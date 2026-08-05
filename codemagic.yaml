@@ -64,19 +64,23 @@ workflows:
       - name: Set build number (auto-increment from App Store Connect)
         script: |
           LATEST=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo "0")
-          cd $CM_BUILD_DIR
+          cd "$CM_BUILD_DIR/ios/App"   # agvtool must run in the Xcode project dir
           agvtool new-version -all $(($LATEST + 1)) || true
 
       - name: Set up code signing (creates cert + profile if missing)
         script: |
           keychain initialize
-          # --create makes the App Store provisioning profile (and a signing
-          # certificate, if none is usable) via the App Store Connect API key.
-          # --certificate-key lets Codemagic create (or reuse) the distribution
-          # certificate from our RSA key; --create also makes the App Store profile.
+          # CERTIFICATE_PRIVATE_KEY is base64(clean-LF PEM). Base64 is a single
+          # line, so the secret survives CI env-var transmission without newline
+          # mangling (raw multi-line PEM came through as "not a valid certificate
+          # private key"). Decode it to a real PEM file and pass that via @file:.
+          printf '%s' "$CERTIFICATE_PRIVATE_KEY" | openssl base64 -d -A > /tmp/cert_key.pem
+          openssl rsa -in /tmp/cert_key.pem -check -noout   # fail fast if key is bad
+          # --certificate-key creates (or reuses) the distribution certificate from
+          # our RSA key; --create also makes the App Store provisioning profile.
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
-            --certificate-key=@env:CERTIFICATE_PRIVATE_KEY \
+            --certificate-key=@file:/tmp/cert_key.pem \
             --create
           keychain add-certificates
           # use-profiles must run where the Xcode project lives (ios/App), else it

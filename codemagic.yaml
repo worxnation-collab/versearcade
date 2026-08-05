@@ -69,11 +69,16 @@ workflows:
         script: |
           cd ios/App && pod install
 
-      - name: Set build number (auto-increment from App Store Connect)
+      - name: Set build number (unique + monotonic)
         script: |
-          LATEST=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo "0")
+          # CFBundleVersion must be higher than ANY previously uploaded build.
+          # get-latest-app-store-build-number returns 0 until a build is on the
+          # actual App Store (TestFlight builds don't count), so it produced "1"
+          # twice -> 409 duplicate. Codemagic's $BUILD_NUMBER always increases.
           cd "$CM_BUILD_DIR/ios/App"   # agvtool must run in the Xcode project dir
-          agvtool new-version -all $(($LATEST + 1)) || true
+          agvtool new-version -all "$BUILD_NUMBER"
+          echo "Set CFBundleVersion to $BUILD_NUMBER"
+          agvtool what-version -terse   # log the applied version
 
       - name: Set up code signing (creates cert + profile if missing)
         script: |

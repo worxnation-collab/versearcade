@@ -221,7 +221,12 @@ export const useAuth = create<AuthState>((set, get) => ({
       throw error
     }
     if (native && data?.url) {
-      await Browser.open({ url: data.url })
+      // Open in the SYSTEM browser (real Safari), NOT the in-app Safari view.
+      // SFSafariViewController (what @capacitor/browser opens) refuses to hand a
+      // custom-scheme redirect (com.versearcade.app://) back to the app — it just
+      // shows a blank page with a "type a URL" bar. Real Safari opens the app via
+      // the registered URL scheme, which fires appUrlOpen -> completeNativeOAuth.
+      window.open(data.url, '_system')
     }
     // Web: the browser navigates automatically and detectSessionInUrl finishes it.
   },

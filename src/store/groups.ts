@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from './auth'
 import { todayLocalDate } from '@/lib/date'
+import { localdb } from '@/lib/localdb'
 
 export interface GroupView {
   id: string
@@ -22,7 +23,7 @@ interface GroupsState {
   loadGroups: () => Promise<void>
   createGroup: (name: string, emoji: string) => Promise<string | null>
   joinGroup: (code: string) => Promise<boolean>
-  contributeToday: (score: number) => Promise<void>
+  contributeToday: () => Promise<void>
 }
 
 const goalFor = (members: number) => Math.max(3000, members * 1500)
@@ -113,10 +114,11 @@ export const useGroups = create<GroupsState>((set, get) => ({
     return true
   },
 
-  async contributeToday(score) {
+  async contributeToday() {
     const date = todayLocalDate()
     if (useAuth.getState().mode === 'local' || !supabase) {
-      // Optimistic demo update.
+      // Optimistic demo update using the score saved for today's play.
+      const score = localdb.getPlay(date)?.result.score ?? 0
       set({
         groups: get().groups.map((g) => ({
           ...g,
@@ -126,9 +128,12 @@ export const useGroups = create<GroupsState>((set, get) => ({
       })
       return
     }
+    // ONLINE: the server reads the authoritative score from the play record, so
+    // we don't need (or trust) a client-side score here.
     for (const g of get().groups) {
       if (g.contributedToday) continue
-      await supabase.rpc('submit_group_play', { p_group_id: g.id, p_drop_date: date, p_score: score })
+      const { error } = await supabase.rpc('submit_group_play', { p_group_id: g.id, p_drop_date: date })
+      if (error) throw error
     }
     await get().loadGroups()
   },

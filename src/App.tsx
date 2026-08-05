@@ -10,6 +10,7 @@ import AuthScreen from './features/auth/AuthScreen'
 import HomeScreen from './features/home/HomeScreen'
 import QuizScreen from './features/daily/QuizScreen'
 import ResultScreen from './features/daily/ResultScreen'
+import ReviewScreen from './features/review/ReviewScreen'
 import GroupsScreen from './features/groups/GroupsScreen'
 import CollectionScreen from './features/collection/CollectionScreen'
 import ProfileScreen from './features/profile/ProfileScreen'
@@ -84,6 +85,14 @@ export default function App() {
           element={
             <RequireProfile>
               <ResultScreen />
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/review"
+          element={
+            <RequireProfile>
+              <ReviewScreen />
             </RequireProfile>
           }
         />

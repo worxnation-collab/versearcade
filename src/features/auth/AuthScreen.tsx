@@ -10,20 +10,30 @@ import { isSupabaseConfigured } from '@/lib/config'
 // play so the app is never a dead end.
 export default function AuthScreen() {
   const navigate = useNavigate()
-  const { signInEmail, signUpEmail, signInOAuth, startAsGuest, error } = useAuth()
+  const { signIn, signUpEmail, signInOAuth, startAsGuest, error } = useAuth()
   const [mode, setMode] = useState<'in' | 'up'>('in')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [username, setUsername] = useState('')
   const [busy, setBusy] = useState(false)
   const [localErr, setLocalErr] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
 
   const submit = async () => {
     setBusy(true)
     setLocalErr(null)
+    setNotice(null)
     try {
-      if (mode === 'up') await signUpEmail(email.trim(), password, username.trim().toLowerCase())
-      else await signInEmail(email.trim(), password)
+      if (mode === 'up') {
+        const { needsConfirmation } = await signUpEmail(email.trim(), password, username.trim().toLowerCase())
+        if (needsConfirmation) {
+          setNotice(`Check ${email.trim()} to confirm your account, then sign in.`)
+          setMode('in')
+          return
+        }
+      } else {
+        await signIn(email.trim(), password)
+      }
       navigate('/play', { replace: true })
     } catch (e: any) {
       setLocalErr(e.message ?? 'Something went wrong')
@@ -86,12 +96,23 @@ export default function AuthScreen() {
               {mode === 'up' && (
                 <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username" autoCapitalize="none" />
               )}
-              <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email" type="email" autoCapitalize="none" />
+              <input
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={mode === 'up' ? 'email' : 'username or email'}
+                type={mode === 'up' ? 'email' : 'text'}
+                autoCapitalize="none"
+                autoCorrect="off"
+              />
               <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="password" type="password" />
             </div>
 
             {(localErr || error) && (
               <p style={{ color: 'var(--coral)', fontSize: 14, textAlign: 'center' }}>{localErr || error}</p>
+            )}
+
+            {notice && (
+              <p style={{ color: 'var(--sky)', fontSize: 14, textAlign: 'center' }}>{notice}</p>
             )}
 
             <Button variant="gold" full disabled={busy} onClick={submit}>

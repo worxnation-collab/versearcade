@@ -6,7 +6,8 @@ import { useGroups, type GroupView } from '@/store/groups'
 import { useGame } from '@/store/game'
 import { useAuth } from '@/store/auth'
 import { useJuice } from '@/juice/useJuice'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { shareResult, APP_URL } from '@/features/daily/shareCard'
 
 // Co-op tier: a group opens the SAME daily verse and pools points toward a
 // shared goal against the clock. Everyone climbs together — no member is ever
@@ -15,8 +16,9 @@ export default function GroupsScreen() {
   const navigate = useNavigate()
   const juice = useJuice()
   const { groups, loadGroups, createGroup, joinGroup, contributeToday } = useGroups()
-  const { lastResult, playedToday } = useGame()
+  const playedToday = useGame((s) => s.playedToday)
   const mode = useAuth((s) => s.mode)
+  const [params] = useSearchParams()
   const [tab, setTab] = useState<'mine' | 'join' | 'new'>('mine')
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
@@ -27,12 +29,24 @@ export default function GroupsScreen() {
     loadGroups()
   }, [loadGroups])
 
+  // Invite deep link: /groups?join=CODE prefills the Join tab for an existing player.
+  useEffect(() => {
+    const invited = params.get('join')
+    if (invited) {
+      setCode(invited.toUpperCase().slice(0, 6))
+      setTab('join')
+    }
+  }, [params])
+
   const contribute = async () => {
-    if (!lastResult) return
     juice.coin()
-    await contributeToday(lastResult.result.score)
-    juice.celebrate()
-    setFlash('Added to the climb! 🧗')
+    try {
+      await contributeToday()
+      juice.celebrate()
+      setFlash('Added to the climb! 🧗')
+    } catch {
+      setFlash('Couldn’t add your score — try again.')
+    }
   }
 
   return (
@@ -51,12 +65,16 @@ export default function GroupsScreen() {
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         {(['mine', 'join', 'new'] as const).map((t) => (
-          <button key={t} onClick={() => { juice.select(); setTab(t) }} className="pill"
+          <button key={t} onClick={() => { juice.select(); setFlash(null); setTab(t) }} className="pill"
             style={{ background: tab === t ? 'var(--grape)' : 'var(--card)', fontWeight: 800, textTransform: 'capitalize' }}>
             {t === 'mine' ? 'My groups' : t === 'join' ? 'Join' : 'New'}
           </button>
         ))}
       </div>
+
+      {/* Feedback is shown on every tab — otherwise a tapped Create/Join button
+          looks dead when it returns a message but doesn't switch tabs. */}
+      {flash && <p style={{ color: 'var(--sky)', textAlign: 'center', marginBottom: 14 }}>{flash}</p>}
 
       {tab === 'mine' && (
         <div style={{ display: 'grid', gap: 14 }}>
@@ -64,7 +82,6 @@ export default function GroupsScreen() {
           {groups.map((g) => (
             <GroupCard key={g.id} g={g} canContribute={playedToday && !g.contributedToday} onContribute={contribute} />
           ))}
-          {flash && <p style={{ color: 'var(--good)', textAlign: 'center' }}>{flash}</p>}
           {!playedToday && groups.length > 0 && (
             <p className="faint center" style={{ fontSize: 13 }}>Play today’s verse first, then add your score to the climb.</p>
           )}
@@ -74,7 +91,8 @@ export default function GroupsScreen() {
       {tab === 'join' && (
         <div style={{ display: 'grid', gap: 12 }}>
           <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Enter 6-letter group code" autoCapitalize="characters" maxLength={6} />
-          <Button variant="gold" full onClick={async () => {
+          <Button variant="gold" full disabled={code.trim().length < 6} onClick={async () => {
+            if (mode === 'local') { setFlash('Sign in to join real groups.'); return }
             const ok = await joinGroup(code)
             setFlash(ok ? 'Joined! 🎉' : 'Hmm, no group with that code.')
             if (ok) setTab('mine')
@@ -92,9 +110,10 @@ export default function GroupsScreen() {
           </div>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Group name (e.g. Youth Group)" maxLength={30} />
           <Button variant="gold" full disabled={name.trim().length < 2} onClick={async () => {
+            if (mode === 'local') { setFlash('Sign in to create real groups and invite friends by code.'); return }
             const c = await createGroup(name.trim(), emoji)
-            setFlash(c ? `Created! Share code: ${c}` : 'Create an account to make real groups.')
-            if (c) setTab('mine')
+            if (c) { setFlash(`Created! Share code: ${c}`); setTab('mine') }
+            else setFlash('Couldn’t create the group — please try again.')
           }}>Create group</Button>
         </div>
       )}
@@ -105,6 +124,18 @@ export default function GroupsScreen() {
 function GroupCard({ g, canContribute, onContribute }: { g: GroupView; canContribute: boolean; onContribute: () => void }) {
   const pct = Math.min(1, g.todayTotal / g.goal)
   const hit = pct >= 1
+  const [invite, setInvite] = useState<string | null>(null)
+
+  const shareInvite = async () => {
+    const text =
+      `Join my Verse Arcade group “${g.name}” ${g.emoji}!\n` +
+      `We race one shared Bible verse a day and climb together.\n\n` +
+      `Tap Groups → Join and enter code ${g.joinCode}\n` +
+      `${APP_URL}/groups?join=${g.joinCode}`
+    const r = await shareResult(text)
+    setInvite(r === 'shared' ? 'Invite shared!' : r === 'copied' ? 'Invite copied to clipboard!' : 'Could not share')
+  }
+
   return (
     <motion.div className="card" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -132,6 +163,18 @@ function GroupCard({ g, canContribute, onContribute }: { g: GroupView; canContri
       ) : canContribute ? (
         <div style={{ marginTop: 12 }}><Button variant="gold" full onClick={onContribute}>Add my score to the climb 🧗</Button></div>
       ) : null}
+
+      {g.id !== 'demo' && (
+        <div style={{ marginTop: 10 }}>
+          <button
+            onClick={shareInvite}
+            style={{ width: '100%', padding: '11px 14px', borderRadius: 'var(--r-md)', background: 'transparent', border: '1px solid var(--stroke)', color: 'var(--ink)', fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+          >
+            📤 Share invite <span className="faint" style={{ fontWeight: 800, letterSpacing: '0.08em' }}>· {g.joinCode}</span>
+          </button>
+          {invite && <p style={{ color: 'var(--good)', fontSize: 12, textAlign: 'center', marginTop: 6 }}>{invite}</p>}
+        </div>
+      )}
     </motion.div>
   )
 }

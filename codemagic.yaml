@@ -32,6 +32,14 @@ workflows:
         BUNDLE_ID: "com.versearcade.app"
         XCODE_WORKSPACE: "ios/App/App.xcworkspace"
         XCODE_SCHEME: "App"
+        # --- Backend (Supabase) build-time config, must match .env.local / the web
+        # build, else `npm run build` compiles the app in offline LOCAL mode. The
+        # anon key is a PUBLIC client key (safe to expose; RLS-protected) and is
+        # already shipped in the web bundle, so it lives here rather than a secret.
+        VITE_SUPABASE_URL: "https://visuppaucpzzigwtqmdd.supabase.co"
+        VITE_SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpc3VwcGF1Y3B6emlnd3RxbWRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MTY1MjEsImV4cCI6MjEwMTQ5MjUyMX0.YP_lJkV8ZD7J-oAqwkhh-6gQ0z1Q7pFR4Nql1NdhSa0"
+        VITE_AUTH_REDIRECT_URL: "https://versearcade.org/auth/callback"
+        VITE_DEFAULT_TRANSLATION: "BSB"
       node: 20
       xcode: latest
       cocoapods: default

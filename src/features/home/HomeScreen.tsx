@@ -9,17 +9,20 @@ import { StreakFlame } from '@/components/StreakFlame'
 import { PresenceStrip } from '@/features/presence/PresenceStrip'
 import { useAuth } from '@/store/auth'
 import { useGame } from '@/store/game'
+import { useReviews } from '@/store/reviews'
 import { msUntilNextLocalMidnight, formatCountdown } from '@/lib/date'
 
 export default function HomeScreen() {
   const navigate = useNavigate()
   const profile = useAuth((s) => s.profile)!
   const { today, playedToday, lastResult, loadToday } = useGame()
+  const { dueRefs, loadDue } = useReviews()
   const [countdown, setCountdown] = useState(msUntilNextLocalMidnight())
 
   useEffect(() => {
     loadToday()
-  }, [loadToday])
+    loadDue()
+  }, [loadToday, loadDue])
 
   useEffect(() => {
     const t = setInterval(() => setCountdown(msUntilNextLocalMidnight()), 1000)
@@ -57,7 +60,7 @@ export default function HomeScreen() {
         transition={{ type: 'spring', stiffness: 260, damping: 24 }}
         style={{ padding: 22, textAlign: 'center', position: 'relative', overflow: 'hidden' }}
       >
-        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(400px 200px at 50% 0%, rgba(255,210,63,0.14), transparent 70%)' }} />
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(400px 200px at 50% 0%, rgba(255,210,63,0.14), transparent 70%)' }} />
         <span className="pill" style={{ marginBottom: 12 }}>
           ✦ Today’s Drop
         </span>
@@ -95,6 +98,28 @@ export default function HomeScreen() {
           </>
         )}
       </motion.div>
+
+      {/* Keep it: spaced-repetition review of verses already learned. Only
+          surfaces when something is actually due, so it's never clutter. */}
+      {dueRefs.length > 0 && (
+        <motion.button
+          onClick={() => navigate('/review')}
+          whileTap={{ scale: 0.97 }}
+          className="card"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{ width: '100%', textAlign: 'left', marginTop: 16, display: 'flex', alignItems: 'center', gap: 14 }}
+        >
+          <div style={{ fontSize: 30 }}>🧠</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 17 }}>Keep it</div>
+            <div className="faint" style={{ fontSize: 13 }}>
+              {dueRefs.length} verse{dueRefs.length > 1 ? 's' : ''} ready to review — make {dueRefs.length > 1 ? 'them' : 'it'} stick
+            </div>
+          </div>
+          <div style={{ fontFamily: 'var(--font-display)', color: 'var(--gold)', fontSize: 20 }}>→</div>
+        </motion.button>
+      )}
 
       <div style={{ height: 16 }} />
       <PresenceStrip />

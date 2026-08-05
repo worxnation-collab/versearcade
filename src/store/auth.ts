@@ -66,8 +66,8 @@ interface AuthState {
   refreshProfile: () => Promise<void>
   setProfileLocal: (p: Profile) => void
 
-  signUpEmail: (email: string, password: string, username: string) => Promise<void>
-  signInEmail: (email: string, password: string) => Promise<void>
+  signUpEmail: (email: string, password: string, username: string) => Promise<{ needsConfirmation: boolean }>
+  signIn: (identifier: string, password: string) => Promise<void>
   signInOAuth: (provider: 'google' | 'apple') => Promise<void>
   startAsGuest: (username: string, emoji: string) => void
 
@@ -91,15 +91,31 @@ export const useAuth = create<AuthState>((set, get) => ({
       set({ ready: true, mode: 'local', profile: p, isAuthed: !!p })
       return
     }
+    supabase.auth.onAuthStateChange(async (_evt, session) => {
+      if (session) {
+        set({ mode: 'online' })
+        await get().refreshProfile()
+      } else {
+        // Cloud session ended — fall back to any local guest profile so the
+        // user isn't kicked back to onboarding.
+        const p = localdb.getProfile()
+        if (p) syncSettingsFromProfile(p)
+        set({ mode: p ? 'local' : 'online', profile: p, isAuthed: !!p })
+      }
+    })
+
     const { data } = await supabase.auth.getSession()
     if (data.session) {
       await get().refreshProfile()
+      set({ ready: true, mode: 'online', isAuthed: true })
+      return
     }
-    supabase.auth.onAuthStateChange(async (_evt, session) => {
-      if (session) await get().refreshProfile()
-      else set({ profile: null, isAuthed: false })
-    })
-    set({ ready: true, mode: 'online', isAuthed: !!data.session })
+
+    // No cloud session: restore a guest profile from this device if one exists,
+    // so guests (the default onboarding path) survive a refresh.
+    const p = localdb.getProfile()
+    if (p) syncSettingsFromProfile(p)
+    set({ ready: true, mode: p ? 'local' : 'online', profile: p, isAuthed: !!p })
   },
 
   async refreshProfile() {
@@ -127,25 +143,59 @@ export const useAuth = create<AuthState>((set, get) => ({
   async signUpEmail(email, password, username) {
     if (!supabase) throw new Error('Backend not configured')
     set({ error: null })
-    const { error } = await supabase.auth.signUp({
+    const emailRedirectTo =
+      import.meta.env.VITE_AUTH_REDIRECT_URL || window.location.origin + '/auth/callback'
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { username, display_name: username } },
+      options: { data: { username, display_name: username }, emailRedirectTo },
     })
     if (error) {
       set({ error: error.message })
       throw error
     }
+    // With email confirmation ON, signUp returns no session — the user must
+    // confirm before they're authed. Report that so the UI doesn't bounce them
+    // straight into a protected route (which would kick back to onboarding).
+    if (!data.session) return { needsConfirmation: true }
     await get().refreshProfile()
+    return { needsConfirmation: false }
   },
 
-  async signInEmail(email, password) {
+  async signIn(identifier, password) {
     if (!supabase) throw new Error('Backend not configured')
     set({ error: null })
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) {
-      set({ error: error.message })
-      throw error
+    const id = identifier.trim()
+
+    // Email path: sign in directly.
+    if (id.includes('@')) {
+      const { error } = await supabase.auth.signInWithPassword({ email: id, password })
+      if (error) {
+        set({ error: error.message })
+        throw error
+      }
+      await get().refreshProfile()
+      return
+    }
+
+    // Username path: an edge function resolves the username to its account and
+    // validates the password server-side (email never touches the browser),
+    // then we adopt the returned session.
+    const { data, error } = await supabase.functions.invoke('username-login', {
+      body: { identifier: id, password },
+    })
+    if (error || !data?.session) {
+      const msg = 'Invalid username or password'
+      set({ error: msg })
+      throw new Error(msg)
+    }
+    const { error: sessErr } = await supabase.auth.setSession({
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+    })
+    if (sessErr) {
+      set({ error: sessErr.message })
+      throw sessErr
     }
     await get().refreshProfile()
   },

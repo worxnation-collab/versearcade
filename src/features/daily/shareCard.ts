@@ -1,8 +1,11 @@
 import type { PlayResult, SubmitOutcome } from '@/types'
 
+// Public front door — appended to every share so friends can jump straight in.
+export const APP_URL = 'https://versearcade.org'
+
 // Spoiler-free share text (Wordle-style virality). Never leaks the reference or
 // answers, so sharing can't ruin the day's drop for a friend — it just flexes
-// the score and streak and pulls them in.
+// the score and streak and pulls them in, then links them to play.
 export function buildShareText(result: PlayResult, outcome: SubmitOutcome): string {
   const dots = result.perQuestion.map((q) => (q.correct ? '🟩' : '⬜')).join('')
   const streakLine = outcome.currentStreak > 1 ? `\n🔥 ${outcome.currentStreak}-day streak` : ''
@@ -11,14 +14,16 @@ export function buildShareText(result: PlayResult, outcome: SubmitOutcome): stri
     `${dots}  ${result.correctCount}/${result.totalQuestions}\n` +
     `⚡ ${result.score.toLocaleString()} pts · ×${result.comboMax} best combo` +
     streakLine +
-    `\n\nCan you beat me? Same verse, everyone. 📖`
+    `\n\nCan you beat me? Same verse, everyone. 📖\n${APP_URL}`
   )
 }
 
 export async function shareResult(text: string): Promise<'shared' | 'copied' | 'failed'> {
   try {
     if (navigator.share) {
-      await navigator.share({ title: 'Verse Arcade', text })
+      // `url` drives the rich link preview; `text` already ends with the link
+      // for share targets (and the clipboard fallback) that ignore `url`.
+      await navigator.share({ title: 'Verse Arcade', text, url: APP_URL })
       return 'shared'
     }
     await navigator.clipboard.writeText(text)

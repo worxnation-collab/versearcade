@@ -1,0 +1,161 @@
+/* Verse Arcade — global styles & design tokens.
+   Aesthetic: bold, cosmic, neon-arcade. Deep violet night sky, vivid candy
+   accents, chunky rounded shapes, springy motion. Mobile-first. */
+
+:root {
+  /* palette */
+  --bg-0: #0b0720;
+  --bg-1: #150a34;
+  --bg-2: #1e0f47;
+  --ink: #ffffff;
+  --ink-dim: #b8a9e0;
+  --ink-faint: #7a6ba8;
+
+  --grape: #a06bff;
+  --grape-deep: #7a3ff2;
+  --gold: #ffd23f;
+  --coral: #ff6b6b;
+  --mint: #4ecdc4;
+  --sky: #5ee7df;
+  --tangerine: #ff9f1c;
+
+  --good: #43e97b;
+  --good-deep: #1fb85a;
+  --warn: #ffb648;
+
+  --card: rgba(255, 255, 255, 0.06);
+  --card-solid: #241353;
+  --stroke: rgba(255, 255, 255, 0.12);
+
+  --r-sm: 12px;
+  --r-md: 18px;
+  --r-lg: 28px;
+  --r-pill: 999px;
+
+  --shadow-pop: 0 10px 0 rgba(0, 0, 0, 0.35), 0 18px 40px rgba(122, 63, 242, 0.35);
+  --shadow-soft: 0 8px 30px rgba(0, 0, 0, 0.35);
+
+  --font-display: 'Baloo 2', 'Fredoka', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  /* safe areas for notch / home indicator */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body, #root { height: 100%; margin: 0; }
+
+body {
+  font-family: var(--font-body);
+  color: var(--ink);
+  background:
+    radial-gradient(1200px 700px at 50% -10%, #2a1568 0%, transparent 60%),
+    radial-gradient(900px 600px at 100% 100%, #3a1a5c 0%, transparent 55%),
+    linear-gradient(180deg, var(--bg-1), var(--bg-0));
+  background-attachment: fixed;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* Disable pull-to-refresh / overscroll bounce for a more native feel. */
+  overscroll-behavior-y: none;
+  user-select: none;
+}
+
+h1, h2, h3, .display {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+
+/* App shell -------------------------------------------------------------- */
+.app-shell {
+  min-height: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: calc(var(--safe-top) + 8px) 18px calc(var(--safe-bottom) + 96px);
+  position: relative;
+}
+.app-shell.no-nav { padding-bottom: calc(var(--safe-bottom) + 18px); }
+
+/* Cards ------------------------------------------------------------------ */
+.card {
+  background: var(--card);
+  border: 1px solid var(--stroke);
+  border-radius: var(--r-lg);
+  padding: 18px;
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-soft);
+}
+
+/* Chips / pills ---------------------------------------------------------- */
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: var(--r-pill);
+  background: var(--card); border: 1px solid var(--stroke);
+  font-weight: 700; font-size: 13px;
+}
+
+/* Text utilities --------------------------------------------------------- */
+.dim { color: var(--ink-dim); }
+.faint { color: var(--ink-faint); }
+.center { text-align: center; }
+.gradient-text {
+  background: linear-gradient(92deg, var(--gold), var(--coral) 55%, var(--grape));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+/* Animations ------------------------------------------------------------- */
+@keyframes floaty { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-8px) } }
+@keyframes pulseGlow {
+  0%,100% { filter: drop-shadow(0 0 0 rgba(255,210,63,0)) }
+  50% { filter: drop-shadow(0 0 16px rgba(255,210,63,0.6)) }
+}
+@keyframes popIn {
+  0% { transform: scale(0.6); opacity: 0 }
+  70% { transform: scale(1.08) }
+  100% { transform: scale(1); opacity: 1 }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0 }
+  100% { background-position: 200% 0 }
+}
+@keyframes flameWobble {
+  0%,100% { transform: rotate(-4deg) scale(1) }
+  50% { transform: rotate(4deg) scale(1.08) }
+}
+
+.floaty { animation: floaty 3.5s ease-in-out infinite; }
+.pop-in { animation: popIn 0.4s cubic-bezier(.2,1.4,.4,1) both; }
+
+/* Skeleton shimmer for loading */
+.skeleton {
+  background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.12) 37%, rgba(255,255,255,0.05) 63%);
+  background-size: 200% 100%;
+  animation: shimmer 1.3s ease-in-out infinite;
+  border-radius: var(--r-md);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floaty, .pop-in, .skeleton { animation: none !important; }
+}
+
+/* Inputs ----------------------------------------------------------------- */
+input, textarea {
+  font-family: inherit; font-size: 16px; /* 16px avoids iOS zoom-on-focus */
+  color: var(--ink);
+  background: rgba(0,0,0,0.25);
+  border: 1.5px solid var(--stroke);
+  border-radius: var(--r-md);
+  padding: 14px 16px; width: 100%;
+  outline: none;
+}
+input:focus, textarea:focus { border-color: var(--grape); }
+input::placeholder { color: var(--ink-faint); }
+
+/* Scrollbars (subtle) */
+::-webkit-scrollbar { width: 0; height: 0; }

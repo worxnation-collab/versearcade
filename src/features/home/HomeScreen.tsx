@@ -1,0 +1,128 @@
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import { Page } from '@/components/Page'
+import { Button } from '@/components/Button'
+import { Avatar } from '@/components/Avatar'
+import { XpBar } from '@/components/XpBar'
+import { StreakFlame } from '@/components/StreakFlame'
+import { PresenceStrip } from '@/features/presence/PresenceStrip'
+import { useAuth } from '@/store/auth'
+import { useGame } from '@/store/game'
+import { msUntilNextLocalMidnight, formatCountdown } from '@/lib/date'
+
+export default function HomeScreen() {
+  const navigate = useNavigate()
+  const profile = useAuth((s) => s.profile)!
+  const { today, playedToday, lastResult, loadToday } = useGame()
+  const [countdown, setCountdown] = useState(msUntilNextLocalMidnight())
+
+  useEffect(() => {
+    loadToday()
+  }, [loadToday])
+
+  useEffect(() => {
+    const t = setInterval(() => setCountdown(msUntilNextLocalMidnight()), 1000)
+    return () => clearInterval(t)
+  }, [])
+
+  return (
+    <Page>
+      {/* Top identity bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <Avatar emoji={profile.avatarEmoji} ring />
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <b style={{ fontFamily: 'var(--font-display)', fontSize: 18 }}>@{profile.username}</b>
+            <StreakFlame days={profile.currentStreak} size={18} />
+          </div>
+          <div style={{ marginTop: 6 }}>
+            <XpBar xp={profile.xp} />
+          </div>
+        </div>
+      </div>
+
+      {/* Streak-freeze reassurance (kind loss-aversion made visible) */}
+      {profile.streakFreezes > 0 && profile.currentStreak > 0 && (
+        <p className="faint" style={{ fontSize: 12, marginBottom: 12 }}>
+          🛟 {profile.streakFreezes} streak freeze{profile.streakFreezes > 1 ? 's' : ''} — miss a day and your streak survives.
+        </p>
+      )}
+
+      {/* The daily drop */}
+      <motion.div
+        className="card"
+        initial={{ scale: 0.96, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+        style={{ padding: 22, textAlign: 'center', position: 'relative', overflow: 'hidden' }}
+      >
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(400px 200px at 50% 0%, rgba(255,210,63,0.14), transparent 70%)' }} />
+        <span className="pill" style={{ marginBottom: 12 }}>
+          ✦ Today’s Drop
+        </span>
+
+        {!playedToday ? (
+          <>
+            <h2 style={{ fontSize: 26, marginTop: 6 }}>A new verse is live</h2>
+            <p className="dim" style={{ marginTop: 8 }}>
+              Read it, then race the clock on {today?.questions.length ?? 5} quick
+              questions about it. Same verse everyone’s playing right now.
+            </p>
+            <div style={{ marginTop: 18 }}>
+              <Button variant="gold" full onClick={() => navigate('/play/run')}>
+                ▶ Play today’s verse
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
+            <h2 style={{ fontSize: 24, marginTop: 6 }}>Done for today 🎉</h2>
+            <p className="dim" style={{ marginTop: 6 }}>{today?.reference}</p>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginTop: 14 }}>
+              <Stat label="Score" value={lastResult?.result.score.toLocaleString() ?? '—'} />
+              <Stat label="Correct" value={`${lastResult?.result.correctCount}/${lastResult?.result.totalQuestions}`} />
+              <Stat label="Best combo" value={`×${lastResult?.result.comboMax ?? 0}`} />
+            </div>
+            <p className="faint" style={{ marginTop: 16, fontSize: 14 }}>
+              Next verse in <b style={{ color: 'var(--sky)' }}>{formatCountdown(countdown)}</b>
+            </p>
+            <div style={{ marginTop: 12 }}>
+              <Button variant="secondary" full onClick={() => navigate('/play/result')}>
+                See my recap & share →
+              </Button>
+            </div>
+          </>
+        )}
+      </motion.div>
+
+      <div style={{ height: 16 }} />
+      <PresenceStrip />
+
+      {/* Quick nudges toward retention loops */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16 }}>
+        <MiniCard emoji="👥" title="Play with friends" sub="Climb together" onClick={() => navigate('/groups')} />
+        <MiniCard emoji="🃏" title="Verse cards" sub="Collect them all" onClick={() => navigate('/collection')} />
+      </div>
+    </Page>
+  )
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 22 }}>{value}</div>
+      <div className="faint" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+    </div>
+  )
+}
+
+function MiniCard({ emoji, title, sub, onClick }: { emoji: string; title: string; sub: string; onClick: () => void }) {
+  return (
+    <motion.button whileTap={{ scale: 0.95 }} onClick={onClick} className="card" style={{ padding: 16, textAlign: 'left' }}>
+      <div style={{ fontSize: 26 }}>{emoji}</div>
+      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, marginTop: 6 }}>{title}</div>
+      <div className="faint" style={{ fontSize: 12 }}>{sub}</div>
+    </motion.button>
+  )
+}

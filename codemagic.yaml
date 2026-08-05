@@ -57,6 +57,15 @@ workflows:
           fi
           npx cap sync ios
 
+      - name: Raise iOS minimum deployment target to 15.0 (ITMS-90068)
+        script: |
+          # Apple warns (ITMS-90068) that MinimumOSVersion 13.0 will be rejected
+          # from Spring 2027; must be >= 15.0. Capacitor defaults to 13.0, so bump
+          # the Xcode project + Podfile here (before pod install). macOS = BSD sed.
+          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 13.0;/IPHONEOS_DEPLOYMENT_TARGET = 15.0;/g' ios/App/App.xcodeproj/project.pbxproj
+          sed -i '' "s/platform :ios, '13.0'/platform :ios, '15.0'/" ios/App/Podfile
+          echo "Deployment target now:" && grep -m1 "IPHONEOS_DEPLOYMENT_TARGET" ios/App/App.xcodeproj/project.pbxproj
+
       - name: Register OAuth deep-link URL scheme (com.versearcade.app://)
         script: |
           # cap add ios generates Info.plist with no custom URL scheme, so the

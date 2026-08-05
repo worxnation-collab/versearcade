@@ -73,14 +73,20 @@ workflows:
             --type IOS_APP_STORE \
             --create
           keychain add-certificates
+          # use-profiles must run where the Xcode project lives (ios/App), else it
+          # configures nothing and the App target keeps automatic signing —
+          # archive then fails with "App requires a provisioning profile".
+          cd ios/App
           xcode-project use-profiles
 
       - name: Build signed IPA
         script: |
+          cd ios/App
           xcode-project build-ipa \
-            --workspace "$XCODE_WORKSPACE" \
-            --scheme "$XCODE_SCHEME"
+            --workspace "App.xcworkspace" \
+            --scheme "App"
     artifacts:
+      - ios/App/build/ios/ipa/*.ipa
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
     publishing:

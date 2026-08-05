@@ -221,7 +221,7 @@ export const useAuth = create<AuthState>((set, get) => ({
       throw error
     }
     if (native && data?.url) {
-      await Browser.open({ url: data.url, presentationStyle: 'popover' })
+      await Browser.open({ url: data.url })
     }
     // Web: the browser navigates automatically and detectSessionInUrl finishes it.
   },

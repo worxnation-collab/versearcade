@@ -68,16 +68,25 @@ workflows:
 
       - name: Register OAuth deep-link URL scheme (com.versearcade.app://)
         script: |
+          set -e
           # cap add ios generates Info.plist with no custom URL scheme, so the
           # OAuth redirect com.versearcade.app://auth/callback can't reopen the app.
-          # Add the scheme via PlistBuddy (idempotent).
+          # Delete any existing block first, then add a clean one (no fragile
+          # "|| true" that hid failures last time), and ASSERT it landed.
           PLIST="ios/App/App/Info.plist"
-          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes array" "$PLIST" 2>/dev/null || true
-          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0 dict" "$PLIST" 2>/dev/null || true
-          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLName string com.versearcade.app" "$PLIST" 2>/dev/null || true
-          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" "$PLIST" 2>/dev/null || true
-          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string com.versearcade.app" "$PLIST" 2>/dev/null || true
-          echo "URL types now:" && /usr/libexec/PlistBuddy -c "Print :CFBundleURLTypes" "$PLIST"
+          test -f "$PLIST" || { echo "Info.plist not found at $PLIST"; ls -R ios/App | head; exit 1; }
+          /usr/libexec/PlistBuddy -c "Delete :CFBundleURLTypes" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes array" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0 dict" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLName string com.versearcade.app" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string com.versearcade.app" "$PLIST"
+          echo "== CFBundleURLTypes now ==" && /usr/libexec/PlistBuddy -c "Print :CFBundleURLTypes" "$PLIST"
+          # Fail the build loudly if the scheme is not present, so we never ship
+          # another binary that can't catch the OAuth redirect.
+          /usr/libexec/PlistBuddy -c "Print :CFBundleURLTypes:0:CFBundleURLSchemes:0" "$PLIST" | grep -qx "com.versearcade.app" \
+            || { echo "FATAL: URL scheme com.versearcade.app not registered"; exit 1; }
+          echo "OK: com.versearcade.app URL scheme registered"
 
       - name: Generate app icons + splash from assets/
         script: |

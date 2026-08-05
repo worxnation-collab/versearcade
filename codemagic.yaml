@@ -24,7 +24,7 @@ workflows:
         distribution_type: app_store
         bundle_identifier: com.versearcade.app
       vars:
-        APP_STORE_APPLE_ID: 0000000000       # <-- your app's numeric Apple ID from App Store Connect
+        APP_STORE_APPLE_ID: 6798202287       # Verse Arcade's numeric Apple ID (App Store Connect)
         BUNDLE_ID: "com.versearcade.app"
         XCODE_WORKSPACE: "ios/App/App.xcworkspace"
         XCODE_SCHEME: "App"

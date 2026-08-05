@@ -1,0 +1,49 @@
+<svg width="2732" height="2732" viewBox="0 0 2732 2732" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bg" cx="1366" cy="1150" r="1500" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1a1040"/>
+      <stop offset="1" stop-color="#0b0720"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffe27a"/>
+      <stop offset="1" stop-color="#ffb020"/>
+    </linearGradient>
+    <linearGradient id="page" x1="0" y1="0" x2="0" y2="1" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#e7deff"/>
+    </linearGradient>
+    <linearGradient id="word" x1="0" y1="0" x2="1" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#c9a3ff"/>
+      <stop offset="1" stop-color="#ff8fd0"/>
+    </linearGradient>
+    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="26" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="2732" height="2732" fill="url(#bg)"/>
+
+  <g transform="translate(1366,1210)">
+    <!-- star -->
+    <g filter="url(#glow)">
+      <path d="M0 -300 c 46 200, 92 246, 292 292 c -200 46, -246 92, -292 292
+               c -46 -200, -92 -246, -292 -292 c 200 -46, 246 -92, 292 -292 z"
+            fill="url(#gold)" transform="translate(0,-150) scale(0.62)"/>
+    </g>
+    <!-- open book -->
+    <g transform="translate(0,150)">
+      <path d="M0 250 c -140 -120 -380 -148 -492 -132 l0 -300 c 140 -24 380 -4 492 116 z" fill="url(#page)"/>
+      <path d="M0 250 c 140 -120 380 -148 492 -132 l0 -300 c -140 -24 -380 -4 -492 116 z" fill="url(#page)"/>
+      <path d="M0 134 l0 -200" stroke="url(#gold)" stroke-width="20" stroke-linecap="round"/>
+    </g>
+  </g>
+
+  <!-- wordmark -->
+  <text x="1366" y="1960" text-anchor="middle"
+        font-family="Arial Black, Arial, sans-serif" font-weight="900"
+        font-size="200" letter-spacing="8" fill="url(#word)">VERSE ARCADE</text>
+  <text x="1366" y="2070" text-anchor="middle"
+        font-family="Arial, sans-serif" font-weight="600"
+        font-size="70" letter-spacing="14" fill="#8b83b8">ONE VERSE A DAY</text>
+</svg>

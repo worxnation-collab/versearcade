@@ -237,13 +237,41 @@ export const useAuth = create<AuthState>((set, get) => ({
   async completeNativeOAuth(url) {
     if (!supabase) return
     try {
-      const code = new URL(url).searchParams.get('code')
-      if (!code) return
-      const { error } = await supabase.auth.exchangeCodeForSession(code)
-      if (error) {
-        set({ error: error.message })
+      // The redirect can carry the session in one of two shapes:
+      //  - PKCE flow:     com.versearcade.app://auth/callback?code=...
+      //  - Implicit flow: com.versearcade.app://auth/callback#access_token=...&refresh_token=...
+      // Supabase defaults to implicit, so the tokens arrive in the hash — the old
+      // code only read ?code= and silently bailed, which is why sign-in returned
+      // to the app but never authed. Handle BOTH so either flow works.
+      const query = new URLSearchParams(url.includes('?') ? url.slice(url.indexOf('?') + 1).split('#')[0] : '')
+      const hash = new URLSearchParams(url.includes('#') ? url.slice(url.indexOf('#') + 1) : '')
+
+      const code = query.get('code')
+      const accessToken = hash.get('access_token')
+      const refreshToken = hash.get('refresh_token')
+
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        if (error) {
+          set({ error: error.message })
+          return
+        }
+      } else if (accessToken && refreshToken) {
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        })
+        if (error) {
+          set({ error: error.message })
+          return
+        }
+      } else {
+        // No usable credentials — surface any provider error, then stop.
+        const errDesc = query.get('error_description') || hash.get('error_description')
+        if (errDesc) set({ error: errDesc })
         return
       }
+
       try {
         await Browser.close()
       } catch {

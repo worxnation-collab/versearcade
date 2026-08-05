@@ -1,4 +1,6 @@
 import { create } from 'zustand'
+import { Capacitor } from '@capacitor/core'
+import { Browser } from '@capacitor/browser'
 import { supabase } from '@/lib/supabase'
 import { isSupabaseConfigured } from '@/lib/config'
 import { localdb } from '@/lib/localdb'
@@ -69,6 +71,7 @@ interface AuthState {
   signUpEmail: (email: string, password: string, username: string) => Promise<{ needsConfirmation: boolean }>
   signIn: (identifier: string, password: string) => Promise<void>
   signInOAuth: (provider: 'google' | 'apple') => Promise<void>
+  completeNativeOAuth: (url: string) => Promise<void>
   startAsGuest: (username: string, emoji: string) => void
 
   updateProfile: (patch: Partial<Profile>) => Promise<void>
@@ -202,14 +205,49 @@ export const useAuth = create<AuthState>((set, get) => ({
 
   async signInOAuth(provider) {
     if (!supabase) throw new Error('Backend not configured')
-    const redirectTo =
-      import.meta.env.VITE_AUTH_REDIRECT_URL || window.location.origin + '/auth/callback'
-    const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo } })
+    const native = Capacitor.isNativePlatform()
+    // Native must return to the app via the custom URL scheme, not the website.
+    const redirectTo = native
+      ? 'com.versearcade.app://auth/callback'
+      : import.meta.env.VITE_AUTH_REDIRECT_URL || window.location.origin + '/auth/callback'
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider,
+      // On native we open the provider URL ourselves (in an in-app browser) so we
+      // can catch the deep-link redirect back into the app.
+      options: { redirectTo, skipBrowserRedirect: native },
+    })
     if (error) {
       set({ error: error.message })
       throw error
     }
-    // Redirect happens; session picked up by detectSessionInUrl on return.
+    if (native && data?.url) {
+      await Browser.open({ url: data.url, presentationStyle: 'popover' })
+    }
+    // Web: the browser navigates automatically and detectSessionInUrl finishes it.
+  },
+
+  // Called from the native deep-link handler when the provider redirects back to
+  // com.versearcade.app://auth/callback?code=... — exchanges the PKCE code for a
+  // session, closes the in-app browser, and loads the profile.
+  async completeNativeOAuth(url) {
+    if (!supabase) return
+    try {
+      const code = new URL(url).searchParams.get('code')
+      if (!code) return
+      const { error } = await supabase.auth.exchangeCodeForSession(code)
+      if (error) {
+        set({ error: error.message })
+        return
+      }
+      try {
+        await Browser.close()
+      } catch {
+        /* browser may already be closed */
+      }
+      await get().refreshProfile()
+    } catch (e) {
+      set({ error: (e as Error).message })
+    }
   },
 
   startAsGuest(username, emoji) {

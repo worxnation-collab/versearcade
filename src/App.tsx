@@ -50,7 +50,13 @@ export default function App() {
 
   useEffect(() => {
     init()
-    initNative()
+    // Handle the OAuth redirect deep link (com.versearcade.app://auth/callback)
+    // returning from Sign in with Google/Apple on device.
+    initNative((url) => {
+      if (url.includes('auth/callback') || url.includes('code=')) {
+        useAuth.getState().completeNativeOAuth(url)
+      }
+    })
   }, [init])
 
   if (!ready) return <Splash />

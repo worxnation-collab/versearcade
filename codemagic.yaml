@@ -57,6 +57,19 @@ workflows:
           fi
           npx cap sync ios
 
+      - name: Register OAuth deep-link URL scheme (com.versearcade.app://)
+        script: |
+          # cap add ios generates Info.plist with no custom URL scheme, so the
+          # OAuth redirect com.versearcade.app://auth/callback can't reopen the app.
+          # Add the scheme via PlistBuddy (idempotent).
+          PLIST="ios/App/App/Info.plist"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes array" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0 dict" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLName string com.versearcade.app" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string com.versearcade.app" "$PLIST" 2>/dev/null || true
+          echo "URL types now:" && /usr/libexec/PlistBuddy -c "Print :CFBundleURLTypes" "$PLIST"
+
       - name: Generate app icons + splash from assets/
         script: |
           npx --yes @capacitor/assets generate --ios \

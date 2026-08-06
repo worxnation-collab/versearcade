@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
@@ -11,6 +11,14 @@ import { isSupabaseConfigured } from '@/lib/config'
 export default function AuthScreen() {
   const navigate = useNavigate()
   const { signIn, signUpEmail, signInOAuth, startAsGuest, error } = useAuth()
+  const profile = useAuth((s) => s.profile)
+
+  // Native OAuth (Apple/Google) completes asynchronously via a deep link, so the
+  // oauth() handler below can't navigate itself. When the session lands and a
+  // profile appears, leave the sign-in screen for the app.
+  useEffect(() => {
+    if (profile) navigate('/play', { replace: true })
+  }, [profile, navigate])
   const [mode, setMode] = useState<'in' | 'up'>('in')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')

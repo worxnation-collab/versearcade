@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { useAuth } from './store/auth'
 import { useJuiceSync } from './juice/useJuice'
 import { initNative } from './lib/native'
@@ -46,18 +46,23 @@ function TabShell({ children }: { children: JSX.Element }) {
 export default function App() {
   const init = useAuth((s) => s.init)
   const ready = useAuth((s) => s.ready)
+  const navigate = useNavigate()
   useJuiceSync()
 
   useEffect(() => {
     init()
     // Handle the OAuth redirect deep link (com.versearcade.app://auth/callback)
     // returning from Sign in with Google/Apple on device.
-    initNative((url) => {
+    initNative(async (url) => {
       if (url.includes('auth/callback') || url.includes('code=')) {
-        useAuth.getState().completeNativeOAuth(url)
+        await useAuth.getState().completeNativeOAuth(url)
+        // Native OAuth finishes here, asynchronously, long after the user tapped
+        // "Sign in with Apple/Google" — so the sign-in screen can't navigate on
+        // its own. Once the session + profile are in, move into the app.
+        if (useAuth.getState().profile) navigate('/play', { replace: true })
       }
     })
-  }, [init])
+  }, [init, navigate])
 
   if (!ready) return <Splash />
 

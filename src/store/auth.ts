@@ -123,14 +123,30 @@ export const useAuth = create<AuthState>((set, get) => ({
 
   async refreshProfile() {
     if (!supabase) return
-    const { data: u } = await supabase.auth.getUser()
-    if (!u.user) {
+    // Use the LOCAL session (getSession) rather than getUser(): getUser() makes a
+    // network round-trip and, called from inside onAuthStateChange, triggers a
+    // request storm / loop. getSession reads the already-set token synchronously.
+    const { data: s } = await supabase.auth.getSession()
+    const user = s.session?.user
+    if (!user) {
       set({ profile: null, isAuthed: false })
       return
     }
-    const { data, error } = await supabase.from('profiles').select('*').eq('id', u.user.id).single()
+    // maybeSingle (not single) so a transient 0-row read doesn't throw
+    // "Cannot coerce the result to a single JSON object" — which happened when a
+    // refresh fired a hair before the auth token was attached to the request.
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .maybeSingle()
     if (error) {
       set({ error: error.message })
+      return
+    }
+    if (!data) {
+      // Row not visible yet (RLS/timing on a brand-new OAuth user). Don't clear an
+      // existing profile or surface an error — a later auth event resolves it.
       return
     }
     const p = mapRow(data as DbProfileRow)

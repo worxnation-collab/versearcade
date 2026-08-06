@@ -12,6 +12,7 @@ import QuizScreen from './features/daily/QuizScreen'
 import ResultScreen from './features/daily/ResultScreen'
 import ReviewScreen from './features/review/ReviewScreen'
 import GroupsScreen from './features/groups/GroupsScreen'
+import LeaderboardScreen from './features/leaderboard/LeaderboardScreen'
 import CollectionScreen from './features/collection/CollectionScreen'
 import ProfileScreen from './features/profile/ProfileScreen'
 import { BottomNav } from './components/BottomNav'
@@ -113,6 +114,16 @@ export default function App() {
             <RequireProfile>
               <TabShell>
                 <GroupsScreen />
+              </TabShell>
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/leaderboard"
+          element={
+            <RequireProfile>
+              <TabShell>
+                <LeaderboardScreen />
               </TabShell>
             </RequireProfile>
           }

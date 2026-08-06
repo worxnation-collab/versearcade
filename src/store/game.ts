@@ -58,16 +58,45 @@ export const useGame = create<GameState>((set, get) => ({
     })
     const { data: u } = await supabase.auth.getUser()
     let played = false
+    let restored: GameState['lastResult'] = null
     if (u.user) {
-      const { data } = await supabase
+      const { data: play } = await supabase
         .from('plays')
-        .select('id')
+        .select('score, time_ms, correct_count, total_questions, combo_max, xp_earned')
         .eq('user_id', u.user.id)
         .eq('drop_date', date)
         .maybeSingle()
-      played = !!data
+      if (play) {
+        played = true
+        // Rebuild lastResult from the stored play so "See my recap & share" works
+        // after a reload or on a return visit — otherwise the recap screen has no
+        // in-memory result and renders nothing. perQuestion isn't persisted (the
+        // recap doesn't use it); the outcome's streak/level come from the profile.
+        const prof = useAuth.getState().profile
+        restored = {
+          result: {
+            score: play.score,
+            timeMs: play.time_ms,
+            correctCount: play.correct_count,
+            totalQuestions: play.total_questions,
+            comboMax: play.combo_max,
+            perQuestion: [],
+          },
+          outcome: {
+            alreadyPlayed: true,
+            xpEarned: play.xp_earned ?? 0,
+            xp: prof?.xp ?? 0,
+            level: prof?.level ?? 1,
+            leveledUp: false,
+            currentStreak: prof?.currentStreak ?? 0,
+            usedFreeze: false,
+            streakFreezes: prof?.streakFreezes ?? 0,
+          },
+        }
+      }
     }
-    set({ today: verse, todayDate: date, playedToday: played })
+    // Keep an accurate just-played result if we have one; else use the rebuilt one.
+    set({ today: verse, todayDate: date, playedToday: played, lastResult: get().lastResult ?? restored })
   },
 
   async submitPlay(result) {

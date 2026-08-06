@@ -4,6 +4,7 @@ import { useJuice } from '@/juice/useJuice'
 
 const tabs = [
   { to: '/play', label: 'Play', icon: '🎮' },
+  { to: '/leaderboard', label: 'Ranks', icon: '🏆' },
   { to: '/groups', label: 'Groups', icon: '👥' },
   { to: '/collection', label: 'Cards', icon: '🃏' },
   { to: '/you', label: 'You', icon: '⭐' },
@@ -58,7 +59,7 @@ export function BottomNav() {
                   flexDirection: 'column',
                   alignItems: 'center',
                   gap: 2,
-                  padding: '8px 16px',
+                  padding: '8px 12px',
                   borderRadius: 999,
                   background: isActive
                     ? 'linear-gradient(180deg, var(--grape), var(--grape-deep))'

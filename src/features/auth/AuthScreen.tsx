@@ -13,13 +13,16 @@ export default function AuthScreen() {
   const navigate = useNavigate()
   const { signIn, signUpEmail, startAsGuest, error } = useAuth()
   const profile = useAuth((s) => s.profile)
+  const authMode = useAuth((s) => s.mode)
 
   // Native OAuth (Apple/Google) completes asynchronously via a deep link, so the
-  // oauth() handler below can't navigate itself. When the session lands and a
-  // profile appears, leave the sign-in screen for the app.
+  // oauth() handler below can't navigate itself. When a real online session lands,
+  // leave the sign-in screen for the app. Gate on mode === 'online': a guest
+  // already has a (local) profile, and redirecting on that would make this screen
+  // unreachable for guests trying to upgrade to a real account.
   useEffect(() => {
-    if (profile) navigate('/play', { replace: true })
-  }, [profile, navigate])
+    if (authMode === 'online' && profile) navigate('/play', { replace: true })
+  }, [authMode, profile, navigate])
   const [mode, setMode] = useState<'in' | 'up'>('in')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -119,6 +122,16 @@ export default function AuthScreen() {
                 {mode === 'in' ? 'Create one' : 'Sign in'}
               </span>
             </p>
+
+            {/* Guests arrive here from an in-app "Create account" CTA — give them a
+                way back so the sign-in screen is never a dead end. */}
+            {profile && authMode === 'local' && (
+              <p className="faint center" style={{ fontSize: 13 }}>
+                <span style={{ textDecoration: 'underline' }} onClick={() => navigate('/play')}>
+                  ← Keep playing as guest
+                </span>
+              </p>
+            )}
           </>
         )}
       </div>

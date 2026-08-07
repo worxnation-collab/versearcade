@@ -40,6 +40,26 @@ function uniq(arr: string[]): string[] {
   return Array.from(new Set(arr))
 }
 
+// Common words we never want to blank out for a fill-in-the-blank question —
+// they'd make a weak, guessable prompt.
+const STOP_WORDS = new Set([
+  'which', 'where', 'these', 'there', 'their', 'would', 'could', 'should',
+  'because', 'before', 'after', 'about', 'through', 'against', 'everyone',
+  'whatever', 'themselves', 'yourselves', 'another', 'things', 'people',
+  'shall', 'those', 'while', 'every', 'himself', 'therefore',
+])
+
+// Pick a second, distinctive content word from the verse text (>= 5 letters,
+// not the primary keyword, not a filler word) so a verse can offer a fresh
+// fill-in-the-blank on replay.
+function pickBlankWord(text: string, avoid: string, rng: () => number): string | null {
+  const words = (text.match(/\b[A-Za-z]{5,}\b/g) || []).filter(
+    (w) => w.toLowerCase() !== avoid.toLowerCase() && !STOP_WORDS.has(w.toLowerCase()),
+  )
+  if (!words.length) return null
+  return words[Math.floor(rng() * words.length)]
+}
+
 // Build one multiple-choice question with plausible distractors.
 function buildMC(
   prompt: string,
@@ -66,6 +86,7 @@ export function generateQuestions(seed: VerseSeed, rng: () => number): Question[
   const events = others.flatMap((v) => [v.before, v.after])
   const themes = others.map((v) => v.theme)
   const keywords = others.map((v) => v.keyword)
+  const references = others.map((v) => v.reference)
 
   const candidates: (Question | null)[] = []
 
@@ -143,16 +164,53 @@ export function generateQuestions(seed: VerseSeed, rng: () => number): Question[
     ),
   )
 
+  // Reference recall — which citation is this verse?
+  candidates.push(
+    buildMC(
+      'What is the reference for this verse?',
+      seed.reference,
+      references,
+      rng,
+      `This verse is ${seed.reference}.`,
+    ),
+  )
+
+  // A second fill-in-the-blank on a different word, so the same verse can feel
+  // fresh across replays.
+  const blank2 = pickBlankWord(seed.text, seed.keyword, rng)
+  if (blank2) {
+    const re2 = new RegExp(`\\b${blank2}\\b`, 'g')
+    const blanked2 = seed.text.replace(re2, '_____')
+    const q = buildMC(
+      `Fill the blank: "${blanked2}"`,
+      blank2,
+      [...keywords, ...others.map((v) => v.keyword)],
+      rng,
+      `The missing word is "${blank2}."`,
+    )
+    if (q) candidates.push(q)
+  }
+
   // Keep a deterministic set of 5 valid questions.
   return shuffle(candidates.filter((q): q is Question => q !== null), rng).slice(0, 5)
 }
 
 // Pick the verse for a given date and build its full DailyVerse payload.
 export function getVerseForDate(dateStr: string): DailyVerse {
-  const seedNum = hashString(dateStr)
-  const rng = mulberry32(seedNum)
-  // Deterministic index into the pool from the date.
-  const seed = VERSE_POOL[seedNum % VERSE_POOL.length]
+  const rng = mulberry32(hashString(dateStr))
+  // No-repeat rotation. One fixed shuffle of the whole pool, indexed by the day
+  // number, so the sequence cycles through EVERY verse exactly once before any
+  // repeat. Guarantees: a verse repeats only every VERSE_POOL.length days
+  // (~8 months at 251 verses), never back-to-back, and every verse appears
+  // equally often. The order is stable, which is what makes those guarantees hold.
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const dayNum = Math.floor(Date.UTC(y || 1970, (m || 1) - 1, d || 1) / 86400000)
+  const N = VERSE_POOL.length
+  const order = shuffle(
+    Array.from({ length: N }, (_, i) => i),
+    mulberry32(hashString('verse-order-v1')),
+  )
+  const seed = VERSE_POOL[order[((dayNum % N) + N) % N]]
   const questions = generateQuestions(seed, rng)
   return {
     dropDate: dateStr,

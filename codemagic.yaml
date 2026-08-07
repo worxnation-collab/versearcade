@@ -57,7 +57,7 @@ workflows:
           fi
           npx cap sync ios
 
-      - name: Raise iOS minimum deployment target to 15.0 (ITMS-90068)
+      - name: Raise deployment target to 15.0 + make app iPhone-only
         script: |
           # Apple warns (ITMS-90068) that MinimumOSVersion 13.0 will be rejected
           # from Spring 2027; must be >= 15.0. Capacitor defaults to 13.0, so bump
@@ -65,6 +65,11 @@ workflows:
           sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 13.0;/IPHONEOS_DEPLOYMENT_TARGET = 15.0;/g' ios/App/App.xcodeproj/project.pbxproj
           sed -i '' "s/platform :ios, '13.0'/platform :ios, '15.0'/" ios/App/Podfile
           echo "Deployment target now:" && grep -m1 "IPHONEOS_DEPLOYMENT_TARGET" ios/App/App.xcodeproj/project.pbxproj
+          # iPhone-only (device family "1"). Capacitor defaults to "1,2" (universal),
+          # which forces Apple to require a full 13" iPad screenshot set. This is a
+          # phone-first game, so restrict to iPhone. Match any current value.
+          sed -i '' 's/TARGETED_DEVICE_FAMILY = "[0-9,]*"/TARGETED_DEVICE_FAMILY = "1"/g' ios/App/App.xcodeproj/project.pbxproj
+          echo "Device family now:" && grep -m1 "TARGETED_DEVICE_FAMILY" ios/App/App.xcodeproj/project.pbxproj
 
       - name: Register OAuth deep-link URL scheme (com.versearcade.app://)
         script: |

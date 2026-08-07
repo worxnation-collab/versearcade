@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
@@ -9,7 +9,7 @@ import { useAuth } from '@/store/auth'
 import { useSettings } from '@/store/settings'
 import { useJuice } from '@/juice/useJuice'
 import { TRANSLATIONS, DEFAULT_TRANSLATION } from '@/lib/config'
-import { localdb } from '@/lib/localdb'
+import { useCollection } from '@/store/collection'
 
 export default function ProfileScreen() {
   const navigate = useNavigate()
@@ -17,9 +17,14 @@ export default function ProfileScreen() {
   const { profile, mode, updateProfile, signOut, deleteAccount } = useAuth()
   const settings = useSettings()
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const owned = useCollection((s) => s.owned)
+  const loadCollection = useCollection((s) => s.load)
+  useEffect(() => {
+    loadCollection()
+  }, [loadCollection])
 
   if (!profile) return null
-  const cards = localdb.getCards().length
+  const cards = owned.length
   const translation = TRANSLATIONS[DEFAULT_TRANSLATION]
 
   // Settings write to BOTH the local settings store (drives juice instantly) and

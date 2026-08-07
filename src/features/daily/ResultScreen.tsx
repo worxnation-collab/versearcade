@@ -10,7 +10,7 @@ import { useAuth } from '@/store/auth'
 import { useJuice } from '@/juice/useJuice'
 import { buildShareText, shareResult, earnedCards } from './shareCard'
 import { collectibleByKey, rarityColor } from '@/data/collectibles'
-import { localdb } from '@/lib/localdb'
+import { useCollection } from '@/store/collection'
 import { OAuthButtons } from '@/features/auth/oauthUi'
 
 export default function ResultScreen() {
@@ -25,12 +25,14 @@ export default function ResultScreen() {
   const result = lastResult?.result
   const outcome = lastResult?.outcome
 
-  const cards = useMemo(() => {
-    if (!result || !outcome) return []
-    const keys = earnedCards(result, outcome, profile.totalPlays)
-    keys.forEach((k) => localdb.addCard(k)) // persist locally (server grant deferred)
-    return keys
-  }, [result, outcome, profile.totalPlays])
+  const cards = useMemo(
+    () => (result && outcome ? earnedCards(result, outcome, profile.totalPlays) : []),
+    [result, outcome, profile.totalPlays],
+  )
+  // Persist earned cards to the account (or device for guests) so they stick.
+  useEffect(() => {
+    if (cards.length) useCollection.getState().grant(cards)
+  }, [cards])
 
   // Celebrate on arrival — the reason people come back is this moment feels good.
   useEffect(() => {

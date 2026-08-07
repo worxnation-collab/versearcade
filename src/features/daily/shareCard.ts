@@ -43,11 +43,20 @@ export async function shareResult(text: string): Promise<'shared' | 'copied' | '
 export function earnedCards(result: PlayResult, outcome: SubmitOutcome, totalPlays: number): string[] {
   const earned: string[] = []
   if (totalPlays <= 1) earned.push('first_light')
-  if (result.correctCount === result.totalQuestions && result.totalQuestions > 0) earned.push('flawless')
+  if (totalPlays >= 25) earned.push('devoted')
+  const perfect = result.correctCount === result.totalQuestions && result.totalQuestions > 0
+  if (perfect) earned.push('flawless')
+  if (result.comboMax >= 5) earned.push('combo_king')
+  if (result.score >= 500) earned.push('high_scorer')
+  if (perfect && result.timeMs > 0 && result.timeMs <= 25000) earned.push('speed_seraph')
+  if (outcome.usedFreeze) earned.push('saved_by_grace')
   if (outcome.currentStreak >= 7) earned.push('week_warrior')
+  if (outcome.currentStreak >= 14) earned.push('fortnight')
   if (outcome.currentStreak >= 30) earned.push('month_mountain')
+  if (outcome.currentStreak >= 50) earned.push('half_century')
   if (outcome.currentStreak >= 100) earned.push('centurion')
   const hour = new Date().getHours()
   if (hour >= 0 && hour < 5) earned.push('night_owl')
+  if (hour >= 5 && hour < 8) earned.push('early_bird')
   return earned
 }

@@ -7,8 +7,9 @@ import type { Profile, PlayResult, SubmitOutcome } from '@/types'
 const K = {
   profile: 'va.profile',
   plays: 'va.plays', // { [dropDate]: { result, outcome } }
-  cards: 'va.cards', // string[] of collectible keys
+  cards: 'va.cards', // string[] of collectible keys (cards + relics)
   guestId: 'va.guestId', // stable anonymous device id, for ambient guest activity
+  chestDate: 'va.chestDate', // last drop_date this device opened the daily chest
 }
 
 export const localdb = {
@@ -57,5 +58,11 @@ export const localdb = {
     const cards = new Set(this.getCards())
     cards.add(key)
     localStorage.setItem(K.cards, JSON.stringify([...cards]))
+  },
+  getChestDate(): string | null {
+    return localStorage.getItem(K.chestDate)
+  },
+  setChestDate(dropDate: string) {
+    localStorage.setItem(K.chestDate, dropDate)
   },
 }

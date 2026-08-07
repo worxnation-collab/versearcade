@@ -1,6 +1,6 @@
 // Shared domain types for Verse Arcade.
 
-export type Rarity = 'common' | 'rare' | 'epic' | 'legendary'
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary'
 
 export interface Question {
   /** The prompt, always about the *displayed* verse. */

@@ -7,6 +7,7 @@ import { Avatar } from '@/components/Avatar'
 import { XpBar } from '@/components/XpBar'
 import { StreakFlame } from '@/components/StreakFlame'
 import { PresenceStrip } from '@/features/presence/PresenceStrip'
+import { DailyChest } from '@/features/chest/DailyChest'
 import { useAuth } from '@/store/auth'
 import { useGame } from '@/store/game'
 import { useReviews } from '@/store/reviews'
@@ -99,6 +100,9 @@ export default function HomeScreen() {
         )}
       </motion.div>
 
+      {/* Daily Chest — unlocks after today's verse, gives a random relic. */}
+      <DailyChest />
+
       {/* Keep it: spaced-repetition review of verses already learned. Only
           surfaces when something is actually due, so it's never clutter. */}
       {dueRefs.length > 0 && (
@@ -127,7 +131,7 @@ export default function HomeScreen() {
       {/* Quick nudges toward retention loops */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16 }}>
         <MiniCard emoji="👥" title="Play with friends" sub="Climb together" onClick={() => navigate('/groups')} />
-        <MiniCard emoji="🃏" title="Verse cards" sub="Collect them all" onClick={() => navigate('/collection')} />
+        <MiniCard emoji="🃏" title="Collection" sub="Cards & relics" onClick={() => navigate('/collection')} />
       </div>
     </Page>
   )

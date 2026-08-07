@@ -113,6 +113,23 @@ export const useGame = create<GameState>((set, get) => ({
       })
       auth.setProfileLocal(profile)
       localdb.savePlay(date, result, outcome)
+      // Log this guest's play so the ambient "opened today" pulse reflects
+      // everyone, not just signed-in users. Fire-and-forget; the RPC is callable
+      // by anonymous clients and dedupes per device.
+      if (supabase) {
+        supabase
+          .rpc('record_guest_open', {
+            p_drop_date: date,
+            p_guest_id: localdb.getGuestId(),
+            p_username: prof.username,
+            p_emoji: prof.avatarEmoji,
+            p_score: result.score,
+          })
+          .then(
+            () => {},
+            () => {},
+          )
+      }
       set({ playedToday: true, lastResult: { result, outcome } })
       return outcome
     }

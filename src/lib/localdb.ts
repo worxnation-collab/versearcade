@@ -8,6 +8,7 @@ const K = {
   profile: 'va.profile',
   plays: 'va.plays', // { [dropDate]: { result, outcome } }
   cards: 'va.cards', // string[] of collectible keys
+  guestId: 'va.guestId', // stable anonymous device id, for ambient guest activity
 }
 
 export const localdb = {
@@ -34,6 +35,19 @@ export const localdb = {
     const all = this.getPlays()
     all[dropDate] = { result, outcome }
     localStorage.setItem(K.plays, JSON.stringify(all))
+  },
+  // Stable anonymous id for this device, so a guest's daily activity can be
+  // counted once in the ambient pulse. Survives clear() (it's not user data).
+  getGuestId(): string {
+    let id = localStorage.getItem(K.guestId)
+    if (!id) {
+      id =
+        typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(16).slice(2)}`
+      localStorage.setItem(K.guestId, id)
+    }
+    return id
   },
   getCards(): string[] {
     const raw = localStorage.getItem(K.cards)

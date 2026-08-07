@@ -11,13 +11,16 @@ import { useJuice } from '@/juice/useJuice'
 import { buildShareText, shareResult, earnedCards } from './shareCard'
 import { collectibleByKey, rarityColor } from '@/data/collectibles'
 import { localdb } from '@/lib/localdb'
+import { OAuthButtons } from '@/features/auth/oauthUi'
 
 export default function ResultScreen() {
   const navigate = useNavigate()
   const juice = useJuice()
   const { today, lastResult } = useGame()
   const profile = useAuth((s) => s.profile)!
+  const isGuest = useAuth((s) => s.mode) === 'local'
   const [shareState, setShareState] = useState<string | null>(null)
+  const [signInErr, setSignInErr] = useState<string | null>(null)
 
   const result = lastResult?.result
   const outcome = lastResult?.outcome
@@ -107,6 +110,34 @@ export default function ResultScreen() {
               })}
             </div>
           </div>
+        )}
+
+        {/* The moment of highest intent: they just got the payoff. Ask guests to
+            save it before they bounce. */}
+        {isGuest && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, type: 'spring', stiffness: 220, damping: 20 }}
+            className="card"
+            style={{ marginTop: 20, textAlign: 'left', borderColor: 'var(--gold)', background: 'rgba(255,209,102,0.10)' }}
+          >
+            <div style={{ fontSize: 26 }}>💾</div>
+            <b style={{ fontSize: 17, display: 'block', marginTop: 2 }}>Save your streak</b>
+            <p className="dim" style={{ fontSize: 13, marginTop: 4 }}>
+              You’re playing as a guest. Create a free account so your streak, XP, and verse
+              cards sync across devices — and never reset.
+            </p>
+            <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>
+              <OAuthButtons onError={setSignInErr} />
+              <Button variant="ghost" full onClick={() => navigate('/auth')}>
+                Use email instead
+              </Button>
+            </div>
+            {signInErr && (
+              <p style={{ color: 'var(--coral)', fontSize: 13, marginTop: 8, textAlign: 'center' }}>{signInErr}</p>
+            )}
+          </motion.div>
         )}
 
         <div style={{ display: 'grid', gap: 10, marginTop: 22 }}>

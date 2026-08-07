@@ -166,3 +166,87 @@ workflows:
         notify:
           success: true
           failure: true
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # ANDROID / GOOGLE PLAY
+  # Builds the SAME web app (dist/) into a signed Android App Bundle (.aab) for the
+  # Play Store. You run ZERO of this on Windows. The android/ native project IS
+  # committed (unlike ios/, which is regenerated), so the OAuth deep-link intent
+  # filter + release signingConfig live in the repo and don't need CI patching.
+  #
+  # ONE-TIME SETUP (see docs/PLAY-STORE-SUBMISSION.md):
+  #   1. Codemagic > Team settings > Code signing identities > Android keystores >
+  #      "Generate keystore". Reference name EXACTLY:  versearcade_upload
+  #      (Codemagic then exposes CM_KEYSTORE_PATH / _PASSWORD / CM_KEY_ALIAS /
+  #      CM_KEY_PASSWORD, which android/app/build.gradle reads for release signing.)
+  #   2. Create a Google Play Developer account ($25, one-time) — YOU must do this.
+  #   3. In Play Console create the app, then Setup > API access: link a Google
+  #      Cloud project + create a service account with "Release manager" access;
+  #      download its JSON key.
+  #   4. Codemagic > this app > Environment variables: add GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+  #      = the service-account JSON, group "googleplay", mark Secure. Then uncomment
+  #      the google_play publishing block below and set the track.
+  #   NOTE: new PERSONAL Play accounts must run a 14-day closed test with 12+
+  #   testers before production is unlocked — start on the "internal" track.
+  android-googleplay:
+    name: Verse Arcade — Android Google Play
+    max_build_duration: 60
+    instance_type: linux_x2
+    environment:
+      android_signing:
+        - versearcade_upload   # <-- must EXACTLY match the keystore reference in Codemagic
+      groups:
+        - googleplay           # holds GCLOUD_SERVICE_ACCOUNT_CREDENTIALS (only needed once auto-publish is enabled)
+      vars:
+        PACKAGE_NAME: "com.versearcade.app"
+        # Same backend config as the web + iOS builds (public anon key; RLS-protected).
+        VITE_SUPABASE_URL: "https://visuppaucpzzigwtqmdd.supabase.co"
+        VITE_SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpc3VwcGF1Y3B6emlnd3RxbWRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MTY1MjEsImV4cCI6MjEwMTQ5MjUyMX0.YP_lJkV8ZD7J-oAqwkhh-6gQ0z1Q7pFR4Nql1NdhSa0"
+        VITE_AUTH_REDIRECT_URL: "https://versearcade.org/auth/callback"
+        VITE_DEFAULT_TRANSLATION: "BSB"
+      node: 20
+      java: 17
+    scripts:
+      - name: Install JS dependencies
+        script: npm ci
+
+      - name: Build the web app (Vite -> dist/)
+        script: npm run build
+
+      - name: Add Android platform if missing, then sync
+        script: |
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
+          npx cap sync android
+
+      - name: Generate app icons + splash from assets/
+        script: |
+          npx --yes @capacitor/assets generate --android \
+            --iconBackgroundColor '#0b0720' \
+            --iconBackgroundColorDark '#0b0720' \
+            --splashBackgroundColor '#0b0720' \
+            --splashBackgroundColorDark '#0b0720'
+
+      - name: Build signed release AAB
+        script: |
+          cd android
+          # BUILD_NUMBER (monotonic) feeds versionCode via build.gradle. Play rejects
+          # a versionCode that isn't strictly greater than any prior upload.
+          echo "versionCode will be BUILD_NUMBER=$BUILD_NUMBER"
+          ./gradlew bundleRelease
+    artifacts:
+      - android/app/build/outputs/bundle/release/*.aab
+      - android/app/build/outputs/**/mapping.txt
+    publishing:
+      email:
+        recipients:
+          - worxnation@gmail.com
+        notify:
+          success: true
+          failure: true
+      # ── Enable automatic Play upload AFTER the account + service-account JSON exist ──
+      # google_play:
+      #   credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+      #   track: internal            # internal | alpha | beta | production
+      #   submit_as_draft: true      # first upload must be promoted manually in Play Console

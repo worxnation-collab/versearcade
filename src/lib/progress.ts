@@ -102,5 +102,7 @@ export function newLocalProfile(username: string, emoji: string): Profile {
     hapticsEnabled: true,
     reduceMotion: false,
     onboarded: false,
+    avatarBorder: 'default',
+    avatarBadge: null,
   }
 }

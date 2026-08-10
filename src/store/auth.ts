@@ -27,6 +27,8 @@ interface DbProfileRow {
   haptics_enabled: boolean
   reduce_motion: boolean
   onboarded: boolean
+  avatar_border: string | null
+  avatar_badge: string | null
 }
 
 function mapRow(r: DbProfileRow): Profile {
@@ -46,6 +48,8 @@ function mapRow(r: DbProfileRow): Profile {
     hapticsEnabled: r.haptics_enabled,
     reduceMotion: r.reduce_motion,
     onboarded: r.onboarded,
+    avatarBorder: r.avatar_border ?? 'default',
+    avatarBadge: r.avatar_badge ?? null,
   }
 }
 
@@ -79,6 +83,8 @@ interface AuthState {
   startAsGuest: (username: string, emoji: string) => void
 
   updateProfile: (patch: Partial<Profile>) => Promise<void>
+  changeUsername: (next: string) => Promise<{ ok: boolean; error?: string }>
+  setCosmetics: (patch: { border?: string; badge?: string | null }) => Promise<{ ok: boolean; error?: string }>
   deleteAccount: () => Promise<void>
   signOut: () => Promise<void>
 }
@@ -430,6 +436,63 @@ export const useAuth = create<AuthState>((set, get) => ({
     if (Object.keys(dbPatch).length) {
       await supabase.from('profiles').update(dbPatch).eq('id', cur.id)
     }
+  },
+
+  // Rename. Online, a SECURITY DEFINER RPC validates + enforces uniqueness so we
+  // get a clean "taken"/"invalid" reason instead of a raw constraint error.
+  // Guests rename freely on-device (no shared namespace to collide with).
+  async changeUsername(next) {
+    const cur = get().profile
+    if (!cur) return { ok: false, error: 'No profile' }
+    const clean = next.trim().toLowerCase().replace(/[^a-z0-9_]/g, '')
+    if (clean.length < 2 || clean.length > 16) {
+      return { ok: false, error: '2–16 letters, numbers, or underscores' }
+    }
+    if (clean === cur.username) return { ok: true }
+
+    if (get().mode === 'local' || !supabase) {
+      const p = { ...cur, username: clean, displayName: clean }
+      localdb.saveProfile(p)
+      set({ profile: p })
+      return { ok: true }
+    }
+
+    const { data, error } = await supabase.rpc('set_username', { p_username: clean })
+    if (error) return { ok: false, error: error.message }
+    if (!data?.ok) {
+      return { ok: false, error: data?.reason === 'taken' ? 'That username is taken' : 'Invalid username' }
+    }
+    set({ profile: { ...cur, username: data.username as string, displayName: data.username as string } })
+    return { ok: true }
+  },
+
+  // Equip an avatar border / badge. The server refuses anything the player's
+  // longest streak hasn't unlocked; we optimistically apply then roll back on
+  // rejection so the UI feels instant but can't lie.
+  async setCosmetics(patch) {
+    const cur = get().profile
+    if (!cur) return { ok: false, error: 'No profile' }
+    const next: Profile = {
+      ...cur,
+      avatarBorder: patch.border ?? cur.avatarBorder,
+      avatarBadge: patch.badge === undefined ? cur.avatarBadge : patch.badge,
+    }
+    set({ profile: next })
+
+    if (get().mode === 'local' || !supabase) {
+      localdb.saveProfile(next)
+      return { ok: true }
+    }
+
+    const { data, error } = await supabase.rpc('set_cosmetics', {
+      p_border: next.avatarBorder,
+      p_badge: next.avatarBadge ?? null,
+    })
+    if (error || !data?.ok) {
+      set({ profile: cur }) // roll back the optimistic change
+      return { ok: false, error: error?.message ?? 'That’s not unlocked yet' }
+    }
+    return { ok: true }
   },
 
   async deleteAccount() {

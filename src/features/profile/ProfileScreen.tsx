@@ -10,13 +10,18 @@ import { useSettings } from '@/store/settings'
 import { useJuice } from '@/juice/useJuice'
 import { TRANSLATIONS, DEFAULT_TRANSLATION } from '@/lib/config'
 import { useCollection } from '@/store/collection'
+import { CustomizeSection } from './CustomizeSection'
 
 export default function ProfileScreen() {
   const navigate = useNavigate()
   const juice = useJuice()
-  const { profile, mode, updateProfile, signOut, deleteAccount } = useAuth()
+  const { profile, mode, updateProfile, changeUsername, signOut, deleteAccount } = useAuth()
   const settings = useSettings()
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const [nameDraft, setNameDraft] = useState('')
+  const [nameErr, setNameErr] = useState<string | null>(null)
+  const [savingName, setSavingName] = useState(false)
   const owned = useCollection((s) => s.owned)
   const loadCollection = useCollection((s) => s.load)
   useEffect(() => {
@@ -33,13 +38,50 @@ export default function ProfileScreen() {
   const setHaptics = (v: boolean) => { settings.set({ hapticsEnabled: v }); updateProfile({ hapticsEnabled: v }); if (v) juice.tap() }
   const setMotion = (v: boolean) => { settings.set({ reduceMotion: v }); updateProfile({ reduceMotion: v }) }
 
+  const startEditName = () => { setNameDraft(profile.username); setNameErr(null); setEditingName(true) }
+  const saveName = async () => {
+    setSavingName(true)
+    setNameErr(null)
+    const res = await changeUsername(nameDraft)
+    setSavingName(false)
+    if (res.ok) { juice.correct?.(); setEditingName(false) }
+    else setNameErr(res.error ?? 'Could not save')
+  }
+
   return (
     <Page>
       {/* Identity */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
-        <Avatar emoji={profile.avatarEmoji} size={64} ring />
-        <div style={{ flex: 1 }}>
-          <h1 style={{ fontSize: 24 }}>@{profile.username}</h1>
+        <Avatar emoji={profile.avatarEmoji} size={64} ring border={profile.avatarBorder} badge={profile.avatarBadge} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {!editingName ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h1 style={{ fontSize: 24, overflow: 'hidden', textOverflow: 'ellipsis' }}>@{profile.username}</h1>
+              <button onClick={startEditName} aria-label="Edit username" className="pill" style={{ fontSize: 12, padding: '4px 10px', flexShrink: 0 }}>
+                ✏️ Edit
+              </button>
+            </div>
+          ) : (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  value={nameDraft}
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  placeholder="username"
+                  maxLength={16}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  autoFocus
+                  style={{ flex: 1, minWidth: 0 }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <Button variant="gold" onClick={saveName} disabled={savingName}>{savingName ? '…' : 'Save'}</Button>
+                <Button variant="ghost" onClick={() => setEditingName(false)} disabled={savingName}>Cancel</Button>
+              </div>
+              {nameErr && <p style={{ color: 'var(--coral)', fontSize: 13, marginTop: 6 }}>{nameErr}</p>}
+            </div>
+          )}
           <div style={{ marginTop: 8 }}><XpBar xp={profile.xp} /></div>
         </div>
       </div>
@@ -53,6 +95,9 @@ export default function ProfileScreen() {
         <Stat label="Total XP" value={profile.xp.toLocaleString()} />
         <Stat label="Plays" value={`${profile.totalPlays}`} />
       </div>
+
+      {/* Streak-unlocked cosmetics */}
+      <CustomizeSection />
 
       {/* Settings */}
       <h3 style={{ fontSize: 16, marginBottom: 10 }} className="dim">Feel</h3>

@@ -10,6 +10,24 @@ const K = {
   cards: 'va.cards', // string[] of collectible keys (cards + relics)
   guestId: 'va.guestId', // stable anonymous device id, for ambient guest activity
   chestDate: 'va.chestDate', // last drop_date this device opened the daily chest
+  pendingClaim: 'va.pendingClaim', // guest snapshot to migrate into a new account
+}
+
+// A frozen snapshot of the guest's progress, captured when they start creating
+// an account, so it survives an OAuth redirect (web reloads the page) and can be
+// folded into the freshly-created account on the other side. See the auth store.
+export interface PendingClaim {
+  profile: Profile
+  cards: string[]
+  plays: {
+    drop_date: string
+    score: number
+    time_ms: number
+    correct_count: number
+    total_questions: number
+    combo_max: number
+    xp_earned: number
+  }[]
 }
 
 export const localdb = {
@@ -24,6 +42,7 @@ export const localdb = {
     localStorage.removeItem(K.profile)
     localStorage.removeItem(K.plays)
     localStorage.removeItem(K.cards)
+    localStorage.removeItem(K.pendingClaim)
   },
   getPlays(): Record<string, { result: PlayResult; outcome: SubmitOutcome }> {
     const raw = localStorage.getItem(K.plays)
@@ -64,5 +83,16 @@ export const localdb = {
   },
   setChestDate(dropDate: string) {
     localStorage.setItem(K.chestDate, dropDate)
+  },
+  // Pending guest -> account migration snapshot (see auth.beginGuestClaim).
+  setPendingClaim(snapshot: PendingClaim) {
+    localStorage.setItem(K.pendingClaim, JSON.stringify(snapshot))
+  },
+  getPendingClaim(): PendingClaim | null {
+    const raw = localStorage.getItem(K.pendingClaim)
+    return raw ? (JSON.parse(raw) as PendingClaim) : null
+  },
+  clearPendingClaim() {
+    localStorage.removeItem(K.pendingClaim)
   },
 }

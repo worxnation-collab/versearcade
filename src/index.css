@@ -132,6 +132,15 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .floaty { animation: floaty 3.5s ease-in-out infinite; }
 .pop-in { animation: popIn 0.4s cubic-bezier(.2,1.4,.4,1) both; }
 
+/* Legendary 1000-day "Halo of Light" avatar border — a slowly rotating,
+   gently pulsing golden halo. */
+@keyframes haloSpin { to { transform: rotate(360deg); } }
+@keyframes haloPulse {
+  0%,100% { box-shadow: 0 0 16px 2px rgba(255,210,63,0.45), 0 6px 16px rgba(0,0,0,0.4); }
+  50%     { box-shadow: 0 0 26px 6px rgba(255,210,63,0.75), 0 6px 16px rgba(0,0,0,0.4); }
+}
+.va-halo { animation: haloSpin 6s linear infinite, haloPulse 2.4s ease-in-out infinite; }
+
 /* Skeleton shimmer for loading */
 .skeleton {
   background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.12) 37%, rgba(255,255,255,0.05) 63%);
@@ -142,6 +151,8 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 
 @media (prefers-reduced-motion: reduce) {
   .floaty, .pop-in, .skeleton { animation: none !important; }
+  /* Keep the halo's glow but stop the rotation for motion-sensitive users. */
+  .va-halo { animation: haloPulse 2.4s ease-in-out infinite !important; }
 }
 
 /* Inputs ----------------------------------------------------------------- */

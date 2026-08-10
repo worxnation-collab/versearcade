@@ -42,6 +42,10 @@ export interface Profile {
   hapticsEnabled: boolean
   reduceMotion: boolean
   onboarded: boolean
+  /** Equipped avatar border cosmetic key (see data/cosmetics). */
+  avatarBorder: string
+  /** Equipped badge cosmetic key, or null for none. */
+  avatarBadge?: string | null
 }
 
 export interface PlayResult {
@@ -70,6 +74,8 @@ export interface PresenceEvent {
   points: number
   kind: 'scored' | 'opened' | 'streak' | 'levelup'
   createdAt: string
+  avatarBorder?: string
+  avatarBadge?: string | null
 }
 
 export interface DailyPulse {

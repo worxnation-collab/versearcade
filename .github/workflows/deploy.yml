@@ -1,0 +1,63 @@
+name: Deploy to Netlify
+
+# Deploys the production site whenever main updates, and on demand via the
+# "Run workflow" button. Runs on GitHub's runners (not network-restricted), so
+# it can reach Netlify's build/deploy API directly.
+#
+# One-time setup: add a repository secret NETLIFY_AUTH_TOKEN
+#   (Netlify → User settings → Applications → Personal access tokens → New).
+# The site ID is not secret and is set below. Until the token is added, this
+# workflow skips cleanly (a warning, not a failure).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: netlify-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      NETLIFY_SITE_ID: ddcca8aa-b60b-4af3-90b6-8382e67e3457
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+    steps:
+      - name: Verify Netlify token is present
+        id: guard
+        run: |
+          if [ -n "${NETLIFY_AUTH_TOKEN}" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Deploy skipped::Add a NETLIFY_AUTH_TOKEN repo secret (Settings → Secrets and variables → Actions) to enable automatic deploys."
+          fi
+
+      - name: Checkout
+        if: steps.guard.outputs.ready == 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        if: steps.guard.outputs.ready == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        if: steps.guard.outputs.ready == 'true'
+        run: npm ci
+
+      - name: Build
+        if: steps.guard.outputs.ready == 'true'
+        run: npm run build
+
+      - name: Deploy to Netlify (production)
+        if: steps.guard.outputs.ready == 'true'
+        run: >-
+          npx -y netlify-cli@latest deploy
+          --prod
+          --dir=dist
+          --site="${NETLIFY_SITE_ID}"
+          --message="CI deploy ${GITHUB_SHA::7}"

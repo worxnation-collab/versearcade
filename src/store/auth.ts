@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { isSupabaseConfigured } from '@/lib/config'
 import { localdb } from '@/lib/localdb'
 import { newLocalProfile } from '@/lib/progress'
+import { getVerseForDate } from '@/data/bible/questions'
 import { useSettings } from './settings'
 import type { Profile } from '@/types'
 
@@ -68,6 +69,9 @@ interface AuthState {
   refreshProfile: () => Promise<void>
   setProfileLocal: (p: Profile) => void
 
+  beginGuestClaim: () => void
+  claimGuestProgress: () => Promise<void>
+
   signUpEmail: (email: string, password: string, username: string) => Promise<{ needsConfirmation: boolean }>
   signIn: (identifier: string, password: string) => Promise<void>
   signInOAuth: (provider: 'google' | 'apple') => Promise<void>
@@ -97,6 +101,9 @@ export const useAuth = create<AuthState>((set, get) => ({
     supabase.auth.onAuthStateChange(async (_evt, session) => {
       if (session) {
         set({ mode: 'online' })
+        // If this session is a guest upgrading, fold their device progress into
+        // the freshly-created account before we read it back. No-op otherwise.
+        await get().claimGuestProgress()
         await get().refreshProfile()
       } else {
         // Cloud session ended — fall back to any local guest profile so the
@@ -159,9 +166,88 @@ export const useAuth = create<AuthState>((set, get) => ({
     set({ profile: p })
   },
 
+  // Snapshot the current guest's progress just before an account-creation flow.
+  // Stored in localStorage so it survives the OAuth redirect (web reloads the
+  // page). Consumed once by claimGuestProgress after the session lands.
+  beginGuestClaim() {
+    if (get().mode !== 'local') return
+    const p = get().profile
+    if (!p) return
+    const plays = Object.entries(localdb.getPlays()).map(([dropDate, v]) => ({
+      drop_date: dropDate,
+      score: v.result.score,
+      time_ms: v.result.timeMs,
+      correct_count: v.result.correctCount,
+      total_questions: v.result.totalQuestions,
+      combo_max: v.result.comboMax,
+      xp_earned: v.outcome.xpEarned ?? 0,
+    }))
+    localdb.setPendingClaim({ profile: p, cards: localdb.getCards(), plays })
+  },
+
+  // Fold a pending guest snapshot into the just-created account (username, emoji,
+  // XP, streak, cards and completed plays), then clear the local guest mirror so
+  // we never re-claim or show stale guest state. Safe to call on every sign-in:
+  // the server RPC only writes into a pristine, never-played profile.
+  async claimGuestProgress() {
+    if (!supabase) return
+    const snap = localdb.getPendingClaim()
+    if (!snap) return
+    const { data: s } = await supabase.auth.getSession()
+    if (!s.session) return
+    try {
+      // Seed the shared verse rows for every completed day first, so the plays
+      // FK (plays.drop_date -> daily_verses) resolves. Verse content is derived
+      // deterministically from the date, so any client seeds identical rows.
+      for (const pl of snap.plays) {
+        const v = getVerseForDate(pl.drop_date)
+        await supabase.rpc('ensure_daily_verse', {
+          p_drop_date: pl.drop_date,
+          p_translation: v.translation,
+          p_reference: v.reference,
+          p_book: v.book,
+          p_chapter: v.chapter,
+          p_verse_start: v.verseStart,
+          p_verse_end: v.verseEnd ?? null,
+          p_text: v.text,
+          p_theme: v.theme ?? null,
+          p_questions: v.questions,
+          p_facts: v.facts,
+        })
+      }
+      const p = snap.profile
+      const { error } = await supabase.rpc('claim_guest_progress', {
+        p_username: p.username,
+        p_emoji: p.avatarEmoji,
+        p_display_name: p.displayName ?? p.username,
+        p_xp: p.xp,
+        p_level: p.level,
+        p_current_streak: p.currentStreak,
+        p_longest_streak: p.longestStreak,
+        p_streak_freezes: p.streakFreezes,
+        p_last_played_on: p.lastPlayedOn ?? null,
+        p_total_plays: p.totalPlays,
+        p_cards: snap.cards,
+        p_plays: snap.plays,
+      })
+      if (error) {
+        // Keep the snapshot for a later retry rather than losing the guest's data.
+        set({ error: error.message })
+        return
+      }
+      // Migrated — the account is now the source of truth. Drop the local mirror.
+      localdb.clear()
+      localdb.clearPendingClaim()
+    } catch (e) {
+      set({ error: (e as Error).message })
+    }
+  },
+
   async signUpEmail(email, password, username) {
     if (!supabase) throw new Error('Backend not configured')
     set({ error: null })
+    // If a guest is upgrading, snapshot their progress before the account lands.
+    get().beginGuestClaim()
     const emailRedirectTo =
       import.meta.env.VITE_AUTH_REDIRECT_URL || window.location.origin + '/auth/callback'
     const { data, error } = await supabase.auth.signUp({
@@ -184,6 +270,9 @@ export const useAuth = create<AuthState>((set, get) => ({
   async signIn(identifier, password) {
     if (!supabase) throw new Error('Backend not configured')
     set({ error: null })
+    // A guest may be signing into an account they just made; snapshot in case
+    // it's fresh. (The server ignores the claim for established accounts.)
+    get().beginGuestClaim()
     const id = identifier.trim()
 
     // Email path: sign in directly.
@@ -221,6 +310,9 @@ export const useAuth = create<AuthState>((set, get) => ({
 
   async signInOAuth(provider) {
     if (!supabase) throw new Error('Backend not configured')
+    // Snapshot guest progress now — the web flow reloads the page on redirect,
+    // so this must be persisted before we hand off to the provider.
+    get().beginGuestClaim()
     const native = Capacitor.isNativePlatform()
     // Native must return to the app via the custom URL scheme, not the website.
     const redirectTo = native
@@ -293,6 +385,10 @@ export const useAuth = create<AuthState>((set, get) => ({
       } catch {
         /* browser may already be closed */
       }
+      // Migrate any pending guest snapshot before we read the profile back, so
+      // the account shows the user's chosen handle + progress from the first
+      // render (idempotent — onAuthStateChange may have already run it).
+      await get().claimGuestProgress()
       await get().refreshProfile()
     } catch (e) {
       set({ error: (e as Error).message })

@@ -5,11 +5,14 @@ import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { useAuth } from '@/store/auth'
 import { supabase } from '@/lib/supabase'
+import { Avatar } from '@/components/Avatar'
 
 interface LbRow {
   rank: number
   username: string
   avatar_emoji: string
+  avatar_border?: string
+  avatar_badge?: string | null
   xp: number
   level: number
 }
@@ -128,7 +131,7 @@ function Row({ r, me }: { r: LbRow; me: boolean }) {
       >
         {medal(r.rank) ?? r.rank}
       </div>
-      <div style={{ fontSize: 26 }}>{r.avatar_emoji}</div>
+      <Avatar emoji={r.avatar_emoji} size={34} ring={false} border={r.avatar_border} badge={r.avatar_badge} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{

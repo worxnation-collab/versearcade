@@ -169,6 +169,8 @@ export const useGame = create<GameState>((set, get) => ({
           points: f.points,
           kind: f.kind,
           createdAt: f.created_at,
+          avatarBorder: f.avatar_border ?? 'default',
+          avatarBadge: f.avatar_badge ?? null,
         })),
       },
     })

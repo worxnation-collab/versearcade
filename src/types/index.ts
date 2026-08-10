@@ -74,6 +74,8 @@ export interface PresenceEvent {
   points: number
   kind: 'scored' | 'opened' | 'streak' | 'levelup'
   createdAt: string
+  avatarBorder?: string
+  avatarBadge?: string | null
 }
 
 export interface DailyPulse {

@@ -235,6 +235,9 @@ export const useAuth = create<AuthState>((set, get) => ({
         p_total_plays: p.totalPlays,
         p_cards: snap.cards,
         p_plays: snap.plays,
+        // Clear this device's guest_opens rows so the just-migrated progress
+        // isn't also counted as a separate guest on the leaderboard.
+        p_guest_id: localdb.getGuestId(),
       })
       if (error) {
         // Keep the snapshot for a later retry rather than losing the guest's data.

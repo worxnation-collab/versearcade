@@ -114,16 +114,20 @@ export const useGame = create<GameState>((set, get) => ({
       auth.setProfileLocal(profile)
       localdb.savePlay(date, result, outcome)
       // Log this guest's play so the ambient "opened today" pulse reflects
-      // everyone, not just signed-in users. Fire-and-forget; the RPC is callable
-      // by anonymous clients and dedupes per device.
+      // everyone, not just signed-in users, AND so guests appear on the
+      // worldwide leaderboard (ranked by their cumulative XP). Fire-and-forget;
+      // the RPC is callable by anonymous clients and dedupes per device. We send
+      // the POST-play profile so xp/level reflect the score just earned.
       if (supabase) {
         supabase
           .rpc('record_guest_open', {
             p_drop_date: date,
             p_guest_id: localdb.getGuestId(),
-            p_username: prof.username,
-            p_emoji: prof.avatarEmoji,
+            p_username: profile.username,
+            p_emoji: profile.avatarEmoji,
             p_score: result.score,
+            p_xp: profile.xp,
+            p_level: profile.level,
           })
           .then(
             () => {},

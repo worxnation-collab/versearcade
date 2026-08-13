@@ -86,8 +86,20 @@ function InvitePicker({ seed, result }: { seed: number; result: PlayResult }) {
           You scored <span className="gradient-text">{result.score.toLocaleString()}</span>
         </h2>
         <p className="dim" style={{ marginTop: 6, fontSize: 14 }}>
-          Challenge players to beat it — the same quiz lands on their Battle tab.
+          Two ways to send it — challenge players here, or share the link anywhere.
         </p>
+      </div>
+
+      {/* External share — the growth button: Facebook, texts, group chats. */}
+      <Button variant="secondary" full onClick={shareLink}>
+        📤 Share the battle — Facebook, texts, anywhere
+      </Button>
+      {shareMsg && <p style={{ color: 'var(--good)', fontSize: 13, marginTop: 8, textAlign: 'center' }}>{shareMsg}</p>}
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0 12px' }}>
+        <div style={{ flex: 1, height: 1, background: 'var(--stroke)' }} />
+        <span className="faint" style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em' }}>OR CHALLENGE PLAYERS HERE</span>
+        <div style={{ flex: 1, height: 1, background: 'var(--stroke)' }} />
       </div>
 
       <input
@@ -145,16 +157,6 @@ function InvitePicker({ seed, result }: { seed: number; result: PlayResult }) {
           })}
         </div>
       )}
-
-      <div style={{ marginTop: 18, textAlign: 'center' }}>
-        <button
-          onClick={shareLink}
-          style={{ background: 'transparent', border: 'none', color: 'var(--sky)', fontWeight: 700, fontSize: 14, cursor: 'pointer', textDecoration: 'underline' }}
-        >
-          Or share a link to invite someone new →
-        </button>
-        {shareMsg && <p style={{ color: 'var(--good)', fontSize: 13, marginTop: 6 }}>{shareMsg}</p>}
-      </div>
 
       <div style={{ marginTop: 18 }}>
         <Button variant="gold" full onClick={() => navigate('/battle')}>

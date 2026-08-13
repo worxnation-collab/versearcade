@@ -168,7 +168,8 @@ export function ChapterReader({ verse, onClose }: { verse: DailyVerse; onClose: 
               <div style={{ fontSize: 30 }}>📖</div>
               <p style={{ margin: '8px 0 4px', fontWeight: 700 }}>Couldn’t load the full chapter</p>
               <p className="faint" style={{ fontSize: 13 }}>
-                You may be offline. Here’s the verse in context from what we have saved.
+                We couldn’t reach the full text right now. Here’s the verse in context from what
+                we have saved.
               </p>
               <div className="card" style={{ marginTop: 14, textAlign: 'left', borderColor: 'var(--gold)', background: 'rgba(255,210,63,0.10)' }}>
                 <b style={{ fontFamily: 'var(--font-display)' }}>{verse.reference}</b>

@@ -6,7 +6,18 @@
 // must handle a thrown error gracefully (the reader falls back to the single
 // verse + the before/after context prose it already has).
 
-import { TRANSLATIONS, DEFAULT_TRANSLATION } from './config'
+import { DEFAULT_TRANSLATION } from './config'
+
+// bible-api.com base + the translations it actually serves. Notably it does NOT
+// serve the BSB (our quiz text) — its default is the World English Bible — so a
+// verse whose translation isn't on this list is read in WEB for the chapter view
+// (the reader header shows whatever translation actually came back). WEB is
+// public-domain and reads very close to the BSB.
+const BIBLE_API = 'https://bible-api.com'
+const BIBLE_API_TRANSLATIONS = new Set([
+  'web', 'kjv', 'bbe', 'oeb-cw', 'oeb-us', 'webbe', 'clementine', 'almeida', 'rccv', 'cherokee',
+])
+const FALLBACK_TRANSLATION = 'web'
 
 export interface ChapterVerse {
   verse: number
@@ -36,12 +47,22 @@ export async function fetchChapter(
   const cached = cache.get(key)
   if (cached) return cached
 
-  const def = TRANSLATIONS[translationCode] ?? TRANSLATIONS[DEFAULT_TRANSLATION]
-  // Premium translations have no live source yet — fall back to the default
-  // public-domain endpoint so the reader always has something to show.
-  const template = def.apiTemplate ?? TRANSLATIONS[DEFAULT_TRANSLATION].apiTemplate ?? TRANSLATIONS.BSB.apiTemplate!
-  const url = template.replace('{ref}', encodeURIComponent(`${book} ${chapter}`))
+  // Ask for the verse's own translation only if bible-api.com serves it;
+  // otherwise read the chapter in WEB (its default). This is why the previous
+  // ?translation=bsb request always failed — bsb isn't a bible-api translation.
+  const wanted = (translationCode || '').toLowerCase()
+  const code = BIBLE_API_TRANSLATIONS.has(wanted) ? wanted : FALLBACK_TRANSLATION
+  const ref = encodeURIComponent(`${book} ${chapter}`)
 
+  const result = await tryFetch(`${BIBLE_API}/${ref}?translation=${code}`, book, chapter, signal)
+    // Belt and suspenders: if that specific translation hiccups, take the default.
+    .catch(() => tryFetch(`${BIBLE_API}/${ref}`, book, chapter, signal))
+
+  cache.set(key, result)
+  return result
+}
+
+async function tryFetch(url: string, book: string, chapter: number, signal?: AbortSignal): Promise<Chapter> {
   const res = await fetch(url, { signal })
   if (!res.ok) throw new Error(`Bible API responded ${res.status}`)
   const data: unknown = await res.json()
@@ -57,11 +78,9 @@ export async function fetchChapter(
   if (!verses.length) throw new Error('No verses returned')
 
   const d = data as { reference?: unknown; translation_name?: unknown }
-  const result: Chapter = {
+  return {
     reference: typeof d.reference === 'string' ? d.reference : `${book} ${chapter}`,
-    translationName: typeof d.translation_name === 'string' ? d.translation_name : def.name,
+    translationName: typeof d.translation_name === 'string' ? d.translation_name : 'World English Bible',
     verses,
   }
-  cache.set(key, result)
-  return result
 }

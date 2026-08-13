@@ -348,6 +348,14 @@ export function Character({
               carrying a cross" rather than a separate figure. */}
           {skinId === 'cross' && (
             <>
+              {/* glowing golden aura around the cross (softly pulsing) */}
+              <g className="va-cross-glow">
+                <path d="M22 160 L96 40" stroke="#FFE7A0" strokeWidth="22" strokeLinecap="round" opacity="0.16" />
+                <path d="M69 46 L103 60" stroke="#FFE7A0" strokeWidth="19" strokeLinecap="round" opacity="0.16" />
+                <path d="M22 160 L96 40" stroke="#FFD23F" strokeWidth="15" strokeLinecap="round" opacity="0.24" />
+                <path d="M69 46 L103 60" stroke="#FFD23F" strokeWidth="13" strokeLinecap="round" opacity="0.24" />
+              </g>
+              {/* the cross itself */}
               <path d="M22 160 L96 40" stroke={CROSS_WOOD} strokeWidth="11" strokeLinecap="round" />
               <path d="M69 46 L103 60" stroke={CROSS_WOOD} strokeWidth="9" strokeLinecap="round" />
               <path d="M27 156 L92 46" stroke={CROSS_GRAIN} strokeWidth="1.3" opacity="0.5" />

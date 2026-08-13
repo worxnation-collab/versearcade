@@ -116,7 +116,8 @@ export function Character({
         </>
       ) : skinId === 'whale' ? (
         <>
-          {/* ── Jonah's Whale — the founding-patron skin (a $100 showpiece) ── */}
+          {/* ── Jonah's Whale — a splashing $100 patron showpiece ── */}
+          <g className="va-whale">
           {/* soft premium aura */}
           <circle cx="54" cy="90" r="55" fill="#6FA8DC" opacity="0.13" />
           {/* gold sparkles */}
@@ -148,6 +149,15 @@ export function Character({
           <path d="M23 64 L26.5 54 L31 60 L35 52 L39 60 L43.5 54 L47 64 Z" fill="#DCAB3A" stroke="#9E7716" strokeWidth="0.8" />
           <rect x="23" y="63" width="24" height="3.6" rx="1" fill="#C9992A" stroke="#9E7716" strokeWidth="0.6" />
           <circle cx="35" cy="58" r="1.7" fill="#8B1E2E" />
+          </g>
+          {/* splash droplets as he surfaces */}
+          <g className="va-splash">
+            <circle cx="40" cy="116" r="2.4" fill="#8FC7E8" style={{ animationDelay: '0s' }} />
+            <circle cx="50" cy="120" r="2" fill="#A9C8E8" style={{ animationDelay: '0.04s' }} />
+            <circle cx="60" cy="115" r="2.6" fill="#8FC7E8" style={{ animationDelay: '0.02s' }} />
+            <circle cx="70" cy="120" r="2" fill="#A9C8E8" style={{ animationDelay: '0.06s' }} />
+            <circle cx="55" cy="122" r="1.8" fill="#B7D2ED" style={{ animationDelay: '0.08s' }} />
+          </g>
         </>
       ) : skinId === 'moses' ? (
         <>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { AnimatePresence, motion } from 'framer-motion'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { Avatar } from '@/components/Avatar'
@@ -18,6 +19,7 @@ export default function ProfileScreen() {
   const { profile, mode, updateProfile, changeUsername, signOut, deleteAccount } = useAuth()
   const settings = useSettings()
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [feelOpen, setFeelOpen] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   const [nameErr, setNameErr] = useState<string | null>(null)
@@ -99,8 +101,24 @@ export default function ProfileScreen() {
       {/* Streak-unlocked cosmetics */}
       <CustomizeSection />
 
-      {/* Settings */}
-      <h3 style={{ fontSize: 16, marginBottom: 10 }} className="dim">Feel</h3>
+      {/* Settings — collapsed by default so the profile isn't cluttered */}
+      <button
+        onClick={() => { juice.select?.(); setFeelOpen((o) => !o) }}
+        aria-expanded={feelOpen}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'transparent', border: 'none', padding: '2px 0 10px', cursor: 'pointer' }}
+      >
+        <h3 style={{ fontSize: 16, margin: 0 }} className="dim">Sound &amp; feel</h3>
+        <span style={{ color: 'var(--gold)', transform: feelOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>
+      </button>
+      <AnimatePresence initial={false}>
+      {feelOpen && (
+      <motion.div
+        initial={{ height: 0, opacity: 0 }}
+        animate={{ height: 'auto', opacity: 1 }}
+        exit={{ height: 0, opacity: 0 }}
+        transition={{ duration: 0.25, ease: 'easeInOut' }}
+        style={{ overflow: 'hidden' }}
+      >
       <div className="card" style={{ display: 'grid', gap: 4, marginBottom: 14 }}>
         <Row label="🔊 Sound effects" on={settings.soundEnabled} onToggle={() => setSound(!settings.soundEnabled)} />
         <Divider />
@@ -117,6 +135,9 @@ export default function ProfileScreen() {
             onMouseUp={() => juice.coin()} style={{ width: '100%' }} />
         </div>
       </div>
+      </motion.div>
+      )}
+      </AnimatePresence>
 
       {/* Translation (swappable; premium ones behind IAP later) */}
       <h3 style={{ fontSize: 16, marginBottom: 10 }} className="dim">Translation</h3>

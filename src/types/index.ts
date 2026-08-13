@@ -95,6 +95,10 @@ export interface Profile {
   /** Optional denomination "faction" key (see data/denominations). Shown only on
    *  the Battle ranks; battle wins auto-pool into the denomination's total. */
   denomination?: string | null
+  /** This account's shareable referral code. */
+  referralCode?: string | null
+  /** How many people signed up with this account's referral code. */
+  referralCount?: number
 }
 
 export interface PlayResult {

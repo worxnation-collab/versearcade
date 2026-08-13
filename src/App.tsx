@@ -60,6 +60,14 @@ export default function App() {
   useJuiceSync()
 
   useEffect(() => {
+    // Capture a referral code from the invite link (?ref=CODE) before anything
+    // else, so it survives the guest→signup flow and gets applied on account load.
+    try {
+      const ref = new URLSearchParams(window.location.search).get('ref')
+      if (ref) localStorage.setItem('va.ref', ref.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))
+    } catch {
+      /* ignore */
+    }
     init()
     // Handle the OAuth redirect deep link (com.versearcade.app://auth/callback)
     // returning from Sign in with Google/Apple on device.

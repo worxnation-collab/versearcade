@@ -11,6 +11,7 @@ import { useSettings } from '@/store/settings'
 import { useJuice } from '@/juice/useJuice'
 import { READING_TRANSLATIONS } from '@/lib/config'
 import { DENOMINATIONS, denominationColor } from '@/data/denominations'
+import { shareResult, APP_URL } from '@/features/daily/shareCard'
 import { useCollection } from '@/store/collection'
 import { CustomizeSection } from './CustomizeSection'
 
@@ -25,6 +26,7 @@ export default function ProfileScreen() {
   const [nameDraft, setNameDraft] = useState('')
   const [nameErr, setNameErr] = useState<string | null>(null)
   const [savingName, setSavingName] = useState(false)
+  const [refFlash, setRefFlash] = useState<string | null>(null)
   const owned = useCollection((s) => s.owned)
   const loadCollection = useCollection((s) => s.load)
   useEffect(() => {
@@ -186,6 +188,48 @@ export default function ProfileScreen() {
       <p className="faint" style={{ fontSize: 11, marginBottom: 14, lineHeight: 1.4 }}>
         Optional &amp; friendly — pick your tradition to represent it on the <b>Battle</b> ranks. Your battle wins add to your denomination’s team total automatically.
       </p>
+
+      {/* Invite friends — referral code + progress toward the carried-cross look. */}
+      {profile.referralCode && (
+        <>
+          <h3 style={{ fontSize: 16, marginBottom: 10 }} className="dim">Invite friends</h3>
+          <div className="card" style={{ marginBottom: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="faint" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Your code</div>
+                <b style={{ fontFamily: 'var(--font-display)', fontSize: 24, letterSpacing: '0.18em' }}>{profile.referralCode}</b>
+              </div>
+              <Button variant="gold" onClick={async () => {
+                juice.coin()
+                const link = `${APP_URL}/?ref=${profile.referralCode}`
+                const r = await shareResult(`Join me on Verse Arcade! Use my code ${profile.referralCode} — daily Bible verse games, streaks & battles.\n${link}`)
+                setRefFlash(r === 'shared' ? 'Shared!' : r === 'copied' ? 'Link copied!' : 'Could not share')
+              }}>📤 Share</Button>
+            </div>
+            {refFlash && <p style={{ color: 'var(--good)', fontSize: 13, marginTop: 8 }}>{refFlash}</p>}
+
+            <div style={{ marginTop: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6, fontWeight: 700 }}>
+                <span className="dim">✝️ Take Up Your Cross</span>
+                <span style={{ color: (profile.referralCount ?? 0) >= 5 ? 'var(--good)' : 'var(--gold)' }}>
+                  {Math.min(profile.referralCount ?? 0, 5)}/5 friends
+                </span>
+              </div>
+              <div style={{ height: 8, borderRadius: 999, background: 'rgba(0,0,0,0.3)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${Math.min((profile.referralCount ?? 0) / 5, 1) * 100}%`, borderRadius: 999, background: 'linear-gradient(90deg, var(--gold), var(--tangerine))', transition: 'width 0.3s' }} />
+              </div>
+              <p className="faint" style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
+                {(profile.referralCount ?? 0) >= 5
+                  ? 'Unlocked! Equip it in Customize → Skins.'
+                  : 'When 5 friends sign up with your code, the carried-cross look unlocks.'}
+              </p>
+            </div>
+          </div>
+          <p className="faint" style={{ fontSize: 11, marginBottom: 14, lineHeight: 1.4 }}>
+            Friends enter your code (or tap your link) when they create an account.
+          </p>
+        </>
+      )}
 
       {/* Account */}
       <h3 style={{ fontSize: 16, marginBottom: 10 }} className="dim">Account</h3>

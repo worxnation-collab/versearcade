@@ -39,6 +39,7 @@ interface DbProfileRow {
   founder?: boolean | null
   is_admin?: boolean | null
   denomination?: string | null
+  referral_code?: string | null
 }
 
 function mapRow(r: DbProfileRow): Profile {
@@ -68,6 +69,7 @@ function mapRow(r: DbProfileRow): Profile {
     founder: r.founder ?? false,
     isAdmin: r.is_admin ?? false,
     denomination: r.denomination ?? null,
+    referralCode: r.referral_code ?? null,
   }
 }
 
@@ -89,6 +91,7 @@ interface AuthState {
 
   init: () => Promise<void>
   refreshProfile: () => Promise<void>
+  loadReferral: () => Promise<void>
   setProfileLocal: (p: Profile) => void
 
   beginGuestClaim: () => void
@@ -187,6 +190,28 @@ export const useAuth = create<AuthState>((set, get) => ({
     const p = mapRow(data as DbProfileRow)
     syncSettingsFromProfile(p)
     set({ profile: p, isAuthed: true, error: null })
+    void get().loadReferral()
+  },
+
+  // Apply any pending referral code (captured from a ?ref=… link before signup),
+  // then load my code + referral count into the profile.
+  async loadReferral() {
+    if (!supabase) return
+    try {
+      const pending = localStorage.getItem('va.ref')
+      if (pending) {
+        const { data } = await supabase.rpc('apply_referral', { p_code: pending })
+        if ((data as { ok?: boolean })?.ok) localStorage.removeItem('va.ref')
+      }
+      const { data } = await supabase.rpc('my_referral_stats')
+      const stats = data as { code?: string; count?: number } | null
+      const cur = get().profile
+      if (cur && stats) {
+        set({ profile: { ...cur, referralCode: stats.code ?? cur.referralCode, referralCount: stats.count ?? 0 } })
+      }
+    } catch {
+      /* referral is non-critical — never block the app on it */
+    }
   },
 
   setProfileLocal(p) {

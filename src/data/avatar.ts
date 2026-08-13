@@ -180,6 +180,7 @@ export interface SkinDef {
   source: 'earned' | 'paid'
   blurb: string
   shareGoal?: number // earned: distinct shared days required
+  referralGoal?: number // earned: referred signups required
   pack?: string // paid: pack sku
   packName?: string // paid: display pack name
   price?: string // paid: display "from" price (pay-what-you-want; no real IAP yet)
@@ -200,6 +201,13 @@ export const FULL_SKINS: SkinDef[] = [
     source: 'earned',
     shareGoal: 25,
     blurb: 'The giant-slayer — earned by sharing on 25 different days.',
+  },
+  {
+    id: 'cross',
+    name: 'Take Up Your Cross',
+    source: 'earned',
+    referralGoal: 5,
+    blurb: 'Carry your cross (Luke 9:23) — earned when 5 friends join with your code.',
   },
   {
     id: 'moses',
@@ -250,8 +258,12 @@ export function equippedSkinId(spec?: AvatarSpec | null): string | null {
 
 // Owned/equippable? Earned skins gate on their achievement; paid skins on the
 // entitlement set.
-export function skinOwned(skin: SkinDef, ctx: { sharedDays?: string[]; ownedSkins?: string[] }): boolean {
+export function skinOwned(
+  skin: SkinDef,
+  ctx: { sharedDays?: string[]; ownedSkins?: string[]; referralCount?: number },
+): boolean {
   if (skin.source === 'earned') {
+    if (skin.referralGoal != null) return (ctx.referralCount ?? 0) >= skin.referralGoal
     return distinctSharedDays(ctx.sharedDays) >= (skin.shareGoal ?? Number.MAX_SAFE_INTEGER)
   }
   return (ctx.ownedSkins ?? []).includes(skin.id)

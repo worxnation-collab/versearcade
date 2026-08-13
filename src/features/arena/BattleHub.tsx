@@ -89,16 +89,21 @@ export default function BattleHub() {
 
           {/* Your battles — collapsible (default closed) so a long list of sent
               challenges doesn't push the ranks off-screen. */}
-          <button
+          <motion.button
+            whileTap={{ scale: 0.98 }}
             onClick={() => { juice.select(); setBattlesOpen((o) => !o) }}
             aria-expanded={battlesOpen}
-            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'transparent', border: 'none', padding: '22px 0 10px', cursor: 'pointer' }}
+            className="card"
+            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'space-between', padding: '13px 14px', margin: '22px 0 10px', cursor: 'pointer', borderColor: battlesOpen ? 'var(--gold)' : 'var(--stroke)' }}
           >
-            <h3 className="dim" style={{ fontSize: 16, margin: 0 }}>
-              Your battles {others.length > 0 && <span className="faint">· {others.length}</span>}
-            </h3>
-            <span style={{ color: 'var(--gold)', transform: battlesOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>
-          </button>
+            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 16 }}>
+              Your battles {others.length > 0 && <span className="faint" style={{ fontWeight: 400 }}>· {others.length}</span>}
+            </span>
+            <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--gold)', color: '#241f0a', fontWeight: 800, fontSize: 13, padding: '6px 12px' }}>
+              {battlesOpen ? 'Hide' : 'Show'}
+              <span style={{ fontSize: 15, transform: battlesOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>
+            </span>
+          </motion.button>
           {battlesOpen && (others.length === 0 ? (
             <p className="faint" style={{ fontSize: 14 }}>
               No battles yet. Start one, then pick players to challenge — or share a link to invite someone new.

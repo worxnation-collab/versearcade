@@ -18,8 +18,17 @@ export interface Battle {
   created_at: string
   is_challenger: boolean
   is_opponent: boolean
+  is_invited: boolean
+  invited: string | null
   challenger: BattleSide
   opponent: BattleSide | null
+}
+
+export interface PoolUser {
+  username: string
+  avatar_emoji: string
+  avatar_character?: AvatarSpec | null
+  level: number
 }
 
 export interface BattleRankRow {
@@ -40,8 +49,9 @@ interface BattlesState {
   loadingMine: boolean
   loadMine: () => Promise<void>
   getBattle: (id: string) => Promise<Battle | null>
-  createBattle: (seed: number, score: number, timeMs: number) => Promise<string | null>
+  createBattle: (seed: number, score: number, timeMs: number, invited?: string) => Promise<string | null>
   submitBattle: (id: string, score: number, timeMs: number) => Promise<Battle | null>
+  userPool: (search?: string) => Promise<PoolUser[]>
   leaderboard: () => Promise<BattleBoard | null>
 }
 
@@ -63,11 +73,22 @@ export const useBattles = create<BattlesState>((set) => ({
     return data as Battle
   },
 
-  async createBattle(seed, score, timeMs) {
+  async createBattle(seed, score, timeMs, invited) {
     if (!supabase) return null
-    const { data, error } = await supabase.rpc('create_battle', { p_seed: seed, p_score: score, p_time_ms: timeMs })
+    const { data, error } = await supabase.rpc('create_battle', {
+      p_seed: seed,
+      p_score: score,
+      p_time_ms: timeMs,
+      p_invited: invited ?? null,
+    })
     if (error || !data) return null
     return data as string
+  },
+
+  async userPool(search) {
+    if (!supabase) return []
+    const { data } = await supabase.rpc('battle_user_pool', { p_search: search ?? null, p_limit: 100 })
+    return (data as PoolUser[]) ?? []
   },
 
   async submitBattle(id, score, timeMs) {

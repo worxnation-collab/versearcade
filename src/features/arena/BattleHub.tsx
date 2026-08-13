@@ -18,6 +18,9 @@ export default function BattleHub() {
   const [board, setBoard] = useState<BattleBoard | null>(null)
 
   const isGuest = mode === 'local'
+  const isIncoming = (b: Battle) => b.is_invited && b.status === 'pending' && !b.is_challenger
+  const incoming = mine.filter(isIncoming)
+  const others = mine.filter((b) => !isIncoming(b))
 
   useEffect(() => {
     if (isGuest) return
@@ -45,15 +48,44 @@ export default function BattleHub() {
             ⚔️ Start a new battle
           </Button>
 
+          {/* Incoming challenges — someone challenged you, your move */}
+          {incoming.length > 0 && (
+            <>
+              <h3 className="dim" style={{ fontSize: 16, margin: '22px 0 10px' }}>
+                Challenges for you <span style={{ color: 'var(--gold)' }}>· {incoming.length}</span>
+              </h3>
+              <div style={{ display: 'grid', gap: 8 }}>
+                {incoming.map((b) => (
+                  <motion.button
+                    key={b.id}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => navigate(`/battle/${b.id}`)}
+                    className="card"
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%', borderColor: 'var(--gold)', background: 'rgba(255,210,63,0.08)' }}
+                  >
+                    <Avatar emoji={b.challenger.avatar_emoji} character={b.challenger.avatar_character} size={40} ring={false} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <b style={{ fontWeight: 800 }}>@{b.challenger.username}</b>
+                      <div style={{ fontSize: 12, color: 'var(--gold)', fontWeight: 700 }}>
+                        Challenged you · beat {b.challenger.score?.toLocaleString()} pts
+                      </div>
+                    </div>
+                    <span className="pill" style={{ background: 'var(--gold)', color: '#241f0a', fontWeight: 800, fontSize: 12 }}>Play</span>
+                  </motion.button>
+                ))}
+              </div>
+            </>
+          )}
+
           {/* Your battles */}
           <h3 className="dim" style={{ fontSize: 16, margin: '22px 0 10px' }}>Your battles</h3>
-          {mine.length === 0 ? (
+          {others.length === 0 ? (
             <p className="faint" style={{ fontSize: 14 }}>
-              No battles yet. Start one, then share the invite — friends without an account get prompted to join and jump right in.
+              No battles yet. Start one, then pick players to challenge — or share a link to invite someone new.
             </p>
           ) : (
             <div style={{ display: 'grid', gap: 8 }}>
-              {mine.map((b) => (
+              {others.map((b) => (
                 <BattleRow key={b.id} b={b} onClick={() => navigate(`/battle/${b.id}`)} />
               ))}
             </div>

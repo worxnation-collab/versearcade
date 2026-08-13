@@ -235,7 +235,7 @@ export const FULL_SKINS: SkinDef[] = [
     source: 'paid',
     pack: 'prophets',
     packName: 'Prophets Pack',
-    price: 'From $4.99',
+    price: 'From $2.99',
     blurb: 'The prophet of fire — mantle, staff, and a raven.',
   },
   {

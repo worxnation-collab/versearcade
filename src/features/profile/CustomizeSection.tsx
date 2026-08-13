@@ -32,6 +32,7 @@ export function CustomizeSection() {
   const juice = useJuice()
   const [err, setErr] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
+  const [devNoteOpen, setDevNoteOpen] = useState(false)
   const [savedFlash, setSavedFlash] = useState(false)
   const savedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
@@ -278,6 +279,36 @@ export function CustomizeSection() {
           Paid skins are <b>preview-unlocked</b> for now — real purchases arrive later. Earned skins (like Baldwin) are never for sale.
         </p>
       </div>
+
+      {/* A genuine note on why anything costs money at all */}
+      <button
+        onClick={() => { juice.select(); setDevNoteOpen((o) => !o) }}
+        className="card"
+        style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10, marginBottom: devNoteOpen ? 0 : 14, cursor: 'pointer' }}
+      >
+        <span style={{ fontSize: 18 }}>💛</span>
+        <b style={{ flex: 1, fontSize: 13.5 }}>Why do skins cost anything?</b>
+        <span style={{ color: 'var(--gold)', transform: devNoteOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>
+      </button>
+      {devNoteOpen && (
+        <div className="card" style={{ marginTop: 8, marginBottom: 14, lineHeight: 1.6, fontSize: 14 }}>
+          <p style={{ margin: 0 }}>
+            Verse Arcade is built by <b>one person</b> — not a company, no investors. The whole app is
+            free: the daily verse, the games, streaks, groups, battles. That never changes, and the
+            Scripture is never behind a paywall.
+          </p>
+          <p style={{ margin: '12px 0 0' }}>
+            Skins are the one optional extra. I’m not a nonprofit, so this isn’t a donation — it’s
+            support. It covers the real monthly cost of keeping the app online, and gives me a little
+            room to keep building it instead of shelving it. You’re only ever paying for a cosmetic you
+            like.
+          </p>
+          <p style={{ margin: '12px 0 0', color: 'var(--ink)' }}>
+            If you grab one — thank you, genuinely. It keeps this going. If you don’t, that’s completely
+            okay: the app is yours to enjoy either way. 🙏
+          </p>
+        </div>
+      )}
 
       {/* ── Collected items (from the Daily Chest) ────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>

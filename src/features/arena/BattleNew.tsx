@@ -40,7 +40,6 @@ function InvitePicker({ seed, result }: { seed: number; result: PlayResult }) {
   const { createBattle, userPool } = useBattles()
   const [users, setUsers] = useState<PoolUser[] | null>(null)
   const [q, setQ] = useState('')
-  const [sent, setSent] = useState<Record<string, boolean>>({})
   const [shareMsg, setShareMsg] = useState<string | null>(null)
 
   useEffect(() => {
@@ -50,16 +49,13 @@ function InvitePicker({ seed, result }: { seed: number; result: PlayResult }) {
   const filtered = (users ?? []).filter((u) =>
     q.trim() ? u.username.toLowerCase().includes(q.trim().toLowerCase()) : true,
   )
-  const sentCount = Object.keys(sent).length
 
+  // One targeted invite per run → go straight to that battle so it's clear who
+  // you're waiting on. (Broadcast link below is the "challenge many" option.)
   const invite = async (u: PoolUser) => {
-    if (sent[u.username]) return
     juice.coin()
     const id = await createBattle(seed, result.score, result.timeMs, u.username)
-    if (id) {
-      juice.correct?.()
-      setSent((s) => ({ ...s, [u.username]: true }))
-    }
+    if (id) navigate(`/battle/${id}`, { replace: true, state: { justCreated: true } })
   }
 
   const [shareId, setShareId] = useState<string | null>(null)
@@ -128,46 +124,35 @@ function InvitePicker({ seed, result }: { seed: number; result: PlayResult }) {
         </p>
       ) : (
         <div style={{ display: 'grid', gap: 8 }}>
-          {filtered.map((u) => {
-            const done = !!sent[u.username]
-            return (
-              <div
-                key={u.username}
-                className="card"
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px' }}
-              >
-                <Avatar emoji={u.avatar_emoji} character={u.avatar_character} size={38} ring={false} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <b style={{ fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
-                    @{u.username}
-                  </b>
-                  <span className="faint" style={{ fontSize: 12 }}>Level {u.level}</span>
-                </div>
-                <motion.button
-                  whileTap={{ scale: 0.94 }}
-                  onClick={() => invite(u)}
-                  disabled={done}
-                  className="pill"
-                  style={{
-                    fontWeight: 800,
-                    fontSize: 13,
-                    padding: '8px 14px',
-                    background: done ? 'transparent' : 'var(--gold)',
-                    color: done ? 'var(--good)' : '#241f0a',
-                    border: done ? '1px solid var(--good)' : 'none',
-                  }}
-                >
-                  {done ? '✓ Sent' : 'Challenge'}
-                </motion.button>
+          {filtered.map((u) => (
+            <div
+              key={u.username}
+              className="card"
+              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px' }}
+            >
+              <Avatar emoji={u.avatar_emoji} character={u.avatar_character} size={38} ring={false} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <b style={{ fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+                  @{u.username}
+                </b>
+                <span className="faint" style={{ fontSize: 12 }}>Level {u.level}</span>
               </div>
-            )
-          })}
+              <motion.button
+                whileTap={{ scale: 0.94 }}
+                onClick={() => invite(u)}
+                className="pill"
+                style={{ fontWeight: 800, fontSize: 13, padding: '8px 14px', background: 'var(--gold)', color: '#241f0a', border: 'none' }}
+              >
+                Challenge
+              </motion.button>
+            </div>
+          ))}
         </div>
       )}
 
       <div style={{ marginTop: 18 }}>
         <Button variant="gold" full onClick={() => navigate('/battle')}>
-          {sentCount ? `Done — ${sentCount} challenge${sentCount > 1 ? 's' : ''} sent` : 'Done'}
+          Done
         </Button>
       </div>
       <div style={{ height: 30 }} />

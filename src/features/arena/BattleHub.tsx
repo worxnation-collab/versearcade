@@ -129,7 +129,7 @@ export default function BattleHub() {
 }
 
 function outcomeLabel(b: Battle): { text: string; color: string } {
-  if (b.status !== 'complete') return { text: 'Waiting for opponent', color: 'var(--sky)' }
+  if (b.status !== 'complete') return { text: 'Waiting on their play', color: 'var(--sky)' }
   const won = (b.is_challenger && b.winner === 'challenger') || (b.is_opponent && b.winner === 'opponent')
   if (b.winner === 'tie') return { text: 'Tie', color: 'var(--ink-faint)' }
   return won ? { text: 'You won 🏆', color: 'var(--good)' } : { text: 'You lost', color: 'var(--coral)' }
@@ -137,6 +137,8 @@ function outcomeLabel(b: Battle): { text: string; color: string } {
 
 function BattleRow({ b, onClick }: { b: Battle; onClick: () => void }) {
   const other = b.is_challenger ? b.opponent : b.challenger
+  // Pending targeted battle: the opponent hasn't played yet, so name the invitee.
+  const name = other?.username ?? (b.status !== 'complete' ? b.invited : null)
   const label = outcomeLabel(b)
   return (
     <motion.button
@@ -145,9 +147,9 @@ function BattleRow({ b, onClick }: { b: Battle; onClick: () => void }) {
       className="card"
       style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%' }}
     >
-      <Avatar emoji={other?.avatar_emoji ?? '⚔️'} character={other?.avatar_character} size={40} ring={false} />
+      <Avatar emoji={other?.avatar_emoji ?? (b.status !== 'complete' ? '⏳' : '⚔️')} character={other?.avatar_character} size={40} ring={false} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <b style={{ fontWeight: 800 }}>{other ? `@${other.username}` : 'Waiting…'}</b>
+        <b style={{ fontWeight: 800 }}>{name ? `@${name}` : 'Open challenge'}</b>
         <div style={{ fontSize: 12, color: label.color, fontWeight: 700 }}>{label.text}</div>
       </div>
       <span style={{ color: 'var(--gold)', fontFamily: 'var(--font-display)', fontSize: 18 }}>›</span>

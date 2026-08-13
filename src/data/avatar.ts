@@ -226,7 +226,7 @@ export const FULL_SKINS: SkinDef[] = [
     source: 'paid',
     pack: 'palace',
     packName: 'Palace Pack',
-    price: 'From $4.99',
+    price: 'From $2.99',
     blurb: 'The queen — “for such a time as this.”',
   },
   {

@@ -3,7 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/Button'
 import { useGame } from '@/store/game'
 import { useCollection } from '@/store/collection'
+import { useAuth } from '@/store/auth'
 import { collectibleByKey, rarityColor } from '@/data/collectibles'
+import { Avatar } from '@/components/Avatar'
+import { drawChestItem, itemById, DEFAULT_AVATAR } from '@/data/avatar'
 import { useJuice } from '@/juice/useJuice'
 
 // A once-a-day reward that reinforces the daily loop: it unlocks only after you
@@ -16,7 +19,10 @@ export function DailyChest() {
   const chestOpenedOn = useCollection((s) => s.chestOpenedOn)
   const openChest = useCollection((s) => s.openChest)
   const juice = useJuice()
+  const profile = useAuth((s) => s.profile)
+  const grantItem = useAuth((s) => s.grantItem)
   const [revealed, setRevealed] = useState<{ kind: 'relic' | 'boost'; key?: string; rarity?: string } | null>(null)
+  const [itemDrop, setItemDrop] = useState<string | null>(null)
   const [opening, setOpening] = useState(false)
 
   useEffect(() => {
@@ -37,6 +43,14 @@ export function DailyChest() {
     } else if (res.key) {
       setRevealed({ kind: 'relic', key: res.key, rarity: res.rarity })
       juice.celebrate()
+    }
+    // Bonus: a chest may also drop a wearable avatar item (free, cosmetic).
+    if (Math.random() < 0.45) {
+      const dropped = drawChestItem(profile?.ownedItems ?? [], Math.random())
+      if (dropped) {
+        grantItem(dropped)
+        setItemDrop(dropped)
+      }
     }
   }
 
@@ -142,6 +156,28 @@ export function DailyChest() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {itemDrop &&
+        (() => {
+          const def = itemById(itemDrop)
+          if (!def) return null
+          const base = profile?.avatarCharacter ?? DEFAULT_AVATAR
+          const preview = { ...base, regalia: null, items: { ...(base.items ?? {}), [def.slot]: def.id } }
+          return (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--stroke)', display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}
+            >
+              <Avatar emoji={profile?.avatarEmoji ?? '🙂'} character={preview} size={52} ring={false} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11, color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>You also found an item</div>
+                <b style={{ fontFamily: 'var(--font-display)', fontSize: 15 }}>{def.name}</b>
+                <div className="faint" style={{ fontSize: 12 }}>{def.rarity} · equip it on your profile</div>
+              </div>
+            </motion.div>
+          )
+        })()}
     </motion.div>
   )
 }

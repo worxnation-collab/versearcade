@@ -13,9 +13,49 @@
 // migration 0010 gates the streak cosmetics. In LOCAL mode it already persists
 // to the device via the auth store.
 
-import type { ArmorSlot, AvatarSpec } from '@/types'
+import type { ArmorSlot, AvatarSpec, ItemSlot } from '@/types'
 
-export type { ArmorSlot, AvatarSpec }
+export type { ArmorSlot, AvatarSpec, ItemSlot }
+
+// ── Wearable items (Daily Chest drops) ────────────────────────────────────────
+// Free, collected by playing. One item per slot; render lives in Character.
+export type ItemRarity = 'common' | 'uncommon' | 'rare'
+
+export interface ItemDef {
+  id: string
+  slot: ItemSlot
+  name: string
+  rarity: ItemRarity
+  blurb: string
+}
+
+export const ITEMS: ItemDef[] = [
+  { id: 'item_headwrap', slot: 'hat', name: 'Shepherd’s Headwrap', rarity: 'common', blurb: 'Cloth against the desert sun.' },
+  { id: 'item_olive_wreath', slot: 'hat', name: 'Olive Wreath', rarity: 'uncommon', blurb: 'A crown of peace.' },
+  { id: 'item_staff', slot: 'held', name: 'Shepherd’s Staff', rarity: 'common', blurb: 'For leading the flock.' },
+  { id: 'item_scroll', slot: 'held', name: 'Scroll', rarity: 'common', blurb: 'The Word, close at hand.' },
+  { id: 'item_lamp', slot: 'held', name: 'Oil Lamp', rarity: 'uncommon', blurb: 'A lamp unto my feet.' },
+  { id: 'item_cloak', slot: 'cape', name: 'Traveler’s Cloak', rarity: 'uncommon', blurb: 'Worn on the long road.' },
+]
+
+export const itemById = (id?: string | null): ItemDef | undefined => ITEMS.find((i) => i.id === id)
+export const itemsBySlot = (slot: ItemSlot): ItemDef[] => ITEMS.filter((i) => i.slot === slot)
+
+// Pick a random item the player doesn't own yet (rarity-weighted), for a chest
+// drop. Returns null once everything is collected. Caller supplies a 0..1 roll
+// so it stays deterministic/testable.
+export function drawChestItem(owned: string[], roll: number): string | null {
+  const pool = ITEMS.filter((i) => !owned.includes(i.id))
+  if (pool.length === 0) return null
+  const weight = (r: ItemRarity) => (r === 'common' ? 6 : r === 'uncommon' ? 3 : 1)
+  const total = pool.reduce((s, i) => s + weight(i.rarity), 0)
+  let x = roll * total
+  for (const i of pool) {
+    x -= weight(i.rarity)
+    if (x <= 0) return i.id
+  }
+  return pool[pool.length - 1].id
+}
 
 export type Access =
   | { kind: 'free' }

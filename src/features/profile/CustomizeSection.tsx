@@ -13,7 +13,9 @@ import {
   baldwinProgress,
   accessOwned,
   accessLabel,
+  ITEMS,
   type ArmorPieceDef,
+  type ItemDef,
   type Swatch,
 } from '@/data/avatar'
 
@@ -79,6 +81,18 @@ export function CustomizeSection() {
     setErr(null)
     juice.select()
     setAvatarCharacter({ ...spec, robe: r.key })
+    flashSaved()
+  }
+
+  const ownedItems = profile.ownedItems ?? []
+  const myItems = ITEMS.filter((i) => ownedItems.includes(i.id))
+  const toggleItem = (item: ItemDef) => {
+    setErr(null)
+    juice.select()
+    const nextItems = { ...(spec.items ?? {}) }
+    if (nextItems[item.slot] === item.id) delete nextItems[item.slot]
+    else nextItems[item.slot] = item.id
+    setAvatarCharacter({ ...spec, items: nextItems })
     flashSaved()
   }
 
@@ -247,6 +261,45 @@ export function CustomizeSection() {
           </div>
         </div>
       </button>
+
+      {/* ── Collected items (from the Daily Chest) ────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
+        <h3 style={{ fontSize: 16 }} className="dim">Items</h3>
+        <span className="faint" style={{ fontSize: 12 }}>{myItems.length} collected</span>
+      </div>
+      <div className="card" style={{ marginBottom: 14 }}>
+        {myItems.length === 0 ? (
+          <p className="faint" style={{ fontSize: 13, textAlign: 'center', padding: '6px 0' }}>
+            🎁 Open your Daily Chest to find hats, staffs, cloaks and more — then equip them here.
+          </p>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {myItems.map((item) => {
+              const on = spec.items?.[item.slot] === item.id
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => toggleItem(item)}
+                  style={{
+                    textAlign: 'left',
+                    display: 'grid',
+                    gap: 3,
+                    padding: '9px 10px',
+                    borderRadius: 12,
+                    background: on ? 'var(--grape)' : 'var(--card-solid)',
+                    border: on ? '1px solid var(--gold)' : '1px solid var(--stroke)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <span style={{ fontSize: 12, fontWeight: 800, lineHeight: 1.15 }}>{item.name}</span>
+                  <span className="faint" style={{ fontSize: 10, textTransform: 'capitalize' }}>{item.slot} · {item.rarity}</span>
+                  <span style={{ ...pillStyle(on ? 'studio' : 'free'), marginTop: 2 }}>{on ? '✓ Worn' : 'Tap to wear'}</span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
 
       {/* ── Streak-unlocked borders + badges ──────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>

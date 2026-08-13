@@ -39,10 +39,15 @@ export interface DailyVerse {
 // and unlock gating live in data/avatar.
 export type ArmorSlot = 'helmet' | 'breastplate' | 'belt' | 'shield' | 'sword' | 'sandals'
 
+// Wearable-item slots (collected from the Daily Chest). One item per slot.
+export type ItemSlot = 'hat' | 'held' | 'cape'
+
 export interface AvatarSpec {
   skin: string // SKINS key (see data/avatar)
   robe: string // ROBES key
   armor: Partial<Record<ArmorSlot, boolean>>
+  /** Equipped items by slot, values are item ids (see data/avatar ITEMS). */
+  items?: Partial<Record<ItemSlot, string>>
   /** Achievement-unlocked full-look set, kept separate from the six Armor of
    *  God pieces. 'baldwin' = the masked Leper King (hood, silver mask, gold
    *  cross-mantle, ceremonial sword). When set, it overrides the base look. */
@@ -74,6 +79,8 @@ export interface Profile {
   /** Distinct day-drops the player has shared (YYYY-MM-DD). Drives share-count
    *  unlocks like the King Baldwin set. */
   sharedDays?: string[]
+  /** Wearable item ids the player has collected (from the Daily Chest). */
+  ownedItems?: string[]
   /** Unused XP Boost consumables (rarely dropped by the Daily Chest). */
   xpBoosts: number
 }

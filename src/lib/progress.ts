@@ -115,6 +115,7 @@ export function newLocalProfile(username: string, emoji: string): Profile {
     avatarBadge: null,
     avatarCharacter: DEFAULT_AVATAR,
     sharedDays: [],
+    ownedItems: [],
     xpBoosts: 0,
   }
 }

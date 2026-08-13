@@ -11,6 +11,12 @@ const K = {
   guestId: 'va.guestId', // stable anonymous device id, for ambient guest activity
   chestDate: 'va.chestDate', // last drop_date this device opened the daily chest
   pendingClaim: 'va.pendingClaim', // guest snapshot to migrate into a new account
+  practice: 'va.practice', // { [dropDate]: { bestScore, lastRewardOn } } practice state
+}
+
+export interface LocalPractice {
+  bestScore: number
+  lastRewardOn: string | null
 }
 
 // A frozen snapshot of the guest's progress, captured when they start creating
@@ -43,6 +49,7 @@ export const localdb = {
     localStorage.removeItem(K.plays)
     localStorage.removeItem(K.cards)
     localStorage.removeItem(K.pendingClaim)
+    localStorage.removeItem(K.practice)
   },
   getPlays(): Record<string, { result: PlayResult; outcome: SubmitOutcome }> {
     const raw = localStorage.getItem(K.plays)
@@ -77,6 +84,19 @@ export const localdb = {
     const cards = new Set(this.getCards())
     cards.add(key)
     localStorage.setItem(K.cards, JSON.stringify([...cards]))
+  },
+  // Practice state per drop_date (guest / offline). ONLINE uses practice_plays.
+  getPracticeAll(): Record<string, LocalPractice> {
+    const raw = localStorage.getItem(K.practice)
+    return raw ? JSON.parse(raw) : {}
+  },
+  getPractice(dropDate: string): LocalPractice | null {
+    return this.getPracticeAll()[dropDate] ?? null
+  },
+  savePractice(dropDate: string, state: LocalPractice) {
+    const all = this.getPracticeAll()
+    all[dropDate] = state
+    localStorage.setItem(K.practice, JSON.stringify(all))
   },
   getChestDate(): string | null {
     return localStorage.getItem(K.chestDate)

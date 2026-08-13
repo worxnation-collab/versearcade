@@ -442,6 +442,7 @@ export const useAuth = create<AuthState>((set, get) => ({
     if (patch.username !== undefined) dbPatch.username = patch.username
     if (patch.displayName !== undefined) dbPatch.display_name = patch.displayName
     if (patch.avatarEmoji !== undefined) dbPatch.avatar_emoji = patch.avatarEmoji
+    if (patch.avatarCharacter !== undefined) dbPatch.avatar_character = patch.avatarCharacter
     if (patch.soundEnabled !== undefined) dbPatch.sound_enabled = patch.soundEnabled
     if (patch.hapticsEnabled !== undefined) dbPatch.haptics_enabled = patch.hapticsEnabled
     if (patch.reduceMotion !== undefined) dbPatch.reduce_motion = patch.reduceMotion
@@ -508,20 +509,29 @@ export const useAuth = create<AuthState>((set, get) => ({
     return { ok: true }
   },
 
-  // Equip the composable character avatar. Persists on-device in LOCAL mode.
-  // Online persistence is a follow-up (needs a profiles.avatar_character column);
-  // until then it updates in memory so the prototype is fully usable.
+  // Equip the composable character avatar. Applied optimistically, then
+  // persisted — on-device in LOCAL mode, to profiles.avatar_character online.
   setAvatarCharacter(spec) {
     const cur = get().profile
     if (!cur) return
     const next: Profile = { ...cur, avatarCharacter: spec }
     set({ profile: next })
-    if (get().mode === 'local' || !supabase) localdb.saveProfile(next)
+    if (get().mode === 'local' || !supabase) {
+      localdb.saveProfile(next)
+      return
+    }
+    void supabase
+      .from('profiles')
+      .update({ avatar_character: spec })
+      .eq('id', cur.id)
+      .then(({ error }) => {
+        if (error) set({ error: error.message })
+      })
   },
 
   // Record that the player shared a given day's drop (distinct days only). Drives
   // share-count unlocks like the King Baldwin set. Persists on-device in LOCAL
-  // mode; online persistence lands with the profiles.shared_days column.
+  // mode, to profiles.shared_days online.
   recordShare(dropDate) {
     const cur = get().profile
     if (!cur) return
@@ -529,7 +539,17 @@ export const useAuth = create<AuthState>((set, get) => ({
     if (days.includes(dropDate)) return // already counted this day
     const next: Profile = { ...cur, sharedDays: [...days, dropDate] }
     set({ profile: next })
-    if (get().mode === 'local' || !supabase) localdb.saveProfile(next)
+    if (get().mode === 'local' || !supabase) {
+      localdb.saveProfile(next)
+      return
+    }
+    void supabase
+      .from('profiles')
+      .update({ shared_days: next.sharedDays })
+      .eq('id', cur.id)
+      .then(({ error }) => {
+        if (error) set({ error: error.message })
+      })
   },
 
   async deleteAccount() {

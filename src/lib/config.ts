@@ -64,3 +64,11 @@ export const SCORING = {
 export const isSupabaseConfigured = Boolean(
   import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY,
 )
+
+// Optional "support / founding patron" payment link — a Stripe Payment Link URL
+// (or any checkout URL). Kept as a swappable env value so the receiving Stripe
+// account can be changed without a code change or redeploy from us; the support
+// button is hidden entirely when this is unset. On web it opens in a new tab;
+// note that for NATIVE app-store builds, digital-cosmetic purchases must go
+// through in-app purchase — this external link is web-only.
+export const SUPPORT_URL = import.meta.env.VITE_SUPPORT_URL || ''

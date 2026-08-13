@@ -96,3 +96,36 @@ export function accessLabel(access: Access | undefined): AccessLabel {
   if (access.kind === 'earned') return { text: `${access.requiredStreak}-day streak`, tone: 'earned' }
   return { text: 'Studio', tone: 'studio' }
 }
+
+// True when the player is still on the untouched starter look — used to nudge
+// existing (emoji-only) players to build a character for the first time.
+export function isDefaultAvatar(spec?: AvatarSpec | null): boolean {
+  if (!spec) return true
+  const equipped = (Object.keys(spec.armor) as (keyof typeof spec.armor)[]).filter((k) => spec.armor[k])
+  return (
+    !spec.crown &&
+    spec.skin === DEFAULT_AVATAR.skin &&
+    spec.robe === DEFAULT_AVATAR.robe &&
+    equipped.length === 1 &&
+    equipped[0] === 'breastplate'
+  )
+}
+
+// ── Royal Regalia: achievement-unlocked sets, separate from the Armor of God ──
+// King Baldwin — the young "Leper King" of Jerusalem, remembered less for
+// conquest than for showing up and leading through relentless hardship. That
+// perseverance is the point: his set is earned by consistency, not payment —
+// sharing the daily verse across many different days. (Display name lives here;
+// swap it in one place if you want a different framing.)
+export const BALDWIN = {
+  key: 'baldwinCrown',
+  name: 'King Baldwin’s Crown',
+  blurb: 'Share the daily verse on 10 different days.',
+  shareGoal: 10,
+} as const
+
+export const distinctSharedDays = (days?: string[]): number => new Set(days ?? []).size
+export const baldwinProgress = (days?: string[]): { count: number; goal: number; unlocked: boolean } => {
+  const count = Math.min(distinctSharedDays(days), BALDWIN.shareGoal)
+  return { count, goal: BALDWIN.shareGoal, unlocked: distinctSharedDays(days) >= BALDWIN.shareGoal }
+}

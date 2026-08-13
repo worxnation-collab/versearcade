@@ -12,6 +12,8 @@ import { PracticeSection } from '@/features/practice/PracticeSection'
 import { useAuth } from '@/store/auth'
 import { useGame } from '@/store/game'
 import { useReviews } from '@/store/reviews'
+import { useSettings } from '@/store/settings'
+import { isDefaultAvatar } from '@/data/avatar'
 import { msUntilNextLocalMidnight, formatCountdown } from '@/lib/date'
 
 export default function HomeScreen() {
@@ -19,7 +21,13 @@ export default function HomeScreen() {
   const profile = useAuth((s) => s.profile)!
   const { today, playedToday, lastResult, loadToday, boostArmed, armBoost } = useGame()
   const { dueRefs, loadDue } = useReviews()
+  const promptDismissed = useSettings((s) => s.characterPromptDismissed)
+  const setSettings = useSettings((s) => s.set)
   const [countdown, setCountdown] = useState(msUntilNextLocalMidnight())
+
+  // Nudge players who haven't built a character yet (existing emoji-only users,
+  // or anyone still on the starter look). One-time, dismissible.
+  const showCharacterPrompt = !promptDismissed && isDefaultAvatar(profile.avatarCharacter)
 
   useEffect(() => {
     loadToday()
@@ -46,6 +54,46 @@ export default function HomeScreen() {
           </div>
         </div>
       </div>
+
+      {/* One-time nudge to build a character (replaces the plain emoji pfp). */}
+      {showCharacterPrompt && (
+        <motion.div
+          className="card"
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{
+            marginBottom: 14,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            background: 'linear-gradient(120deg, rgba(255,210,63,0.14), rgba(160,107,255,0.12))',
+            borderColor: 'var(--gold)',
+          }}
+        >
+          <Avatar emoji={profile.avatarEmoji} character={{ skin: 'sand', robe: 'linen', armor: { breastplate: true, belt: true, helmet: true, sword: true } }} size={48} ring={false} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <b style={{ fontFamily: 'var(--font-display)', fontSize: 15 }}>New — build your character</b>
+            <div className="faint" style={{ fontSize: 12.5 }}>Make it yours and start collecting the Armor of God.</div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+            <button
+              onClick={() => navigate('/you')}
+              className="pill"
+              style={{ background: 'var(--gold)', color: '#241f0a', fontWeight: 800, fontSize: 13, padding: '7px 12px' }}
+            >
+              Build it →
+            </button>
+            <button
+              onClick={() => setSettings({ characterPromptDismissed: true })}
+              className="faint"
+              style={{ fontSize: 11, background: 'transparent', border: 'none', cursor: 'pointer' }}
+              aria-label="Dismiss"
+            >
+              Maybe later
+            </button>
+          </div>
+        </motion.div>
+      )}
 
       {/* Streak-freeze reassurance (kind loss-aversion made visible) */}
       {profile.streakFreezes > 0 && profile.currentStreak > 0 && (

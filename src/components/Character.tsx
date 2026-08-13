@@ -99,6 +99,19 @@ export function Character({
           <rect x="58" y="40" width="4" height="12" fill={GOLD_LINE} opacity="0.5" />
         </>
       )}
+
+      {/* King Baldwin's crown (royal regalia) — sits above everything, cross of
+          Jerusalem at its peak. */}
+      {spec.crown && (
+        <>
+          <path d="M46 41 L49 30 L55 37 L60 27 L65 37 L71 30 L74 41 Z" fill={GOLD} stroke={GOLD_LINE} strokeWidth="1.2" />
+          <rect x="46" y="40" width="28" height="5" rx="1.5" fill={GOLD_DEEP} stroke={GOLD_LINE} />
+          <circle cx="55" cy="38" r="1.6" fill="#8B1E2E" />
+          <circle cx="65" cy="38" r="1.6" fill="#8B1E2E" />
+          <rect x="58.5" y="18" width="3" height="8" fill={GOLD} stroke={GOLD_LINE} strokeWidth="0.6" />
+          <rect x="56" y="20.5" width="8" height="3" fill={GOLD} stroke={GOLD_LINE} strokeWidth="0.6" />
+        </>
+      )}
     </svg>
   )
 }

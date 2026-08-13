@@ -19,6 +19,7 @@ export default function ResultScreen() {
   const juice = useJuice()
   const { today, lastResult } = useGame()
   const profile = useAuth((s) => s.profile)!
+  const recordShare = useAuth((s) => s.recordShare)
   const isGuest = useAuth((s) => s.mode) === 'local'
   const [shareState, setShareState] = useState<string | null>(null)
   const [signInErr, setSignInErr] = useState<string | null>(null)
@@ -56,6 +57,9 @@ export default function ResultScreen() {
   const doShare = async () => {
     const text = buildShareText(result, outcome)
     const r = await shareResult(text)
+    // A successful share (native sheet or clipboard copy) counts today toward
+    // share-day unlocks like the King Baldwin set — distinct days only.
+    if (r !== 'failed' && today) recordShare(today.dropDate)
     setShareState(r === 'copied' ? 'Copied to clipboard!' : r === 'shared' ? 'Shared!' : 'Could not share')
   }
 

@@ -8,6 +8,8 @@ import {
   SKINS,
   ROBES,
   DEFAULT_AVATAR,
+  BALDWIN,
+  baldwinProgress,
   accessOwned,
   accessLabel,
   type ArmorPieceDef,
@@ -63,6 +65,17 @@ export function CustomizeSection() {
     setErr(null)
     juice.select()
     setAvatarCharacter({ ...spec, robe: r.key })
+  }
+
+  const baldwin = baldwinProgress(profile.sharedDays)
+  const toggleCrown = () => {
+    if (!baldwin.unlocked) {
+      setErr(`${BALDWIN.name}: shared ${baldwin.count}/${baldwin.goal} days`)
+      return
+    }
+    setErr(null)
+    juice.select()
+    setAvatarCharacter({ ...spec, crown: !spec.crown })
   }
 
   return (
@@ -146,6 +159,50 @@ export function CustomizeSection() {
           Studio pieces are unlocked here so you can preview the full look. Scripture is always free — the craft around it is the paid layer.
         </p>
       </div>
+
+      {/* ── Royal Regalia (achievement sets) ──────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
+        <h3 style={{ fontSize: 16 }} className="dim">Royal Regalia</h3>
+        <span className="faint" style={{ fontSize: 12 }}>Earned by showing up</span>
+      </div>
+      <button
+        onClick={toggleCrown}
+        className="card"
+        style={{
+          width: '100%',
+          textAlign: 'left',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          marginBottom: 14,
+          border: spec.crown ? '1px solid var(--gold)' : '1px solid var(--stroke)',
+          opacity: baldwin.unlocked ? 1 : 0.9,
+          cursor: 'pointer',
+        }}
+      >
+        <div style={{ position: 'relative' }}>
+          <Avatar
+            emoji={profile.avatarEmoji}
+            character={{ ...spec, crown: true }}
+            size={60}
+            ring={false}
+          />
+          {!baldwin.unlocked && (
+            <span style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: 22, filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.6))' }}>🔒</span>
+          )}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <b style={{ fontFamily: 'var(--font-display)', fontSize: 15 }}>{BALDWIN.name}</b>
+          <div className="faint" style={{ fontSize: 12, marginTop: 2 }}>{BALDWIN.blurb}</div>
+          {/* progress toward the share goal */}
+          <div style={{ marginTop: 8, height: 7, borderRadius: 999, background: 'rgba(0,0,0,0.3)', overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${(baldwin.count / baldwin.goal) * 100}%`, borderRadius: 999, background: 'linear-gradient(90deg, var(--grape), var(--gold))', transition: 'width 0.25s' }} />
+          </div>
+          <div className="faint" style={{ fontSize: 11, marginTop: 4 }}>
+            {baldwin.unlocked ? (spec.crown ? '✓ Equipped — tap to remove' : 'Unlocked — tap to wear') : `Shared ${baldwin.count}/${baldwin.goal} different days`}
+          </div>
+        </div>
+      </button>
 
       {/* ── Streak-unlocked borders + badges ──────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>

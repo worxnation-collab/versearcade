@@ -43,6 +43,9 @@ export interface AvatarSpec {
   skin: string // SKINS key (see data/avatar)
   robe: string // ROBES key
   armor: Partial<Record<ArmorSlot, boolean>>
+  /** Royal regalia (achievement-unlocked sets), kept separate from the six
+   *  Armor of God pieces. e.g. King Baldwin's crown. */
+  crown?: boolean
 }
 
 export interface Profile {
@@ -67,6 +70,9 @@ export interface Profile {
   avatarBorder: string
   /** Equipped badge cosmetic key, or null for none. */
   avatarBadge?: string | null
+  /** Distinct day-drops the player has shared (YYYY-MM-DD). Drives share-count
+   *  unlocks like the King Baldwin set. */
+  sharedDays?: string[]
   /** Unused XP Boost consumables (rarely dropped by the Daily Chest). */
   xpBoosts: number
 }

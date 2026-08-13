@@ -32,6 +32,7 @@ interface DbProfileRow {
   // Not yet a real column — an online account reads back null and falls back to
   // the emoji until a profiles.avatar_character migration lands.
   avatar_character?: AvatarSpec | null
+  shared_days?: string[] | null
   xp_boosts: number | null
 }
 
@@ -55,6 +56,7 @@ function mapRow(r: DbProfileRow): Profile {
     avatarBorder: r.avatar_border ?? 'default',
     avatarBadge: r.avatar_badge ?? null,
     avatarCharacter: r.avatar_character ?? null,
+    sharedDays: r.shared_days ?? [],
     xpBoosts: r.xp_boosts ?? 0,
   }
 }
@@ -92,6 +94,7 @@ interface AuthState {
   changeUsername: (next: string) => Promise<{ ok: boolean; error?: string }>
   setCosmetics: (patch: { border?: string; badge?: string | null }) => Promise<{ ok: boolean; error?: string }>
   setAvatarCharacter: (spec: AvatarSpec) => void
+  recordShare: (dropDate: string) => void
   deleteAccount: () => Promise<void>
   signOut: () => Promise<void>
 }
@@ -512,6 +515,19 @@ export const useAuth = create<AuthState>((set, get) => ({
     const cur = get().profile
     if (!cur) return
     const next: Profile = { ...cur, avatarCharacter: spec }
+    set({ profile: next })
+    if (get().mode === 'local' || !supabase) localdb.saveProfile(next)
+  },
+
+  // Record that the player shared a given day's drop (distinct days only). Drives
+  // share-count unlocks like the King Baldwin set. Persists on-device in LOCAL
+  // mode; online persistence lands with the profiles.shared_days column.
+  recordShare(dropDate) {
+    const cur = get().profile
+    if (!cur) return
+    const days = cur.sharedDays ?? []
+    if (days.includes(dropDate)) return // already counted this day
+    const next: Profile = { ...cur, sharedDays: [...days, dropDate] }
     set({ profile: next })
     if (get().mode === 'local' || !supabase) localdb.saveProfile(next)
   },

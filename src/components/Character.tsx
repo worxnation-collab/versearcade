@@ -475,6 +475,20 @@ export function Character({
               <ellipse cx="69" cy="44" rx="2.4" ry="1.4" fill="#7BA02E" transform="rotate(35 69 44)" />
             </>
           )}
+
+          {/* Day One (live exclusive) — sunglasses + a gold flex sparkle */}
+          {skinId === 'shades' && (
+            <>
+              <rect x="48" y="46.4" width="24" height="2.2" rx="1.1" fill="#14141a" />
+              <ellipse cx="54" cy="50" rx="5.2" ry="4.2" fill="#14141a" />
+              <ellipse cx="66" cy="50" rx="5.2" ry="4.2" fill="#14141a" />
+              <path d="M51.5 48.4 q2.6 -1.8 5.2 0" stroke="#5f86ad" strokeWidth="1.3" fill="none" opacity="0.85" />
+              <path d="M63.5 48.4 q2.6 -1.8 5.2 0" stroke="#5f86ad" strokeWidth="1.3" fill="none" opacity="0.85" />
+              <path d="M49 49 L45 47.5" stroke="#14141a" strokeWidth="1.6" strokeLinecap="round" />
+              <path d="M71 49 L75 47.5" stroke="#14141a" strokeWidth="1.6" strokeLinecap="round" />
+              <path d="M74 40 l0.9 2.3 l2.3 0.9 l-2.3 0.9 l-0.9 2.3 l-0.9 -2.3 l-2.3 -0.9 l2.3 -0.9 z" fill="#FFD23F" />
+            </>
+          )}
         </>
       )}
     </svg>

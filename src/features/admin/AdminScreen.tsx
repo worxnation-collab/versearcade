@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
+import { Avatar } from '@/components/Avatar'
 import { useAuth } from '@/store/auth'
 import { supabase } from '@/lib/supabase'
 import { FULL_SKINS } from '@/data/avatar'
+import type { AvatarSpec } from '@/types'
 
 // Private operator surface. THREE gates, strongest first:
 //   1. Server: every admin_* RPC calls require_admin() — a non-admin gets
@@ -28,6 +30,19 @@ interface AdminUser {
 interface Inquiry {
   id: string; church_name: string; contact_name: string; email: string
   size: string | null; message: string | null; handled: boolean; created_at: string
+}
+interface ActiveRow {
+  rank: number; username: string; avatar_emoji: string; avatar_character?: AvatarSpec | null
+  level: number; daily_plays: number; battles: number; practice_days: number
+  total_ms: number; last_active: string
+}
+
+// Active quiz/battle time (not total app time — the app has no session tracking).
+function fmtDuration(ms: number): string {
+  const min = Math.round(ms / 60000)
+  if (min < 60) return `${min}m`
+  const h = Math.floor(min / 60)
+  return `${h}h ${String(min % 60).padStart(2, '0')}m`
 }
 
 export default function AdminScreen() {
@@ -126,13 +141,58 @@ function Stats({ ov }: { ov: Overview | null }) {
     ['Church (all)', ov.church_total],
   ]
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-      {cells.map(([label, val]) => (
-        <div key={label} className="card" style={{ padding: '12px 14px' }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 26 }} className="gradient-text">{Number(val).toLocaleString()}</div>
-          <div className="faint" style={{ fontSize: 12 }}>{label}</div>
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        {cells.map(([label, val]) => (
+          <div key={label} className="card" style={{ padding: '12px 14px' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 26 }} className="gradient-text">{Number(val).toLocaleString()}</div>
+            <div className="faint" style={{ fontSize: 12 }}>{label}</div>
+          </div>
+        ))}
+      </div>
+      <TopActive />
+    </>
+  )
+}
+
+function TopActive() {
+  const [rows, setRows] = useState<ActiveRow[] | null>(null)
+  useEffect(() => {
+    supabase?.rpc('admin_top_active', { p_limit: 5 }).then(({ data }) => setRows((data as ActiveRow[]) ?? []))
+  }, [])
+  return (
+    <div style={{ marginTop: 18 }}>
+      <h3 className="dim" style={{ fontSize: 16, margin: '0 0 4px' }}>🔥 Top 5 most active</h3>
+      <p className="faint" style={{ fontSize: 11, marginBottom: 10 }}>
+        Ranked by plays. Time = active quiz/battle time (not total time in app).
+      </p>
+      {rows === null ? (
+        <p className="faint center" style={{ padding: 20 }}>Loading…</p>
+      ) : rows.length === 0 ? (
+        <p className="faint center" style={{ padding: 20 }}>No activity yet.</p>
+      ) : (
+        <div style={{ display: 'grid', gap: 8 }}>
+          {rows.map((r) => (
+            <div key={r.username} className="card" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ width: 22, textAlign: 'center', fontFamily: 'var(--font-display)', fontSize: 18, color: 'var(--ink-faint)' }}>
+                {r.rank === 1 ? '👑' : r.rank}
+              </span>
+              <Avatar emoji={r.avatar_emoji} character={r.avatar_character} size={38} ring={false} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <b style={{ fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>@{r.username}</b>
+                <div className="faint" style={{ fontSize: 11.5 }}>
+                  {r.daily_plays} daily · {r.battles} battle{r.battles === 1 ? '' : 's'}
+                  {r.practice_days > 0 && <> · {r.practice_days} practice</>}
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 18 }} className="gradient-text">{r.daily_plays + r.battles}</div>
+                <div className="faint" style={{ fontSize: 10 }}>plays · {fmtDuration(r.total_ms)}</div>
+              </div>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   )
 }

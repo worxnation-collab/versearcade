@@ -1,6 +1,9 @@
 import { useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Capacitor } from '@capacitor/core'
 import { Avatar } from '@/components/Avatar'
+import { Button } from '@/components/Button'
+import { SUPPORT_URL } from '@/lib/config'
 import { useAuth } from '@/store/auth'
 import { useJuice } from '@/juice/useJuice'
 import { BORDERS, BADGES, isUnlocked } from '@/data/cosmetics'
@@ -279,6 +282,23 @@ export function CustomizeSection() {
         <p className="faint" style={{ fontSize: 10, marginTop: 10, lineHeight: 1.4 }}>
           Paid skins are <b>preview-unlocked</b> for now — real purchases arrive later. Earned skins (like Baldwin) are never for sale.
         </p>
+        {/* Optional support link (a Stripe Payment Link, set via VITE_SUPPORT_URL).
+            Web-only: native app-store builds must route digital purchases through
+            in-app purchase, so this is hidden on native. */}
+        {SUPPORT_URL && !Capacitor.isNativePlatform() && (
+          <div style={{ marginTop: 12 }}>
+            <Button
+              variant="gold"
+              full
+              onClick={() => { juice.coin(); window.open(SUPPORT_URL, '_blank', 'noopener,noreferrer') }}
+            >
+              💛 Support Verse Arcade
+            </Button>
+            <p className="faint" style={{ fontSize: 10, marginTop: 6, textAlign: 'center', lineHeight: 1.4 }}>
+              Chip in what you like — it keeps the app online and free. Not a donation; you’re supporting a solo builder.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* A genuine note on why anything costs money at all */}

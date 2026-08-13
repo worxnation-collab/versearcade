@@ -10,6 +10,7 @@ import { ThroneIcon } from '@/components/ThroneIcon'
 import { useCollection } from '@/store/collection'
 import { useJuice } from '@/juice/useJuice'
 import { THRONE_KEY } from '@/data/collectibles'
+import type { AvatarSpec } from '@/types'
 
 interface LbRow {
   rank: number
@@ -17,6 +18,7 @@ interface LbRow {
   avatar_emoji: string
   avatar_border?: string
   avatar_badge?: string | null
+  avatar_character?: AvatarSpec | null
   xp: number
   level: number
 }
@@ -201,7 +203,7 @@ function Row({ r, me }: { r: LbRow; me: boolean }) {
       >
         {isKing ? <ThroneIcon size={30} /> : (medal(r.rank) ?? r.rank)}
       </div>
-      <Avatar emoji={r.avatar_emoji} size={34} ring={false} border={r.avatar_border} badge={r.avatar_badge} />
+      <Avatar emoji={r.avatar_emoji} character={r.avatar_character} size={34} ring={false} border={r.avatar_border} badge={r.avatar_badge} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{

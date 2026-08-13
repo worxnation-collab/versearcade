@@ -93,3 +93,15 @@ export const isSupabaseConfigured = Boolean(
 // note that for NATIVE app-store builds, digital-cosmetic purchases must go
 // through in-app purchase — this external link is web-only.
 export const SUPPORT_URL = import.meta.env.VITE_SUPPORT_URL || ''
+
+// Per-skin checkout links (Stripe Payment Links — public, shareable URLs, not
+// secrets). Each paid skin can have its own; env vars override the defaults so a
+// link can be swapped without a code change. Falls back to SUPPORT_URL, then ''.
+export const SKIN_BUY_URLS: Record<string, string> = {
+  whale: import.meta.env.VITE_BUY_WHALE || 'https://buy.stripe.com/aFa4gz9mM0hD536aoFa3u01',
+  moses: import.meta.env.VITE_BUY_MOSES || '',
+  esther: import.meta.env.VITE_BUY_ESTHER || '',
+  elijah: import.meta.env.VITE_BUY_ELIJAH || '',
+}
+
+export const skinBuyUrl = (id: string): string => SKIN_BUY_URLS[id] || SUPPORT_URL || ''

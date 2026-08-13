@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Capacitor } from '@capacitor/core'
 import { Avatar } from '@/components/Avatar'
 import { Button } from '@/components/Button'
-import { SUPPORT_URL } from '@/lib/config'
+import { SUPPORT_URL, skinBuyUrl } from '@/lib/config'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/store/auth'
 import { useJuice } from '@/juice/useJuice'
@@ -354,13 +354,13 @@ export function CustomizeSection() {
             {buyTarget.packName && <p className="faint" style={{ fontSize: 12 }}>{buyTarget.packName}</p>}
             <p style={{ fontSize: 14, marginTop: 8, lineHeight: 1.5 }}>{buyTarget.blurb}</p>
             <p style={{ marginTop: 10, marginBottom: 12, fontFamily: 'var(--font-display)', fontSize: 24 }} className="gradient-text">{buyTarget.price}</p>
-            {SUPPORT_URL && !Capacitor.isNativePlatform() ? (
+            {skinBuyUrl(buyTarget.id) && !Capacitor.isNativePlatform() ? (
               <>
-                <Button variant="gold" full onClick={() => { juice.coin(); window.open(SUPPORT_URL, '_blank', 'noopener,noreferrer'); setBuyTarget(null) }}>
+                <Button variant="gold" full onClick={() => { juice.coin(); window.open(skinBuyUrl(buyTarget.id), '_blank', 'noopener,noreferrer'); setBuyTarget(null) }}>
                   Get this skin
                 </Button>
                 <p className="faint" style={{ fontSize: 10, marginTop: 8, lineHeight: 1.4 }}>
-                  Opens secure checkout. Your skin is added right after — thank you for supporting a solo builder! 🙏
+                  Opens secure checkout — your skin is added to your account shortly after. Thank you for supporting a solo builder! 🙏
                 </p>
               </>
             ) : (

@@ -181,7 +181,8 @@ export interface SkinDef {
   blurb: string
   pack?: string // paid: pack sku
   packName?: string // paid: display pack name
-  price?: string // paid: display price (no real IAP yet)
+  price?: string // paid: display "from" price (pay-what-you-want; no real IAP yet)
+  patron?: boolean // paid: high-tier supporter reward
 }
 
 export const FULL_SKINS: SkinDef[] = [
@@ -197,8 +198,18 @@ export const FULL_SKINS: SkinDef[] = [
     source: 'paid',
     pack: 'exodus',
     packName: 'Exodus Pack',
-    price: '$4.99',
+    price: 'From $4.99',
     blurb: 'The Lawgiver — staff in hand, the tablets at his side.',
+  },
+  {
+    id: 'whale',
+    name: 'Jonah’s Whale',
+    source: 'paid',
+    pack: 'patron',
+    packName: 'Founding Patron',
+    price: 'From $100',
+    patron: true,
+    blurb: 'A whale of a thank-you — the founding-supporter skin.',
   },
 ]
 

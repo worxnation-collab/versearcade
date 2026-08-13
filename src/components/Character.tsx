@@ -114,6 +114,27 @@ export function Character({
           {/* gloved hand resting on the pommel */}
           <ellipse cx="43" cy="70" rx="3.6" ry="4.4" fill={ROBE_WHITE} stroke={ROBE_SHADE} strokeWidth="0.8" />
         </>
+      ) : skinId === 'whale' ? (
+        <>
+          {/* ── Jonah's Whale — the founding-patron skin ── */}
+          {/* water spout */}
+          <path d="M48 64 q-2 -11 0 -17 M52 64 q0 -13 1 -19 M56 64 q2 -11 3 -16"
+            stroke="#8FC7E8" strokeWidth="2.4" fill="none" strokeLinecap="round" />
+          {/* tail flukes */}
+          <path d="M86 92 L110 74 L100 92 L110 110 Z" fill="#345F8C" />
+          {/* body */}
+          <ellipse cx="52" cy="92" rx="40" ry="28" fill="#3E6FA8" />
+          {/* lighter belly */}
+          <path d="M17 96 Q52 124 89 100 Q80 118 52 119 Q25 119 17 96 Z" fill="#A9C8E8" />
+          {/* belly grooves */}
+          <path d="M30 108 h30 M28 102 h34 M32 114 h24" stroke="#8FB4DA" strokeWidth="1" opacity="0.7" />
+          {/* side fin */}
+          <path d="M48 110 q10 13 22 8 q-11 7 -24 -2 z" fill="#345F8C" />
+          {/* eye + smile */}
+          <circle cx="34" cy="86" r="4.4" fill="#fff" />
+          <circle cx="32.6" cy="86" r="2.2" fill="#20303F" />
+          <path d="M20 98 q10 8 22 4" stroke="#20303F" strokeWidth="1.6" fill="none" strokeLinecap="round" />
+        </>
       ) : skinId === 'moses' ? (
         <>
           {/* ── Moses — the Lawgiver ── */}

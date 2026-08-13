@@ -5,7 +5,8 @@ import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { Avatar } from '@/components/Avatar'
 import { useAuth } from '@/store/auth'
-import { useBattles, type Battle, type BattleBoard } from '@/store/battles'
+import { useBattles, type Battle, type BattleBoard, type DenomBoard } from '@/store/battles'
+import { denominationColor, denominationName } from '@/data/denominations'
 import { useJuice } from '@/juice/useJuice'
 
 export default function BattleHub() {
@@ -15,7 +16,10 @@ export default function BattleHub() {
   const profile = useAuth((s) => s.profile)
   const { mine, loadMine } = useBattles()
   const leaderboard = useBattles((s) => s.leaderboard)
+  const denominationBoard = useBattles((s) => s.denominationBoard)
   const [board, setBoard] = useState<BattleBoard | null>(null)
+  const [denomBoard, setDenomBoard] = useState<DenomBoard | null>(null)
+  const [rankTab, setRankTab] = useState<'individual' | 'denomination'>('individual')
 
   const isGuest = mode === 'local'
   const isIncoming = (b: Battle) => b.is_invited && b.status === 'pending' && !b.is_challenger
@@ -26,7 +30,8 @@ export default function BattleHub() {
     if (isGuest) return
     loadMine()
     leaderboard().then(setBoard)
-  }, [isGuest, loadMine, leaderboard])
+    denominationBoard().then(setDenomBoard)
+  }, [isGuest, loadMine, leaderboard, denominationBoard])
 
   return (
     <Page>
@@ -95,36 +100,89 @@ export default function BattleHub() {
             </div>
           )}
 
-          {/* Battle ranks (separate from the main, encouragement-first leaderboard) */}
+          {/* Battle ranks — two tabs: individual + denomination factions.
+              Denomination only appears here, never on the main leaderboard. */}
           <h3 className="dim" style={{ fontSize: 16, margin: '24px 0 10px' }}>Battle ranks</h3>
-          <div className="card">
-            {!board || board.top.length === 0 ? (
-              <p className="faint" style={{ fontSize: 14, textAlign: 'center', padding: '4px 0' }}>
-                No battles finished yet — be the first to claim a win.
-              </p>
-            ) : (
-              <div style={{ display: 'grid', gap: 4 }}>
-                {board.top.slice(0, 5).map((r) => (
-                  <div key={r.rank} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 2px' }}>
-                    <span style={{ width: 20, textAlign: 'center', fontFamily: 'var(--font-display)', color: 'var(--ink-faint)' }}>
-                      {r.rank === 1 ? '👑' : r.rank}
-                    </span>
-                    <Avatar emoji={r.avatar_emoji} character={r.avatar_character} size={28} ring={false} />
-                    <span style={{ flex: 1, minWidth: 0, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      @{r.username}
-                    </span>
-                    <span style={{ fontFamily: 'var(--font-display)' }} className="gradient-text">{r.wins}</span>
-                    <span className="faint" style={{ fontSize: 11 }}>wins</span>
-                  </div>
-                ))}
-                {board.me && (
-                  <div className="faint" style={{ fontSize: 12, textAlign: 'center', marginTop: 8, borderTop: '1px solid var(--stroke)', paddingTop: 8 }}>
-                    You’re rank <b style={{ color: 'var(--gold)' }}>#{board.me.rank}</b> — {board.me.wins}W / {board.me.battles} battles
-                  </div>
-                )}
-              </div>
-            )}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            {(['individual', 'denomination'] as const).map((t) => (
+              <button key={t} onClick={() => { juice.select(); setRankTab(t) }} className="pill"
+                style={{ background: rankTab === t ? 'var(--grape)' : 'var(--card)', fontWeight: 800, textTransform: 'capitalize' }}>
+                {t === 'individual' ? 'Individual' : 'Denomination'}
+              </button>
+            ))}
           </div>
+
+          {rankTab === 'individual' ? (
+            <div className="card">
+              {!board || board.top.length === 0 ? (
+                <p className="faint" style={{ fontSize: 14, textAlign: 'center', padding: '4px 0' }}>
+                  No battles finished yet — be the first to claim a win.
+                </p>
+              ) : (
+                <div style={{ display: 'grid', gap: 4 }}>
+                  {board.top.slice(0, 5).map((r) => (
+                    <div key={r.rank} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 2px' }}>
+                      <span style={{ width: 20, textAlign: 'center', fontFamily: 'var(--font-display)', color: 'var(--ink-faint)' }}>
+                        {r.rank === 1 ? '👑' : r.rank}
+                      </span>
+                      <span style={{ position: 'relative', flexShrink: 0 }}>
+                        <Avatar emoji={r.avatar_emoji} character={r.avatar_character} size={28} ring={false} />
+                        {r.denomination && (
+                          <span title={denominationName(r.denomination)} style={{ position: 'absolute', right: -2, bottom: -2, width: 10, height: 10, borderRadius: '50%', background: denominationColor(r.denomination), boxShadow: '0 0 0 2px var(--bg-1)' }} />
+                        )}
+                      </span>
+                      <span style={{ flex: 1, minWidth: 0, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        @{r.username}
+                      </span>
+                      <span style={{ fontFamily: 'var(--font-display)' }} className="gradient-text">{r.wins}</span>
+                      <span className="faint" style={{ fontSize: 11 }}>wins</span>
+                    </div>
+                  ))}
+                  {board.me && (
+                    <div className="faint" style={{ fontSize: 12, textAlign: 'center', marginTop: 8, borderTop: '1px solid var(--stroke)', paddingTop: 8 }}>
+                      You’re rank <b style={{ color: 'var(--gold)' }}>#{board.me.rank}</b> — {board.me.wins}W / {board.me.battles} battles
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="card">
+              {!denomBoard || denomBoard.top.length === 0 ? (
+                <p className="faint" style={{ fontSize: 14, textAlign: 'center', padding: '4px 0' }}>
+                  No denominations yet. Pick yours on the <b>You</b> page to start your team’s total.
+                </p>
+              ) : (
+                <div style={{ display: 'grid', gap: 4 }}>
+                  {denomBoard.top.map((r) => {
+                    const color = denominationColor(r.denomination)
+                    const mine = denomBoard.me?.denomination === r.denomination
+                    return (
+                      <div key={r.denomination} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 8px', borderRadius: 10, borderLeft: `3px solid ${color}`, background: mine ? 'rgba(255,210,63,0.08)' : 'transparent' }}>
+                        <span style={{ width: 18, textAlign: 'center', fontFamily: 'var(--font-display)', color: 'var(--ink-faint)' }}>
+                          {r.rank === 1 ? '👑' : r.rank}
+                        </span>
+                        <span style={{ width: 12, height: 12, borderRadius: '50%', background: color, flexShrink: 0, boxShadow: `0 0 8px ${color}` }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <b style={{ fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+                            {denominationName(r.denomination)}{mine && <span style={{ color: 'var(--gold)', fontSize: 11, marginLeft: 6 }}>you</span>}
+                          </b>
+                          <span className="faint" style={{ fontSize: 11 }}>{r.members} member{r.members === 1 ? '' : 's'}</span>
+                        </div>
+                        <span style={{ fontFamily: 'var(--font-display)' }} className="gradient-text">{r.wins}</span>
+                        <span className="faint" style={{ fontSize: 11 }}>wins</span>
+                      </div>
+                    )
+                  })}
+                  {denomBoard.me && (
+                    <div className="faint" style={{ fontSize: 12, textAlign: 'center', marginTop: 8, borderTop: '1px solid var(--stroke)', paddingTop: 8 }}>
+                      {denominationName(denomBoard.me.denomination)} — rank <b style={{ color: 'var(--gold)' }}>#{denomBoard.me.rank}</b> · {denomBoard.me.wins} wins · {denomBoard.me.members} members
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
           <div style={{ height: 90 }} />
         </>
       )}

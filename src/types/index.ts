@@ -92,6 +92,9 @@ export interface Profile {
   /** Admin/operator account. Server-authoritative (every admin RPC re-checks);
    *  the client only mirrors it to reveal the hidden admin entry point. */
   isAdmin?: boolean
+  /** Optional denomination "faction" key (see data/denominations). Shown only on
+   *  the Battle ranks; battle wins auto-pool into the denomination's total. */
+  denomination?: string | null
 }
 
 export interface PlayResult {

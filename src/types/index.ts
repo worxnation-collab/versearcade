@@ -53,6 +53,8 @@ export interface Profile {
   avatarBorder: string
   /** Equipped badge cosmetic key, or null for none. */
   avatarBadge?: string | null
+  /** Unused XP Boost consumables (rarely dropped by the Daily Chest). */
+  xpBoosts: number
 }
 
 export interface PlayResult {
@@ -73,6 +75,10 @@ export interface SubmitOutcome {
   currentStreak: number
   usedFreeze?: boolean
   streakFreezes?: number
+  /** True if an XP Boost was applied to this play (+50% XP). */
+  boostUsed?: boolean
+  /** Remaining XP Boosts after this play. */
+  xpBoosts?: number
 }
 
 // Practice mode — replaying an already-played verse to study. Reward only comes

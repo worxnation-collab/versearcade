@@ -23,7 +23,7 @@ export function xpFromPlay(score: number, correct: number): number {
 // Advance a profile for a new play (drop_date assumed to be "today" locally).
 export function applyPlayLocal(
   profile: Profile,
-  args: { dropDate: string; score: number; correct: number },
+  args: { dropDate: string; score: number; correct: number; useBoost?: boolean },
 ): { profile: Profile; outcome: SubmitOutcome } {
   const prevLevel = profile.level
   let streak = profile.currentStreak
@@ -56,6 +56,11 @@ export function applyPlayLocal(
   let xpEarned = xpFromPlay(args.score, args.correct)
   if ([3, 7, 30, 100].includes(streak)) xpEarned += streak * 5
 
+  // XP Boost: +50% on this play, then consume one.
+  const boostUsed = !!args.useBoost && profile.xpBoosts > 0
+  if (boostUsed) xpEarned = Math.round(xpEarned * 1.5)
+  const boostsLeft = boostUsed ? profile.xpBoosts - 1 : profile.xpBoosts
+
   const newXp = profile.xp + xpEarned
   const newLevel = levelInfo(newXp).level
 
@@ -66,6 +71,7 @@ export function applyPlayLocal(
     currentStreak: streak,
     longestStreak: Math.max(profile.longestStreak, streak),
     streakFreezes: freezes,
+    xpBoosts: boostsLeft,
     lastPlayedOn: args.dropDate,
     totalPlays: profile.totalPlays + 1,
   }
@@ -81,6 +87,8 @@ export function applyPlayLocal(
       currentStreak: streak,
       usedFreeze,
       streakFreezes: freezes,
+      boostUsed,
+      xpBoosts: boostsLeft,
     },
   }
 }
@@ -104,5 +112,6 @@ export function newLocalProfile(username: string, emoji: string): Profile {
     onboarded: false,
     avatarBorder: 'default',
     avatarBadge: null,
+    xpBoosts: 0,
   }
 }

@@ -29,6 +29,7 @@ interface DbProfileRow {
   onboarded: boolean
   avatar_border: string | null
   avatar_badge: string | null
+  xp_boosts: number | null
 }
 
 function mapRow(r: DbProfileRow): Profile {
@@ -50,6 +51,7 @@ function mapRow(r: DbProfileRow): Profile {
     onboarded: r.onboarded,
     avatarBorder: r.avatar_border ?? 'default',
     avatarBadge: r.avatar_badge ?? null,
+    xpBoosts: r.xp_boosts ?? 0,
   }
 }
 

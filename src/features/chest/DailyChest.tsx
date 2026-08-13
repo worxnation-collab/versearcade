@@ -16,7 +16,7 @@ export function DailyChest() {
   const chestOpenedOn = useCollection((s) => s.chestOpenedOn)
   const openChest = useCollection((s) => s.openChest)
   const juice = useJuice()
-  const [revealed, setRevealed] = useState<{ key: string; rarity?: string } | null>(null)
+  const [revealed, setRevealed] = useState<{ kind: 'relic' | 'boost'; key?: string; rarity?: string } | null>(null)
   const [opening, setOpening] = useState(false)
 
   useEffect(() => {
@@ -30,15 +30,20 @@ export function DailyChest() {
     setOpening(true)
     const res = await openChest(todayDate)
     setOpening(false)
-    if (!res.alreadyOpened && res.key) {
-      setRevealed({ key: res.key, rarity: res.rarity })
+    if (res.alreadyOpened) return
+    if (res.kind === 'boost') {
+      setRevealed({ kind: 'boost' })
+      juice.levelUp()
+    } else if (res.key) {
+      setRevealed({ kind: 'relic', key: res.key, rarity: res.rarity })
       juice.celebrate()
     }
   }
 
-  const relic = revealed ? collectibleByKey(revealed.key) : null
+  const isBoost = revealed?.kind === 'boost'
+  const relic = revealed?.kind === 'relic' && revealed.key ? collectibleByKey(revealed.key) : null
   const rarity = relic?.rarity ?? 'common'
-  const glow = rarityColor[rarity]
+  const glow = isBoost ? '#ffd23f' : rarityColor[rarity]
 
   return (
     <motion.div
@@ -55,8 +60,30 @@ export function DailyChest() {
       }}
     >
       <AnimatePresence mode="wait">
-        {relic ? (
-          // ——— Reveal ———
+        {isBoost ? (
+          // ——— Rare XP Boost reveal ———
+          <motion.div key="boost" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div
+              initial={{ scale: 0.3, rotate: -12, opacity: 0 }}
+              animate={{ scale: 1, rotate: 0, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 240, damping: 12 }}
+              style={{ fontSize: 56 }}
+            >
+              ⚡
+            </motion.div>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, marginTop: 6 }} className="gradient-text">
+              XP Boost!
+            </div>
+            <div style={{ fontSize: 11, color: '#ffd23f', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 2 }}>
+              rare find
+            </div>
+            <p className="faint" style={{ fontSize: 13, marginTop: 8 }}>
+              Apply it before a daily verse for <b style={{ color: 'var(--gold)' }}>+50% XP</b>. Saved until you use it.
+            </p>
+            <p className="faint" style={{ fontSize: 12, marginTop: 10 }}>Come back tomorrow for another chest.</p>
+          </motion.div>
+        ) : relic ? (
+          // ——— Relic reveal ———
           <motion.div key="reveal" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <motion.div
               initial={{ scale: 0.3, rotate: -12, opacity: 0 }}

@@ -56,6 +56,20 @@ export const COLLECTIBLES: Collectible[] = [
   { key: 'golden_chalice', name: 'Golden Chalice', emoji: '🏆', rarity: 'rare', category: 'relic', weight: 2, description: 'A cup set apart for the table of the Lord.' },
   { key: 'alabaster_jar', name: 'Alabaster Jar', emoji: '⚱️', rarity: 'rare', category: 'relic', weight: 2, description: 'Costly perfume broken open in worship.' },
   { key: 'star_of_bethlehem', name: 'Star of Bethlehem', emoji: '🌟', rarity: 'rare', category: 'relic', weight: 2, description: 'The light that led the wise men to the Child.' },
+  // —— Expanded relic set ——
+  { key: 'widows_mite', name: 'Widow’s Mite', emoji: '🪙', rarity: 'common', category: 'relic', weight: 20, description: 'Two small coins given with a whole heart.' },
+  { key: 'manna', name: 'Manna', emoji: '🥖', rarity: 'common', category: 'relic', weight: 20, description: 'Bread from heaven, new every morning.' },
+  { key: 'loaves_fish', name: 'Loaves & Fish', emoji: '🐟', rarity: 'common', category: 'relic', weight: 20, description: 'A boy’s small lunch that fed five thousand.' },
+  { key: 'shepherds_crook', name: 'Shepherd’s Crook', emoji: '🪝', rarity: 'common', category: 'relic', weight: 20, description: 'It guides the flock beside quiet waters.' },
+  { key: 'descending_dove', name: 'Descending Dove', emoji: '🕊️', rarity: 'common', category: 'relic', weight: 20, description: 'The Spirit resting gently, like a dove.' },
+  { key: 'jubilee_trumpet', name: 'Jubilee Trumpet', emoji: '📯', rarity: 'uncommon', category: 'relic', weight: 8, description: 'Sounded to proclaim the year of release.' },
+  { key: 'davids_harp', name: 'David’s Harp', emoji: '🎶', rarity: 'uncommon', category: 'relic', weight: 8, description: 'Music that soothed a troubled king.' },
+  { key: 'jordan_water', name: 'Jordan Water', emoji: '💧', rarity: 'uncommon', category: 'relic', weight: 8, description: 'Drawn from the river of baptism.' },
+  { key: 'apostles_letter', name: 'Apostle’s Letter', emoji: '✉️', rarity: 'uncommon', category: 'relic', weight: 8, description: 'An epistle carried between the early churches.' },
+  { key: 'covenant_rainbow', name: 'Covenant Rainbow', emoji: '🌈', rarity: 'rare', category: 'relic', weight: 2, description: 'A bow in the clouds — the promise after the flood.' },
+  { key: 'tablets_law', name: 'Tablets of the Law', emoji: '🪨', rarity: 'rare', category: 'relic', weight: 2, description: 'Ten words carved by the finger of God.' },
+  { key: 'kingdom_keys', name: 'Keys of the Kingdom', emoji: '🗝️', rarity: 'rare', category: 'relic', weight: 2, description: 'Given to bind and to loose.' },
+  { key: 'pearl_price', name: 'Pearl of Great Price', emoji: '🦪', rarity: 'rare', category: 'relic', weight: 2, description: 'Worth selling everything to obtain.' },
 ]
 
 export const rarityColor: Record<Rarity, string> = {

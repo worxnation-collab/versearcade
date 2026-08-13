@@ -116,24 +116,38 @@ export function Character({
         </>
       ) : skinId === 'whale' ? (
         <>
-          {/* ── Jonah's Whale — the founding-patron skin ── */}
-          {/* water spout */}
-          <path d="M48 64 q-2 -11 0 -17 M52 64 q0 -13 1 -19 M56 64 q2 -11 3 -16"
+          {/* ── Jonah's Whale — the founding-patron skin (a $100 showpiece) ── */}
+          {/* soft premium aura */}
+          <circle cx="54" cy="90" r="55" fill="#6FA8DC" opacity="0.13" />
+          {/* gold sparkles */}
+          <path d="M97 50 l1.5 3.6 l3.6 1.5 l-3.6 1.5 l-1.5 3.6 l-1.5 -3.6 l-3.6 -1.5 l3.6 -1.5 z" fill="#FFD23F" />
+          <path d="M16 64 l1 2.6 l2.6 1 l-2.6 1 l-1 2.6 l-1 -2.6 l-2.6 -1 l2.6 -1 z" fill="#FFD23F" />
+          <path d="M101 122 l1 2.4 l2.4 1 l-2.4 1 l-1 2.4 l-1 -2.4 l-2.4 -1 l2.4 -1 z" fill="#FFE58A" />
+          {/* water spout + droplets */}
+          <path d="M46 60 q-3 -13 0 -20 M50 60 q0 -15 1 -22 M54 60 q3 -13 4 -18"
             stroke="#8FC7E8" strokeWidth="2.4" fill="none" strokeLinecap="round" />
-          {/* tail flukes */}
+          <circle cx="46" cy="35" r="1.6" fill="#8FC7E8" /><circle cx="58" cy="39" r="1.4" fill="#8FC7E8" />
+          {/* tail flukes, gold-tipped */}
           <path d="M86 92 L110 74 L100 92 L110 110 Z" fill="#345F8C" />
+          <path d="M104 79 L110 74 L106.5 82 Z M106.5 103 L110 110 L104 105 Z" fill="#DCAB3A" />
           {/* body */}
-          <ellipse cx="52" cy="92" rx="40" ry="28" fill="#3E6FA8" />
-          {/* lighter belly */}
-          <path d="M17 96 Q52 124 89 100 Q80 118 52 119 Q25 119 17 96 Z" fill="#A9C8E8" />
-          {/* belly grooves */}
-          <path d="M30 108 h30 M28 102 h34 M32 114 h24" stroke="#8FB4DA" strokeWidth="1" opacity="0.7" />
+          <ellipse cx="52" cy="92" rx="42" ry="30" fill="#3E6FA8" />
+          {/* darker back for depth */}
+          <path d="M16 82 Q44 64 80 70 Q92 74 93 84 Q68 74 44 78 Q26 80 16 82 Z" fill="#33608F" opacity="0.85" />
+          {/* lighter belly + grooves */}
+          <path d="M15 96 Q52 126 90 100 Q80 120 52 121 Q24 121 15 96 Z" fill="#B7D2ED" />
+          <path d="M30 108 h32 M28 102 h36 M34 114 h24" stroke="#93B7DB" strokeWidth="1" opacity="0.7" />
           {/* side fin */}
-          <path d="M48 110 q10 13 22 8 q-11 7 -24 -2 z" fill="#345F8C" />
-          {/* eye + smile */}
-          <circle cx="34" cy="86" r="4.4" fill="#fff" />
-          <circle cx="32.6" cy="86" r="2.2" fill="#20303F" />
-          <path d="M20 98 q10 8 22 4" stroke="#20303F" strokeWidth="1.6" fill="none" strokeLinecap="round" />
+          <path d="M48 111 q10 13 22 8 q-11 7 -24 -2 z" fill="#345F8C" />
+          {/* eye + sparkle + smile */}
+          <circle cx="33" cy="86" r="4.8" fill="#fff" />
+          <circle cx="31.4" cy="86.4" r="2.4" fill="#20303F" />
+          <circle cx="30.3" cy="85" r="0.9" fill="#fff" />
+          <path d="M19 98 q10 9 23 4" stroke="#20303F" strokeWidth="1.6" fill="none" strokeLinecap="round" />
+          {/* gold patron crown on his head */}
+          <path d="M23 64 L26.5 54 L31 60 L35 52 L39 60 L43.5 54 L47 64 Z" fill="#DCAB3A" stroke="#9E7716" strokeWidth="0.8" />
+          <rect x="23" y="63" width="24" height="3.6" rx="1" fill="#C9992A" stroke="#9E7716" strokeWidth="0.6" />
+          <circle cx="35" cy="58" r="1.7" fill="#8B1E2E" />
         </>
       ) : skinId === 'moses' ? (
         <>

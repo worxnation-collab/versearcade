@@ -4,6 +4,7 @@ import { Capacitor } from '@capacitor/core'
 import { Avatar } from '@/components/Avatar'
 import { Button } from '@/components/Button'
 import { SUPPORT_URL } from '@/lib/config'
+import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/store/auth'
 import { useJuice } from '@/juice/useJuice'
 import { BORDERS, BADGES, isUnlocked } from '@/data/cosmetics'
@@ -37,6 +38,31 @@ export function CustomizeSection() {
   const [open, setOpen] = useState(false)
   const [devNoteOpen, setDevNoteOpen] = useState(false)
   const [buyTarget, setBuyTarget] = useState<SkinDef | null>(null)
+  const [redeemTarget, setRedeemTarget] = useState<SkinDef | null>(null)
+  const [redeemInput, setRedeemInput] = useState('')
+  const [redeemMsg, setRedeemMsg] = useState<string | null>(null)
+  const [redeeming, setRedeeming] = useState(false)
+  const refreshProfile = useAuth((s) => s.refreshProfile)
+
+  const doRedeem = async () => {
+    if (!redeemTarget) return
+    if (!supabase) { setRedeemMsg('Create an account to redeem a code.'); return }
+    setRedeeming(true)
+    setRedeemMsg(null)
+    const { data, error } = await supabase.rpc('redeem_code', { p_code: redeemInput })
+    setRedeeming(false)
+    const res = data as { ok?: boolean; skin?: string } | null
+    if (error || !res?.ok) {
+      setRedeemMsg('That code isn’t valid or has ended.')
+      return
+    }
+    await refreshProfile()
+    juice.celebrate?.()
+    setAvatarCharacter({ ...spec, skinId: redeemTarget.id, regalia: null })
+    setRedeemTarget(null)
+    setRedeemInput('')
+    flashSaved()
+  }
   const [savedFlash, setSavedFlash] = useState(false)
   const savedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
@@ -124,7 +150,8 @@ export function CustomizeSection() {
     // else gets the purchase prompt instead of a free grant.
     if (!owned && skin.source === 'paid' && !profile.isAdmin) {
       juice.select()
-      setBuyTarget(skin)
+      if (skin.exclusive) { setRedeemMsg(null); setRedeemTarget(skin) }
+      else setBuyTarget(skin)
       return
     }
     setErr(null)
@@ -265,7 +292,7 @@ export function CustomizeSection() {
                   ? skin.referralGoal != null
                     ? `${Math.min(profile.referralCount ?? 0, skin.referralGoal)}/${skin.referralGoal} friends`
                     : `Shared ${Math.min(sharedCount, skin.shareGoal ?? 0)}/${skin.shareGoal ?? 0} days`
-                  : `🔒 ${skin.price}`
+                  : skin.exclusive ? '🔒 Live exclusive' : `🔒 ${skin.price}`
             return (
               <button
                 key={skin.id}
@@ -342,6 +369,37 @@ export function CustomizeSection() {
               </p>
             )}
             <button className="pill" style={{ marginTop: 12 }} onClick={() => setBuyTarget(null)}>Maybe later</button>
+          </div>
+        </div>
+      )}
+
+      {/* Redeem prompt for a live-exclusive skin */}
+      {redeemTarget && (
+        <div
+          onClick={() => setRedeemTarget(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.62)', display: 'grid', placeItems: 'center', zIndex: 100, padding: 20 }}
+        >
+          <div className="card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 340, width: '100%', textAlign: 'center' }}>
+            <Avatar emoji={profile.avatarEmoji} character={{ ...spec, skinId: redeemTarget.id, regalia: null }} size={92} ring={false} />
+            <h3 style={{ fontSize: 20, marginTop: 10 }}>{redeemTarget.name}</h3>
+            <span className="pill" style={{ fontSize: 10, background: 'var(--gold)', color: '#241f0a', fontWeight: 800 }}>★ Live Exclusive</span>
+            <p style={{ fontSize: 14, marginTop: 10, lineHeight: 1.5 }}>{redeemTarget.blurb}</p>
+            <input
+              value={redeemInput}
+              onChange={(e) => { setRedeemMsg(null); setRedeemInput(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16)) }}
+              onKeyDown={(e) => { if (e.key === 'Enter') doRedeem() }}
+              placeholder="Enter code"
+              autoCapitalize="characters"
+              autoCorrect="off"
+              style={{ marginTop: 12, textAlign: 'center', letterSpacing: '0.15em', fontWeight: 800 }}
+            />
+            {redeemMsg && <p style={{ color: 'var(--coral)', fontSize: 13, marginTop: 8 }}>{redeemMsg}</p>}
+            <div style={{ marginTop: 12 }}>
+              <Button variant="gold" full disabled={redeeming || redeemInput.trim().length < 3} onClick={doRedeem}>
+                {redeeming ? 'Redeeming…' : 'Redeem'}
+              </Button>
+            </div>
+            <button className="pill" style={{ marginTop: 10 }} onClick={() => setRedeemTarget(null)}>Close</button>
           </div>
         </div>
       )}

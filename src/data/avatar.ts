@@ -186,6 +186,7 @@ export interface SkinDef {
   packName?: string // paid: display pack name
   price?: string // paid: display "from" price (pay-what-you-want; no real IAP yet)
   patron?: boolean // paid: high-tier supporter reward
+  exclusive?: boolean // paid: unlocked by a promo code (redeem), not for sale
 }
 
 export const FULL_SKINS: SkinDef[] = [
@@ -246,6 +247,14 @@ export const FULL_SKINS: SkinDef[] = [
     price: 'From $100',
     patron: true,
     blurb: 'A whale of a thank-you — the founding-supporter skin.',
+  },
+  {
+    id: 'shades',
+    name: 'Day One',
+    source: 'paid',
+    exclusive: true,
+    packName: 'Live Exclusive',
+    blurb: 'Shades on. The day-one look — redeem the code from the live drop.',
   },
 ]
 

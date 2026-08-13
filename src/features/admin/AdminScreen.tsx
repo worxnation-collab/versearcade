@@ -36,6 +36,7 @@ interface ActiveRow {
   level: number; daily_plays: number; battles: number; practice_days: number
   total_ms: number; last_active: string
 }
+interface PromoRow { code: string; skin_id: string; active: boolean; redeemed_count: number; created_at: string }
 
 // Active quiz/battle time (not total app time — the app has no session tracking).
 function fmtDuration(ms: number): string {
@@ -91,7 +92,7 @@ function PinGate({ onOk }: { onOk: () => void }) {
 function Dashboard() {
   const navigate = useNavigate()
   const [ov, setOv] = useState<Overview | null>(null)
-  const [tab, setTab] = useState<'stats' | 'users' | 'church'>('stats')
+  const [tab, setTab] = useState<'stats' | 'users' | 'church' | 'codes'>('stats')
 
   useEffect(() => {
     supabase?.rpc('admin_overview').then(({ data }) => setOv(data as Overview))
@@ -106,7 +107,7 @@ function Dashboard() {
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        {(['stats', 'users', 'church'] as const).map((t) => (
+        {(['stats', 'users', 'church', 'codes'] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)} className="pill"
             style={{ background: tab === t ? 'var(--grape)' : 'var(--card)', fontWeight: 800, textTransform: 'capitalize' }}>
             {t === 'church' ? 'Churches' : t}
@@ -117,6 +118,7 @@ function Dashboard() {
       {tab === 'stats' && <Stats ov={ov} />}
       {tab === 'users' && <Users />}
       {tab === 'church' && <Churches />}
+      {tab === 'codes' && <Codes />}
       <div style={{ height: 40 }} />
     </Page>
   )
@@ -306,6 +308,64 @@ function Churches() {
           {i.message && <p style={{ fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>{i.message}</p>}
         </div>
       ))}
+    </div>
+  )
+}
+
+function Codes() {
+  const [rows, setRows] = useState<PromoRow[] | null>(null)
+  const [code, setCode] = useState('')
+  const [skin, setSkin] = useState('shades')
+  const [msg, setMsg] = useState<string | null>(null)
+
+  const load = () => supabase?.rpc('admin_list_promo_codes').then(({ data }) => setRows((data as PromoRow[]) ?? []))
+  useEffect(() => { load() }, [])
+
+  const upsert = async (c: string, s: string, active: boolean) => {
+    const { data } = await supabase!.rpc('admin_upsert_promo_code', { p_code: c, p_skin: s, p_active: active })
+    if (!(data as { ok?: boolean })?.ok) { setMsg('Code must be 3+ characters.'); return }
+    setMsg(`Saved ${c.toUpperCase()}`)
+    setCode('')
+    load()
+  }
+  const paidSkins = FULL_SKINS.filter((s) => s.source === 'paid')
+
+  return (
+    <div>
+      <p className="faint" style={{ fontSize: 12, marginBottom: 10, lineHeight: 1.4 }}>
+        Pin a code in your live. Viewers redeem it in Skins to unlock the tied skin. Toggle a code off after the live to make it truly exclusive.
+      </p>
+      <div className="card" style={{ marginBottom: 12, display: 'grid', gap: 8 }}>
+        <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16))}
+          placeholder="NEW CODE (e.g. DAYONE)" autoCapitalize="characters" autoCorrect="off" />
+        <select value={skin} onChange={(e) => setSkin(e.target.value)}
+          style={{ padding: '10px 8px', borderRadius: 10, background: 'var(--card-solid)', color: 'var(--ink)', border: '1px solid var(--stroke)' }}>
+          {paidSkins.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.id})</option>)}
+        </select>
+        <Button variant="gold" disabled={code.trim().length < 3} onClick={() => upsert(code, skin, true)}>Create / update code</Button>
+        {msg && <p style={{ color: 'var(--good)', fontSize: 13 }}>{msg}</p>}
+      </div>
+
+      {rows === null ? (
+        <p className="faint center" style={{ padding: 20 }}>Loading…</p>
+      ) : rows.length === 0 ? (
+        <p className="faint center" style={{ padding: 20 }}>No codes yet.</p>
+      ) : (
+        <div style={{ display: 'grid', gap: 8 }}>
+          {rows.map((r) => (
+            <div key={r.code} className="card" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <b style={{ fontFamily: 'var(--font-display)', letterSpacing: '0.1em' }}>{r.code}</b>
+                <div className="faint" style={{ fontSize: 11 }}>→ {r.skin_id} · {r.redeemed_count} redeemed</div>
+              </div>
+              <button className="pill" onClick={() => upsert(r.code, r.skin_id, !r.active)}
+                style={{ fontWeight: 800, fontSize: 12, background: r.active ? 'var(--good)' : 'var(--card-solid)', color: r.active ? '#0a2417' : 'var(--ink-faint)' }}>
+                {r.active ? 'Active' : 'Off'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

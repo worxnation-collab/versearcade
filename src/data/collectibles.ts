@@ -36,6 +36,11 @@ export const COLLECTIBLES: Collectible[] = [
   { key: 'devoted', name: 'Devoted', emoji: '📚', rarity: 'epic', category: 'card', description: 'Played 25 daily verses.' },
   { key: 'half_century', name: 'Half Century', emoji: '🏅', rarity: 'legendary', category: 'card', description: 'Reached a 50-day streak.' },
   { key: 'centurion', name: 'Centurion', emoji: '👑', rarity: 'legendary', category: 'card', description: 'Reached a 100-day streak.' },
+  // The crown jewel: awarded the first time you hold the #1 spot on the
+  // worldwide ranks. Once earned it's yours forever, even after you're dethroned
+  // — a permanent record of having sat the throne. Granted from the leaderboard
+  // screen (see LeaderboardScreen) and rendered with the spinning ThroneIcon.
+  { key: 'leper_king', name: 'The Leper King', emoji: '👑', rarity: 'mythic', category: 'card', description: 'Ascended to #1 on the worldwide ranks — crowned above all.' },
 
   // ————————————————————— Daily Chest relics —————————————————————
   { key: 'olive_branch', name: 'Olive Branch', emoji: '🌿', rarity: 'common', category: 'relic', weight: 20, description: 'A sign of peace carried back to the ark.' },
@@ -59,7 +64,13 @@ export const rarityColor: Record<Rarity, string> = {
   rare: '#4ecdc4',
   epic: '#a06bff',
   legendary: '#ffd23f',
+  mythic: '#fff2c2', // radiant gold-white — the throne
 }
+
+// The collectible key granted for reaching #1 on the worldwide leaderboard.
+// Kept as a named export so the leaderboard grant and the throne rendering
+// never drift apart from a stringly-typed literal.
+export const THRONE_KEY = 'leper_king'
 
 export function collectibleByKey(key: string) {
   return COLLECTIBLES.find((c) => c.key === key)

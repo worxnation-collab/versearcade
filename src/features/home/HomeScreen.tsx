@@ -221,7 +221,7 @@ export default function HomeScreen() {
 
       {/* Quick nudges toward retention loops */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16 }}>
-        <MiniCard emoji="👥" title="Play with friends" sub="Climb together" onClick={() => navigate('/groups')} />
+        <MiniCard emoji="🤝" title="Bible Buddies" sub="Add friends & battle" onClick={() => navigate('/buddies')} />
         <MiniCard emoji="🃏" title="Collection" sub="Cards & relics" onClick={() => navigate('/collection')} />
       </div>
     </Page>

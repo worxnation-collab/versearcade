@@ -6,7 +6,7 @@ const tabs = [
   { to: '/play', label: 'Play', icon: '🎮' },
   { to: '/battle', label: 'Battle', icon: '⚔️' },
   { to: '/leaderboard', label: 'Ranks', icon: '🏆' },
-  { to: '/groups', label: 'Groups', icon: '👥' },
+  { to: '/buddies', label: 'Buddies', icon: '🤝' },
   { to: '/collection', label: 'Cards', icon: '🃏' },
   { to: '/you', label: 'You', icon: '⭐' },
 ]

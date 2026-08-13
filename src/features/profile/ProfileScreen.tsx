@@ -171,6 +171,40 @@ export default function ProfileScreen() {
         )}
       </div>
 
+      {/* More */}
+      <h3 style={{ fontSize: 16, margin: '18px 0 10px' }} className="dim">More</h3>
+      <div style={{ display: 'grid', gap: 10 }}>
+        <button
+          onClick={() => { juice.select?.(); navigate('/churches') }}
+          className="card"
+          style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%', cursor: 'pointer' }}
+        >
+          <span style={{ fontSize: 22 }}>⛪</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <b style={{ fontSize: 14 }}>For Churches</b>
+            <div className="faint" style={{ fontSize: 12 }}>Bring your congregation — get in touch</div>
+          </div>
+          <span style={{ color: 'var(--gold)' }}>›</span>
+        </button>
+
+        {/* Operator entry — rendered only for the admin account (others never get
+            the flag, so it's invisible to them). Access is re-checked server-side. */}
+        {profile.isAdmin && (
+          <button
+            onClick={() => { juice.select?.(); navigate('/admin') }}
+            className="card"
+            style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%', cursor: 'pointer', borderColor: 'var(--grape)' }}
+          >
+            <span style={{ fontSize: 22 }}>🛠️</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <b style={{ fontSize: 14 }}>Admin</b>
+              <div className="faint" style={{ fontSize: 12 }}>Operator dashboard</div>
+            </div>
+            <span style={{ color: 'var(--gold)' }}>›</span>
+          </button>
+        )}
+      </div>
+
       <p className="faint center" style={{ fontSize: 11, marginTop: 20 }}>
         Verse Arcade · Berean Standard Bible (public domain)
       </p>

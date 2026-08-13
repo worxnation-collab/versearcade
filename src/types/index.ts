@@ -89,6 +89,9 @@ export interface Profile {
   /** Founder grant — unlocks the streak cosmetics (borders/badges) regardless
    *  of streak. Server-authoritative; the client only mirrors it for display. */
   founder?: boolean
+  /** Admin/operator account. Server-authoritative (every admin RPC re-checks);
+   *  the client only mirrors it to reveal the hidden admin entry point. */
+  isAdmin?: boolean
 }
 
 export interface PlayResult {

@@ -10,6 +10,8 @@ export interface BuddyCard {
   level: number
   current_streak: number
   last_played_on: string | null
+  /** An official/default account that's everyone's buddy — always present, can't be removed. */
+  official?: boolean
 }
 
 export type BuddyResult = { ok: boolean; status?: 'pending' | 'accepted'; reason?: string }

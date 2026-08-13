@@ -159,19 +159,25 @@ function BuddyRow({ u, onBattle, onRemove }: { u: BuddyCard; onBattle: () => voi
   const [confirm, setConfirm] = useState(false)
   return (
     <motion.div className="card" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-      style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      style={{ display: 'flex', alignItems: 'center', gap: 12, borderColor: u.official ? 'var(--gold)' : undefined }}>
       <Avatar emoji={u.avatar_emoji} character={u.avatar_character} size={40} ring={false} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <b style={{ fontWeight: 800 }}>@{u.username}</b>
-        <div className="faint" style={{ fontSize: 12 }}>Level {u.level} · 🔥 {u.current_streak}</div>
+        <b style={{ fontWeight: 800 }}>
+          @{u.username}
+          {u.official && <span className="pill" style={{ marginLeft: 6, fontSize: 10, background: 'var(--gold)', color: '#241f0a', fontWeight: 800 }}>★ Official</span>}
+        </b>
+        <div className="faint" style={{ fontSize: 12 }}>
+          {u.official ? 'Verse Arcade · say hi!' : <>Level {u.level} · 🔥 {u.current_streak}</>}
+        </div>
       </div>
       <button className="pill" onClick={onBattle}
         style={{ fontWeight: 800, fontSize: 13, background: 'var(--gold)', color: '#241f0a', border: 'none' }}>⚔️ Battle</button>
-      {confirm ? (
+      {/* Official account is always everyone's buddy — no remove control. */}
+      {!u.official && (confirm ? (
         <button className="pill" onClick={onRemove} style={{ fontWeight: 700, fontSize: 12, color: 'var(--coral)' }}>Remove?</button>
       ) : (
         <button className="pill" onClick={() => setConfirm(true)} aria-label="Remove buddy" style={{ fontWeight: 700, fontSize: 13 }}>⋯</button>
-      )}
+      ))}
     </motion.div>
   )
 }

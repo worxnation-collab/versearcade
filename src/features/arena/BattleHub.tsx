@@ -20,6 +20,7 @@ export default function BattleHub() {
   const [board, setBoard] = useState<BattleBoard | null>(null)
   const [denomBoard, setDenomBoard] = useState<DenomBoard | null>(null)
   const [rankTab, setRankTab] = useState<'individual' | 'denomination'>('individual')
+  const [battlesOpen, setBattlesOpen] = useState(false)
 
   const isGuest = mode === 'local'
   const isIncoming = (b: Battle) => b.is_invited && b.status === 'pending' && !b.is_challenger
@@ -86,9 +87,19 @@ export default function BattleHub() {
             </>
           )}
 
-          {/* Your battles */}
-          <h3 className="dim" style={{ fontSize: 16, margin: '22px 0 10px' }}>Your battles</h3>
-          {others.length === 0 ? (
+          {/* Your battles — collapsible (default closed) so a long list of sent
+              challenges doesn't push the ranks off-screen. */}
+          <button
+            onClick={() => { juice.select(); setBattlesOpen((o) => !o) }}
+            aria-expanded={battlesOpen}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'transparent', border: 'none', padding: '22px 0 10px', cursor: 'pointer' }}
+          >
+            <h3 className="dim" style={{ fontSize: 16, margin: 0 }}>
+              Your battles {others.length > 0 && <span className="faint">· {others.length}</span>}
+            </h3>
+            <span style={{ color: 'var(--gold)', transform: battlesOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>
+          </button>
+          {battlesOpen && (others.length === 0 ? (
             <p className="faint" style={{ fontSize: 14 }}>
               No battles yet. Start one, then pick players to challenge — or share a link to invite someone new.
             </p>
@@ -98,7 +109,7 @@ export default function BattleHub() {
                 <BattleRow key={b.id} b={b} onClick={() => navigate(`/battle/${b.id}`)} />
               ))}
             </div>
-          )}
+          ))}
 
           {/* Battle ranks — two tabs: individual + denomination factions.
               Denomination only appears here, never on the main leaderboard. */}

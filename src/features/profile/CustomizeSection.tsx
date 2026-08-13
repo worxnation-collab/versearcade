@@ -64,7 +64,7 @@ export function CustomizeSection() {
   }
 
   const toggleArmor = (def: ArmorPieceDef) => {
-    if (!accessOwned(def.access, longest)) {
+    if (!accessOwned(def.access, longest, profile.isAdmin)) {
       setErr(`${def.name} unlocks with a ${accessLabel(def.access).text.toLowerCase()}`)
       return
     }
@@ -82,7 +82,7 @@ export function CustomizeSection() {
   }
 
   const pickRobe = (r: Swatch) => {
-    if (!accessOwned(r.access, longest)) {
+    if (!accessOwned(r.access, longest, profile.isAdmin)) {
       setErr(`${r.name} is a Studio color`)
       return
     }
@@ -93,7 +93,7 @@ export function CustomizeSection() {
   }
 
   const ownedItems = profile.ownedItems ?? []
-  const myItems = ITEMS.filter((i) => ownedItems.includes(i.id))
+  const myItems = profile.isAdmin ? ITEMS : ITEMS.filter((i) => ownedItems.includes(i.id))
   const toggleItem = (item: ItemDef) => {
     setErr(null)
     juice.select()
@@ -109,7 +109,7 @@ export function CustomizeSection() {
   const ownedSkins = profile.ownedSkins ?? []
   const equippedSkin = equippedSkinId(spec)
   const onSkinTap = (skin: SkinDef) => {
-    const owned = skinOwned(skin, { sharedDays: profile.sharedDays, ownedSkins, referralCount: profile.referralCount })
+    const owned = skinOwned(skin, { sharedDays: profile.sharedDays, ownedSkins, referralCount: profile.referralCount, admin: profile.isAdmin })
     if (!owned && skin.source === 'earned') {
       if (skin.referralGoal != null) {
         const rc = profile.referralCount ?? 0
@@ -188,7 +188,7 @@ export function CustomizeSection() {
         {/* Armor pieces */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           {ARMOR.map((def) => {
-            const owned = accessOwned(def.access, longest)
+            const owned = accessOwned(def.access, longest, profile.isAdmin)
             const on = !!spec.armor[def.slot]
             const lbl = accessLabel(def.access)
             return (
@@ -233,7 +233,7 @@ export function CustomizeSection() {
               key={r.key}
               hex={r.hex}
               selected={spec.robe === r.key}
-              locked={!accessOwned(r.access, longest)}
+              locked={!accessOwned(r.access, longest, profile.isAdmin)}
               studio={r.access?.kind === 'studio'}
               onClick={() => pickRobe(r)}
             />
@@ -253,7 +253,7 @@ export function CustomizeSection() {
       <div className="card" style={{ marginBottom: 14 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           {FULL_SKINS.map((skin) => {
-            const owned = skinOwned(skin, { sharedDays: profile.sharedDays, ownedSkins, referralCount: profile.referralCount })
+            const owned = skinOwned(skin, { sharedDays: profile.sharedDays, ownedSkins, referralCount: profile.referralCount, admin: profile.isAdmin })
             const equipped = equippedSkin === skin.id
             const preview = { ...spec, skinId: skin.id, regalia: null }
             const status =

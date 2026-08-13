@@ -157,12 +157,23 @@ function Stats({ ov }: { ov: Overview | null }) {
 
 function TopActive() {
   const [rows, setRows] = useState<ActiveRow[] | null>(null)
+  const [open, setOpen] = useState(false)
   useEffect(() => {
+    if (!open || rows !== null) return
     supabase?.rpc('admin_top_active', { p_limit: 5 }).then(({ data }) => setRows((data as ActiveRow[]) ?? []))
-  }, [])
+  }, [open, rows])
   return (
     <div style={{ marginTop: 18 }}>
-      <h3 className="dim" style={{ fontSize: 16, margin: '0 0 4px' }}>🔥 Top 5 most active</h3>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'transparent', border: 'none', padding: '0 0 4px', cursor: 'pointer' }}
+      >
+        <h3 className="dim" style={{ fontSize: 16, margin: 0 }}>🔥 Top 5 most active</h3>
+        <span style={{ color: 'var(--gold)', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>
+      </button>
+      {!open ? null : (
+        <>
       <p className="faint" style={{ fontSize: 11, marginBottom: 10 }}>
         Ranked by plays. Time = active quiz/battle time (not total time in app).
       </p>
@@ -192,6 +203,8 @@ function TopActive() {
             </div>
           ))}
         </div>
+      )}
+        </>
       )}
     </div>
   )

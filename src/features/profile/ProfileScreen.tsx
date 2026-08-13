@@ -52,7 +52,7 @@ export default function ProfileScreen() {
     <Page>
       {/* Identity */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
-        <Avatar emoji={profile.avatarEmoji} size={64} ring border={profile.avatarBorder} badge={profile.avatarBadge} />
+        <Avatar emoji={profile.avatarEmoji} character={profile.avatarCharacter} size={64} ring border={profile.avatarBorder} badge={profile.avatarBadge} />
         <div style={{ flex: 1, minWidth: 0 }}>
           {!editingName ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

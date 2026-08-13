@@ -10,6 +10,8 @@ interface SettingsState {
   hapticsEnabled: boolean
   reduceMotion: boolean
   volume: number // 0..1
+  /** Whether the "build your character" nudge has been dismissed (one-time). */
+  characterPromptDismissed: boolean
   set: (patch: Partial<Omit<SettingsState, 'set'>>) => void
 }
 
@@ -20,6 +22,7 @@ export const useSettings = create<SettingsState>()(
       hapticsEnabled: true,
       reduceMotion: false,
       volume: 0.6,
+      characterPromptDismissed: false,
       set: (patch) => set(patch),
     }),
     { name: 'va.settings', storage: createJSONStorage(() => localStorage) },

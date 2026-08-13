@@ -33,11 +33,29 @@ export interface DailyVerse {
   contextAfter?: string
 }
 
+// A composable character avatar (the "Armor of God" figure). Which pieces are
+// equipped + the skin/robe choice. Rendered by components/Character and used as
+// the profile picture anywhere the Avatar component appears. Piece definitions
+// and unlock gating live in data/avatar.
+export type ArmorSlot = 'helmet' | 'breastplate' | 'belt' | 'shield' | 'sword' | 'sandals'
+
+export interface AvatarSpec {
+  skin: string // SKINS key (see data/avatar)
+  robe: string // ROBES key
+  armor: Partial<Record<ArmorSlot, boolean>>
+  /** Achievement-unlocked full-look set, kept separate from the six Armor of
+   *  God pieces. 'baldwin' = the masked Leper King (hood, silver mask, gold
+   *  cross-mantle, ceremonial sword). When set, it overrides the base look. */
+  regalia?: 'baldwin' | null
+}
+
 export interface Profile {
   id: string
   username: string
   displayName?: string
   avatarEmoji: string
+  /** Composable character avatar; null/undefined falls back to avatarEmoji. */
+  avatarCharacter?: AvatarSpec | null
   xp: number
   level: number
   currentStreak: number
@@ -53,6 +71,9 @@ export interface Profile {
   avatarBorder: string
   /** Equipped badge cosmetic key, or null for none. */
   avatarBadge?: string | null
+  /** Distinct day-drops the player has shared (YYYY-MM-DD). Drives share-count
+   *  unlocks like the King Baldwin set. */
+  sharedDays?: string[]
   /** Unused XP Boost consumables (rarely dropped by the Daily Chest). */
   xpBoosts: number
 }

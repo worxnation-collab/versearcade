@@ -38,6 +38,7 @@ interface DbProfileRow {
   xp_boosts: number | null
   founder?: boolean | null
   is_admin?: boolean | null
+  denomination?: string | null
 }
 
 function mapRow(r: DbProfileRow): Profile {
@@ -66,6 +67,7 @@ function mapRow(r: DbProfileRow): Profile {
     xpBoosts: r.xp_boosts ?? 0,
     founder: r.founder ?? false,
     isAdmin: r.is_admin ?? false,
+    denomination: r.denomination ?? null,
   }
 }
 
@@ -453,6 +455,7 @@ export const useAuth = create<AuthState>((set, get) => ({
     if (patch.displayName !== undefined) dbPatch.display_name = patch.displayName
     if (patch.avatarEmoji !== undefined) dbPatch.avatar_emoji = patch.avatarEmoji
     if (patch.avatarCharacter !== undefined) dbPatch.avatar_character = patch.avatarCharacter
+    if (patch.denomination !== undefined) dbPatch.denomination = patch.denomination
     if (patch.soundEnabled !== undefined) dbPatch.sound_enabled = patch.soundEnabled
     if (patch.hapticsEnabled !== undefined) dbPatch.haptics_enabled = patch.hapticsEnabled
     if (patch.reduceMotion !== undefined) dbPatch.reduce_motion = patch.reduceMotion

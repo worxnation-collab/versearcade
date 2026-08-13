@@ -34,6 +34,7 @@ interface DbProfileRow {
   avatar_character?: AvatarSpec | null
   shared_days?: string[] | null
   owned_items?: string[] | null
+  owned_skins?: string[] | null
   xp_boosts: number | null
 }
 
@@ -59,6 +60,7 @@ function mapRow(r: DbProfileRow): Profile {
     avatarCharacter: r.avatar_character ?? null,
     sharedDays: r.shared_days ?? [],
     ownedItems: r.owned_items ?? [],
+    ownedSkins: r.owned_skins ?? [],
     xpBoosts: r.xp_boosts ?? 0,
   }
 }
@@ -98,6 +100,7 @@ interface AuthState {
   setAvatarCharacter: (spec: AvatarSpec) => void
   recordShare: (dropDate: string) => void
   grantItem: (itemId: string) => void
+  grantSkin: (skinId: string) => void
   deleteAccount: () => Promise<void>
   signOut: () => Promise<void>
 }
@@ -571,6 +574,29 @@ export const useAuth = create<AuthState>((set, get) => ({
     void supabase
       .from('profiles')
       .update({ owned_items: next.ownedItems })
+      .eq('id', cur.id)
+      .then(({ error }) => {
+        if (error) set({ error: error.message })
+      })
+  },
+
+  // Grant entitlement to a full-look skin. Today this is a free "preview" unlock
+  // (no IAP yet); real purchases will write this set server-side later. Distinct
+  // ids only; persists on-device in LOCAL mode, to profiles.owned_skins online.
+  grantSkin(skinId) {
+    const cur = get().profile
+    if (!cur) return
+    const owned = cur.ownedSkins ?? []
+    if (owned.includes(skinId)) return
+    const next: Profile = { ...cur, ownedSkins: [...owned, skinId] }
+    set({ profile: next })
+    if (get().mode === 'local' || !supabase) {
+      localdb.saveProfile(next)
+      return
+    }
+    void supabase
+      .from('profiles')
+      .update({ owned_skins: next.ownedSkins })
       .eq('id', cur.id)
       .then(({ error }) => {
         if (error) set({ error: error.message })

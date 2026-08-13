@@ -27,6 +27,7 @@ export default function ProfileScreen() {
   const [nameErr, setNameErr] = useState<string | null>(null)
   const [savingName, setSavingName] = useState(false)
   const [refFlash, setRefFlash] = useState<string | null>(null)
+  const [readingOpen, setReadingOpen] = useState(false)
   const owned = useCollection((s) => s.owned)
   const loadCollection = useCollection((s) => s.load)
   useEffect(() => {
@@ -141,34 +142,49 @@ export default function ProfileScreen() {
       )}
       </AnimatePresence>
 
-      {/* Reading translation — the version used to read the full chapter. */}
-      <h3 style={{ fontSize: 16, marginBottom: 10 }} className="dim">Reading translation</h3>
-      <div className="card" style={{ marginBottom: 6 }}>
-        <div style={{ display: 'grid', gap: 8 }}>
-          {READING_TRANSLATIONS.map((t) => {
-            const on = settings.readingTranslation === t.code
-            return (
-              <button
-                key={t.code}
-                onClick={() => { juice.select?.(); settings.set({ readingTranslation: t.code }) }}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%',
-                  padding: '11px 12px', borderRadius: 12,
-                  background: on ? 'var(--grape)' : 'var(--card-solid)',
-                  border: on ? '1px solid var(--gold)' : '1px solid var(--stroke)', cursor: 'pointer',
-                }}
-              >
-                <span className="pill" style={{ fontSize: 11, fontWeight: 800, flexShrink: 0 }}>{t.short}</span>
-                <b style={{ flex: 1, fontSize: 14 }}>{t.name}</b>
-                {on && <span style={{ color: 'var(--gold)', fontWeight: 800 }}>✓</span>}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-      <p className="faint" style={{ fontSize: 11, marginBottom: 14, lineHeight: 1.4 }}>
-        Used when you read the full chapter. All free &amp; public domain — more versions coming. The daily quiz uses the Berean Standard Bible.
-      </p>
+      {/* Reading translation — collapsible; the version used to read the chapter. */}
+      <button
+        onClick={() => { juice.select?.(); setReadingOpen((o) => !o) }}
+        aria-expanded={readingOpen}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'transparent', border: 'none', padding: '2px 0 10px', cursor: 'pointer' }}
+      >
+        <h3 style={{ fontSize: 16, margin: 0 }} className="dim">
+          Reading translation <span className="faint" style={{ fontSize: 12 }}>· {READING_TRANSLATIONS.find((t) => t.code === settings.readingTranslation)?.short ?? 'WEB'}</span>
+        </h3>
+        <span style={{ color: 'var(--gold)', transform: readingOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>
+      </button>
+      <AnimatePresence initial={false}>
+        {readingOpen && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25, ease: 'easeInOut' }} style={{ overflow: 'hidden' }}>
+            <div className="card" style={{ marginBottom: 6 }}>
+              <div style={{ display: 'grid', gap: 8 }}>
+                {READING_TRANSLATIONS.map((t) => {
+                  const on = settings.readingTranslation === t.code
+                  return (
+                    <button
+                      key={t.code}
+                      onClick={() => { juice.select?.(); settings.set({ readingTranslation: t.code }) }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%',
+                        padding: '11px 12px', borderRadius: 12,
+                        background: on ? 'var(--grape)' : 'var(--card-solid)',
+                        border: on ? '1px solid var(--gold)' : '1px solid var(--stroke)', cursor: 'pointer',
+                      }}
+                    >
+                      <span className="pill" style={{ fontSize: 11, fontWeight: 800, flexShrink: 0 }}>{t.short}</span>
+                      <b style={{ flex: 1, fontSize: 14 }}>{t.name}</b>
+                      {on && <span style={{ color: 'var(--gold)', fontWeight: 800 }}>✓</span>}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            <p className="faint" style={{ fontSize: 11, marginBottom: 14, lineHeight: 1.4 }}>
+              Used when you read the full chapter. All free &amp; public domain — more versions coming. The daily quiz uses the Berean Standard Bible.
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Denomination — optional; only surfaces on the Battle ranks as a faction. */}
       <h3 style={{ fontSize: 16, marginBottom: 10 }} className="dim">Denomination</h3>

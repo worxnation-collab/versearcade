@@ -120,7 +120,8 @@ export const robeHex = (key: string): string => (ROBES.find((r) => r.key === key
 // and `accessOwned` will gate Studio items behind a real Studio Pass.
 export const PREVIEW_STUDIO = true
 
-export function accessOwned(access: Access | undefined, longestStreak: number): boolean {
+export function accessOwned(access: Access | undefined, longestStreak: number, admin = false): boolean {
+  if (admin) return true // operator account has everything unlocked
   if (!access || access.kind === 'free') return true
   if (access.kind === 'earned') return longestStreak >= access.requiredStreak
   return PREVIEW_STUDIO // studio
@@ -260,8 +261,9 @@ export function equippedSkinId(spec?: AvatarSpec | null): string | null {
 // entitlement set.
 export function skinOwned(
   skin: SkinDef,
-  ctx: { sharedDays?: string[]; ownedSkins?: string[]; referralCount?: number },
+  ctx: { sharedDays?: string[]; ownedSkins?: string[]; referralCount?: number; admin?: boolean },
 ): boolean {
+  if (ctx.admin) return true // operator account has every skin unlocked
   if (skin.source === 'earned') {
     if (skin.referralGoal != null) return (ctx.referralCount ?? 0) >= skin.referralGoal
     return distinctSharedDays(ctx.sharedDays) >= (skin.shareGoal ?? Number.MAX_SAFE_INTEGER)

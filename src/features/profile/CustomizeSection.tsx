@@ -3,6 +3,16 @@ import { Avatar } from '@/components/Avatar'
 import { useAuth } from '@/store/auth'
 import { useJuice } from '@/juice/useJuice'
 import { BORDERS, BADGES, isUnlocked } from '@/data/cosmetics'
+import {
+  ARMOR,
+  SKINS,
+  ROBES,
+  DEFAULT_AVATAR,
+  accessOwned,
+  accessLabel,
+  type ArmorPieceDef,
+  type Swatch,
+} from '@/data/avatar'
 
 // "Customize" — streak-unlocked avatar borders + badges. Unlock eligibility is
 // based on the player's LONGEST streak ever, so a missed day never takes a
@@ -14,9 +24,13 @@ export function CustomizeSection() {
   const juice = useJuice()
   const [err, setErr] = useState<string | null>(null)
 
+  const setAvatarCharacter = useAuth((s) => s.setAvatarCharacter)
+
   const longest = profile.longestStreak
   const equippedBorder = profile.avatarBorder || 'default'
   const equippedBadge = profile.avatarBadge ?? 'none'
+  const spec = profile.avatarCharacter ?? DEFAULT_AVATAR
+  const equippedPieces = ARMOR.filter((a) => spec.armor[a.slot]).length
 
   const equip = async (patch: { border?: string; badge?: string | null }) => {
     setErr(null)
@@ -25,8 +39,115 @@ export function CustomizeSection() {
     if (!res.ok) setErr(res.error ?? 'That’s not unlocked yet')
   }
 
+  const toggleArmor = (def: ArmorPieceDef) => {
+    if (!accessOwned(def.access, longest)) {
+      setErr(`${def.name} unlocks with a ${accessLabel(def.access).text.toLowerCase()}`)
+      return
+    }
+    setErr(null)
+    juice.select()
+    setAvatarCharacter({ ...spec, armor: { ...spec.armor, [def.slot]: !spec.armor[def.slot] } })
+  }
+
+  const pickSkin = (s: Swatch) => {
+    setErr(null)
+    juice.select()
+    setAvatarCharacter({ ...spec, skin: s.key })
+  }
+
+  const pickRobe = (r: Swatch) => {
+    if (!accessOwned(r.access, longest)) {
+      setErr(`${r.name} is a Studio color`)
+      return
+    }
+    setErr(null)
+    juice.select()
+    setAvatarCharacter({ ...spec, robe: r.key })
+  }
+
   return (
     <>
+      {/* ── Character builder ─────────────────────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
+        <h3 style={{ fontSize: 16 }} className="dim">Your Character</h3>
+        <span className="faint" style={{ fontSize: 12 }}>Armor of God · {equippedPieces}/6</span>
+      </div>
+
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 14 }}>
+          <Avatar emoji={profile.avatarEmoji} character={spec} size={76} border={equippedBorder} badge={equippedBadge} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <b style={{ fontFamily: 'var(--font-display)', fontSize: 16 }}>Equip your armor</b>
+            <p className="faint" style={{ fontSize: 12, marginTop: 2 }}>
+              Ephesians 6 — a piece at a time. Tap to equip or remove.
+            </p>
+            <div style={{ marginTop: 8, height: 8, borderRadius: 999, background: 'rgba(0,0,0,0.3)', overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${(equippedPieces / 6) * 100}%`, borderRadius: 999, background: 'linear-gradient(90deg, var(--gold), var(--tangerine))', transition: 'width 0.25s' }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Armor pieces */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          {ARMOR.map((def) => {
+            const owned = accessOwned(def.access, longest)
+            const on = !!spec.armor[def.slot]
+            const lbl = accessLabel(def.access)
+            return (
+              <button
+                key={def.slot}
+                onClick={() => toggleArmor(def)}
+                style={{
+                  textAlign: 'left',
+                  display: 'grid',
+                  gap: 3,
+                  padding: '9px 10px',
+                  borderRadius: 12,
+                  background: on ? 'var(--grape)' : 'var(--card-solid)',
+                  border: on ? '1px solid var(--gold)' : '1px solid var(--stroke)',
+                  opacity: owned ? 1 : 0.55,
+                  cursor: 'pointer',
+                }}
+              >
+                <span style={{ fontSize: 12, fontWeight: 800, lineHeight: 1.15 }}>{def.name}</span>
+                <span className="faint" style={{ fontSize: 10, fontStyle: 'italic' }}>{def.verse}</span>
+                <span style={{ ...pillStyle(lbl.tone), marginTop: 2 }}>
+                  {on ? '✓ Equipped' : owned ? (lbl.tone === 'studio' ? '✦ Studio' : 'Tap to equip') : `🔒 ${lbl.text}`}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Skin tone */}
+        <p className="faint" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', margin: '14px 0 6px' }}>Skin tone</p>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {SKINS.map((s) => (
+            <SwatchDot key={s.key} hex={s.hex} selected={spec.skin === s.key} onClick={() => pickSkin(s)} />
+          ))}
+        </div>
+
+        {/* Robe */}
+        <p className="faint" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', margin: '14px 0 6px' }}>Robe</p>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {ROBES.map((r) => (
+            <SwatchDot
+              key={r.key}
+              hex={r.hex}
+              selected={spec.robe === r.key}
+              locked={!accessOwned(r.access, longest)}
+              studio={r.access?.kind === 'studio'}
+              onClick={() => pickRobe(r)}
+            />
+          ))}
+        </div>
+
+        <p className="faint" style={{ fontSize: 10, marginTop: 12, lineHeight: 1.4 }}>
+          Studio pieces are unlocked here so you can preview the full look. Scripture is always free — the craft around it is the paid layer.
+        </p>
+      </div>
+
+      {/* ── Streak-unlocked borders + badges ──────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
         <h3 style={{ fontSize: 16 }} className="dim">Customize</h3>
         <span className="faint" style={{ fontSize: 12 }}>Best streak: {longest}d</span>
@@ -50,6 +171,7 @@ export function CustomizeSection() {
                 preview={
                   <Avatar
                     emoji={profile.avatarEmoji}
+                    character={spec}
                     size={52}
                     border={b.key}
                     badge={equippedBadge}
@@ -79,6 +201,7 @@ export function CustomizeSection() {
                 preview={
                   <Avatar
                     emoji={profile.avatarEmoji}
+                    character={spec}
                     size={52}
                     border={equippedBorder}
                     badge={b.key === 'none' ? null : b.key}
@@ -92,6 +215,73 @@ export function CustomizeSection() {
 
       {err && <p style={{ color: 'var(--coral)', fontSize: 13, marginBottom: 12, textAlign: 'center' }}>{err}</p>}
     </>
+  )
+}
+
+// Small access pill (Free / earned streak / Studio) shown on each armor tile.
+function pillStyle(tone: 'free' | 'earned' | 'studio'): React.CSSProperties {
+  const color = tone === 'free' ? 'var(--good)' : tone === 'earned' ? 'var(--tangerine)' : 'var(--gold)'
+  return {
+    justifySelf: 'start',
+    fontSize: 9.5,
+    fontWeight: 800,
+    letterSpacing: '0.03em',
+    textTransform: 'uppercase',
+    padding: '3px 7px',
+    borderRadius: 999,
+    color,
+    background: 'color-mix(in srgb, currentColor 16%, transparent)',
+  }
+}
+
+// A tappable color swatch for skin tone / robe, with lock + studio affordances.
+function SwatchDot({
+  hex,
+  selected,
+  locked,
+  studio,
+  onClick,
+}: {
+  hex: string
+  selected: boolean
+  locked?: boolean
+  studio?: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={selected}
+      style={{
+        position: 'relative',
+        width: 34,
+        height: 34,
+        borderRadius: '50%',
+        background: hex,
+        border: selected ? '2px solid var(--gold)' : '2px solid var(--stroke)',
+        boxShadow: selected ? '0 0 0 3px color-mix(in srgb, var(--gold) 35%, transparent)' : 'none',
+        cursor: 'pointer',
+        opacity: locked ? 0.6 : 1,
+        flexShrink: 0,
+      }}
+    >
+      {studio && (
+        <span
+          style={{
+            position: 'absolute',
+            right: -3,
+            bottom: -3,
+            fontSize: 10,
+            lineHeight: 1,
+            background: 'var(--card-solid)',
+            borderRadius: '50%',
+            padding: 1,
+          }}
+        >
+          {locked ? '🔒' : '✦'}
+        </span>
+      )}
+    </button>
   )
 }
 

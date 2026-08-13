@@ -7,7 +7,7 @@ import { localdb } from '@/lib/localdb'
 import { newLocalProfile } from '@/lib/progress'
 import { getVerseForDate } from '@/data/bible/questions'
 import { useSettings } from './settings'
-import type { Profile } from '@/types'
+import type { Profile, AvatarSpec } from '@/types'
 
 type Mode = 'online' | 'local'
 
@@ -29,6 +29,9 @@ interface DbProfileRow {
   onboarded: boolean
   avatar_border: string | null
   avatar_badge: string | null
+  // Not yet a real column — an online account reads back null and falls back to
+  // the emoji until a profiles.avatar_character migration lands.
+  avatar_character?: AvatarSpec | null
   xp_boosts: number | null
 }
 
@@ -51,6 +54,7 @@ function mapRow(r: DbProfileRow): Profile {
     onboarded: r.onboarded,
     avatarBorder: r.avatar_border ?? 'default',
     avatarBadge: r.avatar_badge ?? null,
+    avatarCharacter: r.avatar_character ?? null,
     xpBoosts: r.xp_boosts ?? 0,
   }
 }
@@ -87,6 +91,7 @@ interface AuthState {
   updateProfile: (patch: Partial<Profile>) => Promise<void>
   changeUsername: (next: string) => Promise<{ ok: boolean; error?: string }>
   setCosmetics: (patch: { border?: string; badge?: string | null }) => Promise<{ ok: boolean; error?: string }>
+  setAvatarCharacter: (spec: AvatarSpec) => void
   deleteAccount: () => Promise<void>
   signOut: () => Promise<void>
 }
@@ -498,6 +503,17 @@ export const useAuth = create<AuthState>((set, get) => ({
       return { ok: false, error: error?.message ?? 'That’s not unlocked yet' }
     }
     return { ok: true }
+  },
+
+  // Equip the composable character avatar. Persists on-device in LOCAL mode.
+  // Online persistence is a follow-up (needs a profiles.avatar_character column);
+  // until then it updates in memory so the prototype is fully usable.
+  setAvatarCharacter(spec) {
+    const cur = get().profile
+    if (!cur) return
+    const next: Profile = { ...cur, avatarCharacter: spec }
+    set({ profile: next })
+    if (get().mode === 'local' || !supabase) localdb.saveProfile(next)
   },
 
   async deleteAccount() {

@@ -1,4 +1,6 @@
 import { borderRender, badgeByKey } from '@/data/cosmetics'
+import { Character } from '@/components/Character'
+import type { AvatarSpec } from '@/types'
 
 export function Avatar({
   emoji,
@@ -6,6 +8,7 @@ export function Avatar({
   ring,
   border = 'default',
   badge,
+  character,
 }: {
   emoji: string
   size?: number
@@ -14,6 +17,8 @@ export function Avatar({
   border?: string
   /** Equipped badge cosmetic key, or null/undefined for none. */
   badge?: string | null
+  /** Composable character avatar; when set it replaces the emoji as the pfp. */
+  character?: AvatarSpec | null
 }) {
   // `ring={false}` keeps the plain (unringed) look used in a few spots; any
   // explicit border still wins so cosmetics always show.
@@ -30,12 +35,13 @@ export function Avatar({
         display: 'grid',
         placeItems: 'center',
         fontSize: size * 0.5,
+        overflow: 'hidden',
         background: 'linear-gradient(180deg, var(--grape), var(--grape-deep))',
         boxShadow: render.type === 'shadow' ? render.boxShadow : '0 6px 16px rgba(0,0,0,0.4)',
         flexShrink: 0,
       }}
     >
-      {emoji}
+      {character ? <Character spec={character} size={size} /> : emoji}
     </div>
   )
 

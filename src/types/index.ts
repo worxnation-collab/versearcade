@@ -33,11 +33,25 @@ export interface DailyVerse {
   contextAfter?: string
 }
 
+// A composable character avatar (the "Armor of God" figure). Which pieces are
+// equipped + the skin/robe choice. Rendered by components/Character and used as
+// the profile picture anywhere the Avatar component appears. Piece definitions
+// and unlock gating live in data/avatar.
+export type ArmorSlot = 'helmet' | 'breastplate' | 'belt' | 'shield' | 'sword' | 'sandals'
+
+export interface AvatarSpec {
+  skin: string // SKINS key (see data/avatar)
+  robe: string // ROBES key
+  armor: Partial<Record<ArmorSlot, boolean>>
+}
+
 export interface Profile {
   id: string
   username: string
   displayName?: string
   avatarEmoji: string
+  /** Composable character avatar; null/undefined falls back to avatarEmoji. */
+  avatarCharacter?: AvatarSpec | null
   xp: number
   level: number
   currentStreak: number

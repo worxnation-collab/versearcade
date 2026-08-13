@@ -17,6 +17,11 @@ import GroupsScreen from './features/groups/GroupsScreen'
 import LeaderboardScreen from './features/leaderboard/LeaderboardScreen'
 import CollectionScreen from './features/collection/CollectionScreen'
 import ProfileScreen from './features/profile/ProfileScreen'
+import BattleHub from './features/arena/BattleHub'
+import BattleNew from './features/arena/BattleNew'
+import BattlePlay from './features/arena/BattlePlay'
+import BattleDetail from './features/arena/BattleDetail'
+import { BattleResume } from './features/arena/BattleResume'
 import { BottomNav } from './components/BottomNav'
 
 function RequireProfile({ children }: { children: JSX.Element }) {
@@ -70,6 +75,8 @@ export default function App() {
   if (!ready) return <Splash />
 
   return (
+    <>
+    <BattleResume />
     <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/welcome" element={<Onboarding />} />
@@ -137,6 +144,35 @@ export default function App() {
           }
         />
         <Route
+          path="/battle"
+          element={
+            <RequireProfile>
+              <TabShell>
+                <BattleHub />
+              </TabShell>
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/battle/new"
+          element={
+            <RequireProfile>
+              <BattleNew />
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/battle/:id/play"
+          element={
+            <RequireProfile>
+              <BattlePlay />
+            </RequireProfile>
+          }
+        />
+        {/* Public: an invite opened by someone without an account handles its own
+            gate + signup resume, so it is NOT wrapped in RequireProfile. */}
+        <Route path="/battle/:id" element={<BattleDetail />} />
+        <Route
           path="/leaderboard"
           element={
             <RequireProfile>
@@ -168,6 +204,7 @@ export default function App() {
         />
         <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   )
 }
 

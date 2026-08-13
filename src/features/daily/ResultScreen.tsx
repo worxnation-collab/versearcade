@@ -175,7 +175,7 @@ export default function ResultScreen() {
         <div style={{ display: 'grid', gap: 10, marginTop: 22 }}>
           <Button variant="gold" full onClick={doShare}>📤 Share my result</Button>
           {shareState && <p className="faint" style={{ fontSize: 13 }}>{shareState}</p>}
-          <Button variant="secondary" full onClick={() => navigate('/groups')}>👥 Add this to a group climb</Button>
+          <Button variant="secondary" full onClick={() => navigate('/battle/new')}>⚔️ Challenge a buddy</Button>
           <Button variant="ghost" full onClick={() => navigate('/play')}>Back home</Button>
         </div>
       </div>

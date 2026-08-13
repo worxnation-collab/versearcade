@@ -13,7 +13,9 @@ import ResultScreen from './features/daily/ResultScreen'
 import PracticeQuizScreen from './features/practice/PracticeQuizScreen'
 import PracticeResultScreen from './features/practice/PracticeResultScreen'
 import ReviewScreen from './features/review/ReviewScreen'
-import GroupsScreen from './features/groups/GroupsScreen'
+import BuddiesScreen from './features/buddies/BuddiesScreen'
+import ChurchesScreen from './features/churches/ChurchesScreen'
+import AdminScreen from './features/admin/AdminScreen'
 import LeaderboardScreen from './features/leaderboard/LeaderboardScreen'
 import CollectionScreen from './features/collection/CollectionScreen'
 import ProfileScreen from './features/profile/ProfileScreen'
@@ -134,12 +136,26 @@ export default function App() {
           }
         />
         <Route
-          path="/groups"
+          path="/buddies"
           element={
             <RequireProfile>
               <TabShell>
-                <GroupsScreen />
+                <BuddiesScreen />
               </TabShell>
+            </RequireProfile>
+          }
+        />
+        {/* For Churches — the congregation funnel that replaced the Groups tab.
+            Public so it can be shared/linked without an account. */}
+        <Route path="/churches" element={<ChurchesScreen />} />
+        {/* Old Groups deep links now land on the churches page. */}
+        <Route path="/groups" element={<Navigate to="/churches" replace />} />
+        {/* Private operator surface — gated to the admin account + PIN inside. */}
+        <Route
+          path="/admin"
+          element={
+            <RequireProfile>
+              <AdminScreen />
             </RequireProfile>
           }
         />

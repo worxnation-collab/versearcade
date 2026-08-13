@@ -5,16 +5,18 @@ import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { Avatar } from '@/components/Avatar'
 import { QuizRunner } from '@/features/daily/QuizRunner'
-import { useBattles, type PoolUser } from '@/store/battles'
+import { useBattles } from '@/store/battles'
+import { useBuddies, type BuddyCard } from '@/store/buddies'
 import { newBattleSeed, battleVerse } from './battle'
 import { shareResult, APP_URL } from '@/features/daily/shareCard'
 import { useJuice } from '@/juice/useJuice'
 import type { PlayResult } from '@/types'
 
-// Challenger flow: play a fresh random-verse quiz, then pick who to challenge
-// from the player list. Each invite lands as a pending challenge on that
-// player's Battle tab. (A share link is still available for inviting people who
-// aren't on Verse Arcade yet.)
+// Challenger flow: play a fresh random-verse quiz, then pick who to challenge —
+// from your BUDDIES first, plus a few suggested active players so a friendless
+// user still gets an opponent likely to battle back. Challenging a suggested
+// player also sends them a buddy request, kicking off the friends flow. (A share
+// link stays available for inviting people who aren't on Verse Arcade yet.)
 export default function BattleNew() {
   const navigate = useNavigate()
   const seed = useMemo(() => newBattleSeed(), [])
@@ -37,23 +39,22 @@ export default function BattleNew() {
 function InvitePicker({ seed, result }: { seed: number; result: PlayResult }) {
   const navigate = useNavigate()
   const juice = useJuice()
-  const { createBattle, userPool } = useBattles()
-  const [users, setUsers] = useState<PoolUser[] | null>(null)
-  const [q, setQ] = useState('')
+  const { createBattle } = useBattles()
+  const { buddies, suggested, load, loadSuggested, sendRequest } = useBuddies()
+  const [ready, setReady] = useState(false)
   const [shareMsg, setShareMsg] = useState<string | null>(null)
 
   useEffect(() => {
-    userPool().then(setUsers)
-  }, [userPool])
-
-  const filtered = (users ?? []).filter((u) =>
-    q.trim() ? u.username.toLowerCase().includes(q.trim().toLowerCase()) : true,
-  )
+    Promise.all([load(), loadSuggested(3)]).then(() => setReady(true))
+  }, [load, loadSuggested])
 
   // One targeted invite per run → go straight to that battle so it's clear who
-  // you're waiting on. (Broadcast link below is the "challenge many" option.)
-  const invite = async (u: PoolUser) => {
+  // you're waiting on. Challenging someone who ISN'T a buddy yet also sends them
+  // a buddy request, starting the friends flow. (Broadcast link is "challenge
+  // many".)
+  const invite = async (u: BuddyCard, isBuddy: boolean) => {
     juice.coin()
+    if (!isBuddy) void sendRequest(u.username)
     const id = await createBattle(seed, result.score, result.timeMs, u.username)
     if (id) navigate(`/battle/${id}`, { replace: true, state: { justCreated: true } })
   }
@@ -89,7 +90,7 @@ function InvitePicker({ seed, result }: { seed: number; result: PlayResult }) {
           You scored <span className="gradient-text">{result.score.toLocaleString()}</span>
         </h2>
         <p className="dim" style={{ marginTop: 6, fontSize: 14 }}>
-          Two ways to send it — challenge players here, or share the link anywhere.
+          Challenge a buddy, or share the link anywhere.
         </p>
       </div>
 
@@ -99,55 +100,47 @@ function InvitePicker({ seed, result }: { seed: number; result: PlayResult }) {
       </Button>
       {shareMsg && <p style={{ color: 'var(--good)', fontSize: 13, marginTop: 8, textAlign: 'center' }}>{shareMsg}</p>}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0 12px' }}>
-        <div style={{ flex: 1, height: 1, background: 'var(--stroke)' }} />
-        <span className="faint" style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em' }}>OR CHALLENGE PLAYERS HERE</span>
-        <div style={{ flex: 1, height: 1, background: 'var(--stroke)' }} />
-      </div>
-
-      <input
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder="Search players by @username"
-        autoCapitalize="none"
-        autoCorrect="off"
-        style={{ marginBottom: 12 }}
-      />
-
-      {users === null ? (
+      {!ready ? (
         <div className="center" style={{ padding: 30 }}>
           <div className="floaty" style={{ fontSize: 34 }}>⚔️</div>
         </div>
-      ) : filtered.length === 0 ? (
-        <p className="faint center" style={{ fontSize: 14, padding: '10px 0' }}>
-          {q.trim() ? 'No players match that name.' : 'No other players yet — share a link below to invite someone.'}
-        </p>
       ) : (
-        <div style={{ display: 'grid', gap: 8 }}>
-          {filtered.map((u) => (
-            <div
-              key={u.username}
-              className="card"
-              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px' }}
-            >
-              <Avatar emoji={u.avatar_emoji} character={u.avatar_character} size={38} ring={false} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <b style={{ fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
-                  @{u.username}
-                </b>
-                <span className="faint" style={{ fontSize: 12 }}>Level {u.level}</span>
-              </div>
-              <motion.button
-                whileTap={{ scale: 0.94 }}
-                onClick={() => invite(u)}
-                className="pill"
-                style={{ fontWeight: 800, fontSize: 13, padding: '8px 14px', background: 'var(--gold)', color: '#241f0a', border: 'none' }}
-              >
-                Challenge
-              </motion.button>
+        <>
+          {/* Buddies */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0 12px' }}>
+            <div style={{ flex: 1, height: 1, background: 'var(--stroke)' }} />
+            <span className="faint" style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em' }}>CHALLENGE A BUDDY</span>
+            <div style={{ flex: 1, height: 1, background: 'var(--stroke)' }} />
+          </div>
+
+          {buddies.length === 0 ? (
+            <p className="faint center" style={{ fontSize: 14, padding: '4px 0 8px' }}>
+              No buddies yet — challenge a suggested player below and they’ll be added.
+            </p>
+          ) : (
+            <div style={{ display: 'grid', gap: 8 }}>
+              {buddies.map((u) => (
+                <PlayerRow key={u.username} u={u} label="Challenge" onClick={() => invite(u, true)} />
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+
+          {/* Suggested active players */}
+          {suggested.length > 0 && (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0 12px' }}>
+                <div style={{ flex: 1, height: 1, background: 'var(--stroke)' }} />
+                <span className="faint" style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em' }}>SUGGESTED — ACTIVE PLAYERS</span>
+                <div style={{ flex: 1, height: 1, background: 'var(--stroke)' }} />
+              </div>
+              <div style={{ display: 'grid', gap: 8 }}>
+                {suggested.map((u) => (
+                  <PlayerRow key={u.username} u={u} label="Battle + add" onClick={() => invite(u, false)} />
+                ))}
+              </div>
+            </>
+          )}
+        </>
       )}
 
       <div style={{ marginTop: 18 }}>
@@ -157,5 +150,27 @@ function InvitePicker({ seed, result }: { seed: number; result: PlayResult }) {
       </div>
       <div style={{ height: 30 }} />
     </Page>
+  )
+}
+
+function PlayerRow({ u, label, onClick }: { u: BuddyCard; label: string; onClick: () => void }) {
+  return (
+    <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px' }}>
+      <Avatar emoji={u.avatar_emoji} character={u.avatar_character} size={38} ring={false} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <b style={{ fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+          @{u.username}
+        </b>
+        <span className="faint" style={{ fontSize: 12 }}>Level {u.level} · 🔥 {u.current_streak}</span>
+      </div>
+      <motion.button
+        whileTap={{ scale: 0.94 }}
+        onClick={onClick}
+        className="pill"
+        style={{ fontWeight: 800, fontSize: 13, padding: '8px 14px', background: 'var(--gold)', color: '#241f0a', border: 'none' }}
+      >
+        {label}
+      </motion.button>
+    </div>
   )
 }

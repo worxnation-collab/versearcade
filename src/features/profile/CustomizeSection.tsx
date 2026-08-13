@@ -192,13 +192,7 @@ export function CustomizeSection() {
             style={{ overflow: 'hidden' }}
           >
             {/* ── Character builder ─────────────────────────────────────────── */}
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
-              <h3 style={{ fontSize: 16 }} className="dim">Your Character</h3>
-        <span style={{ fontSize: 12, fontWeight: savedFlash ? 700 : 400, color: savedFlash ? 'var(--good)' : 'var(--faint, #8b8199)', transition: 'color 0.2s' }} className={savedFlash ? undefined : 'faint'}>
-          {savedFlash ? 'Saved ✓' : `Armor of God · ${equippedPieces}/6`}
-        </span>
-      </div>
-
+            <Section title="Your Character" defaultOpen right={savedFlash ? <span style={{ color: 'var(--good)', fontWeight: 700 }}>Saved ✓</span> : `Armor of God · ${equippedPieces}/6`}>
       <div className="card" style={{ marginBottom: 14 }}>
         <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 14 }}>
           <Avatar emoji={profile.avatarEmoji} character={spec} size={76} border={equippedBorder} badge={equippedBadge} />
@@ -272,12 +266,10 @@ export function CustomizeSection() {
           Studio pieces are unlocked here so you can preview the full look. Scripture is always free — the craft around it is the paid layer.
         </p>
       </div>
+      </Section>
 
       {/* ── Full-look skins ───────────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
-        <h3 style={{ fontSize: 16 }} className="dim">Skins</h3>
-        <span className="faint" style={{ fontSize: 12 }}>full looks</span>
-      </div>
+      <Section title="Skins" defaultOpen right="full looks">
       <div className="card" style={{ marginBottom: 14 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           {FULL_SKINS.filter((skin) => !skinExpired(skin)).map((skin) => {
@@ -343,6 +335,7 @@ export function CustomizeSection() {
           </div>
         )}
       </div>
+      </Section>
 
       {/* Purchase prompt for a locked hero skin */}
       {buyTarget && (
@@ -446,10 +439,7 @@ export function CustomizeSection() {
       )}
 
       {/* ── Collected items (from the Daily Chest) ────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
-        <h3 style={{ fontSize: 16 }} className="dim">Items</h3>
-        <span className="faint" style={{ fontSize: 12 }}>{myItems.length} collected</span>
-      </div>
+      <Section title="Items" right={`${myItems.length} collected`}>
       <div className="card" style={{ marginBottom: 14 }}>
         {myItems.length === 0 ? (
           <p className="faint" style={{ fontSize: 13, textAlign: 'center', padding: '6px 0' }}>
@@ -483,15 +473,10 @@ export function CustomizeSection() {
           </div>
         )}
       </div>
+      </Section>
 
       {/* ── Streak-unlocked borders + badges ──────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
-        <h3 style={{ fontSize: 16 }} className="dim">Customize</h3>
-        <span className="faint" style={{ fontSize: 12 }}>Best streak: {longest}d</span>
-      </div>
-
-      {/* Borders */}
-      <p className="faint" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Borders</p>
+      <Section title="Borders" right={`Best streak: ${longest}d`}>
       <div className="card" style={{ marginBottom: 14 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
           {BORDERS.map((b) => {
@@ -520,8 +505,10 @@ export function CustomizeSection() {
         </div>
       </div>
 
+      </Section>
+
       {/* Badges */}
-      <p className="faint" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Badges</p>
+      <Section title="Badges">
       <div className="card" style={{ marginBottom: 14 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
           {BADGES.map((b) => {
@@ -549,8 +536,43 @@ export function CustomizeSection() {
           })}
         </div>
       </div>
+      </Section>
 
             {err && <p style={{ color: 'var(--coral)', fontSize: 13, marginBottom: 12, textAlign: 'center' }}>{err}</p>}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  )
+}
+
+// A collapsible sub-section of the customizer, so the (long) page can be tidied
+// section by section. Header shows an optional right-side summary + a chevron.
+function Section({ title, right, defaultOpen = false, children }: {
+  title: string
+  right?: React.ReactNode
+  defaultOpen?: boolean
+  children: React.ReactNode
+}) {
+  const juice = useJuice()
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <>
+      <button
+        onClick={() => { juice.select(); setOpen((o) => !o) }}
+        aria-expanded={open}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'space-between', background: 'transparent', border: 'none', padding: '2px 0 10px', cursor: 'pointer' }}
+      >
+        <span style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+          <h3 style={{ fontSize: 16, margin: 0 }} className="dim">{title}</h3>
+          {right && <span className="faint" style={{ fontSize: 12 }}>{right}</span>}
+        </span>
+        <span style={{ color: 'var(--gold)', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}>▾</span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25, ease: 'easeInOut' }} style={{ overflow: 'hidden' }}>
+            {children}
           </motion.div>
         )}
       </AnimatePresence>

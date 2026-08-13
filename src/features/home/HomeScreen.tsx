@@ -8,6 +8,7 @@ import { XpBar } from '@/components/XpBar'
 import { StreakFlame } from '@/components/StreakFlame'
 import { PresenceStrip } from '@/features/presence/PresenceStrip'
 import { DailyChest } from '@/features/chest/DailyChest'
+import { PracticeSection } from '@/features/practice/PracticeSection'
 import { useAuth } from '@/store/auth'
 import { useGame } from '@/store/game'
 import { useReviews } from '@/store/reviews'
@@ -102,6 +103,9 @@ export default function HomeScreen() {
 
       {/* Daily Chest — unlocks after today's verse, gives a random relic. */}
       <DailyChest />
+
+      {/* Study the last five — replay past verses; beat your best to earn XP. */}
+      <PracticeSection />
 
       {/* Keep it: spaced-repetition review of verses already learned. Only
           surfaces when something is actually due, so it's never clutter. */}

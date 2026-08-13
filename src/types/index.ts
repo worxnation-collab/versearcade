@@ -26,6 +26,11 @@ export interface DailyVerse {
   questions: Question[]
   /** "Did you know" facts revealed on wrong answers / at the end. */
   facts: string[]
+  /** Prose describing what happens just before / after this verse — used by the
+   *  chapter reader for quick context and as an offline fallback when the full
+   *  chapter can't be fetched. */
+  contextBefore?: string
+  contextAfter?: string
 }
 
 export interface Profile {
@@ -68,6 +73,31 @@ export interface SubmitOutcome {
   currentStreak: number
   usedFreeze?: boolean
   streakFreezes?: number
+}
+
+// Practice mode — replaying an already-played verse to study. Reward only comes
+// from beating your best, once per week per verse (see submit_practice / 0014).
+export interface PracticeItem {
+  dropDate: string
+  reference: string
+  /** Score to beat = higher of your daily score and any better practice score. */
+  bestScore: number
+  /** True if beating your best could pay out now (not on weekly cooldown). */
+  rewardable: boolean
+  /** When the weekly reward unlocks again, if currently on cooldown. */
+  nextRewardOn: string | null
+}
+
+export interface PracticeOutcome {
+  score: number
+  previousBest: number
+  newBest: number
+  improved: boolean
+  rewarded: boolean
+  xpEarned: number
+  /** Improved, but the weekly per-verse reward was already claimed. */
+  weeklyLocked: boolean
+  nextRewardOn: string | null
 }
 
 export interface PresenceEvent {

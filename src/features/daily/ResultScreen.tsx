@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ChapterReader } from './ChapterReader'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { CountUp } from '@/components/CountUp'
@@ -21,6 +22,7 @@ export default function ResultScreen() {
   const isGuest = useAuth((s) => s.mode) === 'local'
   const [shareState, setShareState] = useState<string | null>(null)
   const [signInErr, setSignInErr] = useState<string | null>(null)
+  const [readerOpen, setReaderOpen] = useState(false)
 
   const result = lastResult?.result
   const outcome = lastResult?.outcome
@@ -75,6 +77,24 @@ export default function ResultScreen() {
           <b style={{ fontFamily: 'var(--font-display)', fontSize: 18 }}>{today.reference}</b>
           <p style={{ marginTop: 6, lineHeight: 1.5 }}>“{today.text}”</p>
           {today.facts[0] && <p className="faint" style={{ marginTop: 10, fontSize: 13 }}>💡 {today.facts[0]}</p>}
+          <button
+            onClick={() => setReaderOpen(true)}
+            style={{
+              marginTop: 14,
+              width: '100%',
+              padding: '11px 14px',
+              borderRadius: 'var(--r-pill)',
+              border: '1px solid var(--gold)',
+              background: 'rgba(255,210,63,0.10)',
+              color: 'var(--gold)',
+              fontFamily: 'var(--font-display)',
+              fontWeight: 800,
+              fontSize: 14,
+              cursor: 'pointer',
+            }}
+          >
+            📖 Read the full chapter →
+          </button>
         </div>
 
         {/* Level up / XP */}
@@ -149,6 +169,10 @@ export default function ResultScreen() {
           <Button variant="ghost" full onClick={() => navigate('/play')}>Back home</Button>
         </div>
       </div>
+
+      <AnimatePresence>
+        {readerOpen && <ChapterReader verse={today} onClose={() => setReaderOpen(false)} />}
+      </AnimatePresence>
     </Page>
   )
 }

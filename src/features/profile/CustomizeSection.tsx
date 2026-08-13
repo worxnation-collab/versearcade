@@ -358,11 +358,20 @@ export function CustomizeSection() {
             <p style={{ marginTop: 10, marginBottom: 12, fontFamily: 'var(--font-display)', fontSize: 24 }} className="gradient-text">{buyTarget.price}</p>
             {skinBuyUrl(buyTarget.id) && !Capacitor.isNativePlatform() ? (
               <>
-                <Button variant="gold" full onClick={() => { juice.coin(); window.open(skinBuyUrl(buyTarget.id), '_blank', 'noopener,noreferrer'); setBuyTarget(null) }}>
+                <Button variant="gold" full onClick={() => {
+                  juice.coin()
+                  // Pass "<username>-<skinId>" as Stripe's client_reference_id so the
+                  // webhook can auto-grant the right skin to the right account.
+                  const base = skinBuyUrl(buyTarget.id)
+                  const ref = encodeURIComponent(`${profile.username}-${buyTarget.id}`)
+                  const url = base + (base.includes('?') ? '&' : '?') + 'client_reference_id=' + ref
+                  window.open(url, '_blank', 'noopener,noreferrer')
+                  setBuyTarget(null)
+                }}>
                   Get this skin
                 </Button>
                 <p className="faint" style={{ fontSize: 10, marginTop: 8, lineHeight: 1.4 }}>
-                  Opens secure checkout — your skin is added to your account shortly after. Thank you for supporting a solo builder! 🙏
+                  Opens secure checkout — your skin unlocks automatically right after. Thank you for supporting a solo builder! 🙏
                 </p>
               </>
             ) : (

@@ -15,7 +15,7 @@ export interface Denomination {
 export const DENOMINATIONS: Denomination[] = [
   { key: 'non_denominational', name: 'Non-denominational', color: '#5EC8C2' },
   { key: 'baptist', name: 'Baptist', color: '#C0492E' },
-  { key: 'catholic', name: 'Catholic', color: '#DCAB3A' },
+  { key: 'catholic', name: 'Catholic', color: '#8C2434' },
   { key: 'methodist', name: 'Methodist', color: '#E07A3C' },
   { key: 'lutheran', name: 'Lutheran', color: '#4B7BE5' },
   { key: 'presbyterian', name: 'Presbyterian', color: '#7A5AF0' },

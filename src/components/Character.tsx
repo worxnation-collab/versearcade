@@ -79,6 +79,17 @@ export function Character({
           <rect x="45" y="106" width="30" height="8" rx="2.5" fill={GOLD_DEEP} stroke={GOLD_LINE} />
           <circle cx="60" cy="110" r="3.2" fill={GOLD} stroke={GOLD_LINE} strokeWidth="0.7" />
 
+          {/* raised hand of blessing (his free hand, viewer-right) */}
+          <path d="M82 58 L71 100 L75 72 Z" fill={ROBE_WHITE} />
+          <path d="M74 71 Q82 58 88 41" fill="none" stroke={ROBE_SHADE} strokeWidth="11" strokeLinecap="round" />
+          <path d="M74 71 Q82 58 88 41" fill="none" stroke={ROBE_WHITE} strokeWidth="8.5" strokeLinecap="round" />
+          <rect x="85.4" y="25" width="1.7" height="9" rx="0.8" fill={ROBE_WHITE} stroke={ROBE_SHADE} strokeWidth="0.5" />
+          <rect x="87.6" y="24" width="1.7" height="10" rx="0.8" fill={ROBE_WHITE} stroke={ROBE_SHADE} strokeWidth="0.5" />
+          <rect x="89.8" y="25" width="1.7" height="9" rx="0.8" fill={ROBE_WHITE} stroke={ROBE_SHADE} strokeWidth="0.5" />
+          <rect x="92" y="27.5" width="1.7" height="7" rx="0.8" fill={ROBE_WHITE} stroke={ROBE_SHADE} strokeWidth="0.5" />
+          <ellipse cx="89" cy="36" rx="5" ry="6" fill={ROBE_WHITE} stroke={ROBE_SHADE} strokeWidth="0.8" />
+          <ellipse cx="83.6" cy="38" rx="2" ry="3" fill={ROBE_WHITE} stroke={ROBE_SHADE} strokeWidth="0.6" />
+
           {/* white hood framing the face */}
           <path d="M39 74 C35 38 47 22 60 22 C73 22 85 38 81 74 L74 74 C77 46 70 34 60 34 C50 34 43 46 46 74 Z" fill={ROBE_WHITE} />
           <path d="M46 72 C43 46 50 34 60 34 C70 34 77 46 74 72 Z" fill={ROBE_SHADE} opacity="0.55" />

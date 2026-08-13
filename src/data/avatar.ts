@@ -217,7 +217,7 @@ export const FULL_SKINS: SkinDef[] = [
     source: 'paid',
     pack: 'exodus',
     packName: 'Exodus Pack',
-    price: 'From $4.99',
+    price: 'From $2.99',
     blurb: 'The Lawgiver — staff in hand, the tablets at his side.',
   },
   {

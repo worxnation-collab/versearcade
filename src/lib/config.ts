@@ -99,7 +99,7 @@ export const SUPPORT_URL = import.meta.env.VITE_SUPPORT_URL || ''
 // link can be swapped without a code change. Falls back to SUPPORT_URL, then ''.
 export const SKIN_BUY_URLS: Record<string, string> = {
   whale: import.meta.env.VITE_BUY_WHALE || 'https://buy.stripe.com/aFa4gz9mM0hD536aoFa3u01',
-  moses: import.meta.env.VITE_BUY_MOSES || '',
+  moses: import.meta.env.VITE_BUY_MOSES || 'https://buy.stripe.com/dRmcN5cyY7K5brubsJa3u02',
   esther: import.meta.env.VITE_BUY_ESTHER || '',
   elijah: import.meta.env.VITE_BUY_ELIJAH || '',
 }

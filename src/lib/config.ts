@@ -100,7 +100,7 @@ export const SUPPORT_URL = import.meta.env.VITE_SUPPORT_URL || ''
 export const SKIN_BUY_URLS: Record<string, string> = {
   whale: import.meta.env.VITE_BUY_WHALE || 'https://buy.stripe.com/aFa4gz9mM0hD536aoFa3u01',
   moses: import.meta.env.VITE_BUY_MOSES || 'https://buy.stripe.com/dRmcN5cyY7K5brubsJa3u02',
-  esther: import.meta.env.VITE_BUY_ESTHER || '',
+  esther: import.meta.env.VITE_BUY_ESTHER || 'https://buy.stripe.com/dRmcN51Ukd4pbrugN3a3u04',
   elijah: import.meta.env.VITE_BUY_ELIJAH || 'https://buy.stripe.com/9B63cvbuU1lH67absJa3u03',
 }
 

@@ -17,7 +17,7 @@ import { msUntilNextLocalMidnight, formatCountdown } from '@/lib/date'
 export default function HomeScreen() {
   const navigate = useNavigate()
   const profile = useAuth((s) => s.profile)!
-  const { today, playedToday, lastResult, loadToday } = useGame()
+  const { today, playedToday, lastResult, loadToday, boostArmed, armBoost } = useGame()
   const { dueRefs, loadDue } = useReviews()
   const [countdown, setCountdown] = useState(msUntilNextLocalMidnight())
 
@@ -74,9 +74,48 @@ export default function HomeScreen() {
               Read it, then race the clock on {today?.questions.length ?? 5} quick
               questions about it. Same verse everyone’s playing right now.
             </p>
-            <div style={{ marginTop: 18 }}>
+            {profile.xpBoosts > 0 && (
+              <motion.button
+                onClick={() => armBoost(!boostArmed)}
+                whileTap={{ scale: 0.98 }}
+                style={{
+                  width: '100%',
+                  marginTop: 14,
+                  padding: '11px 14px',
+                  borderRadius: 'var(--r-md)',
+                  border: `1px solid ${boostArmed ? 'var(--gold)' : 'var(--stroke)'}`,
+                  background: boostArmed ? 'rgba(255,210,63,0.14)' : 'var(--card)',
+                  color: 'var(--ink)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  textAlign: 'left',
+                }}
+              >
+                <span style={{ fontSize: 22 }}>⚡</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 800, fontSize: 14 }}>
+                    {boostArmed ? 'XP Boost armed — +50% XP' : 'Use an XP Boost'}
+                  </div>
+                  <div className="faint" style={{ fontSize: 12 }}>
+                    {profile.xpBoosts} available{boostArmed ? ' · applies to this run' : ' · +50% XP on this verse'}
+                  </div>
+                </div>
+                <span
+                  className="pill"
+                  style={{
+                    fontSize: 11,
+                    borderColor: boostArmed ? 'var(--gold)' : undefined,
+                    color: boostArmed ? 'var(--gold)' : undefined,
+                  }}
+                >
+                  {boostArmed ? 'ON' : 'OFF'}
+                </span>
+              </motion.button>
+            )}
+            <div style={{ marginTop: 14 }}>
               <Button variant="gold" full onClick={() => navigate('/play/run')}>
-                ▶ Play today’s verse
+                ▶ Play today’s verse{boostArmed ? ' ⚡' : ''}
               </Button>
             </div>
           </>

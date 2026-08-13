@@ -13,10 +13,13 @@ interface GameState {
   playedToday: boolean
   lastResult: { result: PlayResult; outcome: SubmitOutcome } | null
   pulse: DailyPulse | null
+  /** Whether the player armed an XP Boost for today's daily (consumed on submit). */
+  boostArmed: boolean
 
   loadToday: () => Promise<void>
   submitPlay: (result: PlayResult) => Promise<SubmitOutcome>
   loadPulse: () => Promise<void>
+  armBoost: (v: boolean) => void
 }
 
 export const useGame = create<GameState>((set, get) => ({
@@ -25,6 +28,7 @@ export const useGame = create<GameState>((set, get) => ({
   playedToday: false,
   lastResult: null,
   pulse: null,
+  boostArmed: false,
 
   async loadToday() {
     const date = todayLocalDate()
@@ -102,6 +106,7 @@ export const useGame = create<GameState>((set, get) => ({
   async submitPlay(result) {
     const date = get().todayDate
     const auth = useAuth.getState()
+    const useBoost = get().boostArmed
 
     if (auth.mode === 'local' || !supabase) {
       const prof = auth.profile
@@ -110,6 +115,7 @@ export const useGame = create<GameState>((set, get) => ({
         dropDate: date,
         score: result.score,
         correct: result.correctCount,
+        useBoost,
       })
       auth.setProfileLocal(profile)
       localdb.savePlay(date, result, outcome)
@@ -134,7 +140,7 @@ export const useGame = create<GameState>((set, get) => ({
             () => {},
           )
       }
-      set({ playedToday: true, lastResult: { result, outcome } })
+      set({ playedToday: true, lastResult: { result, outcome }, boostArmed: false })
       return outcome
     }
 
@@ -145,11 +151,12 @@ export const useGame = create<GameState>((set, get) => ({
       p_correct: result.correctCount,
       p_total: result.totalQuestions,
       p_combo_max: result.comboMax,
+      p_use_boost: useBoost,
     })
     if (error) throw error
     const outcome = normalizeOutcome(data)
     await auth.refreshProfile()
-    set({ playedToday: true, lastResult: { result, outcome } })
+    set({ playedToday: true, lastResult: { result, outcome }, boostArmed: false })
     return outcome
   },
 
@@ -179,6 +186,10 @@ export const useGame = create<GameState>((set, get) => ({
       },
     })
   },
+
+  armBoost(v) {
+    set({ boostArmed: v })
+  },
 }))
 
 function normalizeOutcome(d: any): SubmitOutcome {
@@ -191,6 +202,8 @@ function normalizeOutcome(d: any): SubmitOutcome {
     currentStreak: d.current_streak,
     usedFreeze: !!d.used_freeze,
     streakFreezes: d.streak_freezes,
+    boostUsed: !!d.boost_used,
+    xpBoosts: d.xp_boosts,
   }
 }
 

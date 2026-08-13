@@ -104,6 +104,12 @@ export default function ResultScreen() {
           <Tile label="Correct" value={`${result.correctCount}/${result.totalQuestions}`} />
         </div>
 
+        {outcome.boostUsed && (
+          <p className="faint" style={{ marginTop: 8, fontSize: 13 }}>
+            ⚡ <b style={{ color: 'var(--gold)' }}>XP Boost applied</b> — +50% XP this run
+          </p>
+        )}
+
         {/* Streak */}
         <motion.div className="card" style={{ marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}
           animate={outcome.currentStreak >= 3 ? { scale: [1, 1.03, 1] } : {}} transition={{ repeat: 2, duration: 0.5 }}>

@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Avatar } from '@/components/Avatar'
 import { useAuth } from '@/store/auth'
 import { useJuice } from '@/juice/useJuice'
@@ -25,6 +26,7 @@ export function CustomizeSection() {
   const setCosmetics = useAuth((s) => s.setCosmetics)
   const juice = useJuice()
   const [err, setErr] = useState<string | null>(null)
+  const [open, setOpen] = useState(false)
   const [savedFlash, setSavedFlash] = useState(false)
   const savedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
@@ -94,9 +96,35 @@ export function CustomizeSection() {
 
   return (
     <>
-      {/* ── Character builder ─────────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
-        <h3 style={{ fontSize: 16 }} className="dim">Your Character</h3>
+      {/* Collapsed by default so the profile stays uncluttered; tapping drops
+          the whole customization menu down. */}
+      <button
+        onClick={() => { juice.select(); setOpen((o) => !o) }}
+        aria-expanded={open}
+        className="card"
+        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, marginBottom: open ? 14 : 0, textAlign: 'left', cursor: 'pointer' }}
+      >
+        <Avatar emoji={profile.avatarEmoji} character={spec} size={44} ring={false} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <b style={{ fontFamily: 'var(--font-display)', fontSize: 15 }}>Customize your character</b>
+          <div className="faint" style={{ fontSize: 12 }}>Armor of God · King Baldwin · borders &amp; badges</div>
+        </div>
+        <span style={{ fontSize: 18, color: 'var(--gold)', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', flexShrink: 0 }}>▾</span>
+      </button>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            key="customize-body"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.28, ease: 'easeInOut' }}
+            style={{ overflow: 'hidden' }}
+          >
+            {/* ── Character builder ─────────────────────────────────────────── */}
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
+              <h3 style={{ fontSize: 16 }} className="dim">Your Character</h3>
         <span style={{ fontSize: 12, fontWeight: savedFlash ? 700 : 400, color: savedFlash ? 'var(--good)' : 'var(--faint, #8b8199)', transition: 'color 0.2s' }} className={savedFlash ? undefined : 'faint'}>
           {savedFlash ? 'Saved ✓' : `Armor of God · ${equippedPieces}/6`}
         </span>
@@ -286,7 +314,10 @@ export function CustomizeSection() {
         </div>
       </div>
 
-      {err && <p style={{ color: 'var(--coral)', fontSize: 13, marginBottom: 12, textAlign: 'center' }}>{err}</p>}
+            {err && <p style={{ color: 'var(--coral)', fontSize: 13, marginBottom: 12, textAlign: 'center' }}>{err}</p>}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   )
 }

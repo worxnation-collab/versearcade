@@ -1,6 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { usePractice } from '@/store/practice'
 import { todayLocalDate } from '@/lib/date'
 import { daysBetween } from '@/lib/practice'
@@ -13,6 +13,7 @@ export function PracticeSection() {
   const list = usePractice((s) => s.list)
   const loadedList = usePractice((s) => s.loadedList)
   const loadList = usePractice((s) => s.loadList)
+  const [open, setOpen] = useState(false)
 
   useEffect(() => {
     loadList()
@@ -27,16 +28,33 @@ export function PracticeSection() {
       animate={{ opacity: 1, y: 0 }}
       style={{ marginTop: 16 }}
     >
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
+      {/* Collapsible (default closed) so it doesn't dominate the homepage. */}
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, background: 'transparent', border: 'none', padding: 0, marginBottom: open ? 8 : 0, cursor: 'pointer' }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 20 }}>📚</span>
-          <div>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 17 }}>Study the last five</div>
+          <div style={{ textAlign: 'left' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 17 }}>
+              Study the last five <span className="faint" style={{ fontSize: 12 }}>· {list.length}</span>
+            </div>
             <div className="faint" style={{ fontSize: 12 }}>Replay to learn — beat your best to earn XP</div>
           </div>
         </div>
-      </div>
+        <span style={{ color: 'var(--gold)', fontSize: 16, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}>▾</span>
+      </button>
 
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            style={{ overflow: 'hidden' }}
+          >
       <div style={{ display: 'grid', gap: 8 }}>
         {list.map((item) => {
           const locked = !item.rewardable
@@ -78,6 +96,9 @@ export function PracticeSection() {
           )
         })}
       </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }

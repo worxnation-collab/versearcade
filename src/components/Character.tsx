@@ -1,5 +1,5 @@
 import type { AvatarSpec, ArmorSlot } from '@/types'
-import { skinHex, robeHex } from '@/data/avatar'
+import { skinHex, robeHex, equippedSkinId } from '@/data/avatar'
 
 // A composable character figure, drawn from an AvatarSpec. Two looks share one
 // silhouette so it reads at any size (20px presence chip → 76px builder):
@@ -26,6 +26,16 @@ const MASK_DARK = '#24262C'
 const BLADE = '#C7CBD4'
 const BLADE_EDGE = '#9AA0AC'
 
+// Moses palette
+const M_ROBE = '#8A7A4E'
+const M_ROBE_SHADE = '#6F6240'
+const M_SKIN = '#C89A6E'
+const M_HAIR = '#CBC6BA'
+const M_BEARD = '#DEDACF'
+const M_WOOD = '#7A5A34'
+const M_STONE = '#B9BBB1'
+const M_STONE_LINE = '#7E827A'
+
 export function Character({
   spec,
   size = 44,
@@ -39,7 +49,7 @@ export function Character({
   const robe = robeHex(spec.robe)
   const has = (s: ArmorSlot) => !!spec.armor[s]
   const items = spec.items ?? {}
-  const baldwin = spec.regalia === 'baldwin'
+  const skinId = equippedSkinId(spec)
 
   return (
     <svg
@@ -48,13 +58,13 @@ export function Character({
       viewBox="0 0 120 170"
       preserveAspectRatio="xMidYMid meet"
       role="img"
-      aria-label={title ?? (baldwin ? 'King Baldwin avatar' : 'Character avatar')}
+      aria-label={title ?? (skinId ? `${skinId} avatar` : 'Character avatar')}
       style={{ display: 'block' }}
     >
       {/* ground shadow */}
       <ellipse cx="60" cy="162" rx="30" ry="5" fill="rgba(0,0,0,0.16)" />
 
-      {baldwin ? (
+      {skinId === 'baldwin' ? (
         <>
           {/* ── King Baldwin — the masked Leper King ── */}
           {/* ceremonial sword, held upright at his (viewer-left) side */}
@@ -103,6 +113,42 @@ export function Character({
 
           {/* gloved hand resting on the pommel */}
           <ellipse cx="43" cy="70" rx="3.6" ry="4.4" fill={ROBE_WHITE} stroke={ROBE_SHADE} strokeWidth="0.8" />
+        </>
+      ) : skinId === 'moses' ? (
+        <>
+          {/* ── Moses — the Lawgiver ── */}
+          {/* staff, right hand */}
+          <rect x="83" y="40" width="4" height="112" rx="2" fill={M_WOOD} />
+          <circle cx="85" cy="40" r="4.2" fill="#6A4E2C" />
+
+          {/* robe */}
+          <path d="M42 66 Q60 60 78 66 L88 158 L32 158 Z" fill={M_ROBE} />
+          <path d="M60 72 L60 156" stroke={M_ROBE_SHADE} strokeWidth="1.2" opacity="0.5" />
+          <path d="M47 82 L44 156 M73 82 L76 156" stroke={M_ROBE_SHADE} strokeWidth="0.8" opacity="0.4" />
+          {/* sash */}
+          <rect x="43" y="104" width="34" height="6" rx="2" fill={M_ROBE_SHADE} />
+
+          {/* sleeves */}
+          <rect x="34" y="70" width="9" height="34" rx="4.5" fill={M_ROBE} />
+          <rect x="77" y="70" width="9" height="34" rx="4.5" fill={M_ROBE} />
+
+          {/* stone tablets, cradled in the left arm */}
+          <rect x="28" y="92" width="10" height="24" rx="4.5" fill={M_STONE} stroke={M_STONE_LINE} strokeWidth="0.8" />
+          <rect x="39" y="92" width="10" height="24" rx="4.5" fill={M_STONE} stroke={M_STONE_LINE} strokeWidth="0.8" />
+          {[100, 104, 108, 112].map((y) => (
+            <g key={y}>
+              <path d={`M30.5 ${y} h5`} stroke={M_STONE_LINE} strokeWidth="0.7" />
+              <path d={`M41.5 ${y} h5`} stroke={M_STONE_LINE} strokeWidth="0.7" />
+            </g>
+          ))}
+
+          {/* neck + head */}
+          <rect x="55" y="54" width="10" height="10" rx="3" fill={M_SKIN} />
+          <circle cx="60" cy="48" r="12" fill={M_SKIN} />
+          {/* hair */}
+          <path d="M48 48 a12 12 0 0 1 24 0 l-2.5 0 a9.5 9.5 0 0 0-19 0 z" fill={M_HAIR} />
+          {/* long beard */}
+          <path d="M49 54 Q50 80 60 90 Q70 80 71 54 Q60 66 49 54 Z" fill={M_BEARD} stroke="#CCC7BB" strokeWidth="0.5" />
         </>
       ) : (
         <>

@@ -48,9 +48,10 @@ export interface AvatarSpec {
   armor: Partial<Record<ArmorSlot, boolean>>
   /** Equipped items by slot, values are item ids (see data/avatar ITEMS). */
   items?: Partial<Record<ItemSlot, string>>
-  /** Achievement-unlocked full-look set, kept separate from the six Armor of
-   *  God pieces. 'baldwin' = the masked Leper King (hood, silver mask, gold
-   *  cross-mantle, ceremonial sword). When set, it overrides the base look. */
+  /** Equipped full-look skin id (e.g. 'baldwin', 'moses'). When set (and owned),
+   *  it overrides the base character, armor and items. See data/avatar SKINS. */
+  skinId?: string | null
+  /** @deprecated superseded by skinId; read for backward compatibility only. */
   regalia?: 'baldwin' | null
 }
 
@@ -81,6 +82,8 @@ export interface Profile {
   sharedDays?: string[]
   /** Wearable item ids the player has collected (from the Daily Chest). */
   ownedItems?: string[]
+  /** Full-look skin ids the player is entitled to (paid/preview-unlocked). */
+  ownedSkins?: string[]
   /** Unused XP Boost consumables (rarely dropped by the Daily Chest). */
   xpBoosts: number
 }

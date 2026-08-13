@@ -169,3 +169,52 @@ export const baldwinProgress = (days?: string[]): { count: number; goal: number;
   const count = Math.min(distinctSharedDays(days), BALDWIN.shareGoal)
   return { count, goal: BALDWIN.shareGoal, unlocked: distinctSharedDays(days) >= BALDWIN.shareGoal }
 }
+
+// ── Full-look skins ───────────────────────────────────────────────────────────
+// Earned skins (Baldwin) gate on an achievement; paid skins on an entitlement
+// (ownedSkins), sold as themed packs. Render lives in Character; a skin overrides
+// the base character + armor + items.
+export interface SkinDef {
+  id: string
+  name: string
+  source: 'earned' | 'paid'
+  blurb: string
+  pack?: string // paid: pack sku
+  packName?: string // paid: display pack name
+  price?: string // paid: display price (no real IAP yet)
+}
+
+export const FULL_SKINS: SkinDef[] = [
+  {
+    id: 'baldwin',
+    name: 'King Baldwin',
+    source: 'earned',
+    blurb: 'The masked Leper King — earned by sharing on 10 different days.',
+  },
+  {
+    id: 'moses',
+    name: 'Moses',
+    source: 'paid',
+    pack: 'exodus',
+    packName: 'Exodus Pack',
+    price: '$4.99',
+    blurb: 'The Lawgiver — staff in hand, the tablets at his side.',
+  },
+]
+
+export const skinById = (id?: string | null): SkinDef | undefined => FULL_SKINS.find((s) => s.id === id)
+
+// The effective equipped skin id, honoring the legacy `regalia` field.
+export function equippedSkinId(spec?: AvatarSpec | null): string | null {
+  if (!spec) return null
+  return spec.skinId ?? (spec.regalia === 'baldwin' ? 'baldwin' : null)
+}
+
+// Owned/equippable? Earned skins gate on their achievement; paid skins on the
+// entitlement set.
+export function skinOwned(skin: SkinDef, ctx: { sharedDays?: string[]; ownedSkins?: string[] }): boolean {
+  if (skin.source === 'earned') {
+    return skin.id === 'baldwin' ? baldwinProgress(ctx.sharedDays).unlocked : false
+  }
+  return (ctx.ownedSkins ?? []).includes(skin.id)
+}

@@ -9,13 +9,16 @@ import {
   SKINS,
   ROBES,
   DEFAULT_AVATAR,
-  BALDWIN,
   baldwinProgress,
   accessOwned,
   accessLabel,
   ITEMS,
+  FULL_SKINS,
+  skinOwned,
+  equippedSkinId,
   type ArmorPieceDef,
   type ItemDef,
+  type SkinDef,
   type Swatch,
 } from '@/data/avatar'
 
@@ -97,14 +100,21 @@ export function CustomizeSection() {
   }
 
   const baldwin = baldwinProgress(profile.sharedDays)
-  const toggleRegalia = () => {
-    if (!baldwin.unlocked) {
-      setErr(`${BALDWIN.name}: shared ${baldwin.count}/${baldwin.goal} days`)
+  const grantSkin = useAuth((s) => s.grantSkin)
+  const ownedSkins = profile.ownedSkins ?? []
+  const equippedSkin = equippedSkinId(spec)
+  const onSkinTap = (skin: SkinDef) => {
+    const owned = skinOwned(skin, { sharedDays: profile.sharedDays, ownedSkins })
+    if (!owned && skin.source === 'earned') {
+      setErr(`${skin.name}: shared ${baldwin.count}/${baldwin.goal} days`)
       return
     }
     setErr(null)
     juice.select()
-    setAvatarCharacter({ ...spec, regalia: spec.regalia === 'baldwin' ? null : 'baldwin' })
+    // Paid skin not owned yet → free "preview" unlock (no real IAP yet).
+    if (!owned && skin.source === 'paid') grantSkin(skin.id)
+    const willEquip = equippedSkin !== skin.id
+    setAvatarCharacter({ ...spec, skinId: willEquip ? skin.id : null, regalia: null })
     flashSaved()
   }
 
@@ -218,49 +228,56 @@ export function CustomizeSection() {
         </p>
       </div>
 
-      {/* ── Royal Regalia (achievement sets) ──────────────────────────── */}
+      {/* ── Full-look skins ───────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
-        <h3 style={{ fontSize: 16 }} className="dim">Royal Regalia</h3>
-        <span className="faint" style={{ fontSize: 12 }}>Earned by showing up</span>
+        <h3 style={{ fontSize: 16 }} className="dim">Skins</h3>
+        <span className="faint" style={{ fontSize: 12 }}>full looks</span>
       </div>
-      <button
-        onClick={toggleRegalia}
-        className="card"
-        style={{
-          width: '100%',
-          textAlign: 'left',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 14,
-          marginBottom: 14,
-          border: spec.regalia === 'baldwin' ? '1px solid var(--gold)' : '1px solid var(--stroke)',
-          opacity: baldwin.unlocked ? 1 : 0.9,
-          cursor: 'pointer',
-        }}
-      >
-        <div style={{ position: 'relative' }}>
-          <Avatar
-            emoji={profile.avatarEmoji}
-            character={{ ...spec, regalia: 'baldwin' }}
-            size={60}
-            ring={false}
-          />
-          {!baldwin.unlocked && (
-            <span style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: 22, filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.6))' }}>🔒</span>
-          )}
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          {FULL_SKINS.map((skin) => {
+            const owned = skinOwned(skin, { sharedDays: profile.sharedDays, ownedSkins })
+            const equipped = equippedSkin === skin.id
+            const preview = { ...spec, skinId: skin.id, regalia: null }
+            const status =
+              owned
+                ? equipped
+                  ? '✓ Equipped'
+                  : 'Tap to wear'
+                : skin.source === 'earned'
+                  ? `Shared ${baldwin.count}/${baldwin.goal} days`
+                  : `✦ ${skin.price} · Preview`
+            return (
+              <button
+                key={skin.id}
+                onClick={() => onSkinTap(skin)}
+                style={{
+                  display: 'grid',
+                  justifyItems: 'center',
+                  gap: 6,
+                  padding: '10px 8px',
+                  borderRadius: 14,
+                  background: equipped ? 'var(--grape)' : 'var(--card-solid)',
+                  border: equipped ? '1px solid var(--gold)' : '1px solid var(--stroke)',
+                  cursor: 'pointer',
+                }}
+              >
+                <div style={{ position: 'relative' }}>
+                  <Avatar emoji={profile.avatarEmoji} character={preview} size={60} ring={false} />
+                  {!owned && (
+                    <span style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: 20, filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.6))' }}>🔒</span>
+                  )}
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 800 }}>{skin.name}</span>
+                <span style={{ ...pillStyle(skin.source === 'paid' ? 'studio' : 'earned') }}>{status}</span>
+              </button>
+            )
+          })}
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <b style={{ fontFamily: 'var(--font-display)', fontSize: 15 }}>{BALDWIN.name}</b>
-          <div className="faint" style={{ fontSize: 12, marginTop: 2 }}>{BALDWIN.blurb}</div>
-          {/* progress toward the share goal */}
-          <div style={{ marginTop: 8, height: 7, borderRadius: 999, background: 'rgba(0,0,0,0.3)', overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${(baldwin.count / baldwin.goal) * 100}%`, borderRadius: 999, background: 'linear-gradient(90deg, var(--grape), var(--gold))', transition: 'width 0.25s' }} />
-          </div>
-          <div className="faint" style={{ fontSize: 11, marginTop: 4 }}>
-            {baldwin.unlocked ? (spec.regalia === 'baldwin' ? '✓ Equipped — tap to remove' : 'Unlocked — tap to wear') : `Shared ${baldwin.count}/${baldwin.goal} different days`}
-          </div>
-        </div>
-      </button>
+        <p className="faint" style={{ fontSize: 10, marginTop: 10, lineHeight: 1.4 }}>
+          Paid skins are <b>preview-unlocked</b> for now — real purchases arrive later. Earned skins (like Baldwin) are never for sale.
+        </p>
+      </div>
 
       {/* ── Collected items (from the Daily Chest) ────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>

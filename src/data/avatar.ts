@@ -187,7 +187,14 @@ export interface SkinDef {
   price?: string // paid: display "from" price (pay-what-you-want; no real IAP yet)
   patron?: boolean // paid: high-tier supporter reward
   exclusive?: boolean // paid: unlocked by a promo code (redeem), not for sale
+  limitedUntil?: string // limited edition: ISO date after which it vanishes for good
 }
+
+// Limited-edition window — premium skins disappear from the shop forever after
+// this moment (~60 days from the launch drop). Owners keep what they unlocked.
+export const LIMITED_UNTIL = '2026-10-12T04:00:00Z'
+export const skinExpired = (skin: SkinDef, now: number = Date.now()): boolean =>
+  skin.limitedUntil != null && now >= new Date(skin.limitedUntil).getTime()
 
 export const FULL_SKINS: SkinDef[] = [
   {
@@ -218,6 +225,7 @@ export const FULL_SKINS: SkinDef[] = [
     pack: 'exodus',
     packName: 'Exodus Pack',
     price: 'From $2.99',
+    limitedUntil: LIMITED_UNTIL,
     blurb: 'The Lawgiver — staff in hand, the tablets at his side.',
   },
   {
@@ -227,6 +235,7 @@ export const FULL_SKINS: SkinDef[] = [
     pack: 'palace',
     packName: 'Palace Pack',
     price: 'From $2.99',
+    limitedUntil: LIMITED_UNTIL,
     blurb: 'The queen — “for such a time as this.”',
   },
   {
@@ -236,6 +245,7 @@ export const FULL_SKINS: SkinDef[] = [
     pack: 'prophets',
     packName: 'Prophets Pack',
     price: 'From $2.99',
+    limitedUntil: LIMITED_UNTIL,
     blurb: 'The prophet of fire — mantle, staff, and a raven.',
   },
   {
@@ -246,6 +256,7 @@ export const FULL_SKINS: SkinDef[] = [
     packName: 'Founding Patron',
     price: 'From $100',
     patron: true,
+    limitedUntil: LIMITED_UNTIL,
     blurb: 'A whale of a thank-you — the founding-supporter skin.',
   },
   {
@@ -254,6 +265,7 @@ export const FULL_SKINS: SkinDef[] = [
     source: 'paid',
     exclusive: true,
     packName: 'Live Exclusive',
+    limitedUntil: LIMITED_UNTIL,
     blurb: 'Shades on. The day-one look — redeem the code from the live drop.',
   },
 ]

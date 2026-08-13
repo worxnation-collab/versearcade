@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Avatar } from '@/components/Avatar'
 import { useAuth } from '@/store/auth'
 import { useJuice } from '@/juice/useJuice'
@@ -25,6 +25,16 @@ export function CustomizeSection() {
   const setCosmetics = useAuth((s) => s.setCosmetics)
   const juice = useJuice()
   const [err, setErr] = useState<string | null>(null)
+  const [savedFlash, setSavedFlash] = useState(false)
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  // Brief "Saved ✓" confirmation — the builder auto-saves on every change, so
+  // this makes the (otherwise invisible) save visible.
+  const flashSaved = () => {
+    setSavedFlash(true)
+    if (savedTimer.current) clearTimeout(savedTimer.current)
+    savedTimer.current = setTimeout(() => setSavedFlash(false), 1500)
+  }
 
   const setAvatarCharacter = useAuth((s) => s.setAvatarCharacter)
 
@@ -49,12 +59,14 @@ export function CustomizeSection() {
     setErr(null)
     juice.select()
     setAvatarCharacter({ ...spec, armor: { ...spec.armor, [def.slot]: !spec.armor[def.slot] } })
+    flashSaved()
   }
 
   const pickSkin = (s: Swatch) => {
     setErr(null)
     juice.select()
     setAvatarCharacter({ ...spec, skin: s.key })
+    flashSaved()
   }
 
   const pickRobe = (r: Swatch) => {
@@ -65,6 +77,7 @@ export function CustomizeSection() {
     setErr(null)
     juice.select()
     setAvatarCharacter({ ...spec, robe: r.key })
+    flashSaved()
   }
 
   const baldwin = baldwinProgress(profile.sharedDays)
@@ -76,6 +89,7 @@ export function CustomizeSection() {
     setErr(null)
     juice.select()
     setAvatarCharacter({ ...spec, regalia: spec.regalia === 'baldwin' ? null : 'baldwin' })
+    flashSaved()
   }
 
   return (
@@ -83,7 +97,9 @@ export function CustomizeSection() {
       {/* ── Character builder ─────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
         <h3 style={{ fontSize: 16 }} className="dim">Your Character</h3>
-        <span className="faint" style={{ fontSize: 12 }}>Armor of God · {equippedPieces}/6</span>
+        <span style={{ fontSize: 12, fontWeight: savedFlash ? 700 : 400, color: savedFlash ? 'var(--good)' : 'var(--faint, #8b8199)', transition: 'color 0.2s' }} className={savedFlash ? undefined : 'faint'}>
+          {savedFlash ? 'Saved ✓' : `Armor of God · ${equippedPieces}/6`}
+        </span>
       </div>
 
       <div className="card" style={{ marginBottom: 14 }}>
@@ -92,7 +108,7 @@ export function CustomizeSection() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <b style={{ fontFamily: 'var(--font-display)', fontSize: 16 }}>Equip your armor</b>
             <p className="faint" style={{ fontSize: 12, marginTop: 2 }}>
-              Ephesians 6 — a piece at a time. Tap to equip or remove.
+              Ephesians 6 — a piece at a time. Tap to equip or remove; it saves automatically.
             </p>
             <div style={{ marginTop: 8, height: 8, borderRadius: 999, background: 'rgba(0,0,0,0.3)', overflow: 'hidden' }}>
               <div style={{ height: '100%', width: `${(equippedPieces / 6) * 100}%`, borderRadius: 999, background: 'linear-gradient(90deg, var(--gold), var(--tangerine))', transition: 'width 0.25s' }} />

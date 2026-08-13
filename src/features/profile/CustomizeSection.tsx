@@ -36,6 +36,7 @@ export function CustomizeSection() {
   const [err, setErr] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
   const [devNoteOpen, setDevNoteOpen] = useState(false)
+  const [buyTarget, setBuyTarget] = useState<SkinDef | null>(null)
   const [savedFlash, setSavedFlash] = useState(false)
   const savedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
@@ -114,10 +115,16 @@ export function CustomizeSection() {
       setErr(`${skin.name}: shared ${Math.min(sharedCount, goal)}/${goal} days`)
       return
     }
+    // Locked paid skin: the operator account (admin) previews it free; everyone
+    // else gets the purchase prompt instead of a free grant.
+    if (!owned && skin.source === 'paid' && !profile.isAdmin) {
+      juice.select()
+      setBuyTarget(skin)
+      return
+    }
     setErr(null)
     juice.select()
-    // Paid skin not owned yet → free "preview" unlock (no real IAP yet).
-    if (!owned && skin.source === 'paid') grantSkin(skin.id)
+    if (!owned && skin.source === 'paid') grantSkin(skin.id) // admin preview
     const willEquip = equippedSkin !== skin.id
     setAvatarCharacter({ ...spec, skinId: willEquip ? skin.id : null, regalia: null })
     flashSaved()
@@ -251,7 +258,7 @@ export function CustomizeSection() {
                   : 'Tap to wear'
                 : skin.source === 'earned'
                   ? `Shared ${Math.min(sharedCount, skin.shareGoal ?? 0)}/${skin.shareGoal ?? 0} days`
-                  : `✦ ${skin.price} · Preview`
+                  : `🔒 ${skin.price}`
             return (
               <button
                 key={skin.id}
@@ -280,7 +287,7 @@ export function CustomizeSection() {
           })}
         </div>
         <p className="faint" style={{ fontSize: 10, marginTop: 10, lineHeight: 1.4 }}>
-          Paid skins are <b>preview-unlocked</b> for now — real purchases arrive later. Earned skins (like Baldwin) are never for sale.
+          Hero skins are <b>premium</b> — tap one to unlock it. Earned skins (like Baldwin) are never for sale, and Scripture is always free.
         </p>
         {/* Optional support link (a Stripe Payment Link, set via VITE_SUPPORT_URL).
             Web-only: native app-store builds must route digital purchases through
@@ -300,6 +307,37 @@ export function CustomizeSection() {
           </div>
         )}
       </div>
+
+      {/* Purchase prompt for a locked hero skin */}
+      {buyTarget && (
+        <div
+          onClick={() => setBuyTarget(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.62)', display: 'grid', placeItems: 'center', zIndex: 100, padding: 20 }}
+        >
+          <div className="card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 340, width: '100%', textAlign: 'center' }}>
+            <Avatar emoji={profile.avatarEmoji} character={{ ...spec, skinId: buyTarget.id, regalia: null }} size={92} ring={false} />
+            <h3 style={{ fontSize: 20, marginTop: 10 }}>{buyTarget.name}</h3>
+            {buyTarget.packName && <p className="faint" style={{ fontSize: 12 }}>{buyTarget.packName}</p>}
+            <p style={{ fontSize: 14, marginTop: 8, lineHeight: 1.5 }}>{buyTarget.blurb}</p>
+            <p style={{ marginTop: 10, marginBottom: 12, fontFamily: 'var(--font-display)', fontSize: 24 }} className="gradient-text">{buyTarget.price}</p>
+            {SUPPORT_URL && !Capacitor.isNativePlatform() ? (
+              <>
+                <Button variant="gold" full onClick={() => { juice.coin(); window.open(SUPPORT_URL, '_blank', 'noopener,noreferrer'); setBuyTarget(null) }}>
+                  Get this skin
+                </Button>
+                <p className="faint" style={{ fontSize: 10, marginTop: 8, lineHeight: 1.4 }}>
+                  Opens secure checkout. Your skin is added right after — thank you for supporting a solo builder! 🙏
+                </p>
+              </>
+            ) : (
+              <p className="faint" style={{ fontSize: 13, marginTop: 4, lineHeight: 1.5 }}>
+                Purchases are opening soon — check back shortly. 🙏
+              </p>
+            )}
+            <button className="pill" style={{ marginTop: 12 }} onClick={() => setBuyTarget(null)}>Maybe later</button>
+          </div>
+        </div>
+      )}
 
       {/* A genuine note on why anything costs money at all */}
       <button

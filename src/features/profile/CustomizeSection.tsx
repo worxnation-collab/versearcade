@@ -109,10 +109,15 @@ export function CustomizeSection() {
   const ownedSkins = profile.ownedSkins ?? []
   const equippedSkin = equippedSkinId(spec)
   const onSkinTap = (skin: SkinDef) => {
-    const owned = skinOwned(skin, { sharedDays: profile.sharedDays, ownedSkins })
+    const owned = skinOwned(skin, { sharedDays: profile.sharedDays, ownedSkins, referralCount: profile.referralCount })
     if (!owned && skin.source === 'earned') {
-      const goal = skin.shareGoal ?? 0
-      setErr(`${skin.name}: shared ${Math.min(sharedCount, goal)}/${goal} days`)
+      if (skin.referralGoal != null) {
+        const rc = profile.referralCount ?? 0
+        setErr(`${skin.name}: ${Math.min(rc, skin.referralGoal)}/${skin.referralGoal} friends joined with your code`)
+      } else {
+        const goal = skin.shareGoal ?? 0
+        setErr(`${skin.name}: shared ${Math.min(sharedCount, goal)}/${goal} days`)
+      }
       return
     }
     // Locked paid skin: the operator account (admin) previews it free; everyone
@@ -248,7 +253,7 @@ export function CustomizeSection() {
       <div className="card" style={{ marginBottom: 14 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           {FULL_SKINS.map((skin) => {
-            const owned = skinOwned(skin, { sharedDays: profile.sharedDays, ownedSkins })
+            const owned = skinOwned(skin, { sharedDays: profile.sharedDays, ownedSkins, referralCount: profile.referralCount })
             const equipped = equippedSkin === skin.id
             const preview = { ...spec, skinId: skin.id, regalia: null }
             const status =
@@ -257,7 +262,9 @@ export function CustomizeSection() {
                   ? '✓ Equipped'
                   : 'Tap to wear'
                 : skin.source === 'earned'
-                  ? `Shared ${Math.min(sharedCount, skin.shareGoal ?? 0)}/${skin.shareGoal ?? 0} days`
+                  ? skin.referralGoal != null
+                    ? `${Math.min(profile.referralCount ?? 0, skin.referralGoal)}/${skin.referralGoal} friends`
+                    : `Shared ${Math.min(sharedCount, skin.shareGoal ?? 0)}/${skin.shareGoal ?? 0} days`
                   : `🔒 ${skin.price}`
             return (
               <button

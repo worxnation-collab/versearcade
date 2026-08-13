@@ -30,6 +30,14 @@ export default function AuthScreen() {
   const [busy, setBusy] = useState(false)
   const [localErr, setLocalErr] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [refCode, setRefCode] = useState(() => {
+    try { return localStorage.getItem('va.ref') ?? '' } catch { return '' }
+  })
+  const onRefChange = (v: string) => {
+    const clean = v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)
+    setRefCode(clean)
+    try { clean ? localStorage.setItem('va.ref', clean) : localStorage.removeItem('va.ref') } catch { /* ignore */ }
+  }
 
   const submit = async () => {
     setBusy(true)
@@ -92,6 +100,9 @@ export default function AuthScreen() {
             <div style={{ display: 'grid', gap: 10 }}>
               {mode === 'up' && (
                 <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username" autoCapitalize="none" />
+              )}
+              {mode === 'up' && (
+                <input value={refCode} onChange={(e) => onRefChange(e.target.value)} placeholder="referral code (optional)" autoCapitalize="characters" autoCorrect="off" maxLength={6} />
               )}
               <input
                 value={email}

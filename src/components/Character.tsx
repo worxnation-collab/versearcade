@@ -54,6 +54,11 @@ const E_SKIN = '#E0B48C'
 const E_HAIR = '#2A1E22'
 const E_JEWEL = '#8B1E2E'
 
+// Take Up Your Cross — a bare-wood cross borne by the player's own character
+const CROSS_WOOD = '#6B4E2E'
+const CROSS_GRAIN = '#4E3A22'
+const CROSS_HAIR = '#3A2A1E'
+
 // Elijah palette — the prophet of fire
 const L_ROBE = '#9A8B5E'
 const L_ROBE_SHADE = '#7F724C'
@@ -335,6 +340,35 @@ export function Character({
           <path d="M88.6 59 l4 -1 l-3.4 2.4 z" fill="#C9A227" />
           <circle cx="86.6" cy="59.4" r="0.7" fill="#E7C24A" />
           <path d="M74 65 l-6 3 l5 -0.5 z" fill={L_RAVEN} />
+        </>
+      ) : skinId === 'cross' ? (
+        <>
+          {/* ── Take Up Your Cross (Luke 9:23) — the player bearing a cross ── */}
+          {/* the cross, dragged diagonally over the shoulder to the ground */}
+          <path d="M26 156 L92 46" stroke={CROSS_WOOD} strokeWidth="12" strokeLinecap="round" />
+          <path d="M64 48 L98 68" stroke={CROSS_WOOD} strokeWidth="10" strokeLinecap="round" />
+          <path d="M31 151 L88 51" stroke={CROSS_GRAIN} strokeWidth="1.4" opacity="0.55" />
+          <path d="M67 51 L95 66" stroke={CROSS_GRAIN} strokeWidth="1.2" opacity="0.55" />
+
+          {/* legs — a straining stride under the weight */}
+          <path d="M56 116 L45 136 L40 153" stroke={LEG} strokeWidth="9" fill="none" strokeLinecap="round" />
+          <path d="M61 116 L68 138 L74 155" stroke={LEG} strokeWidth="9" fill="none" strokeLinecap="round" />
+
+          {/* hunched torso, leaning into the load */}
+          <path d="M52 120 Q50 96 70 84 L82 93 Q77 112 67 123 Z" fill={robe} />
+          <path d="M58 118 Q56 100 71 89" stroke="rgba(0,0,0,0.22)" strokeWidth="1.2" fill="none" />
+
+          {/* bracing arm, down and forward */}
+          <path d="M69 94 L62 112" stroke={robe} strokeWidth="7" strokeLinecap="round" />
+          <circle cx="61" cy="113" r="3.4" fill={skin} />
+
+          {/* bowed head */}
+          <circle cx="80" cy="80" r="10" fill={skin} />
+          <path d="M71 79 a10 10 0 0 1 18 -2 l-2.2 1.2 a8 8 0 0 0-13.6 1.8 z" fill={CROSS_HAIR} />
+
+          {/* raised arm gripping the beam (over the wood) */}
+          <path d="M72 88 L78 66" stroke={robe} strokeWidth="8" strokeLinecap="round" />
+          <ellipse cx="79" cy="64" rx="4" ry="4.6" fill={skin} />
         </>
       ) : (
         <>

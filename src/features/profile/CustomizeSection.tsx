@@ -192,7 +192,7 @@ export function CustomizeSection() {
             style={{ overflow: 'hidden' }}
           >
             {/* ── Character builder ─────────────────────────────────────────── */}
-            <Section title="Your Character" defaultOpen right={savedFlash ? <span style={{ color: 'var(--good)', fontWeight: 700 }}>Saved ✓</span> : `Armor of God · ${equippedPieces}/6`}>
+            <Section title="Your Character" right={savedFlash ? <span style={{ color: 'var(--good)', fontWeight: 700 }}>Saved ✓</span> : `Armor of God · ${equippedPieces}/6`}>
       <div className="card" style={{ marginBottom: 14 }}>
         <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 14 }}>
           <Avatar emoji={profile.avatarEmoji} character={spec} size={76} border={equippedBorder} badge={equippedBadge} />

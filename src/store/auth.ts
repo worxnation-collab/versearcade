@@ -33,6 +33,7 @@ interface DbProfileRow {
   // the emoji until a profiles.avatar_character migration lands.
   avatar_character?: AvatarSpec | null
   shared_days?: string[] | null
+  owned_items?: string[] | null
   xp_boosts: number | null
 }
 
@@ -57,6 +58,7 @@ function mapRow(r: DbProfileRow): Profile {
     avatarBadge: r.avatar_badge ?? null,
     avatarCharacter: r.avatar_character ?? null,
     sharedDays: r.shared_days ?? [],
+    ownedItems: r.owned_items ?? [],
     xpBoosts: r.xp_boosts ?? 0,
   }
 }
@@ -95,6 +97,7 @@ interface AuthState {
   setCosmetics: (patch: { border?: string; badge?: string | null }) => Promise<{ ok: boolean; error?: string }>
   setAvatarCharacter: (spec: AvatarSpec) => void
   recordShare: (dropDate: string) => void
+  grantItem: (itemId: string) => void
   deleteAccount: () => Promise<void>
   signOut: () => Promise<void>
 }
@@ -546,6 +549,28 @@ export const useAuth = create<AuthState>((set, get) => ({
     void supabase
       .from('profiles')
       .update({ shared_days: next.sharedDays })
+      .eq('id', cur.id)
+      .then(({ error }) => {
+        if (error) set({ error: error.message })
+      })
+  },
+
+  // Grant a collected wearable item (from a Daily Chest drop). Distinct ids only.
+  // Persists on-device in LOCAL mode, to profiles.owned_items online.
+  grantItem(itemId) {
+    const cur = get().profile
+    if (!cur) return
+    const owned = cur.ownedItems ?? []
+    if (owned.includes(itemId)) return
+    const next: Profile = { ...cur, ownedItems: [...owned, itemId] }
+    set({ profile: next })
+    if (get().mode === 'local' || !supabase) {
+      localdb.saveProfile(next)
+      return
+    }
+    void supabase
+      .from('profiles')
+      .update({ owned_items: next.ownedItems })
       .eq('id', cur.id)
       .then(({ error }) => {
         if (error) set({ error: error.message })

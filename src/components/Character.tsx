@@ -38,6 +38,7 @@ export function Character({
   const skin = skinHex(spec.skin)
   const robe = robeHex(spec.robe)
   const has = (s: ArmorSlot) => !!spec.armor[s]
+  const items = spec.items ?? {}
   const baldwin = spec.regalia === 'baldwin'
 
   return (
@@ -106,6 +107,14 @@ export function Character({
       ) : (
         <>
           {/* ── Default pilgrim + Armor of God ── */}
+          {/* cape / cloak item — drawn behind the body */}
+          {items.cape === 'item_cloak' && (
+            <>
+              <path d="M40 64 Q60 60 80 64 L94 152 L26 152 Z" fill="#6B5030" />
+              <rect x="53" y="63" width="14" height="4" rx="2" fill="#8A6A3E" />
+            </>
+          )}
+
           {/* legs */}
           <rect x="50" y="118" width="9" height="34" rx="4" fill={LEG} />
           <rect x="61" y="118" width="9" height="34" rx="4" fill={LEG} />
@@ -152,6 +161,28 @@ export function Character({
             </>
           )}
 
+          {/* held item — in the right hand */}
+          {items.held === 'item_staff' && (
+            <>
+              <rect x="83" y="52" width="3.6" height="98" rx="1.8" fill="#7A5A34" />
+              <path d="M84.8 52 q7 -3 7 5 q0 6 -6 6" fill="none" stroke="#7A5A34" strokeWidth="3.4" strokeLinecap="round" />
+            </>
+          )}
+          {items.held === 'item_scroll' && (
+            <>
+              <rect x="79" y="98" width="14" height="7" rx="3.5" fill="#EBE0C6" stroke="#B9A67E" />
+              <circle cx="79" cy="101.5" r="3.6" fill="#DED0AE" stroke="#B9A67E" />
+              <circle cx="93" cy="101.5" r="3.6" fill="#DED0AE" stroke="#B9A67E" />
+            </>
+          )}
+          {items.held === 'item_lamp' && (
+            <>
+              <ellipse cx="85" cy="104" rx="7" ry="4" fill="#C99A2E" stroke="#9E7716" />
+              <path d="M91 104 h4" stroke="#9E7716" strokeWidth="2" />
+              <ellipse cx="80" cy="99" rx="1.8" ry="3.4" fill="#FFB33E" />
+            </>
+          )}
+
           {/* neck + head */}
           <rect x="55" y="56" width="10" height="10" rx="3" fill={skin} />
           <circle cx="60" cy="50" r="13" fill={skin} />
@@ -161,6 +192,22 @@ export function Character({
             <>
               <path d="M46 50 a14 14 0 0 1 28 0 l-4 0 a10 10 0 0 0-20 0 z" fill={GOLD} stroke={GOLD_LINE} />
               <rect x="58" y="40" width="4" height="12" fill={GOLD_LINE} opacity="0.5" />
+            </>
+          )}
+
+          {/* hat items — on the crown of the head */}
+          {items.hat === 'item_headwrap' && (
+            <>
+              <path d="M47 47 a13 13 0 0 1 26 0 l0 3 a13 13 0 0 0-26 0 z" fill="#CDB183" stroke="#A98C5C" strokeWidth="0.8" />
+              <path d="M70 46 q7 8 3 22 l-5 -1 q3 -12 -2 -20 z" fill="#CDB183" stroke="#A98C5C" strokeWidth="0.8" />
+            </>
+          )}
+          {items.hat === 'item_olive_wreath' && (
+            <>
+              <path d="M47 47 q13 -11 26 0" fill="none" stroke="#5E7D1E" strokeWidth="3.4" strokeLinecap="round" />
+              <ellipse cx="51" cy="44" rx="2.4" ry="1.4" fill="#7BA02E" transform="rotate(-35 51 44)" />
+              <ellipse cx="60" cy="40.5" rx="2.4" ry="1.4" fill="#7BA02E" />
+              <ellipse cx="69" cy="44" rx="2.4" ry="1.4" fill="#7BA02E" transform="rotate(35 69 44)" />
             </>
           )}
         </>

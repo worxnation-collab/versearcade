@@ -26,6 +26,11 @@ export interface DailyVerse {
   questions: Question[]
   /** "Did you know" facts revealed on wrong answers / at the end. */
   facts: string[]
+  /** Prose describing what happens just before / after this verse — used by the
+   *  chapter reader for quick context and as an offline fallback when the full
+   *  chapter can't be fetched. */
+  contextBefore?: string
+  contextAfter?: string
 }
 
 export interface Profile {

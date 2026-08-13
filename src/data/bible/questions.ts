@@ -224,5 +224,7 @@ export function getVerseForDate(dateStr: string): DailyVerse {
     theme: seed.theme,
     questions,
     facts: seed.facts,
+    contextBefore: seed.before,
+    contextAfter: seed.after,
   }
 }

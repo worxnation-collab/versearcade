@@ -41,6 +41,27 @@ export const TRANSLATIONS: Record<string, TranslationDef> = {
 export const DEFAULT_TRANSLATION =
   import.meta.env.VITE_DEFAULT_TRANSLATION || 'BSB'
 
+// Reading translations — free, public-domain versions the chapter reader can
+// fetch live (these codes are the ones bible-api.com actually serves). This is a
+// *reading* preference: the daily quiz text stays the bundled BSB, but a player
+// can read the full chapter in the version they love. Licensed versions (NIV,
+// ESV, NLT…) would be added here once a publisher agreement + source are in place.
+export interface ReadingTranslation {
+  code: string // bible-api translation code (lowercase)
+  name: string
+  short: string
+}
+
+export const READING_TRANSLATIONS: ReadingTranslation[] = [
+  { code: 'web', name: 'World English Bible', short: 'WEB' },
+  { code: 'kjv', name: 'King James Version', short: 'KJV' },
+  { code: 'bbe', name: 'Bible in Basic English', short: 'BBE' },
+]
+
+export const DEFAULT_READING = 'web'
+export const readingByCode = (code?: string | null): ReadingTranslation =>
+  READING_TRANSLATIONS.find((t) => t.code === code) ?? READING_TRANSLATIONS[0]
+
 // Feature flags — flip these to stage rollouts.
 export const FEATURES = {
   groups: true,

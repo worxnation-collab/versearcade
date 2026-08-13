@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import type { DailyVerse } from '@/types'
 import { fetchChapter, type Chapter } from '@/lib/bible'
+import { useSettings } from '@/store/settings'
+import { readingByCode } from '@/lib/config'
 
 // A full-screen chapter reader: the day's verse shown in its surrounding
 // context, with the verse itself highlighted and scrolled into view. Opened from
@@ -13,6 +15,7 @@ import { fetchChapter, type Chapter } from '@/lib/bible'
 // useful, even offline.
 export function ChapterReader({ verse, onClose }: { verse: DailyVerse; onClose: () => void }) {
   const reduceMotion = useReducedMotion()
+  const readingCode = useSettings((s) => s.readingTranslation)
   const [chapter, setChapter] = useState<Chapter | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
   const firstHi = useRef<HTMLDivElement | null>(null)
@@ -24,7 +27,7 @@ export function ChapterReader({ verse, onClose }: { verse: DailyVerse; onClose: 
   useEffect(() => {
     const ctrl = new AbortController()
     setState('loading')
-    fetchChapter(verse.book, verse.chapter, verse.translation, ctrl.signal)
+    fetchChapter(verse.book, verse.chapter, readingCode, ctrl.signal)
       .then((c) => {
         setChapter(c)
         setState('ready')
@@ -34,7 +37,7 @@ export function ChapterReader({ verse, onClose }: { verse: DailyVerse; onClose: 
         setState('error')
       })
     return () => ctrl.abort()
-  }, [verse.book, verse.chapter, verse.translation])
+  }, [verse.book, verse.chapter, readingCode])
 
   // Once the chapter renders, bring the highlighted verse into view.
   useEffect(() => {
@@ -104,7 +107,7 @@ export function ChapterReader({ verse, onClose }: { verse: DailyVerse; onClose: 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, lineHeight: 1.1 }}>{chapterLabel}</div>
           <div className="faint" style={{ fontSize: 12 }}>
-            {chapter?.translationName ?? verse.translation} · {verse.reference} highlighted
+            {chapter?.translationName ?? readingByCode(readingCode).name} · {verse.reference} highlighted
           </div>
         </div>
       </div>

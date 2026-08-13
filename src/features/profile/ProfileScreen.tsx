@@ -9,7 +9,7 @@ import { StreakFlame } from '@/components/StreakFlame'
 import { useAuth } from '@/store/auth'
 import { useSettings } from '@/store/settings'
 import { useJuice } from '@/juice/useJuice'
-import { TRANSLATIONS, DEFAULT_TRANSLATION } from '@/lib/config'
+import { READING_TRANSLATIONS } from '@/lib/config'
 import { useCollection } from '@/store/collection'
 import { CustomizeSection } from './CustomizeSection'
 
@@ -32,7 +32,6 @@ export default function ProfileScreen() {
 
   if (!profile) return null
   const cards = owned.length
-  const translation = TRANSLATIONS[DEFAULT_TRANSLATION]
 
   // Settings write to BOTH the local settings store (drives juice instantly) and
   // the profile (persists to Supabase when online).
@@ -139,15 +138,34 @@ export default function ProfileScreen() {
       )}
       </AnimatePresence>
 
-      {/* Translation (swappable; premium ones behind IAP later) */}
-      <h3 style={{ fontSize: 16, marginBottom: 10 }} className="dim">Translation</h3>
-      <div className="card" style={{ marginBottom: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <b>{translation.name}</b>
-          <div className="faint" style={{ fontSize: 12 }}>{translation.publicDomain ? 'Public domain' : 'Licensed'} · more coming</div>
+      {/* Reading translation — the version used to read the full chapter. */}
+      <h3 style={{ fontSize: 16, marginBottom: 10 }} className="dim">Reading translation</h3>
+      <div className="card" style={{ marginBottom: 6 }}>
+        <div style={{ display: 'grid', gap: 8 }}>
+          {READING_TRANSLATIONS.map((t) => {
+            const on = settings.readingTranslation === t.code
+            return (
+              <button
+                key={t.code}
+                onClick={() => { juice.select?.(); settings.set({ readingTranslation: t.code }) }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%',
+                  padding: '11px 12px', borderRadius: 12,
+                  background: on ? 'var(--grape)' : 'var(--card-solid)',
+                  border: on ? '1px solid var(--gold)' : '1px solid var(--stroke)', cursor: 'pointer',
+                }}
+              >
+                <span className="pill" style={{ fontSize: 11, fontWeight: 800, flexShrink: 0 }}>{t.short}</span>
+                <b style={{ flex: 1, fontSize: 14 }}>{t.name}</b>
+                {on && <span style={{ color: 'var(--gold)', fontWeight: 800 }}>✓</span>}
+              </button>
+            )
+          })}
         </div>
-        <span className="pill">{translation.shortName}</span>
       </div>
+      <p className="faint" style={{ fontSize: 11, marginBottom: 14, lineHeight: 1.4 }}>
+        Used when you read the full chapter. All free &amp; public domain — more versions coming. The daily quiz uses the Berean Standard Bible.
+      </p>
 
       {/* Account */}
       <h3 style={{ fontSize: 16, marginBottom: 10 }} className="dim">Account</h3>

@@ -90,14 +90,17 @@ function InvitePicker({ seed, result }: { seed: number; result: PlayResult }) {
           You scored <span className="gradient-text">{result.score.toLocaleString()}</span>
         </h2>
         <p className="dim" style={{ marginTop: 6, fontSize: 14 }}>
-          Challenge a buddy, or share the link anywhere.
+          Challenge a buddy below — or share a link to invite someone new.
         </p>
       </div>
 
-      {/* External share — the growth button: Facebook, texts, group chats. */}
+      {/* External share — for people who aren't on Verse Arcade yet. */}
       <Button variant="secondary" full onClick={shareLink}>
-        📤 Share the battle — Facebook, texts, anywhere
+        📤 Invite someone new — share a link
       </Button>
+      <p className="faint center" style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
+        For friends who aren’t on Verse Arcade yet — anyone who opens it can play your score.
+      </p>
       {shareMsg && <p style={{ color: 'var(--good)', fontSize: 13, marginTop: 8, textAlign: 'center' }}>{shareMsg}</p>}
 
       {!ready ? (

@@ -154,30 +154,44 @@ export default function BattleDetail() {
           </div>
         </>
       ) : iAmChallenger ? (
-        // Waiting for an opponent
-        <>
-          <div className="card" style={{ textAlign: 'center' }}>
-            <div className="floaty" style={{ fontSize: 44 }}>📨</div>
-            <h2 style={{ fontSize: 20, marginTop: 6 }}>
-              {battle.invited ? <>Waiting on <span className="gradient-text">@{battle.invited}</span></> : 'Challenge sent!'}
-            </h2>
-            <p className="dim" style={{ marginTop: 6 }}>
-              Your score to beat: <b style={{ color: 'var(--gold)' }}>{battle.challenger.score?.toLocaleString()}</b>.{' '}
-              {battle.broadcast
-                ? 'Anyone who opens the link can take you on — results land in your battles as they play.'
-                : battle.invited
-                  ? `They'll get it as a challenge on their Battle tab. Send them the link too if you like.`
-                  : 'Share the link — the first person to open it can take you on.'}
-            </p>
-            <div style={{ marginTop: 14 }}>
-              <Button variant="gold" full onClick={doShare}>📤 Share the battle link</Button>
+        !battle.broadcast && battle.invited ? (
+          // Private 1v1 — the invited buddy is notified on their tab; no link to
+          // share (it would only work for them anyway).
+          <>
+            <div className="card" style={{ textAlign: 'center' }}>
+              <div className="floaty" style={{ fontSize: 44 }}>📨</div>
+              <h2 style={{ fontSize: 20, marginTop: 6 }}>
+                Challenge sent to <span className="gradient-text">@{battle.invited}</span>
+              </h2>
+              <p className="dim" style={{ marginTop: 6 }}>
+                Your score to beat: <b style={{ color: 'var(--gold)' }}>{battle.challenger.score?.toLocaleString()}</b>.{' '}
+                It’s waiting on their Battle tab — you’ll see the result here the moment they play.
+              </p>
+              <div style={{ marginTop: 14 }}>
+                <Button variant="gold" full onClick={() => navigate('/battle')}>Back to my battles</Button>
+              </div>
             </div>
-            {shareMsg && <p style={{ color: 'var(--good)', fontSize: 13, marginTop: 8 }}>{shareMsg}</p>}
-          </div>
-          <p className="faint center" style={{ fontSize: 12, marginTop: 12 }}>
-            No account needed to open — friends get prompted to join and jump straight in.
-          </p>
-        </>
+          </>
+        ) : (
+          // Open challenge — anyone with the link can take you on.
+          <>
+            <div className="card" style={{ textAlign: 'center' }}>
+              <div className="floaty" style={{ fontSize: 44 }}>📨</div>
+              <h2 style={{ fontSize: 20, marginTop: 6 }}>Open challenge</h2>
+              <p className="dim" style={{ marginTop: 6 }}>
+                Your score to beat: <b style={{ color: 'var(--gold)' }}>{battle.challenger.score?.toLocaleString()}</b>.{' '}
+                Anyone who opens your link can take you on — each result lands in your battles as they play.
+              </p>
+              <div style={{ marginTop: 14 }}>
+                <Button variant="gold" full onClick={doShare}>📤 Share the battle link</Button>
+              </div>
+              {shareMsg && <p style={{ color: 'var(--good)', fontSize: 13, marginTop: 8 }}>{shareMsg}</p>}
+            </div>
+            <p className="faint center" style={{ fontSize: 12, marginTop: 12 }}>
+              No account needed to open — friends get prompted to join and jump straight in.
+            </p>
+          </>
+        )
       ) : battle.invited && !battle.is_invited ? (
         // Targeted at someone else
         <div className="card" style={{ textAlign: 'center', marginTop: 16 }}>

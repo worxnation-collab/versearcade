@@ -172,8 +172,19 @@ export default function BattleDetail() {
             No account needed to open — friends get prompted to join and jump straight in.
           </p>
         </>
+      ) : battle.invited && !battle.is_invited ? (
+        // Targeted at someone else
+        <div className="card" style={{ textAlign: 'center', marginTop: 16 }}>
+          <div style={{ fontSize: 40 }}>🔒</div>
+          <p style={{ fontSize: 15, marginTop: 8 }}>
+            This challenge is for <b>@{battle.invited}</b>. Start your own to take on <b>@{battle.challenger.username}</b>!
+          </p>
+          <div style={{ marginTop: 16 }}>
+            <Button variant="gold" full onClick={() => navigate('/battle/new')}>Start a battle ⚔️</Button>
+          </div>
+        </div>
       ) : (
-        // Invited opponent, not yet played
+        // I'm the invited opponent (or an open invite), not yet played
         <>
           <ChallengeHeader challenger={battle.challenger} />
           <div className="card" style={{ textAlign: 'center', marginTop: 16 }}>

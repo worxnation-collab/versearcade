@@ -9,7 +9,7 @@ import {
   SKINS,
   ROBES,
   DEFAULT_AVATAR,
-  baldwinProgress,
+  distinctSharedDays,
   accessOwned,
   accessLabel,
   ITEMS,
@@ -100,14 +100,15 @@ export function CustomizeSection() {
     flashSaved()
   }
 
-  const baldwin = baldwinProgress(profile.sharedDays)
+  const sharedCount = distinctSharedDays(profile.sharedDays)
   const grantSkin = useAuth((s) => s.grantSkin)
   const ownedSkins = profile.ownedSkins ?? []
   const equippedSkin = equippedSkinId(spec)
   const onSkinTap = (skin: SkinDef) => {
     const owned = skinOwned(skin, { sharedDays: profile.sharedDays, ownedSkins })
     if (!owned && skin.source === 'earned') {
-      setErr(`${skin.name}: shared ${baldwin.count}/${baldwin.goal} days`)
+      const goal = skin.shareGoal ?? 0
+      setErr(`${skin.name}: shared ${Math.min(sharedCount, goal)}/${goal} days`)
       return
     }
     setErr(null)
@@ -246,7 +247,7 @@ export function CustomizeSection() {
                   ? '✓ Equipped'
                   : 'Tap to wear'
                 : skin.source === 'earned'
-                  ? `Shared ${baldwin.count}/${baldwin.goal} days`
+                  ? `Shared ${Math.min(sharedCount, skin.shareGoal ?? 0)}/${skin.shareGoal ?? 0} days`
                   : `✦ ${skin.price} · Preview`
             return (
               <button

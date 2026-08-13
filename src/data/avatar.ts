@@ -179,6 +179,7 @@ export interface SkinDef {
   name: string
   source: 'earned' | 'paid'
   blurb: string
+  shareGoal?: number // earned: distinct shared days required
   pack?: string // paid: pack sku
   packName?: string // paid: display pack name
   price?: string // paid: display "from" price (pay-what-you-want; no real IAP yet)
@@ -190,7 +191,15 @@ export const FULL_SKINS: SkinDef[] = [
     id: 'baldwin',
     name: 'King Baldwin',
     source: 'earned',
+    shareGoal: 10,
     blurb: 'The masked Leper King — earned by sharing on 10 different days.',
+  },
+  {
+    id: 'david',
+    name: 'David',
+    source: 'earned',
+    shareGoal: 25,
+    blurb: 'The giant-slayer — earned by sharing on 25 different days.',
   },
   {
     id: 'moses',
@@ -200,6 +209,24 @@ export const FULL_SKINS: SkinDef[] = [
     packName: 'Exodus Pack',
     price: 'From $4.99',
     blurb: 'The Lawgiver — staff in hand, the tablets at his side.',
+  },
+  {
+    id: 'esther',
+    name: 'Esther',
+    source: 'paid',
+    pack: 'palace',
+    packName: 'Palace Pack',
+    price: 'From $4.99',
+    blurb: 'The queen — “for such a time as this.”',
+  },
+  {
+    id: 'elijah',
+    name: 'Elijah',
+    source: 'paid',
+    pack: 'prophets',
+    packName: 'Prophets Pack',
+    price: 'From $4.99',
+    blurb: 'The prophet of fire — mantle, staff, and a raven.',
   },
   {
     id: 'whale',
@@ -225,7 +252,7 @@ export function equippedSkinId(spec?: AvatarSpec | null): string | null {
 // entitlement set.
 export function skinOwned(skin: SkinDef, ctx: { sharedDays?: string[]; ownedSkins?: string[] }): boolean {
   if (skin.source === 'earned') {
-    return skin.id === 'baldwin' ? baldwinProgress(ctx.sharedDays).unlocked : false
+    return distinctSharedDays(ctx.sharedDays) >= (skin.shareGoal ?? Number.MAX_SAFE_INTEGER)
   }
   return (ctx.ownedSkins ?? []).includes(skin.id)
 }

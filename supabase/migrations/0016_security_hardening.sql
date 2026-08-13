@@ -39,6 +39,9 @@ revoke execute on function public.claim_guest_progress(
   text,text,text,integer,integer,integer,integer,integer,date,integer,text[],jsonb,uuid
 ) from public, anon;
 revoke execute on function public.delete_my_account() from public, anon;
+revoke execute on function public.ensure_daily_verse(
+  date,text,text,text,integer,integer,integer,text,text,jsonb,jsonb
+) from public, anon;
 
 -- Re-grant the authenticated-only surface (idempotent with existing grants).
 grant execute on function public.submit_play(date,integer,integer,integer,integer,integer,boolean) to authenticated;

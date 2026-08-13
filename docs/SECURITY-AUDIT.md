@@ -100,11 +100,12 @@ all cross-user profile data (leaderboard, feed) already flows through
 `SECURITY DEFINER` functions that don't rely on this policy. So this policy can
 almost certainly be tightened to **owner-only** without breaking the app.
 
-**Recommended:** replace the broad policy with a self-only `SELECT` policy, and —
-if any cross-user public fields are ever needed directly — expose just
-`(username, avatar_emoji, level, avatar_border, avatar_badge)` through a view.
-_Not included in `0016`_ because production has objects not in the repo (see #7)
-and I'd want to confirm nothing else reads `profiles` before changing it.
+**✅ Fixed & live (`0017`):** replaced the broad policy with an owner-only
+`SELECT` policy. Verified against production — a signed-in user now sees exactly
+1 profile (their own) instead of all rows, and the leaderboard/pulse (served by
+`SECURITY DEFINER` functions) still work. If cross-user public fields are ever
+needed directly, expose just `(username, avatar_emoji, level, avatar_border,
+avatar_badge)` through a view rather than widening this policy again.
 
 ### 5. Enable leaked-password protection (and consider MFA)
 Supabase advisor flags that **leaked-password protection is disabled**. For an
@@ -130,9 +131,11 @@ The live database contains objects with **no committed migration**: the
 `verse_reviews` table, the `is_group_member()` function, and a `group_members`
 `SELECT` policy named differently than the repo's. This means (a) a code review of
 the repo alone misses production objects, and (b) replaying the repo migrations
-onto a fresh environment would **not** reproduce prod. Recommend: dump the live
-schema (`supabase db pull`) into a migration so the repo matches production, and
-apply all future changes as committed migrations only.
+onto a fresh environment would **not** reproduce prod. **✅ Reconciled (`0018`):**
+captured `is_group_member()`, `verse_reviews` (+ its RLS policies), the
+`chest_relics` read policy, and the current group policies into a committed,
+idempotent migration so the repo now reproduces production. Going forward, apply
+all schema changes as committed migrations only (avoid ad-hoc dashboard edits).
 
 ### 8. No rate limiting on anonymous RPCs
 `record_guest_open`, `get_daily_pulse`, `get_leaderboard`, and `ensure_daily_verse`
@@ -177,12 +180,30 @@ Not security, but the advisor flagged scale issues worth batching in later:
 
 ---
 
-## What's in migration `0016_security_hardening.sql`
-Safe, non-breaking, idempotent. Covers findings **#1, #2, #6, #9** and the interim
-mitigation for **#3**. **It has NOT been applied to production** — it's a
-reviewable migration file. Apply via your normal migration pipeline (or
-`supabase db push`) after review.
+## Deployment status (applied live to production `visuppaucpzzigwtqmdd`)
 
-Still needs a decision / follow-up work: **#3** (server-authoritative scoring),
-**#4** (tighten `profiles` read), **#5** (auth dashboard toggles), **#7**
-(reconcile migration drift), **#8** (rate limiting).
+| Migration | Covers | Status |
+|-----------|--------|--------|
+| `0016_security_hardening.sql`      | #1, #2, #6, #9, interim #3 | ✅ applied live |
+| `0017_profiles_read_lockdown.sql`  | #4                         | ✅ applied live + verified |
+| `0018_reconcile_prod_objects.sql`  | #7                         | ✅ applied live (no-op reconcile) |
+| `0019_scale_indexes.sql`           | perf (unindexed FKs)       | ✅ applied live |
+
+Re-ran the Supabase security advisor afterward: the two `function_search_path_mutable`
+warnings cleared, and "public can execute SECURITY DEFINER function" dropped from
+~20 functions to the 4 that are intentionally public for guests
+(`get_leaderboard`, `get_daily_pulse`, `record_guest_open`, and — auth-guarded —
+`ensure_daily_verse`, which also had its anon EXECUTE revoked).
+
+### Still open — needs a decision or a non-SQL action
+- **#3 — Server-authoritative scoring.** Interim clamps are live; the full fix
+  (recompute score server-side from the answer key) requires changing the
+  client's submission contract *and* a coordinated client+server deploy so the
+  already-installed apps in the field don't break. It can't be hot-swapped on
+  prod safely, so it's deliberately **not** shipped blind — it needs a tested
+  rollout. This is the main remaining item.
+- **#5 — Enable leaked-password protection.** A Dashboard toggle (Authentication
+  → Policies), not something the migration tools can set. One click.
+- **#8 — Rate limiting on anon RPCs** and periodic `presence_events` cleanup.
+- **Performance follow-ups:** wrap `auth.uid()` in `(select …)` across the
+  remaining table policies, and drop the redundant `practice_plays` SELECT policy.

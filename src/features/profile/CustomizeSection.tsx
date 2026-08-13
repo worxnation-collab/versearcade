@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Capacitor } from '@capacitor/core'
 import { Avatar } from '@/components/Avatar'
@@ -18,6 +18,7 @@ import {
   accessLabel,
   ITEMS,
   FULL_SKINS,
+  skinExpired,
   skinOwned,
   equippedSkinId,
   type ArmorPieceDef,
@@ -279,7 +280,7 @@ export function CustomizeSection() {
       </div>
       <div className="card" style={{ marginBottom: 14 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          {FULL_SKINS.map((skin) => {
+          {FULL_SKINS.filter((skin) => !skinExpired(skin)).map((skin) => {
             const owned = skinOwned(skin, { sharedDays: profile.sharedDays, ownedSkins, referralCount: profile.referralCount, admin: profile.isAdmin })
             const equipped = equippedSkin === skin.id
             const preview = { ...spec, skinId: skin.id, regalia: null }
@@ -316,6 +317,7 @@ export function CustomizeSection() {
                 </div>
                 <span style={{ fontSize: 13, fontWeight: 800 }}>{skin.name}</span>
                 <span style={{ ...pillStyle(skin.source === 'paid' ? 'studio' : 'earned') }}>{status}</span>
+                {skin.limitedUntil && <LimitedBadge until={skin.limitedUntil} />}
               </button>
             )
           })}
@@ -561,6 +563,28 @@ function pillStyle(tone: 'free' | 'earned' | 'studio'): React.CSSProperties {
     color,
     background: 'color-mix(in srgb, currentColor 16%, transparent)',
   }
+}
+
+// A ticking "limited edition" countdown — this look vanishes for good at `until`.
+function LimitedBadge({ until }: { until: string }) {
+  const end = new Date(until).getTime()
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [])
+  const ms = end - now
+  if (ms <= 0) return null
+  const d = Math.floor(ms / 86400000)
+  const h = Math.floor((ms % 86400000) / 3600000)
+  const m = Math.floor((ms % 3600000) / 60000)
+  const s = Math.floor((ms % 60000) / 1000)
+  const label = d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m ${s}s`
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 9.5, fontWeight: 800, color: 'var(--coral)', marginTop: 1 }}>
+      ⏳ {label} left
+    </span>
+  )
 }
 
 // A tappable color swatch for skin tone / robe, with lock + studio affordances.

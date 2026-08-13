@@ -92,7 +92,7 @@ function PinGate({ onOk }: { onOk: () => void }) {
 function Dashboard() {
   const navigate = useNavigate()
   const [ov, setOv] = useState<Overview | null>(null)
-  const [tab, setTab] = useState<'stats' | 'users' | 'church' | 'codes'>('stats')
+  const [tab, setTab] = useState<'stats' | 'users' | 'sales' | 'church' | 'codes'>('stats')
 
   useEffect(() => {
     supabase?.rpc('admin_overview').then(({ data }) => setOv(data as Overview))
@@ -107,7 +107,7 @@ function Dashboard() {
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        {(['stats', 'users', 'church', 'codes'] as const).map((t) => (
+        {(['stats', 'users', 'sales', 'church', 'codes'] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)} className="pill"
             style={{ background: tab === t ? 'var(--grape)' : 'var(--card)', fontWeight: 800, textTransform: 'capitalize' }}>
             {t === 'church' ? 'Churches' : t}
@@ -117,6 +117,7 @@ function Dashboard() {
 
       {tab === 'stats' && <Stats ov={ov} />}
       {tab === 'users' && <Users />}
+      {tab === 'sales' && <Sales />}
       {tab === 'church' && <Churches />}
       {tab === 'codes' && <Codes />}
       <div style={{ height: 40 }} />
@@ -306,6 +307,37 @@ function Churches() {
           <div style={{ fontSize: 13, marginTop: 2 }}>{i.contact_name} · <a href={`mailto:${i.email}`} style={{ color: 'var(--sky)' }}>{i.email}</a></div>
           {i.size && <div className="faint" style={{ fontSize: 12 }}>Size: {i.size}</div>}
           {i.message && <p style={{ fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>{i.message}</p>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+interface SaleRow {
+  skin: string; username: string | null; email: string | null
+  granted: boolean; reason: string | null; created_at: string
+}
+function Sales() {
+  const [rows, setRows] = useState<SaleRow[] | null>(null)
+  useEffect(() => {
+    supabase?.rpc('admin_recent_purchases', { p_limit: 50 }).then(({ data }) => setRows((data as SaleRow[]) ?? []))
+  }, [])
+  if (rows === null) return <p className="faint center" style={{ padding: 30 }}>Loading…</p>
+  if (rows.length === 0) return <p className="faint center" style={{ padding: 30 }}>No purchases yet.</p>
+  return (
+    <div style={{ display: 'grid', gap: 8 }}>
+      {rows.map((r, i) => (
+        <div key={i} className="card" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <b style={{ fontWeight: 800, textTransform: 'capitalize' }}>{r.skin}</b>
+            <div className="faint" style={{ fontSize: 12 }}>
+              {r.username ? `@${r.username}` : r.email || '—'} · {new Date(r.created_at).toLocaleString()}
+            </div>
+          </div>
+          <span className="pill" style={{ fontSize: 11, fontWeight: 800,
+            background: r.granted ? 'var(--good)' : 'var(--coral)', color: '#101018' }}>
+            {r.granted ? '✓ granted' : r.reason ?? 'pending'}
+          </span>
         </div>
       ))}
     </div>

@@ -36,6 +36,7 @@ interface DbProfileRow {
   owned_items?: string[] | null
   owned_skins?: string[] | null
   xp_boosts: number | null
+  founder?: boolean | null
 }
 
 function mapRow(r: DbProfileRow): Profile {
@@ -62,6 +63,7 @@ function mapRow(r: DbProfileRow): Profile {
     ownedItems: r.owned_items ?? [],
     ownedSkins: r.owned_skins ?? [],
     xpBoosts: r.xp_boosts ?? 0,
+    founder: r.founder ?? false,
   }
 }
 

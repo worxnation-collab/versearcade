@@ -86,6 +86,9 @@ export interface Profile {
   ownedSkins?: string[]
   /** Unused XP Boost consumables (rarely dropped by the Daily Chest). */
   xpBoosts: number
+  /** Founder grant — unlocks the streak cosmetics (borders/badges) regardless
+   *  of streak. Server-authoritative; the client only mirrors it for display. */
+  founder?: boolean
 }
 
 export interface PlayResult {

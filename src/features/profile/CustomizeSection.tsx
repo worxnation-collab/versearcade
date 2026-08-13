@@ -361,7 +361,7 @@ export function CustomizeSection() {
       <div className="card" style={{ marginBottom: 14 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
           {BORDERS.map((b) => {
-            const unlocked = isUnlocked(b.requiredStreak, longest)
+            const unlocked = isUnlocked(b.requiredStreak, longest, profile.founder)
             const equipped = equippedBorder === b.key
             return (
               <CosmeticTile
@@ -391,7 +391,7 @@ export function CustomizeSection() {
       <div className="card" style={{ marginBottom: 14 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
           {BADGES.map((b) => {
-            const unlocked = isUnlocked(b.requiredStreak, longest)
+            const unlocked = isUnlocked(b.requiredStreak, longest, profile.founder)
             const equipped = equippedBadge === b.key
             return (
               <CosmeticTile

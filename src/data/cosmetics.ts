@@ -48,8 +48,9 @@ export const borderByKey = (key?: string | null): BorderDef =>
 export const badgeByKey = (key?: string | null): BadgeDef | null =>
   key && key !== 'none' ? BADGES.find((b) => b.key === key) ?? null : null
 
-export const isUnlocked = (requiredStreak: number, longestStreak: number): boolean =>
-  longestStreak >= requiredStreak
+// A founder grant unlocks every streak cosmetic regardless of streak.
+export const isUnlocked = (requiredStreak: number, longestStreak: number, founder?: boolean): boolean =>
+  !!founder || longestStreak >= requiredStreak
 
 // Render config for a border. `type: 'shadow'` draws stacked rings via
 // box-shadow; `type: 'gradient'` needs a conic-gradient wrapper (Avatar handles

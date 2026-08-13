@@ -17,6 +17,7 @@ export interface Battle {
   winner: 'challenger' | 'opponent' | 'tie' | null
   created_at: string
   broadcast: boolean
+  is_welcome: boolean
   is_challenger: boolean
   is_opponent: boolean
   is_invited: boolean

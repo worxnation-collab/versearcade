@@ -192,15 +192,23 @@ export default function BattleDetail() {
       ) : (
         // I'm the invited opponent (or an open invite), not yet played
         <>
-          <ChallengeHeader challenger={battle.challenger} />
-          <div className="card" style={{ textAlign: 'center', marginTop: 16 }}>
+          <ChallengeHeader challenger={battle.challenger} welcome={battle.is_welcome} />
+          <div className="card" style={{ textAlign: 'center', marginTop: 16, ...(battle.is_welcome ? { borderColor: 'var(--gold)', background: 'rgba(255,210,63,0.08)' } : {}) }}>
+            {battle.is_welcome && (
+              <p style={{ fontSize: 15, lineHeight: 1.5, marginBottom: 8 }}>
+                Welcome to Verse Arcade! 🎉 <b>@{battle.challenger.username}</b> kicks off every new player with a
+                friendly battle.
+              </p>
+            )}
             <p style={{ fontSize: 15, lineHeight: 1.5 }}>
               <b>@{battle.challenger.username}</b> scored{' '}
               <b style={{ color: 'var(--gold)' }}>{battle.challenger.score?.toLocaleString()}</b>. Play the same verse quiz and
               beat it!
             </p>
             <div style={{ marginTop: 16 }}>
-              <Button variant="gold" full onClick={() => navigate(`/battle/${id}/play`)}>Accept &amp; play ⚔️</Button>
+              <Button variant="gold" full onClick={() => navigate(`/battle/${id}/play`)}>
+                {battle.is_welcome ? 'Play my first battle ⚔️' : 'Accept & play ⚔️'}
+              </Button>
             </div>
           </div>
         </>
@@ -209,11 +217,11 @@ export default function BattleDetail() {
   )
 }
 
-function ChallengeHeader({ challenger }: { challenger: BattleSide }) {
+function ChallengeHeader({ challenger, welcome }: { challenger: BattleSide; welcome?: boolean }) {
   return (
     <div style={{ textAlign: 'center', paddingTop: 20 }}>
-      <div style={{ fontSize: 40 }}>⚔️</div>
-      <h1 style={{ fontSize: 26, marginTop: 4 }}>You’ve been challenged!</h1>
+      <div style={{ fontSize: 40 }}>{welcome ? '👋' : '⚔️'}</div>
+      <h1 style={{ fontSize: 26, marginTop: 4 }}>{welcome ? 'Welcome! You’ve been challenged' : 'You’ve been challenged!'}</h1>
       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
         <Avatar emoji={challenger.avatar_emoji} character={challenger.avatar_character} size={44} />
         <b style={{ fontFamily: 'var(--font-display)', fontSize: 18 }}>@{challenger.username}</b>

@@ -61,13 +61,17 @@ export default function BattleHub() {
                     whileTap={{ scale: 0.98 }}
                     onClick={() => navigate(`/battle/${b.id}`)}
                     className="card"
-                    style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%', borderColor: 'var(--gold)', background: 'rgba(255,210,63,0.08)' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%', borderColor: 'var(--gold)', background: b.is_welcome ? 'rgba(255,210,63,0.14)' : 'rgba(255,210,63,0.08)' }}
                   >
                     <Avatar emoji={b.challenger.avatar_emoji} character={b.challenger.avatar_character} size={40} ring={false} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <b style={{ fontWeight: 800 }}>@{b.challenger.username}</b>
+                      <b style={{ fontWeight: 800 }}>
+                        {b.is_welcome ? '👋 Welcome!' : `@${b.challenger.username}`}
+                      </b>
                       <div style={{ fontSize: 12, color: 'var(--gold)', fontWeight: 700 }}>
-                        Challenged you · beat {b.challenger.score?.toLocaleString()} pts
+                        {b.is_welcome
+                          ? `@${b.challenger.username} challenged you to your first battle`
+                          : `Challenged you · beat ${b.challenger.score?.toLocaleString()} pts`}
                       </div>
                     </div>
                     <span className="pill" style={{ background: 'var(--gold)', color: '#241f0a', fontWeight: 800, fontSize: 12 }}>Play</span>

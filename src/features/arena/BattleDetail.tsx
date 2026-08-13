@@ -160,8 +160,10 @@ export default function BattleDetail() {
             <div className="floaty" style={{ fontSize: 44 }}>📨</div>
             <h2 style={{ fontSize: 20, marginTop: 6 }}>Challenge sent!</h2>
             <p className="dim" style={{ marginTop: 6 }}>
-              Your score to beat: <b style={{ color: 'var(--gold)' }}>{battle.challenger.score?.toLocaleString()}</b>. Share the
-              link — the first person to open it can take you on.
+              Your score to beat: <b style={{ color: 'var(--gold)' }}>{battle.challenger.score?.toLocaleString()}</b>.{' '}
+              {battle.broadcast
+                ? 'Anyone who opens the link can take you on — results land in your battles as they play.'
+                : 'Share the link — the first person to open it can take you on.'}
             </p>
             <div style={{ marginTop: 14 }}>
               <Button variant="gold" full onClick={doShare}>📤 Share the battle invite</Button>

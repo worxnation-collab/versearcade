@@ -62,12 +62,19 @@ function InvitePicker({ seed, result }: { seed: number; result: PlayResult }) {
     }
   }
 
+  const [shareId, setShareId] = useState<string | null>(null)
   const shareLink = async () => {
     juice.coin()
-    const id = await createBattle(seed, result.score, result.timeMs)
+    // Reuse one broadcast challenge for repeated shares — anyone who opens it
+    // can take you on (each gets their own battle vs your score).
+    let id = shareId
     if (!id) {
-      setShareMsg('Could not create the invite — try again.')
-      return
+      id = await createBattle(seed, result.score, result.timeMs, undefined, true)
+      if (!id) {
+        setShareMsg('Could not create the invite — try again.')
+        return
+      }
+      setShareId(id)
     }
     const r = await shareResult(`⚔️ I challenge you to a Bible Battle! Same quiz, beat my score:\n${APP_URL}/battle/${id}`)
     setShareMsg(r === 'shared' ? 'Shared!' : r === 'copied' ? 'Link copied!' : 'Could not share')

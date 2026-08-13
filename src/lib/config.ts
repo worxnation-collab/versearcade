@@ -19,8 +19,10 @@ export const TRANSLATIONS: Record<string, TranslationDef> = {
     shortName: 'BSB',
     publicDomain: true,
     premium: false,
-    // bible-api.com serves the public-domain BSB and is free for commercial use.
-    apiTemplate: 'https://bible-api.com/{ref}?translation=bsb',
+    // NOTE: bible-api.com does NOT serve the BSB (its translations are web, kjv,
+    // etc.). The chapter reader (lib/bible.ts) reads unsupported translations in
+    // WEB instead. Our quiz text is the bundled BSB (data/bible/pool.ts).
+    apiTemplate: 'https://bible-api.com/{ref}?translation=web',
   },
   WEB: {
     code: 'WEB',

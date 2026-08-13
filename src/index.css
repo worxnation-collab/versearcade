@@ -178,8 +178,8 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 }
 .va-whale { animation: vaWhaleRise 0.8s cubic-bezier(0.2,0.8,0.2,1) both; transform-box: fill-box; transform-origin: center bottom; }
 .va-splash > * { animation: vaSplash 0.6s ease-out both; transform-box: fill-box; transform-origin: center; }
-@keyframes vaCrossGlow { 0%,100% { opacity: 0.55; } 50% { opacity: 1; } }
-.va-cross-glow { animation: vaCrossGlow 2.8s ease-in-out infinite; }
+@keyframes vaCrossGlow { 0%,100% { opacity: 0.7; } 50% { opacity: 1; } }
+.va-cross-glow { animation: vaCrossGlow 1.3s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
   .floaty, .pop-in, .skeleton { animation: none !important; }

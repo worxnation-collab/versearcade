@@ -1,6 +1,8 @@
 // Shared domain types for Verse Arcade.
 
-export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary'
+// 'mythic' sits above 'legendary' — reserved for one-of-a-kind honors like the
+// #1-rank throne (see THRONE_KEY in data/collectibles).
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic'
 
 export interface Question {
   /** The prompt, always about the *displayed* verse. */

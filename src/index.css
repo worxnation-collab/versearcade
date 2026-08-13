@@ -141,6 +141,21 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 }
 .va-halo { animation: haloSpin 6s linear infinite, haloPulse 2.4s ease-in-out infinite; }
 
+/* "The Leper King" throne — the #1-rank crown jewel. A crown that slowly turns
+   on its axis inside a rotating conic halo, wrapped in a pulsing golden glow.
+   Rendered by <ThroneIcon>. */
+@keyframes throneHaloSpin { to { transform: rotate(360deg); } }
+@keyframes throneTurn { to { transform: rotateY(360deg); } }
+@keyframes throneGlow {
+  0%,100% { filter: drop-shadow(0 0 5px rgba(255,210,63,0.65)) drop-shadow(0 0 12px rgba(255,246,207,0.45)); }
+  50%     { filter: drop-shadow(0 0 12px rgba(255,210,63,0.95)) drop-shadow(0 0 24px rgba(255,255,255,0.7)); }
+}
+.va-throne-halo { animation: throneHaloSpin 7s linear infinite; }
+.va-throne-crown {
+  transform-style: preserve-3d;
+  animation: throneTurn 3.6s cubic-bezier(.5,.05,.5,.95) infinite, throneGlow 2.2s ease-in-out infinite;
+}
+
 /* Skeleton shimmer for loading */
 .skeleton {
   background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.12) 37%, rgba(255,255,255,0.05) 63%);
@@ -153,6 +168,9 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   .floaty, .pop-in, .skeleton { animation: none !important; }
   /* Keep the halo's glow but stop the rotation for motion-sensitive users. */
   .va-halo { animation: haloPulse 2.4s ease-in-out infinite !important; }
+  /* Throne: drop the spins, keep the steady golden glow. */
+  .va-throne-halo { animation: none !important; }
+  .va-throne-crown { animation: throneGlow 2.2s ease-in-out infinite !important; }
 }
 
 /* Inputs ----------------------------------------------------------------- */

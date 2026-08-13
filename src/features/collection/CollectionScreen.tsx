@@ -1,8 +1,9 @@
 import { useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Page } from '@/components/Page'
-import { CARDS, RELICS, rarityColor, type Collectible } from '@/data/collectibles'
+import { CARDS, RELICS, rarityColor, THRONE_KEY, type Collectible } from '@/data/collectibles'
 import { useCollection } from '@/store/collection'
+import { ThroneIcon } from '@/components/ThroneIcon'
 
 // A collection wall. Locked items are visible-but-dimmed on purpose: seeing what
 // you *could* earn is a stronger pull than hiding it. Cards name the exact thing
@@ -81,7 +82,13 @@ function Grid({
               boxShadow: has ? `0 0 20px ${rarityColor[c.rarity]}40` : 'none',
             }}
           >
-            <div style={{ fontSize: 40 }}>{has ? c.emoji : '🔒'}</div>
+            {has && c.key === THRONE_KEY ? (
+              <div style={{ display: 'grid', placeItems: 'center', height: 52 }}>
+                <ThroneIcon size={40} />
+              </div>
+            ) : (
+              <div style={{ fontSize: 40 }}>{has ? c.emoji : '🔒'}</div>
+            )}
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, marginTop: 6 }}>{c.name}</div>
             <div style={{ fontSize: 10, color: rarityColor[c.rarity], textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 2 }}>
               {c.rarity}

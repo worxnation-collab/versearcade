@@ -68,14 +68,14 @@ export function CustomizeSection() {
   }
 
   const baldwin = baldwinProgress(profile.sharedDays)
-  const toggleCrown = () => {
+  const toggleRegalia = () => {
     if (!baldwin.unlocked) {
       setErr(`${BALDWIN.name}: shared ${baldwin.count}/${baldwin.goal} days`)
       return
     }
     setErr(null)
     juice.select()
-    setAvatarCharacter({ ...spec, crown: !spec.crown })
+    setAvatarCharacter({ ...spec, regalia: spec.regalia === 'baldwin' ? null : 'baldwin' })
   }
 
   return (
@@ -166,7 +166,7 @@ export function CustomizeSection() {
         <span className="faint" style={{ fontSize: 12 }}>Earned by showing up</span>
       </div>
       <button
-        onClick={toggleCrown}
+        onClick={toggleRegalia}
         className="card"
         style={{
           width: '100%',
@@ -175,7 +175,7 @@ export function CustomizeSection() {
           alignItems: 'center',
           gap: 14,
           marginBottom: 14,
-          border: spec.crown ? '1px solid var(--gold)' : '1px solid var(--stroke)',
+          border: spec.regalia === 'baldwin' ? '1px solid var(--gold)' : '1px solid var(--stroke)',
           opacity: baldwin.unlocked ? 1 : 0.9,
           cursor: 'pointer',
         }}
@@ -183,7 +183,7 @@ export function CustomizeSection() {
         <div style={{ position: 'relative' }}>
           <Avatar
             emoji={profile.avatarEmoji}
-            character={{ ...spec, crown: true }}
+            character={{ ...spec, regalia: 'baldwin' }}
             size={60}
             ring={false}
           />
@@ -199,7 +199,7 @@ export function CustomizeSection() {
             <div style={{ height: '100%', width: `${(baldwin.count / baldwin.goal) * 100}%`, borderRadius: 999, background: 'linear-gradient(90deg, var(--grape), var(--gold))', transition: 'width 0.25s' }} />
           </div>
           <div className="faint" style={{ fontSize: 11, marginTop: 4 }}>
-            {baldwin.unlocked ? (spec.crown ? '✓ Equipped — tap to remove' : 'Unlocked — tap to wear') : `Shared ${baldwin.count}/${baldwin.goal} different days`}
+            {baldwin.unlocked ? (spec.regalia === 'baldwin' ? '✓ Equipped — tap to remove' : 'Unlocked — tap to wear') : `Shared ${baldwin.count}/${baldwin.goal} different days`}
           </div>
         </div>
       </button>

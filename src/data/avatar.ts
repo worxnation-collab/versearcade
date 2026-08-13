@@ -103,7 +103,7 @@ export function isDefaultAvatar(spec?: AvatarSpec | null): boolean {
   if (!spec) return true
   const equipped = (Object.keys(spec.armor) as (keyof typeof spec.armor)[]).filter((k) => spec.armor[k])
   return (
-    !spec.crown &&
+    !spec.regalia &&
     spec.skin === DEFAULT_AVATAR.skin &&
     spec.robe === DEFAULT_AVATAR.robe &&
     equipped.length === 1 &&
@@ -118,9 +118,9 @@ export function isDefaultAvatar(spec?: AvatarSpec | null): boolean {
 // sharing the daily verse across many different days. (Display name lives here;
 // swap it in one place if you want a different framing.)
 export const BALDWIN = {
-  key: 'baldwinCrown',
-  name: 'King Baldwin’s Crown',
-  blurb: 'Share the daily verse on 10 different days.',
+  key: 'baldwin',
+  name: 'King Baldwin’s Regalia',
+  blurb: 'The masked Leper King. Share the daily verse on 10 different days.',
   shareGoal: 10,
 } as const
 

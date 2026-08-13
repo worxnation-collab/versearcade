@@ -43,9 +43,10 @@ export interface AvatarSpec {
   skin: string // SKINS key (see data/avatar)
   robe: string // ROBES key
   armor: Partial<Record<ArmorSlot, boolean>>
-  /** Royal regalia (achievement-unlocked sets), kept separate from the six
-   *  Armor of God pieces. e.g. King Baldwin's crown. */
-  crown?: boolean
+  /** Achievement-unlocked full-look set, kept separate from the six Armor of
+   *  God pieces. 'baldwin' = the masked Leper King (hood, silver mask, gold
+   *  cross-mantle, ceremonial sword). When set, it overrides the base look. */
+  regalia?: 'baldwin' | null
 }
 
 export interface Profile {

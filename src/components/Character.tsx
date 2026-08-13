@@ -348,12 +348,14 @@ export function Character({
               carrying a cross" rather than a separate figure. */}
           {skinId === 'cross' && (
             <>
-              {/* glowing golden aura around the cross (softly pulsing) */}
+              {/* glowing golden aura around the cross (bright, pulsing) */}
               <g className="va-cross-glow">
-                <path d="M22 160 L96 40" stroke="#FFE7A0" strokeWidth="22" strokeLinecap="round" opacity="0.16" />
-                <path d="M69 46 L103 60" stroke="#FFE7A0" strokeWidth="19" strokeLinecap="round" opacity="0.16" />
-                <path d="M22 160 L96 40" stroke="#FFD23F" strokeWidth="15" strokeLinecap="round" opacity="0.24" />
-                <path d="M69 46 L103 60" stroke="#FFD23F" strokeWidth="13" strokeLinecap="round" opacity="0.24" />
+                <path d="M22 160 L96 40" stroke="#FFE7A0" strokeWidth="28" strokeLinecap="round" opacity="0.30" />
+                <path d="M69 46 L103 60" stroke="#FFE7A0" strokeWidth="25" strokeLinecap="round" opacity="0.30" />
+                <path d="M22 160 L96 40" stroke="#FFD23F" strokeWidth="19" strokeLinecap="round" opacity="0.48" />
+                <path d="M69 46 L103 60" stroke="#FFD23F" strokeWidth="17" strokeLinecap="round" opacity="0.48" />
+                <path d="M22 160 L96 40" stroke="#FFF6CE" strokeWidth="13" strokeLinecap="round" opacity="0.6" />
+                <path d="M69 46 L103 60" stroke="#FFF6CE" strokeWidth="11" strokeLinecap="round" opacity="0.6" />
               </g>
               {/* the cross itself */}
               <path d="M22 160 L96 40" stroke={CROSS_WOOD} strokeWidth="11" strokeLinecap="round" />

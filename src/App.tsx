@@ -10,8 +10,6 @@ import AuthScreen from './features/auth/AuthScreen'
 import HomeScreen from './features/home/HomeScreen'
 import QuizScreen from './features/daily/QuizScreen'
 import ResultScreen from './features/daily/ResultScreen'
-import PracticeQuizScreen from './features/practice/PracticeQuizScreen'
-import PracticeResultScreen from './features/practice/PracticeResultScreen'
 import FocusPracticeScreen from './features/practice/FocusPracticeScreen'
 import ReviewScreen from './features/review/ReviewScreen'
 import BuddiesScreen from './features/buddies/BuddiesScreen'
@@ -126,22 +124,6 @@ export default function App() {
           element={
             <RequireProfile>
               <FocusPracticeScreen />
-            </RequireProfile>
-          }
-        />
-        <Route
-          path="/play/practice/:date"
-          element={
-            <RequireProfile>
-              <PracticeQuizScreen />
-            </RequireProfile>
-          }
-        />
-        <Route
-          path="/play/practice/:date/result"
-          element={
-            <RequireProfile>
-              <PracticeResultScreen />
             </RequireProfile>
           }
         />

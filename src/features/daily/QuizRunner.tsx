@@ -29,7 +29,7 @@ export interface QuizHudState {
 }
 
 // The full quiz gameplay — read → timed questions → score. Shared by the daily
-// drop (QuizScreen) and practice replays (PracticeQuizScreen). It owns the run
+// drop (QuizScreen) and focus practice (FocusPracticeScreen). It owns the run
 // state and scoring; the caller decides what "done" means via onComplete (which
 // persists the result and navigates), and gets a spot for a mode label + the
 // exit target.

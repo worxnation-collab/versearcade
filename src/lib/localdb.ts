@@ -12,6 +12,7 @@ const K = {
   chestDate: 'va.chestDate', // last drop_date this device opened the daily chest
   pendingClaim: 'va.pendingClaim', // guest snapshot to migrate into a new account
   practice: 'va.practice', // { [dropDate]: { bestScore, lastRewardOn } } practice state
+  focusXp: 'va.focusXp', // { [localDay]: xpEarned } — focus-practice XP earned per day (cap)
 }
 
 export interface LocalPractice {
@@ -50,6 +51,7 @@ export const localdb = {
     localStorage.removeItem(K.cards)
     localStorage.removeItem(K.pendingClaim)
     localStorage.removeItem(K.practice)
+    localStorage.removeItem(K.focusXp)
   },
   getPlays(): Record<string, { result: PlayResult; outcome: SubmitOutcome }> {
     const raw = localStorage.getItem(K.plays)
@@ -97,6 +99,19 @@ export const localdb = {
     const all = this.getPracticeAll()
     all[dropDate] = state
     localStorage.setItem(K.practice, JSON.stringify(all))
+  },
+  // Focus-practice XP earned per local day (guest / offline). ONLINE uses the
+  // focus_practice_days table via submit_focus_practice.
+  getFocusXpDay(day: string): number {
+    const raw = localStorage.getItem(K.focusXp)
+    const all = raw ? (JSON.parse(raw) as Record<string, number>) : {}
+    return all[day] ?? 0
+  },
+  addFocusXp(day: string, amount: number) {
+    const raw = localStorage.getItem(K.focusXp)
+    const all = raw ? (JSON.parse(raw) as Record<string, number>) : {}
+    all[day] = (all[day] ?? 0) + amount
+    localStorage.setItem(K.focusXp, JSON.stringify(all))
   },
   getChestDate(): string | null {
     return localStorage.getItem(K.chestDate)

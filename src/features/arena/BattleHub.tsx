@@ -47,12 +47,25 @@ export default function BattleHub() {
           <div style={{ fontSize: 34 }}>🔐</div>
           <p style={{ margin: '8px 0 14px' }}>Battles are tied to your account so scores and ranks stick. Create a free one to play.</p>
           <Button variant="gold" full onClick={() => navigate('/auth')}>Create an account</Button>
+          <div style={{ margin: '12px 0 4px', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ flex: 1, height: 1, background: 'var(--stroke)' }} />
+            <span className="faint" style={{ fontSize: 11, fontWeight: 800 }}>OR TRY IT NOW</span>
+            <div style={{ flex: 1, height: 1, background: 'var(--stroke)' }} />
+          </div>
+          <Button variant="secondary" full onClick={() => { juice.coin(); navigate('/battle/cpu') }}>
+            🤖 Play vs CPU — no account needed
+          </Button>
         </div>
       ) : (
         <>
           <Button variant="gold" full onClick={() => { juice.coin(); navigate('/battle/new') }}>
             ⚔️ Start a new battle
           </Button>
+          <div style={{ marginTop: 10 }}>
+            <Button variant="secondary" full onClick={() => { juice.coin(); navigate('/battle/cpu') }}>
+              🤖 Play vs CPU — instant, live head-to-head
+            </Button>
+          </div>
 
           {/* Incoming challenges — someone challenged you, your move */}
           {incoming.length > 0 && (

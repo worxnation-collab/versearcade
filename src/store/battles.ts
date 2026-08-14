@@ -59,6 +59,15 @@ export interface DenomBoard {
   me: DenomRankRow | null
 }
 
+export interface DenomMemberRow {
+  rank: number
+  username: string
+  avatar_emoji: string
+  avatar_character?: AvatarSpec | null
+  wins: number
+  battles: number
+}
+
 interface BattlesState {
   mine: Battle[]
   loadingMine: boolean
@@ -69,6 +78,7 @@ interface BattlesState {
   userPool: (search?: string) => Promise<PoolUser[]>
   leaderboard: () => Promise<BattleBoard | null>
   denominationBoard: () => Promise<DenomBoard | null>
+  denominationMembers: (key: string) => Promise<DenomMemberRow[]>
 }
 
 export const useBattles = create<BattlesState>((set) => ({
@@ -127,5 +137,12 @@ export const useBattles = create<BattlesState>((set) => ({
     const { data, error } = await supabase.rpc('battle_denomination_board', { p_limit: 20 })
     if (error || !data) return null
     return data as DenomBoard
+  },
+
+  async denominationMembers(key) {
+    if (!supabase) return []
+    const { data, error } = await supabase.rpc('battle_denomination_members', { p_denom: key, p_limit: 100 })
+    if (error || !data) return []
+    return data as DenomMemberRow[]
   },
 }))

@@ -12,6 +12,7 @@ import QuizScreen from './features/daily/QuizScreen'
 import ResultScreen from './features/daily/ResultScreen'
 import PracticeQuizScreen from './features/practice/PracticeQuizScreen'
 import PracticeResultScreen from './features/practice/PracticeResultScreen'
+import FocusPracticeScreen from './features/practice/FocusPracticeScreen'
 import ReviewScreen from './features/review/ReviewScreen'
 import BuddiesScreen from './features/buddies/BuddiesScreen'
 import ChurchesScreen from './features/churches/ChurchesScreen'
@@ -117,6 +118,14 @@ export default function App() {
           element={
             <RequireProfile>
               <ResultScreen />
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/play/focus"
+          element={
+            <RequireProfile>
+              <FocusPracticeScreen />
             </RequireProfile>
           }
         />

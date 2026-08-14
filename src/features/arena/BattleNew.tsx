@@ -94,53 +94,71 @@ function InvitePicker({ seed, result }: { seed: number; result: PlayResult }) {
         </p>
       </div>
 
-      {/* External share — for people who aren't on Verse Arcade yet. */}
-      <Button variant="secondary" full onClick={shareLink}>
-        📤 Invite someone new — share a link
-      </Button>
-      <p className="faint center" style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
-        For friends who aren’t on Verse Arcade yet — anyone who opens it can play your score.
-      </p>
-      {shareMsg && <p style={{ color: 'var(--good)', fontSize: 13, marginTop: 8, textAlign: 'center' }}>{shareMsg}</p>}
-
-      {!ready ? (
-        <div className="center" style={{ padding: 30 }}>
-          <div className="floaty" style={{ fontSize: 34 }}>⚔️</div>
+      {shareId ? (
+        // You committed this run to an OPEN challenge — one play, one challenge.
+        // (Challenging a specific buddy instead navigates away on tap.)
+        <div className="card" style={{ textAlign: 'center' }}>
+          <div className="floaty" style={{ fontSize: 40 }}>📨</div>
+          <h3 style={{ fontSize: 18, marginTop: 4 }}>Challenge shared!</h3>
+          <p className="dim" style={{ fontSize: 14, marginTop: 6 }}>
+            Anyone who opens your link plays your score — results land in your battles as they come in.
+          </p>
+          <div style={{ marginTop: 14 }}>
+            <Button variant="secondary" full onClick={shareLink}>📤 Share the link again</Button>
+          </div>
+          {shareMsg && <p style={{ color: 'var(--good)', fontSize: 13, marginTop: 8 }}>{shareMsg}</p>}
         </div>
       ) : (
         <>
-          {/* Buddies */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0 12px' }}>
-            <div style={{ flex: 1, height: 1, background: 'var(--stroke)' }} />
-            <span className="faint" style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em' }}>CHALLENGE A BUDDY</span>
-            <div style={{ flex: 1, height: 1, background: 'var(--stroke)' }} />
-          </div>
+          {/* External share — for people who aren't on Verse Arcade yet. */}
+          <Button variant="secondary" full onClick={shareLink}>
+            📤 Invite someone new — share a link
+          </Button>
+          <p className="faint center" style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
+            For friends who aren’t on Verse Arcade yet — anyone who opens it can play your score.
+          </p>
+          {shareMsg && <p style={{ color: 'var(--coral)', fontSize: 13, marginTop: 8, textAlign: 'center' }}>{shareMsg}</p>}
 
-          {buddies.length === 0 ? (
-            <p className="faint center" style={{ fontSize: 14, padding: '4px 0 8px' }}>
-              No buddies yet — challenge a suggested player below and they’ll be added.
-            </p>
-          ) : (
-            <div style={{ display: 'grid', gap: 8 }}>
-              {buddies.map((u) => (
-                <PlayerRow key={u.username} u={u} label="Challenge" onClick={() => invite(u, true)} />
-              ))}
+          {!ready ? (
+            <div className="center" style={{ padding: 30 }}>
+              <div className="floaty" style={{ fontSize: 34 }}>⚔️</div>
             </div>
-          )}
-
-          {/* Suggested active players */}
-          {suggested.length > 0 && (
+          ) : (
             <>
+              {/* Buddies */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0 12px' }}>
                 <div style={{ flex: 1, height: 1, background: 'var(--stroke)' }} />
-                <span className="faint" style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em' }}>SUGGESTED — ACTIVE PLAYERS</span>
+                <span className="faint" style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em' }}>CHALLENGE A BUDDY</span>
                 <div style={{ flex: 1, height: 1, background: 'var(--stroke)' }} />
               </div>
-              <div style={{ display: 'grid', gap: 8 }}>
-                {suggested.map((u) => (
-                  <PlayerRow key={u.username} u={u} label="Battle + add" onClick={() => invite(u, false)} />
-                ))}
-              </div>
+
+              {buddies.length === 0 ? (
+                <p className="faint center" style={{ fontSize: 14, padding: '4px 0 8px' }}>
+                  No buddies yet — challenge a suggested player below and they’ll be added.
+                </p>
+              ) : (
+                <div style={{ display: 'grid', gap: 8 }}>
+                  {buddies.map((u) => (
+                    <PlayerRow key={u.username} u={u} label="Challenge" onClick={() => invite(u, true)} />
+                  ))}
+                </div>
+              )}
+
+              {/* Suggested active players */}
+              {suggested.length > 0 && (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0 12px' }}>
+                    <div style={{ flex: 1, height: 1, background: 'var(--stroke)' }} />
+                    <span className="faint" style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em' }}>SUGGESTED — ACTIVE PLAYERS</span>
+                    <div style={{ flex: 1, height: 1, background: 'var(--stroke)' }} />
+                  </div>
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    {suggested.map((u) => (
+                      <PlayerRow key={u.username} u={u} label="Battle + add" onClick={() => invite(u, false)} />
+                    ))}
+                  </div>
+                </>
+              )}
             </>
           )}
         </>

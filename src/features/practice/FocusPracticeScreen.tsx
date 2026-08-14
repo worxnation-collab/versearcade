@@ -3,28 +3,42 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
-import { QuizRunner } from '@/features/daily/QuizRunner'
-import { useFocus } from '@/store/focus'
+import { Avatar } from '@/components/Avatar'
+import { CpuVersusQuiz } from '@/features/arena/CpuVersusQuiz'
+import type { CpuProfile } from '@/features/arena/cpu'
+import { useFocus, FOCUS_XP_DAILY_CAP, type FocusXpOutcome } from '@/store/focus'
+import { useAuth } from '@/store/auth'
 import { poolBooks, poolBookCounts, practiceVerseFromBook } from '@/data/bible/questions'
 import { useJuice } from '@/juice/useJuice'
-import type { PlayResult } from '@/types'
+import type { AvatarSpec, PlayResult } from '@/types'
 
-// Focus practice: before a session, pick a book to concentrate on. Every run then
-// draws a random verse from just that book (or any book) until you change it. Pure
-// study — no streaks or scores on the line, just reps on the verses you choose.
+// Focus practice: pick a book, then drill random verses from just that book —
+// racing a live study companion (real-time versus bar) and earning a little XP
+// (5 per session, capped at 20/day). The book choice sticks until you change it.
 const bookLabel = (book: string | null) => book ?? 'Any book'
+
+// A friendly pace-setter — same sim as the Battle CPU, tuned to "fair fight".
+const COMPANION: CpuProfile = {
+  level: 'medium', name: 'Scholar', emoji: '📚', blurb: 'Your study partner', accuracy: 0.72, minMs: 2600, maxMs: 6200,
+}
 
 function randSeed(): number {
   return Math.floor(Math.random() * 0x7fffffff)
 }
 
+interface Outcome {
+  player: PlayResult
+  cpuScore: number
+  xp: FocusXpOutcome
+}
+
 export default function FocusPracticeScreen() {
   const navigate = useNavigate()
   const juice = useJuice()
-  const { book, chosen, setBook } = useFocus()
+  const { book, chosen, setBook, awardXp } = useFocus()
   const [phase, setPhase] = useState<'pick' | 'play' | 'recap'>('pick')
   const [seed, setSeed] = useState(randSeed)
-  const [last, setLast] = useState<PlayResult | null>(null)
+  const [outcome, setOutcome] = useState<Outcome | null>(null)
 
   const verse = useMemo(() => practiceVerseFromBook(book, seed), [book, seed])
 
@@ -39,26 +53,31 @@ export default function FocusPracticeScreen() {
     setSeed(randSeed())
     setPhase('play')
   }
+  const onFinish = async (player: PlayResult, cpuScore: number) => {
+    const xp = await awardXp()
+    setOutcome({ player, cpuScore, xp })
+    setPhase('recap')
+  }
 
   if (phase === 'play') {
     return (
-      <QuizRunner
+      <CpuVersusQuiz
+        key={seed}
         verse={verse}
+        seed={seed}
+        profile={COMPANION}
         label={`🎯 Focus · ${bookLabel(book)}`}
         onExit={() => setPhase('pick')}
-        onComplete={async (r) => {
-          setLast(r)
-          setPhase('recap')
-        }}
+        onFinish={onFinish}
       />
     )
   }
 
-  if (phase === 'recap') {
+  if (phase === 'recap' && outcome) {
     return (
       <RecapScreen
         book={book}
-        result={last}
+        outcome={outcome}
         onNext={nextVerse}
         onChange={() => setPhase('pick')}
         onDone={() => navigate('/play')}
@@ -94,7 +113,7 @@ function BookPicker({
         <div className="floaty" style={{ fontSize: 44 }}>🎯</div>
         <h1 style={{ fontSize: 26, marginTop: 4 }}>Pick a book to focus on</h1>
         <p className="dim" style={{ marginTop: 4, lineHeight: 1.4 }}>
-          You’ll get verses from just this book until you change it — great for learning a favorite.
+          Drill verses from just this book, racing a study partner. Earn 5 XP a session, up to {FOCUS_XP_DAILY_CAP}/day.
         </p>
       </div>
 
@@ -162,19 +181,22 @@ function PickRow({ label, sub, active, onClick }: { label: string; sub: string; 
 
 function RecapScreen({
   book,
-  result,
+  outcome,
   onNext,
   onChange,
   onDone,
 }: {
   book: string | null
-  result: PlayResult | null
+  outcome: Outcome
   onNext: () => void
   onChange: () => void
   onDone: () => void
 }) {
-  const correct = result?.correctCount ?? 0
-  const total = result?.totalQuestions ?? 0
+  const me = useAuth((s) => s.profile)
+  const you = outcome.player.score
+  const cpu = outcome.cpuScore
+  const result: 'won' | 'lost' | 'tie' = you > cpu ? 'won' : you < cpu ? 'lost' : 'tie'
+  const { xpEarned, dayTotal, cap } = outcome.xp
 
   return (
     <Page noNav>
@@ -187,23 +209,89 @@ function RecapScreen({
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ type: 'spring', stiffness: 220, damping: 16 }}
-        style={{ textAlign: 'center', margin: '14px 0 18px' }}
+        style={{ textAlign: 'center', margin: '10px 0 16px' }}
       >
-        <div style={{ fontSize: 52 }}>🎯</div>
-        <h1 className="gradient-text" style={{ fontSize: 30, marginTop: 4 }}>
-          {result ? result.score.toLocaleString() : 0} pts
+        <div style={{ fontSize: 52 }}>{result === 'won' ? '🏆' : result === 'tie' ? '🤝' : '💪'}</div>
+        <h1 className="gradient-text" style={{ fontSize: 28, marginTop: 4 }}>
+          {result === 'won' ? 'You beat the Scholar!' : result === 'tie' ? "It's a tie!" : 'The Scholar edged you'}
         </h1>
         <p className="dim" style={{ marginTop: 4 }}>
-          {correct}/{total} correct · focusing on <b>{bookLabel(book)}</b>
+          {outcome.player.correctCount}/{outcome.player.totalQuestions} correct on <b>{bookLabel(book)}</b>
         </p>
       </motion.div>
 
-      <div style={{ display: 'grid', gap: 10 }}>
+      <ScoreRow name={me?.username ? `@${me.username}` : 'You'} emoji={me?.avatarEmoji ?? '😇'} character={me?.avatarCharacter} score={you} winner={result === 'won'} />
+      <div className="faint center" style={{ fontSize: 12, letterSpacing: '0.3em', margin: '2px 0' }}>VS</div>
+      <ScoreRow name={COMPANION.name} emoji={COMPANION.emoji} score={cpu} winner={result === 'lost'} />
+
+      {/* XP reward / daily cap state */}
+      <div
+        className="card"
+        style={{
+          marginTop: 14, textAlign: 'center',
+          borderColor: xpEarned > 0 ? 'var(--gold)' : 'var(--stroke)',
+          background: xpEarned > 0 ? 'rgba(255,210,63,0.08)' : undefined,
+        }}
+      >
+        {xpEarned > 0 ? (
+          <>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, color: 'var(--gold)' }}>+{xpEarned} XP</div>
+            <div className="faint" style={{ fontSize: 12, marginTop: 2 }}>
+              {dayTotal}/{cap} XP from focus today{dayTotal >= cap ? ' — daily max reached' : ''}
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ fontWeight: 800 }}>Daily XP maxed 🎉</div>
+            <div className="faint" style={{ fontSize: 12, marginTop: 2 }}>
+              You’ve earned all {cap} focus XP today — keep practicing free, XP resets tomorrow.
+            </div>
+          </>
+        )}
+      </div>
+
+      <div style={{ marginTop: 16, display: 'grid', gap: 10 }}>
         <Button variant="gold" full onClick={onNext}>▶ Next verse</Button>
         <Button variant="secondary" full onClick={onChange}>Change book</Button>
         <Button variant="ghost" full onClick={onDone}>Done</Button>
       </div>
       <div style={{ height: 30 }} />
     </Page>
+  )
+}
+
+function ScoreRow({
+  name,
+  emoji,
+  character,
+  score,
+  winner,
+}: {
+  name: string
+  emoji: string
+  character?: AvatarSpec | null
+  score: number
+  winner: boolean
+}) {
+  return (
+    <div
+      className="card"
+      style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        borderColor: winner ? 'var(--gold)' : 'var(--stroke)',
+        background: winner ? 'rgba(255,210,63,0.1)' : undefined,
+      }}
+    >
+      <Avatar emoji={emoji} character={character} size={44} ring={false} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <b style={{ fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{name}</b>
+      </div>
+      <div style={{ textAlign: 'right' }}>
+        <div className={winner ? 'gradient-text' : undefined} style={{ fontFamily: 'var(--font-display)', fontSize: 20 }}>
+          {score.toLocaleString()}
+        </div>
+        <div className="faint" style={{ fontSize: 10 }}>{winner ? '👑 winner' : 'pts'}</div>
+      </div>
+    </div>
   )
 }

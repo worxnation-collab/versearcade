@@ -19,6 +19,15 @@ interface Answered {
   points: number
 }
 
+/** Live snapshot handed to an optional HUD slot (e.g. a vs-CPU versus bar). */
+export interface QuizHudState {
+  score: number
+  qi: number
+  total: number
+  phase: Phase
+  justCorrect: boolean | null
+}
+
 // The full quiz gameplay — read → timed questions → score. Shared by the daily
 // drop (QuizScreen) and practice replays (PracticeQuizScreen). It owns the run
 // state and scoring; the caller decides what "done" means via onComplete (which
@@ -29,12 +38,22 @@ export function QuizRunner({
   onComplete,
   onExit,
   label,
+  hud,
+  onQuestionStart,
+  onReveal,
 }: {
   verse: DailyVerse
   onComplete: (result: PlayResult) => Promise<void>
   onExit: () => void
   /** Small pill under the HUD, e.g. "Practice" — omitted for the daily drop. */
   label?: ReactNode
+  /** Optional live HUD (rendered under the score row) — used by vs-CPU battles
+      to show a real-time versus bar. Gets the current run snapshot each render. */
+  hud?: (s: QuizHudState) => ReactNode
+  /** Fired when a question's clock starts — lets an opponent race the same clock. */
+  onQuestionStart?: (qi: number) => void
+  /** Fired the moment the player locks an answer — lets an opponent sync up. */
+  onReveal?: (qi: number, correct: boolean, timeMs: number) => void
 }) {
   const juice = useJuice()
 
@@ -63,6 +82,7 @@ export function QuizRunner({
   // Per-question timer: running out = a gentle miss (still reveals the fact).
   useEffect(() => {
     if (phase !== 'question') return
+    onQuestionStart?.(qi)
     timeout.current = setTimeout(() => handleAnswer(-1), SCORING.answerWindowMs)
     return () => clearTimeout(timeout.current)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -92,6 +112,7 @@ export function QuizRunner({
     setAnswered(a)
     setAnswers((arr) => [...arr, a])
     setPhase('feedback')
+    onReveal?.(qi, correct, timeMs)
   }
 
   const next = async () => {
@@ -133,6 +154,11 @@ export function QuizRunner({
       {label && (
         <div style={{ textAlign: 'center', marginBottom: 12 }}>
           <span className="pill">{label}</span>
+        </div>
+      )}
+      {hud && (
+        <div style={{ marginBottom: 14 }}>
+          {hud({ score, qi, total: questions.length, phase, justCorrect: answered?.correct ?? null })}
         </div>
       )}
 

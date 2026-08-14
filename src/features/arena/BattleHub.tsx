@@ -8,12 +8,14 @@ import { useAuth } from '@/store/auth'
 import { useBattles, type Battle, type BattleBoard, type DenomBoard } from '@/store/battles'
 import { denominationColor, denominationName } from '@/data/denominations'
 import { useJuice } from '@/juice/useJuice'
+import DenominationBoard from './DenominationBoard'
 
 export default function BattleHub() {
   const navigate = useNavigate()
   const juice = useJuice()
   const mode = useAuth((s) => s.mode)
   const profile = useAuth((s) => s.profile)
+  const updateProfile = useAuth((s) => s.updateProfile)
   const { mine, loadMine } = useBattles()
   const leaderboard = useBattles((s) => s.leaderboard)
   const denominationBoard = useBattles((s) => s.denominationBoard)
@@ -34,6 +36,13 @@ export default function BattleHub() {
     denominationBoard().then(setDenomBoard)
   }, [isGuest, loadMine, leaderboard, denominationBoard])
 
+  // Join/switch/leave a denomination straight from the Battle tab, then refresh
+  // the standings so the change shows immediately.
+  const setDenom = async (key: string | null) => {
+    await updateProfile({ denomination: key })
+    denominationBoard().then(setDenomBoard)
+  }
+
   return (
     <Page>
       <div className="center" style={{ marginBottom: 16 }}>
@@ -47,12 +56,25 @@ export default function BattleHub() {
           <div style={{ fontSize: 34 }}>🔐</div>
           <p style={{ margin: '8px 0 14px' }}>Battles are tied to your account so scores and ranks stick. Create a free one to play.</p>
           <Button variant="gold" full onClick={() => navigate('/auth')}>Create an account</Button>
+          <div style={{ margin: '12px 0 4px', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ flex: 1, height: 1, background: 'var(--stroke)' }} />
+            <span className="faint" style={{ fontSize: 11, fontWeight: 800 }}>OR TRY IT NOW</span>
+            <div style={{ flex: 1, height: 1, background: 'var(--stroke)' }} />
+          </div>
+          <Button variant="secondary" full onClick={() => { juice.coin(); navigate('/battle/cpu') }}>
+            🤖 Play vs CPU — no account needed
+          </Button>
         </div>
       ) : (
         <>
           <Button variant="gold" full onClick={() => { juice.coin(); navigate('/battle/new') }}>
             ⚔️ Start a new battle
           </Button>
+          <div style={{ marginTop: 10 }}>
+            <Button variant="secondary" full onClick={() => { juice.coin(); navigate('/battle/cpu') }}>
+              🤖 Play vs CPU — instant, live head-to-head
+            </Button>
+          </div>
 
           {/* Incoming challenges — someone challenged you, your move */}
           {incoming.length > 0 && (
@@ -120,12 +142,18 @@ export default function BattleHub() {
               Denomination only appears here, never on the main leaderboard. */}
           <h3 className="dim" style={{ fontSize: 16, margin: '24px 0 10px' }}>Battle ranks</h3>
           <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-            {(['individual', 'denomination'] as const).map((t) => (
-              <button key={t} onClick={() => { juice.select(); setRankTab(t) }} className="pill"
-                style={{ background: rankTab === t ? 'var(--grape)' : 'var(--card)', fontWeight: 800, textTransform: 'capitalize' }}>
-                {t === 'individual' ? 'Individual' : 'Denomination'}
-              </button>
-            ))}
+            {(['individual', 'denomination'] as const).map((t) => {
+              const nudge = t === 'denomination' && !profile?.denomination
+              return (
+                <button key={t} onClick={() => { juice.select(); setRankTab(t) }} className="pill"
+                  style={{ position: 'relative', background: rankTab === t ? 'var(--grape)' : 'var(--card)', fontWeight: 800, textTransform: 'capitalize' }}>
+                  {t === 'individual' ? 'Individual' : 'Denomination'}
+                  {nudge && (
+                    <span aria-label="Join your denomination" style={{ position: 'absolute', top: 4, right: 6, width: 7, height: 7, borderRadius: '50%', background: 'var(--gold)', boxShadow: '0 0 6px var(--gold)' }} />
+                  )}
+                </button>
+              )
+            })}
           </div>
 
           {rankTab === 'individual' ? (
@@ -163,41 +191,7 @@ export default function BattleHub() {
               )}
             </div>
           ) : (
-            <div className="card">
-              {!denomBoard || denomBoard.top.length === 0 ? (
-                <p className="faint" style={{ fontSize: 14, textAlign: 'center', padding: '4px 0' }}>
-                  No denominations yet. Pick yours on the <b>You</b> page to start your team’s total.
-                </p>
-              ) : (
-                <div style={{ display: 'grid', gap: 4 }}>
-                  {denomBoard.top.map((r) => {
-                    const color = denominationColor(r.denomination)
-                    const mine = denomBoard.me?.denomination === r.denomination
-                    return (
-                      <div key={r.denomination} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 8px', borderRadius: 10, borderLeft: `3px solid ${color}`, background: mine ? 'rgba(255,210,63,0.08)' : 'transparent' }}>
-                        <span style={{ width: 18, textAlign: 'center', fontFamily: 'var(--font-display)', color: 'var(--ink-faint)' }}>
-                          {r.rank === 1 ? '👑' : r.rank}
-                        </span>
-                        <span style={{ width: 12, height: 12, borderRadius: '50%', background: color, flexShrink: 0, boxShadow: `0 0 8px ${color}` }} />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <b style={{ fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
-                            {denominationName(r.denomination)}{mine && <span style={{ color: 'var(--gold)', fontSize: 11, marginLeft: 6 }}>you</span>}
-                          </b>
-                          <span className="faint" style={{ fontSize: 11 }}>{r.members} member{r.members === 1 ? '' : 's'}</span>
-                        </div>
-                        <span style={{ fontFamily: 'var(--font-display)' }} className="gradient-text">{r.wins}</span>
-                        <span className="faint" style={{ fontSize: 11 }}>wins</span>
-                      </div>
-                    )
-                  })}
-                  {denomBoard.me && (
-                    <div className="faint" style={{ fontSize: 12, textAlign: 'center', marginTop: 8, borderTop: '1px solid var(--stroke)', paddingTop: 8 }}>
-                      {denominationName(denomBoard.me.denomination)} — rank <b style={{ color: 'var(--gold)' }}>#{denomBoard.me.rank}</b> · {denomBoard.me.wins} wins · {denomBoard.me.members} members
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            <DenominationBoard board={denomBoard} myDenom={profile?.denomination ?? null} onSetDenom={setDenom} />
           )}
           <div style={{ height: 90 }} />
         </>

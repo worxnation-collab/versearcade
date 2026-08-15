@@ -1,0 +1,36 @@
+name: CI
+
+# Runs on every pull request and on pushes to main. The verse-pool check is the
+# important one here: PR #58 merged from a stale base and silently deleted 246
+# verses from src/data/bible/pool.ts, which nothing caught until the Focus
+# practice picker started showing "1 verse" per book again. This job fails the
+# PR instead.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # No dependencies needed — the pool check is plain Node. Run it before the
+      # install so a lost-verses regression reports fast.
+      - name: Verse pool integrity
+        run: npm run check:pool
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck

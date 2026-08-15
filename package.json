@@ -6,7 +6,8 @@
   "description": "Verse Arcade — make opening the Bible feel exciting and habitual.",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "npm run check:pool && tsc -b && vite build",
+    "check:pool": "node scripts/check-pool.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "cap:sync": "cap sync",

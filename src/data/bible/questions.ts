@@ -195,6 +195,27 @@ export function generateQuestions(seed: VerseSeed, rng: () => number): Question[
   return shuffle(candidates.filter((q): q is Question => q !== null), rng).slice(0, 5)
 }
 
+// Assemble a full DailyVerse payload from a pool seed. Shared by the daily drop
+// and by focus practice, so both produce identically-shaped runs.
+function buildDailyVerse(seed: VerseSeed, rng: () => number, dropDate: string): DailyVerse {
+  const questions = generateQuestions(seed, rng)
+  return {
+    dropDate,
+    translation: DEFAULT_TRANSLATION,
+    reference: seed.reference,
+    book: seed.book,
+    chapter: seed.chapter,
+    verseStart: seed.verseStart,
+    verseEnd: seed.verseEnd,
+    text: seed.text,
+    theme: seed.theme,
+    questions,
+    facts: seed.facts,
+    contextBefore: seed.before,
+    contextAfter: seed.after,
+  }
+}
+
 // Pick the verse for a given date and build its full DailyVerse payload.
 export function getVerseForDate(dateStr: string): DailyVerse {
   const rng = mulberry32(hashString(dateStr))
@@ -211,20 +232,35 @@ export function getVerseForDate(dateStr: string): DailyVerse {
     mulberry32(hashString('verse-order-v1')),
   )
   const seed = VERSE_POOL[order[((dayNum % N) + N) % N]]
-  const questions = generateQuestions(seed, rng)
-  return {
-    dropDate: dateStr,
-    translation: DEFAULT_TRANSLATION,
-    reference: seed.reference,
-    book: seed.book,
-    chapter: seed.chapter,
-    verseStart: seed.verseStart,
-    verseEnd: seed.verseEnd,
-    text: seed.text,
-    theme: seed.theme,
-    questions,
-    facts: seed.facts,
-    contextBefore: seed.before,
-    contextAfter: seed.after,
+  return buildDailyVerse(seed, rng, dateStr)
+}
+
+// Distinct books present in the verse pool, in canonical (pool) order.
+export function poolBooks(): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const v of VERSE_POOL) {
+    if (!seen.has(v.book)) {
+      seen.add(v.book)
+      out.push(v.book)
+    }
   }
+  return out
+}
+
+// How many verses the pool has per book — used to show a book's depth.
+export function poolBookCounts(): Record<string, number> {
+  const counts: Record<string, number> = {}
+  for (const v of VERSE_POOL) counts[v.book] = (counts[v.book] ?? 0) + 1
+  return counts
+}
+
+// A random practice verse drawn from a single book (or any book when `book` is
+// null), seeded so the same seed reproduces the same verse + questions.
+export function practiceVerseFromBook(book: string | null, seed: number): DailyVerse {
+  const rng = mulberry32(seed >>> 0)
+  const scoped = book ? VERSE_POOL.filter((v) => v.book === book) : VERSE_POOL
+  const pool = scoped.length ? scoped : VERSE_POOL
+  const pick = pool[Math.floor(rng() * pool.length)]
+  return buildDailyVerse(pick, rng, `focus-${book ?? 'any'}`)
 }

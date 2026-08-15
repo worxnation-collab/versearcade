@@ -6,7 +6,7 @@ import { Button } from '@/components/Button'
 import { Avatar } from '@/components/Avatar'
 import { useAuth } from '@/store/auth'
 import { useBattles, type Battle, type BattleBoard, type DenomBoard } from '@/store/battles'
-import { denominationColor, denominationName } from '@/data/denominations'
+import { DENOMINATIONS, denominationColor, denominationName } from '@/data/denominations'
 import { useJuice } from '@/juice/useJuice'
 
 export default function BattleHub() {
@@ -14,6 +14,7 @@ export default function BattleHub() {
   const juice = useJuice()
   const mode = useAuth((s) => s.mode)
   const profile = useAuth((s) => s.profile)
+  const updateProfile = useAuth((s) => s.updateProfile)
   const { mine, loadMine } = useBattles()
   const leaderboard = useBattles((s) => s.leaderboard)
   const denominationBoard = useBattles((s) => s.denominationBoard)
@@ -163,10 +164,38 @@ export default function BattleHub() {
               )}
             </div>
           ) : (
+            <>
+            {/* Your denomination lives here rather than in profile settings —
+                it's a Battle-only faction, so it's picked where it's used. */}
+            <div className="card" style={{ marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ width: 14, height: 14, borderRadius: '50%', flexShrink: 0, background: profile?.denomination ? denominationColor(profile.denomination) : 'var(--stroke)', boxShadow: profile?.denomination ? `0 0 8px ${denominationColor(profile.denomination)}` : 'none' }} />
+                <select
+                  aria-label="Your denomination"
+                  value={profile?.denomination ?? ''}
+                  onChange={async (e) => {
+                    juice.select()
+                    // Wait for the write to land before re-reading, or the board
+                    // comes back with the old membership.
+                    await updateProfile({ denomination: e.target.value || null })
+                    setDenomBoard(await denominationBoard())
+                  }}
+                  style={{ flex: 1, padding: '10px 8px', borderRadius: 10, background: 'var(--card-solid)', color: 'var(--ink)', border: '1px solid var(--stroke)', fontSize: 14 }}
+                >
+                  <option value="">Prefer not to say</option>
+                  {DENOMINATIONS.map((d) => (
+                    <option key={d.key} value={d.key}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+              <p className="faint" style={{ fontSize: 11, marginTop: 8, lineHeight: 1.4 }}>
+                Optional &amp; friendly — pick your tradition to represent it here. Your battle wins add to its team total automatically, and it never shows on the main leaderboard.
+              </p>
+            </div>
             <div className="card">
               {!denomBoard || denomBoard.top.length === 0 ? (
                 <p className="faint" style={{ fontSize: 14, textAlign: 'center', padding: '4px 0' }}>
-                  No denominations yet. Pick yours on the <b>You</b> page to start your team’s total.
+                  No denominations yet. Pick yours above to start your team’s total.
                 </p>
               ) : (
                 <div style={{ display: 'grid', gap: 4 }}>
@@ -198,6 +227,7 @@ export default function BattleHub() {
                 </div>
               )}
             </div>
+            </>
           )}
           <div style={{ height: 90 }} />
         </>

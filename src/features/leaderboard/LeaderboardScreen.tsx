@@ -32,7 +32,26 @@ interface Board {
 
 const medal = (rank: number) => (rank === 2 ? '🥈' : rank === 3 ? '🥉' : null)
 
+// Standalone /leaderboard route — kept for deep links and shares. The ranks
+// themselves now live inside the Play tab, so this is the same body under a
+// full-page header.
 export default function LeaderboardScreen() {
+  return (
+    <Page>
+      <div style={{ paddingTop: 8, paddingBottom: 96 }}>
+        <div className="center" style={{ marginBottom: 16 }}>
+          <div className="floaty" style={{ fontSize: 44 }}>🏆</div>
+          <h1 style={{ fontSize: 28, marginTop: 4 }}>Worldwide Ranks</h1>
+        </div>
+        <LeaderboardSection />
+      </div>
+    </Page>
+  )
+}
+
+// The ranks themselves, with no page chrome — embeddable in a collapsible on
+// the Play tab as well as on its own route above.
+export function LeaderboardSection() {
   const navigate = useNavigate()
   const mode = useAuth((s) => s.mode)
   const profile = useAuth((s) => s.profile)
@@ -85,15 +104,11 @@ export default function LeaderboardScreen() {
   }, [iAmKing, juice])
 
   return (
-    <Page>
-      <div style={{ paddingTop: 8, paddingBottom: 96 }}>
-        <div className="center" style={{ marginBottom: 16 }}>
-          <div className="floaty" style={{ fontSize: 44 }}>🏆</div>
-          <h1 style={{ fontSize: 28, marginTop: 4 }}>Worldwide Ranks</h1>
-          <p className="dim" style={{ marginTop: 4 }}>
-            All-time, by XP{board ? ` · ${board.total.toLocaleString()} players` : ''}
-          </p>
-        </div>
+    <>
+      <div>
+        <p className="dim center" style={{ marginBottom: 14, fontSize: 13 }}>
+          All-time, by XP{board ? ` · ${board.total.toLocaleString()} players` : ''}
+        </p>
 
         {iAmKing && <ThroneBanner />}
 
@@ -143,7 +158,7 @@ export default function LeaderboardScreen() {
           <p className="dim" style={{ textAlign: 'center' }}>No one has played yet — be the first!</p>
         )}
       </div>
-    </Page>
+    </>
   )
 }
 
@@ -194,7 +209,7 @@ function FeaturedRow({ f }: { f: FeaturedRow }) {
       }}
     >
       <div style={{ width: 34, display: 'grid', placeItems: 'center', fontSize: 18 }}>⭐</div>
-      <Avatar emoji={f.avatar_emoji} character={f.avatar_character} size={34} ring={false} border={f.avatar_border} badge={f.avatar_badge} />
+      <Avatar emoji={f.avatar_emoji} character={f.avatar_character} size={34} ring={false} border={f.avatar_border} badge={f.avatar_badge} username={f.username} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {f.username}
@@ -244,7 +259,7 @@ function Row({ r, me }: { r: LbRow; me: boolean }) {
       >
         {isKing ? <ThroneIcon size={24} /> : (medal(r.rank) ?? r.rank)}
       </div>
-      <Avatar emoji={r.avatar_emoji} character={r.avatar_character} size={34} ring={false} border={r.avatar_border} badge={r.avatar_badge} />
+      <Avatar emoji={r.avatar_emoji} character={r.avatar_character} size={34} ring={false} border={r.avatar_border} badge={r.avatar_badge} username={r.username} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{

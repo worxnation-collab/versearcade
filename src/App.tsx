@@ -23,8 +23,11 @@ import BattleHub from './features/arena/BattleHub'
 import BattleNew from './features/arena/BattleNew'
 import BattlePlay from './features/arena/BattlePlay'
 import BattleDetail from './features/arena/BattleDetail'
+import BattleCpu from './features/arena/BattleCpu'
+import StudyScreen from './features/study/StudyScreen'
 import { BattleResume } from './features/arena/BattleResume'
 import { BottomNav } from './components/BottomNav'
+import { PlayerCardProvider } from './components/PlayerCardModal'
 
 function RequireProfile({ children }: { children: JSX.Element }) {
   const { ready, profile } = useAuth()
@@ -85,7 +88,7 @@ export default function App() {
   if (!ready) return <Splash />
 
   return (
-    <>
+    <PlayerCardProvider>
     <BattleResume />
     <Routes>
         <Route path="/" element={<Landing />} />
@@ -177,6 +180,26 @@ export default function App() {
             </RequireProfile>
           }
         />
+        {/* Study tab — practice surfaces that never touch your rank. */}
+        <Route
+          path="/study"
+          element={
+            <RequireProfile>
+              <TabShell>
+                <StudyScreen />
+              </TabShell>
+            </RequireProfile>
+          }
+        />
+        {/* Solo practice battle vs a simulated opponent, reached from Study. */}
+        <Route
+          path="/battle/cpu"
+          element={
+            <RequireProfile>
+              <BattleCpu />
+            </RequireProfile>
+          }
+        />
         <Route
           path="/battle/new"
           element={
@@ -228,7 +251,7 @@ export default function App() {
         />
         <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
-    </>
+    </PlayerCardProvider>
   )
 }
 

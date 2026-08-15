@@ -39,7 +39,7 @@ export function PresenceStrip() {
         >
           {feed.map((f, i) => (
             <span key={i} className="pill" style={{ fontSize: 12, padding: '4px 10px 4px 5px', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-              <Avatar emoji={f.avatarEmoji} size={20} ring={false} border={f.avatarBorder} badge={f.avatarBadge} />
+              <Avatar emoji={f.avatarEmoji} size={20} ring={false} border={f.avatarBorder} badge={f.avatarBadge} username={f.username} />
               <span>@{f.username}</span>
               <span style={{ color: f.kind === 'levelup' ? 'var(--gold)' : 'var(--mint)' }}>
                 {f.kind === 'levelup' ? `hit LVL ${f.points}` : `+${f.points}`}

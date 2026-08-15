@@ -7,19 +7,33 @@ import { daysBetween } from '@/lib/practice'
 
 // "Study the last five" — replay recently-played verses to reinforce them.
 // Replaying is free; beating your best pays scaled XP, once per week per verse.
-// Only shows once you have past plays, so it's never empty clutter.
-export function PracticeSection() {
+// Lives on the Study tab, where it opens expanded and explains itself when the
+// player has no past plays yet (elsewhere it stays silent rather than clutter).
+export function PracticeSection({ defaultOpen = false, showEmpty = false }: { defaultOpen?: boolean; showEmpty?: boolean }) {
   const navigate = useNavigate()
   const list = usePractice((s) => s.list)
   const loadedList = usePractice((s) => s.loadedList)
   const loadList = usePractice((s) => s.loadList)
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(defaultOpen)
 
   useEffect(() => {
     loadList()
   }, [loadList])
 
-  if (!loadedList || list.length === 0) return null
+  if (!loadedList || list.length === 0) {
+    if (!showEmpty) return null
+    return (
+      <div className="card" style={{ marginTop: 16, textAlign: 'center' }}>
+        <div style={{ fontSize: 30 }}>📚</div>
+        <b style={{ fontFamily: 'var(--font-display)', fontSize: 16, display: 'block', marginTop: 6 }}>Study the last five</b>
+        <p className="faint" style={{ fontSize: 13, marginTop: 6, lineHeight: 1.45 }}>
+          {loadedList
+            ? 'Play a few daily verses and they’ll land here to replay — beat your best score to earn XP.'
+            : 'Loading your recent verses…'}
+        </p>
+      </div>
+    )
+  }
   const today = todayLocalDate()
 
   return (

@@ -12,7 +12,20 @@ import { useJuice } from '@/juice/useJuice'
 // buddy" request), accept the ones who ask you, and your buddies become your
 // go-to Battle opponents. Suggested active players help a brand-new user get
 // started with nobody on their list yet.
+// Standalone /buddies route — kept for deep links. The list itself now also
+// lives in a collapsible on the You tab.
 export default function BuddiesScreen() {
+  return (
+    <Page>
+      <Header />
+      <BuddiesSection />
+      <div style={{ height: 90 }} />
+    </Page>
+  )
+}
+
+// The buddies list with no page chrome, so it can be embedded on the You tab.
+export function BuddiesSection() {
   const navigate = useNavigate()
   const juice = useJuice()
   const mode = useAuth((s) => s.mode)
@@ -46,21 +59,16 @@ export default function BuddiesScreen() {
 
   if (isGuest) {
     return (
-      <Page>
-        <Header />
-        <div className="card" style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 34 }}>🔐</div>
-          <p style={{ margin: '8px 0 14px' }}>Buddies are tied to your account so your friends list sticks. Create a free one to add buddies.</p>
-          <Button variant="gold" full onClick={() => navigate('/auth')}>Create an account</Button>
-        </div>
-      </Page>
+      <div className="card" style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: 34 }}>🔐</div>
+        <p style={{ margin: '8px 0 14px' }}>Buddies are tied to your account so your friends list sticks. Create a free one to add buddies.</p>
+        <Button variant="gold" full onClick={() => navigate('/auth')}>Create an account</Button>
+      </div>
     )
   }
 
   return (
-    <Page>
-      <Header />
-
+    <>
       {/* Add a buddy by @username */}
       <div className="card" style={{ marginBottom: 16 }}>
         <b style={{ fontFamily: 'var(--font-display)', fontSize: 15 }}>Add a buddy</b>
@@ -90,7 +98,7 @@ export default function BuddiesScreen() {
           <div style={{ display: 'grid', gap: 8, marginBottom: 20 }}>
             {requests.map((u) => (
               <div key={u.username} className="card" style={{ display: 'flex', alignItems: 'center', gap: 12, borderColor: 'var(--gold)', background: 'rgba(255,210,63,0.08)' }}>
-                <Avatar emoji={u.avatar_emoji} character={u.avatar_character} size={40} ring={false} />
+                <Avatar emoji={u.avatar_emoji} character={u.avatar_character} size={40} ring={false} username={u.username} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <b style={{ fontWeight: 800 }}>@{u.username}</b>
                   <div className="faint" style={{ fontSize: 12 }}>Level {u.level} · wants to be your buddy</div>
@@ -128,7 +136,7 @@ export default function BuddiesScreen() {
           <div style={{ display: 'grid', gap: 8 }}>
             {suggested.map((u) => (
               <div key={u.username} className="card" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <Avatar emoji={u.avatar_emoji} character={u.avatar_character} size={38} ring={false} />
+                <Avatar emoji={u.avatar_emoji} character={u.avatar_character} size={38} ring={false} username={u.username} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <b style={{ fontWeight: 800 }}>@{u.username}</b>
                   <div className="faint" style={{ fontSize: 12 }}>Level {u.level} · 🔥 {u.current_streak}</div>
@@ -140,8 +148,7 @@ export default function BuddiesScreen() {
           </div>
         </>
       )}
-      <div style={{ height: 90 }} />
-    </Page>
+    </>
   )
 }
 
@@ -160,7 +167,7 @@ function BuddyRow({ u, onBattle, onRemove }: { u: BuddyCard; onBattle: () => voi
   return (
     <motion.div className="card" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
       style={{ display: 'flex', alignItems: 'center', gap: 12, borderColor: u.official ? 'var(--gold)' : undefined }}>
-      <Avatar emoji={u.avatar_emoji} character={u.avatar_character} size={40} ring={false} />
+      <Avatar emoji={u.avatar_emoji} character={u.avatar_character} size={40} ring={false} username={u.username} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <b style={{ fontWeight: 800 }}>
           @{u.username}

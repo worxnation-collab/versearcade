@@ -35,12 +35,15 @@ import {
 // based on the player's LONGEST streak ever, so a missed day never takes a
 // cosmetic away. Locked items stay visible (with the milestone needed) as a
 // gentle pull toward the next streak.
+//
+// This is the whole body of the profile's Customize screen, which is already a
+// dedicated place for exactly this — so it has no show/hide header of its own,
+// just the sections.
 export function CustomizeSection() {
   const profile = useAuth((s) => s.profile)!
   const setCosmetics = useAuth((s) => s.setCosmetics)
   const juice = useJuice()
   const [err, setErr] = useState<string | null>(null)
-  const [open, setOpen] = useState(false)
   const [devNoteOpen, setDevNoteOpen] = useState(false)
   const [buyTarget, setBuyTarget] = useState<SkinDef | null>(null)
   const [redeemTarget, setRedeemTarget] = useState<SkinDef | null>(null)
@@ -182,40 +185,8 @@ export function CustomizeSection() {
 
   return (
     <>
-      {/* Collapsed by default so the profile stays uncluttered; tapping drops
-          the whole customization menu down. */}
-      <button
-        onClick={() => { juice.select(); setOpen((o) => !o) }}
-        aria-expanded={open}
-        className="card"
-        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10, textAlign: 'left', cursor: 'pointer', borderColor: open ? 'var(--gold)' : 'var(--stroke)' }}
-      >
-        <Avatar emoji={profile.avatarEmoji} character={spec} size={44} ring={false} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <b style={{ fontFamily: 'var(--font-display)', fontSize: 15 }}>Customize your character</b>
-          <div className="faint" style={{ fontSize: 12 }}>Armor of God · King Baldwin · borders &amp; badges</div>
-        </div>
-        <span
-          className="pill"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--gold)', color: '#241f0a', fontWeight: 800, fontSize: 13, padding: '6px 12px', flexShrink: 0 }}
-        >
-          {open ? 'Hide' : 'Show'}
-          <span style={{ fontSize: 15, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>
-        </span>
-      </button>
-
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            key="customize-body"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.28, ease: 'easeInOut' }}
-            style={{ overflow: 'hidden' }}
-          >
-            {/* ── Character builder ─────────────────────────────────────────── */}
-            <Section title="Your Character" right={savedFlash ? <span style={{ color: 'var(--good)', fontWeight: 700 }}>Saved ✓</span> : `Armor of God · ${equippedPieces}/6`}>
+      {/* ── Character builder ─────────────────────────────────────────── */}
+      <Section title="Your Character" defaultOpen right={savedFlash ? <span style={{ color: 'var(--good)', fontWeight: 700 }}>Saved ✓</span> : `Armor of God · ${equippedPieces}/6`}>
       <div className="card" style={{ marginBottom: 14 }}>
         <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 14 }}>
           <Avatar emoji={profile.avatarEmoji} character={spec} size={76} border={equippedBorder} badge={equippedBadge} />
@@ -614,10 +585,7 @@ export function CustomizeSection() {
       </div>
       </Section>
 
-            {err && <p style={{ color: 'var(--coral)', fontSize: 13, marginBottom: 12, textAlign: 'center' }}>{err}</p>}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {err && <p style={{ color: 'var(--coral)', fontSize: 13, marginBottom: 12, textAlign: 'center' }}>{err}</p>}
     </>
   )
 }

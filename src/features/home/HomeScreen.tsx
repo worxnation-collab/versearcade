@@ -78,7 +78,7 @@ export default function HomeScreen() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
             <button
-              onClick={() => navigate('/you')}
+              onClick={() => navigate('/you?customize=1')}
               className="pill"
               style={{ background: 'var(--gold)', color: '#241f0a', fontWeight: 800, fontSize: 13, padding: '7px 12px' }}
             >

@@ -332,6 +332,7 @@ function Sales() {
             <b style={{ fontWeight: 800, textTransform: 'capitalize' }}>{r.skin}</b>
             <div className="faint" style={{ fontSize: 12 }}>
               {r.username ? `@${r.username}` : r.email || '—'} · {new Date(r.created_at).toLocaleString()}
+              {r.reason === 'manual' && ' · manual'}
             </div>
           </div>
           <span className="pill" style={{ fontSize: 11, fontWeight: 800,

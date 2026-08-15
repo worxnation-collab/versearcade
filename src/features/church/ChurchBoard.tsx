@@ -58,7 +58,7 @@ export function ChurchBoard() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gap: 8 }}>
+      <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
         {board.map((c) => (
           <BoardRow key={c.id} church={c} />
         ))}
@@ -90,6 +90,7 @@ function BoardRow({ church }: { church: Church }) {
         alignItems: 'center',
         gap: 10,
         padding: '10px 12px',
+        minWidth: 0,
         borderColor: mine ? 'var(--gold)' : 'var(--stroke)',
         background: mine ? 'rgba(255,210,63,0.10)' : undefined,
       }}
@@ -116,7 +117,10 @@ function BoardRow({ church }: { church: Church }) {
         <span style={{ display: 'block', fontWeight: 800, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {church.name}
         </span>
-        <span className="faint" style={{ display: 'block', fontSize: 11.5 }}>
+        <span
+          className="faint"
+          style={{ display: 'block', fontSize: 11.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+        >
           LVL {church.level} · {tier.name}
           {church.miles != null && !mine ? ` · ${formatMiles(church.miles)}` : ''}
         </span>

@@ -1,0 +1,16 @@
+{
+  "name": "Verse Arcade",
+  "short_name": "Verse Arcade",
+  "description": "One shared Bible verse a day. Beat the clock, keep your streak, and actually remember it.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0720",
+  "theme_color": "#0b0720",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

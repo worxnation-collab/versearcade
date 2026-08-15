@@ -178,3 +178,31 @@ export interface Group {
   currentStreak: number
   longestStreak: number
 }
+
+// The church a player plays for. XP here is congregational: pooled from every
+// member's gifts, on its own (slower) level curve — see features/church/levels.
+export interface Church {
+  id: string
+  name: string
+  address?: string | null
+  city?: string | null
+  region?: string | null
+  lat: number
+  lng: number
+  xp: number
+  level: number
+  members: number
+  /** Distance from the viewer's church, on the local board. */
+  miles?: number
+  rank?: number
+  isMine?: boolean
+}
+
+// A member of your church, ranked by what they've given to it.
+export interface ChurchGiver {
+  username: string
+  avatarEmoji: string
+  avatarCharacter?: AvatarSpec | null
+  points: number
+  isMe: boolean
+}

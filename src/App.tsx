@@ -15,6 +15,7 @@ import PracticeResultScreen from './features/practice/PracticeResultScreen'
 import ReviewScreen from './features/review/ReviewScreen'
 import BuddiesScreen from './features/buddies/BuddiesScreen'
 import ChurchesScreen from './features/churches/ChurchesScreen'
+import ChurchScreen from './features/church/ChurchScreen'
 import AdminScreen from './features/admin/AdminScreen'
 import LeaderboardScreen from './features/leaderboard/LeaderboardScreen'
 import CollectionScreen from './features/collection/CollectionScreen'
@@ -47,7 +48,7 @@ function Splash() {
   )
 }
 
-// The four tab routes share the bottom nav.
+// The five tab routes share the bottom nav.
 function TabShell({ children }: { children: JSX.Element }) {
   return (
     <>
@@ -157,8 +158,21 @@ export default function App() {
             </RequireProfile>
           }
         />
-        {/* For Churches — the congregation funnel that replaced the Groups tab.
-            Public so it can be shared/linked without an account. */}
+        {/* Church tab — the church you play FOR: pick it, pour points into it,
+            watch it level up and climb the board against churches near it. */}
+        <Route
+          path="/church"
+          element={
+            <RequireProfile>
+              <TabShell>
+                <ChurchScreen />
+              </TabShell>
+            </RequireProfile>
+          }
+        />
+        {/* For Churches — the B2B congregation-partnership funnel that replaced
+            the Groups tab. Public so it can be shared/linked without an account.
+            Distinct from /church above, which is the player-facing tab. */}
         <Route path="/churches" element={<ChurchesScreen />} />
         {/* Old Groups deep links now land on the churches page. */}
         <Route path="/groups" element={<Navigate to="/churches" replace />} />

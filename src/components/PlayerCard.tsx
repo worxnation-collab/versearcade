@@ -70,16 +70,17 @@ export function PlayerCard({
         }}
       />
       <div style={{ position: 'relative' }}>
-      {/* Actions ride in the card's corner rather than beside the handle, so a
-          long username never gets squeezed into an ellipsis. */}
+      {/* Actions get their own row above the handle rather than sitting beside
+          it, so neither a long username nor a wide button ("✨ Customize") ever
+          crowds the other. */}
       {actions && (
-        <div style={{ position: 'absolute', top: 10, right: 12, display: 'flex', gap: 6, zIndex: 1 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginBottom: 10 }}>
           {actions}
         </div>
       )}
 
       {/* Identity */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16, marginTop: actions ? 18 : 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
         <Avatar
           emoji={p.avatarEmoji}
           character={p.avatarCharacter}

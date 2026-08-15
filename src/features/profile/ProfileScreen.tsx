@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
@@ -20,6 +20,12 @@ export default function ProfileScreen() {
   const { profile, mode, changeUsername, signOut, deleteAccount } = useAuth()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // ?customize=1 deep-links straight into the customizer — the home screen's
+  // "build your character" nudge uses it, so it doesn't dump you on the profile
+  // with nothing obviously to do.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const wantsCustomize = searchParams.get('customize') === '1'
+  const [customizing, setCustomizing] = useState(wantsCustomize)
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   const [nameErr, setNameErr] = useState<string | null>(null)
@@ -30,9 +36,28 @@ export default function ProfileScreen() {
   useEffect(() => {
     loadCollection()
   }, [loadCollection])
+  useEffect(() => {
+    if (wantsCustomize) setCustomizing(true)
+  }, [wantsCustomize])
 
   if (!profile) return null
   const cards = owned.length
+
+  const cardData = {
+    username: profile.username,
+    avatarEmoji: profile.avatarEmoji,
+    avatarCharacter: profile.avatarCharacter,
+    avatarBorder: profile.avatarBorder,
+    avatarBadge: profile.avatarBadge,
+    cardBackground: profile.cardBackground,
+    xp: profile.xp,
+    level: profile.level,
+    currentStreak: profile.currentStreak,
+    longestStreak: profile.longestStreak,
+    totalPlays: profile.totalPlays,
+    cards,
+    denomination: profile.denomination,
+  }
 
   const startEditName = () => { setNameDraft(profile.username); setNameErr(null); setEditingName(true) }
   const saveName = async () => {
@@ -43,70 +68,108 @@ export default function ProfileScreen() {
     if (res.ok) { juice.correct?.(); setEditingName(false) }
     else setNameErr(res.error ?? 'Could not save')
   }
+  const openCustomize = () => { juice.select?.(); setCustomizing(true); window.scrollTo({ top: 0 }) }
+  const closeCustomize = () => {
+    juice.select?.()
+    setEditingName(false)
+    setCustomizing(false)
+    if (wantsCustomize) setSearchParams({}, { replace: true })
+    window.scrollTo({ top: 0 })
+  }
+
+  // ── Customize ────────────────────────────────────────────────────────────
+  // Everything that changes how your card looks — name, character, skins,
+  // items, background, borders, badges — lives on its own screen behind the
+  // card's Customize button, so the profile itself stays a profile. The card
+  // sits on top as a live preview: every tap below redraws it immediately.
+  if (customizing) {
+    return (
+      <Page>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 14 }}>
+          <h2 style={{ fontSize: 24, margin: 0 }}>✨ Customize</h2>
+          <button onClick={closeCustomize} className="pill" style={{ fontSize: 13, fontWeight: 800, padding: '7px 14px', flexShrink: 0 }}>
+            Done
+          </button>
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <PlayerCard p={cardData} />
+        </div>
+
+        {/* Name lives here too — it's part of the card, and Edit used to be the
+            only thing this button did. */}
+        <div className="card" style={{ marginBottom: 14 }}>
+          {!editingName ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="faint" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Username</div>
+                <b style={{ fontFamily: 'var(--font-display)', fontSize: 18, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+                  @{profile.username}
+                </b>
+              </div>
+              <button onClick={startEditName} className="pill" style={{ fontSize: 12, padding: '5px 12px', fontWeight: 800, flexShrink: 0 }}>
+                ✏️ Change
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="faint" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Username</div>
+              <input
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                placeholder="username"
+                maxLength={16}
+                autoCapitalize="none"
+                autoCorrect="off"
+                autoFocus
+                style={{ width: '100%' }}
+              />
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <Button variant="gold" onClick={saveName} disabled={savingName}>{savingName ? '…' : 'Save'}</Button>
+                <Button variant="ghost" onClick={() => setEditingName(false)} disabled={savingName}>Cancel</Button>
+              </div>
+              {nameErr && <p style={{ color: 'var(--coral)', fontSize: 13, marginTop: 6 }}>{nameErr}</p>}
+            </>
+          )}
+        </div>
+
+        {/* Character, skins, items, card background, borders, badges. */}
+        <CustomizeSection />
+
+        <p className="faint" style={{ fontSize: 11, textAlign: 'center', marginBottom: 10, lineHeight: 1.4 }}>
+          Everything saves as you tap — the card above is exactly what other players see.
+        </p>
+        <Button variant="gold" full onClick={closeCustomize}>Done</Button>
+      </Page>
+    )
+  }
 
   return (
     <Page>
       {/* Your player card — the exact thing everyone else sees when they tap
           your pfp, background and all, so customizing it has a visible home. */}
-      {!editingName ? (
-        <div style={{ marginBottom: 18 }}>
-          <PlayerCard
-            p={{
-              username: profile.username,
-              avatarEmoji: profile.avatarEmoji,
-              avatarCharacter: profile.avatarCharacter,
-              avatarBorder: profile.avatarBorder,
-              avatarBadge: profile.avatarBadge,
-              cardBackground: profile.cardBackground,
-              xp: profile.xp,
-              level: profile.level,
-              currentStreak: profile.currentStreak,
-              longestStreak: profile.longestStreak,
-              totalPlays: profile.totalPlays,
-              cards,
-              denomination: profile.denomination,
-            }}
-            actions={
-              <>
-                <button onClick={startEditName} aria-label="Edit username" className="pill" style={{ fontSize: 12, padding: '4px 10px', flexShrink: 0 }}>
-                  ✏️ Edit
-                </button>
-                {/* Sound, haptics, motion and translation all live behind here so
-                    the profile stays about the player, not the knobs. */}
-                <button
-                  onClick={() => { juice.select?.(); setSettingsOpen(true) }}
-                  aria-label="Settings"
-                  className="pill"
-                  style={{ fontSize: 14, padding: '4px 10px', flexShrink: 0, lineHeight: 1 }}
-                >
-                  ⚙️
-                </button>
-              </>
-            }
-          />
-        </div>
-      ) : (
-        <div className="card" style={{ marginBottom: 18 }}>
-          <input
-            value={nameDraft}
-            onChange={(e) => setNameDraft(e.target.value)}
-            placeholder="username"
-            maxLength={16}
-            autoCapitalize="none"
-            autoCorrect="off"
-            autoFocus
-            style={{ width: '100%' }}
-          />
-          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            <Button variant="gold" onClick={saveName} disabled={savingName}>{savingName ? '…' : 'Save'}</Button>
-            <Button variant="ghost" onClick={() => setEditingName(false)} disabled={savingName}>Cancel</Button>
-          </div>
-          {nameErr && <p style={{ color: 'var(--coral)', fontSize: 13, marginTop: 6 }}>{nameErr}</p>}
-        </div>
-      )}
-
-      {/* Streak-unlocked cosmetics */}
-      <CustomizeSection />
+      <div style={{ marginBottom: 18 }}>
+        <PlayerCard
+          p={cardData}
+          actions={
+            <>
+              <button onClick={openCustomize} aria-label="Customize your card" className="pill" style={{ fontSize: 12, padding: '4px 10px', flexShrink: 0 }}>
+                ✨ Customize
+              </button>
+              {/* Sound, haptics, motion and translation all live behind here so
+                  the profile stays about the player, not the knobs. */}
+              <button
+                onClick={() => { juice.select?.(); setSettingsOpen(true) }}
+                aria-label="Settings"
+                className="pill"
+                style={{ fontSize: 14, padding: '4px 10px', flexShrink: 0, lineHeight: 1 }}
+              >
+                ⚙️
+              </button>
+            </>
+          }
+        />
+      </div>
 
       {/* Invite friends — referral code + progress toward the carried-cross look.
           Collapsed by default behind an obvious Show/Hide button; the header

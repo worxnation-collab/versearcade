@@ -3,9 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
-import { Avatar } from '@/components/Avatar'
-import { XpBar } from '@/components/XpBar'
-import { StreakFlame } from '@/components/StreakFlame'
+import { PlayerCard } from '@/components/PlayerCard'
 import { useAuth } from '@/store/auth'
 import { useJuice } from '@/juice/useJuice'
 import { shareResult, APP_URL } from '@/features/daily/shareCard'
@@ -48,61 +46,64 @@ export default function ProfileScreen() {
 
   return (
     <Page>
-      {/* Identity */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
-        <Avatar emoji={profile.avatarEmoji} character={profile.avatarCharacter} size={64} ring border={profile.avatarBorder} badge={profile.avatarBadge} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {!editingName ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <h1 style={{ fontSize: 24, overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>@{profile.username}</h1>
-              <button onClick={startEditName} aria-label="Edit username" className="pill" style={{ fontSize: 12, padding: '4px 10px', flexShrink: 0 }}>
-                ✏️ Edit
-              </button>
-              {/* Sound, haptics, motion and translation all live behind here so
-                  the profile stays about the player, not the knobs. */}
-              <button
-                onClick={() => { juice.select?.(); setSettingsOpen(true) }}
-                aria-label="Settings"
-                className="pill"
-                style={{ fontSize: 14, padding: '4px 10px', flexShrink: 0, lineHeight: 1 }}
-              >
-                ⚙️
-              </button>
-            </div>
-          ) : (
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <input
-                  value={nameDraft}
-                  onChange={(e) => setNameDraft(e.target.value)}
-                  placeholder="username"
-                  maxLength={16}
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  autoFocus
-                  style={{ flex: 1, minWidth: 0 }}
-                />
-              </div>
-              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                <Button variant="gold" onClick={saveName} disabled={savingName}>{savingName ? '…' : 'Save'}</Button>
-                <Button variant="ghost" onClick={() => setEditingName(false)} disabled={savingName}>Cancel</Button>
-              </div>
-              {nameErr && <p style={{ color: 'var(--coral)', fontSize: 13, marginTop: 6 }}>{nameErr}</p>}
-            </div>
-          )}
-          <div style={{ marginTop: 8 }}><XpBar xp={profile.xp} /></div>
+      {/* Your player card — the exact thing everyone else sees when they tap
+          your pfp, background and all, so customizing it has a visible home. */}
+      {!editingName ? (
+        <div style={{ marginBottom: 18 }}>
+          <PlayerCard
+            p={{
+              username: profile.username,
+              avatarEmoji: profile.avatarEmoji,
+              avatarCharacter: profile.avatarCharacter,
+              avatarBorder: profile.avatarBorder,
+              avatarBadge: profile.avatarBadge,
+              cardBackground: profile.cardBackground,
+              xp: profile.xp,
+              level: profile.level,
+              currentStreak: profile.currentStreak,
+              longestStreak: profile.longestStreak,
+              totalPlays: profile.totalPlays,
+              cards,
+              denomination: profile.denomination,
+            }}
+            actions={
+              <>
+                <button onClick={startEditName} aria-label="Edit username" className="pill" style={{ fontSize: 12, padding: '4px 10px', flexShrink: 0 }}>
+                  ✏️ Edit
+                </button>
+                {/* Sound, haptics, motion and translation all live behind here so
+                    the profile stays about the player, not the knobs. */}
+                <button
+                  onClick={() => { juice.select?.(); setSettingsOpen(true) }}
+                  aria-label="Settings"
+                  className="pill"
+                  style={{ fontSize: 14, padding: '4px 10px', flexShrink: 0, lineHeight: 1 }}
+                >
+                  ⚙️
+                </button>
+              </>
+            }
+          />
         </div>
-      </div>
-
-      {/* Stats grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 18 }}>
-        <Stat label="Streak" node={<StreakFlame days={profile.currentStreak} size={18} />} />
-        <Stat label="Longest" value={`${profile.longestStreak}d`} />
-        <Stat label="Cards" value={`${cards}`} />
-        <Stat label="Level" value={`${profile.level}`} />
-        <Stat label="Total XP" value={profile.xp.toLocaleString()} />
-        <Stat label="Plays" value={`${profile.totalPlays}`} />
-      </div>
+      ) : (
+        <div className="card" style={{ marginBottom: 18 }}>
+          <input
+            value={nameDraft}
+            onChange={(e) => setNameDraft(e.target.value)}
+            placeholder="username"
+            maxLength={16}
+            autoCapitalize="none"
+            autoCorrect="off"
+            autoFocus
+            style={{ width: '100%' }}
+          />
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <Button variant="gold" onClick={saveName} disabled={savingName}>{savingName ? '…' : 'Save'}</Button>
+            <Button variant="ghost" onClick={() => setEditingName(false)} disabled={savingName}>Cancel</Button>
+          </div>
+          {nameErr && <p style={{ color: 'var(--coral)', fontSize: 13, marginTop: 6 }}>{nameErr}</p>}
+        </div>
+      )}
 
       {/* Streak-unlocked cosmetics */}
       <CustomizeSection />

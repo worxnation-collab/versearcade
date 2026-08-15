@@ -70,7 +70,7 @@ export default function BattleHub() {
                     className="card"
                     style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%', borderColor: 'var(--gold)', background: b.is_welcome ? 'rgba(255,210,63,0.14)' : 'rgba(255,210,63,0.08)' }}
                   >
-                    <Avatar emoji={b.challenger.avatar_emoji} character={b.challenger.avatar_character} size={40} ring={false} />
+                    <Avatar emoji={b.challenger.avatar_emoji} character={b.challenger.avatar_character} size={40} ring={false} username={b.challenger.username} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <b style={{ fontWeight: 800 }}>
                         {b.is_welcome ? '👋 Welcome!' : `@${b.challenger.username}`}
@@ -143,7 +143,7 @@ export default function BattleHub() {
                         {r.rank === 1 ? '👑' : r.rank}
                       </span>
                       <span style={{ position: 'relative', flexShrink: 0 }}>
-                        <Avatar emoji={r.avatar_emoji} character={r.avatar_character} size={28} ring={false} />
+                        <Avatar emoji={r.avatar_emoji} character={r.avatar_character} size={28} ring={false} username={r.username} />
                         {r.denomination && (
                           <span title={denominationName(r.denomination)} style={{ position: 'absolute', right: -2, bottom: -2, width: 10, height: 10, borderRadius: '50%', background: denominationColor(r.denomination), boxShadow: '0 0 0 2px var(--bg-1)' }} />
                         )}
@@ -255,7 +255,7 @@ function BattleRow({ b, onClick }: { b: Battle; onClick: () => void }) {
       className="card"
       style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%' }}
     >
-      <Avatar emoji={other?.avatar_emoji ?? (b.status !== 'complete' ? '⏳' : '⚔️')} character={other?.avatar_character} size={40} ring={false} />
+      <Avatar emoji={other?.avatar_emoji ?? (b.status !== 'complete' ? '⏳' : '⚔️')} character={other?.avatar_character} size={40} ring={false} username={other?.username} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <b style={{ fontWeight: 800 }}>{name ? `@${name}` : 'Open challenge'}</b>
         <div style={{ fontSize: 12, color: label.color, fontWeight: 700 }}>{label.text}</div>

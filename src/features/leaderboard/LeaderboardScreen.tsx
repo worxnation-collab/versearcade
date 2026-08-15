@@ -209,7 +209,7 @@ function FeaturedRow({ f }: { f: FeaturedRow }) {
       }}
     >
       <div style={{ width: 34, display: 'grid', placeItems: 'center', fontSize: 18 }}>⭐</div>
-      <Avatar emoji={f.avatar_emoji} character={f.avatar_character} size={34} ring={false} border={f.avatar_border} badge={f.avatar_badge} />
+      <Avatar emoji={f.avatar_emoji} character={f.avatar_character} size={34} ring={false} border={f.avatar_border} badge={f.avatar_badge} username={f.username} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {f.username}
@@ -259,7 +259,7 @@ function Row({ r, me }: { r: LbRow; me: boolean }) {
       >
         {isKing ? <ThroneIcon size={24} /> : (medal(r.rank) ?? r.rank)}
       </div>
-      <Avatar emoji={r.avatar_emoji} character={r.avatar_character} size={34} ring={false} border={r.avatar_border} badge={r.avatar_badge} />
+      <Avatar emoji={r.avatar_emoji} character={r.avatar_character} size={34} ring={false} border={r.avatar_border} badge={r.avatar_badge} username={r.username} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{

@@ -98,7 +98,7 @@ export function BuddiesSection() {
           <div style={{ display: 'grid', gap: 8, marginBottom: 20 }}>
             {requests.map((u) => (
               <div key={u.username} className="card" style={{ display: 'flex', alignItems: 'center', gap: 12, borderColor: 'var(--gold)', background: 'rgba(255,210,63,0.08)' }}>
-                <Avatar emoji={u.avatar_emoji} character={u.avatar_character} size={40} ring={false} />
+                <Avatar emoji={u.avatar_emoji} character={u.avatar_character} size={40} ring={false} username={u.username} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <b style={{ fontWeight: 800 }}>@{u.username}</b>
                   <div className="faint" style={{ fontSize: 12 }}>Level {u.level} · wants to be your buddy</div>
@@ -136,7 +136,7 @@ export function BuddiesSection() {
           <div style={{ display: 'grid', gap: 8 }}>
             {suggested.map((u) => (
               <div key={u.username} className="card" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <Avatar emoji={u.avatar_emoji} character={u.avatar_character} size={38} ring={false} />
+                <Avatar emoji={u.avatar_emoji} character={u.avatar_character} size={38} ring={false} username={u.username} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <b style={{ fontWeight: 800 }}>@{u.username}</b>
                   <div className="faint" style={{ fontSize: 12 }}>Level {u.level} · 🔥 {u.current_streak}</div>
@@ -167,7 +167,7 @@ function BuddyRow({ u, onBattle, onRemove }: { u: BuddyCard; onBattle: () => voi
   return (
     <motion.div className="card" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
       style={{ display: 'flex', alignItems: 'center', gap: 12, borderColor: u.official ? 'var(--gold)' : undefined }}>
-      <Avatar emoji={u.avatar_emoji} character={u.avatar_character} size={40} ring={false} />
+      <Avatar emoji={u.avatar_emoji} character={u.avatar_character} size={40} ring={false} username={u.username} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <b style={{ fontWeight: 800 }}>
           @{u.username}

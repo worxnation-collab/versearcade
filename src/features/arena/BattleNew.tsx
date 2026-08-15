@@ -177,7 +177,7 @@ function InvitePicker({ seed, result }: { seed: number; result: PlayResult }) {
 function PlayerRow({ u, label, onClick }: { u: BuddyCard; label: string; onClick: () => void }) {
   return (
     <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px' }}>
-      <Avatar emoji={u.avatar_emoji} character={u.avatar_character} size={38} ring={false} />
+      <Avatar emoji={u.avatar_emoji} character={u.avatar_character} size={38} ring={false} username={u.username} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <b style={{ fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
           @{u.username}

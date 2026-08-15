@@ -77,6 +77,9 @@ export interface Profile {
   avatarBorder: string
   /** Equipped badge cosmetic key, or null for none. */
   avatarBadge?: string | null
+  /** Equipped player-card background key (a collectible key; see
+   *  data/playerCards). null/undefined = the free 'default' background. */
+  cardBackground?: string | null
   /** Distinct day-drops the player has shared (YYYY-MM-DD). Drives share-count
    *  unlocks like the King Baldwin set. */
   sharedDays?: string[]

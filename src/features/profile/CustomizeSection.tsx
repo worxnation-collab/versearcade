@@ -8,6 +8,9 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/store/auth'
 import { useJuice } from '@/juice/useJuice'
 import { BORDERS, BADGES, isUnlocked } from '@/data/cosmetics'
+import { useCollection } from '@/store/collection'
+import { collectibleByKey } from '@/data/collectibles'
+import { CARD_BACKGROUNDS, DEFAULT_CARD_BG, cardBgStyle, cardBgAccentColor, cardBgUnlocked } from '@/data/playerCards'
 import {
   ARMOR,
   SKINS,
@@ -76,12 +79,25 @@ export function CustomizeSection() {
   }
 
   const setAvatarCharacter = useAuth((s) => s.setAvatarCharacter)
+  const setCardBackground = useAuth((s) => s.setCardBackground)
+  const ownedCollectibles = useCollection((s) => s.owned)
 
   const longest = profile.longestStreak
   const equippedBorder = profile.avatarBorder || 'default'
   const equippedBadge = profile.avatarBadge ?? 'none'
   const spec = profile.avatarCharacter ?? DEFAULT_AVATAR
   const equippedPieces = ARMOR.filter((a) => spec.armor[a.slot]).length
+
+  const equippedBg = profile.cardBackground ?? DEFAULT_CARD_BG
+  const unlockedBgCount = CARD_BACKGROUNDS.filter((b) => cardBgUnlocked(b.key, ownedCollectibles)).length
+
+  const pickBg = async (key: string) => {
+    setErr(null)
+    juice.select()
+    const res = await setCardBackground(key)
+    if (!res.ok) setErr(res.error ?? 'That background isn’t unlocked yet')
+    else flashSaved()
+  }
 
   const equip = async (patch: { border?: string; badge?: string | null }) => {
     setErr(null)
@@ -478,6 +494,55 @@ export function CustomizeSection() {
             })}
           </div>
         )}
+      </div>
+      </Section>
+
+      {/* ── Player-card backgrounds ───────────────────────────────────────
+          Every card and relic you own also unlocks the background themed after
+          it, so the collection doubles as a wardrobe for your player card. ── */}
+      <Section title="Card background" right={`${unlockedBgCount}/${CARD_BACKGROUNDS.length}`}>
+      <div className="card" style={{ marginBottom: 14 }}>
+        {/* Live preview of the equipped background. */}
+        <div style={{ ...cardBgStyle(equippedBg), height: 74, borderRadius: 14, border: '1px solid var(--stroke)', display: 'grid', placeItems: 'center', marginBottom: 12 }}>
+          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 15, textShadow: '0 2px 10px rgba(0,0,0,0.6)' }}>
+            {CARD_BACKGROUNDS.find((b) => b.key === equippedBg)?.name ?? 'Classic'}
+          </span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+          {CARD_BACKGROUNDS.map((b) => {
+            const unlocked = cardBgUnlocked(b.key, ownedCollectibles)
+            const equipped = equippedBg === b.key
+            const src = collectibleByKey(b.key)
+            return (
+              <button
+                key={b.key}
+                onClick={unlocked && !equipped ? () => pickBg(b.key) : undefined}
+                disabled={!unlocked || equipped}
+                title={unlocked ? b.name : `Unlocks with ${b.name}`}
+                style={{
+                  padding: 0, borderRadius: 12, overflow: 'hidden', cursor: unlocked && !equipped ? 'pointer' : 'default',
+                  border: equipped ? `2px solid ${cardBgAccentColor(b.key)}` : '1px solid var(--stroke)',
+                  opacity: unlocked ? 1 : 0.42, filter: unlocked ? 'none' : 'grayscale(0.75)',
+                  boxShadow: equipped ? `0 0 14px ${cardBgAccentColor(b.key)}55` : 'none',
+                  background: 'transparent',
+                }}
+              >
+                <div style={{ ...cardBgStyle(b.key), height: 46, display: 'grid', placeItems: 'center' }}>
+                  <span style={{ fontSize: 17 }}>{unlocked ? src?.emoji ?? '✦' : '🔒'}</span>
+                </div>
+                <div style={{ padding: '5px 4px 6px', background: 'var(--card-solid)' }}>
+                  <div style={{ fontSize: 9.5, fontWeight: 800, lineHeight: 1.15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {b.name}
+                  </div>
+                  {equipped && <div style={{ fontSize: 8.5, color: cardBgAccentColor(b.key), fontWeight: 800 }}>EQUIPPED</div>}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+        <p className="faint" style={{ fontSize: 11, marginTop: 10, lineHeight: 1.4 }}>
+          Each background unlocks with the card or relic it’s named after — earn them from goals and the Daily Chest.
+        </p>
       </div>
       </Section>
 

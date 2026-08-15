@@ -29,6 +29,7 @@ interface DbProfileRow {
   onboarded: boolean
   avatar_border: string | null
   avatar_badge: string | null
+  card_background: string | null
   // Not yet a real column — an online account reads back null and falls back to
   // the emoji until a profiles.avatar_character migration lands.
   avatar_character?: AvatarSpec | null
@@ -61,6 +62,7 @@ function mapRow(r: DbProfileRow): Profile {
     onboarded: r.onboarded,
     avatarBorder: r.avatar_border ?? 'default',
     avatarBadge: r.avatar_badge ?? null,
+    cardBackground: r.card_background ?? null,
     avatarCharacter: r.avatar_character ?? null,
     sharedDays: r.shared_days ?? [],
     ownedItems: r.owned_items ?? [],
@@ -107,6 +109,7 @@ interface AuthState {
   changeUsername: (next: string) => Promise<{ ok: boolean; error?: string }>
   setCosmetics: (patch: { border?: string; badge?: string | null }) => Promise<{ ok: boolean; error?: string }>
   setAvatarCharacter: (spec: AvatarSpec) => void
+  setCardBackground: (key: string) => Promise<{ ok: boolean; error?: string }>
   recordShare: (dropDate: string) => void
   grantItem: (itemId: string) => void
   grantSkin: (skinId: string) => void
@@ -543,6 +546,28 @@ export const useAuth = create<AuthState>((set, get) => ({
     if (error || !data?.ok) {
       set({ profile: cur }) // roll back the optimistic change
       return { ok: false, error: error?.message ?? 'That’s not unlocked yet' }
+    }
+    return { ok: true }
+  },
+
+  // Equip a player-card background. Like setCosmetics, the server is the gate:
+  // it refuses any key whose collectible the account hasn't unlocked, so we
+  // apply optimistically and roll back if it says no.
+  async setCardBackground(key) {
+    const cur = get().profile
+    if (!cur) return { ok: false, error: 'No profile' }
+    const next: Profile = { ...cur, cardBackground: key === 'default' ? null : key }
+    set({ profile: next })
+
+    if (get().mode === 'local' || !supabase) {
+      localdb.saveProfile(next)
+      return { ok: true }
+    }
+
+    const { data, error } = await supabase.rpc('set_card_background', { p_key: key })
+    if (error || !data?.ok) {
+      set({ profile: cur }) // roll back the optimistic change
+      return { ok: false, error: error?.message ?? 'That background isn’t unlocked yet' }
     }
     return { ok: true }
   },

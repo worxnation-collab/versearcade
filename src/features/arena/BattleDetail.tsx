@@ -237,7 +237,7 @@ function ChallengeHeader({ challenger, welcome }: { challenger: BattleSide; welc
       <div style={{ fontSize: 40 }}>{welcome ? '👋' : '⚔️'}</div>
       <h1 style={{ fontSize: 26, marginTop: 4 }}>{welcome ? 'Welcome! You’ve been challenged' : 'You’ve been challenged!'}</h1>
       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
-        <Avatar emoji={challenger.avatar_emoji} character={challenger.avatar_character} size={44} />
+        <Avatar emoji={challenger.avatar_emoji} character={challenger.avatar_character} size={44} username={challenger.username} />
         <b style={{ fontFamily: 'var(--font-display)', fontSize: 18 }}>@{challenger.username}</b>
       </div>
     </div>
@@ -256,7 +256,7 @@ function ScoreRow({ side, youIf, winner, label }: { side: BattleSide; youIf: boo
         background: winner ? 'rgba(255,210,63,0.1)' : undefined,
       }}
     >
-      <Avatar emoji={side.avatar_emoji} character={side.avatar_character} size={44} ring={false} />
+      <Avatar emoji={side.avatar_emoji} character={side.avatar_character} size={44} ring={false} username={side.username} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <b style={{ fontWeight: 800 }}>
           @{side.username}

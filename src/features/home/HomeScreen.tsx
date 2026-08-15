@@ -44,7 +44,7 @@ export default function HomeScreen() {
     <Page>
       {/* Top identity bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-        <Avatar emoji={profile.avatarEmoji} character={profile.avatarCharacter} ring border={profile.avatarBorder} badge={profile.avatarBadge} />
+        <Avatar emoji={profile.avatarEmoji} character={profile.avatarCharacter} ring border={profile.avatarBorder} badge={profile.avatarBadge} username={profile.username} />
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <b style={{ fontFamily: 'var(--font-display)', fontSize: 18 }}>@{profile.username}</b>

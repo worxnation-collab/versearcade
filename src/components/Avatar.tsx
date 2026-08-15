@@ -1,5 +1,6 @@
 import { borderRender, badgeByKey } from '@/data/cosmetics'
 import { Character } from '@/components/Character'
+import { usePlayerCard } from '@/components/PlayerCardModal'
 import type { AvatarSpec } from '@/types'
 
 export function Avatar({
@@ -9,6 +10,7 @@ export function Avatar({
   border = 'default',
   badge,
   character,
+  username,
 }: {
   emoji: string
   size?: number
@@ -19,7 +21,10 @@ export function Avatar({
   badge?: string | null
   /** Composable character avatar; when set it replaces the emoji as the pfp. */
   character?: AvatarSpec | null
+  /** Whose avatar this is. When given, tapping it opens their player card. */
+  username?: string | null
 }) {
+  const { open } = usePlayerCard()
   // `ring={false}` keeps the plain (unringed) look used in a few spots; any
   // explicit border still wins so cosmetics always show.
   const useDefaultRing = ring !== false
@@ -69,11 +74,11 @@ export function Avatar({
       face
     )
 
-  if (!badgeDef) return content
+  if (!badgeDef) return tappable(content)
 
   // Overlay the badge emblem at the bottom-right of the avatar.
   const badgeSize = Math.max(16, Math.round(size * 0.42))
-  return (
+  return tappable(
     <div style={{ position: 'relative', flexShrink: 0, display: 'inline-grid', placeItems: 'center' }}>
       {content}
       <span
@@ -94,6 +99,22 @@ export function Avatar({
       >
         {badgeDef.emoji}
       </span>
-    </div>
+    </div>,
   )
+
+  // A pfp with a known owner becomes a button that pulls up their player card.
+  // Without a username it stays inert, so decorative avatars aren't clickable.
+  function tappable(node: React.ReactNode) {
+    if (!username) return node
+    return (
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); e.preventDefault(); open(username) }}
+        aria-label={`View @${username}'s player card`}
+        style={{ background: 'none', border: 'none', padding: 0, lineHeight: 0, cursor: 'pointer', flexShrink: 0, borderRadius: '50%' }}
+      >
+        {node}
+      </button>
+    )
+  }
 }

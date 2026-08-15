@@ -37,6 +37,10 @@ group_members · group_plays · collectibles · user_collectibles`
 - One play per user per day → `UNIQUE(user_id, drop_date)` on `plays`.
 - No leaderboard table by design. `presence_events` is a warm, non-ranked feed.
 - Groups pool each member's daily score in `group_plays` toward a shared goal.
+- `book_accuracy` (0039) keeps an additive correct/answered tally per book of the
+  Bible, written by `record_book_accuracy` from every finished run in any mode.
+  Guests keep the same shape in localStorage. It feeds the Study tab's review
+  chart (`lib/bookAccuracy.ts` → `features/study/BookAccuracyChart.tsx`).
 
 ## Folder map
 
@@ -77,6 +81,11 @@ Adapted from Wordle / Duolingo / BeReal, tuned for *learning without shame*:
 9. **Named level tiers + juicy level-up** — escalating XP curve (early levels come
    fast for early dopamine).
 10. **Reduce-motion + sound/haptic toggles** — inclusive and Review-friendly.
+11. **Per-book accuracy + the Study review chart** — every answer, in every mode,
+    rolls up into "how well do I know this book?", ranked weakest first. It's the
+    one place the app tells you where you actually stand, and each row is a tap
+    into a focus drill on that book — so the honest read arrives with the fix
+    attached rather than as a verdict. Deliberately rank-free: no XP, no ladder.
 
 ## Content pipeline (how to scale past the demo pool)
 

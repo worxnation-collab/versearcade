@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { PracticeSection } from '@/features/practice/PracticeSection'
+import { BookAccuracyChart } from './BookAccuracyChart'
 import { useReviews } from '@/store/reviews'
 import { useJuice } from '@/juice/useJuice'
 import { useEffect } from 'react'
@@ -93,6 +94,11 @@ export default function StudyScreen() {
 
       {/* Study the last five — open by default here, since this is its home. */}
       <PracticeSection defaultOpen showEmpty />
+
+      {/* Where you actually stand, book by book — and the tap that turns a weak
+          spot into a focus drill. Sits under the actions: it's the reason to
+          pick one, not a scoreboard to open the tab for. */}
+      <BookAccuracyChart />
 
       <div style={{ height: 90 }} />
     </Page>

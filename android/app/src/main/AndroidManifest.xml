@@ -48,4 +48,10 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Church tab: a one-shot coarse fix so we can look up churches near the
+         player. Never stored, never tracked in the background — fine location
+         is declared only because some devices report nothing without it. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 </manifest>

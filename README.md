@@ -47,6 +47,7 @@ Full Apple Developer portal + Sign in with Apple + IAP checklist: **`docs/SETUP-
 | Core daily loop | `src/features/daily/` |
 | Ambient presence | `src/features/presence/` |
 | Co-op groups | `src/features/groups/`, `src/store/groups.ts` |
+| Church tab (find, give, level, local board) | `src/features/church/`, `src/store/church.ts` |
 | Bible content engine | `src/data/bible/` |
 | Auth (email/Google/Apple + guest) | `src/features/auth/`, `src/store/auth.ts` |
 

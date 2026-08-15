@@ -86,6 +86,30 @@ Adapted from Wordle / Duolingo / BeReal, tuned for *learning without shame*:
     one place the app tells you where you actually stand, and each row is a tap
     into a focus drill on that book — so the honest read arrives with the fix
     attached rather than as a verdict. Deliberately rank-free: no XP, no ladder.
+12. **Play for your church** (the Church tab) — pick the church you actually
+    attend (found by name against OpenStreetMap near your location), then pour
+    points into it. Giving costs the player nothing: lifetime XP is the *budget*,
+    not the currency, so the pool only grows by playing and your own rank never
+    moves. The church banks that XP on its own slower curve and its **building
+    grows with it** — eight tiers from a house gathering to a basilica — and it's
+    ranked only against churches within 10–50 miles of it. A real congregation
+    of forty can win its own town, which a worldwide board could never offer.
+
+### The Church tab, in files
+
+| Piece | Where |
+|---|---|
+| Tables, level curve, join/give/board RPCs | `supabase/migrations/0040_churches.sql` |
+| Map lookup (Overpass + Nominatim, key-less) | `src/lib/churchSearch.ts`, `src/lib/geo.ts` |
+| Level curve + building ladder (mirrors SQL) | `src/features/church/levels.ts` |
+| The eight buildings, as flat inline SVG | `src/features/church/ChurchArt.tsx` |
+| Screen, picker, local board | `src/features/church/`, `src/store/church.ts` |
+
+Two rules worth keeping if this is ever extended: the client curve in `levels.ts`
+and `church_level_from_xp()` must stay identical, and a player's location is used
+only to run a search — the only coordinates stored are the church's, which are
+public map data. Note `/church` (this tab) is distinct from `/churches`, the
+older B2B partnership inquiry funnel.
 
 ## Content pipeline (how to scale past the demo pool)
 

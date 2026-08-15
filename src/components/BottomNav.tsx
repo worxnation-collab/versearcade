@@ -2,13 +2,14 @@ import { NavLink } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useJuice } from '@/juice/useJuice'
 
-// Four tabs, one per thing you actually come here to do. Ranks folded into
+// Five tabs, one per thing you actually come here to do. Ranks folded into
 // Play; Buddies and Cards folded into You — each still a full screen at its own
 // URL, just no longer competing for a slot down here.
 const tabs = [
   { to: '/play', label: 'Play', icon: '🎮' },
   { to: '/battle', label: 'Battle', icon: '⚔️' },
   { to: '/study', label: 'Study', icon: '📚' },
+  { to: '/church', label: 'Church', icon: '⛪' },
   { to: '/you', label: 'You', icon: '⭐' },
 ]
 
@@ -33,7 +34,10 @@ export function BottomNav() {
         style={{
           pointerEvents: 'auto',
           display: 'flex',
-          gap: 4,
+          // Five tabs have to clear a 320px-wide phone, so the gaps and the pill
+          // padding below are as tight as they can be without cramping the taps.
+          gap: 2,
+          maxWidth: 'calc(100vw - 16px)',
           margin: '0 auto',
           marginBottom: 'calc(var(--safe-bottom) + 10px)',
           padding: 6,
@@ -61,7 +65,7 @@ export function BottomNav() {
                   flexDirection: 'column',
                   alignItems: 'center',
                   gap: 2,
-                  padding: '8px 9px',
+                  padding: '8px 7px',
                   borderRadius: 999,
                   background: isActive
                     ? 'linear-gradient(180deg, var(--grape), var(--grape-deep))'
@@ -71,7 +75,7 @@ export function BottomNav() {
                 }}
               >
                 <span style={{ fontSize: 20 }}>{t.icon}</span>
-                <span style={{ fontSize: 10, fontWeight: 800 }}>{t.label}</span>
+                <span style={{ fontSize: 10, fontWeight: 800, whiteSpace: 'nowrap' }}>{t.label}</span>
               </motion.div>
             )}
           </NavLink>

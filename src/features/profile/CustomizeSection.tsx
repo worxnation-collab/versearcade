@@ -10,7 +10,8 @@ import { useJuice } from '@/juice/useJuice'
 import { BORDERS, BADGES, isUnlocked } from '@/data/cosmetics'
 import { useCollection } from '@/store/collection'
 import { collectibleByKey } from '@/data/collectibles'
-import { CARD_BACKGROUNDS, DEFAULT_CARD_BG, cardBgStyle, cardBgAccentColor, cardBgUnlocked } from '@/data/playerCards'
+import { CARD_BACKGROUNDS, DEFAULT_CARD_BG, cardBgStyle, cardArtProps, cardBgAccentColor, cardBgUnlocked } from '@/data/playerCards'
+import { CardArt } from '@/data/cardArt'
 import {
   ARMOR,
   SKINS,
@@ -503,8 +504,9 @@ export function CustomizeSection() {
       <Section title="Card background" right={`${unlockedBgCount}/${CARD_BACKGROUNDS.length}`}>
       <div className="card" style={{ marginBottom: 14 }}>
         {/* Live preview of the equipped background. */}
-        <div style={{ ...cardBgStyle(equippedBg), height: 74, borderRadius: 14, border: '1px solid var(--stroke)', display: 'grid', placeItems: 'center', marginBottom: 12 }}>
-          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 15, textShadow: '0 2px 10px rgba(0,0,0,0.6)' }}>
+        <div style={{ ...cardBgStyle(equippedBg), position: 'relative', height: 92, borderRadius: 14, border: '1px solid var(--stroke)', overflow: 'hidden', display: 'grid', placeItems: 'center', marginBottom: 12 }}>
+          <CardArt {...cardArtProps(equippedBg)} id={`bg-preview-${equippedBg}`} />
+          <span style={{ position: 'relative', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 15, textShadow: '0 2px 10px rgba(0,0,0,0.85)' }}>
             {CARD_BACKGROUNDS.find((b) => b.key === equippedBg)?.name ?? 'Classic'}
           </span>
         </div>
@@ -527,8 +529,11 @@ export function CustomizeSection() {
                   background: 'transparent',
                 }}
               >
-                <div style={{ ...cardBgStyle(b.key), height: 46, display: 'grid', placeItems: 'center' }}>
-                  <span style={{ fontSize: 17 }}>{unlocked ? src?.emoji ?? '✦' : '🔒'}</span>
+                <div style={{ ...cardBgStyle(b.key), position: 'relative', height: 52, overflow: 'hidden', display: 'grid', placeItems: 'center' }}>
+                  <CardArt {...cardArtProps(b.key)} id={`bg-tile-${b.key}`} />
+                  <span style={{ position: 'relative', fontSize: 16, filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.9))' }}>
+                    {unlocked ? src?.emoji ?? '✦' : '🔒'}
+                  </span>
                 </div>
                 <div style={{ padding: '5px 4px 6px', background: 'var(--card-solid)' }}>
                   <div style={{ fontSize: 9.5, fontWeight: 800, lineHeight: 1.15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

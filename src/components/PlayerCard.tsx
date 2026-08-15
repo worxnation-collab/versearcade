@@ -3,7 +3,8 @@ import { motion } from 'framer-motion'
 import { Avatar } from '@/components/Avatar'
 import { XpBar } from '@/components/XpBar'
 import { StreakFlame } from '@/components/StreakFlame'
-import { cardBgStyle } from '@/data/playerCards'
+import { cardBgStyle, cardArtProps } from '@/data/playerCards'
+import { CardArt } from '@/data/cardArt'
 import { denominationColor, denominationName } from '@/data/denominations'
 import type { AvatarSpec } from '@/types'
 
@@ -41,6 +42,10 @@ export function PlayerCard({
   compact?: boolean
 }) {
   const denom = p.denomination ? denominationName(p.denomination) : null
+  const art = cardArtProps(p.cardBackground)
+  // SVG gradient ids must be unique per rendered card — the profile header and
+  // an open pop-up can be on screen at once.
+  const artId = `pc-${p.username}-${p.cardBackground ?? 'default'}`
 
   return (
     <div
@@ -54,6 +59,17 @@ export function PlayerCard({
         boxShadow: '0 10px 30px rgba(0,0,0,0.45)',
       }}
     >
+      <CardArt scene={art.scene} palette={art.palette} id={artId} />
+      {/* A scrim keeps text legible over the brighter paintings without
+          flattening them. */}
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(180deg, rgba(8,3,24,0.20) 0%, rgba(8,3,24,0.44) 100%)',
+        }}
+      />
+      <div style={{ position: 'relative' }}>
       {/* Actions ride in the card's corner rather than beside the handle, so a
           long username never gets squeezed into an ellipsis. */}
       {actions && (
@@ -101,6 +117,7 @@ export function PlayerCard({
         <Stat label="Total XP" value={p.xp.toLocaleString()} />
         <Stat label="Plays" value={`${p.totalPlays}`} />
       </div>
+      </div>
     </div>
   )
 }
@@ -116,7 +133,7 @@ function Stat({ label, value, node }: { label: string; value?: string; node?: Re
         padding: 12,
         textAlign: 'center',
         borderRadius: 'var(--r-md, 16px)',
-        background: 'rgba(10,4,28,0.42)',
+        background: 'rgba(10,4,28,0.5)',
         border: '1px solid rgba(255,255,255,0.10)',
         backdropFilter: 'blur(3px)',
       }}

@@ -1,5 +1,5 @@
-// Player-card backgrounds — the Modern Warfare-style banner behind your avatar,
-// name and stats. Every background is earned: each one is tied to a collectible
+// Player-card backgrounds — the calling-card artwork behind your avatar, name
+// and stats. Every background is earned: each one is tied to a collectible
 // (an achievement card you completed, or a relic pulled from the Daily Chest),
 // and unlocks the moment that collectible lands in your collection. Styling is
 // themed after the thing that unlocked it, so a card reads as a trophy shelf.
@@ -10,73 +10,82 @@
 
 import type { Rarity } from '@/types'
 import { collectibleByKey, rarityColor } from './collectibles'
-
-/** How the accent is painted over the base gradient. */
-export type CardPattern = 'glow' | 'rays' | 'stripes' | 'aurora' | 'stars' | 'embers' | 'waves' | 'marble'
+import type { Palette, Scene } from './cardArt'
 
 export interface CardBgDef {
   /** Collectible key this background is themed after ('default' for the free one). */
   key: string
   name: string
-  from: string
-  to: string
-  accent: string
-  pattern: CardPattern
+  scene: Scene
+  palette: Palette
 }
 
 export const DEFAULT_CARD_BG = 'default'
 
-// The one everybody starts with — the app's own grape gradient.
-const BASE: CardBgDef = { key: DEFAULT_CARD_BG, name: 'Classic', from: '#2a1660', to: '#150a34', accent: '#7a3ff2', pattern: 'glow' }
+// A few shared skies so related scenes hang together as a set.
+const DAWN: [string, string] = ['#4b2a6b', '#1a0c3a']
+const NIGHT: [string, string] = ['#141338', '#070518']
+const DUSK: [string, string] = ['#5a2a4a', '#1c0a24']
+const SEA: [string, string] = ['#1e4a6b', '#08182c']
+const GOLDEN: [string, string] = ['#6b4a18', '#241505']
+const STONEY: [string, string] = ['#3b4055', '#12141f']
+const VERDANT: [string, string] = ['#2c5340', '#0b1c14']
 
-// Themed backgrounds, one per collectible. Anything not listed still works —
-// styleFor() falls back to a rarity-tinted default — but these are hand-tuned.
+// The one everybody starts with.
+const BASE: CardBgDef = {
+  key: DEFAULT_CARD_BG,
+  name: 'Classic',
+  scene: 'night',
+  palette: { sky: ['#3a1f7a', '#150a34'], land: '#1d1046', glow: '#a06bff', accent: '#d9c8ff' },
+}
+
+// One painted scene per collectible, themed to what it depicts.
 const THEMED: Omit<CardBgDef, 'name'>[] = [
   // ——— Achievement cards ———
-  { key: 'first_light', from: '#3a2a63', to: '#160b36', accent: '#ffb35c', pattern: 'rays' },
-  { key: 'night_owl', from: '#1b1746', to: '#0b0722', accent: '#6f8fd8', pattern: 'stars' },
-  { key: 'early_bird', from: '#39305f', to: '#150c33', accent: '#ffd88a', pattern: 'rays' },
-  { key: 'saved_by_grace', from: '#1e2a58', to: '#0d1130', accent: '#5ee7df', pattern: 'waves' },
-  { key: 'flawless', from: '#1f3358', to: '#0c142e', accent: '#7fe6ff', pattern: 'marble' },
-  { key: 'combo_king', from: '#3d1f4f', to: '#160a2c', accent: '#ff6b9d', pattern: 'rays' },
-  { key: 'high_scorer', from: '#402154', to: '#170b30', accent: '#ff8f5e', pattern: 'embers' },
-  { key: 'week_warrior', from: '#4a2033', to: '#1c0a1e', accent: '#ff6b3d', pattern: 'embers' },
-  { key: 'co_op_climber', from: '#233f45', to: '#0c1a20', accent: '#6fce7f', pattern: 'stripes' },
-  { key: 'speed_seraph', from: '#2b2170', to: '#0f0a30', accent: '#9db8ff', pattern: 'rays' },
-  { key: 'fortnight', from: '#2f2a5e', to: '#110d30', accent: '#a06bff', pattern: 'stripes' },
-  { key: 'month_mountain', from: '#2b3350', to: '#0f1428', accent: '#b9c6e8', pattern: 'marble' },
-  { key: 'devoted', from: '#39264f', to: '#150b2c', accent: '#c9a2ff', pattern: 'glow' },
-  { key: 'half_century', from: '#4b3520', to: '#1d1108', accent: '#ffc861', pattern: 'rays' },
-  { key: 'centurion', from: '#513a1a', to: '#1f1206', accent: '#ffd23f', pattern: 'embers' },
-  { key: 'leper_king', from: '#5c4718', to: '#241a06', accent: '#fff2c2', pattern: 'aurora' },
+  { key: 'first_light', scene: 'sunrise', palette: { sky: ['#7a3f2a', '#2a1030'], land: '#2a1030', glow: '#ffb35c', accent: '#ffe0b0' } },
+  { key: 'night_owl', scene: 'night', palette: { sky: NIGHT, land: '#0d0b26', glow: '#9db8ff', accent: '#cfe0ff' } },
+  { key: 'early_bird', scene: 'sunrise', palette: { sky: ['#5c4a86', '#1d1240'], land: '#1d1240', glow: '#ffd88a', accent: '#fff0c8' } },
+  { key: 'saved_by_grace', scene: 'storm', palette: { sky: ['#2c3f6b', '#0c1226'], land: '#151a35', glow: '#7fe6ff', accent: '#d6f6ff' } },
+  { key: 'flawless', scene: 'mountain', palette: { sky: ['#245a78', '#08192e'], land: '#0e2440', glow: '#7fe6ff', accent: '#d8f4ff' } },
+  { key: 'combo_king', scene: 'radiance', palette: { sky: DUSK, land: '#28102e', glow: '#ff6b9d', accent: '#ffd0e2' } },
+  { key: 'high_scorer', scene: 'flames', palette: { sky: ['#4a2360', '#170a2c'], land: '#1c0b32', glow: '#ff8f5e', accent: '#ffd2a0' } },
+  { key: 'week_warrior', scene: 'flames', palette: { sky: ['#63212c', '#1c0a1e'], land: '#220c20', glow: '#ff6b3d', accent: '#ffc46b' } },
+  { key: 'co_op_climber', scene: 'mountain', palette: { sky: ['#2c5b52', '#0a1a1e'], land: '#0f2a26', glow: '#6fce7f', accent: '#c8f0cf' } },
+  { key: 'speed_seraph', scene: 'star', palette: { sky: ['#33268c', '#0f0a30'], land: '#170f45', glow: '#9db8ff', accent: '#e2ecff' } },
+  { key: 'fortnight', scene: 'night', palette: { sky: ['#312a6e', '#110d30'], land: '#191248', glow: '#a06bff', accent: '#dcc9ff' } },
+  { key: 'month_mountain', scene: 'mountain', palette: { sky: STONEY, land: '#1a1f30', glow: '#b9c6e8', accent: '#e6ecfa' } },
+  { key: 'devoted', scene: 'scroll', palette: { sky: ['#3d2a58', '#150b2c'], land: '#4a3a5e', glow: '#c9a2ff', accent: '#efe2ff' } },
+  { key: 'half_century', scene: 'temple', palette: { sky: GOLDEN, land: '#2a1a08', glow: '#ffc861', accent: '#ffeab5' } },
+  { key: 'centurion', scene: 'flames', palette: { sky: ['#6b4a12', '#241705'], land: '#2c1c06', glow: '#ffd23f', accent: '#fff0b0' } },
+  { key: 'leper_king', scene: 'radiance', palette: { sky: ['#6e5518', '#241a06'], land: '#332409', glow: '#fff2c2', accent: '#ffffff' } },
 
   // ——— Daily Chest relics ———
-  { key: 'olive_branch', from: '#243f2e', to: '#0d1a13', accent: '#8fd694', pattern: 'waves' },
-  { key: 'clay_lamp', from: '#41301c', to: '#180f07', accent: '#ffbe5c', pattern: 'glow' },
-  { key: 'palm_frond', from: '#1f4034', to: '#0a1a15', accent: '#5fd6a5', pattern: 'stripes' },
-  { key: 'water_jar', from: '#26364f', to: '#0d1424', accent: '#7fb4e6', pattern: 'waves' },
-  { key: 'scroll_fragment', from: '#3d3524', to: '#17130b', accent: '#e0cf9a', pattern: 'marble' },
-  { key: 'mustard_seed', from: '#2b3a22', to: '#0f160b', accent: '#a8d96b', pattern: 'glow' },
-  { key: 'anointing_oil', from: '#3a3320', to: '#15120a', accent: '#d8c46a', pattern: 'glow' },
-  { key: 'illuminated_icon', from: '#4a3a1c', to: '#1b1408', accent: '#ffdf8a', pattern: 'rays' },
-  { key: 'pilgrim_medallion', from: '#33384f', to: '#111325', accent: '#c2b280', pattern: 'stripes' },
-  { key: 'ancient_menorah', from: '#453518', to: '#191206', accent: '#ffcf5c', pattern: 'rays' },
-  { key: 'golden_chalice', from: '#4e3a15', to: '#1d1405', accent: '#ffd23f', pattern: 'glow' },
-  { key: 'alabaster_jar', from: '#3f3a45', to: '#17141b', accent: '#efe6f0', pattern: 'marble' },
-  { key: 'star_of_bethlehem', from: '#1a1c4a', to: '#080a22', accent: '#ffe98a', pattern: 'stars' },
-  { key: 'widows_mite', from: '#3b3524', to: '#16130b', accent: '#d4b96a', pattern: 'glow' },
-  { key: 'manna', from: '#41372a', to: '#18140e', accent: '#f0d9a8', pattern: 'stars' },
-  { key: 'loaves_fish', from: '#22394a', to: '#0b1520', accent: '#6fc3d6', pattern: 'waves' },
-  { key: 'shepherds_crook', from: '#2e3a2a', to: '#101610', accent: '#a9c98a', pattern: 'stripes' },
-  { key: 'descending_dove', from: '#2c3550', to: '#0f1324', accent: '#dfe8ff', pattern: 'glow' },
-  { key: 'jubilee_trumpet', from: '#4a3719', to: '#1b1408', accent: '#ffc94f', pattern: 'rays' },
-  { key: 'davids_harp', from: '#38284f', to: '#140c26', accent: '#c79bff', pattern: 'waves' },
-  { key: 'jordan_water', from: '#1f3a4e', to: '#0a1620', accent: '#5ee7df', pattern: 'waves' },
-  { key: 'apostles_letter', from: '#3b3628', to: '#16140d', accent: '#e6d7ae', pattern: 'marble' },
-  { key: 'covenant_rainbow', from: '#2a2352', to: '#0f0c26', accent: '#5ee7df', pattern: 'aurora' },
-  { key: 'tablets_law', from: '#333644', to: '#12141c', accent: '#c8d0dd', pattern: 'marble' },
-  { key: 'kingdom_keys', from: '#463617', to: '#191306', accent: '#ffd76b', pattern: 'rays' },
-  { key: 'pearl_price', from: '#3a3550', to: '#141223', accent: '#f2e9ff', pattern: 'glow' },
+  { key: 'olive_branch', scene: 'garden', palette: { sky: ['#3d6b4a', '#0d1a13'], land: '#16301f', glow: '#8fd694', accent: '#d8f2d5' } },
+  { key: 'clay_lamp', scene: 'lamp', palette: { sky: ['#3a2a16', '#120a04'], land: '#1e1408', glow: '#ffbe5c', accent: '#ffe3ac' } },
+  { key: 'palm_frond', scene: 'garden', palette: { sky: VERDANT, land: '#0e2a20', glow: '#5fd6a5', accent: '#c8f5e2' } },
+  { key: 'water_jar', scene: 'water', palette: { sky: ['#3b5a7e', '#0d1424'], land: '#16304a', glow: '#7fb4e6', accent: '#d6ecff' } },
+  { key: 'scroll_fragment', scene: 'scroll', palette: { sky: ['#4a3f28', '#17130b'], land: '#6b5c3c', glow: '#e0cf9a', accent: '#fff2cf' } },
+  { key: 'mustard_seed', scene: 'field', palette: { sky: ['#4a5e2c', '#0f160b'], land: '#1e2a12', glow: '#a8d96b', accent: '#e0f5b8' } },
+  { key: 'anointing_oil', scene: 'lamp', palette: { sky: ['#3f3620', '#15120a'], land: '#221c0e', glow: '#d8c46a', accent: '#f5ecc0' } },
+  { key: 'illuminated_icon', scene: 'temple', palette: { sky: ['#5c481e', '#1b1408'], land: '#2a1f0b', glow: '#ffdf8a', accent: '#fff5d2' } },
+  { key: 'pilgrim_medallion', scene: 'mountain', palette: { sky: ['#3f465e', '#111325'], land: '#1d2136', glow: '#c2b280', accent: '#efe6cd' } },
+  { key: 'ancient_menorah', scene: 'lamp', palette: { sky: ['#4a3818', '#191206'], land: '#2a1f08', glow: '#ffcf5c', accent: '#ffeeb8' } },
+  { key: 'golden_chalice', scene: 'temple', palette: { sky: ['#5e4514', '#1d1405', ], land: '#2c2008', glow: '#ffd23f', accent: '#fff0ae' } },
+  { key: 'alabaster_jar', scene: 'radiance', palette: { sky: ['#4c4553', '#17141b'], land: '#282430', glow: '#efe6f0', accent: '#ffffff' } },
+  { key: 'star_of_bethlehem', scene: 'star', palette: { sky: ['#1c2058', '#070a20'], land: '#0e1235', glow: '#ffe98a', accent: '#fff6cf' } },
+  { key: 'widows_mite', scene: 'temple', palette: { sky: ['#463f28', '#16130b'], land: '#241f10', glow: '#d4b96a', accent: '#f3e6bd' } },
+  { key: 'manna', scene: 'field', palette: { sky: ['#4d4132', '#18140e'], land: '#26200f', glow: '#f0d9a8', accent: '#fff4dd' } },
+  { key: 'loaves_fish', scene: 'water', palette: { sky: ['#2c526b', '#0b1520'], land: '#123043', glow: '#6fc3d6', accent: '#cdeef5' } },
+  { key: 'shepherds_crook', scene: 'field', palette: { sky: ['#3e4d34', '#101610'], land: '#1b2417', glow: '#a9c98a', accent: '#dcecc9' } },
+  { key: 'descending_dove', scene: 'storm', palette: { sky: ['#3a4670', '#0f1324'], land: '#1c2340', glow: '#dfe8ff', accent: '#ffffff' } },
+  { key: 'jubilee_trumpet', scene: 'sunrise', palette: { sky: ['#5e4519', '#1b1408'], land: '#2a1e08', glow: '#ffc94f', accent: '#ffe9ab' } },
+  { key: 'davids_harp', scene: 'night', palette: { sky: ['#41306b', '#140c26'], land: '#221645', glow: '#c79bff', accent: '#ecdcff' } },
+  { key: 'jordan_water', scene: 'water', palette: { sky: SEA, land: '#0d2c3e', glow: '#5ee7df', accent: '#c6f7f3' } },
+  { key: 'apostles_letter', scene: 'scroll', palette: { sky: ['#463f2c', '#16140d'], land: '#6b5f42', glow: '#e6d7ae', accent: '#fff6e0' } },
+  { key: 'covenant_rainbow', scene: 'rainbow', palette: { sky: ['#33417e', '#0f0c26'], land: '#182050', glow: '#cfe6ff', accent: '#ffffff' } },
+  { key: 'tablets_law', scene: 'stone', palette: { sky: STONEY, land: '#4a5064', glow: '#c8d0dd', accent: '#f0f4fa' } },
+  { key: 'kingdom_keys', scene: 'temple', palette: { sky: ['#57431a', '#191306'], land: '#291e07', glow: '#ffd76b', accent: '#fff0bc' } },
+  { key: 'pearl_price', scene: 'deep', palette: { sky: ['#3f3a5c', '#0f0d1c'], land: '#1c1a30', glow: '#f2e9ff', accent: '#ffffff' } },
 ]
 
 // Names come from the collectible that unlocks each background, so the two can
@@ -104,85 +113,14 @@ export function cardBgUnlocked(key: string, owned: string[] | Set<string>): bool
   return owned instanceof Set ? owned.has(key) : owned.includes(key)
 }
 
-// The CSS. Every pattern paints one or more layers over a base gradient; all of
-// them are pure CSS so a card costs no images and scales to any size.
+/** The scene + palette to paint for a background key. */
+export function cardArtProps(key?: string | null): { scene: Scene; palette: Palette } {
+  const d = cardBgByKey(key)
+  return { scene: d.scene, palette: d.palette }
+}
+
+/** A flat fallback fill, used behind the SVG while it paints and for tiny chips. */
 export function cardBgStyle(key?: string | null): React.CSSProperties {
   const d = cardBgByKey(key)
-  const a = d.accent
-  const base = `linear-gradient(160deg, ${mix(d.from, a, 0.26)} 0%, ${d.from} 45%, ${d.to} 100%)`
-  const layers: string[] = []
-  // A wash of the accent over everything, so even the subtler patterns read as
-  // "this player picked something" rather than as the default card.
-  const wash = `linear-gradient(150deg, ${hexA(a, 0.28)} 0%, transparent 55%)`
-
-  switch (d.pattern) {
-    case 'rays':
-      layers.push(`repeating-conic-gradient(from 210deg at 15% -10%, ${hexA(a, 0.224)} 0deg 6deg, transparent 6deg 18deg)`)
-      layers.push(`radial-gradient(420px 220px at 12% -10%, ${hexA(a, 0.56)}, transparent 70%)`)
-      break
-    case 'stripes':
-      layers.push(`repeating-linear-gradient(115deg, ${hexA(a, 0.182)} 0px 14px, transparent 14px 34px)`)
-      layers.push(`radial-gradient(360px 200px at 85% 0%, ${hexA(a, 0.42)}, transparent 72%)`)
-      break
-    case 'aurora':
-      layers.push(`radial-gradient(300px 190px at 20% 0%, ${hexA(a, 0.7)}, transparent 70%)`)
-      layers.push(`radial-gradient(320px 200px at 80% 20%, ${hexA('#a06bff', 0.588)}, transparent 72%)`)
-      layers.push(`radial-gradient(280px 180px at 55% 100%, ${hexA('#5ee7df', 0.448)}, transparent 70%)`)
-      break
-    case 'stars':
-      layers.push(`radial-gradient(1.6px 1.6px at 12% 22%, ${hexA(a, 0.98)}, transparent 100%)`)
-      layers.push(`radial-gradient(1.4px 1.4px at 68% 14%, ${hexA(a, 0.98)}, transparent 100%)`)
-      layers.push(`radial-gradient(1.8px 1.8px at 84% 62%, ${hexA(a, 0.98)}, transparent 100%)`)
-      layers.push(`radial-gradient(1.2px 1.2px at 32% 74%, ${hexA(a, 0.98)}, transparent 100%)`)
-      layers.push(`radial-gradient(1.5px 1.5px at 46% 40%, ${hexA(a, 0.98)}, transparent 100%)`)
-      layers.push(`radial-gradient(420px 240px at 70% 0%, ${hexA(a, 0.308)}, transparent 72%)`)
-      break
-    case 'embers':
-      layers.push(`radial-gradient(120px 90px at 22% 108%, ${hexA(a, 0.77)}, transparent 70%)`)
-      layers.push(`radial-gradient(150px 110px at 62% 115%, ${hexA(a, 0.56)}, transparent 72%)`)
-      layers.push(`radial-gradient(100px 80px at 88% 100%, ${hexA(a, 0.476)}, transparent 70%)`)
-      break
-    case 'waves':
-      layers.push(`repeating-radial-gradient(120% 60% at 50% 118%, transparent 0 18px, ${hexA(a, 0.168)} 18px 20px)`)
-      layers.push(`radial-gradient(380px 200px at 50% 110%, ${hexA(a, 0.476)}, transparent 72%)`)
-      break
-    case 'marble':
-      layers.push(`repeating-linear-gradient(62deg, ${hexA(a, 0.14)} 0px 2px, transparent 2px 26px)`)
-      layers.push(`repeating-linear-gradient(-48deg, ${hexA(a, 0.098)} 0px 1px, transparent 1px 19px)`)
-      layers.push(`radial-gradient(360px 220px at 25% 5%, ${hexA(a, 0.336)}, transparent 72%)`)
-      break
-    case 'glow':
-    default:
-      layers.push(`radial-gradient(400px 230px at 78% 4%, ${hexA(a, 0.588)}, transparent 72%)`)
-      layers.push(`radial-gradient(300px 190px at 8% 92%, ${hexA(a, 0.308)}, transparent 70%)`)
-      break
-  }
-
-  return { background: [...layers, wash, base].join(', ') }
-}
-
-// Lift the top of the gradient toward the ACCENT rather than toward white —
-// mixing with white desaturates a deep base into grey, which reads as a washed
-// out card instead of themed artwork.
-function mix(hex: string, toward: string, amount: number): string {
-  const a = rgb(hex)
-  const b = rgb(toward)
-  if (!a || !b) return hex
-  const c = (i: number) => Math.round(a[i] + (b[i] - a[i]) * amount)
-  return `rgb(${c(0)}, ${c(1)}, ${c(2)})`
-}
-
-function rgb(hex: string): [number, number, number] | null {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim())
-  if (!m) return null
-  const n = parseInt(m[1], 16)
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
-}
-
-/** #rrggbb → rgba() at the given alpha. Non-hex values pass through unchanged. */
-function hexA(hex: string, alpha: number): string {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim())
-  if (!m) return hex
-  const n = parseInt(m[1], 16)
-  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`
+  return { background: `linear-gradient(180deg, ${d.palette.sky[0]} 0%, ${d.palette.sky[1]} 100%)` }
 }

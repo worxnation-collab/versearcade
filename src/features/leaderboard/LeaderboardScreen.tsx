@@ -22,7 +22,9 @@ interface LbRow {
   xp: number
   level: number
 }
+type FeaturedRow = Omit<LbRow, 'rank'>
 interface Board {
+  featured?: FeaturedRow[]
   top: LbRow[]
   me: LbRow | null
   total: number
@@ -95,6 +97,15 @@ export default function LeaderboardScreen() {
 
         {iAmKing && <ThroneBanner />}
 
+        {board?.featured && board.featured.length > 0 && (
+          <div style={{ marginBottom: 14 }}>
+            <p className="faint" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Featured</p>
+            <div style={{ display: 'grid', gap: 8 }}>
+              {board.featured.map((f) => <FeaturedRow key={f.username} f={f} />)}
+            </div>
+          </div>
+        )}
+
         {mode === 'local' || !supabase ? (
           <div className="card" style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 34 }}>🌍</div>
@@ -155,7 +166,7 @@ function ThroneBanner() {
         boxShadow: '0 0 26px rgba(255,210,63,0.30)',
       }}
     >
-      <ThroneIcon size={46} />
+      <ThroneIcon size={38} />
       <div style={{ minWidth: 0 }}>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 18 }} className="gradient-text">
           You hold the throne
@@ -164,6 +175,36 @@ function ThroneBanner() {
           #1 in the world. <b>The Leper King</b> card is yours forever — find it in your
           Collection.
         </p>
+      </div>
+    </motion.div>
+  )
+}
+
+// A curated spotlight player — shown above the ranks, not competing for #1.
+function FeaturedRow({ f }: { f: FeaturedRow }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="card"
+      style={{
+        display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
+        borderColor: 'var(--sky)',
+        background: 'linear-gradient(120deg, rgba(94,231,223,0.12), transparent 62%)',
+      }}
+    >
+      <div style={{ width: 34, display: 'grid', placeItems: 'center', fontSize: 18 }}>⭐</div>
+      <Avatar emoji={f.avatar_emoji} character={f.avatar_character} size={34} ring={false} border={f.avatar_border} badge={f.avatar_badge} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {f.username}
+          <span style={{ color: 'var(--sky)', fontSize: 11, marginLeft: 6, letterSpacing: '0.04em' }}>⭐ Featured</span>
+        </div>
+        <div className="faint" style={{ fontSize: 12 }}>Level {f.level}</div>
+      </div>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 18 }} className="gradient-text">
+        {f.xp.toLocaleString()}
+        <span className="faint" style={{ fontSize: 11, marginLeft: 3 }}>XP</span>
       </div>
     </motion.div>
   )
@@ -201,7 +242,7 @@ function Row({ r, me }: { r: LbRow; me: boolean }) {
           color: 'var(--ink-faint)',
         }}
       >
-        {isKing ? <ThroneIcon size={30} /> : (medal(r.rank) ?? r.rank)}
+        {isKing ? <ThroneIcon size={24} /> : (medal(r.rank) ?? r.rank)}
       </div>
       <Avatar emoji={r.avatar_emoji} character={r.avatar_character} size={34} ring={false} border={r.avatar_border} badge={r.avatar_badge} />
       <div style={{ flex: 1, minWidth: 0 }}>

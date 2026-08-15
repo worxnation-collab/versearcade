@@ -1,8 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { PlayerCard, type PlayerCardData } from '@/components/PlayerCard'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/store/auth'
 import { useCollection } from '@/store/collection'
+import { useBuddies } from '@/store/buddies'
+import { useJuice } from '@/juice/useJuice'
+import { Button } from '@/components/Button'
 import { supabase } from '@/lib/supabase'
 
 // Tap any avatar anywhere and their card pops up. A single provider owns the
@@ -29,7 +33,11 @@ export function PlayerCardProvider({ children }: { children: ReactNode }) {
 }
 
 function CardSheet({ username, onClose }: { username: string; onClose: () => void }) {
+  const navigate = useNavigate()
+  const juice = useJuice()
   const me = useAuth((s) => s.profile)
+  const isGuest = useAuth((s) => s.mode) === 'local'
+  const { buddies, load: loadBuddies, sendRequest } = useBuddies()
   const myCards = useCollection((s) => s.owned.length)
   const loadCollection = useCollection((s) => s.load)
   const collectionLoaded = useCollection((s) => s.loaded)
@@ -37,6 +45,37 @@ function CardSheet({ username, onClose }: { username: string; onClose: () => voi
 
   const [data, setData] = useState<PlayerCardData | null>(null)
   const [err, setErr] = useState<string | null>(null)
+  const [buddyMsg, setBuddyMsg] = useState<string | null>(null)
+  const [sending, setSending] = useState(false)
+
+  // Someone else's card, and you have an account: you can act on it.
+  const canAct = !isMe && !isGuest && !!supabase
+  const alreadyBuddy = buddies.some((b) => b.username.toLowerCase() === username.toLowerCase())
+
+  // Need the buddy list to know whether to offer "Add buddy" at all.
+  useEffect(() => {
+    if (canAct) loadBuddies()
+  }, [canAct, loadBuddies])
+
+  const addBuddy = async () => {
+    setSending(true)
+    juice.coin()
+    const res = await sendRequest(username)
+    setSending(false)
+    setBuddyMsg(
+      !res.ok
+        ? res.reason === 'not_found' ? `No player @${username}` : 'Couldn’t send that request'
+        : res.status === 'accepted' ? `You’re buddies with @${username}! 🎉` : `Buddy request sent 📨`,
+    )
+  }
+
+  // Challenging runs through the normal battle flow — you play first, then it
+  // goes to this player — so a card can't create a battle you haven't earned.
+  const battle = () => {
+    juice.coin()
+    onClose()
+    navigate('/battle/new', { state: { challenge: username } })
+  }
 
   // The CARDS stat needs the collection, which not every screen has loaded yet.
   useEffect(() => {
@@ -124,6 +163,23 @@ function CardSheet({ username, onClose }: { username: string; onClose: () => voi
         ) : (
           <PlayerCard p={data} compact />
         )}
+
+        {/* Act on the player you're looking at, rather than having to go find
+            them again on another screen. */}
+        {data && canAct && (
+          <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: alreadyBuddy ? '1fr' : '1fr 1fr', gap: 10 }}>
+            {!alreadyBuddy && (
+              <Button variant="secondary" full onClick={addBuddy} disabled={sending || !!buddyMsg}>
+                {buddyMsg ? '✓ Sent' : sending ? '…' : '🤝 Add buddy'}
+              </Button>
+            )}
+            <Button variant="gold" full onClick={battle}>⚔️ Battle</Button>
+          </div>
+        )}
+        {buddyMsg && (
+          <p className="center" style={{ color: 'var(--good)', fontSize: 13, marginTop: 8 }}>{buddyMsg}</p>
+        )}
+
         <div style={{ textAlign: 'center', marginTop: 12 }}>
           <button className="pill" onClick={onClose} style={{ fontWeight: 800, fontSize: 13, padding: '8px 16px' }}>Close</button>
         </div>

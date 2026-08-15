@@ -318,9 +318,21 @@ export const useAuth = create<AuthState>((set, get) => ({
       set({ error: error.message })
       throw error
     }
+    // Signing up with an address that already has an account comes back as a
+    // user with no identities and no session — Supabase's deliberate
+    // anti-enumeration shape. Say so, rather than leaving them waiting on a
+    // confirmation email that will never arrive (which is what the branch
+    // below would tell them).
+    if (data.user && (data.user.identities?.length ?? 0) === 0) {
+      const msg = 'That email already has an account — try signing in instead.'
+      set({ error: msg })
+      throw new Error(msg)
+    }
     // With email confirmation ON, signUp returns no session — the user must
     // confirm before they're authed. Report that so the UI doesn't bounce them
     // straight into a protected route (which would kick back to onboarding).
+    // With it OFF (the intended setup — see docs/SETUP-SUPABASE.md) a session
+    // comes back immediately and they go straight into the game.
     if (!data.session) return { needsConfirmation: true }
     await get().refreshProfile()
     return { needsConfirmation: false }

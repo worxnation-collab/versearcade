@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence } from 'framer-motion'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { Avatar } from '@/components/Avatar'
@@ -10,6 +10,9 @@ import { useAuth } from '@/store/auth'
 import { useJuice } from '@/juice/useJuice'
 import { shareResult, APP_URL } from '@/features/daily/shareCard'
 import { useCollection } from '@/store/collection'
+import { Collapsible } from '@/components/Collapsible'
+import { CollectionSection } from '@/features/collection/CollectionScreen'
+import { BuddiesSection } from '@/features/buddies/BuddiesScreen'
 import { CustomizeSection } from './CustomizeSection'
 import { SettingsSheet } from './SettingsSheet'
 
@@ -24,7 +27,6 @@ export default function ProfileScreen() {
   const [nameErr, setNameErr] = useState<string | null>(null)
   const [savingName, setSavingName] = useState(false)
   const [refFlash, setRefFlash] = useState<string | null>(null)
-  const [inviteOpen, setInviteOpen] = useState(false)
   const owned = useCollection((s) => s.owned)
   const loadCollection = useCollection((s) => s.load)
   useEffect(() => {
@@ -109,34 +111,7 @@ export default function ProfileScreen() {
           Collapsed by default behind an obvious Show/Hide button; the header
           keeps the friend count visible so the goal still reads when closed. */}
       {profile.referralCode && (
-        <>
-          <motion.button
-            whileTap={{ scale: 0.98 }}
-            onClick={() => { juice.select?.(); setInviteOpen((o) => !o) }}
-            aria-expanded={inviteOpen}
-            className="card"
-            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'space-between', padding: '13px 14px', marginBottom: 10, cursor: 'pointer', borderColor: inviteOpen ? 'var(--gold)' : 'var(--stroke)' }}
-          >
-            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 16 }}>
-              🎁 Invite friends{' '}
-              <span className="faint" style={{ fontWeight: 400, fontSize: 13 }}>
-                · {Math.min(profile.referralCount ?? 0, 5)}/5
-              </span>
-            </span>
-            <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--gold)', color: '#241f0a', fontWeight: 800, fontSize: 13, padding: '6px 12px', flexShrink: 0 }}>
-              {inviteOpen ? 'Hide' : 'Show'}
-              <span style={{ fontSize: 15, transform: inviteOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>
-            </span>
-          </motion.button>
-          <AnimatePresence initial={false}>
-          {inviteOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: 'easeInOut' }}
-            style={{ overflow: 'hidden' }}
-          >
+        <Collapsible icon="🎁" title="Invite friends" meta={`${Math.min(profile.referralCount ?? 0, 5)}/5`}>
           <div className="card" style={{ marginBottom: 6 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -169,14 +144,21 @@ export default function ProfileScreen() {
               </p>
             </div>
           </div>
-          <p className="faint" style={{ fontSize: 11, marginBottom: 14, lineHeight: 1.4 }}>
+          <p className="faint" style={{ fontSize: 11, lineHeight: 1.4 }}>
             Friends enter your code (or tap your link) when they create an account.
           </p>
-          </motion.div>
-          )}
-          </AnimatePresence>
-        </>
+        </Collapsible>
       )}
+
+      {/* Cards and Buddies used to own tabs of their own. They're the same full
+          screens, just folded in here behind obvious dropdowns. */}
+      <Collapsible icon="🃏" title="Cards" meta={`${cards} collected`}>
+        <CollectionSection />
+      </Collapsible>
+
+      <Collapsible icon="🤝" title="Bible Buddies">
+        <BuddiesSection />
+      </Collapsible>
 
       {/* Account */}
       <h3 style={{ fontSize: 16, marginBottom: 10 }} className="dim">Account</h3>

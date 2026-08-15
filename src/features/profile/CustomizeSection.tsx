@@ -171,14 +171,20 @@ export function CustomizeSection() {
         onClick={() => { juice.select(); setOpen((o) => !o) }}
         aria-expanded={open}
         className="card"
-        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, marginBottom: open ? 14 : 0, textAlign: 'left', cursor: 'pointer' }}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10, textAlign: 'left', cursor: 'pointer', borderColor: open ? 'var(--gold)' : 'var(--stroke)' }}
       >
         <Avatar emoji={profile.avatarEmoji} character={spec} size={44} ring={false} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <b style={{ fontFamily: 'var(--font-display)', fontSize: 15 }}>Customize your character</b>
           <div className="faint" style={{ fontSize: 12 }}>Armor of God · King Baldwin · borders &amp; badges</div>
         </div>
-        <span style={{ fontSize: 18, color: 'var(--gold)', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', flexShrink: 0 }}>▾</span>
+        <span
+          className="pill"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--gold)', color: '#241f0a', fontWeight: 800, fontSize: 13, padding: '6px 12px', flexShrink: 0 }}
+        >
+          {open ? 'Hide' : 'Show'}
+          <span style={{ fontSize: 15, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>
+        </span>
       </button>
 
       <AnimatePresence initial={false}>

@@ -8,7 +8,8 @@ import { XpBar } from '@/components/XpBar'
 import { StreakFlame } from '@/components/StreakFlame'
 import { PresenceStrip } from '@/features/presence/PresenceStrip'
 import { DailyChest } from '@/features/chest/DailyChest'
-import { PracticeSection } from '@/features/practice/PracticeSection'
+import { Collapsible } from '@/components/Collapsible'
+import { LeaderboardSection } from '@/features/leaderboard/LeaderboardScreen'
 import { useAuth } from '@/store/auth'
 import { useGame } from '@/store/game'
 import { useReviews } from '@/store/reviews'
@@ -191,14 +192,12 @@ export default function HomeScreen() {
       {/* Daily Chest — unlocks after today's verse, gives a random relic. */}
       <DailyChest />
 
-      {/* Study the last five — replay past verses; beat your best to earn XP. */}
-      <PracticeSection />
-
-      {/* Keep it: spaced-repetition review of verses already learned. Only
-          surfaces when something is actually due, so it's never clutter. */}
+      {/* Reviews that are due ("Keep it") now live on the Study tab, alongside
+          the other practice surfaces, rather than competing with today's verse.
+          A dot on this nudge points there when something is waiting. */}
       {dueRefs.length > 0 && (
         <motion.button
-          onClick={() => navigate('/review')}
+          onClick={() => navigate('/study')}
           whileTap={{ scale: 0.97 }}
           className="card"
           initial={{ opacity: 0, y: 10 }}
@@ -209,7 +208,7 @@ export default function HomeScreen() {
           <div style={{ flex: 1 }}>
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 17 }}>Keep it</div>
             <div className="faint" style={{ fontSize: 13 }}>
-              {dueRefs.length} verse{dueRefs.length > 1 ? 's' : ''} ready to review — make {dueRefs.length > 1 ? 'them' : 'it'} stick
+              {dueRefs.length} verse{dueRefs.length > 1 ? 's' : ''} ready to review — waiting on the Study tab
             </div>
           </div>
           <div style={{ fontFamily: 'var(--font-display)', color: 'var(--gold)', fontSize: 20 }}>→</div>
@@ -219,11 +218,15 @@ export default function HomeScreen() {
       <div style={{ height: 16 }} />
       <PresenceStrip />
 
-      {/* Quick nudges toward retention loops */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16 }}>
-        <MiniCard emoji="🤝" title="Bible Buddies" sub="Add friends & battle" onClick={() => navigate('/buddies')} />
-        <MiniCard emoji="🃏" title="Collection" sub="Cards & relics" onClick={() => navigate('/collection')} />
+      {/* Worldwide ranks — folded in here instead of owning a tab. Closed by
+          default so today's verse stays the point of this screen. */}
+      <div style={{ marginTop: 18 }}>
+        <Collapsible icon="🏆" title="Worldwide Ranks">
+          <LeaderboardSection />
+        </Collapsible>
       </div>
+
+      <div style={{ height: 80 }} />
     </Page>
   )
 }
@@ -234,15 +237,5 @@ function Stat({ label, value }: { label: string; value: string }) {
       <div style={{ fontFamily: 'var(--font-display)', fontSize: 22 }}>{value}</div>
       <div className="faint" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
     </div>
-  )
-}
-
-function MiniCard({ emoji, title, sub, onClick }: { emoji: string; title: string; sub: string; onClick: () => void }) {
-  return (
-    <motion.button whileTap={{ scale: 0.95 }} onClick={onClick} className="card" style={{ padding: 16, textAlign: 'left' }}>
-      <div style={{ fontSize: 26 }}>{emoji}</div>
-      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, marginTop: 6 }}>{title}</div>
-      <div className="faint" style={{ fontSize: 12 }}>{sub}</div>
-    </motion.button>
   )
 }

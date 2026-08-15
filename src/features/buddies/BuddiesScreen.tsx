@@ -12,7 +12,20 @@ import { useJuice } from '@/juice/useJuice'
 // buddy" request), accept the ones who ask you, and your buddies become your
 // go-to Battle opponents. Suggested active players help a brand-new user get
 // started with nobody on their list yet.
+// Standalone /buddies route — kept for deep links. The list itself now also
+// lives in a collapsible on the You tab.
 export default function BuddiesScreen() {
+  return (
+    <Page>
+      <Header />
+      <BuddiesSection />
+      <div style={{ height: 90 }} />
+    </Page>
+  )
+}
+
+// The buddies list with no page chrome, so it can be embedded on the You tab.
+export function BuddiesSection() {
   const navigate = useNavigate()
   const juice = useJuice()
   const mode = useAuth((s) => s.mode)
@@ -46,21 +59,16 @@ export default function BuddiesScreen() {
 
   if (isGuest) {
     return (
-      <Page>
-        <Header />
-        <div className="card" style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 34 }}>🔐</div>
-          <p style={{ margin: '8px 0 14px' }}>Buddies are tied to your account so your friends list sticks. Create a free one to add buddies.</p>
-          <Button variant="gold" full onClick={() => navigate('/auth')}>Create an account</Button>
-        </div>
-      </Page>
+      <div className="card" style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: 34 }}>🔐</div>
+        <p style={{ margin: '8px 0 14px' }}>Buddies are tied to your account so your friends list sticks. Create a free one to add buddies.</p>
+        <Button variant="gold" full onClick={() => navigate('/auth')}>Create an account</Button>
+      </div>
     )
   }
 
   return (
-    <Page>
-      <Header />
-
+    <>
       {/* Add a buddy by @username */}
       <div className="card" style={{ marginBottom: 16 }}>
         <b style={{ fontFamily: 'var(--font-display)', fontSize: 15 }}>Add a buddy</b>
@@ -140,8 +148,7 @@ export default function BuddiesScreen() {
           </div>
         </>
       )}
-      <div style={{ height: 90 }} />
-    </Page>
+    </>
   )
 }
 

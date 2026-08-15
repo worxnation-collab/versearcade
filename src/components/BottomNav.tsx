@@ -2,12 +2,13 @@ import { NavLink } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useJuice } from '@/juice/useJuice'
 
+// Four tabs, one per thing you actually come here to do. Ranks folded into
+// Play; Buddies and Cards folded into You — each still a full screen at its own
+// URL, just no longer competing for a slot down here.
 const tabs = [
   { to: '/play', label: 'Play', icon: '🎮' },
   { to: '/battle', label: 'Battle', icon: '⚔️' },
-  { to: '/leaderboard', label: 'Ranks', icon: '🏆' },
-  { to: '/buddies', label: 'Buddies', icon: '🤝' },
-  { to: '/collection', label: 'Cards', icon: '🃏' },
+  { to: '/study', label: 'Study', icon: '📚' },
   { to: '/you', label: 'You', icon: '⭐' },
 ]
 

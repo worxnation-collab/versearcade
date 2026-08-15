@@ -23,6 +23,8 @@ import BattleHub from './features/arena/BattleHub'
 import BattleNew from './features/arena/BattleNew'
 import BattlePlay from './features/arena/BattlePlay'
 import BattleDetail from './features/arena/BattleDetail'
+import BattleCpu from './features/arena/BattleCpu'
+import StudyScreen from './features/study/StudyScreen'
 import { BattleResume } from './features/arena/BattleResume'
 import { BottomNav } from './components/BottomNav'
 
@@ -174,6 +176,26 @@ export default function App() {
               <TabShell>
                 <BattleHub />
               </TabShell>
+            </RequireProfile>
+          }
+        />
+        {/* Study tab — practice surfaces that never touch your rank. */}
+        <Route
+          path="/study"
+          element={
+            <RequireProfile>
+              <TabShell>
+                <StudyScreen />
+              </TabShell>
+            </RequireProfile>
+          }
+        />
+        {/* Solo practice battle vs a simulated opponent, reached from Study. */}
+        <Route
+          path="/battle/cpu"
+          element={
+            <RequireProfile>
+              <BattleCpu />
             </RequireProfile>
           }
         />

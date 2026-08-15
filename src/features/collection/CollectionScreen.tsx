@@ -8,7 +8,20 @@ import { ThroneIcon } from '@/components/ThroneIcon'
 // A collection wall. Locked items are visible-but-dimmed on purpose: seeing what
 // you *could* earn is a stronger pull than hiding it. Cards name the exact thing
 // to do to unlock them; relics come from the Daily Chest.
+// Standalone /collection route — kept for deep links. The wall itself now also
+// lives in a collapsible on the You tab.
 export default function CollectionScreen() {
+  return (
+    <Page>
+      <h1 style={{ fontSize: 30 }}>Collection</h1>
+      <CollectionSection />
+      <div style={{ height: 90 }} />
+    </Page>
+  )
+}
+
+// The collection wall with no page chrome, so it can be embedded on the You tab.
+export function CollectionSection() {
   const owned = useCollection((s) => s.owned)
   const loaded = useCollection((s) => s.loaded)
   const load = useCollection((s) => s.load)
@@ -22,8 +35,7 @@ export default function CollectionScreen() {
   const relicsHave = RELICS.filter((c) => ownedSet.has(c.key)).length
 
   return (
-    <Page>
-      <h1 style={{ fontSize: 30 }}>Collection</h1>
+    <>
       <p className="dim" style={{ marginBottom: 18 }}>
         {loaded ? `${cardsHave + relicsHave}/${CARDS.length + RELICS.length} collected — chase the set.` : 'Loading…'}
       </p>
@@ -35,7 +47,7 @@ export default function CollectionScreen() {
 
       <SectionHeader title="Relics" sub="Open the Daily Chest to find these" have={relicsHave} total={RELICS.length} />
       <Grid items={RELICS} ownedSet={ownedSet} lockedHint={() => 'Found in the Daily Chest'} />
-    </Page>
+    </>
   )
 }
 

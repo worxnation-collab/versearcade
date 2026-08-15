@@ -1,0 +1,66 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7c2ff7"/>
+      <stop offset="0.5" stop-color="#b12ee8"/>
+      <stop offset="1" stop-color="#ff3d8b"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="512" cy="330" r="560" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.40"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="page" x1="0" y1="0" x2="0" y2="1" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#efeaff"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffe888"/>
+      <stop offset="1" stop-color="#ffab1f"/>
+    </linearGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="26" flood-color="#2a0a4a" flood-opacity="0.38"/>
+    </filter>
+    <filter id="sparkGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="16" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#glow)"/>
+
+  <!-- playful confetti, kept inside the maskable safe zone (~center 80%) -->
+  <g>
+    <circle cx="300" cy="300" r="13" fill="#5ee7df"/>
+    <circle cx="726" cy="322" r="11" fill="#ffd23f"/>
+    <circle cx="286" cy="706" r="12" fill="#ff6b6b"/>
+    <circle cx="742" cy="690" r="10" fill="#5ee7df"/>
+    <path d="M360 250 l9 22 22 9 -22 9 -9 22 -9 -22 -22 -9 22 -9z" fill="#ffffff" opacity="0.9"/>
+    <path d="M690 235 l7 18 18 7 -18 7 -7 18 -7 -18 -18 -7 18 -7z" fill="#ffffff" opacity="0.8"/>
+  </g>
+
+  <!-- big four-point sparkle star -->
+  <g filter="url(#sparkGlow)">
+    <path d="M512 196
+             c 26 112, 52 138, 164 164
+             c -112 26, -138 52, -164 164
+             c -26 -112, -52 -138, -164 -164
+             c 112 -26, 138 -52, 164 -164 z"
+          fill="url(#gold)"/>
+  </g>
+
+  <!-- open book -->
+  <g filter="url(#soft)" transform="translate(0,52)">
+    <path d="M512 632 c -70 -60 -190 -74 -246 -66 l0 -300 c 70 -12 190 -2 246 58 z" fill="url(#page)"/>
+    <path d="M512 632 c 70 -60 190 -74 246 -66 l0 -300 c -70 -12 -190 -2 -246 58 z" fill="url(#page)"/>
+    <g stroke="#c9a3ff" stroke-width="8" stroke-linecap="round" opacity="0.85">
+      <line x1="322" y1="352" x2="470" y2="378"/>
+      <line x1="322" y1="404" x2="470" y2="430"/>
+      <line x1="322" y1="456" x2="470" y2="482"/>
+      <line x1="554" y1="378" x2="702" y2="352"/>
+      <line x1="554" y1="430" x2="702" y2="404"/>
+      <line x1="554" y1="482" x2="702" y2="456"/>
+    </g>
+    <path d="M512 574 l0 -282" stroke="url(#gold)" stroke-width="15" stroke-linecap="round"/>
+  </g>
+</svg>

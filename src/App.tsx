@@ -25,6 +25,7 @@ import BattlePlay from './features/arena/BattlePlay'
 import BattleDetail from './features/arena/BattleDetail'
 import BattleCpu from './features/arena/BattleCpu'
 import StudyScreen from './features/study/StudyScreen'
+import FocusPracticeScreen from './features/practice/FocusPracticeScreen'
 import { BattleResume } from './features/arena/BattleResume'
 import { BottomNav } from './components/BottomNav'
 import { PlayerCardProvider } from './components/PlayerCardModal'
@@ -188,6 +189,15 @@ export default function App() {
               <TabShell>
                 <StudyScreen />
               </TabShell>
+            </RequireProfile>
+          }
+        />
+        {/* Drill one book against a study companion, reached from Study. */}
+        <Route
+          path="/study/focus"
+          element={
+            <RequireProfile>
+              <FocusPracticeScreen />
             </RequireProfile>
           }
         />

@@ -49,6 +49,27 @@ export default function StudyScreen() {
         </div>
       </motion.div>
 
+      {/* Focus practice — drill one book of your choosing against a companion.
+          Sibling to the CPU battle: same live versus bar, but scoped to a book
+          and it pays a little XP (5/session, capped at 20/day). */}
+      <motion.button
+        onClick={() => { juice.coin(); navigate('/study/focus') }}
+        whileTap={{ scale: 0.98 }}
+        className="card"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        style={{ width: '100%', textAlign: 'left', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14 }}
+      >
+        <div style={{ fontSize: 30 }}>🎯</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 17 }}>Focus a book</div>
+          <div className="faint" style={{ fontSize: 13, lineHeight: 1.35 }}>
+            Drill verses from one book against a study partner · earns XP
+          </div>
+        </div>
+        <div style={{ fontFamily: 'var(--font-display)', color: 'var(--gold)', fontSize: 20 }}>→</div>
+      </motion.button>
+
       {/* Keep it — spaced repetition, only when something is actually due. */}
       {dueRefs.length > 0 && (
         <motion.button

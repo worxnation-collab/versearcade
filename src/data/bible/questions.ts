@@ -4,7 +4,7 @@
 // score cards be comparable. Seeded from the date string, no server needed.
 
 import type { DailyVerse, Question } from '@/types'
-import { VERSE_POOL, type VerseSeed } from './pool'
+import { VERSE_POOL, BIBLE_BOOKS, type VerseSeed } from './pool'
 import { DEFAULT_TRANSLATION } from '@/lib/config'
 
 // --- seeded RNG (mulberry32) ------------------------------------------------
@@ -235,17 +235,17 @@ export function getVerseForDate(dateStr: string): DailyVerse {
   return buildDailyVerse(seed, rng, dateStr)
 }
 
-// Distinct books present in the verse pool, in canonical (pool) order.
+// Distinct books present in the verse pool, in canonical Bible order (Genesis →
+// Revelation) rather than the order entries happen to sit in the pool file, so
+// the picker reads like a table of contents no matter how the pool grows.
 export function poolBooks(): string[] {
   const seen = new Set<string>()
-  const out: string[] = []
-  for (const v of VERSE_POOL) {
-    if (!seen.has(v.book)) {
-      seen.add(v.book)
-      out.push(v.book)
-    }
-  }
-  return out
+  for (const v of VERSE_POOL) seen.add(v.book)
+  const known = BIBLE_BOOKS.filter((b) => seen.has(b))
+  // Anything not in the canonical list (a typo, or a naming variant) still shows
+  // up rather than vanishing from the picker — just at the end, alphabetically.
+  const extra = [...seen].filter((b) => !BIBLE_BOOKS.includes(b)).sort()
+  return [...known, ...extra]
 }
 
 // How many verses the pool has per book — used to show a book's depth.

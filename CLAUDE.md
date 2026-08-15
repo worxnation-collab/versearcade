@@ -116,9 +116,12 @@ spelled out in text, so meaning never rides on color alone.
 
 ## Deploy
 
-Netlify builds from `main` (`.github/workflows/deploy.yml`, plus Netlify's own
-GitHub integration, which posts a deploy preview on every PR). Merges to `main`
-use a **merge commit** titled `<PR title> (#NN)` — match the existing history.
+Netlify builds and publishes every push to `main` through its own GitHub
+integration, which also posts a deploy preview on every PR. Deploying is *not*
+part of CI: `.github/workflows/deploy.yml` was removed because it never had a
+`NETLIFY_AUTH_TOKEN` and skipped every step of all 30 runs while reporting
+green. Merges to `main` use a **merge commit** titled `<PR title> (#NN)` —
+match the existing history.
 
 ## Verify by running it, not by reading it
 

@@ -4,7 +4,7 @@
 // Animation lives in index.css (.va-throne-*), which also tames it under
 // prefers-reduced-motion.
 export function ThroneIcon({ size = 44 }: { size?: number }) {
-  const halo = Math.round(size * 1.5)
+  const halo = Math.round(size * 1.28)
   return (
     <div
       style={{
@@ -40,7 +40,7 @@ export function ThroneIcon({ size = 44 }: { size?: number }) {
           width: size,
           height: size,
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(255,210,63,0.40), transparent 68%)',
+          background: 'radial-gradient(circle, rgba(255,210,63,0.22), transparent 55%)',
         }}
       />
       {/* The turning, glowing crown. */}

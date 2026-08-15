@@ -12,16 +12,20 @@ import { useAuth } from './auth'
 
 const KEY = 'va_focus_book_v1'
 
-// A completed focus session pays a small flat reward, capped per day so it can't
-// be farmed. Mirrors submit_focus_practice / 0036 — keep the two in sync.
+// A completed focus session pays a small flat reward, every session, with no
+// daily ceiling — practice as long as you like and keep earning. Mirrors
+// submit_focus_practice / 0043 — keep the two in sync.
+//
+// This XP is ordinary XP: it counts toward level and the worldwide leaderboard
+// as well as your church giving budget (which is lifetime XP minus what you've
+// already given). Uncapping it was the point — players wanted to farm small
+// amounts to give to their church for events.
 export const FOCUS_XP_PER_SESSION = 5
-export const FOCUS_XP_DAILY_CAP = 20
 
 export interface FocusXpOutcome {
   xpEarned: number
+  /** Running total of focus XP earned today — a tally for the recap, not a limit. */
   dayTotal: number
-  cap: number
-  capped: boolean
 }
 
 interface Saved {
@@ -50,7 +54,7 @@ function save(s: Saved) {
 
 interface FocusState extends Saved {
   setBook: (book: string | null) => void
-  /** Award XP for one completed focus session (5, capped 20/day). */
+  /** Award XP for one completed focus session (a flat 5, no daily limit). */
   awardXp: () => Promise<FocusXpOutcome>
 }
 
@@ -65,48 +69,47 @@ export const useFocus = create<FocusState>((set) => ({
   async awardXp() {
     const auth = useAuth.getState()
     const today = todayLocalDate()
-    const empty: FocusXpOutcome = { xpEarned: 0, dayTotal: FOCUS_XP_DAILY_CAP, cap: FOCUS_XP_DAILY_CAP, capped: true }
+    const empty: FocusXpOutcome = { xpEarned: 0, dayTotal: 0 }
 
-    // ONLINE: server enforces the cap and updates XP/level authoritatively.
+    // ONLINE: the server awards and updates XP/level authoritatively.
     if (supabase && auth.mode === 'online' && auth.isAuthed) {
       const { data, error } = await supabase.rpc('submit_focus_practice', { p_day: today })
-      if (error || !data) return { xpEarned: 0, dayTotal: 0, cap: FOCUS_XP_DAILY_CAP, capped: false }
+      if (error || !data) return empty
       const d = data as Record<string, unknown>
       const out: FocusXpOutcome = {
         xpEarned: Number(d.xp_earned ?? 0),
         dayTotal: Number(d.day_total ?? 0),
-        cap: Number(d.cap ?? FOCUS_XP_DAILY_CAP),
-        capped: !!d.capped,
       }
       if (out.xpEarned > 0) await auth.refreshProfile()
       return out
     }
 
-    // LOCAL / guest: mirror the cap on-device.
+    // LOCAL / guest: mirror the server's award on-device.
     const prof = auth.profile
     if (!prof) return empty
+    // Read the day's tally off disk, not from memory — see the merge note in
+    // store/bookAccuracy.ts. addFocusXp does the same on the write side.
     const prior = localdb.getFocusXpDay(today)
-    const award = Math.min(FOCUS_XP_PER_SESSION, Math.max(0, FOCUS_XP_DAILY_CAP - prior))
-    if (award > 0) {
-      localdb.addFocusXp(today, award)
-      const newXp = prof.xp + award
-      const updated = { ...prof, xp: newXp, level: levelInfo(newXp).level }
-      auth.setProfileLocal(updated)
-      // Keep the guest's cumulative XP on the worldwide leaderboard in step.
-      if (supabase) {
-        supabase
-          .rpc('record_guest_open', {
-            p_drop_date: today,
-            p_guest_id: localdb.getGuestId(),
-            p_username: updated.username,
-            p_emoji: updated.avatarEmoji,
-            p_score: 0,
-            p_xp: updated.xp,
-            p_level: updated.level,
-          })
-          .then(() => {}, () => {})
-      }
+    const award = FOCUS_XP_PER_SESSION
+
+    localdb.addFocusXp(today, award)
+    const newXp = prof.xp + award
+    const updated = { ...prof, xp: newXp, level: levelInfo(newXp).level }
+    auth.setProfileLocal(updated)
+    // Keep the guest's cumulative XP on the worldwide leaderboard in step.
+    if (supabase) {
+      supabase
+        .rpc('record_guest_open', {
+          p_drop_date: today,
+          p_guest_id: localdb.getGuestId(),
+          p_username: updated.username,
+          p_emoji: updated.avatarEmoji,
+          p_score: 0,
+          p_xp: updated.xp,
+          p_level: updated.level,
+        })
+        .then(() => {}, () => {})
     }
-    return { xpEarned: award, dayTotal: prior + award, cap: FOCUS_XP_DAILY_CAP, capped: prior + award >= FOCUS_XP_DAILY_CAP }
+    return { xpEarned: award, dayTotal: prior + award }
   },
 }))

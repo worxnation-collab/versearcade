@@ -12,7 +12,7 @@ const K = {
   chestDate: 'va.chestDate', // last drop_date this device opened the daily chest
   pendingClaim: 'va.pendingClaim', // guest snapshot to migrate into a new account
   practice: 'va.practice', // { [dropDate]: { bestScore, lastRewardOn } } practice state
-  focusXp: 'va.focusXp', // { [localDay]: xpEarned } — focus-practice XP earned per day (cap)
+  focusXp: 'va.focusXp', // { [localDay]: xpEarned } — focus-practice XP per day (a tally, not a cap)
 }
 
 export interface LocalPractice {

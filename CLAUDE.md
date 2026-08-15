@@ -86,7 +86,7 @@ midnight, not UTC.
 
 Reward math exists twice on purpose: once in SQL for online accounts, once in TS
 for guests. `lib/practice.ts` ↔ `submit_practice` (0014), `store/focus.ts` ↔
-`submit_focus_practice` (0038). Change one, change the other, and say so in the
+`submit_focus_practice` (0043). Change one, change the other, and say so in the
 comment — they already carry "keep in sync with the SQL" notes.
 
 ## Shared choke points
@@ -106,8 +106,16 @@ Design tokens live at the top of `src/index.css` — use the CSS variables, neve
 raw hexes. Numbers and headings wear `var(--font-display)`; that's the brand.
 Motion is springy `framer-motion`, mobile-first, max width 520px.
 
-The Study tab is explicitly rank-free: practice there awards small capped XP at
-most and never touches standing. Keep it that way.
+The Study tab is rank-free in the sense that matters: it never puts you head to
+head with another player. It is no longer XP-free. Focus practice pays a flat
+5 XP per session with **no daily cap** (0043) — a deliberate reversal of the
+0038 cap, so players can farm small amounts to give to their church, whose
+giving budget is lifetime XP minus what's already been given. That XP is
+ordinary XP, so grinding focus practice does move level and the worldwide
+leaderboard. That trade was made knowingly; don't "fix" it back to a cap.
+
+Still true: "study the last five" pays only for beating your own best, once per
+7 days per verse (0014). That gate is untouched.
 
 For charts, check colorblind separation rather than eyeballing it. The Study
 accuracy chart uses mint/gold/coral because green↔amber fails deutan separation

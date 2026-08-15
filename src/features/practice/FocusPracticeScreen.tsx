@@ -6,7 +6,7 @@ import { Button } from '@/components/Button'
 import { Avatar } from '@/components/Avatar'
 import { CpuVersusQuiz } from '@/features/arena/CpuVersusQuiz'
 import type { CpuProfile } from '@/features/arena/cpu'
-import { useFocus, FOCUS_XP_DAILY_CAP, type FocusXpOutcome } from '@/store/focus'
+import { useFocus, FOCUS_XP_PER_SESSION, type FocusXpOutcome } from '@/store/focus'
 import { useAuth } from '@/store/auth'
 import { poolBooks, poolBookCounts, practiceVerseFromBook } from '@/data/bible/questions'
 import { useJuice } from '@/juice/useJuice'
@@ -15,7 +15,8 @@ import type { AvatarSpec, PlayResult } from '@/types'
 // Focus practice: pick a book, then drill random verses from just that book —
 // reached from the Study tab, alongside the CPU battle and the last-five replay.
 // racing a live study companion (real-time versus bar) and earning a little XP
-// (5 per session, capped at 20/day). The book choice sticks until you change it.
+// (5 per session, every session — no daily limit, so it can be farmed toward a
+// church offering). The book choice sticks until you change it.
 const bookLabel = (book: string | null) => book ?? 'Any book'
 
 // A friendly pace-setter — same sim as the Battle CPU, tuned to "fair fight".
@@ -134,7 +135,8 @@ function BookPicker({
         <div className="floaty" style={{ fontSize: 44 }}>🎯</div>
         <h1 style={{ fontSize: 26, marginTop: 4 }}>Pick a book to focus on</h1>
         <p className="dim" style={{ marginTop: 4, lineHeight: 1.4 }}>
-          Drill verses from just this book, racing a study partner. Earn 5 XP a session, up to {FOCUS_XP_DAILY_CAP}/day.
+          Drill verses from just this book, racing a study partner. Earn {FOCUS_XP_PER_SESSION} XP every
+          session, as many as you like — give it to your church whenever you want.
         </p>
       </div>
 
@@ -217,7 +219,7 @@ function RecapScreen({
   const you = outcome.player.score
   const cpu = outcome.cpuScore
   const result: 'won' | 'lost' | 'tie' = you > cpu ? 'won' : you < cpu ? 'lost' : 'tie'
-  const { xpEarned, dayTotal, cap } = outcome.xp
+  const { xpEarned, dayTotal } = outcome.xp
 
   return (
     <Page noNav>
@@ -245,7 +247,8 @@ function RecapScreen({
       <div className="faint center" style={{ fontSize: 12, letterSpacing: '0.3em', margin: '2px 0' }}>VS</div>
       <ScoreRow name={COMPANION.name} emoji={COMPANION.emoji} score={cpu} winner={result === 'lost'} />
 
-      {/* XP reward / daily cap state */}
+      {/* XP reward. Every session pays, so xpEarned is only ever 0 if the award
+          didn't reach the server — say that plainly rather than implying a cap. */}
       <div
         className="card"
         style={{
@@ -258,14 +261,14 @@ function RecapScreen({
           <>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, color: 'var(--gold)' }}>+{xpEarned} XP</div>
             <div className="faint" style={{ fontSize: 12, marginTop: 2 }}>
-              {dayTotal}/{cap} XP from focus today{dayTotal >= cap ? ' — daily max reached' : ''}
+              {dayTotal} XP from focus today — keep going, there’s no daily limit
             </div>
           </>
         ) : (
           <>
-            <div style={{ fontWeight: 800 }}>Daily XP maxed 🎉</div>
+            <div style={{ fontWeight: 800 }}>XP didn’t save</div>
             <div className="faint" style={{ fontSize: 12, marginTop: 2 }}>
-              You’ve earned all {cap} focus XP today — keep practicing free, XP resets tomorrow.
+              Couldn’t reach the server for this one — check your connection and play another.
             </div>
           </>
         )}

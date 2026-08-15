@@ -10,7 +10,8 @@ import AuthScreen from './features/auth/AuthScreen'
 import HomeScreen from './features/home/HomeScreen'
 import QuizScreen from './features/daily/QuizScreen'
 import ResultScreen from './features/daily/ResultScreen'
-import FocusPracticeScreen from './features/practice/FocusPracticeScreen'
+import PracticeQuizScreen from './features/practice/PracticeQuizScreen'
+import PracticeResultScreen from './features/practice/PracticeResultScreen'
 import ReviewScreen from './features/review/ReviewScreen'
 import BuddiesScreen from './features/buddies/BuddiesScreen'
 import ChurchesScreen from './features/churches/ChurchesScreen'
@@ -21,7 +22,6 @@ import ProfileScreen from './features/profile/ProfileScreen'
 import BattleHub from './features/arena/BattleHub'
 import BattleNew from './features/arena/BattleNew'
 import BattlePlay from './features/arena/BattlePlay'
-import BattleCpu from './features/arena/BattleCpu'
 import BattleDetail from './features/arena/BattleDetail'
 import { BattleResume } from './features/arena/BattleResume'
 import { BottomNav } from './components/BottomNav'
@@ -120,10 +120,18 @@ export default function App() {
           }
         />
         <Route
-          path="/play/focus"
+          path="/play/practice/:date"
           element={
             <RequireProfile>
-              <FocusPracticeScreen />
+              <PracticeQuizScreen />
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/play/practice/:date/result"
+          element={
+            <RequireProfile>
+              <PracticeResultScreen />
             </RequireProfile>
           }
         />
@@ -185,9 +193,6 @@ export default function App() {
             </RequireProfile>
           }
         />
-        {/* Solo vs-CPU battle — fully offline (no opponent, no account needed), so
-            it's public and doesn't touch rank/win records. */}
-        <Route path="/battle/cpu" element={<BattleCpu />} />
         {/* Public: an invite opened by someone without an account handles its own
             gate + signup resume, so it is NOT wrapped in RequireProfile. */}
         <Route path="/battle/:id" element={<BattleDetail />} />

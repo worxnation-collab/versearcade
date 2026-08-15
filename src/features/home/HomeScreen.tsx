@@ -8,6 +8,7 @@ import { XpBar } from '@/components/XpBar'
 import { StreakFlame } from '@/components/StreakFlame'
 import { PresenceStrip } from '@/features/presence/PresenceStrip'
 import { DailyChest } from '@/features/chest/DailyChest'
+import { PracticeSection } from '@/features/practice/PracticeSection'
 import { useAuth } from '@/store/auth'
 import { useGame } from '@/store/game'
 import { useReviews } from '@/store/reviews'
@@ -190,25 +191,8 @@ export default function HomeScreen() {
       {/* Daily Chest — unlocks after today's verse, gives a random relic. */}
       <DailyChest />
 
-      {/* Focus practice — pick a book, race a study partner, earn XP (5/session,
-          up to 20/day). Replaces the old "study the last five". */}
-      <motion.button
-        onClick={() => navigate('/play/focus')}
-        whileTap={{ scale: 0.97 }}
-        className="card"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        style={{ width: '100%', textAlign: 'left', marginTop: 16, display: 'flex', alignItems: 'center', gap: 14 }}
-      >
-        <div style={{ fontSize: 30 }}>🎯</div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 17 }}>Focus practice</div>
-          <div className="faint" style={{ fontSize: 13 }}>
-            Drill a book head-to-head with a study partner · earn XP
-          </div>
-        </div>
-        <div style={{ fontFamily: 'var(--font-display)', color: 'var(--gold)', fontSize: 20 }}>→</div>
-      </motion.button>
+      {/* Study the last five — replay past verses; beat your best to earn XP. */}
+      <PracticeSection />
 
       {/* Keep it: spaced-repetition review of verses already learned. Only
           surfaces when something is actually due, so it's never clutter. */}

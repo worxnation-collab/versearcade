@@ -10,6 +10,7 @@ import { useAuth } from '@/store/auth'
 import { useSettings } from '@/store/settings'
 import { useJuice } from '@/juice/useJuice'
 import { READING_TRANSLATIONS } from '@/lib/config'
+import { DENOMINATIONS, denominationColor } from '@/data/denominations'
 import { shareResult, APP_URL } from '@/features/daily/shareCard'
 import { useCollection } from '@/store/collection'
 import { CustomizeSection } from './CustomizeSection'
@@ -184,6 +185,25 @@ export default function ProfileScreen() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Denomination — optional; only surfaces on the Battle ranks as a faction. */}
+      <h3 style={{ fontSize: 16, marginBottom: 10 }} className="dim">Denomination</h3>
+      <div className="card" style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ width: 14, height: 14, borderRadius: '50%', flexShrink: 0, background: profile.denomination ? denominationColor(profile.denomination) : 'var(--stroke)', boxShadow: profile.denomination ? `0 0 8px ${denominationColor(profile.denomination)}` : 'none' }} />
+        <select
+          value={profile.denomination ?? ''}
+          onChange={(e) => { juice.select?.(); updateProfile({ denomination: e.target.value || null }) }}
+          style={{ flex: 1, padding: '10px 8px', borderRadius: 10, background: 'var(--card-solid)', color: 'var(--ink)', border: '1px solid var(--stroke)', fontSize: 14 }}
+        >
+          <option value="">Prefer not to say</option>
+          {DENOMINATIONS.map((d) => (
+            <option key={d.key} value={d.key}>{d.name}</option>
+          ))}
+        </select>
+      </div>
+      <p className="faint" style={{ fontSize: 11, marginBottom: 14, lineHeight: 1.4 }}>
+        Optional &amp; friendly — pick your tradition to represent it on the <b>Battle</b> ranks. Your battle wins add to your denomination’s team total automatically.
+      </p>
 
       {/* Invite friends — referral code + progress toward the carried-cross look. */}
       {profile.referralCode && (

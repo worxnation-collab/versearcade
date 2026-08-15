@@ -154,7 +154,7 @@ export function ChurchPicker() {
   }
 
   return (
-    <div style={{ display: 'grid', gap: 12 }}>
+    <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'minmax(0, 1fr)' }}>
       <div className="card">
         <b style={{ fontFamily: 'var(--font-display)', fontSize: 17 }}>Find your church</b>
         <p className="dim" style={{ margin: '6px 0 0', fontSize: 14, lineHeight: 1.5 }}>
@@ -206,7 +206,7 @@ export function ChurchPicker() {
           {error && <p style={{ color: 'var(--coral)', fontSize: 13, margin: 0 }}>{error}</p>}
 
           {matches.length > 0 && (
-            <div style={{ display: 'grid', gap: 8 }}>
+            <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
               {matches.map((p) => (
                 <PlaceRow key={p.placeKey} place={p} busy={joining === p.placeKey} onPick={() => pick(p)} />
               ))}
@@ -232,7 +232,7 @@ export function ChurchPicker() {
           )}
 
           {wide.length > 0 && (
-            <div style={{ display: 'grid', gap: 8 }}>
+            <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
               <p className="faint" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>
                 Further out
               </p>
@@ -294,6 +294,7 @@ function PlaceRow({ place, busy, onPick }: { place: ChurchPlace; busy: boolean; 
         alignItems: 'center',
         gap: 12,
         padding: '12px 14px',
+        minWidth: 0,
         textAlign: 'left',
         opacity: busy ? 0.6 : 1,
         borderColor: place.churchId ? 'var(--gold)' : 'var(--stroke)',

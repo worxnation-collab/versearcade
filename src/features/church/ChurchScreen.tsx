@@ -132,11 +132,11 @@ function ChurchHome({ church }: { church: Church }) {
   const quick = [100, 500, 2500].filter((n) => n <= available)
 
   return (
-    <div style={{ display: 'grid', gap: 14 }}>
+    <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'minmax(0, 1fr)' }}>
       {/* Hero ------------------------------------------------------------- */}
       <div className="card center" style={{ paddingTop: 10 }}>
         <ChurchArt level={info.level} size={220} animate />
-        <h2 style={{ fontSize: 22, marginTop: 6 }}>{church.name}</h2>
+        <h2 style={{ fontSize: 22, marginTop: 6, overflowWrap: 'anywhere' }}>{church.name}</h2>
         <p className="faint" style={{ margin: '2px 0 0', fontSize: 12.5 }}>
           {where || 'Your congregation'} · {church.members} {church.members === 1 ? 'player' : 'players'}
         </p>
@@ -240,7 +240,7 @@ function ChurchHome({ church }: { church: Church }) {
       {/* Congregation ------------------------------------------------------ */}
       {givers.length > 0 && (
         <Collapsible icon="🙌" title="Top givers" meta={`${givers.length}`}>
-          <div style={{ display: 'grid', gap: 8 }}>
+          <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
             {givers.map((g, i) => (
               <div
                 key={g.username}
@@ -250,6 +250,7 @@ function ChurchHome({ church }: { church: Church }) {
                   alignItems: 'center',
                   gap: 10,
                   padding: '9px 12px',
+                  minWidth: 0,
                   borderColor: g.isMe ? 'var(--gold)' : 'var(--stroke)',
                   background: g.isMe ? 'rgba(255,210,63,0.08)' : undefined,
                 }}
@@ -268,14 +269,14 @@ function ChurchHome({ church }: { church: Church }) {
 
       {/* The ladder -------------------------------------------------------- */}
       <Collapsible icon="🏗️" title="Buildings to earn" meta={`${tierIndexForLevel(info.level) + 1}/${CHURCH_TIERS.length}`}>
-        <div style={{ display: 'grid', gap: 8 }}>
+        <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
           {CHURCH_TIERS.map((t) => {
             const earned = info.level >= t.minLevel
             return (
               <div
                 key={t.id}
                 className="card"
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderColor: earned ? 'var(--gold)' : 'var(--stroke)' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', minWidth: 0, borderColor: earned ? 'var(--gold)' : 'var(--stroke)' }}
               >
                 <ChurchArt tier={t.id} size={56} locked={!earned} />
                 <span style={{ minWidth: 0, flex: 1 }}>

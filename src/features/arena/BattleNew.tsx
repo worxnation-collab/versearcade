@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
@@ -19,9 +19,13 @@ import type { PlayResult } from '@/types'
 // link stays available for inviting people who aren't on Verse Arcade yet.)
 export default function BattleNew() {
   const navigate = useNavigate()
+  const location = useLocation()
   const seed = useMemo(() => newBattleSeed(), [])
   const verse = useMemo(() => battleVerse(seed), [seed])
   const [result, setResult] = useState<PlayResult | null>(null)
+  // Arriving from someone's player card ("⚔️ Battle") pre-picks the opponent, so
+  // once you've played we skip the picker and challenge them directly.
+  const target = (location.state as { challenge?: string } | null)?.challenge ?? null
 
   if (!result) {
     return (
@@ -33,10 +37,10 @@ export default function BattleNew() {
       />
     )
   }
-  return <InvitePicker seed={seed} result={result} />
+  return <InvitePicker seed={seed} result={result} target={target} />
 }
 
-function InvitePicker({ seed, result }: { seed: number; result: PlayResult }) {
+function InvitePicker({ seed, result, target }: { seed: number; result: PlayResult; target: string | null }) {
   const navigate = useNavigate()
   const juice = useJuice()
   const { createBattle } = useBattles()
@@ -59,6 +63,18 @@ function InvitePicker({ seed, result }: { seed: number; result: PlayResult }) {
     if (id) navigate(`/battle/${id}`, { replace: true, state: { justCreated: true } })
   }
 
+  // Pre-picked opponent (came from their player card): fire the challenge as
+  // soon as the buddy list is in, so we know whether to attach a buddy request.
+  // The ref guards against a double-send if this re-renders mid-flight.
+  const sent = useRef(false)
+  useEffect(() => {
+    if (!target || !ready || sent.current) return
+    sent.current = true
+    const isBuddy = buddies.some((b) => b.username.toLowerCase() === target.toLowerCase())
+    void invite({ username: target } as BuddyCard, isBuddy)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target, ready, buddies])
+
   const [shareId, setShareId] = useState<string | null>(null)
   const shareLink = async () => {
     juice.coin()
@@ -75,6 +91,22 @@ function InvitePicker({ seed, result }: { seed: number; result: PlayResult }) {
     }
     const r = await shareResult(`⚔️ I challenge you to a Bible Battle! Same quiz, beat my score:\n${APP_URL}/battle/${id}`)
     setShareMsg(r === 'shared' ? 'Shared!' : r === 'copied' ? 'Link copied!' : 'Could not share')
+  }
+
+  if (target) {
+    return (
+      <Page noNav>
+        <div className="card" style={{ textAlign: 'center', marginTop: 40 }}>
+          <div className="floaty" style={{ fontSize: 40 }}>⚔️</div>
+          <h2 style={{ fontSize: 22, marginTop: 6 }}>
+            You scored <span className="gradient-text">{result.score.toLocaleString()}</span>
+          </h2>
+          <p className="dim" style={{ marginTop: 8, fontSize: 14 }}>
+            Sending your challenge to <b>@{target}</b>…
+          </p>
+        </div>
+      </Page>
+    )
   }
 
   return (

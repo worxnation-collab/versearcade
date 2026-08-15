@@ -9,15 +9,27 @@ import type { Church } from '@/types'
 // Churches near yours, ranked by the points their people have poured in. The
 // radius is the whole point: a 40-family congregation is never going to out-XP
 // a megachurch two states over, but it can absolutely out-give the one across town.
+// "All" opens it up to every church playing, for when you want the whole ladder.
 export function ChurchBoard() {
   const juice = useJuice()
   const { board, boardMe, boardTotal, boardLoading, radiusMiles, setRadius } = useChurch()
 
   const meInBoard = !!boardMe && board.some((c) => c.id === boardMe.id)
+  const worldwide = radiusMiles === 'all'
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+      {/* Five equal columns rather than a wrapping flex row: at 360px a flex row
+          drops "All" onto a line of its own, which reads like a stray control.
+          minmax(0, 1fr) lets the chips shrink to fit instead of overflowing. */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+          gap: 5,
+          marginBottom: 12,
+        }}
+      >
         {RADIUS_CHOICES.map((r) => {
           const active = r === radiusMiles
           return (
@@ -26,9 +38,10 @@ export function ChurchBoard() {
               whileTap={{ scale: 0.94 }}
               onClick={() => { juice.select(); setRadius(r) }}
               style={{
-                padding: '7px 14px',
+                padding: '8px 3px',
                 borderRadius: 999,
-                fontSize: 13,
+                fontSize: 12,
+                whiteSpace: 'nowrap',
                 fontWeight: 800,
                 border: '1px solid var(--stroke)',
                 background: active ? 'linear-gradient(180deg, var(--grape), var(--grape-deep))' : 'var(--card)',
@@ -36,7 +49,7 @@ export function ChurchBoard() {
                 boxShadow: active ? '0 4px 14px rgba(122,63,242,0.45)' : 'none',
               }}
             >
-              {r} mi
+              {r === 'all' ? 'All' : `${r} mi`}
             </motion.button>
           )
         })}
@@ -44,16 +57,21 @@ export function ChurchBoard() {
 
       <p className="dim center" style={{ fontSize: 13, margin: '0 0 12px' }}>
         {boardLoading
-          ? 'Looking around…'
-          : `${boardTotal} ${boardTotal === 1 ? 'church' : 'churches'} within ${radiusMiles} miles`}
+          ? worldwide
+            ? 'Counting everyone…'
+            : 'Looking around…'
+          : `${boardTotal.toLocaleString()} ${boardTotal === 1 ? 'church' : 'churches'} ${
+              worldwide ? 'playing worldwide' : `within ${radiusMiles} miles`
+            }`}
       </p>
 
       {!boardLoading && board.length <= 1 && (
         <div className="card center" style={{ marginBottom: 10 }}>
-          <div style={{ fontSize: 30 }}>🗺️</div>
+          <div style={{ fontSize: 30 }}>{worldwide ? '🌍' : '🗺️'}</div>
           <p className="dim" style={{ margin: '8px 0 0', fontSize: 14, lineHeight: 1.5 }}>
-            Yours is the only church playing within {radiusMiles} miles — so you're #1 by default.
-            Invite a friend from a church down the road and give them something to chase.
+            {worldwide
+              ? "Yours is the first church on the board — every church that joins from here on is chasing you."
+              : `Yours is the only church playing within ${radiusMiles} miles — so you're #1 by default. Invite a friend from a church down the road and give them something to chase.`}
           </p>
         </div>
       )}

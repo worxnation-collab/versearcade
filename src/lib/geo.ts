@@ -23,7 +23,8 @@ export function formatMiles(miles: number | null | undefined): string {
   if (miles == null || !Number.isFinite(miles)) return ''
   if (miles < 0.1) return 'right here'
   if (miles < 10) return `${miles.toFixed(1)} mi`
-  return `${Math.round(miles)} mi`
+  // The worldwide board reaches four figures, so group them.
+  return `${Math.round(miles).toLocaleString()} mi`
 }
 
 export type GeoError = 'denied' | 'unavailable' | 'timeout' | 'unsupported'

@@ -105,3 +105,11 @@ export const SKIN_BUY_URLS: Record<string, string> = {
 }
 
 export const skinBuyUrl = (id: string): string => SKIN_BUY_URLS[id] || SUPPORT_URL || ''
+
+// Web Push (VAPID). This PUBLIC key is safe to ship — it's how the browser
+// authenticates our push server. The matching PRIVATE key lives only as a
+// Supabase Edge Function secret (VAPID_PRIVATE_KEY) and is never in the client.
+// Overridable via env so the pair can be rotated without a code change.
+export const VAPID_PUBLIC_KEY =
+  import.meta.env.VITE_VAPID_PUBLIC_KEY ||
+  'BATVXr89OTFcSQOh7Xa0J3d0y2wTqUhez1cxF5XJSPor1vARrhc0jJLGvJr3n7HHDBL0NSAuIEBbHqwNyE9XCec'

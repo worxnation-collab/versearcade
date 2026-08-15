@@ -15,6 +15,7 @@ import { useGame } from '@/store/game'
 import { useReviews } from '@/store/reviews'
 import { useSettings } from '@/store/settings'
 import { Tutorial } from './Tutorial'
+import { InstallPrompt } from './InstallPrompt'
 import { msUntilNextLocalMidnight, formatCountdown } from '@/lib/date'
 
 export default function HomeScreen() {
@@ -61,6 +62,10 @@ export default function HomeScreen() {
           </div>
         </div>
       </div>
+
+      {/* Add to Home Screen — only renders where installing is actually possible
+          (and not already installed), and can be dismissed for good. */}
+      <InstallPrompt />
 
       {/* How to play — a persistent, low-key button that opens the walkthrough.
           Replaces the old build-your-character nudge card. */}

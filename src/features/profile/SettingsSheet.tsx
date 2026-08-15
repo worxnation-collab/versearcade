@@ -5,6 +5,7 @@ import { useSettings } from '@/store/settings'
 import { useJuice } from '@/juice/useJuice'
 import { READING_TRANSLATIONS } from '@/lib/config'
 import { pushSupported, pushPermission, isPushSubscribed, enablePush, disablePush } from '@/lib/push'
+import { InstallRow } from '@/features/home/InstallPrompt'
 
 // Everything that used to sit inline on the profile (sound, haptics, motion,
 // volume, reading translation) lives here instead — one ⚙️ tap away, so the
@@ -113,6 +114,9 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
               onMouseUp={() => juice.coin()} style={{ width: '100%' }} />
           </div>
         </div>
+
+        {/* Install — only renders where the browser can actually install us. */}
+        <InstallRow />
 
         {/* Notifications — Web Push. Only shown where the browser supports it. */}
         {supportsPush && (

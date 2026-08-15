@@ -14,6 +14,8 @@ interface SettingsState {
   characterPromptDismissed: boolean
   /** Whether the how-to-play walkthrough has been shown once automatically. */
   tutorialSeen: boolean
+  /** Whether the "add to home screen" nudge has been dismissed (one-time). */
+  installPromptDismissed: boolean
   /** Preferred translation for reading the full chapter (bible-api code). */
   readingTranslation: string
   set: (patch: Partial<Omit<SettingsState, 'set'>>) => void
@@ -28,6 +30,7 @@ export const useSettings = create<SettingsState>()(
       volume: 0.6,
       characterPromptDismissed: false,
       tutorialSeen: false,
+      installPromptDismissed: false,
       readingTranslation: 'web',
       set: (patch) => set(patch),
     }),

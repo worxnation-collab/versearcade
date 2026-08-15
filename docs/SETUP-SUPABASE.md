@@ -2,18 +2,26 @@
 
 > ## ✅ Already done for this project
 > A Supabase project **`verse-arcade`** (ref `visuppaucpzzigwtqmdd`, region us-east-1)
-> is provisioned, all migrations are applied, and the live Netlify site
-> (`verse-arcade.netlify.app`) is wired to it in ONLINE mode. Email/password
+> is provisioned, all migrations are applied, and the live site
+> (`versearcade.org`) is wired to it in ONLINE mode. Email/password
 > sign-in, guest play, and all RPCs work now.
 >
-> **~2 minutes of dashboard toggles remain (only for a smoother auth UX):**
-> 1. **Authentication → URL Configuration** → set **Site URL** to
->    `https://verse-arcade.netlify.app` and add redirect
->    `https://verse-arcade.netlify.app/auth/callback`. (Makes OAuth + email links
+> **~2 minutes of dashboard toggles remain:**
+> 1. **Authentication → Sign In / Providers → Email** → turn **Confirm email
+>    = OFF**. This is the one that matters: with it ON, someone who signs up by
+>    typing an email and password gets no session and has to go find a
+>    confirmation email before they can play — a hard stop right at the moment
+>    they were most willing to start. With it OFF, `signUp` returns a session
+>    and they land in the game immediately. The app already handles both cases;
+>    nothing in the code needs to change. (Guest play and Google/Apple sign-in
+>    skip verification either way.)
+>    Trade-off while it's off: nothing proves an address is real, so typo'd or
+>    fake emails become accounts, and password reset won't reach those people.
+>    Turn it back on before you lean on email for anything that matters.
+> 2. **Authentication → URL Configuration** → set **Site URL** to
+>    `https://versearcade.org` and add redirect
+>    `https://versearcade.org/auth/callback`. (Makes OAuth + email links
 >    return to the live app instead of localhost.)
-> 2. **Authentication → Providers → Email** → if you want frictionless signup,
->    turn **Confirm email = OFF** (a game usually doesn't need email verification;
->    guest + Google/Apple avoid it entirely either way).
 > 3. Enable **Google** and **Apple** providers using §2 and §3 below.
 >
 > The rest of this doc is the full reference (and how to reproduce from scratch).

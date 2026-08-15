@@ -83,7 +83,8 @@ function Header() {
 // ---------------------------------------------------------------------------
 function ChurchHome({ church }: { church: Church }) {
   const juice = useJuice()
-  const { available, myGiven, givers, contribute, leave } = useChurch()
+  const { available, myGiven, givers, contribute, leave, radiusMiles } = useChurch()
+  const worldwide = radiusMiles === 'all'
   const [busy, setBusy] = useState(false)
   const [flash, setFlash] = useState<string | null>(null)
   const [promoted, setPromoted] = useState<string | null>(null)
@@ -226,12 +227,16 @@ function ChurchHome({ church }: { church: Church }) {
         </AnimatePresence>
       </div>
 
-      {/* Local ranks ------------------------------------------------------- */}
+      {/* Ranks — local by default, worldwide on the "All" chip -------------- */}
       <div className="card">
         <div className="center" style={{ marginBottom: 12 }}>
-          <b style={{ fontFamily: 'var(--font-display)', fontSize: 17 }}>Churches near you</b>
+          <b style={{ fontFamily: 'var(--font-display)', fontSize: 17 }}>
+            {worldwide ? 'Churches worldwide' : 'Churches near you'}
+          </b>
           <p className="faint" style={{ margin: '2px 0 0', fontSize: 12 }}>
-            Ranked by points given, measured from {church.name}
+            {worldwide
+              ? 'Every church playing, ranked by points given'
+              : `Ranked by points given, measured from ${church.name}`}
           </p>
         </div>
         <ChurchBoard />

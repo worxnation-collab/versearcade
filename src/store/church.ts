@@ -10,15 +10,21 @@ import type { ChurchPlace } from '@/lib/churchSearch'
 // there's nothing meaningful to keep on a single device. Guests see a sign-in
 // prompt instead (same as the worldwide leaderboard).
 
-/** Radii the local board offers, in miles. */
-export const RADIUS_CHOICES = [10, 20, 30, 50] as const
-export const DEFAULT_RADIUS = 20
+/** What the board can be scoped to: a radius in miles, or every church there is. */
+export const RADIUS_CHOICES = [10, 20, 30, 50, 'all'] as const
+export type RadiusChoice = (typeof RADIUS_CHOICES)[number]
+export const DEFAULT_RADIUS: RadiusChoice = 20
 const RADIUS_KEY = 'va.churchRadius'
 
-function readRadius(): number {
+const isRadiusChoice = (v: unknown): v is RadiusChoice =>
+  (RADIUS_CHOICES as readonly unknown[]).includes(v)
+
+function readRadius(): RadiusChoice {
   try {
-    const n = Number(localStorage.getItem(RADIUS_KEY))
-    return (RADIUS_CHOICES as readonly number[]).includes(n) ? n : DEFAULT_RADIUS
+    const raw = localStorage.getItem(RADIUS_KEY)
+    if (raw === 'all') return 'all'
+    const n = Number(raw)
+    return isRadiusChoice(n) ? n : DEFAULT_RADIUS
   } catch {
     return DEFAULT_RADIUS
   }
@@ -75,7 +81,7 @@ interface ChurchState {
   board: Church[]
   boardMe: Church | null
   boardTotal: number
-  radiusMiles: number
+  radiusMiles: RadiusChoice
   loaded: boolean
   loading: boolean
   boardLoading: boolean
@@ -83,7 +89,7 @@ interface ChurchState {
 
   load: () => Promise<void>
   loadBoard: () => Promise<void>
-  setRadius: (miles: number) => void
+  setRadius: (choice: RadiusChoice) => void
   join: (place: ChurchPlace) => Promise<Church | null>
   leave: () => Promise<void>
   contribute: (points: number) => Promise<ContributeResult>
@@ -129,9 +135,13 @@ export const useChurch = create<ChurchState>((set, get) => ({
   async loadBoard() {
     if (!isOnline() || !get().church) return
     set({ boardLoading: true })
+    const radius = get().radiusMiles
+    const worldwide = radius === 'all'
     const { data, error } = await supabase!.rpc('church_leaderboard', {
-      p_radius_miles: get().radiusMiles,
-      p_limit: 25,
+      // A null radius is the server's "no distance limit" signal.
+      p_radius_miles: worldwide ? null : radius,
+      // The worldwide ladder is worth showing deeper than the local one.
+      p_limit: worldwide ? 50 : 25,
     })
     if (error) {
       set({ boardLoading: false, error: error.message })
@@ -146,14 +156,14 @@ export const useChurch = create<ChurchState>((set, get) => ({
     })
   },
 
-  setRadius(miles) {
-    if (!(RADIUS_CHOICES as readonly number[]).includes(miles)) return
+  setRadius(choice) {
+    if (!isRadiusChoice(choice)) return
     try {
-      localStorage.setItem(RADIUS_KEY, String(miles))
+      localStorage.setItem(RADIUS_KEY, String(choice))
     } catch {
       /* private mode — the choice just won't stick */
     }
-    set({ radiusMiles: miles })
+    set({ radiusMiles: choice })
     void get().loadBoard()
   },
 

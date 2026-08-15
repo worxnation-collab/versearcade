@@ -92,7 +92,7 @@ function PinGate({ onOk }: { onOk: () => void }) {
 function Dashboard() {
   const navigate = useNavigate()
   const [ov, setOv] = useState<Overview | null>(null)
-  const [tab, setTab] = useState<'stats' | 'users' | 'sales' | 'church' | 'codes'>('stats')
+  const [tab, setTab] = useState<'stats' | 'users' | 'sales' | 'church' | 'codes' | 'push'>('stats')
 
   useEffect(() => {
     supabase?.rpc('admin_overview').then(({ data }) => setOv(data as Overview))
@@ -106,8 +106,8 @@ function Dashboard() {
         <span className="faint" style={{ fontSize: 11, marginLeft: 'auto' }}>operator only</span>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        {(['stats', 'users', 'sales', 'church', 'codes'] as const).map((t) => (
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+        {(['stats', 'users', 'sales', 'church', 'codes', 'push'] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)} className="pill"
             style={{ background: tab === t ? 'var(--grape)' : 'var(--card)', fontWeight: 800, textTransform: 'capitalize' }}>
             {t === 'church' ? 'Churches' : t}
@@ -120,6 +120,7 @@ function Dashboard() {
       {tab === 'sales' && <Sales />}
       {tab === 'church' && <Churches />}
       {tab === 'codes' && <Codes />}
+      {tab === 'push' && <PushBroadcast />}
       <div style={{ height: 40 }} />
     </Page>
   )
@@ -399,6 +400,76 @@ function Codes() {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+// Send a Web Push notification to everyone who's opted in. Calls the push-send
+// Edge Function, which does the VAPID + encryption work and prunes dead subs.
+const PUSH_PRESETS = [
+  { label: '📖 New verse', title: 'Today’s verse is live', body: 'A fresh verse just dropped — play it and keep your streak going.' },
+  { label: '🔥 Streak nudge', title: 'Don’t break your streak', body: 'Your streak is waiting — a couple minutes keeps it alive.' },
+  { label: '⚔️ Battle call', title: 'Who can you beat today?', body: 'Challenge a buddy to today’s verse and settle it head to head.' },
+]
+
+function PushBroadcast() {
+  const [title, setTitle] = useState('Verse Arcade')
+  const [body, setBody] = useState('')
+  const [url, setUrl] = useState('/')
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+
+  const send = async () => {
+    if (!body.trim() || busy) return
+    setBusy(true); setMsg(null); setErr(null)
+    try {
+      const { data, error } = await supabase!.functions.invoke('push-send', {
+        body: { title: title.trim() || 'Verse Arcade', body: body.trim(), url: url.trim() || '/' },
+      })
+      if (error) throw error
+      const r = data as { sent: number; failed: number; removed: number; total: number; error?: string }
+      if (r?.error) { setErr(r.error); return }
+      setMsg(`Sent to ${r.sent}/${r.total} devices${r.failed ? ` · ${r.failed} failed` : ''}${r.removed ? ` · ${r.removed} stale removed` : ''}.`)
+    } catch (e) {
+      const m = (e as { message?: string })?.message || String(e)
+      setErr(/non-2xx|500/i.test(m) ? 'Send failed — is VAPID_PRIVATE_KEY set in Supabase?' : m)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div>
+      <p className="faint" style={{ fontSize: 12, marginBottom: 10, lineHeight: 1.4 }}>
+        Push a notification to everyone who turned reminders on (Profile → ⚙️ → Notifications). Needs the <code>VAPID_PRIVATE_KEY</code> secret set in Supabase.
+      </p>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+        {PUSH_PRESETS.map((p) => (
+          <button key={p.label} className="pill" style={{ fontSize: 12, fontWeight: 800 }}
+            onClick={() => { setTitle(p.title); setBody(p.body) }}>
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="card" style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
+        <label className="faint" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Title</label>
+        <input value={title} onChange={(e) => setTitle(e.target.value.slice(0, 80))} placeholder="Verse Arcade" />
+        <label className="faint" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Message</label>
+        <textarea value={body} onChange={(e) => setBody(e.target.value.slice(0, 240))} rows={3}
+          placeholder="What do you want to say?"
+          style={{ padding: '10px 8px', borderRadius: 10, background: 'var(--card-solid)', color: 'var(--ink)', border: '1px solid var(--stroke)', resize: 'vertical', font: 'inherit' }} />
+        <div className="faint" style={{ fontSize: 11, textAlign: 'right' }}>{body.length}/240</div>
+        <label className="faint" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Opens (path)</label>
+        <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="/" />
+        <Button variant="gold" disabled={body.trim().length === 0 || busy} onClick={send}>
+          {busy ? 'Sending…' : '🔔 Send to everyone'}
+        </Button>
+        {msg && <p style={{ color: 'var(--good)', fontSize: 13 }}>{msg}</p>}
+        {err && <p style={{ color: 'var(--coral)', fontSize: 13 }}>{err}</p>}
+      </div>
     </div>
   )
 }

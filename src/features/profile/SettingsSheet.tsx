@@ -1,9 +1,10 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/store/auth'
 import { useSettings } from '@/store/settings'
 import { useJuice } from '@/juice/useJuice'
 import { READING_TRANSLATIONS } from '@/lib/config'
+import { pushSupported, pushPermission, isPushSubscribed, enablePush, disablePush } from '@/lib/push'
 
 // Everything that used to sit inline on the profile (sound, haptics, motion,
 // volume, reading translation) lives here instead — one ⚙️ tap away, so the
@@ -30,6 +31,41 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const setSound = (v: boolean) => { settings.set({ soundEnabled: v }); updateProfile({ soundEnabled: v }); if (v) juice.select() }
   const setHaptics = (v: boolean) => { settings.set({ hapticsEnabled: v }); updateProfile({ hapticsEnabled: v }); if (v) juice.tap() }
   const setMotion = (v: boolean) => { settings.set({ reduceMotion: v }); updateProfile({ reduceMotion: v }) }
+
+  // Web Push — reflects the *actual* browser subscription, not a stored flag, so
+  // it stays honest if permission is revoked in browser settings.
+  const supportsPush = pushSupported()
+  const [pushOn, setPushOn] = useState(false)
+  const [pushBusy, setPushBusy] = useState(false)
+  const [pushErr, setPushErr] = useState('')
+  const denied = pushPermission() === 'denied'
+
+  useEffect(() => {
+    isPushSubscribed().then(setPushOn).catch(() => setPushOn(false))
+  }, [])
+
+  const togglePush = async () => {
+    if (pushBusy) return
+    setPushErr('')
+    setPushBusy(true)
+    try {
+      if (pushOn) {
+        await disablePush()
+        setPushOn(false)
+      } else {
+        const ok = await enablePush()
+        setPushOn(ok)
+        if (!ok) setPushErr(pushPermission() === 'denied'
+          ? 'Notifications are blocked in your browser settings.'
+          : 'Could not turn on notifications.')
+        else juice.coin()
+      }
+    } catch {
+      setPushErr('Something went wrong. Try again.')
+    } finally {
+      setPushBusy(false)
+    }
+  }
 
   return (
     <div
@@ -77,6 +113,26 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
               onMouseUp={() => juice.coin()} style={{ width: '100%' }} />
           </div>
         </div>
+
+        {/* Notifications — Web Push. Only shown where the browser supports it. */}
+        {supportsPush && (
+          <>
+            <h3 style={{ fontSize: 14, margin: '0 0 8px' }} className="dim">Notifications</h3>
+            <div className="card" style={{ marginBottom: 6 }}>
+              <Row
+                label={pushBusy ? '🔔 Working…' : '🔔 Daily reminders'}
+                on={pushOn}
+                onToggle={togglePush}
+              />
+            </div>
+            <p className="faint" style={{ fontSize: 11, lineHeight: 1.4, marginBottom: 18 }}>
+              {denied
+                ? 'Notifications are blocked for this site — turn them back on in your browser settings, then flip this on.'
+                : 'A gentle nudge when a new verse drops and when your streak’s about to break. Add Verse Arcade to your home screen for the most reliable delivery.'}
+              {pushErr && <span style={{ color: 'var(--coral)', display: 'block', marginTop: 4 }}>{pushErr}</span>}
+            </p>
+          </>
+        )}
 
         {/* Reading translation — the version used to read the full chapter. */}
         <h3 style={{ fontSize: 14, margin: '0 0 8px' }} className="dim">

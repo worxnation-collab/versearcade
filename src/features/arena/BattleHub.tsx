@@ -90,7 +90,7 @@ export default function BattleHub() {
               invite count, so an incoming challenge is visible without opening
               anything — that's the whole point of the split. */}
           <h3 className="dim" style={{ fontSize: 16, margin: '22px 0 10px' }}>Your battles</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, marginBottom: 12 }}>
             {TURNS.map((t) => {
               const count = buckets[t].length
               const active = turn === t
@@ -129,10 +129,13 @@ export default function BattleHub() {
             })}
           </div>
 
+          {/* minmax(0, 1fr) on the list: a bare `grid` track can't shrink below
+              its widest item, so one long "@name challenged you…" line would
+              stretch the whole page (see the church board fix). */}
           {list.length === 0 ? (
             <p className="faint" style={{ fontSize: 14 }}>{TURN_EMPTY[turn]}</p>
           ) : (
-            <div style={{ display: 'grid', gap: 8 }}>
+            <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
               {visible.map((b) => (
                 <BattleRow key={b.id} b={b} turn={turn} onClick={() => navigate(`/battle/${b.id}`)} />
               ))}
@@ -269,9 +272,10 @@ export default function BattleHub() {
 
 function outcomeLabel(b: Battle, turn: Turn): { text: string; color: string } {
   if (turn === 'yours') {
-    return b.is_welcome
-      ? { text: `@${b.challenger.username} challenged you to your first battle`, color: 'var(--gold)' }
-      : { text: `Challenged you · beat ${b.challenger.score?.toLocaleString()} pts`, color: 'var(--gold)' }
+    // The tab, the gold card and the Play pill already say "your move", so the
+    // line spends its width on the number instead of repeating that — it has to
+    // survive the ellipsis at 320px.
+    return { text: `Beat ${b.challenger.score?.toLocaleString()} pts to win`, color: 'var(--gold)' }
   }
   if (turn === 'theirs') {
     return b.invited && !b.broadcast
@@ -295,21 +299,21 @@ function BattleRow({ b, turn, onClick }: { b: Battle; turn: Turn; onClick: () =>
       onClick={onClick}
       className="card"
       style={{
-        display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%',
+        display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%', minWidth: 0,
         ...(mine ? { borderColor: 'var(--gold)', background: b.is_welcome ? 'rgba(255,210,63,0.14)' : 'rgba(255,210,63,0.08)' } : {}),
       }}
     >
       <Avatar emoji={other?.avatar_emoji ?? (b.status !== 'complete' ? '⏳' : '⚔️')} character={other?.avatar_character} size={40} ring={false} username={other?.username} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <b style={{ fontWeight: 800 }}>
-          {mine && b.is_welcome ? '👋 Welcome!' : name ? `@${name}` : 'Open challenge'}
+        <b style={{ fontWeight: 800, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {mine && b.is_welcome ? '👋 Your first battle' : name ? `@${name}` : 'Open challenge'}
         </b>
         <div style={{ fontSize: 12, color: label.color, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {label.text}
         </div>
       </div>
       {mine ? (
-        <span className="pill" style={{ background: 'var(--gold)', color: '#241f0a', fontWeight: 800, fontSize: 12 }}>Play</span>
+        <span className="pill" style={{ background: 'var(--gold)', color: '#241f0a', fontWeight: 800, fontSize: 12, flexShrink: 0 }}>Play</span>
       ) : (
         <span style={{ color: 'var(--gold)', fontFamily: 'var(--font-display)', fontSize: 18 }}>›</span>
       )}

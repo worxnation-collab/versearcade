@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Page } from '@/components/Page'
@@ -8,6 +8,24 @@ import { useAuth } from '@/store/auth'
 import { useBattles, type Battle, type BattleBoard, type DenomBoard } from '@/store/battles'
 import { DENOMINATIONS, denominationColor, denominationName } from '@/data/denominations'
 import { useJuice } from '@/juice/useJuice'
+
+// Whose move is it? Every battle you can see is in exactly one of these.
+type Turn = 'yours' | 'theirs' | 'done'
+const TURNS: Turn[] = ['yours', 'theirs', 'done']
+const TURN_LABEL: Record<Turn, string> = { yours: 'Your turn', theirs: 'Their turn', done: 'Finished' }
+const TURN_EMPTY: Record<Turn, string> = {
+  yours: 'No challenges waiting on you. When someone invites you to a battle, it shows up here.',
+  theirs: 'Nobody owes you a move. Start a battle and pick who to challenge — or share a link to invite someone new.',
+  done: 'No finished battles yet. Play one out and the result lands here.',
+}
+const VISIBLE_ROWS = 5
+
+// Pending + you didn't send it ⇒ you're the invited opponent (list_my_battles
+// only ever returns battles you're the challenger, opponent, or invitee of).
+function turnOf(b: Battle): Turn {
+  if (b.status === 'complete') return 'done'
+  return b.is_challenger ? 'theirs' : 'yours'
+}
 
 export default function BattleHub() {
   const navigate = useNavigate()
@@ -21,12 +39,25 @@ export default function BattleHub() {
   const [board, setBoard] = useState<BattleBoard | null>(null)
   const [denomBoard, setDenomBoard] = useState<DenomBoard | null>(null)
   const [rankTab, setRankTab] = useState<'individual' | 'denomination'>('individual')
-  const [battlesOpen, setBattlesOpen] = useState(false)
+  // Which turn-bucket the player tapped. Null = follow `autoTurn` below, so the
+  // tab that actually needs them is open before they touch anything.
+  const [pickedTurn, setPickedTurn] = useState<Turn | null>(null)
+  const [expanded, setExpanded] = useState<Turn | null>(null)
 
   const isGuest = mode === 'local'
-  const isIncoming = (b: Battle) => b.is_invited && b.status === 'pending' && !b.is_challenger
-  const incoming = mine.filter(isIncoming)
-  const others = mine.filter((b) => !isIncoming(b))
+
+  // Every battle sits in exactly one of three buckets, so "whose move is it?"
+  // is answered by a glance at the tab counts instead of by reading each row.
+  const buckets = useMemo(() => {
+    const b: Record<Turn, Battle[]> = { yours: [], theirs: [], done: [] }
+    for (const battle of mine) b[turnOf(battle)].push(battle)
+    return b
+  }, [mine])
+
+  const autoTurn: Turn = buckets.yours.length ? 'yours' : buckets.theirs.length ? 'theirs' : buckets.done.length ? 'done' : 'yours'
+  const turn = pickedTurn ?? autoTurn
+  const list = buckets[turn]
+  const visible = expanded === turn ? list : list.slice(0, VISIBLE_ROWS)
 
   useEffect(() => {
     if (isGuest) return
@@ -55,67 +86,70 @@ export default function BattleHub() {
             ⚔️ Start a new battle
           </Button>
 
-          {/* Incoming challenges — someone challenged you, your move */}
-          {incoming.length > 0 && (
-            <>
-              <h3 className="dim" style={{ fontSize: 16, margin: '22px 0 10px' }}>
-                Challenges for you <span style={{ color: 'var(--gold)' }}>· {incoming.length}</span>
-              </h3>
-              <div style={{ display: 'grid', gap: 8 }}>
-                {incoming.map((b) => (
-                  <motion.button
-                    key={b.id}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => navigate(`/battle/${b.id}`)}
-                    className="card"
-                    style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%', borderColor: 'var(--gold)', background: b.is_welcome ? 'rgba(255,210,63,0.14)' : 'rgba(255,210,63,0.08)' }}
-                  >
-                    <Avatar emoji={b.challenger.avatar_emoji} character={b.challenger.avatar_character} size={40} ring={false} username={b.challenger.username} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <b style={{ fontWeight: 800 }}>
-                        {b.is_welcome ? '👋 Welcome!' : `@${b.challenger.username}`}
-                      </b>
-                      <div style={{ fontSize: 12, color: 'var(--gold)', fontWeight: 700 }}>
-                        {b.is_welcome
-                          ? `@${b.challenger.username} challenged you to your first battle`
-                          : `Challenged you · beat ${b.challenger.score?.toLocaleString()} pts`}
-                      </div>
-                    </div>
-                    <span className="pill" style={{ background: 'var(--gold)', color: '#241f0a', fontWeight: 800, fontSize: 12 }}>Play</span>
-                  </motion.button>
-                ))}
-              </div>
-            </>
-          )}
+          {/* Your battles, split by whose move it is. "Your turn" carries the
+              invite count, so an incoming challenge is visible without opening
+              anything — that's the whole point of the split. */}
+          <h3 className="dim" style={{ fontSize: 16, margin: '22px 0 10px' }}>Your battles</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, marginBottom: 12 }}>
+            {TURNS.map((t) => {
+              const count = buckets[t].length
+              const active = turn === t
+              // An unplayed invite is the one thing worth shouting about: gold
+              // even when its tab is closed.
+              const nudge = t === 'yours' && count > 0
+              return (
+                <motion.button
+                  key={t}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => { juice.select(); setPickedTurn(t); setExpanded(null) }}
+                  aria-pressed={active}
+                  className="pill"
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                    padding: '10px 6px', fontSize: 13, fontWeight: 800, cursor: 'pointer',
+                    background: active ? 'var(--grape)' : nudge ? 'rgba(255,210,63,0.10)' : 'var(--card)',
+                    border: `1px solid ${active ? 'var(--grape)' : nudge ? 'var(--gold)' : 'var(--stroke)'}`,
+                  }}
+                >
+                  <span>{TURN_LABEL[t]}</span>
+                  {count > 0 && (
+                    <span
+                      style={{
+                        minWidth: 18, padding: '1px 5px', borderRadius: 9, fontSize: 11, fontWeight: 800,
+                        fontFamily: 'var(--font-display)',
+                        background: nudge ? 'var(--gold)' : active ? 'rgba(0,0,0,0.28)' : 'var(--stroke)',
+                        color: nudge ? '#241f0a' : 'var(--ink)',
+                      }}
+                    >
+                      {count}
+                    </span>
+                  )}
+                </motion.button>
+              )
+            })}
+          </div>
 
-          {/* Your battles — collapsible (default closed) so a long list of sent
-              challenges doesn't push the ranks off-screen. */}
-          <motion.button
-            whileTap={{ scale: 0.98 }}
-            onClick={() => { juice.select(); setBattlesOpen((o) => !o) }}
-            aria-expanded={battlesOpen}
-            className="card"
-            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'space-between', padding: '13px 14px', margin: '22px 0 10px', cursor: 'pointer', borderColor: battlesOpen ? 'var(--gold)' : 'var(--stroke)' }}
-          >
-            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 16 }}>
-              Your battles {others.length > 0 && <span className="faint" style={{ fontWeight: 400 }}>· {others.length}</span>}
-            </span>
-            <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--gold)', color: '#241f0a', fontWeight: 800, fontSize: 13, padding: '6px 12px' }}>
-              {battlesOpen ? 'Hide' : 'Show'}
-              <span style={{ fontSize: 15, transform: battlesOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>
-            </span>
-          </motion.button>
-          {battlesOpen && (others.length === 0 ? (
-            <p className="faint" style={{ fontSize: 14 }}>
-              No battles yet. Start one, then pick players to challenge — or share a link to invite someone new.
-            </p>
+          {/* minmax(0, 1fr) on the list: a bare `grid` track can't shrink below
+              its widest item, so one long "@name challenged you…" line would
+              stretch the whole page (see the church board fix). */}
+          {list.length === 0 ? (
+            <p className="faint" style={{ fontSize: 14 }}>{TURN_EMPTY[turn]}</p>
           ) : (
-            <div style={{ display: 'grid', gap: 8 }}>
-              {others.map((b) => (
-                <BattleRow key={b.id} b={b} onClick={() => navigate(`/battle/${b.id}`)} />
+            <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
+              {visible.map((b) => (
+                <BattleRow key={b.id} b={b} turn={turn} onClick={() => navigate(`/battle/${b.id}`)} />
               ))}
+              {list.length > visible.length && (
+                <button
+                  onClick={() => { juice.select(); setExpanded(turn) }}
+                  className="pill"
+                  style={{ background: 'var(--card)', border: '1px solid var(--stroke)', padding: '9px 12px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+                >
+                  Show all {list.length} ▾
+                </button>
+              )}
             </div>
-          ))}
+          )}
 
           {/* Battle ranks — two tabs: individual + denomination factions.
               Denomination only appears here, never on the main leaderboard. */}
@@ -236,31 +270,53 @@ export default function BattleHub() {
   )
 }
 
-function outcomeLabel(b: Battle): { text: string; color: string } {
-  if (b.status !== 'complete') return { text: 'Waiting on their play', color: 'var(--sky)' }
+function outcomeLabel(b: Battle, turn: Turn): { text: string; color: string } {
+  if (turn === 'yours') {
+    // The tab, the gold card and the Play pill already say "your move", so the
+    // line spends its width on the number instead of repeating that — it has to
+    // survive the ellipsis at 320px.
+    return { text: `Beat ${b.challenger.score?.toLocaleString()} pts to win`, color: 'var(--gold)' }
+  }
+  if (turn === 'theirs') {
+    return b.invited && !b.broadcast
+      ? { text: 'Waiting on their play', color: 'var(--sky)' }
+      : { text: 'Open challenge · waiting for a taker', color: 'var(--sky)' }
+  }
   const won = (b.is_challenger && b.winner === 'challenger') || (b.is_opponent && b.winner === 'opponent')
   if (b.winner === 'tie') return { text: 'Tie', color: 'var(--ink-faint)' }
   return won ? { text: 'You won 🏆', color: 'var(--good)' } : { text: 'You lost', color: 'var(--coral)' }
 }
 
-function BattleRow({ b, onClick }: { b: Battle; onClick: () => void }) {
+function BattleRow({ b, turn, onClick }: { b: Battle; turn: Turn; onClick: () => void }) {
   const other = b.is_challenger ? b.opponent : b.challenger
   // Pending targeted battle: the opponent hasn't played yet, so name the invitee.
   const name = other?.username ?? (b.status !== 'complete' ? b.invited : null)
-  const label = outcomeLabel(b)
+  const label = outcomeLabel(b, turn)
+  const mine = turn === 'yours'
   return (
     <motion.button
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
       className="card"
-      style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%' }}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%', minWidth: 0,
+        ...(mine ? { borderColor: 'var(--gold)', background: b.is_welcome ? 'rgba(255,210,63,0.14)' : 'rgba(255,210,63,0.08)' } : {}),
+      }}
     >
       <Avatar emoji={other?.avatar_emoji ?? (b.status !== 'complete' ? '⏳' : '⚔️')} character={other?.avatar_character} size={40} ring={false} username={other?.username} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <b style={{ fontWeight: 800 }}>{name ? `@${name}` : 'Open challenge'}</b>
-        <div style={{ fontSize: 12, color: label.color, fontWeight: 700 }}>{label.text}</div>
+        <b style={{ fontWeight: 800, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {mine && b.is_welcome ? '👋 Your first battle' : name ? `@${name}` : 'Open challenge'}
+        </b>
+        <div style={{ fontSize: 12, color: label.color, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {label.text}
+        </div>
       </div>
-      <span style={{ color: 'var(--gold)', fontFamily: 'var(--font-display)', fontSize: 18 }}>›</span>
+      {mine ? (
+        <span className="pill" style={{ background: 'var(--gold)', color: '#241f0a', fontWeight: 800, fontSize: 12, flexShrink: 0 }}>Play</span>
+      ) : (
+        <span style={{ color: 'var(--gold)', fontFamily: 'var(--font-display)', fontSize: 18 }}>›</span>
+      )}
     </motion.button>
   )
 }

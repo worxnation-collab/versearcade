@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
@@ -36,15 +36,35 @@ interface Outcome {
 export default function FocusPracticeScreen() {
   const navigate = useNavigate()
   const juice = useJuice()
-  const { book, chosen, setBook, awardXp } = useFocus()
-  const [phase, setPhase] = useState<'pick' | 'play' | 'recap'>('pick')
-  const [seed, setSeed] = useState(randSeed)
+  const [params] = useSearchParams()
+  const { book: savedBook, chosen, setBook, awardXp } = useFocus()
   const [outcome, setOutcome] = useState<Outcome | null>(null)
+
+  // ?book=Romans (from the Study tab's accuracy chart) skips the picker and
+  // drills that book straight away. Held in local state rather than read from
+  // the store so the very first verse is already the right one — the store
+  // catches up in an effect, since the choice should still stick afterwards.
+  const [linked, setLinked] = useState<{ book: string | null } | null>(() => {
+    const b = params.get('book')
+    if (b === null) return null
+    return { book: b === 'any' ? null : b }
+  })
+  const book = linked ? linked.book : savedBook
+
+  const [phase, setPhase] = useState<'pick' | 'play' | 'recap'>(linked ? 'play' : 'pick')
+  const [seed, setSeed] = useState(randSeed)
+
+  useEffect(() => {
+    if (linked) setBook(linked.book)
+    // Only on the first render — later picks go through startWith.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const verse = useMemo(() => practiceVerseFromBook(book, seed), [book, seed])
 
   const startWith = (b: string | null) => {
     juice.coin()
+    setLinked(null)
     setBook(b)
     setSeed(randSeed())
     setPhase('play')

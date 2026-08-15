@@ -6,6 +6,7 @@ import { Button } from '@/components/Button'
 import { ComboMeter } from '@/components/ComboMeter'
 import { CountUp } from '@/components/CountUp'
 import { useJuice } from '@/juice/useJuice'
+import { useBookAccuracy } from '@/store/bookAccuracy'
 import { scoreQuestion } from '@/lib/progress'
 import { SCORING } from '@/lib/config'
 import type { DailyVerse, PlayResult } from '@/types'
@@ -134,6 +135,10 @@ export function QuizRunner({
       comboMax,
       perQuestion: answers.map((a) => ({ correct: a.correct, timeMs: a.timeMs, choiceIndex: a.choiceIndex })),
     }
+    // Every finished run feeds per-book accuracy, whatever mode it came from —
+    // knowing Romans is knowing Romans whether it was a daily drop or a battle.
+    // (An abandoned run doesn't count: a quit isn't a wrong answer.)
+    useBookAccuracy.getState().record(verse.book, correctCount, answers.length)
     try {
       await onComplete(result)
     } catch {

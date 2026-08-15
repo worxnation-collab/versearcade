@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { useReviews } from '@/store/reviews'
+import { useBookAccuracy } from '@/store/bookAccuracy'
 import { useJuice } from '@/juice/useJuice'
 import { MASTERY_MAX } from '@/lib/review'
 
@@ -45,6 +46,9 @@ export default function ReviewScreen() {
     const correct = opt.toLowerCase() === c.answer.toLowerCase()
     setChosen(opt)
     grade(c.reference, correct)
+    // A recall card is one answered question about its book — same tally the
+    // quiz feeds, so the Study chart sees "keep it" sessions too.
+    useBookAccuracy.getState().record(c.book, correct ? 1 : 0, 1)
     if (correct) {
       setCorrectCount((n) => n + 1)
       if (c.mastery + 1 >= MASTERY_MAX) setMasteredNow((n) => n + 1)

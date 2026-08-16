@@ -111,11 +111,11 @@ export const skinBuyUrl = (id: string): string => SKIN_BUY_URLS[id] || SUPPORT_U
 
 // Per-BUNDLE checkout links (see data/avatar BUNDLES). A bundle is one sku at one
 // price, so it gets exactly one link — there is intentionally no per-skin link
-// for anything sold only as part of a pack. Link pending; until the env value is
-// set the buy sheet says "opening soon" rather than falling through to a
-// different-priced checkout.
+// for anything sold only as part of a pack, and no SUPPORT_URL fallback here: a
+// pack must never quietly check out at a different price. With no link at all
+// the sheet says "opening soon" instead.
 export const BUNDLE_BUY_URLS: Record<string, string> = {
-  angels: import.meta.env.VITE_BUY_PACK_ANGELS || '',
+  angels: import.meta.env.VITE_BUY_PACK_ANGELS || 'https://buy.stripe.com/bJe3cv2Yo9Sdanq0O5a3u05',
 }
 
 export const bundleBuyUrl = (id: string): string => BUNDLE_BUY_URLS[id] || ''

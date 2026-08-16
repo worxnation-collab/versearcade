@@ -22,14 +22,20 @@ import {
   accessLabel,
   ITEMS,
   FULL_SKINS,
+  BUNDLES,
+  bundleExpired,
+  bundleItemCount,
+  packOwned,
   skinExpired,
   skinOwned,
   equippedSkinId,
   type ArmorPieceDef,
+  type BundleDef,
   type ItemDef,
   type SkinDef,
   type Swatch,
 } from '@/data/avatar'
+import { BundleSheet } from './BundleSheet'
 
 // "Customize" — streak-unlocked avatar borders + badges. Unlock eligibility is
 // based on the player's LONGEST streak ever, so a missed day never takes a
@@ -46,6 +52,7 @@ export function CustomizeSection() {
   const [err, setErr] = useState<string | null>(null)
   const [devNoteOpen, setDevNoteOpen] = useState(false)
   const [buyTarget, setBuyTarget] = useState<SkinDef | null>(null)
+  const [bundleTarget, setBundleTarget] = useState<BundleDef | null>(null)
   const [redeemTarget, setRedeemTarget] = useState<SkinDef | null>(null)
   const [redeemInput, setRedeemInput] = useState('')
   const [redeemMsg, setRedeemMsg] = useState<string | null>(null)
@@ -171,10 +178,13 @@ export function CustomizeSection() {
       return
     }
     // Locked paid skin: the operator account (admin) previews it free; everyone
-    // else gets the purchase prompt instead of a free grant.
+    // else gets the purchase prompt instead of a free grant. A bundle-only skin
+    // has no purchase of its own — it always routes to its pack.
     if (!owned && skin.source === 'paid' && !profile.isAdmin) {
       juice.select()
-      if (skin.exclusive) { setRedeemMsg(null); setRedeemTarget(skin) }
+      const bundle = skin.bundleOnly ? BUNDLES.find((b) => b.id === skin.pack) : undefined
+      if (bundle) setBundleTarget(bundle)
+      else if (skin.exclusive) { setRedeemMsg(null); setRedeemTarget(skin) }
       else setBuyTarget(skin)
       return
     }
@@ -269,7 +279,42 @@ export function CustomizeSection() {
       <Section title="Skins" defaultOpen right="full looks">
       <div className="card" style={{ marginBottom: 14 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          {FULL_SKINS.filter((skin) => !skinExpired(skin)).map((skin) => {
+          {/* Bundles first — a pack is one listing at one price. Its skins are
+              hidden from the grid until it's owned, so the only way to get them
+              is the pack itself. Once owned they appear below as normal, each
+              individually equippable. */}
+          {BUNDLES.filter((b) => !bundleExpired(b) && !packOwned(b.id, ownedSkins, profile.isAdmin)).map((b) => (
+            <button
+              key={b.id}
+              onClick={() => { juice.select(); setBundleTarget(b) }}
+              style={{
+                gridColumn: '1 / -1',
+                display: 'grid', justifyItems: 'center', gap: 6,
+                padding: '12px 8px', borderRadius: 14,
+                background: 'var(--card-solid)', border: '1px solid var(--gold)', cursor: 'pointer',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                {b.skins.map((id, n) => (
+                  <div key={id} style={{ marginLeft: n === 0 ? 0 : -14, zIndex: n }}>
+                    <Avatar emoji={profile.avatarEmoji} character={{ ...spec, skinId: id, regalia: null }} size={56} ring={false} />
+                  </div>
+                ))}
+              </div>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 800 }}>{b.name}</span>
+              <span className="faint" style={{ fontSize: 11 }}>
+                {bundleItemCount(b)} items · {b.skins.length} skins + {b.cards.length} calling cards
+              </span>
+              <span style={{ ...pillStyle('studio') }}>{b.price} · tap to preview</span>
+              {b.limitedUntil && <LimitedBadge until={b.limitedUntil} />}
+            </button>
+          ))}
+          {FULL_SKINS
+            .filter((skin) => !skinExpired(skin))
+            // A bundle-only skin is never its own listing — it shows up here
+            // only once the pack that contains it is owned.
+            .filter((skin) => !skin.bundleOnly || packOwned(skin.pack ?? '', ownedSkins, profile.isAdmin))
+            .map((skin) => {
             const owned = skinOwned(skin, { sharedDays: profile.sharedDays, ownedSkins, referralCount: profile.referralCount, admin: profile.isAdmin })
             const equipped = equippedSkin === skin.id
             const preview = { ...spec, skinId: skin.id, regalia: null }
@@ -282,7 +327,9 @@ export function CustomizeSection() {
                   ? skin.referralGoal != null
                     ? `${Math.min(profile.referralCount ?? 0, skin.referralGoal)}/${skin.referralGoal} friends`
                     : `Shared ${Math.min(sharedCount, skin.shareGoal ?? 0)}/${skin.shareGoal ?? 0} days`
-                  : skin.exclusive ? '🔒 Live exclusive' : `🔒 ${skin.price}`
+                  : skin.exclusive ? '🔒 Live exclusive'
+                    : skin.bundleOnly ? `🔒 ${skin.packName ?? 'Pack only'}`
+                      : `🔒 ${skin.price}`
             return (
               <button
                 key={skin.id}
@@ -312,7 +359,8 @@ export function CustomizeSection() {
           })}
         </div>
         <p className="faint" style={{ fontSize: 10, marginTop: 10, lineHeight: 1.4 }}>
-          Hero skins are <b>premium</b> — tap one to unlock it. Earned skins (like Baldwin) are never for sale, and Scripture is always free.
+          Hero skins are <b>premium</b> — tap one to unlock it. Packs are sold whole: tap to swipe through
+          everything inside before you decide. Earned skins (like Baldwin) are never for sale, and Scripture is always free.
         </p>
         {/* Optional support link (a Stripe Payment Link, set via VITE_SUPPORT_URL).
             Web-only: native app-store builds must route digital purchases through
@@ -333,6 +381,18 @@ export function CustomizeSection() {
         )}
       </div>
       </Section>
+
+      {/* Pack sheet — swipe every item, then buy the whole thing or nothing */}
+      {bundleTarget && (
+        <BundleSheet
+          bundle={bundleTarget}
+          spec={spec}
+          emoji={profile.avatarEmoji}
+          username={profile.username}
+          owned={packOwned(bundleTarget.id, ownedSkins, profile.isAdmin)}
+          onClose={() => setBundleTarget(null)}
+        />
+      )}
 
       {/* Purchase prompt for a locked hero skin */}
       {buyTarget && (
@@ -521,7 +581,7 @@ export function CustomizeSection() {
         </div>
         <p className="faint" style={{ fontSize: 11, marginTop: 10, lineHeight: 1.4 }}>
           Each background unlocks with the card or relic it’s named after — earn them from goals and the Daily Chest.
-          The two Angels cards come bundled with the Angels Pack.
+          The two Angel cards come with The Angel Pack — the pack is sold whole.
         </p>
       </div>
       </Section>

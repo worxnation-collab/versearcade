@@ -5,7 +5,7 @@ import { Button } from '@/components/Button'
 import { Avatar } from '@/components/Avatar'
 import { useAuth } from '@/store/auth'
 import { supabase } from '@/lib/supabase'
-import { FULL_SKINS } from '@/data/avatar'
+import { FULL_SKINS, BUNDLES } from '@/data/avatar'
 import type { AvatarSpec } from '@/types'
 
 // Private operator surface. THREE gates, strongest first:
@@ -270,7 +270,11 @@ function Users() {
               <select defaultValue="" onChange={(e) => { grant(u.username, e.target.value); e.target.value = '' }}
                 style={{ fontSize: 12, padding: '6px 8px', borderRadius: 8, background: 'var(--card-solid)', color: 'var(--ink)', border: '1px solid var(--stroke)' }}>
                 <option value="" disabled>+ Grant skin…</option>
-                {FULL_SKINS.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                {/* Bundles first — granting the pack sku hands over every skin
+                    in it at once (pack_skins, migration 0044), which is the only
+                    way to grant a bundle without leaving someone a partial one. */}
+                {BUNDLES.map((b) => <option key={b.sku} value={b.sku}>{b.name} (whole pack)</option>)}
+                {FULL_SKINS.filter((s) => !s.bundleOnly).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
               {u.owned_skins.length > 0 && (
                 <select defaultValue="" onChange={(e) => { revoke(u.username, e.target.value); e.target.value = '' }}
@@ -362,7 +366,9 @@ function Codes() {
     setCode('')
     load()
   }
-  const paidSkins = FULL_SKINS.filter((s) => s.source === 'paid')
+  // A code can tie to a single paid skin or to a whole bundle sku — never to one
+  // piece of a bundle, which would hand out a partial pack.
+  const paidSkins = FULL_SKINS.filter((s) => s.source === 'paid' && !s.bundleOnly)
 
   return (
     <div>
@@ -374,6 +380,7 @@ function Codes() {
           placeholder="NEW CODE (e.g. DAYONE)" autoCapitalize="characters" autoCorrect="off" />
         <select value={skin} onChange={(e) => setSkin(e.target.value)}
           style={{ padding: '10px 8px', borderRadius: 10, background: 'var(--card-solid)', color: 'var(--ink)', border: '1px solid var(--stroke)' }}>
+          {BUNDLES.map((b) => <option key={b.sku} value={b.sku}>{b.name} — whole pack ({b.sku})</option>)}
           {paidSkins.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.id})</option>)}
         </select>
         <Button variant="gold" disabled={code.trim().length < 3} onClick={() => upsert(code, skin, true)}>Create / update code</Button>

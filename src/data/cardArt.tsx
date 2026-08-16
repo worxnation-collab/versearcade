@@ -23,7 +23,7 @@ export interface Palette {
 export type Scene =
   | 'sunrise' | 'night' | 'star' | 'flames' | 'water' | 'rainbow' | 'mountain'
   | 'temple' | 'scroll' | 'lamp' | 'radiance' | 'field' | 'storm'
-  | 'stone' | 'garden' | 'deep'
+  | 'stone' | 'garden' | 'deep' | 'ladder' | 'host'
 
 const W = 400
 const H = 240
@@ -330,6 +330,76 @@ const deep = (p: Palette, id: string) => (
   </g>
 )
 
+// A small winged figure in silhouette, for scenes that need a host of them.
+// Upright, robed, haloed, wings raised — the things that keep it from reading as
+// a bird at the size these get drawn.
+const wingedFigure = (x: number, y: number, s: number, color: string, opacity: number, key: string) => (
+  <g key={key} transform={`translate(${x} ${y}) scale(${s})`} opacity={opacity}>
+    <path d="M-2 -4 C -10 -9, -18 -15, -21.5 -23 C -20 -12, -14 -4, -6 1 Z" fill={color} />
+    <path d="M2 -4 C 10 -9, 18 -15, 21.5 -23 C 20 -12, 14 -4, 6 1 Z" fill={color} />
+    <path d="M-3.4 -4 Q0 -6 3.4 -4 L5.4 13 L-5.4 13 Z" fill={color} />
+    <circle cx="0" cy="-7.6" r="2.8" fill={color} />
+    <ellipse cx="0" cy="-11.8" rx="3.6" ry="1.2" fill={color} opacity="0.8" />
+  </g>
+)
+
+// Jacob's stairway: a lit ladder standing on the earth, its top reaching heaven,
+// with figures going up and down it (Genesis 28:12).
+const ladder = (p: Palette, id: string) => {
+  const railL = (t: number) => 176 + t * 24 // bottom → top, converging on the light
+  const railR = (t: number) => 228 - t * 16
+  const rungY = (t: number) => 226 - t * 190
+  return (
+    <g key="ladder">
+      <defs>
+        <linearGradient id={`${id}-lad`} x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0%" stopColor={p.glow} stopOpacity="0" />
+          <stop offset="100%" stopColor={p.glow} stopOpacity="0.26" />
+        </linearGradient>
+        <radialGradient id={`${id}-lad-top`}>
+          <stop offset="0%" stopColor={p.glow} stopOpacity="0.95" />
+          <stop offset="100%" stopColor={p.glow} stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      {/* the shaft of light the stair stands in */}
+      <polygon points="158,240 250,240 220,20 190,20" fill={`url(#${id}-lad)`} />
+      {/* heaven at the top of it */}
+      <circle cx="205" cy="30" r="62" fill={`url(#${id}-lad-top)`} />
+      {/* rails */}
+      <path d={`M${railL(0)} 230 L${railL(1)} 34`} stroke={p.glow} strokeWidth="2.6" opacity="0.7" />
+      <path d={`M${railR(0)} 230 L${railR(1)} 34`} stroke={p.glow} strokeWidth="2.6" opacity="0.7" />
+      {/* rungs — brighter the higher they climb */}
+      {Array.from({ length: 13 }, (_, i) => {
+        const t = i / 12
+        return (
+          <path key={i} d={`M${railL(t)} ${rungY(t)} L${railR(t)} ${rungY(t)}`}
+            stroke={p.accent} strokeWidth="2.2" opacity={0.3 + t * 0.55} />
+        )
+      })}
+      {/* angels of God ascending and descending on it */}
+      {wingedFigure(268, 96, 0.95, p.accent, 0.85, 'up')}
+      {wingedFigure(126, 150, 0.8, p.accent, 0.6, 'down')}
+      {wingedFigure(300, 52, 0.6, p.accent, 0.45, 'far')}
+    </g>
+  )
+}
+
+// The heavenly host breaking over the fields — a multitude with the light behind
+// them (Luke 2:13).
+const heavenlyHost = (p: Palette) => (
+  <g key="host">
+    {[
+      [64, 128, 0.72, 0.5],
+      [124, 96, 0.95, 0.72],
+      [196, 74, 1.15, 0.9],
+      [268, 92, 0.95, 0.72],
+      [330, 124, 0.72, 0.5],
+      [30, 74, 0.5, 0.34],
+      [364, 68, 0.5, 0.34],
+    ].map(([x, y, s, o], i) => wingedFigure(x, y, s, p.accent, o, `h${i}`))}
+  </g>
+)
+
 // ── Scene composition ──────────────────────────────────────────────────────
 
 function layersFor(scene: Scene, p: Palette, id: string): ReactNode[] {
@@ -351,6 +421,8 @@ function layersFor(scene: Scene, p: Palette, id: string): ReactNode[] {
     case 'stone': return [sky(p, id), radiance(p, id), tablets(p)]
     case 'garden': return [sky(p, id), sunDisc(p, id, 200, 60, 22), garden(p), hills(p, 198, 0.6)]
     case 'deep': return [sky(p, id), deep(p, id), waves(p, 196)]
+    case 'ladder': return [sky(p, id), stars(p, 34, 5), ladder(p, id), hills(p, 194, 0.62)]
+    case 'host': return [sky(p, id), stars(p, 42, 13), sunDisc(p, id, 200, 34, 22), heavenlyHost(p), hills(p, 188, 0.55)]
   }
 }
 

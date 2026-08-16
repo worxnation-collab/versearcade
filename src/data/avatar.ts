@@ -184,6 +184,8 @@ export interface SkinDef {
   referralGoal?: number // earned: referred signups required
   pack?: string // paid: pack sku
   packName?: string // paid: display pack name
+  /** paid: sold ONLY as part of its pack — never listed or priced on its own. */
+  bundleOnly?: boolean
   price?: string // paid: display "from" price (pay-what-you-want; no real IAP yet)
   patron?: boolean // paid: high-tier supporter reward
   exclusive?: boolean // paid: unlocked by a promo code (redeem), not for sale
@@ -248,6 +250,39 @@ export const FULL_SKINS: SkinDef[] = [
     limitedUntil: LIMITED_UNTIL,
     blurb: 'The prophet of fire — mantle, staff, and a raven.',
   },
+  // ——— The Angel Pack ———
+  // A true bundle: these three are `bundleOnly`, so the shop lists the pack —
+  // never the pieces — and they can't be bought one at a time. See BUNDLES below.
+  {
+    id: 'gabriel',
+    name: 'Gabriel',
+    source: 'paid',
+    pack: 'angels',
+    packName: 'The Angel Pack',
+    bundleOnly: true,
+    limitedUntil: LIMITED_UNTIL,
+    blurb: 'The announcing messenger — trumpet raised, “Do not be afraid.”',
+  },
+  {
+    id: 'michael',
+    name: 'Michael',
+    source: 'paid',
+    pack: 'angels',
+    packName: 'The Angel Pack',
+    bundleOnly: true,
+    limitedUntil: LIMITED_UNTIL,
+    blurb: 'The archangel — helm, shield, and a sword of flame.',
+  },
+  {
+    id: 'seraph',
+    name: 'Seraph',
+    source: 'paid',
+    pack: 'angels',
+    packName: 'The Angel Pack',
+    bundleOnly: true,
+    limitedUntil: LIMITED_UNTIL,
+    blurb: 'Six wings and a live coal — the burning one of Isaiah 6.',
+  },
   {
     id: 'whale',
     name: 'Jonah’s Whale',
@@ -272,10 +307,69 @@ export const FULL_SKINS: SkinDef[] = [
 
 export const skinById = (id?: string | null): SkinDef | undefined => FULL_SKINS.find((s) => s.id === id)
 
+// ── Bundles ───────────────────────────────────────────────────────────────────
+// A bundle is one shop listing, one price, one checkout — all or nothing. The
+// shop shows the BUNDLE tile (never its skins) until it's owned, and the buy
+// sheet swipes through everything inside so nobody pays without seeing all of it.
+//
+// The checkout sku is `pack_<id>`; the server expands that one sku into every
+// skin in `skins` on fulfillment (migration 0044), which is what makes owning
+// part of a bundle impossible. The card backgrounds come along with it — they
+// gate on the pack entitlement (see data/playerCards PACK), so they need no
+// separate grant.
+export interface BundleDef {
+  id: string
+  /** Checkout sku the server fulfills. Always `pack_<id>`. */
+  sku: string
+  name: string
+  price: string
+  blurb: string
+  /** Skin ids included, in preview order. */
+  skins: string[]
+  /** Card-background keys included, in preview order (see data/playerCards). */
+  cards: string[]
+  limitedUntil?: string
+}
+
+export const BUNDLES: BundleDef[] = [
+  {
+    id: 'angels',
+    sku: 'pack_angels',
+    name: 'The Angel Pack',
+    price: '$5.99',
+    blurb:
+      'Three messengers and the two skies they came out of. Sold as one pack — every piece, one price.',
+    skins: ['gabriel', 'michael', 'seraph'],
+    cards: ['angels_ladder', 'angels_host'],
+    limitedUntil: LIMITED_UNTIL,
+  },
+]
+
+export const bundleById = (id?: string | null): BundleDef | undefined =>
+  BUNDLES.find((b) => b.id === id)
+
+export const bundleExpired = (b: BundleDef, now: number = Date.now()): boolean =>
+  b.limitedUntil != null && now >= new Date(b.limitedUntil).getTime()
+
+/** How many things a bundle contains — the "5 items" on its tile. */
+export const bundleItemCount = (b: BundleDef): number => b.skins.length + b.cards.length
+
 // The effective equipped skin id, honoring the legacy `regalia` field.
 export function equippedSkinId(spec?: AvatarSpec | null): string | null {
   if (!spec) return null
   return spec.skinId ?? (spec.regalia === 'baldwin' ? 'baldwin' : null)
+}
+
+/**
+ * Does this account own a paid PACK? True as soon as any skin in the pack is
+ * entitled. Packs can bundle more than skins (the Angels pack ships two
+ * player-card backgrounds), so the pack — not the individual skin — is the unit
+ * that gates those extras.
+ */
+export function packOwned(pack: string, ownedSkins?: string[], admin = false): boolean {
+  if (admin) return true
+  const owned = ownedSkins ?? []
+  return FULL_SKINS.some((s) => s.pack === pack && owned.includes(s.id))
 }
 
 // Owned/equippable? Earned skins gate on their achievement; paid skins on the

@@ -106,6 +106,17 @@ export const SKIN_BUY_URLS: Record<string, string> = {
 
 export const skinBuyUrl = (id: string): string => SKIN_BUY_URLS[id] || SUPPORT_URL || ''
 
+// Per-BUNDLE checkout links (see data/avatar BUNDLES). A bundle is one sku at one
+// price, so it gets exactly one link — there is intentionally no per-skin link
+// for anything sold only as part of a pack. Link pending; until the env value is
+// set the buy sheet says "opening soon" rather than falling through to a
+// different-priced checkout.
+export const BUNDLE_BUY_URLS: Record<string, string> = {
+  angels: import.meta.env.VITE_BUY_PACK_ANGELS || '',
+}
+
+export const bundleBuyUrl = (id: string): string => BUNDLE_BUY_URLS[id] || ''
+
 // Web Push (VAPID). This PUBLIC key is safe to ship — it's how the browser
 // authenticates our push server. The matching PRIVATE key lives only as a
 // Supabase Edge Function secret (VAPID_PRIVATE_KEY) and is never in the client.

@@ -76,7 +76,10 @@ export const SCORING = {
   basePerCorrect: 100,
   // Speed bonus decays over the answer window; fast but not frantic.
   maxSpeedBonus: 100,
-  answerWindowMs: 15000,
+  // 16.5s — 10% slower than the original 15s window, so the clock feels less
+  // frantic. Drives the countdown bar, the auto-miss timeout, and the speed
+  // bonus decay in scoreQuestion(), which all read this one value.
+  answerWindowMs: 16500,
   // Combo multiplier grows with consecutive correct answers (arcade juice).
   comboStep: 0.25, // +25% per combo level
   comboMax: 2.5,

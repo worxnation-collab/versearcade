@@ -25,7 +25,8 @@ import {
   BUNDLES,
   bundleExpired,
   bundleItemCount,
-  packOwned,
+  packEntitled,
+  packPreviewable,
   skinExpired,
   skinOwned,
   equippedSkinId,
@@ -283,7 +284,7 @@ export function CustomizeSection() {
               hidden from the grid until it's owned, so the only way to get them
               is the pack itself. Once owned they appear below as normal, each
               individually equippable. */}
-          {BUNDLES.filter((b) => !bundleExpired(b) && !packOwned(b.id, ownedSkins, profile.isAdmin)).map((b) => (
+          {BUNDLES.filter((b) => !bundleExpired(b) && !packEntitled(b.id, ownedSkins)).map((b) => (
             <button
               key={b.id}
               onClick={() => { juice.select(); setBundleTarget(b) }}
@@ -313,7 +314,7 @@ export function CustomizeSection() {
             .filter((skin) => !skinExpired(skin))
             // A bundle-only skin is never its own listing — it shows up here
             // only once the pack that contains it is owned.
-            .filter((skin) => !skin.bundleOnly || packOwned(skin.pack ?? '', ownedSkins, profile.isAdmin))
+            .filter((skin) => !skin.bundleOnly || packPreviewable(skin.pack ?? '', ownedSkins, profile.isAdmin))
             .map((skin) => {
             const owned = skinOwned(skin, { sharedDays: profile.sharedDays, ownedSkins, referralCount: profile.referralCount, admin: profile.isAdmin })
             const equipped = equippedSkin === skin.id
@@ -389,7 +390,7 @@ export function CustomizeSection() {
           spec={spec}
           emoji={profile.avatarEmoji}
           username={profile.username}
-          owned={packOwned(bundleTarget.id, ownedSkins, profile.isAdmin)}
+          owned={packEntitled(bundleTarget.id, ownedSkins)}
           onClose={() => setBundleTarget(null)}
         />
       )}

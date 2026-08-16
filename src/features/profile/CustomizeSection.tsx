@@ -93,7 +93,10 @@ export function CustomizeSection() {
   const equippedPieces = ARMOR.filter((a) => spec.armor[a.slot]).length
 
   const equippedBg = profile.cardBackground ?? DEFAULT_CARD_BG
-  const unlockedBgCount = CARD_BACKGROUNDS.filter((b) => cardBgUnlocked(b.key, ownedCollectibles)).length
+  // Pack cards gate on the skin entitlement rather than a collectible, so the
+  // picker needs both sources of ownership.
+  const bgCtx = { ownedSkins: profile.ownedSkins ?? [], admin: profile.isAdmin }
+  const unlockedBgCount = CARD_BACKGROUNDS.filter((b) => cardBgUnlocked(b.key, ownedCollectibles, bgCtx)).length
 
   const pickBg = async (key: string) => {
     setErr(null)
@@ -483,7 +486,7 @@ export function CustomizeSection() {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
           {CARD_BACKGROUNDS.map((b) => {
-            const unlocked = cardBgUnlocked(b.key, ownedCollectibles)
+            const unlocked = cardBgUnlocked(b.key, ownedCollectibles, bgCtx)
             const equipped = equippedBg === b.key
             const src = collectibleByKey(b.key)
             return (
@@ -491,7 +494,7 @@ export function CustomizeSection() {
                 key={b.key}
                 onClick={unlocked && !equipped ? () => pickBg(b.key) : undefined}
                 disabled={!unlocked || equipped}
-                title={unlocked ? b.name : `Unlocks with ${b.name}`}
+                title={unlocked ? b.name : b.unlockHint ?? `Unlocks with ${b.name}`}
                 style={{
                   padding: 0, borderRadius: 12, overflow: 'hidden', cursor: unlocked && !equipped ? 'pointer' : 'default',
                   border: equipped ? `2px solid ${cardBgAccentColor(b.key)}` : '1px solid var(--stroke)',
@@ -503,7 +506,7 @@ export function CustomizeSection() {
                 <div style={{ ...cardBgStyle(b.key), position: 'relative', height: 52, overflow: 'hidden', display: 'grid', placeItems: 'center' }}>
                   <CardArt {...cardArtProps(b.key)} id={`bg-tile-${b.key}`} />
                   <span style={{ position: 'relative', fontSize: 16, filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.9))' }}>
-                    {unlocked ? src?.emoji ?? '✦' : '🔒'}
+                    {unlocked ? b.emoji ?? src?.emoji ?? '✦' : '🔒'}
                   </span>
                 </div>
                 <div style={{ padding: '5px 4px 6px', background: 'var(--card-solid)' }}>
@@ -518,6 +521,7 @@ export function CustomizeSection() {
         </div>
         <p className="faint" style={{ fontSize: 11, marginTop: 10, lineHeight: 1.4 }}>
           Each background unlocks with the card or relic it’s named after — earn them from goals and the Daily Chest.
+          The two Angels cards come bundled with the Angels Pack.
         </p>
       </div>
       </Section>

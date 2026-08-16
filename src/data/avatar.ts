@@ -248,6 +248,40 @@ export const FULL_SKINS: SkinDef[] = [
     limitedUntil: LIMITED_UNTIL,
     blurb: 'The prophet of fire — mantle, staff, and a raven.',
   },
+  // ——— Angels Pack ———
+  // Three messengers, one sku family. Unlike the single-skin packs above, this
+  // pack also carries two player-card backgrounds (see data/playerCards PACK):
+  // owning ANY skin in the pack unlocks both cards.
+  {
+    id: 'gabriel',
+    name: 'Gabriel',
+    source: 'paid',
+    pack: 'angels',
+    packName: 'Angels Pack',
+    price: 'From $2.99',
+    limitedUntil: LIMITED_UNTIL,
+    blurb: 'The announcing messenger — trumpet raised, “Do not be afraid.”',
+  },
+  {
+    id: 'michael',
+    name: 'Michael',
+    source: 'paid',
+    pack: 'angels',
+    packName: 'Angels Pack',
+    price: 'From $2.99',
+    limitedUntil: LIMITED_UNTIL,
+    blurb: 'The archangel — helm, shield, and a sword of flame.',
+  },
+  {
+    id: 'seraph',
+    name: 'Seraph',
+    source: 'paid',
+    pack: 'angels',
+    packName: 'Angels Pack',
+    price: 'From $2.99',
+    limitedUntil: LIMITED_UNTIL,
+    blurb: 'Six wings and a live coal — the burning one of Isaiah 6.',
+  },
   {
     id: 'whale',
     name: 'Jonah’s Whale',
@@ -276,6 +310,18 @@ export const skinById = (id?: string | null): SkinDef | undefined => FULL_SKINS.
 export function equippedSkinId(spec?: AvatarSpec | null): string | null {
   if (!spec) return null
   return spec.skinId ?? (spec.regalia === 'baldwin' ? 'baldwin' : null)
+}
+
+/**
+ * Does this account own a paid PACK? True as soon as any skin in the pack is
+ * entitled. Packs can bundle more than skins (the Angels pack ships two
+ * player-card backgrounds), so the pack — not the individual skin — is the unit
+ * that gates those extras.
+ */
+export function packOwned(pack: string, ownedSkins?: string[], admin = false): boolean {
+  if (admin) return true
+  const owned = ownedSkins ?? []
+  return FULL_SKINS.some((s) => s.pack === pack && owned.includes(s.id))
 }
 
 // Owned/equippable? Earned skins gate on their achievement; paid skins on the

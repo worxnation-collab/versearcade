@@ -102,6 +102,11 @@ export const SKIN_BUY_URLS: Record<string, string> = {
   moses: import.meta.env.VITE_BUY_MOSES || 'https://buy.stripe.com/dRmcN5cyY7K5brubsJa3u02',
   esther: import.meta.env.VITE_BUY_ESTHER || 'https://buy.stripe.com/dRmcN51Ukd4pbrugN3a3u04',
   elijah: import.meta.env.VITE_BUY_ELIJAH || 'https://buy.stripe.com/9B63cvbuU1lH67absJa3u03',
+  // Angels Pack — links pending; until an env value is set these fall through to
+  // SUPPORT_URL (and the buy sheet says "opening soon" when that's unset too).
+  gabriel: import.meta.env.VITE_BUY_GABRIEL || '',
+  michael: import.meta.env.VITE_BUY_MICHAEL || '',
+  seraph: import.meta.env.VITE_BUY_SERAPH || '',
 }
 
 export const skinBuyUrl = (id: string): string => SKIN_BUY_URLS[id] || SUPPORT_URL || ''

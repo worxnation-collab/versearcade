@@ -1,15 +1,21 @@
 // Player-card backgrounds — the calling-card artwork behind your avatar, name
-// and stats. Every background is earned: each one is tied to a collectible
+// and stats. Almost every background is earned: each one is tied to a collectible
 // (an achievement card you completed, or a relic pulled from the Daily Chest),
 // and unlocks the moment that collectible lands in your collection. Styling is
 // themed after the thing that unlocked it, so a card reads as a trophy shelf.
 //
-// Keys are collectible keys (see data/collectibles), so ownership is simply
+// Those keys are collectible keys (see data/collectibles), so ownership is simply
 // "is this key in your unlocks" — the server gates equipping the same way (see
 // supabase/migrations/0037_player_cards.sql).
+//
+// The exception is PACK cards: calling cards bundled with a paid skin pack. They
+// have no collectible behind them, so they gate on the pack entitlement instead
+// (profiles.owned_skins). Nothing rank-related and nothing earned is ever moved
+// behind that line — a pack card is extra artwork, not a shortcut.
 
 import type { Rarity } from '@/types'
 import { collectibleByKey, rarityColor } from './collectibles'
+import { packOwned } from './avatar'
 import type { Palette, Scene } from './cardArt'
 
 export interface CardBgDef {
@@ -18,6 +24,13 @@ export interface CardBgDef {
   name: string
   scene: Scene
   palette: Palette
+  /** Paid-pack cards: the pack sku that unlocks this one (see FULL_SKINS). */
+  pack?: string
+  /** Pack cards have no collectible, so they carry their own rarity + chip art. */
+  rarity?: Rarity
+  emoji?: string
+  /** Shown on a locked tile in place of "Unlocks with <collectible>". */
+  unlockHint?: string
 }
 
 export const DEFAULT_CARD_BG = 'default'
@@ -88,11 +101,40 @@ const THEMED: Omit<CardBgDef, 'name'>[] = [
   { key: 'pearl_price', scene: 'deep', palette: { sky: ['#3f3a5c', '#0f0d1c'], land: '#1c1a30', glow: '#f2e9ff', accent: '#ffffff' } },
 ]
 
+// ——— Angels Pack calling cards ———
+// Two scenes the pack's skins step out of: the stairway Jacob saw, and the host
+// that filled the sky over the shepherds. Both unlock together with any skin in
+// the pack (data/avatar FULL_SKINS, pack 'angels'); the server enforces the same
+// rule in migration 0043.
+const PACK: CardBgDef[] = [
+  {
+    key: 'angels_ladder',
+    name: 'Jacob’s Ladder',
+    pack: 'angels',
+    rarity: 'legendary',
+    emoji: '🪜',
+    unlockHint: 'Comes with the Angels Pack',
+    scene: 'ladder',
+    palette: { sky: ['#2a2270', '#0a0722'], land: '#150f3c', glow: '#ffe08a', accent: '#fff4cf' },
+  },
+  {
+    key: 'angels_host',
+    name: 'Heavenly Host',
+    pack: 'angels',
+    rarity: 'legendary',
+    emoji: '👼',
+    unlockHint: 'Comes with the Angels Pack',
+    scene: 'host',
+    palette: { sky: ['#1b2f63', '#06091f'], land: '#0d1633', glow: '#ffeeb4', accent: '#fffaf0' },
+  },
+]
+
 // Names come from the collectible that unlocks each background, so the two can
-// never drift apart.
+// never drift apart. Pack cards bring their own name (there's no collectible).
 export const CARD_BACKGROUNDS: CardBgDef[] = [
   BASE,
   ...THEMED.map((t) => ({ ...t, name: collectibleByKey(t.key)?.name ?? t.key })),
+  ...PACK,
 ]
 
 export const cardBgByKey = (key?: string | null): CardBgDef =>
@@ -101,15 +143,24 @@ export const cardBgByKey = (key?: string | null): CardBgDef =>
 /** Rarity of the collectible behind a background — drives the picker's framing. */
 export function cardBgRarity(key: string): Rarity {
   if (key === DEFAULT_CARD_BG) return 'common'
-  return collectibleByKey(key)?.rarity ?? 'common'
+  return cardBgByKey(key).rarity ?? collectibleByKey(key)?.rarity ?? 'common'
 }
 
 export const cardBgAccentColor = (key: string): string =>
   key === DEFAULT_CARD_BG ? 'var(--gold)' : rarityColor[cardBgRarity(key)]
 
-/** A background is yours once you own the collectible it's themed after. */
-export function cardBgUnlocked(key: string, owned: string[] | Set<string>): boolean {
+/**
+ * A background is yours once you own the collectible it's themed after — or, for
+ * a pack card, once you own the pack it ships with.
+ */
+export function cardBgUnlocked(
+  key: string,
+  owned: string[] | Set<string>,
+  ctx?: { ownedSkins?: string[]; admin?: boolean },
+): boolean {
   if (key === DEFAULT_CARD_BG) return true
+  const def = cardBgByKey(key)
+  if (def.pack) return packOwned(def.pack, ctx?.ownedSkins, ctx?.admin)
   return owned instanceof Set ? owned.has(key) : owned.includes(key)
 }
 

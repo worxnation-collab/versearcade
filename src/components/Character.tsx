@@ -70,6 +70,80 @@ const L_RAVEN = '#26262C'
 const L_FLAME = '#FF8A3C'
 const L_FLAME_HI = '#FFB347'
 
+// Angels palette — one family across the three pack skins so they read as a set
+const A_HALO = '#FFE9A8'
+// Gabriel — the announcing messenger
+const G_ROBE = '#F2EDDF'
+const G_ROBE_SHADE = '#D6CDB6'
+const G_SASH = '#DCAB3A'
+const G_SKIN = '#E0B48C'
+const G_HAIR = '#C79A3E'
+const G_WING = '#FFFFFF'
+const G_WING_EDGE = '#D9D2BE'
+// Michael — the archangel in armor
+const M2_ARMOR = '#C9D2E0'
+const M2_ARMOR_SHADE = '#8F9BB0'
+const M2_TUNIC = '#2E4A7D'
+const M2_SKIN = '#C89A6E'
+const M2_WING = '#DCE4F2'
+const M2_WING_EDGE = '#93A2BE'
+const M2_FLAME = '#FF8A3C'
+const M2_FLAME_HI = '#FFD23F'
+// Seraph — the burning one, six wings, a live coal
+const S_BODY = '#B33A2B'
+const S_BODY_HI = '#E2683C'
+// Three wing values, back to front, so six wings still read as six wings.
+const S_WING_BACK = '#C0431C'
+const S_WING = '#FF9A45'
+const S_WING_EDGE = '#A8360F'
+const S_WING_HI = '#FFC76B'
+const S_COAL = '#FFD766'
+
+// A feathered wing, drawn from the shoulder out to the viewer-right. `flip`
+// mirrors it about the figure's centre line so the pair always matches, and
+// `transform` lets a skin fan several pairs (the seraph's six) from one shape.
+function Wing({
+  fill,
+  edge,
+  flip = false,
+  transform,
+  opacity = 1,
+}: {
+  fill: string
+  edge: string
+  flip?: boolean
+  transform?: string
+  opacity?: number
+}) {
+  // Mirror about x = 60, the centre of the 120-wide viewBox.
+  const mirror = flip ? 'translate(120 0) scale(-1 1) ' : ''
+  return (
+    <g transform={`${mirror}${transform ?? ''}`.trim() || undefined} opacity={opacity}>
+      <path d="M58 74 C 74 44, 96 27, 113 26 C 111 52, 100 84, 83 105 C 71 99, 61 88, 58 74 Z" fill={fill} />
+      <path d="M62 79 C 78 57, 96 41, 112 32" stroke={edge} strokeWidth="1" fill="none" opacity="0.55" />
+      <path d="M68 90 C 84 70, 100 54, 112 43" stroke={edge} strokeWidth="1" fill="none" opacity="0.5" />
+      <path d="M76 100 C 90 83, 102 68, 110 55" stroke={edge} strokeWidth="1" fill="none" opacity="0.45" />
+    </g>
+  )
+}
+
+// The seraph's other two pairs are the same wing, pivoted about its shoulder
+// (58,74): up and across the face, and down and across the feet (Isaiah 6:2).
+const pivot = (deg: number, scale: number, dx: number, dy: number) =>
+  `translate(${dx} ${dy}) rotate(${deg} 58 74) translate(58 74) scale(${scale}) translate(-58 -74)`
+const FACE_WING = pivot(-62, 0.52, 6, 4)
+const FEET_WING = pivot(150, 0.5, 6, 34)
+
+// The ring of light above an angel's head — same halo on all three.
+function Halo({ cy = 26, rx = 13 }: { cy?: number; rx?: number }) {
+  return (
+    <g>
+      <ellipse cx="60" cy={cy} rx={rx + 4} ry={rx / 2.6} fill={A_HALO} opacity="0.22" />
+      <ellipse cx="60" cy={cy} rx={rx} ry={rx / 3.4} fill="none" stroke={A_HALO} strokeWidth="2.6" />
+    </g>
+  )
+}
+
 export function Character({
   spec,
   size = 44,
@@ -294,6 +368,148 @@ export function Character({
           <path d="M49 40 L53 30 L58 37 L60 28 L62 37 L67 30 L71 40 Z" fill={E_SASH} stroke="#B98F28" strokeWidth="0.8" />
           <rect x="49" y="39" width="22" height="3.6" rx="1" fill="#C9992A" stroke="#B98F28" strokeWidth="0.6" />
           <circle cx="60" cy="34" r="2" fill={E_JEWEL} />
+        </>
+      ) : skinId === 'gabriel' ? (
+        <>
+          {/* ── Gabriel — the announcing messenger (Luke 1:19, 1:26) ── */}
+          {/* wings, spread behind him */}
+          <Wing fill={G_WING} edge={G_WING_EDGE} flip />
+          <Wing fill={G_WING} edge={G_WING_EDGE} />
+
+          {/* long white robe to the floor */}
+          <path d="M42 66 Q60 60 78 66 L88 158 L32 158 Z" fill={G_ROBE} />
+          <path d="M60 72 L60 156" stroke={G_ROBE_SHADE} strokeWidth="1.2" opacity="0.55" />
+          <path d="M47 82 L43 156 M73 82 L77 156" stroke={G_ROBE_SHADE} strokeWidth="0.8" opacity="0.4" />
+          {/* gold sash across the chest + belt */}
+          <path d="M46 70 L72 104 L66 108 L42 76 Z" fill={G_SASH} opacity="0.95" />
+          <rect x="45" y="104" width="30" height="7" rx="2.5" fill={G_SASH} stroke="#B98F28" strokeWidth="0.6" />
+          {/* gold hem */}
+          <path d="M32 154 L88 154 L88 158 L32 158 Z" fill={G_SASH} opacity="0.85" />
+
+          {/* left arm at his side */}
+          <rect x="34" y="70" width="9" height="34" rx="4.5" fill={G_ROBE} />
+          {/* right arm raised, lifting the trumpet */}
+          <path d="M79 78 L90 52" stroke={G_ROBE} strokeWidth="8.5" strokeLinecap="round" />
+          <ellipse cx="91" cy="50" rx="4.2" ry="4.8" fill={G_SKIN} />
+
+          {/* trumpet, angled up to the sky */}
+          <path d="M88 50 L104 26" stroke={G_SASH} strokeWidth="3.4" strokeLinecap="round" />
+          <path d="M100 30 L114 14 L118 26 L106 34 Z" fill={G_SASH} stroke="#B98F28" strokeWidth="0.8" strokeLinejoin="round" />
+          <path d="M92 44 h5" stroke="#B98F28" strokeWidth="1" />
+
+          {/* neck + head */}
+          <rect x="55" y="56" width="10" height="10" rx="3" fill={G_SKIN} />
+          <circle cx="60" cy="50" r="12.5" fill={G_SKIN} />
+          {/* gold hair */}
+          <path d="M47.5 50 a12.5 12.5 0 0 1 25 0 l-3 0 a9.5 9.5 0 0 0-19 0 z" fill={G_HAIR} />
+          <path d="M48 50 q-3 12 2 18 l3 -2 q-4 -8 -2 -16 z" fill={G_HAIR} />
+          <path d="M72 50 q3 12 -2 18 l-3 -2 q4 -8 2 -16 z" fill={G_HAIR} />
+
+          <Halo cy={28} />
+        </>
+      ) : skinId === 'michael' ? (
+        <>
+          {/* ── Michael — the archangel (Daniel 12:1, Revelation 12:7) ── */}
+          {/* steel-blue wings behind the armor */}
+          <Wing fill={M2_WING} edge={M2_WING_EDGE} flip />
+          <Wing fill={M2_WING} edge={M2_WING_EDGE} />
+
+          {/* legs + greaves */}
+          <rect x="50" y="118" width="9" height="32" rx="4" fill={M2_TUNIC} />
+          <rect x="61" y="118" width="9" height="32" rx="4" fill={M2_TUNIC} />
+          <path d="M46 148 h16 v6 a4 4 0 0 1-4 4 h-8 a4 4 0 0 1-4-4 z" fill={M2_ARMOR} stroke={M2_ARMOR_SHADE} strokeWidth="0.8" />
+          <path d="M58 148 h16 v6 a4 4 0 0 1-4 4 h-8 a4 4 0 0 1-4-4 z" fill={M2_ARMOR} stroke={M2_ARMOR_SHADE} strokeWidth="0.8" />
+
+          {/* war tunic under the plate */}
+          <path d="M44 66 Q60 60 76 66 L76 120 Q60 126 44 120 Z" fill={M2_TUNIC} />
+
+          {/* arms */}
+          <rect x="34" y="70" width="9" height="34" rx="4.5" fill={M2_TUNIC} />
+          <path d="M79 76 L88 52" stroke={M2_TUNIC} strokeWidth="8.5" strokeLinecap="round" />
+
+          {/* breastplate + belt */}
+          <path d="M45 67 Q60 61 75 67 L73 106 Q60 114 47 106 Z" fill={M2_ARMOR} stroke={M2_ARMOR_SHADE} strokeWidth="1.4" />
+          <path d="M60 68 V108" stroke={M2_ARMOR_SHADE} strokeWidth="1.3" opacity="0.7" />
+          <path d="M48 82 Q60 88 72 82" fill="none" stroke={M2_ARMOR_SHADE} strokeWidth="1.1" opacity="0.6" />
+          <rect x="45" y="106" width="30" height="8" rx="3" fill={GOLD_DEEP} stroke={GOLD_LINE} />
+          {/* pauldrons */}
+          <ellipse cx="42" cy="70" rx="8" ry="6" fill={M2_ARMOR} stroke={M2_ARMOR_SHADE} strokeWidth="0.9" />
+          <ellipse cx="78" cy="70" rx="8" ry="6" fill={M2_ARMOR} stroke={M2_ARMOR_SHADE} strokeWidth="0.9" />
+
+          {/* shield on the left arm */}
+          <path d="M20 84 L40 84 L40 106 Q30 118 20 106 Z" fill={M2_ARMOR} stroke={M2_ARMOR_SHADE} strokeWidth="1.2" />
+          <path d="M30 88 v20 M23 95 h14" stroke={GOLD} strokeWidth="2.2" />
+
+          {/* flaming sword, raised in the right hand — fire runs the whole blade */}
+          <ellipse cx="89" cy="50" rx="4.2" ry="4.8" fill={M2_SKIN} />
+          <path d="M80 46 q9 -5 18 0 l-1 3 q-8 -4 -16 0 z" fill={GOLD} stroke={GOLD_LINE} strokeWidth="0.6" />
+          <path d="M78 40 q11 -6 22 0 l-1.5 5 q-9.5 -5 -19 0 z" fill={GOLD_DEEP} stroke={GOLD_LINE} strokeWidth="0.7" />
+          <path d="M75 22 q6 -18 14 -20 q8 2 14 20 q-3 12 -14 20 q-11 -8 -14 -20 z" fill={M2_FLAME} opacity="0.85" />
+          <path d="M80 24 q4 -13 9 -15 q5 2 9 15 q-2 9 -9 14 q-7 -5 -9 -14 z" fill={M2_FLAME_HI} opacity="0.85" />
+          <rect x="86.6" y="12" width="4.4" height="30" rx="1.8" fill={STEEL} stroke={M2_ARMOR_SHADE} strokeWidth="0.7" />
+          <path d="M86.6 16 L88.8 6 L91 16 Z" fill={STEEL} />
+
+          {/* neck + head */}
+          <rect x="55" y="56" width="10" height="10" rx="3" fill={M2_SKIN} />
+          <circle cx="60" cy="50" r="12" fill={M2_SKIN} />
+          {/* winged helm */}
+          <path d="M47 50 a13 13 0 0 1 26 0 l-3.5 0 a9.5 9.5 0 0 0-19 0 z" fill={M2_ARMOR} stroke={M2_ARMOR_SHADE} strokeWidth="0.9" />
+          <rect x="58" y="34" width="4" height="14" rx="1.5" fill={GOLD} stroke={GOLD_LINE} strokeWidth="0.6" />
+          <path d="M47 42 q-10 -5 -16 4 q9 -2 15 4 z" fill={M2_ARMOR} stroke={M2_ARMOR_SHADE} strokeWidth="0.8" />
+          <path d="M73 42 q10 -5 16 4 q-9 -2 -15 4 z" fill={M2_ARMOR} stroke={M2_ARMOR_SHADE} strokeWidth="0.8" />
+
+          <Halo cy={24} rx={12} />
+        </>
+      ) : skinId === 'seraph' ? (
+        <>
+          {/* ── Seraph — the burning one (Isaiah 6:2–7). Six wings: two cover the
+              face, two cover the feet, and with two he flies. ── */}
+          {/* the glow it burns with — stacked rings instead of one flat disc, so
+              it falls off softly on any card background */}
+          <circle cx="60" cy="92" r="52" fill={S_WING} opacity="0.06" />
+          <circle cx="60" cy="90" r="34" fill={S_WING} opacity="0.08" />
+          <circle cx="60" cy="86" r="20" fill={S_COAL} opacity="0.1" />
+
+          {/* "with two he flew" — the flying pair, spread wide behind it */}
+          <Wing fill={S_WING_BACK} edge={S_WING_EDGE} flip transform="translate(0 16)" />
+          <Wing fill={S_WING_BACK} edge={S_WING_EDGE} transform="translate(0 16)" />
+
+          {/* column of fire-lit robe */}
+          <path d="M46 66 Q60 60 74 66 L80 152 L40 152 Z" fill={S_BODY} />
+          <path d="M60 70 L60 150" stroke={S_BODY_HI} strokeWidth="1.2" opacity="0.5" />
+          <path d="M50 80 L46 150 M70 80 L74 150" stroke={S_BODY_HI} strokeWidth="0.8" opacity="0.35" />
+          <rect x="46" y="98" width="28" height="6.5" rx="2.5" fill={S_WING_HI} opacity="0.9" />
+
+          {/* head — drawn first, then veiled by the face pair */}
+          <rect x="55" y="54" width="10" height="10" rx="3" fill={S_BODY_HI} />
+          <circle cx="60" cy="48" r="11.5" fill={S_BODY_HI} />
+          <circle cx="60" cy="48" r="7" fill={S_COAL} opacity="0.55" />
+
+          {/* right arm holding the tongs */}
+          <path d="M76 76 L86 62" stroke={S_BODY} strokeWidth="8" strokeLinecap="round" />
+          <ellipse cx="87" cy="60" rx="4" ry="4.6" fill={S_BODY_HI} />
+          {/* tongs + the live coal from the altar (Isaiah 6:6) */}
+          <path d="M88 58 L98 46 M90 60 L102 51" stroke="#6E5233" strokeWidth="1.8" strokeLinecap="round" />
+          <circle cx="101" cy="45" r="7.5" fill={S_COAL} opacity="0.3" />
+          <circle cx="101" cy="45" r="4" fill={S_COAL} />
+          <circle cx="100" cy="44" r="1.7" fill="#FFF3C4" />
+
+          {/* "with two he covered his face" — the same wing, swung up and across
+              the head so the pair crosses over the face */}
+          <Wing fill={S_WING} edge={S_WING_EDGE} transform={FACE_WING} />
+          <Wing fill={S_WING_HI} edge={S_WING_EDGE} flip transform={FACE_WING} />
+
+          {/* "with two he covered his feet" — swung down across the hem */}
+          <Wing fill={S_WING} edge={S_WING_EDGE} transform={FEET_WING} />
+          <Wing fill={S_WING_HI} edge={S_WING_EDGE} flip transform={FEET_WING} />
+
+          {/* embers rising off it */}
+          <circle cx="30" cy="52" r="1.8" fill={S_COAL} opacity="0.85" />
+          <circle cx="24" cy="100" r="1.4" fill={S_COAL} opacity="0.7" />
+          <circle cx="96" cy="120" r="1.6" fill={S_COAL} opacity="0.75" />
+          <circle cx="86" cy="142" r="1.3" fill={S_COAL} opacity="0.6" />
+
+          <Halo cy={12} rx={10} />
         </>
       ) : skinId === 'elijah' ? (
         <>

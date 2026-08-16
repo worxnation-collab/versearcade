@@ -15,7 +15,7 @@
 
 import type { Rarity } from '@/types'
 import { collectibleByKey, rarityColor } from './collectibles'
-import { packOwned } from './avatar'
+import { packPreviewable } from './avatar'
 import type { Palette, Scene } from './cardArt'
 
 export interface CardBgDef {
@@ -160,7 +160,7 @@ export function cardBgUnlocked(
 ): boolean {
   if (key === DEFAULT_CARD_BG) return true
   const def = cardBgByKey(key)
-  if (def.pack) return packOwned(def.pack, ctx?.ownedSkins, ctx?.admin)
+  if (def.pack) return packPreviewable(def.pack, ctx?.ownedSkins, ctx?.admin)
   return owned instanceof Set ? owned.has(key) : owned.includes(key)
 }
 

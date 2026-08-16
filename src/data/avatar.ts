@@ -361,15 +361,28 @@ export function equippedSkinId(spec?: AvatarSpec | null): string | null {
 }
 
 /**
- * Does this account own a paid PACK? True as soon as any skin in the pack is
- * entitled. Packs can bundle more than skins (the Angels pack ships two
+ * Does this account actually hold a paid PACK? True as soon as any skin in the
+ * pack is entitled. Packs can bundle more than skins (the Angel Pack ships two
  * player-card backgrounds), so the pack — not the individual skin — is the unit
  * that gates those extras.
+ *
+ * No admin bypass on purpose: this is the *entitlement*, and it's what decides
+ * whether the shop still lists a pack for sale. An operator who is shown the
+ * storefront as though they'd bought everything can't see their own shop —
+ * that's how the Angel Pack tile went missing for admins once already. Use
+ * packPreviewable() for "may this account wear/equip it".
  */
-export function packOwned(pack: string, ownedSkins?: string[], admin = false): boolean {
-  if (admin) return true
+export function packEntitled(pack: string, ownedSkins?: string[]): boolean {
   const owned = ownedSkins ?? []
   return FULL_SKINS.some((s) => s.pack === pack && owned.includes(s.id))
+}
+
+/**
+ * May this account use the pack's contents? Same as the entitlement, plus the
+ * operator, who previews every paid cosmetic for free (see skinOwned).
+ */
+export function packPreviewable(pack: string, ownedSkins?: string[], admin = false): boolean {
+  return admin || packEntitled(pack, ownedSkins)
 }
 
 // Owned/equippable? Earned skins gate on their achievement; paid skins on the

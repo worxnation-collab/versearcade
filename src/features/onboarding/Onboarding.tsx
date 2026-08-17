@@ -12,7 +12,11 @@ const EMOJI = ['📖', '🕊️', '✨', '🔥', '🌿', '⭐', '🙏', '🌅', 
 
 // Onboarding is short and reassuring by design. The middle step lets people
 // *feel* the juice (sound/haptics) immediately — a tiny "aha, this is a game"
-// moment before they've committed anything. Guest-first: no account required.
+// moment before they've committed anything.
+//
+// This is now the *guest* path only — the landing page sends everyone else to
+// /auth first. Picking a name here used to read as signing up, so every step
+// says "guest" out loud: no account exists until they create one.
 export default function Onboarding() {
   const navigate = useNavigate()
   const juice = useJuice()
@@ -47,16 +51,25 @@ export default function Onboarding() {
                 every verse. This isn’t a test. Wrong answers just teach you
                 something cool. You literally can’t lose — you can only learn.
               </p>
+              <p className="faint center" style={{ fontSize: 14 }}>
+                You’re setting up <b>guest play</b> — no account, and everything
+                saves on this device only.
+              </p>
               <Button variant="gold" full onClick={() => setStep(1)}>
                 Let’s go →
               </Button>
+              <p className="faint center" style={{ fontSize: 13 }}>
+                <span style={{ color: 'var(--sky)', textDecoration: 'underline' }} onClick={() => navigate('/auth?mode=signup')}>
+                  Create a free account instead
+                </span>
+              </p>
             </Step>
           )}
 
           {step === 1 && (
             <Step key="1">
               <h1 className="center" style={{ fontSize: 30 }}>
-                Pick your look
+                Pick your guest look
               </h1>
               <div className="center" style={{ marginTop: 16 }}>
                 <motion.div
@@ -94,13 +107,17 @@ export default function Onboarding() {
                 <input
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="pick a username"
+                  placeholder="pick a guest name"
                   maxLength={16}
                   autoCapitalize="none"
                   autoCorrect="off"
                 />
                 <p className="faint" style={{ fontSize: 12, marginTop: 6 }}>
                   {clean ? `You’ll show up as @${clean}` : 'letters, numbers, underscores'}
+                </p>
+                <p className="faint" style={{ fontSize: 12, marginTop: 6 }}>
+                  This is a guest name, not an account — no password, no email,
+                  and it doesn’t follow you to another device.
                 </p>
               </div>
               <Button variant="gold" full disabled={!canContinue} onClick={() => setStep(2)}>
@@ -133,16 +150,16 @@ export default function Onboarding() {
                 <Toggle label="🔊 Sound" on={settings.soundEnabled} onClick={() => settings.set({ soundEnabled: !settings.soundEnabled })} />
                 <Toggle label="📳 Haptics" on={settings.hapticsEnabled} onClick={() => settings.set({ hapticsEnabled: !settings.hapticsEnabled })} />
               </div>
-              <div style={{ marginTop: 22 }}>
-                <Button variant="gold" full onClick={finish}>
-                  Start playing →
+              <div style={{ marginTop: 22, display: 'grid', gap: 10 }}>
+                <Button variant="gold" full onClick={() => navigate('/auth?mode=signup')}>
+                  Create a free account →
                 </Button>
-                <p className="faint center" style={{ fontSize: 13, marginTop: 12 }}>
-                  Playing as a guest.{' '}
-                  <span style={{ color: 'var(--sky)', textDecoration: 'underline' }} onClick={() => navigate('/auth')}>
-                    Create an account
-                  </span>{' '}
-                  to save your streak across devices.
+                <Button variant="ghost" full onClick={finish}>
+                  Start playing as a guest
+                </Button>
+                <p className="faint center" style={{ fontSize: 13 }}>
+                  Guest play saves your streak, XP and cards on this device only.
+                  An account keeps them if you switch phones or clear your browser.
                 </p>
               </div>
             </Step>

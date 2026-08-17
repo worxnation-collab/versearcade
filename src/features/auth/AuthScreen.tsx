@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { useAuth } from '@/store/auth'
@@ -23,7 +23,10 @@ export default function AuthScreen() {
   useEffect(() => {
     if (authMode === 'online' && profile) navigate('/play', { replace: true })
   }, [authMode, profile, navigate])
-  const [mode, setMode] = useState<'in' | 'up'>('in')
+  // ?mode=signup lands straight on the create-account form — that's how the
+  // landing page's primary CTA arrives.
+  const [params] = useSearchParams()
+  const [mode, setMode] = useState<'in' | 'up'>(params.get('mode') === 'signup' ? 'up' : 'in')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [username, setUsername] = useState('')
@@ -68,7 +71,11 @@ export default function AuthScreen() {
         <div className="center">
           <div className="floaty" style={{ fontSize: 60 }}>📖</div>
           <h1 style={{ fontSize: 32, marginTop: 8 }}>{mode === 'in' ? 'Welcome back' : 'Create account'}</h1>
-          <p className="dim" style={{ marginTop: 6 }}>Keep your streak safe across devices.</p>
+          <p className="dim" style={{ marginTop: 6 }}>
+            {mode === 'in'
+              ? 'Keep your streak safe across devices.'
+              : 'Takes a few seconds. Your streak, XP and verse cards follow you to any device.'}
+          </p>
         </div>
 
         {!isSupabaseConfigured && (
@@ -141,6 +148,17 @@ export default function AuthScreen() {
                 <span style={{ textDecoration: 'underline' }} onClick={() => navigate('/play')}>
                   ← Keep playing as guest
                 </span>
+              </p>
+            )}
+
+            {/* No profile yet: this is the account-first front door, so the guest
+                door stays open — just small, and labelled for what it is. */}
+            {!profile && (
+              <p className="faint center" style={{ fontSize: 13 }}>
+                <span style={{ textDecoration: 'underline' }} onClick={() => navigate('/welcome')}>
+                  Play as a guest instead
+                </span>{' '}
+                — progress stays on this device only.
               </p>
             )}
           </>

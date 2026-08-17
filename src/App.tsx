@@ -34,7 +34,9 @@ import { PlayerCardProvider } from './components/PlayerCardModal'
 function RequireProfile({ children }: { children: JSX.Element }) {
   const { ready, profile } = useAuth()
   if (!ready) return <Splash />
-  if (!profile) return <Navigate to="/welcome" replace />
+  // Signed-out deep links land on the front door (account first), not straight
+  // into guest setup.
+  if (!profile) return <Navigate to="/" replace />
   return children
 }
 

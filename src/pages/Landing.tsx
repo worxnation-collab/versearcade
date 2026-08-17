@@ -53,13 +53,33 @@ export default function Landing() {
           </p>
         </div>
 
+        {/* Account-first funnel. Guest play used to be the big gold button, and
+            people came out of guest onboarding believing they'd made an account
+            (they'd picked a username, after all). Signup is now the headline
+            action; guest play stays available, deliberately small. */}
         <div style={{ display: 'grid', gap: 12, paddingBottom: 'calc(var(--safe-bottom) + 20px)' }}>
-          <Button variant="gold" full onClick={() => navigate('/welcome')}>
-            Play today’s verse →
+          <Button variant="gold" full onClick={() => navigate('/auth?mode=signup')}>
+            Create account & play today’s verse →
           </Button>
           <Button variant="ghost" full onClick={() => navigate('/auth')}>
             I already have an account
           </Button>
+          <button
+            type="button"
+            className="faint"
+            onClick={() => navigate('/welcome')}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: '6px 0',
+              font: 'inherit',
+              fontSize: 13,
+              textDecoration: 'underline',
+              cursor: 'pointer',
+            }}
+          >
+            or play as a guest (progress stays on this device)
+          </button>
         </div>
       </div>
     </Page>

@@ -41,6 +41,9 @@ group_members · group_plays · collectibles · user_collectibles`
   Bible, written by `record_book_accuracy` from every finished run in any mode.
   Guests keep the same shape in localStorage. It feeds the Study tab's review
   chart (`lib/bookAccuracy.ts` → `features/study/BookAccuracyChart.tsx`).
+- `favorite_verses` (0045) stores just `(user_id, reference)` — the heart shown on
+  every challenge recap, written by `set_verse_favorite`. Guests mirror it in
+  `va.favorites.*`. Verse text is rehydrated from the pool, never stored.
 
 ## Folder map
 
@@ -86,7 +89,13 @@ Adapted from Wordle / Duolingo / BeReal, tuned for *learning without shame*:
     one place the app tells you where you actually stand, and each row is a tap
     into a focus drill on that book — so the honest read arrives with the fix
     attached rather than as a verdict. Deliberately rank-free: no XP, no ladder.
-12. **Play for your church** (the Church tab) — pick the church you actually
+12. **Favorite verses** — every challenge recap (daily drop, practice replay,
+    focus drill, CPU or real battle, review card) ends with a heart, and what you
+    keep lands on a private shelf you can read any time (`/favorites`). It's the
+    one thing in the app that awards nothing: no XP, no streak, no ranking, not
+    even a count anyone else sees. The verse that struck you is the reason people
+    stay with scripture at all, so keeping it must never feel like scoring.
+13. **Play for your church** (the Church tab) — pick the church you actually
     attend (found by name against OpenStreetMap near your location), then pour
     points into it. Giving costs the player nothing: lifetime XP is the *budget*,
     not the currency, so the pool only grows by playing and your own rank never

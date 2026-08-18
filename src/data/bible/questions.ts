@@ -264,3 +264,13 @@ export function practiceVerseFromBook(book: string | null, seed: number): DailyV
   const pick = pool[Math.floor(rng() * pool.length)]
   return buildDailyVerse(pick, rng, `focus-${book ?? 'any'}`)
 }
+
+// One verse by reference, as a full DailyVerse payload. Used by the favorites
+// shelf, where a kept verse needs to open the chapter reader. Seeded off the
+// reference so it's deterministic like everything else here, and independent of
+// getVerseForDate — reading a favorite never disturbs the daily rotation.
+export function verseFromReference(reference: string): DailyVerse | null {
+  const seed = VERSE_POOL.find((v) => v.reference === reference)
+  if (!seed) return null
+  return buildDailyVerse(seed, mulberry32(hashString(`favorite-${reference}`)), `favorite-${reference}`)
+}

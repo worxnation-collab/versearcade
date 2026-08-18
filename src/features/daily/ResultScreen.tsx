@@ -13,6 +13,7 @@ import { buildShareText, shareResult, earnedCards } from './shareCard'
 import { collectibleByKey, rarityColor } from '@/data/collectibles'
 import { useCollection } from '@/store/collection'
 import { OAuthButtons } from '@/features/auth/oauthUi'
+import { FavoriteButton } from '@/components/FavoriteButton'
 
 export default function ResultScreen() {
   const navigate = useNavigate()
@@ -77,7 +78,14 @@ export default function ResultScreen() {
 
         {/* The teaching payoff: reveal what the verse actually was. */}
         <div className="card" style={{ marginTop: 18, textAlign: 'left' }}>
-          <span className="pill" style={{ marginBottom: 8 }}>📖 Today’s verse</span>
+          {/* The heart sits with the verse, not with the score — keeping a verse
+              is about the text, and it costs and pays nothing. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <span className="pill">📖 Today’s verse</span>
+            <div style={{ marginLeft: 'auto' }}>
+              <FavoriteButton reference={today.reference} variant="icon" />
+            </div>
+          </div>
           <b style={{ fontFamily: 'var(--font-display)', fontSize: 18 }}>{today.reference}</b>
           <p style={{ marginTop: 6, lineHeight: 1.5 }}>“{today.text}”</p>
           {today.facts[0] && <p className="faint" style={{ marginTop: 10, fontSize: 13 }}>💡 {today.facts[0]}</p>}

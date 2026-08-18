@@ -7,6 +7,7 @@ import { usePractice } from '@/store/practice'
 import { useJuice } from '@/juice/useJuice'
 import { todayLocalDate } from '@/lib/date'
 import { daysBetween } from '@/lib/practice'
+import { FavoriteButton } from '@/components/FavoriteButton'
 
 export default function PracticeResultScreen() {
   const navigate = useNavigate()
@@ -100,6 +101,18 @@ export default function PracticeResultScreen() {
               No bonus this time — beat your best of <b style={{ color: 'var(--gold)' }}>{outcome.previousBest.toLocaleString()}</b> to
               earn XP. Replaying is always free to study. 📖
             </p>
+          </div>
+        )}
+
+        {/* The verse itself, with the one gesture that keeps it. A practice run
+            is study, so the text is the payoff — not the score above it. */}
+        {verse && (
+          <div className="card" style={{ marginTop: 14, textAlign: 'left' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <b style={{ fontFamily: 'var(--font-display)', fontSize: 17, flex: 1, minWidth: 0 }}>{verse.reference}</b>
+              <FavoriteButton reference={verse.reference} variant="icon" />
+            </div>
+            <p style={{ marginTop: 8, lineHeight: 1.5 }}>“{verse.text}”</p>
           </div>
         )}
 

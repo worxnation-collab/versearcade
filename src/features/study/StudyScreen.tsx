@@ -5,6 +5,7 @@ import { Button } from '@/components/Button'
 import { PracticeSection } from '@/features/practice/PracticeSection'
 import { BookAccuracyChart } from './BookAccuracyChart'
 import { useReviews } from '@/store/reviews'
+import { useFavorites } from '@/store/favorites'
 import { useJuice } from '@/juice/useJuice'
 import { useEffect } from 'react'
 
@@ -15,10 +16,13 @@ export default function StudyScreen() {
   const navigate = useNavigate()
   const juice = useJuice()
   const { dueRefs, loadDue } = useReviews()
+  const favCount = useFavorites((s) => Object.keys(s.map).length)
+  const loadFavorites = useFavorites((s) => s.load)
 
   useEffect(() => {
     loadDue()
-  }, [loadDue])
+    loadFavorites()
+  }, [loadDue, loadFavorites])
 
   return (
     <Page>
@@ -91,6 +95,31 @@ export default function StudyScreen() {
           <div style={{ fontFamily: 'var(--font-display)', color: 'var(--gold)', fontSize: 20 }}>→</div>
         </motion.button>
       )}
+
+      {/* The shelf of kept verses. Always shown, even at zero — it's how a player
+          learns the heart on a recap does something. */}
+      <motion.button
+        onClick={() => { juice.select(); navigate('/favorites') }}
+        whileTap={{ scale: 0.97 }}
+        className="card"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        style={{ width: '100%', textAlign: 'left', marginTop: dueRefs.length > 0 ? 10 : 0, display: 'flex', alignItems: 'center', gap: 14 }}
+      >
+        <div style={{ fontSize: 30 }}>{favCount > 0 ? '❤️' : '🤍'}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 17 }}>
+            Favorite verses
+            {favCount > 0 && <span className="faint" style={{ fontSize: 12 }}> · {favCount}</span>}
+          </div>
+          <div className="faint" style={{ fontSize: 13, lineHeight: 1.35 }}>
+            {favCount > 0
+              ? 'Read the ones you kept, any time'
+              : 'Tap the heart after a challenge to keep a verse here'}
+          </div>
+        </div>
+        <div style={{ fontFamily: 'var(--font-display)', color: 'var(--gold)', fontSize: 20 }}>→</div>
+      </motion.button>
 
       {/* Study the last five — open by default here, since this is its home. */}
       <PracticeSection defaultOpen showEmpty />

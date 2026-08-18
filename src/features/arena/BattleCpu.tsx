@@ -9,7 +9,8 @@ import { useJuice } from '@/juice/useJuice'
 import { newBattleSeed, battleVerse } from './battle'
 import { CpuVersusQuiz } from './CpuVersusQuiz'
 import { CPU_PROFILES, CPU_LEVELS, type CpuLevel, type CpuProfile } from './cpu'
-import type { AvatarSpec, PlayResult } from '@/types'
+import { FavoriteButton } from '@/components/FavoriteButton'
+import type { AvatarSpec, DailyVerse, PlayResult } from '@/types'
 
 // Solo Bible Battle vs a simulated CPU, reached from the Study tab. No account
 // or opponent needed — you play the same seeded quiz while the CPU races the
@@ -43,6 +44,7 @@ export default function BattleCpu() {
     return (
       <CpuResult
         profile={profile}
+        verse={verse}
         outcome={outcome}
         onRematch={() => {
           juice.coin()
@@ -119,12 +121,14 @@ function CpuPicker({ onPick, onExit }: { onPick: (lv: CpuLevel) => void; onExit:
 // ── Result screen ──
 function CpuResult({
   profile,
+  verse,
   outcome,
   onRematch,
   onChange,
   onDone,
 }: {
   profile: CpuProfile
+  verse: DailyVerse
   outcome: { player: PlayResult; cpuScore: number }
   onRematch: () => void
   onChange: () => void
@@ -166,6 +170,16 @@ function CpuResult({
       <CpuScoreRow name={me?.username ? `@${me.username}` : 'You'} emoji={me?.avatarEmoji ?? '😇'} character={me?.avatarCharacter} score={you} winner={result === 'won'} />
       <div className="faint center" style={{ fontSize: 12, letterSpacing: '0.3em', margin: '2px 0' }}>VS</div>
       <CpuScoreRow name={profile.name} emoji={profile.emoji} score={cpu} winner={result === 'lost'} />
+
+      {/* The verse you just raced over — a battle is still a verse challenge, so
+          it ends with the same chance to keep it. */}
+      <div className="card" style={{ marginTop: 16, textAlign: 'left' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <b style={{ fontFamily: 'var(--font-display)', fontSize: 17, flex: 1, minWidth: 0 }}>{verse.reference}</b>
+          <FavoriteButton reference={verse.reference} variant="icon" />
+        </div>
+        <p style={{ marginTop: 8, lineHeight: 1.5 }}>“{verse.text}”</p>
+      </div>
 
       <div style={{ marginTop: 18, display: 'grid', gap: 10 }}>
         <Button variant="gold" full onClick={onRematch}>🔁 Rematch {profile.name}</Button>

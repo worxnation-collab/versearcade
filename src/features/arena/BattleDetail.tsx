@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Page } from '@/components/Page'
@@ -9,6 +9,8 @@ import { useBattles, type Battle, type BattleSide } from '@/store/battles'
 import { setPendingBattle } from './pending'
 import { shareResult, APP_URL } from '@/features/daily/shareCard'
 import { useJuice } from '@/juice/useJuice'
+import { FavoriteButton } from '@/components/FavoriteButton'
+import { battleVerse } from './battle'
 
 function myOutcome(b: Battle): 'won' | 'lost' | 'tie' | null {
   if (b.status !== 'complete' || !b.winner) return null
@@ -47,6 +49,10 @@ export default function BattleDetail() {
       myOutcome(battle) === 'won' ? juice.levelUp() : juice.celebrate()
     }
   }, [battle, location.state, juice])
+
+  // The verse both sides raced over. Only ever rendered on a finished battle, so
+  // it can't spoil a challenge that's still waiting to be played.
+  const verse = useMemo(() => (battle ? battleVerse(battle.seed) : null), [battle])
 
   const link = `${APP_URL}/battle/${id}`
   const doShare = async () => {
@@ -149,6 +155,18 @@ export default function BattleDetail() {
           {battle.opponent && (
             <ScoreRow side={battle.opponent} youIf={battle.is_opponent} winner={battle.winner === 'opponent'} label="Opponent" />
           )}
+          {/* A battle is a verse challenge too — the players who ran it get the
+              same chance to keep the verse. */}
+          {verse && (battle.is_challenger || battle.is_opponent) && (
+            <div className="card" style={{ marginTop: 16, textAlign: 'left' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <b style={{ fontFamily: 'var(--font-display)', fontSize: 17, flex: 1, minWidth: 0 }}>{verse.reference}</b>
+                <FavoriteButton reference={verse.reference} variant="icon" />
+              </div>
+              <p style={{ marginTop: 8, lineHeight: 1.5 }}>“{verse.text}”</p>
+            </div>
+          )}
+
           <div style={{ marginTop: 18 }}>
             <Button variant="gold" full onClick={() => navigate('/battle/new')}>Start a new battle ⚔️</Button>
           </div>

@@ -10,7 +10,8 @@ import { useFocus, FOCUS_XP_DAILY_CAP, type FocusXpOutcome } from '@/store/focus
 import { useAuth } from '@/store/auth'
 import { poolBooks, poolBookCounts, practiceVerseFromBook } from '@/data/bible/questions'
 import { useJuice } from '@/juice/useJuice'
-import type { AvatarSpec, PlayResult } from '@/types'
+import { FavoriteButton } from '@/components/FavoriteButton'
+import type { AvatarSpec, DailyVerse, PlayResult } from '@/types'
 
 // Focus practice: pick a book, then drill random verses from just that book —
 // reached from the Study tab, alongside the CPU battle and the last-five replay.
@@ -98,6 +99,7 @@ export default function FocusPracticeScreen() {
     return (
       <RecapScreen
         book={book}
+        verse={verse}
         outcome={outcome}
         onNext={nextVerse}
         onChange={() => setPhase('pick')}
@@ -202,12 +204,14 @@ function PickRow({ label, sub, active, onClick }: { label: string; sub: string; 
 
 function RecapScreen({
   book,
+  verse,
   outcome,
   onNext,
   onChange,
   onDone,
 }: {
   book: string | null
+  verse: DailyVerse
   outcome: Outcome
   onNext: () => void
   onChange: () => void
@@ -269,6 +273,15 @@ function RecapScreen({
             </div>
           </>
         )}
+      </div>
+
+      {/* Keep the verse you just drilled — the drill is the reason you met it. */}
+      <div className="card" style={{ marginTop: 14, textAlign: 'left' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <b style={{ fontFamily: 'var(--font-display)', fontSize: 17, flex: 1, minWidth: 0 }}>{verse.reference}</b>
+          <FavoriteButton reference={verse.reference} variant="icon" />
+        </div>
+        <p style={{ marginTop: 8, lineHeight: 1.5 }}>“{verse.text}”</p>
       </div>
 
       <div style={{ marginTop: 16, display: 'grid', gap: 10 }}>

@@ -10,6 +10,7 @@ import { useBuddies, type BuddyCard } from '@/store/buddies'
 import { newBattleSeed, battleVerse } from './battle'
 import { shareResult, APP_URL } from '@/features/daily/shareCard'
 import { useJuice } from '@/juice/useJuice'
+import { FavoriteButton } from '@/components/FavoriteButton'
 import type { PlayResult } from '@/types'
 
 // Challenger flow: play a fresh random-verse quiz, then pick who to challenge —
@@ -42,6 +43,7 @@ export default function BattleNew() {
 
 function InvitePicker({ seed, result, target }: { seed: number; result: PlayResult; target: string | null }) {
   const navigate = useNavigate()
+  const verse = useMemo(() => battleVerse(seed), [seed])
   const juice = useJuice()
   const { createBattle } = useBattles()
   const { buddies, suggested, load, loadSuggested, sendRequest } = useBuddies()
@@ -124,6 +126,16 @@ function InvitePicker({ seed, result, target }: { seed: number; result: PlayResu
         <p className="dim" style={{ marginTop: 6, fontSize: 14 }}>
           Challenge a buddy below — or share a link to invite someone new.
         </p>
+        {/* You've just played this verse, so you can keep it here rather than
+            waiting on an opponent. The text stays hidden — this screen is one
+            tap from sharing, and the challenge should still be a challenge. */}
+        <div style={{ marginTop: 12 }}>
+          <FavoriteButton
+            reference={verse.reference}
+            label={`Save ${verse.reference}`}
+            savedLabel={`${verse.reference} saved`}
+          />
+        </div>
       </div>
 
       {shareId ? (

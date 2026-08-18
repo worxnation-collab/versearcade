@@ -6,6 +6,7 @@ import { Button } from '@/components/Button'
 import { useReviews } from '@/store/reviews'
 import { useBookAccuracy } from '@/store/bookAccuracy'
 import { useJuice } from '@/juice/useJuice'
+import { FavoriteButton } from '@/components/FavoriteButton'
 import { MASTERY_MAX } from '@/lib/review'
 
 type Phase = 'ask' | 'reveal' | 'done'
@@ -128,9 +129,14 @@ export default function ReviewScreen() {
       </div>
 
       <div className="card" style={{ padding: 22 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
           <b style={{ fontFamily: 'var(--font-display)', fontSize: 18 }}>{c.reference}</b>
-          <MasteryPips level={phase === 'reveal' && chosen?.toLowerCase() === c.answer.toLowerCase() ? c.mastery + 1 : c.mastery} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <MasteryPips level={phase === 'reveal' && chosen?.toLowerCase() === c.answer.toLowerCase() ? c.mastery + 1 : c.mastery} />
+            {/* Only once the word is revealed — during the prompt it would just
+                pull attention off the recall. */}
+            {phase === 'reveal' && <FavoriteButton reference={c.reference} variant="icon" />}
+          </div>
         </div>
         <p style={{ fontSize: 20, lineHeight: 1.5, fontWeight: 700, marginTop: 14, fontFamily: 'var(--font-display)' }}>
           {phase === 'reveal' ? renderFilled(c.blanked, c.answer) : `“${c.blanked}”`}

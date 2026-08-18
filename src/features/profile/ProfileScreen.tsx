@@ -250,6 +250,19 @@ export default function ProfileScreen() {
       <h3 style={{ fontSize: 16, margin: '18px 0 10px' }} className="dim">More</h3>
       <div style={{ display: 'grid', gap: 10 }}>
         <button
+          onClick={() => { juice.select?.(); navigate('/favorites') }}
+          className="card"
+          style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%', cursor: 'pointer' }}
+        >
+          <span style={{ fontSize: 22 }}>❤️</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <b style={{ fontSize: 14 }}>Favorite verses</b>
+            <div className="faint" style={{ fontSize: 12 }}>The verses you kept — yours to read again</div>
+          </div>
+          <span style={{ color: 'var(--gold)' }}>›</span>
+        </button>
+
+        <button
           onClick={() => { juice.select?.(); navigate('/churches') }}
           className="card"
           style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%', cursor: 'pointer' }}

@@ -26,6 +26,7 @@ import BattlePlay from './features/arena/BattlePlay'
 import BattleDetail from './features/arena/BattleDetail'
 import BattleCpu from './features/arena/BattleCpu'
 import StudyScreen from './features/study/StudyScreen'
+import FavoritesScreen from './features/favorites/FavoritesScreen'
 import FocusPracticeScreen from './features/practice/FocusPracticeScreen'
 import { BattleResume } from './features/arena/BattleResume'
 import { BottomNav } from './components/BottomNav'
@@ -203,6 +204,16 @@ export default function App() {
               <TabShell>
                 <StudyScreen />
               </TabShell>
+            </RequireProfile>
+          }
+        />
+        {/* Verses the player kept after a challenge — reading, never scoring.
+            Reached from Study and from the profile. */}
+        <Route
+          path="/favorites"
+          element={
+            <RequireProfile>
+              <FavoritesScreen />
             </RequireProfile>
           }
         />

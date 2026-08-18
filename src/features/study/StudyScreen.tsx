@@ -52,7 +52,7 @@ export default function StudyScreen() {
 
       {/* Focus practice — drill one book of your choosing against a companion.
           Sibling to the CPU battle: same live versus bar, but scoped to a book
-          and it pays a little XP (5/session, capped at 20/day). */}
+          and it pays a little XP (5/session, every session — no daily cap). */}
       <motion.button
         onClick={() => { juice.coin(); navigate('/study/focus') }}
         whileTap={{ scale: 0.98 }}
@@ -65,7 +65,7 @@ export default function StudyScreen() {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 17 }}>Focus a book</div>
           <div className="faint" style={{ fontSize: 13, lineHeight: 1.35 }}>
-            Drill verses from one book against a study partner · earns XP
+            Drill verses from one book against a study partner · earns XP every session
           </div>
         </div>
         <div style={{ fontFamily: 'var(--font-display)', color: 'var(--gold)', fontSize: 20 }}>→</div>

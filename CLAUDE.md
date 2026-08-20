@@ -176,6 +176,24 @@ part of CI: `.github/workflows/deploy.yml` was removed because it never had a
 green. Merges to `main` use a **merge commit** titled `<PR title> (#NN)` —
 match the existing history.
 
+## Store versions: 1.0 is live, so the version must move every release
+
+`package.json` `"version"` is the source of truth for the *store* version, and it is
+not decoration. Once App Store Connect approves a version, that version's train
+closes — every later upload must carry a strictly higher `CFBundleShortVersionString`
+or the upload is rejected (`90062` + `90186`) *after* a full signed archive, about
+20 minutes in. Builds 22 and 23 died that way with a perfectly good Admin API key.
+
+`ios/` is not committed; `cap add ios` regenerates it every build and the Capacitor
+template default (`MARKETING_VERSION = 1.0`) comes back each time. So the version is
+patched into `project.pbxproj` in `codemagic.yaml` from `package.json`, with an
+assertion that it landed in both build configurations. Bump `package.json` and
+`android/app/build.gradle`'s `versionName` together — same string, both stores.
+
+The build number is separate and handled: Codemagic's `$BUILD_NUMBER` is monotonic.
+Don't reach for `get-latest-app-store-build-number`; it returns 0 until a build is on
+the actual App Store and has already caused a 409 duplicate here.
+
 ## Verify by running it, not by reading it
 
 The build passing means very little here — the bugs in this codebase have been

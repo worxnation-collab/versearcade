@@ -19,3 +19,6 @@ yarn-error.log*
 
 # Netlify CLI state
 .netlify
+
+# Playwright MCP scratch output (snapshots, console logs)
+.playwright-mcp/

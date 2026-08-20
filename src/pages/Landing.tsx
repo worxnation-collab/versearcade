@@ -2,7 +2,9 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/Button'
 import { Page } from '@/components/Page'
+import { AppStoreBadge } from '@/components/AppStoreBadge'
 import { useAuth } from '@/store/auth'
+import { appStoreAsk } from '@/lib/appStore'
 import { useEffect } from 'react'
 
 // Marketing / hero landing. On web this is the front door; inside the iOS app a
@@ -10,6 +12,14 @@ import { useEffect } from 'react'
 export default function Landing() {
   const navigate = useNavigate()
   const profile = useAuth((s) => s.profile)
+  // On an iPhone the App Store is the better front door, so the badge leads and
+  // "play in the browser" sits under it. Everywhere else the web game leads and
+  // the badge is a footnote — nobody on Android should be handed an iOS link as
+  // their primary call to action, and nobody standing *inside* the iOS app
+  // should be invited to go download it.
+  const ask = appStoreAsk()
+  const iosFirst = ask === 'download'
+  const inApp = ask === 'review'
 
   useEffect(() => {
     if (profile) navigate('/play', { replace: true })
@@ -18,18 +28,40 @@ export default function Landing() {
   return (
     <Page noNav>
       <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 22, paddingTop: 30 }}>
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            gap: iosFirst ? 16 : 22,
+            paddingTop: iosFirst ? 10 : 30,
+          }}
+        >
           <motion.div
             className="floaty"
             initial={{ scale: 0.6, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: 'spring', stiffness: 200, damping: 12 }}
-            style={{ fontSize: 92, textAlign: 'center' }}
+            style={{ fontSize: iosFirst ? 68 : 92, textAlign: 'center' }}
           >
             📖
           </motion.div>
 
           <div style={{ textAlign: 'center' }}>
+            {/* The news flag — skipped on iOS, where the badge below says it
+                louder and the screen needs the room. */}
+            {!iosFirst && !inApp && (
+              <motion.span
+                className="pill"
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25 }}
+                style={{ marginBottom: 12, color: 'var(--gold)' }}
+              >
+                ✦ Now on the App Store
+              </motion.span>
+            )}
             <h1 style={{ fontSize: 46, lineHeight: 1.02 }}>
               <span className="gradient-text">Verse</span> Arcade
             </h1>
@@ -54,12 +86,28 @@ export default function Landing() {
         </div>
 
         <div style={{ display: 'grid', gap: 12, paddingBottom: 'calc(var(--safe-bottom) + 20px)' }}>
+          {iosFirst && (
+            <>
+              <AppStoreBadge />
+              <p className="faint center" style={{ fontSize: 12.5, margin: '-4px 0 0' }}>
+                Free on iPhone &amp; iPad — or play in your browser.
+              </p>
+            </>
+          )}
           <Button variant="gold" full onClick={() => navigate('/welcome')}>
             Play today’s verse →
           </Button>
           <Button variant="ghost" full onClick={() => navigate('/auth')}>
             I already have an account
           </Button>
+          {!iosFirst && !inApp && (
+            <div style={{ display: 'grid', gap: 8, justifyItems: 'center', marginTop: 2 }}>
+              <p className="faint center" style={{ fontSize: 12.5, margin: 0 }}>
+                Got an iPhone? Verse Arcade is free on the App Store.
+              </p>
+              <AppStoreBadge compact />
+            </div>
+          )}
         </div>
       </div>
     </Page>

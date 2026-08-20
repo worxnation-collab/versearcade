@@ -5,8 +5,10 @@
 // capture the event at module load (main.tsx imports this) and hand it to the UI
 // later via a tiny subscribe/snapshot store.
 //
-// iOS Safari has no such API: installing is a manual Share → "Add to Home
-// Screen". There we show instructions instead of a one-tap button.
+// iOS Safari has no such API, and it no longer needs one: Verse Arcade ships on
+// the App Store, so on iOS we say nothing here and let the App Store nudge
+// (`features/home/AppStoreNudge`) make the better offer. `isIOS` stays exported
+// because that's how the nudge knows who to make it to.
 
 import { useSyncExternalStore } from 'react'
 import { Capacitor } from '@capacitor/core'
@@ -56,9 +58,8 @@ if (typeof window !== 'undefined') {
 }
 
 export type InstallMode =
-  | 'unavailable' // already installed, native shell, or browser can't do it
+  | 'unavailable' // already installed, native shell, iOS, or browser can't do it
   | 'prompt' //     one tap — we hold a deferred beforeinstallprompt
-  | 'ios' //        show the manual Share-sheet instructions
 
 function subscribe(cb: () => void) {
   listeners.add(cb)
@@ -70,7 +71,7 @@ function subscribe(cb: () => void) {
 function snapshot(): InstallMode {
   if (installed || isStandalone()) return 'unavailable'
   if (deferred) return 'prompt'
-  if (isIOS()) return 'ios'
+  // iOS gets the App Store app instead — never both asks at once.
   return 'unavailable'
 }
 

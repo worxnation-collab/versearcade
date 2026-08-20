@@ -43,6 +43,31 @@ A store is empty after a reload, and a run can finish before anything called
 back silently erases everything else. This has already happened once; see the
 comment in `store/bookAccuracy.ts:record`.
 
+## Native builds carry no storefront
+
+The web app sells cosmetic packs through Stripe Payment Links. The App Store /
+Play build **may not** — Apple requires digital cosmetics to go through in-app
+purchase (Guideline 3.1.1), and its anti-steering rules mean a native build must
+not show a price, name a pack it can't sell, or point anywhere outside the app to
+buy one. Hiding just the checkout button is not enough: a `$5.99` label or a
+"purchases are opening soon" line is still a storefront.
+
+`lib/commerce.ts` is the only place that decision lives — `storefrontEnabled()`,
+`skinVisible()`, `cardBgVisible()`. Every commerce surface asks it, so the app and
+the site can't drift apart by accident. Don't reach for `Capacitor.isNativePlatform()`
+in a component to gate something you can buy; add it to `commerce.ts` instead.
+
+What native still has, identical to web: earned skins (shared days, referrals),
+free promo-code skins (`redeem_code` — codes are never sold), churches, battles,
+and **every cosmetic the player already owns**, including packs bought on the
+website. Letting someone *use* content they bought elsewhere is fine; advertising
+the sale inside the app is not.
+
+Everything else that differs between the two is deliberate and unrelated:
+haptics, the OAuth redirect (`store/auth.ts`), the install prompt, and
+`appStoreAsk()` (review vs. download). There is no other divergence — keep it
+that way.
+
 ## Content is deterministic — keep it that way
 
 `getVerseForDate(date)` must return the same verse for the same date for every

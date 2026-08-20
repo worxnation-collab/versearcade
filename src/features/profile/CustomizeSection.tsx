@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Capacitor } from '@capacitor/core'
 import { Avatar } from '@/components/Avatar'
 import { Button } from '@/components/Button'
 import { SUPPORT_URL, skinBuyUrl } from '@/lib/config'
+import { cardBgVisible, skinVisible, storefrontEnabled } from '@/lib/commerce'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/store/auth'
 import { useJuice } from '@/juice/useJuice'
@@ -104,7 +104,13 @@ export function CustomizeSection() {
   // Pack cards gate on the skin entitlement rather than a collectible, so the
   // picker needs both sources of ownership.
   const bgCtx = { ownedSkins: profile.ownedSkins ?? [], admin: profile.isAdmin }
-  const unlockedBgCount = CARD_BACKGROUNDS.filter((b) => cardBgUnlocked(b.key, ownedCollectibles, bgCtx)).length
+  // A card that only ships with a paid pack is hidden in a native build until
+  // the pack is owned — the app has no way to sell it (see lib/commerce). The
+  // "x/y unlocked" count follows the same list, so it never reads as short.
+  const visibleBgs = CARD_BACKGROUNDS.filter((b) =>
+    cardBgVisible(b, cardBgUnlocked(b.key, ownedCollectibles, bgCtx)),
+  )
+  const unlockedBgCount = visibleBgs.filter((b) => cardBgUnlocked(b.key, ownedCollectibles, bgCtx)).length
 
   const pickBg = async (key: string) => {
     setErr(null)
@@ -166,8 +172,10 @@ export function CustomizeSection() {
   const grantSkin = useAuth((s) => s.grantSkin)
   const ownedSkins = profile.ownedSkins ?? []
   const equippedSkin = equippedSkinId(spec)
+  const isSkinOwned = (skin: SkinDef) =>
+    skinOwned(skin, { sharedDays: profile.sharedDays, ownedSkins, referralCount: profile.referralCount, admin: profile.isAdmin })
   const onSkinTap = (skin: SkinDef) => {
-    const owned = skinOwned(skin, { sharedDays: profile.sharedDays, ownedSkins, referralCount: profile.referralCount, admin: profile.isAdmin })
+    const owned = isSkinOwned(skin)
     if (!owned && skin.source === 'earned') {
       if (skin.referralGoal != null) {
         const rc = profile.referralCount ?? 0
@@ -183,10 +191,16 @@ export function CustomizeSection() {
     // has no purchase of its own — it always routes to its pack.
     if (!owned && skin.source === 'paid' && !profile.isAdmin) {
       juice.select()
-      const bundle = skin.bundleOnly ? BUNDLES.find((b) => b.id === skin.pack) : undefined
-      if (bundle) setBundleTarget(bundle)
-      else if (skin.exclusive) { setRedeemMsg(null); setRedeemTarget(skin) }
-      else setBuyTarget(skin)
+      // A free promo-code skin redeems in every build — no price, no checkout.
+      // Anything with a price simply doesn't exist in a native build, so there
+      // is no sheet to open (see lib/commerce). The tile is already hidden
+      // there; this is the second lock on the same door.
+      if (skin.exclusive) { setRedeemMsg(null); setRedeemTarget(skin) }
+      else if (storefrontEnabled()) {
+        const bundle = skin.bundleOnly ? BUNDLES.find((b) => b.id === skin.pack) : undefined
+        if (bundle) setBundleTarget(bundle)
+        else setBuyTarget(skin)
+      }
       return
     }
     setErr(null)
@@ -271,7 +285,9 @@ export function CustomizeSection() {
         </div>
 
         <p className="faint" style={{ fontSize: 10, marginTop: 12, lineHeight: 1.4 }}>
-          Studio pieces are unlocked here so you can preview the full look. Scripture is always free — the craft around it is the paid layer.
+          {storefrontEnabled()
+            ? 'Studio pieces are unlocked here so you can preview the full look. Scripture is always free — the craft around it is the paid layer.'
+            : 'Studio pieces are unlocked here so you can build the full look. Scripture is always free.'}
         </p>
       </div>
       </Section>
@@ -284,39 +300,44 @@ export function CustomizeSection() {
               hidden from the grid until it's owned, so the only way to get them
               is the pack itself. Once owned they appear below as normal, each
               individually equippable. */}
-          {BUNDLES.filter((b) => !bundleExpired(b) && !packEntitled(b.id, ownedSkins)).map((b) => (
-            <button
-              key={b.id}
-              onClick={() => { juice.select(); setBundleTarget(b) }}
-              style={{
-                gridColumn: '1 / -1',
-                display: 'grid', justifyItems: 'center', gap: 6,
-                padding: '12px 8px', borderRadius: 14,
-                background: 'var(--card-solid)', border: '1px solid var(--gold)', cursor: 'pointer',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                {b.skins.map((id, n) => (
-                  <div key={id} style={{ marginLeft: n === 0 ? 0 : -14, zIndex: n }}>
-                    <Avatar emoji={profile.avatarEmoji} character={{ ...spec, skinId: id, regalia: null }} size={56} ring={false} />
-                  </div>
-                ))}
-              </div>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 800 }}>{b.name}</span>
-              <span className="faint" style={{ fontSize: 11 }}>
-                {bundleItemCount(b)} items · {b.skins.length} skins + {b.cards.length} calling cards
-              </span>
-              <span style={{ ...pillStyle('studio') }}>{b.price} · tap to preview</span>
-              {b.limitedUntil && <LimitedBadge until={b.limitedUntil} />}
-            </button>
-          ))}
+          {storefrontEnabled() &&
+            BUNDLES.filter((b) => !bundleExpired(b) && !packEntitled(b.id, ownedSkins)).map((b) => (
+              <button
+                key={b.id}
+                onClick={() => { juice.select(); setBundleTarget(b) }}
+                style={{
+                  gridColumn: '1 / -1',
+                  display: 'grid', justifyItems: 'center', gap: 6,
+                  padding: '12px 8px', borderRadius: 14,
+                  background: 'var(--card-solid)', border: '1px solid var(--gold)', cursor: 'pointer',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  {b.skins.map((id, n) => (
+                    <div key={id} style={{ marginLeft: n === 0 ? 0 : -14, zIndex: n }}>
+                      <Avatar emoji={profile.avatarEmoji} character={{ ...spec, skinId: id, regalia: null }} size={56} ring={false} />
+                    </div>
+                  ))}
+                </div>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 800 }}>{b.name}</span>
+                <span className="faint" style={{ fontSize: 11 }}>
+                  {bundleItemCount(b)} items · {b.skins.length} skins + {b.cards.length} calling cards
+                </span>
+                <span style={{ ...pillStyle('studio') }}>{b.price} · tap to preview</span>
+                {b.limitedUntil && <LimitedBadge until={b.limitedUntil} />}
+              </button>
+            ))}
           {FULL_SKINS
             .filter((skin) => !skinExpired(skin))
             // A bundle-only skin is never its own listing — it shows up here
             // only once the pack that contains it is owned.
             .filter((skin) => !skin.bundleOnly || packPreviewable(skin.pack ?? '', ownedSkins, profile.isAdmin))
+            // Native builds carry no storefront, so a priced skin only appears
+            // once it's owned — including packs bought on the website, which
+            // stay wearable here. See lib/commerce.
+            .filter((skin) => skinVisible(skin, isSkinOwned(skin)))
             .map((skin) => {
-            const owned = skinOwned(skin, { sharedDays: profile.sharedDays, ownedSkins, referralCount: profile.referralCount, admin: profile.isAdmin })
+            const owned = isSkinOwned(skin)
             const equipped = equippedSkin === skin.id
             const preview = { ...spec, skinId: skin.id, regalia: null }
             const status =
@@ -360,13 +381,21 @@ export function CustomizeSection() {
           })}
         </div>
         <p className="faint" style={{ fontSize: 10, marginTop: 10, lineHeight: 1.4 }}>
-          Hero skins are <b>premium</b> — tap one to unlock it. Packs are sold whole: tap to swipe through
-          everything inside before you decide. Earned skins (like Baldwin) are never for sale, and Scripture is always free.
+          {storefrontEnabled() ? (
+            <>
+              Hero skins are <b>premium</b> — tap one to unlock it. Packs are sold whole: tap to swipe through
+              everything inside before you decide. Earned skins (like Baldwin) are never for sale, and Scripture is always free.
+            </>
+          ) : (
+            <>
+              Skins are <b>earned</b> — share the daily verse and invite friends, and they’re yours to keep.
+              A missed day never takes one away, and Scripture is always free.
+            </>
+          )}
         </p>
         {/* Optional support link (a Stripe Payment Link, set via VITE_SUPPORT_URL).
-            Web-only: native app-store builds must route digital purchases through
-            in-app purchase, so this is hidden on native. */}
-        {SUPPORT_URL && !Capacitor.isNativePlatform() && (
+            Web-only — native builds carry no storefront at all (see lib/commerce). */}
+        {SUPPORT_URL && storefrontEnabled() && (
           <div style={{ marginTop: 12 }}>
             <Button
               variant="gold"
@@ -407,7 +436,7 @@ export function CustomizeSection() {
             {buyTarget.packName && <p className="faint" style={{ fontSize: 12 }}>{buyTarget.packName}</p>}
             <p style={{ fontSize: 14, marginTop: 8, lineHeight: 1.5 }}>{buyTarget.blurb}</p>
             <p style={{ marginTop: 10, marginBottom: 12, fontFamily: 'var(--font-display)', fontSize: 24 }} className="gradient-text">{buyTarget.price}</p>
-            {skinBuyUrl(buyTarget.id) && !Capacitor.isNativePlatform() ? (
+            {skinBuyUrl(buyTarget.id) && storefrontEnabled() ? (
               <>
                 <Button variant="gold" full onClick={() => {
                   juice.coin()
@@ -466,7 +495,11 @@ export function CustomizeSection() {
         </div>
       )}
 
-      {/* A genuine note on why anything costs money at all */}
+      {/* A genuine note on why anything costs money at all. Web-only: in a
+          native build nothing costs anything, so an essay about paying for
+          skins would both confuse and (per lib/commerce) steer. */}
+      {storefrontEnabled() && (
+      <>
       <button
         onClick={() => { juice.select(); setDevNoteOpen((o) => !o) }}
         className="card"
@@ -494,6 +527,8 @@ export function CustomizeSection() {
             okay: the app is yours to enjoy either way. 🙏
           </p>
         </div>
+      )}
+      </>
       )}
 
       {/* ── Collected items (from the Daily Chest) ────────────────────── */}
@@ -536,7 +571,7 @@ export function CustomizeSection() {
       {/* ── Player-card backgrounds ───────────────────────────────────────
           Every card and relic you own also unlocks the background themed after
           it, so the collection doubles as a wardrobe for your player card. ── */}
-      <Section title="Card background" right={`${unlockedBgCount}/${CARD_BACKGROUNDS.length}`}>
+      <Section title="Card background" right={`${unlockedBgCount}/${visibleBgs.length}`}>
       <div className="card" style={{ marginBottom: 14 }}>
         {/* Live preview of the equipped background. */}
         <div style={{ ...cardBgStyle(equippedBg), position: 'relative', height: 92, borderRadius: 14, border: '1px solid var(--stroke)', overflow: 'hidden', display: 'grid', placeItems: 'center', marginBottom: 12 }}>
@@ -546,7 +581,7 @@ export function CustomizeSection() {
           </span>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-          {CARD_BACKGROUNDS.map((b) => {
+          {visibleBgs.map((b) => {
             const unlocked = cardBgUnlocked(b.key, ownedCollectibles, bgCtx)
             const equipped = equippedBg === b.key
             const src = collectibleByKey(b.key)
@@ -582,7 +617,7 @@ export function CustomizeSection() {
         </div>
         <p className="faint" style={{ fontSize: 11, marginTop: 10, lineHeight: 1.4 }}>
           Each background unlocks with the card or relic it’s named after — earn them from goals and the Daily Chest.
-          The two Angel cards come with The Angel Pack — the pack is sold whole.
+          {storefrontEnabled() && ' The two Angel cards come with The Angel Pack — the pack is sold whole.'}
         </p>
       </div>
       </Section>

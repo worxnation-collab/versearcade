@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Capacitor } from '@capacitor/core'
 import { Avatar } from '@/components/Avatar'
 import { Button } from '@/components/Button'
 import { CardArt } from '@/data/cardArt'
 import { cardArtProps, cardBgByKey } from '@/data/playerCards'
 import { bundleItemCount, skinById, type BundleDef } from '@/data/avatar'
 import { bundleBuyUrl } from '@/lib/config'
+import { storefrontEnabled } from '@/lib/commerce'
 import { useJuice } from '@/juice/useJuice'
 import type { AvatarSpec } from '@/types'
 
@@ -60,7 +60,11 @@ export function BundleSheet({
   }
 
   const buyUrl = bundleBuyUrl(bundle.id)
-  const canBuy = !owned && buyUrl && !Capacitor.isNativePlatform()
+  // Native builds have no storefront, so this sheet is unreachable there (the
+  // pack tile is hidden — see lib/commerce). Kept as a second lock: if it ever
+  // did open, it must not show a price or a way to pay.
+  const store = storefrontEnabled()
+  const canBuy = !owned && !!buyUrl && store
 
   return (
     <div
@@ -143,9 +147,11 @@ export function BundleSheet({
           <p style={{ marginTop: 12, fontWeight: 800, color: 'var(--good)' }}>✓ You own this pack</p>
         ) : (
           <>
-            <p style={{ marginTop: 10, marginBottom: 12, fontFamily: 'var(--font-display)', fontSize: 26 }} className="gradient-text">
-              {bundle.price}
-            </p>
+            {store && (
+              <p style={{ marginTop: 10, marginBottom: 12, fontFamily: 'var(--font-display)', fontSize: 26 }} className="gradient-text">
+                {bundle.price}
+              </p>
+            )}
             {canBuy ? (
               <>
                 <Button variant="gold" full onClick={() => {
@@ -163,11 +169,11 @@ export function BundleSheet({
                   All {bundleItemCount(bundle)} items unlock together right after checkout. Thank you for supporting a solo builder! 🙏
                 </p>
               </>
-            ) : (
+            ) : store ? (
               <p className="faint" style={{ fontSize: 13, marginTop: 4, lineHeight: 1.5 }}>
                 Purchases are opening soon — check back shortly. 🙏
               </p>
-            )}
+            ) : null}
           </>
         )}
         <button className="pill" style={{ marginTop: 12 }} onClick={onClose}>

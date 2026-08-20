@@ -6,6 +6,7 @@ import { useJuice } from '@/juice/useJuice'
 import { READING_TRANSLATIONS } from '@/lib/config'
 import { pushSupported, pushPermission, isPushSubscribed, enablePush, disablePush } from '@/lib/push'
 import { InstallRow } from '@/features/home/InstallPrompt'
+import { AppStoreRow } from '@/features/home/AppStoreNudge'
 
 // Everything that used to sit inline on the profile (sound, haptics, motion,
 // volume, reading translation) lives here instead — one ⚙️ tap away, so the
@@ -114,6 +115,9 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
               onMouseUp={() => juice.coin()} style={{ width: '100%' }} />
           </div>
         </div>
+
+        {/* The App Store app — a review ask inside it, a download link outside. */}
+        <AppStoreRow />
 
         {/* Install — only renders where the browser can actually install us. */}
         <InstallRow />

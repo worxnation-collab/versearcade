@@ -16,6 +16,7 @@ import { useReviews } from '@/store/reviews'
 import { useSettings } from '@/store/settings'
 import { Tutorial } from './Tutorial'
 import { InstallPrompt } from './InstallPrompt'
+import { AppStoreNudge } from './AppStoreNudge'
 import { msUntilNextLocalMidnight, formatCountdown } from '@/lib/date'
 
 export default function HomeScreen() {
@@ -66,6 +67,11 @@ export default function HomeScreen() {
       {/* Add to Home Screen — only renders where installing is actually possible
           (and not already installed), and can be dismissed for good. */}
       <InstallPrompt />
+
+      {/* The App Store bubble — floats in a couple of seconds later, for players
+          a few drops deep. Asks iOS web players to download, and players who are
+          already inside the app to leave a review. */}
+      <AppStoreNudge />
 
       {/* How to play — a persistent, low-key button that opens the walkthrough.
           Replaces the old build-your-character nudge card. */}

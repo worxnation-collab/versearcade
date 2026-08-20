@@ -81,9 +81,13 @@ are wrong in every other currency.
 
 Apple also **requires** a visible "Restore purchases" control for non-consumable
 IAP; it lives in the Skins section and shows whenever StoreKit is reachable, even
-when the shop is hidden. Restoring is not selling. Purchases land through
-`fulfill_apple_purchase` (0047), never a direct `profiles` write —
-`enforce_skin_entitlement` blocks those on purpose.
+when the shop is hidden. Restoring is not selling. Purchases land through the
+`iap-fulfill` Edge Function (0047), never a direct `profiles` write —
+`enforce_skin_entitlement` blocks those on purpose. **The client never tells the
+server what it bought.** It asks the function to settle up; the function asks
+RevenueCat what that subscriber owns, using the secret key, and grants that.
+Verification needs a secret, and a secret can't live in an RPC the client can
+call — which is why there is deliberately no client-callable grant path.
 
 What native still has, identical to web: earned skins (shared days, referrals),
 free promo-code skins (`redeem_code` — codes are never sold), churches, battles,
@@ -125,10 +129,19 @@ migrations idempotently (`create table if not exists`, `drop policy if exists`,
 House pattern for writes: a `security definer` function with
 `set search_path = public`, `auth.uid()` for identity, validated inputs, and
 `grant execute ... to authenticated`. Note that Postgres also grants EXECUTE to
-PUBLIC by default and this project never revokes it — all 40 SECURITY DEFINER
-functions are `anon`-executable, which the Supabase linter flags. Each one
-guards itself with `if uid is null then raise`. Don't tighten one function in
-isolation; either leave the pattern alone or fix all of them deliberately.
+PUBLIC by default, and most of these functions are therefore `anon`-executable,
+which the Supabase linter flags. Each one guards itself with `if uid is null
+then raise`. Don't tighten one function in isolation; either leave the pattern
+alone or fix all of them deliberately.
+
+It is **not** universal, though — `grant_skins` and `fulfill_skin` are
+`postgres`/`service_role` only, which is what lets the IAP Edge Function grant
+entitlements no client can forge. Check the real ACL before assuming either way:
+
+```sql
+select proname, proacl from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public' and proname = '<fn>';
+```
 
 **Dates are the user's local date.** The client sends `todayLocalDate()` and the
 server clamps it to ±1 day rather than trusting it (see `submit_focus_practice`,

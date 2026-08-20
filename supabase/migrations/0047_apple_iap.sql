@@ -2,25 +2,42 @@
 -- ---------------------------------------------------------------------------
 -- The web sells cosmetic packs through Stripe (fulfill_skin, 0034/0043/0044).
 -- The App Store build sells the same catalog through in-app purchase instead
--- (Review Guideline 3.1.1). Same catalog, same entitlements, second checkout —
--- so this is the StoreKit twin of fulfill_skin.
+-- (Review Guideline 3.1.1). Same catalog, same entitlements, second checkout.
 --
--- Why an RPC at all: enforce_skin_entitlement (0043, narrowed in 0044) blocks a
--- client from writing a paid skin onto its own profiles row. That's the whole
--- defense against "just PATCH owned_skins", and it must stay — so a purchase
--- lands through grant_skins(), which sets app.grant_ok, and never through the
--- plain profiles UPDATE that grantSkin() uses for free preview unlocks.
+-- WHAT CHANGED, AND WHY IT MATTERS
 --
--- Client mirror: src/lib/iap.ts (product ids, pack expansion) and
--- src/store/iap.ts (the call). Keep the sku vocabulary identical to 0044 —
--- a bundle is 'pack_<id>', a single skin is its skin id.
+-- The first version of this file exposed
+--     fulfill_apple_purchase(p_sku, p_skins, p_transaction_id)
+-- to `authenticated` and granted what the caller asked for, intersected with
+-- what that sku is worth. It never established that a purchase had happened.
+-- No receipt, no signature, no callback from Apple or RevenueCat. Since
+-- PostgREST exposes every function and the anon key ships in the web bundle,
+-- ANY signed-in user could have handed themselves every paid cosmetic — the
+-- exact attack enforce_skin_entitlement (0043, narrowed in 0044) exists to
+-- stop, and which the old header in this very file called "the whole defense
+-- against 'just PATCH owned_skins'".
 --
--- Idempotent: create-or-replace throughout, `if not exists` on the table, so
--- re-running is a no-op (see CLAUDE.md — migrations here are applied by hand).
+-- That version was never applied to visuppaucpzzigwtqmdd, so there is nothing
+-- to undo; this file is that migration, rewritten before its first run rather
+-- than a repair on top of it. See issue #88.
+--
+-- Fulfillment now lives in the `iap-fulfill` Edge Function, which asks
+-- RevenueCat what the subscriber actually owns using the SECRET key, and only
+-- then calls grant_skins() with the service role. Verification needs a secret,
+-- and a secret cannot live in a function the client can call — which is why
+-- this migration deliberately creates NO client-callable grant path at all.
+--
+-- Client: src/store/iap.ts invokes the function; src/lib/iap.ts holds the
+-- product ids. Keep the sku vocabulary identical to 0044 — a bundle is
+-- 'pack_<id>', a single skin is its skin id.
+--
+-- Idempotent: `if not exists` / `create or replace` / `drop ... if exists`
+-- throughout, so a re-run is a no-op (see CLAUDE.md — applied by hand).
 -- ---------------------------------------------------------------------------
 
--- Every Apple purchase we've fulfilled, so a replayed call can't double-grant
--- and so there's a paper trail to reconcile against App Store Connect.
+-- Every Apple purchase we've fulfilled, so a replayed restore can't
+-- double-grant and there's a paper trail to reconcile against App Store
+-- Connect. Written ONLY by the Edge Function, using the service role.
 create table if not exists public.apple_purchases (
   transaction_id text primary key,
   user_id        uuid references auth.users(id) on delete set null,
@@ -31,78 +48,25 @@ create table if not exists public.apple_purchases (
 
 alter table public.apple_purchases enable row level security;
 
--- Readable by the buyer, writable by nobody directly — only the SECURITY
--- DEFINER function below writes here.
+-- A buyer can read their own receipts. Nobody can write here through the API:
+-- there is no insert/update/delete policy, and the service role bypasses RLS.
 drop policy if exists apple_purchases_select_own on public.apple_purchases;
 create policy apple_purchases_select_own on public.apple_purchases
   for select using (auth.uid() = user_id);
 
 -- ---------------------------------------------------------------------------
--- Fulfill one Apple purchase.
+-- Remove the client-trusting RPC if it exists anywhere.
 --
--- p_skins is what the CLIENT believes it bought; it is never trusted as-is.
--- The sku is expanded server-side the same way the Stripe path expands it, and
--- the intersection is what actually gets granted — so a tampered client can't
--- ask for 'whale' by buying the cheapest pack. When p_sku is null (a restore,
--- where Apple hands back a set of product ids rather than one purchase), each
--- requested skin is checked against the known paid catalog instead.
---
--- House pattern: security definer, search_path pinned, auth.uid() for identity,
--- and a null-uid guard because Postgres grants EXECUTE to PUBLIC by default and
--- this project doesn't revoke it (see CLAUDE.md).
+-- It was never applied to production, but a branch, a local stack, or a
+-- preview database may have run the earlier file. Dropping it here means
+-- applying this migration REPAIRS such an environment rather than leaving a
+-- free-skins function sitting next to the fixed one. Idempotent by design.
 -- ---------------------------------------------------------------------------
-create or replace function public.fulfill_apple_purchase(
-  p_sku            text,
-  p_skins          text[],
-  p_transaction_id text
-)
-returns text[]
-language plpgsql
-security definer set search_path = public
-as $$
-declare
-  v_uid     uuid := auth.uid();
-  v_allowed text[];
-  v_grant   text[];
-begin
-  if v_uid is null then
-    raise exception 'not signed in';
-  end if;
+drop function if exists public.fulfill_apple_purchase(text, text[], text);
 
-  -- What this purchase is genuinely worth.
-  if p_sku is not null and coalesce(array_length(pack_skins(p_sku), 1), 0) > 0 then
-    v_allowed := pack_skins(p_sku);            -- a bundle: all of it, or none
-  elsif p_sku is not null then
-    v_allowed := array[lower(trim(p_sku))];    -- a single skin sku
-  else
-    -- Restore: allow anything that is a real paid skin. Apple already told the
-    -- client what this Apple ID owns; we're only refusing made-up ids.
-    v_allowed := array[
-      'moses','esther','elijah','whale','gabriel','michael','seraph','shades'
-    ];
-  end if;
+-- Note on grant_skins (0044): it is SECURITY DEFINER but its EXECUTE grant is
+-- restricted to postgres and service_role — verified against production, not
+-- assumed — so the Edge Function can call it and no client can. That, plus the
+-- absence of any RPC here, is what makes purchases unforgeable.
 
-  select array(
-    select distinct x
-      from unnest(coalesce(p_skins, '{}'::text[])) as x
-     where x = any(v_allowed)
-  ) into v_grant;
-
-  if coalesce(array_length(v_grant, 1), 0) = 0 then
-    return '{}'::text[];
-  end if;
-
-  -- Idempotency: Apple/RevenueCat can deliver the same transaction more than
-  -- once, and a restore replays every past purchase every time it runs.
-  if p_transaction_id is not null then
-    insert into public.apple_purchases(transaction_id, user_id, sku, skins)
-    values (p_transaction_id, v_uid, p_sku, v_grant)
-    on conflict (transaction_id) do nothing;
-  end if;
-
-  -- The privileged write (0044). Distinct-union, so re-granting is harmless.
-  perform grant_skins(v_uid, v_grant);
-  return v_grant;
-end $$;
-
-grant execute on function public.fulfill_apple_purchase(text, text[], text) to authenticated;
+notify pgrst, 'reload schema';

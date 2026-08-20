@@ -7,15 +7,19 @@
 // in lib/iap; this is the React-facing half.
 //
 // Both modes, as always:
-//   • ONLINE → fulfill_apple_purchase (migration 0045) writes owned_skins. It
-//     has to be an RPC: enforce_skin_entitlement (0043/0044) deliberately blocks
-//     a client from writing a paid skin onto its own profile, so the plain
-//     `profiles` update that grantSkin() uses for free preview unlocks would be
-//     rejected here — correctly.
+//   • ONLINE → the `iap-fulfill` Edge Function (migration 0047). Note what is
+//     NOT sent: this client never tells the server what it bought. The function
+//     asks RevenueCat what the subscriber actually owns, with the secret key,
+//     and returns what it granted — so a tampered client gets nothing extra.
+//     An RPC can't do this job: verification needs a secret, and a secret can't
+//     live somewhere the client can call. See issue #88.
 //   • LOCAL/guest → merged onto what's on DISK, never onto in-memory state. A
 //     guest can buy on a fresh load before anything called load(); merging onto
 //     an empty object would erase every other skin they own. Same bug as
-//     store/bookAccuracy:record — see the note there.
+//     store/bookAccuracy:record — see the note there. Unverified by necessity
+//     (there's no account to ask about), but also unexploitable: the grant is
+//     device-local and claim_guest_progress (0009) does not carry owned_skins
+//     into a new account, so it can't be laundered into a real entitlement.
 
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
@@ -73,12 +77,17 @@ export const useIap = create<IapState>((set, get) => ({
     try {
       const outcome = await purchaseSku(sku)
       if (outcome.cancelled) return 'cancelled'
-      // Trust Apple's post-purchase entitlement list over the single sku, so a
-      // pack lands whole and an interrupted earlier purchase settles up too.
-      const skins = outcome.ownedProductIds.length
+      // Apple's post-purchase entitlement list beats the single sku, so a pack
+      // lands whole and an interrupted earlier purchase settles up too. Online
+      // this is only the GUEST fallback and the optimistic paint — the server
+      // re-derives the truth from RevenueCat regardless.
+      const claimed = outcome.ownedProductIds.length
         ? skinsForProductIds(outcome.ownedProductIds)
         : skinsForSku(sku)
-      await persist(skins, sku, outcome.transactionId)
+      // Two attempts online: the purchase reaches RevenueCat's servers before
+      // purchaseSku resolves, but a moment of propagation lag would otherwise
+      // read as "you bought nothing" to someone who just paid.
+      await persist(claimed, 2)
       return 'bought'
     } catch (e) {
       set({ error: msg(e) })
@@ -88,9 +97,11 @@ export const useIap = create<IapState>((set, get) => ({
 
   async restore() {
     try {
-      const skins = skinsForProductIds(await restorePurchases())
-      if (skins.length) await persist(skins, null, null)
-      return skins.length
+      const claimed = skinsForProductIds(await restorePurchases())
+      // Online, restore asks the server outright — `claimed` is only the guest
+      // path's input, and an empty list there means there is nothing to do.
+      if (!isOnline() && !claimed.length) return 0
+      return (await persist(claimed, 1)).length
     } catch (e) {
       set({ error: msg(e) })
       return 0
@@ -99,20 +110,30 @@ export const useIap = create<IapState>((set, get) => ({
 }))
 
 /**
- * Write an entitlement everywhere it has to live, then reflect it in the
- * profile the UI is already rendering so the skin is wearable immediately.
+ * Settle up, then reflect the result in the profile the UI is already
+ * rendering so the skin is wearable immediately.
+ *
+ * `claimed` is what the CLIENT believes it owns. Online that is used for
+ * nothing at all — the server's answer replaces it — and it matters only on the
+ * guest path, where there is no server to ask. Returns what was actually
+ * granted, which is the server's list when online.
  */
-async function persist(skins: string[], sku: string | null, transactionId: string | null) {
-  if (!skins.length) return
+async function persist(claimed: string[], attempts: number): Promise<string[]> {
+  let skins: string[]
 
   if (isOnline() && supabase) {
-    const { error } = await supabase.rpc('fulfill_apple_purchase', {
-      p_sku: sku,
-      p_skins: skins,
-      p_transaction_id: transactionId,
-    })
-    if (error) throw new Error(error.message)
+    skins = []
+    for (let i = 0; i < Math.max(1, attempts); i++) {
+      if (i > 0) await new Promise((r) => setTimeout(r, 1500))
+      const { data, error } = await supabase.functions.invoke('iap-fulfill', { body: {} })
+      if (error) throw new Error(error.message)
+      skins = Array.isArray(data?.granted) ? (data.granted as string[]) : []
+      if (skins.length) break
+    }
+    if (!skins.length) return []
   } else {
+    if (!claimed.length) return []
+    skins = claimed
     // Guest: merge onto DISK. See the header note.
     const onDisk = localdb.getProfile()
     if (onDisk) {
@@ -127,6 +148,7 @@ async function persist(skins: string[], sku: string | null, transactionId: strin
       profile: { ...cur, ownedSkins: [...new Set([...(cur.ownedSkins ?? []), ...skins])] },
     })
   }
+  return skins
 }
 
 const msg = (e: unknown): string => (e instanceof Error ? e.message : String(e))

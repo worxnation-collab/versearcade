@@ -117,6 +117,12 @@ const ED_FRUIT = '#C62F35'
 const ED_FRUIT_HI = '#E85A4A'
 const ED_SERPENT = '#9AA84E'
 const ED_SERPENT_DARK = '#63702C'
+const ED_SERPENT_HI = '#C6D278'
+const ED_SKIN_SH = '#BE8B58'
+const ED_BARK_HI = '#7A5433'
+const ED_CANOPY_DK = '#24552A'
+const ED_FRUIT_DK = '#8E1F26'
+const ED_LIGHT = '#FFE9A8'
 
 // A feathered wing, drawn from the shoulder out to the viewer-right. `flip`
 // mirrors it about the figure's centre line so the pair always matches, and
@@ -581,29 +587,68 @@ export function Character({
           {/* Composed right-heavy on purpose: figure left, tree right, one red
               fruit in the gap between her hand and the serpent's head. At chip
               size that's all that survives — person, tree, red dot — which is
-              the test every skin here has to pass. Everything else (bark lines,
-              leaf veins, grass) is detail for the 92px builder preview.
-              Drawn back-to-front: canopy, trunk, branch, serpent, then Eve, so
-              her reaching arm lands in front of the branch. */}
+              the test every skin here has to pass. Everything below that (bark
+              grain, leaf plates, scales, grass) is detail for the 92px builder
+              preview and the redeem sheet, and is layered so it drops out
+              gracefully rather than turning to mush when it shrinks.
+              Drawn back-to-front: light, canopy, trunk, branch, serpent, fruit,
+              then Eve, so her reaching arm lands in front of the branch. */}
 
-          {/* canopy — overlapping blobs, kept clear of her head and the fruit */}
-          <ellipse cx="94" cy="30" rx="26" ry="20" fill={ED_CANOPY} />
-          <circle cx="76" cy="32" r="12" fill={ED_CANOPY} />
-          <circle cx="112" cy="45" r="10" fill={ED_CANOPY} />
+          {/* morning light behind the tree */}
+          <circle cx="99" cy="26" r="40" fill={ED_LIGHT} opacity="0.035" />
+          <circle cx="99" cy="26" r="32" fill={ED_LIGHT} opacity="0.035" />
+          <circle cx="99" cy="26" r="24" fill={ED_LIGHT} opacity="0.04" />
+          <circle cx="99" cy="26" r="15" fill={ED_LIGHT} opacity="0.045" />
+
+          {/* canopy — shadow mass first, then the lit body, then a scalloped
+              leaf edge so the silhouette reads as foliage and not as circles */}
+          <ellipse cx="96" cy="34" rx="26" ry="20" fill={ED_CANOPY_DK} />
+          <circle cx="78" cy="36" r="12" fill={ED_CANOPY_DK} />
+          <circle cx="113" cy="47" r="10" fill={ED_CANOPY_DK} />
+          <ellipse cx="94" cy="30" rx="25" ry="19" fill={ED_CANOPY} />
+          <circle cx="76" cy="32" r="11.5" fill={ED_CANOPY} />
+          <circle cx="112" cy="44" r="9.5" fill={ED_CANOPY} />
           <circle cx="88" cy="12" r="12" fill={ED_CANOPY} />
-          <circle cx="86" cy="20" r="8.5" fill={ED_CANOPY_HI} opacity="0.5" />
-          <circle cx="103" cy="30" r="6.5" fill={ED_CANOPY_HI} opacity="0.4" />
-          <circle cx="75" cy="27" r="5" fill={ED_CANOPY_HI} opacity="0.38" />
+          {[
+            [70, 33, 6], [73, 23, 7], [81, 15, 8], [91, 8, 8], [101, 10, 8],
+            [110, 17, 8], [116, 26, 7], [118, 36, 6], [84, 38, 7], [97, 41, 7],
+          ].map(([cx, cy, r]) => <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r={r} fill={ED_CANOPY} />)}
+          {/* dappled light on the crown */}
+          <circle cx="86" cy="19" r="8.5" fill={ED_CANOPY_HI} opacity="0.5" />
+          <circle cx="103" cy="28" r="6.5" fill={ED_CANOPY_HI} opacity="0.4" />
+          <circle cx="74" cy="26" r="5" fill={ED_CANOPY_HI} opacity="0.38" />
+          <circle cx="95" cy="14" r="4" fill={ED_CANOPY_HI} opacity="0.35" />
+          {/* more fruit up in the branches — it has to read as a fruit tree,
+              not a shade tree, but these stay small so they never compete with
+              the one she's reaching for */}
+          {[[86, 36, 3], [105, 38, 3], [97, 20, 2.6]].map(([cx, cy, r]) => (
+            <g key={`f${cx}`}>
+              <circle cx={cx} cy={cy} r={r} fill={ED_FRUIT} />
+              <circle cx={cx - r * 0.32} cy={cy - r * 0.32} r={r * 0.34} fill={ED_FRUIT_HI} opacity="0.8" />
+            </g>
+          ))}
 
-          {/* trunk + root flare */}
+          {/* trunk — lit edge on the left, grain and a knot on the shadow side */}
           <path d="M86 158 Q90 108 90 48 L100 48 Q100 108 104 158 Z" fill={ED_BARK} />
-          <path d="M92 60 Q93 108 89 152 M98 60 Q97 106 101 152" stroke={ED_BARK_LINE} strokeWidth="1.1" fill="none" opacity="0.5" />
+          <path d="M86 158 Q90 108 90 48 L93 48 Q93 108 89 158 Z" fill={ED_BARK_HI} opacity="0.45" />
+          <path d="M95 60 Q96 108 92 152 M99 58 Q98 106 102 152 M97 74 Q97.5 100 96 130"
+            stroke={ED_BARK_LINE} strokeWidth="1" fill="none" opacity="0.45" />
+          <ellipse cx="96.5" cy="116" rx="2.8" ry="3.8" fill={ED_BARK_LINE} opacity="0.55" />
+          <ellipse cx="96.5" cy="116" rx="1.2" ry="1.8" fill={ED_BARK} opacity="0.7" />
+          {/* root flare */}
           <path d="M86 158 Q80 152 76 154 Q82 154 85 158 Z" fill={ED_BARK} />
           <path d="M104 158 Q110 151 114 153 Q107 154 105 158 Z" fill={ED_BARK} />
+          <path d="M89 158 Q86 154 83 155" stroke={ED_BARK_LINE} strokeWidth="0.8" fill="none" opacity="0.5" />
+
+          {/* sprig off the trunk, breaking up the bare column */}
+          <path d="M99 96 q7 -3 11 -9" fill="none" stroke={ED_BARK} strokeWidth="2" strokeLinecap="round" />
+          <path d="M104 92 q4 -4.5 7.5 0.5 q-4 4 -7.5 -0.5 z" fill={ED_LEAF} />
+          <path d="M108 85 q4 -4.5 7.5 0.5 q-4 4 -7.5 -0.5 z" fill={ED_LEAF_HI} opacity="0.85" />
 
           {/* the low branch the fruit hangs from */}
           <path d="M95 52 Q82 42 68 43" stroke={ED_BARK} strokeWidth="4" fill="none" strokeLinecap="round" />
-          <path d="M95 52 Q82 42 68 43" stroke={ED_BARK_LINE} strokeWidth="0.9" fill="none" strokeLinecap="round" opacity="0.45" />
+          <path d="M95 51 Q82 41 68 42" stroke={ED_BARK_HI} strokeWidth="1.2" fill="none" strokeLinecap="round" opacity="0.5" />
+          <path d="M88 47 q4 -3.5 7 0.5 q-3.5 3.5 -7 -0.5 z" fill={ED_LEAF} opacity="0.9" />
 
           {/* serpent — down out of the canopy, one coil round the branch, head
               over the fruit. Thin on purpose: it's the villain, not the subject,
@@ -612,66 +657,102 @@ export function Character({
             fill="none" stroke={ED_SERPENT_DARK} strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round" />
           <path d="M92 32 Q88 42 81 37 Q75 33 76 40 Q77 45 81 45"
             fill="none" stroke={ED_SERPENT} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          {/* scale banding, as a dashed highlight down the length of the body */}
+          <path d="M92 32 Q88 42 81 37 Q75 33 76 40 Q77 45 81 45"
+            fill="none" stroke={ED_SERPENT_HI} strokeWidth="0.9" strokeDasharray="1.5 2.3"
+            strokeLinecap="round" opacity="0.75" />
           {/* head, tipped down toward the fruit but never touching it — the two
               reds have to stay separable or they merge into one shape */}
-          <ellipse cx="81" cy="45.5" rx="4" ry="2.9" fill={ED_SERPENT} transform="rotate(20 81 45.5)" />
-          <ellipse cx="81" cy="45.5" rx="4" ry="2.9" fill="none" stroke={ED_SERPENT_DARK} strokeWidth="0.6" transform="rotate(20 81 45.5)" />
-          <circle cx="82.6" cy="44.4" r="0.85" fill={ED_BARK_LINE} />
+          <ellipse cx="81" cy="45.5" rx="4.2" ry="3" fill={ED_SERPENT} transform="rotate(20 81 45.5)" />
+          <ellipse cx="81" cy="45.5" rx="4.2" ry="3" fill="none" stroke={ED_SERPENT_DARK}
+            strokeWidth="0.6" transform="rotate(20 81 45.5)" />
+          <path d="M77.4 47 q3.4 1.4 6.8 -0.6" fill="none" stroke={ED_SERPENT_DARK}
+            strokeWidth="0.6" opacity="0.8" />
+          <circle cx="82.6" cy="44.4" r="1" fill={ED_BARK_LINE} />
+          <circle cx="82.9" cy="44.1" r="0.35" fill={ED_LIGHT} />
           <path d="M78.4 47.6 l-3 2 m3 -2 l-3.2 0.4" stroke={ED_FRUIT_HI} strokeWidth="0.85" strokeLinecap="round" />
 
           {/* the fruit, hanging just past her fingers */}
           <path d="M68 44 L68 49" stroke={ED_BARK_LINE} strokeWidth="1.4" strokeLinecap="round" />
           <path d="M68 48 q4.5 -2.5 6 0.5 q-3.5 1.6 -6 -0.5 z" fill={ED_LEAF_DARK} />
-          <circle cx="68" cy="55" r="6" fill={ED_FRUIT} />
-          <circle cx="66.2" cy="53" r="2" fill={ED_FRUIT_HI} opacity="0.85" />
+          <circle cx="68" cy="55" r="6" fill={ED_FRUIT_DK} />
+          <circle cx="67.2" cy="54.4" r="5.4" fill={ED_FRUIT} />
+          <ellipse cx="65.9" cy="52.6" rx="2" ry="1.5" fill={ED_FRUIT_HI} opacity="0.9" transform="rotate(-30 65.9 52.6)" />
 
           {/* legs + bare feet */}
           <rect x="36" y="116" width="8" height="38" rx="4" fill={ED_SKIN} />
           <rect x="45" y="116" width="8" height="38" rx="4" fill={ED_SKIN} />
+          <rect x="45" y="116" width="2.6" height="38" rx="1.3" fill={ED_SKIN_SH} opacity="0.5" />
           <ellipse cx="39" cy="155" rx="5.6" ry="3.2" fill={ED_SKIN} />
           <ellipse cx="50" cy="155" rx="5.6" ry="3.2" fill={ED_SKIN} />
+          <path d="M36 154.6 h6 M47 154.6 h6" stroke={ED_SKIN_SH} strokeWidth="0.7" opacity="0.5" strokeLinecap="round" />
 
-          {/* long hair down her back, kept inside the body line so it doesn't
-              read as a cape at small sizes */}
-          <path d="M35 56 Q31 90 36 114 L42 114 Q38 88 41 62 Z" fill={ED_HAIR} />
-          <path d="M36 64 Q33 90 37 110" stroke={ED_HAIR_HI} strokeWidth="1.3" fill="none" opacity="0.5" />
+          {/* long hair down her back — wavy outer edge, kept inside the body
+              line so it doesn't read as a cape at small sizes */}
+          <path d="M35 56 Q30 70 32 82 Q29 94 34 104 Q31 110 36 114 L42 114 Q38 100 39 86 Q40 70 41 62 Z" fill={ED_HAIR} />
+          <path d="M36 64 Q33 78 35 90 Q33 100 37 108" stroke={ED_HAIR_HI} strokeWidth="1.2" fill="none" opacity="0.55" />
+          <path d="M39 68 Q37 82 38.5 96" stroke={ED_HAIR_HI} strokeWidth="0.8" fill="none" opacity="0.35" />
           <path d="M55 56 Q58 74 54 84 L49 82 Q52 70 51 60 Z" fill={ED_HAIR} />
+          <path d="M55 60 Q57 72 54.5 80" stroke={ED_HAIR_HI} strokeWidth="0.8" fill="none" opacity="0.4" />
 
           {/* leaf wrap — calf-length, scalloped leaf hem, vine at the waist */}
           <path d="M31 70 Q44 63 57 70 L55 134 q-2.75 7 -5.5 0 q-2.75 7 -5.5 0 q-2.75 7 -5.5 0 q-2.75 7 -5.5 0 Z" fill={ED_LEAF} />
-          <path d="M44 72 L44 136" stroke={ED_LEAF_DARK} strokeWidth="1" opacity="0.45" />
-          <path d="M36 80 L34 130 M52 80 L54 130" stroke={ED_LEAF_DARK} strokeWidth="0.8" opacity="0.35" />
-          {/* single-shoulder drape + a couple of leaves, so the wrap reads as
-              foliage rather than cloth */}
+          {/* shadow down the side away from the light */}
+          <path d="M31 70 Q35 67.5 38 66.8 L37 136 q-2.6 5.4 -5.2 0.6 Z" fill={ED_LEAF_DARK} opacity="0.32" />
+          {/* overlapping leaf plates, so the wrap reads as foliage not cloth */}
           <path d="M44 66 Q52 64 56 71 Q49 74 44 71 Z" fill={ED_LEAF_HI} opacity="0.9" />
-          <path d="M36 78 q4.5 -4 8 1 q-4.5 4 -8 -1 z" fill={ED_LEAF_HI} opacity="0.7" />
-          <path d="M47 92 q4.5 -4 8 1 q-4.5 4 -8 -1 z" fill={ED_LEAF_HI} opacity="0.55" />
+          {[
+            [33.5, 80], [43, 79],
+            [34.5, 92], [43.5, 91],
+            [34.5, 114], [43.5, 113],
+            [36, 126], [44.5, 125.5],
+          ].map(([x, y]) => (
+            <g key={`lf${x}-${y}`}>
+              <path d={`M${x} ${y} q5.4 -5 9.8 1.2 q-5.4 5 -9.8 -1.2 z`} fill={ED_LEAF_HI} opacity="0.5" />
+              <path d={`M${x + 0.8} ${y + 0.3} q4.8 -2.4 8.6 0.7`} fill="none" stroke={ED_LEAF_DARK} strokeWidth="0.5" opacity="0.45" />
+            </g>
+          ))}
+          <path d="M44 72 L44 136" stroke={ED_LEAF_DARK} strokeWidth="0.9" opacity="0.35" />
+          {/* vine belt, tied off */}
           <path d="M33 104 q11 5 22 0" fill="none" stroke={ED_LEAF_DARK} strokeWidth="2.2" strokeLinecap="round" />
+          <path d="M53 105 q3 3 1 6 M55 105 q3 2 2 5" fill="none" stroke={ED_LEAF_DARK} strokeWidth="1.2" strokeLinecap="round" />
 
           {/* arm at her side — drawn after the wrap, with a shoulder cap that
               overlaps it, so the limb reads as attached rather than floating */}
           <ellipse cx="32" cy="74" rx="5.2" ry="4.6" fill={ED_SKIN} />
           <rect x="27" y="72" width="8" height="30" rx="4" fill={ED_SKIN} />
+          <rect x="27.2" y="76" width="2.2" height="24" rx="1.1" fill={ED_SKIN_SH} opacity="0.28" />
           <ellipse cx="31" cy="104" rx="4.1" ry="4.5" fill={ED_SKIN} />
 
           {/* neck + head */}
           <rect x="39" y="58" width="10" height="10" rx="3" fill={ED_SKIN} />
+          <path d="M39 58 q5 4 10 0 v3 q-5 3.5 -10 0 z" fill={ED_SKIN_SH} opacity="0.4" />
           <circle cx="44" cy="52" r="12" fill={ED_SKIN} />
           <path d="M32 52 a12 12 0 0 1 24 0 l-3 0 a9 9 0 0 0-18 0 z" fill={ED_HAIR} />
+          <path d="M33.4 47 a12 12 0 0 1 5.6 -6.6" fill="none" stroke={ED_HAIR_HI} strokeWidth="1" opacity="0.4" strokeLinecap="round" />
 
           {/* the reach — up past her head, fingers stopping short of the fruit */}
           <path d="M53 78 Q59 68 58 56" fill="none" stroke={ED_SKIN} strokeWidth="8" strokeLinecap="round" />
+          <path d="M55.4 74 Q60.4 66.5 60 58.5" fill="none" stroke={ED_SKIN_SH} strokeWidth="1.8" strokeLinecap="round" opacity="0.4" />
           <ellipse cx="57.8" cy="53.5" rx="4" ry="4.4" fill={ED_SKIN} />
           <path d="M58.5 49.6 l1.4 -3.2 M60.6 51 l3 -2.4 M61 54 l3.2 -0.8" stroke={ED_SKIN} strokeWidth="2.1" strokeLinecap="round" />
+          <path d="M61 54 l3.2 -0.8" stroke={ED_SKIN_SH} strokeWidth="0.7" strokeLinecap="round" opacity="0.5" />
 
-          {/* sprig off the trunk, breaking up the bare column */}
-          <path d="M99 96 q7 -3 11 -9" fill="none" stroke={ED_BARK} strokeWidth="2" strokeLinecap="round" />
-          <path d="M104 92 q4 -4.5 7.5 0.5 q-4 4 -7.5 -0.5 z" fill={ED_LEAF} />
-          <path d="M108 85 q4 -4.5 7.5 0.5 q-4 4 -7.5 -0.5 z" fill={ED_LEAF_HI} opacity="0.85" />
-
-          {/* grass at the foot of the tree */}
-          <path d="M80 158 q2 -6 4 -1 M106 158 q2 -6 4 -1 M72 159 q2 -5 3 -1 M112 159 q1.5 -5 3 -1"
+          {/* garden floor — grass, a couple of flowers, a pebble */}
+          <path d="M80 158 q2 -6 4 -1 M106 158 q2 -6 4 -1 M72 159 q2 -5 3 -1 M112 159 q1.5 -5 3 -1
+                   M29 158 q2 -6 3.5 -1 M60 158 q2 -6 4 -1 M66 159 q1.6 -5 3 -1"
             fill="none" stroke={ED_LEAF} strokeWidth="1.6" strokeLinecap="round" />
+          {[[25, 154.5], [84, 155.5]].map(([fx, fy]) => (
+            <g key={`fl${fx}`}>
+              <path d={`M${fx} 158.5 v-3.2`} stroke={ED_LEAF_DARK} strokeWidth="0.8" strokeLinecap="round" />
+              {[0, 72, 144, 216, 288].map((a) => (
+                <ellipse key={a} cx={fx} cy={fy - 1.5} rx="0.75" ry="1.3" fill={ED_LIGHT}
+                  opacity="0.85" transform={`rotate(${a} ${fx} ${fy})`} />
+              ))}
+              <circle cx={fx} cy={fy} r="0.7" fill={ED_FRUIT_HI} opacity="0.9" />
+            </g>
+          ))}
+          <ellipse cx="70" cy="159" rx="3" ry="1.4" fill={ED_BARK_HI} opacity="0.45" />
         </>
       ) : (
         <>

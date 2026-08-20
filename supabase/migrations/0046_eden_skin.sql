@@ -1,8 +1,8 @@
 -- Verse Arcade — the "Eden" thank-you skin.
 -- ---------------------------------------------------------------------------
 -- One exclusive skin ('eden' — Eve reaching for the fruit), handed out by promo
--- code to people who install from the App Store. Client catalog: FULL_SKINS in
--- src/data/avatar.ts.
+-- code to people who share the App Store link on social. Client catalog:
+-- FULL_SKINS in src/data/avatar.ts.
 --
 -- Two server-side rules:
 --   1. 'eden' joins the protected list in enforce_skin_entitlement, so no client

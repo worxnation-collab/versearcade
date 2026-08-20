@@ -299,13 +299,13 @@ export const FULL_SKINS: SkinDef[] = [
     name: 'Eden',
     source: 'paid',
     exclusive: true,
-    packName: 'Thank-You Code',
+    packName: 'Share Reward',
     // No `limitedUntil` on purpose. The limited-edition skins vanish from the
     // grid — for owners too — once their window closes (see skinExpired and the
-    // filter in CustomizeSection). This one is the App Store thank-you and has
-    // to keep working for as long as the code is being handed out, so it never
-    // expires; retire it by toggling its promo code off in the admin panel.
-    blurb: 'Eve reaching for the fruit — the thank-you skin. Redeem your code.',
+    // filter in CustomizeSection). This one is the share promo and has to keep
+    // working for as long as the code is being handed out, so it never expires;
+    // retire it by toggling its promo code off in the admin panel.
+    blurb: 'Eve reaching for the fruit — share Verse Arcade to unlock it. Redeem your code.',
   },
   {
     id: 'shades',

@@ -16,6 +16,10 @@ interface SettingsState {
   tutorialSeen: boolean
   /** Whether the "add to home screen" nudge has been dismissed (one-time). */
   installPromptDismissed: boolean
+  /** When the App Store bubble was last dismissed (epoch ms, 0 = never). */
+  appNudgeSnoozedAt: number
+  /** Set once they've tapped through to the store — then we stop asking. */
+  appNudgeDone: boolean
   /** Preferred translation for reading the full chapter (bible-api code). */
   readingTranslation: string
   set: (patch: Partial<Omit<SettingsState, 'set'>>) => void
@@ -31,6 +35,8 @@ export const useSettings = create<SettingsState>()(
       characterPromptDismissed: false,
       tutorialSeen: false,
       installPromptDismissed: false,
+      appNudgeSnoozedAt: 0,
+      appNudgeDone: false,
       readingTranslation: 'web',
       set: (patch) => set(patch),
     }),

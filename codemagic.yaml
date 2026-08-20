@@ -6,7 +6,7 @@
 #   2. Create an App Store Connect API key (App Store Connect > Users and Access >
 #      Integrations > keys), download the .p8, note the Key ID + Issuer ID.
 #   3. In Codemagic: Teams/User settings > Integrations > App Store Connect >
-#      add the key. Name it exactly:  VerseArcade ASC  (referenced below).
+#      add the key. Name it exactly:  VerseArcade  (referenced below).
 #   4. Push to GitHub. Start this workflow in Codemagic (or it triggers on tag).
 #
 # Automatic code signing: Codemagic creates the distribution certificate and
@@ -117,12 +117,37 @@ workflows:
         script: |
           cd ios/App && pod install
 
-      - name: Set build number (unique + monotonic)
+      - name: Set marketing version + build number
         script: |
-          # CFBundleVersion must be higher than ANY previously uploaded build.
-          # get-latest-app-store-build-number returns 0 until a build is on the
-          # actual App Store (TestFlight builds don't count), so it produced "1"
-          # twice -> 409 duplicate. Codemagic's $BUILD_NUMBER always increases.
+          set -e
+          # TWO different numbers. Apple rejects the UPLOAD if either is wrong, and
+          # it rejects it after signing and archiving, ~20 minutes in.
+          #
+          # 1. CFBundleShortVersionString / MARKETING_VERSION — the version users see.
+          #    Once a version is APPROVED its "train" closes, and every later upload
+          #    must carry a strictly higher one. 1.0 is live on the App Store, so
+          #    re-uploading 1.0 failed builds 22 and 23 with BOTH
+          #      90062  "must contain a higher version than that of the previously
+          #              approved version [1.0]"
+          #      90186  "the train version '1.0' is closed for new build submissions"
+          #    Source of truth is package.json "version" — bump it for every release.
+          #    ios/ is NOT committed; `cap add ios` regenerates it each build and the
+          #    Capacitor template default (MARKETING_VERSION = 1.0) comes back every
+          #    time, so it must be patched here — same as the deployment target above.
+          #
+          # 2. CFBundleVersion / CURRENT_PROJECT_VERSION — the build inside that
+          #    version. Must beat any previously UPLOADED build.
+          #    get-latest-app-store-build-number returns 0 until a build is on the
+          #    actual App Store (TestFlight builds don't count), so it produced "1"
+          #    twice -> 409 duplicate. Codemagic's $BUILD_NUMBER always increases.
+          APP_VERSION=$(node -p "require('$CM_BUILD_DIR/package.json').version")
+          PBXPROJ="$CM_BUILD_DIR/ios/App/App.xcodeproj/project.pbxproj"
+          sed -i '' "s/MARKETING_VERSION = [^;]*;/MARKETING_VERSION = $APP_VERSION;/g" "$PBXPROJ"
+          # Assert it landed in BOTH build configurations (Debug + Release). A silent
+          # miss here is another rejected upload 20 minutes from now, so fail loudly.
+          APPLIED=$(grep -c "MARKETING_VERSION = $APP_VERSION;" "$PBXPROJ" || true)
+          echo "MARKETING_VERSION set to $APP_VERSION in $APPLIED configuration(s)"
+          [ "$APPLIED" -ge 2 ] || { echo "FATAL: MARKETING_VERSION not applied"; grep -n MARKETING_VERSION "$PBXPROJ"; exit 1; }
           cd "$CM_BUILD_DIR/ios/App"   # agvtool must run in the Xcode project dir
           agvtool new-version -all "$BUILD_NUMBER"
           echo "Set CFBundleVersion to $BUILD_NUMBER"

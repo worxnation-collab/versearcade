@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { useAuth } from './store/auth'
+import { useReminders } from './store/reminders'
 import { useJuiceSync } from './juice/useJuice'
 import { initNative } from './lib/native'
 
@@ -75,6 +76,9 @@ export default function App() {
       /* ignore */
     }
     init()
+    // Local reminders (native only) — load the device's preferences and lay down
+    // the schedule. No-op on the web, where Web Push handles this instead.
+    void useReminders.getState().load()
     // Handle the OAuth redirect deep link (com.versearcade.app://auth/callback)
     // returning from Sign in with Google/Apple on device.
     initNative(async (url) => {
@@ -85,6 +89,10 @@ export default function App() {
         // its own. Once the session + profile are in, move into the app.
         if (useAuth.getState().profile) navigate('/play', { replace: true })
       }
+    }, () => {
+      // Back in the foreground: rebuild the reminder plan against the current
+      // review state and roll the horizon forward.
+      void useReminders.getState().reschedule()
     })
   }, [init, navigate])
 

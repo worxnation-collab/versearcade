@@ -40,6 +40,13 @@ workflows:
         VITE_SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpc3VwcGF1Y3B6emlnd3RxbWRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MTY1MjEsImV4cCI6MjEwMTQ5MjUyMX0.YP_lJkV8ZD7J-oAqwkhh-6gQ0z1Q7pFR4Nql1NdhSa0"
         VITE_AUTH_REDIRECT_URL: "https://versearcade.org/auth/callback"
         VITE_DEFAULT_TRANSLATION: "BSB"
+        # RevenueCat's PUBLIC iOS SDK key (appl_...), which drives Apple in-app
+        # purchase (src/lib/iap.ts). Add REVENUECAT_IOS_KEY to the "appstore"
+        # variable group in Codemagic. Public by design — it only identifies the
+        # app; the secret key stays server-side.
+        # UNSET IS SAFE: with no key the app shows no storefront at all, exactly
+        # as it does today, rather than a shop that can't take money.
+        VITE_REVENUECAT_IOS_KEY: $REVENUECAT_IOS_KEY
       node: 20
       xcode: latest
       cocoapods: default

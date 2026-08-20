@@ -3,7 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Avatar } from '@/components/Avatar'
 import { Button } from '@/components/Button'
 import { SUPPORT_URL, skinBuyUrl } from '@/lib/config'
-import { cardBgVisible, skinVisible, storefrontEnabled } from '@/lib/commerce'
+import { cardBgVisible, displayPrice, skinVisible, storefrontEnabled } from '@/lib/commerce'
+import { isNativeApp } from '@/lib/appStore'
+import { iapAvailable } from '@/lib/iap'
+import { useIap } from '@/store/iap'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/store/auth'
 import { useJuice } from '@/juice/useJuice'
@@ -58,6 +61,14 @@ export function CustomizeSection() {
   const [redeemInput, setRedeemInput] = useState('')
   const [redeemMsg, setRedeemMsg] = useState<string | null>(null)
   const [redeeming, setRedeeming] = useState(false)
+  const [buying, setBuying] = useState(false)
+  const [restoreMsg, setRestoreMsg] = useState<string | null>(null)
+  const loadIap = useIap((s) => s.load)
+  const buyIap = useIap((s) => s.buy)
+  const restoreIap = useIap((s) => s.restore)
+  // Ask StoreKit for the catalog when the customizer opens. Until it answers,
+  // storefrontEnabled() is false on native and no price is rendered anywhere.
+  useEffect(() => { void loadIap() }, [loadIap])
   const refreshProfile = useAuth((s) => s.refreshProfile)
 
   const doRedeem = async () => {
@@ -323,7 +334,7 @@ export function CustomizeSection() {
                 <span className="faint" style={{ fontSize: 11 }}>
                   {bundleItemCount(b)} items · {b.skins.length} skins + {b.cards.length} calling cards
                 </span>
-                <span style={{ ...pillStyle('studio') }}>{b.price} · tap to preview</span>
+                <span style={{ ...pillStyle('studio') }}>{displayPrice(b.sku, b.price)} · tap to preview</span>
                 {b.limitedUntil && <LimitedBadge until={b.limitedUntil} />}
               </button>
             ))}
@@ -393,9 +404,38 @@ export function CustomizeSection() {
             </>
           )}
         </p>
+        {/* Restore Purchases — REQUIRED by Apple for non-consumable in-app
+            purchases (Guideline 3.1.1): a buyer who reinstalls, or signs in on a
+            second device, has to be able to get their packs back without paying
+            again. Shown whenever the app can talk to StoreKit at all, including
+            when the shop itself is hidden — restoring is not selling. */}
+        {iapAvailable() && (
+          <div style={{ marginTop: 12 }}>
+            <button
+              className="pill"
+              style={{ width: '100%' }}
+              onClick={async () => {
+                juice.select()
+                setRestoreMsg(null)
+                const n = await restoreIap()
+                setRestoreMsg(
+                  n > 0
+                    ? `Restored ${n} item${n === 1 ? '' : 's'} ✓`
+                    : 'Nothing to restore on this Apple ID.',
+                )
+              }}
+            >
+              Restore purchases
+            </button>
+            {restoreMsg && (
+              <p className="faint" style={{ fontSize: 11, marginTop: 6, textAlign: 'center' }}>{restoreMsg}</p>
+            )}
+          </div>
+        )}
         {/* Optional support link (a Stripe Payment Link, set via VITE_SUPPORT_URL).
-            Web-only — native builds carry no storefront at all (see lib/commerce). */}
-        {SUPPORT_URL && storefrontEnabled() && (
+            Web-only: on native, "chip in what you like" is a pay-what-you-want
+            digital purchase outside IAP, which Apple does not allow. */}
+        {SUPPORT_URL && !isNativeApp() && (
           <div style={{ marginTop: 12 }}>
             <Button
               variant="gold"
@@ -435,20 +475,32 @@ export function CustomizeSection() {
             <h3 style={{ fontSize: 20, marginTop: 10 }}>{buyTarget.name}</h3>
             {buyTarget.packName && <p className="faint" style={{ fontSize: 12 }}>{buyTarget.packName}</p>}
             <p style={{ fontSize: 14, marginTop: 8, lineHeight: 1.5 }}>{buyTarget.blurb}</p>
-            <p style={{ marginTop: 10, marginBottom: 12, fontFamily: 'var(--font-display)', fontSize: 24 }} className="gradient-text">{buyTarget.price}</p>
-            {skinBuyUrl(buyTarget.id) && storefrontEnabled() ? (
+            <p style={{ marginTop: 10, marginBottom: 12, fontFamily: 'var(--font-display)', fontSize: 24 }} className="gradient-text">
+              {displayPrice(buyTarget.id, buyTarget.price)}
+            </p>
+            {(isNativeApp() ? storefrontEnabled() : !!skinBuyUrl(buyTarget.id)) && storefrontEnabled() ? (
               <>
-                <Button variant="gold" full onClick={() => {
+                <Button variant="gold" full disabled={buying} onClick={async () => {
                   juice.coin()
+                  const skin = buyTarget
+                  if (isNativeApp()) {
+                    // Apple's purchase sheet — the app may not check out anywhere else.
+                    setBuying(true)
+                    const result = await buyIap(skin.id)
+                    setBuying(false)
+                    if (result === 'cancelled') return
+                    setBuyTarget(null)
+                    return
+                  }
                   // Pass "<username>-<skinId>" as Stripe's client_reference_id so the
                   // webhook can auto-grant the right skin to the right account.
-                  const base = skinBuyUrl(buyTarget.id)
-                  const ref = encodeURIComponent(`${profile.username}-${buyTarget.id}`)
+                  const base = skinBuyUrl(skin.id)
+                  const ref = encodeURIComponent(`${profile.username}-${skin.id}`)
                   const url = base + (base.includes('?') ? '&' : '?') + 'client_reference_id=' + ref
                   window.open(url, '_blank', 'noopener,noreferrer')
                   setBuyTarget(null)
                 }}>
-                  Get this skin
+                  {buying ? 'Opening Apple…' : 'Get this skin'}
                 </Button>
                 <p className="faint" style={{ fontSize: 10, marginTop: 8, lineHeight: 1.4 }}>
                   Opens secure checkout — your skin unlocks automatically right after. Thank you for supporting a solo builder! 🙏

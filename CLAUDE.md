@@ -43,19 +43,38 @@ A store is empty after a reload, and a run can finish before anything called
 back silently erases everything else. This has already happened once; see the
 comment in `store/bookAccuracy.ts:record`.
 
-## Native builds carry no storefront
+## Two checkouts, never the wrong one
 
 The web app sells cosmetic packs through Stripe Payment Links. The App Store /
 Play build **may not** — Apple requires digital cosmetics to go through in-app
 purchase (Guideline 3.1.1), and its anti-steering rules mean a native build must
-not show a price, name a pack it can't sell, or point anywhere outside the app to
-buy one. Hiding just the checkout button is not enough: a `$5.99` label or a
-"purchases are opening soon" line is still a storefront.
+not show a price it can't charge, name a pack it can't sell, or point anywhere
+outside the app to buy one. Hiding just the checkout button is not enough: a
+`$5.99` label or a "purchases are opening soon" line is still a storefront.
 
-`lib/commerce.ts` is the only place that decision lives — `storefrontEnabled()`,
-`skinVisible()`, `cardBgVisible()`. Every commerce surface asks it, so the app and
-the site can't drift apart by accident. Don't reach for `Capacitor.isNativePlatform()`
-in a component to gate something you can buy; add it to `commerce.ts` instead.
+So the same catalog is sold twice: Stripe on web (`lib/config.ts`), Apple IAP in
+the app (`lib/iap.ts` + `store/iap.ts`, RevenueCat). Setup runbook and the
+account-gated Apple steps: `docs/APPLE-IAP.md`.
+
+`lib/commerce.ts` is the only place the *decision* lives — `storefrontEnabled()`,
+`skinVisible()`, `cardBgVisible()`, `displayPrice()`. Every commerce surface asks
+it, so the app and the site can't drift apart by accident. Don't reach for
+`Capacitor.isNativePlatform()` in a component to gate something you can buy; add
+it to `commerce.ts` instead.
+
+**It fails closed, and it must stay that way.** On native the storefront turns on
+only once StoreKit has actually returned products — no RevenueCat key, no
+network, products not approved yet ⇒ the whole marketplace stays hidden, exactly
+as it was before IAP existed. A hidden shop is compliant; a shop that can't take
+money is a rejection. And prices on native are always Apple's localized string,
+never the `price` fields in `data/avatar.ts` — those are the USD web prices and
+are wrong in every other currency.
+
+Apple also **requires** a visible "Restore purchases" control for non-consumable
+IAP; it lives in the Skins section and shows whenever StoreKit is reachable, even
+when the shop is hidden. Restoring is not selling. Purchases land through
+`fulfill_apple_purchase` (0046), never a direct `profiles` write —
+`enforce_skin_entitlement` blocks those on purpose.
 
 What native still has, identical to web: earned skins (shared days, referrals),
 free promo-code skins (`redeem_code` — codes are never sold), churches, battles,

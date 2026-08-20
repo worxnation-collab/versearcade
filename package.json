@@ -25,6 +25,7 @@
     "@capacitor/push-notifications": "^6.0.0",
     "@capacitor/splash-screen": "^6.0.0",
     "@capacitor/status-bar": "^6.0.0",
+    "@revenuecat/purchases-capacitor": "^9.2.2",
     "@supabase/supabase-js": "^2.45.0",
     "canvas-confetti": "^1.9.3",
     "framer-motion": "^11.3.0",

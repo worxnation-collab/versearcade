@@ -46,11 +46,20 @@ comment in `store/bookAccuracy.ts:record`.
 ## Two checkouts, never the wrong one
 
 The web app sells cosmetic packs through Stripe Payment Links. The App Store /
-Play build **may not** — Apple requires digital cosmetics to go through in-app
-purchase (Guideline 3.1.1), and its anti-steering rules mean a native build must
-not show a price it can't charge, name a pack it can't sell, or point anywhere
-outside the app to buy one. Hiding just the checkout button is not enough: a
+Play build sells the same packs through in-app purchase (Guideline 3.1.1)
+instead. Wherever a shop appears, it must not show a price it can't charge or
+name a pack it can't sell — hiding just the checkout button is not enough: a
 `$5.99` label or a "purchases are opening soon" line is still a storefront.
+
+**Anti-steering, stated precisely** (it's narrower than it used to be): since the
+Epic v. Apple injunction, apps on the **United States storefront** may include
+buttons, external links and calls to action pointing at an outside checkout, no
+entitlement required. Every other storefront still forbids it. Since the
+storefront is a per-device runtime fact, this app takes the one path that's
+correct everywhere and sells through IAP full stop — a deliberate simplification,
+not a legal requirement. A US-only Stripe path is a real option worth real money
+(Apple takes 15–30%); if it's ever added, the storefront check goes in
+`commerce.ts` and nowhere else.
 
 So the same catalog is sold twice: Stripe on web (`lib/config.ts`), Apple IAP in
 the app (`lib/iap.ts` + `store/iap.ts`, RevenueCat). Setup runbook and the

@@ -1,9 +1,8 @@
 # Apple in-app purchase — setup runbook
 
 The site sells cosmetic packs through Stripe Payment Links. The App Store build
-**may not**: Apple requires digital cosmetics to be sold through in-app purchase
-(Review Guideline 3.1.1). So the same catalog is sold two ways, and the code for
-the Apple half is already written and merged:
+sells the same catalog through Apple in-app purchase (Review Guideline 3.1.1).
+The code for the Apple half is already written and merged:
 
 | Piece | Where |
 |---|---|
@@ -43,7 +42,8 @@ typo means the product silently never loads and its tile stays hidden:
 | `com.versearcade.app.skin_elijah` | Elijah skin | $2.99 | "From $2.99" |
 | `com.versearcade.app.patron_founding` | Founding Patron | $99.99 | "From $100" |
 
-Two deliberate changes from the web catalog, both forced by Apple:
+Two deliberate changes from the web catalog, both forced by Apple's pricing
+model:
 
 - **Pay-what-you-want is gone.** Apple sells at fixed price points only, so
   "From $2.99" becomes a flat $2.99 and the $100 patron tier becomes $99.99
@@ -110,5 +110,22 @@ be submitted on their own.
   and referrals — no money involved, identical in both builds.
 - **Anything already owned.** A pack bought on the website stays wearable and
   visible on the profile in the app. Letting someone *use* content they bought
-  elsewhere is fine; advertising that sale inside the app is not, so the app
-  never links to, names, or prices the website's checkout.
+  elsewhere is always fine, and the app never links to, names, or prices the
+  website's checkout.
+
+## Why not just link to Stripe from the app?
+
+On the **United States storefront** you now could. After the Epic v. Apple
+injunction, Apple's guidelines say the entitlements "are not required for
+developers to include buttons, external links, or other calls to action in their
+United States storefront apps" — no entitlement, and no Apple commission.
+
+That exception is US-only; every other storefront still prohibits linking out.
+Since the storefront is a per-device runtime fact, this app takes the single path
+that is correct everywhere and sells through IAP.
+
+It's worth revisiting, because it's real money: Apple takes 15% under the Small
+Business Program (30% above $1M/yr) against Stripe's ~2.9% + 30¢ — about $0.90 vs
+$0.47 on a $5.99 pack, and $15 vs $3.20 on the $99.99 patron tier. Adding a
+US-only Stripe path means asking StoreKit for the storefront country and
+branching in `lib/commerce.ts` — and nowhere else.

@@ -82,7 +82,7 @@ are wrong in every other currency.
 Apple also **requires** a visible "Restore purchases" control for non-consumable
 IAP; it lives in the Skins section and shows whenever StoreKit is reachable, even
 when the shop is hidden. Restoring is not selling. Purchases land through
-`fulfill_apple_purchase` (0046), never a direct `profiles` write —
+`fulfill_apple_purchase` (0047), never a direct `profiles` write —
 `enforce_skin_entitlement` blocks those on purpose.
 
 What native still has, identical to web: earned skins (shared days, referrals),

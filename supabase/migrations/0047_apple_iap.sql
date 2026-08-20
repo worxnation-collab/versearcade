@@ -1,9 +1,9 @@
 -- Verse Arcade — Apple in-app purchase fulfillment.
 -- ---------------------------------------------------------------------------
 -- The web sells cosmetic packs through Stripe (fulfill_skin, 0034/0043/0044).
--- The App Store build can't: Apple requires digital cosmetics to go through
--- in-app purchase (Review Guideline 3.1.1). Same catalog, same entitlements,
--- second checkout — so this is the StoreKit twin of fulfill_skin.
+-- The App Store build sells the same catalog through in-app purchase instead
+-- (Review Guideline 3.1.1). Same catalog, same entitlements, second checkout —
+-- so this is the StoreKit twin of fulfill_skin.
 --
 -- Why an RPC at all: enforce_skin_entitlement (0043, narrowed in 0044) blocks a
 -- client from writing a paid skin onto its own profiles row. That's the whole

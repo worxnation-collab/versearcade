@@ -9,7 +9,7 @@ The code for the Apple half is already written and merged:
 | Product ids, pack expansion, StoreKit calls | `src/lib/iap.ts` |
 | Purchase / restore state, entitlement writes | `src/store/iap.ts` |
 | Which store applies, and what price to show | `src/lib/commerce.ts` |
-| Server-side fulfillment | `supabase/migrations/0046_apple_iap.sql` |
+| Server-side fulfillment | `supabase/migrations/0047_apple_iap.sql` |
 
 **Nothing below can be done from a dev machine or from CI — every step needs
 your Apple account.** Until it's done the app shows *no* storefront at all,
@@ -71,7 +71,7 @@ the secret key never leaves RevenueCat.
 
 ## 4. Apply the migration
 
-`supabase/migrations/0046_apple_iap.sql`, by hand against `verse-arcade`
+`supabase/migrations/0047_apple_iap.sql`, by hand against `verse-arcade`
 (`visuppaucpzzigwtqmdd`), **before** shipping a build that can purchase — same
 rule as every migration here. It's idempotent, so re-running is a no-op.
 

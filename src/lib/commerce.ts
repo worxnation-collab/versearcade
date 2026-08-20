@@ -1,12 +1,23 @@
 // Where the app is allowed to sell things — one decision, made once.
 //
 // The web app at versearcade.org sells cosmetic packs through Stripe Payment
-// Links. The native App Store / Play build MAY NOT: Apple requires digital
-// cosmetics to be sold through in-app purchase (App Store Review Guideline
-// 3.1.1), and the anti-steering rules mean a native build must not show a
-// price, name a pack you can't buy here, or point anywhere outside the app to
-// buy one. Hiding only the checkout button isn't enough — a "$5.99" label and a
-// "purchases are opening soon" line are still a storefront.
+// Links. The native App Store / Play build sells them through Apple in-app
+// purchase instead (App Store Review Guideline 3.1.1).
+//
+// ON ANTI-STEERING, precisely: since the Epic v. Apple injunction, apps on the
+// UNITED STATES storefront may include buttons, external links and other calls
+// to action pointing at an outside checkout, with no entitlement required. That
+// exception is US-only — in every other storefront, linking out is still
+// prohibited. Because the storefront is a per-device runtime fact, this app
+// takes the one path that is correct everywhere and sells through IAP full
+// stop. That's a deliberate simplification, not a legal requirement; adding a
+// US-only Stripe path later means detecting the storefront here, and nowhere
+// else.
+//
+// Where a shop is shown at all, the old rule still binds: don't show a price
+// you can't charge, name a pack you can't sell, or point outside the app in a
+// storefront that forbids it. Hiding only the checkout button isn't enough — a
+// "$5.99" label and a "purchases are opening soon" line are still a storefront.
 //
 // So the same catalog is sold two ways: Stripe on the web, Apple in-app
 // purchase in the app (lib/iap + store/iap). Until StoreKit actually has the

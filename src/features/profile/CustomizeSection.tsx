@@ -59,10 +59,19 @@ export function CustomizeSection() {
   const [redeemMsg, setRedeemMsg] = useState<string | null>(null)
   const [redeeming, setRedeeming] = useState(false)
   const refreshProfile = useAuth((s) => s.refreshProfile)
+  const mode = useAuth((s) => s.mode)
 
   const doRedeem = async () => {
     if (!redeemTarget) return
-    if (!supabase) { setRedeemMsg('Create an account to redeem a code.'); return }
+    // A guest has no server identity, so redeem_code would raise
+    // 'not authenticated' and surface as "invalid code" — which is a lie, and a
+    // costly one when most redeemers are fresh installs still playing as
+    // guests. Check mode first (it is 'local' for a guest *and* for a keyless
+    // build) and tell them the actual fix.
+    if (mode === 'local' || !supabase) {
+      setRedeemMsg('Create a free account to redeem a code — your progress carries over.')
+      return
+    }
     setRedeeming(true)
     setRedeemMsg(null)
     const { data, error } = await supabase.rpc('redeem_code', { p_code: redeemInput })
@@ -328,7 +337,7 @@ export function CustomizeSection() {
                   ? skin.referralGoal != null
                     ? `${Math.min(profile.referralCount ?? 0, skin.referralGoal)}/${skin.referralGoal} friends`
                     : `Shared ${Math.min(sharedCount, skin.shareGoal ?? 0)}/${skin.shareGoal ?? 0} days`
-                  : skin.exclusive ? '🔒 Live exclusive'
+                  : skin.exclusive ? `🔒 ${skin.packName ?? 'Exclusive'}`
                     : skin.bundleOnly ? `🔒 ${skin.packName ?? 'Pack only'}`
                       : `🔒 ${skin.price}`
             return (
@@ -444,7 +453,7 @@ export function CustomizeSection() {
           <div className="card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 340, width: '100%', textAlign: 'center' }}>
             <Avatar emoji={profile.avatarEmoji} character={{ ...spec, skinId: redeemTarget.id, regalia: null }} size={92} ring={false} />
             <h3 style={{ fontSize: 20, marginTop: 10 }}>{redeemTarget.name}</h3>
-            <span className="pill" style={{ fontSize: 10, background: 'var(--gold)', color: '#241f0a', fontWeight: 800 }}>★ Live Exclusive</span>
+            <span className="pill" style={{ fontSize: 10, background: 'var(--gold)', color: '#241f0a', fontWeight: 800 }}>★ {redeemTarget.packName ?? 'Exclusive'}</span>
             <p style={{ fontSize: 14, marginTop: 10, lineHeight: 1.5 }}>{redeemTarget.blurb}</p>
             <input
               value={redeemInput}

@@ -295,6 +295,19 @@ export const FULL_SKINS: SkinDef[] = [
     blurb: 'A whale of a thank-you — the founding-supporter skin.',
   },
   {
+    id: 'eden',
+    name: 'Eden',
+    source: 'paid',
+    exclusive: true,
+    packName: 'Share Reward',
+    // No `limitedUntil` on purpose. The limited-edition skins vanish from the
+    // grid — for owners too — once their window closes (see skinExpired and the
+    // filter in CustomizeSection). This one is the share promo and has to keep
+    // working for as long as the code is being handed out, so it never expires;
+    // retire it by toggling its promo code off in the admin panel.
+    blurb: 'Eve reaching for the fruit — share Verse Arcade to unlock it. Redeem your code.',
+  },
+  {
     id: 'shades',
     name: 'Day One',
     source: 'paid',

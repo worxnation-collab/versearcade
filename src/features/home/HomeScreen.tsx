@@ -10,6 +10,7 @@ import { PresenceStrip } from '@/features/presence/PresenceStrip'
 import { DailyChest } from '@/features/chest/DailyChest'
 import { Collapsible } from '@/components/Collapsible'
 import { LeaderboardSection } from '@/features/leaderboard/LeaderboardScreen'
+import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/store/auth'
 import { useGame } from '@/store/game'
 import { useReviews } from '@/store/reviews'
@@ -22,6 +23,7 @@ import { msUntilNextLocalMidnight, formatCountdown } from '@/lib/date'
 export default function HomeScreen() {
   const navigate = useNavigate()
   const profile = useAuth((s) => s.profile)!
+  const mode = useAuth((s) => s.mode)
   const { today, playedToday, lastResult, loadToday, boostArmed, armBoost } = useGame()
   const { dueRefs, loadDue } = useReviews()
   const tutorialSeen = useSettings((s) => s.tutorialSeen)
@@ -190,6 +192,34 @@ export default function HomeScreen() {
           </>
         )}
       </motion.div>
+
+      {/* Guests need a way back into an existing account, and this is the only
+          screen everyone lands on. The same CTA already exists inside
+          LeaderboardSection, but that lives in the "Worldwide Ranks"
+          collapsible, which is CLOSED by default — so a signed-out player with
+          an account had no visible way to sign in from here.
+
+          Guarded on `supabase` as well as guest mode: in a LOCAL build (no keys)
+          there is no backend to sign in to, and the button would be a dead end.
+          Deliberately `secondary`, so it never competes with the gold primary
+          action above it — this is an offer, not a wall. */}
+      {mode === 'local' && supabase && (
+        <motion.div
+          className="card"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{ marginTop: 16, textAlign: 'center' }}
+        >
+          <p className="dim" style={{ margin: '0 0 12px', fontSize: 14, lineHeight: 1.5 }}>
+            You’re playing as a guest — everything is saved on this device only. Sign in to
+            carry your streak, XP and skins across devices, or pick up an account you
+            already have.
+          </p>
+          <Button variant="secondary" full onClick={() => navigate('/auth')}>
+            Sign in / Create account
+          </Button>
+        </motion.div>
+      )}
 
       {/* Daily Chest — unlocks after today's verse, gives a random relic. */}
       <DailyChest />

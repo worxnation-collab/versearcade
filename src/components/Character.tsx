@@ -99,6 +99,25 @@ const S_WING_EDGE = '#A8360F'
 const S_WING_HI = '#FFC76B'
 const S_COAL = '#FFD766'
 
+// Eden palette — Eve reaching for the fruit. Warm skin and desaturated leaf
+// greens against the deep red fruit, so the fruit stays the one hot spot in the
+// frame at any size. Genesis says "fruit", not "apple" (the apple is a Latin
+// pun, malum, that stuck) — hence the round, unlabelled red fruit.
+const ED_SKIN = '#D9A472'
+const ED_HAIR = '#3A2418'
+const ED_HAIR_HI = '#5A3A22'
+const ED_LEAF = '#4E7A3A'
+const ED_LEAF_DARK = '#3B5F2C'
+const ED_LEAF_HI = '#6FA04E'
+const ED_BARK = '#5E4126'
+const ED_BARK_LINE = '#432D18'
+const ED_CANOPY = '#2F6B33'
+const ED_CANOPY_HI = '#4E9A4A'
+const ED_FRUIT = '#C62F35'
+const ED_FRUIT_HI = '#E85A4A'
+const ED_SERPENT = '#9AA84E'
+const ED_SERPENT_DARK = '#63702C'
+
 // A feathered wing, drawn from the shoulder out to the viewer-right. `flip`
 // mirrors it about the figure's centre line so the pair always matches, and
 // `transform` lets a skin fan several pairs (the seraph's six) from one shape.
@@ -555,6 +574,104 @@ export function Character({
           <path d="M88.6 59 l4 -1 l-3.4 2.4 z" fill="#C9A227" />
           <circle cx="86.6" cy="59.4" r="0.7" fill="#E7C24A" />
           <path d="M74 65 l-6 3 l5 -0.5 z" fill={L_RAVEN} />
+        </>
+      ) : skinId === 'eden' ? (
+        <>
+          {/* ── Eden — Eve reaching for the fruit (Genesis 3:6) ── */}
+          {/* Composed right-heavy on purpose: figure left, tree right, one red
+              fruit in the gap between her hand and the serpent's head. At chip
+              size that's all that survives — person, tree, red dot — which is
+              the test every skin here has to pass. Everything else (bark lines,
+              leaf veins, grass) is detail for the 92px builder preview.
+              Drawn back-to-front: canopy, trunk, branch, serpent, then Eve, so
+              her reaching arm lands in front of the branch. */}
+
+          {/* canopy — overlapping blobs, kept clear of her head and the fruit */}
+          <ellipse cx="94" cy="30" rx="26" ry="20" fill={ED_CANOPY} />
+          <circle cx="76" cy="32" r="12" fill={ED_CANOPY} />
+          <circle cx="112" cy="45" r="10" fill={ED_CANOPY} />
+          <circle cx="88" cy="12" r="12" fill={ED_CANOPY} />
+          <circle cx="86" cy="20" r="8.5" fill={ED_CANOPY_HI} opacity="0.5" />
+          <circle cx="103" cy="30" r="6.5" fill={ED_CANOPY_HI} opacity="0.4" />
+          <circle cx="75" cy="27" r="5" fill={ED_CANOPY_HI} opacity="0.38" />
+
+          {/* trunk + root flare */}
+          <path d="M86 158 Q90 108 90 48 L100 48 Q100 108 104 158 Z" fill={ED_BARK} />
+          <path d="M92 60 Q93 108 89 152 M98 60 Q97 106 101 152" stroke={ED_BARK_LINE} strokeWidth="1.1" fill="none" opacity="0.5" />
+          <path d="M86 158 Q80 152 76 154 Q82 154 85 158 Z" fill={ED_BARK} />
+          <path d="M104 158 Q110 151 114 153 Q107 154 105 158 Z" fill={ED_BARK} />
+
+          {/* the low branch the fruit hangs from */}
+          <path d="M95 52 Q82 42 68 43" stroke={ED_BARK} strokeWidth="4" fill="none" strokeLinecap="round" />
+          <path d="M95 52 Q82 42 68 43" stroke={ED_BARK_LINE} strokeWidth="0.9" fill="none" strokeLinecap="round" opacity="0.45" />
+
+          {/* serpent — down out of the canopy, one coil round the branch, head
+              over the fruit. Thin on purpose: it's the villain, not the subject,
+              and at thicker weights it read as a green ribbon across the frame. */}
+          <path d="M92 32 Q88 42 81 37 Q75 33 76 40 Q77 45 81 45"
+            fill="none" stroke={ED_SERPENT_DARK} strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M92 32 Q88 42 81 37 Q75 33 76 40 Q77 45 81 45"
+            fill="none" stroke={ED_SERPENT} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          {/* head, tipped down toward the fruit but never touching it — the two
+              reds have to stay separable or they merge into one shape */}
+          <ellipse cx="81" cy="45.5" rx="4" ry="2.9" fill={ED_SERPENT} transform="rotate(20 81 45.5)" />
+          <ellipse cx="81" cy="45.5" rx="4" ry="2.9" fill="none" stroke={ED_SERPENT_DARK} strokeWidth="0.6" transform="rotate(20 81 45.5)" />
+          <circle cx="82.6" cy="44.4" r="0.85" fill={ED_BARK_LINE} />
+          <path d="M78.4 47.6 l-3 2 m3 -2 l-3.2 0.4" stroke={ED_FRUIT_HI} strokeWidth="0.85" strokeLinecap="round" />
+
+          {/* the fruit, hanging just past her fingers */}
+          <path d="M68 44 L68 49" stroke={ED_BARK_LINE} strokeWidth="1.4" strokeLinecap="round" />
+          <path d="M68 48 q4.5 -2.5 6 0.5 q-3.5 1.6 -6 -0.5 z" fill={ED_LEAF_DARK} />
+          <circle cx="68" cy="55" r="6" fill={ED_FRUIT} />
+          <circle cx="66.2" cy="53" r="2" fill={ED_FRUIT_HI} opacity="0.85" />
+
+          {/* legs + bare feet */}
+          <rect x="36" y="116" width="8" height="38" rx="4" fill={ED_SKIN} />
+          <rect x="45" y="116" width="8" height="38" rx="4" fill={ED_SKIN} />
+          <ellipse cx="39" cy="155" rx="5.6" ry="3.2" fill={ED_SKIN} />
+          <ellipse cx="50" cy="155" rx="5.6" ry="3.2" fill={ED_SKIN} />
+
+          {/* long hair down her back, kept inside the body line so it doesn't
+              read as a cape at small sizes */}
+          <path d="M35 56 Q31 90 36 114 L42 114 Q38 88 41 62 Z" fill={ED_HAIR} />
+          <path d="M36 64 Q33 90 37 110" stroke={ED_HAIR_HI} strokeWidth="1.3" fill="none" opacity="0.5" />
+          <path d="M55 56 Q58 74 54 84 L49 82 Q52 70 51 60 Z" fill={ED_HAIR} />
+
+          {/* leaf wrap — calf-length, scalloped leaf hem, vine at the waist */}
+          <path d="M31 70 Q44 63 57 70 L55 134 q-2.75 7 -5.5 0 q-2.75 7 -5.5 0 q-2.75 7 -5.5 0 q-2.75 7 -5.5 0 Z" fill={ED_LEAF} />
+          <path d="M44 72 L44 136" stroke={ED_LEAF_DARK} strokeWidth="1" opacity="0.45" />
+          <path d="M36 80 L34 130 M52 80 L54 130" stroke={ED_LEAF_DARK} strokeWidth="0.8" opacity="0.35" />
+          {/* single-shoulder drape + a couple of leaves, so the wrap reads as
+              foliage rather than cloth */}
+          <path d="M44 66 Q52 64 56 71 Q49 74 44 71 Z" fill={ED_LEAF_HI} opacity="0.9" />
+          <path d="M36 78 q4.5 -4 8 1 q-4.5 4 -8 -1 z" fill={ED_LEAF_HI} opacity="0.7" />
+          <path d="M47 92 q4.5 -4 8 1 q-4.5 4 -8 -1 z" fill={ED_LEAF_HI} opacity="0.55" />
+          <path d="M33 104 q11 5 22 0" fill="none" stroke={ED_LEAF_DARK} strokeWidth="2.2" strokeLinecap="round" />
+
+          {/* arm at her side — drawn after the wrap, with a shoulder cap that
+              overlaps it, so the limb reads as attached rather than floating */}
+          <ellipse cx="32" cy="74" rx="5.2" ry="4.6" fill={ED_SKIN} />
+          <rect x="27" y="72" width="8" height="30" rx="4" fill={ED_SKIN} />
+          <ellipse cx="31" cy="104" rx="4.1" ry="4.5" fill={ED_SKIN} />
+
+          {/* neck + head */}
+          <rect x="39" y="58" width="10" height="10" rx="3" fill={ED_SKIN} />
+          <circle cx="44" cy="52" r="12" fill={ED_SKIN} />
+          <path d="M32 52 a12 12 0 0 1 24 0 l-3 0 a9 9 0 0 0-18 0 z" fill={ED_HAIR} />
+
+          {/* the reach — up past her head, fingers stopping short of the fruit */}
+          <path d="M53 78 Q59 68 58 56" fill="none" stroke={ED_SKIN} strokeWidth="8" strokeLinecap="round" />
+          <ellipse cx="57.8" cy="53.5" rx="4" ry="4.4" fill={ED_SKIN} />
+          <path d="M58.5 49.6 l1.4 -3.2 M60.6 51 l3 -2.4 M61 54 l3.2 -0.8" stroke={ED_SKIN} strokeWidth="2.1" strokeLinecap="round" />
+
+          {/* sprig off the trunk, breaking up the bare column */}
+          <path d="M99 96 q7 -3 11 -9" fill="none" stroke={ED_BARK} strokeWidth="2" strokeLinecap="round" />
+          <path d="M104 92 q4 -4.5 7.5 0.5 q-4 4 -7.5 -0.5 z" fill={ED_LEAF} />
+          <path d="M108 85 q4 -4.5 7.5 0.5 q-4 4 -7.5 -0.5 z" fill={ED_LEAF_HI} opacity="0.85" />
+
+          {/* grass at the foot of the tree */}
+          <path d="M80 158 q2 -6 4 -1 M106 158 q2 -6 4 -1 M72 159 q2 -5 3 -1 M112 159 q1.5 -5 3 -1"
+            fill="none" stroke={ED_LEAF} strokeWidth="1.6" strokeLinecap="round" />
         </>
       ) : (
         <>

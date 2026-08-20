@@ -5,6 +5,7 @@ import { useSettings } from '@/store/settings'
 import { useJuice } from '@/juice/useJuice'
 import { READING_TRANSLATIONS } from '@/lib/config'
 import { pushSupported, pushPermission, isPushSubscribed, enablePush, disablePush } from '@/lib/push'
+import { useReminders } from '@/store/reminders'
 import { InstallRow } from '@/features/home/InstallPrompt'
 import { AppStoreRow } from '@/features/home/AppStoreNudge'
 
@@ -36,6 +37,26 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
 
   // Web Push — reflects the *actual* browser subscription, not a stored flag, so
   // it stays honest if permission is revoked in browser settings.
+  // Local reminders — the native counterpart to Web Push. Scheduled on the
+  // device (lib/reminders.ts), so guests get them too.
+  const reminders = useReminders()
+  useEffect(() => {
+    if (!reminders.loaded) void reminders.load()
+  }, [reminders.loaded, reminders])
+  const [remErr, setRemErr] = useState('')
+
+  const toggleReminder = async (which: 'drop' | 'study', on: boolean) => {
+    setRemErr('')
+    const ok = await reminders.setEnabled(which, on)
+    if (on && !ok) {
+      setRemErr(
+        useReminders.getState().permission === 'denied'
+          ? 'Notifications are turned off for Verse Arcade in iOS Settings — turn them back on there, then flip this on.'
+          : 'Could not turn on reminders.',
+      )
+    } else if (on && ok) juice.coin()
+  }
+
   const supportsPush = pushSupported()
   const [pushOn, setPushOn] = useState(false)
   const [pushBusy, setPushBusy] = useState(false)
@@ -142,6 +163,46 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           </>
         )}
 
+        {/* Local reminders — native only. Web keeps Web Push above; the
+            Capacitor plugin has no real web implementation, and these two
+            nudges are predictable enough not to need a server at all. Unlike
+            Web Push these reach GUESTS, who have no push_subscriptions row. */}
+        {reminders.supported && (
+          <>
+            <h3 style={{ fontSize: 14, margin: '0 0 8px' }} className="dim">Reminders</h3>
+            <div className="card" style={{ marginBottom: 6 }}>
+              <Row
+                label="📖 Today's verse"
+                on={reminders.dropEnabled}
+                onToggle={() => void toggleReminder('drop', !reminders.dropEnabled)}
+              />
+              {reminders.dropEnabled && (
+                <TimePicker
+                  value={reminders.dropTime}
+                  onChange={(t) => void reminders.setTime('drop', t)}
+                />
+              )}
+              <Divider />
+              <Row
+                label="🧠 Your study is calling"
+                on={reminders.studyEnabled}
+                onToggle={() => void toggleReminder('study', !reminders.studyEnabled)}
+              />
+              {reminders.studyEnabled && (
+                <TimePicker
+                  value={reminders.studyTime}
+                  onChange={(t) => void reminders.setTime('study', t)}
+                />
+              )}
+            </div>
+            <p className="faint" style={{ fontSize: 11, lineHeight: 1.4, marginBottom: 18 }}>
+              Scheduled on this device, so they arrive even offline. The study nudge only
+              shows up on days you actually have something waiting.
+              {remErr && <span style={{ color: 'var(--coral)', display: 'block', marginTop: 4 }}>{remErr}</span>}
+            </p>
+          </>
+        )}
+
         {/* Reading translation — the version used to read the full chapter. */}
         <h3 style={{ fontSize: 14, margin: '0 0 8px' }} className="dim">
           Reading translation <span className="faint" style={{ fontSize: 12 }}>· {READING_TRANSLATIONS.find((t) => t.code === settings.readingTranslation)?.short ?? 'WEB'}</span>
@@ -173,6 +234,37 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           Used when you read the full chapter. All free &amp; public domain — more versions coming. The daily quiz uses the Berean Standard Bible.
         </p>
       </motion.div>
+    </div>
+  )
+}
+
+// A short list of sensible hours rather than a free time field: a wheel of
+// every minute is a worse choice on a phone, and nobody needs 7:43am.
+const TIME_CHOICES = ['06:00', '07:00', '08:00', '09:00', '12:00', '17:00', '19:00', '20:00', '21:00']
+
+function timeLabel(t: string): string {
+  const [h, m] = t.split(':').map(Number)
+  const suffix = h < 12 ? 'AM' : 'PM'
+  const hour = h % 12 === 0 ? 12 : h % 12
+  return `${hour}:${String(m).padStart(2, '0')} ${suffix}`
+}
+
+function TimePicker({ value, onChange }: { value: string; onChange: (t: string) => void }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 4px 12px' }}>
+      <span className="faint" style={{ fontSize: 12 }}>Remind me at</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          padding: '7px 10px', borderRadius: 10, background: 'var(--card-solid)',
+          border: '1px solid var(--stroke)', color: 'var(--ink)', fontSize: 13, fontWeight: 700,
+        }}
+      >
+        {TIME_CHOICES.map((t) => (
+          <option key={t} value={t}>{timeLabel(t)}</option>
+        ))}
+      </select>
     </div>
   )
 }

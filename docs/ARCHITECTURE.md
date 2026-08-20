@@ -140,7 +140,8 @@ metadata, so it stays self-consistent either way.
 | Item | State | Why |
 |---|---|---|
 | **iOS native project (`ios/`)** | Not generated | Needs macOS + Xcode; run `npx cap add ios` on a Mac. All Capacitor config + native init code is in place. |
-| **Push notifications** | Registration stubbed (`native.ts`) | Full APNs needs an Apple push key **and** a backend scheduler to send the daily "your verse dropped" nudge. Capability + code hook are ready to turn on. |
+| **Local reminders** | Shipped (`lib/reminders.ts`, `store/reminders.ts`) | The daily-drop and "your study is calling" nudges are scheduled **on the device**. `getVerseForDate` is deterministic, so the phone can name a verse weeks ahead — no server, works offline, and works for guests. Native only; the web keeps Web Push. |
+| **Remote push (APNs)** | Registration stubbed (`native.ts`) | Only needed for notifications another human triggers — battle invites. Requires an Apple push key, Push capability on the App ID, the `aps-environment` entitlement patched into the regenerated Xcode project in `codemagic.yaml`, a device-token table (`push_subscriptions` is Web-Push shaped), and an Edge Function that signs for APNs. |
 | **In-app purchase for premium translations** | Gated in config, no purchase flow | Requires an IAP plugin + App Store Connect products (see SETUP-APPLE §5). ESV/NLT/CSB are wired as `premium:true` slots so adding them is config + data, not a rewrite. |
 | **Server-side collectible grants** | Awarded client-side, persisted locally | The catalog + RLS tables exist; a `grant_collectible` RPC would move authority server-side. Fine for now; cosmetic. |
 | **Real Google/Apple OAuth end-to-end** | Code complete, needs dashboard keys | Providers must be enabled in Supabase + Apple/Google portals (the two checklists). Can't be done from code. |

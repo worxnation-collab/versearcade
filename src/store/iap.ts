@@ -38,6 +38,25 @@ import { useAuth } from './auth'
 
 const isOnline = (): boolean => useAuth.getState().mode !== 'local' && !!supabase
 
+/**
+ * What happened when someone tapped buy.
+ *
+ * `unconfirmed` is the one that matters: Apple took the money but the
+ * entitlement isn't visible yet — RevenueCat hasn't caught up, or the server
+ * couldn't be reached. Reporting that as 'failed' would tell a paying customer
+ * their purchase didn't work; reporting it as 'bought' would show them a skin
+ * they haven't got. It is its own outcome, and the UI says "give it a moment,
+ * then Restore".
+ */
+export type PurchaseOutcome = 'bought' | 'cancelled' | 'unconfirmed' | 'failed'
+
+/**
+ * Restore has to distinguish "you own nothing" from "we couldn't ask".
+ * Collapsing them tells a buyer with a real purchase that they have none —
+ * which is both a lie and precisely what App Review tests.
+ */
+export type RestoreOutcome = { ok: true; count: number } | { ok: false }
+
 interface IapState {
   /** True once StoreKit has returned at least one product we can actually sell. */
   ready: boolean
@@ -45,8 +64,8 @@ interface IapState {
   products: Record<string, IapProduct>
   error: string | null
   load: () => Promise<void>
-  buy: (sku: string) => Promise<'bought' | 'cancelled' | 'failed'>
-  restore: () => Promise<number>
+  buy: (sku: string) => Promise<PurchaseOutcome>
+  restore: () => Promise<RestoreOutcome>
 }
 
 export const useIap = create<IapState>((set, get) => ({
@@ -74,24 +93,35 @@ export const useIap = create<IapState>((set, get) => ({
   },
 
   async buy(sku) {
+    // Split deliberately in two, because the line between them is the line
+    // between "you were not charged" and "you were".
+    let outcome
     try {
-      const outcome = await purchaseSku(sku)
-      if (outcome.cancelled) return 'cancelled'
-      // Apple's post-purchase entitlement list beats the single sku, so a pack
-      // lands whole and an interrupted earlier purchase settles up too. Online
-      // this is only the GUEST fallback and the optimistic paint — the server
-      // re-derives the truth from RevenueCat regardless.
-      const claimed = outcome.ownedProductIds.length
-        ? skinsForProductIds(outcome.ownedProductIds)
-        : skinsForSku(sku)
+      outcome = await purchaseSku(sku)
+    } catch (e) {
+      // StoreKit itself failed: no money moved.
+      set({ error: msg(e) })
+      return 'failed'
+    }
+    if (outcome.cancelled) return 'cancelled'
+
+    // Past this point Apple has taken payment. Nothing below may report failure.
+    // Apple's post-purchase entitlement list beats the single sku, so a pack
+    // lands whole and an interrupted earlier purchase settles up too. Online
+    // this is only the GUEST fallback and the optimistic paint — the server
+    // re-derives the truth from RevenueCat regardless.
+    const claimed = outcome.ownedProductIds.length
+      ? skinsForProductIds(outcome.ownedProductIds)
+      : skinsForSku(sku)
+    try {
       // Two attempts online: the purchase reaches RevenueCat's servers before
       // purchaseSku resolves, but a moment of propagation lag would otherwise
       // read as "you bought nothing" to someone who just paid.
-      await persist(claimed, 2)
-      return 'bought'
+      const granted = await persist(claimed, 2)
+      return granted.length ? 'bought' : 'unconfirmed'
     } catch (e) {
       set({ error: msg(e) })
-      return 'failed'
+      return 'unconfirmed'
     }
   },
 
@@ -100,11 +130,12 @@ export const useIap = create<IapState>((set, get) => ({
       const claimed = skinsForProductIds(await restorePurchases())
       // Online, restore asks the server outright — `claimed` is only the guest
       // path's input, and an empty list there means there is nothing to do.
-      if (!isOnline() && !claimed.length) return 0
-      return (await persist(claimed, 1)).length
+      if (!isOnline() && !claimed.length) return { ok: true, count: 0 }
+      return { ok: true, count: (await persist(claimed, 1)).length }
     } catch (e) {
+      // Couldn't ask. Say so, rather than claiming they own nothing.
       set({ error: msg(e) })
-      return 0
+      return { ok: false }
     }
   },
 }))

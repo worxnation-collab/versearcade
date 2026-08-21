@@ -426,11 +426,17 @@ export function CustomizeSection() {
               onClick={async () => {
                 juice.select()
                 setRestoreMsg(null)
-                const n = await restoreIap()
+                const r = await restoreIap()
                 setRestoreMsg(
-                  n > 0
-                    ? `Restored ${n} item${n === 1 ? '' : 's'} ✓`
-                    : 'Nothing to restore on this Apple ID.',
+                  // Three outcomes, not two. "Nothing to restore" must only be
+                  // said when we actually asked and were told nothing — saying
+                  // it after a failed lookup tells a real buyer they own
+                  // nothing, which is the case App Review checks.
+                  !r.ok
+                    ? 'Couldn’t check with the App Store just now — try again in a moment.'
+                    : r.count > 0
+                      ? `Restored ${r.count} item${r.count === 1 ? '' : 's'} ✓`
+                      : 'Nothing to restore on this Apple ID.',
                 )
               }}
             >
@@ -499,6 +505,15 @@ export function CustomizeSection() {
                     setBuying(false)
                     if (result === 'cancelled') return
                     setBuyTarget(null)
+                    // Never close on a paid purchase without saying what
+                    // happened. 'unconfirmed' means Apple charged but the
+                    // entitlement hasn't landed yet — the honest instruction is
+                    // to wait and Restore, not silence.
+                    if (result === 'failed') {
+                      setErr('That didn’t go through — you haven’t been charged.')
+                    } else if (result === 'unconfirmed') {
+                      setErr('Payment went through. Your skin should appear in a moment — if it doesn’t, tap Restore purchases.')
+                    }
                     return
                   }
                   // Pass "<username>-<skinId>" as Stripe's client_reference_id so the

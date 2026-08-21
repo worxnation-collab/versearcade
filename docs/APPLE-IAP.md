@@ -56,11 +56,29 @@ Each product needs a screenshot and a review note before it can be submitted.
 
 ## 3. RevenueCat
 
+> **Do not use the Test Store.** RevenueCat's onboarding offers one, and it is
+> the wrong path here: it simulates purchases entirely inside RevenueCat, never
+> touches StoreKit, and uses a *separate* API key that must never ship. Worse
+> for us, a Test Store key would make `storefrontEnabled()` true with fake
+> products. Choose **New app configuration → App Store** instead.
+
 1. Create a project at [app.revenuecat.com](https://app.revenuecat.com), add an
    **App Store** app with bundle id `com.versearcade.app`.
-2. Paste the **App Store Connect Shared Secret** (App Store Connect → your app →
-   **App Information → App-Specific Shared Secret**) so RevenueCat can validate
-   receipts.
+2. Upload an **In-App Purchase Key**, *not* the App-Specific Shared Secret.
+
+   This one is easy to get wrong and expensive when you do. We pin
+   `@revenuecat/purchases-capacitor@9.2.2` → `PurchasesHybridCommon 13.26.0` →
+   `RevenueCat 5.20.0` — purchases-ios **v5**, which uses **StoreKit 2** by
+   default. RevenueCat requires the In-App Purchase Key for StoreKit 2; the
+   shared secret is the StoreKit 1 path. With only the shared secret,
+   transactions are not recorded against the subscriber — the purchase succeeds,
+   Apple takes the money, and `iap-fulfill` asks RevenueCat what the user owns
+   and is truthfully told "nothing". Silent, and indistinguishable from a bug in
+   our code.
+
+   Generate it at App Store Connect → **Users and Access → Integrations →
+   In-App Purchase → +**, download the `.p8` (once only), and upload it to
+   RevenueCat with its Key ID and Issuer ID.
 3. Import the five products above.
 4. Copy the **public iOS SDK key** (`appl_...`) *and* a **secret API key**
    (RevenueCat → Project settings → API keys). They go to different places and

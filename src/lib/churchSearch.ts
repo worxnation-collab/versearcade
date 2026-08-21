@@ -37,6 +37,34 @@ const OVERPASS_ENDPOINTS = [
 
 const MILES_TO_M = 1609.34
 
+// Every map call gets a deadline. Overpass in particular can queue a request
+// for minutes when it's busy, and a request the phone never gets an answer to
+// is indistinguishable from a frozen screen — so we give up and let the caller
+// fall back to what it already has.
+const OVERPASS_TIMEOUT_MS = 15000
+const NOMINATIM_TIMEOUT_MS = 12000
+
+/**
+ * A signal that aborts on the caller's signal *or* after `ms`, whichever comes
+ * first. Call `done()` when the request settles so the timer doesn't outlive it.
+ */
+function deadline(ms: number, signal?: AbortSignal) {
+  const ctl = new AbortController()
+  const bail = () => ctl.abort()
+  const timer = setTimeout(bail, ms)
+  if (signal) {
+    if (signal.aborted) bail()
+    else signal.addEventListener('abort', bail, { once: true })
+  }
+  return {
+    signal: ctl.signal,
+    done() {
+      clearTimeout(timer)
+      signal?.removeEventListener('abort', bail)
+    },
+  }
+}
+
 // Denominations we surface. OSM tags most churches religion=christian, but
 // plenty of small congregations are only tagged amenity=place_of_worship — so
 // we take untagged ones too and exclude the religions that are clearly not a
@@ -97,19 +125,24 @@ function fromOverpass(el: OverpassElement, from: Coords): ChurchPlace | null {
 async function overpass(query: string, signal?: AbortSignal): Promise<OverpassElement[]> {
   let lastErr: unknown = null
   for (const url of OVERPASS_ENDPOINTS) {
+    // Per endpoint, so a mirror that hangs still leaves time for the other one.
+    const limit = deadline(OVERPASS_TIMEOUT_MS, signal)
     try {
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: `data=${encodeURIComponent(query)}`,
-        signal,
+        signal: limit.signal,
       })
       if (!res.ok) throw new Error(`Overpass ${res.status}`)
       const json = (await res.json()) as { elements?: OverpassElement[] }
       return json.elements ?? []
     } catch (e) {
+      // The caller walking away ends it; our own deadline just moves us on.
       if (signal?.aborted) throw e
       lastErr = e
+    } finally {
+      limit.done()
     }
   }
   throw lastErr ?? new Error('Overpass unreachable')
@@ -161,36 +194,49 @@ interface NominatimRow {
 }
 
 /**
- * Name search bounded to a box around the player. Used when the local list has
- * nothing for what they typed — e.g. a church that meets in a school, or one
- * the map has under a slightly different name.
+ * Name search, bounded to a box around the player when we know where they are.
+ * Used when the local list has nothing for what they typed — e.g. a church that
+ * meets in a school, or one the map has under a slightly different name — and
+ * unbounded (`from` null) when location is off, which is then the only way in.
  */
 export async function searchChurchesByName(
   q: string,
-  from: Coords,
+  from: Coords | null,
   radiusMiles = 30,
   signal?: AbortSignal,
 ): Promise<ChurchPlace[]> {
   const query = q.trim()
   if (query.length < 3) return []
-  // Degrees of latitude are ~69 miles everywhere; longitude shrinks with
-  // latitude, so widen the box by 1/cos(lat) to keep it square-ish on the ground.
-  const dLat = radiusMiles / 69
-  const dLng = dLat / Math.max(0.2, Math.cos((from.lat * Math.PI) / 180))
   const params = new URLSearchParams({
     q: query,
     format: 'jsonv2',
     addressdetails: '1',
     limit: '20',
-    viewbox: `${from.lng - dLng},${from.lat + dLat},${from.lng + dLng},${from.lat - dLat}`,
-    bounded: '1',
   })
+  if (from) {
+    // Degrees of latitude are ~69 miles everywhere; longitude shrinks with
+    // latitude, so widen the box by 1/cos(lat) to keep it square-ish on the ground.
+    const dLat = radiusMiles / 69
+    const dLng = dLat / Math.max(0.2, Math.cos((from.lat * Math.PI) / 180))
+    params.set('viewbox', `${from.lng - dLng},${from.lat + dLat},${from.lng + dLng},${from.lat - dLat}`)
+    params.set('bounded', '1')
+  }
 
-  const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, { signal })
-  if (!res.ok) throw new Error(`Nominatim ${res.status}`)
-  const rows = (await res.json()) as NominatimRow[]
+  // With no location we can't bound the box, so this is a plain worldwide name
+  // search — the only way to find a church when location is off or refused.
+  const limit = deadline(NOMINATIM_TIMEOUT_MS, signal)
+  let rows: NominatimRow[]
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
+      signal: limit.signal,
+    })
+    if (!res.ok) throw new Error(`Nominatim ${res.status}`)
+    rows = (await res.json()) as NominatimRow[]
+  } finally {
+    limit.done()
+  }
 
-  return rows
+  const found = rows
     .map((r): ChurchPlace | null => {
       const lat = Number(r.lat)
       const lng = Number(r.lon)
@@ -208,11 +254,14 @@ export async function searchChurchesByName(
         region: addr.state || null,
         lat,
         lng,
-        miles: milesBetween(from, { lat, lng }),
+        // No origin, no distance: formatMiles() renders nothing for NaN, so the
+        // row simply shows its address instead of a bogus "0.0 mi".
+        miles: from ? milesBetween(from, { lat, lng }) : NaN,
       }
     })
     .filter((p): p is ChurchPlace => p !== null)
-    .sort((a, b) => a.miles - b.miles)
+
+  return from ? found.sort((a, b) => a.miles - b.miles) : found
 }
 
 /** Case/punctuation-insensitive "does this church match what they typed". */

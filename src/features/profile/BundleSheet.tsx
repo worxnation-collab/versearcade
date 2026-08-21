@@ -70,6 +70,7 @@ export function BundleSheet({
   const native = isNativeApp()
   const buyIap = useIap((s) => s.buy)
   const [busy, setBusy] = useState(false)
+  const [note, setNote] = useState<string | null>(null)
   // Apple's own localized price on native; the catalog price on web.
   const price = displayPrice(bundle.sku, bundle.price)
   const canBuy = !owned && store && !!price && (native || !!buyUrl)
@@ -81,7 +82,15 @@ export function BundleSheet({
       const result = await buyIap(bundle.sku)
       setBusy(false)
       if (result === 'cancelled') return
-      onClose()
+      if (result === 'bought') { onClose(); return }
+      // Charged, or not charged — either way the sheet stays open and says so.
+      // Closing silently on a paid tap is how someone ends up thinking the pack
+      // simply vanished.
+      setNote(
+        result === 'failed'
+          ? 'That didn’t go through — you haven’t been charged.'
+          : 'Payment went through. The pack should appear in a moment — if it doesn’t, tap Restore purchases in Skins.',
+      )
       return
     }
     // "<username>-<sku>" as Stripe's client_reference_id, so the webhook grants
@@ -186,6 +195,9 @@ export function BundleSheet({
                 <p className="faint" style={{ fontSize: 10, marginTop: 8, lineHeight: 1.4 }}>
                   All {bundleItemCount(bundle)} items unlock together right after checkout. Thank you for supporting a solo builder! 🙏
                 </p>
+                {note && (
+                  <p style={{ color: 'var(--coral)', fontSize: 12, marginTop: 8, lineHeight: 1.45 }}>{note}</p>
+                )}
               </>
             ) : store ? (
               <p className="faint" style={{ fontSize: 13, marginTop: 4, lineHeight: 1.5 }}>

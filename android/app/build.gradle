@@ -15,7 +15,7 @@ android {
         // truth for the store version (iOS reads it in codemagic.yaml). Play
         // has no "closed version train" rule the way the App Store does, but
         // the two stores showing different version numbers is a bug.
-        versionName "1.0.1"
+        versionName "1.1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

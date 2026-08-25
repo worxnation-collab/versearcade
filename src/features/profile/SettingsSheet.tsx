@@ -108,7 +108,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           width: '100%', maxWidth: 520, maxHeight: '86vh', overflowY: 'auto',
           background: 'var(--bg-1)', borderTop: '1px solid var(--stroke)',
           borderTopLeftRadius: 22, borderTopRightRadius: 22,
-          padding: '10px 16px calc(24px + env(safe-area-inset-bottom))',
+          padding: '10px 16px calc(24px + var(--safe-bottom))',
         }}
       >
         {/* Grabber + header */}

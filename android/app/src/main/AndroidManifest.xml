@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <application
         android:allowBackup="true"
@@ -10,7 +11,7 @@
         android:theme="@style/AppTheme">
 
         <activity
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
             android:name=".MainActivity"
             android:label="@string/title_activity_main"
             android:theme="@style/AppTheme.NoActionBarLaunch"
@@ -54,4 +55,24 @@
          is declared only because some devices report nothing without it. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+    <!-- @capacitor/local-notifications declares SCHEDULE_EXACT_ALARM in its own
+         manifest, and the merger would pull it into ours. We remove it on
+         purpose, for two reasons:
+
+         1. Play policy. Exact alarms are a restricted permission reserved for
+            alarm-clock, timer and calendar apps. A daily verse nudge is none of
+            those, so declaring it invites a rejection (or a declaration form we
+            can't honestly fill in) for a precision we don't need.
+         2. UX. The plugin's default is isExactNotification:true, and on Android
+            12+ that makes schedule() launch the system "Alarms & reminders"
+            settings screen. applyPlan() runs on every app resume, so a player
+            would be thrown out of the app to a settings page. lib/reminders.ts
+            passes isExactNotification:false to match this — change one, change
+            the other, or the nudges start yanking people out of the app.
+
+         The cost is that a reminder may fire a few minutes late. For "your
+         study is calling" that is not a cost at all. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        tools:node="remove" />
 </manifest>

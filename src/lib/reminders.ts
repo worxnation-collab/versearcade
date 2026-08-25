@@ -40,7 +40,8 @@ const STUDY_ID_BASE = 42_000
 
 // How far ahead to schedule. iOS keeps at most 64 pending local notifications
 // per app and silently drops the rest, so these two must stay well under it.
-// 21 + 14 = 35 leaves room to spare.
+// 21 + 14 = 35 leaves room to spare. (Android has no such cap, but one plan
+// serving both platforms is worth more than 30 extra days of Android nudges.)
 const DROP_HORIZON_DAYS = 21
 const STUDY_HORIZON_DAYS = 14
 
@@ -147,7 +148,13 @@ export async function permissionState(): Promise<ReminderPermission> {
   }
 }
 
-/** Ask iOS for permission. Returns whether we ended up allowed. */
+/**
+ * Ask for permission. Returns whether we ended up allowed.
+ *
+ * On Android 13+ this is the POST_NOTIFICATIONS runtime prompt (the permission
+ * itself is declared by the plugin's own manifest and merged into ours); below
+ * 13 it resolves granted without a prompt. On iOS it's the usual alert.
+ */
 export async function requestPermission(): Promise<boolean> {
   if (!remindersAvailable()) return false
   try {
@@ -181,6 +188,16 @@ export async function applyPlan(plan: PlannedReminder[]): Promise<void> {
       title: n.title,
       body: n.body,
       schedule: { at: n.at, allowWhileIdle: true },
+      // Android only, and load-bearing. The plugin's default is an EXACT alarm,
+      // which (a) needs SCHEDULE_EXACT_ALARM — a restricted Play permission for
+      // alarm-clock and calendar apps, which this isn't — and (b) makes
+      // schedule() throw the player out to the system "Alarms & reminders"
+      // settings screen to grant it. applyPlan() runs on every app resume, so
+      // that would happen constantly. Inexact + allowWhileIdle still wakes a
+      // dozing device; the nudge may land a few minutes late, which for "your
+      // study is calling" is not a cost. The permission is stripped in
+      // android/app/src/main/AndroidManifest.xml — keep the two together.
+      isExactNotification: false,
     })),
   })
 }

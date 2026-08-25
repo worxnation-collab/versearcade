@@ -3,8 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/store/auth'
 import { useSettings } from '@/store/settings'
 import { useJuice } from '@/juice/useJuice'
-import { AppleGlyph } from '@/components/AppStoreBadge'
-import { appStoreAsk, openAppStore } from '@/lib/appStore'
+import { AppleGlyph, PlayGlyph } from '@/components/AppStoreBadge'
+import { appStoreAsk, deviceNoun, openAppStore, storeName, targetStore } from '@/lib/appStore'
 
 // How long a ✕ buys you before we'd mention it again.
 const SNOOZE_MS = 14 * 24 * 60 * 60 * 1000
@@ -19,7 +19,7 @@ const APPEAR_DELAY_MS = 2600
  * The low-key bubble that floats in over the home screen once a player is a few
  * drops deep. Two shapes, decided by where they're standing:
  *
- *   • in the iOS app  → "leave a review" — the single highest-leverage thing a
+ *   • in the native app → "leave a review" — the single highest-leverage thing a
  *                       happy player can do for a project this size.
  *   • iOS on the web  → "get the app".
  *
@@ -130,16 +130,22 @@ export function AppStoreNudge() {
                   color: '#fff',
                 }}
               >
-                {review ? <span style={{ fontSize: 20 }}>⭐</span> : <AppleGlyph size={20} />}
+                {review ? (
+                  <span style={{ fontSize: 20 }}>⭐</span>
+                ) : targetStore() === 'play' ? (
+                  <PlayGlyph size={20} />
+                ) : (
+                  <AppleGlyph size={20} />
+                )}
               </span>
               <span style={{ flex: 1, minWidth: 0 }}>
                 <b style={{ display: 'block', fontFamily: 'var(--font-display)', fontSize: 15 }}>
-                  {review ? 'Enjoying Verse Arcade?' : 'Get the iPhone app'}
+                  {review ? 'Enjoying Verse Arcade?' : `Get the ${deviceNoun()} app`}
                 </b>
                 <span className="faint" style={{ display: 'block', fontSize: 12.5, lineHeight: 1.35 }}>
                   {review
-                    ? 'A quick App Store review helps new players find the daily drop.'
-                    : 'Free on the App Store — plus a nudge when the drop lands.'}
+                    ? `A quick ${storeName()} review helps new players find the daily drop.`
+                    : `Free on ${storeName()} — plus a nudge when the drop lands.`}
                 </span>
               </span>
               <span style={{ fontFamily: 'var(--font-display)', color: 'var(--gold)', fontSize: 18, flexShrink: 0 }}>
@@ -166,7 +172,7 @@ export function AppStoreNudge() {
  * The same two asks as an always-available settings row — someone who dismissed
  * the bubble (or wants to leave a review months later) can still get there.
  * Unlike the bubble this shows everywhere, including desktop: it's opt-in, so a
- * "we're on iPhone" row is information rather than a nag.
+ * "we're on the store" row is information rather than a nag.
  */
 export function AppStoreRow() {
   const ask = appStoreAsk()
@@ -176,7 +182,7 @@ export function AppStoreRow() {
   return (
     <>
       <h3 style={{ fontSize: 14, margin: '0 0 8px' }} className="dim">
-        {review ? 'Rate us' : 'iPhone app'}
+        {review ? 'Rate us' : `${deviceNoun()} app`}
       </h3>
       <div className="card" style={{ marginBottom: 18 }}>
         <button
@@ -197,8 +203,10 @@ export function AppStoreRow() {
             cursor: 'pointer',
           }}
         >
-          <span style={{ flex: 1 }}>{review ? '⭐ Leave an App Store review' : '📱 Get Verse Arcade on iPhone'}</span>
-          <span className="pill" style={{ fontSize: 11, fontWeight: 800 }}>{review ? 'Review' : 'App Store'}</span>
+          <span style={{ flex: 1 }}>
+            {review ? `⭐ Leave a ${storeName()} review` : `📱 Get Verse Arcade on ${deviceNoun()}`}
+          </span>
+          <span className="pill" style={{ fontSize: 11, fontWeight: 800 }}>{review ? 'Review' : storeName()}</span>
         </button>
       </div>
       {review && (

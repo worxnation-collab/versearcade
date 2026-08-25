@@ -47,7 +47,8 @@ workflows:
         # UNSET IS SAFE: with no key the app shows no storefront at all, exactly
         # as it does today, rather than a shop that can't take money.
         VITE_REVENUECAT_IOS_KEY: $REVENUECAT_IOS_KEY
-      node: 20
+      # Capacitor 8 requires Node 22+ and Xcode 26+.
+      node: 22
       xcode: latest
       cocoapods: default
     scripts:
@@ -59,19 +60,34 @@ workflows:
 
       - name: Add iOS platform if missing, then sync
         script: |
+          set -e
+          # --packagemanager CocoaPods is REQUIRED, not decorative. Capacitor 8
+          # generates NEW iOS projects with Swift Package Manager by default, and
+          # ios/ is regenerated on every build here — so without this flag the
+          # project silently becomes SPM, there is no Podfile for the `pod install`
+          # step below, and App.xcworkspace (which XCODE_WORKSPACE and
+          # xcode-project use-profiles both point at) never exists. The whole
+          # signing + archive chain then fails on a working app.
+          # Everything downstream detects the choice from disk: `cap sync` picks
+          # SPM only when ios/App/CapApp-SPM exists, which CocoaPods never creates.
           if [ ! -d "ios" ]; then
-            npx cap add ios
+            npx cap add ios --packagemanager CocoaPods
           fi
           npx cap sync ios
+          test -f ios/App/Podfile || { echo "FATAL: no Podfile — iOS project is not CocoaPods"; exit 1; }
 
       - name: Raise deployment target to 15.0 + make app iPhone-only
         script: |
           # Apple warns (ITMS-90068) that MinimumOSVersion 13.0 will be rejected
-          # from Spring 2027; must be >= 15.0. Capacitor defaults to 13.0, so bump
-          # the Xcode project + Podfile here (before pod install). macOS = BSD sed.
-          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 13.0;/IPHONEOS_DEPLOYMENT_TARGET = 15.0;/g' ios/App/App.xcodeproj/project.pbxproj
-          sed -i '' "s/platform :ios, '13.0'/platform :ios, '15.0'/" ios/App/Podfile
+          # from Spring 2027; must be >= 15.0. Capacitor 8's own minimum is already
+          # 15.0, so this is usually a no-op now — but it matches ANY value rather
+          # than the literal 13.0 it used to, because a sed keyed to one template
+          # default silently stops working the day the template changes. macOS = BSD sed.
+          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [^;]*;/IPHONEOS_DEPLOYMENT_TARGET = 15.0;/g' ios/App/App.xcodeproj/project.pbxproj
+          sed -i '' "s/platform :ios, '[0-9.]*'/platform :ios, '15.0'/" ios/App/Podfile
           echo "Deployment target now:" && grep -m1 "IPHONEOS_DEPLOYMENT_TARGET" ios/App/App.xcodeproj/project.pbxproj
+          grep -q "IPHONEOS_DEPLOYMENT_TARGET = 15.0;" ios/App/App.xcodeproj/project.pbxproj \
+            || { echo "FATAL: deployment target not set to 15.0"; exit 1; }
           # iPhone-only (device family "1"). Capacitor defaults to "1,2" (universal),
           # which forces Apple to require a full 13" iPad screenshot set. This is a
           # phone-first game, so restrict to iPhone. Match any current value.
@@ -216,7 +232,14 @@ workflows:
   # Builds the SAME web app (dist/) into a signed Android App Bundle (.aab) for the
   # Play Store. You run ZERO of this on Windows. The android/ native project IS
   # committed (unlike ios/, which is regenerated), so the OAuth deep-link intent
-  # filter + release signingConfig live in the repo and don't need CI patching.
+  # filter, the removed SCHEDULE_EXACT_ALARM permission and the release
+  # signingConfig live in the repo and don't need CI patching.
+  #
+  # TARGET SDK IS A DEADLINE, NOT A PREFERENCE. Google Play requires targetSdk 36
+  # for every new app and every update from 31 August 2026 (35 before that), and
+  # Capacitor pins the target SDK to its major version — which is why this project
+  # is on Capacitor 8. android/variables.gradle holds the numbers; don't raise them
+  # without raising Capacitor, and don't raise Capacitor without re-testing iOS.
   #
   # ONE-TIME SETUP (see docs/PLAY-STORE-SUBMISSION.md):
   #   1. Codemagic > Team settings > Code signing identities > Android keystores >
@@ -248,8 +271,10 @@ workflows:
         VITE_SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpc3VwcGF1Y3B6emlnd3RxbWRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MTY1MjEsImV4cCI6MjEwMTQ5MjUyMX0.YP_lJkV8ZD7J-oAqwkhh-6gQ0z1Q7pFR4Nql1NdhSa0"
         VITE_AUTH_REDIRECT_URL: "https://versearcade.org/auth/callback"
         VITE_DEFAULT_TRANSLATION: "BSB"
-      node: 20
-      java: 17
+      # Capacitor 8 needs Node 22+ and compiles the Android project at Java 21
+      # (see android/app/capacitor.build.gradle, which cap sync regenerates).
+      node: 22
+      java: 21
     scripts:
       - name: Install JS dependencies
         script: npm ci
@@ -271,6 +296,22 @@ workflows:
             --iconBackgroundColorDark '#0b0720' \
             --splashBackgroundColor '#0b0720' \
             --splashBackgroundColorDark '#0b0720'
+
+      - name: Assert the store version matches package.json
+        script: |
+          set -e
+          # Two stores, one version number. package.json is the source of truth
+          # (the iOS workflow patches MARKETING_VERSION from it); android/ is
+          # committed, so versionName is a literal in build.gradle and can drift
+          # from it silently. Play would happily accept the mismatch and ship an
+          # Android build whose version disagrees with the iOS one — so fail here
+          # instead, where it costs 30 seconds rather than a release.
+          APP_VERSION=$(node -p "require('$CM_BUILD_DIR/package.json').version")
+          GRADLE_VERSION=$(grep -m1 'versionName' android/app/build.gradle | sed 's/.*"\(.*\)".*/\1/')
+          echo "package.json=$APP_VERSION  build.gradle=$GRADLE_VERSION"
+          [ "$APP_VERSION" = "$GRADLE_VERSION" ] || {
+            echo "FATAL: versionName '$GRADLE_VERSION' != package.json version '$APP_VERSION'."
+            echo "Bump both together (see CLAUDE.md)."; exit 1; }
 
       - name: Build signed release AAB
         script: |

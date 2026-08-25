@@ -65,6 +65,15 @@ So the same catalog is sold twice: Stripe on web (`lib/config.ts`), Apple IAP in
 the app (`lib/iap.ts` + `store/iap.ts`, RevenueCat). Setup runbook and the
 account-gated Apple steps: `docs/APPLE-IAP.md`.
 
+**Android sells nothing yet, on purpose.** `lib/iap.ts` knows only Apple product
+ids and only reads `VITE_REVENUECAT_IOS_KEY`, so on Android `iapAvailable()` is
+false and the fail-closed rule below hides the entire marketplace. That is a
+shippable state, not a bug — it's the same state iOS was in before IAP existed.
+Turning Play billing on means: a `goog_` key, a Play product-id map beside the
+Apple one, and those ids added to `SKU_BY_PRODUCT_ID` in the `iap-fulfill` Edge
+Function. The bundled Play Billing library is already 8.3.0, which is what Play
+requires from 31 August 2026, so it's a code change and not a migration.
+
 `lib/commerce.ts` is the only place the *decision* lives — `storefrontEnabled()`,
 `skinVisible()`, `cardBgVisible()`, `displayPrice()`. Every commerce surface asks
 it, so the app and the site can't drift apart by accident. Don't reach for
@@ -188,6 +197,43 @@ part of CI: `.github/workflows/deploy.yml` was removed because it never had a
 `NETLIFY_AUTH_TOKEN` and skipped every step of all 30 runs while reporting
 green. Merges to `main` use a **merge commit** titled `<PR title> (#NN)` —
 match the existing history.
+
+## Android: the target SDK is a deadline, not a preference
+
+Google Play refuses any new app or update whose `targetSdk` is below the current
+line — 35 until 31 August 2026, **36 after it**. Capacitor pins the target SDK to
+its major version, so the target SDK and the Capacitor major are one decision:
+this project is on **Capacitor 8** (compileSdk/targetSdk 36, minSdk 24, JDK 21,
+Node 22, AGP 8.13 / Gradle 8.14.3). Raising the numbers in
+`android/variables.gradle` without raising Capacitor doesn't work — AGP rejects
+the compileSdk — and raising Capacitor touches iOS too, so re-test both.
+
+Two Android-specific traps, both already handled, both easy to undo by accident:
+
+- **Edge-to-edge is mandatory** at targetSdk 36, and Android WebView below 140
+  reports wrong `env(safe-area-inset-*)` values. Capacitor injects the real insets
+  as `--safe-area-inset-*`; `src/index.css` reads `var(--safe-area-inset-*,
+  env(...))` so one expression is correct on all three platforms. Don't "simplify"
+  it back to bare `env()`.
+- **`SCHEDULE_EXACT_ALARM` is stripped** in `AndroidManifest.xml`, and
+  `lib/reminders.ts` passes `isExactNotification: false` to match. They are a pair.
+  The plugin's default (exact) both requires a restricted Play permission this app
+  doesn't qualify for and throws the player out to the system "Alarms & reminders"
+  screen — on every app resume, since `applyPlan()` runs there.
+
+CI keeps iOS on CocoaPods explicitly (`cap add ios --packagemanager CocoaPods`).
+Capacitor 8 defaults new iOS projects to SPM, and `ios/` is regenerated every
+build, so without that flag there is no Podfile and no `App.xcworkspace` — and the
+whole signing chain fails on an app that didn't change.
+
+## Two stores, two links
+
+`lib/appStore.ts` decides which store a device is offered — Play inside the
+Android app or on an Android browser, the App Store otherwise. It is the only
+place that knows; `storeName()`/`deviceNoun()` exist so copy never hardcodes "App
+Store" or "iPhone" again. The bug that motivated this: the in-app review nudge on
+Android opened apps.apple.com. `PLAY_LISTING_LIVE` gates the *web* download CTA
+and stays false until the Play listing is public.
 
 ## Store versions: 1.0 is live, so the version must move every release
 

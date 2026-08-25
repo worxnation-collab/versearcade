@@ -69,6 +69,15 @@ Console and a Play service account linked into RevenueCat.
 
 ## One-time setup (you)
 
+**You do NOT add a new application in Codemagic.** A Codemagic application is a
+connected *repository*, and this repo is already connected for the iOS build.
+Both workflows live in the one `codemagic.yaml`, so you pick the workflow when
+you start the build: *Start new build → choose branch → choose
+`Verse Arcade — Android Google Play`*. Adding the repo a second time would just
+give you two apps fighting over the same `$BUILD_NUMBER`.
+
+What you do add, inside that existing app/team:
+
 1. **Keystore (no Java needed):** Codemagic → *Team settings → Code signing
    identities → Android keystores → Generate keystore*. Reference name **exactly**
    `versearcade_upload`. Codemagic stores it and exposes it to the build.
@@ -86,7 +95,10 @@ Console and a Play service account linked into RevenueCat.
    link a Google Cloud project → create a service account → grant it *Release
    manager* → download the JSON. Add it to Codemagic (this app → *Environment
    variables*) as `GCLOUD_SERVICE_ACCOUNT_CREDENTIALS`, group `googleplay`, Secure.
-   Then uncomment the `google_play:` block at the bottom of the workflow.
+   Then uncomment **both** the `groups: - googleplay` block and the `google_play:`
+   block in the workflow — they go together. Until then both stay commented out,
+   because Codemagic fails any build that references a variable group which
+   doesn't exist yet, and skipping that is one wasted build.
 
 ## First release
 

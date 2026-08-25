@@ -261,9 +261,17 @@ workflows:
     instance_type: linux_x2
     environment:
       android_signing:
-        - versearcade_upload   # <-- must EXACTLY match the keystore reference in Codemagic
-      groups:
-        - googleplay           # holds GCLOUD_SERVICE_ACCOUNT_CREDENTIALS (only needed once auto-publish is enabled)
+        - versearcade_upload   # <-- must EXACTLY match the keystore reference in Codemagic.
+                               # REQUIRED: a missing keystore reference fails the build,
+                               # and an unsigned AAB is useless to Play anyway.
+      # NOTE: `groups:` is commented out on purpose. Codemagic FAILS a build that
+      # references a variable group which doesn't exist yet, and `googleplay` only
+      # carries GCLOUD_SERVICE_ACCOUNT_CREDENTIALS for the auto-publish block at the
+      # bottom of this workflow — which is itself still commented out. Leaving this
+      # in would fail the very first Android build for a credential nothing uses.
+      # Uncomment it together with the google_play: block, once the group exists.
+      # groups:
+      #   - googleplay
       vars:
         PACKAGE_NAME: "com.versearcade.app"
         # Same backend config as the web + iOS builds (public anon key; RLS-protected).

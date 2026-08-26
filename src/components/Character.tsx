@@ -183,6 +183,7 @@ function Halo({ cy = 26, rx = 13 }: { cy?: number; rx?: number }) {
 const RASTER_SKINS: Record<string, string> = {
   baldwin: '/skins/baldwin.png',
   esther: '/skins/esther.png',
+  whale: '/skins/whale.png',
 }
 
 export function Character({
@@ -221,10 +222,16 @@ export function Character({
       {useRaster ? (
         <image
           href={raster}
-          x="0"
-          y="0"
-          width="120"
-          height="170"
+          // Inset rather than filling the viewBox. Avatar clips to a circle, and
+          // a figure spanning the full 170 height has its top and bottom corners
+          // cut by the curve — invisible on the narrow drawn skins, obvious on a
+          // wide head like the whale's, whose cap was being sliced flat. This
+          // keeps the feet on the drawn skins' baseline and the head inside the
+          // circle at every size.
+          x="10"
+          y="20"
+          width="100"
+          height="136"
           preserveAspectRatio="xMidYMax meet"
           onError={() => setRasterFailed(true)}
         />

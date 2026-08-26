@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { AvatarSpec, ArmorSlot } from '@/types'
 import { skinHex, robeHex, equippedSkinId } from '@/data/avatar'
 
@@ -169,6 +170,21 @@ function Halo({ cy = 26, rx = 13 }: { cy?: number; rx?: number }) {
   )
 }
 
+// ── Raster skin preview ───────────────────────────────────────────────────
+// A skin listed here renders as an image instead of drawn paths. The <image>
+// sits inside the same 120×170 viewBox, so sizing, the circular clip in Avatar
+// and every call site are untouched — and a skin that isn't listed keeps its
+// SVG exactly as before.
+//
+// This is a preview path, not a decision. Raster can't compose (the free
+// starter layers armour and items independently) and it softens badly at the
+// 18px presence chip, so anything kept here long-term should be redrawn as
+// paths. The file is served from public/, so dropping a PNG in is enough.
+const RASTER_SKINS: Record<string, string> = {
+  baldwin: '/skins/baldwin.png',
+  esther: '/skins/esther.png',
+}
+
 export function Character({
   spec,
   size = 44,
@@ -183,6 +199,11 @@ export function Character({
   const has = (s: ArmorSlot) => !!spec.armor[s]
   const items = spec.items ?? {}
   const skinId = equippedSkinId(spec)
+  // Falls back to the drawn skin if the image is missing or fails to decode, so
+  // a listed-but-absent file degrades to what shipped before rather than a hole.
+  const [rasterFailed, setRasterFailed] = useState(false)
+  const raster = skinId ? RASTER_SKINS[skinId] : undefined
+  const useRaster = !!raster && !rasterFailed
 
   return (
     <svg
@@ -197,7 +218,17 @@ export function Character({
       {/* ground shadow */}
       <ellipse cx="60" cy="162" rx="30" ry="5" fill="rgba(0,0,0,0.16)" />
 
-      {skinId === 'baldwin' ? (
+      {useRaster ? (
+        <image
+          href={raster}
+          x="0"
+          y="0"
+          width="120"
+          height="170"
+          preserveAspectRatio="xMidYMax meet"
+          onError={() => setRasterFailed(true)}
+        />
+      ) : skinId === 'baldwin' ? (
         <>
           {/* ── King Baldwin — the masked Leper King ── */}
           {/* ceremonial sword, held upright at his (viewer-left) side */}

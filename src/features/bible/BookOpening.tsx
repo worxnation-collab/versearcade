@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { PAPER } from './paper'
 import { BookCoverArt, COVER_BOARD, COVER_RATIO } from './BookCoverArt'
+import { bibleTitle } from './title'
 
 // The transition that makes this a book rather than a screen.
 //
@@ -146,12 +147,22 @@ export function BookOpening({
                 fontWeight: 800,
                 fontSize: 22,
                 color: PAPER.ink,
-                letterSpacing: '0.04em',
+                letterSpacing: '0.03em',
+                lineHeight: 1.25,
               }}
             >
-              My Bible
+              {bibleTitle(name)}
             </div>
-            <div style={{ fontSize: 12, color: PAPER.inkFaint, marginTop: 6 }}>
+            <div
+              aria-hidden
+              style={{
+                width: 54,
+                height: 1,
+                margin: '10px auto',
+                background: PAPER.rule,
+              }}
+            />
+            <div style={{ fontSize: 12, color: PAPER.inkFaint }}>
               66 books · 1,189 chapters
             </div>
           </motion.div>

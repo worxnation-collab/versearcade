@@ -28,6 +28,32 @@ export type Scene =
 const W = 400
 const H = 240
 
+// ── Where the art is actually seen ─────────────────────────────────────────
+// Measured in the browser, not guessed. The SVG is 400×240 and every card
+// renders it with preserveAspectRatio="slice", but the card box is ~380×260 on
+// a phone and 520×260 at the app's max width — which are two different crops:
+//
+//   380 wide → full height, x cropped to 25…375
+//   520 wide → full width,  y cropped to 20…220
+//
+// So only x 25…375, y 20…220 survives both. Outside it, art is cropped away on
+// one layout or the other.
+//
+// The card's own contents then sit on top. The stat grid covers y 97…222 in
+// tiles of rgba(10,4,28,0.5) with a 3px backdrop blur, so detail finer than
+// ~6px dissolves down there; the avatar disc covers x 40…105, y 17…82 opaquely.
+// Measuring the type as well: the avatar disc is opaque over x 40…99, y 20…79;
+// the username sets x 112…240, y 18…43; the XP figure x 281…360, y 51…64; the XP
+// bar itself is solid across x 112…360, y 66…82. So there is no unoccupied
+// region on this card at all — every scene is read through type or through the
+// stat tiles, and the art's job is a tonal field, not a picture.
+//
+// The one low-ink pocket is x 240…375, y 18…48 — right of the short username and
+// above the XP figure. A bright hard-edged element belongs there and nowhere
+// else; put it lower (sunrise used y 150, lamp y 120) and the stat tiles eat it,
+// put it wider and it sits under small text and costs legibility. Soft haloes
+// may spill anywhere; it is only the hot core that has to respect the pocket.
+
 // ── Layer primitives ───────────────────────────────────────────────────────
 // Every layer is pure SVG so a card renders at any size with no image bytes.
 
@@ -57,18 +83,46 @@ const sunDisc = (p: Palette, id: string, cx = 300, cy = 96, r = 40) => (
   </g>
 )
 
-const sunRays = (p: Palette, cx = 300, cy = 96) => (
-  <g key="rays" opacity="0.34">
-    {Array.from({ length: 16 }, (_, i) => {
-      const a = (i * Math.PI * 2) / 16
+// A fan of light from a point. Widths and opacities vary so it reads as light
+// rather than a pinwheel — the previous version drew 16 identical wedges, which
+// striped the card and fought the text on top of it.
+const rayFan = (p: Palette, cx: number, cy: number, count = 22, opacity = 0.28) => (
+  <g key="rays" opacity={opacity}>
+    {Array.from({ length: count }, (_, i) => {
+      const a = (i * Math.PI * 2) / count
+      const w = 0.014 + ((i * 7) % 5) * 0.012
       return (
         <polygon
           key={i}
-          points={`${cx},${cy} ${cx + Math.cos(a - 0.05) * 460},${cy + Math.sin(a - 0.05) * 460} ${cx + Math.cos(a + 0.05) * 460},${cy + Math.sin(a + 0.05) * 460}`}
+          points={`${cx},${cy} ${cx + Math.cos(a - w) * 520},${cy + Math.sin(a - w) * 520} ${cx + Math.cos(a + w) * 520},${cy + Math.sin(a + w) * 520}`}
           fill={p.glow}
+          opacity={0.45 + ((i * 3) % 4) * 0.18}
         />
       )
     })}
+  </g>
+)
+
+// Warm air stacked on the horizon. Cheap, and it does most of the work of making
+// a sky read as depth rather than as a vertical gradient.
+const horizonHaze = (p: Palette, id: string, y: number, strength = 0.5) => (
+  <g key="haze">
+    <defs>
+      <linearGradient id={`${id}-haze`} x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor={p.glow} stopOpacity="0" />
+        <stop offset="100%" stopColor={p.glow} stopOpacity={strength} />
+      </linearGradient>
+    </defs>
+    <rect y={y - 96} width={W} height={96} fill={`url(#${id}-haze)`} />
+  </g>
+)
+
+// One ridge: a filled body plus a lit top edge. The rim is a separate open path
+// because stroking the closed shape would draw a hairline down both frame edges.
+const ridge = (p: Palette, top: string, fill: number, rim: number, key: string) => (
+  <g key={key}>
+    <path d={`${top} L${W} ${H} L0 ${H} Z`} fill={p.land} opacity={fill} />
+    <path d={top} fill="none" stroke={p.glow} strokeWidth="1.8" opacity={rim} strokeLinecap="round" />
   </g>
 )
 
@@ -108,14 +162,6 @@ const hills = (p: Palette, y = 168, dark = 0.55) => (
   <g key="hills">
     <path d={`M0 ${y + 26} Q 70 ${y - 20} 150 ${y + 10} T 300 ${y - 4} T ${W} ${y + 16} L${W} ${H} L0 ${H} Z`} fill={p.land} opacity={dark} />
     <path d={`M0 ${y + 52} Q 100 ${y + 14} 190 ${y + 44} T ${W} ${y + 36} L${W} ${H} L0 ${H} Z`} fill={p.land} />
-  </g>
-)
-
-const peaks = (p: Palette) => (
-  <g key="peaks">
-    <path d={`M0 240 L96 108 L152 168 L214 88 L300 200 L${W} 132 L${W} ${H} Z`} fill={p.land} opacity="0.5" />
-    <path d={`M0 240 L70 152 L140 206 L226 138 L308 226 L${W} 178 L${W} ${H} Z`} fill={p.land} />
-    <path d="M214 88 L246 132 L182 132 Z" fill={p.glow} opacity="0.5" />
   </g>
 )
 
@@ -191,19 +237,6 @@ const sparks = (p: Palette, count = 22) => (
 )
 
 // A single lamp flame in the dark, with its pool of light.
-const lampLight = (p: Palette, id: string, cx = 300, cy = 120) => (
-  <g key="lamp">
-    <defs>
-      <radialGradient id={`${id}-lamp`}>
-        <stop offset="0%" stopColor={p.glow} stopOpacity="0.85" />
-        <stop offset="100%" stopColor={p.glow} stopOpacity="0" />
-      </radialGradient>
-    </defs>
-    <circle cx={cx} cy={cy} r="150" fill={`url(#${id}-lamp)`} />
-    <path d={`M${cx} ${cy - 34} C ${cx - 15} ${cy - 8}, ${cx - 11} ${cy + 12}, ${cx} ${cy + 18} C ${cx + 11} ${cy + 12}, ${cx + 15} ${cy - 8}, ${cx} ${cy - 34} Z`} fill={p.glow} />
-  </g>
-)
-
 // Temple colonnade in silhouette.
 const pillars = (p: Palette) => (
   <g key="pillars">
@@ -400,21 +433,105 @@ const heavenlyHost = (p: Palette) => (
   </g>
 )
 
+// ── Reworked scenes ────────────────────────────────────────────────────────
+// These three place their hero element in the clear band documented above and
+// build depth from aerial perspective — one land colour at three opacities, each
+// ridge rimmed with light — rather than from two stacked curves.
+
+const sunriseScene = (p: Palette, id: string): ReactNode[] => [
+  sky(p, id),
+  horizonHaze(p, id, 168, 0.5),
+  rayFan(p, 322, 38, 22, 0.24),
+  sunDisc(p, id, 322, 38, 17),
+  ridge(p, 'M0 158 Q 62 140 126 152 T 248 142 T 340 152 T 400 144', 0.34, 0.5, 'far'),
+  ridge(p, 'M0 186 Q 86 164 162 180 T 306 170 T 400 184', 0.62, 0.34, 'mid'),
+  ridge(p, 'M0 214 Q 72 198 148 210 T 276 204 T 400 218', 1, 0.2, 'near'),
+]
+
+// One flame in a wide darkness. Two-stage falloff — a broad pool plus a tight
+// core — because the single radial it replaces flattened the whole card into an
+// even wash. The vessel gives the flame something to stand on; without it the
+// flame read as a smudge floating in the middle of the card.
+const lampScene = (p: Palette, id: string): ReactNode[] => {
+  const cx = 322
+  const cy = 46
+  return [
+    sky(p, id),
+    stars(p, 22, 3),
+    <g key="pool">
+      <defs>
+        <radialGradient id={`${id}-pool`}>
+          <stop offset="0%" stopColor={p.glow} stopOpacity="0.46" />
+          <stop offset="45%" stopColor={p.glow} stopOpacity="0.13" />
+          <stop offset="100%" stopColor={p.glow} stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id={`${id}-core`}>
+          <stop offset="0%" stopColor={p.accent} stopOpacity="0.85" />
+          <stop offset="100%" stopColor={p.glow} stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <circle cx={cx} cy={cy} r="170" fill={`url(#${id}-pool)`} />
+      <circle cx={cx} cy={cy} r="38" fill={`url(#${id}-core)`} />
+    </g>,
+    <g key="flame">
+      <path d={`M${cx} ${cy - 20} C ${cx - 9} ${cy - 4}, ${cx - 7} ${cy + 6}, ${cx} ${cy + 10} C ${cx + 7} ${cy + 6}, ${cx + 9} ${cy - 4}, ${cx} ${cy - 20} Z`} fill={p.glow} />
+      <path d={`M${cx} ${cy - 10} C ${cx - 4} ${cy - 2}, ${cx - 3} ${cy + 4}, ${cx} ${cy + 7} C ${cx + 3} ${cy + 4}, ${cx + 4} ${cy - 2}, ${cx} ${cy - 10} Z`} fill={p.accent} />
+    </g>,
+    // Light falling on the land below the flame. This is what a lamp scene needs
+    // instead of a drawn vessel — the earlier version put a clay bowl under the
+    // flame and at card size it read as a black smear, while the ground never
+    // acknowledged the light at all.
+    <g key="spill">
+      <defs>
+        <radialGradient id={`${id}-spill`}>
+          <stop offset="0%" stopColor={p.glow} stopOpacity="0.4" />
+          <stop offset="100%" stopColor={p.glow} stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <ellipse cx={cx} cy="200" rx="150" ry="44" fill={`url(#${id}-spill)`} />
+    </g>,
+    ridge(p, 'M0 196 Q 90 182 176 194 T 320 188 T 400 198', 1, 0.34, 'near'),
+  ]
+}
+
+// Three ranges, far ones hazier and higher. The old single-opacity pair of
+// polygons topped out at y 88 and sat almost entirely behind the stat grid, so
+// the card read as sky; these push the far summits up into the clear band. Lit
+// faces are hard-edged shapes on the sun side rather than one decorative wedge.
+const mountainScene = (p: Palette, id: string): ReactNode[] => [
+  sky(p, id),
+  horizonHaze(p, id, 150, 0.26),
+  sunDisc(p, id, 322, 38, 17),
+  <g key="far" opacity="0.42">
+    <path d="M0 240 L46 118 L92 150 L150 74 L214 132 L268 96 L340 146 L400 108 L400 240 Z" fill={p.land} />
+    <path d="M150 74 L214 132 L176 132 Z" fill={p.glow} opacity="0.55" />
+    <path d="M268 96 L340 146 L302 146 Z" fill={p.glow} opacity="0.4" />
+  </g>,
+  <g key="mid" opacity="0.72">
+    <path d="M0 240 L38 166 L96 200 L156 128 L222 186 L286 152 L352 196 L400 168 L400 240 Z" fill={p.land} />
+    <path d="M156 128 L222 186 L184 186 Z" fill={p.glow} opacity="0.4" />
+  </g>,
+  <g key="near">
+    <path d="M0 240 L62 194 L124 224 L190 176 L256 218 L322 190 L400 222 L400 240 Z" fill={p.land} />
+    <path d="M190 176 L256 218 L220 218 Z" fill={p.glow} opacity="0.22" />
+  </g>,
+]
+
 // ── Scene composition ──────────────────────────────────────────────────────
 
 function layersFor(scene: Scene, p: Palette, id: string): ReactNode[] {
   switch (scene) {
-    case 'sunrise': return [sky(p, id), sunRays(p, 300, 150), sunDisc(p, id, 300, 150, 34), hills(p, 168)]
+    case 'sunrise': return sunriseScene(p, id)
     case 'night': return [sky(p, id), stars(p), moon(p), hills(p, 182, 0.5)]
     // One great star over the hills — no moon competing with it.
     case 'star': return [sky(p, id), stars(p, 40, 11), starburst(p, 268, 68, 26), hills(p, 186, 0.55)]
     case 'flames': return [sky(p, id), sparks(p), flames(p)]
     case 'water': return [sky(p, id), sunDisc(p, id, 200, 96, 26), clouds(p, 0.22), waves(p, 158)]
     case 'rainbow': return [sky(p, id), clouds(p, 0.35), rainbow(p), hills(p, 190, 0.6)]
-    case 'mountain': return [sky(p, id), sunDisc(p, id, 320, 70, 24), peaks(p)]
+    case 'mountain': return mountainScene(p, id)
     case 'temple': return [sky(p, id), sunDisc(p, id, 200, 120, 30), pillars(p)]
     case 'scroll': return [sky(p, id), parchment(p)]
-    case 'lamp': return [sky(p, id), stars(p, 26, 3), lampLight(p, id), hills(p, 196, 0.7)]
+    case 'lamp': return lampScene(p, id)
     case 'radiance': return [sky(p, id), radiance(p, id), hills(p, 200, 0.4)]
     case 'field': return [sky(p, id), sunDisc(p, id, 96, 78, 26), field(p)]
     case 'storm': return [sky(p, id), storm(p), hills(p, 196, 0.65)]

@@ -184,6 +184,9 @@ const RASTER_SKINS: Record<string, string> = {
   baldwin: '/skins/baldwin.png',
   esther: '/skins/esther.png',
   whale: '/skins/whale.png',
+  gabriel: '/skins/gabriel.png',
+  michael: '/skins/michael.png',
+  seraph: '/skins/seraph.png',
 }
 
 export function Character({
@@ -205,6 +208,11 @@ export function Character({
   const [rasterFailed, setRasterFailed] = useState(false)
   const raster = skinId ? RASTER_SKINS[skinId] : undefined
   const useRaster = !!raster && !rasterFailed
+  // Everywhere the player actually reads an avatar — chips, lists, the profile
+  // header, the customise grid — a full-length figure in a small circle throws
+  // away the face. Those get a portrait crop. The one place that stays
+  // full-length is the large purchase preview, where the whole skin is the point.
+  const zoomRaster = useRaster && size < 120
 
   return (
     <svg
@@ -216,8 +224,9 @@ export function Character({
       aria-label={title ?? (skinId ? `${skinId} avatar` : 'Character avatar')}
       style={{ display: 'block' }}
     >
-      {/* ground shadow */}
-      <ellipse cx="60" cy="162" rx="30" ry="5" fill="rgba(0,0,0,0.16)" />
+      {/* Ground shadow — skipped when a raster skin is framed as a portrait,
+          since the figure is cropped at the waist and has no feet to cast one. */}
+      {!zoomRaster && <ellipse cx="60" cy="162" rx="30" ry="5" fill="rgba(0,0,0,0.16)" />}
 
       {useRaster ? (
         <image
@@ -228,11 +237,20 @@ export function Character({
           // wide head like the whale's, whose cap was being sliced flat. This
           // keeps the feet on the drawn skins' baseline and the head inside the
           // circle at every size.
-          x="10"
-          y="20"
-          width="100"
-          height="136"
-          preserveAspectRatio="xMidYMax meet"
+          {...(zoomRaster
+            ? // Portrait framing: cover the viewBox and anchor to the top, so the
+              // head and torso fill the circle instead of a full figure shrinking
+              // to a few pixels. The processed PNGs are cropped tight to the top
+              // of the head, so xMidYMin lands the crop correctly. How much of
+              // the figure survives falls out of its own width — a narrow figure
+              // like Baldwin zooms to about the waist, a wide-winged angel barely
+              // crops at all, which is the right behaviour in both cases. Inset a
+              // few units so a wide head (the whale's cap) is not caught by the
+              // circle's curve at the corners.
+              { x: 5, y: 7, width: 110, height: 156, preserveAspectRatio: 'xMidYMin slice' }
+            : // Full figure, inset so Avatar's circular clip does not cut the
+              // corners off a wide head.
+              { x: 10, y: 20, width: 100, height: 136, preserveAspectRatio: 'xMidYMax meet' })}
           onError={() => setRasterFailed(true)}
         />
       ) : skinId === 'baldwin' ? (

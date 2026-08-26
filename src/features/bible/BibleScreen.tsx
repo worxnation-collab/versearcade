@@ -2,7 +2,9 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useJuice } from '@/juice/useJuice'
+import { useAuth } from '@/store/auth'
 import { useBibleMarks } from './useBibleMarks'
+import { bibleTitle } from './title'
 import { BookHeader, BookPage } from './BookPage'
 import { PaperCard, TierBar, TierLegend } from './tiers'
 import { PAPER, PAPER_TIER } from './paper'
@@ -45,6 +47,7 @@ export default function BibleScreen() {
   const navigate = useNavigate()
   const juice = useJuice()
   const { marks, ready } = useBibleMarks()
+  const name = useAuth((s) => s.profile?.username ?? '')
   const { OT, NT } = useMemo(() => shapesByTestament(), [])
   const [open, setOpen] = useState<Record<string, boolean>>(readFold)
 
@@ -70,7 +73,7 @@ export default function BibleScreen() {
         <BookHeader
           onBack={() => navigate('/you')}
           backLabel="Close my Bible"
-          title="My Bible"
+          title={bibleTitle(name)}
           note={`${percentLabel(touchedFraction(overall))} opened`}
         />
       }

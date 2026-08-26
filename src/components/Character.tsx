@@ -184,6 +184,9 @@ const RASTER_SKINS: Record<string, string> = {
   baldwin: '/skins/baldwin.png',
   esther: '/skins/esther.png',
   whale: '/skins/whale.png',
+  gabriel: '/skins/gabriel.png',
+  michael: '/skins/michael.png',
+  seraph: '/skins/seraph.png',
 }
 
 export function Character({

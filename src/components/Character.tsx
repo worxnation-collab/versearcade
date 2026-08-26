@@ -205,9 +205,16 @@ export function Character({
   const skinId = equippedSkinId(spec)
   // Falls back to the drawn skin if the image is missing or fails to decode, so
   // a listed-but-absent file degrades to what shipped before rather than a hole.
-  const [rasterFailed, setRasterFailed] = useState(false)
+  //
+  // Keyed on the failing src rather than a boolean. One Character instance can
+  // be shown many skins in turn -- the preview avatar on the customise screen is
+  // a single instance whose skinId changes as the player taps through the grid --
+  // and a boolean latched on the first failure would fall back for every skin
+  // after it, permanently, until the component remounted. A transient 404 while
+  // a deploy propagates was enough to do it.
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
   const raster = skinId ? RASTER_SKINS[skinId] : undefined
-  const useRaster = !!raster && !rasterFailed
+  const useRaster = !!raster && failedSrc !== raster
   // Everywhere the player actually reads an avatar — chips, lists, the profile
   // header, the customise grid — a full-length figure in a small circle throws
   // away the face. Those get a portrait crop. The one place that stays
@@ -251,7 +258,7 @@ export function Character({
             : // Full figure, inset so Avatar's circular clip does not cut the
               // corners off a wide head.
               { x: 10, y: 20, width: 100, height: 136, preserveAspectRatio: 'xMidYMax meet' })}
-          onError={() => setRasterFailed(true)}
+          onError={() => setFailedSrc(raster ?? null)}
         />
       ) : skinId === 'baldwin' ? (
         <>

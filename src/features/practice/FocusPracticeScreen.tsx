@@ -8,7 +8,7 @@ import { CpuVersusQuiz } from '@/features/arena/CpuVersusQuiz'
 import type { CpuProfile } from '@/features/arena/cpu'
 import { useFocus, FOCUS_XP_DAILY_CAP, type FocusXpOutcome } from '@/store/focus'
 import { useAuth } from '@/store/auth'
-import { poolBooks, poolBookCounts, practiceVerseFromBook } from '@/data/bible/questions'
+import { poolBooks, poolBookCounts, practiceVerseFromBook, verseFromReference } from '@/data/bible/questions'
 import { useJuice } from '@/juice/useJuice'
 import { FavoriteButton } from '@/components/FavoriteButton'
 import type { AvatarSpec, DailyVerse, PlayResult } from '@/types'
@@ -46,9 +46,20 @@ export default function FocusPracticeScreen() {
   // the store so the very first verse is already the right one — the store
   // catches up in an effect, since the choice should still stick afterwards.
   const [linked, setLinked] = useState<{ book: string | null } | null>(() => {
+    // ?verse=John+3:16 (a verse tapped in the player's Bible) pins the first
+    // run to that exact verse, and settles into its book afterwards.
+    const pinned = params.get('verse')
+    const seed = pinned ? verseFromReference(pinned) : null
+    if (seed) return { book: seed.book }
     const b = params.get('book')
     if (b === null) return null
     return { book: b === 'any' ? null : b }
+  })
+  // Cleared as soon as the player asks for another verse — the pin is for the
+  // first run only, so "next verse" behaves like any other focus session.
+  const [pinnedVerse, setPinnedVerse] = useState<DailyVerse | null>(() => {
+    const pinned = params.get('verse')
+    return pinned ? verseFromReference(pinned) : null
   })
   const book = linked ? linked.book : savedBook
 
@@ -61,17 +72,20 @@ export default function FocusPracticeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const verse = useMemo(() => practiceVerseFromBook(book, seed), [book, seed])
+  const randomVerse = useMemo(() => practiceVerseFromBook(book, seed), [book, seed])
+  const verse = pinnedVerse ?? randomVerse
 
   const startWith = (b: string | null) => {
     juice.coin()
     setLinked(null)
+    setPinnedVerse(null)
     setBook(b)
     setSeed(randSeed())
     setPhase('play')
   }
   const nextVerse = () => {
     juice.whoosh()
+    setPinnedVerse(null)
     setSeed(randSeed())
     setPhase('play')
   }

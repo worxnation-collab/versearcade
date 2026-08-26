@@ -7,6 +7,7 @@ import { ComboMeter } from '@/components/ComboMeter'
 import { CountUp } from '@/components/CountUp'
 import { useJuice } from '@/juice/useJuice'
 import { useBookAccuracy } from '@/store/bookAccuracy'
+import { useBible } from '@/store/bible'
 import { scoreQuestion } from '@/lib/progress'
 import { SCORING } from '@/lib/config'
 import type { DailyVerse, PlayResult } from '@/types'
@@ -139,6 +140,10 @@ export function QuizRunner({
     // knowing Romans is knowing Romans whether it was a daily drop or a battle.
     // (An abandoned run doesn't count: a quit isn't a wrong answer.)
     useBookAccuracy.getState().record(verse.book, correctCount, answers.length)
+    // …and lights the verse up in the player's own Bible, from whichever mode it
+    // came. Studying a verse is studying it whether it was the daily drop or a
+    // battle, and the Bible is the one place that shows all of it at once.
+    useBible.getState().markStudied(verse.reference)
     try {
       await onComplete(result)
     } catch {

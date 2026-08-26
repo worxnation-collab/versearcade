@@ -113,6 +113,47 @@ Add verses by appending to `VERSE_POOL` (`src/data/bible/pool.ts`) with full
 metadata — the generator needs `speaker`, `audience`, `before`, `after`,
 `theme`, `keyword`, `facts` to build its five MCQs.
 
+## The player's Bible
+
+`/bible` draws **all 66 books, 1,189 chapters and 31,102 verse slots** with no
+network at all — `data/bible/structure.ts` ships the verse count of every
+chapter, and only the *words* are fetched (a chapter at a time, `lib/bible.ts` →
+bible-api). That's why a chapter still renders every verse when the API is down.
+
+Each verse wears one of four states, brightest first: **saved** (kept — the
+favorites store, unchanged), **studied** (quizzed in any mode), **read** (its
+chapter was opened), **unread**. Orthogonal to all four: whether the verse is in
+`VERSE_POOL`, shown as a ✨ you can tap to play it. Most of the Bible isn't in
+the pool and the reader says so plainly — "here to read", never a disabled
+button or a dimmed second class.
+
+Three things bite here:
+
+- **The pool cites `Psalm 23:1`; the book is `Psalms`.** 24 entries do this, and
+  it's correct English, so don't "fix" the pool — favorites are keyed by
+  reference and rewriting them would orphan every kept Psalm. `citationBook()` /
+  `canonBook()` in `structure.ts` translate, `parseReference()` normalizes on the
+  way in, and `verseReference()` emits the citation form so a verse kept from the
+  Bible has the *same key* as one kept from a recap. `npm run check:structure`
+  fails the build if any pool reference stops landing in a real slot.
+- **The verse-count table is 1,189 hand-entered numbers.** A typo there is
+  invisible (the app renders fine; the percentages are just quietly wrong
+  forever), so `scripts/check-structure.mjs` checks every book's chapter count
+  and verse total against independently-entered published figures plus the 31,102
+  grand total. It caught a 10-verse error in Joshua on its first run. If you edit
+  the table, don't derive the expected values from it.
+- **Marks are cumulative and never removed.** Opening a chapter is a footprint,
+  not a claim to have understood it. Nothing here is scored, ranked, or shown to
+  another player — same rule as the Study tab.
+
+Persistence follows the usual two-mode shape: `bible_marks` + `mark_bible_progress`
+(0048) online, `va.bible.*` for guests (`store/bible.ts`). Marks are written from
+the two choke points — `QuizRunner` for studied, `ChapterReader` /
+`BibleChapterScreen` for read — so every mode counts without five call sites.
+
+The old `/favorites` shelf is now `/bible/highlights` (the route redirects), and
+the profile tab carries the book itself, which swings open on tap.
+
 ## Supabase
 
 Migrations live in `supabase/migrations/`, numbered, and are **applied by hand**

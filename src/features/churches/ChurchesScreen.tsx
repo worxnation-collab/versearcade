@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/store/auth'
 import { useJuice } from '@/juice/useJuice'
 
 // For Churches — the congregation/partnership funnel that replaces the old
@@ -11,6 +12,24 @@ import { useJuice } from '@/juice/useJuice'
 export default function ChurchesScreen() {
   const navigate = useNavigate()
   const juice = useJuice()
+  const profile = useAuth((s) => s.profile)
+  const location = useLocation()
+
+  // This route sits outside TabShell, so there's no bottom nav to escape
+  // through, and it's public — someone can land here from a shared link, and the
+  // installed app has no browser back button either.
+  //
+  // The check is router history, not window.history: window.history counts
+  // entries from before the app was even loaded, so on a cold landing it can be
+  // >1 and going back would throw the visitor out of the app entirely. A router
+  // location key of 'default' means this is the first entry of the session —
+  // there is no in-app page to return to, so send them somewhere real instead,
+  // which depends on whether they have an account at all.
+  const exit = () => {
+    juice.select?.()
+    if (location.key !== 'default') navigate(-1)
+    else navigate(profile ? '/play' : '/')
+  }
   const [church, setChurch] = useState('')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -49,7 +68,9 @@ export default function ChurchesScreen() {
             We got your inquiry and will reach out to <b>{email}</b> to walk through how Verse Arcade can work for your congregation.
           </p>
           <div style={{ marginTop: 20 }}>
-            <Button variant="gold" full onClick={() => navigate('/play')}>Back to the app</Button>
+            <Button variant="gold" full onClick={exit}>
+              {profile ? 'Back to the app' : 'Back'}
+            </Button>
           </div>
         </div>
       </Page>
@@ -58,6 +79,10 @@ export default function ChurchesScreen() {
 
   return (
     <Page>
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
+        <button className="pill" onClick={exit} aria-label="Back">← Back</button>
+      </div>
+
       <div className="center" style={{ marginBottom: 16 }}>
         <div className="floaty" style={{ fontSize: 44 }}>⛪</div>
         <h1 style={{ fontSize: 28, marginTop: 4 }}>Verse Arcade for Churches</h1>

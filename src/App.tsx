@@ -27,7 +27,10 @@ import BattlePlay from './features/arena/BattlePlay'
 import BattleDetail from './features/arena/BattleDetail'
 import BattleCpu from './features/arena/BattleCpu'
 import StudyScreen from './features/study/StudyScreen'
-import FavoritesScreen from './features/favorites/FavoritesScreen'
+import BibleScreen from './features/bible/BibleScreen'
+import BibleBookScreen from './features/bible/BibleBookScreen'
+import BibleChapterScreen from './features/bible/BibleChapterScreen'
+import HighlightsScreen from './features/bible/HighlightsScreen'
 import FocusPracticeScreen from './features/practice/FocusPracticeScreen'
 import { BattleResume } from './features/arena/BattleResume'
 import { BottomNav } from './components/BottomNav'
@@ -215,16 +218,46 @@ export default function App() {
             </RequireProfile>
           }
         />
-        {/* Verses the player kept after a challenge — reading, never scoring.
-            Reached from Study and from the profile. */}
+        {/* The player's own Bible — all 66 books, shaded by what they've kept,
+            studied and read. Reading, never scoring. Reached from the profile
+            (the book you open) and from Study. */}
         <Route
-          path="/favorites"
+          path="/bible"
           element={
             <RequireProfile>
-              <FavoritesScreen />
+              <BibleScreen />
             </RequireProfile>
           }
         />
+        {/* Static segment before the dynamic one, so a book can never be named
+            "highlights" out from under this. */}
+        <Route
+          path="/bible/highlights"
+          element={
+            <RequireProfile>
+              <HighlightsScreen />
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/bible/:book"
+          element={
+            <RequireProfile>
+              <BibleBookScreen />
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/bible/:book/:chapter"
+          element={
+            <RequireProfile>
+              <BibleChapterScreen />
+            </RequireProfile>
+          }
+        />
+        {/* The favorites shelf became the highlights page inside the Bible;
+            old links and bookmarks still land somewhere true. */}
+        <Route path="/favorites" element={<Navigate to="/bible/highlights" replace />} />
         {/* Drill one book against a study companion, reached from Study. */}
         <Route
           path="/study/focus"

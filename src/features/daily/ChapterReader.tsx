@@ -3,6 +3,8 @@ import { motion, useReducedMotion } from 'framer-motion'
 import type { DailyVerse } from '@/types'
 import { fetchChapter, type Chapter } from '@/lib/bible'
 import { useSettings } from '@/store/settings'
+import { useBible } from '@/store/bible'
+import { noteRealVerseCount } from '@/data/bible/structure'
 import { readingByCode } from '@/lib/config'
 
 // A full-screen chapter reader: the day's verse shown in its surrounding
@@ -24,11 +26,21 @@ export function ChapterReader({ verse, onClose }: { verse: DailyVerse; onClose: 
   const end = verse.verseEnd ?? verse.verseStart
   const isHi = (n: number) => n >= start && n <= end
 
+  // Opening a chapter here counts the same as opening it in the Bible itself —
+  // the reader is the reader, whichever door you came through. Recorded on
+  // arrival, before the text lands, because a chapter you opened offline is
+  // still a chapter you opened.
+  useEffect(() => {
+    useBible.getState().markChapterRead(verse.book, verse.chapter)
+  }, [verse.book, verse.chapter])
+
   useEffect(() => {
     const ctrl = new AbortController()
     setState('loading')
     fetchChapter(verse.book, verse.chapter, readingCode, ctrl.signal)
       .then((c) => {
+        // Believe the translation in hand over the shipped verse-count table.
+        noteRealVerseCount(verse.book, verse.chapter, c.verses.length)
         setChapter(c)
         setState('ready')
       })

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { Page } from '@/components/Page'
+import { BibleCover } from '@/features/bible/BibleCover'
 import { Button } from '@/components/Button'
 import { PlayerCard } from '@/components/PlayerCard'
 import { useAuth } from '@/store/auth'
@@ -225,6 +226,14 @@ export default function ProfileScreen() {
       </Collapsible>
 
       {/* Account */}
+      {/* Not a row in a list — a book, sitting on the profile, that opens. It
+          sits above the account plumbing because it's the thing a player comes
+          back to look at. */}
+      <h3 style={{ fontSize: 16, margin: '18px 0 10px' }} className="dim">Your Bible</h3>
+      <div style={{ marginBottom: 6 }}>
+        <BibleCover />
+      </div>
+
       <h3 style={{ fontSize: 16, marginBottom: 10 }} className="dim">Account</h3>
       <div style={{ display: 'grid', gap: 10 }}>
         {mode === 'local' && (
@@ -249,19 +258,6 @@ export default function ProfileScreen() {
       {/* More */}
       <h3 style={{ fontSize: 16, margin: '18px 0 10px' }} className="dim">More</h3>
       <div style={{ display: 'grid', gap: 10 }}>
-        <button
-          onClick={() => { juice.select?.(); navigate('/favorites') }}
-          className="card"
-          style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%', cursor: 'pointer' }}
-        >
-          <span style={{ fontSize: 22 }}>❤️</span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <b style={{ fontSize: 14 }}>Favorite verses</b>
-            <div className="faint" style={{ fontSize: 12 }}>The verses you kept — yours to read again</div>
-          </div>
-          <span style={{ color: 'var(--gold)' }}>›</span>
-        </button>
-
         <button
           onClick={() => { juice.select?.(); navigate('/churches') }}
           className="card"

@@ -96,26 +96,27 @@ export default function StudyScreen() {
         </motion.button>
       )}
 
-      {/* The shelf of kept verses. Always shown, even at zero — it's how a player
-          learns the heart on a recap does something. */}
+      {/* The player's Bible. Always shown, even at zero — it's how a player
+          learns the heart on a recap does something, and where they see that
+          everything they've opened is already lit up in the whole book. */}
       <motion.button
-        onClick={() => { juice.select(); navigate('/favorites') }}
+        onClick={() => { juice.select(); navigate('/bible') }}
         whileTap={{ scale: 0.97 }}
         className="card"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         style={{ width: '100%', textAlign: 'left', marginTop: dueRefs.length > 0 ? 10 : 0, display: 'flex', alignItems: 'center', gap: 14 }}
       >
-        <div style={{ fontSize: 30 }}>{favCount > 0 ? '❤️' : '🤍'}</div>
+        <div style={{ fontSize: 30 }}>📖</div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 17 }}>
-            Favorite verses
-            {favCount > 0 && <span className="faint" style={{ fontSize: 12 }}> · {favCount}</span>}
+            My Bible
+            {favCount > 0 && <span className="faint" style={{ fontSize: 12 }}> · {favCount} kept</span>}
           </div>
           <div className="faint" style={{ fontSize: 13, lineHeight: 1.35 }}>
             {favCount > 0
-              ? 'Read the ones you kept, any time'
-              : 'Tap the heart after a challenge to keep a verse here'}
+              ? 'See what you’ve kept, studied and read — book by book'
+              : 'All 66 books, lit up as you go. Tap the heart after a challenge to keep a verse'}
           </div>
         </div>
         <div style={{ fontFamily: 'var(--font-display)', color: 'var(--gold)', fontSize: 20 }}>→</div>

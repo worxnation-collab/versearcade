@@ -74,10 +74,15 @@ sits on top of every card, so art is seen 20–45% darker than generated. Glows
 must be bright and darks must stay separated from each other.
 
 The `LIGHT` line in each prompt places that scene's light source in the pocket.
-The three scenes already reworked in `cardArt.tsx` (`sunrise`, `lamp`,
-`mountain`) all centre their hero at **(322, 38)** for exactly this reason; the
-versions they replaced sat at y 120–150 and were being eaten by the stat tiles,
-which is most of why those cards read as flat washes.
+All 18 archetypes in `cardArt.tsx` now centre their hero on the `HERO_X, HERO_Y`
+constant at **(322, 38)** for exactly this reason. The versions they replaced put
+their subjects wherever the composition suggested — sunrise's sun at y 150,
+lamp's flame at y 120, stone's tablets at y 108…208, host's multitude behind the
+username — which is most of why so many cards read as flat washes.
+
+So these prompts describe art the codebase already draws. Use them if you want a
+richer painted take on an archetype from a generator; the geometry is the part
+that has to hold either way.
 
 ---
 

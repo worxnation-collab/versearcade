@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { PAPER } from './paper'
+import { BookCoverArt, COVER_BOARD, COVER_RATIO } from './BookCoverArt'
 
 // The transition that makes this a book rather than a screen.
 //
@@ -24,10 +25,13 @@ const FILL_MS = 260
 
 export function BookOpening({
   from,
+  name,
   onDone,
 }: {
   /** Where the closed book is sitting right now, so it flies from itself. */
   from: DOMRect
+  /** Stamped on the flying cover, so it's the same book that was tapped. */
+  name?: string
   onDone: () => void
 }) {
   const [phase, setPhase] = useState<Phase>('lift')
@@ -36,8 +40,8 @@ export function BookOpening({
   // proportions of a real one.
   const vw = typeof window === 'undefined' ? 390 : window.innerWidth
   const vh = typeof window === 'undefined' ? 800 : window.innerHeight
-  const width = Math.min(vw - 48, 360)
-  const height = Math.min(vh - 160, width * 1.38)
+  const width = Math.min(vw - 64, 320, (vh - 140) / COVER_RATIO)
+  const height = width * COVER_RATIO
   const left = (vw - width) / 2
   const top = (vh - height) / 2
 
@@ -164,52 +168,10 @@ export function BookOpening({
             transformStyle: 'preserve-3d',
             backfaceVisibility: 'hidden',
             WebkitBackfaceVisibility: 'hidden',
-            borderRadius: 'var(--r-md)',
-            background: 'linear-gradient(135deg, #4a1d6e 0%, #2c1049 45%, #1b0a33 100%)',
-            border: '1px solid rgba(255,210,63,0.35)',
-            boxShadow: '0 24px 60px rgba(0,0,0,0.6)',
-            overflow: 'hidden',
-            display: 'grid',
-            placeItems: 'center',
+            ...COVER_BOARD,
           }}
         >
-          <div
-            style={{
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: 14,
-              background: 'linear-gradient(90deg, rgba(0,0,0,0.55), rgba(255,255,255,0.06))',
-              borderRight: '1px solid rgba(255,210,63,0.25)',
-            }}
-          />
-          <div
-            style={{
-              position: 'absolute',
-              right: 0,
-              top: 8,
-              bottom: 8,
-              width: 7,
-              borderRadius: '0 4px 4px 0',
-              background: 'linear-gradient(90deg, rgba(255,210,63,0.75), rgba(255,210,63,0.25))',
-            }}
-          />
-          <div style={{ textAlign: 'center', padding: 20 }}>
-            <div style={{ fontSize: 34 }}>📖</div>
-            <div
-              style={{
-                fontFamily: 'var(--font-display)',
-                fontWeight: 800,
-                fontSize: 20,
-                color: 'var(--gold)',
-                marginTop: 8,
-                letterSpacing: '0.03em',
-              }}
-            >
-              My Bible
-            </div>
-          </div>
+          <BookCoverArt width={width} name={name} />
         </motion.div>
       </motion.div>
     </motion.div>

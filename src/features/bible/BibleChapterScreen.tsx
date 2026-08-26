@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
-import { Page } from '@/components/Page'
-import { Button } from '@/components/Button'
 import { useJuice } from '@/juice/useJuice'
 import { useSettings } from '@/store/settings'
 import { useBible } from '@/store/bible'
@@ -10,15 +8,10 @@ import { useFavorites } from '@/store/favorites'
 import { fetchChapter, type Chapter } from '@/lib/bible'
 import { FAVORITES_CAP } from '@/lib/favorites'
 import { useBibleMarks } from './useBibleMarks'
-import { TierLegend } from './tiers'
-import {
-  quizSeedAt,
-  TIER_COLOR,
-  TIER_LABEL,
-  TIER_WASH,
-  tierAt,
-  type VerseTier,
-} from '@/lib/bibleProgress'
+import { BookHeader, BookPage } from './BookPage'
+import { PaperCard, TierLegend } from './tiers'
+import { PAPER, PAPER_TIER } from './paper'
+import { quizSeedAt, TIER_LABEL, tierAt, type VerseTier } from '@/lib/bibleProgress'
 import {
   canonBook,
   chapterCount,
@@ -28,9 +21,9 @@ import {
   verseReference,
 } from '@/data/bible/structure'
 
-// A chapter of the player's own Bible. Every verse the chapter has is on the
-// page whether or not its text loaded, shaded by what the player has done with
-// it: kept it, been quizzed on it, walked past it, or never been here.
+// A chapter of the player's own Bible, set as a page: every verse the chapter
+// has is here whether or not its text loaded, shaded by what the player has done
+// with it — kept it, been quizzed on it, walked past it, or never been here.
 //
 // Opening this marks the chapter read — a footprint, not a claim to have
 // understood it. Tapping a verse opens the one thing you can do with it: keep
@@ -41,8 +34,6 @@ export default function BibleChapterScreen() {
   const reduceMotion = useReducedMotion()
   const params = useParams()
   const [search] = useSearchParams()
-  // A citation name in the URL still finds the book — /bible/Psalm/23 is
-  // Psalms 23, and every link the app builds already uses the shelf name.
   const book = canonBook(decodeURIComponent(params.book ?? ''))
   const chapter = Number(params.chapter ?? 0)
 
@@ -53,6 +44,8 @@ export default function BibleChapterScreen() {
   const [text, setText] = useState<Chapter | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [open, setOpen] = useState<number | null>(null)
+  // Which way the last chapter move went, so the page slides the right way.
+  const [turn, setTurn] = useState<-1 | 0 | 1>(0)
   const targetRef = useRef<HTMLDivElement | null>(null)
 
   const shape = shapeOf(book)
@@ -69,6 +62,7 @@ export default function BibleChapterScreen() {
     const ctrl = new AbortController()
     setState('loading')
     setText(null)
+    setOpen(null)
     fetchChapter(book, chapter, readingCode, ctrl.signal)
       .then((c) => {
         // Translations disagree about a few chapter endings; believe the one the
@@ -90,7 +84,7 @@ export default function BibleChapterScreen() {
     if (!target || state === 'loading') return
     const t = setTimeout(() => {
       targetRef.current?.scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' })
-    }, 140)
+    }, 160)
     return () => clearTimeout(t)
   }, [target, state, reduceMotion])
 
@@ -109,58 +103,64 @@ export default function BibleChapterScreen() {
 
   if (!valid) {
     return (
-      <Page noNav>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-          <button className="pill" onClick={() => navigate('/bible')} aria-label="Back">✕</button>
-          <b style={{ fontFamily: 'var(--font-display)', fontSize: 18 }}>No such chapter</b>
-        </div>
-        <div className="card" style={{ textAlign: 'center' }}>
-          <p className="dim" style={{ fontSize: 14, lineHeight: 1.5 }}>
+      <BookPage
+        header={<BookHeader onBack={() => navigate('/bible')} backLabel="Back to contents" title="No such chapter" />}
+      >
+        <PaperCard>
+          <p style={{ fontSize: 14, lineHeight: 1.5, color: PAPER.inkDim, margin: 0 }}>
             {shape
               ? `${book} has ${chapterCount(book)} chapters.`
               : `There’s no book called “${book}” in the Bible.`}
           </p>
-          <div style={{ marginTop: 14 }}>
-            <Button variant="gold" full onClick={() => navigate('/bible')}>Back to contents</Button>
-          </div>
-        </div>
-      </Page>
+        </PaperCard>
+      </BookPage>
     )
   }
 
   const prev = chapter > 1 ? chapter - 1 : null
   const next = chapter < chapterCount(book) ? chapter + 1 : null
+  const goto = (c: number, dir: -1 | 1) => {
+    juice.whoosh()
+    setTurn(dir)
+    navigate(`/bible/${encodeURIComponent(book)}/${c}`)
+  }
 
   return (
-    <Page noNav>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-        <button
-          className="pill"
-          onClick={() => navigate(`/bible/${encodeURIComponent(book)}`)}
-          aria-label={`Back to ${book}`}
-        >
-          ←
-        </button>
-        <b style={{ fontFamily: 'var(--font-display)', fontSize: 18 }}>{book} {chapter}</b>
-        <span className="faint" style={{ fontSize: 11, marginLeft: 'auto' }}>
-          {state === 'ready' && text ? text.translationName : `${verses.length} verses`}
-        </span>
-      </div>
-
+    <BookPage
+      pageKey={`${book}-${chapter}`}
+      turn={turn}
+      header={
+        <BookHeader
+          onBack={() => navigate(`/bible/${encodeURIComponent(book)}`)}
+          backLabel={`Back to ${book}`}
+          title={`${book} ${chapter}`}
+          note={state === 'ready' && text ? text.translationName : `${verses.length} verses`}
+        />
+      }
+    >
+      {/* Only the two states that can differ on this page — everything else
+          here is read by definition, which is why it isn't shaded. */}
       <div style={{ marginBottom: 12 }}>
-        <TierLegend compact />
+        <TierLegend only={['saved', 'studied']} />
       </div>
 
       {state === 'error' && (
-        <p className="faint center" style={{ fontSize: 12, marginBottom: 12, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 12, marginBottom: 12, lineHeight: 1.5, textAlign: 'center', color: PAPER.inkFaint }}>
           The text couldn’t load right now, so this chapter is showing its verses without their
           words. Everything you’ve marked here is still here.
         </p>
       )}
 
-      <div style={{ display: 'grid', gap: 2 }}>
+      <div style={{ display: 'grid', gap: 1 }}>
         {verses.map(({ verse, body }) => {
           const tier = tierAt(book, chapter, verse, marks)
+          // Opening this chapter marked every verse in it read, so washing them
+          // all would say nothing and turn the page into stripes. Inside a
+          // chapter you've opened, `read` IS the page — what earns a mark here
+          // is a verse you kept or were quizzed on. The state is still announced
+          // to screen readers, and still tints the chapter tile back in the
+          // grid, where it does discriminate.
+          const paint: VerseTier = tier === 'read' ? 'unread' : tier
           const seed = quizSeedAt(book, chapter, verse)
           const isTarget = verse === target
           return (
@@ -171,27 +171,27 @@ export default function BibleChapterScreen() {
                 aria-label={`${verseReference(book, chapter, verse)} — ${TIER_LABEL[tier]}`}
                 style={{
                   display: 'flex',
-                  gap: 10,
+                  gap: 9,
                   width: '100%',
                   textAlign: 'left',
-                  padding: '8px 10px',
-                  borderRadius: 'var(--r-sm)',
-                  background: TIER_WASH[tier],
+                  padding: '7px 10px 7px 8px',
+                  borderRadius: 6,
+                  background: PAPER_TIER[paint].wash,
                   // A left rule carries the tier as shape as well as color, so
-                  // the four states stay separable without relying on hue.
-                  borderLeft: `3px solid ${tier === 'unread' ? 'transparent' : TIER_COLOR[tier]}`,
-                  outline: isTarget ? '1px solid var(--gold)' : 'none',
+                  // the states stay separable without relying on hue.
+                  borderLeft: `3px solid ${PAPER_TIER[paint].rule}`,
+                  outline: isTarget ? `1px solid ${PAPER_TIER.saved.rule}` : 'none',
                   cursor: 'pointer',
-                  lineHeight: 1.55,
                 }}
               >
                 <span
                   style={{
                     fontFamily: 'var(--font-display)',
-                    fontSize: 12,
-                    minWidth: 20,
-                    paddingTop: 3,
-                    color: tier === 'unread' ? 'var(--ink-faint)' : 'var(--gold)',
+                    fontSize: 11,
+                    minWidth: 18,
+                    paddingTop: 4,
+                    color: PAPER.accent,
+                    opacity: paint === 'unread' ? 0.75 : 1,
                   }}
                 >
                   {verse}
@@ -200,16 +200,17 @@ export default function BibleChapterScreen() {
                   style={{
                     flex: 1,
                     minWidth: 0,
-                    fontSize: 15,
-                    color: tier === 'unread' ? 'var(--ink-dim)' : 'var(--ink)',
+                    fontSize: 16,
+                    lineHeight: 1.62,
+                    color: PAPER.ink,
                   }}
                 >
                   {body ?? (
-                    <span className="faint" style={{ fontSize: 13, fontStyle: 'italic' }}>
-                      {state === 'loading' ? '…' : `${verseReference(book, chapter, verse)}`}
+                    <span style={{ fontSize: 13, fontStyle: 'italic', color: PAPER.inkFaint }}>
+                      {state === 'loading' ? '…' : verseReference(book, chapter, verse)}
                     </span>
                   )}
-                  {seed && <span aria-hidden style={{ fontSize: 10, marginLeft: 6 }}>✨</span>}
+                  {seed && <span aria-hidden style={{ fontSize: 10, marginLeft: 5 }}>✨</span>}
                 </span>
               </button>
 
@@ -230,29 +231,33 @@ export default function BibleChapterScreen() {
         })}
       </div>
 
-      <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-        {prev !== null && (
-          <Button
-            variant="secondary"
-            full
-            onClick={() => navigate(`/bible/${encodeURIComponent(book)}/${prev}`)}
-          >
-            ← {chapter - 1}
-          </Button>
-        )}
-        {next !== null && (
-          <Button
-            variant="secondary"
-            full
-            onClick={() => navigate(`/bible/${encodeURIComponent(book)}/${next}`)}
-          >
-            {chapter + 1} →
-          </Button>
-        )}
+      <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
+        {prev !== null && <TurnButton label={`← ${prev}`} onClick={() => goto(prev, -1)} />}
+        {next !== null && <TurnButton label={`${next} →`} onClick={() => goto(next, 1)} />}
       </div>
+    </BookPage>
+  )
+}
 
-      <div style={{ height: 40 }} />
-    </Page>
+function TurnButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        flex: 1,
+        padding: '12px 14px',
+        borderRadius: 12,
+        border: `1px solid ${PAPER.rule}`,
+        background: 'rgba(255,255,255,0.5)',
+        color: PAPER.inkDim,
+        fontFamily: 'var(--font-display)',
+        fontWeight: 800,
+        fontSize: 15,
+        cursor: 'pointer',
+      }}
+    >
+      {label}
+    </button>
   )
 }
 
@@ -301,14 +306,24 @@ function VerseActions({
       transition={{ type: 'spring', stiffness: 400, damping: 34 }}
       style={{ overflow: 'hidden' }}
     >
-      <div
-        className="card"
-        style={{ padding: 12, margin: '6px 0 8px', borderColor: TIER_COLOR[tier] }}
+      <PaperCard
+        accent={tier === 'unread' ? PAPER.rule : PAPER_TIER[tier].rule}
+        style={{ padding: 12, margin: '6px 0 8px', background: 'rgba(255,255,255,0.68)' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <b style={{ fontFamily: 'var(--font-display)', fontSize: 14 }}>{reference}</b>
-          <span className="faint" style={{ fontSize: 11, marginLeft: 'auto' }}>{TIER_LABEL[tier]}</span>
-          <button className="pill" style={{ padding: '2px 8px' }} onClick={onClose} aria-label="Close">✕</button>
+          <b style={{ fontFamily: 'var(--font-display)', fontSize: 14, color: PAPER.ink }}>{reference}</b>
+          <span style={{ fontSize: 11, color: PAPER.inkFaint, marginLeft: 'auto' }}>{TIER_LABEL[tier]}</span>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              width: 24, height: 24, borderRadius: '50%', border: `1px solid ${PAPER.rule}`,
+              background: 'none', color: PAPER.inkDim, fontSize: 12, cursor: 'pointer',
+              display: 'grid', placeItems: 'center',
+            }}
+          >
+            ✕
+          </button>
         </div>
 
         <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
@@ -318,9 +333,9 @@ function VerseActions({
             style={{
               padding: '10px 14px',
               borderRadius: 'var(--r-pill)',
-              border: `1px solid ${saved ? 'var(--gold)' : 'var(--stroke)'}`,
-              background: saved ? 'rgba(255,210,63,0.12)' : 'var(--card)',
-              color: saved ? 'var(--gold)' : 'var(--ink)',
+              border: `1px solid ${saved ? PAPER_TIER.saved.rule : PAPER.rule}`,
+              background: saved ? 'rgba(255,196,0,0.30)' : 'rgba(255,255,255,0.6)',
+              color: PAPER.ink,
               fontFamily: 'var(--font-display)',
               fontWeight: 800,
               fontSize: 14,
@@ -339,9 +354,9 @@ function VerseActions({
               style={{
                 padding: '10px 14px',
                 borderRadius: 'var(--r-pill)',
-                border: '1px solid var(--mint)',
-                background: 'rgba(78,205,196,0.10)',
-                color: 'var(--mint)',
+                border: `1px solid ${PAPER_TIER.studied.rule}`,
+                background: 'rgba(31,110,130,0.14)',
+                color: PAPER_TIER.studied.rule,
                 fontFamily: 'var(--font-display)',
                 fontWeight: 800,
                 fontSize: 14,
@@ -354,18 +369,18 @@ function VerseActions({
             // Most of the Bible has no quiz, and saying so plainly is kinder
             // than a disabled button: this verse isn't lesser, it's just here to
             // read for now.
-            <p className="faint" style={{ fontSize: 12, lineHeight: 1.45, margin: 0 }}>
+            <p style={{ fontSize: 12, lineHeight: 1.45, margin: 0, color: PAPER.inkFaint }}>
               No quiz for this verse yet — it’s here to read. More verses join the arcade over time.
             </p>
           )}
 
           {full && (
-            <p className="faint" style={{ fontSize: 12, margin: 0 }}>
+            <p style={{ fontSize: 12, margin: 0, color: PAPER.inkFaint }}>
               Your highlights are full ({FAVORITES_CAP}). Remove one to keep another.
             </p>
           )}
         </div>
-      </div>
+      </PaperCard>
     </motion.div>
   )
 }

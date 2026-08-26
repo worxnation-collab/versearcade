@@ -146,13 +146,35 @@ Three things bite here:
   not a claim to have understood it. Nothing here is scored, ranked, or shown to
   another player — same rule as the Study tab.
 
+**Inside the book is paper, not app chrome.** Every Bible surface renders through
+`BookPage` (cream page, spine gutter, stacked page edges) using the local tokens
+in `features/bible/paper.ts` — *not* the `:root` variables. Don't reach for
+`var(--card)` or `var(--gold)` in there; they're tuned for the dark arcade and
+they fight the page. Tier colors were measured, not eyeballed: ink clears 11:1 on
+every tier, and neighbouring tiers clear ΔE 10 under deutan and protan. The one
+exception is `read` vs `unread`, which is separated by shape (a left rule) rather
+than by wash, on purpose — `read` is the most common state and a loud wash makes
+every chapter you've opened noisy. In the chapter reader `read` isn't painted at
+all: opening the chapter marked every verse in it read, so shading them all would
+say nothing and turn the page into stripes.
+
+Tapping the book on the profile doesn't navigate — `BookOpening` lifts it from
+its own `getBoundingClientRect()`, swings the cover, and only changes the route
+once the open page already fills the screen, so the arrival is invisible. It's
+portalled to `document.body` because the cover sets `perspective`, and a
+perspective is a containing block for `position: fixed`. Phases run on a short
+clock rather than `onAnimationComplete`: springs that soft take over a second to
+settle, which made opening the book a two-second wait.
+
 Persistence follows the usual two-mode shape: `bible_marks` + `mark_bible_progress`
 (0048) online, `va.bible.*` for guests (`store/bible.ts`). Marks are written from
 the two choke points — `QuizRunner` for studied, `ChapterReader` /
 `BibleChapterScreen` for read — so every mode counts without five call sites.
 
 The old `/favorites` shelf is now `/bible/highlights` (the route redirects), and
-the profile tab carries the book itself, which swings open on tap.
+the profile tab carries the book itself. The two testaments fold (66 books is a
+lot of thumb) and a folded section still reports what's inside it, so closing one
+never hides progress; the choice is remembered in `va.bible.open`.
 
 ## Supabase
 

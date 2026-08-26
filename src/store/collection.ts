@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { localdb } from '@/lib/localdb'
 import { drawRelicKey, collectibleByKey } from '@/data/collectibles'
 import { useAuth } from './auth'
+import { useInventory } from './inventory'
 
 // Collectible unlocks (achievement cards + daily-chest relics) with a single
 // source of truth: the account when signed in (persists across devices), or the
@@ -14,6 +15,10 @@ export interface ChestResult {
   kind?: 'relic' | 'boost'
   key?: string
   rarity?: string
+  /** First time ever seeing this one — it just got stamped into their Bible. */
+  newStamp?: boolean
+  /** How many copies they now hold, so a duplicate can say what it's good for. */
+  qty?: number
 }
 
 function isOnline(): boolean {
@@ -84,7 +89,14 @@ export const useCollection = create<CollectionState>((set, get) => ({
     if (isOnline() && supabase) {
       const { data, error } = await supabase.rpc('open_daily_chest', { p_drop_date: dropDate })
       if (error || !data) return { alreadyOpened: false }
-      const raw = data as { already_opened?: boolean; kind?: string; key?: string; rarity?: string }
+      const raw = data as {
+        already_opened?: boolean
+        kind?: string
+        key?: string
+        rarity?: string
+        new_stamp?: boolean
+        qty?: number
+      }
       if (raw.already_opened) return { alreadyOpened: true }
       if (raw.kind === 'boost') {
         set({ lastChestOn: dropDate })
@@ -97,7 +109,17 @@ export const useCollection = create<CollectionState>((set, get) => ({
         lastChestOn: dropDate,
         owned: raw.key && !owned.includes(raw.key) ? [...owned, raw.key] : owned,
       })
-      return { alreadyOpened: false, kind: 'relic', key: raw.key, rarity: raw.rarity }
+      // The server stacked the item; pull the fresh counts so the Inventory and
+      // the reveal agree about how many the player now holds.
+      void useInventory.getState().load()
+      return {
+        alreadyOpened: false,
+        kind: 'relic',
+        key: raw.key,
+        rarity: raw.rarity,
+        newStamp: raw.new_stamp ?? false,
+        qty: raw.qty,
+      }
     }
     // Guest (offline) chest — mirror the server's odds locally, incl. the rare boost.
     if (Math.random() < 0.04) {
@@ -110,10 +132,14 @@ export const useCollection = create<CollectionState>((set, get) => ({
     }
     const key = drawRelicKey()
     const rarity = collectibleByKey(key)?.rarity
+    const owned = get().owned
+    const newStamp = !owned.includes(key)
     localdb.addCard(key)
     localdb.setChestDate(dropDate)
-    const owned = get().owned
-    set({ lastChestOn: dropDate, owned: owned.includes(key) ? owned : [...owned, key] })
-    return { alreadyOpened: false, kind: 'relic', key, rarity }
+    // The stamp lands once; the item stacks every time. Before this, pulling a
+    // relic a guest already had granted nothing at all.
+    useInventory.getState().addLocal(key)
+    set({ lastChestOn: dropDate, owned: newStamp ? [...owned, key] : owned })
+    return { alreadyOpened: false, kind: 'relic', key, rarity, newStamp }
   },
 }))

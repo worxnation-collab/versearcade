@@ -21,7 +21,15 @@ export function DailyChest() {
   const juice = useJuice()
   const profile = useAuth((s) => s.profile)
   const grantItem = useAuth((s) => s.grantItem)
-  const [revealed, setRevealed] = useState<{ kind: 'relic' | 'boost'; key?: string; rarity?: string } | null>(null)
+  const [revealed, setRevealed] = useState<{
+    kind: 'relic' | 'boost'
+    key?: string
+    rarity?: string
+    /** First time ever — it just got stamped into their Bible. */
+    newStamp?: boolean
+    /** Copies now held, so a duplicate can say what it's good for. */
+    qty?: number
+  } | null>(null)
   const [itemDrop, setItemDrop] = useState<string | null>(null)
   const [opening, setOpening] = useState(false)
 
@@ -41,7 +49,7 @@ export function DailyChest() {
       setRevealed({ kind: 'boost' })
       juice.levelUp()
     } else if (res.key) {
-      setRevealed({ kind: 'relic', key: res.key, rarity: res.rarity })
+      setRevealed({ kind: 'relic', key: res.key, rarity: res.rarity, newStamp: res.newStamp, qty: res.qty })
       juice.celebrate()
     }
     // Bonus: a chest may also drop a wearable avatar item (free, cosmetic).
@@ -112,6 +120,22 @@ export function DailyChest() {
               {rarity} relic
             </div>
             <p className="faint" style={{ fontSize: 13, marginTop: 8 }}>{relic.description}</p>
+
+            {/* Say what actually just happened. The reveal used to name the
+                relic and stop, so a first find and a duplicate looked identical
+                — and a duplicate genuinely was nothing before inventory existed.
+                Now one presses a stamp and the other is something to give. */}
+            {revealed?.newStamp ? (
+              <p style={{ fontSize: 12, marginTop: 10, color: 'var(--gold)', lineHeight: 1.5 }}>
+                ✦ Stamped into your Bible — its card background is yours now.
+              </p>
+            ) : (
+              <p style={{ fontSize: 12, marginTop: 10, color: 'var(--mint)', lineHeight: 1.5 }}>
+                You already have this one{revealed?.qty && revealed.qty > 1 ? ` — that’s ${revealed.qty}` : ''}.
+                Spare copies are worth giving: donate it to your church from your Inventory.
+              </p>
+            )}
+
             <p className="faint" style={{ fontSize: 12, marginTop: 10 }}>Come back tomorrow for another.</p>
           </motion.div>
         ) : openedToday ? (

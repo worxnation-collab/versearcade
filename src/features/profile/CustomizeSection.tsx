@@ -127,10 +127,20 @@ export function CustomizeSection() {
   // A card that only ships with a paid pack is hidden in a native build until
   // the pack is owned — the app has no way to sell it (see lib/commerce). The
   // "x/y unlocked" count follows the same list, so it never reads as short.
-  const visibleBgs = CARD_BACKGROUNDS.filter((b) =>
-    cardBgVisible(b, cardBgUnlocked(b.key, ownedCollectibles, bgCtx)),
+  // Only what the player actually has. This used to render all 44 backgrounds
+  // with the locked ones dimmed, which made the customizer a wall of things you
+  // can't use — the collection wall is where "what's out there" belongs, and it
+  // still shows every locked item. Here the question is "what do I equip", so
+  // anything you can't equip is noise.
+  const visibleBgs = CARD_BACKGROUNDS.filter(
+    (b) =>
+      cardBgUnlocked(b.key, ownedCollectibles, bgCtx) &&
+      cardBgVisible(b, true),
   )
-  const unlockedBgCount = visibleBgs.filter((b) => cardBgUnlocked(b.key, ownedCollectibles, bgCtx)).length
+  const unlockedBgCount = visibleBgs.length
+  const lockedBgCount = CARD_BACKGROUNDS.filter(
+    (b) => !cardBgUnlocked(b.key, ownedCollectibles, bgCtx) && cardBgVisible(b, false),
+  ).length
 
   const pickBg = async (key: string) => {
     setErr(null)
@@ -658,19 +668,17 @@ export function CustomizeSection() {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
           {visibleBgs.map((b) => {
-            const unlocked = cardBgUnlocked(b.key, ownedCollectibles, bgCtx)
             const equipped = equippedBg === b.key
             const src = collectibleByKey(b.key)
             return (
               <button
                 key={b.key}
-                onClick={unlocked && !equipped ? () => pickBg(b.key) : undefined}
-                disabled={!unlocked || equipped}
-                title={unlocked ? b.name : b.unlockHint ?? `Unlocks with ${b.name}`}
+                onClick={!equipped ? () => pickBg(b.key) : undefined}
+                disabled={equipped}
+                title={b.name}
                 style={{
-                  padding: 0, borderRadius: 12, overflow: 'hidden', cursor: unlocked && !equipped ? 'pointer' : 'default',
+                  padding: 0, borderRadius: 12, overflow: 'hidden', cursor: equipped ? 'default' : 'pointer',
                   border: equipped ? `2px solid ${cardBgAccentColor(b.key)}` : '1px solid var(--stroke)',
-                  opacity: unlocked ? 1 : 0.42, filter: unlocked ? 'none' : 'grayscale(0.75)',
                   boxShadow: equipped ? `0 0 14px ${cardBgAccentColor(b.key)}55` : 'none',
                   background: 'transparent',
                 }}
@@ -678,7 +686,7 @@ export function CustomizeSection() {
                 <div style={{ ...cardBgStyle(b.key), position: 'relative', height: 52, overflow: 'hidden', display: 'grid', placeItems: 'center' }}>
                   <CardArt {...cardArtProps(b.key)} id={`bg-tile-${b.key}`} />
                   <span style={{ position: 'relative', fontSize: 16, filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.9))' }}>
-                    {unlocked ? b.emoji ?? src?.emoji ?? '✦' : '🔒'}
+                    {b.emoji ?? src?.emoji ?? '✦'}
                   </span>
                 </div>
                 <div style={{ padding: '5px 4px 6px', background: 'var(--card-solid)' }}>
@@ -693,6 +701,7 @@ export function CustomizeSection() {
         </div>
         <p className="faint" style={{ fontSize: 11, marginTop: 10, lineHeight: 1.4 }}>
           Each background unlocks with the card or relic it’s named after — earn them from goals and the Daily Chest.
+          {lockedBgCount > 0 && ` ${lockedBgCount} more are waiting in your collection.`}
           {storefrontEnabled() && ' The two Angel cards come with The Angel Pack — the pack is sold whole.'}
         </p>
       </div>

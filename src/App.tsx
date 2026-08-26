@@ -31,6 +31,7 @@ import BibleScreen from './features/bible/BibleScreen'
 import BibleBookScreen from './features/bible/BibleBookScreen'
 import BibleChapterScreen from './features/bible/BibleChapterScreen'
 import HighlightsScreen from './features/bible/HighlightsScreen'
+import StampsScreen from './features/bible/StampsScreen'
 import FocusPracticeScreen from './features/practice/FocusPracticeScreen'
 import { BattleResume } from './features/arena/BattleResume'
 import { BottomNav } from './components/BottomNav'
@@ -236,6 +237,14 @@ export default function App() {
           element={
             <RequireProfile>
               <HighlightsScreen />
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/bible/stamps"
+          element={
+            <RequireProfile>
+              <StampsScreen />
             </RequireProfile>
           }
         />

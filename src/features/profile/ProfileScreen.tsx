@@ -11,6 +11,8 @@ import { shareResult, APP_URL } from '@/features/daily/shareCard'
 import { useCollection } from '@/store/collection'
 import { Collapsible } from '@/components/Collapsible'
 import { CollectionSection } from '@/features/collection/CollectionScreen'
+import { InventorySection } from '@/features/collection/InventorySection'
+import { useInventory } from '@/store/inventory'
 import { BuddiesSection } from '@/features/buddies/BuddiesScreen'
 import { CustomizeSection } from './CustomizeSection'
 import { SettingsSheet } from './SettingsSheet'
@@ -18,6 +20,9 @@ import { SettingsSheet } from './SettingsSheet'
 export default function ProfileScreen() {
   const navigate = useNavigate()
   const juice = useJuice()
+  const inHand = useInventory((s) =>
+    Object.values(s.items).reduce((n, q) => n + (q > 0 ? q : 0), 0),
+  )
   const { profile, mode, changeUsername, signOut, deleteAccount } = useAuth()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -217,6 +222,12 @@ export default function ProfileScreen() {
 
       {/* Cards and Buddies used to own tabs of their own. They're the same full
           screens, just folded in here behind obvious dropdowns. */}
+      {/* What you're holding, and what it's for. Sits above the collection wall
+          because it's the actionable one — the wall is a gallery, this is a bag. */}
+      <Collapsible icon="🎒" title="Inventory" meta={`${inHand} in hand`}>
+        <InventorySection />
+      </Collapsible>
+
       <Collapsible icon="🃏" title="Cards" meta={`${cards} collected`}>
         <CollectionSection />
       </Collapsible>

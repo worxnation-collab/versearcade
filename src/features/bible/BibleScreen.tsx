@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useJuice } from '@/juice/useJuice'
 import { useAuth } from '@/store/auth'
 import { useBibleMarks } from './useBibleMarks'
+import { useCollection } from '@/store/collection'
 import { bibleTitle } from './title'
 import { BookHeader, BookPage } from './BookPage'
 import { PaperCard, TierBar, TierLegend } from './tiers'
@@ -48,11 +49,17 @@ export default function BibleScreen() {
   const juice = useJuice()
   const { marks, ready } = useBibleMarks()
   const name = useAuth((s) => s.profile?.username ?? '')
+  const stamps = useCollection((s) => s.owned.length)
+  const loadCollection = useCollection((s) => s.load)
   const { OT, NT } = useMemo(() => shapesByTestament(), [])
   const [open, setOpen] = useState<Record<string, boolean>>(readFold)
 
   const overall = useMemo(() => wholeBibleTiers(marks), [marks])
   const opened = overall.saved + overall.studied + overall.read
+
+  useEffect(() => {
+    loadCollection()
+  }, [loadCollection])
 
   const toggle = (key: string) => {
     juice.select()
@@ -129,6 +136,39 @@ export default function BibleScreen() {
             {overall.saved > 0
               ? 'Every verse you’ve kept, in one place'
               : 'Tap the heart after a challenge to keep a verse here'}
+          </div>
+        </div>
+        <span style={{ color: PAPER.accent }}>›</span>
+      </button>
+
+      {/* The permanent record of everything collected — kept even after the item
+          itself is given to a church. */}
+      <button
+        onClick={() => { juice.select(); navigate('/bible/stamps') }}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          textAlign: 'left',
+          width: '100%',
+          marginTop: 10,
+          padding: 14,
+          borderRadius: 14,
+          border: `1px solid ${stamps > 0 ? PAPER.accent : PAPER.rule}`,
+          background: stamps > 0 ? 'rgba(154,47,47,0.07)' : 'rgba(255,255,255,0.45)',
+          cursor: 'pointer',
+        }}
+      >
+        <span style={{ fontSize: 20 }}>🕊️</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <b style={{ fontSize: 14, color: PAPER.ink }}>
+            Stamps
+            {stamps > 0 && <span style={{ color: PAPER.inkFaint, fontWeight: 400 }}> · {stamps}</span>}
+          </b>
+          <div style={{ fontSize: 12, color: PAPER.inkFaint, marginTop: 1 }}>
+            {stamps > 0
+              ? 'Every card and relic you’ve held, pressed in for good'
+              : 'Collect a card or a relic and it gets pressed in here'}
           </div>
         </div>
         <span style={{ color: PAPER.accent }}>›</span>

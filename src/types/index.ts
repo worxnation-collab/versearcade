@@ -128,17 +128,14 @@ export interface SubmitOutcome {
   xpBoosts?: number
 }
 
-// Practice mode — replaying an already-played verse to study. Reward only comes
-// from beating your best, once per week per verse (see submit_practice / 0014).
+// Practice mode — replaying an already-played verse to study. Reward comes from
+// beating your best, every time you manage it: no per-verse cooldown since 0057
+// (see submit_practice / 0014).
 export interface PracticeItem {
   dropDate: string
   reference: string
   /** Score to beat = higher of your daily score and any better practice score. */
   bestScore: number
-  /** True if beating your best could pay out now (not on weekly cooldown). */
-  rewardable: boolean
-  /** When the weekly reward unlocks again, if currently on cooldown. */
-  nextRewardOn: string | null
 }
 
 export interface PracticeOutcome {
@@ -148,9 +145,6 @@ export interface PracticeOutcome {
   improved: boolean
   rewarded: boolean
   xpEarned: number
-  /** Improved, but the weekly per-verse reward was already claimed. */
-  weeklyLocked: boolean
-  nextRewardOn: string | null
 }
 
 export interface PresenceEvent {

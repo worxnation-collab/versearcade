@@ -165,6 +165,25 @@ artwork ships as a new skin id. **Still no prices, either mode**: the custom
 option says it's answered by email, and the money happens off the device. See
 `docs/CHURCH-SKINS.md`.
 
+### The churchyard
+
+Giving grows the building for everybody; the same points, counted as *your*
+lifetime giving, open the landscaping you plant in front of it. Eight plants,
+six plots, thresholds from 250 to 120,000 given — `features/church/yard.ts` and
+`church_flora_min_given` (0061), which is the usual keep-them-in-sync pair.
+
+Same three rules as the keep's hall, because it's the same shape of feature:
+plantings are **per-player** while the yard is shared (`church_yard_json` blends
+a per-viewer sample, your own planting winning its plot), nothing is ever
+**counted** — no "3 planted", no who-planted-what, no per-member total — and
+there is **nowhere to write a string**. Lifetime given is across *every* church,
+so switching keeps every flower: the points were a gift, not a deposit.
+
+This one is **online-only**, inheriting the church store's break with the
+two-mode invariant rather than choosing its own: a guest has no church to stand
+a flowerpot in front of. `store/churchYard.ts` names the shape to use if that
+ever changes. Still no prices, either mode. See `docs/CHURCHYARD.md`.
+
 ## Content is deterministic — keep it that way
 
 `getVerseForDate(date)` must return the same verse for the same date for every
@@ -357,6 +376,33 @@ next to the rank-free rule.
 - The unlock banner (`NowPlaying`) fires **eight times ever** — once per new
   track, plus the very first note carrying the mute button — never on ordinary
   tab switches. It yields the top slot to `StudyDropToast` when both show.
+
+## The keep: duplicates merge
+
+Putting a keep decoration out a second time doesn't stand two of it in the room
+— the two **merge** into one finer piece (plain → Fine → Grand, three tiers
+max), the spare anchor stays free, and a chime plays. `planPlacement`
+(`data/keep.ts`) is the only thing that decides what a duplicate means, so the
+guest path and the RPC path can't disagree; `store/keep.ts:place` just writes
+what the planner returned, and returns whether it was a merge so the sheet can
+chime and pulse the spot that actually changed.
+
+Three things to know before touching it:
+
+- **A tier is a look, not a count.** That's what keeps it inside the hall's
+  "presence, not quantity" rule (`data/keep.ts` header): a Grand rug is not a
+  bigger rug, exactly as a skinned church is not a bigger church. Nothing is
+  spent and nothing is destroyed — ownership is still derived from the six
+  counters, so clearing a merged prop starts it again at plain.
+- **The tier rides on the placement value as a suffix** — `keep_woven_rug.2` —
+  which was the whole schema change (0060 relaxes one regex). Every row and
+  every `va.keep.*` blob written before merging existed still reads as tier 1,
+  and `my_keep`/`keep_json` pass the string through. `packDecor`/`unpackDecor`
+  are the only two places that know the format.
+- **Tapping a maxed decoration on its own anchor must be a no-op.** It used to
+  write a plain `decorId` there, which silently demoted a Grand piece back to
+  nothing — invisible in the diff, found by driving the real app. The planner
+  returns `noop` for it now.
 
 ## Shared choke points
 

@@ -187,3 +187,110 @@ export const KEEP_LEVEL_NAMES = [
 export function keepLevelName(level: number): string {
   return KEEP_LEVEL_NAMES[Math.min(KEEP_LEVEL_NAMES.length - 1, Math.max(0, level - 1))]
 }
+
+// ── Merging duplicates ───────────────────────────────────────────────────────
+// Two of the same thing in one room is clutter, so a duplicate MERGES instead
+// of standing beside itself: put a second rug down and it goes into the rug you
+// already have, which becomes a Fine Woven Rug, and the spot you were about to
+// fill stays free for something else. Three make it Grand. It is pure upside —
+// nothing is spent, nothing is destroyed, and the spare anchor comes back.
+//
+// This does NOT break "presence, not quantity" (see the header): a tier is a
+// LOOK, exactly like a church skin, and reading it back the other way tells you
+// nothing about anybody. Ownership is still derived from the six counters, so a
+// merge can't be hoarded or lost — clear a tiered prop and it simply starts
+// again at plain, because you never stopped owning the rug.
+//
+// WIRE FORMAT. A placement value is `keep_woven_rug` at tier 1 and
+// `keep_woven_rug.2` / `.3` above it, so every row and every localStorage blob
+// written before merging existed still reads correctly as tier 1 and no stored
+// shape had to change. `set_keep_placement` (0060) allows exactly this suffix.
+// packDecor/unpackDecor are the only two places that know it.
+
+export const MAX_DECOR_TIER = 3
+
+/** Tier 1 is the object itself, so it has no adjective. */
+const TIER_PREFIX = ['', 'Fine ', 'Grand '] as const
+
+export function packDecor(id: string, tier: number): string {
+  const t = Math.min(MAX_DECOR_TIER, Math.max(1, Math.floor(tier || 1)))
+  return t <= 1 ? id : `${id}.${t}`
+}
+
+export function unpackDecor(value?: string | null): { id: string; tier: number } {
+  if (!value) return { id: '', tier: 1 }
+  const dot = value.indexOf('.')
+  if (dot < 0) return { id: value, tier: 1 }
+  const tier = Number(value.slice(dot + 1))
+  return {
+    id: value.slice(0, dot),
+    // An unknown suffix is somebody else's future, not a crash: draw it plain.
+    tier: Number.isFinite(tier) ? Math.min(MAX_DECOR_TIER, Math.max(1, tier)) : 1,
+  }
+}
+
+/** 'Grand Woven Rug' — the name a tiered decoration wears in the UI. */
+export function decorName(value?: string | null): string {
+  const { id, tier } = unpackDecor(value)
+  const def = decorById(id)
+  if (!def) return ''
+  return `${TIER_PREFIX[tier - 1] ?? ''}${def.name}`
+}
+
+export interface PlacementPlan {
+  /** The anchor that actually changes. */
+  anchor: string
+  /** What to write there — a packed decor value, or null to clear. */
+  value: string | null
+  /** True when this absorbed a duplicate rather than filling the target spot. */
+  merged: boolean
+  /** The tier the object ends up at, for the toast. */
+  tier: number
+  /** True when the tap changes nothing at all, so nothing is written. */
+  noop?: boolean
+}
+
+/**
+ * What placing `decorId` on `anchor` should actually do.
+ *
+ * If that decoration is already out anywhere and isn't maxed, the placement
+ * merges into THAT copy and the tapped spot is left alone. Ties go to the copy
+ * furthest along — a second merge should finish the Fine one rather than
+ * starting a second ladder — and then to ANCHORS order, so two devices given
+ * the same state always pick the same spot.
+ *
+ * The tapped anchor counts as a candidate when it's already holding the same
+ * thing, which is what stops the destrier being the one decoration that can
+ * never be merged: the stable has a single spot, so "put a second one out" has
+ * to mean tapping the one you have. Everywhere else it just reads as tapping
+ * again to keep going.
+ */
+export function planPlacement(
+  placements: Record<string, string>,
+  anchor: string,
+  decorId: string | null,
+): PlacementPlan {
+  if (!decorId) return { anchor, value: null, merged: false, tier: 1 }
+
+  let best: { anchor: string; tier: number } | null = null
+  for (const a of ANCHORS) {
+    const here = unpackDecor(placements[a.id])
+    if (here.id !== decorId || here.tier >= MAX_DECOR_TIER) continue
+    if (!best || here.tier > best.tier) best = { anchor: a.id, tier: here.tier }
+  }
+
+  if (best) {
+    return { anchor: best.anchor, value: packDecor(decorId, best.tier + 1), merged: true, tier: best.tier + 1 }
+  }
+
+  // Nothing left to merge into. If the tapped spot is ALREADY holding this —
+  // a maxed one, since anything below max would have merged — then the tap
+  // means "keep it", and writing a plain `decorId` here would quietly demote a
+  // Grand piece back to nothing. (It did, until a browser found it.)
+  const onTarget = unpackDecor(placements[anchor])
+  if (onTarget.id === decorId) {
+    return { anchor, value: placements[anchor], merged: false, tier: onTarget.tier, noop: true }
+  }
+
+  return { anchor, value: decorId, merged: false, tier: 1 }
+}

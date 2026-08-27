@@ -1,5 +1,7 @@
 import { ChurchArt } from './ChurchArt'
+import { ChurchFlora } from './ChurchFlora'
 import { CrowdLife, type CrowdWaypoint } from '@/components/CrowdLife'
+import type { Plantings } from './yard'
 import type { ChurchMember } from '@/types'
 
 // The church, pulled back far enough that you can see the people.
@@ -49,11 +51,25 @@ export function ChurchScene({
   level,
   members,
   skin,
+  flora,
+  emptyNote = true,
 }: {
   level: number
   members: ChurchMember[]
   /** The church's skin, so the wide shot matches the row you tapped. */
   skin?: string | null
+  /**
+   * What's planted out front — the viewer's own plantings blended with a
+   * sample of the congregation's (see features/church/yard.ts). Absent on a
+   * yard nobody has given enough to plant, which is simply a lawn.
+   */
+  flora?: Plantings
+  /**
+   * Whether an empty crowd says so. False on your own church tab, where the
+   * scene is a preview of your own yard and "nobody's playing for this one
+   * yet" would be talking about you.
+   */
+  emptyNote?: boolean
 }) {
   return (
     <div
@@ -116,13 +132,18 @@ export function ChurchScene({
         <ChurchArt level={level} skin={skin} size={CHURCH_W} />
       </div>
 
+      {/* Planted in front of the wall, behind the people: flowers earned by
+          giving, drawn by ChurchFlora. Non-interactive — planting happens on
+          your own church tab and never in somebody else's yard. */}
+      {flora && <ChurchFlora plantings={flora} />}
+
       {/* The congregation, alive: figures drift between the lawn, the path
           and the door on seeded schedules (CrowdLife sorts you to the front
           of the cut and caps the crowd — a picture of the place, not a
           census, same as ever). */}
       <CrowdLife members={members} waypoints={WAYPOINTS} sizeFor={sizeFor} max={9} showYouTag />
 
-      {members.length === 0 && (
+      {emptyNote && members.length === 0 && (
         <p
           className="faint"
           style={{ position: 'absolute', left: 0, right: 0, bottom: 10, margin: 0, fontSize: 12, textAlign: 'center' }}

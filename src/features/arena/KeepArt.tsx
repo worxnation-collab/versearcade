@@ -13,6 +13,8 @@
 // barding take denominationColor(), which is already measured to clear ΔE 9
 // from every other faction under normal, deutan and protan vision.
 
+import { unpackDecor, type MountKind } from '@/data/keep'
+
 // Palette — warm stone interior against the app's dark chrome.
 const WALL = '#3a3350'
 const WALL_DARK = '#2c2740'
@@ -133,18 +135,109 @@ function DrawnHall({ color }: { color: string }) {
  * gen-art.mjs, like the skins). The kite shield and the destrier stay DRAWN:
  * their colour IS the faction's — measured for colourblind separation — and a
  * generated image can't take a runtime colour.
+ *
+ * `value` is the PACKED placement (`keep_woven_rug.2`), so tier and id arrive
+ * together and no caller has to remember to unpack. A merged prop is the same
+ * artwork grown and gilded rather than a second picture: 15 decorations x 3
+ * tiers would be 45 renders for something drawn at 40px in a sheet, which is
+ * the same size argument that made church skins a kit instead of 32 images.
  */
-export function DecorProp({ id, x, y, color }: { id: string; x: number; y: number; color: string }) {
+export function DecorProp({
+  value,
+  x,
+  y,
+  color,
+  mount,
+}: {
+  value: string
+  x: number
+  y: number
+  color: string
+  mount?: MountKind
+}) {
+  const { id, tier } = unpackDecor(value)
   const raster = RASTER_DECOR[id]
-  if (raster) {
-    const { src, w, h, mode } = raster
-    const px = x - w / 2
-    const py = mode === 'hang' ? y : mode === 'center' ? y - h / 2 : y - h
-    return <image href={src} x={px} y={py} width={w} height={h} preserveAspectRatio="xMidYMid meet" />
+  const art = raster ? null : PROPS[id]
+  if (!raster && !art) return null
+
+  const grown = TIER_SCALE[tier - 1] ?? 1
+
+  return (
+    <g transform={`translate(${x}, ${y})`}>
+      {/* The gilding goes BEHIND the prop, so it reads as the object sitting on
+          something finer rather than a highlight painted over it. */}
+      {tier > 1 && <TierAccent tier={tier} mount={mount} />}
+      <g transform={grown === 1 ? undefined : `scale(${grown})`}>
+        {raster ? (
+          <image
+            href={raster.src}
+            x={-raster.w / 2}
+            y={raster.mode === 'hang' ? 0 : raster.mode === 'center' ? -raster.h / 2 : -raster.h}
+            width={raster.w}
+            height={raster.h}
+            preserveAspectRatio="xMidYMid meet"
+          />
+        ) : (
+          art!(color)
+        )}
+      </g>
+    </g>
+  )
+}
+
+/** Plain, Fine, Grand. Small steps: this has to stay recognisably the same rug. */
+const TIER_SCALE = [1, 1.12, 1.24]
+
+/**
+ * What "finer" looks like, in flat fills and no <defs> like everything else in
+ * here. Ground pieces gain a gilt mat under them; hung pieces gain a gilt
+ * mounting behind them. Grand adds a second ring and four small studs — the
+ * shape changes, so the step doesn't rely on colour alone (the chart rule).
+ */
+function TierAccent({ tier, mount }: { tier: number; mount?: MountKind }) {
+  const hangs = mount === 'banner' || mount === 'rafters'
+  const onWall = mount === 'wall'
+
+  if (hangs) {
+    return (
+      <g>
+        <rect x="-16" y="-5" width="32" height="4" rx="2" fill={GOLD_DEEP} />
+        {tier > 2 && <rect x="-21" y="-9" width="42" height="4" rx="2" fill={GOLD} />}
+      </g>
+    )
   }
-  const prop = PROPS[id]
-  if (!prop) return null
-  return <g transform={`translate(${x}, ${y})`}>{prop(color)}</g>
+  if (onWall) {
+    return (
+      <g>
+        <circle cx="0" cy="0" r="27" fill={GOLD_DEEP} opacity="0.28" />
+        {tier > 2 && (
+          <g fill={GOLD}>
+            <circle cx="0" cy="0" r="31" opacity="0.2" />
+            <circle cx="-22" cy="-22" r="2.2" />
+            <circle cx="22" cy="-22" r="2.2" />
+            <circle cx="-22" cy="22" r="2.2" />
+            <circle cx="22" cy="22" r="2.2" />
+          </g>
+        )}
+      </g>
+    )
+  }
+  // Table, floor, stable: it stands on something.
+  return (
+    <g>
+      <ellipse cx="0" cy="1" rx="30" ry="9" fill={GOLD_DEEP} opacity="0.34" />
+      <ellipse cx="0" cy="1" rx="23" ry="6.5" fill={GOLD} opacity="0.22" />
+      {tier > 2 && (
+        <g fill={GOLD}>
+          <ellipse cx="0" cy="1" rx="35" ry="10.5" opacity="0.18" />
+          <circle cx="-31" cy="1" r="2.2" />
+          <circle cx="31" cy="1" r="2.2" />
+          <circle cx="0" cy="-8" r="2" />
+          <circle cx="0" cy="10" r="2" />
+        </g>
+      )}
+    </g>
+  )
 }
 
 // Display boxes in viewBox units, from each render's real aspect ratio.

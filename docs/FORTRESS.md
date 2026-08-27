@@ -192,6 +192,33 @@ field on somebody else's congregation is a moderation problem. A denomination is
   battle wins and from members' own placements; there is no
   `admin_upsert_fortress` because there is nothing authored to publish.
 
+### Merging duplicates
+
+Put a decoration you already have out somewhere a second time and the two
+**merge** into one finer piece — plain, then Fine, then Grand — and the spot you
+were about to fill stays empty for something else. Three tiers is the ceiling.
+
+It is pure upside: nothing is spent, nothing is destroyed, the spare anchor
+comes back, and clearing a merged prop simply starts it again at plain, because
+ownership is still derived from the six counters and you never stopped owning
+the rug. On the stable, which has one spot, "put a second one out" means tapping
+the one you have, so the destrier can be gilded like everything else.
+
+This does not break *presence, not quantity*. A tier is a **look**, the same way
+a church skin is: a Grand rug is not a bigger rug, no number distinguishes it,
+and reading a hall backwards still tells you nothing about how many members own
+one or who hung it. The gilt is drawn as an accent behind the existing prop
+rather than as new artwork — 15 decorations x 3 tiers would be 45 renders for
+something drawn at 40px, which is the same size argument that made church skins
+a kit instead of 32 images.
+
+On the wire the tier is a suffix on the placement value — `keep_woven_rug`, then
+`keep_woven_rug.2`, `.3` — so every row written before merging existed reads
+correctly as tier 1, `my_keep` and `keep_json` pass it through untouched, and
+nothing had to be backfilled (migration 0060). `planPlacement` in
+`src/data/keep.ts` is the single place that decides what a duplicate means, so
+the guest path and the RPC path cannot disagree.
+
 ### The Armor of God rack
 
 The six pieces from `ARMOR` (Ephesians 6:14–17) hang on the armoury wall as a

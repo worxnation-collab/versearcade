@@ -103,4 +103,15 @@ export const Sound = {
   whoosh() {
     this.tone(600, 0.22, { type: 'sine', gain: 0.12, slideTo: 120 })
   },
+  /**
+   * Two things becoming one nicer thing (the keep's merges). Sine bells, not
+   * the square arcade voice: a merge is a small satisfying settle, and reusing
+   * levelUp() would promise a reward that didn't happen. Rises through a major
+   * triad and lands on the octave, with a soft high shimmer over the last note.
+   */
+  chime() {
+    const notes = [659, 880, 1109, 1319]
+    notes.forEach((n, i) => this.tone(n, 0.22, { type: 'sine', gain: 0.16, delay: i * 0.07 }))
+    this.tone(2637, 0.3, { type: 'sine', gain: 0.05, delay: 0.21 })
+  },
 }

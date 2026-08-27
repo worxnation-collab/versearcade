@@ -4,6 +4,7 @@ import { useAuth } from './auth'
 import {
   EMPTY_COUNTERS,
   ownedDecor,
+  planPlacement,
   type KeepCounter,
   type KeepCounters,
 } from '@/data/keep'
@@ -22,8 +23,20 @@ import {
 // migration 0059). Nothing here writes shared faction state, and nothing in a
 // hall is ever counted — see the header of data/keep.ts.
 
-/** anchor id -> decor id. */
+/** anchor id -> packed decor value (`keep_woven_rug`, `keep_woven_rug.2`). */
 export type Placements = Record<string, string>
+
+/** What a `place()` turned out to be, so the UI can chime for a merge. */
+export interface PlaceResult {
+  /** The anchor that actually changed — not always the one that was tapped. */
+  anchor: string
+  /** True when this went into a copy already out instead of filling the spot. */
+  merged: boolean
+  /** The tier the object ended up at. */
+  tier: number
+  /** The packed value now on that anchor, or null when it was cleared. */
+  value: string | null
+}
 
 interface LocalKeep {
   counters: KeepCounters
@@ -80,8 +93,16 @@ interface KeepState {
    * must count exactly once.
    */
   track: (counter: KeepCounter, battleId?: string) => Promise<void>
-  /** Put a decoration on an anchor (null clears it). */
-  place: (anchor: string, decorId: string | null) => Promise<void>
+  /**
+   * Put a decoration on an anchor (null clears it).
+   *
+   * A duplicate MERGES rather than standing twice: the planner (data/keep
+   * planPlacement) decides which anchor actually moves, and the result says so
+   * for the chime and the toast. Everything about merging lives in the planner
+   * — this only writes what it was told to write, so the guest path and the RPC
+   * path can't disagree about what a second rug means.
+   */
+  place: (anchor: string, decorId: string | null) => Promise<PlaceResult>
   /** Decor ids the player has earned, derived from the counters. */
   owned: () => string[]
 }
@@ -143,20 +164,33 @@ export const useKeep = create<KeepState>((set, get) => ({
   },
 
   async place(anchor, decorId) {
+    // The planner reads what's already out, so a second rug lands in the first
+    // one. Only ONE anchor ever changes per call — the merge target when this
+    // is a merge, the tapped spot otherwise.
+    const plan = planPlacement(get().placements, anchor, decorId)
+    if (plan.noop) {
+      return { anchor: plan.anchor, merged: false, tier: plan.tier, value: plan.value }
+    }
+
     const next = { ...get().placements }
-    if (decorId) next[anchor] = decorId
-    else delete next[anchor]
+    if (plan.value) next[plan.anchor] = plan.value
+    else delete next[plan.anchor]
     set({ placements: next })
 
     if (isOnline()) {
-      void supabase!.rpc('set_keep_placement', { p_anchor: anchor, p_decor: decorId })
-      return
+      void supabase!.rpc('set_keep_placement', { p_anchor: plan.anchor, p_decor: plan.value })
+    } else {
+      // Guest: merge onto what's on disk, never onto in-memory state — a hall
+      // can be opened before anything called load(). Same trap as
+      // store/bookAccuracy.ts:record.
+      const disk = readLocal()
+      const placements = { ...disk.placements }
+      if (plan.value) placements[plan.anchor] = plan.value
+      else delete placements[plan.anchor]
+      writeLocal({ ...disk, placements })
     }
-    const disk = readLocal()
-    const placements = { ...disk.placements }
-    if (decorId) placements[anchor] = decorId
-    else delete placements[anchor]
-    writeLocal({ ...disk, placements })
+
+    return { anchor: plan.anchor, merged: plan.merged, tier: plan.tier, value: plan.value }
   },
 
   owned() {

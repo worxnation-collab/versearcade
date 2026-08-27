@@ -8,10 +8,14 @@ import { Collapsible } from '@/components/Collapsible'
 import { CountUp } from '@/components/CountUp'
 import { useAuth } from '@/store/auth'
 import { useChurch } from '@/store/church'
+import { useChurchYard } from '@/store/churchYard'
 import { useJuice } from '@/juice/useJuice'
 import { supabase } from '@/lib/supabase'
 import { ChurchArt } from './ChurchArt'
 import { ChurchBoard } from './ChurchBoard'
+import { ChurchScene } from './ChurchScene'
+import { FloraIcon } from './ChurchFlora'
+import { FLORA, PLOTS, floraById, nextFlora } from './yard'
 import { ChurchPicker } from './ChurchPicker'
 import { CHURCH_TIERS, churchLevelInfo, nextTier, tierForLevel, tierIndexForLevel } from './levels'
 import type { Church } from '@/types'
@@ -121,6 +125,9 @@ function ChurchHome({ church }: { church: Church }) {
       juice.correct()
     }
     setFlash(`+${res.given.toLocaleString()} to ${church.name}`)
+    // Giving is the only thing that opens landscaping, so the yard's ladder is
+    // stale the moment this lands.
+    void useChurchYard.getState().load()
   }
 
   useEffect(() => {
@@ -227,6 +234,9 @@ function ChurchHome({ church }: { church: Church }) {
         </AnimatePresence>
       </div>
 
+      {/* The churchyard ---------------------------------------------------- */}
+      <Churchyard church={church} level={info.level} />
+
       {/* Ranks — local by default, worldwide on the "All" chip -------------- */}
       <div className="card">
         <div className="center" style={{ marginBottom: 12 }}>
@@ -328,6 +338,180 @@ function ChurchHome({ church }: { church: Church }) {
 
       <div style={{ height: 20 }} />
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// The churchyard
+// ---------------------------------------------------------------------------
+// The other half of giving. Church XP grows the building for everybody; the
+// same points, counted as YOUR lifetime giving, open the landscaping you get to
+// choose. It sits directly under the Give card because that's the sentence:
+// give, and the ground out front is where it shows up.
+//
+// This preview is your own plot list on your own church — the wide shot on the
+// church's page blends the whole congregation's (church_yard_json). The crowd
+// here is just you, the same way the keep shows only you in your own hall, so
+// the scene is about the garden rather than a thin turnout.
+//
+// Nothing in here counts or compares anybody: no "3 planted", no who-planted-
+// what, no per-giver totals. See features/church/yard.ts.
+function Churchyard({ church, level }: { church: Church; level: number }) {
+  const juice = useJuice()
+  const me = useAuth((s) => s.profile)
+  const { given, plantings, loaded, load, plant, unlocked } = useChurchYard()
+  const [flash, setFlash] = useState<string | null>(null)
+
+  useEffect(() => {
+    void load()
+  }, [load, church.id])
+
+  useEffect(() => {
+    if (!flash) return
+    const t = setTimeout(() => setFlash(null), 2600)
+    return () => clearTimeout(t)
+  }, [flash])
+
+  const mine = unlocked()
+  const next = nextFlora(given)
+  const crowd = me
+    ? [{ username: me.username, avatarEmoji: me.avatarEmoji, avatarCharacter: me.avatarCharacter, isMe: true }]
+    : []
+
+  const put = async (plot: string, floraId: string | null) => {
+    juice.select()
+    const res = await plant(plot, floraId)
+    if (!res.ok) {
+      setFlash(
+        res.reason === 'locked'
+          ? 'Not open yet — keep giving and it will be.'
+          : 'That didn’t save. Try again in a moment.',
+      )
+      return
+    }
+    if (floraId) {
+      juice.coin()
+      setFlash(`Planted — ${floraById(floraId)?.name}.`)
+    }
+  }
+
+  return (
+    <div className="card">
+      <b style={{ fontFamily: 'var(--font-display)', fontSize: 17 }}>Your churchyard</b>
+      <p className="dim" style={{ margin: '6px 0 12px', fontSize: 13.5, lineHeight: 1.5 }}>
+        Giving opens up the landscaping out front. Everyone who gives plants their own, and the yard
+        on {church.name}'s page is all of it together — nobody's beds are labelled.
+      </p>
+
+      <ChurchScene level={level} members={crowd} skin={church.skin} flora={plantings} emptyNote={false} />
+
+      <AnimatePresence>
+        {flash && (
+          <motion.p
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="center"
+            style={{ margin: '10px 0 0', fontSize: 13, fontWeight: 800, color: 'var(--gold)' }}
+          >
+            {flash}
+          </motion.p>
+        )}
+      </AnimatePresence>
+
+      <p className="faint" style={{ fontSize: 12, margin: '10px 0 0', lineHeight: 1.5 }}>
+        {given.toLocaleString()} given, all-time
+        {next
+          ? ` · ${(next.given - given).toLocaleString()} more opens the ${next.name}.`
+          : ' · every plant is open. The yard is yours.'}
+      </p>
+
+      <div style={{ marginTop: 12 }}>
+        <Collapsible icon="🌷" title="Landscaping" meta={`${mine.length}/${FLORA.length} open`}>
+          {!loaded ? (
+            <p className="faint" style={{ fontSize: 12, margin: 0 }}>Reading the yard…</p>
+          ) : mine.length === 0 ? (
+            <p className="dim" style={{ fontSize: 13, margin: 0, lineHeight: 1.5 }}>
+              Nothing to plant yet. The first pots go in at {FLORA[0].given.toLocaleString()} given —
+              giving costs you nothing, so it's only a matter of playing.
+            </p>
+          ) : (
+            PLOTS.map((plot) => {
+              const current = plantings[plot.id]
+              return (
+                <div key={plot.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--stroke)' }}>
+                  <div className="faint" style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+                    {plot.label}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    <PlantChip label="Bare" active={!current} onClick={() => void put(plot.id, null)} />
+                    {mine.map((f) => (
+                      <PlantChip
+                        key={f.id}
+                        label={f.name}
+                        active={current === f.id}
+                        onClick={() => void put(plot.id, f.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )
+            })
+          )}
+
+          {/* The ladder: what's open, and what giving more opens next. Plain
+              numbers, no urgency, nothing expires — the Study-tab tone. */}
+          <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)', marginTop: 12 }}>
+            {FLORA.map((f) => {
+              const open = given >= f.given
+              return (
+                <div
+                  key={f.id}
+                  className="card"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: '10px 12px',
+                    minWidth: 0,
+                    borderColor: open ? 'var(--gold)' : 'var(--stroke)',
+                    opacity: open ? 1 : 0.62,
+                  }}
+                >
+                  <FloraIcon id={f.id} size={38} />
+                  <span style={{ minWidth: 0, flex: 1 }}>
+                    <span style={{ display: 'block', fontWeight: 800, fontSize: 14 }}>{f.name}</span>
+                    <span className="faint" style={{ display: 'block', fontSize: 12 }}>
+                      {open ? f.blurb : `At ${f.given.toLocaleString()} given`}
+                    </span>
+                  </span>
+                  <span style={{ fontSize: 16 }}>{open ? '✅' : '🔒'}</span>
+                </div>
+              )
+            })}
+          </div>
+        </Collapsible>
+      </div>
+    </div>
+  )
+}
+
+function PlantChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: '5px 10px',
+        borderRadius: 9,
+        fontSize: 12.5,
+        cursor: 'pointer',
+        border: `1px solid ${active ? 'var(--gold)' : 'var(--stroke)'}`,
+        background: active ? 'rgba(255,210,63,0.14)' : 'rgba(255,255,255,0.04)',
+        color: active ? 'var(--gold)' : 'var(--ink-dim)',
+      }}
+    >
+      {label}
+    </button>
   )
 }
 

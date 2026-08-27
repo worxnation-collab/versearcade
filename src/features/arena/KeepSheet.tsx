@@ -9,10 +9,12 @@ import { denominationColor, denominationName } from '@/data/denominations'
 import {
   ANCHORS,
   DECOR,
-  decorById,
   decorForMount,
+  decorName,
   keepLevelForWins,
   keepLevelName,
+  planPlacement,
+  unpackDecor,
 } from '@/data/keep'
 import { KeepHall, DecorProp } from './KeepArt'
 import { KeepLife } from './KeepLife'
@@ -43,6 +45,10 @@ export function KeepSheet({
   const me = useAuth((s) => s.profile)
   const keep = useKeep()
   const [faction, setFaction] = useState<FactionKeep | null>(null)
+  // The last merge, so the hall can flash the spot that absorbed it and say in
+  // words what just happened. Tapping a second rug and watching a DIFFERENT
+  // corner of the room change is the one confusing moment in the mechanic.
+  const [merged, setMerged] = useState<{ anchor: string; name: string } | null>(null)
 
   const myFaction = !!denomination && me?.denomination === denomination
   const ownHall = !denomination || myFaction
@@ -53,6 +59,23 @@ export function KeepSheet({
       loadFactionKeep(denomination).then(setFaction)
     }
   }, [denomination])
+
+  useEffect(() => {
+    if (!merged) return
+    const t = setTimeout(() => setMerged(null), 3000)
+    return () => clearTimeout(t)
+  }, [merged])
+
+  // Place, and let the store tell us whether it turned into a merge.
+  const place = async (anchor: string, decorId: string | null) => {
+    const res = await useKeep.getState().place(anchor, decorId)
+    if (res.merged) {
+      juice.merge()
+      setMerged({ anchor: res.anchor, name: decorName(res.value) })
+    } else {
+      juice.select()
+    }
+  }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -130,8 +153,22 @@ export function KeepSheet({
             <svg viewBox="0 0 560 300" style={{ display: 'block', width: '100%', height: 'auto' }}>
               <KeepHall color={colorHex} />
               {ANCHORS.map((a) => {
-                const decor = placements[a.id]
-                return decor ? <DecorProp key={a.id} id={decor} x={a.x} y={a.y} color={colorHex} /> : null
+                const value = placements[a.id]
+                if (!value) return null
+                // The spot that just absorbed a duplicate gives one pulse — the
+                // eye needs telling where to look when the thing you tapped
+                // isn't the thing that changed.
+                return (
+                  <motion.g
+                    key={a.id}
+                    initial={false}
+                    animate={merged?.anchor === a.id ? { scale: [1, 1.22, 1] } : { scale: 1 }}
+                    transition={{ duration: 0.5 }}
+                    style={{ transformOrigin: `${a.x}px ${a.y}px` }}
+                  >
+                    <DecorProp value={value} x={a.x} y={a.y} color={colorHex} mount={a.mount} />
+                  </motion.g>
+                )
               })}
             </svg>
             {/* Alive, not pasted: figures run seeded schedules between the
@@ -141,6 +178,21 @@ export function KeepSheet({
                 them rather than letting them go back to being stickers. */}
             <KeepLife members={lifeMembers} />
           </div>
+
+          <AnimatePresence>
+            {merged && (
+              <motion.p
+                key="merge-flash"
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="center"
+                style={{ margin: '8px 0 0', fontSize: 13, fontWeight: 800, color: 'var(--gold)' }}
+              >
+                ✦ Two became one — that's a {merged.name} now.
+              </motion.p>
+            )}
+          </AnimatePresence>
 
           <p className="faint" style={{ fontSize: 12, margin: '8px 0 0', lineHeight: 1.5 }}>
             <b style={{ color: 'var(--ink-dim)' }}>{keepLevelName(level)}</b> · level {level}
@@ -158,11 +210,13 @@ export function KeepSheet({
               <Collapsible icon="🛋️" title="Decorate" meta={`${keep.owned().length}/${DECOR.length} earned`}>
                 <p className="faint" style={{ fontSize: 11.5, margin: '0 0 10px', lineHeight: 1.5 }}>
                   Win keep challenges on the Battle tab to earn furnishings, then choose what hangs
-                  where. Members each furnish their own view of the hall.
+                  where. Members each furnish their own view of the hall. Put something you already
+                  have out a second time and the two <b style={{ color: 'var(--gold)' }}>merge</b>
+                  {' '}into one finer piece — and the spare spot stays yours to fill.
                 </p>
                 {ANCHORS.filter((a) => decorForMount(a.mount).some((d) => keep.owned().includes(d.id))).map((a) => {
                   const options = decorForMount(a.mount).filter((d) => keep.owned().includes(d.id))
-                  const current = keep.placements[a.id]
+                  const current = unpackDecor(keep.placements[a.id])
                   return (
                     <div key={a.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--stroke)' }}>
                       <div className="faint" style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
@@ -171,17 +225,24 @@ export function KeepSheet({
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                         <Chip
                           label="Empty"
-                          active={!current}
-                          onClick={() => { juice.select(); void keep.place(a.id, null) }}
+                          active={!current.id}
+                          onClick={() => { juice.select(); void place(a.id, null) }}
                         />
-                        {options.map((d) => (
-                          <Chip
-                            key={d.id}
-                            label={d.name}
-                            active={current === d.id}
-                            onClick={() => { juice.select(); void keep.place(a.id, d.id) }}
-                          />
-                        ))}
+                        {options.map((d) => {
+                          // Ask the planner what the tap will really do, so a
+                          // chip that's about to merge says so before it's
+                          // pressed rather than surprising you afterwards.
+                          const plan = planPlacement(keep.placements, a.id, d.id)
+                          return (
+                            <Chip
+                              key={d.id}
+                              label={current.id === d.id ? decorName(keep.placements[a.id]) : d.name}
+                              note={plan.merged ? 'merge' : undefined}
+                              active={current.id === d.id}
+                              onClick={() => { void place(a.id, d.id) }}
+                            />
+                          )
+                        })}
                       </div>
                     </div>
                   )
@@ -217,11 +278,25 @@ function mountIndex(anchorId: string): string {
   return suffix === 'l' ? '(left)' : suffix === 'r' ? '(right)' : suffix === '1' && !anchorId.startsWith('stable') ? '1' : suffix
 }
 
-function Chip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+function Chip({
+  label,
+  active,
+  note,
+  onClick,
+}: {
+  label: string
+  active: boolean
+  /** Small tag on the right — 'merge' when tapping would fold a duplicate in. */
+  note?: string
+  onClick: () => void
+}) {
   return (
     <button
       onClick={onClick}
       style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
         padding: '5px 10px',
         borderRadius: 9,
         fontSize: 12.5,
@@ -232,6 +307,22 @@ function Chip({ label, active, onClick }: { label: string; active: boolean; onCl
       }}
     >
       {label}
+      {note && (
+        <span
+          style={{
+            fontSize: 9.5,
+            fontWeight: 800,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            padding: '1px 5px',
+            borderRadius: 6,
+            background: 'rgba(255,210,63,0.16)',
+            color: 'var(--gold)',
+          }}
+        >
+          ✦ {note}
+        </span>
+      )}
     </button>
   )
 }

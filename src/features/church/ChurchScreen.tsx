@@ -136,7 +136,7 @@ function ChurchHome({ church }: { church: Church }) {
     <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'minmax(0, 1fr)' }}>
       {/* Hero ------------------------------------------------------------- */}
       <div className="card center" style={{ paddingTop: 10 }}>
-        <ChurchArt level={info.level} size={220} animate />
+        <ChurchArt level={info.level} skin={church.skin} size={220} animate />
         <h2 style={{ fontSize: 22, marginTop: 6, overflowWrap: 'anywhere' }}>{church.name}</h2>
         <p className="faint" style={{ margin: '2px 0 0', fontSize: 12.5 }}>
           {where || 'Your congregation'} · {church.members} {church.members === 1 ? 'player' : 'players'}
@@ -283,7 +283,7 @@ function ChurchHome({ church }: { church: Church }) {
                 className="card"
                 style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', minWidth: 0, borderColor: earned ? 'var(--gold)' : 'var(--stroke)' }}
               >
-                <ChurchArt tier={t.id} size={56} locked={!earned} />
+                <ChurchArt tier={t.id} skin={church.skin} size={56} locked={!earned} />
                 <span style={{ minWidth: 0, flex: 1 }}>
                   <span style={{ display: 'block', fontWeight: 800, fontSize: 14 }}>{t.name}</span>
                   <span className="faint" style={{ display: 'block', fontSize: 12 }}>
@@ -321,7 +321,9 @@ function ChurchHome({ church }: { church: Church }) {
 
       {/* Promotion moment -------------------------------------------------- */}
       <AnimatePresence>
-        {promoted && <Promotion name={promoted} level={info.level} onClose={() => setPromoted(null)} />}
+        {promoted && (
+          <Promotion name={promoted} level={info.level} skin={church.skin} onClose={() => setPromoted(null)} />
+        )}
       </AnimatePresence>
 
       <div style={{ height: 20 }} />
@@ -330,7 +332,17 @@ function ChurchHome({ church }: { church: Church }) {
 }
 
 // The reward for a long climb: the building visibly becomes something bigger.
-function Promotion({ name, level, onClose }: { name: string; level: number; onClose: () => void }) {
+function Promotion({
+  name,
+  level,
+  skin,
+  onClose,
+}: {
+  name: string
+  level: number
+  skin?: string | null
+  onClose: () => void
+}) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -358,7 +370,7 @@ function Promotion({ name, level, onClose }: { name: string; level: number; onCl
         <p className="faint" style={{ margin: 0, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
           Your church grew
         </p>
-        <ChurchArt level={level} size={200} animate />
+        <ChurchArt level={level} skin={skin} size={200} animate />
         <h2 className="gradient-text" style={{ fontSize: 26, marginTop: 4 }}>{name}</h2>
         <p className="dim" style={{ margin: '8px 0 14px', fontSize: 14 }}>
           Everyone who gave built this. Keep going — there's more house to raise.

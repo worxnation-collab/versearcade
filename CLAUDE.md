@@ -137,6 +137,34 @@ The sheet sits at `z-index: 100` — the app's sheet tier. Don't raise it: the
 player card (110) is meant to open *over* a sheet, and tapping a face in the
 roster opens exactly that.
 
+### Church skins
+
+Two axes, and only one is for sale. `levels.ts` decides *which* of the eight
+buildings a church has — earned by playing, and nothing buys it. `skins.ts`
+decides what it's *made of*: `classic` (default), `modern`, `glass`, `tile`. A
+skinned church is not a bigger church — no number distinguishes it, which is the
+point: the thing a church pays for is the thing that can't beat anybody.
+
+Skins are drawn, not painted, and that's a size decision, not a taste one: 8
+tiers × 4 skins is 32 images for something that renders at 44px in a board row.
+`ChurchArt` composes each tier from a `Kit` (`Wall`/`Gable`/`Opening`/`Wheel`/
+`Spire`/`Topper`) that each skin builds its own way, so a skin changes the
+silhouette and not just the palette. Add a tier by composing the kit; add a skin
+by branching each primitive. Still flat fills and no `<defs>` — same reason.
+
+Staff pick one inside the "Add info" inquiry and it publishes nothing:
+`submit_church_info_request` (0051) records it, and only
+`admin_upsert_church_profile` can grant it. The server nulls the skin on the
+`member` path rather than trusting the form. `church_json` is the one place the
+published skin is read, so the board, the page, search and your own church tab
+can't drift apart.
+
+`custom` ("draw our actual building") is a commission, not a look — stored so
+the queue knows to quote it, and the church keeps the default until real
+artwork ships as a new skin id. **Still no prices, either mode**: the custom
+option says it's answered by email, and the money happens off the device. See
+`docs/CHURCH-SKINS.md`.
+
 ## Content is deterministic — keep it that way
 
 `getVerseForDate(date)` must return the same verse for the same date for every

@@ -123,9 +123,14 @@ Two rules here are load-bearing:
   a storefront that `commerce.ts` would have to gate. If a church page ever gets
   a real price, that decision goes in `commerce.ts` and nowhere else.
 
-The roster the scene draws is deliberately not ordered by contribution and
-carries no per-person points: a crowd, not a ladder. "Top givers" stays your own
-church's thank-you list.
+The page names the congregation ("Who plays here") as well as drawing it. Both
+the roster and the scene are ordered by join date and carry no per-person
+points: a crowd, not a ladder. "Top givers" stays your own church's thank-you
+list, where it's a thank-you rather than a comparison between strangers.
+
+The sheet sits at `z-index: 100` — the app's sheet tier. Don't raise it: the
+player card (110) is meant to open *over* a sheet, and tapping a face in the
+roster opens exactly that.
 
 ## Content is deterministic — keep it that way
 

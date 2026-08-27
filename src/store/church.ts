@@ -296,7 +296,10 @@ export const useChurch = create<ChurchState>((set, get) => ({
     }
     const { data, error } = await supabase!.rpc('get_church_page', {
       p_church_id: church.id,
-      p_members_limit: 12,
+      // The server's cap. The scene only draws a dozen or so, but the page also
+      // names the congregation, and a name list wants to be as complete as the
+      // RPC will give us.
+      p_members_limit: 24,
     })
     // Tapping a second row before the first landed: whatever came back belongs
     // to a sheet that isn't on screen any more, so drop it.

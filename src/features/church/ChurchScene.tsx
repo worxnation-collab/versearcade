@@ -15,6 +15,11 @@ import type { ChurchMember } from '@/types'
 // the back rank is smaller, dimmer and higher on the ground plane; the front
 // rank is bigger and lower. Nobody is ordered by what they gave, and no figure
 // carries a score — see the note on ChurchMember.
+//
+// It draws at most eleven people and deliberately doesn't say so. This is a
+// picture of the place, not a census: the roster underneath it names the
+// congregation and carries the head count, and a "+23 more" badge up here only
+// argued with the list of names right below it.
 
 const CANVAS_H = 236
 /** Where the building's own ground ellipse lands, measured from the bottom. */
@@ -57,21 +62,12 @@ function rank(members: ChurchMember[], y: number, size: number): Figure[] {
   })
 }
 
-export function ChurchScene({
-  level,
-  members,
-  memberTotal,
-}: {
-  level: number
-  members: ChurchMember[]
-  memberTotal: number
-}) {
+export function ChurchScene({ level, members }: { level: number; members: ChurchMember[] }) {
   // You stand out front. Everyone else keeps the server's order (oldest member
   // first), which is stable and means the crowd doesn't rearrange itself.
   const ordered = [...members].sort((a, b) => Number(b.isMe) - Number(a.isMe))
   const front = rank(ordered.slice(0, 5), 18, 40)
   const back = rank(ordered.slice(5, 11), 56, 28)
-  const hidden = Math.max(0, memberTotal - (front.length + back.length))
 
   return (
     <div
@@ -141,25 +137,6 @@ export function ChurchScene({
         <Figure key={f.member.username} {...f} />
       ))}
 
-      {/* Up in the sky, not down in the crowd: at the bottom it landed on top of
-          whoever happened to be standing on the right. */}
-      {hidden > 0 && (
-        <span
-          className="pill"
-          style={{
-            position: 'absolute',
-            right: 10,
-            top: 10,
-            zIndex: 4,
-            fontSize: 11.5,
-            fontWeight: 800,
-            background: 'rgba(11,7,32,0.7)',
-          }}
-        >
-          +{hidden.toLocaleString()} more inside
-        </span>
-      )}
-
       {members.length === 0 && (
         <p
           className="faint"
@@ -215,7 +192,7 @@ function Figure({ member, x, y, size, dim = false }: Figure & { dim?: boolean })
         <span
           role="img"
           aria-label={member.username}
-          style={{ fontSize: size * 0.85, lineHeight: 1, filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.5))' }}
+          style={{ fontSize: size * 0.72, lineHeight: 1, filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.5))' }}
         >
           {member.avatarEmoji}
         </span>

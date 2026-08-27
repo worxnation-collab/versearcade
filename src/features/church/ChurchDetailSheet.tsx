@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
+import { Avatar } from '@/components/Avatar'
 import { Button } from '@/components/Button'
 import { useChurch, INFO_NOTE_MAX, INFO_NOTE_MIN, type InfoRequestRole } from '@/store/church'
 import { useJuice } from '@/juice/useJuice'
 import { formatMiles } from '@/lib/geo'
 import { churchLevelInfo, tierForLevel } from './levels'
 import { ChurchScene } from './ChurchScene'
-import type { ChurchPage } from '@/types'
+import type { ChurchMember, ChurchPage } from '@/types'
 
 // A church's page: what's behind tapping a row on the leaderboard.
 //
@@ -48,7 +49,7 @@ export function ChurchDetailSheet() {
             display: 'flex',
             alignItems: 'flex-end',
             justifyContent: 'center',
-            zIndex: 120,
+            zIndex: 100,
           }}
         >
           <motion.div
@@ -105,7 +106,7 @@ function Body({ page, loading, onClose }: { page: ChurchPage; loading: boolean; 
       </div>
 
       {/* The wide shot: the building, and the people who play for it. */}
-      <ChurchScene level={level.level} members={members} memberTotal={memberTotal} />
+      <ChurchScene level={level.level} members={members} />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, margin: '12px 0 14px' }}>
         <Stat label={tier.name} value={`LVL ${level.level}`} tone="var(--gold)" />
@@ -122,9 +123,79 @@ function Body({ page, loading, onClose }: { page: ChurchPage; loading: boolean; 
         </p>
       )}
 
+      <Congregation members={members} total={memberTotal} loading={loading} />
+
       <InfoSection page={page} loading={loading} />
       <div style={{ height: 8 }} />
     </>
+  )
+}
+
+// Who plays here, by name. Join order, no numbers, no medals: the same crowd the
+// scene draws, spelled out — a congregation reads as people, and a building with
+// eleven anonymous figures outside it doesn't tell you whether you know any of
+// them. Deliberately not "top givers": that list is a thank-you and only ever
+// appears on your own church, where nobody is being measured against a stranger.
+function Congregation({ members, total, loading }: { members: ChurchMember[]; total: number; loading: boolean }) {
+  const hidden = Math.max(0, total - members.length)
+  if (!members.length) {
+    return loading ? null : (
+      <div className="card" style={{ marginBottom: 14 }}>
+        <b style={{ fontFamily: 'var(--font-display)', fontSize: 16 }}>Who plays here</b>
+        <p className="dim" style={{ margin: '6px 0 0', fontSize: 13.5 }}>
+          Nobody yet — this church is on the board, but no one has picked it as theirs.
+        </p>
+      </div>
+    )
+  }
+  return (
+    <div className="card" style={{ marginBottom: 14 }}>
+      <b style={{ fontFamily: 'var(--font-display)', fontSize: 16, display: 'block', marginBottom: 10 }}>
+        Who plays here
+      </b>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {members.map((m) => (
+          <span
+            key={m.username}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 7,
+              maxWidth: '100%',
+              minWidth: 0,
+              padding: '5px 12px 5px 5px',
+              borderRadius: 999,
+              border: '1px solid',
+              borderColor: m.isMe ? 'var(--gold)' : 'var(--stroke)',
+              background: m.isMe ? 'rgba(255,210,63,0.10)' : 'var(--card)',
+            }}
+          >
+            {/* `username` makes the avatar tappable — it opens their player card,
+                the same as every other avatar in the app. */}
+            <Avatar emoji={m.avatarEmoji} character={m.avatarCharacter} username={m.username} size={28} />
+            <span
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                minWidth: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {m.username}{m.isMe ? ' (you)' : ''}
+            </span>
+          </span>
+        ))}
+      </div>
+
+      {hidden > 0 && (
+        <p className="faint" style={{ margin: '10px 0 0', fontSize: 12 }}>
+          and {hidden.toLocaleString()} more
+        </p>
+      )}
+    </div>
   )
 }
 

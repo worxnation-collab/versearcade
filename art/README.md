@@ -16,6 +16,7 @@ must never be written into a tracked file.
 |---|---|---|
 | `keep-halls.json` | halls 2–6 of the keep's six-tier ladder (hall 1 is the existing `hall.jpg`) | `public/keep/hall-<n>.png` |
 | `churchyard-flora.json` | the eight plants a giver can put in a churchyard | `public/keep/yard_*.png` |
+| `pets.json` | the six companions that stand beside you on the You tab | `public/items/pet_*.png` |
 
 `kind` picks the pipeline (see `docs/RASTER-SKINS.md`):
 
@@ -38,6 +39,10 @@ that hasn't been run yet degrades to something correct rather than to nothing:
 - **Flora:** add the id to `RASTER_FLORA` in
   `src/features/church/ChurchFlora.tsx`; anything not listed keeps drawing its
   SVG.
+- **Pets:** add the id to `RASTER_PETS` in `src/components/Pet.tsx`, pointing at
+  `/items/<id>.png` (the `item` pipeline's output directory). A pet stands
+  beside the player's own figure, which is the worst place in the app for a
+  404, so add it only once the file is really there.
 
 ## Two things stay drawn, and it isn't laziness
 

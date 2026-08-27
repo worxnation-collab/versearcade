@@ -11,6 +11,8 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/store/auth'
 import { useSeason } from '@/store/season'
 import { useJuice } from '@/juice/useJuice'
+import { Pet } from '@/components/Pet'
+import { PETS, nextPet, petById } from '@/data/pets'
 import { BORDERS, BADGES, isUnlocked } from '@/data/cosmetics'
 import { useCollection } from '@/store/collection'
 import { collectibleByKey } from '@/data/collectibles'
@@ -116,6 +118,7 @@ export function CustomizeSection() {
 
   const setAvatarCharacter = useAuth((s) => s.setAvatarCharacter)
   const setCardBackground = useAuth((s) => s.setCardBackground)
+  const setPet = useAuth((s) => s.setPet)
   const ownedCollectibles = useCollection((s) => s.owned)
 
   const longest = profile.longestStreak
@@ -125,6 +128,8 @@ export function CustomizeSection() {
   const equippedPieces = ARMOR.filter((a) => spec.armor[a.slot]).length
 
   const equippedBg = profile.cardBackground ?? DEFAULT_CARD_BG
+  const unlockedPetCount = PETS.filter((p) => profile.level >= p.level).length
+  const comingPet = nextPet(profile.level)
   // Pack cards gate on the skin entitlement rather than a collectible, so the
   // picker needs both sources of ownership.
   const bgCtx = { ownedSkins: profile.ownedSkins ?? [], admin: profile.isAdmin }
@@ -151,6 +156,23 @@ export function CustomizeSection() {
     juice.select()
     const res = await setCardBackground(key)
     if (!res.ok) setErr(res.error ?? 'That background isn’t unlocked yet')
+    else flashSaved()
+  }
+
+  // Pets are earned by level and nothing else, so the picker's only job is to
+  // say which are yours yet. Tapping the equipped one takes it off — a
+  // companion you can't put down is a commitment, and this isn't one.
+  const pickPet = async (id: string) => {
+    const def = petById(id)
+    if (!def) return
+    if (profile.level < def.level) {
+      setErr(`${def.name} arrives at level ${def.level}`)
+      return
+    }
+    setErr(null)
+    juice.select()
+    const res = await setPet(profile.pet === id ? null : id)
+    if (!res.ok) setErr(res.error ?? 'That one isn’t unlocked yet')
     else flashSaved()
   }
 
@@ -687,6 +709,56 @@ export function CustomizeSection() {
           </div>
         )}
       </div>
+      </Section>
+
+      {/* ── Pets ──────────────────────────────────────────────────────────
+          Company, not a stat. Nothing here touches XP, points, streaks or any
+          board, which is exactly why a collectible gets to exist next to the
+          rank-free rule — there is no version of this that anybody loses. ── */}
+      <Section title="Pets" right={`${unlockedPetCount}/${PETS.length}`}>
+        <p className="faint" style={{ fontSize: 12, margin: '0 0 10px', lineHeight: 1.5 }}>
+          A companion stands beside you at the top of this tab. They arrive as you level up —
+          nothing buys one, nothing takes one away, and they don't change a single number.
+          {comingPet && ` ${comingPet.name} at level ${comingPet.level}.`}
+        </p>
+        <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', marginBottom: 14 }}>
+          {PETS.map((p) => {
+            const open = profile.level >= p.level
+            const on = profile.pet === p.id
+            return (
+              <button
+                key={p.id}
+                onClick={() => void pickPet(p.id)}
+                className="card"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '10px 12px',
+                  minWidth: 0,
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  borderColor: on ? 'var(--gold)' : 'var(--stroke)',
+                  background: on ? 'rgba(255,210,63,0.08)' : undefined,
+                  // Locked pets stay visible and legible — a silhouette would
+                  // make the ladder a mystery, and the level it arrives at is
+                  // the whole message.
+                  opacity: open ? 1 : 0.58,
+                }}
+              >
+                <span style={{ flexShrink: 0, width: 44, height: 44, display: 'grid', placeItems: 'center' }}>
+                  <Pet id={p.id} size={44} />
+                </span>
+                <span style={{ minWidth: 0, flex: 1 }}>
+                  <span style={{ display: 'block', fontWeight: 800, fontSize: 13.5 }}>{p.name}</span>
+                  <span className="faint" style={{ display: 'block', fontSize: 11.5, lineHeight: 1.35 }}>
+                    {on ? 'Beside you · tap to put down' : open ? p.blurb : `🔒 Level ${p.level}`}
+                  </span>
+                </span>
+              </button>
+            )
+          })}
+        </div>
       </Section>
 
       {/* ── Player-card backgrounds ───────────────────────────────────────

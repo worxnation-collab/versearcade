@@ -481,6 +481,44 @@ at Grand. A determined client can still fake counters and collect the 3,100 —
 that's accepted, it's written down in the migration, and **if the ladder ever
 grows past this size the counters have to become verifiable first.**
 
+## The You tab opens with you in it
+
+`ProfileHero` is the top of `/you`: the full-body figure at the size the skin
+was actually drawn for, your pet beside it, on the card background you equipped,
+under the words "This is you". Everywhere else in the app your character is a
+44px circle with the face cropped in (`Character` does that on purpose — a full
+figure in a small circle throws away the face), so this is the one place the
+whole thing is visible.
+
+It is a **portrait, not a card**: no stats, no level, no numbers at all. The
+player card sits directly underneath and carries every number, and keeping them
+apart is what makes the hero a picture of a person rather than a second
+scoreboard. It uses the same `cardBgStyle` + `CardBg` pair as the card, so
+equipping a background changes both and they can't drift.
+
+### Pets
+
+A companion, earned by **player level and nothing else** — 10, 15, 20, 26, 33,
+40 (`data/pets.ts` ↔ `pet_min_level` in 0063, the usual keep-in-sync pair).
+
+**A pet is not a stat.** It touches no XP, no points, no streak, no standing and
+no board, and today it renders only on your own profile — so there is nothing
+here anyone can be beaten by, which is the only reason a collectible gets to sit
+next to the rank-free rule. Nothing sells one, nothing drops one, nothing takes
+one away, and levels only go up, so a pet can't be lost. Putting one down is
+always allowed: a companion you can't take off is a commitment, and this isn't.
+
+The ladder starts at 10 rather than 1 deliberately — a companion that arrives on
+day one is a default, one that arrives after a month is a small event.
+
+Showing pets on *other* players' cards would mean widening `get_player_card` and
+the leaderboard RPCs; it isn't done, and it's a decision rather than an
+oversight — a pet visible to strangers is one step from being compared.
+
+Art follows the house rule: drawn SVG in `components/Pet.tsx` today, with
+`art/pets.json` ready to generate and `RASTER_PETS` as the slot the renders drop
+into.
+
 ## Shared choke points
 
 `QuizRunner` (`features/daily/QuizRunner.tsx`) owns quiz gameplay and scoring for

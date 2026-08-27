@@ -18,6 +18,7 @@ import { useBuddies } from '@/store/buddies'
 import { useSeason } from '@/store/season'
 import { titleById } from '@/data/season'
 import { CustomizeSection } from './CustomizeSection'
+import { ProfileHero } from './ProfileHero'
 import { SettingsSheet } from './SettingsSheet'
 
 export default function ProfileScreen() {
@@ -115,6 +116,17 @@ export default function ProfileScreen() {
         </div>
 
         <div style={{ marginBottom: 14 }}>
+          <ProfileHero
+            spec={profile.avatarCharacter}
+            emoji={profile.avatarEmoji}
+            username={profile.username}
+            pet={profile.pet}
+            cardBackground={profile.cardBackground}
+            title={myTitle}
+          />
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
           <PlayerCard p={cardData} />
         </div>
 
@@ -168,6 +180,22 @@ export default function ProfileScreen() {
 
   return (
     <Page>
+      {/* You, at the size the skin was drawn for, with your pet and the
+          background you earned. The tab is called You, so it opens with you in
+          it — everywhere else your character is a 44px cropped circle. It's a
+          portrait: no numbers, because the card right underneath is all
+          numbers. */}
+      <div style={{ marginBottom: 14 }}>
+        <ProfileHero
+          spec={profile.avatarCharacter}
+          emoji={profile.avatarEmoji}
+          username={profile.username}
+          pet={profile.pet}
+          cardBackground={profile.cardBackground}
+          title={myTitle}
+        />
+      </div>
+
       {/* Your player card — the exact thing everyone else sees when they tap
           your pfp, background and all, so customizing it has a visible home. */}
       <div style={{ marginBottom: 18 }}>

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useJuice } from '@/juice/useJuice'
 
@@ -22,6 +22,17 @@ export function Collapsible({
 }) {
   const juice = useJuice()
   const [open, setOpen] = useState(defaultOpen)
+
+  // A reason to open can arrive after mount — buddy requests are fetched async,
+  // so the count that justifies opening isn't known on the first render. Honour
+  // defaultOpen when it flips true, but only on the edge, and never force the
+  // section closed again: if the player has already opened or dismissed it,
+  // that's their call, not the prop's.
+  const wasOpenable = useRef(defaultOpen)
+  useEffect(() => {
+    if (defaultOpen && !wasOpenable.current) setOpen(true)
+    wasOpenable.current = defaultOpen
+  }, [defaultOpen])
 
   return (
     <>

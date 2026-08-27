@@ -7,7 +7,7 @@ import { Avatar } from '@/components/Avatar'
 import { useAuth } from '@/store/auth'
 import { useBattles, type Battle, type BattleSide } from '@/store/battles'
 import { setPendingBattle } from './pending'
-import { shareResult, APP_URL } from '@/features/daily/shareCard'
+import { shareResult, inviteUrl } from '@/features/daily/shareCard'
 import { useJuice } from '@/juice/useJuice'
 import { FavoriteButton } from '@/components/FavoriteButton'
 import { battleVerse } from './battle'
@@ -54,11 +54,11 @@ export default function BattleDetail() {
   // it can't spoil a challenge that's still waiting to be played.
   const verse = useMemo(() => (battle ? battleVerse(battle.seed) : null), [battle])
 
-  const link = `${APP_URL}/battle/${id}`
+  const link = inviteUrl(profile?.referralCode, `/battle/${id}`)
   const doShare = async () => {
     juice.coin()
     const text = `⚔️ I challenge you to a Bible Battle! Same quiz, beat my score:\n${link}`
-    const r = await shareResult(text)
+    const r = await shareResult(text, link)
     setShareMsg(r === 'shared' ? 'Shared!' : r === 'copied' ? 'Link copied!' : 'Could not share')
   }
 

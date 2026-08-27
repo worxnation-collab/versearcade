@@ -7,7 +7,7 @@ import { useGame } from '@/store/game'
 import { useAuth } from '@/store/auth'
 import { useJuice } from '@/juice/useJuice'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { shareResult, APP_URL } from '@/features/daily/shareCard'
+import { shareResult, inviteUrl } from '@/features/daily/shareCard'
 
 // Co-op tier: a group opens the SAME daily verse and pools points toward a
 // shared goal against the clock. Everyone climbs together — no member is ever
@@ -125,14 +125,16 @@ function GroupCard({ g, canContribute, onContribute }: { g: GroupView; canContri
   const pct = Math.min(1, g.todayTotal / g.goal)
   const hit = pct >= 1
   const [invite, setInvite] = useState<string | null>(null)
+  const referralCode = useAuth((s) => s.profile?.referralCode)
 
   const shareInvite = async () => {
+    const link = inviteUrl(referralCode, `/groups?join=${g.joinCode}`)
     const text =
       `Join my Verse Arcade group “${g.name}” ${g.emoji}!\n` +
       `We race one shared Bible verse a day and climb together.\n\n` +
       `Tap Groups → Join and enter code ${g.joinCode}\n` +
-      `${APP_URL}/groups?join=${g.joinCode}`
-    const r = await shareResult(text)
+      `${link}`
+    const r = await shareResult(text, link)
     setInvite(r === 'shared' ? 'Invite shared!' : r === 'copied' ? 'Invite copied to clipboard!' : 'Could not share')
   }
 

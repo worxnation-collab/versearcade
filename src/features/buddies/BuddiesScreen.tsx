@@ -5,6 +5,7 @@ import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { Avatar } from '@/components/Avatar'
 import { useAuth } from '@/store/auth'
+import { PushNudge } from '@/components/PushNudge'
 import { useBuddies, type BuddyCard } from '@/store/buddies'
 import { useJuice } from '@/juice/useJuice'
 
@@ -32,6 +33,10 @@ export function BuddiesSection() {
   const { buddies, requests, suggested, load, loadSuggested, sendRequest, respond, remove } = useBuddies()
   const [handle, setHandle] = useState('')
   const [flash, setFlash] = useState<{ text: string; good: boolean } | null>(null)
+  // Set when a request goes out and is left pending — the one case where the
+  // answer arrives later and from another person, so a notification is the
+  // honest solution rather than an interruption.
+  const [awaitingReply, setAwaitingReply] = useState(false)
   const isGuest = mode === 'local'
 
   useEffect(() => {
@@ -55,6 +60,7 @@ export function BuddiesSection() {
       text: res.status === 'accepted' ? `You’re buddies with @${clean}! 🎉` : `Buddy request sent to @${clean} 📨`,
       good: true,
     })
+    if (res.status !== 'accepted') setAwaitingReply(true)
   }
 
   if (isGuest) {
@@ -87,6 +93,7 @@ export function BuddiesSection() {
           </Button>
         </div>
         {flash && <p style={{ color: flash.good ? 'var(--good)' : 'var(--coral)', fontSize: 13, marginTop: 8 }}>{flash.text}</p>}
+        <PushNudge reason="buddy" when={awaitingReply} />
       </div>
 
       {/* Incoming "be my buddy" requests */}

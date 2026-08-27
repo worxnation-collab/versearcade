@@ -39,12 +39,25 @@ export function PlayerCard({
   p,
   actions,
   compact = false,
+  statsOnly = false,
 }: {
   p: PlayerCardData
   /** Buttons pinned beside the name — Edit / settings on your own profile. */
   actions?: ReactNode
   /** Tighter padding, for the pop-up where vertical space is scarcer. */
   compact?: boolean
+  /**
+   * Drop the identity block — avatar, name, title, denomination, XP bar — and
+   * keep only the six stats.
+   *
+   * For your own profile, where ProfileHero already shows you at full size
+   * directly above: repeating the avatar and handle underneath it is the same
+   * person twice on one screen, and the numbers are the part the card is
+   * actually carrying there. Everywhere the card stands alone — the pop-up,
+   * anyone else's profile — it keeps its identity, because there it IS the
+   * identity.
+   */
+  statsOnly?: boolean
 }) {
   const denom = p.denomination ? denominationName(p.denomination) : null
   // SVG gradient ids must be unique per rendered card — the profile header and
@@ -84,6 +97,7 @@ export function PlayerCard({
       )}
 
       {/* Identity */}
+      {!statsOnly && (
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
         <Avatar
           emoji={p.avatarEmoji}
@@ -129,6 +143,16 @@ export function PlayerCard({
           <div style={{ marginTop: 8 }}><XpBar xp={p.xp} /></div>
         </div>
       </div>
+      )}
+
+      {/* Without the identity block the level bar has nowhere to live, and it's
+          the one number that reads as progress rather than a total — so it
+          moves above the tiles rather than being dropped. */}
+      {statsOnly && (
+        <div style={{ marginBottom: 12 }}>
+          <XpBar xp={p.xp} />
+        </div>
+      )}
 
       {/* The six stats, same set and order as the profile has always shown. */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>

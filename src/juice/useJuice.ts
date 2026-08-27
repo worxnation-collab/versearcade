@@ -75,6 +75,11 @@ export function useJuice() {
       whoosh() {
         Sound.whoosh()
       },
+      /** A duplicate folding into the copy already out — see Sound.chime. */
+      merge() {
+        Sound.chime()
+        Haptic.success()
+      },
     }),
     [],
   )

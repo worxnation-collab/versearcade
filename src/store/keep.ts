@@ -4,6 +4,8 @@ import { useAuth } from './auth'
 import {
   EMPTY_COUNTERS,
   ownedDecor,
+  planMove,
+  planPlacement,
   type KeepCounter,
   type KeepCounters,
 } from '@/data/keep'
@@ -22,8 +24,20 @@ import {
 // migration 0059). Nothing here writes shared faction state, and nothing in a
 // hall is ever counted — see the header of data/keep.ts.
 
-/** anchor id -> decor id. */
+/** anchor id -> packed decor value (`keep_woven_rug`, `keep_woven_rug.2`). */
 export type Placements = Record<string, string>
+
+/** What a `place()` turned out to be, so the UI can chime for a merge. */
+export interface PlaceResult {
+  /** The anchor that actually changed — not always the one that was tapped. */
+  anchor: string
+  /** True when this went into a copy already out instead of filling the spot. */
+  merged: boolean
+  /** The tier the object ended up at. */
+  tier: number
+  /** The packed value now on that anchor, or null when it was cleared. */
+  value: string | null
+}
 
 interface LocalKeep {
   counters: KeepCounters
@@ -72,6 +86,8 @@ interface KeepState {
   loaded: boolean
   counters: KeepCounters
   placements: Placements
+  /** Decorations already given to a church — once ever each (0062). */
+  offered: string[]
 
   load: () => Promise<void>
   /**
@@ -80,26 +96,69 @@ interface KeepState {
    * must count exactly once.
    */
   track: (counter: KeepCounter, battleId?: string) => Promise<void>
-  /** Put a decoration on an anchor (null clears it). */
-  place: (anchor: string, decorId: string | null) => Promise<void>
+  /**
+   * Put a decoration on an anchor (null clears it).
+   *
+   * A duplicate MERGES rather than standing twice: the planner (data/keep
+   * planPlacement) decides which anchor actually moves, and the result says so
+   * for the chime and the toast. Everything about merging lives in the planner
+   * — this only writes what it was told to write, so the guest path and the RPC
+   * path can't disagree about what a second rug means.
+   */
+  place: (anchor: string, decorId: string | null) => Promise<PlaceResult>
+  /**
+   * Move a placed piece to another anchor of the same mount. Empty target takes
+   * it, same decoration merges, anything else trades places — see planMove.
+   * Returns null when the move isn't legal (wrong mount, nothing to move).
+   */
+  move: (from: string, to: string) => Promise<MoveResult | null>
+  /**
+   * Give a Grand piece to your church. Online + a church only: the points are
+   * banked against a shared congregation, which is not a thing a guest device
+   * has (store/church.ts). Once ever per decoration — see 0062.
+   */
+  offer: (decorId: string) => Promise<OfferResult>
   /** Decor ids the player has earned, derived from the counters. */
   owned: () => string[]
+}
+
+export interface MoveResult {
+  merged: boolean
+  swapped: boolean
+  tier: number
+  /** Where the moved piece ended up. */
+  anchor: string
+}
+
+export interface OfferResult {
+  ok: boolean
+  /** Points the church banked. */
+  points: number
+  leveledUp: boolean
+  reason?: 'offline' | 'no_church' | 'already_offered' | 'not_owned' | 'not_maxed' | 'failed'
 }
 
 export const useKeep = create<KeepState>((set, get) => ({
   loaded: false,
   counters: { ...EMPTY_COUNTERS },
   placements: {},
+  offered: [],
 
   async load() {
     if (isOnline()) {
-      const { data, error } = await supabase!.rpc('my_keep')
-      if (!error && data) {
-        const raw = data as { counters?: Partial<KeepCounters>; placements?: Placements }
+      // Two reads, one round trip: the offering list is a different table and
+      // the sheet needs both before it can draw a give button honestly.
+      const [keep, offerings] = await Promise.all([
+        supabase!.rpc('my_keep'),
+        supabase!.rpc('my_keep_offerings'),
+      ])
+      if (!keep.error && keep.data) {
+        const raw = keep.data as { counters?: Partial<KeepCounters>; placements?: Placements }
         set({
           loaded: true,
           counters: { ...EMPTY_COUNTERS, ...(raw.counters ?? {}) },
           placements: raw.placements ?? {},
+          offered: Array.isArray(offerings.data) ? (offerings.data as string[]) : [],
         })
         return
       }
@@ -107,7 +166,10 @@ export const useKeep = create<KeepState>((set, get) => ({
       return
     }
     const local = readLocal()
-    set({ loaded: true, counters: local.counters, placements: local.placements })
+    // A guest has no church to give to, so the offering list is empty by
+    // construction rather than by storage — same reason store/church.ts is
+    // online-only.
+    set({ loaded: true, counters: local.counters, placements: local.placements, offered: [] })
   },
 
   async track(counter, battleId) {
@@ -143,20 +205,78 @@ export const useKeep = create<KeepState>((set, get) => ({
   },
 
   async place(anchor, decorId) {
+    // The planner reads what's already out, so a second rug lands in the first
+    // one. Only ONE anchor ever changes per call — the merge target when this
+    // is a merge, the tapped spot otherwise.
+    const plan = planPlacement(get().placements, anchor, decorId)
+    if (plan.noop) {
+      return { anchor: plan.anchor, merged: false, tier: plan.tier, value: plan.value }
+    }
+
     const next = { ...get().placements }
-    if (decorId) next[anchor] = decorId
-    else delete next[anchor]
+    if (plan.value) next[plan.anchor] = plan.value
+    else delete next[plan.anchor]
     set({ placements: next })
 
     if (isOnline()) {
-      void supabase!.rpc('set_keep_placement', { p_anchor: anchor, p_decor: decorId })
-      return
+      void supabase!.rpc('set_keep_placement', { p_anchor: plan.anchor, p_decor: plan.value })
+    } else {
+      // Guest: merge onto what's on disk, never onto in-memory state — a hall
+      // can be opened before anything called load(). Same trap as
+      // store/bookAccuracy.ts:record.
+      const disk = readLocal()
+      const placements = { ...disk.placements }
+      if (plan.value) placements[plan.anchor] = plan.value
+      else delete placements[plan.anchor]
+      writeLocal({ ...disk, placements })
     }
-    const disk = readLocal()
-    const placements = { ...disk.placements }
-    if (decorId) placements[anchor] = decorId
-    else delete placements[anchor]
-    writeLocal({ ...disk, placements })
+
+    return { anchor: plan.anchor, merged: plan.merged, tier: plan.tier, value: plan.value }
+  },
+
+  async move(from, to) {
+    const plan = planMove(get().placements, from, to)
+    if (!plan) return null
+
+    const next = { ...get().placements }
+    for (const w of plan.writes) {
+      if (w.value) next[w.anchor] = w.value
+      else delete next[w.anchor]
+    }
+    set({ placements: next })
+
+    if (isOnline()) {
+      // Two rows move, so two calls. set_keep_placement is per-anchor and
+      // idempotent, and a half-applied move is two well-formed placements
+      // rather than a lost decoration — which is why the plan never overwrites.
+      for (const w of plan.writes) {
+        void supabase!.rpc('set_keep_placement', { p_anchor: w.anchor, p_decor: w.value })
+      }
+    } else {
+      const disk = readLocal()
+      const placements = { ...disk.placements }
+      for (const w of plan.writes) {
+        if (w.value) placements[w.anchor] = w.value
+        else delete placements[w.anchor]
+      }
+      writeLocal({ ...disk, placements })
+    }
+
+    return { merged: plan.merged, swapped: plan.swapped, tier: plan.tier, anchor: to }
+  },
+
+  async offer(decorId) {
+    if (!isOnline()) return { ok: false, points: 0, leveledUp: false, reason: 'offline' }
+
+    const { data, error } = await supabase!.rpc('offer_keep_decor', { p_decor: decorId })
+    if (error) return { ok: false, points: 0, leveledUp: false, reason: 'failed' }
+    const raw = data as { ok?: boolean; reason?: OfferResult['reason']; points?: number; leveled_up?: boolean }
+    if (!raw?.ok) return { ok: false, points: 0, leveledUp: false, reason: raw?.reason ?? 'failed' }
+
+    // The Grand piece left the hall; the server cleared its anchor, so re-read
+    // rather than guessing which one it was.
+    await get().load()
+    return { ok: true, points: Number(raw.points ?? 0), leveledUp: !!raw.leveled_up }
   },
 
   owned() {

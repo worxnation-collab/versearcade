@@ -80,6 +80,9 @@ export interface Profile {
   /** Equipped player-card background key (a collectible key; see
    *  data/playerCards). null/undefined = the free 'default' background. */
   cardBackground?: string | null
+  /** Equipped pet id (see data/pets), or null for none. Earned by player level
+   *  and purely company — it touches no score, no board and no standing. */
+  pet?: string | null
   /** Distinct day-drops the player has shared (YYYY-MM-DD). Drives share-count
    *  unlocks like the King Baldwin set. */
   sharedDays?: string[]

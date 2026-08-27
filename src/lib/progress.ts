@@ -3,6 +3,7 @@
 // mode before the RPC returns. Keep the two in sync.
 
 import { SCORING } from './config'
+import { petXpBonus } from '@/data/pets'
 import type { Profile, SubmitOutcome } from '@/types'
 import { levelInfo } from '@/components/XpBar'
 import { DEFAULT_AVATAR } from '@/data/avatar'
@@ -61,6 +62,12 @@ export function applyPlayLocal(
   const boostUsed = !!args.useBoost && profile.xpBoosts > 0
   if (boostUsed) xpEarned = Math.round(xpEarned * 1.5)
   const boostsLeft = boostUsed ? profile.xpBoosts - 1 : profile.xpBoosts
+
+  // A pet with the `xp` effect adds a small permanent slice on top. Applied
+  // after the consumable so the two don't multiply into something surprising.
+  // KEEP IN SYNC with submit_play (0064) — same order, same rounding.
+  const petCut = petXpBonus(profile.pet)
+  if (petCut > 0) xpEarned = Math.round(xpEarned * (1 + petCut))
 
   const newXp = profile.xp + xpEarned
   const newLevel = levelInfo(newXp).level

@@ -18,6 +18,7 @@ import { useBuddies } from '@/store/buddies'
 import { useSeason } from '@/store/season'
 import { titleById } from '@/data/season'
 import { CustomizeSection } from './CustomizeSection'
+import { ProfileHero } from './ProfileHero'
 import { SettingsSheet } from './SettingsSheet'
 
 export default function ProfileScreen() {
@@ -115,6 +116,17 @@ export default function ProfileScreen() {
         </div>
 
         <div style={{ marginBottom: 14 }}>
+          <ProfileHero
+            spec={profile.avatarCharacter}
+            emoji={profile.avatarEmoji}
+            username={profile.username}
+            pet={profile.pet}
+            cardBackground={profile.cardBackground}
+            title={myTitle}
+          />
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
           <PlayerCard p={cardData} />
         </div>
 
@@ -168,11 +180,32 @@ export default function ProfileScreen() {
 
   return (
     <Page>
-      {/* Your player card — the exact thing everyone else sees when they tap
-          your pfp, background and all, so customizing it has a visible home. */}
+      {/* You, at the size the skin was drawn for, with your pet and the
+          background you earned. The tab is called You, so it opens with you in
+          it — everywhere else your character is a 44px cropped circle. It's a
+          portrait: no numbers, because the card right underneath is all
+          numbers. */}
+      <div style={{ marginBottom: 14 }}>
+        <ProfileHero
+          spec={profile.avatarCharacter}
+          emoji={profile.avatarEmoji}
+          username={profile.username}
+          pet={profile.pet}
+          cardBackground={profile.cardBackground}
+          title={myTitle}
+        />
+      </div>
+
+      {/* The numbers, and only the numbers. The hero above is already you at
+          full size on your own background, so the card here drops its identity
+          block — the same avatar and handle twice on one screen was the thing
+          that made the hero feel like a duplicate rather than the header. What
+          other players see when they tap your pfp is unchanged: that's the same
+          component with its identity intact (PlayerCardModal). */}
       <div style={{ marginBottom: 18 }}>
         <PlayerCard
           p={cardData}
+          statsOnly
           actions={
             <>
               <button onClick={openCustomize} aria-label="Customize your card" className="pill" style={{ fontSize: 12, padding: '4px 10px', flexShrink: 0 }}>

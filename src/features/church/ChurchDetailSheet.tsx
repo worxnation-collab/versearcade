@@ -5,6 +5,7 @@ import { Avatar } from '@/components/Avatar'
 import { Button } from '@/components/Button'
 import { Collapsible } from '@/components/Collapsible'
 import { useChurch, INFO_NOTE_MAX, INFO_NOTE_MIN, type InfoRequestRole } from '@/store/church'
+import { useChurchYard } from '@/store/churchYard'
 import { useJuice } from '@/juice/useJuice'
 import { formatMiles } from '@/lib/geo'
 import { churchLevelInfo, tierForLevel } from './levels'
@@ -12,6 +13,9 @@ import { ChurchArt } from './ChurchArt'
 import { ChurchScene } from './ChurchScene'
 import { CHURCH_SKINS, DEFAULT_CHURCH_SKIN, type ChurchSkinChoice } from './skins'
 import type { ChurchMember, ChurchPage } from '@/types'
+
+/** Stable empty yard — a fresh {} from the selector would re-render forever. */
+const EMPTY_YARD = {}
 
 // A church's page: what's behind tapping a row on the leaderboard.
 //
@@ -88,6 +92,16 @@ export function ChurchDetailSheet() {
 
 function Body({ page, loading, onClose }: { page: ChurchPage; loading: boolean; onClose: () => void }) {
   const { church, members, memberTotal } = page
+  // The yard is a second read on purpose: the sheet is seeded from the row and
+  // draws instantly, and the landscaping arrives with the roster rather than
+  // holding the building back.
+  const yard = useChurchYard((s) => (s.pageChurchId === church.id ? s.pageYard : EMPTY_YARD))
+  const loadPageYard = useChurchYard((s) => s.loadPageYard)
+  useEffect(() => {
+    void loadPageYard(church.id)
+    return () => { void loadPageYard(null) }
+  }, [church.id, loadPageYard])
+
   const level = churchLevelInfo(church.xp)
   const tier = tierForLevel(level.level)
   const where = [church.city, church.region].filter(Boolean).join(', ')
@@ -108,8 +122,9 @@ function Body({ page, loading, onClose }: { page: ChurchPage; loading: boolean; 
         </button>
       </div>
 
-      {/* The wide shot: the building, and the people who play for it. */}
-      <ChurchScene level={level.level} members={members} skin={church.skin} />
+      {/* The wide shot: the building, the landscaping its givers planted, and
+          the people who play for it. */}
+      <ChurchScene level={level.level} members={members} skin={church.skin} flora={yard} />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, margin: '12px 0 14px' }}>
         <Stat label={tier.name} value={`LVL ${level.level}`} tone="var(--gold)" />

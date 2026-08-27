@@ -280,8 +280,8 @@ midnight, not UTC.
 
 Reward math exists twice on purpose: once in SQL for online accounts, once in TS
 for guests. `lib/practice.ts` ↔ `submit_practice` (0014), `store/focus.ts` ↔
-`submit_focus_practice` (0038). Change one, change the other, and say so in the
-comment — they already carry "keep in sync with the SQL" notes.
+`submit_focus_practice` (0038, uncapped by 0056). Change one, change the other,
+and say so in the comment — they already carry "keep in sync with the SQL" notes.
 
 ## Study drops: a reward that can't rank anybody
 
@@ -328,8 +328,11 @@ Design tokens live at the top of `src/index.css` — use the CSS variables, neve
 raw hexes. Numbers and headings wear `var(--font-display)`; that's the brand.
 Motion is springy `framer-motion`, mobile-first, max width 520px.
 
-The Study tab is explicitly rank-free: practice there awards small capped XP at
-most and never touches standing. Keep it that way.
+The Study tab is explicitly rank-free: practice there awards small per-session XP
+at most and never touches standing. The rank-free rule is the invariant, not the
+size of the reward — as of 0056 focus practice has no daily ceiling, so studying
+more keeps paying, and that's fine precisely because none of it ranks anybody.
+Points, streak and standing still stay out of Study. Keep it that way.
 
 For charts, check colorblind separation rather than eyeballing it. The Study
 accuracy chart uses mint/gold/coral because green↔amber fails deutan separation

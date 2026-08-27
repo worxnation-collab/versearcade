@@ -2,11 +2,9 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { usePractice } from '@/store/practice'
-import { todayLocalDate } from '@/lib/date'
-import { daysBetween } from '@/lib/practice'
 
 // "Study the last five" — replay recently-played verses to reinforce them.
-// Replaying is free; beating your best pays scaled XP, once per week per verse.
+// Replaying is free; beating your best pays scaled XP, every time you beat it.
 // Lives on the Study tab, where it opens expanded and explains itself when the
 // player has no past plays yet (elsewhere it stays silent rather than clutter).
 export function PracticeSection({ defaultOpen = false, showEmpty = false }: { defaultOpen?: boolean; showEmpty?: boolean }) {
@@ -34,7 +32,6 @@ export function PracticeSection({ defaultOpen = false, showEmpty = false }: { de
       </div>
     )
   }
-  const today = todayLocalDate()
 
   return (
     <motion.div
@@ -71,8 +68,6 @@ export function PracticeSection({ defaultOpen = false, showEmpty = false }: { de
           >
       <div style={{ display: 'grid', gap: 8 }}>
         {list.map((item) => {
-          const locked = !item.rewardable
-          const days = item.nextRewardOn ? Math.max(0, daysBetween(today, item.nextRewardOn)) : 0
           return (
             <motion.button
               key={item.dropDate}
@@ -88,23 +83,14 @@ export function PracticeSection({ defaultOpen = false, showEmpty = false }: { de
                 </div>
                 <div className="faint" style={{ fontSize: 12 }}>
                   Best {item.bestScore.toLocaleString()} ·{' '}
-                  {locked ? (
-                    <span>bonus back in {days} day{days === 1 ? '' : 's'}</span>
-                  ) : (
-                    <span style={{ color: 'var(--gold)' }}>beat it for XP</span>
-                  )}
+                  <span style={{ color: 'var(--gold)' }}>beat it for XP</span>
                 </div>
               </div>
               <div
                 className="pill"
-                style={{
-                  fontSize: 11,
-                  opacity: locked ? 0.6 : 1,
-                  borderColor: locked ? undefined : 'var(--gold)',
-                  color: locked ? undefined : 'var(--gold)',
-                }}
+                style={{ fontSize: 11, borderColor: 'var(--gold)', color: 'var(--gold)' }}
               >
-                {locked ? '🔁 Study' : '⚡ Beat it'}
+                ⚡ Beat it
               </div>
             </motion.button>
           )

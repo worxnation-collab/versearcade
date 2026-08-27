@@ -279,7 +279,7 @@ midnight, not UTC.
 ## Client mirrors server rules — both sides, every time
 
 Reward math exists twice on purpose: once in SQL for online accounts, once in TS
-for guests. `lib/practice.ts` ↔ `submit_practice` (0014), `store/focus.ts` ↔
+for guests. `lib/practice.ts` ↔ `submit_practice` (0014, uncapped by 0057), `store/focus.ts` ↔
 `submit_focus_practice` (0038, uncapped by 0056). Change one, change the other,
 and say so in the comment — they already carry "keep in sync with the SQL" notes.
 
@@ -330,8 +330,11 @@ Motion is springy `framer-motion`, mobile-first, max width 520px.
 
 The Study tab is explicitly rank-free: practice there awards small per-session XP
 at most and never touches standing. The rank-free rule is the invariant, not the
-size of the reward — as of 0056 focus practice has no daily ceiling, so studying
-more keeps paying, and that's fine precisely because none of it ranks anybody.
+size of the reward — as of 0056 focus practice has no daily ceiling and as of
+0057 replay has no weekly per-verse cooldown, so studying more keeps paying, and
+that's fine precisely because none of it ranks anybody. Replay still only pays
+for beating your own best, and that bar only rises, so it self-limits without a
+gate.
 Points, streak and standing still stay out of Study. Keep it that way.
 
 For charts, check colorblind separation rather than eyeballing it. The Study

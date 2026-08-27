@@ -4,6 +4,8 @@
 
 import { useEffect, useMemo } from 'react'
 import { useSettings } from '@/store/settings'
+import { useSeason } from '@/store/season'
+import { confettiById } from '@/data/season'
 import { Sound } from './sound'
 import { Haptic } from './haptics'
 import { Burst } from './confetti'
@@ -12,11 +14,15 @@ import { configureConfetti } from './confetti'
 
 export function useJuiceSync() {
   const { soundEnabled, hapticsEnabled, reduceMotion, volume } = useSettings()
+  // The equipped confetti theme rides along here rather than being read at each
+  // burst site: every juice call would otherwise need to know about seasons,
+  // and the engines are already configured from one place.
+  const theme = useSeason((s) => s.equipped.confetti)
   useEffect(() => {
     Sound.configure({ enabled: soundEnabled, volume })
     configureHaptics({ enabled: hapticsEnabled })
-    configureConfetti({ reduceMotion })
-  }, [soundEnabled, hapticsEnabled, reduceMotion, volume])
+    configureConfetti({ reduceMotion, theme: confettiById(theme) })
+  }, [soundEnabled, hapticsEnabled, reduceMotion, volume, theme])
 }
 
 export function useJuice() {

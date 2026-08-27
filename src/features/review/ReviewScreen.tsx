@@ -6,6 +6,7 @@ import { Button } from '@/components/Button'
 import { useReviews } from '@/store/reviews'
 import { useBookAccuracy } from '@/store/bookAccuracy'
 import { useDrops } from '@/store/drops'
+import { useSeason } from '@/store/season'
 import { useJuice } from '@/juice/useJuice'
 import { FavoriteButton } from '@/components/FavoriteButton'
 import { MASTERY_MAX } from '@/lib/review'
@@ -69,6 +70,9 @@ export default function ReviewScreen() {
       // the others. Once per session, not per card — this is the one study
       // surface that doesn't go through QuizRunner, so the roll is here.
       void useDrops.getState().roll()
+      // Same reason this screen rolls its own drop: it doesn't go through
+      // QuizRunner, so it walks the road itself.
+      void useSeason.getState().track('study_run')
       return
     }
     setI((n) => n + 1)

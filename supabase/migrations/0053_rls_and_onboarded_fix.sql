@@ -1,4 +1,4 @@
--- Two fixes surfaced while building the growth dashboard (0051).
+-- Two fixes surfaced while building the growth dashboard (0052).
 
 -- ———————————————————— 1. collectible_offerings had RLS off ————————————————————
 --

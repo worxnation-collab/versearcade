@@ -208,7 +208,7 @@ begin
 
     -- ——— can these numbers be trusted ———
     -- Self-monitoring. onboarded_gap counts accounts that have played but were
-    -- never flagged onboarded (0052 fixes the cause and backfills; if this ever
+    -- never flagged onboarded (0053 fixes the cause and backfills; if this ever
     -- climbs again, a write path is bypassing the trigger). rls_disabled lists
     -- any public table left readable/writable by the anon key.
     'health', jsonb_build_object(

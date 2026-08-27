@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase'
 // The growth tab. Answers "is this thing growing and where is it leaking",
 // which admin_overview()'s totals can't.
 //
-// Nothing here is computed client-side. admin_growth() (0051) returns a cached
+// Nothing here is computed client-side. admin_growth() (0052) returns a cached
 // snapshot that pg_cron rebuilds every 12 hours, and refreshes itself lazily if
 // it's ever staler than that — so this panel is a renderer, not a calculator.
 // "Refresh now" forces a rebuild for when you want numbers this second.
@@ -325,7 +325,7 @@ function Health({ h }: { h: GrowthMetrics['health'] }) {
           <div style={{ fontSize: 12.5, color: 'var(--coral)', lineHeight: 1.45 }}>
             ⚠ {h.onboarded_gap} account{h.onboarded_gap === 1 ? ' has' : 's have'} played but{' '}
             {h.onboarded_gap === 1 ? 'is' : 'are'} not flagged onboarded — a write path is bypassing
-            the trigger from migration 0052.
+            the trigger from migration 0053.
           </div>
         )}
         {h.rls_disabled.length > 0 && (

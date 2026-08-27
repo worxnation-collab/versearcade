@@ -47,7 +47,7 @@ export async function initNative(onDeepLink?: (url: string) => void, onResume?: 
  * where only a server can deliver the message.
  *
  * The client half is now real: it asks, registers, and persists the token via
- * save_device_token (0053). The rest is not, and cannot be done from a repo:
+ * save_device_token (0054). The rest is not, and cannot be done from a repo:
  *
  *   · an APNs auth key from the Apple Developer account
  *   · the Push Notifications capability on the App ID

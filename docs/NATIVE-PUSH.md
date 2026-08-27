@@ -10,7 +10,7 @@ The client half is written and merged:
 | Piece | Where |
 |---|---|
 | Permission, `register()`, token → server | `src/lib/native.ts` → `registerPush()` |
-| Token storage + upsert RPC | `supabase/migrations/0053_device_tokens.sql` |
+| Token storage + upsert RPC | `supabase/migrations/0054_device_tokens.sql` |
 | The opt-in moment (web today) | `src/components/PushNudge.tsx` |
 
 **Everything below needs your Apple account and cannot be done from the repo or

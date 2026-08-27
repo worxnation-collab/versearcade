@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Avatar } from '@/components/Avatar'
 import { Button } from '@/components/Button'
+import { Collapsible } from '@/components/Collapsible'
 import { useChurch, INFO_NOTE_MAX, INFO_NOTE_MIN, type InfoRequestRole } from '@/store/church'
 import { useJuice } from '@/juice/useJuice'
 import { formatMiles } from '@/lib/geo'
@@ -131,14 +132,41 @@ function Body({ page, loading, onClose }: { page: ChurchPage; loading: boolean; 
   )
 }
 
+// Whether the roster was left open, remembered across churches. A congregation
+// of two dozen is a tall block sitting between the building and the "Add info"
+// pill, and whether you want to read names every time is a taste, not a state of
+// the church — so it's one flag for the whole feature, not one per church.
+const ROSTER_KEY = 'va.church.roster'
+
+function rosterOpen(): boolean {
+  try {
+    // Open unless it was explicitly folded: the names are the point of the section.
+    return localStorage.getItem(ROSTER_KEY) !== '0'
+  } catch {
+    return true
+  }
+}
+
+function rememberRoster(open: boolean) {
+  try {
+    localStorage.setItem(ROSTER_KEY, open ? '1' : '0')
+  } catch {
+    /* private mode — the choice just won't stick */
+  }
+}
+
 // Who plays here, by name. Join order, no numbers, no medals: the same crowd the
 // scene draws, spelled out — a congregation reads as people, and a building with
 // eleven anonymous figures outside it doesn't tell you whether you know any of
 // them. Deliberately not "top givers": that list is a thank-you and only ever
 // appears on your own church, where nobody is being measured against a stranger.
+//
+// It folds, and the head count rides on the header, so a folded section still
+// tells you how big the congregation is rather than going quiet.
 function Congregation({ members, total, loading }: { members: ChurchMember[]; total: number; loading: boolean }) {
   const hidden = Math.max(0, total - members.length)
   if (!members.length) {
+    // Nothing to fold away — one sentence, left open.
     return loading ? null : (
       <div className="card" style={{ marginBottom: 14 }}>
         <b style={{ fontFamily: 'var(--font-display)', fontSize: 16 }}>Who plays here</b>
@@ -149,53 +177,57 @@ function Congregation({ members, total, loading }: { members: ChurchMember[]; to
     )
   }
   return (
-    <div className="card" style={{ marginBottom: 14 }}>
-      <b style={{ fontFamily: 'var(--font-display)', fontSize: 16, display: 'block', marginBottom: 10 }}>
-        Who plays here
-      </b>
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-        {members.map((m) => (
-          <span
-            key={m.username}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 7,
-              maxWidth: '100%',
-              minWidth: 0,
-              padding: '5px 12px 5px 5px',
-              borderRadius: 999,
-              border: '1px solid',
-              borderColor: m.isMe ? 'var(--gold)' : 'var(--stroke)',
-              background: m.isMe ? 'rgba(255,210,63,0.10)' : 'var(--card)',
-            }}
-          >
-            {/* `username` makes the avatar tappable — it opens their player card,
-                the same as every other avatar in the app. */}
-            <Avatar emoji={m.avatarEmoji} character={m.avatarCharacter} username={m.username} size={28} />
+    <Collapsible
+      icon="🙌"
+      title="Who plays here"
+      meta={`${total.toLocaleString()} ${total === 1 ? 'player' : 'players'}`}
+      defaultOpen={rosterOpen()}
+      onToggle={rememberRoster}
+    >
+      <div className="card">
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {members.map((m) => (
             <span
+              key={m.username}
               style={{
-                fontSize: 13,
-                fontWeight: 700,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 7,
+                maxWidth: '100%',
                 minWidth: 0,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
+                padding: '5px 12px 5px 5px',
+                borderRadius: 999,
+                border: '1px solid',
+                borderColor: m.isMe ? 'var(--gold)' : 'var(--stroke)',
+                background: m.isMe ? 'rgba(255,210,63,0.10)' : 'var(--card)',
               }}
             >
-              {m.username}{m.isMe ? ' (you)' : ''}
+              {/* `username` makes the avatar tappable — it opens their player card,
+                  the same as every other avatar in the app. */}
+              <Avatar emoji={m.avatarEmoji} character={m.avatarCharacter} username={m.username} size={28} />
+              <span
+                style={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  minWidth: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {m.username}{m.isMe ? ' (you)' : ''}
+              </span>
             </span>
-          </span>
-        ))}
-      </div>
+          ))}
+        </div>
 
-      {hidden > 0 && (
-        <p className="faint" style={{ margin: '10px 0 0', fontSize: 12 }}>
-          and {hidden.toLocaleString()} more
-        </p>
-      )}
-    </div>
+        {hidden > 0 && (
+          <p className="faint" style={{ margin: '10px 0 0', fontSize: 12 }}>
+            and {hidden.toLocaleString()} more
+          </p>
+        )}
+      </div>
+    </Collapsible>
   )
 }
 

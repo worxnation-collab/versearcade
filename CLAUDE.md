@@ -128,6 +128,11 @@ the roster and the scene are ordered by join date and carry no per-person
 points: a crowd, not a ladder. "Top givers" stays your own church's thank-you
 list, where it's a thank-you rather than a comparison between strangers.
 
+The roster folds through the shared `Collapsible`, with the head count on the
+header so a folded section still says how big the congregation is. The choice is
+one flag for the whole feature (`va.church.roster`), not one per church — whether
+you want to read names is a taste, not a fact about a congregation.
+
 The sheet sits at `z-index: 100` — the app's sheet tier. Don't raise it: the
 player card (110) is meant to open *over* a sheet, and tapping a face in the
 roster opens exactly that.

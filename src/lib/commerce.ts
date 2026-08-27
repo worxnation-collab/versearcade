@@ -77,6 +77,10 @@ export function skuPurchasable(sku: string): boolean {
  * checkout — so they stay exactly as they are on the web.
  */
 export function skinVisible(skin: SkinDef, owned: boolean): boolean {
+  // Road (pass) skins are earned by playing and never sold — no price, no
+  // checkout, so they show everywhere, exactly like 'earned'. Hiding one on
+  // native would hide free content, not a storefront.
+  if (skin.source === 'pass') return true
   // On native, a priced skin is listed only if Apple will actually sell it —
   // a tile with no product behind it is a dead end and a review risk.
   if (isNativeApp() && storefrontEnabled() && skin.source === 'paid' && !owned) {

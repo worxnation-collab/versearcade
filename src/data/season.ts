@@ -140,6 +140,27 @@ export function rewardLabel(id: string): { name: string; kindLabel: string; glyp
   if (kind === 'confetti') return { name: confettiById(id).name, kindLabel: 'Confetti', glyph: '🎊' }
   if (kind === 'flame') return { name: flameById(id).name, kindLabel: 'Streak flame', glyph: flameById(id).glyph }
   if (kind === 'chest') return { name: chestSkinById(id).name, kindLabel: 'Chest skin', glyph: chestSkinById(id).glyph }
+  if (id.startsWith('skin_')) {
+    // Reactive-skin states get their own line so the toast can say what changed.
+    const SKIN_NAMES: Record<string, string> = {
+      skin_ruth_1: 'Ruth the Gleaner',
+      skin_ruth_2: 'Ruth — basket half full',
+      skin_ruth_3: 'Ruth — sheaf on her shoulder',
+      skin_ruth_4: 'Ruth — basket overflowing',
+      skin_boaz: 'Boaz',
+    }
+    return { name: SKIN_NAMES[id] ?? id.slice(5), kindLabel: 'Skin', glyph: '🌾' }
+  }
+  if (id.startsWith('item_')) {
+    const ITEM_NAMES: Record<string, string> = {
+      item_sickle: 'Harvest Sickle',
+      item_winnowing_fork: 'Winnowing Fork',
+      item_water_skin: 'Water Skin',
+      item_harvest_headscarf: 'Harvest Headscarf',
+      item_gleaner_shawl: 'Gleaner’s Shawl',
+    }
+    return { name: ITEM_NAMES[id] ?? id.slice(5), kindLabel: 'Item', glyph: '🧺' }
+  }
   if (id === 'boost') return { name: 'XP Boost', kindLabel: 'Consumable', glyph: '⚡' }
   if (id === 'freeze') return { name: 'Streak Freeze', kindLabel: 'Consumable', glyph: '🛟' }
   if (id.startsWith('memento_')) return { name: 'Road Memento', kindLabel: 'Keepsake', glyph: '🌾' }
@@ -190,26 +211,34 @@ const M = (n: number): Partial<Waystation> => ({ milestone: n % 10 === 0 })
  * both.
  */
 const HARVEST_WAYS: Waystation[] = [
-  { n: 1, a: [{ id: 'freeze', qty: 1 }], b: [{ id: 'title_gleaner' }] },
-  { n: 2, a: [{ id: 'confetti_chaff' }], b: [] },
+  // Ruth lands at waystation 1 so the road pays off in the first minute — and
+  // her basket fills at 20, 35 and 50 (see passSkinEquipId in data/avatar).
+  { n: 1, a: [{ id: 'freeze', qty: 1 }], b: [{ id: 'skin_ruth_1' }] },
+  { n: 2, a: [{ id: 'confetti_chaff' }], b: [{ id: 'title_gleaner' }] },
   { n: 4, a: [{ id: 'boost', qty: 1 }], b: [] },
   { n: 5, a: [{ id: 'chest_basket' }], b: [] },
-  { n: 8, a: [{ id: 'freeze', qty: 1 }], b: [] },
+  { n: 8, a: [{ id: 'freeze', qty: 1 }], b: [{ id: 'item_harvest_headscarf' }] },
   { n: 10, a: [{ id: 'flame_olive' }], b: [{ id: 'boost', qty: 1 }], ...M(10) },
-  { n: 13, a: [{ id: 'confetti_coins' }], b: [] },
+  { n: 13, a: [{ id: 'confetti_coins' }], b: [{ id: 'item_sickle' }] },
   { n: 15, a: [{ id: 'freeze', qty: 1 }], b: [] },
   { n: 18, a: [{ id: 'chest_jar' }], b: [] },
-  { n: 20, a: [{ id: 'title_barley' }], b: [{ id: 'boost', qty: 2 }], ...M(20) },
-  { n: 23, a: [{ id: 'flame_candle' }], b: [] },
-  { n: 26, a: [{ id: 'freeze', qty: 2 }], b: [] },
+  { n: 20, a: [{ id: 'title_barley' }], b: [{ id: 'skin_ruth_2' }], ...M(20) },
+  { n: 23, a: [{ id: 'flame_candle' }], b: [{ id: 'boost', qty: 2 }] },
+  { n: 26, a: [{ id: 'freeze', qty: 2 }], b: [{ id: 'item_water_skin' }] },
   { n: 28, a: [{ id: 'chest_cedar' }], b: [] },
   { n: 30, a: [{ id: 'confetti_petals' }], b: [{ id: 'title_lamplighter' }], ...M(30) },
-  { n: 34, a: [{ id: 'boost', qty: 2 }], b: [] },
+  { n: 34, a: [{ id: 'boost', qty: 2 }], b: [{ id: 'item_winnowing_fork' }] },
+  { n: 35, a: [], b: [{ id: 'skin_ruth_3' }] },
   { n: 38, a: [{ id: 'flame_pillar' }], b: [] },
   { n: 40, a: [{ id: 'chest_sack' }], b: [{ id: 'freeze', qty: 2 }], ...M(40) },
-  { n: 44, a: [{ id: 'title_wayfarer' }], b: [] },
+  { n: 44, a: [{ id: 'title_wayfarer' }], b: [{ id: 'item_gleaner_shawl' }] },
   { n: 47, a: [{ id: 'confetti_doves' }], b: [{ id: 'boost', qty: 3 }] },
-  { n: 50, a: [{ id: 'flame_star' }], b: [{ id: 'memento_harvest' }], ...M(50) },
+  {
+    n: 50,
+    a: [{ id: 'flame_star' }, { id: 'memento_harvest' }],
+    b: [{ id: 'skin_boaz' }, { id: 'skin_ruth_4' }],
+    ...M(50),
+  },
 ]
 
 export const ROADS: RoadDef[] = [

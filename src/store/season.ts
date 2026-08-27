@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import { todayLocalDate } from '@/lib/date'
 import { useAuth } from './auth'
+import { baseSkinId, passSkinEquipId, skinById } from '@/data/avatar'
 import {
   MILES,
   MILES_CAP,
@@ -405,6 +406,10 @@ async function grantCrossed(roadId: string, from: number, to: number): Promise<v
         void auth.updateProfile({ xpBoosts: (auth.profile.xpBoosts ?? 0) + qty })
       } else if (r.id === 'freeze' && auth.profile) {
         void auth.updateProfile({ streakFreezes: (auth.profile.streakFreezes ?? 0) + qty })
+      } else if (r.id.startsWith('item_')) {
+        // Wearable avatar items ride the existing owned_items path, so the
+        // customize grid picks them up with no season-specific code there.
+        auth.grantItem(r.id)
       }
     }
   }
@@ -423,6 +428,20 @@ async function grantCrossed(roadId: string, from: number, to: number): Promise<v
   }
 
   useSeason.setState({ pending: { waystation: to, rewards } })
+
+  // Ruth's basket fills as the road is walked. If she's equipped, upgrade the
+  // stored skinId to the newest state so the change is visible the moment the
+  // waystation lands — and travels with the spec, so every other viewer sees
+  // the right basket too (see passSkinEquipId in data/avatar).
+  const spec = auth.profile?.avatarCharacter
+  const equipped = spec?.skinId
+  if (spec && equipped && baseSkinId(equipped) === 'ruth') {
+    const ruth = skinById('ruth')
+    if (ruth) {
+      const next = passSkinEquipId(ruth, useSeason.getState().unlocks)
+      if (next !== equipped) auth.setAvatarCharacter({ ...spec, skinId: next })
+    }
+  }
 }
 
 /** Advance every live quest watching this event, paying out any that finish. */

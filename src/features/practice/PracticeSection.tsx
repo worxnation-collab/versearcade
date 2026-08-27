@@ -5,14 +5,24 @@ import { usePractice } from '@/store/practice'
 
 // "Study the last five" — replay recently-played verses to reinforce them.
 // Replaying is free; beating your best pays scaled XP, every time you beat it.
-// Lives on the Study tab, where it opens expanded and explains itself when the
-// player has no past plays yet (elsewhere it stays silent rather than clutter).
-export function PracticeSection({ defaultOpen = false, showEmpty = false }: { defaultOpen?: boolean; showEmpty?: boolean }) {
+// Its own page off the Study shelf (`plain`, where the page title already names
+// it), and folded away wherever it's a guest — silent rather than clutter when
+// the player has nothing to replay yet.
+export function PracticeSection({
+  defaultOpen = false,
+  showEmpty = false,
+  plain = false,
+}: {
+  defaultOpen?: boolean
+  showEmpty?: boolean
+  /** Drop the fold and its header — for a page that's already titled. */
+  plain?: boolean
+}) {
   const navigate = useNavigate()
   const list = usePractice((s) => s.list)
   const loadedList = usePractice((s) => s.loadedList)
   const loadList = usePractice((s) => s.loadList)
-  const [open, setOpen] = useState(defaultOpen)
+  const [open, setOpen] = useState(defaultOpen || plain)
 
   useEffect(() => {
     loadList()
@@ -30,6 +40,42 @@ export function PracticeSection({ defaultOpen = false, showEmpty = false }: { de
             : 'Loading your recent verses…'}
         </p>
       </div>
+    )
+  }
+
+  const rows = (
+    <div style={{ display: 'grid', gap: 8 }}>
+      {list.map((item) => (
+        <motion.button
+          key={item.dropDate}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => navigate(`/play/practice/${item.dropDate}`)}
+          className="card"
+          style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', textAlign: 'left' }}
+        >
+          <div style={{ fontSize: 22 }}>📖</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {item.reference}
+            </div>
+            <div className="faint" style={{ fontSize: 12 }}>
+              Best {item.bestScore.toLocaleString()} ·{' '}
+              <span style={{ color: 'var(--gold)' }}>beat it for XP</span>
+            </div>
+          </div>
+          <div className="pill" style={{ fontSize: 11, borderColor: 'var(--gold)', color: 'var(--gold)' }}>
+            ⚡ Beat it
+          </div>
+        </motion.button>
+      ))}
+    </div>
+  )
+
+  if (plain) {
+    return (
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+        {rows}
+      </motion.div>
     )
   }
 
@@ -66,36 +112,7 @@ export function PracticeSection({ defaultOpen = false, showEmpty = false }: { de
             transition={{ duration: 0.25, ease: 'easeInOut' }}
             style={{ overflow: 'hidden' }}
           >
-      <div style={{ display: 'grid', gap: 8 }}>
-        {list.map((item) => {
-          return (
-            <motion.button
-              key={item.dropDate}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => navigate(`/play/practice/${item.dropDate}`)}
-              className="card"
-              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', textAlign: 'left' }}
-            >
-              <div style={{ fontSize: 22 }}>📖</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {item.reference}
-                </div>
-                <div className="faint" style={{ fontSize: 12 }}>
-                  Best {item.bestScore.toLocaleString()} ·{' '}
-                  <span style={{ color: 'var(--gold)' }}>beat it for XP</span>
-                </div>
-              </div>
-              <div
-                className="pill"
-                style={{ fontSize: 11, borderColor: 'var(--gold)', color: 'var(--gold)' }}
-              >
-                ⚡ Beat it
-              </div>
-            </motion.button>
-          )
-        })}
-      </div>
+            {rows}
           </motion.div>
         )}
       </AnimatePresence>

@@ -21,6 +21,16 @@ function ensure() {
   master.connect(ctx.destination)
 }
 
+/** The one AudioContext in the app. music.ts renders into this same context —
+ *  a second one is a second thing for iOS to suspend, and the two then drift in
+ *  and out of silence independently. Returns null where Web Audio is missing.
+ *  Music hangs its own gain chain off `ctx.destination` so its volume and mute
+ *  are entirely independent of the SFX bus. */
+export function audioContext(): AudioContext | null {
+  ensure()
+  return ctx
+}
+
 export const Sound = {
   /** Call once on first tap so iOS/Safari unlock the audio context. */
   unlock() {

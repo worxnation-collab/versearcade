@@ -8,6 +8,7 @@ import { CountUp } from '@/components/CountUp'
 import { StreakFlame } from '@/components/StreakFlame'
 import { useGame } from '@/store/game'
 import { useAuth } from '@/store/auth'
+import { useSeason } from '@/store/season'
 import { useJuice } from '@/juice/useJuice'
 import { buildShareText, shareResult, earnedCards, inviteUrl } from './shareCard'
 import { collectibleByKey, rarityColor } from '@/data/collectibles'
@@ -65,7 +66,10 @@ export default function ResultScreen() {
     const r = await shareResult(text, inviteUrl(profile.referralCode))
     // A successful share (native sheet or clipboard copy) counts today toward
     // share-day unlocks like the King Baldwin set — distinct days only.
-    if (r !== 'failed' && today) recordShare(today.dropDate)
+    if (r !== 'failed' && today) {
+      recordShare(today.dropDate)
+      void useSeason.getState().track('share_daily')
+    }
     setShareState(r === 'copied' ? 'Copied to clipboard!' : r === 'shared' ? 'Shared!' : 'Could not share')
   }
 

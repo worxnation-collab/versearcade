@@ -24,7 +24,8 @@
 // The API key comes ONLY from the environment (.env.local is gitignored).
 // Never write it into this file or any other tracked file.
 
-import { readFileSync, writeFileSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs'
+import { dirname } from 'node:path'
 import { PNG } from 'pngjs'
 import jpeg from 'jpeg-js'
 
@@ -176,6 +177,38 @@ function padAndCap(png, { padBelowPct, maxH }) {
 
 // ── run ──────────────────────────────────────────────────────────────────────
 
+// ── the generated-art map ────────────────────────────────────────────────────
+// src/data/generatedArt.ts is written from here so that wiring a render into
+// the app is not a second, forgettable step. Existing entries are MERGED, not
+// replaced: running one manifest (or one --only id) must never un-wire art an
+// earlier batch produced.
+const MAP_PATH = 'src/data/generatedArt.ts'
+
+function readMap() {
+  if (!existsSync(MAP_PATH)) return {}
+  const src = readFileSync(MAP_PATH, 'utf8')
+  const body = src.slice(src.indexOf('{'), src.lastIndexOf('}') + 1)
+  const out = {}
+  for (const m of body.matchAll(/'([^']+)':\s*'([^']+)'/g)) out[m[1]] = m[2]
+  return out
+}
+
+function writeMap(map) {
+  const header = readFileSync(MAP_PATH, 'utf8').split('export const GENERATED_ART')[0]
+  const rows = Object.keys(map)
+    .sort()
+    .map((k) => `  '${k}': '${map[k]}',`)
+    .join('\n')
+  mkdirSync(dirname(MAP_PATH), { recursive: true })
+  writeFileSync(
+    MAP_PATH,
+    `${header}export const GENERATED_ART: Record<string, string> = {${rows ? `\n${rows}\n` : ''}}\n`,
+  )
+}
+
+const artMap = readMap()
+let produced = 0
+
 for (const entry of manifest) {
   if (only && entry.id !== only) continue
   const isSkin = entry.kind === 'skin'
@@ -211,8 +244,18 @@ for (const entry of manifest) {
     }
     const buf = PNG.sync.write(png)
     writeFileSync(dest, buf)
+    // The app serves public/ from the root, so the URL is the path minus it.
+    artMap[entry.id] = dest.replace(/^public/, '')
+    produced += 1
     console.log(`ok → ${dest} (${png.width}x${png.height}, ${(buf.length / 1024).toFixed(0)}KB)`)
   } catch (e) {
     console.log(`FAILED: ${e.message.slice(0, 300)}`)
   }
+}
+
+if (produced > 0) {
+  writeMap(artMap)
+  console.log(`\nwired ${produced} render${produced === 1 ? '' : 's'} into ${MAP_PATH}`)
+} else {
+  console.log('\nnothing produced — generatedArt.ts left alone')
 }

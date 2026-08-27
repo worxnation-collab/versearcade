@@ -2,7 +2,7 @@ import { Character } from '@/components/Character'
 import { CardBg } from '@/components/CardBg'
 import { Pet } from '@/components/Pet'
 import { cardBgStyle } from '@/data/playerCards'
-import { petById } from '@/data/pets'
+import { petById, petGlows } from '@/data/pets'
 import { useSettings } from '@/store/settings'
 import type { AvatarSpec } from '@/types'
 
@@ -44,6 +44,10 @@ export function ProfileHero({
 }) {
   const reduceMotion = useSettings((s) => s.reduceMotion)
   const companion = petById(pet)
+  // Some pets make you glow. It is decoration and only decoration — no number
+  // moves — which is why it can be gated on the keep's clamped counters when
+  // the XP pets can't be.
+  const glowing = petGlows(pet)
   // Unique per hero: SVG gradient ids inside CardBg must not collide with the
   // player card rendering the same background right below this.
   const artId = `hero-${username}-${cardBackground ?? 'default'}`
@@ -99,9 +103,12 @@ export function ProfileHero({
           {spec ? (
             <span
               className={reduceMotion ? undefined : 'floaty'}
-              style={{ display: 'block', flexShrink: 0 }}
+              style={{ display: 'block', flexShrink: 0, position: 'relative' }}
             >
-              <Character spec={spec} size={FIGURE} fullBody title={username} />
+              {glowing && <Aura size={FIGURE} still={reduceMotion} />}
+              <span style={{ position: 'relative', display: 'block' }}>
+                <Character spec={spec} size={FIGURE} fullBody title={username} />
+              </span>
             </span>
           ) : (
             <span
@@ -160,5 +167,37 @@ export function ProfileHero({
         )}
       </div>
     </div>
+  )
+}
+
+/**
+ * The aura a glowing pet gives you.
+ *
+ * A soft radial wash behind the figure rather than a filter on it: `filter:
+ * drop-shadow` on a Character containing a raster skin repaints the whole PNG
+ * every frame, and the hero is the first thing the tab renders. Two stacked
+ * gradients read as light rather than as a coloured disc.
+ *
+ * reduce-motion turns off the breathing and leaves the glow — the light is the
+ * reward, the pulsing is just the flourish.
+ */
+function Aura({ size, still }: { size: number; still: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={still ? undefined : 'pet-aura'}
+      style={{
+        position: 'absolute',
+        left: '50%',
+        top: '52%',
+        width: size * 1.15,
+        height: size * 1.15,
+        transform: 'translate(-50%, -50%)',
+        borderRadius: '50%',
+        background:
+          'radial-gradient(circle, rgba(255,210,63,0.34) 0%, rgba(255,159,28,0.16) 42%, rgba(255,159,28,0) 68%)',
+        pointerEvents: 'none',
+      }}
+    />
   )
 }

@@ -12,7 +12,10 @@ import { useAuth } from '@/store/auth'
 import { useSeason } from '@/store/season'
 import { useJuice } from '@/juice/useJuice'
 import { Pet } from '@/components/Pet'
-import { PETS, nextPet, petById } from '@/data/pets'
+import { PETS, nextPet, petById, petEffectText, petRequirementText, petUnlocked, reqValue } from '@/data/pets'
+import { petProgress } from '@/lib/petProgress'
+import { useBible } from '@/store/bible'
+import { useKeep } from '@/store/keep'
 import { BORDERS, BADGES, isUnlocked } from '@/data/cosmetics'
 import { useCollection } from '@/store/collection'
 import { collectibleByKey } from '@/data/collectibles'
@@ -128,8 +131,23 @@ export function CustomizeSection() {
   const equippedPieces = ARMOR.filter((a) => spec.armor[a.slot]).length
 
   const equippedBg = profile.cardBackground ?? DEFAULT_CARD_BG
-  const unlockedPetCount = PETS.filter((p) => profile.level >= p.level).length
-  const comingPet = nextPet(profile.level)
+  // Two of the pet requirements live in other stores (verses studied, CPU races
+  // won), and nothing else on this screen loads them — without this the picker
+  // quietly reports 0 for both and a pet the player has already earned reads as
+  // locked. Found by driving the real screen.
+  const loadBible = useBible((st) => st.load)
+  const loadKeep = useKeep((st) => st.load)
+  const bibleLoaded = useBible((st) => st.loaded)
+  const keepLoaded = useKeep((st) => st.loaded)
+  useEffect(() => {
+    if (!bibleLoaded) void loadBible()
+    if (!keepLoaded) void loadKeep()
+  }, [bibleLoaded, keepLoaded, loadBible, loadKeep])
+
+  const [petErr, setPetErr] = useState<string | null>(null)
+  const petProg = petProgress()
+  const unlockedPetCount = PETS.filter((p) => petUnlocked(p.id, petProg)).length
+  const comingPet = nextPet(petProg)
   // Pack cards gate on the skin entitlement rather than a collectible, so the
   // picker needs both sources of ownership.
   const bgCtx = { ownedSkins: profile.ownedSkins ?? [], admin: profile.isAdmin }
@@ -165,14 +183,17 @@ export function CustomizeSection() {
   const pickPet = async (id: string) => {
     const def = petById(id)
     if (!def) return
-    if (profile.level < def.level) {
-      setErr(`${def.name} arrives at level ${def.level}`)
+    const prog = petProgress()
+    if (!petUnlocked(id, prog)) {
+      // Local to the section, not the shared error at the very bottom of the
+      // customizer — a refusal a page and a half below the tap is no refusal.
+      setPetErr(`${def.name} needs ${petRequirementText(def).toLowerCase()}.`)
       return
     }
-    setErr(null)
+    setPetErr(null)
     juice.select()
-    const res = await setPet(profile.pet === id ? null : id)
-    if (!res.ok) setErr(res.error ?? 'That one isn’t unlocked yet')
+    const res = await setPet(profile.pet === id ? null : id, prog)
+    if (!res.ok) setPetErr(res.error ?? 'That one isn’t unlocked yet')
     else flashSaved()
   }
 
@@ -717,14 +738,25 @@ export function CustomizeSection() {
           rank-free rule — there is no version of this that anybody loses. ── */}
       <Section title="Pets" right={`${unlockedPetCount}/${PETS.length}`}>
         <p className="faint" style={{ fontSize: 12, margin: '0 0 10px', lineHeight: 1.5 }}>
-          A companion stands beside you at the top of this tab. They arrive as you level up —
-          nothing buys one, nothing takes one away, and they don't change a single number.
-          {comingPet && ` ${comingPet.name} at level ${comingPet.level}.`}
+          A companion stands beside you at the top of this tab. Every one is earned — a level and,
+          past the first, one more thing — and nothing buys, trades or takes one away. The common
+          ones are simply company; the rarer ones each do one small thing.
+          {comingPet && ` Next: ${comingPet.name}, ${petRequirementText(comingPet).toLowerCase()}.`}
         </p>
+        {petErr && (
+          <p style={{ color: 'var(--coral)', fontSize: 12.5, margin: '0 0 10px', lineHeight: 1.4 }}>{petErr}</p>
+        )}
         <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', marginBottom: 14 }}>
           {PETS.map((p) => {
-            const open = profile.level >= p.level
+            const open = petUnlocked(p.id, petProg)
             const on = profile.pet === p.id
+            // The one number worth showing on a locked row: how far along the
+            // second requirement is. A bare "🔒 Level 33" tells you nothing
+            // about the part you're actually working on.
+            const short =
+              !open && petProg.level >= p.level && p.extra
+                ? `${reqValue(p.extra, petProg).toLocaleString()}/${p.extra.n.toLocaleString()}`
+                : null
             return (
               <button
                 key={p.id}
@@ -752,7 +784,26 @@ export function CustomizeSection() {
                 <span style={{ minWidth: 0, flex: 1 }}>
                   <span style={{ display: 'block', fontWeight: 800, fontSize: 13.5 }}>{p.name}</span>
                   <span className="faint" style={{ display: 'block', fontSize: 11.5, lineHeight: 1.35 }}>
-                    {on ? 'Beside you · tap to put down' : open ? p.blurb : `🔒 Level ${p.level}`}
+                    {on
+                      ? 'Beside you · tap to put down'
+                      : open
+                        ? p.blurb
+                        : `🔒 ${petRequirementText(p)}${short ? ` · ${short}` : ''}`}
+                  </span>
+                  {/* What it does, always — including "Just company", so the
+                      common ones read as a choice rather than as a lesser
+                      version of the rare ones. */}
+                  <span
+                    style={{
+                      display: 'block',
+                      fontSize: 10.5,
+                      marginTop: 3,
+                      fontWeight: 800,
+                      letterSpacing: '0.02em',
+                      color: p.effects.length ? 'var(--gold)' : 'var(--ink-dim)',
+                    }}
+                  >
+                    {petEffectText(p)}
                   </span>
                 </span>
               </button>

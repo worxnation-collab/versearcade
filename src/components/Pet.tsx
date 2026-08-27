@@ -1,3 +1,4 @@
+import { GENERATED_ART } from '@/data/generatedArt'
 import { PETS, petById } from '@/data/pets'
 
 // The companion that stands beside your figure on your own profile.
@@ -164,11 +165,10 @@ const ART: Record<string, JSX.Element> = {
 export const DRAWN_PETS = Object.keys(ART)
 
 // Generated art, when it exists. Every image in the project comes from Nano
-// Banana (art/pets.json → scripts/gen-art.mjs); a pet listed here renders as
-// its render, anything else keeps drawing the SVG above. Add an id only once
-// its PNG is actually in public/pets/ — an <img> at a 404 is a hole beside the
-// player's own figure, which is the worst place in the app for one.
-const RASTER_PETS: Record<string, string> = {}
+// Banana (art/pets.json → scripts/gen-art.mjs), and the generator writes its
+// own output into GENERATED_ART — so a render reaches the player the moment it
+// is produced, with no list to remember to update and no id ever pointing at a
+// file that isn't there. Anything ungenerated keeps the drawing above.
 
 /**
  * One pet, standing. `size` is its height in px; the drawing is square, so a
@@ -176,7 +176,7 @@ const RASTER_PETS: Record<string, string> = {}
  */
 export function Pet({ id, size = 48, title }: { id: string; size?: number; title?: string }) {
   const def = petById(id)
-  const raster = RASTER_PETS[id]
+  const raster = GENERATED_ART[id]
   const art = ART[id]
   if (!def || (!raster && !art)) return null
 
@@ -207,7 +207,7 @@ export function Pet({ id, size = 48, title }: { id: string; size?: number; title
 // the profile rather than a missing file — so say so at import in dev, the same
 // guard checkTrackData() gives the soundtrack.
 if (import.meta.env.DEV) {
-  const missing = PETS.filter((p) => !ART[p.id] && !RASTER_PETS[p.id]).map((p) => p.id)
+  const missing = PETS.filter((p) => !ART[p.id] && !GENERATED_ART[p.id]).map((p) => p.id)
   if (missing.length) console.error('[pets] pets with no art:', missing.join(', '))
   const orphans = DRAWN_PETS.filter((id) => !PETS.some((p) => p.id === id))
   if (orphans.length) console.error('[pets] art with no pet:', orphans.join(', '))

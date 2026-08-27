@@ -6,7 +6,7 @@ import { isSupabaseConfigured } from '@/lib/config'
 import { localdb } from '@/lib/localdb'
 import { newLocalProfile } from '@/lib/progress'
 import { getVerseForDate } from '@/data/bible/questions'
-import { petUnlocked } from '@/data/pets'
+import { petUnlocked, type PetProgress } from '@/data/pets'
 import { useSettings } from './settings'
 import type { Profile, AvatarSpec } from '@/types'
 
@@ -113,8 +113,12 @@ interface AuthState {
   setCosmetics: (patch: { border?: string; badge?: string | null }) => Promise<{ ok: boolean; error?: string }>
   setAvatarCharacter: (spec: AvatarSpec) => void
   setCardBackground: (key: string) => Promise<{ ok: boolean; error?: string }>
-  /** Equip a pet, or null for none. The server gates on player level (0063). */
-  setPet: (id: string | null) => Promise<{ ok: boolean; error?: string }>
+  /**
+   * Equip a pet, or null for none. The server is the gate (0064); `progress`
+   * is the guest-mode gate and comes from the caller — see lib/petProgress for
+   * why this store doesn't gather it itself.
+   */
+  setPet: (id: string | null, progress?: PetProgress) => Promise<{ ok: boolean; error?: string }>
   recordShare: (dropDate: string) => void
   grantItem: (itemId: string) => void
   grantSkin: (skinId: string) => void
@@ -595,7 +599,7 @@ export const useAuth = create<AuthState>((set, get) => ({
   // reached, so the UI feels instant but can't lie. Guests keep theirs on the
   // device, where the level in the local profile is the same number the ladder
   // reads, so both modes gate on exactly the same thing.
-  async setPet(id) {
+  async setPet(id, progress) {
     const cur = get().profile
     if (!cur) return { ok: false, error: 'No profile' }
     const next: Profile = { ...cur, pet: id }
@@ -603,8 +607,8 @@ export const useAuth = create<AuthState>((set, get) => ({
 
     if (get().mode === 'local' || !supabase) {
       // The local gate is the catalog itself — data/pets is the only ladder,
-      // and a guest's level lives right here in the profile.
-      if (id && !petUnlocked(id, cur.level)) {
+      // and lib/petProgress gathered the numbers it reads.
+      if (id && progress && !petUnlocked(id, progress)) {
         set({ profile: cur })
         return { ok: false, error: 'That one isn’t unlocked yet' }
       }

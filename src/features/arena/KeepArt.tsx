@@ -13,6 +13,7 @@
 // barding take denominationColor(), which is already measured to clear ΔE 9
 // from every other faction under normal, deutan and protan vision.
 
+import { GENERATED_ART } from '@/data/generatedArt'
 import { KEEP_LEVEL_NAMES, keepTier, unpackDecor, type MountKind } from '@/data/keep'
 
 // Palette — warm stone interior against the app's dark chrome. Anything the
@@ -43,12 +44,13 @@ const PAGE = '#efe4c8'
 // Each tier is a Nano Banana painting (see art/keep-halls.json), and the drawn
 // hall underneath is the fallback — so a tier whose painting hasn't been
 // generated yet still reads as its own room rather than as the wrong one.
-// PAINTED_TIERS lists the ones that exist; add a tier's index here when its
-// file lands, and never before, because a 404 per render is a flash of the
-// fallback on every open.
-const PAINTED_TIERS = new Set([0])
+// GENERATED_ART is written by the generator itself, so a hall starts being
+// painted the moment its file lands and never points at one that isn't there.
+//
+// Tier 0 is the exception: hall.jpg predates the generated-art map and is a
+// .jpg rather than a .png, so it's named directly.
 const hallImage = (tier: number): string | null =>
-  PAINTED_TIERS.has(tier) ? (tier === 0 ? '/keep/hall.jpg' : `/keep/hall-${tier + 1}.png`) : null
+  tier === 0 ? '/keep/hall.jpg' : GENERATED_ART[`hall-${tier + 1}`] ?? null
 
 /**
  * How the drawn hall differs tier to tier. Timber and soot at the bottom,

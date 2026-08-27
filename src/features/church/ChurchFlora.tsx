@@ -1,3 +1,4 @@
+import { GENERATED_ART } from '@/data/generatedArt'
 import { FLORA, PLOTS, floraById, plotHeight, type Plantings } from './yard'
 
 // The churchyard's landscaping — drawn, not generated.
@@ -154,19 +155,14 @@ const PLANTS: Record<string, JSX.Element> = {
 export const DRAWN_FLORA = Object.keys(PLANTS)
 
 // Generated art, when it exists. Every image in the project comes from Nano
-// Banana (art/churchyard-flora.json → scripts/gen-art.mjs); a plant listed here
-// renders as its render, and anything not listed keeps drawing the SVG above.
-// That's the same fallback shape as RASTER_DECOR in KeepArt and RASTER_SKINS in
-// Character: a batch that hasn't been generated yet degrades to something
-// correct rather than to a hole in the yard.
-//
-// Add an id here only once its PNG is actually in public/keep/ — an <img> at a
-// 404 is a blank plot on every render.
-const RASTER_FLORA: Record<string, string> = {}
+// Banana (art/churchyard-flora.json → scripts/gen-art.mjs), and the generator
+// writes its own output into GENERATED_ART — so a plant starts rendering as its
+// render the moment one is produced, and an id can never point at a file that
+// isn't there. Anything ungenerated keeps drawing the SVG above.
 
 /** The picture for one plant: its render if we have one, else its drawing. */
 function PlantArt({ id }: { id: string }) {
-  const raster = RASTER_FLORA[id]
+  const raster = GENERATED_ART[id]
   if (raster) {
     return (
       <img
@@ -220,7 +216,7 @@ export function ChurchFlora({
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
       {filled.map((plot) => {
         const flora = floraById(plantings[plot.id])!
-        if (!PLANTS[flora.id] && !RASTER_FLORA[flora.id]) return null
+        if (!PLANTS[flora.id] && !GENERATED_ART[flora.id]) return null
         const h = plotHeight(plot.b) * flora.scale
         const lifted = picked === plot.id
         const Tag = editable ? 'button' : 'span'
@@ -291,7 +287,7 @@ export function ChurchFlora({
 
 /** One plant on its own, for the picker rows and the ladder. */
 export function FloraIcon({ id, size = 40 }: { id: string; size?: number }) {
-  if (!PLANTS[id] && !RASTER_FLORA[id]) return null
+  if (!PLANTS[id] && !GENERATED_ART[id]) return null
   return (
     <span style={{ display: 'block', width: size * (40 / 48), height: size, flexShrink: 0 }} aria-hidden>
       <PlantArt id={id} />

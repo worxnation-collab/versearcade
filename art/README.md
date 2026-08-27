@@ -30,19 +30,23 @@ must never be written into a tracked file.
 
 ## Wiring a generated file up
 
-Generated art never replaces the drawn fallback, it layers over it — so a batch
-that hasn't been run yet degrades to something correct rather than to nothing:
+**There is nothing to do.** The generator writes `src/data/generatedArt.ts`
+itself — an id → public-path map — and every surface that can show generated art
+looks itself up in it. So a render reaches the player the moment it is produced,
+and no id can ever point at a file that isn't there.
 
-- **Halls:** add the tier's index to `PAINTED_TIERS` in
-  `src/features/arena/KeepArt.tsx` once its file exists. Not before — an
-  `<image>` pointing at a 404 is a flash of the fallback on every open.
-- **Flora:** add the id to `RASTER_FLORA` in
-  `src/features/church/ChurchFlora.tsx`; anything not listed keeps drawing its
-  SVG.
-- **Pets:** add the id to `RASTER_PETS` in `src/components/Pet.tsx`, pointing at
-  `/items/<id>.png` (the `item` pipeline's output directory). A pet stands
-  beside the player's own figure, which is the worst place in the app for a
-  404, so add it only once the file is really there.
+That file is generated: don't hand-edit it. Entries are **merged**, so running
+one manifest (or one `--only`) never un-wires art an earlier batch produced.
+
+Generated art never replaces the drawn fallback, it layers over it, so a batch
+that hasn't been run yet degrades to something correct rather than to nothing —
+an ungenerated hall still reads as its own room, an ungenerated plant still
+grows in its plot. (Halls have one exception, commented where it lives: tier 1
+is the original `hall.jpg`, which predates the map and is a `.jpg`.)
+
+The keep's props (`RASTER_DECOR` in `KeepArt.tsx`) stay a hand-written list.
+They're older, and each one carries a display box and an anchor mode the map
+has nowhere to put.
 
 ## Two things stay drawn, and it isn't laziness
 

@@ -4,6 +4,7 @@ import { localdb } from '@/lib/localdb'
 import { todayLocalDate } from '@/lib/date'
 import { STUDY_DROP } from '@/lib/drops'
 import { drawRelicKey, collectibleByKey } from '@/data/collectibles'
+import { petDropLuck } from '@/data/pets'
 import { useAuth } from './auth'
 import { useCollection } from './collection'
 import { useInventory } from './inventory'
@@ -130,7 +131,11 @@ function rollGuest(): StudyDrop | null {
   const day = readLocalDay()
   const finds = day.date === today ? day.finds : 0
   if (finds >= STUDY_DROP.dailyCap) return null
-  if (Math.random() >= STUDY_DROP.chance) return null
+  // A `luck` pet nudges the odds. Only the odds — the cap is untouched, so the
+  // pet finds things a little more often and can never find MORE per day.
+  // KEEP IN SYNC with roll_study_drop (0064): same multiplier, same clamp.
+  const luck = petDropLuck(useAuth.getState().profile?.pet)
+  if (Math.random() >= Math.min(0.6, STUDY_DROP.chance * luck)) return null
 
   const key = drawRelicKey()
   const rarity = collectibleByKey(key)?.rarity

@@ -118,10 +118,12 @@ flat magenta (keyed, cropped, capped at 150px), `skin`/`item` for the avatar
 path. `art/README.md` has the details and the wiring.
 
 **Generated art layers OVER a drawn fallback, never instead of it.** A tier
-whose PNG hasn't been generated still has to render as itself — that's why
-`PAINTED_TIERS` (KeepArt) and `RASTER_FLORA` (ChurchFlora) are explicit lists
-you add an id to *after* the file exists. An `<image>` pointing at a 404 is a
-flash of the fallback on every open.
+whose PNG hasn't been generated still has to render as itself. Wiring is
+automatic: the generator writes `src/data/generatedArt.ts` (id → public path)
+and every surface looks itself up there, so a render reaches the player the
+moment it exists and no id can point at a 404. That file is generated — don't
+hand-edit it — and entries merge, so one `--only` never un-wires an earlier
+batch.
 
 Two things stay drawn, and it isn't laziness. **Anything taking a runtime
 colour** — the kite shield, the destrier's barding, the gonfalon — is painted in
@@ -498,22 +500,42 @@ equipping a background changes both and they can't drift.
 
 ### Pets
 
-A companion, earned by **player level and nothing else** — 10, 15, 20, 26, 33,
-40 (`data/pets.ts` ↔ `pet_min_level` in 0063, the usual keep-in-sync pair).
+A companion, **earned and never sold** — a level plus, past the first, one more
+lifetime number (`data/pets.ts` ↔ `pet_requirements_met` in 0064). Every
+requirement only goes up, so a pet can't be taken back by a bad week; putting one
+down is always allowed, because a companion you can't take off is a commitment.
 
-**A pet is not a stat.** It touches no XP, no points, no streak, no standing and
-no board, and today it renders only on your own profile — so there is nothing
-here anyone can be beaten by, which is the only reason a collectible gets to sit
-next to the rank-free rule. Nothing sells one, nothing drops one, nothing takes
-one away, and levels only go up, so a pet can't be lost. Putting one down is
-always allowed: a companion you can't take off is a commitment, and this isn't.
+**Two tiers, and the split is the design.** The common pets (lamb, dove) are
+company and nothing else. The rarer ones each do one small thing, and *what a
+pet does is tied to how hard it was to get*.
 
-The ladder starts at 10 rather than 1 deliberately — a companion that arrives on
-day one is a default, one that arrives after a month is a small event.
+**Where an effect is allowed to reach is the load-bearing rule:**
 
-Showing pets on *other* players' cards would mean widening `get_player_card` and
-the leaderboard RPCs; it isn't done, and it's a decision rather than an
+- `xp` touches the one number here that actually ranks people, so every XP pet
+  is gated on a column **the server wrote itself** (level, longest streak, total
+  plays — all written by `submit_play`) and the bonus is applied *inside*
+  `submit_play`, never sent by a client. 3–5% of one daily drop.
+- `glow` is decoration, so it can be gated on anything, including the keep's
+  counters — 0059 clamps those, and a forged counter is worth a halo, not
+  standing.
+- `luck` moves study-drop **odds only**, never the daily cap, and a study drop
+  pays nothing rankable (its one use is giving a relic to a church).
+
+The honest caveat, written down rather than glossed: an XP pet compounds a
+little — you need level 33 to get the thing that levels you slightly faster.
+It's bounded at 5% of one play a day, which is why it's tolerable. **If these
+numbers ever grow, that argument stops holding** and the effect needs rethinking
+rather than raising.
+
+Pets still don't appear on *other* players' cards. That would mean widening
+`get_player_card` and the leaderboard RPCs, and it's a decision rather than an
 oversight — a pet visible to strangers is one step from being compared.
+
+`lib/petProgress.ts` gathers the requirement numbers, and it's a function rather
+than a hook for an import-graph reason: `data/pets.ts` can't import stores (the
+reward math depends on it) and `store/auth.ts` can't import the bible and keep
+stores (they already import auth). The screen that shows the picker has to
+`load()` both of those stores or it quietly reports 0 for two requirements.
 
 Art follows the house rule: drawn SVG in `components/Pet.tsx` today, with
 `art/pets.json` ready to generate and `RASTER_PETS` as the slot the renders drop

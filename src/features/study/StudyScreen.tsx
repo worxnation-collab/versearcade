@@ -48,8 +48,9 @@ export default function StudyScreen() {
   if (params.get('bag') === '1') return <Navigate to="/study/bag" replace />
 
   // The shelf, in reading order: things to do first, then things to look at.
-  // "Keep it" earns its spot only when something is actually due — an empty
-  // review book would be a dead tap, and the shelf shouldn't sell those.
+  // Every book stands on the shelf all the time — a shelf that grows and
+  // shrinks makes the player hunt for their place. When "Keep it" has nothing
+  // due, its caption says what the book is for and the badge stays off.
   const items: ShelfItem[] = [
     {
       key: 'versus',
@@ -79,19 +80,18 @@ export default function StudyScreen() {
       to: '/study/recent',
       badge: replays > 0 ? String(replays) : undefined,
     },
-    ...(dueRefs.length > 0
-      ? [
-          {
-            key: 'keep',
-            title: 'Keep it',
-            emblem: '🧠',
-            skin: 'keep',
-            caption: `${dueRefs.length} verse${dueRefs.length === 1 ? '' : 's'} ready to review — make ${dueRefs.length === 1 ? 'it' : 'them'} stick`,
-            to: '/review',
-            badge: String(dueRefs.length),
-          } satisfies ShelfItem,
-        ]
-      : []),
+    {
+      key: 'keep',
+      title: 'Keep it',
+      emblem: '🧠',
+      skin: 'keep',
+      caption:
+        dueRefs.length > 0
+          ? `${dueRefs.length} verse${dueRefs.length === 1 ? '' : 's'} ready to review — make ${dueRefs.length === 1 ? 'it' : 'them'} stick`
+          : 'Spaced review — verses you play come back here',
+      to: '/review',
+      badge: dueRefs.length > 0 ? String(dueRefs.length) : undefined,
+    },
     {
       key: 'bible',
       title: 'My Bible',

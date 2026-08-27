@@ -182,7 +182,11 @@ function Halo({ cy = 26, rx = 13 }: { cy?: number; rx?: number }) {
 // paths. The file is served from public/, so dropping a PNG in is enough.
 const RASTER_SKINS: Record<string, string> = {
   baldwin: '/skins/baldwin.png',
+  david: '/skins/david.png',
   esther: '/skins/esther.png',
+  moses: '/skins/moses.png',
+  elijah: '/skins/elijah.png',
+  eden: '/skins/eden.png',
   whale: '/skins/whale.png',
   gabriel: '/skins/gabriel.png',
   michael: '/skins/michael.png',

@@ -11,6 +11,7 @@ import { useCollection } from '@/store/collection'
 import { useJuice } from '@/juice/useJuice'
 import { THRONE_KEY } from '@/data/collectibles'
 import type { AvatarSpec } from '@/types'
+import { CardBg } from '@/components/CardBg'
 
 interface LbRow {
   rank: number
@@ -19,6 +20,8 @@ interface LbRow {
   avatar_border?: string
   avatar_badge?: string | null
   avatar_character?: AvatarSpec | null
+  /** Equipped player-card background key; drives the row's colour wash. */
+  card_background?: string | null
   xp: number
   level: number
 }
@@ -203,7 +206,9 @@ function FeaturedRow({ f }: { f: FeaturedRow }) {
       animate={{ opacity: 1, y: 0 }}
       className="card"
       style={{
-        display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
+        // Same grid-item min-width:auto trap as the ranked rows: without this
+        // the score is pushed off the right edge of a phone.
+        display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', minWidth: 0,
         borderColor: 'var(--sky)',
         background: 'linear-gradient(120deg, rgba(94,231,223,0.12), transparent 62%)',
       }}
@@ -217,7 +222,10 @@ function FeaturedRow({ f }: { f: FeaturedRow }) {
         </div>
         <div className="faint" style={{ fontSize: 12 }}>Level {f.level}</div>
       </div>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 18 }} className="gradient-text">
+      <div
+        style={{ fontFamily: 'var(--font-display)', fontSize: 18, flexShrink: 0, whiteSpace: 'nowrap' }}
+        className="gradient-text"
+      >
         {f.xp.toLocaleString()}
         <span className="faint" style={{ fontSize: 11, marginLeft: 3 }}>XP</span>
       </div>
@@ -226,6 +234,9 @@ function FeaturedRow({ f }: { f: FeaturedRow }) {
 }
 
 function Row({ r, me }: { r: LbRow; me: boolean }) {
+  // Ids must be unique per rendered instance, and a hundred rows are on screen
+  // at once.
+  const artId = `lb-${r.rank}-${r.card_background ?? 'default'}`
   const isKing = r.rank === 1
   return (
     <motion.div
@@ -234,19 +245,46 @@ function Row({ r, me }: { r: LbRow; me: boolean }) {
       transition={{ type: 'spring', stiffness: 260, damping: 22 }}
       className="card"
       style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        padding: '10px 14px',
+        // The row is a grid item, and grid items default to min-width:auto, so
+        // without this it refuses to shrink below its own content and pushes the
+        // score off the right edge of a phone.
+        minWidth: 0,
+        position: 'relative',
+        overflow: 'hidden',
+        padding: 0,
         borderColor: isKing ? 'var(--gold)' : me ? 'var(--gold)' : undefined,
-        background: isKing
-          ? 'linear-gradient(120deg, rgba(255,210,63,0.14), rgba(255,246,207,0.04) 55%, transparent)'
-          : me
-            ? 'rgba(255,209,102,0.10)'
-            : undefined,
         boxShadow: isKing ? '0 0 22px rgba(255,210,63,0.28)' : undefined,
       }}
     >
+      {/* The player's own card background, as a wash behind the row. Same art
+          the card uses, cropped to a band — it is the cheapest way to make a
+          list of a hundred strangers feel like a list of people. */}
+      <CardBg bgKey={r.card_background} id={artId} />
+      {/* Scrim: heavy on the left where the name and level sit, lighter on the
+          right so the art still reads. Without it the brighter scenes take the
+          username with them. */}
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: isKing
+            ? 'linear-gradient(90deg, rgba(8,3,24,0.80) 0%, rgba(8,3,24,0.52) 55%, rgba(255,210,63,0.12) 100%)'
+            : me
+              ? 'linear-gradient(90deg, rgba(8,3,24,0.82) 0%, rgba(255,209,102,0.10) 100%)'
+              : 'linear-gradient(90deg, rgba(8,3,24,0.84) 0%, rgba(8,3,24,0.56) 100%)',
+        }}
+      />
+      <div
+        style={{
+          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: '10px 14px',
+          minWidth: 0,
+        }}
+      >
       <div
         style={{
           width: 34,
@@ -281,11 +319,15 @@ function Row({ r, me }: { r: LbRow; me: boolean }) {
           Level {r.level}
         </div>
       </div>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 18 }} className="gradient-text">
+      <div
+        style={{ fontFamily: 'var(--font-display)', fontSize: 18, flexShrink: 0, whiteSpace: 'nowrap' }}
+        className="gradient-text"
+      >
         {r.xp.toLocaleString()}
         <span className="faint" style={{ fontSize: 11, marginLeft: 3 }}>
           XP
         </span>
+      </div>
       </div>
     </motion.div>
   )

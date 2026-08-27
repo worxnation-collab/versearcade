@@ -27,7 +27,20 @@ export function XpBar({ xp }: { xp: number }) {
   const { level, intoLevel, levelSpan, pct } = levelInfo(xp)
   return (
     <div style={{ width: '100%' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 12, fontWeight: 700 }}>
+      {/* Both labels sit over the player card's background art, which since the
+          painted backgrounds landed can be bright right here — the XP figure is
+          in the card's upper right, exactly where a scene puts its light source.
+          A shadow costs nothing and keeps them legible on every card. */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          marginBottom: 6,
+          fontSize: 12,
+          fontWeight: 700,
+          textShadow: '0 1px 4px rgba(8,3,24,0.9), 0 0 10px rgba(8,3,24,0.7)',
+        }}
+      >
         <span className="dim">LVL {level}</span>
         <span className="faint">
           {intoLevel}/{levelSpan} XP

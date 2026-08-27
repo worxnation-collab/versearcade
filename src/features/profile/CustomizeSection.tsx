@@ -38,6 +38,7 @@ import {
   type ItemDef,
   type SkinDef,
   type Swatch,
+  itemArt,
 } from '@/data/avatar'
 import { BundleSheet } from './BundleSheet'
 
@@ -635,7 +636,13 @@ export function CustomizeSection() {
                   style={{
                     textAlign: 'left',
                     display: 'grid',
-                    gap: 3,
+                    // The art sits in its own column beside the three text rows,
+                    // so a long item name never pushes it out of alignment.
+                    gridTemplateColumns: '40px minmax(0, 1fr)',
+                    gridTemplateAreas: '"art name" "art meta" "art pill"',
+                    columnGap: 9,
+                    rowGap: 3,
+                    alignItems: 'start',
                     padding: '9px 10px',
                     borderRadius: 12,
                     background: on ? 'var(--grape)' : 'var(--card-solid)',
@@ -643,9 +650,18 @@ export function CustomizeSection() {
                     cursor: 'pointer',
                   }}
                 >
-                  <span style={{ fontSize: 12, fontWeight: 800, lineHeight: 1.15 }}>{item.name}</span>
-                  <span className="faint" style={{ fontSize: 10, textTransform: 'capitalize' }}>{item.slot} · {item.rarity}</span>
-                  <span style={{ ...pillStyle(on ? 'studio' : 'free'), marginTop: 2 }}>{on ? '✓ Worn' : 'Tap to wear'}</span>
+                  <img
+                    src={itemArt(item.id)}
+                    alt=""
+                    aria-hidden
+                    width={40}
+                    height={40}
+                    loading="lazy"
+                    style={{ gridArea: 'art', width: 40, height: 40, objectFit: 'contain', alignSelf: 'center' }}
+                  />
+                  <span style={{ gridArea: 'name', fontSize: 12, fontWeight: 800, lineHeight: 1.15 }}>{item.name}</span>
+                  <span className="faint" style={{ gridArea: 'meta', fontSize: 10, textTransform: 'capitalize' }}>{item.slot} · {item.rarity}</span>
+                  <span style={{ ...pillStyle(on ? 'studio' : 'free'), gridArea: 'pill', marginTop: 2 }}>{on ? '✓ Worn' : 'Tap to wear'}</span>
                 </button>
               )
             })}

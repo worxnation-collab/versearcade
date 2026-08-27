@@ -16,6 +16,7 @@ import {
 } from '@/data/season'
 import { MILES_PER_WAYSTATION, milesProgress } from '@/lib/season'
 import { SeasonCosmetics } from './SeasonCosmetics'
+import { ROAD_BACKGROUND } from './roadArt'
 
 // The road. A vertical scroller of waystations — vertical because the app is
 // 520px wide at most and a horizontal track on a phone is a swipe nobody makes.
@@ -423,7 +424,7 @@ function RoadScene() {
         marginBottom: 16,
         // Anchored to the bottom of the painting so the walkable foreground
         // path survives whatever the banner crop takes from the sky.
-        background: 'url(/road/harvest.jpg) center bottom / cover no-repeat, #6b4a18',
+        background: ROAD_BACKGROUND,
       }}
     >
       <CrowdLife members={members} waypoints={ROAD_WAYPOINTS} sizeFor={roadSizeFor} max={1} />

@@ -14,7 +14,7 @@
 // from every other faction under normal, deutan and protan vision.
 
 import { GENERATED_ART } from '@/data/generatedArt'
-import { KEEP_LEVEL_NAMES, keepTier, unpackDecor, type MountKind } from '@/data/keep'
+import { KEEP_LEVEL_NAMES, decorById, keepTier, unpackDecor, type MountKind } from '@/data/keep'
 
 // Palette — warm stone interior against the app's dark chrome. Anything the
 // six halls vary tier to tier lives in HALL_TIERS below instead; what's left
@@ -537,3 +537,48 @@ const PROPS: Record<string, (color: string) => JSX.Element> = {
 
 /** Every prop id KeepArt can draw — used to sanity-check the catalog in dev. */
 export const DRAWN_PROPS = Object.keys(PROPS)
+
+/**
+ * One decoration on its own, for the shelf you pick from.
+ *
+ * The picker used to be a text chip per decoration, which meant you couldn't
+ * tell a Barrel Stack from a Brazier without placing it. This draws the actual
+ * object at thumbnail size — the same render or the same paths the hall uses,
+ * so what you tap is what you get.
+ *
+ * The viewBox has to be chosen per mount because props are drawn around their
+ * GROUND POINT rather than centred: a banner hangs DOWN from (0,0), a wall
+ * piece straddles it, and a rug sits on it. One box for all three would crop
+ * two of them.
+ */
+export function DecorThumb({ id, size = 56 }: { id: string; size?: number }) {
+  const def = decorById(id)
+  if (!def) return null
+
+  const raster = RASTER_DECOR[id]
+  if (raster) {
+    return (
+      <img
+        src={raster.src}
+        alt=""
+        style={{ display: 'block', width: size, height: size, objectFit: 'contain' }}
+      />
+    )
+  }
+
+  const prop = PROPS[id]
+  if (!prop) return null
+  const box =
+    def.mount === 'banner' || def.mount === 'rafters'
+      ? '-32 -10 64 64'
+      : def.mount === 'wall'
+        ? '-32 -32 64 64'
+        : '-36 -52 72 62'
+  return (
+    <svg width={size} height={size} viewBox={box} style={{ display: 'block' }} aria-hidden>
+      {/* Drawn props take the faction colour at runtime; on the shelf they get
+          the app's gold so the tile reads before a faction is even picked. */}
+      {prop(GOLD)}
+    </svg>
+  )
+}

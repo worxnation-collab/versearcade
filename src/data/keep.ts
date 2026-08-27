@@ -413,3 +413,74 @@ export function planPlacement(
 
   return { anchor, value: decorId, merged: false, tier: 1 }
 }
+
+// ── Picking from the shelf ───────────────────────────────────────────────────
+// The old picker was a row per anchor with a chip per decoration: to make a
+// Fine rug you had to find a second floor spot and put a rug on it, and to see
+// what "Barrel Stack" looked like you had to place it. Both are the list doing
+// a picture's job.
+//
+// This is the tap-one-thing flow instead. You tap a decoration and it goes
+// where it belongs; if you already have one out, tapping it again MERGES rather
+// than standing a second one beside it, which is the "duplicates just become
+// the better thing" rule with no second anchor to hunt for.
+
+export type PickOutcome =
+  /** Goes to a free anchor of its mount. */
+  | { kind: 'place'; anchor: string; value: string; tier: 1 }
+  /** Folds into the copy already out, one tier up. */
+  | { kind: 'merge'; anchor: string; value: string; tier: number }
+  /** Already out and already Grand — there is nothing left to do to it. */
+  | { kind: 'maxed'; anchor: string }
+  /** Every spot of its kind is taken by something else. */
+  | { kind: 'full'; mount: MountKind }
+
+/**
+ * What tapping `decorId` on the shelf should do.
+ *
+ * Order matters: merging beats filling a new spot, so a second tap always
+ * improves the piece you have rather than starting a second one. When the mount
+ * is full of OTHER things it refuses instead of overwriting — the hall's rule
+ * is that nothing you placed ever silently disappears.
+ */
+export function planPick(placements: Record<string, string>, decorId: string): PickOutcome {
+  const def = decorById(decorId)
+  if (!def) return { kind: 'full', mount: 'wall' }
+
+  let best: { anchor: string; tier: number } | null = null
+  let anyCopy: string | null = null
+  for (const a of anchorsForMount(def.mount)) {
+    const here = unpackDecor(placements[a.id])
+    if (here.id !== decorId) continue
+    anyCopy = anyCopy ?? a.id
+    if (here.tier < MAX_DECOR_TIER && (!best || here.tier > best.tier)) {
+      best = { anchor: a.id, tier: here.tier }
+    }
+  }
+
+  if (best) {
+    const tier = best.tier + 1
+    return { kind: 'merge', anchor: best.anchor, value: packDecor(decorId, tier), tier }
+  }
+  if (anyCopy) return { kind: 'maxed', anchor: anyCopy }
+
+  const free = anchorsForMount(def.mount).find((a) => !placements[a.id])
+  if (free) return { kind: 'place', anchor: free.id, value: decorId, tier: 1 }
+
+  return { kind: 'full', mount: def.mount }
+}
+
+/** Every anchor currently holding this decoration, best tier first. */
+export function anchorsHolding(placements: Record<string, string>, decorId: string): string[] {
+  return ANCHORS.filter((a) => unpackDecor(placements[a.id]).id === decorId)
+    .sort((a, b) => unpackDecor(placements[b.id]).tier - unpackDecor(placements[a.id]).tier)
+    .map((a) => a.id)
+}
+
+/** The best tier of this decoration currently in the hall, or 0 if it's not out. */
+export function placedTier(placements: Record<string, string>, decorId: string): number {
+  return ANCHORS.reduce((best, a) => {
+    const here = unpackDecor(placements[a.id])
+    return here.id === decorId ? Math.max(best, here.tier) : best
+  }, 0)
+}

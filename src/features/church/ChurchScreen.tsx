@@ -436,10 +436,20 @@ function Landscaping({ church, onPlanted }: { church: Church; onPlanted: () => v
   const mine = unlocked()
   const next = nextFlora(given)
 
-  const put = async (plot: string, floraId: string | null) => {
+  /** Tap a plant: it goes in the first free plot. No plot list to read first —
+   *  and if the yard is full, it says so rather than quietly replacing
+   *  something, which is the same rule the keep's shelf follows. */
+  const put = async (floraId: string) => {
     onPlanted()
+    const taken = new Set(Object.keys(plantings))
+    const free = PLOTS.find((p) => !taken.has(p.id))
+    if (!free) {
+      juice.select()
+      setFlash('The yard is full — take something out first, or move one in the yard above.')
+      return
+    }
     juice.select()
-    const res = await plant(plot, floraId)
+    const res = await plant(free.id, floraId)
     if (!res.ok) {
       setFlash(
         res.reason === 'locked'
@@ -448,10 +458,18 @@ function Landscaping({ church, onPlanted }: { church: Church; onPlanted: () => v
       )
       return
     }
-    if (floraId) {
-      juice.coin()
-      setFlash(`Planted — ${floraById(floraId)?.name}.`)
-    }
+    juice.coin()
+    setFlash(`Planted — ${floraById(floraId)?.name}.`)
+  }
+
+  /** Take a plant out of whichever plot holds it. */
+  const pull = async (floraId: string) => {
+    onPlanted()
+    juice.select()
+    const plot = PLOTS.find((p) => plantings[p.id] === floraId)
+    if (!plot) return
+    const res = await plant(plot.id, null)
+    if (!res.ok) setFlash('That didn’t save. Try again in a moment.')
   }
 
   return (
@@ -488,90 +506,89 @@ function Landscaping({ church, onPlanted }: { church: Church; onPlanted: () => v
         <Collapsible icon="🌷" title="Landscaping" meta={`${mine.length}/${FLORA.length} open`}>
           {!loaded ? (
             <p className="faint" style={{ fontSize: 12, margin: 0 }}>Reading the yard…</p>
-          ) : mine.length === 0 ? (
-            <p className="dim" style={{ fontSize: 13, margin: 0, lineHeight: 1.5 }}>
-              Nothing to plant yet. The first pots go in at {FLORA[0].given.toLocaleString()} given —
-              giving costs you nothing, so it's only a matter of playing.
-            </p>
           ) : (
-            PLOTS.map((plot) => {
-              const current = plantings[plot.id]
-              return (
-                <div key={plot.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--stroke)' }}>
-                  <div className="faint" style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
-                    {plot.label}
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    <PlantChip label="Bare" active={!current} onClick={() => void put(plot.id, null)} />
-                    {mine.map((f) => (
-                      <PlantChip
-                        key={f.id}
-                        label={f.name}
-                        active={current === f.id}
-                        onClick={() => void put(plot.id, f.id)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )
-            })
+            <>
+              <p className="faint" style={{ fontSize: 11.5, margin: '0 0 10px', lineHeight: 1.5 }}>
+                Tap a plant to put it in the yard above, and tap it there to move it. Everything
+                arrives by giving — nothing here is for sale.
+              </p>
+              {/* Pictures, not a list of names. The ladder WAS the visual and
+                  the per-plot chip rows were a second, wordier copy of it, so
+                  the ladder became the picker and the rows are gone. */}
+              <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))' }}>
+                {FLORA.map((f) => {
+                  const open = given >= f.given
+                  const planted = Object.values(plantings).includes(f.id)
+                  return (
+                    <div
+                      key={f.id}
+                      style={{
+                        position: 'relative',
+                        borderRadius: 12,
+                        border: `1px solid ${planted ? 'var(--gold)' : 'var(--stroke)'}`,
+                        background: planted ? 'rgba(255,210,63,0.10)' : 'rgba(255,255,255,0.04)',
+                        opacity: open ? 1 : 0.45,
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <button
+                        onClick={() => open && void put(f.id)}
+                        disabled={!open}
+                        aria-label={open ? `Plant ${f.name}` : `${f.name}, locked`}
+                        style={{
+                          display: 'block',
+                          width: '100%',
+                          padding: '10px 6px 8px',
+                          background: 'none',
+                          border: 'none',
+                          cursor: open ? 'pointer' : 'default',
+                          textAlign: 'center',
+                        }}
+                      >
+                        <span style={{ display: 'grid', placeItems: 'center', height: 56 }}>
+                          <FloraIcon id={f.id} size={54} />
+                        </span>
+                        <span style={{ display: 'block', fontSize: 11, fontWeight: 800, marginTop: 4, lineHeight: 1.25 }}>
+                          {f.name}
+                        </span>
+                        <span className="faint" style={{ display: 'block', fontSize: 10, marginTop: 2 }}>
+                          {planted ? 'In the yard' : open ? 'Tap to plant' : `🔒 ${f.given.toLocaleString()} given`}
+                        </span>
+                      </button>
+                      {planted && (
+                        <button
+                          onClick={() => void pull(f.id)}
+                          aria-label={`Take the ${f.name} out`}
+                          style={{
+                            position: 'absolute',
+                            top: 4,
+                            right: 4,
+                            width: 22,
+                            height: 22,
+                            borderRadius: '50%',
+                            border: '1px solid var(--stroke)',
+                            background: 'rgba(10,5,26,0.8)',
+                            color: 'var(--ink-dim)',
+                            fontSize: 12,
+                            lineHeight: 1,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </>
           )}
-
-          {/* The ladder: what's open, and what giving more opens next. Plain
-              numbers, no urgency, nothing expires — the Study-tab tone. */}
-          <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)', marginTop: 12 }}>
-            {FLORA.map((f) => {
-              const open = given >= f.given
-              return (
-                <div
-                  key={f.id}
-                  className="card"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: '10px 12px',
-                    minWidth: 0,
-                    borderColor: open ? 'var(--gold)' : 'var(--stroke)',
-                    opacity: open ? 1 : 0.62,
-                  }}
-                >
-                  <FloraIcon id={f.id} size={38} />
-                  <span style={{ minWidth: 0, flex: 1 }}>
-                    <span style={{ display: 'block', fontWeight: 800, fontSize: 14 }}>{f.name}</span>
-                    <span className="faint" style={{ display: 'block', fontSize: 12 }}>
-                      {open ? f.blurb : `At ${f.given.toLocaleString()} given`}
-                    </span>
-                  </span>
-                  <span style={{ fontSize: 16 }}>{open ? '✅' : '🔒'}</span>
-                </div>
-              )
-            })}
-          </div>
         </Collapsible>
       </div>
     </div>
   )
 }
 
-function PlantChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        padding: '5px 10px',
-        borderRadius: 9,
-        fontSize: 12.5,
-        cursor: 'pointer',
-        border: `1px solid ${active ? 'var(--gold)' : 'var(--stroke)'}`,
-        background: active ? 'rgba(255,210,63,0.14)' : 'rgba(255,255,255,0.04)',
-        color: active ? 'var(--gold)' : 'var(--ink-dim)',
-      }}
-    >
-      {label}
-    </button>
-  )
-}
 
 // The reward for a long climb: the building visibly becomes something bigger.
 function Promotion({

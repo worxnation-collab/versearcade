@@ -7,21 +7,21 @@ import { useKeep, loadFactionKeep, type FactionKeep, type Placements } from '@/s
 import { useJuice } from '@/juice/useJuice'
 import { denominationColor, denominationName } from '@/data/denominations'
 import {
-  ANCHORS,
   DECOR,
-  anchorById,
-  decorForMount,
+  anchorsHolding,
   decorName,
   keepLevelForWins,
   keepLevelName,
   keepTier,
   offerValue,
   offerableAnchors,
-  planPlacement,
-  unpackDecor,
+  packDecor,
+  placedTier,
+  planPick,
   winsForTier,
 } from '@/data/keep'
 import { useChurch } from '@/store/church'
+import { DecorThumb } from './KeepArt'
 import { KeepScene } from './KeepScene'
 
 // The Keep — a faction's hall, opened from a row on the battle Teams board, or
@@ -89,18 +89,6 @@ export function KeepSheet({
     if (!useChurch.getState().loaded) void useChurch.getState().load()
   }, [])
 
-  // Place, and let the store tell us whether it turned into a merge.
-  const place = async (anchor: string, decorId: string | null) => {
-    setPicked(null)
-    const res = await useKeep.getState().place(anchor, decorId)
-    if (res.merged) {
-      juice.merge()
-      setMerged({ anchor: res.anchor, name: decorName(res.value) })
-    } else {
-      juice.select()
-    }
-  }
-
   // Tap a placed piece: lift it, or put it back down where it was.
   const pickUp = (anchor: string) => {
     juice.tap()
@@ -124,22 +112,66 @@ export function KeepSheet({
     }
   }
 
-  const offer = async (decorId: string) => {
+  // Tap a piece on the shelf: it goes where it belongs, or merges with the one
+  // already out. The planner decides; this only reports what happened.
+  const pickDecor = async (decorId: string) => {
+    const plan = planPick(keep.placements, decorId)
+    if (plan.kind === 'maxed') {
+      juice.select()
+      setNote(`That's already as fine as it gets — tap it in the hall to move it.`)
+      return
+    }
+    if (plan.kind === 'full') {
+      juice.select()
+      setNote(`No room on the ${MOUNT_WORD[plan.mount].toLowerCase()} — take something down first.`)
+      return
+    }
+    const res = await useKeep.getState().place(plan.anchor, decorId)
+    if (res.failed) {
+      setNote('That didn’t save. Try again in a moment.')
+      return
+    }
+    if (res.merged) {
+      juice.merge()
+      setMerged({ anchor: res.anchor, name: decorName(res.value) })
+    } else {
+      juice.select()
+    }
+  }
+
+  /** Take every copy of a decoration back down. */
+  const clearDecor = async (decorId: string) => {
+    juice.select()
+    for (const anchor of anchorsHolding(useKeep.getState().placements, decorId)) {
+      const res = await useKeep.getState().place(anchor, null)
+      if (res.failed) {
+        setNote('That didn’t save. Try again in a moment.')
+        return
+      }
+    }
+  }
+
+  /** Returns what to say, so the Offerings section can say it where the button
+   *  is. The shared note at the top of the sheet is a page away from the Give
+   *  button once you've scrolled down to it — an invisible refusal reads as a
+   *  dead button, which is exactly how this was reported. */
+  const offer = async (decorId: string): Promise<string> => {
     const res = await useKeep.getState().offer(decorId)
     if (!res.ok) {
-      setNote(
-        res.reason === 'no_church'
-          ? 'Join a church on the Church tab first.'
-          : res.reason === 'already_offered'
-            ? 'You have already given that one.'
-            : 'That didn’t go through. Try again in a moment.',
-      )
-      return
+      return res.reason === 'no_church'
+        ? 'Join a church on the Church tab first.'
+        : res.reason === 'already_offered'
+          ? 'You have already given that one.'
+          : res.reason === 'not_maxed'
+            ? 'It has to be out in the hall at Grand before you can give it.'
+            : res.reason === 'not_owned'
+              ? 'That one isn’t earned yet.'
+              : 'That didn’t go through. Try again in a moment.'
     }
     if (res.leveledUp) juice.celebrate()
     else juice.coin()
-    setNote(`Given — ${res.points.toLocaleString()} to ${church?.name ?? 'your church'}.`)
     void useChurch.getState().load()
+    return `Given — ${res.points.toLocaleString()} to ${church?.name ?? 'your church'}.`
   }
 
   useEffect(() => {
@@ -274,56 +306,28 @@ export function KeepSheet({
 
           {/* Decorate — only your own hall (your faction's, or your solo keep).
               You place YOUR decorations; other members see theirs and a sample
-              of everyone's. Nothing here writes shared faction state. */}
+              of everyone's. Nothing here writes shared faction state.
+
+              A shelf of pictures, not a list of names: you tap the thing you
+              want and it goes where it belongs. Tapping one you already have
+              out merges it a tier finer, so "duplicates become the better
+              thing" needs no second anchor hunted down. */}
           {ownHall && (
             <div style={{ marginTop: 12 }}>
               <Collapsible icon="🛋️" title="Decorate" meta={`${keep.owned().length}/${DECOR.length} earned`}>
                 <p className="faint" style={{ fontSize: 11.5, margin: '0 0 10px', lineHeight: 1.5 }}>
-                  Win keep challenges on the Battle tab to earn furnishings, then choose what hangs
-                  where. Members each furnish their own view of the hall. Put something you already
-                  have out a second time and the two <b style={{ color: 'var(--gold)' }}>merge</b>
-                  {' '}into one finer piece — and the spare spot stays yours to fill.{' '}
-                  <b style={{ color: 'var(--gold)' }}>Tap anything in the hall</b> to pick it up and
-                  move it somewhere else.
+                  Tap a piece to put it in the hall. Tap one you already have out and the two{' '}
+                  <b style={{ color: 'var(--gold)' }}>merge</b> into something finer. Tap anything in
+                  the room above to pick it up and move it. Members each furnish their own view.
                 </p>
-                {ANCHORS.filter((a) => decorForMount(a.mount).some((d) => keep.owned().includes(d.id))).map((a) => {
-                  const options = decorForMount(a.mount).filter((d) => keep.owned().includes(d.id))
-                  const current = unpackDecor(keep.placements[a.id])
-                  return (
-                    <div key={a.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--stroke)' }}>
-                      <div className="faint" style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
-                        {MOUNT_LABEL[a.mount]} {mountIndex(a.id)}
-                      </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                        <Chip
-                          label="Empty"
-                          active={!current.id}
-                          onClick={() => { juice.select(); void place(a.id, null) }}
-                        />
-                        {options.map((d) => {
-                          // Ask the planner what the tap will really do, so a
-                          // chip that's about to merge says so before it's
-                          // pressed rather than surprising you afterwards.
-                          const plan = planPlacement(keep.placements, a.id, d.id)
-                          return (
-                            <Chip
-                              key={d.id}
-                              label={current.id === d.id ? decorName(keep.placements[a.id]) : d.name}
-                              note={plan.merged ? 'merge' : undefined}
-                              active={current.id === d.id}
-                              onClick={() => { void place(a.id, d.id) }}
-                            />
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )
-                })}
-                {/* Spots with nothing earned yet stay out of the list — one
-                    line says where the rest comes from, instead of eight
-                    repeats of "nothing here yet". */}
-                <p className="faint" style={{ fontSize: 11.5, margin: '8px 0 0', lineHeight: 1.5 }}>
-                  More spots open as challenges unlock furnishings for them.
+                <Shelf
+                  owned={keep.owned()}
+                  placements={keep.placements}
+                  onPick={(id) => void pickDecor(id)}
+                  onClear={(id) => void clearDecor(id)}
+                />
+                <p className="faint" style={{ fontSize: 11.5, margin: '10px 0 0', lineHeight: 1.5 }}>
+                  More arrives as challenges unlock it on the Battle tab.
                 </p>
               </Collapsible>
             </div>
@@ -360,8 +364,17 @@ function Offerings({
   placements: Placements
   offered: string[]
   churchName: string | null
-  onOffer: (decorId: string) => void
+  onOffer: (decorId: string) => Promise<string>
 }) {
+  const [msg, setMsg] = useState<string | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!msg) return
+    const t = setTimeout(() => setMsg(null), 4000)
+    return () => clearTimeout(t)
+  }, [msg])
+
   const grand = offerableAnchors(placements).filter((g) => !offered.includes(g.decor))
   if (grand.length === 0) return null
 
@@ -391,10 +404,15 @@ function Offerings({
                 </span>
                 <button
                   className="pill"
-                  onClick={() => onOffer(g.decor)}
+                  disabled={busy === g.decor}
+                  onClick={async () => {
+                    setBusy(g.decor)
+                    setMsg(await onOffer(g.decor))
+                    setBusy(null)
+                  }}
                   style={{ borderColor: 'var(--gold)', color: 'var(--gold)', fontWeight: 800, flexShrink: 0 }}
                 >
-                  Give
+                  {busy === g.decor ? '…' : 'Give'}
                 </button>
               </div>
             ))}
@@ -404,71 +422,118 @@ function Offerings({
             Pick your church on the Church tab and you'll be able to give these to it.
           </p>
         )}
+        {msg && (
+          <p className="center" style={{ margin: '10px 0 0', fontSize: 13, fontWeight: 800, color: 'var(--gold)' }}>
+            {msg}
+          </p>
+        )}
       </Collapsible>
     </div>
   )
 }
 
-const MOUNT_LABEL: Record<string, string> = {
+/**
+ * The shelf you pick decorations from.
+ *
+ * Ordered by the challenge ladder (DECOR order), so the shelf reads as the
+ * collection it is and a newly-earned piece appears where you'd expect rather
+ * than jumping to the front. Locked pieces stay visible and dimmed: a silhouette
+ * would hide what you're working toward, and the row already says where it
+ * comes from.
+ *
+ * A placed piece carries its tier name and an ✕ to take it back down — with the
+ * per-anchor rows gone, this is the only way to clear one, so it has to be on
+ * the tile rather than hidden behind a long-press.
+ */
+function Shelf({
+  owned,
+  placements,
+  onPick,
+  onClear,
+}: {
+  owned: string[]
+  placements: Placements
+  onPick: (id: string) => void
+  onClear: (id: string) => void
+}) {
+  return (
+    <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))' }}>
+      {DECOR.map((d) => {
+        const has = owned.includes(d.id)
+        const tier = placedTier(placements, d.id)
+        const out = tier > 0
+        return (
+          <div
+            key={d.id}
+            style={{
+              position: 'relative',
+              borderRadius: 12,
+              border: `1px solid ${out ? 'var(--gold)' : 'var(--stroke)'}`,
+              background: out ? 'rgba(255,210,63,0.10)' : 'rgba(255,255,255,0.04)',
+              opacity: has ? 1 : 0.45,
+              overflow: 'hidden',
+            }}
+          >
+            <button
+              onClick={() => has && onPick(d.id)}
+              disabled={!has}
+              aria-label={has ? `Place ${d.name}` : `${d.name}, locked`}
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '10px 6px 8px',
+                background: 'none',
+                border: 'none',
+                cursor: has ? 'pointer' : 'default',
+                textAlign: 'center',
+              }}
+            >
+              <span style={{ display: 'grid', placeItems: 'center', height: 56 }}>
+                <DecorThumb id={d.id} size={54} />
+              </span>
+              <span style={{ display: 'block', fontSize: 11, fontWeight: 800, marginTop: 4, lineHeight: 1.25 }}>
+                {out ? decorName(packDecor(d.id, tier)) : d.name}
+              </span>
+              <span className="faint" style={{ display: 'block', fontSize: 10, marginTop: 2 }}>
+                {has ? (out ? 'In the hall' : MOUNT_WORD[d.mount]) : '🔒 Locked'}
+              </span>
+            </button>
+            {out && (
+              <button
+                onClick={() => onClear(d.id)}
+                aria-label={`Take ${d.name} back down`}
+                style={{
+                  position: 'absolute',
+                  top: 4,
+                  right: 4,
+                  width: 22,
+                  height: 22,
+                  borderRadius: '50%',
+                  border: '1px solid var(--stroke)',
+                  background: 'rgba(10,5,26,0.8)',
+                  color: 'var(--ink-dim)',
+                  fontSize: 12,
+                  lineHeight: 1,
+                  cursor: 'pointer',
+                }}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/** Where a piece goes, in one word, for the shelf tile. */
+const MOUNT_WORD: Record<string, string> = {
   banner: 'Banner pole',
   wall: 'Wall',
   rafters: 'Rafters',
-  table: 'Long table',
+  table: 'Table',
   floor: 'Floor',
   stable: 'Stable',
 }
 
-/** 'wall_2' -> '2', 'banner_l' -> 'left'. Purely a label. */
-function mountIndex(anchorId: string): string {
-  const suffix = anchorId.split('_')[1]
-  return suffix === 'l' ? '(left)' : suffix === 'r' ? '(right)' : suffix === '1' && !anchorId.startsWith('stable') ? '1' : suffix
-}
-
-function Chip({
-  label,
-  active,
-  note,
-  onClick,
-}: {
-  label: string
-  active: boolean
-  /** Small tag on the right — 'merge' when tapping would fold a duplicate in. */
-  note?: string
-  onClick: () => void
-}) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 6,
-        padding: '5px 10px',
-        borderRadius: 9,
-        fontSize: 12.5,
-        cursor: 'pointer',
-        border: `1px solid ${active ? 'var(--gold)' : 'var(--stroke)'}`,
-        background: active ? 'rgba(255,210,63,0.14)' : 'rgba(255,255,255,0.04)',
-        color: active ? 'var(--gold)' : 'var(--ink-dim)',
-      }}
-    >
-      {label}
-      {note && (
-        <span
-          style={{
-            fontSize: 9.5,
-            fontWeight: 800,
-            letterSpacing: '0.06em',
-            textTransform: 'uppercase',
-            padding: '1px 5px',
-            borderRadius: 6,
-            background: 'rgba(255,210,63,0.16)',
-            color: 'var(--gold)',
-          }}
-        >
-          ✦ {note}
-        </span>
-      )}
-    </button>
-  )
-}

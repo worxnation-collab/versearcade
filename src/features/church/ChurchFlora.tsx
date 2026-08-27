@@ -153,54 +153,149 @@ const PLANTS: Record<string, JSX.Element> = {
 /** Every plant id this file can draw — used to check the catalog in dev. */
 export const DRAWN_FLORA = Object.keys(PLANTS)
 
+// Generated art, when it exists. Every image in the project comes from Nano
+// Banana (art/churchyard-flora.json → scripts/gen-art.mjs); a plant listed here
+// renders as its render, and anything not listed keeps drawing the SVG above.
+// That's the same fallback shape as RASTER_DECOR in KeepArt and RASTER_SKINS in
+// Character: a batch that hasn't been generated yet degrades to something
+// correct rather than to a hole in the yard.
+//
+// Add an id here only once its PNG is actually in public/keep/ — an <img> at a
+// 404 is a blank plot on every render.
+const RASTER_FLORA: Record<string, string> = {}
+
+/** The picture for one plant: its render if we have one, else its drawing. */
+function PlantArt({ id }: { id: string }) {
+  const raster = RASTER_FLORA[id]
+  if (raster) {
+    return (
+      <img
+        src={raster}
+        alt=""
+        style={{ display: 'block', width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'bottom' }}
+      />
+    )
+  }
+  const art = PLANTS[id]
+  if (!art) return null
+  return (
+    <svg viewBox="0 0 40 48" width="100%" height="100%" style={{ display: 'block', overflow: 'visible' }}>
+      {art}
+    </svg>
+  )
+}
+
 /**
  * The planted layer of a churchyard.
  *
- * Absolutely positioned inside the scene, one small SVG per filled plot. Purely
- * decorative and non-interactive: planting happens on your own church tab, and
- * a flower bed you can tap in somebody else's yard would be the first step
- * towards writing on their page.
+ * Absolutely positioned inside the scene, one small SVG per filled plot.
+ *
+ * Non-interactive by default, and that default is the safe one: a flower bed
+ * you can tap in somebody else's yard is the first step towards writing on
+ * their page, which is the rule the whole church feature is built around. Only
+ * the preview on your OWN church tab passes `editable`, and there tapping a
+ * plant picks it up and tapping a plot sets it down — the same move-it-by-
+ * tapping as the keep's hall, so the two scenes can't drift apart.
  */
-export function ChurchFlora({ plantings }: { plantings: Plantings }) {
+export function ChurchFlora({
+  plantings,
+  editable = false,
+  picked = null,
+  onPick,
+  onDrop,
+}: {
+  plantings: Plantings
+  editable?: boolean
+  /** The plot whose plant is currently lifted. */
+  picked?: string | null
+  onPick?: (plot: string) => void
+  onDrop?: (plot: string) => void
+}) {
   const filled = PLOTS.filter((p) => floraById(plantings[p.id]))
-  if (filled.length === 0) return null
+  // Targets only exist while carrying, so an idle yard is still just a yard.
+  const targets = editable && picked ? PLOTS.filter((p) => p.id !== picked) : []
+  if (filled.length === 0 && targets.length === 0) return null
+
   return (
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
       {filled.map((plot) => {
         const flora = floraById(plantings[plot.id])!
-        const art = PLANTS[flora.id]
-        if (!art) return null
+        if (!PLANTS[flora.id] && !RASTER_FLORA[flora.id]) return null
         const h = plotHeight(plot.b) * flora.scale
+        const lifted = picked === plot.id
+        const Tag = editable ? 'button' : 'span'
         return (
-          <span
+          <Tag
             key={plot.id}
+            {...(editable
+              ? {
+                  onClick: () => (picked && picked !== plot.id ? onDrop?.(plot.id) : onPick?.(plot.id)),
+                  'aria-label': `${flora.name}, ${plot.label}`,
+                }
+              : {})}
             style={{
               position: 'absolute',
               left: `${plot.x}%`,
               bottom: `${plot.b}%`,
               width: h * (40 / 48),
               height: h,
-              transform: 'translateX(-50%)',
+              transform: `translateX(-50%)${lifted ? ' translateY(-6px) scale(1.08)' : ''}`,
+              transition: 'transform 160ms ease-out',
+              pointerEvents: editable ? 'auto' : 'none',
+              padding: 0,
+              border: lifted ? '1px dashed var(--gold)' : 'none',
+              borderRadius: 8,
+              background: 'transparent',
+              cursor: editable ? 'pointer' : 'default',
             }}
           >
-            <svg viewBox="0 0 40 48" width="100%" height="100%" style={{ display: 'block', overflow: 'visible' }}>
-              {art}
-            </svg>
-          </span>
+            <PlantArt id={flora.id} />
+          </Tag>
         )
       })}
+
+      {/* Where a lifted plant can go. An occupied plot trades places rather
+          than overwriting, so no tap can lose a plant. */}
+      {targets.map((plot) => (
+        <button
+          key={`t-${plot.id}`}
+          onClick={() => onDrop?.(plot.id)}
+          aria-label={`Move here: ${plot.label}`}
+          style={{
+            position: 'absolute',
+            left: `${plot.x}%`,
+            bottom: `${plot.b}%`,
+            width: 30,
+            height: 30,
+            marginBottom: -6,
+            transform: 'translateX(-50%)',
+            pointerEvents: 'auto',
+            borderRadius: '50%',
+            border: '2px dashed var(--gold)',
+            // A taken plot gets a solid dark disc: a gold wash over a sunflower
+            // reads as nothing at all.
+            background: plantings[plot.id] ? 'rgba(10,5,26,0.86)' : 'rgba(255,210,63,0.16)',
+            color: 'var(--gold)',
+            fontSize: 15,
+            fontWeight: 800,
+            lineHeight: 1,
+            cursor: 'pointer',
+          }}
+        >
+          {plantings[plot.id] ? '⇄' : '+'}
+        </button>
+      ))}
     </div>
   )
 }
 
 /** One plant on its own, for the picker rows and the ladder. */
 export function FloraIcon({ id, size = 40 }: { id: string; size?: number }) {
-  const art = PLANTS[id]
-  if (!art) return null
+  if (!PLANTS[id] && !RASTER_FLORA[id]) return null
   return (
-    <svg viewBox="0 0 40 48" width={size * (40 / 48)} height={size} style={{ display: 'block' }} aria-hidden>
-      {art}
-    </svg>
+    <span style={{ display: 'block', width: size * (40 / 48), height: size, flexShrink: 0 }} aria-hidden>
+      <PlantArt id={id} />
+    </span>
   )
 }
 

@@ -9,13 +9,19 @@ import { denominationColor, denominationName } from '@/data/denominations'
 import {
   ANCHORS,
   DECOR,
+  anchorById,
   decorForMount,
   decorName,
   keepLevelForWins,
   keepLevelName,
+  keepTier,
+  offerValue,
+  offerableAnchors,
   planPlacement,
   unpackDecor,
+  winsForTier,
 } from '@/data/keep'
+import { useChurch } from '@/store/church'
 import { KeepHall, DecorProp } from './KeepArt'
 import { KeepLife } from './KeepLife'
 
@@ -49,6 +55,12 @@ export function KeepSheet({
   // words what just happened. Tapping a second rug and watching a DIFFERENT
   // corner of the room change is the one confusing moment in the mechanic.
   const [merged, setMerged] = useState<{ anchor: string; name: string } | null>(null)
+  // The piece currently picked up, by anchor. Tap a prop to lift it, tap a spot
+  // of the same kind to set it down — no drag, because the hall is 300 viewBox
+  // units tall inside a scrolling sheet and a drag there fights the scroll.
+  const [picked, setPicked] = useState<string | null>(null)
+  const [note, setNote] = useState<string | null>(null)
+  const church = useChurch((s) => s.church)
 
   const myFaction = !!denomination && me?.denomination === denomination
   const ownHall = !denomination || myFaction
@@ -66,8 +78,21 @@ export function KeepSheet({
     return () => clearTimeout(t)
   }, [merged])
 
+  useEffect(() => {
+    if (!note) return
+    const t = setTimeout(() => setNote(null), 3000)
+    return () => clearTimeout(t)
+  }, [note])
+
+  // Your own church, for the offering button. Loaded lazily: the Battle tab has
+  // no reason to have read it, and a guest never gets one at all.
+  useEffect(() => {
+    if (!useChurch.getState().loaded) void useChurch.getState().load()
+  }, [])
+
   // Place, and let the store tell us whether it turned into a merge.
   const place = async (anchor: string, decorId: string | null) => {
+    setPicked(null)
     const res = await useKeep.getState().place(anchor, decorId)
     if (res.merged) {
       juice.merge()
@@ -75,6 +100,47 @@ export function KeepSheet({
     } else {
       juice.select()
     }
+  }
+
+  // Tap a placed piece: lift it, or put it back down where it was.
+  const pickUp = (anchor: string) => {
+    juice.tap()
+    setPicked((cur) => (cur === anchor ? null : anchor))
+  }
+
+  // Tap a spot while carrying: move it there. An occupied spot trades places
+  // rather than overwriting, and the same decoration merges (see planMove).
+  const dropOn = async (anchor: string) => {
+    const from = picked
+    if (!from) return
+    setPicked(null)
+    const res = await useKeep.getState().move(from, anchor)
+    if (!res) return
+    if (res.merged) {
+      juice.merge()
+      setMerged({ anchor: res.anchor, name: decorName(useKeep.getState().placements[res.anchor]) })
+    } else {
+      juice.select()
+      if (res.swapped) setNote('Swapped.')
+    }
+  }
+
+  const offer = async (decorId: string) => {
+    const res = await useKeep.getState().offer(decorId)
+    if (!res.ok) {
+      setNote(
+        res.reason === 'no_church'
+          ? 'Join a church on the Church tab first.'
+          : res.reason === 'already_offered'
+            ? 'You have already given that one.'
+            : 'That didn’t go through. Try again in a moment.',
+      )
+      return
+    }
+    if (res.leveledUp) juice.celebrate()
+    else juice.coin()
+    setNote(`Given — ${res.points.toLocaleString()} to ${church?.name ?? 'your church'}.`)
+    void useChurch.getState().load()
   }
 
   useEffect(() => {
@@ -97,6 +163,7 @@ export function KeepSheet({
 
   const wins = denomination ? faction?.wins ?? 0 : keep.counters.battle_won + keep.counters.cpu_won
   const level = keepLevelForWins(wins)
+  const nextHall = winsForTier(keepTier(level))
 
   // Who lives in this view of the hall: the faction's members, or just you.
   const lifeMembers =
@@ -151,25 +218,86 @@ export function KeepSheet({
           {/* The place itself. */}
           <div style={{ position: 'relative', borderRadius: 'var(--r-md)', overflow: 'hidden', border: '1px solid var(--stroke)' }}>
             <svg viewBox="0 0 560 300" style={{ display: 'block', width: '100%', height: 'auto' }}>
-              <KeepHall color={colorHex} />
+              <KeepHall color={colorHex} level={level} />
               {ANCHORS.map((a) => {
                 const value = placements[a.id]
                 if (!value) return null
                 // The spot that just absorbed a duplicate gives one pulse — the
                 // eye needs telling where to look when the thing you tapped
                 // isn't the thing that changed.
+                const lifted = picked === a.id
                 return (
                   <motion.g
                     key={a.id}
                     initial={false}
-                    animate={merged?.anchor === a.id ? { scale: [1, 1.22, 1] } : { scale: 1 }}
-                    transition={{ duration: 0.5 }}
-                    style={{ transformOrigin: `${a.x}px ${a.y}px` }}
+                    animate={
+                      merged?.anchor === a.id
+                        ? { scale: [1, 1.22, 1], y: 0 }
+                        : lifted
+                          ? { scale: 1.08, y: -6 }
+                          : { scale: 1, y: 0 }
+                    }
+                    transition={{ duration: lifted ? 0.18 : 0.5 }}
+                    style={{ transformOrigin: `${a.x}px ${a.y}px`, cursor: ownHall ? 'pointer' : 'default' }}
+                    onClick={ownHall ? () => (picked && picked !== a.id ? void dropOn(a.id) : pickUp(a.id)) : undefined}
                   >
                     <DecorProp value={value} x={a.x} y={a.y} color={colorHex} mount={a.mount} />
+                    {/* A carried piece floats and wears a ring, so "picked up"
+                        is legible without a drag to watch. */}
+                    {lifted && (
+                      <circle
+                        cx={a.x}
+                        cy={a.y}
+                        r="30"
+                        fill="none"
+                        stroke="var(--gold)"
+                        strokeWidth="2"
+                        strokeDasharray="5 5"
+                        opacity="0.9"
+                      />
+                    )}
                   </motion.g>
                 )
               })}
+
+              {/* Where the carried piece can go: every OTHER spot of its own
+                  kind. A rug on a rafter isn't a placement, it's a bug, so the
+                  targets are the constraint made visible rather than an error
+                  message after the fact. */}
+              {ownHall && picked &&
+                ANCHORS.filter(
+                  (a) => a.id !== picked && a.mount === anchorById(picked)?.mount,
+                ).map((a) => (
+                  <g key={`t-${a.id}`} onClick={() => void dropOn(a.id)} style={{ cursor: 'pointer' }}>
+                    {/* A generous invisible hit area — the visible ring is 26
+                        units across, which is a 12px tap on a phone. */}
+                    <circle cx={a.x} cy={a.y} r="26" fill="transparent" />
+                    {/* An occupied spot gets a SOLID dark disc, not a wash: a
+                        translucent gold ring over a bright tapestry is
+                        invisible, and the swap marker is the one that most
+                        needs reading (a screenshot caught this). */}
+                    <circle
+                      cx={a.x}
+                      cy={a.y}
+                      r="13"
+                      fill={placements[a.id] ? 'rgba(10,5,26,0.86)' : 'rgba(255,210,63,0.16)'}
+                      stroke="var(--gold)"
+                      strokeWidth="2"
+                      strokeDasharray="4 4"
+                    />
+                    {placements[a.id] && (
+                      // Two arrows: this spot is taken, so dropping here trades.
+                      <path
+                        d={`M${a.x - 6} ${a.y - 3} h12 l-3 -3 M${a.x + 6} ${a.y + 3} h-12 l3 3`}
+                        fill="none"
+                        stroke="var(--gold)"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    )}
+                  </g>
+                ))}
             </svg>
             {/* Alive, not pasted: figures run seeded schedules between the
                 hearth, the table and the stable (KeepLife). A faction hall
@@ -194,6 +322,16 @@ export function KeepSheet({
             )}
           </AnimatePresence>
 
+          {/* Carrying, or a note about the last thing that happened. One slot,
+              because two stacked status lines under a picture is a form. */}
+          {(picked || note) && (
+            <p className="center" style={{ margin: '8px 0 0', fontSize: 12.5, fontWeight: 700, color: 'var(--gold)' }}>
+              {picked
+                ? `Carrying the ${decorName(placements[picked])} — tap a marked spot to set it down.`
+                : note}
+            </p>
+          )}
+
           <p className="faint" style={{ fontSize: 12, margin: '8px 0 0', lineHeight: 1.5 }}>
             <b style={{ color: 'var(--ink-dim)' }}>{keepLevelName(level)}</b> · level {level}
             {denomination && faction
@@ -201,6 +339,17 @@ export function KeepSheet({
               : ' · won in battles, furnished by you.'}
             {Object.keys(placements).length === 0 && ' Stone, and room to fill it.'}
           </p>
+
+          {/* What the next hall costs. The room itself grows with pooled wins
+              (six halls, KeepHall), so the ladder is worth naming — a level
+              that only changes a label is the thing this was fixing. */}
+          {nextHall != null && (
+            <p className="faint" style={{ fontSize: 11.5, margin: '4px 0 0', lineHeight: 1.5 }}>
+              {Math.max(0, nextHall - wins).toLocaleString()} more win
+              {nextHall - wins === 1 ? '' : 's'} and this becomes the{' '}
+              <b style={{ color: 'var(--ink-dim)' }}>{keepLevelName(level + 1)}</b>.
+            </p>
+          )}
 
           {/* Decorate — only your own hall (your faction's, or your solo keep).
               You place YOUR decorations; other members see theirs and a sample
@@ -212,7 +361,9 @@ export function KeepSheet({
                   Win keep challenges on the Battle tab to earn furnishings, then choose what hangs
                   where. Members each furnish their own view of the hall. Put something you already
                   have out a second time and the two <b style={{ color: 'var(--gold)' }}>merge</b>
-                  {' '}into one finer piece — and the spare spot stays yours to fill.
+                  {' '}into one finer piece — and the spare spot stays yours to fill.{' '}
+                  <b style={{ color: 'var(--gold)' }}>Tap anything in the hall</b> to pick it up and
+                  move it somewhere else.
                 </p>
                 {ANCHORS.filter((a) => decorForMount(a.mount).some((d) => keep.owned().includes(d.id))).map((a) => {
                   const options = decorForMount(a.mount).filter((d) => keep.owned().includes(d.id))
@@ -256,10 +407,84 @@ export function KeepSheet({
               </Collapsible>
             </div>
           )}
+
+          {/* Give a finished piece to your church ------------------------- */}
+          {ownHall && <Offerings placements={placements} offered={keep.offered} churchName={church?.name ?? null} onOffer={offer} />}
         </motion.div>
       </motion.div>
     </AnimatePresence>,
     document.body,
+  )
+}
+
+/**
+ * Grand pieces, and the one thing left to do with them.
+ *
+ * A decoration merged to the top has nowhere further to go, so it can be given:
+ * the Grand one leaves the hall, the church banks the points, and you keep the
+ * plain decoration — ownership is derived from the counters and none of them
+ * moved. Once ever per decoration (0062).
+ *
+ * It renders only when there is something to give, so an empty hall never grows
+ * a section explaining a thing the player can't do yet. Guests and the
+ * church-less get the one line that says where a church comes from, because the
+ * button would otherwise be a promise the app can't keep.
+ */
+function Offerings({
+  placements,
+  offered,
+  churchName,
+  onOffer,
+}: {
+  placements: Placements
+  offered: string[]
+  churchName: string | null
+  onOffer: (decorId: string) => void
+}) {
+  const grand = offerableAnchors(placements).filter((g) => !offered.includes(g.decor))
+  if (grand.length === 0) return null
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      <Collapsible icon="🕯️" title="Give to your church" meta={`${grand.length} ready`}>
+        <p className="faint" style={{ fontSize: 11.5, margin: '0 0 10px', lineHeight: 1.5 }}>
+          A piece merged all the way to Grand has nowhere left to go. Give it and your church banks
+          the points — the Grand one leaves the hall and you keep the plain one, because you never
+          stopped owning it. Once each, and it doesn't touch your own XP or rank.
+        </p>
+        {churchName ? (
+          <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
+            {grand.map((g) => (
+              <div
+                key={g.decor}
+                className="card"
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', minWidth: 0 }}
+              >
+                <span style={{ minWidth: 0, flex: 1 }}>
+                  <span style={{ display: 'block', fontWeight: 800, fontSize: 14 }}>
+                    {decorName(placements[g.anchor])}
+                  </span>
+                  <span className="faint" style={{ display: 'block', fontSize: 12 }}>
+                    +{offerValue(g.decor).toLocaleString()} to {churchName}
+                  </span>
+                </span>
+                <button
+                  className="pill"
+                  onClick={() => onOffer(g.decor)}
+                  style={{ borderColor: 'var(--gold)', color: 'var(--gold)', fontWeight: 800, flexShrink: 0 }}
+                >
+                  Give
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="dim" style={{ fontSize: 13, margin: 0, lineHeight: 1.5 }}>
+            Pick your church on the Church tab and you'll be able to give these to it.
+          </p>
+        )}
+      </Collapsible>
+    </div>
   )
 }
 

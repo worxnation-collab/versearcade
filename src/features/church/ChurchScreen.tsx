@@ -359,8 +359,11 @@ function ChurchHome({ church }: { church: Church }) {
 function Churchyard({ church, level }: { church: Church; level: number }) {
   const juice = useJuice()
   const me = useAuth((s) => s.profile)
-  const { given, plantings, loaded, load, plant, unlocked } = useChurchYard()
+  const { given, plantings, loaded, load, plant, move, unlocked } = useChurchYard()
   const [flash, setFlash] = useState<string | null>(null)
+  // The plant currently lifted, by plot. Tap it, then tap where it should go —
+  // the same move-it-by-tapping the keep's hall uses.
+  const [picked, setPicked] = useState<string | null>(null)
 
   useEffect(() => {
     void load()
@@ -378,7 +381,27 @@ function Churchyard({ church, level }: { church: Church; level: number }) {
     ? [{ username: me.username, avatarEmoji: me.avatarEmoji, avatarCharacter: me.avatarCharacter, isMe: true }]
     : []
 
+  const pick = (plot: string) => {
+    juice.tap()
+    setPicked((cur) => (cur === plot ? null : plot))
+  }
+
+  const drop = async (plot: string) => {
+    const from = picked
+    setPicked(null)
+    if (!from) return
+    const had = !!plantings[plot]
+    const res = await move(from, plot)
+    if (!res.ok) {
+      setFlash('That didn’t save. Try again in a moment.')
+      return
+    }
+    juice.select()
+    if (had) setFlash('Swapped.')
+  }
+
   const put = async (plot: string, floraId: string | null) => {
+    setPicked(null)
     juice.select()
     const res = await plant(plot, floraId)
     if (!res.ok) {
@@ -400,10 +423,24 @@ function Churchyard({ church, level }: { church: Church; level: number }) {
       <b style={{ fontFamily: 'var(--font-display)', fontSize: 17 }}>Your churchyard</b>
       <p className="dim" style={{ margin: '6px 0 12px', fontSize: 13.5, lineHeight: 1.5 }}>
         Giving opens up the landscaping out front. Everyone who gives plants their own, and the yard
-        on {church.name}'s page is all of it together — nobody's beds are labelled.
+        on {church.name}'s page is all of it together — nobody's beds are labelled. Tap anything
+        you've planted to pick it up and move it.
       </p>
 
-      <ChurchScene level={level} members={crowd} skin={church.skin} flora={plantings} emptyNote={false} />
+      <ChurchScene
+        level={level}
+        members={crowd}
+        skin={church.skin}
+        flora={plantings}
+        floraEditing={{ picked, onPick: pick, onDrop: drop }}
+        emptyNote={false}
+      />
+
+      {picked && (
+        <p className="center" style={{ margin: '8px 0 0', fontSize: 12.5, fontWeight: 700, color: 'var(--gold)' }}>
+          Carrying the {floraById(plantings[picked])?.name} — tap a spot to plant it there.
+        </p>
+      )}
 
       <AnimatePresence>
         {flash && (

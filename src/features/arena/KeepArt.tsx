@@ -13,16 +13,15 @@
 // barding take denominationColor(), which is already measured to clear ΔE 9
 // from every other faction under normal, deutan and protan vision.
 
-import { unpackDecor, type MountKind } from '@/data/keep'
+import { KEEP_LEVEL_NAMES, keepTier, unpackDecor, type MountKind } from '@/data/keep'
 
-// Palette — warm stone interior against the app's dark chrome.
-const WALL = '#3a3350'
+// Palette — warm stone interior against the app's dark chrome. Anything the
+// six halls vary tier to tier lives in HALL_TIERS below instead; what's left
+// here is the furniture, which is the same room's stuff whatever the walls are
+// made of.
 const WALL_DARK = '#2c2740'
 const STONE_LINE = '#4a4260'
-const BEAM = '#4a3626'
 const BEAM_DARK = '#3a2a1e'
-const FLOOR = '#4e4030'
-const FLOOR_DARK = '#3c3226'
 const WOOD = '#6b4f30'
 const WOOD_DARK = '#543d24'
 const IRON = '#6a7080'
@@ -34,17 +33,83 @@ const FLAME_HOT = '#ffd23f'
 const CLOTH = '#8a6f42'
 const PAGE = '#efe4c8'
 
+// ── The six halls ────────────────────────────────────────────────────────────
+// A faction's room GROWS with its pooled battle wins, the same way a church's
+// building grows with pooled XP — earned by playing, and nothing buys it. Until
+// now the level was only a label under the picture, which is the one thing a
+// ladder must never be: the promise is that the place gets better, so the place
+// has to visibly get better.
+//
+// Each tier is a Nano Banana painting (see art/keep-halls.json), and the drawn
+// hall underneath is the fallback — so a tier whose painting hasn't been
+// generated yet still reads as its own room rather than as the wrong one.
+// PAINTED_TIERS lists the ones that exist; add a tier's index here when its
+// file lands, and never before, because a 404 per render is a flash of the
+// fallback on every open.
+const PAINTED_TIERS = new Set([0])
+const hallImage = (tier: number): string | null =>
+  PAINTED_TIERS.has(tier) ? (tier === 0 ? '/keep/hall.jpg' : `/keep/hall-${tier + 1}.png`) : null
+
+/**
+ * How the drawn hall differs tier to tier. Timber and soot at the bottom,
+ * dressed stone in the middle, a vaulted and gilded bastion at the top — the
+ * silhouette changes (pillars, arches, a vault), not just the palette, for the
+ * same reason church skins change the shape: a recolour reads as a filter, and
+ * a filter doesn't feel like the room got bigger.
+ */
+interface HallTier {
+  wall: string
+  wallDark: string
+  line: string
+  beam: string
+  floor: string
+  floorDark: string
+  /** Stone coursing instead of bare boards. */
+  coursed: boolean
+  /** Pillars flanking the room. */
+  pillars: boolean
+  /** Tall arched windows on the back wall. */
+  windows: boolean
+  /** A vaulted ceiling instead of flat rafters. */
+  vault: boolean
+  /** Gilded trim on every edge. */
+  gilt: boolean
+}
+
+const HALL_TIERS: HallTier[] = [
+  // 1 Hall of Timber — dark boards, low beams, everything smoke-stained.
+  { wall: '#3a3350', wallDark: '#2c2740', line: '#4a4260', beam: '#4a3626', floor: '#4e4030', floorDark: '#3c3226',
+    coursed: false, pillars: false, windows: false, vault: false, gilt: false },
+  // 2 Hall of Stone — the walls are masonry now.
+  { wall: '#413a58', wallDark: '#302b45', line: '#544b6b', beam: '#4a3626', floor: '#4e4030', floorDark: '#3c3226',
+    coursed: true, pillars: false, windows: false, vault: false, gilt: false },
+  // 3 Walled Keep — pillars carry the roof.
+  { wall: '#474062', wallDark: '#342e4c', line: '#5d5478', beam: '#54402c', floor: '#544636', floorDark: '#41372a',
+    coursed: true, pillars: true, windows: false, vault: false, gilt: false },
+  // 4 High Keep — the wall is tall enough for real windows.
+  { wall: '#4d466b', wallDark: '#383152', line: '#665c84', beam: '#5b4632', floor: '#5a4b3a', floorDark: '#463b2d',
+    coursed: true, pillars: true, windows: true, vault: false, gilt: false },
+  // 5 Great Keep — vaulted.
+  { wall: '#544d75', wallDark: '#3d3659', line: '#6f658f', beam: '#634d37', floor: '#60503e', floorDark: '#4b3f30',
+    coursed: true, pillars: true, windows: true, vault: true, gilt: false },
+  // 6 Bastion — vaulted and gilded. The top of the ladder should look like it.
+  { wall: '#5a5280', wallDark: '#423a61', line: '#7a6f9c', beam: '#6b533b', floor: '#665442', floorDark: '#504333',
+    coursed: true, pillars: true, windows: true, vault: true, gilt: true },
+]
+
+export const hallTierCount = KEEP_LEVEL_NAMES.length
+
 /**
  * The room itself. The interior is a Nano Banana painting (public/keep/
- * hall.jpg — generated bare on purpose, so every furnishing the player sees
+ * hall*.jpg — generated bare on purpose, so every furnishing the player sees
  * was earned) with the drawn hall underneath as the loading/offline fallback.
  * The gonfalon stays DRAWN on top: it takes denominationColor() at runtime,
  * which a baked image can't.
  */
-export function KeepHall({ color }: { color: string }) {
+export function KeepHall({ color, level = 1 }: { color: string; level?: number }) {
   return (
     <g>
-      <PaintedOrDrawnHall color={color} />
+      <PaintedOrDrawnHall color={color} tier={keepTier(level)} />
       {/* the faction gonfalon — on the chimney breast, always present, the one
           element that says whose hall this is. Colour is the whole identity:
           no crest is invented per faction, so none can be wrong. */}
@@ -57,42 +122,87 @@ export function KeepHall({ color }: { color: string }) {
   )
 }
 
-function PaintedOrDrawnHall({ color }: { color: string }) {
+function PaintedOrDrawnHall({ color, tier }: { color: string; tier: number }) {
+  const painting = hallImage(tier)
   return (
     <g>
-      <DrawnHall color={color} />
-      <image
-        href="/keep/hall.jpg"
-        x="0"
-        y="0"
-        width="560"
-        height="300"
-        preserveAspectRatio="xMidYMid slice"
-      />
+      <DrawnHall color={color} tier={tier} />
+      {painting && (
+        <image
+          href={painting}
+          x="0"
+          y="0"
+          width="560"
+          height="300"
+          preserveAspectRatio="xMidYMid slice"
+        />
+      )}
     </g>
   )
 }
 
-/** The original flat-SVG hall — the fallback while (or if) the painting never
- *  loads, and the proof the sheet still works fully offline. */
-function DrawnHall({ color }: { color: string }) {
+/** The flat-SVG hall at one of the six tiers — the fallback while (or if) the
+ *  painting never loads, and the proof the sheet still works fully offline. */
+function DrawnHall({ color, tier = 0 }: { color: string; tier?: number }) {
   void color
+  const t = HALL_TIERS[Math.min(HALL_TIERS.length - 1, Math.max(0, tier))]
   return (
     <g>
       {/* back wall */}
-      <rect x="0" y="0" width="560" height="264" fill={WALL} />
-      {/* stone coursing — sparse lines, not a grid */}
-      <g stroke={STONE_LINE} strokeWidth="2" opacity="0.5">
-        <path d="M0 70 H560 M0 136 H560 M0 202 H560" fill="none" />
-        <path d="M90 70 V136 M230 70 V136 M370 70 V136 M500 70 V136" fill="none" />
-        <path d="M40 136 V202 M180 136 V202 M320 136 V202 M460 136 V202" fill="none" />
-      </g>
-      {/* rafters */}
-      <rect x="0" y="0" width="560" height="26" fill={BEAM} />
-      <rect x="0" y="22" width="560" height="6" fill={BEAM_DARK} />
-      <rect x="130" y="0" width="14" height="44" fill={BEAM} />
-      <rect x="280" y="0" width="14" height="44" fill={BEAM} />
-      <rect x="430" y="0" width="14" height="44" fill={BEAM} />
+      <rect x="0" y="0" width="560" height="264" fill={t.wall} />
+      {/* Coursing: sparse lines, not a grid. The timber hall gets vertical
+          boarding instead — the difference between "planks" and "masonry" is
+          the first thing that says the room was rebuilt. */}
+      {t.coursed ? (
+        <g stroke={t.line} strokeWidth="2" opacity="0.5">
+          <path d="M0 70 H560 M0 136 H560 M0 202 H560" fill="none" />
+          <path d="M90 70 V136 M230 70 V136 M370 70 V136 M500 70 V136" fill="none" />
+          <path d="M40 136 V202 M180 136 V202 M320 136 V202 M460 136 V202" fill="none" />
+        </g>
+      ) : (
+        <g stroke={t.line} strokeWidth="2" opacity="0.4">
+          <path d="M60 26 V264 M130 26 V264 M200 26 V264 M270 26 V264 M340 26 V264 M410 26 V264 M480 26 V264" fill="none" />
+        </g>
+      )}
+
+      {/* Tall windows, lit from outside. */}
+      {t.windows && (
+        <g>
+          <path d="M186 150 v-52 a16 16 0 0 1 32 0 v52 z" fill={t.wallDark} />
+          <path d="M191 148 v-49 a11 11 0 0 1 22 0 v49 z" fill="#2b2a52" />
+          <path d="M402 150 v-52 a16 16 0 0 1 32 0 v52 z" fill={t.wallDark} />
+          <path d="M407 148 v-49 a11 11 0 0 1 22 0 v49 z" fill="#2b2a52" />
+        </g>
+      )}
+
+      {/* Pillars carrying the roof. */}
+      {t.pillars && (
+        <g>
+          <rect x="150" y="30" width="18" height="234" fill={t.wallDark} />
+          <rect x="150" y="30" width="18" height="8" fill={t.line} />
+          <rect x="452" y="30" width="18" height="234" fill={t.wallDark} />
+          <rect x="452" y="30" width="18" height="8" fill={t.line} />
+        </g>
+      )}
+
+      {/* Ceiling: flat rafters, or a vault once the keep is great. */}
+      {t.vault ? (
+        <g>
+          <path d="M0 60 q140 -56 280 -56 q140 0 280 56 v-60 H0 z" fill={t.wallDark} />
+          <g stroke={t.line} strokeWidth="3" fill="none" opacity="0.75">
+            <path d="M0 58 q140 -54 280 -54 q140 0 280 54" />
+            <path d="M110 22 V50 M280 4 V34 M450 22 V50" />
+          </g>
+        </g>
+      ) : (
+        <g>
+          <rect x="0" y="0" width="560" height="26" fill={t.beam} />
+          <rect x="0" y="22" width="560" height="6" fill={BEAM_DARK} />
+          <rect x="130" y="0" width="14" height="44" fill={t.beam} />
+          <rect x="280" y="0" width="14" height="44" fill={t.beam} />
+          <rect x="430" y="0" width="14" height="44" fill={t.beam} />
+        </g>
+      )}
 
       {/* hearth — left wall, fire always lit */}
       <g transform="translate(40, 176)">
@@ -121,9 +231,19 @@ function DrawnHall({ color }: { color: string }) {
       </g>
 
       {/* floor */}
-      <rect x="0" y="264" width="560" height="36" fill={FLOOR} />
-      <rect x="0" y="264" width="560" height="4" fill={FLOOR_DARK} />
-      <path d="M120 268 H480 M60 282 H500 M160 294 H420" stroke={FLOOR_DARK} strokeWidth="2" opacity="0.6" fill="none" />
+      <rect x="0" y="264" width="560" height="36" fill={t.floor} />
+      <rect x="0" y="264" width="560" height="4" fill={t.floorDark} />
+      <path d="M120 268 H480 M60 282 H500 M160 294 H420" stroke={t.floorDark} strokeWidth="2" opacity="0.6" fill="none" />
+
+      {/* The bastion's gilding: the top of a ladder should look like the top. */}
+      {t.gilt && (
+        <g fill={GOLD_DEEP}>
+          <rect x="0" y="60" width="560" height="3" opacity="0.55" />
+          <rect x="0" y="261" width="560" height="4" opacity="0.7" />
+          <rect x="148" y="28" width="22" height="4" />
+          <rect x="450" y="28" width="22" height="4" />
+        </g>
+      )}
     </g>
   )
 }

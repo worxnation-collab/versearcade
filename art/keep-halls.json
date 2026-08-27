@@ -1,0 +1,27 @@
+[
+  {
+    "id": "hall-2",
+    "kind": "scene",
+    "prompt": "A wide interior of a medieval great hall, painted in a warm hand-illustrated storybook style with clean flat shapes and soft painted shading — no photorealism, no line art, no text, no watermark, no people, no furniture beyond what is described. 16:9 landscape, camera dead centre at standing eye height, symmetrical, the far wall filling the frame. THE HALL OF STONE, the second of six halls a growing fellowship earns: rough dressed stone walls with visible coursing, a big open hearth on the LEFT with a lit fire, a long empty wooden table across the CENTRE with benches, and a dark stone stable arch on the RIGHT opening into shadow. Heavy timber roof beams across the top. Deliberately BARE: no banners, no rugs, no lamps, no shields, no chandeliers, no barrels, nothing hanging on the big flat wall between the beams and the table — that wall must stay empty, because everything a player sees there is something they earned. Warm firelight from the left, deep violet-brown shadow, a palette of dusty violet-grey stone, warm brown timber and orange flame."
+  },
+  {
+    "id": "hall-3",
+    "kind": "scene",
+    "prompt": "A wide interior of a medieval great hall, painted in a warm hand-illustrated storybook style with clean flat shapes and soft painted shading — no photorealism, no line art, no text, no watermark, no people, no furniture beyond what is described. 16:9 landscape, camera dead centre at standing eye height, symmetrical, the far wall filling the frame. THE WALLED KEEP, the third of six halls: smooth dressed stone, and two heavy stone PILLARS rising floor to ceiling, one just inside the left edge and one just inside the right edge. A big open hearth on the LEFT with a lit fire, a long empty wooden table across the CENTRE with benches, a stone stable arch on the RIGHT opening into shadow. Timber roof beams above. Deliberately BARE: no banners, no rugs, no lamps, no shields, no chandeliers, no barrels, and the big flat wall between the beams and the table must stay completely empty. Warm firelight from the left, deep violet-brown shadow, dusty violet-grey stone and warm brown timber."
+  },
+  {
+    "id": "hall-4",
+    "kind": "scene",
+    "prompt": "A wide interior of a medieval great hall, painted in a warm hand-illustrated storybook style with clean flat shapes and soft painted shading — no photorealism, no line art, no text, no watermark, no people, no furniture beyond what is described. 16:9 landscape, camera dead centre at standing eye height, symmetrical, the far wall filling the frame. THE HIGH KEEP, the fourth of six halls: tall pale dressed stone, two heavy stone pillars near the left and right edges, and two TALL NARROW ARCHED WINDOWS in the back wall showing deep blue night sky — one left of centre, one right of centre, both well above the table. A big open hearth on the LEFT with a lit fire, a long empty wooden table across the CENTRE with benches, a stone stable arch on the RIGHT. Deliberately BARE: no banners, no rugs, no lamps, no shields, no chandeliers, no barrels, and the flat wall between the windows must stay empty. Warm firelight from the left against cool blue window light, dusty violet-grey stone, warm brown timber."
+  },
+  {
+    "id": "hall-5",
+    "kind": "scene",
+    "prompt": "A wide interior of a medieval great hall, painted in a warm hand-illustrated storybook style with clean flat shapes and soft painted shading — no photorealism, no line art, no text, no watermark, no people, no furniture beyond what is described. 16:9 landscape, camera dead centre at standing eye height, symmetrical, the far wall filling the frame. THE GREAT KEEP, the fifth of six halls: a high VAULTED stone ceiling with ribbed arches meeting overhead instead of flat timber beams, tall pale stone walls, two heavy pillars near the left and right edges, and two tall arched windows in the back wall showing deep blue night sky. A big open hearth on the LEFT with a lit fire, a long empty wooden table across the CENTRE with benches, a stone stable arch on the RIGHT. Deliberately BARE: no banners, no rugs, no lamps, no shields, no chandeliers, no barrels, and the wall between the windows must stay empty. Warm firelight from the left against cool blue window light, pale violet-grey stone."
+  },
+  {
+    "id": "hall-6",
+    "kind": "scene",
+    "prompt": "A wide interior of a medieval great hall, painted in a warm hand-illustrated storybook style with clean flat shapes and soft painted shading — no photorealism, no line art, no text, no watermark, no people, no furniture beyond what is described. 16:9 landscape, camera dead centre at standing eye height, symmetrical, the far wall filling the frame. THE BASTION, the sixth and finest of six halls: a high vaulted stone ceiling with ribbed arches, pale dressed stone, two grand pillars near the left and right edges with gilded capitals, two tall arched windows showing deep blue night sky, and thin GOLD trim lines running along the wall courses and the floor edge. A big open hearth on the LEFT with a lit fire, a long empty wooden table across the CENTRE with benches, a stone stable arch on the RIGHT. Deliberately BARE: no banners, no rugs, no lamps, no shields, no chandeliers, no barrels, and the wall between the windows must stay empty — the gold is architecture, not decoration. Warm firelight from the left, pale violet-grey stone, restrained antique gold."
+  }
+]

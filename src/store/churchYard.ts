@@ -47,6 +47,12 @@ interface YardState {
   load: () => Promise<void>
   /** Put a plant in a plot (null clears it). */
   plant: (plot: string, floraId: string | null) => Promise<PlantResult>
+  /**
+   * Move a plant to another plot. An occupied plot TRADES places rather than
+   * being overwritten, so no tap can lose a plant — the same rule the keep's
+   * planMove follows, for the same reason.
+   */
+  move: (from: string, to: string) => Promise<PlantResult>
   /** What I've earned. */
   unlocked: () => FloraDef[]
   /** Load a church's yard for its page; clears when the sheet closes. */
@@ -93,6 +99,32 @@ export const useChurchYard = create<YardState>((set, get) => ({
     })
     if (error) {
       // Put it back: an optimistic garden that lies is worse than a slow one.
+      await get().load()
+      return { ok: false, reason: 'failed' }
+    }
+    return { ok: true }
+  },
+
+  async move(from, to) {
+    if (from === to) return { ok: true }
+    const cur = get().plantings
+    const moving = cur[from]
+    if (!moving) return { ok: true }
+    if (!isOnline()) return { ok: false, reason: 'offline' }
+
+    const next = { ...cur }
+    next[to] = moving
+    if (cur[to]) next[from] = cur[to]
+    else delete next[from]
+    set({ plantings: next })
+
+    // Two rows move, so two calls. Each is idempotent and validated on its own,
+    // and a half-applied move is two real plantings rather than a lost one.
+    const results = await Promise.all([
+      supabase!.rpc('set_church_yard_placement', { p_plot: to, p_flora: next[to] ?? null }),
+      supabase!.rpc('set_church_yard_placement', { p_plot: from, p_flora: next[from] ?? null }),
+    ])
+    if (results.some((r) => r.error)) {
       await get().load()
       return { ok: false, reason: 'failed' }
     }

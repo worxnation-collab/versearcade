@@ -188,6 +188,125 @@ export function keepLevelName(level: number): string {
   return KEEP_LEVEL_NAMES[Math.min(KEEP_LEVEL_NAMES.length - 1, Math.max(0, level - 1))]
 }
 
+/** 0-based index into the six halls — the tier the room is actually drawn at. */
+export function keepTier(level: number): number {
+  return Math.min(KEEP_LEVEL_NAMES.length - 1, Math.max(0, Math.floor(level) - 1))
+}
+
+/** Wins the faction needs for the next hall, or null at the top. */
+export function winsForTier(tier: number): number | null {
+  if (tier >= KEEP_LEVEL_NAMES.length - 1) return null
+  // Inverse of keepLevelForWins: level L starts at 3(L-1)^2 wins.
+  return 3 * (tier + 1) * (tier + 1)
+}
+
+// ── Offering a finished piece ────────────────────────────────────────────────
+// A decoration merged all the way to Grand has nowhere left to go, so it can be
+// given to your church: the Grand one leaves the hall, your church banks the
+// points, and you keep the plain decoration (you never stopped owning it — the
+// counters did not move).
+//
+// ONCE EVER PER DECORATION, and the values are small on purpose. Church XP is
+// the one number here that ranks anything, and keep counters are clamped rather
+// than verified (0059's doctrine: an inflated counter is worth wall furniture,
+// not standing). Turning counters into church XP moves them a little closer to
+// standing than that doctrine likes, so the whole set is worth 3,100 points —
+// under three church levels at the very bottom of the curve — and the
+// primary key on (user, decor) is what caps it. See 0062.
+//
+// KEEP IN SYNC with `keep_decor_offer_value` in 0062. The server decides; this
+// copy draws the number on the button.
+
+export const OFFER_VALUES: Record<string, number> = {
+  keep_woven_rug: 60,
+  keep_oil_lamp: 60,
+  keep_kite_shield: 90,
+  keep_rosary: 90,
+  keep_sheaf_banner: 120,
+  keep_crossed_spears: 120,
+  keep_open_bible: 150,
+  keep_lanterns: 150,
+  keep_brazier: 200,
+  keep_barrels: 200,
+  keep_tapestry: 260,
+  keep_chess: 260,
+  keep_chandelier: 340,
+  keep_armor_rack: 400,
+  keep_destrier: 600,
+}
+
+export function offerValue(decorId?: string | null): number {
+  return (decorId && OFFER_VALUES[decorId]) || 0
+}
+
+/** Anchors holding a Grand piece — the only ones that can be offered. */
+export function offerableAnchors(placements: Record<string, string>): { anchor: string; decor: string }[] {
+  return ANCHORS.flatMap((a) => {
+    const { id, tier } = unpackDecor(placements[a.id])
+    return id && tier >= MAX_DECOR_TIER ? [{ anchor: a.id, decor: id }] : []
+  })
+}
+
+// ── Moving a piece ───────────────────────────────────────────────────────────
+// Tap something already placed, then tap where it should go. A piece only ever
+// lands on an anchor of its own MOUNT — a rug on a rafter is not a placement,
+// it is a bug — so the targets a pick-up offers are exactly its own kind.
+
+export interface MovePlan {
+  /** anchor -> new packed value, or null to clear. Applied in this order. */
+  writes: { anchor: string; value: string | null }[]
+  /** True when the two pieces were the same thing and folded together. */
+  merged: boolean
+  /** True when two different pieces traded places. */
+  swapped: boolean
+  tier: number
+}
+
+/**
+ * Move the piece on `from` to `to`.
+ *
+ * Three outcomes, and none of them can lose a decoration: an empty target just
+ * takes it, a target holding the SAME decoration merges (the same rule as
+ * placing a duplicate — one step up, capped), and a target holding something
+ * else trades places with it. Nothing is ever overwritten, because "I dropped
+ * it on the wrong spot and my tapestry vanished" is the one way a drag can
+ * genuinely hurt.
+ */
+export function planMove(
+  placements: Record<string, string>,
+  from: string,
+  to: string,
+): MovePlan | null {
+  if (from === to) return null
+  const fromDef = anchorById(from)
+  const toDef = anchorById(to)
+  if (!fromDef || !toDef || fromDef.mount !== toDef.mount) return null
+
+  const moving = unpackDecor(placements[from])
+  if (!moving.id) return null
+  const target = unpackDecor(placements[to])
+
+  if (target.id === moving.id && target.tier < MAX_DECOR_TIER) {
+    const tier = Math.min(MAX_DECOR_TIER, Math.max(target.tier, moving.tier) + 1)
+    return {
+      writes: [{ anchor: to, value: packDecor(moving.id, tier) }, { anchor: from, value: null }],
+      merged: true,
+      swapped: false,
+      tier,
+    }
+  }
+
+  return {
+    writes: [
+      { anchor: to, value: placements[from] },
+      { anchor: from, value: placements[to] ?? null },
+    ],
+    merged: false,
+    swapped: !!target.id,
+    tier: moving.tier,
+  }
+}
+
 // ── Merging duplicates ───────────────────────────────────────────────────────
 // Two of the same thing in one room is clutter, so a duplicate MERGES instead
 // of standing beside itself: put a second rug down and it goes into the rug you

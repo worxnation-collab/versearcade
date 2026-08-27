@@ -52,6 +52,7 @@ export function ChurchScene({
   members,
   skin,
   flora,
+  floraEditing,
   emptyNote = true,
 }: {
   level: number
@@ -64,6 +65,16 @@ export function ChurchScene({
    * yard nobody has given enough to plant, which is simply a lawn.
    */
   flora?: Plantings
+  /**
+   * Tap-to-move for the plantings. Only your own church tab passes this — a bed
+   * you can move in somebody else's yard is exactly the thing the church-page
+   * rule forbids. See ChurchFlora.
+   */
+  floraEditing?: {
+    picked: string | null
+    onPick: (plot: string) => void
+    onDrop: (plot: string) => void
+  }
   /**
    * Whether an empty crowd says so. False on your own church tab, where the
    * scene is a preview of your own yard and "nobody's playing for this one
@@ -135,7 +146,15 @@ export function ChurchScene({
       {/* Planted in front of the wall, behind the people: flowers earned by
           giving, drawn by ChurchFlora. Non-interactive — planting happens on
           your own church tab and never in somebody else's yard. */}
-      {flora && <ChurchFlora plantings={flora} />}
+      {flora && (
+        <ChurchFlora
+          plantings={flora}
+          editable={!!floraEditing}
+          picked={floraEditing?.picked ?? null}
+          onPick={floraEditing?.onPick}
+          onDrop={floraEditing?.onDrop}
+        />
+      )}
 
       {/* The congregation, alive: figures drift between the lawn, the path
           and the door on seeded schedules (CrowdLife sorts you to the front

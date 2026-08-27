@@ -100,6 +100,36 @@ haptics, the OAuth redirect (`store/auth.ts`), the install prompt, and
 `appStoreAsk()` (review vs. download). There is no other divergence — keep it
 that way.
 
+## Every image comes from Nano Banana
+
+House rule, not a preference: art we add is **generated through
+`scripts/gen-art.mjs`** (Gemini image models) from a prompt manifest in `art/`,
+so the whole app reads as one hand rather than as five sessions' worth of
+drawing styles.
+
+```bash
+GEMINI_API_KEY=... node scripts/gen-art.mjs art/keep-halls.json [--only <id>]
+```
+
+The key lives in `.env.local` (gitignored) and comes only from the environment —
+never write it into a tracked file. `kind` picks the pipeline: `scene` for a
+full-bleed background (no keying, capped at 640px), `prop` for one object on
+flat magenta (keyed, cropped, capped at 150px), `skin`/`item` for the avatar
+path. `art/README.md` has the details and the wiring.
+
+**Generated art layers OVER a drawn fallback, never instead of it.** A tier
+whose PNG hasn't been generated still has to render as itself — that's why
+`PAINTED_TIERS` (KeepArt) and `RASTER_FLORA` (ChurchFlora) are explicit lists
+you add an id to *after* the file exists. An `<image>` pointing at a 404 is a
+flash of the fallback on every open.
+
+Two things stay drawn, and it isn't laziness. **Anything taking a runtime
+colour** — the kite shield, the destrier's barding, the gonfalon — is painted in
+`denominationColor()`, which is measured for colourblind separation and isn't
+knowable at generation time; a baked image can't take a colour. And **church
+buildings** stay a kit, because 8 tiers x 4 skins is 32 images for something
+that must also read at 44px in a board row (see `features/church/skins.ts`).
+
 ## Church pages
 
 Every row on the church leaderboard opens `ChurchDetailSheet` — the building
@@ -178,6 +208,11 @@ a per-viewer sample, your own planting winning its plot), nothing is ever
 **counted** — no "3 planted", no who-planted-what, no per-member total — and
 there is **nowhere to write a string**. Lifetime given is across *every* church,
 so switching keeps every flower: the points were a gift, not a deposit.
+
+Anything planted can be **moved by tapping** it and then tapping another plot,
+with the keep's rules (an occupied plot trades places, so no tap loses a plant).
+Only your own church tab passes `floraEditing`; a bed you can move in somebody
+else's yard is exactly what the church-page rule forbids.
 
 This one is **online-only**, inheriting the church store's break with the
 two-mode invariant rather than choosing its own: a guest has no church to stand
@@ -377,7 +412,22 @@ next to the rank-free rule.
   track, plus the very first note carrying the mute button — never on ordinary
   tab switches. It yields the top slot to `StudyDropToast` when both show.
 
-## The keep: duplicates merge
+## The keep: six halls, merging, moving, offerings
+
+### The room grows with the faction's wins
+
+Pooled battle wins move the hall up a six-rung ladder (`keepLevelForWins`,
+`KEEP_LEVEL_NAMES`), and the ladder is **visible**: `HALL_TIERS` in `KeepArt`
+changes the room's silhouette, not just its palette — timber boarding becomes
+stone coursing, then pillars, then windows, then a vault, then gilding. Same
+split as church levels: earned by playing, and nothing buys it.
+
+Each tier is a Nano Banana painting over that drawn fallback
+(`art/keep-halls.json`; hall 1 is the existing `hall.jpg`). **The prompts say
+"bare" three times on purpose** — every hall is a room the player furnishes, so
+anything the generator hangs on the wall is a decoration nobody earned.
+
+### Duplicates merge
 
 Putting a keep decoration out a second time doesn't stand two of it in the room
 — the two **merge** into one finer piece (plain → Fine → Grand, three tiers
@@ -403,6 +453,33 @@ Three things to know before touching it:
   write a plain `decorId` there, which silently demoted a Grand piece back to
   nothing — invisible in the diff, found by driving the real app. The planner
   returns `noop` for it now.
+
+### Anything placed can be moved
+
+Tap a piece to lift it, tap a spot to set it down — no drag, because the hall is
+a 300-unit viewBox inside a scrolling sheet and a drag there fights the scroll.
+`planMove` (`data/keep.ts`) is the choke point and the churchyard copies its
+rules exactly: a piece only lands on an anchor of **its own mount** (the targets
+drawn while carrying are that constraint made visible), an empty target takes
+it, the **same** decoration merges, and anything else **trades places**. Nothing
+is ever overwritten — "I dropped it on the wrong spot and my tapestry vanished"
+is the one way this can genuinely hurt.
+
+### A Grand piece can be given to your church
+
+A decoration merged to the top has nowhere left to go, so it can be offered:
+the Grand one leaves the hall, the church banks the points, and the player keeps
+the plain decoration (the counters never moved). Once ever per decoration.
+
+**The values are small on purpose, and this is the one place the keep touches
+something that ranks.** 0059 clamps rather than verifies because a forged
+counter bought wall furniture; church XP ranks congregations, so `0062` mirrors
+the challenge ladder into SQL to verify ownership, and bounds the exposure three
+ways: once per decoration, a fixed ladder totalling 3,100 points (under three
+church levels at the bottom of the curve), and the piece must actually be placed
+at Grand. A determined client can still fake counters and collect the 3,100 —
+that's accepted, it's written down in the migration, and **if the ladder ever
+grows past this size the counters have to become verifiable first.**
 
 ## Shared choke points
 

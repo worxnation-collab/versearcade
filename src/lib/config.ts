@@ -126,4 +126,4 @@ export const bundleBuyUrl = (id: string): string => BUNDLE_BUY_URLS[id] || ''
 // Overridable via env so the pair can be rotated without a code change.
 export const VAPID_PUBLIC_KEY =
   import.meta.env.VITE_VAPID_PUBLIC_KEY ||
-  'BATVXr89OTFcSQOh7Xa0J3d0y2wTqUhez1cxF5XJSPor1vARrhc0jJLGvJr3n7HHDBL0NSAuIEBbHqwNyE9XCec'
+  'BMjBZZ-dKxm_J-ARiuH3TPX1kjGbR4Uju1JtgZbsdp1P0phqRTiwKiEARyqOD_R0AkYhEDCcAX0tRWkkyvzHW1c'

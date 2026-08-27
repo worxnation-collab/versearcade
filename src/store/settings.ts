@@ -16,6 +16,14 @@ interface SettingsState {
   tutorialSeen: boolean
   /** Whether the "add to home screen" nudge has been dismissed (one-time). */
   installPromptDismissed: boolean
+  /**
+   * Whether the player has ever had the Inventory section open in front of
+   * them. Set from InventorySection itself, which only mounts when the section
+   * is actually expanded — so this is "saw it", not "walked past it".
+   */
+  inventorySeen: boolean
+  /** Whether the "you're holding relics" nudge has been dismissed (one-time). */
+  inventoryNudgeDismissed: boolean
   /** When the App Store bubble was last dismissed (epoch ms, 0 = never). */
   appNudgeSnoozedAt: number
   /** Set once they've tapped through to the store — then we stop asking. */
@@ -35,6 +43,8 @@ export const useSettings = create<SettingsState>()(
       characterPromptDismissed: false,
       tutorialSeen: false,
       installPromptDismissed: false,
+      inventorySeen: false,
+      inventoryNudgeDismissed: false,
       appNudgeSnoozedAt: 0,
       appNudgeDone: false,
       readingTranslation: 'web',

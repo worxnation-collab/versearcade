@@ -90,7 +90,7 @@ export default function ReviewScreen() {
             Play a few daily drops — they’ll come back here to help you keep them.
           </p>
           <div style={{ marginTop: 20 }}>
-            <Button variant="gold" full onClick={() => navigate('/play')}>Back home</Button>
+            <Button variant="gold" full onClick={() => navigate('/study')}>← Back to Study</Button>
           </div>
         </div>
       </Page>
@@ -111,8 +111,10 @@ export default function ReviewScreen() {
           <p className="faint" style={{ marginTop: 14, fontSize: 13 }}>
             The ones you nailed come back later; the tricky ones come back sooner. That spacing is what makes them stick.
           </p>
+          {/* Review is opened off the Study shelf, so finishing one returns
+              there — the next book is one tap away instead of a trip home. */}
           <div style={{ marginTop: 22 }}>
-            <Button variant="gold" full onClick={() => navigate('/play')}>Done</Button>
+            <Button variant="gold" full onClick={() => navigate('/study')}>← Back to Study</Button>
           </div>
         </div>
       </Page>
@@ -125,7 +127,7 @@ export default function ReviewScreen() {
     <Page noNav>
       {/* HUD */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <button className="pill" onClick={() => navigate('/play')} aria-label="Back">✕</button>
+        <button className="pill" onClick={() => navigate('/study')} aria-label="Back">✕</button>
         <span className="pill">🧠 Keep it</span>
         <span className="faint" style={{ fontSize: 13 }}>{i + 1}/{session.length}</span>
       </div>

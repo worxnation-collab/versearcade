@@ -296,7 +296,7 @@ function RecapScreen({
       <div style={{ marginTop: 16, display: 'grid', gap: 10 }}>
         <Button variant="gold" full onClick={onNext}>▶ Next verse</Button>
         <Button variant="secondary" full onClick={onChange}>Change book</Button>
-        <Button variant="ghost" full onClick={onDone}>Done</Button>
+        <Button variant="ghost" full onClick={onDone}>← Back to Study</Button>
       </div>
       <div style={{ height: 30 }} />
     </Page>

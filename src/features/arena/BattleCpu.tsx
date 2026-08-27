@@ -205,6 +205,7 @@ function CpuResult({
       <div style={{ marginTop: 18, display: 'grid', gap: 10 }}>
         <Button variant="gold" full onClick={onRematch}>🔁 Rematch {profile.name}</Button>
         <Button variant="secondary" full onClick={onChange}>Change difficulty</Button>
+        <Button variant="ghost" full onClick={onDone}>← Back to Study</Button>
       </div>
       <div style={{ height: 30 }} />
     </Page>

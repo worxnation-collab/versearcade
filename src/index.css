@@ -114,6 +114,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 /* The keep's walk-bob — figures glide between waypoints and this sells the
    steps. Paired with scaleX facing on the same element (KeepLife). */
 @keyframes va-keep-bob { from { transform: translateY(0) } to { transform: translateY(-2.5px) } }
+@keyframes va-keep-breathe { from { transform: scaleY(1) } to { transform: scaleY(1.018) } }
 @keyframes pulseGlow {
   0%,100% { filter: drop-shadow(0 0 0 rgba(255,210,63,0)) }
   50% { filter: drop-shadow(0 0 16px rgba(255,210,63,0.6)) }

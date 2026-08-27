@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { useAuth } from './store/auth'
+import { useBuddies } from './store/buddies'
 import { useReminders } from './store/reminders'
 import { useJuiceSync } from './juice/useJuice'
 import { initNative } from './lib/native'
@@ -67,8 +68,17 @@ function TabShell({ children }: { children: JSX.Element }) {
 export default function App() {
   const init = useAuth((s) => s.init)
   const ready = useAuth((s) => s.ready)
+  const mode = useAuth((s) => s.mode)
   const navigate = useNavigate()
   useJuiceSync()
+
+  // Pull buddy requests once the account is up, app-wide rather than on the You
+  // tab. The nav dot has to be able to say "someone is waiting" from the Play
+  // tab — loading this only where the list is rendered is what made a pending
+  // request invisible until you'd already gone looking for it.
+  useEffect(() => {
+    if (ready && mode === 'online') void useBuddies.getState().load()
+  }, [ready, mode])
 
   useEffect(() => {
     // Capture a referral code from the invite link (?ref=CODE) before anything

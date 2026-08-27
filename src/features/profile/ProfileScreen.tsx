@@ -7,13 +7,14 @@ import { Button } from '@/components/Button'
 import { PlayerCard } from '@/components/PlayerCard'
 import { useAuth } from '@/store/auth'
 import { useJuice } from '@/juice/useJuice'
-import { shareResult, APP_URL } from '@/features/daily/shareCard'
+import { shareResult, inviteUrl } from '@/features/daily/shareCard'
 import { useCollection } from '@/store/collection'
 import { Collapsible } from '@/components/Collapsible'
 import { CollectionSection } from '@/features/collection/CollectionScreen'
 import { InventorySection } from '@/features/collection/InventorySection'
 import { useInventory } from '@/store/inventory'
 import { BuddiesSection } from '@/features/buddies/BuddiesScreen'
+import { useBuddies } from '@/store/buddies'
 import { CustomizeSection } from './CustomizeSection'
 import { SettingsSheet } from './SettingsSheet'
 
@@ -37,6 +38,15 @@ export default function ProfileScreen() {
   const [nameErr, setNameErr] = useState<string | null>(null)
   const [savingName, setSavingName] = useState(false)
   const [refFlash, setRefFlash] = useState<string | null>(null)
+  // Buddy requests have to be counted from out here, not from inside the
+  // drawer: Collapsible only mounts its children once opened, so leaving the
+  // load to BuddiesSection meant the count was always 0 until you'd already
+  // found the thing the count exists to point at.
+  const buddyRequests = useBuddies((st) => st.requests.length)
+  const loadBuddies = useBuddies((st) => st.load)
+  useEffect(() => {
+    if (mode === 'online') void loadBuddies()
+  }, [mode, loadBuddies])
   const owned = useCollection((s) => s.owned)
   const loadCollection = useCollection((s) => s.load)
   useEffect(() => {
@@ -190,8 +200,8 @@ export default function ProfileScreen() {
               </div>
               <Button variant="gold" onClick={async () => {
                 juice.coin()
-                const link = `${APP_URL}/?ref=${profile.referralCode}`
-                const r = await shareResult(`Join me on Verse Arcade! Use my code ${profile.referralCode} — daily Bible verse games, streaks & battles.\n${link}`)
+                const link = inviteUrl(profile.referralCode)
+                const r = await shareResult(`Join me on Verse Arcade! Use my code ${profile.referralCode} — daily Bible verse games, streaks & battles.\n${link}`, link)
                 setRefFlash(r === 'shared' ? 'Shared!' : r === 'copied' ? 'Link copied!' : 'Could not share')
               }}>📤 Share</Button>
             </div>
@@ -232,7 +242,16 @@ export default function ProfileScreen() {
         <CollectionSection />
       </Collapsible>
 
-      <Collapsible icon="🤝" title="Bible Buddies">
+      {/* Inventory and Cards advertise what's inside them; this one didn't, so a
+          player with people waiting saw an identical closed row and 71% of every
+          buddy request ever sent was still unanswered. It now counts, and opens
+          itself when the answer is someone else's to receive. */}
+      <Collapsible
+        icon="🤝"
+        title="Bible Buddies"
+        meta={buddyRequests > 0 ? `${buddyRequests} waiting` : undefined}
+        defaultOpen={buddyRequests > 0}
+      >
         <BuddiesSection />
       </Collapsible>
 

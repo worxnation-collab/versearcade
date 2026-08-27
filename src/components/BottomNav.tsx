@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useJuice } from '@/juice/useJuice'
+import { useBuddies } from '@/store/buddies'
 
 // Five tabs, one per thing you actually come here to do. Ranks folded into
 // Play; Buddies and Cards folded into You — each still a full screen at its own
@@ -13,10 +14,34 @@ const tabs = [
   { to: '/you', label: 'You', icon: '⭐' },
 ]
 
+// A pending buddy request lives two taps deep on the You tab, so nothing out
+// here said it existed. One dot — no count, no red, no badge that demands
+// clearing. It marks that someone is waiting on you, which is the one thing
+// in this app another person can be blocked by.
+function NavDot() {
+  return (
+    <span
+      aria-hidden
+      style={{
+        position: 'absolute',
+        top: 5,
+        right: 5,
+        width: 9,
+        height: 9,
+        borderRadius: 999,
+        background: 'var(--gold)',
+        border: '2px solid rgba(20,10,52,0.95)',
+        boxSizing: 'content-box',
+      }}
+    />
+  )
+}
+
 // Native-feeling tab bar pinned above the home indicator. Springy icon pop on
 // the active tab. Tapping fires a light select sound/haptic.
 export function BottomNav() {
   const juice = useJuice()
+  const buddyRequests = useBuddies((s) => s.requests.length)
   return (
     <nav
       style={{
@@ -67,6 +92,7 @@ export function BottomNav() {
                   gap: 2,
                   padding: '8px 7px',
                   borderRadius: 999,
+                  position: 'relative',
                   background: isActive
                     ? 'linear-gradient(180deg, var(--grape), var(--grape-deep))'
                     : 'transparent',
@@ -76,6 +102,7 @@ export function BottomNav() {
               >
                 <span style={{ fontSize: 20 }}>{t.icon}</span>
                 <span style={{ fontSize: 10, fontWeight: 800, whiteSpace: 'nowrap' }}>{t.label}</span>
+                {t.to === '/you' && buddyRequests > 0 && <NavDot />}
               </motion.div>
             )}
           </NavLink>

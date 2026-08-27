@@ -7,8 +7,9 @@ import { Avatar } from '@/components/Avatar'
 import { QuizRunner } from '@/features/daily/QuizRunner'
 import { useBattles } from '@/store/battles'
 import { useBuddies, type BuddyCard } from '@/store/buddies'
+import { useAuth } from '@/store/auth'
 import { newBattleSeed, battleVerse } from './battle'
-import { shareResult, APP_URL } from '@/features/daily/shareCard'
+import { shareResult, inviteUrl } from '@/features/daily/shareCard'
 import { useJuice } from '@/juice/useJuice'
 import { FavoriteButton } from '@/components/FavoriteButton'
 import type { PlayResult } from '@/types'
@@ -50,6 +51,7 @@ function InvitePicker({ seed, result, target }: { seed: number; result: PlayResu
   const juice = useJuice()
   const { createBattle } = useBattles()
   const { buddies, suggested, load, loadSuggested, sendRequest } = useBuddies()
+  const referralCode = useAuth((s) => s.profile?.referralCode)
   const [ready, setReady] = useState(false)
   const [shareMsg, setShareMsg] = useState<string | null>(null)
 
@@ -105,7 +107,8 @@ function InvitePicker({ seed, result, target }: { seed: number; result: PlayResu
       }
       setShareId(id)
     }
-    const r = await shareResult(`⚔️ I challenge you to a Bible Battle! Same quiz, beat my score:\n${APP_URL}/battle/${id}`)
+    const link = inviteUrl(referralCode, `/battle/${id}`)
+    const r = await shareResult(`⚔️ I challenge you to a Bible Battle! Same quiz, beat my score:\n${link}`, link)
     setShareMsg(r === 'shared' ? 'Shared!' : r === 'copied' ? 'Link copied!' : 'Could not share')
   }
 

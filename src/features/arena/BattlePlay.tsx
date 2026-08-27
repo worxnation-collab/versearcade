@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Page } from '@/components/Page'
 import { QuizRunner } from '@/features/daily/QuizRunner'
 import { useBattles } from '@/store/battles'
+import { useKeep } from '@/store/keep'
 import { battleVerse } from './battle'
 import type { PlayResult } from '@/types'
 
@@ -32,6 +33,12 @@ export default function BattlePlay() {
   const verse = useMemo(() => (seed != null ? battleVerse(seed) : null), [seed])
 
   const onComplete = async (result: PlayResult) => {
+    // Keep challenges: answering a friend's battle counts as played, and the
+    // run's quality feeds the perfect/combo ladders (see data/keep).
+    const k = useKeep.getState()
+    void k.track('battle_played')
+    if (result.correctCount === result.totalQuestions && result.totalQuestions > 0) void k.track('battle_perfect')
+    if ((result.comboMax ?? 0) >= 4) void k.track('battle_combo')
     await submitBattle(id, result.score, result.timeMs)
     navigate(`/battle/${id}`, { replace: true, state: { justPlayed: true } })
   }

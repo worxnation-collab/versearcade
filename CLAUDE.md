@@ -45,11 +45,19 @@ comment in `store/bookAccuracy.ts:record`.
 
 ## Two checkouts, never the wrong one
 
-The web app sells cosmetic packs through Stripe Payment Links. The App Store /
-Play build sells the same packs through in-app purchase (Guideline 3.1.1)
-instead. Wherever a shop appears, it must not show a price it can't charge or
-name a pack it can't sell — hiding just the checkout button is not enough: a
-`$5.99` label or a "purchases are opening soon" line is still a storefront.
+The web app sells the whole cosmetic catalog through Stripe Payment Links. The
+App Store / Play build sells through in-app purchase instead (Apple Guideline
+3.1.1, Google Play Payments policy). Wherever a shop appears, it must not show a
+price it can't charge or name a pack it can't sell — hiding just the checkout
+button is not enough: a `$5.99` label or a "purchases are opening soon" line is
+still a storefront.
+
+**The native catalog is one product: the whale** (`patron_founding`, the
+founding-supporter skin). The web sells everything; the app sells the whale. That
+list is `PRODUCT_IDS` in `lib/iap.ts`, and anything absent from it is
+unpurchasable on native and hidden by `commerce.ts` automatically — which is what
+makes it safe to render the narrow catalog against the full one. Adding a sku
+means creating and getting the product approved in *both* stores.
 
 **Anti-steering, stated precisely** (it's narrower than it used to be): since the
 Epic v. Apple injunction, apps on the **United States storefront** may include
@@ -61,33 +69,58 @@ not a legal requirement. A US-only Stripe path is a real option worth real money
 (Apple takes 15–30%); if it's ever added, the storefront check goes in
 `commerce.ts` and nowhere else.
 
-So the same catalog is sold twice: Stripe on web (`lib/config.ts`), Apple IAP in
-the app (`lib/iap.ts` + `store/iap.ts`, RevenueCat). Setup runbook and the
-account-gated Apple steps: `docs/APPLE-IAP.md`.
+So it's sold two ways: Stripe on web (`lib/config.ts`), native billing in the app
+(`lib/iap.ts` + `store/iap.ts`, RevenueCat fronting StoreKit and Play Billing with
+one API). Account-gated steps: `docs/APPLE-IAP.md`, `docs/PLAY-STORE-SUBMISSION.md`.
 
 `lib/commerce.ts` is the only place the *decision* lives — `storefrontEnabled()`,
-`skinVisible()`, `cardBgVisible()`, `displayPrice()`. Every commerce surface asks
-it, so the app and the site can't drift apart by accident. Don't reach for
-`Capacitor.isNativePlatform()` in a component to gate something you can buy; add
-it to `commerce.ts` instead.
+`skinVisible()`, `bundleVisible()`, `cardBgVisible()`, `displayPrice()`. Every
+commerce surface asks it, so the app and the site can't drift apart by accident.
+Don't reach for `Capacitor.isNativePlatform()` in a component to gate something
+you can buy; add it to `commerce.ts` instead. Platform questions go through
+`nativePlatform()` / `storeName()` in `lib/appStore.ts` — never a raw
+`Capacitor.getPlatform()`, which is how the review nudge ended up asking Play
+users for an *App Store* review.
+
+**Every commerce surface must call `useStorefront()` once, even if it ignores the
+result.** The helpers above read the IAP store with `useIap.getState()` on
+purpose, because they're called from inside `.filter()` callbacks where hooks are
+illegal — but an imperative read creates no subscription, so a component that
+only calls them never re-renders when the catalog lands a second after mount. The
+shop then stays hidden on a device that could sell perfectly well. Toggling a
+`<Section>` does not rescue it either: Section's own state change re-renders
+Section, but `children` is an element tree the *parent* already built, so the
+parent's render never re-runs.
 
 **It fails closed, and it must stay that way.** On native the storefront turns on
-only once StoreKit has actually returned products — no RevenueCat key, no
-network, products not approved yet ⇒ the whole marketplace stays hidden, exactly
-as it was before IAP existed. A hidden shop is compliant; a shop that can't take
-money is a rejection. And prices on native are always Apple's localized string,
-never the `price` fields in `data/avatar.ts` — those are the USD web prices and
-are wrong in every other currency.
+only once the store has actually returned products — no RevenueCat key for *that
+platform*, no network, products not created yet ⇒ the whole marketplace stays
+hidden, exactly as it was before IAP existed. A hidden shop is compliant; a shop
+that can't take money is a rejection. That's also how Android ships before its
+Play product exists, and why the key is per-platform (`REVENUECAT_IOS_KEY` /
+`REVENUECAT_ANDROID_KEY`).
+
+Prices on native are always the **store's** localized string, never the `price`
+fields in `data/avatar.ts` — those are the USD web prices and are wrong in every
+other currency. Route every rendered price through `displayPrice()`; a tile that
+interpolates `skin.price` directly will print "From $100" next to a button that
+charges £89.99, which misstates the price and is its own review risk.
 
 Apple also **requires** a visible "Restore purchases" control for non-consumable
-IAP; it lives in the Skins section and shows whenever StoreKit is reachable, even
-when the shop is hidden. Restoring is not selling. Purchases land through the
+IAP; it lives in the Skins section and shows whenever the store is reachable, even
+when the shop is hidden. Google doesn't mandate it, but Play Billing has the same
+reinstall problem, so it's shown on both. Restoring is not selling. Purchases land through the
 `iap-fulfill` Edge Function (0047), never a direct `profiles` write —
 `enforce_skin_entitlement` blocks those on purpose. **The client never tells the
 server what it bought.** It asks the function to settle up; the function asks
 RevenueCat what that subscriber owns, using the secret key, and grants that.
 Verification needs a secret, and a secret can't live in an RPC the client can
 call — which is why there is deliberately no client-callable grant path.
+
+The `iap-fulfill` allowlist is deliberately **wider** than `PRODUCT_IDS`: it
+carries every product either store has ever sold, because it exists to *honor*
+purchases, not make them. Adding to it is fine; deleting a line revokes someone's
+real entitlement.
 
 What native still has, identical to web: earned skins (shared days, referrals),
 free promo-code skins (`redeem_code` — codes are never sold), churches, battles,
@@ -243,6 +276,42 @@ accuracy chart uses mint/gold/coral because green↔amber fails deutan separatio
 against the card surface (ΔE 5.7); mint↔gold clears it at 17.5. Tiers are also
 spelled out in text, so meaning never rides on color alone.
 
+## Android: the target SDK is a deadline, not a setting
+
+Google Play requires new apps and updates to target **API 36 from 2026-08-31**
+(API 35 before that), and enforces it *at upload* — after a full signed build,
+the same 20-minutes-in rejection the App Store does for versions. Capacitor pins
+the Android target SDK to its **major version**, so raising the target means
+raising Capacitor: API 36 ⇒ **Capacitor 8** (minSdk 24, AGP 8.13.0, Gradle
+8.14.3, **Node 22**, **Java 21**, Xcode 26+ for the shared iOS build). Google
+ships a new requirement every August; expect to move a Capacitor major every year.
+CI asserts `targetSdkVersion >= 36` before it spends the build minutes.
+
+Unlike `ios/`, **`android/` is committed**, because it carries things
+`cap add android` doesn't know: the OAuth intent filter, the
+`SCHEDULE_EXACT_ALARM` removal, and the signing hook. So CI *fails* when
+`android/` is missing rather than regenerating a default project that would ship
+without them. `cap sync android` is still safe and still run — it only rewrites
+the generated `capacitor.*.gradle` files.
+
+Two Android-only traps, both fixed and both invisible in a diff:
+
+- **Edge-to-edge is forced from targetSdk 35.** Android's WebView does *not*
+  populate `env(safe-area-inset-*)` for the system bars, so `env()` alone
+  resolves to 0 and the app draws under the status and nav bars. Capacitor 8's
+  SystemBars plugin injects `--safe-area-inset-*` instead, and `--safe-top` /
+  `--safe-bottom` in `index.css` read `var(…, env(…))` to cover both platforms.
+  Every surface that dodges a bar goes through those two tokens.
+- **The system bar style must be pinned.** `SystemBars.style` defaults to
+  `DEFAULT`, which follows the *device's* light/dark setting — so a phone in
+  light mode gets dark status-bar icons painted on this app's `#0b0720`
+  background, where they're invisible. `capacitor.config.ts` pins it to `DARK`.
+
+Signing fails *open*, which is the dangerous direction: `build.gradle` only wires
+the release `signingConfig` when `CM_KEYSTORE_PATH` exists, so a mismatched
+keystore name produces a perfectly good **unsigned** AAB that Play refuses at
+upload. CI checks for it up front.
+
 ## Deploy
 
 Netlify builds and publishes every push to `main` through its own GitHub
@@ -263,8 +332,12 @@ or the upload is rejected (`90062` + `90186`) *after* a full signed archive, abo
 `ios/` is not committed; `cap add ios` regenerates it every build and the Capacitor
 template default (`MARKETING_VERSION = 1.0`) comes back each time. So the version is
 patched into `project.pbxproj` in `codemagic.yaml` from `package.json`, with an
-assertion that it landed in both build configurations. Bump `package.json` and
-`android/app/build.gradle`'s `versionName` together — same string, both stores.
+assertion that it landed in both build configurations.
+
+**Android needs no such bump.** `android/` *is* committed, so
+`android/app/build.gradle` reads `package.json` directly with `JsonSlurper` —
+one source of truth, no second place to edit, no CI step to forget. Bump
+`package.json` and both stores follow.
 
 The build number is separate and handled: Codemagic's `$BUILD_NUMBER` is monotonic.
 Don't reach for `get-latest-app-store-build-number`; it returns 0 until a build is on

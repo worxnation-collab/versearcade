@@ -6,7 +6,7 @@ import { CardArt } from '@/data/cardArt'
 import { cardArtProps, cardBgByKey } from '@/data/playerCards'
 import { bundleItemCount, skinById, type BundleDef } from '@/data/avatar'
 import { bundleBuyUrl } from '@/lib/config'
-import { displayPrice, storefrontEnabled } from '@/lib/commerce'
+import { displayPrice, useStorefront } from '@/lib/commerce'
 import { isNativeApp } from '@/lib/appStore'
 import { useIap } from '@/store/iap'
 import { useJuice } from '@/juice/useJuice'
@@ -62,16 +62,17 @@ export function BundleSheet({
   }
 
   const buyUrl = bundleBuyUrl(bundle.id)
-  // Two checkouts, one sheet: Stripe on the web, Apple in-app purchase in the
-  // app. If neither is usable the sheet shows no price and no way to pay — the
+  // Two checkouts, one sheet: Stripe on the web, the platform's own billing in
+  // the app (StoreKit on iOS, Play Billing on Android). If neither is usable the sheet shows no price and no way to pay — the
   // pack tile is hidden in that state anyway (lib/commerce), so this is the
   // second lock rather than the first.
-  const store = storefrontEnabled()
+  // Subscribes the sheet to the catalog — see useStorefront in lib/commerce.
+  const store = useStorefront()
   const native = isNativeApp()
   const buyIap = useIap((s) => s.buy)
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
-  // Apple's own localized price on native; the catalog price on web.
+  // The store's own localized price on native; the catalog price on web.
   const price = displayPrice(bundle.sku, bundle.price)
   const canBuy = !owned && store && !!price && (native || !!buyUrl)
 
@@ -190,7 +191,7 @@ export function BundleSheet({
             {canBuy ? (
               <>
                 <Button variant="gold" full disabled={busy} onClick={purchase}>
-                  {busy ? 'Opening Apple…' : `Get the pack — ${price}`}
+                  {busy ? 'Opening checkout…' : `Get the pack — ${price}`}
                 </Button>
                 <p className="faint" style={{ fontSize: 10, marginTop: 8, lineHeight: 1.4 }}>
                   All {bundleItemCount(bundle)} items unlock together right after checkout. Thank you for supporting a solo builder! 🙏

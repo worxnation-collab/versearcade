@@ -37,15 +37,23 @@ export async function initNative(onDeepLink?: (url: string) => void, onResume?: 
 }
 
 /**
- * APNs device-token registration — still a stub.
+ * Remote push registration — still a stub, and the plugin is no longer installed.
  *
  * Deliberately NOT what powers the daily verse or study nudges; those are local
  * (lib/reminders.ts) and need none of this. What this is for is battle invites,
  * where another player triggers the notification and only a server can deliver
- * it. Turning it on needs an Apple push key, the Push Notifications capability
- * on the App ID, the aps-environment entitlement patched into the regenerated
- * Xcode project in codemagic.yaml, a device-token table (push_subscriptions is
- * Web-Push shaped and won't hold one), and an Edge Function that signs for APNs.
+ * it.
+ *
+ * @capacitor/push-notifications was a dependency for a long time without a single
+ * import, which on Android is not free: it drags in Firebase and makes
+ * google-services.json a build requirement for a feature that doesn't exist. It's
+ * been removed. Turning remote push on means adding it back and then, on iOS: an
+ * Apple push key, the Push Notifications capability on the App ID, and the
+ * aps-environment entitlement patched into the regenerated Xcode project in
+ * codemagic.yaml; on Android: a Firebase project and google-services.json in
+ * android/app/. Plus, on both: a device-token table (push_subscriptions is
+ * Web-Push shaped and won't hold one) and an Edge Function that signs for APNs
+ * and FCM.
  */
 export async function registerPush(): Promise<string | null> {
   if (!Capacitor.isNativePlatform()) return null

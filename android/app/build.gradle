@@ -1,5 +1,13 @@
 apply plugin: 'com.android.application'
 
+// package.json is the single source of truth for the STORE version, on both
+// stores. iOS has to be patched in codemagic.yaml with sed, because ios/ is not
+// committed and `cap add ios` regenerates the Capacitor default every build.
+// Android is committed, so it can just read the file — no CI step to forget, no
+// assertion to write, and a local build gets the same number CI does.
+import groovy.json.JsonSlurper
+def packageVersion = new JsonSlurper().parseText(file('../../package.json').text).version
+
 android {
     namespace "com.versearcade.app"
     compileSdk rootProject.ext.compileSdkVersion
@@ -11,11 +19,11 @@ android {
         // sets BUILD_NUMBER (monotonic); locally it falls back to 1. versionName is
         // the human-facing marketing version and should match the iOS CFBundleShortVersionString.
         versionCode System.getenv("BUILD_NUMBER") ? System.getenv("BUILD_NUMBER").toInteger() : 1
-        // Keep in sync with "version" in package.json, which is the source of
-        // truth for the store version (iOS reads it in codemagic.yaml). Play
-        // has no "closed version train" rule the way the App Store does, but
-        // the two stores showing different version numbers is a bug.
-        versionName "1.1.0"
+        // Read straight from package.json (above). Play has no "closed version
+        // train" rule the way the App Store does, but the two stores showing
+        // different version numbers is a bug, and a hardcoded string here is
+        // how that happens.
+        versionName packageVersion
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

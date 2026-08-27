@@ -1,8 +1,20 @@
 # Apple in-app purchase — setup runbook
 
 The site sells cosmetic packs through Stripe Payment Links. The App Store build
-sells the same catalog through Apple in-app purchase (Review Guideline 3.1.1).
-The code for the Apple half is already written and merged:
+sells through Apple in-app purchase (Review Guideline 3.1.1). The code for the
+Apple half is already written and merged:
+
+> **Scope changed: the app now sells the whale only.** `PRODUCT_IDS` in
+> `src/lib/iap.ts` lists exactly one product for each store — the founding-patron
+> whale. The Angel Pack and the Moses / Esther / Elijah skins are **no longer
+> offered for sale inside the app** on either platform; they remain on sale on
+> the website, and anyone who already bought one keeps it (the `iap-fulfill`
+> allowlist still honors all five Apple product IDs — see §2). Only step 2's
+> "Founding Patron" row is required to start selling. The other four rows are
+> kept below because they document products that may already exist in App Store
+> Connect and must not be deleted.
+>
+> Google Play setup is the mirror of this document: `docs/PLAY-STORE-SUBMISSION.md`.
 
 | Piece | Where |
 |---|---|
@@ -29,10 +41,15 @@ fill in banking and tax (US W-9 plus any regions you sell in).
 ## 2. Create the products
 
 App Store Connect → your app → **Monetization → In-App Purchases** → **+**, type
-**Non-Consumable** for all five (they're permanent unlocks, not subscriptions).
+**Non-Consumable** (they're permanent unlocks, not subscriptions).
 
-The Product ID must match `APPLE_PRODUCT_IDS` in `src/lib/iap.ts` **exactly** — a
-typo means the product silently never loads and its tile stays hidden:
+**Only `com.versearcade.app.patron_founding` is needed now** — it's the one
+product the app sells, and its ID must match `PRODUCT_IDS.ios.whale` in
+`src/lib/iap.ts` **exactly**; a typo means the product silently never loads and
+its tile stays hidden. The other four are listed for the record: if they already
+exist in App Store Connect, leave them alone. They aren't offered for sale in the
+app any more, but the server still honors them so existing buyers keep what they
+paid for.
 
 | Product ID | Reference name | Price | Replaces on web |
 |---|---|---|---|
@@ -40,7 +57,7 @@ typo means the product silently never loads and its tile stays hidden:
 | `com.versearcade.app.skin_moses` | Moses skin | $2.99 | "From $2.99" |
 | `com.versearcade.app.skin_esther` | Esther skin | $2.99 | "From $2.99" |
 | `com.versearcade.app.skin_elijah` | Elijah skin | $2.99 | "From $2.99" |
-| `com.versearcade.app.patron_founding` | Founding Patron | $99.99 | "From $100" |
+| `com.versearcade.app.patron_founding` | **Founding Patron — the only one still sold in-app** | $99.99 | "From $100" |
 
 Two deliberate changes from the web catalog, both forced by Apple's pricing
 model:

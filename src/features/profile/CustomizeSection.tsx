@@ -3,8 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Avatar } from '@/components/Avatar'
 import { Button } from '@/components/Button'
 import { SUPPORT_URL, skinBuyUrl } from '@/lib/config'
-import { cardBgVisible, displayPrice, skinVisible, storefrontEnabled } from '@/lib/commerce'
-import { isNativeApp } from '@/lib/appStore'
+import { bundleVisible, cardBgVisible, displayPrice, skinVisible, skuPurchasable, useStorefront } from '@/lib/commerce'
+import { isNativeApp, storeName } from '@/lib/appStore'
 import { iapAvailable } from '@/lib/iap'
 import { useIap } from '@/store/iap'
 import { supabase } from '@/lib/supabase'
@@ -67,9 +67,13 @@ export function CustomizeSection() {
   const loadIap = useIap((s) => s.load)
   const buyIap = useIap((s) => s.buy)
   const restoreIap = useIap((s) => s.restore)
-  // Ask StoreKit for the catalog when the customizer opens. Until it answers,
-  // storefrontEnabled() is false on native and no price is rendered anywhere.
+  // Ask the store for the catalog when the customizer opens. Until it answers,
+  // the storefront is closed on native and no price is rendered anywhere.
   useEffect(() => { void loadIap() }, [loadIap])
+  // Subscribes this component to the catalog, so the shop appears when the
+  // products land instead of waiting for an unrelated re-render. See
+  // useStorefront in lib/commerce — this call is load-bearing, not a style.
+  const storeOpen = useStorefront()
   const refreshProfile = useAuth((s) => s.refreshProfile)
   const mode = useAuth((s) => s.mode)
 
@@ -227,7 +231,7 @@ export function CustomizeSection() {
       // is no sheet to open (see lib/commerce). The tile is already hidden
       // there; this is the second lock on the same door.
       if (skin.exclusive) { setRedeemMsg(null); setRedeemTarget(skin) }
-      else if (storefrontEnabled()) {
+      else if (storeOpen) {
         const bundle = skin.bundleOnly ? BUNDLES.find((b) => b.id === skin.pack) : undefined
         if (bundle) setBundleTarget(bundle)
         else setBuyTarget(skin)
@@ -316,7 +320,7 @@ export function CustomizeSection() {
         </div>
 
         <p className="faint" style={{ fontSize: 10, marginTop: 12, lineHeight: 1.4 }}>
-          {storefrontEnabled()
+          {storeOpen
             ? 'Studio pieces are unlocked here so you can preview the full look. Scripture is always free — the craft around it is the paid layer.'
             : 'Studio pieces are unlocked here so you can build the full look. Scripture is always free.'}
         </p>
@@ -331,8 +335,9 @@ export function CustomizeSection() {
               hidden from the grid until it's owned, so the only way to get them
               is the pack itself. Once owned they appear below as normal, each
               individually equippable. */}
-          {storefrontEnabled() &&
-            BUNDLES.filter((b) => !bundleExpired(b) && !packEntitled(b.id, ownedSkins)).map((b) => (
+          {BUNDLES.filter(
+            (b) => !bundleExpired(b) && !packEntitled(b.id, ownedSkins) && bundleVisible(b),
+          ).map((b) => (
               <button
                 key={b.id}
                 onClick={() => { juice.select(); setBundleTarget(b) }}
@@ -382,7 +387,13 @@ export function CustomizeSection() {
                     : `Shared ${Math.min(sharedCount, skin.shareGoal ?? 0)}/${skin.shareGoal ?? 0} days`
                   : skin.exclusive ? `🔒 ${skin.packName ?? 'Exclusive'}`
                     : skin.bundleOnly ? `🔒 ${skin.packName ?? 'Pack only'}`
-                      : `🔒 ${skin.price}`
+                      // Never skin.price here: that's the USD web/Stripe price
+                      // from data/avatar, and on native the charge is the store's
+                      // own localized amount (£/€/¥ + local tax). Printing "From
+                      // $100" next to a button that charges £89.99 misstates the
+                      // price, which is its own review risk on both stores.
+                      // displayPrice returns the catalog price on web unchanged.
+                      : `🔒 ${displayPrice(skin.id, skin.price) ?? ''}`
             return (
               <button
                 key={skin.id}
@@ -412,7 +423,7 @@ export function CustomizeSection() {
           })}
         </div>
         <p className="faint" style={{ fontSize: 10, marginTop: 10, lineHeight: 1.4 }}>
-          {storefrontEnabled() ? (
+          {storeOpen ? (
             <>
               Hero skins are <b>premium</b> — tap one to unlock it. Packs are sold whole: tap to swipe through
               everything inside before you decide. Earned skins (like Baldwin) are never for sale, and Scripture is always free.
@@ -444,10 +455,10 @@ export function CustomizeSection() {
                   // it after a failed lookup tells a real buyer they own
                   // nothing, which is the case App Review checks.
                   !r.ok
-                    ? 'Couldn’t check with the App Store just now — try again in a moment.'
+                    ? `Couldn’t check with ${storeName()} just now — try again in a moment.`
                     : r.count > 0
                       ? `Restored ${r.count} item${r.count === 1 ? '' : 's'} ✓`
-                      : 'Nothing to restore on this Apple ID.',
+                      : `Nothing to restore on this ${storeName()} account.`,
                 )
               }}
             >
@@ -504,20 +515,21 @@ export function CustomizeSection() {
             <p style={{ marginTop: 10, marginBottom: 12, fontFamily: 'var(--font-display)', fontSize: 24 }} className="gradient-text">
               {displayPrice(buyTarget.id, buyTarget.price)}
             </p>
-            {(isNativeApp() ? storefrontEnabled() : !!skinBuyUrl(buyTarget.id)) && storefrontEnabled() ? (
+            {(isNativeApp() ? skuPurchasable(buyTarget.id) : !!skinBuyUrl(buyTarget.id)) && storeOpen ? (
               <>
                 <Button variant="gold" full disabled={buying} onClick={async () => {
                   juice.coin()
                   const skin = buyTarget
                   if (isNativeApp()) {
-                    // Apple's purchase sheet — the app may not check out anywhere else.
+                    // The store's own purchase sheet (StoreKit / Play Billing) —
+                    // the app may not check out anywhere else.
                     setBuying(true)
                     const result = await buyIap(skin.id)
                     setBuying(false)
                     if (result === 'cancelled') return
                     setBuyTarget(null)
                     // Never close on a paid purchase without saying what
-                    // happened. 'unconfirmed' means Apple charged but the
+                    // happened. 'unconfirmed' means the store charged but the
                     // entitlement hasn't landed yet — the honest instruction is
                     // to wait and Restore, not silence.
                     if (result === 'failed') {
@@ -535,7 +547,7 @@ export function CustomizeSection() {
                   window.open(url, '_blank', 'noopener,noreferrer')
                   setBuyTarget(null)
                 }}>
-                  {buying ? 'Opening Apple…' : 'Get this skin'}
+                  {buying ? 'Opening checkout…' : 'Get this skin'}
                 </Button>
                 <p className="faint" style={{ fontSize: 10, marginTop: 8, lineHeight: 1.4 }}>
                   Opens secure checkout — your skin unlocks automatically right after. Thank you for supporting a solo builder! 🙏
@@ -582,10 +594,14 @@ export function CustomizeSection() {
         </div>
       )}
 
-      {/* A genuine note on why anything costs money at all. Web-only: in a
-          native build nothing costs anything, so an essay about paying for
-          skins would both confuse and (per lib/commerce) steer. */}
-      {storefrontEnabled() && (
+      {/* A genuine note on why anything costs money at all. Shown wherever a
+          storefront is open — which now includes native, where the whale is
+          sold through the platform's own billing. It's an explanation, not a
+          call to action: no price, no link, nothing pointing at an outside
+          checkout, so it doesn't steer (per lib/commerce). When there's no shop
+          it's hidden, because an essay about paying for skins you can't buy
+          would only confuse. */}
+      {storeOpen && (
       <>
       <button
         onClick={() => { juice.select(); setDevNoteOpen((o) => !o) }}
@@ -718,7 +734,12 @@ export function CustomizeSection() {
         <p className="faint" style={{ fontSize: 11, marginTop: 10, lineHeight: 1.4 }}>
           Each background unlocks with the card or relic it’s named after — earn them from goals and the Daily Chest.
           {lockedBgCount > 0 && ` ${lockedBgCount} more are waiting in your collection.`}
-          {storefrontEnabled() && ' The two Angel cards come with The Angel Pack — the pack is sold whole.'}
+          {/* Names a specific pack, so it needs the pack's own gate, not the
+              storefront's: on native the shop is open (the whale) while the
+              Angel Pack is not sold in-app, and naming a pack you can't sell is
+              the same violation as pricing one. */}
+          {skuPurchasable('pack_angels') && storeOpen &&
+            ' The two Angel cards come with The Angel Pack — the pack is sold whole.'}
         </p>
       </div>
       </Section>

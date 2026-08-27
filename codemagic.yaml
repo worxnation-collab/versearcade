@@ -47,8 +47,8 @@ workflows:
         # UNSET IS SAFE: with no key the app shows no storefront at all, exactly
         # as it does today, rather than a shop that can't take money.
         VITE_REVENUECAT_IOS_KEY: $REVENUECAT_IOS_KEY
-      node: 20
-      xcode: latest
+      node: 22          # Capacitor 8 requires Node 22+
+      xcode: latest    # Capacitor 8 requires Xcode 26+
       cocoapods: default
     scripts:
       - name: Install JS dependencies
@@ -248,8 +248,16 @@ workflows:
         VITE_SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpc3VwcGF1Y3B6emlnd3RxbWRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MTY1MjEsImV4cCI6MjEwMTQ5MjUyMX0.YP_lJkV8ZD7J-oAqwkhh-6gQ0z1Q7pFR4Nql1NdhSa0"
         VITE_AUTH_REDIRECT_URL: "https://versearcade.org/auth/callback"
         VITE_DEFAULT_TRANSLATION: "BSB"
-      node: 20
-      java: 17
+        # RevenueCat's PUBLIC Android SDK key (goog_...), which drives Play
+        # Billing (src/lib/iap.ts). Add REVENUECAT_ANDROID_KEY to the "googleplay"
+        # variable group in Codemagic. Public by design — it only identifies the
+        # app; the secret key stays server-side in the iap-fulfill function.
+        # UNSET IS SAFE: with no key the app shows no storefront at all, which is
+        # exactly how the first Play build should ship (the whale product won't
+        # exist in Play Console yet). Nothing to reject, nothing to refund.
+        VITE_REVENUECAT_ANDROID_KEY: $REVENUECAT_ANDROID_KEY
+      node: 22          # Capacitor 8 requires Node 22+
+      java: 21          # Capacitor 8 compiles the Android project at Java 21
     scripts:
       - name: Install JS dependencies
         script: npm ci
@@ -257,12 +265,24 @@ workflows:
       - name: Build the web app (Vite -> dist/)
         script: npm run build
 
-      - name: Add Android platform if missing, then sync
+      - name: Sync the Android project
         script: |
-          if [ ! -d "android" ]; then
-            npx cap add android
-          fi
+          set -e
+          # Unlike ios/, the android/ project IS committed, because it carries
+          # customizations `cap add android` does not know about: the OAuth deep
+          # link intent filter, the SCHEDULE_EXACT_ALARM removal, the release
+          # signing hook, and versionName read from package.json. So we never
+          # regenerate it — if it's missing, that's a broken checkout, not
+          # something to paper over by generating a default project that would
+          # ship without any of the above.
+          [ -d "android" ] || { echo "FATAL: android/ is missing from the checkout"; exit 1; }
           npx cap sync android
+          # Assert the target SDK actually is what Play requires. Google rejects
+          # new apps and updates below API 36 from 2026-08-31 (API 35 before
+          # that), and it rejects them at UPLOAD — after a full signed build.
+          TARGET=$(grep -oE 'targetSdkVersion *= *[0-9]+' android/variables.gradle | grep -oE '[0-9]+')
+          echo "targetSdkVersion = $TARGET"
+          [ "$TARGET" -ge 36 ] || { echo "FATAL: targetSdkVersion $TARGET < 36; Play will reject this AAB"; exit 1; }
 
       - name: Generate app icons + splash from assets/
         script: |
@@ -274,14 +294,32 @@ workflows:
 
       - name: Build signed release AAB
         script: |
-          cd android
-          # BUILD_NUMBER (monotonic) feeds versionCode via build.gradle. Play rejects
-          # a versionCode that isn't strictly greater than any prior upload.
+          set -e
+          # android/app/build.gradle only wires the release signingConfig when
+          # CM_KEYSTORE_PATH is present, so a mismatched keystore reference name
+          # doesn't fail the build — it produces an UNSIGNED aab that Play refuses
+          # at upload, which is the expensive way to find out. Check it up front.
+          if [ -z "$CM_KEYSTORE_PATH" ]; then
+            echo "FATAL: CM_KEYSTORE_PATH is unset — the AAB would build unsigned."
+            echo "The android_signing: reference in this workflow must match the"
+            echo "keystore name in Codemagic > Team settings > Code signing identities."
+            exit 1
+          fi
+          # versionName comes from package.json (read directly by build.gradle);
+          # versionCode comes from BUILD_NUMBER, which Codemagic keeps monotonic.
+          # Play rejects a versionCode that isn't strictly greater than any prior
+          # upload.
+          echo "versionName will be $(node -p "require('$CM_BUILD_DIR/package.json').version")"
           echo "versionCode will be BUILD_NUMBER=$BUILD_NUMBER"
+          cd android
           ./gradlew bundleRelease
     artifacts:
       - android/app/build/outputs/bundle/release/*.aab
-      - android/app/build/outputs/**/mapping.txt
+      # No mapping.txt here on purpose: minifyEnabled is false in
+      # android/app/build.gradle, so R8 produces no mapping to upload. If code
+      # shrinking is ever turned on, add the mapping artifact back at the same
+      # time — a shrunk build with no symbol map makes every Play crash report
+      # unreadable.
     publishing:
       email:
         recipients:

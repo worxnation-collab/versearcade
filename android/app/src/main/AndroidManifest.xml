@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <application
         android:allowBackup="true"
@@ -51,7 +52,22 @@
 
     <!-- Church tab: a one-shot coarse fix so we can look up churches near the
          player. Never stored, never tracked in the background — fine location
-         is declared only because some devices report nothing without it. -->
+         is declared only because some devices report nothing without it.
+         Foreground only: ACCESS_BACKGROUND_LOCATION is deliberately absent, and
+         it is the one that would drag Play's sensitive-permission declaration
+         form in. Both of these still have to be disclosed in Data safety. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+    <!-- @capacitor/local-notifications merges SCHEDULE_EXACT_ALARM into the
+         manifest for every app that uses it. We don't want it: Play asks you to
+         justify exact alarms, Android 14 makes the grant revocable, and a daily
+         verse nudge does not need to-the-minute delivery. The plugin already
+         degrades correctly — LocalNotificationManager checks
+         canScheduleExactAlarms() and falls back to setAndAllowWhileIdle(), so
+         reminders still fire, just not to the second. Removing it here keeps the
+         permission off the Play listing entirely. -->
+    <uses-permission
+        android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        tools:node="remove" />
 </manifest>

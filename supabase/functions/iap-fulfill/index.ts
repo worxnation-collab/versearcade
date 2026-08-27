@@ -40,20 +40,32 @@ const CORS = {
 }
 
 /**
- * Apple product id → our sku vocabulary.
+ * Store product id → our sku vocabulary, for BOTH stores.
  *
- * KEEP IN SYNC with APPLE_PRODUCT_IDS in src/lib/iap.ts. This map is also the
- * allowlist: a product id that isn't here grants nothing, so an id invented by
- * a caller (or added in App Store Connect but not here) is simply ignored.
- * What each sku is WORTH is not decided here — pack_skins() in SQL stays the
- * single authority for that, exactly as the Stripe path uses it.
+ * RevenueCat reports whatever the subscriber owns without telling us to care
+ * which store it came from, so Apple's reverse-DNS ids and Play's short ids sit
+ * in one map. This is also the allowlist: a product id that isn't here grants
+ * nothing, so an id invented by a caller (or created in a store console but not
+ * added here) is simply ignored. What each sku is WORTH is not decided here —
+ * pack_skins() in SQL stays the single authority for that, exactly as the Stripe
+ * path uses it.
+ *
+ * THIS MAP IS WIDER THAN WHAT THE APP SELLS, ON PURPOSE. src/lib/iap.ts lists
+ * only the whale, because that's the one product the native builds put up for
+ * sale. This map is about HONORING purchases, not making them: the four Apple
+ * ids below were sellable earlier, and someone who bought the Angel Pack then
+ * must keep it forever. Deleting a line here revokes a real entitlement. Add to
+ * this map when a store gains a product; never subtract.
  */
 const SKU_BY_PRODUCT_ID: Record<string, string> = {
+  // Apple (App Store Connect ids are global across Apple, hence reverse-DNS).
   'com.versearcade.app.pack_angels': 'pack_angels',
   'com.versearcade.app.skin_moses': 'moses',
   'com.versearcade.app.skin_esther': 'esther',
   'com.versearcade.app.skin_elijah': 'elijah',
   'com.versearcade.app.patron_founding': 'whale',
+  // Google Play (ids are already scoped to the package name, so they're short).
+  'patron_founding': 'whale',
 }
 
 const json = (body: unknown, status = 200) =>

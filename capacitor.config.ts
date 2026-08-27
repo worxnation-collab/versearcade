@@ -17,13 +17,22 @@ const config: CapacitorConfig = {
     backgroundColor: '#0b0720',
   },
   plugins: {
+    // Android 15 (targetSdk 35+) forces edge-to-edge, and Capacitor 8's SystemBars
+    // plugin is what draws the system bars and feeds the real WindowInsets to CSS
+    // as --safe-area-inset-* (consumed by --safe-top/--safe-bottom in index.css).
+    //
+    // style must be pinned. The default is 'DEFAULT', which follows the DEVICE's
+    // light/dark setting — so on a phone in light mode Android picks dark status
+    // bar icons and paints them on this app's #0b0720 background, where they're
+    // invisible. Verse Arcade is dark in every theme, so the bars are always
+    // 'DARK' (which means dark background ⇒ light icons).
+    SystemBars: {
+      style: 'DARK',
+    },
     SplashScreen: {
       launchShowDuration: 900,
       backgroundColor: '#0b0720',
       showSpinner: false,
-    },
-    PushNotifications: {
-      presentationOptions: ['badge', 'sound', 'alert'],
     },
     Keyboard: {
       resize: 'native',

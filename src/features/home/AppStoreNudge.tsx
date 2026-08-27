@@ -4,7 +4,7 @@ import { useAuth } from '@/store/auth'
 import { useSettings } from '@/store/settings'
 import { useJuice } from '@/juice/useJuice'
 import { AppleGlyph } from '@/components/AppStoreBadge'
-import { appStoreAsk, openAppStore } from '@/lib/appStore'
+import { appStoreAsk, isAppleStoreTarget, openAppStore, storeName } from '@/lib/appStore'
 
 // How long a ✕ buys you before we'd mention it again.
 const SNOOZE_MS = 14 * 24 * 60 * 60 * 1000
@@ -19,9 +19,13 @@ const APPEAR_DELAY_MS = 2600
  * The low-key bubble that floats in over the home screen once a player is a few
  * drops deep. Two shapes, decided by where they're standing:
  *
- *   • in the iOS app  → "leave a review" — the single highest-leverage thing a
+ *   • in a native app → "leave a review" — the single highest-leverage thing a
  *                       happy player can do for a project this size.
- *   • iOS on the web  → "get the app".
+ *   • on the web      → "get the app", on the store for their device.
+ *
+ * Every mention of the store goes through storeName(), because both shapes are
+ * rendered by the Android build too — hardcoding "App Store" here is how a Play
+ * user gets asked for an App Store review.
  *
  * Never a modal, never blocks play, one tap to dismiss, and silent for two weeks
  * after that. Tapping through retires it for good.
@@ -130,16 +134,22 @@ export function AppStoreNudge() {
                   color: '#fff',
                 }}
               >
-                {review ? <span style={{ fontSize: 20 }}>⭐</span> : <AppleGlyph size={20} />}
+                {review ? (
+                  <span style={{ fontSize: 20 }}>⭐</span>
+                ) : isAppleStoreTarget() ? (
+                  <AppleGlyph size={20} />
+                ) : (
+                  <span style={{ fontSize: 18 }}>▶</span>
+                )}
               </span>
               <span style={{ flex: 1, minWidth: 0 }}>
                 <b style={{ display: 'block', fontFamily: 'var(--font-display)', fontSize: 15 }}>
-                  {review ? 'Enjoying Verse Arcade?' : 'Get the iPhone app'}
+                  {review ? 'Enjoying Verse Arcade?' : isAppleStoreTarget() ? 'Get the iPhone app' : 'Get the Android app'}
                 </b>
                 <span className="faint" style={{ display: 'block', fontSize: 12.5, lineHeight: 1.35 }}>
                   {review
-                    ? 'A quick App Store review helps new players find the daily drop.'
-                    : 'Free on the App Store — plus a nudge when the drop lands.'}
+                    ? `A quick ${storeName()} review helps new players find the daily drop.`
+                    : `Free on ${storeName()} — plus a nudge when the drop lands.`}
                 </span>
               </span>
               <span style={{ fontFamily: 'var(--font-display)', color: 'var(--gold)', fontSize: 18, flexShrink: 0 }}>

@@ -43,6 +43,47 @@ A store is empty after a reload, and a run can finish before anything called
 back silently erases everything else. This has already happened once; see the
 comment in `store/bookAccuracy.ts:record`.
 
+**This invariant is about the code, not about who we let in.** A guest no longer
+*reaches* most of these features (see the next section) — but every store still
+has both paths, and must. The gate is a route wrapper that can be deleted in one
+edit; a store that only works online can't be un-broken that cheaply.
+
+## What a guest gets: today's verse, and their own profile
+
+The front door sells the account, and everything past those two things asks for
+one. This is a product decision layered on top of the invariant above, not a
+replacement for it — so if a future session finds a "half-built" guest path
+behind a wall, the answer is that it's deliberate, and both halves stay.
+
+- **Open to a guest:** `/` (Landing), `/welcome`, `/auth`, `/play` and its run +
+  result, `/you`, and the two genuinely public pages (`/churches`, and a battle
+  invite at `/battle/:id`, which handles its own gate + signup resume).
+- **Behind the wall:** everything else — Battle, the keep, Study, the Bible, the
+  church, the Harvest Road, ranks, cards, buddies, reviews and past-day replays.
+
+`WALL` + `RequireAccount` in `App.tsx` is the whole list and the only gate;
+`components/AccountWall.tsx` draws it. Screens that already had their own guest
+branch (`BattleHub`, `ChurchScreen`, `LeaderboardScreen`, `InventorySection`)
+keep it untouched, so lifting a wall restores the old behaviour by deleting one
+wrapper rather than by rewriting a screen.
+
+Two things about it that are load-bearing:
+
+- **It only bites when an account is obtainable.** The condition is
+  `isSupabaseConfigured && mode === 'local'` (`useAccountLocked()`), so a keyless
+  LOCAL build — `npm run dev` with no `.env.local`, the documented way to work on
+  this app — is never walled. Gating on `mode === 'local'` alone would hand a
+  developer five padlocked tabs and no backend to sign up to. Landing flips for
+  the same reason: with no keys it leads with guest play again.
+- **The locked tabs stay visible, and tapping one is not a dead end.** A padlock
+  in the nav, a wall that says what's inside and offers the account — that's the
+  pitch. Hiding the tabs would make the app look smaller than it is, and this is
+  still the app with no losers in it: the wall never scolds anyone for playing as
+  a guest, and it says plainly that the streak and character come with them.
+
+Every "create an account" call to action goes to `/auth?mode=signup`, which opens
+the sign-up form rather than "Welcome back" with a password field.
+
 ## Two checkouts, never the wrong one
 
 The web app sells cosmetic packs through Stripe Payment Links. The App Store /

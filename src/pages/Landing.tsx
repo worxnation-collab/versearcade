@@ -5,10 +5,22 @@ import { Page } from '@/components/Page'
 import { AppStoreBadge } from '@/components/AppStoreBadge'
 import { useAuth } from '@/store/auth'
 import { appStoreAsk } from '@/lib/appStore'
+import { isSupabaseConfigured } from '@/lib/config'
 import { useEffect } from 'react'
 
 // Marketing / hero landing. On web this is the front door; inside the iOS app a
 // returning user with a profile is bounced straight to /play.
+//
+// THE HEADLINE IS THE ACCOUNT. A guest can play today's verse and keep their own
+// profile; battles, the keep, Study, the Bible and the church all ask for a free
+// account first (see the WALL table in App.tsx). So the front door leads with
+// the thing that opens the game, and the guest path stays as a quiet third
+// option rather than the gold button — someone who taps it should be choosing
+// "not yet", not being handed the smaller game by default.
+//
+// The one exception is a keyless LOCAL build, where there is no backend to sign
+// up to at all. There the guest path leads again, because the alternative is a
+// front door whose main button can't work.
 export default function Landing() {
   const navigate = useNavigate()
   const profile = useAuth((s) => s.profile)
@@ -83,6 +95,17 @@ export default function Landing() {
             No shame, no pop quiz energy. Miss one? You still learn something
             surprising. It’s the Bible, but it’s a <i>game</i>.
           </p>
+
+          {/* The honest version of what an account is: free, and it's the whole
+              game rather than a nag about syncing. */}
+          {isSupabaseConfigured && (
+            <p className="center" style={{ fontSize: 13.5, maxWidth: 340, marginInline: 'auto', lineHeight: 1.5 }}>
+              <b style={{ color: 'var(--gold)' }}>Free account</b>
+              <span className="dim">
+                {' '}opens battles, your keep, Study, your own Bible and playing for your church.
+              </span>
+            </p>
+          )}
         </div>
 
         <div style={{ display: 'grid', gap: 12, paddingBottom: 'calc(var(--safe-bottom) + 20px)' }}>
@@ -94,12 +117,33 @@ export default function Landing() {
               </p>
             </>
           )}
-          <Button variant="gold" full onClick={() => navigate('/welcome')}>
-            Play today’s verse →
-          </Button>
-          <Button variant="ghost" full onClick={() => navigate('/auth')}>
-            I already have an account
-          </Button>
+          {isSupabaseConfigured ? (
+            <>
+              <Button variant="gold" full onClick={() => navigate('/auth?mode=signup')}>
+                Create a free account →
+              </Button>
+              <Button variant="ghost" full onClick={() => navigate('/auth')}>
+                I already have an account
+              </Button>
+              <p className="faint center" style={{ fontSize: 13, margin: '-2px 0 0' }}>
+                <span
+                  style={{ textDecoration: 'underline', cursor: 'pointer' }}
+                  onClick={() => navigate('/welcome')}
+                >
+                  or just play today’s verse
+                </span>
+              </p>
+            </>
+          ) : (
+            <>
+              <Button variant="gold" full onClick={() => navigate('/welcome')}>
+                Play today’s verse →
+              </Button>
+              <Button variant="ghost" full onClick={() => navigate('/auth')}>
+                I already have an account
+              </Button>
+            </>
+          )}
           {!iosFirst && !inApp && (
             <div style={{ display: 'grid', gap: 8, justifyItems: 'center', marginTop: 2 }}>
               <p className="faint center" style={{ fontSize: 12.5, margin: 0 }}>

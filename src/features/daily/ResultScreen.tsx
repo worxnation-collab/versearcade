@@ -8,6 +8,7 @@ import { CountUp } from '@/components/CountUp'
 import { StreakFlame } from '@/components/StreakFlame'
 import { useGame } from '@/store/game'
 import { useAuth } from '@/store/auth'
+import { useAccountLocked } from '@/components/AccountWall'
 import { useSeason } from '@/store/season'
 import { useJuice } from '@/juice/useJuice'
 import { buildShareText, shareResult, earnedCards, inviteUrl } from './shareCard'
@@ -24,6 +25,10 @@ export default function ResultScreen() {
   const profile = useAuth((s) => s.profile)!
   const recordShare = useAuth((s) => s.recordShare)
   const isGuest = useAuth((s) => s.mode) === 'local'
+  // Guest AND an account is actually available. This is the app's one reliably
+  // happy screen, so it's where the offer belongs — right after the run they
+  // just finished, naming what's on the other side of it.
+  const locked = useAccountLocked()
   const [shareState, setShareState] = useState<string | null>(null)
   const [signInErr, setSignInErr] = useState<string | null>(null)
   const [readerOpen, setReaderOpen] = useState(false)
@@ -225,19 +230,36 @@ export default function ResultScreen() {
                 : 'when 5 friends join with it, the carried-cross look unlocks.'}
             </p>
           )}
-          <Button variant="secondary" full onClick={() => navigate('/battle/new')}>⚔️ Challenge a buddy</Button>
-
           {/* The drop is one run a day and then it's over, which is most of why
               27 of 68 players have exactly one day on record: they didn't reject
               the app, they ran out of it. Study has no cap and is already the
               most-used thing after the drop, so it — not "Back home" — is the
-              answer to "that was fun, now what". */}
-          <Button variant="secondary" full onClick={() => navigate('/study')}>
-            📚 Keep playing in Study
-          </Button>
-          <p className="faint" style={{ fontSize: 12, marginTop: -2 }}>
-            That’s today’s drop. Study is unlimited and never ranks you.
-          </p>
+              answer to "that was fun, now what".
+
+              For a guest that answer is behind the account wall, so the ask goes
+              here instead of two buttons that would open a padlock. Same
+              sentence either way: today's drop is over, here's what isn't. */}
+          {locked ? (
+            <>
+              <Button variant="gold" full onClick={() => navigate('/auth?mode=signup')}>
+                ✨ Create a free account
+              </Button>
+              <p className="faint" style={{ fontSize: 12, marginTop: -2, lineHeight: 1.5 }}>
+                That’s today’s drop. An account opens Study (unlimited, never ranks you),
+                battles, your keep and your own Bible — and keeps this streak safe.
+              </p>
+            </>
+          ) : (
+            <>
+              <Button variant="secondary" full onClick={() => navigate('/battle/new')}>⚔️ Challenge a buddy</Button>
+              <Button variant="secondary" full onClick={() => navigate('/study')}>
+                📚 Keep playing in Study
+              </Button>
+              <p className="faint" style={{ fontSize: 12, marginTop: -2 }}>
+                That’s today’s drop. Study is unlimited and never ranks you.
+              </p>
+            </>
+          )}
 
           <Button variant="ghost" full onClick={() => navigate('/play')}>Back home</Button>
         </div>

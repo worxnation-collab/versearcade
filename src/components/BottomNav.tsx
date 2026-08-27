@@ -2,16 +2,23 @@ import { NavLink } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useJuice } from '@/juice/useJuice'
 import { useBuddies } from '@/store/buddies'
+import { useAccountLocked } from '@/components/AccountWall'
 
 // Five tabs, one per thing you actually come here to do. Ranks folded into
 // Play; Buddies and Cards folded into You — each still a full screen at its own
 // URL, just no longer competing for a slot down here.
+//
+// `guest: false` means the tab shows an account wall to a guest (App.tsx's WALL
+// table is the authority; this flag only decides whether the little padlock is
+// drawn). The tabs stay VISIBLE and tappable for guests on purpose — a locked
+// tab you can look into is the pitch, and hiding half the nav would make the
+// app look smaller than it is.
 const tabs = [
-  { to: '/play', label: 'Play', icon: '🎮' },
-  { to: '/battle', label: 'Battle', icon: '⚔️' },
-  { to: '/study', label: 'Study', icon: '📚' },
-  { to: '/church', label: 'Church', icon: '⛪' },
-  { to: '/you', label: 'You', icon: '⭐' },
+  { to: '/play', label: 'Play', icon: '🎮', guest: true },
+  { to: '/battle', label: 'Battle', icon: '⚔️', guest: false },
+  { to: '/study', label: 'Study', icon: '📚', guest: false },
+  { to: '/church', label: 'Church', icon: '⛪', guest: false },
+  { to: '/you', label: 'You', icon: '⭐', guest: true },
 ]
 
 // A pending buddy request lives two taps deep on the You tab, so nothing out
@@ -37,11 +44,32 @@ function NavDot() {
   )
 }
 
+// A padlock, same corner as the buddy dot. Quiet on purpose: it marks what an
+// account opens, it doesn't scold anyone for not having one.
+function NavLock() {
+  return (
+    <span
+      aria-hidden
+      style={{
+        position: 'absolute',
+        top: 2,
+        right: 2,
+        fontSize: 9,
+        lineHeight: 1,
+        opacity: 0.85,
+      }}
+    >
+      🔒
+    </span>
+  )
+}
+
 // Native-feeling tab bar pinned above the home indicator. Springy icon pop on
 // the active tab. Tapping fires a light select sound/haptic.
 export function BottomNav() {
   const juice = useJuice()
   const buddyRequests = useBuddies((s) => s.requests.length)
+  const locked = useAccountLocked()
   return (
     <nav
       style={{
@@ -103,6 +131,7 @@ export function BottomNav() {
                 <span style={{ fontSize: 20 }}>{t.icon}</span>
                 <span style={{ fontSize: 10, fontWeight: 800, whiteSpace: 'nowrap' }}>{t.label}</span>
                 {t.to === '/you' && buddyRequests > 0 && <NavDot />}
+                {locked && !t.guest && <NavLock />}
               </motion.div>
             )}
           </NavLink>

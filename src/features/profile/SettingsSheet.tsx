@@ -6,6 +6,7 @@ import { useJuice } from '@/juice/useJuice'
 import { READING_TRANSLATIONS } from '@/lib/config'
 import { pushSupported, pushPermission, isPushSubscribed, enablePush, disablePush } from '@/lib/push'
 import { useReminders } from '@/store/reminders'
+import { useUnlocks } from '@/store/unlocks'
 import { InstallRow } from '@/features/home/InstallPrompt'
 import { AppStoreRow } from '@/features/home/AppStoreNudge'
 
@@ -54,7 +55,14 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           ? 'Notifications are turned off for Verse Arcade in iOS Settings — turn them back on there, then flip this on.'
           : 'Could not turn on reminders.',
       )
-    } else if (on && ok) juice.coin()
+    } else if (on && ok) {
+      juice.coin()
+      // Switching a reminder on is one of the unlock conditions (Eden). The
+      // store can't observe this by itself — the reminder prefs are device
+      // state — so tell it here, at the choke point, and the celebration
+      // lands on the same tap.
+      void useUnlocks.getState().refreshNotifications()
+    }
   }
 
   const supportsPush = pushSupported()
@@ -75,13 +83,20 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
       if (pushOn) {
         await disablePush()
         setPushOn(false)
+        // Nothing to take back — Eden latched into the entitlement set the
+        // moment it was earned (see store/unlocks). This just keeps the
+        // context honest for anything still deriving from it.
+        void useUnlocks.getState().refreshNotifications()
       } else {
         const ok = await enablePush()
         setPushOn(ok)
         if (!ok) setPushErr(pushPermission() === 'denied'
           ? 'Notifications are blocked in your browser settings.'
           : 'Could not turn on notifications.')
-        else juice.coin()
+        else {
+          juice.coin()
+          void useUnlocks.getState().refreshNotifications() // see toggleReminder
+        }
       }
     } catch {
       setPushErr('Something went wrong. Try again.')

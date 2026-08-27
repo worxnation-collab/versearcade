@@ -15,7 +15,7 @@
 
 import type { Rarity } from '@/types'
 import { collectibleByKey, rarityColor } from './collectibles'
-import { packPreviewable } from './avatar'
+import { packPreviewable, type UnlockContext } from './avatar'
 import type { Palette, Scene } from './cardArt'
 
 export interface CardBgDef {
@@ -156,11 +156,14 @@ export const cardBgAccentColor = (key: string): string =>
 export function cardBgUnlocked(
   key: string,
   owned: string[] | Set<string>,
-  ctx?: { ownedSkins?: string[]; admin?: boolean },
+  ctx?: UnlockContext,
 ): boolean {
   if (key === DEFAULT_CARD_BG) return true
   const def = cardBgByKey(key)
-  if (def.pack) return packPreviewable(def.pack, ctx?.ownedSkins, ctx?.admin)
+  // A pack card follows its pack — including the moment the pack's requirement
+  // is met but the entitlement latch hasn't been written yet, so the cards
+  // never lag a beat behind the skins they came with.
+  if (def.pack) return packPreviewable(def.pack, ctx?.ownedSkins, ctx?.admin, ctx)
   return owned instanceof Set ? owned.has(key) : owned.includes(key)
 }
 

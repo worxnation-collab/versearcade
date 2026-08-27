@@ -172,28 +172,201 @@ export const baldwinProgress = (days?: string[]): { count: number; goal: number;
 }
 
 // ── Full-look skins ───────────────────────────────────────────────────────────
-// Earned skins (Baldwin) gate on an achievement; paid skins on an entitlement
-// (ownedSkins), sold as themed packs. Render lives in Character; a skin overrides
-// the base character + armor + items.
+// A skin is a whole look — it overrides the base character, armor and items
+// (render lives in Character). All but one are EARNED by playing; the Founding
+// Patron whale is the only thing in this app that costs money.
+//
+// How a skin is come by is ONE field — `requirement` — rather than a `source`
+// flag plus four optional goal numbers, because every surface (the grid, the
+// celebration, the collection wall) has to say the same sentence about it and
+// they used to each branch their own way.
+
+export type SkinRequirement =
+  | { kind: 'share'; goal: number } // distinct days the daily verse was shared
+  | { kind: 'referral'; goal: number } // signups with this account's code
+  | { kind: 'streak'; goal: number } // LONGEST streak, so a miss never strips it
+  | { kind: 'level'; goal: number }
+  | { kind: 'plays'; goal: number } // lifetime daily drops played
+  | { kind: 'church' } // has joined a church (profiles.church_id)
+  | { kind: 'notifications' } // daily reminders switched on, on this device
+  | { kind: 'code' } // free promo/live-drop code — never sold (redeem_code)
+  | { kind: 'purchase' } // the one paid thing left
+
+/**
+ * Everything a requirement can be measured against. Assembled once by
+ * store/unlocks and passed down, so no component has to know which store a
+ * given number comes from.
+ */
+export interface UnlockContext {
+  sharedDays?: string[]
+  referralCount?: number
+  longestStreak?: number
+  level?: number
+  totalPlays?: number
+  /** Joined a church. Online-only fact — a guest has no church to join. */
+  hasChurch?: boolean
+  /** Daily reminders on: local notifications on native, Web Push on the web. */
+  notificationsOn?: boolean
+  /** Entitlements: bought, redeemed, or latched (see `latching` below). */
+  ownedSkins?: string[]
+  admin?: boolean
+}
+
+export interface RequirementProgress {
+  /** Met by the live stats right now, before any latch is considered. */
+  met: boolean
+  /** Countable requirements only: where the player is, capped at the goal. */
+  count?: number
+  goal?: number
+  /** The whole ask, as a sentence: "Share on 10 different days". */
+  label: string
+  /** Where they are against it: "Shared 7/10 days". */
+  progressLabel: string
+  /**
+   * The ask in the past tense, for the moment it lands: "A 14-day streak".
+   * `label` reads as an instruction, which is wrong on a celebration card —
+   * telling someone to add the church they just added.
+   */
+  earnedLabel: string
+  /**
+   * True when the criterion can stop being true after it starts. Leaving a
+   * church or switching notifications off must never take a skin back — this
+   * app doesn't do that (a missed day doesn't strip a border either; see
+   * cosmetics.ts) — so these are written to owned_skins the moment they're met
+   * and are permanent from then on. store/unlocks does the latching.
+   *
+   * The rest are monotonic — a longest streak, a level, a lifetime play count
+   * and a distinct-share count only ever go up — so they need no latch and
+   * re-derive correctly on any device.
+   */
+  latching: boolean
+}
+
+const clamp = (n: number, goal: number): number => Math.max(0, Math.min(n, goal))
+
+export function requirementProgress(req: SkinRequirement, ctx: UnlockContext): RequirementProgress {
+  switch (req.kind) {
+    case 'share': {
+      const n = distinctSharedDays(ctx.sharedDays)
+      return {
+        met: n >= req.goal,
+        count: clamp(n, req.goal),
+        goal: req.goal,
+        label: `Share the daily verse on ${req.goal} different days`,
+        progressLabel: `Shared ${clamp(n, req.goal)}/${req.goal} days`,
+        earnedLabel: `Shared on ${req.goal} different days`,
+        latching: false,
+      }
+    }
+    case 'referral': {
+      const n = ctx.referralCount ?? 0
+      return {
+        met: n >= req.goal,
+        count: clamp(n, req.goal),
+        goal: req.goal,
+        label: `Invite ${req.goal} friends with your code`,
+        progressLabel: `${clamp(n, req.goal)}/${req.goal} friends joined`,
+        earnedLabel: `${req.goal} friends joined with your code`,
+        latching: false,
+      }
+    }
+    case 'streak': {
+      const n = ctx.longestStreak ?? 0
+      return {
+        met: n >= req.goal,
+        count: clamp(n, req.goal),
+        goal: req.goal,
+        label: `Reach a ${req.goal}-day streak`,
+        progressLabel: `${clamp(n, req.goal)}/${req.goal}-day streak`,
+        earnedLabel: `A ${req.goal}-day streak`,
+        latching: false,
+      }
+    }
+    case 'level': {
+      const n = ctx.level ?? 1
+      return {
+        met: n >= req.goal,
+        count: clamp(n, req.goal),
+        goal: req.goal,
+        label: `Reach level ${req.goal}`,
+        progressLabel: `Level ${clamp(n, req.goal)}/${req.goal}`,
+        earnedLabel: `Reached level ${req.goal}`,
+        latching: false,
+      }
+    }
+    case 'plays': {
+      const n = ctx.totalPlays ?? 0
+      return {
+        met: n >= req.goal,
+        count: clamp(n, req.goal),
+        goal: req.goal,
+        label: `Play ${req.goal} daily drops`,
+        progressLabel: `${clamp(n, req.goal)}/${req.goal} drops played`,
+        earnedLabel: `${req.goal} daily drops played`,
+        latching: false,
+      }
+    }
+    case 'church':
+      return {
+        met: !!ctx.hasChurch,
+        label: 'Add your church',
+        progressLabel: 'Add your church',
+        earnedLabel: 'For putting your church on the map',
+        latching: true,
+      }
+    case 'notifications':
+      return {
+        met: !!ctx.notificationsOn,
+        label: 'Turn on daily reminders',
+        progressLabel: 'Turn on daily reminders',
+        earnedLabel: 'For switching the daily nudge on',
+        latching: true,
+      }
+    case 'code':
+      return {
+        met: false,
+        label: 'Redeem a code',
+        progressLabel: 'Redeem a code',
+        earnedLabel: 'Redeemed with a code',
+        latching: false,
+      }
+    case 'purchase':
+      return {
+        met: false,
+        label: 'Founding Patron',
+        progressLabel: 'Founding Patron',
+        earnedLabel: 'Founding Patron — thank you',
+        latching: false,
+      }
+  }
+}
+
 export interface SkinDef {
   id: string
   name: string
-  source: 'earned' | 'paid'
+  requirement: SkinRequirement
   blurb: string
-  shareGoal?: number // earned: distinct shared days required
-  referralGoal?: number // earned: referred signups required
-  pack?: string // paid: pack sku
-  packName?: string // paid: display pack name
-  /** paid: sold ONLY as part of its pack — never listed or priced on its own. */
+  pack?: string // the set it belongs to (see BUNDLES)
+  packName?: string // display name of that set
+  /** Comes only with its pack — never listed or unlocked on its own. */
   bundleOnly?: boolean
-  price?: string // paid: display "from" price (pay-what-you-want; no real IAP yet)
-  patron?: boolean // paid: high-tier supporter reward
-  exclusive?: boolean // paid: unlocked by a promo code (redeem), not for sale
+  price?: string // purchase only: the web/Stripe display price, in USD
+  patron?: boolean // purchase only: high-tier supporter reward
   limitedUntil?: string // limited edition: ISO date after which it vanishes for good
 }
 
-// Limited-edition window — premium skins disappear from the shop forever after
-// this moment (~60 days from the launch drop). Owners keep what they unlocked.
+/** What kind of thing this is, for the surfaces that still care. */
+export type SkinSource = 'earned' | 'code' | 'paid'
+export const skinSource = (skin: SkinDef): SkinSource =>
+  skin.requirement.kind === 'purchase' ? 'paid' : skin.requirement.kind === 'code' ? 'code' : 'earned'
+
+// Limited-edition window — the paid patron skin disappears from the shop for
+// good after this moment. Owners keep what they unlocked.
+//
+// It is deliberately NOT on the earned skins any more. A window makes sense for
+// a drop you can buy today; it makes no sense at all for a goal someone is 40
+// days into working toward, and having Esther evaporate mid-streak would be the
+// exact shame this app is built to avoid.
 export const LIMITED_UNTIL = '2026-10-12T04:00:00Z'
 export const skinExpired = (skin: SkinDef, now: number = Date.now()): boolean =>
   skin.limitedUntil != null && now >= new Date(skin.limitedUntil).getTime()
@@ -202,91 +375,94 @@ export const FULL_SKINS: SkinDef[] = [
   {
     id: 'baldwin',
     name: 'King Baldwin',
-    source: 'earned',
-    shareGoal: 10,
-    blurb: 'The masked Leper King — earned by sharing on 10 different days.',
+    requirement: { kind: 'share', goal: 10 },
+    blurb: 'The masked Leper King — remembered for showing up, not for conquest.',
   },
   {
     id: 'david',
     name: 'David',
-    source: 'earned',
-    shareGoal: 25,
-    blurb: 'The giant-slayer — earned by sharing on 25 different days.',
+    requirement: { kind: 'share', goal: 25 },
+    blurb: 'The giant-slayer — a shepherd underneath it all.',
   },
   {
     id: 'cross',
     name: 'Take Up Your Cross',
-    source: 'earned',
-    referralGoal: 5,
-    blurb: 'Carry your cross (Luke 9:23) — earned when 5 friends join with your code.',
+    requirement: { kind: 'referral', goal: 5 },
+    blurb: 'Carry your cross — “daily,” as Luke 9:23 has it.',
   },
   {
     id: 'moses',
     name: 'Moses',
-    source: 'paid',
-    pack: 'exodus',
-    packName: 'Exodus Pack',
-    price: 'From $2.99',
-    limitedUntil: LIMITED_UNTIL,
+    requirement: { kind: 'plays', goal: 25 },
     blurb: 'The Lawgiver — staff in hand, the tablets at his side.',
   },
   {
     id: 'esther',
     name: 'Esther',
-    source: 'paid',
-    pack: 'palace',
-    packName: 'Palace Pack',
-    price: 'From $2.99',
-    limitedUntil: LIMITED_UNTIL,
+    requirement: { kind: 'streak', goal: 14 },
     blurb: 'The queen — “for such a time as this.”',
   },
   {
     id: 'elijah',
     name: 'Elijah',
-    source: 'paid',
-    pack: 'prophets',
-    packName: 'Prophets Pack',
-    price: 'From $2.99',
-    limitedUntil: LIMITED_UNTIL,
+    requirement: { kind: 'streak', goal: 60 },
     blurb: 'The prophet of fire — mantle, staff, and a raven.',
   },
   // ——— The Angel Pack ———
-  // A true bundle: these three are `bundleOnly`, so the shop lists the pack —
-  // never the pieces — and they can't be bought one at a time. See BUNDLES below.
+  // A set: these three are `bundleOnly`, so the grid shows the PACK — never the
+  // pieces — until it's earned, and they arrive together. See BUNDLES below.
   {
     id: 'gabriel',
     name: 'Gabriel',
-    source: 'paid',
+    requirement: { kind: 'church' },
     pack: 'angels',
     packName: 'The Angel Pack',
     bundleOnly: true,
-    limitedUntil: LIMITED_UNTIL,
     blurb: 'The announcing messenger — trumpet raised, “Do not be afraid.”',
   },
   {
     id: 'michael',
     name: 'Michael',
-    source: 'paid',
+    requirement: { kind: 'church' },
     pack: 'angels',
     packName: 'The Angel Pack',
     bundleOnly: true,
-    limitedUntil: LIMITED_UNTIL,
     blurb: 'The archangel — helm, shield, and a sword of flame.',
   },
   {
     id: 'seraph',
     name: 'Seraph',
-    source: 'paid',
+    requirement: { kind: 'church' },
     pack: 'angels',
     packName: 'The Angel Pack',
     bundleOnly: true,
-    limitedUntil: LIMITED_UNTIL,
     blurb: 'Six wings and a live coal — the burning one of Isaiah 6.',
+  },
+  {
+    id: 'eden',
+    name: 'Eden',
+    requirement: { kind: 'notifications' },
+    packName: 'Daily Reminder',
+    // No `limitedUntil`, and it never had one: this is a standing reward, not a
+    // drop. Retire it by changing its requirement, not by expiring it.
+    blurb: 'Eve reaching for the fruit — the garden at first light.',
+  },
+  {
+    id: 'shades',
+    name: 'Day One',
+    requirement: { kind: 'code' },
+    packName: 'Live Exclusive',
+    // The one skin with no goal behind it, on purpose: it's the surprise the
+    // admin panel can hand out at a live drop (promo_codes → redeem_code), and
+    // it's free. Keeping one code-only skin is what keeps that whole path — and
+    // the Redeem entry point in the customizer — alive and testable.
+    limitedUntil: LIMITED_UNTIL,
+    blurb: 'Shades on. The day-one look — redeem the code from the live drop.',
   },
   {
     id: 'whale',
     name: 'Jonah’s Whale',
-    source: 'paid',
+    requirement: { kind: 'purchase' },
     pack: 'patron',
     packName: 'Founding Patron',
     price: 'From $100',
@@ -294,48 +470,25 @@ export const FULL_SKINS: SkinDef[] = [
     limitedUntil: LIMITED_UNTIL,
     blurb: 'A whale of a thank-you — the founding-supporter skin.',
   },
-  {
-    id: 'eden',
-    name: 'Eden',
-    source: 'paid',
-    exclusive: true,
-    packName: 'Share Reward',
-    // No `limitedUntil` on purpose. The limited-edition skins vanish from the
-    // grid — for owners too — once their window closes (see skinExpired and the
-    // filter in CustomizeSection). This one is the share promo and has to keep
-    // working for as long as the code is being handed out, so it never expires;
-    // retire it by toggling its promo code off in the admin panel.
-    blurb: 'Eve reaching for the fruit — share Verse Arcade to unlock it. Redeem your code.',
-  },
-  {
-    id: 'shades',
-    name: 'Day One',
-    source: 'paid',
-    exclusive: true,
-    packName: 'Live Exclusive',
-    limitedUntil: LIMITED_UNTIL,
-    blurb: 'Shades on. The day-one look — redeem the code from the live drop.',
-  },
 ]
 
 export const skinById = (id?: string | null): SkinDef | undefined => FULL_SKINS.find((s) => s.id === id)
 
-// ── Bundles ───────────────────────────────────────────────────────────────────
-// A bundle is one shop listing, one price, one checkout — all or nothing. The
-// shop shows the BUNDLE tile (never its skins) until it's owned, and the buy
-// sheet swipes through everything inside so nobody pays without seeing all of it.
+// ── Packs ─────────────────────────────────────────────────────────────────────
+// A pack is one listing that unlocks several things at once — all or nothing.
+// The grid shows the PACK tile (never its skins) until it's earned, and the
+// sheet swipes through everything inside so the goal is worth wanting.
 //
-// The checkout sku is `pack_<id>`; the server expands that one sku into every
-// skin in `skins` on fulfillment (migration 0044), which is what makes owning
-// part of a bundle impossible. The card backgrounds come along with it — they
-// gate on the pack entitlement (see data/playerCards PACK), so they need no
-// separate grant.
+// The Angel Pack used to be a $5.99 bundle; it's now what you get for putting
+// your church on the map. The card backgrounds come along with it — they gate on
+// the pack entitlement (see data/playerCards PACK), so they need no separate
+// grant, and the server enforces the same rule in set_card_background.
 export interface BundleDef {
   id: string
-  /** Checkout sku the server fulfills. Always `pack_<id>`. */
+  /** Checkout sku, kept so past purchases still fulfil/restore. Always `pack_<id>`. */
   sku: string
   name: string
-  price: string
+  requirement: SkinRequirement
   blurb: string
   /** Skin ids included, in preview order. */
   skins: string[]
@@ -349,12 +502,11 @@ export const BUNDLES: BundleDef[] = [
     id: 'angels',
     sku: 'pack_angels',
     name: 'The Angel Pack',
-    price: '$5.99',
+    requirement: { kind: 'church' },
     blurb:
-      'Three messengers and the two skies they came out of. Sold as one pack — every piece, one price.',
+      'Three messengers and the two skies they came out of — the whole set, unlocked together.',
     skins: ['gabriel', 'michael', 'seraph'],
     cards: ['angels_ladder', 'angels_host'],
-    limitedUntil: LIMITED_UNTIL,
   },
 ]
 
@@ -364,7 +516,7 @@ export const bundleById = (id?: string | null): BundleDef | undefined =>
 export const bundleExpired = (b: BundleDef, now: number = Date.now()): boolean =>
   b.limitedUntil != null && now >= new Date(b.limitedUntil).getTime()
 
-/** How many things a bundle contains — the "5 items" on its tile. */
+/** How many things a pack contains — the "5 items" on its tile. */
 export const bundleItemCount = (b: BundleDef): number => b.skins.length + b.cards.length
 
 // The effective equipped skin id, honoring the legacy `regalia` field.
@@ -374,16 +526,19 @@ export function equippedSkinId(spec?: AvatarSpec | null): string | null {
 }
 
 /**
- * Does this account actually hold a paid PACK? True as soon as any skin in the
- * pack is entitled. Packs can bundle more than skins (the Angel Pack ships two
+ * Does this account actually hold a PACK? True as soon as any skin in the pack
+ * is entitled. Packs can bundle more than skins (the Angel Pack ships two
  * player-card backgrounds), so the pack — not the individual skin — is the unit
  * that gates those extras.
  *
- * No admin bypass on purpose: this is the *entitlement*, and it's what decides
- * whether the shop still lists a pack for sale. An operator who is shown the
- * storefront as though they'd bought everything can't see their own shop —
- * that's how the Angel Pack tile went missing for admins once already. Use
- * packPreviewable() for "may this account wear/equip it".
+ * This reads the ENTITLEMENT (owned_skins), not the live requirement, because
+ * the pack's requirement latches: joining a church writes the three skins, and
+ * from then on the entitlement is the truth even if the player later leaves.
+ *
+ * No admin bypass on purpose — an operator shown the shop as though they'd
+ * bought everything can't see their own shop (that's how the Angel Pack tile
+ * went missing for admins once already). Use packPreviewable() for "may this
+ * account wear/equip it".
  */
 export function packEntitled(pack: string, ownedSkins?: string[]): boolean {
   const owned = ownedSkins ?? []
@@ -391,23 +546,34 @@ export function packEntitled(pack: string, ownedSkins?: string[]): boolean {
 }
 
 /**
- * May this account use the pack's contents? Same as the entitlement, plus the
- * operator, who previews every paid cosmetic for free (see skinOwned).
+ * May this account use the pack's contents? The entitlement, plus a pack whose
+ * requirement is met right now (the latch may not have been written yet), plus
+ * the operator, who previews every cosmetic (see skinOwned).
  */
-export function packPreviewable(pack: string, ownedSkins?: string[], admin = false): boolean {
-  return admin || packEntitled(pack, ownedSkins)
+export function packPreviewable(pack: string, ownedSkins?: string[], admin = false, ctx?: UnlockContext): boolean {
+  if (admin) return true
+  if (packEntitled(pack, ownedSkins)) return true
+  if (!ctx) return false
+  return FULL_SKINS.some((s) => s.pack === pack && requirementProgress(s.requirement, ctx).met)
 }
 
-// Owned/equippable? Earned skins gate on their achievement; paid skins on the
-// entitlement set.
-export function skinOwned(
-  skin: SkinDef,
-  ctx: { sharedDays?: string[]; ownedSkins?: string[]; referralCount?: number; admin?: boolean },
-): boolean {
+/**
+ * Owned/equippable?
+ *
+ * An entitlement in owned_skins always wins — that's a purchase, a redeemed
+ * code, or a latched earned unlock, and none of those can be taken back. Past
+ * that, an earned skin is simply DERIVED from the player's stats, which is why
+ * hitting the goal unlocks it with nothing to claim and no server round-trip.
+ */
+export function skinOwned(skin: SkinDef, ctx: UnlockContext): boolean {
   if (ctx.admin) return true // operator account has every skin unlocked
-  if (skin.source === 'earned') {
-    if (skin.referralGoal != null) return (ctx.referralCount ?? 0) >= skin.referralGoal
-    return distinctSharedDays(ctx.sharedDays) >= (skin.shareGoal ?? Number.MAX_SAFE_INTEGER)
-  }
-  return (ctx.ownedSkins ?? []).includes(skin.id)
+  if ((ctx.ownedSkins ?? []).includes(skin.id)) return true
+  return requirementProgress(skin.requirement, ctx).met
+}
+
+/** The same question for a pack, so the grid can ask about the tile it draws. */
+export function bundleOwned(bundle: BundleDef, ctx: UnlockContext): boolean {
+  if (ctx.admin) return true
+  if (packEntitled(bundle.id, ctx.ownedSkins)) return true
+  return requirementProgress(bundle.requirement, ctx).met
 }

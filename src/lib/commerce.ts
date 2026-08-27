@@ -1,8 +1,16 @@
 // Where the app is allowed to sell things — one decision, made once.
 //
-// The web app at versearcade.org sells cosmetic packs through Stripe Payment
-// Links. The native App Store / Play build sells them through Apple in-app
-// purchase instead (App Store Review Guideline 3.1.1).
+// There is now exactly ONE thing for sale anywhere in Verse Arcade: the
+// Founding Patron whale. The cosmetic packs that used to be sold — Exodus,
+// Palace, Prophets, the Angel Pack — are earned by playing (see the
+// requirements in data/avatar), and the Day One skin is a free code. That
+// change makes most of this file quiet, and it deliberately did NOT delete it:
+// the whale still has to obey every rule below, and a future paid pack should
+// land here rather than growing a second storefront somewhere else.
+//
+// The web sells through a Stripe Payment Link; the native App Store / Play
+// build sells the same thing through Apple in-app purchase instead (App Store
+// Review Guideline 3.1.1).
 //
 // ON ANTI-STEERING, precisely: since the Epic v. Apple injunction, apps on the
 // UNITED STATES storefront may include buttons, external links and other calls
@@ -18,22 +26,19 @@
 // you can't charge, name a pack you can't sell, or point outside the app in a
 // storefront that forbids it. Hiding only the checkout button isn't enough — a
 // "$5.99" label and a "purchases are opening soon" line are still a storefront.
+// Until StoreKit actually has the product, native hides the marketplace
+// entirely — the state this file originally shipped, and still the fallback
+// whenever IAP isn't usable.
 //
-// So the same catalog is sold two ways: Stripe on the web, Apple in-app
-// purchase in the app (lib/iap + store/iap). Until StoreKit actually has the
-// products, native hides the marketplace entirely — the state this file
-// originally shipped, and still the fallback whenever IAP isn't usable.
-//
-// Everything else is identical to the web either way: earned skins, promo-code
-// skins, churches, battles, and every cosmetic the player already owns —
-// including packs they bought on the website, which stay wearable and visible
-// on their profile. Letting a player USE content they bought elsewhere is fine;
-// advertising a sale the app can't complete is not.
+// Everything else is identical either way: earned skins, code skins, churches,
+// battles, and every cosmetic the player already owns — including the packs
+// they bought on the website back when those were sold, which stay wearable and
+// visible on their profile.
 //
 // This is deliberately the ONLY place that decision lives, so the app and the
 // site can't drift apart by accident — every commerce surface asks these.
 
-import type { SkinDef } from '@/data/avatar'
+import { skinSource, type SkinDef } from '@/data/avatar'
 import { useIap } from '@/store/iap'
 import { isNativeApp } from './appStore'
 
@@ -71,29 +76,28 @@ export function skuPurchasable(sku: string): boolean {
 /**
  * Should this skin appear in the Skins grid at all?
  *
- * On web, everything shows. On native, a paid skin shows only once it's owned,
- * so the grid never advertises something with no way to get it. Earned skins
- * (shared days, referrals) and promo-code exclusives are free — no price, no
- * checkout — so they stay exactly as they are on the web.
+ * Only one thing in the catalog is sold now — the Founding Patron whale — so
+ * this question is almost always "yes". Earned skins and the free code skin
+ * carry no price and open no checkout, which makes them identical on the web
+ * and in the app; there is nothing for a storefront rule to hide.
+ *
+ * The paid one still follows the old rule: on native it is listed only if Apple
+ * will actually sell it, because a tile with no product behind it is a dead end
+ * and a review risk.
  */
 export function skinVisible(skin: SkinDef, owned: boolean): boolean {
-  // On native, a priced skin is listed only if Apple will actually sell it —
-  // a tile with no product behind it is a dead end and a review risk.
-  if (isNativeApp() && storefrontEnabled() && skin.source === 'paid' && !owned) {
-    return skin.bundleOnly ? false : skuPurchasable(skin.id)
-  }
-  if (storefrontEnabled()) return true
-  if (skin.source === 'earned') return true
-  if (skin.exclusive) return true // redeemed with a free code, never sold
-  return owned
+  if (skinSource(skin) !== 'paid') return true
+  if (owned) return true
+  if (isNativeApp()) return storefrontEnabled() && !skin.bundleOnly && skuPurchasable(skin.id)
+  return true
 }
 
 /**
- * Should this player-card background appear? Same rule as skins: a card that
- * only comes with a paid pack is hidden on native until the pack is owned,
- * rather than sitting locked behind a pack the app can't sell.
+ * Should this player-card background appear? Every pack that ships cards is
+ * earned now, so there is no longer a case where a card sits locked behind
+ * something the app can't sell. Kept as the one place that decision lives, so
+ * adding a paid pack later is a change here and nowhere else.
  */
-export function cardBgVisible(def: { pack?: string }, unlocked: boolean): boolean {
-  if (storefrontEnabled()) return true
-  return !def.pack || unlocked
+export function cardBgVisible(_def: { pack?: string }, _unlocked: boolean): boolean {
+  return true
 }

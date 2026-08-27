@@ -20,7 +20,6 @@ import {
   SKINS,
   ROBES,
   DEFAULT_AVATAR,
-  distinctSharedDays,
   accessOwned,
   accessLabel,
   ITEMS,
@@ -28,10 +27,13 @@ import {
   BUNDLES,
   bundleExpired,
   bundleItemCount,
+  bundleOwned,
   packEntitled,
   packPreviewable,
+  requirementProgress,
   skinExpired,
   skinOwned,
+  skinSource,
   equippedSkinId,
   type ArmorPieceDef,
   type BundleDef,
@@ -39,6 +41,7 @@ import {
   type SkinDef,
   type Swatch,
 } from '@/data/avatar'
+import { unlockContext, useUnlocks } from '@/store/unlocks'
 import { BundleSheet } from './BundleSheet'
 
 // "Customize" — streak-unlocked avatar borders + badges. Unlock eligibility is
@@ -93,7 +96,9 @@ export function CustomizeSection() {
       return
     }
     await refreshProfile()
-    juice.celebrate?.()
+    // No confetti here: refreshProfile lands the new entitlement, the unlock
+    // watcher notices it, and the celebration card fires once at the root
+    // (features/unlocks). Two celebrations for one skin is worse than one.
     setAvatarCharacter({ ...spec, skinId: redeemTarget.id, regalia: null })
     setRedeemTarget(null)
     setRedeemInput('')
@@ -121,9 +126,14 @@ export function CustomizeSection() {
   const equippedPieces = ARMOR.filter((a) => spec.armor[a.slot]).length
 
   const equippedBg = profile.cardBackground ?? DEFAULT_CARD_BG
+  // One context, asked by every lock on this screen: skins, packs and the pack
+  // cards. Built from the profile plus the one fact that isn't on it — whether
+  // this device's daily reminders are actually on (store/unlocks).
+  const notificationsOn = useUnlocks((s) => s.notificationsOn)
+  const ctx = unlockContext(profile, notificationsOn)
   // Pack cards gate on the skin entitlement rather than a collectible, so the
   // picker needs both sources of ownership.
-  const bgCtx = { ownedSkins: profile.ownedSkins ?? [], admin: profile.isAdmin }
+  const bgCtx = ctx
   // A card that only ships with a paid pack is hidden in a native build until
   // the pack is owned — the app has no way to sell it (see lib/commerce). The
   // "x/y unlocked" count follows the same list, so it never reads as short.
@@ -198,44 +208,38 @@ export function CustomizeSection() {
     flashSaved()
   }
 
-  const sharedCount = distinctSharedDays(profile.sharedDays)
   const grantSkin = useAuth((s) => s.grantSkin)
   const ownedSkins = profile.ownedSkins ?? []
   const equippedSkin = equippedSkinId(spec)
-  const isSkinOwned = (skin: SkinDef) =>
-    skinOwned(skin, { sharedDays: profile.sharedDays, ownedSkins, referralCount: profile.referralCount, admin: profile.isAdmin })
+  const isSkinOwned = (skin: SkinDef) => skinOwned(skin, ctx)
   const onSkinTap = (skin: SkinDef) => {
     const owned = isSkinOwned(skin)
-    if (!owned && skin.source === 'earned') {
-      if (skin.referralGoal != null) {
-        const rc = profile.referralCount ?? 0
-        setErr(`${skin.name}: ${Math.min(rc, skin.referralGoal)}/${skin.referralGoal} friends joined with your code`)
-      } else {
-        const goal = skin.shareGoal ?? 0
-        setErr(`${skin.name}: shared ${Math.min(sharedCount, goal)}/${goal} days`)
+    if (!owned) {
+      const source = skinSource(skin)
+      // Locked and earnable: say where they are, not just that it's locked.
+      if (source === 'earned') {
+        setErr(`${skin.name}: ${requirementProgress(skin.requirement, ctx).progressLabel}`)
+        return
       }
-      return
-    }
-    // Locked paid skin: the operator account (admin) previews it free; everyone
-    // else gets the purchase prompt instead of a free grant. A bundle-only skin
-    // has no purchase of its own — it always routes to its pack.
-    if (!owned && skin.source === 'paid' && !profile.isAdmin) {
-      juice.select()
-      // A free promo-code skin redeems in every build — no price, no checkout.
-      // Anything with a price simply doesn't exist in a native build, so there
-      // is no sheet to open (see lib/commerce). The tile is already hidden
-      // there; this is the second lock on the same door.
-      if (skin.exclusive) { setRedeemMsg(null); setRedeemTarget(skin) }
-      else if (storefrontEnabled()) {
-        const bundle = skin.bundleOnly ? BUNDLES.find((b) => b.id === skin.pack) : undefined
-        if (bundle) setBundleTarget(bundle)
-        else setBuyTarget(skin)
+      // The operator previews the two non-earned skins free; everyone else gets
+      // the code prompt or the purchase prompt.
+      if (!profile.isAdmin) {
+        juice.select()
+        // A free code skin redeems in every build — no price, no checkout.
+        // Anything with a price simply doesn't exist in a native build without
+        // StoreKit, so there is no sheet to open (see lib/commerce).
+        if (source === 'code') { setRedeemMsg(null); setRedeemTarget(skin) }
+        else if (storefrontEnabled()) {
+          const bundle = skin.bundleOnly ? BUNDLES.find((b) => b.id === skin.pack) : undefined
+          if (bundle) setBundleTarget(bundle)
+          else setBuyTarget(skin)
+        }
+        return
       }
-      return
     }
     setErr(null)
     juice.select()
-    if (!owned && skin.source === 'paid') grantSkin(skin.id) // admin preview
+    if (!owned) grantSkin(skin.id) // admin preview
     const willEquip = equippedSkin !== skin.id
     setAvatarCharacter({ ...spec, skinId: willEquip ? skin.id : null, regalia: null })
     flashSaved()
@@ -315,9 +319,7 @@ export function CustomizeSection() {
         </div>
 
         <p className="faint" style={{ fontSize: 10, marginTop: 12, lineHeight: 1.4 }}>
-          {storefrontEnabled()
-            ? 'Studio pieces are unlocked here so you can preview the full look. Scripture is always free — the craft around it is the paid layer.'
-            : 'Studio pieces are unlocked here so you can build the full look. Scripture is always free.'}
+          Studio pieces are unlocked here so you can build the full look. Scripture is always free.
         </p>
       </div>
       </Section>
@@ -326,12 +328,11 @@ export function CustomizeSection() {
       <Section title="Skins" defaultOpen right="full looks">
       <div className="card" style={{ marginBottom: 14 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          {/* Bundles first — a pack is one listing at one price. Its skins are
-              hidden from the grid until it's owned, so the only way to get them
-              is the pack itself. Once owned they appear below as normal, each
-              individually equippable. */}
-          {storefrontEnabled() &&
-            BUNDLES.filter((b) => !bundleExpired(b) && !packEntitled(b.id, ownedSkins)).map((b) => (
+          {/* Packs first — a pack arrives whole. Its skins are hidden from the
+              grid until it's earned, so the only way to get them is the pack
+              itself. Once owned they appear below as normal, each individually
+              equippable. */}
+          {BUNDLES.filter((b) => !bundleExpired(b) && !bundleOwned(b, ctx)).map((b) => (
               <button
                 key={b.id}
                 onClick={() => { juice.select(); setBundleTarget(b) }}
@@ -353,7 +354,9 @@ export function CustomizeSection() {
                 <span className="faint" style={{ fontSize: 11 }}>
                   {bundleItemCount(b)} items · {b.skins.length} skins + {b.cards.length} calling cards
                 </span>
-                <span style={{ ...pillStyle('studio') }}>{displayPrice(b.sku, b.price)} · tap to preview</span>
+                <span style={{ ...pillStyle('earned') }}>
+                  {requirementProgress(b.requirement, ctx).progressLabel} · tap to preview
+                </span>
                 {b.limitedUntil && <LimitedBadge until={b.limitedUntil} />}
               </button>
             ))}
@@ -361,27 +364,27 @@ export function CustomizeSection() {
             .filter((skin) => !skinExpired(skin))
             // A bundle-only skin is never its own listing — it shows up here
             // only once the pack that contains it is owned.
-            .filter((skin) => !skin.bundleOnly || packPreviewable(skin.pack ?? '', ownedSkins, profile.isAdmin))
-            // Native builds carry no storefront, so a priced skin only appears
-            // once it's owned — including packs bought on the website, which
-            // stay wearable here. See lib/commerce.
+            .filter((skin) => !skin.bundleOnly || packPreviewable(skin.pack ?? '', ownedSkins, profile.isAdmin, ctx))
+            // The one paid skin only appears where it can actually be sold —
+            // see lib/commerce. Everything else is earned and always listed.
             .filter((skin) => skinVisible(skin, isSkinOwned(skin)))
             .map((skin) => {
             const owned = isSkinOwned(skin)
             const equipped = equippedSkin === skin.id
             const preview = { ...spec, skinId: skin.id, regalia: null }
+            const source = skinSource(skin)
+            // Locked tiles say where you ARE, not just that you can't have it —
+            // "Shared 7/10 days" is a nudge; a padlock is a wall.
             const status =
               owned
                 ? equipped
                   ? '✓ Equipped'
                   : 'Tap to wear'
-                : skin.source === 'earned'
-                  ? skin.referralGoal != null
-                    ? `${Math.min(profile.referralCount ?? 0, skin.referralGoal)}/${skin.referralGoal} friends`
-                    : `Shared ${Math.min(sharedCount, skin.shareGoal ?? 0)}/${skin.shareGoal ?? 0} days`
-                  : skin.exclusive ? `🔒 ${skin.packName ?? 'Exclusive'}`
-                    : skin.bundleOnly ? `🔒 ${skin.packName ?? 'Pack only'}`
-                      : `🔒 ${skin.price}`
+                : source === 'earned'
+                  ? requirementProgress(skin.requirement, ctx).progressLabel
+                  : source === 'code'
+                    ? `🔒 ${skin.packName ?? 'Code'}`
+                    : `🔒 ${displayPrice(skin.id, skin.price) ?? skin.price ?? 'Patron'}`
             return (
               <button
                 key={skin.id}
@@ -404,24 +407,16 @@ export function CustomizeSection() {
                   )}
                 </div>
                 <span style={{ fontSize: 13, fontWeight: 800 }}>{skin.name}</span>
-                <span style={{ ...pillStyle(skin.source === 'paid' ? 'studio' : 'earned') }}>{status}</span>
+                <span style={{ ...pillStyle(source === 'earned' ? 'earned' : 'studio') }}>{status}</span>
                 {skin.limitedUntil && <LimitedBadge until={skin.limitedUntil} />}
               </button>
             )
           })}
         </div>
         <p className="faint" style={{ fontSize: 10, marginTop: 10, lineHeight: 1.4 }}>
-          {storefrontEnabled() ? (
-            <>
-              Hero skins are <b>premium</b> — tap one to unlock it. Packs are sold whole: tap to swipe through
-              everything inside before you decide. Earned skins (like Baldwin) are never for sale, and Scripture is always free.
-            </>
-          ) : (
-            <>
-              Skins are <b>earned</b> — share the daily verse and invite friends, and they’re yours to keep.
-              A missed day never takes one away, and Scripture is always free.
-            </>
-          )}
+          Skins are <b>earned</b> — keep a streak, share the daily verse, invite friends, add your church, switch
+          the daily nudge on. Each one says what it takes and how far along you are. Nothing here is ever taken
+          back: a missed day can't strip a skin, and Scripture is always free.
         </p>
         {/* Restore Purchases — REQUIRED by Apple for non-consumable in-app
             purchases (Guideline 3.1.1): a buyer who reinstalls, or signs in on a
@@ -483,8 +478,8 @@ export function CustomizeSection() {
           bundle={bundleTarget}
           spec={spec}
           emoji={profile.avatarEmoji}
-          username={profile.username}
-          owned={packEntitled(bundleTarget.id, ownedSkins)}
+          owned={bundleOwned(bundleTarget, ctx)}
+          progress={requirementProgress(bundleTarget.requirement, ctx)}
           onClose={() => setBundleTarget(null)}
         />
       )}
@@ -592,25 +587,26 @@ export function CustomizeSection() {
         style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10, marginBottom: devNoteOpen ? 0 : 14, cursor: 'pointer' }}
       >
         <span style={{ fontSize: 18 }}>💛</span>
-        <b style={{ flex: 1, fontSize: 13.5 }}>Why do skins cost anything?</b>
+        <b style={{ flex: 1, fontSize: 13.5 }}>Why are skins free?</b>
         <span style={{ color: 'var(--gold)', transform: devNoteOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>
       </button>
       {devNoteOpen && (
         <div className="card" style={{ marginTop: 8, marginBottom: 14, lineHeight: 1.6, fontSize: 14 }}>
           <p style={{ margin: 0 }}>
             Verse Arcade is built by <b>one person</b> — not a company, no investors. The whole app is
-            free: the daily verse, the games, streaks, groups, battles. That never changes, and the
+            free: the daily verse, the games, streaks, churches, battles. That never changes, and the
             Scripture is never behind a paywall.
           </p>
           <p style={{ margin: '12px 0 0' }}>
-            Skins are the one optional extra. I’m not a nonprofit, so this isn’t a donation — it’s
-            support. It covers the real monthly cost of keeping the app online, and gives me a little
-            room to keep building it instead of shelving it. You’re only ever paying for a cosmetic you
-            like.
+            The skins used to be the one thing you could buy. They aren’t any more — every one of them
+            is earned by turning up: a streak, a share, a friend, your church, the daily nudge. Each
+            tile says exactly what it takes and how far along you are, and nothing here is ever taken
+            back once you’ve got it.
           </p>
           <p style={{ margin: '12px 0 0', color: 'var(--ink)' }}>
-            If you grab one — thank you, genuinely. It keeps this going. If you don’t, that’s completely
-            okay: the app is yours to enjoy either way. 🙏
+            Keeping this online still costs real money each month, so the support button is there if
+            you ever feel like it — it buys you nothing, and that’s the point. If you don’t, that’s
+            completely okay: the app is yours to enjoy either way. 🙏
           </p>
         </div>
       )}

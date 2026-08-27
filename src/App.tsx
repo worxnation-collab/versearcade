@@ -36,6 +36,7 @@ import FocusPracticeScreen from './features/practice/FocusPracticeScreen'
 import { BattleResume } from './features/arena/BattleResume'
 import { BottomNav } from './components/BottomNav'
 import { PlayerCardProvider } from './components/PlayerCardModal'
+import { UnlockCelebration, UnlockWatcher } from './features/unlocks/UnlockCelebration'
 
 function RequireProfile({ children }: { children: JSX.Element }) {
   const { ready, profile } = useAuth()
@@ -104,6 +105,12 @@ export default function App() {
 
   return (
     <PlayerCardProvider>
+    {/* Unlocks are derived from the player's stats, so they can complete
+        anywhere — a share on the result screen, a church joined on the church
+        tab, a reminder switched on in settings. The watcher and the card live
+        at the root for that reason, rather than in any one screen. */}
+    <UnlockWatcher />
+    <UnlockCelebration />
     <BattleResume />
     <Routes>
         <Route path="/" element={<Landing />} />

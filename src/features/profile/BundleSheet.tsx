@@ -1,22 +1,22 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Avatar } from '@/components/Avatar'
-import { Button } from '@/components/Button'
 import { CardArt } from '@/data/cardArt'
 import { cardArtProps, cardBgByKey } from '@/data/playerCards'
-import { bundleItemCount, skinById, type BundleDef } from '@/data/avatar'
-import { bundleBuyUrl } from '@/lib/config'
-import { displayPrice, storefrontEnabled } from '@/lib/commerce'
-import { isNativeApp } from '@/lib/appStore'
-import { useIap } from '@/store/iap'
+import { bundleItemCount, skinById, type BundleDef, type RequirementProgress } from '@/data/avatar'
 import { useJuice } from '@/juice/useJuice'
 import type { AvatarSpec } from '@/types'
 
-// The buy sheet for a BUNDLE — one price, all or nothing. Everything inside is
-// swipeable before you pay: each skin worn by YOUR character (so you see the
-// look you'd actually get, not a stock figure) and each calling card painted
-// full-bleed. There is deliberately no per-item buy button; the pack is the
-// only thing for sale.
+// The sheet for a PACK — all or nothing, and now earned rather than bought.
+// Everything inside is swipeable before you've got it: each skin worn by YOUR
+// character (so you see the look you'd actually get, not a stock figure) and
+// each calling card painted full-bleed. Seeing the whole thing is the point —
+// a goal you can look at is worth more than a goal you can only read about.
+//
+// This sheet used to carry two checkouts (Stripe on web, Apple IAP in the app).
+// Both are gone with the price: the Angel Pack unlocks on adding your church.
+// If a paid pack ever returns, that machinery belongs here again — and in
+// lib/commerce, which still owns the decision.
 
 interface Slide {
   key: string
@@ -29,15 +29,16 @@ export function BundleSheet({
   bundle,
   spec,
   emoji,
-  username,
   owned,
+  progress,
   onClose,
 }: {
   bundle: BundleDef
   spec: AvatarSpec
   emoji: string
-  username: string
   owned: boolean
+  /** Where the player stands against the pack's requirement. */
+  progress: RequirementProgress
   onClose: () => void
 }) {
   const juice = useJuice()
@@ -61,46 +62,6 @@ export function BundleSheet({
     setI(clamped)
   }
 
-  const buyUrl = bundleBuyUrl(bundle.id)
-  // Two checkouts, one sheet: Stripe on the web, Apple in-app purchase in the
-  // app. If neither is usable the sheet shows no price and no way to pay — the
-  // pack tile is hidden in that state anyway (lib/commerce), so this is the
-  // second lock rather than the first.
-  const store = storefrontEnabled()
-  const native = isNativeApp()
-  const buyIap = useIap((s) => s.buy)
-  const [busy, setBusy] = useState(false)
-  const [note, setNote] = useState<string | null>(null)
-  // Apple's own localized price on native; the catalog price on web.
-  const price = displayPrice(bundle.sku, bundle.price)
-  const canBuy = !owned && store && !!price && (native || !!buyUrl)
-
-  const purchase = async () => {
-    juice.coin()
-    if (native) {
-      setBusy(true)
-      const result = await buyIap(bundle.sku)
-      setBusy(false)
-      if (result === 'cancelled') return
-      if (result === 'bought') { onClose(); return }
-      // Charged, or not charged — either way the sheet stays open and says so.
-      // Closing silently on a paid tap is how someone ends up thinking the pack
-      // simply vanished.
-      setNote(
-        result === 'failed'
-          ? 'That didn’t go through — you haven’t been charged.'
-          : 'Payment went through. The pack should appear in a moment — if it doesn’t, tap Restore purchases in Skins.',
-      )
-      return
-    }
-    // "<username>-<sku>" as Stripe's client_reference_id, so the webhook grants
-    // the whole pack to the right account.
-    const ref = encodeURIComponent(`${username}-${bundle.sku}`)
-    const url = buyUrl + (buyUrl.includes('?') ? '&' : '?') + 'client_reference_id=' + ref
-    window.open(url, '_blank', 'noopener,noreferrer')
-    onClose()
-  }
-
   return (
     <div
       onClick={onClose}
@@ -109,7 +70,7 @@ export function BundleSheet({
       <div className="card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 360, width: '100%', textAlign: 'center' }}>
         <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 22 }}>{bundle.name}</h3>
         <p className="faint" style={{ fontSize: 12, marginTop: 2 }}>
-          {bundleItemCount(bundle)} items · sold as one pack
+          {bundleItemCount(bundle)} items · unlocked together
         </p>
 
         {/* Swipeable preview of everything inside. */}
@@ -179,35 +140,19 @@ export function BundleSheet({
         <p style={{ fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>{bundle.blurb}</p>
 
         {owned ? (
-          <p style={{ marginTop: 12, fontWeight: 800, color: 'var(--good)' }}>✓ You own this pack</p>
+          <p style={{ marginTop: 12, fontWeight: 800, color: 'var(--good)' }}>✓ The whole pack is yours</p>
         ) : (
           <>
-            {price && (
-              <p style={{ marginTop: 10, marginBottom: 12, fontFamily: 'var(--font-display)', fontSize: 26 }} className="gradient-text">
-                {price}
-              </p>
-            )}
-            {canBuy ? (
-              <>
-                <Button variant="gold" full disabled={busy} onClick={purchase}>
-                  {busy ? 'Opening Apple…' : `Get the pack — ${price}`}
-                </Button>
-                <p className="faint" style={{ fontSize: 10, marginTop: 8, lineHeight: 1.4 }}>
-                  All {bundleItemCount(bundle)} items unlock together right after checkout. Thank you for supporting a solo builder! 🙏
-                </p>
-                {note && (
-                  <p style={{ color: 'var(--coral)', fontSize: 12, marginTop: 8, lineHeight: 1.45 }}>{note}</p>
-                )}
-              </>
-            ) : store ? (
-              <p className="faint" style={{ fontSize: 13, marginTop: 4, lineHeight: 1.5 }}>
-                Purchases are opening soon — check back shortly. 🙏
-              </p>
-            ) : null}
+            <p style={{ marginTop: 10, marginBottom: 4, fontFamily: 'var(--font-display)', fontSize: 22 }} className="gradient-text">
+              {progress.label}
+            </p>
+            <p className="faint" style={{ fontSize: 11, lineHeight: 1.45 }}>
+              All {bundleItemCount(bundle)} items unlock together, the moment you do. Nothing to buy.
+            </p>
           </>
         )}
         <button className="pill" style={{ marginTop: 12 }} onClick={onClose}>
-          {owned ? 'Close' : 'Maybe later'}
+          {owned ? 'Close' : 'Got it'}
         </button>
       </div>
     </div>

@@ -366,9 +366,11 @@ function Codes() {
     setCode('')
     load()
   }
-  // A code can tie to a single paid skin or to a whole bundle sku — never to one
-  // piece of a bundle, which would hand out a partial pack.
-  const paidSkins = FULL_SKINS.filter((s) => s.source === 'paid' && !s.bundleOnly)
+  // A code can tie to any single skin or to a whole pack sku — never to one
+  // piece of a pack, which would hand out a partial set. Every skin is listed,
+  // not just the sold ones: most are earned now, and handing someone Esther
+  // early is exactly what a code is for.
+  const codeableSkins = FULL_SKINS.filter((s) => !s.bundleOnly)
 
   return (
     <div>
@@ -381,7 +383,7 @@ function Codes() {
         <select value={skin} onChange={(e) => setSkin(e.target.value)}
           style={{ padding: '10px 8px', borderRadius: 10, background: 'var(--card-solid)', color: 'var(--ink)', border: '1px solid var(--stroke)' }}>
           {BUNDLES.map((b) => <option key={b.sku} value={b.sku}>{b.name} — whole pack ({b.sku})</option>)}
-          {paidSkins.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.id})</option>)}
+          {codeableSkins.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.id})</option>)}
         </select>
         <Button variant="gold" disabled={code.trim().length < 3} onClick={() => upsert(code, skin, true)}>Create / update code</Button>
         {msg && <p style={{ color: 'var(--good)', fontSize: 13 }}>{msg}</p>}

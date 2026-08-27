@@ -98,6 +98,11 @@ export interface Profile {
   /** Optional denomination "faction" key (see data/denominations). Shown only on
    *  the Battle ranks; battle wins auto-pool into the denomination's total. */
   denomination?: string | null
+  /** The church this account plays for, if any (profiles.church_id). Online
+   *  only — a church is a pooled, shared thing, so a guest never has one. Kept
+   *  on the profile rather than read from store/church so an unlock that gates
+   *  on it (the Angel Pack) doesn't need the church tab to have been opened. */
+  churchId?: string | null
   /** This account's shareable referral code. */
   referralCode?: string | null
   /** How many people signed up with this account's referral code. */

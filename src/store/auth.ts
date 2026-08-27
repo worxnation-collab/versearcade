@@ -40,6 +40,7 @@ interface DbProfileRow {
   founder?: boolean | null
   is_admin?: boolean | null
   denomination?: string | null
+  church_id?: string | null
   referral_code?: string | null
 }
 
@@ -71,6 +72,7 @@ function mapRow(r: DbProfileRow): Profile {
     founder: r.founder ?? false,
     isAdmin: r.is_admin ?? false,
     denomination: r.denomination ?? null,
+    churchId: r.church_id ?? null,
     referralCode: r.referral_code ?? null,
   }
 }
@@ -113,6 +115,7 @@ interface AuthState {
   recordShare: (dropDate: string) => void
   grantItem: (itemId: string) => void
   grantSkin: (skinId: string) => void
+  claimSkin: (skinId: string) => Promise<boolean>
   deleteAccount: () => Promise<void>
   signOut: () => Promise<void>
 }
@@ -670,6 +673,52 @@ export const useAuth = create<AuthState>((set, get) => ({
       .then(({ error }) => {
         if (error) set({ error: error.message })
       })
+  },
+
+  // Latch an EARNED skin into the entitlement set. Only requirements that can
+  // stop being true come through here — a church you might leave, a
+  // notification toggle you might flip off — because nothing in this app ever
+  // takes a cosmetic back. Monotonic goals (streak, level, plays, shares,
+  // referrals) need no latch: they re-derive correctly on any device, forever.
+  //
+  // Online this calls claim_earned_skin (0050) rather than writing owned_skins
+  // directly, because enforce_skin_entitlement still refuses client writes to
+  // that column — which is what keeps the paid whale, and the pack card
+  // backgrounds set_card_background gates on, unforgeable. The function
+  // re-checks the requirement server-side from the same profile row.
+  //
+  // Returns true only when this call is what added it, so the caller can
+  // celebrate exactly once.
+  async claimSkin(skinId) {
+    const cur = get().profile
+    if (!cur) return false
+    if ((cur.ownedSkins ?? []).includes(skinId)) return false
+
+    if (get().mode === 'local' || !supabase) {
+      // Merge the ARRAY onto what's on disk, not onto in-memory state: a skin
+      // can land before anything on this tab called init (deep link straight
+      // into a quiz), and writing back an empty set would erase the rest.
+      // Same scar as store/bookAccuracy.ts:record — see CLAUDE.md.
+      const disk = localdb.getProfile()
+      const merged = Array.from(new Set([...(disk?.ownedSkins ?? []), ...(cur.ownedSkins ?? []), skinId]))
+      const next: Profile = { ...cur, ownedSkins: merged }
+      localdb.saveProfile(next)
+      set({ profile: next })
+      return true
+    }
+
+    const { data, error } = await supabase.rpc('claim_earned_skin', { p_skin: skinId })
+    const res = data as { ok?: boolean; skins?: string[] } | null
+    if (error || !res?.ok) return false
+    const live = get().profile
+    if (!live) return false
+    set({
+      profile: {
+        ...live,
+        ownedSkins: res.skins ?? Array.from(new Set([...(live.ownedSkins ?? []), skinId])),
+      },
+    })
+    return true
   },
 
   async deleteAccount() {

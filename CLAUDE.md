@@ -43,13 +43,29 @@ A store is empty after a reload, and a run can finish before anything called
 back silently erases everything else. This has already happened once; see the
 comment in `store/bookAccuracy.ts:record`.
 
+## One thing is for sale; everything else is earned
+
+**The catalog stopped being a shop.** Every skin except the Founding Patron whale
+now unlocks by playing — a streak, a share count, referrals, adding your church,
+switching the daily nudge on (`SkinRequirement` in `data/avatar.ts` is the whole
+list). Day One stays a free live-drop code. The Exodus / Palace / Prophets /
+Angel Pack Stripe links are gone from `lib/config.ts` so nothing in the app can
+open a checkout for something free — **deactivating those Payment Links in Stripe
+and the matching products in App Store Connect is a by-hand step that the code
+can't do.** Their `APPLE_PRODUCT_IDS` entries stay on purpose: past buyers still
+need Restore to map those product ids back to skins.
+
+Anyone who paid keeps everything — `owned_skins` entitlements always win in
+`skinOwned()`, ahead of any requirement.
+
 ## Two checkouts, never the wrong one
 
-The web app sells cosmetic packs through Stripe Payment Links. The App Store /
-Play build sells the same packs through in-app purchase (Guideline 3.1.1)
-instead. Wherever a shop appears, it must not show a price it can't charge or
-name a pack it can't sell — hiding just the checkout button is not enough: a
-`$5.99` label or a "purchases are opening soon" line is still a storefront.
+That still leaves one paid item, and the rules below are unchanged for it (and
+for any paid pack added later). The web sells through a Stripe Payment Link; the
+App Store / Play build sells through in-app purchase (Guideline 3.1.1) instead.
+Wherever a shop appears, it must not show a price it can't charge or name a pack
+it can't sell — hiding just the checkout button is not enough: a `$5.99` label or
+a "purchases are opening soon" line is still a storefront.
 
 **Anti-steering, stated precisely** (it's narrower than it used to be): since the
 Epic v. Apple injunction, apps on the **United States storefront** may include
@@ -61,9 +77,9 @@ not a legal requirement. A US-only Stripe path is a real option worth real money
 (Apple takes 15–30%); if it's ever added, the storefront check goes in
 `commerce.ts` and nowhere else.
 
-So the same catalog is sold twice: Stripe on web (`lib/config.ts`), Apple IAP in
-the app (`lib/iap.ts` + `store/iap.ts`, RevenueCat). Setup runbook and the
-account-gated Apple steps: `docs/APPLE-IAP.md`.
+So the whale is sold twice: Stripe on web (`lib/config.ts`), Apple IAP in the app
+(`lib/iap.ts` + `store/iap.ts`, RevenueCat). Setup runbook and the account-gated
+Apple steps: `docs/APPLE-IAP.md`.
 
 `lib/commerce.ts` is the only place the *decision* lives — `storefrontEnabled()`,
 `skinVisible()`, `cardBgVisible()`, `displayPrice()`. Every commerce surface asks
@@ -89,16 +105,47 @@ RevenueCat what that subscriber owns, using the secret key, and grants that.
 Verification needs a secret, and a secret can't live in an RPC the client can
 call — which is why there is deliberately no client-callable grant path.
 
-What native still has, identical to web: earned skins (shared days, referrals),
-free promo-code skins (`redeem_code` — codes are never sold), churches, battles,
-and **every cosmetic the player already owns**, including packs bought on the
-website. Letting someone *use* content they bought elsewhere is fine; advertising
-the sale inside the app is not.
+What native has, identical to web: every earned skin, the free code skin
+(`redeem_code` — codes are never sold), churches, battles, and **every cosmetic
+the player already owns**, including packs bought on the website back when those
+were sold. Letting someone *use* content they bought elsewhere is fine;
+advertising the sale inside the app is not.
 
 Everything else that differs between the two is deliberate and unrelated:
 haptics, the OAuth redirect (`store/auth.ts`), the install prompt, and
 `appStoreAsk()` (review vs. download). There is no other divergence — keep it
 that way.
+
+## Unlocks are derived, and they have to be announced
+
+Nothing grants an earned cosmetic. `skinOwned()` / `isUnlocked()` read the
+player's stats and answer on the spot, so hitting a goal unlocks the thing with
+no claim, no RPC and no reconciliation job. Keep it that way — it re-derives
+correctly on a fresh device, forever.
+
+What that model has no room for is a *moment*, so `store/unlocks.ts` supplies
+one: it computes everything currently owned, diffs it against what this device
+has already announced, and queues the difference for
+`features/unlocks/UnlockCelebration.tsx` (mounted once at the root, because an
+unlock can complete on any screen). Three rules hold it together:
+
+- **The first scan for an account seeds silently.** Otherwise an existing player
+  with a 60-day streak opens the build and eats a dozen popups in a row. Only
+  changes *after* the seed celebrate.
+- **Two requirements can stop being true** — a church you leave, a notification
+  toggle you flip off. Those `latch` (the flag is on `RequirementProgress`):
+  the moment they're met, `claimSkin` writes them into `owned_skins` and they're
+  permanent. Nothing in this app ever takes a cosmetic back. Everything else is
+  monotonic and needs no latch.
+- **The card holds its queue mid-run** (`MID_RUN` in that file). Confetti thrown
+  over a live quiz is an interruption, not a reward.
+
+Adding a requirement kind means both halves, as always: `requirementProgress()`
+in `data/avatar.ts` and `earned_skin_met()` in SQL (0050) — they already carry
+the keep-in-sync note. The one deliberate hole is `eden`: its requirement is
+whether notifications are on, which is a fact about a *device*, so the server
+takes the client's word for it. That's bounded on purpose — free skin, no cards,
+forging it skips a toggle rather than a payment.
 
 ## Content is deterministic — keep it that way
 
@@ -215,7 +262,8 @@ midnight, not UTC.
 
 Reward math exists twice on purpose: once in SQL for online accounts, once in TS
 for guests. `lib/practice.ts` ↔ `submit_practice` (0014), `store/focus.ts` ↔
-`submit_focus_practice` (0038). Change one, change the other, and say so in the
+`submit_focus_practice` (0038), `requirementProgress()` in `data/avatar.ts` ↔
+`earned_skin_met()` (0050). Change one, change the other, and say so in the
 comment — they already carry "keep in sync with the SQL" notes.
 
 ## Shared choke points

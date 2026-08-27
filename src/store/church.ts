@@ -35,6 +35,15 @@ function isOnline(): boolean {
   return !!supabase && a.mode === 'online' && a.isAuthed
 }
 
+// Keep profiles.church_id's client mirror in step with joins and leaves. The
+// server column is already written by join_church / leave_church; this is just
+// the in-memory copy the unlock watcher reads.
+function syncChurchIdToProfile(churchId: string | null) {
+  const { profile } = useAuth.getState()
+  if (!profile || profile.churchId === churchId) return
+  useAuth.setState({ profile: { ...profile, churchId } })
+}
+
 // The RPCs speak snake_case; the app speaks camelCase.
 function toChurch(raw: any): Church | null {
   if (!raw) return null
@@ -188,6 +197,11 @@ export const useChurch = create<ChurchState>((set, get) => ({
     }
     const church = toChurch(data)
     set({ church, loading: false, givers: [], myGiven: 0, board: [], boardMe: null })
+    // Mirror the membership onto the profile. The Angel Pack unlocks on having a
+    // church (data/avatar), and the watcher reads profile.churchId — writing it
+    // here is what makes the celebration land the moment they join rather than
+    // on the next profile refresh.
+    syncChurchIdToProfile(church?.id ?? null)
     // Pull the real numbers (available budget, who else is here) now that we're in.
     void get().load()
     return church
@@ -197,6 +211,9 @@ export const useChurch = create<ChurchState>((set, get) => ({
     if (!isOnline()) return
     await supabase!.rpc('leave_church')
     set({ church: null, givers: [], myGiven: 0, board: [], boardMe: null, boardTotal: 0 })
+    // Leaving clears the flag but never the skins: the Angel Pack latched into
+    // owned_skins the moment it was earned, exactly so this can't take it back.
+    syncChurchIdToProfile(null)
     void get().load()
   },
 

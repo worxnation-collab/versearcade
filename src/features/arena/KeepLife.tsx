@@ -106,11 +106,17 @@ function LifeFigure({ member, slot }: { member: KeepMember; slot: number }) {
     let timer: ReturnType<typeof setTimeout>
     let alive = true
 
+    let firstMove = true
     const dwell = () => {
       if (!alive) return
       setWalking(false)
-      // 6–14s at a spot; the room breathes rather than churns.
-      timer = setTimeout(walk, (6 + p.next() * 8) * 1000)
+      // The FIRST move comes fast (0.8-3s): a viewer decides whether the room
+      // is alive in the first few seconds, and a figure that stands still for
+      // eight of them reads as a statue — which is exactly how it shipped
+      // first. After that, 4-9s a spot keeps it calm without going dead.
+      const wait = firstMove ? 0.8 + p.next() * 2.2 : 4 + p.next() * 5
+      firstMove = false
+      timer = setTimeout(walk, wait * 1000)
     }
     const walk = () => {
       if (!alive) return
@@ -173,13 +179,21 @@ function LifeFigure({ member, slot }: { member: KeepMember; slot: number }) {
           filter: 'blur(1.5px)',
         }}
       />
-      <span
-        style={{
-          display: 'block',
-          transform: `scaleX(${facing})`,
-          animation: walking ? 'va-keep-bob 0.44s ease-in-out infinite alternate' : 'none',
-        }}
-      >
+      {/* Two nested spans because both need `transform`: the outer owns the
+          facing flip, the inner owns the bob/breathe animation — on one
+          element the animation's transform would silently replace the flip. */}
+      <span style={{ display: 'block', transform: `scaleX(${facing})` }}>
+        <span
+          style={{
+            display: 'block',
+            // Walking bobs; standing breathes. Either way the figure is never
+            // perfectly still, because perfectly still reads as a sticker.
+            animation: walking
+              ? 'va-keep-bob 0.44s ease-in-out infinite alternate'
+              : 'va-keep-breathe 2.6s ease-in-out infinite alternate',
+            transformOrigin: 'bottom center',
+          }}
+        >
         {member.avatarCharacter ? (
           <Character spec={member.avatarCharacter} size={size} title={member.username} fullBody />
         ) : (
@@ -194,6 +208,7 @@ function LifeFigure({ member, slot }: { member: KeepMember; slot: number }) {
             {member.avatarEmoji}
           </span>
         )}
+        </span>
       </span>
     </button>
   )

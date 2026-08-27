@@ -2,6 +2,8 @@ import { useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { Page } from '@/components/Page'
+import { CrowdLife, type CrowdWaypoint } from '@/components/CrowdLife'
+import { useAuth } from '@/store/auth'
 import { Collapsible } from '@/components/Collapsible'
 import { useSeason } from '@/store/season'
 import { useJuice } from '@/juice/useJuice'
@@ -104,6 +106,8 @@ export default function PilgrimageScreen() {
           </p>
         </div>
       </motion.div>
+
+      <RoadScene />
 
       <QuestSection />
 
@@ -378,6 +382,51 @@ function QuestRow({
           </button>
         )}
       </div>
+    </div>
+  )
+}
+
+// ── The road itself, walked ─────────────────────────────────────────────────
+// Your character wandering the season's landscape on the shared CrowdLife
+// engine — the same living figures as the keep and the churchyard. ONE figure,
+// deliberately: the Pilgrimage never shows another player, no pace, no
+// comparison (docs/BATTLE-PASS.md), and that rule holds for the scenery too.
+// The road is yours alone.
+
+const ROAD_WAYPOINTS: CrowdWaypoint[] = [
+  { x: 50, b: 4 },  // the path, front and centre
+  { x: 44, b: 14 }, // the first bend
+  { x: 53, b: 22 }, // further along
+  { x: 48, b: 30 }, // where the path meets the hills
+  { x: 24, b: 10 }, // out by the left sheaves
+  { x: 72, b: 8 },  // the right verge
+]
+
+/** Depth cue: further up the road = smaller. b 4..30% -> 46..24px. */
+const roadSizeFor = (b: number) =>
+  Math.round(46 - ((Math.min(Math.max(b, 4), 30) - 4) / 26) * 22)
+
+function RoadScene() {
+  const me = useAuth((s) => s.profile)
+  if (!me) return null
+  const members = [
+    { username: me.username, avatarEmoji: me.avatarEmoji, avatarCharacter: me.avatarCharacter, isMe: true },
+  ]
+  return (
+    <div
+      style={{
+        position: 'relative',
+        height: 176,
+        borderRadius: 'var(--r-md)',
+        overflow: 'hidden',
+        border: '1px solid var(--stroke)',
+        marginBottom: 16,
+        // Anchored to the bottom of the painting so the walkable foreground
+        // path survives whatever the banner crop takes from the sky.
+        background: 'url(/road/harvest.jpg) center bottom / cover no-repeat, #6b4a18',
+      }}
+    >
+      <CrowdLife members={members} waypoints={ROAD_WAYPOINTS} sizeFor={roadSizeFor} max={1} />
     </div>
   )
 }

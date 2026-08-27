@@ -27,7 +27,7 @@ export default function PracticeResultScreen() {
   }, [outcome, juice])
 
   useEffect(() => {
-    if (!lastResult) navigate('/play', { replace: true })
+    if (!lastResult) navigate('/study/recent', { replace: true })
   }, [lastResult, navigate])
 
   if (!outcome) return null
@@ -106,7 +106,11 @@ export default function PracticeResultScreen() {
           <Button variant="gold" full onClick={() => navigate(`/play/practice/${date}`, { replace: true })}>
             ↻ Practice again
           </Button>
-          <Button variant="ghost" full onClick={() => navigate('/play')}>Back home</Button>
+          {/* A replay is a study run and it was started from the Study tab, so
+              the way out is back to the shelf — dropping the player on the home
+              screen loses the place they were studying from. */}
+          <Button variant="secondary" full onClick={() => navigate('/study/recent')}>📚 Another verse</Button>
+          <Button variant="ghost" full onClick={() => navigate('/study')}>← Back to Study</Button>
         </div>
       </div>
     </Page>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Page } from '@/components/Page'
@@ -34,6 +34,26 @@ interface Board {
 }
 
 const medal = (rank: number) => (rank === 2 ? '🥈' : rank === 3 ? '🥉' : null)
+
+// Rows are laid out in a one-column grid, and an `auto` grid track sizes itself
+// to its content's *max-content* width. A row's max-content width is the whole
+// un-wrapped username plus the "👑 The Leper King" / "you" tags, which blows
+// straight past the 520px shell and pushes the XP column off-screen.
+//
+// `minWidth: 0` on the name (below) is not enough on its own: it lets the name
+// shrink once the row has a definite width, but it doesn't stop the *track*
+// from asking for the full width in the first place. `minmax(0, 1fr)` pins the
+// track to the container, which gives the row a definite width, which is what
+// finally lets the name ellipsize.
+const ROWS: CSSProperties = { display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }
+
+// One line, clipped with an ellipsis. Both lines of a row use this: a handle can
+// be any length, and neither it nor the meta line may push the XP column out.
+const ELLIPSIS: CSSProperties = {
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+}
 
 // Standalone /leaderboard route — kept for deep links and shares. The ranks
 // themselves now live inside the Play tab, so this is the same body under a
@@ -118,7 +138,7 @@ export function LeaderboardSection() {
         {board?.featured && board.featured.length > 0 && (
           <div style={{ marginBottom: 14 }}>
             <p className="faint" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Featured</p>
-            <div style={{ display: 'grid', gap: 8 }}>
+            <div style={ROWS}>
               {board.featured.map((f) => <FeaturedRow key={f.username} f={f} />)}
             </div>
           </div>
@@ -143,7 +163,7 @@ export function LeaderboardSection() {
           <p style={{ color: 'var(--coral)', textAlign: 'center' }}>{err}</p>
         ) : board && board.top.length > 0 ? (
           <>
-            <div style={{ display: 'grid', gap: 8 }}>
+            <div style={ROWS}>
               {board.top.map((r) => (
                 <Row key={r.rank} r={r} me={r.username === profile?.username} />
               ))}
@@ -213,14 +233,14 @@ function FeaturedRow({ f }: { f: FeaturedRow }) {
         background: 'linear-gradient(120deg, rgba(94,231,223,0.12), transparent 62%)',
       }}
     >
-      <div style={{ width: 34, display: 'grid', placeItems: 'center', fontSize: 18 }}>⭐</div>
+      <div style={{ width: 34, flexShrink: 0, display: 'grid', placeItems: 'center', fontSize: 18 }}>⭐</div>
       <Avatar emoji={f.avatar_emoji} character={f.avatar_character} size={34} ring={false} border={f.avatar_border} badge={f.avatar_badge} username={f.username} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {f.username}
-          <span style={{ color: 'var(--sky)', fontSize: 11, marginLeft: 6, letterSpacing: '0.04em' }}>⭐ Featured</span>
+        <div style={{ ...ELLIPSIS, fontWeight: 800 }}>{f.username}</div>
+        <div className="faint" style={{ ...ELLIPSIS, fontSize: 12 }}>
+          Level {f.level}
+          <span style={{ color: 'var(--sky)', letterSpacing: '0.04em' }}> · ⭐ Featured</span>
         </div>
-        <div className="faint" style={{ fontSize: 12 }}>Level {f.level}</div>
       </div>
       <div
         style={{ fontFamily: 'var(--font-display)', fontSize: 18, flexShrink: 0, whiteSpace: 'nowrap' }}
@@ -288,6 +308,7 @@ function Row({ r, me }: { r: LbRow; me: boolean }) {
       <div
         style={{
           width: 34,
+          flexShrink: 0,
           display: 'grid',
           placeItems: 'center',
           fontFamily: 'var(--font-display)',
@@ -299,24 +320,22 @@ function Row({ r, me }: { r: LbRow; me: boolean }) {
       </div>
       <Avatar emoji={r.avatar_emoji} character={r.avatar_character} size={34} ring={false} border={r.avatar_border} badge={r.avatar_badge} username={r.username} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            fontWeight: 800,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {r.username}
-          {isKing && (
-            <span style={{ color: 'var(--gold)', fontSize: 11, marginLeft: 6, letterSpacing: '0.04em' }}>
-              👑 The Leper King
-            </span>
-          )}
-          {me && <span style={{ color: 'var(--gold)', fontSize: 12, marginLeft: 6 }}>you</span>}
-        </div>
-        <div className="faint" style={{ fontSize: 12 }}>
+        {/* The handle gets the whole first line to itself. The king/you tags sit
+            on the meta line instead of trailing the name: side by side there is
+            only ~165px between the avatar and the XP column on a phone, and the
+            tag is wider than that, so it used to eat the handle down to "s…". */}
+        <div style={{ ...ELLIPSIS, fontWeight: 800 }}>{r.username}</div>
+        <div className="faint" style={{ ...ELLIPSIS, fontSize: 12 }}>
           Level {r.level}
+          {/* No crown emoji here — the rank column already shows the throne, and
+              the two together don't fit beside the XP column on a phone. */}
+          {isKing && (
+            <span style={{ color: 'var(--gold)', letterSpacing: '0.04em' }}> · The Leper King</span>
+          )}
+          {/* Not on the king's own row: the throne banner above, the gold border
+              and the throne icon already say it's you, and a third marker is
+              what pushes "The Leper King" into an ellipsis. */}
+          {me && !isKing && <span style={{ color: 'var(--gold)' }}> · you</span>}
         </div>
       </div>
       <div

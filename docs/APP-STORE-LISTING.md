@@ -23,7 +23,7 @@ Daily Bible verse game
 
 ## Promotional text (max 170 chars — editable anytime without review)
 ```
-A new verse drops every day for everyone. Beat the clock, keep your streak alive, and learn something new even when you miss. No shame, all play.
+One verse a day. Race the clock, keep your streak, battle a friend, and play for your church. No shame, no pop quiz energy — miss one and you still learn something.
 ```
 
 ## Description (max 4000 chars)
@@ -31,7 +31,7 @@ A new verse drops every day for everyone. Beat the clock, keep your streak alive
 Open the Bible and actually want to. Verse Arcade turns Scripture into a fast, friendly daily game.
 
 THE DAILY DROP
-Every day, one verse goes live for everyone at the same time — your shared ritual. Read it, then race the clock through a handful of quick questions about that exact verse: which book it's from, who's speaking, who's being addressed, what happens next. Answer fast and accurately to rack up points.
+Every day, one verse goes live for everyone at the same time — your shared ritual. Read it, then race the clock through five quick questions about that exact verse: which book it's from, who's speaking, who's being addressed, what happens next. Answer fast and accurately to rack up points.
 
 YOU CAN'T LOSE, ONLY LEARN
 Miss a question? No buzzer, no shame. A wrong answer reveals a genuinely interesting fact about the verse, so you walk away knowing more than you did a second ago. This app is built for people who feel behind — nobody starts knowing every verse.
@@ -39,11 +39,20 @@ Miss a question? No buzzer, no shame. A wrong answer reveals a genuinely interes
 BUILD A STREAK YOU'LL WANT TO KEEP
 Earn XP, level up, and grow a daily streak with a flame that gets hotter the longer you go. Busy day? A streak freeze quietly saves you, so real life doesn't punish you.
 
-PLAY WITH FRIENDS, NEVER AGAINST THEM
-Join a co-op group and take on the same verse together against a shared clock, climbing as a team. There are no leaderboards and no rankings — just the feeling that you're in it with everyone else opening the verse today.
+BATTLE A FRIEND
+Challenge someone to the same verse quiz and see who scores higher — or race a study partner whose score ticks up live beside yours. Pick Rookie, Deacon or Prophet.
 
-COLLECT AND CELEBRATE
-Every session is tactile and alive — springy buttons, satisfying point pops, confetti on a great run, and unlockable verse cards to collect.
+PLAY FOR YOUR CHURCH
+Find your church, then give it the points you earn. Giving costs you nothing — your own XP and rank stay exactly where they are — and your congregation levels up and climbs the board. Can't find yours? Add it in seconds.
+
+STUDY WHAT YOU'RE ACTUALLY WEAK AT
+See your accuracy book by book, weakest first, and drill the ones that need it. Keep the verses that mattered with Favorites, review them before they fade, and read the whole chapter in KJV, WEB or BBE.
+
+BUILD A CHARACTER
+Piece together the Armor of God, collect relics from the daily chest, and earn full-look skins by showing up and sharing. Earned skins are earned — a missed day never takes one away.
+
+GENTLE REMINDERS
+Turn on a nudge for the daily verse and it'll tell you which verse is waiting, even offline. Study reminders only arrive on days you actually have something to review.
 
 MADE THOUGHTFULLY
 - Play instantly as a guest — no account required.
@@ -52,14 +61,14 @@ MADE THOUGHTFULLY
 - Delete your account and all data in-app, whenever you want.
 - No ads. No tracking. We never sell your data.
 
-Verse text uses the Berean Standard Bible (BSB), a modern, public-domain translation.
+Verse text uses the Berean Standard Bible (BSB), a modern, public-domain translation. Scripture is always free — and always will be.
 
 Start your streak today. It's one verse.
 ```
 
 ## Keywords (max 100 chars, comma-separated, no spaces)
 ```
-bible,verse,scripture,daily,trivia,christian,faith,devotional,quiz,streak,jesus,god,study,memory
+bible,verse,scripture,daily,trivia,christian,faith,devotional,quiz,streak,church,battle,study,god
 ```
 
 ## Support URL

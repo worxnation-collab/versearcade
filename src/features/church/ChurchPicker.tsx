@@ -18,18 +18,29 @@ import {
 // The nearby list is fetched ONCE per location and filtered as you type, so
 // typing is instant and we're gentle on the free map endpoints. Only when the
 // local list comes up empty do we go back out for a wider name search.
+//
+// The hard rule here, learned from a TestFlight build that sat on "Looking up
+// churches nearby…" forever: the map lookup NEVER blocks the screen. The moment
+// we have coordinates — or fail to get any — the search box, the list and the
+// add-by-hand card are on screen and usable. Results fill in behind them, and
+// every network call has a deadline, so there is no state this screen can get
+// stuck in.
 
 const SEARCH_RADIUS_MILES = 30
+/** Our own churches come from Postgres; if that's slow, we carry on without it. */
+const KNOWN_TIMEOUT_MS = 10000
 
-type Phase = 'idle' | 'locating' | 'loading' | 'ready' | 'error'
+type Phase = 'idle' | 'locating' | 'ready'
 
 export function ChurchPicker() {
   const juice = useJuice()
   const join = useChurch((s) => s.join)
   const [phase, setPhase] = useState<Phase>('idle')
   const [error, setError] = useState<string | null>(null)
+  const [locationError, setLocationError] = useState<string | null>(null)
   const [coords, setCoords] = useState<Coords | null>(null)
   const [places, setPlaces] = useState<ChurchPlace[]>([])
+  const [nearbyBusy, setNearbyBusy] = useState(false)
   const [query, setQuery] = useState('')
   const [joining, setJoining] = useState<string | null>(null)
   const [wide, setWide] = useState<ChurchPlace[]>([])
@@ -37,21 +48,42 @@ export function ChurchPicker() {
   const [manual, setManual] = useState(false)
   const [manualName, setManualName] = useState('')
   const searchRef = useRef<AbortController | null>(null)
+  const nearbyRef = useRef<AbortController | null>(null)
 
-  useEffect(() => () => searchRef.current?.abort(), [])
+  useEffect(
+    () => () => {
+      searchRef.current?.abort()
+      nearbyRef.current?.abort()
+    },
+    [],
+  )
 
   // Churches already in Verse Arcade near this point. These are the good ones —
   // they carry a level and a congregation already — so they lead the list.
+  // Bounded and swallowing its own failures: an empty list is a fine answer.
   const loadKnown = useCallback(async (at: Coords): Promise<ChurchPlace[]> => {
     if (!supabase) return []
-    const { data, error: err } = await supabase.rpc('search_churches', {
+    const call = supabase.rpc('search_churches', {
       p_lat: at.lat,
       p_lng: at.lng,
       p_q: null,
       p_radius_miles: SEARCH_RADIUS_MILES,
       p_limit: 50,
     })
-    if (err || !Array.isArray(data)) return []
+    let data: unknown = null
+    try {
+      // supabase-js reports network trouble as `error`, but a stalled auth
+      // token refresh can leave the promise pending — hence the race.
+      const res = await Promise.race([
+        call,
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), KNOWN_TIMEOUT_MS)),
+      ])
+      if (!res || res.error) return []
+      data = res.data
+    } catch {
+      return []
+    }
+    if (!Array.isArray(data)) return []
     return (data as any[]).map((c) => ({
       placeKey: `known:${c.id}`,
       churchId: c.id as string,
@@ -68,34 +100,59 @@ export function ChurchPicker() {
     }))
   }, [])
 
+  // Both sources run at once and each renders the moment it lands, so a slow
+  // map endpoint can't hide the churches we already know about.
+  const loadPlaces = useCallback(
+    async (at: Coords) => {
+      nearbyRef.current?.abort()
+      const ctl = new AbortController()
+      nearbyRef.current = ctl
+      setNearbyBusy(true)
+
+      const known = loadKnown(at).then((rows) => {
+        if (!ctl.signal.aborted && rows.length) setPlaces((prev) => mergePlaces(rows, prev))
+        return rows
+      })
+      const mapped = nearbyChurches(at, SEARCH_RADIUS_MILES, ctl.signal).then(
+        (rows) => {
+          // Our own rows keep priority: they're already in `prev`.
+          if (!ctl.signal.aborted && rows.length) setPlaces((prev) => mergePlaces(prev, rows))
+          return rows
+        },
+        () => null,
+      )
+
+      const [knownRows, mappedRows] = await Promise.all([known, mapped])
+      if (ctl.signal.aborted) return
+      setNearbyBusy(false)
+      if (mappedRows === null && knownRows.length === 0) {
+        setError("We couldn't reach the map just now. Search by name, or add your church by hand below.")
+      }
+    },
+    [loadKnown],
+  )
+
   const locate = useCallback(async () => {
     setPhase('locating')
     setError(null)
+    setLocationError(null)
     let at: Coords
     try {
       at = await getPosition()
     } catch (e) {
-      setPhase('error')
-      setError(e instanceof LocationError ? geoErrorMessage(e.kind) : geoErrorMessage('unavailable'))
+      // No location is not a dead end — name search still works, it just can't
+      // be sorted by distance.
+      setCoords(null)
+      setLocationError(
+        e instanceof LocationError ? geoErrorMessage(e.kind) : geoErrorMessage('unavailable'),
+      )
+      setPhase('ready')
       return
     }
     setCoords(at)
-    setPhase('loading')
-
-    // Our own churches are the important half of the list, so never let a slow
-    // or blocked map endpoint stop them from rendering.
-    const known = await loadKnown(at)
-    try {
-      const mapped = await nearbyChurches(at, SEARCH_RADIUS_MILES)
-      setPlaces(mergePlaces(known, mapped))
-    } catch {
-      setPlaces(known)
-      if (known.length === 0) {
-        setError("We couldn't reach the map just now. Search by name, or add your church by hand below.")
-      }
-    }
     setPhase('ready')
-  }, [loadKnown])
+    void loadPlaces(at)
+  }, [loadPlaces])
 
   const matches = useMemo(() => {
     const found = places.filter((p) => matchesQuery(p, query))
@@ -108,15 +165,16 @@ export function ChurchPicker() {
   }, [places, query])
 
   // Nothing nearby matched what they typed — go back out and search by name.
+  // Works without coordinates too, just unbounded by distance.
   const searchWider = useCallback(async () => {
-    if (!coords || query.trim().length < 3) return
+    if (query.trim().length < 3) return
     searchRef.current?.abort()
     const ctl = new AbortController()
     searchRef.current = ctl
     setWideBusy(true)
     try {
       const found = await searchChurchesByName(query, coords, 60, ctl.signal)
-      setWide(found)
+      if (!ctl.signal.aborted) setWide(found)
     } catch {
       if (!ctl.signal.aborted) setWide([])
     } finally {
@@ -172,27 +230,24 @@ export function ChurchPicker() {
         </Button>
       )}
 
-      {(phase === 'locating' || phase === 'loading') && (
+      {phase === 'locating' && (
         <div className="card center" style={{ padding: 28 }}>
           <div className="floaty" style={{ fontSize: 34 }}>⛪</div>
-          <p className="dim" style={{ marginTop: 10, fontSize: 14 }}>
-            {phase === 'locating' ? 'Finding you…' : 'Looking up churches nearby…'}
-          </p>
-        </div>
-      )}
-
-      {phase === 'error' && (
-        <div className="card">
-          <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>{error}</p>
-          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            <Button variant="secondary" onClick={locate}>Try again</Button>
-            <Button variant="ghost" onClick={() => { setPhase('ready'); setManual(true) }}>Add by hand</Button>
-          </div>
+          <p className="dim" style={{ marginTop: 10, fontSize: 14 }}>Finding you…</p>
         </div>
       )}
 
       {phase === 'ready' && (
         <>
+          {locationError && (
+            <div className="card">
+              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>{locationError}</p>
+              <div style={{ marginTop: 12 }}>
+                <Button variant="secondary" onClick={locate}>Try again</Button>
+              </div>
+            </div>
+          )}
+
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -205,6 +260,12 @@ export function ChurchPicker() {
 
           {error && <p style={{ color: 'var(--coral)', fontSize: 13, margin: 0 }}>{error}</p>}
 
+          {nearbyBusy && (
+            <p className="faint" style={{ fontSize: 12, margin: 0 }} aria-live="polite">
+              Still checking the map around you… you can start typing.
+            </p>
+          )}
+
           {matches.length > 0 && (
             <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
               {matches.map((p) => (
@@ -213,18 +274,20 @@ export function ChurchPicker() {
             </div>
           )}
 
-          {matches.length === 0 && (
+          {matches.length === 0 && !nearbyBusy && (
             <div className="card center" style={{ padding: 20 }}>
               <div style={{ fontSize: 30 }}>🔎</div>
               <p className="dim" style={{ margin: '8px 0 0', fontSize: 14 }}>
-                {query.trim()
-                  ? `Nothing within ${SEARCH_RADIUS_MILES} miles matches “${query.trim()}”.`
-                  : `We didn't find any churches within ${SEARCH_RADIUS_MILES} miles.`}
+                {!coords
+                  ? 'Type your church name, then search.'
+                  : query.trim()
+                    ? `Nothing within ${SEARCH_RADIUS_MILES} miles matches “${query.trim()}”.`
+                    : `We didn't find any churches within ${SEARCH_RADIUS_MILES} miles.`}
               </p>
               {query.trim().length >= 3 && (
                 <div style={{ marginTop: 12 }}>
                   <Button variant="secondary" disabled={wideBusy} onClick={searchWider}>
-                    {wideBusy ? 'Searching…' : 'Search a wider area'}
+                    {wideBusy ? 'Searching…' : coords ? 'Search a wider area' : 'Search by name'}
                   </Button>
                 </div>
               )}
@@ -234,7 +297,7 @@ export function ChurchPicker() {
           {wide.length > 0 && (
             <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
               <p className="faint" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>
-                Further out
+                {coords ? 'Further out' : 'Name matches'}
               </p>
               {wide.map((p) => (
                 <PlaceRow key={p.placeKey} place={p} busy={joining === p.placeKey} onPick={() => pick(p)} />
@@ -243,9 +306,15 @@ export function ChurchPicker() {
           )}
 
           {/* Plenty of congregations meet in a school gym or a living room and
-              aren't on any map. They should still get a building. */}
+              aren't on any map. They should still get a building — but we can
+              only pin one where the player is, so it needs a location. */}
           <div className="card">
-            {manual ? (
+            {!coords ? (
+              <p className="dim" style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>
+                Adding a church by hand pins it where you are, so it needs your location. Turn it on
+                and tap <b>Try again</b> — or find yours by name above.
+              </p>
+            ) : manual ? (
               <div style={{ display: 'grid', gap: 10 }}>
                 <b style={{ fontFamily: 'var(--font-display)', fontSize: 15 }}>Add your church</b>
                 <input
@@ -259,7 +328,7 @@ export function ChurchPicker() {
                   We'll pin it where you are now, so the people around you can find and join it too.
                 </p>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <Button variant="gold" disabled={manualName.trim().length < 2 || !coords || !!joining} onClick={addManually}>
+                  <Button variant="gold" disabled={manualName.trim().length < 2 || !!joining} onClick={addManually}>
                     {joining ? 'Adding…' : 'Add & join'}
                   </Button>
                   <Button variant="ghost" onClick={() => setManual(false)}>Cancel</Button>

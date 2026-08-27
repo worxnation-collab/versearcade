@@ -50,7 +50,10 @@ import { PlayerCardProvider } from './components/PlayerCardModal'
 function RequireProfile({ children }: { children: JSX.Element }) {
   const { ready, profile } = useAuth()
   if (!ready) return <Splash />
-  if (!profile) return <Navigate to="/welcome" replace />
+  // Landing, not /welcome: someone without a profile is either brand new or
+  // just signed out, and only Landing offers both doors ("Play today's verse"
+  // and "I already have an account"). Onboarding assumes you're new.
+  if (!profile) return <Navigate to="/" replace />
   return children
 }
 

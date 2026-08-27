@@ -5,6 +5,7 @@ import { Button } from '@/components/Button'
 import { useInventory, seedGuestInventoryFromCollection } from '@/store/inventory'
 import { useChurch } from '@/store/church'
 import { useAuth } from '@/store/auth'
+import { useSettings } from '@/store/settings'
 import { useJuice } from '@/juice/useJuice'
 import { collectibleByKey, rarityColor } from '@/data/collectibles'
 
@@ -30,6 +31,7 @@ export function InventorySection() {
   const mode = useAuth((s) => s.mode)
   const church = useChurch((s) => s.church)
   const loadChurch = useChurch((s) => s.load)
+  const setSettings = useSettings((s) => s.set)
 
   const [busy, setBusy] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
@@ -40,6 +42,14 @@ export function InventorySection() {
     seedGuestInventoryFromCollection()
     loadChurch()
   }, [load, loadChurch])
+
+  // This component only mounts when the section is actually expanded (the
+  // Collapsible renders no children while closed), so mounting *is* the moment
+  // the player has seen their bag and what it's for. That retires the home-screen
+  // nudge — see features/home/InventoryNudge.tsx.
+  useEffect(() => {
+    setSettings({ inventorySeen: true })
+  }, [setSettings])
 
   // Rarest first, so the thing worth thinking about is at the top.
   const rows = useMemo(() => {

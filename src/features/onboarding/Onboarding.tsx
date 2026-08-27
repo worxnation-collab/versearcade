@@ -5,6 +5,7 @@ import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { Avatar } from '@/components/Avatar'
 import { useAuth } from '@/store/auth'
+import { isSupabaseConfigured } from '@/lib/config'
 import { useSettings } from '@/store/settings'
 import { useJuice } from '@/juice/useJuice'
 
@@ -50,6 +51,21 @@ export default function Onboarding() {
               <Button variant="gold" full onClick={() => setStep(1)}>
                 Let’s go →
               </Button>
+              {/* Onboarding is guest-first, but it's also where a signed-out
+                  player can land, and step 0 used to be a dead end for anyone
+                  who already had an account. Hidden in a LOCAL build, where
+                  there's no backend to sign in to. */}
+              {isSupabaseConfigured && (
+                <p className="faint center" style={{ fontSize: 13, marginTop: 2 }}>
+                  Already have an account?{' '}
+                  <span
+                    style={{ color: 'var(--sky)', textDecoration: 'underline' }}
+                    onClick={() => navigate('/auth')}
+                  >
+                    Sign in
+                  </span>
+                </p>
+              )}
             </Step>
           )}
 

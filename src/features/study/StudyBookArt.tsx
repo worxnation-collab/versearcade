@@ -185,3 +185,98 @@ export function StudyBookArt({
     </>
   )
 }
+
+/**
+ * A painted cover — generated artwork wearing the same spine and stamped
+ * title as the drawn boards, so a shelf of mixed covers still reads as one
+ * bound set. The artwork carries the frame and emblem itself (see
+ * scripts/generate-study-covers.mjs, which keeps the lower third plain for
+ * the title), so this stamps only what must stay crisp and localizable:
+ * the text.
+ */
+export function StudyBookPaintedArt({
+  width,
+  title,
+  art,
+}: {
+  width: number
+  title: string
+  art: string
+}) {
+  const k = width / STUDY_COVER_REF
+  const px = (n: number) => n * k
+
+  return (
+    <>
+      <img
+        src={art}
+        alt=""
+        aria-hidden
+        draggable={false}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          objectPosition: 'center',
+        }}
+      />
+
+      {/* The spine, laid over the artwork so the board still turns a corner. */}
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: px(17),
+          background:
+            'linear-gradient(90deg, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.28) 55%, rgba(255,255,255,0.07) 100%)',
+          borderRight: '1px solid rgba(255,210,63,0.22)',
+        }}
+      />
+      {[0.22, 0.5, 0.78].map((t) => (
+        <div
+          key={t}
+          aria-hidden
+          style={{
+            position: 'absolute',
+            left: 0,
+            width: px(17),
+            top: `${t * 100}%`,
+            height: px(5),
+            background: 'linear-gradient(180deg, rgba(255,210,63,0.42), rgba(255,210,63,0.10))',
+          }}
+        />
+      ))}
+
+      {/* The title, stamped over the plain leather the prompt reserves. The
+          scrim underneath earns its keep when a generation ignores that
+          instruction and paints something busy there anyway. */}
+      <div
+        style={{
+          position: 'absolute',
+          left: px(30),
+          right: px(15),
+          bottom: px(20),
+          padding: `${px(8)}px ${px(4)}px`,
+          borderRadius: px(4),
+          background: 'radial-gradient(closest-side, rgba(0,0,0,0.38), transparent)',
+          textAlign: 'center',
+          fontFamily: 'var(--font-display)',
+          fontWeight: 800,
+          fontSize: px(15),
+          lineHeight: 1.15,
+          color: '#f4cf62',
+          letterSpacing: '0.09em',
+          textTransform: 'uppercase',
+          textShadow: '0 1px 2px rgba(0,0,0,0.75)',
+        }}
+      >
+        {title}
+      </div>
+    </>
+  )
+}

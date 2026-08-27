@@ -3,7 +3,23 @@ import { useNavigate } from 'react-router-dom'
 import { motion, useReducedMotion } from 'framer-motion'
 import { useJuice } from '@/juice/useJuice'
 import { BookCoverArt, COVER_BOARD } from '@/features/bible/BookCoverArt'
-import { BOARDS, STUDY_COVER_RATIO, StudyBookArt, studyBoard, type BoardSkin } from './StudyBookArt'
+import {
+  BOARDS,
+  STUDY_COVER_RATIO,
+  StudyBookArt,
+  StudyBookPaintedArt,
+  studyBoard,
+  type BoardSkin,
+} from './StudyBookArt'
+
+// Generated cover paintings (scripts/generate-study-covers.mjs), keyed by book.
+// Resolved at build time: a book whose image exists wears it; one whose image
+// is missing keeps its drawn board, so a partial set never breaks the shelf.
+const PAINTED: Record<string, string> = Object.fromEntries(
+  Object.entries(
+    import.meta.glob('@/assets/study/*.{jpg,png,webp}', { eager: true, query: '?url', import: 'default' }),
+  ).map(([file, url]) => [file.replace(/^.*\//, '').replace(/\.[a-z]+$/, ''), url as string]),
+)
 
 // The Study tab as a shelf.
 //
@@ -16,7 +32,10 @@ import { BOARDS, STUDY_COVER_RATIO, StudyBookArt, studyBoard, type BoardSkin } f
 // replay, three due, your accuracy) and never how you compare to anyone.
 
 /** Cap the board so it stays a book on a wide screen instead of a poster. */
-const MAX_BOOK_WIDTH = 168
+const MAX_BOOK_WIDTH = 148
+/** Books stand a little back from their column, not flush to it — smaller
+    boards with air around them read as a shelf rather than a wall of tiles. */
+const BOOK_SCALE = 0.86
 const GAP = 16
 /** How long the cover swings before the route changes. Tween, not spring —
     a spring soft enough to look like leather takes a second to settle, and
@@ -41,7 +60,7 @@ export interface ShelfItem {
 export function StudyShelf({ items }: { items: ShelfItem[] }) {
   const shelf = useRef<HTMLDivElement | null>(null)
   const width = useShelfWidth(shelf)
-  const bookW = Math.min(Math.floor((width - GAP) / 2), MAX_BOOK_WIDTH)
+  const bookW = Math.min(Math.floor(((width - GAP) / 2) * BOOK_SCALE), MAX_BOOK_WIDTH)
   const bookH = Math.round(bookW * STUDY_COVER_RATIO)
 
   // Two to a row, with a plank drawn under each pair.
@@ -95,6 +114,9 @@ function ShelfBook({ item, width, delay }: { item: ShelfItem; width: number; del
   const [opening, setOpening] = useState(false)
   const height = Math.round(width * STUDY_COVER_RATIO)
   const skin: BoardSkin | null = item.skin === 'bible' ? null : BOARDS[item.skin]
+  // The player's Bible always wears its real board (their name is stamped on
+  // it); every other book prefers its painting when one has been generated.
+  const painted = item.skin === 'bible' ? undefined : PAINTED[item.skin]
 
   const open = () => {
     if (opening) return
@@ -167,10 +189,12 @@ function ShelfBook({ item, width, delay }: { item: ShelfItem; width: number; del
             ...(skin ? studyBoard(skin) : COVER_BOARD),
           }}
         >
-          {skin ? (
-            <StudyBookArt width={width} title={item.title} emblem={item.emblem} skin={skin} />
-          ) : (
+          {!skin ? (
             <BookCoverArt width={width} name={item.name} />
+          ) : painted ? (
+            <StudyBookPaintedArt width={width} title={item.title} art={painted} />
+          ) : (
+            <StudyBookArt width={width} title={item.title} emblem={item.emblem} skin={skin} />
           )}
         </motion.div>
 

@@ -15,6 +15,7 @@ import {
   keepLevelName,
 } from '@/data/keep'
 import { KeepHall, DecorProp } from './KeepArt'
+import { KeepLife } from './KeepLife'
 
 // The Keep — a faction's hall, opened from a row on the battle Teams board, or
 // your own hall from the "Your keep" card.
@@ -74,6 +75,14 @@ export function KeepSheet({
   const wins = denomination ? faction?.wins ?? 0 : keep.counters.battle_won + keep.counters.cpu_won
   const level = keepLevelForWins(wins)
 
+  // Who lives in this view of the hall: the faction's members, or just you.
+  const lifeMembers =
+    denomination && faction
+      ? faction.members
+      : me
+        ? [{ username: me.username, avatarEmoji: me.avatarEmoji, avatarCharacter: me.avatarCharacter, isMe: true }]
+        : []
+
   return createPortal(
     <AnimatePresence>
       <motion.div
@@ -125,12 +134,12 @@ export function KeepSheet({
                 return decor ? <DecorProp key={a.id} id={decor} x={a.x} y={a.y} color={colorHex} /> : null
               })}
             </svg>
-            {/* Deliberately NO figures in the hall. Static avatars pasted over
-                the painted room muddied the picture; the congregation is the
-                head count in the caption below until figures can be alive in
-                here — NPC-style, walking the floor, sitting at the table. The
-                member data still arrives (keep_json), so that version starts
-                from what this one already loads. */}
+            {/* Alive, not pasted: figures run seeded schedules between the
+                hearth, the table and the stable (KeepLife). A faction hall
+                shows its members; your own hall shows you. Static figures were
+                deliberately cut before this — if these ever stop moving, remove
+                them rather than letting them go back to being stickers. */}
+            <KeepLife members={lifeMembers} />
           </div>
 
           <p className="faint" style={{ fontSize: 12, margin: '8px 0 0', lineHeight: 1.5 }}>

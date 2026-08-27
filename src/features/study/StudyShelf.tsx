@@ -16,7 +16,10 @@ import { BOARDS, STUDY_COVER_RATIO, StudyBookArt, studyBoard, type BoardSkin } f
 // replay, three due, your accuracy) and never how you compare to anyone.
 
 /** Cap the board so it stays a book on a wide screen instead of a poster. */
-const MAX_BOOK_WIDTH = 168
+const MAX_BOOK_WIDTH = 148
+/** Books stand a little back from their column, not flush to it — smaller
+    boards with air around them read as a shelf rather than a wall of tiles. */
+const BOOK_SCALE = 0.86
 const GAP = 16
 /** How long the cover swings before the route changes. Tween, not spring —
     a spring soft enough to look like leather takes a second to settle, and
@@ -41,7 +44,7 @@ export interface ShelfItem {
 export function StudyShelf({ items }: { items: ShelfItem[] }) {
   const shelf = useRef<HTMLDivElement | null>(null)
   const width = useShelfWidth(shelf)
-  const bookW = Math.min(Math.floor((width - GAP) / 2), MAX_BOOK_WIDTH)
+  const bookW = Math.min(Math.floor(((width - GAP) / 2) * BOOK_SCALE), MAX_BOOK_WIDTH)
   const bookH = Math.round(bookW * STUDY_COVER_RATIO)
 
   // Two to a row, with a plank drawn under each pair.

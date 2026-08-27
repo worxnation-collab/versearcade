@@ -28,6 +28,14 @@
 --
 -- Idempotent — create-or-replace plus on-conflict-do-nothing; re-running is a
 -- no-op.
+--
+-- Numbering note: this was written, and APPLIED TO PRODUCTION, as
+-- `0056_sonshine_skin` before 0056_focus_practice_uncapped landed on main from
+-- another branch. Renumbered to 0057 here so the tree doesn't gain a third
+-- duplicate (see the 0034 and 0038 scars in CLAUDE.md); the supabase migration
+-- ledger still carries the row under the old name. Nothing needs re-running —
+-- the two touch different functions (submit_focus_practice vs
+-- enforce_skin_entitlement) and both are already live.
 -- ---------------------------------------------------------------------------
 
 create or replace function public.enforce_skin_entitlement()

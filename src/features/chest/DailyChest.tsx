@@ -8,6 +8,8 @@ import { collectibleByKey, rarityColor } from '@/data/collectibles'
 import { Avatar } from '@/components/Avatar'
 import { drawChestItem, itemById, DEFAULT_AVATAR } from '@/data/avatar'
 import { useJuice } from '@/juice/useJuice'
+import { useSeason } from '@/store/season'
+import { chestSkinById } from '@/data/season'
 
 // A once-a-day reward that reinforces the daily loop: it unlocks only after you
 // play today's verse, then gives a random relic (common / uncommon / rare) —
@@ -32,6 +34,9 @@ export function DailyChest() {
   } | null>(null)
   const [itemDrop, setItemDrop] = useState<string | null>(null)
   const [opening, setOpening] = useState(false)
+  // What the chest looks like — an equipped seasonal chest skin, or the default.
+  // Cosmetic only: the skin never changes what's inside or how often it opens.
+  const chest = chestSkinById(useSeason((s) => s.equipped.chest))
 
   useEffect(() => {
     load()
@@ -45,6 +50,8 @@ export function DailyChest() {
     const res = await openChest(todayDate)
     setOpening(false)
     if (res.alreadyOpened) return
+    // Opening the chest is worth miles on the road, and finishes a quest.
+    void useSeason.getState().track('chest_open')
     if (res.kind === 'boost') {
       setRevealed({ kind: 'boost' })
       juice.levelUp()
@@ -141,7 +148,7 @@ export function DailyChest() {
         ) : openedToday ? (
           // ——— Already opened today ———
           <motion.div key="done" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <div style={{ fontSize: 40, opacity: 0.5 }}>🎁</div>
+            <div style={{ fontSize: 40, opacity: 0.5 }}>{chest.glyph}</div>
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, marginTop: 6 }}>Chest opened</div>
             <p className="faint" style={{ fontSize: 13, marginTop: 4 }}>Come back tomorrow for a new relic.</p>
           </motion.div>
@@ -161,7 +168,7 @@ export function DailyChest() {
               transition={{ repeat: Infinity, repeatDelay: 1.4, duration: 0.7 }}
               style={{ fontSize: 48 }}
             >
-              🎁
+              {chest.glyph}
             </motion.div>
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, marginTop: 6 }}>Daily Chest</div>
             <p className="dim" style={{ fontSize: 13, marginTop: 4 }}>A relic is waiting inside.</p>
@@ -174,7 +181,7 @@ export function DailyChest() {
         ) : (
           // ——— Locked until they play ———
           <motion.div key="locked" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <div style={{ fontSize: 40, opacity: 0.5 }}>🎁</div>
+            <div style={{ fontSize: 40, opacity: 0.5 }}>{chest.glyph}</div>
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, marginTop: 6 }}>Daily Chest</div>
             <p className="faint" style={{ fontSize: 13, marginTop: 4 }}>Play today’s verse to unlock your chest.</p>
           </motion.div>

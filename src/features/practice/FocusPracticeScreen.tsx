@@ -6,7 +6,7 @@ import { Button } from '@/components/Button'
 import { Avatar } from '@/components/Avatar'
 import { CpuVersusQuiz } from '@/features/arena/CpuVersusQuiz'
 import type { CpuProfile } from '@/features/arena/cpu'
-import { useFocus, FOCUS_XP_DAILY_CAP, type FocusXpOutcome } from '@/store/focus'
+import { useFocus, FOCUS_XP_PER_SESSION, type FocusXpOutcome } from '@/store/focus'
 import { useAuth } from '@/store/auth'
 import { poolBooks, poolBookCounts, practiceVerseFromBook, verseFromReference } from '@/data/bible/questions'
 import { useJuice } from '@/juice/useJuice'
@@ -16,7 +16,8 @@ import type { AvatarSpec, DailyVerse, PlayResult } from '@/types'
 // Focus practice: pick a book, then drill random verses from just that book —
 // reached from the Study tab, alongside the CPU battle and the last-five replay.
 // racing a live study companion (real-time versus bar) and earning a little XP
-// (5 per session, capped at 20/day). The book choice sticks until you change it.
+// (5 per session, every session — no daily ceiling). The book choice sticks
+// until you change it.
 const bookLabel = (book: string | null) => book ?? 'Any book'
 
 // A friendly pace-setter — same sim as the Battle CPU, tuned to "fair fight".
@@ -105,6 +106,7 @@ export default function FocusPracticeScreen() {
         label={`🎯 Focus · ${bookLabel(book)}`}
         onExit={() => setPhase('pick')}
         onFinish={onFinish}
+        studyDrop
       />
     )
   }
@@ -150,7 +152,7 @@ function BookPicker({
         <div className="floaty" style={{ fontSize: 44 }}>🎯</div>
         <h1 style={{ fontSize: 26, marginTop: 4 }}>Pick a book to focus on</h1>
         <p className="dim" style={{ marginTop: 4, lineHeight: 1.4 }}>
-          Drill verses from just this book, racing a study partner. Earn 5 XP a session, up to {FOCUS_XP_DAILY_CAP}/day.
+          Drill verses from just this book, racing a study partner. Earn {FOCUS_XP_PER_SESSION} XP every session — study as much as you like.
         </p>
       </div>
 
@@ -235,7 +237,7 @@ function RecapScreen({
   const you = outcome.player.score
   const cpu = outcome.cpuScore
   const result: 'won' | 'lost' | 'tie' = you > cpu ? 'won' : you < cpu ? 'lost' : 'tie'
-  const { xpEarned, dayTotal, cap } = outcome.xp
+  const { xpEarned, dayTotal } = outcome.xp
 
   return (
     <Page noNav>
@@ -263,31 +265,24 @@ function RecapScreen({
       <div className="faint center" style={{ fontSize: 12, letterSpacing: '0.3em', margin: '2px 0' }}>VS</div>
       <ScoreRow name={COMPANION.name} emoji={COMPANION.emoji} score={cpu} winner={result === 'lost'} />
 
-      {/* XP reward / daily cap state */}
-      <div
-        className="card"
-        style={{
-          marginTop: 14, textAlign: 'center',
-          borderColor: xpEarned > 0 ? 'var(--gold)' : 'var(--stroke)',
-          background: xpEarned > 0 ? 'rgba(255,210,63,0.08)' : undefined,
-        }}
-      >
-        {xpEarned > 0 ? (
-          <>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, color: 'var(--gold)' }}>+{xpEarned} XP</div>
-            <div className="faint" style={{ fontSize: 12, marginTop: 2 }}>
-              {dayTotal}/{cap} XP from focus today{dayTotal >= cap ? ' — daily max reached' : ''}
-            </div>
-          </>
-        ) : (
-          <>
-            <div style={{ fontWeight: 800 }}>Daily XP maxed 🎉</div>
-            <div className="faint" style={{ fontSize: 12, marginTop: 2 }}>
-              You’ve earned all {cap} focus XP today — keep practicing free, XP resets tomorrow.
-            </div>
-          </>
-        )}
-      </div>
+      {/* XP reward. Every session pays — the running day total is encouragement,
+          not a budget. Nothing to render if the award didn't land (offline blip),
+          rather than a card that implies a limit that no longer exists. */}
+      {xpEarned > 0 && (
+        <div
+          className="card"
+          style={{
+            marginTop: 14, textAlign: 'center',
+            borderColor: 'var(--gold)',
+            background: 'rgba(255,210,63,0.08)',
+          }}
+        >
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, color: 'var(--gold)' }}>+{xpEarned} XP</div>
+          <div className="faint" style={{ fontSize: 12, marginTop: 2 }}>
+            {dayTotal} XP from focus today — keep going, there’s no daily limit
+          </div>
+        </div>
+      )}
 
       {/* Keep the verse you just drilled — the drill is the reason you met it. */}
       <div className="card" style={{ marginTop: 14, textAlign: 'left' }}>
@@ -301,7 +296,7 @@ function RecapScreen({
       <div style={{ marginTop: 16, display: 'grid', gap: 10 }}>
         <Button variant="gold" full onClick={onNext}>▶ Next verse</Button>
         <Button variant="secondary" full onClick={onChange}>Change book</Button>
-        <Button variant="ghost" full onClick={onDone}>Done</Button>
+        <Button variant="ghost" full onClick={onDone}>← Back to Study</Button>
       </div>
       <div style={{ height: 30 }} />
     </Page>

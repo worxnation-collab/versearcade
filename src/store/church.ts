@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from './auth'
 import type { Church, ChurchGiver, ChurchInfo, ChurchMember, ChurchPage } from '@/types'
 import type { ChurchPlace } from '@/lib/churchSearch'
+import type { ChurchSkinChoice } from '@/features/church/skins'
 
 // Your church, what you've given it, and how it stacks up locally.
 //
@@ -52,6 +53,9 @@ function toChurch(raw: any): Church | null {
     miles: raw.miles != null ? Number(raw.miles) : undefined,
     rank: raw.rank != null ? Number(raw.rank) : undefined,
     isMine: raw.is_mine ?? undefined,
+    // Set on every church by `church_json` (0051), so board rows, the page and
+    // your own church tab all draw the same building.
+    skin: raw.skin ?? null,
   }
 }
 
@@ -112,6 +116,13 @@ export interface InfoRequestInput {
   note: string
   name?: string
   email?: string
+  /**
+   * The look the church is asking for — a `ChurchSkinChoice`, or undefined for
+   * "no preference". Leadership only: `submit_church_info_request` (0051) drops
+   * it on the member path rather than trusting the form, because someone who
+   * merely attends doesn't get to redecorate the building.
+   */
+  skin?: ChurchSkinChoice
 }
 
 interface ChurchState {
@@ -328,7 +339,7 @@ export const useChurch = create<ChurchState>((set, get) => ({
     set({ page: null, pageLoading: false })
   },
 
-  async requestInfo({ churchId, role, note, name, email }) {
+  async requestInfo({ churchId, role, note, name, email, skin }) {
     if (!isOnline()) return { ok: false, reason: 'offline' }
     const { data, error } = await supabase!.rpc('submit_church_info_request', {
       p_church_id: churchId,
@@ -336,6 +347,7 @@ export const useChurch = create<ChurchState>((set, get) => ({
       p_note: note.slice(0, INFO_NOTE_MAX[role]),
       p_name: name?.trim() || null,
       p_email: email?.trim() || null,
+      p_skin: skin ?? null,
     })
     if (error) return { ok: false, reason: error.message }
     const payload = data as any

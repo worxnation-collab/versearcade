@@ -6,6 +6,7 @@ import { Avatar } from '@/components/Avatar'
 import { useAuth } from '@/store/auth'
 import { supabase } from '@/lib/supabase'
 import { FULL_SKINS, BUNDLES } from '@/data/avatar'
+import GrowthPanel from './GrowthPanel'
 import type { AvatarSpec } from '@/types'
 
 // Private operator surface. THREE gates, strongest first:
@@ -92,7 +93,7 @@ function PinGate({ onOk }: { onOk: () => void }) {
 function Dashboard() {
   const navigate = useNavigate()
   const [ov, setOv] = useState<Overview | null>(null)
-  const [tab, setTab] = useState<'stats' | 'users' | 'sales' | 'church' | 'codes' | 'push'>('stats')
+  const [tab, setTab] = useState<'stats' | 'growth' | 'users' | 'sales' | 'church' | 'codes' | 'push'>('stats')
 
   useEffect(() => {
     supabase?.rpc('admin_overview').then(({ data }) => setOv(data as Overview))
@@ -107,7 +108,7 @@ function Dashboard() {
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-        {(['stats', 'users', 'sales', 'church', 'codes', 'push'] as const).map((t) => (
+        {(['stats', 'growth', 'users', 'sales', 'church', 'codes', 'push'] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)} className="pill"
             style={{ background: tab === t ? 'var(--grape)' : 'var(--card)', fontWeight: 800, textTransform: 'capitalize' }}>
             {t === 'church' ? 'Churches' : t}
@@ -116,6 +117,7 @@ function Dashboard() {
       </div>
 
       {tab === 'stats' && <Stats ov={ov} />}
+      {tab === 'growth' && <GrowthPanel />}
       {tab === 'users' && <Users />}
       {tab === 'sales' && <Sales />}
       {tab === 'church' && <Churches />}

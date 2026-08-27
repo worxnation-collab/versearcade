@@ -4,18 +4,13 @@ import { localdb } from '@/lib/localdb'
 import { getVerseForDate } from '@/data/bible/questions'
 import { todayLocalDate } from '@/lib/date'
 import { levelInfo } from '@/components/XpBar'
-import {
-  PRACTICE_LIST_SIZE,
-  practiceBonusXp,
-  rewardAvailable,
-  nextRewardDate,
-} from '@/lib/practice'
+import { PRACTICE_LIST_SIZE, practiceBonusXp } from '@/lib/practice'
 import { useAuth } from './auth'
 import type { DailyVerse, PlayResult, PracticeItem, PracticeOutcome } from '@/types'
 
 // Practice mode store: the list of recently-played verses you can restudy, and
-// the run/submit flow. Replaying is free study; XP only comes from beating your
-// best, once per week per verse (see lib/practice + migration 0014).
+// the run/submit flow. Replaying is free study; XP comes from beating your best,
+// every time you do it (see lib/practice + migrations 0014/0057).
 
 function isOnline(): boolean {
   const a = useAuth.getState()
@@ -84,8 +79,6 @@ export const usePractice = create<PracticeState>((set, get) => ({
           dropDate: date,
           reference: getVerseForDate(date).reference,
           bestScore,
-          rewardable: rewardAvailable(pp?.last_reward_on, today),
-          nextRewardOn: rewardAvailable(pp?.last_reward_on, today) ? null : nextRewardDate(pp?.last_reward_on),
         }
       })
       set({ list, loadedList: true })
@@ -102,13 +95,10 @@ export const usePractice = create<PracticeState>((set, get) => ({
       const dailyScore = plays[date]?.result.score ?? 0
       const pp = localdb.getPractice(date)
       const bestScore = Math.max(dailyScore, pp?.bestScore ?? 0)
-      const avail = rewardAvailable(pp?.lastRewardOn, today)
       return {
         dropDate: date,
         reference: getVerseForDate(date).reference,
         bestScore,
-        rewardable: avail,
-        nextRewardOn: avail ? null : nextRewardDate(pp?.lastRewardOn),
       }
     })
     set({ list, loadedList: true })
@@ -138,8 +128,6 @@ export const usePractice = create<PracticeState>((set, get) => ({
         improved: !!d.improved,
         rewarded: !!d.rewarded,
         xpEarned: Number(d.xp_earned ?? 0),
-        weeklyLocked: !!d.weekly_locked,
-        nextRewardOn: (d.next_reward_on as string | null) ?? null,
       }
       if (outcome.rewarded) await auth.refreshProfile()
       set({ lastResult: { result, outcome } })
@@ -161,8 +149,6 @@ export const usePractice = create<PracticeState>((set, get) => ({
         improved: false,
         rewarded: false,
         xpEarned: 0,
-        weeklyLocked: false,
-        nextRewardOn: null,
       }
       set({ lastResult: { result, outcome } })
       return outcome
@@ -171,10 +157,11 @@ export const usePractice = create<PracticeState>((set, get) => ({
     const pp = localdb.getPractice(date)
     const previousBest = Math.max(dailyScore, pp?.bestScore ?? 0)
     const improved = result.score > previousBest
-    const canReward = improved && rewardAvailable(pp?.lastRewardOn, today)
-    const xpEarned = canReward ? practiceBonusXp(result.score - previousBest) : 0
+    const xpEarned = improved ? practiceBonusXp(result.score - previousBest) : 0
     const newBest = Math.max(previousBest, result.score)
 
+    // lastRewardOn no longer gates anything — kept as a record of when this verse
+    // last paid out, and so old saved state still round-trips unchanged.
     localdb.savePractice(date, {
       bestScore: newBest,
       lastRewardOn: xpEarned > 0 ? today : (pp?.lastRewardOn ?? null),
@@ -210,8 +197,6 @@ export const usePractice = create<PracticeState>((set, get) => ({
       improved,
       rewarded: xpEarned > 0,
       xpEarned,
-      weeklyLocked: improved && !canReward,
-      nextRewardOn: canReward ? nextRewardDate(today) : nextRewardDate(pp?.lastRewardOn),
     }
     set({ lastResult: { result, outcome } })
     get().loadList()

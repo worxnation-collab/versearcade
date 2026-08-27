@@ -5,11 +5,17 @@ import { Avatar } from '@/components/Avatar'
 import { Button } from '@/components/Button'
 import { Collapsible } from '@/components/Collapsible'
 import { useChurch, INFO_NOTE_MAX, INFO_NOTE_MIN, type InfoRequestRole } from '@/store/church'
+import { useChurchYard } from '@/store/churchYard'
 import { useJuice } from '@/juice/useJuice'
 import { formatMiles } from '@/lib/geo'
 import { churchLevelInfo, tierForLevel } from './levels'
+import { ChurchArt } from './ChurchArt'
 import { ChurchScene } from './ChurchScene'
+import { CHURCH_SKINS, DEFAULT_CHURCH_SKIN, type ChurchSkinChoice } from './skins'
 import type { ChurchMember, ChurchPage } from '@/types'
+
+/** Stable empty yard — a fresh {} from the selector would re-render forever. */
+const EMPTY_YARD = {}
 
 // A church's page: what's behind tapping a row on the leaderboard.
 //
@@ -86,6 +92,16 @@ export function ChurchDetailSheet() {
 
 function Body({ page, loading, onClose }: { page: ChurchPage; loading: boolean; onClose: () => void }) {
   const { church, members, memberTotal } = page
+  // The yard is a second read on purpose: the sheet is seeded from the row and
+  // draws instantly, and the landscaping arrives with the roster rather than
+  // holding the building back.
+  const yard = useChurchYard((s) => (s.pageChurchId === church.id ? s.pageYard : EMPTY_YARD))
+  const loadPageYard = useChurchYard((s) => s.loadPageYard)
+  useEffect(() => {
+    void loadPageYard(church.id)
+    return () => { void loadPageYard(null) }
+  }, [church.id, loadPageYard])
+
   const level = churchLevelInfo(church.xp)
   const tier = tierForLevel(level.level)
   const where = [church.city, church.region].filter(Boolean).join(', ')
@@ -106,8 +122,9 @@ function Body({ page, loading, onClose }: { page: ChurchPage; loading: boolean; 
         </button>
       </div>
 
-      {/* The wide shot: the building, and the people who play for it. */}
-      <ChurchScene level={level.level} members={members} />
+      {/* The wide shot: the building, the landscaping its givers planted, and
+          the people who play for it. */}
+      <ChurchScene level={level.level} members={members} skin={church.skin} flora={yard} />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, margin: '12px 0 14px' }}>
         <Stat label={tier.name} value={`LVL ${level.level}`} tone="var(--gold)" />
@@ -265,7 +282,18 @@ function InfoSection({ page, loading }: { page: ChurchPage; loading: boolean }) 
   useEffect(() => { setOpen(false) }, [church.id])
 
   if (open) {
-    return <InfoRequestForm churchId={church.id} churchName={church.name} onDone={() => setOpen(false)} />
+    return (
+      <InfoRequestForm
+        churchId={church.id}
+        churchName={church.name}
+        // Preview the skin on the building this church has actually earned, and
+        // start from the one it's already wearing — a chooser that opens on
+        // somebody else's look reads as a proposal to change it.
+        level={churchLevelInfo(church.xp).level}
+        currentSkin={church.skin}
+        onDone={() => setOpen(false)}
+      />
+    )
   }
 
   return (
@@ -345,10 +373,25 @@ const REASONS: Record<string, string> = {
   offline: 'You need to be signed in to send this.',
 }
 
-function InfoRequestForm({ churchId, churchName, onDone }: { churchId: string; churchName: string; onDone: () => void }) {
+function InfoRequestForm({
+  churchId,
+  churchName,
+  level,
+  currentSkin,
+  onDone,
+}: {
+  churchId: string
+  churchName: string
+  level: number
+  currentSkin?: string | null
+  onDone: () => void
+}) {
   const requestInfo = useChurch((s) => s.requestInfo)
   const juice = useJuice()
   const [role, setRoleState] = useState<InfoRequestRole>('member')
+  const [skin, setSkin] = useState<ChurchSkinChoice>(
+    (CHURCH_SKINS.find((s) => s.id === currentSkin)?.id ?? DEFAULT_CHURCH_SKIN) as ChurchSkinChoice,
+  )
   const [note, setNote] = useState('')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -373,7 +416,7 @@ function InfoRequestForm({ churchId, churchName, onDone }: { churchId: string; c
     if (!valid || busy) return
     setBusy(true)
     setErr(null)
-    const res = await requestInfo({ churchId, role, note, name, email })
+    const res = await requestInfo({ churchId, role, note, name, email, skin: leadership ? skin : undefined })
     setBusy(false)
     if (!res.ok) {
       setErr(REASONS[res.reason ?? ''] ?? 'That didn’t go through. Try again in a moment.')
@@ -389,9 +432,11 @@ function InfoRequestForm({ churchId, churchName, onDone }: { churchId: string; c
         <div style={{ fontSize: 32 }}>🙏</div>
         <b style={{ fontFamily: 'var(--font-display)', fontSize: 17, display: 'block', marginTop: 6 }}>Thank you</b>
         <p className="dim" style={{ margin: '6px 0 14px', fontSize: 13.5, lineHeight: 1.55 }}>
-          {leadership
-            ? `We'll email you about ${churchName}'s page.`
-            : `We'll use this to fill in ${churchName}'s page — and we'll reach out to the church too.`}
+          {!leadership
+            ? `We'll use this to fill in ${churchName}'s page — and we'll reach out to the church too.`
+            : skin === 'custom'
+              ? `We'll email you about ${churchName}'s page, and about drawing the building itself.`
+              : `We'll email you about ${churchName}'s page.`}
         </p>
         <Button variant="secondary" full onClick={onDone}>Back</Button>
       </div>
@@ -437,6 +482,12 @@ function InfoRequestForm({ churchId, churchName, onDone }: { churchId: string; c
               maxLength={120}
             />
           </label>
+          <SkinPicker
+            churchName={churchName}
+            level={level}
+            value={skin}
+            onPick={(next) => { juice.select?.(); setSkin(next) }}
+          />
         </>
       )}
 
@@ -501,3 +552,109 @@ function RoleChip({ active, onClick, children }: { active: boolean; onClick: () 
 }
 
 const labelStyle: React.CSSProperties = { display: 'grid', gap: 5, fontSize: 12, fontWeight: 700, color: 'var(--ink-faint)' }
+
+// ---------------------------------------------------------------------------
+// Choosing how the building looks
+// ---------------------------------------------------------------------------
+// Staff only, and it's still an ask rather than a setting: this posts to the
+// same review queue as everything else on the form, and `church_profiles` has
+// no client write path at all (0050/0051). Picking "Tile roof" here does not
+// change a single pixel for anybody until a person publishes it.
+//
+// Each tile previews the church's OWN building — the tier it has actually
+// earned — because that's what the choice is really about. Showing a cathedral
+// to a congregation on the second rung would be selling them a level, and the
+// levels aren't for sale.
+//
+// NOTHING HERE NAMES A PRICE, on purpose, and that isn't squeamishness — it's
+// the rule this whole surface is built to keep. The pill has to be byte-
+// identical on the web and in the App Store build, and a price label is a
+// storefront even with no button under it (see lib/commerce.ts). Custom work
+// says what it is — a commission, answered by email — which is the honest
+// version anyway: what a hand-drawn building costs depends on the building.
+// If a church page ever gets a real in-app price, that decision goes in
+// commerce.ts and nowhere else.
+function SkinPicker({
+  churchName,
+  level,
+  value,
+  onPick,
+}: {
+  churchName: string
+  level: number
+  value: ChurchSkinChoice
+  onPick: (skin: ChurchSkinChoice) => void
+}) {
+  return (
+    <div style={{ display: 'grid', gap: 8 }}>
+      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-faint)' }}>
+        How should {churchName} look?
+      </span>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+        {CHURCH_SKINS.map((s) => (
+          <SkinTile key={s.id} active={value === s.id} onClick={() => onPick(s.id)}>
+            <ChurchArt level={level} skin={s.id} size={98} />
+            <b style={{ fontSize: 12.5, marginTop: 2 }}>{s.name}</b>
+            <span className="faint" style={{ fontSize: 10.5, lineHeight: 1.35, textAlign: 'center' }}>
+              {s.id === DEFAULT_CHURCH_SKIN ? 'The one you have now' : s.blurb}
+            </span>
+          </SkinTile>
+        ))}
+      </div>
+
+      <SkinTile active={value === 'custom'} onClick={() => onPick('custom')} row>
+        <span style={{ fontSize: 26, lineHeight: 1 }}>✏️</span>
+        <span style={{ minWidth: 0, flex: 1 }}>
+          <b style={{ fontSize: 13, display: 'block' }}>Custom — draw our actual building</b>
+          <span className="faint" style={{ fontSize: 11.5, lineHeight: 1.45, display: 'block' }}>
+            Your roofline, your windows, your doors. This one is a commission rather than a preset,
+            so we'll write back about what it takes before anything gets drawn.
+          </span>
+        </span>
+      </SkinTile>
+
+      <p className="faint" style={{ margin: 0, fontSize: 11, lineHeight: 1.5 }}>
+        Whichever you pick, the building stays the one your congregation earned by playing — right now
+        that's the {tierForLevel(level).name}. A look never moves your level or your place on the board.
+      </p>
+    </div>
+  )
+}
+
+function SkinTile({
+  active,
+  onClick,
+  row = false,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  row?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <motion.button
+      whileTap={{ scale: 0.96 }}
+      onClick={onClick}
+      aria-pressed={active}
+      style={{
+        display: 'flex',
+        flexDirection: row ? 'row' : 'column',
+        // The wide row's icon belongs beside its heading, not floating level
+        // with the middle of a four-line paragraph.
+        alignItems: row ? 'flex-start' : 'center',
+        gap: row ? 10 : 1,
+        textAlign: row ? 'left' : 'center',
+        padding: row ? '10px 12px' : '8px 6px 10px',
+        borderRadius: 'var(--r-sm)',
+        border: '1px solid',
+        borderColor: active ? 'var(--gold)' : 'var(--stroke)',
+        background: active ? 'rgba(255,210,63,0.10)' : 'var(--card)',
+        color: 'var(--ink)',
+        minWidth: 0,
+      }}
+    >
+      {children}
+    </motion.button>
+  )
+}

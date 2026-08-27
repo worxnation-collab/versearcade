@@ -7,7 +7,7 @@ import { ThroneIcon } from '@/components/ThroneIcon'
 
 // A collection wall. Locked items are visible-but-dimmed on purpose: seeing what
 // you *could* earn is a stronger pull than hiding it. Cards name the exact thing
-// to do to unlock them; relics come from the Daily Chest.
+// to do to unlock them; relics come from the Daily Chest and from studying.
 // Standalone /collection route — kept for deep links. The wall itself now also
 // lives in a collapsible on the You tab.
 export default function CollectionScreen() {
@@ -45,8 +45,8 @@ export function CollectionSection() {
 
       <div style={{ height: 22 }} />
 
-      <SectionHeader title="Relics" sub="Open the Daily Chest to find these" have={relicsHave} total={RELICS.length} />
-      <Grid items={RELICS} ownedSet={ownedSet} lockedHint={() => 'Found in the Daily Chest'} />
+      <SectionHeader title="Relics" sub="Found in the Daily Chest — and while you study" have={relicsHave} total={RELICS.length} />
+      <Grid items={RELICS} ownedSet={ownedSet} lockedHint={() => 'Found in the Daily Chest, or while you study'} />
     </>
   )
 }

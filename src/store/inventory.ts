@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from './auth'
+import { useSeason } from './season'
 import { localdb } from '@/lib/localdb'
 
 // What the player is currently HOLDING, as opposed to what they've collected.
@@ -129,6 +130,12 @@ export const useInventory = create<InventoryState>((set, get) => ({
     if (remaining > 0) next[key] = remaining
     else delete next[key]
     set({ items: next })
+
+    // Giving to your church walks the road. Note the direction: the road pays
+    // the giver miles (which rank nothing), and the church's own points are
+    // untouched by anything seasonal — no road reward may ever move church
+    // standing. See docs/FORTRESS.md.
+    void useSeason.getState().track('donate')
 
     return {
       ok: true,

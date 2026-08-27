@@ -5,8 +5,6 @@ import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { usePractice } from '@/store/practice'
 import { useJuice } from '@/juice/useJuice'
-import { todayLocalDate } from '@/lib/date'
-import { daysBetween } from '@/lib/practice'
 import { FavoriteButton } from '@/components/FavoriteButton'
 
 export default function PracticeResultScreen() {
@@ -29,21 +27,18 @@ export default function PracticeResultScreen() {
   }, [outcome, juice])
 
   useEffect(() => {
-    if (!lastResult) navigate('/play', { replace: true })
+    if (!lastResult) navigate('/study/recent', { replace: true })
   }, [lastResult, navigate])
 
   if (!outcome) return null
 
   const delta = outcome.score - outcome.previousBest
-  const daysToUnlock = outcome.nextRewardOn ? Math.max(0, daysBetween(todayLocalDate(), outcome.nextRewardOn)) : 0
 
   const headline = outcome.rewarded
     ? 'New personal best! 🏆'
-    : outcome.weeklyLocked
-      ? 'New best — no bonus this week'
-      : outcome.improved
-        ? 'New best!'
-        : 'Good study 📖'
+    : outcome.improved
+      ? 'New best!'
+      : 'Good study 📖'
 
   const emoji = outcome.rewarded ? '🏆' : outcome.improved ? '📈' : '📖'
 
@@ -83,18 +78,9 @@ export default function PracticeResultScreen() {
             </div>
             <p className="dim" style={{ fontSize: 13, marginTop: 4 }}>
               You beat your best by {delta.toLocaleString()} — bonus scales with how much you improve.
-              This verse’s bonus returns in {daysToUnlock} day{daysToUnlock === 1 ? '' : 's'}.
+              Beat <b style={{ color: 'var(--gold)' }}>{outcome.newBest.toLocaleString()}</b> to earn again.
             </p>
           </motion.div>
-        ) : outcome.weeklyLocked ? (
-          <div className="card" style={{ marginTop: 16 }}>
-            <p style={{ fontWeight: 700 }}>Nice — that’s a new best! 📈</p>
-            <p className="dim" style={{ fontSize: 13, marginTop: 4 }}>
-              You already earned this verse’s weekly bonus. It opens again in{' '}
-              <b style={{ color: 'var(--sky)' }}>{daysToUnlock} day{daysToUnlock === 1 ? '' : 's'}</b> — beat this
-              score then to earn more.
-            </p>
-          </div>
         ) : (
           <div className="card" style={{ marginTop: 16 }}>
             <p className="dim" style={{ fontSize: 14 }}>
@@ -120,7 +106,11 @@ export default function PracticeResultScreen() {
           <Button variant="gold" full onClick={() => navigate(`/play/practice/${date}`, { replace: true })}>
             ↻ Practice again
           </Button>
-          <Button variant="ghost" full onClick={() => navigate('/play')}>Back home</Button>
+          {/* A replay is a study run and it was started from the Study tab, so
+              the way out is back to the shelf — dropping the player on the home
+              screen loses the place they were studying from. */}
+          <Button variant="secondary" full onClick={() => navigate('/study/recent')}>📚 Another verse</Button>
+          <Button variant="ghost" full onClick={() => navigate('/study')}>← Back to Study</Button>
         </div>
       </div>
     </Page>

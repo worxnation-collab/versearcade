@@ -6,6 +6,7 @@ import { useJuice } from '@/juice/useJuice'
 import { READING_TRANSLATIONS } from '@/lib/config'
 import { pushSupported, pushPermission, isPushSubscribed, enablePush, disablePush } from '@/lib/push'
 import { useReminders } from '@/store/reminders'
+import { MusicSection } from './MusicSection'
 import { InstallRow } from '@/features/home/InstallPrompt'
 import { AppStoreRow } from '@/features/home/AppStoreNudge'
 
@@ -136,6 +137,10 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
               onMouseUp={() => juice.coin()} style={{ width: '100%' }} />
           </div>
         </div>
+
+        {/* The soundtrack — its own toggle and its own level, deliberately not
+            wired to the sound-effects ones above. */}
+        <MusicSection />
 
         {/* The App Store app — a review ask inside it, a download link outside. */}
         <AppStoreRow />

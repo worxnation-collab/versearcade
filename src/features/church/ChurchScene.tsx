@@ -1,6 +1,7 @@
-import { motion } from 'framer-motion'
-import { Character } from '@/components/Character'
 import { ChurchArt } from './ChurchArt'
+import { ChurchFlora } from './ChurchFlora'
+import { CrowdLife, type CrowdWaypoint } from '@/components/CrowdLife'
+import type { Plantings } from './yard'
 import type { ChurchMember } from '@/types'
 
 // The church, pulled back far enough that you can see the people.
@@ -26,49 +27,61 @@ const CANVAS_H = 236
 const GROUND = 82
 const CHURCH_W = 190
 
-/** Stable per-person jitter, so nobody shuffles on a re-render. */
-function hash(s: string): number {
-  let h = 2166136261
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i)
-    h = Math.imul(h, 16777619)
+// The churchyard's standing spots: the lawn either side, the foot of the
+// path, and up the path by the door. The congregation wanders between them on
+// the shared CrowdLife engine — the same living figures as the keep's hall,
+// so the two scenes can't drift apart. All spots keep clear of the building's
+// footprint (roughly x 31-69% above b 20%): nobody walks through a wall.
+const WAYPOINTS: CrowdWaypoint[] = [
+  { x: 14, b: 8 },  // left lawn, front
+  { x: 84, b: 9 },  // right lawn, front
+  { x: 50, b: 5 },  // the foot of the path
+  { x: 50, b: 24 }, // up the path, by the door
+  { x: 27, b: 17 }, // mid-left
+  { x: 72, b: 18 }, // mid-right
+  { x: 12, b: 25 }, // far back, left of the building
+  { x: 88, b: 24 }, // far back, right of the building
+]
+
+/** Depth cue: further up the yard = smaller. b 5..26% -> 42..27px. */
+const sizeFor = (b: number) =>
+  Math.round(42 - ((Math.min(Math.max(b, 5), 26) - 5) / 21) * 15)
+
+export function ChurchScene({
+  level,
+  members,
+  skin,
+  flora,
+  floraEditing,
+  emptyNote = true,
+}: {
+  level: number
+  members: ChurchMember[]
+  /** The church's skin, so the wide shot matches the row you tapped. */
+  skin?: string | null
+  /**
+   * What's planted out front — the viewer's own plantings blended with a
+   * sample of the congregation's (see features/church/yard.ts). Absent on a
+   * yard nobody has given enough to plant, which is simply a lawn.
+   */
+  flora?: Plantings
+  /**
+   * Tap-to-move for the plantings. Only your own church tab passes this — a bed
+   * you can move in somebody else's yard is exactly the thing the church-page
+   * rule forbids. See ChurchFlora.
+   */
+  floraEditing?: {
+    picked: string | null
+    onPick: (plot: string) => void
+    onDrop: (plot: string) => void
   }
-  return (h >>> 0) / 4294967295
-}
-
-interface Figure {
-  member: ChurchMember
-  /** Percent across the scene. */
-  x: number
-  /** Pixels from the bottom of the scene. */
-  y: number
-  size: number
-}
-
-/** Spread `members` across the width in a rank, nudged so they don't line up. */
-function rank(members: ChurchMember[], y: number, size: number): Figure[] {
-  const n = members.length
-  return members.map((member, i) => {
-    const j = hash(member.username)
-    // Evenly spaced across 10%–90%, then jittered by up to ±3.5% of the width.
-    const span = n === 1 ? 0 : 80 / (n - 1)
-    const x = (n === 1 ? 50 : 10 + i * span) + (j - 0.5) * 7
-    return {
-      member,
-      x,
-      y: y + Math.round((j - 0.5) * 8),
-      size: Math.round(size * (0.9 + j * 0.2)),
-    }
-  })
-}
-
-export function ChurchScene({ level, members }: { level: number; members: ChurchMember[] }) {
-  // You stand out front. Everyone else keeps the server's order (oldest member
-  // first), which is stable and means the crowd doesn't rearrange itself.
-  const ordered = [...members].sort((a, b) => Number(b.isMe) - Number(a.isMe))
-  const front = rank(ordered.slice(0, 5), 18, 40)
-  const back = rank(ordered.slice(5, 11), 56, 28)
-
+  /**
+   * Whether an empty crowd says so. False on your own church tab, where the
+   * scene is a preview of your own yard and "nobody's playing for this one
+   * yet" would be talking about you.
+   */
+  emptyNote?: boolean
+}) {
   return (
     <div
       style={{
@@ -127,17 +140,29 @@ export function ChurchScene({ level, members }: { level: number; members: Church
       />
 
       <div style={{ position: 'absolute', left: '50%', bottom: GROUND - 8, transform: 'translateX(-50%)' }}>
-        <ChurchArt level={level} size={CHURCH_W} />
+        <ChurchArt level={level} skin={skin} size={CHURCH_W} />
       </div>
 
-      {back.map((f) => (
-        <Figure key={f.member.username} {...f} dim />
-      ))}
-      {front.map((f) => (
-        <Figure key={f.member.username} {...f} />
-      ))}
+      {/* Planted in front of the wall, behind the people: flowers earned by
+          giving, drawn by ChurchFlora. Non-interactive — planting happens on
+          your own church tab and never in somebody else's yard. */}
+      {flora && (
+        <ChurchFlora
+          plantings={flora}
+          editable={!!floraEditing}
+          picked={floraEditing?.picked ?? null}
+          onPick={floraEditing?.onPick}
+          onDrop={floraEditing?.onDrop}
+        />
+      )}
 
-      {members.length === 0 && (
+      {/* The congregation, alive: figures drift between the lawn, the path
+          and the door on seeded schedules (CrowdLife sorts you to the front
+          of the cut and caps the crowd — a picture of the place, not a
+          census, same as ever). */}
+      <CrowdLife members={members} waypoints={WAYPOINTS} sizeFor={sizeFor} max={9} showYouTag />
+
+      {emptyNote && members.length === 0 && (
         <p
           className="faint"
           style={{ position: 'absolute', left: 0, right: 0, bottom: 10, margin: 0, fontSize: 12, textAlign: 'center' }}
@@ -155,63 +180,3 @@ const STARS: [number, number, number][] = [
   [8, 12, 2], [17, 30, 1.5], [26, 8, 1.5], [38, 20, 2], [47, 6, 1.5],
   [58, 16, 2], [69, 9, 1.5], [78, 26, 2], [88, 14, 1.5], [93, 32, 2],
 ]
-
-function Figure({ member, x, y, size, dim = false }: Figure & { dim?: boolean }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: dim ? 0.82 : 1, y: 0 }}
-      transition={{ type: 'spring', stiffness: 260, damping: 22 }}
-      title={member.isMe ? `${member.username} (you)` : member.username}
-      style={{
-        position: 'absolute',
-        left: `${x}%`,
-        bottom: y,
-        transform: 'translateX(-50%)',
-        display: 'grid',
-        placeItems: 'center',
-        // Front rank over back rank, and you over everyone.
-        zIndex: (dim ? 1 : 2) + (member.isMe ? 1 : 0),
-      }}
-    >
-      {/* Contact shadow — without it the figures hover above the grass. */}
-      <span
-        style={{
-          position: 'absolute',
-          bottom: -2,
-          width: size * 0.6,
-          height: size * 0.13,
-          borderRadius: '50%',
-          background: 'rgba(0,0,0,0.4)',
-          filter: 'blur(1.5px)',
-        }}
-      />
-      {member.avatarCharacter ? (
-        <Character spec={member.avatarCharacter} size={size} title={member.username} />
-      ) : (
-        <span
-          role="img"
-          aria-label={member.username}
-          style={{ fontSize: size * 0.72, lineHeight: 1, filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.5))' }}
-        >
-          {member.avatarEmoji}
-        </span>
-      )}
-      {member.isMe && (
-        <span
-          style={{
-            position: 'absolute',
-            bottom: -11,
-            fontSize: 9.5,
-            fontWeight: 800,
-            color: 'var(--gold)',
-            textShadow: '0 1px 3px rgba(0,0,0,0.8)',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          you
-        </span>
-      )}
-    </motion.div>
-  )
-}

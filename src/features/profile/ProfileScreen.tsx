@@ -7,14 +7,18 @@ import { Button } from '@/components/Button'
 import { PlayerCard } from '@/components/PlayerCard'
 import { useAuth } from '@/store/auth'
 import { useJuice } from '@/juice/useJuice'
-import { shareResult, APP_URL } from '@/features/daily/shareCard'
+import { shareResult, inviteUrl } from '@/features/daily/shareCard'
 import { useCollection } from '@/store/collection'
 import { Collapsible } from '@/components/Collapsible'
 import { CollectionSection } from '@/features/collection/CollectionScreen'
 import { InventorySection } from '@/features/collection/InventorySection'
 import { useInventory } from '@/store/inventory'
 import { BuddiesSection } from '@/features/buddies/BuddiesScreen'
+import { useBuddies } from '@/store/buddies'
+import { useSeason } from '@/store/season'
+import { titleById } from '@/data/season'
 import { CustomizeSection } from './CustomizeSection'
+import { ProfileHero } from './ProfileHero'
 import { SettingsSheet } from './SettingsSheet'
 
 export default function ProfileScreen() {
@@ -43,6 +47,15 @@ export default function ProfileScreen() {
   const [nameErr, setNameErr] = useState<string | null>(null)
   const [savingName, setSavingName] = useState(false)
   const [refFlash, setRefFlash] = useState<string | null>(null)
+  // Buddy requests have to be counted from out here, not from inside the
+  // drawer: Collapsible only mounts its children once opened, so leaving the
+  // load to BuddiesSection meant the count was always 0 until you'd already
+  // found the thing the count exists to point at.
+  const buddyRequests = useBuddies((st) => st.requests.length)
+  const loadBuddies = useBuddies((st) => st.load)
+  useEffect(() => {
+    if (mode === 'online') void loadBuddies()
+  }, [mode, loadBuddies])
   const owned = useCollection((s) => s.owned)
   const loadCollection = useCollection((s) => s.load)
   useEffect(() => {
@@ -56,6 +69,9 @@ export default function ProfileScreen() {
   useEffect(() => {
     if (wantsCustomize) setCustomizing(true)
   }, [wantsCustomize])
+
+  // Above the early return: a hook can't sit behind a conditional.
+  const myTitle = titleById(useSeason((s) => s.equipped.title))?.text ?? null
 
   // Arriving from the relic nudge: the bag is already open, so put it under the
   // thumb instead of leaving it below the fold. A beat late, so the expand
@@ -94,6 +110,7 @@ export default function ProfileScreen() {
     totalPlays: profile.totalPlays,
     cards,
     denomination: profile.denomination,
+    title: myTitle,
   }
 
   const startEditName = () => { setNameDraft(profile.username); setNameErr(null); setEditingName(true) }
@@ -127,6 +144,17 @@ export default function ProfileScreen() {
           <button onClick={closeCustomize} className="pill" style={{ fontSize: 13, fontWeight: 800, padding: '7px 14px', flexShrink: 0 }}>
             Done
           </button>
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <ProfileHero
+            spec={profile.avatarCharacter}
+            emoji={profile.avatarEmoji}
+            username={profile.username}
+            pet={profile.pet}
+            cardBackground={profile.cardBackground}
+            title={myTitle}
+          />
         </div>
 
         <div style={{ marginBottom: 14 }}>
@@ -183,11 +211,32 @@ export default function ProfileScreen() {
 
   return (
     <Page>
-      {/* Your player card — the exact thing everyone else sees when they tap
-          your pfp, background and all, so customizing it has a visible home. */}
+      {/* You, at the size the skin was drawn for, with your pet and the
+          background you earned. The tab is called You, so it opens with you in
+          it — everywhere else your character is a 44px cropped circle. It's a
+          portrait: no numbers, because the card right underneath is all
+          numbers. */}
+      <div style={{ marginBottom: 14 }}>
+        <ProfileHero
+          spec={profile.avatarCharacter}
+          emoji={profile.avatarEmoji}
+          username={profile.username}
+          pet={profile.pet}
+          cardBackground={profile.cardBackground}
+          title={myTitle}
+        />
+      </div>
+
+      {/* The numbers, and only the numbers. The hero above is already you at
+          full size on your own background, so the card here drops its identity
+          block — the same avatar and handle twice on one screen was the thing
+          that made the hero feel like a duplicate rather than the header. What
+          other players see when they tap your pfp is unchanged: that's the same
+          component with its identity intact (PlayerCardModal). */}
       <div style={{ marginBottom: 18 }}>
         <PlayerCard
           p={cardData}
+          statsOnly
           actions={
             <>
               <button onClick={openCustomize} aria-label="Customize your card" className="pill" style={{ fontSize: 12, padding: '4px 10px', flexShrink: 0 }}>
@@ -221,8 +270,8 @@ export default function ProfileScreen() {
               </div>
               <Button variant="gold" onClick={async () => {
                 juice.coin()
-                const link = `${APP_URL}/?ref=${profile.referralCode}`
-                const r = await shareResult(`Join me on Verse Arcade! Use my code ${profile.referralCode} — daily Bible verse games, streaks & battles.\n${link}`)
+                const link = inviteUrl(profile.referralCode)
+                const r = await shareResult(`Join me on Verse Arcade! Use my code ${profile.referralCode} — daily Bible verse games, streaks & battles.\n${link}`, link)
                 setRefFlash(r === 'shared' ? 'Shared!' : r === 'copied' ? 'Link copied!' : 'Could not share')
               }}>📤 Share</Button>
             </div>
@@ -265,7 +314,16 @@ export default function ProfileScreen() {
         <CollectionSection />
       </Collapsible>
 
-      <Collapsible icon="🤝" title="Bible Buddies">
+      {/* Inventory and Cards advertise what's inside them; this one didn't, so a
+          player with people waiting saw an identical closed row and 71% of every
+          buddy request ever sent was still unanswered. It now counts, and opens
+          itself when the answer is someone else's to receive. */}
+      <Collapsible
+        icon="🤝"
+        title="Bible Buddies"
+        meta={buddyRequests > 0 ? `${buddyRequests} waiting` : undefined}
+        defaultOpen={buddyRequests > 0}
+      >
         <BuddiesSection />
       </Collapsible>
 

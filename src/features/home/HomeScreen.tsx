@@ -8,6 +8,7 @@ import { XpBar } from '@/components/XpBar'
 import { StreakFlame } from '@/components/StreakFlame'
 import { PresenceStrip } from '@/features/presence/PresenceStrip'
 import { DailyChest } from '@/features/chest/DailyChest'
+import { RoadStrip } from '@/features/season/RoadStrip'
 import { Collapsible } from '@/components/Collapsible'
 import { LeaderboardSection } from '@/features/leaderboard/LeaderboardScreen'
 import { supabase } from '@/lib/supabase'
@@ -66,6 +67,10 @@ export default function HomeScreen() {
           </div>
         </div>
       </div>
+
+      {/* The Pilgrimage. High on the tab because the bottom nav is full at five
+          and this strip is the only way the road gets seen. */}
+      <RoadStrip />
 
       {/* Add to Home Screen — only renders where installing is actually possible
           (and not already installed), and can be dismissed for good. */}

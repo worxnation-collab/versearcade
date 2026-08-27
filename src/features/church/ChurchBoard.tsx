@@ -149,7 +149,7 @@ function BoardRow({ church }: { church: Church }) {
       </span>
 
       <span style={{ width: 44, flexShrink: 0, display: 'grid', placeItems: 'center' }}>
-        <ChurchArt level={church.level} size={44} />
+        <ChurchArt level={church.level} skin={church.skin} size={44} />
       </span>
 
       <span style={{ minWidth: 0, flex: 1 }}>

@@ -20,7 +20,13 @@ import type { AvatarSpec } from '@/types'
 // position means nothing, you stand among your own people, and tapping a
 // figure opens their player card (sheets sit at z 100, the card at 110).
 //
-// reduce-motion: figures hold their first waypoint, breathing off.
+// reduce-motion: the schedule still runs — the vestibular problem is
+// CONTINUOUS motion, not change — but figures REPOSITION instantly instead of
+// gliding, and the bob/breathe loops are off. The scene stays inhabited for
+// everyone; nobody gets a room of statues, and nobody gets motion they asked
+// not to see. (Removing the setting outright was considered and rejected: it
+// is an accessibility control, the app ships on the App Store, and it also
+// governs confetti and springs app-wide through useJuice.)
 // The component unmounts with its scene, which kills every timer.
 
 export interface CrowdMember {
@@ -137,7 +143,6 @@ function LifeFigure({
   const [durMs, setDurMs] = useState(0)
 
   useEffect(() => {
-    if (reduceMotion) return
     const p = plan.current!
     let leg = 0
     let cur = waypoints[p.order[0]]
@@ -159,10 +164,12 @@ function LifeFigure({
       if (!alive) return
       leg = (leg + 1) % p.order.length
       const to = waypoints[p.order[leg]]
-      const ms = (Math.hypot(to.x - cur.x, to.b - cur.b) / speed) * 1000
+      // Reduced motion: the figure is simply THERE now — a discrete change of
+      // state, not a movement across the screen.
+      const ms = reduceMotion ? 0 : (Math.hypot(to.x - cur.x, to.b - cur.b) / speed) * 1000
       setFacing(to.x >= cur.x ? 1 : -1)
       setDurMs(ms)
-      setWalking(true)
+      setWalking(!reduceMotion)
       setPos(to)
       cur = to
       timer = setTimeout(dwell, ms)

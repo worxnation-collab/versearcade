@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { useChurch, RADIUS_CHOICES } from '@/store/church'
 import { useJuice } from '@/juice/useJuice'
 import { ChurchArt } from './ChurchArt'
+import { ChurchDetailSheet } from './ChurchDetailSheet'
 import { tierForLevel } from './levels'
 import { formatMiles } from '@/lib/geo'
 import type { Church } from '@/types'
@@ -89,19 +90,37 @@ export function ChurchBoard() {
           <BoardRow church={boardMe} />
         </>
       )}
+
+      {!boardLoading && board.length > 0 && (
+        <p className="faint center" style={{ margin: '10px 0 0', fontSize: 11.5 }}>
+          Tap a church to see it.
+        </p>
+      )}
+
+      {/* Portalled to the body, so it isn't clipped by the card the board sits in. */}
+      <ChurchDetailSheet />
     </div>
   )
 }
 
 const medal = (rank: number) => (rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null)
 
+// A row is a door: tapping it opens the church's own page — the building drawn
+// wide with its congregation outside it, whatever the church has published about
+// itself, and the way to ask for that to be filled in.
 function BoardRow({ church }: { church: Church }) {
+  const juice = useJuice()
+  const openChurch = useChurch((s) => s.openChurch)
   const mine = !!church.isMine
   const tier = tierForLevel(church.level)
   return (
-    <motion.div
+    <motion.button
+      type="button"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
+      whileTap={{ scale: 0.985 }}
+      onClick={() => { juice.select(); void openChurch(church) }}
+      aria-label={`${church.name}, level ${church.level}, ${church.xp.toLocaleString()} XP`}
       className="card"
       style={{
         display: 'flex',
@@ -109,6 +128,8 @@ function BoardRow({ church }: { church: Church }) {
         gap: 10,
         padding: '10px 12px',
         minWidth: 0,
+        width: '100%',
+        textAlign: 'left',
         borderColor: mine ? 'var(--gold)' : 'var(--stroke)',
         background: mine ? 'rgba(255,210,63,0.10)' : undefined,
       }}
@@ -152,6 +173,8 @@ function BoardRow({ church }: { church: Church }) {
           {church.members} {church.members === 1 ? 'player' : 'players'}
         </span>
       </span>
-    </motion.div>
+
+      <span className="faint" style={{ fontSize: 17, flexShrink: 0, marginLeft: 2 }} aria-hidden>›</span>
+    </motion.button>
   )
 }

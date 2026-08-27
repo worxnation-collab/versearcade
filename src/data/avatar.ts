@@ -39,6 +39,10 @@ export const ITEMS: ItemDef[] = [
 ]
 
 export const itemById = (id?: string | null): ItemDef | undefined => ITEMS.find((i) => i.id === id)
+
+/** Illustration for a chest item, served from public/items. Ids are prefixed
+ *  `item_`; the files are not. */
+export const itemArt = (id: string): string => `/items/${id.replace(/^item_/, '')}.png`
 export const itemsBySlot = (slot: ItemSlot): ItemDef[] => ITEMS.filter((i) => i.slot === slot)
 
 // Pick a random item the player doesn't own yet (rarity-weighted), for a chest

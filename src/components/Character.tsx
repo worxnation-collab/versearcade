@@ -216,6 +216,14 @@ const RASTER_SKINS: Record<string, string> = {
   gabriel: '/skins/gabriel.png',
   michael: '/skins/michael.png',
   seraph: '/skins/seraph.png',
+  // The Pilgrimage's reactive skin: the equipped skinId carries the state
+  // (ruth_1..ruth_4 — see passSkinEquipId in data/avatar), so each maps to its
+  // own file and every viewer renders the right basket from the spec alone.
+  ruth_1: '/skins/ruth_1.png',
+  ruth_2: '/skins/ruth_2.png',
+  ruth_3: '/skins/ruth_3.png',
+  ruth_4: '/skins/ruth_4.png',
+  boaz: '/skins/boaz.png',
 }
 
 export function Character({
@@ -935,6 +943,14 @@ export function Character({
               <rect x="53" y="63" width="14" height="4" rx="2" fill="#8A6A3E" />
             </>
           )}
+          {items.cape === 'item_gleaner_shawl' && (
+            <>
+              <path d="M42 63 Q60 58 78 63 L90 148 L30 148 Z" fill="#B49B6C" />
+              {/* barley-stitch hem */}
+              <path d="M32 144 L88 144" stroke="#8A6F42" strokeWidth="2" strokeDasharray="3 3" />
+              <rect x="54" y="62" width="12" height="4" rx="2" fill="#CBB584" />
+            </>
+          )}
 
           {/* legs */}
           <rect x="50" y="118" width="9" height="34" rx="4" fill={LEG} />
@@ -1011,6 +1027,26 @@ export function Character({
               <ellipse cx="80" cy="99" rx="1.8" ry="3.4" fill="#FFB33E" />
             </>
           )}
+          {items.held === 'item_sickle' && (
+            <>
+              <rect x="82.5" y="96" width="4" height="18" rx="2" fill="#7A5A34" />
+              <path d="M84.5 96 q-14 -14 0 -26 q4 10 10 14 q-2 8 -10 12 z" fill="#B98A3C" stroke="#8A6420" strokeWidth="1.2" />
+            </>
+          )}
+          {items.held === 'item_winnowing_fork' && (
+            <>
+              <rect x="83" y="60" width="3.6" height="90" rx="1.8" fill="#8A6438" />
+              <path d="M78 60 v-14 M84.8 62 v-18 M91.5 60 v-14" stroke="#8A6438" strokeWidth="3" strokeLinecap="round" />
+              <path d="M77 61 h15" stroke="#8A6438" strokeWidth="3.4" strokeLinecap="round" />
+            </>
+          )}
+          {items.held === 'item_water_skin' && (
+            <>
+              <path d="M80 96 q10 -3 12 6 q2 9 -7 10 q-9 1 -10 -7 q-1 -7 5 -9 z" fill="#A66A38" stroke="#7C4C22" strokeWidth="1.2" />
+              <rect x="88.5" y="92" width="4" height="6" rx="1.5" fill="#7C4C22" />
+              <path d="M80 98 q6 6 11 3" stroke="#C89864" strokeWidth="1.4" fill="none" />
+            </>
+          )}
 
           {/* neck + head */}
           <rect x="55" y="56" width="10" height="10" rx="3" fill={skin} />
@@ -1025,6 +1061,13 @@ export function Character({
           )}
 
           {/* hat items — on the crown of the head */}
+          {items.hat === 'item_harvest_headscarf' && (
+            <>
+              <path d="M47 47 a13 13 0 0 1 26 0 l0 4 a13 13 0 0 0-26 0 z" fill="#E4D2A8" stroke="#B8A06C" strokeWidth="0.8" />
+              <path d="M48 44 a12 12 0 0 1 24 0" fill="none" stroke="#C8863C" strokeWidth="2.2" />
+              <path d="M71 48 q6 9 1 21 l-5 -2 q4 -10 0 -17 z" fill="#E4D2A8" stroke="#B8A06C" strokeWidth="0.8" />
+            </>
+          )}
           {items.hat === 'item_headwrap' && (
             <>
               <path d="M47 47 a13 13 0 0 1 26 0 l0 3 a13 13 0 0 0-26 0 z" fill="#CDB183" stroke="#A98C5C" strokeWidth="0.8" />

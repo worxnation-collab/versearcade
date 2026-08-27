@@ -1,0 +1,204 @@
+#!/usr/bin/env node
+// Generate raster skin/item art through Nano Banana (Gemini image models) and
+// run it through the keying pipeline in docs/RASTER-SKINS.md:
+//
+//   1. generate on flat magenta #FF00FF, single figure, no shadow/text/frame
+//   2. key magenta -> transparency with a soft edge, then DESPILL every pixel
+//      within 2px of transparency (or the magenta-tinted outline survives as a
+//      pink halo — invisible on the dark avatar circle, obvious elsewhere)
+//   3. isolate by empty-column split, keep the region carrying the most ink
+//      (drops the silhouette and any corner watermark)
+//   4. pad 8% empty below the feet (the figure sits above the ground shadow
+//      Character draws at y=162 of its 170-unit viewBox)
+//   5. cap at 400px tall for skins / 220px for items (the avatar never renders
+//      above 92 CSS px; bigger is bytes every player downloads and nobody sees)
+//
+// Usage:
+//   GEMINI_API_KEY=... node scripts/gen-art.mjs <manifest.json> [--only id]
+//
+// The manifest is an array of { id, kind: 'skin'|'item', prompt }. Skins land
+// in public/skins/<id>.png, items in public/items/<id>.png. Style references
+// (public/skins/moses.png + esther.png) ride along on every skin call so a new
+// road matches the ten skins it will sit next to.
+//
+// The API key comes ONLY from the environment (.env.local is gitignored).
+// Never write it into this file or any other tracked file.
+
+import { readFileSync, writeFileSync, existsSync } from 'node:fs'
+import { PNG } from 'pngjs'
+import jpeg from 'jpeg-js'
+
+const KEY = process.env.GEMINI_API_KEY
+if (!KEY) {
+  console.error('GEMINI_API_KEY is not set. Put it in .env.local and export it.')
+  process.exit(1)
+}
+
+const MODEL = process.env.GEN_ART_MODEL || 'gemini-3-pro-image'
+const manifestPath = process.argv[2]
+if (!manifestPath) {
+  console.error('usage: node scripts/gen-art.mjs <manifest.json> [--only id]')
+  process.exit(1)
+}
+const only = process.argv.includes('--only') ? process.argv[process.argv.indexOf('--only') + 1] : null
+const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+
+const b64 = (p) => readFileSync(p).toString('base64')
+const STYLE_REFS = ['public/skins/moses.png', 'public/skins/esther.png']
+  .filter(existsSync)
+  .map((p) => ({ inline_data: { mime_type: 'image/png', data: b64(p) } }))
+
+async function generate(prompt, withRefs) {
+  const parts = [{ text: prompt }, ...(withRefs ? STYLE_REFS : [])]
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-goog-api-key': KEY },
+      body: JSON.stringify({
+        contents: [{ parts }],
+        generationConfig: { responseModalities: ['IMAGE'] },
+      }),
+    },
+  )
+  if (!res.ok) throw new Error(`${res.status} ${await res.text()}`)
+  const data = await res.json()
+  const img = data.candidates?.[0]?.content?.parts?.find((p) => p.inlineData || p.inline_data)
+  const raw = img?.inlineData?.data ?? img?.inline_data?.data
+  if (!raw) throw new Error('no image in response: ' + JSON.stringify(data).slice(0, 400))
+  return Buffer.from(raw, 'base64')
+}
+
+// ── pipeline ─────────────────────────────────────────────────────────────────
+
+/** Step 2: magenta -> alpha with a soft edge, then despill near the edge. */
+function keyMagenta(png) {
+  const { width: w, height: h, data } = png
+  // Pass 1: alpha from magenta-ness. Magenta = high R, high B, low G.
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i], g = data[i + 1], b = data[i + 2]
+    const mag = Math.min(r, b) - g // how magenta this pixel is
+    if (mag > 96) data[i + 3] = 0 // solidly key color
+    else if (mag > 48) data[i + 3] = Math.round(255 * (1 - (mag - 48) / 48)) // soft edge
+  }
+  // Pass 2: despill every pixel within 2px of transparency. Without this the
+  // artwork's own magenta-tinted outline survives as a pink halo.
+  const near = new Uint8Array(w * h)
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (data[(y * w + x) * 4 + 3] > 250) continue
+      for (let dy = -2; dy <= 2; dy++) {
+        for (let dx = -2; dx <= 2; dx++) {
+          const nx = x + dx, ny = y + dy
+          if (nx >= 0 && nx < w && ny >= 0 && ny < h) near[ny * w + nx] = 1
+        }
+      }
+    }
+  }
+  for (let p = 0; p < near.length; p++) {
+    if (!near[p]) continue
+    const i = p * 4
+    const g = data[i + 1]
+    const spill = Math.min(data[i], data[i + 2]) - g
+    if (spill > 0) {
+      data[i] = Math.max(0, data[i] - spill)
+      data[i + 2] = Math.max(0, data[i + 2] - spill)
+    }
+  }
+  return png
+}
+
+/** Step 3: split into regions by fully-transparent columns; keep the most ink. */
+function isolate(png) {
+  const { width: w, height: h, data } = png
+  const colInk = new Array(w).fill(0)
+  for (let x = 0; x < w; x++)
+    for (let y = 0; y < h; y++) if (data[(y * w + x) * 4 + 3] > 24) colInk[x]++
+  const regions = []
+  let start = null
+  for (let x = 0; x <= w; x++) {
+    const has = x < w && colInk[x] > 0
+    if (has && start === null) start = x
+    if (!has && start !== null) {
+      let ink = 0
+      for (let c = start; c < x; c++) ink += colInk[c]
+      regions.push({ start, end: x - 1, ink })
+      start = null
+    }
+  }
+  if (regions.length === 0) throw new Error('image is empty after keying')
+  const best = regions.reduce((a, b) => (b.ink > a.ink ? b : a))
+  // Rows within the winning region.
+  let top = h, bottom = 0
+  for (let y = 0; y < h; y++)
+    for (let x = best.start; x <= best.end; x++)
+      if (data[(y * w + x) * 4 + 3] > 24) { top = Math.min(top, y); bottom = Math.max(bottom, y); break }
+  const cw = best.end - best.start + 1
+  const ch = bottom - top + 1
+  const out = new PNG({ width: cw, height: ch })
+  PNG.bitblt(png, out, best.start, top, cw, ch, 0, 0)
+  return out
+}
+
+/** Step 4+5: pad below the feet, then box-downsample to the height cap. */
+function padAndCap(png, { padBelowPct, maxH }) {
+  const padded = new PNG({ width: png.width, height: Math.round(png.height * (1 + padBelowPct)) })
+  PNG.bitblt(png, padded, 0, 0, png.width, png.height, 0, 0)
+  if (padded.height <= maxH) return padded
+  const scale = maxH / padded.height
+  const ow = Math.max(1, Math.round(padded.width * scale))
+  const out = new PNG({ width: ow, height: maxH })
+  const inv = 1 / scale
+  for (let oy = 0; oy < maxH; oy++) {
+    for (let ox = 0; ox < ow; ox++) {
+      // Average the source box, alpha-weighted so edges stay clean.
+      let r = 0, g = 0, b = 0, a = 0, n = 0
+      const sy0 = Math.floor(oy * inv), sy1 = Math.min(padded.height, Math.ceil((oy + 1) * inv))
+      const sx0 = Math.floor(ox * inv), sx1 = Math.min(padded.width, Math.ceil((ox + 1) * inv))
+      for (let sy = sy0; sy < sy1; sy++) {
+        for (let sx = sx0; sx < sx1; sx++) {
+          const i = (sy * padded.width + sx) * 4
+          const pa = padded.data[i + 3] / 255
+          r += padded.data[i] * pa; g += padded.data[i + 1] * pa; b += padded.data[i + 2] * pa
+          a += padded.data[i + 3]; n++
+        }
+      }
+      const o = (oy * ow + ox) * 4
+      const am = a / n / 255
+      out.data[o] = am > 0 ? Math.round(r / n / am) : 0
+      out.data[o + 1] = am > 0 ? Math.round(g / n / am) : 0
+      out.data[o + 2] = am > 0 ? Math.round(b / n / am) : 0
+      out.data[o + 3] = Math.round(a / n)
+    }
+  }
+  return out
+}
+
+// ── run ──────────────────────────────────────────────────────────────────────
+
+for (const entry of manifest) {
+  if (only && entry.id !== only) continue
+  const isSkin = entry.kind === 'skin'
+  const dest = isSkin ? `public/skins/${entry.id}.png` : `public/items/${entry.id}.png`
+  process.stdout.write(`${entry.id} … `)
+  try {
+    const raw = await generate(entry.prompt, isSkin)
+    // The API returns JPEG or PNG depending on the model; sniff the magic bytes.
+    let png
+    if (raw[0] === 0x89 && raw[1] === 0x50) {
+      png = PNG.sync.read(raw)
+    } else {
+      const j = jpeg.decode(raw, { maxMemoryUsageInMB: 1024 })
+      png = new PNG({ width: j.width, height: j.height })
+      j.data.copy(png.data)
+    }
+    png = keyMagenta(png)
+    png = isolate(png)
+    png = padAndCap(png, isSkin ? { padBelowPct: 0.08, maxH: 400 } : { padBelowPct: 0, maxH: 220 })
+    const buf = PNG.sync.write(png)
+    writeFileSync(dest, buf)
+    console.log(`ok → ${dest} (${png.width}x${png.height}, ${(buf.length / 1024).toFixed(0)}KB)`)
+  } catch (e) {
+    console.log(`FAILED: ${e.message.slice(0, 300)}`)
+  }
+}

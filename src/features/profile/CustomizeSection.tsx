@@ -9,6 +9,7 @@ import { iapAvailable } from '@/lib/iap'
 import { useIap } from '@/store/iap'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/store/auth'
+import { useSeason } from '@/store/season'
 import { useJuice } from '@/juice/useJuice'
 import { BORDERS, BADGES, isUnlocked } from '@/data/cosmetics'
 import { useCollection } from '@/store/collection'
@@ -33,6 +34,8 @@ import {
   skinExpired,
   skinOwned,
   equippedSkinId,
+  baseSkinId,
+  passSkinEquipId,
   type ArmorPieceDef,
   type BundleDef,
   type ItemDef,
@@ -202,11 +205,18 @@ export function CustomizeSection() {
   const sharedCount = distinctSharedDays(profile.sharedDays)
   const grantSkin = useAuth((s) => s.grantSkin)
   const ownedSkins = profile.ownedSkins ?? []
+  const seasonUnlocks = useSeason((st) => st.unlocks)
   const equippedSkin = equippedSkinId(spec)
+  /** Reactive pass skins store their state in the id ('ruth_2'); compare bases. */
+  const isEquipped = (skin: SkinDef) => !!equippedSkin && baseSkinId(equippedSkin) === skin.id
   const isSkinOwned = (skin: SkinDef) =>
-    skinOwned(skin, { sharedDays: profile.sharedDays, ownedSkins, referralCount: profile.referralCount, admin: profile.isAdmin })
+    skinOwned(skin, { sharedDays: profile.sharedDays, ownedSkins, referralCount: profile.referralCount, admin: profile.isAdmin, seasonUnlocks })
   const onSkinTap = (skin: SkinDef) => {
     const owned = isSkinOwned(skin)
+    if (!owned && skin.source === 'pass') {
+      setErr(`${skin.name} is earned on the Pilgrimage — walk the road on the Play tab.`)
+      return
+    }
     if (!owned && skin.source === 'earned') {
       if (skin.referralGoal != null) {
         const rc = profile.referralCount ?? 0
@@ -237,8 +247,11 @@ export function CustomizeSection() {
     setErr(null)
     juice.select()
     if (!owned && skin.source === 'paid') grantSkin(skin.id) // admin preview
-    const willEquip = equippedSkin !== skin.id
-    setAvatarCharacter({ ...spec, skinId: willEquip ? skin.id : null, regalia: null })
+    const willEquip = !isEquipped(skin)
+    // A reactive pass skin equips at its highest unlocked state, and the state
+    // rides in the stored id so other viewers render the same basket.
+    const equipId = skin.source === 'pass' ? passSkinEquipId(skin, seasonUnlocks) : skin.id
+    setAvatarCharacter({ ...spec, skinId: willEquip ? equipId : null, regalia: null })
     flashSaved()
   }
 
@@ -369,13 +382,19 @@ export function CustomizeSection() {
             .filter((skin) => skinVisible(skin, isSkinOwned(skin)))
             .map((skin) => {
             const owned = isSkinOwned(skin)
-            const equipped = equippedSkin === skin.id
-            const preview = { ...spec, skinId: skin.id, regalia: null }
+            const equipped = isEquipped(skin)
+            const preview = {
+              ...spec,
+              skinId: skin.source === 'pass' ? passSkinEquipId(skin, seasonUnlocks) : skin.id,
+              regalia: null,
+            }
             const status =
               owned
                 ? equipped
                   ? '✓ Equipped'
                   : 'Tap to wear'
+                : skin.source === 'pass'
+                  ? '🌾 On the road'
                 : skin.source === 'earned'
                   ? skin.referralGoal != null
                     ? `${Math.min(profile.referralCount ?? 0, skin.referralGoal)}/${skin.referralGoal} friends`

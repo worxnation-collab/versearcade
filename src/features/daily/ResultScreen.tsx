@@ -8,12 +8,14 @@ import { CountUp } from '@/components/CountUp'
 import { StreakFlame } from '@/components/StreakFlame'
 import { useGame } from '@/store/game'
 import { useAuth } from '@/store/auth'
+import { useSeason } from '@/store/season'
 import { useJuice } from '@/juice/useJuice'
-import { buildShareText, shareResult, earnedCards } from './shareCard'
+import { buildShareText, shareResult, earnedCards, inviteUrl } from './shareCard'
 import { collectibleByKey, rarityColor } from '@/data/collectibles'
 import { useCollection } from '@/store/collection'
 import { OAuthButtons } from '@/features/auth/oauthUi'
 import { FavoriteButton } from '@/components/FavoriteButton'
+import { PushNudge } from '@/components/PushNudge'
 
 export default function ResultScreen() {
   const navigate = useNavigate()
@@ -28,6 +30,10 @@ export default function ResultScreen() {
 
   const result = lastResult?.result
   const outcome = lastResult?.outcome
+
+  // A guest who has played before has something to lose, which is a different
+  // pitch from a first-timer who has only just seen the payoff.
+  const returningGuest = isGuest && (profile.totalPlays > 1 || (outcome?.currentStreak ?? 0) > 1)
 
   const cards = useMemo(
     () => (result && outcome ? earnedCards(result, outcome, profile.totalPlays) : []),
@@ -56,11 +62,14 @@ export default function ResultScreen() {
   if (!result || !outcome || !today) return null
 
   const doShare = async () => {
-    const text = buildShareText(result, outcome)
-    const r = await shareResult(text)
+    const text = buildShareText(result, outcome, profile.referralCode)
+    const r = await shareResult(text, inviteUrl(profile.referralCode))
     // A successful share (native sheet or clipboard copy) counts today toward
     // share-day unlocks like the King Baldwin set — distinct days only.
-    if (r !== 'failed' && today) recordShare(today.dropDate)
+    if (r !== 'failed' && today) {
+      recordShare(today.dropDate)
+      void useSeason.getState().track('share_daily')
+    }
     setShareState(r === 'copied' ? 'Copied to clipboard!' : r === 'shared' ? 'Shared!' : 'Could not share')
   }
 
@@ -153,7 +162,13 @@ export default function ResultScreen() {
         )}
 
         {/* The moment of highest intent: they just got the payoff. Ask guests to
-            save it before they bounce. */}
+            save it before they bounce.
+
+            The ask stays on run one — 71% of guests never come back, so that is
+            the only shot at most of them and removing it would cost more than it
+            saved. What changes is the pitch: once a guest has a streak, the
+            thing they'd lose is concrete, and the copy names it instead of
+            describing sync in the abstract. */}
         {isGuest && (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
@@ -162,11 +177,16 @@ export default function ResultScreen() {
             className="card"
             style={{ marginTop: 20, textAlign: 'left', borderColor: 'var(--gold)', background: 'rgba(255,209,102,0.10)' }}
           >
-            <div style={{ fontSize: 26 }}>💾</div>
-            <b style={{ fontSize: 17, display: 'block', marginTop: 2 }}>Save your streak</b>
+            <div style={{ fontSize: 26 }}>{returningGuest ? '🔥' : '💾'}</div>
+            <b style={{ fontSize: 17, display: 'block', marginTop: 2 }}>
+              {returningGuest
+                ? `Don’t lose your ${outcome.currentStreak}-day streak`
+                : 'Save your streak'}
+            </b>
             <p className="dim" style={{ fontSize: 13, marginTop: 4 }}>
-              You’re playing as a guest. Create a free account so your streak, XP, and verse
-              cards sync across devices — and never reset.
+              {returningGuest
+                ? `You’ve come back ${profile.totalPlays} times as a guest. Everything you’ve built lives on this device only — clear your browser and it’s gone. A free account keeps it.`
+                : 'You’re playing as a guest. Create a free account so your streak, XP, and verse cards sync across devices — and never reset.'}
             </p>
             <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>
               <OAuthButtons onError={setSignInErr} />
@@ -180,10 +200,45 @@ export default function ResultScreen() {
           </motion.div>
         )}
 
+        {/* Only worth asking of a signed-in player with a streak to protect —
+            a guest has no account for a subscription to hang off, and someone
+            on run one has nothing to be reminded about yet. */}
+        {!isGuest && <PushNudge reason="streak" when={(outcome.currentStreak ?? 0) >= 3} />}
+
         <div style={{ display: 'grid', gap: 10, marginTop: 22 }}>
           <Button variant="gold" full onClick={doShare}>📤 Share my result</Button>
           {shareState && <p className="faint" style={{ fontSize: 13 }}>{shareState}</p>}
+
+          {/* The code used to live only behind a closed drawer on the You tab, at
+              a neutral moment. This is the app's one reliably happy screen, so
+              it's where the offer belongs — stated, not sold, and only to
+              someone who hasn't finished the set yet. */}
+          {!isGuest && profile.referralCode && (profile.referralCount ?? 0) < 5 && (
+            <p className="faint" style={{ fontSize: 12, marginTop: -2, lineHeight: 1.5 }}>
+              Your link carries code{' '}
+              <b style={{ fontFamily: 'var(--font-display)', letterSpacing: '0.12em', color: 'var(--gold)' }}>
+                {profile.referralCode}
+              </b>
+              {' — '}
+              {(profile.referralCount ?? 0) > 0
+                ? `${profile.referralCount} of 5 friends joined so far.`
+                : 'when 5 friends join with it, the carried-cross look unlocks.'}
+            </p>
+          )}
           <Button variant="secondary" full onClick={() => navigate('/battle/new')}>⚔️ Challenge a buddy</Button>
+
+          {/* The drop is one run a day and then it's over, which is most of why
+              27 of 68 players have exactly one day on record: they didn't reject
+              the app, they ran out of it. Study has no cap and is already the
+              most-used thing after the drop, so it — not "Back home" — is the
+              answer to "that was fun, now what". */}
+          <Button variant="secondary" full onClick={() => navigate('/study')}>
+            📚 Keep playing in Study
+          </Button>
+          <p className="faint" style={{ fontSize: 12, marginTop: -2 }}>
+            That’s today’s drop. Study is unlimited and never ranks you.
+          </p>
+
           <Button variant="ghost" full onClick={() => navigate('/play')}>Back home</Button>
         </div>
       </div>

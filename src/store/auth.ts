@@ -6,6 +6,7 @@ import { isSupabaseConfigured } from '@/lib/config'
 import { localdb } from '@/lib/localdb'
 import { newLocalProfile } from '@/lib/progress'
 import { getVerseForDate } from '@/data/bible/questions'
+import { petUnlocked, type PetProgress } from '@/data/pets'
 import { useSettings } from './settings'
 import type { Profile, AvatarSpec } from '@/types'
 
@@ -30,6 +31,7 @@ interface DbProfileRow {
   avatar_border: string | null
   avatar_badge: string | null
   card_background: string | null
+  pet?: string | null
   // Not yet a real column — an online account reads back null and falls back to
   // the emoji until a profiles.avatar_character migration lands.
   avatar_character?: AvatarSpec | null
@@ -63,6 +65,7 @@ function mapRow(r: DbProfileRow): Profile {
     avatarBorder: r.avatar_border ?? 'default',
     avatarBadge: r.avatar_badge ?? null,
     cardBackground: r.card_background ?? null,
+    pet: r.pet ?? null,
     avatarCharacter: r.avatar_character ?? null,
     sharedDays: r.shared_days ?? [],
     ownedItems: r.owned_items ?? [],
@@ -110,6 +113,12 @@ interface AuthState {
   setCosmetics: (patch: { border?: string; badge?: string | null }) => Promise<{ ok: boolean; error?: string }>
   setAvatarCharacter: (spec: AvatarSpec) => void
   setCardBackground: (key: string) => Promise<{ ok: boolean; error?: string }>
+  /**
+   * Equip a pet, or null for none. The server is the gate (0064); `progress`
+   * is the guest-mode gate and comes from the caller — see lib/petProgress for
+   * why this store doesn't gather it itself.
+   */
+  setPet: (id: string | null, progress?: PetProgress) => Promise<{ ok: boolean; error?: string }>
   recordShare: (dropDate: string) => void
   grantItem: (itemId: string) => void
   grantSkin: (skinId: string) => void
@@ -496,6 +505,7 @@ export const useAuth = create<AuthState>((set, get) => ({
     if (patch.avatarEmoji !== undefined) dbPatch.avatar_emoji = patch.avatarEmoji
     if (patch.avatarCharacter !== undefined) dbPatch.avatar_character = patch.avatarCharacter
     if (patch.denomination !== undefined) dbPatch.denomination = patch.denomination
+    if (patch.pet !== undefined) dbPatch.pet = patch.pet
     if (patch.soundEnabled !== undefined) dbPatch.sound_enabled = patch.soundEnabled
     if (patch.hapticsEnabled !== undefined) dbPatch.haptics_enabled = patch.hapticsEnabled
     if (patch.reduceMotion !== undefined) dbPatch.reduce_motion = patch.reduceMotion
@@ -580,6 +590,36 @@ export const useAuth = create<AuthState>((set, get) => ({
     if (error || !data?.ok) {
       set({ profile: cur }) // roll back the optimistic change
       return { ok: false, error: error?.message ?? 'That background isn’t unlocked yet' }
+    }
+    return { ok: true }
+  },
+
+  // Equip a pet. Same shape as setCosmetics/setCardBackground: optimistic, with
+  // the server as the gate — it refuses any pet the account's level hasn't
+  // reached, so the UI feels instant but can't lie. Guests keep theirs on the
+  // device, where the level in the local profile is the same number the ladder
+  // reads, so both modes gate on exactly the same thing.
+  async setPet(id, progress) {
+    const cur = get().profile
+    if (!cur) return { ok: false, error: 'No profile' }
+    const next: Profile = { ...cur, pet: id }
+    set({ profile: next })
+
+    if (get().mode === 'local' || !supabase) {
+      // The local gate is the catalog itself — data/pets is the only ladder,
+      // and lib/petProgress gathered the numbers it reads.
+      if (id && progress && !petUnlocked(id, progress)) {
+        set({ profile: cur })
+        return { ok: false, error: 'That one isn’t unlocked yet' }
+      }
+      localdb.saveProfile(next)
+      return { ok: true }
+    }
+
+    const { data, error } = await supabase.rpc('set_pet', { p_pet: id })
+    if (error || !data?.ok) {
+      set({ profile: cur }) // roll back the optimistic change
+      return { ok: false, error: error?.message ?? 'That one isn’t unlocked yet' }
     }
     return { ok: true }
   },

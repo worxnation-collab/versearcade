@@ -6,27 +6,45 @@ import { Button } from '@/components/Button'
 import { Avatar } from '@/components/Avatar'
 import { QuizRunner } from '@/features/daily/QuizRunner'
 import { useBattles } from '@/store/battles'
+import { useKeep } from '@/store/keep'
 import { useBuddies, type BuddyCard } from '@/store/buddies'
+import { useAuth } from '@/store/auth'
 import { newBattleSeed, battleVerse } from './battle'
-import { shareResult, APP_URL } from '@/features/daily/shareCard'
+import { shareResult, inviteUrl } from '@/features/daily/shareCard'
 import { useJuice } from '@/juice/useJuice'
 import { FavoriteButton } from '@/components/FavoriteButton'
 import type { PlayResult } from '@/types'
 
-// Challenger flow: play a fresh random-verse quiz, then pick who to challenge —
-// from your BUDDIES first, plus a few suggested active players so a friendless
-// user still gets an opponent likely to battle back. Challenging a suggested
-// player also sends them a buddy request, kicking off the friends flow. (A share
-// link stays available for inviting people who aren't on Verse Arcade yet.)
+// Challenger flow: pick who you're battling, play a fresh random-verse quiz,
+// and the challenge goes out on its own. Opponents come from your BUDDIES first,
+// plus a few suggested active players so a friendless user still gets someone
+// likely to battle back — challenging a suggested player also sends them a buddy
+// request, kicking off the friends flow.
+//
+// The ORDER matters, and it used to be the other way round. "Start a new battle"
+// dropped you straight into the quiz and only asked who at the end, which reads
+// as a results screen — players finished a run, tapped away, and never sent
+// anything. Choosing first matches what people expect from "battle a friend",
+// and it doesn't weaken the rule that a challenge has to be earned: nothing is
+// created until the run is over.
+//
+// "I'll decide after I play" keeps the old order for anyone who wants it, and
+// it's also where the share-a-link (broadcast) challenge lives, since that one
+// needs a score to exist before there's anything to share.
+type Choice = { kind: 'player'; username: string } | { kind: 'later' }
+
 export default function BattleNew() {
   const navigate = useNavigate()
   const location = useLocation()
   const seed = useMemo(() => newBattleSeed(), [])
   const verse = useMemo(() => battleVerse(seed), [seed])
   const [result, setResult] = useState<PlayResult | null>(null)
-  // Arriving from someone's player card ("⚔️ Battle") pre-picks the opponent, so
-  // once you've played we skip the picker and challenge them directly.
+  // Arriving from someone's player card or a buddy row ("⚔️ Battle") already
+  // names the opponent, so that path skips the picker entirely.
   const target = (location.state as { challenge?: string } | null)?.challenge ?? null
+  const [choice, setChoice] = useState<Choice | null>(target ? { kind: 'player', username: target } : null)
+
+  if (!choice) return <OpponentPicker onPick={setChoice} onExit={() => navigate('/battle')} />
 
   if (!result) {
     return (
@@ -34,11 +52,110 @@ export default function BattleNew() {
         verse={verse}
         onComplete={async (r) => setResult(r)}
         onExit={() => navigate('/battle')}
-        label="⚔️ Bible Battle"
+        // Name the opponent for the whole run — otherwise the quiz looks like a
+        // solo game and nobody can tell whether picking them did anything.
+        label={choice.kind === 'player' ? `⚔️ Battle vs @${choice.username}` : '⚔️ Bible Battle'}
       />
     )
   }
-  return <InvitePicker seed={seed} result={result} target={target} />
+  return <InvitePicker seed={seed} result={result} target={choice.kind === 'player' ? choice.username : null} />
+}
+
+// Step one: who are you battling? Shown before the quiz so the tap that names a
+// person is the tap that starts the battle.
+function OpponentPicker({ onPick, onExit }: { onPick: (c: Choice) => void; onExit: () => void }) {
+  const juice = useJuice()
+  const { buddies, suggested, load, loadSuggested } = useBuddies()
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    Promise.all([load(), loadSuggested(3)]).then(() => setReady(true))
+  }, [load, loadSuggested])
+
+  // Nobody to show (brand-new account, or offline): don't gate the run behind an
+  // empty list — fall through to the old play-then-pick order, which at least
+  // offers the share link.
+  const empty = ready && buddies.length === 0 && suggested.length === 0
+  useEffect(() => {
+    if (empty) onPick({ kind: 'later' })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [empty])
+
+  if (!ready || empty) {
+    return (
+      <Page noNav>
+        <div style={{ display: 'grid', placeItems: 'center', height: '70dvh' }}>
+          <div className="floaty" style={{ fontSize: 56 }}>⚔️</div>
+        </div>
+      </Page>
+    )
+  }
+
+  const pick = (u: BuddyCard) => {
+    juice.coin()
+    onPick({ kind: 'player', username: u.username })
+  }
+
+  return (
+    <Page noNav>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+        <button className="pill" onClick={onExit} aria-label="Back">✕</button>
+        <b style={{ fontFamily: 'var(--font-display)', fontSize: 18 }}>Who are you battling?</b>
+      </div>
+
+      <div className="card" style={{ textAlign: 'center', marginBottom: 14 }}>
+        <div className="floaty" style={{ fontSize: 40 }}>⚔️</div>
+        <p style={{ marginTop: 8, fontSize: 15, lineHeight: 1.5 }}>
+          Pick someone, then play your round — <b>your score is what they’ll have to beat</b>. The
+          challenge goes out the moment you finish.
+        </p>
+      </div>
+
+      {buddies.length > 0 && (
+        <>
+          <Divider>YOUR BUDDIES</Divider>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {buddies.map((u) => (
+              <PlayerRow key={u.username} u={u} label="Battle" onClick={() => pick(u)} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {suggested.length > 0 && (
+        <>
+          <Divider>SUGGESTED — ACTIVE PLAYERS</Divider>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {suggested.map((u) => (
+              <PlayerRow key={u.username} u={u} label="Battle + add" onClick={() => pick(u)} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* The old order, kept as a choice: play now, decide at the end. It's also
+          the only route to a share-a-link challenge, which needs a score first. */}
+      <div style={{ marginTop: 18 }}>
+        <Button variant="secondary" full onClick={() => { juice.select(); onPick({ kind: 'later' }) }}>
+          I’ll decide after I play
+        </Button>
+        <p className="faint center" style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
+          Play first and pick at the end — or share a link to invite someone who isn’t here yet.
+        </p>
+      </div>
+      <div style={{ height: 30 }} />
+    </Page>
+  )
+}
+
+function Divider({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0 12px' }}>
+      <div style={{ flex: 1, height: 1, background: 'var(--stroke)' }} />
+      <span className="faint" style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em' }}>{children}</span>
+      <div style={{ flex: 1, height: 1, background: 'var(--stroke)' }} />
+    </div>
+  )
 }
 
 function InvitePicker({ seed, result, target }: { seed: number; result: PlayResult; target: string | null }) {
@@ -47,6 +164,7 @@ function InvitePicker({ seed, result, target }: { seed: number; result: PlayResu
   const juice = useJuice()
   const { createBattle } = useBattles()
   const { buddies, suggested, load, loadSuggested, sendRequest } = useBuddies()
+  const referralCode = useAuth((s) => s.profile?.referralCode)
   const [ready, setReady] = useState(false)
   const [shareMsg, setShareMsg] = useState<string | null>(null)
 
@@ -62,18 +180,30 @@ function InvitePicker({ seed, result, target }: { seed: number; result: PlayResu
     juice.coin()
     if (!isBuddy) void sendRequest(u.username)
     const id = await createBattle(seed, result.score, result.timeMs, u.username)
+    trackKeepRun(result)
     if (id) navigate(`/battle/${id}`, { replace: true, state: { justCreated: true } })
+    return !!id
   }
 
   // Pre-picked opponent (came from their player card): fire the challenge as
   // soon as the buddy list is in, so we know whether to attach a buddy request.
   // The ref guards against a double-send if this re-renders mid-flight.
   const sent = useRef(false)
+  const [targetFailed, setTargetFailed] = useState(false)
+  const sendToTarget = () => {
+    if (!target) return
+    setTargetFailed(false)
+    const isBuddy = buddies.some((b) => b.username.toLowerCase() === target.toLowerCase())
+    void invite({ username: target } as BuddyCard, isBuddy).then((ok) => {
+      // A failed create used to leave this stuck on "Sending…" forever — the run
+      // is still good, so drop into the picker and let them retry or pick again.
+      if (!ok) setTargetFailed(true)
+    })
+  }
   useEffect(() => {
     if (!target || !ready || sent.current) return
     sent.current = true
-    const isBuddy = buddies.some((b) => b.username.toLowerCase() === target.toLowerCase())
-    void invite({ username: target } as BuddyCard, isBuddy)
+    sendToTarget()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target, ready, buddies])
 
@@ -85,17 +215,19 @@ function InvitePicker({ seed, result, target }: { seed: number; result: PlayResu
     let id = shareId
     if (!id) {
       id = await createBattle(seed, result.score, result.timeMs, undefined, true)
+      trackKeepRun(result)
       if (!id) {
         setShareMsg('Could not create the invite — try again.')
         return
       }
       setShareId(id)
     }
-    const r = await shareResult(`⚔️ I challenge you to a Bible Battle! Same quiz, beat my score:\n${APP_URL}/battle/${id}`)
+    const link = inviteUrl(referralCode, `/battle/${id}`)
+    const r = await shareResult(`⚔️ I challenge you to a Bible Battle! Same quiz, beat my score:\n${link}`, link)
     setShareMsg(r === 'shared' ? 'Shared!' : r === 'copied' ? 'Link copied!' : 'Could not share')
   }
 
-  if (target) {
+  if (target && !targetFailed) {
     return (
       <Page noNav>
         <div className="card" style={{ textAlign: 'center', marginTop: 40 }}>
@@ -114,17 +246,24 @@ function InvitePicker({ seed, result, target }: { seed: number; result: PlayResu
   return (
     <Page noNav>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-        <button className="pill" onClick={() => navigate('/battle')} aria-label="Done">✕</button>
+        <button className="pill" onClick={() => navigate('/battle')} aria-label="Leave without sending">✕</button>
         <b style={{ fontFamily: 'var(--font-display)', fontSize: 18 }}>Send your challenge</b>
       </div>
 
+      {/* This screen looks like a results screen but it's a required step: the
+          run isn't a challenge until somebody is picked. Say so out loud —
+          players were reading "You scored X" as the end and leaving. */}
       <div className="card" style={{ textAlign: 'center', marginBottom: 14 }}>
         <div style={{ fontSize: 40 }}>⚔️</div>
         <h2 style={{ fontSize: 22, marginTop: 4 }}>
           You scored <span className="gradient-text">{result.score.toLocaleString()}</span>
         </h2>
-        <p className="dim" style={{ marginTop: 6, fontSize: 14 }}>
-          Challenge a buddy below — or share a link to invite someone new.
+        <p style={{ marginTop: 8, fontSize: 15, fontWeight: 700, color: 'var(--gold)' }}>
+          Last step — pick who has to beat it 👇
+        </p>
+        <p className="faint" style={{ marginTop: 4, fontSize: 13, lineHeight: 1.4 }}>
+          Tap a name below to send them this score, or share a link to invite someone new. Nothing
+          goes out until you pick.
         </p>
         {/* You've just played this verse, so you can keep it here rather than
             waiting on an opponent. The text stays hidden — this screen is one
@@ -137,6 +276,17 @@ function InvitePicker({ seed, result, target }: { seed: number; result: PlayResu
           />
         </div>
       </div>
+
+      {targetFailed && target && (
+        <div className="card" style={{ marginBottom: 14, borderColor: 'var(--coral)' }}>
+          <p style={{ fontSize: 14, lineHeight: 1.5 }}>
+            Couldn’t send that to <b>@{target}</b> — your run is safe, so try again or pick someone else.
+          </p>
+          <div style={{ marginTop: 12 }}>
+            <Button variant="secondary" full onClick={sendToTarget}>Try @{target} again ⚔️</Button>
+          </div>
+        </div>
+      )}
 
       {shareId ? (
         // You committed this run to an OPEN challenge — one play, one challenge.
@@ -170,11 +320,7 @@ function InvitePicker({ seed, result, target }: { seed: number; result: PlayResu
           ) : (
             <>
               {/* Buddies */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0 12px' }}>
-                <div style={{ flex: 1, height: 1, background: 'var(--stroke)' }} />
-                <span className="faint" style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em' }}>CHALLENGE A BUDDY</span>
-                <div style={{ flex: 1, height: 1, background: 'var(--stroke)' }} />
-              </div>
+              <Divider>CHALLENGE A BUDDY</Divider>
 
               {buddies.length === 0 ? (
                 <p className="faint center" style={{ fontSize: 14, padding: '4px 0 8px' }}>
@@ -191,11 +337,7 @@ function InvitePicker({ seed, result, target }: { seed: number; result: PlayResu
               {/* Suggested active players */}
               {suggested.length > 0 && (
                 <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0 12px' }}>
-                    <div style={{ flex: 1, height: 1, background: 'var(--stroke)' }} />
-                    <span className="faint" style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em' }}>SUGGESTED — ACTIVE PLAYERS</span>
-                    <div style={{ flex: 1, height: 1, background: 'var(--stroke)' }} />
-                  </div>
+                  <Divider>SUGGESTED — ACTIVE PLAYERS</Divider>
                   <div style={{ display: 'grid', gap: 8 }}>
                     {suggested.map((u) => (
                       <PlayerRow key={u.username} u={u} label="Battle + add" onClick={() => invite(u, false)} />
@@ -208,10 +350,23 @@ function InvitePicker({ seed, result, target }: { seed: number; result: PlayResu
         </>
       )}
 
+      {/* Gold is the "do the thing" colour, and it was sitting on the control
+          that quietly drops the run. The names above are the primary action;
+          leaving is a quiet exit that says what it costs. */}
       <div style={{ marginTop: 18 }}>
-        <Button variant="gold" full onClick={() => navigate('/battle')}>
-          Done
-        </Button>
+        {shareId ? (
+          <Button variant="gold" full onClick={() => navigate('/battle')}>
+            Done
+          </Button>
+        ) : (
+          <button
+            onClick={() => navigate('/battle')}
+            className="pill"
+            style={{ width: '100%', padding: '12px', background: 'transparent', border: '1px solid var(--stroke)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+          >
+            Skip — don’t send this one
+          </button>
+        )}
       </div>
       <div style={{ height: 30 }} />
     </Page>
@@ -238,4 +393,14 @@ function PlayerRow({ u, label, onClick }: { u: BuddyCard; label: string; onClick
       </motion.button>
     </div>
   )
+}
+
+
+// Keep challenges: opening a battle counts as played once it actually exists
+// on the server, and the run's quality feeds the perfect/combo ladders.
+function trackKeepRun(result: PlayResult) {
+  const k = useKeep.getState()
+  void k.track('battle_played')
+  if (result.correctCount === result.totalQuestions && result.totalQuestions > 0) void k.track('battle_perfect')
+  if ((result.comboMax ?? 0) >= 4) void k.track('battle_combo')
 }

@@ -1,8 +1,9 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from './auth'
-import type { Church, ChurchGiver } from '@/types'
+import type { Church, ChurchGiver, ChurchInfo, ChurchMember, ChurchPage } from '@/types'
 import type { ChurchPlace } from '@/lib/churchSearch'
+import type { ChurchSkinChoice } from '@/features/church/skins'
 
 // Your church, what you've given it, and how it stacks up locally.
 //
@@ -52,6 +53,9 @@ function toChurch(raw: any): Church | null {
     miles: raw.miles != null ? Number(raw.miles) : undefined,
     rank: raw.rank != null ? Number(raw.rank) : undefined,
     isMine: raw.is_mine ?? undefined,
+    // Set on every church by `church_json` (0051), so board rows, the page and
+    // your own church tab all draw the same building.
+    skin: raw.skin ?? null,
   }
 }
 
@@ -65,11 +69,60 @@ function toGiver(raw: any): ChurchGiver {
   }
 }
 
+function toMember(raw: any): ChurchMember {
+  return {
+    username: raw.username,
+    avatarEmoji: raw.avatar_emoji ?? '📖',
+    avatarCharacter: raw.avatar_character ?? null,
+    isMe: !!raw.is_me,
+  }
+}
+
+function toInfo(raw: any): ChurchInfo | null {
+  if (!raw) return null
+  const info: ChurchInfo = {
+    tagline: raw.tagline ?? null,
+    about: raw.about ?? null,
+    serviceTimes: raw.serviceTimes ?? null,
+    website: raw.website ?? null,
+    contact: raw.contact ?? null,
+  }
+  // A published-but-blank profile is nothing to show; treat it as absent so the
+  // page offers the "Add info" pill instead of an empty panel.
+  return Object.values(info).some((v) => !!v) ? info : null
+}
+
 export interface ContributeResult {
   ok: boolean
   given: number
   leveledUp: boolean
   reason?: string
+}
+
+/** Who's asking for a church's page to be filled in. */
+export type InfoRequestRole = 'leadership' | 'member'
+
+/** Note length by role — mirrored exactly in `submit_church_info_request` (0050). */
+export const INFO_NOTE_MAX: Record<InfoRequestRole, number> = {
+  leadership: 500,
+  // Someone who just attends is passing on a fact, not writing the page.
+  member: 180,
+}
+export const INFO_NOTE_MIN = 10
+
+export interface InfoRequestInput {
+  churchId: string
+  role: InfoRequestRole
+  note: string
+  name?: string
+  email?: string
+  /**
+   * The look the church is asking for — a `ChurchSkinChoice`, or undefined for
+   * "no preference". Leadership only: `submit_church_info_request` (0051) drops
+   * it on the member path rather than trusting the form, because someone who
+   * merely attends doesn't get to redecorate the building.
+   */
+  skin?: ChurchSkinChoice
 }
 
 interface ChurchState {
@@ -87,12 +140,20 @@ interface ChurchState {
   boardLoading: boolean
   error: string | null
 
+  /** The church page opened from a board row, or null when the sheet is closed. */
+  page: ChurchPage | null
+  /** True while the extra detail (info, roster) is still in flight. */
+  pageLoading: boolean
+
   load: () => Promise<void>
   loadBoard: () => Promise<void>
   setRadius: (choice: RadiusChoice) => void
   join: (place: ChurchPlace) => Promise<Church | null>
   leave: () => Promise<void>
   contribute: (points: number) => Promise<ContributeResult>
+  openChurch: (church: Church) => Promise<void>
+  closeChurch: () => void
+  requestInfo: (input: InfoRequestInput) => Promise<{ ok: boolean; reason?: string }>
 }
 
 export const useChurch = create<ChurchState>((set, get) => ({
@@ -108,6 +169,8 @@ export const useChurch = create<ChurchState>((set, get) => ({
   loading: false,
   boardLoading: false,
   error: null,
+  page: null,
+  pageLoading: false,
 
   async load() {
     if (!isOnline()) {
@@ -226,5 +289,73 @@ export const useChurch = create<ChurchState>((set, get) => ({
     // The local board's ranks just moved, and so did our row in "top givers".
     void get().load()
     return { ok: true, given, leveledUp: !!payload.leveled_up }
+  },
+
+  // --- The church page behind a leaderboard row -----------------------------
+  // Seeded from the row that was tapped so the sheet is drawn the instant it
+  // opens: rank, level, XP and members are all already in hand. Only the parts
+  // we don't have yet — the published info and the congregation to stand
+  // outside — wait on the network.
+  async openChurch(church) {
+    set({
+      page: { church, info: null, members: [], memberTotal: church.members, myRequestPending: false },
+      pageLoading: true,
+    })
+    if (!isOnline()) {
+      set({ pageLoading: false })
+      return
+    }
+    const { data, error } = await supabase!.rpc('get_church_page', {
+      p_church_id: church.id,
+      // The server's cap. The scene only draws a dozen or so, but the page also
+      // names the congregation, and a name list wants to be as complete as the
+      // RPC will give us.
+      p_members_limit: 24,
+    })
+    // Tapping a second row before the first landed: whatever came back belongs
+    // to a sheet that isn't on screen any more, so drop it.
+    if (get().page?.church.id !== church.id) return
+    if (error || !(data as any)?.ok) {
+      set({ pageLoading: false })
+      return
+    }
+    const payload = data as any
+    set({
+      page: {
+        // Keep the row's rank: the page RPC doesn't compute one (it would mean
+        // ranking the whole board again), and the rank the player just looked at
+        // is the right one to keep showing.
+        church: { ...(toChurch(payload.church) ?? church), rank: church.rank },
+        info: toInfo(payload.info),
+        members: ((payload.members ?? []) as any[]).map(toMember),
+        memberTotal: Number(payload.member_total ?? church.members),
+        myRequestPending: !!payload.my_request_pending,
+      },
+      pageLoading: false,
+    })
+  },
+
+  closeChurch() {
+    set({ page: null, pageLoading: false })
+  },
+
+  async requestInfo({ churchId, role, note, name, email, skin }) {
+    if (!isOnline()) return { ok: false, reason: 'offline' }
+    const { data, error } = await supabase!.rpc('submit_church_info_request', {
+      p_church_id: churchId,
+      p_role: role,
+      p_note: note.slice(0, INFO_NOTE_MAX[role]),
+      p_name: name?.trim() || null,
+      p_email: email?.trim() || null,
+      p_skin: skin ?? null,
+    })
+    if (error) return { ok: false, reason: error.message }
+    const payload = data as any
+    if (!payload?.ok) return { ok: false, reason: payload?.reason ?? 'failed' }
+    // The pill stops inviting a second note the moment the first one lands.
+    set((s) =>
+      s.page?.church.id === churchId ? { page: { ...s.page, myRequestPending: true } } : {},
+    )
+    return { ok: true }
   },
 }))

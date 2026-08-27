@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { AvatarSpec, ArmorSlot } from '@/types'
 import { skinHex, robeHex, equippedSkinId } from '@/data/avatar'
 
@@ -124,6 +125,31 @@ const ED_CANOPY_DK = '#24552A'
 const ED_FRUIT_DK = '#8E1F26'
 const ED_LIGHT = '#FFE9A8'
 
+// Sonshine palette — the creator-collab skin, sampled off the reference clips.
+// Blocky on purpose: it's a portrait of a voxel-game character, so it is all
+// flat axis-aligned rects on a 4-unit grid (an 8x8 head, an 8x12 body and 4x12
+// limbs, scaled x4 into the 120x170 box). Drawn rather than raster like the
+// other recent skins: rectangles cost nothing to draw, they stay crisp at the
+// 18px presence chip where the PNGs soften (see docs/RASTER-SKINS.md), and the
+// reference colours can be matched exactly instead of approximated by a
+// generator. One shade value per volume, always on the viewer-right edge, so
+// the figure reads as lit from the left the way the reference renders do.
+const SS_HAIR = '#E0342A'
+const SS_HAIR_HI = '#F2483B'
+const SS_HAIR_DK = '#A82119'
+const SS_SKIN = '#F2D3B3'
+const SS_SKIN_SH = '#D9B694'
+const SS_EYE = '#2E5CC8'
+const SS_JACKET = '#17171E'
+const SS_JACKET_DK = '#0D0D12'
+const SS_TEE = '#ECECF2'
+const SS_TEE_SH = '#CFCFD8'
+const SS_DENIM = '#33405C'
+const SS_DENIM_DK = '#26314A'
+const SS_SHOE = '#C6382C'
+const SS_SHOE_DK = '#9E2A20'
+const SS_SOLE = '#F0ECE2'
+
 // A feathered wing, drawn from the shoulder out to the viewer-right. `flip`
 // mirrors it about the figure's centre line so the pair always matches, and
 // `transform` lets a skin fan several pairs (the seraph's six) from one shape.
@@ -169,20 +195,74 @@ function Halo({ cy = 26, rx = 13 }: { cy?: number; rx?: number }) {
   )
 }
 
+// ── Raster skin preview ───────────────────────────────────────────────────
+// A skin listed here renders as an image instead of drawn paths. The <image>
+// sits inside the same 120×170 viewBox, so sizing, the circular clip in Avatar
+// and every call site are untouched — and a skin that isn't listed keeps its
+// SVG exactly as before.
+//
+// This is a preview path, not a decision. Raster can't compose (the free
+// starter layers armour and items independently) and it softens badly at the
+// 18px presence chip, so anything kept here long-term should be redrawn as
+// paths. The file is served from public/, so dropping a PNG in is enough.
+const RASTER_SKINS: Record<string, string> = {
+  baldwin: '/skins/baldwin.png',
+  david: '/skins/david.png',
+  esther: '/skins/esther.png',
+  moses: '/skins/moses.png',
+  elijah: '/skins/elijah.png',
+  eden: '/skins/eden.png',
+  whale: '/skins/whale.png',
+  gabriel: '/skins/gabriel.png',
+  michael: '/skins/michael.png',
+  seraph: '/skins/seraph.png',
+  // The Pilgrimage's reactive skin: the equipped skinId carries the state
+  // (ruth_1..ruth_4 — see passSkinEquipId in data/avatar), so each maps to its
+  // own file and every viewer renders the right basket from the spec alone.
+  ruth_1: '/skins/ruth_1.png',
+  ruth_2: '/skins/ruth_2.png',
+  ruth_3: '/skins/ruth_3.png',
+  ruth_4: '/skins/ruth_4.png',
+  boaz: '/skins/boaz.png',
+}
+
 export function Character({
   spec,
   size = 44,
   title,
+  fullBody = false,
 }: {
   spec: AvatarSpec
   size?: number
   title?: string
+  /** Keep the full-length figure at ANY size. The portrait crop below exists
+   *  for circular avatar chips, where a full figure throws away the face — but
+   *  a figure STANDING somewhere (the keep's hall, the church lawn) needs its
+   *  feet, or a raster skin turns into a floating bust. */
+  fullBody?: boolean
 }) {
   const skin = skinHex(spec.skin)
   const robe = robeHex(spec.robe)
   const has = (s: ArmorSlot) => !!spec.armor[s]
   const items = spec.items ?? {}
   const skinId = equippedSkinId(spec)
+  // Falls back to the drawn skin if the image is missing or fails to decode, so
+  // a listed-but-absent file degrades to what shipped before rather than a hole.
+  //
+  // Keyed on the failing src rather than a boolean. One Character instance can
+  // be shown many skins in turn -- the preview avatar on the customise screen is
+  // a single instance whose skinId changes as the player taps through the grid --
+  // and a boolean latched on the first failure would fall back for every skin
+  // after it, permanently, until the component remounted. A transient 404 while
+  // a deploy propagates was enough to do it.
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
+  const raster = skinId ? RASTER_SKINS[skinId] : undefined
+  const useRaster = !!raster && failedSrc !== raster
+  // Everywhere the player actually reads an avatar — chips, lists, the profile
+  // header, the customise grid — a full-length figure in a small circle throws
+  // away the face. Those get a portrait crop. The one place that stays
+  // full-length is the large purchase preview, where the whole skin is the point.
+  const zoomRaster = useRaster && size < 120 && !fullBody
 
   return (
     <svg
@@ -194,10 +274,36 @@ export function Character({
       aria-label={title ?? (skinId ? `${skinId} avatar` : 'Character avatar')}
       style={{ display: 'block' }}
     >
-      {/* ground shadow */}
-      <ellipse cx="60" cy="162" rx="30" ry="5" fill="rgba(0,0,0,0.16)" />
+      {/* Ground shadow — skipped when a raster skin is framed as a portrait,
+          since the figure is cropped at the waist and has no feet to cast one. */}
+      {!zoomRaster && <ellipse cx="60" cy="162" rx="30" ry="5" fill="rgba(0,0,0,0.16)" />}
 
-      {skinId === 'baldwin' ? (
+      {useRaster ? (
+        <image
+          href={raster}
+          // Inset rather than filling the viewBox. Avatar clips to a circle, and
+          // a figure spanning the full 170 height has its top and bottom corners
+          // cut by the curve — invisible on the narrow drawn skins, obvious on a
+          // wide head like the whale's, whose cap was being sliced flat. This
+          // keeps the feet on the drawn skins' baseline and the head inside the
+          // circle at every size.
+          {...(zoomRaster
+            ? // Portrait framing: cover the viewBox and anchor to the top, so the
+              // head and torso fill the circle instead of a full figure shrinking
+              // to a few pixels. The processed PNGs are cropped tight to the top
+              // of the head, so xMidYMin lands the crop correctly. How much of
+              // the figure survives falls out of its own width — a narrow figure
+              // like Baldwin zooms to about the waist, a wide-winged angel barely
+              // crops at all, which is the right behaviour in both cases. Inset a
+              // few units so a wide head (the whale's cap) is not caught by the
+              // circle's curve at the corners.
+              { x: 5, y: 7, width: 110, height: 156, preserveAspectRatio: 'xMidYMin slice' }
+            : // Full figure, inset so Avatar's circular clip does not cut the
+              // corners off a wide head.
+              { x: 10, y: 20, width: 100, height: 136, preserveAspectRatio: 'xMidYMax meet' })}
+          onError={() => setFailedSrc(raster ?? null)}
+        />
+      ) : skinId === 'baldwin' ? (
         <>
           {/* ── King Baldwin — the masked Leper King ── */}
           {/* ceremonial sword, held upright at his (viewer-left) side */}
@@ -754,6 +860,64 @@ export function Character({
           ))}
           <ellipse cx="70" cy="159" rx="3" ry="1.4" fill={ED_BARK_HI} opacity="0.45" />
         </>
+      ) : skinId === 'sonshine' ? (
+        <>
+          {/* ── Sonshine — the creator collab ── */}
+          {/* Built back-to-front so the torso's dark edge lands over the arm
+              seams: legs, arms, torso, head. Nothing here overlaps by accident
+              — every rect sits on the 4-unit grid described at SS_HAIR. */}
+
+          {/* legs — denim, split by a seam so two legs still read as two at
+              chip size, where they are three pixels wide between them */}
+          <rect x="44" y="104" width="32" height="40" fill={SS_DENIM} />
+          <rect x="70" y="104" width="6" height="40" fill={SS_DENIM_DK} />
+          <rect x="59" y="104" width="2" height="40" fill={SS_DENIM_DK} />
+
+          {/* red high-tops: upper, stripe, sole */}
+          <rect x="44" y="144" width="32" height="8" fill={SS_SHOE} />
+          <rect x="70" y="144" width="6" height="8" fill={SS_SHOE_DK} />
+          <rect x="59" y="144" width="2" height="8" fill={SS_SHOE_DK} />
+          <rect x="46" y="146" width="11" height="2" fill={SS_SOLE} />
+          <rect x="62" y="146" width="11" height="2" fill={SS_SOLE} />
+          <rect x="44" y="152" width="32" height="4" fill={SS_SOLE} />
+          <rect x="59" y="152" width="2" height="4" fill="#D6D1C4" />
+
+          {/* arms — black sleeves, bare hands below the cuff */}
+          <rect x="28" y="56" width="16" height="40" fill={SS_JACKET} />
+          <rect x="40" y="56" width="4" height="40" fill={SS_JACKET_DK} />
+          <rect x="28" y="96" width="16" height="8" fill={SS_SKIN} />
+          <rect x="40" y="96" width="4" height="8" fill={SS_SKIN_SH} />
+          <rect x="76" y="56" width="16" height="40" fill={SS_JACKET} />
+          <rect x="86" y="56" width="6" height="40" fill={SS_JACKET_DK} />
+          <rect x="76" y="96" width="16" height="8" fill={SS_SKIN} />
+          <rect x="86" y="96" width="6" height="8" fill={SS_SKIN_SH} />
+
+          {/* torso — open black hoodie over a light tee */}
+          <rect x="44" y="56" width="32" height="40" fill={SS_JACKET} />
+          <rect x="68" y="56" width="8" height="40" fill={SS_JACKET_DK} />
+          <rect x="56" y="56" width="7" height="40" fill={SS_TEE} />
+          <rect x="60" y="56" width="3" height="40" fill={SS_TEE_SH} />
+          <rect x="53" y="58" width="2" height="12" fill={SS_TEE} />
+          <rect x="65" y="58" width="2" height="12" fill={SS_TEE_SH} />
+          <rect x="44" y="96" width="32" height="8" fill={SS_DENIM} />
+          <rect x="68" y="96" width="8" height="8" fill={SS_DENIM_DK} />
+
+          {/* head — face first, then the hair laid over it */}
+          <rect x="44" y="36" width="32" height="20" fill={SS_SKIN} />
+          <rect x="72" y="36" width="4" height="20" fill={SS_SKIN_SH} />
+          <rect x="44" y="24" width="32" height="12" fill={SS_HAIR} />
+          <rect x="44" y="24" width="32" height="4" fill={SS_HAIR_HI} />
+          <rect x="72" y="24" width="4" height="12" fill={SS_HAIR_DK} />
+          {/* fringe, parted off-centre, with the sideburns a row below */}
+          <rect x="44" y="36" width="12" height="4" fill={SS_HAIR} />
+          <rect x="64" y="36" width="12" height="4" fill={SS_HAIR} />
+          <rect x="72" y="36" width="4" height="4" fill={SS_HAIR_DK} />
+          <rect x="44" y="40" width="4" height="4" fill={SS_HAIR} />
+          <rect x="72" y="40" width="4" height="4" fill={SS_HAIR_DK} />
+          <rect x="52" y="42" width="4" height="8" fill={SS_EYE} />
+          <rect x="64" y="42" width="4" height="8" fill={SS_EYE} />
+          <rect x="56" y="52" width="8" height="2" fill={SS_SKIN_SH} />
+        </>
       ) : (
         <>
           {/* ── Default pilgrim + Armor of God ── */}
@@ -783,6 +947,14 @@ export function Character({
             <>
               <path d="M40 64 Q60 60 80 64 L94 152 L26 152 Z" fill="#6B5030" />
               <rect x="53" y="63" width="14" height="4" rx="2" fill="#8A6A3E" />
+            </>
+          )}
+          {items.cape === 'item_gleaner_shawl' && (
+            <>
+              <path d="M42 63 Q60 58 78 63 L90 148 L30 148 Z" fill="#B49B6C" />
+              {/* barley-stitch hem */}
+              <path d="M32 144 L88 144" stroke="#8A6F42" strokeWidth="2" strokeDasharray="3 3" />
+              <rect x="54" y="62" width="12" height="4" rx="2" fill="#CBB584" />
             </>
           )}
 
@@ -861,6 +1033,26 @@ export function Character({
               <ellipse cx="80" cy="99" rx="1.8" ry="3.4" fill="#FFB33E" />
             </>
           )}
+          {items.held === 'item_sickle' && (
+            <>
+              <rect x="82.5" y="96" width="4" height="18" rx="2" fill="#7A5A34" />
+              <path d="M84.5 96 q-14 -14 0 -26 q4 10 10 14 q-2 8 -10 12 z" fill="#B98A3C" stroke="#8A6420" strokeWidth="1.2" />
+            </>
+          )}
+          {items.held === 'item_winnowing_fork' && (
+            <>
+              <rect x="83" y="60" width="3.6" height="90" rx="1.8" fill="#8A6438" />
+              <path d="M78 60 v-14 M84.8 62 v-18 M91.5 60 v-14" stroke="#8A6438" strokeWidth="3" strokeLinecap="round" />
+              <path d="M77 61 h15" stroke="#8A6438" strokeWidth="3.4" strokeLinecap="round" />
+            </>
+          )}
+          {items.held === 'item_water_skin' && (
+            <>
+              <path d="M80 96 q10 -3 12 6 q2 9 -7 10 q-9 1 -10 -7 q-1 -7 5 -9 z" fill="#A66A38" stroke="#7C4C22" strokeWidth="1.2" />
+              <rect x="88.5" y="92" width="4" height="6" rx="1.5" fill="#7C4C22" />
+              <path d="M80 98 q6 6 11 3" stroke="#C89864" strokeWidth="1.4" fill="none" />
+            </>
+          )}
 
           {/* neck + head */}
           <rect x="55" y="56" width="10" height="10" rx="3" fill={skin} />
@@ -875,6 +1067,13 @@ export function Character({
           )}
 
           {/* hat items — on the crown of the head */}
+          {items.hat === 'item_harvest_headscarf' && (
+            <>
+              <path d="M47 47 a13 13 0 0 1 26 0 l0 4 a13 13 0 0 0-26 0 z" fill="#E4D2A8" stroke="#B8A06C" strokeWidth="0.8" />
+              <path d="M48 44 a12 12 0 0 1 24 0" fill="none" stroke="#C8863C" strokeWidth="2.2" />
+              <path d="M71 48 q6 9 1 21 l-5 -2 q4 -10 0 -17 z" fill="#E4D2A8" stroke="#B8A06C" strokeWidth="0.8" />
+            </>
+          )}
           {items.hat === 'item_headwrap' && (
             <>
               <path d="M47 47 a13 13 0 0 1 26 0 l0 3 a13 13 0 0 0-26 0 z" fill="#CDB183" stroke="#A98C5C" strokeWidth="0.8" />

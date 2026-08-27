@@ -1,7 +1,9 @@
 import { useEffect } from 'react'
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { useAuth } from './store/auth'
+import { useBuddies } from './store/buddies'
 import { useReminders } from './store/reminders'
+import { useSeason } from './store/season'
 import { useJuiceSync } from './juice/useJuice'
 import { initNative } from './lib/native'
 
@@ -27,9 +29,21 @@ import BattlePlay from './features/arena/BattlePlay'
 import BattleDetail from './features/arena/BattleDetail'
 import BattleCpu from './features/arena/BattleCpu'
 import StudyScreen from './features/study/StudyScreen'
-import FavoritesScreen from './features/favorites/FavoritesScreen'
+import StudyReportsScreen from './features/study/StudyReportsScreen'
+import StudyRecentScreen from './features/study/StudyRecentScreen'
+import StudyBagScreen from './features/study/StudyBagScreen'
+import BibleScreen from './features/bible/BibleScreen'
+import BibleBookScreen from './features/bible/BibleBookScreen'
+import BibleChapterScreen from './features/bible/BibleChapterScreen'
+import HighlightsScreen from './features/bible/HighlightsScreen'
+import StampsScreen from './features/bible/StampsScreen'
 import FocusPracticeScreen from './features/practice/FocusPracticeScreen'
 import { BattleResume } from './features/arena/BattleResume'
+import { StudyDropToast } from './features/study/StudyDropToast'
+import { WaystationToast } from './features/season/WaystationToast'
+import PilgrimageScreen from './features/season/PilgrimageScreen'
+import { MusicDirector } from './juice/MusicDirector'
+import { NowPlaying } from './components/NowPlaying'
 import { BottomNav } from './components/BottomNav'
 import { PlayerCardProvider } from './components/PlayerCardModal'
 
@@ -66,8 +80,17 @@ function TabShell({ children }: { children: JSX.Element }) {
 export default function App() {
   const init = useAuth((s) => s.init)
   const ready = useAuth((s) => s.ready)
+  const mode = useAuth((s) => s.mode)
   const navigate = useNavigate()
   useJuiceSync()
+
+  // Pull buddy requests once the account is up, app-wide rather than on the You
+  // tab. The nav dot has to be able to say "someone is waiting" from the Play
+  // tab — loading this only where the list is rendered is what made a pending
+  // request invisible until you'd already gone looking for it.
+  useEffect(() => {
+    if (ready && mode === 'online') void useBuddies.getState().load()
+  }, [ready, mode])
 
   useEffect(() => {
     // Capture a referral code from the invite link (?ref=CODE) before anything
@@ -79,6 +102,10 @@ export default function App() {
       /* ignore */
     }
     init()
+    // The road, app-wide rather than on the Play tab: the streak flame, the
+    // Daily Chest and the confetti engine all read equipped seasonal cosmetics,
+    // and none of those is behind the strip that opens the road.
+    void useSeason.getState().load()
     // Local reminders (native only) — load the device's preferences and lay down
     // the schedule. No-op on the web, where Web Push handles this instead.
     void useReminders.getState().load()
@@ -104,6 +131,16 @@ export default function App() {
   return (
     <PlayerCardProvider>
     <BattleResume />
+    {/* A study run finishes and immediately navigates, so the reveal for
+        anything it turned up is mounted here and follows the player. */}
+    <StudyDropToast />
+    {/* Reaching a waystation reveals here for the same reason: a run navigates
+        the instant it finishes, so the reveal has to follow the player. */}
+    <WaystationToast />
+    {/* The soundtrack follows the route rather than any one screen, so it lives
+        up here with the other app-wide passengers. */}
+    <MusicDirector />
+    <NowPlaying />
     <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/welcome" element={<Onboarding />} />
@@ -185,6 +222,16 @@ export default function App() {
         {/* For Churches — the B2B congregation-partnership funnel that replaced
             the Groups tab. Public so it can be shared/linked without an account.
             Distinct from /church above, which is the player-facing tab. */}
+        <Route
+          path="/pilgrimage"
+          element={
+            <RequireProfile>
+              <TabShell>
+                <PilgrimageScreen />
+              </TabShell>
+            </RequireProfile>
+          }
+        />
         <Route path="/churches" element={<ChurchesScreen />} />
         {/* Old Groups deep links now land on the churches page. */}
         <Route path="/groups" element={<Navigate to="/churches" replace />} />
@@ -218,13 +265,77 @@ export default function App() {
             </RequireProfile>
           }
         />
-        {/* Verses the player kept after a challenge — reading, never scoring.
-            Reached from Study and from the profile. */}
+        {/* The player's own Bible — all 66 books, shaded by what they've kept,
+            studied and read. Reading, never scoring. Reached from the profile
+            (the book you open) and from Study. */}
         <Route
-          path="/favorites"
+          path="/bible"
           element={
             <RequireProfile>
-              <FavoritesScreen />
+              <BibleScreen />
+            </RequireProfile>
+          }
+        />
+        {/* Static segment before the dynamic one, so a book can never be named
+            "highlights" out from under this. */}
+        <Route
+          path="/bible/highlights"
+          element={
+            <RequireProfile>
+              <HighlightsScreen />
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/bible/stamps"
+          element={
+            <RequireProfile>
+              <StampsScreen />
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/bible/:book"
+          element={
+            <RequireProfile>
+              <BibleBookScreen />
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/bible/:book/:chapter"
+          element={
+            <RequireProfile>
+              <BibleChapterScreen />
+            </RequireProfile>
+          }
+        />
+        {/* The favorites shelf became the highlights page inside the Bible;
+            old links and bookmarks still land somewhere true. */}
+        <Route path="/favorites" element={<Navigate to="/bible/highlights" replace />} />
+        {/* The books on the Study shelf that open onto pages of their own —
+            reports (accuracy by book), the last-five replays, and the bag. */}
+        <Route
+          path="/study/reports"
+          element={
+            <RequireProfile>
+              <StudyReportsScreen />
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/study/recent"
+          element={
+            <RequireProfile>
+              <StudyRecentScreen />
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/study/bag"
+          element={
+            <RequireProfile>
+              <StudyBagScreen />
             </RequireProfile>
           }
         />

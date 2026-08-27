@@ -26,7 +26,8 @@ export default function PracticeQuizScreen() {
     <QuizRunner
       verse={verse}
       label="📖 Practice · study run"
-      onExit={() => navigate('/play')}
+      onExit={() => navigate('/study/recent')}
+      studyDrop
       onComplete={async (result) => {
         try {
           await submit(result)

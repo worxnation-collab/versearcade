@@ -1,0 +1,12 @@
+[
+  {
+    "id": "open_bible",
+    "kind": "prop",
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the object itself \u2014 a flat chroma-key backdrop, NOT white, NOT grey, NOT parchment, NOT a table surface, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No surface under the object, no cast shadow, no text, no watermark, no second copy, no silhouette. All four corners of the image must be that same flat magenta.\n\nAn open leather-bound Bible resting on a small wooden reading stand, cream pages, a thin red ribbon marker down the middle. Warm hand-illustrated storybook style with clean shapes and soft painted shading, no line art, no photorealism \u2014 a small prop for a medieval great hall, seen slightly from above at three-quarters, the whole object inside the frame. Lit warmly from the left."
+  },
+  {
+    "id": "rosary",
+    "kind": "prop",
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the object itself \u2014 a flat chroma-key backdrop, NOT white, NOT grey, NOT parchment, NOT a table surface, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No surface under the object, no cast shadow, no text, no watermark, no second copy, no silhouette. All four corners of the image must be that same flat magenta.\n\nA wooden bead rosary laid out in a loose oval coil, with a small gold cross at the bottom of its short strand. Warm hand-illustrated storybook style with clean shapes and soft painted shading, no line art, no photorealism \u2014 a small prop for a medieval great hall, seen slightly from above at three-quarters, the whole object inside the frame. Lit warmly from the left."
+  }
+]

@@ -111,6 +111,10 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 
 /* Animations ------------------------------------------------------------- */
 @keyframes floaty { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-8px) } }
+/* The keep's walk-bob — figures glide between waypoints and this sells the
+   steps. Paired with scaleX facing on the same element (KeepLife). */
+@keyframes va-keep-bob { from { transform: translateY(0) } to { transform: translateY(-2.5px) } }
+@keyframes va-keep-breathe { from { transform: scaleY(1) } to { transform: scaleY(1.018) } }
 @keyframes pulseGlow {
   0%,100% { filter: drop-shadow(0 0 0 rgba(255,210,63,0)) }
   50% { filter: drop-shadow(0 0 16px rgba(255,210,63,0.6)) }
@@ -130,6 +134,14 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 }
 
 .floaty { animation: floaty 3.5s ease-in-out infinite; }
+/* A glowing pet's aura on the profile hero — breathes slowly, never flashes.
+   It sits BEHIND the figure as its own element rather than as a filter on the
+   character, so a raster skin isn't repainted every frame. */
+@keyframes petAura {
+  0%, 100% { opacity: 0.72; transform: translate(-50%, -50%) scale(0.97); }
+  50%      { opacity: 1;    transform: translate(-50%, -50%) scale(1.05); }
+}
+.pet-aura { animation: petAura 4.5s ease-in-out infinite; }
 .pop-in { animation: popIn 0.4s cubic-bezier(.2,1.4,.4,1) both; }
 
 /* Legendary 1000-day "Halo of Light" avatar border — a slowly rotating,

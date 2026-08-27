@@ -7,8 +7,9 @@ import { Avatar } from '@/components/Avatar'
 import { useAuth } from '@/store/auth'
 import { useBattles, type Battle, type BattleSide } from '@/store/battles'
 import { setPendingBattle } from './pending'
-import { shareResult, APP_URL } from '@/features/daily/shareCard'
+import { shareResult, inviteUrl } from '@/features/daily/shareCard'
 import { useJuice } from '@/juice/useJuice'
+import { useKeep } from '@/store/keep'
 import { FavoriteButton } from '@/components/FavoriteButton'
 import { battleVerse } from './battle'
 
@@ -50,15 +51,22 @@ export default function BattleDetail() {
     }
   }, [battle, location.state, juice])
 
+  // Keep challenges: a battle I was in completed with me as the winner. Fires
+  // on whichever visit first SEES the completed battle (the opponent's result
+  // arrives async); track() guards by battle id so revisits can't double-count.
+  useEffect(() => {
+    if (battle && myOutcome(battle) === 'won') void useKeep.getState().track('battle_won', battle.id)
+  }, [battle])
+
   // The verse both sides raced over. Only ever rendered on a finished battle, so
   // it can't spoil a challenge that's still waiting to be played.
   const verse = useMemo(() => (battle ? battleVerse(battle.seed) : null), [battle])
 
-  const link = `${APP_URL}/battle/${id}`
+  const link = inviteUrl(profile?.referralCode, `/battle/${id}`)
   const doShare = async () => {
     juice.coin()
     const text = `⚔️ I challenge you to a Bible Battle! Same quiz, beat my score:\n${link}`
-    const r = await shareResult(text)
+    const r = await shareResult(text, link)
     setShareMsg(r === 'shared' ? 'Shared!' : r === 'copied' ? 'Link copied!' : 'Could not share')
   }
 
@@ -126,6 +134,8 @@ export default function BattleDetail() {
   // ── Signed in ──
   const iAmChallenger = battle.is_challenger
   const finished = battle.status === 'complete'
+  // The other side of a battle I played — the rematch target.
+  const rival = (iAmChallenger ? battle.opponent?.username : battle.challenger.username) ?? null
 
   return (
     <Page noNav>
@@ -167,8 +177,16 @@ export default function BattleDetail() {
             </div>
           )}
 
+          {/* "Rematch" has to mean rematch THEM — a generic new battle sends
+              you to the picker and makes you hunt down the same opponent. */}
           <div style={{ marginTop: 18 }}>
-            <Button variant="gold" full onClick={() => navigate('/battle/new')}>Start a new battle ⚔️</Button>
+            {rival ? (
+              <Button variant="gold" full onClick={() => navigate('/battle/new', { state: { challenge: rival } })}>
+                Rematch @{rival} ⚔️
+              </Button>
+            ) : (
+              <Button variant="gold" full onClick={() => navigate('/battle/new')}>Start a new battle ⚔️</Button>
+            )}
           </div>
         </>
       ) : iAmChallenger ? (
@@ -218,7 +236,13 @@ export default function BattleDetail() {
             This challenge is for <b>@{battle.invited}</b>. Start your own to take on <b>@{battle.challenger.username}</b>!
           </p>
           <div style={{ marginTop: 16 }}>
-            <Button variant="gold" full onClick={() => navigate('/battle/new')}>Start a battle ⚔️</Button>
+            <Button
+              variant="gold"
+              full
+              onClick={() => navigate('/battle/new', { state: { challenge: battle.challenger.username } })}
+            >
+              Challenge @{battle.challenger.username} ⚔️
+            </Button>
           </div>
         </div>
       ) : (

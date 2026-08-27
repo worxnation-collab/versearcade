@@ -3,8 +3,8 @@ import { motion } from 'framer-motion'
 import { Avatar } from '@/components/Avatar'
 import { XpBar } from '@/components/XpBar'
 import { StreakFlame } from '@/components/StreakFlame'
-import { cardBgStyle, cardArtProps } from '@/data/playerCards'
-import { CardArt } from '@/data/cardArt'
+import { cardBgStyle } from '@/data/playerCards'
+import { CardBg } from '@/components/CardBg'
 import { denominationColor, denominationName } from '@/data/denominations'
 import type { AvatarSpec } from '@/types'
 
@@ -25,6 +25,11 @@ export interface PlayerCardData {
   totalPlays: number
   cards: number
   denomination?: string | null
+  /** Earned road title, shown under the name. Only ever set for your own card:
+   *  the leaderboard RPCs don't return other players' titles yet, and a title
+   *  that renders for you and vanishes for everyone else would read as a bug.
+   *  Widening it means adding the column to those RPCs, not a change here. */
+  title?: string | null
 }
 
 // The player card: identity + level + the six stats, on a background the player
@@ -34,15 +39,27 @@ export function PlayerCard({
   p,
   actions,
   compact = false,
+  statsOnly = false,
 }: {
   p: PlayerCardData
   /** Buttons pinned beside the name — Edit / settings on your own profile. */
   actions?: ReactNode
   /** Tighter padding, for the pop-up where vertical space is scarcer. */
   compact?: boolean
+  /**
+   * Drop the identity block — avatar, name, title, denomination, XP bar — and
+   * keep only the six stats.
+   *
+   * For your own profile, where ProfileHero already shows you at full size
+   * directly above: repeating the avatar and handle underneath it is the same
+   * person twice on one screen, and the numbers are the part the card is
+   * actually carrying there. Everywhere the card stands alone — the pop-up,
+   * anyone else's profile — it keeps its identity, because there it IS the
+   * identity.
+   */
+  statsOnly?: boolean
 }) {
   const denom = p.denomination ? denominationName(p.denomination) : null
-  const art = cardArtProps(p.cardBackground)
   // SVG gradient ids must be unique per rendered card — the profile header and
   // an open pop-up can be on screen at once.
   const artId = `pc-${p.username}-${p.cardBackground ?? 'default'}`
@@ -59,7 +76,7 @@ export function PlayerCard({
         boxShadow: '0 10px 30px rgba(0,0,0,0.45)',
       }}
     >
-      <CardArt scene={art.scene} palette={art.palette} id={artId} />
+      <CardBg bgKey={p.cardBackground} id={artId} eager />
       {/* A scrim keeps text legible over the brighter paintings without
           flattening them. */}
       <div
@@ -80,6 +97,7 @@ export function PlayerCard({
       )}
 
       {/* Identity */}
+      {!statsOnly && (
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
         <Avatar
           emoji={p.avatarEmoji}
@@ -99,6 +117,23 @@ export function PlayerCard({
           >
             @{p.username}
           </h2>
+          {p.title && (
+            <div
+              className="faint"
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                marginTop: 1,
+                color: 'var(--gold)',
+                textShadow: '0 2px 8px rgba(0,0,0,0.6)',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {p.title}
+            </div>
+          )}
           {denom && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
               <span style={{ width: 9, height: 9, borderRadius: '50%', background: denominationColor(p.denomination!), boxShadow: `0 0 7px ${denominationColor(p.denomination!)}` }} />
@@ -108,6 +143,16 @@ export function PlayerCard({
           <div style={{ marginTop: 8 }}><XpBar xp={p.xp} /></div>
         </div>
       </div>
+      )}
+
+      {/* Without the identity block the level bar has nowhere to live, and it's
+          the one number that reads as progress rather than a total — so it
+          moves above the tiles rather than being dropped. */}
+      {statsOnly && (
+        <div style={{ marginBottom: 12 }}>
+          <XpBar xp={p.xp} />
+        </div>
+      )}
 
       {/* The six stats, same set and order as the profile has always shown. */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>

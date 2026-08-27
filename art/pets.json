@@ -1,0 +1,32 @@
+[
+  {
+    "id": "pet_lamb",
+    "kind": "item",
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the animal itself \u2014 a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the animal, no silhouette.\n\nA small white lamb with soft curly fleece, a dark face and dark legs, its head turned toward the viewer. Shown side-on in full, standing, with all of its feet at the bottom edge of the frame and the whole animal inside the frame. Warm hand-illustrated storybook style, clean shapes and soft painted shading, no line art, no photorealism. A companion, not a mascot. Lit warmly from the upper left, colours bright enough to read at small size."
+  },
+  {
+    "id": "pet_dove",
+    "kind": "item",
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the animal itself \u2014 a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the animal, no silhouette.\n\nA white dove with folded wings and an olive sprig in its beak, its head turned toward the viewer. Shown side-on in full, standing, with all of its feet at the bottom edge of the frame and the whole animal inside the frame. Warm hand-illustrated storybook style, clean shapes and soft painted shading, no line art, no photorealism. A companion, not a mascot. Lit warmly from the upper left, colours bright enough to read at small size."
+  },
+  {
+    "id": "pet_raven",
+    "kind": "item",
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the animal itself \u2014 a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the animal, no silhouette.\n\nA glossy black raven with folded wings and a small piece of bread in its beak, a faint blue sheen on the feathers, its head turned toward the viewer. Shown side-on in full, standing, with all of its feet at the bottom edge of the frame and the whole animal inside the frame. Warm hand-illustrated storybook style, clean shapes and soft painted shading, no line art, no photorealism. A companion, not a mascot. Lit warmly from the upper left, colours bright enough to read at small size."
+  },
+  {
+    "id": "pet_lion_cub",
+    "kind": "item",
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the animal itself \u2014 a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the animal, no silhouette.\n\nA small lion with tawny gold fur, a short soft mane just starting to come in, and a tufted tail, its head turned toward the viewer. Shown side-on in full, standing, with all of its feet at the bottom edge of the frame and the whole animal inside the frame. Warm hand-illustrated storybook style, clean shapes and soft painted shading, no line art, no photorealism. A companion, not a mascot. Lit warmly from the upper left, colours bright enough to read at small size."
+  },
+  {
+    "id": "pet_donkey",
+    "kind": "item",
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the animal itself \u2014 a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the animal, no silhouette.\n\nA burro \u2014 a small long-eared member of the horse family \u2014 with a soft grey-brown coat, tall upright ears, a pale muzzle and a short dark mane, wearing no saddle or harness, looking toward the viewer. Shown side-on in full, standing, with all of its feet at the bottom edge of the frame and the whole animal inside the frame. Warm hand-illustrated storybook style, clean shapes and soft painted shading, no line art, no photorealism. A companion, not a mascot. Lit warmly from the upper left, colours bright enough to read at small size."
+  },
+  {
+    "id": "pet_camel",
+    "kind": "item",
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the animal itself \u2014 a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the animal, no silhouette.\n\nA one-humped camel with a sandy tan coat, a long neck and calm half-lidded eyes, carrying no saddle or baggage, its head turned toward the viewer. Shown side-on in full, standing, with all of its feet at the bottom edge of the frame and the whole animal inside the frame. Warm hand-illustrated storybook style, clean shapes and soft painted shading, no line art, no photorealism. A companion, not a mascot. Lit warmly from the upper left, colours bright enough to read at small size."
+  }
+]

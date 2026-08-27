@@ -80,6 +80,9 @@ export interface Profile {
   /** Equipped player-card background key (a collectible key; see
    *  data/playerCards). null/undefined = the free 'default' background. */
   cardBackground?: string | null
+  /** Equipped pet id (see data/pets), or null for none. Earned by player level
+   *  and purely company — it touches no score, no board and no standing. */
+  pet?: string | null
   /** Distinct day-drops the player has shared (YYYY-MM-DD). Drives share-count
    *  unlocks like the King Baldwin set. */
   sharedDays?: string[]
@@ -128,17 +131,14 @@ export interface SubmitOutcome {
   xpBoosts?: number
 }
 
-// Practice mode — replaying an already-played verse to study. Reward only comes
-// from beating your best, once per week per verse (see submit_practice / 0014).
+// Practice mode — replaying an already-played verse to study. Reward comes from
+// beating your best, every time you manage it: no per-verse cooldown since 0057
+// (see submit_practice / 0014).
 export interface PracticeItem {
   dropDate: string
   reference: string
   /** Score to beat = higher of your daily score and any better practice score. */
   bestScore: number
-  /** True if beating your best could pay out now (not on weekly cooldown). */
-  rewardable: boolean
-  /** When the weekly reward unlocks again, if currently on cooldown. */
-  nextRewardOn: string | null
 }
 
 export interface PracticeOutcome {
@@ -148,9 +148,6 @@ export interface PracticeOutcome {
   improved: boolean
   rewarded: boolean
   xpEarned: number
-  /** Improved, but the weekly per-verse reward was already claimed. */
-  weeklyLocked: boolean
-  nextRewardOn: string | null
 }
 
 export interface PresenceEvent {
@@ -196,6 +193,16 @@ export interface Church {
   miles?: number
   rank?: number
   isMine?: boolean
+  /**
+   * What the building is made of — a `ChurchSkinId`, or null for the default.
+   *
+   * Carried on the church rather than on its profile because the board draws
+   * it: a skin is the one thing a church pays for that a stranger scrolling
+   * past can actually see. Typed as a plain string so a value from a newer
+   * build doesn't fail to parse; `churchSkin()` falls back to the default for
+   * anything it doesn't recognise.
+   */
+  skin?: string | null
 }
 
 // A member of your church, ranked by what they've given to it.
@@ -205,4 +212,35 @@ export interface ChurchGiver {
   avatarCharacter?: AvatarSpec | null
   points: number
   isMe: boolean
+}
+
+// Someone who plays for a church, as the church page draws them: a figure
+// standing outside the building. Deliberately carries no points — the crowd
+// outside a stranger's church is a congregation, not a ladder.
+export interface ChurchMember {
+  username: string
+  avatarEmoji: string
+  avatarCharacter?: AvatarSpec | null
+  isMe: boolean
+}
+
+// The extra detail a church shows on its page. Null until a church claims it;
+// there is no client write path at all (see migration 0050), so this only ever
+// arrives from the server already vetted.
+export interface ChurchInfo {
+  tagline?: string | null
+  about?: string | null
+  serviceTimes?: string | null
+  website?: string | null
+  contact?: string | null
+}
+
+// Everything behind a tap on a leaderboard row.
+export interface ChurchPage {
+  church: Church
+  info: ChurchInfo | null
+  members: ChurchMember[]
+  memberTotal: number
+  /** This player already has an unhandled "add info" ask in for this church. */
+  myRequestPending: boolean
 }

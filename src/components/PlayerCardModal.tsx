@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/store/auth'
 import { useCollection } from '@/store/collection'
 import { useBuddies } from '@/store/buddies'
+import { useSeason } from '@/store/season'
+import { titleById } from '@/data/season'
 import { useJuice } from '@/juice/useJuice'
 import { Button } from '@/components/Button'
 import { supabase } from '@/lib/supabase'
@@ -77,6 +79,10 @@ function CardSheet({ username, onClose }: { username: string; onClose: () => voi
     navigate('/battle/new', { state: { challenge: username } })
   }
 
+  // Your equipped road title. Only ever rendered on your own card — see the
+  // note on PlayerCardData.title.
+  const myTitle = titleById(useSeason((s) => s.equipped.title))?.text ?? null
+
   // The CARDS stat needs the collection, which not every screen has loaded yet.
   useEffect(() => {
     if (isMe && !collectionLoaded) loadCollection()
@@ -106,6 +112,7 @@ function CardSheet({ username, onClose }: { username: string; onClose: () => voi
         totalPlays: me.totalPlays,
         cards: myCards,
         denomination: me.denomination,
+        title: myTitle,
       })
       return
     }
@@ -133,7 +140,7 @@ function CardSheet({ username, onClose }: { username: string; onClose: () => voi
       })
     })()
     return () => { alive = false }
-  }, [username, isMe, me, myCards])
+  }, [username, isMe, me, myCards, myTitle])
 
   return (
     <div

@@ -1,133 +1,145 @@
-import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { useEffect, useMemo } from 'react'
+import { Navigate, useSearchParams } from 'react-router-dom'
 import { Page } from '@/components/Page'
-import { Button } from '@/components/Button'
-import { PracticeSection } from '@/features/practice/PracticeSection'
-import { BookAccuracyChart } from './BookAccuracyChart'
+import { StudyShelf, type ShelfItem } from './StudyShelf'
 import { useReviews } from '@/store/reviews'
 import { useFavorites } from '@/store/favorites'
-import { useJuice } from '@/juice/useJuice'
-import { useEffect } from 'react'
+import { useInventory, seedGuestInventoryFromCollection } from '@/store/inventory'
+import { usePractice } from '@/store/practice'
+import { useBookAccuracy } from '@/store/bookAccuracy'
+import { useAuth } from '@/store/auth'
+import { summarize } from '@/lib/bookAccuracy'
 
 // The Study tab — everything that's practice rather than the daily drop or a
-// real battle: race a CPU study partner, replay the last five verses, and clear
-// whatever spaced-repetition reviews are due. Nothing here touches your rank.
+// real battle, laid out as a shelf of books. Each surface is a bound volume
+// (CPU battles, focus drills, the last-five replays, reviews, your reports,
+// your bag) and tapping one swings its cover open onto that surface's own
+// page. The player's actual Bible stands among them, wearing its real board.
+// Nothing here touches your rank.
 export default function StudyScreen() {
-  const navigate = useNavigate()
-  const juice = useJuice()
   const { dueRefs, loadDue } = useReviews()
   const favCount = useFavorites((s) => Object.keys(s.map).length)
   const loadFavorites = useFavorites((s) => s.load)
+  const loadInventory = useInventory((s) => s.load)
+  const inHand = useInventory((s) =>
+    Object.values(s.items).reduce((n, qty) => n + Math.max(0, qty), 0),
+  )
+  const replays = usePractice((s) => s.list.length)
+  const loadPractice = usePractice((s) => s.loadList)
+  const stats = useBookAccuracy((s) => s.stats)
+  const loadAccuracy = useBookAccuracy((s) => s.load)
+  const name = useAuth((s) => s.profile?.username ?? '')
+
+  // Old deep links (the drop toast used to send ?bag=1 here) land on the bag's
+  // own page now that it's a book of its own.
+  const [params] = useSearchParams()
 
   useEffect(() => {
     loadDue()
     loadFavorites()
-  }, [loadDue, loadFavorites])
+    loadInventory()
+    loadPractice()
+    loadAccuracy()
+    seedGuestInventoryFromCollection()
+  }, [loadDue, loadFavorites, loadInventory, loadPractice, loadAccuracy])
+
+  const summary = useMemo(() => summarize(stats), [stats])
+
+  if (params.get('bag') === '1') return <Navigate to="/study/bag" replace />
+
+  // The shelf, in reading order: things to do first, then things to look at.
+  // Every book stands on the shelf all the time — a shelf that grows and
+  // shrinks makes the player hunt for their place. When "Keep it" has nothing
+  // due, its caption says what the book is for and the badge stays off.
+  const items: ShelfItem[] = [
+    {
+      key: 'versus',
+      title: 'Battle the CPU',
+      emblem: '🤖',
+      skin: 'versus',
+      caption: 'Race a study partner through a verse quiz',
+      to: '/battle/cpu',
+    },
+    {
+      key: 'focus',
+      title: 'Focus a book',
+      emblem: '🎯',
+      skin: 'focus',
+      caption: 'Drill one book of your choosing · earns XP',
+      to: '/study/focus',
+    },
+    {
+      key: 'replay',
+      title: 'The last five',
+      emblem: '📚',
+      skin: 'replay',
+      caption:
+        replays > 0
+          ? 'Replay a recent verse — beat your best for XP'
+          : 'Play daily verses and they land here to replay',
+      to: '/study/recent',
+      badge: replays > 0 ? String(replays) : undefined,
+    },
+    {
+      key: 'keep',
+      title: 'Keep it',
+      emblem: '🧠',
+      skin: 'keep',
+      caption:
+        dueRefs.length > 0
+          ? `${dueRefs.length} verse${dueRefs.length === 1 ? '' : 's'} ready to review — make ${dueRefs.length === 1 ? 'it' : 'them'} stick`
+          : 'Spaced review — verses you play come back here',
+      to: '/review',
+      badge: dueRefs.length > 0 ? String(dueRefs.length) : undefined,
+    },
+    {
+      key: 'bible',
+      title: 'My Bible',
+      emblem: '📖',
+      skin: 'bible',
+      name,
+      caption:
+        favCount > 0
+          ? `${favCount} kept — see what you've studied and read`
+          : 'All 66 books, lit up as you go',
+      to: '/bible',
+    },
+    {
+      key: 'reports',
+      title: 'My reports',
+      emblem: '📊',
+      skin: 'reports',
+      caption:
+        summary.answered > 0
+          ? `Accuracy by book · ${summary.pct}% overall`
+          : 'Accuracy by book — fills in as you answer',
+      to: '/study/reports',
+    },
+    {
+      key: 'bag',
+      title: 'Your bag',
+      emblem: '🎒',
+      skin: 'bag',
+      caption:
+        inHand > 0
+          ? `${inHand} find${inHand === 1 ? '' : 's'} in hand — give ${inHand === 1 ? 'it' : 'one'} to your church`
+          : 'What studying turns up lands here',
+      to: '/study/bag',
+      badge: inHand > 0 ? String(inHand) : undefined,
+    },
+  ]
 
   return (
     <Page>
-      <div className="center" style={{ marginBottom: 18 }}>
+      <div className="center" style={{ marginBottom: 22 }}>
         <div className="floaty" style={{ fontSize: 44 }}>📚</div>
         <h1 style={{ fontSize: 28, marginTop: 4 }}>Study</h1>
-        <p className="dim" style={{ marginTop: 4 }}>Practice as much as you like — none of it affects your rank.</p>
+        <p className="dim" style={{ marginTop: 4 }}>
+          Pick a book off the shelf — none of it affects your rank.
+        </p>
       </div>
 
-      {/* Battle the CPU — the headline action, always available. */}
-      <motion.div
-        className="card"
-        initial={{ scale: 0.97, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: 'spring', stiffness: 260, damping: 24 }}
-        style={{ padding: 20, textAlign: 'center', position: 'relative', overflow: 'hidden', marginBottom: 18 }}
-      >
-        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(400px 200px at 50% 0%, rgba(122,63,242,0.22), transparent 70%)' }} />
-        <div className="floaty" style={{ fontSize: 40 }}>🤖</div>
-        <h2 style={{ fontSize: 22, marginTop: 6 }}>Battle the CPU</h2>
-        <p className="dim" style={{ marginTop: 6, fontSize: 14, lineHeight: 1.45 }}>
-          Race a study partner through a verse quiz — their score ticks up live beside yours.
-          Pick Rookie, Deacon or Prophet.
-        </p>
-        <div style={{ marginTop: 14 }}>
-          <Button variant="gold" full onClick={() => { juice.coin(); navigate('/battle/cpu') }}>
-            ⚔️ Play vs CPU
-          </Button>
-        </div>
-      </motion.div>
-
-      {/* Focus practice — drill one book of your choosing against a companion.
-          Sibling to the CPU battle: same live versus bar, but scoped to a book
-          and it pays a little XP (5/session, capped at 20/day). */}
-      <motion.button
-        onClick={() => { juice.coin(); navigate('/study/focus') }}
-        whileTap={{ scale: 0.98 }}
-        className="card"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        style={{ width: '100%', textAlign: 'left', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14 }}
-      >
-        <div style={{ fontSize: 30 }}>🎯</div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 17 }}>Focus a book</div>
-          <div className="faint" style={{ fontSize: 13, lineHeight: 1.35 }}>
-            Drill verses from one book against a study partner · earns XP
-          </div>
-        </div>
-        <div style={{ fontFamily: 'var(--font-display)', color: 'var(--gold)', fontSize: 20 }}>→</div>
-      </motion.button>
-
-      {/* Keep it — spaced repetition, only when something is actually due. */}
-      {dueRefs.length > 0 && (
-        <motion.button
-          onClick={() => { juice.select(); navigate('/review') }}
-          whileTap={{ scale: 0.97 }}
-          className="card"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          style={{ width: '100%', textAlign: 'left', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 14 }}
-        >
-          <div style={{ fontSize: 30 }}>🧠</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 17 }}>Keep it</div>
-            <div className="faint" style={{ fontSize: 13 }}>
-              {dueRefs.length} verse{dueRefs.length > 1 ? 's' : ''} ready to review — make {dueRefs.length > 1 ? 'them' : 'it'} stick
-            </div>
-          </div>
-          <div style={{ fontFamily: 'var(--font-display)', color: 'var(--gold)', fontSize: 20 }}>→</div>
-        </motion.button>
-      )}
-
-      {/* The shelf of kept verses. Always shown, even at zero — it's how a player
-          learns the heart on a recap does something. */}
-      <motion.button
-        onClick={() => { juice.select(); navigate('/favorites') }}
-        whileTap={{ scale: 0.97 }}
-        className="card"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        style={{ width: '100%', textAlign: 'left', marginTop: dueRefs.length > 0 ? 10 : 0, display: 'flex', alignItems: 'center', gap: 14 }}
-      >
-        <div style={{ fontSize: 30 }}>{favCount > 0 ? '❤️' : '🤍'}</div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 17 }}>
-            Favorite verses
-            {favCount > 0 && <span className="faint" style={{ fontSize: 12 }}> · {favCount}</span>}
-          </div>
-          <div className="faint" style={{ fontSize: 13, lineHeight: 1.35 }}>
-            {favCount > 0
-              ? 'Read the ones you kept, any time'
-              : 'Tap the heart after a challenge to keep a verse here'}
-          </div>
-        </div>
-        <div style={{ fontFamily: 'var(--font-display)', color: 'var(--gold)', fontSize: 20 }}>→</div>
-      </motion.button>
-
-      {/* Study the last five — open by default here, since this is its home. */}
-      <PracticeSection defaultOpen showEmpty />
-
-      {/* Where you actually stand, book by book — and the tap that turns a weak
-          spot into a focus drill. Sits under the actions: it's the reason to
-          pick one, not a scoreboard to open the tab for. */}
-      <BookAccuracyChart />
+      <StudyShelf items={items} />
 
       <div style={{ height: 90 }} />
     </Page>

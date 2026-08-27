@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from './auth'
+import { useSeason } from './season'
 import { FAVORITES_CAP, type FavoriteMap } from '@/lib/favorites'
 
 // Verses the player has kept. Persistence mirrors the reviews / bookAccuracy
@@ -92,6 +93,9 @@ export const useFavorites = create<FavoritesState>((set, get) => ({
     if (has) delete map[reference]
     else map[reference] = new Date().toISOString()
     set({ map })
+
+    // Keeping a verse walks the road; un-keeping one doesn't take it back.
+    if (!has) void useSeason.getState().track('save_verse')
 
     if (online) {
       supabase!

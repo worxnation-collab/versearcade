@@ -36,16 +36,38 @@ export const ITEMS: ItemDef[] = [
   { id: 'item_scroll', slot: 'held', name: 'Scroll', rarity: 'common', blurb: 'The Word, close at hand.' },
   { id: 'item_lamp', slot: 'held', name: 'Oil Lamp', rarity: 'uncommon', blurb: 'A lamp unto my feet.' },
   { id: 'item_cloak', slot: 'cape', name: 'Traveler’s Cloak', rarity: 'uncommon', blurb: 'Worn on the long road.' },
+  // ——— Harvest Road items ———
+  // Earned on the Pilgrimage (data/season), never dropped by the chest: the
+  // pool below in drawChestItem deliberately excludes them so the road stays
+  // the only way to get one. Granted through the same owned_items set.
+  { id: 'item_sickle', slot: 'held', name: 'Harvest Sickle', rarity: 'rare', blurb: 'For the standing grain.' },
+  { id: 'item_winnowing_fork', slot: 'held', name: 'Winnowing Fork', rarity: 'rare', blurb: 'Chaff to the wind.' },
+  { id: 'item_water_skin', slot: 'held', name: 'Water Skin', rarity: 'uncommon', blurb: 'Drawn for the reapers.' },
+  { id: 'item_harvest_headscarf', slot: 'hat', name: 'Harvest Headscarf', rarity: 'uncommon', blurb: 'Cloth for the field.' },
+  { id: 'item_gleaner_shawl', slot: 'cape', name: 'Gleaner’s Shawl', rarity: 'rare', blurb: 'Ruth wore one like it.' },
 ]
 
+/** Item ids that only the seasonal road grants — kept out of the chest pool. */
+export const ROAD_ITEM_IDS = new Set([
+  'item_sickle',
+  'item_winnowing_fork',
+  'item_water_skin',
+  'item_harvest_headscarf',
+  'item_gleaner_shawl',
+])
+
 export const itemById = (id?: string | null): ItemDef | undefined => ITEMS.find((i) => i.id === id)
+
+/** Illustration for a chest item, served from public/items. Ids are prefixed
+ *  `item_`; the files are not. */
+export const itemArt = (id: string): string => `/items/${id.replace(/^item_/, '')}.png`
 export const itemsBySlot = (slot: ItemSlot): ItemDef[] => ITEMS.filter((i) => i.slot === slot)
 
 // Pick a random item the player doesn't own yet (rarity-weighted), for a chest
 // drop. Returns null once everything is collected. Caller supplies a 0..1 roll
 // so it stays deterministic/testable.
 export function drawChestItem(owned: string[], roll: number): string | null {
-  const pool = ITEMS.filter((i) => !owned.includes(i.id))
+  const pool = ITEMS.filter((i) => !owned.includes(i.id) && !ROAD_ITEM_IDS.has(i.id))
   if (pool.length === 0) return null
   const weight = (r: ItemRarity) => (r === 'common' ? 6 : r === 'uncommon' ? 3 : 1)
   const total = pool.reduce((s, i) => s + weight(i.rarity), 0)
@@ -178,7 +200,10 @@ export const baldwinProgress = (days?: string[]): { count: number; goal: number;
 export interface SkinDef {
   id: string
   name: string
-  source: 'earned' | 'paid'
+  /** 'pass' = earned on the seasonal road (data/season). Never sold, never in
+   *  the shop, no limitedUntil — road skins are permanent for their owners and
+   *  simply never return for anyone else. */
+  source: 'earned' | 'paid' | 'pass'
   blurb: string
   shareGoal?: number // earned: distinct shared days required
   referralGoal?: number // earned: referred signups required
@@ -190,6 +215,10 @@ export interface SkinDef {
   patron?: boolean // paid: high-tier supporter reward
   exclusive?: boolean // paid: unlocked by a promo code (redeem), not for sale
   limitedUntil?: string // limited edition: ISO date after which it vanishes for good
+  /** pass: a reactive skin with numbered states (ruth_1..ruth_N). The unlock
+   *  ids are `skin_<id>_<n>`; the equipped skinId carries the state so every
+   *  OTHER viewer renders your Ruth at the right fullness from the spec alone. */
+  states?: number
 }
 
 // Limited-edition window — premium skins disappear from the shop forever after
@@ -219,6 +248,20 @@ export const FULL_SKINS: SkinDef[] = [
     source: 'earned',
     referralGoal: 5,
     blurb: 'Carry your cross (Luke 9:23) — earned when 5 friends join with your code.',
+  },
+  // ——— The Pilgrimage (seasonal road) ———
+  {
+    id: 'ruth',
+    name: 'Ruth the Gleaner',
+    source: 'pass',
+    states: 4,
+    blurb: 'Walk the Harvest Road. Her basket fills as you go — waystations 1, 20, 35 and 50.',
+  },
+  {
+    id: 'boaz',
+    name: 'Boaz',
+    source: 'pass',
+    blurb: 'Lord of the harvest — the end of the Harvest Road, waystation 50.',
   },
   {
     id: 'moses',
@@ -316,9 +359,26 @@ export const FULL_SKINS: SkinDef[] = [
     limitedUntil: LIMITED_UNTIL,
     blurb: 'Shades on. The day-one look — redeem the code from the live drop.',
   },
+  {
+    id: 'sonshine',
+    name: 'Sonshine',
+    source: 'paid',
+    exclusive: true,
+    packName: 'Creator Collab',
+    // No `limitedUntil`, for the same reason as 'eden'. The launch skins vanish
+    // from the grid once their window closes — for owners too — and a creator
+    // skin has to keep working for as long as the partnership does. Retire it
+    // by toggling its code off in the admin panel, never by expiring the skin.
+    blurb: 'Red hair, black hoodie, red kicks — the Sonshine look. Redeem his code to wear it.',
+  },
 ]
 
-export const skinById = (id?: string | null): SkinDef | undefined => FULL_SKINS.find((s) => s.id === id)
+/** 'ruth_3' -> 'ruth': reactive pass skins bake their state into the equipped
+ *  id, so lookups and equality checks normalize through this. */
+export const baseSkinId = (id: string): string => id.replace(/_\d+$/, '')
+
+export const skinById = (id?: string | null): SkinDef | undefined =>
+  id ? FULL_SKINS.find((s) => s.id === id) ?? FULL_SKINS.find((s) => s.id === baseSkinId(id)) : undefined
 
 // ── Bundles ───────────────────────────────────────────────────────────────────
 // A bundle is one shop listing, one price, one checkout — all or nothing. The
@@ -402,12 +462,39 @@ export function packPreviewable(pack: string, ownedSkins?: string[], admin = fal
 // entitlement set.
 export function skinOwned(
   skin: SkinDef,
-  ctx: { sharedDays?: string[]; ownedSkins?: string[]; referralCount?: number; admin?: boolean },
+  ctx: {
+    sharedDays?: string[]
+    ownedSkins?: string[]
+    referralCount?: number
+    admin?: boolean
+    /** Reward ids unlocked on the seasonal road (store/season). */
+    seasonUnlocks?: string[]
+  },
 ): boolean {
   if (ctx.admin) return true // operator account has every skin unlocked
+  if (skin.source === 'pass') {
+    const u = ctx.seasonUnlocks ?? []
+    return u.includes(`skin_${skin.id}`) || u.some((x) => x.startsWith(`skin_${skin.id}_`))
+  }
   if (skin.source === 'earned') {
     if (skin.referralGoal != null) return (ctx.referralCount ?? 0) >= skin.referralGoal
     return distinctSharedDays(ctx.sharedDays) >= (skin.shareGoal ?? Number.MAX_SAFE_INTEGER)
   }
   return (ctx.ownedSkins ?? []).includes(skin.id)
+}
+
+/**
+ * The skinId to store when equipping a pass skin: the highest unlocked state
+ * for a reactive skin ('ruth' -> 'ruth_3'), the plain id otherwise. Baking the
+ * state into the stored spec is what keeps every OTHER viewer's render correct
+ * — a spec that said just 'ruth' would leave the basket's fullness to the
+ * viewer, which is wrong for everyone but you.
+ */
+export function passSkinEquipId(skin: SkinDef, seasonUnlocks?: string[]): string {
+  if (!skin.states) return skin.id
+  const u = seasonUnlocks ?? []
+  for (let n = skin.states; n >= 1; n--) {
+    if (u.includes(`skin_${skin.id}_${n}`)) return `${skin.id}_${n}`
+  }
+  return `${skin.id}_1`
 }

@@ -1,10 +1,12 @@
-import { useMemo, useEffect, useState } from 'react'
+import { useMemo, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { Avatar } from '@/components/Avatar'
 import { useAuth } from '@/store/auth'
+import { useSeason } from '@/store/season'
+import { useKeep } from '@/store/keep'
 import { useJuice } from '@/juice/useJuice'
 import { newBattleSeed, battleVerse } from './battle'
 import { CpuVersusQuiz } from './CpuVersusQuiz'
@@ -70,6 +72,7 @@ export default function BattleCpu() {
       label={`🤖 vs ${profile.name}`}
       onFinish={(player, cpuScore) => setOutcome({ player, cpuScore })}
       onExit={() => setLevel(null)}
+      studyDrop
     />
   )
 }
@@ -140,8 +143,26 @@ function CpuResult({
   const cpu = outcome.cpuScore
   const result: 'won' | 'lost' | 'tie' = you > cpu ? 'won' : you < cpu ? 'lost' : 'tie'
 
+  // One result = one payout. StrictMode remounts effects in dev, and this one
+  // moves counters — the ref makes the double-invoke a no-op.
+  const paidOut = useRef(false)
   useEffect(() => {
     result === 'won' ? juice.levelUp() : juice.celebrate()
+    if (paidOut.current) return
+    paidOut.current = true
+    // Beating the CPU walks the road. The only "beat something" verb on the
+    // track, and the something is a simulation — the line CpuVersusQuiz
+    // already draws. A real battle pays nothing seasonal for winning.
+    if (result === 'won') void useSeason.getState().track('cpu_win')
+    // Keep challenges (data/keep): a CPU race counts as played, a win as won,
+    // and the run's own quality feeds the perfect/combo ladders. Battles are
+    // the only thing that moves these counters — see the header of data/keep.
+    const k = useKeep.getState()
+    void k.track('cpu_played')
+    if (result === 'won') void k.track('cpu_won')
+    const run = outcome.player
+    if (run.correctCount === run.totalQuestions && run.totalQuestions > 0) void k.track('battle_perfect')
+    if ((run.comboMax ?? 0) >= 4) void k.track('battle_combo')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -184,6 +205,7 @@ function CpuResult({
       <div style={{ marginTop: 18, display: 'grid', gap: 10 }}>
         <Button variant="gold" full onClick={onRematch}>🔁 Rematch {profile.name}</Button>
         <Button variant="secondary" full onClick={onChange}>Change difficulty</Button>
+        <Button variant="ghost" full onClick={onDone}>← Back to Study</Button>
       </div>
       <div style={{ height: 30 }} />
     </Page>

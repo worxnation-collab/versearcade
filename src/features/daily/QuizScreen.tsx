@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Page } from '@/components/Page'
 import { useGame } from '@/store/game'
+import { useSeason } from '@/store/season'
 import { QuizRunner } from './QuizRunner'
 
 export default function QuizScreen() {
@@ -26,6 +27,9 @@ export default function QuizScreen() {
       verse={today}
       onExit={() => navigate('/play')}
       onComplete={async (result) => {
+        // The daily drop's own miles, on top of the per-run miles QuizRunner
+        // already paid. Gated to once a local day inside the store.
+        void useSeason.getState().track('daily_play')
         try {
           await submitPlay(result)
         } catch {

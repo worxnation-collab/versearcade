@@ -6,6 +6,7 @@ import { Avatar } from '@/components/Avatar'
 import { useAuth } from '@/store/auth'
 import { supabase } from '@/lib/supabase'
 import { FULL_SKINS, BUNDLES } from '@/data/avatar'
+import GrowthPanel from './GrowthPanel'
 import type { AvatarSpec } from '@/types'
 
 // Private operator surface. THREE gates, strongest first:
@@ -92,7 +93,7 @@ function PinGate({ onOk }: { onOk: () => void }) {
 function Dashboard() {
   const navigate = useNavigate()
   const [ov, setOv] = useState<Overview | null>(null)
-  const [tab, setTab] = useState<'stats' | 'users' | 'sales' | 'church' | 'codes' | 'push'>('stats')
+  const [tab, setTab] = useState<'stats' | 'growth' | 'users' | 'sales' | 'church' | 'codes' | 'push'>('stats')
 
   useEffect(() => {
     supabase?.rpc('admin_overview').then(({ data }) => setOv(data as Overview))
@@ -107,7 +108,7 @@ function Dashboard() {
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-        {(['stats', 'users', 'sales', 'church', 'codes', 'push'] as const).map((t) => (
+        {(['stats', 'growth', 'users', 'sales', 'church', 'codes', 'push'] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)} className="pill"
             style={{ background: tab === t ? 'var(--grape)' : 'var(--card)', fontWeight: 800, textTransform: 'capitalize' }}>
             {t === 'church' ? 'Churches' : t}
@@ -116,6 +117,7 @@ function Dashboard() {
       </div>
 
       {tab === 'stats' && <Stats ov={ov} />}
+      {tab === 'growth' && <GrowthPanel />}
       {tab === 'users' && <Users />}
       {tab === 'sales' && <Sales />}
       {tab === 'church' && <Churches />}
@@ -300,7 +302,74 @@ function Churches() {
   useEffect(() => {
     supabase?.rpc('admin_church_inquiries', { p_limit: 50 }).then(({ data }) => setRows((data as Inquiry[]) ?? []))
   }, [])
-  if (rows.length === 0) return <p className="faint center" style={{ padding: 30 }}>No church inquiries yet.</p>
+  return (
+    <div style={{ display: 'grid', gap: 18 }}>
+      <InfoRequests />
+      <div>
+        <h3 style={{ fontSize: 14, margin: '0 0 8px' }} className="dim">“For Churches” inquiries</h3>
+        {rows.length === 0
+          ? <p className="faint center" style={{ padding: 20 }}>No church inquiries yet.</p>
+          : <Inquiries rows={rows} />}
+      </div>
+    </div>
+  )
+}
+
+// The "Add info" queue from a church's page on the leaderboard (migration
+// 0050). Marking one handled is what clears the pending state on the player's
+// pill, so do it once the page is filled in — or once it's been decided against.
+interface InfoRequest {
+  id: string; church_id: string; church_name: string; city: string | null; region: string | null
+  role: 'leadership' | 'member'; username: string | null; contact_name: string | null
+  email: string | null; note: string; handled: boolean; created_at: string
+}
+function InfoRequests() {
+  const [rows, setRows] = useState<InfoRequest[] | null>(null)
+  const load = () =>
+    supabase?.rpc('admin_church_info_requests', { p_limit: 50 }).then(({ data }) => setRows((data as InfoRequest[]) ?? []))
+  useEffect(() => { void load() }, [])
+
+  const handle = async (r: InfoRequest) => {
+    await supabase?.rpc('admin_handle_church_info_request', { p_id: r.id, p_handled: !r.handled })
+    void load()
+  }
+
+  return (
+    <div>
+      <h3 style={{ fontSize: 14, margin: '0 0 8px' }} className="dim">Church page requests</h3>
+      {rows === null && <p className="faint center" style={{ padding: 20 }}>Loading…</p>}
+      {rows?.length === 0 && <p className="faint center" style={{ padding: 20 }}>No page requests yet.</p>}
+      <div style={{ display: 'grid', gap: 8 }}>
+        {(rows ?? []).map((r) => (
+          <div key={r.id} className="card" style={{ opacity: r.handled ? 0.55 : 1 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+              <b style={{ fontWeight: 800 }}>{r.church_name}</b>
+              <span className="faint" style={{ fontSize: 11, marginLeft: 'auto' }}>
+                {new Date(r.created_at).toLocaleDateString()}
+              </span>
+            </div>
+            <div className="faint" style={{ fontSize: 12 }}>
+              {[r.city, r.region].filter(Boolean).join(', ') || 'No location'}
+            </div>
+            <div style={{ fontSize: 13, marginTop: 4 }}>
+              <span className="pill" style={{ fontSize: 11, padding: '3px 9px', borderColor: r.role === 'leadership' ? 'var(--gold)' : 'var(--stroke)' }}>
+                {r.role === 'leadership' ? 'staff' : 'attender'}
+              </span>{' '}
+              {r.contact_name || (r.username ? `@${r.username}` : 'anonymous')}
+              {r.email && <> · <a href={`mailto:${r.email}`} style={{ color: 'var(--sky)' }}>{r.email}</a></>}
+            </div>
+            <p style={{ fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>{r.note}</p>
+            <button className="pill" onClick={() => void handle(r)} style={{ fontSize: 12, fontWeight: 700, marginTop: 4 }}>
+              {r.handled ? 'Reopen' : 'Mark handled'}
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function Inquiries({ rows }: { rows: Inquiry[] }) {
   return (
     <div style={{ display: 'grid', gap: 8 }}>
       {rows.map((i) => (

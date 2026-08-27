@@ -1,22 +1,33 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { Page } from '@/components/Page'
+import { BibleCover } from '@/features/bible/BibleCover'
 import { Button } from '@/components/Button'
 import { PlayerCard } from '@/components/PlayerCard'
 import { useAuth } from '@/store/auth'
 import { useJuice } from '@/juice/useJuice'
-import { shareResult, APP_URL } from '@/features/daily/shareCard'
+import { shareResult, inviteUrl } from '@/features/daily/shareCard'
 import { useCollection } from '@/store/collection'
 import { Collapsible } from '@/components/Collapsible'
 import { CollectionSection } from '@/features/collection/CollectionScreen'
+import { InventorySection } from '@/features/collection/InventorySection'
+import { useInventory } from '@/store/inventory'
 import { BuddiesSection } from '@/features/buddies/BuddiesScreen'
+import { useBuddies } from '@/store/buddies'
+import { useSeason } from '@/store/season'
+import { titleById } from '@/data/season'
 import { CustomizeSection } from './CustomizeSection'
+import { ProfileHero } from './ProfileHero'
 import { SettingsSheet } from './SettingsSheet'
 
 export default function ProfileScreen() {
   const navigate = useNavigate()
   const juice = useJuice()
+  const inHand = useInventory((s) =>
+    Object.values(s.items).reduce((n, q) => n + (q > 0 ? q : 0), 0),
+  )
+  const loadInventory = useInventory((s) => s.load)
   const { profile, mode, changeUsername, signOut, deleteAccount } = useAuth()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -26,19 +37,61 @@ export default function ProfileScreen() {
   const [searchParams, setSearchParams] = useSearchParams()
   const wantsCustomize = searchParams.get('customize') === '1'
   const [customizing, setCustomizing] = useState(wantsCustomize)
+  // ?inventory=1 does the same for the bag — the home screen's one-time relic
+  // nudge uses it. Captured once, because the param is cleared straight after
+  // and the section must stay open when it goes.
+  const [openInventory] = useState(() => searchParams.get('inventory') === '1')
+  const inventoryRef = useRef<HTMLDivElement>(null)
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   const [nameErr, setNameErr] = useState<string | null>(null)
   const [savingName, setSavingName] = useState(false)
   const [refFlash, setRefFlash] = useState<string | null>(null)
+  // Buddy requests have to be counted from out here, not from inside the
+  // drawer: Collapsible only mounts its children once opened, so leaving the
+  // load to BuddiesSection meant the count was always 0 until you'd already
+  // found the thing the count exists to point at.
+  const buddyRequests = useBuddies((st) => st.requests.length)
+  const loadBuddies = useBuddies((st) => st.load)
+  useEffect(() => {
+    if (mode === 'online') void loadBuddies()
+  }, [mode, loadBuddies])
   const owned = useCollection((s) => s.owned)
   const loadCollection = useCollection((s) => s.load)
   useEffect(() => {
     loadCollection()
-  }, [loadCollection])
+    // The header's "N in hand" used to read zero until the section was opened,
+    // because InventorySection was the only thing that ever loaded the store —
+    // and a folded section reporting nothing is exactly what the nudge exists
+    // to fix.
+    void loadInventory()
+  }, [loadCollection, loadInventory])
   useEffect(() => {
     if (wantsCustomize) setCustomizing(true)
   }, [wantsCustomize])
+
+  // Above the early return: a hook can't sit behind a conditional.
+  const myTitle = titleById(useSeason((s) => s.equipped.title))?.text ?? null
+
+  // Arriving from the relic nudge: the bag is already open, so put it under the
+  // thumb instead of leaving it below the fold. A beat late, so the expand
+  // animation isn't moving the target while we aim at it. The param is dropped
+  // on the way past — a back-navigation shouldn't re-scroll.
+  useEffect(() => {
+    if (!openInventory) return
+    const t = setTimeout(() => {
+      inventoryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          next.delete('inventory')
+          return next
+        },
+        { replace: true },
+      )
+    }, 60)
+    return () => clearTimeout(t)
+  }, [openInventory, setSearchParams])
 
   if (!profile) return null
   const cards = owned.length
@@ -57,6 +110,7 @@ export default function ProfileScreen() {
     totalPlays: profile.totalPlays,
     cards,
     denomination: profile.denomination,
+    title: myTitle,
   }
 
   const startEditName = () => { setNameDraft(profile.username); setNameErr(null); setEditingName(true) }
@@ -90,6 +144,17 @@ export default function ProfileScreen() {
           <button onClick={closeCustomize} className="pill" style={{ fontSize: 13, fontWeight: 800, padding: '7px 14px', flexShrink: 0 }}>
             Done
           </button>
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <ProfileHero
+            spec={profile.avatarCharacter}
+            emoji={profile.avatarEmoji}
+            username={profile.username}
+            pet={profile.pet}
+            cardBackground={profile.cardBackground}
+            title={myTitle}
+          />
         </div>
 
         <div style={{ marginBottom: 14 }}>
@@ -146,11 +211,32 @@ export default function ProfileScreen() {
 
   return (
     <Page>
-      {/* Your player card — the exact thing everyone else sees when they tap
-          your pfp, background and all, so customizing it has a visible home. */}
+      {/* You, at the size the skin was drawn for, with your pet and the
+          background you earned. The tab is called You, so it opens with you in
+          it — everywhere else your character is a 44px cropped circle. It's a
+          portrait: no numbers, because the card right underneath is all
+          numbers. */}
+      <div style={{ marginBottom: 14 }}>
+        <ProfileHero
+          spec={profile.avatarCharacter}
+          emoji={profile.avatarEmoji}
+          username={profile.username}
+          pet={profile.pet}
+          cardBackground={profile.cardBackground}
+          title={myTitle}
+        />
+      </div>
+
+      {/* The numbers, and only the numbers. The hero above is already you at
+          full size on your own background, so the card here drops its identity
+          block — the same avatar and handle twice on one screen was the thing
+          that made the hero feel like a duplicate rather than the header. What
+          other players see when they tap your pfp is unchanged: that's the same
+          component with its identity intact (PlayerCardModal). */}
       <div style={{ marginBottom: 18 }}>
         <PlayerCard
           p={cardData}
+          statsOnly
           actions={
             <>
               <button onClick={openCustomize} aria-label="Customize your card" className="pill" style={{ fontSize: 12, padding: '4px 10px', flexShrink: 0 }}>
@@ -184,8 +270,8 @@ export default function ProfileScreen() {
               </div>
               <Button variant="gold" onClick={async () => {
                 juice.coin()
-                const link = `${APP_URL}/?ref=${profile.referralCode}`
-                const r = await shareResult(`Join me on Verse Arcade! Use my code ${profile.referralCode} — daily Bible verse games, streaks & battles.\n${link}`)
+                const link = inviteUrl(profile.referralCode)
+                const r = await shareResult(`Join me on Verse Arcade! Use my code ${profile.referralCode} — daily Bible verse games, streaks & battles.\n${link}`, link)
                 setRefFlash(r === 'shared' ? 'Shared!' : r === 'copied' ? 'Link copied!' : 'Could not share')
               }}>📤 Share</Button>
             </div>
@@ -216,15 +302,40 @@ export default function ProfileScreen() {
 
       {/* Cards and Buddies used to own tabs of their own. They're the same full
           screens, just folded in here behind obvious dropdowns. */}
+      {/* What you're holding, and what it's for. Sits above the collection wall
+          because it's the actionable one — the wall is a gallery, this is a bag. */}
+      <div ref={inventoryRef} style={{ scrollMarginTop: 12 }}>
+        <Collapsible icon="🎒" title="Inventory" meta={`${inHand} in hand`} defaultOpen={openInventory}>
+          <InventorySection />
+        </Collapsible>
+      </div>
+
       <Collapsible icon="🃏" title="Cards" meta={`${cards} collected`}>
         <CollectionSection />
       </Collapsible>
 
-      <Collapsible icon="🤝" title="Bible Buddies">
+      {/* Inventory and Cards advertise what's inside them; this one didn't, so a
+          player with people waiting saw an identical closed row and 71% of every
+          buddy request ever sent was still unanswered. It now counts, and opens
+          itself when the answer is someone else's to receive. */}
+      <Collapsible
+        icon="🤝"
+        title="Bible Buddies"
+        meta={buddyRequests > 0 ? `${buddyRequests} waiting` : undefined}
+        defaultOpen={buddyRequests > 0}
+      >
         <BuddiesSection />
       </Collapsible>
 
       {/* Account */}
+      {/* Not a row in a list — a book, sitting on the profile, that opens. It
+          sits above the account plumbing because it's the thing a player comes
+          back to look at. */}
+      <h3 style={{ fontSize: 16, margin: '18px 0 10px' }} className="dim">Your Bible</h3>
+      <div style={{ marginBottom: 6 }}>
+        <BibleCover />
+      </div>
+
       <h3 style={{ fontSize: 16, marginBottom: 10 }} className="dim">Account</h3>
       <div style={{ display: 'grid', gap: 10 }}>
         {mode === 'local' && (
@@ -264,19 +375,6 @@ export default function ProfileScreen() {
       {/* More */}
       <h3 style={{ fontSize: 16, margin: '18px 0 10px' }} className="dim">More</h3>
       <div style={{ display: 'grid', gap: 10 }}>
-        <button
-          onClick={() => { juice.select?.(); navigate('/favorites') }}
-          className="card"
-          style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%', cursor: 'pointer' }}
-        >
-          <span style={{ fontSize: 22 }}>❤️</span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <b style={{ fontSize: 14 }}>Favorite verses</b>
-            <div className="faint" style={{ fontSize: 12 }}>The verses you kept — yours to read again</div>
-          </div>
-          <span style={{ color: 'var(--gold)' }}>›</span>
-        </button>
-
         <button
           onClick={() => { juice.select?.(); navigate('/churches') }}
           className="card"

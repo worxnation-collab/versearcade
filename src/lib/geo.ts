@@ -54,6 +54,13 @@ export const geoErrorMessage = (kind: GeoError): string => {
  * One-shot position. Deliberately coarse (no high-accuracy GPS wake-up): we're
  * looking for churches within tens of miles, so a cell/wifi fix is plenty and
  * it resolves far faster.
+ *
+ * The `timeout` option is not trustworthy inside a WKWebView — on iOS the
+ * request goes through CoreLocation, and while the system permission sheet is
+ * up (or authorisation is stuck "not determined") neither callback is
+ * guaranteed to fire. So we run our own deadline on top of it: a caller must
+ * always get either coordinates or an error, never a promise that hangs and a
+ * screen that spins forever.
  */
 export function getPosition(timeoutMs = 12000): Promise<Coords> {
   return new Promise((resolve, reject) => {
@@ -61,17 +68,31 @@ export function getPosition(timeoutMs = 12000): Promise<Coords> {
       reject(new LocationError('unsupported', 'Geolocation unsupported'))
       return
     }
+    let settled = false
+    const finish = (fn: () => void) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      fn()
+    }
+    const timer = setTimeout(
+      () => finish(() => reject(new LocationError('timeout', 'Location timed out'))),
+      // A little past the browser's own deadline, so its error (which carries a
+      // better reason) wins whenever it does arrive.
+      timeoutMs + 2000,
+    )
     navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      (err) => {
-        const kind: GeoError =
-          err.code === err.PERMISSION_DENIED
-            ? 'denied'
-            : err.code === err.TIMEOUT
-              ? 'timeout'
-              : 'unavailable'
-        reject(new LocationError(kind, err.message || 'Location unavailable'))
-      },
+      (pos) => finish(() => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude })),
+      (err) =>
+        finish(() => {
+          const kind: GeoError =
+            err.code === err.PERMISSION_DENIED
+              ? 'denied'
+              : err.code === err.TIMEOUT
+                ? 'timeout'
+                : 'unavailable'
+          reject(new LocationError(kind, err.message || 'Location unavailable'))
+        }),
       { enableHighAccuracy: false, timeout: timeoutMs, maximumAge: 5 * 60 * 1000 },
     )
   })

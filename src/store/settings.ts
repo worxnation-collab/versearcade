@@ -10,12 +10,24 @@ interface SettingsState {
   hapticsEnabled: boolean
   reduceMotion: boolean
   volume: number // 0..1
+  /** Background music. Independent of soundEnabled on purpose — "music off,
+   *  sound effects on" is the combination most people reach for. */
+  musicEnabled: boolean
+  musicVolume: number // 0..1
   /** Whether the "build your character" nudge has been dismissed (one-time). */
   characterPromptDismissed: boolean
   /** Whether the how-to-play walkthrough has been shown once automatically. */
   tutorialSeen: boolean
   /** Whether the "add to home screen" nudge has been dismissed (one-time). */
   installPromptDismissed: boolean
+  /**
+   * Whether the player has ever had the Inventory section open in front of
+   * them. Set from InventorySection itself, which only mounts when the section
+   * is actually expanded — so this is "saw it", not "walked past it".
+   */
+  inventorySeen: boolean
+  /** Whether the "you're holding relics" nudge has been dismissed (one-time). */
+  inventoryNudgeDismissed: boolean
   /** When the App Store bubble was last dismissed (epoch ms, 0 = never). */
   appNudgeSnoozedAt: number
   /** Set once they've tapped through to the store — then we stop asking. */
@@ -32,9 +44,13 @@ export const useSettings = create<SettingsState>()(
       hapticsEnabled: true,
       reduceMotion: false,
       volume: 0.6,
+      musicEnabled: true,
+      musicVolume: 0.55,
       characterPromptDismissed: false,
       tutorialSeen: false,
       installPromptDismissed: false,
+      inventorySeen: false,
+      inventoryNudgeDismissed: false,
       appNudgeSnoozedAt: 0,
       appNudgeDone: false,
       readingTranslation: 'web',

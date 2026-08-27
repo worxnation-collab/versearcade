@@ -103,6 +103,52 @@ that writes tomorrow's row into `daily_verses` — see `docs/ARCHITECTURE.md` �
 
 ---
 
+## 5. Web Push (the admin broadcast)
+
+The "Daily reminders" toggle in Settings subscribes the browser; `/admin` →
+**Push** broadcasts to everyone opted in, through the `push-send` Edge Function.
+That function needs **one secret** before any send works.
+
+The key *pair* is yours to generate — Supabase doesn't issue it. The public half
+ships in the client (`src/lib/config.ts` → `VAPID_PUBLIC_KEY`, mirrored as the
+fallback in `supabase/functions/push-send/index.ts`); the private half lives only
+as an Edge Function secret and is never in the repo.
+
+1. **Generate a pair.** Public is an 87-char `B…`; private is the 43-char
+   base64url EC private scalar (the JWK `d`) — a PEM block will **not** work.
+
+   ```bash
+   npx web-push generate-vapid-keys
+   ```
+
+2. **Supabase → Edge Functions → Secrets**
+   (`https://supabase.com/dashboard/project/<ref>/functions/secrets`).
+   Add `VAPID_PRIVATE_KEY` = the private half. 🔑 **PASTE**. Optional overrides:
+   `VAPID_PUBLIC_KEY` and `VAPID_SUBJECT` (defaults to `mailto:worxnation@gmail.com`).
+   Secrets apply immediately — no redeploy needed.
+
+3. **Put the public half in the client** — edit `src/lib/config.ts` (and the
+   `push-send` fallback), or set `VITE_VAPID_PUBLIC_KEY` in the build env. Either
+   way the *web build* has to be redeployed before anyone can subscribe with it.
+
+**Rotating invalidates every existing subscription.** A subscription is bound to
+the public key it was created with, and `push-send` only prunes 404/410 — a key
+mismatch answers 403, so the dead row would otherwise sit there forever. That's
+why `enablePush()` compares `sub.options.applicationServerKey` against the
+current key and re-subscribes instead of reusing a stale one: the player turns
+reminders on and it heals itself. Someone whose reminders are *already* on has
+to toggle them off and back on once, since nothing calls `enablePush()` on load.
+
+The private key can't be derived from the public one: if it's lost, the only fix
+is a new pair and rotating both halves together.
+
+| Symptom | Cause |
+|---|---|
+| `500 VAPID_PRIVATE_KEY is not configured` (admin says "is VAPID_PRIVATE_KEY set in Supabase?") | the secret isn't set |
+| `sent 0 · failed N` | halves don't match — the client subscribed with a different public key than the function signs with |
+
+---
+
 ## Sanity check
 
 - `.env.local` has both `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.

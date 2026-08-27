@@ -7,6 +7,9 @@ import { ComboMeter } from '@/components/ComboMeter'
 import { CountUp } from '@/components/CountUp'
 import { useJuice } from '@/juice/useJuice'
 import { useBookAccuracy } from '@/store/bookAccuracy'
+import { useBible } from '@/store/bible'
+import { useDrops } from '@/store/drops'
+import { useSeason } from '@/store/season'
 import { scoreQuestion } from '@/lib/progress'
 import { SCORING } from '@/lib/config'
 import type { DailyVerse, PlayResult } from '@/types'
@@ -42,12 +45,20 @@ export function QuizRunner({
   hud,
   onQuestionStart,
   onReveal,
+  studyDrop = false,
 }: {
   verse: DailyVerse
   onComplete: (result: PlayResult) => Promise<void>
   onExit: () => void
   /** Small pill under the HUD, e.g. "Practice" — omitted for the daily drop. */
   label?: ReactNode
+  /**
+   * Opt this run into a study drop roll (see lib/drops.ts). Off by default and
+   * set only by the Study tab's surfaces: the daily drop and real battles carry
+   * their own rewards, and a relic falling out of a ranked match would tie a
+   * find to standing — the one thing the Study loop is not allowed to do.
+   */
+  studyDrop?: boolean
   /** Optional live HUD (rendered under the score row) — used by vs-CPU battles
       to show a real-time versus bar. Gets the current run snapshot each render. */
   hud?: (s: QuizHudState) => ReactNode
@@ -139,6 +150,25 @@ export function QuizRunner({
     // knowing Romans is knowing Romans whether it was a daily drop or a battle.
     // (An abandoned run doesn't count: a quit isn't a wrong answer.)
     useBookAccuracy.getState().record(verse.book, correctCount, answers.length)
+    // …and lights the verse up in the player's own Bible, from whichever mode it
+    // came. Studying a verse is studying it whether it was the daily drop or a
+    // battle, and the Bible is the one place that shows all of it at once.
+    useBible.getState().markStudied(verse.reference)
+    // A finished study run rolls for a relic — here, at the same choke point as
+    // the two marks above, so every study mode counts without five call sites.
+    // Fire-and-forget: the reveal is a toast that follows the player to whatever
+    // screen onComplete sends them to, and a failed roll is simply no find.
+    if (studyDrop) void useDrops.getState().roll()
+    // …and it walks the road. Same choke point, same reason: every quiz mode
+    // counts once, from here, rather than from five screens. Miles are not XP
+    // and appear on no board (see lib/season), so paying them from a battle is
+    // safe in a way paying points from a study run would not be.
+    void useSeason.getState().track('quiz_complete', {
+      correct: correctCount,
+      perfect: correctCount === questions.length,
+      comboMax,
+    })
+    if (studyDrop) void useSeason.getState().track('study_run')
     try {
       await onComplete(result)
     } catch {

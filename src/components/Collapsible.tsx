@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useJuice } from '@/juice/useJuice'
 
@@ -12,6 +12,7 @@ export function Collapsible({
   meta,
   children,
   defaultOpen = false,
+  onToggle,
 }: {
   icon: string
   title: string
@@ -19,15 +20,28 @@ export function Collapsible({
   meta?: ReactNode
   children: ReactNode
   defaultOpen?: boolean
+  /** Fires with the new state on every open/close, for callers that remember it. */
+  onToggle?: (open: boolean) => void
 }) {
   const juice = useJuice()
   const [open, setOpen] = useState(defaultOpen)
+
+  // A reason to open can arrive after mount — buddy requests are fetched async,
+  // so the count that justifies opening isn't known on the first render. Honour
+  // defaultOpen when it flips true, but only on the edge, and never force the
+  // section closed again: if the player has already opened or dismissed it,
+  // that's their call, not the prop's.
+  const wasOpenable = useRef(defaultOpen)
+  useEffect(() => {
+    if (defaultOpen && !wasOpenable.current) setOpen(true)
+    wasOpenable.current = defaultOpen
+  }, [defaultOpen])
 
   return (
     <>
       <motion.button
         whileTap={{ scale: 0.98 }}
-        onClick={() => { juice.select?.(); setOpen((o) => !o) }}
+        onClick={() => { juice.select?.(); const next = !open; setOpen(next); onToggle?.(next) }}
         aria-expanded={open}
         className="card"
         style={{

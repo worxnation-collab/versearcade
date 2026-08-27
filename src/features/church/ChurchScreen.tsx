@@ -8,10 +8,14 @@ import { Collapsible } from '@/components/Collapsible'
 import { CountUp } from '@/components/CountUp'
 import { useAuth } from '@/store/auth'
 import { useChurch } from '@/store/church'
+import { useChurchYard } from '@/store/churchYard'
 import { useJuice } from '@/juice/useJuice'
 import { supabase } from '@/lib/supabase'
 import { ChurchArt } from './ChurchArt'
 import { ChurchBoard } from './ChurchBoard'
+import { ChurchScene } from './ChurchScene'
+import { FloraIcon } from './ChurchFlora'
+import { FLORA, PLOTS, floraById, nextFlora } from './yard'
 import { ChurchPicker } from './ChurchPicker'
 import { CHURCH_TIERS, churchLevelInfo, nextTier, tierForLevel, tierIndexForLevel } from './levels'
 import type { Church } from '@/types'
@@ -90,6 +94,49 @@ function ChurchHome({ church }: { church: Church }) {
   const [promoted, setPromoted] = useState<string | null>(null)
   const [confirmLeave, setConfirmLeave] = useState(false)
 
+  // The churchyard lives up here now, because the hero IS the yard: the scene
+  // at the top of this tab is the editable one, and the picker below only fills
+  // plots. Two scenes on one screen was one scene too many.
+  const me = useAuth((s) => s.profile)
+  const { plantings, load: loadYard, move: moveFlora } = useChurchYard()
+  const [picked, setPicked] = useState<string | null>(null)
+  const [yardNote, setYardNote] = useState<string | null>(null)
+
+  useEffect(() => {
+    void loadYard()
+  }, [loadYard, church.id])
+
+  useEffect(() => {
+    if (!yardNote) return
+    const t = setTimeout(() => setYardNote(null), 2600)
+    return () => clearTimeout(t)
+  }, [yardNote])
+
+  // Your own churchyard shows you, the same way your own hall does — the
+  // congregation stands outside it on the church's page, where the roster is.
+  const crowd = me
+    ? [{ username: me.username, avatarEmoji: me.avatarEmoji, avatarCharacter: me.avatarCharacter, isMe: true }]
+    : []
+
+  const pick = (plot: string) => {
+    juice.tap()
+    setPicked((cur) => (cur === plot ? null : plot))
+  }
+
+  const drop = async (plot: string) => {
+    const from = picked
+    setPicked(null)
+    if (!from) return
+    const had = !!plantings[plot]
+    const res = await moveFlora(from, plot)
+    if (!res.ok) {
+      setYardNote('That didn’t save. Try again in a moment.')
+      return
+    }
+    juice.select()
+    if (had) setYardNote('Swapped.')
+  }
+
   const info = useMemo(() => churchLevelInfo(church.xp), [church.xp])
   const tier = tierForLevel(info.level)
   const upcoming = nextTier(info.level)
@@ -121,6 +168,9 @@ function ChurchHome({ church }: { church: Church }) {
       juice.correct()
     }
     setFlash(`+${res.given.toLocaleString()} to ${church.name}`)
+    // Giving is the only thing that opens landscaping, so the yard's ladder is
+    // stale the moment this lands.
+    void useChurchYard.getState().load()
   }
 
   useEffect(() => {
@@ -134,10 +184,33 @@ function ChurchHome({ church }: { church: Church }) {
 
   return (
     <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'minmax(0, 1fr)' }}>
-      {/* Hero ------------------------------------------------------------- */}
+      {/* Hero --------------------------------------------------------------
+          The church you play for, as a PLACE: the building at its tier, the
+          landscaping its givers planted, and people standing outside it. It was
+          a portrait of the building on its own, which said "here is a drawing"
+          rather than "here is where you go" — the Harvest Road and the keep both
+          open with their world, and this is the same idea in the same spot.
+
+          It is also the editable one: tap a plant to pick it up, tap a plot to
+          set it down. The landscaping picker below fills the plots; this is
+          where you arrange them. */}
       <div className="card center" style={{ paddingTop: 10 }}>
-        <ChurchArt level={info.level} size={220} animate />
-        <h2 style={{ fontSize: 22, marginTop: 6, overflowWrap: 'anywhere' }}>{church.name}</h2>
+        <ChurchScene
+          level={info.level}
+          members={crowd}
+          skin={church.skin}
+          flora={plantings}
+          floraEditing={{ picked, onPick: pick, onDrop: drop }}
+          emptyNote={false}
+        />
+        {(picked || yardNote) && (
+          <p className="center" style={{ margin: '8px 0 0', fontSize: 12.5, fontWeight: 700, color: 'var(--gold)' }}>
+            {picked
+              ? `Carrying the ${floraById(plantings[picked])?.name} — tap a spot to plant it there.`
+              : yardNote}
+          </p>
+        )}
+        <h2 style={{ fontSize: 22, marginTop: 8, overflowWrap: 'anywhere' }}>{church.name}</h2>
         <p className="faint" style={{ margin: '2px 0 0', fontSize: 12.5 }}>
           {where || 'Your congregation'} · {church.members} {church.members === 1 ? 'player' : 'players'}
         </p>
@@ -227,6 +300,9 @@ function ChurchHome({ church }: { church: Church }) {
         </AnimatePresence>
       </div>
 
+      {/* Landscaping — the picker only; the yard itself is the hero above. */}
+      <Landscaping church={church} onPlanted={() => setPicked(null)} />
+
       {/* Ranks — local by default, worldwide on the "All" chip -------------- */}
       <div className="card">
         <div className="center" style={{ marginBottom: 12 }}>
@@ -283,7 +359,7 @@ function ChurchHome({ church }: { church: Church }) {
                 className="card"
                 style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', minWidth: 0, borderColor: earned ? 'var(--gold)' : 'var(--stroke)' }}
               >
-                <ChurchArt tier={t.id} size={56} locked={!earned} />
+                <ChurchArt tier={t.id} skin={church.skin} size={56} locked={!earned} />
                 <span style={{ minWidth: 0, flex: 1 }}>
                   <span style={{ display: 'block', fontWeight: 800, fontSize: 14 }}>{t.name}</span>
                   <span className="faint" style={{ display: 'block', fontSize: 12 }}>
@@ -321,7 +397,9 @@ function ChurchHome({ church }: { church: Church }) {
 
       {/* Promotion moment -------------------------------------------------- */}
       <AnimatePresence>
-        {promoted && <Promotion name={promoted} level={info.level} onClose={() => setPromoted(null)} />}
+        {promoted && (
+          <Promotion name={promoted} level={info.level} skin={church.skin} onClose={() => setPromoted(null)} />
+        )}
       </AnimatePresence>
 
       <div style={{ height: 20 }} />
@@ -329,8 +407,184 @@ function ChurchHome({ church }: { church: Church }) {
   )
 }
 
+// ---------------------------------------------------------------------------
+// Landscaping
+// ---------------------------------------------------------------------------
+// The other half of giving. Church XP grows the building for everybody; the
+// same points, counted as YOUR lifetime giving, open the landscaping you get to
+// choose. It sits directly under the Give card because that's the sentence:
+// give, and the ground out front is where it shows up.
+//
+// This is the PICKER only — what goes in each plot. The yard itself is the hero
+// at the top of the tab, and arranging it happens there by tapping. Rendering a
+// second scene down here meant two churchyards on one screen disagreeing about
+// which one you were touching.
+//
+// Nothing in here counts or compares anybody: no "3 planted", no who-planted-
+// what, no per-giver totals. See features/church/yard.ts.
+function Landscaping({ church, onPlanted }: { church: Church; onPlanted: () => void }) {
+  const juice = useJuice()
+  const { given, plantings, loaded, plant, unlocked } = useChurchYard()
+  const [flash, setFlash] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!flash) return
+    const t = setTimeout(() => setFlash(null), 2600)
+    return () => clearTimeout(t)
+  }, [flash])
+
+  const mine = unlocked()
+  const next = nextFlora(given)
+
+  const put = async (plot: string, floraId: string | null) => {
+    onPlanted()
+    juice.select()
+    const res = await plant(plot, floraId)
+    if (!res.ok) {
+      setFlash(
+        res.reason === 'locked'
+          ? 'Not open yet — keep giving and it will be.'
+          : 'That didn’t save. Try again in a moment.',
+      )
+      return
+    }
+    if (floraId) {
+      juice.coin()
+      setFlash(`Planted — ${floraById(floraId)?.name}.`)
+    }
+  }
+
+  return (
+    <div className="card">
+      <b style={{ fontFamily: 'var(--font-display)', fontSize: 17 }}>Your churchyard</b>
+      <p className="dim" style={{ margin: '6px 0 10px', fontSize: 13.5, lineHeight: 1.5 }}>
+        Giving opens up the landscaping out front — it's the yard at the top of this tab. Everyone
+        who gives plants their own, and the yard on {church.name}'s page is all of it together;
+        nobody's beds are labelled. Tap anything you've planted up there to move it.
+      </p>
+
+      <p className="faint" style={{ fontSize: 12, margin: '0 0 4px', lineHeight: 1.5 }}>
+        {given.toLocaleString()} given, all-time
+        {next
+          ? ` · ${(next.given - given).toLocaleString()} more opens the ${next.name}.`
+          : ' · every plant is open. The yard is yours.'}
+      </p>
+
+      <AnimatePresence>
+        {flash && (
+          <motion.p
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="center"
+            style={{ margin: '8px 0 0', fontSize: 13, fontWeight: 800, color: 'var(--gold)' }}
+          >
+            {flash}
+          </motion.p>
+        )}
+      </AnimatePresence>
+
+      <div style={{ marginTop: 12 }}>
+        <Collapsible icon="🌷" title="Landscaping" meta={`${mine.length}/${FLORA.length} open`}>
+          {!loaded ? (
+            <p className="faint" style={{ fontSize: 12, margin: 0 }}>Reading the yard…</p>
+          ) : mine.length === 0 ? (
+            <p className="dim" style={{ fontSize: 13, margin: 0, lineHeight: 1.5 }}>
+              Nothing to plant yet. The first pots go in at {FLORA[0].given.toLocaleString()} given —
+              giving costs you nothing, so it's only a matter of playing.
+            </p>
+          ) : (
+            PLOTS.map((plot) => {
+              const current = plantings[plot.id]
+              return (
+                <div key={plot.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--stroke)' }}>
+                  <div className="faint" style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+                    {plot.label}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    <PlantChip label="Bare" active={!current} onClick={() => void put(plot.id, null)} />
+                    {mine.map((f) => (
+                      <PlantChip
+                        key={f.id}
+                        label={f.name}
+                        active={current === f.id}
+                        onClick={() => void put(plot.id, f.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )
+            })
+          )}
+
+          {/* The ladder: what's open, and what giving more opens next. Plain
+              numbers, no urgency, nothing expires — the Study-tab tone. */}
+          <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)', marginTop: 12 }}>
+            {FLORA.map((f) => {
+              const open = given >= f.given
+              return (
+                <div
+                  key={f.id}
+                  className="card"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: '10px 12px',
+                    minWidth: 0,
+                    borderColor: open ? 'var(--gold)' : 'var(--stroke)',
+                    opacity: open ? 1 : 0.62,
+                  }}
+                >
+                  <FloraIcon id={f.id} size={38} />
+                  <span style={{ minWidth: 0, flex: 1 }}>
+                    <span style={{ display: 'block', fontWeight: 800, fontSize: 14 }}>{f.name}</span>
+                    <span className="faint" style={{ display: 'block', fontSize: 12 }}>
+                      {open ? f.blurb : `At ${f.given.toLocaleString()} given`}
+                    </span>
+                  </span>
+                  <span style={{ fontSize: 16 }}>{open ? '✅' : '🔒'}</span>
+                </div>
+              )
+            })}
+          </div>
+        </Collapsible>
+      </div>
+    </div>
+  )
+}
+
+function PlantChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: '5px 10px',
+        borderRadius: 9,
+        fontSize: 12.5,
+        cursor: 'pointer',
+        border: `1px solid ${active ? 'var(--gold)' : 'var(--stroke)'}`,
+        background: active ? 'rgba(255,210,63,0.14)' : 'rgba(255,255,255,0.04)',
+        color: active ? 'var(--gold)' : 'var(--ink-dim)',
+      }}
+    >
+      {label}
+    </button>
+  )
+}
+
 // The reward for a long climb: the building visibly becomes something bigger.
-function Promotion({ name, level, onClose }: { name: string; level: number; onClose: () => void }) {
+function Promotion({
+  name,
+  level,
+  skin,
+  onClose,
+}: {
+  name: string
+  level: number
+  skin?: string | null
+  onClose: () => void
+}) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -358,7 +612,7 @@ function Promotion({ name, level, onClose }: { name: string; level: number; onCl
         <p className="faint" style={{ margin: 0, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
           Your church grew
         </p>
-        <ChurchArt level={level} size={200} animate />
+        <ChurchArt level={level} skin={skin} size={200} animate />
         <h2 className="gradient-text" style={{ fontSize: 26, marginTop: 4 }}>{name}</h2>
         <p className="dim" style={{ margin: '8px 0 14px', fontSize: 14 }}>
           Everyone who gave built this. Keep going — there's more house to raise.

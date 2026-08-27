@@ -8,6 +8,7 @@ import { XpBar } from '@/components/XpBar'
 import { StreakFlame } from '@/components/StreakFlame'
 import { PresenceStrip } from '@/features/presence/PresenceStrip'
 import { DailyChest } from '@/features/chest/DailyChest'
+import { RoadStrip } from '@/features/season/RoadStrip'
 import { Collapsible } from '@/components/Collapsible'
 import { LeaderboardSection } from '@/features/leaderboard/LeaderboardScreen'
 import { supabase } from '@/lib/supabase'
@@ -18,6 +19,7 @@ import { useSettings } from '@/store/settings'
 import { Tutorial } from './Tutorial'
 import { InstallPrompt } from './InstallPrompt'
 import { AppStoreNudge } from './AppStoreNudge'
+import { InventoryNudge } from './InventoryNudge'
 import { msUntilNextLocalMidnight, formatCountdown } from '@/lib/date'
 
 export default function HomeScreen() {
@@ -65,6 +67,10 @@ export default function HomeScreen() {
           </div>
         </div>
       </div>
+
+      {/* The Pilgrimage. High on the tab because the bottom nav is full at five
+          and this strip is the only way the road gets seen. */}
+      <RoadStrip />
 
       {/* Add to Home Screen — only renders where installing is actually possible
           (and not already installed), and can be dismissed for good. */}
@@ -223,6 +229,10 @@ export default function HomeScreen() {
 
       {/* Daily Chest — unlocks after today's verse, gives a random relic. */}
       <DailyChest />
+
+      {/* …and, once, a pointer at where those relics went and what they're for.
+          Directly under the chest because that's where they came from. */}
+      <InventoryNudge />
 
       {/* Reviews that are due ("Keep it") now live on the Study tab, alongside
           the other practice surfaces, rather than competing with today's verse.

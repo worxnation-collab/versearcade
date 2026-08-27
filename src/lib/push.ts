@@ -43,6 +43,17 @@ function bufToB64url(buf: ArrayBuffer | null): string {
   return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
+// A subscription is bound to the VAPID key it was created with: rotate the pair
+// and the old one answers 403 forever, while getSubscription() keeps returning
+// it as if nothing were wrong. So check which key it carries before reusing it.
+function subscribedWithCurrentKey(sub: PushSubscription): boolean {
+  const key = sub.options.applicationServerKey
+  // Older browsers don't expose it — assume it's ours rather than churning a
+  // subscription that probably works.
+  if (!key) return true
+  return bufToB64url(key) === VAPID_PUBLIC_KEY
+}
+
 async function readyRegistration(): Promise<ServiceWorkerRegistration | null> {
   if (!pushSupported()) return null
   try {
@@ -72,6 +83,19 @@ export async function enablePush(): Promise<boolean> {
   if (!reg) return false
 
   let sub = await reg.pushManager.getSubscription()
+  if (sub && !subscribedWithCurrentKey(sub)) {
+    // Left over from a previous VAPID pair. Drop it here as well as server-side,
+    // otherwise push-send keeps a row it can never deliver to (it only prunes
+    // 404/410, and a key mismatch is a 403).
+    const stale = sub.endpoint
+    try {
+      await sub.unsubscribe()
+    } catch {
+      /* ignore */
+    }
+    await supabase.rpc('delete_push_subscription', { p_endpoint: stale })
+    sub = null
+  }
   if (!sub) {
     sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,

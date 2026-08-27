@@ -7,6 +7,7 @@ leaderboard row stops being a number and becomes a place — and it is where the
 Pilgrimage's furnishing rewards are actually seen.
 
 Read `docs/BATTLE-PASS.md` first; this is where a third of that track pays out.
+Everything here is free, like everything on the track.
 
 ---
 
@@ -32,10 +33,12 @@ easy one to get wrong:
 ## 2. The rule that keeps this safe: presence, not quantity
 
 The obvious build is "show everything the faction's members have unlocked."
-Do that and a fortress becomes a live tally of how many of its members bought
-the battle pass — Catholics with four thousand banners next to Adventists with
-forty. That is a sectarian scoreboard, purchasable, on a topic where real people
-have real sore spots. It's the single worst thing this feature could turn into.
+Do that and a fortress becomes a live tally of faction size and grind —
+Catholics with four thousand banners next to Adventists with forty. That's a
+sectarian scoreboard, on a topic where real people have real sore spots, and
+making the track free doesn't help: it just changes what the tally measures from
+who paid to who has more members. It's the single worst thing this feature could
+turn into.
 
 `CLAUDE.md` already solved this exact problem one level down, for church skins:
 
@@ -112,28 +115,53 @@ somebody switches faction, and it turns a warm object into a permission check.
 
 ---
 
-## 5. You can buy the furniture; you can't buy the sacred
+## 5. Everything here is free — and one rule survives anyway
 
-`AVATAR-ECONOMY.md` already rules that the Virgin Mary is "denominationally
-sensitive — earn-only or omit, never a paid SKU." Extend that from figures to
-objects, because it's the same trade:
+Nothing in the hall is for sale (see `docs/BATTLE-PASS.md`), so the old
+"devotional objects are earned, never sold" line is satisfied by construction.
 
-> **Devotional objects are earned or free. Never sold.** The paid track sells
-> heraldry and furniture.
+One piece of it still binds, for a different reason:
 
-| Free / earned only | Sellable on the Pilgrim's Pass |
-|---|---|
-| Rosary · prayer rope · icon corner · prie-dieu · baptismal font · censer · open Bible on its stand · chalice · Advent wreath · prayer shawl | Gonfalons and standards · armoured destrier · tapestries · iron chandelier · brazier · wall shields · antique map table · chess set · stained glass · hunting horn · barrel stacks · rugs |
+> **No decoration is assigned by faction, and none is gated to one.** Anyone can
+> earn and hang anything. Don't gate the rosary to Catholics — that's an identity
+> check, it breaks the moment somebody switches faction, and it turns a warm
+> object into a permission prompt.
 
-Nobody is ever charged $5.99 for a devotional object of their own tradition.
-That sentence is the whole test — if a proposed decoration fails it, it goes on
-the free track.
+A hall looks like its tradition because its members *chose* those objects, not
+because the app decided what Catholics get. That's what keeps the feature warm
+instead of presumptuous, and it's why the iconography can't be subtly wrong for
+a tradition — the app never asserts anything about one.
 
-The Pilgrimage's cosmetic-only rule still binds on top of this: a decoration
-grants no XP, no points, no battle bonus, and no drop-rate anything. It hangs on
-a wall. That's it.
+### The catalog
 
----
+**Devotional** — rosary · prayer rope · icon corner · prie-dieu · baptismal
+font · censer · open Bible on its stand · chalice · Advent wreath · prayer
+shawl · a lit candle rack.
+
+**Heraldry** — faction gonfalon (auto, `denominationColor`) · Lion of Judah
+standard · Chi-Rho banner · olive-branch pennant · twelve-star banner · sheaf
+banner · a plain war banner.
+
+**Armoury** — the six Armor of God pieces as a set · kite shield · crossed
+spears · hunting horn · antique map of the Holy Land · a season tapestry
+(Harvest, Exodus, Emmaus) · a rack of practice staves.
+
+**Stable** — armoured destrier · palfrey · donkey · ox · camel · a yoked pair ·
+dovecote · a sleeping hound.
+
+**Table** — scribe's inkhorn and quill · chess set · loaves and fish · bowl of
+pomegranates · oil lamp · a map with pins · a relic case (displays a relic you
+actually found — ties the drop economy into the hall).
+
+**Hearth & floor** — stone hearth with fire · brazier · anvil · barrel stacks ·
+woven rug · hand-mill · a well.
+
+**Rafters** — iron chandelier · hanging lanterns · a bell · roosting doves ·
+stained-glass rose window · a hanging censer.
+
+Roughly sixty objects across six anchor types, and every one of them is a small
+flat SVG prop. That is the cheapest reward-per-unit-of-work in the whole
+Pilgrimage, which is most of why the track leans on it.
 
 ## 6. Anchors — a loadout, not a canvas
 
@@ -295,7 +323,8 @@ that this app can't.
       empty, poor, or behind.
 - [ ] The open factions get the same building, the same anchors and the same
       decoration catalog, with no religious decor assigned by default.
-- [ ] No devotional object is behind a price, in either mode.
+- [ ] Nothing in the hall is behind a price, and no decoration is gated to a
+      faction.
 - [ ] Nothing in the hall is text a player can author.
 - [ ] The crowd carries no per-person score and no join-order prestige.
 - [ ] Nothing hung on a wall affects battles, XP, points, drops or standing.

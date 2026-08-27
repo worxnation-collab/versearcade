@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Character } from '@/components/Character'
 import { Collapsible } from '@/components/Collapsible'
-import { usePlayerCard } from '@/components/PlayerCardModal'
 import { useAuth } from '@/store/auth'
 import { useKeep, loadFactionKeep, type FactionKeep, type Placements } from '@/store/keep'
 import { useJuice } from '@/juice/useJuice'
@@ -127,11 +125,12 @@ export function KeepSheet({
                 return decor ? <DecorProp key={a.id} id={decor} x={a.x} y={a.y} color={colorHex} /> : null
               })}
             </svg>
-            {/* The crowd — same rules as ChurchScene: two ranks, stable jitter,
-                you in front, no score on anybody, no "+N more" badge. */}
-            {denomination && faction && faction.members.length > 0 && (
-              <Crowd members={faction.members} />
-            )}
+            {/* Deliberately NO figures in the hall. Static avatars pasted over
+                the painted room muddied the picture; the congregation is the
+                head count in the caption below until figures can be alive in
+                here — NPC-style, walking the floor, sitting at the table. The
+                member data still arrives (keep_json), so that version starts
+                from what this one already loads. */}
           </div>
 
           <p className="faint" style={{ fontSize: 12, margin: '8px 0 0', lineHeight: 1.5 }}>
@@ -225,65 +224,5 @@ function Chip({ label, active, onClick }: { label: string; active: boolean; onCl
     >
       {label}
     </button>
-  )
-}
-
-/** Stable per-person jitter — same hash family as ChurchScene, same reason:
- *  nobody shuffles on a re-render. */
-function hash(s: string): number {
-  let h = 2166136261
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i)
-    h = Math.imul(h, 16777619)
-  }
-  return (h >>> 0) / 4294967295
-}
-
-function Crowd({ members }: { members: FactionKeep['members'] }) {
-  const { open } = usePlayerCard()
-  // You stand out front; everyone else keeps the server's order (oldest member
-  // first) so the crowd doesn't rearrange itself between visits.
-  const ordered = [...members].sort((a, b) => Number(b.isMe) - Number(a.isMe))
-  const front = ordered.slice(0, 5)
-  const back = ordered.slice(5, 11)
-
-  const figure = (m: FactionKeep['members'][number], i: number, count: number, bottomPct: number, size: number, dim: boolean) => {
-    const j = hash(m.username)
-    const span = count === 1 ? 0 : 64 / (count - 1)
-    const x = (count === 1 ? 40 : 12 + i * span) + (j - 0.5) * 6
-    return (
-      <button
-        key={m.username}
-        onClick={() => open(m.username)}
-        title={m.isMe ? `${m.username} (you)` : m.username}
-        style={{
-          position: 'absolute',
-          left: `${x}%`,
-          bottom: `${bottomPct + (j - 0.5) * 3}%`,
-          transform: 'translateX(-50%)',
-          zIndex: (dim ? 1 : 2) + (m.isMe ? 1 : 0),
-          opacity: dim ? 0.82 : 1,
-          background: 'none',
-          border: 'none',
-          padding: 0,
-          cursor: 'pointer',
-        }}
-      >
-        {m.avatarCharacter ? (
-          <Character spec={m.avatarCharacter} size={size} title={m.username} />
-        ) : (
-          <span style={{ fontSize: size * 0.72, lineHeight: 1, filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.5))' }}>
-            {m.avatarEmoji}
-          </span>
-        )}
-      </button>
-    )
-  }
-
-  return (
-    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto' }}>
-      {back.map((m, i) => figure(m, i, back.length, 15, 26, true))}
-      {front.map((m, i) => figure(m, i, front.length, 2, 38, false))}
-    </div>
   )
 }

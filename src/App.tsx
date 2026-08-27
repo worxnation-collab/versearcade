@@ -29,6 +29,9 @@ import BattlePlay from './features/arena/BattlePlay'
 import BattleDetail from './features/arena/BattleDetail'
 import BattleCpu from './features/arena/BattleCpu'
 import StudyScreen from './features/study/StudyScreen'
+import StudyReportsScreen from './features/study/StudyReportsScreen'
+import StudyRecentScreen from './features/study/StudyRecentScreen'
+import StudyBagScreen from './features/study/StudyBagScreen'
 import BibleScreen from './features/bible/BibleScreen'
 import BibleBookScreen from './features/bible/BibleBookScreen'
 import BibleChapterScreen from './features/bible/BibleChapterScreen'
@@ -307,6 +310,32 @@ export default function App() {
         {/* The favorites shelf became the highlights page inside the Bible;
             old links and bookmarks still land somewhere true. */}
         <Route path="/favorites" element={<Navigate to="/bible/highlights" replace />} />
+        {/* The books on the Study shelf that open onto pages of their own —
+            reports (accuracy by book), the last-five replays, and the bag. */}
+        <Route
+          path="/study/reports"
+          element={
+            <RequireProfile>
+              <StudyReportsScreen />
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/study/recent"
+          element={
+            <RequireProfile>
+              <StudyRecentScreen />
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/study/bag"
+          element={
+            <RequireProfile>
+              <StudyBagScreen />
+            </RequireProfile>
+          }
+        />
         {/* Drill one book against a study companion, reached from Study. */}
         <Route
           path="/study/focus"

@@ -28,13 +28,21 @@ import {
 
 const COLLAPSED_ROWS = 5
 
-export function BookAccuracyChart() {
+export function BookAccuracyChart({
+  defaultExpanded = false,
+  flush = false,
+}: {
+  /** Open every book. The reports page is here to be read in full. */
+  defaultExpanded?: boolean
+  /** Drop the top margin — for a page where this is the whole content. */
+  flush?: boolean
+} = {}) {
   const navigate = useNavigate()
   const juice = useJuice()
   const stats = useBookAccuracy((s) => s.stats)
   const loaded = useBookAccuracy((s) => s.loaded)
   const load = useBookAccuracy((s) => s.load)
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(defaultExpanded)
 
   useEffect(() => {
     load()
@@ -50,7 +58,7 @@ export function BookAccuracyChart() {
 
   if (!loaded || rows.length === 0) {
     return (
-      <div className="card" style={{ marginTop: 16, textAlign: 'center' }}>
+      <div className="card" style={{ marginTop: flush ? 0 : 16, textAlign: 'center' }}>
         <div style={{ fontSize: 30 }}>📊</div>
         <b style={{ fontFamily: 'var(--font-display)', fontSize: 16, display: 'block', marginTop: 6 }}>
           Your book accuracy
@@ -72,7 +80,7 @@ export function BookAccuracyChart() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className="card"
-      style={{ marginTop: 16, padding: 16 }}
+      style={{ marginTop: flush ? 0 : 16, padding: 16 }}
       aria-label="Accuracy by book"
     >
       {/* Header: the one headline number, then what the list is for. */}

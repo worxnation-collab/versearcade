@@ -206,3 +206,34 @@ export interface ChurchGiver {
   points: number
   isMe: boolean
 }
+
+// Someone who plays for a church, as the church page draws them: a figure
+// standing outside the building. Deliberately carries no points — the crowd
+// outside a stranger's church is a congregation, not a ladder.
+export interface ChurchMember {
+  username: string
+  avatarEmoji: string
+  avatarCharacter?: AvatarSpec | null
+  isMe: boolean
+}
+
+// The extra detail a church shows on its page. Null until a church claims it;
+// there is no client write path at all (see migration 0050), so this only ever
+// arrives from the server already vetted.
+export interface ChurchInfo {
+  tagline?: string | null
+  about?: string | null
+  serviceTimes?: string | null
+  website?: string | null
+  contact?: string | null
+}
+
+// Everything behind a tap on a leaderboard row.
+export interface ChurchPage {
+  church: Church
+  info: ChurchInfo | null
+  members: ChurchMember[]
+  memberTotal: number
+  /** This player already has an unhandled "add info" ask in for this church. */
+  myRequestPending: boolean
+}

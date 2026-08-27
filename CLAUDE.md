@@ -100,6 +100,33 @@ haptics, the OAuth redirect (`store/auth.ts`), the install prompt, and
 `appStoreAsk()` (review vs. download). There is no other divergence — keep it
 that way.
 
+## Church pages
+
+Every row on the church leaderboard opens `ChurchDetailSheet` — the building
+drawn wide by `ChurchScene` with the congregation's own characters standing
+outside it, plus whatever the church has published about itself. The sheet is
+portalled to `document.body` because the board sits inside a `.card`, and
+`.card` sets `backdrop-filter`, which is a containing block for `position:
+fixed` — same family of bug as the `perspective` note in `BookOpening`.
+
+Two rules here are load-bearing:
+
+- **No client can write a church's page.** `church_profiles` (0050) has no
+  insert/update policy and no player-callable RPC; publishing is
+  `admin_upsert_church_profile`. The "Add info" pill submits to a review queue
+  (`church_info_requests`) and publishes nothing. This is somebody else's
+  congregation — an open text field on it is a moderation problem, and it is
+  also the thing a church is meant to pay for later, so it follows the same
+  can't-be-forged rule the IAP entitlements do.
+- **No prices, no checkout, either mode.** The pill is an inquiry, so the
+  surface is byte-identical on web and in the App Store build and never becomes
+  a storefront that `commerce.ts` would have to gate. If a church page ever gets
+  a real price, that decision goes in `commerce.ts` and nowhere else.
+
+The roster the scene draws is deliberately not ordered by contribution and
+carries no per-person points: a crowd, not a ladder. "Top givers" stays your own
+church's thank-you list.
+
 ## Content is deterministic — keep it that way
 
 `getVerseForDate(date)` must return the same verse for the same date for every

@@ -39,6 +39,8 @@ import { BattleResume } from './features/arena/BattleResume'
 import { StudyDropToast } from './features/study/StudyDropToast'
 import { WaystationToast } from './features/season/WaystationToast'
 import PilgrimageScreen from './features/season/PilgrimageScreen'
+import { MusicDirector } from './juice/MusicDirector'
+import { NowPlaying } from './components/NowPlaying'
 import { BottomNav } from './components/BottomNav'
 import { PlayerCardProvider } from './components/PlayerCardModal'
 
@@ -129,6 +131,10 @@ export default function App() {
     {/* Reaching a waystation reveals here for the same reason: a run navigates
         the instant it finishes, so the reveal has to follow the player. */}
     <WaystationToast />
+    {/* The soundtrack follows the route rather than any one screen, so it lives
+        up here with the other app-wide passengers. */}
+    <MusicDirector />
+    <NowPlaying />
     <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/welcome" element={<Onboarding />} />

@@ -125,6 +125,31 @@ const ED_CANOPY_DK = '#24552A'
 const ED_FRUIT_DK = '#8E1F26'
 const ED_LIGHT = '#FFE9A8'
 
+// Sonshine palette — the creator-collab skin, sampled off the reference clips.
+// Blocky on purpose: it's a portrait of a voxel-game character, so it is all
+// flat axis-aligned rects on a 4-unit grid (an 8x8 head, an 8x12 body and 4x12
+// limbs, scaled x4 into the 120x170 box). Drawn rather than raster like the
+// other recent skins: rectangles cost nothing to draw, they stay crisp at the
+// 18px presence chip where the PNGs soften (see docs/RASTER-SKINS.md), and the
+// reference colours can be matched exactly instead of approximated by a
+// generator. One shade value per volume, always on the viewer-right edge, so
+// the figure reads as lit from the left the way the reference renders do.
+const SS_HAIR = '#E0342A'
+const SS_HAIR_HI = '#F2483B'
+const SS_HAIR_DK = '#A82119'
+const SS_SKIN = '#F2D3B3'
+const SS_SKIN_SH = '#D9B694'
+const SS_EYE = '#2E5CC8'
+const SS_JACKET = '#17171E'
+const SS_JACKET_DK = '#0D0D12'
+const SS_TEE = '#ECECF2'
+const SS_TEE_SH = '#CFCFD8'
+const SS_DENIM = '#33405C'
+const SS_DENIM_DK = '#26314A'
+const SS_SHOE = '#C6382C'
+const SS_SHOE_DK = '#9E2A20'
+const SS_SOLE = '#F0ECE2'
+
 // A feathered wing, drawn from the shoulder out to the viewer-right. `flip`
 // mirrors it about the figure's centre line so the pair always matches, and
 // `transform` lets a skin fan several pairs (the seraph's six) from one shape.
@@ -820,6 +845,64 @@ export function Character({
             </g>
           ))}
           <ellipse cx="70" cy="159" rx="3" ry="1.4" fill={ED_BARK_HI} opacity="0.45" />
+        </>
+      ) : skinId === 'sonshine' ? (
+        <>
+          {/* ── Sonshine — the creator collab ── */}
+          {/* Built back-to-front so the torso's dark edge lands over the arm
+              seams: legs, arms, torso, head. Nothing here overlaps by accident
+              — every rect sits on the 4-unit grid described at SS_HAIR. */}
+
+          {/* legs — denim, split by a seam so two legs still read as two at
+              chip size, where they are three pixels wide between them */}
+          <rect x="44" y="104" width="32" height="40" fill={SS_DENIM} />
+          <rect x="70" y="104" width="6" height="40" fill={SS_DENIM_DK} />
+          <rect x="59" y="104" width="2" height="40" fill={SS_DENIM_DK} />
+
+          {/* red high-tops: upper, stripe, sole */}
+          <rect x="44" y="144" width="32" height="8" fill={SS_SHOE} />
+          <rect x="70" y="144" width="6" height="8" fill={SS_SHOE_DK} />
+          <rect x="59" y="144" width="2" height="8" fill={SS_SHOE_DK} />
+          <rect x="46" y="146" width="11" height="2" fill={SS_SOLE} />
+          <rect x="62" y="146" width="11" height="2" fill={SS_SOLE} />
+          <rect x="44" y="152" width="32" height="4" fill={SS_SOLE} />
+          <rect x="59" y="152" width="2" height="4" fill="#D6D1C4" />
+
+          {/* arms — black sleeves, bare hands below the cuff */}
+          <rect x="28" y="56" width="16" height="40" fill={SS_JACKET} />
+          <rect x="40" y="56" width="4" height="40" fill={SS_JACKET_DK} />
+          <rect x="28" y="96" width="16" height="8" fill={SS_SKIN} />
+          <rect x="40" y="96" width="4" height="8" fill={SS_SKIN_SH} />
+          <rect x="76" y="56" width="16" height="40" fill={SS_JACKET} />
+          <rect x="86" y="56" width="6" height="40" fill={SS_JACKET_DK} />
+          <rect x="76" y="96" width="16" height="8" fill={SS_SKIN} />
+          <rect x="86" y="96" width="6" height="8" fill={SS_SKIN_SH} />
+
+          {/* torso — open black hoodie over a light tee */}
+          <rect x="44" y="56" width="32" height="40" fill={SS_JACKET} />
+          <rect x="68" y="56" width="8" height="40" fill={SS_JACKET_DK} />
+          <rect x="56" y="56" width="7" height="40" fill={SS_TEE} />
+          <rect x="60" y="56" width="3" height="40" fill={SS_TEE_SH} />
+          <rect x="53" y="58" width="2" height="12" fill={SS_TEE} />
+          <rect x="65" y="58" width="2" height="12" fill={SS_TEE_SH} />
+          <rect x="44" y="96" width="32" height="8" fill={SS_DENIM} />
+          <rect x="68" y="96" width="8" height="8" fill={SS_DENIM_DK} />
+
+          {/* head — face first, then the hair laid over it */}
+          <rect x="44" y="36" width="32" height="20" fill={SS_SKIN} />
+          <rect x="72" y="36" width="4" height="20" fill={SS_SKIN_SH} />
+          <rect x="44" y="24" width="32" height="12" fill={SS_HAIR} />
+          <rect x="44" y="24" width="32" height="4" fill={SS_HAIR_HI} />
+          <rect x="72" y="24" width="4" height="12" fill={SS_HAIR_DK} />
+          {/* fringe, parted off-centre, with the sideburns a row below */}
+          <rect x="44" y="36" width="12" height="4" fill={SS_HAIR} />
+          <rect x="64" y="36" width="12" height="4" fill={SS_HAIR} />
+          <rect x="72" y="36" width="4" height="4" fill={SS_HAIR_DK} />
+          <rect x="44" y="40" width="4" height="4" fill={SS_HAIR} />
+          <rect x="72" y="40" width="4" height="4" fill={SS_HAIR_DK} />
+          <rect x="52" y="42" width="4" height="8" fill={SS_EYE} />
+          <rect x="64" y="42" width="4" height="8" fill={SS_EYE} />
+          <rect x="56" y="52" width="8" height="2" fill={SS_SKIN_SH} />
         </>
       ) : (
         <>

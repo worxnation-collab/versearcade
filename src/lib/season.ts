@@ -2,7 +2,7 @@
 //
 // Like every reward rule in this app, this exists twice: once here in
 // TypeScript for guests, once in SQL for accounts (award_season_miles /
-// track_quest, migration 0056). KEEP THEM IN SYNC — change one, change the
+// track_quest, migration 0058). KEEP THEM IN SYNC — change one, change the
 // other, or guests and accounts quietly walk different roads.
 //
 // Miles are deliberately NOT xp. profiles.xp is the worldwide leaderboard

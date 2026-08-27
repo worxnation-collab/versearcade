@@ -123,7 +123,10 @@ export function BuddiesSection() {
         <div style={{ display: 'grid', gap: 8, marginBottom: 20 }}>
           {buddies.map((u) => (
             <BuddyRow key={u.username} u={u}
-              onBattle={() => { juice.coin(); navigate('/battle/new') }}
+              // The row names a person, so the challenge has to carry that
+              // person — landing on the generic picker made people think the
+              // tap did nothing and re-pick the same buddy after playing.
+              onBattle={() => { juice.coin(); navigate('/battle/new', { state: { challenge: u.username } }) }}
               onRemove={() => { juice.select(); remove(u.username) }} />
           ))}
         </div>

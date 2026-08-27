@@ -34,7 +34,7 @@ const COVERS = {
   keep: `${STYLE} Deep royal purple-violet leather. Central emblem: a gold anatomical brain with a soft radiant halo, faint engraved filigree swirls behind it.`,
   replay: `${STYLE} Deep navy-indigo leather. Central emblem: a small gold stack of five books, faint engraved star flourishes behind it.`,
   reports: `${STYLE} Warm golden-amber ochre leather. Central emblem: a gold rising bar chart of three bars, faint engraved laurel branches behind it.`,
-  bag: `${STYLE} Rustic chestnut-brown leather. Central emblem: a gold traveler's satchel with a buckled flap, faint engraved rope-knot flourishes behind it.`,
+  bag: `${STYLE} Dark walnut-brown earthy leather, distinctly brown with no red tones. Central emblem: a gold traveler's satchel with a buckled flap, faint engraved rope-knot flourishes behind it.`,
 }
 
 const key = process.env.GEMINI_API_KEY

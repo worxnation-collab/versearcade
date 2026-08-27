@@ -196,11 +196,16 @@ export default function ProfileScreen() {
         />
       </div>
 
-      {/* Your player card — the exact thing everyone else sees when they tap
-          your pfp, background and all, so customizing it has a visible home. */}
+      {/* The numbers, and only the numbers. The hero above is already you at
+          full size on your own background, so the card here drops its identity
+          block — the same avatar and handle twice on one screen was the thing
+          that made the hero feel like a duplicate rather than the header. What
+          other players see when they tap your pfp is unchanged: that's the same
+          component with its identity intact (PlayerCardModal). */}
       <div style={{ marginBottom: 18 }}>
         <PlayerCard
           p={cardData}
+          statsOnly
           actions={
             <>
               <button onClick={openCustomize} aria-label="Customize your card" className="pill" style={{ fontSize: 12, padding: '4px 10px', flexShrink: 0 }}>

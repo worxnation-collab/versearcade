@@ -552,6 +552,44 @@ Art follows the house rule: drawn SVG in `components/Pet.tsx` today, with
 `art/pets.json` ready to generate and `RASTER_PETS` as the slot the renders drop
 into.
 
+## The little worlds go where the section lives
+
+Four places in this app are places, not screens — the Harvest Road, the keep's
+hall, the churchyard, and you. Each one **opens its section**, at the top or
+directly under its primary action, rather than sitting behind a row that
+describes it:
+
+| World | Where it renders | Component |
+|---|---|---|
+| Harvest Road | top of `/season` | `RoadScene` |
+| The hall | under "Start a new battle", and in the sheet | `KeepScene` |
+| The churchyard | hero of `/church`, and on any church's page | `ChurchScene` |
+| You | top of `/you` | `ProfileHero` |
+
+Two rules fall out of that:
+
+- **One component per world, used by every surface that shows it.** `KeepScene`
+  was extracted from the sheet the moment the Battle tab wanted it — a hall
+  drawn twice would drift, and the whole point is that the room on the tab and
+  the room in the sheet are the same room. Same rule as `QuizRunner` and
+  `CrowdLife`.
+- **Editing belongs to exactly one surface.** The scene takes an optional
+  `editing`/`floraEditing` prop and is inert without it. Two editable copies of
+  the same world on one screen means you can't tell which one you're touching —
+  that's why the church tab's hero is the editable yard and the Landscaping
+  section below it is only a picker.
+
+And when the world is showing, the row that used to link to it goes. The Battle
+tab lost its "Your Keep →" card, and the profile's player card lost its identity
+block (`statsOnly`) because `ProfileHero` is already showing you at full size
+directly above it. Everywhere the card stands alone — the pop-up, another
+player's profile — it keeps its identity, because there it *is* the identity.
+
+A player with no faction gets the invitation instead of the hall: a room with
+nobody's colours in it is the one version of that world that says nothing. It
+offers non-denominational in one tap and scrolls to the full list, and it never
+appears again once a team is picked.
+
 ## Shared choke points
 
 `QuizRunner` (`features/daily/QuizRunner.tsx`) owns quiz gameplay and scoring for

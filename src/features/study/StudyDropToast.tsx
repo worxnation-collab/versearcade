@@ -76,7 +76,7 @@ export function StudyDropToast() {
               the bag, which is the only thing there is to do about a find. */}
           <div style={{ position: 'relative' }}>
             <button
-              onClick={() => { juice.coin(); dismiss(); navigate('/study?bag=1') }}
+              onClick={() => { juice.coin(); dismiss(); navigate('/study/bag') }}
               className="card"
               style={{
                 width: '100%',

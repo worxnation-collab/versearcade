@@ -3,8 +3,8 @@ import { motion } from 'framer-motion'
 import { Avatar } from '@/components/Avatar'
 import { XpBar } from '@/components/XpBar'
 import { StreakFlame } from '@/components/StreakFlame'
-import { cardBgStyle, cardArtProps } from '@/data/playerCards'
-import { CardArt } from '@/data/cardArt'
+import { cardBgStyle } from '@/data/playerCards'
+import { CardBg } from '@/components/CardBg'
 import { denominationColor, denominationName } from '@/data/denominations'
 import type { AvatarSpec } from '@/types'
 
@@ -42,7 +42,6 @@ export function PlayerCard({
   compact?: boolean
 }) {
   const denom = p.denomination ? denominationName(p.denomination) : null
-  const art = cardArtProps(p.cardBackground)
   // SVG gradient ids must be unique per rendered card — the profile header and
   // an open pop-up can be on screen at once.
   const artId = `pc-${p.username}-${p.cardBackground ?? 'default'}`
@@ -59,7 +58,7 @@ export function PlayerCard({
         boxShadow: '0 10px 30px rgba(0,0,0,0.45)',
       }}
     >
-      <CardArt scene={art.scene} palette={art.palette} id={artId} />
+      <CardBg bgKey={p.cardBackground} id={artId} eager />
       {/* A scrim keeps text legible over the brighter paintings without
           flattening them. */}
       <div

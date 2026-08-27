@@ -170,7 +170,10 @@ export function cardArtProps(key?: string | null): { scene: Scene; palette: Pale
   return { scene: d.scene, palette: d.palette }
 }
 
-/** A flat fallback fill, used behind the SVG while it paints and for tiny chips. */
+/** The painted background image for a key, served from public/cards. */
+export const cardBgImage = (key?: string | null): string => `/cards/${cardBgByKey(key).key}.webp`
+
+/** A flat fallback fill, used under the image while it decodes and for tiny chips. */
 export function cardBgStyle(key?: string | null): React.CSSProperties {
   const d = cardBgByKey(key)
   return { background: `linear-gradient(180deg, ${d.palette.sky[0]} 0%, ${d.palette.sky[1]} 100%)` }

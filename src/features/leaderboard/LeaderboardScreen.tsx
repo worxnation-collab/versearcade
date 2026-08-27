@@ -11,8 +11,7 @@ import { useCollection } from '@/store/collection'
 import { useJuice } from '@/juice/useJuice'
 import { THRONE_KEY } from '@/data/collectibles'
 import type { AvatarSpec } from '@/types'
-import { cardArtProps } from '@/data/playerCards'
-import { CardArt } from '@/data/cardArt'
+import { CardBg } from '@/components/CardBg'
 
 interface LbRow {
   rank: number
@@ -235,9 +234,8 @@ function FeaturedRow({ f }: { f: FeaturedRow }) {
 }
 
 function Row({ r, me }: { r: LbRow; me: boolean }) {
-  const art = cardArtProps(r.card_background)
-  // SVG gradient ids must be unique per rendered scene, and a hundred rows are
-  // on screen at once.
+  // Ids must be unique per rendered instance, and a hundred rows are on screen
+  // at once.
   const artId = `lb-${r.rank}-${r.card_background ?? 'default'}`
   const isKing = r.rank === 1
   return (
@@ -261,7 +259,7 @@ function Row({ r, me }: { r: LbRow; me: boolean }) {
       {/* The player's own card background, as a wash behind the row. Same art
           the card uses, cropped to a band — it is the cheapest way to make a
           list of a hundred strangers feel like a list of people. */}
-      <CardArt scene={art.scene} palette={art.palette} id={artId} />
+      <CardBg bgKey={r.card_background} id={artId} />
       {/* Scrim: heavy on the left where the name and level sit, lighter on the
           right so the art still reads. Without it the brighter scenes take the
           username with them. */}

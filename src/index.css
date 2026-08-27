@@ -134,6 +134,13 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 }
 
 .floaty { animation: floaty 3.5s ease-in-out infinite; }
+/* The figure in the Play tab's road window. Its own keyframe because floaty's
+   -8px is a third of that 68px box — it would clip the head on every cycle —
+   and because the element it rides on is already centred with a translateX
+   that a transform animation would otherwise wipe out. Hence: the bob goes on
+   an INNER element, never the positioned one. */
+@keyframes va-road-bob { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-4px) } }
+.road-bob { animation: va-road-bob 3.2s ease-in-out infinite; }
 /* A glowing pet's aura on the profile hero — breathes slowly, never flashes.
    It sits BEHIND the figure as its own element rather than as a filter on the
    character, so a raster skin isn't repainted every frame. */

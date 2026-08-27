@@ -6,7 +6,7 @@ import { Button } from '@/components/Button'
 import { Avatar } from '@/components/Avatar'
 import { useAuth } from '@/store/auth'
 import { useBattles, type Battle, type BattleBoard, type DenomBoard } from '@/store/battles'
-import { DENOMINATIONS, denominationColor, denominationName } from '@/data/denominations'
+import { DENOMINATIONS, DENOMINATION_GROUPS, denominationColor, denominationName, isOpenFaction } from '@/data/denominations'
 import { useJuice } from '@/juice/useJuice'
 
 // Whose move is it? Every battle you can see is in exactly one of these.
@@ -154,14 +154,17 @@ export default function BattleHub() {
             </div>
           )}
 
-          {/* Battle ranks — two tabs: individual + denomination factions.
-              Denomination only appears here, never on the main leaderboard. */}
+          {/* Battle ranks — two tabs: individual + team factions. The team
+              only appears here, never on the main leaderboard. The tab is
+              labelled "Teams", not "Denominations": Agnostic and Atheist play
+              on this board too, and a heading that reads past them is the
+              first thing that would tell them they're guests. */}
           <h3 className="dim" style={{ fontSize: 16, margin: '24px 0 10px' }}>Battle ranks</h3>
           <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
             {(['individual', 'denomination'] as const).map((t) => (
               <button key={t} onClick={() => { juice.select(); setRankTab(t) }} className="pill"
                 style={{ background: rankTab === t ? 'var(--grape)' : 'var(--card)', fontWeight: 800, textTransform: 'capitalize' }}>
-                {t === 'individual' ? 'Individual' : 'Denomination'}
+                {t === 'individual' ? 'Individual' : 'Teams'}
               </button>
             ))}
           </div>
@@ -202,13 +205,13 @@ export default function BattleHub() {
             </div>
           ) : (
             <>
-            {/* Your denomination lives here rather than in profile settings —
-                it's a Battle-only faction, so it's picked where it's used. */}
+            {/* Your team lives here rather than in profile settings — it's a
+                Battle-only faction, so it's picked where it's used. */}
             <div className="card" style={{ marginBottom: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ width: 14, height: 14, borderRadius: '50%', flexShrink: 0, background: profile?.denomination ? denominationColor(profile.denomination) : 'var(--stroke)', boxShadow: profile?.denomination ? `0 0 8px ${denominationColor(profile.denomination)}` : 'none' }} />
                 <select
-                  aria-label="Your denomination"
+                  aria-label="Who you're playing for"
                   value={profile?.denomination ?? ''}
                   onChange={async (e) => {
                     juice.select()
@@ -220,19 +223,35 @@ export default function BattleHub() {
                   style={{ flex: 1, padding: '10px 8px', borderRadius: 10, background: 'var(--card-solid)', color: 'var(--ink)', border: '1px solid var(--stroke)', fontSize: 14 }}
                 >
                   <option value="">Prefer not to say</option>
-                  {DENOMINATIONS.map((d) => (
+                  {DENOMINATION_GROUPS.map((g) => (
+                    <optgroup key={g.key} label={g.label}>
+                      {DENOMINATIONS.filter((d) => d.group === g.key).map((d) => (
+                        <option key={d.key} value={d.key}>{d.name}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                  {/* `other` belongs to neither heading, so it sits after both. */}
+                  {DENOMINATIONS.filter((d) => !d.group).map((d) => (
                     <option key={d.key} value={d.key}>{d.name}</option>
                   ))}
                 </select>
               </div>
               <p className="faint" style={{ fontSize: 11, marginTop: 8, lineHeight: 1.4 }}>
-                Optional &amp; friendly — pick your tradition to represent it here. Your battle wins add to its team total automatically, and it never shows on the main leaderboard.
+                Optional &amp; friendly — pick who you’re playing for. Your battle wins add to that team’s total automatically, and it never shows on the main leaderboard.
               </p>
+              {/* Said once, only to the two teams that might wonder whether
+                  they're actually welcome. It's a welcome, not a badge: nothing
+                  else about these teams looks different anywhere in the app. */}
+              {isOpenFaction(profile?.denomination) && (
+                <p className="faint" style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
+                  You don’t have to believe it to be good at it — same verses, same board, no sermon attached.
+                </p>
+              )}
             </div>
             <div className="card">
               {!denomBoard || denomBoard.top.length === 0 ? (
                 <p className="faint" style={{ fontSize: 14, textAlign: 'center', padding: '4px 0' }}>
-                  No denominations yet. Pick yours above to start your team’s total.
+                  No teams yet. Pick yours above to start its total.
                 </p>
               ) : (
                 <div style={{ display: 'grid', gap: 4 }}>

@@ -331,6 +331,14 @@ next to the rank-free rule.
   a second thing for iOS to suspend, and the two drift in and out of silence
   independently. Music volume/mute are separate settings from SFX on purpose;
   neither mirrors to the profile (same as `volume`).
+- **iPhones on silent hear nothing unless the app claims a playback session.**
+  The hardware ring/silent switch mutes the entire Web Audio API in Safari and
+  home-screen installs — this shipped, announced "Music is on", and played
+  nothing on the first real phone. `applyAudioSession()` in `juice/music.ts`
+  sets iOS 17's `navigator.audioSession.type` to `'playback'` (plays through
+  the switch, like any game with a score) while music is enabled, and back to
+  `'ambient'` when it's muted so SFX mix politely with the user's own audio.
+  Pre-17 iOS still obeys the switch; there is no sanctioned way around that.
 - **It must fail to silence, not to a white screen.** `ensure()` wraps graph
   construction in try/catch and latches `broken` — the director runs on every
   route change, and a browser with Web Audio stubbed or blocked took the whole

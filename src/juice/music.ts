@@ -105,6 +105,23 @@ let noise: AudioBuffer | null = null
 
 let enabled = true
 let volume = 0.55
+
+/** iOS silences the whole Web Audio API with the hardware ring/silent switch,
+ *  and most phones live on silent — so the soundtrack shipped, the intro card
+ *  said "Music is on", and the phone said nothing. iOS 17's Audio Session API
+ *  is the sanctioned opt-out: type 'playback' plays through the switch, the
+ *  way any game with a score does. Claimed only while music is enabled — a
+ *  'playback' session also takes audio focus (ducks Spotify/podcasts), and an
+ *  app whose music you've turned off has no business doing either; 'ambient'
+ *  keeps the SFX mixing politely and muted alongside everything else. */
+function applyAudioSession(): void {
+  try {
+    const session = (navigator as { audioSession?: { type: string } }).audioSession
+    if (session) session.type = enabled ? 'playback' : 'ambient'
+  } catch {
+    /* pre-17 iOS or a browser without the API — the switch wins there */
+  }
+}
 /** A track asked for before audio was allowed to start, or while muted. */
 let pending: string | null = null
 let timer: ReturnType<typeof setInterval> | null = null
@@ -513,6 +530,7 @@ export const Music = {
   configure(opts: { enabled?: boolean; volume?: number }): void {
     if (opts.enabled !== undefined) enabled = opts.enabled
     if (opts.volume !== undefined) volume = opts.volume
+    applyAudioSession()
     // Nothing built yet? The values above get picked up by ensure().
     if (!bus || !ctx) return
     const target = enabled ? volume * BUS_CEILING : 0

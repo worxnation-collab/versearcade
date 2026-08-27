@@ -5,6 +5,7 @@ import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { useReviews } from '@/store/reviews'
 import { useBookAccuracy } from '@/store/bookAccuracy'
+import { useDrops } from '@/store/drops'
 import { useJuice } from '@/juice/useJuice'
 import { FavoriteButton } from '@/components/FavoriteButton'
 import { MASTERY_MAX } from '@/lib/review'
@@ -64,6 +65,10 @@ export default function ReviewScreen() {
     if (i + 1 >= session.length) {
       juice.celebrate()
       setPhase('done')
+      // A finished review is a finished study run, so it rolls for a relic like
+      // the others. Once per session, not per card — this is the one study
+      // surface that doesn't go through QuizRunner, so the roll is here.
+      void useDrops.getState().roll()
       return
     }
     setI((n) => n + 1)

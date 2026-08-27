@@ -105,6 +105,7 @@ export default function FocusPracticeScreen() {
         label={`🎯 Focus · ${bookLabel(book)}`}
         onExit={() => setPhase('pick')}
         onFinish={onFinish}
+        studyDrop
       />
     )
   }

@@ -27,6 +27,7 @@ export default function PracticeQuizScreen() {
       verse={verse}
       label="📖 Practice · study run"
       onExit={() => navigate('/play')}
+      studyDrop
       onComplete={async (result) => {
         try {
           await submit(result)

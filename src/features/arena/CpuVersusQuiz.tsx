@@ -20,6 +20,7 @@ export function CpuVersusQuiz({
   label,
   onFinish,
   onExit,
+  studyDrop = false,
 }: {
   verse: DailyVerse
   /** Seeds the CPU's pre-rolled answer plan (correctness + think-time per question). */
@@ -28,6 +29,8 @@ export function CpuVersusQuiz({
   label?: ReactNode
   onFinish: (player: PlayResult, cpuScore: number) => void
   onExit: () => void
+  /** Forwarded to QuizRunner — set by the Study tab's surfaces. */
+  studyDrop?: boolean
 }) {
   const plan = useMemo(() => buildCpuPlan(seed, verse.questions.length, profile), [seed, verse, profile])
 
@@ -89,6 +92,7 @@ export function CpuVersusQuiz({
       hud={hud}
       onQuestionStart={onQuestionStart}
       onReveal={onReveal}
+      studyDrop={studyDrop}
     />
   )
 }

@@ -311,6 +311,45 @@ Three things to know before touching it:
   ±1 is the house pattern and it does mean a lying client can reach three
   buckets, which is bounded and buys nothing rankable.
 
+## The soundtrack: synthesized, area-based, unmissable
+
+Every room has a looping instrumental, RuneScape-style: the track crossfades
+when you change tabs, and the first time a room's tune plays it unlocks into
+the music player in Settings. Walking in is the only way to get a track and
+cannot be missed — the one collectible with no loser, which is why it can exist
+next to the rank-free rule.
+
+- **Every note is generated at runtime** (`juice/music.ts`), same bargain as
+  the SFX in `juice/sound.ts`: no files to ship, cache or license. The tunes
+  live as note data in `data/music.ts` — two are real public-domain hymns
+  (Amazing Grace, Ode to Joy), the rest are originals named for places, because
+  naming a track after a hymn it isn't would be a lie in the music player.
+  `checkTrackData()` asserts melody/chords agree on loop length and that every
+  track is reachable from some route; it runs at import in dev.
+- **One AudioContext for the whole app.** Music renders into the context that
+  `sound.ts` owns (`audioContext()`), on its own gain bus — a second context is
+  a second thing for iOS to suspend, and the two drift in and out of silence
+  independently. Music volume/mute are separate settings from SFX on purpose;
+  neither mirrors to the profile (same as `volume`).
+- **It must fail to silence, not to a white screen.** `ensure()` wraps graph
+  construction in try/catch and latches `broken` — the director runs on every
+  route change, and a browser with Web Audio stubbed or blocked took the whole
+  app down in testing before that guard existed. Two more scars in there: a
+  `BufferSource.stop()` before `start()` is an `InvalidStateError` (one bad
+  hi-hat killed a whole scheduler tick), and `AudioContext.resume()` is async —
+  playing before it settles silently drops the track.
+- **Unlocks are deliberately device-local** (`va.music`), both modes — see the
+  header comment in `store/music.ts` for why that breaks the usual two-mode
+  invariant on purpose. If unlocks ever should follow the account, that store
+  names the shape to use.
+- `MusicDirector` (mounted once in `App`) is the only thing that tells the
+  engine what to play; the route→track map is `trackForPath()` in
+  `data/music.ts`. Screens never touch `Music` directly — same choke-point rule
+  as `QuizRunner` and `useJuice`.
+- The unlock banner (`NowPlaying`) fires **eight times ever** — once per new
+  track, plus the very first note carrying the mute button — never on ordinary
+  tab switches. It yields the top slot to `StudyDropToast` when both show.
+
 ## Shared choke points
 
 `QuizRunner` (`features/daily/QuizRunner.tsx`) owns quiz gameplay and scoring for

@@ -10,6 +10,10 @@ interface SettingsState {
   hapticsEnabled: boolean
   reduceMotion: boolean
   volume: number // 0..1
+  /** Background music. Independent of soundEnabled on purpose — "music off,
+   *  sound effects on" is the combination most people reach for. */
+  musicEnabled: boolean
+  musicVolume: number // 0..1
   /** Whether the "build your character" nudge has been dismissed (one-time). */
   characterPromptDismissed: boolean
   /** Whether the how-to-play walkthrough has been shown once automatically. */
@@ -32,6 +36,8 @@ export const useSettings = create<SettingsState>()(
       hapticsEnabled: true,
       reduceMotion: false,
       volume: 0.6,
+      musicEnabled: true,
+      musicVolume: 0.55,
       characterPromptDismissed: false,
       tutorialSeen: false,
       installPromptDismissed: false,

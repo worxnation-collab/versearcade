@@ -181,7 +181,7 @@ function LifeFigure({ member, slot }: { member: KeepMember; slot: number }) {
         }}
       >
         {member.avatarCharacter ? (
-          <Character spec={member.avatarCharacter} size={size} title={member.username} />
+          <Character spec={member.avatarCharacter} size={size} title={member.username} fullBody />
         ) : (
           <span
             style={{

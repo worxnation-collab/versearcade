@@ -230,10 +230,16 @@ export function Character({
   spec,
   size = 44,
   title,
+  fullBody = false,
 }: {
   spec: AvatarSpec
   size?: number
   title?: string
+  /** Keep the full-length figure at ANY size. The portrait crop below exists
+   *  for circular avatar chips, where a full figure throws away the face — but
+   *  a figure STANDING somewhere (the keep's hall, the church lawn) needs its
+   *  feet, or a raster skin turns into a floating bust. */
+  fullBody?: boolean
 }) {
   const skin = skinHex(spec.skin)
   const robe = robeHex(spec.robe)
@@ -256,7 +262,7 @@ export function Character({
   // header, the customise grid — a full-length figure in a small circle throws
   // away the face. Those get a portrait crop. The one place that stays
   // full-length is the large purchase preview, where the whole skin is the point.
-  const zoomRaster = useRaster && size < 120
+  const zoomRaster = useRaster && size < 120 && !fullBody
 
   return (
     <svg

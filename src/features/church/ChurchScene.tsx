@@ -196,7 +196,7 @@ function Figure({ member, x, y, size, dim = false }: Figure & { dim?: boolean })
         }}
       />
       {member.avatarCharacter ? (
-        <Character spec={member.avatarCharacter} size={size} title={member.username} />
+        <Character spec={member.avatarCharacter} size={size} title={member.username} fullBody />
       ) : (
         <span
           role="img"

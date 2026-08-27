@@ -85,6 +85,11 @@ export default function BattleHub() {
           <Button variant="gold" full onClick={() => { juice.coin(); navigate('/battle/new') }}>
             ⚔️ Start a new battle
           </Button>
+          {/* The order surprises people: you set the score first, THEN choose
+              who has to beat it. Saying so here beats discovering it after a run. */}
+          <p className="faint center" style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
+            You play first — then pick who has to beat your score.
+          </p>
 
           {/* Your battles, split by whose move it is. "Your turn" carries the
               invite count, so an incoming challenge is visible without opening

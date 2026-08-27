@@ -62,7 +62,16 @@ function rank(members: ChurchMember[], y: number, size: number): Figure[] {
   })
 }
 
-export function ChurchScene({ level, members }: { level: number; members: ChurchMember[] }) {
+export function ChurchScene({
+  level,
+  members,
+  skin,
+}: {
+  level: number
+  members: ChurchMember[]
+  /** The church's skin, so the wide shot matches the row you tapped. */
+  skin?: string | null
+}) {
   // You stand out front. Everyone else keeps the server's order (oldest member
   // first), which is stable and means the crowd doesn't rearrange itself.
   const ordered = [...members].sort((a, b) => Number(b.isMe) - Number(a.isMe))
@@ -127,7 +136,7 @@ export function ChurchScene({ level, members }: { level: number; members: Church
       />
 
       <div style={{ position: 'absolute', left: '50%', bottom: GROUND - 8, transform: 'translateX(-50%)' }}>
-        <ChurchArt level={level} size={CHURCH_W} />
+        <ChurchArt level={level} skin={skin} size={CHURCH_W} />
       </div>
 
       {back.map((f) => (

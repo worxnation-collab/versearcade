@@ -196,6 +196,16 @@ export interface Church {
   miles?: number
   rank?: number
   isMine?: boolean
+  /**
+   * What the building is made of — a `ChurchSkinId`, or null for the default.
+   *
+   * Carried on the church rather than on its profile because the board draws
+   * it: a skin is the one thing a church pays for that a stranger scrolling
+   * past can actually see. Typed as a plain string so a value from a newer
+   * build doesn't fail to parse; `churchSkin()` falls back to the default for
+   * anything it doesn't recognise.
+   */
+  skin?: string | null
 }
 
 // A member of your church, ranked by what they've given to it.

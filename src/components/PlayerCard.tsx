@@ -25,6 +25,11 @@ export interface PlayerCardData {
   totalPlays: number
   cards: number
   denomination?: string | null
+  /** Earned road title, shown under the name. Only ever set for your own card:
+   *  the leaderboard RPCs don't return other players' titles yet, and a title
+   *  that renders for you and vanishes for everyone else would read as a bug.
+   *  Widening it means adding the column to those RPCs, not a change here. */
+  title?: string | null
 }
 
 // The player card: identity + level + the six stats, on a background the player
@@ -98,6 +103,23 @@ export function PlayerCard({
           >
             @{p.username}
           </h2>
+          {p.title && (
+            <div
+              className="faint"
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                marginTop: 1,
+                color: 'var(--gold)',
+                textShadow: '0 2px 8px rgba(0,0,0,0.6)',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {p.title}
+            </div>
+          )}
           {denom && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
               <span style={{ width: 9, height: 9, borderRadius: '50%', background: denominationColor(p.denomination!), boxShadow: `0 0 7px ${denominationColor(p.denomination!)}` }} />

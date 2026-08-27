@@ -15,6 +15,8 @@ import { InventorySection } from '@/features/collection/InventorySection'
 import { useInventory } from '@/store/inventory'
 import { BuddiesSection } from '@/features/buddies/BuddiesScreen'
 import { useBuddies } from '@/store/buddies'
+import { useSeason } from '@/store/season'
+import { titleById } from '@/data/season'
 import { CustomizeSection } from './CustomizeSection'
 import { SettingsSheet } from './SettingsSheet'
 
@@ -56,6 +58,9 @@ export default function ProfileScreen() {
     if (wantsCustomize) setCustomizing(true)
   }, [wantsCustomize])
 
+  // Above the early return: a hook can't sit behind a conditional.
+  const myTitle = titleById(useSeason((s) => s.equipped.title))?.text ?? null
+
   if (!profile) return null
   const cards = owned.length
 
@@ -73,6 +78,7 @@ export default function ProfileScreen() {
     totalPlays: profile.totalPlays,
     cards,
     denomination: profile.denomination,
+    title: myTitle,
   }
 
   const startEditName = () => { setNameDraft(profile.username); setNameErr(null); setEditingName(true) }

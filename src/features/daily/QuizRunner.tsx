@@ -9,6 +9,7 @@ import { useJuice } from '@/juice/useJuice'
 import { useBookAccuracy } from '@/store/bookAccuracy'
 import { useBible } from '@/store/bible'
 import { useDrops } from '@/store/drops'
+import { useSeason } from '@/store/season'
 import { scoreQuestion } from '@/lib/progress'
 import { SCORING } from '@/lib/config'
 import type { DailyVerse, PlayResult } from '@/types'
@@ -158,6 +159,16 @@ export function QuizRunner({
     // Fire-and-forget: the reveal is a toast that follows the player to whatever
     // screen onComplete sends them to, and a failed roll is simply no find.
     if (studyDrop) void useDrops.getState().roll()
+    // …and it walks the road. Same choke point, same reason: every quiz mode
+    // counts once, from here, rather than from five screens. Miles are not XP
+    // and appear on no board (see lib/season), so paying them from a battle is
+    // safe in a way paying points from a study run would not be.
+    void useSeason.getState().track('quiz_complete', {
+      correct: correctCount,
+      perfect: correctCount === questions.length,
+      comboMax,
+    })
+    if (studyDrop) void useSeason.getState().track('study_run')
     try {
       await onComplete(result)
     } catch {

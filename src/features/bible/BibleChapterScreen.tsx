@@ -4,6 +4,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { useJuice } from '@/juice/useJuice'
 import { useSettings } from '@/store/settings'
 import { useBible } from '@/store/bible'
+import { useSeason } from '@/store/season'
 import { useFavorites } from '@/store/favorites'
 import { fetchChapter, type Chapter } from '@/lib/bible'
 import { FAVORITES_CAP } from '@/lib/favorites'
@@ -54,7 +55,13 @@ export default function BibleChapterScreen() {
   // Opening a chapter is what "read" means, so it's recorded on arrival rather
   // than on a scroll-to-bottom — the promise is a map of where you've been.
   useEffect(() => {
-    if (valid) markChapterRead(book, chapter)
+    if (valid) {
+      markChapterRead(book, chapter)
+      // Reading walks the road too. The store caps this at one chapter's worth
+      // of miles per local day, so a flick through Psalms is a footprint rather
+      // than a farm.
+      void useSeason.getState().track('chapter_read')
+    }
   }, [valid, book, chapter, markChapterRead])
 
   useEffect(() => {

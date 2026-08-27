@@ -5,6 +5,7 @@ import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { Avatar } from '@/components/Avatar'
 import { useAuth } from '@/store/auth'
+import { useSeason } from '@/store/season'
 import { useJuice } from '@/juice/useJuice'
 import { newBattleSeed, battleVerse } from './battle'
 import { CpuVersusQuiz } from './CpuVersusQuiz'
@@ -143,6 +144,10 @@ function CpuResult({
 
   useEffect(() => {
     result === 'won' ? juice.levelUp() : juice.celebrate()
+    // Beating the CPU walks the road. The only "beat something" verb on the
+    // track, and the something is a simulation — the line CpuVersusQuiz
+    // already draws. A real battle pays nothing seasonal for winning.
+    if (result === 'won') void useSeason.getState().track('cpu_win')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

@@ -112,7 +112,18 @@ GEMINI_API_KEY=... node scripts/gen-art.mjs art/keep-halls.json [--only <id>]
 ```
 
 The key lives in `.env.local` (gitignored) and comes only from the environment —
-never write it into a tracked file. `kind` picks the pipeline: `scene` for a
+never write it into a tracked file.
+
+**Then check what came back**: `node scripts/check-art.mjs`. A model that ignores
+the chroma-key instruction returns a file that looks fine and wires itself in,
+and renders as an opaque rectangle behind the object — `open_bible` and `rosary`
+shipped that way and drew grey boxes on the keep's table for months. The script
+reads `art/*.json` to know which files are meant to be cut-outs and which are
+full-bleed scenes.
+
+Expect to reword prompts: `PROHIBITED_CONTENT` came back for "lion cub" and for
+"donkey" (a *burro* generated first try), and several subjects ignored the
+magenta backdrop until the instruction was moved first and put in caps. `kind` picks the pipeline: `scene` for a
 full-bleed background (no keying, capped at 640px), `prop` for one object on
 flat magenta (keyed, cropped, capped at 150px), `skin`/`item` for the avatar
 path. `art/README.md` has the details and the wiring.

@@ -101,8 +101,12 @@ export const PETS: PetDef[] = [
     scale: 0.3,
   },
   {
+    // The id keeps its original spelling because 0064 speaks it; the NAME is
+    // 'Lion' because the render is a full-grown one. Asking the generator for a
+    // cub returned PROHIBITED_CONTENT twice, and a lion beside the lamb is the
+    // better picture anyway (Isaiah 11:6).
     id: 'pet_lion_cub',
-    name: 'Lion Cub',
+    name: 'Lion',
     level: 26,
     extra: { kind: 'cpu_won', n: 25 },
     blurb: 'Lies down with the lamb, most days. You walk a little brighter.',

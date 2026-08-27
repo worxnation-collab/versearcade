@@ -17,6 +17,24 @@ must never be written into a tracked file.
 | `keep-halls.json` | halls 2–6 of the keep's six-tier ladder (hall 1 is the existing `hall.jpg`) | `public/keep/hall-<n>.png` |
 | `churchyard-flora.json` | the eight plants a giver can put in a churchyard | `public/keep/yard_*.png` |
 | `pets.json` | the six companions that stand beside you on the You tab | `public/items/pet_*.png` |
+| `keep-props.json` | keep props that need regenerating (two shipped unkeyed) | `public/keep/<id>.png` |
+
+**Check what came back**, every time:
+
+```bash
+node scripts/check-art.mjs
+```
+
+A model that ignores the chroma-key instruction still returns a fine-looking
+file, and it still wires itself into the app — it just renders as an opaque
+rectangle behind the object. Two of the keep's props shipped that way and drew
+grey boxes on the long table for months before this script found them.
+
+`refs` on an entry passes reference images to the model. That's how the halls
+are held to one composition: the anchor coordinates in `src/data/keep.ts` are
+measured against a single painting, so every other hall has to put its hearth,
+table and arch in the same places or a rug hangs in mid-air. Describing that in
+words does not work; showing `hall.jpg` does.
 
 `kind` picks the pipeline (see `docs/RASTER-SKINS.md`):
 
@@ -58,3 +76,19 @@ has nowhere to put.
   something that also has to read at 44px in a leaderboard row, and a picture
   that reads at 44px is a different picture from one that reads at 220px. See
   the note at the top of `features/church/skins.ts`.
+
+## What the models refuse, and what they ignore
+
+Two things bite, both worked around in the manifests rather than fought:
+
+- **False refusals.** `PROHIBITED_CONTENT` came back for "a young lion cub"
+  (twice) and for the word "donkey" (twice, having succeeded once). Neither is a
+  content problem; the filter is noisy on animal words. Rewording fixes it —
+  "burro — a small long-eared member of the horse family" generated first try.
+  The lion came back full-grown, so the pet is called *Lion*: naming the art
+  what it is beats regenerating until the filter relents.
+- **Ignored backgrounds.** Asking once for magenta is not enough — several
+  came back on white, mauve, or a wash tinted by the subject's own glow. The
+  prompts now put the background clause FIRST, in caps, listing what it must
+  not be, and lamps get an extra line saying the glow may not spill onto the
+  backdrop. `check-art.mjs` catches the rest.

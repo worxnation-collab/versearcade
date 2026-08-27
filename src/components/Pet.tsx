@@ -180,14 +180,12 @@ export function Pet({ id, size = 48, title }: { id: string; size?: number; title
   const art = ART[id]
   if (!def || (!raster && !art)) return null
 
+  // A render is cropped tight to the animal and each comes out its own shape,
+  // so it gets a HEIGHT and its width follows. Boxing it square instead
+  // letterboxes it, which quietly makes every pet shorter than the scale it was
+  // given — and the scale is what keeps the camel from dwarfing the player.
   if (raster) {
-    return (
-      <img
-        src={raster}
-        alt={title ?? def.name}
-        style={{ display: 'block', width: size, height: size, objectFit: 'contain', objectPosition: 'bottom' }}
-      />
-    )
+    return <img src={raster} alt={title ?? def.name} style={{ display: 'block', height: size, width: 'auto' }} />
   }
   return (
     <svg

@@ -362,7 +362,9 @@ function TierAccent({ tier, mount }: { tier: number; mount?: MountKind }) {
   )
 }
 
-// Display boxes in viewBox units, from each render's real aspect ratio.
+// Display boxes in viewBox units, from each render's real aspect ratio. Getting
+// one wrong stretches the prop, so recompute the width whenever a render is
+// replaced: width = height x (png width / png height).
 // `mode`: hang = top at the anchor, center = centred on it, stand = feet on it.
 const RASTER_DECOR: Record<string, { src: string; w: number; h: number; mode: 'hang' | 'center' | 'stand' }> = {
   keep_sheaf_banner: { src: '/keep/sheaf_banner.png', w: 31, h: 52, mode: 'hang' },
@@ -371,8 +373,8 @@ const RASTER_DECOR: Record<string, { src: string; w: number; h: number; mode: 'h
   keep_chandelier: { src: '/keep/chandelier.png', w: 56, h: 46, mode: 'hang' },
   keep_lanterns: { src: '/keep/lanterns.png', w: 21, h: 42, mode: 'hang' },
   keep_oil_lamp: { src: '/keep/oil_lamp.png', w: 32, h: 13, mode: 'stand' },
-  keep_rosary: { src: '/keep/rosary.png', w: 24, h: 13, mode: 'stand' },
-  keep_open_bible: { src: '/keep/open_bible.png', w: 37, h: 20, mode: 'stand' },
+  keep_rosary: { src: '/keep/rosary.png', w: 18, h: 13, mode: 'stand' },
+  keep_open_bible: { src: '/keep/open_bible.png', w: 30, h: 20, mode: 'stand' },
   keep_chess: { src: '/keep/chess.png', w: 34, h: 18, mode: 'stand' },
   keep_brazier: { src: '/keep/brazier.png', w: 39, h: 34, mode: 'stand' },
   keep_barrels: { src: '/keep/barrels.png', w: 44, h: 38, mode: 'stand' },

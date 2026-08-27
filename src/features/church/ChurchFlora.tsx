@@ -160,22 +160,30 @@ export const DRAWN_FLORA = Object.keys(PLANTS)
 // render the moment one is produced, and an id can never point at a file that
 // isn't there. Anything ungenerated keeps drawing the SVG above.
 
-/** The picture for one plant: its render if we have one, else its drawing. */
-function PlantArt({ id }: { id: string }) {
+/**
+ * The picture for one plant: its render if we have one, else its drawing.
+ *
+ * The two are sized differently on purpose. The drawings all live in one 40x48
+ * box, so they can be given a box. A render is cropped tight to the plant and
+ * every one comes out a different shape — a hedge is wide, a lamp post is a
+ * sliver — so it gets a HEIGHT and lets its own width follow. Forcing a render
+ * into the drawings' box letterboxes it, and a hedge that has to fit a portrait
+ * frame ends up half the size of the bed it's meant to fill.
+ */
+function PlantArt({ id, height }: { id: string; height: number }) {
   const raster = GENERATED_ART[id]
   if (raster) {
-    return (
-      <img
-        src={raster}
-        alt=""
-        style={{ display: 'block', width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'bottom' }}
-      />
-    )
+    return <img src={raster} alt="" style={{ display: 'block', height, width: 'auto' }} />
   }
   const art = PLANTS[id]
   if (!art) return null
   return (
-    <svg viewBox="0 0 40 48" width="100%" height="100%" style={{ display: 'block', overflow: 'visible' }}>
+    <svg
+      viewBox="0 0 40 48"
+      width={height * (40 / 48)}
+      height={height}
+      style={{ display: 'block', overflow: 'visible' }}
+    >
       {art}
     </svg>
   )
@@ -233,8 +241,9 @@ export function ChurchFlora({
               position: 'absolute',
               left: `${plot.x}%`,
               bottom: `${plot.b}%`,
-              width: h * (40 / 48),
-              height: h,
+              // No width: the art inside sets it, so a wide hedge and a narrow
+              // lamp post both sit centred on the plot at the right size.
+              lineHeight: 0,
               transform: `translateX(-50%)${lifted ? ' translateY(-6px) scale(1.08)' : ''}`,
               transition: 'transform 160ms ease-out',
               pointerEvents: editable ? 'auto' : 'none',
@@ -245,7 +254,7 @@ export function ChurchFlora({
               cursor: editable ? 'pointer' : 'default',
             }}
           >
-            <PlantArt id={flora.id} />
+            <PlantArt id={flora.id} height={h} />
           </Tag>
         )
       })}
@@ -289,8 +298,8 @@ export function ChurchFlora({
 export function FloraIcon({ id, size = 40 }: { id: string; size?: number }) {
   if (!PLANTS[id] && !GENERATED_ART[id]) return null
   return (
-    <span style={{ display: 'block', width: size * (40 / 48), height: size, flexShrink: 0 }} aria-hidden>
-      <PlantArt id={id} />
+    <span style={{ display: 'block', flexShrink: 0, lineHeight: 0 }} aria-hidden>
+      <PlantArt id={id} height={size} />
     </span>
   )
 }

@@ -16,10 +16,15 @@
 // Usage:
 //   GEMINI_API_KEY=... node scripts/gen-art.mjs <manifest.json> [--only id]
 //
-// The manifest is an array of { id, kind: 'skin'|'item', prompt }. Skins land
-// in public/skins/<id>.png, items in public/items/<id>.png. Style references
-// (public/skins/moses.png + esther.png) ride along on every skin call so a new
-// road matches the ten skins it will sit next to.
+// The manifest is an array of { id, kind, prompt, refs? }. Skins land in
+// public/skins/<id>.png, items in public/items/<id>.png, scenes and props in
+// public/keep/<id>.png. Style references (public/skins/moses.png +
+// esther.png) ride along on every skin call so a new road matches the ten
+// skins it will sit next to; `refs` adds per-entry reference images, which is
+// how the keep's halls are held to one composition (see art/keep-halls.json).
+//
+// Successful renders are written into src/data/generatedArt.ts so the app
+// picks them up with no second step.
 //
 // The API key comes ONLY from the environment (.env.local is gitignored).
 // Never write it into this file or any other tracked file.
@@ -49,8 +54,16 @@ const STYLE_REFS = ['public/skins/moses.png', 'public/skins/esther.png']
   .filter(existsSync)
   .map((p) => ({ inline_data: { mime_type: 'image/png', data: b64(p) } }))
 
-async function generate(prompt, withRefs) {
-  const parts = [{ text: prompt }, ...(withRefs ? STYLE_REFS : [])]
+async function generate(prompt, withRefs, refPaths = []) {
+  // Per-entry reference images, on top of the skin style refs. A scene needs
+  // these for a reason the skins don't: the hall's anchor coordinates
+  // (src/data/keep.ts) are measured against ONE painting, so every other hall
+  // has to put its hearth, table and arch in the same places or a rug hangs in
+  // mid-air. Describing that in words does not do it; showing it does.
+  const extra = refPaths
+    .filter(existsSync)
+    .map((f) => ({ inline_data: { mime_type: f.endsWith('.jpg') ? 'image/jpeg' : 'image/png', data: b64(f) } }))
+  const parts = [{ text: prompt }, ...extra, ...(withRefs ? STYLE_REFS : [])]
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
     {
@@ -221,7 +234,7 @@ for (const entry of manifest) {
       : `public/items/${entry.id}.png`
   process.stdout.write(`${entry.id} … `)
   try {
-    const raw = await generate(entry.prompt, isSkin)
+    const raw = await generate(entry.prompt, isSkin, entry.refs ?? [])
     // The API returns JPEG or PNG depending on the model; sniff the magic bytes.
     let png
     if (raw[0] === 0x89 && raw[1] === 0x50) {

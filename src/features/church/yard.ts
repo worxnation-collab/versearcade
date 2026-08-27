@@ -60,9 +60,12 @@ export const PLOTS: PlotDef[] = [
   // Back: against the front wall, either side of the door.
   { id: 'bed_l', x: 33, b: 28, label: 'Bed, left of the door' },
   { id: 'bed_r', x: 67, b: 28, label: 'Bed, right of the door' },
-  // Middle: out on the lawn, clear of the building.
-  { id: 'lawn_l', x: 10, b: 17, label: 'Left lawn' },
-  { id: 'lawn_r', x: 90, b: 17, label: 'Right lawn' },
+  // Middle: out on the lawn, clear of the building. Pulled in from the edges
+  // because the generated plants are cropped tight and each has its own shape —
+  // a hedge is half again as wide as it is tall, and at x 90 it ran off the
+  // side of the scene.
+  { id: 'lawn_l', x: 14, b: 17, label: 'Left lawn' },
+  { id: 'lawn_r', x: 86, b: 17, label: 'Right lawn' },
   // Front: nearest the viewer, flanking the foot of the path.
   { id: 'path_l', x: 24, b: 4, label: 'Path edge, left' },
   { id: 'path_r', x: 76, b: 4, label: 'Path edge, right' },

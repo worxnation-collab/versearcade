@@ -151,6 +151,12 @@ export const useInventory = create<InventoryState>((set, get) => ({
 // collection already lives in localdb; this seeds one item per collected thing
 // the first time, matching the server-side backfill in 0049.
 export function seedGuestInventoryFromCollection() {
+  // Guests only, as the name says. An online account's inventory is the table,
+  // and localdb still holds whatever this device collected back when the player
+  // was a guest here — seeding from that would write junk under their uid key
+  // and race load() for the in-memory state. It only ever came out right
+  // because load()'s remote read happened to land second.
+  if (isOnline()) return
   const inv = readLocal()
   if (Object.keys(inv).length) return
   const owned = localdb.getCards()

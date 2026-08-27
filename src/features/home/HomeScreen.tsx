@@ -19,6 +19,7 @@ import { useSettings } from '@/store/settings'
 import { Tutorial } from './Tutorial'
 import { InstallPrompt } from './InstallPrompt'
 import { AppStoreNudge } from './AppStoreNudge'
+import { InventoryNudge } from './InventoryNudge'
 import { msUntilNextLocalMidnight, formatCountdown } from '@/lib/date'
 
 export default function HomeScreen() {
@@ -228,6 +229,10 @@ export default function HomeScreen() {
 
       {/* Daily Chest — unlocks after today's verse, gives a random relic. */}
       <DailyChest />
+
+      {/* …and, once, a pointer at where those relics went and what they're for.
+          Directly under the chest because that's where they came from. */}
+      <InventoryNudge />
 
       {/* Reviews that are due ("Keep it") now live on the Study tab, alongside
           the other practice surfaces, rather than competing with today's verse.

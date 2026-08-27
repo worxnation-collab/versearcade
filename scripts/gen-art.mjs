@@ -179,7 +179,13 @@ function padAndCap(png, { padBelowPct, maxH }) {
 for (const entry of manifest) {
   if (only && entry.id !== only) continue
   const isSkin = entry.kind === 'skin'
-  const dest = isSkin ? `public/skins/${entry.id}.png` : `public/items/${entry.id}.png`
+  const isScene = entry.kind === 'scene'
+  const isProp = entry.kind === 'prop'
+  const dest = isSkin
+    ? `public/skins/${entry.id}.png`
+    : isScene || isProp
+      ? `public/keep/${entry.id}.png`
+      : `public/items/${entry.id}.png`
   process.stdout.write(`${entry.id} … `)
   try {
     const raw = await generate(entry.prompt, isSkin)
@@ -192,9 +198,17 @@ for (const entry of manifest) {
       png = new PNG({ width: j.width, height: j.height })
       j.data.copy(png.data)
     }
-    png = keyMagenta(png)
-    png = isolate(png)
-    png = padAndCap(png, isSkin ? { padBelowPct: 0.08, maxH: 400 } : { padBelowPct: 0, maxH: 220 })
+    if (isScene) {
+      // A full-bleed background: no key, no isolate — just cap the width.
+      png = padAndCap(png, { padBelowPct: 0, maxH: 640 })
+    } else {
+      png = keyMagenta(png)
+      png = isolate(png)
+      png = padAndCap(
+        png,
+        isSkin ? { padBelowPct: 0.08, maxH: 400 } : isProp ? { padBelowPct: 0, maxH: 150 } : { padBelowPct: 0, maxH: 220 },
+      )
+    }
     const buf = PNG.sync.write(png)
     writeFileSync(dest, buf)
     console.log(`ok → ${dest} (${png.width}x${png.height}, ${(buf.length / 1024).toFixed(0)}KB)`)

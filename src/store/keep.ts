@@ -37,6 +37,8 @@ export interface PlaceResult {
   tier: number
   /** The packed value now on that anchor, or null when it was cleared. */
   value: string | null
+  /** The server refused or was unreachable; state has been re-read from it. */
+  failed?: boolean
 }
 
 interface LocalKeep {
@@ -219,7 +221,21 @@ export const useKeep = create<KeepState>((set, get) => ({
     set({ placements: next })
 
     if (isOnline()) {
-      void supabase!.rpc('set_keep_placement', { p_anchor: plan.anchor, p_decor: plan.value })
+      // AWAIT, do not fire-and-forget. A postgrest-js builder is lazy: the HTTP
+      // request is sent inside its `then()`, so `void supabase.rpc(...)` builds
+      // the call, discards it, and never talks to the server. That is exactly
+      // what happened here — keep_placements sat at zero rows in production
+      // while the churchyard, which awaits, saved fine. Decorating looked like
+      // it worked until you reloaded.
+      const { error } = await supabase!.rpc('set_keep_placement', {
+        p_anchor: plan.anchor,
+        p_decor: plan.value,
+      })
+      if (error) {
+        // Re-read rather than leave an optimistic lie on screen.
+        await get().load()
+        return { anchor: plan.anchor, merged: false, tier: 1, value: null, failed: true }
+      }
     } else {
       // Guest: merge onto what's on disk, never onto in-memory state — a hall
       // can be opened before anything called load(). Same trap as
@@ -246,11 +262,16 @@ export const useKeep = create<KeepState>((set, get) => ({
     set({ placements: next })
 
     if (isOnline()) {
-      // Two rows move, so two calls. set_keep_placement is per-anchor and
-      // idempotent, and a half-applied move is two well-formed placements
-      // rather than a lost decoration — which is why the plan never overwrites.
-      for (const w of plan.writes) {
-        void supabase!.rpc('set_keep_placement', { p_anchor: w.anchor, p_decor: w.value })
+      // Two rows move, so two calls — awaited for the reason in place() above.
+      // set_keep_placement is per-anchor and idempotent, and a half-applied
+      // move is two well-formed placements rather than a lost decoration, which
+      // is why the plan never overwrites.
+      const results = await Promise.all(
+        plan.writes.map((w) => supabase!.rpc('set_keep_placement', { p_anchor: w.anchor, p_decor: w.value })),
+      )
+      if (results.some((r) => r.error)) {
+        await get().load()
+        return null
       }
     } else {
       const disk = readLocal()

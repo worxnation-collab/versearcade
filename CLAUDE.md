@@ -343,6 +343,28 @@ server clamps it to ±1 day rather than trusting it (see `submit_focus_practice`
 `record_book_accuracy`). Streaks and daily caps roll over at the player's
 midnight, not UTC.
 
+## `supabase.rpc(...)` must be awaited — `void` sends nothing
+
+A postgrest-js builder is **lazy**: the HTTP request is made inside its
+`then()`. So `void supabase.rpc(...)` builds a request object, throws it away,
+and never talks to the server — silently, with no error anywhere.
+
+This shipped. Keep decorating looked like it worked (the store updates
+optimistically) and `keep_placements` sat at **zero rows in production** while
+the churchyard, which awaits, saved fine. It also broke the keep's Give button
+downstream, because an offering requires a Grand piece to actually be in the
+table.
+
+- **Await it, and check `error`.** On failure, re-read from the server rather
+  than leaving an optimistic lie on screen — `store/churchYard.ts` is the
+  shape to copy.
+- `void supabase....then(cb)` **is** fine — `.then()` is what sends it. That's
+  the pattern in `store/auth.ts`, and it's why those four calls work.
+
+If you want to check whether a write path is real, count rows: `select count(*)
+from <table>` against the live project answers in one query what reading the
+client cannot.
+
 ## Client mirrors server rules — both sides, every time
 
 Reward math exists twice on purpose: once in SQL for online accounts, once in TS
@@ -466,6 +488,27 @@ Three things to know before touching it:
   write a plain `decorId` there, which silently demoted a Grand piece back to
   nothing — invisible in the diff, found by driving the real app. The planner
   returns `noop` for it now.
+
+### The picker is a shelf of pictures
+
+Both worlds are furnished the same way, and neither has a list of names any
+more: a grid of the actual objects, and **tapping one puts it where it
+belongs** — the first free anchor of its mount, or the first free plot.
+
+- **Tapping something already out MERGES it** a tier finer (`planPick` in
+  `data/keep.ts`). That is the whole "duplicates just become the better thing"
+  rule, with no second anchor to hunt down — the old flow made you find another
+  floor spot to make a Fine rug.
+- **A full mount refuses and says so.** It never overwrites, because the hall's
+  rule is that nothing you placed silently disappears.
+- **The ✕ on a placed tile is the only way to clear one**, now that the
+  per-anchor rows are gone, so it stays on the tile rather than behind a
+  long-press.
+
+`DecorThumb` (KeepArt) draws each piece for its tile. The viewBox is chosen per
+mount because props are drawn around their GROUND POINT rather than centred — a
+banner hangs down from it, a wall piece straddles it, a rug sits on it, and one
+box for all three crops two of them.
 
 ### Anything placed can be moved
 

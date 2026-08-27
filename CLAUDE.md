@@ -100,6 +100,71 @@ haptics, the OAuth redirect (`store/auth.ts`), the install prompt, and
 `appStoreAsk()` (review vs. download). There is no other divergence — keep it
 that way.
 
+## Church pages
+
+Every row on the church leaderboard opens `ChurchDetailSheet` — the building
+drawn wide by `ChurchScene` with the congregation's own characters standing
+outside it, plus whatever the church has published about itself. The sheet is
+portalled to `document.body` because the board sits inside a `.card`, and
+`.card` sets `backdrop-filter`, which is a containing block for `position:
+fixed` — same family of bug as the `perspective` note in `BookOpening`.
+
+Two rules here are load-bearing:
+
+- **No client can write a church's page.** `church_profiles` (0050) has no
+  insert/update policy and no player-callable RPC; publishing is
+  `admin_upsert_church_profile`. The "Add info" pill submits to a review queue
+  (`church_info_requests`) and publishes nothing. This is somebody else's
+  congregation — an open text field on it is a moderation problem, and it is
+  also the thing a church is meant to pay for later, so it follows the same
+  can't-be-forged rule the IAP entitlements do.
+- **No prices, no checkout, either mode.** The pill is an inquiry, so the
+  surface is byte-identical on web and in the App Store build and never becomes
+  a storefront that `commerce.ts` would have to gate. If a church page ever gets
+  a real price, that decision goes in `commerce.ts` and nowhere else.
+
+The page names the congregation ("Who plays here") as well as drawing it. Both
+the roster and the scene are ordered by join date and carry no per-person
+points: a crowd, not a ladder. "Top givers" stays your own church's thank-you
+list, where it's a thank-you rather than a comparison between strangers.
+
+The roster folds through the shared `Collapsible`, with the head count on the
+header so a folded section still says how big the congregation is. The choice is
+one flag for the whole feature (`va.church.roster`), not one per church — whether
+you want to read names is a taste, not a fact about a congregation.
+
+The sheet sits at `z-index: 100` — the app's sheet tier. Don't raise it: the
+player card (110) is meant to open *over* a sheet, and tapping a face in the
+roster opens exactly that.
+
+### Church skins
+
+Two axes, and only one is for sale. `levels.ts` decides *which* of the eight
+buildings a church has — earned by playing, and nothing buys it. `skins.ts`
+decides what it's *made of*: `classic` (default), `modern`, `glass`, `tile`. A
+skinned church is not a bigger church — no number distinguishes it, which is the
+point: the thing a church pays for is the thing that can't beat anybody.
+
+Skins are drawn, not painted, and that's a size decision, not a taste one: 8
+tiers × 4 skins is 32 images for something that renders at 44px in a board row.
+`ChurchArt` composes each tier from a `Kit` (`Wall`/`Gable`/`Opening`/`Wheel`/
+`Spire`/`Topper`) that each skin builds its own way, so a skin changes the
+silhouette and not just the palette. Add a tier by composing the kit; add a skin
+by branching each primitive. Still flat fills and no `<defs>` — same reason.
+
+Staff pick one inside the "Add info" inquiry and it publishes nothing:
+`submit_church_info_request` (0051) records it, and only
+`admin_upsert_church_profile` can grant it. The server nulls the skin on the
+`member` path rather than trusting the form. `church_json` is the one place the
+published skin is read, so the board, the page, search and your own church tab
+can't drift apart.
+
+`custom` ("draw our actual building") is a commission, not a look — stored so
+the queue knows to quote it, and the church keeps the default until real
+artwork ships as a new skin id. **Still no prices, either mode**: the custom
+option says it's answered by email, and the money happens off the device. See
+`docs/CHURCH-SKINS.md`.
+
 ## Content is deterministic — keep it that way
 
 `getVerseForDate(date)` must return the same verse for the same date for every

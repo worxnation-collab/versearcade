@@ -126,6 +126,8 @@ export default function BattleDetail() {
   // ── Signed in ──
   const iAmChallenger = battle.is_challenger
   const finished = battle.status === 'complete'
+  // The other side of a battle I played — the rematch target.
+  const rival = (iAmChallenger ? battle.opponent?.username : battle.challenger.username) ?? null
 
   return (
     <Page noNav>
@@ -167,8 +169,16 @@ export default function BattleDetail() {
             </div>
           )}
 
+          {/* "Rematch" has to mean rematch THEM — a generic new battle sends
+              you to the picker and makes you hunt down the same opponent. */}
           <div style={{ marginTop: 18 }}>
-            <Button variant="gold" full onClick={() => navigate('/battle/new')}>Start a new battle ⚔️</Button>
+            {rival ? (
+              <Button variant="gold" full onClick={() => navigate('/battle/new', { state: { challenge: rival } })}>
+                Rematch @{rival} ⚔️
+              </Button>
+            ) : (
+              <Button variant="gold" full onClick={() => navigate('/battle/new')}>Start a new battle ⚔️</Button>
+            )}
           </div>
         </>
       ) : iAmChallenger ? (
@@ -218,7 +228,13 @@ export default function BattleDetail() {
             This challenge is for <b>@{battle.invited}</b>. Start your own to take on <b>@{battle.challenger.username}</b>!
           </p>
           <div style={{ marginTop: 16 }}>
-            <Button variant="gold" full onClick={() => navigate('/battle/new')}>Start a battle ⚔️</Button>
+            <Button
+              variant="gold"
+              full
+              onClick={() => navigate('/battle/new', { state: { challenge: battle.challenger.username } })}
+            >
+              Challenge @{battle.challenger.username} ⚔️
+            </Button>
           </div>
         </div>
       ) : (

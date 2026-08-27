@@ -12,6 +12,7 @@ export function Collapsible({
   meta,
   children,
   defaultOpen = false,
+  onToggle,
 }: {
   icon: string
   title: string
@@ -19,6 +20,8 @@ export function Collapsible({
   meta?: ReactNode
   children: ReactNode
   defaultOpen?: boolean
+  /** Fires with the new state on every open/close, for callers that remember it. */
+  onToggle?: (open: boolean) => void
 }) {
   const juice = useJuice()
   const [open, setOpen] = useState(defaultOpen)
@@ -38,7 +41,7 @@ export function Collapsible({
     <>
       <motion.button
         whileTap={{ scale: 0.98 }}
-        onClick={() => { juice.select?.(); setOpen((o) => !o) }}
+        onClick={() => { juice.select?.(); const next = !open; setOpen(next); onToggle?.(next) }}
         aria-expanded={open}
         className="card"
         style={{

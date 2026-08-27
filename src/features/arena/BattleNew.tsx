@@ -35,7 +35,10 @@ export default function BattleNew() {
         verse={verse}
         onComplete={async (r) => setResult(r)}
         onExit={() => navigate('/battle')}
-        label="⚔️ Bible Battle"
+        // With an opponent already picked, say so for the whole run — otherwise
+        // the quiz looks like a solo game and nobody can tell whether tapping
+        // their name did anything.
+        label={target ? `⚔️ Battle vs @${target}` : '⚔️ Bible Battle'}
       />
     )
   }
@@ -65,17 +68,28 @@ function InvitePicker({ seed, result, target }: { seed: number; result: PlayResu
     if (!isBuddy) void sendRequest(u.username)
     const id = await createBattle(seed, result.score, result.timeMs, u.username)
     if (id) navigate(`/battle/${id}`, { replace: true, state: { justCreated: true } })
+    return !!id
   }
 
   // Pre-picked opponent (came from their player card): fire the challenge as
   // soon as the buddy list is in, so we know whether to attach a buddy request.
   // The ref guards against a double-send if this re-renders mid-flight.
   const sent = useRef(false)
+  const [targetFailed, setTargetFailed] = useState(false)
+  const sendToTarget = () => {
+    if (!target) return
+    setTargetFailed(false)
+    const isBuddy = buddies.some((b) => b.username.toLowerCase() === target.toLowerCase())
+    void invite({ username: target } as BuddyCard, isBuddy).then((ok) => {
+      // A failed create used to leave this stuck on "Sending…" forever — the run
+      // is still good, so drop into the picker and let them retry or pick again.
+      if (!ok) setTargetFailed(true)
+    })
+  }
   useEffect(() => {
     if (!target || !ready || sent.current) return
     sent.current = true
-    const isBuddy = buddies.some((b) => b.username.toLowerCase() === target.toLowerCase())
-    void invite({ username: target } as BuddyCard, isBuddy)
+    sendToTarget()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target, ready, buddies])
 
@@ -98,7 +112,7 @@ function InvitePicker({ seed, result, target }: { seed: number; result: PlayResu
     setShareMsg(r === 'shared' ? 'Shared!' : r === 'copied' ? 'Link copied!' : 'Could not share')
   }
 
-  if (target) {
+  if (target && !targetFailed) {
     return (
       <Page noNav>
         <div className="card" style={{ textAlign: 'center', marginTop: 40 }}>
@@ -117,17 +131,24 @@ function InvitePicker({ seed, result, target }: { seed: number; result: PlayResu
   return (
     <Page noNav>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-        <button className="pill" onClick={() => navigate('/battle')} aria-label="Done">✕</button>
+        <button className="pill" onClick={() => navigate('/battle')} aria-label="Leave without sending">✕</button>
         <b style={{ fontFamily: 'var(--font-display)', fontSize: 18 }}>Send your challenge</b>
       </div>
 
+      {/* This screen looks like a results screen but it's a required step: the
+          run isn't a challenge until somebody is picked. Say so out loud —
+          players were reading "You scored X" as the end and leaving. */}
       <div className="card" style={{ textAlign: 'center', marginBottom: 14 }}>
         <div style={{ fontSize: 40 }}>⚔️</div>
         <h2 style={{ fontSize: 22, marginTop: 4 }}>
           You scored <span className="gradient-text">{result.score.toLocaleString()}</span>
         </h2>
-        <p className="dim" style={{ marginTop: 6, fontSize: 14 }}>
-          Challenge a buddy below — or share a link to invite someone new.
+        <p style={{ marginTop: 8, fontSize: 15, fontWeight: 700, color: 'var(--gold)' }}>
+          Last step — pick who has to beat it 👇
+        </p>
+        <p className="faint" style={{ marginTop: 4, fontSize: 13, lineHeight: 1.4 }}>
+          Tap a name below to send them this score, or share a link to invite someone new. Nothing
+          goes out until you pick.
         </p>
         {/* You've just played this verse, so you can keep it here rather than
             waiting on an opponent. The text stays hidden — this screen is one
@@ -140,6 +161,17 @@ function InvitePicker({ seed, result, target }: { seed: number; result: PlayResu
           />
         </div>
       </div>
+
+      {targetFailed && target && (
+        <div className="card" style={{ marginBottom: 14, borderColor: 'var(--coral)' }}>
+          <p style={{ fontSize: 14, lineHeight: 1.5 }}>
+            Couldn’t send that to <b>@{target}</b> — your run is safe, so try again or pick someone else.
+          </p>
+          <div style={{ marginTop: 12 }}>
+            <Button variant="secondary" full onClick={sendToTarget}>Try @{target} again ⚔️</Button>
+          </div>
+        </div>
+      )}
 
       {shareId ? (
         // You committed this run to an OPEN challenge — one play, one challenge.
@@ -211,10 +243,23 @@ function InvitePicker({ seed, result, target }: { seed: number; result: PlayResu
         </>
       )}
 
+      {/* Gold is the "do the thing" colour, and it was sitting on the control
+          that quietly drops the run. The names above are the primary action;
+          leaving is a quiet exit that says what it costs. */}
       <div style={{ marginTop: 18 }}>
-        <Button variant="gold" full onClick={() => navigate('/battle')}>
-          Done
-        </Button>
+        {shareId ? (
+          <Button variant="gold" full onClick={() => navigate('/battle')}>
+            Done
+          </Button>
+        ) : (
+          <button
+            onClick={() => navigate('/battle')}
+            className="pill"
+            style={{ width: '100%', padding: '12px', background: 'transparent', border: '1px solid var(--stroke)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+          >
+            Skip — don’t send this one
+          </button>
+        )}
       </div>
       <div style={{ height: 30 }} />
     </Page>

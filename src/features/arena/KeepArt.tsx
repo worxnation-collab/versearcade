@@ -32,8 +32,49 @@ const FLAME_HOT = '#ffd23f'
 const CLOTH = '#8a6f42'
 const PAGE = '#efe4c8'
 
-/** The room itself: stone walls, rafters, hearth, long table, stable arch. */
+/**
+ * The room itself. The interior is a Nano Banana painting (public/keep/
+ * hall.jpg — generated bare on purpose, so every furnishing the player sees
+ * was earned) with the drawn hall underneath as the loading/offline fallback.
+ * The gonfalon stays DRAWN on top: it takes denominationColor() at runtime,
+ * which a baked image can't.
+ */
 export function KeepHall({ color }: { color: string }) {
+  return (
+    <g>
+      <PaintedOrDrawnHall color={color} />
+      {/* the faction gonfalon — on the chimney breast, always present, the one
+          element that says whose hall this is. Colour is the whole identity:
+          no crest is invented per faction, so none can be wrong. */}
+      <g transform="translate(95, 52)">
+        <rect x="-26" y="0" width="52" height="5" fill={WOOD_DARK} />
+        <path d="M-20 5 h40 v46 l-20 -12 -20 12 z" fill={color} />
+        <path d="M-20 5 h40 v7 h-40 z" fill="#ffffff" opacity="0.22" />
+      </g>
+    </g>
+  )
+}
+
+function PaintedOrDrawnHall({ color }: { color: string }) {
+  return (
+    <g>
+      <DrawnHall color={color} />
+      <image
+        href="/keep/hall.jpg"
+        x="0"
+        y="0"
+        width="560"
+        height="300"
+        preserveAspectRatio="xMidYMid slice"
+      />
+    </g>
+  )
+}
+
+/** The original flat-SVG hall — the fallback while (or if) the painting never
+ *  loads, and the proof the sheet still works fully offline. */
+function DrawnHall({ color }: { color: string }) {
+  void color
   return (
     <g>
       {/* back wall */}
@@ -50,15 +91,6 @@ export function KeepHall({ color }: { color: string }) {
       <rect x="130" y="0" width="14" height="44" fill={BEAM} />
       <rect x="280" y="0" width="14" height="44" fill={BEAM} />
       <rect x="430" y="0" width="14" height="44" fill={BEAM} />
-
-      {/* the faction gonfalon — centre wall, always present, the one element
-          that says whose hall this is. Colour is the whole identity: no crest
-          is invented per faction, so none can be wrong. */}
-      <g transform="translate(280, 30)">
-        <rect x="-30" y="0" width="60" height="6" fill={WOOD_DARK} />
-        <path d="M-24 6 h48 v54 l-24 -14 -24 14 z" fill={color} />
-        <path d="M-24 6 h48 v8 h-48 z" fill="#ffffff" opacity="0.22" />
-      </g>
 
       {/* hearth — left wall, fire always lit */}
       <g transform="translate(40, 176)">
@@ -94,11 +126,42 @@ export function KeepHall({ color }: { color: string }) {
   )
 }
 
-/** One placed decoration, translated to its anchor's ground point. */
+/**
+ * One placed decoration, translated to its anchor's ground point.
+ *
+ * Most props are Nano Banana renders (magenta-keyed through scripts/
+ * gen-art.mjs, like the skins). The kite shield and the destrier stay DRAWN:
+ * their colour IS the faction's — measured for colourblind separation — and a
+ * generated image can't take a runtime colour.
+ */
 export function DecorProp({ id, x, y, color }: { id: string; x: number; y: number; color: string }) {
+  const raster = RASTER_DECOR[id]
+  if (raster) {
+    const { src, w, h, mode } = raster
+    const px = x - w / 2
+    const py = mode === 'hang' ? y : mode === 'center' ? y - h / 2 : y - h
+    return <image href={src} x={px} y={py} width={w} height={h} preserveAspectRatio="xMidYMid meet" />
+  }
   const prop = PROPS[id]
   if (!prop) return null
   return <g transform={`translate(${x}, ${y})`}>{prop(color)}</g>
+}
+
+// Display boxes in viewBox units, from each render's real aspect ratio.
+// `mode`: hang = top at the anchor, center = centred on it, stand = feet on it.
+const RASTER_DECOR: Record<string, { src: string; w: number; h: number; mode: 'hang' | 'center' | 'stand' }> = {
+  keep_sheaf_banner: { src: '/keep/sheaf_banner.png', w: 31, h: 52, mode: 'hang' },
+  keep_tapestry: { src: '/keep/tapestry.png', w: 72, h: 46, mode: 'center' },
+  keep_armor_rack: { src: '/keep/armor_rack.png', w: 59, h: 48, mode: 'center' },
+  keep_chandelier: { src: '/keep/chandelier.png', w: 56, h: 46, mode: 'hang' },
+  keep_lanterns: { src: '/keep/lanterns.png', w: 21, h: 42, mode: 'hang' },
+  keep_oil_lamp: { src: '/keep/oil_lamp.png', w: 32, h: 13, mode: 'stand' },
+  keep_rosary: { src: '/keep/rosary.png', w: 24, h: 13, mode: 'stand' },
+  keep_open_bible: { src: '/keep/open_bible.png', w: 37, h: 20, mode: 'stand' },
+  keep_chess: { src: '/keep/chess.png', w: 34, h: 18, mode: 'stand' },
+  keep_brazier: { src: '/keep/brazier.png', w: 39, h: 34, mode: 'stand' },
+  keep_barrels: { src: '/keep/barrels.png', w: 44, h: 38, mode: 'stand' },
+  keep_woven_rug: { src: '/keep/rug.png', w: 38, h: 20, mode: 'stand' },
 }
 
 // Each prop draws around its ground point: banners/rafters hang DOWN from

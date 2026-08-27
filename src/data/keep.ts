@@ -39,19 +39,23 @@ export interface AnchorDef {
   s?: number
 }
 
+// Positions are calibrated against the painted hall (public/keep/hall.jpg,
+// drawn 1120x625 and shown sliced into this 560x300 viewBox): the big bare
+// wall runs x 190..435 between the beams and the table, the hearth owns the
+// left, the stable arch the right.
 export const ANCHORS: AnchorDef[] = [
-  { id: 'banner_l', mount: 'banner', x: 96, y: 58 },
-  { id: 'banner_r', mount: 'banner', x: 466, y: 58 },
-  { id: 'wall_1', mount: 'wall', x: 168, y: 96 },
-  { id: 'wall_2', mount: 'wall', x: 280, y: 126 },
-  { id: 'wall_3', mount: 'wall', x: 392, y: 96 },
-  { id: 'rafters_1', mount: 'rafters', x: 218, y: 40 },
-  { id: 'rafters_2', mount: 'rafters', x: 342, y: 40 },
-  { id: 'table_1', mount: 'table', x: 210, y: 196 },
-  { id: 'table_2', mount: 'table', x: 262, y: 194 },
-  { id: 'floor_1', mount: 'floor', x: 96, y: 246 },
-  { id: 'floor_2', mount: 'floor', x: 316, y: 248 },
-  { id: 'stable_1', mount: 'stable', x: 470, y: 248 },
+  { id: 'banner_l', mount: 'banner', x: 215, y: 76 },
+  { id: 'banner_r', mount: 'banner', x: 405, y: 76 },
+  { id: 'wall_1', mount: 'wall', x: 240, y: 148 },
+  { id: 'wall_2', mount: 'wall', x: 310, y: 144 },
+  { id: 'wall_3', mount: 'wall', x: 380, y: 148 },
+  { id: 'rafters_1', mount: 'rafters', x: 310, y: 28 },
+  { id: 'rafters_2', mount: 'rafters', x: 448, y: 54 },
+  { id: 'table_1', mount: 'table', x: 250, y: 199 },
+  { id: 'table_2', mount: 'table', x: 315, y: 199 },
+  { id: 'floor_1', mount: 'floor', x: 160, y: 268 },
+  { id: 'floor_2', mount: 'floor', x: 420, y: 284 },
+  { id: 'stable_1', mount: 'stable', x: 482, y: 244 },
 ]
 
 export const anchorById = (id: string): AnchorDef | undefined => ANCHORS.find((a) => a.id === id)

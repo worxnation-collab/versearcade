@@ -3,7 +3,23 @@ import { useNavigate } from 'react-router-dom'
 import { motion, useReducedMotion } from 'framer-motion'
 import { useJuice } from '@/juice/useJuice'
 import { BookCoverArt, COVER_BOARD } from '@/features/bible/BookCoverArt'
-import { BOARDS, STUDY_COVER_RATIO, StudyBookArt, studyBoard, type BoardSkin } from './StudyBookArt'
+import {
+  BOARDS,
+  STUDY_COVER_RATIO,
+  StudyBookArt,
+  StudyBookPaintedArt,
+  studyBoard,
+  type BoardSkin,
+} from './StudyBookArt'
+
+// Generated cover paintings (scripts/generate-study-covers.mjs), keyed by book.
+// Resolved at build time: a book whose image exists wears it; one whose image
+// is missing keeps its drawn board, so a partial set never breaks the shelf.
+const PAINTED: Record<string, string> = Object.fromEntries(
+  Object.entries(
+    import.meta.glob('@/assets/study/*.{jpg,png,webp}', { eager: true, query: '?url', import: 'default' }),
+  ).map(([file, url]) => [file.replace(/^.*\//, '').replace(/\.[a-z]+$/, ''), url as string]),
+)
 
 // The Study tab as a shelf.
 //
@@ -98,6 +114,9 @@ function ShelfBook({ item, width, delay }: { item: ShelfItem; width: number; del
   const [opening, setOpening] = useState(false)
   const height = Math.round(width * STUDY_COVER_RATIO)
   const skin: BoardSkin | null = item.skin === 'bible' ? null : BOARDS[item.skin]
+  // The player's Bible always wears its real board (their name is stamped on
+  // it); every other book prefers its painting when one has been generated.
+  const painted = item.skin === 'bible' ? undefined : PAINTED[item.skin]
 
   const open = () => {
     if (opening) return
@@ -170,10 +189,12 @@ function ShelfBook({ item, width, delay }: { item: ShelfItem; width: number; del
             ...(skin ? studyBoard(skin) : COVER_BOARD),
           }}
         >
-          {skin ? (
-            <StudyBookArt width={width} title={item.title} emblem={item.emblem} skin={skin} />
-          ) : (
+          {!skin ? (
             <BookCoverArt width={width} name={item.name} />
+          ) : painted ? (
+            <StudyBookPaintedArt width={width} title={item.title} art={painted} />
+          ) : (
+            <StudyBookArt width={width} title={item.title} emblem={item.emblem} skin={skin} />
           )}
         </motion.div>
 

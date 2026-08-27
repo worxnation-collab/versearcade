@@ -132,10 +132,15 @@ as an Edge Function secret and is never in the repo.
    way the *web build* has to be redeployed before anyone can subscribe with it.
 
 **Rotating invalidates every existing subscription.** A subscription is bound to
-the public key it was created with, so after a rotation each player has to
-re-toggle reminders. `push-send` only prunes 404/410 — a key mismatch answers
-403 and the dead row stays. And the private key can't be derived from the public
-one: if it's lost, the only fix is a new pair and rotating both halves together.
+the public key it was created with, and `push-send` only prunes 404/410 — a key
+mismatch answers 403, so the dead row would otherwise sit there forever. That's
+why `enablePush()` compares `sub.options.applicationServerKey` against the
+current key and re-subscribes instead of reusing a stale one: the player turns
+reminders on and it heals itself. Someone whose reminders are *already* on has
+to toggle them off and back on once, since nothing calls `enablePush()` on load.
+
+The private key can't be derived from the public one: if it's lost, the only fix
+is a new pair and rotating both halves together.
 
 | Symptom | Cause |
 |---|---|

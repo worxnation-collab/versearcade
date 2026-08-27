@@ -341,7 +341,22 @@ export default function ProfileScreen() {
         {mode === 'local' && (
           <Button variant="gold" full onClick={() => navigate('/auth')}>✨ Create account to sync & invite friends</Button>
         )}
-        {mode === 'online' && <Button variant="secondary" full onClick={() => { signOut(); navigate('/') }}>Sign out</Button>}
+        {/* Await the sign-out before leaving. Firing it and navigating in the
+            same tick left `profile` still set when Landing mounted, so Landing
+            bounced us to /play, and /play's guard then bounced us on to the
+            onboarding flow — a screen with no way back into an account. */}
+        {mode === 'online' && (
+          <Button
+            variant="secondary"
+            full
+            onClick={async () => {
+              await signOut()
+              navigate('/', { replace: true })
+            }}
+          >
+            Sign out
+          </Button>
+        )}
 
         {!confirmDelete ? (
           <Button variant="ghost" full onClick={() => setConfirmDelete(true)}>Delete my account</Button>

@@ -8,6 +8,7 @@ import { CountUp } from '@/components/CountUp'
 import { useJuice } from '@/juice/useJuice'
 import { useBookAccuracy } from '@/store/bookAccuracy'
 import { useBible } from '@/store/bible'
+import { useDrops } from '@/store/drops'
 import { scoreQuestion } from '@/lib/progress'
 import { SCORING } from '@/lib/config'
 import type { DailyVerse, PlayResult } from '@/types'
@@ -43,12 +44,20 @@ export function QuizRunner({
   hud,
   onQuestionStart,
   onReveal,
+  studyDrop = false,
 }: {
   verse: DailyVerse
   onComplete: (result: PlayResult) => Promise<void>
   onExit: () => void
   /** Small pill under the HUD, e.g. "Practice" — omitted for the daily drop. */
   label?: ReactNode
+  /**
+   * Opt this run into a study drop roll (see lib/drops.ts). Off by default and
+   * set only by the Study tab's surfaces: the daily drop and real battles carry
+   * their own rewards, and a relic falling out of a ranked match would tie a
+   * find to standing — the one thing the Study loop is not allowed to do.
+   */
+  studyDrop?: boolean
   /** Optional live HUD (rendered under the score row) — used by vs-CPU battles
       to show a real-time versus bar. Gets the current run snapshot each render. */
   hud?: (s: QuizHudState) => ReactNode
@@ -144,6 +153,11 @@ export function QuizRunner({
     // came. Studying a verse is studying it whether it was the daily drop or a
     // battle, and the Bible is the one place that shows all of it at once.
     useBible.getState().markStudied(verse.reference)
+    // A finished study run rolls for a relic — here, at the same choke point as
+    // the two marks above, so every study mode counts without five call sites.
+    // Fire-and-forget: the reveal is a toast that follows the player to whatever
+    // screen onComplete sends them to, and a failed roll is simply no find.
+    if (studyDrop) void useDrops.getState().roll()
     try {
       await onComplete(result)
     } catch {

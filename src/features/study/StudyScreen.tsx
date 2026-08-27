@@ -1,11 +1,14 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
+import { Collapsible } from '@/components/Collapsible'
 import { PracticeSection } from '@/features/practice/PracticeSection'
+import { InventorySection } from '@/features/collection/InventorySection'
 import { BookAccuracyChart } from './BookAccuracyChart'
 import { useReviews } from '@/store/reviews'
 import { useFavorites } from '@/store/favorites'
+import { useInventory, seedGuestInventoryFromCollection } from '@/store/inventory'
 import { useJuice } from '@/juice/useJuice'
 import { useEffect } from 'react'
 
@@ -18,11 +21,21 @@ export default function StudyScreen() {
   const { dueRefs, loadDue } = useReviews()
   const favCount = useFavorites((s) => Object.keys(s.map).length)
   const loadFavorites = useFavorites((s) => s.load)
+  const loadInventory = useInventory((s) => s.load)
+  const inHand = useInventory((s) =>
+    Object.values(s.items).reduce((n, qty) => n + Math.max(0, qty), 0),
+  )
+  // The drop toast sends the player here with ?bag=1 so "give it to your church"
+  // lands on an open bag rather than on a closed drawer they have to find.
+  const [params] = useSearchParams()
+  const openBag = params.get('bag') === '1'
 
   useEffect(() => {
     loadDue()
     loadFavorites()
-  }, [loadDue, loadFavorites])
+    loadInventory()
+    seedGuestInventoryFromCollection()
+  }, [loadDue, loadFavorites, loadInventory])
 
   return (
     <Page>
@@ -124,6 +137,17 @@ export default function StudyScreen() {
 
       {/* Study the last five — open by default here, since this is its home. */}
       <PracticeSection defaultOpen showEmpty />
+
+      {/* What studying turned up, and the one thing it's for. The bag also lives
+          on the You tab; it's here because this is where the finds happen and
+          because the answer to "I found a thing" should be one tap away, not a
+          trip to another tab. Folded by default — a drop is a surprise, and a
+          permanently open reward drawer would turn it into a chore. */}
+      <div style={{ marginTop: 16 }}>
+        <Collapsible icon="🎒" title="Your bag" meta={`${inHand} in hand`} defaultOpen={openBag}>
+          <InventorySection />
+        </Collapsible>
+      </div>
 
       {/* Where you actually stand, book by book — and the tap that turns a weak
           spot into a focus drill. Sits under the actions: it's the reason to

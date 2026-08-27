@@ -70,6 +70,7 @@ export default function BattleCpu() {
       label={`🤖 vs ${profile.name}`}
       onFinish={(player, cpuScore) => setOutcome({ player, cpuScore })}
       onExit={() => setLevel(null)}
+      studyDrop
     />
   )
 }

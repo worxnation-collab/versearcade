@@ -35,6 +35,7 @@ import HighlightsScreen from './features/bible/HighlightsScreen'
 import StampsScreen from './features/bible/StampsScreen'
 import FocusPracticeScreen from './features/practice/FocusPracticeScreen'
 import { BattleResume } from './features/arena/BattleResume'
+import { StudyDropToast } from './features/study/StudyDropToast'
 import { BottomNav } from './components/BottomNav'
 import { PlayerCardProvider } from './components/PlayerCardModal'
 
@@ -115,6 +116,9 @@ export default function App() {
   return (
     <PlayerCardProvider>
     <BattleResume />
+    {/* A study run finishes and immediately navigates, so the reveal for
+        anything it turned up is mounted here and follows the player. */}
+    <StudyDropToast />
     <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/welcome" element={<Onboarding />} />

@@ -283,6 +283,34 @@ for guests. `lib/practice.ts` ↔ `submit_practice` (0014), `store/focus.ts` ↔
 `submit_focus_practice` (0038). Change one, change the other, and say so in the
 comment — they already carry "keep in sync with the SQL" notes.
 
+## Study drops: a reward that can't rank anybody
+
+Finishing a study run (CPU race, focus drill, replay, "keep it" review) rolls
+once for a relic — the Study tab's reason to come back. It pays **no XP, no
+points and no standing**, which is what lets it exist at all next to the
+rank-free rule above: the only thing a find is good for is `donate_collectible`,
+giving it to your church. The incentive to study is an offering, not a score.
+
+Three things to know before touching it:
+
+- **The roll is opt-in, and only Study opts in.** It lives in `QuizRunner`
+  behind a `studyDrop` prop (off by default) so every study mode counts from one
+  call site, and so the daily drop and real battles — which are ranked — can't
+  start dropping relics by accident. `ReviewScreen` is the one study surface
+  that doesn't go through `QuizRunner`, so it calls `useDrops().roll()` itself.
+- **The reveal is app-wide on purpose.** A study run navigates the instant it
+  finishes, so a banner rendered inside the run would unmount before anyone saw
+  it. The find parks in `store/drops.ts` and `StudyDropToast` (mounted once in
+  `App`) shows it wherever the player lands. It's a slim bar at the *top*:
+  every screen here anchors its primary action to the bottom, and a toast that
+  covers the button someone is reaching for is a trap.
+- **Odds and the daily cap exist twice**, like all reward math here —
+  `lib/drops.ts` for guests, `roll_study_drop` (0055) for accounts. The cap
+  counts finds, never attempts, so a dry run costs nothing. As everywhere, the
+  client sends `todayLocalDate()` and the server clamps it to ±1 day; that
+  ±1 is the house pattern and it does mean a lying client can reach three
+  buckets, which is bounded and buys nothing rankable.
+
 ## Shared choke points
 
 `QuizRunner` (`features/daily/QuizRunner.tsx`) owns quiz gameplay and scoring for

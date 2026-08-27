@@ -320,6 +320,18 @@ export const FULL_SKINS: SkinDef[] = [
     limitedUntil: LIMITED_UNTIL,
     blurb: 'Shades on. The day-one look — redeem the code from the live drop.',
   },
+  {
+    id: 'sonshine',
+    name: 'Sonshine',
+    source: 'paid',
+    exclusive: true,
+    packName: 'Creator Collab',
+    // No `limitedUntil`, for the same reason as 'eden'. The launch skins vanish
+    // from the grid once their window closes — for owners too — and a creator
+    // skin has to keep working for as long as the partnership does. Retire it
+    // by toggling its code off in the admin panel, never by expiring the skin.
+    blurb: 'Red hair, black hoodie, red kicks — the Sonshine look. Redeem his code to wear it.',
+  },
 ]
 
 export const skinById = (id?: string | null): SkinDef | undefined => FULL_SKINS.find((s) => s.id === id)

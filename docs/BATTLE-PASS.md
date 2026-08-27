@@ -179,16 +179,16 @@ harvest is in. It is almost embarrassingly on the nose for a progression track.
 | 5 | relic: Sheaf of Firstfruits | card bg: **Barley Field** |
 | 8 | 1 XP Boost | item: *Gleaner's Shawl* (cape) |
 | 10 | **companion: Lamb** | item: *Winnowing Fork* (held) |
-| 13 | item: *Field Tunic* (top) | card bg: **Gate of Bethlehem** |
+| 13 | fortress: *Sheaf Banner* | card bg: **Gate of Bethlehem** |
 | 15 | 1 Streak Freeze | badge: 🌾 *Gleaner* |
 | 18 | relic: Threshing Sledge | item: *Jar of Parched Grain* (held) |
 | 20 | card bg: **Gleaning** | **Ruth state 2** — basket half full |
-| 23 | 1 XP Boost | item: *Kinsman's Sandals* (bottoms) |
+| 23 | 1 XP Boost | fortress: *Harvest Tapestry* (armoury wall) |
 | 25 | item: *Water Skin* (held) | **companion: Threshing Ox** (Deut 25:4) |
 | 28 | relic: Measure of Barley | card bg: **Threshing Floor at Night** |
-| 30 | **border: Barley Gold** | item: *Redeemer's Mantle* (cape) |
+| 30 | **border: Barley Gold** | **fortress: Armoured Destrier** (stable) |
 | 35 | 2 Streak Freezes | **Ruth state 3** — sheaf on the shoulder |
-| 40 | card bg: **Harvest Moon** | item: *Boaz's Signet* (held) |
+| 40 | fortress: *Hand-Mill* (hearth) | item: *Boaz's Signet* (held) |
 | 45 | 2 XP Boosts | badge: 👑 *Kinsman-Redeemer* |
 | 50 | **card bg: The Winnowing** + **memento: Harvest Road** | **Boaz** (skin) + **Ruth state 4** — basket overflowing |
 
@@ -229,8 +229,9 @@ overloading `exclusive`, which currently means "promo code".
 
 ### Battle-pass-only items, and one new slot
 
-Item slots today are `hat | top | bottoms | held | cape` and there are exactly
-six items in `ITEMS[]`. A pass is the right vehicle to take that to fifty — items
+Item slots today are `hat | held | cape` — note that `AVATAR-ECONOMY.md`
+promises `top` and `bottoms` too, but the real `ItemSlot` in `src/types` never
+had them — and there are exactly six items in `ITEMS[]`. A pass is the right vehicle to take that to fifty — items
 are cheap to draw, they stack into a collection, and they're the free track's
 bread and butter.
 
@@ -244,9 +245,27 @@ and the existing `itemsBySlot` grid picks it up for free.
 
 Harvest item set, for scale: *Sickle, Winnowing Fork, Jar of Parched Grain,
 Water Skin, Boaz's Signet, Sheaf* (held) · *Harvest Headscarf, Threshing Veil*
-(hat) · *Gleaner's Shawl, Redeemer's Mantle, Road Cloak* (cape) · *Field Tunic,
-Girded Tunic* (top) · *Kinsman's Sandals* (bottoms) · *Lamb, Threshing Ox,
-Turtledove* (companion).
+(hat) · *Gleaner's Shawl, Redeemer's Mantle, Road Cloak* (cape) · *Lamb,
+Threshing Ox, Turtledove* (companion). Add `top`/`bottoms` to `ItemSlot` if you
+want the tunic and sandals — don't assume they exist.
+
+### Fortress decorations — the third reward type
+
+The furnishings for a faction's hall (`docs/FORTRESS.md`): banners, an armoured
+destrier in the stable, armour on the wall rack, a rosary on the long table.
+These are the best value-per-unit-of-work on the whole track — they're small flat
+SVG props rather than figures, they hang in a space other players walk into
+(which is what actually drives cosmetic desire), and they have zero gameplay
+effect by construction.
+
+They're **items**, mechanically: `ItemSlot` gains `'fortress'` and `ItemDef`
+gains a `mount` naming its anchor, so they grant through the existing
+`grantItem` → `profiles.owned_items` path with no new table.
+
+One rule crosses over from that doc and binds here: **devotional objects are
+earned or free, never sold.** A rosary, an icon corner, a censer, a font, a
+prie-dieu go on the Road; the Pass sells heraldry and furniture. Nobody is
+charged $5.99 for a devotional object of their own tradition.
 
 ---
 

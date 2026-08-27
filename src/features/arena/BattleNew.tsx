@@ -6,6 +6,7 @@ import { Button } from '@/components/Button'
 import { Avatar } from '@/components/Avatar'
 import { QuizRunner } from '@/features/daily/QuizRunner'
 import { useBattles } from '@/store/battles'
+import { useKeep } from '@/store/keep'
 import { useBuddies, type BuddyCard } from '@/store/buddies'
 import { useAuth } from '@/store/auth'
 import { newBattleSeed, battleVerse } from './battle'
@@ -179,6 +180,7 @@ function InvitePicker({ seed, result, target }: { seed: number; result: PlayResu
     juice.coin()
     if (!isBuddy) void sendRequest(u.username)
     const id = await createBattle(seed, result.score, result.timeMs, u.username)
+    trackKeepRun(result)
     if (id) navigate(`/battle/${id}`, { replace: true, state: { justCreated: true } })
     return !!id
   }
@@ -213,6 +215,7 @@ function InvitePicker({ seed, result, target }: { seed: number; result: PlayResu
     let id = shareId
     if (!id) {
       id = await createBattle(seed, result.score, result.timeMs, undefined, true)
+      trackKeepRun(result)
       if (!id) {
         setShareMsg('Could not create the invite — try again.')
         return
@@ -390,4 +393,14 @@ function PlayerRow({ u, label, onClick }: { u: BuddyCard; label: string; onClick
       </motion.button>
     </div>
   )
+}
+
+
+// Keep challenges: opening a battle counts as played once it actually exists
+// on the server, and the run's quality feeds the perfect/combo ladders.
+function trackKeepRun(result: PlayResult) {
+  const k = useKeep.getState()
+  void k.track('battle_played')
+  if (result.correctCount === result.totalQuestions && result.totalQuestions > 0) void k.track('battle_perfect')
+  if ((result.comboMax ?? 0) >= 4) void k.track('battle_combo')
 }

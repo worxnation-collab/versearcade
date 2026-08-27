@@ -9,6 +9,7 @@ import { useBattles, type Battle, type BattleSide } from '@/store/battles'
 import { setPendingBattle } from './pending'
 import { shareResult, inviteUrl } from '@/features/daily/shareCard'
 import { useJuice } from '@/juice/useJuice'
+import { useKeep } from '@/store/keep'
 import { FavoriteButton } from '@/components/FavoriteButton'
 import { battleVerse } from './battle'
 
@@ -49,6 +50,13 @@ export default function BattleDetail() {
       myOutcome(battle) === 'won' ? juice.levelUp() : juice.celebrate()
     }
   }, [battle, location.state, juice])
+
+  // Keep challenges: a battle I was in completed with me as the winner. Fires
+  // on whichever visit first SEES the completed battle (the opponent's result
+  // arrives async); track() guards by battle id so revisits can't double-count.
+  useEffect(() => {
+    if (battle && myOutcome(battle) === 'won') void useKeep.getState().track('battle_won', battle.id)
+  }, [battle])
 
   // The verse both sides raced over. Only ever rendered on a finished battle, so
   // it can't spoil a challenge that's still waiting to be played.

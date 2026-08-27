@@ -7,6 +7,8 @@ import { Avatar } from '@/components/Avatar'
 import { useAuth } from '@/store/auth'
 import { useBattles, type Battle, type BattleBoard, type DenomBoard } from '@/store/battles'
 import { DENOMINATIONS, DENOMINATION_GROUPS, denominationColor, denominationName, isOpenFaction } from '@/data/denominations'
+import { KeepSheet } from './KeepSheet'
+import { KeepChallenges } from './KeepChallenges'
 import { useJuice } from '@/juice/useJuice'
 
 // Whose move is it? Every battle you can see is in exactly one of these.
@@ -42,6 +44,8 @@ export default function BattleHub() {
   // Which turn-bucket the player tapped. Null = follow `autoTurn` below, so the
   // tab that actually needs them is open before they touch anything.
   const [pickedTurn, setPickedTurn] = useState<Turn | null>(null)
+  /** Faction key whose keep is open, '' for "my hall", null for closed. */
+  const [openKeep, setOpenKeep] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<Turn | null>(null)
 
   const isGuest = mode === 'local'
@@ -75,11 +79,33 @@ export default function BattleHub() {
       </div>
 
       {isGuest ? (
+        <>
         <div className="card" style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 34 }}>🔐</div>
           <p style={{ margin: '8px 0 14px' }}>Battles are tied to your account so scores and ranks stick. Create a free one to play.</p>
           <Button variant="gold" full onClick={() => navigate('/auth')}>Create an account</Button>
         </div>
+        <div style={{ textAlign: 'left' }}>
+          {/* The keep still works for a guest: CPU races (reachable from the
+              Study tab) move the same counters, and their hall lives on this
+              device. Only the faction layer needs an account. */}
+          <h3 className="dim" style={{ fontSize: 16, margin: '24px 0 10px' }}>The Keep</h3>
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            onClick={() => { juice.select(); setOpenKeep('') }}
+            className="card"
+            style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', marginBottom: 10 }}
+          >
+            <div style={{ fontSize: 26, flexShrink: 0 }}>🏰</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <b style={{ fontFamily: 'var(--font-display)', fontSize: 15 }}>Your Keep</b>
+              <div className="faint" style={{ fontSize: 12.5 }}>Won in battles, furnished by you — saved on this device.</div>
+            </div>
+            <div style={{ fontFamily: 'var(--font-display)', color: 'var(--gold)', fontSize: 18, flexShrink: 0 }}>→</div>
+          </motion.button>
+          <KeepChallenges />
+        </div>
+        </>
       ) : (
         <>
           <Button variant="gold" full onClick={() => { juice.coin(); navigate('/battle/new') }}>
@@ -259,7 +285,11 @@ export default function BattleHub() {
                     const color = denominationColor(r.denomination)
                     const mine = denomBoard.me?.denomination === r.denomination
                     return (
-                      <div key={r.denomination} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 8px', borderRadius: 10, borderLeft: `3px solid ${color}`, background: mine ? 'rgba(255,210,63,0.08)' : 'transparent' }}>
+                      <button
+                        key={r.denomination}
+                        onClick={() => { juice.select(); setOpenKeep(r.denomination) }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 8px', borderRadius: 10, borderLeft: `3px solid ${color}`, background: mine ? 'rgba(255,210,63,0.08)' : 'transparent', width: '100%', textAlign: 'left', cursor: 'pointer' }}
+                      >
                         <span style={{ width: 18, textAlign: 'center', fontFamily: 'var(--font-display)', color: 'var(--ink-faint)' }}>
                           {r.rank === 1 ? '👑' : r.rank}
                         </span>
@@ -272,9 +302,13 @@ export default function BattleHub() {
                         </div>
                         <span style={{ fontFamily: 'var(--font-display)' }} className="gradient-text">{r.wins}</span>
                         <span className="faint" style={{ fontSize: 11 }}>wins</span>
-                      </div>
+                        <span style={{ color: 'var(--gold)', fontFamily: 'var(--font-display)' }}>›</span>
+                      </button>
                     )
                   })}
+                  <p className="faint" style={{ fontSize: 11, textAlign: 'center', margin: '6px 0 0' }}>
+                    Tap a team to walk into its keep.
+                  </p>
                   {denomBoard.me && (
                     <div className="faint" style={{ fontSize: 12, textAlign: 'center', marginTop: 8, borderTop: '1px solid var(--stroke)', paddingTop: 8 }}>
                       {denominationName(denomBoard.me.denomination)} — rank <b style={{ color: 'var(--gold)' }}>#{denomBoard.me.rank}</b> · {denomBoard.me.wins} wins · {denomBoard.me.members} members
@@ -285,8 +319,35 @@ export default function BattleHub() {
             </div>
             </>
           )}
+          {/* ── The Keep ─────────────────────────────────────────────── */}
+          <h3 className="dim" style={{ fontSize: 16, margin: '24px 0 10px' }}>The Keep</h3>
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            onClick={() => { juice.select(); setOpenKeep(profile?.denomination ?? '') }}
+            className="card"
+            style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', marginBottom: 10 }}
+          >
+            <div style={{ fontSize: 26, flexShrink: 0 }}>🏰</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <b style={{ fontFamily: 'var(--font-display)', fontSize: 15 }}>
+                {profile?.denomination ? `${denominationName(profile.denomination)} Keep` : 'Your Keep'}
+              </b>
+              <div className="faint" style={{ fontSize: 12.5 }}>
+                {profile?.denomination
+                  ? 'Your hall — decorate it with what battles earn.'
+                  : 'Pick a team above to share a hall, or furnish your own.'}
+              </div>
+            </div>
+            <div style={{ fontFamily: 'var(--font-display)', color: 'var(--gold)', fontSize: 18, flexShrink: 0 }}>→</div>
+          </motion.button>
+          <KeepChallenges />
+
           <div style={{ height: 90 }} />
         </>
+      )}
+
+      {openKeep !== null && (
+        <KeepSheet denomination={openKeep === '' ? null : openKeep} onClose={() => setOpenKeep(null)} />
       )}
     </Page>
   )

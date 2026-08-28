@@ -1191,13 +1191,27 @@ part of CI: `.github/workflows/deploy.yml` was removed because it never had a
 green. Merges to `main` use a **merge commit** titled `<PR title> (#NN)` —
 match the existing history.
 
-## Store versions: 1.0 is live, so the version must move every release
+## Store versions: an approved version can never be uploaded again
 
 `package.json` `"version"` is the source of truth for the *store* version, and it is
 not decoration. Once App Store Connect approves a version, that version's train
 closes — every later upload must carry a strictly higher `CFBundleShortVersionString`
 or the upload is rejected (`90062` + `90186`) *after* a full signed archive, about
 20 minutes in. Builds 22 and 23 died that way with a perfectly good Admin API key.
+
+**Where we are: 1.1.0 is the approved, live version; 1.2.0 is what the repo carries
+and has never been uploaded**, so its train is still open. A good deal landed after
+that number was picked (the Upper Room, praying, gifts and the mailbox, the Journal,
+saved looks, companions in the crowd scenes), which changes the release NOTES rather
+than the number — check App Store Connect for what is actually approved before
+choosing the next one, never the repo's last guess.
+
+`codemagic.yaml` now sets `submit_to_app_store: true` with `release_type: MANUAL`: a
+push to `main` uploads to TestFlight and submits for review by itself, and the app
+goes live only when a human presses Release. Codemagic *submits* the version, it does
+not fill it in — an App Store Connect version record missing screenshots, What's New
+or the demo-account review notes fails the publishing step after the archive, which
+is the same expensive shape as the version-train rejection above.
 
 `ios/` is not committed; `cap add ios` regenerates it every build and the Capacitor
 template default (`MARKETING_VERSION = 1.0`) comes back each time. So the version is

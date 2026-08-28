@@ -200,10 +200,27 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration
-        # TestFlight upload always happens. Flip submit_to_app_store to true when
-        # your listing (screenshots, metadata, privacy) is complete in App Store Connect.
+        # TestFlight upload always happens; the build then goes straight into App
+        # Store review.
+        #
+        # submit_to_app_store REQUIRES the version's metadata to be complete in App
+        # Store Connect before the build lands — screenshots, description, What's New,
+        # privacy answers, age rating, export compliance. Codemagic submits the
+        # version; it does not fill it in. An incomplete version record fails this
+        # publishing step AFTER a successful 20-minute archive, which is the same
+        # expensive shape as the 90062 version-train rejection above.
         submit_to_testflight: true
-        submit_to_app_store: false
+        submit_to_app_store: true
+        # MANUAL keeps the go-live moment yours: Apple approves, and the app ships
+        # when you press "Release" in App Store Connect. AFTER_APPROVAL would put it
+        # on the store the instant review passes, with nobody looking.
+        release_type: MANUAL
+        # A re-run while an earlier submission is still "Waiting for Review" would
+        # otherwise be refused; this replaces it instead.
+        cancel_previous_submissions: true
+        # copyright: "2026 Worx Nation"   # only needed if ASC asks for it on a NEW
+        #                                 # version record; set it to the real legal
+        #                                 # entity, don't guess.
       email:
         recipients:
           - worxnation@gmail.com

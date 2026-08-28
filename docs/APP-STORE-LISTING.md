@@ -82,16 +82,35 @@ Start your streak today. It's one verse.
 Your whole Bible is in here now — all 66 books and 31,102 verses — and every one you
 read, study or keep lights up on your own copy.
 
-NEW IN THIS UPDATE
-• Make your character at the door: figure, skin tone and hair, all free.
-• A companion. Earn a pet by playing; it walks beside you on your profile.
+PLACES THAT ARE YOURS
+• The Upper Room: a small chamber under your player card that belongs to nobody but
+  you. Eighteen furnishings, earned by playing. Friends can knock and look around —
+  and there is no number on it for anyone to beat.
+• Pray in it. A prayer is built for you out of four movements, so you always know what
+  comes next, and it will read itself aloud in a calm voice if you'd rather listen.
+  Your lampstand burns on the day you prayed and goes out overnight. It is not a
+  streak, and nothing counts it.
 • Your faction's keep — a hall that grows with the battles your side wins. Furnish it,
   merge duplicates into finer pieces, and offer your best one to your church.
 • A churchyard you plant in front of your congregation's building.
-• The Harvest Road: daily quests, a walkable painted road, and rewards that are never
-  for sale.
+• The Harvest Road: daily quests, a walkable painted road, and rewards never for sale.
+
+PEOPLE, WITHOUT A SCOREBOARD
+• Make your character at the door: figure, skin tone and hair, all free.
+• A companion. Earn a pet by playing — it walks beside you on your profile, and now in
+  every place people gather: the hall, the churchyard, the road, your room.
+• Tap anyone and meet them at full height, companion and all, instead of a small crop.
 • Wash another player's feet. Twelve a day, one for each disciple — the one thing you
   can do to somebody here that isn't a challenge.
+• Give a relic you found to another player. No message field, no trade, no haggling.
+• A mailbox for gifts, buddy requests, washings and news. It carries nothing that is a
+  comparison — no digest of what your friends scored, no "you're 4th".
+
+THE REST
+• The Journal: every milestone you've passed, gathered in one page. A number you got
+  to, never a place you hold.
+• Saved looks — put a whole outfit back on in one tap.
+• Larger reading text, if you want it.
 • A soundtrack. Every room has its own tune, and walking in is the only way to get one.
 • Study got more generous: no daily ceiling on focus drills, no weekly cooldown on
   replays, and a relic to find when you study.
@@ -160,8 +179,11 @@ knowing exactly where a user can type at all: a group name (visible only inside 
 private group), their own username, and the "Add info" form on a church page. That last
 one publishes NOTHING — it files a request that only staff can act on
 (`submit_church_info_request`), so nothing a stranger types ever renders for another
-player. Washing feet, the keep, the churchyard and pets carry no text at all: they are
-taps on fixed objects. If Apple's form asks about UGC, "Infrequent/Mild" at most. This
+player. Washing feet, the keep, the churchyard, the Upper Room, gifts, praying
+and pets carry no text at all: they are taps on fixed objects. A gift has no message
+field, a prayer stores a date and nothing else, and the one place figures appear to
+speak to each other — the emoji bubbles in the crowd scenes — draws from a fixed
+ten-emoji list nobody can add to. If Apple's form asks about UGC, "Infrequent/Mild" at most. This
 lands at 12+ / 9+; either is fine.
 
 > Do NOT check "Made for Kids." That opts you into the Kids Category and COPPA rules.
@@ -197,6 +219,11 @@ sandbox build — that is deliberate fail-closed behaviour, not a missing screen
 
 There are no external purchase links or steering of any kind. Everything digital is
 sold through Apple's in-app purchase.
+
+READ-ALOUD: the Upper Room's prayer sheet can read a prayer out loud. It uses the
+voices already on the device through the standard speech synthesis API — nothing is
+recorded, and no text is sent anywhere. A device with no installed voices shows a line
+saying so rather than a dead button.
 
 Account deletion: Profile tab → "Delete my account".
 Sound, music and haptics: Settings.

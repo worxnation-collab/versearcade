@@ -207,6 +207,12 @@ export interface SkinDef {
   blurb: string
   shareGoal?: number // earned: distinct shared days required
   referralGoal?: number // earned: referred signups required
+  /** earned: longest streak required. LONGEST, never current — a requirement
+   *  you can lose by missing a day is a punishment, and nothing here takes
+   *  something back (same rule as a pet's, data/pets.ts). */
+  streakGoal?: number
+  studiedGoal?: number // earned: verses quizzed in any mode (store/bible)
+  cpuWonGoal?: number // earned: CPU races won (keep counter `cpu_won`)
   pack?: string // paid: pack sku
   packName?: string // paid: display pack name
   /** paid: sold ONLY as part of its pack — never listed or priced on its own. */
@@ -263,34 +269,45 @@ export const FULL_SKINS: SkinDef[] = [
     source: 'pass',
     blurb: 'Lord of the harvest — the end of the Harvest Road, waystation 50.',
   },
+  // ——— The three that used to be sold ———
+  // Moses, Esther and Elijah were $2.99 skins on a limited-edition clock. They
+  // are earned now, and each asks for a different thing on purpose: one habit,
+  // one depth, one nerve — so no single way of playing collects all three, and
+  // none of them is a wall you pay to skip.
+  //
+  // The goals echo the character rather than being three sizes of the same
+  // number, and every one of them only goes UP, so a bad week can't take a skin
+  // back (the pets' rule, data/pets.ts). No `limitedUntil`: a thing you are
+  // working toward must not evaporate mid-climb — the countdown was a scarcity
+  // device for a sale that no longer exists.
+  //
+  // Anyone who BOUGHT one keeps it regardless of the goal — see skinOwned,
+  // which ORs the earned test with owned_skins for exactly this reason.
   {
     id: 'moses',
     name: 'Moses',
-    source: 'paid',
-    pack: 'exodus',
-    packName: 'Exodus Pack',
-    price: 'From $2.99',
-    limitedUntil: LIMITED_UNTIL,
+    source: 'earned',
+    // Forty days on the mountain, forty years in the wilderness. The Lawgiver
+    // is the endurance skin, so he hangs on the streak.
+    streakGoal: 21,
     blurb: 'The Lawgiver — staff in hand, the tablets at his side.',
   },
   {
     id: 'esther',
     name: 'Esther',
-    source: 'paid',
-    pack: 'palace',
-    packName: 'Palace Pack',
-    price: 'From $2.99',
-    limitedUntil: LIMITED_UNTIL,
+    source: 'earned',
+    // She walked in uninvited and stood before the king. Hers is the nerve
+    // goal — races won, not days survived.
+    cpuWonGoal: 15,
     blurb: 'The queen — “for such a time as this.”',
   },
   {
     id: 'elijah',
     name: 'Elijah',
-    source: 'paid',
-    pack: 'prophets',
-    packName: 'Prophets Pack',
-    price: 'From $2.99',
-    limitedUntil: LIMITED_UNTIL,
+    source: 'earned',
+    // Fed by ravens, and the man who knew what the word actually said. His is
+    // the depth goal: verses studied, in any mode.
+    studiedGoal: 150,
     blurb: 'The prophet of fire — mantle, staff, and a raven.',
   },
   // ——— The Angel Pack ———
@@ -469,6 +486,12 @@ export function skinOwned(
     admin?: boolean
     /** Reward ids unlocked on the seasonal road (store/season). */
     seasonUnlocks?: string[]
+    /** Longest streak, total verses studied, CPU races won — the three goals
+     *  Moses/Elijah/Esther ask for. Same numbers `petProgress()` gathers; the
+     *  caller passes them because this file must not import stores. */
+    longestStreak?: number
+    studiedCount?: number
+    cpuWon?: number
   },
 ): boolean {
   if (ctx.admin) return true // operator account has every skin unlocked
@@ -477,10 +500,43 @@ export function skinOwned(
     return u.includes(`skin_${skin.id}`) || u.some((x) => x.startsWith(`skin_${skin.id}_`))
   }
   if (skin.source === 'earned') {
+    // An earned skin that someone BOUGHT while it was for sale stays theirs.
+    // Moses, Esther and Elijah were $2.99 items before they became goals, and
+    // dropping this test would repossess a skin people paid real money for the
+    // moment the source flipped. Forging it is not a way in: owned_skins is
+    // still guarded server-side for these three (enforce_skin_entitlement,
+    // 0031+), so the goal remains the only route for everyone else.
+    if ((ctx.ownedSkins ?? []).includes(skin.id)) return true
     if (skin.referralGoal != null) return (ctx.referralCount ?? 0) >= skin.referralGoal
+    if (skin.streakGoal != null) return (ctx.longestStreak ?? 0) >= skin.streakGoal
+    if (skin.studiedGoal != null) return (ctx.studiedCount ?? 0) >= skin.studiedGoal
+    if (skin.cpuWonGoal != null) return (ctx.cpuWon ?? 0) >= skin.cpuWonGoal
     return distinctSharedDays(ctx.sharedDays) >= (skin.shareGoal ?? Number.MAX_SAFE_INTEGER)
   }
   return (ctx.ownedSkins ?? []).includes(skin.id)
+}
+
+/** Progress toward an earned skin's goal: `{ have, goal, label }`, or null if
+ *  the skin isn't goal-earned. One place, so the locked pill on the tile and
+ *  the message on tap can never quote different numbers. */
+export function skinGoalProgress(
+  skin: SkinDef,
+  ctx: {
+    sharedDays?: string[]
+    referralCount?: number
+    longestStreak?: number
+    studiedCount?: number
+    cpuWon?: number
+  },
+): { have: number; goal: number; label: string } | null {
+  if (skin.source !== 'earned') return null
+  const at = (have: number, goal: number, label: string) => ({ have: Math.min(have, goal), goal, label })
+  if (skin.referralGoal != null) return at(ctx.referralCount ?? 0, skin.referralGoal, 'friends joined')
+  if (skin.streakGoal != null) return at(ctx.longestStreak ?? 0, skin.streakGoal, 'day streak')
+  if (skin.studiedGoal != null) return at(ctx.studiedCount ?? 0, skin.studiedGoal, 'verses studied')
+  if (skin.cpuWonGoal != null) return at(ctx.cpuWon ?? 0, skin.cpuWonGoal, 'races won')
+  if (skin.shareGoal != null) return at(distinctSharedDays(ctx.sharedDays), skin.shareGoal, 'days shared')
+  return null
 }
 
 /**

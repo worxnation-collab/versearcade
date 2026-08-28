@@ -38,6 +38,7 @@ import {
   packPreviewable,
   skinExpired,
   skinOwned,
+  skinGoalProgress,
   equippedSkinId,
   baseSkinId,
   passSkinEquipId,
@@ -151,6 +152,16 @@ export function CustomizeSection() {
   const petProg = petProgress()
   const unlockedPetCount = PETS.filter((p) => petUnlocked(p.id, petProg)).length
   const comingPet = nextPet(petProg)
+  // Everything an earned skin's goal can ask about. It reuses petProg rather
+  // than re-reading the stores so the two ladders can't quote different numbers
+  // for the same streak — and it depends on the load() above for studied/cpuWon.
+  const goalCtx = {
+    sharedDays: profile.sharedDays,
+    referralCount: profile.referralCount,
+    longestStreak: petProg.streak,
+    studiedCount: petProg.studied,
+    cpuWon: petProg.cpuWon,
+  }
   // Pack cards gate on the skin entitlement rather than a collectible, so the
   // picker needs both sources of ownership.
   const bgCtx = { ownedSkins: profile.ownedSkins ?? [], admin: profile.isAdmin }
@@ -256,7 +267,7 @@ export function CustomizeSection() {
   /** Reactive pass skins store their state in the id ('ruth_2'); compare bases. */
   const isEquipped = (skin: SkinDef) => !!equippedSkin && baseSkinId(equippedSkin) === skin.id
   const isSkinOwned = (skin: SkinDef) =>
-    skinOwned(skin, { sharedDays: profile.sharedDays, ownedSkins, referralCount: profile.referralCount, admin: profile.isAdmin, seasonUnlocks })
+    skinOwned(skin, { ...goalCtx, ownedSkins, admin: profile.isAdmin, seasonUnlocks })
   const onSkinTap = (skin: SkinDef) => {
     const owned = isSkinOwned(skin)
     if (!owned && skin.source === 'pass') {
@@ -264,13 +275,8 @@ export function CustomizeSection() {
       return
     }
     if (!owned && skin.source === 'earned') {
-      if (skin.referralGoal != null) {
-        const rc = profile.referralCount ?? 0
-        setErr(`${skin.name}: ${Math.min(rc, skin.referralGoal)}/${skin.referralGoal} friends joined with your code`)
-      } else {
-        const goal = skin.shareGoal ?? 0
-        setErr(`${skin.name}: shared ${Math.min(sharedCount, goal)}/${goal} days`)
-      }
+      const p = skinGoalProgress(skin, goalCtx)
+      setErr(p ? `${skin.name}: ${p.have}/${p.goal} ${p.label}` : `${skin.name} is earned by playing.`)
       return
     }
     // Locked paid skin: the operator account (admin) previews it free; everyone
@@ -443,9 +449,10 @@ export function CustomizeSection() {
                 : skin.source === 'pass'
                   ? '🌾 On the road'
                 : skin.source === 'earned'
-                  ? skin.referralGoal != null
-                    ? `${Math.min(profile.referralCount ?? 0, skin.referralGoal)}/${skin.referralGoal} friends`
-                    : `Shared ${Math.min(sharedCount, skin.shareGoal ?? 0)}/${skin.shareGoal ?? 0} days`
+                  ? (() => {
+                      const p = skinGoalProgress(skin, goalCtx)
+                      return p ? `${p.have}/${p.goal} ${p.label}` : 'Earned by playing'
+                    })()
                   : skin.exclusive ? `🔒 ${skin.packName ?? 'Exclusive'}`
                     : skin.bundleOnly ? `🔒 ${skin.packName ?? 'Pack only'}`
                       // Apple's localized price on native, the catalog price on

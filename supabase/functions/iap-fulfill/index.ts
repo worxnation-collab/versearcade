@@ -42,11 +42,17 @@ const CORS = {
 /**
  * Apple product id → our sku vocabulary.
  *
- * KEEP IN SYNC with APPLE_PRODUCT_IDS in src/lib/iap.ts. This map is also the
- * allowlist: a product id that isn't here grants nothing, so an id invented by
- * a caller (or added in App Store Connect but not here) is simply ignored.
- * What each sku is WORTH is not decided here — pack_skins() in SQL stays the
- * single authority for that, exactly as the Stripe path uses it.
+ * This map is also the allowlist: a product id that isn't here grants nothing,
+ * so an id invented by a caller (or added in App Store Connect but not here) is
+ * simply ignored. What each sku is WORTH is not decided here — pack_skins() in
+ * SQL stays the single authority for that, exactly as the Stripe path uses it.
+ *
+ * DELIBERATELY WIDER than APPLE_PRODUCT_IDS in src/lib/iap.ts, and it must stay
+ * that way. moses/esther/elijah were withdrawn from sale when they became
+ * earned skins, so the client no longer ASKS StoreKit for them — but this is
+ * the FULFILLMENT side, and people bought them. Dropping them here would make a
+ * past purchase un-restorable on a reinstall, which is taking back something
+ * somebody paid for. Selling stops in the client; honoring never stops here.
  */
 const SKU_BY_PRODUCT_ID: Record<string, string> = {
   'com.versearcade.app.pack_angels': 'pack_angels',

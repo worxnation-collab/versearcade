@@ -100,11 +100,15 @@ export const SUPPORT_URL = import.meta.env.VITE_SUPPORT_URL || ''
 // Per-skin checkout links (Stripe Payment Links — public, shareable URLs, not
 // secrets). Each paid skin can have its own; env vars override the defaults so a
 // link can be swapped without a code change. Falls back to SUPPORT_URL, then ''.
+//
+// Moses, Esther and Elijah USED to be here at $2.99 each. They are earned now
+// (data/avatar — a streak, verses studied, races won), so their links are gone
+// on purpose: a Payment Link that still resolves is a way to buy something the
+// app no longer sells, and the shop and the catalog must not disagree about
+// what is for sale. Deactivate those three Payment Links in Stripe too — this
+// only stops the app from linking to them, not Stripe from honoring them.
 export const SKIN_BUY_URLS: Record<string, string> = {
   whale: import.meta.env.VITE_BUY_WHALE || 'https://buy.stripe.com/aFa4gz9mM0hD536aoFa3u01',
-  moses: import.meta.env.VITE_BUY_MOSES || 'https://buy.stripe.com/dRmcN5cyY7K5brubsJa3u02',
-  esther: import.meta.env.VITE_BUY_ESTHER || 'https://buy.stripe.com/dRmcN51Ukd4pbrugN3a3u04',
-  elijah: import.meta.env.VITE_BUY_ELIJAH || 'https://buy.stripe.com/9B63cvbuU1lH67absJa3u03',
 }
 
 export const skinBuyUrl = (id: string): string => SKIN_BUY_URLS[id] || SUPPORT_URL || ''

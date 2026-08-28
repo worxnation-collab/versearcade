@@ -29,7 +29,7 @@ fill in banking and tax (US W-9 plus any regions you sell in).
 ## 2. Create the products
 
 App Store Connect → your app → **Monetization → In-App Purchases** → **+**, type
-**Non-Consumable** for all five (they're permanent unlocks, not subscriptions).
+**Non-Consumable** for both (they're permanent unlocks, not subscriptions).
 
 The Product ID must match `APPLE_PRODUCT_IDS` in `src/lib/iap.ts` **exactly** — a
 typo means the product silently never loads and its tile stays hidden:
@@ -37,10 +37,19 @@ typo means the product silently never loads and its tile stays hidden:
 | Product ID | Reference name | Price | Replaces on web |
 |---|---|---|---|
 | `com.versearcade.app.pack_angels` | Angel Pack | $5.99 | `$5.99` pack |
-| `com.versearcade.app.skin_moses` | Moses skin | $2.99 | "From $2.99" |
-| `com.versearcade.app.skin_esther` | Esther skin | $2.99 | "From $2.99" |
-| `com.versearcade.app.skin_elijah` | Elijah skin | $2.99 | "From $2.99" |
 | `com.versearcade.app.patron_founding` | Founding Patron | $99.99 | "From $100" |
+
+**Withdrawn from sale.** `skin_moses`, `skin_esther` and `skin_elijah` were
+$2.99 products here. Moses, Esther and Elijah are **earned** now — a 21-day
+streak, 15 CPU races won, 150 verses studied — so the app no longer asks
+StoreKit for them and they are gone from `APPLE_PRODUCT_IDS`.
+
+If you already created them in App Store Connect, **remove them from sale
+rather than deleting them**, and leave them in the `SKU_BY_PRODUCT_ID` map in
+`supabase/functions/iap-fulfill/index.ts`. Both matter for the same reason:
+people bought these, and a deleted product plus a trimmed map is a past
+purchase that can no longer be restored on a reinstall. Selling stops; honoring
+does not.
 
 Two deliberate changes from the web catalog, both forced by Apple's pricing
 model:
@@ -79,7 +88,7 @@ Each product needs a screenshot and a review note before it can be submitted.
    Generate it at App Store Connect → **Users and Access → Integrations →
    In-App Purchase → +**, download the `.p8` (once only), and upload it to
    RevenueCat with its Key ID and Issuer ID.
-3. Import the five products above.
+3. Import the two products above.
 4. Copy the **public iOS SDK key** (`appl_...`) *and* a **secret API key**
    (RevenueCat → Project settings → API keys). They go to different places and
    must not be swapped.
@@ -145,7 +154,7 @@ of the App Store, install a TestFlight build, buy, and check:
 ## 6. Submit
 
 The **first** in-app purchase must be submitted together with an app version —
-attach all five products to the build in App Store Connect. Later products can
+attach both products to the build in App Store Connect. Later products can
 be submitted on their own.
 
 ---

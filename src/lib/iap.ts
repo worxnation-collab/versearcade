@@ -42,11 +42,14 @@ export const REVENUECAT_IOS_KEY = import.meta.env.VITE_REVENUECAT_IOS_KEY || ''
  */
 export const APPLE_PRODUCT_IDS: Record<string, string> = {
   pack_angels: 'com.versearcade.app.pack_angels',
-  moses: 'com.versearcade.app.skin_moses',
-  esther: 'com.versearcade.app.skin_esther',
-  elijah: 'com.versearcade.app.skin_elijah',
   whale: 'com.versearcade.app.patron_founding',
 }
+// skin_moses / skin_esther / skin_elijah were here. Those three are earned now
+// (data/avatar), so the app must not ask StoreKit for them: a product that
+// still loads is a tile with a price on something that is no longer for sale.
+// Anyone who bought one keeps it — entitlements are read from the account, not
+// from this map — and their App Store Connect products should be removed from
+// sale rather than deleted, so past purchases still restore.
 
 const SKU_BY_PRODUCT_ID: Record<string, string> = Object.fromEntries(
   Object.entries(APPLE_PRODUCT_IDS).map(([sku, pid]) => [pid, sku]),

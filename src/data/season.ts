@@ -41,6 +41,7 @@ import {
   type TitleDef,
   type Waystation,
 } from './catalog'
+import { allSkins } from './avatar'
 
 // The shapes moved to data/catalog.ts so the sanitisers there can see them
 // without importing this file's content (which would be a cycle). Re-exported
@@ -159,10 +160,15 @@ export function rewardLabel(id: string): { name: string; kindLabel: string; glyp
     // Reactive skins carry their state in the id (skin_ruth_2), so try the
     // whole id first and then the base — a catalog only lists the base skin.
     const bare = id.slice(5)
-    const fromCatalog =
-      catalogOverlay().skins.find((s) => s.id === bare) ??
-      catalogOverlay().skins.find((s) => s.id === bare.replace(/_\d+$/, ''))
-    if (fromCatalog) return { name: fromCatalog.name, kindLabel: 'Skin', glyph: '🌾' }
+    // The MERGED skin catalog, not just the overlay. Consulting only the
+    // overlay meant a bundled skin granted by a catalog road revealed as its
+    // raw id — waystation 20 of the Advent road announced "gabriel" rather than
+    // "Gabriel", because Gabriel lives in FULL_SKINS and the road that hands
+    // him out lives in a catalog. Found by publishing the road and reading the
+    // labels back, which is the only place it would ever have shown up.
+    const named = allSkins().find((s) => s.id === bare) ??
+      allSkins().find((s) => s.id === bare.replace(/_\d+$/, ''))
+    if (named) return { name: named.name, kindLabel: 'Skin', glyph: '🌾' }
     // Reactive-skin states get their own line so the toast can say what changed.
     const SKIN_NAMES: Record<string, string> = {
       skin_ruth_1: 'Ruth the Gleaner',

@@ -1,0 +1,393 @@
+{
+  "version": 1,
+  "roads": [
+    {
+      "id": "advent",
+      "name": "The Advent Road",
+      "blurb": "Four weeks of waiting. The road to Bethlehem, walked a day at a time.",
+      "start": "2026-11-29T00:00:00Z",
+      "end": "2026-12-26T00:00:00Z",
+      "length": 24,
+      "scene": "advent",
+      "memento": "memento_advent",
+      "waystations": [
+        {
+          "n": 1,
+          "a": [
+            {
+              "id": "freeze",
+              "qty": 1
+            }
+          ],
+          "b": [
+            {
+              "id": "skin_shepherd_night"
+            }
+          ]
+        },
+        {
+          "n": 2,
+          "a": [
+            {
+              "id": "confetti_snow"
+            }
+          ],
+          "b": [
+            {
+              "id": "title_starlit"
+            }
+          ]
+        },
+        {
+          "n": 4,
+          "a": [
+            {
+              "id": "boost",
+              "qty": 1
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 6,
+          "a": [
+            {
+              "id": "chest_evergreen"
+            }
+          ],
+          "b": [
+            {
+              "id": "skin_mary"
+            }
+          ]
+        },
+        {
+          "n": 8,
+          "a": [
+            {
+              "id": "freeze",
+              "qty": 1
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 10,
+          "a": [
+            {
+              "id": "flame_candlelight"
+            }
+          ],
+          "b": [
+            {
+              "id": "boost",
+              "qty": 1
+            }
+          ],
+          "milestone": true
+        },
+        {
+          "n": 12,
+          "a": [
+            {
+              "id": "title_watchful"
+            }
+          ],
+          "b": [
+            {
+              "id": "skin_joseph"
+            }
+          ]
+        },
+        {
+          "n": 14,
+          "a": [
+            {
+              "id": "confetti_starlight"
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 16,
+          "a": [
+            {
+              "id": "boost",
+              "qty": 2
+            }
+          ],
+          "b": [
+            {
+              "id": "skin_bethlehem_star_bearer"
+            }
+          ]
+        },
+        {
+          "n": 18,
+          "a": [
+            {
+              "id": "freeze",
+              "qty": 2
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 20,
+          "a": [
+            {
+              "id": "title_bearer"
+            }
+          ],
+          "b": [
+            {
+              "id": "skin_gabriel"
+            }
+          ],
+          "milestone": true
+        },
+        {
+          "n": 22,
+          "a": [
+            {
+              "id": "boost",
+              "qty": 3
+            }
+          ],
+          "b": []
+        },
+        {
+          "n": 24,
+          "a": [
+            {
+              "id": "flame_starlight"
+            },
+            {
+              "id": "memento_advent"
+            }
+          ],
+          "b": [
+            {
+              "id": "skin_magus"
+            }
+          ],
+          "milestone": true
+        }
+      ],
+      "daily": [
+        {
+          "key": "adv_play",
+          "verb": "play_daily",
+          "goal": 1,
+          "text": "Play today’s drop"
+        },
+        {
+          "key": "adv_correct",
+          "verb": "answer_correct",
+          "goal": 10,
+          "text": "Answer 10 questions correctly"
+        },
+        {
+          "key": "adv_read",
+          "verb": "read_chapters",
+          "goal": 1,
+          "text": "Read a chapter in your Bible"
+        },
+        {
+          "key": "adv_chest",
+          "verb": "open_chest",
+          "goal": 1,
+          "text": "Open the Daily Chest"
+        },
+        {
+          "key": "adv_study",
+          "verb": "study_runs",
+          "goal": 2,
+          "text": "Finish 2 study runs"
+        },
+        {
+          "key": "adv_perfect",
+          "verb": "perfect_run",
+          "goal": 1,
+          "text": "Finish a run with no misses"
+        },
+        {
+          "key": "adv_save",
+          "verb": "save_verses",
+          "goal": 1,
+          "text": "Keep a verse"
+        },
+        {
+          "key": "adv_focus",
+          "verb": "focus_drills",
+          "goal": 1,
+          "text": "Finish a focus drill"
+        },
+        {
+          "key": "adv_combo",
+          "verb": "combo",
+          "goal": 5,
+          "text": "Hit a 5× combo"
+        },
+        {
+          "key": "adv_cpu",
+          "verb": "cpu_wins",
+          "goal": 1,
+          "text": "Beat the CPU once"
+        }
+      ],
+      "weekly": [
+        {
+          "key": "advw_correct",
+          "verb": "answer_correct",
+          "goal": 60,
+          "text": "Answer 60 questions correctly"
+        },
+        {
+          "key": "advw_read",
+          "verb": "read_chapters",
+          "goal": 7,
+          "text": "Read 7 chapters"
+        },
+        {
+          "key": "advw_play",
+          "verb": "play_daily",
+          "goal": 5,
+          "text": "Play the drop on 5 days"
+        },
+        {
+          "key": "advw_study",
+          "verb": "study_runs",
+          "goal": 10,
+          "text": "Finish 10 study runs"
+        },
+        {
+          "key": "advw_share",
+          "verb": "share_daily",
+          "goal": 2,
+          "text": "Share the daily verse twice"
+        },
+        {
+          "key": "advw_focus",
+          "verb": "focus_drills",
+          "goal": 5,
+          "text": "Finish 5 focus drills"
+        },
+        {
+          "key": "advw_any",
+          "verb": "play_any",
+          "goal": 12,
+          "text": "Finish 12 runs in any mode"
+        },
+        {
+          "key": "advw_perfect",
+          "verb": "perfect_run",
+          "goal": 3,
+          "text": "Finish 3 runs with no misses"
+        },
+        {
+          "key": "advw_cpu",
+          "verb": "cpu_wins",
+          "goal": 3,
+          "text": "Beat the CPU 3 times"
+        }
+      ]
+    }
+  ],
+  "titles": [
+    {
+      "id": "title_starlit",
+      "text": "the Starlit"
+    },
+    {
+      "id": "title_watchful",
+      "text": "the Watchful"
+    },
+    {
+      "id": "title_bearer",
+      "text": "Light-Bearer"
+    }
+  ],
+  "confetti": [
+    {
+      "id": "confetti_snow",
+      "name": "Snowfall",
+      "colors": [
+        "#ffffff",
+        "#dcecff",
+        "#a9c9f0",
+        "#7fa8d8"
+      ]
+    },
+    {
+      "id": "confetti_starlight",
+      "name": "Starlight",
+      "colors": [
+        "#fff6d0",
+        "#ffd23f",
+        "#ffffff",
+        "#cbb26a"
+      ]
+    }
+  ],
+  "flames": [
+    {
+      "id": "flame_candlelight",
+      "name": "Candlelight",
+      "glyph": "🕯️",
+      "rgb": "255,214,150"
+    },
+    {
+      "id": "flame_starlight",
+      "name": "Bethlehem Star",
+      "glyph": "🌟",
+      "rgb": "255,240,190"
+    }
+  ],
+  "chests": [
+    {
+      "id": "chest_evergreen",
+      "name": "Evergreen",
+      "glyph": "🎄"
+    }
+  ],
+  "skins": [
+    {
+      "id": "gabriel",
+      "name": "Gabriel",
+      "source": "pass",
+      "blurb": "The announcing messenger — trumpet raised, “Do not be afraid.”"
+    },
+    {
+      "id": "mary",
+      "name": "Mary",
+      "source": "pass",
+      "blurb": "“Let it be to me according to your word.”"
+    },
+    {
+      "id": "joseph",
+      "name": "Joseph",
+      "source": "pass",
+      "blurb": "The carpenter who took the long road to Bethlehem."
+    },
+    {
+      "id": "shepherd_night",
+      "name": "The Night Shepherd",
+      "source": "pass",
+      "blurb": "Keeping watch over the flock by night."
+    },
+    {
+      "id": "magus",
+      "name": "The Magus",
+      "source": "pass",
+      "blurb": "One of the wise men — myrrh carried in both hands."
+    },
+    {
+      "id": "bethlehem_star_bearer",
+      "name": "The Star-Follower",
+      "source": "pass",
+      "blurb": "Lantern up, eyes on the light that moved."
+    }
+  ],
+  "art": {}
+}

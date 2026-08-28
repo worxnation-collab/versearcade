@@ -18,6 +18,9 @@ export interface PlayerCardData {
   avatarBorder?: string
   avatarBadge?: string | null
   cardBackground?: string | null
+  /** Equipped pet id (data/pets.ts). Drawn by ProfileHero above the card, never
+   *  by the card itself — see the note on statsOnly. */
+  pet?: string | null
   xp: number
   level: number
   currentStreak: number
@@ -50,12 +53,14 @@ export function PlayerCard({
    * Drop the identity block — avatar, name, title, denomination, XP bar — and
    * keep only the six stats.
    *
-   * For your own profile, where ProfileHero already shows you at full size
-   * directly above: repeating the avatar and handle underneath it is the same
-   * person twice on one screen, and the numbers are the part the card is
-   * actually carrying there. Everywhere the card stands alone — the pop-up,
-   * anyone else's profile — it keeps its identity, because there it IS the
-   * identity.
+   * Used wherever ProfileHero is already showing the player at full size
+   * directly above — your own profile, and now the pop-up. Repeating the avatar
+   * and handle underneath a portrait is the same person twice on one screen,
+   * and the numbers are the part the card is actually carrying there. The
+   * denomination and title move up into the hero's caption rather than being
+   * dropped.
+   *
+   * The card still keeps its identity anywhere it stands genuinely alone.
    */
   statsOnly?: boolean
 }) {

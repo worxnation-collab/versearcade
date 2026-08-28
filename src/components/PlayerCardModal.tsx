@@ -11,6 +11,8 @@ import { useJuice } from '@/juice/useJuice'
 import { Button } from '@/components/Button'
 import { WashFeetButton } from '@/components/WashFeetButton'
 import { supabase } from '@/lib/supabase'
+import { ProfileHero } from '@/features/profile/ProfileHero'
+import { denominationColor, denominationName } from '@/data/denominations'
 import { RoomVisitSheet } from '@/features/room/RoomVisitSheet'
 import { GiveGiftSheet } from '@/features/gifts/GiveGiftSheet'
 
@@ -116,6 +118,7 @@ function CardSheet({ username, onClose }: { username: string; onClose: () => voi
         avatarBorder: me.avatarBorder,
         avatarBadge: me.avatarBadge,
         cardBackground: me.cardBackground,
+        pet: me.pet,
         xp: me.xp,
         level: me.level,
         currentStreak: me.currentStreak,
@@ -141,6 +144,10 @@ function CardSheet({ username, onClose }: { username: string; onClose: () => voi
         avatarBorder: (r.avatar_border as string) ?? 'default',
         avatarBadge: (r.avatar_badge as string | null) ?? null,
         cardBackground: (r.card_background as string | null) ?? null,
+        // Added to get_player_card by 0071. An older server simply omits it and
+        // the hero draws a figure with no companion — the usual fail-closed
+        // shape, not a crash.
+        pet: (r.pet as string | null) ?? null,
         xp: Number(r.xp ?? 0),
         level: Number(r.level ?? 1),
         currentStreak: Number(r.current_streak ?? 0),
@@ -167,7 +174,18 @@ function CardSheet({ username, onClose }: { username: string; onClose: () => voi
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 10, scale: 0.97 }}
         transition={{ type: 'spring', stiffness: 300, damping: 26 }}
-        style={{ width: '100%', maxWidth: 420 }}
+        // The card grew a portrait on top of it, so on a short phone the whole
+        // dialog — hero, six stats, three rows of buttons — can be taller than
+        // the viewport. It scrolls inside itself rather than being clipped by
+        // the centring grid, which silently cut the buttons off the bottom
+        // before this. `overscrollBehavior` keeps the page behind it still.
+        style={{
+          width: '100%',
+          maxWidth: 420,
+          maxHeight: 'calc(100dvh - 36px)',
+          overflowY: 'auto',
+          overscrollBehavior: 'contain',
+        }}
       >
         {err ? (
           <div className="card" style={{ textAlign: 'center' }}>
@@ -179,7 +197,54 @@ function CardSheet({ username, onClose }: { username: string; onClose: () => voi
             <div className="floaty" style={{ fontSize: 34 }}>🃏</div>
           </div>
         ) : (
-          <PlayerCard p={data} compact />
+          <>
+            {/* The look, at the size it was drawn for, with their companion —
+                the same ProfileHero /you opens with, so a player's card and
+                their own profile can't show two different figures.
+
+                It goes ABOVE the numbers and the card drops its identity block
+                (statsOnly), which is the rule the profile already follows: a
+                portrait and a scoreboard on one screen, not an avatar chip
+                twice. The faction moves up into the hero's caption rather than
+                being lost with the identity block.
+
+                140 rather than /you's 190: this sits over a stats card and
+                three rows of buttons on a 320px phone. */}
+            <div style={{ marginBottom: 10 }}>
+              <ProfileHero
+                spec={data.avatarCharacter}
+                emoji={data.avatarEmoji}
+                username={data.username}
+                pet={data.pet}
+                cardBackground={data.cardBackground}
+                title={data.title}
+                size={140}
+                // The faction comes FIRST, for anyone: it left the card with the
+                // identity block, and it is the one piece of identity the
+                // pop-up would otherwise drop entirely. "This is you" is the
+                // fallback on your own card when you have no faction yet.
+                caption={
+                  data.denomination ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <span
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: '50%',
+                          background: denominationColor(data.denomination),
+                          boxShadow: `0 0 7px ${denominationColor(data.denomination)}`,
+                        }}
+                      />
+                      {denominationName(data.denomination)}
+                    </span>
+                  ) : isMe ? (
+                    'This is you'
+                  ) : null
+                }
+              />
+            </div>
+            <PlayerCard p={data} compact statsOnly />
+          </>
         )}
 
         {/* Act on the player you're looking at, rather than having to go find

@@ -22,7 +22,7 @@ the world opens its section rather than sitting behind a row describing it.
 ## What it is
 
 A small chamber, drawn in the app's flat-fill SVG idiom, at the top of `/you`
-directly under `ProfileHero`. Twelve anchors across six mounts. Sixteen
+directly under `ProfileHero`. Twelve anchors across six mounts. Eighteen
 furnishings, each earned from a lifetime number that only ever goes up.
 
 **The room grows with your own level**, five tiers, the same earned-not-bought
@@ -44,7 +44,7 @@ split as church levels and keep halls:
 - **Nothing is ever lost.** Placement goes through the same planner as the keep
   (`data/placement.ts`): an empty spot takes the piece, the same piece merges a
   tier finer, anything else trades places. There is no overwrite path.
-- **Ownership is derived, never granted.** Sixteen furnishings against six
+- **Ownership is derived, never granted.** Eighteen furnishings against six
   lifetime numbers the app already keeps (level, longest streak, plays, verses
   studied, chapters read, collectibles stamped). No grant table, nothing to
   revoke, and a bad week can't take a chair away.

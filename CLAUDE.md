@@ -453,6 +453,9 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
+The latest are `0069` (the Upper Room) and `0070` (gifts) — both must be applied
+before the client that uses them merges.
+
 Numbering has scars: `0034` is used twice (`promo_codes`, `skin_purchases`), and
 `0038_focus_practice_xp.sql` is a re-add of a file that shipped as `0036` and was
 lost when PR #58 landed from a stale branch. Take the next free number and write
@@ -883,8 +886,8 @@ into.
 
 ## The little worlds go where the section lives
 
-Four places in this app are places, not screens — the Harvest Road, the keep's
-hall, the churchyard, and you. Each one **opens its section**, at the top or
+Five places in this app are places, not screens — the Harvest Road, the keep's
+hall, the churchyard, your own Upper Room, and you. Each one **opens its section**, at the top or
 directly under its primary action, rather than sitting behind a row that
 describes it:
 
@@ -894,6 +897,7 @@ describes it:
 | The hall | under "Start a new battle", and in the sheet | `KeepScene` |
 | The churchyard | hero of `/church`, and on any church's page | `ChurchScene` |
 | You | top of `/you` | `ProfileHero` |
+| Your Upper Room | `/you`, under the card, and in the visit sheet | `RoomScene` |
 
 Two rules fall out of that:
 
@@ -928,6 +932,98 @@ A player with no faction gets the invitation instead of the hall: a room with
 nobody's colours in it is the one version of that world that says nothing. It
 offers non-denominational in one tap and scrolls to the full list, and it never
 appears again once a team is picked.
+
+## The Upper Room: the one place that is yours
+
+Every other place in this app belongs to a group — the hall to a faction, the
+churchyard to a congregation, the road to a season — so the whole decorating
+system was attached to a room shared with thousands of strangers and there was
+no private space at all. `/you` now opens one: a small chamber under the player
+card, eighteen furnishings, five tiers earned by your own level. Full design:
+`docs/UPPER-ROOM.md`.
+
+**The placement rules now live in one file, and that is the load-bearing part.**
+`planPlacement`, `planMove` and `planPick` were hardcoded against the keep's
+`ANCHORS`; they are now `data/placement.ts`, parameterised by a `Surface`
+(`{ anchors, mountOf }`), and `data/keep.ts` keeps every one of its exports as a
+thin wrapper — **no keep call site changed**. Copying them would have been the
+exact drift the `QuizRunner` rule exists to prevent: two rooms disagreeing about
+what a duplicate means is a bug nobody finds for months, because both halves look
+right on their own. The wire format (`room_reed_mat.2`) moved with them and is
+unchanged, so every keep row still reads as before.
+
+Three rules the room adds to the ones it inherits:
+
+- **A visitor can only look, by construction.** `room_json` (0069) returns
+  placements, an *architecture tier* instead of the owner's level, and **no
+  number at all** — a room you can rank is a scoreboard with a rug on it.
+  `RoomScene` takes no `editing` prop on the visit path, so a visited room is
+  inert because the scene was never handed the ability to change, not because a
+  handler decided to say no. And nothing records the visit: there is no visitor
+  log to build "12 people looked at your room" out of later, same rule as
+  `my_washings` being recipient-only.
+- **Ownership is derived from six lifetime numbers that only go up** (level,
+  longest streak, plays, verses studied, chapters read, stamps —
+  `lib/roomProgress.ts`, the `petProgress` shape). No grant table, nothing to
+  revoke, and **the screen showing the room has to `load()` the bible and
+  collection stores** or it quietly reports 0 and locks three earned pieces.
+- **Furnishings stay drawn SVG even once the room is painted.** `lib/postcard.ts`
+  serialises the scene into an `<img>` and an SVG loaded that way never fetches
+  external resources — a room made of `<image href>` exports blank. The chamber
+  may become a Nano Banana painting (`art/upper-room.json` → `room-1`…`room-5`,
+  wired through `GENERATED_ART` like every other tier ladder); the props may not.
+
+**Two scars from driving it, both invisible in the diff.** Tapping two shelf
+tiles inside one tick planned against the placements the *last render* saw, so
+both picked the same free anchor and the second overwrote the first — plan
+against `useRoom.getState()`, never the hook's snapshot (`KeepSheet` had the same
+latent bug on a fast double-tap and got the same fix). And the window and the
+alcove overlapped by 22 viewBox units and drew two arches in one place: three
+fixtures own three bands of the back wall (shelf 110..214, window 400..460,
+alcove 470..540) and they must not touch.
+
+## Giving, and the mailbox
+
+**A gift moves the ITEM and never the STAMP** (`gift_collectible`, 0070). That
+split is the whole safety argument: `user_unlocks` is the number
+`get_player_card` publishes as `cards` and it gates card backgrounds and room
+furnishings, so granting it would let a stranger inflate a number on your card.
+Nothing is created either — the relic already existed and can still only be
+donated once, so a gift changes *which* church banks the points, never how many
+there are. Ten a day, no message field, and online-only for the reason washing
+feet is: the gesture needs a second real account on the other end.
+
+**`/mail` exists mostly for the second thing it carries.** The content catalog
+can ship a whole road without a submission — and until now the road switched
+itself on in silence, the strip on the season tab quietly becoming a different
+strip. `NewsDef` + `activeNews()` (`data/catalog.ts`) is the announcement
+channel, published through `admin_publish_catalog` like the rest of the catalog,
+so it is operator text and not a moderation surface. It is still length-capped
+and sanitised per entry, because a pipeline that can push markup to every phone
+at once will eventually be asked to.
+
+The mailbox delivers gifts, buddy requests, washings received and news — and
+**nothing that is a comparison**. No "you're 4th", no digest of what your
+buddies scored, no count of anything belonging to somebody else. Opening it
+marks gifts read; the dot goes because you looked, not because you cleared a
+queue. It is a pill on your own card rather than a sixth tab, because five
+already have to clear a 320px phone.
+
+## The Journal, and saved looks
+
+`/journal` is the page that says what you have done — five features had milestone
+ladders and nothing collected them. It is **purely derived** (no table, no grant,
+nothing to migrate) and every rung is **a number you passed, never a place you
+hold**, which is the same sentence `data/washing.ts` is built on and the only
+reason an achievement screen can exist in an app with no losers. The one total it
+shows is rungs passed out of rungs that exist — your own ladder, never a
+percentile.
+
+Saved looks (`store/looks.ts`) are **device-local in both modes**, a deliberate
+break with the two-mode invariant of the same kind `store/music.ts` makes: a look
+is a shortcut for your fingers, not a possession. It grants nothing, and every
+piece it names is re-checked by the equip path, so a look naming a skin you no
+longer have degrades rather than fails.
 
 ## Shared choke points
 

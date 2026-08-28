@@ -9,6 +9,7 @@ import { useSeason } from '@/store/season'
 import { titleById } from '@/data/season'
 import { useJuice } from '@/juice/useJuice'
 import { Button } from '@/components/Button'
+import { WashFeetButton } from '@/components/WashFeetButton'
 import { supabase } from '@/lib/supabase'
 
 // Tap any avatar anywhere and their card pops up. A single provider owns the
@@ -48,6 +49,7 @@ function CardSheet({ username, onClose }: { username: string; onClose: () => voi
   const [data, setData] = useState<PlayerCardData | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [buddyMsg, setBuddyMsg] = useState<string | null>(null)
+  const [washCheer, setWashCheer] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
 
   // Someone else's card, and you have an account: you can act on it.
@@ -174,14 +176,30 @@ function CardSheet({ username, onClose }: { username: string; onClose: () => voi
         {/* Act on the player you're looking at, rather than having to go find
             them again on another screen. */}
         {data && canAct && (
-          <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: alreadyBuddy ? '1fr' : '1fr 1fr', gap: 10 }}>
-            {!alreadyBuddy && (
-              <Button variant="secondary" full onClick={addBuddy} disabled={sending || !!buddyMsg}>
-                {buddyMsg ? '✓ Sent' : sending ? '…' : '🤝 Add buddy'}
-              </Button>
+          <>
+            <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: alreadyBuddy ? '1fr' : '1fr 1fr', gap: 10 }}>
+              {!alreadyBuddy && (
+                <Button variant="secondary" full onClick={addBuddy} disabled={sending || !!buddyMsg}>
+                  {buddyMsg ? '✓ Sent' : sending ? '…' : '🤝 Add buddy'}
+                </Button>
+              )}
+              <Button variant="gold" full onClick={battle}>⚔️ Battle</Button>
+            </div>
+            {/* Every other way to act on a person here is a challenge. This is
+                the one that asks nothing back — and this card is the app's one
+                place where a single other player is on screen, so it belongs
+                here rather than on five separate rows. */}
+            <div style={{ marginTop: 10 }}>
+              <WashFeetButton
+                username={username}
+                size="wide"
+                onWashed={(m) => { if (m) { juice.celebrate(); setWashCheer(`${m.emoji} ${m.name}`) } }}
+              />
+            </div>
+            {washCheer && (
+              <p className="center" style={{ color: 'var(--gold)', fontSize: 13, marginTop: 6, fontWeight: 800 }}>{washCheer}</p>
             )}
-            <Button variant="gold" full onClick={battle}>⚔️ Battle</Button>
-          </div>
+          </>
         )}
         {buddyMsg && (
           <p className="center" style={{ color: 'var(--good)', fontSize: 13, marginTop: 8 }}>{buddyMsg}</p>

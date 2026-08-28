@@ -117,7 +117,7 @@ Three rules, and they're the whole design:
 **Verbs are the prepack, and they're why this works.** A quest names a verb;
 only `deltaFor` (`store/season.ts`) can score one. A catalog quest naming a verb
 this build lacks is DROPPED (`KNOWN_VERBS` + `sanitizeQuestDefs`) rather than
-shown as a bar nobody can fill. Twelve verbs currently have live emit sites and
+shown as a bar nobody can fill. Thirteen verbs currently have live emit sites and
 no bundled quest using them, on purpose — adding a verb is the one part of a
 season that still costs a release, so add them generously and early.
 `checkQuestVerbs()` asserts the two lists agree at import in dev, because
@@ -537,6 +537,51 @@ Three things to know before touching it:
   client sends `todayLocalDate()` and the server clamps it to ±1 day; that
   ±1 is the house pattern and it does mean a lying client can reach three
   buckets, which is bounded and buys nothing rankable.
+
+## Washing feet: the poke that costs the sender
+
+Every other way to act on a person in this app is a challenge. `wash_feet`
+(0068, `store/washing.ts`, `data/washing.ts`) is the one that asks nothing
+back: you tap a player's face anywhere in the app and kneel, they get a warm
+line on their own basin, and **you** get the point. It's the app's version of a
+poke, built the opposite way round — a poke costs nothing and asks for
+attention, this one spends one of your twelve and gives.
+
+**The 1 XP is the whole risk, and the design is about bounding it.** `xp` is
+the one number here that ranks people (0006), so the same rule the XP pets
+follow applies: the server counts the rows and pays the point, and the client
+never sends an amount.
+
+- **One XP.** A daily drop pays 30-60, so a full day of washing is a quarter of
+  one run.
+- **Twelve a day — one for each disciple.** The cap IS the theme, which is why
+  it can be that generous, and it's enforced in SQL, not in the button.
+- **Once per person per day**, held by the primary key. Reaching twelve means
+  finding twelve different real accounts, which is the actual limit on this.
+- The client sends `todayLocalDate()` and the server clamps ±1, the house
+  pattern — a lying client can reach three buckets and 36 XP, which is bounded
+  and buys nothing rankable.
+
+**Nothing here is ever a comparison, and that's load-bearing.** The count of
+washings you've RECEIVED is returned by `my_washings` to the recipient only:
+`get_player_card` is untouched, no board reads the table, and there is
+deliberately no RPC that asks how many someone *else* has received. A count of
+who likes you is the exact feature this app doesn't have. The milestone ladder
+(`WASH_MILESTONES`, 1 → 500) is numbers you passed, never a place you hold,
+and there is no rung for being washed — receiving isn't an achievement.
+
+**Online-only, inherited rather than chosen** — the same break with the two-mode
+invariant `store/churchYard.ts` makes. The gesture needs a second real account
+on the other end of it; a local basin would be a person washing their own feet.
+The store header names the shape to use if that ever changes, and says why it
+shouldn't: offline, the XP would be client-granted, which is the one thing this
+feature's safety argument rests on not happening.
+
+`WashFeetButton` is the single control (`pill` in a row, `wide` on a card), so
+the rules can't drift between the player card, the buddy rows and the basin —
+the same choke-point habit as `QuizRunner`. A road can score the gesture through
+the prepacked `wash_feet` verb; no bundled quest uses it yet, which is what
+makes "wash 25 players' feet" shippable as content rather than a release.
 
 ## The soundtrack: synthesized, area-based, unmissable
 

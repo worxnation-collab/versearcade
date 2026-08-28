@@ -7,6 +7,7 @@ import { Avatar } from '@/components/Avatar'
 import { useAuth } from '@/store/auth'
 import { PushNudge } from '@/components/PushNudge'
 import { useBuddies, type BuddyCard } from '@/store/buddies'
+import { WashFeetButton } from '@/components/WashFeetButton'
 import { useJuice } from '@/juice/useJuice'
 
 // Bible Buddies — a personal friends layer. Add someone by @username (a "be my
@@ -187,6 +188,8 @@ function BuddyRow({ u, onBattle, onRemove }: { u: BuddyCard; onBattle: () => voi
           {u.official ? 'Verse Arcade · say hi!' : <>Level {u.level} · 🔥 {u.current_streak}</>}
         </div>
       </div>
+      {/* The official account has no feet to wash — it never plays. */}
+      {!u.official && <WashFeetButton username={u.username} />}
       <button className="pill" onClick={onBattle}
         style={{ fontWeight: 800, fontSize: 13, background: 'var(--gold)', color: '#241f0a', border: 'none' }}>⚔️ Battle</button>
       {/* Official account is always everyone's buddy — no remove control. */}

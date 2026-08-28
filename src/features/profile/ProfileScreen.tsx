@@ -14,7 +14,9 @@ import { CollectionSection } from '@/features/collection/CollectionScreen'
 import { InventorySection } from '@/features/collection/InventorySection'
 import { useInventory } from '@/store/inventory'
 import { BuddiesSection } from '@/features/buddies/BuddiesScreen'
+import { BasinSection } from '@/features/washing/BasinSection'
 import { useBuddies } from '@/store/buddies'
+import { useWashing } from '@/store/washing'
 import { useSeason } from '@/store/season'
 import { titleById } from '@/data/season'
 import { CustomizeSection } from './CustomizeSection'
@@ -56,6 +58,14 @@ export default function ProfileScreen() {
   useEffect(() => {
     if (mode === 'online') void loadBuddies()
   }, [mode, loadBuddies])
+  // Same reason the buddy count is loaded out here: a folded section that
+  // reports nothing is a row nobody opens. The basin's meta is the one number
+  // this feature has, and it's yours alone.
+  const washLifetime = useWashing((st) => st.lifetime)
+  const loadWashing = useWashing((st) => st.load)
+  useEffect(() => {
+    if (mode === 'online') void loadWashing()
+  }, [mode, loadWashing])
   const owned = useCollection((s) => s.owned)
   const loadCollection = useCollection((s) => s.load)
   useEffect(() => {
@@ -325,6 +335,16 @@ export default function ProfileScreen() {
         defaultOpen={buddyRequests > 0}
       >
         <BuddiesSection />
+      </Collapsible>
+
+      {/* The one social gesture in the app that asks nothing back. Sits under
+          Buddies because it's the same people, one row down. */}
+      <Collapsible
+        icon="🫗"
+        title="The Basin"
+        meta={washLifetime > 0 ? `${washLifetime} washed` : 'wash a friend’s feet'}
+      >
+        <BasinSection />
       </Collapsible>
 
       {/* Account */}

@@ -14,9 +14,9 @@
 // to the device via the auth store.
 
 import { catalogArtUrl, catalogOverlay, mergeById, type CatalogSkin } from './catalog'
-import type { ArmorSlot, AvatarSpec, ItemSlot } from '@/types'
+import type { ArmorSlot, AvatarSpec, Figure, ItemSlot } from '@/types'
 
-export type { ArmorSlot, AvatarSpec, ItemSlot }
+export type { ArmorSlot, AvatarSpec, Figure, ItemSlot }
 
 // ── Wearable items (Daily Chest drops) ────────────────────────────────────────
 // Free, collected by playing. One item per slot; render lives in Character.
@@ -92,6 +92,22 @@ export interface ArmorPieceDef {
   access: Access
 }
 
+// ── The Armor of God, parked ────────────────────────────────────────────────
+// The six pieces are drawn as flat gold overlays on the base figure, and next
+// to the character the onboarding picker now builds they read as a costume
+// stuck on top of a person rather than as armor. Until there's art that
+// actually fits, the whole thing is off: this ONE flag hides the builder grid
+// (CustomizeSection) and stops Character drawing the pieces.
+//
+// Nothing is destroyed. `spec.armor` is still stored, still round-trips through
+// the profile, and flipping this back to true brings every equipped piece back
+// exactly as it was. The definitions below stay for the same reason.
+//
+// When it comes back, the likely shape is a full-look skin (the way Baldwin and
+// Michael work) rather than six separate overlays — one earned "Armor of God"
+// look, drawn as one figure, instead of gold plates layered over a robe.
+export const ARMOR_ENABLED = false
+
 // The six pieces of the Armor of God (Ephesians 6:14–17) — a natural collectible
 // set. Ordered head-to-toe for the builder grid.
 export const ARMOR: ArmorPieceDef[] = [
@@ -113,12 +129,44 @@ export interface Swatch {
   access?: Access
 }
 
+// Six tones, evenly spaced rather than "a few light ones and a dark one" — the
+// gap between amber and umber used to be twice any other step, which made the
+// darker half of the row read as an afterthought.
 export const SKINS: Swatch[] = [
   { key: 'porcelain', name: 'Porcelain', hex: '#F0C9A8' },
   { key: 'sand', name: 'Sand', hex: '#E0B48C' },
   { key: 'amber', name: 'Amber', hex: '#C68A5E' },
+  { key: 'bronze', name: 'Bronze', hex: '#A66E45' },
   { key: 'umber', name: 'Umber', hex: '#8A5A38' },
   { key: 'ebony', name: 'Ebony', hex: '#5A3A24' },
+]
+
+// Hair — all free, all six the same cut. Identity is never paywalled and never
+// a difficulty setting: what changes here is colour, never how much character
+// you get. Values are picked to separate against every skin tone above (the
+// lightest hair is darker than the lightest skin, so a blonde on porcelain
+// still reads as hair rather than as more forehead).
+export const HAIRS: Swatch[] = [
+  { key: 'jet', name: 'Jet', hex: '#241C1A' },
+  { key: 'espresso', name: 'Espresso', hex: '#3E2A1E' },
+  { key: 'chestnut', name: 'Chestnut', hex: '#6B4327' },
+  { key: 'auburn', name: 'Auburn', hex: '#8C4A2B' },
+  { key: 'honey', name: 'Honey', hex: '#B4823C' },
+  { key: 'ash', name: 'Ash', hex: '#9A958C' },
+]
+
+// Male / female, and that is the entire axis. Both figures are the SAME
+// character — same head, same arms, same legs, same palette — differing only in
+// the robe's hem and the length of the hair, so switching reads as "that's me"
+// rather than as picking a different avatar.
+export interface FigureDef {
+  key: Figure
+  name: string
+}
+
+export const FIGURES: FigureDef[] = [
+  { key: 'masc', name: 'Male' },
+  { key: 'fem', name: 'Female' },
 ]
 
 // Robe / tunic colors — base ones free, one Studio color to show the model.
@@ -129,14 +177,24 @@ export const ROBES: Swatch[] = [
   { key: 'crimson', name: 'Crimson Royal', hex: '#9A3B3B', access: { kind: 'studio' } },
 ]
 
+// The starter look. No armor: the pieces are parked (see ARMOR_ENABLED), and a
+// character somebody picked in onboarding shouldn't arrive already wearing
+// something they didn't choose.
 export const DEFAULT_AVATAR: AvatarSpec = {
   skin: 'sand',
   robe: 'linen',
-  armor: { breastplate: true }, // everyone starts with the free breastplate
+  hair: 'espresso',
+  figure: 'masc',
+  armor: {},
 }
 
 export const skinHex = (key: string): string => (SKINS.find((s) => s.key === key) ?? SKINS[1]).hex
 export const robeHex = (key: string): string => (ROBES.find((r) => r.key === key) ?? ROBES[0]).hex
+/** Falls back to Espresso, so a spec stored before hair existed still gets hair
+ *  rather than a bald head. */
+export const hairHex = (key?: string | null): string =>
+  (HAIRS.find((h) => h.key === key) ?? HAIRS[1]).hex
+export const figureOf = (spec: AvatarSpec): Figure => (spec.figure === 'fem' ? 'fem' : 'masc')
 
 // Prototype flag: Studio pieces are treated as OWNED so the full armored look can
 // be previewed without a purchase flow. Flip to false once IAP/entitlements land
@@ -165,13 +223,13 @@ export function accessLabel(access: Access | undefined): AccessLabel {
 // existing (emoji-only) players to build a character for the first time.
 export function isDefaultAvatar(spec?: AvatarSpec | null): boolean {
   if (!spec) return true
-  const equipped = (Object.keys(spec.armor) as (keyof typeof spec.armor)[]).filter((k) => spec.armor[k])
   return (
     !spec.regalia &&
+    !spec.skinId &&
     spec.skin === DEFAULT_AVATAR.skin &&
     spec.robe === DEFAULT_AVATAR.robe &&
-    equipped.length === 1 &&
-    equipped[0] === 'breastplate'
+    (spec.hair ?? DEFAULT_AVATAR.hair) === DEFAULT_AVATAR.hair &&
+    figureOf(spec) === DEFAULT_AVATAR.figure
   )
 }
 

@@ -1,0 +1,578 @@
+[
+  {
+    "id": "starter_masc_sand_espresso",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_sand.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — reproduce it faithfully: identical pose standing square to the viewer, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical gentle friendly face with simple painted features, identical warm light tan skin, identical dark brown hair in a short practical cut, full figure with feet at the bottom edge of the frame and the whole figure inside the frame. Warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left, colours bright enough to read at small size."
+  },
+  {
+    "id": "starter_masc_porcelain_espresso",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_sand_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical dark brown hair in the same short practical cut, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the skin is now a fair light peach. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_amber_espresso",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_sand_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical dark brown hair in the same short practical cut, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the skin is now a medium golden-brown. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_bronze_espresso",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_sand_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical dark brown hair in the same short practical cut, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the skin is now a warm medium brown. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_umber_espresso",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_sand_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical dark brown hair in the same short practical cut, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the skin is now a rich deep brown. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_ebony_espresso",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_sand_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical dark brown hair in the same short practical cut, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the skin is now a deep dark brown. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_porcelain_jet",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_porcelain_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical fair light peach skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now black, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_porcelain_chestnut",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_porcelain_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical fair light peach skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now medium warm chestnut brown, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_porcelain_auburn",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_porcelain_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical fair light peach skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now reddish auburn, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_porcelain_honey",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_porcelain_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical fair light peach skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now warm golden honey blonde, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_porcelain_ash",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_porcelain_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical fair light peach skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now soft silver-grey, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_sand_jet",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_sand_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical warm light tan skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now black, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_sand_chestnut",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_sand_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical warm light tan skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now medium warm chestnut brown, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_sand_auburn",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_sand_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical warm light tan skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now reddish auburn, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_sand_honey",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_sand_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical warm light tan skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now warm golden honey blonde, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_sand_ash",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_sand_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical warm light tan skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now soft silver-grey, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_amber_jet",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_amber_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical medium golden-brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now black, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_amber_chestnut",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_amber_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical medium golden-brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now medium warm chestnut brown, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_amber_auburn",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_amber_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical medium golden-brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now reddish auburn, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_amber_honey",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_amber_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical medium golden-brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now warm golden honey blonde, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_amber_ash",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_amber_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical medium golden-brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now soft silver-grey, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_bronze_jet",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_bronze_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical warm medium brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now black, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_bronze_chestnut",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_bronze_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical warm medium brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now medium warm chestnut brown, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_bronze_auburn",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_bronze_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical warm medium brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now reddish auburn, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_bronze_honey",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_bronze_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical warm medium brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now warm golden honey blonde, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_bronze_ash",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_bronze_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical warm medium brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now soft silver-grey, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_umber_jet",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_umber_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical rich deep brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now black, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_umber_chestnut",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_umber_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical rich deep brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now medium warm chestnut brown, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_umber_auburn",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_umber_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical rich deep brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now reddish auburn, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_umber_honey",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_umber_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical rich deep brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now warm golden honey blonde, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_umber_ash",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_umber_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical rich deep brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now soft silver-grey, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_ebony_jet",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_ebony_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical deep dark brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now black, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_ebony_chestnut",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_ebony_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical deep dark brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now medium warm chestnut brown, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_ebony_auburn",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_ebony_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical deep dark brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now reddish auburn, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_ebony_honey",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_ebony_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical deep dark brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now warm golden honey blonde, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_ebony_ash",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_masc_ebony_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, identical deep dark brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now soft silver-grey, in the same short practical cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_sand_espresso",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_sand.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — reproduce it faithfully: identical pose standing square to the viewer, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical gentle friendly face with simple painted features, identical warm light tan skin, identical dark brown hair in a simple bob to the jaw, full figure with feet at the bottom edge of the frame and the whole figure inside the frame. Warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left, colours bright enough to read at small size."
+  },
+  {
+    "id": "starter_fem_porcelain_espresso",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_sand_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical dark brown hair in the same simple bob to the jaw, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the skin is now a fair light peach. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_amber_espresso",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_sand_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical dark brown hair in the same simple bob to the jaw, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the skin is now a medium golden-brown. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_bronze_espresso",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_sand_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical dark brown hair in the same simple bob to the jaw, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the skin is now a warm medium brown. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_umber_espresso",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_sand_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical dark brown hair in the same simple bob to the jaw, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the skin is now a rich deep brown. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_ebony_espresso",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_sand_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical dark brown hair in the same simple bob to the jaw, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the skin is now a deep dark brown. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_porcelain_jet",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_porcelain_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical fair light peach skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now black, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_porcelain_chestnut",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_porcelain_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical fair light peach skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now medium warm chestnut brown, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_porcelain_auburn",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_porcelain_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical fair light peach skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now reddish auburn, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_porcelain_honey",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_porcelain_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical fair light peach skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now warm golden honey blonde, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_porcelain_ash",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_porcelain_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical fair light peach skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now soft silver-grey, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_sand_jet",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_sand_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical warm light tan skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now black, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_sand_chestnut",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_sand_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical warm light tan skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now medium warm chestnut brown, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_sand_auburn",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_sand_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical warm light tan skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now reddish auburn, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_sand_honey",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_sand_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical warm light tan skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now warm golden honey blonde, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_sand_ash",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_sand_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical warm light tan skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now soft silver-grey, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_amber_jet",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_amber_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical medium golden-brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now black, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_amber_chestnut",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_amber_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical medium golden-brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now medium warm chestnut brown, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_amber_auburn",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_amber_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical medium golden-brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now reddish auburn, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_amber_honey",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_amber_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical medium golden-brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now warm golden honey blonde, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_amber_ash",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_amber_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical medium golden-brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now soft silver-grey, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_bronze_jet",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_bronze_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical warm medium brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now black, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_bronze_chestnut",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_bronze_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical warm medium brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now medium warm chestnut brown, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_bronze_auburn",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_bronze_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical warm medium brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now reddish auburn, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_bronze_honey",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_bronze_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical warm medium brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now warm golden honey blonde, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_bronze_ash",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_bronze_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical warm medium brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now soft silver-grey, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_umber_jet",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_umber_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical rich deep brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now black, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_umber_chestnut",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_umber_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical rich deep brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now medium warm chestnut brown, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_umber_auburn",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_umber_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical rich deep brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now reddish auburn, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_umber_honey",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_umber_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical rich deep brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now warm golden honey blonde, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_umber_ash",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_umber_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical rich deep brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now soft silver-grey, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_ebony_jet",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_ebony_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical deep dark brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now black, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_ebony_chestnut",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_ebony_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical deep dark brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now medium warm chestnut brown, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_ebony_auburn",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_ebony_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical deep dark brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now reddish auburn, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_ebony_honey",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_ebony_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical deep dark brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now warm golden honey blonde, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_ebony_ash",
+    "kind": "skin",
+    "refs": [
+      "public/skins/starter_fem_ebony_espresso.png"
+    ],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the reference image — identical pose, identical a simple undyed pale linen robe falling to the shin with a plain rope belt, bare forearms, and simple leather sandals — the sandals must be visible on both feet, NOT barefoot, identical deep dark brown skin, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the hair is now soft silver-grey, in the same simple bob to the jaw. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  }
+]

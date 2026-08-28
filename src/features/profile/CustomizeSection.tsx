@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Avatar } from '@/components/Avatar'
+import { CharacterPicker } from '@/components/CharacterPicker'
 import { Button } from '@/components/Button'
 import { SUPPORT_URL, skinBuyUrl } from '@/lib/config'
 import { cardBgVisible, displayPrice, skinVisible, storefrontEnabled } from '@/lib/commerce'
@@ -22,13 +23,8 @@ import { collectibleByKey } from '@/data/collectibles'
 import { CARD_BACKGROUNDS, DEFAULT_CARD_BG, cardBgStyle, cardArtProps, cardBgAccentColor, cardBgUnlocked } from '@/data/playerCards'
 import { CardArt } from '@/data/cardArt'
 import {
-  ARMOR,
-  SKINS,
-  ROBES,
   DEFAULT_AVATAR,
   distinctSharedDays,
-  accessOwned,
-  accessLabel,
   ITEMS,
   allSkins,
   BUNDLES,
@@ -41,14 +37,13 @@ import {
   equippedSkinId,
   baseSkinId,
   passSkinEquipId,
-  type ArmorPieceDef,
   type BundleDef,
   type ItemDef,
   type SkinDef,
-  type Swatch,
   itemArt,
 } from '@/data/avatar'
 import { BundleSheet } from './BundleSheet'
+import type { AvatarSpec } from '@/types'
 
 // "Customize" — streak-unlocked avatar borders + badges. Unlock eligibility is
 // based on the player's LONGEST streak ever, so a missed day never takes a
@@ -128,7 +123,6 @@ export function CustomizeSection() {
   const equippedBorder = profile.avatarBorder || 'default'
   const equippedBadge = profile.avatarBadge ?? 'none'
   const spec = profile.avatarCharacter ?? DEFAULT_AVATAR
-  const equippedPieces = ARMOR.filter((a) => spec.armor[a.slot]).length
 
   const equippedBg = profile.cardBackground ?? DEFAULT_CARD_BG
   // Two of the pet requirements live in other stores (verses studied, CPU races
@@ -210,35 +204,6 @@ export function CustomizeSection() {
     if (!res.ok) setErr(res.error ?? 'That’s not unlocked yet')
   }
 
-  const toggleArmor = (def: ArmorPieceDef) => {
-    if (!accessOwned(def.access, longest, profile.isAdmin)) {
-      setErr(`${def.name} unlocks with a ${accessLabel(def.access).text.toLowerCase()}`)
-      return
-    }
-    setErr(null)
-    juice.select()
-    setAvatarCharacter({ ...spec, armor: { ...spec.armor, [def.slot]: !spec.armor[def.slot] } })
-    flashSaved()
-  }
-
-  const pickSkin = (s: Swatch) => {
-    setErr(null)
-    juice.select()
-    setAvatarCharacter({ ...spec, skin: s.key })
-    flashSaved()
-  }
-
-  const pickRobe = (r: Swatch) => {
-    if (!accessOwned(r.access, longest, profile.isAdmin)) {
-      setErr(`${r.name} is a Studio color`)
-      return
-    }
-    setErr(null)
-    juice.select()
-    setAvatarCharacter({ ...spec, robe: r.key })
-    flashSaved()
-  }
-
   const ownedItems = profile.ownedItems ?? []
   const myItems = profile.isAdmin ? ITEMS : ITEMS.filter((i) => ownedItems.includes(i.id))
   const toggleItem = (item: ItemDef) => {
@@ -307,80 +272,31 @@ export function CustomizeSection() {
   return (
     <>
       {/* ── Character builder ─────────────────────────────────────────── */}
-      <Section title="Your Character" defaultOpen right={savedFlash ? <span style={{ color: 'var(--good)', fontWeight: 700 }}>Saved ✓</span> : `Armor of God · ${equippedPieces}/6`}>
+      <Section
+        title="Your Character"
+        defaultOpen
+        right={savedFlash ? <span style={{ color: 'var(--good)', fontWeight: 700 }}>Saved ✓</span> : 'always free'}
+      >
       <div className="card" style={{ marginBottom: 14 }}>
-        <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 14 }}>
-          <Avatar emoji={profile.avatarEmoji} character={spec} size={76} border={equippedBorder} badge={equippedBadge} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <b style={{ fontFamily: 'var(--font-display)', fontSize: 16 }}>Equip your armor</b>
-            <p className="faint" style={{ fontSize: 12, marginTop: 2 }}>
-              Ephesians 6 — a piece at a time. Tap to equip or remove; it saves automatically.
-            </p>
-            <div style={{ marginTop: 8, height: 8, borderRadius: 999, background: 'rgba(0,0,0,0.3)', overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${(equippedPieces / 6) * 100}%`, borderRadius: 999, background: 'linear-gradient(90deg, var(--gold), var(--tangerine))', transition: 'width 0.25s' }} />
-            </div>
-          </div>
-        </div>
-
-        {/* Armor pieces */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          {ARMOR.map((def) => {
-            const owned = accessOwned(def.access, longest, profile.isAdmin)
-            const on = !!spec.armor[def.slot]
-            const lbl = accessLabel(def.access)
-            return (
-              <button
-                key={def.slot}
-                onClick={() => toggleArmor(def)}
-                style={{
-                  textAlign: 'left',
-                  display: 'grid',
-                  gap: 3,
-                  padding: '9px 10px',
-                  borderRadius: 12,
-                  background: on ? 'var(--grape)' : 'var(--card-solid)',
-                  border: on ? '1px solid var(--gold)' : '1px solid var(--stroke)',
-                  opacity: owned ? 1 : 0.55,
-                  cursor: 'pointer',
-                }}
-              >
-                <span style={{ fontSize: 12, fontWeight: 800, lineHeight: 1.15 }}>{def.name}</span>
-                <span className="faint" style={{ fontSize: 10, fontStyle: 'italic' }}>{def.verse}</span>
-                <span style={{ ...pillStyle(lbl.tone), marginTop: 2 }}>
-                  {on ? '✓ Equipped' : owned ? (lbl.tone === 'studio' ? '✦ Studio' : 'Tap to equip') : `🔒 ${lbl.text}`}
-                </span>
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Skin tone */}
-        <p className="faint" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', margin: '14px 0 6px' }}>Skin tone</p>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {SKINS.map((s) => (
-            <SwatchDot key={s.key} hex={s.hex} selected={spec.skin === s.key} onClick={() => pickSkin(s)} />
-          ))}
-        </div>
-
-        {/* Robe */}
-        <p className="faint" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', margin: '14px 0 6px' }}>Robe</p>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {ROBES.map((r) => (
-            <SwatchDot
-              key={r.key}
-              hex={r.hex}
-              selected={spec.robe === r.key}
-              locked={!accessOwned(r.access, longest, profile.isAdmin)}
-              studio={r.access?.kind === 'studio'}
-              onClick={() => pickRobe(r)}
-            />
-          ))}
-        </div>
+        {/* The SAME picker the sign-up flow uses (components/CharacterPicker) —
+            a second copy here would drift from the one people meet at the door,
+            and the whole promise is that the character you made while signing up
+            is the character you keep and can keep editing.
+            The Armor of God grid used to sit above this; it's parked, not
+            deleted — see ARMOR_ENABLED in data/avatar. */}
+        {/* No robe row: the raster base bakes the linen robe into the art, so
+            a robe swatch would be a control that visibly does nothing. The
+            stored `robe` still colours the drawn SVG fallback. */}
+        <CharacterPicker
+          value={spec}
+          onChange={(next: AvatarSpec) => { setAvatarCharacter(next); flashSaved() }}
+          longestStreak={longest}
+          admin={!!profile.isAdmin}
+        />
 
         <p className="faint" style={{ fontSize: 10, marginTop: 12, lineHeight: 1.4 }}>
-          {storefrontEnabled()
-            ? 'Studio pieces are unlocked here so you can preview the full look. Scripture is always free — the craft around it is the paid layer.'
-            : 'Studio pieces are unlocked here so you can build the full look. Scripture is always free.'}
+          Every tone and every colour here is free and always will be — this is
+          who you are, not something to unlock. It saves as you tap.
         </p>
       </div>
       </Section>

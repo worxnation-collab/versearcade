@@ -42,9 +42,19 @@ export type ArmorSlot = 'helmet' | 'breastplate' | 'belt' | 'shield' | 'sword' |
 // Wearable-item slots (collected from the Daily Chest). One item per slot.
 export type ItemSlot = 'hat' | 'held' | 'cape'
 
+/** Which way the base figure is drawn. Purely a look: both figures share the
+ *  same head, arms, legs and palette, so a player reads as the same character
+ *  either way — the robe hem and the hair length are the whole difference. */
+export type Figure = 'masc' | 'fem'
+
 export interface AvatarSpec {
   skin: string // SKINS key (see data/avatar)
   robe: string // ROBES key
+  /** HAIRS key. Optional for specs written before hair existed; those render
+   *  with the default so nobody's stored avatar changes out from under them. */
+  hair?: string
+  /** Defaults to 'masc' when absent, for the same backward-compatible reason. */
+  figure?: Figure
   armor: Partial<Record<ArmorSlot, boolean>>
   /** Equipped items by slot, values are item ids (see data/avatar ITEMS). */
   items?: Partial<Record<ItemSlot, string>>

@@ -2,9 +2,13 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
+import { Avatar } from '@/components/Avatar'
+import { CharacterPicker } from '@/components/CharacterPicker'
+import { DEFAULT_AVATAR } from '@/data/avatar'
 import { useAuth } from '@/store/auth'
 import { isSupabaseConfigured } from '@/lib/config'
 import { OAuthButtons } from './oauthUi'
+import type { AvatarSpec } from '@/types'
 
 // Email/password + Sign in with Google + Sign in with Apple. All wired through
 // Supabase Auth. In LOCAL mode (no backend env yet) we explain and offer guest
@@ -12,6 +16,7 @@ import { OAuthButtons } from './oauthUi'
 export default function AuthScreen() {
   const navigate = useNavigate()
   const { signIn, signUpEmail, startAsGuest, error } = useAuth()
+  const setPendingCharacter = useAuth((s) => s.setPendingCharacter)
   const profile = useAuth((s) => s.profile)
   const authMode = useAuth((s) => s.mode)
 
@@ -28,6 +33,14 @@ export default function AuthScreen() {
   // with a password field is one tap of friction in exactly the wrong place.
   const [params] = useSearchParams()
   const [mode, setMode] = useState<'in' | 'up'>(params.get('mode') === 'signup' ? 'up' : 'in')
+  // Sign-up runs in two beats: make a character, then make the account. The
+  // character comes FIRST on purpose — it's the part of signing up that's fun,
+  // and it's the answer to "what do I actually get". It parks in localStorage
+  // (setPendingCharacter) rather than travelling with the credentials, because
+  // an OAuth sign-up reloads the whole page between these two beats.
+  const [phase, setPhase] = useState<'look' | 'account'>('look')
+  const [spec, setSpec] = useState<AvatarSpec>(DEFAULT_AVATAR)
+  const signingUpLook = mode === 'up' && phase === 'look'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [username, setUsername] = useState('')
@@ -37,6 +50,11 @@ export default function AuthScreen() {
   const [refCode, setRefCode] = useState(() => {
     try { return localStorage.getItem('va.ref') ?? '' } catch { return '' }
   })
+  const goToMode = (m: 'in' | 'up') => {
+    setMode(m)
+    setPhase('look')
+    setLocalErr(null)
+  }
   const onRefChange = (v: string) => {
     const clean = v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)
     setRefCode(clean)
@@ -49,10 +67,14 @@ export default function AuthScreen() {
     setNotice(null)
     try {
       if (mode === 'up') {
+        setPendingCharacter(spec)
         const { needsConfirmation } = await signUpEmail(email.trim(), password, username.trim().toLowerCase())
         if (needsConfirmation) {
           setNotice(`Check ${email.trim()} to confirm your account, then sign in.`)
+          // The parked character survives the confirmation round-trip and lands
+          // when they come back and sign in, so it isn't cleared here.
           setMode('in')
+          setPhase('look')
           return
         }
       } else {
@@ -70,12 +92,16 @@ export default function AuthScreen() {
     <Page noNav>
       <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 16 }}>
         <div className="center">
-          <div className="floaty" style={{ fontSize: 60 }}>📖</div>
-          <h1 style={{ fontSize: 32, marginTop: 8 }}>{mode === 'in' ? 'Welcome back' : 'Create account'}</h1>
+          {!signingUpLook && <div className="floaty" style={{ fontSize: 60 }}>📖</div>}
+          <h1 style={{ fontSize: 32, marginTop: 8 }}>
+            {mode === 'in' ? 'Welcome back' : signingUpLook ? 'Make your character' : 'Create account'}
+          </h1>
           <p className="dim" style={{ marginTop: 6, lineHeight: 1.5 }}>
             {mode === 'in'
               ? 'Keep your streak safe across devices.'
-              : 'Free, and it opens the whole game \u2014 battles, the keep, Study, your Bible and your church.'}
+              : signingUpLook
+                ? 'This is you, everywhere in the arcade. Change it any time \u2014 nothing here is locked.'
+                : 'Free, and it opens the whole game \u2014 battles, the keep, Study, your Bible and your church.'}
           </p>
         </div>
 
@@ -95,8 +121,64 @@ export default function AuthScreen() {
           </div>
         )}
 
-        {isSupabaseConfigured && (
+        {/* ── Beat one: the character ──────────────────────────────────── */}
+        {isSupabaseConfigured && signingUpLook && (
           <>
+            <div className="card">
+              <CharacterPicker value={spec} onChange={setSpec} />
+            </div>
+
+            <Button
+              variant="gold"
+              full
+              onClick={() => {
+                // Parked before the account exists, and again at submit — an
+                // OAuth sign-up leaves this page entirely between the two.
+                setPendingCharacter(spec)
+                setPhase('account')
+              }}
+            >
+              That’s me →
+            </Button>
+
+            <p className="faint center" style={{ fontSize: 14 }}>
+              Have an account?{' '}
+              <span style={{ color: 'var(--sky)', textDecoration: 'underline' }} onClick={() => goToMode('in')}>
+                Sign in
+              </span>
+            </p>
+          </>
+        )}
+
+        {/* ── Beat two: the account ─────────────────────────────────────── */}
+        {isSupabaseConfigured && !signingUpLook && (
+          <>
+            {mode === 'up' && (
+              <button
+                onClick={() => setPhase('look')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '10px 12px',
+                  borderRadius: 14,
+                  background: 'var(--card-solid)',
+                  border: '1px solid var(--stroke)',
+                  color: 'inherit',
+                  cursor: 'pointer',
+                }}
+              >
+                <Avatar emoji="📖" character={spec} size={48} />
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <b style={{ display: 'block', fontSize: 14 }}>Your character is ready</b>
+                  <span className="faint" style={{ fontSize: 12 }}>It’s saved to your account the moment you create it.</span>
+                </span>
+                <span style={{ color: 'var(--sky)', fontSize: 13, fontWeight: 800, flexShrink: 0 }}>Change</span>
+              </button>
+            )}
+
             <OAuthButtons onError={setLocalErr} />
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: 0.5 }}>
@@ -137,34 +219,57 @@ export default function AuthScreen() {
 
             <p className="faint center" style={{ fontSize: 14 }}>
               {mode === 'in' ? 'New here?' : 'Have an account?'}{' '}
-              <span style={{ color: 'var(--sky)', textDecoration: 'underline' }} onClick={() => setMode(mode === 'in' ? 'up' : 'in')}>
+              <span style={{ color: 'var(--sky)', textDecoration: 'underline' }} onClick={() => goToMode(mode === 'in' ? 'up' : 'in')}>
                 {mode === 'in' ? 'Create one' : 'Sign in'}
               </span>
             </p>
 
-            {/* Guests arrive here from an in-app "Create account" CTA — give them a
-                way back so the sign-in screen is never a dead end. */}
-            {profile && authMode === 'local' && (
-              <p className="faint center" style={{ fontSize: 13 }}>
-                <span style={{ textDecoration: 'underline' }} onClick={() => navigate('/play')}>
-                  ← Keep playing as guest
-                </span>
-              </p>
-            )}
-
-            {/* Someone who arrived straight from Landing has no profile yet and
-                nothing behind them, so this is their only door back to the
-                guest path — today's verse, without signing up for anything. */}
-            {!profile && (
-              <p className="faint center" style={{ fontSize: 13 }}>
-                <span style={{ textDecoration: 'underline' }} onClick={() => navigate('/welcome')}>
-                  Just try today’s verse first
-                </span>
-              </p>
-            )}
           </>
+        )}
+
+        {/* Never a dead end, in EITHER beat of sign-up: the character step is a
+            step of this screen, so the doors back out belong to it too. */}
+        {isSupabaseConfigured && (
+          <GuestWayOut profile={!!profile} guest={authMode === 'local'} navigate={navigate} />
         )}
       </div>
     </Page>
   )
+}
+
+// The two ways off this screen that don't involve an account. Extracted so the
+// character step and the credentials step can't drift on which of them shows.
+function GuestWayOut({
+  profile,
+  guest,
+  navigate,
+}: {
+  profile: boolean
+  guest: boolean
+  navigate: (to: string) => void
+}) {
+  // A guest arrived from an in-app "Create account" CTA — let them back to the
+  // game they were already playing.
+  if (profile && guest) {
+    return (
+      <p className="faint center" style={{ fontSize: 13 }}>
+        <span style={{ textDecoration: 'underline' }} onClick={() => navigate('/play')}>
+          ← Keep playing as guest
+        </span>
+      </p>
+    )
+  }
+  // Someone who arrived straight from Landing has no profile yet and nothing
+  // behind them, so this is their only door back to the guest path — today's
+  // verse, without signing up for anything.
+  if (!profile) {
+    return (
+      <p className="faint center" style={{ fontSize: 13 }}>
+        <span style={{ textDecoration: 'underline' }} onClick={() => navigate('/welcome')}>
+          Just try today’s verse first
+        </span>
+      </p>
+    )
+  }
+  return null
 }

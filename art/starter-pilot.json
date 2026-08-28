@@ -1,0 +1,31 @@
+[
+  {
+    "id": "starter_masc_sand",
+    "kind": "skin",
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nA young pilgrim standing square to the viewer, full figure, feet at the bottom edge of the frame and the whole figure inside the frame. A simple undyed pale linen robe to the knee with a plain rope belt, bare forearms, simple leather sandals. Warm light-tan skin. Short dark-brown hair in a plain practical cut, no facial hair. A gentle friendly face with simple painted features, drawn in the same warm hand-illustrated storybook style as the reference characters — clean shapes, soft painted shading, no line art, no photorealism. Humble and hopeful, an everyman starting a journey, carrying nothing. Lit warmly from the upper left, colours bright enough to read at small size."
+  },
+  {
+    "id": "starter_masc_ebony",
+    "kind": "skin",
+    "refs": ["public/skins/starter_masc_sand.png"],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the first reference image — identical pose, identical pale linen robe and rope belt, identical sandals, identical short dark hair, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the skin is now a deep rich brown. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_masc_porcelain",
+    "kind": "skin",
+    "refs": ["public/skins/starter_masc_sand.png"],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the first reference image — identical pose, identical pale linen robe and rope belt, identical sandals, identical face structure and expression, identical framing with feet at the bottom edge — changed in TWO ways only: the skin is now fair and light, and the hair is now a warm honey blonde in the same short cut. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_sand",
+    "kind": "skin",
+    "refs": ["public/skins/starter_masc_sand.png"],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nThe FEMALE counterpart of the character in the first reference image: the same person's sister — identical warm light-tan skin, identical gentle painted face style, the SAME undyed pale linen robe and rope belt but falling longer, to the shin, and the same dark-brown hair worn in a simple bob to the jaw. Standing square to the viewer in the identical pose and framing, feet at the bottom edge of the frame. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Humble and hopeful, carrying nothing. Lit warmly from the upper left."
+  },
+  {
+    "id": "starter_fem_ebony",
+    "kind": "skin",
+    "refs": ["public/skins/starter_fem_sand.png"],
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the figure itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a border or frame. No ground, no shadow, no horizon, no text, no watermark, no second copy of the figure, no silhouette.\n\nEXACTLY THE SAME character as the first reference image — identical pose, identical long pale linen robe and rope belt, identical bob haircut, identical face structure and expression, identical framing with feet at the bottom edge — changed in ONE way only: the skin is now a deep rich brown. Same warm hand-illustrated storybook style, clean shapes, soft painted shading, no line art, no photorealism. Lit warmly from the upper left."
+  }
+]

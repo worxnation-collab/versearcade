@@ -5,12 +5,16 @@ import { supabase } from '@/lib/supabase'
 import { isSupabaseConfigured } from '@/lib/config'
 import { localdb } from '@/lib/localdb'
 import { newLocalProfile } from '@/lib/progress'
+import { isDefaultAvatar } from '@/data/avatar'
 import { getVerseForDate } from '@/data/bible/questions'
 import { petUnlocked, type PetProgress } from '@/data/pets'
 import { useSettings } from './settings'
 import type { Profile, AvatarSpec } from '@/types'
 
 type Mode = 'online' | 'local'
+
+/** Character chosen during account creation, before the account exists. */
+const PENDING_CHARACTER_KEY = 'va.pendingCharacter'
 
 interface DbProfileRow {
   id: string
@@ -106,7 +110,11 @@ interface AuthState {
   signIn: (identifier: string, password: string) => Promise<void>
   signInOAuth: (provider: 'google' | 'apple') => Promise<void>
   completeNativeOAuth: (url: string) => Promise<void>
-  startAsGuest: (username: string, emoji: string) => void
+  startAsGuest: (username: string, emoji: string, character?: AvatarSpec | null) => void
+  /** Park the character picked during account creation until the account
+   *  actually exists (see applyPendingCharacter). */
+  setPendingCharacter: (spec: AvatarSpec | null) => void
+  applyPendingCharacter: () => void
 
   updateProfile: (patch: Partial<Profile>) => Promise<void>
   changeUsername: (next: string) => Promise<{ ok: boolean; error?: string }>
@@ -202,6 +210,7 @@ export const useAuth = create<AuthState>((set, get) => ({
     const p = mapRow(data as DbProfileRow)
     syncSettingsFromProfile(p)
     set({ profile: p, isAuthed: true, error: null })
+    get().applyPendingCharacter()
     void get().loadReferral()
   },
 
@@ -248,6 +257,17 @@ export const useAuth = create<AuthState>((set, get) => ({
       xp_earned: v.outcome.xpEarned ?? 0,
     }))
     localdb.setPendingClaim({ profile: p, cards: localdb.getCards(), plays })
+    // claim_guest_progress doesn't carry avatar_character, so a guest who built
+    // a character and then signed up used to arrive at their new account with
+    // the emoji fallback. Park it like a sign-up pick — but never over one: the
+    // picker on the sign-up screen ran later and is the more recent choice.
+    try {
+      if (p.avatarCharacter && !localStorage.getItem(PENDING_CHARACTER_KEY)) {
+        localStorage.setItem(PENDING_CHARACTER_KEY, JSON.stringify(p.avatarCharacter))
+      }
+    } catch {
+      /* ignore */
+    }
   },
 
   // Fold a pending guest snapshot into the just-created account (username, emoji,
@@ -475,11 +495,56 @@ export const useAuth = create<AuthState>((set, get) => ({
     }
   },
 
-  startAsGuest(username, emoji) {
+  startAsGuest(username, emoji, character) {
     const p = { ...newLocalProfile(username, emoji), onboarded: true }
+    if (character) p.avatarCharacter = character
     localdb.saveProfile(p)
     syncSettingsFromProfile(p)
     set({ profile: p, isAuthed: true, mode: 'local' })
+  },
+
+  // The character somebody builds while signing up exists before the account
+  // does, and on the web an OAuth sign-up reloads the whole page mid-flow — so
+  // it parks in localStorage rather than in memory, and lands on the profile
+  // once there is a profile to land on.
+  setPendingCharacter(spec) {
+    try {
+      if (spec) localStorage.setItem(PENDING_CHARACTER_KEY, JSON.stringify(spec))
+      else localStorage.removeItem(PENDING_CHARACTER_KEY)
+    } catch {
+      /* private mode / storage disabled — the picker still works, it just
+         doesn't survive the redirect. Never worth throwing over. */
+    }
+  },
+
+  // Consume the parked character. Applied ONCE, and only onto an account that
+  // hasn't got a look of its own yet: signing in to an established account on a
+  // device where a half-finished sign-up left a pick behind must not repaint
+  // that account's character.
+  applyPendingCharacter() {
+    let raw: string | null = null
+    try {
+      raw = localStorage.getItem(PENDING_CHARACTER_KEY)
+    } catch {
+      return
+    }
+    if (!raw) return
+    const cur = get().profile
+    if (!cur) return
+    try {
+      localStorage.removeItem(PENDING_CHARACTER_KEY)
+    } catch {
+      /* ignore */
+    }
+    if (cur.avatarCharacter && !isDefaultAvatar(cur.avatarCharacter)) return
+    try {
+      const spec = JSON.parse(raw) as AvatarSpec
+      if (spec && typeof spec.skin === 'string' && typeof spec.robe === 'string') {
+        get().setAvatarCharacter(spec)
+      }
+    } catch {
+      /* corrupt blob — the account simply keeps the default look */
+    }
   },
 
   async updateProfile(patch) {

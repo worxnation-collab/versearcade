@@ -690,6 +690,71 @@ apart is what makes the hero a picture of a person rather than a second
 scoreboard. It uses the same `cardBgStyle` + `CardBg` pair as the card, so
 equipping a background changes both and they can't drift.
 
+### The starter character, and the parked armor
+
+The first thing anyone does — as a guest at `/welcome`, or on the first beat of
+`/auth?mode=signup` — is **make a character**, and both screens mount the same
+`components/CharacterPicker`. A second copy would drift, and the promise of the
+flow is that what you build at the door is what you keep, so the profile's
+Customize screen mounts it too (with `showRobe`).
+
+The axes are deliberately three: **male/female**, six **skin tones**, six **hair
+colours**. All free, none of them a number. The two figures are the *same*
+character — same face, same robe, same palette — parting only at the hem of the
+robe and the length of the hair, so switching reads as "that's me" rather than
+as picking a different avatar. `hair` and `figure` are new optional fields on
+`AvatarSpec`; `avatar_character` is an unconstrained `jsonb` column, so **no
+migration is involved** and a spec written before either existed still renders
+(`hairHex` and `figureOf` supply the defaults).
+
+**The base character is Nano Banana art, one render per combination.**
+`art/starter.json` is the batch — 2 figures × 6 tones × 6 hairs = 72 `skin`-kind
+entries, held to ONE character by reference-chaining: each figure's master
+render is the ref for its tone bases, and each tone base is the ref for that
+tone's hair variants, so drift can't compound across the set. `Character` looks
+up `starter_<figure>_<skin>_<hair>` in `GENERATED_ART` whenever no full skin is
+equipped and renders it through the same raster path as Moses and Esther; only
+the equipped combination ever loads (~60KB), and `CharacterPicker` pre-warms the
+variants one tap away so a swatch tap doesn't flash blank.
+
+Three consequences of that, all deliberate:
+
+- **Chest items don't compose onto the raster base** — same trade every raster
+  skin already makes (equip Moses and the staff disappears too). If items ever
+  need to show on the base again, that's an argument for generating item-on-body
+  renders, not for realigning SVG overlays onto a painting.
+- **The drawn SVG figure stays, as the fallback.** A combination whose PNG
+  hasn't landed (or 404s, or fails to decode) renders the drawn pilgrim exactly
+  as before — the batch can ship incomplete and nothing breaks. That fallback
+  keeps its own two scars: it stays faceless (the raster has a face, like every
+  other skin; a face on the *drawn* figure was the odd art out), and its hair
+  never leaves the head circle — sideburns off the widest point read as
+  headphones at every size.
+- **The reference renders are load-bearing.** `starter_masc_sand.png` and
+  `starter_fem_sand.png` (the pilot, `art/starter-pilot.json`) are the refs the
+  whole set descends from. Regenerating one combination is fine; regenerating
+  the masters restyles everything generated after them, so don't.
+
+**A character exists before the account does.** Web OAuth reloads the page
+between the two beats of sign-up, so the pick parks in
+`localStorage['va.pendingCharacter']` (`setPendingCharacter`) and lands in
+`applyPendingCharacter`, called from `refreshProfile`. It applies **once**, and
+only onto an account with no look of its own (`isDefaultAvatar`) — signing in to
+an established account on a device where a half-finished sign-up left a pick
+behind must not repaint that account's character. `beginGuestClaim` parks the
+guest's character the same way, because `claim_guest_progress` doesn't carry
+`avatar_character` and a guest who upgraded used to arrive at their new account
+wearing the emoji fallback.
+
+**The Armor of God is parked, not deleted.** Six flat gold overlays on top of
+the figure read as a costume rather than as armor, and there's no art for it
+yet. `ARMOR_ENABLED` in `data/avatar.ts` is the *one* flag: it hides the builder
+grid and stops `Character` drawing the pieces. `spec.armor` is still stored and
+still round-trips, so flipping it back restores every equipped piece without
+touching a profile. When it returns, the likely shape is a **full-look skin**
+(the way Baldwin and Michael work) — one earned "Armor of God" figure, drawn as
+one figure — rather than six overlays layered over a robe.
+
 ### Pets
 
 A companion, **earned and never sold** — a level plus, past the first, one more

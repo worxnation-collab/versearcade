@@ -140,8 +140,12 @@ export function CustomizeSection() {
 
   const [petErr, setPetErr] = useState<string | null>(null)
   const petProg = petProgress()
-  const unlockedPetCount = PETS.filter((p) => petUnlocked(p.id, petProg)).length
-  const comingPet = nextPet(petProg)
+  // The operator account previews every pet, the same way it previews every
+  // skin — and 0067 says the same thing inside pet_requirements_met, so the
+  // grid never offers something set_pet will refuse.
+  const petAdmin = !!profile.isAdmin
+  const unlockedPetCount = PETS.filter((p) => petUnlocked(p.id, petProg, petAdmin)).length
+  const comingPet = nextPet(petProg, petAdmin)
   // Pack cards gate on the skin entitlement rather than a collectible, so the
   // picker needs both sources of ownership.
   const bgCtx = { ownedSkins: profile.ownedSkins ?? [], admin: profile.isAdmin }
@@ -178,7 +182,7 @@ export function CustomizeSection() {
     const def = petById(id)
     if (!def) return
     const prog = petProgress()
-    if (!petUnlocked(id, prog)) {
+    if (!petUnlocked(id, prog, petAdmin)) {
       // Local to the section, not the shared error at the very bottom of the
       // customizer — a refusal a page and a half below the tap is no refusal.
       setPetErr(`${def.name} needs ${petRequirementText(def).toLowerCase()}.`)
@@ -536,7 +540,7 @@ export function CustomizeSection() {
                   )}
                   <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', marginBottom: 14 }}>
                     {PETS.map((p) => {
-                      const open = petUnlocked(p.id, petProg)
+                      const open = petUnlocked(p.id, petProg, petAdmin)
                       const on = profile.pet === p.id
                       // The one number worth showing on a locked row: how far along the
                       // second requirement is. A bare "🔒 Level 33" tells you nothing

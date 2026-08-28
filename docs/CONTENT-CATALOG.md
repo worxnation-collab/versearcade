@@ -22,7 +22,7 @@ Now the bundled catalog is the **floor** and a fetched overlay merges over it.
 
 | | |
 |---|---|
-| **Can** | Roads (window, waystations, rewards, blurb, length), their quest lists, titles, confetti themes, streak flames, chest skins, free/earned/road skins, and the art URL for any of them |
+| **Can** | Roads (window, waystations, rewards, blurb, length, **backdrop painting**), their quest lists, titles, confetti themes, streak flames, chest skins, free/earned/road skins, and the art URL for any of them |
 | **Cannot** | Quest **verbs**, reward **kinds**, wearable **items**, drawn-SVG art, screens, prices |
 
 Three of those are worth explaining, because they're the ones you'll hit.
@@ -133,6 +133,7 @@ meant. Two roads with the same start is undefined — don't.
     "start": "2026-11-29T00:00:00Z",
     "end":   "2026-12-26T00:00:00Z",
     "length": 24,                       // an Advent road is 24, not 50
+    "scene": "advent",                  // art id for the road's painting
     "memento": "memento_advent",
     "waystations": [
       { "n": 1,  "a": [{ "id": "freeze", "qty": 1 }], "b": [{ "id": "title_starlit" }] },
@@ -176,6 +177,29 @@ meant. Two roads with the same start is undefined — don't.
 - Quest `goal` — 1–1000, matching the server's own clamp.
 - Skin `source` — `free` | `earned` | `pass`.
 - `art` values — `https://…` or `/rooted/path`.
+- `scene` — an art **id**, not a URL. It resolves through the same
+  overlay → `GENERATED_ART` chain as a skin, so it can name a bundled painting
+  (`"advent"` → `/road/advent.png`, pre-shipped and offline-proof) or an id you
+  publish in `art`. Omitted keeps the Harvest painting.
+
+### The road's painting
+
+A season that can't change its own backdrop isn't really a season — an Advent
+road drawn over a wheat field is the giveaway that the content is only half
+data. `roadBackground(road)` in `features/season/roadArt.ts` resolves `scene`
+for both surfaces that show it (the banner on `/pilgrimage` and the window into
+it on the Play tab), so the strip stays a peek at the place the screen opens.
+
+Road paintings are generated with `kind: "road"` (a scene by every pipeline
+rule — full-bleed, no chroma key, capped at 640px — landing in `public/road/`):
+
+```bash
+GEMINI_API_KEY=... node scripts/gen-art.mjs art/road-scenes.json
+```
+
+The prompt must keep the **bottom third walkable**: `CrowdLife` stands small
+figures on it, and `center bottom` anchoring means a shorter box crops the sky,
+never the ground.
 
 ## Art
 

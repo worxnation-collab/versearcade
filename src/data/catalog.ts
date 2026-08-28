@@ -38,6 +38,7 @@
 // WHAT STILL NEEDS A RELEASE: new quest verbs, new cosmetic kinds, drawn-SVG
 // art, and anything that changes a screen. See docs/CONTENT-CATALOG.md.
 
+import { GENERATED_ART } from './generatedArt'
 import { sanitizeQuestDefs, type QuestDef, type QuestPools } from '@/lib/season'
 
 // ── The shapes ───────────────────────────────────────────────────────────────
@@ -121,6 +122,17 @@ export interface RoadDef {
    */
   daily?: QuestDef[]
   weekly?: QuestDef[]
+  /**
+   * Art id for the road's painting — the full-width scene at the top of
+   * /pilgrimage and the window into it on the Play tab.
+   *
+   * An ID, not a URL, so every image in the catalog is declared in one place
+   * (`art`) and validated by one rule. Resolved through catalogArtUrl, so it
+   * can point at a bundled render (pre-shipped, works offline) or at an https
+   * URL published with the season. Omitted keeps the Harvest painting, which
+   * is the right fallback: a road with no scene is still a road.
+   */
+  scene?: string
 }
 
 /**
@@ -368,6 +380,7 @@ export function sanitizeRoads(raw: unknown): RoadDef[] {
       // weeklies, and falling back to the bundled pool is always playable.
       ...(daily.length >= 3 ? { daily } : {}),
       ...(weekly.length >= 5 ? { weekly } : {}),
+      ...(id(o.scene) ? { scene: o.scene } : {}),
     })
   }
   return out
@@ -453,6 +466,18 @@ export function setCatalogOverlay(raw: unknown): ContentCatalog {
 }
 
 export const catalogOverlay = (): ContentCatalog => overlay
+
+/**
+ * Any image the catalog can name, by id.
+ *
+ * Overlay first, then whatever the generator bundled — the same two-tier
+ * bargain skinArtUrl makes, and the reason a season's art can either ride
+ * along in the binary (pre-shipped, offline-proof) or arrive over the wire.
+ */
+export function catalogArtUrl(id?: string | null): string | undefined {
+  if (!id) return undefined
+  return catalogOverlay().art[id] ?? GENERATED_ART[id]
+}
 
 /** Test/dev seam — put it back to "nothing fetched yet". */
 export function resetCatalogOverlay(): void {

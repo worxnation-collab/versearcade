@@ -123,6 +123,13 @@ season that still costs a release, so add them generously and early.
 `checkQuestVerbs()` asserts the two lists agree at import in dev, because
 drifting apart is otherwise invisible.
 
+**A road brings its own painting.** `RoadDef.scene` is an art id resolved by
+`roadBackground()` (`features/season/roadArt.ts`) through the same
+overlay → `GENERATED_ART` chain skins use, so a December road isn't drawn over a
+wheat field. Generate them with `kind: 'road'` (`art/road-scenes.json` →
+`public/road/`), keeping the bottom third walkable — `CrowdLife` stands figures
+on it.
+
 **Items are still code, and that's a known gap.** `item_*` are drawn as
 hardcoded SVG per id in `Character.tsx`, so a catalog can't add one. Roads can
 hand out skins, cosmetics, boosts, freezes and mementos — not items.

@@ -13,8 +13,7 @@
 // migration 0010 gates the streak cosmetics. In LOCAL mode it already persists
 // to the device via the auth store.
 
-import { GENERATED_ART } from './generatedArt'
-import { catalogOverlay, mergeById, type CatalogSkin } from './catalog'
+import { catalogArtUrl, catalogOverlay, mergeById, type CatalogSkin } from './catalog'
 import type { ArmorSlot, AvatarSpec, ItemSlot } from '@/types'
 
 export type { ArmorSlot, AvatarSpec, ItemSlot }
@@ -460,7 +459,7 @@ const RASTER_SKINS: Record<string, string> = {
  */
 export function skinArtUrl(skinId?: string | null): string | undefined {
   if (!skinId) return undefined
-  return catalogOverlay().art[skinId] ?? GENERATED_ART[skinId] ?? RASTER_SKINS[skinId]
+  return catalogArtUrl(skinId) ?? RASTER_SKINS[skinId]
 }
 
 // ── Bundles ───────────────────────────────────────────────────────────────────

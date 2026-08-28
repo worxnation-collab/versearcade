@@ -147,6 +147,22 @@ interface ChurchState {
   /** True while the extra detail (info, roster) is still in flight. */
   pageLoading: boolean
 
+  /**
+   * Your OWN congregation, for the yard on the church tab.
+   *
+   * The hero used to stand you alone on the grass under a caption reading
+   * "Your congregation · 3 players", which reads as a bug — because it is one,
+   * in the only sense that matters: the screen said three and drew one. Your
+   * church is a place you share with a handful of named people, not a faction
+   * hall shared with thousands, so there is no sampling problem to dodge here.
+   *
+   * Same roster the page uses, ordered by join date and carrying no per-person
+   * number — a crowd, not a ladder. `is_me` comes back on your own row, which
+   * is what stops you being drawn twice and lets CrowdLife read your live pet
+   * from the auth store rather than the row.
+   */
+  congregation: ChurchMember[]
+
   load: () => Promise<void>
   loadBoard: () => Promise<void>
   setRadius: (choice: RadiusChoice) => void
@@ -155,6 +171,7 @@ interface ChurchState {
   contribute: (points: number) => Promise<ContributeResult>
   openChurch: (church: Church) => Promise<void>
   closeChurch: () => void
+  loadCongregation: () => Promise<void>
   requestInfo: (input: InfoRequestInput) => Promise<{ ok: boolean; reason?: string }>
 }
 
@@ -173,6 +190,7 @@ export const useChurch = create<ChurchState>((set, get) => ({
   error: null,
   page: null,
   pageLoading: false,
+  congregation: [],
 
   async load() {
     if (!isOnline()) {
@@ -339,6 +357,31 @@ export const useChurch = create<ChurchState>((set, get) => ({
 
   closeChurch() {
     set({ page: null, pageLoading: false })
+  },
+
+  // --- Your own congregation, for the yard on the church tab ----------------
+  // Reuses get_church_page rather than adding an RPC: it already returns the
+  // roster for ANY church, your own included, and a second function returning
+  // the same rows is two places to keep the "no per-person number" rule.
+  //
+  // Offline and for a guest this leaves the list empty and the scene falls back
+  // to drawing you alone, which is the honest picture when there is no server
+  // to ask — the church store's inherited online-only break, not a new one.
+  async loadCongregation() {
+    const mine = get().church
+    if (!mine || !isOnline()) {
+      set({ congregation: [] })
+      return
+    }
+    const { data, error } = await supabase!.rpc('get_church_page', {
+      p_church_id: mine.id,
+      p_members_limit: 24,
+    })
+    // Left or switched church while this was in flight: the rows that came back
+    // belong to a yard that isn't on screen any more.
+    if (get().church?.id !== mine.id) return
+    if (error || !(data as any)?.ok) return
+    set({ congregation: ((data as any).members ?? []).map(toMember) })
   },
 
   async requestInfo({ churchId, role, note, name, email, skin }) {

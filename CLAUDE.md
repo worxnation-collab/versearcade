@@ -360,6 +360,16 @@ a per-viewer sample, your own planting winning its plot), nothing is ever
 there is **nowhere to write a string**. Lifetime given is across *every* church,
 so switching keeps every flower: the points were a gift, not a deposit.
 
+**Your own congregation stands in your own yard**, not only on the church's page
+(`loadCongregation` in `store/church.ts`, the same `get_church_page` roster the
+page uses). It used to draw you alone there, on the reasoning that the people
+belong on the page — which read as a broken screen on a real phone, and fairly:
+the caption said "3 players" and the grass had one. The hall shows you alone
+because a faction is thousands of strangers and any crowd it drew would be an
+arbitrary sample; a congregation is a handful of named people, so there is
+nothing to sample. The rule is untouched — join-date order, no per-person number
+— and `is_me` on your own row is what keeps you from being drawn twice.
+
 Anything planted can be **moved by tapping** it and then tapping another plot,
 with the keep's rules (an occupied plot trades places, so no tap loses a plant).
 Only your own church tab passes `floraEditing`; a bed you can move in somebody

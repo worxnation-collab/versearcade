@@ -99,6 +99,8 @@ function ChurchHome({ church }: { church: Church }) {
   // plots. Two scenes on one screen was one scene too many.
   const me = useAuth((s) => s.profile)
   const { plantings, load: loadYard, move: moveFlora } = useChurchYard()
+  const congregation = useChurch((s) => s.congregation)
+  const loadCongregation = useChurch((s) => s.loadCongregation)
   const [picked, setPicked] = useState<string | null>(null)
   const [yardNote, setYardNote] = useState<string | null>(null)
 
@@ -106,17 +108,37 @@ function ChurchHome({ church }: { church: Church }) {
     void loadYard()
   }, [loadYard, church.id])
 
+  // Keyed on the church so joining, leaving or switching redraws the yard with
+  // the right people in it rather than the last congregation's.
+  useEffect(() => {
+    void loadCongregation()
+  }, [loadCongregation, church.id])
+
   useEffect(() => {
     if (!yardNote) return
     const t = setTimeout(() => setYardNote(null), 2600)
     return () => clearTimeout(t)
   }, [yardNote])
 
-  // Your own churchyard shows you, the same way your own hall does — the
-  // congregation stands outside it on the church's page, where the roster is.
-  const crowd = me
-    ? [{ username: me.username, avatarEmoji: me.avatarEmoji, avatarCharacter: me.avatarCharacter, pet: me.pet, isMe: true }]
-    : []
+  // The congregation stands in its own yard.
+  //
+  // This used to draw you ALONE under a caption reading "Your congregation ·
+  // 3 players", on the reasoning that the people belong on the church's page
+  // where the roster is. On a real phone that reads as a broken screen, and
+  // fairly: the line above says three and the grass had one. The keep's hall
+  // shows you alone because a faction is thousands of strangers and any crowd
+  // it drew would be an arbitrary sample; a congregation is a handful of named
+  // people, so there is nothing to sample.
+  //
+  // Nothing about the rule changes: the roster is ordered by join date, carries
+  // no per-person points, and `is_me` on your own row is what keeps you from
+  // being drawn twice. Until the RPC lands — and for a guest, who has no church
+  // at all — you stand there on your own, exactly as before.
+  const crowd = congregation.length
+    ? congregation
+    : me
+      ? [{ username: me.username, avatarEmoji: me.avatarEmoji, avatarCharacter: me.avatarCharacter, pet: me.pet, isMe: true }]
+      : []
 
   const pick = (plot: string) => {
     juice.tap()

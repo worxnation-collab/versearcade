@@ -3,13 +3,18 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
-import { Avatar } from '@/components/Avatar'
+import { CharacterPicker } from '@/components/CharacterPicker'
+import { DEFAULT_AVATAR } from '@/data/avatar'
 import { useAuth } from '@/store/auth'
 import { isSupabaseConfigured } from '@/lib/config'
 import { useSettings } from '@/store/settings'
 import { useJuice } from '@/juice/useJuice'
+import type { AvatarSpec } from '@/types'
 
-const EMOJI = ['📖', '🕊️', '✨', '🔥', '🌿', '⭐', '🙏', '🌅', '🦁', '🐟', '👑', '🎵']
+// The emoji is now only a fallback — for anything rendering a player before
+// their character has loaded, and for accounts made before characters existed.
+// Step 1 builds an actual character instead of picking a glyph.
+const FALLBACK_EMOJI = '📖'
 
 // Onboarding is short and reassuring by design. The middle step lets people
 // *feel* the juice (sound/haptics) immediately — a tiny "aha, this is a game"
@@ -18,10 +23,11 @@ export default function Onboarding() {
   const navigate = useNavigate()
   const juice = useJuice()
   const startAsGuest = useAuth((s) => s.startAsGuest)
+  const setPendingCharacter = useAuth((s) => s.setPendingCharacter)
   const settings = useSettings()
 
   const [step, setStep] = useState(0)
-  const [emoji, setEmoji] = useState('📖')
+  const [spec, setSpec] = useState<AvatarSpec>(DEFAULT_AVATAR)
   const [username, setUsername] = useState('')
 
   const clean = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, '')
@@ -29,7 +35,10 @@ export default function Onboarding() {
 
   const finish = () => {
     juice.celebrate()
-    startAsGuest(clean, emoji)
+    startAsGuest(clean, FALLBACK_EMOJI, spec)
+    // Parked as well as saved: a guest who later creates an account keeps the
+    // character they made here (see applyPendingCharacter in store/auth).
+    setPendingCharacter(spec)
     navigate('/play', { replace: true })
   }
 
@@ -72,41 +81,13 @@ export default function Onboarding() {
           {step === 1 && (
             <Step key="1">
               <h1 className="center" style={{ fontSize: 30 }}>
-                Pick your look
+                Make your character
               </h1>
-              <div className="center" style={{ marginTop: 16 }}>
-                <motion.div
-                  key={emoji}
-                  initial={{ scale: 0.5 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: 'spring', stiffness: 500, damping: 14 }}
-                  style={{ display: 'inline-block' }}
-                >
-                  <Avatar emoji={emoji} size={88} ring />
-                </motion.div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 8, marginTop: 18 }}>
-                {EMOJI.map((e) => (
-                  <motion.button
-                    key={e}
-                    whileTap={{ scale: 0.8 }}
-                    onClick={() => {
-                      juice.select()
-                      setEmoji(e)
-                    }}
-                    style={{
-                      fontSize: 26,
-                      padding: 8,
-                      borderRadius: 14,
-                      background: e === emoji ? 'var(--grape)' : 'var(--card)',
-                      border: '1px solid var(--stroke)',
-                    }}
-                  >
-                    {e}
-                  </motion.button>
-                ))}
-              </div>
-              <div style={{ marginTop: 18 }}>
+              <p className="dim center" style={{ fontSize: 15, marginTop: -2 }}>
+                This is you, everywhere in the arcade. You can change it any time.
+              </p>
+              <CharacterPicker value={spec} onChange={setSpec} />
+              <div style={{ marginTop: 4 }}>
                 <input
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}

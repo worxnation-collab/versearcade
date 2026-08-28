@@ -1,13 +1,17 @@
 import { useState } from 'react'
 import type { AvatarSpec, ArmorSlot } from '@/types'
-import { skinHex, robeHex, equippedSkinId } from '@/data/avatar'
+import { skinHex, robeHex, hairHex, figureOf, equippedSkinId, ARMOR_ENABLED } from '@/data/avatar'
 
 // A composable character figure, drawn from an AvatarSpec. Two looks share one
 // silhouette so it reads at any size (20px presence chip → 76px builder):
 //
-//  • Default — a pilgrim in a robe, with each equipped Armor of God piece added
-//    as a gold overlay. Unequipped pieces aren't drawn, so a free-tier character
-//    still looks intentional, never poor.
+//  • Default — a pilgrim in a robe: skin tone, hair colour and one of two
+//    figures (male/female), all chosen in onboarding. The two figures are the
+//    SAME character — same head, same limbs, same palette — parting only at the
+//    hem of the robe and the length of the hair, so a player switching still
+//    recognises themselves. Faceless on purpose: every other drawn skin here is
+//    (Moses, David, Esther, Gabriel…), and a face on this one alone would make
+//    the starter character the odd art out.
 //  • King Baldwin regalia — the masked Leper King: white hood, dark silver mask,
 //    gold cross-mantle + belt, and a ceremonial sword held upright at his side.
 //    A full-look override (its iconic silhouette replaces the base body).
@@ -243,7 +247,12 @@ export function Character({
 }) {
   const skin = skinHex(spec.skin)
   const robe = robeHex(spec.robe)
-  const has = (s: ArmorSlot) => !!spec.armor[s]
+  const hair = hairHex(spec.hair)
+  const fem = figureOf(spec) === 'fem'
+  // Armor is parked (see ARMOR_ENABLED in data/avatar): the pieces stay in the
+  // stored spec and simply aren't drawn, so turning the flag back on restores
+  // every equipped piece without touching a single profile.
+  const has = (s: ArmorSlot) => ARMOR_ENABLED && !!spec.armor[s]
   const items = spec.items ?? {}
   const skinId = equippedSkinId(spec)
   // Falls back to the drawn skin if the image is missing or fails to decode, so
@@ -970,8 +979,14 @@ export function Character({
             </>
           )}
 
-          {/* tunic / robe */}
-          <path d="M44 66 Q60 60 76 66 L74 120 Q60 126 46 120 Z" fill={robe} />
+          {/* tunic / robe — the female figure wears it long and flared to the
+              shin, the male figure to the knee. Same shoulders, same neckline:
+              the hem is the whole silhouette difference. */}
+          {fem ? (
+            <path d="M43 66 Q60 60 77 66 L81 140 Q60 147 39 140 Z" fill={robe} />
+          ) : (
+            <path d="M44 66 Q60 60 76 66 L74 120 Q60 126 46 120 Z" fill={robe} />
+          )}
 
           {/* arms (sleeves in robe color). For the cross, the right arm is raised
               to grip the beam instead of hanging at the side. */}
@@ -1054,9 +1069,33 @@ export function Character({
             </>
           )}
 
+          {/* longer hair, drawn BEHIND the head so its inner edge is hidden by
+              the face and only the length shows (same trick as Esther). A bob
+              to the jaw rather than two panels to the waist: full-length panels
+              read as two dark straps hanging down the chest at 44px, and this
+              still says "longer hair" in a 20px chip. */}
+          {fem && (
+            <>
+              <path d="M45.5 46 Q40 62 42 74 Q47 79.5 52.5 73 Q51.5 60 51.5 50 Z" fill={hair} />
+              <path d="M74.5 46 Q80 62 78 74 Q73 79.5 67.5 73 Q68.5 60 68.5 50 Z" fill={hair} />
+            </>
+          )}
+
           {/* neck + head */}
           <rect x="55" y="56" width="10" height="10" rx="3" fill={skin} />
           <circle cx="60" cy="50" r="13" fill={skin} />
+
+          {/* hair — the same cut on both figures: a cap over the crown that
+              wraps past the widest point of the head and stops in a hairline
+              across the brow. Drawn before the helmet and hats so headwear
+              still covers it.
+              It stays strictly INSIDE the head circle. A first pass hung two
+              sideburns off the widest point and the character read as wearing
+              headphones, at every size. */}
+          <path
+            d="M47 50 a13 13 0 0 1 26 0 L71.6 55.8 q-1.6 -6.2 -11.6 -6.2 q-10 0 -11.6 6.2 Z"
+            fill={hair}
+          />
 
           {/* helmet of salvation */}
           {has('helmet') && (

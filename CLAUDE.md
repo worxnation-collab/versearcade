@@ -593,6 +593,53 @@ apart is what makes the hero a picture of a person rather than a second
 scoreboard. It uses the same `cardBgStyle` + `CardBg` pair as the card, so
 equipping a background changes both and they can't drift.
 
+### The starter character, and the parked armor
+
+The first thing anyone does — as a guest at `/welcome`, or on the first beat of
+`/auth?mode=signup` — is **make a character**, and both screens mount the same
+`components/CharacterPicker`. A second copy would drift, and the promise of the
+flow is that what you build at the door is what you keep, so the profile's
+Customize screen mounts it too (with `showRobe`).
+
+The axes are deliberately three: **male/female**, six **skin tones**, six **hair
+colours**. All free, none of them a number. The two figures are the *same*
+character — same head, same limbs, same palette — parting only at the hem of the
+robe and the length of the hair, so switching reads as "that's me" rather than
+as picking a different avatar. `hair` and `figure` are new optional fields on
+`AvatarSpec`; `avatar_character` is an unconstrained `jsonb` column, so **no
+migration is involved** and a spec written before either existed still renders
+(`hairHex` and `figureOf` supply the defaults).
+
+Two things in the drawing are scars, not taste:
+
+- **The figure stays faceless.** Every other drawn skin here is (Moses, David,
+  Esther, Gabriel…), and a face on the starter character alone would make the
+  one look everybody has the odd art out.
+- **The hair never leaves the head circle.** The first pass hung two sideburns
+  off its widest point and the character read as wearing headphones, at every
+  size. Female hair is a bob to the jaw for the same reason: full-length panels
+  down the chest read as two dark straps at 44px.
+
+**A character exists before the account does.** Web OAuth reloads the page
+between the two beats of sign-up, so the pick parks in
+`localStorage['va.pendingCharacter']` (`setPendingCharacter`) and lands in
+`applyPendingCharacter`, called from `refreshProfile`. It applies **once**, and
+only onto an account with no look of its own (`isDefaultAvatar`) — signing in to
+an established account on a device where a half-finished sign-up left a pick
+behind must not repaint that account's character. `beginGuestClaim` parks the
+guest's character the same way, because `claim_guest_progress` doesn't carry
+`avatar_character` and a guest who upgraded used to arrive at their new account
+wearing the emoji fallback.
+
+**The Armor of God is parked, not deleted.** Six flat gold overlays on top of
+the figure read as a costume rather than as armor, and there's no art for it
+yet. `ARMOR_ENABLED` in `data/avatar.ts` is the *one* flag: it hides the builder
+grid and stops `Character` drawing the pieces. `spec.armor` is still stored and
+still round-trips, so flipping it back restores every equipped piece without
+touching a profile. When it returns, the likely shape is a **full-look skin**
+(the way Baldwin and Michael work) — one earned "Armor of God" figure, drawn as
+one figure — rather than six overlays layered over a robe.
+
 ### Pets
 
 A companion, **earned and never sold** — a level plus, past the first, one more

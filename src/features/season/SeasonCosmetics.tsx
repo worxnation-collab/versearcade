@@ -3,11 +3,11 @@ import { useSeason } from '@/store/season'
 import { useJuice } from '@/juice/useJuice'
 import { Burst } from '@/juice/confetti'
 import {
-  CHEST_SKINS,
-  CONFETTI_THEMES,
+  allChestSkins,
+  allConfetti,
   COSMETIC_DEFAULTS,
-  FLAMES,
-  TITLES,
+  allFlames,
+  allTitles,
   confettiById,
   type CosmeticKind,
 } from '@/data/season'
@@ -36,23 +36,23 @@ const ROWS: Row[] = [
   {
     kind: 'title',
     label: 'Title',
-    options: TITLES.map((t) => ({ id: t.id, name: t.text, glyph: '🏷️' })),
+    options: allTitles().map((t) => ({ id: t.id, name: t.text, glyph: '🏷️' })),
     clearable: true,
   },
   {
     kind: 'confetti',
     label: 'Confetti',
-    options: CONFETTI_THEMES.map((c) => ({ id: c.id, name: c.name, glyph: '🎊' })),
+    options: allConfetti().map((c) => ({ id: c.id, name: c.name, glyph: '🎊' })),
   },
   {
     kind: 'flame',
     label: 'Streak flame',
-    options: FLAMES.map((f) => ({ id: f.id, name: f.name, glyph: f.glyph })),
+    options: allFlames().map((f) => ({ id: f.id, name: f.name, glyph: f.glyph })),
   },
   {
     kind: 'chest',
     label: 'Daily Chest',
-    options: CHEST_SKINS.map((c) => ({ id: c.id, name: c.name, glyph: c.glyph })),
+    options: allChestSkins().map((c) => ({ id: c.id, name: c.name, glyph: c.glyph })),
   },
 ]
 

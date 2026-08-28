@@ -8,6 +8,7 @@ import { CpuVersusQuiz } from '@/features/arena/CpuVersusQuiz'
 import type { CpuProfile } from '@/features/arena/cpu'
 import { useFocus, FOCUS_XP_PER_SESSION, type FocusXpOutcome } from '@/store/focus'
 import { useAuth } from '@/store/auth'
+import { useSeason } from '@/store/season'
 import { poolBooks, poolBookCounts, practiceVerseFromBook, verseFromReference } from '@/data/bible/questions'
 import { useJuice } from '@/juice/useJuice'
 import { FavoriteButton } from '@/components/FavoriteButton'
@@ -91,6 +92,9 @@ export default function FocusPracticeScreen() {
     setPhase('play')
   }
   const onFinish = async (player: PlayResult, cpuScore: number) => {
+    // Prepacked verb: no bundled quest watches focus_drills yet, but a catalog
+    // road can (see the prepack note on QuestVerb in lib/season.ts).
+    void useSeason.getState().track('focus_drill')
     const xp = await awardXp()
     setOutcome({ player, cpuScore, xp })
     setPhase('recap')

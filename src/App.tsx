@@ -4,6 +4,7 @@ import { useAuth } from './store/auth'
 import { useBuddies } from './store/buddies'
 import { useReminders } from './store/reminders'
 import { useSeason } from './store/season'
+import { useCatalog } from './store/catalog'
 import { useJuiceSync } from './juice/useJuice'
 import { initNative } from './lib/native'
 
@@ -176,6 +177,10 @@ export default function App() {
       /* ignore */
     }
     init()
+    // The content catalog, BEFORE the season store reads it. Its cache is
+    // already applied at import (store/catalog.ts), so this only refreshes;
+    // whichever way it goes, activeRoad() has something to answer with.
+    void useCatalog.getState().load()
     // The road, app-wide rather than on the Play tab: the streak flame, the
     // Daily Chest and the confetti engine all read equipped seasonal cosmetics,
     // and none of those is behind the strip that opens the road.

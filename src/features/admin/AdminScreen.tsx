@@ -5,7 +5,7 @@ import { Button } from '@/components/Button'
 import { Avatar } from '@/components/Avatar'
 import { useAuth } from '@/store/auth'
 import { supabase } from '@/lib/supabase'
-import { FULL_SKINS, BUNDLES } from '@/data/avatar'
+import { allSkins, BUNDLES } from '@/data/avatar'
 import GrowthPanel from './GrowthPanel'
 import type { AvatarSpec } from '@/types'
 
@@ -276,7 +276,7 @@ function Users() {
                     in it at once (pack_skins, migration 0044), which is the only
                     way to grant a bundle without leaving someone a partial one. */}
                 {BUNDLES.map((b) => <option key={b.sku} value={b.sku}>{b.name} (whole pack)</option>)}
-                {FULL_SKINS.filter((s) => !s.bundleOnly).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                {allSkins().filter((s) => !s.bundleOnly).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
               {u.owned_skins.length > 0 && (
                 <select defaultValue="" onChange={(e) => { revoke(u.username, e.target.value); e.target.value = '' }}
@@ -437,7 +437,7 @@ function Codes() {
   }
   // A code can tie to a single paid skin or to a whole bundle sku — never to one
   // piece of a bundle, which would hand out a partial pack.
-  const paidSkins = FULL_SKINS.filter((s) => s.source === 'paid' && !s.bundleOnly)
+  const paidSkins = allSkins().filter((s) => s.source === 'paid' && !s.bundleOnly)
 
   return (
     <div>

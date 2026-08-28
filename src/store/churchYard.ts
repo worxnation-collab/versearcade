@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from './auth'
+import { useSeason } from './season'
 import { floraUnlocked, unlockedFlora, type FloraDef, type Plantings } from '@/features/church/yard'
 
 // The churchyard: what you've planted in front of your church, and what a
@@ -102,6 +103,8 @@ export const useChurchYard = create<YardState>((set, get) => ({
       await get().load()
       return { ok: false, reason: 'failed' }
     }
+    // Prepacked verb. A null floraId is lifting a plant out, not planting one.
+    if (floraId) void useSeason.getState().track('flora_planted')
     return { ok: true }
   },
 

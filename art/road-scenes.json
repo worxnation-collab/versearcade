@@ -1,0 +1,12 @@
+[
+  {
+    "id": "advent",
+    "kind": "road",
+    "prompt": "A wide full-bleed painted landscape background for a game screen, filling the entire frame edge to edge. No characters, no people, no animals, no text, no watermark, no border, no frame, no UI. A cold clear winter night over the hills outside Bethlehem: deep indigo and violet sky with one large bright star low over the horizon, distant snow-dusted hills, a few small warm lit windows of a far-off town, bare shrubs and pale frosted grass. A clear walkable path or road runs from the bottom edge of the frame into the distance, centred, with open ground either side — the bottom third must be the walkable foreground, since small character figures are drawn standing on it. Flat stylised storybook painting, clean shapes, soft shading, no photorealism, no line art. Rich but not busy: it sits behind figures and must never compete with them."
+  },
+  {
+    "id": "lamplight",
+    "kind": "road",
+    "prompt": "A wide full-bleed painted landscape background for a game screen, filling the entire frame edge to edge. No characters, no people, no animals, no text, no watermark, no border, no frame, no UI. Late autumn dusk over harvested fields: a deep amber and rose sky fading to dark blue, stubble fields and a few bare trees, a line of small hanging oil lamps glowing warm along the roadside, distant low hills going blue with evening. A clear walkable path or road runs from the bottom edge of the frame into the distance, centred, with open ground either side — the bottom third must be the walkable foreground, since small character figures are drawn standing on it. Flat stylised storybook painting, clean shapes, soft shading, no photorealism, no line art. Rich but not busy: it sits behind figures and must never compete with them."
+  }
+]

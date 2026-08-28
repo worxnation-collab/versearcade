@@ -4,6 +4,8 @@ import { todayLocalDate } from '@/lib/date'
 import { useAuth } from './auth'
 import { baseSkinId, passSkinEquipId, skinById } from '@/data/avatar'
 import {
+  BUNDLED_POOLS,
+  KNOWN_VERBS,
   MILES,
   MILES_CAP,
   activeQuests,
@@ -11,6 +13,7 @@ import {
   waystationFor,
   type Quest,
 } from '@/lib/season'
+import { poolsFor } from '@/data/catalog'
 import {
   COSMETIC_DEFAULTS,
   activeRoad,
@@ -65,6 +68,14 @@ interface SeasonState {
   owns: (rewardId: string) => boolean
 }
 
+/**
+ * Everything a player can do that a quest might watch.
+ *
+ * Several of these pay NO miles (they aren't in SOURCE_FOR) and no bundled
+ * quest uses them yet — they exist so a catalog road shipped months from now
+ * can score them without an App Store submission. See the prepack note on
+ * QuestVerb in lib/season.ts.
+ */
 export type TrackEvent =
   | 'quiz_complete'
   | 'daily_play'
@@ -75,11 +86,24 @@ export type TrackEvent =
   | 'donate'
   | 'save_verse'
   | 'cpu_win'
+  // ── Prepacked emit sites ──
+  | 'focus_drill'
+  | 'replay_run'
+  | 'battle_played'
+  | 'battle_win'
+  | 'decor_placed'
+  | 'flora_planted'
+  | 'relic_found'
+  | 'keep_offering'
+  | 'track_unlocked'
+  | 'pet_equipped'
 
 export interface TrackPayload {
   correct?: number
   perfect?: boolean
   comboMax?: number
+  /** How many at once, for events that can happen in a batch. Defaults to 1. */
+  count?: number
 }
 
 // ── storage ──────────────────────────────────────────────────────────────────
@@ -274,7 +298,9 @@ export const useSeason = create<SeasonState>((set, get) => ({
     const { quests, rerolledOn, rerolled } = get()
     const today = todayLocalDate()
     const swapped = rerolledOn === today ? rerolled : []
-    return activeQuests(road.id, roadDay(road))
+    // A catalog road may carry its own quest pools; poolsFor falls back to the
+    // bundled ones, which is what keeps the Harvest Road exactly as it shipped.
+    return activeQuests(road.id, roadDay(road), poolsFor(road, BUNDLED_POOLS()))
       .filter((q) => !swapped.includes(q.key))
       .map((q) => ({ ...q, ...(quests[q.id] ?? { progress: 0, done: false }) }))
   },
@@ -455,7 +481,7 @@ async function advanceQuests(
 
   for (const q of useSeason.getState().liveQuests()) {
     if (q.done) continue
-    const delta = deltaFor(q.verb, event, payload)
+    const delta = deltaFor(q.verb, event, payload, q.goal)
     if (delta <= 0) continue
 
     const before = q.progress
@@ -494,8 +520,20 @@ async function advanceQuests(
   }
 }
 
-/** How much one event moves a quest watching a given verb. */
-function deltaFor(verb: Quest['verb'], event: TrackEvent, p: TrackPayload): number {
+/**
+ * How much one event moves a quest watching a given verb.
+ *
+ * `goal` is passed because two verbs are thresholds rather than tallies: they
+ * either clear the bar in ONE run or score nothing. Everything else counts.
+ *
+ * The `default: 0` is deliberate and load-bearing for the remote catalog — an
+ * unrecognised verb scores nothing rather than throwing. It should be
+ * unreachable, though: `sanitizeQuestDefs` drops any verb outside KNOWN_VERBS
+ * before a quest is ever shown, so a quest that lands here is a bug in the two
+ * lists agreeing, which `checkQuestVerbs()` catches in dev.
+ */
+function deltaFor(verb: Quest['verb'], event: TrackEvent, p: TrackPayload, goal: number): number {
+  const n = Math.max(1, Math.floor(p.count ?? 1))
   switch (verb) {
     case 'play_daily':
       return event === 'daily_play' ? 1 : 0
@@ -507,7 +545,11 @@ function deltaFor(verb: Quest['verb'], event: TrackEvent, p: TrackPayload): numb
       // A peak, not a tally. "Hit a 4x combo" means in ONE run — returning the
       // raw comboMax would let two 2x runs add up to it, which is not what the
       // quest says and not what it should feel like.
-      return event === 'quiz_complete' && (p.comboMax ?? 0) >= 4 ? 4 : 0
+      //
+      // The bar is the quest's own goal, so a catalog road can ask for any
+      // combo it likes. At goal 4 this is byte-identical to the hardcoded 4
+      // this shipped with, which is what makes it safe to generalise mid-road.
+      return event === 'quiz_complete' && (p.comboMax ?? 0) >= goal ? goal : 0
     case 'read_chapters':
       return event === 'chapter_read' ? 1 : 0
     case 'study_runs':
@@ -522,7 +564,69 @@ function deltaFor(verb: Quest['verb'], event: TrackEvent, p: TrackPayload): numb
       return event === 'share_daily' ? 1 : 0
     case 'open_chest':
       return event === 'chest_open' ? 1 : 0
+
+    // ── Prepacked: no bundled quest uses these, a catalog road may ──
+    case 'play_any':
+      return event === 'quiz_complete' ? 1 : 0
+    case 'answers_in_run':
+      // A threshold like `combo`: the run either cleared the bar or it didn't,
+      // so two half-runs never add up to it.
+      return event === 'quiz_complete' && Math.max(0, p.correct ?? 0) >= goal ? goal : 0
+    case 'focus_drills':
+      return event === 'focus_drill' ? n : 0
+    case 'replay_runs':
+      return event === 'replay_run' ? n : 0
+    case 'battle_wins':
+      return event === 'battle_win' ? n : 0
+    case 'battles_played':
+      return event === 'battle_played' ? n : 0
+    case 'place_decor':
+      return event === 'decor_placed' ? n : 0
+    case 'plant_flora':
+      return event === 'flora_planted' ? n : 0
+    case 'find_relic':
+      return event === 'relic_found' ? n : 0
+    case 'give_offering':
+      return event === 'keep_offering' ? n : 0
+    case 'unlock_track':
+      return event === 'track_unlocked' ? n : 0
+    case 'equip_pet':
+      return event === 'pet_equipped' ? n : 0
     default:
       return 0
   }
+}
+
+/**
+ * Every verb `deltaFor` actually handles, asserted against KNOWN_VERBS at
+ * import in dev — the same guard shape as `checkTrackData()` in data/music.ts.
+ *
+ * The two lists live in different files (the verb type is reward math, the
+ * scoring switch is store wiring) and drifting apart has one very quiet
+ * symptom: a catalog road ships a quest that passes sanitisation, renders with
+ * a progress bar, and can never be completed. This turns that into a console
+ * error the first time anyone runs the app.
+ */
+const SCORED_VERBS = new Set<string>([
+  'play_daily', 'answer_correct', 'perfect_run', 'combo', 'read_chapters',
+  'study_runs', 'cpu_wins', 'save_verses', 'donate', 'share_daily', 'open_chest',
+  'play_any', 'answers_in_run', 'focus_drills', 'replay_runs', 'battle_wins',
+  'battles_played', 'place_decor', 'plant_flora', 'find_relic', 'give_offering',
+  'unlock_track', 'equip_pet',
+])
+
+export function checkQuestVerbs(): string[] {
+  const problems: string[] = []
+  for (const v of KNOWN_VERBS) {
+    if (!SCORED_VERBS.has(v)) problems.push(`verb "${v}" is in KNOWN_VERBS but deltaFor cannot score it`)
+  }
+  for (const v of SCORED_VERBS) {
+    if (!KNOWN_VERBS.has(v)) problems.push(`verb "${v}" is scored but missing from KNOWN_VERBS — catalog quests using it are dropped`)
+  }
+  return problems
+}
+
+if (import.meta.env.DEV) {
+  const problems = checkQuestVerbs()
+  if (problems.length) console.error('[season] quest verb mismatch:\n' + problems.join('\n'))
 }

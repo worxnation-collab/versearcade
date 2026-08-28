@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { AvatarSpec, ArmorSlot } from '@/types'
-import { skinHex, robeHex, hairHex, figureOf, equippedSkinId, ARMOR_ENABLED } from '@/data/avatar'
+import { skinHex, robeHex, hairHex, figureOf, equippedSkinId, skinArtUrl, ARMOR_ENABLED } from '@/data/avatar'
 import { GENERATED_ART } from '@/data/generatedArt'
 
 // A composable character figure, drawn from an AvatarSpec. Two looks share one
@@ -200,36 +200,6 @@ function Halo({ cy = 26, rx = 13 }: { cy?: number; rx?: number }) {
   )
 }
 
-// ── Raster skin preview ───────────────────────────────────────────────────
-// A skin listed here renders as an image instead of drawn paths. The <image>
-// sits inside the same 120×170 viewBox, so sizing, the circular clip in Avatar
-// and every call site are untouched — and a skin that isn't listed keeps its
-// SVG exactly as before.
-//
-// This is a preview path, not a decision. Raster can't compose (the free
-// starter layers armour and items independently) and it softens badly at the
-// 18px presence chip, so anything kept here long-term should be redrawn as
-// paths. The file is served from public/, so dropping a PNG in is enough.
-const RASTER_SKINS: Record<string, string> = {
-  baldwin: '/skins/baldwin.png',
-  david: '/skins/david.png',
-  esther: '/skins/esther.png',
-  moses: '/skins/moses.png',
-  elijah: '/skins/elijah.png',
-  eden: '/skins/eden.png',
-  whale: '/skins/whale.png',
-  gabriel: '/skins/gabriel.png',
-  michael: '/skins/michael.png',
-  seraph: '/skins/seraph.png',
-  // The Pilgrimage's reactive skin: the equipped skinId carries the state
-  // (ruth_1..ruth_4 — see passSkinEquipId in data/avatar), so each maps to its
-  // own file and every viewer renders the right basket from the spec alone.
-  ruth_1: '/skins/ruth_1.png',
-  ruth_2: '/skins/ruth_2.png',
-  ruth_3: '/skins/ruth_3.png',
-  ruth_4: '/skins/ruth_4.png',
-  boaz: '/skins/boaz.png',
-}
 
 export function Character({
   spec,
@@ -273,11 +243,12 @@ export function Character({
   // as before — the batch can ship incomplete and nothing breaks. Like every
   // raster look, chest items don't compose onto it; that trade was made
   // deliberately when the base went raster (same behaviour as equipping
-  // Moses, where items also stop rendering).
+  // Moses, where items also stop rendering). Equipped skins go through
+  // skinArtUrl so the season catalog can serve their art (see data/avatar).
   const starterRaster = !skinId
     ? GENERATED_ART[`starter_${fem ? 'fem' : 'masc'}_${spec.skin}_${spec.hair ?? 'espresso'}`]
     : undefined
-  const raster = skinId ? RASTER_SKINS[skinId] : starterRaster
+  const raster = skinId ? skinArtUrl(skinId) : starterRaster
   const useRaster = !!raster && failedSrc !== raster
   // Everywhere the player actually reads an avatar — chips, lists, the profile
   // header, the customise grid — a full-length figure in a small circle throws

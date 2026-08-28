@@ -225,13 +225,23 @@ let produced = 0
 for (const entry of manifest) {
   if (only && entry.id !== only) continue
   const isSkin = entry.kind === 'skin'
-  const isScene = entry.kind === 'scene'
+  // `road` is a scene by every pipeline rule — full-bleed, no key, capped at
+  // 640 — and differs only in where it lands. The season's painting belongs in
+  // public/road/ next to harvest.jpg, not in the keep's folder.
+  const isRoad = entry.kind === 'road'
+  const isScene = entry.kind === 'scene' || isRoad
   const isProp = entry.kind === 'prop'
+  // A road's painting is full-bleed and fully opaque, so PNG buys nothing and
+  // costs a lot: the first two came back at ~1MB each against the 88KB of the
+  // hand-made harvest.jpg they sit beside, and every user downloads them.
+  // JPEG at 82 is visually indistinguishable on a soft painted gradient.
   const dest = isSkin
     ? `public/skins/${entry.id}.png`
-    : isScene || isProp
-      ? `public/keep/${entry.id}.png`
-      : `public/items/${entry.id}.png`
+    : isRoad
+      ? `public/road/${entry.id}.jpg`
+      : isScene || isProp
+        ? `public/keep/${entry.id}.png`
+        : `public/items/${entry.id}.png`
   process.stdout.write(`${entry.id} … `)
   try {
     const raw = await generate(entry.prompt, isSkin, entry.refs ?? [])
@@ -255,7 +265,9 @@ for (const entry of manifest) {
         isSkin ? { padBelowPct: 0.08, maxH: 400 } : isProp ? { padBelowPct: 0, maxH: 150 } : { padBelowPct: 0, maxH: 220 },
       )
     }
-    const buf = PNG.sync.write(png)
+    const buf = isRoad
+      ? jpeg.encode({ data: png.data, width: png.width, height: png.height }, 82).data
+      : PNG.sync.write(png)
     writeFileSync(dest, buf)
     // The app serves public/ from the root, so the URL is the path minus it.
     artMap[entry.id] = dest.replace(/^public/, '')

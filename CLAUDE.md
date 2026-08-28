@@ -690,6 +690,23 @@ apart is what makes the hero a picture of a person rather than a second
 scoreboard. It uses the same `cardBgStyle` + `CardBg` pair as the card, so
 equipping a background changes both and they can't drift.
 
+### Customizing is one shelf, not six
+
+Everything you can equip — skins, pets, items, card backgrounds, borders,
+badges — lives under a single row of pills in `CustomizeSection`
+(`TabbedSection`), with the character builder above it. It used to be six
+stacked collapsibles, which meant changing your border after your skin was a
+scroll past four other sections, and Pets sat so far down that nobody choosing
+a look ever saw it. Everything is now one tap from everything else.
+
+Three things about it worth keeping: the pills **are** the header (tapping the
+open one folds the section, so there's one control), only the **active tab's
+content is mounted** so six grids of avatars and card art never render at once,
+and the row **wraps rather than scrolls sideways** — six names fit in two rows
+on every phone, where a scrolling chip rail would hide half the wardrobe behind
+a swipe nobody is told about. Adding a shelf is one more entry in the `tabs`
+array.
+
 ### The starter character, and the parked armor
 
 The first thing anyone does — as a guest at `/welcome`, or on the first beat of
@@ -845,6 +862,16 @@ Two rules fall out of that:
   the same world on one screen means you can't tell which one you're touching —
   that's why the church tab's hero is the editable yard and the Landscaping
   section below it is only a picker.
+
+**The crowd talks, in emoji, and that is deliberately all it can do.** Figures
+pop a small bubble every 12-30s from a fixed ten-emoji list in `CrowdLife`
+(`CHATTER`) — a wave, a heart, a dove. There is no text field, no per-player
+message and nothing anybody can author, so the one surface in this app where
+players appear to speak to each other cannot carry an insult, a link or a
+moderation queue. The list is also uncomparative on purpose: no 💪, no 🥇, no
+👎, same rule that keeps figures from carrying points. If a future session
+wants real words here, understand that it is opening a user-content problem the
+current design doesn't have — the emoji aren't a placeholder for chat.
 
 And when the world is showing, the row that used to link to it goes. The Battle
 tab lost its "Your Keep →" card, and the profile's player card lost its identity

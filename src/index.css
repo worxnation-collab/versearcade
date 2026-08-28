@@ -115,6 +115,19 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
    steps. Paired with scaleX facing on the same element (KeepLife). */
 @keyframes va-keep-bob { from { transform: translateY(0) } to { transform: translateY(-2.5px) } }
 @keyframes va-keep-breathe { from { transform: scaleY(1) } to { transform: scaleY(1.018) } }
+/* A crowd figure's emoji bubble: pops, holds, fades. The whole life of the
+   bubble is ONE animation rather than a second timer, so a fade can never
+   outlive the element it belongs to. The centring translate lives inside the
+   keyframes on purpose — this animates `transform`, and a translateX(-50%) set
+   on the element would be silently replaced by every frame (the same trap
+   CrowdLife's facing flip documents). */
+@keyframes va-bubble {
+  0%   { opacity: 0; transform: translate(-50%, 5px) scale(0.6) }
+  10%  { opacity: 1; transform: translate(-50%, 0) scale(1) }
+  16%  { opacity: 1; transform: translate(-50%, 0) scale(0.97) }
+  78%  { opacity: 1; transform: translate(-50%, 0) scale(0.97) }
+  100% { opacity: 0; transform: translate(-50%, -4px) scale(0.9) }
+}
 @keyframes pulseGlow {
   0%,100% { filter: drop-shadow(0 0 0 rgba(255,210,63,0)) }
   50% { filter: drop-shadow(0 0 16px rgba(255,210,63,0.6)) }

@@ -92,6 +92,22 @@ function rng(seed: number): () => number {
  */
 const PET_MIN_PX = 9
 
+/**
+ * What the crowd says to each other. EMOJI ONLY, from this fixed list, and
+ * that is the entire feature — there is no text field, no per-player message
+ * and nothing anybody can author, so the one surface in this app where players
+ * appear to talk cannot carry an insult, a link, or a moderation queue.
+ *
+ * Chosen to be warm and uncomparative, like everything else in these scenes: a
+ * wave, a heart, a hallelujah. Nothing here can read as a score, a taunt or a
+ * verdict on somebody else's play (no 💪, no 🥇, no 👎), which is the same rule
+ * that keeps figures from carrying points.
+ */
+const CHATTER = ['❤️', '📖', '✝️', '🙏', '🕊️', '✨', '😊', '👋', '🎵', '🌾']
+
+/** How long one bubble is on screen — must match the va-bubble keyframe. */
+const BUBBLE_MS = 2400
+
 export function CrowdLife({
   members,
   waypoints,
@@ -172,6 +188,7 @@ function LifeFigure({
   const [walking, setWalking] = useState(false)
   const [facing, setFacing] = useState(1)
   const [durMs, setDurMs] = useState(0)
+  const [bubble, setBubble] = useState<string | null>(null)
 
   useEffect(() => {
     const p = plan.current!
@@ -213,6 +230,38 @@ function LifeFigure({
     // The schedule is seeded and self-contained; it never re-derives.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reduceMotion])
+
+  // Chatter runs on its OWN rng, seeded from the same name with a different
+  // salt. Drawing from the walk plan's generator would have shifted every
+  // dwell and every waypoint the moment this was added, which is the sort of
+  // change that silently re-times a scene nobody thought they had touched.
+  //
+  // 12-30s apart per figure and 2.4s on screen, so a full yard says something
+  // every few seconds and no single person is chatty. The first one comes
+  // sooner, for the same reason the first move does: a viewer decides in the
+  // first few seconds whether anything here is alive.
+  useEffect(() => {
+    const r = rng(seedFrom(member.username) + 104729 + slot * 31)
+    let alive = true
+    let timer: ReturnType<typeof setTimeout>
+    const wait = () => { timer = setTimeout(say, (12 + r() * 18) * 1000) }
+    const say = () => {
+      if (!alive) return
+      setBubble(CHATTER[Math.floor(r() * CHATTER.length)])
+      timer = setTimeout(() => {
+        if (!alive) return
+        setBubble(null)
+        wait()
+      }, BUBBLE_MS)
+    }
+    timer = setTimeout(say, (2 + r() * 9) * 1000)
+    return () => {
+      alive = false
+      clearTimeout(timer)
+    }
+    // Seeded and self-contained, exactly like the walk schedule above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const size = sizeFor(pos.b)
   // Which side the companion stands on: towards the middle of the scene, so it
@@ -300,6 +349,54 @@ function LifeFigure({
           >
             <Pet id={companion.id} size={Math.max(size * companion.scale, PET_MIN_PX)} />
           </span>
+        </span>
+      )}
+      {/* What they're saying. Above the head and OUTSIDE the facing flip: a
+          bubble inside it would mirror, and a back-to-front ✝️ is the one thing
+          in this scene that would read as a bug rather than as a place.
+          Anchored to the top of the figure's own box, so it clears every head
+          from the 24px figures at the back of the road to the 46px ones at the
+          front without knowing which is which.
+          reduce-motion keeps the bubble and drops the pop — appearing and
+          disappearing is a discrete change of state, which is the same line
+          the glide draws. */}
+      {bubble && (
+        <span
+          aria-hidden
+          style={{
+            position: 'absolute',
+            left: '50%',
+            bottom: '100%',
+            marginBottom: 2,
+            padding: `${Math.max(2, size * 0.05)}px ${Math.max(4, size * 0.1)}px`,
+            borderRadius: 999,
+            background: 'rgba(10,5,26,0.82)',
+            border: '1px solid rgba(255,255,255,0.18)',
+            fontSize: Math.max(11, size * 0.4),
+            lineHeight: 1,
+            whiteSpace: 'nowrap',
+            transform: 'translateX(-50%)',
+            animation: reduceMotion ? 'none' : `va-bubble ${BUBBLE_MS}ms ease-out both`,
+          }}
+        >
+          {bubble}
+          {/* The tail. A bordered triangle would show its own outline through
+              the bubble, so this is a plain filled one in the bubble's colour,
+              tucked a pixel under the rim. */}
+          <span
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: '100%',
+              marginTop: -1,
+              transform: 'translateX(-50%)',
+              width: 0,
+              height: 0,
+              borderLeft: '3px solid transparent',
+              borderRight: '3px solid transparent',
+              borderTop: '4px solid rgba(10,5,26,0.82)',
+            }}
+          />
         </span>
       )}
       {/* Two nested spans because both need `transform`: the outer owns the

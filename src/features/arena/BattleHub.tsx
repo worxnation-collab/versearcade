@@ -50,6 +50,24 @@ export default function BattleHub() {
   /** Faction key whose keep is open, '' for "my hall", null for closed. */
   const [openKeep, setOpenKeep] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<Turn | null>(null)
+  /**
+   * The team picker only EXISTS inside the Teams rank tab, so "Choose a
+   * denomination" has to open that tab before it can scroll to it. It used to
+   * call getElementById straight away, which returned null on the default
+   * (Individual) tab and made the button do nothing at all. Opening the tab and
+   * scrolling in an effect — rather than in the same handler — is what
+   * guarantees the picker is mounted before we look for it.
+   */
+  const [scrollToPicker, setScrollToPicker] = useState(false)
+  const browseTeams = () => {
+    setRankTab('denomination')
+    setScrollToPicker(true)
+  }
+  useEffect(() => {
+    if (!scrollToPicker) return
+    setScrollToPicker(false)
+    document.getElementById('team-picker')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [scrollToPicker])
 
   const isGuest = mode === 'local'
 
@@ -124,7 +142,7 @@ export default function BattleHub() {
               instead, because a hall with nobody's colours on it is the one
               version of this that says nothing. */}
           <div style={{ marginTop: 14, marginBottom: 4 }}>
-            {profile?.denomination ? <MyKeepScene onOpen={() => { juice.select(); setOpenKeep(profile.denomination ?? '') }} /> : <PickATeam />}
+            {profile?.denomination ? <MyKeepScene onOpen={() => { juice.select(); setOpenKeep(profile.denomination ?? '') }} /> : <PickATeam onBrowse={browseTeams} />}
           </div>
 
           {/* Your battles, split by whose move it is. "Your turn" carries the
@@ -413,11 +431,18 @@ function MyKeepScene({ onOpen }: { onOpen: () => void }) {
  * What sits where the hall would be, before there's a hall to show.
  *
  * The tone matters more than the layout here. A faction is optional and stays
- * optional — this offers the easy answer and the full list, and says plainly
+ * optional — this offers the full list and the one-tap answer, and says plainly
  * that it can be changed and that it never touches the main leaderboard.
  * Nobody is nagged twice: it disappears the moment a team is picked.
+ *
+ * NEITHER BUTTON OUTRANKS THE OTHER, and that's the whole point of this card.
+ * The gold variant is this app's "do the thing" colour, so putting it on
+ * Non-denominational alone made one of thirty teams look like the recommended
+ * answer and skewed who joined what. Both paths are the same variant now, the
+ * full list leads, and the gold on this tab belongs to "Start a new battle".
+ * If a variant ever changes here, change both.
  */
-function PickATeam() {
+function PickATeam({ onBrowse }: { onBrowse: () => void }) {
   const juice = useJuice()
   const updateProfile = useAuth((st) => st.updateProfile)
   const [busy, setBusy] = useState(false)
@@ -442,20 +467,20 @@ function PickATeam() {
         can change it whenever you like.
       </p>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-        <Button variant="gold" disabled={busy} onClick={() => void pick('non_denominational')}>
-          Non-denominational
-        </Button>
         <Button
-          variant="secondary"
+          variant="primary"
           disabled={busy}
           onClick={() => {
             juice.select()
             // The full list already exists further down the tab; send them to
             // it rather than building a second picker that could disagree.
-            document.getElementById('team-picker')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            onBrowse()
           }}
         >
           Choose a denomination
+        </Button>
+        <Button variant="primary" disabled={busy} onClick={() => void pick('non_denominational')}>
+          Non-denominational
         </Button>
       </div>
     </div>

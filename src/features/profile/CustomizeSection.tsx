@@ -77,6 +77,9 @@ export function CustomizeSection() {
   const restoreIap = useIap((s) => s.restore)
   // Ask StoreKit for the catalog when the customizer opens. Until it answers,
   // storefrontEnabled() is false on native and no price is rendered anywhere.
+  // AFTER it answers the shop is live, so every price on this screen has to
+  // come from displayPrice() — Apple's own localized string — and not from the
+  // USD `price` fields in data/avatar.
   useEffect(() => { void loadIap() }, [loadIap])
   const refreshProfile = useAuth((s) => s.refreshProfile)
   const mode = useAuth((s) => s.mode)
@@ -276,9 +279,10 @@ export function CustomizeSection() {
     if (!owned && skin.source === 'paid' && !profile.isAdmin) {
       juice.select()
       // A free promo-code skin redeems in every build — no price, no checkout.
-      // Anything with a price simply doesn't exist in a native build, so there
-      // is no sheet to open (see lib/commerce). The tile is already hidden
-      // there; this is the second lock on the same door.
+      // A priced skin opens its sheet only where a sale can actually complete:
+      // Stripe on web, and on native only once StoreKit has the product (see
+      // lib/commerce). With no storefront the tile is already hidden; this is
+      // the second lock on the same door.
       if (skin.exclusive) { setRedeemMsg(null); setRedeemTarget(skin) }
       else if (storefrontEnabled()) {
         const bundle = skin.bundleOnly ? BUNDLES.find((b) => b.id === skin.pack) : undefined
@@ -444,7 +448,12 @@ export function CustomizeSection() {
                     : `Shared ${Math.min(sharedCount, skin.shareGoal ?? 0)}/${skin.shareGoal ?? 0} days`
                   : skin.exclusive ? `🔒 ${skin.packName ?? 'Exclusive'}`
                     : skin.bundleOnly ? `🔒 ${skin.packName ?? 'Pack only'}`
-                      : `🔒 ${skin.price}`
+                      // Apple's localized price on native, the catalog price on
+                      // web — never skin.price directly, which is the USD web
+                      // price and misstates the charge in every other currency
+                      // (the sheet below already asks displayPrice, and a tile
+                      // that disagrees with it is the rejection).
+                      : `🔒 ${displayPrice(skin.id, skin.price) ?? 'Locked'}`
             return (
               <button
                 key={skin.id}

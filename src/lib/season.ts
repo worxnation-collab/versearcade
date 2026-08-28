@@ -135,6 +135,12 @@ export type QuestVerb =
   | 'equip_pet'
   /** Another player's feet washed — the Basin (John 13:14). */
   | 'wash_feet'
+  /** Furnishings set in your own Upper Room. */
+  | 'furnish_room'
+  /** Other players' rooms visited. */
+  | 'visit_room'
+  /** Relics given to another player, which cost the giver the item. */
+  | 'give_gift'
 
 /**
  * Every verb this build can actually score. Anything outside it is dropped on
@@ -171,6 +177,9 @@ export const KNOWN_VERBS = new Set<string>([
   'unlock_track',
   'equip_pet',
   'wash_feet',
+  'furnish_room',
+  'visit_room',
+  'give_gift',
 ])
 
 export interface QuestDef {

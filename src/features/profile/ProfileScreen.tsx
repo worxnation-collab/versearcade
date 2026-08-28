@@ -16,11 +16,13 @@ import { useInventory } from '@/store/inventory'
 import { BuddiesSection } from '@/features/buddies/BuddiesScreen'
 import { BasinSection } from '@/features/washing/BasinSection'
 import { useBuddies } from '@/store/buddies'
+import { useGifts } from '@/store/gifts'
 import { useWashing } from '@/store/washing'
 import { useSeason } from '@/store/season'
 import { titleById } from '@/data/season'
 import { CustomizeSection } from './CustomizeSection'
 import { ProfileHero } from './ProfileHero'
+import { RoomSection } from '@/features/room/RoomSection'
 import { SettingsSheet } from './SettingsSheet'
 
 export default function ProfileScreen() {
@@ -54,6 +56,10 @@ export default function ProfileScreen() {
   // load to BuddiesSection meant the count was always 0 until you'd already
   // found the thing the count exists to point at.
   const buddyRequests = useBuddies((st) => st.requests.length)
+  // Same "something for you" signal the bottom nav shows, so the pill and the
+  // tab can't disagree about whether the mailbox has anything in it.
+  const unseenGifts = useGifts((st) => st.unseen)
+  const mailWaiting = buddyRequests + unseenGifts
   const loadBuddies = useBuddies((st) => st.load)
   useEffect(() => {
     if (mode === 'online') void loadBuddies()
@@ -252,6 +258,35 @@ export default function ProfileScreen() {
               <button onClick={openCustomize} aria-label="Customize your card" className="pill" style={{ fontSize: 12, padding: '4px 10px', flexShrink: 0 }}>
                 ✨ Customize
               </button>
+              <button
+                onClick={() => { juice.select?.(); navigate('/journal') }}
+                aria-label="Journal"
+                className="pill"
+                style={{ fontSize: 12, padding: '4px 10px', flexShrink: 0 }}
+              >
+                📔 Journal
+              </button>
+              {/* The mailbox. It lives behind a pill rather than a sixth tab
+                  (five already have to clear a 320px phone), and it carries the
+                  same one dot the nav does — no count, nothing to clear. */}
+              <button
+                onClick={() => { juice.select?.(); navigate('/mail') }}
+                aria-label="Mail"
+                className="pill"
+                style={{ fontSize: 12, padding: '4px 10px', flexShrink: 0, position: 'relative' }}
+              >
+                📬 Mail
+                {mailWaiting > 0 && (
+                  <span
+                    aria-hidden
+                    style={{
+                      position: 'absolute', top: -2, right: -2, width: 8, height: 8,
+                      borderRadius: 999, background: 'var(--gold)',
+                      border: '2px solid rgba(20,10,52,0.95)', boxSizing: 'content-box',
+                    }}
+                  />
+                )}
+              </button>
               {/* Sound, haptics, motion and translation all live behind here so
                   the profile stays about the player, not the knobs. */}
               <button
@@ -266,6 +301,13 @@ export default function ProfileScreen() {
           }
         />
       </div>
+
+      {/* The fourth little world, and the only one that is yours alone. It opens
+          its section here rather than sitting behind a row that describes it —
+          the same rule the road, the hall and the churchyard follow. Below the
+          card rather than above it, because the hero and the card are a pair:
+          a portrait and its numbers, and a room between them would split them. */}
+      <RoomSection />
 
       {/* Invite friends — referral code + progress toward the carried-cross look.
           Collapsed by default behind an obvious Show/Hide button; the header

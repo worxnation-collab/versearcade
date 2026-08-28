@@ -1,3 +1,20 @@
+import {
+  MAX_TIER,
+  TIER_PREFIX,
+  anchorsHoldingOn,
+  packDecor as packOn,
+  placedTierOn,
+  planMoveOn,
+  planPickOn,
+  planPlacementOn,
+  unpackDecor as unpackOn,
+  type MovePlan,
+  type PickOutcome,
+  type PlacementMap,
+  type PlacementPlan,
+  type Surface,
+} from './placement'
+
 // The Keep — a denomination's hall on the Battle tab. See docs/FORTRESS.md for
 // the design of record; the rules that matter most here:
 //
@@ -242,245 +259,62 @@ export function offerValue(decorId?: string | null): number {
 /** Anchors holding a Grand piece — the only ones that can be offered. */
 export function offerableAnchors(placements: Record<string, string>): { anchor: string; decor: string }[] {
   return ANCHORS.flatMap((a) => {
-    const { id, tier } = unpackDecor(placements[a.id])
-    return id && tier >= MAX_DECOR_TIER ? [{ anchor: a.id, decor: id }] : []
+    const { id, tier } = unpackOn(placements[a.id])
+    return id && tier >= MAX_TIER ? [{ anchor: a.id, decor: id }] : []
   })
 }
 
-// ── Moving a piece ───────────────────────────────────────────────────────────
-// Tap something already placed, then tap where it should go. A piece only ever
-// lands on an anchor of its own MOUNT — a rug on a rafter is not a placement,
-// it is a bug — so the targets a pick-up offers are exactly its own kind.
-
-export interface MovePlan {
-  /** anchor -> new packed value, or null to clear. Applied in this order. */
-  writes: { anchor: string; value: string | null }[]
-  /** True when the two pieces were the same thing and folded together. */
-  merged: boolean
-  /** True when two different pieces traded places. */
-  swapped: boolean
-  tier: number
-}
-
-/**
- * Move the piece on `from` to `to`.
- *
- * Three outcomes, and none of them can lose a decoration: an empty target just
- * takes it, a target holding the SAME decoration merges (the same rule as
- * placing a duplicate — one step up, capped), and a target holding something
- * else trades places with it. Nothing is ever overwritten, because "I dropped
- * it on the wrong spot and my tapestry vanished" is the one way a drag can
- * genuinely hurt.
- */
-export function planMove(
-  placements: Record<string, string>,
-  from: string,
-  to: string,
-): MovePlan | null {
-  if (from === to) return null
-  const fromDef = anchorById(from)
-  const toDef = anchorById(to)
-  if (!fromDef || !toDef || fromDef.mount !== toDef.mount) return null
-
-  const moving = unpackDecor(placements[from])
-  if (!moving.id) return null
-  const target = unpackDecor(placements[to])
-
-  if (target.id === moving.id && target.tier < MAX_DECOR_TIER) {
-    const tier = Math.min(MAX_DECOR_TIER, Math.max(target.tier, moving.tier) + 1)
-    return {
-      writes: [{ anchor: to, value: packDecor(moving.id, tier) }, { anchor: from, value: null }],
-      merged: true,
-      swapped: false,
-      tier,
-    }
-  }
-
-  return {
-    writes: [
-      { anchor: to, value: placements[from] },
-      { anchor: from, value: placements[to] ?? null },
-    ],
-    merged: false,
-    swapped: !!target.id,
-    tier: moving.tier,
-  }
-}
-
-// ── Merging duplicates ───────────────────────────────────────────────────────
-// Two of the same thing in one room is clutter, so a duplicate MERGES instead
-// of standing beside itself: put a second rug down and it goes into the rug you
-// already have, which becomes a Fine Woven Rug, and the spot you were about to
-// fill stays free for something else. Three make it Grand. It is pure upside —
-// nothing is spent, nothing is destroyed, and the spare anchor comes back.
+// ── The planners live in data/placement.ts ──────────────────────────────────
+// Placing, merging and moving are the SAME rules in every little world, so they
+// are written once (data/placement.ts) and the keep hands them its own anchor
+// set. What used to be four copied algorithms is four wrappers; every call site
+// below the app still imports these names from here and none of them changed.
 //
-// This does NOT break "presence, not quantity" (see the header): a tier is a
-// LOOK, exactly like a church skin, and reading it back the other way tells you
-// nothing about anybody. Ownership is still derived from the six counters, so a
-// merge can't be hoarded or lost — clear a tiered prop and it simply starts
-// again at plain, because you never stopped owning the rug.
-//
-// WIRE FORMAT. A placement value is `keep_woven_rug` at tier 1 and
-// `keep_woven_rug.2` / `.3` above it, so every row and every localStorage blob
-// written before merging existed still reads correctly as tier 1 and no stored
-// shape had to change. `set_keep_placement` (0060) allows exactly this suffix.
-// packDecor/unpackDecor are the only two places that know it.
+// The rules themselves are documented at the top of data/placement.ts: nothing
+// is ever lost, a tier is a look rather than a count, and a piece only ever
+// lands on an anchor of its own mount.
 
-export const MAX_DECOR_TIER = 3
-
-/** Tier 1 is the object itself, so it has no adjective. */
-const TIER_PREFIX = ['', 'Fine ', 'Grand '] as const
-
-export function packDecor(id: string, tier: number): string {
-  const t = Math.min(MAX_DECOR_TIER, Math.max(1, Math.floor(tier || 1)))
-  return t <= 1 ? id : `${id}.${t}`
+/** The keep, as a surface the shared planners can reason about. */
+export const KEEP_SURFACE: Surface = {
+  anchors: ANCHORS,
+  mountOf: (id) => decorById(id)?.mount,
 }
 
-export function unpackDecor(value?: string | null): { id: string; tier: number } {
-  if (!value) return { id: '', tier: 1 }
-  const dot = value.indexOf('.')
-  if (dot < 0) return { id: value, tier: 1 }
-  const tier = Number(value.slice(dot + 1))
-  return {
-    id: value.slice(0, dot),
-    // An unknown suffix is somebody else's future, not a crash: draw it plain.
-    tier: Number.isFinite(tier) ? Math.min(MAX_DECOR_TIER, Math.max(1, tier)) : 1,
-  }
-}
+export const MAX_DECOR_TIER = MAX_TIER
+
+export { packOn as packDecor, unpackOn as unpackDecor }
+export type { MovePlan, PickOutcome, PlacementPlan }
 
 /** 'Grand Woven Rug' — the name a tiered decoration wears in the UI. */
 export function decorName(value?: string | null): string {
-  const { id, tier } = unpackDecor(value)
+  const { id, tier } = unpackOn(value)
   const def = decorById(id)
   if (!def) return ''
   return `${TIER_PREFIX[tier - 1] ?? ''}${def.name}`
 }
 
-export interface PlacementPlan {
-  /** The anchor that actually changes. */
-  anchor: string
-  /** What to write there — a packed decor value, or null to clear. */
-  value: string | null
-  /** True when this absorbed a duplicate rather than filling the target spot. */
-  merged: boolean
-  /** The tier the object ends up at, for the toast. */
-  tier: number
-  /** True when the tap changes nothing at all, so nothing is written. */
-  noop?: boolean
-}
-
-/**
- * What placing `decorId` on `anchor` should actually do.
- *
- * If that decoration is already out anywhere and isn't maxed, the placement
- * merges into THAT copy and the tapped spot is left alone. Ties go to the copy
- * furthest along — a second merge should finish the Fine one rather than
- * starting a second ladder — and then to ANCHORS order, so two devices given
- * the same state always pick the same spot.
- *
- * The tapped anchor counts as a candidate when it's already holding the same
- * thing, which is what stops the destrier being the one decoration that can
- * never be merged: the stable has a single spot, so "put a second one out" has
- * to mean tapping the one you have. Everywhere else it just reads as tapping
- * again to keep going.
- */
 export function planPlacement(
-  placements: Record<string, string>,
+  placements: PlacementMap,
   anchor: string,
   decorId: string | null,
 ): PlacementPlan {
-  if (!decorId) return { anchor, value: null, merged: false, tier: 1 }
-
-  let best: { anchor: string; tier: number } | null = null
-  for (const a of ANCHORS) {
-    const here = unpackDecor(placements[a.id])
-    if (here.id !== decorId || here.tier >= MAX_DECOR_TIER) continue
-    if (!best || here.tier > best.tier) best = { anchor: a.id, tier: here.tier }
-  }
-
-  if (best) {
-    return { anchor: best.anchor, value: packDecor(decorId, best.tier + 1), merged: true, tier: best.tier + 1 }
-  }
-
-  // Nothing left to merge into. If the tapped spot is ALREADY holding this —
-  // a maxed one, since anything below max would have merged — then the tap
-  // means "keep it", and writing a plain `decorId` here would quietly demote a
-  // Grand piece back to nothing. (It did, until a browser found it.)
-  const onTarget = unpackDecor(placements[anchor])
-  if (onTarget.id === decorId) {
-    return { anchor, value: placements[anchor], merged: false, tier: onTarget.tier, noop: true }
-  }
-
-  return { anchor, value: decorId, merged: false, tier: 1 }
+  return planPlacementOn(KEEP_SURFACE, placements, anchor, decorId)
 }
 
-// ── Picking from the shelf ───────────────────────────────────────────────────
-// The old picker was a row per anchor with a chip per decoration: to make a
-// Fine rug you had to find a second floor spot and put a rug on it, and to see
-// what "Barrel Stack" looked like you had to place it. Both are the list doing
-// a picture's job.
-//
-// This is the tap-one-thing flow instead. You tap a decoration and it goes
-// where it belongs; if you already have one out, tapping it again MERGES rather
-// than standing a second one beside it, which is the "duplicates just become
-// the better thing" rule with no second anchor to hunt for.
+export function planMove(placements: PlacementMap, from: string, to: string): MovePlan | null {
+  return planMoveOn(KEEP_SURFACE, placements, from, to)
+}
 
-export type PickOutcome =
-  /** Goes to a free anchor of its mount. */
-  | { kind: 'place'; anchor: string; value: string; tier: 1 }
-  /** Folds into the copy already out, one tier up. */
-  | { kind: 'merge'; anchor: string; value: string; tier: number }
-  /** Already out and already Grand — there is nothing left to do to it. */
-  | { kind: 'maxed'; anchor: string }
-  /** Every spot of its kind is taken by something else. */
-  | { kind: 'full'; mount: MountKind }
-
-/**
- * What tapping `decorId` on the shelf should do.
- *
- * Order matters: merging beats filling a new spot, so a second tap always
- * improves the piece you have rather than starting a second one. When the mount
- * is full of OTHER things it refuses instead of overwriting — the hall's rule
- * is that nothing you placed ever silently disappears.
- */
-export function planPick(placements: Record<string, string>, decorId: string): PickOutcome {
-  const def = decorById(decorId)
-  if (!def) return { kind: 'full', mount: 'wall' }
-
-  let best: { anchor: string; tier: number } | null = null
-  let anyCopy: string | null = null
-  for (const a of anchorsForMount(def.mount)) {
-    const here = unpackDecor(placements[a.id])
-    if (here.id !== decorId) continue
-    anyCopy = anyCopy ?? a.id
-    if (here.tier < MAX_DECOR_TIER && (!best || here.tier > best.tier)) {
-      best = { anchor: a.id, tier: here.tier }
-    }
-  }
-
-  if (best) {
-    const tier = best.tier + 1
-    return { kind: 'merge', anchor: best.anchor, value: packDecor(decorId, tier), tier }
-  }
-  if (anyCopy) return { kind: 'maxed', anchor: anyCopy }
-
-  const free = anchorsForMount(def.mount).find((a) => !placements[a.id])
-  if (free) return { kind: 'place', anchor: free.id, value: decorId, tier: 1 }
-
-  return { kind: 'full', mount: def.mount }
+export function planPick(placements: PlacementMap, decorId: string): PickOutcome {
+  return planPickOn(KEEP_SURFACE, placements, decorId)
 }
 
 /** Every anchor currently holding this decoration, best tier first. */
-export function anchorsHolding(placements: Record<string, string>, decorId: string): string[] {
-  return ANCHORS.filter((a) => unpackDecor(placements[a.id]).id === decorId)
-    .sort((a, b) => unpackDecor(placements[b.id]).tier - unpackDecor(placements[a.id]).tier)
-    .map((a) => a.id)
+export function anchorsHolding(placements: PlacementMap, decorId: string): string[] {
+  return anchorsHoldingOn(KEEP_SURFACE, placements, decorId)
 }
 
 /** The best tier of this decoration currently in the hall, or 0 if it's not out. */
-export function placedTier(placements: Record<string, string>, decorId: string): number {
-  return ANCHORS.reduce((best, a) => {
-    const here = unpackDecor(placements[a.id])
-    return here.id === decorId ? Math.max(best, here.tier) : best
-  }, 0)
+export function placedTier(placements: PlacementMap, decorId: string): number {
+  return placedTierOn(KEEP_SURFACE, placements, decorId)
 }

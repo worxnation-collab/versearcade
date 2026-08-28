@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useJuice } from '@/juice/useJuice'
 import { useBuddies } from '@/store/buddies'
+import { useGifts } from '@/store/gifts'
 import { useAccountLocked } from '@/components/AccountWall'
 
 // Five tabs, one per thing you actually come here to do. Ranks folded into
@@ -69,6 +70,10 @@ function NavLock() {
 export function BottomNav() {
   const juice = useJuice()
   const buddyRequests = useBuddies((s) => s.requests.length)
+  // Anything addressed to you that you have not seen. Still ONE dot with no
+  // count — a gift and a buddy request are both "there's something for you",
+  // and a number here would turn a letterbox into a queue to be cleared.
+  const unseenGifts = useGifts((s) => s.unseen)
   const locked = useAccountLocked()
   return (
     <nav
@@ -130,7 +135,7 @@ export function BottomNav() {
               >
                 <span style={{ fontSize: 20 }}>{t.icon}</span>
                 <span style={{ fontSize: 10, fontWeight: 800, whiteSpace: 'nowrap' }}>{t.label}</span>
-                {t.to === '/you' && buddyRequests > 0 && <NavDot />}
+                {t.to === '/you' && buddyRequests + unseenGifts > 0 && <NavDot />}
                 {locked && !t.guest && <NavLock />}
               </motion.div>
             )}

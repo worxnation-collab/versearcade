@@ -23,6 +23,7 @@ import { useCollection } from '@/store/collection'
 import { collectibleByKey } from '@/data/collectibles'
 import { CARD_BACKGROUNDS, DEFAULT_CARD_BG, cardBgStyle, cardArtProps, cardBgAccentColor, cardBgUnlocked } from '@/data/playerCards'
 import { CardArt } from '@/data/cardArt'
+import { SavedLooks } from './SavedLooks'
 import {
   DEFAULT_AVATAR,
   distinctSharedDays,
@@ -796,6 +797,12 @@ export function CustomizeSection() {
               </div>
               </>
             ),
+          },
+          {
+            key: 'looks',
+            label: 'Looks',
+            right: 'saved outfits',
+            content: <SavedLooks />,
           },
         ]}
       />

@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { useAuth } from './store/auth'
 import { useBuddies } from './store/buddies'
+import { useGifts } from './store/gifts'
 import { useReminders } from './store/reminders'
 import { useSeason } from './store/season'
 import { useCatalog } from './store/catalog'
@@ -18,6 +19,8 @@ import PracticeQuizScreen from './features/practice/PracticeQuizScreen'
 import PracticeResultScreen from './features/practice/PracticeResultScreen'
 import ReviewScreen from './features/review/ReviewScreen'
 import BuddiesScreen from './features/buddies/BuddiesScreen'
+import MailScreen from './features/mail/MailScreen'
+import JournalScreen from './features/journal/JournalScreen'
 import ChurchesScreen from './features/churches/ChurchesScreen'
 import ChurchScreen from './features/church/ChurchScreen'
 import AdminScreen from './features/admin/AdminScreen'
@@ -109,6 +112,11 @@ const WALL: Record<string, WallCopy> = {
     title: 'Your collection needs an account',
     line: 'Verse cards, relics and skins are yours to keep \u2014 an account is what keeps them.',
   },
+  mail: {
+    icon: '\ud83d\udcec',
+    title: 'Your mailbox needs an account',
+    line: 'Gifts, buddy requests and the news a season brings are addressed to a person. An account is the address.',
+  },
   buddies: {
     icon: '\ud83e\udd1d',
     title: 'Bible Buddies need an account',
@@ -164,7 +172,14 @@ export default function App() {
   // tab — loading this only where the list is rendered is what made a pending
   // request invisible until you'd already gone looking for it.
   useEffect(() => {
-    if (ready && mode === 'online') void useBuddies.getState().load()
+    if (ready && mode === 'online') {
+      void useBuddies.getState().load()
+      // Gifts, for the same reason: the nav dot has to be able to say "there's
+      // something for you" from the Play tab, and loading this only where the
+      // mailbox renders would make a gift invisible until you'd already gone
+      // looking for it.
+      void useGifts.getState().load()
+    }
   }, [ready, mode])
 
   useEffect(() => {
@@ -289,6 +304,34 @@ export default function App() {
               <TabShell>
                 <RequireAccount copy={WALL.buddies}>
                   <BuddiesScreen />
+                </RequireAccount>
+              </TabShell>
+            </RequireProfile>
+          }
+        />
+        {/* The Journal — what you have done. Open to a guest, like /you itself:
+            it is derived entirely from numbers this device already has, so it
+            reads correctly with no account and walls nothing off. */}
+        <Route
+          path="/journal"
+          element={
+            <RequireProfile>
+              <TabShell>
+                <JournalScreen />
+              </TabShell>
+            </RequireProfile>
+          }
+        />
+        {/* The mailbox — everything addressed to you, in one place. Reachable
+            from the 📬 pill on your own card; not a tab, because a sixth tab
+            would not clear a 320px phone. */}
+        <Route
+          path="/mail"
+          element={
+            <RequireProfile>
+              <TabShell>
+                <RequireAccount copy={WALL.mail}>
+                  <MailScreen />
                 </RequireAccount>
               </TabShell>
             </RequireProfile>

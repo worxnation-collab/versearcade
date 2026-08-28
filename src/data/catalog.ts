@@ -47,6 +47,31 @@ import { sanitizeQuestDefs, type QuestDef, type QuestPools } from '@/lib/season'
 // imports this file). data/season.ts re-exports them, so every existing call
 // site is untouched.
 
+/**
+ * A post in the app's mailbox — the one channel a season has for saying it has
+ * started.
+ *
+ * The catalog can already ship a whole road without a submission, and until
+ * this existed a road switched itself on in total silence: the strip on the
+ * season tab simply became a different strip. This is the announcement.
+ *
+ * It is OPERATOR text, not player text. Only `admin_publish_catalog` (0066)
+ * can write the catalog, so nothing here is a moderation surface — and it is
+ * still length-capped and rendered as plain text, because a content pipeline
+ * that can inject markup into every phone at once is a content pipeline that
+ * will eventually be asked to.
+ */
+export interface NewsDef {
+  id: string
+  emoji: string
+  title: string
+  body: string
+  /** ISO date the post is FROM — what the mailbox sorts and dates it by. */
+  at: string
+  /** ISO date it stops being shown, if it should. */
+  until?: string
+}
+
 /** A short earned phrase shown under your name. Fixed catalog — a player never
  *  types one, so there is no moderation surface. */
 export interface TitleDef {
@@ -164,6 +189,8 @@ export interface ContentCatalog {
   flames: FlameDef[]
   chests: ChestSkinDef[]
   skins: CatalogSkin[]
+  /** Mailbox posts — how a season announces itself. See NewsDef. */
+  news: NewsDef[]
   /**
    * Art id → URL, merged over data/generatedArt.ts and RASTER_SKINS.
    *
@@ -183,6 +210,7 @@ export const EMPTY_CATALOG: ContentCatalog = {
   flames: [],
   chests: [],
   skins: [],
+  news: [],
   art: {},
 }
 
@@ -429,6 +457,40 @@ function sanitizeArt(raw: unknown): Record<string, string> {
   return out
 }
 
+/**
+ * Mailbox posts. Fails closed per entry like every other sanitiser here: a post
+ * missing a date, or carrying a body longer than a paragraph, is dropped rather
+ * than rendered badly. `at` and `until` must parse as dates, because a post the
+ * mailbox cannot sort is a post that appears in a random place forever.
+ */
+export function sanitizeNews(raw: unknown): NewsDef[] {
+  if (!Array.isArray(raw)) return []
+  const seen = new Set<string>()
+  const out: NewsDef[] = []
+  for (const n of raw) {
+    if (!n || typeof n !== 'object') continue
+    const { id, emoji, title, body, at, until } = n as Partial<NewsDef>
+    if (typeof id !== 'string' || !/^[a-z0-9][a-z0-9_-]{0,63}$/i.test(id)) continue
+    if (seen.has(id)) continue
+    const t = str(title, 80)
+    const b = str(body, 400)
+    if (!t || !b) continue
+    if (typeof at !== 'string' || Number.isNaN(Date.parse(at))) continue
+    if (until != null && (typeof until !== 'string' || Number.isNaN(Date.parse(until)))) continue
+    seen.add(id)
+    out.push({
+      id,
+      // One or two characters: an emoji, never a sentence smuggled in as one.
+      emoji: typeof emoji === 'string' && emoji.length > 0 && emoji.length <= 4 ? emoji : '📣',
+      title: t,
+      body: b,
+      at,
+      ...(until ? { until } : {}),
+    })
+  }
+  return out
+}
+
 /** Turn whatever the server sent into something safe to render. */
 export function sanitizeCatalog(raw: unknown): ContentCatalog {
   if (!raw || typeof raw !== 'object') return EMPTY_CATALOG
@@ -441,6 +503,7 @@ export function sanitizeCatalog(raw: unknown): ContentCatalog {
     flames: sanitizeFlames(o.flames),
     chests: sanitizeChests(o.chests),
     skins: sanitizeSkins(o.skins),
+    news: sanitizeNews(o.news),
     art: sanitizeArt(o.art),
   }
 }
@@ -480,6 +543,21 @@ export function catalogArtUrl(id?: string | null): string | undefined {
 }
 
 /** Test/dev seam — put it back to "nothing fetched yet". */
+/**
+ * Every mailbox post that is live right now, newest first.
+ *
+ * There is no bundled news — a binary has nothing to announce about itself —
+ * so this is the overlay, filtered by `until` and sorted. It is a pure function
+ * of the clock against ISO dates, which is the same free trick `activeRoad()`
+ * uses: a post can be published weeks early and switch itself on at its `at`.
+ */
+export function activeNews(now: Date = new Date()): NewsDef[] {
+  const t = now.getTime()
+  return overlay.news
+    .filter((n) => Date.parse(n.at) <= t && (!n.until || Date.parse(n.until) > t))
+    .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
+}
+
 export function resetCatalogOverlay(): void {
   overlay = EMPTY_CATALOG
 }

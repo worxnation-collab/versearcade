@@ -4,6 +4,7 @@ import { todayLocalDate } from '@/lib/date'
 import { useAuth } from './auth'
 import { baseSkinId, passSkinEquipId, skinById } from '@/data/avatar'
 import {
+  BUNDLED_POOLS,
   KNOWN_VERBS,
   MILES,
   MILES_CAP,
@@ -12,6 +13,7 @@ import {
   waystationFor,
   type Quest,
 } from '@/lib/season'
+import { poolsFor } from '@/data/catalog'
 import {
   COSMETIC_DEFAULTS,
   activeRoad,
@@ -296,7 +298,9 @@ export const useSeason = create<SeasonState>((set, get) => ({
     const { quests, rerolledOn, rerolled } = get()
     const today = todayLocalDate()
     const swapped = rerolledOn === today ? rerolled : []
-    return activeQuests(road.id, roadDay(road))
+    // A catalog road may carry its own quest pools; poolsFor falls back to the
+    // bundled ones, which is what keeps the Harvest Road exactly as it shipped.
+    return activeQuests(road.id, roadDay(road), poolsFor(road, BUNDLED_POOLS()))
       .filter((q) => !swapped.includes(q.key))
       .map((q) => ({ ...q, ...(quests[q.id] ?? { progress: 0, done: false }) }))
   },

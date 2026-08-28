@@ -8,7 +8,7 @@ import { Collapsible } from '@/components/Collapsible'
 import { useSeason } from '@/store/season'
 import { useJuice } from '@/juice/useJuice'
 import {
-  ROAD_LENGTH,
+  roadLength,
   activeRoad,
   daysLeft,
   rewardLabel,
@@ -144,7 +144,7 @@ export default function PilgrimageScreen() {
       </div>
 
       <p className="faint" style={{ fontSize: 11.5, marginTop: 16, lineHeight: 1.5 }}>
-        {ROAD_LENGTH} waystations, {MILES_PER_WAYSTATION.toLocaleString()} miles each. Everything on
+        {roadLength(road)} waystations, {MILES_PER_WAYSTATION.toLocaleString()} miles each. Everything on
         this road is free, and everything you reach is yours to keep after it closes.
       </p>
     </Page>

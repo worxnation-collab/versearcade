@@ -59,19 +59,25 @@ export interface RoomAnchorDef {
   y: number
 }
 
+// Three fixtures own three bands of the back wall and they must not touch: the
+// SHELF on the left (110..214), the WINDOW right of centre (400..460) and the
+// ALCOVE on the far right (470..540). The first draft had the window at
+// 416..484 and the alcove at 462..530, which overlapped by 22 units and drew
+// two arches on top of each other — invisible in the diff, obvious the moment
+// the room was on screen. Keep the bands apart when moving anything here.
 export const ROOM_ANCHORS: RoomAnchorDef[] = [
-  { id: 'shelf_1', mount: 'shelf', x: 148, y: 120 },
-  { id: 'shelf_2', mount: 'shelf', x: 198, y: 120 },
-  { id: 'wall_1', mount: 'wall', x: 258, y: 96 },
-  { id: 'wall_2', mount: 'wall', x: 320, y: 92 },
-  { id: 'wall_3', mount: 'wall', x: 382, y: 96 },
-  { id: 'sill_1', mount: 'sill', x: 452, y: 134 },
-  { id: 'table_1', mount: 'table', x: 296, y: 212 },
-  { id: 'table_2', mount: 'table', x: 336, y: 212 },
-  { id: 'floor_1', mount: 'floor', x: 108, y: 262 },
-  { id: 'floor_2', mount: 'floor', x: 250, y: 284 },
-  { id: 'floor_3', mount: 'floor', x: 398, y: 266 },
-  { id: 'nook_1', mount: 'nook', x: 496, y: 240 },
+  { id: 'shelf_1', mount: 'shelf', x: 140, y: 120 },
+  { id: 'shelf_2', mount: 'shelf', x: 190, y: 120 },
+  { id: 'wall_1', mount: 'wall', x: 240, y: 96 },
+  { id: 'wall_2', mount: 'wall', x: 300, y: 92 },
+  { id: 'wall_3', mount: 'wall', x: 358, y: 96 },
+  { id: 'sill_1', mount: 'sill', x: 430, y: 146 },
+  { id: 'table_1', mount: 'table', x: 292, y: 210 },
+  { id: 'table_2', mount: 'table', x: 336, y: 210 },
+  { id: 'floor_1', mount: 'floor', x: 96, y: 264 },
+  { id: 'floor_2', mount: 'floor', x: 228, y: 286 },
+  { id: 'floor_3', mount: 'floor', x: 380, y: 268 },
+  { id: 'nook_1', mount: 'nook', x: 505, y: 244 },
 ]
 
 export const roomAnchorById = (id: string): RoomAnchorDef | undefined =>

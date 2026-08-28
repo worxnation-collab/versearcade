@@ -111,7 +111,13 @@ export function RoomSection() {
   // Tap a piece on the shelf: it goes where it belongs, or merges with the one
   // already out. The planner decides; this only reports what happened.
   const pickFurnishing = async (id: string) => {
-    const plan = planRoomPick(placements, id)
+    // Plan against the LIVE store, not the rendered snapshot. `placements` from
+    // the hook is whatever the last render saw, and two taps inside one tick
+    // both read it — so tapping the mat and then the stool planned the same
+    // free floor anchor twice and the second overwrote the first. Found by
+    // driving the real app; it is invisible in the diff, and it is the one
+    // thing the planner exists to make impossible.
+    const plan = planRoomPick(useRoom.getState().placements, id)
     if (plan.kind === 'maxed') {
       juice.select()
       setNote('That’s already as fine as it gets — tap it in the room to move it.')

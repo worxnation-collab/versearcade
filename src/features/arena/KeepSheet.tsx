@@ -115,7 +115,11 @@ export function KeepSheet({
   // Tap a piece on the shelf: it goes where it belongs, or merges with the one
   // already out. The planner decides; this only reports what happened.
   const pickDecor = async (decorId: string) => {
-    const plan = planPick(keep.placements, decorId)
+    // The LIVE store, not the rendered snapshot: `keep.placements` is whatever
+    // the last render saw, so two taps inside one tick both plan against the
+    // same state and the second can land on an anchor the first just filled.
+    // Same fix, same reason, as RoomSection.pickFurnishing.
+    const plan = planPick(useKeep.getState().placements, decorId)
     if (plan.kind === 'maxed') {
       juice.select()
       setNote(`That's already as fine as it gets — tap it in the hall to move it.`)

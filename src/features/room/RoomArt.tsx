@@ -63,15 +63,15 @@ interface RoomTierStyle {
 }
 
 const TIERS: RoomTierStyle[] = [
-  { wall: CLAY, wallDark: CLAY_DARK, floor: FLOOR, floorDark: FLOOR_DARK,
+  { wall: '#4c3d2c', wallDark: '#3a2f22', floor: '#3f3324', floorDark: '#2f261b',
     plastered: false, window: false, beams: false, upper: false, gilt: false },
-  { wall: PLASTER, wallDark: '#6d5a42', floor: '#63503a', floorDark: '#4c3c2a',
+  { wall: '#5b4a35', wallDark: '#463829', floor: '#4a3b2a', floorDark: '#382c1f',
     plastered: true, window: false, beams: false, upper: false, gilt: false },
-  { wall: '#957d60', wallDark: '#755f47', floor: '#6b5740', floorDark: '#52412e',
+  { wall: '#6a5740', wallDark: '#514231', floor: '#54432f', floorDark: '#3f3223',
     plastered: true, window: true, beams: false, upper: false, gilt: false },
-  { wall: '#9d8567', wallDark: '#7b654c', floor: '#725d44', floorDark: '#584631',
+  { wall: '#77624a', wallDark: '#5b4a38', floor: '#5d4a34', floorDark: '#463726',
     plastered: true, window: true, beams: true, upper: true, gilt: false },
-  { wall: '#a68d6d', wallDark: '#836c51', floor: '#7a6449', floorDark: '#5e4b35',
+  { wall: '#846d52', wallDark: '#65523d', floor: '#65503a', floorDark: '#4c3c2a',
     plastered: true, window: true, beams: true, upper: true, gilt: true },
 ]
 
@@ -107,31 +107,42 @@ export function RoomChamber({ tier = 0, flat = false }: { tier?: number; flat?: 
   )
 }
 
-/** The room itself. Everything a furnishing can stand on is drawn here. */
+/**
+ * The room itself. Everything a furnishing can stand on is drawn here.
+ *
+ * THREE FIXTURES, THREE BANDS OF THE BACK WALL, and they must never overlap:
+ * the shelf on the left (110..214), the window right of centre (400..460), the
+ * alcove on the far right (470..540). The first version put the window and the
+ * alcove on top of each other and drew two arches in the same place; the anchor
+ * table in data/room.ts carries the same warning.
+ */
 function DrawnChamber({ tier }: { tier: number }) {
   const s = TIERS[tier]
   return (
     <g>
       {/* Back wall + floor */}
       <rect x="0" y="0" width="560" height="300" fill={s.wall} />
-      <rect x="0" y="0" width="560" height="30" fill={s.wallDark} />
+      {/* The wall darkens toward the ceiling, so a flat fill doesn't read as a
+          blank rectangle behind everything. */}
+      <rect x="0" y="0" width="560" height="46" fill={s.wallDark} />
+      <rect x="0" y="46" width="560" height="10" fill={s.wallDark} opacity="0.45" />
       <rect x="0" y="216" width="560" height="84" fill={s.floor} />
-      <rect x="0" y="216" width="560" height="5" fill={s.floorDark} />
+      <rect x="0" y="216" width="560" height="6" fill={s.floorDark} />
 
       {/* Brick coursing on the bare chamber; smooth plaster above it. */}
       {!s.plastered && (
-        <g stroke={s.wallDark} strokeWidth="1.4" opacity="0.7">
-          {[52, 82, 112, 142, 172, 202].map((y) => (
+        <g stroke={s.wallDark} strokeWidth="1.4" opacity="0.65">
+          {[62, 92, 122, 152, 182].map((y) => (
             <line key={y} x1="0" y1={y} x2="560" y2={y} />
           ))}
-          {[0, 1, 2, 3, 4, 5].map((r) =>
+          {[0, 1, 2, 3, 4].map((r) =>
             [0, 1, 2, 3, 4, 5, 6, 7].map((c) => (
               <line
                 key={`${r}-${c}`}
                 x1={c * 70 + (r % 2 ? 35 : 0)}
-                y1={52 + r * 30}
+                y1={62 + r * 30}
                 x2={c * 70 + (r % 2 ? 35 : 0)}
-                y2={82 + r * 30}
+                y2={92 + r * 30}
               />
             )),
           )}
@@ -140,8 +151,8 @@ function DrawnChamber({ tier }: { tier: number }) {
 
       {/* Floorboards, once the floor is boarded rather than beaten earth. */}
       {s.plastered && (
-        <g stroke={s.floorDark} strokeWidth="1.2" opacity="0.55">
-          {[232, 250, 270, 292].map((y) => (
+        <g stroke={s.floorDark} strokeWidth="1.2" opacity="0.5">
+          {[236, 256, 278, 296].map((y) => (
             <line key={y} x1="0" y1={y} x2="560" y2={y} />
           ))}
         </g>
@@ -149,73 +160,77 @@ function DrawnChamber({ tier }: { tier: number }) {
 
       {/* Ceiling beams */}
       {s.beams && (
-        <g fill={WOOD_DARK}>
-          <rect x="0" y="0" width="560" height="14" fill={WOOD} />
-          {[70, 190, 310, 430].map((x) => (
-            <rect key={x} x={x} y="0" width="16" height="30" />
-          ))}
+        <g>
+          <rect x="0" y="0" width="560" height="15" fill={WOOD} />
+          <g fill={WOOD_DARK}>
+            {[70, 190, 310, 430].map((x) => (
+              <rect key={x} x={x} y="0" width="16" height="34" />
+            ))}
+          </g>
         </g>
       )}
 
-      {/* The window. A slit in the bare chamber; a real arch from tier 3. */}
+      {/* THE WINDOW — 400..460. A slit in the bare chamber; a real arch from
+          the Lit Chamber up. Night sky, because the app is dark and a bright
+          noon window would be the brightest thing on the screen by a mile. */}
       {s.window ? (
         <g>
-          <path d="M416 150 v-52 a34 34 0 0 1 68 0 v52 z" fill={NIGHT} />
+          <path d="M400 150 v-52 a30 30 0 0 1 60 0 v52 z" fill={NIGHT} />
           <path
-            d="M416 150 v-52 a34 34 0 0 1 68 0 v52 z"
+            d="M400 150 v-52 a30 30 0 0 1 60 0 v52 z"
             fill="none"
             stroke={s.gilt ? GOLD_DEEP : s.wallDark}
             strokeWidth="5"
           />
-          {/* Night sky, because the app is dark and a bright noon window would
-              be the brightest thing on the screen by a mile. */}
-          <circle cx="466" cy="112" r="7" fill={STAR} opacity="0.85" />
-          <circle cx="436" cy="126" r="2" fill={STAR} opacity="0.7" />
-          <circle cx="450" cy="98" r="1.6" fill={STAR} opacity="0.55" />
-          {s.upper && <rect x="440" y="70" width="4" height="80" fill={s.wallDark} />}
+          <circle cx="444" cy="110" r="6.5" fill={STAR} opacity="0.85" />
+          <circle cx="415" cy="126" r="2" fill={STAR} opacity="0.7" />
+          <circle cx="428" cy="96" r="1.6" fill={STAR} opacity="0.55" />
+          {s.upper && <rect x="428" y="72" width="4" height="78" fill={s.wallDark} />}
           {/* The sill the sill-mount anchor stands on. */}
-          <rect x="408" y="148" width="84" height="7" rx="2" fill={s.gilt ? GOLD_DEEP : WOOD} />
+          <rect x="392" y="148" width="76" height="7" rx="2" fill={s.gilt ? GOLD_DEEP : WOOD} />
+          <rect x="392" y="155" width="76" height="3" fill={WOOD_DARK} />
         </g>
       ) : (
         <g>
-          <rect x="440" y="82" width="20" height="62" rx="9" fill={NIGHT} />
-          <circle cx="450" cy="100" r="2" fill={STAR} opacity="0.6" />
-          <rect x="424" y="146" width="52" height="6" rx="2" fill={WOOD_DARK} />
+          <rect x="420" y="86" width="20" height="58" rx="9" fill={NIGHT} />
+          <circle cx="430" cy="104" r="2" fill={STAR} opacity="0.6" />
+          <rect x="396" y="146" width="68" height="7" rx="2" fill={WOOD_DARK} />
         </g>
       )}
 
-      {/* The shelf on the left wall — two anchors stand on this. */}
+      {/* THE SHELF — 110..214 on the left wall. Two anchors stand on it. */}
       <g>
-        <rect x="118" y="126" width="104" height="7" rx="2" fill={WOOD} />
-        <rect x="118" y="133" width="104" height="3" fill={WOOD_DARK} />
-        <rect x="126" y="136" width="6" height="10" fill={WOOD_DARK} />
-        <rect x="208" y="136" width="6" height="10" fill={WOOD_DARK} />
-        {s.gilt && <rect x="118" y="124" width="104" height="2.5" fill={GOLD_DEEP} />}
+        <rect x="110" y="126" width="104" height="7" rx="2" fill={WOOD} />
+        <rect x="110" y="133" width="104" height="3" fill={WOOD_DARK} />
+        <rect x="118" y="136" width="6" height="10" fill={WOOD_DARK} />
+        <rect x="200" y="136" width="6" height="10" fill={WOOD_DARK} />
+        {s.gilt && <rect x="110" y="123.5" width="104" height="2.5" fill={GOLD_DEEP} />}
       </g>
 
-      {/* The low table, mid-floor. Two anchors stand on its top. */}
+      {/* THE ALCOVE — 470..540 on the far right, clear of the window. */}
       <g>
-        <rect x="266" y="214" width="98" height="9" rx="3" fill={WOOD} />
-        <rect x="266" y="223" width="98" height="4" fill={WOOD_DARK} />
-        <rect x="276" y="227" width="8" height="26" fill={WOOD_DARK} />
-        <rect x="346" y="227" width="8" height="26" fill={WOOD_DARK} />
-        {s.gilt && <rect x="266" y="212" width="98" height="2.5" fill={GOLD_DEEP} />}
-      </g>
-
-      {/* The alcove on the right — the nook anchor's home. */}
-      <g>
-        <path d="M462 244 v-58 a34 34 0 0 1 68 0 v58 z" fill={s.wallDark} />
+        <path d="M470 248 v-62 a35 35 0 0 1 70 0 v62 z" fill={s.wallDark} />
+        <path d="M474 248 v-60 a31 31 0 0 1 62 0 v60 z" fill="#241d15" opacity="0.7" />
         <path
-          d="M462 244 v-58 a34 34 0 0 1 68 0 v58 z"
+          d="M470 248 v-62 a35 35 0 0 1 70 0 v62 z"
           fill="none"
           stroke={s.gilt ? GOLD_DEEP : s.floorDark}
           strokeWidth="4"
         />
-        {s.upper && <rect x="456" y="244" width="80" height="8" rx="2" fill={s.floorDark} />}
+        {s.upper && <rect x="464" y="246" width="82" height="8" rx="2" fill={s.floorDark} />}
+      </g>
+
+      {/* THE LOW TABLE, mid-floor. Two anchors stand on its top. */}
+      <g>
+        <rect x="262" y="212" width="104" height="9" rx="3" fill={WOOD} />
+        <rect x="262" y="221" width="104" height="4" fill={WOOD_DARK} />
+        <rect x="272" y="225" width="8" height="28" fill={WOOD_DARK} />
+        <rect x="348" y="225" width="8" height="28" fill={WOOD_DARK} />
+        {s.gilt && <rect x="262" y="209.5" width="104" height="2.5" fill={GOLD_DEEP} />}
       </g>
 
       {/* Gilt trim where the wall meets the floor — the top room only. */}
-      {s.gilt && <rect x="0" y="212" width="560" height="3" fill={GOLD_DEEP} opacity="0.8" />}
+      {s.gilt && <rect x="0" y="212" width="560" height="3" fill={GOLD_DEEP} opacity="0.85" />}
     </g>
   )
 }

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from './auth'
+import { useSeason } from './season'
 import {
   EMPTY_COUNTERS,
   ownedDecor,
@@ -185,6 +186,13 @@ export const useKeep = create<KeepState>((set, get) => ({
       disk.countedBattles = [...disk.countedBattles, battleId].slice(-200)
     }
 
+    // Prepacked verbs. Emitted HERE, past the countedBattles guard above,
+    // because BattleDetail fires on whichever visit first sees a finished
+    // battle — a second visit must not advance a quest again. `battle_played`
+    // needs no guard: it is emitted once by the screen that plays the run.
+    if (counter === 'battle_won') void useSeason.getState().track('battle_win')
+    else if (counter === 'battle_played') void useSeason.getState().track('battle_played')
+
     const next: KeepCounters = { ...get().counters, [counter]: (get().counters[counter] ?? 0) + 1 }
     set({ counters: next })
 
@@ -219,6 +227,10 @@ export const useKeep = create<KeepState>((set, get) => ({
     if (plan.value) next[plan.anchor] = plan.value
     else delete next[plan.anchor]
     set({ placements: next })
+
+    // Prepacked verb (place_decor). Only an actual placement counts — a `noop`
+    // returned above, and a clear (no value) is a removal, not a decoration.
+    if (plan.value) void useSeason.getState().track('decor_placed')
 
     if (isOnline()) {
       // AWAIT, do not fire-and-forget. A postgrest-js builder is lazy: the HTTP
@@ -297,6 +309,7 @@ export const useKeep = create<KeepState>((set, get) => ({
     // The Grand piece left the hall; the server cleared its anchor, so re-read
     // rather than guessing which one it was.
     await get().load()
+    void useSeason.getState().track('keep_offering') // prepacked verb
     return { ok: true, points: Number(raw.points ?? 0), leveledUp: !!raw.leveled_up }
   },
 

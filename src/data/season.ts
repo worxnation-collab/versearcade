@@ -21,6 +21,32 @@
 // so the active road is a function of the clock and there is no server-side
 // "current season" flag to drift out of sync.
 
+// WHERE THE CONTENT COMES FROM
+// Everything below is the BUNDLED catalog — the floor, and what a keyless
+// LOCAL build, an offline phone or a failed fetch renders. A remote overlay
+// (data/catalog.ts + store/catalog.ts) merges over it by id, which is how a
+// Christmas road reaches a shipped App Store binary without a submission.
+// Every accessor in this file reads the MERGED view, so no call site has to
+// know whether a road came from the bundle or the wire.
+
+import {
+  DEFAULT_ROAD_LENGTH,
+  catalogOverlay,
+  mergeById,
+  type ChestSkinDef,
+  type ConfettiDef,
+  type FlameDef,
+  type Reward,
+  type RoadDef,
+  type TitleDef,
+  type Waystation,
+} from './catalog'
+
+// The shapes moved to data/catalog.ts so the sanitisers there can see them
+// without importing this file's content (which would be a cycle). Re-exported
+// so every existing importer is untouched.
+export type { ChestSkinDef, ConfettiDef, FlameDef, Reward, RoadDef, TitleDef, Waystation }
+
 // ── Cosmetic catalogs ────────────────────────────────────────────────────────
 // The four cheap reward types. Each is a small config object rather than art,
 // which is the whole point: a confetti theme fires on every correct answer a
@@ -28,11 +54,6 @@
 
 /** A short earned phrase shown under your name. Fixed catalog — a player never
  *  types one, so there is no moderation surface. */
-export interface TitleDef {
-  id: string
-  text: string
-}
-
 export const TITLES: TitleDef[] = [
   { id: 'title_gleaner', text: 'the Gleaner' },
   { id: 'title_barley', text: 'Barley-Handed' },
@@ -41,20 +62,24 @@ export const TITLES: TitleDef[] = [
   { id: 'title_wayfarer', text: 'Wayfarer' },
 ]
 
+/**
+ * The merged catalogs. These are FUNCTIONS rather than the constants they
+ * replace because the overlay arrives after module evaluation — a `const`
+ * computed at import would freeze the bundled list forever, which is the exact
+ * bug this whole feature exists to avoid. The arrays above stay exported as
+ * the bundled floor; nothing outside this file should read them directly.
+ */
+export const allTitles = (): TitleDef[] => mergeById(TITLES, catalogOverlay().titles)
+export const allConfetti = (): ConfettiDef[] => mergeById(CONFETTI_THEMES, catalogOverlay().confetti)
+export const allFlames = (): FlameDef[] => mergeById(FLAMES, catalogOverlay().flames)
+export const allChestSkins = (): ChestSkinDef[] => mergeById(CHEST_SKINS, catalogOverlay().chests)
+
 export const titleById = (id?: string | null): TitleDef | undefined =>
-  id ? TITLES.find((t) => t.id === id) : undefined
+  id ? allTitles().find((t) => t.id === id) : undefined
 
 /** What bursts on a correct answer and at the end of a run. Colors only — a
  *  theme changes what is drawn, never WHETHER motion happens. Reduce-motion is
  *  still the last word, in juice/confetti. */
-export interface ConfettiDef {
-  id: string
-  name: string
-  colors: string[]
-  /** Confetti shapes; omitted means the library default mix. */
-  shapes?: ('circle' | 'square')[]
-}
-
 export const CONFETTI_THEMES: ConfettiDef[] = [
   // The house palette, and what every player starts on.
   { id: 'confetti_arcade', name: 'Arcade', colors: ['#ffd23f', '#ff6b6b', '#4ecdc4', '#a06bff', '#5ee7df', '#ff9f1c'] },
@@ -66,19 +91,11 @@ export const CONFETTI_THEMES: ConfettiDef[] = [
 
 export const DEFAULT_CONFETTI = 'confetti_arcade'
 export const confettiById = (id?: string | null): ConfettiDef =>
-  CONFETTI_THEMES.find((c) => c.id === id) ?? CONFETTI_THEMES[0]
+  allConfetti().find((c) => c.id === id) ?? CONFETTI_THEMES[0]
 
 /** The streak flame on the home screen — seen every single morning, which is
  *  most of why it's worth having as a reward. Glyph plus the color its glow
  *  takes; StreakFlame still scales the intensity by streak length. */
-export interface FlameDef {
-  id: string
-  name: string
-  glyph: string
-  /** Glow color, as `r,g,b` so StreakFlame can vary the alpha by heat. */
-  rgb: string
-}
-
 export const FLAMES: FlameDef[] = [
   { id: 'flame_ember', name: 'Ember', glyph: '🔥', rgb: '255,90,40' },
   { id: 'flame_olive', name: 'Olive Lamp', glyph: '🪔', rgb: '255,190,90' },
@@ -89,15 +106,9 @@ export const FLAMES: FlameDef[] = [
 
 export const DEFAULT_FLAME = 'flame_ember'
 export const flameById = (id?: string | null): FlameDef =>
-  FLAMES.find((f) => f.id === id) ?? FLAMES[0]
+  allFlames().find((f) => f.id === id) ?? FLAMES[0]
 
 /** What the Daily Chest looks like before it's opened. */
-export interface ChestSkinDef {
-  id: string
-  name: string
-  glyph: string
-}
-
 export const CHEST_SKINS: ChestSkinDef[] = [
   { id: 'chest_classic', name: 'Treasure Chest', glyph: '🎁' },
   { id: 'chest_basket', name: 'Woven Basket', glyph: '🧺' },
@@ -108,7 +119,7 @@ export const CHEST_SKINS: ChestSkinDef[] = [
 
 export const DEFAULT_CHEST = 'chest_classic'
 export const chestSkinById = (id?: string | null): ChestSkinDef =>
-  CHEST_SKINS.find((c) => c.id === id) ?? CHEST_SKINS[0]
+  allChestSkins().find((c) => c.id === id) ?? CHEST_SKINS[0]
 
 // Which slot a seasonal cosmetic equips into. One key per kind, stored together
 // in profiles.equipped_cosmetics so a new reward type is a catalog entry rather
@@ -141,6 +152,17 @@ export function rewardLabel(id: string): { name: string; kindLabel: string; glyp
   if (kind === 'flame') return { name: flameById(id).name, kindLabel: 'Streak flame', glyph: flameById(id).glyph }
   if (kind === 'chest') return { name: chestSkinById(id).name, kindLabel: 'Chest skin', glyph: chestSkinById(id).glyph }
   if (id.startsWith('skin_')) {
+    // A catalog skin names itself, so a road published after this binary
+    // shipped still reveals "Gabriel" rather than "noel_1". The bundled map
+    // below stays as the floor for everything that shipped with the app.
+    //
+    // Reactive skins carry their state in the id (skin_ruth_2), so try the
+    // whole id first and then the base — a catalog only lists the base skin.
+    const bare = id.slice(5)
+    const fromCatalog =
+      catalogOverlay().skins.find((s) => s.id === bare) ??
+      catalogOverlay().skins.find((s) => s.id === bare.replace(/_\d+$/, ''))
+    if (fromCatalog) return { name: fromCatalog.name, kindLabel: 'Skin', glyph: '🌾' }
     // Reactive-skin states get their own line so the toast can say what changed.
     const SKIN_NAMES: Record<string, string> = {
       skin_ruth_1: 'Ruth the Gleaner',
@@ -169,36 +191,7 @@ export function rewardLabel(id: string): { name: string; kindLabel: string; glyp
 
 // ── Rewards ──────────────────────────────────────────────────────────────────
 
-export interface Reward {
-  /** Stable id. Cosmetics use their catalog id; consumables are 'boost'/'freeze'. */
-  id: string
-  /** How many, for consumables. Cosmetics are always one. */
-  qty?: number
-}
-
-export interface Waystation {
-  /** 1-based tier. */
-  n: number
-  /** Both columns, both free. Column A is the steady drip, B the bigger beat. */
-  a: Reward[]
-  b: Reward[]
-  /** Every tenth is a milestone: a bigger reveal, nothing more. */
-  milestone?: boolean
-}
-
 // ── Roads ────────────────────────────────────────────────────────────────────
-
-export interface RoadDef {
-  id: string
-  name: string
-  blurb: string
-  /** Inclusive start / exclusive end, ISO. */
-  start: string
-  end: string
-  waystations: Waystation[]
-  /** Granted to everyone who reached waystation 1, so nobody ends empty-handed. */
-  memento: string
-}
 
 const M = (n: number): Partial<Waystation> => ({ milestone: n % 10 === 0 })
 
@@ -253,18 +246,39 @@ export const ROADS: RoadDef[] = [
   },
 ]
 
-/** How many waystations a road has, whether or not each one pays out. */
-export const ROAD_LENGTH = 50
+/** How many waystations a road has when it doesn't say. The Harvest Road's 50. */
+export const ROAD_LENGTH = DEFAULT_ROAD_LENGTH
 
-/** The road being walked right now, or null between seasons. */
+/** Every road this build knows: bundled, plus whatever the catalog published. */
+export const allRoads = (): RoadDef[] => mergeById(ROADS, catalogOverlay().roads)
+
+/** How long a given road is, for the screens that draw the whole track. */
+export const roadLength = (road: RoadDef): number => road.length ?? ROAD_LENGTH
+
+/**
+ * The road being walked right now, or null between seasons.
+ *
+ * Still a pure function of the clock, exactly as when ROADS was the only
+ * source: there is no server-side "current season" flag to drift, and a road
+ * published months early simply switches itself on at its `start`. That is what
+ * makes pre-shipping a holiday road in today's binary work at all.
+ *
+ * Overlapping windows resolve to the road that starts LATEST. A publisher who
+ * overlaps two roads meant the new one; picking the first match would have a
+ * long-running road swallow a short holiday one sitting inside it.
+ */
 export function activeRoad(now: number = Date.now()): RoadDef | null {
-  return (
-    ROADS.find((r) => now >= new Date(r.start).getTime() && now < new Date(r.end).getTime()) ?? null
+  const live = allRoads().filter(
+    (r) => now >= new Date(r.start).getTime() && now < new Date(r.end).getTime(),
+  )
+  if (live.length === 0) return null
+  return live.reduce((best, r) =>
+    new Date(r.start).getTime() > new Date(best.start).getTime() ? r : best,
   )
 }
 
 export const roadById = (id?: string | null): RoadDef | undefined =>
-  id ? ROADS.find((r) => r.id === id) : undefined
+  id ? allRoads().find((r) => r.id === id) : undefined
 
 /** Day number within the road, 0-based. Drives quest generation. */
 export function roadDay(road: RoadDef, now: number = Date.now()): number {

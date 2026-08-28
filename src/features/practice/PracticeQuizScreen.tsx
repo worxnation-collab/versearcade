@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Page } from '@/components/Page'
 import { QuizRunner } from '@/features/daily/QuizRunner'
 import { usePractice } from '@/store/practice'
+import { useSeason } from '@/store/season'
 
 // A practice replay of a past verse. Same gameplay as the daily drop, but the
 // result is submitted as practice (study — XP only for beating your best).
@@ -29,6 +30,9 @@ export default function PracticeQuizScreen() {
       onExit={() => navigate('/study/recent')}
       studyDrop
       onComplete={async (result) => {
+        // Prepacked verb — a catalog road can ask for replay runs specifically,
+        // where 'study_runs' (tracked by QuizRunner) counts every study mode.
+        void useSeason.getState().track('replay_run')
         try {
           await submit(result)
         } catch {

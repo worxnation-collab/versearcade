@@ -8,7 +8,7 @@ import { Collapsible } from '@/components/Collapsible'
 import { useSeason } from '@/store/season'
 import { useJuice } from '@/juice/useJuice'
 import {
-  ROAD_LENGTH,
+  roadLength,
   activeRoad,
   daysLeft,
   rewardLabel,
@@ -16,7 +16,7 @@ import {
 } from '@/data/season'
 import { MILES_PER_WAYSTATION, milesProgress } from '@/lib/season'
 import { SeasonCosmetics } from './SeasonCosmetics'
-import { ROAD_BACKGROUND } from './roadArt'
+import { roadBackground } from './roadArt'
 
 // The road. A vertical scroller of waystations — vertical because the app is
 // 520px wide at most and a horizontal track on a phone is a swipe nobody makes.
@@ -144,7 +144,7 @@ export default function PilgrimageScreen() {
       </div>
 
       <p className="faint" style={{ fontSize: 11.5, marginTop: 16, lineHeight: 1.5 }}>
-        {ROAD_LENGTH} waystations, {MILES_PER_WAYSTATION.toLocaleString()} miles each. Everything on
+        {roadLength(road)} waystations, {MILES_PER_WAYSTATION.toLocaleString()} miles each. Everything on
         this road is free, and everything you reach is yours to keep after it closes.
       </p>
     </Page>
@@ -409,6 +409,9 @@ const roadSizeFor = (b: number) =>
 
 function RoadScene() {
   const me = useAuth((s) => s.profile)
+  // The painting belongs to the road being walked, so a catalog season brings
+  // its own backdrop rather than standing everyone in a wheat field in December.
+  const road = activeRoad()
   if (!me) return null
   const members = [
     { username: me.username, avatarEmoji: me.avatarEmoji, avatarCharacter: me.avatarCharacter, isMe: true },
@@ -424,7 +427,7 @@ function RoadScene() {
         marginBottom: 16,
         // Anchored to the bottom of the painting so the walkable foreground
         // path survives whatever the banner crop takes from the sky.
-        background: ROAD_BACKGROUND,
+        background: roadBackground(road),
       }}
     >
       <CrowdLife members={members} waypoints={ROAD_WAYPOINTS} sizeFor={roadSizeFor} max={1} />

@@ -42,11 +42,21 @@ const CORS = {
 /**
  * Apple product id → our sku vocabulary.
  *
- * KEEP IN SYNC with APPLE_PRODUCT_IDS in src/lib/iap.ts. This map is also the
- * allowlist: a product id that isn't here grants nothing, so an id invented by
- * a caller (or added in App Store Connect but not here) is simply ignored.
- * What each sku is WORTH is not decided here — pack_skins() in SQL stays the
- * single authority for that, exactly as the Stripe path uses it.
+ * This map is the allowlist: a product id that isn't here grants nothing, so an
+ * id invented by a caller (or added in App Store Connect but not here) is
+ * simply ignored. What each sku is WORTH is not decided here — pack_skins() in
+ * SQL stays the single authority for that, exactly as the Stripe path uses it.
+ *
+ * IT IS DELIBERATELY LONGER THAN APPLE_PRODUCT_IDS IN src/lib/iap.ts, and the
+ * two must NOT be trimmed together. That list decides what the app OFFERS; this
+ * one decides what a purchase somebody already made is WORTH. The angels pack
+ * and the three launch skins stopped being sold in the de-monetisation, but
+ * people bought them — deleting their rows here would mean a buyer who
+ * reinstalls and taps Restore silently gets nothing back. An entry for a
+ * product no longer on sale costs nothing: RevenueCat only ever reports it for
+ * a subscriber who actually paid.
+ *
+ * So: add a row when a product goes on sale, and never remove one.
  */
 const SKU_BY_PRODUCT_ID: Record<string, string> = {
   'com.versearcade.app.pack_angels': 'pack_angels',

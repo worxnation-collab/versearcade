@@ -13,6 +13,7 @@
 // migration 0010 gates the streak cosmetics. In LOCAL mode it already persists
 // to the device via the auth store.
 
+import { catalogArtUrl, catalogOverlay, mergeById, type CatalogSkin } from './catalog'
 import type { ArmorSlot, AvatarSpec, ItemSlot } from '@/types'
 
 export type { ArmorSlot, AvatarSpec, ItemSlot }
@@ -200,10 +201,17 @@ export const baldwinProgress = (days?: string[]): { count: number; goal: number;
 export interface SkinDef {
   id: string
   name: string
-  /** 'pass' = earned on the seasonal road (data/season). Never sold, never in
-   *  the shop, no limitedUntil — road skins are permanent for their owners and
-   *  simply never return for anyone else. */
-  source: 'earned' | 'paid' | 'pass'
+  /**
+   * 'free'   = everybody has it, always. No goal, no entitlement, no checkout.
+   * 'earned' = gated on an achievement (shared days, referrals).
+   * 'pass'   = earned on the seasonal road (data/season). Never sold, never in
+   *            the shop, no limitedUntil — road skins are permanent for their
+   *            owners and simply never return for anyone else.
+   * 'paid'   = an entitlement in owned_skins. As of the de-monetisation this is
+   *            the founding-patron whale plus the promo-code exclusives, and
+   *            nothing else should ever join them without a very good reason.
+   */
+  source: 'free' | 'earned' | 'paid' | 'pass'
   blurb: string
   shareGoal?: number // earned: distinct shared days required
   referralGoal?: number // earned: referred signups required
@@ -263,67 +271,58 @@ export const FULL_SKINS: SkinDef[] = [
     source: 'pass',
     blurb: 'Lord of the harvest — the end of the Harvest Road, waystation 50.',
   },
+  // ——— The launch trio, now free ———
+  // These were the $2.99 skins. Cosmetics are no longer sold (the founding
+  // patron whale is the one exception), and rather than leave three good skins
+  // behind a checkout that no longer exists they simply belong to everybody.
+  // `limitedUntil` is gone with the price: a free skin that vanishes on a date
+  // is a worse deal than a paid one, and it would take them from the people who
+  // bought them. Existing buyers keep their owned_skins rows, which now say the
+  // same thing everyone else's absence of a row says.
   {
     id: 'moses',
     name: 'Moses',
-    source: 'paid',
-    pack: 'exodus',
-    packName: 'Exodus Pack',
-    price: 'From $2.99',
-    limitedUntil: LIMITED_UNTIL,
+    source: 'free',
     blurb: 'The Lawgiver — staff in hand, the tablets at his side.',
   },
   {
     id: 'esther',
     name: 'Esther',
-    source: 'paid',
-    pack: 'palace',
-    packName: 'Palace Pack',
-    price: 'From $2.99',
-    limitedUntil: LIMITED_UNTIL,
+    source: 'free',
     blurb: 'The queen — “for such a time as this.”',
   },
   {
     id: 'elijah',
     name: 'Elijah',
-    source: 'paid',
-    pack: 'prophets',
-    packName: 'Prophets Pack',
-    price: 'From $2.99',
-    limitedUntil: LIMITED_UNTIL,
+    source: 'free',
     blurb: 'The prophet of fire — mantle, staff, and a raven.',
   },
-  // ——— The Angel Pack ———
-  // A true bundle: these three are `bundleOnly`, so the shop lists the pack —
-  // never the pieces — and they can't be bought one at a time. See BUNDLES below.
+  // ——— The angels, now road rewards ———
+  // These were The Angel Pack ($5.99, bundleOnly). They are a themed set of
+  // three, which is exactly the shape a season wants, so instead of being
+  // retired they become inventory: a road grants `skin_gabriel` and the rest
+  // at a waystation. Anybody who bought the pack keeps it — skinOwned's
+  // `admin`/unlock checks aside, an owned_skins row still reads as owned
+  // through the pass branch's fallback below.
+  //
+  // No `limitedUntil`: a pass skin never expires for its owner, and the way it
+  // stops being obtainable is the road closing.
   {
     id: 'gabriel',
     name: 'Gabriel',
-    source: 'paid',
-    pack: 'angels',
-    packName: 'The Angel Pack',
-    bundleOnly: true,
-    limitedUntil: LIMITED_UNTIL,
+    source: 'pass',
     blurb: 'The announcing messenger — trumpet raised, “Do not be afraid.”',
   },
   {
     id: 'michael',
     name: 'Michael',
-    source: 'paid',
-    pack: 'angels',
-    packName: 'The Angel Pack',
-    bundleOnly: true,
-    limitedUntil: LIMITED_UNTIL,
+    source: 'pass',
     blurb: 'The archangel — helm, shield, and a sword of flame.',
   },
   {
     id: 'seraph',
     name: 'Seraph',
-    source: 'paid',
-    pack: 'angels',
-    packName: 'The Angel Pack',
-    bundleOnly: true,
-    limitedUntil: LIMITED_UNTIL,
+    source: 'pass',
     blurb: 'Six wings and a live coal — the burning one of Isaiah 6.',
   },
   {
@@ -377,8 +376,91 @@ export const FULL_SKINS: SkinDef[] = [
  *  id, so lookups and equality checks normalize through this. */
 export const baseSkinId = (id: string): string => id.replace(/_\d+$/, '')
 
-export const skinById = (id?: string | null): SkinDef | undefined =>
-  id ? FULL_SKINS.find((s) => s.id === id) ?? FULL_SKINS.find((s) => s.id === baseSkinId(id)) : undefined
+/**
+ * Every skin this build knows: bundled, plus whatever the catalog published.
+ *
+ * A CatalogSkin is a narrower thing than a SkinDef — it has no price, sku or
+ * pack, and its source union excludes 'paid' (see data/catalog.ts). Widening it
+ * here is therefore lossless in the direction that matters: a catalog can add a
+ * free, earned or road skin and cannot add one that costs money.
+ */
+const asSkinDef = (c: CatalogSkin): SkinDef => ({
+  id: c.id,
+  name: c.name,
+  source: c.source,
+  blurb: c.blurb,
+  ...(c.states ? { states: c.states } : {}),
+  ...(c.shareGoal ? { shareGoal: c.shareGoal } : {}),
+  ...(c.referralGoal ? { referralGoal: c.referralGoal } : {}),
+})
+
+export const allSkins = (): SkinDef[] =>
+  mergeById(FULL_SKINS, catalogOverlay().skins.map(asSkinDef))
+
+export const skinById = (id?: string | null): SkinDef | undefined => {
+  if (!id) return undefined
+  const all = allSkins()
+  return all.find((s) => s.id === id) ?? all.find((s) => s.id === baseSkinId(id))
+}
+
+// ── Raster skin art ──────────────────────────────────────────────────────────
+// Moved here from components/Character.tsx so that ONE function decides what a
+// skin looks like (skinArtUrl below). Character used to own this map, which
+// meant the catalog had no way to reach it — art is content, and content lives
+// in data/.
+// A skin listed here renders as an image instead of drawn paths. The <image>
+// sits inside the same 120×170 viewBox, so sizing, the circular clip in Avatar
+// and every call site are untouched — and a skin that isn't listed keeps its
+// SVG exactly as before.
+//
+// This is a preview path, not a decision. Raster can't compose (the free
+// starter layers armour and items independently) and it softens badly at the
+// 18px presence chip, so anything kept here long-term should be redrawn as
+// paths. The file is served from public/, so dropping a PNG in is enough.
+const RASTER_SKINS: Record<string, string> = {
+  baldwin: '/skins/baldwin.png',
+  david: '/skins/david.png',
+  esther: '/skins/esther.png',
+  moses: '/skins/moses.png',
+  elijah: '/skins/elijah.png',
+  eden: '/skins/eden.png',
+  whale: '/skins/whale.png',
+  gabriel: '/skins/gabriel.png',
+  michael: '/skins/michael.png',
+  seraph: '/skins/seraph.png',
+  // The Pilgrimage's reactive skin: the equipped skinId carries the state
+  // (ruth_1..ruth_4 — see passSkinEquipId in data/avatar), so each maps to its
+  // own file and every viewer renders the right basket from the spec alone.
+  ruth_1: '/skins/ruth_1.png',
+  ruth_2: '/skins/ruth_2.png',
+  ruth_3: '/skins/ruth_3.png',
+  ruth_4: '/skins/ruth_4.png',
+  boaz: '/skins/boaz.png',
+}
+
+/**
+ * Raster art for a skin, or undefined to keep the drawn SVG.
+ *
+ * THIS IS THE ORDER THAT LETS A SEASON'S ART SHIP WITHOUT A BINARY, and each
+ * step is a deliberate fallback rather than a preference:
+ *
+ *   1. The catalog overlay — an https URL (Supabase Storage, a CDN) published
+ *      alongside the road that hands the skin out. The only tier that can
+ *      appear after the app was submitted.
+ *   2. GENERATED_ART — written by scripts/gen-art.mjs for anything rendered
+ *      through Nano Banana and bundled into public/.
+ *   3. RASTER_SKINS — the hand-placed files that predate the generator.
+ *
+ * An id in none of them keeps its drawn paths, which is the same bargain
+ * generatedArt.ts makes one level down: a skin with no render is still a skin,
+ * and no id can point at a 404 that leaves a hole where a character should be.
+ * Character.tsx keeps its own onError fallback on top of this, because a URL
+ * that resolves is not the same as a file that decodes.
+ */
+export function skinArtUrl(skinId?: string | null): string | undefined {
+  if (!skinId) return undefined
+  return catalogArtUrl(skinId) ?? RASTER_SKINS[skinId]
+}
 
 // ── Bundles ───────────────────────────────────────────────────────────────────
 // A bundle is one shop listing, one price, one checkout — all or nothing. The
@@ -404,19 +486,19 @@ export interface BundleDef {
   limitedUntil?: string
 }
 
-export const BUNDLES: BundleDef[] = [
-  {
-    id: 'angels',
-    sku: 'pack_angels',
-    name: 'The Angel Pack',
-    price: '$5.99',
-    blurb:
-      'Three messengers and the two skies they came out of. Sold as one pack — every piece, one price.',
-    skins: ['gabriel', 'michael', 'seraph'],
-    cards: ['angels_ladder', 'angels_host'],
-    limitedUntil: LIMITED_UNTIL,
-  },
-]
+/**
+ * EMPTY, and deliberately kept rather than deleted.
+ *
+ * The Angel Pack was the only bundle and its skins are road rewards now, so
+ * nothing is sold as a pack any more. The type, the shop grid and the SQL that
+ * expands a pack sku (pack_skins, 0044) all stay: they cost nothing while
+ * empty, every surface already renders an empty list as "no packs", and
+ * deleting them would mean rebuilding the whole path if a pack is ever sold
+ * again. `pack_skins('pack_angels')` also still resolves server-side, so a
+ * historical Stripe or Apple receipt replayed against it fulfils exactly as it
+ * always did.
+ */
+export const BUNDLES: BundleDef[] = []
 
 export const bundleById = (id?: string | null): BundleDef | undefined =>
   BUNDLES.find((b) => b.id === id)
@@ -472,9 +554,14 @@ export function skinOwned(
   },
 ): boolean {
   if (ctx.admin) return true // operator account has every skin unlocked
+  if (skin.source === 'free') return true
   if (skin.source === 'pass') {
     const u = ctx.seasonUnlocks ?? []
-    return u.includes(`skin_${skin.id}`) || u.some((x) => x.startsWith(`skin_${skin.id}_`))
+    if (u.includes(`skin_${skin.id}`) || u.some((x) => x.startsWith(`skin_${skin.id}_`))) return true
+    // A pass skin that USED to be sold still belongs to whoever bought it. The
+    // angels moved from a $5.99 pack to road rewards, and an entitlement row is
+    // not something a change of heart about monetisation gets to revoke.
+    return (ctx.ownedSkins ?? []).includes(skin.id)
   }
   if (skin.source === 'earned') {
     if (skin.referralGoal != null) return (ctx.referralCount ?? 0) >= skin.referralGoal

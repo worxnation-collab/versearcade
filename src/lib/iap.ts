@@ -41,12 +41,19 @@ export const REVENUECAT_IOS_KEY = import.meta.env.VITE_REVENUECAT_IOS_KEY || ''
  * (fail-closed) shows up as a missing tile rather than a crash.
  */
 export const APPLE_PRODUCT_IDS: Record<string, string> = {
-  pack_angels: 'com.versearcade.app.pack_angels',
-  moses: 'com.versearcade.app.skin_moses',
-  esther: 'com.versearcade.app.skin_esther',
-  elijah: 'com.versearcade.app.skin_elijah',
   whale: 'com.versearcade.app.patron_founding',
 }
+
+// The four products that used to be here — pack_angels, skin_moses,
+// skin_esther, skin_elijah — are gone with the de-monetisation. Removing them
+// from this map is what stops the app ASKING StoreKit about them, which matters
+// more than it looks: a product still approved in App Store Connect but absent
+// here simply never loads, and its tile stays hidden (fail closed). Anyone who
+// BOUGHT one keeps it — entitlements are granted from what RevenueCat says the
+// subscriber owns (supabase/functions/iap-fulfill), never from this list.
+//
+// Deactivate them in App Store Connect too, or they remain purchasable by a
+// crafted client for a skin the app now gives away.
 
 const SKU_BY_PRODUCT_ID: Record<string, string> = Object.fromEntries(
   Object.entries(APPLE_PRODUCT_IDS).map(([sku, pid]) => [pid, sku]),

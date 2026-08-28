@@ -98,25 +98,26 @@ export const isSupabaseConfigured = Boolean(
 export const SUPPORT_URL = import.meta.env.VITE_SUPPORT_URL || ''
 
 // Per-skin checkout links (Stripe Payment Links — public, shareable URLs, not
-// secrets). Each paid skin can have its own; env vars override the defaults so a
-// link can be swapped without a code change. Falls back to SUPPORT_URL, then ''.
+// secrets). Env vars override the defaults so a link can be swapped without a
+// code change. Falls back to SUPPORT_URL, then ''.
+//
+// ONE ENTRY, and that is the whole shop now. Cosmetics are no longer sold:
+// Moses, Esther and Elijah are free, the angels are road rewards, and the
+// founding-patron whale is the only thing left with a price on it. Their old
+// Payment Links are deleted rather than commented out — a live link with no
+// product behind it is a way to take somebody's money for nothing.
 export const SKIN_BUY_URLS: Record<string, string> = {
   whale: import.meta.env.VITE_BUY_WHALE || 'https://buy.stripe.com/aFa4gz9mM0hD536aoFa3u01',
-  moses: import.meta.env.VITE_BUY_MOSES || 'https://buy.stripe.com/dRmcN5cyY7K5brubsJa3u02',
-  esther: import.meta.env.VITE_BUY_ESTHER || 'https://buy.stripe.com/dRmcN51Ukd4pbrugN3a3u04',
-  elijah: import.meta.env.VITE_BUY_ELIJAH || 'https://buy.stripe.com/9B63cvbuU1lH67absJa3u03',
 }
 
 export const skinBuyUrl = (id: string): string => SKIN_BUY_URLS[id] || SUPPORT_URL || ''
 
-// Per-BUNDLE checkout links (see data/avatar BUNDLES). A bundle is one sku at one
-// price, so it gets exactly one link — there is intentionally no per-skin link
-// for anything sold only as part of a pack, and no SUPPORT_URL fallback here: a
-// pack must never quietly check out at a different price. With no link at all
-// the sheet says "opening soon" instead.
-export const BUNDLE_BUY_URLS: Record<string, string> = {
-  angels: import.meta.env.VITE_BUY_PACK_ANGELS || 'https://buy.stripe.com/bJe3cv2Yo9Sdanq0O5a3u05',
-}
+// Per-BUNDLE checkout links (see data/avatar BUNDLES). Empty, because BUNDLES
+// is: the Angel Pack's skins are road rewards now. Kept, along with its lookup,
+// so selling a pack again is a row here rather than a rebuilt code path. No
+// SUPPORT_URL fallback, then or now — a pack must never quietly check out at a
+// different price.
+export const BUNDLE_BUY_URLS: Record<string, string> = {}
 
 export const bundleBuyUrl = (id: string): string => BUNDLE_BUY_URLS[id] || ''
 

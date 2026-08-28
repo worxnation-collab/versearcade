@@ -92,3 +92,27 @@ Two things bite, both worked around in the manifests rather than fought:
   prompts now put the background clause FIRST, in caps, listing what it must
   not be, and lamps get an extra line saying the glow may not spill onto the
   backdrop. `check-art.mjs` catches the rest.
+
+
+## Skin manifests and the full-body rule
+
+`art/skins-*.json` are the seasonal character sets (`kind: "skin"` → keyed,
+isolated, padded 8% below the feet, capped at 400px tall → `public/skins/`).
+Style references (`moses.png`, `esther.png`) ride along automatically on every
+`skin` call, so a new road matches the fifteen skins it will stand next to.
+
+**Every skin prompt must demand a full-length standing figure, head to feet,
+with both feet at the bottom edge of the frame.** This is not a stylistic
+preference. One PNG serves two frames: `Character` crops to a portrait for
+avatar chips (`preserveAspectRatio: 'xMidYMin slice'`), and the little worlds —
+the Harvest Road, the churchyard crowd, `ProfileHero` — render the same file
+with `fullBody`. A bust renders perfectly in every avatar circle in the app and
+turns into a floating torso the moment the character stands somewhere.
+
+`scripts/check-art.mjs` flags any skin whose ink is squarer than 1.05:1 with
+`(BUST?)`. For calibration, all fifteen shipped skins are 1.08 (Michael, whose
+wings are as wide as he is tall) to 2.71 (ruth_2). It's a heuristic — it cannot
+tell a well-drawn bust from a well-drawn figure — so open the file.
+
+Seasonal skins destined for the content catalog go to Supabase Storage rather
+than `public/`; see `docs/CONTENT-CATALOG.md`.

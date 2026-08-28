@@ -5,7 +5,7 @@ import { useSeason } from '@/store/season'
 import { useAuth } from '@/store/auth'
 import { useSettings } from '@/store/settings'
 import { Character } from '@/components/Character'
-import { ROAD_BACKGROUND } from './roadArt'
+import { roadBackground } from './roadArt'
 import { activeRoad, nextPayout, rewardLabel } from '@/data/season'
 import { milesProgress } from '@/lib/season'
 
@@ -78,7 +78,7 @@ export function RoadStrip() {
           borderRadius: 12,
           overflow: 'hidden',
           border: '1px solid var(--stroke)',
-          background: ROAD_BACKGROUND,
+          background: roadBackground(road),
         }}
       >
         {/* A soft floor shadow so the figure stands on the road rather than

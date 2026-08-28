@@ -27,6 +27,7 @@ import { RoomScene } from './RoomScene'
 import { FurnishingThumb } from './RoomArt'
 import { sharePostcard } from '@/lib/postcard'
 import { PrayerSheet } from '@/features/prayer/PrayerSheet'
+import { usePrayer } from '@/store/prayer'
 
 // Your Upper Room, on /you — the one surface that owns furnishing it.
 //
@@ -48,6 +49,10 @@ export function RoomSection() {
   // than opening the sheet on the tap itself: a figure that launches a
   // full-screen sheet the instant you brush it is a trap on a screen where
   // everything else you tap is furniture you're moving.
+  // Burning when you have prayed today. The whole of the feedback for praying:
+  // no count, no streak, no rung — it resets by itself every day and the only
+  // thing it can say is "today, yes".
+  const lampLit = usePrayer((s) => s.today > 0)
   const [praying, setPraying] = useState(false)
   const [prayerOffered, setPrayerOffered] = useState(false)
 
@@ -59,6 +64,10 @@ export function RoomSection() {
     void useRoom.getState().load()
     if (!useBible.getState().loaded) void useBible.getState().load()
     if (!useCollection.getState().loaded) void useCollection.getState().load()
+    // The lamp. Loaded here rather than only inside the prayer sheet, or it
+    // would stay dark until you opened the sheet — which is the one screen
+    // where you already know the answer.
+    void usePrayer.getState().load()
   }, [])
 
   // Re-read the numbers whenever anything they depend on changes. Subscribing
@@ -187,6 +196,7 @@ export function RoomSection() {
           isMe: true,
         }]}
         editing={{ picked, mergedAnchor: merged?.anchor ?? null, onPick: pickUp, onDrop: (a) => void dropOn(a) }}
+        lampLit={lampLit}
         onTapSelf={() => { juice.tap(); setPrayerOffered(true) }}
       />
 

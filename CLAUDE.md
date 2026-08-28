@@ -1206,12 +1206,14 @@ saved looks, companions in the crowd scenes), which changes the release NOTES ra
 than the number — check App Store Connect for what is actually approved before
 choosing the next one, never the repo's last guess.
 
-`codemagic.yaml` now sets `submit_to_app_store: true` with `release_type: MANUAL`: a
-push to `main` uploads to TestFlight and submits for review by itself, and the app
-goes live only when a human presses Release. Codemagic *submits* the version, it does
-not fill it in — an App Store Connect version record missing screenshots, What's New
-or the demo-account review notes fails the publishing step after the archive, which
-is the same expensive shape as the version-train rejection above.
+**Codemagic stops at TestFlight; submitting to review is done by hand.**
+`submit_to_app_store: false` is a choice, not an unfinished setting — it keeps a real
+device between the archive and the reviewer, and crash-on-launch is the top avoidable
+rejection. The three keys that hand it to CI are written down in `codemagic.yaml`
+along with what they cost: Codemagic would *submit* the version, not fill it in, so
+an App Store Connect record missing screenshots, What's New or the demo-account
+review notes fails the publishing step after the archive — the same expensive shape
+as the version-train rejection above.
 
 `ios/` is not committed; `cap add ios` regenerates it every build and the Capacitor
 template default (`MARKETING_VERSION = 1.0`) comes back each time. So the version is

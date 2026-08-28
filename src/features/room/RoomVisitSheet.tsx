@@ -26,9 +26,11 @@ import { RoomScene } from './RoomScene'
 //   - Any trace. Nothing records the visit, so no "12 people looked at your
 //     room" can be built out of it later — the my_washings rule.
 //
-// Portalled to document.body and pinned at z-index 100, the app's sheet tier:
-// it opens FROM the player card (110), so the card stays over it and closing
-// the sheet puts you back on the card you came from.
+// Portalled to document.body and pinned at z-index 112 — ABOVE the player card
+// (110) that opened it. The app's tiers encode direction: the keep sheet is at
+// 100 because a player card is opened OUT of it, so the card belongs on top.
+// This is the other way round, and the first version put it at 100 — which drew
+// the card straight over the room you had just asked to see.
 
 export function RoomVisitSheet({ username, onClose }: { username: string; onClose: () => void }) {
   const juice = useJuice()
@@ -70,7 +72,19 @@ export function RoomVisitSheet({ username, onClose }: { username: string; onClos
         style={{
           position: 'fixed',
           inset: 0,
-          zIndex: 100,
+          // 112 — the "opened from the player card" tier. The ladder, so the
+          // next session doesn't have to re-derive it from six files:
+          //   40  bottom nav
+          //   100 sheets (keep, church detail, settings, bundles)
+          //   110 the player card, which opens OUT of a 100 sheet
+          //   112 sheets the player card itself opens — this one
+          //   115 NowPlaying, 120 StudyDropToast / WaystationToast (always on
+          //       top: a toast that a sheet can hide is a toast nobody sees)
+          //   200 Tutorial, BookOpening (whole-screen takeovers)
+          // The tiers encode DIRECTION: a surface sits above the one that
+          // opened it. Putting this at 100 drew the card over the room you had
+          // just asked to see, and 120 would have buried the toasts.
+          zIndex: 112,
           background: 'rgba(8,3,24,0.72)',
           display: 'flex',
           alignItems: 'flex-end',

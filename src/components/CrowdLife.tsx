@@ -131,7 +131,26 @@ export function CrowdLife({
   const shown = [...members].sort((a, b) => Number(b.isMe) - Number(a.isMe)).slice(0, max)
   if (shown.length === 0) return null
   return (
-    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+    <div
+      style={{
+        position: 'absolute',
+        inset: 0,
+        overflow: 'hidden',
+        pointerEvents: 'none',
+        // A STACKING CONTEXT, and it is load-bearing. Figures carry a z-index of
+        // roughly 180-199 to sort themselves by depth (below), and this
+        // container used to be `position: absolute` at `z-index: auto`, which
+        // creates no context at all — so those numbers escaped into whatever
+        // ancestor context the scene happened to sit in. For a scene rendered
+        // INLINE on a page (the Battle tab's hall, the churchyard, the road,
+        // the Upper Room) that is the page root, where the app's sheets live at
+        // 100 and the player card at 110 — so a camel painted over the card you
+        // had just opened by tapping it. `isolation: isolate` makes the depth
+        // sorting local without changing layout or the layer's order against
+        // the SVG beside it, which is decided by DOM order.
+        isolation: 'isolate',
+      }}
+    >
       {shown.map((m, i) => (
         <LifeFigure
           key={m.username}
@@ -281,7 +300,9 @@ function LifeFigure({
         // the two-second wait that bit BookOpening, so none of those here.
         transition: walking ? `left ${durMs}ms linear, bottom ${durMs}ms linear` : 'none',
         transform: 'translateX(-50%)',
-        // Lower on the scene = nearer = in front.
+        // Lower on the scene = nearer = in front. These are SCENE-LOCAL: the
+        // container above isolates them, so they never compete with the app's
+        // sheet (100) and player-card (110) tiers.
         zIndex: Math.round(200 - pos.b) + (member.isMe ? 1 : 0),
         background: 'none',
         border: 'none',

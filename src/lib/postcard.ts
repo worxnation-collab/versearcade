@@ -1,4 +1,5 @@
 import { APP_URL } from '@/features/daily/shareCard'
+import { isNativeApp } from './appStore'
 
 // A postcard of your room.
 //
@@ -92,17 +93,71 @@ export async function renderPostcard(username: string): Promise<Blob | null> {
   }
 }
 
+/** What actually happened, so the caller can say the right thing — or nothing. */
+export type PostcardOutcome = 'shared' | 'saved' | 'cancelled' | 'failed'
+
+/** A cancelled share sheet is a decision, not a fault. */
+function wasCancelled(err: unknown): boolean {
+  const name = (err as { name?: string } | null)?.name ?? ''
+  const message = String((err as { message?: string } | null)?.message ?? '')
+  return name === 'AbortError' || /cancel/i.test(message)
+}
+
+/** Blob -> bare base64 (no data: prefix), which is what Filesystem.writeFile wants. */
+function toBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onerror = () => reject(new Error('read failed'))
+    reader.onload = () => {
+      const result = String(reader.result)
+      const comma = result.indexOf(',')
+      resolve(comma >= 0 ? result.slice(comma + 1) : result)
+    }
+    reader.readAsDataURL(blob)
+  })
+}
+
 /**
  * Share the postcard, or save it.
  *
- * Web Share with a file where it exists (every phone this app cares about), and
- * a download everywhere else. Returns false only when nothing at all could be
- * produced — a share the user CANCELS is not a failure and must not draw an
- * error line.
+ * THE NATIVE PATH IS NOT AN OPTIMISATION — it is the only one that works.
+ * Inside the Capacitor shell this used to fall all the way through to an
+ * `<a download>` click, which a WKWebView simply ignores: no share sheet, no
+ * file, no error. And because the click itself never throws, the old boolean
+ * came back TRUE, so the screen didn't even show the "couldn't make one" line.
+ * Tapping the button did nothing at all, silently, which is exactly how it was
+ * found — on a real phone, months after it shipped. Any future "save a picture"
+ * feature needs this same branch; a download link is a web-only affordance.
+ *
+ * So: Capacitor Share (via a file in the cache directory, the one place the
+ * plugin can read from) on native, Web Share where the browser has it, and the
+ * download only where a download means something.
  */
-export async function sharePostcard(username: string): Promise<boolean> {
+export async function sharePostcard(username: string): Promise<PostcardOutcome> {
   const blob = await renderPostcard(username)
-  if (!blob) return false
+  if (!blob) return 'failed'
+
+  const text = `A little chamber on the wall. ${APP_URL}`
+
+  if (isNativeApp()) {
+    try {
+      const [{ Filesystem, Directory }, { Share }] = await Promise.all([
+        import('@capacitor/filesystem'),
+        import('@capacitor/share'),
+      ])
+      // A fresh name each time: the sheet can hold on to the previous file, and
+      // overwriting the one it is reading hands somebody last week's room.
+      const { uri } = await Filesystem.writeFile({
+        path: `upper-room-${Date.now()}.png`,
+        data: await toBase64(blob),
+        directory: Directory.Cache,
+      })
+      await Share.share({ title: 'My Upper Room', text, files: [uri] })
+      return 'shared'
+    } catch (err) {
+      return wasCancelled(err) ? 'cancelled' : 'failed'
+    }
+  }
 
   const file = new File([blob], 'upper-room.png', { type: 'image/png' })
   const nav = navigator as Navigator & {
@@ -111,15 +166,13 @@ export async function sharePostcard(username: string): Promise<boolean> {
 
   if (nav.share && nav.canShare?.({ files: [file] })) {
     try {
-      await nav.share({
-        files: [file],
-        title: 'My Upper Room',
-        text: `A little chamber on the wall. ${APP_URL}`,
-      })
-      return true
-    } catch {
-      // Cancelled, or the sheet refused the file — fall through to saving it,
-      // which is still a postcard in the player's hands.
+      await nav.share({ files: [file], title: 'My Upper Room', text })
+      return 'shared'
+    } catch (err) {
+      // Waving the sheet away is not a failure and must not draw an error line
+      // — or, worse, silently download a file nobody asked for.
+      if (wasCancelled(err)) return 'cancelled'
+      // The sheet refused the file: saving it is still a postcard in hand.
     }
   }
 
@@ -130,8 +183,8 @@ export async function sharePostcard(username: string): Promise<boolean> {
     a.download = 'upper-room.png'
     a.click()
     setTimeout(() => URL.revokeObjectURL(url), 4000)
-    return true
+    return 'saved'
   } catch {
-    return false
+    return 'failed'
   }
 }

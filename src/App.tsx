@@ -224,6 +224,9 @@ export default function App() {
 
   return (
     <PlayerCardProvider>
+    {/* Keeps scrolled content from colliding with the clock. Inert and 0px
+        tall wherever there is no notch — see .status-scrim in index.css. */}
+    <div className="status-scrim" aria-hidden />
     <BattleResume />
     {/* A study run finishes and immediately navigates, so the reveal for
         anything it turned up is mounted here and follows the player. */}

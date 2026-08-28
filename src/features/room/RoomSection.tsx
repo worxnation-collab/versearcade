@@ -173,16 +173,44 @@ export function RoomSection() {
   const postcard = async () => {
     setSharing(true)
     juice.coin()
-    const ok = await sharePostcard(me.username)
+    const outcome = await sharePostcard(me.username)
     setSharing(false)
-    setNote(ok ? null : 'Couldn’t make a postcard on this device.')
+    // Shared and cancelled both say nothing: one is obvious, and the other was
+    // a decision. Only the two outcomes the player can't see get a line.
+    setNote(
+      outcome === 'saved'
+        ? 'Saved the postcard to your photos or files.'
+        : outcome === 'failed'
+          ? 'Couldn’t make a postcard on this device.'
+          : null,
+    )
   }
 
   return (
     <div style={{ marginTop: 14 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
+      {/* The postcard sits ON the room's own title, not inside the Furnish
+          shelf it used to hide at the bottom of. Sharing a room is not a step
+          of decorating one, and a button folded behind a collapsible is a
+          button nobody found. `flexWrap` lets it drop to its own line on a
+          320px phone rather than crushing the tier name. */}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
         <b style={{ fontFamily: 'var(--font-display)', fontSize: 16 }}>Your Upper Room</b>
         <span className="faint" style={{ fontSize: 11.5 }}>{roomTierName(tier)}</span>
+        <button
+          className="pill"
+          onClick={() => void postcard()}
+          disabled={sharing}
+          aria-label="Share a postcard of your room"
+          style={{
+            marginLeft: 'auto',
+            fontWeight: 800,
+            fontSize: 12,
+            padding: '5px 12px',
+            opacity: sharing ? 0.6 : 1,
+          }}
+        >
+          {sharing ? '…' : '📮 Postcard'}
+        </button>
       </div>
 
       <RoomScene
@@ -298,14 +326,6 @@ export function RoomSection() {
               {upNext.goal.toLocaleString()}).
             </p>
           )}
-          <button
-            className="pill"
-            onClick={() => void postcard()}
-            disabled={sharing}
-            style={{ marginTop: 12, fontWeight: 800, fontSize: 12.5 }}
-          >
-            {sharing ? '…' : '📮 Share a postcard'}
-          </button>
         </Collapsible>
       </div>
     </div>

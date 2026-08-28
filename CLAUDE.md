@@ -360,6 +360,16 @@ a per-viewer sample, your own planting winning its plot), nothing is ever
 there is **nowhere to write a string**. Lifetime given is across *every* church,
 so switching keeps every flower: the points were a gift, not a deposit.
 
+**Your own congregation stands in your own yard**, not only on the church's page
+(`loadCongregation` in `store/church.ts`, the same `get_church_page` roster the
+page uses). It used to draw you alone there, on the reasoning that the people
+belong on the page — which read as a broken screen on a real phone, and fairly:
+the caption said "3 players" and the grass had one. The hall shows you alone
+because a faction is thousands of strangers and any crowd it drew would be an
+arbitrary sample; a congregation is a handful of named people, so there is
+nothing to sample. The rule is untouched — join-date order, no per-person number
+— and `is_me` on your own row is what keeps you from being drawn twice.
+
 Anything planted can be **moved by tapping** it and then tapping another plot,
 with the keep's rules (an occupied plot trades places, so no tap loses a plant).
 Only your own church tab passes `floraEditing`; a bed you can move in somebody
@@ -1002,6 +1012,17 @@ Three rules the room adds to the ones it inherits:
   may become a Nano Banana painting (`art/upper-room.json` → `room-1`…`room-5`,
   wired through `GENERATED_ART` like every other tier ladder); the props may not.
 
+**The postcard has to go through Capacitor on native, and the reason is a whole
+class of bug.** `lib/postcard.ts` used to end at an `<a download>` click, which a
+WKWebView silently ignores — no share sheet, no file, no error. The click doesn't
+throw, so the old boolean came back `true` and the screen didn't even draw its
+"couldn't make one" line: tapping the button did *nothing*, invisibly, and it took
+a real phone to find. Native now writes the PNG to the cache directory and hands it
+to `@capacitor/share`; the download stays as the web path. **A download link is a
+web-only affordance** — any future "save a picture" feature needs the same branch.
+The button also sits on the room's own title rather than at the bottom of the
+Furnish shelf, where it was folded behind a collapsible nobody opened to share.
+
 **Two scars from driving it, both invisible in the diff.** Tapping two shelf
 tiles inside one tick planned against the placements the *last render* saw, so
 both picked the same free anchor and the second overwrote the first — plan
@@ -1143,6 +1164,7 @@ files, and both ways of getting it wrong have now shipped):
 | z | Layer |
 |---|---|
 | 40 | bottom nav |
+| 90 | `.status-scrim` — the strip the page scrolls behind under the notch |
 | 100 | sheets — keep, church detail, settings, bundles |
 | 110 | the player card, which opens *out of* a 100 sheet |
 | 112 | sheets the player card itself opens — visit a room, give a relic |

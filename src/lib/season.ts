@@ -141,6 +141,8 @@ export type QuestVerb =
   | 'visit_room'
   /** Relics given to another player, which cost the giver the item. */
   | 'give_gift'
+  /** Practice prayers said in the Upper Room. */
+  | 'pray'
 
 /**
  * Every verb this build can actually score. Anything outside it is dropped on
@@ -180,6 +182,7 @@ export const KNOWN_VERBS = new Set<string>([
   'furnish_room',
   'visit_room',
   'give_gift',
+  'pray',
 ])
 
 export interface QuestDef {

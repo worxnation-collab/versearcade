@@ -26,6 +26,7 @@ import {
 import { RoomScene } from './RoomScene'
 import { FurnishingThumb } from './RoomArt'
 import { sharePostcard } from '@/lib/postcard'
+import { PrayerSheet } from '@/features/prayer/PrayerSheet'
 
 // Your Upper Room, on /you — the one surface that owns furnishing it.
 //
@@ -43,6 +44,12 @@ export function RoomSection() {
   const [picked, setPicked] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
   const [sharing, setSharing] = useState(false)
+  // Tapping your own figure in your own room offers to pray. Two steps rather
+  // than opening the sheet on the tap itself: a figure that launches a
+  // full-screen sheet the instant you brush it is a trap on a screen where
+  // everything else you tap is furniture you're moving.
+  const [praying, setPraying] = useState(false)
+  const [prayerOffered, setPrayerOffered] = useState(false)
 
   // The room's own store, plus the two stores its REQUIREMENTS live in. Loading
   // only the first would quietly report 0 studied verses and 0 chapters read
@@ -180,7 +187,48 @@ export function RoomSection() {
           isMe: true,
         }]}
         editing={{ picked, mergedAnchor: merged?.anchor ?? null, onPick: pickUp, onDrop: (a) => void dropOn(a) }}
+        onTapSelf={() => { juice.tap(); setPrayerOffered(true) }}
       />
+
+      {/* The offer, not the thing itself. It stays until it's taken or waved
+          off — a prompt that vanishes on a timer is one you have to catch. */}
+      <AnimatePresence>
+        {prayerOffered && !praying && (
+          <motion.div
+            key="pray-offer"
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}
+          >
+            <button
+              className="pill"
+              onClick={() => { juice.select(); setPraying(true) }}
+              style={{
+                fontWeight: 800,
+                fontSize: 13.5,
+                padding: '10px 18px',
+                borderColor: 'var(--gold)',
+                color: 'var(--gold)',
+              }}
+            >
+              🙏 Pray
+            </button>
+            <button
+              className="pill"
+              onClick={() => { juice.select(); setPrayerOffered(false) }}
+              aria-label="Not now"
+              style={{ fontSize: 12, fontWeight: 800 }}
+            >
+              Not now
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {praying && (
+        <PrayerSheet onClose={() => { setPraying(false); setPrayerOffered(false) }} />
+      )}
 
       <AnimatePresence>
         {merged && (

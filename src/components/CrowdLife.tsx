@@ -23,6 +23,12 @@ import type { AvatarSpec } from '@/types'
 // position means nothing, you stand among your own people, and tapping a
 // figure opens their player card (sheets sit at z 100, the card at 110).
 //
+// ONE scene overrides that, and only for your own figure: the Upper Room passes
+// `onTapSelf`, because tapping yourself in the room that is yours should offer
+// to pray rather than show you your own stats. Somebody else's figure always
+// opens their card, in every scene including that one — the override is
+// narrow on purpose, so "tap a person, see the person" stays true.
+//
 // EVERYBODY'S pet walks with them. `CrowdMember.pet` carries it, filled by the
 // three RPCs that feed a scene (keep_json, get_church_page, room_json — 0072).
 //
@@ -125,6 +131,7 @@ export function CrowdLife({
   max = 6,
   speedPctPerSec = 5,
   showYouTag = false,
+  onTapSelf,
 }: {
   members: CrowdMember[]
   /** The scene's standing spots. Figures glide between these and nowhere else. */
@@ -137,6 +144,9 @@ export function CrowdLife({
   speedPctPerSec?: number
   /** The churchyard names you; the keep lets the tap do it. */
   showYouTag?: boolean
+  /** Tapping YOUR OWN figure calls this instead of opening your player card.
+   *  Only the Upper Room passes it — see the header note. */
+  onTapSelf?: () => void
 }) {
   const shown = [...members].sort((a, b) => Number(b.isMe) - Number(a.isMe)).slice(0, max)
   if (shown.length === 0) return null
@@ -170,6 +180,7 @@ export function CrowdLife({
           sizeFor={sizeFor}
           speed={speedPctPerSec}
           showYouTag={showYouTag}
+          onTapSelf={onTapSelf}
         />
       ))}
     </div>
@@ -183,6 +194,7 @@ function LifeFigure({
   sizeFor,
   speed,
   showYouTag,
+  onTapSelf,
 }: {
   member: CrowdMember
   slot: number
@@ -190,6 +202,7 @@ function LifeFigure({
   sizeFor: (b: number) => number
   speed: number
   showYouTag: boolean
+  onTapSelf?: () => void
 }) {
   const { open } = usePlayerCard()
   const reduceMotion = useSettings((s) => s.reduceMotion)
@@ -302,7 +315,7 @@ function LifeFigure({
 
   return (
     <button
-      onClick={() => open(member.username)}
+      onClick={() => (member.isMe && onTapSelf ? onTapSelf() : open(member.username))}
       title={member.isMe ? `${member.username} (you)` : member.username}
       aria-label={member.username}
       style={{

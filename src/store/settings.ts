@@ -45,6 +45,12 @@ interface SettingsState {
    * size everyone can read.
    */
   readingTextScale: number
+  /** Whether the prayer sheet labels its four movements. Off by default: a
+   *  first-time reader should meet a prayer, not a diagram. */
+  prayerShowShape: boolean
+  /** Which reading voice the prayer sheet uses — see lib/voice.ts. The device's
+   *  own voices; this only chooses between them. */
+  prayerVoice: 'female' | 'male'
   set: (patch: Partial<Omit<SettingsState, 'set'>>) => void
 }
 
@@ -66,6 +72,8 @@ export const useSettings = create<SettingsState>()(
       appNudgeDone: false,
       readingTranslation: 'web',
       readingTextScale: 1,
+      prayerShowShape: false,
+      prayerVoice: 'female',
       set: (patch) => set(patch),
     }),
     { name: 'va.settings', storage: createJSONStorage(() => localStorage) },

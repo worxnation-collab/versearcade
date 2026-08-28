@@ -92,6 +92,14 @@ to generate the five tiers through `scripts/gen-art.mjs`. Wiring is automatic:
 `RoomArt` looks up `room-<tier>` in `GENERATED_ART`, so a painting reaches
 players the moment it lands and a tier without one still renders as itself.
 
+The postcard button lives on the "Your Upper Room" heading, not inside the Furnish
+shelf — sharing a room is not a step of decorating one, and a control folded behind
+a collapsible is a control nobody finds. On native it goes through
+`@capacitor/filesystem` + `@capacitor/share` (write to the cache directory, hand the
+`file://` URI to the share sheet). That is not a nicety: the web fallback is an
+`<a download>` click, which a WKWebView ignores without throwing, so the button used
+to do nothing at all and report success while doing it.
+
 Furnishings stay drawn for the reason the kite shield does: the postcard
 rasteriser serialises the scene to a canvas, and an SVG loaded as an image never
 fetches external resources — a room made of `<image href>` would export blank.

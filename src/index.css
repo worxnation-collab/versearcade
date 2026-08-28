@@ -82,6 +82,34 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 }
 .app-shell.no-nav { padding-bottom: calc(var(--safe-bottom) + 18px); }
 
+/* Status-bar scrim ------------------------------------------------------- */
+/* The shell's top padding only holds the FIRST screenful clear of the notch.
+   Everything after it scrolls up behind the clock, which is how "Your buddies"
+   ended up sharing a line with 3:48 on a real phone. This strip puts the page
+   BEHIND the status bar instead of colliding with it.
+
+   Height is exactly the inset and the fade lives inside it, so on a phone with
+   no notch — and in every browser — it is 0px tall and paints nothing at all.
+   No backdrop-filter: it would buy a little polish and cost a containing block
+   for position:fixed, which is the bug family that already bit BookOpening and
+   ChurchDetailSheet. Sits at 90, under the sheet tier (100), because a sheet
+   covers the whole screen and draws its own top. */
+.status-scrim {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--safe-top);
+  z-index: 90;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    var(--bg-0) 0%,
+    rgba(11, 7, 32, 0.86) 68%,
+    rgba(11, 7, 32, 0) 100%
+  );
+}
+
 /* Cards ------------------------------------------------------------------ */
 .card {
   background: var(--card);

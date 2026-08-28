@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { useAuth } from '@/store/auth'
@@ -23,7 +23,11 @@ export default function AuthScreen() {
   useEffect(() => {
     if (authMode === 'online' && profile) navigate('/play', { replace: true })
   }, [authMode, profile, navigate])
-  const [mode, setMode] = useState<'in' | 'up'>('in')
+  // ?mode=signup opens on the sign-up form. Landing and every account wall link
+  // here that way: the ask is "create an account", so landing on "Welcome back"
+  // with a password field is one tap of friction in exactly the wrong place.
+  const [params] = useSearchParams()
+  const [mode, setMode] = useState<'in' | 'up'>(params.get('mode') === 'signup' ? 'up' : 'in')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [username, setUsername] = useState('')
@@ -68,7 +72,11 @@ export default function AuthScreen() {
         <div className="center">
           <div className="floaty" style={{ fontSize: 60 }}>📖</div>
           <h1 style={{ fontSize: 32, marginTop: 8 }}>{mode === 'in' ? 'Welcome back' : 'Create account'}</h1>
-          <p className="dim" style={{ marginTop: 6 }}>Keep your streak safe across devices.</p>
+          <p className="dim" style={{ marginTop: 6, lineHeight: 1.5 }}>
+            {mode === 'in'
+              ? 'Keep your streak safe across devices.'
+              : 'Free, and it opens the whole game \u2014 battles, the keep, Study, your Bible and your church.'}
+          </p>
         </div>
 
         {!isSupabaseConfigured && (
@@ -140,6 +148,17 @@ export default function AuthScreen() {
               <p className="faint center" style={{ fontSize: 13 }}>
                 <span style={{ textDecoration: 'underline' }} onClick={() => navigate('/play')}>
                   ← Keep playing as guest
+                </span>
+              </p>
+            )}
+
+            {/* Someone who arrived straight from Landing has no profile yet and
+                nothing behind them, so this is their only door back to the
+                guest path — today's verse, without signing up for anything. */}
+            {!profile && (
+              <p className="faint center" style={{ fontSize: 13 }}>
+                <span style={{ textDecoration: 'underline' }} onClick={() => navigate('/welcome')}>
+                  Just try today’s verse first
                 </span>
               </p>
             )}

@@ -46,6 +46,7 @@ import { MusicDirector } from './juice/MusicDirector'
 import { NowPlaying } from './components/NowPlaying'
 import { BottomNav } from './components/BottomNav'
 import { PlayerCardProvider } from './components/PlayerCardModal'
+import { AccountWall, useAccountLocked, type WallCopy } from './components/AccountWall'
 
 function RequireProfile({ children }: { children: JSX.Element }) {
   const { ready, profile } = useAuth()
@@ -54,6 +55,79 @@ function RequireProfile({ children }: { children: JSX.Element }) {
   // just signed out, and only Landing offers both doors ("Play today's verse"
   // and "I already have an account"). Onboarding assumes you're new.
   if (!profile) return <Navigate to="/" replace />
+  return children
+}
+
+// What a guest can reach, and what asks for a free account first.
+//
+// The product rule, stated once so it isn't guessed from the route table: a
+// guest gets TODAY'S VERSE and THEIR OWN PROFILE. Everything else — battles,
+// the keep, Study, the Bible, the church, the road, ranks, cards, buddies —
+// wants an account, because every one of those either pools with other people
+// or is a record that has to survive a lost phone.
+//
+// The gate lives here rather than in the screens on purpose: one list, one
+// place to read it, and the screens keep whatever guest behaviour they already
+// had (BattleHub and ChurchScreen still carry theirs), so lifting a wall is
+// deleting one wrapper. See components/AccountWall.tsx for why this doesn't
+// contradict the two-mode invariant in CLAUDE.md, and why a keyless LOCAL build
+// is never walled.
+const WALL: Record<string, WallCopy> = {
+  battle: {
+    icon: '\u2694\ufe0f',
+    title: 'Battles need an account',
+    line: 'Challenging a friend, the ranks and your faction\u2019s keep all live on your account \u2014 so a score means the same thing on both your phones.',
+  },
+  study: {
+    icon: '\ud83d\udcda',
+    title: 'Study needs an account',
+    line: 'Replays, focus drills and the verses you\u2019re keeping are a record of what you\u2019ve worked on. An account is what makes that record yours tomorrow.',
+  },
+  bible: {
+    icon: '\ud83d\udcd6',
+    title: 'Your Bible needs an account',
+    line: 'Every chapter you open and verse you keep is marked on your own Bible \u2014 31,102 slots that fill in as you play. That belongs on an account, not on one device.',
+  },
+  church: {
+    icon: '\u26ea',
+    title: 'Playing for a church needs an account',
+    line: 'Your points pool with everyone else who goes there, and the building grows for all of them. There\u2019s no way to do that from one phone alone.',
+  },
+  road: {
+    icon: '\ud83c\udf3e',
+    title: 'The Harvest Road needs an account',
+    line: 'The season\u2019s road, its waystations and everything you earn walking it are saved to your account.',
+  },
+  ranks: {
+    icon: '\ud83c\udfc6',
+    title: 'Ranks need an account',
+    line: 'A board of one person isn\u2019t a board. Create a free account to stand on it.',
+  },
+  cards: {
+    icon: '\ud83c\udccf',
+    title: 'Your collection needs an account',
+    line: 'Verse cards, relics and skins are yours to keep \u2014 an account is what keeps them.',
+  },
+  buddies: {
+    icon: '\ud83e\udd1d',
+    title: 'Bible Buddies need an account',
+    line: 'Adding a friend takes two accounts. Yours is free.',
+  },
+  review: {
+    icon: '\ud83e\udde0',
+    title: 'Keeping verses needs an account',
+    line: 'Reviews come back on a schedule built from what you got wrong \u2014 that schedule has to outlive this browser tab.',
+  },
+  replay: {
+    icon: '\ud83d\udd01',
+    title: 'Replays need an account',
+    line: 'Today\u2019s verse is yours to play. Every day before it, and beating your own best on them, comes with an account.',
+  },
+}
+
+function RequireAccount({ copy, children }: { copy: WallCopy; children: JSX.Element }) {
+  const locked = useAccountLocked()
+  if (locked) return <AccountWall {...copy} />
   return children
 }
 
@@ -177,7 +251,9 @@ export default function App() {
           path="/play/practice/:date"
           element={
             <RequireProfile>
-              <PracticeQuizScreen />
+              <RequireAccount copy={WALL.replay}>
+                <PracticeQuizScreen />
+              </RequireAccount>
             </RequireProfile>
           }
         />
@@ -185,7 +261,9 @@ export default function App() {
           path="/play/practice/:date/result"
           element={
             <RequireProfile>
-              <PracticeResultScreen />
+              <RequireAccount copy={WALL.replay}>
+                <PracticeResultScreen />
+              </RequireAccount>
             </RequireProfile>
           }
         />
@@ -193,7 +271,9 @@ export default function App() {
           path="/review"
           element={
             <RequireProfile>
-              <ReviewScreen />
+              <RequireAccount copy={WALL.review}>
+                <ReviewScreen />
+              </RequireAccount>
             </RequireProfile>
           }
         />
@@ -202,7 +282,9 @@ export default function App() {
           element={
             <RequireProfile>
               <TabShell>
-                <BuddiesScreen />
+                <RequireAccount copy={WALL.buddies}>
+                  <BuddiesScreen />
+                </RequireAccount>
               </TabShell>
             </RequireProfile>
           }
@@ -214,7 +296,9 @@ export default function App() {
           element={
             <RequireProfile>
               <TabShell>
-                <ChurchScreen />
+                <RequireAccount copy={WALL.church}>
+                  <ChurchScreen />
+                </RequireAccount>
               </TabShell>
             </RequireProfile>
           }
@@ -227,7 +311,9 @@ export default function App() {
           element={
             <RequireProfile>
               <TabShell>
-                <PilgrimageScreen />
+                <RequireAccount copy={WALL.road}>
+                  <PilgrimageScreen />
+                </RequireAccount>
               </TabShell>
             </RequireProfile>
           }
@@ -249,7 +335,9 @@ export default function App() {
           element={
             <RequireProfile>
               <TabShell>
-                <BattleHub />
+                <RequireAccount copy={WALL.battle}>
+                  <BattleHub />
+                </RequireAccount>
               </TabShell>
             </RequireProfile>
           }
@@ -260,7 +348,9 @@ export default function App() {
           element={
             <RequireProfile>
               <TabShell>
-                <StudyScreen />
+                <RequireAccount copy={WALL.study}>
+                  <StudyScreen />
+                </RequireAccount>
               </TabShell>
             </RequireProfile>
           }
@@ -272,7 +362,9 @@ export default function App() {
           path="/bible"
           element={
             <RequireProfile>
-              <BibleScreen />
+              <RequireAccount copy={WALL.bible}>
+                <BibleScreen />
+              </RequireAccount>
             </RequireProfile>
           }
         />
@@ -282,7 +374,9 @@ export default function App() {
           path="/bible/highlights"
           element={
             <RequireProfile>
-              <HighlightsScreen />
+              <RequireAccount copy={WALL.bible}>
+                <HighlightsScreen />
+              </RequireAccount>
             </RequireProfile>
           }
         />
@@ -290,7 +384,9 @@ export default function App() {
           path="/bible/stamps"
           element={
             <RequireProfile>
-              <StampsScreen />
+              <RequireAccount copy={WALL.bible}>
+                <StampsScreen />
+              </RequireAccount>
             </RequireProfile>
           }
         />
@@ -298,7 +394,9 @@ export default function App() {
           path="/bible/:book"
           element={
             <RequireProfile>
-              <BibleBookScreen />
+              <RequireAccount copy={WALL.bible}>
+                <BibleBookScreen />
+              </RequireAccount>
             </RequireProfile>
           }
         />
@@ -306,7 +404,9 @@ export default function App() {
           path="/bible/:book/:chapter"
           element={
             <RequireProfile>
-              <BibleChapterScreen />
+              <RequireAccount copy={WALL.bible}>
+                <BibleChapterScreen />
+              </RequireAccount>
             </RequireProfile>
           }
         />
@@ -319,7 +419,9 @@ export default function App() {
           path="/study/reports"
           element={
             <RequireProfile>
-              <StudyReportsScreen />
+              <RequireAccount copy={WALL.study}>
+                <StudyReportsScreen />
+              </RequireAccount>
             </RequireProfile>
           }
         />
@@ -327,7 +429,9 @@ export default function App() {
           path="/study/recent"
           element={
             <RequireProfile>
-              <StudyRecentScreen />
+              <RequireAccount copy={WALL.study}>
+                <StudyRecentScreen />
+              </RequireAccount>
             </RequireProfile>
           }
         />
@@ -335,7 +439,9 @@ export default function App() {
           path="/study/bag"
           element={
             <RequireProfile>
-              <StudyBagScreen />
+              <RequireAccount copy={WALL.study}>
+                <StudyBagScreen />
+              </RequireAccount>
             </RequireProfile>
           }
         />
@@ -344,7 +450,9 @@ export default function App() {
           path="/study/focus"
           element={
             <RequireProfile>
-              <FocusPracticeScreen />
+              <RequireAccount copy={WALL.study}>
+                <FocusPracticeScreen />
+              </RequireAccount>
             </RequireProfile>
           }
         />
@@ -353,7 +461,9 @@ export default function App() {
           path="/battle/cpu"
           element={
             <RequireProfile>
-              <BattleCpu />
+              <RequireAccount copy={WALL.study}>
+                <BattleCpu />
+              </RequireAccount>
             </RequireProfile>
           }
         />
@@ -361,7 +471,9 @@ export default function App() {
           path="/battle/new"
           element={
             <RequireProfile>
-              <BattleNew />
+              <RequireAccount copy={WALL.battle}>
+                <BattleNew />
+              </RequireAccount>
             </RequireProfile>
           }
         />
@@ -369,7 +481,9 @@ export default function App() {
           path="/battle/:id/play"
           element={
             <RequireProfile>
-              <BattlePlay />
+              <RequireAccount copy={WALL.battle}>
+                <BattlePlay />
+              </RequireAccount>
             </RequireProfile>
           }
         />
@@ -381,7 +495,9 @@ export default function App() {
           element={
             <RequireProfile>
               <TabShell>
-                <LeaderboardScreen />
+                <RequireAccount copy={WALL.ranks}>
+                  <LeaderboardScreen />
+                </RequireAccount>
               </TabShell>
             </RequireProfile>
           }
@@ -391,7 +507,9 @@ export default function App() {
           element={
             <RequireProfile>
               <TabShell>
-                <CollectionScreen />
+                <RequireAccount copy={WALL.cards}>
+                  <CollectionScreen />
+                </RequireAccount>
               </TabShell>
             </RequireProfile>
           }

@@ -216,14 +216,21 @@ export default function HomeScreen() {
           animate={{ opacity: 1, y: 0 }}
           style={{ marginTop: 16, textAlign: 'center' }}
         >
-          <p className="dim" style={{ margin: '0 0 12px', fontSize: 14, lineHeight: 1.5 }}>
-            You’re playing as a guest — everything is saved on this device only. Sign in to
-            carry your streak, XP and skins across devices, or pick up an account you
-            already have.
+          <p style={{ margin: '0 0 4px', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 17 }}>
+            Today’s verse is yours. The rest is one tap away.
           </p>
-          <Button variant="secondary" full onClick={() => navigate('/auth')}>
-            Sign in / Create account
-          </Button>
+          <p className="dim" style={{ margin: '0 0 12px', fontSize: 14, lineHeight: 1.5 }}>
+            A free account opens battles, your keep, Study, your own Bible and playing for
+            your church — and carries your streak, XP and character to any device.
+          </p>
+          <div style={{ display: 'grid', gap: 8 }}>
+            <Button variant="gold" full onClick={() => navigate('/auth?mode=signup')}>
+              Create a free account →
+            </Button>
+            <Button variant="ghost" full onClick={() => navigate('/auth')}>
+              I already have an account
+            </Button>
+          </div>
         </motion.div>
       )}
 
@@ -237,7 +244,7 @@ export default function HomeScreen() {
       {/* Reviews that are due ("Keep it") now live on the Study tab, alongside
           the other practice surfaces, rather than competing with today's verse.
           A dot on this nudge points there when something is waiting. */}
-      {dueRefs.length > 0 && (
+      {dueRefs.length > 0 && !(mode === 'local' && supabase) && (
         <motion.button
           onClick={() => navigate('/study')}
           whileTap={{ scale: 0.97 }}

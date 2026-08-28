@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useJuice } from '@/juice/useJuice'
 import { useAuth } from '@/store/auth'
+import { useAccountLocked } from '@/components/AccountWall'
 import { BookOpening } from './BookOpening'
 import { BookCoverArt, COVER_BOARD, COVER_RATIO, COVER_REF_WIDTH } from './BookCoverArt'
 import { useBibleMarks } from './useBibleMarks'
@@ -27,6 +28,10 @@ export function BibleCover() {
   const reduceMotion = useReducedMotion()
   const { marks } = useBibleMarks()
   const name = useAuth((s) => s.profile?.username ?? '')
+  // A guest's Bible is behind the account wall (App.tsx), so the book still
+  // stands on the profile — it's the pitch — but it doesn't perform the opening
+  // to land on a locked page. Straight to the wall, which says what's inside.
+  const locked = useAccountLocked()
   // Where the closed book is sitting, so the opening flies from exactly here
   // rather than from a guess at the middle of the screen.
   const shell = useRef<HTMLDivElement | null>(null)
@@ -38,6 +43,10 @@ export function BibleCover() {
 
   const go = () => {
     juice.select?.()
+    if (locked) {
+      navigate('/bible')
+      return
+    }
     // Reduce-motion gets the destination, not a shortened version of the show.
     if (reduceMotion || !shell.current) {
       navigate('/bible')

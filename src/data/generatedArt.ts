@@ -15,6 +15,7 @@
 // half-generated batch degrades to something correct rather than to holes.
 
 export const GENERATED_ART: Record<string, string> = {
+  'armor_of_god': '/skins/armor_of_god.png',
   'hall-2': '/keep/hall-2.png',
   'hall-3': '/keep/hall-3.png',
   'hall-4': '/keep/hall-4.png',

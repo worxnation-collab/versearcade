@@ -192,9 +192,15 @@ export function CustomizeSection() {
     }
     setPetErr(null)
     juice.select()
-    const res = await setPet(profile.pet === id ? null : id, prog)
+    const equipping = profile.pet !== id
+    const res = await setPet(equipping ? id : null, prog)
     if (!res.ok) setPetErr(res.error ?? 'That one isn’t unlocked yet')
-    else flashSaved()
+    else {
+      // Prepacked verb. Emitted from the screen rather than store/auth.ts,
+      // which store/season.ts already imports — the other direction is a cycle.
+      if (equipping) void useSeason.getState().track('pet_equipped')
+      flashSaved()
+    }
   }
 
   const equip = async (patch: { border?: string; badge?: string | null }) => {

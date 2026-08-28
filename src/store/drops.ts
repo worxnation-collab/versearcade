@@ -6,6 +6,7 @@ import { STUDY_DROP } from '@/lib/drops'
 import { drawRelicKey, collectibleByKey } from '@/data/collectibles'
 import { petDropLuck } from '@/data/pets'
 import { useAuth } from './auth'
+import { useSeason } from './season'
 import { useCollection } from './collection'
 import { useInventory } from './inventory'
 
@@ -80,7 +81,12 @@ export const useDrops = create<DropsState>((set, get) => ({
     set({ rolling: true })
     try {
       const drop = isOnline() ? await rollOnline() : rollGuest()
-      if (drop) set({ found: drop })
+      if (drop) {
+        set({ found: drop })
+        // Prepacked verb. Counts finds, never attempts — the same rule the
+        // daily cap uses, so a dry run costs a quest nothing.
+        void useSeason.getState().track('relic_found')
+      }
     } catch {
       // A drop is a bonus. If the roll fails there is nothing to recover and
       // nothing to tell the player — they just didn't find anything this run.

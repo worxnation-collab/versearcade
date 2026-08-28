@@ -76,9 +76,27 @@ export function milesProgress(miles: number): { into: number; span: number; pct:
 // ── Quests ───────────────────────────────────────────────────────────────────
 
 /** What a quest watches. Every verb is self-vs-self or self-vs-CPU: `cpu_wins`
- *  is the only "beat something" verb and the something is a simulation, which
- *  is the line CpuVersusQuiz already draws. */
+ *  and `battle_wins` are the only "beat something" verbs, and neither is ever
+ *  compared against another player's count — winning a battle is a thing you
+ *  did, not a place you hold.
+ *
+ * THIS LIST IS THE PREPACK, AND IT IS WHY IT IS LONGER THAN THE POOLS BELOW.
+ * A road's quests are content (see RoadDef.daily/weekly in data/season.ts) and
+ * can arrive from the remote catalog long after a binary shipped — but a verb
+ * is CODE. `deltaFor` in store/season.ts is what turns an event into progress,
+ * so a remote quest can only use a verb the installed app already understands.
+ * Every verb here has a live emit site today, even when no bundled quest uses
+ * it, precisely so a future season can reach for it without an App Store
+ * submission. Adding a verb is the one part of a season that still needs a
+ * release, so add them generously and early.
+ *
+ * The matching guard is KNOWN_VERBS: a catalog quest naming a verb this build
+ * doesn't have is DROPPED, never shown. An unknown verb scores 0 forever, so
+ * showing it would hand the player a daily they can't finish — the one failure
+ * mode this feature must not have.
+ */
 export type QuestVerb =
+  // ── Shipped with the Harvest Road ──
   | 'play_daily'
   | 'answer_correct'
   | 'perfect_run'
@@ -90,6 +108,67 @@ export type QuestVerb =
   | 'donate'
   | 'share_daily'
   | 'open_chest'
+  // ── Prepacked for future roads (no bundled quest uses these yet) ──
+  /** Any finished run, in any mode — not just the daily drop. */
+  | 'play_any'
+  /** `goal` correct answers in ONE run, rather than added up across the day. */
+  | 'answers_in_run'
+  /** Focus drills finished (Study tab). */
+  | 'focus_drills'
+  /** Replay runs finished (Study tab). */
+  | 'replay_runs'
+  /** Real battles won — against a person, but never ranked against them. */
+  | 'battle_wins'
+  /** Real battles played, won or lost. Showing up is the whole verb. */
+  | 'battles_played'
+  /** Decorations placed in the keep's hall. */
+  | 'place_decor'
+  /** Plants set in the churchyard. */
+  | 'plant_flora'
+  /** Relics found by studying (study drops). */
+  | 'find_relic'
+  /** Grand decorations offered from the hall to your church. */
+  | 'give_offering'
+  /** Soundtrack rooms walked into for the first time. */
+  | 'unlock_track'
+  /** A pet put out beside your character. */
+  | 'equip_pet'
+
+/**
+ * Every verb this build can actually score. Anything outside it is dropped on
+ * the way in — see `sanitizeQuestDefs`.
+ *
+ * Keep in sync with the switch in store/season.ts:deltaFor. The two are checked
+ * against each other by `checkQuestVerbs()` in store/season.ts, which runs at
+ * import in dev for the same reason `checkTrackData()` does in data/music.ts:
+ * a verb listed here but missing from the switch is a quest that silently
+ * never completes.
+ */
+export const KNOWN_VERBS = new Set<string>([
+  'play_daily',
+  'answer_correct',
+  'perfect_run',
+  'combo',
+  'read_chapters',
+  'study_runs',
+  'cpu_wins',
+  'save_verses',
+  'donate',
+  'share_daily',
+  'open_chest',
+  'play_any',
+  'answers_in_run',
+  'focus_drills',
+  'replay_runs',
+  'battle_wins',
+  'battles_played',
+  'place_decor',
+  'plant_flora',
+  'find_relic',
+  'give_offering',
+  'unlock_track',
+  'equip_pet',
+])
 
 export interface QuestDef {
   key: string
@@ -98,7 +177,43 @@ export interface QuestDef {
   text: string
 }
 
-/** The daily pool. Three are drawn from it each day. */
+/**
+ * Drop any quest this build can't score, and any that is malformed.
+ *
+ * Catalog quests are content written months after the binary shipped, so this
+ * is the boundary that keeps a bad row from becoming an uncompletable daily.
+ * Bundled pools go through it too — one code path, no "trusted" input.
+ */
+export function sanitizeQuestDefs(defs: unknown): QuestDef[] {
+  if (!Array.isArray(defs)) return []
+  const seen = new Set<string>()
+  const out: QuestDef[] = []
+  for (const d of defs) {
+    if (!d || typeof d !== 'object') continue
+    const { key, verb, goal, text } = d as Partial<QuestDef>
+    if (typeof key !== 'string' || !key) continue
+    if (typeof verb !== 'string' || !KNOWN_VERBS.has(verb)) continue
+    if (typeof text !== 'string' || !text.trim()) continue
+    // The server clamps a goal to 1..1000 (track_season_quest, 0058); matching
+    // that here means the client never shows a bar it can't fill.
+    if (typeof goal !== 'number' || !Number.isFinite(goal) || goal < 1 || goal > 1000) continue
+    if (seen.has(key)) continue // a duplicate key would collide as a quest id
+    seen.add(key)
+    out.push({ key, verb: verb as QuestVerb, goal: Math.floor(goal), text })
+  }
+  return out
+}
+
+/**
+ * The daily pool. Three are drawn from it each day.
+ *
+ * DO NOT ADD TO OR REORDER THIS ARRAY WHILE A ROAD USING IT IS LIVE. `pick()`
+ * shuffles the whole pool from a day seed, so one extra entry re-draws every
+ * day's three — two players on different app versions would see different
+ * dailies on the same date, which is the shared-drop promise broken. A new road
+ * carries its OWN pools (`RoadDef.daily` / `.weekly`) instead; this one belongs
+ * to the Harvest Road now and is effectively frozen.
+ */
 export const DAILY_QUESTS: QuestDef[] = [
   { key: 'd_play', verb: 'play_daily', goal: 1, text: 'Play today’s drop' },
   { key: 'd_correct', verb: 'answer_correct', goal: 10, text: 'Answer 10 questions correctly' },
@@ -168,9 +283,26 @@ function pick<T>(pool: T[], n: number, seed: string): T[] {
   return copy.slice(0, n)
 }
 
+/**
+ * The pools one road draws from. A road that names neither gets the bundled
+ * ones, which is what keeps the Harvest Road exactly as it shipped.
+ *
+ * A ROAD'S POOLS ARE FROZEN ONCE IT STARTS, for the same reason the bundled
+ * pool is: the draw is a seeded shuffle of the whole array, so editing it
+ * mid-road re-draws every remaining day. Publish a catalog road's quests before
+ * its `start`, and after that only ever fix a `text` typo — never add, remove
+ * or reorder.
+ */
+export interface QuestPools {
+  daily: QuestDef[]
+  weekly: QuestDef[]
+}
+
+export const BUNDLED_POOLS = (): QuestPools => ({ daily: DAILY_QUESTS, weekly: WEEKLY_QUESTS })
+
 /** The three dailies for a given road day. Identical for every player. */
-export function dailyQuests(roadId: string, day: number): Quest[] {
-  return pick(DAILY_QUESTS, 3, `${roadId}:d:${day}`).map((q) => ({
+export function dailyQuests(roadId: string, day: number, pools: QuestPools = BUNDLED_POOLS()): Quest[] {
+  return pick(pools.daily, 3, `${roadId}:d:${day}`).map((q) => ({
     ...q,
     id: `d:${roadId}:${day}:${q.key}`,
     kind: 'daily' as const,
@@ -183,8 +315,12 @@ export function dailyQuests(roadId: string, day: number): Quest[] {
  * the end of the road — miss a week and you lose nothing, you just have more to
  * do later. That is the single most important anti-shame mechanic here.
  */
-export function weeklyQuests(roadId: string, week: number): Quest[] {
-  const chosen = pick(WEEKLY_QUESTS, 5, `${roadId}:w:${week}`)
+export function weeklyQuests(
+  roadId: string,
+  week: number,
+  pools: QuestPools = BUNDLED_POOLS(),
+): Quest[] {
+  const chosen = pick(pools.weekly, 5, `${roadId}:w:${week}`)
   // One gilded weekly per week, also seeded, paying double.
   const gildedAt = Math.floor(rng(seedFrom(`${roadId}:g:${week}`))() * chosen.length)
   return chosen.map((q, i) => ({
@@ -197,19 +333,28 @@ export function weeklyQuests(roadId: string, week: number): Quest[] {
 }
 
 /** Every quest currently live: today's three, plus every week issued so far. */
-export function activeQuests(roadId: string, day: number): Quest[] {
+export function activeQuests(
+  roadId: string,
+  day: number,
+  pools: QuestPools = BUNDLED_POOLS(),
+): Quest[] {
   const week = Math.floor(day / 7)
   const weeks: Quest[] = []
-  for (let w = 0; w <= week; w++) weeks.push(...weeklyQuests(roadId, w))
-  return [...dailyQuests(roadId, day), ...weeks]
+  for (let w = 0; w <= week; w++) weeks.push(...weeklyQuests(roadId, w, pools))
+  return [...dailyQuests(roadId, day, pools), ...weeks]
 }
 
 /** The replacement offered when a daily is rerolled — deterministic too, so a
  *  reroll can't be re-rolled for a better one by reloading. */
-export function rerollFor(roadId: string, day: number, questKey: string): Quest {
-  const taken = new Set(dailyQuests(roadId, day).map((q) => q.key))
-  const pool = DAILY_QUESTS.filter((q) => !taken.has(q.key))
-  const chosen = pick(pool.length ? pool : DAILY_QUESTS, 1, `${roadId}:r:${day}:${questKey}`)[0]
+export function rerollFor(
+  roadId: string,
+  day: number,
+  questKey: string,
+  pools: QuestPools = BUNDLED_POOLS(),
+): Quest {
+  const taken = new Set(dailyQuests(roadId, day, pools).map((q) => q.key))
+  const pool = pools.daily.filter((q) => !taken.has(q.key))
+  const chosen = pick(pool.length ? pool : pools.daily, 1, `${roadId}:r:${day}:${questKey}`)[0]
   return {
     ...chosen,
     id: `d:${roadId}:${day}:${chosen.key}:r`,

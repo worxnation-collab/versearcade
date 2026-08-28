@@ -20,6 +20,7 @@
 // shape from store/reviews.ts.
 
 import { create } from 'zustand'
+import { useSeason } from './season'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { TRACKS } from '@/data/music'
 
@@ -60,6 +61,9 @@ export const useMusic = create<MusicState>()(
       heard: (id) => {
         const { unlocked, introSeen } = get()
         const isNew = !unlocked.includes(id)
+        // Prepacked verb. A find only — walking back into a room you've already
+        // heard is not a new track, and the director calls this on every route.
+        if (isNew) void useSeason.getState().track('track_unlocked')
         const intro = !introSeen
         set({
           unlocked: isNew ? [...unlocked, id] : unlocked,

@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Character } from '@/components/Character'
+import { Pet } from '@/components/Pet'
 import { usePlayerCard } from '@/components/PlayerCardModal'
+import { petById } from '@/data/pets'
+import { useAuth } from '@/store/auth'
 import { useSettings } from '@/store/settings'
 import type { AvatarSpec } from '@/types'
 
@@ -19,6 +22,16 @@ import type { AvatarSpec } from '@/types'
 // The crowd rules hold everywhere this renders: nobody carries a score,
 // position means nothing, you stand among your own people, and tapping a
 // figure opens their player card (sheets sit at z 100, the card at 110).
+//
+// YOUR pet walks with you, and only yours. The equipped pet is read from the
+// auth store here rather than taken as a prop, which does two things: every
+// scene that draws you gets the companion without being asked (the hall, the
+// churchyard and the road are three call sites that would otherwise each have
+// to remember), and there is no field on CrowdMember for somebody ELSE's pet
+// — so the rule that a pet is never shown to strangers is enforced by the
+// shape of this component rather than by everyone remembering it. Widening
+// the church/keep RPCs to carry pets would be the deliberate decision that
+// rule is about; see the Pets section of CLAUDE.md.
 //
 // reduce-motion: the schedule still runs — the vestibular problem is
 // CONTINUOUS motion, not change — but figures REPOSITION instantly instead of
@@ -63,6 +76,21 @@ function rng(seed: number): () => number {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296
   }
 }
+
+/**
+ * A companion is drawn at `PetDef.scale` against the figure — the SAME ratio as
+ * ProfileHero, so your camel is your camel wherever you meet it, and the "kept
+ * well under 1 on purpose" note in data/pets holds here too (a camel at real
+ * scale is a mount with a person beside it, not a companion).
+ *
+ * The one concession to size: a scene figure is 24-46px, so a strictly
+ * proportional dove at the far end of the road lands at six pixels and reads
+ * as a speck of dirt on the painting. Nothing is drawn under this floor. It
+ * only ever bites for the two smallest pets at the two smallest depths, which
+ * is the trade — a dove and a lamb the same size for one waypoint, rather than
+ * a dove nobody can see at all.
+ */
+const PET_MIN_PX = 9
 
 export function CrowdLife({
   members,
@@ -120,6 +148,9 @@ function LifeFigure({
 }) {
   const { open } = usePlayerCard()
   const reduceMotion = useSettings((s) => s.reduceMotion)
+  // Only ever your own, and only on your own figure — see the header note.
+  const myPet = useAuth((s) => s.profile?.pet)
+  const companion = member.isMe ? petById(myPet) : undefined
 
   // Each figure walks its own seeded shuffle of the waypoints, offset by slot
   // so two members never share a schedule even with colliding names, plus a
@@ -184,6 +215,9 @@ function LifeFigure({
   }, [reduceMotion])
 
   const size = sizeFor(pos.b)
+  // Which side the companion stands on: towards the middle of the scene, so it
+  // can never be the half of the pair that falls outside the frame.
+  const petOnRight = pos.x < 50
 
   return (
     <button
@@ -222,6 +256,52 @@ function LifeFigure({
           filter: 'blur(1.5px)',
         }}
       />
+      {/* Your companion, standing with you.
+          It sits OUTSIDE the facing flip and picks its side from where you are
+          in the frame — inward, always. Tying it to the facing flip was the
+          obvious version and it walks the pet out of the painting: the outer
+          waypoints sit at x 12-24%, so a figure facing outward there hangs its
+          camel over the edge, and every scene clips (overflow: hidden). Inward
+          also composes better — the pet is between you and the middle of the
+          picture rather than pressed against its border.
+          Mirrored when it lands on your right so it's always turned towards
+          you: a companion looking at you reads as company, one looking away
+          reads as an animal that happens to be nearby. */}
+      {companion && (
+        <span
+          aria-hidden
+          style={{
+            position: 'absolute',
+            // Just past the figure's shoulder. Character draws into a 120x170
+            // viewBox with the figure only about 70 units wide, so a fifth of
+            // that box is empty on each side — 88% lands the pet beside a
+            // person rather than a hand's width away from one.
+            ...(petOnRight ? { left: '88%' } : { right: '88%' }),
+            // Character's ground shadow sits at y=162 of 170, ~4.5% up from the
+            // bottom of its box. Matching it stands the two on one floor.
+            bottom: size * 0.045,
+            lineHeight: 0,
+            transform: petOnRight ? 'scaleX(-1)' : 'none',
+            transformOrigin: 'bottom center',
+          }}
+        >
+          <span
+            style={{
+              display: 'block',
+              // Bobs and breathes like everyone else in the scene, half a beat
+              // behind you so the pair aren't in lockstep.
+              animation: reduceMotion
+                ? 'none'
+                : walking
+                  ? 'va-keep-bob 0.44s ease-in-out -0.22s infinite alternate'
+                  : 'va-keep-breathe 2.6s ease-in-out -1.3s infinite alternate',
+              transformOrigin: 'bottom center',
+            }}
+          >
+            <Pet id={companion.id} size={Math.max(size * companion.scale, PET_MIN_PX)} />
+          </span>
+        </span>
+      )}
       {/* Two nested spans because both need `transform`: the outer owns the
           facing flip, the inner owns the bob/breathe animation — on one
           element the animation's transform would silently replace the flip. */}

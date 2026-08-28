@@ -792,9 +792,22 @@ It's bounded at 5% of one play a day, which is why it's tolerable. **If these
 numbers ever grow, that argument stops holding** and the effect needs rethinking
 rather than raising.
 
-Pets still don't appear on *other* players' cards. That would mean widening
-`get_player_card` and the leaderboard RPCs, and it's a decision rather than an
-oversight — a pet visible to strangers is one step from being compared.
+**Your companion walks with you in the little worlds** — the hall, the
+churchyard and the road — because a pet you only see on your own profile is a
+thing you own rather than a thing you have. It's one change in `CrowdLife`,
+which is why all three got it at once, and the pet is read from the auth store
+there rather than passed in: every scene that draws you gets the companion
+without being asked, and `CrowdMember` has nowhere to put somebody *else's*
+pet. Two rules the scenes taught, both written into that file: a companion
+stands on the side facing the middle of the frame (tie it to the figure's
+facing flip and the outer waypoints hang your camel over the edge, and every
+scene clips), and it's drawn at `PetDef.scale` — the profile's own ratio — with
+a 9px floor, below which a dove is a speck of dirt on the painting.
+
+Pets still don't appear on *other* players' cards, or on other players'
+figures in those scenes. That would mean widening `get_player_card`, the
+leaderboard RPCs and `church_json`/`keep_json`, and it's a decision rather than
+an oversight — a pet visible to strangers is one step from being compared.
 
 `lib/petProgress.ts` gathers the requirement numbers, and it's a function rather
 than a hook for an import-graph reason: `data/pets.ts` can't import stores (the

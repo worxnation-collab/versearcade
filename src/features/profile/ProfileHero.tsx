@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Character } from '@/components/Character'
 import { CardBg } from '@/components/CardBg'
 import { Pet } from '@/components/Pet'
@@ -6,13 +7,19 @@ import { petById, petGlows } from '@/data/pets'
 import { useSettings } from '@/store/settings'
 import type { AvatarSpec } from '@/types'
 
-// "This is you" — the top of your own profile.
+// "This is you" — the top of your own profile, and the top of anybody's card.
 //
-// Everywhere else in the app your character is a 44px circle with the face
-// cropped in, because that's what a chip or a list row needs. This is the one
-// place that shows the whole figure at the size the skin was drawn for, on the
-// background you earned, with your pet beside you. The tab is called You; it
-// should open with you in it.
+// Everywhere else in the app a character is a 44px circle with the face cropped
+// in, because that's what a chip or a list row needs. This is the one component
+// that shows the whole figure at the size the skin was drawn for, on the
+// background that player earned, with their pet beside them.
+//
+// It serves TWO surfaces now: your own /you (at full size, captioned "This is
+// you") and the player-card pop-up (smaller, captioned with their faction). One
+// component rather than two, for the reason KeepScene and QuizRunner are one:
+// the moment a second surface wanted the same picture, drawing it twice would
+// have meant two figures that drift — and the whole promise of a look is that
+// it is the same look wherever it appears.
 //
 // It is a PORTRAIT, not a card. No stats, no level, no numbers of any kind —
 // the player card sits directly underneath and carries all of that, and the
@@ -32,6 +39,8 @@ export function ProfileHero({
   pet,
   cardBackground,
   title,
+  caption = 'This is you',
+  size = 190,
 }: {
   spec?: AvatarSpec | null
   emoji: string
@@ -41,6 +50,20 @@ export function ProfileHero({
   /** The equipped road title, if any — the one bit of text that is identity
    *  rather than score. */
   title?: string | null
+  /**
+   * The eyebrow above the figure. "This is you" on your own profile; on
+   * somebody else's card it carries their faction, which is identity rather
+   * than score and has nowhere else to sit once the card goes `statsOnly`.
+   * Pass null for no eyebrow at all.
+   */
+  caption?: ReactNode
+  /**
+   * Figure height. 190 is the size the skins were drawn for and what /you
+   * shows; the pop-up passes something smaller because it has a card and three
+   * rows of buttons under it on a 320px phone. Everything else in here scales
+   * off this, so there is one number to change.
+   */
+  size?: number
 }) {
   const reduceMotion = useSettings((s) => s.reduceMotion)
   const companion = petById(pet)
@@ -52,7 +75,7 @@ export function ProfileHero({
   // player card rendering the same background right below this.
   const artId = `hero-${username}-${cardBackground ?? 'default'}`
 
-  const FIGURE = 190
+  const FIGURE = size
 
   return (
     <div
@@ -79,12 +102,14 @@ export function ProfileHero({
       />
 
       <div style={{ position: 'relative' }}>
-        <p
-          className="faint"
-          style={{ margin: 0, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.12em', textAlign: 'center' }}
-        >
-          This is you
-        </p>
+        {caption != null && (
+          <p
+            className="faint"
+            style={{ margin: 0, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.12em', textAlign: 'center' }}
+          >
+            {caption}
+          </p>
+        )}
 
         {/* Feet on one line: the figure and the pet share a baseline, so the
             pet stands NEXT to you rather than floating near you. The pet's own
@@ -151,7 +176,7 @@ export function ProfileHero({
             margin: '2px 0 0',
             textAlign: 'center',
             fontFamily: 'var(--font-display)',
-            fontSize: 20,
+            fontSize: FIGURE >= 170 ? 20 : 18,
             fontWeight: 800,
             overflow: 'hidden',
             textOverflow: 'ellipsis',

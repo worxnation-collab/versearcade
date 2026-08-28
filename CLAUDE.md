@@ -738,6 +738,17 @@ apart is what makes the hero a picture of a person rather than a second
 scoreboard. It uses the same `cardBgStyle` + `CardBg` pair as the card, so
 equipping a background changes both and they can't drift.
 
+**The same component is the top of the player-card pop-up**, at `size={140}`
+with the faction as its caption, and the card underneath goes `statsOnly` there
+for exactly the reason it does on `/you` — an avatar chip directly beneath a
+portrait of the same person is that person twice on one screen. So tapping
+anybody now opens their look at full length with their companion, rather than a
+44px crop. Two consequences worth knowing: the faction and title move *up* into
+the hero's caption rather than being dropped with the identity block, and the
+dialog sets its own `maxHeight` + `overflowY` because hero + six stats + four
+action buttons is taller than a 600px phone — the centring grid was clipping
+the Close button before that.
+
 ### Customizing is one shelf, not six
 
 Everything you can equip — skins, pets, items, card backgrounds, borders,
@@ -869,10 +880,21 @@ facing flip and the outer waypoints hang your camel over the edge, and every
 scene clips), and it's drawn at `PetDef.scale` — the profile's own ratio — with
 a 9px floor, below which a dove is a speck of dirt on the painting.
 
-Pets still don't appear on *other* players' cards, or on other players'
-figures in those scenes. That would mean widening `get_player_card`, the
-leaderboard RPCs and `church_json`/`keep_json`, and it's a decision rather than
-an oversight — a pet visible to strangers is one step from being compared.
+**A pet now appears on the player card, and nowhere else it didn't before.**
+`get_player_card` carries `pet` (0071) so the pop-up can draw the companion
+beside the figure. The old rule here said a pet visible to strangers is one step
+from being compared; the narrower version, and the reason it holds, is that **a
+pet on a card is a picture, not a number** — one id out of a fixed catalog, with
+no count, no rarity label, no "unlocked on" and no ordering. Nothing about it
+can be summed or put in a row beside somebody else's, which is what that rule
+was actually protecting.
+
+The leaderboard RPCs and `church_json`/`keep_json` are **still** untouched, so a
+pet does not appear beside a figure in a crowd or on a board row. That is the
+same distinction `CrowdMember` enforces by having nowhere to put somebody else's
+pet: a card is a thing you open one at a time, and a board is people side by
+side — which is exactly where a companion starts reading as a score. Widening
+those is a separate decision needing its own argument, not a follow-on.
 
 `lib/petProgress.ts` gathers the requirement numbers, and it's a function rather
 than a hook for an import-graph reason: `data/pets.ts` can't import stores (the

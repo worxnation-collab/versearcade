@@ -231,6 +231,8 @@ export interface ChurchMember {
   username: string
   avatarEmoji: string
   avatarCharacter?: AvatarSpec | null
+  /** Equipped pet id — the companion standing beside them (0072). */
+  pet?: string | null
   isMe: boolean
 }
 

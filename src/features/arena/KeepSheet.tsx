@@ -205,7 +205,7 @@ export function KeepSheet({
     denomination && faction
       ? faction.members
       : me
-        ? [{ username: me.username, avatarEmoji: me.avatarEmoji, avatarCharacter: me.avatarCharacter, isMe: true }]
+        ? [{ username: me.username, avatarEmoji: me.avatarEmoji, avatarCharacter: me.avatarCharacter, pet: me.pet, isMe: true }]
         : []
 
   return createPortal(

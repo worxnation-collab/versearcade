@@ -176,6 +176,7 @@ export function RoomSection() {
           username: me.username,
           avatarEmoji: me.avatarEmoji,
           avatarCharacter: me.avatarCharacter,
+          pet: me.pet,
           isMe: true,
         }]}
         editing={{ picked, mergedAnchor: merged?.anchor ?? null, onPick: pickUp, onDrop: (a) => void dropOn(a) }}

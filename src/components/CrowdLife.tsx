@@ -23,15 +23,22 @@ import type { AvatarSpec } from '@/types'
 // position means nothing, you stand among your own people, and tapping a
 // figure opens their player card (sheets sit at z 100, the card at 110).
 //
-// YOUR pet walks with you, and only yours. The equipped pet is read from the
-// auth store here rather than taken as a prop, which does two things: every
-// scene that draws you gets the companion without being asked (the hall, the
-// churchyard and the road are three call sites that would otherwise each have
-// to remember), and there is no field on CrowdMember for somebody ELSE's pet
-// — so the rule that a pet is never shown to strangers is enforced by the
-// shape of this component rather than by everyone remembering it. Widening
-// the church/keep RPCs to carry pets would be the deliberate decision that
-// rule is about; see the Pets section of CLAUDE.md.
+// EVERYBODY'S pet walks with them. `CrowdMember.pet` carries it, filled by the
+// three RPCs that feed a scene (keep_json, get_church_page, room_json — 0072).
+//
+// This used to be your pet and only yours, with no field on CrowdMember at all,
+// so the rule was enforced by the shape of the component. The rule is now
+// narrower rather than gone, and the line is worth keeping straight: a pet is a
+// PICTURE, not a number, and a SCENE has no order and no score in it — so a
+// companion standing in a churchyard is the same kind of thing as the robe
+// standing there. A LEADERBOARD is the opposite: an ordered list, where a
+// companion in a ranked row starts reading as part of the rank. Those RPCs are
+// deliberately still untouched. See the Pets section of CLAUDE.md.
+//
+// YOUR OWN figure still reads from the auth store rather than from the member
+// row, and that is not redundancy: equipping a pet has to change the scene you
+// are looking at immediately, before any RPC is re-fetched. The member row is
+// the fallback for you and the only source for everyone else.
 //
 // reduce-motion: the schedule still runs — the vestibular problem is
 // CONTINUOUS motion, not change — but figures REPOSITION instantly instead of
@@ -46,6 +53,9 @@ export interface CrowdMember {
   username: string
   avatarEmoji: string
   avatarCharacter?: AvatarSpec | null
+  /** Equipped pet id (data/pets.ts). Absent = no companion, which is also what
+   *  an id this build doesn't know renders as — petById() drops it. */
+  pet?: string | null
   isMe: boolean
 }
 
@@ -183,9 +193,12 @@ function LifeFigure({
 }) {
   const { open } = usePlayerCard()
   const reduceMotion = useSettings((s) => s.reduceMotion)
-  // Only ever your own, and only on your own figure — see the header note.
+  // Your own comes from the auth store so equipping one changes the scene you
+  // are looking at without waiting for a re-fetch; everybody else's rides on
+  // the member row. See the header note for why this is allowed in a scene and
+  // still isn't on a board.
   const myPet = useAuth((s) => s.profile?.pet)
-  const companion = member.isMe ? petById(myPet) : undefined
+  const companion = petById(member.isMe ? (myPet ?? member.pet) : member.pet)
 
   // Each figure walks its own seeded shuffle of the waypoints, offset by slot
   // so two members never share a schedule even with colliding names, plus a

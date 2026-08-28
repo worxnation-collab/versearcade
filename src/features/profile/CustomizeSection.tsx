@@ -30,7 +30,7 @@ import {
   accessOwned,
   accessLabel,
   ITEMS,
-  FULL_SKINS,
+  allSkins,
   BUNDLES,
   bundleExpired,
   bundleItemCount,
@@ -420,7 +420,7 @@ export function CustomizeSection() {
                 {b.limitedUntil && <LimitedBadge until={b.limitedUntil} />}
               </button>
             ))}
-          {FULL_SKINS
+          {allSkins()
             .filter((skin) => !skinExpired(skin))
             // A bundle-only skin is never its own listing — it shows up here
             // only once the pack that contains it is owned.

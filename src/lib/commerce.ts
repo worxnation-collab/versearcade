@@ -77,6 +77,10 @@ export function skuPurchasable(sku: string): boolean {
  * checkout — so they stay exactly as they are on the web.
  */
 export function skinVisible(skin: SkinDef, owned: boolean): boolean {
+  // Free skins are nobody's storefront question — no price, no checkout, no
+  // entitlement. Since the de-monetisation this covers the launch trio
+  // (Moses, Esther, Elijah), which used to be $2.99 each.
+  if (skin.source === 'free') return true
   // Road (pass) skins are earned by playing and never sold — no price, no
   // checkout, so they show everywhere, exactly like 'earned'. Hiding one on
   // native would hide free content, not a storefront.

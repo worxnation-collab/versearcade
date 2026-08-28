@@ -102,7 +102,10 @@ const THEMED: Omit<CardBgDef, 'name'>[] = [
 ]
 
 // ——— Angels Pack calling cards ———
-// Two scenes the pack's skins step out of: the stairway Jacob saw, and the host
+// Two scenes the angels step out of: the stairway Jacob saw, and the host
+// ——— these came with The Angel Pack and are free now, along with it. They keep
+// no `pack`, so cardBackgroundOwned falls through to "everyone", which is what
+// the de-monetisation means for artwork nobody can buy any more.
 // that filled the sky over the shepherds. Both unlock together with any skin in
 // the pack (data/avatar FULL_SKINS, pack 'angels'); the server enforces the same
 // rule in migration 0043.
@@ -110,7 +113,6 @@ const PACK: CardBgDef[] = [
   {
     key: 'angels_ladder',
     name: 'Jacob’s Ladder',
-    pack: 'angels',
     rarity: 'legendary',
     emoji: '🪜',
     unlockHint: 'Comes with The Angel Pack',
@@ -120,7 +122,6 @@ const PACK: CardBgDef[] = [
   {
     key: 'angels_host',
     name: 'Heavenly Host',
-    pack: 'angels',
     rarity: 'legendary',
     emoji: '👼',
     unlockHint: 'Comes with The Angel Pack',

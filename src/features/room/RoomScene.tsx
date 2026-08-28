@@ -38,6 +38,7 @@ export function RoomScene({
   onTapSelf,
   /** Skip the generated painting — the postcard can only serialise drawn SVG. */
   flat = false,
+  lampLit = true,
 }: {
   tier: number
   placements: RoomPlacements
@@ -60,6 +61,14 @@ export function RoomScene({
    *  a visited room shows its owner, and tapping them opens their card as it
    *  does in every other scene. */
   onTapSelf?: () => void
+  /**
+   * Whether the lampstand is burning — true when you have prayed today.
+   *
+   * Defaults to true, and only your own room passes the real value. A visited
+   * room shows the lamp exactly as it has always looked, so nobody can read
+   * somebody else's prayer life off their furniture. See FurnishingProp.
+   */
+  lampLit?: boolean
 }) {
   const picked = editing?.picked ?? null
   const pickedMount = picked ? roomAnchorById(picked)?.mount : undefined
@@ -108,7 +117,7 @@ export function RoomScene({
                   : undefined
               }
             >
-              <FurnishingProp value={value} x={a.x} y={a.y} mount={a.mount} />
+              <FurnishingProp value={value} x={a.x} y={a.y} mount={a.mount} lit={lampLit} />
               {lifted && (
                 <circle cx={a.x} cy={a.y} r="28" fill="none" stroke="var(--gold)" strokeWidth="2" strokeDasharray="5 5" opacity="0.9" />
               )}

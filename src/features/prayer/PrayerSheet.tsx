@@ -4,6 +4,8 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useJuice } from '@/juice/useJuice'
 import { useSettings } from '@/store/settings'
 import { usePrayer } from '@/store/prayer'
+import { useRoom } from '@/store/room'
+import { roomPlacedTier } from '@/data/room'
 import { CALM, LINE_PAUSE_MS, VOICE_KINDS, pickVoice, voicesReady, type VoiceKind } from '@/lib/voice'
 import {
   MOVEMENTS,
@@ -64,6 +66,11 @@ export function PrayerSheet({ onClose }: { onClose: () => void }) {
   const [reward, setReward] = useState<string | null>(null)
   const todayCount = usePrayer((s) => s.today)
   const cap = usePrayer((s) => s.cap)
+  // Whether there is a lampstand out to light. Said only on the prayer that
+  // actually lights it, and only if the player has one in the room — telling
+  // somebody their lamp is lit when there is no lamp is a lie about their own
+  // room.
+  const hasLamp = useRoom((s) => roomPlacedTier(s.placements, 'room_lampstand') > 0)
 
   useEffect(() => {
     void usePrayer.getState().load()
@@ -193,7 +200,11 @@ export function PrayerSheet({ onClose }: { onClose: () => void }) {
     if (res.awarded > 0) {
       if (res.leveledUp) juice.celebrate()
       else juice.coin()
-      setReward(`Amen. +${res.awarded} XP — ${Math.max(0, res.cap - res.today)} more today.`)
+      setReward(
+        res.today === 1 && hasLamp
+          ? `Amen. +${res.awarded} XP — the lamp in your room is lit.`
+          : `Amen. +${res.awarded} XP — ${Math.max(0, res.cap - res.today)} more today.`,
+      )
     } else {
       juice.select()
       setReward('Amen. That’s all three for today — the rest are just between you and God.')

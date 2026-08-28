@@ -1058,6 +1058,23 @@ ranked list of real voice names, then name hints, then any English voice), and
 takes the whole read-aloud down instead of falling back to the default voice. A
 device with no voices gets a line saying so rather than a dead button.
 
+**The lamp is the feedback, and its shape is the argument.** The room's
+`room_lampstand` burns when you have prayed today and shows a cold wick when you
+haven't (`RoomArt`'s `PropOpts.lit`). It is not a count, not a streak, not a
+rung: it resets by itself every day, and the only thing it can ever say is
+"today, yes" or nothing. That is "presence, not quantity" applied to the one
+feature where a growing tally would change WHY somebody does it — a daily thing
+that clears is an invitation, a lifetime number is an accumulation you can fall
+behind on.
+
+**`lit` defaults to TRUE, and that default is a privacy decision.** Only your own
+room passes the real value; a visited room, the postcard and the shelf thumbnail
+all keep the lamp lit exactly as it has always looked, so a visitor can never
+read "did they pray today" off somebody else's furniture. The signal exists on
+one screen: yours. `RoomSection` also has to `load()` the prayer store, or the
+lamp stays dark until you open the sheet — the one screen where you already know
+the answer.
+
 **There is deliberately no Journal ladder for it.** Every rung in the Journal is
 a number you passed; a rung you climb by praying is a rung you would pray to
 climb. The table stores a user and a date and nothing else — no occasion, no

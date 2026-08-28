@@ -239,7 +239,17 @@ function DrawnChamber({ tier }: { tier: number }) {
 // Every one drawn around its GROUND POINT, except `wall` pieces which straddle
 // it. Small: these render at roughly 40px inside a 520px-wide card.
 
-type Prop = () => JSX.Element
+/**
+ * Options a furnishing can react to. Only the lampstand uses `lit` today; every
+ * other prop ignores it, which is why it is one object rather than a growing
+ * argument list.
+ */
+export interface PropOpts {
+  /** Whether the lampstand is burning — see LAMP below. */
+  lit: boolean
+}
+
+type Prop = (o: PropOpts) => JSX.Element
 
 const PROPS: Record<string, Prop> = {
   room_reed_mat: () => (
@@ -286,14 +296,39 @@ const PROPS: Record<string, Prop> = {
       </g>
     </g>
   ),
-  room_lampstand: () => (
+  // THE LAMP. Burning when you have prayed today, a cold wick when you haven't.
+  //
+  // This is the whole of the feedback for praying, and what it is NOT is the
+  // point: it is not a count, not a streak, not a rung, and not a number that
+  // can stall. It resets every day by itself, it lives in the room nobody else
+  // can change, and the only thing it can ever say is "today, yes" or nothing
+  // at all. That is the keep's "presence, not quantity" rule applied to the one
+  // feature in this app where a growing tally would change WHY somebody does it.
+  //
+  // The glow is flat circles rather than a filter, for the same reason
+  // everything else in here is: no <defs>, and drop-shadow on an SVG this size
+  // repaints more than it is worth.
+  room_lampstand: ({ lit }) => (
     <g>
       <ellipse cx="0" cy="-1" rx="9" ry="3" fill={BRASS} />
       <rect x="-2" y="-26" width="4" height="25" fill={BRASS} />
       <path d="M-11 -26 q11 -7 22 0 z" fill={BRASS} />
       <ellipse cx="0" cy="-27" rx="6" ry="2.4" fill="#a8842f" />
-      <path d="M0 -40 q6 6 0 11 q-6 -5 0 -11 z" fill={FLAME} />
-      <path d="M0 -36 q3 3 0 6 q-3 -3 0 -6 z" fill={FLAME_HOT} />
+      {lit ? (
+        <>
+          <circle cx="0" cy="-34" r="16" fill={FLAME} opacity="0.10" />
+          <circle cx="0" cy="-34" r="9" fill={FLAME_HOT} opacity="0.16" />
+          <path d="M0 -40 q6 6 0 11 q-6 -5 0 -11 z" fill={FLAME} />
+          <path d="M0 -36 q3 3 0 6 q-3 -3 0 -6 z" fill={FLAME_HOT} />
+        </>
+      ) : (
+        // Unlit reads as a lamp waiting, never as a broken one: the wick is
+        // still there, just dark. Nothing scolds, nothing is missing.
+        <>
+          <rect x="-1" y="-33" width="2" height="6" rx="1" fill="#4a4030" />
+          <ellipse cx="0" cy="-33.5" rx="2.2" ry="1.2" fill="#3a3226" />
+        </>
+      )}
     </g>
   ),
   room_open_scroll: () => (
@@ -498,11 +533,22 @@ export function FurnishingProp({
   x,
   y,
   mount,
+  lit = true,
 }: {
   value: string
   x: number
   y: number
   mount?: RoomMount
+  /**
+   * Whether the lamp is burning.
+   *
+   * DEFAULTS TO TRUE, and that default is a privacy decision rather than a
+   * convenience. Only your OWN room passes the real value; a visited room, the
+   * postcard and every other render keep the lamp lit as it has always looked,
+   * so a visitor can never read "did they pray today" off somebody else's
+   * lampstand. The signal exists on exactly one screen: yours.
+   */
+  lit?: boolean
 }) {
   const { id, tier } = unpackDecor(value)
   const art = PROPS[id]
@@ -513,7 +559,7 @@ export function FurnishingProp({
       {/* Behind the prop, so it reads as the object sitting on something finer
           rather than a highlight painted over it. */}
       {tier > 1 && <TierAccent tier={tier} mount={mount} />}
-      <g transform={grown === 1 ? undefined : `scale(${grown})`}>{art()}</g>
+      <g transform={grown === 1 ? undefined : `scale(${grown})`}>{art({ lit })}</g>
     </g>
   )
 }
@@ -533,7 +579,9 @@ export function FurnishingThumb({ id, size = 56 }: { id: string; size?: number }
   const box = def.mount === 'wall' ? '-32 -32 64 64' : '-32 -46 64 56'
   return (
     <svg width={size} height={size} viewBox={box} style={{ display: 'block' }} aria-hidden>
-      {prop()}
+      {/* The shelf shows the object itself, always lit: this is a picture of
+          the lampstand, not a report on today. */}
+      {prop({ lit: true })}
     </svg>
   )
 }

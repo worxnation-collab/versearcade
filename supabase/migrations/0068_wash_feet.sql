@@ -139,7 +139,10 @@ begin
     ),
     'received', (select count(*) from public.feet_washings where washed_id = uid),
     'recent', (
-      select coalesce(jsonb_agg(card order by ord), '[]'::jsonb)
+      -- desc twice on purpose: the inner order picks WHICH eight, the outer
+      -- one decides how they're handed over — most recent first, as the
+      -- section draws them.
+      select coalesce(jsonb_agg(card order by ord desc), '[]'::jsonb)
       from (
         select public.buddy_card(p) as card, w.created_at as ord
         from public.feet_washings w join public.profiles p on p.id = w.washer_id

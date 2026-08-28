@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Character } from '@/components/Character'
 import {
@@ -9,6 +10,7 @@ import {
   figureOf,
   type Swatch,
 } from '@/data/avatar'
+import { GENERATED_ART } from '@/data/generatedArt'
 import { useJuice } from '@/juice/useJuice'
 import type { AvatarSpec, Figure } from '@/types'
 
@@ -45,6 +47,26 @@ export function CharacterPicker({
 }) {
   const juice = useJuice()
   const figure = figureOf(value)
+  const hairKey = value.hair ?? 'espresso'
+
+  // The base character is a raster render per (figure, tone, hair) — see
+  // Character.tsx — so a tap on a swatch swaps to a PNG the browser may not
+  // have yet, and an unfetched image is a blank figure for a beat. Warm the
+  // variants one tap away: every tone at the current hair, every hair at the
+  // current tone, both figures at the current combination. Bounded (~13
+  // images), and misses are harmless — an id with no render just isn't in
+  // the map, and the drawn fallback shows instead of a gap.
+  useEffect(() => {
+    const ids = [
+      ...SKINS.map((s) => `starter_${figure}_${s.key}_${hairKey}`),
+      ...HAIRS.map((h) => `starter_${figure}_${value.skin}_${h.key}`),
+      `starter_${figure === 'fem' ? 'masc' : 'fem'}_${value.skin}_${hairKey}`,
+    ]
+    for (const id of ids) {
+      const src = GENERATED_ART[id]
+      if (src) new Image().src = src
+    }
+  }, [figure, value.skin, hairKey])
 
   const pick = (patch: Partial<AvatarSpec>) => {
     juice.select?.()

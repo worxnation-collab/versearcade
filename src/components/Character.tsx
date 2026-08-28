@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { AvatarSpec, ArmorSlot } from '@/types'
 import { skinHex, robeHex, hairHex, figureOf, equippedSkinId, ARMOR_ENABLED } from '@/data/avatar'
+import { GENERATED_ART } from '@/data/generatedArt'
 
 // A composable character figure, drawn from an AvatarSpec. Two looks share one
 // silhouette so it reads at any size (20px presence chip → 76px builder):
@@ -265,7 +266,18 @@ export function Character({
   // after it, permanently, until the component remounted. A transient 404 while
   // a deploy propagates was enough to do it.
   const [failedSrc, setFailedSrc] = useState<string | null>(null)
-  const raster = skinId ? RASTER_SKINS[skinId] : undefined
+  // The base character is ALSO raster now — the same Nano Banana pipeline as
+  // the full-look skins, one render per (figure, tone, hair) combination in
+  // the picker (art/starter.json). The lookup goes through GENERATED_ART, so
+  // a combination whose PNG hasn't landed keeps the drawn SVG below exactly
+  // as before — the batch can ship incomplete and nothing breaks. Like every
+  // raster look, chest items don't compose onto it; that trade was made
+  // deliberately when the base went raster (same behaviour as equipping
+  // Moses, where items also stop rendering).
+  const starterRaster = !skinId
+    ? GENERATED_ART[`starter_${fem ? 'fem' : 'masc'}_${spec.skin}_${spec.hair ?? 'espresso'}`]
+    : undefined
+  const raster = skinId ? RASTER_SKINS[skinId] : starterRaster
   const useRaster = !!raster && failedSrc !== raster
   // Everywhere the player actually reads an avatar — chips, lists, the profile
   // header, the customise grid — a full-length figure in a small circle throws

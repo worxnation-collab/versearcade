@@ -603,22 +603,40 @@ Customize screen mounts it too (with `showRobe`).
 
 The axes are deliberately three: **male/female**, six **skin tones**, six **hair
 colours**. All free, none of them a number. The two figures are the *same*
-character — same head, same limbs, same palette — parting only at the hem of the
+character — same face, same robe, same palette — parting only at the hem of the
 robe and the length of the hair, so switching reads as "that's me" rather than
 as picking a different avatar. `hair` and `figure` are new optional fields on
 `AvatarSpec`; `avatar_character` is an unconstrained `jsonb` column, so **no
 migration is involved** and a spec written before either existed still renders
 (`hairHex` and `figureOf` supply the defaults).
 
-Two things in the drawing are scars, not taste:
+**The base character is Nano Banana art, one render per combination.**
+`art/starter.json` is the batch — 2 figures × 6 tones × 6 hairs = 72 `skin`-kind
+entries, held to ONE character by reference-chaining: each figure's master
+render is the ref for its tone bases, and each tone base is the ref for that
+tone's hair variants, so drift can't compound across the set. `Character` looks
+up `starter_<figure>_<skin>_<hair>` in `GENERATED_ART` whenever no full skin is
+equipped and renders it through the same raster path as Moses and Esther; only
+the equipped combination ever loads (~60KB), and `CharacterPicker` pre-warms the
+variants one tap away so a swatch tap doesn't flash blank.
 
-- **The figure stays faceless.** Every other drawn skin here is (Moses, David,
-  Esther, Gabriel…), and a face on the starter character alone would make the
-  one look everybody has the odd art out.
-- **The hair never leaves the head circle.** The first pass hung two sideburns
-  off its widest point and the character read as wearing headphones, at every
-  size. Female hair is a bob to the jaw for the same reason: full-length panels
-  down the chest read as two dark straps at 44px.
+Three consequences of that, all deliberate:
+
+- **Chest items don't compose onto the raster base** — same trade every raster
+  skin already makes (equip Moses and the staff disappears too). If items ever
+  need to show on the base again, that's an argument for generating item-on-body
+  renders, not for realigning SVG overlays onto a painting.
+- **The drawn SVG figure stays, as the fallback.** A combination whose PNG
+  hasn't landed (or 404s, or fails to decode) renders the drawn pilgrim exactly
+  as before — the batch can ship incomplete and nothing breaks. That fallback
+  keeps its own two scars: it stays faceless (the raster has a face, like every
+  other skin; a face on the *drawn* figure was the odd art out), and its hair
+  never leaves the head circle — sideburns off the widest point read as
+  headphones at every size.
+- **The reference renders are load-bearing.** `starter_masc_sand.png` and
+  `starter_fem_sand.png` (the pilot, `art/starter-pilot.json`) are the refs the
+  whole set descends from. Regenerating one combination is fine; regenerating
+  the masters restyles everything generated after them, so don't.
 
 **A character exists before the account does.** Web OAuth reloads the page
 between the two beats of sign-up, so the pick parks in

@@ -278,10 +278,12 @@ export function CustomizeSection() {
             is the character you keep and can keep editing.
             The Armor of God grid used to sit above this; it's parked, not
             deleted — see ARMOR_ENABLED in data/avatar. */}
+        {/* No robe row: the raster base bakes the linen robe into the art, so
+            a robe swatch would be a control that visibly does nothing. The
+            stored `robe` still colours the drawn SVG fallback. */}
         <CharacterPicker
           value={spec}
           onChange={(next: AvatarSpec) => { setAvatarCharacter(next); flashSaved() }}
-          showRobe
           longestStreak={longest}
           admin={!!profile.isAdmin}
         />

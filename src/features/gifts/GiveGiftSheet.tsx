@@ -22,8 +22,9 @@ import { useJuice } from '@/juice/useJuice'
 //   text box aimed at a stranger is the moderation problem the churchyard, the
 //   keep and the crowd's ten emoji all exist to avoid.
 //
-// Portalled and pinned at the sheet tier (100) so it opens under the player
-// card (110) it was launched from.
+// Portalled and pinned at 112 — above the player card (110) that launched it.
+// A surface opened from another sits above the one that opened it; the keep
+// sheet is at 100 for the opposite reason (a card opens out of IT).
 
 export function GiveGiftSheet({ username, onClose }: { username: string; onClose: () => void }) {
   const juice = useJuice()
@@ -84,7 +85,19 @@ export function GiveGiftSheet({ username, onClose }: { username: string; onClose
         style={{
           position: 'fixed',
           inset: 0,
-          zIndex: 100,
+          // 112 — the "opened from the player card" tier. The ladder, so the
+          // next session doesn't have to re-derive it from six files:
+          //   40  bottom nav
+          //   100 sheets (keep, church detail, settings, bundles)
+          //   110 the player card, which opens OUT of a 100 sheet
+          //   112 sheets the player card itself opens — this one
+          //   115 NowPlaying, 120 StudyDropToast / WaystationToast (always on
+          //       top: a toast that a sheet can hide is a toast nobody sees)
+          //   200 Tutorial, BookOpening (whole-screen takeovers)
+          // The tiers encode DIRECTION: a surface sits above the one that
+          // opened it. Putting this at 100 drew the card over the room you had
+          // just asked to see, and 120 would have buried the toasts.
+          zIndex: 112,
           background: 'rgba(8,3,24,0.72)',
           display: 'flex',
           alignItems: 'flex-end',

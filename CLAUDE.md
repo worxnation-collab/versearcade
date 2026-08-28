@@ -1038,6 +1038,33 @@ Same idea elsewhere: `CpuVersusQuiz` for anything racing a simulated opponent,
 
 ## UI conventions
 
+**The z-index ladder, written down once** (it was being re-derived from six
+files, and both ways of getting it wrong have now shipped):
+
+| z | Layer |
+|---|---|
+| 40 | bottom nav |
+| 100 | sheets — keep, church detail, settings, bundles |
+| 110 | the player card, which opens *out of* a 100 sheet |
+| 112 | sheets the player card itself opens — visit a room, give a relic |
+| 115 / 120 | `NowPlaying` / `StudyDropToast`, `WaystationToast` |
+| 200 | `Tutorial`, `BookOpening` — whole-screen takeovers |
+
+**The tiers encode direction: a surface sits above the one that opened it.** The
+keep sheet is at 100 because tapping a figure inside it opens the card; a sheet
+the card opens has to be above the card, and putting one at 100 draws the card
+over the thing you just asked to see. The toasts stay top: a toast a sheet can
+hide is a toast nobody sees.
+
+**A scene's figures must not compete in that ladder.** `CrowdLife` gives each
+figure a z-index of ~180-199 to sort itself by depth, and its container sets
+`isolation: 'isolate'` so those numbers stay scene-local. Without it the
+container is `position: absolute` at `z-index: auto`, which creates no stacking
+context at all — so for any scene rendered INLINE on a page (the Battle tab's
+hall, the churchyard, the road, the Upper Room) the figures escaped into the
+page root and painted a camel over the player card you had just opened by
+tapping it. Any future overlay inside a scene needs the same treatment.
+
 Design tokens live at the top of `src/index.css` — use the CSS variables, never
 raw hexes. Numbers and headings wear `var(--font-display)`; that's the brand.
 Motion is springy `framer-motion`, mobile-first, max width 520px.

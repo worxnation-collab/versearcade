@@ -97,6 +97,7 @@ export type TrackEvent =
   | 'keep_offering'
   | 'track_unlocked'
   | 'pet_equipped'
+  | 'feet_washed'
 
 export interface TrackPayload {
   correct?: number
@@ -592,6 +593,8 @@ function deltaFor(verb: Quest['verb'], event: TrackEvent, p: TrackPayload, goal:
       return event === 'track_unlocked' ? n : 0
     case 'equip_pet':
       return event === 'pet_equipped' ? n : 0
+    case 'wash_feet':
+      return event === 'feet_washed' ? n : 0
     default:
       return 0
   }
@@ -612,7 +615,7 @@ const SCORED_VERBS = new Set<string>([
   'study_runs', 'cpu_wins', 'save_verses', 'donate', 'share_daily', 'open_chest',
   'play_any', 'answers_in_run', 'focus_drills', 'replay_runs', 'battle_wins',
   'battles_played', 'place_decor', 'plant_flora', 'find_relic', 'give_offering',
-  'unlock_track', 'equip_pet',
+  'unlock_track', 'equip_pet', 'wash_feet',
 ])
 
 export function checkQuestVerbs(): string[] {

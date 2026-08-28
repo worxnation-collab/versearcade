@@ -112,7 +112,9 @@ So every release now starts with a version bump:
 
 1. Bump `"version"` in **`package.json`** — this is the source of truth. It must be
    strictly higher than the last *approved* version (1.0 → `1.0.1` → `1.0.2`, or
-   `1.1.0` for a feature release).
+   `1.1.0` / `1.2.0` for a feature release). Check App Store Connect for what is
+   actually approved before choosing: the rejection arrives ~20 minutes into a signed
+   archive, so guessing low costs a build.
 2. Bump `versionName` in **`android/app/build.gradle`** to the same string, so the
    two stores don't drift.
 3. Push to `main`. `codemagic.yaml` reads the version out of `package.json`, patches
@@ -137,10 +139,18 @@ the only thing standing between you and that default.
 - ✅ **No external payment links** for digital goods. 1.0 shipped with no paid
    features at all; from 1.0.1 the native build hides the storefront entirely
    and sells only through Apple IAP (see `docs/APPLE-IAP.md` and `lib/commerce.ts`).
+   From 1.2.0 there is exactly ONE product — the founding-patron tip. Say so in the
+   review notes: metadata that claims "no in-app purchases" while the binary carries
+   StoreKit is its own rejection.
 - ✅ **Sound/haptics can be silenced** (Settings).
 - ✅ **Privacy Policy + Support URLs** live and reachable.
-- ⚠️ **Guest-first**: reviewers can play immediately without an account — call this
-   out in review notes so they don't think it's broken behind a login wall.
+- ⚠️ **The account wall is the #1 metadata trap now.** Guest-first stopped being the
+   whole story when `WALL` landed in `App.tsx`: a guest gets today's verse and their
+   own profile, and Battle, Study, Bible and Church show a padlock. A reviewer without
+   credentials sees four locked tabs, which reads as "features behind a login"
+   (Guideline 2.1). **The demo account is now mandatory**, and the review notes must
+   say plainly that the padlocks are deliberate. Both are handled in
+   `APP-STORE-LISTING.md` — fill in the credentials before you submit.
 - ⚠️ **Crash on launch** is the #1 avoidable rejection — do the Phase 4 TestFlight
    smoke test on a real device.
 

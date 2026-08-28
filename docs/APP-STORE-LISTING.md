@@ -46,16 +46,25 @@ PLAY FOR YOUR CHURCH
 Find your church, then give it the points you earn. Giving costs you nothing — your own XP and rank stay exactly where they are — and your congregation levels up and climbs the board. Can't find yours? Add it in seconds.
 
 STUDY WHAT YOU'RE ACTUALLY WEAK AT
-See your accuracy book by book, weakest first, and drill the ones that need it. Keep the verses that mattered with Favorites, review them before they fade, and read the whole chapter in KJV, WEB or BBE.
+See your accuracy book by book, weakest first, and drill the ones that need it. Keep the verses that mattered, review them before they fade, and read the whole chapter in KJV, WEB or BBE. Nothing in Study is ranked or scored against anyone.
 
-BUILD A CHARACTER
-Piece together the Armor of God, collect relics from the daily chest, and earn full-look skins by showing up and sharing. Earned skins are earned — a missed day never takes one away.
+YOUR WHOLE BIBLE, FILLING IN
+All 66 books, 1,189 chapters and 31,102 verses are in here, and every one you read, study or keep lights up on your own copy. Open a chapter with no signal and it still draws every verse. Most of the Bible isn't in the daily rotation, and the reader says so plainly — it's there to read, not to grade you.
+
+MAKE A CHARACTER, AND FURNISH A WORLD
+Build yourself at the door, then earn full-look skins and a companion by showing up. Your faction's keep grows with the battles you play — decorate the hall, plant the churchyard, and offer your finest piece to your congregation. Earned is earned: a missed day never takes one away.
+
+WASH SOMEBODY'S FEET
+Every other way to act on a player here is a challenge. This one isn't. Tap someone's face, kneel, and they'll see it — twelve a day, one for each disciple. There is no score for being washed and no way to see anyone's total but your own.
+
+A SOUNDTRACK THAT UNLOCKS BY WALKING IN
+Every room has its own instrumental, and hearing one for the first time adds it to your music player. You can't miss one, and there's nothing to buy.
 
 GENTLE REMINDERS
 Turn on a nudge for the daily verse and it'll tell you which verse is waiting, even offline. Study reminders only arrive on days you actually have something to review.
 
 MADE THOUGHTFULLY
-- Play instantly as a guest — no account required.
+- Play today's verse as a guest. A free account opens the rest and keeps your streak.
 - Sign in with Apple, Google, or email to sync your streak across devices.
 - Sound and haptics you can dial down or off anytime.
 - Delete your account and all data in-app, whenever you want.
@@ -65,6 +74,36 @@ Verse text uses the Berean Standard Bible (BSB), a modern, public-domain transla
 
 Start your streak today. It's one verse.
 ```
+
+## What's New (max 4000 chars — per version, App Store Connect asks for this)
+
+### 1.2.0 — the release after 1.1.0
+```
+Your whole Bible is in here now — all 66 books and 31,102 verses — and every one you
+read, study or keep lights up on your own copy.
+
+NEW IN THIS UPDATE
+• Make your character at the door: figure, skin tone and hair, all free.
+• A companion. Earn a pet by playing; it walks beside you on your profile.
+• Your faction's keep — a hall that grows with the battles your side wins. Furnish it,
+  merge duplicates into finer pieces, and offer your best one to your church.
+• A churchyard you plant in front of your congregation's building.
+• The Harvest Road: daily quests, a walkable painted road, and rewards that are never
+  for sale.
+• Wash another player's feet. Twelve a day, one for each disciple — the one thing you
+  can do to somebody here that isn't a challenge.
+• A soundtrack. Every room has its own tune, and walking in is the only way to get one.
+• Study got more generous: no daily ceiling on focus drills, no weekly cooldown on
+  replays, and a relic to find when you study.
+
+Cosmetics are no longer sold. Everything that used to cost money is earned or free, and
+anyone who bought a pack keeps every piece of it.
+
+As always: no ads, no tracking, and a wrong answer still teaches you something.
+```
+
+> Keep this section per-release. Apple shows "What's New" on the product page for the
+> current version only, so it should read as a change list, not as the description.
 
 ## Keywords (max 100 chars, comma-separated, no spaces)
 ```
@@ -116,33 +155,62 @@ no "Used to Track You" bucket.
 ## Age rating questionnaire → results in **12+**
 Answer "None" to every content question (violence, sexual content, profanity, gambling,
 etc.). The only nuance: **"Unrestricted Web Access" = No** (the app has no open browser),
-and there is **no** user-generated content shared publicly (group names are the only
-free text, visible only within a private group — keep the answer honest; if Apple's
-form asks about UGC, "Infrequent/Mild" at most). This lands at 12+ / 9+; either is fine.
+and there is **no** user-generated content shared publicly. Keep that answer honest by
+knowing exactly where a user can type at all: a group name (visible only inside that
+private group), their own username, and the "Add info" form on a church page. That last
+one publishes NOTHING — it files a request that only staff can act on
+(`submit_church_info_request`), so nothing a stranger types ever renders for another
+player. Washing feet, the keep, the churchyard and pets carry no text at all: they are
+taps on fixed objects. If Apple's form asks about UGC, "Infrequent/Mild" at most. This
+lands at 12+ / 9+; either is fine.
 
 > Do NOT check "Made for Kids." That opts you into the Kids Category and COPPA rules.
 
 ---
 
 ## Review notes (App Information → Notes for reviewer)
-```
-Verse Arcade is a Bible-learning game. No account is required — tap "Play today's verse"
-on the home screen to play immediately as a guest, which exercises the full core loop.
 
-To test account features and Sign in with Apple, you can create a throwaway account, or
-use this demo account:
+Two things changed in 1.2.0 that a reviewer will hit in the first thirty seconds, so
+they are said first and plainly: most tabs now ask for an account, and the app carries
+one in-app purchase. Both were true of the binary before this text described them.
+
+```
+Verse Arcade is a Bible-learning game. Tap "Play today's verse" on the home screen to
+play the full daily quiz immediately as a guest — no account, no email, no paywall.
+
+PLEASE SIGN IN WITH THE ACCOUNT BELOW TO REVIEW THE REST. Beyond today's verse and your
+own profile, the tabs (Battle, Study, Bible, Church) show a padlock and a "create an
+account" card rather than their contents. This is intentional, not a bug or a broken
+screen: those features are multiplayer or synced — a shared church building, a battle
+against another person, a record of what you have read — and they have nowhere to live
+on a single device without an account.
+
   Email: [FILL IN — create one before submitting]
   Password: [FILL IN]
 
-There are no paid features in this version, so no in-app purchases to test.
+IN-APP PURCHASE: there is exactly one, a non-consumable "founding patron" tip
+(com.versearcade.app.patron_founding). It buys a cosmetic thank-you and nothing that
+affects play, scores or standing. Cosmetics are otherwise earned or free. The shop is
+hidden entirely unless StoreKit returns approved products, so it may not appear in a
+sandbox build — that is deliberate fail-closed behaviour, not a missing screen. A
+"Restore purchases" control is in Profile → Skins whenever StoreKit is reachable.
+
+There are no external purchase links or steering of any kind. Everything digital is
+sold through Apple's in-app purchase.
+
 Account deletion: Profile tab → "Delete my account".
-Sound/haptics can be toggled in Settings.
+Sound, music and haptics: Settings.
 ```
 
-## Demo account (create before submitting)
-Reviewers must be able to reach every feature. Since guest play covers the core loop,
-a demo account is optional but recommended so they can see synced/account state.
-Create one real account in the app, then paste its credentials into the review notes above.
+## Demo account (REQUIRED before submitting)
+This is no longer optional. Since the account wall landed, a reviewer without
+credentials can only reach today's verse and the profile tab — everything else is a
+padlock, which reads as "features behind a login" (Guideline 2.1) if the notes do not
+explain it and hand them a way in.
+
+Create one real account in the app, play a round on it so the profile is not empty,
+then paste its credentials into the review notes above. Use an address you control and
+a throwaway password; the account can be deleted from inside the app afterwards.
 
 ---
 

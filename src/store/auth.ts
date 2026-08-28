@@ -672,8 +672,10 @@ export const useAuth = create<AuthState>((set, get) => ({
 
     if (get().mode === 'local' || !supabase) {
       // The local gate is the catalog itself — data/pets is the only ladder,
-      // and lib/petProgress gathered the numbers it reads.
-      if (id && progress && !petUnlocked(id, progress)) {
+      // and lib/petProgress gathered the numbers it reads. `isAdmin` mirrors
+      // the operator preview the online gate grants in 0067; on a guest profile
+      // it is simply absent, so nothing changes for a normal player.
+      if (id && progress && !petUnlocked(id, progress, !!cur.isAdmin)) {
         set({ profile: cur })
         return { ok: false, error: 'That one isn’t unlocked yet' }
       }

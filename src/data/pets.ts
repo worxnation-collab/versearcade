@@ -196,21 +196,31 @@ export function reqText(req: PetReq): string {
   }
 }
 
-export function petUnlocked(id: string, p: PetProgress): boolean {
+/**
+ * `admin` is the operator preview, exactly as it works for skins (see
+ * `skinOwned`): the account that has to screenshot, demo and sanity-check a
+ * companion can't be made to grind 250 verses for the raven first. It is
+ * server-authoritative — `profiles.is_admin`, which no client can set — and
+ * 0067 mirrors it inside `pet_requirements_met`, so the picker and `set_pet`
+ * agree about who may equip what. Without that mirror the grid would offer an
+ * admin six pets and the RPC would refuse five of them.
+ */
+export function petUnlocked(id: string, p: PetProgress, admin = false): boolean {
   const def = petById(id)
   if (!def) return false
+  if (admin) return true // operator account has every pet unlocked
   if (p.level < def.level) return false
   if (def.extra && reqValue(def.extra, p) < def.extra.n) return false
   return true
 }
 
-export function unlockedPets(p: PetProgress): PetDef[] {
-  return PETS.filter((def) => petUnlocked(def.id, p))
+export function unlockedPets(p: PetProgress, admin = false): PetDef[] {
+  return PETS.filter((def) => petUnlocked(def.id, p, admin))
 }
 
 /** The next one to earn, for the single line that says what's coming. */
-export function nextPet(p: PetProgress): PetDef | undefined {
-  return PETS.find((def) => !petUnlocked(def.id, p))
+export function nextPet(p: PetProgress, admin = false): PetDef | undefined {
+  return PETS.find((def) => !petUnlocked(def.id, p, admin))
 }
 
 /** "Level 33 · 150 days played" — what the row says when it's still locked. */

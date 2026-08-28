@@ -762,6 +762,14 @@ lifetime number (`data/pets.ts` ↔ `pet_requirements_met` in 0064). Every
 requirement only goes up, so a pet can't be taken back by a bad week; putting one
 down is always allowed, because a companion you can't take off is a commitment.
 
+The one bypass is the **operator preview**: an `is_admin` profile has every pet
+unlocked, exactly as `skinOwned` gives it every skin. It lives in two places
+that have to agree — `petUnlocked`'s `admin` argument and the `is_admin` branch
+`0067` adds to `pet_requirements_met` — because a grid that offers six pets over
+an RPC that refuses five is worse than no preview at all. It's safe where a real
+unlock wouldn't be for the usual reason: `is_admin` is server-written, and no
+client-callable RPC sets it.
+
 **Two tiers, and the split is the design.** The common pets (lamb, dove) are
 company and nothing else. The rarer ones each do one small thing, and *what a
 pet does is tied to how hard it was to get*.

@@ -140,8 +140,12 @@ export function CustomizeSection() {
 
   const [petErr, setPetErr] = useState<string | null>(null)
   const petProg = petProgress()
-  const unlockedPetCount = PETS.filter((p) => petUnlocked(p.id, petProg)).length
-  const comingPet = nextPet(petProg)
+  // The operator account previews every pet, the same way it previews every
+  // skin — and 0067 says the same thing inside pet_requirements_met, so the
+  // grid never offers something set_pet will refuse.
+  const petAdmin = !!profile.isAdmin
+  const unlockedPetCount = PETS.filter((p) => petUnlocked(p.id, petProg, petAdmin)).length
+  const comingPet = nextPet(petProg, petAdmin)
   // Pack cards gate on the skin entitlement rather than a collectible, so the
   // picker needs both sources of ownership.
   const bgCtx = { ownedSkins: profile.ownedSkins ?? [], admin: profile.isAdmin }
@@ -178,7 +182,7 @@ export function CustomizeSection() {
     const def = petById(id)
     if (!def) return
     const prog = petProgress()
-    if (!petUnlocked(id, prog)) {
+    if (!petUnlocked(id, prog, petAdmin)) {
       // Local to the section, not the shared error at the very bottom of the
       // customizer — a refusal a page and a half below the tap is no refusal.
       setPetErr(`${def.name} needs ${petRequirementText(def).toLowerCase()}.`)
@@ -225,6 +229,15 @@ export function CustomizeSection() {
   const isEquipped = (skin: SkinDef) => !!equippedSkin && baseSkinId(equippedSkin) === skin.id
   const isSkinOwned = (skin: SkinDef) =>
     skinOwned(skin, { sharedDays: profile.sharedDays, ownedSkins, referralCount: profile.referralCount, admin: profile.isAdmin, seasonUnlocks })
+  // Cosmetics aren't sold any more — the launch trio is free, the angels are
+  // road rewards and the promo skins are free redemptions — so the copy under
+  // the grid only mentions money while a listing that still HAS a price is
+  // actually on screen. That's the founding-patron whale, and it expires; the
+  // filters below are the same ones the grid itself uses, so the sentence and
+  // the tile appear and disappear together.
+  const pricedOnShelf =
+    storefrontEnabled() &&
+    allSkins().some((sk) => sk.source === 'paid' && !sk.exclusive && !skinExpired(sk) && skinVisible(sk, isSkinOwned(sk)))
   const onSkinTap = (skin: SkinDef) => {
     const owned = isSkinOwned(skin)
     if (!owned && skin.source === 'pass') {
@@ -301,166 +314,299 @@ export function CustomizeSection() {
       </div>
       </Section>
 
-      {/* ── Full-look skins ───────────────────────────────────────────── */}
-      <Section title="Skins" defaultOpen right="full looks">
-      <div className="card" style={{ marginBottom: 14 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          {/* Bundles first — a pack is one listing at one price. Its skins are
-              hidden from the grid until it's owned, so the only way to get them
-              is the pack itself. Once owned they appear below as normal, each
-              individually equippable. */}
-          {storefrontEnabled() &&
-            BUNDLES.filter((b) => !bundleExpired(b) && !packEntitled(b.id, ownedSkins)).map((b) => (
-              <button
-                key={b.id}
-                onClick={() => { juice.select(); setBundleTarget(b) }}
-                style={{
-                  gridColumn: '1 / -1',
-                  display: 'grid', justifyItems: 'center', gap: 6,
-                  padding: '12px 8px', borderRadius: 14,
-                  background: 'var(--card-solid)', border: '1px solid var(--gold)', cursor: 'pointer',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'center' }}>
-                  {b.skins.map((id, n) => (
-                    <div key={id} style={{ marginLeft: n === 0 ? 0 : -14, zIndex: n }}>
-                      <Avatar emoji={profile.avatarEmoji} character={{ ...spec, skinId: id, regalia: null }} size={56} ring={false} />
+      {/* ── Full looks + companions ────────────────────────────────────
+          One shelf with two pills instead of two collapsibles: skins and pets
+          answer the same question (who stands there when you show up), and a
+          player choosing a look is one tap from choosing who walks beside it.
+          Both names stay on screen, which a nested accordion loses. ── */}
+      <TabbedSection
+        defaultOpen
+        tabs={[
+          {
+            key: 'skins',
+            label: 'Skins',
+            right: 'full looks',
+            content: (
+              <>
+                <div className="card" style={{ marginBottom: 14 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    {/* Bundles first — a pack is one listing at one price. Its skins are
+                        hidden from the grid until it's owned, so the only way to get them
+                        is the pack itself. Once owned they appear below as normal, each
+                        individually equippable. */}
+                    {storefrontEnabled() &&
+                      BUNDLES.filter((b) => !bundleExpired(b) && !packEntitled(b.id, ownedSkins)).map((b) => (
+                        <button
+                          key={b.id}
+                          onClick={() => { juice.select(); setBundleTarget(b) }}
+                          style={{
+                            gridColumn: '1 / -1',
+                            display: 'grid', justifyItems: 'center', gap: 6,
+                            padding: '12px 8px', borderRadius: 14,
+                            background: 'var(--card-solid)', border: '1px solid var(--gold)', cursor: 'pointer',
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'center' }}>
+                            {b.skins.map((id, n) => (
+                              <div key={id} style={{ marginLeft: n === 0 ? 0 : -14, zIndex: n }}>
+                                <Avatar emoji={profile.avatarEmoji} character={{ ...spec, skinId: id, regalia: null }} size={56} ring={false} />
+                              </div>
+                            ))}
+                          </div>
+                          <span style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 800 }}>{b.name}</span>
+                          <span className="faint" style={{ fontSize: 11 }}>
+                            {bundleItemCount(b)} items · {b.skins.length} skins + {b.cards.length} calling cards
+                          </span>
+                          <span style={{ ...pillStyle('studio') }}>{displayPrice(b.sku, b.price)} · tap to preview</span>
+                          {b.limitedUntil && <LimitedBadge until={b.limitedUntil} />}
+                        </button>
+                      ))}
+                    {allSkins()
+                      .filter((skin) => !skinExpired(skin))
+                      // A bundle-only skin is never its own listing — it shows up here
+                      // only once the pack that contains it is owned.
+                      .filter((skin) => !skin.bundleOnly || packPreviewable(skin.pack ?? '', ownedSkins, profile.isAdmin))
+                      // Native builds carry no storefront, so a priced skin only appears
+                      // once it's owned — including packs bought on the website, which
+                      // stay wearable here. See lib/commerce.
+                      .filter((skin) => skinVisible(skin, isSkinOwned(skin)))
+                      .map((skin) => {
+                      const owned = isSkinOwned(skin)
+                      const equipped = isEquipped(skin)
+                      const preview = {
+                        ...spec,
+                        skinId: skin.source === 'pass' ? passSkinEquipId(skin, seasonUnlocks) : skin.id,
+                        regalia: null,
+                      }
+                      const status =
+                        owned
+                          ? equipped
+                            ? '✓ Equipped'
+                            : 'Tap to wear'
+                          : skin.source === 'pass'
+                            ? '🌾 On the road'
+                          : skin.source === 'earned'
+                            ? skin.referralGoal != null
+                              ? `${Math.min(profile.referralCount ?? 0, skin.referralGoal)}/${skin.referralGoal} friends`
+                              : `Shared ${Math.min(sharedCount, skin.shareGoal ?? 0)}/${skin.shareGoal ?? 0} days`
+                            : skin.exclusive ? `🔒 ${skin.packName ?? 'Exclusive'}`
+                              : skin.bundleOnly ? `🔒 ${skin.packName ?? 'Pack only'}`
+                                : `🔒 ${skin.price}`
+                      return (
+                        <button
+                          key={skin.id}
+                          onClick={() => onSkinTap(skin)}
+                          style={{
+                            display: 'grid',
+                            justifyItems: 'center',
+                            gap: 6,
+                            padding: '10px 8px',
+                            borderRadius: 14,
+                            background: equipped ? 'var(--grape)' : 'var(--card-solid)',
+                            border: equipped ? '1px solid var(--gold)' : '1px solid var(--stroke)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <div style={{ position: 'relative' }}>
+                            <Avatar emoji={profile.avatarEmoji} character={preview} size={60} ring={false} />
+                            {!owned && (
+                              <span style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: 20, filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.6))' }}>🔒</span>
+                            )}
+                          </div>
+                          <span style={{ fontSize: 13, fontWeight: 800 }}>{skin.name}</span>
+                          <span style={{ ...pillStyle(skin.source === 'paid' ? 'studio' : 'earned') }}>{status}</span>
+                          {skin.limitedUntil && <LimitedBadge until={skin.limitedUntil} />}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <p className="faint" style={{ fontSize: 10, marginTop: 10, lineHeight: 1.4 }}>
+                    Skins are <b>earned</b>, not sold — share the daily verse, invite friends, or walk the
+                    Harvest Road, and they’re yours to keep. A few unlock with a code. A missed day never
+                    takes one away, and Scripture is always free.
+                    {pricedOnShelf && ' The one listing with a price is the founding-patron thank-you — nothing in the game is behind it.'}
+                  </p>
+                  {/* Restore Purchases — REQUIRED by Apple for non-consumable in-app
+                      purchases (Guideline 3.1.1): a buyer who reinstalls, or signs in on a
+                      second device, has to be able to get their packs back without paying
+                      again. Shown whenever the app can talk to StoreKit at all, including
+                      when the shop itself is hidden — restoring is not selling. */}
+                  {iapAvailable() && (
+                    <div style={{ marginTop: 12 }}>
+                      <button
+                        className="pill"
+                        style={{ width: '100%' }}
+                        onClick={async () => {
+                          juice.select()
+                          setRestoreMsg(null)
+                          const r = await restoreIap()
+                          setRestoreMsg(
+                            // Three outcomes, not two. "Nothing to restore" must only be
+                            // said when we actually asked and were told nothing — saying
+                            // it after a failed lookup tells a real buyer they own
+                            // nothing, which is the case App Review checks.
+                            !r.ok
+                              ? 'Couldn’t check with the App Store just now — try again in a moment.'
+                              : r.count > 0
+                                ? `Restored ${r.count} item${r.count === 1 ? '' : 's'} ✓`
+                                : 'Nothing to restore on this Apple ID.',
+                          )
+                        }}
+                      >
+                        Restore purchases
+                      </button>
+                      {restoreMsg && (
+                        <p className="faint" style={{ fontSize: 11, marginTop: 6, textAlign: 'center' }}>{restoreMsg}</p>
+                      )}
                     </div>
-                  ))}
-                </div>
-                <span style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 800 }}>{b.name}</span>
-                <span className="faint" style={{ fontSize: 11 }}>
-                  {bundleItemCount(b)} items · {b.skins.length} skins + {b.cards.length} calling cards
-                </span>
-                <span style={{ ...pillStyle('studio') }}>{displayPrice(b.sku, b.price)} · tap to preview</span>
-                {b.limitedUntil && <LimitedBadge until={b.limitedUntil} />}
-              </button>
-            ))}
-          {allSkins()
-            .filter((skin) => !skinExpired(skin))
-            // A bundle-only skin is never its own listing — it shows up here
-            // only once the pack that contains it is owned.
-            .filter((skin) => !skin.bundleOnly || packPreviewable(skin.pack ?? '', ownedSkins, profile.isAdmin))
-            // Native builds carry no storefront, so a priced skin only appears
-            // once it's owned — including packs bought on the website, which
-            // stay wearable here. See lib/commerce.
-            .filter((skin) => skinVisible(skin, isSkinOwned(skin)))
-            .map((skin) => {
-            const owned = isSkinOwned(skin)
-            const equipped = isEquipped(skin)
-            const preview = {
-              ...spec,
-              skinId: skin.source === 'pass' ? passSkinEquipId(skin, seasonUnlocks) : skin.id,
-              regalia: null,
-            }
-            const status =
-              owned
-                ? equipped
-                  ? '✓ Equipped'
-                  : 'Tap to wear'
-                : skin.source === 'pass'
-                  ? '🌾 On the road'
-                : skin.source === 'earned'
-                  ? skin.referralGoal != null
-                    ? `${Math.min(profile.referralCount ?? 0, skin.referralGoal)}/${skin.referralGoal} friends`
-                    : `Shared ${Math.min(sharedCount, skin.shareGoal ?? 0)}/${skin.shareGoal ?? 0} days`
-                  : skin.exclusive ? `🔒 ${skin.packName ?? 'Exclusive'}`
-                    : skin.bundleOnly ? `🔒 ${skin.packName ?? 'Pack only'}`
-                      : `🔒 ${skin.price}`
-            return (
-              <button
-                key={skin.id}
-                onClick={() => onSkinTap(skin)}
-                style={{
-                  display: 'grid',
-                  justifyItems: 'center',
-                  gap: 6,
-                  padding: '10px 8px',
-                  borderRadius: 14,
-                  background: equipped ? 'var(--grape)' : 'var(--card-solid)',
-                  border: equipped ? '1px solid var(--gold)' : '1px solid var(--stroke)',
-                  cursor: 'pointer',
-                }}
-              >
-                <div style={{ position: 'relative' }}>
-                  <Avatar emoji={profile.avatarEmoji} character={preview} size={60} ring={false} />
-                  {!owned && (
-                    <span style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: 20, filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.6))' }}>🔒</span>
+                  )}
+                  {/* Optional support link (a Stripe Payment Link, set via VITE_SUPPORT_URL).
+                      Web-only: on native, "chip in what you like" is a pay-what-you-want
+                      digital purchase outside IAP, which Apple does not allow. */}
+                  {SUPPORT_URL && !isNativeApp() && (
+                    <div style={{ marginTop: 12 }}>
+                      <Button
+                        variant="gold"
+                        full
+                        onClick={() => { juice.coin(); window.open(SUPPORT_URL, '_blank', 'noopener,noreferrer') }}
+                      >
+                        💛 Support Verse Arcade
+                      </Button>
+                      <p className="faint" style={{ fontSize: 10, marginTop: 6, textAlign: 'center', lineHeight: 1.4 }}>
+                        Chip in what you like — it keeps the app online and free. Not a donation; you’re supporting a solo builder.
+                      </p>
+                    </div>
                   )}
                 </div>
-                <span style={{ fontSize: 13, fontWeight: 800 }}>{skin.name}</span>
-                <span style={{ ...pillStyle(skin.source === 'paid' ? 'studio' : 'earned') }}>{status}</span>
-                {skin.limitedUntil && <LimitedBadge until={skin.limitedUntil} />}
-              </button>
-            )
-          })}
-        </div>
-        <p className="faint" style={{ fontSize: 10, marginTop: 10, lineHeight: 1.4 }}>
-          {storefrontEnabled() ? (
-            <>
-              Hero skins are <b>premium</b> — tap one to unlock it. Packs are sold whole: tap to swipe through
-              everything inside before you decide. Earned skins (like Baldwin) are never for sale, and Scripture is always free.
-            </>
-          ) : (
-            <>
-              Skins are <b>earned</b> — share the daily verse and invite friends, and they’re yours to keep.
-              A missed day never takes one away, and Scripture is always free.
-            </>
-          )}
-        </p>
-        {/* Restore Purchases — REQUIRED by Apple for non-consumable in-app
-            purchases (Guideline 3.1.1): a buyer who reinstalls, or signs in on a
-            second device, has to be able to get their packs back without paying
-            again. Shown whenever the app can talk to StoreKit at all, including
-            when the shop itself is hidden — restoring is not selling. */}
-        {iapAvailable() && (
-          <div style={{ marginTop: 12 }}>
-            <button
-              className="pill"
-              style={{ width: '100%' }}
-              onClick={async () => {
-                juice.select()
-                setRestoreMsg(null)
-                const r = await restoreIap()
-                setRestoreMsg(
-                  // Three outcomes, not two. "Nothing to restore" must only be
-                  // said when we actually asked and were told nothing — saying
-                  // it after a failed lookup tells a real buyer they own
-                  // nothing, which is the case App Review checks.
-                  !r.ok
-                    ? 'Couldn’t check with the App Store just now — try again in a moment.'
-                    : r.count > 0
-                      ? `Restored ${r.count} item${r.count === 1 ? '' : 's'} ✓`
-                      : 'Nothing to restore on this Apple ID.',
-                )
-              }}
-            >
-              Restore purchases
-            </button>
-            {restoreMsg && (
-              <p className="faint" style={{ fontSize: 11, marginTop: 6, textAlign: 'center' }}>{restoreMsg}</p>
-            )}
-          </div>
-        )}
-        {/* Optional support link (a Stripe Payment Link, set via VITE_SUPPORT_URL).
-            Web-only: on native, "chip in what you like" is a pay-what-you-want
-            digital purchase outside IAP, which Apple does not allow. */}
-        {SUPPORT_URL && !isNativeApp() && (
-          <div style={{ marginTop: 12 }}>
-            <Button
-              variant="gold"
-              full
-              onClick={() => { juice.coin(); window.open(SUPPORT_URL, '_blank', 'noopener,noreferrer') }}
-            >
-              💛 Support Verse Arcade
-            </Button>
-            <p className="faint" style={{ fontSize: 10, marginTop: 6, textAlign: 'center', lineHeight: 1.4 }}>
-              Chip in what you like — it keeps the app online and free. Not a donation; you’re supporting a solo builder.
-            </p>
-          </div>
-        )}
-      </div>
-      </Section>
+
+                {/* A genuine note on the one thing that still has a price. It lives
+                    inside the Skins tab because that's what it's about — under Pets it
+                    would be answering a question nobody asked. Web-only: in a native
+                    build nothing is offered for sale at all, so an essay about paying
+                    would both confuse and (per lib/commerce) steer. */}
+                {storefrontEnabled() && (
+              <>
+                <button
+                  onClick={() => { juice.select(); setDevNoteOpen((o) => !o) }}
+                  className="card"
+                  style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10, marginBottom: devNoteOpen ? 0 : 14, cursor: 'pointer' }}
+                >
+                  <span style={{ fontSize: 18 }}>💛</span>
+                  <b style={{ flex: 1, fontSize: 13.5 }}>Is any of this paid?</b>
+                  <span style={{ color: 'var(--gold)', transform: devNoteOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>
+                </button>
+                {devNoteOpen && (
+                  <div className="card" style={{ marginTop: 8, marginBottom: 14, lineHeight: 1.6, fontSize: 14 }}>
+                    <p style={{ margin: 0 }}>
+                      Verse Arcade is built by <b>one person</b> — not a company, no investors. The whole app is
+                      free: the daily verse, the games, streaks, groups, battles. That never changes, and the
+                      Scripture is never behind a paywall.
+                    </p>
+                    <p style={{ margin: '12px 0 0' }}>
+                      Skins used to be the one paid extra. They aren’t any more — the three that had a price
+                      belong to everybody now, the angels are earned on the Harvest Road, and nothing you can
+                      play with is sold. Anyone who bought a pack keeps every bit of it.
+                    </p>
+                    <p style={{ margin: '12px 0 0' }}>
+                      What’s left is a founding-patron thank-you for people who want to chip in. I’m not a
+                      nonprofit, so it isn’t a donation — it’s support that covers the monthly cost of keeping
+                      the app online. It buys one cosmetic and nothing else.
+                    </p>
+                    <p style={{ margin: '12px 0 0', color: 'var(--ink)' }}>
+                      If you chip in — thank you, genuinely. It keeps this going. If you don’t, that’s completely
+                      okay: nothing is missing from your app either way. 🙏
+                    </p>
+                  </div>
+                )}
+              </>
+              )}
+              </>
+            ),
+          },
+          {
+            key: 'pets',
+            label: 'Pets',
+            right: `${unlockedPetCount}/${PETS.length}`,
+            content: (
+              <>
+                  <p className="faint" style={{ fontSize: 12, margin: '0 0 10px', lineHeight: 1.5 }}>
+                    A companion stands beside you at the top of this tab. Every one is earned — a level and,
+                    past the first, one more thing — and nothing buys, trades or takes one away. The common
+                    ones are simply company; the rarer ones each do one small thing.
+                    {comingPet && ` Next: ${comingPet.name}, ${petRequirementText(comingPet).toLowerCase()}.`}
+                  </p>
+                  {petErr && (
+                    <p style={{ color: 'var(--coral)', fontSize: 12.5, margin: '0 0 10px', lineHeight: 1.4 }}>{petErr}</p>
+                  )}
+                  <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', marginBottom: 14 }}>
+                    {PETS.map((p) => {
+                      const open = petUnlocked(p.id, petProg, petAdmin)
+                      const on = profile.pet === p.id
+                      // The one number worth showing on a locked row: how far along the
+                      // second requirement is. A bare "🔒 Level 33" tells you nothing
+                      // about the part you're actually working on.
+                      const short =
+                        !open && petProg.level >= p.level && p.extra
+                          ? `${reqValue(p.extra, petProg).toLocaleString()}/${p.extra.n.toLocaleString()}`
+                          : null
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => void pickPet(p.id)}
+                          className="card"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            padding: '10px 12px',
+                            minWidth: 0,
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            borderColor: on ? 'var(--gold)' : 'var(--stroke)',
+                            background: on ? 'rgba(255,210,63,0.08)' : undefined,
+                            // Locked pets stay visible and legible — a silhouette would
+                            // make the ladder a mystery, and the level it arrives at is
+                            // the whole message.
+                            opacity: open ? 1 : 0.58,
+                          }}
+                        >
+                          <span style={{ flexShrink: 0, width: 44, height: 44, display: 'grid', placeItems: 'center' }}>
+                            <Pet id={p.id} size={44} />
+                          </span>
+                          <span style={{ minWidth: 0, flex: 1 }}>
+                            <span style={{ display: 'block', fontWeight: 800, fontSize: 13.5 }}>{p.name}</span>
+                            <span className="faint" style={{ display: 'block', fontSize: 11.5, lineHeight: 1.35 }}>
+                              {on
+                                ? 'Beside you · tap to put down'
+                                : open
+                                  ? p.blurb
+                                  : `🔒 ${petRequirementText(p)}${short ? ` · ${short}` : ''}`}
+                            </span>
+                            {/* What it does, always — including "Just company", so the
+                                common ones read as a choice rather than as a lesser
+                                version of the rare ones. */}
+                            <span
+                              style={{
+                                display: 'block',
+                                fontSize: 10.5,
+                                marginTop: 3,
+                                fontWeight: 800,
+                                letterSpacing: '0.02em',
+                                color: p.effects.length ? 'var(--gold)' : 'var(--ink-dim)',
+                              }}
+                            >
+                              {petEffectText(p)}
+                            </span>
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+              </>
+            ),
+          },
+        ]}
+      />
 
       {/* Pack sheet — swipe every item, then buy the whole thing or nothing */}
       {bundleTarget && (
@@ -490,40 +636,40 @@ export function CustomizeSection() {
             </p>
             {(isNativeApp() ? storefrontEnabled() : !!skinBuyUrl(buyTarget.id)) && storefrontEnabled() ? (
               <>
-                <Button variant="gold" full disabled={buying} onClick={async () => {
-                  juice.coin()
-                  const skin = buyTarget
-                  if (isNativeApp()) {
-                    // Apple's purchase sheet — the app may not check out anywhere else.
-                    setBuying(true)
-                    const result = await buyIap(skin.id)
-                    setBuying(false)
-                    if (result === 'cancelled') return
-                    setBuyTarget(null)
-                    // Never close on a paid purchase without saying what
-                    // happened. 'unconfirmed' means Apple charged but the
-                    // entitlement hasn't landed yet — the honest instruction is
-                    // to wait and Restore, not silence.
-                    if (result === 'failed') {
-                      setErr('That didn’t go through — you haven’t been charged.')
-                    } else if (result === 'unconfirmed') {
-                      setErr('Payment went through. Your skin should appear in a moment — if it doesn’t, tap Restore purchases.')
-                    }
-                    return
-                  }
-                  // Pass "<username>-<skinId>" as Stripe's client_reference_id so the
-                  // webhook can auto-grant the right skin to the right account.
-                  const base = skinBuyUrl(skin.id)
-                  const ref = encodeURIComponent(`${profile.username}-${skin.id}`)
-                  const url = base + (base.includes('?') ? '&' : '?') + 'client_reference_id=' + ref
-                  window.open(url, '_blank', 'noopener,noreferrer')
-                  setBuyTarget(null)
-                }}>
-                  {buying ? 'Opening Apple…' : 'Get this skin'}
-                </Button>
-                <p className="faint" style={{ fontSize: 10, marginTop: 8, lineHeight: 1.4 }}>
-                  Opens secure checkout — your skin unlocks automatically right after. Thank you for supporting a solo builder! 🙏
-                </p>
+                    <Button variant="gold" full disabled={buying} onClick={async () => {
+                      juice.coin()
+                      const skin = buyTarget
+                      if (isNativeApp()) {
+                        // Apple's purchase sheet — the app may not check out anywhere else.
+                        setBuying(true)
+                        const result = await buyIap(skin.id)
+                        setBuying(false)
+                        if (result === 'cancelled') return
+                        setBuyTarget(null)
+                        // Never close on a paid purchase without saying what
+                        // happened. 'unconfirmed' means Apple charged but the
+                        // entitlement hasn't landed yet — the honest instruction is
+                        // to wait and Restore, not silence.
+                        if (result === 'failed') {
+                          setErr('That didn’t go through — you haven’t been charged.')
+                        } else if (result === 'unconfirmed') {
+                          setErr('Payment went through. Your skin should appear in a moment — if it doesn’t, tap Restore purchases.')
+                        }
+                        return
+                      }
+                      // Pass "<username>-<skinId>" as Stripe's client_reference_id so the
+                      // webhook can auto-grant the right skin to the right account.
+                      const base = skinBuyUrl(skin.id)
+                      const ref = encodeURIComponent(`${profile.username}-${skin.id}`)
+                      const url = base + (base.includes('?') ? '&' : '?') + 'client_reference_id=' + ref
+                      window.open(url, '_blank', 'noopener,noreferrer')
+                      setBuyTarget(null)
+                    }}>
+                      {buying ? 'Opening Apple…' : 'Get this skin'}
+                    </Button>
+                    <p className="faint" style={{ fontSize: 10, marginTop: 8, lineHeight: 1.4 }}>
+                      Opens secure checkout — your skin unlocks automatically right after. Thank you for supporting a solo builder! 🙏
+                    </p>
               </>
             ) : (
               <p className="faint" style={{ fontSize: 13, marginTop: 4, lineHeight: 1.5 }}>
@@ -564,42 +710,6 @@ export function CustomizeSection() {
             <button className="pill" style={{ marginTop: 10 }} onClick={() => setRedeemTarget(null)}>Close</button>
           </div>
         </div>
-      )}
-
-      {/* A genuine note on why anything costs money at all. Web-only: in a
-          native build nothing costs anything, so an essay about paying for
-          skins would both confuse and (per lib/commerce) steer. */}
-      {storefrontEnabled() && (
-      <>
-      <button
-        onClick={() => { juice.select(); setDevNoteOpen((o) => !o) }}
-        className="card"
-        style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10, marginBottom: devNoteOpen ? 0 : 14, cursor: 'pointer' }}
-      >
-        <span style={{ fontSize: 18 }}>💛</span>
-        <b style={{ flex: 1, fontSize: 13.5 }}>Why do skins cost anything?</b>
-        <span style={{ color: 'var(--gold)', transform: devNoteOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>
-      </button>
-      {devNoteOpen && (
-        <div className="card" style={{ marginTop: 8, marginBottom: 14, lineHeight: 1.6, fontSize: 14 }}>
-          <p style={{ margin: 0 }}>
-            Verse Arcade is built by <b>one person</b> — not a company, no investors. The whole app is
-            free: the daily verse, the games, streaks, groups, battles. That never changes, and the
-            Scripture is never behind a paywall.
-          </p>
-          <p style={{ margin: '12px 0 0' }}>
-            Skins are the one optional extra. I’m not a nonprofit, so this isn’t a donation — it’s
-            support. It covers the real monthly cost of keeping the app online, and gives me a little
-            room to keep building it instead of shelving it. You’re only ever paying for a cosmetic you
-            like.
-          </p>
-          <p style={{ margin: '12px 0 0', color: 'var(--ink)' }}>
-            If you grab one — thank you, genuinely. It keeps this going. If you don’t, that’s completely
-            okay: the app is yours to enjoy either way. 🙏
-          </p>
-        </div>
-      )}
-      </>
       )}
 
       {/* ── Collected items (from the Daily Chest) ────────────────────── */}
@@ -654,85 +764,6 @@ export function CustomizeSection() {
       </div>
       </Section>
 
-      {/* ── Pets ──────────────────────────────────────────────────────────
-          Company, not a stat. Nothing here touches XP, points, streaks or any
-          board, which is exactly why a collectible gets to exist next to the
-          rank-free rule — there is no version of this that anybody loses. ── */}
-      <Section title="Pets" right={`${unlockedPetCount}/${PETS.length}`}>
-        <p className="faint" style={{ fontSize: 12, margin: '0 0 10px', lineHeight: 1.5 }}>
-          A companion stands beside you at the top of this tab. Every one is earned — a level and,
-          past the first, one more thing — and nothing buys, trades or takes one away. The common
-          ones are simply company; the rarer ones each do one small thing.
-          {comingPet && ` Next: ${comingPet.name}, ${petRequirementText(comingPet).toLowerCase()}.`}
-        </p>
-        {petErr && (
-          <p style={{ color: 'var(--coral)', fontSize: 12.5, margin: '0 0 10px', lineHeight: 1.4 }}>{petErr}</p>
-        )}
-        <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', marginBottom: 14 }}>
-          {PETS.map((p) => {
-            const open = petUnlocked(p.id, petProg)
-            const on = profile.pet === p.id
-            // The one number worth showing on a locked row: how far along the
-            // second requirement is. A bare "🔒 Level 33" tells you nothing
-            // about the part you're actually working on.
-            const short =
-              !open && petProg.level >= p.level && p.extra
-                ? `${reqValue(p.extra, petProg).toLocaleString()}/${p.extra.n.toLocaleString()}`
-                : null
-            return (
-              <button
-                key={p.id}
-                onClick={() => void pickPet(p.id)}
-                className="card"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '10px 12px',
-                  minWidth: 0,
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  borderColor: on ? 'var(--gold)' : 'var(--stroke)',
-                  background: on ? 'rgba(255,210,63,0.08)' : undefined,
-                  // Locked pets stay visible and legible — a silhouette would
-                  // make the ladder a mystery, and the level it arrives at is
-                  // the whole message.
-                  opacity: open ? 1 : 0.58,
-                }}
-              >
-                <span style={{ flexShrink: 0, width: 44, height: 44, display: 'grid', placeItems: 'center' }}>
-                  <Pet id={p.id} size={44} />
-                </span>
-                <span style={{ minWidth: 0, flex: 1 }}>
-                  <span style={{ display: 'block', fontWeight: 800, fontSize: 13.5 }}>{p.name}</span>
-                  <span className="faint" style={{ display: 'block', fontSize: 11.5, lineHeight: 1.35 }}>
-                    {on
-                      ? 'Beside you · tap to put down'
-                      : open
-                        ? p.blurb
-                        : `🔒 ${petRequirementText(p)}${short ? ` · ${short}` : ''}`}
-                  </span>
-                  {/* What it does, always — including "Just company", so the
-                      common ones read as a choice rather than as a lesser
-                      version of the rare ones. */}
-                  <span
-                    style={{
-                      display: 'block',
-                      fontSize: 10.5,
-                      marginTop: 3,
-                      fontWeight: 800,
-                      letterSpacing: '0.02em',
-                      color: p.effects.length ? 'var(--gold)' : 'var(--ink-dim)',
-                    }}
-                  >
-                    {petEffectText(p)}
-                  </span>
-                </span>
-              </button>
-            )
-          })}
-        </div>
-      </Section>
 
       {/* ── Player-card backgrounds ───────────────────────────────────────
           Every card and relic you own also unlocks the background themed after
@@ -857,6 +888,83 @@ export function CustomizeSection() {
 
 // A collapsible sub-section of the customizer, so the (long) page can be tidied
 // section by section. Header shows an optional right-side summary + a chevron.
+// Two shelves under one header. The pills ARE the header: tapping the other
+// name swaps the grid, tapping the one you're on folds the section away, so
+// there's exactly one control and both names stay on screen — which is the
+// thing a second collapsible below loses (Pets used to sit four sections down,
+// where nobody choosing a look ever saw it).
+//
+// Only the active tab's content is mounted, so the two grids never both pay
+// for their avatars at once.
+function TabbedSection({ tabs, defaultOpen = false }: {
+  tabs: { key: string; label: string; right?: React.ReactNode; content: React.ReactNode }[]
+  defaultOpen?: boolean
+}) {
+  const juice = useJuice()
+  const [open, setOpen] = useState(defaultOpen)
+  const [active, setActive] = useState(tabs[0].key)
+  const current = tabs.find((t) => t.key === active) ?? tabs[0]
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 0 10px' }}>
+        <div role="tablist" style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
+          {tabs.map((t) => {
+            // A pill only reads as selected while the section is actually open;
+            // folded, neither is lit, so the header never claims to be showing
+            // something it isn't.
+            const on = open && t.key === current.key
+            return (
+              <button
+                key={t.key}
+                role="tab"
+                aria-selected={on}
+                onClick={() => {
+                  juice.select()
+                  if (t.key === current.key) setOpen((o) => !o)
+                  else { setActive(t.key); setOpen(true) }
+                }}
+                className="pill"
+                style={{
+                  padding: '5px 13px',
+                  fontFamily: 'var(--font-display)',
+                  fontSize: 15,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  color: on ? 'var(--ink)' : 'var(--ink-dim)',
+                  background: on ? 'var(--grape)' : 'var(--card)',
+                  borderColor: on ? 'var(--gold)' : 'var(--stroke)',
+                }}
+              >
+                {t.label}
+              </button>
+            )
+          })}
+          {current.right && <span className="faint" style={{ fontSize: 12 }}>{current.right}</span>}
+        </div>
+        <button
+          onClick={() => { juice.select(); setOpen((o) => !o) }}
+          aria-expanded={open}
+          aria-label={open ? `Hide ${current.label}` : `Show ${current.label}`}
+          style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--gold)', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}
+        >
+          ▾
+        </button>
+      </div>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25, ease: 'easeInOut' }} style={{ overflow: 'hidden' }}>
+            {/* Keyed on the tab, so switching remounts and replays the fade —
+                a swap with no motion at all reads as a render glitch. */}
+            <motion.div key={current.key} initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.18, ease: 'easeOut' }}>
+              {current.content}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  )
+}
+
 function Section({ title, right, defaultOpen = false, children }: {
   title: string
   right?: React.ReactNode

@@ -200,22 +200,39 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration
-        # TestFlight upload always happens; submission to review is done BY HAND in
-        # App Store Connect (attach the processed build to the version, then Submit).
-        # That is the deliberate choice, not an unfinished setting: it keeps a real
-        # device between the archive and the reviewer, and crash-on-launch is the top
-        # avoidable rejection.
+        # BOTH false, and the build still lands in App Store Connect. The upload is
+        # what this block does; these two flags only decide whether Codemagic then
+        # SUBMITS the uploaded build to one of Apple's two review queues. So the
+        # pipeline is: push -> signed IPA -> App Store Connect -> visible in
+        # TestFlight for internal testers -> you install it, play a round, and
+        # submit to App Store review by hand. That last human step is the point:
+        # crash-on-launch is the top avoidable rejection and CI cannot spot it.
         #
-        # To hand it over to CI later, set submit_to_app_store: true and add
-        # `release_type: MANUAL` (Apple approves; a human still presses Release) and
-        # `cancel_previous_submissions: true` (a re-run replaces a submission stuck in
-        # "Waiting for Review" instead of being refused). Know what that buys you: it
-        # REQUIRES the version's metadata to already be complete in App Store Connect
-        # — screenshots, description, What's New, privacy answers, age rating, demo
+        # submit_to_testflight submits to TESTFLIGHT BETA review, which is the gate
+        # on EXTERNAL testers (people outside the team). It was true here, and it
+        # failed the build after a perfectly good upload:
+        #     "Complete test information is required to submit application Verse
+        #      Arcade build for external testing.
+        #      App is missing required Beta App Information: Feedback Email.
+        #      App is missing required Beta App Review Information: First Name,
+        #      Last Name, Phone Number, Email."
+        # Nothing was wrong with the binary — build 30244618 uploaded and finished
+        # processing before that line. INTERNAL testing (your own team, up to 100
+        # people) needs no beta review at all, so it never needed to be true.
+        # Turn it back on only when you actually want testers outside the team, and
+        # fill in the test info first:
+        #   https://appstoreconnect.apple.com/apps/6798202287/testflight/test-info
+        submit_to_testflight: false
+        #
+        # submit_to_app_store submits to APP STORE review. To hand that to CI, set it
+        # true and add `release_type: MANUAL` (Apple approves; a human still presses
+        # Release) and `cancel_previous_submissions: true` (a re-run replaces a
+        # submission stuck in "Waiting for Review" instead of being refused). Know
+        # what it costs: it REQUIRES the version's metadata to already be complete —
+        # screenshots, description, What's New, privacy answers, age rating, demo
         # account. Codemagic submits the version; it does not fill it in, and an
         # incomplete record fails this publishing step AFTER a successful 20-minute
         # archive, which is the same expensive shape as the 90062 rejection above.
-        submit_to_testflight: true
         submit_to_app_store: false
       email:
         recipients:

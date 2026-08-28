@@ -137,10 +137,24 @@ the only thing standing between you and that default.
 
 ### Submitting: Codemagic gets it to TestFlight, you press Submit
 
-`publishing.app_store_connect.submit_to_app_store` is `false` on purpose. Codemagic
-builds, signs, uploads and stops. You attach the build and submit by hand — which
-keeps a real device between the archive and the reviewer, and crash-on-launch is the
-top avoidable rejection.
+`submit_to_testflight` and `submit_to_app_store` are BOTH `false` on purpose, and the
+build still reaches TestFlight either way — uploading is what the `app_store_connect`
+publishing block does, and those two flags only decide whether Codemagic then submits
+the uploaded build to one of Apple's two review queues. Codemagic builds, signs,
+uploads and stops. You install it, play a round, and submit by hand — which keeps a
+real device between the archive and the reviewer, and crash-on-launch is the top
+avoidable rejection.
+
+> **`submit_to_testflight` is about EXTERNAL testers, not about reaching TestFlight.**
+> It was `true` and it failed a build that had already uploaded and processed
+> perfectly: *"Complete test information is required... missing required Beta App
+> Information: Feedback Email... Beta App Review Information: First Name, Last Name,
+> Phone Number, Email."* That is Apple's gate on TestFlight **beta review**, which only
+> applies to testers outside your team. Internal testing — you, on your own phone, up
+> to 100 people — needs none of it. If you ever do want outside testers, fill the test
+> info once at
+> <https://appstoreconnect.apple.com/apps/6798202287/testflight/test-info> and flip the
+> flag back.
 
 The order that works:
 

@@ -21,6 +21,7 @@ import { useSeason } from '@/store/season'
 import { titleById } from '@/data/season'
 import { CustomizeSection } from './CustomizeSection'
 import { ProfileHero } from './ProfileHero'
+import { RoomSection } from '@/features/room/RoomSection'
 import { SettingsSheet } from './SettingsSheet'
 
 export default function ProfileScreen() {
@@ -266,6 +267,13 @@ export default function ProfileScreen() {
           }
         />
       </div>
+
+      {/* The fourth little world, and the only one that is yours alone. It opens
+          its section here rather than sitting behind a row that describes it —
+          the same rule the road, the hall and the churchyard follow. Below the
+          card rather than above it, because the hero and the card are a pair:
+          a portrait and its numbers, and a room between them would split them. */}
+      <RoomSection />
 
       {/* Invite friends — referral code + progress toward the carried-cross look.
           Collapsed by default behind an obvious Show/Hide button; the header

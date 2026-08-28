@@ -11,6 +11,7 @@ import { useJuice } from '@/juice/useJuice'
 import { Button } from '@/components/Button'
 import { WashFeetButton } from '@/components/WashFeetButton'
 import { supabase } from '@/lib/supabase'
+import { RoomVisitSheet } from '@/features/room/RoomVisitSheet'
 
 // Tap any avatar anywhere and their card pops up. A single provider owns the
 // one open card, so avatars stay dumb: they just say "open @handle".
@@ -51,6 +52,11 @@ function CardSheet({ username, onClose }: { username: string; onClose: () => voi
   const [buddyMsg, setBuddyMsg] = useState<string | null>(null)
   const [washCheer, setWashCheer] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
+  // Going to see where somebody lives. The sheet sits at the app's sheet tier
+  // (100) and this card at 110, so it opens UNDER the card you came from and
+  // closing it puts you straight back — the same relationship the keep sheet
+  // has with the player card opened from a figure inside it.
+  const [visiting, setVisiting] = useState(false)
 
   // Someone else's card, and you have an account: you can act on it.
   const canAct = !isMe && !isGuest && !!supabase
@@ -189,6 +195,14 @@ function CardSheet({ username, onClose }: { username: string; onClose: () => voi
                 the one that asks nothing back — and this card is the app's one
                 place where a single other player is on screen, so it belongs
                 here rather than on five separate rows. */}
+            {/* Visiting: the cozy half of the multiplayer, and the only thing
+                anyone can do to another player's room. Read-only by
+                construction — see RoomVisitSheet. */}
+            <div style={{ marginTop: 10 }}>
+              <Button variant="secondary" full onClick={() => { juice.select(); setVisiting(true) }}>
+                🚪 Visit their room
+              </Button>
+            </div>
             <div style={{ marginTop: 10 }}>
               <WashFeetButton
                 username={username}
@@ -204,6 +218,8 @@ function CardSheet({ username, onClose }: { username: string; onClose: () => voi
         {buddyMsg && (
           <p className="center" style={{ color: 'var(--good)', fontSize: 13, marginTop: 8 }}>{buddyMsg}</p>
         )}
+
+        {visiting && <RoomVisitSheet username={username} onClose={() => setVisiting(false)} />}
 
         <div style={{ textAlign: 'center', marginTop: 12 }}>
           <button className="pill" onClick={onClose} style={{ fontWeight: 800, fontSize: 13, padding: '8px 16px' }}>Close</button>

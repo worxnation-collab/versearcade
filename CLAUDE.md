@@ -84,10 +84,88 @@ Two things about it that are load-bearing:
 Every "create an account" call to action goes to `/auth?mode=signup`, which opens
 the sign-up form rather than "Welcome back" with a password field.
 
+## Content is data: seasons ship without a submission
+
+The App Store build runs a copy of `dist` baked into the IPA (`webDir`, no
+`server.url`), so anything compiled into the bundle is frozen until the next
+review. That's right for mechanics and wrong for content — a Christmas road is a
+reward table, five hex codes and an emoji.
+
+So the bundled catalog is the **floor** and a fetched overlay merges over it by
+id: `data/catalog.ts` (shapes + sanitisers + the overlay), `store/catalog.ts`
+(fetch + cache), `content_catalog` / `admin_publish_catalog` (0066). Every
+existing accessor — `confettiById`, `flameById`, `activeRoad`, `rewardLabel`,
+`skinById`, `skinArtUrl` — reads the **merged** view, so no call site knows or
+cares where its content came from. Full runbook: `docs/CONTENT-CATALOG.md`.
+
+Three rules, and they're the whole design:
+
+- **Merge, never replace.** An overlay entry overrides one id, a new id is
+  appended, a bundled entry is *never* removed — so an old binary still renders
+  everything it shipped with and an equipped cosmetic can't vanish. Bundled
+  entries keep their positions so the equip grids don't reshuffle mid-tap.
+- **Fail closed, per entry.** Every sanitiser drops what it can't read and keeps
+  going. There is no state where the season screen renders empty because a fetch
+  failed — no keys, no network, a 500 and bad JSON all land on the bundled
+  catalog, which is a complete app.
+- **Code is not content.** `art` URLs land in `<image href>`, so only `https:`
+  or a root-relative path is accepted (`javascript:`, `data:`, `http:` and
+  `//host` are rejected). And a catalog can never invent a **price**:
+  `CatalogSkin` has no sku/pack/price and its `source` union excludes `'paid'`,
+  because that decision lives in `commerce.ts` and nowhere else.
+
+**Verbs are the prepack, and they're why this works.** A quest names a verb;
+only `deltaFor` (`store/season.ts`) can score one. A catalog quest naming a verb
+this build lacks is DROPPED (`KNOWN_VERBS` + `sanitizeQuestDefs`) rather than
+shown as a bar nobody can fill. Twelve verbs currently have live emit sites and
+no bundled quest using them, on purpose — adding a verb is the one part of a
+season that still costs a release, so add them generously and early.
+`checkQuestVerbs()` asserts the two lists agree at import in dev, because
+drifting apart is otherwise invisible.
+
+**Items are still code, and that's a known gap.** `item_*` are drawn as
+hardcoded SVG per id in `Character.tsx`, so a catalog can't add one. Roads can
+hand out skins, cosmetics, boosts, freezes and mementos — not items.
+
+**A road's quest pools freeze when it starts.** `pick()` shuffles the whole pool
+from a day seed, so adding one entry re-draws every remaining day and two app
+versions show different dailies on the same date. The bundled `DAILY_QUESTS`
+belongs to the Harvest Road now; a new road carries its own `daily`/`weekly`.
+Overlapping road windows resolve to the road that **starts latest**, so a short
+holiday road inside a long one wins.
+
+And the free trick that needs no infrastructure at all: `activeRoad()` is a pure
+function of the clock against hard ISO windows, so a road can be **pre-shipped**
+in today's binary months early and switch itself on at its `start`. Do both —
+the bundled road is what an offline phone falls back to.
+
 ## Two checkouts, never the wrong one
 
-The web app sells cosmetic packs through Stripe Payment Links. The App Store /
-Play build sells the same packs through in-app purchase (Guideline 3.1.1)
+**Cosmetics are no longer sold.** Moses, Esther and Elijah are `free`, the
+angels (Gabriel, Michael, Seraph) are `pass` — road rewards — and `BUNDLES` is
+empty. What still has a price is the founding-patron whale, and the promo-code
+exclusives (`eden`, `shades`, `sonshine`) are still free redemptions. Everything
+below still holds for that one product, and for the machinery, which is kept
+rather than deleted so selling something again is a row rather than a rebuild.
+
+Two things about the de-monetisation that are load-bearing:
+
+- **Nobody loses what they bought.** `skinOwned`'s `pass` branch falls back to
+  `owned_skins`, so an Angel Pack buyer still owns Gabriel with no season
+  unlock. And `SKU_BY_PRODUCT_ID` in the `iap-fulfill` Edge Function keeps all
+  five product ids while `APPLE_PRODUCT_IDS` in `lib/iap.ts` drops four — they
+  look like duplicates and are not. The client list is what the app OFFERS; the
+  function's is what an existing purchase is WORTH. Trim the second and a buyer
+  who reinstalls and taps Restore gets nothing back. **Add rows there, never
+  remove them.**
+- **`enforce_skin_entitlement` was deliberately not touched.** The de-monetised
+  ids stay in its protected list: nothing reads `owned_skins` for them now, so
+  guarding them is free, and that list is restated *wholesale* by every
+  migration that edits it — a needless rewrite is the one way to unlock a paid
+  skin for everybody by accident.
+
+The web app sells through Stripe Payment Links. The App Store /
+Play build sells through in-app purchase (Guideline 3.1.1)
 instead. Wherever a shop appears, it must not show a price it can't charge or
 name a pack it can't sell — hiding just the checkout button is not enough: a
 `$5.99` label or a "purchases are opening soon" line is still a storefront.
@@ -154,6 +232,18 @@ GEMINI_API_KEY=... node scripts/gen-art.mjs art/keep-halls.json [--only <id>]
 
 The key lives in `.env.local` (gitignored) and comes only from the environment —
 never write it into a tracked file.
+
+**A skin render must be a FULL-LENGTH FIGURE, head to feet.** One PNG serves two
+frames: avatar chips crop to a portrait (`xMidYMin slice`), but the little
+worlds — the road, the churchyard crowd, `ProfileHero` — render the *same file*
+with `fullBody`. So a bust looks perfect in every avatar circle in the app and
+becomes a floating torso the moment the character stands somewhere. The skin
+manifests say head-to-feet three times for this reason, and `check-art.mjs`
+flags any skin squarer than 1.05:1 as `(BUST?)` — all fifteen shipped skins are
+1.08 or taller. Seasonal skin art goes to Supabase Storage and into the
+catalog's `art` map instead of `public/`, which is what lets it ship without a
+binary; `skinArtUrl()` resolves catalog → `GENERATED_ART` → `RASTER_SKINS` →
+drawn.
 
 **Then check what came back**: `node scripts/check-art.mjs`. A model that ignores
 the chroma-key instruction returns a file that looks fine and wires itself in,

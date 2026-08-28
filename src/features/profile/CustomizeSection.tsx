@@ -12,6 +12,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/store/auth'
 import { useSeason } from '@/store/season'
 import { useJuice } from '@/juice/useJuice'
+import { useSettings } from '@/store/settings'
 import { Pet } from '@/components/Pet'
 import { PETS, nextPet, petById, petEffectText, petRequirementText, petUnlocked, reqValue } from '@/data/pets'
 import { petProgress } from '@/lib/petProgress'
@@ -605,6 +606,197 @@ export function CustomizeSection() {
               </>
             ),
           },
+          {
+            key: 'items',
+            label: 'Items',
+            right: `${myItems.length} collected`,
+            content: (
+              <>
+              {/* ── Collected items (from the Daily Chest) ────────────────────── */}
+              <div className="card" style={{ marginBottom: 14 }}>
+                {myItems.length === 0 ? (
+                  <p className="faint" style={{ fontSize: 13, textAlign: 'center', padding: '6px 0' }}>
+                    🎁 Open your Daily Chest to find hats, staffs, cloaks and more — then equip them here.
+                  </p>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    {myItems.map((item) => {
+                      const on = spec.items?.[item.slot] === item.id
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => toggleItem(item)}
+                          style={{
+                            textAlign: 'left',
+                            display: 'grid',
+                            // The art sits in its own column beside the three text rows,
+                            // so a long item name never pushes it out of alignment.
+                            gridTemplateColumns: '40px minmax(0, 1fr)',
+                            gridTemplateAreas: '"art name" "art meta" "art pill"',
+                            columnGap: 9,
+                            rowGap: 3,
+                            alignItems: 'start',
+                            padding: '9px 10px',
+                            borderRadius: 12,
+                            background: on ? 'var(--grape)' : 'var(--card-solid)',
+                            border: on ? '1px solid var(--gold)' : '1px solid var(--stroke)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <img
+                            src={itemArt(item.id)}
+                            alt=""
+                            aria-hidden
+                            width={40}
+                            height={40}
+                            loading="lazy"
+                            style={{ gridArea: 'art', width: 40, height: 40, objectFit: 'contain', alignSelf: 'center' }}
+                          />
+                          <span style={{ gridArea: 'name', fontSize: 12, fontWeight: 800, lineHeight: 1.15 }}>{item.name}</span>
+                          <span className="faint" style={{ gridArea: 'meta', fontSize: 10, textTransform: 'capitalize' }}>{item.slot} · {item.rarity}</span>
+                          <span style={{ ...pillStyle(on ? 'studio' : 'free'), gridArea: 'pill', marginTop: 2 }}>{on ? '✓ Worn' : 'Tap to wear'}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+              </>
+            ),
+          },
+          {
+            key: 'cards',
+            label: 'Backgrounds',
+            right: `${unlockedBgCount}/${visibleBgs.length}`,
+            content: (
+              <>
+              {/* ── Player-card backgrounds ───────────────────────────────────────
+                  Every card and relic you own also unlocks the background themed after
+                  it, so the collection doubles as a wardrobe for your player card. ── */}
+              <div className="card" style={{ marginBottom: 14 }}>
+                {/* Live preview of the equipped background. */}
+                <div style={{ ...cardBgStyle(equippedBg), position: 'relative', height: 92, borderRadius: 14, border: '1px solid var(--stroke)', overflow: 'hidden', display: 'grid', placeItems: 'center', marginBottom: 12 }}>
+                  <CardArt {...cardArtProps(equippedBg)} id={`bg-preview-${equippedBg}`} />
+                  <span style={{ position: 'relative', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 15, textShadow: '0 2px 10px rgba(0,0,0,0.85)' }}>
+                    {CARD_BACKGROUNDS.find((b) => b.key === equippedBg)?.name ?? 'Classic'}
+                  </span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                  {visibleBgs.map((b) => {
+                    const equipped = equippedBg === b.key
+                    const src = collectibleByKey(b.key)
+                    return (
+                      <button
+                        key={b.key}
+                        onClick={!equipped ? () => pickBg(b.key) : undefined}
+                        disabled={equipped}
+                        title={b.name}
+                        style={{
+                          padding: 0, borderRadius: 12, overflow: 'hidden', cursor: equipped ? 'default' : 'pointer',
+                          border: equipped ? `2px solid ${cardBgAccentColor(b.key)}` : '1px solid var(--stroke)',
+                          boxShadow: equipped ? `0 0 14px ${cardBgAccentColor(b.key)}55` : 'none',
+                          background: 'transparent',
+                        }}
+                      >
+                        <div style={{ ...cardBgStyle(b.key), position: 'relative', height: 52, overflow: 'hidden', display: 'grid', placeItems: 'center' }}>
+                          <CardArt {...cardArtProps(b.key)} id={`bg-tile-${b.key}`} />
+                          <span style={{ position: 'relative', fontSize: 16, filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.9))' }}>
+                            {b.emoji ?? src?.emoji ?? '✦'}
+                          </span>
+                        </div>
+                        <div style={{ padding: '5px 4px 6px', background: 'var(--card-solid)' }}>
+                          <div style={{ fontSize: 9.5, fontWeight: 800, lineHeight: 1.15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {b.name}
+                          </div>
+                          {equipped && <div style={{ fontSize: 8.5, color: cardBgAccentColor(b.key), fontWeight: 800 }}>EQUIPPED</div>}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="faint" style={{ fontSize: 11, marginTop: 10, lineHeight: 1.4 }}>
+                  Each background unlocks with the card or relic it’s named after — earn them from goals and the Daily Chest.
+                  {lockedBgCount > 0 && ` ${lockedBgCount} more are waiting in your collection.`}
+                  {storefrontEnabled() && ' The two Angel cards come with The Angel Pack — the pack is sold whole.'}
+                </p>
+              </div>
+              </>
+            ),
+          },
+          {
+            key: 'borders',
+            label: 'Borders',
+            right: `Best streak: ${longest}d`,
+            content: (
+              <>
+              {/* ── Streak-unlocked borders + badges ──────────────────────────── */}
+              <div className="card" style={{ marginBottom: 14 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+                  {BORDERS.map((b) => {
+                    const unlocked = isUnlocked(b.requiredStreak, longest, profile.founder)
+                    const equipped = equippedBorder === b.key
+                    return (
+                      <CosmeticTile
+                        key={b.key}
+                        name={b.name}
+                        unlocked={unlocked}
+                        equipped={equipped}
+                        requiredStreak={b.requiredStreak}
+                        onClick={unlocked && !equipped ? () => equip({ border: b.key }) : undefined}
+                        preview={
+                          <Avatar
+                            emoji={profile.avatarEmoji}
+                            character={spec}
+                            size={52}
+                            border={b.key}
+                            badge={equippedBadge}
+                          />
+                        }
+                      />
+                    )
+                  })}
+                </div>
+              </div>
+
+              </>
+            ),
+          },
+          {
+            key: 'badges',
+            label: 'Badges',
+            content: (
+              <>
+              {/* Badges */}
+              <div className="card" style={{ marginBottom: 14 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+                  {BADGES.map((b) => {
+                    const unlocked = isUnlocked(b.requiredStreak, longest, profile.founder)
+                    const equipped = equippedBadge === b.key
+                    return (
+                      <CosmeticTile
+                        key={b.key}
+                        name={b.name}
+                        unlocked={unlocked}
+                        equipped={equipped}
+                        requiredStreak={b.requiredStreak}
+                        onClick={unlocked && !equipped ? () => equip({ badge: b.key }) : undefined}
+                        preview={
+                          <Avatar
+                            emoji={profile.avatarEmoji}
+                            character={spec}
+                            size={52}
+                            border={equippedBorder}
+                            badge={b.key === 'none' ? null : b.key}
+                          />
+                        }
+                      />
+                    )
+                  })}
+                </div>
+              </div>
+              </>
+            ),
+          },
         ]}
       />
 
@@ -712,174 +904,6 @@ export function CustomizeSection() {
         </div>
       )}
 
-      {/* ── Collected items (from the Daily Chest) ────────────────────── */}
-      <Section title="Items" right={`${myItems.length} collected`}>
-      <div className="card" style={{ marginBottom: 14 }}>
-        {myItems.length === 0 ? (
-          <p className="faint" style={{ fontSize: 13, textAlign: 'center', padding: '6px 0' }}>
-            🎁 Open your Daily Chest to find hats, staffs, cloaks and more — then equip them here.
-          </p>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            {myItems.map((item) => {
-              const on = spec.items?.[item.slot] === item.id
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => toggleItem(item)}
-                  style={{
-                    textAlign: 'left',
-                    display: 'grid',
-                    // The art sits in its own column beside the three text rows,
-                    // so a long item name never pushes it out of alignment.
-                    gridTemplateColumns: '40px minmax(0, 1fr)',
-                    gridTemplateAreas: '"art name" "art meta" "art pill"',
-                    columnGap: 9,
-                    rowGap: 3,
-                    alignItems: 'start',
-                    padding: '9px 10px',
-                    borderRadius: 12,
-                    background: on ? 'var(--grape)' : 'var(--card-solid)',
-                    border: on ? '1px solid var(--gold)' : '1px solid var(--stroke)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <img
-                    src={itemArt(item.id)}
-                    alt=""
-                    aria-hidden
-                    width={40}
-                    height={40}
-                    loading="lazy"
-                    style={{ gridArea: 'art', width: 40, height: 40, objectFit: 'contain', alignSelf: 'center' }}
-                  />
-                  <span style={{ gridArea: 'name', fontSize: 12, fontWeight: 800, lineHeight: 1.15 }}>{item.name}</span>
-                  <span className="faint" style={{ gridArea: 'meta', fontSize: 10, textTransform: 'capitalize' }}>{item.slot} · {item.rarity}</span>
-                  <span style={{ ...pillStyle(on ? 'studio' : 'free'), gridArea: 'pill', marginTop: 2 }}>{on ? '✓ Worn' : 'Tap to wear'}</span>
-                </button>
-              )
-            })}
-          </div>
-        )}
-      </div>
-      </Section>
-
-
-      {/* ── Player-card backgrounds ───────────────────────────────────────
-          Every card and relic you own also unlocks the background themed after
-          it, so the collection doubles as a wardrobe for your player card. ── */}
-      <Section title="Card background" right={`${unlockedBgCount}/${visibleBgs.length}`}>
-      <div className="card" style={{ marginBottom: 14 }}>
-        {/* Live preview of the equipped background. */}
-        <div style={{ ...cardBgStyle(equippedBg), position: 'relative', height: 92, borderRadius: 14, border: '1px solid var(--stroke)', overflow: 'hidden', display: 'grid', placeItems: 'center', marginBottom: 12 }}>
-          <CardArt {...cardArtProps(equippedBg)} id={`bg-preview-${equippedBg}`} />
-          <span style={{ position: 'relative', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 15, textShadow: '0 2px 10px rgba(0,0,0,0.85)' }}>
-            {CARD_BACKGROUNDS.find((b) => b.key === equippedBg)?.name ?? 'Classic'}
-          </span>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-          {visibleBgs.map((b) => {
-            const equipped = equippedBg === b.key
-            const src = collectibleByKey(b.key)
-            return (
-              <button
-                key={b.key}
-                onClick={!equipped ? () => pickBg(b.key) : undefined}
-                disabled={equipped}
-                title={b.name}
-                style={{
-                  padding: 0, borderRadius: 12, overflow: 'hidden', cursor: equipped ? 'default' : 'pointer',
-                  border: equipped ? `2px solid ${cardBgAccentColor(b.key)}` : '1px solid var(--stroke)',
-                  boxShadow: equipped ? `0 0 14px ${cardBgAccentColor(b.key)}55` : 'none',
-                  background: 'transparent',
-                }}
-              >
-                <div style={{ ...cardBgStyle(b.key), position: 'relative', height: 52, overflow: 'hidden', display: 'grid', placeItems: 'center' }}>
-                  <CardArt {...cardArtProps(b.key)} id={`bg-tile-${b.key}`} />
-                  <span style={{ position: 'relative', fontSize: 16, filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.9))' }}>
-                    {b.emoji ?? src?.emoji ?? '✦'}
-                  </span>
-                </div>
-                <div style={{ padding: '5px 4px 6px', background: 'var(--card-solid)' }}>
-                  <div style={{ fontSize: 9.5, fontWeight: 800, lineHeight: 1.15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {b.name}
-                  </div>
-                  {equipped && <div style={{ fontSize: 8.5, color: cardBgAccentColor(b.key), fontWeight: 800 }}>EQUIPPED</div>}
-                </div>
-              </button>
-            )
-          })}
-        </div>
-        <p className="faint" style={{ fontSize: 11, marginTop: 10, lineHeight: 1.4 }}>
-          Each background unlocks with the card or relic it’s named after — earn them from goals and the Daily Chest.
-          {lockedBgCount > 0 && ` ${lockedBgCount} more are waiting in your collection.`}
-          {storefrontEnabled() && ' The two Angel cards come with The Angel Pack — the pack is sold whole.'}
-        </p>
-      </div>
-      </Section>
-
-      {/* ── Streak-unlocked borders + badges ──────────────────────────── */}
-      <Section title="Borders" right={`Best streak: ${longest}d`}>
-      <div className="card" style={{ marginBottom: 14 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
-          {BORDERS.map((b) => {
-            const unlocked = isUnlocked(b.requiredStreak, longest, profile.founder)
-            const equipped = equippedBorder === b.key
-            return (
-              <CosmeticTile
-                key={b.key}
-                name={b.name}
-                unlocked={unlocked}
-                equipped={equipped}
-                requiredStreak={b.requiredStreak}
-                onClick={unlocked && !equipped ? () => equip({ border: b.key }) : undefined}
-                preview={
-                  <Avatar
-                    emoji={profile.avatarEmoji}
-                    character={spec}
-                    size={52}
-                    border={b.key}
-                    badge={equippedBadge}
-                  />
-                }
-              />
-            )
-          })}
-        </div>
-      </div>
-
-      </Section>
-
-      {/* Badges */}
-      <Section title="Badges">
-      <div className="card" style={{ marginBottom: 14 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
-          {BADGES.map((b) => {
-            const unlocked = isUnlocked(b.requiredStreak, longest, profile.founder)
-            const equipped = equippedBadge === b.key
-            return (
-              <CosmeticTile
-                key={b.key}
-                name={b.name}
-                unlocked={unlocked}
-                equipped={equipped}
-                requiredStreak={b.requiredStreak}
-                onClick={unlocked && !equipped ? () => equip({ badge: b.key }) : undefined}
-                preview={
-                  <Avatar
-                    emoji={profile.avatarEmoji}
-                    character={spec}
-                    size={52}
-                    border={equippedBorder}
-                    badge={b.key === 'none' ? null : b.key}
-                  />
-                }
-              />
-            )
-          })}
-        </div>
-      </div>
-      </Section>
 
       {err && <p style={{ color: 'var(--coral)', fontSize: 13, marginBottom: 12, textAlign: 'center' }}>{err}</p>}
     </>
@@ -888,14 +912,19 @@ export function CustomizeSection() {
 
 // A collapsible sub-section of the customizer, so the (long) page can be tidied
 // section by section. Header shows an optional right-side summary + a chevron.
-// Two shelves under one header. The pills ARE the header: tapping the other
-// name swaps the grid, tapping the one you're on folds the section away, so
-// there's exactly one control and both names stay on screen — which is the
-// thing a second collapsible below loses (Pets used to sit four sections down,
-// where nobody choosing a look ever saw it).
+// Every shelf in the customizer under ONE header. The pills ARE the header:
+// tapping another name swaps the grid, tapping the one you're on folds the
+// whole thing away, so there is exactly one control and every shelf's name is
+// on screen at once.
 //
-// Only the active tab's content is mounted, so the two grids never both pay
-// for their avatars at once.
+// This replaced six stacked collapsibles. The old shape made changing your
+// border after your skin a scroll past four other sections, and Pets sat so
+// far down that nobody choosing a look ever saw it — which is the opposite of
+// what a customizer is for. Everything you can equip is now one tap from
+// everything else.
+//
+// Only the active tab's content is mounted, so six grids of avatars, card art
+// and borders never render at once.
 function TabbedSection({ tabs, defaultOpen = false }: {
   tabs: { key: string; label: string; right?: React.ReactNode; content: React.ReactNode }[]
   defaultOpen?: boolean
@@ -903,11 +932,31 @@ function TabbedSection({ tabs, defaultOpen = false }: {
   const juice = useJuice()
   const [open, setOpen] = useState(defaultOpen)
   const [active, setActive] = useState(tabs[0].key)
+  const reduceMotion = useSettings((st) => st.reduceMotion)
+  const headRef = useRef<HTMLDivElement>(null)
   const current = tabs.find((t) => t.key === active) ?? tabs[0]
+
+  // Switching from a long shelf (44 card backgrounds) to a short one can leave
+  // you scrolled below the whole section, looking at nothing. If the pills have
+  // gone off the top by the time you tap one, bring them back — but only then,
+  // because scrolling a header that's already in view moves the page under a
+  // thumb that just landed.
+  const pick = (key: string) => {
+    juice.select()
+    if (key === current.key) { setOpen((o) => !o); return }
+    setActive(key)
+    setOpen(true)
+    const top = headRef.current?.getBoundingClientRect().top ?? 0
+    if (top < 0) headRef.current?.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' })
+  }
+
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 0 10px' }}>
-        <div role="tablist" style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
+      <div ref={headRef} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '2px 0 10px', scrollMarginTop: 8 }}>
+        {/* Wraps rather than scrolls sideways: six names fit in two rows on
+            every phone, and all six stay visible. A scrolling chip rail hides
+            half the wardrobe behind a swipe nobody is told about. */}
+        <div role="tablist" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, flex: 1, minWidth: 0 }}>
           {tabs.map((t) => {
             // A pill only reads as selected while the section is actually open;
             // folded, neither is lit, so the header never claims to be showing
@@ -918,16 +967,12 @@ function TabbedSection({ tabs, defaultOpen = false }: {
                 key={t.key}
                 role="tab"
                 aria-selected={on}
-                onClick={() => {
-                  juice.select()
-                  if (t.key === current.key) setOpen((o) => !o)
-                  else { setActive(t.key); setOpen(true) }
-                }}
+                onClick={() => pick(t.key)}
                 className="pill"
                 style={{
-                  padding: '5px 13px',
+                  padding: '5px 11px',
                   fontFamily: 'var(--font-display)',
-                  fontSize: 15,
+                  fontSize: 14,
                   fontWeight: 800,
                   cursor: 'pointer',
                   color: on ? 'var(--ink)' : 'var(--ink-dim)',
@@ -939,13 +984,12 @@ function TabbedSection({ tabs, defaultOpen = false }: {
               </button>
             )
           })}
-          {current.right && <span className="faint" style={{ fontSize: 12 }}>{current.right}</span>}
         </div>
         <button
           onClick={() => { juice.select(); setOpen((o) => !o) }}
           aria-expanded={open}
           aria-label={open ? `Hide ${current.label}` : `Show ${current.label}`}
-          style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--gold)', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}
+          style={{ background: 'transparent', border: 'none', padding: '4px 0 0', cursor: 'pointer', color: 'var(--gold)', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}
         >
           ▾
         </button>
@@ -956,6 +1000,12 @@ function TabbedSection({ tabs, defaultOpen = false }: {
             {/* Keyed on the tab, so switching remounts and replays the fade —
                 a swap with no motion at all reads as a render glitch. */}
             <motion.div key={current.key} initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.18, ease: 'easeOut' }}>
+              {/* The shelf's own count, under the pills rather than beside
+                  them: once the row wraps, a hint trailing the last pill reads
+                  as belonging to THAT pill instead of to the open shelf. */}
+              {current.right && (
+                <p className="faint" style={{ fontSize: 12, margin: '0 0 8px' }}>{current.right}</p>
+              )}
               {current.content}
             </motion.div>
           </motion.div>

@@ -10,6 +10,14 @@ import { MusicSection } from './MusicSection'
 import { InstallRow } from '@/features/home/InstallPrompt'
 import { AppStoreRow } from '@/features/home/AppStoreNudge'
 
+/** Four steps, and 1 is exactly what the book was drawn at. */
+const TEXT_SIZES = [
+  { label: 'Small', scale: 0.9 },
+  { label: 'Default', scale: 1 },
+  { label: 'Large', scale: 1.2 },
+  { label: 'Largest', scale: 1.45 },
+]
+
 // Everything that used to sit inline on the profile (sound, haptics, motion,
 // volume, reading translation) lives here instead — one ⚙️ tap away, so the
 // profile itself stays about *you* rather than about knobs.
@@ -207,6 +215,40 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
             </p>
           </>
         )}
+
+        {/* Reading text size. The Bible is the one surface people read for
+            minutes at a time, and it was drawn at 16px with no way to change
+            it — this app ships on the App Store, where that is an
+            accessibility gap rather than a preference. Four steps, sampled at
+            their real size so the choice is visible rather than described. */}
+        <h3 style={{ fontSize: 14, margin: '0 0 8px' }} className="dim">
+          Reading text size
+        </h3>
+        <div className="card" style={{ marginBottom: 18 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {TEXT_SIZES.map((t) => {
+              const on = (settings.readingTextScale ?? 1) === t.scale
+              return (
+                <button
+                  key={t.label}
+                  onClick={() => { juice.select?.(); settings.set({ readingTextScale: t.scale }) }}
+                  style={{
+                    flex: 1,
+                    padding: '10px 4px',
+                    borderRadius: 12,
+                    background: on ? 'var(--grape)' : 'var(--card-solid)',
+                    border: on ? '1px solid var(--gold)' : '1px solid var(--stroke)',
+                    cursor: 'pointer',
+                    color: 'var(--ink)',
+                  }}
+                >
+                  <span style={{ display: 'block', fontSize: 16 * t.scale, lineHeight: 1.2, fontWeight: 700 }}>Aa</span>
+                  <span className="faint" style={{ display: 'block', fontSize: 10.5, marginTop: 4 }}>{t.label}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
 
         {/* Reading translation — the version used to read the full chapter. */}
         <h3 style={{ fontSize: 14, margin: '0 0 8px' }} className="dim">

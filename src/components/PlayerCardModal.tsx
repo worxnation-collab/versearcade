@@ -12,6 +12,7 @@ import { Button } from '@/components/Button'
 import { WashFeetButton } from '@/components/WashFeetButton'
 import { supabase } from '@/lib/supabase'
 import { RoomVisitSheet } from '@/features/room/RoomVisitSheet'
+import { GiveGiftSheet } from '@/features/gifts/GiveGiftSheet'
 
 // Tap any avatar anywhere and their card pops up. A single provider owns the
 // one open card, so avatars stay dumb: they just say "open @handle".
@@ -57,6 +58,8 @@ function CardSheet({ username, onClose }: { username: string; onClose: () => voi
   // closing it puts you straight back — the same relationship the keep sheet
   // has with the player card opened from a figure inside it.
   const [visiting, setVisiting] = useState(false)
+  // Handing over a relic. Same tier and the same reason as visiting.
+  const [gifting, setGifting] = useState(false)
 
   // Someone else's card, and you have an account: you can act on it.
   const canAct = !isMe && !isGuest && !!supabase
@@ -195,12 +198,16 @@ function CardSheet({ username, onClose }: { username: string; onClose: () => voi
                 the one that asks nothing back — and this card is the app's one
                 place where a single other player is on screen, so it belongs
                 here rather than on five separate rows. */}
-            {/* Visiting: the cozy half of the multiplayer, and the only thing
-                anyone can do to another player's room. Read-only by
-                construction — see RoomVisitSheet. */}
-            <div style={{ marginTop: 10 }}>
+            {/* The two gestures that aren't a challenge. Visiting is the cozy
+                half of the multiplayer (read-only by construction — see
+                RoomVisitSheet); giving is the only way an object in this app
+                reaches a PERSON rather than a church. */}
+            <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <Button variant="secondary" full onClick={() => { juice.select(); setVisiting(true) }}>
-                🚪 Visit their room
+                🚪 Their room
+              </Button>
+              <Button variant="secondary" full onClick={() => { juice.select(); setGifting(true) }}>
+                🎁 Give a relic
               </Button>
             </div>
             <div style={{ marginTop: 10 }}>
@@ -220,6 +227,7 @@ function CardSheet({ username, onClose }: { username: string; onClose: () => voi
         )}
 
         {visiting && <RoomVisitSheet username={username} onClose={() => setVisiting(false)} />}
+        {gifting && <GiveGiftSheet username={username} onClose={() => setGifting(false)} />}
 
         <div style={{ textAlign: 'center', marginTop: 12 }}>
           <button className="pill" onClick={onClose} style={{ fontWeight: 800, fontSize: 13, padding: '8px 16px' }}>Close</button>

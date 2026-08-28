@@ -39,6 +39,7 @@ export default function BibleChapterScreen() {
   const chapter = Number(params.chapter ?? 0)
 
   const readingCode = useSettings((s) => s.readingTranslation)
+  const textScale = useSettings((s) => s.readingTextScale ?? 1)
   const markChapterRead = useBible((s) => s.markChapterRead)
   const { marks } = useBibleMarks()
 
@@ -194,7 +195,7 @@ export default function BibleChapterScreen() {
                 <span
                   style={{
                     fontFamily: 'var(--font-display)',
-                    fontSize: 11,
+                    fontSize: 11 * textScale,
                     minWidth: 18,
                     paddingTop: 4,
                     color: PAPER.accent,
@@ -207,13 +208,17 @@ export default function BibleChapterScreen() {
                   style={{
                     flex: 1,
                     minWidth: 0,
-                    fontSize: 16,
+                    // The one place in the app somebody reads for minutes at a
+                    // time, so it takes the reader's own text size (Settings →
+                    // Reading). Line height rides with it; scaling the text and
+                    // not the leading turns big type into a wall.
+                    fontSize: 16 * textScale,
                     lineHeight: 1.62,
                     color: PAPER.ink,
                   }}
                 >
                   {body ?? (
-                    <span style={{ fontSize: 13, fontStyle: 'italic', color: PAPER.inkFaint }}>
+                    <span style={{ fontSize: 13 * textScale, fontStyle: 'italic', color: PAPER.inkFaint }}>
                       {state === 'loading' ? '…' : verseReference(book, chapter, verse)}
                     </span>
                   )}

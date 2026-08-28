@@ -34,6 +34,17 @@ interface SettingsState {
   appNudgeDone: boolean
   /** Preferred translation for reading the full chapter (bible-api code). */
   readingTranslation: string
+  /**
+   * How big the verse text is inside the book. 1 is the drawn default; the
+   * chapter reader multiplies its own sizes by this.
+   *
+   * It lives here rather than on the profile for the same reason `volume` does:
+   * it is a property of the eyes looking at THIS screen, not of the account. It
+   * is also the one accessibility control this app was missing — the Bible is
+   * the surface people read for minutes at a time, at 16px, and 16px is not a
+   * size everyone can read.
+   */
+  readingTextScale: number
   set: (patch: Partial<Omit<SettingsState, 'set'>>) => void
 }
 
@@ -54,6 +65,7 @@ export const useSettings = create<SettingsState>()(
       appNudgeSnoozedAt: 0,
       appNudgeDone: false,
       readingTranslation: 'web',
+      readingTextScale: 1,
       set: (patch) => set(patch),
     }),
     { name: 'va.settings', storage: createJSONStorage(() => localStorage) },

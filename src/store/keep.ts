@@ -324,6 +324,8 @@ export interface KeepMember {
   username: string
   avatarEmoji: string
   avatarCharacter?: import('@/types').AvatarSpec | null
+  /** Equipped pet id — the companion standing beside them (0072). */
+  pet?: string | null
   isMe: boolean
 }
 
@@ -345,7 +347,7 @@ export async function loadFactionKeep(denomination: string): Promise<FactionKeep
   const raw = data as {
     wins?: number
     member_total?: number
-    members?: { username: string; avatar_emoji?: string; avatar_character?: unknown; is_me?: boolean }[]
+    members?: { username: string; avatar_emoji?: string; avatar_character?: unknown; pet?: string | null; is_me?: boolean }[]
     placements?: Placements
   }
   return {
@@ -355,6 +357,9 @@ export async function loadFactionKeep(denomination: string): Promise<FactionKeep
       username: m.username,
       avatarEmoji: m.avatar_emoji ?? '😇',
       avatarCharacter: (m.avatar_character as KeepMember['avatarCharacter']) ?? null,
+      // Absent on a server that predates 0072 — a figure with no companion,
+      // which is exactly how it looked before.
+      pet: m.pet ?? null,
       isMe: !!m.is_me,
     })),
     placements: raw.placements ?? {},

@@ -414,7 +414,7 @@ function RoadScene() {
   const road = activeRoad()
   if (!me) return null
   const members = [
-    { username: me.username, avatarEmoji: me.avatarEmoji, avatarCharacter: me.avatarCharacter, isMe: true },
+    { username: me.username, avatarEmoji: me.avatarEmoji, avatarCharacter: me.avatarCharacter, pet: me.pet, isMe: true },
   ]
   return (
     <div

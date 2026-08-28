@@ -115,7 +115,7 @@ function ChurchHome({ church }: { church: Church }) {
   // Your own churchyard shows you, the same way your own hall does — the
   // congregation stands outside it on the church's page, where the roster is.
   const crowd = me
-    ? [{ username: me.username, avatarEmoji: me.avatarEmoji, avatarCharacter: me.avatarCharacter, isMe: true }]
+    ? [{ username: me.username, avatarEmoji: me.avatarEmoji, avatarCharacter: me.avatarCharacter, pet: me.pet, isMe: true }]
     : []
 
   const pick = (plot: string) => {

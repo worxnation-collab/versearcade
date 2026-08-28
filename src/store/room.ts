@@ -185,6 +185,8 @@ export interface VisitedRoom {
   username: string
   avatarEmoji: string
   avatarCharacter?: AvatarSpec | null
+  /** Equipped pet id — the companion standing in the room with them (0072). */
+  pet?: string | null
   isMe: boolean
   /** 0-4 — the room's architecture, NOT the owner's level. */
   tier: number
@@ -199,6 +201,7 @@ export async function loadVisitedRoom(username: string): Promise<VisitedRoom | n
     username?: string
     avatar_emoji?: string
     avatar_character?: unknown
+    pet?: string | null
     is_me?: boolean
     tier?: number
     placements?: RoomPlacements
@@ -208,6 +211,7 @@ export async function loadVisitedRoom(username: string): Promise<VisitedRoom | n
     username: raw.username,
     avatarEmoji: raw.avatar_emoji ?? '😇',
     avatarCharacter: (raw.avatar_character as AvatarSpec | null) ?? null,
+    pet: raw.pet ?? null,
     isMe: !!raw.is_me,
     tier: Math.min(4, Math.max(0, Number(raw.tier ?? 0))),
     placements: raw.placements ?? {},

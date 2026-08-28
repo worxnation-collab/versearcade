@@ -35,6 +35,7 @@ export function RoomScene({
   members,
   editing,
   onOpen,
+  onTapSelf,
   /** Skip the generated painting — the postcard can only serialise drawn SVG. */
   flat = false,
 }: {
@@ -55,6 +56,10 @@ export function RoomScene({
   }
   onOpen?: () => void
   flat?: boolean
+  /** Tapping YOUR OWN figure in the room. Only the editable surface passes it:
+   *  a visited room shows its owner, and tapping them opens their card as it
+   *  does in every other scene. */
+  onTapSelf?: () => void
 }) {
   const picked = editing?.picked ?? null
   const pickedMount = picked ? roomAnchorById(picked)?.mount : undefined
@@ -146,7 +151,7 @@ export function RoomScene({
           road use, so your companion walks in here too without this file
           knowing pets exist. `max` is 3 rather than the hall's 6: this is a
           small room, and a crowd in it would be a party, not a chamber. */}
-      <CrowdLife members={members} waypoints={WAYPOINTS} sizeFor={sizeFor} max={3} />
+      <CrowdLife members={members} waypoints={WAYPOINTS} sizeFor={sizeFor} max={3} onTapSelf={onTapSelf} />
     </div>
   )
 }

@@ -139,6 +139,7 @@ export function RoomVisitSheet({ username, onClose }: { username: string; onClos
                   username: room.username,
                   avatarEmoji: room.avatarEmoji,
                   avatarCharacter: room.avatarCharacter,
+                  pet: room.pet,
                   isMe: room.isMe,
                 }]}
               />

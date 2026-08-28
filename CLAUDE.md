@@ -868,9 +868,10 @@ It's bounded at 5% of one play a day, which is why it's tolerable. **If these
 numbers ever grow, that argument stops holding** and the effect needs rethinking
 rather than raising.
 
-**Your companion walks with you in the little worlds** — the hall, the
-churchyard and the road — because a pet you only see on your own profile is a
-thing you own rather than a thing you have. It's one change in `CrowdLife`,
+**Companions walk in the little worlds** — the hall, the churchyard, the road
+and the Upper Room — because a pet you only see on your own profile is a thing
+you own rather than a thing you have. Since `0072` that includes other people's:
+see the scenes-vs-boards rule below. It's one change in `CrowdLife`,
 which is why all three got it at once, and the pet is read from the auth store
 there rather than passed in: every scene that draws you gets the companion
 without being asked, and `CrowdMember` has nowhere to put somebody *else's*
@@ -889,12 +890,18 @@ no count, no rarity label, no "unlocked on" and no ordering. Nothing about it
 can be summed or put in a row beside somebody else's, which is what that rule
 was actually protecting.
 
-The leaderboard RPCs and `church_json`/`keep_json` are **still** untouched, so a
-pet does not appear beside a figure in a crowd or on a board row. That is the
-same distinction `CrowdMember` enforces by having nowhere to put somebody else's
-pet: a card is a thing you open one at a time, and a board is people side by
-side — which is exactly where a companion starts reading as a score. Widening
-those is a separate decision needing its own argument, not a follow-on.
+**And a companion walks with everybody in the little worlds** (`0072`):
+`keep_json`, `get_church_page` and `room_json` carry `pet`, and `CrowdMember`
+has a field for it. `CrowdLife` reads YOUR pet from the auth store and everybody
+else's from the member row — not redundancy: equipping a pet has to change the
+scene in front of you before any RPC is re-fetched.
+
+**The line that survives is scenes vs. boards, and it is the whole rule.** A
+scene has no order, no rows and no number on anybody — a companion standing in a
+churchyard is the same kind of thing as the robe standing there. A leaderboard
+is an ordered list, where a companion in a ranked row starts reading as part of
+the rank. So the leaderboard RPCs are **still untouched**, and widening them
+would need its own argument rather than following from this one.
 
 `lib/petProgress.ts` gathers the requirement numbers, and it's a function rather
 than a hook for an import-graph reason: `data/pets.ts` can't import stores (the
@@ -1003,6 +1010,59 @@ latent bug on a fast double-tap and got the same fix). And the window and the
 alcove overlapped by 22 viewBox units and drew two arches in one place: three
 fixtures own three bands of the back wall (shelf 110..214, window 400..460,
 alcove 470..540) and they must not touch.
+
+## Praying: the one thing here that isn't a game
+
+Tap your own figure standing in your Upper Room and it offers to pray with you.
+`data/prayers.ts` + `features/prayer/PrayerSheet.tsx`, and it is the only place
+in the app where tapping a figure does something other than open a player card
+(`CrowdLife`'s `onTapSelf`, passed by the room and nowhere else — somebody
+*else's* figure always opens their card, in every scene).
+
+**It generates rather than quotes, and that is the feature.** Somebody nervous
+about praying out loud is rarely short of prayers to read — they are short of a
+SHAPE, and the fear is of not knowing what comes next. So a prayer is built from
+four movements in order (who you're talking to → what you're thankful for →
+what you're asking → how you finish), one line drawn per movement from pools
+tagged by occasion. "Show the shape" names the movements; it is off by default,
+because a first-time reader should meet a prayer rather than a diagram.
+
+**Saying Amen is what records it, and the payout follows the Basin's doctrine.**
+Three a day, 10 XP each (`record_prayer`, 0073). `xp` is the worldwide
+leaderboard (0006), so: the client says "I prayed", the SERVER counts the rows
+and pays, and no client ever sends an amount. The cap is in SQL, not in the
+button. The client sends `todayLocalDate()` and the server clamps ±1, the house
+pattern. **The fourth prayer of a day is still a prayer** — it returns ok with
+`awarded: 0` and the sheet says the warm version of that, never an error.
+
+Worth knowing when weighing any change: 30 XP a day is much bigger than the
+Basin's 12, and roughly one daily drop. What keeps it honest is that it is
+capped and server-granted, not that it is small.
+
+Two-mode for real, not inherited-online-only: praying needs nobody on the other
+end, so `store/prayer.ts` has a guest path with the same cap and payout against
+the local profile — which ranks nobody. Its level maths goes through
+`levelInfo` (the existing client mirror of `level_from_xp`); do not write a
+third copy of that curve.
+
+**Two reading voices, and the honest limit.** `lib/voice.ts` picks a "Softer"
+and a "Deeper" voice from the ones the DEVICE ships (Samantha/Daniel on iOS,
+the tpf/tpd pair on Android), read at rate 0.84 and pitch 0.92 with a beat
+between lines. The app cannot ship a voice of its own: recording one means audio
+files, which is the exact thing `juice/music.ts` exists to avoid, and a cloud
+TTS would mean sending what somebody is praying to a third party. Three things
+that bite here, all handled: `getVoices()` is empty on the first call in Chrome
+and Android (wait for `voiceschanged`), gender is not in the API at all (hence a
+ranked list of real voice names, then name hints, then any English voice), and
+**setting `u.voice` throws synchronously** on a stale reference — unguarded that
+takes the whole read-aloud down instead of falling back to the default voice. A
+device with no voices gets a line saying so rather than a dead button.
+
+**There is deliberately no Journal ladder for it.** Every rung in the Journal is
+a number you passed; a rung you climb by praying is a rung you would pray to
+climb. The table stores a user and a date and nothing else — no occasion, no
+text, no streak — because counting the cap is all it exists to do, and no RPC
+asks how much anybody else has prayed.
 
 ## Giving, and the mailbox
 

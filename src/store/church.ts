@@ -74,6 +74,8 @@ function toMember(raw: any): ChurchMember {
     username: raw.username,
     avatarEmoji: raw.avatar_emoji ?? '📖',
     avatarCharacter: raw.avatar_character ?? null,
+    // Absent on a server that predates 0072 — a figure with no companion.
+    pet: raw.pet ?? null,
     isMe: !!raw.is_me,
   }
 }

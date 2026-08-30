@@ -22,3 +22,19 @@ export function formatCountdown(ms: number): string {
   const s = String(totalSec % 60).padStart(2, '0')
   return `${h}:${m}:${s}`
 }
+
+/**
+ * The viewer's IANA zone (e.g. "America/Chicago"), or 'UTC' where the runtime
+ * won't say. Sent to the admin RPCs so the dashboard's "today" is the
+ * operator's day rather than the database's — the server's TimeZone is UTC, so
+ * `current_date` there rolls over hours before midnight anywhere in the US.
+ * The server validates the name and falls back to UTC, so a junk value from an
+ * exotic runtime degrades to the old behaviour instead of erroring.
+ */
+export function localTimeZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+  } catch {
+    return 'UTC'
+  }
+}

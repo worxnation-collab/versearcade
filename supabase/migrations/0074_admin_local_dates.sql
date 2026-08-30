@@ -353,9 +353,36 @@ begin
 end;
 $$;
 
-revoke execute on function public.refresh_growth_snapshot(text) from public;
-revoke execute on function public.compute_growth_metrics(text) from public;
-revoke execute on function public.growth_today(text) from public;
+-- These three are the ONLY functions in the growth path with no
+-- require_admin() of their own — compute and growth_today return the entire
+-- operator funnel (revenue, health, every business metric) and refresh writes.
+-- They are safe only because nothing but pg_cron and admin_growth() can reach
+-- them, so the revoke below is load-bearing rather than tidy.
+--
+-- `revoke ... from public` IS NOT ENOUGH, and 0052 shipped believing it was.
+-- Supabase sets ALTER DEFAULT PRIVILEGES granting EXECUTE on new functions to
+-- anon and authenticated EXPLICITLY; revoking the PUBLIC grant leaves both
+-- named grants standing, so the pre-0074 versions of these were callable by
+-- any signed-in user and by the anon key. Verified on the live project: their
+-- ACLs read anon=X,authenticated=X while grant_skins — locked properly by 0047
+-- — reads {postgres,service_role} only.
+--
+-- This is NOT the tolerated anon-executable pattern CLAUDE.md describes. That
+-- one covers functions that guard themselves with `if uid is null then raise`.
+-- These deliberately do not, which is exactly why they have to be unreachable.
+-- Revoke from the named roles as well as PUBLIC.
+do $$
+declare fn text;
+begin
+  foreach fn in array array[
+    'public.refresh_growth_snapshot(text)',
+    'public.compute_growth_metrics(text)',
+    'public.growth_today(text)'
+  ] loop
+    execute format('revoke all on function %s from public, anon, authenticated', fn);
+  end loop;
+end;
+$$;
 
 -- ——————————————————————————— read it (dashboard) ———————————————————————————
 drop function if exists public.admin_growth(boolean);

@@ -494,7 +494,19 @@ alone or fix all of them deliberately.
 
 It is **not** universal, though — `grant_skins` and `fulfill_skin` are
 `postgres`/`service_role` only, which is what lets the IAP Edge Function grant
-entitlements no client can forge. Check the real ACL before assuming either way:
+entitlements no client can forge.
+
+**`revoke execute ... from public` does NOT lock a function down here**, and
+0052 shipped believing it did. Supabase sets `alter default privileges ... grant
+all on functions to anon, authenticated`, so a new function gets those two as
+**named** grants; revoking PUBLIC strips only the `=X/postgres` entry and leaves
+`anon=X,authenticated=X` standing. `compute_growth_metrics`,
+`refresh_growth_snapshot` and `growth_today` were world-callable that way — and
+unlike the pattern above they have **no** `require_admin()` of their own, so
+that was the whole operator funnel behind the anon key. Revoke from the named
+roles too (`revoke all on function ... from public, anon, authenticated`) and
+then confirm the ACL reads `{postgres,service_role}`, the way `grant_skins`
+does. Check the real ACL before assuming either way:
 
 ```sql
 select proname, proacl from pg_proc p join pg_namespace n on n.oid = p.pronamespace

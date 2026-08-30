@@ -7,3 +7,11 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Put the church's name on a /church/:id link preview. The SPA fallback above
+# serves one static set of OG tags for every route, which is fine everywhere
+# except the one page built to be pasted into a group chat. Fails open — see the
+# function.
+[[edge_functions]]
+  path = "/church/*"
+  function = "church-og"

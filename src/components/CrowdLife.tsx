@@ -56,7 +56,15 @@ import type { AvatarSpec } from '@/types'
 // The component unmounts with its scene, which kills every timer.
 
 export interface CrowdMember {
+  /** Empty on an anonymous crowd — see `seed`. A figure with no username is
+   *  inert: it opens no player card, and it names nobody in its tooltip. */
   username: string
+  /** What the figure's walk and chatter are seeded from, when there is no name
+   *  to seed them from. The public church page (0074) draws the congregation
+   *  without naming it, so its figures arrive with a position in the list and
+   *  nothing else; without this they would all share one schedule and move as
+   *  a single body. Falls back to `username` everywhere else. */
+  seed?: string
   avatarEmoji: string
   avatarCharacter?: AvatarSpec | null
   /** Equipped pet id (data/pets.ts). Absent = no companion, which is also what
@@ -173,7 +181,7 @@ export function CrowdLife({
     >
       {shown.map((m, i) => (
         <LifeFigure
-          key={m.username}
+          key={m.seed || m.username || i}
           member={m}
           slot={i}
           waypoints={waypoints}
@@ -219,7 +227,7 @@ function LifeFigure({
   // each other rather than perfectly stacked.
   const plan = useRef<{ order: number[]; next: () => number; jitter: number }>()
   if (!plan.current) {
-    const r = rng(seedFrom(member.username) + slot * 7919)
+    const r = rng(seedFrom(member.seed ?? member.username) + slot * 7919)
     const order = waypoints.map((_, i) => i)
     for (let i = order.length - 1; i > 0; i--) {
       const j = Math.floor(r() * (i + 1))
@@ -286,7 +294,7 @@ function LifeFigure({
   // sooner, for the same reason the first move does: a viewer decides in the
   // first few seconds whether anything here is alive.
   useEffect(() => {
-    const r = rng(seedFrom(member.username) + 104729 + slot * 31)
+    const r = rng(seedFrom(member.seed ?? member.username) + 104729 + slot * 31)
     let alive = true
     let timer: ReturnType<typeof setTimeout>
     const wait = () => { timer = setTimeout(say, (12 + r() * 18) * 1000) }
@@ -315,9 +323,14 @@ function LifeFigure({
 
   return (
     <button
-      onClick={() => (member.isMe && onTapSelf ? onTapSelf() : open(member.username))}
-      title={member.isMe ? `${member.username} (you)` : member.username}
-      aria-label={member.username}
+      onClick={() => {
+        if (member.isMe && onTapSelf) return onTapSelf()
+        // An anonymous figure opens nothing. Same rule as Avatar, which is
+        // already inert without a username.
+        if (member.username) open(member.username)
+      }}
+      title={member.isMe ? `${member.username} (you)` : member.username || undefined}
+      aria-label={member.username || 'Someone who plays here'}
       style={{
         position: 'absolute',
         left: `${pos.x + plan.current.jitter}%`,

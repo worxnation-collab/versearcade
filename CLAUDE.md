@@ -303,6 +303,15 @@ Two rules here are load-bearing:
   surface is byte-identical on web and in the App Store build and never becomes
   a storefront that `commerce.ts` would have to gate. If a church page ever gets
   a real price, that decision goes in `commerce.ts` and nowhere else.
+- **Leadership outranks an attender.** An attender is passing on a fact about a
+  congregation; leadership is speaking *for* it, so where two open notes about
+  the same church disagree, the staff one is authoritative. `InfoRequests`
+  (`features/admin/AdminScreen.tsx`) sorts open staff notes to the top and marks
+  an attender's note for a church that has one as superseded — **marked, not
+  hidden**, because the attender's note is often the only thing in the queue
+  carrying service times, and nothing a player submitted disappears silently.
+  It's a queue-ordering rule, not a permission: the server already enforces the
+  part that matters, dropping the skin choice on the member path.
 
 The page names the congregation ("Who plays here") as well as drawing it. Both
 the roster and the scene are ordered by join date and carry no per-person

@@ -346,6 +346,18 @@ function Churches() {
 // Marking one handled is what clears the pending state on the player's pill,
 // so publishing offers to do it in the same breath — a filled-in page whose
 // request is still open re-shows "your note is in the queue" to the player.
+//
+// LEADERSHIP OUTRANKS AN ATTENDER, and the queue says so rather than leaving it
+// to whoever is reading. An attender is passing on a fact about a congregation;
+// leadership is speaking FOR it, and where the two disagree about their own
+// church the staff note is the one that's right. So open leadership requests
+// sort to the top, and an attender's note for a church that has one is marked
+// superseded.
+//
+// Marked, not hidden. The attender's note is still worth reading — it's often
+// the only thing in the queue with service times on it — and this codebase's
+// standing rule is that nothing a player submitted silently disappears. The
+// precedence is about which note WINS, not about which note is visible.
 interface InfoRequest {
   id: string; church_id: string; church_name: string; city: string | null; region: string | null
   role: 'leadership' | 'member'; username: string | null; contact_name: string | null
@@ -380,6 +392,17 @@ function InfoRequests() {
     await load()
   }
 
+  // Churches with an OPEN staff note. Handled ones are excluded on purpose: a
+  // staff request that's been dealt with is history, and it shouldn't go on
+  // outranking notes that arrived after it.
+  const claimed = new Set(
+    (rows ?? []).filter((r) => r.role === 'leadership' && !r.handled).map((r) => r.church_id),
+  )
+  // Open before handled, then staff before attender, then newest first. The RPC
+  // already returns newest-first, so sorting a copy is enough to break ties.
+  const rank = (r: InfoRequest) => (r.handled ? 2 : 0) + (r.role === 'leadership' ? 0 : 1)
+  const ordered = [...(rows ?? [])].sort((a, b) => rank(a) - rank(b))
+
   return (
     <div>
       <h3 style={{ fontSize: 14, margin: '0 0 8px' }} className="dim">Church page requests</h3>
@@ -391,8 +414,10 @@ function InfoRequests() {
       {!err && rows === null && <p className="faint center" style={{ padding: 20 }}>Loading…</p>}
       {!err && rows?.length === 0 && <p className="faint center" style={{ padding: 20 }}>No page requests yet.</p>}
       <div style={{ display: 'grid', gap: 8 }}>
-        {(rows ?? []).map((r) => (
-          <div key={r.id} className="card" style={{ opacity: r.handled ? 0.55 : 1 }}>
+        {ordered.map((r) => {
+          const superseded = r.role === 'member' && !r.handled && claimed.has(r.church_id)
+          return (
+          <div key={r.id} className="card" style={{ opacity: r.handled ? 0.55 : superseded ? 0.75 : 1 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
               <b style={{ fontWeight: 800 }}>{r.church_name}</b>
               <span className="faint" style={{ fontSize: 11, marginLeft: 'auto' }}>
@@ -406,6 +431,11 @@ function InfoRequests() {
               <span className="pill" style={{ fontSize: 11, padding: '3px 9px', borderColor: r.role === 'leadership' ? 'var(--gold)' : 'var(--stroke)' }}>
                 {r.role === 'leadership' ? 'staff' : 'attender'}
               </span>{' '}
+              {superseded && (
+                <span className="pill" style={{ fontSize: 11, padding: '3px 9px', borderColor: 'var(--coral)', color: 'var(--coral)' }}>
+                  staff note wins
+                </span>
+              )}{superseded ? ' ' : ''}
               {r.contact_name || (r.username ? `@${r.username}` : 'anonymous')}
               {r.email && <> · <a href={`mailto:${r.email}`} style={{ color: 'var(--sky)' }}>{r.email}</a></>}
               {/* Leadership-only by construction: the RPC nulls it on the
@@ -419,13 +449,23 @@ function InfoRequests() {
             <p style={{ fontSize: 13, marginTop: 6, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{r.note}</p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
               <button className="pill" onClick={() => setEditing(editing === r.id ? null : r.id)}
-                style={{ fontSize: 12, fontWeight: 700, borderColor: 'var(--gold)', color: 'var(--gold)' }}>
-                {editing === r.id ? 'Close' : 'Publish page…'}
+                style={{
+                  fontSize: 12, fontWeight: 700,
+                  borderColor: superseded ? 'var(--stroke)' : 'var(--gold)',
+                  color: superseded ? 'var(--ink)' : 'var(--gold)',
+                }}>
+                {editing === r.id ? 'Close' : superseded ? 'Publish anyway…' : 'Publish page…'}
               </button>
               <button className="pill" onClick={() => void handle(r)} style={{ fontSize: 12, fontWeight: 700 }}>
                 {r.handled ? 'Reopen' : 'Mark handled'}
               </button>
             </div>
+            {superseded && (
+              <p className="faint" style={{ fontSize: 12, margin: '6px 0 0', lineHeight: 1.5 }}>
+                {r.church_name} has an open note from its own staff — publish that one instead
+                unless this adds something it doesn’t say.
+              </p>
+            )}
             {editing === r.id && (
               <PublishPage
                 request={r}
@@ -437,7 +477,8 @@ function InfoRequests() {
               />
             )}
           </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

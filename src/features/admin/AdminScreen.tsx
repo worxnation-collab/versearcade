@@ -7,6 +7,7 @@ import { useAuth } from '@/store/auth'
 import { supabase } from '@/lib/supabase'
 import { localTimeZone } from '@/lib/date'
 import { allSkins, BUNDLES } from '@/data/avatar'
+import { CHURCH_SKIN_CHOICES, type ChurchSkinChoice } from '@/features/church/skins'
 import GrowthPanel from './GrowthPanel'
 import type { AvatarSpec } from '@/types'
 
@@ -333,29 +334,62 @@ function Churches() {
 }
 
 // The "Add info" queue from a church's page on the leaderboard (migration
-// 0050). Marking one handled is what clears the pending state on the player's
-// pill, so do it once the page is filled in — or once it's been decided against.
+// 0050/0051), and the ONLY place a note in it becomes a published page.
+//
+// It used to be a queue with nowhere to go: `admin_upsert_church_profile` is
+// the sole write path to `church_profiles` (no client policy, no player RPC —
+// 0050), and it had zero call sites in the app. So a player's note landed in
+// the table, the operator could mark it handled, and the church's page stayed
+// blank forever with no way to fill it in short of hand-written SQL. "A user
+// made a note and I don't see anything" was that gap, from both ends.
+//
+// Marking one handled is what clears the pending state on the player's pill,
+// so publishing offers to do it in the same breath — a filled-in page whose
+// request is still open re-shows "your note is in the queue" to the player.
 interface InfoRequest {
   id: string; church_id: string; church_name: string; city: string | null; region: string | null
   role: 'leadership' | 'member'; username: string | null; contact_name: string | null
   email: string | null; note: string; handled: boolean; created_at: string
+  // Returned by the RPC since 0051 and previously dropped on the floor here.
+  // That migration's own warning was that a church picks "Tile roof" and nobody
+  // finds out; leaving it off this interface is exactly how that happened.
+  skin: ChurchSkinChoice | null
 }
+
 function InfoRequests() {
   const [rows, setRows] = useState<InfoRequest[] | null>(null)
-  const load = () =>
-    supabase?.rpc('admin_church_info_requests', { p_limit: 50 }).then(({ data }) => setRows((data as InfoRequest[]) ?? []))
+  // An RPC that fails must never render as an empty queue. require_admin()
+  // raises for a non-admin, and postgrest hands that back as `error` with
+  // `data` null — which `?? []` turned into "No page requests yet.", i.e. the
+  // operator being told there is nothing to see when there is.
+  const [err, setErr] = useState<string | null>(null)
+  const [editing, setEditing] = useState<string | null>(null)
+
+  const load = async () => {
+    const res = await supabase?.rpc('admin_church_info_requests', { p_limit: 50 })
+    if (!res) return
+    if (res.error) { setErr(res.error.message); setRows(null); return }
+    setErr(null)
+    setRows((res.data as InfoRequest[]) ?? [])
+  }
   useEffect(() => { void load() }, [])
 
   const handle = async (r: InfoRequest) => {
-    await supabase?.rpc('admin_handle_church_info_request', { p_id: r.id, p_handled: !r.handled })
-    void load()
+    const res = await supabase?.rpc('admin_handle_church_info_request', { p_id: r.id, p_handled: !r.handled })
+    if (res?.error) { setErr(res.error.message); return }
+    await load()
   }
 
   return (
     <div>
       <h3 style={{ fontSize: 14, margin: '0 0 8px' }} className="dim">Church page requests</h3>
-      {rows === null && <p className="faint center" style={{ padding: 20 }}>Loading…</p>}
-      {rows?.length === 0 && <p className="faint center" style={{ padding: 20 }}>No page requests yet.</p>}
+      {err && (
+        <p className="center" style={{ padding: 20, color: 'var(--coral)', fontSize: 13 }}>
+          Couldn’t load the queue: {err}
+        </p>
+      )}
+      {!err && rows === null && <p className="faint center" style={{ padding: 20 }}>Loading…</p>}
+      {!err && rows?.length === 0 && <p className="faint center" style={{ padding: 20 }}>No page requests yet.</p>}
       <div style={{ display: 'grid', gap: 8 }}>
         {(rows ?? []).map((r) => (
           <div key={r.id} className="card" style={{ opacity: r.handled ? 0.55 : 1 }}>
@@ -374,14 +408,155 @@ function InfoRequests() {
               </span>{' '}
               {r.contact_name || (r.username ? `@${r.username}` : 'anonymous')}
               {r.email && <> · <a href={`mailto:${r.email}`} style={{ color: 'var(--sky)' }}>{r.email}</a></>}
+              {/* Leadership-only by construction: the RPC nulls it on the
+                  member path rather than trusting the form. */}
+              {r.skin && (
+                <> · <span className="pill" style={{ fontSize: 11, padding: '3px 9px', borderColor: 'var(--sky)' }}>
+                  wants {r.skin}
+                </span></>
+              )}
             </div>
-            <p style={{ fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>{r.note}</p>
-            <button className="pill" onClick={() => void handle(r)} style={{ fontSize: 12, fontWeight: 700, marginTop: 4 }}>
-              {r.handled ? 'Reopen' : 'Mark handled'}
-            </button>
+            <p style={{ fontSize: 13, marginTop: 6, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{r.note}</p>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+              <button className="pill" onClick={() => setEditing(editing === r.id ? null : r.id)}
+                style={{ fontSize: 12, fontWeight: 700, borderColor: 'var(--gold)', color: 'var(--gold)' }}>
+                {editing === r.id ? 'Close' : 'Publish page…'}
+              </button>
+              <button className="pill" onClick={() => void handle(r)} style={{ fontSize: 12, fontWeight: 700 }}>
+                {r.handled ? 'Reopen' : 'Mark handled'}
+              </button>
+            </div>
+            {editing === r.id && (
+              <PublishPage
+                request={r}
+                onDone={async (alsoHandle) => {
+                  setEditing(null)
+                  if (alsoHandle && !r.handled) await handle(r)
+                  else await load()
+                }}
+              />
+            )}
           </div>
         ))}
       </div>
+    </div>
+  )
+}
+
+// The publish form. Prefills from what's ALREADY published (via get_church_page,
+// the same read the player's sheet uses, so the operator edits the live page
+// rather than blanking it) — `admin_upsert_church_profile` upserts the whole
+// row, so a field left empty here is a field cleared on the page.
+//
+// The note is shown beside the fields rather than poured into one: a note is
+// somebody describing their church, and the page's fields are tagline / about /
+// services / website / contact. Deciding which sentence is which is the review
+// step, and it's the reason this queue is read by a person at all.
+function PublishPage({ request, onDone }: { request: InfoRequest; onDone: (alsoHandle: boolean) => void }) {
+  const [form, setForm] = useState({ tagline: '', about: '', service_times: '', website: '', contact: '' })
+  const [skin, setSkin] = useState<ChurchSkinChoice | ''>('')
+  const [published, setPublished] = useState(true)
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  useEffect(() => {
+    let live = true
+    void (async () => {
+      const res = await supabase?.rpc('get_church_page', { p_church_id: request.church_id, p_members_limit: 1 })
+      if (!live) return
+      const info = (res?.data as any)?.info
+      if (info) {
+        setForm({
+          tagline: info.tagline ?? '',
+          about: info.about ?? '',
+          service_times: info.serviceTimes ?? '',
+          website: info.website ?? '',
+          contact: info.contact ?? '',
+        })
+      }
+      // The church's current look, so saving text doesn't silently strip a skin
+      // it already wears. The request's own ask only pre-selects when there
+      // isn't one yet.
+      const current = (res?.data as any)?.church?.skin as ChurchSkinChoice | null
+      setSkin(current ?? request.skin ?? '')
+      setLoading(false)
+    })()
+    return () => { live = false }
+  }, [request.church_id, request.skin])
+
+  const save = async () => {
+    setBusy(true); setErr(null)
+    const res = await supabase?.rpc('admin_upsert_church_profile', {
+      p_church_id: request.church_id,
+      p_tagline: form.tagline.trim() || null,
+      p_about: form.about.trim() || null,
+      p_service_times: form.service_times.trim() || null,
+      p_website: form.website.trim() || null,
+      p_contact: form.contact.trim() || null,
+      p_published: published,
+      p_skin: skin || null,
+    })
+    setBusy(false)
+    if (res?.error) { setErr(res.error.message); return }
+    const payload = res?.data as any
+    if (!payload?.ok) { setErr(payload?.reason ?? 'failed'); return }
+    onDone(true)
+  }
+
+  if (loading) return <p className="faint" style={{ fontSize: 12, marginTop: 10 }}>Loading the current page…</p>
+
+  const field = (key: keyof typeof form, label: string, max: number, lines = 1) => (
+    <label style={{ display: 'grid', gap: 4 }}>
+      <span className="faint" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        {label} <span style={{ opacity: 0.6 }}>({form[key].length}/{max})</span>
+      </span>
+      {lines > 1 ? (
+        <textarea value={form[key]} rows={lines} maxLength={max}
+          onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+          style={{ fontSize: 13, width: '100%', resize: 'vertical' }} />
+      ) : (
+        <input value={form[key]} maxLength={max}
+          onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+          style={{ fontSize: 13, width: '100%' }} />
+      )}
+    </label>
+  )
+
+  return (
+    <div style={{ display: 'grid', gap: 10, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--stroke)' }}>
+      {/* Server caps, mirrored: admin_upsert_church_profile truncates to these
+          rather than rejecting, so a counter here is the only warning. */}
+      {field('tagline', 'Tagline', 120)}
+      {field('about', 'About', 600, 4)}
+      {field('service_times', 'Service times', 200, 2)}
+      {field('website', 'Website', 200)}
+      {field('contact', 'Contact', 120)}
+
+      <label style={{ display: 'grid', gap: 4 }}>
+        <span className="faint" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          Skin
+        </span>
+        <select value={skin} onChange={(e) => setSkin(e.target.value as ChurchSkinChoice | '')}
+          style={{ fontSize: 13, padding: '6px 8px', borderRadius: 8, background: 'var(--card-solid)', color: 'var(--ink)', border: '1px solid var(--stroke)' }}>
+          <option value="">Default (classic)</option>
+          {CHURCH_SKIN_CHOICES.map((s) => (
+            <option key={s} value={s}>{s}{s === 'custom' ? ' — commission, keeps default until art ships' : ''}</option>
+          ))}
+        </select>
+      </label>
+
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+        <input type="checkbox" checked={published} onChange={(e) => setPublished(e.target.checked)} />
+        Published (visible on the church’s page)
+      </label>
+
+      {err && <p style={{ color: 'var(--coral)', fontSize: 12, margin: 0 }}>{err}</p>}
+
+      <button className="pill" disabled={busy} onClick={() => void save()}
+        style={{ fontSize: 12.5, fontWeight: 800, borderColor: 'var(--gold)', color: 'var(--gold)', justifySelf: 'start' }}>
+        {busy ? 'Saving…' : 'Save page & mark handled'}
+      </button>
     </div>
   )
 }

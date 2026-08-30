@@ -188,21 +188,48 @@ export function RoomSection() {
 
   return (
     <div style={{ marginTop: 14 }}>
-      {/* The postcard sits ON the room's own title, not inside the Furnish
-          shelf it used to hide at the bottom of. Sharing a room is not a step
+      {/* Pray and Postcard sit ON the room's own title, not inside the Furnish
+          shelf they used to hide at the bottom of. Sharing a room is not a step
           of decorating one, and a button folded behind a collapsible is a
-          button nobody found. `flexWrap` lets it drop to its own line on a
-          320px phone rather than crushing the tier name. */}
+          button nobody found. `flexWrap` lets them drop to their own line on a
+          320px phone rather than crushing the tier name.
+
+          PRAY IS HERE BECAUSE IT HAD NO NAME ANYWHERE IN THE APP. The gesture
+          was reachable only by tapping your own figure in the room and then
+          confirming — a lovely thing to discover and an impossible thing to
+          find, on the one feature here that isn't a game. Tapping the figure
+          still works and still offers; this is the same sheet with a label on
+          it, so somebody who has never brushed their own character can still
+          get to it.
+
+          It says the same thing the lamp says and nothing more: an invitation
+          while today is unprayed, quiet once it isn't. No count, no streak, no
+          rung — see the lamp's note in CLAUDE.md for why a growing tally here
+          would change why somebody does it. */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
         <b style={{ fontFamily: 'var(--font-display)', fontSize: 16 }}>Your Upper Room</b>
         <span className="faint" style={{ fontSize: 11.5 }}>{roomTierName(tier)}</span>
+        <button
+          className="pill"
+          onClick={() => { juice.select(); setPraying(true) }}
+          aria-label={lampLit ? 'Pray again' : 'Pray in your room'}
+          style={{
+            marginLeft: 'auto',
+            fontWeight: 800,
+            fontSize: 12,
+            padding: '5px 12px',
+            borderColor: lampLit ? undefined : 'var(--gold)',
+            color: lampLit ? undefined : 'var(--gold)',
+          }}
+        >
+          🙏 Pray
+        </button>
         <button
           className="pill"
           onClick={() => void postcard()}
           disabled={sharing}
           aria-label="Share a postcard of your room"
           style={{
-            marginLeft: 'auto',
             fontWeight: 800,
             fontSize: 12,
             padding: '5px 12px',

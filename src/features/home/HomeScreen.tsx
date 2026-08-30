@@ -68,44 +68,6 @@ export default function HomeScreen() {
         </div>
       </div>
 
-      {/* The Pilgrimage. High on the tab because the bottom nav is full at five
-          and this strip is the only way the road gets seen. */}
-      <RoadStrip />
-
-      {/* Add to Home Screen — only renders where installing is actually possible
-          (and not already installed), and can be dismissed for good. */}
-      <InstallPrompt />
-
-      {/* The App Store bubble — floats in a couple of seconds later, for players
-          a few drops deep. Asks iOS web players to download, and players who are
-          already inside the app to leave a review. */}
-      <AppStoreNudge />
-
-      {/* How to play — a persistent, low-key button that opens the walkthrough.
-          Replaces the old build-your-character nudge card. */}
-      <button
-        onClick={() => setTutorialOpen(true)}
-        className="card"
-        style={{
-          width: '100%',
-          marginBottom: 14,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          textAlign: 'left',
-          cursor: 'pointer',
-        }}
-      >
-        <div style={{ fontSize: 22 }}>💡</div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <b style={{ fontFamily: 'var(--font-display)', fontSize: 15 }}>How to play</b>
-          <div className="faint" style={{ fontSize: 12.5 }}>A 20-second tour — streaks, battles &amp; building your character.</div>
-        </div>
-        <div style={{ fontFamily: 'var(--font-display)', color: 'var(--gold)', fontSize: 18, flexShrink: 0 }}>→</div>
-      </button>
-
-      {tutorialOpen && <Tutorial onClose={() => setTutorialOpen(false)} />}
-
       {/* Streak-freeze reassurance (kind loss-aversion made visible) */}
       {profile.streakFreezes > 0 && profile.currentStreak > 0 && (
         <p className="faint" style={{ fontSize: 12, marginBottom: 12 }}>
@@ -241,6 +203,14 @@ export default function HomeScreen() {
           Directly under the chest because that's where they came from. */}
       <InventoryNudge />
 
+      {/* The Pilgrimage. The bottom nav is full at five and this strip is the
+          only way the road gets seen — but it sits UNDER the drop and the chest,
+          not above them. It used to lead the tab, which put the gold "Play
+          today's verse" button below three cards and barely above the fold on a
+          390px phone. The one thing everybody opens this tab to do now opens
+          it, and the road is the next thing their eye lands on. */}
+      <RoadStrip />
+
       {/* Reviews that are due ("Keep it") now live on the Study tab, alongside
           the other practice surfaces, rather than competing with today's verse.
           A dot on this nudge points there when something is waiting. */}
@@ -263,6 +233,43 @@ export default function HomeScreen() {
           <div style={{ fontFamily: 'var(--font-display)', color: 'var(--gold)', fontSize: 20 }}>→</div>
         </motion.button>
       )}
+
+      {/* Add to Home Screen — only renders where installing is actually possible
+          (and not already installed), and can be dismissed for good. */}
+      <InstallPrompt />
+
+      {/* The App Store bubble — floats in a couple of seconds later, for players
+          a few drops deep. Asks iOS web players to download, and players who are
+          already inside the app to leave a review. */}
+      <AppStoreNudge />
+
+      {/* How to play — a persistent, low-key button that opens the walkthrough.
+          Down here rather than above the daily drop: it still opens itself once
+          for a brand-new player (the effect above), so its job on this screen is
+          to be findable again later — not to outrank today's verse for somebody
+          on their hundredth day. */}
+      <button
+        onClick={() => setTutorialOpen(true)}
+        className="card"
+        style={{
+          width: '100%',
+          marginBottom: 14,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          textAlign: 'left',
+          cursor: 'pointer',
+        }}
+      >
+        <div style={{ fontSize: 22 }}>💡</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <b style={{ fontFamily: 'var(--font-display)', fontSize: 15 }}>How to play</b>
+          <div className="faint" style={{ fontSize: 12.5 }}>A 20-second tour of the whole app — the five tabs and what's on them.</div>
+        </div>
+        <div style={{ fontFamily: 'var(--font-display)', color: 'var(--gold)', fontSize: 18, flexShrink: 0 }}>→</div>
+      </button>
+
+      {tutorialOpen && <Tutorial onClose={() => setTutorialOpen(false)} />}
 
       <div style={{ height: 16 }} />
       <PresenceStrip />

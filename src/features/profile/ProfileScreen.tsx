@@ -309,6 +309,48 @@ export default function ProfileScreen() {
           a portrait and its numbers, and a room between them would split them. */}
       <RoomSection />
 
+      {/* Not a row in a list — a book, sitting on the profile, that opens.
+          It sits directly under the room because those two are the pair this
+          tab is actually for: the place that is yours, and the book that is
+          yours. It used to be ninth, below five folded rows — "the thing a
+          player comes back to look at", parked under everything they don't. */}
+      <h3 style={{ fontSize: 16, margin: '18px 0 10px' }} className="dim">Your Bible</h3>
+      <div style={{ marginBottom: 6 }}>
+        <BibleCover />
+      </div>
+
+      {/* ── Your people ──────────────────────────────────────────────────
+          Three folded rows that are all about somebody else, under one word
+          that says so. Buddies, Basin and Invite friends used to sit in an
+          undifferentiated stack of six identical closed rows with Inventory and
+          Cards — same shape, same chevron, no way to tell from the outside
+          which ones were people and which were things. The heading is the
+          whole fix: it costs one line and it halves what you have to read to
+          find the row you came for. */}
+      <h3 style={{ fontSize: 16, margin: '18px 0 10px' }} className="dim">Your people</h3>
+      {/* This one used to advertise nothing, so a player with people waiting
+          saw an identical closed row and 71% of every buddy request ever sent
+          was still unanswered. It now counts, and opens itself when the answer
+          is someone else's to receive. */}
+      <Collapsible
+        icon="🤝"
+        title="Bible Buddies"
+        meta={buddyRequests > 0 ? `${buddyRequests} waiting` : undefined}
+        defaultOpen={buddyRequests > 0}
+      >
+        <BuddiesSection />
+      </Collapsible>
+
+      {/* The one social gesture in the app that asks nothing back. Sits under
+          Buddies because it's the same people, one row down. */}
+      <Collapsible
+        icon="🫗"
+        title="The Basin"
+        meta={washLifetime > 0 ? `${washLifetime} washed` : 'wash a friend’s feet'}
+      >
+        <BasinSection />
+      </Collapsible>
+
       {/* Invite friends — referral code + progress toward the carried-cross look.
           Collapsed by default behind an obvious Show/Hide button; the header
           keeps the friend count visible so the goal still reads when closed. */}
@@ -352,10 +394,14 @@ export default function ProfileScreen() {
         </Collapsible>
       )}
 
-      {/* Cards and Buddies used to own tabs of their own. They're the same full
-          screens, just folded in here behind obvious dropdowns. */}
+      {/* ── Your things ──────────────────────────────────────────────────
+          The other half of that stack: what you're carrying and what you've
+          collected. Same reasoning as "Your people" above. */}
+      <h3 style={{ fontSize: 16, margin: '18px 0 10px' }} className="dim">Your things</h3>
       {/* What you're holding, and what it's for. Sits above the collection wall
-          because it's the actionable one — the wall is a gallery, this is a bag. */}
+          because it's the actionable one — the wall is a gallery, this is a bag.
+          Cards used to own a tab; it's the same full screen (/collection), just
+          folded in here. */}
       <div ref={inventoryRef} style={{ scrollMarginTop: 12 }}>
         <Collapsible icon="🎒" title="Inventory" meta={`${inHand} in hand`} defaultOpen={openInventory}>
           <InventorySection />
@@ -366,39 +412,7 @@ export default function ProfileScreen() {
         <CollectionSection />
       </Collapsible>
 
-      {/* Inventory and Cards advertise what's inside them; this one didn't, so a
-          player with people waiting saw an identical closed row and 71% of every
-          buddy request ever sent was still unanswered. It now counts, and opens
-          itself when the answer is someone else's to receive. */}
-      <Collapsible
-        icon="🤝"
-        title="Bible Buddies"
-        meta={buddyRequests > 0 ? `${buddyRequests} waiting` : undefined}
-        defaultOpen={buddyRequests > 0}
-      >
-        <BuddiesSection />
-      </Collapsible>
-
-      {/* The one social gesture in the app that asks nothing back. Sits under
-          Buddies because it's the same people, one row down. */}
-      <Collapsible
-        icon="🫗"
-        title="The Basin"
-        meta={washLifetime > 0 ? `${washLifetime} washed` : 'wash a friend’s feet'}
-      >
-        <BasinSection />
-      </Collapsible>
-
-      {/* Account */}
-      {/* Not a row in a list — a book, sitting on the profile, that opens. It
-          sits above the account plumbing because it's the thing a player comes
-          back to look at. */}
-      <h3 style={{ fontSize: 16, margin: '18px 0 10px' }} className="dim">Your Bible</h3>
-      <div style={{ marginBottom: 6 }}>
-        <BibleCover />
-      </div>
-
-      <h3 style={{ fontSize: 16, marginBottom: 10 }} className="dim">Account</h3>
+      <h3 style={{ fontSize: 16, margin: '18px 0 10px' }} className="dim">Account</h3>
       <div style={{ display: 'grid', gap: 10 }}>
         {mode === 'local' && (
           <Button variant="gold" full onClick={() => navigate('/auth')}>✨ Create account to sync & invite friends</Button>

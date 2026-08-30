@@ -11,7 +11,10 @@ signup afterwards. `inviteUrl()` is sitting in `features/daily/shareCard.ts`
 ready to point at anything. The church has all of the payload and none of the
 door.
 
-This is the scope for that door.
+This is the scope for that door. **Shipped** — `0074_public_church_page.sql`,
+`ChurchPublicScreen`, the `ChurchPageBody` extraction and the `church-og` edge
+function. The roster decision below was taken as recommended: the public page
+draws the congregation and counts it, and never names it.
 
 ## What it is
 

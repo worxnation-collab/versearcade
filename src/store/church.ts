@@ -80,6 +80,23 @@ function toMember(raw: any): ChurchMember {
   }
 }
 
+// The public page's roster: the same crowd, with nobody named.
+//
+// `public_church_page` (0074) returns no username at all, so the figures need
+// something else to seed their walk from or they all share one schedule and
+// move as a single body. Their position in a join-ordered list is stable across
+// loads and says nothing about anybody, which is exactly what's wanted.
+function toAnonMember(raw: any, i: number): ChurchMember {
+  return {
+    username: '',
+    seed: `anon-${i}`,
+    avatarEmoji: raw.avatar_emoji ?? '📖',
+    avatarCharacter: raw.avatar_character ?? null,
+    pet: raw.pet ?? null,
+    isMe: false,
+  }
+}
+
 function toInfo(raw: any): ChurchInfo | null {
   if (!raw) return null
   const info: ChurchInfo = {
@@ -404,3 +421,58 @@ export const useChurch = create<ChurchState>((set, get) => ({
     return { ok: true }
   },
 }))
+
+// ---------------------------------------------------------------------------
+// One church, by id — the page behind /church/:id
+// ---------------------------------------------------------------------------
+// A standalone function rather than another slot on the store, because the
+// store's `page` belongs to the sheet: it is opened from a board row it was
+// seeded by and closed by a scrim tap, and a screen borrowing that slot would
+// fight the sheet's lifecycle over who gets to null it.
+//
+// Two RPCs, one URL. A signed-in visitor gets `get_church_page` and the full
+// page they already know, names and all; anyone else gets `public_church_page`,
+// which draws the same congregation without naming it (see 0074 for why). The
+// screen doesn't branch — it asks, and renders whatever detail came back.
+export async function fetchChurchPage(churchId: string): Promise<ChurchPage | null> {
+  if (!supabase) return null
+
+  if (isOnline()) {
+    const { data, error } = await supabase.rpc('get_church_page', {
+      p_church_id: churchId,
+      p_members_limit: 24,
+    })
+    if (!error && (data as any)?.ok) {
+      const payload = data as any
+      const church = toChurch(payload.church)
+      if (church) {
+        return {
+          church,
+          info: toInfo(payload.info),
+          members: ((payload.members ?? []) as any[]).map(toMember),
+          memberTotal: Number(payload.member_total ?? 0),
+          myRequestPending: !!payload.my_request_pending,
+        }
+      }
+    }
+    // Fall through on failure rather than showing nothing: the public read is
+    // anon-callable, so a signed-in visitor whose session went stale still gets
+    // the church rather than an error page.
+  }
+
+  const { data, error } = await supabase.rpc('public_church_page', {
+    p_church_id: churchId,
+    p_members_limit: 24,
+  })
+  if (error || !(data as any)?.ok) return null
+  const payload = data as any
+  const church = toChurch(payload.church)
+  if (!church) return null
+  return {
+    church,
+    info: toInfo(payload.info),
+    members: ((payload.members ?? []) as any[]).map(toAnonMember),
+    memberTotal: Number(payload.member_total ?? 0),
+    myRequestPending: false,
+  }
+}

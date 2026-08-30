@@ -23,6 +23,7 @@ import MailScreen from './features/mail/MailScreen'
 import JournalScreen from './features/journal/JournalScreen'
 import ChurchesScreen from './features/churches/ChurchesScreen'
 import ChurchScreen from './features/church/ChurchScreen'
+import ChurchPublicScreen from './features/church/ChurchPublicScreen'
 import AdminScreen from './features/admin/AdminScreen'
 import LeaderboardScreen from './features/leaderboard/LeaderboardScreen'
 import CollectionScreen from './features/collection/CollectionScreen'
@@ -43,6 +44,7 @@ import HighlightsScreen from './features/bible/HighlightsScreen'
 import StampsScreen from './features/bible/StampsScreen'
 import FocusPracticeScreen from './features/practice/FocusPracticeScreen'
 import { BattleResume } from './features/arena/BattleResume'
+import { ChurchResume } from './features/church/ChurchResume'
 import { StudyDropToast } from './features/study/StudyDropToast'
 import { WaystationToast } from './features/season/WaystationToast'
 import PilgrimageScreen from './features/season/PilgrimageScreen'
@@ -228,6 +230,7 @@ export default function App() {
         tall wherever there is no notch — see .status-scrim in index.css. */}
     <div className="status-scrim" aria-hidden />
     <BattleResume />
+    <ChurchResume />
     {/* A study run finishes and immediately navigates, so the reveal for
         anything it turned up is mounted here and follows the player. */}
     <StudyDropToast />
@@ -369,6 +372,12 @@ export default function App() {
             </RequireProfile>
           }
         />
+        {/* Public: one congregation, linkable by anybody — the page a church
+            puts on a slide. Handles its own gate + signup resume exactly like
+            /battle/:id, so it is NOT wrapped in RequireProfile or the wall.
+            Distinct from /church above (the player-facing tab) and /churches
+            below (the B2B funnel). */}
+        <Route path="/church/:id" element={<ChurchPublicScreen />} />
         <Route path="/churches" element={<ChurchesScreen />} />
         {/* Old Groups deep links now land on the churches page. */}
         <Route path="/groups" element={<Navigate to="/churches" replace />} />

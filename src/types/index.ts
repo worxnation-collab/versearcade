@@ -228,7 +228,11 @@ export interface ChurchGiver {
 // standing outside the building. Deliberately carries no points — the crowd
 // outside a stranger's church is a congregation, not a ladder.
 export interface ChurchMember {
+  /** Empty on the public church page (0074), which draws the congregation
+   *  without naming it. An unnamed member is inert everywhere it's rendered. */
   username: string
+  /** Stands in for the username when seeding a figure's walk — see CrowdMember. */
+  seed?: string
   avatarEmoji: string
   avatarCharacter?: AvatarSpec | null
   /** Equipped pet id — the companion standing beside them (0072). */

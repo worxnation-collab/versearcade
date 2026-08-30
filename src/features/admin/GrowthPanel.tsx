@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { localTimeZone } from '@/lib/date'
 
 // The growth tab. Answers "is this thing growing and where is it leaking",
 // which admin_overview()'s totals can't.
@@ -8,12 +9,17 @@ import { supabase } from '@/lib/supabase'
 // snapshot that pg_cron rebuilds every 12 hours, and refreshes itself lazily if
 // it's ever staler than that — so this panel is a renderer, not a calculator.
 // "Refresh now" forces a rebuild for when you want numbers this second.
+//
+// One exception, and it is the reason this panel can be trusted before noon:
+// TODAY's row is recomputed live on every read and stitched over the cached
+// one (admin_growth, 0074). A signup at 9am used to be invisible until the
+// 12-hour rebuild. Everything older than today comes from the snapshot.
 
 export interface GrowthMetrics {
-  window: { first_signup: string | null; first_play: string | null; today: string; partial_day: string }
+  window: { tz: string; first_signup: string | null; first_play: string | null; today: string; partial_day: string }
   headline: {
     accounts: number; players: number; zero_play_accts: number; guests: number; plays: number
-    active_7d: number; active_28d: number; new_7d: number; new_prev_7d: number
+    active_7d: number; active_28d: number; new_today: number; new_7d: number; new_prev_7d: number
   }
   daily: { day: string; new_accounts: number; players: number; guests: number }[]
   weekly: { week: string; actives: number; prior_actives: number; retained: number; partial: boolean }[]
@@ -33,6 +39,7 @@ export interface GrowthMetrics {
 }
 interface GrowthResponse {
   metrics: GrowthMetrics
+  tz: string
   computed_at: string
   compute_ms: number | null
   stale: boolean
@@ -56,7 +63,7 @@ export default function GrowthPanel() {
 
   const load = useCallback(async (force: boolean) => {
     setBusy(true); setErr(null)
-    const { data, error } = await supabase!.rpc('admin_growth', { p_force: force })
+    const { data, error } = await supabase!.rpc('admin_growth', { p_force: force, p_tz: localTimeZone() })
     if (error) setErr(error.message)
     else setRes(data as GrowthResponse)
     setBusy(false)
@@ -108,6 +115,9 @@ function Freshness({ res, busy, onRefresh }: { res: GrowthResponse; busy: boolea
         <div className="faint" style={{ fontSize: 11 }}>
           Rebuilds every 12h · next {new Date(res.next_refresh_due).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
         </div>
+        <div className="faint" style={{ fontSize: 11 }}>
+          Days are {res.tz} · today is live, not cached
+        </div>
       </div>
       <button className="pill" onClick={onRefresh} disabled={busy}
         style={{ fontSize: 11, fontWeight: 800, background: 'var(--card-solid)', opacity: busy ? 0.5 : 1 }}>
@@ -141,6 +151,7 @@ function Headline({ m }: { m: GrowthMetrics }) {
     <Section title="📈 Where it stands">
       <Cells cells={[
         ['Accounts', h.accounts],
+        ['New today', h.new_today, 'var(--gold)'],
         ['New this week', delta === null ? h.new_7d : `${h.new_7d} (${delta > 0 ? '+' : ''}${delta}%)`, deltaColor],
         ['Active (7d)', h.active_7d, 'var(--gold)'],
         ['Active (28d)', h.active_28d],

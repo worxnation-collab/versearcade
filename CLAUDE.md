@@ -463,8 +463,20 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest are `0069` (the Upper Room) and `0070` (gifts) — both must be applied
-before the client that uses them merges.
+The latest is `0074` (the admin dashboard's dates) — it must be applied before
+the client that uses it merges, and that one is not optional: it DROPS the old
+`admin_overview()` / `admin_growth(boolean)` signatures to replace them with
+timezone-taking ones, so an un-applied 0074 means the dashboard errors rather
+than degrades.
+
+**The house "dates are the user's local date" rule applies to the operator too.**
+`current_date` on this project is UTC, so `new_today` / `active_today` counted a
+UTC day and read **zero every evening** while the operator's own day was still
+going — and `last_played_on` is a *local* date column, so comparing it to
+`current_date` was mixing two date systems outright. Every admin metric that
+says "today" or "7d" now takes a validated IANA zone from the client
+(`localTimeZone()` in `lib/date.ts`, falling back to UTC server-side). If you add
+one, take the day from `p_tz`, never from `current_date`.
 
 Numbering has scars: `0034` is used twice (`promo_codes`, `skin_purchases`), and
 `0038_focus_practice_xp.sql` is a re-add of a file that shipped as `0036` and was

@@ -5,6 +5,7 @@ import { Button } from '@/components/Button'
 import { Avatar } from '@/components/Avatar'
 import { useAuth } from '@/store/auth'
 import { supabase } from '@/lib/supabase'
+import { localTimeZone } from '@/lib/date'
 import { allSkins, BUNDLES } from '@/data/avatar'
 import GrowthPanel from './GrowthPanel'
 import type { AvatarSpec } from '@/types'
@@ -19,6 +20,10 @@ const ADMIN_PIN = '4208'
 const PIN_KEY = 'va_admin_unlocked'
 
 interface Overview {
+  // The zone the server counted in, and the local day it resolved to. Echoed
+  // back so the dashboard can SAY which day it is reporting — the whole class
+  // of bug this replaced was a "today" that silently meant somewhere else.
+  tz: string; today: string
   users: number; active_today: number; active_7d: number; new_7d: number; new_today: number
   total_plays: number; battles_total: number; battles_complete: number
   buddies_pairs: number; buddy_requests_pending: number; skins_sold: number
@@ -96,7 +101,7 @@ function Dashboard() {
   const [tab, setTab] = useState<'stats' | 'growth' | 'users' | 'sales' | 'church' | 'codes' | 'push'>('stats')
 
   useEffect(() => {
-    supabase?.rpc('admin_overview').then(({ data }) => setOv(data as Overview))
+    supabase?.rpc('admin_overview', { p_tz: localTimeZone() }).then(({ data }) => setOv(data as Overview))
   }, [])
 
   return (
@@ -146,6 +151,12 @@ function Stats({ ov }: { ov: Overview | null }) {
     ['Church (open)', ov.church_open],
     ['Church (all)', ov.church_total],
   ]
+  // Which day these numbers mean. Naming it is the point: "today" used to be
+  // the database's UTC day, so every evening the counters read 0 while the
+  // operator's own day was still going.
+  const day = ov.today
+    ? new Date(ov.today + 'T00:00').toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
+    : null
   return (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
@@ -156,6 +167,12 @@ function Stats({ ov }: { ov: Overview | null }) {
           </div>
         ))}
       </div>
+      {day && (
+        <p className="faint" style={{ fontSize: 11, marginTop: 8, lineHeight: 1.45 }}>
+          “Today” = {day} in {ov.tz} · still in progress. 7-day figures are the
+          last seven calendar days, today included.
+        </p>
+      )}
       <TopActive />
     </>
   )

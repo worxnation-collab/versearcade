@@ -33,6 +33,7 @@ import BattleNew from './features/arena/BattleNew'
 import BattlePlay from './features/arena/BattlePlay'
 import BattleDetail from './features/arena/BattleDetail'
 import BattleCpu from './features/arena/BattleCpu'
+import LiveLobby, { LiveRoom } from './features/arena/LiveBattle'
 import StudyScreen from './features/study/StudyScreen'
 import StudyReportsScreen from './features/study/StudyReportsScreen'
 import StudyRecentScreen from './features/study/StudyRecentScreen'
@@ -512,6 +513,28 @@ export default function App() {
             <RequireProfile>
               <RequireAccount copy={WALL.study}>
                 <FocusPracticeScreen />
+              </RequireAccount>
+            </RequireProfile>
+          }
+        />
+        {/* Live 1v1: a room code, a ready-check, one clock. Both segments are
+            static-first, so they out-rank /battle/:id in the router's ranking. */}
+        <Route
+          path="/battle/live"
+          element={
+            <RequireProfile>
+              <RequireAccount copy={WALL.battle}>
+                <LiveLobby />
+              </RequireAccount>
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/battle/live/:code"
+          element={
+            <RequireProfile>
+              <RequireAccount copy={WALL.battle}>
+                <LiveRoom />
               </RequireAccount>
             </RequireProfile>
           }

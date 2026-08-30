@@ -136,6 +136,18 @@ export default function BattleHub() {
             Pick who you’re battling, then play your round.
           </p>
 
+          {/* Live sits UNDER the async battle, not beside it: a live match needs
+              the other person to be holding their phone right now, so it is the
+              rarer case even though it is the louder one. */}
+          <div style={{ marginTop: 10 }}>
+            <Button full onClick={() => { juice.coin(); navigate('/battle/live') }}>
+              🔴 Live battle — same verse, same moment
+            </Button>
+          </div>
+          <p className="faint center" style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
+            Share a room code and play head-to-head, right now.
+          </p>
+
           {/* The hall, right under the button — the same place the Harvest Road
               puts its road. A tab whose whole ladder is a room should show the
               room, not a link to it. Someone with no team gets the invitation

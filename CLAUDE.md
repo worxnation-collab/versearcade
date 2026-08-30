@@ -380,6 +380,43 @@ two-mode invariant rather than choosing its own: a guest has no church to stand
 a flowerpot in front of. `store/churchYard.ts` names the shape to use if that
 ever changes. Still no prices, either mode. See `docs/CHURCHYARD.md`.
 
+## Live battles: the one synchronous thing here
+
+Every other battle is asynchronous — you play, they play later. A **live battle**
+(`/battle/live`) is a room code, a ready-check and one clock: both players read
+the same verse, both tap "I'm ready", the questions start on the second tap, and
+a versus bar races the whole way down. Full design: `docs/LIVE-BATTLE.md`.
+
+Four things to know before touching it:
+
+- **No table and no migration.** The transport is a Supabase Realtime *broadcast*
+  channel; nothing in a live match outlives the match. Who won is written through
+  the existing `create_battle` / `submit_battle` — the host creates the row (the
+  schema forces that: `create_battle` takes the challenger's score) and names the
+  guest as invited, the guest polls for it and submits. Best-effort on purpose:
+  `liveWinner()` has already put the right result on both screens, and it
+  **mirrors `submit_battle`'s tiebreak** — the usual keep-them-in-sync pair.
+- **The seed is derived, never sent.** `seedForRoom(code, round)` means both
+  devices compute the verse from the room, so there is no announce-the-seed
+  message to lose or race, and a rematch is `round + 1`.
+- **The ready-check buys the FEELING of starting together and nothing else, and
+  the runs are deliberately not locked in step.** Every question is timed from
+  the moment it starts on your own device, so drift costs nothing in fairness —
+  which is what lets the feedback screen stay self-paced. It has to: the teach
+  line is the point of a wrong answer here, and a live mode that snatched it away
+  from whoever was slower would make being slower mean "you don't get to read
+  it". The bar says where the other player is instead.
+- **The gate lives in `QuizRunner`** (`StartGate`), like every other cross-mode
+  concern, rather than in a wrapper that would have to draw its own copy of the
+  verse card above the real one.
+
+Online-only, inherited rather than chosen — the `store/washing.ts` break with the
+two-mode invariant. A local live battle is a person racing themselves, which is
+what `/battle/cpu` already is. And a room code rather than a queue: matchmaking
+is a queue table, pairing and timeouts, and two people about to play each other
+need none of it. Open matchmaking, if it ever lands, goes in front of this screen
+and nothing here changes.
+
 ## Content is deterministic — keep it that way
 
 `getVerseForDate(date)` must return the same verse for the same date for every

@@ -23,6 +23,26 @@ interface Answered {
   points: number
 }
 
+/**
+ * Holds the read phase until everybody says go — a live battle's ready-check.
+ *
+ * It lives HERE rather than in a wrapper for the reason every other cross-mode
+ * concern does: the read phase and the button that ends it belong to QuizRunner,
+ * and a caller that wanted to gate them would have to draw a second copy of the
+ * verse card above the real one. So the caller supplies the words and the "has
+ * everyone said go" answer, and the clock still starts in exactly one place.
+ */
+export interface StartGate {
+  /** Flips true once every player has readied — the clock starts on the flip. */
+  open: boolean
+  /** Fired when this player taps the button. */
+  onReady: () => void
+  /** The button before it is tapped. */
+  readyLabel: ReactNode
+  /** The button after it is tapped, while the gate is still shut. */
+  waitingLabel: ReactNode
+}
+
 /** Live snapshot handed to an optional HUD slot (e.g. a vs-CPU versus bar). */
 export interface QuizHudState {
   score: number
@@ -45,6 +65,7 @@ export function QuizRunner({
   hud,
   onQuestionStart,
   onReveal,
+  startGate,
   studyDrop = false,
 }: {
   verse: DailyVerse
@@ -66,6 +87,8 @@ export function QuizRunner({
   onQuestionStart?: (qi: number) => void
   /** Fired the moment the player locks an answer — lets an opponent sync up. */
   onReveal?: (qi: number, correct: boolean, timeMs: number) => void
+  /** Optional ready-check on the read phase — see StartGate. */
+  startGate?: StartGate
 }) {
   const juice = useJuice()
 
@@ -77,6 +100,7 @@ export function QuizRunner({
   const [answered, setAnswered] = useState<Answered | null>(null)
   const [answers, setAnswers] = useState<Answered[]>([])
   const [pop, setPop] = useState<{ id: number; text: string } | null>(null)
+  const [waitingToStart, setWaitingToStart] = useState(false)
   const startTs = useRef(0)
   const timeout = useRef<ReturnType<typeof setTimeout>>()
 
@@ -90,6 +114,12 @@ export function QuizRunner({
     setAnswered(null)
     setPhase('question')
   }, [])
+
+  // The gate opened (everyone is ready) — start the clock, from the one place
+  // that ever starts it.
+  useEffect(() => {
+    if (startGate?.open && phase === 'read') beginQuestion()
+  }, [startGate?.open, phase, beginQuestion])
 
   // Per-question timer: running out = a gentle miss (still reveals the fact).
   useEffect(() => {
@@ -212,9 +242,20 @@ export function QuizRunner({
               </p>
             </div>
             <div style={{ marginTop: 18 }}>
-              <Button variant="gold" full onClick={() => { juice.whoosh(); beginQuestion() }}>
-                I’ve read it — start the clock ⏱️
-              </Button>
+              {startGate ? (
+                <Button
+                  variant="gold"
+                  full
+                  disabled={waitingToStart}
+                  onClick={() => { juice.whoosh(); setWaitingToStart(true); startGate.onReady() }}
+                >
+                  {waitingToStart ? startGate.waitingLabel : startGate.readyLabel}
+                </Button>
+              ) : (
+                <Button variant="gold" full onClick={() => { juice.whoosh(); beginQuestion() }}>
+                  I’ve read it — start the clock ⏱️
+                </Button>
+              )}
             </div>
           </motion.div>
         )}

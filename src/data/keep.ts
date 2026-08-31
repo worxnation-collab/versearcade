@@ -332,7 +332,28 @@ export const KEEP_SURFACE: Surface = {
   mountOf: (id) => decorById(id)?.mount,
   bands: {
     banner: { x0: 200, y0: 60, x1: 420, y1: 95 },
-    wall: { x0: 215, y0: 125, x1: 400, y1: 165 },
+    // The back wall, measured off the paintings rather than guessed. Mapping
+    // image pixels through the `slice` transform (scale 560/width, then 6.25
+    // units cropped off the top and bottom): the flat wall runs x 183..378 at
+    // tier 6, where two pillars frame it, and x 172..395 at tier 1, where a
+    // timber post frame does — so x 190..380 is the strip that is wall in
+    // every tier. The old x1 of 400 was past the wall's right edge in both,
+    // which let a tapestry be pushed onto the pillar.
+    //
+    // The height is the part that was actually wrong. y 125..165 gave a wall
+    // piece FORTY units of travel, and the arched windows tiers 4-6 paint on
+    // that wall sit at y 79..182 — so every wall piece was pinned across a
+    // window with nowhere to go. Above the windows the wall is clear to about
+    // y 70 (the vault springs at ~57), and the table top is at y 194. The band
+    // clamps a piece's CENTRE and the tallest wall piece is 50 tall, so
+    // y 95..168 is exactly the range that keeps the whole of one on stone: at
+    // 95 its top lands on y 70, and at 168 its foot stops short of the table.
+    //
+    // Nothing here dodges the windows for the player — it cannot, since only
+    // one clear column (x 244..322) exists between them and three wall anchors
+    // will not fit in it. What it does is give back the vertical room to
+    // arrange around them, which is the whole of the complaint.
+    wall: { x0: 190, y0: 95, x1: 380, y1: 168 },
     rafters: { x0: 150, y0: 20, x1: 460, y1: 70 },
     table: { x0: 235, y0: 192, x1: 330, y1: 206 },
     floor: { x0: 90, y0: 245, x1: 470, y1: 292 },

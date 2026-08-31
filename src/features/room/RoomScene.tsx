@@ -27,8 +27,31 @@ const WAYPOINTS: CrowdWaypoint[] = [
   { x: 76, b: 11 },
 ]
 
-/** Depth cue: further up the floor = smaller. b 5..17% -> 46..30px. */
-const sizeFor = (b: number) => Math.round(46 - ((Math.min(Math.max(b, 5), 17) - 5) / 12) * 16)
+/**
+ * Depth cue: further up the floor = smaller. b 5..17% -> 146..100px.
+ *
+ * MUCH bigger than the other worlds' figures, and deliberately so: this is the
+ * one scene that holds exactly ONE person. The hall, the churchyard and the
+ * road all draw a crowd, so a figure there is sized to leave room for the
+ * others and reads as one of many. A room only ever has its owner in it —
+ * RoomSection and RoomVisitSheet each pass a single member — so a
+ * crowd-sized figure just read as a doll in an outsized chamber.
+ *
+ * The numbers are measured against the painting rather than picked: the
+ * chamber's alcove stands about 59% of the scene's height and its low table
+ * about 14%, which puts a person at roughly half the frame. At the old 46px
+ * the owner was a twelfth of the room's height and shorter than the table
+ * they were standing next to.
+ *
+ * Landed by looking rather than by arithmetic alone — the figure now stands
+ * about 0.7 of the alcove's height, which reads as a person in a room without
+ * filling it. The pet follows automatically: CrowdLife draws it at a ratio of
+ * the figure, so a companion grows with its owner and needs nothing here.
+ *
+ * The postcard is unaffected. CrowdLife draws people as HTML over the scene
+ * rather than as SVG, so no figure has ever been serialised onto the card.
+ */
+const sizeFor = (b: number) => Math.round(146 - ((Math.min(Math.max(b, 5), 17) - 5) / 12) * 46)
 
 export function RoomScene({
   tier,

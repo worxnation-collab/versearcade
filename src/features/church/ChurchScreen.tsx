@@ -241,7 +241,7 @@ function ChurchHome({ church }: { church: Church }) {
           statues={statues}
           floraEditing={{ picked, onPick: pick, onDrop: drop }}
           emptyNote={false}
-          onArcade={() => { juice.select(); navigate('/arcade/manna') }}
+          onArcade={() => { juice.select(); navigate('/arcade') }}
         />
         {(picked || yardNote) && (
           <p className="center" style={{ margin: '8px 0 0', fontSize: 12.5, fontWeight: 700, color: 'var(--gold)' }}>

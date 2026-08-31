@@ -101,7 +101,7 @@ export function RoomScene({
         <RoomChamber tier={tier} flat={flat} />
 
         {/* Tucked into the left corner, clear of floor_1 at x=96. */}
-        {onArcade && <ArcadeCabinet x={52} y={284} scale={0.86} onOpen={onArcade} />}
+        {onArcade && <ArcadeCabinet x={52} y={284} scale={0.86} screen="attract" onOpen={onArcade} />}
 
         {ROOM_ANCHORS.map((a) => {
           const value = placements[a.id]

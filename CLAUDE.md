@@ -803,6 +803,110 @@ Three things to know before touching it:
   ±1 is the house pattern and it does mean a lying client can reach three
   buckets, which is bounded and buys nothing rankable.
 
+## The arcade: a room with machines, and a lobby in front of them
+
+A cabinet stands in the hall, the churchyard and your own Upper Room (and again
+on the home screen's "In the meantime…" card). Tapping any of them opens
+`/arcade` — a wall of machines you pick from. Three today: Manna Rush, Word
+Catch and the Cross Word. Full design: `docs/ARCADE.md`.
+
+- **The cabinet opens the LOBBY, not a game.** It used to open Manna Rush
+  directly, which was right when there was one game; with two, a door that
+  always led to the same machine lies about what's behind it, and a second
+  cabinet in every scene turns three little worlds into a shopping street. The
+  machine's little screen runs an **attract cycle** through the games so it
+  can't promise the wrong one (reduce-motion holds the first frame).
+- **`features/arcade/games.ts` is the list, and it's the only list.** Adding a
+  game is a row there plus a route — the same choke-point habit as `QuizRunner`.
+  It's pure data (the id union in it is what makes `gameScreens.ts` compile);
+  wear `ArcadeShell` so games can't drift into different headers.
+- **Two of the three run on one engine, and the interesting hook is
+  `verdictOf`.** `TapRunner` judges a tap AT TAP TIME rather than at spawn,
+  because in Word Catch the same word is the wrong answer on the way down and
+  the right one the moment the word before it is placed — a table of fixed spawn
+  weights can't say that. With `plan`, a game decides what goes on the field
+  too. Both default to the old behaviour, so Manna Rush is untouched by either.
+  `TapGameScreen` is the gate/run/harvest those two share.
+- **Nothing in the arcade may rank anybody, and that's what lets it exist.** A
+  game here may be one you get *better* at, but no cabinet carries a score (a
+  list of games with your numbers on it is a scoreboard with a coin slot), the
+  order is the order they were built, and a result screen shows your own numbers
+  against your own bar with no way to set them beside anybody else's. A run pays
+  a drop roll and road progress — never XP, points or standing.
+- **Guest-open by default**, because a game that persists nothing has nothing an
+  account would keep for you tomorrow. The exception is a game that writes to
+  the player's own record: the Cross Word marks its verse studied, so it carries
+  `needsAccount`, the route wraps it in `RequireAccount` (`WALL.cross`), and the
+  lobby draws the padlock on that cabinet — the nav's convention, for the nav's
+  reason.
+- **Every machine can be shared, and a shared link is one free go.** The button
+  is in `ArcadeShell`, so "every game" means every game that will ever exist
+  rather than a rule someone has to remember. `/arcade/<game>/invite` is PUBLIC
+  — no `RequireProfile`, no wall — because the machine is the pitch and the ask
+  comes after the play. That's the opposite order from the battle invite, which
+  has to ask first because accepting a battle writes a score against a real
+  account. Four things hold it together: the free go **pays nothing** (`demo` on
+  the game components — no relic, no road step, no Bible mark, nothing
+  recorded), so the one-play limit guards nothing worth farming and a
+  device-local tally is enough; **no score is ever in a share** (`shareLine`),
+  because "I got 47, beat me" is the comparison this app doesn't build; an
+  account **skips the whole thing** and goes straight to the machine; and the
+  `?from=` name is somebody else's text in a URL, so it's sanitised before it's
+  rendered. Two traps are written into the code: the have-they-played decision
+  is **frozen at mount** (re-reading it swaps the screen out at the exact moment
+  the result appears), and everything account-shaped is **hidden** on a demo
+  rather than left to fail — "Keep this verse" writes to a shelf a visitor
+  doesn't have and "Read the chapter" is behind the wall. Full rules:
+  `docs/ARCADE.md`.
+
+## The Cross Word: a puzzle that becomes the thing it's about
+
+Two words that share a letter, standing as a cross — one upright, one crossbar —
+and finishing it turns the squares into two timbers with the letters chiselled
+into them, with the verse both words came from read underneath. Fifty-two of
+them ship; `/arcade/cross`, a machine in the arcade above (it stood on the Study
+shelf first, and `/study/cross` still redirects). Full design:
+`docs/CROSS-WORD.md`.
+
+- **The data has three invisible failure modes, so they're a build failure.**
+  A crossbar one row too low still renders — as a plus sign. A word that isn't
+  in the verse still solves — and then reveals a verse that doesn't contain it.
+  A clue containing its answer just makes the puzzle free. None of that throws,
+  so `checkCrossPuzzles()` asserts it at import in dev and
+  `scripts/check-cross.mjs` (in `npm run build`) asserts it again, re-deriving
+  the rules rather than importing the checker.
+- **The verse is the source of truth, not the puzzle.** `reference` must name a
+  `VERSE_POOL` entry and BOTH words must appear in its text — the whole payoff
+  is "that's where those two words live". `crossForDate()` is the same
+  no-repeat rotation as `getVerseForDate` (seed `'cross-order-v1'` — changing
+  it reshuffles history), and "Build another" only ever draws from days already
+  past, so playing more can't spoil tomorrow's.
+- **It pays what a study run pays and nothing else** — a drop roll, a
+  `study_run` step on the road (the prepacked verb; no new one needed), and the
+  verse marked studied through `store/bible.ts`. What a thing is doesn't change
+  with where it stands: no XP, no points, no timer, no "solved in N", no
+  shareable result. That rank-free rule is the whole reason it can be a daily
+  thing at all.
+- **Solved crosses are DEVICE-LOCAL in both modes**, the deliberate break
+  `store/looks.ts` makes: the set grants nothing (everything a solve pays is
+  capped elsewhere), and the half of a solve that's really a record — the verse
+  — already follows the account. `store/crossword.ts` names the table shape to
+  use if that ever changes.
+- **The wood is drawn, not generated**, for the reason the church kit is: a
+  cross is a different shape for every pair of words, and a baked image can't be
+  re-cut per puzzle. Two layers over the same geometry and the same cell size —
+  HTML buttons while you play, SVG timbers once you're done — so nothing moves
+  when it turns to wood. The shelf's *cover* still follows the house rule and
+  has a prompt in `scripts/generate-study-covers.mjs`.
+- **All the puzzle state is in one reducer, and that's load-bearing.** Typing
+  five letters inside one tick put all five in the same square when each handler
+  planned against a hook snapshot — the same scar as `KeepSheet`'s double-tap,
+  found by driving the real app and invisible in the diff. Two more from the
+  same afternoon: turning direction has to carry the cursor into the other word
+  (every square but the shared one belongs to one word, so the keys did nothing
+  at all), and typing must advance one square rather than skip the filled
+  crossing one, or the second word lands silently off by one.
+
 ## Washing feet: the poke that costs the sender
 
 Every other way to act on a person in this app is a challenge. `wash_feet`

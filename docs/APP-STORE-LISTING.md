@@ -109,6 +109,22 @@ BATTLE SOMEONE IN REAL TIME
   of you at once with a bar showing where the other player is.
 • Wrong answers still teach. The line explaining the answer is yours to read at your
   own pace, even if it costs you the round — being slower never means being told less.
+
+THERE'S AN ARCADE IN HERE NOW
+• A cabinet stands in your keep, your churchyard and your own room. Tap it and pick
+  a machine.
+• Manna Rush: seven days in the wilderness. Gather the fresh flakes, leave the ones
+  kept from yesterday, and on the seventh day the best thing you can do is rest.
+• Word Catch: today's verse comes loose from the page and you tap the words back
+  into order. The line at the top shows what you've put back and how long each
+  missing word is.
+• Cross Word: two words that share a letter, standing in the shape of a cross. Solve
+  it and the squares turn to wood, with the verse both words came from carved
+  underneath. A new one every day, 52 in all, Genesis to Revelation.
+• Nothing in the arcade touches your rank, and no machine keeps a high score. No
+  timers, no streaks, and hints are free.
+• Send a friend a machine: a shared link is good for one free go, no account and no
+  download first. It's an invitation to play, never a score to beat.
 ```
 
 **Check the uploaded 1.2.0 binary before submitting this.** If live battles shipped

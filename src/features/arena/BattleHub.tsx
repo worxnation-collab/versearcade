@@ -430,7 +430,7 @@ function MyKeepScene({ onOpen }: { onOpen: () => void }) {
         placements={placements}
         members={members}
         onOpen={onOpen}
-        onArcade={() => navigate('/arcade/manna')}
+        onArcade={() => navigate('/arcade')}
       />
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 8 }}>
         <b style={{ fontFamily: 'var(--font-display)', fontSize: 14, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

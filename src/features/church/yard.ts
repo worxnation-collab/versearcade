@@ -99,13 +99,23 @@ export interface FloraDef {
   scale: number
 }
 
+// Ordered by threshold. Six of these were added after the first eight, slotted
+// BETWEEN the original rungs rather than on top of them: every existing
+// threshold is untouched, because lowering one would be free points and
+// raising one would lock a plant somebody had already planted.
 export const FLORA: FloraDef[] = [
   { id: 'yard_planters', name: 'Doorstep Planters', given: 250, scale: 0.62, blurb: 'Two pots by the door. Somebody has been here.' },
+  { id: 'yard_ivy', name: 'Ivy', given: 500, scale: 0.55, blurb: 'It got there on its own, and nobody minds.' },
   { id: 'yard_marigolds', name: 'Marigold Bed', given: 1_000, scale: 0.72, blurb: 'Orange all summer, and hard to kill.' },
+  { id: 'yard_lavender', name: 'Lavender', given: 2_000, scale: 0.7, blurb: 'The bees find it before anybody else does.' },
   { id: 'yard_lilies', name: 'Easter Lilies', given: 3_000, scale: 0.86, blurb: 'White trumpets, out for the one Sunday.' },
+  { id: 'yard_olive', name: 'Olive Sapling', given: 5_000, scale: 1.05, blurb: 'Slow, and worth it.' },
   { id: 'yard_rosebush', name: 'Rose Bush', given: 7_500, scale: 0.95, blurb: 'Someone prunes this every spring.' },
+  { id: 'yard_bench', name: 'Garden Bench', given: 10_000, scale: 0.7, blurb: 'Somewhere to sit before you go in.' },
   { id: 'yard_hedge', name: 'Boxwood Hedge', given: 15_000, scale: 0.8, blurb: 'Clipped square, the way it has always been.' },
+  { id: 'yard_birdbath', name: 'Stone Birdbath', given: 22_000, scale: 0.78, blurb: 'Sparrows, mostly. He knows about those.' },
   { id: 'yard_lamp', name: 'Lamp Post', given: 30_000, scale: 1.25, blurb: 'So the path is lit for the evening service.' },
+  { id: 'yard_wisteria', name: 'Wisteria', given: 45_000, scale: 1.3, blurb: 'It takes years to climb, and then it is everywhere.' },
   { id: 'yard_sunflowers', name: 'Sunflowers', given: 60_000, scale: 1.15, blurb: 'Taller than the children who planted them.' },
   { id: 'yard_dogwood', name: 'Flowering Dogwood', given: 120_000, scale: 1.6, blurb: 'A tree in bloom. It will outlast the roof.' },
 ]

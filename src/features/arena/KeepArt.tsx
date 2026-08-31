@@ -15,6 +15,9 @@
 
 import { GENERATED_ART } from '@/data/generatedArt'
 import { KEEP_LEVEL_NAMES, decorById, keepTier, unpackDecor, type MountKind } from '@/data/keep'
+// The display boxes live in their own module so the build-time check can run
+// the real table against the real renders — see src/data/keepArt.ts.
+import { RASTER_DECOR } from '@/data/keepArt'
 
 // Palette — warm stone interior against the app's dark chrome. Anything the
 // six halls vary tier to tier lives in HALL_TIERS below instead; what's left
@@ -365,31 +368,6 @@ function TierAccent({ tier, mount }: { tier: number; mount?: MountKind }) {
   )
 }
 
-// Display boxes in viewBox units, from each render's real aspect ratio. Getting
-// one wrong stretches the prop, so recompute the width whenever a render is
-// replaced: width = height x (png width / png height).
-// `mode`: hang = top at the anchor, center = centred on it, stand = feet on it.
-// Size and anchoring for a decoration rendered as a picture. `src` is the
-// hand-placed file for the ten that predate the generator; anything generated
-// since resolves through GENERATED_ART on its id instead, so a render wires
-// itself in the way it does everywhere else and no id can point at a 404.
-const RASTER_DECOR: Record<string, { src?: string; w: number; h: number; mode: 'hang' | 'center' | 'stand' }> = {
-  keep_sheaf_banner: { src: '/keep/sheaf_banner.png', w: 31, h: 52, mode: 'hang' },
-  keep_tapestry: { src: '/keep/tapestry.png', w: 72, h: 46, mode: 'center' },
-  keep_armor_rack: { src: '/keep/armor_rack.png', w: 59, h: 48, mode: 'center' },
-  keep_chandelier: { src: '/keep/chandelier.png', w: 56, h: 46, mode: 'hang' },
-  keep_lanterns: { src: '/keep/lanterns.png', w: 21, h: 42, mode: 'hang' },
-  keep_oil_lamp: { src: '/keep/oil_lamp.png', w: 32, h: 13, mode: 'stand' },
-  keep_rosary: { src: '/keep/rosary.png', w: 18, h: 13, mode: 'stand' },
-  keep_open_bible: { src: '/keep/open_bible.png', w: 30, h: 20, mode: 'stand' },
-  keep_chess: { src: '/keep/chess.png', w: 34, h: 18, mode: 'stand' },
-  keep_brazier: { src: '/keep/brazier.png', w: 39, h: 34, mode: 'stand' },
-  // Generated, so no src: sized to the drawing it replaces, straddling its
-  // point across a 50x50 span the way every wall trophy here does.
-  keep_crossed_spears: { w: 50, h: 50, mode: 'center' },
-  keep_barrels: { src: '/keep/barrels.png', w: 44, h: 38, mode: 'stand' },
-  keep_woven_rug: { src: '/keep/rug.png', w: 38, h: 20, mode: 'stand' },
-}
 
 // Each prop draws around its ground point: banners/rafters hang DOWN from
 // (0,0); wall pieces centre on it; table/floor/stable pieces stand on it.
@@ -397,10 +375,17 @@ const RASTER_DECOR: Record<string, { src?: string; w: number; h: number; mode: '
  * The picture for a decoration, or null to keep its drawing.
  *
  * A generated render wins over a hand-placed file, and an entry with neither
- * falls through to the drawn prop — the same tiering skinArtUrl uses. Three
- * decorations are deliberately absent from RASTER_DECOR and always will be:
- * the kite shield, the woven rug and the destrier's barding all take
- * denominationColor() at runtime, and a baked image cannot take a colour.
+ * falls through to the drawn prop — the same tiering skinArtUrl uses.
+ *
+ * TWO decorations are deliberately absent from RASTER_DECOR and always will
+ * be: the kite shield and the destrier's barding take denominationColor() at
+ * runtime, and a baked image cannot take a colour. This used to say three and
+ * name the woven rug alongside them, which the table it describes has not
+ * agreed with for a long time — the rug's drawn version does take the colour,
+ * but rug.png overrides it, so the faction band is already gone. Putting it
+ * back is a real choice someone may want to make (delete its row in
+ * data/keepArt.ts); it is not what the code does today, and a comment claiming
+ * otherwise is worse than either answer.
  */
 function decorRaster(id: string) {
   const d = RASTER_DECOR[id]
@@ -581,7 +566,14 @@ export function DecorThumb({ id, size = 56 }: { id: string; size?: number }) {
   const def = decorById(id)
   if (!def) return null
 
-  const raster = RASTER_DECOR[id]
+  // decorRaster, not RASTER_DECOR: the tile has to resolve a render the same
+  // way the hall does, or the shelf and the room draw different pictures of
+  // the same object. Reading the table directly meant a generated-only entry
+  // (the crossed spears, which have no hand-placed file) rendered an <img>
+  // with no src at all — an empty box on the shelf — and every prop whose
+  // render landed after its drawing showed the old art here and the new art
+  // in the hall.
+  const raster = decorRaster(id)
   if (raster) {
     return (
       <img

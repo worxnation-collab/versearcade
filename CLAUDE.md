@@ -642,7 +642,11 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0079` (a church claiming its own page); before it, `0078` (a
+The latest is `0081` (free placement + tiers as their own unlocks) and `0080`
+(six more churchyard plants) — both APPLIED to the live project on 2026-08-31,
+in that order, and verified: the fourteen flora ids answer, both placement
+regexes accept the new grammar and the legacy values, and every existing
+placement row still validates. Before them, `0079` (a church claiming its own page) and `0078` (a
 church's ask for a sponsored slot) and `0077` (the slot itself). Before them, `0075` (the weekly church rivalry) and `0074` (the admin
 dashboard's dates) — 0074 must be applied before
 the client that uses it merges, and that one is not optional: it DROPS the old

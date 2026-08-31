@@ -27,6 +27,8 @@ export const GENERATED_ART: Record<string, string> = {
   'hall-6': '/keep/hall-6.png',
   'harvest_reaper': '/skins/harvest_reaper.png',
   'joseph': '/skins/joseph.png',
+  'keep_barrels': '/keep/keep_barrels.png',
+  'keep_crossed_spears': '/keep/keep_crossed_spears.png',
   'lamplight': '/road/lamplight.jpg',
   'lamplighter': '/skins/lamplighter.png',
   'magus': '/skins/magus.png',

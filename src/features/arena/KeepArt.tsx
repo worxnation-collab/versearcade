@@ -278,7 +278,7 @@ export function DecorProp({
   mount?: MountKind
 }) {
   const { id, tier } = unpackDecor(value)
-  const raster = RASTER_DECOR[id]
+  const raster = decorRaster(id)
   const art = raster ? null : PROPS[id]
   if (!raster && !art) return null
 
@@ -366,7 +366,11 @@ function TierAccent({ tier, mount }: { tier: number; mount?: MountKind }) {
 // one wrong stretches the prop, so recompute the width whenever a render is
 // replaced: width = height x (png width / png height).
 // `mode`: hang = top at the anchor, center = centred on it, stand = feet on it.
-const RASTER_DECOR: Record<string, { src: string; w: number; h: number; mode: 'hang' | 'center' | 'stand' }> = {
+// Size and anchoring for a decoration rendered as a picture. `src` is the
+// hand-placed file for the ten that predate the generator; anything generated
+// since resolves through GENERATED_ART on its id instead, so a render wires
+// itself in the way it does everywhere else and no id can point at a 404.
+const RASTER_DECOR: Record<string, { src?: string; w: number; h: number; mode: 'hang' | 'center' | 'stand' }> = {
   keep_sheaf_banner: { src: '/keep/sheaf_banner.png', w: 31, h: 52, mode: 'hang' },
   keep_tapestry: { src: '/keep/tapestry.png', w: 72, h: 46, mode: 'center' },
   keep_armor_rack: { src: '/keep/armor_rack.png', w: 59, h: 48, mode: 'center' },
@@ -377,12 +381,31 @@ const RASTER_DECOR: Record<string, { src: string; w: number; h: number; mode: 'h
   keep_open_bible: { src: '/keep/open_bible.png', w: 30, h: 20, mode: 'stand' },
   keep_chess: { src: '/keep/chess.png', w: 34, h: 18, mode: 'stand' },
   keep_brazier: { src: '/keep/brazier.png', w: 39, h: 34, mode: 'stand' },
+  // Generated, so no src: sized to the drawing it replaces, straddling its
+  // point across a 50x50 span the way every wall trophy here does.
+  keep_crossed_spears: { w: 50, h: 50, mode: 'center' },
   keep_barrels: { src: '/keep/barrels.png', w: 44, h: 38, mode: 'stand' },
   keep_woven_rug: { src: '/keep/rug.png', w: 38, h: 20, mode: 'stand' },
 }
 
 // Each prop draws around its ground point: banners/rafters hang DOWN from
 // (0,0); wall pieces centre on it; table/floor/stable pieces stand on it.
+/**
+ * The picture for a decoration, or null to keep its drawing.
+ *
+ * A generated render wins over a hand-placed file, and an entry with neither
+ * falls through to the drawn prop — the same tiering skinArtUrl uses. Three
+ * decorations are deliberately absent from RASTER_DECOR and always will be:
+ * the kite shield, the woven rug and the destrier's barding all take
+ * denominationColor() at runtime, and a baked image cannot take a colour.
+ */
+function decorRaster(id: string) {
+  const d = RASTER_DECOR[id]
+  if (!d) return null
+  const src = GENERATED_ART[id] ?? d.src
+  return src ? { ...d, src } : null
+}
+
 const PROPS: Record<string, (color: string) => JSX.Element> = {
   keep_sheaf_banner: () => (
     <g>

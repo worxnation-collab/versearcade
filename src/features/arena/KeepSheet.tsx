@@ -125,7 +125,7 @@ export function KeepSheet({
     if (res.swapped) setNote('Swapped.')
   }
 
-  // Tap open ground while carrying: stand it right there. The planner clamps
+  // Where a dragged piece was let go: stand it right there. The planner clamps
   // the point into the piece's own mount band, and the piece stays selected so
   // a nudge can follow a nudge.
   const dropAt = async (x: number, y: number) => {
@@ -322,6 +322,7 @@ export function KeepSheet({
                     onPick: pickUp,
                     onDrop: (a) => void dropOn(a),
                     onDropAt: (x, y) => void dropAt(x, y),
+                    onCancel: () => { juice.tap(); setPicked(null) },
                     onRemove: (a) => void removeAt(a),
                   }
                 : undefined
@@ -366,7 +367,7 @@ export function KeepSheet({
           {(picked || note) && (
             <p className="center" style={{ margin: '8px 0 0', fontSize: 12.5, fontWeight: 700, color: 'var(--gold)' }}>
               {picked
-                ? `Holding the ${decorName(placements[picked])} — drag it anywhere, tap a marked spot to swap, or ✕ to take it down.`
+                ? `Holding the ${decorName(placements[picked])} — drag it anywhere, tap a marked spot to swap, ✕ to take it down, or tap the floor to let go.`
                 : note}
             </p>
           )}
@@ -406,7 +407,8 @@ export function KeepSheet({
                   playing and it <b style={{ color: 'var(--gold)' }}>upgrades</b> where it stands.
                   Tap anything in the hall to pick it up, then{' '}
                   <b style={{ color: 'var(--gold)' }}>drag it</b> wherever you like — or resize it,
-                  or tap its ✕ to take it back down. Members each furnish their own view.
+                  or tap its ✕ to take it back down. Tapping anywhere else in the hall puts it
+                  down. Members each furnish their own view.
                 </p>
                 <Shelf
                   counters={keep.counters}

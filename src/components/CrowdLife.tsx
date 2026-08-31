@@ -140,6 +140,7 @@ export function CrowdLife({
   speedPctPerSec = 5,
   showYouTag = false,
   onTapSelf,
+  inert = false,
 }: {
   members: CrowdMember[]
   /** The scene's standing spots. Figures glide between these and nowhere else. */
@@ -155,6 +156,20 @@ export function CrowdLife({
   /** Tapping YOUR OWN figure calls this instead of opening your player card.
    *  Only the Upper Room passes it — see the header note. */
   onTapSelf?: () => void
+  /**
+   * Let taps fall THROUGH the crowd to the scene behind it.
+   *
+   * For while somebody is arranging the world: a figure wanders in front of a
+   * flower bed, and the tap meant for the bed opens that person's player card
+   * instead. The congregation is drawn at 27-42px and moves on its own, so
+   * this is not a rare miss — it is most of the yard, most of the time.
+   *
+   * Deliberately inertness rather than a different action: a figure that
+   * responded to an arranging tap would be inventing a gesture, and the crowd
+   * is a picture of the place rather than a control surface. The cards are one
+   * tap away again the moment the shelf is closed.
+   */
+  inert?: boolean
 }) {
   const shown = [...members].sort((a, b) => Number(b.isMe) - Number(a.isMe)).slice(0, max)
   if (shown.length === 0) return null
@@ -189,6 +204,7 @@ export function CrowdLife({
           speed={speedPctPerSec}
           showYouTag={showYouTag}
           onTapSelf={onTapSelf}
+          inert={inert}
         />
       ))}
     </div>
@@ -203,6 +219,7 @@ function LifeFigure({
   speed,
   showYouTag,
   onTapSelf,
+  inert,
 }: {
   member: CrowdMember
   slot: number
@@ -211,6 +228,7 @@ function LifeFigure({
   speed: number
   showYouTag: boolean
   onTapSelf?: () => void
+  inert: boolean
 }) {
   const { open } = usePlayerCard()
   const reduceMotion = useSettings((s) => s.reduceMotion)
@@ -324,13 +342,20 @@ function LifeFigure({
   return (
     <button
       onClick={() => {
+        // Inert while the world is being arranged: the tap belongs to the
+        // scene behind this figure. `pointerEvents: none` below means this
+        // should never fire then, and the guard is here because a figure that
+        // opened a card on a stray synthetic click would be the whole bug.
+        if (inert) return
         if (member.isMe && onTapSelf) return onTapSelf()
         // An anonymous figure opens nothing. Same rule as Avatar, which is
         // already inert without a username.
         if (member.username) open(member.username)
       }}
-      title={member.isMe ? `${member.username} (you)` : member.username || undefined}
+      title={inert ? undefined : member.isMe ? `${member.username} (you)` : member.username || undefined}
       aria-label={member.username || 'Someone who plays here'}
+      aria-hidden={inert || undefined}
+      tabIndex={inert ? -1 : undefined}
       style={{
         position: 'absolute',
         left: `${pos.x + plan.current.jitter}%`,
@@ -346,8 +371,9 @@ function LifeFigure({
         background: 'none',
         border: 'none',
         padding: 0,
-        cursor: 'pointer',
-        pointerEvents: 'auto',
+        cursor: inert ? 'default' : 'pointer',
+        // The whole point: a tap passes through to the yard behind.
+        pointerEvents: inert ? 'none' : 'auto',
       }}
     >
       {/* Contact shadow, so the glide reads as feet on ground, not a hover. */}

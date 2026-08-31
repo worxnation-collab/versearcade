@@ -104,6 +104,28 @@ the real regexes from migrations 0083 and 0084 on every build, because a
 disagreement between them is invisible on screen: the client updates
 optimistically and the RPC quietly raises `bad flora`.
 
+## Where the picker lives
+
+On the church's own card, folded, directly under the yard it fills — the shape
+the keep's hall and the Upper Room both already use (scene, then what it is,
+then the shelf). It was a card of its own further down the tab, below the
+weekly matchup and the Give card, which meant tapping a plant and watching a
+yard that had scrolled off the screen.
+
+Two details of that placement were measured rather than chosen, and both are
+consequences of putting a `Collapsible` (whose header is a `.card`) inside
+another card:
+
+- It is **bled to the card's edges** with `margin: 0 -18px`, taking back the
+  `.card` padding. Its contents are padded back in, because a grid of plant
+  tiles running under a rounded corner reads as a layout bug.
+- Its header carries **no `meta`**. Every other folded section in the app
+  reports its contents on the header; this one cannot. Nested, the label has
+  177px on a 320px phone against 139px for the title alone, so even " · 5/14"
+  renders as "· 5/1…" — a count worse than no count. The tally is the first
+  line inside instead. If the header ever gains room, that is the thing to put
+  back.
+
 ## The ladder
 
 Eight plants against lifetime given, from 250 to 120,000. The first two land

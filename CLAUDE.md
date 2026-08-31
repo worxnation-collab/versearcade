@@ -1589,7 +1589,18 @@ Two rules fall out of that:
   `editing`/`floraEditing` prop and is inert without it. Two editable copies of
   the same world on one screen means you can't tell which one you're touching —
   that's why the church tab's hero is the editable yard and the Landscaping
-  section below it is only a picker.
+  shelf under it is only a picker.
+- **The shelf lives on the same card as the world it fills.** All three worlds
+  now read the same way — scene, then what it is, then a folded shelf: the keep
+  in its sheet, the Upper Room in its section, and the churchyard on the church
+  card. Landscaping was its own card two scrolls down, past the matchup and the
+  Give card, so tapping a plant changed a yard that was no longer on screen.
+  On the church card it is **bled to the card's edges** (`margin: 0 -18px`, the
+  `.card` padding) and carries **no `meta` on its header**, both measured rather
+  than chosen: the collapsible's header is itself a `.card`, and nested inside
+  another one's padding its label had 141px on a 320px phone — enough to
+  truncate the word "Landscaping" itself. The bleed buys 36px, and the tally
+  moved to the first line inside, where a sentence fits.
 
 **The crowd talks, in emoji, and that is deliberately all it can do.** Figures
 pop a small bubble every 12-30s from a fixed ten-emoji list in `CrowdLife`

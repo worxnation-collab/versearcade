@@ -286,9 +286,9 @@ function ChurchHome({ church }: { church: Church }) {
           rather than "here is where you go" — the Harvest Road and the keep both
           open with their world, and this is the same idea in the same spot.
 
-          It is also the editable one: tap a plant to pick it up, tap a plot to
-          set it down. The landscaping picker below fills the plots; this is
-          where you arrange them. */}
+          It is also the editable one, and since the picker moved onto this card
+          the whole loop is in one place: the shelf at the bottom puts a plant
+          in the yard, and the yard above is where you drag it about. */}
       <div className="card center" style={{ paddingTop: 10 }}>
         <ChurchScene
           level={info.level}
@@ -355,6 +355,23 @@ function ChurchHome({ church }: { church: Church }) {
             {upcoming ? ` · ${upcoming.name} at LVL ${upcoming.minLevel}` : ' · top of the ladder'}
           </p>
         </div>
+
+        {/* The shelf you fill the yard from, ON the church's own card — the
+            shape the Upper Room and the keep's hall both already use: the
+            world, then what it is, then the folded shelf that furnishes it. It
+            was a separate card two scrolls down, past the matchup and the Give
+            card, which meant tapping a plant and watching a yard you could no
+            longer see. Folded, it costs the card one row.
+
+            BLED to the card's edges (18px, `.card`'s padding), and that is not
+            decoration: the collapsible's header is itself a `.card`, so nested
+            inside this one's padding the label had 141px on a 320px phone and
+            truncated its own title to "Landscapi…". The Study tab's painting
+            bleeds past the shell's gutter for the same reason — a full-width
+            child inside a padded card takes the padding back. */}
+        <div style={{ margin: '14px -18px 0', textAlign: 'left' }}>
+          <Landscaping church={church} onPlanted={() => setPicked(null)} />
+        </div>
       </div>
 
       {/* This week's matchup ------------------------------------------------
@@ -415,9 +432,6 @@ function ChurchHome({ church }: { church: Church }) {
           )}
         </AnimatePresence>
       </div>
-
-      {/* Landscaping — the picker only; the yard itself is the hero above. */}
-      <Landscaping church={church} onPlanted={() => setPicked(null)} />
 
       {/* Ranks — local by default, worldwide on the "All" chip -------------- */}
       <div className="card">
@@ -593,21 +607,118 @@ function Landscaping({ church, onPlanted }: { church: Church; onPlanted: () => v
   }
 
   return (
-    <div className="card">
-      <b style={{ fontFamily: 'var(--font-display)', fontSize: 17 }}>Your churchyard</b>
-      <p className="dim" style={{ margin: '6px 0 10px', fontSize: 13.5, lineHeight: 1.5 }}>
-        Giving opens up the landscaping out front — it's the yard at the top of this tab. Everyone
-        who gives plants their own, and the yard on {church.name}'s page is all of it together;
-        nobody's beds are labelled. Tap anything up there to pick it up, then drag it wherever
-        you want it — or tap its ✕ to take it out.
-      </p>
-
-      <p className="faint" style={{ fontSize: 12, margin: '0 0 4px', lineHeight: 1.5 }}>
-        {given.toLocaleString()} given, all-time
-        {next
-          ? ` · ${(next.given - given).toLocaleString()} more opens the ${next.name}.`
-          : ' · every plant is open. The yard is yours.'}
-      </p>
+    // No card of its own: this IS a section of the church's card now, so the
+    // heading it used to carry ("Your churchyard") would be a second title
+    // under one that already names the place. The collapsible's own header is
+    // the heading, and everything wordy moved inside it — a folded shelf costs
+    // the hero one row, which is the whole reason it can live up here.
+    <>
+      <Collapsible
+        icon="🌷"
+        title="Landscaping"
+        // NO META, and it was measured rather than chosen. Every other folded
+        // section in the app reports what is inside it on its header, and this
+        // one cannot: the header is a `.card` nested inside the church's card,
+        // which leaves its label 177px on a 320px phone against 139px for the
+        // title alone. " · 5/14" needs 181 and renders as "· 5/1…", a count
+        // that is worse than no count. So the tally is the first line INSIDE
+        // instead, where a sentence fits. If this header ever gains room —
+        // a shorter title, a smaller pill — the meta is the thing to put back.
+      >
+        {/* The header is bled to the card's edges; its CONTENTS are not — a
+            grid of plant tiles running under the card's rounded corner reads
+            as a layout bug rather than as a full-bleed. */}
+        <div style={{ padding: '0 18px' }}>
+        {!loaded ? (
+          <p className="faint" style={{ fontSize: 12, margin: 0 }}>Reading the yard…</p>
+        ) : (
+          <>
+            <p className="faint" style={{ fontSize: 11.5, margin: '0 0 10px', lineHeight: 1.5 }}>
+              Tap a plant to put it in the yard above, then drag it wherever you like — or tap
+              its ✕ to take it out. Everyone who gives plants their own, and {church.name}'s
+              page shows all of them together; nobody's beds are labelled.
+            </p>
+            <p className="faint" style={{ fontSize: 11.5, margin: '0 0 10px', lineHeight: 1.5 }}>
+              <b style={{ color: 'var(--ink-dim)' }}>{mine.length} of {FLORA.length} open</b> ·{' '}
+              {given.toLocaleString()} given, all-time
+              {next
+                ? ` · ${(next.given - given).toLocaleString()} more opens the ${next.name}.`
+                : ' · every plant is open. The yard is yours.'}
+              {' '}Nothing here is for sale.
+            </p>
+            {/* Pictures, not a list of names. The ladder WAS the visual and
+                the per-plot chip rows were a second, wordier copy of it, so
+                the ladder became the picker and the rows are gone. */}
+            <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))' }}>
+              {FLORA.map((f) => {
+                const open = given >= f.given
+                const planted = Object.values(plantings).some((v) => plantingId(v) === f.id)
+                return (
+                  <div
+                    key={f.id}
+                    style={{
+                      position: 'relative',
+                      borderRadius: 12,
+                      border: `1px solid ${planted ? 'var(--gold)' : 'var(--stroke)'}`,
+                      background: planted ? 'rgba(255,210,63,0.10)' : 'rgba(255,255,255,0.04)',
+                      opacity: open ? 1 : 0.45,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <button
+                      onClick={() => open && void put(f.id)}
+                      disabled={!open}
+                      aria-label={open ? `Plant ${f.name}` : `${f.name}, locked`}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        padding: '10px 6px 8px',
+                        background: 'none',
+                        border: 'none',
+                        cursor: open ? 'pointer' : 'default',
+                        textAlign: 'center',
+                      }}
+                    >
+                      <span style={{ display: 'grid', placeItems: 'center', height: 56 }}>
+                        <FloraIcon id={f.id} size={54} />
+                      </span>
+                      <span style={{ display: 'block', fontSize: 11, fontWeight: 800, marginTop: 4, lineHeight: 1.25 }}>
+                        {f.name}
+                      </span>
+                      <span className="faint" style={{ display: 'block', fontSize: 10, marginTop: 2 }}>
+                        {planted ? 'In the yard' : open ? 'Tap to plant' : `🔒 ${f.given.toLocaleString()} given`}
+                      </span>
+                    </button>
+                    {planted && (
+                      <button
+                        onClick={() => void pull(f.id)}
+                        aria-label={`Take the ${f.name} out`}
+                        style={{
+                          position: 'absolute',
+                          top: 4,
+                          right: 4,
+                          width: 22,
+                          height: 22,
+                          borderRadius: '50%',
+                          border: '1px solid var(--stroke)',
+                          background: 'rgba(10,5,26,0.8)',
+                          color: 'var(--ink-dim)',
+                          fontSize: 12,
+                          lineHeight: 1,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
+        </div>
+      </Collapsible>
 
       <AnimatePresence>
         {flash && (
@@ -616,97 +727,15 @@ function Landscaping({ church, onPlanted }: { church: Church; onPlanted: () => v
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
             className="center"
-            style={{ margin: '8px 0 0', fontSize: 13, fontWeight: 800, color: 'var(--gold)' }}
+            // Padded back in: the shelf above it is bled to the card's edges,
+            // and a line of text run to a rounded corner reads as a mistake.
+            style={{ margin: '2px 0 0', padding: '0 18px', fontSize: 13, fontWeight: 800, color: 'var(--gold)' }}
           >
             {flash}
           </motion.p>
         )}
       </AnimatePresence>
-
-      <div style={{ marginTop: 12 }}>
-        <Collapsible icon="🌷" title="Landscaping" meta={`${mine.length}/${FLORA.length} open`}>
-          {!loaded ? (
-            <p className="faint" style={{ fontSize: 12, margin: 0 }}>Reading the yard…</p>
-          ) : (
-            <>
-              <p className="faint" style={{ fontSize: 11.5, margin: '0 0 10px', lineHeight: 1.5 }}>
-                Tap a plant to put it in the yard above, then tap it there and drag it wherever
-                you like. Everything arrives by giving — nothing here is for sale.
-              </p>
-              {/* Pictures, not a list of names. The ladder WAS the visual and
-                  the per-plot chip rows were a second, wordier copy of it, so
-                  the ladder became the picker and the rows are gone. */}
-              <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))' }}>
-                {FLORA.map((f) => {
-                  const open = given >= f.given
-                  const planted = Object.values(plantings).some((v) => plantingId(v) === f.id)
-                  return (
-                    <div
-                      key={f.id}
-                      style={{
-                        position: 'relative',
-                        borderRadius: 12,
-                        border: `1px solid ${planted ? 'var(--gold)' : 'var(--stroke)'}`,
-                        background: planted ? 'rgba(255,210,63,0.10)' : 'rgba(255,255,255,0.04)',
-                        opacity: open ? 1 : 0.45,
-                        overflow: 'hidden',
-                      }}
-                    >
-                      <button
-                        onClick={() => open && void put(f.id)}
-                        disabled={!open}
-                        aria-label={open ? `Plant ${f.name}` : `${f.name}, locked`}
-                        style={{
-                          display: 'block',
-                          width: '100%',
-                          padding: '10px 6px 8px',
-                          background: 'none',
-                          border: 'none',
-                          cursor: open ? 'pointer' : 'default',
-                          textAlign: 'center',
-                        }}
-                      >
-                        <span style={{ display: 'grid', placeItems: 'center', height: 56 }}>
-                          <FloraIcon id={f.id} size={54} />
-                        </span>
-                        <span style={{ display: 'block', fontSize: 11, fontWeight: 800, marginTop: 4, lineHeight: 1.25 }}>
-                          {f.name}
-                        </span>
-                        <span className="faint" style={{ display: 'block', fontSize: 10, marginTop: 2 }}>
-                          {planted ? 'In the yard' : open ? 'Tap to plant' : `🔒 ${f.given.toLocaleString()} given`}
-                        </span>
-                      </button>
-                      {planted && (
-                        <button
-                          onClick={() => void pull(f.id)}
-                          aria-label={`Take the ${f.name} out`}
-                          style={{
-                            position: 'absolute',
-                            top: 4,
-                            right: 4,
-                            width: 22,
-                            height: 22,
-                            borderRadius: '50%',
-                            border: '1px solid var(--stroke)',
-                            background: 'rgba(10,5,26,0.8)',
-                            color: 'var(--ink-dim)',
-                            fontSize: 12,
-                            lineHeight: 1,
-                            cursor: 'pointer',
-                          }}
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </>
-          )}
-        </Collapsible>
-      </div>
-    </div>
+    </>
   )
 }
 

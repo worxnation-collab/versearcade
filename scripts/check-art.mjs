@@ -56,18 +56,22 @@ const dirFor = (kind) =>
     ? 'public/skins'
     : kind === 'road'
       ? 'public/road'
+      : kind === 'room'
+        ? 'public/room'
       : kind === 'item'
         ? 'public/items'
         : 'public/keep'
 
-// Road paintings are written as JPEG (opaque full-bleed; see gen-art.mjs), and
-// this script reads PNG only — so they are simply not among the files it can
-// check. That is correct rather than a gap: the whole check is about whether a
-// chroma key took, and a road never goes through one.
+// Road and room paintings are written as JPEG (opaque full-bleed; see
+// gen-art.mjs), and this script reads PNG only — so they are simply not among
+// the files it can check. That is correct rather than a gap: the whole check is
+// about whether a chroma key took, and neither one goes through one. They are
+// excluded by name rather than left to fall through dirFor, so that a kind
+// added later fails loudly here instead of silently checking nothing.
 const files = process.argv.slice(2).length
   ? process.argv.slice(2)
   : Object.keys(kinds)
-      .filter((id) => kinds[id] !== 'road')
+      .filter((id) => kinds[id] !== 'road' && kinds[id] !== 'room')
       .map((id) => `${dirFor(kinds[id])}/${id}.png`)
       .filter(existsSync)
 
@@ -80,7 +84,7 @@ let bad = 0
 for (const f of files) {
   const id = f.split('/').pop().replace(/\.png$/, '')
   // A road's painting is a full-bleed background like any other scene.
-  const isScene = kinds[id] === 'scene' || kinds[id] === 'road'
+  const isScene = kinds[id] === 'scene' || kinds[id] === 'road' || kinds[id] === 'room'
   const png = PNG.sync.read(readFileSync(f))
   const { width: w, height: h, data } = png
   const at = (x, y) => data[(y * w + x) * 4 + 3]

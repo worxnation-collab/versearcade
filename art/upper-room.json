@@ -1,39 +1,39 @@
 [
   {
     "id": "room-1",
-    "kind": "scene",
+    "kind": "room",
     "prompt": "THE BARE CHAMBER, the first of five rooms: rough mud-brick walls with visible coursing, a beaten earth floor, and only a narrow unglazed slit high in the right wall for a window.\n\nA small interior room in a first-century Levantine house, painted in a warm hand-illustrated storybook style with clean flat shapes and soft painted shading — no photorealism, no line art, no text, no watermark, NO PEOPLE, and no furniture beyond what is described. 16:9 landscape, camera dead centre at seated eye height, symmetrical, the far wall filling the frame. The room must be DELIBERATELY BARE: nothing hanging on the walls, nothing on the shelf, nothing on the table, nothing on the floor and nothing in the alcove — everything a player will ever see in those places is something they earned, so the painting must leave them empty. Three fixtures and only these three, at these exact positions: a narrow wooden SHELF fixed to the left wall at upper-middle height, a LOW WOODEN TABLE standing on the floor in the centre, and an arched ALCOVE recessed into the right wall reaching the floor. The floor runs across the bottom quarter of the frame. Warm lamplight, deep violet-brown shadow, a palette of warm clay, sand plaster and brown timber against the night outside."
   },
   {
     "id": "room-2",
-    "kind": "scene",
+    "kind": "room",
     "prompt": "MATCH THE REFERENCE IMAGE'S COMPOSITION EXACTLY. Same camera position, same eye level, same framing, same perspective. The shelf on the left wall, the low table in the centre and the alcove on the right must sit at the SAME height and the SAME position in frame as they do in the reference. Change only the architecture and materials described below; do not move the fixtures, re-frame the shot, or zoom.\n\nTHE PLASTERED ROOM, the second of five: the walls are smooth sand-coloured plaster now, and the floor is laid with wide wooden boards. The window is still a narrow slit in the right wall.\n\nA small interior room in a first-century Levantine house, painted in a warm hand-illustrated storybook style with clean flat shapes and soft painted shading — no photorealism, no line art, no text, no watermark, NO PEOPLE, and no furniture beyond what is described. 16:9 landscape, camera dead centre at seated eye height, symmetrical, the far wall filling the frame. The room must be DELIBERATELY BARE: nothing hanging on the walls, nothing on the shelf, nothing on the table, nothing on the floor and nothing in the alcove — everything a player will ever see in those places is something they earned, so the painting must leave them empty. Three fixtures and only these three, at these exact positions: a narrow wooden SHELF fixed to the left wall at upper-middle height, a LOW WOODEN TABLE standing on the floor in the centre, and an arched ALCOVE recessed into the right wall reaching the floor. The floor runs across the bottom quarter of the frame. Warm lamplight, deep violet-brown shadow, a palette of warm clay, sand plaster and brown timber against the night outside.",
     "refs": [
-      "public/room/room-1.png"
+      "public/room/room-1.jpg"
     ]
   },
   {
     "id": "room-3",
-    "kind": "scene",
+    "kind": "room",
     "prompt": "MATCH THE REFERENCE IMAGE'S COMPOSITION EXACTLY. Same camera position, same eye level, same framing, same perspective. The shelf on the left wall, the low table in the centre and the alcove on the right must sit at the SAME height and the SAME position in frame as they do in the reference. Change only the architecture and materials described below; do not move the fixtures, re-frame the shot, or zoom.\n\nTHE LIT CHAMBER, the third of five: smooth plastered walls, boarded floor, and a proper tall ARCHED WINDOW right of centre showing deep blue night sky, with a wooden sill beneath it.\n\nA small interior room in a first-century Levantine house, painted in a warm hand-illustrated storybook style with clean flat shapes and soft painted shading — no photorealism, no line art, no text, no watermark, NO PEOPLE, and no furniture beyond what is described. 16:9 landscape, camera dead centre at seated eye height, symmetrical, the far wall filling the frame. The room must be DELIBERATELY BARE: nothing hanging on the walls, nothing on the shelf, nothing on the table, nothing on the floor and nothing in the alcove — everything a player will ever see in those places is something they earned, so the painting must leave them empty. Three fixtures and only these three, at these exact positions: a narrow wooden SHELF fixed to the left wall at upper-middle height, a LOW WOODEN TABLE standing on the floor in the centre, and an arched ALCOVE recessed into the right wall reaching the floor. The floor runs across the bottom quarter of the frame. Warm lamplight, deep violet-brown shadow, a palette of warm clay, sand plaster and brown timber against the night outside.",
     "refs": [
-      "public/room/room-1.png"
+      "public/room/room-1.jpg"
     ]
   },
   {
     "id": "room-4",
-    "kind": "scene",
+    "kind": "room",
     "prompt": "MATCH THE REFERENCE IMAGE'S COMPOSITION EXACTLY. Same camera position, same eye level, same framing, same perspective. The shelf on the left wall, the low table in the centre and the alcove on the right must sit at the SAME height and the SAME position in frame as they do in the reference. Change only the architecture and materials described below; do not move the fixtures, re-frame the shot, or zoom.\n\nTHE UPPER ROOM, the fourth of five: smooth pale plastered walls, boarded floor, a tall arched window right of centre with a mullion dividing it, heavy TIMBER CEILING BEAMS crossing the top of the frame, and a low step up into the alcove.\n\nA small interior room in a first-century Levantine house, painted in a warm hand-illustrated storybook style with clean flat shapes and soft painted shading — no photorealism, no line art, no text, no watermark, NO PEOPLE, and no furniture beyond what is described. 16:9 landscape, camera dead centre at seated eye height, symmetrical, the far wall filling the frame. The room must be DELIBERATELY BARE: nothing hanging on the walls, nothing on the shelf, nothing on the table, nothing on the floor and nothing in the alcove — everything a player will ever see in those places is something they earned, so the painting must leave them empty. Three fixtures and only these three, at these exact positions: a narrow wooden SHELF fixed to the left wall at upper-middle height, a LOW WOODEN TABLE standing on the floor in the centre, and an arched ALCOVE recessed into the right wall reaching the floor. The floor runs across the bottom quarter of the frame. Warm lamplight, deep violet-brown shadow, a palette of warm clay, sand plaster and brown timber against the night outside.",
     "refs": [
-      "public/room/room-1.png"
+      "public/room/room-1.jpg"
     ]
   },
   {
     "id": "room-5",
-    "kind": "scene",
+    "kind": "room",
     "prompt": "MATCH THE REFERENCE IMAGE'S COMPOSITION EXACTLY. Same camera position, same eye level, same framing, same perspective. The shelf on the left wall, the low table in the centre and the alcove on the right must sit at the SAME height and the SAME position in frame as they do in the reference. Change only the architecture and materials described below; do not move the fixtures, re-frame the shot, or zoom.\n\nTHE ROOM ON THE WALL, the fifth of five: warm pale plaster, boarded floor, timber ceiling beams, a tall mullioned arched window right of centre with a stone PARAPET visible outside it against the night, and slim gilt trim along the top of the shelf, the table and the alcove arch.\n\nA small interior room in a first-century Levantine house, painted in a warm hand-illustrated storybook style with clean flat shapes and soft painted shading — no photorealism, no line art, no text, no watermark, NO PEOPLE, and no furniture beyond what is described. 16:9 landscape, camera dead centre at seated eye height, symmetrical, the far wall filling the frame. The room must be DELIBERATELY BARE: nothing hanging on the walls, nothing on the shelf, nothing on the table, nothing on the floor and nothing in the alcove — everything a player will ever see in those places is something they earned, so the painting must leave them empty. Three fixtures and only these three, at these exact positions: a narrow wooden SHELF fixed to the left wall at upper-middle height, a LOW WOODEN TABLE standing on the floor in the centre, and an arched ALCOVE recessed into the right wall reaching the floor. The floor runs across the bottom quarter of the frame. Warm lamplight, deep violet-brown shadow, a palette of warm clay, sand plaster and brown timber against the night outside.",
     "refs": [
-      "public/room/room-1.png"
+      "public/room/room-1.jpg"
     ]
   }
 ]

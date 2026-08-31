@@ -58,6 +58,8 @@ const dirFor = (kind) =>
       ? 'public/road'
       : kind === 'room'
         ? 'public/room'
+        : kind === 'church'
+          ? 'public/church'
       : kind === 'item'
         ? 'public/items'
         : 'public/keep'
@@ -71,7 +73,7 @@ const dirFor = (kind) =>
 const files = process.argv.slice(2).length
   ? process.argv.slice(2)
   : Object.keys(kinds)
-      .filter((id) => kinds[id] !== 'road' && kinds[id] !== 'room')
+      .filter((id) => kinds[id] !== 'road' && kinds[id] !== 'room' && kinds[id] !== 'church')
       .map((id) => `${dirFor(kinds[id])}/${id}.png`)
       .filter(existsSync)
 
@@ -84,7 +86,7 @@ let bad = 0
 for (const f of files) {
   const id = f.split('/').pop().replace(/\.png$/, '')
   // A road's painting is a full-bleed background like any other scene.
-  const isScene = kinds[id] === 'scene' || kinds[id] === 'road' || kinds[id] === 'room'
+  const isScene = kinds[id] === 'scene' || kinds[id] === 'road' || kinds[id] === 'room' || kinds[id] === 'church'
   const png = PNG.sync.read(readFileSync(f))
   const { width: w, height: h, data } = png
   const at = (x, y) => data[(y * w + x) * 4 + 3]

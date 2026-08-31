@@ -228,14 +228,14 @@ for (const entry of manifest) {
   // `road` is a scene by every pipeline rule — full-bleed, no key, capped at
   // 640 — and differs only in where it lands. The season's painting belongs in
   // public/road/ next to harvest.jpg, not in the keep's folder.
-  const isRoad = entry.kind === 'road'
-  // Same argument as `road`, one room over: the Upper Room's tiers are scenes
-  // by every pipeline rule and differ only in where they land. They belong in
-  // public/room/ — not the keep's folder, which is a different place entirely
-  // — and art/upper-room.json already chains rooms 2..5 off
-  // public/room/room-1.png, so writing them anywhere else breaks its own refs.
-  const isRoom = entry.kind === 'room'
-  const isScene = entry.kind === 'scene' || isRoad || isRoom
+  // Scenes that live somewhere of their own. All three are full-bleed opaque
+  // paintings that differ from a plain `scene` only in where they land and how
+  // they encode — the keep's folder is a different place entirely, and a road,
+  // a room and a churchyard each belong next to their own feature. Adding the
+  // fourth is one row here rather than another level of ternary.
+  const SCENE_DIRS = { road: 'public/road', room: 'public/room', church: 'public/church' }
+  const sceneDir = SCENE_DIRS[entry.kind]
+  const isScene = entry.kind === 'scene' || !!sceneDir
   const isProp = entry.kind === 'prop'
   // A road's painting is full-bleed and fully opaque, so PNG buys nothing and
   // costs a lot: the first two came back at ~1MB each against the 88KB of the
@@ -243,13 +243,11 @@ for (const entry of manifest) {
   // JPEG at 82 is visually indistinguishable on a soft painted gradient.
   const dest = isSkin
     ? `public/skins/${entry.id}.png`
-    : isRoad
-      ? `public/road/${entry.id}.jpg`
-      : isRoom
-        ? `public/room/${entry.id}.jpg`
-        : isScene || isProp
-          ? `public/keep/${entry.id}.png`
-          : `public/items/${entry.id}.png`
+    : sceneDir
+      ? `${sceneDir}/${entry.id}.jpg`
+      : isScene || isProp
+        ? `public/keep/${entry.id}.png`
+        : `public/items/${entry.id}.png`
   process.stdout.write(`${entry.id} … `)
   try {
     const raw = await generate(entry.prompt, isSkin, entry.refs ?? [])
@@ -273,11 +271,13 @@ for (const entry of manifest) {
         isSkin ? { padBelowPct: 0.08, maxH: 400 } : isProp ? { padBelowPct: 0, maxH: 150 } : { padBelowPct: 0, maxH: 220 },
       )
     }
-    // Rooms encode like roads and for the same reason: a full-bleed opaque
-    // painting gains nothing from PNG and costs a lot. The five tiers came back
-    // at ~750KB each as PNG against ~90KB as JPEG, and it is a background the
-    // player downloads to look at their own room.
-    const buf = isRoad || isRoom
+    // Anything with a folder of its own encodes as JPEG, and for one reason: a
+    // full-bleed opaque painting gains nothing from PNG and costs a lot. The
+    // five room tiers came back at ~750KB each as PNG against ~80KB as JPEG,
+    // and these are backgrounds every player downloads. (A plain `scene` — the
+    // keep's halls — predates this and is still PNG; same argument applies to
+    // it whenever somebody wants to re-encode them.)
+    const buf = sceneDir
       ? jpeg.encode({ data: png.data, width: png.width, height: png.height }, 82).data
       : PNG.sync.write(png)
     mkdirSync(dirname(dest), { recursive: true })

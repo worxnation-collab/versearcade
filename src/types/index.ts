@@ -102,6 +102,11 @@ export interface Profile {
    *  not on any board: a count of matches beside somebody else's is one step
    *  from the battle ladder this app doesn't have. */
   liveBattles?: number
+  /** Battles won, lifetime, live or async. SERVER-WRITTEN (submit_battle, 0087)
+   *  and only ever going up — there is no rating to fall and no losses column
+   *  anywhere in the schema. Gates the crusades-era skins, and is deliberately
+   *  never drawn as a goal: see the set in data/avatar. */
+  battleWins?: number
   /** Wearable item ids the player has collected (from the Daily Chest). */
   ownedItems?: string[]
   /** Full-look skin ids the player is entitled to (paid/preview-unlocked). */

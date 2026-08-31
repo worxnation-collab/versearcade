@@ -138,6 +138,9 @@ BATTLE SOMEONE IN REAL TIME
 • Two new looks you can only get by playing live: Jonathan, who went out to meet
   David in the field, and Deborah, the judge under the palm. They count battles
   played, win or lose.
+• And four you win: Francis of Assisi, Hildegard of Bingen, Thomas Aquinas and
+  Melisende of Jerusalem. You're told the moment one is yours — there's no
+  progress bar to grind, and nothing anywhere counts what you've lost.
 • Wrong answers still teach. The line explaining the answer is yours to read at your
   own pace, even if it costs you the round — being slower never means being told less.
 

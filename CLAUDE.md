@@ -818,6 +818,51 @@ entirely white image (the magenta instruction ignored, the failure the church
 skins hit twice); it was re-rolled with the prompt hardened against exactly that
 and every pale garment on the figure recoloured.
 
+### The crusades set: the one cosmetic earned by winning
+
+Four figures from 1095–1291 — Francis of Assisi, Hildegard of Bingen, Thomas
+Aquinas, Melisende of Jerusalem — earned at **5 / 10 / 15 / 20 battles WON**,
+live or async. King Baldwin is from the same century, which is why they sit next
+to him rather than on a shelf of their own. `0087`, `profiles.battle_wins`.
+
+**This narrows the rule this file states absolutely**, so the argument is written
+down rather than left to be re-derived — and note it is the OPPOSITE call from
+Jonathan and Deborah one section up, which count battles played on purpose. It
+was made deliberately by the app's owner. What keeps it inside the fence:
+
+- **A battle already has a winner, and this app has ranked people by wins since
+  `0020`.** `battle_leaderboard` and `battle_denomination_board` both order by
+  wins desc and always have. This hangs a look on a number that has been public
+  and ranked for eighty migrations; it does not bring ranking to a clean surface.
+- **Nothing is taken from the loser.** `battle_wins` only goes up: no rating to
+  fall, no streak to break, no rung to slip down, and still **no losses column
+  anywhere in the schema**. A player who never wins is exactly where they began.
+- **The XP stays blind to the result.** `award_battle_xp` still never reads a
+  score — winner and loser are paid the same 10. `xp` is the number that ranks
+  people (0006), and it must stay unmovable by beating anybody. A look is not
+  standing, and that distinction is the whole load-bearing line here.
+- **The ladder is never drawn.** A locked one shows `🔒 ⚔️` and nothing
+  countable — no "3/10 wins" bar to grind against, because a screen where you
+  watch yourself being behind is the thing this app doesn't build. The number is
+  spoken exactly once, in the toast that says you've earned it.
+
+**The unlock notification diffs rather than being told, and that's forced.** The
+winner of an async battle isn't holding their phone when their battle completes
+— the opponent's submit is what decides it — so there is no call on their device
+to hang a reward off. `store/skinUnlocks.ts` compares what's owned now against
+what this device last saw, catching both sides and catching the challenger
+whenever they next open the app. **Priming is the trap and it is handled**: a
+device seeing an account for the first time records silently, or `0087`'s
+backfill would announce four skins at once to every long-time player. Toast is
+`SkinUnlockToast`, mounted once in `App` like `StudyDropToast` and for the same
+reason.
+
+Every figure is deliberately un-martial — the peacemaker who crossed the lines at
+Damietta, the abbess with her psaltery, the scholar with his book, the queen
+holding the psalter she commissioned. None carries a weapon and no prompt
+mentions a crusade: the era is the setting, not the subject. That is a content
+decision worth keeping if the set ever grows.
+
 ## Content is deterministic — keep it that way
 
 `getVerseForDate(date)` must return the same verse for the same date for every
@@ -962,12 +1007,14 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is **`0086` (battle XP + the live-battle skins), and it is NOT APPLIED
-YET** — the one migration in this folder the live project has never seen. Until
-somebody runs it battles pay nothing, `profiles.live_battles` doesn't exist so
-Jonathan and Deborah can never unlock, and PostgREST silently drops
-`create_battle`'s new `p_live`/`p_local_date` arguments. Apply it before merging
-the client, the way this section demands.
+The latest are **`0086` (battle XP + the live-battle skins) and `0087` (battle
+wins + the crusades skins), and NEITHER IS APPLIED YET** — the two migrations in
+this folder the live project has never seen. **Apply them in order**: 0087
+redefines `submit_battle` on top of 0086's version and calls `award_battle_xp`,
+so running it alone leaves a function referring to something that doesn't exist.
+Until both run, battles pay nothing, none of the six new skins can ever unlock,
+and PostgREST silently drops `create_battle`'s new `p_live`/`p_local_date`
+arguments. Apply before merging the client, the way this section demands.
 
 Before it, `0085` (erasure hardening — scrubbing the denormalised copies of
 a username that no foreign key can reach, plus a prune for the pulse table),
@@ -1011,8 +1058,8 @@ Numbering has scars: `0034` is used twice (`promo_codes`, `skin_purchases`),
 `public_church_page`), `0081` twice (`first_light`, and the Study library's
 card, which was applied to production under that number and renumbered to
 `0083` in the tree when the two branches met), and — from that same collision —
-`0082` and `0083` twice each. So the next free number is `0087` (0085 is taken
-by erasure hardening and 0086 by battle XP, above),
+`0082` and `0083` twice each. So the next free number is `0088` (0085 is taken by
+erasure hardening, 0086 by battle XP and 0087 by battle wins, above),
 and this
 sentence has already gone stale twice: it said "0076" while 0077, 0078 and 0079
 were sitting in the folder. `ls supabase/migrations | tail -1` is the answer — on ORIGIN/MAIN, not your

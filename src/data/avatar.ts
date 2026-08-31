@@ -274,6 +274,11 @@ export interface SkinDef {
   shareGoal?: number // earned: distinct shared days required
   referralGoal?: number // earned: referred signups required
   liveGoal?: number // earned: live battles played (room code or quick match)
+  /** earned: battles WON, live or async. Deliberately never shown as a
+   *  goal anywhere — a locked one draws a padlock and crossed swords and
+   *  nothing else, and the number appears exactly once, in the toast that
+   *  says you earned it. See the crusades set below. */
+  winGoal?: number
   pack?: string // paid: pack sku
   packName?: string // paid: display pack name
   /** paid: sold ONLY as part of its pack — never listed or priced on its own. */
@@ -340,6 +345,57 @@ export const FULL_SKINS: SkinDef[] = [
     source: 'earned',
     liveGoal: 15,
     blurb: 'The judge under the palm, who said \u201cI will surely go with you\u201d \u2014 earned by playing 15 live battles.',
+  },
+  // ——— The crusades era: won, not played ———
+  // Four figures from 1095-1291, earned at 5 / 10 / 15 / 20 battles WON (live or
+  // async, both count). King Baldwin above is from the same century, which is
+  // why this set sits next to him rather than inventing its own shelf.
+  //
+  // THIS SET IS THE ONE PLACE A COSMETIC IS EARNED BY BEATING SOMEBODY, and the
+  // argument for it lives in 0087's header rather than here. The short version:
+  // a battle already has a winner and this app has ranked people by wins since
+  // 0020, nothing is taken from the loser (battle_wins only goes up, there is no
+  // rating to fall and still no losses column anywhere in the schema), and the
+  // XP stays blind to the result — award_battle_xp pays the winner and the loser
+  // the same 10, so `xp`, the number that actually ranks people, cannot be moved
+  // by winning. A look is not standing.
+  //
+  // THE LADDER IS NEVER DRAWN. No progress bar, no "3/10 wins" — a locked one is
+  // a padlock and crossed swords, because a screen where you watch yourself
+  // being behind is the thing this app doesn't build. The number is revealed
+  // once, in the unlock notification (store/skinUnlocks).
+  //
+  // Every figure is deliberately un-martial: the peacemaker who crossed the
+  // lines at Damietta, the abbess with her psaltery, the scholar with his book,
+  // and the queen holding the psalter she commissioned. Not one of them carries
+  // a weapon, and none of the art references a crusade.
+  {
+    id: 'francis',
+    name: 'Francis of Assisi',
+    source: 'earned',
+    winGoal: 5,
+    blurb: 'Who walked through the front line at Damietta to sit with the Sultan.',
+  },
+  {
+    id: 'hildegard',
+    name: 'Hildegard of Bingen',
+    source: 'earned',
+    winGoal: 10,
+    blurb: 'Abbess, healer and composer \u2014 she wrote the music too.',
+  },
+  {
+    id: 'aquinas',
+    name: 'Thomas Aquinas',
+    source: 'earned',
+    winGoal: 15,
+    blurb: 'The scholar who thought it all the way through, book in hand.',
+  },
+  {
+    id: 'melisende',
+    name: 'Melisende of Jerusalem',
+    source: 'earned',
+    winGoal: 20,
+    blurb: 'Queen in her own right, holding the psalter she had made.',
   },
   // ——— The Pilgrimage (seasonal road) ———
   {
@@ -682,6 +738,8 @@ export function skinOwned(
     referralCount?: number
     /** Lifetime live battles played (profiles.live_battles, 0086). */
     liveBattles?: number
+    /** Lifetime battles won, live or async (profiles.battle_wins, 0087). */
+    battleWins?: number
     admin?: boolean
     /** Reward ids unlocked on the seasonal road (store/season). */
     seasonUnlocks?: string[]
@@ -702,6 +760,9 @@ export function skinOwned(
     // Live battles played, lifetime — win or lose, the counter never reads a
     // score (see the Jonathan/Deborah entries above and award_battle_xp).
     if (skin.liveGoal != null) return (ctx.liveBattles ?? 0) >= skin.liveGoal
+    // Battles won, live or async (0087). The only cosmetic axis here that reads
+    // a result rather than a turn-up — see the crusades set above.
+    if (skin.winGoal != null) return (ctx.battleWins ?? 0) >= skin.winGoal
     return distinctSharedDays(ctx.sharedDays) >= (skin.shareGoal ?? Number.MAX_SAFE_INTEGER)
   }
   return (ctx.ownedSkins ?? []).includes(skin.id)

@@ -191,7 +191,12 @@ export function ChurchScene({
         }}
       />
 
-      <div style={{ position: 'absolute', left: '50%', bottom: GROUND - 8, transform: 'translateX(-50%)' }}>
+      {/* The painted buildings carry ~8px of empty viewBox below their
+          bottom-anchored render, so GROUND - 8 put the visible foundation
+          exactly on the horizon — the very back edge of the lawn, floating.
+          Dropped so the building clearly stands ON the grass; the path is
+          drawn before this div, so it still runs up to the door. */}
+      <div style={{ position: 'absolute', left: '50%', bottom: GROUND - 26, transform: 'translateX(-50%)' }}>
         <ChurchArt level={level} skin={skin} size={CHURCH_W} />
       </div>
 

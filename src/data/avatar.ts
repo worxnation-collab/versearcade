@@ -428,6 +428,25 @@ export const FULL_SKINS: SkinDef[] = [
     // by toggling its code off in the admin panel, never by expiring the skin.
     blurb: 'Red hair, black hoodie, red kicks — the Sonshine look. Redeem his code to wear it.',
   },
+  {
+    id: 'porchlight',
+    name: 'Porchlight',
+    source: 'paid',
+    exclusive: true,
+    packName: 'Creator Collab',
+    // No `limitedUntil`, for the same reason as 'eden' and 'sonshine'. The
+    // launch skins vanish from the grid once their window closes — for owners
+    // too — and a creator skin has to keep working for as long as the
+    // partnership does. Retire it by toggling its code off in the admin panel,
+    // never by expiring the skin.
+    //
+    // THE UKULELE IS PART OF THE RENDER, not an item. Raster skins don't
+    // compose (equip Moses and the shepherd's staff disappears too), so the
+    // instrument that makes this look what it is has to be baked in — which is
+    // also why the prompt spends three sentences insisting it is a ukulele and
+    // not a guitar.
+    blurb: 'Curls, a cream knit and a ukulele on the porch. Redeem his code to wear it.',
+  },
 ]
 
 /** 'ruth_3' -> 'ruth': reactive pass skins bake their state into the equipped

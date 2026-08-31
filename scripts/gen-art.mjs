@@ -225,28 +225,34 @@ let produced = 0
 for (const entry of manifest) {
   if (only && entry.id !== only) continue
   const isSkin = entry.kind === 'skin'
-  // `road` is a scene by every pipeline rule — full-bleed, no key, capped at
-  // 640 — and differs only in where it lands. The season's painting belongs in
-  // public/road/ next to harvest.jpg, not in the keep's folder.
   // Scenes that live somewhere of their own. All three are full-bleed opaque
-  // paintings that differ from a plain `scene` only in where they land and how
-  // they encode — the keep's folder is a different place entirely, and a road,
-  // a room and a churchyard each belong next to their own feature. Adding the
-  // fourth is one row here rather than another level of ternary.
+  // paintings that differ from a plain `scene` only in where they land — the
+  // keep's folder is a different place entirely, and a road, a room and a
+  // churchyard each belong next to their own feature. Adding a fourth is one
+  // row here rather than another level of ternary.
   const SCENE_DIRS = { road: 'public/road', room: 'public/room', church: 'public/church' }
   const sceneDir = SCENE_DIRS[entry.kind]
   const isScene = entry.kind === 'scene' || !!sceneDir
   const isProp = entry.kind === 'prop'
-  // A road's painting is full-bleed and fully opaque, so PNG buys nothing and
-  // costs a lot: the first two came back at ~1MB each against the 88KB of the
-  // hand-made harvest.jpg they sit beside, and every user downloads them.
-  // JPEG at 82 is visually indistinguishable on a soft painted gradient.
+  // A full-bleed opaque painting gains nothing from PNG and costs a lot — the
+  // room tiers came back ~750KB each as PNG against ~80KB as JPEG, the roads
+  // ~1MB against the 88KB of the hand-made harvest.jpg beside them — so
+  // everything with a folder of its own encodes as JPEG, and a plain `scene`
+  // can opt in with `"format": "jpg"` without moving folders (the halls
+  // shipped as PNG, but nothing about a scene needs an alpha channel). Ignored
+  // on skins, items and props, which are cut-outs and genuinely need alpha.
+  // Two branches merged here: sceneDir came from the room/church work and
+  // `format` from the study library — asJpeg is the union, and it must never
+  // reference kinds that no longer exist (isRoad died in the sceneDir refactor
+  // and the auto-merge happily kept a call to it).
+  const asJpeg = !!sceneDir || (isScene && entry.format === 'jpg')
+  const ext = asJpeg ? 'jpg' : 'png'
   const dest = isSkin
     ? `public/skins/${entry.id}.png`
     : sceneDir
       ? `${sceneDir}/${entry.id}.jpg`
       : isScene || isProp
-        ? `public/keep/${entry.id}.png`
+        ? `public/keep/${entry.id}.${ext}`
         : `public/items/${entry.id}.png`
   process.stdout.write(`${entry.id} … `)
   try {
@@ -271,13 +277,7 @@ for (const entry of manifest) {
         isSkin ? { padBelowPct: 0.08, maxH: 400 } : isProp ? { padBelowPct: 0, maxH: 150 } : { padBelowPct: 0, maxH: 220 },
       )
     }
-    // Anything with a folder of its own encodes as JPEG, and for one reason: a
-    // full-bleed opaque painting gains nothing from PNG and costs a lot. The
-    // five room tiers came back at ~750KB each as PNG against ~80KB as JPEG,
-    // and these are backgrounds every player downloads. (A plain `scene` — the
-    // keep's halls — predates this and is still PNG; same argument applies to
-    // it whenever somebody wants to re-encode them.)
-    const buf = sceneDir
+    const buf = asJpeg
       ? jpeg.encode({ data: png.data, width: png.width, height: png.height }, 82).data
       : PNG.sync.write(png)
     mkdirSync(dirname(dest), { recursive: true })

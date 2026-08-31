@@ -85,6 +85,18 @@ export function skinVisible(skin: SkinDef, owned: boolean): boolean {
   // checkout, so they show everywhere, exactly like 'earned'. Hiding one on
   // native would hide free content, not a storefront.
   if (skin.source === 'pass') return true
+  // A promo-code exclusive is not a storefront question either, and this has to
+  // be decided BEFORE the native branch below — it wears source 'paid' to reuse
+  // the owned_skins entitlement, so with StoreKit live it used to fall into
+  // skuPurchasable() and vanish for want of a product that is never meant to
+  // exist. It carries no price and no checkout ANYWHERE: an unowned one opens
+  // the redeem prompt (CustomizeSection), draws "🔒 <packName>" rather than an
+  // amount, and is excluded from `pricedOnShelf` by name. So showing it in the
+  // App Store build is showing free content, exactly as `pass` and `earned` are
+  // — and hiding it would hide the thing a creator's audience was sent to
+  // redeem, which is what CLAUDE.md means by "native still has free promo-code
+  // skins, identical to web".
+  if (skin.exclusive) return true // redeemed with a free code, never sold
   // On native, a priced skin is listed only if Apple will actually sell it —
   // a tile with no product behind it is a dead end and a review risk.
   if (isNativeApp() && storefrontEnabled() && skin.source === 'paid' && !owned) {
@@ -92,7 +104,6 @@ export function skinVisible(skin: SkinDef, owned: boolean): boolean {
   }
   if (storefrontEnabled()) return true
   if (skin.source === 'earned') return true
-  if (skin.exclusive) return true // redeemed with a free code, never sold
   return owned
 }
 

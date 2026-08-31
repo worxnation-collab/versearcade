@@ -163,7 +163,8 @@ the bundled road is what an offline phone falls back to.
 **Cosmetics are no longer sold.** Moses, Esther and Elijah are `free`, the
 angels (Gabriel, Michael, Seraph) are `pass` — road rewards — and `BUNDLES` is
 empty. What still has a price is the founding-patron whale, and the promo-code
-exclusives (`eden`, `shades`, `sonshine`) are still free redemptions. Everything
+exclusives (`eden`, `shades`, `sonshine`, `porchlight`) are still free
+redemptions. Everything
 below still holds for that one product, and for the machinery, which is kept
 rather than deleted so selling something again is a row rather than a rebuild.
 
@@ -177,11 +178,35 @@ Two things about the de-monetisation that are load-bearing:
   function's is what an existing purchase is WORTH. Trim the second and a buyer
   who reinstalls and taps Restore gets nothing back. **Add rows there, never
   remove them.**
-- **`enforce_skin_entitlement` was deliberately not touched.** The de-monetised
-  ids stay in its protected list: nothing reads `owned_skins` for them now, so
-  guarding them is free, and that list is restated *wholesale* by every
-  migration that edits it — a needless rewrite is the one way to unlock a paid
-  skin for everybody by accident.
+- **`enforce_skin_entitlement` was deliberately not touched by the
+  de-monetisation.** The de-monetised ids stay in its protected list: nothing
+  reads `owned_skins` for them now, so guarding them is free, and that list is
+  restated *wholesale* by every migration that edits it — a needless rewrite is
+  the one way to unlock a paid skin for everybody by accident. The ONE
+  legitimate reason to touch it is adding a new protected id, and then the whole
+  list is copied forward from the migration that last set it. That chain is
+  0031 → 0034 → 0043 → 0044 → 0046 → 0057 → **0082** (`porchlight`); read the
+  latest one, never an earlier one.
+
+**A creator-collab skin is a promo code, not a product**, and `sonshine` (0057)
+and `porchlight` (0082) are the two worked examples. The shape: `source: 'paid'`
++ `exclusive: true` so it reuses the `owned_skins` entitlement, NO
+`limitedUntil` (a partnership outlives a launch window — retire it by toggling
+the code off in the admin panel, never by expiring the skin), a row in
+`promo_codes`, the id added to `enforce_skin_entitlement`, and deliberately NOT
+added to `fulfill_skin`'s allowlist, so neither Stripe nor IAP can ever grant
+it. Grant it with `grant_skins()` rather than `admin_grant_skin()`: the latter
+writes a `skin_purchases` row with `reason='manual'`, which files a free
+creator grant in the dashboard's Sales tab as though it were revenue.
+
+**`skinVisible` decides `exclusive` BEFORE the native branch, and the order is
+the point.** An exclusive wears `source: 'paid'`, so with StoreKit live it used
+to fall through to `skuPurchasable()` and vanish for want of a product that is
+never meant to exist — hiding the very thing a creator's audience was sent to
+redeem. It is safe to show because it carries no price and no checkout anywhere:
+an unowned one opens the redeem prompt, draws `🔒 <packName>` instead of an
+amount, and `pricedOnShelf` excludes exclusives by name. Free content, like
+`pass` and `earned`.
 
 The web app sells through Stripe Payment Links. The App Store /
 Play build sells through in-app purchase (Guideline 3.1.1)
@@ -276,7 +301,10 @@ Expect to reword prompts: `PROHIBITED_CONTENT` came back for "lion cub" and for
 magenta backdrop until the instruction was moved first and put in caps. `kind` picks the pipeline: `scene` for a
 full-bleed background (no keying, capped at 640px), `prop` for one object on
 flat magenta (keyed, cropped, capped at 150px), `skin`/`item` for the avatar
-path. `art/README.md` has the details and the wiring.
+path. A scene may add **`"format": "jpg"`** to get the road's JPEG encoding
+without moving to the road's folder — nothing full-bleed and opaque needs an
+alpha channel, and the Study library came back at 1,008KB as a PNG against
+166KB as a JPEG. The keep's halls are still PNG; that's history, not a rule. `art/README.md` has the details and the wiring.
 
 **Generated art layers OVER a drawn fallback, never instead of it.** A tier
 whose PNG hasn't been generated still has to render as itself. Wiring is
@@ -753,6 +781,7 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
+<<<<<<< HEAD
 The latest is `0083` (free placement + tiers as their own unlocks) and `0082`
 (six more churchyard plants) — both APPLIED to the live project on 2026-08-31,
 in that order, and verified: the fourteen flora ids answer, both placement
@@ -764,6 +793,13 @@ those numbers — the scars paragraph below has the details. Before them,
 this week / all time on the church board), both also applied; then `0079`
 (a church claiming its own page) and `0078` (a
 church's ask for a sponsored slot) and `0077` (the slot itself). Before them, `0075` (the weekly church rivalry) and `0074` (the admin
+=======
+The latest is `0083` (the Study library's card); before it, `0082` (the
+Porchlight creator-collab skin), `0081` (first light — who opened the day's
+verse first), `0080` (today / this week / all time on the church board), `0079`
+(a church claiming its own page), `0078` (a church's ask for a sponsored slot)
+and `0077` (the slot itself). Before them, `0075` (the weekly church rivalry) and `0074` (the admin
+>>>>>>> origin/main
 dashboard's dates) — 0074 must be applied before
 the client that uses it merges, and that one is not optional: it DROPS the old
 `admin_overview()` / `admin_growth(boolean)` signatures to replace them with
@@ -781,7 +817,14 @@ one, take the day from `p_tz`, never from `current_date`.
 
 Numbering has scars: `0034` is used twice (`promo_codes`, `skin_purchases`),
 `0059` twice (`keep`, `practice_uncapped`) and `0074` twice (`admin_local_dates`,
+<<<<<<< HEAD
 `public_church_page`) — so the next free number is `0084`, not `0082`, and this
+=======
+`public_church_page`) — and `0081` twice (`first_light`, and the Study library's
+card, which was applied to production under that number and renumbered to
+`0083` in the tree when the two branches met) — so the next free number is
+`0084`, not `0083`, and this
+>>>>>>> origin/main
 sentence has already gone stale twice: it said "0076" while 0077, 0078 and 0079
 were sitting in the folder. `ls supabase/migrations | tail -1` is the answer — on ORIGIN/MAIN, not your
 working tree: two branches in flight both took 0080 and 0081, and git merged
@@ -1402,6 +1445,7 @@ describes it:
 | Harvest Road | top of `/season` | `RoadScene` |
 | The hall | under "Start a new battle", and in the sheet | `KeepScene` |
 | The churchyard | hero of `/church`, and on any church's page | `ChurchScene` |
+| The lending library | the whole of `/study` | `LibraryScene` |
 | You | top of `/you` | `ProfileHero` |
 | Your Upper Room | `/you`, under the card, and in the visit sheet | `RoomScene` |
 
@@ -1656,6 +1700,48 @@ tapping it. Any future overlay inside a scene needs the same treatment.
 Design tokens live at the top of `src/index.css` — use the CSS variables, never
 raw hexes. Numbers and headings wear `var(--font-display)`; that's the brand.
 Motion is springy `framer-motion`, mobile-first, max width 520px.
+
+### The Study tab IS a library
+
+`/study` is one room filling the tab — a lit library with an NPC librarian
+(Tabitha) at the desk. It used to be a grid of book tiles; the tiles are gone
+(`StudyShelf`/`StudyBookArt` deleted) and everything Study can do is now
+something in the room. Full design: `docs/STUDY-LIBRARY.md`. Five things:
+
+- **Three hotspots, and the ceiling is deliberate.** Tabitha lends the five
+  practice surfaces, the ledger on her desk is `/study/reports`, the satchel on
+  the floor is `/study/bag`. Nothing else is tappable: a room with a hotspot on
+  every object is a menu with a painting behind it, so anything new in Study
+  belongs in her offer rather than as a fourth glowing thing on the floor. Every
+  marker is always labelled — this is a tab, not a puzzle.
+- **One list, two surfaces.** `StudyBook[]` is built once in `StudyScreen` and
+  handed BOTH to the room (hotspot badges) and to Tabitha (what she lends). A
+  `lend` line makes an entry stock; without one it is yours and stands in the
+  room as itself. Same choke-point habit as `QuizRunner` and `CrowdLife`.
+- **The first book of the DAY pays 5 XP**, and it is built like every XP grant
+  here: `xp` is the worldwide leaderboard (0006), so the server counts and the
+  server pays (`checkout_library_book`, 0083), the client never sends an amount,
+  and the cap is the PRIMARY KEY `(user_id, borrowed_on)` rather than a count —
+  the day's second checkout inserts nothing and two taps racing settle
+  themselves. `todayLocalDate()` clamped ±1, the house pattern. 5/day is the
+  smallest payout in the app (the Basin pays 12, praying 30).
+- **Nothing counts the days.** No streak on the table, no Journal rung, no RPC
+  asking how many times anybody has visited, and `borrowedToday` is a boolean on
+  both paths. A daily reward you can fall BEHIND on is the version that would be
+  wrong, and the guarantee is in what isn't stored.
+- **She never measures anybody**, and the reveal waits. No due dates, no "it's
+  been a while", no count of visits. Every checkout after the day's first is a
+  SUCCESS that pays nothing — never a refusal, and neither is a failed call,
+  because Study has no other door. The sheet holds the stamp behind an "Open
+  it →" button rather than navigating for you: a +5 XP line swept off screen by
+  a route change is the exact bug `StudyDropToast` exists to work around.
+
+Two-mode for real (`store/library.ts`), because a keyless LOCAL build IS this
+tab and a dead librarian there would be a dead tab; the guest day rolls over on
+READ, so nothing has to fire at midnight. The room's painting is a **5:8
+portrait because the frame is one** — it was re-prompted twice to get there —
+and it's bled past the shell's 18px gutter, since it isn't a card on the tab,
+it's the tab.
 
 The Study tab is explicitly rank-free: practice there awards small per-session XP
 at most and never touches standing. The rank-free rule is the invariant, not the

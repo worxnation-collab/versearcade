@@ -158,6 +158,16 @@ export type QuestVerb =
   | 'give_gift'
   /** Practice prayers said in the Upper Room. */
   | 'pray'
+  /**
+   * Books checked out from the librarian in the Study tab's lending library.
+   *
+   * Scores the LONG WAY ROUND, never the studying: every checkout ends on a
+   * study surface the shelf already offers, so a quest naming this verb asks a
+   * player to visit the room rather than to practise more. Study's rank-free
+   * rule is untouched by it — a road may notice you went to the library, and
+   * may not notice how you did once you got there.
+   */
+  | 'borrow_book'
 
 /**
  * Every verb this build can actually score. Anything outside it is dropped on
@@ -202,6 +212,7 @@ export const KNOWN_VERBS = new Set<string>([
   'arcade_runs',
   'arcade_gathered',
   'keep_rest',
+  'borrow_book',
 ])
 
 export interface QuestDef {

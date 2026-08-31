@@ -268,3 +268,108 @@ input::placeholder { color: var(--ink-faint); }
 
 /* Scrollbars (subtle) */
 ::-webkit-scrollbar { width: 0; height: 0; }
+
+/* Arcade ----------------------------------------------------------------- */
+/* The tap games (features/arcade). Keyframes and pseudo-elements are the two
+   things inline styles cannot express, which is the only reason these live
+   here rather than beside the component that uses them.
+
+   The two things on the ground are separated by SHAPE, LUSTRE and MOTION —
+   round vs irregular, glowing vs matte, still vs twitching — and only then by
+   colour. They are deliberately close in value (that is the difficulty), so
+   colour is the one channel doing the least work here, not the most. Same rule
+   as the Study accuracy chart, applied where it matters more. */
+.arcade-sky {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, #1b0d3f 0%, #2d1550 34%, #472a6b 46%);
+}
+.arcade-stars {
+  position: absolute; inset: 0 0 56% 0; opacity: 0.55;
+  background-image:
+    radial-gradient(1.4px 1.4px at 18% 30%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 62% 18%, #ffe9b0, transparent),
+    radial-gradient(1.6px 1.6px at 82% 40%, #fff, transparent),
+    radial-gradient(1.1px 1.1px at 34% 12%, #cbb6ff, transparent),
+    radial-gradient(1.3px 1.3px at 48% 46%, #fff, transparent);
+}
+.arcade-ground {
+  position: absolute; left: 0; right: 0; top: 44%; bottom: 0;
+  background: linear-gradient(180deg, #5d3f56 0%, #6d4c37 9%, #b4855a 40%, #d8ab74 100%);
+}
+/* Speckled desert floor. Ruled lines read as floorboards and a tiled ripple
+   moires into corduroy at phone size; both were tried. */
+.arcade-ground::before {
+  content: ""; position: absolute; inset: 0; opacity: 0.55;
+  background-image:
+    radial-gradient(1px 1px at 18% 24%, rgba(255,255,255,0.45), transparent),
+    radial-gradient(1px 1px at 68% 58%, rgba(61,38,24,0.5), transparent),
+    radial-gradient(1.6px 1.6px at 42% 82%, rgba(109,76,55,0.45), transparent),
+    radial-gradient(1px 1px at 86% 16%, rgba(255,255,255,0.3), transparent);
+  background-size: 57px 57px, 43px 43px, 79px 79px, 91px 91px;
+}
+.arcade-ground::after {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(70% 55% at 50% 8%, rgba(255,220,160,0.22), transparent 70%);
+}
+
+.tap-flake { display: block; width: 100%; height: 100%; position: relative; }
+
+/* Fresh manna: round, luminous, breathing. "White like coriander seed." */
+.tap-flake.manna {
+  border-radius: 50%;
+  background:
+    radial-gradient(1.5px 1.5px at 62% 40%, rgba(190,150,95,0.5), transparent),
+    radial-gradient(1.5px 1.5px at 40% 66%, rgba(190,150,95,0.4), transparent),
+    radial-gradient(circle at 34% 28%, #fffdf4 0%, #fff6dc 44%, #e8d3a4 100%);
+  box-shadow:
+    0 0 0 2px rgba(255,255,255,0.55),
+    0 0 20px 5px rgba(255,235,175,0.5),
+    0 5px 0 rgba(109,76,55,0.4);
+  animation: manna-dew 1.9s ease-in-out infinite;
+}
+/* The dew it fell with. */
+.tap-flake.manna::after {
+  content: ""; position: absolute; width: 22%; height: 22%; top: 20%; left: 24%;
+  border-radius: 50%; background: #fff; opacity: 0.95;
+  box-shadow: 0 0 6px 2px rgba(255,255,255,0.8);
+}
+
+/* Kept over from yesterday: nearly the same colour, and nothing else the same.
+   Irregular, matte, and it moves on its own. */
+.tap-flake.kept {
+  border-radius: 72% 28% 46% 54% / 32% 66% 34% 68%;
+  background:
+    radial-gradient(3px 2px at 72% 68%, #8d7c5f, transparent),
+    radial-gradient(2px 1.6px at 26% 76%, #8d7c5f, transparent),
+    radial-gradient(circle at 36% 28%, #f2e9d6 0%, #d9caae 52%, #a2916f 100%);
+  box-shadow: inset 0 -5px 8px rgba(78,60,38,0.45), inset 0 3px 5px rgba(255,255,255,0.35), 0 4px 0 rgba(70,50,32,0.3);
+  animation: manna-squirm 0.55s ease-in-out infinite;
+}
+/* One worm lying across it — a streak, not an outline: a curl hooking off the
+   edge reads as a handle and turns the lump into a teacup. */
+.tap-flake.kept::after {
+  content: ""; position: absolute; width: 42%; height: 3px; left: 16%; top: 31%;
+  border-radius: var(--r-pill); opacity: 0.8; transform: rotate(-24deg);
+  background: linear-gradient(90deg, transparent, #8d7c5f 25%, #8d7c5f 70%, transparent);
+  animation: manna-crawl 0.55s ease-in-out infinite;
+}
+
+/* Exits. These follow the two rules above in source order on purpose: equal
+   specificity, so the later rule replaces the idle animation. */
+.tap-flake.is-taken { animation: tap-pop 0.22s ease-out forwards; }
+.tap-flake.is-leaving { animation: tap-melt 0.3s ease-in forwards; }
+
+@keyframes manna-dew { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.14); } }
+@keyframes manna-squirm { 0%, 100% { transform: rotate(-5deg) scale(1); } 50% { transform: rotate(6deg) scale(1.04); } }
+@keyframes manna-crawl {
+  0%, 100% { transform: rotate(-24deg) translate(0, 0); }
+  50% { transform: rotate(-13deg) translate(2px, 1px); }
+}
+@keyframes tap-pop { to { transform: translateY(-40%) scale(0.4); opacity: 0; } }
+@keyframes tap-melt { to { transform: scale(0.25); opacity: 0; } }
+
+/* The setting, not just the OS preference — this app has its own switch. */
+.arcade-still, .arcade-still::before, .arcade-still::after { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .tap-flake, .tap-flake::after { animation: none !important; }
+}

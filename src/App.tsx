@@ -34,6 +34,7 @@ import BattlePlay from './features/arena/BattlePlay'
 import BattleDetail from './features/arena/BattleDetail'
 import BattleCpu from './features/arena/BattleCpu'
 import LiveLobby, { LiveRoom } from './features/arena/LiveBattle'
+import ArcadeScreen from './features/arcade/ArcadeScreen'
 import StudyScreen from './features/study/StudyScreen'
 import StudyReportsScreen from './features/study/StudyReportsScreen'
 import StudyRecentScreen from './features/study/StudyRecentScreen'
@@ -401,6 +402,17 @@ export default function App() {
                   <BattleHub />
                 </RequireAccount>
               </TabShell>
+            </RequireProfile>
+          }
+        />
+        {/* The arcade cabinet standing in the hall, the churchyard and your own
+            Upper Room. Guest-open: the game persists nothing, so an account
+            would make nothing here yours tomorrow. */}
+        <Route
+          path="/arcade/manna"
+          element={
+            <RequireProfile>
+              <ArcadeScreen />
             </RequireProfile>
           }
         />

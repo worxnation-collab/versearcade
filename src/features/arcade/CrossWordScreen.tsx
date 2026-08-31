@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { ArcadeShell } from './ArcadeShell'
+import { ArcadeWelcome } from './ArcadeWelcome'
 import { CrossBoard, boardCells } from './CrossArt'
 import { VerseCard } from './VerseCard'
 import { Button } from '@/components/Button'
@@ -10,6 +11,7 @@ import { useJuice } from '@/juice/useJuice'
 import { useSettings } from '@/store/settings'
 import { useCrossword } from '@/store/crossword'
 import { useArcadeInvite } from '@/store/arcadeInvite'
+import { useArcadeXp, type ArcadePlayResult } from '@/store/arcadeXp'
 import { useBible } from '@/store/bible'
 import { useDrops } from '@/store/drops'
 import { useSeason } from '@/store/season'
@@ -252,6 +254,7 @@ export default function CrossWordScreen({ demo }: { demo?: boolean }) {
   // marked studied, which is the half of a solve that belongs to the account
   // rather than to this device (see store/crossword.ts).
   const paid = useRef<string | null>(null)
+  const [reward, setReward] = useState<ArcadePlayResult | null>(null)
   useEffect(() => {
     if (!st.done || paid.current === puzzle.id) return
     paid.current = puzzle.id
@@ -265,6 +268,12 @@ export default function CrossWordScreen({ demo }: { demo?: boolean }) {
       markStudied(puzzle.reference)
       void useDrops.getState().roll()
       void useSeason.getState().track('study_run')
+      // The day's first cross is worth 5 XP, exactly like the day's first run
+      // on either tap machine — what is paid for is turning up at a machine,
+      // not solving it faster than anybody. Building a second cross pays
+      // nothing and says nothing, which is why "Build another" is still an
+      // offer rather than a chore.
+      void useArcadeXp.getState().record('cross').then(setReward)
     }
     // No-op outside a demo, so this is flat rather than conditional.
     useArcadeInvite.getState().notePlayEnded(today)
@@ -310,6 +319,7 @@ export default function CrossWordScreen({ demo }: { demo?: boolean }) {
     const fresh = earlier.filter((p) => !solvedMap[p.id])
     const pick = fresh[0] ?? earlier[0] ?? CROSS_PUZZLES[0]
     juice.whoosh()
+    setReward(null)
     dispatch({ t: 'start', puzzle: pick })
   }
 
@@ -445,6 +455,12 @@ export default function CrossWordScreen({ demo }: { demo?: boolean }) {
                 </>
               }
             >
+              {/* Under the verse rather than over it: the scripture is the
+                  payoff of a cross, and a reward line above it would be the
+                  screen leading with the smaller thing. */}
+              <div style={{ marginTop: 14 }}>
+                <ArcadeWelcome reward={reward} />
+              </div>
               {/* Both of these belong to somebody with a Bible of their own:
                   keeping a verse writes to a shelf a free go doesn't have, and
                   the chapter reader is behind the account wall, so on a demo

@@ -35,22 +35,22 @@ export interface DecorArtDef {
 }
 
 export const RASTER_DECOR: Record<string, DecorArtDef> = {
-  keep_sheaf_banner: { src: '/keep/sheaf_banner.png', w: 31, h: 52, mode: 'hang' },
-  keep_tapestry: { src: '/keep/tapestry.png', w: 72, h: 46, mode: 'center' },
-  keep_armor_rack: { src: '/keep/armor_rack.png', w: 59, h: 48, mode: 'center' },
-  keep_chandelier: { src: '/keep/chandelier.png', w: 56, h: 46, mode: 'hang' },
-  keep_lanterns: { src: '/keep/lanterns.png', w: 21, h: 42, mode: 'hang' },
-  keep_oil_lamp: { src: '/keep/oil_lamp.png', w: 32, h: 13, mode: 'stand' },
+  keep_sheaf_banner: { src: '/keep/sheaf_banner.png', w: 33.6, h: 52, mode: 'hang' },
+  keep_tapestry: { src: '/keep/tapestry.png', w: 33.7, h: 46, mode: 'center' },
+  keep_armor_rack: { src: '/keep/armor_rack.png', w: 41.3, h: 48, mode: 'center' },
+  keep_chandelier: { src: '/keep/chandelier.png', w: 45.4, h: 46, mode: 'hang' },
+  keep_lanterns: { src: '/keep/lanterns.png', w: 12.9, h: 42, mode: 'hang' },
+  keep_oil_lamp: { src: '/keep/oil_lamp.png', w: 22.1, h: 13, mode: 'stand' },
   keep_rosary: { src: '/keep/rosary.png', w: 18, h: 13, mode: 'stand' },
   keep_open_bible: { src: '/keep/open_bible.png', w: 30, h: 20, mode: 'stand' },
-  keep_chess: { src: '/keep/chess.png', w: 34, h: 18, mode: 'stand' },
-  keep_brazier: { src: '/keep/brazier.png', w: 39, h: 34, mode: 'stand' },
+  keep_chess: { src: '/keep/chess.png', w: 41.5, h: 18, mode: 'stand' },
+  keep_brazier: { src: '/keep/brazier.png', w: 46.0, h: 34, mode: 'stand' },
   keep_barrels: { src: '/keep/barrels.png', w: 41.3, h: 38, mode: 'stand' },
   // Generated, and the only entry with no drawn file underneath it: the spears
   // went straight to a render, straddling their point across the ~50-unit span
   // every wall trophy here uses.
   keep_crossed_spears: { w: 47.7, h: 50, mode: 'center' },
-  keep_woven_rug: { src: '/keep/rug.png', w: 38, h: 20, mode: 'stand' },
+  keep_woven_rug: { src: '/keep/rug.png', w: 41.7, h: 20, mode: 'stand' },
   // Awaiting its render, and deliberately listed before one exists. With no
   // file to resolve, decorRaster returns null and the drawn destrier is the
   // whole prop, so nothing here is read yet — which is also why this w/h is
@@ -58,5 +58,5 @@ export const RASTER_DECOR: Record<string, DecorArtDef> = {
   // fails with the real width to put here; adding this row later is the step
   // that gets forgotten. It carries the faction colour through PROP_OVERLAYS
   // rather than in the painting, so it is NOT one of the drawn holdouts.
-  keep_destrier: { w: 81, h: 59, mode: 'stand' },
+  keep_destrier: { w: 70.8, h: 59, mode: 'stand' },
 }

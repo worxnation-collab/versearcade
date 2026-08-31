@@ -86,8 +86,39 @@ be private and uncomparable:
   copy.
 
 **What a run may pay:** a study-drop roll (capped, and worth only a relic to
-give to your church) and season-road progress through a verb. Not XP, not
-points, not standing — those rank people, and this is a place to spend a minute.
+give to your church), season-road progress through a verb, and — since `0084` —
+**5 XP for the day's first run on each machine**. Not points, not standing, and
+never anything that scales with how the run went.
+
+That XP is the one thing here that touches a number which ranks people (`xp` IS
+the worldwide leaderboard, 0006), so it is bounded on every side, and each rail
+is worth understanding before touching it:
+
+- **What is paid for is turning up, not doing well.** Forty flakes and four
+  flakes are worth exactly the same 5 XP, and nothing on the paying path ever
+  sees a score. This is what keeps the rule above intact: a run still cannot be
+  behind any other run.
+- **The server counts and the server pays.** `record_arcade_play` decides;
+  no client ever sends an amount. The client sends `todayLocalDate()` and the
+  server clamps it ±1, the house pattern.
+- **The cap is a PRIMARY KEY, not a count.** `(user_id, game_id, played_on)`
+  means the second run of a machine today inserts nothing and pays nothing, and
+  two runs finishing together settle themselves.
+- **The game id is validated against a fixed list in SQL, and that list IS the
+  ceiling.** Three machines × 5 XP = 15 XP a day, against a daily drop's 30–60.
+  Without the list a client could invent ids and mint 5 XP each. Adding a
+  machine that should pay is therefore a migration, deliberately.
+- **A free go from a shared link pays nothing**, like everything else a demo
+  doesn't pay — there is no account behind an invite, and paying for one would
+  make a share farmable.
+- **Nothing counts runs or days.** The table stores a user, a game id and a
+  date. No streak, no total, no "days in a row", and no RPC asking what anybody
+  else has collected — a daily reward you can fall *behind* on is the version
+  that would be wrong, and the guarantee is in what isn't stored.
+
+The result screen says `+5 XP` once, through one shared component
+(`ArcadeWelcome`) so three machines can't drift into saying different things,
+and says **nothing at all** on a later run: quiet, never refused.
 
 **Guest-open by default.** A game that persists nothing has nothing an account
 would keep for you tomorrow, so walling it would be a padlock in front of

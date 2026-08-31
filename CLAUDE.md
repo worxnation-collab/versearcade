@@ -987,8 +987,22 @@ Catch and the Cross Word. Full design: `docs/ARCADE.md`.
   game here may be one you get *better* at, but no cabinet carries a score (a
   list of games with your numbers on it is a scoreboard with a coin slot), the
   order is the order they were built, and a result screen shows your own numbers
-  against your own bar with no way to set them beside anybody else's. A run pays
-  a drop roll and road progress — never XP, points or standing.
+  against your own bar with no way to set them beside anybody else's.
+- **A run pays a drop roll, road progress, and — since `0084` — 5 XP for the
+  day's FIRST run on each machine.** That last one narrows a rule this file used
+  to state absolutely ("never XP"), so the argument is written down in
+  `docs/ARCADE.md` and in the migration rather than left to be re-derived. The
+  part that was doing the work is untouched: **what is paid for is turning up,
+  not doing well** — forty flakes and four are worth the same 5 XP, nothing on
+  the paying path sees a score, and no run can be behind another. The rest is
+  the library's own safety argument (0083) copied deliberately, because `xp` is
+  the worldwide leaderboard (0006): the server counts and pays, the client never
+  sends an amount, and the cap is the PRIMARY KEY `(user_id, game_id,
+  played_on)` rather than a count. **The SQL's fixed list of paid game ids IS
+  the ceiling** — three machines × 5 XP = 15 a day against a daily drop's 30–60
+  — so a new machine that should pay needs a migration, on purpose. A free go
+  from a shared link still pays nothing, and nothing anywhere counts runs or
+  days: no streak, no total, no rung.
 - **The paintings are backdrops; everything live stays drawn.** `art/arcade.json`
   is a scene per machine — the wilderness under Manna Rush, the blank page under
   Word Catch, the workshop wall behind the Cross Word — laid OVER the drawn

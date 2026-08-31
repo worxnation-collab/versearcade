@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/Button'
 import { ArcadeShell } from './ArcadeShell'
+import { ArcadeWelcome } from './ArcadeWelcome'
 import { TapRunner, type TapSurface } from './TapRunner'
 import { useArcadeInvite } from '@/store/arcadeInvite'
+import { useArcadeXp, type ArcadePlayResult } from '@/store/arcadeXp'
 import { todayLocalDate } from '@/lib/date'
 import type { TapGameDef, TapResult } from '@/lib/tapGame'
 
@@ -49,20 +51,35 @@ export function TapGameScreen({
   const [runs, setRuns] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [result, setResult] = useState<TapResult | null>(null)
+  const [reward, setReward] = useState<ArcadePlayResult | null>(null)
 
   const start = useCallback(() => {
     setResult(null)
+    setReward(null)
     setRuns((n) => n + 1)
     setPlaying(true)
   }, [])
 
-  const done = useCallback((r: TapResult) => {
-    setPlaying(false)
-    setResult(r)
-    // On a shared link the run that just ended was the free go. The store
-    // no-ops outside a demo, so this is flat rather than conditional.
-    useArcadeInvite.getState().notePlayEnded(todayLocalDate())
-  }, [])
+  const done = useCallback(
+    (r: TapResult) => {
+      setPlaying(false)
+      setResult(r)
+      // The day's first run on this machine is worth 5 XP. Deliberately AFTER
+      // the result is on screen and deliberately not awaited: the payout is a
+      // small welcome, and a machine that made you wait on the network to see
+      // how your run went would have the tail wagging the dog.
+      //
+      // A FREE GO PAYS NOTHING. There is no account behind a shared link to pay
+      // into, and paying for one would make a share farmable in a way nothing
+      // else in this app is — the same reason a demo records no relic, no road
+      // step and no Bible mark.
+      if (!demo) void useArcadeXp.getState().record(id).then(setReward)
+      // On a shared link the run that just ended was the free go. The store
+      // no-ops outside a demo, so this is flat rather than conditional.
+      useArcadeInvite.getState().notePlayEnded(todayLocalDate())
+    },
+    [demo, id],
+  )
 
   return (
     <ArcadeShell title={game.name} tagline={tagline} shareId={id}>
@@ -73,6 +90,7 @@ export function TapGameScreen({
           <Harvest
             game={game}
             result={result}
+            reward={reward}
             // A free go is one run. Offering "again" under it would make the
             // sign-up card below a suggestion rather than the next step.
             onAgain={demo ? undefined : start}
@@ -123,11 +141,14 @@ function Gate({
 function Harvest({
   game,
   result,
+  reward,
   onAgain,
   onLeave,
 }: {
   game: TapGameDef
   result: TapResult
+  /** The day's welcome, if this run earned it. Null until the call lands. */
+  reward: ArcadePlayResult | null
   /** Absent on a free go — one run is the whole offer. */
   onAgain?: () => void
   onLeave?: () => void
@@ -156,6 +177,10 @@ function Harvest({
         <Tally value={String(result.taken)} label={game.labels.taken} />
         <Tally value={`${result.cleanRounds}/${result.scoringRounds}`} label={game.labels.clean} />
       </div>
+
+      {/* Above the rest-day stamp and the buttons, under the two numbers: it
+          belongs to the run that just ended, not to what happens next. */}
+      <ArcadeWelcome reward={reward} />
 
       {result.restKept !== null &&
         (result.restKept ? (

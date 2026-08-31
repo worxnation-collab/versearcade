@@ -1,10 +1,11 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArcadeShell } from './ArcadeShell'
 import { ArcadeCabinetBox, CABINET_H, CABINET_W } from './ArcadeCabinet'
 import { ARCADE_GAMES, type ArcadeGame } from './games'
 import { useAccountLocked } from '@/components/AccountWall'
+import { useArcadeXp } from '@/store/arcadeXp'
 import { useJuice } from '@/juice/useJuice'
 
 // The arcade: a row of machines against a wall, and you pick one.
@@ -27,6 +28,15 @@ const GAP = 18
 export default function ArcadeLobby() {
   const wall = useRef<HTMLDivElement | null>(null)
   const width = useWallWidth(wall)
+  const loadXp = useArcadeXp((s) => s.load)
+
+  // Warm from the room rather than only when a run ends, so the state is known
+  // before anybody taps a machine (same reason StudyScreen loads the library
+  // card). It deliberately draws NOTHING here: a cabinet carrying "+5 today"
+  // would be a to-do list, and the first run teaches the reward by paying it.
+  useEffect(() => {
+    void loadXp()
+  }, [loadXp])
   const cabinetW = Math.min(Math.floor(((width - GAP) / 2) * 0.82), MAX_CABINET)
 
   return (

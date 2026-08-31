@@ -132,8 +132,10 @@ THERE'S AN ARCADE IN HERE NOW
   underneath. A new one every day, 52 in all, Genesis to Revelation.
 • Every machine is a painted place now: the wilderness at first light under Manna
   Rush, a real page under the words, and a carpenter's workshop wall behind the cross.
-• Nothing in the arcade touches your rank, and no machine keeps a high score. No
-  timers, no streaks, and hints are free.
+• Your first go on each machine each day is worth 5 XP — paid for turning up, not
+  for doing well. A brilliant run and a terrible one are worth exactly the same.
+• No machine keeps a high score and nothing in here can be lost. No timers, no
+  streaks, nothing to fall behind on, and hints are free.
 • Send a friend a machine: a shared link is good for one free go, no account and no
   download first. It's an invitation to play, never a score to beat.
 ```

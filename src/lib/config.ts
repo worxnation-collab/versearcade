@@ -107,7 +107,7 @@ export const SUPPORT_URL = import.meta.env.VITE_SUPPORT_URL || ''
 // Payment Links are deleted rather than commented out — a live link with no
 // product behind it is a way to take somebody's money for nothing.
 export const SKIN_BUY_URLS: Record<string, string> = {
-  whale: import.meta.env.VITE_BUY_WHALE || 'https://buy.stripe.com/aFa4gz9mM0hD536aoFa3u01',
+  whale: import.meta.env.VITE_BUY_WHALE || 'https://buy.stripe.com/9B6fZh1Uk1lHdzC2Wda3u06',
 }
 
 export const skinBuyUrl = (id: string): string => SKIN_BUY_URLS[id] || SUPPORT_URL || ''

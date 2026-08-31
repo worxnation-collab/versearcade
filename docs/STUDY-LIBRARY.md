@@ -48,10 +48,30 @@ than as a fourth glowing thing on the floor.
 
 Every marker is **always labelled**. This is a tab, not a puzzle: somebody
 arriving must not have to hunt for the way to their own reports. Each carries a
-generous invisible hit area, because a 26px pill is under Apple's 44px minimum
+generous invisible hit area, because a 26px marker is under Apple's 44px minimum
 on its own. Tabitha's marker carries the **verses-due count**, since that is the
 one number worth seeing before you decide to open anything, and there are no
 rows left to put it on.
+
+A marker is a **thought cloud**: a scalloped outline, deep violet with the brand
+gold as its edge, trailing three shrinking puffs at whatever it is about. It
+shipped as a flat gold-outlined pill with a hard triangular tail, and that was
+the one place in this app where chrome sits directly on a painting wearing the
+shape of a button — three of them stuck to a warm oil-painted room. The house
+aesthetic is chunky, rounded and springy, and the room's own subject is somebody
+thinking about a book, so a cloud says "this has something to say" without
+pretending to be a control. The puffs also replaced a tail that could only point
+one way and had to be aimed by hand; a trail points anywhere by moving its last
+puff, which is what lets her marker come off the top of her head while the other
+two drop onto the ledger and the bag.
+
+Two placement rules fall out of that, and both were found by looking at the real
+screen rather than at the diff. **The puffs may touch the object, the cloud may
+not** — a cloud sitting on the bag reads as a label stuck to it rather than as a
+thought about it, which is why the satchel's marker stands 30 units higher than
+its old pill did. And **her trail must clear her face**: aimed at the shortest
+route it crossed her glasses, so the cloud sits above her head and the last puff
+lands in her hair.
 
 **Layers are painted back to front — ledger, then Tabitha, then satchel.** SVG
 has no z-index, only document order, and in any other order her hem covers the

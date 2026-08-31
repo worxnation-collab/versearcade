@@ -1317,7 +1317,7 @@ describes it:
 | Harvest Road | top of `/season` | `RoadScene` |
 | The hall | under "Start a new battle", and in the sheet | `KeepScene` |
 | The churchyard | hero of `/church`, and on any church's page | `ChurchScene` |
-| The lending library | top of `/study` | `LibraryWindow` |
+| The lending library | the whole of `/study` | `LibraryScene` |
 | You | top of `/you` | `ProfileHero` |
 | Your Upper Room | `/you`, under the card, and in the visit sheet | `RoomScene` |
 
@@ -1573,42 +1573,47 @@ Design tokens live at the top of `src/index.css` — use the CSS variables, neve
 raw hexes. Numbers and headings wear `var(--font-display)`; that's the brand.
 Motion is springy `framer-motion`, mobile-first, max width 520px.
 
-### The lending library, and the woman at the desk
+### The Study tab IS a library
 
-The Study tab opens with the room its shelf came out of: a lit library with an
-NPC librarian (Tabitha) standing in it, and tapping her is a second way to reach
-the same books. Taking her route the first time pays **5 XP, once ever**, as an
-Easter egg. Full design: `docs/STUDY-LIBRARY.md`. Four things to know:
+`/study` is one room filling the tab — a lit library with an NPC librarian
+(Tabitha) at the desk. It used to be a grid of book tiles; the tiles are gone
+(`StudyShelf`/`StudyBookArt` deleted) and everything Study can do is now
+something in the room. Full design: `docs/STUDY-LIBRARY.md`. Five things:
 
-- **Every destination she offers is already on the shelf.** She is handed the
-  tab's own `ShelfItem[]` and offers the ones carrying a `lend` line, so the
-  library is a *route* to Study rather than a second menu that can drift — the
-  same choke-point habit `QuizRunner` and `CrowdLife` keep. Your bag and your
-  reports have no `lend`: they are yours, not stock.
-- **The 5 XP is built like every XP grant here.** `xp` is the worldwide
-  leaderboard (0006), so the server counts and the server pays
-  (`checkout_library_book`, 0081), the client never sends an amount, and the cap
-  is the table's PRIMARY KEY rather than a count — a race inserts nothing.
-  Lifetime exposure is 5 XP. **Once ever rather than once a day is deliberate**:
-  an Easter egg that pays every morning becomes a chore-tap you feel behind on
-  for missing, which is the feeling this app is built not to produce. A daily
-  version is one line in 0081 and needs its own argument.
-- **A second checkout is a SUCCESS that pays nothing**, never a refusal, and so
-  is a failed call — she still hands the book over, because the destination was
-  reachable from the shelf without her. And she never measures anybody: no due
-  dates, no "it's been a while", no count of visits. A librarian who tuts is the
-  one version of this that would be worse than no librarian.
-- **The reveal waits.** The sheet stays open on the stamp with an "Open it →"
-  button rather than navigating for you — a +5 XP line swept off screen by a
-  route change is the exact bug `StudyDropToast` exists to work around, and here
-  the sheet owns the moment so it just holds it.
+- **Three hotspots, and the ceiling is deliberate.** Tabitha lends the five
+  practice surfaces, the ledger on her desk is `/study/reports`, the satchel on
+  the floor is `/study/bag`. Nothing else is tappable: a room with a hotspot on
+  every object is a menu with a painting behind it, so anything new in Study
+  belongs in her offer rather than as a fourth glowing thing on the floor. Every
+  marker is always labelled — this is a tab, not a puzzle.
+- **One list, two surfaces.** `StudyBook[]` is built once in `StudyScreen` and
+  handed BOTH to the room (hotspot badges) and to Tabitha (what she lends). A
+  `lend` line makes an entry stock; without one it is yours and stands in the
+  room as itself. Same choke-point habit as `QuizRunner` and `CrowdLife`.
+- **The first book of the DAY pays 5 XP**, and it is built like every XP grant
+  here: `xp` is the worldwide leaderboard (0006), so the server counts and the
+  server pays (`checkout_library_book`, 0081), the client never sends an amount,
+  and the cap is the PRIMARY KEY `(user_id, borrowed_on)` rather than a count —
+  the day's second checkout inserts nothing and two taps racing settle
+  themselves. `todayLocalDate()` clamped ±1, the house pattern. 5/day is the
+  smallest payout in the app (the Basin pays 12, praying 30).
+- **Nothing counts the days.** No streak on the table, no Journal rung, no RPC
+  asking how many times anybody has visited, and `borrowedToday` is a boolean on
+  both paths. A daily reward you can fall BEHIND on is the version that would be
+  wrong, and the guarantee is in what isn't stored.
+- **She never measures anybody**, and the reveal waits. No due dates, no "it's
+  been a while", no count of visits. Every checkout after the day's first is a
+  SUCCESS that pays nothing — never a refusal, and neither is a failed call,
+  because Study has no other door. The sheet holds the stamp behind an "Open
+  it →" button rather than navigating for you: a +5 XP line swept off screen by
+  a route change is the exact bug `StudyDropToast` exists to work around.
 
-Two-mode for real, not inherited-online-only (`store/library.ts`), because a
-keyless LOCAL build reaches this tab and must not find a dead librarian in it.
-The shelf's boards came down with her (148 → 108, `BOOK_SCALE` 0.86 → 0.66,
-~230px of scroll) so the room and the books share a screen; captions did *not*
-shrink with them — they span the full grid column, because the caption is the
-only part of a book that says what is inside it.
+Two-mode for real (`store/library.ts`), because a keyless LOCAL build IS this
+tab and a dead librarian there would be a dead tab; the guest day rolls over on
+READ, so nothing has to fire at midnight. The room's painting is a **5:8
+portrait because the frame is one** — it was re-prompted twice to get there —
+and it's bled past the shell's 18px gutter, since it isn't a card on the tab,
+it's the tab.
 
 The Study tab is explicitly rank-free: practice there awards small per-session XP
 at most and never touches standing. The rank-free rule is the invariant, not the

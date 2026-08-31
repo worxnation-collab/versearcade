@@ -535,7 +535,7 @@ export default function App() {
         {/* The favorites shelf became the highlights page inside the Bible;
             old links and bookmarks still land somewhere true. */}
         <Route path="/favorites" element={<Navigate to="/bible/highlights" replace />} />
-        {/* The books on the Study shelf that open onto pages of their own —
+        {/* The books Tabitha lends that open onto pages of their own —
             reports (accuracy by book), the last-five replays, and the bag. */}
         <Route
           path="/study/reports"

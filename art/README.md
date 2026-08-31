@@ -18,7 +18,7 @@ must never be written into a tracked file.
 | `churchyard-flora.json` | the eight plants a giver can put in a churchyard | `public/keep/yard_*.png` |
 | `pets.json` | the six companions that stand beside you on the You tab | `public/items/pet_*.png` |
 | `keep-props.json` | keep props that need regenerating (two shipped unkeyed) | `public/keep/<id>.png` |
-| `library.json` | the Study tab's lending library and the librarian standing in it | `public/keep/study-library.jpg`, `public/skins/librarian.png` |
+| `library.json` | the Study tab (a library), the librarian in it, and the satchel on its floor | `public/keep/study-library.jpg`, `public/keep/study_satchel.png`, `public/skins/librarian.png` |
 
 **Check what came back**, every time:
 
@@ -45,6 +45,13 @@ words does not work; showing `hall.jpg` does.
   decoration nobody earned.
 - **`prop`** — one object on flat magenta, keyed to transparency and cropped
   tight. Capped at 150px tall.
+
+A scene's ASPECT is worth prompting for deliberately, because the frame has one.
+`study-library` fills the whole Study tab, so a 16:9 render was a picture of a
+room rather than the room; it took two re-prompts (16:9 → 4:5 → **5:8**, asking
+in words and giving an example ratio) to land at 398x640, which fills a phone's
+content area with nothing cropped. The model follows an explicit ratio well when
+it is stated first, in caps, with what it must NOT be.
 
 `"format": "jpg"` on a **scene** gets the road's JPEG encoding without moving to
 the road's folder. A full-bleed opaque painting has no use for an alpha channel

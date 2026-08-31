@@ -1,14 +1,14 @@
 // The lending library, and the woman behind its desk.
 //
-// The Study tab is a shelf you tap. This is the same shelf reached the long way
-// round: a room with a librarian in it, who asks what you feel like reading and
-// hands you the book. Nothing here is a second set of destinations — every
-// checkout ends on a study surface the shelf already offers, so the library can
-// never drift into being a menu of its own.
+// THE STUDY TAB IS THIS ROOM. It used to be a grid of book tiles; it is now a
+// library you stand in, and everything Study can do is something in the room:
+// Tabitha at her desk lends the five things you can practise, the ledger on the
+// desk is your reports, and the satchel on the floor is your bag.
 //
-// WHY IT EXISTS: some players want the game, not the list. The shelf is faster
-// and stays exactly where it was; this is for the ones who would rather be
-// somewhere than pick something.
+// WHY: a wall of tiles is a menu, and a menu is the thing this app keeps trying
+// not to be. Every other section already opens with the place it is about — the
+// road, the hall, the churchyard, your own Upper Room — and Study was the one
+// that opened with a list. Now it opens with somewhere.
 //
 // WHAT IT MAY NOT BECOME. It is a Study surface, so the Study tab's rule binds
 // it: nothing here ranks anybody. She has no opinion of how much you have read,
@@ -17,12 +17,48 @@
 // than no librarian.
 
 /**
- * What the first checkout is worth, once ever.
+ * One thing you can do in Study, as the room describes it.
+ *
+ * This replaced `ShelfItem` when the shelf came out. It is the ONE list — the
+ * room's hotspots and the librarian's offer are both built from it, so a
+ * surface added to Study cannot appear in one and not the other.
+ */
+export interface StudyBook {
+  key: string
+  title: string
+  /** Fallback icon, and what the Bible uses (it has no painted cover). */
+  emblem: string
+  /** Cover painting id in `src/assets/study/` (generate-study-covers.mjs). */
+  cover?: string
+  /** What's inside, in the player's terms. */
+  caption: string
+  to: string
+  /** A count worth seeing before you tap, e.g. verses due. */
+  badge?: string
+  /**
+   * How Tabitha describes it as she hands it over.
+   *
+   * An entry WITHOUT this is not something she lends — your reports and your
+   * bag are your own, not stock, and they stand in the room as themselves.
+   * Deciding it here, once, is what stops the room and her desk becoming two
+   * lists that can disagree.
+   */
+  lend?: string
+}
+
+/**
+ * What the FIRST BOOK OF THE DAY is worth. Every one after it is free.
  *
  * KEEP IN SYNC with `pay` in checkout_library_book (0081). This constant is the
  * GUEST mirror and the number the sheet draws after the fact — it is never sent
  * to the server. Online, the RPC decides what a checkout is worth and the store
  * only reports what came back, because `xp` is the worldwide leaderboard (0006).
+ *
+ * 5 a day is the smallest payout in the app — the Basin pays 12, praying 30,
+ * a daily drop 30-60. And NOTHING COUNTS THE DAYS: there is no streak on the
+ * table, no rung in the Journal, and no RPC that asks how many times anybody
+ * has been to the library. A daily reward you can fall behind on is the version
+ * of this that would be wrong, and the guarantee is in what isn't stored.
  */
 export const LIBRARY_XP = 5
 
@@ -43,6 +79,7 @@ export const GREETINGS: readonly string[] = [
   'Take your time. Nothing here is due back, ever.',
   'I keep the good ones behind the desk. Say the word.',
   'Quiet night. Perfect for reading, if you ask me.',
+  'Whatever you fancy. I’ll find it.',
 ]
 
 /** What she says as she hands it over, keyed by nothing — just warmth. */

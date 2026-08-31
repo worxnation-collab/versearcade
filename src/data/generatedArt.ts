@@ -98,6 +98,7 @@ export const GENERATED_ART: Record<string, string> = {
   'starter_masc_umber_honey': '/skins/starter_masc_umber_honey.png',
   'starter_masc_umber_jet': '/skins/starter_masc_umber_jet.png',
   'study-library': '/keep/study-library.jpg',
+  'study_satchel': '/keep/study_satchel.png',
   'watchman': '/skins/watchman.png',
   'wise_lamp': '/skins/wise_lamp.png',
   'yard_dogwood': '/keep/yard_dogwood.png',

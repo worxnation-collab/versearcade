@@ -1,8 +1,8 @@
 import { StudySubPage } from './StudySubPage'
 import { PracticeSection } from '@/features/practice/PracticeSection'
 
-// "Study the last five" — the replay list, opened from its own book on the
-// shelf. Plain here (no collapsible header): the page title already says what
+// "Study the last five" — the replay list, opened from the book Tabitha lends
+// for it. Plain here (no collapsible header): the page title already says what
 // this is, so a second one to fold would just be furniture.
 export default function StudyRecentScreen() {
   return (

@@ -1,37 +1,42 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
+import { todayLocalDate } from '@/lib/date'
 import { useAuth } from './auth'
 import { useSeason } from './season'
 import { levelInfo } from '@/components/XpBar'
 import { LIBRARY_XP } from '@/data/library'
 
-// The library card the Study tab's librarian stamps, once.
+// The first book you borrow each day, and what it was worth.
 //
 // House two-mode shape — a private isOnline(), a load() that reads whichever
 // source is authoritative, and a writer that updates in-memory state first so
 // the sheet is instant. Copied from store/prayer.ts, which is the closest
-// relative: a small server-granted XP payout with its cap in SQL.
+// relative: a small server-granted daily XP payout with its cap in SQL.
 //
 // It genuinely has both paths rather than inheriting an online-only break.
-// Checking a book out needs nobody on the other end of it, so a guest can do
-// it, and a keyless LOCAL build — the documented way to work on this app —
-// reaches the Study tab and must not find a dead librarian standing there.
+// Borrowing a book needs nobody on the other end of it, and a keyless LOCAL
+// build — the documented way to work on this app — IS the Study tab, so a dead
+// librarian there would be a dead tab.
 //
 // THE CLIENT NEVER SENDS AN AMOUNT. `xp` is the worldwide leaderboard (0006),
-// so online the RPC decides what a first checkout is worth and this store only
-// reports what came back. `LIBRARY_XP` is the guest mirror and the number the
-// sheet draws after the fact — it is never sent to the server.
+// so online the RPC decides what the day's first book is worth and this store
+// only reports what came back. `LIBRARY_XP` is the guest mirror and the number
+// the sheet draws after the fact — it is never sent to the server.
 //
-// KEEP IN SYNC with checkout_library_book (0081): once ever, 5 XP, and a
-// SECOND checkout is a success that pays nothing rather than a refusal. She
-// never turns anybody away from the desk.
+// KEEP IN SYNC with checkout_library_book (0081): one paid checkout per local
+// day, 5 XP, and every checkout after it is a SUCCESS that pays nothing rather
+// than a refusal. She never turns anybody away from the desk.
+//
+// AND NOTHING HERE COUNTS DAYS. `borrowedToday` is a boolean, not a tally, and
+// there is no stored history on either path — a streak on this would turn a
+// small welcome into something you can fall behind on.
 
 export interface CheckoutResult {
   ok: boolean
-  /** XP actually granted — 0 on every checkout after the first. */
+  /** XP actually granted — 0 on every checkout after the day's first. */
   awarded: number
-  /** Whether this was the stamp, i.e. whether the Easter egg just fired. */
-  firstTime: boolean
+  /** Whether this was the day's first, i.e. whether the welcome just fired. */
+  firstToday: boolean
   leveledUp: boolean
 }
 
@@ -45,17 +50,18 @@ function localKey(): string {
   return uid ? `va.library.${uid}` : 'va.library.guest'
 }
 
-function readLocal(): boolean {
+/** The last day this device was paid for a book, or null. */
+function readLocal(): string | null {
   try {
-    return localStorage.getItem(localKey()) === '1'
+    return localStorage.getItem(localKey())
   } catch {
-    return false
+    return null
   }
 }
 
-function writeLocal() {
+function writeLocal(day: string) {
   try {
-    localStorage.setItem(localKey(), '1')
+    localStorage.setItem(localKey(), day)
   } catch {
     /* private mode / storage full — in-memory only */
   }
@@ -63,45 +69,52 @@ function writeLocal() {
 
 interface LibraryState {
   loaded: boolean
-  /** Whether the card has already been stamped, so nothing is owed. */
-  hasCard: boolean
+  /** Whether today's welcome has already been paid, so nothing is owed. */
+  borrowedToday: boolean
   load: () => Promise<void>
-  /** Check a book out. Safe to call again — it simply pays nothing. */
+  /** Borrow a book. Safe to call again — it simply pays nothing. */
   checkout: () => Promise<CheckoutResult>
 }
 
-export const useLibrary = create<LibraryState>((set, get) => ({
+export const useLibrary = create<LibraryState>((set) => ({
   loaded: false,
-  hasCard: false,
+  borrowedToday: false,
 
   async load() {
     if (isOnline()) {
-      const { data, error } = await supabase!.rpc('my_library_card')
+      const { data, error } = await supabase!.rpc('my_library_card', {
+        p_local_date: todayLocalDate(),
+      })
       if (!error && data) {
-        const raw = data as { has_card?: boolean }
-        set({ loaded: true, hasCard: !!raw.has_card })
+        const raw = data as { borrowed_today?: boolean }
+        set({ loaded: true, borrowedToday: !!raw.borrowed_today })
         return
       }
       // A missing RPC (0081 not applied yet) must not make the librarian
-      // unreachable — she still hands books over, the stamp just can't be
-      // read. Fail to "no card known", never to a broken sheet.
+      // unreachable — this tab IS the library. Fail to "nothing known", never
+      // to a broken room.
       set({ loaded: true })
       return
     }
-    set({ loaded: true, hasCard: readLocal() })
+    // A stored day that isn't today is not today's. Rolling over on READ rather
+    // than on write is what makes this reset at the player's own midnight
+    // without anything having to fire at midnight (same as store/prayer.ts).
+    set({ loaded: true, borrowedToday: readLocal() === todayLocalDate() })
   },
 
   async checkout() {
     if (isOnline()) {
       // Awaited, and `error` checked. A postgrest-js builder is lazy — a `void`
       // here would report a payout for a call that never left the device.
-      const { data, error } = await supabase!.rpc('checkout_library_book')
+      const { data, error } = await supabase!.rpc('checkout_library_book', {
+        p_local_date: todayLocalDate(),
+      })
       if (error || !data) {
-        return { ok: false, awarded: 0, firstTime: false, leveledUp: false }
+        return { ok: false, awarded: 0, firstToday: false, leveledUp: false }
       }
-      const raw = data as { awarded?: number; first_time?: boolean; leveled_up?: boolean }
+      const raw = data as { awarded?: number; first_today?: boolean; leveled_up?: boolean }
       const awarded = Number(raw.awarded ?? 0)
-      set({ hasCard: true })
+      set({ borrowedToday: true })
       // The server moved xp and level on the profile; pull them rather than
       // guessing, so every XP bar in the app is right immediately.
       if (awarded > 0) await useAuth.getState().refreshProfile()
@@ -109,29 +122,30 @@ export const useLibrary = create<LibraryState>((set, get) => ({
       return {
         ok: true,
         awarded,
-        firstTime: !!raw.first_time,
+        firstToday: !!raw.first_today,
         leveledUp: !!raw.leveled_up,
       }
     }
 
     // Guest: read what is on DISK rather than trusting in-memory state — the
-    // sheet can be the first thing a session renders, and a store that has
-    // never load()ed says hasCard:false about an account that has one. Same
-    // trap as store/bookAccuracy.ts:record.
-    const had = readLocal()
-    set({ hasCard: true })
+    // room can be the first thing a session renders, and a store that has never
+    // load()ed says "not borrowed" about a day that has been. Same trap as
+    // store/bookAccuracy.ts:record.
+    const day = todayLocalDate()
+    const paidOn = readLocal()
+    set({ borrowedToday: true })
     void useSeason.getState().track('book_borrowed')
-    if (had) return { ok: true, awarded: 0, firstTime: false, leveledUp: false }
+    if (paidOn === day) return { ok: true, awarded: 0, firstToday: false, leveledUp: false }
 
     const auth = useAuth.getState()
     const prof = auth.profile
-    // No profile to pay into — so don't STAMP THE CARD either. `RequireProfile`
-    // wraps the Study tab, so this should be unreachable; writing the flag
-    // anyway would spend the one-time Easter egg on nothing and there would be
-    // no way to give it back. She still hands the book over either way.
-    if (!prof) return { ok: false, awarded: 0, firstTime: false, leveledUp: false }
+    // No profile to pay into — so don't SPEND THE DAY either. `RequireProfile`
+    // wraps the Study tab, so this should be unreachable; writing the day
+    // anyway would burn the welcome on nothing. She hands the book over either
+    // way.
+    if (!prof) return { ok: false, awarded: 0, firstToday: false, leveledUp: false }
 
-    writeLocal()
+    writeLocal(day)
 
     const xp = prof.xp + LIBRARY_XP
     // `levelInfo` is the client's existing mirror of the server's level_from_xp
@@ -140,11 +154,6 @@ export const useLibrary = create<LibraryState>((set, get) => ({
     const level = levelInfo(xp).level
     const leveledUp = level > prof.level
     auth.setProfileLocal({ ...prof, xp, level })
-    return { ok: true, awarded: LIBRARY_XP, firstTime: true, leveledUp }
+    return { ok: true, awarded: LIBRARY_XP, firstToday: true, leveledUp }
   },
 }))
-
-/** For the sheet's copy: whether there is still a surprise waiting. */
-export function libraryCardPending(): boolean {
-  return !useLibrary.getState().hasCard
-}

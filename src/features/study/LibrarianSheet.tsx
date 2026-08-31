@@ -6,23 +6,34 @@ import { Button } from '@/components/Button'
 import { useJuice } from '@/juice/useJuice'
 import { useLibrary } from '@/store/library'
 import { GREETINGS, HANDOVER, LIBRARIAN_NAME, lineFrom } from '@/data/library'
-import { LibraryWindow } from './LibraryWindow'
-import type { ShelfItem } from './StudyShelf'
+import type { StudyBook } from '@/data/library'
+
+// The cover paintings generated for the old shelf (scripts/generate-study-
+// covers.mjs), keyed by book. The tiles they were painted for are gone; the
+// paintings are not, and a real cover beside a title is worth more here than
+// the emoji it replaces. Resolved at build time, so a book whose image is
+// missing simply keeps its emblem.
+const COVERS: Record<string, string> = Object.fromEntries(
+  Object.entries(
+    import.meta.glob('@/assets/study/*.{jpg,png,webp}', { eager: true, query: '?url', import: 'default' }),
+  ).map(([file, url]) => [file.replace(/^.*\//, '').replace(/\.[a-z]+$/, ''), url as string]),
+)
 
 // The desk. Tabitha asks what you want and hands it over.
 //
-// EVERY DESTINATION HERE IS ALREADY ON THE SHELF. She takes the `ShelfItem`s
-// the tab is already rendering and offers the ones marked `lend`, so the
-// library can never become a second menu with surfaces of its own — a book
-// added to Study is lendable or not, decided once, in one place. That is the
-// same choke-point habit `QuizRunner` and `CrowdLife` keep.
+// SHE IS HANDED THE ROOM'S OWN LIST. The tab builds one `StudyBook[]` and both
+// the room's hotspots and this offer are built from it, so a surface added to
+// Study cannot appear in one and not the other — the same choke-point habit
+// `QuizRunner` and `CrowdLife` keep. She offers the entries carrying `lend`;
+// your reports and your bag have none, because they are yours rather than
+// stock, and they stand in the room as themselves.
 //
 // TWO BEATS, AND THE SECOND ONE WAITS. Pick a book, she stamps it, and the
 // sheet STAYS OPEN on the stamp with an "Open it" button — it does not navigate
-// for you. The first checkout pays 5 XP as an Easter egg (0081), and a reveal
-// that gets swept off screen by a route change is a reveal nobody sees; that is
-// the whole reason `StudyDropToast` had to be lifted out of the run it belongs
-// to. Here the sheet owns the moment, so it simply holds it.
+// for you. The day's FIRST book pays 5 XP (0081), and a reveal that gets swept
+// off screen by a route change is a reveal nobody sees; that is the whole
+// reason `StudyDropToast` had to be lifted out of the run it belongs to. Here
+// the sheet owns the moment, so it simply holds it.
 //
 // SHE NEVER MEASURES ANYBODY. No due dates, no "it's been a while", no count of
 // visits, no opinion of how much you have read. The Study tab is rank-free and
@@ -31,7 +42,7 @@ import type { ShelfItem } from './StudyShelf'
 
 type Phase = 'choosing' | 'stamped'
 
-export function LibrarianSheet({ items, onClose }: { items: ShelfItem[]; onClose: () => void }) {
+export function LibrarianSheet({ items, onClose }: { items: StudyBook[]; onClose: () => void }) {
   const juice = useJuice()
   const navigate = useNavigate()
   const reduceMotion = useReducedMotion()
@@ -42,7 +53,7 @@ export function LibrarianSheet({ items, onClose }: { items: ShelfItem[]; onClose
   const greeting = useMemo(() => lineFrom(GREETINGS), [])
 
   const [phase, setPhase] = useState<Phase>('choosing')
-  const [chosen, setChosen] = useState<ShelfItem | null>(null)
+  const [chosen, setChosen] = useState<StudyBook | null>(null)
   const [handover, setHandover] = useState('')
   const [reward, setReward] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -60,14 +71,14 @@ export function LibrarianSheet({ items, onClose }: { items: ShelfItem[]; onClose
   /**
    * Check one out.
    *
-   * A second checkout is a SUCCESS that pays nothing (0081 returns ok with
-   * awarded 0), not a refusal — she never turns anybody away from the desk, and
-   * this sheet must never draw an error at somebody for coming back. A failed
-   * call is the same: the book is still handed over, because the destination
-   * was reachable from the shelf without her and refusing it here would make
-   * the long way round the *worse* way round.
+   * Every checkout after the day's first is a SUCCESS that pays nothing (0081
+   * returns ok with awarded 0), not a refusal — she never turns anybody away
+   * from the desk, and this sheet must never draw an error at somebody for
+   * coming back. A failed call is the same: the book is still handed over,
+   * because Study has no other door and refusing at this one would be refusing
+   * the tab.
    */
-  const take = async (item: ShelfItem) => {
+  const take = async (item: StudyBook) => {
     if (busy) return
     setBusy(true)
     setChosen(item)
@@ -78,7 +89,7 @@ export function LibrarianSheet({ items, onClose }: { items: ShelfItem[]; onClose
     if (res.ok && res.awarded > 0) {
       if (res.leveledUp) juice.celebrate()
       else juice.coin()
-      setReward(`She slides a library card across the desk. +${res.awarded} XP.`)
+      setReward(`She stamps your card for the day. +${res.awarded} XP.`)
     } else {
       juice.select()
       setReward(null)
@@ -147,17 +158,11 @@ export function LibrarianSheet({ items, onClose }: { items: ShelfItem[]; onClose
             <button className="pill" onClick={() => { juice.select(); onClose() }} aria-label="Close">✕</button>
           </div>
 
-          {/* The same room you tapped, still. A moving backdrop behind a
-              paragraph is unreadable, which is what `still` is for. */}
-          <div style={{ marginBottom: 12 }}>
-            <LibraryWindow still label={false} height={124} />
-          </div>
-
           {phase === 'choosing' ? (
             <>
               <Speech>{greeting}</Speech>
               <p className="faint" style={{ fontSize: 12, margin: '0 0 10px' }}>
-                Everything she lends is on the shelf below too — this is just the long way round.
+                Nothing is ever due back, and none of it affects your rank.
               </p>
               <div style={{ display: 'grid', gap: 8 }}>
                 {stock.map((item) => (
@@ -180,7 +185,7 @@ export function LibrarianSheet({ items, onClose }: { items: ShelfItem[]; onClose
                       width: '100%',
                     }}
                   >
-                    <span style={{ fontSize: 20, lineHeight: 1, flexShrink: 0 }}>{item.emblem}</span>
+                    <Cover item={item} />
                     <span style={{ minWidth: 0, flex: 1 }}>
                       <b style={{ display: 'block', fontSize: 13.5 }}>{item.title}</b>
                       <span className="faint" style={{ fontSize: 11, lineHeight: 1.35 }}>{item.lend}</span>
@@ -238,6 +243,48 @@ export function LibrarianSheet({ items, onClose }: { items: ShelfItem[]; onClose
       </motion.div>
     </AnimatePresence>,
     document.body,
+  )
+}
+
+/**
+ * A book's own cover, small, or its emblem where no painting exists.
+ *
+ * The Bible deliberately has none: its board carries the player's name and is
+ * drawn, not painted, so it keeps its emblem here rather than borrowing
+ * somebody else's cover.
+ */
+function Cover({ item }: { item: StudyBook }) {
+  const art = item.cover ? COVERS[item.cover] : undefined
+  if (!art) {
+    return (
+      <span
+        style={{
+          fontSize: 20,
+          lineHeight: 1,
+          flexShrink: 0,
+          width: 30,
+          height: 42,
+          display: 'grid',
+          placeItems: 'center',
+        }}
+      >
+        {item.emblem}
+      </span>
+    )
+  }
+  return (
+    <span
+      aria-hidden
+      style={{
+        flexShrink: 0,
+        width: 30,
+        height: 42,
+        borderRadius: '2px 4px 4px 2px',
+        overflow: 'hidden',
+        boxShadow: '0 2px 7px rgba(0,0,0,0.5), inset 2px 0 0 rgba(0,0,0,0.35)',
+        background: `center/cover no-repeat url(${art})`,
+      }}
+    />
   )
 }
 

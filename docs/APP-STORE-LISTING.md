@@ -160,12 +160,13 @@ PEOPLE, WITHOUT A SCOREBOARD
 • A mailbox for gifts, buddy requests, washings and news. It carries nothing that is a
   comparison — no digest of what your friends scored, no "you're 4th".
 
-THERE'S A LIBRARIAN IN THE STUDY TAB NOW
-• Study opens with the library its shelf came out of, and Tabitha is at the desk. Ask
-  her for something to read and she'll fetch it and stamp it out to you.
-• Everything she lends is on the shelf too — she's just the nicer way round. There are
-  no due dates, nothing is ever overdue, and she has no opinion of how much you read.
-• Take her route the first time and she slides a library card across the desk.
+THE STUDY TAB IS A LIBRARY NOW
+• It used to be a wall of tiles. It's a room: shelves, lamplight, and Tabitha at the
+  desk. Ask her for something to read and she'll fetch it and stamp it out to you.
+• Your reports are the ledger on her desk. Your bag is the satchel on the floor.
+• The first book you borrow each day is worth a little something.
+• There are no due dates, nothing is ever overdue, and she has no opinion at all about
+  how much you read.
 
 THE REST
 • The Journal: every milestone you've passed, gathered in one page. A number you got

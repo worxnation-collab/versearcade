@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Navigate, useSearchParams } from 'react-router-dom'
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { Page } from '@/components/Page'
-import { StudyShelf, type ShelfItem } from './StudyShelf'
-import { LibraryWindow } from './LibraryWindow'
+import { LibraryScene } from './LibraryScene'
 import { LibrarianSheet } from './LibrarianSheet'
 import { useLibrary } from '@/store/library'
+import { LIBRARIAN_NAME, type StudyBook } from '@/data/library'
+import { useJuice } from '@/juice/useJuice'
 import { useReviews } from '@/store/reviews'
 import { useFavorites } from '@/store/favorites'
 import { useInventory, seedGuestInventoryFromCollection } from '@/store/inventory'
@@ -14,23 +15,29 @@ import { useAuth } from '@/store/auth'
 import { summarize } from '@/lib/bookAccuracy'
 
 // The Study tab — everything that's practice rather than the daily drop or a
-// real battle, laid out as a shelf of books. Each surface is a bound volume
-// (CPU battles, focus drills, the last-five replays, reviews, your reports,
-// your bag) and tapping one swings its cover open onto that surface's own
-// page. The player's actual Bible stands among them, wearing its real board.
-// Nothing here touches your rank.
+// real battle. It is a LIBRARY: one room, filling the tab, with a librarian at
+// the desk who lends you the five things you can practise, a ledger on that
+// desk that is your reports, and a satchel on the floor that is your bag.
 //
-// The lending library stands above the shelf, because every other section here
-// opens with the place it is about (the road, the hall, the churchyard, your
-// room) and Study opened with a menu. Tapping it puts you in front of a
-// librarian who fetches the same books — the long way round, for players who
-// would rather be somewhere than pick something. The shelf's boards came down
-// to 108px to make room for her; see the note on BOOK_SCALE in StudyShelf.
+// It used to be a grid of book tiles. The argument for the room is the one
+// every other section of this app already made — the road is the top of
+// /season, the hall sits under "Start a new battle", the churchyard is the hero
+// of /church, your Upper Room is under the player card — and Study was the last
+// section that opened with a list of things rather than the place they are in.
 //
-// EVERY DESTINATION SHE OFFERS IS ONE OF THESE ITEMS. The `lend` line below is
-// what makes a book borrowable, so the room and the shelf cannot drift into
-// two different lists of things to do.
+// ONE LIST, TWO SURFACES. `books` below is built once and handed BOTH to the
+// room (for its hotspot badges) and to Tabitha (for what she lends). A book
+// carrying `lend` is stock; one without it is yours, and stands in the room as
+// itself. Deciding that here, once, is what stops the room and her desk from
+// becoming two menus that can disagree.
+//
+// Nothing here touches your rank. The one exception is deliberately tiny and
+// deliberately server-granted: the FIRST BOOK OF THE DAY pays 5 XP
+// (checkout_library_book, 0081), and nothing anywhere counts how many days in a
+// row you have collected it.
 export default function StudyScreen() {
+  const navigate = useNavigate()
+  const juice = useJuice()
   const { dueRefs, loadDue } = useReviews()
   const favCount = useFavorites((s) => Object.keys(s.map).length)
   const loadFavorites = useFavorites((s) => s.load)
@@ -43,12 +50,12 @@ export default function StudyScreen() {
   const stats = useBookAccuracy((s) => s.stats)
   const loadAccuracy = useBookAccuracy((s) => s.load)
   const name = useAuth((s) => s.profile?.username ?? '')
+  const loadLibrary = useLibrary((s) => s.load)
 
   // Old deep links (the drop toast used to send ?bag=1 here) land on the bag's
-  // own page now that it's a book of its own.
+  // own page now that it's a place of its own.
   const [params] = useSearchParams()
   const [atDesk, setAtDesk] = useState(false)
-  const loadLibrary = useLibrary((s) => s.load)
 
   useEffect(() => {
     loadDue()
@@ -56,8 +63,8 @@ export default function StudyScreen() {
     loadInventory()
     loadPractice()
     loadAccuracy()
-    // Loaded here rather than only in the sheet, so the librarian knows
-    // whether a card has already been stamped before anybody taps her.
+    // Loaded here rather than only in the sheet, so the room knows whether
+    // today's welcome is still owed before anybody taps anything.
     void loadLibrary()
     seedGuestInventoryFromCollection()
   }, [loadDue, loadFavorites, loadInventory, loadPractice, loadAccuracy, loadLibrary])
@@ -66,16 +73,15 @@ export default function StudyScreen() {
 
   if (params.get('bag') === '1') return <Navigate to="/study/bag" replace />
 
-  // The shelf, in reading order: things to do first, then things to look at.
-  // Every book stands on the shelf all the time — a shelf that grows and
-  // shrinks makes the player hunt for their place. When "Keep it" has nothing
-  // due, its caption says what the book is for and the badge stays off.
-  const items: ShelfItem[] = [
+  // Everything Study can do, in one list. `lend` is what Tabitha will fetch;
+  // the two without it stand in the room as themselves. `name` rides along for
+  // the Bible, which is the player's own and says so.
+  const books: StudyBook[] = [
     {
       key: 'versus',
       title: 'Battle the CPU',
       emblem: '🤖',
-      skin: 'versus',
+      cover: 'versus',
       caption: 'Race a study partner through a verse quiz',
       to: '/battle/cpu',
       lend: 'A verse quiz with someone to race down the page',
@@ -84,7 +90,7 @@ export default function StudyScreen() {
       key: 'focus',
       title: 'Focus a book',
       emblem: '🎯',
-      skin: 'focus',
+      cover: 'focus',
       caption: 'Drill one book of your choosing · earns XP',
       to: '/study/focus',
       lend: 'Pick one book of the Bible and go deep on it',
@@ -93,7 +99,7 @@ export default function StudyScreen() {
       key: 'replay',
       title: 'The last five',
       emblem: '📚',
-      skin: 'replay',
+      cover: 'replay',
       caption:
         replays > 0
           ? 'Replay a recent verse — beat your best for XP'
@@ -106,10 +112,10 @@ export default function StudyScreen() {
       key: 'keep',
       title: 'Keep it',
       emblem: '🧠',
-      skin: 'keep',
+      cover: 'keep',
       caption:
         dueRefs.length > 0
-          ? `${dueRefs.length} verse${dueRefs.length === 1 ? '' : 's'} ready to review — make ${dueRefs.length === 1 ? 'it' : 'them'} stick`
+          ? `${dueRefs.length} verse${dueRefs.length === 1 ? '' : 's'} ready to review`
           : 'Spaced review — verses you play come back here',
       to: '/review',
       badge: dueRefs.length > 0 ? String(dueRefs.length) : undefined,
@@ -117,10 +123,8 @@ export default function StudyScreen() {
     },
     {
       key: 'bible',
-      title: 'My Bible',
+      title: name ? `${name}’s Bible` : 'My Bible',
       emblem: '📖',
-      skin: 'bible',
-      name,
       caption:
         favCount > 0
           ? `${favCount} kept — see what you've studied and read`
@@ -128,11 +132,12 @@ export default function StudyScreen() {
       to: '/bible',
       lend: 'The whole thing — all 66 books, yours to read',
     },
+    // No `lend` past here: yours, not stock.
     {
       key: 'reports',
       title: 'My reports',
       emblem: '📊',
-      skin: 'reports',
+      cover: 'reports',
       caption:
         summary.answered > 0
           ? `Accuracy by book · ${summary.pct}% overall`
@@ -143,37 +148,50 @@ export default function StudyScreen() {
       key: 'bag',
       title: 'Your bag',
       emblem: '🎒',
-      skin: 'bag',
+      cover: 'bag',
       caption:
         inHand > 0
-          ? `${inHand} find${inHand === 1 ? '' : 's'} in hand — give ${inHand === 1 ? 'it' : 'one'} to your church`
+          ? `${inHand} find${inHand === 1 ? '' : 's'} in hand`
           : 'What studying turns up lands here',
       to: '/study/bag',
       badge: inHand > 0 ? String(inHand) : undefined,
     },
   ]
 
+  const byKey = (k: string) => books.find((b) => b.key === k)
+  const go = (to: string) => {
+    juice.select?.()
+    navigate(to)
+  }
+
+  // The librarian's marker carries what's DUE, because that's the one number
+  // somebody needs before deciding whether to open anything — and it lives on
+  // her rather than on a row, since there are no rows any more.
+  const due = byKey('keep')?.badge
+
   return (
     <Page>
-      <div className="center" style={{ marginBottom: 16 }}>
-        <div className="floaty" style={{ fontSize: 44 }}>📚</div>
-        <h1 style={{ fontSize: 28, marginTop: 4 }}>Study</h1>
-        <p className="dim" style={{ marginTop: 4 }}>
-          Pick a book off the shelf — none of it affects your rank.
+      <div className="center" style={{ marginBottom: 12 }}>
+        <h1 style={{ fontSize: 26 }}>Study</h1>
+        <p className="dim" style={{ marginTop: 2, fontSize: 13 }}>
+          {LIBRARIAN_NAME} is at the desk — none of this affects your rank.
         </p>
       </div>
 
-      {/* The room, above the shelf it belongs to — the same placement the road,
-          the hall, the churchyard and the Upper Room use. */}
-      <div style={{ marginBottom: 18 }}>
-        <LibraryWindow onEnter={() => setAtDesk(true)} />
+      {/* Bled past the shell's 18px gutter, because this is not a card on the
+          tab — it is the tab. The extra width is height too: the render is a
+          5:8 portrait, so every pixel sideways makes the room taller and the
+          floor Tabitha stands on bigger. The shell already reserves 96px at the
+          bottom for the nav, so nothing here needs a spacer. */}
+      <div style={{ margin: '0 -18px' }}>
+        <LibraryScene
+          librarian={{ onTap: () => { juice.select?.(); setAtDesk(true) }, label: 'Ask her', badge: due }}
+          ledger={{ onTap: () => go('/study/reports'), label: 'Reports' }}
+          satchel={{ onTap: () => go('/study/bag'), label: 'Your bag', badge: byKey('bag')?.badge }}
+        />
       </div>
 
-      <StudyShelf items={items} />
-
-      {atDesk && <LibrarianSheet items={items} onClose={() => setAtDesk(false)} />}
-
-      <div style={{ height: 90 }} />
+      {atDesk && <LibrarianSheet items={books} onClose={() => setAtDesk(false)} />}
     </Page>
   )
 }

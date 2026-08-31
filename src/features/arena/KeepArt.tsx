@@ -439,19 +439,33 @@ const PROP_OVERLAYS: Record<string, (color: string, box: { w: number; h: number 
   // The trapper's band across the barrel, and the plume on the chanfron. The
   // prompt asks for undyed cream cloth and no plume at all, so these land on
   // blank wool and on bare iron rather than over painted colour.
-  keep_destrier: (color, { w, h }) => (
-    <g>
-      <path
-        d={`M${w * 0.08} ${h * 0.36} h${w * 0.5} v${h * 0.17} l${-w * 0.05} ${h * 0.05} l${-w * 0.05} ${-h * 0.05} l${-w * 0.05} ${h * 0.05} l${-w * 0.05} ${-h * 0.05} l${-w * 0.05} ${h * 0.05} l${-w * 0.05} ${-h * 0.05} l${-w * 0.05} ${h * 0.05} l${-w * 0.05} ${-h * 0.05} l${-w * 0.05} ${h * 0.05} l${-w * 0.05} ${-h * 0.05} z`}
-        fill={color}
-      />
-      <path d={`M${w * 0.08} ${h * 0.36} h${w * 0.5} v${h * 0.04} h${-w * 0.5} z`} fill="#ffffff" opacity="0.22" />
-      <path
-        d={`M${w * 0.82} ${h * 0.07} q${w * 0.06} ${-h * 0.07} ${w * 0.12} ${-h * 0.03} q${-w * 0.04} ${h * 0.06} ${-w * 0.1} ${h * 0.06} z`}
-        fill={color}
-      />
-    </g>
-  ),
+  keep_destrier: (color, { w, h }) => {
+    // Measured against the render rather than guessed: the trapper's pale wool
+    // runs x 0.07..0.70 and y 0.30..0.80 of the box, but it is NARROW at the
+    // top (the back is a ridge) and only widens lower down — so a band placed
+    // level with the withers hangs off the horse into open air, which is
+    // exactly what the first pass did. This sits in the widest, flattest part
+    // of the barrel, inset far enough that no scallop clears the cloth.
+    const l = w * 0.16, r = w * 0.56, top = h * 0.52, bot = h * 0.64
+    const step = (r - l) / 12, dip = h * 0.035
+    let scallop = ''
+    for (let i = 0; i < 6; i++) scallop += `l ${-step} ${dip} l ${-step} ${-dip} `
+    return (
+      <g>
+        <path d={`M${l} ${top} H${r} V${bot} ${scallop}Z`} fill={color} />
+        {/* the same 22% white lift the gonfalon uses, so the band reads as
+            cloth catching the light rather than as a flat decal */}
+        <path d={`M${l} ${top} H${r} v${h * 0.03} H${l} Z`} fill="#ffffff" opacity="0.22" />
+        {/* the plume, at the poll: the crown runs x 0.64..0.91 with its top
+            edge at y 0.03..0.11, and the prompt asked for a bare head so this
+            lands on iron and leather, never over painted colour. */}
+        <path
+          d={`M${w * 0.66} ${h * 0.11} q${w * 0.03} ${-h * 0.11} ${w * 0.12} ${-h * 0.08} q${-w * 0.05} ${h * 0.07} ${-w * 0.1} ${h * 0.08} z`}
+          fill={color}
+        />
+      </g>
+    )
+  },
 }
 
 const PROPS: Record<string, (color: string) => JSX.Element> = {

@@ -1,5 +1,14 @@
 -- The Study tab's library: the first book you open each day is worth 5 XP.
 --
+-- Numbering note: this was written, and APPLIED TO PRODUCTION, as
+-- `0081_library_card` before 0081_first_light landed on main from another
+-- branch. Renumbered to 0083 here so the tree doesn't gain a fourth
+-- duplicate number (see the 0034, 0038, 0059 and 0074 scars in CLAUDE.md);
+-- the supabase migration ledger still carries the row under the old name.
+-- Nothing needs re-running — the two touch entirely different objects
+-- (daily_opens vs library_checkouts) and both are already live. Same shape
+-- of renumber as 0057_sonshine_skin.
+--
 -- The Study tab IS a library now — a room with a librarian in it rather than a
 -- grid of book tiles — and the first book she hands you on any given day pays a
 -- small welcome. Coming back for a second, or a fifth, still works and simply

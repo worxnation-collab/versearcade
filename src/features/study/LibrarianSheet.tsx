@@ -30,7 +30,7 @@ const COVERS: Record<string, string> = Object.fromEntries(
 //
 // TWO BEATS, AND THE SECOND ONE WAITS. Pick a book, she stamps it, and the
 // sheet STAYS OPEN on the stamp with an "Open it" button — it does not navigate
-// for you. The day's FIRST book pays 5 XP (0081), and a reveal that gets swept
+// for you. The day's FIRST book pays 5 XP (0083), and a reveal that gets swept
 // off screen by a route change is a reveal nobody sees; that is the whole
 // reason `StudyDropToast` had to be lifted out of the run it belongs to. Here
 // the sheet owns the moment, so it simply holds it.
@@ -71,7 +71,7 @@ export function LibrarianSheet({ items, onClose }: { items: StudyBook[]; onClose
   /**
    * Check one out.
    *
-   * Every checkout after the day's first is a SUCCESS that pays nothing (0081
+   * Every checkout after the day's first is a SUCCESS that pays nothing (0083
    * returns ok with awarded 0), not a refusal — she never turns anybody away
    * from the desk, and this sheet must never draw an error at somebody for
    * coming back. A failed call is the same: the book is still handed over,

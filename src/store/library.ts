@@ -23,7 +23,7 @@ import { LIBRARY_XP } from '@/data/library'
 // only reports what came back. `LIBRARY_XP` is the guest mirror and the number
 // the sheet draws after the fact — it is never sent to the server.
 //
-// KEEP IN SYNC with checkout_library_book (0081): one paid checkout per local
+// KEEP IN SYNC with checkout_library_book (0083): one paid checkout per local
 // day, 5 XP, and every checkout after it is a SUCCESS that pays nothing rather
 // than a refusal. She never turns anybody away from the desk.
 //
@@ -90,7 +90,7 @@ export const useLibrary = create<LibraryState>((set) => ({
         set({ loaded: true, borrowedToday: !!raw.borrowed_today })
         return
       }
-      // A missing RPC (0081 not applied yet) must not make the librarian
+      // A missing RPC (0083 not applied yet) must not make the librarian
       // unreachable — this tab IS the library. Fail to "nothing known", never
       // to a broken room.
       set({ loaded: true })

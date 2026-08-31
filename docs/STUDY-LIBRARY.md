@@ -8,7 +8,7 @@ on the floor is your bag. **The first book you borrow each day pays 5 XP.**
 Files: `features/study/LibraryScene.tsx` (the room), `features/study/
 LibrarianSheet.tsx` (the desk), `data/library.ts` (the `StudyBook` list type,
 her name and her lines), `store/library.ts` (the day's card),
-`supabase/migrations/0081_library_card.sql`, `art/library.json` (three renders).
+`supabase/migrations/0083_library_card.sql`, `art/library.json` (three renders).
 
 ## Why the tiles went
 
@@ -110,7 +110,7 @@ what makes it reset at the player's own midnight with nothing firing at
 midnight. The guest branch does not spend the day when there is no profile to
 pay into.
 
-An unapplied 0081 degrades rather than breaks — `my_library_card` failing leaves
+An unapplied 0083 degrades rather than breaks — `my_library_card` failing leaves
 "nothing known" and the room still works.
 
 ## The art

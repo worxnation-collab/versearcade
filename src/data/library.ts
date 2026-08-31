@@ -49,7 +49,7 @@ export interface StudyBook {
 /**
  * What the FIRST BOOK OF THE DAY is worth. Every one after it is free.
  *
- * KEEP IN SYNC with `pay` in checkout_library_book (0081). This constant is the
+ * KEEP IN SYNC with `pay` in checkout_library_book (0083). This constant is the
  * GUEST mirror and the number the sheet draws after the fact — it is never sent
  * to the server. Online, the RPC decides what a checkout is worth and the store
  * only reports what came back, because `xp` is the worldwide leaderboard (0006).

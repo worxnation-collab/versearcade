@@ -33,7 +33,7 @@ import { summarize } from '@/lib/bookAccuracy'
 //
 // Nothing here touches your rank. The one exception is deliberately tiny and
 // deliberately server-granted: the FIRST BOOK OF THE DAY pays 5 XP
-// (checkout_library_book, 0081), and nothing anywhere counts how many days in a
+// (checkout_library_book, 0083), and nothing anywhere counts how many days in a
 // row you have collected it.
 export default function StudyScreen() {
   const navigate = useNavigate()

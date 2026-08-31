@@ -314,14 +314,29 @@ as $$
   select public.church_leaderboard(p_radius_miles, p_limit, 'all');
 $$;
 
--- Same grant pattern as everything else here: effectively anon-callable by
--- Supabase's default privileges, and each function either guards itself with an
--- auth.uid() null check (church_leaderboard) or returns per-church totals no
--- wider than what a board row already publishes. Not tightened in isolation —
--- see the note in CLAUDE.md.
+-- Grants. church_window_start and church_points_since take the house pattern —
+-- effectively anon-callable via Supabase's default privileges, matching their
+-- sibling church_week_points (0075) exactly, and returning per-church totals no
+-- wider than what a board row already publishes. Not tightened in isolation.
 grant execute on function public.church_window_start(text, timestamptz) to anon, authenticated;
 grant execute on function public.church_points_since(timestamptz) to authenticated;
-grant execute on function public.church_leaderboard(numeric, integer, text) to authenticated;
 grant execute on function public.church_leaderboard(numeric, integer) to authenticated;
+
+-- The three-argument overload is the exception, and it is not a new opinion
+-- about the pattern: the two-argument church_leaderboard already carries
+-- {postgres, authenticated, service_role} with no PUBLIC and no anon — the same
+-- shape as get_church_page — because `create or replace` preserves an existing
+-- ACL and somebody tightened that one deliberately. A NEW function does not
+-- inherit it: Supabase's `alter default privileges ... grant all on functions to
+-- anon, authenticated` hands the overload the anon grant, so the new front door
+-- to this RPC lands wider than the old one unless it is closed here.
+--
+-- And per the 0052 lesson in CLAUDE.md, `revoke ... from public` alone does NOT
+-- close it — that strips only the `=X/postgres` entry and leaves the NAMED anon
+-- grant standing. anon has to be revoked by name. Confirmed against pg_proc.proacl
+-- on the live project rather than assumed: both overloads now read
+-- `postgres=X/postgres authenticated=X/postgres service_role=X/postgres`.
+revoke all on function public.church_leaderboard(numeric, integer, text) from public, anon;
+grant execute on function public.church_leaderboard(numeric, integer, text) to authenticated, service_role;
 
 notify pgrst, 'reload schema';

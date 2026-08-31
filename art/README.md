@@ -17,7 +17,7 @@ must never be written into a tracked file.
 | `keep-halls.json` | halls 2–6 of the keep's six-tier ladder (hall 1 is the existing `hall.jpg`) | `public/keep/hall-<n>.png` |
 | `churchyard-flora.json` | the eight plants a giver can put in a churchyard | `public/keep/yard_*.png` |
 | `pets.json` | the six companions that stand beside you on the You tab | `public/items/pet_*.png` |
-| `keep-props.json` | keep props that need regenerating (two shipped unkeyed) | `public/keep/<id>.png` |
+| `keep-props.json` | every picture-backed decoration in the keep's hall | `public/keep/<id>.png` |
 | `library.json` | the Study tab (a library), the librarian in it, and the satchel on its floor | `public/keep/study-library.jpg`, `public/keep/study_satchel.png`, `public/skins/librarian.png` |
 | `skins-porchlight.json` | the Porchlight creator-collab skin (curls, cream knit, ukulele) | `public/skins/porchlight.png` |
 | `arcade.json` | the backdrops of the three arcade machines — the wilderness, the blank page, the workshop wall | `public/arcade/arcade_*.jpg` |
@@ -96,9 +96,23 @@ an ungenerated hall still reads as its own room, an ungenerated plant still
 grows in its plot. (Halls have one exception, commented where it lives: tier 1
 is the original `hall.jpg`, which predates the map and is a `.jpg`.)
 
-The keep's props (`RASTER_DECOR` in `KeepArt.tsx`) stay a hand-written list.
-They're older, and each one carries a display box and an anchor mode the map
-has nowhere to put.
+The keep's props keep a hand-written list beside the map
+(`RASTER_DECOR` in `src/data/keepArt.ts`), because each one carries a display
+box and an anchor mode the map has nowhere to put. Two things about that list:
+
+- **The width is derived, not chosen.** The hall stretches a prop to whatever
+  box it is given, so `w` must be `h x (png width / png height)` for the file
+  that actually renders. Replacing a drawing with a render changes that ratio
+  and nothing throws — the prop is just a little squashed forever. So
+  `npm run check:decor` (in `npm run build`) runs the real table against the
+  real files and prints the width to use. The crossed spears shipped 5% wide
+  and the barrel stack 7% wide before it existed.
+- **The list is only ever a fallback under the map.** `decorRaster` resolves
+  `GENERATED_ART[id] ?? src`, so a render wired up under a decoration's own id
+  wins and the old drawing stays underneath it. Anything that reads the table
+  directly gets the wrong picture: `DecorThumb` did, which drew the shelf tile
+  from the old file while the hall drew the new one, and drew nothing at all
+  for the one prop that never had a drawing.
 
 ## Two things stay drawn, and it isn't laziness
 

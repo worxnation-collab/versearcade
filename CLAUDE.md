@@ -306,6 +306,16 @@ without moving to the road's folder — nothing full-bleed and opaque needs an
 alpha channel, and the Study library came back at 1,008KB as a PNG against
 166KB as a JPEG. The keep's halls are still PNG; that's history, not a rule. `art/README.md` has the details and the wiring.
 
+**A prop's display box carries its render's aspect ratio, and replacing a
+render changes it.** The keep's hall stretches a decoration to whatever box
+`RASTER_DECOR` (`data/keepArt.ts`) gives it, so `w` is derived — `h x (png
+width / png height)` — and a stale width squashes the picture with nothing
+thrown. `npm run check:decor` runs the real table against the real files in
+`npm run build` and prints the number to use; the two most recently generated
+props were both stretched before it existed. Its sibling trap is reading that
+table instead of `decorRaster()`: the map wins over the hand-placed `src`, so a
+direct read draws the old art on the shelf and the new art in the hall.
+
 **Generated art layers OVER a drawn fallback, never instead of it.** A tier
 whose PNG hasn't been generated still has to render as itself. Wiring is
 automatic: the generator writes `src/data/generatedArt.ts` (id → public path)

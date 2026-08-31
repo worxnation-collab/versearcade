@@ -1,6 +1,6 @@
 -- "Tell us about promoting our church" — the ask, not the sale.
 --
--- 0075 gave the operator a sponsored slot to grant. This is how a church asks
+-- 0077 gave the operator a sponsored slot to grant. This is how a church asks
 -- for one: a single box on the leadership path of the existing "Add info" form,
 -- carried on the request that already goes to a person to read.
 --
@@ -9,7 +9,7 @@
 -- like the `custom` church skin, and for the same reason: the money happens off
 -- the device, so `commerce.ts` never has to gate this and the App Store build
 -- never shows a storefront it can't take money through. Ticking the box grants
--- nothing. Only `admin_set_church_promotion` (0075) can start a slot.
+-- nothing. Only `admin_set_church_promotion` (0077) can start a slot.
 --
 -- Leadership only, and enforced here rather than in the form: a member telling
 -- us about service times is not the person who decides a congregation's

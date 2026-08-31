@@ -10,6 +10,7 @@ import { formatMiles } from '@/lib/geo'
 import { churchLevelInfo, tierForLevel } from './levels'
 import { ChurchArt } from './ChurchArt'
 import { ChurchScene } from './ChurchScene'
+import { useRivalry } from '@/store/rivalry'
 import { CHURCH_SKINS, DEFAULT_CHURCH_SKIN, type ChurchSkinChoice } from './skins'
 import type { ChurchMember, ChurchPage } from '@/types'
 
@@ -72,6 +73,18 @@ export function ChurchPageBody({
     return () => { void loadPageYard(null) }
   }, [church.id, loadPageYard, withYard])
 
+  // The monuments, on the same second read as the landscaping. Unlike the yard
+  // these are NOT sampled per viewer: a statue belongs to the congregation, so
+  // everybody who opens this page sees the same one standing there.
+  const statues = useRivalry((s) => (s.pageChurchId === church.id ? s.pageStatues : EMPTY_YARD))
+  const pageWins = useRivalry((s) => (s.pageChurchId === church.id ? s.pageWins : 0))
+  const loadPageStatues = useRivalry((s) => s.loadPageStatues)
+  useEffect(() => {
+    if (!withYard) return
+    void loadPageStatues(church.id)
+    return () => { void loadPageStatues(null) }
+  }, [church.id, loadPageStatues, withYard])
+
   const level = churchLevelInfo(church.xp)
   const tier = tierForLevel(level.level)
   const where = [church.city, church.region].filter(Boolean).join(', ')
@@ -96,7 +109,29 @@ export function ChurchPageBody({
 
       {/* The wide shot: the building, the landscaping its givers planted, and
           the people who play for it. */}
-      <ChurchScene level={level.level} members={members} skin={church.skin} flora={yard} />
+      <ChurchScene
+        level={level.level}
+        members={members}
+        skin={church.skin}
+        flora={yard}
+        statues={statues}
+      />
+
+      {/* Weeks won, and deliberately nothing to weigh it against.
+          This is the ONE number the rivalry publishes about a church, and it is
+          safe for the same reason the win ladder is safe everywhere else here:
+          it says a congregation showed up, and it cannot say that anybody else
+          didn't. There is no losses figure to pair it with — not on this page,
+          not in the payload, not in the schema. It appears only once a church
+          has won something, so a page never reads "0 weeks won". */}
+      {pageWins > 0 && (
+        <p
+          className="center"
+          style={{ margin: '10px 0 0', fontSize: 12.5, fontWeight: 700, color: 'var(--gold)' }}
+        >
+          🏛 {pageWins} {pageWins === 1 ? 'week' : 'weeks'} won
+        </p>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, margin: '12px 0 14px' }}>
         <Stat label={tier.name} value={`LVL ${level.level}`} tone="var(--gold)" />
@@ -500,7 +535,7 @@ function InfoRequestForm({
             onPick={(next) => { juice.select?.(); setSkin(next) }}
           />
 
-          {/* The one place a church can ask to be promoted (0076), and it is an
+          {/* The one place a church can ask to be promoted (0078), and it is an
               ASK: it names no price, takes no money and grants no slot — only
               the operator can start one, and the money is settled off the
               device. That's what keeps this surface byte-identical on the web

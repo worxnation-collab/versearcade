@@ -5,7 +5,7 @@ players nearby who haven't picked a church yet. It is the only thing in this
 app a third party can pay to put in front of a player, and the rules below are
 what make it safe to sell.
 
-Schema: `0075_church_promotions.sql`. Client: `ChurchPicker`, plus the
+Schema: `0077_church_promotions.sql`. Client: `ChurchPicker`, plus the
 **Sponsored slot** panel under Admin → Churches.
 
 ## What a church is actually buying
@@ -83,7 +83,7 @@ failure mode; the warning is the fix.
 ## Fail-closed, everywhere
 
 `loadSponsored` returns `null` on: no Supabase keys, a server that predates
-0075, a network blip, a slow response past the 10s deadline, and the ordinary
+0077, a network blip, a slow response past the 10s deadline, and the ordinary
 case of no promotion in this area. All five land on the same screen — the picker
 exactly as it was before this feature existed.
 
@@ -106,7 +106,7 @@ There is one entry point, and it's the one that already existed: the
 **"＋ Add info"** pill on `ChurchPageBody`, which both the leaderboard sheet
 (`ChurchDetailSheet`) and the public page (`/church/:id`) render. Tapping it,
 choosing **I'm on staff** and ticking *"Tell me about reaching players nearby"*
-sets `wants_promotion` on the request (`0076`); the admin queue flags it with a
+sets `wants_promotion` on the request (`0078`); the admin queue flags it with a
 gold pill.
 
 It is an **ask, not a sale**. Ticking it grants nothing, names no price and

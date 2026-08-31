@@ -109,7 +109,7 @@ export function ChurchPicker() {
     }))
   }, [])
 
-  // The one paid slot, if this spot has one (0075). Everything about this call
+  // The one paid slot, if this spot has one (0077). Everything about this call
   // fails to `null`: no keys, a server that predates the migration, a network
   // blip, or simply no promotion in this area — all four land on "no sponsored
   // row", and the picker renders exactly as it did before the feature existed.

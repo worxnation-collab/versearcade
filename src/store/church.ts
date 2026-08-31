@@ -136,9 +136,9 @@ export interface InfoRequestInput {
   name?: string
   email?: string
   /**
-   * Leadership ticked "tell us about promoting our church" (0076). An ASK and
+   * Leadership ticked "tell us about promoting our church" (0078). An ASK and
    * nothing more — it grants no slot, names no price, and only
-   * `admin_set_church_promotion` (0075) can actually start one. Dropped on the
+   * `admin_set_church_promotion` (0077) can actually start one. Dropped on the
    * member path by the server, like `skin`.
    */
   wantsPromotion?: boolean

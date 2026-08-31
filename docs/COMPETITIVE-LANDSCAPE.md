@@ -1,6 +1,9 @@
 # The competitive landscape — August 2026
 
-Written against repository HEAD (1.1.0 live, 1.2.0 built and unuploaded). Feature
+Written against repository HEAD when 1.1.0 was live and 1.2.0 was built and
+unuploaded. **1.2.0 has since shipped and is live; the repo now carries 1.3.0**, which
+adds live battles and the weekly church rivalry — neither is weighed in the comparison
+below, so treat the tables as a floor rather than a current reading. Feature
 inventory is from the repo and is authoritative. Competitor figures come from
 public store listings and third-party analytics aggregators as of 30 Aug 2026 —
 directional, not audited. Re-check anything before quoting it externally.
@@ -83,7 +86,7 @@ the no-shame doctrine. Re-run this comparison in Q4 2026.
 
 ## What follows
 
-1. **Ship 1.2.0.** The feature set is at parity or ahead nearly everywhere. The
+1. **Ship 1.2.0.** ✅ Done — approved and live. The feature set is at parity or ahead nearly everywhere. The
    problem is that a competitor shipped the same ideas in June and updates daily
    while our best work has never been uploaded. No positioning fixes that.
 2. **Lead the listing with the three things Ascend cannot say** — no energy meter,

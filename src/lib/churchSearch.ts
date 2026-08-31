@@ -26,7 +26,7 @@ export interface ChurchPlace {
   /** Set when this church already exists in Verse Arcade. */
   churchId?: string
   /**
-   * The one paid slot on the suggestion list (`sponsored_church`, 0075). Set
+   * The one paid slot on the suggestion list (`sponsored_church`, 0077). Set
    * only on a row the server chose; the client can never mark one itself, and
    * every surface that renders it must label it — see `docs/CHURCH-PROMOTION.md`.
    */

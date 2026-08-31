@@ -339,7 +339,7 @@ function Churches() {
   )
 }
 
-// The paid slot on the suggestion list (0075).
+// The paid slot on the suggestion list (0077).
 //
 // This is the only surface anywhere that can create one, and that is the
 // point: a promotion is granted by the operator after the money has happened
@@ -510,7 +510,7 @@ interface InfoRequest {
   // Both are leadership-only asks the server already returns. `skin` shipped in
   // 0051 and was never rendered here, which is precisely the failure that
   // migration's comment predicted: a church picks Tile roof and nobody finds
-  // out. `wants_promotion` (0076) is the sponsored-slot ask.
+  // out. `wants_promotion` (0078) is the sponsored-slot ask.
   skin: string | null; wants_promotion?: boolean
 }
 function InfoRequests() {

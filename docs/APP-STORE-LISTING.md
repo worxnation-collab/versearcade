@@ -130,6 +130,9 @@ ARRANGE YOUR ROOMS AND YOUR CHURCHYARD WITH YOUR THUMB
 BATTLE SOMEONE IN REAL TIME
 • Live battles: share a room code, both tap ready, and the same verse starts for both
   of you at once with a bar showing where the other player is.
+• Nobody to send a code to? Tap Quick match and we'll put you with whoever else is
+  looking right now — no code, no waiting list, no rating. Whoever's there is who
+  you play, and the loser of a live battle is still somebody who just learnt a verse.
 • Wrong answers still teach. The line explaining the answer is yours to read at your
   own pace, even if it costs you the round — being slower never means being told less.
 

@@ -7,6 +7,7 @@ import { Avatar } from '@/components/Avatar'
 import { useAuth } from '@/store/auth'
 import { useKeep } from '@/store/keep'
 import { useLive } from '@/store/live'
+import { useLiveQueue } from '@/store/liveQueue'
 import { useJuice } from '@/juice/useJuice'
 import { LiveVersusQuiz } from './LiveVersusQuiz'
 import { liveWinner, newRoomCode, normalizeRoomCode, verseForRoom } from './live'
@@ -16,28 +17,61 @@ import type { PlayResult } from '@/types'
 // The two live-battle screens: the door (/battle/live) and the room
 // (/battle/live/:code).
 //
-// A ROOM CODE, not a queue. Matchmaking with strangers is a queue table, a
-// pairing function, timeouts and abandonment handling; two people who already
-// know they are about to play each other need none of it, and a code can be read
-// out loud on a stream, which is the actual use this was built for. If open
-// matchmaking is ever wanted, it goes in front of this screen and everything
-// below still works unchanged.
+// A ROOM CODE, and now also a QUEUE IN FRONT OF IT. The original note here said
+// matchmaking with strangers is a queue table, a pairing function, timeouts and
+// abandonment handling, and that two people who already know they are about to
+// play each other need none of it. All of that is still true — and it is an
+// argument about people who already know each other, which is the case a code
+// covers and the case "find me anyone" does not. It also predicted its own
+// exception: open matchmaking goes IN FRONT of this screen and everything below
+// works unchanged. That is exactly what happened. Quick match ends by handing
+// two devices the same room code, so from that second on there is only one live
+// battle in this app and store/live.ts did not change at all.
+//
+// The queue kept the property that made this worth building: no table, no
+// migration, nothing that outlives the search. See store/liveQueue.ts.
 
 /** Who owns the room, remembered so a refresh doesn't demote the host. */
 const roleKey = (code: string) => `va.live.host.${code}`
+
+/**
+ * Remember that this tab created the room, so a refresh doesn't demote the host
+ * and leave a room with two guests in it and nobody able to record the result.
+ * Both doors go through here — a hosted room and the host half of a quick match
+ * are the same thing by the time the room screen reads it.
+ */
+function claimHost(code: string) {
+  try {
+    sessionStorage.setItem(roleKey(code), '1')
+  } catch {
+    /* private mode: a refresh will just rejoin as a guest */
+  }
+}
 
 export default function LiveLobby() {
   const navigate = useNavigate()
   const juice = useJuice()
   const [code, setCode] = useState('')
+  const { status, match, error: queueError, search, cancel } = useLiveQueue()
+
+  // Leaving the door leaves the queue. There is nothing to come back to: the
+  // roster is a picture of who is free right now, and a presence left behind by
+  // a screen nobody is looking at would offer rooms to people who then wait
+  // alone in them.
+  useEffect(() => () => cancel(), [cancel])
+
+  // Paired. The host claims the room before navigating, so both halves of a
+  // quick match arrive exactly as a code-shared room does.
+  useEffect(() => {
+    if (!match) return
+    if (match.role === 'host') claimHost(match.code)
+    juice.coin()
+    navigate(`/battle/live/${match.code}`, { state: { host: match.role === 'host' } })
+  }, [match, navigate, juice])
 
   const host = () => {
     const c = newRoomCode()
-    try {
-      sessionStorage.setItem(roleKey(c), '1')
-    } catch {
-      /* private mode: a refresh will just rejoin as a guest */
-    }
+    claimHost(c)
     juice.coin()
     navigate(`/battle/live/${c}`, { state: { host: true } })
   }
@@ -47,6 +81,10 @@ export default function LiveLobby() {
     if (c.length !== 4) return
     juice.coin()
     navigate(`/battle/live/${c}`)
+  }
+
+  if (status !== 'idle') {
+    return <QuickSearch onCancel={() => { juice.tap(); cancel() }} onRoom={host} />
   }
 
   return (
@@ -64,9 +102,28 @@ export default function LiveLobby() {
         </p>
       </div>
 
+      {/* Quick match leads, because it is the one door that needs nothing
+          arranged first — no code to send, nobody to text. The room is still
+          right underneath it for the two people who already know each other,
+          which is the case it was built for. */}
       <div style={{ marginTop: 18 }}>
-        <Button variant="gold" full onClick={host}>Start a room →</Button>
+        <Button variant="gold" full onClick={() => { juice.coin(); void search() }}>
+          🎲 Quick match — find me anyone
+        </Button>
       </div>
+      <p className="faint center" style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
+        We’ll put you with whoever else is looking. No code needed.
+      </p>
+      {queueError && (
+        <p className="dim center" style={{ fontSize: 13, marginTop: 8 }}>{queueError}</p>
+      )}
+
+      <div style={{ marginTop: 14 }}>
+        <Button full onClick={host}>Start a room →</Button>
+      </div>
+      <p className="faint center" style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
+        Playing someone you know? Send them the code.
+      </p>
 
       <div className="card" style={{ padding: 18, marginTop: 18 }}>
         <b style={{ fontFamily: 'var(--font-display)' }}>Got a code?</b>
@@ -109,8 +166,16 @@ export function LiveRoom() {
   // Host if this tab created the room — including across a refresh, which would
   // otherwise leave a room with two guests in it and nobody able to record the
   // result (see recordResult in store/live).
+  //
+  // A navigation that STATES which side you are wins over the stored flag, both
+  // ways round. Quick match sends its guest here with `host: false`, and the two
+  // halves of a match can be the same browser (two tabs share sessionStorage, so
+  // a room hosted in one tab marks the other one host too) — which lands both
+  // devices on 'host', and store/live drops every message from a player wearing
+  // your own role. Two people in one room, each told nobody had joined.
   const isHost = useMemo(() => {
-    if ((location.state as { host?: boolean } | null)?.host) return true
+    const stated = (location.state as { host?: boolean } | null)?.host
+    if (typeof stated === 'boolean') return stated
     try {
       return sessionStorage.getItem(roleKey(code)) === '1'
     } catch {
@@ -356,5 +421,79 @@ function Side({
       </div>
       <div className="faint" style={{ fontSize: 11 }}>{correct}/{total} right</div>
     </div>
+  )
+}
+
+/**
+ * Looking for anybody. One button's worth of screen, and the only interesting
+ * decision in it is what happens when the lobby is EMPTY.
+ *
+ * It is going to be empty most of the time — that is simply true of a small app,
+ * and a spinner that never resolves is the version of this feature that teaches
+ * people not to tap it. So the search keeps running (somebody may walk in at any
+ * second) and after a quiet spell the screen says so plainly and puts the two
+ * doors that always work right there: a room code, and the async battle that
+ * needs nobody to be holding their phone at all.
+ */
+function QuickSearch({ onCancel, onRoom }: { onCancel: () => void; onRoom: () => void }) {
+  const navigate = useNavigate()
+  const { waiting, elapsed, status } = useLiveQueue()
+  const quiet = elapsed >= 20 && waiting === 0
+
+  return (
+    <Page noNav>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+        <button className="pill" onClick={onCancel} aria-label="Stop looking">✕</button>
+        <b style={{ fontFamily: 'var(--font-display)', fontSize: 20 }}>🎲 Quick match</b>
+      </div>
+
+      <div className="card" style={{ padding: 26, textAlign: 'center' }}>
+        <motion.div
+          animate={{ rotate: [-8, 8, -8] }}
+          transition={{ repeat: Infinity, duration: 2.2, ease: 'easeInOut' }}
+          style={{ fontSize: 54 }}
+        >
+          ⚔️
+        </motion.div>
+        <p style={{ marginTop: 12, fontFamily: 'var(--font-display)', fontSize: 20 }}>
+          {status === 'matched' ? 'Found someone!' : 'Looking for an opponent…'}
+        </p>
+        <motion.p
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ repeat: Infinity, duration: 1.8 }}
+          className="dim"
+          style={{ marginTop: 8, fontSize: 14 }}
+        >
+          {status === 'matched'
+            ? 'Opening the room…'
+            : waiting > 0
+              ? `${waiting} other player${waiting === 1 ? '' : 's'} in the lobby`
+              : `Searching… ${elapsed}s`}
+        </motion.p>
+      </div>
+
+      {quiet && (
+        <div className="card" style={{ padding: 18, marginTop: 16 }}>
+          <b style={{ fontFamily: 'var(--font-display)' }}>Quiet in here right now</b>
+          <p className="dim" style={{ marginTop: 6, fontSize: 13.5, lineHeight: 1.5 }}>
+            We’ll keep looking while you’re on this screen — but a live battle
+            needs somebody holding their phone this second. These two don’t.
+          </p>
+          <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
+            <Button full onClick={onRoom}>Start a room and send the code</Button>
+            <Button full onClick={() => navigate('/battle/new')}>Challenge someone — they play later</Button>
+          </div>
+        </div>
+      )}
+
+      <div style={{ marginTop: 16 }}>
+        <Button full onClick={onCancel}>Stop looking</Button>
+      </div>
+
+      <p className="faint center" style={{ fontSize: 11, marginTop: 14, lineHeight: 1.5 }}>
+        You’ll be matched with whoever else is looking — you both get the same
+        verse at the same moment.
+      </p>
+    </Page>
   )
 }

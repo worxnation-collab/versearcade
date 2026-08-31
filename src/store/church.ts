@@ -136,6 +136,13 @@ export interface InfoRequestInput {
   name?: string
   email?: string
   /**
+   * Leadership ticked "tell us about promoting our church" (0076). An ASK and
+   * nothing more — it grants no slot, names no price, and only
+   * `admin_set_church_promotion` (0075) can actually start one. Dropped on the
+   * member path by the server, like `skin`.
+   */
+  wantsPromotion?: boolean
+  /**
    * The look the church is asking for — a `ChurchSkinChoice`, or undefined for
    * "no preference". Leadership only: `submit_church_info_request` (0051) drops
    * it on the member path rather than trusting the form, because someone who
@@ -401,7 +408,7 @@ export const useChurch = create<ChurchState>((set, get) => ({
     set({ congregation: ((data as any).members ?? []).map(toMember) })
   },
 
-  async requestInfo({ churchId, role, note, name, email, skin }) {
+  async requestInfo({ churchId, role, note, name, email, skin, wantsPromotion }) {
     if (!isOnline()) return { ok: false, reason: 'offline' }
     const { data, error } = await supabase!.rpc('submit_church_info_request', {
       p_church_id: churchId,
@@ -410,6 +417,7 @@ export const useChurch = create<ChurchState>((set, get) => ({
       p_name: name?.trim() || null,
       p_email: email?.trim() || null,
       p_skin: skin ?? null,
+      p_wants_promotion: !!wantsPromotion,
     })
     if (error) return { ok: false, reason: error.message }
     const payload = data as any

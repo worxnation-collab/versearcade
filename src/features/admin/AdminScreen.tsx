@@ -507,6 +507,11 @@ interface InfoRequest {
   id: string; church_id: string; church_name: string; city: string | null; region: string | null
   role: 'leadership' | 'member'; username: string | null; contact_name: string | null
   email: string | null; note: string; handled: boolean; created_at: string
+  // Both are leadership-only asks the server already returns. `skin` shipped in
+  // 0051 and was never rendered here, which is precisely the failure that
+  // migration's comment predicted: a church picks Tile roof and nobody finds
+  // out. `wants_promotion` (0076) is the sponsored-slot ask.
+  skin: string | null; wants_promotion?: boolean
 }
 function InfoRequests() {
   const [rows, setRows] = useState<InfoRequest[] | null>(null)
@@ -543,6 +548,20 @@ function InfoRequests() {
               {r.contact_name || (r.username ? `@${r.username}` : 'anonymous')}
               {r.email && <> · <a href={`mailto:${r.email}`} style={{ color: 'var(--sky)' }}>{r.email}</a></>}
             </div>
+            {(r.skin || r.wants_promotion) && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                {r.skin && (
+                  <span className="pill" style={{ fontSize: 11, padding: '3px 9px', borderColor: 'var(--grape)' }}>
+                    {r.skin === 'custom' ? '🎨 custom building (quote it)' : `wants ${r.skin}`}
+                  </span>
+                )}
+                {r.wants_promotion && (
+                  <span className="pill" style={{ fontSize: 11, padding: '3px 9px', borderColor: 'var(--gold)', color: 'var(--gold)', fontWeight: 800 }}>
+                    ⭐ asked about promotion
+                  </span>
+                )}
+              </div>
+            )}
             <p style={{ fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>{r.note}</p>
             <button className="pill" onClick={() => void handle(r)} style={{ fontSize: 12, fontWeight: 700, marginTop: 4 }}>
               {r.handled ? 'Reopen' : 'Mark handled'}

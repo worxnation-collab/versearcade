@@ -379,6 +379,14 @@ top of them — a paid row lengthens nobody's list. And **typing removes it**:
 search is distance-ordered and unpaid, so the sponsor can only ever raise a
 church on the list you didn't ask for, never on the one you did.
 
+**A church asks through the pill that already existed.** The leadership path of
+"Add info" carries a `wants_promotion` box (`0076`) that the admin queue flags —
+an ask, not a sale: it grants nothing and names no price, so the surface stays
+identical in both builds like the `custom` skin. The server drops the flag on
+the member path the way it drops the skin. (0076 also fixes a 0051 bug the same
+comment predicted: the queue returned the skin a church asked for and the admin
+screen never rendered it.)
+
 It records no location (`sponsored_church` takes the coordinates
 `search_churches` already takes and stores none of them — the picker promises
 "we never save it"), and `note_promotion_join` counts joins the server verified,
@@ -538,7 +546,7 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0075` (the church sponsored slot); before it, `0074` (the admin dashboard's dates) — it must be applied before
+The latest is `0076` (a church's ask for a sponsored slot) and `0075` (the slot itself); before them, `0074` (the admin dashboard's dates) — it must be applied before
 the client that uses it merges, and that one is not optional: it DROPS the old
 `admin_overview()` / `admin_growth(boolean)` signatures to replace them with
 timezone-taking ones, so an un-applied 0074 means the dashboard errors rather

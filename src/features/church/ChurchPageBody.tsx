@@ -393,6 +393,7 @@ function InfoRequestForm({
     (CHURCH_SKINS.find((s) => s.id === currentSkin)?.id ?? DEFAULT_CHURCH_SKIN) as ChurchSkinChoice,
   )
   const [note, setNote] = useState('')
+  const [wantsPromotion, setWantsPromotion] = useState(false)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
@@ -416,7 +417,15 @@ function InfoRequestForm({
     if (!valid || busy) return
     setBusy(true)
     setErr(null)
-    const res = await requestInfo({ churchId, role, note, name, email, skin: leadership ? skin : undefined })
+    const res = await requestInfo({
+      churchId,
+      role,
+      note,
+      name,
+      email,
+      skin: leadership ? skin : undefined,
+      wantsPromotion: leadership && wantsPromotion,
+    })
     setBusy(false)
     if (!res.ok) {
       setErr(REASONS[res.reason ?? ''] ?? 'That didn’t go through. Try again in a moment.')
@@ -436,7 +445,9 @@ function InfoRequestForm({
             ? `We'll use this to fill in ${churchName}'s page — and we'll reach out to the church too.`
             : skin === 'custom'
               ? `We'll email you about ${churchName}'s page, and about drawing the building itself.`
-              : `We'll email you about ${churchName}'s page.`}
+              : wantsPromotion
+                ? `We'll email you about ${churchName}'s page, and about reaching players nearby.`
+                : `We'll email you about ${churchName}'s page.`}
         </p>
         <Button variant="secondary" full onClick={onDone}>Back</Button>
       </div>
@@ -488,6 +499,42 @@ function InfoRequestForm({
             value={skin}
             onPick={(next) => { juice.select?.(); setSkin(next) }}
           />
+
+          {/* The one place a church can ask to be promoted (0076), and it is an
+              ASK: it names no price, takes no money and grants no slot — only
+              the operator can start one, and the money is settled off the
+              device. That's what keeps this surface byte-identical on the web
+              and in the App Store build, the same rule the `custom` skin
+              follows. If it ever becomes a real checkout, that decision goes in
+              lib/commerce.ts and nowhere else. */}
+          <button
+            onClick={() => { juice.select?.(); setWantsPromotion((v) => !v) }}
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 10,
+              textAlign: 'left',
+              width: '100%',
+              padding: '10px 12px',
+              borderRadius: 'var(--r-sm)',
+              border: `1px solid ${wantsPromotion ? 'var(--gold)' : 'var(--stroke)'}`,
+              background: 'var(--card)',
+            }}
+            aria-pressed={wantsPromotion}
+          >
+            <span style={{ fontSize: 16, lineHeight: 1.2, flexShrink: 0 }}>
+              {wantsPromotion ? '☑️' : '⬜️'}
+            </span>
+            <span style={{ minWidth: 0 }}>
+              <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700 }}>
+                Tell me about reaching players nearby
+              </span>
+              <span className="faint" style={{ display: 'block', fontSize: 11.5, lineHeight: 1.5, marginTop: 2 }}>
+                We can suggest {churchName} to people near you who haven't picked a church yet.
+                We'll explain how it works by email — nothing is charged here.
+              </span>
+            </span>
+          </button>
         </>
       )}
 

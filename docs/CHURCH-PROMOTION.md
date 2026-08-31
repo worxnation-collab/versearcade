@@ -100,6 +100,24 @@ people joined your congregation through the slot last month" is a real number,
 verified server-side (the RPC checks the caller actually plays for that church
 before counting), and it is the only number the slot produces.
 
+## How a church asks
+
+There is one entry point, and it's the one that already existed: the
+**"＋ Add info"** pill on `ChurchPageBody`, which both the leaderboard sheet
+(`ChurchDetailSheet`) and the public page (`/church/:id`) render. Tapping it,
+choosing **I'm on staff** and ticking *"Tell me about reaching players nearby"*
+sets `wants_promotion` on the request (`0076`); the admin queue flags it with a
+gold pill.
+
+It is an **ask, not a sale**. Ticking it grants nothing, names no price and
+takes no money — only `admin_set_church_promotion` starts a slot. That is what
+keeps the surface byte-identical on the web and in the App Store build, exactly
+like the `custom` church skin, and it's why `commerce.ts` never has to gate it.
+
+Leadership only, enforced in SQL rather than in the form: the server nulls the
+flag on the member path the same way it nulls the skin. Someone who just
+attends is passing on service times, not deciding a congregation's advertising.
+
 ## Operating it
 
 Admin → Churches → **Sponsored slot**.

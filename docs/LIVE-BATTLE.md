@@ -127,13 +127,81 @@ would be a person racing themselves, which is what `/battle/cpu` already is and
 does better. There is no half-built guest path here to finish — there is nothing
 for one to do.
 
-## A room code, not a queue
+## A room code, and now a queue in front of it
 
 Matchmaking with strangers is a queue table, a pairing function, timeouts and
 abandonment handling. Two people who already know they are about to play each
 other need none of it, and a code can be read out loud on a stream, which is the
 use this was built for. If open matchmaking is ever wanted it goes in *front* of
 this screen and everything here still works unchanged.
+
+That is exactly what happened, and the prediction held: **Quick match** ends by
+handing two devices the same room code, so from that second on it *is* a
+room-code match and not a line of `store/live.ts` changed. The paragraph above is
+still the reason the room exists — it was an argument about two people who
+already know each other, which is the case a code covers and the case "find me
+anyone" does not.
+
+### The queue has no table either
+
+`store/liveQueue.ts`. Everybody looking stands in one Realtime presence roster
+(`live-battle:queue`); the pairing is *derived from that roster on every device*
+rather than assigned by a server, and a three-message handshake settles who
+actually got whom. Nothing outlives the search — a closed tab is a vanished
+presence, which is the whole of the abandonment handling. Still no migration.
+
+**The pairing rule is the smallest one that cannot disagree with itself:** the
+person who has been waiting longest proposes, everybody else waits. One pair
+forms at a time and both leave the roster, so the queue drains in join order and
+arriving late can't jump anybody. Sorted rather than hashed — unlike the church
+rivalry's draw, there *is* an order here worth honouring.
+
+Everything that rule can still get wrong is caught rather than prevented, because
+two devices half a second apart genuinely do see different rosters:
+
+- **offer → accept → confirm, three messages, not two.** The accepter is not in
+  the room until it hears back. With two, an offer crossing another offer leaves
+  one player alone in a room the other never entered — the same "one device
+  deciding for two" shape as the rematch bug above.
+- **The lower ticket wins a collision.** If both sides believe they are the head,
+  they compare the two ticket strings and reach the same answer with no round
+  trip to agree on it.
+- **A dead head can't stall the queue.** An unanswered offer expires after 4s and
+  that ticket is skipped for 10s; anybody may propose once they have waited 8s,
+  so a client that never offers (a frozen tab, an older build) is routed around
+  rather than waited on.
+- **Never two presences wearing the same username.** That is your own second tab,
+  and `create_battle` refuses a battle with yourself anyway.
+
+### The empty lobby is the state that matters
+
+It will be empty most of the time — that is simply true of a small app, and a
+spinner that never resolves is the version of this feature that teaches people
+not to tap it. So the search keeps running (somebody may walk in at any second)
+and after 20 quiet seconds the screen says so plainly and puts the two doors that
+always work right there: a room code, and the async battle that needs nobody to
+be holding their phone at all. Not a dead end — the same rule the account wall
+follows.
+
+### It adds no comparison
+
+Worth stating, because "matchmaking" is the word that usually brings ranking with
+it. There is no rating, no bracket, no queue position and no skill matching:
+whoever is looking, in join order. The lobby draws a COUNT of other people
+looking — a number about the room, never about a person — and the match itself is
+the battle that already existed. Ranking strangers by ability is the ladder this
+app refuses everywhere else, and it would need a rating on every account, which
+is a number that ranks people (0006) and would then want a table to keep it in.
+
+### Which side hosts
+
+The pair's proposer becomes the host, and the room is told which side it is by
+the navigation that opens it. A navigation that STATES a role now wins over the
+remembered `va.live.host.<code>` flag, both ways round — that flag is a refresh
+fallback, and two tabs of one browser share `sessionStorage`, which made both
+halves of a quick match arrive as 'host'. `store/live.ts` drops every message
+from a player wearing your own role, so the two of them sat in the same room each
+being told nobody had joined. Found by driving it, invisible in the diff.
 
 ## Verified by driving it
 
@@ -152,3 +220,21 @@ before anyone had dropped.
 not be exercised with guest profiles. Do one rehearsal match on two signed-in
 accounts before going live, and check the battle shows up in both players'
 history.
+
+### Quick match, verified the same way
+
+Two isolated browsing contexts running the real store and the real screens: two
+taps from "find me anyone" to the ready-check, both on one room code with one
+host and one guest, the same verse on both, a full five-question run and both
+result screens agreeing on the winner. Then the cases that only a second player
+makes visible — three people tapping at the same instant produce exactly one pair
+and leave the third looking; two tabs of one account never pair; a client that
+sits in the roster and answers nothing is skipped rather than waited on; the
+quiet panel appears at 20s and stopping the search returns the door.
+
+**The transport under that test was a stand-in, not Supabase Realtime** — this
+sandbox's proxy refuses WebSocket upgrades, so the live service was unreachable
+from it. The protocol, the screens and the room are the real ones; what has not
+been exercised against the live project is the presence roster itself. Do the
+quick-match rehearsal on two real devices at the same time as the recording one
+above.

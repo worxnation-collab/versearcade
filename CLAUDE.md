@@ -696,12 +696,34 @@ Four things to know before touching it:
   concern, rather than in a wrapper that would have to draw its own copy of the
   verse card above the real one.
 
+- **Quick match is the queue that landed in front of it, exactly where that was
+  predicted to go.** One button on `/battle/live` puts you in a Realtime presence
+  roster with everybody else looking; the pair is derived from that roster on
+  every device (longest-waiting proposes, one pair at a time) and settled by an
+  offer → accept → confirm handshake, then both are handed the same room code —
+  so from that second on it IS a room-code match and `store/live.ts` did not
+  change. **Still no table and no migration**: nothing outlives the search, and a
+  closed tab is a vanished presence, which is the whole of the abandonment
+  handling. Three things are load-bearing. The third message is not ceremony —
+  with two, an offer crossing another offer strands one player alone in a room
+  the other never entered. **It adds no comparison**: no rating, no bracket, no
+  queue position, no skill matching, and the only number on screen is how many
+  people are looking (a number about the room, never about a person) — a rating
+  would rank people and would then want a table to keep it in. And the EMPTY
+  lobby is the state that matters, because it is the usual one: the search keeps
+  running, and after 20 quiet seconds the screen says so and offers the two doors
+  that always work (a room code, and the async battle). `store/liveQueue.ts`.
+- **A navigation that states which side you are beats the remembered host flag.**
+  `va.live.host.<code>` is a refresh fallback; two tabs of one browser share
+  `sessionStorage`, so both halves of a quick match used to arrive as 'host', and
+  `store/live.ts` drops every message from a player wearing your own role — two
+  people in one room, each told nobody had joined.
+
 Online-only, inherited rather than chosen — the `store/washing.ts` break with the
 two-mode invariant. A local live battle is a person racing themselves, which is
-what `/battle/cpu` already is. And a room code rather than a queue: matchmaking
-is a queue table, pairing and timeouts, and two people about to play each other
-need none of it. Open matchmaking, if it ever lands, goes in front of this screen
-and nothing here changes.
+what `/battle/cpu` already is. The room code is still the right shape for two
+people who already know each other (a code can be read out loud on a stream);
+quick match is the door for the case where there is nobody to send one to.
 
 ## Content is deterministic — keep it that way
 

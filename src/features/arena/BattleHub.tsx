@@ -138,14 +138,17 @@ export default function BattleHub() {
 
           {/* Live sits UNDER the async battle, not beside it: a live match needs
               the other person to be holding their phone right now, so it is the
-              rarer case even though it is the louder one. */}
+              rarer case even though it is the louder one. One button, not two:
+              quick match and the room code are both behind this door, and a
+              second button here would put the rarer case ahead of the async
+              battle that always works. */}
           <div style={{ marginTop: 10 }}>
             <Button full onClick={() => { juice.coin(); navigate('/battle/live') }}>
               🔴 Live battle — same verse, same moment
             </Button>
           </div>
           <p className="faint center" style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
-            Share a room code and play head-to-head, right now.
+            Quick match anyone who’s looking, or share a room code.
           </p>
 
           {/* The hall, right under the button — the same place the Harvest Road

@@ -185,11 +185,11 @@ Two things about the de-monetisation that are load-bearing:
   the one way to unlock a paid skin for everybody by accident. The ONE
   legitimate reason to touch it is adding a new protected id, and then the whole
   list is copied forward from the migration that last set it. That chain is
-  0031 → 0034 → 0043 → 0044 → 0046 → 0057 → **0082** (`porchlight`); read the
-  latest one, never an earlier one.
+  0031 → 0034 → 0043 → 0044 → 0046 → 0057 → 0082 → **0088** (`lantern`); read
+  the latest one, never an earlier one.
 
-**A creator-collab skin is a promo code, not a product**, and `sonshine` (0057)
-and `porchlight` (0082) are the two worked examples. The shape: `source: 'paid'`
+**A creator-collab skin is a promo code, not a product**, and `sonshine` (0057),
+`porchlight` (0082) and `lantern` (0088) are the worked examples. The shape: `source: 'paid'`
 + `exclusive: true` so it reuses the `owned_skins` entitlement, NO
 `limitedUntil` (a partnership outlives a launch window — retire it by toggling
 the code off in the admin panel, never by expiring the skin), a row in
@@ -1007,7 +1007,14 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest are `0086` (battle XP + the live-battle skins) and `0087` (battle wins
+The latest is `0088` (the "Light in the Darkness" creator-collab skin for Tyler
+Talks 2 U), APPLIED on 2026-08-31 and verified: all TWELVE names survive in
+`enforce_skin_entitlement`'s protected list — the wholesale-restate trap this
+section warns about, checked name by name rather than assumed — the
+`TYLERTALKS2U` code row is live, and `lantern` is deliberately absent from
+`fulfill_skin`, so neither Stripe nor IAP can ever grant it.
+
+Before it, `0086` (battle XP + the live-battle skins) and `0087` (battle wins
 + the crusades skins), both APPLIED to the live project on 2026-08-31, in that
 order, and verified. **The order is not optional if they are ever re-run**: 0087
 redefines `submit_battle` on top of 0086's version and calls `award_battle_xp`,
@@ -1067,8 +1074,9 @@ Numbering has scars: `0034` is used twice (`promo_codes`, `skin_purchases`),
 `public_church_page`), `0081` twice (`first_light`, and the Study library's
 card, which was applied to production under that number and renumbered to
 `0083` in the tree when the two branches met), and — from that same collision —
-`0082` and `0083` twice each. So the next free number is `0088` (0085 is taken by
-erasure hardening, 0086 by battle XP and 0087 by battle wins, above),
+`0082` and `0083` twice each. So the next free number is `0089` (0085 is taken by
+erasure hardening, 0086 by battle XP, 0087 by battle wins and 0088 by the
+lantern skin, above),
 and this
 sentence has already gone stale twice: it said "0076" while 0077, 0078 and 0079
 were sitting in the folder. `ls supabase/migrations | tail -1` is the answer — on ORIGIN/MAIN, not your

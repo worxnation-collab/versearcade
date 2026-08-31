@@ -533,6 +533,25 @@ export const FULL_SKINS: SkinDef[] = [
     // not a guitar.
     blurb: 'Curls, a cream knit and a ukulele on the porch. Redeem his code to wear it.',
   },
+  {
+    id: 'lantern',
+    // The DISPLAY name is the skin's, not the creator's — "Light in the
+    // Darkness" (John 1:5) is the thing he named, and 'lantern' stays the id
+    // because it is the ENTITLEMENT KEY: enforce_skin_entitlement's protected
+    // list (0088), the promo_codes row, owned_skins and /skins/lantern.png all
+    // key off it, and renaming an id would silently un-own it for everybody who
+    // redeemed.
+    name: 'Light in the Darkness',
+    source: 'paid',
+    exclusive: true,
+    packName: 'Creator Collab',
+    // No `limitedUntil`, for the same reason as 'eden', 'sonshine' and
+    // 'porchlight' — and it matters more here than usual, because this one
+    // LOOKS seasonal. A Halloween skin that expired in November would vanish
+    // out from under everybody who redeemed it, which is exactly what a
+    // partnership skin must never do. It is a look, not a window.
+    blurb: 'A lantern lit against the dark \u2014 the light shines in the darkness, and the darkness has not overcome it. Redeem Tyler\u2019s code to wear it.',
+  },
 ]
 
 /** 'ruth_3' -> 'ruth': reactive pass skins bake their state into the equipped

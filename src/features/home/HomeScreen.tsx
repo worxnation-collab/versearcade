@@ -29,7 +29,7 @@ export default function HomeScreen() {
   const profile = useAuth((s) => s.profile)!
   const mode = useAuth((s) => s.mode)
   const { today, playedToday, lastResult, loadToday, boostArmed, armBoost } = useGame()
-  const { dueRefs, loadDue } = useReviews()
+  const { loadDue } = useReviews()
   const tutorialSeen = useSettings((s) => s.tutorialSeen)
   const setSettings = useSettings((s) => s.set)
   const [countdown, setCountdown] = useState(msUntilNextLocalMidnight())
@@ -261,28 +261,13 @@ export default function HomeScreen() {
           it, and the road is the next thing their eye lands on. */}
       <RoadStrip />
 
-      {/* Reviews that are due ("Keep it") now live on the Study tab, alongside
-          the other practice surfaces, rather than competing with today's verse.
-          A dot on this nudge points there when something is waiting. */}
-      {dueRefs.length > 0 && !(mode === 'local' && supabase) && (
-        <motion.button
-          onClick={() => navigate('/study')}
-          whileTap={{ scale: 0.97 }}
-          className="card"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          style={{ width: '100%', textAlign: 'left', marginTop: 16, display: 'flex', alignItems: 'center', gap: 14 }}
-        >
-          <div style={{ fontSize: 30 }}>🧠</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 17 }}>Keep it</div>
-            <div className="faint" style={{ fontSize: 13 }}>
-              {dueRefs.length} verse{dueRefs.length > 1 ? 's' : ''} ready to review — waiting on the Study tab
-            </div>
-          </div>
-          <div style={{ fontFamily: 'var(--font-display)', color: 'var(--gold)', fontSize: 20 }}>→</div>
-        </motion.button>
-      )}
+      {/* Reviews that are due used to have a whole card here, pointing at the
+          Study tab. It was a signpost to a tab already in the nav, and it cost
+          a card's worth of the busiest screen in the app to say so — so the
+          signal is now a DOT on the Study tab itself (BottomNav), which says
+          the same thing in no space at all. `loadDue()` above still runs
+          because this is the screen everyone lands on, and the dot needs
+          somebody to have loaded the schedule. */}
 
       {/* Add to Home Screen — only renders where installing is actually possible
           (and not already installed), and can be dismissed for good. */}
@@ -293,32 +278,11 @@ export default function HomeScreen() {
           already inside the app to leave a review. */}
       <AppStoreNudge />
 
-      {/* How to play — a persistent, low-key button that opens the walkthrough.
-          Down here rather than above the daily drop: it still opens itself once
-          for a brand-new player (the effect above), so its job on this screen is
-          to be findable again later — not to outrank today's verse for somebody
-          on their hundredth day. */}
-      <button
-        onClick={() => setTutorialOpen(true)}
-        className="card"
-        style={{
-          width: '100%',
-          marginBottom: 14,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          textAlign: 'left',
-          cursor: 'pointer',
-        }}
-      >
-        <div style={{ fontSize: 22 }}>💡</div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <b style={{ fontFamily: 'var(--font-display)', fontSize: 15 }}>How to play</b>
-          <div className="faint" style={{ fontSize: 12.5 }}>A 20-second tour of the whole app — the five tabs and what's on them.</div>
-        </div>
-        <div style={{ fontFamily: 'var(--font-display)', color: 'var(--gold)', fontSize: 18, flexShrink: 0 }}>→</div>
-      </button>
-
+      {/* The walkthrough still opens itself ONCE for a brand-new player (the
+          effect above), which is the only time most people want it. Its manual
+          re-entry moved to Settings — a permanent card on this screen was a
+          help button outranking today's verse for somebody on their hundredth
+          day, and Settings is where a lost player already looks. */}
       {tutorialOpen && <Tutorial onClose={() => setTutorialOpen(false)} />}
 
       <div style={{ height: 16 }} />

@@ -5,6 +5,7 @@ import { CrossBoard, boardCells } from './CrossArt'
 import { VerseCard } from './VerseCard'
 import { Button } from '@/components/Button'
 import { VerseActions } from './VerseActions'
+import { GENERATED_ART } from '@/data/generatedArt'
 import { useJuice } from '@/juice/useJuice'
 import { useSettings } from '@/store/settings'
 import { useCrossword } from '@/store/crossword'
@@ -533,6 +534,7 @@ function Board({
   const box = useRef<HTMLDivElement | null>(null)
   const [space, setSpace] = useState({ width: 320, height: 320 })
   const { rows, cols } = crossSize(puzzle)
+  const workshop = GENERATED_ART['arcade_workshop']
 
   // What's left of the screen once the clues above and the keyboard below have
   // had their share. Measured rather than guessed at a fraction of the viewport:
@@ -570,13 +572,56 @@ function Board({
   )
 
   return (
-    <div ref={box} style={{ padding: '8px 0 2px' }}>
+    <div ref={box} style={{ position: 'relative', padding: '8px 0 2px' }}>
+      {/* The workshop the cross is cut in: a Nano Banana painting (art/
+          arcade.json) behind the board, dim and bare through the middle
+          because the cross stands there. It is a BACKDROP and nothing else —
+          the timbers themselves are still drawn, for the reason they always
+          were: a cross is a different shape for every pair of words and a
+          baked image cannot be re-cut per puzzle. Absent, the board sits on
+          the card exactly as it did before. */}
+      {workshop && (
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            inset: '4px -6px',
+            borderRadius: 'var(--r-md)',
+            overflow: 'hidden',
+            // Under the cells, and under the wood — both are drawn over it.
+            zIndex: 0,
+          }}
+        >
+          <img
+            src={workshop}
+            alt=""
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+          {/* Letters are pale ink on a translucent cell (var(--card) is 6%
+              white), so the painting has to stay a long way behind them: a lit
+              patch of timber showing through a cell pulls white ink under the
+              contrast the rest of the app holds. The scrim keeps the board
+              sitting on roughly the page's own --bg-0 whatever the render came
+              back like, which is why the workshop was prompted dim and bare
+              through the middle as well — belt and braces, because the art is
+              the one part of this that cannot be asserted in code. */}
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background:
+                'linear-gradient(180deg, rgba(11,7,32,0.72) 0%, rgba(11,7,32,0.62) 50%, rgba(11,7,32,0.76) 100%)',
+            }}
+          />
+        </div>
+      )}
       <motion.div
         // A wrong word shivers rather than flashing red — nothing here is a
         // failure, it's just not the word yet.
         key={shake ?? 'steady'}
         animate={shake && !instant ? { x: [0, -6, 6, -4, 4, 0] } : { x: 0 }}
         transition={{ duration: 0.34 }}
+        style={{ position: 'relative', zIndex: 1 }}
       >
         <CrossBoard
           puzzle={puzzle}

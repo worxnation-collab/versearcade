@@ -989,6 +989,14 @@ Catch and the Cross Word. Full design: `docs/ARCADE.md`.
   order is the order they were built, and a result screen shows your own numbers
   against your own bar with no way to set them beside anybody else's. A run pays
   a drop roll and road progress — never XP, points or standing.
+- **The paintings are backdrops; everything live stays drawn.** `art/arcade.json`
+  is a scene per machine — the wilderness under Manna Rush, the blank page under
+  Word Catch, the workshop wall behind the Cross Word — laid OVER the drawn
+  field, so an ungenerated build is the app exactly as it was. What must NOT be
+  painted is the rule: a manna flake carries its meaning in motion (and a
+  painted one couldn't be tapped), a word has to be placed, and the cross is
+  re-cut per puzzle. Every prompt therefore says the ground/page/wall is empty
+  twice over, because whatever the model puts there gets drawn over.
 - **Guest-open by default**, because a game that persists nothing has nothing an
   account would keep for you tomorrow. The exception is a game that writes to
   the player's own record: the Cross Word marks its verse studied, so it carries

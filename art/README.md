@@ -20,6 +20,7 @@ must never be written into a tracked file.
 | `keep-props.json` | keep props that need regenerating (two shipped unkeyed) | `public/keep/<id>.png` |
 | `library.json` | the Study tab (a library), the librarian in it, and the satchel on its floor | `public/keep/study-library.jpg`, `public/keep/study_satchel.png`, `public/skins/librarian.png` |
 | `skins-porchlight.json` | the Porchlight creator-collab skin (curls, cream knit, ukulele) | `public/skins/porchlight.png` |
+| `arcade.json` | the backdrops of the three arcade machines — the wilderness, the blank page, the workshop wall | `public/arcade/arcade_*.jpg` |
 
 **Check what came back**, every time:
 
@@ -46,8 +47,25 @@ words does not work; showing `hall.jpg` does.
   decoration nobody earned.
 - **`prop`** — one object on flat magenta, keyed to transparency and cropped
   tight. Capped at 150px tall.
+- **`road`** / **`room`** / **`church`** / **`arcade`** — a scene with a folder
+  of its own (`public/road`, `public/room`, `public/church`, `public/arcade`),
+  always JPEG. Adding another is one row in `gen-art.mjs`'s `SCENE_DIRS` **and**
+  one in `check-art.mjs` — that script reads PNG only, so a kind it doesn't know
+  about sends it looking for a file the generator never wrote.
+
+**A backdrop the game draws on must be prompted EMPTY, and that is the whole
+craft of the arcade batch.** Every arcade painting is under something live: the
+manna flakes stand on the wilderness sand, the words lie on the page, the cross
+stands on the workshop wall. A flake painted into the sand cannot be tapped, a
+word painted onto the page cannot be placed, and a painted cross sits under the
+real one — so each prompt lists what must not be in it at least twice and says
+plainly that things are drawn on top. Same discipline as the keep's halls saying
+*bare* three times, for the same reason.
 
 A scene's ASPECT is worth prompting for deliberately, because the frame has one.
+The two tap games' fields are `aspectRatio: 10/15` boxes (`TapRunner`), so their
+paintings ask for a 2:3 upright and the wilderness asks for its horizon two
+fifths down — where the drawn horizon is, and where `MANNA_PLOTS` start.
 `study-library` fills the whole Study tab, so a 16:9 render was a picture of a
 room rather than the room; it took two re-prompts (16:9 → 4:5 → **5:8**, asking
 in words and giving an example ratio) to land at 398x640, which fills a phone's

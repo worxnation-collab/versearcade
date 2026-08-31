@@ -1,3 +1,4 @@
+import { GENERATED_ART } from '@/data/generatedArt'
 import { PAPER } from '@/features/bible/paper'
 import type { TapSurface } from './TapRunner'
 import { WORD_PLOTS, type WordCatch } from './wordCatch'
@@ -13,6 +14,15 @@ import { WORD_PLOTS, type WordCatch } from './wordCatch'
 // Every colour here comes from PAPER. The dark-arcade tokens are wrong on cream
 // and the paper tokens are wrong everywhere else, which is exactly why they are
 // two sets.
+//
+// The paper itself is a Nano Banana painting (art/arcade.json) laid OVER the
+// flat PAPER.page fill, the layering every render here uses — an ungenerated
+// build is the cream page it always was. The render is prompted BLANK, over and
+// over: no text, no verse numbers, no ruled lines. Every mark on this page is
+// drawn (the ruling and the gutter below, the words above), because a painted
+// word is one nobody can tap and a painted rule fights the real one. So the
+// painting adds grain and warmth and nothing structural — which is also what
+// keeps it from touching the ink contrast PAPER was measured for.
 
 /** Deterministic, so a word does not re-tilt on every render. */
 const tiltOf = (i: number) => ((i * 37) % 9) - 4
@@ -22,6 +32,7 @@ export function wordCatchSurface(
   { reduceMotion }: { reduceMotion: boolean },
 ): TapSurface {
   const { words, lineStarts, lineEnds } = wc
+  const paper = GENERATED_ART['arcade_page']
 
   return {
     plots: WORD_PLOTS,
@@ -29,6 +40,20 @@ export function wordCatchSurface(
     field: (
       <>
         <div style={{ position: 'absolute', inset: 0, background: PAPER.page }} />
+        {paper && (
+          <img
+            src={paper}
+            alt=""
+            aria-hidden
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+            }}
+          />
+        )}
         <div className={reduceMotion ? 'arcade-rules arcade-still' : 'arcade-rules'} />
         <div className="arcade-gutter" />
       </>

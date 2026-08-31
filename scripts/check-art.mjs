@@ -62,12 +62,15 @@ const dirFor = (kind) =>
           ? 'public/church'
         : kind === 'church'
           ? 'public/church'
+          : kind === 'arcade'
+            ? 'public/arcade'
       : kind === 'item'
         ? 'public/items'
         : 'public/keep'
 
-// Road and room paintings are written as JPEG (opaque full-bleed; see
-// gen-art.mjs), and this script reads PNG only — so they are simply not among
+// The paintings with a folder of their own — road, room, church, arcade — are
+// written as JPEG (opaque full-bleed; see gen-art.mjs), and this script reads
+// PNG only — so they are simply not among
 // the files it can check. That is correct rather than a gap: the whole check is
 // about whether a chroma key took, and neither one goes through one. They are
 // excluded by name rather than left to fall through dirFor, so that a kind
@@ -75,7 +78,7 @@ const dirFor = (kind) =>
 const files = process.argv.slice(2).length
   ? process.argv.slice(2)
   : Object.keys(kinds)
-      .filter((id) => kinds[id] !== 'road' && kinds[id] !== 'room' && kinds[id] !== 'church')
+      .filter((id) => !['road', 'room', 'church', 'arcade'].includes(kinds[id]))
       .map((id) => `${dirFor(kinds[id])}/${id}.png`)
       .filter(existsSync)
 

@@ -225,12 +225,19 @@ let produced = 0
 for (const entry of manifest) {
   if (only && entry.id !== only) continue
   const isSkin = entry.kind === 'skin'
-  // Scenes that live somewhere of their own. All three are full-bleed opaque
+  // Scenes that live somewhere of their own. They are full-bleed opaque
   // paintings that differ from a plain `scene` only in where they land — the
-  // keep's folder is a different place entirely, and a road, a room and a
-  // churchyard each belong next to their own feature. Adding a fourth is one
-  // row here rather than another level of ternary.
-  const SCENE_DIRS = { road: 'public/road', room: 'public/room', church: 'public/church' }
+  // keep's folder is a different place entirely, and a road, a room, a
+  // churchyard and the arcade's game fields each belong next to their own
+  // feature. Adding another is one row here rather than another level of
+  // ternary; `check-art.mjs` has the matching row, and a kind added to one and
+  // not the other checks a file that was never written.
+  const SCENE_DIRS = {
+    road: 'public/road',
+    room: 'public/room',
+    church: 'public/church',
+    arcade: 'public/arcade',
+  }
   const sceneDir = SCENE_DIRS[entry.kind]
   const isScene = entry.kind === 'scene' || !!sceneDir
   const isProp = entry.kind === 'prop'

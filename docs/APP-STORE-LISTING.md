@@ -130,6 +130,8 @@ THERE'S AN ARCADE IN HERE NOW
 • Cross Word: two words that share a letter, standing in the shape of a cross. Solve
   it and the squares turn to wood, with the verse both words came from carved
   underneath. A new one every day, 52 in all, Genesis to Revelation.
+• Every machine is a painted place now: the wilderness at first light under Manna
+  Rush, a real page under the words, and a carpenter's workshop wall behind the cross.
 • Nothing in the arcade touches your rank, and no machine keeps a high score. No
   timers, no streaks, and hints are free.
 • Send a friend a machine: a shared link is good for one free go, no account and no

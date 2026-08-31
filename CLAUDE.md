@@ -880,11 +880,15 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-`0085` (erasure hardening — scrubbing the denormalised copies of a username
-that no foreign key can reach, plus a prune for the pulse table) is WRITTEN AND
-NOT YET APPLIED. Apply it before relying on account deletion being complete.
+The latest is `0085` (erasure hardening — scrubbing the denormalised copies of
+a username that no foreign key can reach, plus a prune for the pulse table),
+APPLIED on 2026-08-31 and verified: the scrub clears a probe name from
+`presence_events` and `guest_opens` in one statement, and
+`prune_presence_events`'s ACL reads `{postgres,service_role}` — the locked-down
+shape `grant_skins` has, not the `revoke from public` that 0052 wrongly believed
+was enough.
 
-Before it, the latest is `0084` (free placement in the churchyard — plants and monuments
+Before it, `0084` (free placement in the churchyard — plants and monuments
 stand where you drag them), APPLIED to the live project on 2026-08-31 and
 verified: the shared value grammar parses every form the client writes, refuses
 every malformed one, and all 18 existing planting rows still validate.

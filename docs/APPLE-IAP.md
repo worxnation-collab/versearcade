@@ -40,14 +40,15 @@ typo means the product silently never loads and its tile stays hidden:
 | `com.versearcade.app.skin_moses` | Moses skin | $2.99 | "From $2.99" |
 | `com.versearcade.app.skin_esther` | Esther skin | $2.99 | "From $2.99" |
 | `com.versearcade.app.skin_elijah` | Elijah skin | $2.99 | "From $2.99" |
-| `com.versearcade.app.patron_founding` | Founding Patron | $99.99 | "From $100" |
+| `com.versearcade.app.patron_founding` | Founding Patron | $9.99 | `$9.99` |
 
 Two deliberate changes from the web catalog, both forced by Apple's pricing
 model:
 
 - **Pay-what-you-want is gone.** Apple sells at fixed price points only, so
-  "From $2.99" becomes a flat $2.99 and the $100 patron tier becomes $99.99
-  (the nearest tier). The website keeps pay-what-you-want through Stripe.
+  "From $2.99" became a flat $2.99. The patron tier is now a flat $9.99 on
+  both sides, so this no longer diverges — but the rule stands for anything
+  priced later.
 - **Prices in the app are Apple's, not ours.** The app displays the localized
   price StoreKit returns (£, €, ¥). The `price` strings in `src/data/avatar.ts`
   are the *web* prices and never render on native.

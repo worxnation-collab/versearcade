@@ -121,6 +121,15 @@ export type QuestVerb =
   | 'battle_wins'
   /** Real battles played, won or lost. Showing up is the whole verb. */
   | 'battles_played'
+  /**
+   * Statues raised in the churchyard after a weekly rivalry win (0075).
+   *
+   * Scores the RAISING, never the winning: a road quest may ask a congregation
+   * to put its trophy up, and must not be able to ask it to beat somebody. A
+   * verb for the win itself would make a season quest out of another church
+   * losing, which is the one thing the rivalry's design forbids.
+   */
+  | 'statue_raised'
   /** Decorations placed in the keep's hall. */
   | 'place_decor'
   /** Plants set in the churchyard. */
@@ -172,6 +181,7 @@ export const KNOWN_VERBS = new Set<string>([
   'replay_runs',
   'battle_wins',
   'battles_played',
+  'statue_raised',
   'place_decor',
   'plant_flora',
   'find_relic',

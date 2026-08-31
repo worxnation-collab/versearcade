@@ -4,8 +4,20 @@ Read this before changing anything. It's the stuff that isn't obvious from the
 files and that has bitten previous sessions.
 
 **Mission constraint, not a slogan:** stickiness without shame. Wrong answers
-teach (every answer reveals a fact), and nothing ranks a player against a
-friend. If a feature idea needs a loser, it's the wrong feature.
+teach (every answer reveals a fact), and nothing ranks a *player* against a
+friend. If a feature idea needs a person to lose, it's the wrong feature.
+
+**One narrow exception, added deliberately: a CHURCH may lose a week.** The
+weekly rivalry (`docs/CHURCH-RIVALRY.md`) matches your congregation against
+another one its own size, and the one that gives more wins a statue for its
+yard. The distinction that keeps the rule intact is that a church is an
+institution, not a person — and it is enforced in the *shape of the data*, not
+in copy: a matchup carries two totals and one church name, there is no losses
+column anywhere in the schema, and no RPC will tell you a per-member weekly
+number. Read that doc before extending anything competitive. **The exception
+stops at churches**: the Study tab, the Journal, the Basin, the crowd scenes and
+every player-facing surface are unchanged, and widening it needs its own
+argument rather than following from this one.
 
 ## Commands
 
@@ -380,6 +392,51 @@ two-mode invariant rather than choosing its own: a guest has no church to stand
 a flowerpot in front of. `store/churchYard.ts` names the shape to use if that
 ever changes. Still no prices, either mode. See `docs/CHURCHYARD.md`.
 
+### The weekly rivalry, and the statues it buys
+
+The one place in this app where something can lose. Every Monday (**UTC** — see
+below) your church is matched against another church its own size; whoever gives
+more over the week wins a statue for the churchyard. Full design and the whole
+safety argument: `docs/CHURCH-RIVALRY.md`. Five things to know before touching
+it:
+
+- **The week is UTC, and it is the one deliberate break with "dates are the
+  user's local date".** A streak belongs to one person and should roll over at
+  their midnight; a rivalry belongs to two congregations that may span time
+  zones, and every member of both has to agree whether a gift landed inside the
+  week. Two clocks means a point that counts for one member and not another.
+  Derived from a fixed epoch on both sides (`weekIndex()` ↔
+  `church_rivalry_week()`), never sent.
+- **Pairing is banded by congregation size, and that's load-bearing.** A
+  four-person church drawn against a two-hundred-person one loses every week
+  forever, which teaches the churches this feature exists for that showing up
+  was pointless. Banding makes the week winnable by out-recruiting somebody your
+  own size — the behaviour the whole thing is trying to produce. The draw is
+  `md5(week || id)`, so it is not first-come and opening the app early can't
+  steer it.
+- **No cron, because this project has none.** Pairing and settling are lazy and
+  idempotent, and opening the church tab IS the scheduler: the first member in a
+  new week creates the matchup (advisory-locked, both sides in one statement),
+  the first after it ends banks the result. A church with nobody to play gets a
+  **bye**, which is not a loss and re-tries until somebody's in range; an empty
+  church is never paired, because it would be a free win.
+- **The score is a sum over the three existing ledgers** (`church_contributions`,
+  `church_offerings`, `keep_offerings`), never a stored counter and never a
+  number a client sends. A draw pays BOTH churches; a 0-0 pays nobody, so a
+  dormant opponent is never a free statue.
+- **The prize is a look, and the church picks it.** Eight statues, three plinths,
+  the whole catalog open from the first win — deliberately no rarity, no unlock
+  ladder and no ordering, or a yard starts saying how well a church has done
+  rather than what it chose. Letting the church choose is also how the feature
+  avoids telling a congregation which saints its tradition venerates. Any member
+  may raise or change one and it carries no name (`set_by` is forensics only and
+  never leaves the server) — a statue with a name on it is one member's trophy,
+  not the congregation's.
+
+Online-only, inherited rather than chosen — the `store/churchYard.ts` break with
+the two-mode invariant. A local weekly matchup is a church playing itself, and a
+locally-granted statue is a trophy you awarded yourself.
+
 ## Live battles: the one synchronous thing here
 
 Every other battle is asynchronous — you play, they play later. A **live battle**
@@ -500,7 +557,7 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0074` (the admin dashboard's dates) — it must be applied before
+The latest is `0075` (the weekly church rivalry). Before that, `0074` (the admin dashboard's dates) — it must be applied before
 the client that uses it merges, and that one is not optional: it DROPS the old
 `admin_overview()` / `admin_growth(boolean)` signatures to replace them with
 timezone-taking ones, so an un-applied 0074 means the dashboard errors rather
@@ -515,7 +572,9 @@ says "today" or "7d" now takes a validated IANA zone from the client
 (`localTimeZone()` in `lib/date.ts`, falling back to UTC server-side). If you add
 one, take the day from `p_tz`, never from `current_date`.
 
-Numbering has scars: `0034` is used twice (`promo_codes`, `skin_purchases`), and
+Numbering has scars: `0034` is used twice (`promo_codes`, `skin_purchases`),
+`0059` twice (`keep`, `practice_uncapped`) and `0074` twice (`admin_local_dates`,
+`public_church_page`) — so the next free number is `0076`, not `0075`. And
 `0038_focus_practice_xp.sql` is a re-add of a file that shipped as `0036` and was
 lost when PR #58 landed from a stale branch. Take the next free number and write
 migrations idempotently (`create table if not exists`, `drop policy if exists`,

@@ -34,7 +34,7 @@ import BattlePlay from './features/arena/BattlePlay'
 import BattleDetail from './features/arena/BattleDetail'
 import BattleCpu from './features/arena/BattleCpu'
 import LiveLobby, { LiveRoom } from './features/arena/LiveBattle'
-import ArcadeScreen from './features/arcade/ArcadeScreen'
+import ArcadeScreen, { MannaScreen, WordCatchScreen } from './features/arcade/ArcadeScreen'
 import StudyScreen from './features/study/StudyScreen'
 import StudyReportsScreen from './features/study/StudyReportsScreen'
 import StudyRecentScreen from './features/study/StudyRecentScreen'
@@ -408,10 +408,26 @@ export default function App() {
             Upper Room. Guest-open: the game persists nothing, so an account
             would make nothing here yours tomorrow. */}
         <Route
-          path="/arcade/manna"
+          path="/arcade"
           element={
             <RequireProfile>
               <ArcadeScreen />
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/arcade/manna"
+          element={
+            <RequireProfile>
+              <MannaScreen />
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/arcade/word-catch"
+          element={
+            <RequireProfile>
+              <WordCatchScreen />
             </RequireProfile>
           }
         />

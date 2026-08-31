@@ -4,6 +4,7 @@ import {
   isRestRound,
   pickKind,
   scoringRounds as countScoringRounds,
+  type TapContext,
   type TapGameDef,
   type TapPlot,
   type TapResult,
@@ -42,6 +43,27 @@ export interface TapSurface {
   field: React.ReactNode
   /** One target. `leaving` is true for the last frames of its life. */
   renderTarget: (t: { kind: string; taken: boolean; leaving: boolean }) => React.ReactNode
+  /**
+   * Replaces the quota pips in the HUD.
+   *
+   * Pips answer "how many left", which is the only thing there is to say about
+   * gathering manna. A game whose progress IS the content — a verse coming back
+   * together a word at a time — has something better to show there, and showing
+   * it is the teaching.
+   */
+  progress?: (ctx: TapContext) => React.ReactNode
+  /**
+   * The tap target's box. Defaults to the 46x46 square a falling flake wants;
+   * a word is wide and short and sizes itself, so it overrides this.
+   */
+  targetStyle?: React.CSSProperties
+  /**
+   * Where the playable area starts, as a percentage from the top. Defaults to
+   * 44%, which is the horizon in Manna Rush — sky above, sand below. A game
+   * with no horizon wants more of its field, and leaving the default there
+   * gives it a dead band nothing can ever appear in.
+   */
+  fieldTop?: string
 }
 
 interface LiveTarget {
@@ -157,6 +179,17 @@ export function TapRunner({
     [after],
   )
 
+  /** What the game is allowed to know. Built from refs, never from a render
+   *  snapshot — a spawn fires 600ms after the render that scheduled it. */
+  const context = useCallback(
+    (): TapContext => ({
+      round: roundRef.current,
+      taken: gotRef.current,
+      live: liveRef.current.filter((t) => !t.taken && !t.leaving).map((t) => t.kind),
+    }),
+    [],
+  )
+
   const endRound = useCallback(
     (reason: 'quota' | 'time') => {
       if (phaseRef.current !== 'play') return
@@ -197,7 +230,14 @@ export function TapRunner({
   const tap = useCallback(
     (t: LiveTarget) => {
       if (t.taken || t.leaving) return
-      if (t.leave) {
+      // Judged now, not when it landed. The same word can be the wrong answer
+      // on the way down and the right one a moment later.
+      const verdict = game.verdictOf
+        ? game.verdictOf(t.kind, context(), def)
+        : t.leave
+          ? 'leave'
+          : 'take'
+      if (verdict === 'leave') {
         // Never a punishment: no points come off, nothing ends. The run just
         // stops being a clean one, and the verse says why the rule exists.
         cleanRef.current = false
@@ -213,7 +253,7 @@ export function TapRunner({
       retire(t.id, 'taken')
       if (def.quota > 0 && gotRef.current >= def.quota) endRound('quota')
     },
-    [def.quota, endRound, game.teach.wrong, juice, retire, say],
+    [context, def, endRound, game, juice, retire, say],
   )
 
   /** Tapping the bare field — only meaningful in a round with nothing to take. */
@@ -231,7 +271,10 @@ export function TapRunner({
     if (!free.length) return
     const idx = free[Math.floor(Math.random() * free.length)]
     const plot = surface.plots[idx]
-    const kind = pickKind(def.kinds)
+    // A game may choose for itself; the weighted table is the default, and is
+    // everything a game with fixed verdicts needs.
+    const kind = game.plan ? game.plan(context(), def) : pickKind(def.kinds)
+    if (!kind) return
     const t: LiveTarget = {
       id: nextId.current++,
       kind: kind.kind,
@@ -257,7 +300,7 @@ export function TapRunner({
       }
       retire(t.id, 'leaving')
     }, def.lifeMs)
-  }, [after, def.kinds, def.lifeMs, game.teach.missed, retire, say, surface.plots])
+  }, [after, context, def, game, retire, say, surface.plots])
 
   // ── the round clock ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -362,7 +405,7 @@ export function TapRunner({
           {def.title}
         </span>
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '58%' }}>
-          {rest ? (
+          {surface.progress ? null : rest ? (
             <span
               style={{
                 fontFamily: 'var(--font-display)',
@@ -425,12 +468,38 @@ export function TapRunner({
         )}
       </div>
 
+      {/* Progress that is the content rather than a count of it, given the
+          width to say so. Pips fit in the corner of the HUD; a verse coming
+          back together does not, and squeezing it in there would make the one
+          thing worth reading the smallest thing on screen. */}
+      {surface.progress && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 62,
+            left: 14,
+            right: 14,
+            zIndex: 6,
+            pointerEvents: 'none',
+          }}
+        >
+          {surface.progress({ round, taken: got, live: live.map((t) => t.kind) })}
+        </div>
+      )}
+
       {/* The field. The bottom is kept clear of the teach line — a target you
           cannot reach because a toast is over it is not a hard target, it is a
           broken one. */}
       <div
         onClick={tapGround}
-        style={{ position: 'absolute', left: 0, right: 0, top: '44%', bottom: 84, zIndex: 4 }}
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: surface.fieldTop ?? '44%',
+          bottom: 84,
+          zIndex: 4,
+        }}
       >
         {live.map((t) => (
           <button
@@ -450,6 +519,9 @@ export function TapRunner({
               padding: 0,
               display: 'grid',
               placeItems: 'center',
+              ...surface.targetStyle,
+              // The transform carries the plot's depth cue, so it is applied
+              // after the surface's box rather than being overridable.
               transform: `translate(-50%, -50%) scale(${t.scale})`,
             }}
           >

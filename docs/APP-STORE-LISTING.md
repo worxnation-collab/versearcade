@@ -85,6 +85,15 @@ Start your streak today. It's one verse.
 > *approved* version forces a bump.
 
 ```
+FIRST LIGHT: THE DAY BELONGS TO WHOEVER OPENS IT
+• The first person to open a day's verse holds that day's first light, and everyone
+  who opens it after them is worth a point of XP to them — up to about one run's
+  worth. Nothing is taken from anybody: the points are minted, not moved.
+• Their card sits under the daily drop, one tap away, so the person who got up first
+  is somebody you can actually go and look at.
+• There is no second place and no leaderboard of who was quickest. One name, a fresh
+  start every midnight, and nothing that says you were late.
+
 YOUR CHURCH HAS SOMEBODY TO PLAY THIS WEEK
 • Every Monday your church is matched against another church its own size. Whoever
   gives more over the week raises a statue in their churchyard — the Good Shepherd,

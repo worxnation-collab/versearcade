@@ -622,6 +622,67 @@ Add verses by appending to `VERSE_POOL` (`src/data/bible/pool.ts`) with full
 metadata — the generator needs `speaker`, `audience`, `before`, `after`,
 `theme`, `keyword`, `facts` to build its five MCQs.
 
+## First light: the day belongs to whoever opens it
+
+The first person to open a day's verse holds that day's **first light**, and
+every account that opens the same verse after them pays them **1 XP** — minted
+by the server, never taken from the follower. Their player card sits under the
+daily drop on the Play tab. `0081`, `data/firstLight.ts`, `store/firstLight.ts`,
+`features/daily/FirstLight.tsx`. Full design: `docs/FIRST-LIGHT.md`.
+
+A "first" mechanic is the obvious way to break the no-losers rule, so the things
+that keep it inside the rule are in the **shape of the data**, not in copy:
+
+- **One person is named and NOBODY has a position.** No second place, no "you
+  were 400th", no ordering of a day's openers anywhere. `daily_opens` is read as
+  a count and as a primary key — never as a sorted list — and `first_light()`
+  returns one holder plus two counts about the day. The data needed to build a
+  "who got here first" ladder is never sent to a client, the same guarantee the
+  rivalry's payload shape gives.
+- **It's a day, not a ladder.** It resets at midnight and nothing accumulates:
+  deliberately no lifetime "dawns held" number, no badge, no title, **no Journal
+  rung** — the same argument `record_prayer` makes for having no prayer streak.
+  A rung you climb by getting up earlier is a rung people would get up earlier
+  to climb, and this app should not be handing anybody a reason to set a 4am
+  alarm.
+- **The XP is bounded the way the Basin's is**, because `xp` is the one number
+  here that ranks people (0006): 1 XP per follower, **60 a day** (about one
+  daily drop, `FIRST_LIGHT_XP_CAP` ↔ the SQL — the usual keep-them-in-sync
+  pair), once per account per day by the primary key, never to yourself, and the
+  ceiling is applied inside the same statement that pays under a row lock so two
+  followers landing together can't both spend the last point. Followers are
+  still counted honestly past the ceiling, so the card can say "1,400 have
+  followed you in" while the XP stops at 60.
+- **Guests count in the pulse and pay nothing.** `record_guest_open` takes a
+  client-generated device id, so paying for guest opens would let a holder mint
+  the whole ceiling out of invented uuids. It takes real accounts, which is the
+  same natural limit `wash_feet` leans on.
+
+**Opening the verse is opening the screen that shows it** — `QuizScreen` calls
+`open_daily_verse` on mount, the only place in the app the day's verse is read.
+`submit_play` records an open **too**, and that isn't redundancy: `ios/` ships a
+baked `dist`, so every already-approved build finishes a drop without ever
+calling the new RPC, and this is what keeps those players counting toward the
+day. The primary key makes the second write a no-op and only a *fresh* row pays.
+
+**The timezone caveat is real and is written down rather than glossed.** A
+`drop_date` is the player's LOCAL date, so a date begins in Kiritimati ~26 hours
+before it begins in Honolulu and the far east reaches each verse first. This
+deliberately does NOT follow the rivalry's break to UTC: the rivalry is two
+institutions needing one clock, while the daily verse is one person's ritual and
+every table around it (`plays`, `guest_opens`, `presence_events`) is keyed on
+that local date — a second date system in the daily tables is the exact mistake
+0074 had to undo. The ceiling is what keeps the caveat small.
+
+Online-only, inherited rather than chosen — the `store/washing.ts` break with the
+two-mode invariant. "First" needs everybody else to be first *of*: offline there
+is one player, so the lantern would be claimed every day by the only person
+there and the XP would be client-granted, which is the one thing the safety
+argument rests on not happening. A guest can still SEE the holder (`first_light`
+is granted to `anon`) and that's the pitch for the account. The card **renders
+nothing** with no keys or against a server without 0081 — the unclaimed state
+would otherwise announce that nobody has opened a verse somebody is holding.
+
 ## The player's Bible
 
 `/bible` draws **all 66 books, 1,189 chapters and 31,102 verse slots** with no
@@ -692,8 +753,9 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0080` (today / this week / all time on the church board); before
-it, `0079` (a church claiming its own page), `0078` (a
+The latest is `0081` (first light — who opened the day's verse first); before it,
+`0080` (today / this week / all time on the church board), `0079` (a church
+claiming its own page), `0078` (a
 church's ask for a sponsored slot) and `0077` (the slot itself). Before them, `0075` (the weekly church rivalry) and `0074` (the admin
 dashboard's dates) — 0074 must be applied before
 the client that uses it merges, and that one is not optional: it DROPS the old
@@ -712,7 +774,7 @@ one, take the day from `p_tz`, never from `current_date`.
 
 Numbering has scars: `0034` is used twice (`promo_codes`, `skin_purchases`),
 `0059` twice (`keep`, `practice_uncapped`) and `0074` twice (`admin_local_dates`,
-`public_church_page`) — so the next free number is `0081`, not `0080`, and this
+`public_church_page`) — so the next free number is `0082`, not `0081`, and this
 sentence has already gone stale twice: it said "0076" while 0077, 0078 and 0079
 were sitting in the folder. `ls supabase/migrations | tail -1` is the answer;
 this line is only a record of which numbers were burned twice. And

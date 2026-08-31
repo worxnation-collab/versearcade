@@ -95,6 +95,15 @@ YOUR CHURCH HAS SOMEBODY TO PLAY THIS WEEK
 • Small congregations play other small congregations, so a church of four can
   actually win its week.
 
+SEE WHO'S GIVING NOW, NOT JUST WHO GAVE FIRST
+• The church board reads Today, This week, or All time. A lifetime total is a ladder
+  you can climb but not join — a congregation playing hard this fortnight was still
+  buried under one that banked its points two years ago and went quiet.
+• "This week" is the same week your church's matchup runs on, so the board and the
+  rivalry card never disagree about what your congregation has given.
+• Still churches, never people: a church total, a player count, and nothing anywhere
+  that says who in a congregation gave what.
+
 BATTLE SOMEONE IN REAL TIME
 • Live battles: share a room code, both tap ready, and the same verse starts for both
   of you at once with a bar showing where the other player is.

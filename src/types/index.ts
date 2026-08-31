@@ -199,6 +199,16 @@ export interface Church {
   xp: number
   level: number
   members: number
+  /**
+   * Points banked inside the board's chosen window — today, this week, or all
+   * time, in which case it equals `xp`.
+   *
+   * Separate from `xp` because `xp` is LIFETIME and the level is drawn from it:
+   * a church does not shrink to a wooden chapel because it was quiet on
+   * Tuesday. Only `church_leaderboard` (0080) sets this; every other RPC that
+   * returns a church leaves it undefined and the row falls back to `xp`.
+   */
+  points?: number
   /** Distance from the viewer's church, on the local board. */
   miles?: number
   rank?: number

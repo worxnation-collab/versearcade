@@ -582,6 +582,15 @@ Four things to know before touching it:
 - **The seed is derived, never sent.** `seedForRoom(code, round)` means both
   devices compute the verse from the room, so there is no announce-the-seed
   message to lose or race, and a rematch is `round + 1`.
+- **A rematch takes two, and that is the same rule as the ready-check.**
+  `rematch()` is an offer: it sets `iWantRematch`, sends the round it proposes,
+  and starts only once both sides have asked; both paths go through one
+  `startRound()` so the two devices can't reset to different things. It shipped
+  the other way — one tap reset the OTHER player outright, sweeping them off
+  their result screen (or out of a run they were still playing) into a round
+  they never agreed to. One device deciding for two is the bug; the round number
+  is `current + 1` computed on both sides for the same reason. `bye` clears a
+  pending offer, or you wait forever on somebody who left.
 - **The ready-check buys the FEELING of starting together and nothing else, and
   the runs are deliberately not locked in step.** Every question is timed from
   the moment it starts on your own device, so drift costs nothing in fairness —

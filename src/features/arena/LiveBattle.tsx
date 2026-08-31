@@ -260,7 +260,9 @@ function RoomWaiting({ code, joining, onExit }: { code: string; joining: boolean
 // true of the loser — they answered these questions and now know the verse.
 function LiveResultScreen({ onRematch, onDone }: { onRematch: () => void; onDone: () => void }) {
   const me = useAuth((s) => s.profile)
-  const { myResult, opponentResult, opponent } = useLive()
+  const {
+    myResult, opponentResult, opponent, opponentGone, iWantRematch, opponentWantsRematch,
+  } = useLive()
   const juice = useJuice()
   const outcome = myResult && opponentResult ? liveWinner(myResult, opponentResult) : 'tie'
 
@@ -308,8 +310,26 @@ function LiveResultScreen({ onRematch, onDone }: { onRematch: () => void; onDone
         doesn’t have a loser.
       </p>
 
+      {/* A rematch takes two, so this button says where the other one is.
+          Waiting is a state worth drawing: without it, tapping Rematch and
+          having nothing happen looks like the button is broken. */}
       <div style={{ marginTop: 20, display: 'grid', gap: 10 }}>
-        <Button variant="gold" full onClick={onRematch}>🔁 Rematch — new verse</Button>
+        {opponentGone ? (
+          <p className="dim" style={{ textAlign: 'center', margin: 0, fontSize: 13.5, lineHeight: 1.5 }}>
+            {opponent ? `@${opponent.username} has` : 'They have'} left the room — no rematch
+            from here. Your result still counted.
+          </p>
+        ) : iWantRematch ? (
+          <Button variant="gold" full disabled onClick={() => {}}>
+            ⏳ Waiting for {opponent ? `@${opponent.username}` : 'them'}…
+          </Button>
+        ) : (
+          <Button variant="gold" full onClick={onRematch}>
+            {opponentWantsRematch
+              ? `🔁 ${opponent ? `@${opponent.username}` : 'They'} want${opponent ? 's' : ''} a rematch — go`
+              : '🔁 Rematch — new verse'}
+          </Button>
+        )}
         <Button full onClick={onDone}>Done</Button>
       </div>
     </Page>

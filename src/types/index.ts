@@ -259,4 +259,11 @@ export interface ChurchPage {
   memberTotal: number
   /** This player already has an unhandled "add info" ask in for this church. */
   myRequestPending: boolean
+  /**
+   * This viewer is verified leadership of THIS church (`church_admins`, 0079),
+   * so the page offers an editor instead of the request queue. Server-set —
+   * `update_my_church_profile` re-checks it, so flipping this in a client buys
+   * a form that refuses to save.
+   */
+  canEdit: boolean
 }

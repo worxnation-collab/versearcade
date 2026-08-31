@@ -12,7 +12,7 @@ import { ChurchArt } from './ChurchArt'
 import { ChurchScene } from './ChurchScene'
 import { useRivalry } from '@/store/rivalry'
 import { CHURCH_SKINS, DEFAULT_CHURCH_SKIN, type ChurchSkinChoice } from './skins'
-import type { ChurchMember, ChurchPage } from '@/types'
+import type { Church, ChurchInfo, ChurchMember, ChurchPage } from '@/types'
 
 /** Stable empty yard — a fresh {} from the selector would re-render forever. */
 const EMPTY_YARD = {}
@@ -309,12 +309,21 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: str
 // this surface identical on the web and in the App Store build (see
 // lib/commerce.ts for where a real storefront decision would live).
 function InfoSection({ page, loading }: { page: ChurchPage; loading: boolean }) {
-  const { church, info, myRequestPending } = page
+  const { church, info, myRequestPending, canEdit } = page
   const [open, setOpen] = useState(false)
+  const [editing, setEditing] = useState(false)
   const juice = useJuice()
 
   // A different church means a different form — reset when the sheet reopens.
-  useEffect(() => { setOpen(false) }, [church.id])
+  useEffect(() => { setOpen(false); setEditing(false) }, [church.id])
+
+  // Verified leadership writes straight through instead of joining a queue —
+  // that's the whole point of a claim (0079). The operator still grants the
+  // claim by hand, so this form is only ever in front of somebody a person
+  // already checked.
+  if (editing && canEdit) {
+    return <ChurchPageEditor church={church} info={info} onDone={() => setEditing(false)} />
+  }
 
   if (open) {
     return (
@@ -335,7 +344,16 @@ function InfoSection({ page, loading }: { page: ChurchPage; loading: boolean }) 
     <div className="card">
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: info ? 10 : 6 }}>
         <b style={{ fontFamily: 'var(--font-display)', fontSize: 16, flex: 1 }}>About this church</b>
-        {!myRequestPending && (
+        {canEdit ? (
+          <motion.button
+            whileTap={{ scale: 0.94 }}
+            onClick={() => { juice.select?.(); setEditing(true) }}
+            className="pill"
+            style={{ borderColor: 'var(--gold)', color: 'var(--gold)', fontWeight: 800, fontSize: 12.5, flexShrink: 0 }}
+          >
+            ✏️ Edit page
+          </motion.button>
+        ) : !myRequestPending && (
           <motion.button
             whileTap={{ scale: 0.94 }}
             onClick={() => { juice.select?.(); setOpen(true) }}
@@ -360,6 +378,11 @@ function InfoSection({ page, loading }: { page: ChurchPage; loading: boolean }) 
       ) : myRequestPending ? (
         // Don't ask again for something they've already sent.
         <p className="dim" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55 }}>Nothing here yet.</p>
+      ) : canEdit ? (
+        <p className="dim" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55 }}>
+          Nothing here yet — and this page is yours. Tap <b>Edit page</b> to put your service
+          times, a website and a line about who you are on it.
+        </p>
       ) : (
         <p className="dim" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55 }}>
           Nothing here yet. If you're on staff at {church.name}, you can claim this page and put
@@ -406,6 +429,114 @@ const REASONS: Record<string, string> = {
   email_required: 'That email doesn’t look right.',
   not_found: 'That church has gone missing. Try reopening it.',
   offline: 'You need to be signed in to send this.',
+}
+
+// The editor a claimed church gets instead of the queue (0079).
+//
+// Five text fields and no more: the skin is the paid axis and only an operator
+// can grant one, so this form can't touch it and `update_my_church_profile`
+// doesn't take it. Nothing here is about a person either — there is no member
+// list, no per-player number and nothing to sort, which is the rule the roster
+// already follows and the one a leadership screen is most likely to break.
+function ChurchPageEditor({
+  church,
+  info,
+  onDone,
+}: {
+  church: Church
+  info: ChurchInfo | null
+  onDone: () => void
+}) {
+  const updateChurchPage = useChurch((s) => s.updateChurchPage)
+  const juice = useJuice()
+  const [tagline, setTagline] = useState(info?.tagline ?? '')
+  const [about, setAbout] = useState(info?.about ?? '')
+  const [serviceTimes, setServiceTimes] = useState(info?.serviceTimes ?? '')
+  const [website, setWebsite] = useState(info?.website ?? '')
+  const [contact, setContact] = useState(info?.contact ?? '')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  const save = async () => {
+    if (busy) return
+    setBusy(true)
+    setErr(null)
+    const res = await updateChurchPage({
+      churchId: church.id, tagline, about, serviceTimes, website, contact,
+    })
+    setBusy(false)
+    if (!res.ok) {
+      setErr(
+        res.reason === 'invalid_website'
+          ? 'That website doesn’t look like a web address — try grace.org or https://grace.org.'
+          : res.reason === 'not_leadership'
+            ? 'This page isn’t yours to edit any more. Get in touch if that’s wrong.'
+            : 'That didn’t save. Try again in a moment.',
+      )
+      return
+    }
+    juice.celebrate()
+    onDone()
+  }
+
+  return (
+    <div className="card" style={{ display: 'grid', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <b style={{ fontFamily: 'var(--font-display)', fontSize: 16, flex: 1 }}>Edit your page</b>
+        <button onClick={onDone} className="faint" style={{ fontSize: 12.5, textDecoration: 'underline', flexShrink: 0 }}>
+          Cancel
+        </button>
+      </div>
+      <p className="faint" style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}>
+        This publishes to {church.name}&rsquo;s page straight away. Leave anything blank to take it off.
+      </p>
+
+      <Field label="Tagline" value={tagline} onChange={setTagline} max={120} placeholder="Come as you are" />
+      <Field label="Service times" value={serviceTimes} onChange={setServiceTimes} max={200} placeholder="Sundays 9 & 11am, Wednesday 7pm" />
+      <Field label="Website" value={website} onChange={setWebsite} max={200} placeholder="grace.org" />
+      <Field label="Contact" value={contact} onChange={setContact} max={120} placeholder="hello@grace.org" />
+
+      <label style={labelStyle}>
+        <span style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+          <span>About</span>
+          <span style={{ flexShrink: 0, color: about.length >= 600 ? 'var(--tangerine)' : undefined }}>
+            {about.length}/600
+          </span>
+        </span>
+        <textarea
+          value={about}
+          onChange={(e) => setAbout(e.target.value.slice(0, 600))}
+          rows={4}
+          maxLength={600}
+          placeholder="A line or two about your congregation."
+          style={{ resize: 'vertical' }}
+        />
+      </label>
+
+      {err && <p style={{ color: 'var(--coral)', fontSize: 13, margin: 0 }}>{err}</p>}
+
+      <Button variant="gold" full disabled={busy} onClick={save}>
+        {busy ? 'Publishing…' : 'Publish'}
+      </Button>
+    </div>
+  )
+}
+
+function Field({
+  label, value, onChange, max, placeholder,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  max: number
+  placeholder: string
+}) {
+  return (
+    <label style={labelStyle}>
+      {label}
+      <input value={value} onChange={(e) => onChange(e.target.value.slice(0, max))} maxLength={max} placeholder={placeholder} />
+    </label>
+  )
 }
 
 function InfoRequestForm({

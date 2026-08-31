@@ -38,6 +38,7 @@ export const GENERATED_ART: Record<string, string> = {
   'pet_lamb': '/items/pet_lamb.png',
   'pet_lion_cub': '/items/pet_lion_cub.png',
   'pet_raven': '/items/pet_raven.png',
+  'porchlight': '/skins/porchlight.png',
   'rosary': '/keep/rosary.png',
   'shepherd_night': '/skins/shepherd_night.png',
   'starter_fem_amber_espresso': '/skins/starter_fem_amber_espresso.png',

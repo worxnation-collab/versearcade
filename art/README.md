@@ -19,6 +19,7 @@ must never be written into a tracked file.
 | `pets.json` | the six companions that stand beside you on the You tab | `public/items/pet_*.png` |
 | `keep-props.json` | keep props that need regenerating (two shipped unkeyed) | `public/keep/<id>.png` |
 | `library.json` | the Study tab (a library), the librarian in it, and the satchel on its floor | `public/keep/study-library.jpg`, `public/keep/study_satchel.png`, `public/skins/librarian.png` |
+| `skins-porchlight.json` | the Porchlight creator-collab skin (curls, cream knit, ukulele) | `public/skins/porchlight.png` |
 
 **Check what came back**, every time:
 
@@ -123,6 +124,14 @@ avatar chips (`preserveAspectRatio: 'xMidYMin slice'`), and the little worlds �
 the Harvest Road, the churchyard crowd, `ProfileHero` — render the same file
 with `fullBody`. A bust renders perfectly in every avatar circle in the app and
 turns into a floating torso the moment the character stands somewhere.
+
+**A held object has to be described against what the model expects.** The
+Porchlight skin needed three separate sentences insisting its instrument was a
+*ukulele* — "four-string", "much smaller than a guitar", "about the length of
+his forearm", plus "clearly a ukulele, not a guitar" — because the training
+prior for "person holding a stringed instrument" is a full-size guitar and one
+mention of the word does not beat it. Say the size, the string count and the
+negative.
 
 `scripts/check-art.mjs` flags any skin whose ink is squarer than 1.05:1 with
 `(BUST?)`. For calibration, all fifteen shipped skins are 1.08 (Michael, whose

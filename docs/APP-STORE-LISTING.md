@@ -177,6 +177,9 @@ THE REST
 • Study got more generous: no daily ceiling on focus drills, no weekly cooldown on
   replays, and a relic to find when you study.
 
+• A new creator-collab look: curls, a cream knit and a ukulele. Free with a code from
+  the creator — like every code skin, it's never for sale.
+
 Cosmetics are no longer sold. Everything that used to cost money is earned or free, and
 anyone who bought a pack keeps every piece of it.
 

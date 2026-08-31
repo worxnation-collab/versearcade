@@ -163,7 +163,8 @@ the bundled road is what an offline phone falls back to.
 **Cosmetics are no longer sold.** Moses, Esther and Elijah are `free`, the
 angels (Gabriel, Michael, Seraph) are `pass` — road rewards — and `BUNDLES` is
 empty. What still has a price is the founding-patron whale, and the promo-code
-exclusives (`eden`, `shades`, `sonshine`) are still free redemptions. Everything
+exclusives (`eden`, `shades`, `sonshine`, `porchlight`) are still free
+redemptions. Everything
 below still holds for that one product, and for the machinery, which is kept
 rather than deleted so selling something again is a row rather than a rebuild.
 
@@ -177,11 +178,35 @@ Two things about the de-monetisation that are load-bearing:
   function's is what an existing purchase is WORTH. Trim the second and a buyer
   who reinstalls and taps Restore gets nothing back. **Add rows there, never
   remove them.**
-- **`enforce_skin_entitlement` was deliberately not touched.** The de-monetised
-  ids stay in its protected list: nothing reads `owned_skins` for them now, so
-  guarding them is free, and that list is restated *wholesale* by every
-  migration that edits it — a needless rewrite is the one way to unlock a paid
-  skin for everybody by accident.
+- **`enforce_skin_entitlement` was deliberately not touched by the
+  de-monetisation.** The de-monetised ids stay in its protected list: nothing
+  reads `owned_skins` for them now, so guarding them is free, and that list is
+  restated *wholesale* by every migration that edits it — a needless rewrite is
+  the one way to unlock a paid skin for everybody by accident. The ONE
+  legitimate reason to touch it is adding a new protected id, and then the whole
+  list is copied forward from the migration that last set it. That chain is
+  0031 → 0034 → 0043 → 0044 → 0046 → 0057 → **0082** (`porchlight`); read the
+  latest one, never an earlier one.
+
+**A creator-collab skin is a promo code, not a product**, and `sonshine` (0057)
+and `porchlight` (0082) are the two worked examples. The shape: `source: 'paid'`
++ `exclusive: true` so it reuses the `owned_skins` entitlement, NO
+`limitedUntil` (a partnership outlives a launch window — retire it by toggling
+the code off in the admin panel, never by expiring the skin), a row in
+`promo_codes`, the id added to `enforce_skin_entitlement`, and deliberately NOT
+added to `fulfill_skin`'s allowlist, so neither Stripe nor IAP can ever grant
+it. Grant it with `grant_skins()` rather than `admin_grant_skin()`: the latter
+writes a `skin_purchases` row with `reason='manual'`, which files a free
+creator grant in the dashboard's Sales tab as though it were revenue.
+
+**`skinVisible` decides `exclusive` BEFORE the native branch, and the order is
+the point.** An exclusive wears `source: 'paid'`, so with StoreKit live it used
+to fall through to `skuPurchasable()` and vanish for want of a product that is
+never meant to exist — hiding the very thing a creator's audience was sent to
+redeem. It is safe to show because it carries no price and no checkout anywhere:
+an unowned one opens the redeem prompt, draws `🔒 <packName>` instead of an
+amount, and `pricedOnShelf` excludes exclusives by name. Free content, like
+`pass` and `earned`.
 
 The web app sells through Stripe Payment Links. The App Store /
 Play build sells through in-app purchase (Guideline 3.1.1)
@@ -695,9 +720,10 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0081` (the Study library's card); before it, `0080` (today / this
-week / all time on the church board), `0079` (a church claiming its own page),
-`0078` (a church's ask for a sponsored slot) and `0077` (the slot itself). Before them, `0075` (the weekly church rivalry) and `0074` (the admin
+The latest is `0082` (the Porchlight creator-collab skin); before it, `0081`
+(the Study library's card), `0080` (today / this week / all time on the church
+board), `0079` (a church claiming its own page), `0078` (a church's ask for a
+sponsored slot) and `0077` (the slot itself). Before them, `0075` (the weekly church rivalry) and `0074` (the admin
 dashboard's dates) — 0074 must be applied before
 the client that uses it merges, and that one is not optional: it DROPS the old
 `admin_overview()` / `admin_growth(boolean)` signatures to replace them with
@@ -715,7 +741,7 @@ one, take the day from `p_tz`, never from `current_date`.
 
 Numbering has scars: `0034` is used twice (`promo_codes`, `skin_purchases`),
 `0059` twice (`keep`, `practice_uncapped`) and `0074` twice (`admin_local_dates`,
-`public_church_page`) — so the next free number is `0082`, not `0081`, and this
+`public_church_page`) — so the next free number is `0083`, not `0082`, and this
 sentence has already gone stale twice: it said "0076" while 0077, 0078 and 0079
 were sitting in the folder. `ls supabase/migrations | tail -1` is the answer;
 this line is only a record of which numbers were burned twice. And

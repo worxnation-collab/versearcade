@@ -1344,7 +1344,16 @@ or the upload is rejected (`90062` + `90186`) *after* a full signed archive, abo
 **Where we are: 1.2.0 is the approved, live version — its train is CLOSED — and the
 repo carries 1.3.0, which has never been uploaded.** 1.2.0 shipped the Upper Room,
 praying, gifts and the mailbox, the Journal, saved looks and companions in the crowd
-scenes; 1.3.0 adds live battles and the weekly church rivalry.
+scenes.
+
+**1.3.0's train is OPEN, so keep landing features under that number.** An unuploaded
+version can absorb any amount of work: a feature merging today does NOT need a bump,
+and bumping per-feature just burns numbers and makes the next one harder to reason
+about. The number only has to move when the version it names has been *approved*. So
+what a new feature changes is the release NOTES, not the version — the running list
+for 1.3.0 lives in `docs/APP-STORE-LISTING.md` under "What's New", and it is a draft
+that grows until the day someone uploads. This is the same situation 1.2.0 was in
+while the Upper Room, praying, gifts and the Journal all landed on top of it.
 
 The lesson this file has now learned twice: **this paragraph goes stale silently, and
 a stale version number costs a full signed archive to discover.** It is a claim about

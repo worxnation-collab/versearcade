@@ -25,6 +25,13 @@ export interface ChurchPlace {
   miles: number
   /** Set when this church already exists in Verse Arcade. */
   churchId?: string
+  /**
+   * The one paid slot on the suggestion list (`sponsored_church`, 0075). Set
+   * only on a row the server chose; the client can never mark one itself, and
+   * every surface that renders it must label it — see `docs/CHURCH-PROMOTION.md`.
+   */
+  sponsored?: boolean
+  promotionId?: string
   xp?: number
   level?: number
   members?: number

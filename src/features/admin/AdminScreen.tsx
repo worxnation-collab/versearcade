@@ -43,6 +43,12 @@ interface ActiveRow {
   total_ms: number; last_active: string
 }
 interface PromoRow { code: string; skin_id: string; active: boolean; redeemed_count: number; created_at: string }
+interface AdminChurch { id: string; name: string; city: string | null; region: string | null; xp: number; members: number }
+interface PromotionRow {
+  id: string; church_id: string; church_name: string; city: string | null; region: string | null
+  radius_miles: number; starts_at: string; ends_at: string; live: boolean; joins: number; note: string | null
+}
+interface Overlap { name: string; city: string | null; region: string | null; miles: number; ends_at: string }
 
 // Active quiz/battle time (not total app time — the app has no session tracking).
 function fmtDuration(ms: number): string {
@@ -321,6 +327,7 @@ function Churches() {
   }, [])
   return (
     <div style={{ display: 'grid', gap: 18 }}>
+      <Promotions />
       <InfoRequests />
       <div>
         <h3 style={{ fontSize: 14, margin: '0 0 8px' }} className="dim">“For Churches” inquiries</h3>
@@ -328,6 +335,167 @@ function Churches() {
           ? <p className="faint center" style={{ padding: 20 }}>No church inquiries yet.</p>
           : <Inquiries rows={rows} />}
       </div>
+    </div>
+  )
+}
+
+// The paid slot on the suggestion list (0075).
+//
+// This is the only surface anywhere that can create one, and that is the
+// point: a promotion is granted by the operator after the money has happened
+// off the device (invoice by email, same as a custom church skin). Nothing in
+// the player-facing app names a price, in either mode — see
+// `docs/CHURCH-PROMOTION.md` for why that line is where it is.
+//
+// The overlap warning is the one number worth reading here. Only ONE promotion
+// is ever shown in an area (earliest start wins — it's a billboard, not an
+// auction), so selling a second slot inside the same circle means taking money
+// for a row that will not appear. The server reports the clash; this panel's
+// job is to make it impossible to miss.
+function Promotions() {
+  const [rows, setRows] = useState<PromotionRow[] | null>(null)
+  const [q, setQ] = useState('')
+  const [found, setFound] = useState<AdminChurch[] | null>(null)
+  const [target, setTarget] = useState<AdminChurch | null>(null)
+  const [days, setDays] = useState(30)
+  const [radius, setRadius] = useState(25)
+  const [note, setNote] = useState('')
+  const [msg, setMsg] = useState<string | null>(null)
+  const [overlaps, setOverlaps] = useState<Overlap[]>([])
+
+  const load = () =>
+    supabase?.rpc('admin_church_promotions', { p_limit: 50 }).then(({ data }) => setRows((data as PromotionRow[]) ?? []))
+  useEffect(() => { load() }, [])
+
+  const search = async () => {
+    const { data } = await supabase!.rpc('admin_find_churches', { p_search: q || null, p_limit: 20 })
+    setFound((data as AdminChurch[]) ?? [])
+  }
+
+  const start = async () => {
+    if (!target) return
+    const { data } = await supabase!.rpc('admin_set_church_promotion', {
+      p_church_id: target.id, p_days: days, p_radius_miles: radius, p_note: note || null,
+    })
+    const res = data as { ok?: boolean; reason?: string; overlaps?: Overlap[] }
+    if (!res?.ok) { setMsg(res?.reason ?? 'Could not start it.'); return }
+    setOverlaps(res.overlaps ?? [])
+    setMsg(`${target.name} is promoted for ${days} days.`)
+    setTarget(null); setFound(null); setQ(''); setNote('')
+    load()
+  }
+
+  const end = async (r: PromotionRow) => {
+    await supabase!.rpc('admin_end_church_promotion', { p_id: r.id })
+    load()
+  }
+
+  const where = (c: { city: string | null; region: string | null }) =>
+    [c.city, c.region].filter(Boolean).join(', ')
+
+  return (
+    <div>
+      <h3 style={{ fontSize: 14, margin: '0 0 8px' }} className="dim">Sponsored slot</h3>
+      <p className="faint" style={{ fontSize: 12, marginBottom: 10, lineHeight: 1.4 }}>
+        Puts one church at the top of “Suggested for you” for players nearby who haven’t picked one
+        yet, labelled Sponsored. Flat rate, one slot, first come — never an auction. Bill the church
+        off the device; nothing in the app shows a price.
+      </p>
+
+      <div className="card" style={{ marginBottom: 12, display: 'grid', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a church by name or city"
+            onKeyDown={(e) => { if (e.key === 'Enter') void search() }} style={{ flex: 1, minWidth: 0 }} />
+          <Button variant="secondary" onClick={search}>Find</Button>
+        </div>
+
+        {found?.length === 0 && <p className="faint" style={{ fontSize: 12, margin: 0 }}>No churches match.</p>}
+        {found && found.length > 0 && !target && (
+          <div style={{ display: 'grid', gap: 6 }}>
+            {found.map((c) => (
+              <button key={c.id} className="card" onClick={() => setTarget(c)}
+                style={{ textAlign: 'left', padding: '8px 10px', display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <b style={{ fontSize: 14 }}>{c.name}</b>
+                  <span className="faint" style={{ display: 'block', fontSize: 11 }}>
+                    {[where(c), `${c.members} ${c.members === 1 ? 'player' : 'players'}`].filter(Boolean).join(' · ')}
+                  </span>
+                </span>
+                <span style={{ color: 'var(--gold)', fontSize: 12, fontWeight: 800 }}>Pick</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {target && (
+          <div style={{ display: 'grid', gap: 8 }}>
+            <b style={{ fontSize: 14 }}>{target.name}</b>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <label className="faint" style={{ fontSize: 11, flex: 1 }}>
+                Days
+                <input type="number" min={1} max={365} value={days}
+                  onChange={(e) => setDays(Number(e.target.value) || 30)} style={{ width: '100%' }} />
+              </label>
+              <label className="faint" style={{ fontSize: 11, flex: 1 }}>
+                Radius (mi, max 30)
+                <input type="number" min={1} max={30} value={radius}
+                  onChange={(e) => setRadius(Number(e.target.value) || 25)} style={{ width: '100%' }} />
+              </label>
+            </div>
+            <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={200}
+              placeholder="Note — who bought it, what they paid (operator only)" />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button variant="gold" onClick={start}>Start promotion</Button>
+              <Button variant="ghost" onClick={() => setTarget(null)}>Cancel</Button>
+            </div>
+          </div>
+        )}
+
+        {msg && <p style={{ color: 'var(--good)', fontSize: 13, margin: 0 }}>{msg}</p>}
+        {overlaps.length > 0 && (
+          <div className="card" style={{ borderColor: 'var(--coral)' }}>
+            <b style={{ color: 'var(--coral)', fontSize: 13 }}>Overlaps an existing slot</b>
+            <p className="dim" style={{ fontSize: 12, margin: '4px 0 0', lineHeight: 1.4 }}>
+              Only one sponsored church shows in an area, and the earliest start wins. These are
+              already live nearby — end one, or refund:
+            </p>
+            <ul className="faint" style={{ fontSize: 12, margin: '6px 0 0', paddingLeft: 18 }}>
+              {overlaps.map((o, i) => (
+                <li key={i}>{o.name}{where(o) ? ` (${where(o)})` : ''} — {o.miles} mi away</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+
+      {rows === null ? (
+        <p className="faint center" style={{ padding: 20 }}>Loading…</p>
+      ) : rows.length === 0 ? (
+        <p className="faint center" style={{ padding: 20 }}>No promotions yet.</p>
+      ) : (
+        <div style={{ display: 'grid', gap: 8 }}>
+          {rows.map((r) => (
+            <div key={r.id} className="card" style={{ display: 'flex', alignItems: 'center', gap: 10, borderColor: r.live ? 'var(--gold)' : 'var(--stroke)' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <b style={{ fontSize: 14 }}>{r.church_name}</b>
+                <div className="faint" style={{ fontSize: 11 }}>
+                  {[where(r), `${r.radius_miles} mi`, `${r.joins} joined`].filter(Boolean).join(' · ')}
+                </div>
+                <div className="faint" style={{ fontSize: 11 }}>
+                  {r.live ? 'until' : 'ended'} {new Date(r.ends_at).toLocaleDateString()}
+                  {r.note ? ` · ${r.note}` : ''}
+                </div>
+              </div>
+              {r.live && (
+                <button className="pill" onClick={() => end(r)}
+                  style={{ fontWeight: 800, fontSize: 12, background: 'var(--card-solid)', color: 'var(--ink-dim)' }}>
+                  End
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

@@ -47,6 +47,12 @@ const LEDGER = { x: 334, y: 336 }
 const SATCHEL = { x: 64, y: 632 }
 const SATCHEL_W = 100
 
+/** The clouds' own two colours. Deep violet out of the app's own night sky
+ *  rather than the room's browns — a marker is the app speaking, not the
+ *  painting — with the brand gold as its edge. */
+const CLOUD_FILL = 'rgba(24,12,58,0.92)'
+const CLOUD_EDGE = 'var(--gold)'
+
 export interface Hotspot {
   onTap: () => void
   /** Shown on the marker. Kept to a word or two — this is a label, not a row. */
@@ -99,7 +105,7 @@ export function LibraryScene({
             own label — SVG has no z-index, only document order. */}
 
         {/* The ledger, already painted on the desk — this only rings it. */}
-        {ledger && <Tappable spot={ledger} x={LEDGER.x} y={LEDGER.y - 36} alive={alive} anchor="above" />}
+        {ledger && <Tappable spot={ledger} x={LEDGER.x} y={LEDGER.y - 52} alive={alive} trail="down" />}
 
         {/* Her. Bobs a hair, so the room has somebody alive in it rather than a
             sticker on a background — the trick CrowdLife plays, without its
@@ -134,9 +140,9 @@ export function LibraryScene({
             <Tappable
               spot={librarian}
               x={HER_X + 54}
-              y={HER_FOOT_Y - HER_H - 4}
+              y={HER_FOOT_Y - HER_H - 26}
               alive={alive}
-              anchor="bubble"
+              trail="down-left"
             />
           )}
         </motion.g>
@@ -145,7 +151,7 @@ export function LibraryScene({
             painted — the room's floor was prompted empty on purpose, so
             anything standing on it is something we put there. */}
         {satchel && (
-          <Tappable spot={satchel} x={SATCHEL.x + 6} y={SATCHEL.y - 74} alive={alive} anchor="above">
+          <Tappable spot={satchel} x={SATCHEL.x + 2} y={SATCHEL.y - 104} alive={alive} trail="down">
             <Satchel x={SATCHEL.x} y={SATCHEL.y} />
           </Tappable>
         )}
@@ -155,26 +161,100 @@ export function LibraryScene({
 }
 
 /**
+ * How many scallops the top and bottom of a cloud that wide should carry.
+ *
+ * A fixed count makes a two-word marker lumpy and a one-word one nearly round,
+ * so the bumps are sized instead: ~20 units of straight span each, at least
+ * two, which keeps every label in the room wearing the same size of puff.
+ */
+function bumpsFor(span: number) {
+  return Math.max(2, Math.round(span / 20))
+}
+
+/**
+ * A thought cloud, as ONE closed path.
+ *
+ * Drawing it the obvious way — a rounded rect with circles overlapping its edge
+ * — needs every piece to share a fill AND leaves the stroke running through the
+ * middle of the shape, so the outline shows all the seams. Tracing the whole
+ * scalloped outline instead gives a single fill and a single unbroken stroke,
+ * which is what lets it be painted twice (shadow, then body) without the copies
+ * disagreeing about where the edge is.
+ *
+ * The caps are true semicircles, so `w` is the real width; only the bumps
+ * push past `h`, by about a quarter of a bump each side.
+ */
+function cloudPath(cx: number, cy: number, w: number, h: number) {
+  const hr = h / 2
+  const left = cx - w / 2
+  const right = cx + w / 2
+  const top = cy - hr
+  const bot = cy + hr
+  const span = w - h
+  const n = bumpsFor(span)
+  const bw = span / n
+  // Radius > half the chord, so each arc is a shallow bulge rather than a
+  // half-circle: about 0.27 * bw of relief, which reads as a puff at 14px text
+  // without turning the label into a flower.
+  const rb = bw * 0.56
+  const parts: string[] = [`M${left + hr} ${top}`]
+  for (let i = 1; i <= n; i++) parts.push(`A${rb} ${rb} 0 0 1 ${left + hr + i * bw} ${top}`)
+  parts.push(`A${hr} ${hr} 0 0 1 ${right - hr} ${bot}`)
+  for (let i = 1; i <= n; i++) parts.push(`A${rb} ${rb} 0 0 1 ${right - hr - i * bw} ${bot}`)
+  parts.push(`A${hr} ${hr} 0 0 1 ${left + hr} ${top}`, 'Z')
+  return parts.join(' ')
+}
+
+/** How far a cloud's bumps reach past `h`, so hit areas and trails can allow
+ *  for them without re-deriving the arc maths. */
+function cloudBulge(w: number, h: number) {
+  const span = w - h
+  const bw = span / bumpsFor(span)
+  const rb = bw * 0.56
+  return rb - Math.sqrt(Math.max(0, rb * rb - (bw / 2) * (bw / 2)))
+}
+
+/** The trail of puffs, shrinking towards whatever the cloud is about. */
+const TRAIL = [
+  { t: 0.0, r: 5.5 },
+  { t: 0.5, r: 3.6 },
+  { t: 1.0, r: 2.2 },
+]
+
+/**
  * One thing in the room you can touch.
  *
- * A ring, a label and a generous invisible hit area — never a bare region of
- * painting, because a hotspot nobody can see is a room that feels broken rather
- * than mysterious. The label is always drawn: this is a tab, not a puzzle, and
- * somebody arriving must not have to hunt for the way to their own reports.
+ * A thought cloud, a label and a generous invisible hit area — never a bare
+ * region of painting, because a hotspot nobody can see is a room that feels
+ * broken rather than mysterious. The label is always drawn: this is a tab, not
+ * a puzzle, and somebody arriving must not have to hunt for the way to their
+ * own reports.
+ *
+ * WHY A CLOUD RATHER THAN A PILL. These markers are the one place in this app
+ * where chrome sits directly on a painting, and they shipped wearing the shape
+ * of a button — a flat gold-outlined pill with a hard triangular tail, three of
+ * them stuck to a warm oil-painted room. The house aesthetic is chunky, rounded
+ * and springy (index.css), and the room's own subject is somebody thinking
+ * about a book: a scalloped cloud trailing puffs says "this has something to
+ * say" without pretending to be a control. It also fixes the tail, which as a
+ * triangle could only ever point one way and had to be aimed by hand — a trail
+ * of puffs points anywhere by moving its last puff.
  */
 function Tappable({
   spot,
   x,
   y,
   alive,
-  anchor,
+  /** Where the puffs lead: straight down to the object under the cloud, or
+   *  down-left to a head the cloud is standing beside. */
+  trail,
   children,
 }: {
   spot: Hotspot
   x: number
   y: number
   alive: boolean
-  anchor: 'above' | 'bubble'
+  trail: 'down' | 'down-left'
   children?: React.ReactNode
 }) {
   // Roughly 7px per character at this font size, plus padding. Measuring text
@@ -182,43 +262,76 @@ function Tappable({
   // two words, so an estimate that errs wide is the right trade.
   const w = Math.max(64, spot.label.length * 7.4 + 26)
   const h = 26
+  const bulge = cloudBulge(w, h)
+  const path = cloudPath(x, y, w, h)
+  // Where the puffs go. They start at the cloud's own edge and run to a point
+  // just short of the thing being pointed at, so the last one lands on the
+  // ledger's corner or by her shoulder rather than on top of it.
+  const down = trail === 'down'
+  const from = { x: down ? x - 8 : x - w / 2 + 8, y: y + h / 2 + bulge }
+  const to = { x: down ? x - 20 : x - w / 2 - 26, y: from.y + (down ? 26 : 24) }
   return (
     <g style={{ cursor: 'pointer' }} onClick={spot.onTap}>
       {children}
-      {/* The hit area, well beyond the marker — a 26px pill is under Apple's
-          44px minimum on its own. */}
-      <rect x={x - w / 2 - 10} y={y - h / 2 - 14} width={w + 20} height={h + 28} fill="transparent" />
+      {/* The hit area, well beyond the marker — a 26px cloud is under Apple's
+          44px minimum on its own, and the puffs are far too small to aim at.
+          Derived from the marker's real extent rather than from its width: the
+          trail leans left, so a box centred on the cloud misses one edge or the
+          other depending on which way it points. */}
+      <rect
+        x={Math.min(x - w / 2, to.x - 6) - 14}
+        y={y - h / 2 - bulge - 16}
+        width={Math.max(x + w / 2, to.x + 6) - Math.min(x - w / 2, to.x - 6) + 28}
+        height={to.y + 20 - (y - h / 2 - bulge - 16)}
+        fill="transparent"
+      />
       <motion.g
-        animate={alive ? { y: [0, -3, 0], opacity: [0.86, 1, 0.86] } : { y: 0, opacity: 1 }}
-        transition={alive ? { duration: 2.8, repeat: Infinity, ease: 'easeInOut' } : undefined}
+        animate={alive ? { y: [0, -3, 0] } : { y: 0 }}
+        transition={alive ? { duration: 3.4, repeat: Infinity, ease: 'easeInOut' } : undefined}
       >
-        {anchor === 'bubble' && (
-          // A speech tail, so the marker over a person reads as her talking
-          // rather than as a label pinned to her head. Drawn before the pill so
-          // the pill paints over the join.
-          <path
-            d={`M${x - w / 2 + 6} ${y + h / 2 - 2} L${x - w / 2 - 14} ${y + h / 2 + 20} L${x - w / 2 + 30} ${y + h / 2}z`}
-            fill="rgba(12,6,26,0.9)"
-            stroke="var(--gold)"
-            strokeWidth="2"
-            strokeLinejoin="round"
-          />
-        )}
-        <rect
-          x={x - w / 2}
-          y={y - h / 2}
-          width={w}
-          height={h}
-          rx={h / 2}
-          fill="rgba(12,6,26,0.9)"
-          stroke="var(--gold)"
-          strokeWidth="2"
-        />
+        {/* The puffs first, so the cloud paints over the join — SVG has no
+            z-index, only document order. Each fades a beat after the one above
+            it, which is what makes the trail read as a direction rather than as
+            three dots. */}
+        {TRAIL.map((puff, i) => {
+          const cx = from.x + (to.x - from.x) * puff.t
+          const cy = from.y + (to.y - from.y) * puff.t
+          return (
+            <motion.g
+              key={i}
+              animate={alive ? { opacity: [0.55, 1, 0.55] } : { opacity: 1 }}
+              transition={
+                alive
+                  ? { duration: 2.6, repeat: Infinity, ease: 'easeInOut', delay: i * 0.35 }
+                  : undefined
+              }
+            >
+              <circle cx={cx} cy={cy + 3} r={puff.r} fill="rgba(0,0,0,0.3)" />
+              <circle
+                cx={cx}
+                cy={cy}
+                r={puff.r}
+                fill={CLOUD_FILL}
+                stroke={CLOUD_EDGE}
+                strokeWidth="1.6"
+              />
+            </motion.g>
+          )
+        })}
+        {/* Chunky drop shadow, the SVG version of --shadow-pop: the same
+            outline again, three units down. It is what stops a dark cloud from
+            sinking into a dark shelf behind it. */}
+        <path d={path} fill="rgba(0,0,0,0.32)" transform="translate(0 3)" />
+        {/* A soft gold bloom, drawn as a fat translucent stroke rather than a
+            filter — no <defs>, same rule the church kit follows, and it costs
+            nothing on a scene that already carries a full-bleed image. */}
+        <path d={path} fill="none" stroke="rgba(255,210,63,0.16)" strokeWidth="7" />
+        <path d={path} fill={CLOUD_FILL} stroke={CLOUD_EDGE} strokeWidth="2" />
         <text
           x={x}
           y={y + 5}
           textAnchor="middle"
-          fill="#ffd257"
+          fill="#ffe08a"
           fontSize="14"
           fontWeight="700"
           style={{ fontFamily: 'var(--font-display)' }}
@@ -227,10 +340,10 @@ function Tappable({
         </text>
         {spot.badge && (
           <>
-            <circle cx={x + w / 2 - 2} cy={y - h / 2 + 2} r="11" fill="#e8b93f" stroke="#3a1663" strokeWidth="1.5" />
+            <circle cx={x + w / 2 - 6} cy={y - h / 2 - 3} r="11" fill="#e8b93f" stroke="#3a1663" strokeWidth="1.5" />
             <text
-              x={x + w / 2 - 2}
-              y={y - h / 2 + 7}
+              x={x + w / 2 - 6}
+              y={y - h / 2 + 2}
               textAnchor="middle"
               fill="#3a1663"
               fontSize="12"

@@ -2,7 +2,6 @@ import { ChurchArt } from './ChurchArt'
 import { ChurchFlora } from './ChurchFlora'
 import { ChurchStatues } from './ChurchStatues'
 import { CrowdLife, type CrowdWaypoint } from '@/components/CrowdLife'
-import { ArcadeCabinetBox } from '@/features/arcade/ArcadeCabinet'
 import type { Plantings } from './yard'
 import type { Statues } from './rivalry'
 import type { ChurchMember } from '@/types'
@@ -60,7 +59,6 @@ export function ChurchScene({
   floraEditing,
   statueEditing,
   emptyNote = true,
-  onArcade,
 }: {
   level: number
   members: ChurchMember[]
@@ -110,12 +108,6 @@ export function ChurchScene({
    * yet" would be talking about you.
    */
   emptyNote?: boolean
-  /**
-   * Tapping the arcade machine at the front of the yard. Only your own church
-   * tab passes it, and without it the cabinet is not drawn — somebody else's
-   * churchyard does not grow one because you have one.
-   */
-  onArcade?: () => void
 }) {
   // The painted backdrop, layered OVER the drawn one rather than instead of it
   // — the house rule every other render follows. The gradient below stays as
@@ -237,14 +229,6 @@ export function ChurchScene({
           statueEditing — a statue is the congregation's, and moving one is
           shared the way choosing one already is (see ChurchStatues). */}
       {statues && <ChurchStatues statues={statues} editing={statueEditing} />}
-
-      {/* Somebody wheeled a cabinet onto the grass. It sits at the front-left
-          corner, in front of the crowd and clear of the path. */}
-      {onArcade && (
-        <div style={{ position: 'absolute', left: '3%', bottom: 4, zIndex: 3 }}>
-          <ArcadeCabinetBox width={34} screen="attract" onOpen={onArcade} title="Play in the arcade" />
-        </div>
-      )}
 
       {/* The congregation, alive: figures drift between the lawn, the path
           and the door on seeded schedules (CrowdLife sorts you to the front

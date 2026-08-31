@@ -978,17 +978,28 @@ Three things to know before touching it:
 
 ## The arcade: a room with machines, and a lobby in front of them
 
-A cabinet stands in the hall, the churchyard and your own Upper Room (and again
-on the home screen's "In the meantime…" card). Tapping any of them opens
-`/arcade` — a wall of machines you pick from. Three today: Manna Rush, Word
-Catch and the Cross Word. Full design: `docs/ARCADE.md`.
+A cabinet stands in your own Upper Room, and the home screen's "In the meantime…"
+card is the same machine again — offered only once the day's verse is done.
+Tapping either opens `/arcade` — a wall of machines you pick from. Three today:
+Manna Rush, Word Catch and the Cross Word. Full design: `docs/ARCADE.md`.
 
+- **Two doors, and the count is the design.** The cabinet stood in the keep's
+  hall and the churchyard too, and both were removed: those are the FACTION'S
+  room and the CONGREGATION'S yard, and a games machine wheeled into somebody
+  else's shared space reads as an advertisement standing in it. The two that
+  remain are the two places the offer is honestly the player's own — the room
+  that belongs to them alone, and the moment on the home screen when today's
+  verse is finished and the app has nothing left to ask. That second one is the
+  whole pitch: it answers the sentence the countdown above it already started.
+  `KeepScene` and `ChurchScene` no longer take an `onArcade` prop at all, so a
+  future surface can't quietly grow one back by passing a callback.
 - **The cabinet opens the LOBBY, not a game.** It used to open Manna Rush
   directly, which was right when there was one game; with two, a door that
   always led to the same machine lies about what's behind it, and a second
-  cabinet in every scene turns three little worlds into a shopping street. The
-  machine's little screen runs an **attract cycle** through the games so it
-  can't promise the wrong one (reduce-motion holds the first frame).
+  cabinet in every scene turns a little world into a shopping street — the same
+  instinct that took it out of the other two. The machine's little screen runs
+  an **attract cycle** through the games so it can't promise the wrong one
+  (reduce-motion holds the first frame).
 - **`features/arcade/games.ts` is the list, and it's the only list.** Adding a
   game is a row there plus a route — the same choke-point habit as `QuizRunner`.
   It's pure data (the id union in it is what makes `gameScreens.ts` compile);

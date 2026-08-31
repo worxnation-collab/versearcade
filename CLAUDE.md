@@ -314,12 +314,13 @@ moment it exists and no id can point at a 404. That file is generated — don't
 hand-edit it — and entries merge, so one `--only` never un-wires an earlier
 batch.
 
-Two things stay drawn, and it isn't laziness. **Anything taking a runtime
-colour** — the kite shield, the destrier's barding, the gonfalon — is painted in
-`denominationColor()`, which is measured for colourblind separation and isn't
-knowable at generation time; a baked image can't take a colour. And **church
-buildings** stay a kit, because 8 tiers x 4 skins is 32 images for something
-that must also read at 44px in a board row (see `features/church/skins.ts`).
+One class of thing stays drawn, and it isn't laziness: **anything taking a
+runtime colour** — the kite shield, the destrier's barding, the gonfalon — is
+painted in `denominationColor()`, which is measured for colourblind separation
+and isn't knowable at generation time; a baked image can't take a colour. The
+church buildings used to be the second holdout ("a kit, because 32 images");
+they are painted now — see the church-skins section for what changed and why
+the kit still exists.
 
 ## Church pages
 
@@ -407,12 +408,29 @@ decides what it's *made of*: `classic` (default), `modern`, `glass`, `tile`. A
 skinned church is not a bigger church — no number distinguishes it, which is the
 point: the thing a church pays for is the thing that can't beat anybody.
 
-Skins are drawn, not painted, and that's a size decision, not a taste one: 8
-tiers × 4 skins is 32 images for something that renders at 44px in a board row.
-`ChurchArt` composes each tier from a `Kit` (`Wall`/`Gable`/`Opening`/`Wheel`/
-`Spire`/`Topper`) that each skin builds its own way, so a skin changes the
-silhouette and not just the palette. Add a tier by composing the kit; add a skin
-by branching each primitive. Still flat fills and no `<defs>` — same reason.
+The buildings are Nano Banana paintings now (`art/church-buildings.json`, a
+`building` art kind: keyed cut-out at skin resolution, landing in
+`public/church/`), reference-chained like the starter set so the four material
+languages can't drift — classic grows tier over tier as the master line, and
+every other skin leans on its own previous tier for material and on classic's
+same tier for architecture and scale. This overturned a written decision, and
+both of its reasons died on inspection: 32 images stopped being a cost when
+the art pipeline landed, and 44px legibility was CHECKED on the real board row
+rather than assumed — all four skins stay separable at a glance at 44px, which
+is the fact that made the reversal safe. Two scars from the batch: the very
+first render (the only one with no reference to steer it) drifted to a
+three-quarter view, and the modern skin's pale walls twice lured a white
+backdrop past the magenta instruction — both re-rolled with the instruction
+hardened against exactly what came back.
+
+**The drawn Kit is the fallback, not a leftover — do not delete it.**
+`ChurchArt` resolves `church_<skin>_<tier>` through `GENERATED_ART` and falls
+to the kit for anything missing, and the key goes through `kit.skin.id`, so an
+unknown skin, a null and an undrawn `custom` all reach the default's render by
+the same road they reached its drawing. The kit's `Ground` ellipse stays under
+the render either way (a keyed building floating over a board row reads as a
+sticker), and the palettes in `skins.ts` still feed it. Still flat fills and no
+`<defs>` in the kit — same reason as ever.
 
 Staff pick one inside the "Add info" inquiry and it publishes nothing:
 `submit_church_info_request` (0051) records it, and only

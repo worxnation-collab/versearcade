@@ -10,21 +10,32 @@ import { useSettings } from '@/store/settings'
 // three times would drift and the joke only works if it is obviously the same
 // machine in every room.
 //
-// Drawn SVG rather than a Nano Banana render, for two reasons that both come
-// from where it has to appear. It stands in a scene that the postcard
-// serialises (lib/postcard.ts), and an SVG loaded into an <img> never fetches
-// external resources — a room made of <image href> exports blank. And it has to
-// read at about 40px in a churchyard, which is the same argument that keeps the
-// church buildings a drawn kit.
+// Drawn SVG rather than a Nano Banana render. The postcard reason is gone —
+// lib/postcard.ts inlines images as data: URIs now, so a raster would survive
+// the export — but the other one still stands on its own: it has to read at
+// about 40px in a churchyard, which is the same argument that keeps the church
+// buildings a drawn kit. Staying drawn is also what lets one machine sit in
+// three differently-lit worlds without three renders of it.
 //
 // It is drawn around its GROUND POINT (0,0 is the middle of its feet), like
 // every prop in KeepArt and RoomArt, so a caller places it by where it stands
 // rather than by where its box happens to be.
 
-const BODY = '#2f1b57'
-const BODY_LIT = '#3d2470'
-const BODY_DARK = '#1d0f3a'
-const EDGE = '#6a44b8'
+// The CABINET is timber and brass; the SCREEN is the only thing that glows.
+//
+// It used to be built out of the app's chrome purple, which is right for a nav
+// bar and wrong for furniture: standing in a lamplit clay chamber or a stone
+// hall, a violet box read as a sticker pasted onto the painting rather than as
+// something in the room. Warm wood and brass is an object that could plausibly
+// be standing there — while the marquee, the lit screen, the buttons and the
+// coin door still say arcade machine at a glance, which is the whole joke.
+//
+// Keep the accents. The coral and mint buttons are two small dots, and they are
+// the fastest read that this is a machine rather than a cupboard.
+const BODY = '#6b4a2e'
+const BODY_LIT = '#8a6340'
+const BODY_DARK = '#452e1c'
+const EDGE = '#b98a3e'
 const SCREEN = '#0b0720'
 const SAND = '#b4855a'
 const GOLD = '#ffd23f'
@@ -102,8 +113,8 @@ export function ArcadeCabinet({
 
       {/* Marquee. No lettering: at churchyard size type is a smudge, and a
           smudge that is trying to be a word looks like a bug. */}
-      <rect x="-16" y={-CABINET_H} width="32" height="10" rx="2" fill={GOLD} />
-      <rect x="-11" y={-CABINET_H + 3.5} width="22" height="3" rx="1.5" fill="#7a4a00" opacity="0.55" />
+      <rect x="-16" y={-CABINET_H} width="32" height="10" rx="2" fill={EDGE} />
+      <rect x="-11" y={-CABINET_H + 3.5} width="22" height="3" rx="1.5" fill="#5c4220" opacity="0.55" />
 
       {/* Screen. Whatever is showing, it is drawn inside the same 28x24 well,
           so swapping games never changes the machine's silhouette. */}
@@ -137,7 +148,7 @@ export function ArcadeCabinet({
 
       {/* Coin door and a warm spill of light on the floor in front of it. */}
       <rect x="-8" y="-24" width="16" height="11" rx="1.5" fill={BODY_DARK} />
-      <rect x="-3" y="-20" width="6" height="1.8" rx="0.9" fill={GOLD} opacity="0.8" />
+      <rect x="-3" y="-20" width="6" height="1.8" rx="0.9" fill={EDGE} opacity="0.9" />
       <ellipse cx="0" cy="-1" rx="26" ry="6" fill={GOLD} opacity="0.07" />
     </g>
   )

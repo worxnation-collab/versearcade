@@ -8,7 +8,7 @@ import { useCollection } from '@/store/collection'
 import { useRoom } from '@/store/room'
 import { useJuice } from '@/juice/useJuice'
 import { roomProgress } from '@/lib/roomProgress'
-import { packDecor } from '@/data/placement'
+import { packDecor, unpackDecor } from '@/data/placement'
 import {
   FURNISHINGS,
   REQUIREMENT_NOUN,
@@ -22,6 +22,8 @@ import {
   roomPlacedTier,
   roomTier,
   roomTierName,
+  furnishingBestTier,
+  nextFurnishingTierInfo,
   type RoomProgress,
 } from '@/data/room'
 import { RoomScene } from './RoomScene'
@@ -37,6 +39,18 @@ import { usePrayer } from '@/store/prayer'
 // is the ONLY editable copy — the visit sheet renders the same RoomScene with
 // no `editing` prop, so a room you are visiting is inert by construction rather
 // than by everyone remembering not to write to it.
+
+const SIZE_BTN: React.CSSProperties = {
+  width: 32,
+  height: 32,
+  borderRadius: 10,
+  border: '1px solid var(--stroke)',
+  background: 'rgba(255,255,255,0.06)',
+  color: 'var(--ink)',
+  fontSize: 16,
+  fontWeight: 800,
+  cursor: 'pointer',
+}
 
 export function RoomSection() {
   const juice = useJuice()
@@ -110,24 +124,35 @@ export function RoomSection() {
   }
 
   // Tap a spot while carrying: move it there. An occupied spot trades places
-  // rather than overwriting, and the same piece merges (see planRoomMove).
+  // rather than overwriting (see planRoomMove).
   const dropOn = async (anchor: string) => {
     const from = picked
     if (!from) return
     setPicked(null)
     const res = await useRoom.getState().move(from, anchor)
     if (!res) return
-    if (res.merged) {
-      juice.merge()
-      setMerged({ anchor: res.anchor, name: furnishingName(useRoom.getState().placements[res.anchor]) })
-    } else {
-      juice.select()
-      if (res.swapped) setNote('Swapped.')
-    }
+    juice.select()
+    if (res.swapped) setNote('Swapped.')
   }
 
-  // Tap a piece on the shelf: it goes where it belongs, or merges with the one
-  // already out. The planner decides; this only reports what happened.
+  // Tap open ground while carrying: stand it right there, clamped to its own
+  // mount's band. Selection is kept so a nudge can follow a nudge.
+  const dropAt = async (x: number, y: number) => {
+    if (!picked) return
+    juice.select()
+    await useRoom.getState().moveTo(picked, x, y)
+  }
+
+  // Grow or shrink the selected furnishing a step. Bounds live in the planner.
+  const resizePicked = async (delta: number) => {
+    if (!picked) return
+    const cur = unpackDecor(useRoom.getState().placements[picked]).s ?? 1
+    juice.tap()
+    await useRoom.getState().resize(picked, cur + delta)
+  }
+
+  // Tap a piece on the shelf: it goes where it belongs, or upgrades the one
+  // already out in place. The planner decides; this only reports what happened.
   const pickFurnishing = async (id: string) => {
     // Plan against the LIVE store, not the rendered snapshot. `placements` from
     // the hook is whatever the last render saw, and two taps inside one tick
@@ -135,10 +160,13 @@ export function RoomSection() {
     // free floor anchor twice and the second overwrote the first. Found by
     // driving the real app; it is invisible in the diff, and it is the one
     // thing the planner exists to make impossible.
-    const plan = planRoomPick(useRoom.getState().placements, id)
-    if (plan.kind === 'maxed') {
+    // The shelf offers the finest tier this life has earned; a lesser copy
+    // already out is upgraded where it stands.
+    const tier = Math.max(1, furnishingBestTier(id, roomProgress()))
+    const plan = planRoomPick(useRoom.getState().placements, id, tier)
+    if (plan.kind === 'already') {
       juice.select()
-      setNote('That’s already as fine as it gets — tap it in the room to move it.')
+      setNote('That’s already out — tap it in the room to move or resize it.')
       return
     }
     if (plan.kind === 'full') {
@@ -147,14 +175,14 @@ export function RoomSection() {
       setNote(`No room on the ${word} — take something down first.`)
       return
     }
-    const res = await useRoom.getState().place(plan.anchor, id)
+    const res = await useRoom.getState().place(plan.anchor, plan.value)
     if (res.failed) {
       setNote('That didn’t save. Try again in a moment.')
       return
     }
-    if (res.merged) {
+    if (plan.kind === 'upgrade') {
       juice.merge()
-      setMerged({ anchor: res.anchor, name: furnishingName(res.value) })
+      setMerged({ anchor: plan.anchor, name: furnishingName(plan.value) })
     } else {
       juice.select()
     }
@@ -252,7 +280,13 @@ export function RoomSection() {
           pet: me.pet,
           isMe: true,
         }]}
-        editing={{ picked, mergedAnchor: merged?.anchor ?? null, onPick: pickUp, onDrop: (a) => void dropOn(a) }}
+        editing={{
+          picked,
+          mergedAnchor: merged?.anchor ?? null,
+          onPick: pickUp,
+          onDrop: (a) => void dropOn(a),
+          onDropAt: (x, y) => void dropAt(x, y),
+        }}
         lampLit={lampLit}
         onTapSelf={() => { juice.tap(); setPrayerOffered(true) }}
         onArcade={() => { juice.select(); navigate('/arcade') }}
@@ -299,6 +333,22 @@ export function RoomSection() {
       )}
 
       <AnimatePresence>
+        {picked && (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', marginTop: 8 }}>
+            <span className="faint" style={{ fontSize: 12, fontWeight: 700 }}>
+              {furnishingName(useRoom.getState().placements[picked])}
+            </span>
+            <button onClick={() => void resizePicked(-0.1)} aria-label="Smaller" style={SIZE_BTN}>
+              −
+            </button>
+            <button onClick={() => void resizePicked(0.1)} aria-label="Bigger" style={SIZE_BTN}>
+              ＋
+            </button>
+            <button onClick={() => setPicked(null)} style={{ ...SIZE_BTN, width: 'auto', padding: '0 10px' }}>
+              Done
+            </button>
+          </div>
+        )}
         {merged && (
           <motion.p
             key="room-merge"
@@ -308,7 +358,7 @@ export function RoomSection() {
             className="center"
             style={{ margin: '8px 0 0', fontSize: 13, fontWeight: 800, color: 'var(--gold)' }}
           >
-            ✦ Two became one — that's a {merged.name} now.
+            ✦ Upgraded where it stands — that’s a {merged.name} now.
           </motion.p>
         )}
       </AnimatePresence>
@@ -337,9 +387,10 @@ export function RoomSection() {
       <div style={{ marginTop: 12 }}>
         <Collapsible icon="🪑" title="Furnish" meta={`${owned.length}/${FURNISHINGS.length} earned`}>
           <p className="faint" style={{ fontSize: 11.5, margin: '0 0 10px', lineHeight: 1.5 }}>
-            Tap a piece to put it in the room. Tap one you already have out and the two{' '}
-            <b style={{ color: 'var(--gold)' }}>merge</b> into something finer. Tap anything in the
-            room above to pick it up and move it — nothing you place can ever be lost.
+            Tap a piece to put it in the room — the finest version you've earned. Keep at it and
+            it <b style={{ color: 'var(--gold)' }}>upgrades</b> where it stands. Tap anything in the
+            room above to pick it up, then tap where it should go — or resize it. Nothing you place
+            can ever be lost.
           </p>
           <Shelf
             owned={owned}
@@ -388,8 +439,10 @@ function Shelf({
     <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))' }}>
       {FURNISHINGS.map((f) => {
         const has = owned.includes(f.id)
+        const best = furnishingBestTier(f.id, progress)
         const tier = roomPlacedTier(placements, f.id)
         const out = tier > 0
+        const next = nextFurnishingTierInfo(f.id, progress)
         return (
           <div
             key={f.id}
@@ -420,13 +473,11 @@ function Shelf({
                 <FurnishingThumb id={f.id} size={54} />
               </span>
               <span style={{ display: 'block', fontSize: 11, fontWeight: 800, marginTop: 4, lineHeight: 1.25 }}>
-                {out ? furnishingName(packDecor(f.id, tier)) : f.name}
+                {has ? furnishingName(packDecor(f.id, Math.max(tier, best, 1))) : f.name}
               </span>
               <span className="faint" style={{ display: 'block', fontSize: 10, marginTop: 2, lineHeight: 1.3 }}>
                 {has
-                  ? out
-                    ? 'In the room'
-                    : ROOM_MOUNT_WORD[f.mount]
+                  ? `${out ? 'In the room' : ROOM_MOUNT_WORD[f.mount]}${next ? ` · ${next.name} at ${next.goal.toLocaleString()}` : ''}`
                   : `🔒 ${REQUIREMENT_NOUN[f.req](f.goal)} (${Math.min(progress[f.req], f.goal).toLocaleString()}/${f.goal.toLocaleString()})`}
               </span>
             </button>

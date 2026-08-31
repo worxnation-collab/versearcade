@@ -6,6 +6,7 @@ import { ArcadeCabinetBox } from '@/features/arcade/ArcadeCabinet'
 import type { Plantings } from './yard'
 import type { Statues } from './rivalry'
 import type { ChurchMember } from '@/types'
+import { GENERATED_ART } from '@/data/generatedArt'
 
 // The church, pulled back far enough that you can see the people.
 //
@@ -100,6 +101,12 @@ export function ChurchScene({
    */
   onArcade?: () => void
 }) {
+  // The painted backdrop, layered OVER the drawn one rather than instead of it
+  // — the house rule every other render follows. The gradient below stays as
+  // the fallback, and the two pieces it supersedes (the sky and the grass) both
+  // ask this same question, so the scene is never half painted.
+  const backdrop = GENERATED_ART['churchyard']
+
   return (
     <div
       style={{
@@ -112,6 +119,28 @@ export function ChurchScene({
           'radial-gradient(120% 90% at 50% 8%, #35197a 0%, #1b0d43 55%, #120829 100%)',
       }}
     >
+      {/* The churchyard painting: sky, horizon treeline and lawn in one image,
+          under everything the scene draws on top of it. It deliberately carries
+          no building, no path, no stars and nobody standing on it — those are
+          all drawn above, and a painted one would sit under the real thing. */}
+      {backdrop && (
+        <img
+          src={backdrop}
+          alt=""
+          aria-hidden
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            // Nudged up so the painted horizon lands on GROUND rather than a
+            // few pixels below it, where the figures would stand in the sky.
+            objectPosition: 'center 42%',
+          }}
+        />
+      )}
+
       {/* A few stars, fixed so they don't twinkle differently on every render. */}
       {STARS.map((s, i) => (
         <span
@@ -128,18 +157,23 @@ export function ChurchScene({
         />
       ))}
 
-      {/* Grass. The building's own shadow ellipse sits right on this line. */}
-      <div
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: 0,
-          height: GROUND + 6,
-          background: 'linear-gradient(180deg, #24404a 0%, #16262f 100%)',
-          borderTop: '1px solid rgba(94,231,223,0.18)',
-        }}
-      />
+      {/* Grass. The building's own shadow ellipse sits right on this line.
+          Skipped when the painting is present, which carries its own lawn and
+          its own horizon — drawing this over it would cover the treeline with
+          a flat wash and put a second horizon line a few pixels off the first. */}
+      {!backdrop && (
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: GROUND + 6,
+            background: 'linear-gradient(180deg, #24404a 0%, #16262f 100%)',
+            borderTop: '1px solid rgba(94,231,223,0.18)',
+          }}
+        />
+      )}
       {/* The path up to the door — narrow at the church, wide at the viewer, so
           it reads as ground running away from you rather than a beam of light.
           It's what makes the figures look like they're standing *outside* the

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { AvatarSpec, ArmorSlot } from '@/types'
-import { skinHex, robeHex, hairHex, figureOf, equippedSkinId, skinArtUrl, ARMOR_ENABLED } from '@/data/avatar'
+import { skinHex, robeHex, hairHex, figureOf, equippedSkinId, skinArtUrl, isOverlaySkin, ARMOR_ENABLED } from '@/data/avatar'
 import { GENERATED_ART } from '@/data/generatedArt'
 
 // A composable character figure, drawn from an AvatarSpec. Two looks share one
@@ -236,6 +236,9 @@ export function Character({
   // after it, permanently, until the component remounted. A transient 404 while
   // a deploy propagates was enough to do it.
   const [failedSrc, setFailedSrc] = useState<string | null>(null)
+  // The overlay's own latch. Sharing failedSrc with the base figure would let
+  // two different missing files overwrite each other's latch and flip-flop.
+  const [crossFailed, setCrossFailed] = useState<string | null>(null)
   // The base character is ALSO raster now — the same Nano Banana pipeline as
   // the full-look skins, one render per (figure, tone, hair) combination in
   // the picker (art/starter.json). The lookup goes through GENERATED_ART, so
@@ -245,16 +248,35 @@ export function Character({
   // deliberately when the base went raster (same behaviour as equipping
   // Moses, where items also stop rendering). Equipped skins go through
   // skinArtUrl so the season catalog can serve their art (see data/avatar).
-  const starterRaster = !skinId
+  // An overlay skin — the carried cross — layers ONTO the player's character
+  // instead of replacing it, so the base look underneath stays whatever it
+  // would have been with nothing equipped. Resolving it through skinArtUrl
+  // would swap the whole figure out and throw away the tone and hair chosen at
+  // the front door, which is the one thing this skin exists not to do. See
+  // isOverlaySkin in data/avatar.
+  const overlaySkin = isOverlaySkin(skinId) ? skinId : undefined
+  const baseSkinId = overlaySkin ? undefined : skinId
+  const starterRaster = !baseSkinId
     ? GENERATED_ART[`starter_${fem ? 'fem' : 'masc'}_${spec.skin}_${spec.hair ?? 'espresso'}`]
     : undefined
-  const raster = skinId ? skinArtUrl(skinId) : starterRaster
+  const raster = baseSkinId ? skinArtUrl(baseSkinId) : starterRaster
+  // The cross prefers its own render and falls back to the drawn paths below —
+  // the same bargain generatedArt.ts makes everywhere else, so the batch can
+  // ship late and nothing breaks. Deliberately NOT keyed 'cross': that id
+  // resolves through skinArtUrl, and a render sitting there would be drawn as
+  // a whole replacement figure rather than as the beam.
+  const crossRaster = overlaySkin === 'cross' ? GENERATED_ART['cross_beam'] : undefined
+  const useCrossRaster = !!crossRaster && crossFailed !== crossRaster
   const useRaster = !!raster && failedSrc !== raster
   // Everywhere the player actually reads an avatar — chips, lists, the profile
   // header, the customise grid — a full-length figure in a small circle throws
   // away the face. Those get a portrait crop. The one place that stays
   // full-length is the large purchase preview, where the whole skin is the point.
-  const zoomRaster = useRaster && size < 120 && !fullBody
+  // An overlay is positioned against the WHOLE figure, so a portrait crop would
+  // zoom the character to the chest and leave the cross spanning a body that is
+  // no longer there. Chips wearing one keep the full figure, exactly as they did
+  // when this skin was drawn-only.
+  const zoomRaster = useRaster && size < 120 && !fullBody && !overlaySkin
 
   return (
     <svg
@@ -269,6 +291,52 @@ export function Character({
       {/* Ground shadow — skipped when a raster skin is framed as a portrait,
           since the figure is cropped at the waist and has no feet to cast one. */}
       {!zoomRaster && <ellipse cx="60" cy="162" rx="30" ry="5" fill="rgba(0,0,0,0.16)" />}
+
+      {/* Carried cross (Luke 9:23) — drawn BEHIND the player's own character,
+          angled over the shoulder, so the equipped look is "my character
+          carrying a cross" rather than a separate figure. It sits out here
+          rather than inside the drawn branch because the base look underneath
+          it is now usually the painted starter render.
+
+          The glow is drawn in figure coordinates either way; only the timber
+          swaps. The render is generated UPRIGHT (art/cross.json) and rotated
+          onto the same axis the drawn beam uses — (22,160) to (96,40), whose
+          midpoint is (59,100) and whose angle off vertical is 31.7 degrees —
+          so the two versions land in the same place and swapping one for the
+          other moves nothing. */}
+      {overlaySkin === 'cross' && (
+        <>
+          {/* glowing golden aura around the cross (bright, pulsing) */}
+          <g className="va-cross-glow">
+            <path d="M22 160 L96 40" stroke="#FFE7A0" strokeWidth="28" strokeLinecap="round" opacity="0.30" />
+            <path d="M69 46 L103 60" stroke="#FFE7A0" strokeWidth="25" strokeLinecap="round" opacity="0.30" />
+            <path d="M22 160 L96 40" stroke="#FFD23F" strokeWidth="19" strokeLinecap="round" opacity="0.48" />
+            <path d="M69 46 L103 60" stroke="#FFD23F" strokeWidth="17" strokeLinecap="round" opacity="0.48" />
+            <path d="M22 160 L96 40" stroke="#FFF6CE" strokeWidth="13" strokeLinecap="round" opacity="0.6" />
+            <path d="M69 46 L103 60" stroke="#FFF6CE" strokeWidth="11" strokeLinecap="round" opacity="0.6" />
+          </g>
+          {useCrossRaster ? (
+            <image
+              href={crossRaster}
+              x="15"
+              y="27"
+              width="88"
+              height="146"
+              transform="rotate(31.7 59 100)"
+              preserveAspectRatio="xMidYMid meet"
+              onError={() => setCrossFailed(crossRaster ?? null)}
+            />
+          ) : (
+            <>
+              {/* the cross itself */}
+              <path d="M22 160 L96 40" stroke={CROSS_WOOD} strokeWidth="11" strokeLinecap="round" />
+              <path d="M69 46 L103 60" stroke={CROSS_WOOD} strokeWidth="9" strokeLinecap="round" />
+              <path d="M27 156 L92 46" stroke={CROSS_GRAIN} strokeWidth="1.3" opacity="0.5" />
+              <path d="M71 49 L100 60" stroke={CROSS_GRAIN} strokeWidth="1.1" opacity="0.5" />
+            </>
+          )}
+        </>
+      )}
 
       {useRaster ? (
         <image
@@ -913,27 +981,6 @@ export function Character({
       ) : (
         <>
           {/* ── Default pilgrim + Armor of God ── */}
-          {/* Carried cross (Luke 9:23) — drawn BEHIND the player's own character,
-              angled over the shoulder, so the equipped look is "my character
-              carrying a cross" rather than a separate figure. */}
-          {skinId === 'cross' && (
-            <>
-              {/* glowing golden aura around the cross (bright, pulsing) */}
-              <g className="va-cross-glow">
-                <path d="M22 160 L96 40" stroke="#FFE7A0" strokeWidth="28" strokeLinecap="round" opacity="0.30" />
-                <path d="M69 46 L103 60" stroke="#FFE7A0" strokeWidth="25" strokeLinecap="round" opacity="0.30" />
-                <path d="M22 160 L96 40" stroke="#FFD23F" strokeWidth="19" strokeLinecap="round" opacity="0.48" />
-                <path d="M69 46 L103 60" stroke="#FFD23F" strokeWidth="17" strokeLinecap="round" opacity="0.48" />
-                <path d="M22 160 L96 40" stroke="#FFF6CE" strokeWidth="13" strokeLinecap="round" opacity="0.6" />
-                <path d="M69 46 L103 60" stroke="#FFF6CE" strokeWidth="11" strokeLinecap="round" opacity="0.6" />
-              </g>
-              {/* the cross itself */}
-              <path d="M22 160 L96 40" stroke={CROSS_WOOD} strokeWidth="11" strokeLinecap="round" />
-              <path d="M69 46 L103 60" stroke={CROSS_WOOD} strokeWidth="9" strokeLinecap="round" />
-              <path d="M27 156 L92 46" stroke={CROSS_GRAIN} strokeWidth="1.3" opacity="0.5" />
-              <path d="M71 49 L100 60" stroke={CROSS_GRAIN} strokeWidth="1.1" opacity="0.5" />
-            </>
-          )}
           {/* cape / cloak item — drawn behind the body */}
           {items.cape === 'item_cloak' && (
             <>

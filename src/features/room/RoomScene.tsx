@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { CrowdLife, type CrowdMember, type CrowdWaypoint } from '@/components/CrowdLife'
 import { ROOM_ANCHORS, roomAnchorById } from '@/data/room'
+import { unpackDecor } from '@/data/placement'
 import type { RoomPlacements } from '@/store/room'
 import { RoomChamber, FurnishingProp } from './RoomArt'
 import { ArcadeCabinet } from '@/features/arcade/ArcadeCabinet'
@@ -27,8 +28,31 @@ const WAYPOINTS: CrowdWaypoint[] = [
   { x: 76, b: 11 },
 ]
 
-/** Depth cue: further up the floor = smaller. b 5..17% -> 46..30px. */
-const sizeFor = (b: number) => Math.round(46 - ((Math.min(Math.max(b, 5), 17) - 5) / 12) * 16)
+/**
+ * Depth cue: further up the floor = smaller. b 5..17% -> 146..100px.
+ *
+ * MUCH bigger than the other worlds' figures, and deliberately so: this is the
+ * one scene that holds exactly ONE person. The hall, the churchyard and the
+ * road all draw a crowd, so a figure there is sized to leave room for the
+ * others and reads as one of many. A room only ever has its owner in it —
+ * RoomSection and RoomVisitSheet each pass a single member — so a
+ * crowd-sized figure just read as a doll in an outsized chamber.
+ *
+ * The numbers are measured against the painting rather than picked: the
+ * chamber's alcove stands about 59% of the scene's height and its low table
+ * about 14%, which puts a person at roughly half the frame. At the old 46px
+ * the owner was a twelfth of the room's height and shorter than the table
+ * they were standing next to.
+ *
+ * Landed by looking rather than by arithmetic alone — the figure now stands
+ * about 0.7 of the alcove's height, which reads as a person in a room without
+ * filling it. The pet follows automatically: CrowdLife draws it at a ratio of
+ * the figure, so a companion grows with its owner and needs nothing here.
+ *
+ * The postcard is unaffected. CrowdLife draws people as HTML over the scene
+ * rather than as SVG, so no figure has ever been serialised onto the card.
+ */
+const sizeFor = (b: number) => Math.round(146 - ((Math.min(Math.max(b, 5), 17) - 5) / 12) * 46)
 
 export function RoomScene({
   tier,
@@ -56,6 +80,12 @@ export function RoomScene({
     mergedAnchor?: string | null
     onPick: (anchor: string) => void
     onDrop: (anchor: string) => void
+    /**
+     * Tapping open ground while carrying: stand the piece at that exact point,
+     * clamped to its mount's band by the planner. Optional so a surface can
+     * offer anchor-only moving; the sheet passes it.
+     */
+    onDropAt?: (x: number, y: number) => void
   }
   onOpen?: () => void
   /**
@@ -97,6 +127,14 @@ export function RoomScene({
         viewBox="0 0 560 300"
         style={{ display: 'block', width: '100%', height: 'auto' }}
         data-room-scene=""
+        onClick={(e) => {
+          // Carrying + a tap on open ground = stand it right there. Pieces and
+          // targets stop propagation, so this only fires for the ground itself,
+          // and the planner clamps the point into the piece's own mount band.
+          if (!editing?.onDropAt || !picked) return
+          const r = e.currentTarget.getBoundingClientRect()
+          editing.onDropAt(((e.clientX - r.left) / r.width) * 560, ((e.clientY - r.top) / r.height) * 300)
+        }}
       >
         <RoomChamber tier={tier} flat={flat} />
 
@@ -107,6 +145,12 @@ export function RoomScene({
           const value = placements[a.id]
           if (!value) return null
           const lifted = picked === a.id
+          // A moved piece stands where its value says; an untouched one stands
+          // on its anchor, exactly as every placement written before free
+          // positioning existed still should.
+          const u = unpackDecor(value)
+          const px = u.x ?? a.x
+          const py = u.y ?? a.y
           // The spot that just absorbed a duplicate gives one pulse — the eye
           // needs telling where to look when the thing you tapped isn't the
           // thing that changed.
@@ -122,16 +166,23 @@ export function RoomScene({
                     : { scale: 1, y: 0 }
               }
               transition={{ duration: lifted ? 0.18 : 0.5 }}
-              style={{ transformOrigin: `${a.x}px ${a.y}px`, cursor: editing ? 'pointer' : undefined }}
+              style={{ transformOrigin: `${px}px ${py}px`, cursor: editing ? 'pointer' : undefined }}
               onClick={
                 editing
-                  ? () => (picked && picked !== a.id ? editing.onDrop(a.id) : editing.onPick(a.id))
+                  ? (e) => {
+                      // The svg behind this drops the carried piece at the tap
+                      // point; a tap ON a piece must not also be a tap on the
+                      // ground under it.
+                      e.stopPropagation()
+                      if (picked && picked !== a.id) editing.onDrop(a.id)
+                      else editing.onPick(a.id)
+                    }
                   : undefined
               }
             >
-              <FurnishingProp value={value} x={a.x} y={a.y} mount={a.mount} lit={lampLit} />
+              <FurnishingProp value={value} x={px} y={py} mount={a.mount} lit={lampLit} sizeScale={u.s ?? 1} />
               {lifted && (
-                <circle cx={a.x} cy={a.y} r="28" fill="none" stroke="var(--gold)" strokeWidth="2" strokeDasharray="5 5" opacity="0.9" />
+                <circle cx={px} cy={py} r="28" fill="none" stroke="var(--gold)" strokeWidth="2" strokeDasharray="5 5" opacity="0.9" />
               )}
             </motion.g>
           )
@@ -141,7 +192,14 @@ export function RoomScene({
             The constraint made visible, rather than an error after the fact. */}
         {editing && picked &&
           ROOM_ANCHORS.filter((a) => a.id !== picked && a.mount === pickedMount).map((a) => (
-            <g key={`t-${a.id}`} onClick={() => editing.onDrop(a.id)} style={{ cursor: 'pointer' }}>
+            <g
+              key={`t-${a.id}`}
+              onClick={(e) => {
+                e.stopPropagation()
+                editing.onDrop(a.id)
+              }}
+              style={{ cursor: 'pointer' }}
+            >
               {/* Generous invisible hit area — the visible ring is a 12px tap. */}
               <circle cx={a.x} cy={a.y} r="26" fill="transparent" />
               <circle

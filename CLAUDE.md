@@ -781,11 +781,25 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
+<<<<<<< HEAD
+The latest is `0083` (free placement + tiers as their own unlocks) and `0082`
+(six more churchyard plants) — both APPLIED to the live project on 2026-08-31,
+in that order, and verified: the fourteen flora ids answer, both placement
+regexes accept the new grammar and the legacy values, and every existing
+placement row still validates. They were numbered 0080/0081 in flight and
+renumbered at merge, because another branch landing the same week had taken
+those numbers — the scars paragraph below has the details. Before them,
+`0081` (first light — who opened the day's verse first) and `0080` (today /
+this week / all time on the church board), both also applied; then `0079`
+(a church claiming its own page) and `0078` (a
+church's ask for a sponsored slot) and `0077` (the slot itself). Before them, `0075` (the weekly church rivalry) and `0074` (the admin
+=======
 The latest is `0083` (the Study library's card); before it, `0082` (the
 Porchlight creator-collab skin), `0081` (first light — who opened the day's
 verse first), `0080` (today / this week / all time on the church board), `0079`
 (a church claiming its own page), `0078` (a church's ask for a sponsored slot)
 and `0077` (the slot itself). Before them, `0075` (the weekly church rivalry) and `0074` (the admin
+>>>>>>> origin/main
 dashboard's dates) — 0074 must be applied before
 the client that uses it merges, and that one is not optional: it DROPS the old
 `admin_overview()` / `admin_growth(boolean)` signatures to replace them with
@@ -803,12 +817,19 @@ one, take the day from `p_tz`, never from `current_date`.
 
 Numbering has scars: `0034` is used twice (`promo_codes`, `skin_purchases`),
 `0059` twice (`keep`, `practice_uncapped`) and `0074` twice (`admin_local_dates`,
+<<<<<<< HEAD
+`public_church_page`) — so the next free number is `0084`, not `0082`, and this
+=======
 `public_church_page`) — and `0081` twice (`first_light`, and the Study library's
 card, which was applied to production under that number and renumbered to
 `0083` in the tree when the two branches met) — so the next free number is
 `0084`, not `0083`, and this
+>>>>>>> origin/main
 sentence has already gone stale twice: it said "0076" while 0077, 0078 and 0079
-were sitting in the folder. `ls supabase/migrations | tail -1` is the answer;
+were sitting in the folder. `ls supabase/migrations | tail -1` is the answer — on ORIGIN/MAIN, not your
+working tree: two branches in flight both took 0080 and 0081, and git merged
+the four files silently because the names differed. The unmerged side was
+renumbered 0082/0083 at merge time, which is the only cheap moment to do it.
 this line is only a record of which numbers were burned twice. And
 `0038_focus_practice_xp.sql` is a re-add of a file that shipped as `0036` and was
 lost when PR #58 landed from a stale branch. Take the next free number and write
@@ -1131,32 +1152,49 @@ Each tier is a Nano Banana painting over that drawn fallback
 "bare" three times on purpose** — every hall is a room the player furnishes, so
 anything the generator hangs on the wall is a decoration nobody earned.
 
-### Duplicates merge
+### Tiers are their own unlocks (merging is gone)
 
-Putting a keep decoration out a second time doesn't stand two of it in the room
-— the two **merge** into one finer piece (plain → Fine → Grand, three tiers
-max), the spare anchor stays free, and a chime plays. `planPlacement`
-(`data/keep.ts`) is the only thing that decides what a duplicate means, so the
-guest path and the RPC path can't disagree; `store/keep.ts:place` just writes
-what the planner returned, and returns whether it was a merge so the sheet can
-chime and pulse the spot that actually changed.
+Fine and Grand used to be made by stacking duplicates. Since 0083 they are
+their own rungs on the same challenge ladders — the same counter at 2.5× and
+5× the base goal (`tierGoal` in `data/keep.ts`, `furnishingTierGoal` in
+`data/room.ts`) — so a finer piece is still earned by playing and ownership
+stays a pure function of the counters. The shelf offers the finest tier you
+have earned; if a lesser copy is already out, the tap upgrades it IN PLACE,
+keeping its position and size.
 
 Three things to know before touching it:
 
-- **A tier is a look, not a count.** That's what keeps it inside the hall's
-  "presence, not quantity" rule (`data/keep.ts` header): a Grand rug is not a
-  bigger rug, exactly as a skinned church is not a bigger church. Nothing is
-  spent and nothing is destroyed — ownership is still derived from the six
-  counters, so clearing a merged prop starts it again at plain.
-- **The tier rides on the placement value as a suffix** — `keep_woven_rug.2` —
-  which was the whole schema change (0060 relaxes one regex). Every row and
-  every `va.keep.*` blob written before merging existed still reads as tier 1,
-  and `my_keep`/`keep_json` pass the string through. `packDecor`/`unpackDecor`
-  are the only two places that know the format.
-- **Tapping a maxed decoration on its own anchor must be a no-op.** It used to
-  write a plain `decorId` there, which silently demoted a Grand piece back to
-  nothing — invisible in the diff, found by driving the real app. The planner
-  returns `noop` for it now.
+- **The wire format did not change, and that is what kept 0062 intact.** The
+  tier still rides the placement value as a suffix (`keep_woven_rug.3`), so
+  the church offering's gate — "placed at Grand", read off that suffix — needed
+  no migration, and every row written under the merge era still reads. Only how
+  a player REACHES a tier changed.
+- **A tier is a look, not a count**, still: nothing is spent, nothing granted,
+  clearing a Grand piece and re-placing it gives Grand back (you earned it).
+- **One copy per decoration.** The shelf refuses to stand a second copy;
+  `planPickOn` returns `already` where it used to merge.
+
+### Placement is free, inside a mount's band
+
+A placement value may carry a position and size: `keep_woven_rug.2~x412y188s120`
+(scene units; s is scale×100, clamped 0.7–1.4). The two halves are independent
+— `~s120` alone, `~x412y188` alone — and entangling them shipped for about a
+minute: a resize on a never-moved piece defaulted x/y to 0 and teleported the
+mat to the corner. Found by driving the real app; the grammar lives ONLY in
+`packDecor`/`unpackDecor` and is fuzzed against 0083's regexes.
+
+The ANCHOR became a row key, not a location: it still bounds rows per player
+and is still validated server-side, but a piece stands wherever its value says,
+falling back to its anchor when the value carries no position — which is what
+keeps every pre-0081 row rendering exactly where it always did. Free movement
+clamps into per-mount BANDS (`Surface.bands`), so "put it where you like"
+never becomes "hang the brazier from the ceiling". Resizing is deliberately
+bounded: a rug scaled to fill the hall stops being furniture.
+
+**0083 is applied** (2026-08-31, before the client merged — the order the
+Supabase section demands). It relaxes both value regexes (`set_keep_placement`,
+`set_room_placement`); against the 0060/0069 versions every reposition is
+rejected as 'bad decor'.
 
 ### The picker is a shelf of pictures
 
@@ -1164,10 +1202,9 @@ Both worlds are furnished the same way, and neither has a list of names any
 more: a grid of the actual objects, and **tapping one puts it where it
 belongs** — the first free anchor of its mount, or the first free plot.
 
-- **Tapping something already out MERGES it** a tier finer (`planPick` in
-  `data/keep.ts`). That is the whole "duplicates just become the better thing"
-  rule, with no second anchor to hunt down — the old flow made you find another
-  floor spot to make a Fine rug.
+- **Tapping something already out at a lesser tier UPGRADES it in place**
+  (`planPick` with the best owned tier). Already out at that tier → the tap is
+  refused with a note, never a duplicate.
 - **A full mount refuses and says so.** It never overwrites, because the hall's
   rule is that nothing you placed silently disappears.
 - **The ✕ on a placed tile is the only way to clear one**, now that the
@@ -1179,20 +1216,20 @@ mount because props are drawn around their GROUND POINT rather than centred — 
 banner hangs down from it, a wall piece straddles it, a rug sits on it, and one
 box for all three crops two of them.
 
-### Anything placed can be moved
+### Anything placed can be moved, anywhere in its band — and resized
 
-Tap a piece to lift it, tap a spot to set it down — no drag, because the hall is
-a 300-unit viewBox inside a scrolling sheet and a drag there fights the scroll.
-`planMove` (`data/keep.ts`) is the choke point and the churchyard copies its
-rules exactly: a piece only lands on an anchor of **its own mount** (the targets
-drawn while carrying are that constraint made visible), an empty target takes
-it, the **same** decoration merges, and anything else **trades places**. Nothing
-is ever overwritten — "I dropped it on the wrong spot and my tapestry vanished"
-is the one way this can genuinely hurt.
+Tap a piece to lift it, then tap an anchor target (trades places, never
+overwrites) or ANY open ground (stands it at that exact point, clamped to its
+mount's band; the piece stays selected so a nudge can follow a nudge). While
+selected, a small bar under the scene resizes it in 0.1 steps. `planMoveOn`,
+`planMoveToPointOn` and `planResizeOn` in `data/placement.ts` are the choke
+points and the room copies them exactly. No drag, still: the halls are
+viewBoxes inside scrolling sheets, and a drag there fights the scroll. Nothing
+is ever overwritten.
 
 ### A Grand piece can be given to your church
 
-A decoration merged to the top has nowhere left to go, so it can be offered:
+A decoration at Grand has nowhere finer to go, so it can be offered:
 the Grand one leaves the hall, the church banks the points, and the player keeps
 the plain decoration (the counters never moved). Once ever per decoration.
 

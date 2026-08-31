@@ -10,16 +10,20 @@ import { denominationColor, denominationName } from '@/data/denominations'
 import {
   DECOR,
   anchorsHolding,
+  bestOwnedTier,
   decorName,
   keepLevelForWins,
   keepLevelName,
   keepTier,
   offerValue,
   offerableAnchors,
+  nextTierInfo,
   packDecor,
   placedTier,
   planPick,
+  unpackDecor,
   winsForTier,
+  type KeepCounters,
 } from '@/data/keep'
 import { useChurch } from '@/store/church'
 import { DecorThumb } from './KeepArt'
@@ -39,6 +43,18 @@ import { KeepScene } from './KeepScene'
 // ChurchDetailSheet / BookOpening family of bug). z-index 100 is the sheet
 // tier: the player card (110) opens OVER this when you tap a figure.
 
+const SIZE_BTN: React.CSSProperties = {
+  width: 32,
+  height: 32,
+  borderRadius: 10,
+  border: '1px solid var(--stroke)',
+  background: 'rgba(255,255,255,0.06)',
+  color: 'var(--ink)',
+  fontSize: 16,
+  fontWeight: 800,
+  cursor: 'pointer',
+}
+
 export function KeepSheet({
   denomination,
   onClose,
@@ -52,7 +68,7 @@ export function KeepSheet({
   const me = useAuth((s) => s.profile)
   const keep = useKeep()
   const [faction, setFaction] = useState<FactionKeep | null>(null)
-  // The last merge, so the hall can flash the spot that absorbed it and say in
+  // The last upgrade, so the hall can flash the spot that got finer and say in
   // words what just happened. Tapping a second rug and watching a DIFFERENT
   // corner of the room change is the one confusing moment in the mechanic.
   const [merged, setMerged] = useState<{ anchor: string; name: string } | null>(null)
@@ -98,33 +114,49 @@ export function KeepSheet({
   }
 
   // Tap a spot while carrying: move it there. An occupied spot trades places
-  // rather than overwriting, and the same decoration merges (see planMove).
+  // rather than overwriting (see planMove).
   const dropOn = async (anchor: string) => {
     const from = picked
     if (!from) return
     setPicked(null)
     const res = await useKeep.getState().move(from, anchor)
     if (!res) return
-    if (res.merged) {
-      juice.merge()
-      setMerged({ anchor: res.anchor, name: decorName(useKeep.getState().placements[res.anchor]) })
-    } else {
-      juice.select()
-      if (res.swapped) setNote('Swapped.')
-    }
+    juice.select()
+    if (res.swapped) setNote('Swapped.')
   }
 
-  // Tap a piece on the shelf: it goes where it belongs, or merges with the one
-  // already out. The planner decides; this only reports what happened.
+  // Tap open ground while carrying: stand it right there. The planner clamps
+  // the point into the piece's own mount band, and the piece stays selected so
+  // a nudge can follow a nudge.
+  const dropAt = async (x: number, y: number) => {
+    if (!picked) return
+    juice.select()
+    await useKeep.getState().moveTo(picked, x, y)
+  }
+
+  // Grow or shrink the selected piece a step. Bounds live in the planner.
+  const resizePicked = async (delta: number) => {
+    if (!picked) return
+    const cur = unpackDecor(useKeep.getState().placements[picked]).s ?? 1
+    juice.tap()
+    await useKeep.getState().resize(picked, cur + delta)
+  }
+
+  // Tap a piece on the shelf: it goes where it belongs, or upgrades the one
+  // already out in place. The planner decides; this only reports what happened.
   const pickDecor = async (decorId: string) => {
     // The LIVE store, not the rendered snapshot: `keep.placements` is whatever
     // the last render saw, so two taps inside one tick both plan against the
     // same state and the second can land on an anchor the first just filled.
     // Same fix, same reason, as RoomSection.pickFurnishing.
-    const plan = planPick(useKeep.getState().placements, decorId)
-    if (plan.kind === 'maxed') {
+    // The shelf offers the finest tier the counters have earned; if a lesser
+    // copy is already out, the tap upgrades it where it stands.
+    const counters = useKeep.getState().counters
+    const tier = Math.max(1, bestOwnedTier(decorId, counters))
+    const plan = planPick(useKeep.getState().placements, decorId, tier)
+    if (plan.kind === 'already') {
       juice.select()
-      setNote(`That's already as fine as it gets — tap it in the hall to move it.`)
+      setNote('That’s already out — tap it in the hall to move or resize it.')
       return
     }
     if (plan.kind === 'full') {
@@ -132,14 +164,14 @@ export function KeepSheet({
       setNote(`No room on the ${MOUNT_WORD[plan.mount].toLowerCase()} — take something down first.`)
       return
     }
-    const res = await useKeep.getState().place(plan.anchor, decorId)
+    const res = await useKeep.getState().place(plan.anchor, plan.value)
     if (res.failed) {
       setNote('That didn’t save. Try again in a moment.')
       return
     }
-    if (res.merged) {
+    if (plan.kind === 'upgrade') {
       juice.merge()
-      setMerged({ anchor: res.anchor, name: decorName(res.value) })
+      setMerged({ anchor: plan.anchor, name: decorName(plan.value) })
     } else {
       juice.select()
     }
@@ -261,7 +293,13 @@ export function KeepSheet({
             members={lifeMembers}
             editing={
               ownHall
-                ? { picked, mergedAnchor: merged?.anchor ?? null, onPick: pickUp, onDrop: (a) => void dropOn(a) }
+                ? {
+                    picked,
+                    mergedAnchor: merged?.anchor ?? null,
+                    onPick: pickUp,
+                    onDrop: (a) => void dropOn(a),
+                    onDropAt: (x, y) => void dropAt(x, y),
+                  }
                 : undefined
             }
             // The machine belongs to YOUR hall, so it appears on the same
@@ -271,6 +309,24 @@ export function KeepSheet({
           />
 
           <AnimatePresence>
+            {picked && (
+              <div
+                style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', marginTop: 8 }}
+              >
+                <span className="faint" style={{ fontSize: 12, fontWeight: 700 }}>
+                  {decorName(keep.placements[picked])}
+                </span>
+                <button onClick={() => void resizePicked(-0.1)} aria-label="Smaller" style={SIZE_BTN}>
+                  −
+                </button>
+                <button onClick={() => void resizePicked(0.1)} aria-label="Bigger" style={SIZE_BTN}>
+                  ＋
+                </button>
+                <button onClick={() => setPicked(null)} style={{ ...SIZE_BTN, width: 'auto', padding: '0 10px' }}>
+                  Done
+                </button>
+              </div>
+            )}
             {merged && (
               <motion.p
                 key="merge-flash"
@@ -280,7 +336,7 @@ export function KeepSheet({
                 className="center"
                 style={{ margin: '8px 0 0', fontSize: 13, fontWeight: 800, color: 'var(--gold)' }}
               >
-                ✦ Two became one — that's a {merged.name} now.
+                ✦ Upgraded where it stands — that's a {merged.name} now.
               </motion.p>
             )}
           </AnimatePresence>
@@ -319,18 +375,20 @@ export function KeepSheet({
               of everyone's. Nothing here writes shared faction state.
 
               A shelf of pictures, not a list of names: you tap the thing you
-              want and it goes where it belongs. Tapping one you already have
-              out merges it a tier finer, so "duplicates become the better
-              thing" needs no second anchor hunted down. */}
+              want and it goes where it belongs, at the finest tier your
+              counters have earned. Fine and Grand are their own unlocks on the
+              same ladders now — nothing merges, nothing stacks. */}
           {ownHall && (
             <div style={{ marginTop: 12 }}>
               <Collapsible icon="🛋️" title="Decorate" meta={`${keep.owned().length}/${DECOR.length} earned`}>
                 <p className="faint" style={{ fontSize: 11.5, margin: '0 0 10px', lineHeight: 1.5 }}>
-                  Tap a piece to put it in the hall. Tap one you already have out and the two{' '}
-                  <b style={{ color: 'var(--gold)' }}>merge</b> into something finer. Tap anything in
-                  the room above to pick it up and move it. Members each furnish their own view.
+                  Tap a piece to put it in the hall — the finest version you've earned. Keep
+                  playing and it <b style={{ color: 'var(--gold)' }}>upgrades</b> where it stands.
+                  Tap anything in the hall to pick it up, then tap where it should go — or resize
+                  it. Members each furnish their own view.
                 </p>
                 <Shelf
+                  counters={keep.counters}
                   owned={keep.owned()}
                   placements={keep.placements}
                   onPick={(id) => void pickDecor(id)}
@@ -392,9 +450,9 @@ function Offerings({
     <div style={{ marginTop: 12 }}>
       <Collapsible icon="🕯️" title="Give to your church" meta={`${grand.length} ready`}>
         <p className="faint" style={{ fontSize: 11.5, margin: '0 0 10px', lineHeight: 1.5 }}>
-          A piece merged all the way to Grand has nowhere left to go. Give it and your church banks
-          the points — the Grand one leaves the hall and you keep the plain one, because you never
-          stopped owning it. Once each, and it doesn't touch your own XP or rank.
+          A Grand piece has nowhere finer to go. Give it and your church banks the points — the
+          Grand one leaves the hall and you keep the plain one, because you never stopped owning
+          it. Once each, and it doesn't touch your own XP or rank.
         </p>
         {churchName ? (
           <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
@@ -456,11 +514,13 @@ function Offerings({
  * the tile rather than hidden behind a long-press.
  */
 function Shelf({
+  counters,
   owned,
   placements,
   onPick,
   onClear,
 }: {
+  counters: KeepCounters
   owned: string[]
   placements: Placements
   onPick: (id: string) => void
@@ -470,8 +530,10 @@ function Shelf({
     <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))' }}>
       {DECOR.map((d) => {
         const has = owned.includes(d.id)
+        const best = bestOwnedTier(d.id, counters)
         const tier = placedTier(placements, d.id)
         const out = tier > 0
+        const next = nextTierInfo(d.id, counters)
         return (
           <div
             key={d.id}
@@ -502,10 +564,12 @@ function Shelf({
                 <DecorThumb id={d.id} size={54} />
               </span>
               <span style={{ display: 'block', fontSize: 11, fontWeight: 800, marginTop: 4, lineHeight: 1.25 }}>
-                {out ? decorName(packDecor(d.id, tier)) : d.name}
+                {decorName(packDecor(d.id, Math.max(tier, best, 1)))}
               </span>
               <span className="faint" style={{ display: 'block', fontSize: 10, marginTop: 2 }}>
-                {has ? (out ? 'In the hall' : MOUNT_WORD[d.mount]) : '🔒 Locked'}
+                {has
+                  ? `${out ? 'In the hall' : MOUNT_WORD[d.mount]}${next ? ` · ${next.name} at ${next.goal}` : ''}`
+                  : '🔒 Locked'}
               </span>
             </button>
             {out && (

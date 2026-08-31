@@ -34,6 +34,15 @@ const BLOOM_CORAL = '#ef6f5a'
 const BLOOM_CREAM = '#f6efd8'
 const BLOOM_PINK = '#f0a7c4'
 const IRON = '#5d6472'
+// Added with the second six plants. Lilac carries at 20px against the teal
+// grass the way the golds and corals do; the silver-green is the olive's, kept
+// distinct from LEAF so a sapling does not read as a small shrub; the stone
+// matches the statues so a birdbath and a plinth look quarried together.
+const BLOOM_LILAC = '#b48ce0'
+const BLOOM_LILAC_DARK = '#8c66b8'
+const LEAF_SILVER = '#8fae8a'
+const STONE = '#cfc4ad'
+const STONE_DARK = '#a89a80'
 const FLAME = '#ffd23f'
 
 /** One planted plot, drawn around its ground point at (20,48). */
@@ -147,6 +156,77 @@ const PLANTS: Record<string, JSX.Element> = {
         <circle cx="21" cy="7" r="1.2" />
         <circle cx="26" cy="23" r="1.1" />
       </g>
+    </g>
+  ),
+  // ── The second six ────────────────────────────────────────────────────────
+  // Drawn as well as rendered, like the first eight. A plant that existed only
+  // as a PNG would vanish from its plot the moment the file 404'd — and the
+  // dev guard below is what caught these going in raster-only.
+  yard_ivy: (
+    <g>
+      <ellipse cx="20" cy="46" rx="17" ry="3.4" fill={SOIL} />
+      <path d="M20 45 q-8 -3 -14 -8 M20 45 q8 -3 14 -8 M20 45 q-2 -8 -1 -13" stroke={STEM} strokeWidth="1.6" fill="none" strokeLinecap="round" />
+      <circle cx="6" cy="37" r="3.4" fill={LEAF_DARK} />
+      <circle cx="12" cy="41" r="3" fill={LEAF} />
+      <circle cx="34" cy="37" r="3.4" fill={LEAF_DARK} />
+      <circle cx="28" cy="41" r="3" fill={LEAF} />
+      <circle cx="19" cy="32" r="3.2" fill={LEAF} />
+      <circle cx="22" cy="38" r="2.8" fill={LEAF_DARK} />
+    </g>
+  ),
+  yard_lavender: (
+    <g>
+      <ellipse cx="20" cy="46" rx="15" ry="3.4" fill={SOIL} />
+      <path d="M9 45 v-9 M14 45 v-12 M20 45 v-14 M26 45 v-12 M31 45 v-9" stroke={LEAF_SILVER} strokeWidth="1.7" strokeLinecap="round" />
+      <rect x="7.4" y="26" width="3.2" height="11" rx="1.6" fill={BLOOM_LILAC_DARK} />
+      <rect x="12.4" y="22" width="3.2" height="12" rx="1.6" fill={BLOOM_LILAC} />
+      <rect x="18.4" y="19" width="3.2" height="13" rx="1.6" fill={BLOOM_LILAC} />
+      <rect x="24.4" y="22" width="3.2" height="12" rx="1.6" fill={BLOOM_LILAC} />
+      <rect x="29.4" y="26" width="3.2" height="11" rx="1.6" fill={BLOOM_LILAC_DARK} />
+    </g>
+  ),
+  yard_olive: (
+    <g>
+      <ellipse cx="20" cy="46" rx="9" ry="3" fill={SOIL} />
+      <path d="M20 45 v-19" stroke={BARK} strokeWidth="3.4" strokeLinecap="round" />
+      <path d="M20 30 l-6 -5 M20 27 l6 -6 M20 34 l-5 -4" stroke={BARK_DARK} strokeWidth="1.6" strokeLinecap="round" />
+      <ellipse cx="13" cy="22" rx="6" ry="4.2" fill={LEAF_SILVER} />
+      <ellipse cx="27" cy="19" rx="6.4" ry="4.4" fill={LEAF_SILVER} />
+      <ellipse cx="20" cy="14" rx="7" ry="4.6" fill={LEAF} />
+      <ellipse cx="20" cy="21" rx="5.4" ry="3.8" fill={LEAF_DARK} />
+    </g>
+  ),
+  yard_bench: (
+    <g>
+      <rect x="3" y="42" width="3.4" height="5" rx="1.2" fill={IRON} />
+      <rect x="33.6" y="42" width="3.4" height="5" rx="1.2" fill={IRON} />
+      <rect x="4" y="36" width="32" height="3.4" rx="1.6" fill={BARK} />
+      <rect x="4" y="30" width="32" height="2.8" rx="1.4" fill={BARK_DARK} />
+      <rect x="4" y="25" width="32" height="2.8" rx="1.4" fill={BARK} />
+      <rect x="4.5" y="24" width="2.6" height="14" rx="1.2" fill={IRON} />
+      <rect x="32.9" y="24" width="2.6" height="14" rx="1.2" fill={IRON} />
+    </g>
+  ),
+  yard_birdbath: (
+    <g>
+      <ellipse cx="20" cy="46" rx="11" ry="3.2" fill={SOIL} />
+      <rect x="13" y="41" width="14" height="4.4" rx="1.4" fill={STONE_DARK} />
+      <rect x="17.2" y="24" width="5.6" height="18" rx="2" fill={STONE} />
+      <ellipse cx="20" cy="23" rx="12" ry="4.4" fill={STONE} />
+      <ellipse cx="20" cy="21.6" rx="8.6" ry="2.8" fill={STONE_DARK} />
+      <path d="M11 44 q3 -2 5 0" stroke={LEAF_DARK} strokeWidth="1.6" fill="none" strokeLinecap="round" />
+    </g>
+  ),
+  yard_wisteria: (
+    <g>
+      <ellipse cx="20" cy="46" rx="12" ry="3.2" fill={SOIL} />
+      <rect x="5" y="14" width="2.6" height="31" rx="1.2" fill={BARK_DARK} />
+      <rect x="32.4" y="14" width="2.6" height="31" rx="1.2" fill={BARK_DARK} />
+      <rect x="4" y="12" width="32" height="2.8" rx="1.4" fill={BARK} />
+      <path d="M20 45 q-3 -16 -8 -30" stroke={BARK} strokeWidth="2.4" fill="none" strokeLinecap="round" />
+      <path d="M10 16 v10 M16 16 v13 M23 16 v11 M30 16 v9" stroke={BLOOM_LILAC} strokeWidth="4" strokeLinecap="round" />
+      <path d="M13 16 v7 M27 16 v8" stroke={BLOOM_LILAC_DARK} strokeWidth="3.4" strokeLinecap="round" />
+      <path d="M8 18 q5 2 10 0" stroke={LEAF} strokeWidth="1.6" fill="none" strokeLinecap="round" />
     </g>
   ),
 }

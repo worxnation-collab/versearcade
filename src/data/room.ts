@@ -32,7 +32,9 @@ import {
   anchorsHoldingOn,
   placedTierOn,
   planMoveOn,
+  planMoveToPointOn,
   planPickOn,
+  planResizeOn,
   planPlacementOn,
   unpackDecor,
   type MovePlan,
@@ -228,6 +230,17 @@ export function levelForTier(tier: number): number | null {
 export const ROOM_SURFACE: Surface = {
   anchors: ROOM_ANCHORS,
   mountOf: (id) => furnishingById(id)?.mount,
+  // Where each mount's pieces may stand when moved freely, in the room's
+  // 560x300 units. The back-wall fixtures own three bands that must not touch
+  // (shelf, window, alcove — see the header scars), and these respect them.
+  bands: {
+    shelf: { x0: 120, y0: 114, x1: 208, y1: 124 },
+    wall: { x0: 225, y0: 78, x1: 385, y1: 112 },
+    sill: { x0: 418, y0: 142, x1: 448, y1: 150 },
+    table: { x0: 268, y0: 204, x1: 352, y1: 214 },
+    floor: { x0: 70, y0: 246, x1: 520, y1: 292 },
+    nook: { x0: 485, y0: 238, x1: 528, y1: 250 },
+  },
 }
 
 export const MAX_ROOM_TIER = MAX_TIER
@@ -252,8 +265,50 @@ export function planRoomMove(placements: PlacementMap, from: string, to: string)
   return planMoveOn(ROOM_SURFACE, placements, from, to)
 }
 
-export function planRoomPick(placements: PlacementMap, id: string): PickOutcome {
-  return planPickOn(ROOM_SURFACE, placements, id)
+/** Move a placed furnishing to a free point inside its own mount's band. */
+export function planRoomMoveToPoint(placements: PlacementMap, from: string, x: number, y: number): MovePlan | null {
+  return planMoveToPointOn(ROOM_SURFACE, placements, from, x, y)
+}
+
+export function planRoomResize(placements: PlacementMap, anchor: string, scale: number): MovePlan | null {
+  return planResizeOn(placements, anchor, scale)
+}
+
+export function planRoomPick(placements: PlacementMap, id: string, tier = 1): PickOutcome {
+  return planPickOn(ROOM_SURFACE, placements, id, tier)
+}
+
+// Fine and Grand are their own unlocks now, on the same requirement each
+// furnishing already had — same counter-shape as the keep (2.5x and 5x the
+// goal), so the reed mat's Grand is 5 plays and the cedar chest's is level 150…
+// which is deliberate: the top of this ladder is a long life in the app.
+
+const ROOM_TIER_MULT = [1, 2.5, 5] as const
+
+export function furnishingTierGoal(base: number, tier: number): number {
+  return Math.ceil(base * (ROOM_TIER_MULT[Math.min(MAX_TIER, Math.max(1, tier)) - 1] ?? 1))
+}
+
+/** The finest tier of a furnishing this progress has earned, or 0. */
+export function furnishingBestTier(id: string, p: Record<RoomRequirement, number>): number {
+  const f = furnishingById(id)
+  if (!f) return 0
+  for (let t = MAX_TIER; t >= 1; t--) {
+    if ((p[f.req] ?? 0) >= furnishingTierGoal(f.goal, t)) return t
+  }
+  return 0
+}
+
+/** The next tier this progress has not reached yet, for the shelf's one line. */
+export function nextFurnishingTierInfo(
+  id: string,
+  p: Record<RoomRequirement, number>,
+): { name: string; goal: number; have: number } | null {
+  const f = furnishingById(id)
+  if (!f) return null
+  const best = furnishingBestTier(id, p)
+  if (best === 0 || best >= MAX_TIER) return null
+  return { name: TIER_PREFIX[best].trim(), goal: furnishingTierGoal(f.goal, best + 1), have: p[f.req] ?? 0 }
 }
 
 export function roomAnchorsHolding(placements: PlacementMap, id: string): string[] {

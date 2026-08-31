@@ -1218,14 +1218,61 @@ box for all three crops two of them.
 
 ### Anything placed can be moved, anywhere in its band — and resized
 
-Tap a piece to lift it, then tap an anchor target (trades places, never
-overwrites) or ANY open ground (stands it at that exact point, clamped to its
-mount's band; the piece stays selected so a nudge can follow a nudge). While
-selected, a small bar under the scene resizes it in 0.1 steps. `planMoveOn`,
-`planMoveToPointOn` and `planResizeOn` in `data/placement.ts` are the choke
-points and the room copies them exactly. No drag, still: the halls are
-viewBoxes inside scrolling sheets, and a drag there fights the scroll. Nothing
-is ever overwritten.
+Tap a piece to lift it, then **drag it wherever you like**, or tap an anchor
+target (trades places, never overwrites) or ANY open ground (stands it at that
+exact point, clamped to its mount's band; the piece stays selected so a nudge
+can follow a nudge). While selected, a small bar under the scene resizes it in
+0.1 steps. `planMoveOn`, `planMoveToPointOn` and `planResizeOn` in
+`data/placement.ts` are the choke points and the room copies them exactly.
+Nothing is ever overwritten.
+
+**Dragging is only ever available on the piece you have already LIFTED, and that
+is the whole reason it is safe.** These halls are 300-unit viewBoxes inside
+scrolling surfaces, and for a long time that ruled dragging out entirely — a
+grab anywhere on the picture fights the scroll. Selecting first is what makes
+the two gestures separable: one tap says which object you are holding, and only
+that object's pointer stream is taken. Every other pixel of every scene — the
+floor, the walls, an unselected piece — still scrolls exactly as before, and
+tapping is untouched (a drag inside a 4px slop radius is still a tap).
+
+`lib/sceneDrag.ts` is the one copy of the mechanics, bound by both scenes. Three
+things in it were learned by driving the real app and are invisible in a diff:
+
+- **`touch-action: none` does NOT work on an SVG child** — it was set, read back
+  empty, and the page scrolled out from under the piece. What actually cancels
+  the scroll is a hand-registered NON-PASSIVE `touchmove` listener on the
+  scene's `<svg>` that preventDefaults only while a drag is in flight (React
+  attaches its own touch listeners passively, so it can't be done through JSX).
+  Putting `touch-action` on the wrapper instead would kill scrolling over the
+  whole picture for as long as anything is selected.
+- **A finished drag fires a click**, which would otherwise read as "tap the
+  piece" and put down what you just dragged. `consumeClick()` latches that one
+  click; a drag that never left the slop radius does not latch it, so a tap
+  still toggles.
+- **The commit is one write, on release** (through `onDropAt`, the same planner
+  the tap path uses). The position mid-drag is local preview state — writing on
+  every pointer move would be an RPC per frame.
+
+### The ✕ on a lifted piece takes it back out
+
+A selected piece wears a small ✕ on its ring (`components/SceneRemoveBadge`),
+and it clears that one placement. The shelf tile's ✕ still exists and still
+clears every copy; this one is for the thought you have while looking at the
+room, rather than making you find the piece again in a grid of eighteen.
+
+Two things about it are load-bearing. It is drawn as the scene's LAST layer,
+NOT inside the piece's own `<g>` — the move targets are drawn after the pieces,
+so a ✕ inside the group sat under the target ring of the next spot along and
+tapping it moved the piece there instead of removing it. And it marks itself
+`data-scene-edit`, which `lib/postcard.ts` strips along with the dashed rings:
+a ✕ on a picture somebody sends is a stray dark blob, and its `var(--gold)`
+doesn't resolve in a detached document anyway.
+
+Nothing is lost by it, which is why it can be one tap with no confirmation:
+ownership is derived from lifetime counters that only go up, so a piece taken
+out is back on the shelf at the same tier before the note fades. In a FACTION
+hall the placements are a blend, so the ✕ refuses somebody else's piece and says
+so rather than reporting a removal that didn't happen.
 
 ### A Grand piece can be given to your church
 

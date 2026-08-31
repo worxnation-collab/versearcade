@@ -1,7 +1,9 @@
 import { motion } from 'framer-motion'
 import { CrowdLife, type CrowdMember, type CrowdWaypoint } from '@/components/CrowdLife'
-import { ROOM_ANCHORS, roomAnchorById } from '@/data/room'
+import { SceneRemoveBadge } from '@/components/SceneRemoveBadge'
+import { ROOM_ANCHORS, ROOM_SURFACE, roomAnchorById, furnishingName } from '@/data/room'
 import { unpackDecor } from '@/data/placement'
+import { useSceneDrag } from '@/lib/sceneDrag'
 import type { RoomPlacements } from '@/store/room'
 import { RoomChamber, FurnishingProp } from './RoomArt'
 import { ArcadeCabinet } from '@/features/arcade/ArcadeCabinet'
@@ -81,11 +83,14 @@ export function RoomScene({
     onPick: (anchor: string) => void
     onDrop: (anchor: string) => void
     /**
-     * Tapping open ground while carrying: stand the piece at that exact point,
-     * clamped to its mount's band by the planner. Optional so a surface can
-     * offer anchor-only moving; the sheet passes it.
+     * Tapping open ground while carrying — and, since dragging landed, where a
+     * dragged piece is set down: stand it at that exact point, clamped to its
+     * mount's band by the planner. Optional so a surface can offer anchor-only
+     * moving; passing it is also what turns dragging on.
      */
     onDropAt?: (x: number, y: number) => void
+    /** Take the lifted piece back out of the room — the ✕ on its ring. */
+    onRemove?: (anchor: string) => void
   }
   onOpen?: () => void
   /**
@@ -110,7 +115,26 @@ export function RoomScene({
   lampLit?: boolean
 }) {
   const picked = editing?.picked ?? null
-  const pickedMount = picked ? roomAnchorById(picked)?.mount : undefined
+  const pickedAnchor = picked ? roomAnchorById(picked) : undefined
+  const pickedMount = pickedAnchor?.mount
+
+  // Drag the piece you are holding. Only the lifted one moves this way, which
+  // is what keeps the gesture from fighting the page's own scroll — see
+  // lib/sceneDrag.ts. Tapping still does everything it did.
+  const drag = useSceneDrag({
+    surface: ROOM_SURFACE,
+    picked,
+    enabled: !!editing?.onDropAt,
+    onCommit: (_anchor, x, y) => editing?.onDropAt?.(x, y),
+  })
+
+  // Where the lifted piece is standing, for the ✕ that hangs off its ring. It
+  // is drawn as the scene's LAST layer rather than inside the piece's own <g>,
+  // because the move targets are drawn after the pieces: a ✕ inside the group
+  // sat under the target ring of the next spot along, and tapping it moved the
+  // piece there instead of taking it out. Found by driving the real app.
+  const pickedValue = picked ? placements[picked] : undefined
+  const pickedPos = pickedAnchor && pickedValue ? unpackDecor(pickedValue) : undefined
 
   return (
     <div
@@ -124,6 +148,7 @@ export function RoomScene({
       onClick={onOpen}
     >
       <svg
+        ref={drag.sceneRef}
         viewBox="0 0 560 300"
         style={{ display: 'block', width: '100%', height: 'auto' }}
         data-room-scene=""
@@ -145,12 +170,15 @@ export function RoomScene({
           const value = placements[a.id]
           if (!value) return null
           const lifted = picked === a.id
-          // A moved piece stands where its value says; an untouched one stands
-          // on its anchor, exactly as every placement written before free
-          // positioning existed still should.
           const u = unpackDecor(value)
-          const px = u.x ?? a.x
-          const py = u.y ?? a.y
+          // Mid-drag the piece follows the finger; otherwise a moved piece
+          // stands where its value says and an untouched one stands on its
+          // anchor, exactly as every placement written before free positioning
+          // existed still should.
+          const at = drag.live?.anchor === a.id ? drag.live : null
+          const px = at?.x ?? u.x ?? a.x
+          const py = at?.y ?? u.y ?? a.y
+          const dragging = !!at
           // The spot that just absorbed a duplicate gives one pulse — the eye
           // needs telling where to look when the thing you tapped isn't the
           // thing that changed.
@@ -162,11 +190,16 @@ export function RoomScene({
                 editing?.mergedAnchor === a.id
                   ? { scale: [1, 1.22, 1], y: 0 }
                   : lifted
-                    ? { scale: 1.08, y: -6 }
+                    ? { scale: 1.08, y: dragging ? 0 : -6 }
                     : { scale: 1, y: 0 }
               }
-              transition={{ duration: lifted ? 0.18 : 0.5 }}
-              style={{ transformOrigin: `${px}px ${py}px`, cursor: editing ? 'pointer' : undefined }}
+              // A dragged piece must track the finger, not spring after it.
+              transition={{ duration: dragging ? 0 : lifted ? 0.18 : 0.5 }}
+              style={{
+                transformOrigin: `${px}px ${py}px`,
+                cursor: editing ? (dragging ? 'grabbing' : lifted ? 'grab' : 'pointer') : undefined,
+              }}
+              {...(editing ? drag.bind(a.id, a.mount, u.x ?? a.x, u.y ?? a.y) : {})}
               onClick={
                 editing
                   ? (e) => {
@@ -174,6 +207,9 @@ export function RoomScene({
                       // point; a tap ON a piece must not also be a tap on the
                       // ground under it.
                       e.stopPropagation()
+                      // The click a finished drag fires is not a tap: letting
+                      // it through would put down what you just dragged.
+                      if (drag.consumeClick()) return
                       if (picked && picked !== a.id) editing.onDrop(a.id)
                       else editing.onPick(a.id)
                     }
@@ -182,7 +218,12 @@ export function RoomScene({
             >
               <FurnishingProp value={value} x={px} y={py} mount={a.mount} lit={lampLit} sizeScale={u.s ?? 1} />
               {lifted && (
-                <circle cx={px} cy={py} r="28" fill="none" stroke="var(--gold)" strokeWidth="2" strokeDasharray="5 5" opacity="0.9" />
+                <>
+                  {/* A grab area over the whole selection, so dragging doesn't
+                      mean hitting the one filled pixel of a candlestick. */}
+                  <circle cx={px} cy={py} r="28" fill="transparent" data-scene-edit="" />
+                  <circle cx={px} cy={py} r="28" fill="none" stroke="var(--gold)" strokeWidth="2" strokeDasharray="5 5" opacity="0.9" />
+                </>
               )}
             </motion.g>
           )
@@ -224,6 +265,16 @@ export function RoomScene({
               )}
             </g>
           ))}
+
+        {editing?.onRemove && picked && pickedAnchor && pickedPos && !drag.live && (
+          <SceneRemoveBadge
+            x={pickedPos.x ?? pickedAnchor.x}
+            y={pickedPos.y ?? pickedAnchor.y}
+            ring={28}
+            label={`Take the ${furnishingName(pickedValue)} back out`}
+            onRemove={() => editing.onRemove!(picked)}
+          />
+        )}
       </svg>
 
       {/* Alive, not pasted — the same engine the hall, the churchyard and the

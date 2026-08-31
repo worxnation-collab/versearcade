@@ -113,6 +113,15 @@ SEE WHO'S GIVING NOW, NOT JUST WHO GAVE FIRST
 • Still churches, never people: a church total, a player count, and nothing anywhere
   that says who in a congregation gave what.
 
+ARRANGE YOUR ROOM WITH YOUR THUMB
+• Pick up anything in your Upper Room or your keep's hall and drag it where you want
+  it. Rugs stay on the floor and banners stay on the wall, so nothing lands anywhere
+  daft, and nothing you place can ever be lost or overwritten.
+• A piece you're holding wears a small ✕ — one tap takes it back out and it goes
+  straight back on the shelf, at the tier you earned. Nothing is spent, ever.
+• Tap-to-move still works exactly as it did, and the page still scrolls under your
+  thumb everywhere except the one thing you said you were holding.
+
 BATTLE SOMEONE IN REAL TIME
 • Live battles: share a room code, both tap ready, and the same verse starts for both
   of you at once with a bar showing where the other player is.

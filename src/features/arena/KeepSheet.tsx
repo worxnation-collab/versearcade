@@ -72,9 +72,11 @@ export function KeepSheet({
   // words what just happened. Tapping a second rug and watching a DIFFERENT
   // corner of the room change is the one confusing moment in the mechanic.
   const [merged, setMerged] = useState<{ anchor: string; name: string } | null>(null)
-  // The piece currently picked up, by anchor. Tap a prop to lift it, tap a spot
-  // of the same kind to set it down — no drag, because the hall is 300 viewBox
-  // units tall inside a scrolling sheet and a drag there fights the scroll.
+  // The piece currently picked up, by anchor. Tap a prop to lift it, then drag
+  // it anywhere inside its mount's band or tap a spot of the same kind to trade
+  // places. Dragging is deliberately only available on the LIFTED piece: the
+  // hall is 300 viewBox units inside a scrolling sheet, so anything that grabbed
+  // the scroll before you had said what you were holding would fight it.
   const [picked, setPicked] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
   const church = useChurch((s) => s.church)
@@ -134,6 +136,29 @@ export function KeepSheet({
     await useKeep.getState().moveTo(picked, x, y)
   }
 
+  // The ✕ on the lifted piece: take that one back down. It loses nothing —
+  // ownership is derived from the counters, which never move — so the piece is
+  // back on the shelf at the same tier before the note fades.
+  const removeAt = async (anchor: string) => {
+    juice.select()
+    // A faction hall is a BLEND: your own placements over a sample of other
+    // members'. You can only take down your own, and saying so beats a note
+    // claiming something came down while it stands there.
+    const mine = useKeep.getState().placements[anchor]
+    setPicked(null)
+    if (!mine) {
+      setNote('That one is another member’s — you only furnish your own view.')
+      return
+    }
+    const name = decorName(mine)
+    const res = await useKeep.getState().place(anchor, null)
+    if (res.failed) {
+      setNote('That didn’t save. Try again in a moment.')
+      return
+    }
+    setNote(name ? `Took the ${name} back down — it’s on the shelf.` : null)
+  }
+
   // Grow or shrink the selected piece a step. Bounds live in the planner.
   const resizePicked = async (delta: number) => {
     if (!picked) return
@@ -156,7 +181,7 @@ export function KeepSheet({
     const plan = planPick(useKeep.getState().placements, decorId, tier)
     if (plan.kind === 'already') {
       juice.select()
-      setNote('That’s already out — tap it in the hall to move or resize it.')
+      setNote('That’s already out — tap it in the hall to drag, resize or take it down.')
       return
     }
     if (plan.kind === 'full') {
@@ -299,6 +324,7 @@ export function KeepSheet({
                     onPick: pickUp,
                     onDrop: (a) => void dropOn(a),
                     onDropAt: (x, y) => void dropAt(x, y),
+                    onRemove: (a) => void removeAt(a),
                   }
                 : undefined
             }
@@ -346,7 +372,7 @@ export function KeepSheet({
           {(picked || note) && (
             <p className="center" style={{ margin: '8px 0 0', fontSize: 12.5, fontWeight: 700, color: 'var(--gold)' }}>
               {picked
-                ? `Carrying the ${decorName(placements[picked])} — tap a marked spot to set it down.`
+                ? `Holding the ${decorName(placements[picked])} — drag it anywhere, tap a marked spot to swap, or ✕ to take it down.`
                 : note}
             </p>
           )}
@@ -384,8 +410,9 @@ export function KeepSheet({
                 <p className="faint" style={{ fontSize: 11.5, margin: '0 0 10px', lineHeight: 1.5 }}>
                   Tap a piece to put it in the hall — the finest version you've earned. Keep
                   playing and it <b style={{ color: 'var(--gold)' }}>upgrades</b> where it stands.
-                  Tap anything in the hall to pick it up, then tap where it should go — or resize
-                  it. Members each furnish their own view.
+                  Tap anything in the hall to pick it up, then{' '}
+                  <b style={{ color: 'var(--gold)' }}>drag it</b> wherever you like — or resize it,
+                  or tap its ✕ to take it back down. Members each furnish their own view.
                 </p>
                 <Shelf
                   counters={keep.counters}

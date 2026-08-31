@@ -143,6 +143,21 @@ export function RoomSection() {
     await useRoom.getState().moveTo(picked, x, y)
   }
 
+  // The ✕ on the lifted piece: take that one back out of the room. It loses
+  // nothing — ownership is derived from lifetime numbers that only go up, so
+  // the piece is back on the shelf at the same tier before the toast fades.
+  const removeAt = async (anchor: string) => {
+    juice.select()
+    const name = furnishingName(useRoom.getState().placements[anchor])
+    setPicked(null)
+    const res = await useRoom.getState().place(anchor, null)
+    if (res.failed) {
+      setNote('That didn’t save. Try again in a moment.')
+      return
+    }
+    setNote(name ? `Took the ${name} back out — it’s on the shelf.` : null)
+  }
+
   // Grow or shrink the selected furnishing a step. Bounds live in the planner.
   const resizePicked = async (delta: number) => {
     if (!picked) return
@@ -166,7 +181,7 @@ export function RoomSection() {
     const plan = planRoomPick(useRoom.getState().placements, id, tier)
     if (plan.kind === 'already') {
       juice.select()
-      setNote('That’s already out — tap it in the room to move or resize it.')
+      setNote('That’s already out — tap it in the room to drag, resize or take it out.')
       return
     }
     if (plan.kind === 'full') {
@@ -286,6 +301,7 @@ export function RoomSection() {
           onPick: pickUp,
           onDrop: (a) => void dropOn(a),
           onDropAt: (x, y) => void dropAt(x, y),
+          onRemove: (a) => void removeAt(a),
         }}
         lampLit={lampLit}
         onTapSelf={() => { juice.tap(); setPrayerOffered(true) }}
@@ -368,7 +384,7 @@ export function RoomSection() {
       {(picked || note) && (
         <p className="center" style={{ margin: '8px 0 0', fontSize: 12.5, fontWeight: 700, color: 'var(--gold)' }}>
           {picked
-            ? `Carrying the ${furnishingName(placements[picked])} — tap a marked spot to set it down.`
+            ? `Holding the ${furnishingName(placements[picked])} — drag it anywhere, tap a marked spot to swap, or ✕ to take it out.`
             : note}
         </p>
       )}
@@ -389,8 +405,9 @@ export function RoomSection() {
           <p className="faint" style={{ fontSize: 11.5, margin: '0 0 10px', lineHeight: 1.5 }}>
             Tap a piece to put it in the room — the finest version you've earned. Keep at it and
             it <b style={{ color: 'var(--gold)' }}>upgrades</b> where it stands. Tap anything in the
-            room above to pick it up, then tap where it should go — or resize it. Nothing you place
-            can ever be lost.
+            room above to pick it up, then <b style={{ color: 'var(--gold)' }}>drag it</b> wherever
+            you like — or resize it, or tap its ✕ to take it back out. Nothing you place can ever
+            be lost.
           </p>
           <Shelf
             owned={owned}

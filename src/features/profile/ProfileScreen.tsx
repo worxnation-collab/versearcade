@@ -23,6 +23,7 @@ import { titleById } from '@/data/season'
 import { CustomizeSection } from './CustomizeSection'
 import { ProfileHero } from './ProfileHero'
 import { RoomSection } from '@/features/room/RoomSection'
+import { ChurchNudge } from '@/features/church/ChurchNudge'
 import { SettingsSheet } from './SettingsSheet'
 
 export default function ProfileScreen() {
@@ -328,6 +329,11 @@ export default function ProfileScreen() {
           whole fix: it costs one line and it halves what you have to read to
           find the row you came for. */}
       <h3 style={{ fontSize: 16, margin: '18px 0 10px' }} className="dim">Your people</h3>
+      {/* Open rather than folded, and first: it's the only row here that's an
+          invitation instead of a drawer, and a player with no church has
+          nothing to open. It removes itself the moment there is one — or when
+          they say it isn't for them. */}
+      <ChurchNudge />
       {/* This one used to advertise nothing, so a player with people waiting
           saw an identical closed row and 71% of every buddy request ever sent
           was still unanswered. It now counts, and opens itself when the answer

@@ -358,6 +358,52 @@ artwork ships as a new skin id. **Still no prices, either mode**: the custom
 option says it's answered by email, and the money happens off the device. See
 `docs/CHURCH-SKINS.md`.
 
+### The sponsored slot
+
+A player with no church sees "Suggested for you" at the top of `/church` — the
+picker has always fetched the churches around you before you type, it just led
+with a search box. One church in that strip can be paid for (`0077`,
+`sponsored_church`, Admin → Churches). Full rules: `docs/CHURCH-PROMOTION.md`.
+
+It's the only thing here a third party can pay to put in front of a player, and
+three rails make that safe:
+
+- **The money never touches the device.** No client-callable way to create or
+  buy one exists; `admin_set_church_promotion` is the only writer and the money
+  happens off-device, like the custom church skin. A slot sold *inside* the app
+  is a storefront `commerce.ts` would have to gate, and a user-bought "boost" in
+  the App Store build is an IAP by Apple's reckoning. **No price, either mode.**
+- **It cannot lie about distance.** A promotion has no position of its own — it
+  carries a radius and the centre is the church's own lat/lng, capped at 30
+  miles, which is the picker's own search radius. A congregation can't advertise
+  into a town it isn't in, by construction.
+- **It's a billboard, not an auction.** Earliest start wins; flat rate, one
+  slot. Ranking congregations by what they paid is the ladder this app refuses
+  everywhere else — a sponsored church is not a bigger church, exactly as a
+  skinned one isn't. Because only one ever shows, selling a second slot in the
+  same circle is taking money for a row that won't appear, so
+  `admin_set_church_promotion` returns the overlapping live promotions and the
+  panel renders them in coral.
+
+Two more things that are load-bearing. The row is **labelled Sponsored above the
+name**, and it takes one of the three suggestion slots rather than sitting on
+top of them — a paid row lengthens nobody's list. And **typing removes it**:
+search is distance-ordered and unpaid, so the sponsor can only ever raise a
+church on the list you didn't ask for, never on the one you did.
+
+**A church asks through the pill that already existed.** The leadership path of
+"Add info" carries a `wants_promotion` box (`0078`) that the admin queue flags —
+an ask, not a sale: it grants nothing and names no price, so the surface stays
+identical in both builds like the `custom` skin. The server drops the flag on
+the member path the way it drops the skin. (0076 also fixes a 0051 bug the same
+comment predicted: the queue returned the skin a church asked for and the admin
+screen never rendered it.)
+
+It records no location (`sponsored_church` takes the coordinates
+`search_churches` already takes and stores none of them — the picker promises
+"we never save it"), and `note_promotion_join` counts joins the server verified,
+which is the one number the slot produces and the only thing to renew on.
+
 ### The churchyard
 
 Giving grows the building for everybody; the same points, counted as *your*
@@ -557,7 +603,9 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0075` (the weekly church rivalry). Before that, `0074` (the admin dashboard's dates) — it must be applied before
+The latest are `0078` (a church's ask for a sponsored slot) and `0077` (the slot
+itself). Before them, `0075` (the weekly church rivalry) and `0074` (the admin
+dashboard's dates) — 0074 must be applied before
 the client that uses it merges, and that one is not optional: it DROPS the old
 `admin_overview()` / `admin_growth(boolean)` signatures to replace them with
 timezone-taking ones, so an un-applied 0074 means the dashboard errors rather

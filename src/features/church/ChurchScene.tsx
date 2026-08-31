@@ -1,8 +1,10 @@
 import { ChurchArt } from './ChurchArt'
 import { ChurchFlora } from './ChurchFlora'
+import { ChurchStatues } from './ChurchStatues'
 import { CrowdLife, type CrowdWaypoint } from '@/components/CrowdLife'
 import { ArcadeCabinetBox } from '@/features/arcade/ArcadeCabinet'
 import type { Plantings } from './yard'
+import type { Statues } from './rivalry'
 import type { ChurchMember } from '@/types'
 
 // The church, pulled back far enough that you can see the people.
@@ -53,6 +55,7 @@ export function ChurchScene({
   members,
   skin,
   flora,
+  statues,
   floraEditing,
   emptyNote = true,
   onArcade,
@@ -67,6 +70,13 @@ export function ChurchScene({
    * yard nobody has given enough to plant, which is simply a lawn.
    */
   flora?: Plantings
+  /**
+   * What the congregation has raised out front — the monuments a weekly
+   * rivalry win buys (features/church/rivalry.ts). Unlike the flora this is
+   * NOT sampled per viewer: a statue belongs to the church rather than to a
+   * giver, so everybody who visits sees the same one standing there.
+   */
+  statues?: Statues
   /**
    * Tap-to-move for the plantings. Only your own church tab passes this — a bed
    * you can move in somebody else's yard is exactly the thing the church-page
@@ -163,6 +173,12 @@ export function ChurchScene({
           onDrop={floraEditing?.onDrop}
         />
       )}
+
+      {/* The monuments, in the same band as the flora and for the same reason:
+          they are things standing in the yard, and people walk in front of
+          them. Read-only on every surface — a statue is the congregation's, so
+          there is no tap-to-move to hand out. */}
+      {statues && <ChurchStatues statues={statues} />}
 
       {/* Somebody wheeled a cabinet onto the grass. It sits at the front-left
           corner, in front of the crowd and clear of the path. */}

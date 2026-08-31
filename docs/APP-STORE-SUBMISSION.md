@@ -109,13 +109,26 @@ and `90186` ("the train version '1.0' is closed for new build submissions"). Not
 was wrong with the key, the certificate, or the profile. The rejection arrives ~20
 minutes into a signed archive, so guessing low costs a whole build.
 
-**Where we are: 1.1.0 is the live, approved version. 1.2.0 has never been uploaded**,
-so its train is still open — `package.json` and `android/app/build.gradle` already
-carry `1.2.0` and need no bump for this release, even though a good deal landed after
-that number was chosen (the Upper Room, praying, gifts and the mailbox, the Journal,
-saved looks, companions in the crowd scenes, the full-length player card). What that
-DOES mean is that "What's New" has to describe the binary rather than the version
-number's original scope — `APP-STORE-LISTING.md` has been rewritten to cover all of it.
+**Where we are: 1.2.0 is the live, approved version, so its train is CLOSED.**
+`package.json` and `android/app/build.gradle` now carry **1.3.0**, which has never
+been uploaded — that is the number the next archive will build, and it is already
+strictly higher than what is approved.
+
+**1.3.0's train is open, so keep landing features under that number** — an unuploaded
+version absorbs any amount of work, and a per-feature bump just burns numbers. Bump
+again only once 1.3.0 itself is approved. What a new feature changes is "What's New",
+not the version.
+
+So far 1.3.0 carries live battles (`/battle/live`) and the weekly church rivalry, and
+more is expected before it goes up — treat the list in `APP-STORE-LISTING.md` as a
+running draft and re-read it against `git log` on the day you submit, not before.
+**Also check the uploaded 1.2.0 binary before trusting that split**: if live battles
+were inside it, trim them rather than announcing a feature the store already showed
+people.
+
+This paragraph is a claim about App Store Connect, not about the repo, and nothing in
+CI verifies it. It has gone stale once already. Re-read it against the real console
+every release, and update it in the same commit as the bump.
 
 For the release after this one:
 

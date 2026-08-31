@@ -9,11 +9,13 @@ import { CountUp } from '@/components/CountUp'
 import { useAuth } from '@/store/auth'
 import { useChurch } from '@/store/church'
 import { useChurchYard } from '@/store/churchYard'
+import { useRivalry } from '@/store/rivalry'
 import { useJuice } from '@/juice/useJuice'
 import { supabase } from '@/lib/supabase'
 import { ChurchArt } from './ChurchArt'
 import { ChurchBoard } from './ChurchBoard'
 import { ChurchScene } from './ChurchScene'
+import { RivalryCard } from './RivalryCard'
 import { FloraIcon } from './ChurchFlora'
 import { FLORA, PLOTS, floraById, nextFlora } from './yard'
 import { ChurchPicker } from './ChurchPicker'
@@ -100,6 +102,9 @@ function ChurchHome({ church }: { church: Church }) {
   // plots. Two scenes on one screen was one scene too many.
   const me = useAuth((s) => s.profile)
   const { plantings, load: loadYard, move: moveFlora } = useChurchYard()
+  // The congregation's monuments stand in the same hero scene as its flowers.
+  const statues = useRivalry((s) => s.statues)
+  const loadRivalry = useRivalry((s) => s.load)
   const congregation = useChurch((s) => s.congregation)
   const loadCongregation = useChurch((s) => s.loadCongregation)
   const [picked, setPicked] = useState<string | null>(null)
@@ -107,7 +112,13 @@ function ChurchHome({ church }: { church: Church }) {
 
   useEffect(() => {
     void loadYard()
-  }, [loadYard, church.id])
+    // This one has SIDE EFFECTS on the server as well as reading: church_rivalry
+    // settles any finished week and pairs the current one (0075). Since nothing
+    // in this project runs on a schedule, opening the tab IS the scheduler —
+    // which is why it is called on mount rather than lazily when the card
+    // scrolls into view.
+    void loadRivalry()
+  }, [loadYard, loadRivalry, church.id])
 
   // Keyed on the church so joining, leaving or switching redraws the yard with
   // the right people in it rather than the last congregation's.
@@ -194,6 +205,10 @@ function ChurchHome({ church }: { church: Church }) {
     // Giving is the only thing that opens landscaping, so the yard's ladder is
     // stale the moment this lands.
     void useChurchYard.getState().load()
+    // And it just moved this week's matchup — the whole point of the card above
+    // is that a gift changes the bar you can see. Re-read rather than adding
+    // optimistically: the opponent's half moves too, and only the server knows.
+    void useRivalry.getState().load()
   }
 
   useEffect(() => {
@@ -223,6 +238,7 @@ function ChurchHome({ church }: { church: Church }) {
           members={crowd}
           skin={church.skin}
           flora={plantings}
+          statues={statues}
           floraEditing={{ picked, onPick: pick, onDrop: drop }}
           emptyNote={false}
           onArcade={() => { juice.select(); navigate('/arcade/manna') }}
@@ -270,6 +286,12 @@ function ChurchHome({ church }: { church: Church }) {
           </p>
         </div>
       </div>
+
+      {/* This week's matchup ------------------------------------------------
+          Above the Give card on purpose: it is the reason to tap Give this
+          week, and an argument placed below its own call to action is an
+          argument nobody reads. */}
+      <RivalryCard mine={church} />
 
       {/* Give -------------------------------------------------------------- */}
       <div className="card">

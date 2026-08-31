@@ -4,8 +4,20 @@ Read this before changing anything. It's the stuff that isn't obvious from the
 files and that has bitten previous sessions.
 
 **Mission constraint, not a slogan:** stickiness without shame. Wrong answers
-teach (every answer reveals a fact), and nothing ranks a player against a
-friend. If a feature idea needs a loser, it's the wrong feature.
+teach (every answer reveals a fact), and nothing ranks a *player* against a
+friend. If a feature idea needs a person to lose, it's the wrong feature.
+
+**One narrow exception, added deliberately: a CHURCH may lose a week.** The
+weekly rivalry (`docs/CHURCH-RIVALRY.md`) matches your congregation against
+another one its own size, and the one that gives more wins a statue for its
+yard. The distinction that keeps the rule intact is that a church is an
+institution, not a person — and it is enforced in the *shape of the data*, not
+in copy: a matchup carries two totals and one church name, there is no losses
+column anywhere in the schema, and no RPC will tell you a per-member weekly
+number. Read that doc before extending anything competitive. **The exception
+stops at churches**: the Study tab, the Journal, the Basin, the crowd scenes and
+every player-facing surface are unchanged, and widening it needs its own
+argument rather than following from this one.
 
 ## Commands
 
@@ -346,6 +358,91 @@ artwork ships as a new skin id. **Still no prices, either mode**: the custom
 option says it's answered by email, and the money happens off the device. See
 `docs/CHURCH-SKINS.md`.
 
+### A church can claim its own page
+
+`church_profiles` had exactly one writer for good reason — an open text field on
+somebody else's congregation is a moderation problem — and that meant every
+corrected service time went through the operator. `church_admins` (`0079`) is
+the seam: a row saying *this player is verified leadership of this church*,
+granted only by `admin_grant_church_admin`. Full rules: `docs/CHURCH-CLAIM.md`.
+
+**Verification is MANUAL and stays manual.** There is no self-serve claim — no
+domain check, no mailed code, nothing a stranger can drive. An operator reads
+the request in the "Add info" queue, satisfies themselves by phone or by an
+email from the church's own domain, and grants it by username. So the grant IS
+the moderation, and it's revocable in one call. It doesn't scale to thousands,
+on purpose; at this volume a human reading a request beats any heuristic, and
+the honest upgrade later is domain-verified email, not loosening this.
+
+What a claim buys is narrow, and each exclusion is load-bearing:
+
+- **The five text fields**, published straight through — that's the point.
+- **Not the skin.** It's the paid axis, so `update_my_church_profile` doesn't
+  take one and an edit can't drop the look an operator granted.
+- **Not `published`**, which would let a church hide itself into a state only an
+  operator could undo.
+- **Nothing about a member**, and this is the rule someone will try to break.
+
+**No per-member data for leadership.** The roster carries no per-person numbers
+("a crowd, not a ladder"), and a pastor-facing view of who played and who lapsed
+is that shape *with authority attached* — the person who played less becomes
+visible to their minister as having played less, which is worse than the
+player-vs-player comparison this app already refuses. A leader already sees the
+two aggregates that are public anyway: congregation size and banked XP. Anything
+more must be an aggregate with a small-count floor and needs its own argument.
+
+**The website is validated server-side now**, because this is the first writer
+of those columns that isn't us: https, http, or a bare host that gets prefixed;
+any other scheme is refused rather than mangled. `Detail` already neutralised a
+`javascript:` string on one render path, but `public_church_page` is a second
+reader and shouldn't have to know that.
+
+### The sponsored slot
+
+A player with no church sees "Suggested for you" at the top of `/church` — the
+picker has always fetched the churches around you before you type, it just led
+with a search box. One church in that strip can be paid for (`0077`,
+`sponsored_church`, Admin → Churches). Full rules: `docs/CHURCH-PROMOTION.md`.
+
+It's the only thing here a third party can pay to put in front of a player, and
+three rails make that safe:
+
+- **The money never touches the device.** No client-callable way to create or
+  buy one exists; `admin_set_church_promotion` is the only writer and the money
+  happens off-device, like the custom church skin. A slot sold *inside* the app
+  is a storefront `commerce.ts` would have to gate, and a user-bought "boost" in
+  the App Store build is an IAP by Apple's reckoning. **No price, either mode.**
+- **It cannot lie about distance.** A promotion has no position of its own — it
+  carries a radius and the centre is the church's own lat/lng, capped at 30
+  miles, which is the picker's own search radius. A congregation can't advertise
+  into a town it isn't in, by construction.
+- **It's a billboard, not an auction.** Earliest start wins; flat rate, one
+  slot. Ranking congregations by what they paid is the ladder this app refuses
+  everywhere else — a sponsored church is not a bigger church, exactly as a
+  skinned one isn't. Because only one ever shows, selling a second slot in the
+  same circle is taking money for a row that won't appear, so
+  `admin_set_church_promotion` returns the overlapping live promotions and the
+  panel renders them in coral.
+
+Two more things that are load-bearing. The row is **labelled Sponsored above the
+name**, and it takes one of the three suggestion slots rather than sitting on
+top of them — a paid row lengthens nobody's list. And **typing removes it**:
+search is distance-ordered and unpaid, so the sponsor can only ever raise a
+church on the list you didn't ask for, never on the one you did.
+
+**A church asks through the pill that already existed.** The leadership path of
+"Add info" carries a `wants_promotion` box (`0078`) that the admin queue flags —
+an ask, not a sale: it grants nothing and names no price, so the surface stays
+identical in both builds like the `custom` skin. The server drops the flag on
+the member path the way it drops the skin. (0076 also fixes a 0051 bug the same
+comment predicted: the queue returned the skin a church asked for and the admin
+screen never rendered it.)
+
+It records no location (`sponsored_church` takes the coordinates
+`search_churches` already takes and stores none of them — the picker promises
+"we never save it"), and `note_promotion_join` counts joins the server verified,
+which is the one number the slot produces and the only thing to renew on.
+
 ### The churchyard
 
 Giving grows the building for everybody; the same points, counted as *your*
@@ -379,6 +476,51 @@ This one is **online-only**, inheriting the church store's break with the
 two-mode invariant rather than choosing its own: a guest has no church to stand
 a flowerpot in front of. `store/churchYard.ts` names the shape to use if that
 ever changes. Still no prices, either mode. See `docs/CHURCHYARD.md`.
+
+### The weekly rivalry, and the statues it buys
+
+The one place in this app where something can lose. Every Monday (**UTC** — see
+below) your church is matched against another church its own size; whoever gives
+more over the week wins a statue for the churchyard. Full design and the whole
+safety argument: `docs/CHURCH-RIVALRY.md`. Five things to know before touching
+it:
+
+- **The week is UTC, and it is the one deliberate break with "dates are the
+  user's local date".** A streak belongs to one person and should roll over at
+  their midnight; a rivalry belongs to two congregations that may span time
+  zones, and every member of both has to agree whether a gift landed inside the
+  week. Two clocks means a point that counts for one member and not another.
+  Derived from a fixed epoch on both sides (`weekIndex()` ↔
+  `church_rivalry_week()`), never sent.
+- **Pairing is banded by congregation size, and that's load-bearing.** A
+  four-person church drawn against a two-hundred-person one loses every week
+  forever, which teaches the churches this feature exists for that showing up
+  was pointless. Banding makes the week winnable by out-recruiting somebody your
+  own size — the behaviour the whole thing is trying to produce. The draw is
+  `md5(week || id)`, so it is not first-come and opening the app early can't
+  steer it.
+- **No cron, because this project has none.** Pairing and settling are lazy and
+  idempotent, and opening the church tab IS the scheduler: the first member in a
+  new week creates the matchup (advisory-locked, both sides in one statement),
+  the first after it ends banks the result. A church with nobody to play gets a
+  **bye**, which is not a loss and re-tries until somebody's in range; an empty
+  church is never paired, because it would be a free win.
+- **The score is a sum over the three existing ledgers** (`church_contributions`,
+  `church_offerings`, `keep_offerings`), never a stored counter and never a
+  number a client sends. A draw pays BOTH churches; a 0-0 pays nobody, so a
+  dormant opponent is never a free statue.
+- **The prize is a look, and the church picks it.** Eight statues, three plinths,
+  the whole catalog open from the first win — deliberately no rarity, no unlock
+  ladder and no ordering, or a yard starts saying how well a church has done
+  rather than what it chose. Letting the church choose is also how the feature
+  avoids telling a congregation which saints its tradition venerates. Any member
+  may raise or change one and it carries no name (`set_by` is forensics only and
+  never leaves the server) — a statue with a name on it is one member's trophy,
+  not the congregation's.
+
+Online-only, inherited rather than chosen — the `store/churchYard.ts` break with
+the two-mode invariant. A local weekly matchup is a church playing itself, and a
+locally-granted statue is a trophy you awarded yourself.
 
 ## Live battles: the one synchronous thing here
 
@@ -500,7 +642,9 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0074` (the admin dashboard's dates) — it must be applied before
+The latest is `0079` (a church claiming its own page); before it, `0078` (a
+church's ask for a sponsored slot) and `0077` (the slot itself). Before them, `0075` (the weekly church rivalry) and `0074` (the admin
+dashboard's dates) — 0074 must be applied before
 the client that uses it merges, and that one is not optional: it DROPS the old
 `admin_overview()` / `admin_growth(boolean)` signatures to replace them with
 timezone-taking ones, so an un-applied 0074 means the dashboard errors rather
@@ -515,7 +659,9 @@ says "today" or "7d" now takes a validated IANA zone from the client
 (`localTimeZone()` in `lib/date.ts`, falling back to UTC server-side). If you add
 one, take the day from `p_tz`, never from `current_date`.
 
-Numbering has scars: `0034` is used twice (`promo_codes`, `skin_purchases`), and
+Numbering has scars: `0034` is used twice (`promo_codes`, `skin_purchases`),
+`0059` twice (`keep`, `practice_uncapped`) and `0074` twice (`admin_local_dates`,
+`public_church_page`) — so the next free number is `0076`, not `0075`. And
 `0038_focus_practice_xp.sql` is a re-add of a file that shipped as `0036` and was
 lost when PR #58 landed from a stale branch. Take the next free number and write
 migrations idempotently (`create table if not exists`, `drop policy if exists`,
@@ -1282,12 +1428,26 @@ closes — every later upload must carry a strictly higher `CFBundleShortVersion
 or the upload is rejected (`90062` + `90186`) *after* a full signed archive, about
 20 minutes in. Builds 22 and 23 died that way with a perfectly good Admin API key.
 
-**Where we are: 1.1.0 is the approved, live version; 1.2.0 is what the repo carries
-and has never been uploaded**, so its train is still open. A good deal landed after
-that number was picked (the Upper Room, praying, gifts and the mailbox, the Journal,
-saved looks, companions in the crowd scenes), which changes the release NOTES rather
-than the number — check App Store Connect for what is actually approved before
-choosing the next one, never the repo's last guess.
+**Where we are: 1.2.0 is the approved, live version — its train is CLOSED — and the
+repo carries 1.3.0, which has never been uploaded.** 1.2.0 shipped the Upper Room,
+praying, gifts and the mailbox, the Journal, saved looks and companions in the crowd
+scenes.
+
+**1.3.0's train is OPEN, so keep landing features under that number.** An unuploaded
+version can absorb any amount of work: a feature merging today does NOT need a bump,
+and bumping per-feature just burns numbers and makes the next one harder to reason
+about. The number only has to move when the version it names has been *approved*. So
+what a new feature changes is the release NOTES, not the version — the running list
+for 1.3.0 lives in `docs/APP-STORE-LISTING.md` under "What's New", and it is a draft
+that grows until the day someone uploads. This is the same situation 1.2.0 was in
+while the Upper Room, praying, gifts and the Journal all landed on top of it.
+
+The lesson this file has now learned twice: **this paragraph goes stale silently, and
+a stale version number costs a full signed archive to discover.** It is a claim about
+App Store Connect, not about the repo, and nothing in CI checks it. So do not trust it
+— open App Store Connect, read what is actually approved, and pick strictly higher.
+Update this paragraph in the same commit as the bump, or the next session inherits the
+same trap.
 
 **Codemagic stops at TestFlight; submitting to review is done by hand.**
 `submit_to_app_store: false` is a choice, not an unfinished setting — it keeps a real

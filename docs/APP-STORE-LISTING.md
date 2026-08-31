@@ -77,7 +77,36 @@ Start your streak today. It's one verse.
 
 ## What's New (max 4000 chars — per version, App Store Connect asks for this)
 
-### 1.2.0 — the release after 1.1.0
+### 1.3.0 — the release after 1.2.0 (NEXT, unuploaded — RUNNING DRAFT)
+
+> 1.3.0's train is open and features are still landing under that number, so this
+> block is **not final**. Add to it as things merge, and re-read it against `git log`
+> on the day you submit. Do not bump the version for a new feature — only an
+> *approved* version forces a bump.
+
+```
+YOUR CHURCH HAS SOMEBODY TO PLAY THIS WEEK
+• Every Monday your church is matched against another church its own size. Whoever
+  gives more over the week raises a statue in their churchyard — the Good Shepherd,
+  Moses, an angel, the empty tomb, and four more. Your congregation picks which one.
+• Nobody is ever named on the losing side. A matchup is two church totals and a
+  church name: there is no table of who gave most, no streak, and losing costs you
+  absolutely nothing. Monday starts everyone at nothing again.
+• Small congregations play other small congregations, so a church of four can
+  actually win its week.
+
+BATTLE SOMEONE IN REAL TIME
+• Live battles: share a room code, both tap ready, and the same verse starts for both
+  of you at once with a bar showing where the other player is.
+• Wrong answers still teach. The line explaining the answer is yours to read at your
+  own pace, even if it costs you the round — being slower never means being told less.
+```
+
+**Check the uploaded 1.2.0 binary before submitting this.** If live battles shipped
+inside 1.2.0, cut that section — announcing a feature the store already showed people
+is worse than a short release note.
+
+### 1.2.0 — the release after 1.1.0 (SHIPPED, approved and live)
 ```
 Your whole Bible is in here now — all 66 books and 31,102 verses — and every one you
 read, study or keep lights up on your own copy.
@@ -192,9 +221,10 @@ lands at 12+ / 9+; either is fine.
 
 ## Review notes (App Information → Notes for reviewer)
 
-Two things changed in 1.2.0 that a reviewer will hit in the first thirty seconds, so
-they are said first and plainly: most tabs now ask for an account, and the app carries
-one in-app purchase. Both were true of the binary before this text described them.
+Two things a reviewer hits in the first thirty seconds, so they are said first and
+plainly: most tabs ask for an account, and the app carries one in-app purchase. Both
+have been true since 1.2.0 and are unchanged in 1.3.0 — this block is not
+version-specific and does not need rewriting each release, unlike "What's New" above.
 
 ```
 Verse Arcade is a Bible-learning game. Tap "Play today's verse" on the home screen to

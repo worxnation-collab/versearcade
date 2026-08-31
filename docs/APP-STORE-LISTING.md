@@ -169,6 +169,14 @@ PEOPLE, WITHOUT A SCOREBOARD
 • A mailbox for gifts, buddy requests, washings and news. It carries nothing that is a
   comparison — no digest of what your friends scored, no "you're 4th".
 
+THE STUDY TAB IS A LIBRARY NOW
+• It used to be a wall of tiles. It's a room: shelves, lamplight, and Tabitha at the
+  desk. Ask her for something to read and she'll fetch it and stamp it out to you.
+• Your reports are the ledger on her desk. Your bag is the satchel on the floor.
+• The first book you borrow each day is worth a little something.
+• There are no due dates, nothing is ever overdue, and she has no opinion at all about
+  how much you read.
+
 THE REST
 • The Journal: every milestone you've passed, gathered in one page. A number you got
   to, never a place you hold.
@@ -177,6 +185,9 @@ THE REST
 • A soundtrack. Every room has its own tune, and walking in is the only way to get one.
 • Study got more generous: no daily ceiling on focus drills, no weekly cooldown on
   replays, and a relic to find when you study.
+
+• A new creator-collab look: curls, a cream knit and a ukulele. Free with a code from
+  the creator — like every code skin, it's never for sale.
 
 Cosmetics are no longer sold. Everything that used to cost money is earned or free, and
 anyone who bought a pack keeps every piece of it.

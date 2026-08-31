@@ -111,7 +111,7 @@ export default function ReviewScreen() {
           <p className="faint" style={{ marginTop: 14, fontSize: 13 }}>
             The ones you nailed come back later; the tricky ones come back sooner. That spacing is what makes them stick.
           </p>
-          {/* Review is opened off the Study shelf, so finishing one returns
+          {/* Review is opened from the Study library, so finishing one returns
               there — the next book is one tap away instead of a trip home. */}
           <div style={{ marginTop: 22 }}>
             <Button variant="gold" full onClick={() => navigate('/study')}>← Back to Study</Button>

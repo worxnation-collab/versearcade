@@ -2,8 +2,8 @@ import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Page } from '@/components/Page'
 
-// The inside of a study book. Every shelf book opens onto one of these, so the
-// way back to the shelf looks the same wherever you landed.
+// The inside of a study book. Every book Tabitha lends opens onto one of these,
+// so the way back to the library looks the same wherever you landed.
 export function StudySubPage({
   emblem,
   title,
@@ -23,9 +23,9 @@ export function StudySubPage({
         className="pill"
         onClick={() => navigate('/study')}
         style={{ marginBottom: 14, fontSize: 13 }}
-        aria-label="Back to the study shelf"
+        aria-label="Back to the library"
       >
-        ← Shelf
+        ← Library
       </button>
 
       <div className="center" style={{ marginBottom: 18 }}>

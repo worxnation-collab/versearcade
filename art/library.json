@@ -1,0 +1,18 @@
+[
+  {
+    "id": "study-library",
+    "kind": "scene",
+    "prompt": "THE LENDING LIBRARY — a TALL NARROW VERTICAL PORTRAIT, roughly 5:8 (much taller than it is wide, like a phone screen). NOT landscape, NOT square, NOT 4:5. The frame must be strongly upright.\n\nA small warm reading room lined with wooden shelves of books and rolled scrolls that rise the FULL HEIGHT of the frame, lit by hanging oil lamps. Painted in a warm hand-illustrated storybook style with clean flat shapes and soft painted shading — no photorealism, no line art, no text, no lettering on the spines, no watermark, NO PEOPLE and NO ANIMALS.\n\nCamera dead centre at standing eye height, symmetrical, the far wall of shelving filling the frame. A tall arched window sits high in the back wall showing deep blue night sky. A heavy wooden CHECKOUT DESK stands on the floor at the RIGHT, seen side-on — its near corner well INSIDE the frame with a hand's width of floor visible to the right of it, not running off the edge. Its top is clear except for a closed ledger and a small brass lamp.\n\nTHE FLOOR runs across the BOTTOM THIRD of the frame as plain warm timber boards. THE LEFT AND CENTRE OF THAT FLOOR MUST BE COMPLETELY CLEAR AND EMPTY — no furniture, no crates, no stacks of books, no rug, no basket, nothing standing on it. Characters and objects will be drawn standing there, so anything painted into that space will be drawn over.\n\nWarm lamplight, deep violet-brown shadow, a palette of warm clay, honey timber, aged leather spines and gold, against the night outside.",
+    "format": "jpg"
+  },
+  {
+    "id": "librarian",
+    "kind": "skin",
+    "prompt": "FLAT SOLID MAGENTA BACKGROUND #FF00FF filling every pixel behind the figure. NOT white, NOT grey, NOT mauve, NOT a gradient, NOT a room — flat pure magenta only. No shadow on the backdrop, no ground plane, no frame, no text, no watermark.\n\nA FULL-LENGTH STANDING FIGURE, HEAD TO FEET, both feet resting at the very bottom edge of the frame, the whole body visible from the top of the head to the soles of both shoes. NOT a bust, NOT a portrait, NOT cropped at the waist or knees. A single character, standing straight, facing the viewer, arms at a comfortable rest.\n\nThe village librarian: a warm, kindly older woman with a broad friendly smile and laugh lines, silver-streaked dark hair pinned up in a soft bun with a wooden stylus through it, small round brass spectacles on a beaded chain. She wears a long simple ankle-length linen robe in deep teal with a soft ochre shawl over one shoulder and a wide woven belt. She holds a single closed leather-bound book against her chest with both hands, and a small brass key hangs from her belt.\n\nWarm hand-illustrated storybook style with clean flat shapes and soft painted shading, matching the reference figures exactly in proportion, line weight and palette warmth. Head to feet, full length, feet at the bottom edge."
+  },
+  {
+    "id": "study_satchel",
+    "kind": "prop",
+    "prompt": "FLAT SOLID MAGENTA BACKGROUND #FF00FF filling every pixel behind the object. NOT white, NOT grey, NOT mauve, NOT a gradient, NOT a room, NOT a floor — flat pure magenta only. No shadow on the backdrop, no ground plane, no frame, no text, no watermark.\n\nONE OBJECT, centred, seen from slightly above at standing eye height: a worn brown leather SATCHEL sitting closed on the ground, its flap buckled down with a brass buckle, a shoulder strap looped over the top, the leather soft and creased with age. Nothing else in the image.\n\nWarm hand-illustrated storybook style with clean flat shapes and soft painted shading, honey-brown leather and warm brass, matching a lamplit library interior."
+  }
+]

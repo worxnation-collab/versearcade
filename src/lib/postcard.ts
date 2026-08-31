@@ -14,10 +14,19 @@ import { isNativeApp } from './appStore'
 //   it. One room, one drawing — the same rule that made KeepScene a component.
 //
 //   An SVG loaded as an <img> never fetches external resources, so any <image>
-//   inside it would export as a blank rectangle. The clone strips them, which
-//   means a generated room painting is dropped and the DRAWN chamber underneath
-//   is what ships on the card. That is the fallback working as designed, and it
-//   is why RoomArt's furnishings must stay drawn (see its header).
+//   pointing at a URL exports as a blank rectangle. This used to strip them,
+//   which shipped the DRAWN chamber and was why every furnishing had to stay
+//   drawn. It INLINES them now: each href is fetched once and rewritten as a
+//   data: URI, which is not a fetch, so the painting and any raster furnishing
+//   arrive on the card as they look on screen.
+//
+//   Inlining cannot make the PNG bigger in the way it sounds like it would —
+//   the card is a fixed 1120x760 canvas, so what grows is the intermediate SVG
+//   string in memory, not the file anybody receives.
+//
+//   Anything that fails to fetch or decode is REMOVED rather than left broken,
+//   which lands back on exactly the old behaviour: the drawn piece underneath
+//   ships instead. So a missing render still costs a postcard nothing.
 //
 //   The figures are NOT on the card. CrowdLife draws people as HTML positioned
 //   over the scene, not as SVG, so they can't be serialised — and a postcard of
@@ -27,16 +36,58 @@ import { isNativeApp } from './appStore'
 const W = 1120
 const H = 760
 
-/** Strip anything an <img>-loaded SVG cannot fetch. */
-function sanitizeClone(svg: SVGSVGElement): SVGSVGElement {
+/** One URL to a data: URI, or null if it cannot be had. */
+async function toDataUri(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return null
+    const blob = await res.blob()
+    return await new Promise<string | null>((resolve) => {
+      const reader = new FileReader()
+      reader.onerror = () => resolve(null)
+      reader.onload = () => resolve(String(reader.result))
+      reader.readAsDataURL(blob)
+    })
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Rewrite every <image> href as a data: URI so it survives the <img> load.
+ *
+ * Deduped by URL, because a room can stand several copies of one furnishing and
+ * fetching the same PNG six times to build the same string six times is waste
+ * on the one code path the player is waiting on.
+ *
+ * Anything that fails is removed, not left pointing at a URL that will render
+ * as a blank rectangle — that is the drawn fallback taking over, which is what
+ * this function did for everything before it learned to inline.
+ */
+async function inlineImages(clone: SVGSVGElement): Promise<void> {
+  const cache = new Map<string, Promise<string | null>>()
+  await Promise.all(
+    [...clone.querySelectorAll('image')].map(async (node) => {
+      const href = node.getAttribute('href') ?? node.getAttribute('xlink:href')
+      if (!href) return node.remove()
+      if (href.startsWith('data:')) return
+      if (!cache.has(href)) cache.set(href, toDataUri(href))
+      const uri = await cache.get(href)!
+      if (!uri) return node.remove()
+      node.setAttribute('href', uri)
+      node.removeAttribute('xlink:href')
+    }),
+  )
+}
+
+/** Make the clone self-contained: an <img>-loaded SVG fetches nothing. */
+async function sanitizeClone(svg: SVGSVGElement): Promise<SVGSVGElement> {
   const clone = svg.cloneNode(true) as SVGSVGElement
   clone.removeAttribute('style')
   clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
   clone.setAttribute('width', '1120')
   clone.setAttribute('height', '600')
-  // Generated paintings and any other external reference: dropped, so the drawn
-  // room underneath is what gets exported rather than a blank rectangle.
-  clone.querySelectorAll('image').forEach((n) => n.remove())
+  await inlineImages(clone)
   // Editing furniture (targets, dashed rings) uses CSS variables, which do not
   // resolve in a detached document — and a postcard of a room mid-rearrange is
   // not the picture anyone wants to send.
@@ -66,7 +117,7 @@ export async function renderPostcard(username: string): Promise<Blob | null> {
     const svg = document.querySelector<SVGSVGElement>('svg[data-room-scene]')
     if (!svg) return null
 
-    const xml = new XMLSerializer().serializeToString(sanitizeClone(svg))
+    const xml = new XMLSerializer().serializeToString(await sanitizeClone(svg))
     const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(xml)}`
 
     const img = new Image()

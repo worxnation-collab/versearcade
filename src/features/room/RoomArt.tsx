@@ -11,11 +11,19 @@ import { unpackDecor } from '@/data/placement'
 //   1. Shared <defs> ids across SVG instances is a classic way to get one
 //      instance silently painting another's colours, and this scene renders
 //      twice on one screen when you visit a room from your own profile.
-//   2. THE POSTCARD. lib/postcard.ts serialises this scene into an <img> and
-//      draws it to a canvas, and an SVG loaded as an image never fetches
-//      external resources — so a room made of <image href> exports blank. The
-//      chamber painting below is allowed to be a raster because the postcard
-//      falls back to the drawn room; the FURNISHINGS must stay drawn.
+//   2. THE POSTCARD — no longer a hard constraint, but read this before
+//      assuming it never was. lib/postcard.ts serialises this scene into an
+//      <img>, and an SVG loaded that way never fetches external resources, so
+//      a room made of <image href> used to export blank; furnishings therefore
+//      had to be drawn. The postcard INLINES images as data: URIs now, so a
+//      raster furnishing survives the export, and anything that fails to fetch
+//      is dropped back to the drawn piece underneath.
+//
+//      What has NOT changed is that a drawn fallback still has to exist. The
+//      rule everywhere here is that generated art layers OVER a drawing rather
+//      than instead of it — the churchyard's dev guard caught six plants going
+//      in raster-only, and a furnishing with no drawing is an empty anchor the
+//      moment a PNG 404s.
 //
 // The room is a 560x300 interior. Props are drawn around their GROUND POINT
 // (0,0 = where they meet their anchor) and translated into place, so a prop

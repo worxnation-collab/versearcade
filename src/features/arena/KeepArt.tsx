@@ -270,19 +270,22 @@ export function DecorProp({
   y,
   color,
   mount,
+  sizeScale = 1,
 }: {
   value: string
   x: number
   y: number
   color: string
   mount?: MountKind
+  /** The player-chosen size from the placement value, on top of the tier's. */
+  sizeScale?: number
 }) {
   const { id, tier } = unpackDecor(value)
   const raster = decorRaster(id)
   const art = raster ? null : PROPS[id]
   if (!raster && !art) return null
 
-  const grown = TIER_SCALE[tier - 1] ?? 1
+  const grown = (TIER_SCALE[tier - 1] ?? 1) * sizeScale
 
   return (
     <g transform={`translate(${x}, ${y})`}>

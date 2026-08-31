@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from './auth'
 import { useSeason } from './season'
-import { planRoomMove, planRoomPlacement } from '@/data/room'
+import { planRoomMove, planRoomMoveToPoint, planRoomPlacement, planRoomResize } from '@/data/room'
 import type { AvatarSpec } from '@/types'
 
 // The Upper Room — where your own furnishings sit.
@@ -23,7 +23,6 @@ export type RoomPlacements = Record<string, string>
 export interface RoomPlaceResult {
   /** The anchor that actually changed — not always the one that was tapped. */
   anchor: string
-  merged: boolean
   tier: number
   value: string | null
   /** The server refused or was unreachable; state has been re-read from it. */
@@ -31,7 +30,6 @@ export interface RoomPlaceResult {
 }
 
 export interface RoomMoveResult {
-  merged: boolean
   swapped: boolean
   tier: number
   anchor: string
@@ -76,6 +74,12 @@ interface RoomState {
   place: (anchor: string, id: string | null) => Promise<RoomPlaceResult>
   /** Move a placed piece to another anchor of the same mount. */
   move: (from: string, to: string) => Promise<RoomMoveResult | null>
+  /** Apply pre-planned writes (moveTo/resize) through the usual two paths. */
+  arrange: (writes: { anchor: string; value: string | null }[]) => Promise<boolean>
+  /** Stand the furnishing on `from` at a free point inside its mount's band. */
+  moveTo: (from: string, x: number, y: number) => Promise<boolean>
+  /** Resize the furnishing on `anchor`, clamped to SCALE_MIN..SCALE_MAX. */
+  resize: (anchor: string, scale: number) => Promise<boolean>
 }
 
 export const useRoom = create<RoomState>((set, get) => ({
@@ -122,7 +126,7 @@ export const useRoom = create<RoomState>((set, get) => ({
       })
       if (error) {
         await get().load()
-        return { anchor: plan.anchor, merged: false, tier: 1, value: null, failed: true }
+        return { anchor: plan.anchor, tier: 1, value: null, failed: true }
       }
     } else {
       // Guest: merge onto what's on DISK, never onto in-memory state — a room
@@ -134,7 +138,7 @@ export const useRoom = create<RoomState>((set, get) => ({
       writeLocal(disk)
     }
 
-    return { anchor: plan.anchor, merged: plan.merged, tier: plan.tier, value: plan.value }
+    return { anchor: plan.anchor, tier: plan.tier, value: plan.value }
   },
 
   async move(from, to) {
@@ -171,7 +175,48 @@ export const useRoom = create<RoomState>((set, get) => ({
       writeLocal(disk)
     }
 
-    return { merged: plan.merged, swapped: plan.swapped, tier: plan.tier, anchor: to }
+    return { swapped: plan.swapped, tier: plan.tier, anchor: to }
+  },
+
+  // Free position and size — see store/keep.ts arrange() for why this does not
+  // go through place().
+  async arrange(writes) {
+    if (!writes.length) return true
+    const next = { ...get().placements }
+    for (const w of writes) {
+      if (w.value) next[w.anchor] = w.value
+      else delete next[w.anchor]
+    }
+    set({ placements: next })
+    if (isOnline()) {
+      const results = await Promise.all(
+        writes.map((w) => supabase!.rpc('set_room_placement', { p_anchor: w.anchor, p_item: w.value })),
+      )
+      if (results.some((r) => r.error)) {
+        await get().load()
+        return false
+      }
+    } else {
+      const disk = readLocal()
+      for (const w of writes) {
+        if (w.value) disk[w.anchor] = w.value
+        else delete disk[w.anchor]
+      }
+      writeLocal(disk)
+    }
+    return true
+  },
+
+  async moveTo(from, x, y) {
+    const plan = planRoomMoveToPoint(get().placements, from, x, y)
+    if (!plan) return false
+    return get().arrange(plan.writes)
+  },
+
+  async resize(anchor, scale) {
+    const plan = planRoomResize(get().placements, anchor, scale)
+    if (!plan) return false
+    return get().arrange(plan.writes)
   },
 }))
 

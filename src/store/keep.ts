@@ -6,7 +6,9 @@ import {
   EMPTY_COUNTERS,
   ownedDecor,
   planMove,
+  planMoveToPoint,
   planPlacement,
+  planResize,
   type KeepCounter,
   type KeepCounters,
 } from '@/data/keep'
@@ -32,8 +34,6 @@ export type Placements = Record<string, string>
 export interface PlaceResult {
   /** The anchor that actually changed — not always the one that was tapped. */
   anchor: string
-  /** True when this went into a copy already out instead of filling the spot. */
-  merged: boolean
   /** The tier the object ended up at. */
   tier: number
   /** The packed value now on that anchor, or null when it was cleared. */
@@ -100,21 +100,25 @@ interface KeepState {
    */
   track: (counter: KeepCounter, battleId?: string) => Promise<void>
   /**
-   * Put a decoration on an anchor (null clears it).
-   *
-   * A duplicate MERGES rather than standing twice: the planner (data/keep
-   * planPlacement) decides which anchor actually moves, and the result says so
-   * for the chime and the toast. Everything about merging lives in the planner
-   * — this only writes what it was told to write, so the guest path and the RPC
-   * path can't disagree about what a second rug means.
+   * Put a PACKED placement value on an anchor (null clears it). The value
+   * carries the tier — the shelf offers the finest tier you've earned, and an
+   * upgrade lands on the copy already out, in place. Everything smart lives in
+   * the planner; this writes what it was told, so the guest path and the RPC
+   * path can't disagree about what a placement means.
    */
   place: (anchor: string, decorId: string | null) => Promise<PlaceResult>
   /**
    * Move a placed piece to another anchor of the same mount. Empty target takes
-   * it, same decoration merges, anything else trades places — see planMove.
-   * Returns null when the move isn't legal (wrong mount, nothing to move).
+   * it, anything else trades places — see planMove. Returns null when the move
+   * isn't legal (wrong mount, nothing to move).
    */
   move: (from: string, to: string) => Promise<MoveResult | null>
+  /** Apply pre-planned writes (moveTo/resize) through the usual two paths. */
+  arrange: (writes: { anchor: string; value: string | null }[]) => Promise<boolean>
+  /** Stand the piece on `from` at a free point inside its mount's band. */
+  moveTo: (from: string, x: number, y: number) => Promise<boolean>
+  /** Resize the piece on `anchor`, clamped to SCALE_MIN..SCALE_MAX. */
+  resize: (anchor: string, scale: number) => Promise<boolean>
   /**
    * Give a Grand piece to your church. Online + a church only: the points are
    * banked against a shared congregation, which is not a thing a guest device
@@ -126,7 +130,6 @@ interface KeepState {
 }
 
 export interface MoveResult {
-  merged: boolean
   swapped: boolean
   tier: number
   /** Where the moved piece ended up. */
@@ -246,7 +249,7 @@ export const useKeep = create<KeepState>((set, get) => ({
       if (error) {
         // Re-read rather than leave an optimistic lie on screen.
         await get().load()
-        return { anchor: plan.anchor, merged: false, tier: 1, value: null, failed: true }
+        return { anchor: plan.anchor, tier: 1, value: null, failed: true }
       }
     } else {
       // Guest: merge onto what's on disk, never onto in-memory state — a hall
@@ -259,7 +262,7 @@ export const useKeep = create<KeepState>((set, get) => ({
       writeLocal({ ...disk, placements })
     }
 
-    return { anchor: plan.anchor, merged: plan.merged, tier: plan.tier, value: plan.value }
+    return { anchor: plan.anchor, tier: plan.tier, value: plan.value }
   },
 
   async move(from, to) {
@@ -295,7 +298,51 @@ export const useKeep = create<KeepState>((set, get) => ({
       writeLocal({ ...disk, placements })
     }
 
-    return { merged: plan.merged, swapped: plan.swapped, tier: plan.tier, anchor: to }
+    return { swapped: plan.swapped, tier: plan.tier, anchor: to }
+  },
+
+  // Free position and size. One write each, applied through the same
+  // online/guest pair as place() — and NOT through place() itself, whose no-op
+  // guard would (correctly) refuse to rewrite the same id at the same tier,
+  // which is exactly what a reposition is.
+  async arrange(writes) {
+    if (!writes.length) return true
+    const next = { ...get().placements }
+    for (const w of writes) {
+      if (w.value) next[w.anchor] = w.value
+      else delete next[w.anchor]
+    }
+    set({ placements: next })
+    if (isOnline()) {
+      const results = await Promise.all(
+        writes.map((w) => supabase!.rpc('set_keep_placement', { p_anchor: w.anchor, p_decor: w.value })),
+      )
+      if (results.some((r) => r.error)) {
+        await get().load()
+        return false
+      }
+    } else {
+      const disk = readLocal()
+      const placements = { ...disk.placements }
+      for (const w of writes) {
+        if (w.value) placements[w.anchor] = w.value
+        else delete placements[w.anchor]
+      }
+      writeLocal({ ...disk, placements })
+    }
+    return true
+  },
+
+  async moveTo(from, x, y) {
+    const plan = planMoveToPoint(get().placements, from, x, y)
+    if (!plan) return false
+    return get().arrange(plan.writes)
+  },
+
+  async resize(anchor, scale) {
+    const plan = planResize(get().placements, anchor, scale)
+    if (!plan) return false
+    return get().arrange(plan.writes)
   },
 
   async offer(decorId) {

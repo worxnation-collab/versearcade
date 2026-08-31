@@ -607,11 +607,14 @@ export function FurnishingProp({
   y,
   mount,
   lit = true,
+  sizeScale = 1,
 }: {
   value: string
   x: number
   y: number
   mount?: RoomMount
+  /** The player-chosen size from the placement value, on top of the tier's. */
+  sizeScale?: number
   /**
    * Whether the lamp is burning.
    *
@@ -627,7 +630,7 @@ export function FurnishingProp({
   const art = PROPS[id]
   const raster = propRaster(id)
   if (!art && !raster) return null
-  const grown = TIER_SCALE[tier - 1] ?? 1
+  const grown = (TIER_SCALE[tier - 1] ?? 1) * sizeScale
   return (
     <g transform={`translate(${x}, ${y})`}>
       {/* Behind the prop, so it reads as the object sitting on something finer

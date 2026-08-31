@@ -5,7 +5,9 @@ import {
   packDecor as packOn,
   placedTierOn,
   planMoveOn,
+  planMoveToPointOn,
   planPickOn,
+  planResizeOn,
   planPlacementOn,
   unpackDecor as unpackOn,
   type MovePlan,
@@ -171,11 +173,58 @@ export const CHALLENGES: ChallengeDef[] = [
   { id: 'k_destrier', counter: 'battle_won', goal: 15, text: 'Win 15 battles', decor: 'keep_destrier' },
 ]
 
+// ── Tiers as their own unlocks ───────────────────────────────────────────────
+// Fine and Grand used to be made by stacking duplicates. They are their own
+// rungs on the same ladder now: the same counter, at 2.5x and 5x the goal, so a
+// finer piece is still EARNED BY PLAYING and ownership stays a pure function of
+// the counters — nothing granted, nothing to revoke, nothing a second device
+// can disagree about. The multipliers are deliberately steep enough that Grand
+// keeps meaning something (the destrier's Grand is 75 battle wins) without any
+// rung expiring or ranking anybody.
+//
+// The church offering is untouched by construction: its gate has always been
+// "placed at Grand", read off the tier suffix in the placement value, and the
+// suffix is written exactly as before — only the way a player REACHES Grand
+// changed. 0062's ladder, cap and values did not move.
+
+const TIER_GOAL_MULT = [1, 2.5, 5] as const
+
+/** The counter goal for a decoration at a tier (tier 1 is the base goal). */
+export function tierGoal(base: number, tier: number): number {
+  return Math.ceil(base * (TIER_GOAL_MULT[Math.min(MAX_TIER, Math.max(1, tier)) - 1] ?? 1))
+}
+
 /** Ownership is a pure function of the counters. */
 export function decorOwned(decorId: string, counters: KeepCounters): boolean {
+  return decorTierOwned(decorId, 1, counters)
+}
+
+export function decorTierOwned(decorId: string, tier: number, counters: KeepCounters): boolean {
   const ch = CHALLENGES.find((c) => c.decor === decorId)
   if (!ch) return false
-  return (counters[ch.counter] ?? 0) >= ch.goal
+  return (counters[ch.counter] ?? 0) >= tierGoal(ch.goal, tier)
+}
+
+/** The finest tier of this decoration the counters have earned, or 0. */
+export function bestOwnedTier(decorId: string, counters: KeepCounters): number {
+  for (let t = MAX_TIER; t >= 1; t--) if (decorTierOwned(decorId, t, counters)) return t
+  return 0
+}
+
+/** The next tier the counters have not reached yet, for the shelf's one line. */
+export function nextTierInfo(
+  decorId: string,
+  counters: KeepCounters,
+): { name: string; goal: number; have: number } | null {
+  const ch = CHALLENGES.find((c) => c.decor === decorId)
+  if (!ch) return null
+  const best = bestOwnedTier(decorId, counters)
+  if (best === 0 || best >= MAX_TIER) return null
+  return {
+    name: TIER_PREFIX[best].trim(),
+    goal: tierGoal(ch.goal, best + 1),
+    have: counters[ch.counter] ?? 0,
+  }
 }
 
 export function ownedDecor(counters: KeepCounters): string[] {
@@ -274,10 +323,21 @@ export function offerableAnchors(placements: Record<string, string>): { anchor: 
 // is ever lost, a tier is a look rather than a count, and a piece only ever
 // lands on an anchor of its own mount.
 
-/** The keep, as a surface the shared planners can reason about. */
+/** The keep, as a surface the shared planners can reason about. The bands are
+ *  where each mount's pieces may stand when the player moves them freely —
+ *  drawn from the hall's geometry (560x300), so a banner stays on the chimney
+ *  line and a rug stays on stone. Tuned by looking at the real hall. */
 export const KEEP_SURFACE: Surface = {
   anchors: ANCHORS,
   mountOf: (id) => decorById(id)?.mount,
+  bands: {
+    banner: { x0: 200, y0: 60, x1: 420, y1: 95 },
+    wall: { x0: 215, y0: 125, x1: 400, y1: 165 },
+    rafters: { x0: 150, y0: 20, x1: 460, y1: 70 },
+    table: { x0: 235, y0: 192, x1: 330, y1: 206 },
+    floor: { x0: 90, y0: 245, x1: 470, y1: 292 },
+    stable: { x0: 465, y0: 235, x1: 500, y1: 250 },
+  },
 }
 
 export const MAX_DECOR_TIER = MAX_TIER
@@ -305,8 +365,17 @@ export function planMove(placements: PlacementMap, from: string, to: string): Mo
   return planMoveOn(KEEP_SURFACE, placements, from, to)
 }
 
-export function planPick(placements: PlacementMap, decorId: string): PickOutcome {
-  return planPickOn(KEEP_SURFACE, placements, decorId)
+/** Move a placed piece to a free point inside its own mount's band. */
+export function planMoveToPoint(placements: PlacementMap, from: string, x: number, y: number): MovePlan | null {
+  return planMoveToPointOn(KEEP_SURFACE, placements, from, x, y)
+}
+
+export function planResize(placements: PlacementMap, anchor: string, scale: number): MovePlan | null {
+  return planResizeOn(placements, anchor, scale)
+}
+
+export function planPick(placements: PlacementMap, decorId: string, tier = 1): PickOutcome {
+  return planPickOn(KEEP_SURFACE, placements, decorId, tier)
 }
 
 /** Every anchor currently holding this decoration, best tier first. */

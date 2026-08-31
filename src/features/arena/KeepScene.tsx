@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { ANCHORS, anchorById } from '@/data/keep'
+import { ANCHORS, anchorById, unpackDecor } from '@/data/keep'
 import type { Placements } from '@/store/keep'
 import type { KeepMember } from '@/store/keep'
 import { KeepHall, DecorProp } from './KeepArt'
@@ -43,6 +43,12 @@ export function KeepScene({
     mergedAnchor?: string | null
     onPick: (anchor: string) => void
     onDrop: (anchor: string) => void
+    /**
+     * Tapping open ground while carrying: stand the piece at that exact point,
+     * clamped to its mount's band by the planner. Optional so a surface can
+     * offer anchor-only moving; the sheet passes it.
+     */
+    onDropAt?: (x: number, y: number) => void
   }
   /** Makes the whole scene one big button. Only for the non-editing surfaces. */
   onOpen?: () => void
@@ -70,7 +76,18 @@ export function KeepScene({
       }}
       onClick={onOpen}
     >
-      <svg viewBox="0 0 560 300" style={{ display: 'block', width: '100%', height: 'auto' }}>
+      <svg
+        viewBox="0 0 560 300"
+        style={{ display: 'block', width: '100%', height: 'auto' }}
+        onClick={(e) => {
+          // Carrying + a tap on open ground = stand it right there. Pieces and
+          // targets stop propagation, so this only fires for the ground itself,
+          // and the planner clamps the point into the piece's own mount band.
+          if (!editing?.onDropAt || !picked) return
+          const r = e.currentTarget.getBoundingClientRect()
+          editing.onDropAt(((e.clientX - r.left) / r.width) * 560, ((e.clientY - r.top) / r.height) * 300)
+        }}
+      >
         <KeepHall color={color} level={level} />
 
         {/* Front-left, on the near floor. It has to sit BELOW the hearth
@@ -82,6 +99,12 @@ export function KeepScene({
           const value = placements[a.id]
           if (!value) return null
           const lifted = picked === a.id
+          // A moved piece stands where its value says; an untouched one stands
+          // on its anchor, exactly as every placement written before free
+          // positioning existed still should.
+          const u = unpackDecor(value)
+          const px = u.x ?? a.x
+          const py = u.y ?? a.y
           // The spot that just absorbed a duplicate gives one pulse — the eye
           // needs telling where to look when the thing you tapped isn't the
           // thing that changed.
@@ -97,18 +120,25 @@ export function KeepScene({
                     : { scale: 1, y: 0 }
               }
               transition={{ duration: lifted ? 0.18 : 0.5 }}
-              style={{ transformOrigin: `${a.x}px ${a.y}px`, cursor: editing ? 'pointer' : undefined }}
+              style={{ transformOrigin: `${px}px ${py}px`, cursor: editing ? 'pointer' : undefined }}
               onClick={
                 editing
-                  ? () => (picked && picked !== a.id ? editing.onDrop(a.id) : editing.onPick(a.id))
+                  ? (e) => {
+                      // The svg behind this drops the carried piece at the tap
+                      // point; a tap ON a piece must not also be a tap on the
+                      // ground under it.
+                      e.stopPropagation()
+                      if (picked && picked !== a.id) editing.onDrop(a.id)
+                      else editing.onPick(a.id)
+                    }
                   : undefined
               }
             >
-              <DecorProp value={value} x={a.x} y={a.y} color={color} mount={a.mount} />
+              <DecorProp value={value} x={px} y={py} color={color} mount={a.mount} sizeScale={u.s ?? 1} />
               {lifted && (
                 <circle
-                  cx={a.x}
-                  cy={a.y}
+                  cx={px}
+                  cy={py}
                   r="30"
                   fill="none"
                   stroke="var(--gold)"
@@ -126,7 +156,14 @@ export function KeepScene({
             the constraint made visible rather than an error after the fact. */}
         {editing && picked &&
           ANCHORS.filter((a) => a.id !== picked && a.mount === pickedMount).map((a) => (
-            <g key={`t-${a.id}`} onClick={() => editing.onDrop(a.id)} style={{ cursor: 'pointer' }}>
+            <g
+              key={`t-${a.id}`}
+              onClick={(e) => {
+                e.stopPropagation()
+                editing.onDrop(a.id)
+              }}
+              style={{ cursor: 'pointer' }}
+            >
               {/* A generous invisible hit area — the visible ring is 26 units
                   across, which is a 12px tap on a phone. */}
               <circle cx={a.x} cy={a.y} r="26" fill="transparent" />

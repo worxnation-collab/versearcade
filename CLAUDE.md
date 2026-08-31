@@ -847,7 +847,11 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0084` (free placement in the churchyard — plants and monuments
+`0085` (erasure hardening — scrubbing the denormalised copies of a username
+that no foreign key can reach, plus a prune for the pulse table) is WRITTEN AND
+NOT YET APPLIED. Apply it before relying on account deletion being complete.
+
+Before it, the latest is `0084` (free placement in the churchyard — plants and monuments
 stand where you drag them), APPLIED to the live project on 2026-08-31 and
 verified: the shared value grammar parses every form the client writes, refuses
 every malformed one, and all 18 existing planting rows still validate.
@@ -881,7 +885,8 @@ Numbering has scars: `0034` is used twice (`promo_codes`, `skin_purchases`),
 `public_church_page`), `0081` twice (`first_light`, and the Study library's
 card, which was applied to production under that number and renumbered to
 `0083` in the tree when the two branches met), and — from that same collision —
-`0082` and `0083` twice each. So the next free number is `0085`, not `0084`,
+`0082` and `0083` twice each. So the next free number is `0086` (0085 is taken
+by erasure hardening, above),
 and this
 sentence has already gone stale twice: it said "0076" while 0077, 0078 and 0079
 were sitting in the folder. `ls supabase/migrations | tail -1` is the answer — on ORIGIN/MAIN, not your

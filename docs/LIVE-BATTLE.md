@@ -203,6 +203,30 @@ halves of a quick match arrive as 'host'. `store/live.ts` drops every message
 from a player wearing your own role, so the two of them sat in the same room each
 being told nobody had joined. Found by driving it, invisible in the diff.
 
+## What it pays, and the two skins
+
+Live battles paid nothing at all until `0086`, which is defensible for a room
+code between friends and not for a queue full of strangers. Now a battle pays
+**10 XP, three a day** — and the grant sits inside `create_battle` and
+`submit_battle` rather than anywhere in this feature, because those two are what
+a live match already goes through to be recorded. Nothing in `store/live.ts`
+decides a reward; it passes `p_live: true` and re-reads the profile.
+
+**The winner and the loser are paid the same 10 XP.** `award_battle_xp` never
+reads a score. That is not a nicety — `xp` is the worldwide leaderboard (0006),
+so paying the winner more would make that board a battle ladder and make losing
+cost something, which is the one thing this app's whole design refuses. The
+result screen puts the line under "that part doesn't have a loser" on purpose:
+both players see the identical sentence.
+
+**Jonathan (3 live battles) and Deborah (15)** are earned looks that only the
+live door gives — a room code and a quick match both count, because after the
+handshake they are the same thing. The counter is `profiles.live_battles`,
+server-written and only ever going up, and it counts battles PLAYED: lose all
+fifteen and Deborah is yours anyway. `live` is stamped once by the host on the
+battle row, so the guest never declares it and no client can relabel an async
+battle into the counter.
+
 ## Verified by driving it
 
 Two browser contexts, a real Supabase project, a full match: same verse on both

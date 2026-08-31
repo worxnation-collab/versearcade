@@ -53,6 +53,7 @@ import { BattleResume } from './features/arena/BattleResume'
 import { ChurchResume } from './features/church/ChurchResume'
 import { StudyDropToast } from './features/study/StudyDropToast'
 import { WaystationToast } from './features/season/WaystationToast'
+import { SkinUnlockToast } from './features/profile/SkinUnlockToast'
 import PilgrimageScreen from './features/season/PilgrimageScreen'
 import { MusicDirector } from './juice/MusicDirector'
 import { NowPlaying } from './components/NowPlaying'
@@ -248,6 +249,9 @@ export default function App() {
     {/* Reaching a waystation reveals here for the same reason: a run navigates
         the instant it finishes, so the reveal has to follow the player. */}
     <WaystationToast />
+    {/* Mounted app-wide: the winner of an async battle isn't on any
+        particular screen when their battle completes. See store/skinUnlocks. */}
+    <SkinUnlockToast />
     {/* The soundtrack follows the route rather than any one screen, so it lives
         up here with the other app-wide passengers. */}
     <MusicDirector />

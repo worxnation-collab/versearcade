@@ -3,6 +3,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from './auth'
 import { seedForRoom, type LiveResult } from '@/features/arena/live'
+import { todayLocalDate } from '@/lib/date'
 import type { AvatarSpec } from '@/types'
 
 // LIVE Bible Battle: two people in the same room, on the same verse, at the same
@@ -162,8 +163,16 @@ export const useLive = create<LiveState>((set, get) => {
           p_time_ms: myResult.timeMs,
           p_invited: opponent.username,
           p_broadcast: false,
+          // The one place a battle is marked LIVE. The guest never sends it —
+          // submit_battle reads it back off the row the host wrote — so the two
+          // devices cannot disagree about what kind of match this was, and a
+          // client cannot claim an async battle was a live one to farm the
+          // Jonathan/Deborah counters (0086).
+          p_live: true,
+          p_local_date: todayLocalDate(),
         })
         if (data) set({ battleId: data as string })
+        await useAuth.getState().refreshProfile()
       } else {
         // The host's row may not exist yet. Look for the challenge that names
         // me on this seed, for a few seconds, then give up quietly.
@@ -172,8 +181,18 @@ export const useLive = create<LiveState>((set, get) => {
           const rows = (data as { id: string; seed: number; status: string; is_invited: boolean }[]) ?? []
           const row = rows.find((b) => Number(b.seed) === seed && b.is_invited && b.status === 'pending')
           if (row) {
-            await supabase.rpc('submit_battle', { p_id: row.id, p_score: myResult.score, p_time_ms: myResult.timeMs })
+            await supabase.rpc('submit_battle', {
+              p_id: row.id,
+              p_score: myResult.score,
+              p_time_ms: myResult.timeMs,
+              p_local_date: todayLocalDate(),
+            })
             set({ battleId: row.id })
+            // The server may have paid for this run (award_battle_xp, 0086).
+            // Pull the profile rather than guessing an amount, so the XP bar and
+            // the live-battle skin counter are right the moment the result
+            // screen draws.
+            await useAuth.getState().refreshProfile()
             break
           }
           await new Promise((r) => setTimeout(r, 800))

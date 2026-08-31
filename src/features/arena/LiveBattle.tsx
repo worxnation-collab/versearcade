@@ -10,6 +10,7 @@ import { useLive } from '@/store/live'
 import { useLiveQueue } from '@/store/liveQueue'
 import { useJuice } from '@/juice/useJuice'
 import { LiveVersusQuiz } from './LiveVersusQuiz'
+import { BattleXpLine } from './BattleXpLine'
 import { liveWinner, newRoomCode, normalizeRoomCode, verseForRoom } from './live'
 import { shareResult, inviteUrl } from '@/features/daily/shareCard'
 import type { PlayResult } from '@/types'
@@ -374,6 +375,11 @@ function LiveResultScreen({ onRematch, onDone }: { onRematch: () => void; onDone
         Both of you just read the same verse and answered for it. That part
         doesn’t have a loser.
       </p>
+
+      {/* And neither does the reward: the winner and the loser of this match
+          were paid the same, which is why this line sits under that sentence
+          rather than under the scores. */}
+      <BattleXpLine live />
 
       {/* A rematch takes two, so this button says where the other one is.
           Waiting is a state worth drawing: without it, tapping Rematch and

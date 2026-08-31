@@ -21,6 +21,7 @@ import { Tutorial } from './Tutorial'
 import { InstallPrompt } from './InstallPrompt'
 import { AppStoreNudge } from './AppStoreNudge'
 import { InventoryNudge } from './InventoryNudge'
+import { FirstLight } from '@/features/daily/FirstLight'
 import { msUntilNextLocalMidnight, formatCountdown } from '@/lib/date'
 
 export default function HomeScreen() {
@@ -202,6 +203,13 @@ export default function HomeScreen() {
           </>
         )}
       </motion.div>
+
+      {/* Who opened today's verse first, and their card one tap away. Directly
+          under the drop because it is a fact about THAT verse — and because
+          the only thing it asks anybody to do is open it. */}
+      <div style={{ marginTop: 16 }}>
+        <FirstLight />
+      </div>
 
       {/* Guests need a way back into an existing account, and this is the only
           screen everyone lands on. The same CTA already exists inside

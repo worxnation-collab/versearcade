@@ -389,7 +389,7 @@ export const FULL_SKINS: SkinDef[] = [
     source: 'paid',
     pack: 'patron',
     packName: 'Founding Patron',
-    price: 'From $100',
+    price: '$9.99',
     patron: true,
     limitedUntil: LIMITED_UNTIL,
     blurb: 'A whale of a thank-you — the founding-supporter skin.',

@@ -33,8 +33,9 @@
 // This is deliberately the ONLY place that decision lives, so the app and the
 // site can't drift apart by accident — every commerce surface asks these.
 
-import type { SkinDef } from '@/data/avatar'
+import { skinExpired, type SkinDef } from '@/data/avatar'
 import { useIap } from '@/store/iap'
+import { useAuth } from '@/store/auth'
 import { isNativeApp } from './appStore'
 
 /**
@@ -115,4 +116,60 @@ export function skinVisible(skin: SkinDef, owned: boolean): boolean {
 export function cardBgVisible(def: { pack?: string }, unlocked: boolean): boolean {
   if (storefrontEnabled()) return true
   return !def.pack || unlocked
+}
+
+/**
+ * The founding patron is the ONE thing in this app that still has a price, and
+ * `whale` is its sku in both stores — the Stripe link in `lib/config` and
+ * `APPLE_PRODUCT_IDS` in `lib/iap` are keyed on it.
+ */
+export const PATRON_SKU = 'whale'
+
+/**
+ * What the support card on /you should draw.
+ *
+ * Cosmetics are no longer sold, so this is the whole shop, and the rule the
+ * de-monetisation left standing still binds: don't show a price you can't
+ * charge. Hence three states rather than a boolean —
+ *
+ *   `owned`  — already a patron. Draws a thank-you and NO checkout: the whole
+ *              point of a one-off thank-you is that it is asked for once.
+ *   `buy`    — a sale can actually be completed here.
+ *   `hidden` — it cannot, so the card does not render AT ALL. Not a greyed
+ *              button, not "opening soon" (CLAUDE.md: that line is still a
+ *              storefront), not a price with nothing behind it.
+ *
+ * Fails closed on native for the reason `storefrontEnabled` does: no
+ * RevenueCat key, no network, or a product not yet approved ⇒ hidden, which is
+ * the compliant state and the one this app shipped with before IAP existed.
+ */
+export type PatronOffer = 'buy' | 'owned' | 'hidden'
+
+export function patronOffer(skin: SkinDef, owned: boolean, webUrl: string): PatronOffer {
+  // A GUEST MAY NOT BUY THIS, and the reason is delivery rather than policy.
+  // Both fulfilment paths land the skin on a server-side account: Stripe's
+  // webhook splits `client_reference_id` ("<username>-<skinId>") to find the
+  // profile to grant, and `iap-fulfill` asks RevenueCat what a signed-in
+  // subscriber owns. A guest has no such row, so the money would arrive with
+  // nothing to attach it to — taking a payment we cannot deliver. Found by
+  // driving /you as a guest, where this card renders above "Create account".
+  //
+  // This is NOT `useAccountLocked()`'s rule and deliberately doesn't reuse it:
+  // that wall stands down in a keyless LOCAL build so a developer isn't shown
+  // five padlocks with no backend to sign up to. Here a keyless build genuinely
+  // cannot complete a sale either, so hiding is right in both cases.
+  if (useAuth.getState().mode === 'local') return 'hidden'
+  // Expiry first, and it hides the card for OWNERS too. That looks harsh and is
+  // deliberately the same rule the Skins grid already applies (`skinExpired` +
+  // the filter in CustomizeSection): a limited thank-you that keeps advertising
+  // itself after its window has closed is a different promise from the one the
+  // patron was sold. Note this currently retires the entire shop on the whale's
+  // `limitedUntil` — see data/avatar.
+  if (skinExpired(skin)) return 'hidden'
+  if (owned) return 'owned'
+  if (!storefrontEnabled()) return 'hidden'
+  // Native: only once StoreKit has this exact product. Web: only if a real
+  // checkout URL is configured — an unset link would otherwise render a button
+  // that opens nothing.
+  return (isNativeApp() ? skuPurchasable(PATRON_SKU) : !!webUrl) ? 'buy' : 'hidden'
 }

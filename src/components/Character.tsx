@@ -415,7 +415,7 @@ export function Character({
         </>
       ) : skinId === 'whale' ? (
         <>
-          {/* ── Jonah's Whale — a splashing $100 patron showpiece ── */}
+          {/* ── Jonah's Whale — the patron showpiece ── */}
           <g className="va-whale">
           {/* soft premium aura */}
           <circle cx="54" cy="90" r="55" fill="#6FA8DC" opacity="0.13" />

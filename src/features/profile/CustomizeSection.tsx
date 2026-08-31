@@ -4,6 +4,7 @@ import { Avatar } from '@/components/Avatar'
 import { CharacterPicker } from '@/components/CharacterPicker'
 import { Button } from '@/components/Button'
 import { SUPPORT_URL, skinBuyUrl } from '@/lib/config'
+import { startSkinCheckout } from '@/lib/checkout'
 import { cardBgVisible, displayPrice, skinVisible, storefrontEnabled } from '@/lib/commerce'
 import { isNativeApp } from '@/lib/appStore'
 import { iapAvailable } from '@/lib/iap'
@@ -838,31 +839,22 @@ export function CustomizeSection() {
                     <Button variant="gold" full disabled={buying} onClick={async () => {
                       juice.coin()
                       const skin = buyTarget
-                      if (isNativeApp()) {
-                        // Apple's purchase sheet — the app may not check out anywhere else.
-                        setBuying(true)
-                        const result = await buyIap(skin.id)
-                        setBuying(false)
-                        if (result === 'cancelled') return
-                        setBuyTarget(null)
-                        // Never close on a paid purchase without saying what
-                        // happened. 'unconfirmed' means Apple charged but the
-                        // entitlement hasn't landed yet — the honest instruction is
-                        // to wait and Restore, not silence.
-                        if (result === 'failed') {
-                          setErr('That didn’t go through — you haven’t been charged.')
-                        } else if (result === 'unconfirmed') {
-                          setErr('Payment went through. Your skin should appear in a moment — if it doesn’t, tap Restore purchases.')
-                        }
-                        return
-                      }
-                      // Pass "<username>-<skinId>" as Stripe's client_reference_id so the
-                      // webhook can auto-grant the right skin to the right account.
-                      const base = skinBuyUrl(skin.id)
-                      const ref = encodeURIComponent(`${profile.username}-${skin.id}`)
-                      const url = base + (base.includes('?') ? '&' : '?') + 'client_reference_id=' + ref
-                      window.open(url, '_blank', 'noopener,noreferrer')
+                      // Both stores, one implementation — shared with the patron
+                      // card on /you so the two surfaces can't drift (lib/checkout).
+                      setBuying(true)
+                      const result = await startSkinCheckout(skin.id, profile.username)
+                      setBuying(false)
+                      if (result === 'cancelled') return
                       setBuyTarget(null)
+                      // Never close on a paid purchase without saying what
+                      // happened. 'unconfirmed' means Apple charged but the
+                      // entitlement hasn't landed yet — the honest instruction is
+                      // to wait and Restore, not silence.
+                      if (result === 'failed') {
+                        setErr('That didn’t go through — you haven’t been charged.')
+                      } else if (result === 'unconfirmed') {
+                        setErr('Payment went through. Your skin should appear in a moment — if it doesn’t, tap Restore purchases.')
+                      }
                     }}>
                       {buying ? 'Opening Apple…' : 'Get this skin'}
                     </Button>

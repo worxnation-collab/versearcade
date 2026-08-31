@@ -228,6 +228,39 @@ So the same catalog is sold twice: Stripe on web (`lib/config.ts`), Apple IAP in
 the app (`lib/iap.ts` + `store/iap.ts`, RevenueCat). Setup runbook and the
 account-gated Apple steps: `docs/APPLE-IAP.md`.
 
+**The founding patron has a card of its own now** (`PatronCard`, at the settled
+end of `/you` — after the room and the collection, before the account
+controls). It shipped reachable only by opening Customize, choosing Skins,
+scrolling to a locked whale and tapping it, which is not a shop; the app has one
+product and it was effectively invisible. Four things keep it from becoming a
+nag, and they are why it can sit on a player-facing tab at all: it is asked
+**once** (a patron sees a thank-you and no checkout — `patronOffer` returns
+`owned`), it sells a **thank-you rather than power** (a skin; no XP, no rank,
+nothing a non-patron is behind on — the same rule that makes a paid church skin
+"not a bigger church"), it **hides entirely** rather than degrading to a greyed
+button or an "opening soon" line, and it is **hidden from guests**. That last
+one is delivery, not policy: both fulfilment paths land the skin on a
+server-side account (Stripe's webhook splits `client_reference_id`,
+`iap-fulfill` asks RevenueCat about a signed-in subscriber), so a guest's money
+would arrive with no row to attach it to. It is deliberately NOT
+`useAccountLocked()`'s rule — that wall stands down in a keyless LOCAL build,
+where this one must not, because a keyless build cannot complete a sale either.
+
+**`lib/checkout.ts` is the one place a sale is STARTED**, as `commerce.ts` is
+the one place it is decided. Two surfaces now begin a purchase (the Skins grid
+and the patron card) and each writing its own "which store am I in, and what do
+I pass it" is the drift the `QuizRunner` rule exists to prevent. The web path's
+`client_reference_id` is load-bearing rather than decorative — drop it and the
+money arrives with no way to tell whose it was.
+
+**The whole shop retires itself on 2026-10-12.** The whale carries
+`limitedUntil: LIMITED_UNTIL`, and `skinExpired` hides an expired skin from the
+grid *for owners too*; `patronOffer` follows the same rule on purpose, so the
+patron card disappears with it. Since cosmetics are de-monetised and `BUNDLES`
+is empty, that date is the moment this app has nothing purchasable at all.
+Extending it is one constant in `data/avatar.ts` — a decision, not an
+oversight, so it is written here rather than left to be discovered.
+
 `lib/commerce.ts` is the only place the *decision* lives — `storefrontEnabled()`,
 `skinVisible()`, `cardBgVisible()`, `displayPrice()`. Every commerce surface asks
 it, so the app and the site can't drift apart by accident. Don't reach for
@@ -847,7 +880,15 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0084` (free placement in the churchyard — plants and monuments
+The latest is `0085` (erasure hardening — scrubbing the denormalised copies of
+a username that no foreign key can reach, plus a prune for the pulse table),
+APPLIED on 2026-08-31 and verified: the scrub clears a probe name from
+`presence_events` and `guest_opens` in one statement, and
+`prune_presence_events`'s ACL reads `{postgres,service_role}` — the locked-down
+shape `grant_skins` has, not the `revoke from public` that 0052 wrongly believed
+was enough.
+
+Before it, `0084` (free placement in the churchyard — plants and monuments
 stand where you drag them), APPLIED to the live project on 2026-08-31 and
 verified: the shared value grammar parses every form the client writes, refuses
 every malformed one, and all 18 existing planting rows still validate.
@@ -881,7 +922,8 @@ Numbering has scars: `0034` is used twice (`promo_codes`, `skin_purchases`),
 `public_church_page`), `0081` twice (`first_light`, and the Study library's
 card, which was applied to production under that number and renumbered to
 `0083` in the tree when the two branches met), and — from that same collision —
-`0082` and `0083` twice each. So the next free number is `0085`, not `0084`,
+`0082` and `0083` twice each. So the next free number is `0086` (0085 is taken
+by erasure hardening, above),
 and this
 sentence has already gone stale twice: it said "0076" while 0077, 0078 and 0079
 were sitting in the folder. `ls supabase/migrations | tail -1` is the answer — on ORIGIN/MAIN, not your

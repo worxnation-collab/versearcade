@@ -11,13 +11,17 @@
 //
 // The one faction-specific element is colour: the gonfalons and the destrier's
 // barding take denominationColor(), which is already measured to clear ΔE 9
-// from every other faction under normal, deutan and protan vision.
+// from every other faction under normal, deutan and protan vision. That
+// measurement is of FLAT SWATCHES, so the colour has to stay a flat fill — it
+// cannot be baked into a painting, where shading would move every one of those
+// values and two close hues (Baptist #C0492E against Catholic #8C2434) would
+// stop being the pair somebody checked. Hence PROP_OVERLAYS below.
 
 import { GENERATED_ART } from '@/data/generatedArt'
 import { KEEP_LEVEL_NAMES, decorById, keepTier, unpackDecor, type MountKind } from '@/data/keep'
 // The display boxes live in their own module so the build-time check can run
 // the real table against the real renders — see src/data/keepArt.ts.
-import { RASTER_DECOR } from '@/data/keepArt'
+import { RASTER_DECOR, type DecorMode } from '@/data/keepArt'
 
 // Palette — warm stone interior against the app's dark chrome. Anything the
 // six halls vary tier to tier lives in HALL_TIERS below instead; what's left
@@ -267,6 +271,10 @@ function DrawnHall({ color, tier = 0 }: { color: string; tier?: number }) {
  * tiers would be 45 renders for something drawn at 40px in a sheet, which is
  * the same size argument that made church skins a kit instead of 32 images.
  */
+/** Where a picture's top edge sits relative to its anchor, per mount mode. */
+const rasterTop = (d: { h: number; mode: DecorMode }) =>
+  d.mode === 'hang' ? 0 : d.mode === 'center' ? -d.h / 2 : -d.h
+
 export function DecorProp({
   value,
   x,
@@ -286,6 +294,7 @@ export function DecorProp({
   const { id, tier } = unpackDecor(value)
   const raster = decorRaster(id)
   const art = raster ? null : PROPS[id]
+  const overlay = raster ? PROP_OVERLAYS[id] : undefined
   if (!raster && !art) return null
 
   const grown = (TIER_SCALE[tier - 1] ?? 1) * sizeScale
@@ -297,14 +306,23 @@ export function DecorProp({
       {tier > 1 && <TierAccent tier={tier} mount={mount} />}
       <g transform={grown === 1 ? undefined : `scale(${grown})`}>
         {raster ? (
-          <image
-            href={raster.src}
-            x={-raster.w / 2}
-            y={raster.mode === 'hang' ? 0 : raster.mode === 'center' ? -raster.h / 2 : -raster.h}
-            width={raster.w}
-            height={raster.h}
-            preserveAspectRatio="xMidYMid meet"
-          />
+          <>
+            <image
+              href={raster.src}
+              x={-raster.w / 2}
+              y={rasterTop(raster)}
+              width={raster.w}
+              height={raster.h}
+              preserveAspectRatio="xMidYMid meet"
+            />
+            {/* the faction colour, drawn over the painting rather than baked
+                into it — see PROP_OVERLAYS */}
+            {overlay && (
+              <g transform={`translate(${-raster.w / 2}, ${rasterTop(raster)})`}>
+                {overlay(color, raster)}
+              </g>
+            )}
+          </>
         ) : (
           art!(color)
         )}
@@ -377,21 +395,63 @@ function TierAccent({ tier, mount }: { tier: number; mount?: MountKind }) {
  * A generated render wins over a hand-placed file, and an entry with neither
  * falls through to the drawn prop — the same tiering skinArtUrl uses.
  *
- * TWO decorations are deliberately absent from RASTER_DECOR and always will
- * be: the kite shield and the destrier's barding take denominationColor() at
- * runtime, and a baked image cannot take a colour. This used to say three and
- * name the woven rug alongside them, which the table it describes has not
- * agreed with for a long time — the rug's drawn version does take the colour,
- * but rug.png overrides it, so the faction band is already gone. Putting it
- * back is a real choice someone may want to make (delete its row in
- * data/keepArt.ts); it is not what the code does today, and a comment claiming
- * otherwise is worse than either answer.
+ * ONE decoration is deliberately absent from RASTER_DECOR: the kite shield is
+ * mostly the colour, so there is no picture left once the colour is lifted off
+ * it. The destrier used to be listed here too and no longer is — the horse is
+ * the painting and its trapper band and plume are drawn over it
+ * (PROP_OVERLAYS), which is how a prop can be painted without baking a measured
+ * colour into shading.
+ *
+ * This once said THREE and named the woven rug, which the table it describes
+ * had not agreed with for a long time: the rug's drawn version does take the
+ * colour, but rug.png overrides it, so the faction band is already gone.
+ * Putting it back is a real choice someone may want to make (delete its row in
+ * data/keepArt.ts, or give it an overlay); it is not what the code does today.
  */
 function decorRaster(id: string) {
   const d = RASTER_DECOR[id]
   if (!d) return null
   const src = GENERATED_ART[id] ?? d.src
   return src ? { ...d, src } : null
+}
+
+/**
+ * Flat colour drawn ON TOP of a generated prop, for the pieces whose identity
+ * is a faction colour.
+ *
+ * This is the same bargain KeepHall already strikes — a painted room with the
+ * gonfalon drawn over it — applied to a prop. A destrier painted in one colour
+ * would stop saying whose hall it is, and fourteen paintings, one per faction,
+ * would bake the colour into shading and lose the ΔE separation the palette was
+ * measured for. So the horse, its iron and its leather are the painting, and
+ * the two things that carry the colour are not.
+ *
+ * Geometry is expressed as FRACTIONS OF THE DISPLAY BOX rather than viewBox
+ * units, so it survives the render coming back at its own aspect ratio (which
+ * it will — see check-decor-art.mjs). The origin is the TOP-LEFT of the picture
+ * and (w, h) is its far corner, which is the one frame both the hall and the
+ * shelf tile can put it in.
+ *
+ * An id here still needs its full drawing in PROPS: with no render this map is
+ * never consulted, and the drawn prop is the whole prop.
+ */
+const PROP_OVERLAYS: Record<string, (color: string, box: { w: number; h: number }) => JSX.Element> = {
+  // The trapper's band across the barrel, and the plume on the chanfron. The
+  // prompt asks for undyed cream cloth and no plume at all, so these land on
+  // blank wool and on bare iron rather than over painted colour.
+  keep_destrier: (color, { w, h }) => (
+    <g>
+      <path
+        d={`M${w * 0.08} ${h * 0.36} h${w * 0.5} v${h * 0.17} l${-w * 0.05} ${h * 0.05} l${-w * 0.05} ${-h * 0.05} l${-w * 0.05} ${h * 0.05} l${-w * 0.05} ${-h * 0.05} l${-w * 0.05} ${h * 0.05} l${-w * 0.05} ${-h * 0.05} l${-w * 0.05} ${h * 0.05} l${-w * 0.05} ${-h * 0.05} l${-w * 0.05} ${h * 0.05} l${-w * 0.05} ${-h * 0.05} z`}
+        fill={color}
+      />
+      <path d={`M${w * 0.08} ${h * 0.36} h${w * 0.5} v${h * 0.04} h${-w * 0.5} z`} fill="#ffffff" opacity="0.22" />
+      <path
+        d={`M${w * 0.82} ${h * 0.07} q${w * 0.06} ${-h * 0.07} ${w * 0.12} ${-h * 0.03} q${-w * 0.04} ${h * 0.06} ${-w * 0.1} ${h * 0.06} z`}
+        fill={color}
+      />
+    </g>
+  ),
 }
 
 const PROPS: Record<string, (color: string) => JSX.Element> = {
@@ -575,6 +635,20 @@ export function DecorThumb({ id, size = 56 }: { id: string; size?: number }) {
   // in the hall.
   const raster = decorRaster(id)
   if (raster) {
+    // A colour-carrying prop has to wear its overlay HERE too, or the tile and
+    // the hall draw different objects — the same split decorRaster exists to
+    // close. It needs an <svg> rather than an <img> to draw over, and the
+    // shelf's own gold stands in for the faction the way it does for a drawn
+    // prop, so the tile reads before a faction is even picked.
+    const overlay = PROP_OVERLAYS[id]
+    if (overlay) {
+      return (
+        <svg width={size} height={size} viewBox={`0 0 ${raster.w} ${raster.h}`} style={{ display: 'block' }} aria-hidden>
+          <image href={raster.src} x="0" y="0" width={raster.w} height={raster.h} preserveAspectRatio="xMidYMid meet" />
+          {overlay(GOLD, raster)}
+        </svg>
+      )
+    }
     return (
       <img
         src={raster.src}

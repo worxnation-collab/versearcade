@@ -51,4 +51,12 @@ export const RASTER_DECOR: Record<string, DecorArtDef> = {
   // every wall trophy here uses.
   keep_crossed_spears: { w: 47.7, h: 50, mode: 'center' },
   keep_woven_rug: { src: '/keep/rug.png', w: 38, h: 20, mode: 'stand' },
+  // Awaiting its render, and deliberately listed before one exists. With no
+  // file to resolve, decorRaster returns null and the drawn destrier is the
+  // whole prop, so nothing here is read yet — which is also why this w/h is
+  // only the drawn horse's own span. The moment the render lands, check:decor
+  // fails with the real width to put here; adding this row later is the step
+  // that gets forgotten. It carries the faction colour through PROP_OVERLAYS
+  // rather than in the painting, so it is NOT one of the drawn holdouts.
+  keep_destrier: { w: 81, h: 59, mode: 'stand' },
 }

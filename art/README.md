@@ -116,10 +116,22 @@ box and an anchor mode the map has nowhere to put. Two things about that list:
 
 ## Two things stay drawn, and it isn't laziness
 
-- **Anything that takes a runtime colour.** The kite shield, the destrier's
-  barding and the faction gonfalon are painted in `denominationColor()`, which
-  is measured for colourblind separation and is not knowable at generation
-  time. A baked image cannot take a colour.
+- **Anything that takes a runtime colour.** The kite shield and the faction
+  gonfalon are painted in `denominationColor()`, which is measured for
+  colourblind separation and is not knowable at generation time. A baked image
+  cannot take a colour — and the measurement is of FLAT SWATCHES, so painting
+  one in would move every value and stop two close hues being the pair somebody
+  checked.
+
+  **But "takes a colour" no longer means "cannot be generated."** A prop can be
+  painted everywhere the colour ISN'T and wear the colour as flat SVG on top —
+  `PROP_OVERLAYS` in `KeepArt.tsx`, the same bargain `KeepHall` strikes with a
+  painted room and a drawn gonfalon. That is how the destrier is done: the
+  prompt asks for undyed cream cloth and explicitly no plume, and the trapper
+  band and plume are drawn over the render in fractions of its display box, so
+  they survive the render coming back at its own aspect ratio. The kite shield
+  stays drawn because it is mostly the colour — lift that off and there is no
+  picture left to paint.
 - **Church buildings (`ChurchArt`).** Eight tiers x four skins is 32 images for
   something that also has to read at 44px in a leaderboard row, and a picture
   that reads at 44px is a different picture from one that reads at 220px. See

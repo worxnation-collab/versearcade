@@ -83,13 +83,19 @@ const ids = Object.keys(RASTER_DECOR)
 if (ids.length === 0) fail('RASTER_DECOR is empty — did src/data/keepArt.ts move?')
 
 let checked = 0
+let pending = 0
 for (const id of ids) {
   const def = RASTER_DECOR[id]
   // decorRaster's tiering, restated: a generated render wins over the drawn
   // file underneath it, and an entry with neither is not a picture at all.
   const src = GENERATED_ART[id] ?? def.src
   if (!src) {
-    fail(`${id} has neither a generated render nor a src — it would render an empty <img>`)
+    // A row can legitimately land before its render does — decorRaster returns
+    // null with nothing to resolve, so the drawn prop is still the whole prop
+    // and the width here is not read by anything. Listing it early is what
+    // stops the row being the forgotten half of a generated batch; this check
+    // starts biting the moment the file exists.
+    pending++
     continue
   }
   const file = resolve(root, 'public', src.replace(/^\//, ''))
@@ -117,5 +123,8 @@ if (process.exitCode) {
       'Set each width to the value printed above; the hall stretches a prop to whatever box it is given.',
   )
 } else {
-  console.log(`✓ decor art: ${checked} decorations render at the ratio they were drawn at`)
+  console.log(
+    `✓ decor art: ${checked} decorations render at the ratio they were drawn at` +
+      (pending ? `, ${pending} still drawn and awaiting a render` : ''),
+  )
 }

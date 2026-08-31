@@ -81,6 +81,7 @@ export const GENERATED_ART: Record<string, string> = {
   'keep_woven_rug': '/keep/keep_woven_rug.png',
   'lamplight': '/road/lamplight.jpg',
   'lamplighter': '/skins/lamplighter.png',
+  'lantern': '/skins/lantern.png',
   'librarian': '/skins/librarian.png',
   'magus': '/skins/magus.png',
   'mary': '/skins/mary.png',

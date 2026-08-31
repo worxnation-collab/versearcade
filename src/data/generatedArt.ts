@@ -18,6 +18,7 @@ export const GENERATED_ART: Record<string, string> = {
   'advent': '/road/advent.jpg',
   'armor_of_god': '/skins/armor_of_god.png',
   'bethlehem_star_bearer': '/skins/bethlehem_star_bearer.png',
+  'cross_beam': '/items/cross_beam.png',
   'hall-2': '/keep/hall-2.png',
   'hall-3': '/keep/hall-3.png',
   'hall-4': '/keep/hall-4.png',

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { useJuice } from '@/juice/useJuice'
 import { useBuddies } from '@/store/buddies'
 import { useGifts } from '@/store/gifts'
+import { useReviews } from '@/store/reviews'
 import { useAccountLocked } from '@/components/AccountWall'
 
 // Five tabs, one per thing you actually come here to do. Ranks folded into
@@ -26,6 +27,12 @@ const tabs = [
 // here said it existed. One dot — no count, no red, no badge that demands
 // clearing. It marks that someone is waiting on you, which is the one thing
 // in this app another person can be blocked by.
+//
+// The Study tab wears the same dot when verses are due for review. That used to
+// be a whole card on the Play tab pointing down here, which is a signpost to a
+// tab that is already on screen — the dot says it in no space at all. It is
+// deliberately the SAME dot: no count, because "15 verses overdue" is a backlog
+// to feel behind on, and this app doesn't do those. It is an invitation.
 function NavDot() {
   return (
     <span
@@ -74,6 +81,11 @@ export function BottomNav() {
   // count — a gift and a buddy request are both "there's something for you",
   // and a number here would turn a letterbox into a queue to be cleared.
   const unseenGifts = useGifts((s) => s.unseen)
+  // Read-only, like the two above: HomeScreen calls loadDue() and everybody
+  // lands there, so the schedule is loaded by the time this matters. The nav
+  // never fetches — a tab bar mounted on every screen must not be a network
+  // call on every screen.
+  const reviewsDue = useReviews((s) => s.dueRefs.length)
   const locked = useAccountLocked()
   return (
     <nav
@@ -136,6 +148,9 @@ export function BottomNav() {
                 <span style={{ fontSize: 20 }}>{t.icon}</span>
                 <span style={{ fontSize: 10, fontWeight: 800, whiteSpace: 'nowrap' }}>{t.label}</span>
                 {t.to === '/you' && buddyRequests + unseenGifts > 0 && <NavDot />}
+                {/* Not while the tab is locked: the padlock sits in the same
+                    corner, and a guest can't reach the reviews anyway. */}
+                {t.to === '/study' && !locked && reviewsDue > 0 && <NavDot />}
                 {locked && !t.guest && <NavLock />}
               </motion.div>
             )}

@@ -25,6 +25,7 @@ import { ProfileHero } from './ProfileHero'
 import { RoomSection } from '@/features/room/RoomSection'
 import { ChurchNudge } from '@/features/church/ChurchNudge'
 import { SettingsSheet } from './SettingsSheet'
+import { Tutorial } from '@/features/home/Tutorial'
 
 export default function ProfileScreen() {
   const navigate = useNavigate()
@@ -36,6 +37,9 @@ export default function ProfileScreen() {
   const { profile, mode, changeUsername, signOut, deleteAccount } = useAuth()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // The walkthrough, opened from Settings. Owned here rather than by the sheet
+  // because its last step navigates — see the note on SettingsSheet's prop.
+  const [tourOpen, setTourOpen] = useState(false)
   // ?customize=1 deep-links straight into the customizer — the home screen's
   // "build your character" nudge uses it, so it doesn't dump you on the profile
   // with nothing obviously to do.
@@ -493,7 +497,13 @@ export default function ProfileScreen() {
       </p>
 
       <AnimatePresence>
-        {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} />}
+        {settingsOpen && (
+          <SettingsSheet
+            onClose={() => setSettingsOpen(false)}
+            onHowToPlay={() => { setSettingsOpen(false); setTourOpen(true) }}
+          />
+        )}
+        {tourOpen && <Tutorial onClose={() => setTourOpen(false)} />}
       </AnimatePresence>
     </Page>
   )

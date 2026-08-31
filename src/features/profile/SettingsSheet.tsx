@@ -21,7 +21,17 @@ const TEXT_SIZES = [
 // Everything that used to sit inline on the profile (sound, haptics, motion,
 // volume, reading translation) lives here instead — one ⚙️ tap away, so the
 // profile itself stays about *you* rather than about knobs.
-export function SettingsSheet({ onClose }: { onClose: () => void }) {
+export function SettingsSheet({
+  onClose,
+  onHowToPlay,
+}: {
+  onClose: () => void
+  /** Open the walkthrough. The PARENT owns it, not this sheet: the tour's last
+   *  step navigates to /you?customize=1, and a settings sheet still standing
+   *  over the customizer is the bug that shape invites. So this closes first
+   *  and lets the profile screen show the tour. */
+  onHowToPlay?: () => void
+}) {
   const juice = useJuice()
   const settings = useSettings()
   const updateProfile = useAuth((s) => s.updateProfile)
@@ -126,6 +136,29 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           <h2 style={{ fontSize: 22, margin: 0 }}>⚙️ Settings</h2>
           <button onClick={onClose} className="pill" style={{ fontSize: 13, fontWeight: 800, padding: '7px 14px' }}>Done</button>
         </div>
+
+        {/* How to play — the walkthrough's manual way back in. It used to be a
+            permanent card on the Play tab, where it outranked today's verse for
+            everybody who had long since read it. It still opens itself once for
+            a brand-new player; this is where somebody who wants it AGAIN looks,
+            which is the same place they look for every other knob. */}
+        {onHowToPlay && (
+          <button
+            onClick={() => { juice.select?.(); onHowToPlay() }}
+            className="card"
+            style={{
+              width: '100%', marginBottom: 18, display: 'flex', alignItems: 'center',
+              gap: 12, textAlign: 'left', cursor: 'pointer',
+            }}
+          >
+            <span style={{ fontSize: 22 }}>💡</span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <b style={{ fontFamily: 'var(--font-display)', fontSize: 15, display: 'block' }}>How to play</b>
+              <span className="faint" style={{ fontSize: 12.5 }}>A 20-second tour of the whole app — the five tabs and what's on them.</span>
+            </span>
+            <span style={{ fontFamily: 'var(--font-display)', color: 'var(--gold)', fontSize: 18, flexShrink: 0 }}>→</span>
+          </button>
+        )}
 
         {/* Sound & feel */}
         <h3 style={{ fontSize: 14, margin: '0 0 8px' }} className="dim">Sound &amp; feel</h3>

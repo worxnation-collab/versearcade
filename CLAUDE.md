@@ -1007,14 +1007,23 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest are **`0086` (battle XP + the live-battle skins) and `0087` (battle
-wins + the crusades skins), and NEITHER IS APPLIED YET** — the two migrations in
-this folder the live project has never seen. **Apply them in order**: 0087
+The latest are `0086` (battle XP + the live-battle skins) and `0087` (battle wins
++ the crusades skins), both APPLIED to the live project on 2026-08-31, in that
+order, and verified. **The order is not optional if they are ever re-run**: 0087
 redefines `submit_battle` on top of 0086's version and calls `award_battle_xp`,
 so running it alone leaves a function referring to something that doesn't exist.
-Until both run, battles pay nothing, none of the six new skins can ever unlock,
-and PostgREST silently drops `create_battle`'s new `p_live`/`p_local_date`
-arguments. Apply before merging the client, the way this section demands.
+
+What the verification actually checked, because "applied" is not the same as
+"right": `award_battle_xp`'s ACL reads `{postgres,service_role}` — the locked-down
+shape `grant_skins` has, not the `revoke from public` 0052 wrongly believed was
+enough; there is exactly ONE signature each for `create_battle`, `submit_battle`
+and `my_battle_xp`, so no stale overload survived the drop-and-recreate for
+PostgREST to resolve an old client's call to; and 0087's backfill gave 28
+accounts a win count off 225 completed battles, topping out at 62. A real player
+finished an async battle four minutes after 0086 landed and was paid 10 XP from
+an already-deployed client that sends no `p_local_date` — the "approved builds
+start paying without a submission" claim, confirmed in production rather than
+argued.
 
 Before it, `0085` (erasure hardening — scrubbing the denormalised copies of
 a username that no foreign key can reach, plus a prune for the pulse table),

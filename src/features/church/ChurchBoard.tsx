@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
-import { useChurch, RADIUS_CHOICES } from '@/store/church'
+import { useChurch, RADIUS_CHOICES, TIMEFRAME_CHOICES } from '@/store/church'
+import type { TimeframeChoice } from '@/store/church'
 import { useJuice } from '@/juice/useJuice'
 import { ChurchArt } from './ChurchArt'
 import { ChurchDetailSheet } from './ChurchDetailSheet'
@@ -11,12 +12,54 @@ import type { Church } from '@/types'
 // radius is the whole point: a 40-family congregation is never going to out-XP
 // a megachurch two states over, but it can absolutely out-give the one across town.
 // "All" opens it up to every church playing, for when you want the whole ladder.
+//
+// Two axes now, and the second one matters as much as the first. A lifetime
+// ladder is one a church can climb but not JOIN — a congregation playing hard
+// for a fortnight still sits under one that banked 18,000 points two years ago
+// and has been quiet since. Today / This week / All time makes the board
+// winnable by showing up, which is the behaviour the whole church feature is
+// trying to produce.
+//
+// The windows are UTC and "this week" is the RIVALRY's week (see 0080 and
+// features/church/rivalry.ts): the board's weekly number and the rivalry card's
+// weekly number are the same number for the same church, and they roll over
+// together. Two weekly totals disagreeing by a few hours would be
+// indistinguishable from a bug.
+
+/** What the chips say. */
+const TIMEFRAME_LABEL: Record<TimeframeChoice, string> = {
+  day: 'Today',
+  week: 'This week',
+  all: 'All time',
+}
+
+/**
+ * The window as a phrase that slots into "ranked by points given___".
+ *
+ * Empty for all-time on purpose, so the caption the board has always had is
+ * byte-identical on the default scope. Exported because `ChurchScreen` draws
+ * that caption above this component.
+ */
+export const TIMEFRAME_PHRASE: Record<TimeframeChoice, string> = {
+  day: ' today',
+  week: ' this week',
+  all: '',
+}
+
 export function ChurchBoard() {
   const juice = useJuice()
-  const { board, boardMe, boardTotal, boardLoading, radiusMiles, setRadius } = useChurch()
+  const { board, boardMe, boardTotal, boardLoading, radiusMiles, setRadius, timeframe, setTimeframe } =
+    useChurch()
 
   const meInBoard = !!boardMe && board.some((c) => c.id === boardMe.id)
   const worldwide = radiusMiles === 'all'
+  const windowed = timeframe !== 'all'
+
+  // Nobody has given anything inside the window yet — including you. Worth
+  // saying plainly: a column of zeroes with a gold medal on the top row would
+  // be claiming somebody won a day that hasn't started.
+  const quiet =
+    windowed && !boardLoading && board.length > 0 && board.every((c) => (c.points ?? c.xp) <= 0)
 
   return (
     <div>
@@ -28,7 +71,7 @@ export function ChurchBoard() {
           display: 'grid',
           gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
           gap: 5,
-          marginBottom: 12,
+          marginBottom: 6,
         }}
       >
         {RADIUS_CHOICES.map((r) => {
@@ -38,6 +81,7 @@ export function ChurchBoard() {
               key={r}
               whileTap={{ scale: 0.94 }}
               onClick={() => { juice.select(); setRadius(r) }}
+              aria-pressed={active}
               style={{
                 padding: '8px 3px',
                 borderRadius: 999,
@@ -51,6 +95,42 @@ export function ChurchBoard() {
               }}
             >
               {r === 'all' ? 'All' : `${r} mi`}
+            </motion.button>
+          )
+        })}
+      </div>
+
+      {/* When, under where. Three wide chips rather than five narrow ones, so
+          "This week" never has to be abbreviated on a 320px phone. */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+          gap: 5,
+          marginBottom: 12,
+        }}
+      >
+        {TIMEFRAME_CHOICES.map((t) => {
+          const active = t === timeframe
+          return (
+            <motion.button
+              key={t}
+              whileTap={{ scale: 0.94 }}
+              onClick={() => { juice.select(); setTimeframe(t) }}
+              aria-pressed={active}
+              style={{
+                padding: '8px 3px',
+                borderRadius: 999,
+                fontSize: 12,
+                whiteSpace: 'nowrap',
+                fontWeight: 800,
+                border: '1px solid var(--stroke)',
+                background: active ? 'linear-gradient(180deg, var(--grape), var(--grape-deep))' : 'var(--card)',
+                color: active ? '#fff' : 'var(--ink-faint)',
+                boxShadow: active ? '0 4px 14px rgba(122,63,242,0.45)' : 'none',
+              }}
+            >
+              {TIMEFRAME_LABEL[t]}
             </motion.button>
           )
         })}
@@ -77,9 +157,17 @@ export function ChurchBoard() {
         </div>
       )}
 
+      {quiet && (
+        <p className="faint center" style={{ margin: '0 0 10px', fontSize: 12.5, lineHeight: 1.5 }}>
+          {timeframe === 'day'
+            ? 'Nothing given anywhere yet today — the first gift takes the top spot.'
+            : 'A quiet week so far — the first gift takes the top spot.'}
+        </p>
+      )}
+
       <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
         {board.map((c) => (
-          <BoardRow key={c.id} church={c} />
+          <BoardRow key={c.id} church={c} timeframe={timeframe} />
         ))}
       </div>
 
@@ -87,7 +175,7 @@ export function ChurchBoard() {
       {boardMe && !meInBoard && (
         <>
           <p className="faint center" style={{ margin: '10px 0 8px', fontSize: 18, letterSpacing: 4 }}>···</p>
-          <BoardRow church={boardMe} />
+          <BoardRow church={boardMe} timeframe={timeframe} />
         </>
       )}
 
@@ -108,11 +196,24 @@ const medal = (rank: number) => (rank === 1 ? '🥇' : rank === 2 ? '🥈' : ran
 // A row is a door: tapping it opens the church's own page — the building drawn
 // wide with its congregation outside it, whatever the church has published about
 // itself, and the way to ask for that to be filled in.
-function BoardRow({ church }: { church: Church }) {
+function BoardRow({ church, timeframe }: { church: Church; timeframe: TimeframeChoice }) {
   const juice = useJuice()
   const openChurch = useChurch((s) => s.openChurch)
   const mine = !!church.isMine
   const tier = tierForLevel(church.level)
+
+  // The number for the chosen window. Undefined on a server that predates 0080,
+  // and on every other RPC that returns a church, so it falls back to lifetime —
+  // which is what this row has always shown.
+  const points = church.points ?? church.xp
+  // The LEVEL still comes from lifetime XP: a church doesn't shrink to a wooden
+  // chapel because it was quiet on Tuesday.
+  const podium = church.rank != null && church.rank <= 3
+  // No medal on a row that gave nothing inside the window. The ranking there is
+  // only a lifetime tiebreak, and a gold medal on a 0 claims somebody won a day
+  // nobody has played yet.
+  const showMedal = podium && points > 0
+
   return (
     <motion.button
       type="button"
@@ -120,7 +221,7 @@ function BoardRow({ church }: { church: Church }) {
       animate={{ opacity: 1, y: 0 }}
       whileTap={{ scale: 0.985 }}
       onClick={() => { juice.select(); void openChurch(church) }}
-      aria-label={`${church.name}, level ${church.level}, ${church.xp.toLocaleString()} XP`}
+      aria-label={`${church.name}, level ${church.level}, ${points.toLocaleString()} points given${TIMEFRAME_PHRASE[timeframe] || ' all time'}`}
       className="card"
       style={{
         display: 'flex',
@@ -140,12 +241,12 @@ function BoardRow({ church }: { church: Church }) {
           textAlign: 'center',
           fontFamily: 'var(--font-display)',
           fontWeight: 800,
-          fontSize: church.rank && church.rank <= 3 ? 20 : 15,
+          fontSize: showMedal ? 20 : 15,
           color: mine ? 'var(--gold)' : 'var(--ink-faint)',
           flexShrink: 0,
         }}
       >
-        {medal(church.rank ?? 0) ?? church.rank}
+        {(showMedal ? medal(church.rank ?? 0) : null) ?? church.rank}
       </span>
 
       <span style={{ width: 44, flexShrink: 0, display: 'grid', placeItems: 'center' }}>
@@ -166,8 +267,18 @@ function BoardRow({ church }: { church: Church }) {
       </span>
 
       <span style={{ textAlign: 'right', flexShrink: 0 }}>
-        <span style={{ display: 'block', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 15, color: 'var(--gold)' }}>
-          {church.xp.toLocaleString()}
+        <span
+          style={{
+            display: 'block',
+            fontFamily: 'var(--font-display)',
+            fontWeight: 800,
+            fontSize: 15,
+            // A zero inside a window is a real answer, not a highlight. Dimming
+            // it keeps the eye on the churches that actually gave.
+            color: points > 0 ? 'var(--gold)' : 'var(--ink-faint)',
+          }}
+        >
+          {points.toLocaleString()}
         </span>
         <span className="faint" style={{ fontSize: 10.5 }}>
           {church.members} {church.members === 1 ? 'player' : 'players'}

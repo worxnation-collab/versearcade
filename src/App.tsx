@@ -34,9 +34,10 @@ import BattlePlay from './features/arena/BattlePlay'
 import BattleDetail from './features/arena/BattleDetail'
 import BattleCpu from './features/arena/BattleCpu'
 import LiveLobby, { LiveRoom } from './features/arena/LiveBattle'
-import ArcadeScreen from './features/arcade/ArcadeScreen'
 import ArcadeLobby from './features/arcade/ArcadeLobby'
 import ArcadeInvite from './features/arcade/ArcadeInvite'
+import MannaScreen from './features/arcade/MannaScreen'
+import WordCatchScreen from './features/arcade/WordCatchScreen'
 import StudyScreen from './features/study/StudyScreen'
 import StudyReportsScreen from './features/study/StudyReportsScreen'
 import StudyRecentScreen from './features/study/StudyRecentScreen'
@@ -434,7 +435,15 @@ export default function App() {
           path="/arcade/manna"
           element={
             <RequireProfile>
-              <ArcadeScreen />
+              <MannaScreen />
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/arcade/word-catch"
+          element={
+            <RequireProfile>
+              <WordCatchScreen />
             </RequireProfile>
           }
         />

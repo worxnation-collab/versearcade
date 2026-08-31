@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react'
 import type { ArcadeGameId } from './games'
-import ArcadeScreen from './ArcadeScreen'
+import MannaScreen from './MannaScreen'
+import WordCatchScreen from './WordCatchScreen'
 import CrossWordScreen from './CrossWordScreen'
 
 // Which component is which machine, so a shared link can mount a game without
@@ -16,6 +17,7 @@ import CrossWordScreen from './CrossWordScreen'
 // `demo` is the free go a shared link hands out: the game runs exactly as it
 // does anywhere else, but pays nothing and offers no "again".
 export const GAME_SCREENS: Record<ArcadeGameId, ComponentType<{ demo?: boolean }>> = {
-  manna: ArcadeScreen,
+  manna: MannaScreen,
+  'word-catch': WordCatchScreen,
   cross: CrossWordScreen,
 }

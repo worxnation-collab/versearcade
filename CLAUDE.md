@@ -762,8 +762,8 @@ Three things to know before touching it:
 
 A cabinet stands in the hall, the churchyard and your own Upper Room (and again
 on the home screen's "In the meantime…" card). Tapping any of them opens
-`/arcade` — a wall of machines you pick from. Two today: Manna Rush and the
-Cross Word. Full design: `docs/ARCADE.md`.
+`/arcade` — a wall of machines you pick from. Three today: Manna Rush, Word
+Catch and the Cross Word. Full design: `docs/ARCADE.md`.
 
 - **The cabinet opens the LOBBY, not a game.** It used to open Manna Rush
   directly, which was right when there was one game; with two, a door that
@@ -773,7 +773,15 @@ Cross Word. Full design: `docs/ARCADE.md`.
   can't promise the wrong one (reduce-motion holds the first frame).
 - **`features/arcade/games.ts` is the list, and it's the only list.** Adding a
   game is a row there plus a route — the same choke-point habit as `QuizRunner`.
-  Wear `ArcadeShell` so two games can't drift into two different headers.
+  It's pure data (the id union in it is what makes `gameScreens.ts` compile);
+  wear `ArcadeShell` so games can't drift into different headers.
+- **Two of the three run on one engine, and the interesting hook is
+  `verdictOf`.** `TapRunner` judges a tap AT TAP TIME rather than at spawn,
+  because in Word Catch the same word is the wrong answer on the way down and
+  the right one the moment the word before it is placed — a table of fixed spawn
+  weights can't say that. With `plan`, a game decides what goes on the field
+  too. Both default to the old behaviour, so Manna Rush is untouched by either.
+  `TapGameScreen` is the gate/run/harvest those two share.
 - **Nothing in the arcade may rank anybody, and that's what lets it exist.** A
   game here may be one you get *better* at, but no cabinet carries a score (a
   list of games with your numbers on it is a scoreboard with a coin slot), the

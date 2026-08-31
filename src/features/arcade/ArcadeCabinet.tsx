@@ -45,9 +45,9 @@ export const CABINET_H = 94
  * frame instead — the cycle is decoration, and the lobby says what's inside in
  * words anyway.
  */
-export type CabinetScreen = 'manna' | 'cross' | 'attract'
+export type CabinetScreen = 'manna' | 'words' | 'cross' | 'attract'
 
-const SCREEN_ORDER: Exclude<CabinetScreen, 'attract'>[] = ['manna', 'cross']
+const SCREEN_ORDER: Exclude<CabinetScreen, 'attract'>[] = ['manna', 'words', 'cross']
 /** How long each game holds the screen in attract mode. */
 const ATTRACT_MS = 3200
 
@@ -110,6 +110,8 @@ export function ArcadeCabinet({
       <rect x="-14" y={-CABINET_H + 13} width="28" height="24" rx="2" fill={SCREEN} />
       {showing === 'manna' ? (
         <MannaScreen reduceMotion={reduceMotion} />
+      ) : showing === 'words' ? (
+        <WordsScreen reduceMotion={reduceMotion} />
       ) : (
         <CrossScreen reduceMotion={reduceMotion} />
       )}
@@ -155,6 +157,70 @@ function MannaScreen({ reduceMotion }: { reduceMotion: boolean }) {
         <circle cx="3" cy={-CABINET_H + 24} r="2" fill="#fff6dc" />
         <circle cx="9" cy={-CABINET_H + 18} r="1.6" fill="#fff6dc" />
       </motion.g>
+    </g>
+  )
+}
+
+/**
+ * A line of paper words, landing.
+ *
+ * Word Catch is played on paper rather than in the app's dark, so its screen is
+ * a pale page with ink bars on it — the same "tell the machines apart from
+ * across the room" job the sand and the gold cross do, and legible at nine
+ * pixels because it is bars rather than letters.
+ */
+function WordsScreen({ reduceMotion }: { reduceMotion: boolean }) {
+  const top = -CABINET_H + 16
+  // Three lines of "words", of uneven length, the way a verse breaks up.
+  const bars: [number, number, number][] = [
+    [-11, 0, 9],
+    [-1, 0, 7],
+    [-11, 1, 6],
+    [-4, 1, 11],
+    [-11, 2, 13],
+  ]
+  return (
+    <g>
+      <rect x="-12" y={top - 2} width="24" height="18" rx="1" fill="#f2e5c8" />
+      {bars.map(([x, row, w], i) => (
+        <motion.rect
+          key={i}
+          x={x}
+          y={top + 1 + row * 5}
+          width={w}
+          height={2.6}
+          rx="1.1"
+          fill="#4a3a24"
+          initial={false}
+          animate={reduceMotion ? { opacity: 0.85 } : { opacity: [0.2, 0.9, 0.9, 0.2] }}
+          transition={
+            reduceMotion
+              ? { duration: 0 }
+              : { duration: 3, repeat: Infinity, ease: 'easeInOut', delay: i * 0.28 }
+          }
+        />
+      ))}
+      {/* The word still in the air, over the page.
+
+          The bob is a RELATIVE translate, not the rect's `y`: framer-motion
+          maps x/y on an SVG element to a transform rather than to the
+          attribute, so animating to an absolute viewBox coordinate translates
+          the rect by that whole distance and throws it clean off the cabinet
+          (it landed up beside the page title). `attrY` would animate the
+          attribute; a small offset is what this actually wants. */}
+      <motion.rect
+        x="1"
+        y={top + 11}
+        width="8"
+        height="2.8"
+        rx="1.2"
+        fill={GOLD}
+        initial={false}
+        animate={reduceMotion ? { y: 0 } : { y: [-2.5, 2.5, -2.5] }}
+        transition={
+          reduceMotion ? { duration: 0 } : { duration: 1.8, repeat: Infinity, ease: 'easeInOut' }
+        }
+      />
     </g>
   )
 }

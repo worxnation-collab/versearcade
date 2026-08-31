@@ -106,6 +106,9 @@ THERE'S AN ARCADE IN HERE NOW
   a machine.
 • Manna Rush: seven days in the wilderness. Gather the fresh flakes, leave the ones
   kept from yesterday, and on the seventh day the best thing you can do is rest.
+• Word Catch: today's verse comes loose from the page and you tap the words back
+  into order. The line at the top shows what you've put back and how long each
+  missing word is.
 • Cross Word: two words that share a letter, standing in the shape of a cross. Solve
   it and the squares turn to wood, with the verse both words came from carved
   underneath. A new one every day, 52 in all, Genesis to Revelation.

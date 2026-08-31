@@ -10,12 +10,27 @@ the "In the meantime…" card on the home screen is the same machine again.
 Tapping any of them opens **`/arcade`** — a wall of machines with their names
 under them — and you pick one.
 
-Two games today:
+Three machines today:
 
 | Game | Route | What a minute of it is |
 |---|---|---|
 | Manna Rush | `/arcade/manna` | Tap the fresh flakes, leave yesterday's, keep the seventh day |
+| Word Catch | `/arcade/word-catch` | Today's verse, come loose from the page — tap the words back into order |
 | Cross Word | `/arcade/cross` | Two words sharing a letter, in the shape of a cross (`docs/CROSS-WORD.md`) |
+
+Manna Rush and Word Catch are two games on **one engine** (`TapRunner` +
+`lib/tapGame.ts`), and the split between them is the useful one: Manna Rush asks
+*should you take this*, Word Catch asks *what comes next*. The engine holds both
+because a game may answer two questions itself — what to put on the field
+(`plan`) and whether a tap was right **at tap time** (`verdictOf`). That second
+one is load-bearing: the same word is the wrong answer on the way down and the
+right one the moment the word before it is placed, and a table of fixed spawn
+weights cannot say that. Both hooks default to the old fixed-verdict behaviour,
+so a game that doesn't need them writes nothing.
+
+`TapGameScreen` is the screen those two wear — gate, run, harvest — so a fourth
+tap game is a definition, a surface and three lines of copy. The Cross Word
+isn't a tap game and wears `ArcadeShell` directly.
 
 ## Why a lobby
 
@@ -115,9 +130,10 @@ Two traps that are written into the code and worth repeating:
 
 ## Adding a game
 
-1. Build the screen under `features/arcade/`. Wear `ArcadeShell` — it owns the
-   way out, the title and the tagline, so two games can't drift into two
-   different headers.
+1. Build the screen under `features/arcade/`. A tap game is a `TapGameDef`, a
+   `TapSurface` and a `TapGameScreen`; anything else wears `ArcadeShell`
+   directly — it owns the way out, the title, the tagline and the Share button,
+   so games can't drift into different headers.
 2. Add the id to `ArcadeGameId`, a row to `ARCADE_GAMES` (title, tagline,
    route, `shareLine`, `screen`, and `needsAccount` only if it writes to the
    player's record), and the component to `GAME_SCREENS`. The id union is what

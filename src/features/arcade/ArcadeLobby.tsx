@@ -59,7 +59,10 @@ export default function ArcadeLobby() {
               style={{
                 position: 'relative',
                 display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
+                // An odd number of machines leaves one on the end. It stands in
+                // the middle of its own row rather than in the left-hand column
+                // with a hole beside it.
+                gridTemplateColumns: row.length === 1 ? '1fr' : 'repeat(2, 1fr)',
                 gap: GAP,
                 alignItems: 'start',
               }}

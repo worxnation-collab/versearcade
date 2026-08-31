@@ -20,7 +20,7 @@ import type { CabinetScreen } from './ArcadeCabinet'
 // own bar, never a board, a percentile or a shareable score.
 
 /** Every machine, as a type — `gameScreens.ts` must cover all of them. */
-export type ArcadeGameId = 'manna' | 'cross'
+export type ArcadeGameId = 'manna' | 'word-catch' | 'cross'
 
 export interface ArcadeGame {
   id: ArcadeGameId
@@ -55,6 +55,15 @@ export const ARCADE_GAMES: ArcadeGame[] = [
     to: '/arcade/manna',
     shareLine: 'Seven days in the wilderness — gather the fresh manna, leave yesterday’s, and rest on the seventh.',
     screen: 'manna',
+  },
+  {
+    id: 'word-catch',
+    title: 'Word Catch',
+    tagline: 'Today’s verse, come loose from the page · put it back in order',
+    to: '/arcade/word-catch',
+    shareLine:
+      'Today’s verse has come loose from the page — tap the words back into the order they belong.',
+    screen: 'words',
   },
   {
     id: 'cross',

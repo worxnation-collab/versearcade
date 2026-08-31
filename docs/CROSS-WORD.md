@@ -15,8 +15,10 @@ Finish the puzzle and the squares turn into two timbers with your letters
 chiselled into them, and the verse is read underneath: *"KNOCK and OPENED both
 live in this verse."*
 
-Fifty-two crosses ship in the binary, Genesis to Revelation. It lives on the
-Study shelf at `/study/cross`.
+Fifty-two crosses ship in the binary, Genesis to Revelation. It's a machine in
+the arcade at `/arcade/cross` — picked off the wall in the lobby, or reached by
+tapping the cabinet standing in the hall, the churchyard or your Upper Room. See
+`docs/ARCADE.md` for the lobby and the rules every game there keeps.
 
 ## Why a two-word crossword rather than a crossword
 
@@ -25,9 +27,9 @@ minutes. This one is two clues and a shape, and it can be finished on a bus.
 The shape is the point: the puzzle IS a cross, and the moment it's solved is the
 moment it becomes one.
 
-It also fits the one thing this app refuses. Study is rank-free, and the Cross
-Word is a study surface: **no timer, no score, no streak, and nothing anybody
-else can see.** Wrong answers cost nothing, hints cost nothing, and re-solving
+It also fits the one thing this app refuses. Nothing in the arcade may rank
+anybody, and this one doesn't even try: **no timer, no score, no streak, and
+nothing anybody else can see.** Wrong answers cost nothing, hints cost nothing, and re-solving
 one you've built before is allowed and pays exactly what it paid the first time
 (nothing that ranks anybody).
 
@@ -62,14 +64,17 @@ can never spoil tomorrow's cross for you.
 
 ## What it pays, and where that goes
 
-Exactly what any study run pays, through the paths that already cap it:
+It sits in the arcade but it pays what a **study run** pays — what a thing is
+doesn't change with where it stands — through the paths that already cap it:
 
 - **A study drop roll** (`useDrops().roll()`) — capped per day, server-verified
   for accounts, and worth nothing but a relic to give to your church.
 - **A step on the road** (`track('study_run')`) — the prepacked verb, no new one
   needed.
 - **The verse is marked studied** (`store/bible.ts`), which lights it up on the
-  player's own Bible. This is the half of a solve that belongs to the *account*.
+  player's own Bible. This is the half of a solve that belongs to the *account*,
+  and it's why this is the one machine in the arcade that asks for one: the rest
+  of the arcade persists nothing, so it's open to guests.
 
 No XP, no points, no standing. Nothing on a leaderboard changes.
 
@@ -95,7 +100,7 @@ store as the local mirror.
 
 ## The wood
 
-`features/study/CrossArt.tsx` draws two layers over the same geometry, sized in
+`features/arcade/CrossArt.tsx` draws two layers over the same geometry, sized in
 the same pixels and crossfaded:
 
 - **Playing:** an HTML grid of real `<button>`s, so a square can be tapped,
@@ -126,6 +131,11 @@ shelf's *cover* for this book still follows the house rule and has a prompt in
 - **The board is sized from measured space, not a fraction of the viewport.** A
   nine-letter upright pushed the on-screen keyboard off the bottom of a 390×844
   phone, and a puzzle you have to scroll to type into is a puzzle you can't play.
+- **Advancing has to be dumb.** Skipping the already-filled crossing square
+  looks like a kindness and puts the second word one square out of step, because
+  somebody typing O-P-E-N-E-D is spelling the word, crossing letter included. It
+  types perfectly until you solve the other word first, which is why it survived
+  a first pass.
 
 ## What it deliberately doesn't have
 
@@ -137,3 +147,7 @@ shelf's *cover* for this book still follows the house rule and has a prompt in
   punished for is a hint nobody uses.
 - **No streak.** The daily cross is an invitation, not a thing to fall behind on
   — the same argument as the Upper Room's lamp.
+- **No second door.** It used to stand on the Study shelf as well. The arcade is
+  its home now, and the shelf book went the way the Battle tab's "Your Keep →"
+  card went when the hall started drawing itself on the tab. `/study/cross`
+  redirects, so nothing already pointing at it breaks.

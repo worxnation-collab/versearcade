@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useSettings } from '@/store/settings'
 
@@ -34,19 +35,39 @@ const MINT = '#4ecdc4'
 export const CABINET_W = 44
 export const CABINET_H = 94
 
+/**
+ * What is playing on the little screen.
+ *
+ * `attract` cycles the games the way a real cabinet's attract mode does, and
+ * that is doing a job rather than being cute: the machine standing in the hall
+ * now opens a lobby with more than one game behind it, and a screen stuck on
+ * one of them would promise the wrong thing. Reduce-motion holds the first
+ * frame instead — the cycle is decoration, and the lobby says what's inside in
+ * words anyway.
+ */
+export type CabinetScreen = 'manna' | 'cross' | 'attract'
+
+const SCREEN_ORDER: Exclude<CabinetScreen, 'attract'>[] = ['manna', 'cross']
+/** How long each game holds the screen in attract mode. */
+const ATTRACT_MS = 3200
+
 export function ArcadeCabinet({
   x = 0,
   y = 0,
   scale = 1,
+  screen = 'manna',
   onOpen,
 }: {
   x?: number
   y?: number
   scale?: number
+  /** Which game is on the screen; `attract` cycles them. */
+  screen?: CabinetScreen
   /** Present only on the surfaces that own the room. Without it, furniture. */
   onOpen?: () => void
 }) {
   const reduceMotion = useSettings((s) => s.reduceMotion)
+  const showing = useAttract(screen, reduceMotion)
 
   return (
     <g
@@ -84,18 +105,14 @@ export function ArcadeCabinet({
       <rect x="-16" y={-CABINET_H} width="32" height="10" rx="2" fill={GOLD} />
       <rect x="-11" y={-CABINET_H + 3.5} width="22" height="3" rx="1.5" fill="#7a4a00" opacity="0.55" />
 
-      {/* Screen: a strip of sand under a night sky, with manna on it. */}
+      {/* Screen. Whatever is showing, it is drawn inside the same 28x24 well,
+          so swapping games never changes the machine's silhouette. */}
       <rect x="-14" y={-CABINET_H + 13} width="28" height="24" rx="2" fill={SCREEN} />
-      <rect x="-14" y={-CABINET_H + 28} width="28" height="9" rx="0" fill={SAND} />
-      <motion.g
-        initial={false}
-        animate={reduceMotion ? { opacity: 1 } : { opacity: [1, 0.55, 1] }}
-        transition={reduceMotion ? { duration: 0 } : { duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
-      >
-        <circle cx="-7" cy={-CABINET_H + 20} r="2.4" fill="#fff6dc" />
-        <circle cx="3" cy={-CABINET_H + 24} r="2" fill="#fff6dc" />
-        <circle cx="9" cy={-CABINET_H + 18} r="1.6" fill="#fff6dc" />
-      </motion.g>
+      {showing === 'manna' ? (
+        <MannaScreen reduceMotion={reduceMotion} />
+      ) : (
+        <CrossScreen reduceMotion={reduceMotion} />
+      )}
       <rect
         x="-14"
         y={-CABINET_H + 13}
@@ -124,16 +141,91 @@ export function ArcadeCabinet({
   )
 }
 
+/** A strip of sand under a night sky, with manna falling on it. */
+function MannaScreen({ reduceMotion }: { reduceMotion: boolean }) {
+  return (
+    <g>
+      <rect x="-14" y={-CABINET_H + 28} width="28" height="9" fill={SAND} />
+      <motion.g
+        initial={false}
+        animate={reduceMotion ? { opacity: 1 } : { opacity: [1, 0.55, 1] }}
+        transition={reduceMotion ? { duration: 0 } : { duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        <circle cx="-7" cy={-CABINET_H + 20} r="2.4" fill="#fff6dc" />
+        <circle cx="3" cy={-CABINET_H + 24} r="2" fill="#fff6dc" />
+        <circle cx="9" cy={-CABINET_H + 18} r="1.6" fill="#fff6dc" />
+      </motion.g>
+    </g>
+  )
+}
+
+/**
+ * A cross of squares, filling in.
+ *
+ * Not a legible crossword: at churchyard size the whole screen is nine pixels
+ * tall, so this is the SHAPE of the game — the same argument that keeps
+ * lettering off the marquee.
+ */
+function CrossScreen({ reduceMotion }: { reduceMotion: boolean }) {
+  // A 5x5 of squares centred in the 28x24 well, with the bar on the SECOND row
+  // — the same upper-third rule the puzzles themselves are checked against, or
+  // this draws a plus sign and the machine advertises the wrong game.
+  const cell = 3.6
+  const step = 4.2
+  const left = -10.2
+  const top = -CABINET_H + 14.8
+  const squares: [number, number][] = [
+    [2, 0], [0, 1], [1, 1], [2, 1], [3, 1], [4, 1], [2, 2], [2, 3], [2, 4],
+  ]
+  return (
+    <g>
+      {squares.map(([c, r], i) => (
+        <motion.rect
+          key={`${c},${r}`}
+          x={left + c * step}
+          y={top + r * step}
+          width={cell}
+          height={cell}
+          rx="0.7"
+          fill={GOLD}
+          initial={false}
+          animate={reduceMotion ? { opacity: 0.9 } : { opacity: [0.25, 0.95, 0.25] }}
+          transition={
+            reduceMotion
+              ? { duration: 0 }
+              : { duration: 2.6, repeat: Infinity, ease: 'easeInOut', delay: i * 0.16 }
+          }
+        />
+      ))}
+    </g>
+  )
+}
+
+/** Which game the screen is showing right now. */
+function useAttract(screen: CabinetScreen, reduceMotion: boolean) {
+  const [i, setI] = useState(0)
+  const cycling = screen === 'attract' && !reduceMotion
+  useEffect(() => {
+    if (!cycling) return
+    const t = window.setInterval(() => setI((n) => n + 1), ATTRACT_MS)
+    return () => window.clearInterval(t)
+  }, [cycling])
+  if (screen !== 'attract') return screen
+  return SCREEN_ORDER[i % SCREEN_ORDER.length]
+}
+
 /**
  * The same cabinet as a standalone box, for a scene built out of DOM rather
  * than one SVG — the churchyard is positioned divs on a lawn, not a viewBox.
  */
 export function ArcadeCabinetBox({
   width,
+  screen = 'manna',
   onOpen,
   title,
 }: {
   width: number
+  screen?: CabinetScreen
   onOpen?: () => void
   title?: string
 }) {
@@ -147,7 +239,7 @@ export function ArcadeCabinetBox({
       role={onOpen ? 'button' : undefined}
       aria-label={onOpen ? title : undefined}
     >
-      <ArcadeCabinet onOpen={onOpen} />
+      <ArcadeCabinet screen={screen} onOpen={onOpen} />
     </svg>
   )
 }

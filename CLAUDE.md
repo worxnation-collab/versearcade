@@ -758,12 +758,43 @@ Three things to know before touching it:
   ±1 is the house pattern and it does mean a lying client can reach three
   buckets, which is bounded and buys nothing rankable.
 
+## The arcade: a room with machines, and a lobby in front of them
+
+A cabinet stands in the hall, the churchyard and your own Upper Room (and again
+on the home screen's "In the meantime…" card). Tapping any of them opens
+`/arcade` — a wall of machines you pick from. Two today: Manna Rush and the
+Cross Word. Full design: `docs/ARCADE.md`.
+
+- **The cabinet opens the LOBBY, not a game.** It used to open Manna Rush
+  directly, which was right when there was one game; with two, a door that
+  always led to the same machine lies about what's behind it, and a second
+  cabinet in every scene turns three little worlds into a shopping street. The
+  machine's little screen runs an **attract cycle** through the games so it
+  can't promise the wrong one (reduce-motion holds the first frame).
+- **`features/arcade/games.ts` is the list, and it's the only list.** Adding a
+  game is a row there plus a route — the same choke-point habit as `QuizRunner`.
+  Wear `ArcadeShell` so two games can't drift into two different headers.
+- **Nothing in the arcade may rank anybody, and that's what lets it exist.** A
+  game here may be one you get *better* at, but no cabinet carries a score (a
+  list of games with your numbers on it is a scoreboard with a coin slot), the
+  order is the order they were built, and a result screen shows your own numbers
+  against your own bar with no way to set them beside anybody else's. A run pays
+  a drop roll and road progress — never XP, points or standing.
+- **Guest-open by default**, because a game that persists nothing has nothing an
+  account would keep for you tomorrow. The exception is a game that writes to
+  the player's own record: the Cross Word marks its verse studied, so it carries
+  `needsAccount`, the route wraps it in `RequireAccount` (`WALL.cross`), and the
+  lobby draws the padlock on that cabinet — the nav's convention, for the nav's
+  reason.
+
 ## The Cross Word: a puzzle that becomes the thing it's about
 
 Two words that share a letter, standing as a cross — one upright, one crossbar —
 and finishing it turns the squares into two timbers with the letters chiselled
 into them, with the verse both words came from read underneath. Fifty-two of
-them ship; `/study/cross`, on the Study shelf. Full design: `docs/CROSS-WORD.md`.
+them ship; `/arcade/cross`, a machine in the arcade above (it stood on the Study
+shelf first, and `/study/cross` still redirects). Full design:
+`docs/CROSS-WORD.md`.
 
 - **The data has three invisible failure modes, so they're a build failure.**
   A crossbar one row too low still renders — as a plus sign. A word that isn't
@@ -780,9 +811,10 @@ them ship; `/study/cross`, on the Study shelf. Full design: `docs/CROSS-WORD.md`
   past, so playing more can't spoil tomorrow's.
 - **It pays what a study run pays and nothing else** — a drop roll, a
   `study_run` step on the road (the prepacked verb; no new one needed), and the
-  verse marked studied through `store/bible.ts`. No XP, no points, no timer, no
-  "solved in N", no shareable result. It is a Study surface, so the rank-free
-  rule is the whole reason it can be a daily thing at all.
+  verse marked studied through `store/bible.ts`. What a thing is doesn't change
+  with where it stands: no XP, no points, no timer, no "solved in N", no
+  shareable result. That rank-free rule is the whole reason it can be a daily
+  thing at all.
 - **Solved crosses are DEVICE-LOCAL in both modes**, the deliberate break
   `store/looks.ts` makes: the set grants nothing (everything a solve pays is
   capped elsewhere), and the half of a solve that's really a record — the verse
@@ -797,7 +829,11 @@ them ship; `/study/cross`, on the Study shelf. Full design: `docs/CROSS-WORD.md`
 - **All the puzzle state is in one reducer, and that's load-bearing.** Typing
   five letters inside one tick put all five in the same square when each handler
   planned against a hook snapshot — the same scar as `KeepSheet`'s double-tap,
-  found by driving the real app and invisible in the diff.
+  found by driving the real app and invisible in the diff. Two more from the
+  same afternoon: turning direction has to carry the cursor into the other word
+  (every square but the shared one belongs to one word, so the keys did nothing
+  at all), and typing must advance one square rather than skip the filled
+  crossing one, or the second word lands silently off by one.
 
 ## Washing feet: the poke that costs the sender
 

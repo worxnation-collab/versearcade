@@ -169,7 +169,7 @@ export default function HomeScreen() {
                 unplayed state, because before you have played, the verse is the
                 only thing this screen should be pointing at. */}
             <motion.button
-              onClick={() => navigate('/arcade/manna')}
+              onClick={() => navigate('/arcade')}
               whileTap={{ scale: 0.98 }}
               style={{
                 width: '100%',
@@ -188,11 +188,11 @@ export default function HomeScreen() {
               {/* The same cabinet standing in the hall, the churchyard and your
                   Upper Room — one drawing, so this reads as a door into a place
                   the player has already seen rather than as a new icon. */}
-              <ArcadeCabinetBox width={22} />
+              <ArcadeCabinetBox width={22} screen="attract" />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 800, fontSize: 14 }}>In the meantime…</div>
                 <div className="faint" style={{ fontSize: 12 }}>
-                  Manna Rush · a minute in the wilderness
+                  The arcade · a minute a machine
                 </div>
               </div>
               <span className="pill" style={{ fontSize: 11, flexShrink: 0 }}>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
-import { StudySubPage } from './StudySubPage'
+import { ArcadeShell } from './ArcadeShell'
 import { CrossBoard, boardCells } from './CrossArt'
 import { Button } from '@/components/Button'
 import { FavoriteButton } from '@/components/FavoriteButton'
@@ -25,9 +25,12 @@ import {
 // The Cross Word: two words that share a letter, standing in the shape of a
 // cross. Finish it and the squares you filled in turn into two timbers with
 // your letters chiselled into them, and the verse both words came out of is
-// read underneath. That reveal is the whole reward — this is a Study surface,
-// so it pays exactly what any study run pays (a relic roll and a step on the
-// road) and touches nothing that ranks anybody.
+// read underneath. That reveal is the whole reward.
+//
+// It's a machine in the arcade (`/arcade/cross`) and it still pays exactly what
+// a study run pays — a relic roll, a step on the road, and the verse marked
+// studied — because what it is hasn't changed with where it stands: nothing
+// here is timed, scored, ranked or comparable with anybody else's.
 //
 // Wrong answers are treated the way they are everywhere else here: a completed
 // word that isn't right gets a gentle line and stays editable, nothing is taken
@@ -307,10 +310,9 @@ export default function CrossWordScreen() {
   const seenBefore = !!solvedMap[puzzle.id] && !st.done
 
   return (
-    <StudySubPage
-      emblem="✝️"
+    <ArcadeShell
       title="Cross Word"
-      blurb="Two words that share a letter, standing as a cross. Finish it and it turns to wood."
+      tagline="Two words that share a letter, standing as a cross. Finish it and it turns to wood."
     >
       <div className="card" style={{ padding: 14 }}>
         <div
@@ -458,7 +460,7 @@ export default function CrossWordScreen() {
           </motion.div>
         )}
       </AnimatePresence>
-    </StudySubPage>
+    </ArcadeShell>
   )
 }
 

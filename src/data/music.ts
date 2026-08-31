@@ -289,7 +289,10 @@ export function trackForPath(pathname: string): string {
   const p = pathname.toLowerCase()
   // A run is a run wherever it started from — check the deepest routes first.
   if (p.startsWith('/play/run') || p.startsWith('/play/practice')) return 'joyful'
-  // The arcade cabinet — a run is a run, so it takes the run's music.
+  // The Cross Word is a machine in the arcade but it isn't a run — it's a
+  // crossword, and the run's music hurries a puzzle nobody is timing.
+  if (p.startsWith('/arcade/cross')) return 'cloister'
+  // The rest of the arcade — a run is a run, so it takes the run's music.
   if (p.startsWith('/arcade')) return 'joyful'
   if (p.startsWith('/battle')) return 'fortress'
   if (p.startsWith('/study') || p.startsWith('/review')) return 'cloister'

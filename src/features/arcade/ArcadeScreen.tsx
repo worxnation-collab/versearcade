@@ -1,16 +1,16 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
+import { ArcadeShell } from './ArcadeShell'
 import { useSettings } from '@/store/settings'
 import type { TapResult } from '@/lib/tapGame'
 import { TapRunner } from './TapRunner'
 import { MANNA_RUSH } from './manna'
 import { mannaSurface } from './MannaField'
 
-// The arcade cabinet's screen. One route, reached by tapping the machine
-// standing in the hall, the churchyard or your own Upper Room.
+// Manna Rush: one machine in the arcade, picked off the lobby's wall (or
+// reached directly — the route is unchanged, so old links still land on it).
 //
 // It is open to guests on purpose. Nothing here is persisted, so there is
 // nothing an account would make yours tomorrow: the run pays a study drop
@@ -42,41 +42,15 @@ export default function ArcadeScreen() {
   }, [])
 
   return (
-    <Page noNav>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            aria-label="Leave the arcade"
-            style={{
-              fontSize: 20,
-              lineHeight: 1,
-              padding: '8px 12px',
-              borderRadius: 'var(--r-pill)',
-              background: 'var(--card)',
-              border: '1px solid var(--stroke)',
-            }}
-          >
-            ←
-          </button>
-          <div>
-            <h1 style={{ fontSize: 26 }}>Manna Rush</h1>
-            <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-dim)' }}>
-              Seven days in the wilderness · Exodus 16
-            </p>
-          </div>
-        </div>
-
-        {playing ? (
-          <TapRunner key={runs} game={MANNA_RUSH} surface={surface} onDone={done} />
-        ) : result ? (
-          <Harvest result={result} onAgain={start} onLeave={() => navigate(-1)} />
-        ) : (
-          <Gate onStart={start} />
-        )}
-      </div>
-    </Page>
+    <ArcadeShell title="Manna Rush" tagline="Seven days in the wilderness · Exodus 16">
+      {playing ? (
+        <TapRunner key={runs} game={MANNA_RUSH} surface={surface} onDone={done} />
+      ) : result ? (
+        <Harvest result={result} onAgain={start} onLeave={() => navigate(-1)} />
+      ) : (
+        <Gate onStart={start} />
+      )}
+    </ArcadeShell>
   )
 }
 

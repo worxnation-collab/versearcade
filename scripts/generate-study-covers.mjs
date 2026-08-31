@@ -5,10 +5,10 @@
 //
 //   GEMINI_API_KEY=... node scripts/generate-study-covers.mjs [key ...]
 //
-// Pass book keys (versus focus keep replay reports bag cross) to regenerate a
-// subset; no arguments regenerates all seven.
+// Pass book keys (versus focus keep replay reports bag) to regenerate a
+// subset; no arguments regenerates all six.
 //
-// One shared style preamble, seven subjects — the whole set is generated
+// One shared style preamble, six subjects — the whole set is generated
 // together so it reads as books bound by the same hand. The titles are NOT in
 // the artwork on purpose: the app stamps them in CSS, so they stay crisp at
 // 44px, localizable, and immune to the model misspelling them.
@@ -35,7 +35,6 @@ const COVERS = {
   replay: `${STYLE} Deep navy-indigo leather. Central emblem: a small gold stack of five books, faint engraved star flourishes behind it.`,
   reports: `${STYLE} Warm golden-amber ochre leather. Central emblem: a gold rising bar chart of three bars, faint engraved laurel branches behind it.`,
   bag: `${STYLE} Dark walnut-brown earthy leather, distinctly brown with no red tones. Central emblem: a gold traveler's satchel with a buckled flap, faint engraved rope-knot flourishes behind it.`,
-  cross: `${STYLE} Deep olive-forest green leather. Central emblem: a gold Latin cross made of two timbers with visible woodgrain, the crossbar high in the upper third, faint engraved wheat sprays behind it.`,
 }
 
 const key = process.env.GEMINI_API_KEY

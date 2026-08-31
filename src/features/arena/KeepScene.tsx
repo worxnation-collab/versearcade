@@ -76,7 +76,7 @@ export function KeepScene({
         {/* Front-left, on the near floor. It has to sit BELOW the hearth
             rather than against the left wall: standing it up there put a games
             machine over the fire, which looks like a bug rather than a joke. */}
-        {onArcade && <ArcadeCabinet x={58} y={297} scale={0.8} onOpen={onArcade} />}
+        {onArcade && <ArcadeCabinet x={58} y={297} scale={0.8} screen="attract" onOpen={onArcade} />}
 
         {ANCHORS.map((a) => {
           const value = placements[a.id]

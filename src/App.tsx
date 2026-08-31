@@ -35,11 +35,12 @@ import BattleDetail from './features/arena/BattleDetail'
 import BattleCpu from './features/arena/BattleCpu'
 import LiveLobby, { LiveRoom } from './features/arena/LiveBattle'
 import ArcadeScreen from './features/arcade/ArcadeScreen'
+import ArcadeLobby from './features/arcade/ArcadeLobby'
 import StudyScreen from './features/study/StudyScreen'
 import StudyReportsScreen from './features/study/StudyReportsScreen'
 import StudyRecentScreen from './features/study/StudyRecentScreen'
 import StudyBagScreen from './features/study/StudyBagScreen'
-import CrossWordScreen from './features/study/CrossWordScreen'
+import CrossWordScreen from './features/arcade/CrossWordScreen'
 import BibleScreen from './features/bible/BibleScreen'
 import BibleBookScreen from './features/bible/BibleBookScreen'
 import BibleChapterScreen from './features/bible/BibleChapterScreen'
@@ -96,6 +97,11 @@ const WALL: Record<string, WallCopy> = {
     icon: '\ud83d\udcd6',
     title: 'Your Bible needs an account',
     line: 'Every chapter you open and verse you keep is marked on your own Bible \u2014 31,102 slots that fill in as you play. That belongs on an account, not on one device.',
+  },
+  cross: {
+    icon: '\u271d\ufe0f',
+    title: 'The Cross Word needs an account',
+    line: 'Every cross you finish marks its verse studied on your own Bible \u2014 that record is the thing an account still has for you tomorrow. The rest of the arcade is open either way.',
   },
   church: {
     icon: '\u26ea',
@@ -405,14 +411,39 @@ export default function App() {
             </RequireProfile>
           }
         />
-        {/* The arcade cabinet standing in the hall, the churchyard and your own
-            Upper Room. Guest-open: the game persists nothing, so an account
-            would make nothing here yours tomorrow. */}
+        {/* The arcade. The cabinet standing in the hall, the churchyard and your
+            own Upper Room opens the LOBBY — there is more than one machine in
+            there, and a door that always led to the same game would be lying
+            about what the arcade is.
+
+            Guest-open, like the games that persist nothing. The one exception
+            is the Cross Word, which marks its verse studied on the player's own
+            Bible: that's a record rather than a round, so it asks for an
+            account the way the rest of the Bible does. Static segments first,
+            so a game can never be swallowed by the lobby's own path. */}
+        <Route
+          path="/arcade"
+          element={
+            <RequireProfile>
+              <ArcadeLobby />
+            </RequireProfile>
+          }
+        />
         <Route
           path="/arcade/manna"
           element={
             <RequireProfile>
               <ArcadeScreen />
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/arcade/cross"
+          element={
+            <RequireProfile>
+              <RequireAccount copy={WALL.cross}>
+                <CrossWordScreen />
+              </RequireAccount>
             </RequireProfile>
           }
         />
@@ -519,18 +550,9 @@ export default function App() {
             </RequireProfile>
           }
         />
-        {/* Two words in the shape of a cross; finishing it turns the puzzle to
-            wood and reveals the verse both words came from. */}
-        <Route
-          path="/study/cross"
-          element={
-            <RequireProfile>
-              <RequireAccount copy={WALL.study}>
-                <CrossWordScreen />
-              </RequireAccount>
-            </RequireProfile>
-          }
-        />
+        {/* The Cross Word moved into the arcade when the arcade got a lobby.
+            Anything already pointing here still lands somewhere true. */}
+        <Route path="/study/cross" element={<Navigate to="/arcade/cross" replace />} />
         {/* Drill one book against a study companion, reached from Study. */}
         <Route
           path="/study/focus"

@@ -1,7 +1,10 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { Page } from '@/components/Page'
 import { StudyShelf, type ShelfItem } from './StudyShelf'
+import { LibraryWindow } from './LibraryWindow'
+import { LibrarianSheet } from './LibrarianSheet'
+import { useLibrary } from '@/store/library'
 import { useReviews } from '@/store/reviews'
 import { useFavorites } from '@/store/favorites'
 import { useInventory, seedGuestInventoryFromCollection } from '@/store/inventory'
@@ -16,6 +19,17 @@ import { summarize } from '@/lib/bookAccuracy'
 // your bag) and tapping one swings its cover open onto that surface's own
 // page. The player's actual Bible stands among them, wearing its real board.
 // Nothing here touches your rank.
+//
+// The lending library stands above the shelf, because every other section here
+// opens with the place it is about (the road, the hall, the churchyard, your
+// room) and Study opened with a menu. Tapping it puts you in front of a
+// librarian who fetches the same books — the long way round, for players who
+// would rather be somewhere than pick something. The shelf's boards came down
+// to 108px to make room for her; see the note on BOOK_SCALE in StudyShelf.
+//
+// EVERY DESTINATION SHE OFFERS IS ONE OF THESE ITEMS. The `lend` line below is
+// what makes a book borrowable, so the room and the shelf cannot drift into
+// two different lists of things to do.
 export default function StudyScreen() {
   const { dueRefs, loadDue } = useReviews()
   const favCount = useFavorites((s) => Object.keys(s.map).length)
@@ -33,6 +47,8 @@ export default function StudyScreen() {
   // Old deep links (the drop toast used to send ?bag=1 here) land on the bag's
   // own page now that it's a book of its own.
   const [params] = useSearchParams()
+  const [atDesk, setAtDesk] = useState(false)
+  const loadLibrary = useLibrary((s) => s.load)
 
   useEffect(() => {
     loadDue()
@@ -40,8 +56,11 @@ export default function StudyScreen() {
     loadInventory()
     loadPractice()
     loadAccuracy()
+    // Loaded here rather than only in the sheet, so the librarian knows
+    // whether a card has already been stamped before anybody taps her.
+    void loadLibrary()
     seedGuestInventoryFromCollection()
-  }, [loadDue, loadFavorites, loadInventory, loadPractice, loadAccuracy])
+  }, [loadDue, loadFavorites, loadInventory, loadPractice, loadAccuracy, loadLibrary])
 
   const summary = useMemo(() => summarize(stats), [stats])
 
@@ -59,6 +78,7 @@ export default function StudyScreen() {
       skin: 'versus',
       caption: 'Race a study partner through a verse quiz',
       to: '/battle/cpu',
+      lend: 'A verse quiz with someone to race down the page',
     },
     {
       key: 'focus',
@@ -67,6 +87,7 @@ export default function StudyScreen() {
       skin: 'focus',
       caption: 'Drill one book of your choosing · earns XP',
       to: '/study/focus',
+      lend: 'Pick one book of the Bible and go deep on it',
     },
     {
       key: 'replay',
@@ -79,6 +100,7 @@ export default function StudyScreen() {
           : 'Play daily verses and they land here to replay',
       to: '/study/recent',
       badge: replays > 0 ? String(replays) : undefined,
+      lend: 'The daily verses you’ve already played, to play again',
     },
     {
       key: 'keep',
@@ -91,6 +113,7 @@ export default function StudyScreen() {
           : 'Spaced review — verses you play come back here',
       to: '/review',
       badge: dueRefs.length > 0 ? String(dueRefs.length) : undefined,
+      lend: 'Verses brought back round so they stick',
     },
     {
       key: 'bible',
@@ -103,6 +126,7 @@ export default function StudyScreen() {
           ? `${favCount} kept — see what you've studied and read`
           : 'All 66 books, lit up as you go',
       to: '/bible',
+      lend: 'The whole thing — all 66 books, yours to read',
     },
     {
       key: 'reports',
@@ -131,7 +155,7 @@ export default function StudyScreen() {
 
   return (
     <Page>
-      <div className="center" style={{ marginBottom: 22 }}>
+      <div className="center" style={{ marginBottom: 16 }}>
         <div className="floaty" style={{ fontSize: 44 }}>📚</div>
         <h1 style={{ fontSize: 28, marginTop: 4 }}>Study</h1>
         <p className="dim" style={{ marginTop: 4 }}>
@@ -139,7 +163,15 @@ export default function StudyScreen() {
         </p>
       </div>
 
+      {/* The room, above the shelf it belongs to — the same placement the road,
+          the hall, the churchyard and the Upper Room use. */}
+      <div style={{ marginBottom: 18 }}>
+        <LibraryWindow onEnter={() => setAtDesk(true)} />
+      </div>
+
       <StudyShelf items={items} />
+
+      {atDesk && <LibrarianSheet items={items} onClose={() => setAtDesk(false)} />}
 
       <div style={{ height: 90 }} />
     </Page>

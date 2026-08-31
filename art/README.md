@@ -18,6 +18,7 @@ must never be written into a tracked file.
 | `churchyard-flora.json` | the eight plants a giver can put in a churchyard | `public/keep/yard_*.png` |
 | `pets.json` | the six companions that stand beside you on the You tab | `public/items/pet_*.png` |
 | `keep-props.json` | keep props that need regenerating (two shipped unkeyed) | `public/keep/<id>.png` |
+| `library.json` | the Study tab's lending library and the librarian standing in it | `public/keep/study-library.jpg`, `public/skins/librarian.png` |
 
 **Check what came back**, every time:
 
@@ -44,6 +45,13 @@ words does not work; showing `hall.jpg` does.
   decoration nobody earned.
 - **`prop`** — one object on flat magenta, keyed to transparency and cropped
   tight. Capped at 150px tall.
+
+`"format": "jpg"` on a **scene** gets the road's JPEG encoding without moving to
+the road's folder. A full-bleed opaque painting has no use for an alpha channel
+and PNG costs a lot for it: `study-library` came back at 1,008KB as a PNG and
+166KB as a JPEG at quality 82, visually indistinguishable, on a tab people open
+every day. The keep's halls predate the flag and are still PNG. Ignored on
+skins, items and props, which are cut-outs and genuinely need the alpha.
 - **`skin`** / **`item`** — the avatar pipeline, unchanged.
 
 ## Wiring a generated file up

@@ -235,12 +235,20 @@ for (const entry of manifest) {
   // costs a lot: the first two came back at ~1MB each against the 88KB of the
   // hand-made harvest.jpg they sit beside, and every user downloads them.
   // JPEG at 82 is visually indistinguishable on a soft painted gradient.
+  // Any full-bleed opaque painting can say `"format": "jpg"` and get the road's
+  // encoding without moving to the road's folder. A road is JPEG by definition;
+  // a `scene` is PNG by default because the halls shipped that way, but nothing
+  // about a scene needs an alpha channel and a megabyte on a tab people open
+  // every day is a megabyte. Ignored on skins, items and props, which are
+  // cut-outs and genuinely need the alpha.
+  const asJpeg = isRoad || (isScene && entry.format === 'jpg')
+  const ext = asJpeg ? 'jpg' : 'png'
   const dest = isSkin
     ? `public/skins/${entry.id}.png`
     : isRoad
       ? `public/road/${entry.id}.jpg`
       : isScene || isProp
-        ? `public/keep/${entry.id}.png`
+        ? `public/keep/${entry.id}.${ext}`
         : `public/items/${entry.id}.png`
   process.stdout.write(`${entry.id} … `)
   try {
@@ -265,7 +273,7 @@ for (const entry of manifest) {
         isSkin ? { padBelowPct: 0.08, maxH: 400 } : isProp ? { padBelowPct: 0, maxH: 150 } : { padBelowPct: 0, maxH: 220 },
       )
     }
-    const buf = isRoad
+    const buf = asJpeg
       ? jpeg.encode({ data: png.data, width: png.width, height: png.height }, 82).data
       : PNG.sync.write(png)
     writeFileSync(dest, buf)

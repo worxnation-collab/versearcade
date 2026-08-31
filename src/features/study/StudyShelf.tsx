@@ -32,10 +32,20 @@ const PAINTED: Record<string, string> = Object.fromEntries(
 // replay, three due, your accuracy) and never how you compare to anyone.
 
 /** Cap the board so it stays a book on a wide screen instead of a poster. */
-const MAX_BOOK_WIDTH = 148
-/** Books stand a little back from their column, not flush to it — smaller
-    boards with air around them read as a shelf rather than a wall of tiles. */
-const BOOK_SCALE = 0.86
+const MAX_BOOK_WIDTH = 108
+/**
+ * Books stand well back from their column, not flush to it.
+ *
+ * These two numbers came down (148/0.86 -> 108/0.66) when the lending library
+ * moved in above the shelf. Two reasons, and the second is the one that
+ * matters: a smaller board is a *shelf* rather than a wall of tiles, and the
+ * whole shelf now clears roughly 230px of scroll, which is what lets the room
+ * and the books share one screen instead of the room pushing the books below
+ * the fold. The caption is deliberately NOT scaled with the board — it spans
+ * the full grid column (see ShelfBook), so shrinking the art doesn't shrink
+ * the only part of a book that says what is inside it.
+ */
+const BOOK_SCALE = 0.66
 const GAP = 16
 /** How long the cover swings before the route changes. Tween, not spring —
     a spring soft enough to look like leather takes a second to settle, and
@@ -55,6 +65,15 @@ export interface ShelfItem {
   badge?: string
   /** Stamped on the Bible's board, the way a Bible you were given is. */
   name?: string
+  /**
+   * How the librarian describes it as she hands it over, if she lends it.
+   *
+   * An item WITHOUT this is not something the library can fetch — your bag and
+   * your reports are your own, not stock. This lives on the shelf item rather
+   * than in a second list in the sheet so the two can never drift: a book added
+   * to the shelf is either lendable here or it isn't, decided once.
+   */
+  lend?: string
 }
 
 export function StudyShelf({ items }: { items: ShelfItem[] }) {
@@ -70,7 +89,7 @@ export function StudyShelf({ items }: { items: ShelfItem[] }) {
   return (
     <div ref={shelf}>
       {rows.map((row, r) => (
-        <div key={row.map((i) => i.key).join('-')} style={{ position: 'relative', marginBottom: 26 }}>
+        <div key={row.map((i) => i.key).join('-')} style={{ position: 'relative', marginBottom: 22 }}>
           {/* The plank. Positioned off the known board height rather than by
               flow, so it lands exactly at the books' feet and the captions
               hang below it like shelf labels. */}
@@ -146,8 +165,11 @@ function ShelfBook({ item, width, delay }: { item: ShelfItem; width: number; del
         padding: 0,
         background: 'none',
         border: 'none',
-        justifySelf: 'center',
-        width,
+        justifySelf: 'stretch',
+        // Full column, with the board centred inside it. The caption is the
+        // only part of a book that says what is inside, so it gets the whole
+        // column even though the board no longer fills it.
+        width: '100%',
         perspective: 900,
         WebkitPerspective: 900,
       }}

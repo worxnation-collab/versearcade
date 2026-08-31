@@ -276,7 +276,10 @@ Expect to reword prompts: `PROHIBITED_CONTENT` came back for "lion cub" and for
 magenta backdrop until the instruction was moved first and put in caps. `kind` picks the pipeline: `scene` for a
 full-bleed background (no keying, capped at 640px), `prop` for one object on
 flat magenta (keyed, cropped, capped at 150px), `skin`/`item` for the avatar
-path. `art/README.md` has the details and the wiring.
+path. A scene may add **`"format": "jpg"`** to get the road's JPEG encoding
+without moving to the road's folder — nothing full-bleed and opaque needs an
+alpha channel, and the Study library came back at 1,008KB as a PNG against
+166KB as a JPEG. The keep's halls are still PNG; that's history, not a rule. `art/README.md` has the details and the wiring.
 
 **Generated art layers OVER a drawn fallback, never instead of it.** A tier
 whose PNG hasn't been generated still has to render as itself. Wiring is
@@ -692,9 +695,9 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0080` (today / this week / all time on the church board); before
-it, `0079` (a church claiming its own page), `0078` (a
-church's ask for a sponsored slot) and `0077` (the slot itself). Before them, `0075` (the weekly church rivalry) and `0074` (the admin
+The latest is `0081` (the Study library's card); before it, `0080` (today / this
+week / all time on the church board), `0079` (a church claiming its own page),
+`0078` (a church's ask for a sponsored slot) and `0077` (the slot itself). Before them, `0075` (the weekly church rivalry) and `0074` (the admin
 dashboard's dates) — 0074 must be applied before
 the client that uses it merges, and that one is not optional: it DROPS the old
 `admin_overview()` / `admin_growth(boolean)` signatures to replace them with
@@ -712,7 +715,7 @@ one, take the day from `p_tz`, never from `current_date`.
 
 Numbering has scars: `0034` is used twice (`promo_codes`, `skin_purchases`),
 `0059` twice (`keep`, `practice_uncapped`) and `0074` twice (`admin_local_dates`,
-`public_church_page`) — so the next free number is `0081`, not `0080`, and this
+`public_church_page`) — so the next free number is `0082`, not `0081`, and this
 sentence has already gone stale twice: it said "0076" while 0077, 0078 and 0079
 were sitting in the folder. `ls supabase/migrations | tail -1` is the answer;
 this line is only a record of which numbers were burned twice. And
@@ -1314,6 +1317,7 @@ describes it:
 | Harvest Road | top of `/season` | `RoadScene` |
 | The hall | under "Start a new battle", and in the sheet | `KeepScene` |
 | The churchyard | hero of `/church`, and on any church's page | `ChurchScene` |
+| The lending library | top of `/study` | `LibraryWindow` |
 | You | top of `/you` | `ProfileHero` |
 | Your Upper Room | `/you`, under the card, and in the visit sheet | `RoomScene` |
 
@@ -1568,6 +1572,43 @@ tapping it. Any future overlay inside a scene needs the same treatment.
 Design tokens live at the top of `src/index.css` — use the CSS variables, never
 raw hexes. Numbers and headings wear `var(--font-display)`; that's the brand.
 Motion is springy `framer-motion`, mobile-first, max width 520px.
+
+### The lending library, and the woman at the desk
+
+The Study tab opens with the room its shelf came out of: a lit library with an
+NPC librarian (Tabitha) standing in it, and tapping her is a second way to reach
+the same books. Taking her route the first time pays **5 XP, once ever**, as an
+Easter egg. Full design: `docs/STUDY-LIBRARY.md`. Four things to know:
+
+- **Every destination she offers is already on the shelf.** She is handed the
+  tab's own `ShelfItem[]` and offers the ones carrying a `lend` line, so the
+  library is a *route* to Study rather than a second menu that can drift — the
+  same choke-point habit `QuizRunner` and `CrowdLife` keep. Your bag and your
+  reports have no `lend`: they are yours, not stock.
+- **The 5 XP is built like every XP grant here.** `xp` is the worldwide
+  leaderboard (0006), so the server counts and the server pays
+  (`checkout_library_book`, 0081), the client never sends an amount, and the cap
+  is the table's PRIMARY KEY rather than a count — a race inserts nothing.
+  Lifetime exposure is 5 XP. **Once ever rather than once a day is deliberate**:
+  an Easter egg that pays every morning becomes a chore-tap you feel behind on
+  for missing, which is the feeling this app is built not to produce. A daily
+  version is one line in 0081 and needs its own argument.
+- **A second checkout is a SUCCESS that pays nothing**, never a refusal, and so
+  is a failed call — she still hands the book over, because the destination was
+  reachable from the shelf without her. And she never measures anybody: no due
+  dates, no "it's been a while", no count of visits. A librarian who tuts is the
+  one version of this that would be worse than no librarian.
+- **The reveal waits.** The sheet stays open on the stamp with an "Open it →"
+  button rather than navigating for you — a +5 XP line swept off screen by a
+  route change is the exact bug `StudyDropToast` exists to work around, and here
+  the sheet owns the moment so it just holds it.
+
+Two-mode for real, not inherited-online-only (`store/library.ts`), because a
+keyless LOCAL build reaches this tab and must not find a dead librarian in it.
+The shelf's boards came down with her (148 → 108, `BOOK_SCALE` 0.86 → 0.66,
+~230px of scroll) so the room and the books share a screen; captions did *not*
+shrink with them — they span the full grid column, because the caption is the
+only part of a book that says what is inside it.
 
 The Study tab is explicitly rank-free: practice there awards small per-session XP
 at most and never touches standing. The rank-free rule is the invariant, not the

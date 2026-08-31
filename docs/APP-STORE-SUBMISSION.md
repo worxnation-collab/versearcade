@@ -119,12 +119,17 @@ version absorbs any amount of work, and a per-feature bump just burns numbers. B
 again only once 1.3.0 itself is approved. What a new feature changes is "What's New",
 not the version.
 
-So far 1.3.0 carries live battles (`/battle/live`) and the weekly church rivalry, and
-more is expected before it goes up — treat the list in `APP-STORE-LISTING.md` as a
-running draft and re-read it against `git log` on the day you submit, not before.
-**Also check the uploaded 1.2.0 binary before trusting that split**: if live battles
-were inside it, trim them rather than announcing a feature the store already showed
-people.
+1.3.0 now carries everything from #156 to #191 — live battles and quick match, the
+weekly church rivalry, the arcade, first light, the Study library, free placement in
+all three worlds, and the battle XP and looks. `APP-STORE-LISTING.md`'s "What's New"
+was rebuilt against `git log --first-parent` and is complete as it stands; re-read it
+against the log only if something merges after this line was written.
+
+**The "check the 1.2.0 binary first" warning that used to sit here is discharged** —
+don't redo it. Live battles and the rivalry were assigned to 1.3.0 by #158 itself,
+the commit that closed 1.2.0's train, and the Study library branched after #158 had
+merged, so none of the three can be in the 1.2.0 binary. The reasoning is written out
+in `APP-STORE-LISTING.md` above the 1.3.0 block.
 
 This paragraph is a claim about App Store Connect, not about the repo, and nothing in
 CI verifies it. It has gone stale once already. Re-read it against the real console

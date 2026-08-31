@@ -85,7 +85,7 @@ Start your streak today. It's one verse.
 > *approved* version forces a bump.
 >
 > Last rebuilt against `git log --first-parent` on 2026-08-31, covering #157 to #191.
-> 3,826 characters, against Apple's 4,000 limit — there is room for about one more
+> 3,827 characters, against Apple's 4,000 limit — there is room for about one more
 > short section before something has to give.
 
 ```
@@ -153,20 +153,31 @@ THE STUDY TAB IS A LIBRARY
   dates, nothing is ever overdue, and she has no opinion about how much you read.
 ```
 
-**Three sections here may already be in players' hands, and the repo cannot settle
-it.** `1.2.0 is live: close its train` (#158) landed *after* the weekly rivalry
-(#157) and live battles (#156), and the Study library (#169) landed after it — so
-the merge order says one thing and the 1.2.0 release notes below, which describe
-the library as shipped, say another. A binary is cut before it is approved, and
-only App Store Connect knows what was in it.
+**All three doubted sections belong here, and the repo did settle it.** An earlier
+draft hedged that live battles, the weekly rivalry and the Study library might
+already be in players' hands and told you to check the binary by hand. Don't — the
+log answers it, twice over:
 
-So before submitting: open the uploaded 1.2.0 build and check whether **live
-battles**, **the weekly church rivalry** and **the Study library** are in it. Cut
-whatever is — announcing a feature the store already showed people is worse than a
-short release note. Everything else in the block above merged well after 1.2.0 was
-live and is safe.
+- **Live battles (#156) and the weekly rivalry (#157)** were assigned to 1.3.0 by
+  `1.2.0 is live: close its train` (#158) itself. That commit is the one written by
+  whoever watched 1.2.0 go live, it created this very block, and it opened it with
+  those two features. The person best placed to know put them here.
+- **The Study library (#169)** branched *after* #158 had already merged — a day
+  after 1.2.0 was live — so it cannot be in that binary
+  (`git merge-base --is-ancestor` confirms the branch point). It was appended to the
+  1.2.0 block below by mistake, and has now been removed from it.
+
+So paste this block as it stands. Nothing in it has been shown to players before.
 
 ### 1.2.0 — the release after 1.1.0 (SHIPPED, approved and live)
+
+> This is the historical record of what 1.2.0 actually told players, so treat it as
+> read-only. It carried a "THE STUDY TAB IS A LIBRARY NOW" section that has been
+> removed: the Study library branched a day *after* #158 declared 1.2.0 live, so it
+> was never in that binary and was never pasted into App Store Connect — the PR
+> simply appended its section to the newest block in the file, which by then was the
+> wrong one. It is announced in 1.3.0 above, where it belongs.
+
 ```
 Your whole Bible is in here now — all 66 books and 31,102 verses — and every one you
 read, study or keep lights up on your own copy.
@@ -194,14 +205,6 @@ PEOPLE, WITHOUT A SCOREBOARD
 • Give a relic you found to another player. No message field, no trade, no haggling.
 • A mailbox for gifts, buddy requests, washings and news. It carries nothing that is a
   comparison — no digest of what your friends scored, no "you're 4th".
-
-THE STUDY TAB IS A LIBRARY NOW
-• It used to be a wall of tiles. It's a room: shelves, lamplight, and Tabitha at the
-  desk. Ask her for something to read and she'll fetch it and stamp it out to you.
-• Your reports are the ledger on her desk. Your bag is the satchel on the floor.
-• The first book you borrow each day is worth a little something.
-• There are no due dates, nothing is ever overdue, and she has no opinion at all about
-  how much you read.
 
 THE REST
 • The Journal: every milestone you've passed, gathered in one page. A number you got

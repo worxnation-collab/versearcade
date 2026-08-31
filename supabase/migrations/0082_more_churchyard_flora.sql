@@ -1,4 +1,4 @@
--- 0080 — six more things to plant in the churchyard.
+-- 0082 — six more things to plant in the churchyard.
 --
 -- The yard shipped with eight plants on a ladder from 250 to 120,000 lifetime
 -- given. This adds six more, and the whole change is that the ladder has more

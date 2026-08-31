@@ -330,6 +330,47 @@ The sheet sits at `z-index: 100` — the app's sheet tier. Don't raise it: the
 player card (110) is meant to open *over* a sheet, and tapping a face in the
 roster opens exactly that.
 
+### The board reads three windows
+
+Every row on `/church`'s board is a church and a number, and until `0080` that
+number could only be lifetime points. That is a ladder a congregation can climb
+but not JOIN: a church playing hard for a fortnight still sits under one that
+banked 18,000 points two years ago and has been quiet since. Today / This week /
+All time makes the week winnable by showing up, which is what the whole church
+feature is trying to produce.
+
+Four things about it are load-bearing:
+
+- **"This week" IS the rivalry's week.** `church_window_start('week', …)` is
+  derived from `church_rivalry_week_start()`, so the board's weekly number and
+  the rivalry card's weekly number are the same number for the same church and
+  roll over together. Two weekly totals disagreeing by a few hours would be
+  indistinguishable from a bug.
+- **So both windows are UTC**, inheriting the rivalry's deliberate break with
+  "dates are the user's local date" rather than making a new one. A per-viewer
+  local day means two members of the *same* church see different totals for it.
+  A person's streak still rolls over at their own midnight — this is an
+  institution.
+- **It adds no visibility.** A windowed row is a church total, exactly like the
+  lifetime one already there. `church_points_since` returns `(church_id, points)`
+  and never groups by user; "top giver this week" is the feature this app must
+  not have, and the guarantee is that the query is never built. Same rule the
+  rivalry's payload shape enforces.
+- **`xp` stays lifetime and the row's window number is `points`.** The LEVEL is
+  drawn from `xp`, so a church does not shrink to a wooden chapel because it was
+  quiet on Tuesday. `points` is undefined on every other RPC that returns a
+  church, and the row falls back to `xp` — which is also what an app installed
+  before 0080 gets, because **the old two-argument `church_leaderboard` is kept
+  as a wrapper.** `ios/` ships a baked `dist`, so dropping that signature the
+  way 0074 dropped `admin_overview()` would blank the board in every approved
+  build. It is a wrapper, not a second implementation, and must stay one.
+
+The board keeps listing churches that gave nothing inside the window, sitting on
+0, rather than dropping them: a congregation vanishing from its own neighbourhood
+board at midnight reads as broken. What it does not do is put a **medal** on a
+row that gave nothing — with every church on 0 the ranking is only a lifetime
+tiebreak, and a gold medal there claims somebody won a day nobody has played.
+
 ### Church skins
 
 Two axes, and only one is for sale. `levels.ts` decides *which* of the eight
@@ -541,6 +582,15 @@ Four things to know before touching it:
 - **The seed is derived, never sent.** `seedForRoom(code, round)` means both
   devices compute the verse from the room, so there is no announce-the-seed
   message to lose or race, and a rematch is `round + 1`.
+- **A rematch takes two, and that is the same rule as the ready-check.**
+  `rematch()` is an offer: it sets `iWantRematch`, sends the round it proposes,
+  and starts only once both sides have asked; both paths go through one
+  `startRound()` so the two devices can't reset to different things. It shipped
+  the other way — one tap reset the OTHER player outright, sweeping them off
+  their result screen (or out of a run they were still playing) into a round
+  they never agreed to. One device deciding for two is the bug; the round number
+  is `current + 1` computed on both sides for the same reason. `bye` clears a
+  pending offer, or you wait forever on somebody who left.
 - **The ready-check buys the FEELING of starting together and nothing else, and
   the runs are deliberately not locked in step.** Every question is timed from
   the moment it starts on your own device, so drift costs nothing in fairness —
@@ -571,6 +621,67 @@ same reason.
 Add verses by appending to `VERSE_POOL` (`src/data/bible/pool.ts`) with full
 metadata — the generator needs `speaker`, `audience`, `before`, `after`,
 `theme`, `keyword`, `facts` to build its five MCQs.
+
+## First light: the day belongs to whoever opens it
+
+The first person to open a day's verse holds that day's **first light**, and
+every account that opens the same verse after them pays them **1 XP** — minted
+by the server, never taken from the follower. Their player card sits under the
+daily drop on the Play tab. `0081`, `data/firstLight.ts`, `store/firstLight.ts`,
+`features/daily/FirstLight.tsx`. Full design: `docs/FIRST-LIGHT.md`.
+
+A "first" mechanic is the obvious way to break the no-losers rule, so the things
+that keep it inside the rule are in the **shape of the data**, not in copy:
+
+- **One person is named and NOBODY has a position.** No second place, no "you
+  were 400th", no ordering of a day's openers anywhere. `daily_opens` is read as
+  a count and as a primary key — never as a sorted list — and `first_light()`
+  returns one holder plus two counts about the day. The data needed to build a
+  "who got here first" ladder is never sent to a client, the same guarantee the
+  rivalry's payload shape gives.
+- **It's a day, not a ladder.** It resets at midnight and nothing accumulates:
+  deliberately no lifetime "dawns held" number, no badge, no title, **no Journal
+  rung** — the same argument `record_prayer` makes for having no prayer streak.
+  A rung you climb by getting up earlier is a rung people would get up earlier
+  to climb, and this app should not be handing anybody a reason to set a 4am
+  alarm.
+- **The XP is bounded the way the Basin's is**, because `xp` is the one number
+  here that ranks people (0006): 1 XP per follower, **60 a day** (about one
+  daily drop, `FIRST_LIGHT_XP_CAP` ↔ the SQL — the usual keep-them-in-sync
+  pair), once per account per day by the primary key, never to yourself, and the
+  ceiling is applied inside the same statement that pays under a row lock so two
+  followers landing together can't both spend the last point. Followers are
+  still counted honestly past the ceiling, so the card can say "1,400 have
+  followed you in" while the XP stops at 60.
+- **Guests count in the pulse and pay nothing.** `record_guest_open` takes a
+  client-generated device id, so paying for guest opens would let a holder mint
+  the whole ceiling out of invented uuids. It takes real accounts, which is the
+  same natural limit `wash_feet` leans on.
+
+**Opening the verse is opening the screen that shows it** — `QuizScreen` calls
+`open_daily_verse` on mount, the only place in the app the day's verse is read.
+`submit_play` records an open **too**, and that isn't redundancy: `ios/` ships a
+baked `dist`, so every already-approved build finishes a drop without ever
+calling the new RPC, and this is what keeps those players counting toward the
+day. The primary key makes the second write a no-op and only a *fresh* row pays.
+
+**The timezone caveat is real and is written down rather than glossed.** A
+`drop_date` is the player's LOCAL date, so a date begins in Kiritimati ~26 hours
+before it begins in Honolulu and the far east reaches each verse first. This
+deliberately does NOT follow the rivalry's break to UTC: the rivalry is two
+institutions needing one clock, while the daily verse is one person's ritual and
+every table around it (`plays`, `guest_opens`, `presence_events`) is keyed on
+that local date — a second date system in the daily tables is the exact mistake
+0074 had to undo. The ceiling is what keeps the caveat small.
+
+Online-only, inherited rather than chosen — the `store/washing.ts` break with the
+two-mode invariant. "First" needs everybody else to be first *of*: offline there
+is one player, so the lantern would be claimed every day by the only person
+there and the XP would be client-granted, which is the one thing the safety
+argument rests on not happening. A guest can still SEE the holder (`first_light`
+is granted to `anon`) and that's the pitch for the account. The card **renders
+nothing** with no keys or against a server without 0081 — the unclaimed state
+would otherwise announce that nobody has opened a verse somebody is holding.
 
 ## The player's Bible
 
@@ -642,11 +753,16 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0081` (free placement + tiers as their own unlocks) and `0080`
+The latest is `0083` (free placement + tiers as their own unlocks) and `0082`
 (six more churchyard plants) — both APPLIED to the live project on 2026-08-31,
 in that order, and verified: the fourteen flora ids answer, both placement
 regexes accept the new grammar and the legacy values, and every existing
-placement row still validates. Before them, `0079` (a church claiming its own page) and `0078` (a
+placement row still validates. They were numbered 0080/0081 in flight and
+renumbered at merge, because another branch landing the same week had taken
+those numbers — the scars paragraph below has the details. Before them,
+`0081` (first light — who opened the day's verse first) and `0080` (today /
+this week / all time on the church board), both also applied; then `0079`
+(a church claiming its own page) and `0078` (a
 church's ask for a sponsored slot) and `0077` (the slot itself). Before them, `0075` (the weekly church rivalry) and `0074` (the admin
 dashboard's dates) — 0074 must be applied before
 the client that uses it merges, and that one is not optional: it DROPS the old
@@ -665,7 +781,13 @@ one, take the day from `p_tz`, never from `current_date`.
 
 Numbering has scars: `0034` is used twice (`promo_codes`, `skin_purchases`),
 `0059` twice (`keep`, `practice_uncapped`) and `0074` twice (`admin_local_dates`,
-`public_church_page`) — so the next free number is `0076`, not `0075`. And
+`public_church_page`) — so the next free number is `0084`, not `0082`, and this
+sentence has already gone stale twice: it said "0076" while 0077, 0078 and 0079
+were sitting in the folder. `ls supabase/migrations | tail -1` is the answer — on ORIGIN/MAIN, not your
+working tree: two branches in flight both took 0080 and 0081, and git merged
+the four files silently because the names differed. The unmerged side was
+renumbered 0082/0083 at merge time, which is the only cheap moment to do it.
+this line is only a record of which numbers were burned twice. And
 `0038_focus_practice_xp.sql` is a re-add of a file that shipped as `0036` and was
 lost when PR #58 landed from a stale branch. Take the next free number and write
 migrations idempotently (`create table if not exists`, `drop policy if exists`,
@@ -761,6 +883,124 @@ Three things to know before touching it:
   client sends `todayLocalDate()` and the server clamps it to ±1 day; that
   ±1 is the house pattern and it does mean a lying client can reach three
   buckets, which is bounded and buys nothing rankable.
+
+## The arcade: a room with machines, and a lobby in front of them
+
+A cabinet stands in the hall, the churchyard and your own Upper Room (and again
+on the home screen's "In the meantime…" card). Tapping any of them opens
+`/arcade` — a wall of machines you pick from. Three today: Manna Rush, Word
+Catch and the Cross Word. Full design: `docs/ARCADE.md`.
+
+- **The cabinet opens the LOBBY, not a game.** It used to open Manna Rush
+  directly, which was right when there was one game; with two, a door that
+  always led to the same machine lies about what's behind it, and a second
+  cabinet in every scene turns three little worlds into a shopping street. The
+  machine's little screen runs an **attract cycle** through the games so it
+  can't promise the wrong one (reduce-motion holds the first frame).
+- **`features/arcade/games.ts` is the list, and it's the only list.** Adding a
+  game is a row there plus a route — the same choke-point habit as `QuizRunner`.
+  It's pure data (the id union in it is what makes `gameScreens.ts` compile);
+  wear `ArcadeShell` so games can't drift into different headers.
+- **A machine that plays a verse hands the verse back.** Word Catch ends on the
+  whole verse it just had you rebuild, and the Cross Word on the one its two
+  words came out of — the same `VerseCard`/`VerseActions` pair, so the offer
+  can't drift between them. Word Catch passes it as `TapGameScreen`'s `finale`,
+  a beat after the tallies: "17 words, 1 of 4 lines clean" is a poor last thing
+  to leave somebody looking at when scripture is the point. It shows on a free
+  go too (it's the payoff, not a reward); the keep/read actions don't.
+- **A tap game's pace is measured in READING, not reaction.** Word Catch shipped
+  tuned like Manna Rush and was too fast on a real phone: a word lived 2.1s,
+  which is enough to see a flake but not to read four words, work out which
+  comes next and get a thumb to it. Longer lives with *fewer* arrivals is the
+  lever — more words on the paper is more scanning, and scanning isn't what it
+  teaches. Its lines are split evenly too (17 words is 5-4-4-4, never 5-5-5-2),
+  because a two-word round is over before its title card has been read.
+- **Two of the three run on one engine, and the interesting hook is
+  `verdictOf`.** `TapRunner` judges a tap AT TAP TIME rather than at spawn,
+  because in Word Catch the same word is the wrong answer on the way down and
+  the right one the moment the word before it is placed — a table of fixed spawn
+  weights can't say that. With `plan`, a game decides what goes on the field
+  too. Both default to the old behaviour, so Manna Rush is untouched by either.
+  `TapGameScreen` is the gate/run/harvest those two share.
+- **Nothing in the arcade may rank anybody, and that's what lets it exist.** A
+  game here may be one you get *better* at, but no cabinet carries a score (a
+  list of games with your numbers on it is a scoreboard with a coin slot), the
+  order is the order they were built, and a result screen shows your own numbers
+  against your own bar with no way to set them beside anybody else's. A run pays
+  a drop roll and road progress — never XP, points or standing.
+- **Guest-open by default**, because a game that persists nothing has nothing an
+  account would keep for you tomorrow. The exception is a game that writes to
+  the player's own record: the Cross Word marks its verse studied, so it carries
+  `needsAccount`, the route wraps it in `RequireAccount` (`WALL.cross`), and the
+  lobby draws the padlock on that cabinet — the nav's convention, for the nav's
+  reason.
+- **Every machine can be shared, and a shared link is one free go.** The button
+  is in `ArcadeShell`, so "every game" means every game that will ever exist
+  rather than a rule someone has to remember. `/arcade/<game>/invite` is PUBLIC
+  — no `RequireProfile`, no wall — because the machine is the pitch and the ask
+  comes after the play. That's the opposite order from the battle invite, which
+  has to ask first because accepting a battle writes a score against a real
+  account. Four things hold it together: the free go **pays nothing** (`demo` on
+  the game components — no relic, no road step, no Bible mark, nothing
+  recorded), so the one-play limit guards nothing worth farming and a
+  device-local tally is enough; **no score is ever in a share** (`shareLine`),
+  because "I got 47, beat me" is the comparison this app doesn't build; an
+  account **skips the whole thing** and goes straight to the machine; and the
+  `?from=` name is somebody else's text in a URL, so it's sanitised before it's
+  rendered. Two traps are written into the code: the have-they-played decision
+  is **frozen at mount** (re-reading it swaps the screen out at the exact moment
+  the result appears), and everything account-shaped is **hidden** on a demo
+  rather than left to fail — "Keep this verse" writes to a shelf a visitor
+  doesn't have and "Read the chapter" is behind the wall. Full rules:
+  `docs/ARCADE.md`.
+
+## The Cross Word: a puzzle that becomes the thing it's about
+
+Two words that share a letter, standing as a cross — one upright, one crossbar —
+and finishing it turns the squares into two timbers with the letters chiselled
+into them, with the verse both words came from read underneath. Fifty-two of
+them ship; `/arcade/cross`, a machine in the arcade above (it stood on the Study
+shelf first, and `/study/cross` still redirects). Full design:
+`docs/CROSS-WORD.md`.
+
+- **The data has three invisible failure modes, so they're a build failure.**
+  A crossbar one row too low still renders — as a plus sign. A word that isn't
+  in the verse still solves — and then reveals a verse that doesn't contain it.
+  A clue containing its answer just makes the puzzle free. None of that throws,
+  so `checkCrossPuzzles()` asserts it at import in dev and
+  `scripts/check-cross.mjs` (in `npm run build`) asserts it again, re-deriving
+  the rules rather than importing the checker.
+- **The verse is the source of truth, not the puzzle.** `reference` must name a
+  `VERSE_POOL` entry and BOTH words must appear in its text — the whole payoff
+  is "that's where those two words live". `crossForDate()` is the same
+  no-repeat rotation as `getVerseForDate` (seed `'cross-order-v1'` — changing
+  it reshuffles history), and "Build another" only ever draws from days already
+  past, so playing more can't spoil tomorrow's.
+- **It pays what a study run pays and nothing else** — a drop roll, a
+  `study_run` step on the road (the prepacked verb; no new one needed), and the
+  verse marked studied through `store/bible.ts`. What a thing is doesn't change
+  with where it stands: no XP, no points, no timer, no "solved in N", no
+  shareable result. That rank-free rule is the whole reason it can be a daily
+  thing at all.
+- **Solved crosses are DEVICE-LOCAL in both modes**, the deliberate break
+  `store/looks.ts` makes: the set grants nothing (everything a solve pays is
+  capped elsewhere), and the half of a solve that's really a record — the verse
+  — already follows the account. `store/crossword.ts` names the table shape to
+  use if that ever changes.
+- **The wood is drawn, not generated**, for the reason the church kit is: a
+  cross is a different shape for every pair of words, and a baked image can't be
+  re-cut per puzzle. Two layers over the same geometry and the same cell size —
+  HTML buttons while you play, SVG timbers once you're done — so nothing moves
+  when it turns to wood. The shelf's *cover* still follows the house rule and
+  has a prompt in `scripts/generate-study-covers.mjs`.
+- **All the puzzle state is in one reducer, and that's load-bearing.** Typing
+  five letters inside one tick put all five in the same square when each handler
+  planned against a hook snapshot — the same scar as `KeepSheet`'s double-tap,
+  found by driving the real app and invisible in the diff. Two more from the
+  same afternoon: turning direction has to carry the cursor into the other word
+  (every square but the shared one belongs to one word, so the keys did nothing
+  at all), and typing must advance one square rather than skip the filled
+  crossing one, or the second word lands silently off by one.
 
 ## Washing feet: the poke that costs the sender
 
@@ -871,7 +1111,7 @@ anything the generator hangs on the wall is a decoration nobody earned.
 
 ### Tiers are their own unlocks (merging is gone)
 
-Fine and Grand used to be made by stacking duplicates. Since 0081 they are
+Fine and Grand used to be made by stacking duplicates. Since 0083 they are
 their own rungs on the same challenge ladders — the same counter at 2.5× and
 5× the base goal (`tierGoal` in `data/keep.ts`, `furnishingTierGoal` in
 `data/room.ts`) — so a finer piece is still earned by playing and ownership
@@ -898,7 +1138,7 @@ A placement value may carry a position and size: `keep_woven_rug.2~x412y188s120`
 — `~s120` alone, `~x412y188` alone — and entangling them shipped for about a
 minute: a resize on a never-moved piece defaulted x/y to 0 and teleported the
 mat to the corner. Found by driving the real app; the grammar lives ONLY in
-`packDecor`/`unpackDecor` and is fuzzed against 0081's regexes.
+`packDecor`/`unpackDecor` and is fuzzed against 0083's regexes.
 
 The ANCHOR became a row key, not a location: it still bounds rows per player
 and is still validated server-side, but a piece stands wherever its value says,
@@ -908,9 +1148,10 @@ clamps into per-mount BANDS (`Surface.bands`), so "put it where you like"
 never becomes "hang the brazier from the ceiling". Resizing is deliberately
 bounded: a rug scaled to fill the hall stops being furniture.
 
-**0081 must be applied before this client merges** — it relaxes both value
-regexes (`set_keep_placement`, `set_room_placement`); against the 0060/0069
-versions every reposition is rejected as 'bad decor'.
+**0083 is applied** (2026-08-31, before the client merged — the order the
+Supabase section demands). It relaxes both value regexes (`set_keep_placement`,
+`set_room_placement`); against the 0060/0069 versions every reposition is
+rejected as 'bad decor'.
 
 ### The picker is a shelf of pictures
 

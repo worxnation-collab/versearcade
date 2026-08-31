@@ -37,6 +37,29 @@ announces the seed" message to lose, to race, or to arrive after somebody has
 already tapped ready. A rematch is `round + 1`, which is also why the round is in
 the hash — the same room must not replay the same verse all stream.
 
+## A rematch takes two, exactly like the start does
+
+`rematch()` is an OFFER, not a command: it sets `iWantRematch`, sends the round
+it is proposing, and starts the round only when the other side has asked too.
+The receiver does the mirror — records `opponentWantsRematch`, and starts only
+if it had already asked. Both sides land in `startRound()`, one function, so the
+two devices cannot reset to different things.
+
+It shipped the other way, and that was a bug worth writing down. The `rematch`
+message reset the receiver outright, so one player tapping it swept the other
+off their result screen into a round they had not agreed to — and if they were
+still playing, out of the run they were in the middle of. This is the same
+mistake in both places: **one device deciding for two.** The ready-check exists
+precisely because a live match is two people agreeing to begin together, and the
+second beginning needs the same agreement as the first.
+
+The round number is `current + 1` computed on both sides rather than sent and
+obeyed, so whichever order the two taps land in, the two devices derive the same
+verse. And an offer dies with its owner: `bye` clears `opponentWantsRematch`, or
+a player would sit waiting on somebody who has gone. The result screen draws all
+four states — nobody asked, I asked, they asked, they left — because a button
+that does nothing visible when tapped reads as broken.
+
 ## What the ready-check actually buys
 
 `StartGate` (a prop on `QuizRunner`) holds the read phase until both players have

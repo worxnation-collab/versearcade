@@ -61,10 +61,45 @@ export interface TapRoundDef {
   kinds: TapKindDef[]
 }
 
+/**
+ * What a game is told when it decides what to put on the field, or whether a
+ * tap was right.
+ *
+ * This exists because "should I tap this?" is not always a fact about the
+ * thing. In Manna Rush it is — a lump is a lump whenever you touch it. In Word
+ * Catch the same word is wrong now and right in four seconds, because what
+ * makes it right is how much of the verse you have already rebuilt. A spawn
+ * table of fixed weights cannot say that, so a game may answer both questions
+ * itself.
+ */
+export interface TapContext {
+  /** Index of the round being played. */
+  round: number
+  /** Correct taps in THIS round so far. */
+  taken: number
+  /** Kinds currently on the field, so a game can avoid spawning a duplicate. */
+  live: string[]
+}
+
 export interface TapGameDef {
   id: string
   name: string
   rounds: TapRoundDef[]
+  /**
+   * Choose what to put on the field next. Return null to put nothing there
+   * this tick. Defaults to drawing from the round's weighted `kinds` table,
+   * which is all a game with fixed verdicts ever needs.
+   */
+  plan?: (ctx: TapContext, round: TapRoundDef) => { kind: string; verdict: TapVerdict } | null
+  /**
+   * Judge a tap AT TAP TIME rather than at spawn time. Defaults to the verdict
+   * the target was spawned with.
+   *
+   * The distinction is the whole reason this hook exists: a word that was the
+   * wrong answer when it landed becomes the right one the moment the word
+   * before it is placed, and it is still sitting there on the field.
+   */
+  verdictOf?: (kind: string, ctx: TapContext, round: TapRoundDef) => TapVerdict
   teach: {
     /** Tapped something whose verdict was 'leave'. */
     wrong: TeachLine

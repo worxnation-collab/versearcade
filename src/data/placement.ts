@@ -85,7 +85,7 @@ export const SCALE_MAX = 1.4
 // every localStorage blob written before any of this existed still reads
 // correctly — no suffix means "tier 1, standing on its anchor, at scale 1" —
 // and packDecor/unpackDecor are the only two places that know the format.
-// KEEP THE GRAMMAR IN SYNC with the value regexes in migration 0081.
+// KEEP THE GRAMMAR IN SYNC with the value regexes in migration 0083.
 
 export interface PlacedPos {
   x?: number

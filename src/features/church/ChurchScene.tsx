@@ -218,7 +218,7 @@ export function ChurchScene({
           corner, in front of the crowd and clear of the path. */}
       {onArcade && (
         <div style={{ position: 'absolute', left: '3%', bottom: 4, zIndex: 3 }}>
-          <ArcadeCabinetBox width={34} onOpen={onArcade} title="Play Manna Rush" />
+          <ArcadeCabinetBox width={34} screen="attract" onOpen={onArcade} title="Play in the arcade" />
         </div>
       )}
 

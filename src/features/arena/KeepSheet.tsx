@@ -305,7 +305,7 @@ export function KeepSheet({
             // The machine belongs to YOUR hall, so it appears on the same
             // condition the furnishing does — and it is the same cabinet the
             // Battle tab shows inline, not a second one.
-            onArcade={ownHall ? () => { juice.select(); navigate('/arcade/manna') } : undefined}
+            onArcade={ownHall ? () => { juice.select(); navigate('/arcade') } : undefined}
           />
 
           <AnimatePresence>

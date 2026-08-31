@@ -13,7 +13,7 @@ import { useRivalry } from '@/store/rivalry'
 import { useJuice } from '@/juice/useJuice'
 import { supabase } from '@/lib/supabase'
 import { ChurchArt } from './ChurchArt'
-import { ChurchBoard } from './ChurchBoard'
+import { ChurchBoard, TIMEFRAME_PHRASE } from './ChurchBoard'
 import { ChurchScene } from './ChurchScene'
 import { RivalryCard } from './RivalryCard'
 import { FloraIcon } from './ChurchFlora'
@@ -90,7 +90,7 @@ function Header() {
 function ChurchHome({ church }: { church: Church }) {
   const juice = useJuice()
   const navigate = useNavigate()
-  const { available, myGiven, givers, contribute, leave, radiusMiles } = useChurch()
+  const { available, myGiven, givers, contribute, leave, radiusMiles, timeframe } = useChurch()
   const worldwide = radiusMiles === 'all'
   const [busy, setBusy] = useState(false)
   const [flash, setFlash] = useState<string | null>(null)
@@ -241,7 +241,7 @@ function ChurchHome({ church }: { church: Church }) {
           statues={statues}
           floraEditing={{ picked, onPick: pick, onDrop: drop }}
           emptyNote={false}
-          onArcade={() => { juice.select(); navigate('/arcade/manna') }}
+          onArcade={() => { juice.select(); navigate('/arcade') }}
         />
         {(picked || yardNote) && (
           <p className="center" style={{ margin: '8px 0 0', fontSize: 12.5, fontWeight: 700, color: 'var(--gold)' }}>
@@ -356,9 +356,12 @@ function ChurchHome({ church }: { church: Church }) {
             {worldwide ? 'Churches worldwide' : 'Churches near you'}
           </b>
           <p className="faint" style={{ margin: '2px 0 0', fontSize: 12 }}>
+            {/* The window slots into the sentence the caption has always been.
+                It is the empty string on all time, so the default scope reads
+                exactly as it did before the chips existed. */}
             {worldwide
-              ? 'Every church playing, ranked by points given'
-              : `Ranked by points given, measured from ${church.name}`}
+              ? `Every church playing, ranked by points given${TIMEFRAME_PHRASE[timeframe]}`
+              : `Ranked by points given${TIMEFRAME_PHRASE[timeframe]}, measured from ${church.name}`}
           </p>
         </div>
         <ChurchBoard />

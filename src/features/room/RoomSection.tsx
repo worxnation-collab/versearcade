@@ -289,7 +289,7 @@ export function RoomSection() {
         }}
         lampLit={lampLit}
         onTapSelf={() => { juice.tap(); setPrayerOffered(true) }}
-        onArcade={() => { juice.select(); navigate('/arcade/manna') }}
+        onArcade={() => { juice.select(); navigate('/arcade') }}
       />
 
       {/* The offer, not the thing itself. It stays until it's taken or waved

@@ -373,3 +373,39 @@ input::placeholder { color: var(--ink-faint); }
 @media (prefers-reduced-motion: reduce) {
   .tap-flake, .tap-flake::after { animation: none !important; }
 }
+
+/* Word Catch — the page the words came loose from. ------------------------ */
+/* Colours come from features/bible/paper.ts, inline, so the book's palette has
+   exactly one definition. Only the things inline styles cannot express live
+   here: the ruled grain of the page, and the two animations. */
+.arcade-rules {
+  position: absolute; inset: 0; opacity: 0.5; pointer-events: none;
+  background-image: repeating-linear-gradient(
+    180deg, transparent 0 27px, rgba(58,44,22,0.07) 27px 28px
+  );
+}
+.arcade-gutter {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 26px; pointer-events: none;
+  background: linear-gradient(90deg, rgba(58,44,22,0.16), rgba(58,44,22,0) 70%);
+}
+
+.tap-word { display: block; }
+.tap-word.is-taken { animation: word-place 0.26s ease-out forwards; }
+/* A word that was not next does not vanish in a puff — it drops back, which is
+   what a word declining to go in yet should look like. */
+.tap-word.is-leaving { animation: word-drop 0.3s ease-in forwards; }
+
+@keyframes word-place {
+  40% { transform: translateY(-10px) scale(1.06); }
+  to { transform: translateY(-30px) scale(0.7); opacity: 0; }
+}
+@keyframes word-drop { to { transform: translateY(12px) rotate(4deg); opacity: 0; } }
+
+/* The slot the next word goes in. It pulses rather than flashing: this sits
+   under the reader's eye for the whole round. */
+.word-slot { animation: slot-wait 1.5s ease-in-out infinite; }
+@keyframes slot-wait { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .word-slot, .tap-word { animation: none !important; }
+}

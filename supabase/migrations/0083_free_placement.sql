@@ -1,4 +1,4 @@
--- 0081 — tiers as their own unlocks; a placement carries where it stands and
+-- 0083 — tiers as their own unlocks; a placement carries where it stands and
 -- how big it is.
 --
 -- Two client changes land together and this is their schema half:
@@ -54,7 +54,7 @@ begin
     return json_build_object('ok', true);
   end if;
 
-  -- `.2` / `.3` is the tier (its own unlock since 0081), and `~x..y..s..` is
+  -- `.2` / `.3` is the tier (its own unlock since 0083), and `~x..y..s..` is
   -- where the piece stands and how big it is — see the header.
   if p_decor !~ '^keep_[a-z_]{1,40}(\.[23])?(~(x\d{1,3}y\d{1,3}s\d{2,3}|x\d{1,3}y\d{1,3}|s\d{2,3}))?$' then
     raise exception 'bad decor';

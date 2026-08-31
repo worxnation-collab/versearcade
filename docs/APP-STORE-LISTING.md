@@ -85,6 +85,15 @@ Start your streak today. It's one verse.
 > *approved* version forces a bump.
 
 ```
+FIRST LIGHT: THE DAY BELONGS TO WHOEVER OPENS IT
+• The first person to open a day's verse holds that day's first light, and everyone
+  who opens it after them is worth a point of XP to them — up to about one run's
+  worth. Nothing is taken from anybody: the points are minted, not moved.
+• Their card sits under the daily drop, one tap away, so the person who got up first
+  is somebody you can actually go and look at.
+• There is no second place and no leaderboard of who was quickest. One name, a fresh
+  start every midnight, and nothing that says you were late.
+
 YOUR CHURCH HAS SOMEBODY TO PLAY THIS WEEK
 • Every Monday your church is matched against another church its own size. Whoever
   gives more over the week raises a statue in their churchyard — the Good Shepherd,
@@ -95,11 +104,36 @@ YOUR CHURCH HAS SOMEBODY TO PLAY THIS WEEK
 • Small congregations play other small congregations, so a church of four can
   actually win its week.
 
+SEE WHO'S GIVING NOW, NOT JUST WHO GAVE FIRST
+• The church board reads Today, This week, or All time. A lifetime total is a ladder
+  you can climb but not join — a congregation playing hard this fortnight was still
+  buried under one that banked its points two years ago and went quiet.
+• "This week" is the same week your church's matchup runs on, so the board and the
+  rivalry card never disagree about what your congregation has given.
+• Still churches, never people: a church total, a player count, and nothing anywhere
+  that says who in a congregation gave what.
+
 BATTLE SOMEONE IN REAL TIME
 • Live battles: share a room code, both tap ready, and the same verse starts for both
   of you at once with a bar showing where the other player is.
 • Wrong answers still teach. The line explaining the answer is yours to read at your
   own pace, even if it costs you the round — being slower never means being told less.
+
+THERE'S AN ARCADE IN HERE NOW
+• A cabinet stands in your keep, your churchyard and your own room. Tap it and pick
+  a machine.
+• Manna Rush: seven days in the wilderness. Gather the fresh flakes, leave the ones
+  kept from yesterday, and on the seventh day the best thing you can do is rest.
+• Word Catch: today's verse comes loose from the page and you tap the words back
+  into order. The line at the top shows what you've put back and how long each
+  missing word is.
+• Cross Word: two words that share a letter, standing in the shape of a cross. Solve
+  it and the squares turn to wood, with the verse both words came from carved
+  underneath. A new one every day, 52 in all, Genesis to Revelation.
+• Nothing in the arcade touches your rank, and no machine keeps a high score. No
+  timers, no streaks, and hints are free.
+• Send a friend a machine: a shared link is good for one free go, no account and no
+  download first. It's an invitation to play, never a score to beat.
 ```
 
 **Check the uploaded 1.2.0 binary before submitting this.** If live battles shipped

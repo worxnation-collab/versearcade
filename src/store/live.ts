@@ -90,6 +90,10 @@ interface LiveState {
   opponentGone: boolean
   iAmReady: boolean
   opponentReady: boolean
+  /** I've asked for another round and am waiting for them to agree. */
+  iWantRematch: boolean
+  /** They've asked. Nothing moves until I say yes too. */
+  opponentWantsRematch: boolean
   progress: LiveProgress
   myResult: LiveResult | null
   opponentResult: LiveResult | null
@@ -227,21 +231,40 @@ export const useLive = create<LiveState>((set, get) => {
         void recordResult()
         break
       case 'rematch':
-        set({
-          round: w.round,
-          stage: 'reading',
-          iAmReady: false,
-          opponentReady: false,
-          progress: emptyProgress,
-          myResult: null,
-          opponentResult: null,
-          battleId: null,
-        })
+        // An OFFER, not a command. This used to reset the receiver outright,
+        // which meant one player tapping Rematch swept the other off their
+        // result screen and into a new round they had not agreed to — and if
+        // they were still playing, out of the run they were in the middle of.
+        // Now it waits, exactly like the ready-check two cases up.
+        set({ opponent: who, opponentWantsRematch: true })
+        if (get().iWantRematch) startRound(w.round)
         break
       case 'bye':
-        set({ opponentGone: true, opponentReady: false })
+        // Their offer leaves with them, or the result screen would sit there
+        // waiting on somebody who has gone.
+        set({ opponentGone: true, opponentReady: false, opponentWantsRematch: false })
         break
     }
+  }
+
+  /**
+   * Begin an agreed round. Both sides land here — the one who offered second
+   * and the one whose offer was accepted — so there is no way for the two
+   * devices to reset to different things.
+   */
+  const startRound = (round: number) => {
+    set({
+      round,
+      stage: 'reading',
+      iAmReady: false,
+      opponentReady: false,
+      iWantRematch: false,
+      opponentWantsRematch: false,
+      progress: emptyProgress,
+      myResult: null,
+      opponentResult: null,
+      battleId: null,
+    })
   }
 
   return {
@@ -253,6 +276,8 @@ export const useLive = create<LiveState>((set, get) => {
     opponentGone: false,
     iAmReady: false,
     opponentReady: false,
+    iWantRematch: false,
+    opponentWantsRematch: false,
     progress: emptyProgress,
     myResult: null,
     opponentResult: null,
@@ -279,6 +304,8 @@ export const useLive = create<LiveState>((set, get) => {
         opponentGone: false,
         iAmReady: false,
         opponentReady: false,
+        iWantRematch: false,
+        opponentWantsRematch: false,
         progress: emptyProgress,
         myResult: null,
         opponentResult: null,
@@ -343,19 +370,23 @@ export const useLive = create<LiveState>((set, get) => {
       void recordResult()
     },
 
+    /**
+     * Ask for another round. Nothing moves until BOTH have asked.
+     *
+     * Same shape as `setReady` above, and for the same reason: a live match is
+     * two people agreeing to start together. One of them deciding for the other
+     * is the bug this replaced — the second player got no say and no warning,
+     * they were simply somewhere else.
+     *
+     * The round number is `current + 1` on both sides, so whichever way round
+     * the two taps land, the two devices derive the same verse.
+     */
     rematch() {
+      if (get().iWantRematch) return
       const round = get().round + 1
-      set({
-        round,
-        stage: 'reading',
-        iAmReady: false,
-        opponentReady: false,
-        progress: emptyProgress,
-        myResult: null,
-        opponentResult: null,
-        battleId: null,
-      })
+      set({ iWantRematch: true })
       send({ t: 'rematch', round })
+      if (get().opponentWantsRematch) startRound(round)
     },
 
     leave() {
@@ -365,7 +396,7 @@ export const useLive = create<LiveState>((set, get) => {
         channel = null
       }
       recording = false
-      set({ stage: 'idle', code: null, role: null, opponent: null, opponentGone: false, iAmReady: false, opponentReady: false, progress: emptyProgress, myResult: null, opponentResult: null, battleId: null })
+      set({ stage: 'idle', code: null, role: null, opponent: null, opponentGone: false, iAmReady: false, opponentReady: false, iWantRematch: false, opponentWantsRematch: false, progress: emptyProgress, myResult: null, opponentResult: null, battleId: null })
     },
   }
 })

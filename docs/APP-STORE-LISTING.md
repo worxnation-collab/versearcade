@@ -83,91 +83,88 @@ Start your streak today. It's one verse.
 > block is **not final**. Add to it as things merge, and re-read it against `git log`
 > on the day you submit. Do not bump the version for a new feature — only an
 > *approved* version forces a bump.
+>
+> Last rebuilt against `git log --first-parent` on 2026-08-31, covering #157 to #191.
+> 3,826 characters, against Apple's 4,000 limit — there is room for about one more
+> short section before something has to give.
 
 ```
-FIRST LIGHT: THE DAY BELONGS TO WHOEVER OPENS IT
-• The first person to open a day's verse holds that day's first light, and everyone
-  who opens it after them is worth a point of XP to them — up to about one run's
-  worth. Nothing is taken from anybody: the points are minted, not moved.
-• Their card sits under the daily drop, one tap away, so the person who got up first
-  is somebody you can actually go and look at.
-• There is no second place and no leaderboard of who was quickest. One name, a fresh
-  start every midnight, and nothing that says you were late.
-
-YOUR CHURCH HAS SOMEBODY TO PLAY THIS WEEK
-• Every Monday your church is matched against another church its own size. Whoever
-  gives more over the week raises a statue in their churchyard — the Good Shepherd,
-  Moses, an angel, the empty tomb, and four more. Your congregation picks which one.
-• Nobody is ever named on the losing side. A matchup is two church totals and a
-  church name: there is no table of who gave most, no streak, and losing costs you
-  absolutely nothing. Monday starts everyone at nothing again.
-• Small congregations play other small congregations, so a church of four can
-  actually win its week.
-
-SEE WHO'S GIVING NOW, NOT JUST WHO GAVE FIRST
-• The church board reads Today, This week, or All time. A lifetime total is a ladder
-  you can climb but not join — a congregation playing hard this fortnight was still
-  buried under one that banked its points two years ago and went quiet.
-• "This week" is the same week your church's matchup runs on, so the board and the
-  rivalry card never disagree about what your congregation has given.
-• Still churches, never people: a church total, a player count, and nothing anywhere
-  that says who in a congregation gave what.
-
-ARRANGE YOUR ROOMS AND YOUR CHURCHYARD WITH YOUR THUMB
-• Pick up anything in your Upper Room, your keep's hall or your churchyard and drag
-  it where you want it. Rugs stay on the floor, banners stay on the wall and plants
-  stay on the grass, so nothing lands anywhere daft, and nothing you place can ever
-  be lost or overwritten.
-• Plant a flower bed at the front of the lawn and it's nearer, so it's bigger. Drag
-  it back toward the church and it settles into the distance.
-• Anything you're holding wears a small ✕ — one tap takes it back out and it goes
-  straight back on the shelf, at the tier you earned. Nothing is spent, ever.
-• Your congregation's statues move too, and any member can move them: a monument
-  belongs to the church, the same way choosing which one stands there always has.
-• Tap-to-move still works exactly as it did, and the page still scrolls under your
-  thumb everywhere except the one thing you said you were holding.
-
-BATTLE SOMEONE IN REAL TIME
-• Live battles: share a room code, both tap ready, and the same verse starts for both
-  of you at once with a bar showing where the other player is.
-• Nobody to send a code to? Tap Quick match and we'll put you with whoever else is
-  looking right now — no code, no waiting list, no rating. Whoever's there is who
-  you play, and the loser of a live battle is still somebody who just learnt a verse.
-• Battles now pay 10 XP for turning up, three a day — the same for the winner and
-  the loser, because what's rewarded is playing, not beating anybody.
-• Two new looks you can only get by playing live: Jonathan, who went out to meet
-  David in the field, and Deborah, the judge under the palm. They count battles
-  played, win or lose.
-• And four you win: Francis of Assisi, Hildegard of Bingen, Thomas Aquinas and
-  Melisende of Jerusalem. You're told the moment one is yours — there's no
-  progress bar to grind, and nothing anywhere counts what you've lost.
-• Wrong answers still teach. The line explaining the answer is yours to read at your
-  own pace, even if it costs you the round — being slower never means being told less.
+BATTLE ANYONE, RIGHT NOW
+• Quick match: tap it and we'll put you with whoever else is looking. No code, no
+  queue position, no rating — whoever's there is who you play.
+• Or share a room code. Either way you both read the same verse, you both tap
+  ready, and a bar shows where the other player is the whole way down.
+• Battles pay 10 XP for turning up, three a day — the winner and the loser get
+  exactly the same, because what's rewarded is playing, not beating anybody.
+• Six new looks earned in battle. Jonathan and Deborah come from playing live,
+  win or lose. Francis of Assisi, Hildegard of Bingen, Thomas Aquinas and
+  Melisende of Jerusalem come from winning. You're told the moment one is yours —
+  there's no progress bar to grind, and nothing anywhere counts what you've lost.
+• Wrong answers still teach. The line explaining the answer is yours to read at
+  your own pace, even if it costs you the round.
 
 THERE'S AN ARCADE IN HERE NOW
-• A cabinet stands in your keep, your churchyard and your own room. Tap it and pick
-  a machine.
-• Manna Rush: seven days in the wilderness. Gather the fresh flakes, leave the ones
-  kept from yesterday, and on the seventh day the best thing you can do is rest.
-• Word Catch: today's verse comes loose from the page and you tap the words back
-  into order. The line at the top shows what you've put back and how long each
-  missing word is.
-• Cross Word: two words that share a letter, standing in the shape of a cross. Solve
-  it and the squares turn to wood, with the verse both words came from carved
-  underneath. A new one every day, 52 in all, Genesis to Revelation.
-• Every machine is a painted place now: the wilderness at first light under Manna
-  Rush, a real page under the words, and a carpenter's workshop wall behind the cross.
-• Your first go on each machine each day is worth 5 XP — paid for turning up, not
-  for doing well. A brilliant run and a terrible one are worth exactly the same.
-• No machine keeps a high score and nothing in here can be lost. No timers, no
-  streaks, nothing to fall behind on, and hints are free.
-• Send a friend a machine: a shared link is good for one free go, no account and no
-  download first. It's an invitation to play, never a score to beat.
+• A cabinet in your own room, and on the home screen once the day's verse is done.
+• Manna Rush: seven days in the wilderness. Gather the fresh flakes, leave
+  yesterday's, and on the seventh day the best thing you can do is rest.
+• Word Catch: the verse comes loose from the page and you tap the words back into
+  order.
+• Cross Word: two words that share a letter, standing as a cross. Solve it and the
+  squares turn to wood with the verse carved underneath. A new one every day.
+• Your first go on each machine each day is worth 5 XP — for turning up, not for
+  doing well. No machine keeps a high score and nothing in here can be lost.
+• Send a friend a machine: a shared link is one free go, no account, no download.
+
+FIRST LIGHT: THE DAY BELONGS TO WHOEVER OPENS IT
+• The first person to open a day's verse holds its first light, and everyone who
+  opens it after them is worth a point of XP to them. Nothing is taken from
+  anybody — the points are minted, not moved.
+• No second place, no leaderboard of who was quickest, and a fresh start at
+  midnight.
+
+YOUR CHURCH HAS SOMEBODY TO PLAY THIS WEEK
+• Every Monday your church is matched against another its own size. Whoever gives
+  more raises a statue in their churchyard, and your congregation picks which one.
+  Nobody is ever named on the losing side, and Monday starts everyone at nothing.
+• Small congregations play other small congregations, so a church of four can
+  actually win its week.
+• The board reads Today, This week or All time, so a church playing hard right now
+  isn't buried under one that banked its points two years ago and went quiet.
+• Churches near you are suggested before you type a thing, and a verified leader
+  can keep their own church's page up to date.
+• Every church building is painted now — all eight sizes, in four materials.
+
+ARRANGE EVERYTHING WITH YOUR THUMB
+• Pick up anything in your Upper Room, your keep's hall or your churchyard and
+  drag it where you like. Rugs stay on floors, banners on walls, plants on grass,
+  and nothing you place can be lost or overwritten.
+• A plant at the front of the lawn is nearer, so it's bigger. Drag it back toward
+  the church and it settles into the distance.
+• Finer furnishings are their own rewards now: you earn Fine and Grand by playing
+  instead of stacking duplicates, and a lesser copy upgrades where it stands.
+• Anything you're holding wears a small ✕. One tap puts it back on the shelf at
+  the tier you earned. Nothing is ever spent.
+• Your congregation's statues move too, and any member can move them.
+
+THE STUDY TAB IS A LIBRARY
+• Shelves, lamplight, and Tabitha at the desk. Ask her for something to read and
+  she fetches it and stamps it out to you.
+• The first book you borrow each day is worth a little something. There are no due
+  dates, nothing is ever overdue, and she has no opinion about how much you read.
 ```
 
-**Check the uploaded 1.2.0 binary before submitting this.** If live battles shipped
-inside 1.2.0, cut that section — announcing a feature the store already showed people
-is worse than a short release note.
+**Three sections here may already be in players' hands, and the repo cannot settle
+it.** `1.2.0 is live: close its train` (#158) landed *after* the weekly rivalry
+(#157) and live battles (#156), and the Study library (#169) landed after it — so
+the merge order says one thing and the 1.2.0 release notes below, which describe
+the library as shipped, say another. A binary is cut before it is approved, and
+only App Store Connect knows what was in it.
+
+So before submitting: open the uploaded 1.2.0 build and check whether **live
+battles**, **the weekly church rivalry** and **the Study library** are in it. Cut
+whatever is — announcing a feature the store already showed people is worse than a
+short release note. Everything else in the block above merged well after 1.2.0 was
+live and is safe.
 
 ### 1.2.0 — the release after 1.1.0 (SHIPPED, approved and live)
 ```

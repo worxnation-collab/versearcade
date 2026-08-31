@@ -758,6 +758,66 @@ what `/battle/cpu` already is. The room code is still the right shape for two
 people who already know each other (a code can be read out loud on a stream);
 quick match is the door for the case where there is nobody to send one to.
 
+## What a battle pays, and the two skins only a live one gives
+
+Every battle in this app paid **nothing** until `0086` — not the async
+challenge, not the room code, not quick match. That was survivable while the
+only door was challenging somebody you know; quick match put a stranger one tap
+away, and a mode you can play all day for no reward is a mode people try once.
+
+**The grant lives inside `create_battle` and `submit_battle`, and that is the
+whole design.** Those two are what every battle path already goes through — an
+async challenge, a broadcast link, the welcome battle, a room code and a quick
+match all land there — so there is one choke point rather than five call sites,
+and the baked `dist` in every already-approved iOS build starts paying the moment
+the migration is applied, with no submission. Same argument first light's
+`submit_play` write makes.
+
+- **10 XP, three a day**, so 30 against a daily drop's 30-60 — the ceiling
+  praying has, and a battle is a whole five-question run. The per-battle half of
+  the cap is the PRIMARY KEY `(user_id, battle_id)`, so a resubmit or the guest's
+  poll landing twice pays nothing; the per-day half is a count taken under a row
+  lock on the profile, so two battles finishing together can't both spend the
+  last slot. `todayLocalDate()` clamped +-1, the house pattern.
+- **WHAT IS PAID FOR IS TURNING UP, NOT WINNING, and that is the line that
+  matters.** `award_battle_xp` never reads a score: the winner and the loser are
+  paid the identical 10 XP, and both result screens say so in the same words. If
+  a future session pays the winner more, `xp` — the worldwide leaderboard (0006)
+  — becomes a battle ladder and losing starts costing something, in an app whose
+  whole rule is that it doesn't. Don't.
+- `award_battle_xp` is **not client-callable** (revoked from `public`, `anon`
+  AND `authenticated` — the 0052 scar) and refuses a battle the caller isn't in,
+  so even an undone revoke buys nothing that playing wouldn't.
+- Participation is recorded **whether or not it pays**, because `battle_plays` is
+  also what the skins below count: a ceiling that stopped counting would freeze a
+  player's progress toward a cosmetic on the day they played most.
+
+**Jonathan (3) and Deborah (15) are earned by playing LIVE battles**, counted on
+`profiles.live_battles` — server-written, only ever going up, so a bad week can't
+take one back. Three things about them are load-bearing:
+
+- **The counter is battles PLAYED, never won.** Somebody who lost all fifteen
+  wears Deborah exactly as somebody who won all fifteen, and the locked tile says
+  "win or lose, they all count" rather than leaving anyone to guess. A skin you
+  can only get by beating people is the trophy this app doesn't hand out.
+- **`live` is set once, by the host, on the battle row** (`create_battle`'s
+  `p_live`). The guest never sends it — `submit_battle` reads it back off the row
+  — so the two devices can't disagree about what kind of match it was, and no
+  client can relabel async battles to farm the counter.
+- **`live_battles` is on the profile and nowhere else.** Not on
+  `get_player_card`, not on any board. It rides there because `skinOwned` can
+  already read a profile field the way it reads `shared_days`; a count of matches
+  drawn beside somebody else's is one step from the ladder above.
+
+The art is Nano Banana like everything else (`art/skins-live.json`), and both
+figures are deliberately un-martial: Jonathan holds his bow **pointing down**
+with his other hand out in greeting, Deborah carries a palm branch. They are two
+people who went out to MEET somebody — which is what a live battle is — rather
+than two people who beat somebody. Jonathan's first render came back an almost
+entirely white image (the magenta instruction ignored, the failure the church
+skins hit twice); it was re-rolled with the prompt hardened against exactly that
+and every pale garment on the figure recoloured.
+
 ## Content is deterministic — keep it that way
 
 `getVerseForDate(date)` must return the same verse for the same date for every
@@ -902,7 +962,14 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0085` (erasure hardening — scrubbing the denormalised copies of
+The latest is **`0086` (battle XP + the live-battle skins), and it is NOT APPLIED
+YET** — the one migration in this folder the live project has never seen. Until
+somebody runs it battles pay nothing, `profiles.live_battles` doesn't exist so
+Jonathan and Deborah can never unlock, and PostgREST silently drops
+`create_battle`'s new `p_live`/`p_local_date` arguments. Apply it before merging
+the client, the way this section demands.
+
+Before it, `0085` (erasure hardening — scrubbing the denormalised copies of
 a username that no foreign key can reach, plus a prune for the pulse table),
 APPLIED on 2026-08-31 and verified: the scrub clears a probe name from
 `presence_events` and `guest_opens` in one statement, and
@@ -944,8 +1011,8 @@ Numbering has scars: `0034` is used twice (`promo_codes`, `skin_purchases`),
 `public_church_page`), `0081` twice (`first_light`, and the Study library's
 card, which was applied to production under that number and renumbered to
 `0083` in the tree when the two branches met), and — from that same collision —
-`0082` and `0083` twice each. So the next free number is `0086` (0085 is taken
-by erasure hardening, above),
+`0082` and `0083` twice each. So the next free number is `0087` (0085 is taken
+by erasure hardening and 0086 by battle XP, above),
 and this
 sentence has already gone stale twice: it said "0076" while 0077, 0078 and 0079
 were sitting in the folder. `ls supabase/migrations | tail -1` is the answer — on ORIGIN/MAIN, not your

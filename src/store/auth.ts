@@ -40,6 +40,7 @@ interface DbProfileRow {
   // the emoji until a profiles.avatar_character migration lands.
   avatar_character?: AvatarSpec | null
   shared_days?: string[] | null
+  live_battles?: number | null
   owned_items?: string[] | null
   owned_skins?: string[] | null
   xp_boosts: number | null
@@ -72,6 +73,7 @@ function mapRow(r: DbProfileRow): Profile {
     pet: r.pet ?? null,
     avatarCharacter: r.avatar_character ?? null,
     sharedDays: r.shared_days ?? [],
+    liveBattles: r.live_battles ?? 0,
     ownedItems: r.owned_items ?? [],
     ownedSkins: r.owned_skins ?? [],
     xpBoosts: r.xp_boosts ?? 0,

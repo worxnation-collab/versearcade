@@ -273,6 +273,7 @@ export interface SkinDef {
   blurb: string
   shareGoal?: number // earned: distinct shared days required
   referralGoal?: number // earned: referred signups required
+  liveGoal?: number // earned: live battles played (room code or quick match)
   pack?: string // paid: pack sku
   packName?: string // paid: display pack name
   /** paid: sold ONLY as part of its pack — never listed or priced on its own. */
@@ -314,6 +315,31 @@ export const FULL_SKINS: SkinDef[] = [
     source: 'earned',
     referralGoal: 5,
     blurb: 'Carry your cross (Luke 9:23) — earned when 5 friends join with your code.',
+  },
+  // ——— The live battles ———
+  // Earned by turning up to a live battle — a room code or a quick match, both
+  // count, because both are the same thing once the room opens (see
+  // store/liveQueue). What they are NOT is a prize for winning: the counter
+  // behind them is battles PLAYED, so the person who lost every one of them
+  // wears the same skin as the person who won every one. That is the whole
+  // reason a battle-shaped cosmetic is allowed to exist here — it says "I was
+  // there", which is the only claim this app lets anybody make about anybody.
+  //
+  // The count is server-written (award_battle_xp, 0086) and only goes up, so a
+  // bad week can't take one back, exactly like the pets' requirements.
+  {
+    id: 'jonathan',
+    name: 'Jonathan',
+    source: 'earned',
+    liveGoal: 3,
+    blurb: 'Saul\u2019s son, who went out to meet David in the field \u2014 earned by playing 3 live battles.',
+  },
+  {
+    id: 'deborah',
+    name: 'Deborah',
+    source: 'earned',
+    liveGoal: 15,
+    blurb: 'The judge under the palm, who said \u201cI will surely go with you\u201d \u2014 earned by playing 15 live battles.',
   },
   // ——— The Pilgrimage (seasonal road) ———
   {
@@ -654,6 +680,8 @@ export function skinOwned(
     sharedDays?: string[]
     ownedSkins?: string[]
     referralCount?: number
+    /** Lifetime live battles played (profiles.live_battles, 0086). */
+    liveBattles?: number
     admin?: boolean
     /** Reward ids unlocked on the seasonal road (store/season). */
     seasonUnlocks?: string[]
@@ -671,6 +699,9 @@ export function skinOwned(
   }
   if (skin.source === 'earned') {
     if (skin.referralGoal != null) return (ctx.referralCount ?? 0) >= skin.referralGoal
+    // Live battles played, lifetime — win or lose, the counter never reads a
+    // score (see the Jonathan/Deborah entries above and award_battle_xp).
+    if (skin.liveGoal != null) return (ctx.liveBattles ?? 0) >= skin.liveGoal
     return distinctSharedDays(ctx.sharedDays) >= (skin.shareGoal ?? Number.MAX_SAFE_INTEGER)
   }
   return (ctx.ownedSkins ?? []).includes(skin.id)

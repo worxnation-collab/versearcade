@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
+import { todayLocalDate } from '@/lib/date'
+import { useAuth } from './auth'
 import type { AvatarSpec } from '@/types'
 
 export interface BattleSide {
@@ -24,6 +26,10 @@ export interface Battle {
   invited: string | null
   challenger: BattleSide
   opponent: BattleSide | null
+  /** XP this submission was worth (0086). Only ever present on the object
+   *  submit_battle hands back — a battle read from a list has no payout to
+   *  report, and undefined is the normal case rather than an error. */
+  xp_awarded?: number
 }
 
 export interface PoolUser {
@@ -64,7 +70,7 @@ interface BattlesState {
   loadingMine: boolean
   loadMine: () => Promise<void>
   getBattle: (id: string) => Promise<Battle | null>
-  createBattle: (seed: number, score: number, timeMs: number, invited?: string, broadcast?: boolean) => Promise<string | null>
+  createBattle: (seed: number, score: number, timeMs: number, invited?: string, broadcast?: boolean, live?: boolean) => Promise<string | null>
   submitBattle: (id: string, score: number, timeMs: number) => Promise<Battle | null>
   userPool: (search?: string) => Promise<PoolUser[]>
   leaderboard: () => Promise<BattleBoard | null>
@@ -89,7 +95,11 @@ export const useBattles = create<BattlesState>((set) => ({
     return data as Battle
   },
 
-  async createBattle(seed, score, timeMs, invited, broadcast) {
+  // `live` marks a battle played face to face — a room code or a quick match —
+  // and it is the ONLY place that fact is recorded, because the two sides submit
+  // through the same RPCs an async challenge does. The server reads it back off
+  // the row for the guest's half, so neither device declares it twice.
+  async createBattle(seed, score, timeMs, invited, broadcast, live) {
     if (!supabase) return null
     const { data, error } = await supabase.rpc('create_battle', {
       p_seed: seed,
@@ -97,8 +107,15 @@ export const useBattles = create<BattlesState>((set) => ({
       p_time_ms: timeMs,
       p_invited: invited ?? null,
       p_broadcast: broadcast ?? false,
+      p_live: live ?? false,
+      p_local_date: todayLocalDate(),
     })
     if (error || !data) return null
+    // The server may have paid for this run (award_battle_xp, 0086). It never
+    // says so here — create_battle returns a uuid and an approved build is
+    // reading that shape — so pull the profile rather than guessing, and every
+    // XP bar in the app is right immediately.
+    await useAuth.getState().refreshProfile()
     return data as string
   },
 
@@ -110,9 +127,19 @@ export const useBattles = create<BattlesState>((set) => ({
 
   async submitBattle(id, score, timeMs) {
     if (!supabase) return null
-    const { data, error } = await supabase.rpc('submit_battle', { p_id: id, p_score: score, p_time_ms: timeMs })
+    const { data, error } = await supabase.rpc('submit_battle', {
+      p_id: id,
+      p_score: score,
+      p_time_ms: timeMs,
+      p_local_date: todayLocalDate(),
+    })
     if (error || !data) return null
-    return data as Battle
+    const battle = data as Battle
+    // Same as createBattle: the payout happened server-side, so re-read rather
+    // than trusting `xp_awarded` to move a number the client keeps its own copy
+    // of. The key is there for the screens that want to say "+10 XP".
+    if ((battle.xp_awarded ?? 0) > 0) await useAuth.getState().refreshProfile()
+    return battle
   },
 
   async leaderboard() {

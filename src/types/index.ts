@@ -96,6 +96,12 @@ export interface Profile {
   /** Distinct day-drops the player has shared (YYYY-MM-DD). Drives share-count
    *  unlocks like the King Baldwin set. */
   sharedDays?: string[]
+  /** Live battles played, lifetime. SERVER-WRITTEN (award_battle_xp, 0086) and
+   *  only ever going up, which is what lets it gate the two live-battle skins
+   *  the way shared_days gates Baldwin. Deliberately not on get_player_card and
+   *  not on any board: a count of matches beside somebody else's is one step
+   *  from the battle ladder this app doesn't have. */
+  liveBattles?: number
   /** Wearable item ids the player has collected (from the Daily Chest). */
   ownedItems?: string[]
   /** Full-look skin ids the player is entitled to (paid/preview-unlocked). */

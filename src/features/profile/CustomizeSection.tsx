@@ -231,7 +231,7 @@ export function CustomizeSection() {
   /** Reactive pass skins store their state in the id ('ruth_2'); compare bases. */
   const isEquipped = (skin: SkinDef) => !!equippedSkin && baseSkinId(equippedSkin) === skin.id
   const isSkinOwned = (skin: SkinDef) =>
-    skinOwned(skin, { sharedDays: profile.sharedDays, ownedSkins, referralCount: profile.referralCount, admin: profile.isAdmin, seasonUnlocks })
+    skinOwned(skin, { sharedDays: profile.sharedDays, ownedSkins, referralCount: profile.referralCount, liveBattles: profile.liveBattles, admin: profile.isAdmin, seasonUnlocks })
   // Cosmetics aren't sold any more — the launch trio is free, the angels are
   // road rewards and the promo skins are free redemptions — so the copy under
   // the grid only mentions money while a listing that still HAS a price is
@@ -251,6 +251,11 @@ export function CustomizeSection() {
       if (skin.referralGoal != null) {
         const rc = profile.referralCount ?? 0
         setErr(`${skin.name}: ${Math.min(rc, skin.referralGoal)}/${skin.referralGoal} friends joined with your code`)
+      } else if (skin.liveGoal != null) {
+        // Played, not won — the sentence says so, because a goal phrased as
+        // "won" is the version of this skin the app must not have.
+        const lb = profile.liveBattles ?? 0
+        setErr(`${skin.name}: ${Math.min(lb, skin.liveGoal)}/${skin.liveGoal} live battles played \u2014 win or lose, they all count`)
       } else {
         const goal = skin.shareGoal ?? 0
         setErr(`${skin.name}: shared ${Math.min(sharedCount, goal)}/${goal} days`)
@@ -391,7 +396,9 @@ export function CustomizeSection() {
                           : skin.source === 'earned'
                             ? skin.referralGoal != null
                               ? `${Math.min(profile.referralCount ?? 0, skin.referralGoal)}/${skin.referralGoal} friends`
-                              : `Shared ${Math.min(sharedCount, skin.shareGoal ?? 0)}/${skin.shareGoal ?? 0} days`
+                              : skin.liveGoal != null
+                                ? `${Math.min(profile.liveBattles ?? 0, skin.liveGoal)}/${skin.liveGoal} live battles`
+                                : `Shared ${Math.min(sharedCount, skin.shareGoal ?? 0)}/${skin.shareGoal ?? 0} days`
                             : skin.exclusive ? `🔒 ${skin.packName ?? 'Exclusive'}`
                               : skin.bundleOnly ? `🔒 ${skin.packName ?? 'Pack only'}`
                                 : `🔒 ${skin.price}`

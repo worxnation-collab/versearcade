@@ -11,6 +11,7 @@ import { shareResult, inviteUrl } from '@/features/daily/shareCard'
 import { useJuice } from '@/juice/useJuice'
 import { useKeep } from '@/store/keep'
 import { FavoriteButton } from '@/components/FavoriteButton'
+import { BattleXpLine } from './BattleXpLine'
 import { battleVerse } from './battle'
 
 function myOutcome(b: Battle): 'won' | 'lost' | 'tie' | null {
@@ -176,6 +177,12 @@ export default function BattleDetail() {
               <p style={{ marginTop: 8, lineHeight: 1.5 }}>“{verse.text}”</p>
             </div>
           )}
+
+          {/* What the run was worth — your own day, never a comparison, and the
+              same whichever way the result above went. Only for the two people
+              who actually played it; a spectator opening a finished battle has
+              no day of their own to report. */}
+          {(battle.is_challenger || battle.is_opponent) && <BattleXpLine />}
 
           {/* "Rematch" has to mean rematch THEM — a generic new battle sends
               you to the picker and makes you hunt down the same opponent. */}

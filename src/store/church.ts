@@ -17,8 +17,29 @@ export type RadiusChoice = (typeof RADIUS_CHOICES)[number]
 export const DEFAULT_RADIUS: RadiusChoice = 20
 const RADIUS_KEY = 'va.churchRadius'
 
+/**
+ * How far back the board counts: today, this week, or every point ever banked.
+ *
+ * The two windows are UTC, and that is inherited from the rivalry (0075)
+ * rather than chosen here — see the header of `0080_church_leaderboard_window.sql`.
+ * "This week" IS the rivalry's week, derived from the same epoch on both sides
+ * of the wire, so the number on the board and the number on the rivalry card
+ * are the same number for the same church and roll over together.
+ *
+ * All time stays the default: it is the only one of the three that reads a
+ * counter rather than summing three ledgers, and it is what the board has
+ * always shown.
+ */
+export const TIMEFRAME_CHOICES = ['day', 'week', 'all'] as const
+export type TimeframeChoice = (typeof TIMEFRAME_CHOICES)[number]
+export const DEFAULT_TIMEFRAME: TimeframeChoice = 'all'
+const TIMEFRAME_KEY = 'va.churchWindow'
+
 const isRadiusChoice = (v: unknown): v is RadiusChoice =>
   (RADIUS_CHOICES as readonly unknown[]).includes(v)
+
+const isTimeframe = (v: unknown): v is TimeframeChoice =>
+  (TIMEFRAME_CHOICES as readonly unknown[]).includes(v)
 
 function readRadius(): RadiusChoice {
   try {
@@ -28,6 +49,15 @@ function readRadius(): RadiusChoice {
     return isRadiusChoice(n) ? n : DEFAULT_RADIUS
   } catch {
     return DEFAULT_RADIUS
+  }
+}
+
+function readTimeframe(): TimeframeChoice {
+  try {
+    const raw = localStorage.getItem(TIMEFRAME_KEY)
+    return isTimeframe(raw) ? raw : DEFAULT_TIMEFRAME
+  } catch {
+    return DEFAULT_TIMEFRAME
   }
 }
 
@@ -48,6 +78,10 @@ function toChurch(raw: any): Church | null {
     lat: Number(raw.lat),
     lng: Number(raw.lng),
     xp: Number(raw.xp ?? 0),
+    // Only `church_leaderboard` (0080) sends this, and a server that predates
+    // it never does — so an older backend leaves it undefined and the board
+    // falls back to lifetime XP, which is exactly how it used to read.
+    points: raw.points != null ? Number(raw.points) : undefined,
     level: Number(raw.level ?? 1),
     members: Number(raw.members ?? 0),
     miles: raw.miles != null ? Number(raw.miles) : undefined,
@@ -161,6 +195,7 @@ interface ChurchState {
   boardMe: Church | null
   boardTotal: number
   radiusMiles: RadiusChoice
+  timeframe: TimeframeChoice
   loaded: boolean
   loading: boolean
   boardLoading: boolean
@@ -190,6 +225,7 @@ interface ChurchState {
   load: () => Promise<void>
   loadBoard: () => Promise<void>
   setRadius: (choice: RadiusChoice) => void
+  setTimeframe: (choice: TimeframeChoice) => void
   join: (place: ChurchPlace) => Promise<Church | null>
   leave: () => Promise<void>
   contribute: (points: number) => Promise<ContributeResult>
@@ -225,6 +261,7 @@ export const useChurch = create<ChurchState>((set, get) => ({
   boardMe: null,
   boardTotal: 0,
   radiusMiles: readRadius(),
+  timeframe: readTimeframe(),
   loaded: false,
   loading: false,
   boardLoading: false,
@@ -266,6 +303,10 @@ export const useChurch = create<ChurchState>((set, get) => ({
       p_radius_miles: worldwide ? null : radius,
       // The worldwide ladder is worth showing deeper than the local one.
       p_limit: worldwide ? 50 : 25,
+      // 0080. A server that predates it resolves the two-argument overload
+      // instead and answers all-time, which is what the board used to show —
+      // no error, and the chips still change the radius.
+      p_window: get().timeframe,
     })
     if (error) {
       set({ boardLoading: false, error: error.message })
@@ -288,6 +329,17 @@ export const useChurch = create<ChurchState>((set, get) => ({
       /* private mode — the choice just won't stick */
     }
     set({ radiusMiles: choice })
+    void get().loadBoard()
+  },
+
+  setTimeframe(choice) {
+    if (!isTimeframe(choice)) return
+    try {
+      localStorage.setItem(TIMEFRAME_KEY, choice)
+    } catch {
+      /* private mode — the choice just won't stick */
+    }
+    set({ timeframe: choice })
     void get().loadBoard()
   },
 

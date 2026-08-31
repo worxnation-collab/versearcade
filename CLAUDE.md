@@ -330,6 +330,47 @@ The sheet sits at `z-index: 100` — the app's sheet tier. Don't raise it: the
 player card (110) is meant to open *over* a sheet, and tapping a face in the
 roster opens exactly that.
 
+### The board reads three windows
+
+Every row on `/church`'s board is a church and a number, and until `0080` that
+number could only be lifetime points. That is a ladder a congregation can climb
+but not JOIN: a church playing hard for a fortnight still sits under one that
+banked 18,000 points two years ago and has been quiet since. Today / This week /
+All time makes the week winnable by showing up, which is what the whole church
+feature is trying to produce.
+
+Four things about it are load-bearing:
+
+- **"This week" IS the rivalry's week.** `church_window_start('week', …)` is
+  derived from `church_rivalry_week_start()`, so the board's weekly number and
+  the rivalry card's weekly number are the same number for the same church and
+  roll over together. Two weekly totals disagreeing by a few hours would be
+  indistinguishable from a bug.
+- **So both windows are UTC**, inheriting the rivalry's deliberate break with
+  "dates are the user's local date" rather than making a new one. A per-viewer
+  local day means two members of the *same* church see different totals for it.
+  A person's streak still rolls over at their own midnight — this is an
+  institution.
+- **It adds no visibility.** A windowed row is a church total, exactly like the
+  lifetime one already there. `church_points_since` returns `(church_id, points)`
+  and never groups by user; "top giver this week" is the feature this app must
+  not have, and the guarantee is that the query is never built. Same rule the
+  rivalry's payload shape enforces.
+- **`xp` stays lifetime and the row's window number is `points`.** The LEVEL is
+  drawn from `xp`, so a church does not shrink to a wooden chapel because it was
+  quiet on Tuesday. `points` is undefined on every other RPC that returns a
+  church, and the row falls back to `xp` — which is also what an app installed
+  before 0080 gets, because **the old two-argument `church_leaderboard` is kept
+  as a wrapper.** `ios/` ships a baked `dist`, so dropping that signature the
+  way 0074 dropped `admin_overview()` would blank the board in every approved
+  build. It is a wrapper, not a second implementation, and must stay one.
+
+The board keeps listing churches that gave nothing inside the window, sitting on
+0, rather than dropping them: a congregation vanishing from its own neighbourhood
+board at midnight reads as broken. What it does not do is put a **medal** on a
+row that gave nothing — with every church on 0 the ranking is only a lifetime
+tiebreak, and a gold medal there claims somebody won a day nobody has played.
+
 ### Church skins
 
 Two axes, and only one is for sale. `levels.ts` decides *which* of the eight
@@ -642,7 +683,8 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0079` (a church claiming its own page); before it, `0078` (a
+The latest is `0080` (today / this week / all time on the church board); before
+it, `0079` (a church claiming its own page), `0078` (a
 church's ask for a sponsored slot) and `0077` (the slot itself). Before them, `0075` (the weekly church rivalry) and `0074` (the admin
 dashboard's dates) — 0074 must be applied before
 the client that uses it merges, and that one is not optional: it DROPS the old
@@ -661,7 +703,10 @@ one, take the day from `p_tz`, never from `current_date`.
 
 Numbering has scars: `0034` is used twice (`promo_codes`, `skin_purchases`),
 `0059` twice (`keep`, `practice_uncapped`) and `0074` twice (`admin_local_dates`,
-`public_church_page`) — so the next free number is `0076`, not `0075`. And
+`public_church_page`) — so the next free number is `0081`, not `0080`, and this
+sentence has already gone stale twice: it said "0076" while 0077, 0078 and 0079
+were sitting in the folder. `ls supabase/migrations | tail -1` is the answer;
+this line is only a record of which numbers were burned twice. And
 `0038_focus_practice_xp.sql` is a re-add of a file that shipped as `0036` and was
 lost when PR #58 landed from a stale branch. Take the next free number and write
 migrations idempotently (`create table if not exists`, `drop policy if exists`,

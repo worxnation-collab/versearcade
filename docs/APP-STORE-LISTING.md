@@ -77,7 +77,13 @@ Start your streak today. It's one verse.
 
 ## What's New (max 4000 chars — per version, App Store Connect asks for this)
 
-### 1.3.0 — the release after 1.2.0 (NEXT, unuploaded)
+### 1.3.0 — the release after 1.2.0 (NEXT, unuploaded — RUNNING DRAFT)
+
+> 1.3.0's train is open and features are still landing under that number, so this
+> block is **not final**. Add to it as things merge, and re-read it against `git log`
+> on the day you submit. Do not bump the version for a new feature — only an
+> *approved* version forces a bump.
+
 ```
 YOUR CHURCH HAS SOMEBODY TO PLAY THIS WEEK
 • Every Monday your church is matched against another church its own size. Whoever

@@ -234,6 +234,10 @@ for (const entry of manifest) {
   const sceneDir = SCENE_DIRS[entry.kind]
   const isScene = entry.kind === 'scene' || !!sceneDir
   const isProp = entry.kind === 'prop'
+  // A church building: a keyed cut-out like a prop, but it renders from 44px
+  // board rows up to a 200px hero, so it keeps prop treatment at skin-like
+  // resolution — and it lands beside the churchyard painting, not in the keep.
+  const isBuilding = entry.kind === 'building'
   // A full-bleed opaque painting gains nothing from PNG and costs a lot — the
   // room tiers came back ~750KB each as PNG against ~80KB as JPEG, the roads
   // ~1MB against the 88KB of the hand-made harvest.jpg beside them — so
@@ -251,9 +255,11 @@ for (const entry of manifest) {
     ? `public/skins/${entry.id}.png`
     : sceneDir
       ? `${sceneDir}/${entry.id}.jpg`
-      : isScene || isProp
-        ? `public/keep/${entry.id}.${ext}`
-        : `public/items/${entry.id}.png`
+      : isBuilding
+        ? `public/church/${entry.id}.png`
+        : isScene || isProp
+          ? `public/keep/${entry.id}.${ext}`
+          : `public/items/${entry.id}.png`
   process.stdout.write(`${entry.id} … `)
   try {
     const raw = await generate(entry.prompt, isSkin, entry.refs ?? [])
@@ -274,7 +280,11 @@ for (const entry of manifest) {
       png = isolate(png)
       png = padAndCap(
         png,
-        isSkin ? { padBelowPct: 0.08, maxH: 400 } : isProp ? { padBelowPct: 0, maxH: 150 } : { padBelowPct: 0, maxH: 220 },
+        isSkin || isBuilding
+          ? { padBelowPct: isSkin ? 0.08 : 0, maxH: 400 }
+          : isProp
+            ? { padBelowPct: 0, maxH: 150 }
+            : { padBelowPct: 0, maxH: 220 },
       )
     }
     const buf = asJpeg

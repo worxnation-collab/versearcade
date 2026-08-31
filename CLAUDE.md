@@ -1341,12 +1341,17 @@ closes — every later upload must carry a strictly higher `CFBundleShortVersion
 or the upload is rejected (`90062` + `90186`) *after* a full signed archive, about
 20 minutes in. Builds 22 and 23 died that way with a perfectly good Admin API key.
 
-**Where we are: 1.1.0 is the approved, live version; 1.2.0 is what the repo carries
-and has never been uploaded**, so its train is still open. A good deal landed after
-that number was picked (the Upper Room, praying, gifts and the mailbox, the Journal,
-saved looks, companions in the crowd scenes), which changes the release NOTES rather
-than the number — check App Store Connect for what is actually approved before
-choosing the next one, never the repo's last guess.
+**Where we are: 1.2.0 is the approved, live version — its train is CLOSED — and the
+repo carries 1.3.0, which has never been uploaded.** 1.2.0 shipped the Upper Room,
+praying, gifts and the mailbox, the Journal, saved looks and companions in the crowd
+scenes; 1.3.0 adds live battles and the weekly church rivalry.
+
+The lesson this file has now learned twice: **this paragraph goes stale silently, and
+a stale version number costs a full signed archive to discover.** It is a claim about
+App Store Connect, not about the repo, and nothing in CI checks it. So do not trust it
+— open App Store Connect, read what is actually approved, and pick strictly higher.
+Update this paragraph in the same commit as the bump, or the next session inherits the
+same trap.
 
 **Codemagic stops at TestFlight; submitting to review is done by hand.**
 `submit_to_app_store: false` is a choice, not an unfinished setting — it keeps a real

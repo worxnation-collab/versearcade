@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { isSupabaseConfigured } from '@/lib/config'
 import { localdb } from '@/lib/localdb'
 import { newLocalProfile } from '@/lib/progress'
-import { isDefaultAvatar } from '@/data/avatar'
+import { allSkins, equippedSkinId, isDefaultAvatar } from '@/data/avatar'
 import { getVerseForDate } from '@/data/bible/questions'
 import { petUnlocked, type PetProgress } from '@/data/pets'
 import { useSettings } from './settings'
@@ -15,6 +15,10 @@ type Mode = 'online' | 'local'
 
 /** Character chosen during account creation, before the account exists. */
 const PENDING_CHARACTER_KEY = 'va.pendingCharacter'
+// Per-account list of exclusive skins this DEVICE has already seen on the
+// account. Device-local on purpose: it records what has been shown, not what
+// is owned — the entitlement itself lives in owned_skins, server-side.
+const SEEN_SKINS_KEY = 'va.skinsSeen'
 
 interface DbProfileRow {
   id: string
@@ -115,6 +119,9 @@ interface AuthState {
    *  actually exists (see applyPendingCharacter). */
   setPendingCharacter: (spec: AvatarSpec | null) => void
   applyPendingCharacter: () => void
+  /** Put on a skin that was GRANTED since this device last looked — see the
+   *  implementation for the three rules that stop it repainting anybody. */
+  autoEquipGrantedSkin: () => void
 
   updateProfile: (patch: Partial<Profile>) => Promise<void>
   changeUsername: (next: string) => Promise<{ ok: boolean; error?: string }>
@@ -211,6 +218,7 @@ export const useAuth = create<AuthState>((set, get) => ({
     syncSettingsFromProfile(p)
     set({ profile: p, isAuthed: true, error: null })
     get().applyPendingCharacter()
+    get().autoEquipGrantedSkin()
     void get().loadReferral()
   },
 
@@ -545,6 +553,65 @@ export const useAuth = create<AuthState>((set, get) => ({
     } catch {
       /* corrupt blob — the account simply keeps the default look */
     }
+  },
+
+  // A skin GRANTED server-side — a creator collab, an operator grant — used to
+  // arrive in complete silence: grant_skins() writes owned_skins and stops,
+  // nothing in the app announces it (the mailbox carries gifts, buddy requests,
+  // washings and news, never entitlements) and nothing puts it on. The REDEEM
+  // path has always celebrated and equipped on the spot (CustomizeSection's
+  // doRedeem), so the person handed a skin directly was the only one who never
+  // saw it — which is exactly how the Porchlight collab sat unworn on the
+  // creator's own account while his audience's copies equipped themselves.
+  //
+  // Three rules keep this from repainting anybody:
+  //   1. Only when NOTHING is equipped. A look somebody chose is never
+  //      overwritten, the same way applyPendingCharacter refuses an account
+  //      that already has a character of its own.
+  //   2. Only a skin that arrived AFTER this device first saw the account. The
+  //      first run banks a baseline and equips nothing, so a skin somebody
+  //      deliberately took off can't come back on the next reload — putting one
+  //      down stays allowed, the rule pets already follow.
+  //   3. Once, and the id is banked whether or not it went on, so taking it off
+  //      sticks forever after.
+  // Only `exclusive` skins qualify: earned and pass skins are announced by the
+  // flows that grant them, and a priced one is never granted silently.
+  autoEquipGrantedSkin() {
+    const cur = get().profile
+    if (!cur) return
+    const owned = cur.ownedSkins ?? []
+    if (owned.length === 0) return
+    const exclusives = allSkins()
+      .filter((sk) => sk.exclusive && owned.includes(sk.id))
+      .map((sk) => sk.id)
+    if (exclusives.length === 0) return
+
+    const key = `${SEEN_SKINS_KEY}.${cur.id}`
+    let seen: string[] | null = null
+    try {
+      const raw = localStorage.getItem(key)
+      const parsed: unknown = raw ? JSON.parse(raw) : null
+      seen = Array.isArray(parsed) ? (parsed as string[]) : null
+    } catch {
+      // Private mode, or a corrupt blob. Never repaint a character we have no
+      // way to remember having repainted.
+      return
+    }
+    const banked = Array.from(new Set([...(seen ?? []), ...exclusives]))
+    try {
+      localStorage.setItem(key, JSON.stringify(banked))
+    } catch {
+      // Can't bank it ⇒ don't wear it, or it comes back at every reload.
+      return
+    }
+    // First run on this device: baseline only.
+    if (seen === null) return
+
+    const fresh = exclusives.find((id) => !seen!.includes(id))
+    if (!fresh) return
+    const spec = cur.avatarCharacter
+    if (!spec || equippedSkinId(spec)) return
+    get().setAvatarCharacter({ ...spec, skinId: fresh, regalia: null })
   },
 
   async updateProfile(patch) {

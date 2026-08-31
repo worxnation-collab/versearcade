@@ -426,7 +426,8 @@ export function CustomizeSection() {
                   <p className="faint" style={{ fontSize: 10, marginTop: 10, lineHeight: 1.4 }}>
                     Skins are <b>earned</b>, not sold — share the daily verse, invite friends, or walk the
                     Harvest Road, and they’re yours to keep. A few unlock with a code. A missed day never
-                    takes one away, and Scripture is always free.
+                    takes one away, and Scripture is always free. Tap the one you’re wearing to take it
+                    off — your own character is underneath, exactly as you made it.
                     {pricedOnShelf && ' The one listing with a price is the founding-patron thank-you — nothing in the game is behind it.'}
                   </p>
                   {/* Restore Purchases — REQUIRED by Apple for non-consumable in-app

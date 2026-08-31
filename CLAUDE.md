@@ -1300,13 +1300,29 @@ box for all three crops two of them.
 
 ### Anything placed can be moved, anywhere in its band — and resized
 
-Tap a piece to lift it, then **drag it wherever you like**, or tap an anchor
-target (trades places, never overwrites) or ANY open ground (stands it at that
-exact point, clamped to its mount's band; the piece stays selected so a nudge
-can follow a nudge). While selected, a small bar under the scene resizes it in
-0.1 steps. `planMoveOn`, `planMoveToPointOn` and `planResizeOn` in
+Tap a piece to lift it, then **drag it wherever you like** (clamped to its
+mount's band; it stays held, so a nudge can follow a nudge), or tap an anchor
+target to trade places. **Tapping anywhere else puts it down** — it stays where
+it stands and stops being held. While held, a small bar under the scene resizes
+it in 0.1 steps. `planMoveOn`, `planMoveToPointOn` and `planResizeOn` in
 `data/placement.ts` are the choke points and the room copies them exactly.
 Nothing is ever overwritten.
+
+**A tap on open ground used to MOVE the piece there, and giving that gesture
+back is the point.** It was how you positioned something before dragging
+existed; once you could drag, it left the worlds with no way to let go by
+tapping at all — you had to find the piece again or reach the Done button under
+the scene, which is not what a selection anywhere else does. `onDropAt` is now
+the drag's commit only, and `onCancel` is the tap.
+
+**The crowd goes INERT while a piece is held** (`CrowdLife`'s `inert`, and the
+churchyard also passes it whenever the Landscaping shelf is open). Figures are
+27-42px, they wander on their own schedule, and one standing in front of the
+thing you are arranging turned the tap meant for it into somebody's player
+card — not a rare miss but most of the scene, most of the time. Inertness
+rather than a second behaviour: a figure that answered an arranging tap would
+be inventing a gesture, and a crowd is a picture of the place rather than a
+control surface. The cards come back the moment you put the piece down.
 
 **Dragging is only ever available on the piece you have already LIFTED, and that
 is the whole reason it is safe.** These halls are 300-unit viewBoxes inside

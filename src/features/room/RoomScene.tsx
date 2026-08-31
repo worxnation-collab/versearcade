@@ -86,12 +86,25 @@ export function RoomScene({
     onPick: (anchor: string) => void
     onDrop: (anchor: string) => void
     /**
-     * Tapping open ground while carrying — and, since dragging landed, where a
-     * dragged piece is set down: stand it at that exact point, clamped to its
-     * mount's band by the planner. Optional so a surface can offer anchor-only
-     * moving; passing it is also what turns dragging on.
+     * Where a DRAGGED piece was let go: stand it at that exact point, clamped
+     * to its mount's band by the planner. Optional so a surface can offer
+     * anchor-only moving; passing it is also what turns dragging on.
+     *
+     * It used to fire on a tap of open ground too, which is how you positioned
+     * a piece before dragging existed. Now that you can drag one, that gesture
+     * had to give the tap back: see onCancel.
      */
     onDropAt?: (x: number, y: number) => void
+    /**
+     * Tapping anywhere that isn't a piece or a target: put the held piece
+     * down — it stays exactly where it stands and stops being held.
+     *
+     * "Click away to stop holding it" is what every other selection in every
+     * other app does, and until now the ground was the one place a tap MOVED
+     * the thing instead, which meant there was no way to let go by tapping at
+     * all: you had to find the piece again, or the Done button under the scene.
+     */
+    onCancel?: () => void
     /** Take the lifted piece back out of the room — the ✕ on its ring. */
     onRemove?: (anchor: string) => void
   }
@@ -155,13 +168,11 @@ export function RoomScene({
         viewBox="0 0 560 300"
         style={{ display: 'block', width: '100%', height: 'auto' }}
         data-room-scene=""
-        onClick={(e) => {
-          // Carrying + a tap on open ground = stand it right there. Pieces and
-          // targets stop propagation, so this only fires for the ground itself,
-          // and the planner clamps the point into the piece's own mount band.
-          if (!editing?.onDropAt || !picked) return
-          const r = e.currentTarget.getBoundingClientRect()
-          editing.onDropAt(((e.clientX - r.left) / r.width) * 560, ((e.clientY - r.top) / r.height) * 300)
+        onClick={() => {
+          // Holding something + a tap on open ground = put it down where it
+          // stands. Pieces, targets and the ✕ all stop propagation, so this
+          // only ever fires for the ground itself.
+          if (picked) editing?.onCancel?.()
         }}
       >
         <RoomChamber tier={tier} flat={flat} />
@@ -284,7 +295,17 @@ export function RoomScene({
           road use, so your companion walks in here too without this file
           knowing pets exist. `max` is 3 rather than the hall's 6: this is a
           small room, and a crowd in it would be a party, not a chamber. */}
-      <CrowdLife members={members} waypoints={WAYPOINTS} sizeFor={sizeFor} max={3} onTapSelf={onTapSelf} />
+      {/* Inert while a piece is held, the same rule the hall and the churchyard
+          follow: your own figure walks in front of the furniture, and a tap
+          meant for the lampstand would open the prayer offer instead. */}
+      <CrowdLife
+        members={members}
+        waypoints={WAYPOINTS}
+        sizeFor={sizeFor}
+        max={3}
+        onTapSelf={onTapSelf}
+        inert={!!picked}
+      />
     </div>
   )
 }

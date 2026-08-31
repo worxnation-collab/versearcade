@@ -340,7 +340,9 @@ export function ChurchStatues({
             key={plinth.id}
             {...(editing
               ? {
-                  onClick: () => {
+                  onClick: (e: React.MouseEvent) => {
+                    // The lawn behind this drops what you are holding.
+                    e.stopPropagation()
                     // The click a finished drag fires is not a tap.
                     if (drag.consumeClick()) return
                     editing.onPick(plinth.id)

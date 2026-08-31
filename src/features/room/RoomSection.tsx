@@ -135,7 +135,7 @@ export function RoomSection() {
     if (res.swapped) setNote('Swapped.')
   }
 
-  // Tap open ground while carrying: stand it right there, clamped to its own
+  // Where a dragged piece was let go: stand it right there, clamped to its own
   // mount's band. Selection is kept so a nudge can follow a nudge.
   const dropAt = async (x: number, y: number) => {
     if (!picked) return
@@ -301,6 +301,7 @@ export function RoomSection() {
           onPick: pickUp,
           onDrop: (a) => void dropOn(a),
           onDropAt: (x, y) => void dropAt(x, y),
+          onCancel: () => { juice.tap(); setPicked(null) },
           onRemove: (a) => void removeAt(a),
         }}
         lampLit={lampLit}
@@ -384,7 +385,7 @@ export function RoomSection() {
       {(picked || note) && (
         <p className="center" style={{ margin: '8px 0 0', fontSize: 12.5, fontWeight: 700, color: 'var(--gold)' }}>
           {picked
-            ? `Holding the ${furnishingName(placements[picked])} — drag it anywhere, tap a marked spot to swap, or ✕ to take it out.`
+            ? `Holding the ${furnishingName(placements[picked])} — drag it anywhere, tap a marked spot to swap, ✕ to take it out, or tap the floor to let go.`
             : note}
         </p>
       )}
@@ -406,8 +407,8 @@ export function RoomSection() {
             Tap a piece to put it in the room — the finest version you've earned. Keep at it and
             it <b style={{ color: 'var(--gold)' }}>upgrades</b> where it stands. Tap anything in the
             room above to pick it up, then <b style={{ color: 'var(--gold)' }}>drag it</b> wherever
-            you like — or resize it, or tap its ✕ to take it back out. Nothing you place can ever
-            be lost.
+            you like — or resize it, or tap its ✕ to take it back out. Tapping anywhere else in
+            the room puts it down. Nothing you place can ever be lost.
           </p>
           <Shelf
             owned={owned}

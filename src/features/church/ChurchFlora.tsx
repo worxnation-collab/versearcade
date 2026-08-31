@@ -363,7 +363,10 @@ export function ChurchFlora({
             key={plot.id}
             {...(editable
               ? {
-                  onClick: () => {
+                  onClick: (e: React.MouseEvent) => {
+                    // The lawn behind this drops what you are holding; a tap ON
+                    // a plant must not also be a tap on the grass under it.
+                    e.stopPropagation()
                     // The click a finished drag fires is not a tap: letting it
                     // through would put down what you just dragged.
                     if (drag.consumeClick()) return
@@ -408,7 +411,7 @@ export function ChurchFlora({
       {targets.map((plot) => (
         <button
           key={`t-${plot.id}`}
-          onClick={() => onDrop?.(plot.id)}
+          onClick={(e) => { e.stopPropagation(); onDrop?.(plot.id) }}
           aria-label={`Move here: ${plot.label}`}
           style={{
             position: 'absolute',

@@ -58,6 +58,8 @@ export function ChurchScene({
   statues,
   floraEditing,
   statueEditing,
+  arranging = false,
+  onBackgroundTap,
   emptyNote = true,
 }: {
   level: number
@@ -103,6 +105,24 @@ export function ChurchScene({
     onRemove: (plinth: string) => void
   }
   /**
+   * The yard is being arranged, so taps belong to the YARD rather than to the
+   * people standing in it: the congregation goes inert and a tap reaches the
+   * plant behind whoever wandered in front of it.
+   *
+   * The crowd is drawn at 27-42px and moves on its own, so a figure over a
+   * flower bed is not a rare miss — it is most of the yard, most of the time,
+   * and every one of those taps opened somebody's player card instead. The
+   * cards come back the moment the shelf is closed and nothing is held.
+   */
+  arranging?: boolean
+  /**
+   * Tapping the lawn itself while holding something: put it down where it
+   * stands. Same gesture as the two rooms, for the same reason — "click away
+   * to stop holding it" is what a selection is expected to do, and without it
+   * the only way to let go was to find the thing again.
+   */
+  onBackgroundTap?: () => void
+  /**
    * Whether an empty crowd says so. False on your own church tab, where the
    * scene is a preview of your own yard and "nobody's playing for this one
    * yet" would be talking about you.
@@ -115,8 +135,13 @@ export function ChurchScene({
   // ask this same question, so the scene is never half painted.
   const backdrop = GENERATED_ART['churchyard']
 
+  const holding = !!floraEditing?.picked || !!statueEditing?.picked
+
   return (
     <div
+      // Everything that IS something — a plant, a monument, a target ring, a
+      // ✕ — stops propagation, so this only ever fires for the lawn itself.
+      onClick={holding ? onBackgroundTap : undefined}
       style={{
         position: 'relative',
         height: CANVAS_H,
@@ -125,6 +150,7 @@ export function ChurchScene({
         border: '1px solid var(--stroke)',
         background:
           'radial-gradient(120% 90% at 50% 8%, #35197a 0%, #1b0d43 55%, #120829 100%)',
+        cursor: holding && onBackgroundTap ? 'pointer' : undefined,
       }}
     >
       {/* The churchyard painting: sky, horizon treeline and lawn in one image,
@@ -234,7 +260,14 @@ export function ChurchScene({
           and the door on seeded schedules (CrowdLife sorts you to the front
           of the cut and caps the crowd — a picture of the place, not a
           census, same as ever). */}
-      <CrowdLife members={members} waypoints={WAYPOINTS} sizeFor={sizeFor} max={9} showYouTag />
+      <CrowdLife
+        members={members}
+        waypoints={WAYPOINTS}
+        sizeFor={sizeFor}
+        max={9}
+        showYouTag
+        inert={arranging || holding}
+      />
 
       {emptyNote && members.length === 0 && (
         <p

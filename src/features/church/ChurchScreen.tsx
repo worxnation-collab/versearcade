@@ -112,6 +112,12 @@ function ChurchHome({ church }: { church: Church }) {
   // statue at once would put two ✕s on one lawn and leave the status line
   // unable to say what you are holding.
   const [statuePicked, setStatuePicked] = useState<string | null>(null)
+  // Whether the Landscaping shelf on this card is open. It is the one signal
+  // that says "this person is arranging the yard right now", and while it is
+  // true the congregation standing in the yard goes inert — see ChurchScene's
+  // `arranging`. Held here rather than inside the shelf because the scene is
+  // this card's, not the shelf's.
+  const [arranging, setArranging] = useState(false)
   const [yardNote, setYardNote] = useState<string | null>(null)
 
   useEffect(() => {
@@ -309,14 +315,20 @@ function ChurchHome({ church }: { church: Church }) {
             onDropAt: (x, b) => void dragStatue(x, b),
             onRemove: (plinth) => void takeDownStatue(plinth),
           }}
+          arranging={arranging}
+          onBackgroundTap={() => {
+            juice.tap()
+            setPicked(null)
+            setStatuePicked(null)
+          }}
           emptyNote={false}
         />
         {(picked || statuePicked || yardNote) && (
           <p className="center" style={{ margin: '8px 0 0', fontSize: 12.5, fontWeight: 700, color: 'var(--gold)' }}>
             {picked
-              ? `Holding the ${floraById(plantings[picked])?.name} — drag it anywhere on the lawn, or ✕ to take it out.`
+              ? `Holding the ${floraById(plantings[picked])?.name} — drag it anywhere on the lawn, ✕ to take it out, or tap the grass to let go.`
               : statuePicked
-                ? `Holding the ${statueById(statues[statuePicked])?.name} — drag it anywhere on the lawn. The whole congregation sees where it stands.`
+                ? `Holding the ${statueById(statues[statuePicked])?.name} — drag it anywhere on the lawn, or tap the grass to let go. The whole congregation sees where it stands.`
                 : yardNote}
           </p>
         )}
@@ -370,7 +382,11 @@ function ChurchHome({ church }: { church: Church }) {
             bleeds past the shell's gutter for the same reason — a full-width
             child inside a padded card takes the padding back. */}
         <div style={{ margin: '14px -18px 0', textAlign: 'left' }}>
-          <Landscaping church={church} onPlanted={() => setPicked(null)} />
+          <Landscaping
+            church={church}
+            onPlanted={() => setPicked(null)}
+            onOpenChange={setArranging}
+          />
         </div>
       </div>
 
@@ -555,7 +571,17 @@ function ChurchHome({ church }: { church: Church }) {
 //
 // Nothing in here counts or compares anybody: no "3 planted", no who-planted-
 // what, no per-giver totals. See features/church/yard.ts.
-function Landscaping({ church, onPlanted }: { church: Church; onPlanted: () => void }) {
+function Landscaping({
+  church,
+  onPlanted,
+  onOpenChange,
+}: {
+  church: Church
+  onPlanted: () => void
+  /** Fires as the shelf folds and unfolds, so the card can tell the yard that
+   *  somebody is arranging it. */
+  onOpenChange?: (open: boolean) => void
+}) {
   const juice = useJuice()
   const { given, plantings, loaded, plant, unlocked } = useChurchYard()
   const [flash, setFlash] = useState<string | null>(null)
@@ -616,6 +642,7 @@ function Landscaping({ church, onPlanted }: { church: Church; onPlanted: () => v
       <Collapsible
         icon="🌷"
         title="Landscaping"
+        onToggle={onOpenChange}
         // NO META, and it was measured rather than chosen. Every other folded
         // section in the app reports what is inside it on its header, and this
         // one cannot: the header is a `.card` nested inside the church's card,

@@ -99,7 +99,20 @@ Three things about it are load-bearing:
 
 Only your own church tab passes `floraEditing`; a visited yard is handed no
 editing prop at all, so it is inert by construction rather than by a handler
-deciding to refuse. `scripts/check-placement.mjs` runs the real packers against
+deciding to refuse.
+
+**Tapping bare lawn puts the plant down** — it stays where it stands and stops
+being held. That is the same gesture the two rooms have, and it is what a
+selection is expected to do; a tap on the grass never moves anything, because
+moving is what dragging is for.
+
+**And the congregation goes inert while you are arranging** — whenever the
+Landscaping shelf is open or something is held (`ChurchScene`'s `arranging`,
+`CrowdLife`'s `inert`). The crowd is drawn at 27-42px and walks its own
+schedule, so a figure standing in front of a flower bed is not a rare
+mis-tap: every one of those taps opened that person's player card instead of
+picking up the bed. The cards are one tap away again the moment the shelf is
+closed. `scripts/check-placement.mjs` runs the real packers against
 the real regexes from migrations 0083 and 0084 on every build, because a
 disagreement between them is invisible on screen: the client updates
 optimistically and the RPC quietly raises `bad flora`.

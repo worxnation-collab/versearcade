@@ -21,6 +21,7 @@ import { useWashing } from '@/store/washing'
 import { useSeason } from '@/store/season'
 import { titleById } from '@/data/season'
 import { CustomizeSection } from './CustomizeSection'
+import { PatronCard } from './PatronCard'
 import { ProfileHero } from './ProfileHero'
 import { RoomSection } from '@/features/room/RoomSection'
 import { ChurchNudge } from '@/features/church/ChurchNudge'
@@ -421,6 +422,14 @@ export default function ProfileScreen() {
       <Collapsible icon="🃏" title="Cards" meta={`${cards} collected`}>
         <CollectionSection />
       </Collapsible>
+
+      {/* The support card sits at the settled end of your own profile — after the
+          room and the collection, before the account controls — and never in
+          front of the day's verse. It renders nothing at all unless a sale can
+          actually be completed here (lib/commerce patronOffer). */}
+      <div style={{ marginTop: 18 }}>
+        <PatronCard />
+      </div>
 
       <h3 style={{ fontSize: 16, margin: '18px 0 10px' }} className="dim">Account</h3>
       <div style={{ display: 'grid', gap: 10 }}>

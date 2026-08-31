@@ -228,6 +228,39 @@ So the same catalog is sold twice: Stripe on web (`lib/config.ts`), Apple IAP in
 the app (`lib/iap.ts` + `store/iap.ts`, RevenueCat). Setup runbook and the
 account-gated Apple steps: `docs/APPLE-IAP.md`.
 
+**The founding patron has a card of its own now** (`PatronCard`, at the settled
+end of `/you` — after the room and the collection, before the account
+controls). It shipped reachable only by opening Customize, choosing Skins,
+scrolling to a locked whale and tapping it, which is not a shop; the app has one
+product and it was effectively invisible. Four things keep it from becoming a
+nag, and they are why it can sit on a player-facing tab at all: it is asked
+**once** (a patron sees a thank-you and no checkout — `patronOffer` returns
+`owned`), it sells a **thank-you rather than power** (a skin; no XP, no rank,
+nothing a non-patron is behind on — the same rule that makes a paid church skin
+"not a bigger church"), it **hides entirely** rather than degrading to a greyed
+button or an "opening soon" line, and it is **hidden from guests**. That last
+one is delivery, not policy: both fulfilment paths land the skin on a
+server-side account (Stripe's webhook splits `client_reference_id`,
+`iap-fulfill` asks RevenueCat about a signed-in subscriber), so a guest's money
+would arrive with no row to attach it to. It is deliberately NOT
+`useAccountLocked()`'s rule — that wall stands down in a keyless LOCAL build,
+where this one must not, because a keyless build cannot complete a sale either.
+
+**`lib/checkout.ts` is the one place a sale is STARTED**, as `commerce.ts` is
+the one place it is decided. Two surfaces now begin a purchase (the Skins grid
+and the patron card) and each writing its own "which store am I in, and what do
+I pass it" is the drift the `QuizRunner` rule exists to prevent. The web path's
+`client_reference_id` is load-bearing rather than decorative — drop it and the
+money arrives with no way to tell whose it was.
+
+**The whole shop retires itself on 2026-10-12.** The whale carries
+`limitedUntil: LIMITED_UNTIL`, and `skinExpired` hides an expired skin from the
+grid *for owners too*; `patronOffer` follows the same rule on purpose, so the
+patron card disappears with it. Since cosmetics are de-monetised and `BUNDLES`
+is empty, that date is the moment this app has nothing purchasable at all.
+Extending it is one constant in `data/avatar.ts` — a decision, not an
+oversight, so it is written here rather than left to be discovered.
+
 `lib/commerce.ts` is the only place the *decision* lives — `storefrontEnabled()`,
 `skinVisible()`, `cardBgVisible()`, `displayPrice()`. Every commerce surface asks
 it, so the app and the site can't drift apart by accident. Don't reach for

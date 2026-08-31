@@ -8,10 +8,18 @@
 // that doesn't still gets the whole ladder. Nothing here can outrank anybody.
 //
 // Every skin has to work at both ends of the range it's drawn at: 44px in a
-// leaderboard row and 220px as the hero on your own church tab. That's why
-// these are palettes and traits for `ChurchArt` to draw with rather than image
-// files — 8 tiers x 4 skins would be 32 pictures to download, and a picture
-// that reads at 44px is a different picture from one that reads at 220px.
+// leaderboard row and 220px as the hero on your own church tab.
+//
+// These used to be the ONLY rendering — "palettes, not pictures" — because 32
+// images was a cost and 44px legibility was a worry. Both broke: the art
+// pipeline made 32 renders an afternoon, and the renders are prompted (and
+// checked by eye on the real board) to hold their silhouette at 44px. So the
+// buildings are Nano Banana paintings now (art/church-buildings.json, keyed on
+// church_<skin>_<tier> through GENERATED_ART in ChurchArt), and everything in
+// this file is the DRAWN FALLBACK plus the palette the rest of the church UI
+// still reads — the ground ellipse under the render, the locked preview, and
+// any (skin, tier) whose PNG hasn't landed or fails to load. The kit is one
+// map entry away, not a rewrite away; do not delete it.
 //
 // See docs/CHURCH-SKINS.md for how a church ends up wearing one.
 

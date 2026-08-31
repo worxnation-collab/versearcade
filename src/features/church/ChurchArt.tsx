@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { GENERATED_ART } from '@/data/generatedArt'
 import { CHURCH_TIERS, tierForLevel, type ChurchTierId } from './levels'
 import { churchSkin, type ChurchSkin } from './skins'
 
@@ -645,6 +646,23 @@ export function ChurchArt({ level = 1, tier, skin, size = 200, animate = false, 
   const tierId = tier ?? tierForLevel(level).id
   const Art = TIER_ART[tierId]
   const kit = kitFor(skin)
+  // The painted building, layered OVER the drawn kit rather than instead of it
+  // — the rule every render here follows. The key goes through kit.skin.id, so
+  // an unknown skin, a null, and an undrawn `custom` all fall to the default's
+  // render by the same road they fall to its drawing; a (skin, tier) whose PNG
+  // has not landed keeps its kit exactly as before, and the batch can ship
+  // incomplete. The kit's own Ground stays underneath either way, because the
+  // renders are keyed cut-outs with no ground of their own — a building
+  // floating over a board row reads as a sticker, not a place.
+  //
+  // This deliberately overturns skins.ts's old "palettes, not pictures" rule.
+  // Its two reasons are gone: 32 images stopped being a cost the day the art
+  // pipeline landed, and the 44px legibility worry is now a fact checked by
+  // eye against the real board row rather than assumed — the prompts demand
+  // silhouette, roof colour and lit windows that survive 44px, and the drawn
+  // kit remains one deleted map entry away, not a rewrite away.
+  const raster = GENERATED_ART[`church_${kit.skin.id}_${tierId}`]
+  const tierIdx = Math.max(0, CHURCH_TIERS.findIndex((t) => t.id === tierId))
   const svg = (
     <svg
       viewBox="0 0 200 160"
@@ -658,7 +676,16 @@ export function ChurchArt({ level = 1, tier, skin, size = 200, animate = false, 
         opacity: locked ? 0.55 : 1,
       }}
     >
-      {Art(kit)}
+      {raster ? (
+        <>
+          <kit.Ground rx={42 + tierIdx * 4} />
+          {/* Bottom-anchored so the foundation sits on the ground ellipse at
+              every tier, whatever shape the building came back. */}
+          <image href={raster} x={14} y={4} width={172} height={148} preserveAspectRatio="xMidYMax meet" />
+        </>
+      ) : (
+        Art(kit)
+      )}
     </svg>
   )
   if (!animate) return svg

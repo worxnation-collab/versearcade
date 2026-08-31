@@ -58,6 +58,8 @@ const dirFor = (kind) =>
       ? 'public/road'
       : kind === 'room'
         ? 'public/room'
+        : kind === 'building'
+          ? 'public/church'
         : kind === 'church'
           ? 'public/church'
       : kind === 'item'

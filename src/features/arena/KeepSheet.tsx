@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Collapsible } from '@/components/Collapsible'
@@ -47,6 +48,7 @@ export function KeepSheet({
   onClose: () => void
 }) {
   const juice = useJuice()
+  const navigate = useNavigate()
   const me = useAuth((s) => s.profile)
   const keep = useKeep()
   const [faction, setFaction] = useState<FactionKeep | null>(null)
@@ -262,6 +264,10 @@ export function KeepSheet({
                 ? { picked, mergedAnchor: merged?.anchor ?? null, onPick: pickUp, onDrop: (a) => void dropOn(a) }
                 : undefined
             }
+            // The machine belongs to YOUR hall, so it appears on the same
+            // condition the furnishing does — and it is the same cabinet the
+            // Battle tab shows inline, not a second one.
+            onArcade={ownHall ? () => { juice.select(); navigate('/arcade/manna') } : undefined}
           />
 
           <AnimatePresence>

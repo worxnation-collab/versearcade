@@ -9,6 +9,7 @@ import { StreakFlame } from '@/components/StreakFlame'
 import { PresenceStrip } from '@/features/presence/PresenceStrip'
 import { DailyChest } from '@/features/chest/DailyChest'
 import { RoadStrip } from '@/features/season/RoadStrip'
+import { ArcadeCabinetBox } from '@/features/arcade/ArcadeCabinet'
 import { Collapsible } from '@/components/Collapsible'
 import { LeaderboardSection } from '@/features/leaderboard/LeaderboardScreen'
 import { supabase } from '@/lib/supabase'
@@ -157,6 +158,47 @@ export default function HomeScreen() {
                 See my recap & share →
               </Button>
             </div>
+
+            {/* The one moment in the app with a countdown on it and nothing to
+                do underneath — "done for today" used to end at the recap. The
+                arcade is the answer to the sentence the clock above already
+                started, which is why it is worded as the rest of it.
+
+                Quieter than the recap on purpose: this is an offer to stay, not
+                the thing they came for. It never appears above the fold on the
+                unplayed state, because before you have played, the verse is the
+                only thing this screen should be pointing at. */}
+            <motion.button
+              onClick={() => navigate('/arcade/manna')}
+              whileTap={{ scale: 0.98 }}
+              style={{
+                width: '100%',
+                marginTop: 10,
+                padding: '10px 14px',
+                borderRadius: 'var(--r-md)',
+                border: '1px solid var(--stroke)',
+                background: 'var(--card)',
+                color: 'var(--ink)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                textAlign: 'left',
+              }}
+            >
+              {/* The same cabinet standing in the hall, the churchyard and your
+                  Upper Room — one drawing, so this reads as a door into a place
+                  the player has already seen rather than as a new icon. */}
+              <ArcadeCabinetBox width={22} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 800, fontSize: 14 }}>In the meantime…</div>
+                <div className="faint" style={{ fontSize: 12 }}>
+                  Manna Rush · a minute in the wilderness
+                </div>
+              </div>
+              <span className="pill" style={{ fontSize: 11, flexShrink: 0 }}>
+                Play
+              </span>
+            </motion.button>
           </>
         )}
       </motion.div>

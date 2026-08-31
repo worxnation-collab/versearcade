@@ -401,6 +401,7 @@ export default function BattleHub() {
  */
 function MyKeepScene({ onOpen }: { onOpen: () => void }) {
   const profile = useAuth((st) => st.profile)
+  const navigate = useNavigate()
   const keep = useKeep()
   const [faction, setFaction] = useState<FactionKeep | null>(null)
   const denomination = profile?.denomination ?? null
@@ -423,7 +424,14 @@ function MyKeepScene({ onOpen }: { onOpen: () => void }) {
 
   return (
     <div>
-      <KeepScene color={color} level={level} placements={placements} members={members} onOpen={onOpen} />
+      <KeepScene
+        color={color}
+        level={level}
+        placements={placements}
+        members={members}
+        onOpen={onOpen}
+        onArcade={() => navigate('/arcade/manna')}
+      />
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 8 }}>
         <b style={{ fontFamily: 'var(--font-display)', fontSize: 14, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {denominationName(denomination)} Keep

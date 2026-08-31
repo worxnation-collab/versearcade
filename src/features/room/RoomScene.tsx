@@ -3,6 +3,7 @@ import { CrowdLife, type CrowdMember, type CrowdWaypoint } from '@/components/Cr
 import { ROOM_ANCHORS, roomAnchorById } from '@/data/room'
 import type { RoomPlacements } from '@/store/room'
 import { RoomChamber, FurnishingProp } from './RoomArt'
+import { ArcadeCabinet } from '@/features/arcade/ArcadeCabinet'
 
 // The Upper Room as a place you can look at — the chamber at its tier, whatever
 // is in it, and whoever lives there.
@@ -35,6 +36,7 @@ export function RoomScene({
   members,
   editing,
   onOpen,
+  onArcade,
   onTapSelf,
   /** Skip the generated painting — the postcard can only serialise drawn SVG. */
   flat = false,
@@ -56,6 +58,13 @@ export function RoomScene({
     onDrop: (anchor: string) => void
   }
   onOpen?: () => void
+  /**
+   * Tapping the arcade machine in the corner. Only your own room passes it, and
+   * without it the cabinet is not drawn — a visited room stays a picture, and
+   * the postcard (which serialises this scene into an <img>) must not carry a
+   * control nobody can press.
+   */
+  onArcade?: () => void
   flat?: boolean
   /** Tapping YOUR OWN figure in the room. Only the editable surface passes it:
    *  a visited room shows its owner, and tapping them opens their card as it
@@ -90,6 +99,9 @@ export function RoomScene({
         data-room-scene=""
       >
         <RoomChamber tier={tier} flat={flat} />
+
+        {/* Tucked into the left corner, clear of floor_1 at x=96. */}
+        {onArcade && <ArcadeCabinet x={52} y={284} scale={0.86} onOpen={onArcade} />}
 
         {ROOM_ANCHORS.map((a) => {
           const value = placements[a.id]

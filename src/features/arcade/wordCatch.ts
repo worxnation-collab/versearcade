@@ -34,8 +34,15 @@ const TARGET_PER_LINE = 5
  * and it is the same shape as the line rounds so nothing else changes.
  */
 const DRILL_AT_MOST = 6
-/** How long a word waits, per pass of a drilled verse. */
-const DRILL_LIVES = [2400, 2000, 1700]
+/**
+ * How long a word waits, per pass of a drilled verse.
+ *
+ * Slower than the first cut of this, on the evidence of playing it on a real
+ * phone: reading four or five words, deciding which one comes next and getting
+ * a thumb to it takes longer than watching for a bright flake. The passes still
+ * quicken — that is the drill — they just start from a pace you can read at.
+ */
+const DRILL_LIVES = [3400, 2900, 2500]
 
 export interface WordCatch {
   game: TapGameDef
@@ -72,12 +79,20 @@ export function splitWords(text: string): string[] {
  */
 function chunk(count: number): { starts: number[]; ends: number[] } {
   const lines = Math.max(1, Math.min(MAX_LINES, Math.ceil(count / TARGET_PER_LINE)))
-  const per = Math.ceil(count / lines)
+  // Spread the remainder rather than letting it fall off the end. Seventeen
+  // words at ceil(17/4)=5 a line is 5, 5, 5 and then a line of TWO, which is
+  // over before the player has read the title card — a whole round that feels
+  // like the game skipped. Evenly it is 5, 4, 4, 4.
+  const base = Math.floor(count / lines)
+  const extra = count % lines
   const starts: number[] = []
   const ends: number[] = []
-  for (let i = 0; i < count; i += per) {
-    starts.push(i)
-    ends.push(Math.min(count, i + per))
+  let at = 0
+  for (let i = 0; i < lines; i++) {
+    const len = base + (i < extra ? 1 : 0)
+    starts.push(at)
+    at += len
+    ends.push(at)
   }
   return { starts, ends }
 }
@@ -110,14 +125,18 @@ export function buildWordCatch(verse: { text: string; reference: string }): Word
       title: `${drilled ? 'Pass' : 'Line'} ${i + 1} of ${starts.length}`,
       note: notes[Math.min(i, notes.length - 1)],
       quota: len,
-      // Long enough that reading is the limit, not reaction: about three
+      // Long enough that reading is the limit, not reaction: about four
       // seconds a word, plus a beat to find the first one.
-      durationMs: 4000 + len * 3000,
-      spawnEveryMs: 620,
+      durationMs: 6000 + len * 4200,
+      // Words arrive slowly enough that the page stays a page. Spawning faster
+      // does not make the game harder in an interesting way — it just puts more
+      // to scan on the paper, and scanning is not what this is teaching.
+      spawnEveryMs: 860,
       // A word has to stay long enough to be READ, which is much longer than a
-      // flake needs to be seen. Under about a second this stops being recall
-      // and becomes an eye test.
-      lifeMs: drilled ? DRILL_LIVES[i] : 2100,
+      // flake needs to be seen — and then long enough to be CHOSEN, which is
+      // longer again. Two seconds tested as too quick on a phone: the word you
+      // had just decided on was the one going out.
+      lifeMs: drilled ? DRILL_LIVES[i] : 3200,
       // Unused — `plan` and `verdictOf` below decide everything. Left empty
       // rather than filled with a lie about fixed weights.
       kinds: [],
@@ -140,7 +159,10 @@ export function buildWordCatch(verse: { text: string; reference: string }): Word
       // Keep the next word on the field most of the time. Not always: hunting
       // for it is the moment the verse is actually being recalled, and a next
       // word that is guaranteed present turns the game into "spot the newest".
-      if (!ctx.live.includes(String(want)) && Math.random() < 0.62) {
+      // Nudged up from 0.62 with the same pass that slowed the clock — waiting
+      // out three spawns for the word you already know is not recall, it is
+      // just waiting.
+      if (!ctx.live.includes(String(want)) && Math.random() < 0.72) {
         return { kind: String(want), verdict: 'take' }
       }
 

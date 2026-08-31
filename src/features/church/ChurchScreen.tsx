@@ -87,6 +87,7 @@ function Header() {
 // ---------------------------------------------------------------------------
 function ChurchHome({ church }: { church: Church }) {
   const juice = useJuice()
+  const navigate = useNavigate()
   const { available, myGiven, givers, contribute, leave, radiusMiles } = useChurch()
   const worldwide = radiusMiles === 'all'
   const [busy, setBusy] = useState(false)
@@ -224,6 +225,7 @@ function ChurchHome({ church }: { church: Church }) {
           flora={plantings}
           floraEditing={{ picked, onPick: pick, onDrop: drop }}
           emptyNote={false}
+          onArcade={() => { juice.select(); navigate('/arcade/manna') }}
         />
         {(picked || yardNote) && (
           <p className="center" style={{ margin: '8px 0 0', fontSize: 12.5, fontWeight: 700, color: 'var(--gold)' }}>

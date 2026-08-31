@@ -289,6 +289,8 @@ export function trackForPath(pathname: string): string {
   const p = pathname.toLowerCase()
   // A run is a run wherever it started from — check the deepest routes first.
   if (p.startsWith('/play/run') || p.startsWith('/play/practice')) return 'joyful'
+  // The arcade cabinet — a run is a run, so it takes the run's music.
+  if (p.startsWith('/arcade')) return 'joyful'
   if (p.startsWith('/battle')) return 'fortress'
   if (p.startsWith('/study') || p.startsWith('/review')) return 'cloister'
   if (p.startsWith('/bible') || p.startsWith('/favorites')) return 'scriptorium'
@@ -307,7 +309,7 @@ function reachableTracks(): Set<string> {
   const probes = [
     '/', '/welcome', '/auth', '/play', '/play/run', '/play/practice/2026-01-01',
     '/battle', '/battle/cpu', '/study', '/study/focus', '/review', '/bible',
-    '/bible/highlights', '/church', '/churches', '/leaderboard', '/collection',
+    '/bible/highlights', '/church', '/churches', '/leaderboard', '/collection', '/arcade/manna',
     '/you', '/buddies',
   ]
   return new Set(probes.map(trackForPath))

@@ -135,6 +135,12 @@ export type QuestVerb =
   | 'equip_pet'
   /** Another player's feet washed — the Basin (John 13:14). */
   | 'wash_feet'
+  /** Arcade runs finished — any tap game on the cabinet (features/arcade). */
+  | 'arcade_runs'
+  /** Things correctly taken in tap games, added up across runs. */
+  | 'arcade_gathered'
+  /** Rest rounds kept — a quota-0 round finished without a single tap. */
+  | 'keep_rest'
   /** Furnishings set in your own Upper Room. */
   | 'furnish_room'
   /** Other players' rooms visited. */
@@ -183,6 +189,9 @@ export const KNOWN_VERBS = new Set<string>([
   'visit_room',
   'give_gift',
   'pray',
+  'arcade_runs',
+  'arcade_gathered',
+  'keep_rest',
 ])
 
 export interface QuestDef {

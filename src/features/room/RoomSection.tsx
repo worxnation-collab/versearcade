@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Collapsible } from '@/components/Collapsible'
 import { useAuth } from '@/store/auth'
@@ -39,6 +40,7 @@ import { usePrayer } from '@/store/prayer'
 
 export function RoomSection() {
   const juice = useJuice()
+  const navigate = useNavigate()
   const me = useAuth((s) => s.profile)
   const placements = useRoom((s) => s.placements)
   const [merged, setMerged] = useState<{ anchor: string; name: string } | null>(null)
@@ -253,6 +255,7 @@ export function RoomSection() {
         editing={{ picked, mergedAnchor: merged?.anchor ?? null, onPick: pickUp, onDrop: (a) => void dropOn(a) }}
         lampLit={lampLit}
         onTapSelf={() => { juice.tap(); setPrayerOffered(true) }}
+        onArcade={() => { juice.select(); navigate('/arcade/manna') }}
       />
 
       {/* The offer, not the thing itself. It stays until it's taken or waved

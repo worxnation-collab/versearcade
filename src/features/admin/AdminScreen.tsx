@@ -49,6 +49,10 @@ interface PromotionRow {
   radius_miles: number; starts_at: string; ends_at: string; live: boolean; joins: number; note: string | null
 }
 interface Overlap { name: string; city: string | null; region: string | null; miles: number; ends_at: string }
+interface ChurchAdminRow {
+  church_id: string; church_name: string; city: string | null; region: string | null
+  username: string; granted_at: string; note: string | null
+}
 
 // Active quiz/battle time (not total app time — the app has no session tracking).
 function fmtDuration(ms: number): string {
@@ -327,6 +331,7 @@ function Churches() {
   }, [])
   return (
     <div style={{ display: 'grid', gap: 18 }}>
+      <ChurchClaims />
       <Promotions />
       <InfoRequests />
       <div>
@@ -335,6 +340,133 @@ function Churches() {
           ? <p className="faint center" style={{ padding: 20 }}>No church inquiries yet.</p>
           : <Inquiries rows={rows} />}
       </div>
+    </div>
+  )
+}
+
+// Church leadership claims (0079). Verification is MANUAL and this panel is
+// the whole of it: read the request in the queue below, check the person is
+// who they say — a call to the church, an email from its own domain, whatever
+// convinces you — then grant it here by username. There is deliberately no
+// self-serve claim, so this grant IS the moderation, and Revoke undoes it.
+//
+// What a claim buys is narrow on purpose: the five text fields on their own
+// page. Not the skin (that's the paid axis, and only `admin_upsert_church_profile`
+// grants one) and nothing about a member — there is no per-person data for
+// leadership to see anywhere in this app, deliberately.
+function ChurchClaims() {
+  const [rows, setRows] = useState<ChurchAdminRow[] | null>(null)
+  const [q, setQ] = useState('')
+  const [found, setFound] = useState<AdminChurch[] | null>(null)
+  const [target, setTarget] = useState<AdminChurch | null>(null)
+  const [username, setUsername] = useState('')
+  const [note, setNote] = useState('')
+  const [msg, setMsg] = useState<string | null>(null)
+
+  const load = () =>
+    supabase?.rpc('admin_church_admins', { p_limit: 100 }).then(({ data }) => setRows((data as ChurchAdminRow[]) ?? []))
+  useEffect(() => { void load() }, [])
+
+  const search = async () => {
+    const { data } = await supabase!.rpc('admin_find_churches', { p_search: q || null, p_limit: 20 })
+    setFound((data as AdminChurch[]) ?? [])
+  }
+
+  const grant = async () => {
+    if (!target || username.trim().length < 2) return
+    const { data } = await supabase!.rpc('admin_grant_church_admin', {
+      p_church_id: target.id, p_username: username.trim(), p_note: note || null,
+    })
+    const res = data as { ok?: boolean; reason?: string }
+    if (!res?.ok) {
+      setMsg(res?.reason === 'user_not_found' ? `No player called @${username.trim()}.` : 'Could not grant it.')
+      return
+    }
+    setMsg(`@${username.trim()} can now edit ${target.name}.`)
+    setTarget(null); setFound(null); setQ(''); setUsername(''); setNote('')
+    void load()
+  }
+
+  const revoke = async (r: ChurchAdminRow) => {
+    await supabase!.rpc('admin_revoke_church_admin', { p_church_id: r.church_id, p_username: r.username })
+    void load()
+  }
+
+  const where = (c: { city: string | null; region: string | null }) =>
+    [c.city, c.region].filter(Boolean).join(', ')
+
+  return (
+    <div>
+      <h3 style={{ fontSize: 14, margin: '0 0 8px' }} className="dim">Church leadership</h3>
+      <p className="faint" style={{ fontSize: 12, marginBottom: 10, lineHeight: 1.4 }}>
+        Verify by hand first — a call, or an email from the church&rsquo;s own domain. A claim lets
+        that player publish their church&rsquo;s tagline, about, service times, website and contact
+        without you. It does <b>not</b> give them a skin, and there is no member data to see.
+      </p>
+
+      <div className="card" style={{ marginBottom: 12, display: 'grid', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find the church"
+            onKeyDown={(e) => { if (e.key === 'Enter') void search() }} style={{ flex: 1, minWidth: 0 }} />
+          <Button variant="secondary" onClick={search}>Find</Button>
+        </div>
+
+        {found?.length === 0 && <p className="faint" style={{ fontSize: 12, margin: 0 }}>No churches match.</p>}
+        {found && found.length > 0 && !target && (
+          <div style={{ display: 'grid', gap: 6 }}>
+            {found.map((c) => (
+              <button key={c.id} className="card" onClick={() => setTarget(c)}
+                style={{ textAlign: 'left', padding: '8px 10px', display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <b style={{ fontSize: 14 }}>{c.name}</b>
+                  <span className="faint" style={{ display: 'block', fontSize: 11 }}>{where(c)}</span>
+                </span>
+                <span style={{ color: 'var(--gold)', fontSize: 12, fontWeight: 800 }}>Pick</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {target && (
+          <div style={{ display: 'grid', gap: 8 }}>
+            <b style={{ fontSize: 14 }}>{target.name}</b>
+            <input value={username} onChange={(e) => setUsername(e.target.value.replace(/^@/, ''))}
+              placeholder="Player username" autoCapitalize="none" autoCorrect="off" />
+            <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={200}
+              placeholder="How you verified them (operator only)" />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button variant="gold" disabled={username.trim().length < 2} onClick={grant}>Grant claim</Button>
+              <Button variant="ghost" onClick={() => setTarget(null)}>Cancel</Button>
+            </div>
+          </div>
+        )}
+
+        {msg && <p style={{ color: 'var(--good)', fontSize: 13, margin: 0 }}>{msg}</p>}
+      </div>
+
+      {rows === null ? (
+        <p className="faint center" style={{ padding: 20 }}>Loading…</p>
+      ) : rows.length === 0 ? (
+        <p className="faint center" style={{ padding: 20 }}>No churches claimed yet.</p>
+      ) : (
+        <div style={{ display: 'grid', gap: 8 }}>
+          {rows.map((r) => (
+            <div key={`${r.church_id}:${r.username}`} className="card" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <b style={{ fontSize: 14 }}>{r.church_name}</b>
+                <div className="faint" style={{ fontSize: 11 }}>
+                  @{r.username} · since {new Date(r.granted_at).toLocaleDateString()}
+                  {r.note ? ` · ${r.note}` : ''}
+                </div>
+              </div>
+              <button className="pill" onClick={() => revoke(r)}
+                style={{ fontWeight: 800, fontSize: 12, background: 'var(--card-solid)', color: 'var(--ink-dim)' }}>
+                Revoke
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

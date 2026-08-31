@@ -358,6 +358,45 @@ artwork ships as a new skin id. **Still no prices, either mode**: the custom
 option says it's answered by email, and the money happens off the device. See
 `docs/CHURCH-SKINS.md`.
 
+### A church can claim its own page
+
+`church_profiles` had exactly one writer for good reason — an open text field on
+somebody else's congregation is a moderation problem — and that meant every
+corrected service time went through the operator. `church_admins` (`0079`) is
+the seam: a row saying *this player is verified leadership of this church*,
+granted only by `admin_grant_church_admin`. Full rules: `docs/CHURCH-CLAIM.md`.
+
+**Verification is MANUAL and stays manual.** There is no self-serve claim — no
+domain check, no mailed code, nothing a stranger can drive. An operator reads
+the request in the "Add info" queue, satisfies themselves by phone or by an
+email from the church's own domain, and grants it by username. So the grant IS
+the moderation, and it's revocable in one call. It doesn't scale to thousands,
+on purpose; at this volume a human reading a request beats any heuristic, and
+the honest upgrade later is domain-verified email, not loosening this.
+
+What a claim buys is narrow, and each exclusion is load-bearing:
+
+- **The five text fields**, published straight through — that's the point.
+- **Not the skin.** It's the paid axis, so `update_my_church_profile` doesn't
+  take one and an edit can't drop the look an operator granted.
+- **Not `published`**, which would let a church hide itself into a state only an
+  operator could undo.
+- **Nothing about a member**, and this is the rule someone will try to break.
+
+**No per-member data for leadership.** The roster carries no per-person numbers
+("a crowd, not a ladder"), and a pastor-facing view of who played and who lapsed
+is that shape *with authority attached* — the person who played less becomes
+visible to their minister as having played less, which is worse than the
+player-vs-player comparison this app already refuses. A leader already sees the
+two aggregates that are public anyway: congregation size and banked XP. Anything
+more must be an aggregate with a small-count floor and needs its own argument.
+
+**The website is validated server-side now**, because this is the first writer
+of those columns that isn't us: https, http, or a bare host that gets prefixed;
+any other scheme is refused rather than mangled. `Detail` already neutralised a
+`javascript:` string on one render path, but `public_church_page` is a second
+reader and shouldn't have to know that.
+
 ### The sponsored slot
 
 A player with no church sees "Suggested for you" at the top of `/church` — the
@@ -603,8 +642,8 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest are `0078` (a church's ask for a sponsored slot) and `0077` (the slot
-itself). Before them, `0075` (the weekly church rivalry) and `0074` (the admin
+The latest is `0079` (a church claiming its own page); before it, `0078` (a
+church's ask for a sponsored slot) and `0077` (the slot itself). Before them, `0075` (the weekly church rivalry) and `0074` (the admin
 dashboard's dates) — 0074 must be applied before
 the client that uses it merges, and that one is not optional: it DROPS the old
 `admin_overview()` / `admin_growth(boolean)` signatures to replace them with

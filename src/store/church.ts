@@ -197,6 +197,23 @@ interface ChurchState {
   closeChurch: () => void
   loadCongregation: () => Promise<void>
   requestInfo: (input: InfoRequestInput) => Promise<{ ok: boolean; reason?: string }>
+  /**
+   * Publish an edit to a church page you are verified leadership of (0079).
+   * Unlike `requestInfo` this writes straight through — that's the whole point
+   * of a claim — but only for the five text fields, and the server re-checks
+   * the claim rather than trusting `canEdit`.
+   */
+  updateChurchPage: (input: ChurchPageEdit) => Promise<{ ok: boolean; reason?: string }>
+}
+
+/** The five things a claimed church may say about itself. Never the skin. */
+export interface ChurchPageEdit {
+  churchId: string
+  tagline: string
+  about: string
+  serviceTimes: string
+  website: string
+  contact: string
 }
 
 export const useChurch = create<ChurchState>((set, get) => ({
@@ -342,7 +359,7 @@ export const useChurch = create<ChurchState>((set, get) => ({
   // outside — wait on the network.
   async openChurch(church) {
     set({
-      page: { church, info: null, members: [], memberTotal: church.members, myRequestPending: false },
+      page: { church, info: null, members: [], memberTotal: church.members, myRequestPending: false, canEdit: false },
       pageLoading: true,
     })
     if (!isOnline()) {
@@ -374,6 +391,9 @@ export const useChurch = create<ChurchState>((set, get) => ({
         members: ((payload.members ?? []) as any[]).map(toMember),
         memberTotal: Number(payload.member_total ?? church.members),
         myRequestPending: !!payload.my_request_pending,
+        // Absent on a server that predates 0079 — nobody can edit, which is
+        // exactly how this screen behaved before claims existed.
+        canEdit: !!payload.can_edit,
       },
       pageLoading: false,
     })
@@ -406,6 +426,39 @@ export const useChurch = create<ChurchState>((set, get) => ({
     if (get().church?.id !== mine.id) return
     if (error || !(data as any)?.ok) return
     set({ congregation: ((data as any).members ?? []).map(toMember) })
+  },
+
+  async updateChurchPage({ churchId, tagline, about, serviceTimes, website, contact }) {
+    if (!isOnline()) return { ok: false, reason: 'offline' }
+    const { data, error } = await supabase!.rpc('update_my_church_profile', {
+      p_church_id: churchId,
+      p_tagline: tagline.trim() || null,
+      p_about: about.trim() || null,
+      p_service_times: serviceTimes.trim() || null,
+      p_website: website.trim() || null,
+      p_contact: contact.trim() || null,
+    })
+    if (error) return { ok: false, reason: error.message }
+    const payload = data as any
+    if (!payload?.ok) return { ok: false, reason: payload?.reason ?? 'failed' }
+    // Show what was just published rather than re-fetching: the server took
+    // exactly these five strings, so the page can say so immediately. Cleared
+    // to null when every field is empty, the same rule `toInfo` applies to a
+    // published-but-blank profile — otherwise the page draws an empty panel.
+    const next: ChurchInfo = {
+      tagline: tagline.trim() || null,
+      about: about.trim() || null,
+      serviceTimes: serviceTimes.trim() || null,
+      website: website.trim() || null,
+      contact: contact.trim() || null,
+    }
+    const anything = Object.values(next).some((v) => !!v)
+    set((s) =>
+      s.page?.church.id === churchId
+        ? { page: { ...s.page, info: anything ? next : null } }
+        : {},
+    )
+    return { ok: true }
   },
 
   async requestInfo({ churchId, role, note, name, email, skin, wantsPromotion }) {
@@ -460,6 +513,7 @@ export async function fetchChurchPage(churchId: string): Promise<ChurchPage | nu
           members: ((payload.members ?? []) as any[]).map(toMember),
           memberTotal: Number(payload.member_total ?? 0),
           myRequestPending: !!payload.my_request_pending,
+          canEdit: !!payload.can_edit,
         }
       }
     }
@@ -482,5 +536,8 @@ export async function fetchChurchPage(churchId: string): Promise<ChurchPage | nu
     members: ((payload.members ?? []) as any[]).map(toAnonMember),
     memberTotal: Number(payload.member_total ?? 0),
     myRequestPending: false,
+    // `public_church_page` (0074) is the signed-out read and knows nothing
+    // about who is looking, so the editor never appears on it.
+    canEdit: false,
   }
 }

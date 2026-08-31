@@ -62,6 +62,14 @@ const WEEK_EPOCH_UTC = Date.UTC(2024, 0, 1)
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000
 
 /** Which rivalry week a moment falls in. Mirrors `church_rivalry_week()`. */
+import {
+  clampToPercentBand,
+  packPercent,
+  unpackPercent,
+  type PercentBand,
+  type PercentPos,
+} from '@/data/placement'
+
 export function weekIndex(at: Date = new Date()): number {
   return Math.floor((at.getTime() - WEEK_EPOCH_UTC) / WEEK_MS)
 }
@@ -232,8 +240,16 @@ export const STATUES: StatueDef[] = [
   { id: 'statue_lion_lamb', name: 'The Lion and the Lamb', scale: 0.92, blurb: 'Lying down together, the way it was promised.' },
 ]
 
-export const statueById = (id?: string | null): StatueDef | undefined =>
-  id ? STATUES.find((s) => s.id === id) : undefined
+/**
+ * Takes an id OR a packed value, for the reason floraById does: almost every
+ * caller holds the latter, and forgetting to unpack draws an empty plinth
+ * rather than throwing — a bug nobody sees until they look at their own yard.
+ */
+export const statueById = (id?: string | null): StatueDef | undefined => {
+  if (!id) return undefined
+  const bare = id.includes('~') ? unpackPercent(id).id : id
+  return STATUES.find((s) => s.id === bare)
+}
 
 // ── Plinths ──────────────────────────────────────────────────────────────────
 // Three spots, so a fourth win is a CHOICE about the yard rather than another
@@ -262,6 +278,29 @@ export const PLINTHS: PlinthDef[] = [
 
 export const plinthById = (id: string): PlinthDef | undefined => PLINTHS.find((p) => p.id === id)
 
+// ── Where a statue may actually stand ───────────────────────────────────────
+// Same move the churchyard's plants made, and the same grammar: a plinth is a
+// ROW KEY, and the statue stands wherever its value says — falling back to the
+// plinth when there is no position, so every monument raised before this stands
+// exactly where it always has.
+//
+// The band is the churchyard's, pulled in a little at the sides because a
+// monument is taller and wider than a pot of marigolds.
+export const PLINTH_BAND: PercentBand = { x0: 6, b0: 1, x1: 94, b1: 30 }
+
+export function packStatue(id: string, pos: PercentPos): string {
+  return packPercent(id, clampToPercentBand(PLINTH_BAND, pos.x, pos.b))
+}
+
+/** The statue in a value — a bare `statue_dove` or a positioned one. */
+export const raisedId = (value?: string | null): string => unpackPercent(value).id
+
+/** Where a monument stands: its own position, or its plinth's. */
+export function statueAt(value: string | undefined, plinth: PlinthDef): PercentPos {
+  const u = unpackPercent(value)
+  return { x: u.x ?? plinth.x, b: u.b ?? plinth.b }
+}
+
 /**
  * Depth cue, matching the crowd's and the flora's: further up the yard is
  * smaller. Statues run taller than plants at the same depth because a monument
@@ -272,7 +311,7 @@ export function plinthHeight(b: number): number {
   return 58 - ((clamped - 1) / 29) * 24
 }
 
-/** plinth id -> statue id. */
+/** plinth id -> statue value (`statue_dove`, or `statue_dove~x500y120`). */
 export type Statues = Record<string, string>
 
 /**

@@ -13,6 +13,7 @@ import {
   plinthById,
   statueById,
   timeLeftLabel,
+  raisedId,
 } from './rivalry'
 
 // This week's matchup, and the statue a win buys.
@@ -317,7 +318,7 @@ function StatueShelf() {
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
           {PLINTHS.filter((p) => statues[p.id]).map((p) => (
             <div key={p.id} className="center" style={{ position: 'relative', width: 78 }}>
-              <StatueIcon id={statues[p.id]} size={54} />
+              <StatueIcon id={raisedId(statues[p.id])} size={54} />
               <div className="faint" style={{ fontSize: 10.5, marginTop: 2, lineHeight: 1.25 }}>
                 {statueById(statues[p.id])?.name}
               </div>

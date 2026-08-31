@@ -1,5 +1,7 @@
 import { motion } from 'framer-motion'
-import { ANCHORS, anchorById, unpackDecor } from '@/data/keep'
+import { SceneRemoveBadge } from '@/components/SceneRemoveBadge'
+import { ANCHORS, KEEP_SURFACE, anchorById, decorName, unpackDecor } from '@/data/keep'
+import { svgSpace, useSceneDrag } from '@/lib/sceneDrag'
 import type { Placements } from '@/store/keep'
 import type { KeepMember } from '@/store/keep'
 import { KeepHall, DecorProp } from './KeepArt'
@@ -19,6 +21,9 @@ import { KeepLife } from './KeepLife'
 // Everything interactive is optional. With no `editing` prop this is a picture:
 // nothing is tappable, no targets are drawn, and it costs nothing to put on a
 // screen that only wants to show the place.
+/** The scene's coordinate system — fixed, so it is built once. */
+const SPACE = svgSpace(KEEP_SURFACE)
+
 export function KeepScene({
   color,
   level,
@@ -44,11 +49,14 @@ export function KeepScene({
     onPick: (anchor: string) => void
     onDrop: (anchor: string) => void
     /**
-     * Tapping open ground while carrying: stand the piece at that exact point,
-     * clamped to its mount's band by the planner. Optional so a surface can
-     * offer anchor-only moving; the sheet passes it.
+     * Tapping open ground while carrying — and, since dragging landed, where a
+     * dragged piece is set down: stand it at that exact point, clamped to its
+     * mount's band by the planner. Optional so a surface can offer anchor-only
+     * moving; passing it is also what turns dragging on.
      */
     onDropAt?: (x: number, y: number) => void
+    /** Take the lifted piece back down — the ✕ on its ring. */
+    onRemove?: (anchor: string) => void
   }
   /** Makes the whole scene one big button. Only for the non-editing surfaces. */
   onOpen?: () => void
@@ -63,7 +71,26 @@ export function KeepScene({
   onArcade?: () => void
 }) {
   const picked = editing?.picked ?? null
-  const pickedMount = picked ? anchorById(picked)?.mount : undefined
+  const pickedAnchor = picked ? anchorById(picked) : undefined
+  const pickedMount = pickedAnchor?.mount
+
+  // Drag the piece you are holding. Only the lifted one moves this way, which
+  // is what finally makes dragging safe inside this scrolling sheet — see
+  // lib/sceneDrag.ts. Tapping still does everything it did.
+  const drag = useSceneDrag({
+    space: SPACE,
+    picked,
+    enabled: !!editing?.onDropAt,
+    onCommit: (_anchor, x, y) => editing?.onDropAt?.(x, y),
+  })
+
+  // Where the lifted piece is standing, for the ✕ that hangs off its ring. It
+  // is drawn as the scene's LAST layer rather than inside the piece's own <g>,
+  // because the move targets are drawn after the pieces: a ✕ inside the group
+  // sat under the target ring of the next spot along, and tapping it moved the
+  // piece there instead of taking it down. Found by driving the real app.
+  const pickedValue = picked ? placements[picked] : undefined
+  const pickedPos = pickedAnchor && pickedValue ? unpackDecor(pickedValue) : undefined
 
   return (
     <div
@@ -77,6 +104,7 @@ export function KeepScene({
       onClick={onOpen}
     >
       <svg
+        ref={drag.sceneRef}
         viewBox="0 0 560 300"
         style={{ display: 'block', width: '100%', height: 'auto' }}
         onClick={(e) => {
@@ -99,12 +127,15 @@ export function KeepScene({
           const value = placements[a.id]
           if (!value) return null
           const lifted = picked === a.id
-          // A moved piece stands where its value says; an untouched one stands
-          // on its anchor, exactly as every placement written before free
-          // positioning existed still should.
           const u = unpackDecor(value)
-          const px = u.x ?? a.x
-          const py = u.y ?? a.y
+          // Mid-drag the piece follows the finger; otherwise a moved piece
+          // stands where its value says and an untouched one stands on its
+          // anchor, exactly as every placement written before free positioning
+          // existed still should.
+          const at = drag.live?.anchor === a.id ? drag.live : null
+          const px = at?.x ?? u.x ?? a.x
+          const py = at?.y ?? u.y ?? a.y
+          const dragging = !!at
           // The spot that just absorbed a duplicate gives one pulse — the eye
           // needs telling where to look when the thing you tapped isn't the
           // thing that changed.
@@ -116,11 +147,16 @@ export function KeepScene({
                 editing?.mergedAnchor === a.id
                   ? { scale: [1, 1.22, 1], y: 0 }
                   : lifted
-                    ? { scale: 1.08, y: -6 }
+                    ? { scale: 1.08, y: dragging ? 0 : -6 }
                     : { scale: 1, y: 0 }
               }
-              transition={{ duration: lifted ? 0.18 : 0.5 }}
-              style={{ transformOrigin: `${px}px ${py}px`, cursor: editing ? 'pointer' : undefined }}
+              // A dragged piece must track the finger, not spring after it.
+              transition={{ duration: dragging ? 0 : lifted ? 0.18 : 0.5 }}
+              style={{
+                transformOrigin: `${px}px ${py}px`,
+                cursor: editing ? (dragging ? 'grabbing' : lifted ? 'grab' : 'pointer') : undefined,
+              }}
+              {...(editing ? drag.bind(a.id, a.mount, u.x ?? a.x, u.y ?? a.y) : {})}
               onClick={
                 editing
                   ? (e) => {
@@ -128,6 +164,9 @@ export function KeepScene({
                       // point; a tap ON a piece must not also be a tap on the
                       // ground under it.
                       e.stopPropagation()
+                      // The click a finished drag fires is not a tap: letting
+                      // it through would put down what you just dragged.
+                      if (drag.consumeClick()) return
                       if (picked && picked !== a.id) editing.onDrop(a.id)
                       else editing.onPick(a.id)
                     }
@@ -136,16 +175,21 @@ export function KeepScene({
             >
               <DecorProp value={value} x={px} y={py} color={color} mount={a.mount} sizeScale={u.s ?? 1} />
               {lifted && (
-                <circle
-                  cx={px}
-                  cy={py}
-                  r="30"
-                  fill="none"
-                  stroke="var(--gold)"
-                  strokeWidth="2"
-                  strokeDasharray="5 5"
-                  opacity="0.9"
-                />
+                <>
+                  {/* A grab area over the whole selection, so dragging doesn't
+                      mean hitting the one filled pixel of a candle. */}
+                  <circle cx={px} cy={py} r="30" fill="transparent" data-scene-edit="" />
+                  <circle
+                    cx={px}
+                    cy={py}
+                    r="30"
+                    fill="none"
+                    stroke="var(--gold)"
+                    strokeWidth="2"
+                    strokeDasharray="5 5"
+                    opacity="0.9"
+                  />
+                </>
               )}
             </motion.g>
           )
@@ -192,6 +236,16 @@ export function KeepScene({
               )}
             </g>
           ))}
+
+        {editing?.onRemove && picked && pickedAnchor && pickedPos && !drag.live && (
+          <SceneRemoveBadge
+            x={pickedPos.x ?? pickedAnchor.x}
+            y={pickedPos.y ?? pickedAnchor.y}
+            ring={30}
+            label={`Take the ${decorName(pickedValue)} back down`}
+            onRemove={() => editing.onRemove!(picked)}
+          />
+        )}
       </svg>
 
       {/* Alive, not pasted: figures run seeded schedules between the hearth,

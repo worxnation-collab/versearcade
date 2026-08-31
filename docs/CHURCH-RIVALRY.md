@@ -155,9 +155,20 @@ only and is never returned by any RPC: a statue that carried a name would turn
 the congregation's trophy into one member's, and "who put that there" is the
 first step to "who didn't".
 
-Unlike the flora, statues are **not** sampled per viewer and are **read-only on
-every surface** — a statue belongs to the congregation, so everybody who visits
-sees the same one standing there, and there is no tap-to-move to hand out.
+Unlike the flora, statues are **not** sampled per viewer: a statue belongs to
+the congregation, so everybody who visits sees the same one standing there.
+
+**Any member may also MOVE one, since 0084, and that is the same rule rather
+than a new one.** This layer was read-only on every surface until then, on the
+grounds that two members dragging the same trophy around each other's screens is
+a fight over a shared object. What that argument missed is that any member could
+already swap or take down any statue — so where it stands is a smaller version
+of a decision the congregation already shares, and moving one exposes nothing
+new: no name, no count, no who-moved-it, and `set_by` stays forensics that never
+leaves the server. Only your own church tab passes `statueEditing`; a visited
+yard is handed no editing prop at all, so it stays inert by construction. A
+statue that replaces one already standing keeps its spot, the way a finer piece
+upgrades in place in the two rooms.
 
 Art follows the house rule: drawn SVG in `features/church/ChurchStatues.tsx`
 today, with `art/church-statues.json` ready to generate and `GENERATED_ART` as

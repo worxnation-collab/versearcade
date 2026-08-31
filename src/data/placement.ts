@@ -171,6 +171,73 @@ export function clampToBand(surface: Surface, mount: string, x: number, y: numbe
   }
 }
 
+// ── The same grammar, in percent space ──────────────────────────────────────
+// The keep and the Upper Room are viewBoxes, so their x/y are scene units. The
+// churchyard is HTML — plants and statues are absolutely positioned at `left:
+// x%` and `bottom: b%` over a photograph of a lawn — and a yard that stretches
+// with the phone's width cannot store pixels.
+//
+// So the yard uses the SAME integer grammar and the same packDecor/unpackDecor,
+// storing TENTHS OF A PERCENT: 0..999 carries 0.0%..99.9%, which is a third of
+// a pixel on a 390px canvas and leaves the format, the fuzzing and migration
+// 0084's regexes shared with the two rooms rather than forked. `y` is `b`:
+// percent UP FROM THE BOTTOM, the axis every churchyard coordinate already
+// uses (PLOTS, PLINTHS, the crowd's waypoints).
+
+/** A region a percent-space piece may stand in. x across, b up from the bottom. */
+export interface PercentBand {
+  x0: number
+  b0: number
+  x1: number
+  b1: number
+}
+
+export interface PercentPos {
+  /** Percent across the scene. */
+  x: number
+  /** Percent up from the scene's bottom edge. */
+  b: number
+}
+
+/** `yard_lamp~x412y188` — 41.2% across, 18.8% up. */
+export function packPercent(id: string, pos: PercentPos, s?: number): string {
+  return packDecor(id, 1, {
+    x: Math.min(999, Math.max(0, Math.round(pos.x * 10))),
+    y: Math.min(999, Math.max(0, Math.round(pos.b * 10))),
+    ...(s !== undefined ? { s } : {}),
+  })
+}
+
+export interface UnpackedPercent {
+  id: string
+  /** Present only when the piece has been moved off its plot. */
+  x?: number
+  b?: number
+  /** Present only if a size was ever written; nothing writes one today. */
+  s?: number
+}
+
+/** Read a packed percent value. An old bare id comes back as just an id, which
+ *  is what keeps every planting written before free placement standing exactly
+ *  where its plot always put it. */
+export function unpackPercent(value?: string | null): UnpackedPercent {
+  const u = unpackDecor(value)
+  return {
+    id: u.id,
+    ...(u.x !== undefined ? { x: u.x / 10, b: (u.y ?? 0) / 10 } : {}),
+    ...(u.s !== undefined ? { s: u.s } : {}),
+  }
+}
+
+/** Clamp a point into a band, so "put it where you like" never becomes "plant
+ *  a hedge in the sky". */
+export function clampToPercentBand(band: PercentBand, x: number, b: number): PercentPos {
+  return {
+    x: Math.min(band.x1, Math.max(band.x0, Math.round(x * 10) / 10)),
+    b: Math.min(band.b1, Math.max(band.b0, Math.round(b * 10) / 10)),
+  }
+}
+
 /** anchor id -> packed value. */
 export type PlacementMap = Record<string, string>
 

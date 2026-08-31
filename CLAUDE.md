@@ -554,10 +554,38 @@ arbitrary sample; a congregation is a handful of named people, so there is
 nothing to sample. The rule is untouched — join-date order, no per-person number
 — and `is_me` on your own row is what keeps you from being drawn twice.
 
-Anything planted can be **moved by tapping** it and then tapping another plot,
-with the keep's rules (an occupied plot trades places, so no tap loses a plant).
-Only your own church tab passes `floraEditing`; a bed you can move in somebody
-else's yard is exactly what the church-page rule forbids.
+Anything planted can be **picked up and dragged anywhere on the lawn**, or
+tapped onto another plot (which trades places, so no tap loses a plant), or
+taken out with the ✕ on its ring. Only your own church tab passes
+`floraEditing`; a bed you can move in somebody else's yard is exactly what the
+church-page rule forbids.
+
+**The plot became a row key, exactly as the keep's anchor did in 0083.** A
+planting stands wherever its value says and falls back to its plot when the
+value carries no position, which is what keeps every bed planted before `0084`
+standing where it always did. The wire format is the SAME grammar the two rooms
+use — `yard_ivy~x412y188`, written by `packPercent`/`unpackPercent` — with the
+integers in **tenths of a percent** (41.2% across, 18.8% up from the bottom),
+because the yard is HTML positioned in percent rather than a viewBox and a lawn
+that stretches with the phone cannot store pixels. `scripts/check-placement.mjs`
+(in `npm run build`) runs the real packers against the real regexes out of
+migrations 0083 and 0084, because the failure mode when they disagree is
+invisible: the client updates optimistically, so the plant moves on screen and
+the RPC quietly raises `bad flora`.
+
+Free movement clamps into `YARD_BAND`, whose top is the line the building's base
+sits on — so nothing can be dragged into the sky or onto the roof — and whose
+sides stop short of the frame, because the art is cropped tight and centred on
+its point (a hedge is half again as wide as it is tall). **A plant is sized by
+where it STANDS, not by which plot it is filed under**: drag a sapling to the
+front of the lawn and it grows, or the yard stops reading as a yard.
+
+**`draggable={false}` on the plant and statue `<img>`s is load-bearing.** A
+plant is a raster where one has been generated, and an `<img>` starts a NATIVE
+image drag — the browser cancels the pointer stream to do it, so the first
+pointermove of a real drag arrived as a `lostpointercapture` and the plant
+simply refused to move. The two rooms never hit this because their props are
+SVG. Found by driving the real yard.
 
 This one is **online-only**, inheriting the church store's break with the
 two-mode invariant rather than choosing its own: a guest has no church to stand
@@ -604,6 +632,16 @@ it:
   may raise or change one and it carries no name (`set_by` is forensics only and
   never leaves the server) — a statue with a name on it is one member's trophy,
   not the congregation's.
+- **And any member may MOVE one, which is the same rule rather than a new one.**
+  `ChurchStatues` refused editing outright until `0084`, on the grounds that two
+  members dragging the same trophy around each other's screens is a fight over a
+  shared object. What that missed is that any member could already swap or take
+  down any statue, so where it stands is a smaller version of a decision the
+  congregation already shares — and nothing new is exposed by it: no name, no
+  count, no who-moved-it. Only your own church tab passes `statueEditing`; a
+  visited yard has no editing prop at all, so it is inert by construction. A
+  statue that REPLACES one already standing keeps its spot, the way a finer
+  piece upgrades in place in the two rooms.
 
 Online-only, inherited rather than chosen — the `store/churchYard.ts` break with
 the two-mode invariant. A local weekly matchup is a church playing itself, and a
@@ -799,25 +837,20 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-<<<<<<< HEAD
-The latest is `0083` (free placement + tiers as their own unlocks) and `0082`
-(six more churchyard plants) — both APPLIED to the live project on 2026-08-31,
-in that order, and verified: the fourteen flora ids answer, both placement
-regexes accept the new grammar and the legacy values, and every existing
-placement row still validates. They were numbered 0080/0081 in flight and
-renumbered at merge, because another branch landing the same week had taken
-those numbers — the scars paragraph below has the details. Before them,
-`0081` (first light — who opened the day's verse first) and `0080` (today /
-this week / all time on the church board), both also applied; then `0079`
-(a church claiming its own page) and `0078` (a
-church's ask for a sponsored slot) and `0077` (the slot itself). Before them, `0075` (the weekly church rivalry) and `0074` (the admin
-=======
-The latest is `0083` (the Study library's card); before it, `0082` (the
-Porchlight creator-collab skin), `0081` (first light — who opened the day's
-verse first), `0080` (today / this week / all time on the church board), `0079`
-(a church claiming its own page), `0078` (a church's ask for a sponsored slot)
-and `0077` (the slot itself). Before them, `0075` (the weekly church rivalry) and `0074` (the admin
->>>>>>> origin/main
+The latest is `0084` (free placement in the churchyard — plants and monuments
+stand where you drag them), APPLIED to the live project on 2026-08-31 and
+verified: the shared value grammar parses every form the client writes, refuses
+every malformed one, and all 18 existing planting rows still validate.
+
+**Both 0083s and both 0082s exist**, because two branches landed the same week
+and git merged four files silently on differing names: `0083` is BOTH free
+placement in the two rooms (+ tiers as their own unlocks) and the Study
+library's card; `0082` is BOTH six more churchyard plants and the Porchlight
+creator-collab skin. All four are applied. Before them, `0081` (first light —
+who opened the day's verse first) and `0080` (today / this week / all time on
+the church board), both also applied; then `0079` (a church claiming its own
+page), `0078` (a church's ask for a sponsored slot) and `0077` (the slot
+itself). Before them, `0075` (the weekly church rivalry) and `0074` (the admin
 dashboard's dates) — 0074 must be applied before
 the client that uses it merges, and that one is not optional: it DROPS the old
 `admin_overview()` / `admin_growth(boolean)` signatures to replace them with
@@ -834,21 +867,19 @@ says "today" or "7d" now takes a validated IANA zone from the client
 one, take the day from `p_tz`, never from `current_date`.
 
 Numbering has scars: `0034` is used twice (`promo_codes`, `skin_purchases`),
-`0059` twice (`keep`, `practice_uncapped`) and `0074` twice (`admin_local_dates`,
-<<<<<<< HEAD
-`public_church_page`) — so the next free number is `0084`, not `0082`, and this
-=======
-`public_church_page`) — and `0081` twice (`first_light`, and the Study library's
+`0059` twice (`keep`, `practice_uncapped`), `0074` twice (`admin_local_dates`,
+`public_church_page`), `0081` twice (`first_light`, and the Study library's
 card, which was applied to production under that number and renumbered to
-`0083` in the tree when the two branches met) — so the next free number is
-`0084`, not `0083`, and this
->>>>>>> origin/main
+`0083` in the tree when the two branches met), and — from that same collision —
+`0082` and `0083` twice each. So the next free number is `0085`, not `0084`,
+and this
 sentence has already gone stale twice: it said "0076" while 0077, 0078 and 0079
 were sitting in the folder. `ls supabase/migrations | tail -1` is the answer — on ORIGIN/MAIN, not your
 working tree: two branches in flight both took 0080 and 0081, and git merged
 the four files silently because the names differed. The unmerged side was
-renumbered 0082/0083 at merge time, which is the only cheap moment to do it.
-this line is only a record of which numbers were burned twice. And
+renumbered 0082/0083 at merge time, which is the only cheap moment to do it —
+and doing it in the TREE rather than in production is why a number can be
+burned twice: this line is only a record of which ones were. And
 `0038_focus_practice_xp.sql` is a re-add of a file that shipped as `0036` and was
 lost when PR #58 landed from a stale branch. Take the next free number and write
 migrations idempotently (`create table if not exists`, `drop policy if exists`,
@@ -1244,14 +1275,61 @@ box for all three crops two of them.
 
 ### Anything placed can be moved, anywhere in its band — and resized
 
-Tap a piece to lift it, then tap an anchor target (trades places, never
-overwrites) or ANY open ground (stands it at that exact point, clamped to its
-mount's band; the piece stays selected so a nudge can follow a nudge). While
-selected, a small bar under the scene resizes it in 0.1 steps. `planMoveOn`,
-`planMoveToPointOn` and `planResizeOn` in `data/placement.ts` are the choke
-points and the room copies them exactly. No drag, still: the halls are
-viewBoxes inside scrolling sheets, and a drag there fights the scroll. Nothing
-is ever overwritten.
+Tap a piece to lift it, then **drag it wherever you like**, or tap an anchor
+target (trades places, never overwrites) or ANY open ground (stands it at that
+exact point, clamped to its mount's band; the piece stays selected so a nudge
+can follow a nudge). While selected, a small bar under the scene resizes it in
+0.1 steps. `planMoveOn`, `planMoveToPointOn` and `planResizeOn` in
+`data/placement.ts` are the choke points and the room copies them exactly.
+Nothing is ever overwritten.
+
+**Dragging is only ever available on the piece you have already LIFTED, and that
+is the whole reason it is safe.** These halls are 300-unit viewBoxes inside
+scrolling surfaces, and for a long time that ruled dragging out entirely — a
+grab anywhere on the picture fights the scroll. Selecting first is what makes
+the two gestures separable: one tap says which object you are holding, and only
+that object's pointer stream is taken. Every other pixel of every scene — the
+floor, the walls, an unselected piece — still scrolls exactly as before, and
+tapping is untouched (a drag inside a 4px slop radius is still a tap).
+
+`lib/sceneDrag.ts` is the one copy of the mechanics, bound by both scenes. Three
+things in it were learned by driving the real app and are invisible in a diff:
+
+- **`touch-action: none` does NOT work on an SVG child** — it was set, read back
+  empty, and the page scrolled out from under the piece. What actually cancels
+  the scroll is a hand-registered NON-PASSIVE `touchmove` listener on the
+  scene's `<svg>` that preventDefaults only while a drag is in flight (React
+  attaches its own touch listeners passively, so it can't be done through JSX).
+  Putting `touch-action` on the wrapper instead would kill scrolling over the
+  whole picture for as long as anything is selected.
+- **A finished drag fires a click**, which would otherwise read as "tap the
+  piece" and put down what you just dragged. `consumeClick()` latches that one
+  click; a drag that never left the slop radius does not latch it, so a tap
+  still toggles.
+- **The commit is one write, on release** (through `onDropAt`, the same planner
+  the tap path uses). The position mid-drag is local preview state — writing on
+  every pointer move would be an RPC per frame.
+
+### The ✕ on a lifted piece takes it back out
+
+A selected piece wears a small ✕ on its ring (`components/SceneRemoveBadge`),
+and it clears that one placement. The shelf tile's ✕ still exists and still
+clears every copy; this one is for the thought you have while looking at the
+room, rather than making you find the piece again in a grid of eighteen.
+
+Two things about it are load-bearing. It is drawn as the scene's LAST layer,
+NOT inside the piece's own `<g>` — the move targets are drawn after the pieces,
+so a ✕ inside the group sat under the target ring of the next spot along and
+tapping it moved the piece there instead of removing it. And it marks itself
+`data-scene-edit`, which `lib/postcard.ts` strips along with the dashed rings:
+a ✕ on a picture somebody sends is a stray dark blob, and its `var(--gold)`
+doesn't resolve in a detached document anyway.
+
+Nothing is lost by it, which is why it can be one tap with no confirmation:
+ownership is derived from lifetime counters that only go up, so a piece taken
+out is back on the shelf at the same tier before the note fades. In a FACTION
+hall the placements are a blend, so the ✕ refuses somebody else's piece and says
+so rather than reporting a removal that didn't happen.
 
 ### A Grand piece can be given to your church
 

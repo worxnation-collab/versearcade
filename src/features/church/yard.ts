@@ -29,6 +29,14 @@
 // `commerce.ts` never has to know it exists — the same rule the church page's
 // "Add info" pill follows.
 
+import {
+  clampToPercentBand,
+  packPercent,
+  unpackPercent,
+  type PercentBand,
+  type PercentPos,
+} from '@/data/placement'
+
 // ── Plots ────────────────────────────────────────────────────────────────────
 // A fixed set of spots in the scene, so the yard's render cost never grows and
 // planting is a loadout rather than a canvas — six plots, eight plants, so a
@@ -72,6 +80,40 @@ export const PLOTS: PlotDef[] = [
 ]
 
 export const plotById = (id: string): PlotDef | undefined => PLOTS.find((p) => p.id === id)
+
+// ── Where a plant may actually stand ────────────────────────────────────────
+// A plot is now a ROW KEY rather than a location, exactly as an anchor became
+// one in the keep (data/placement.ts): a planting stands wherever its value
+// says, and falls back to its plot when the value carries no position — which
+// is what keeps every bed planted before free placement standing where it
+// always did.
+//
+// The band is the lawn. Its top is the line the building's base sits on (b≈31%)
+// so nothing can be dragged into the sky or onto the roof, and the sides stop
+// short of the frame because the art is cropped tight and centred on its point:
+// a boxwood hedge is half again as wide as it is tall, so at the old x1 of 96
+// its right edge was clipped by the frame. 6..94 keeps every shape inside.
+export const YARD_BAND: PercentBand = { x0: 6, b0: 1, x1: 94, b1: 30 }
+
+/** `yard_lamp~x412y188` — the shared grammar, in tenths of a percent. */
+export function packPlanting(id: string, pos: PercentPos): string {
+  const p = clampToPercentBand(YARD_BAND, pos.x, pos.b)
+  return packPercent(id, p)
+}
+
+/** The plant in a planting value — a bare `yard_ivy` or a positioned one. */
+export const plantingId = (value?: string | null): string => unpackPercent(value).id
+
+/**
+ * Where a planting stands: its own position, or its plot's.
+ *
+ * Every render path goes through this, so a value written before free
+ * placement and one dragged this morning are drawn by the same code.
+ */
+export function plantingAt(value: string | undefined, plot: PlotDef): PercentPos {
+  const u = unpackPercent(value)
+  return { x: u.x ?? plot.x, b: u.b ?? plot.b }
+}
 
 /** Depth cue, matching the crowd's: further up the yard = smaller. */
 export function plotHeight(b: number): number {
@@ -120,8 +162,16 @@ export const FLORA: FloraDef[] = [
   { id: 'yard_dogwood', name: 'Flowering Dogwood', given: 120_000, scale: 1.6, blurb: 'A tree in bloom. It will outlast the roof.' },
 ]
 
-export const floraById = (id?: string | null): FloraDef | undefined =>
-  id ? FLORA.find((f) => f.id === id) : undefined
+/**
+ * Takes an id OR a packed planting value, because nearly every caller has the
+ * latter and forgetting to unpack draws an empty plot rather than an error —
+ * the exact class of bug that is invisible until somebody looks at their yard.
+ */
+export const floraById = (id?: string | null): FloraDef | undefined => {
+  if (!id) return undefined
+  const bare = id.includes('~') ? unpackPercent(id).id : id
+  return FLORA.find((f) => f.id === bare)
+}
 
 /** What a giver has earned. Pure function of lifetime given — nothing granted. */
 export function unlockedFlora(given: number): FloraDef[] {
@@ -138,5 +188,5 @@ export function nextFlora(given: number): FloraDef | undefined {
   return FLORA.find((f) => given < f.given)
 }
 
-/** plot id -> flora id. */
+/** plot id -> planting value (`yard_ivy`, or `yard_ivy~x412y188`). */
 export type Plantings = Record<string, string>

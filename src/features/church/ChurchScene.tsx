@@ -58,6 +58,7 @@ export function ChurchScene({
   flora,
   statues,
   floraEditing,
+  statueEditing,
   emptyNote = true,
   onArcade,
 }: {
@@ -79,14 +80,29 @@ export function ChurchScene({
    */
   statues?: Statues
   /**
-   * Tap-to-move for the plantings. Only your own church tab passes this — a bed
-   * you can move in somebody else's yard is exactly the thing the church-page
-   * rule forbids. See ChurchFlora.
+   * Arranging the plantings — tap to lift, drag to place, ✕ to take out. Only
+   * your own church tab passes this: a bed you can move in somebody else's yard
+   * is exactly the thing the church-page rule forbids. See ChurchFlora.
    */
   floraEditing?: {
     picked: string | null
     onPick: (plot: string) => void
     onDrop: (plot: string) => void
+    /** Where a dragged plant was let go, in percent across / up. */
+    onDropAt?: (x: number, b: number) => void
+    onRemove?: (plot: string) => void
+  }
+  /**
+   * The same, for the congregation's monuments. Also your own tab only — but
+   * unlike the flora these rows are the CHURCH'S, so any member arranging them
+   * is arranging them for everybody, exactly as any member may already change
+   * which statue stands there. See ChurchStatues.
+   */
+  statueEditing?: {
+    picked: string | null
+    onPick: (plinth: string) => void
+    onDropAt: (x: number, b: number) => void
+    onRemove: (plinth: string) => void
   }
   /**
    * Whether an empty crowd says so. False on your own church tab, where the
@@ -210,14 +226,17 @@ export function ChurchScene({
           picked={floraEditing?.picked ?? null}
           onPick={floraEditing?.onPick}
           onDrop={floraEditing?.onDrop}
+          onDropAt={floraEditing?.onDropAt}
+          onRemove={floraEditing?.onRemove}
         />
       )}
 
       {/* The monuments, in the same band as the flora and for the same reason:
           they are things standing in the yard, and people walk in front of
-          them. Read-only on every surface — a statue is the congregation's, so
-          there is no tap-to-move to hand out. */}
-      {statues && <ChurchStatues statues={statues} />}
+          them. Read-only everywhere except your own church tab, which passes
+          statueEditing — a statue is the congregation's, and moving one is
+          shared the way choosing one already is (see ChurchStatues). */}
+      {statues && <ChurchStatues statues={statues} editing={statueEditing} />}
 
       {/* Somebody wheeled a cabinet onto the grass. It sits at the front-left
           corner, in front of the crowd and clear of the path. */}

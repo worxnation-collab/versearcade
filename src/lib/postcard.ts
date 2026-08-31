@@ -92,6 +92,9 @@ async function sanitizeClone(svg: SVGSVGElement): Promise<SVGSVGElement> {
   // resolve in a detached document — and a postcard of a room mid-rearrange is
   // not the picture anyone wants to send.
   clone.querySelectorAll('[stroke-dasharray]').forEach((n) => n.remove())
+  // Chrome that carries no dash of its own — the ✕ on a lifted piece, its grab
+  // area. Anything drawn only for the person arranging the room marks itself.
+  clone.querySelectorAll('[data-scene-edit]').forEach((n) => n.remove())
   return clone
 }
 

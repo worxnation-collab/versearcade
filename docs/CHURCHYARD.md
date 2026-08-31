@@ -64,6 +64,46 @@ flower bed. It did, in the first pass, and only a screenshot showed it.
 The flora layer draws between the building and the crowd: flowers are planted in
 front of the wall, and people walk in front of the flowers.
 
+## A plot is a row key, not a location (0084)
+
+Since `0084` a planting stands **wherever you drag it**. Tap a plant on your own
+church tab to pick it up, then drag it anywhere on the lawn; tap a plot marker
+instead and it trades places with whatever is there, as it always did; tap the ✕
+on its ring and it comes out and goes straight back in the picker.
+
+The plot survives as the ROW KEY — it still bounds rows per player, still keeps
+free text out of the table, and still says where a plant stands when its value
+carries no position, which is what keeps every bed planted before `0084` exactly
+where it was.
+
+The value is the same grammar the keep's hall and the Upper Room use
+(`src/data/placement.ts`), in **tenths of a percent**: `yard_ivy~x412y188` is
+41.2% across and 18.8% up from the bottom. Percent rather than pixels because
+the yard is HTML that stretches with the phone; tenths because one whole percent
+is four pixels on a 390px canvas and 0..999 carries the decimal for free.
+
+Three things about it are load-bearing:
+
+- **`YARD_BAND` is the lawn.** Its top is the line the building's base sits on,
+  so nothing can be dragged into the sky or onto the roof, and its sides stop
+  short of the frame because the art is cropped tight and centred on its point —
+  a hedge is half again as wide as it is tall.
+- **A plant is sized by where it stands**, not by which plot it is filed under
+  (`plotHeight(at.b)`, not `plotHeight(plot.b)`). Drag a sapling to the front of
+  the lawn and it grows, or the yard stops reading as a yard.
+- **`draggable={false}` on the plant `<img>`.** A generated plant is a raster,
+  and an `<img>` starts a native image drag — the browser cancels the pointer
+  stream to do it, so the first move of a real drag arrived as
+  `lostpointercapture` and the plant refused to budge. The rooms never hit this
+  because their props are SVG.
+
+Only your own church tab passes `floraEditing`; a visited yard is handed no
+editing prop at all, so it is inert by construction rather than by a handler
+deciding to refuse. `scripts/check-placement.mjs` runs the real packers against
+the real regexes from migrations 0083 and 0084 on every build, because a
+disagreement between them is invisible on screen: the client updates
+optimistically and the RPC quietly raises `bad flora`.
+
 ## The ladder
 
 Eight plants against lifetime given, from 250 to 120,000. The first two land

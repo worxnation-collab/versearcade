@@ -113,12 +113,17 @@ SEE WHO'S GIVING NOW, NOT JUST WHO GAVE FIRST
 • Still churches, never people: a church total, a player count, and nothing anywhere
   that says who in a congregation gave what.
 
-ARRANGE YOUR ROOM WITH YOUR THUMB
-• Pick up anything in your Upper Room or your keep's hall and drag it where you want
-  it. Rugs stay on the floor and banners stay on the wall, so nothing lands anywhere
-  daft, and nothing you place can ever be lost or overwritten.
-• A piece you're holding wears a small ✕ — one tap takes it back out and it goes
+ARRANGE YOUR ROOMS AND YOUR CHURCHYARD WITH YOUR THUMB
+• Pick up anything in your Upper Room, your keep's hall or your churchyard and drag
+  it where you want it. Rugs stay on the floor, banners stay on the wall and plants
+  stay on the grass, so nothing lands anywhere daft, and nothing you place can ever
+  be lost or overwritten.
+• Plant a flower bed at the front of the lawn and it's nearer, so it's bigger. Drag
+  it back toward the church and it settles into the distance.
+• Anything you're holding wears a small ✕ — one tap takes it back out and it goes
   straight back on the shelf, at the tier you earned. Nothing is spent, ever.
+• Your congregation's statues move too, and any member can move them: a monument
+  belongs to the church, the same way choosing which one stands there always has.
 • Tap-to-move still works exactly as it did, and the page still scrolls under your
   thumb everywhere except the one thing you said you were holding.
 

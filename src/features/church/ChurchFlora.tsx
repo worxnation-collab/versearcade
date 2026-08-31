@@ -1,5 +1,18 @@
 import { GENERATED_ART } from '@/data/generatedArt'
-import { FLORA, PLOTS, floraById, plotHeight, type Plantings } from './yard'
+import { SceneRemoveButton } from '@/components/SceneRemoveBadge'
+import { unpackPercent } from '@/data/placement'
+import { percentSpace, useSceneDrag } from '@/lib/sceneDrag'
+import {
+  FLORA,
+  PLOTS,
+  YARD_BAND,
+  floraById,
+  plantingAt,
+  plotById,
+  plotHeight,
+  type Plantings,
+  type PlotDef,
+} from './yard'
 
 // The churchyard's landscaping — drawn, not generated.
 //
@@ -16,6 +29,9 @@ import { FLORA, PLOTS, floraById, plotHeight, type Plantings } from './yard'
 //
 // The layer sits BETWEEN the building and the crowd: flowers are planted in
 // front of the wall, and people walk in front of the flowers.
+
+/** The yard's coordinate system — fixed, so it is built once. */
+const YARD_SPACE = percentSpace(YARD_BAND)
 
 // Night palette. The grass is a dark teal (#24404a → #16262f), so foliage runs
 // warmer and lighter than real leaves would and the blooms are picked to carry
@@ -253,7 +269,12 @@ export const DRAWN_FLORA = Object.keys(PLANTS)
 function PlantArt({ id, height }: { id: string; height: number }) {
   const raster = GENERATED_ART[id]
   if (raster) {
-    return <img src={raster} alt="" style={{ display: 'block', height, width: 'auto' }} />
+    // draggable={false} is load-bearing, not tidiness: an <img> starts a NATIVE
+    // image drag, and the browser cancels the pointer stream to do it — so the
+    // first pointermove of a real drag arrived as a lostpointercapture and the
+    // plant simply refused to move. The rooms never hit this because their
+    // props are SVG. Found by driving the real yard.
+    return <img src={raster} alt="" draggable={false} style={{ display: 'block', height, width: 'auto' }} />
   }
   const art = PLANTS[id]
   if (!art) return null
@@ -272,14 +293,17 @@ function PlantArt({ id, height }: { id: string; height: number }) {
 /**
  * The planted layer of a churchyard.
  *
- * Absolutely positioned inside the scene, one small SVG per filled plot.
+ * Absolutely positioned inside the scene, one small picture per filled plot,
+ * standing wherever its value says (features/church/yard.ts) — or on its plot,
+ * for every bed planted before positions were free.
  *
  * Non-interactive by default, and that default is the safe one: a flower bed
  * you can tap in somebody else's yard is the first step towards writing on
  * their page, which is the rule the whole church feature is built around. Only
  * the preview on your OWN church tab passes `editable`, and there tapping a
- * plant picks it up and tapping a plot sets it down — the same move-it-by-
- * tapping as the keep's hall, so the two scenes can't drift apart.
+ * plant picks it up, DRAGGING it plants it where you let go, tapping a plot
+ * sets it down, and the ✕ takes it out — the same gestures as the keep's hall
+ * and the Upper Room, over the same hook, so the three can't drift apart.
  */
 export function ChurchFlora({
   plantings,
@@ -287,6 +311,8 @@ export function ChurchFlora({
   picked = null,
   onPick,
   onDrop,
+  onDropAt,
+  onRemove,
 }: {
   plantings: Plantings
   editable?: boolean
@@ -294,50 +320,88 @@ export function ChurchFlora({
   picked?: string | null
   onPick?: (plot: string) => void
   onDrop?: (plot: string) => void
+  /** Where a dragged plant was let go, in percent. Passing it enables dragging. */
+  onDropAt?: (x: number, b: number) => void
+  /** The ✕ on the lifted plant. */
+  onRemove?: (plot: string) => void
 }) {
+  const drag = useSceneDrag({
+    space: YARD_SPACE,
+    picked,
+    enabled: !!(editable && onDropAt),
+    onCommit: (_plot, x, b) => onDropAt?.(x, b),
+  })
+
   const filled = PLOTS.filter((p) => floraById(plantings[p.id]))
   // Targets only exist while carrying, so an idle yard is still just a yard.
   const targets = editable && picked ? PLOTS.filter((p) => p.id !== picked) : []
+  const pickedPlot = picked ? plotById(picked) : undefined
+  const pickedFlora = picked ? floraById(plantings[picked]) : undefined
   if (filled.length === 0 && targets.length === 0) return null
 
   return (
-    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+    <div
+      ref={drag.sceneRef}
+      style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}
+    >
       {filled.map((plot) => {
-        const flora = floraById(plantings[plot.id])!
+        const value = plantings[plot.id]
+        const flora = floraById(value)!
         if (!PLANTS[flora.id] && !GENERATED_ART[flora.id]) return null
-        const h = plotHeight(plot.b) * flora.scale
         const lifted = picked === plot.id
+        // Mid-drag the plant follows the finger; otherwise it stands where its
+        // value says, or on its plot when the value carries no position.
+        const at = drag.live?.anchor === plot.id ? { x: drag.live.x, b: drag.live.y } : plantingAt(value, plot)
+        const dragging = !!drag.live && drag.live.anchor === plot.id
+        // Depth is where it STANDS, not which row it is stored under: drag a
+        // sapling to the front of the lawn and it has to grow, or the yard
+        // stops reading as a yard.
+        const h = plotHeight(at.b) * flora.scale * (unpackPercent(value).s ?? 1)
         const Tag = editable ? 'button' : 'span'
         return (
           <Tag
             key={plot.id}
             {...(editable
               ? {
-                  onClick: () => (picked && picked !== plot.id ? onDrop?.(plot.id) : onPick?.(plot.id)),
+                  onClick: () => {
+                    // The click a finished drag fires is not a tap: letting it
+                    // through would put down what you just dragged.
+                    if (drag.consumeClick()) return
+                    picked && picked !== plot.id ? onDrop?.(plot.id) : onPick?.(plot.id)
+                  },
                   'aria-label': `${flora.name}, ${plot.label}`,
+                  ...drag.bind(plot.id, 'yard', at.x, at.b),
                 }
               : {})}
             style={{
               position: 'absolute',
-              left: `${plot.x}%`,
-              bottom: `${plot.b}%`,
+              left: `${at.x}%`,
+              bottom: `${at.b}%`,
               // No width: the art inside sets it, so a wide hedge and a narrow
               // lamp post both sit centred on the plot at the right size.
               lineHeight: 0,
-              transform: `translateX(-50%)${lifted ? ' translateY(-6px) scale(1.08)' : ''}`,
-              transition: 'transform 160ms ease-out',
+              transform: `translateX(-50%)${lifted && !dragging ? ' translateY(-6px) scale(1.08)' : ''}`,
+              // A dragged plant tracks the finger; anything else eases.
+              transition: dragging ? 'none' : 'transform 160ms ease-out',
               pointerEvents: editable ? 'auto' : 'none',
               padding: 0,
               border: lifted ? '1px dashed var(--gold)' : 'none',
               borderRadius: 8,
               background: 'transparent',
-              cursor: editable ? 'pointer' : 'default',
+              cursor: editable ? (dragging ? 'grabbing' : lifted ? 'grab' : 'pointer') : 'default',
+              // A lifted plant draws over the beds around it, so the thing you
+              // are holding is never behind the thing you are dragging it past.
+              zIndex: lifted ? 3 : undefined,
             }}
           >
             <PlantArt id={flora.id} height={h} />
           </Tag>
         )
       })}
+
+      {/* The ✕ on the lifted plant, drawn AFTER the targets below it for the
+          reason the rooms' badge is the scene's last layer: a target ring over
+          the ✕ turns "take this out" into "move it one plot left". */}
 
       {/* Where a lifted plant can go. An occupied plot trades places rather
           than overwriting, so no tap can lose a plant. */}
@@ -348,8 +412,7 @@ export function ChurchFlora({
           aria-label={`Move here: ${plot.label}`}
           style={{
             position: 'absolute',
-            left: `${plot.x}%`,
-            bottom: `${plot.b}%`,
+            ...plotStyle(plantings[plot.id], plot),
             width: 30,
             height: 30,
             marginBottom: -6,
@@ -370,8 +433,25 @@ export function ChurchFlora({
           {plantings[plot.id] ? '⇄' : '+'}
         </button>
       ))}
+
+      {editable && onRemove && picked && pickedPlot && pickedFlora && !drag.live && (
+        <SceneRemoveButton
+          {...plantingAt(plantings[picked], pickedPlot)}
+          height={plotHeight(plantingAt(plantings[picked], pickedPlot).b) * pickedFlora.scale}
+          label={`Take the ${pickedFlora.name} out of the yard`}
+          onRemove={() => onRemove(picked)}
+        />
+      )}
     </div>
   )
+}
+
+/** A target ring stands where its plot's plant does, so "move here" points at
+ *  the place the plant would actually go rather than at the row it is filed
+ *  under. */
+function plotStyle(value: string | undefined, plot: PlotDef): { left: string; bottom: string } {
+  const at = plantingAt(value, plot)
+  return { left: `${at.x}%`, bottom: `${at.b}%` }
 }
 
 /** One plant on its own, for the picker rows and the ladder. */

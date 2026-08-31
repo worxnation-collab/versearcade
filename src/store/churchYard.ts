@@ -2,7 +2,14 @@ import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from './auth'
 import { useSeason } from './season'
-import { floraUnlocked, unlockedFlora, type FloraDef, type Plantings } from '@/features/church/yard'
+import {
+  floraUnlocked,
+  packPlanting,
+  plantingId,
+  unlockedFlora,
+  type FloraDef,
+  type Plantings,
+} from '@/features/church/yard'
 
 // The churchyard: what you've planted in front of your church, and what a
 // church's yard looks like to a visitor.
@@ -54,6 +61,12 @@ interface YardState {
    * planMove follows, for the same reason.
    */
   move: (from: string, to: string) => Promise<PlantResult>
+  /**
+   * Stand the plant in `plot` at a point on the lawn, clamped into YARD_BAND.
+   * One row moves — the plot stays the row key and only the value changes —
+   * which is why this is not `move`.
+   */
+  moveTo: (plot: string, x: number, b: number) => Promise<PlantResult>
   /** What I've earned. */
   unlocked: () => FloraDef[]
   /** Load a church's yard for its page; clears when the sheet closes. */
@@ -87,7 +100,9 @@ export const useChurchYard = create<YardState>((set, get) => ({
     // the one that decides, this is so a locked row can't be tapped into a
     // failed round trip. Keep the thresholds in features/church/yard.ts and the
     // SQL in step.
-    if (floraId && !floraUnlocked(floraId, get().given)) return { ok: false, reason: 'locked' }
+    // Against the plant's ID: `plant()` is called with a bare id from the
+    // picker, but a re-plant of something already positioned carries a suffix.
+    if (floraId && !floraUnlocked(plantingId(floraId), get().given)) return { ok: false, reason: 'locked' }
 
     const next = { ...get().plantings }
     if (floraId) next[plot] = floraId
@@ -115,9 +130,13 @@ export const useChurchYard = create<YardState>((set, get) => ({
     if (!moving) return { ok: true }
     if (!isOnline()) return { ok: false, reason: 'offline' }
 
+    // Both plants DROP any free position they carried: the tap said "stand on
+    // that plot", and keeping the old coordinates would move the row while
+    // leaving the plant drawn where it was. Same rule as planMoveOn in the
+    // rooms, which drops x/y on an anchor-to-anchor move for the same reason.
     const next = { ...cur }
-    next[to] = moving
-    if (cur[to]) next[from] = cur[to]
+    next[to] = plantingId(moving)
+    if (cur[to]) next[from] = plantingId(cur[to])
     else delete next[from]
     set({ plantings: next })
 
@@ -131,6 +150,29 @@ export const useChurchYard = create<YardState>((set, get) => ({
       await get().load()
       return { ok: false, reason: 'failed' }
     }
+    return { ok: true }
+  },
+
+  async moveTo(plot, x, b) {
+    const value = get().plantings[plot]
+    const id = plantingId(value)
+    if (!id) return { ok: true }
+    if (!isOnline()) return { ok: false, reason: 'offline' }
+
+    const next = { ...get().plantings, [plot]: packPlanting(id, { x, b }) }
+    set({ plantings: next })
+
+    const { error } = await supabase!.rpc('set_church_yard_placement', {
+      p_plot: plot,
+      p_flora: next[plot],
+    })
+    if (error) {
+      // Put it back: an optimistic garden that lies is worse than a slow one.
+      await get().load()
+      return { ok: false, reason: 'failed' }
+    }
+    // No season verb: this is arranging what is already planted, and
+    // `flora_planted` is a quest about giving enough to plant something.
     return { ok: true }
   },
 

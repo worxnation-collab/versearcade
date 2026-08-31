@@ -1,7 +1,10 @@
-// The ✕ that takes the piece you are holding back out of the room.
+// The ✕ that takes the piece you are holding back out of the world.
 //
-// One copy, for both little worlds you can furnish — the keep's hall and the
-// Upper Room — like every other thing those two scenes share. It is drawn on
+// One copy, for every world you can arrange — the keep's hall, the Upper Room
+// and the churchyard — like every other thing those scenes share. It comes in
+// two bodies because the scenes do: an SVG <g> for the two rooms, drawn in
+// their viewBox, and an HTML button for the yard, which is absolutely
+// positioned over a photograph. Same size, same colours, same rules. It is drawn on
 // the selection ring rather than on the shelf tile below, because "get this
 // out of here" is a thought you have while looking at the room: the shelf's ✕
 // still exists and still clears every copy, but it makes you find the piece
@@ -64,5 +67,65 @@ export function SceneRemoveBadge({
         strokeLinecap="round"
       />
     </g>
+  )
+}
+
+
+/**
+ * The same ✕, for a scene drawn in HTML rather than in a viewBox.
+ *
+ * The churchyard positions everything in percent (`left: x%`, `bottom: b%`) and
+ * has no coordinate space of its own to draw into, so the badge is a button
+ * offset from the piece's own point in pixels: up and to the right, clear of
+ * the art, which for a plant is drawn upward from where it meets the grass.
+ */
+export function SceneRemoveButton({
+  x,
+  b,
+  height,
+  label,
+  onRemove,
+}: {
+  /** The piece's point in the scene, in percent. */
+  x: number
+  b: number
+  /** How tall the piece is drawn, so the ✕ clears its head rather than its feet. */
+  height: number
+  label: string
+  onRemove: () => void
+}) {
+  return (
+    <button
+      aria-label={label}
+      // The wrapper this sits in starts a drag on pointerdown and toggles the
+      // selection on click. Reaching for the ✕ must do neither.
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation()
+        onRemove()
+      }}
+      style={{
+        position: 'absolute',
+        left: `${x}%`,
+        bottom: `${b}%`,
+        // Out of the plant and up its side, from the ground point it stands on.
+        transform: `translate(6px, -${Math.round(height) + 4}px)`,
+        width: 22,
+        height: 22,
+        padding: 0,
+        borderRadius: '50%',
+        border: '1.5px solid var(--gold)',
+        background: 'rgba(10,5,26,0.92)',
+        color: 'var(--gold)',
+        fontSize: 12,
+        fontWeight: 800,
+        lineHeight: 1,
+        cursor: 'pointer',
+        pointerEvents: 'auto',
+        zIndex: 4,
+      }}
+    >
+      ✕
+    </button>
   )
 }

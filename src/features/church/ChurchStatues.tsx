@@ -1,5 +1,20 @@
 import { GENERATED_ART } from '@/data/generatedArt'
-import { PLINTHS, STATUES, plinthHeight, statueById, type Statues } from './rivalry'
+import { SceneRemoveButton } from '@/components/SceneRemoveBadge'
+import { percentSpace, useSceneDrag } from '@/lib/sceneDrag'
+import {
+  PLINTHS,
+  PLINTH_BAND,
+  STATUES,
+  plinthById,
+  plinthHeight,
+  raisedId,
+  statueAt,
+  statueById,
+  type Statues,
+} from './rivalry'
+
+/** The yard's coordinate system for monuments — fixed, so it is built once. */
+const PLINTH_SPACE = percentSpace(PLINTH_BAND)
 
 // The churchyard's monuments — the prize a weekly rivalry win buys.
 //
@@ -231,6 +246,9 @@ export function StatueIcon({ id, size = 40 }: { id: string; size?: number }) {
       <img
         src={raster}
         alt=""
+        // See the note in ChurchFlora's PlantArt: a draggable <img> cancels the
+        // pointer stream and a monument can never be dragged anywhere.
+        draggable={false}
         width={size * (40 / 48)}
         height={size}
         style={{ display: 'block', objectFit: 'contain' }}
@@ -249,45 +267,118 @@ export function StatueIcon({ id, size = 40 }: { id: string; size?: number }) {
 /**
  * The monuments standing in a churchyard.
  *
- * Read-only everywhere, deliberately. A statue is the CONGREGATION'S — unlike a
- * flower bed, which is the giver's — so there is no tap-to-move and no editing
- * prop: it is raised from the picker on your own church tab and stands where
- * the yard puts it. Two members dragging the same trophy around each other's
- * screens is a fight over a shared object that the churchyard's per-player
- * plantings deliberately avoid having.
+ * Read-only on every surface but ONE: your own church tab, which passes
+ * `editing` so a member can drag a monument across the lawn and take it down
+ * with its ✕. Everywhere else — a visited church's page, a leaderboard row's
+ * sheet — there is no editing prop at all, so a stranger's yard is inert
+ * because the layer was never handed the ability to change, not because a
+ * handler decided to say no. Same construction as a visited Upper Room.
+ *
+ * A STATUE IS THE CONGREGATION'S, AND MOVING ONE IS SHARED THE WAY RAISING ONE
+ * ALREADY IS. This layer used to refuse editing outright, on the grounds that
+ * two members dragging the same trophy around each other's screens is a fight
+ * over a shared object. What that argument missed is that any member may
+ * already swap or take down any statue (0075, and it is deliberate: a monument
+ * carries no name and belongs to the church, not to whoever won the week), so
+ * where it stands is a smaller version of a decision the congregation already
+ * shares. Nothing new is exposed: no name, no count, no who-moved-it. `set_by`
+ * stays forensics that never leaves the server.
  */
-export function ChurchStatues({ statues }: { statues: Statues }) {
+export function ChurchStatues({
+  statues,
+  editing,
+}: {
+  statues: Statues
+  editing?: {
+    picked: string | null
+    onPick: (plinth: string) => void
+    /** Where a dragged monument was let go, in percent. */
+    onDropAt: (x: number, b: number) => void
+    /** The ✕ on the lifted monument. */
+    onRemove: (plinth: string) => void
+  }
+}) {
+  const picked = editing?.picked ?? null
+  const drag = useSceneDrag({
+    space: PLINTH_SPACE,
+    picked,
+    enabled: !!editing,
+    onCommit: (_plinth, x, b) => editing?.onDropAt(x, b),
+  })
+
   const standing = PLINTHS
     // Back to front, so a nearer monument draws over a further one — the same
     // depth sort the crowd and the flora use.
     .slice()
     .sort((a, b) => b.b - a.b)
     .filter((p) => {
-      const id = statues[p.id]
+      const id = raisedId(statues[p.id])
       return !!id && (!!CARVINGS[id] || !!GENERATED_ART[id])
     })
 
+  const pickedPlinth = picked ? plinthById(picked) : undefined
+  const pickedStatue = picked ? statueById(statues[picked]) : undefined
+
   return (
-    <>
+    // The layer is a real element rather than a fragment because the drag needs
+    // one: it is what a position is measured against, and — since a touchmove
+    // is only cancellable on an ANCESTOR of the element the touch started on —
+    // it has to be the monuments' parent, not a sibling overlay. It draws
+    // nothing and takes no pointer events of its own.
+    <div ref={drag.sceneRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
       {standing.map((plinth) => {
-        const statue = statueById(statues[plinth.id])
-        const h = plinthHeight(plinth.b) * (statue?.scale ?? 1)
+        const value = statues[plinth.id]
+        const lifted = picked === plinth.id
+        const dragging = !!drag.live && drag.live.anchor === plinth.id
+        const at = dragging ? { x: drag.live!.x, b: drag.live!.y } : statueAt(value, plinth)
+        // Sized by where it STANDS: a monument dragged to the front of the yard
+        // is nearer the viewer, so it has to be bigger.
+        const h = plinthHeight(at.b) * (statueById(value)?.scale ?? 1)
+        const Tag = editing ? 'button' : 'div'
         return (
-          <div
+          <Tag
             key={plinth.id}
+            {...(editing
+              ? {
+                  onClick: () => {
+                    // The click a finished drag fires is not a tap.
+                    if (drag.consumeClick()) return
+                    editing.onPick(plinth.id)
+                  },
+                  'aria-label': `${statueById(value)?.name ?? 'Monument'}, ${plinth.label}`,
+                  ...drag.bind(plinth.id, 'yard', at.x, at.b),
+                }
+              : {})}
             style={{
               position: 'absolute',
-              left: `${plinth.x}%`,
-              bottom: `${plinth.b}%`,
-              transform: 'translateX(-50%)',
-              pointerEvents: 'none',
+              left: `${at.x}%`,
+              bottom: `${at.b}%`,
+              lineHeight: 0,
+              padding: 0,
+              background: 'transparent',
+              border: lifted ? '1px dashed var(--gold)' : 'none',
+              borderRadius: 8,
+              transform: `translateX(-50%)${lifted && !dragging ? ' translateY(-6px) scale(1.06)' : ''}`,
+              transition: dragging ? 'none' : 'transform 160ms ease-out',
+              pointerEvents: editing ? 'auto' : 'none',
+              cursor: editing ? (dragging ? 'grabbing' : lifted ? 'grab' : 'pointer') : 'default',
+              zIndex: lifted ? 3 : undefined,
             }}
           >
-            <StatueIcon id={statues[plinth.id]} size={h} />
-          </div>
+            <StatueIcon id={raisedId(value)} size={h} />
+          </Tag>
         )
       })}
-    </>
+
+      {editing && picked && pickedPlinth && pickedStatue && !drag.live && (
+        <SceneRemoveButton
+          {...statueAt(statues[picked], pickedPlinth)}
+          height={plinthHeight(statueAt(statues[picked], pickedPlinth).b) * pickedStatue.scale}
+          label={`Take down the ${pickedStatue.name}`}
+          onRemove={() => editing.onRemove(picked)}
+        />
+      )}
+    </div>
   )
 }
 

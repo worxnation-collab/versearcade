@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { SceneRemoveBadge } from '@/components/SceneRemoveBadge'
 import { ANCHORS, KEEP_SURFACE, anchorById, decorName, unpackDecor } from '@/data/keep'
-import { useSceneDrag } from '@/lib/sceneDrag'
+import { svgSpace, useSceneDrag } from '@/lib/sceneDrag'
 import type { Placements } from '@/store/keep'
 import type { KeepMember } from '@/store/keep'
 import { KeepHall, DecorProp } from './KeepArt'
@@ -21,6 +21,9 @@ import { KeepLife } from './KeepLife'
 // Everything interactive is optional. With no `editing` prop this is a picture:
 // nothing is tappable, no targets are drawn, and it costs nothing to put on a
 // screen that only wants to show the place.
+/** The scene's coordinate system — fixed, so it is built once. */
+const SPACE = svgSpace(KEEP_SURFACE)
+
 export function KeepScene({
   color,
   level,
@@ -75,7 +78,7 @@ export function KeepScene({
   // is what finally makes dragging safe inside this scrolling sheet — see
   // lib/sceneDrag.ts. Tapping still does everything it did.
   const drag = useSceneDrag({
-    surface: KEEP_SURFACE,
+    space: SPACE,
     picked,
     enabled: !!editing?.onDropAt,
     onCommit: (_anchor, x, y) => editing?.onDropAt?.(x, y),

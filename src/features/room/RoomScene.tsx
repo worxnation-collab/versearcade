@@ -3,7 +3,7 @@ import { CrowdLife, type CrowdMember, type CrowdWaypoint } from '@/components/Cr
 import { SceneRemoveBadge } from '@/components/SceneRemoveBadge'
 import { ROOM_ANCHORS, ROOM_SURFACE, roomAnchorById, furnishingName } from '@/data/room'
 import { unpackDecor } from '@/data/placement'
-import { useSceneDrag } from '@/lib/sceneDrag'
+import { svgSpace, useSceneDrag } from '@/lib/sceneDrag'
 import type { RoomPlacements } from '@/store/room'
 import { RoomChamber, FurnishingProp } from './RoomArt'
 import { ArcadeCabinet } from '@/features/arcade/ArcadeCabinet'
@@ -55,6 +55,9 @@ const WAYPOINTS: CrowdWaypoint[] = [
  * rather than as SVG, so no figure has ever been serialised onto the card.
  */
 const sizeFor = (b: number) => Math.round(146 - ((Math.min(Math.max(b, 5), 17) - 5) / 12) * 46)
+
+/** The scene's coordinate system — fixed, so it is built once. */
+const SPACE = svgSpace(ROOM_SURFACE)
 
 export function RoomScene({
   tier,
@@ -122,7 +125,7 @@ export function RoomScene({
   // is what keeps the gesture from fighting the page's own scroll — see
   // lib/sceneDrag.ts. Tapping still does everything it did.
   const drag = useSceneDrag({
-    surface: ROOM_SURFACE,
+    space: SPACE,
     picked,
     enabled: !!editing?.onDropAt,
     onCommit: (_anchor, x, y) => editing?.onDropAt?.(x, y),

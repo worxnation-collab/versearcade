@@ -1,12 +1,25 @@
 import { useCallback, useRef, useState } from 'react'
-import { clampToBand, type Surface } from '@/data/placement'
+import {
+  clampToBand,
+  clampToPercentBand,
+  type PercentBand,
+  type Surface,
+} from '@/data/placement'
 
 // Dragging a placed piece around a little world — the one copy.
 //
-// The keep's hall and the Upper Room draw different art over the same rules
-// (data/placement.ts), and the pointer mechanics of moving something inside a
-// 560x300 viewBox are exactly the same in both. So they live here once and both
-// scenes bind them, the same reason planPlacementOn is not written twice.
+// The keep's hall, the Upper Room and the churchyard draw different art over
+// the same rules (data/placement.ts), and the pointer mechanics of moving
+// something around inside a scene are the same in all three. So they live here
+// once and every scene binds them, the same reason planPlacementOn is not
+// written twice.
+//
+// The three do not share a coordinate system: the two rooms are 560x300
+// viewBoxes and the yard is HTML positioned in percent, with its second axis
+// running UP from the bottom. That is the whole of the difference, so it is the
+// whole of what a caller passes in — `space` converts a client-pixel delta into
+// the scene's own units and clamps the result. `svgSpace()` and `percentSpace()`
+// below are the two that exist; nothing else in the hook knows or cares.
 //
 // WHY THIS IS SAFE NEXT TO THE SCROLL, which is what kept dragging out of these
 // rooms until now: a drag can only start on the piece that is ALREADY PICKED
@@ -23,7 +36,10 @@ import { clampToBand, type Surface } from '@/data/placement'
 // `onCommit` fires once, on release, through the same planner the tap path
 // uses — so a dragged piece and a tapped one land under identical rules.
 
-/** Where a piece is standing right now, mid-drag, in scene units. */
+/** The element a scene is measured against: an <svg> or a plain <div>. */
+export type SceneRoot = SVGSVGElement | HTMLElement
+
+/** Where a piece is standing right now, mid-drag, in the scene's own units. */
 export interface ScenePoint {
   anchor: string
   x: number
@@ -51,10 +67,50 @@ interface DragRef {
   moved: boolean
 }
 
+/**
+ * A scene's coordinate system: how a client-pixel delta becomes scene units,
+ * and where a piece of a given kind is allowed to end up.
+ */
+export interface SceneSpace {
+  /** Scene units per client pixel, from the scene's own rect. `sy` is negative
+   *  for a bottom-up axis, which is what the churchyard uses. */
+  project: (rect: DOMRect) => { sx: number; sy: number }
+  /** Keep the point inside the band belonging to this kind of piece. */
+  clamp: (kind: string, x: number, y: number) => { x: number; y: number }
+}
+
+/** The two rooms: 560x300 scene units, clamped into a mount's band. */
+export function svgSpace(surface: Surface, width = 560, height = 300): SceneSpace {
+  return {
+    project: (r) => ({ sx: width / r.width, sy: height / r.height }),
+    clamp: (mount, x, y) => {
+      const p = clampToBand(surface, mount, x, y)
+      // A mount with no band of its own still can't leave the frame.
+      return { x: Math.min(width, Math.max(0, p.x)), y: Math.min(height, Math.max(0, p.y)) }
+    },
+  }
+}
+
+/**
+ * The churchyard: percent across and percent UP from the bottom, so `sy` is
+ * negative — dragging a plant down the screen brings it toward the viewer,
+ * which is a smaller `b`, not a bigger one. Every kind shares one band, since
+ * the yard is one lawn rather than six mounts.
+ */
+export function percentSpace(band: PercentBand): SceneSpace {
+  return {
+    project: (r) => ({ sx: 100 / r.width, sy: -100 / r.height }),
+    clamp: (_kind, x, b) => {
+      const p = clampToPercentBand(band, x, b)
+      return { x: p.x, y: p.b }
+    },
+  }
+}
+
 export interface SceneDrag {
   /** The piece being dragged and where it is, or null. */
   live: ScenePoint | null
-  /** Pointer handlers for a placed piece's <g>. */
+  /** Pointer handlers for a placed piece. */
   bind: (
     anchor: string,
     mount: string,
@@ -73,10 +129,11 @@ export interface SceneDrag {
    */
   consumeClick: () => boolean
   /**
-   * Put this on the scene's <svg>. It is what actually keeps a drag from
-   * scrolling the page on a phone — see the note on the listener below.
+   * Put this on the scene's root — the <svg> of a room, the wrapper <div> of
+   * the churchyard. It is what a drag is measured against, and what keeps one
+   * from scrolling the page on a phone (see the note on the listener below).
    */
-  sceneRef: (el: SVGSVGElement | null) => void
+  sceneRef: (el: SceneRoot | null) => void
 }
 
 /**
@@ -87,37 +144,29 @@ export interface SceneDrag {
  * so "put it where you like" still never hangs the brazier from the ceiling.
  */
 export function useSceneDrag({
-  surface,
+  space,
   picked,
   enabled,
-  width = 560,
-  height = 300,
   onCommit,
 }: {
-  surface: Surface
+  space: SceneSpace
   picked: string | null
   /** Off entirely on a surface that only shows the world (a visited room). */
   enabled: boolean
-  width?: number
-  height?: number
   onCommit: (anchor: string, x: number, y: number) => void
 }): SceneDrag {
   const [live, setLive] = useState<ScenePoint | null>(null)
+  const root = useRef<SceneRoot | null>(null)
   const drag = useRef<DragRef | null>(null)
   const at = useRef<ScenePoint | null>(null)
   const swallowClick = useRef(false)
 
   const point = useCallback(
     (d: DragRef, e: React.PointerEvent): ScenePoint => {
-      const p = clampToBand(surface, d.mount, d.x0 + (e.clientX - d.cx) * d.sx, d.y0 + (e.clientY - d.cy) * d.sy)
-      // A mount with no band of its own still can't leave the frame.
-      return {
-        anchor: d.anchor,
-        x: Math.min(width, Math.max(0, p.x)),
-        y: Math.min(height, Math.max(0, p.y)),
-      }
+      const p = space.clamp(d.mount, d.x0 + (e.clientX - d.cx) * d.sx, d.y0 + (e.clientY - d.cy) * d.sy)
+      return { anchor: d.anchor, x: p.x, y: p.y }
     },
-    [surface, width, height],
+    [space],
   )
 
   const bind = useCallback(
@@ -126,9 +175,11 @@ export function useSceneDrag({
         // Only the lifted piece drags. Everything else keeps the browser's own
         // behaviour, which on a phone means the sheet still scrolls.
         if (!enabled || picked !== anchor) return
-        const svg = (e.currentTarget as SVGGElement).ownerSVGElement
-        const r = svg?.getBoundingClientRect()
+        // Measured from the element sceneRef was put on, so an SVG viewBox and
+        // an HTML lawn are the same question.
+        const r = root.current?.getBoundingClientRect()
         if (!r?.width || !r.height) return
+        const { sx, sy } = space.project(r)
         try {
           ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
         } catch {
@@ -142,8 +193,8 @@ export function useSceneDrag({
           cy: e.clientY,
           x0: x,
           y0: y,
-          sx: width / r.width,
-          sy: height / r.height,
+          sx,
+          sy,
           moved: false,
         }
       },
@@ -183,7 +234,7 @@ export function useSceneDrag({
         setLive(null)
       },
     }),
-    [enabled, picked, width, height, point, onCommit],
+    [enabled, picked, space, point, onCommit],
   )
 
   // WHY A HAND-ROLLED, NON-PASSIVE touchmove LISTENER and not `touch-action`.
@@ -200,11 +251,12 @@ export function useSceneDrag({
   // React attaches its own touch listeners passively, which is why this one is
   // registered by hand.
   const detach = useRef<(() => void) | null>(null)
-  const sceneRef = useCallback((el: SVGSVGElement | null) => {
+  const sceneRef = useCallback((el: SceneRoot | null) => {
     detach.current?.()
     detach.current = null
+    root.current = el
     if (!el) return
-    const onTouchMove = (e: TouchEvent) => {
+    const onTouchMove = (e: Event) => {
       if (drag.current) e.preventDefault()
     }
     el.addEventListener('touchmove', onTouchMove, { passive: false })

@@ -1,9 +1,12 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
+import { unpackPercent } from '@/data/placement'
 import { useAuth } from './auth'
 import { useSeason } from './season'
 import {
+  packStatue,
   plinthsEarned,
+  raisedId,
   statueById,
   weekIndex,
   type RivalryOutcome,
@@ -76,6 +79,9 @@ interface RivalryState {
   load: () => Promise<void>
   /** Raise, change or clear (statueId null) a statue. Any member may. */
   raise: (plinth: string, statueId: string | null) => Promise<StatueResult>
+  /** Move a raised monument to a point on the lawn. Any member may, exactly as
+   *  any member may change which statue stands there. */
+  moveStatue: (plinth: string, x: number, b: number) => Promise<StatueResult>
   /** How many plinths the congregation has earned the right to fill. */
   earned: () => number
   loadPageStatues: (churchId: string | null) => Promise<void>
@@ -185,14 +191,24 @@ export const useRivalry = create<RivalryState>((set, get) => ({
       if (!statueById(statueId)) return { ok: false, reason: 'failed' }
     }
 
+    // A statue that replaces one already standing KEEPS ITS SPOT, the way a
+    // finer piece upgrades in place in the two rooms: the congregation chose
+    // where that monument stands, and swapping the figure isn't a request to
+    // put it back on its plinth.
+    const here = get().statues[plinth]
+    const pos = unpackPercent(here)
     const next = { ...get().statues }
-    if (statueId) next[plinth] = statueId
-    else delete next[plinth]
+    if (statueId) {
+      next[plinth] =
+        pos.x !== undefined && pos.b !== undefined
+          ? packStatue(statueId, { x: pos.x, b: pos.b })
+          : statueId
+    } else delete next[plinth]
     set({ statues: next })
 
     const { data, error } = await supabase!.rpc('set_church_statue', {
       p_plinth: plinth,
-      p_statue: statueId,
+      p_statue: next[plinth] ?? null,
     })
     if (error) {
       // Put it back: an optimistic yard that lies is worse than a slow one.
@@ -207,6 +223,37 @@ export const useRivalry = create<RivalryState>((set, get) => ({
     }
     // Prepacked verb. Clearing a plinth is taking a statue down, not raising one.
     if (statueId) void useSeason.getState().track('statue_raised')
+    return { ok: true }
+  },
+
+  /**
+   * Stand a monument at a point on the lawn, clamped into PLINTH_BAND. One row
+   * changes — the plinth stays the row key — and no entitlement moves: the
+   * statue is already standing, this only says where. Which is also why it
+   * skips the `statue_raised` verb.
+   */
+  async moveStatue(plinth, x, b) {
+    const id = raisedId(get().statues[plinth])
+    if (!id) return { ok: true }
+    if (!isOnline()) return { ok: false, reason: 'offline' }
+
+    const next = { ...get().statues, [plinth]: packStatue(id, { x, b }) }
+    set({ statues: next })
+
+    const { data, error } = await supabase!.rpc('set_church_statue', {
+      p_plinth: plinth,
+      p_statue: next[plinth],
+    })
+    if (error) {
+      // Put it back: an optimistic yard that lies is worse than a slow one.
+      await get().load()
+      return { ok: false, reason: 'failed' }
+    }
+    const res = data as { ok?: boolean; reason?: string } | null
+    if (res && res.ok === false) {
+      await get().load()
+      return { ok: false, reason: (res.reason as StatueResult['reason']) ?? 'failed' }
+    }
     return { ok: true }
   },
 

@@ -17,7 +17,8 @@ import { ChurchBoard, TIMEFRAME_PHRASE } from './ChurchBoard'
 import { ChurchScene } from './ChurchScene'
 import { RivalryCard } from './RivalryCard'
 import { FloraIcon } from './ChurchFlora'
-import { FLORA, PLOTS, floraById, nextFlora } from './yard'
+import { FLORA, PLOTS, floraById, nextFlora, plantingId } from './yard'
+import { statueById } from './rivalry'
 import { ChurchPicker } from './ChurchPicker'
 import { CHURCH_TIERS, churchLevelInfo, nextTier, tierForLevel, tierIndexForLevel } from './levels'
 import type { Church } from '@/types'
@@ -108,6 +109,10 @@ function ChurchHome({ church }: { church: Church }) {
   const congregation = useChurch((s) => s.congregation)
   const loadCongregation = useChurch((s) => s.loadCongregation)
   const [picked, setPicked] = useState<string | null>(null)
+  // One thing is held at a time across BOTH layers: a lifted plant and a lifted
+  // statue at once would put two ✕s on one lawn and leave the status line
+  // unable to say what you are holding.
+  const [statuePicked, setStatuePicked] = useState<string | null>(null)
   const [yardNote, setYardNote] = useState<string | null>(null)
 
   useEffect(() => {
@@ -154,6 +159,7 @@ function ChurchHome({ church }: { church: Church }) {
 
   const pick = (plot: string) => {
     juice.tap()
+    setStatuePicked(null)
     setPicked((cur) => (cur === plot ? null : plot))
   }
 
@@ -169,6 +175,58 @@ function ChurchHome({ church }: { church: Church }) {
     }
     juice.select()
     if (had) setYardNote('Swapped.')
+  }
+
+  // Dragged and let go: stand it right there, clamped into the lawn by the
+  // store. The plant stays lifted so a nudge can follow a nudge.
+  const dropAt = async (x: number, b: number) => {
+    if (!picked) return
+    juice.select()
+    const res = await useChurchYard.getState().moveTo(picked, x, b)
+    if (!res.ok) setYardNote('That didn’t save. Try again in a moment.')
+  }
+
+  // The ✕ on a lifted plant. Nothing is lost: the ladder is lifetime given, so
+  // the plant is back in the picker at once — and the row is per-player, so
+  // this only ever takes out your own.
+  const pullUp = async (plot: string) => {
+    const name = floraById(plantings[plot])?.name
+    setPicked(null)
+    juice.select()
+    const res = await useChurchYard.getState().plant(plot, null)
+    if (!res.ok) {
+      setYardNote('That didn’t save. Try again in a moment.')
+      return
+    }
+    setYardNote(name ? `Took the ${name} out — it’s back in the landscaping.` : null)
+  }
+
+  // The monuments. Shared with the congregation the way choosing one already
+  // is (see ChurchStatues), so the gestures are the same and the note says
+  // plainly that the yard is everybody's.
+  const pickStatue = (plinth: string) => {
+    juice.tap()
+    setPicked(null)
+    setStatuePicked((cur) => (cur === plinth ? null : plinth))
+  }
+
+  const dragStatue = async (x: number, b: number) => {
+    if (!statuePicked) return
+    juice.select()
+    const res = await useRivalry.getState().moveStatue(statuePicked, x, b)
+    if (!res.ok) setYardNote('That didn’t save. Try again in a moment.')
+  }
+
+  const takeDownStatue = async (plinth: string) => {
+    const name = statueById(statues[plinth])?.name
+    setStatuePicked(null)
+    juice.select()
+    const res = await useRivalry.getState().raise(plinth, null)
+    if (!res.ok) {
+      setYardNote('That didn’t save. Try again in a moment.')
+      return
+    }
+    setYardNote(name ? `${name} came down — the plinth is free.` : null)
   }
 
   const info = useMemo(() => churchLevelInfo(church.xp), [church.xp])
@@ -239,15 +297,29 @@ function ChurchHome({ church }: { church: Church }) {
           skin={church.skin}
           flora={plantings}
           statues={statues}
-          floraEditing={{ picked, onPick: pick, onDrop: drop }}
+          floraEditing={{
+            picked,
+            onPick: pick,
+            onDrop: (plot) => void drop(plot),
+            onDropAt: (x, b) => void dropAt(x, b),
+            onRemove: (plot) => void pullUp(plot),
+          }}
+          statueEditing={{
+            picked: statuePicked,
+            onPick: pickStatue,
+            onDropAt: (x, b) => void dragStatue(x, b),
+            onRemove: (plinth) => void takeDownStatue(plinth),
+          }}
           emptyNote={false}
           onArcade={() => { juice.select(); navigate('/arcade') }}
         />
-        {(picked || yardNote) && (
+        {(picked || statuePicked || yardNote) && (
           <p className="center" style={{ margin: '8px 0 0', fontSize: 12.5, fontWeight: 700, color: 'var(--gold)' }}>
             {picked
-              ? `Carrying the ${floraById(plantings[picked])?.name} — tap a spot to plant it there.`
-              : yardNote}
+              ? `Holding the ${floraById(plantings[picked])?.name} — drag it anywhere on the lawn, or ✕ to take it out.`
+              : statuePicked
+                ? `Holding the ${statueById(statues[statuePicked])?.name} — drag it anywhere on the lawn. The whole congregation sees where it stands.`
+                : yardNote}
           </p>
         )}
         <h2 style={{ fontSize: 22, marginTop: 8, overflowWrap: 'anywhere' }}>{church.name}</h2>
@@ -515,7 +587,8 @@ function Landscaping({ church, onPlanted }: { church: Church; onPlanted: () => v
   const pull = async (floraId: string) => {
     onPlanted()
     juice.select()
-    const plot = PLOTS.find((p) => plantings[p.id] === floraId)
+    // By ID: a planting that has been dragged carries its position in the value.
+    const plot = PLOTS.find((p) => plantingId(plantings[p.id]) === floraId)
     if (!plot) return
     const res = await plant(plot.id, null)
     if (!res.ok) setFlash('That didn’t save. Try again in a moment.')
@@ -527,7 +600,8 @@ function Landscaping({ church, onPlanted }: { church: Church; onPlanted: () => v
       <p className="dim" style={{ margin: '6px 0 10px', fontSize: 13.5, lineHeight: 1.5 }}>
         Giving opens up the landscaping out front — it's the yard at the top of this tab. Everyone
         who gives plants their own, and the yard on {church.name}'s page is all of it together;
-        nobody's beds are labelled. Tap anything you've planted up there to move it.
+        nobody's beds are labelled. Tap anything up there to pick it up, then drag it wherever
+        you want it — or tap its ✕ to take it out.
       </p>
 
       <p className="faint" style={{ fontSize: 12, margin: '0 0 4px', lineHeight: 1.5 }}>
@@ -558,8 +632,8 @@ function Landscaping({ church, onPlanted }: { church: Church; onPlanted: () => v
           ) : (
             <>
               <p className="faint" style={{ fontSize: 11.5, margin: '0 0 10px', lineHeight: 1.5 }}>
-                Tap a plant to put it in the yard above, and tap it there to move it. Everything
-                arrives by giving — nothing here is for sale.
+                Tap a plant to put it in the yard above, then tap it there and drag it wherever
+                you like. Everything arrives by giving — nothing here is for sale.
               </p>
               {/* Pictures, not a list of names. The ladder WAS the visual and
                   the per-plot chip rows were a second, wordier copy of it, so
@@ -567,7 +641,7 @@ function Landscaping({ church, onPlanted }: { church: Church; onPlanted: () => v
               <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))' }}>
                 {FLORA.map((f) => {
                   const open = given >= f.given
-                  const planted = Object.values(plantings).includes(f.id)
+                  const planted = Object.values(plantings).some((v) => plantingId(v) === f.id)
                   return (
                     <div
                       key={f.id}

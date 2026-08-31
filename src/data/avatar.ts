@@ -520,6 +520,31 @@ export function skinArtUrl(skinId?: string | null): string | undefined {
   return catalogArtUrl(skinId) ?? RASTER_SKINS[skinId]
 }
 
+/**
+ * Skins that LAYER onto the player's own character instead of replacing it.
+ *
+ * Every other skin swaps the whole figure out — equip Moses and you are Moses,
+ * items and all. "Take Up Your Cross" was never that: the cross is drawn behind
+ * YOUR character, in your robe and your skin tone, because the equipped look is
+ * "my character carrying a cross" rather than a stranger carrying one. Putting
+ * a full-length render behind that id would quietly delete the figure, tone and
+ * hair the player built at the front door, which is the whole point of it.
+ *
+ * So an overlay skin deliberately does NOT resolve through skinArtUrl. The base
+ * look underneath stays whatever it would have been with nothing equipped (the
+ * starter render, or the drawn pilgrim), and Character draws the overlay behind
+ * it — preferring a generated prop, falling back to the drawn paths, the same
+ * bargain every other render makes.
+ *
+ * Adding one here is half the job: Character has to know how to draw it.
+ */
+const OVERLAY_SKINS = new Set(['cross'])
+
+/** True when this skin layers onto the player's character rather than replacing it. */
+export function isOverlaySkin(skinId?: string | null): boolean {
+  return !!skinId && OVERLAY_SKINS.has(skinId)
+}
+
 // ── Bundles ───────────────────────────────────────────────────────────────────
 // A bundle is one shop listing, one price, one checkout — all or nothing. The
 // shop shows the BUNDLE tile (never its skins) until it's owned, and the buy

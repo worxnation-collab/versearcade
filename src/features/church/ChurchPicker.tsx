@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/Button'
 import { supabase } from '@/lib/supabase'
@@ -27,6 +27,14 @@ import {
 // stuck in.
 
 const SEARCH_RADIUS_MILES = 30
+/**
+ * How many churches lead the screen as suggestions.
+ *
+ * Three, because the point of the strip is that it can be read without
+ * scrolling or typing — a "suggestion" you have to scan twenty of is a search
+ * result with a nicer heading. Everything else is still right below it.
+ */
+const SUGGEST_COUNT = 3
 /** Our own churches come from Postgres; if that's slow, we carry on without it. */
 const KNOWN_TIMEOUT_MS = 10000
 
@@ -164,6 +172,14 @@ export function ChurchPicker() {
       .slice(0, 40)
   }, [places, query])
 
+  // Before anyone types, the screen leads with a short list rather than a long
+  // one: the top few are what we'd pick for them, the remainder is the honest
+  // "everything within 30 miles" list underneath. The moment a query exists the
+  // split disappears — someone typing a name wants matches, not our opinion.
+  const browsing = !query.trim()
+  const suggested = browsing ? matches.slice(0, SUGGEST_COUNT) : []
+  const rest = browsing ? matches.slice(SUGGEST_COUNT) : matches
+
   // Nothing nearby matched what they typed — go back out and search by name.
   // Works without coordinates too, just unbounded by distance.
   const searchWider = useCallback(async () => {
@@ -214,10 +230,13 @@ export function ChurchPicker() {
   return (
     <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'minmax(0, 1fr)' }}>
       <div className="card">
-        <b style={{ fontFamily: 'var(--font-display)', fontSize: 17 }}>Find your church</b>
+        <b style={{ fontFamily: 'var(--font-display)', fontSize: 17 }}>
+          {phase === 'ready' ? 'Churches near you' : 'Find your church'}
+        </b>
         <p className="dim" style={{ margin: '6px 0 0', fontSize: 14, lineHeight: 1.5 }}>
-          Share your location once and we'll look up the churches around you. Type the name to
-          narrow it down, then tap yours.
+          {phase === 'ready'
+            ? "Tap yours and the points you earn pool with everyone else who goes there. Not sure it's listed? Search by name, or add it by hand at the bottom."
+            : "Share your location once and we'll suggest the churches around you. Type the name to narrow it down, then tap yours."}
         </p>
         <p className="faint" style={{ margin: '8px 0 0', fontSize: 12 }}>
           Your location is only used to search — we never save it. Only the church you pick is stored.
@@ -266,9 +285,25 @@ export function ChurchPicker() {
             </p>
           )}
 
-          {matches.length > 0 && (
+          {suggested.length > 0 && (
             <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
-              {matches.map((p) => (
+              <SectionLabel>Suggested for you</SectionLabel>
+              {suggested.map((p) => (
+                <PlaceRow
+                  key={p.placeKey}
+                  place={p}
+                  featured
+                  busy={joining === p.placeKey}
+                  onPick={() => pick(p)}
+                />
+              ))}
+            </div>
+          )}
+
+          {rest.length > 0 && (
+            <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
+              {browsing && <SectionLabel>More churches nearby</SectionLabel>}
+              {rest.map((p) => (
                 <PlaceRow key={p.placeKey} place={p} busy={joining === p.placeKey} onPick={() => pick(p)} />
               ))}
             </div>
@@ -296,9 +331,7 @@ export function ChurchPicker() {
 
           {wide.length > 0 && (
             <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
-              <p className="faint" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>
-                {coords ? 'Further out' : 'Name matches'}
-              </p>
+              <SectionLabel>{coords ? 'Further out' : 'Name matches'}</SectionLabel>
               {wide.map((p) => (
                 <PlaceRow key={p.placeKey} place={p} busy={joining === p.placeKey} onPick={() => pick(p)} />
               ))}
@@ -349,7 +382,29 @@ export function ChurchPicker() {
   )
 }
 
-function PlaceRow({ place, busy, onPick }: { place: ChurchPlace; busy: boolean; onPick: () => void }) {
+function SectionLabel({ children }: { children: ReactNode }) {
+  return (
+    <p
+      className="faint"
+      style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}
+    >
+      {children}
+    </p>
+  )
+}
+
+function PlaceRow({
+  place,
+  busy,
+  featured,
+  onPick,
+}: {
+  place: ChurchPlace
+  busy: boolean
+  /** A suggestion rather than a row in the long list: bigger, with more air. */
+  featured?: boolean
+  onPick: () => void
+}) {
   const where = [place.address, place.city, place.region].filter(Boolean).join(', ')
   return (
     <motion.button
@@ -362,14 +417,14 @@ function PlaceRow({ place, busy, onPick }: { place: ChurchPlace; busy: boolean; 
         display: 'flex',
         alignItems: 'center',
         gap: 12,
-        padding: '12px 14px',
+        padding: featured ? '14px 14px' : '12px 14px',
         minWidth: 0,
         textAlign: 'left',
         opacity: busy ? 0.6 : 1,
         borderColor: place.churchId ? 'var(--gold)' : 'var(--stroke)',
       }}
     >
-      <span style={{ fontSize: 24, flexShrink: 0 }}>⛪</span>
+      <span style={{ fontSize: featured ? 28 : 24, flexShrink: 0 }}>⛪</span>
       <span style={{ minWidth: 0, flex: 1 }}>
         <span style={{ display: 'block', fontWeight: 800, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {place.name}

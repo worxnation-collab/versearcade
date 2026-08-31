@@ -5,7 +5,6 @@ import { svgSpace, useSceneDrag } from '@/lib/sceneDrag'
 import type { Placements } from '@/store/keep'
 import type { KeepMember } from '@/store/keep'
 import { KeepHall, DecorProp } from './KeepArt'
-import { ArcadeCabinet } from '@/features/arcade/ArcadeCabinet'
 import { KeepLife } from './KeepLife'
 
 // The hall as a place you can look at — the painted room at its tier, whatever
@@ -31,7 +30,6 @@ export function KeepScene({
   members,
   editing,
   onOpen,
-  onArcade,
 }: {
   /** The faction colour the gonfalon and barding take. */
   color: string
@@ -60,15 +58,6 @@ export function KeepScene({
   }
   /** Makes the whole scene one big button. Only for the non-editing surfaces. */
   onOpen?: () => void
-  /**
-   * Tapping the arcade machine in the corner of the hall.
-   *
-   * Present only on the surfaces showing YOUR OWN faction's hall. Absent
-   * elsewhere the cabinet is not drawn at all — a stranger's room does not grow
-   * an arcade machine because you own one, and the postcard rasteriser has no
-   * business serialising a button.
-   */
-  onArcade?: () => void
 }) {
   const picked = editing?.picked ?? null
   const pickedAnchor = picked ? anchorById(picked) : undefined
@@ -117,11 +106,6 @@ export function KeepScene({
         }}
       >
         <KeepHall color={color} level={level} />
-
-        {/* Front-left, on the near floor. It has to sit BELOW the hearth
-            rather than against the left wall: standing it up there put a games
-            machine over the fire, which looks like a bug rather than a joke. */}
-        {onArcade && <ArcadeCabinet x={58} y={297} scale={0.8} screen="attract" onOpen={onArcade} />}
 
         {ANCHORS.map((a) => {
           const value = placements[a.id]

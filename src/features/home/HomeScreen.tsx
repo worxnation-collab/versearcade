@@ -186,9 +186,12 @@ export default function HomeScreen() {
                 textAlign: 'left',
               }}
             >
-              {/* The same cabinet standing in the hall, the churchyard and your
-                  Upper Room — one drawing, so this reads as a door into a place
-                  the player has already seen rather than as a new icon. */}
+              {/* The same cabinet standing in your Upper Room — one drawing, so
+                  this reads as a door into a place the player has already seen
+                  rather than as a new icon. Those two are the only places the
+                  machine appears now: the hall and the churchyard belong to a
+                  faction and a congregation, and this card is the one moment
+                  the offer is unambiguously the player's own. */}
               <ArcadeCabinetBox width={22} screen="attract" />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 800, fontSize: 14 }}>In the meantime…</div>

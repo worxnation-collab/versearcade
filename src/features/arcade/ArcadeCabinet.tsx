@@ -2,20 +2,25 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useSettings } from '@/store/settings'
 
-// The arcade machine that stands in the little worlds.
+// The arcade machine that stands in your Upper Room.
 //
-// One drawing, used by every room that has one — the hall, the churchyard and
-// your own Upper Room. Same rule as KeepScene and CrowdLife: the instant a
-// second surface wanted it, it became one thing, because three cabinets drawn
-// three times would drift and the joke only works if it is obviously the same
-// machine in every room.
+// One drawing, used by both surfaces that show it — the room, and the "In the
+// meantime…" card the home screen offers once the day's verse is done. Same
+// rule as KeepScene and CrowdLife, and it still holds at two: the machine on
+// the card has to be recognisably the one standing in the room, or the card is
+// a new icon rather than a door into a place the player has already been.
+//
+// It used to stand in the keep's hall and the churchyard as well, and both were
+// removed on purpose: those are the FACTION'S room and the CONGREGATION'S yard,
+// and a games machine wheeled into somebody else's shared space reads as an
+// advertisement standing in it. What is left are the two places where the offer
+// is honestly yours.
 //
 // Drawn SVG rather than a Nano Banana render. The postcard reason is gone —
 // lib/postcard.ts inlines images as data: URIs now, so a raster would survive
 // the export — but the other one still stands on its own: it has to read at
-// about 40px in a churchyard, which is the same argument that keeps the church
-// buildings a drawn kit. Staying drawn is also what lets one machine sit in
-// three differently-lit worlds without three renders of it.
+// about 40px in the room and at 22px on the home card, which is the same
+// argument that keeps the church buildings a drawn kit.
 //
 // It is drawn around its GROUND POINT (0,0 is the middle of its feet), like
 // every prop in KeepArt and RoomArt, so a caller places it by where it stands
@@ -24,9 +29,9 @@ import { useSettings } from '@/store/settings'
 // The CABINET is timber and brass; the SCREEN is the only thing that glows.
 //
 // It used to be built out of the app's chrome purple, which is right for a nav
-// bar and wrong for furniture: standing in a lamplit clay chamber or a stone
-// hall, a violet box read as a sticker pasted onto the painting rather than as
-// something in the room. Warm wood and brass is an object that could plausibly
+// bar and wrong for furniture: standing in a lamplit clay chamber, a violet box
+// read as a sticker pasted onto the painting rather than as something in the
+// room. Warm wood and brass is an object that could plausibly
 // be standing there — while the marquee, the lit screen, the buttons and the
 // coin door still say arcade machine at a glance, which is the whole joke.
 //
@@ -50,7 +55,7 @@ export const CABINET_H = 94
  * What is playing on the little screen.
  *
  * `attract` cycles the games the way a real cabinet's attract mode does, and
- * that is doing a job rather than being cute: the machine standing in the hall
+ * that is doing a job rather than being cute: the machine standing in the room
  * now opens a lobby with more than one game behind it, and a screen stuck on
  * one of them would promise the wrong thing. Reduce-motion holds the first
  * frame instead — the cycle is decoration, and the lobby says what's inside in

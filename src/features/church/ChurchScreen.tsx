@@ -90,7 +90,6 @@ function Header() {
 // ---------------------------------------------------------------------------
 function ChurchHome({ church }: { church: Church }) {
   const juice = useJuice()
-  const navigate = useNavigate()
   const { available, myGiven, givers, contribute, leave, radiusMiles, timeframe } = useChurch()
   const worldwide = radiusMiles === 'all'
   const [busy, setBusy] = useState(false)
@@ -311,7 +310,6 @@ function ChurchHome({ church }: { church: Church }) {
             onRemove: (plinth) => void takeDownStatue(plinth),
           }}
           emptyNote={false}
-          onArcade={() => { juice.select(); navigate('/arcade') }}
         />
         {(picked || statuePicked || yardNote) && (
           <p className="center" style={{ margin: '8px 0 0', fontSize: 12.5, fontWeight: 700, color: 'var(--gold)' }}>

@@ -5,10 +5,19 @@
 
 ## What it is
 
-A cabinet stands in the hall, in the churchyard and in your own Upper Room, and
-the "In the meantime…" card on the home screen is the same machine again.
-Tapping any of them opens **`/arcade`** — a wall of machines with their names
-under them — and you pick one.
+A cabinet stands in your own Upper Room, and the "In the meantime…" card on the
+home screen is the same machine again — offered **only once the day's verse is
+done**, under the countdown to the next one. Tapping either opens **`/arcade`**
+— a wall of machines with their names under them — and you pick one.
+
+**Two doors, and the count is the design.** It stood in the keep's hall and in
+the churchyard too, and both were removed: those are the FACTION'S room and the
+CONGREGATION'S yard, and a games machine wheeled into somebody else's shared
+space reads as an advertisement standing in it. The two that remain are the two
+places where the offer is honestly yours — the room that belongs to you alone,
+and the moment on the home screen when today's verse is finished and the app has
+nothing left to ask of you. That second one is the whole pitch for the arcade
+existing at all: it answers the sentence the countdown already started.
 
 Three machines today:
 
@@ -58,7 +67,8 @@ over before the title card has been read.
 The cabinet used to open Manna Rush directly, which was right when there was one
 game. The moment there were two, a door that always led to the same machine is
 lying about what's behind it — and the alternative (a second cabinet in every
-scene) turns three little worlds into a shopping street.
+scene) turns a little world into a shopping street. The same instinct is why
+there are two doors rather than four now.
 
 So the machine in the room is a **door to the arcade**, and its little screen
 runs an **attract cycle** through the games so it can't promise the wrong one.
@@ -197,8 +207,8 @@ Two traps that are written into the code and worth repeating:
    swallowed by the lobby's own path.
 4. Give the cabinet a `CabinetScreen` in `ArcadeCabinet.tsx` if it needs its own
    attract art, and add it to `SCREEN_ORDER` so the in-world machines cycle it.
-   Keep it a *shape*, not a picture: the screen is nine pixels tall in a
-   churchyard, which is the same argument that keeps lettering off the marquee.
+   Keep it a *shape*, not a picture: the screen is nine pixels tall in the
+   Upper Room, which is the same argument that keeps lettering off the marquee.
 5. Check `trackForPath` in `data/music.ts`. `/arcade` takes the run's music;
    a game that isn't a run (the Cross Word is a crossword) says so there. The
    invite paths sit under the game's own path, so they inherit its music.
@@ -206,9 +216,12 @@ Two traps that are written into the code and worth repeating:
 ## Where the cabinet is drawn
 
 `ArcadeCabinet.tsx`, once, used by every surface that shows it — the same rule
-as `KeepScene` and `CrowdLife`. It's drawn SVG rather than a Nano Banana render
-for two reasons that both come from where it stands: the Upper Room's scene is
-serialised into a postcard (`lib/postcard.ts`), and an SVG loaded into an `<img>`
-never fetches external resources; and it has to read at about 40px in a
-churchyard. It's drawn around its ground point, like every prop in `KeepArt` and
+as `KeepScene` and `CrowdLife`, and it stays one drawing even now that only two
+surfaces show it: the machine on the home card has to be recognisably the one
+standing in the room, or the card is a new icon rather than a door into a place
+you have already been. It's drawn SVG rather than a Nano Banana render for two
+reasons that both come from where it stands: the Upper Room's scene is
+serialised into a postcard (`lib/postcard.ts`), and an SVG loaded into an
+`<img>` never fetches external resources; and it has to read at about 40px in a
+room. It's drawn around its ground point, like every prop in `KeepArt` and
 `RoomArt`, so a caller places it by where it stands.

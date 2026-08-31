@@ -15,7 +15,7 @@ Three machines today:
 | Game | Route | What a minute of it is |
 |---|---|---|
 | Manna Rush | `/arcade/manna` | Tap the fresh flakes, leave yesterday's, keep the seventh day |
-| Word Catch | `/arcade/word-catch` | Today's verse, come loose from the page — tap the words back into order |
+| Word Catch | `/arcade/word-catch` | Today's verse, come loose from the page — tap the words back into order, then read it whole |
 | Cross Word | `/arcade/cross` | Two words sharing a letter, in the shape of a cross (`docs/CROSS-WORD.md`) |
 
 Manna Rush and Word Catch are two games on **one engine** (`TapRunner` +
@@ -28,9 +28,30 @@ right one the moment the word before it is placed, and a table of fixed spawn
 weights cannot say that. Both hooks default to the old fixed-verdict behaviour,
 so a game that doesn't need them writes nothing.
 
-`TapGameScreen` is the screen those two wear — gate, run, harvest — so a fourth
-tap game is a definition, a surface and three lines of copy. The Cross Word
-isn't a tap game and wears `ArcadeShell` directly.
+`TapGameScreen` is the screen those two wear — gate, run, harvest, and an
+optional `finale` under the numbers — so a fourth tap game is a definition, a
+surface and three lines of copy. The Cross Word isn't a tap game and wears
+`ArcadeShell` directly.
+
+**Two machines end on scripture, and they end on the same card.** The Cross Word
+reveals the verse its two words came out of; Word Catch hands back the whole
+verse you have just spent a minute pulling apart. `VerseCard` + `VerseActions`
+are that card and its two offers (keep it, read the chapter), shared so the two
+can't drift. Word Catch passes it as `finale`, a beat after the tallies, because
+"17 words, 1 of 4 lines clean" is a poor last thing to leave somebody looking at
+when scripture is the point. The verse shows on a free go too — it's the payoff,
+not a reward — while the two actions don't, per the demo rule above.
+
+**Pacing is a per-game number, and it is measured in reading, not reaction.**
+Word Catch's first cut was tuned like Manna Rush and played too fast on a real
+phone: a word lived 2.1s, which is enough to *see* a flake but not enough to
+read four words, work out which comes next, and get a thumb to it. A word now
+lives 3.2s (2.5–3.4s on the drilled passes), arrives every 860ms rather than
+620ms, and its line has half again as long on the clock. Fewer arrivals with
+longer lives is the lever: more words on the paper is more scanning, and
+scanning is not what the game teaches. Lines are also split evenly now — 17
+words over four lines is 5-4-4-4, not 5-5-5-**2**, because a two-word round is
+over before the title card has been read.
 
 ## Why a lobby
 

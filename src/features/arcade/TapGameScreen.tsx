@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/Button'
@@ -23,6 +23,7 @@ export function TapGameScreen({
   tagline,
   how,
   cta,
+  finale,
   demo,
 }: {
   /** The machine's id in `ARCADE_GAMES` — what a share hands out. */
@@ -33,6 +34,14 @@ export function TapGameScreen({
   /** How it works, in the player's terms. First line leads, the rest are dim. */
   how: string[]
   cta: string
+  /**
+   * What the run was for, shown under the two numbers once it's over.
+   *
+   * Word Catch spends a minute pulling a verse apart, so it hands the whole
+   * thing back at the end — and "17 words, 1 of 4 lines clean" is a poor last
+   * thing to leave somebody looking at when scripture is the point.
+   */
+  finale?: ReactNode
   /** A free go from a shared link: pays nothing, and offers no "again". */
   demo?: boolean
 }) {
@@ -60,14 +69,17 @@ export function TapGameScreen({
       {playing ? (
         <TapRunner key={runs} game={game} surface={surface} demo={demo} onDone={done} />
       ) : result ? (
-        <Harvest
-          game={game}
-          result={result}
-          // A free go is one run. Offering "again" under it would make the
-          // sign-up card below a suggestion rather than the next step.
-          onAgain={demo ? undefined : start}
-          onLeave={demo ? undefined : () => navigate('/arcade')}
-        />
+        <>
+          <Harvest
+            game={game}
+            result={result}
+            // A free go is one run. Offering "again" under it would make the
+            // sign-up card below a suggestion rather than the next step.
+            onAgain={demo ? undefined : start}
+            onLeave={demo ? undefined : () => navigate('/arcade')}
+          />
+          {finale}
+        </>
       ) : (
         <Gate how={how} cta={cta} demo={demo} onStart={start} />
       )}

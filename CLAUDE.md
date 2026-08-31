@@ -820,6 +820,20 @@ Catch and the Cross Word. Full design: `docs/ARCADE.md`.
   game is a row there plus a route — the same choke-point habit as `QuizRunner`.
   It's pure data (the id union in it is what makes `gameScreens.ts` compile);
   wear `ArcadeShell` so games can't drift into different headers.
+- **A machine that plays a verse hands the verse back.** Word Catch ends on the
+  whole verse it just had you rebuild, and the Cross Word on the one its two
+  words came out of — the same `VerseCard`/`VerseActions` pair, so the offer
+  can't drift between them. Word Catch passes it as `TapGameScreen`'s `finale`,
+  a beat after the tallies: "17 words, 1 of 4 lines clean" is a poor last thing
+  to leave somebody looking at when scripture is the point. It shows on a free
+  go too (it's the payoff, not a reward); the keep/read actions don't.
+- **A tap game's pace is measured in READING, not reaction.** Word Catch shipped
+  tuned like Manna Rush and was too fast on a real phone: a word lived 2.1s,
+  which is enough to see a flake but not to read four words, work out which
+  comes next and get a thumb to it. Longer lives with *fewer* arrivals is the
+  lever — more words on the paper is more scanning, and scanning isn't what it
+  teaches. Its lines are split evenly too (17 words is 5-4-4-4, never 5-5-5-2),
+  because a two-word round is over before its title card has been read.
 - **Two of the three run on one engine, and the interesting hook is
   `verdictOf`.** `TapRunner` judges a tap AT TAP TIME rather than at spawn,
   because in Word Catch the same word is the wrong answer on the way down and

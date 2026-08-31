@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { ArcadeShell } from './ArcadeShell'
 import { CrossBoard, boardCells } from './CrossArt'
+import { VerseCard } from './VerseCard'
 import { Button } from '@/components/Button'
-import { FavoriteButton } from '@/components/FavoriteButton'
+import { VerseActions } from './VerseActions'
 import { useJuice } from '@/juice/useJuice'
 import { useSettings } from '@/store/settings'
 import { useCrossword } from '@/store/crossword'
@@ -13,7 +13,6 @@ import { useBible } from '@/store/bible'
 import { useDrops } from '@/store/drops'
 import { useSeason } from '@/store/season'
 import { todayLocalDate } from '@/lib/date'
-import { canonBook } from '@/data/bible/structure'
 import {
   CROSS_PUZZLES,
   crossForDate,
@@ -429,53 +428,38 @@ export default function CrossWordScreen({ demo }: { demo?: boolean }) {
               damping: 26,
               delay: reduceMotion ? 0 : 0.45,
             }}
-            className="card"
             // Announced when it arrives: the wood is drawn art and the finished
             // board is aria-hidden, so without this a screen reader gets no
             // signal that the puzzle is done.
             role="status"
-            style={{ padding: 18, marginTop: 14 }}
+            style={{ marginTop: 14 }}
           >
-            <div
-              style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: 12.5,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                color: 'var(--gold)',
-              }}
+            <VerseCard
+              reference={verse.reference}
+              text={verse.text}
+              note={
+                <>
+                  {puzzle.down.word} and {puzzle.across.word} both live in this verse
+                  {demo ? '.' : ' — it’s marked studied on your Bible now.'}
+                </>
+              }
             >
-              {verse.reference}
-            </div>
-            <p style={{ margin: '8px 0 0', fontSize: 16.5, lineHeight: 1.55 }}>“{verse.text}”</p>
-            <p style={{ margin: '10px 0 0', fontSize: 12.5, color: 'var(--ink-dim)', lineHeight: 1.45 }}>
-              {puzzle.down.word} and {puzzle.across.word} both live in this verse
-              {demo ? '.' : ' — it’s marked studied on your Bible now.'}
-            </p>
-            {/* Both of these belong to somebody with a Bible of their own:
-                keeping a verse writes to a shelf a free go doesn't have, and
-                the chapter reader is behind the account wall, so on a demo they
-                are an offer that goes nowhere and a link that bounces. The
-                verse itself — the whole payoff — stays. */}
-            {!demo && (
-              <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
-                <FavoriteButton reference={verse.reference} label="Keep this verse" />
-                <Link
-                  className="pill"
-                  style={{ textDecoration: 'none', color: 'var(--ink)' }}
-                  to={`/bible/${encodeURIComponent(canonBook(verse.book))}/${verse.chapter}`}
-                >
-                  📖 Read the chapter
-                </Link>
-              </div>
-            )}
-            {!demo && (
-              <div style={{ marginTop: 14 }}>
-                <Button variant="gold" full onClick={another}>
-                  Build another cross
-                </Button>
-              </div>
-            )}
+              {/* Both of these belong to somebody with a Bible of their own:
+                  keeping a verse writes to a shelf a free go doesn't have, and
+                  the chapter reader is behind the account wall, so on a demo
+                  they are an offer that goes nowhere and a link that bounces.
+                  The verse itself — the whole payoff — stays. */}
+              {!demo && (
+                <VerseActions reference={verse.reference} book={verse.book} chapter={verse.chapter} />
+              )}
+              {!demo && (
+                <div style={{ marginTop: 14 }}>
+                  <Button variant="gold" full onClick={another}>
+                    Build another cross
+                  </Button>
+                </div>
+              )}
+            </VerseCard>
           </motion.div>
         )}
       </AnimatePresence>

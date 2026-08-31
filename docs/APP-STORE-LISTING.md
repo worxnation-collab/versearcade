@@ -111,6 +111,8 @@ THERE'S AN ARCADE IN HERE NOW
   underneath. A new one every day, 52 in all, Genesis to Revelation.
 • Nothing in the arcade touches your rank, and no machine keeps a high score. No
   timers, no streaks, and hints are free.
+• Send a friend a machine: a shared link is good for one free go, no account and no
+  download first. It's an invitation to play, never a score to beat.
 ```
 
 **Check the uploaded 1.2.0 binary before submitting this.** If live battles shipped

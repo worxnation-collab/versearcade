@@ -8,6 +8,7 @@ import { FavoriteButton } from '@/components/FavoriteButton'
 import { useJuice } from '@/juice/useJuice'
 import { useSettings } from '@/store/settings'
 import { useCrossword } from '@/store/crossword'
+import { useArcadeInvite } from '@/store/arcadeInvite'
 import { useBible } from '@/store/bible'
 import { useDrops } from '@/store/drops'
 import { useSeason } from '@/store/season'
@@ -224,7 +225,7 @@ function reducer(s: State, a: Action): State {
   }
 }
 
-export default function CrossWordScreen() {
+export default function CrossWordScreen({ demo }: { demo?: boolean }) {
   const today = todayLocalDate()
   const solvedMap = useCrossword((s) => s.solved)
   const loadSolved = useCrossword((s) => s.load)
@@ -255,11 +256,19 @@ export default function CrossWordScreen() {
     if (!st.done || paid.current === puzzle.id) return
     paid.current = puzzle.id
     juice.celebrate()
-    markSolved(puzzle.id, today)
-    markStudied(puzzle.reference)
-    void useDrops.getState().roll()
-    void useSeason.getState().track('study_run')
-  }, [st.done, puzzle.id, puzzle.reference, juice, markSolved, markStudied, today])
+    // A free go from a shared link pays nothing and records nothing: whoever is
+    // playing has no account to mark a verse on, and a solve written into a
+    // stranger's browser is a promise this app can't keep. The wood and the
+    // verse — the entire point — happen exactly as they do for anybody else.
+    if (!demo) {
+      markSolved(puzzle.id, today)
+      markStudied(puzzle.reference)
+      void useDrops.getState().roll()
+      void useSeason.getState().track('study_run')
+    }
+    // No-op outside a demo, so this is flat rather than conditional.
+    useArcadeInvite.getState().notePlayEnded(today)
+  }, [st.done, puzzle.id, puzzle.reference, demo, juice, markSolved, markStudied, today])
 
   // A word finished and wrong shivers and says so, once, rather than on every
   // keystroke afterwards.
@@ -312,7 +321,8 @@ export default function CrossWordScreen() {
   return (
     <ArcadeShell
       title="Cross Word"
-      tagline="Two words that share a letter, standing as a cross. Finish it and it turns to wood."
+      tagline="Two words, one shared letter · finish it and it turns to wood"
+      shareId="cross"
     >
       <div className="card" style={{ padding: 14 }}>
         <div
@@ -330,7 +340,7 @@ export default function CrossWordScreen() {
             {seenBefore && ' · built before'}
           </span>
           <span style={{ color: 'var(--ink-faint)' }}>
-            {built} of {CROSS_PUZZLES.length} built
+            {demo ? `1 of ${CROSS_PUZZLES.length} crosses` : `${built} of ${CROSS_PUZZLES.length} built`}
           </span>
         </div>
 
@@ -439,24 +449,33 @@ export default function CrossWordScreen() {
             </div>
             <p style={{ margin: '8px 0 0', fontSize: 16.5, lineHeight: 1.55 }}>“{verse.text}”</p>
             <p style={{ margin: '10px 0 0', fontSize: 12.5, color: 'var(--ink-dim)', lineHeight: 1.45 }}>
-              {puzzle.down.word} and {puzzle.across.word} both live in this verse — it’s marked
-              studied on your Bible now.
+              {puzzle.down.word} and {puzzle.across.word} both live in this verse
+              {demo ? '.' : ' — it’s marked studied on your Bible now.'}
             </p>
-            <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
-              <FavoriteButton reference={verse.reference} label="Keep this verse" />
-              <Link
-                className="pill"
-                style={{ textDecoration: 'none', color: 'var(--ink)' }}
-                to={`/bible/${encodeURIComponent(canonBook(verse.book))}/${verse.chapter}`}
-              >
-                📖 Read the chapter
-              </Link>
-            </div>
-            <div style={{ marginTop: 14 }}>
-              <Button variant="gold" full onClick={another}>
-                Build another cross
-              </Button>
-            </div>
+            {/* Both of these belong to somebody with a Bible of their own:
+                keeping a verse writes to a shelf a free go doesn't have, and
+                the chapter reader is behind the account wall, so on a demo they
+                are an offer that goes nowhere and a link that bounces. The
+                verse itself — the whole payoff — stays. */}
+            {!demo && (
+              <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
+                <FavoriteButton reference={verse.reference} label="Keep this verse" />
+                <Link
+                  className="pill"
+                  style={{ textDecoration: 'none', color: 'var(--ink)' }}
+                  to={`/bible/${encodeURIComponent(canonBook(verse.book))}/${verse.chapter}`}
+                >
+                  📖 Read the chapter
+                </Link>
+              </div>
+            )}
+            {!demo && (
+              <div style={{ marginTop: 14 }}>
+                <Button variant="gold" full onClick={another}>
+                  Build another cross
+                </Button>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

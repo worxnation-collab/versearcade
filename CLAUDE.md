@@ -786,6 +786,25 @@ Cross Word. Full design: `docs/ARCADE.md`.
   `needsAccount`, the route wraps it in `RequireAccount` (`WALL.cross`), and the
   lobby draws the padlock on that cabinet — the nav's convention, for the nav's
   reason.
+- **Every machine can be shared, and a shared link is one free go.** The button
+  is in `ArcadeShell`, so "every game" means every game that will ever exist
+  rather than a rule someone has to remember. `/arcade/<game>/invite` is PUBLIC
+  — no `RequireProfile`, no wall — because the machine is the pitch and the ask
+  comes after the play. That's the opposite order from the battle invite, which
+  has to ask first because accepting a battle writes a score against a real
+  account. Four things hold it together: the free go **pays nothing** (`demo` on
+  the game components — no relic, no road step, no Bible mark, nothing
+  recorded), so the one-play limit guards nothing worth farming and a
+  device-local tally is enough; **no score is ever in a share** (`shareLine`),
+  because "I got 47, beat me" is the comparison this app doesn't build; an
+  account **skips the whole thing** and goes straight to the machine; and the
+  `?from=` name is somebody else's text in a URL, so it's sanitised before it's
+  rendered. Two traps are written into the code: the have-they-played decision
+  is **frozen at mount** (re-reading it swaps the screen out at the exact moment
+  the result appears), and everything account-shaped is **hidden** on a demo
+  rather than left to fail — "Keep this verse" writes to a shelf a visitor
+  doesn't have and "Read the chapter" is behind the wall. Full rules:
+  `docs/ARCADE.md`.
 
 ## The Cross Word: a puzzle that becomes the thing it's about
 

@@ -61,13 +61,70 @@ record: the Cross Word marks its verse studied on your Bible, so it carries
 padlock on that cabinet — the nav's convention, for the nav's reason: a locked
 machine still stands in the room, and tapping it explains itself.
 
+## Sharing a machine: one free go
+
+Every arcade screen carries a **Share** button, and it lives in `ArcadeShell`
+rather than in each game — "every game can be shared" has to mean every game
+that will ever exist, and a button per screen is a rule you have to remember
+instead of one the code keeps.
+
+The link is `/arcade/<game>/invite`, and whoever opens it gets **one play on
+that machine, then the invitation to make an account**. Six things about it are
+deliberate:
+
+- **The machine is the pitch, so the ask comes after.** That is the opposite
+  order from the battle invite (`/battle/:id`), which asks first — it has to,
+  because accepting a battle writes a score against a real account. A free go
+  writes nothing, so nothing has to be established first.
+- **The route is PUBLIC** — no `RequireProfile`, no wall. The person on the
+  other end of a share may never have seen this app.
+- **The free go pays NOTHING.** No relic, no road step, no mark on anybody's
+  Bible, no solved cross recorded (`demo` on the game components). Two reasons:
+  there is no account to pay into, and it means the one-play limit guards
+  nothing worth farming. The wood, the verse, the harvest — the whole payoff —
+  happen exactly as they do for anybody else.
+- **No score is ever in a share.** The arcade's safety argument is that a result
+  here can't be set beside anybody else's, and "I got 47, beat me" is precisely
+  the comparison this app doesn't build. A share invites somebody to the
+  machine; it doesn't challenge them. The copy is `shareLine` in `games.ts`.
+- **An account skips the whole thing.** A signed-in player opening a shared link
+  is redirected straight to the machine — a free go is for people who don't have
+  one, and putting a full account onto a one-play page takes something away.
+- **The link carries the referral code** (through `inviteUrl`, like every other
+  link the app hands out) and the sharer's username as `?from=`. That name is
+  somebody else's text arriving in a URL, so it is sanitised to
+  `[A-Za-z0-9_]{1,20}` before it is ever rendered (`sanitizeFrom`).
+
+`store/arcadeInvite.ts` is the bookkeeping, device-local and honest about it:
+whoever this is has no account, so there is nowhere else to put it, and clearing
+site data is another free go. That's fine — the only thing a determined visitor
+can farm is more of the game we are trying to give them.
+
+Two traps that are written into the code and worth repeating:
+
+- **The "have they played" decision is frozen at mount.** Finishing the go marks
+  the machine spent, and re-reading that would swap the screen out at the exact
+  moment the player's result appears — snatching away the payoff that is doing
+  all the persuading.
+- **Anything account-shaped is hidden on a demo**, not left to fail: the Cross
+  Word's "Keep this verse" would write to a shelf the visitor doesn't have, and
+  "Read the chapter" is behind the account wall, so on a free go it is a link
+  that bounces. Same for "Walk the week again" and "Build another cross" — one
+  play is one play, and offering "again" underneath the sign-up card would make
+  the card a suggestion rather than the next step.
+
 ## Adding a game
 
 1. Build the screen under `features/arcade/`. Wear `ArcadeShell` — it owns the
    way out, the title and the tagline, so two games can't drift into two
    different headers.
-2. Add a row to `ARCADE_GAMES` (id, title, tagline, route, `screen`, and
-   `needsAccount` only if it writes to the player's record).
+2. Add the id to `ArcadeGameId`, a row to `ARCADE_GAMES` (title, tagline,
+   route, `shareLine`, `screen`, and `needsAccount` only if it writes to the
+   player's record), and the component to `GAME_SCREENS`. The id union is what
+   makes the compiler insist the row and the screen both exist — `games.ts`
+   stays pure data on purpose, because holding the components there put it in
+   an import cycle with `ArcadeShell`.
+   Accept a `demo?: boolean` prop: skip every payout and hide every "again".
 3. Add the route in `App.tsx`, **static segment first** so a game can never be
    swallowed by the lobby's own path.
 4. Give the cabinet a `CabinetScreen` in `ArcadeCabinet.tsx` if it needs its own
@@ -75,7 +132,8 @@ machine still stands in the room, and tapping it explains itself.
    Keep it a *shape*, not a picture: the screen is nine pixels tall in a
    churchyard, which is the same argument that keeps lettering off the marquee.
 5. Check `trackForPath` in `data/music.ts`. `/arcade` takes the run's music;
-   a game that isn't a run (the Cross Word is a crossword) says so there.
+   a game that isn't a run (the Cross Word is a crossword) says so there. The
+   invite paths sit under the game's own path, so they inherit its music.
 
 ## Where the cabinet is drawn
 

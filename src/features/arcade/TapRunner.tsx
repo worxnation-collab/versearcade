@@ -68,10 +68,17 @@ type Phase = 'intro' | 'play' | 'beat' | 'done'
 export function TapRunner({
   game,
   surface,
+  demo,
   onDone,
 }: {
   game: TapGameDef
   surface: TapSurface
+  /**
+   * A free go from a shared link. The run is identical — it just pays nothing,
+   * because the person playing it has no account to pay into and writing
+   * relics into a stranger's browser is a promise this app can't keep.
+   */
+  demo?: boolean
   /** Called once, with the finished run. The caller decides what "done" means. */
   onDone: (result: TapResult) => void
 }) {
@@ -294,12 +301,14 @@ export function TapRunner({
 
     // The one payout, and it is the whole reason a game about thumbs is
     // allowed to exist here: a relic, which buys nothing and ranks nobody.
-    void useDrops.getState().roll()
-    void useSeason.getState().track('tap_run', { count: 1 })
-    if (totals.current.taken > 0) {
-      void useSeason.getState().track('tap_gather', { count: totals.current.taken })
+    if (!demo) {
+      void useDrops.getState().roll()
+      void useSeason.getState().track('tap_run', { count: 1 })
+      if (totals.current.taken > 0) {
+        void useSeason.getState().track('tap_gather', { count: totals.current.taken })
+      }
+      if (totals.current.restKept) void useSeason.getState().track('tap_rest_kept')
     }
-    if (totals.current.restKept) void useSeason.getState().track('tap_rest_kept')
 
     onDone({
       taken: totals.current.taken,
@@ -307,7 +316,7 @@ export function TapRunner({
       scoringRounds: countScoringRounds(game),
       restKept: totals.current.restKept,
     })
-  }, [clearTimers, game, juice, onDone, phase])
+  }, [clearTimers, demo, game, juice, onDone, phase])
 
   const pips = useMemo(
     () => Array.from({ length: def.quota }, (_, i) => i < got),

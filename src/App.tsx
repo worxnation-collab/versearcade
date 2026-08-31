@@ -36,6 +36,7 @@ import BattleCpu from './features/arena/BattleCpu'
 import LiveLobby, { LiveRoom } from './features/arena/LiveBattle'
 import ArcadeScreen from './features/arcade/ArcadeScreen'
 import ArcadeLobby from './features/arcade/ArcadeLobby'
+import ArcadeInvite from './features/arcade/ArcadeInvite'
 import StudyScreen from './features/study/StudyScreen'
 import StudyReportsScreen from './features/study/StudyReportsScreen'
 import StudyRecentScreen from './features/study/StudyRecentScreen'
@@ -447,6 +448,13 @@ export default function App() {
             </RequireProfile>
           }
         />
+        {/* A shared machine: one free go for whoever opens the link, then the
+            invitation. PUBLIC — no RequireProfile and no wall, because the
+            person on the other end of a share may never have seen this app and
+            the machine is the pitch. Nothing a free go does is written down
+            anywhere (see the games' `demo` prop), so there is nothing an
+            account has to exist for first. */}
+        <Route path="/arcade/:game/invite" element={<ArcadeInvite />} />
         {/* Study tab — practice surfaces that never touch your rank. */}
         <Route
           path="/study"

@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/Button'
 import { ArcadeShell } from './ArcadeShell'
+import { useArcadeInvite } from '@/store/arcadeInvite'
+import { todayLocalDate } from '@/lib/date'
 import { useSettings } from '@/store/settings'
 import type { TapResult } from '@/lib/tapGame'
 import { TapRunner } from './TapRunner'
@@ -21,7 +23,7 @@ import { mannaSurface } from './MannaField'
 // QuizRunner owns StartGate: the run should begin when the player says so, and
 // the engine should not have to know what a title screen is.
 
-export default function ArcadeScreen() {
+export default function ArcadeScreen({ demo }: { demo?: boolean }) {
   const navigate = useNavigate()
   const reduceMotion = useSettings((s) => s.reduceMotion)
   const [runs, setRuns] = useState(0)
@@ -36,25 +38,41 @@ export default function ArcadeScreen() {
     setPlaying(true)
   }, [])
 
-  const done = useCallback((r: TapResult) => {
-    setPlaying(false)
-    setResult(r)
-  }, [])
+  const done = useCallback(
+    (r: TapResult) => {
+      setPlaying(false)
+      setResult(r)
+      // On a shared link the week that just ended was the free go. The store
+      // no-ops outside a demo, so this is flat rather than conditional.
+      useArcadeInvite.getState().notePlayEnded(todayLocalDate())
+    },
+    [],
+  )
 
   return (
-    <ArcadeShell title="Manna Rush" tagline="Seven days in the wilderness · Exodus 16">
+    <ArcadeShell
+      title="Manna Rush"
+      tagline="Seven days in the wilderness · Exodus 16"
+      shareId="manna"
+    >
       {playing ? (
-        <TapRunner key={runs} game={MANNA_RUSH} surface={surface} onDone={done} />
+        <TapRunner key={runs} game={MANNA_RUSH} surface={surface} demo={demo} onDone={done} />
       ) : result ? (
-        <Harvest result={result} onAgain={start} onLeave={() => navigate(-1)} />
+        <Harvest
+          result={result}
+          // A free go is one week. Offering "again" under it would make the
+          // sign-up card below a suggestion rather than the next step.
+          onAgain={demo ? undefined : start}
+          onLeave={demo ? undefined : () => navigate(-1)}
+        />
       ) : (
-        <Gate onStart={start} />
+        <Gate onStart={start} demo={demo} />
       )}
     </ArcadeShell>
   )
 }
 
-function Gate({ onStart }: { onStart: () => void }) {
+function Gate({ onStart, demo }: { onStart: () => void; demo?: boolean }) {
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: 20 }}>
       <p style={{ margin: 0, fontSize: 15, lineHeight: 1.55 }}>
@@ -65,7 +83,9 @@ function Gate({ onStart }: { onStart: () => void }) {
         On the seventh day nothing falls, and the best thing you can do is keep still.
       </p>
       <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-faint)' }}>
-        Nothing here touches your rank. A finished week can turn up a relic for your church.
+        {demo
+          ? 'Nothing here touches anybody’s rank, and there’s nothing to sign up for first.'
+          : 'Nothing here touches your rank. A finished week can turn up a relic for your church.'}
       </p>
       <Button variant="gold" full onClick={onStart}>
         Go out and gather
@@ -80,8 +100,9 @@ function Harvest({
   onLeave,
 }: {
   result: TapResult
-  onAgain: () => void
-  onLeave: () => void
+  /** Absent on a free go — one week is the whole offer. */
+  onAgain?: () => void
+  onLeave?: () => void
 }) {
   return (
     <motion.div
@@ -128,14 +149,18 @@ function Harvest({
           </span>
         ))}
 
-      <div style={{ display: 'flex', gap: 10, width: '100%' }}>
-        <Button variant="gold" full onClick={onAgain}>
-          Walk the week again
-        </Button>
-        <Button variant="ghost" onClick={onLeave}>
-          Done
-        </Button>
-      </div>
+      {onAgain && (
+        <div style={{ display: 'flex', gap: 10, width: '100%' }}>
+          <Button variant="gold" full onClick={onAgain}>
+            Walk the week again
+          </Button>
+          {onLeave && (
+            <Button variant="ghost" onClick={onLeave}>
+              Done
+            </Button>
+          )}
+        </div>
+      )}
     </motion.div>
   )
 }

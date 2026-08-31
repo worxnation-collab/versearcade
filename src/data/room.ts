@@ -235,7 +235,23 @@ export const ROOM_SURFACE: Surface = {
   // (shelf, window, alcove — see the header scars), and these respect them.
   bands: {
     shelf: { x0: 120, y0: 114, x1: 208, y1: 124 },
-    wall: { x0: 225, y0: 78, x1: 385, y1: 112 },
+    // The back wall, measured off the paintings the way the keep's was: it runs
+    // from under the ceiling beams at y 35 down to the table at y 192, and the
+    // band was using y 78..112 of it. Thirty-four units, so every wall piece
+    // was pinned in a line near the ceiling with the whole wall bare beneath —
+    // the same complaint the keep's wall had, and the same fix.
+    //
+    // The band clamps a piece's CENTRE and the tallest wall piece is 30, so
+    // y 60..170 is the range that keeps one whole on plaster: at 60 its top
+    // lands on y 45, under the beams, and at 170 its foot stops above the
+    // table. A hundred and ten units instead of thirty-four.
+    //
+    // x is deliberately left alone. It wants to come in — the painted window
+    // starts at x 331, so the right of this range is already over glass — but
+    // wall_3's anchor sits at x 358, and narrowing the band under an anchor
+    // would strand it. That is a real problem and it is NOT this change: see
+    // the note on the anchors above.
+    wall: { x0: 225, y0: 60, x1: 385, y1: 170 },
     sill: { x0: 418, y0: 142, x1: 448, y1: 150 },
     table: { x0: 268, y0: 204, x1: 352, y1: 214 },
     floor: { x0: 70, y0: 246, x1: 520, y1: 292 },

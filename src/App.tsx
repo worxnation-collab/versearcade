@@ -38,6 +38,7 @@ import StudyScreen from './features/study/StudyScreen'
 import StudyReportsScreen from './features/study/StudyReportsScreen'
 import StudyRecentScreen from './features/study/StudyRecentScreen'
 import StudyBagScreen from './features/study/StudyBagScreen'
+import CrossWordScreen from './features/study/CrossWordScreen'
 import BibleScreen from './features/bible/BibleScreen'
 import BibleBookScreen from './features/bible/BibleBookScreen'
 import BibleChapterScreen from './features/bible/BibleChapterScreen'
@@ -502,6 +503,18 @@ export default function App() {
             <RequireProfile>
               <RequireAccount copy={WALL.study}>
                 <StudyBagScreen />
+              </RequireAccount>
+            </RequireProfile>
+          }
+        />
+        {/* Two words in the shape of a cross; finishing it turns the puzzle to
+            wood and reveals the verse both words came from. */}
+        <Route
+          path="/study/cross"
+          element={
+            <RequireProfile>
+              <RequireAccount copy={WALL.study}>
+                <CrossWordScreen />
               </RequireAccount>
             </RequireProfile>
           }

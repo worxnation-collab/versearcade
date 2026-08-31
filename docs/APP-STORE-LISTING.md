@@ -100,6 +100,13 @@ BATTLE SOMEONE IN REAL TIME
   of you at once with a bar showing where the other player is.
 • Wrong answers still teach. The line explaining the answer is yours to read at your
   own pace, even if it costs you the round — being slower never means being told less.
+
+A NEW PUZZLE ON THE STUDY SHELF: CROSS WORD
+• Two words that share a letter, standing in the shape of a cross. Solve it and the
+  squares turn to wood, with the verse both words came from carved underneath.
+• A new one every day, 52 in all, Genesis to Revelation — and you can always go back
+  and build an earlier one.
+• No timer, no score, no streak. Hints are free and cost you nothing.
 ```
 
 **Check the uploaded 1.2.0 binary before submitting this.** If live battles shipped

@@ -758,6 +758,47 @@ Three things to know before touching it:
   ±1 is the house pattern and it does mean a lying client can reach three
   buckets, which is bounded and buys nothing rankable.
 
+## The Cross Word: a puzzle that becomes the thing it's about
+
+Two words that share a letter, standing as a cross — one upright, one crossbar —
+and finishing it turns the squares into two timbers with the letters chiselled
+into them, with the verse both words came from read underneath. Fifty-two of
+them ship; `/study/cross`, on the Study shelf. Full design: `docs/CROSS-WORD.md`.
+
+- **The data has three invisible failure modes, so they're a build failure.**
+  A crossbar one row too low still renders — as a plus sign. A word that isn't
+  in the verse still solves — and then reveals a verse that doesn't contain it.
+  A clue containing its answer just makes the puzzle free. None of that throws,
+  so `checkCrossPuzzles()` asserts it at import in dev and
+  `scripts/check-cross.mjs` (in `npm run build`) asserts it again, re-deriving
+  the rules rather than importing the checker.
+- **The verse is the source of truth, not the puzzle.** `reference` must name a
+  `VERSE_POOL` entry and BOTH words must appear in its text — the whole payoff
+  is "that's where those two words live". `crossForDate()` is the same
+  no-repeat rotation as `getVerseForDate` (seed `'cross-order-v1'` — changing
+  it reshuffles history), and "Build another" only ever draws from days already
+  past, so playing more can't spoil tomorrow's.
+- **It pays what a study run pays and nothing else** — a drop roll, a
+  `study_run` step on the road (the prepacked verb; no new one needed), and the
+  verse marked studied through `store/bible.ts`. No XP, no points, no timer, no
+  "solved in N", no shareable result. It is a Study surface, so the rank-free
+  rule is the whole reason it can be a daily thing at all.
+- **Solved crosses are DEVICE-LOCAL in both modes**, the deliberate break
+  `store/looks.ts` makes: the set grants nothing (everything a solve pays is
+  capped elsewhere), and the half of a solve that's really a record — the verse
+  — already follows the account. `store/crossword.ts` names the table shape to
+  use if that ever changes.
+- **The wood is drawn, not generated**, for the reason the church kit is: a
+  cross is a different shape for every pair of words, and a baked image can't be
+  re-cut per puzzle. Two layers over the same geometry and the same cell size —
+  HTML buttons while you play, SVG timbers once you're done — so nothing moves
+  when it turns to wood. The shelf's *cover* still follows the house rule and
+  has a prompt in `scripts/generate-study-covers.mjs`.
+- **All the puzzle state is in one reducer, and that's load-bearing.** Typing
+  five letters inside one tick put all five in the same square when each handler
+  planned against a hook snapshot — the same scar as `KeepSheet`'s double-tap,
+  found by driving the real app and invisible in the diff.
+
 ## Washing feet: the poke that costs the sender
 
 Every other way to act on a person in this app is a challenge. `wash_feet`

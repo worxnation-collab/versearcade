@@ -19,7 +19,7 @@ export interface BoardSkin {
   glow: string
 }
 
-// Six leathers. Distinct in hue *and* in value, so the shelf still reads as
+// Seven leathers. Distinct in hue *and* in value, so the shelf still reads as
 // seven different books in greyscale or for a colourblind player — nothing here
 // carries meaning by colour anyway, it's just so you can find your place.
 export const BOARDS = {
@@ -46,6 +46,10 @@ export const BOARDS = {
   bag: {
     board: 'radial-gradient(120% 90% at 30% 15%, #74482a 0%, #53331c 38%, #382110 72%, #23150a 100%)',
     glow: 'rgba(255,159,28,0.26)',
+  },
+  cross: {
+    board: 'radial-gradient(120% 90% at 30% 15%, #4a6b34 0%, #33501f 38%, #203513 72%, #14210b 100%)',
+    glow: 'rgba(200,230,140,0.26)',
   },
 } satisfies Record<string, BoardSkin>
 

@@ -7,6 +7,7 @@ import { useFavorites } from '@/store/favorites'
 import { useInventory, seedGuestInventoryFromCollection } from '@/store/inventory'
 import { usePractice } from '@/store/practice'
 import { useBookAccuracy } from '@/store/bookAccuracy'
+import { useCrossword } from '@/store/crossword'
 import { useAuth } from '@/store/auth'
 import { summarize } from '@/lib/bookAccuracy'
 
@@ -28,6 +29,8 @@ export default function StudyScreen() {
   const loadPractice = usePractice((s) => s.loadList)
   const stats = useBookAccuracy((s) => s.stats)
   const loadAccuracy = useBookAccuracy((s) => s.load)
+  const crossesBuilt = useCrossword((s) => Object.keys(s.solved).length)
+  const loadCrosses = useCrossword((s) => s.load)
   const name = useAuth((s) => s.profile?.username ?? '')
 
   // Old deep links (the drop toast used to send ?bag=1 here) land on the bag's
@@ -40,8 +43,9 @@ export default function StudyScreen() {
     loadInventory()
     loadPractice()
     loadAccuracy()
+    loadCrosses()
     seedGuestInventoryFromCollection()
-  }, [loadDue, loadFavorites, loadInventory, loadPractice, loadAccuracy])
+  }, [loadDue, loadFavorites, loadInventory, loadPractice, loadAccuracy, loadCrosses])
 
   const summary = useMemo(() => summarize(stats), [stats])
 
@@ -67,6 +71,17 @@ export default function StudyScreen() {
       skin: 'focus',
       caption: 'Drill one book of your choosing · earns XP',
       to: '/study/focus',
+    },
+    {
+      key: 'cross',
+      title: 'Cross Word',
+      emblem: '✝️',
+      skin: 'cross',
+      caption:
+        crossesBuilt > 0
+          ? `Two words in the shape of a cross · ${crossesBuilt} built`
+          : 'Two words in the shape of a cross — finish it for the verse',
+      to: '/study/cross',
     },
     {
       key: 'replay',

@@ -495,6 +495,71 @@ const PROPS: Record<string, Prop> = {
 /** Every furnishing id RoomArt can draw — used to sanity-check the catalog. */
 export const DRAWN_FURNISHINGS = Object.keys(PROPS)
 
+/**
+ * Furnishings that stay DRAWN whatever art exists for them.
+ *
+ * The lampstand carries the prayer signal — it burns when you have prayed today
+ * and shows a cold wick when you have not — and a baked image has exactly one
+ * state. Same class of exclusion the keep makes for the gonfalon and the
+ * destrier's barding, which take denominationColor() at runtime: a picture
+ * cannot answer a question asked after it was painted.
+ */
+const ALWAYS_DRAWN = new Set(['room_lampstand'])
+
+/**
+ * Natural height of each furnishing in room units, so a render occupies the
+ * space its drawing did rather than whatever size it happened to come back.
+ *
+ * Measured off the drawn props: the stool stands 20 units, the loom 36, a row
+ * of clay lamps 9. A render is given a box three times as wide as it is tall
+ * and fits inside it, so its own proportions decide the width — the same
+ * bargain ChurchFlora makes, and for the same reason. Forcing every prop into
+ * one box would squash a loom and inflate a scroll.
+ */
+const RASTER_H: Record<string, number> = {
+  room_reed_mat: 8,
+  room_stool: 20,
+  room_sleeping_mat: 10,
+  room_olive_jar: 16,
+  room_lattice: 22,
+  room_hanging: 30,
+  room_open_scroll: 8,
+  room_scroll_rack: 18,
+  room_water_jar: 22,
+  room_clay_lamps: 9,
+  room_psaltery: 22,
+  room_palm_wreath: 24,
+  room_censer: 14,
+  room_land_map: 26,
+  room_dovecote: 24,
+  room_loom: 36,
+  room_cedar_chest: 20,
+}
+
+/** A render placed on the same ground point its drawing is built around. */
+function PropImage({ id, mount, href, h }: { id: string; mount: RoomMount; href: string; h: number }) {
+  const w = h * 3
+  // Everything stands ON the ground point; only a wall piece straddles it.
+  return (
+    <image
+      href={href}
+      x={-w / 2}
+      y={mount === 'wall' ? -h / 2 : -h}
+      width={w}
+      height={h}
+      preserveAspectRatio={mount === 'wall' ? 'xMidYMid meet' : 'xMidYMax meet'}
+      aria-hidden
+      data-prop={id}
+    />
+  )
+}
+
+/** The render for a furnishing, or null to keep its drawing. */
+function propRaster(id: string): string | null {
+  if (ALWAYS_DRAWN.has(id)) return null
+  return GENERATED_ART[id] ?? null
+}
+
 /** Plain, Fine, Grand. Small steps: this has to stay recognisably the same mat. */
 const TIER_SCALE = [1, 1.12, 1.24]
 
@@ -560,14 +625,21 @@ export function FurnishingProp({
 }) {
   const { id, tier } = unpackDecor(value)
   const art = PROPS[id]
-  if (!art) return null
+  const raster = propRaster(id)
+  if (!art && !raster) return null
   const grown = TIER_SCALE[tier - 1] ?? 1
   return (
     <g transform={`translate(${x}, ${y})`}>
       {/* Behind the prop, so it reads as the object sitting on something finer
           rather than a highlight painted over it. */}
       {tier > 1 && <TierAccent tier={tier} mount={mount} />}
-      <g transform={grown === 1 ? undefined : `scale(${grown})`}>{art({ lit })}</g>
+      <g transform={grown === 1 ? undefined : `scale(${grown})`}>
+        {raster ? (
+          <PropImage id={id} mount={mount ?? 'floor'} href={raster} h={RASTER_H[id] ?? 20} />
+        ) : (
+          art?.({ lit })
+        )}
+      </g>
     </g>
   )
 }
@@ -583,13 +655,20 @@ export function FurnishingProp({
 export function FurnishingThumb({ id, size = 56 }: { id: string; size?: number }) {
   const def = furnishingById(id)
   const prop = PROPS[id]
-  if (!def || !prop) return null
+  const raster = propRaster(id)
+  if (!def || (!prop && !raster)) return null
   const box = def.mount === 'wall' ? '-32 -32 64 64' : '-32 -46 64 56'
   return (
     <svg width={size} height={size} viewBox={box} style={{ display: 'block' }} aria-hidden>
       {/* The shelf shows the object itself, always lit: this is a picture of
           the lampstand, not a report on today. */}
-      {prop({ lit: true })}
+      {raster ? (
+        // Sized to the thumbnail box rather than to room units — the shelf is a
+        // catalogue, so every tile is the same size on purpose.
+        <PropImage id={id} mount={def.mount ?? 'floor'} href={raster} h={def.mount === 'wall' ? 44 : 40} />
+      ) : (
+        prop?.({ lit: true })
+      )}
     </svg>
   )
 }

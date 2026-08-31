@@ -430,7 +430,11 @@ export const FULL_SKINS: SkinDef[] = [
   },
   {
     id: 'porchlight',
-    name: 'Porchlight',
+    // The DISPLAY name is the creator's; the id stays 'porchlight' because it is
+    // the entitlement key — enforce_skin_entitlement's protected list (0082),
+    // the promo_codes row, owned_skins and /skins/porchlight.png all key off it,
+    // and renaming an id would silently un-own it for everybody who redeemed.
+    name: 'BrotherNoahScott',
     source: 'paid',
     exclusive: true,
     packName: 'Creator Collab',

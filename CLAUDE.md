@@ -1165,7 +1165,21 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0092` (church name locks) and `0091` (the church places index —
+The latest is `0093` (`daily_players` — who has played today), APPLIED on
+2026-09-01 and verified rather than assumed: exactly ONE signature, so no stale
+overload survives for PostgREST to resolve an old client's call to; `prosecdef`
+true and the ACL reads `{=X,postgres,anon,authenticated,service_role}` — the
+deliberately-public shape `get_daily_pulse` and `first_light` have, not the
+locked-down `grant_skins` one, because a guest seeing the day is populated IS
+the pitch. And the part worth checking by running it: against live data the
+payload's player keys are exactly `username, avatar_emoji, avatar_character,
+avatar_border, avatar_badge, denomination, is_me` — **no score, no xp, no rank,
+no per-person count**, so the "a crowd, not a ladder" guarantee is a fact about
+the deployed function rather than a claim in its header. The client fails closed
+either way: an unapplied 0093 makes the Play tab's count a plain line instead of
+a button, never an error.
+
+Before it, `0092` (church name locks) and `0091` (the church places index —
 churches now come from our own Overture-loaded table instead of live
 OpenStreetMap), both APPLIED on 2026-09-01. **606,272 US places are loaded**
 from Overture release `2026-08-19.0`, and `link_church_places()` +
@@ -1273,11 +1287,12 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0093` (0085 is taken by erasure
+production only). So the next free number is `0094` (0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the
-tree and 0092 by the name locks in the tree, above),
+tree, 0092 by the name locks in the tree, above, and 0093 by `daily_players` —
+who has played today),
 and this
 sentence has already gone stale twice: it said "0076" while 0077, 0078 and 0079
 were sitting in the folder. `ls supabase/migrations | tail -1` is the answer — on ORIGIN/MAIN, not your
@@ -2324,6 +2339,30 @@ else (`features/home/HomeScreen.tsx`, whose header is the long version):
    account offer. Each opens its own content in a `QuickSheet` rather than
    spending a card on it — First Light's own gesture (a row, tapped, opening the
    player card) generalised rather than three screens each inventing a sheet.
+
+Plus **one line, not a card**: how many people have played today, directly under
+the two boxes (`features/presence/PlayedToday.tsx`). It is what survived of the
+drifting presence ticker, which is now deleted — the COUNT was the part doing
+the work ("others are doing this with me today"), and the scrolling "@name +430"
+rows were the part that put one player's number beside another's on the screen
+everybody lands on. Tapping the number opens the PEOPLE and never the scores:
+`daily_players` (`0093`) returns faces and names with **no score in the payload
+at all**, ordered by who turned up most recently — a fact about the clock rather
+than about them. It is the church roster's "a crowd, not a ladder" applied to
+the day, and the guarantee is that the query is never built, the same shape the
+rivalry's payload and `first_light`'s take. Read the migration header before
+adding a number to a row there.
+
+Three states, and none of them is broken: no count ⇒ nothing renders (there is
+no "0 played today", which on a quiet morning would open the app by telling
+somebody they are alone); a count with no roster behind it ⇒ a plain line rather
+than a button, which is what a keyless LOCAL build and a server without 0093
+both get — the count there is `synthPulse()`'s ambience, and a list to go with
+it would have to invent NAMES, which is the "a named player who doesn't exist is
+a lie you can tap" rule `FirstLight` already follows; a count with a roster ⇒ a
+button. Guests are **counted and not named**: the day's number is plays +
+guest_opens, so a list of accounts alone would be shorter than the number beside
+it, and `guest_opens.username` is unmoderated text on a row keyed to a device.
 
 Four rules fall out of it, and each is the thing a future session will want to
 break first:

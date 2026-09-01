@@ -1636,6 +1636,33 @@ on every phone, where a scrolling chip rail would hide half the wardrobe behind
 a swipe nobody is told about. Adding a shelf is one more entry in the `tabs`
 array.
 
+**`TabbedSection` lives in `components/` now, not inside the customizer**, and
+three surfaces use it: the customizer, the profile's "Your people" / "Your
+things" rows, and the church tab's board / givers / buildings. The argument
+above generalised exactly — a column of identical closed rows means the one you
+want is always the last one — so it moved out rather than being copied, the same
+choke-point rule `QuizRunner` and the little worlds follow. A pill may carry a
+**dot** (somebody is waiting on you) and may never carry a **count**: the same
+single, countless signal the bottom nav uses, because a number there turns a
+wardrobe into a queue to be cleared.
+
+Two applications of it are worth knowing before changing them. On the profile
+the split into **two** rows is deliberate — people and things are different
+kinds of thing, and one undifferentiated row of five would undo the very
+distinction those headings were added to draw. On the church tab the **board is
+the default panel**, so that tab opens looking exactly as it did: nothing was
+folded away, two things were promoted to sit level with it. The board is why a
+church can *join* the week rather than only climb it (see the three-windows
+note above), so hiding it behind a pill by default would be a real change to
+what the tab is for, not a tidy-up.
+
+And the two page titles that used to head `/battle` and `/church` are gone: a
+44px floating sword over the words "Bible Battle", on a tab you reach by tapping
+a nav button labelled Battle, was ~130px of the first screen spent restating the
+tap — and it pushed the gold primary action most of the way down a 390px phone.
+Play and Study never had one. Church keeps its header only for the guest card
+and the picker, where there is no hero to name the screen.
+
 ### The starter character, and the parked armor
 
 The first thing anyone does — as a guest at `/welcome`, or on the first beat of
@@ -2026,7 +2053,59 @@ count for all modes belongs here, once, rather than in five screens.
 
 Same idea elsewhere: `CpuVersusQuiz` for anything racing a simulated opponent,
 `Page`/`Button`/`Avatar` for chrome, `useJuice()` for sound + haptics + confetti
-(respecting the user's reduce-motion and sound settings — always go through it).
+(respecting the user's reduce-motion and sound settings — always go through it),
+and `TabbedSection` wherever three or more foldable panels would otherwise stack
+down a screen.
+
+## The map: five tabs, twenty-six places
+
+The compass beside the bottom nav opens a directory of the whole app.
+`data/map.ts` is the one list, `features/map/MapSheet.tsx` draws it,
+`features/map/invitations.ts` is the panel at the top.
+
+It exists because every placement in this app is individually right and the sum
+of them was an app you had to already know: praying was behind tapping your own
+figure inside a room halfway down a tab, the arcade only advertised itself once
+the day's verse was done, the Journal and mailbox were pills on a card two
+screens down. The map does not move any of them — it adds a second way in.
+
+Four things about it are load-bearing:
+
+- **The map may never count anything.** A place carries an icon, a name and a
+  line saying what it *is*. No "12 cards", no "3 due", no completion state, no
+  ordering by how much you have used it — a map with counts on it is a progress
+  screen, and a progress screen is a list of the places you are behind on.
+  `scripts/check-map.mjs` fails the build on a digit in a place's copy.
+- **The invitations panel is not a checklist, and the distinction is the whole
+  design.** It lists only what is genuinely OPEN, so it gets shorter through the
+  day rather than filling with ticks; there is no denominator, nothing
+  remembered about a day that has passed, and no strikethrough state. Empty is a
+  warm line, never a zero. Read the header in `invitations.ts` before adding
+  anything to it: a completion number there is the thing the review dot, the
+  prayer lamp and the library's `borrowed_today` boolean were each deliberately
+  built without.
+- **The puck sits BESIDE the nav pill, in the nav's own row.** Five tabs already
+  have to clear a 320px phone, so a sixth would shrink every one of them; and
+  that band is the only strip the app shell already reserves, so a free-floating
+  button anywhere else lands on the bottom-anchored primary action — the trap
+  `StudyDropToast` moved to the top of the screen to avoid. Measured: pill 248 +
+  gap 8 + puck 47 = 303 of 320.
+- **The sheet is a SIBLING of `<nav>`, never a child.** The nav sets `z-index:
+  40`, which creates a stacking context, so a sheet nested inside it paints at
+  40 regardless of its own z-index — under the player card and every other
+  sheet. Same family of bug as the `backdrop-filter` note on `ChurchDetailSheet`
+  and the `perspective` one in `BookOpening`.
+
+`scripts/check-map.mjs` (in `npm run build`) asserts every `to` against the real
+`<Route>` table in `App.tsx`, re-derived by text rather than imported. A
+mistyped route does not throw and does not fail to compile — it falls through
+the catch-all to Landing, silently signing somebody out of their own app, on the
+one row nobody happened to tap.
+
+Two deep links exist so the map has somewhere honest to point: `?pray=1` on
+`/you` opens the prayer sheet and `?customize=1` opens the customizer. Both are
+frozen at mount and stripped from the URL immediately, or a reload re-opens them
+over whatever the player moved on to.
 
 ### A started run is locked, and can't be re-dealt
 

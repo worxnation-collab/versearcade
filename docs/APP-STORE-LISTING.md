@@ -84,11 +84,16 @@ Start your streak today. It's one verse.
 > on the day you submit. Do not bump the version for a new feature — only an
 > *approved* version forces a bump.
 >
-> Last rebuilt against `git log --first-parent` on 2026-08-31, covering #157 to #191,
-> plus the run lock (2026-09-01). 3,963 characters against Apple's 4,000 limit — this
-> block is now FULL. The next thing that lands has to take something out, and the
-> cheapest cut is the section describing whatever turns out to have shipped in 1.2.0
-> already (see the note under the block).
+> Last rebuilt against `git log --first-parent` on 2026-09-01, covering #157 to the
+> navigation map, including the run lock. **3,998 characters against Apple's 4,000
+> limit — this block is not merely full, it is at the wall.** Two branches both
+> declared it full on the same day and both added to it anyway; fitting the second
+> one meant cutting the "small ✕ puts it back on the shelf" bullet and writing the
+> map's own section twice as short. There is nothing left to shave.
+>
+> So the next thing that lands has to TAKE A SECTION OUT, and the cheapest cut is
+> whichever one turns out to have shipped in 1.2.0 already (see the note under the
+> block) — that check is owed before submission regardless.
 
 ```
 BATTLE ANYONE, RIGHT NOW
@@ -146,8 +151,6 @@ ARRANGE EVERYTHING WITH YOUR THUMB
   the church and it settles into the distance.
 • Finer furnishings are their own rewards now: you earn Fine and Grand by playing
   instead of stacking duplicates, and a lesser copy upgrades where it stands.
-• Anything you're holding wears a small ✕. One tap puts it back on the shelf at
-  the tier you earned. Nothing is ever spent.
 • Your congregation's statues move too, and any member can move them.
 
 THE STUDY TAB IS A LIBRARY
@@ -155,6 +158,10 @@ THE STUDY TAB IS A LIBRARY
   she fetches it and stamps it out to you.
 • The first book you borrow each day is worth a little something. There are no due
   dates, nothing is ever overdue, and she has no opinion about how much you read.
+
+FIND ANYTHING IN ONE TAP
+• A compass by the tabs maps everywhere in the app, and what's still open today.
+  Never a score, and never a list of what you missed.
 ```
 
 **Three sections here may already be in players' hands, and the repo cannot settle

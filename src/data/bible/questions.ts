@@ -5,7 +5,7 @@
 
 import type { DailyVerse, Question } from '@/types'
 import { VERSE_POOL, BIBLE_BOOKS, type VerseSeed } from './pool'
-import { bonusTriviaFor, triviaBooks, triviaRoundFor } from './trivia'
+import { triviaBooks, triviaRoundFor } from './trivia'
 import { DEFAULT_TRANSLATION } from '@/lib/config'
 
 // --- seeded RNG (mulberry32) ------------------------------------------------
@@ -195,20 +195,28 @@ export function generateQuestions(seed: VerseSeed, rng: () => number): Question[
   // Keep a deterministic set of valid questions.
   const verseQuestions = shuffle(candidates.filter((q): q is Question => q !== null), rng)
 
-  // BONUS TRIVIA takes the last slot — four questions about this verse, then one
-  // about the whole book it comes from. See `./trivia.ts` for why that question
-  // can't be generated from a VerseSeed, and `Question.bonus` for why the last
-  // slot is the one that makes "bonus" true without touching any scoring.
+  // FIVE QUESTIONS ABOUT THIS VERSE. All five.
   //
-  // The rng is consumed AFTER the verse questions are drawn, deliberately: the
-  // first four of any run are exactly the ones this generator produced before
-  // trivia existed, so a replay of a past day is as close to unchanged as a
-  // content addition can be.
+  // The last slot briefly held a BONUS TRIVIA question about the whole book the
+  // verse came from, and it has been taken back out: the daily drop is the one
+  // place in this app that teaches a specific verse, and spending its most
+  // valuable slot on a fact about the book was spending it on something else.
+  // Trivia did not go away — it has two rounds of its own now (`/play/trivia`
+  // and `/study/trivia`) plus a whole battle mode, which is a better home for
+  // it than one seat inside a run about something else.
   //
-  // A book with no trivia in this build falls back to five verse questions —
-  // the run the app has always had. Nothing here can leave a run short.
-  const bonus = bonusTriviaFor(seed.book, rng)
-  return bonus ? [...verseQuestions.slice(0, 4), bonus] : verseQuestions.slice(0, 5)
+  // **Taking it out RESTORES the historical deal rather than re-dealing it, and
+  // that is not luck — the original wiring was built for this.** The bonus was
+  // appended AFTER `verseQuestions` was already shuffled, so it consumed rng
+  // nobody else was waiting on. Dropping the call leaves questions one through
+  // four untouched and puts back, in slot five, exactly the question this
+  // generator produced before trivia existed. Verified by running both
+  // derivations over the pool rather than reasoned about.
+  //
+  // If a bonus question is ever wanted back, `bonusTriviaFor` is still in
+  // `./trivia.ts` and still the only thing that builds one — and it must go on
+  // the END for the same reason, or every run in the app's history re-deals.
+  return verseQuestions.slice(0, 5)
 }
 
 /**

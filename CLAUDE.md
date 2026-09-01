@@ -959,7 +959,7 @@ holding the psalter she commissioned. None carries a weapon and no prompt
 mentions a crusade: the era is the setting, not the subject. That is a content
 decision worth keeping if the set ever grows.
 
-## Bonus trivia: the last question of every run
+## Book trivia: rounds of its own, and not a seat in the daily run
 
 `generateQuestions` derives every question from ONE `VerseSeed` — which book,
 who spoke, who was addressed, before, after, two fill-in-the-blanks, the theme,
@@ -969,18 +969,37 @@ in a story**: a narrative question needs the narrative, and a seed only knows
 about itself. So a daily player meets the same nine shapes forever.
 
 `data/bible/trivia.ts` is the second question source: 406 questions about the
-BOOKS, keyed by book name, six minimum for every one of the 66. The last slot of
-every run is one of them, for the book the verse came from — the daily drop,
-practice, replays, CPU races, async battles and live battles all at once,
-because they all go through `generateQuestions`. Five things are load-bearing:
+BOOKS, keyed by book name, six minimum for every one of the 66.
 
-- **It takes the LAST slot, and that is what makes "bonus" honest.** The combo
-  multiplier grows through a run and peaks on question 5 (up to 2.5x), so the
-  final question was *already* the most valuable one. Nothing in `SCORING`,
-  `scoreQuestion`, the battle comparison or any stored score changed — a run is
-  still five questions. **Do not give it a weight of its own**: every score in
-  the app's history would become incomparable with every score after it, and the
-  thing making it a bonus is already there.
+**It briefly took the last slot of every run, and it has been taken back out.**
+The daily drop asks five questions about the verse again — all five — and the
+same is true everywhere `generateQuestions` reaches: practice, replays, focus
+drills, CPU races and verse-mode battles. The argument for removing it is the
+one that put it there, read the other way round: the combo multiplier peaks on
+question five, so that slot is the most valuable one in the run, and the daily
+drop is the one place in this app that teaches a SPECIFIC VERSE. Spending its
+best slot on a fact about the book was spending it on something else. Trivia did
+not shrink when it moved — it has two rounds of its own (`/play/trivia` and
+`/study/trivia`) and a whole battle mode, all of which are a better home for it
+than one seat inside a run about something else.
+
+**Removing it RESTORED the historical deal rather than re-dealing it, and that
+was designed in from the start.** The bonus was appended AFTER `verseQuestions`
+was already shuffled, so it consumed rng nothing else was waiting on. Dropping
+the call therefore leaves questions one to four untouched and puts back, in slot
+five, exactly the question the generator produced before trivia existed —
+checked by running both derivations over 400 dates rather than reasoned about
+(identical Q1–Q4, every Q5 a verse question again, no short runs), and the daily
+and library trivia ROUNDS came back byte-identical because they draw before
+`buildDailyVerse` runs. **If a bonus question is ever wanted back, it goes on
+the END for that reason**, or every run in the app's history re-deals.
+
+`bonusTriviaFor` is still in `trivia.ts`, unwired and labelled as such, because
+it is the only thing that builds a single bonus question and putting one back
+should stay a line rather than a rewrite.
+
+Three things about the trivia DATA are load-bearing, and none of them changed:
+
 - **A wrong answer still teaches**, the same `teach` line a verse question
   carries. That is the whole reason trivia — a pub-quiz mechanic, the format
   most likely to make somebody feel stupid — can exist in this app at all.
@@ -990,12 +1009,9 @@ because they all go through `generateQuestions`. Five things are load-bearing:
   are factions the app deliberately never ranks, and a question a Catholic and a
   Baptist answer differently would quietly make one of them wrong on their own
   church's tab. People, places, events, order, and numbers that are IN the text.
-- **The rng is consumed AFTER the verse questions are drawn**, so the first four
-  of any run are exactly what the generator produced before trivia existed. A
-  replay of a past day is as close to unchanged as a content addition gets.
-- **It fails closed, per book.** No trivia for a book ⇒ `bonusTriviaFor` returns
-  null and the run is five verse questions, exactly the app as it was. Nothing
-  here can leave a run short.
+- **It fails closed, per book.** No trivia for a book ⇒ a round falls back to
+  drawing across the whole Bible rather than rendering empty. Nothing here can
+  leave a run short.
 
 **The failure modes all render perfectly**, so they are a build failure:
 `scripts/check-trivia.mjs` (in `npm run build`) checks coverage of all 66 books,
@@ -1015,8 +1031,8 @@ number, so raising the round size fails the build instead of silently repeating.
 **And the day's own round is the second box on the Play tab** (`/play/trivia`,
 `features/daily/DailyTriviaScreen.tsx`, `dailyTriviaFor` in
 `data/bible/questions.ts`). Five questions about ONE book, the same book and
-the same five for every player on a date — the daily drop's bonus question
-turned into a whole round, sitting level with the verse rather than under it.
+the same five for every player on a date — what the daily drop's bonus question
+grew into, sitting level with the verse rather than inside it.
 Nothing in it is invented: the book rotation is `getVerseForDate`'s no-repeat
 shuffle under its own seed (`'trivia-order-v1'` — a history seed, so changing
 it re-deals every past and future day), the questions come from

@@ -1,4 +1,4 @@
-import { battleVerse } from './battle'
+import { battleVerse, type BattleMode } from './battle'
 import type { DailyVerse } from '@/types'
 
 // Live Bible Battle — the pure parts. Room codes, the seed both devices derive
@@ -52,8 +52,49 @@ export function seedForRoom(code: string, round: number): number {
   return Math.abs(h | 0) % 0x7fffffff
 }
 
+/**
+ * The MODE both players get, derived from the room the way the seed is.
+ *
+ * A live battle has no row until it is over and no announce message by design,
+ * so there is nowhere to put a host's choice — and putting one there would be
+ * one device deciding for two, which is exactly the bug the rematch handshake
+ * was rewritten to close. Deriving it means the ROOM deals the round and neither
+ * player imposes anything, which is also the only shape that works for quick
+ * match, where two strangers arrive with nobody in charge.
+ *
+ * Its own hash rather than a bit of the seed: hanging the mode on the seed's
+ * parity ties two things that should stay free to change separately, and would
+ * make any future tweak to `seedForRoom` silently re-roll every room's mode too.
+ *
+ * `round` is in the input for the same reason it is in the seed — a rematch is
+ * a fresh round of a fresh kind, rather than the same thing all stream.
+ */
+export function modeForRoom(code: string, round: number): BattleMode {
+  let h = 2166136261
+  const input = `mode#${code}#${round}`
+  for (let i = 0; i < input.length; i++) {
+    h ^= input.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  // AVALANCHE BEFORE TAKING A BIT, and this is not decoration — it was found by
+  // running the real function over three hundred room codes. FNV-1a's final
+  // step is a multiply by an odd constant, so the LOW bit of the result is just
+  // the low bit of the input: incrementing the round by one flips it every
+  // time. Taking `h % 2` straight off meant every room in the app produced one
+  // of exactly two sequences (verse/trivia/verse… or its inverse), so a
+  // rematch always flipped the mode and one round told you every future one.
+  // Unbiased across rooms, and still wrong. This is murmur3's fmix32, which
+  // spreads every input bit across all thirty-two.
+  h ^= h >>> 16
+  h = Math.imul(h, 0x85ebca6b)
+  h ^= h >>> 13
+  h = Math.imul(h, 0xc2b2ae35)
+  h ^= h >>> 16
+  return (h >>> 0) % 2 === 0 ? 'verse' : 'trivia'
+}
+
 export function verseForRoom(code: string, round: number): DailyVerse {
-  return battleVerse(seedForRoom(code, round))
+  return battleVerse(seedForRoom(code, round), modeForRoom(code, round))
 }
 
 export interface LiveResult {

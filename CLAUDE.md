@@ -870,6 +870,50 @@ entirely white image (the magenta instruction ignored, the failure the church
 skins hit twice); it was re-rolled with the prompt hardened against exactly that
 and every pale garment on the figure recoloured.
 
+### Two kinds of round: verse or trivia
+
+Every battle used to be one shape — a verse, four questions about it, a bonus
+about its book. Since `0094` the person starting one picks: **verse** as it
+always was, or **trivia**, five questions about one book of the Bible read over
+a verse from that book (the daily trivia round, dealt from a battle seed).
+
+`battleVerse(seed, mode)` is the whole engine and every path goes through it —
+an async challenge, a broadcast link, the welcome battle, a room code, a quick
+match and a CPU race. Four things are load-bearing:
+
+- **The mode is a COLUMN, not something folded into the seed.** Encoding it in
+  the seed would have shipped no migration at all, and would have silently
+  re-dealt EVERY PENDING BATTLE: a challenge sent an hour ago stores only a
+  seed, its opponent rebuilds the round from that number when they accept, and a
+  client reading the same number differently hands the two players different
+  questions under one score column. There is no version on a battle row to tell
+  them apart and the failure is silent on both screens. So `mode` defaults to
+  `'verse'` everywhere — the column, the RPC argument and `battleVerse`'s second
+  parameter — and a one-argument call is byte-identical to what it always was.
+  Verified by running the old derivation against the new one over six seeds
+  including both ends of the range.
+- **Live battles DERIVE their mode from the room** (`modeForRoom`), exactly as
+  they derive the seed, and do not use the column for anything but the record
+  written afterwards. A live match has no row until it is over and no
+  announce-the-deal message by design; a host's choice sent to a guest would be
+  one device deciding for two, which is the bug the rematch handshake was
+  rewritten to close. It is also the only shape that works for quick match,
+  where two strangers arrive with nobody in charge. `ModePicker` is for the
+  surfaces where a person chooses; `ModeNote` states it where the room decided.
+- **`modeForRoom` avalanches its hash before taking a bit, and that line was
+  earned.** FNV-1a's last step is a multiply by an odd constant, so the result's
+  LOW bit is just the input's low bit: incrementing the round flipped it every
+  time, and every room in the app produced one of exactly TWO sequences
+  (verse/trivia/verse… or its inverse) — unbiased across rooms, and still wrong,
+  since one round told you every future one. Found by running the real function
+  over three hundred room codes, invisible in the diff. murmur3's fmix32 fixed
+  it; all 64 six-round patterns now appear.
+- **A mode is a flavour, not a difficulty.** It changes which questions are
+  asked and nothing else: scoring is untouched, `award_battle_xp` still never
+  reads a result and pays winner and loser the identical 10, and no board
+  separates a trivia win from a verse win. Two ladders is the thing this app has
+  trouble enough with at one.
+
 ### The crusades set: the one cosmetic earned by winning
 
 Four figures from 1095–1291 — Francis of Assisi, Hildegard of Bingen, Thomas
@@ -1165,7 +1209,14 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0093` (`daily_players` — who has played today), APPLIED on
+The latest is `0094` (battle modes — verse or trivia), APPLIED on 2026-09-01
+and verified: exactly ONE `create_battle` signature after the drop-and-recreate,
+so no stale seven-argument overload survives for PostgREST to resolve an old
+client's call to (the 0086 scar, checked rather than assumed); all 409 existing
+battle rows read `mode = 'verse'` with none null; the check constraint is
+present; and `battle_json` returns the key for a historic row.
+
+Before it, `0093` (`daily_players` — who has played today), APPLIED on
 2026-09-01 and verified rather than assumed: exactly ONE signature, so no stale
 overload survives for PostgREST to resolve an old client's call to; `prosecdef`
 true and the ACL reads `{=X,postgres,anon,authenticated,service_role}` — the
@@ -1287,12 +1338,12 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0094` (0085 is taken by erasure
+production only). So the next free number is `0095` (0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the
-tree, 0092 by the name locks in the tree, above, and 0093 by `daily_players` —
-who has played today),
+tree, 0092 by the name locks in the tree, above, 0093 by `daily_players` — who has played
+today — and 0094 by the battle mode),
 and this
 sentence has already gone stale twice: it said "0076" while 0077, 0078 and 0079
 were sitting in the folder. `ls supabase/migrations | tail -1` is the answer — on ORIGIN/MAIN, not your

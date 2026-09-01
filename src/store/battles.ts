@@ -20,6 +20,10 @@ export interface Battle {
   created_at: string
   broadcast: boolean
   is_welcome: boolean
+  /** Which round this battle deals (0094). Absent on a row written before it and
+   *  on a server without it — `asBattleMode` reads both as 'verse', which is
+   *  what those battles actually are. */
+  mode?: 'verse' | 'trivia'
   is_challenger: boolean
   is_opponent: boolean
   is_invited: boolean
@@ -70,7 +74,15 @@ interface BattlesState {
   loadingMine: boolean
   loadMine: () => Promise<void>
   getBattle: (id: string) => Promise<Battle | null>
-  createBattle: (seed: number, score: number, timeMs: number, invited?: string, broadcast?: boolean, live?: boolean) => Promise<string | null>
+  createBattle: (
+    seed: number,
+    score: number,
+    timeMs: number,
+    invited?: string,
+    broadcast?: boolean,
+    live?: boolean,
+    mode?: 'verse' | 'trivia',
+  ) => Promise<string | null>
   submitBattle: (id: string, score: number, timeMs: number) => Promise<Battle | null>
   userPool: (search?: string) => Promise<PoolUser[]>
   leaderboard: () => Promise<BattleBoard | null>
@@ -99,7 +111,7 @@ export const useBattles = create<BattlesState>((set) => ({
   // and it is the ONLY place that fact is recorded, because the two sides submit
   // through the same RPCs an async challenge does. The server reads it back off
   // the row for the guest's half, so neither device declares it twice.
-  async createBattle(seed, score, timeMs, invited, broadcast, live) {
+  async createBattle(seed, score, timeMs, invited, broadcast, live, mode) {
     if (!supabase) return null
     const { data, error } = await supabase.rpc('create_battle', {
       p_seed: seed,
@@ -109,6 +121,10 @@ export const useBattles = create<BattlesState>((set) => ({
       p_broadcast: broadcast ?? false,
       p_live: live ?? false,
       p_local_date: todayLocalDate(),
+      // Named, and defaulted server-side: a server without 0094 has no p_mode
+      // and would reject the call outright, so this is sent as 'verse' rather
+      // than omitted only when it is actually a trivia battle.
+      ...(mode === 'trivia' ? { p_mode: 'trivia' } : {}),
     })
     if (error || !data) return null
     // The server may have paid for this run (award_battle_xp, 0086). It never

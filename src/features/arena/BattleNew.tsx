@@ -9,7 +9,8 @@ import { useBattles } from '@/store/battles'
 import { useKeep } from '@/store/keep'
 import { useBuddies, type BuddyCard } from '@/store/buddies'
 import { useAuth } from '@/store/auth'
-import { newBattleSeed, battleVerse } from './battle'
+import { newBattleSeed, battleVerse, battleModeLabel, type BattleMode } from './battle'
+import { ModePicker } from './ModePicker'
 import { shareResult, inviteUrl } from '@/features/daily/shareCard'
 import { useJuice } from '@/juice/useJuice'
 import { FavoriteButton } from '@/components/FavoriteButton'
@@ -37,14 +38,28 @@ export default function BattleNew() {
   const navigate = useNavigate()
   const location = useLocation()
   const seed = useMemo(() => newBattleSeed(), [])
-  const verse = useMemo(() => battleVerse(seed), [seed])
+  // Which round this deals. Chosen on the picker below rather than as a third
+  // step, so it costs no extra tap — and it has to be settled BEFORE the run,
+  // because the round the challenger plays is the round their opponent will be
+  // handed, and the only record of it is the row this creates afterwards.
+  const [mode, setMode] = useState<BattleMode>('verse')
+  const verse = useMemo(() => battleVerse(seed, mode), [seed, mode])
   const [result, setResult] = useState<PlayResult | null>(null)
   // Arriving from someone's player card or a buddy row ("⚔️ Battle") already
   // names the opponent, so that path skips the picker entirely.
   const target = (location.state as { challenge?: string } | null)?.challenge ?? null
   const [choice, setChoice] = useState<Choice | null>(target ? { kind: 'player', username: target } : null)
 
-  if (!choice) return <OpponentPicker onPick={setChoice} onExit={() => navigate('/battle')} />
+  if (!choice) {
+    return (
+      <OpponentPicker
+        mode={mode}
+        onMode={setMode}
+        onPick={setChoice}
+        onExit={() => navigate('/battle')}
+      />
+    )
+  }
 
   if (!result) {
     return (
@@ -54,16 +69,33 @@ export default function BattleNew() {
         onExit={() => navigate('/battle')}
         // Name the opponent for the whole run — otherwise the quiz looks like a
         // solo game and nobody can tell whether picking them did anything.
-        label={choice.kind === 'player' ? `⚔️ Battle vs @${choice.username}` : '⚔️ Bible Battle'}
+        label={`${choice.kind === 'player' ? `⚔️ vs @${choice.username}` : '⚔️ Bible Battle'} · ${battleModeLabel(seed, mode)}`}
       />
     )
   }
-  return <InvitePicker seed={seed} result={result} target={choice.kind === 'player' ? choice.username : null} />
+  return (
+    <InvitePicker
+      seed={seed}
+      mode={mode}
+      result={result}
+      target={choice.kind === 'player' ? choice.username : null}
+    />
+  )
 }
 
 // Step one: who are you battling? Shown before the quiz so the tap that names a
 // person is the tap that starts the battle.
-function OpponentPicker({ onPick, onExit }: { onPick: (c: Choice) => void; onExit: () => void }) {
+function OpponentPicker({
+  mode,
+  onMode,
+  onPick,
+  onExit,
+}: {
+  mode: BattleMode
+  onMode: (m: BattleMode) => void
+  onPick: (c: Choice) => void
+  onExit: () => void
+}) {
   const juice = useJuice()
   const { buddies, suggested, load, loadSuggested } = useBuddies()
   const [ready, setReady] = useState(false)
@@ -110,6 +142,12 @@ function OpponentPicker({ onPick, onExit }: { onPick: (c: Choice) => void; onExi
           challenge goes out the moment you finish.
         </p>
       </div>
+
+      {/* What kind of round, above who you are playing: it changes what BOTH of
+          you are handed, so it belongs with the setup rather than tucked under
+          the list of people. */}
+      <Divider>WHAT KIND OF ROUND</Divider>
+      <ModePicker value={mode} onChange={onMode} />
 
       {buddies.length > 0 && (
         <>
@@ -158,9 +196,21 @@ function Divider({ children }: { children: React.ReactNode }) {
   )
 }
 
-function InvitePicker({ seed, result, target }: { seed: number; result: PlayResult; target: string | null }) {
+function InvitePicker({
+  seed,
+  mode,
+  result,
+  target,
+}: {
+  seed: number
+  mode: BattleMode
+  result: PlayResult
+  target: string | null
+}) {
   const navigate = useNavigate()
-  const verse = useMemo(() => battleVerse(seed), [seed])
+  // The SAME deal the run above was played on. Rebuilding it without the mode
+  // would show a verse the challenger never saw on a trivia battle's recap.
+  const verse = useMemo(() => battleVerse(seed, mode), [seed, mode])
   const juice = useJuice()
   const { createBattle } = useBattles()
   const { buddies, suggested, load, loadSuggested, sendRequest } = useBuddies()
@@ -179,7 +229,7 @@ function InvitePicker({ seed, result, target }: { seed: number; result: PlayResu
   const invite = async (u: BuddyCard, isBuddy: boolean) => {
     juice.coin()
     if (!isBuddy) void sendRequest(u.username)
-    const id = await createBattle(seed, result.score, result.timeMs, u.username)
+    const id = await createBattle(seed, result.score, result.timeMs, u.username, false, false, mode)
     trackKeepRun(result)
     if (id) navigate(`/battle/${id}`, { replace: true, state: { justCreated: true } })
     return !!id
@@ -214,7 +264,7 @@ function InvitePicker({ seed, result, target }: { seed: number; result: PlayResu
     // can take you on (each gets their own battle vs your score).
     let id = shareId
     if (!id) {
-      id = await createBattle(seed, result.score, result.timeMs, undefined, true)
+      id = await createBattle(seed, result.score, result.timeMs, undefined, true, false, mode)
       trackKeepRun(result)
       if (!id) {
         setShareMsg('Could not create the invite — try again.')

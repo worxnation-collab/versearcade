@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from './auth'
-import { seedForRoom, type LiveResult } from '@/features/arena/live'
+import { modeForRoom, seedForRoom, type LiveResult } from '@/features/arena/live'
 import { todayLocalDate } from '@/lib/date'
 import type { AvatarSpec } from '@/types'
 
@@ -170,6 +170,12 @@ export const useLive = create<LiveState>((set, get) => {
           // Jonathan/Deborah counters (0086).
           p_live: true,
           p_local_date: todayLocalDate(),
+          // DERIVED from the room, exactly as the seed above is — not chosen by
+          // the host and not sent between the devices. Both phones already
+          // computed it to build the round they just played, so this is the
+          // host recording a fact rather than declaring one, and the guest's
+          // submit reads it back off the row the same way it reads `live`.
+          p_mode: modeForRoom(code, round),
         })
         if (data) set({ battleId: data as string })
         await useAuth.getState().refreshProfile()

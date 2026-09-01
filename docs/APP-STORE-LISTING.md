@@ -85,44 +85,48 @@ Start your streak today. It's one verse.
 > *approved* version forces a bump.
 >
 > Last rebuilt against `git log --first-parent` on 2026-09-01, covering #157 to the
-> navigation map, including the run lock. **3,998 characters against Apple's 4,000
-> limit — this block is not merely full, it is at the wall.** Two branches both
-> declared it full on the same day and both added to it anyway; fitting the second
-> one meant cutting the "small ✕ puts it back on the shelf" bullet and writing the
-> map's own section twice as short. There is nothing left to shave.
+> arcade's verse variety, including the run lock and the navigation map. **3,999
+> characters against Apple's 4,000 limit — this block is not merely full, it is at
+> the wall.** Three branches have now declared it full and added to it anyway.
+> Fitting the arcade's two-line change cost eight separate re-wordings elsewhere
+> (`whoever's there is who you get`, `winner and loser`, `no account or download`)
+> and bought nothing back. There is genuinely nothing left to shave.
 >
 > So the next thing that lands has to TAKE A SECTION OUT, and the cheapest cut is
 > whichever one turns out to have shipped in 1.2.0 already (see the note under the
-> block) — that check is owed before submission regardless.
+> block) — that check is owed before submission regardless. `THE STUDY TAB IS A
+> LIBRARY` is the standout candidate: it appears near-verbatim in 1.2.0's own
+> shipped notes below, which is the strongest evidence the repo can offer that
+> players have already been told about it.
 
 ```
 BATTLE ANYONE, RIGHT NOW
 • Quick match: tap it and we'll put you with whoever else is looking. No code, no
-  queue position, no rating — whoever's there is who you play.
+  queue position, no rating — whoever's there is who you get.
 • Or share a room code. Either way you both read the same verse, you both tap
   ready, and a bar shows where the other player is the whole way down.
-• Battles pay 10 XP for turning up, three a day — the winner and the loser get
-  exactly the same, because what's rewarded is playing, not beating anybody.
+• Battles pay 10 XP for turning up, three a day — winner and loser get exactly the
+  same, because what's rewarded is playing, not beating anybody.
 • Six new looks earned in battle. Jonathan and Deborah come from playing live,
   win or lose. Francis of Assisi, Hildegard of Bingen, Thomas Aquinas and
   Melisende of Jerusalem come from winning. You're told the moment one is yours —
   there's no progress bar to grind, and nothing anywhere counts what you've lost.
-• Wrong answers still teach. The line explaining the answer is yours to read at
-  your own pace, even if it costs you the round.
+• Wrong answers still teach. The line explaining one is yours to read at your own
+  pace, even if it costs you the round.
 • Once a run starts, it runs — no bailing out of a bad round to deal a fresh one,
-  and an interrupted run comes back where you left it.
+  and an interrupted one comes back where you left it.
 
 THERE'S AN ARCADE IN HERE NOW
-• A cabinet in your own room, and on the home screen once the day's verse is done.
+• A cabinet in your own room, and on the home screen once today's verse is done.
 • Manna Rush: seven days in the wilderness. Gather the fresh flakes, leave
-  yesterday's, and on the seventh day the best thing you can do is rest.
-• Word Catch: the verse comes loose from the page and you tap the words back into
-  order.
+  yesterday's, and on the seventh day the best thing to do is rest.
+• Word Catch: a verse comes loose from the page and you tap the words back into
+  order. Play again and a different one comes apart.
 • Cross Word: two words that share a letter, standing as a cross. Solve it and the
-  squares turn to wood with the verse carved underneath. A new one every day.
-• Your first go on each machine each day is worth 5 XP — for turning up, not for
-  doing well. No machine keeps a high score and nothing in here can be lost.
-• Send a friend a machine: a shared link is one free go, no account, no download.
+  squares turn to wood with the verse carved underneath. A fresh cut every time.
+• Your first go on each machine is worth 5 XP a day — for turning up, not for doing
+  well. No high scores, and nothing in here can be lost.
+• Send a friend a machine: a shared link is one free go, no account or download.
 
 FIRST LIGHT: THE DAY BELONGS TO WHOEVER OPENS IT
 • The first person to open a day's verse holds its first light, and everyone who
@@ -161,7 +165,7 @@ THE STUDY TAB IS A LIBRARY
 
 FIND ANYTHING IN ONE TAP
 • A compass by the tabs maps everywhere in the app, and what's still open today.
-  Never a score, and never a list of what you missed.
+  Never a score, never a list of what you missed.
 ```
 
 **Three sections here may already be in players' hands, and the repo cannot settle

@@ -37,6 +37,11 @@ export default function QuizScreen() {
   return (
     <QuizRunner
       verse={today}
+      // The day's five questions are the same five for everybody, forever (see
+      // getVerseForDate), so an abandoned run restarted is a retry with the
+      // answers known. Naming the deal is what makes a reload come back to the
+      // question it left instead — QuizRunner's run lock.
+      runId={`daily:${today.dropDate}`}
       onExit={() => navigate('/play')}
       onComplete={async (result) => {
         // The daily drop's own miles, on top of the per-run miles QuizRunner

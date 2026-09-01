@@ -9,7 +9,7 @@ import { useAuth } from '@/store/auth'
 import { useJuice } from '@/juice/useJuice'
 import { shareResult, inviteUrl } from '@/features/daily/shareCard'
 import { useCollection } from '@/store/collection'
-import { Collapsible } from '@/components/Collapsible'
+import { TabbedSection } from '@/components/TabbedSection'
 import { CollectionSection } from '@/features/collection/CollectionScreen'
 import { InventorySection } from '@/features/collection/InventorySection'
 import { useInventory } from '@/store/inventory'
@@ -58,9 +58,9 @@ export default function ProfileScreen() {
   const [savingName, setSavingName] = useState(false)
   const [refFlash, setRefFlash] = useState<string | null>(null)
   // Buddy requests have to be counted from out here, not from inside the
-  // drawer: Collapsible only mounts its children once opened, so leaving the
-  // load to BuddiesSection meant the count was always 0 until you'd already
-  // found the thing the count exists to point at.
+  // drawer: TabbedSection only mounts the OPEN panel, so leaving the load to
+  // BuddiesSection meant the count was always 0 until you'd already found the
+  // thing the count exists to point at — and it is what lights the pill's dot.
   const buddyRequests = useBuddies((st) => st.requests.length)
   // Same "something for you" signal the bottom nav shows, so the pill and the
   // tab can't disagree about whether the mailbox has anything in it.
@@ -326,102 +326,110 @@ export default function ProfileScreen() {
       </div>
 
       {/* ── Your people ──────────────────────────────────────────────────
-          Three folded rows that are all about somebody else, under one word
-          that says so. Buddies, Basin and Invite friends used to sit in an
-          undifferentiated stack of six identical closed rows with Inventory and
-          Cards — same shape, same chevron, no way to tell from the outside
-          which ones were people and which were things. The heading is the
-          whole fix: it costs one line and it halves what you have to read to
-          find the row you came for. */}
+          Buddies, the Basin and Invite friends under ONE pill row rather than
+          three stacked collapsibles. It is the same fix, for the same reason,
+          that the customizer already made: six identical closed rows meant the
+          one you wanted was always the last one, and reaching it was a scroll
+          past everything you didn't. Every name is on screen at once now, and
+          only the open panel is mounted.
+
+          The heading stays, and the split into two rows with it: people and
+          things are different kinds of thing, and one undifferentiated pill row
+          of five would undo the very distinction these headings were added to
+          draw. */}
       <h3 style={{ fontSize: 16, margin: '18px 0 10px' }} className="dim">Your people</h3>
       {/* Open rather than folded, and first: it's the only row here that's an
           invitation instead of a drawer, and a player with no church has
           nothing to open. It removes itself the moment there is one — or when
           they say it isn't for them. */}
       <ChurchNudge />
-      {/* This one used to advertise nothing, so a player with people waiting
-          saw an identical closed row and 71% of every buddy request ever sent
-          was still unanswered. It now counts, and opens itself when the answer
-          is someone else's to receive. */}
-      <Collapsible
-        icon="🤝"
-        title="Bible Buddies"
-        meta={buddyRequests > 0 ? `${buddyRequests} waiting` : undefined}
+      <TabbedSection
         defaultOpen={buddyRequests > 0}
-      >
-        <BuddiesSection />
-      </Collapsible>
+        defaultTab={buddyRequests > 0 ? 'buddies' : undefined}
+        tabs={[
+          {
+            key: 'buddies',
+            label: '🤝 Buddies',
+            // The pill wears the same single, countless dot the bottom nav
+            // does. This row used to advertise nothing at all, and 71% of every
+            // buddy request ever sent was still unanswered.
+            dot: buddyRequests > 0,
+            right: buddyRequests > 0 ? `${buddyRequests} waiting on you` : undefined,
+            content: <BuddiesSection />,
+          },
+          {
+            key: 'basin',
+            label: '🫗 Basin',
+            right: washLifetime > 0 ? `${washLifetime} washed` : 'The one gesture here that asks nothing back.',
+            content: <BasinSection />,
+          },
+          ...(profile.referralCode
+            ? [{
+                key: 'invite',
+                label: '🎁 Invite',
+                right: `${Math.min(profile.referralCount ?? 0, 5)}/5 friends toward the carried-cross look`,
+                content: (
+                  <>
+                    <div className="card" style={{ marginBottom: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div className="faint" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Your code</div>
+                          <b style={{ fontFamily: 'var(--font-display)', fontSize: 24, letterSpacing: '0.18em' }}>{profile.referralCode}</b>
+                        </div>
+                        <Button variant="gold" onClick={async () => {
+                          juice.coin()
+                          const link = inviteUrl(profile.referralCode!)
+                          const r = await shareResult(`Join me on Verse Arcade! Use my code ${profile.referralCode} — daily Bible verse games, streaks & battles.\n${link}`, link)
+                          setRefFlash(r === 'shared' ? 'Shared!' : r === 'copied' ? 'Link copied!' : 'Could not share')
+                        }}>📤 Share</Button>
+                      </div>
+                      {refFlash && <p style={{ color: 'var(--good)', fontSize: 13, marginTop: 8 }}>{refFlash}</p>}
 
-      {/* The one social gesture in the app that asks nothing back. Sits under
-          Buddies because it's the same people, one row down. */}
-      <Collapsible
-        icon="🫗"
-        title="The Basin"
-        meta={washLifetime > 0 ? `${washLifetime} washed` : 'wash a friend’s feet'}
-      >
-        <BasinSection />
-      </Collapsible>
-
-      {/* Invite friends — referral code + progress toward the carried-cross look.
-          Collapsed by default behind an obvious Show/Hide button; the header
-          keeps the friend count visible so the goal still reads when closed. */}
-      {profile.referralCode && (
-        <Collapsible icon="🎁" title="Invite friends" meta={`${Math.min(profile.referralCount ?? 0, 5)}/5`}>
-          <div className="card" style={{ marginBottom: 6 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="faint" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Your code</div>
-                <b style={{ fontFamily: 'var(--font-display)', fontSize: 24, letterSpacing: '0.18em' }}>{profile.referralCode}</b>
-              </div>
-              <Button variant="gold" onClick={async () => {
-                juice.coin()
-                const link = inviteUrl(profile.referralCode)
-                const r = await shareResult(`Join me on Verse Arcade! Use my code ${profile.referralCode} — daily Bible verse games, streaks & battles.\n${link}`, link)
-                setRefFlash(r === 'shared' ? 'Shared!' : r === 'copied' ? 'Link copied!' : 'Could not share')
-              }}>📤 Share</Button>
-            </div>
-            {refFlash && <p style={{ color: 'var(--good)', fontSize: 13, marginTop: 8 }}>{refFlash}</p>}
-
-            <div style={{ marginTop: 14 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6, fontWeight: 700 }}>
-                <span className="dim">✝️ Take Up Your Cross</span>
-                <span style={{ color: (profile.referralCount ?? 0) >= 5 ? 'var(--good)' : 'var(--gold)' }}>
-                  {Math.min(profile.referralCount ?? 0, 5)}/5 friends
-                </span>
-              </div>
-              <div style={{ height: 8, borderRadius: 999, background: 'rgba(0,0,0,0.3)', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${Math.min((profile.referralCount ?? 0) / 5, 1) * 100}%`, borderRadius: 999, background: 'linear-gradient(90deg, var(--gold), var(--tangerine))', transition: 'width 0.3s' }} />
-              </div>
-              <p className="faint" style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
-                {(profile.referralCount ?? 0) >= 5
-                  ? 'Unlocked! Equip it in Customize → Skins.'
-                  : 'When 5 friends sign up with your code, the carried-cross look unlocks.'}
-              </p>
-            </div>
-          </div>
-          <p className="faint" style={{ fontSize: 11, lineHeight: 1.4 }}>
-            Friends enter your code (or tap your link) when they create an account.
-          </p>
-        </Collapsible>
-      )}
+                      <div style={{ marginTop: 14 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6, fontWeight: 700 }}>
+                          <span className="dim">✝️ Take Up Your Cross</span>
+                          <span style={{ color: (profile.referralCount ?? 0) >= 5 ? 'var(--good)' : 'var(--gold)' }}>
+                            {Math.min(profile.referralCount ?? 0, 5)}/5 friends
+                          </span>
+                        </div>
+                        <div style={{ height: 8, borderRadius: 999, background: 'rgba(0,0,0,0.3)', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${Math.min((profile.referralCount ?? 0) / 5, 1) * 100}%`, borderRadius: 999, background: 'linear-gradient(90deg, var(--gold), var(--tangerine))', transition: 'width 0.3s' }} />
+                        </div>
+                        <p className="faint" style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
+                          {(profile.referralCount ?? 0) >= 5
+                            ? 'Unlocked! Equip it in Customize → Skins.'
+                            : 'When 5 friends sign up with your code, the carried-cross look unlocks.'}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="faint" style={{ fontSize: 11, lineHeight: 1.4 }}>
+                      Friends enter your code (or tap your link) when they create an account.
+                    </p>
+                  </>
+                ),
+              }]
+            : []),
+        ]}
+      />
 
       {/* ── Your things ──────────────────────────────────────────────────
-          The other half of that stack: what you're carrying and what you've
-          collected. Same reasoning as "Your people" above. */}
+          The other half of that stack, same treatment. The bag sits before the
+          collection because it's the actionable one — the wall is a gallery,
+          this is a bag. */}
       <h3 style={{ fontSize: 16, margin: '18px 0 10px' }} className="dim">Your things</h3>
-      {/* What you're holding, and what it's for. Sits above the collection wall
-          because it's the actionable one — the wall is a gallery, this is a bag.
-          Cards used to own a tab; it's the same full screen (/collection), just
-          folded in here. */}
+      {/* ?inventory=1 (the home screen's one-time relic nudge) opens straight
+          onto the bag. The ref is what the effect below scrolls to — a section
+          that opens off screen is a section nobody knows opened. */}
       <div ref={inventoryRef} style={{ scrollMarginTop: 12 }}>
-        <Collapsible icon="🎒" title="Inventory" meta={`${inHand} in hand`} defaultOpen={openInventory}>
-          <InventorySection />
-        </Collapsible>
+        <TabbedSection
+          defaultOpen={openInventory}
+          defaultTab={openInventory ? 'bag' : undefined}
+          tabs={[
+            { key: 'bag', label: '🎒 Bag', right: `${inHand} in hand`, content: <InventorySection /> },
+            { key: 'cards', label: '🃏 Cards', right: `${cards} collected`, content: <CollectionSection /> },
+          ]}
+        />
       </div>
-
-      <Collapsible icon="🃏" title="Cards" meta={`${cards} collected`}>
-        <CollectionSection />
-      </Collapsible>
 
       {/* The support card sits at the settled end of your own profile — after the
           room and the collection, before the account controls — and never in

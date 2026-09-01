@@ -63,15 +63,32 @@ export default function GrowthPanel() {
 
   const load = useCallback(async (force: boolean) => {
     setBusy(true); setErr(null)
-    const { data, error } = await supabase!.rpc('admin_growth', { p_force: force, p_tz: localTimeZone() })
-    if (error) setErr(error.message)
-    else setRes(data as GrowthResponse)
-    setBusy(false)
+    try {
+      const { data, error } = await supabase!.rpc('admin_growth', { p_force: force, p_tz: localTimeZone() })
+      if (error) setErr(error.message)
+      else setRes(data as GrowthResponse)
+    } catch (e) {
+      // A throw (network, abort) would otherwise latch busy true and leave the
+      // panel on "Loading…" forever with nothing to tap.
+      setErr(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
   }, [])
 
   useEffect(() => { load(false) }, [load])
 
-  if (err) return <p className="center" style={{ padding: 30, color: 'var(--coral)' }}>{err}</p>
+  // A failed read is a dead end without this: the panel showed the raw error
+  // and no way back, so the only recovery was reloading the whole dashboard.
+  if (err) return (
+    <div className="card" style={{ padding: 24, display: 'grid', gap: 10, justifyItems: 'center', textAlign: 'center' }}>
+      <div style={{ color: 'var(--coral)', fontSize: 13, lineHeight: 1.45 }}>{err}</div>
+      <button className="pill" onClick={() => load(false)} disabled={busy}
+        style={{ fontSize: 11, fontWeight: 800, background: 'var(--card-solid)', opacity: busy ? 0.5 : 1 }}>
+        {busy ? '…' : '↻ Try again'}
+      </button>
+    </div>
+  )
   if (!res) return <p className="faint center" style={{ padding: 30 }}>Loading…</p>
   const m = res.metrics
 
@@ -110,6 +127,9 @@ function Freshness({ res, busy, onRefresh }: { res: GrowthResponse; busy: boolea
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 12.5, fontWeight: 700 }}>
           Updated {ago(res.computed_at)}
+          {/* The RPC has always returned this and the panel dropped it, so a
+              snapshot past its rebuild window looked identical to a fresh one. */}
+          {res.stale && <span style={{ color: 'var(--warn)' }}> · stale</span>}
           {res.compute_ms != null && <span className="faint" style={{ fontWeight: 400 }}> · {res.compute_ms}ms</span>}
         </div>
         <div className="faint" style={{ fontSize: 11 }}>

@@ -107,3 +107,16 @@ Windermere row sits 5.4 miles from the building it names.)
 the picker falls back to Overpass and Nominatim exactly as it did before, because
 an empty picker is a dead end and a stale name beats no church at all. Anywhere
 the index has rows, OSM is never called. Loading a new region is a `--bbox` run.
+
+**So load whole regions, not small boxes.** The fallback triggers on the index
+returning *zero* rows, which is the right rule at the edge of the world and the
+wrong one at the edge of a partial load: somebody standing 20 miles outside a
+loaded box gets the handful of churches that happen to fall inside their radius,
+and because that isn't zero, OSM is never consulted — a shorter list than they
+would have had before the index existed. A country-sized load makes this moot
+inside that country. A city-sized one puts a ring of degraded results around it.
+
+If a partial load is ever genuinely wanted, the fallback needs to become a
+question about COVERAGE rather than about row count — "does the index know this
+area at all", answered from the loaded bboxes — and that is a schema change
+(`church_place_regions`, or similar), not a tweak to the client's `=== 0`.

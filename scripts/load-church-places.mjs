@@ -143,6 +143,14 @@ try {
 // newline in it is a parsing bug waiting to happen, and JSON.parse has no such
 // opinions.
 const lines = readFileSync(tmpJson, 'utf8').split('\n').filter((l) => l.trim())
+// --ndjson keeps DuckDB's raw output. The SQL files below are for the psql /
+// SQL-editor path; a bulk HTTP loader wants the rows, not statements wrapping
+// them, and re-running the S3 query just to get them back would be minutes.
+const keepJson = flag('ndjson', null)
+if (keepJson) {
+  writeFileSync(keepJson, readFileSync(tmpJson))
+  console.log(`raw rows -> ${keepJson}`)
+}
 rmSync(tmpJson, { force: true })
 console.log(`${lines.length.toLocaleString()} places`)
 if (!lines.length) {

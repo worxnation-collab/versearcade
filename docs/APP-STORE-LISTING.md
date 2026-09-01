@@ -84,41 +84,48 @@ Start your streak today. It's one verse.
 > on the day you submit. Do not bump the version for a new feature — only an
 > *approved* version forces a bump.
 >
-> Last rebuilt against `git log --first-parent` on 2026-08-31, covering #157 to #191.
-> 3,826 characters, against Apple's 4,000 limit — there is room for about one more
-> short section before something has to give.
+> Last rebuilt against `git log --first-parent` on 2026-08-31, covering #157 to #191,
+> plus bonus trivia (this branch). **3,997 characters against Apple's 4,000 — this
+> block is now full.** Adding bonus trivia's section pushed it to 4,427, and getting
+> back under meant real cuts: the arcade's three per-game bullets became one, the
+> battle section's "wrong answers still teach" line was dropped (bonus trivia's
+> section says it now), and half a dozen lines were reworded shorter. So the next
+> feature does not append — decide what comes OUT first, and re-count.
 
 ```
+BONUS TRIVIA ON EVERY VERSE
+• The last question of every run is now a bonus about the BOOK the verse comes
+  from — who's in it, where it happens, what happens in it. 406 questions across
+  all 66 books, and everybody playing that day gets the same one.
+• Tabitha lends whole rounds of it in the library: pick a book, answer five. No
+  XP, no rank, nothing to fall behind on, like everything on the Study shelf.
+• Every answer tells you something, right or wrong — even in a battle, and the
+  line is yours to read at your own pace.
+
 BATTLE ANYONE, RIGHT NOW
 • Quick match: tap it and we'll put you with whoever else is looking. No code, no
   queue position, no rating — whoever's there is who you play.
 • Or share a room code. Either way you both read the same verse, you both tap
   ready, and a bar shows where the other player is the whole way down.
-• Battles pay 10 XP for turning up, three a day — the winner and the loser get
-  exactly the same, because what's rewarded is playing, not beating anybody.
+• Battles pay 10 XP for turning up, three a day — winner and loser get exactly
+  the same, because what's rewarded is playing, not beating anybody.
 • Six new looks earned in battle. Jonathan and Deborah come from playing live,
-  win or lose. Francis of Assisi, Hildegard of Bingen, Thomas Aquinas and
-  Melisende of Jerusalem come from winning. You're told the moment one is yours —
-  there's no progress bar to grind, and nothing anywhere counts what you've lost.
-• Wrong answers still teach. The line explaining the answer is yours to read at
-  your own pace, even if it costs you the round.
-
+  win or lose; Francis of Assisi, Hildegard of Bingen, Thomas Aquinas and
+  Melisende of Jerusalem from winning. You're told the moment one is yours —
+  no progress bar to grind, and nothing anywhere counts what you've lost.
 THERE'S AN ARCADE IN HERE NOW
-• A cabinet in your own room, and on the home screen once the day's verse is done.
-• Manna Rush: seven days in the wilderness. Gather the fresh flakes, leave
-  yesterday's, and on the seventh day the best thing you can do is rest.
-• Word Catch: the verse comes loose from the page and you tap the words back into
-  order.
-• Cross Word: two words that share a letter, standing as a cross. Solve it and the
-  squares turn to wood with the verse carved underneath. A new one every day.
+• A cabinet in your own room, and on the home screen once the verse is done.
+• Three machines: Manna Rush in the wilderness, Word Catch putting a verse back
+  in order, and Cross Word — two words sharing a letter, which turn to carved
+  wood when you solve it, with the verse underneath.
 • Your first go on each machine each day is worth 5 XP — for turning up, not for
   doing well. No machine keeps a high score and nothing in here can be lost.
-• Send a friend a machine: a shared link is one free go, no account, no download.
+• Share a machine: the link is one free go, no account, no download.
 
 FIRST LIGHT: THE DAY BELONGS TO WHOEVER OPENS IT
 • The first person to open a day's verse holds its first light, and everyone who
-  opens it after them is worth a point of XP to them. Nothing is taken from
-  anybody — the points are minted, not moved.
+  opens it after is worth a point of XP to them. Nothing is taken from anybody —
+  the points are minted, not moved.
 • No second place, no leaderboard of who was quickest, and a fresh start at
   midnight.
 

@@ -96,6 +96,14 @@ export default function StudyScreen() {
       lend: 'Pick one book of the Bible and go deep on it',
     },
     {
+      key: 'trivia',
+      title: 'Bonus trivia',
+      emblem: '✨',
+      caption: 'Five questions about a book of your choosing',
+      to: '/study/trivia',
+      lend: 'The bonus questions from the daily verse, five at a time',
+    },
+    {
       key: 'replay',
       title: 'The last five',
       emblem: '📚',

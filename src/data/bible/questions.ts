@@ -5,6 +5,7 @@
 
 import type { DailyVerse, Question } from '@/types'
 import { VERSE_POOL, BIBLE_BOOKS, type VerseSeed } from './pool'
+import { bonusTriviaFor, triviaRoundFor } from './trivia'
 import { DEFAULT_TRANSLATION } from '@/lib/config'
 
 // --- seeded RNG (mulberry32) ------------------------------------------------
@@ -191,8 +192,47 @@ export function generateQuestions(seed: VerseSeed, rng: () => number): Question[
     if (q) candidates.push(q)
   }
 
-  // Keep a deterministic set of 5 valid questions.
-  return shuffle(candidates.filter((q): q is Question => q !== null), rng).slice(0, 5)
+  // Keep a deterministic set of valid questions.
+  const verseQuestions = shuffle(candidates.filter((q): q is Question => q !== null), rng)
+
+  // BONUS TRIVIA takes the last slot — four questions about this verse, then one
+  // about the whole book it comes from. See `./trivia.ts` for why that question
+  // can't be generated from a VerseSeed, and `Question.bonus` for why the last
+  // slot is the one that makes "bonus" true without touching any scoring.
+  //
+  // The rng is consumed AFTER the verse questions are drawn, deliberately: the
+  // first four of any run are exactly the ones this generator produced before
+  // trivia existed, so a replay of a past day is as close to unchanged as a
+  // content addition can be.
+  //
+  // A book with no trivia in this build falls back to five verse questions —
+  // the run the app has always had. Nothing here can leave a run short.
+  const bonus = bonusTriviaFor(seed.book, rng)
+  return bonus ? [...verseQuestions.slice(0, 4), bonus] : verseQuestions.slice(0, 5)
+}
+
+/**
+ * A whole round of bonus trivia about one book, as a `DailyVerse` the shared
+ * `QuizRunner` can run — what the library lends.
+ *
+ * It is ANCHORED ON A REAL VERSE from that book rather than being five bare
+ * questions, for the reason every arcade machine hands its verse back: a round
+ * of Bible facts with no scripture on the screen is a pub quiz. The verse is
+ * read first, gets marked studied like any other study run, and is there to
+ * keep at the end.
+ *
+ * `book` null draws across all 66.
+ */
+export function triviaVerseFromBook(book: string | null, seed: number): DailyVerse {
+  const rng = mulberry32(seed >>> 0)
+  const scoped = book ? VERSE_POOL.filter((v) => v.book === book) : VERSE_POOL
+  const pool = scoped.length ? scoped : VERSE_POOL
+  const pick = pool[Math.floor(rng() * pool.length)]
+  const questions = triviaRoundFor(book, rng)
+  // Fail closed the same way `generateQuestions` does: a build with no trivia
+  // for this book gives an ordinary practice run rather than an empty screen.
+  if (!questions.length) return buildDailyVerse(pick, rng, `trivia-${book ?? 'any'}`)
+  return { ...buildDailyVerse(pick, rng, `trivia-${book ?? 'any'}`), questions }
 }
 
 // Assemble a full DailyVerse payload from a pool seed. Shared by the daily drop

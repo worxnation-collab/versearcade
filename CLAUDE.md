@@ -863,6 +863,76 @@ holding the psalter she commissioned. None carries a weapon and no prompt
 mentions a crusade: the era is the setting, not the subject. That is a content
 decision worth keeping if the set ever grows.
 
+## Bonus trivia: the last question of every run
+
+`generateQuestions` derives every question from ONE `VerseSeed` — which book,
+who spoke, who was addressed, before, after, two fill-in-the-blanks, the theme,
+the reference. Nine shapes, all answerable off the card the player just read.
+That teaches verse attribution well and **structurally cannot ask what happens
+in a story**: a narrative question needs the narrative, and a seed only knows
+about itself. So a daily player meets the same nine shapes forever.
+
+`data/bible/trivia.ts` is the second question source: 406 questions about the
+BOOKS, keyed by book name, six minimum for every one of the 66. The last slot of
+every run is one of them, for the book the verse came from — the daily drop,
+practice, replays, CPU races, async battles and live battles all at once,
+because they all go through `generateQuestions`. Five things are load-bearing:
+
+- **It takes the LAST slot, and that is what makes "bonus" honest.** The combo
+  multiplier grows through a run and peaks on question 5 (up to 2.5x), so the
+  final question was *already* the most valuable one. Nothing in `SCORING`,
+  `scoreQuestion`, the battle comparison or any stored score changed — a run is
+  still five questions. **Do not give it a weight of its own**: every score in
+  the app's history would become incomparable with every score after it, and the
+  thing making it a bonus is already there.
+- **A wrong answer still teaches**, the same `teach` line a verse question
+  carries. That is the whole reason trivia — a pub-quiz mechanic, the format
+  most likely to make somebody feel stupid — can exist in this app at all.
+- **Narrative only, inside the shared 66-book canon.** No doctrine, no
+  canon-count ("how many books are in the Bible" has two right answers depending
+  on who is asking), nothing distinctive to one tradition. Denominations here
+  are factions the app deliberately never ranks, and a question a Catholic and a
+  Baptist answer differently would quietly make one of them wrong on their own
+  church's tab. People, places, events, order, and numbers that are IN the text.
+- **The rng is consumed AFTER the verse questions are drawn**, so the first four
+  of any run are exactly what the generator produced before trivia existed. A
+  replay of a past day is as close to unchanged as a content addition gets.
+- **It fails closed, per book.** No trivia for a book ⇒ `bonusTriviaFor` returns
+  null and the run is five verse questions, exactly the app as it was. Nothing
+  here can leave a run short.
+
+**The failure modes all render perfectly**, so they are a build failure:
+`scripts/check-trivia.mjs` (in `npm run build`) checks coverage of all 66 books,
+the six-per-book floor, four distinct options, a valid `answerIndex`, a real
+teach line, a prompt that asks something, no duplicate id or prompt, and no
+prompt containing its own answer. `checkTriviaData()` asserts the same at import
+in dev, re-derived rather than shared — and *that* is not academic: the two
+disagreed on the first real run, because the in-file one stripped digits and so
+read "Psalm 23" as "psalm", flagging five good questions. Found by opening the
+app, not by reading the diff. **Keep digits in any normalisation here.**
+
+`MIN_TRIVIA_PER_BOOK` is 6 rather than 4 because the library lends a FIVE-question
+round from a single book, and a book with four cannot fill one without repeating
+itself inside one round. The checker asserts that relationship rather than the
+number, so raising the round size fails the build instead of silently repeating.
+
+**The library round is the same questions, five at a time** (`/study/trivia`,
+`features/study/TriviaRoundScreen.tsx`, lent by Tabitha like everything else in
+Study). It is **anchored on a real verse** from the chosen book, which
+`QuizRunner` reads first and the recap offers to keep — the arcade's rule that a
+machine playing a verse hands the verse back, for the same reason: a round of
+Bible facts with no scripture on screen is a pub quiz. It pays what a study run
+pays (a relic roll, a `study_run` step, the verse marked studied — all inside
+`QuizRunner` via `studyDrop`) and **no XP and no standing**, so it inherits
+Study's rank-free rule rather than needing an argument of its own.
+
+**The pill naming the bonus is suppressed when EVERY question is one.** It marks
+the question that is different from the rest; in the library's all-trivia round
+nothing is different, so it was just restating the run's own label on all five
+screens. Both that and the read-phase copy are derived from the questions
+themselves rather than passed in — a prop would let a caller describe a run it
+did not build.
+
 ## Content is deterministic — keep it that way
 
 `getVerseForDate(date)` must return the same verse for the same date for every

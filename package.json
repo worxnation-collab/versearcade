@@ -6,9 +6,10 @@
   "description": "Verse Arcade \u2014 make opening the Bible feel exciting and habitual.",
   "scripts": {
     "dev": "vite",
-    "build": "npm run check:pool && npm run check:structure && npm run check:cross && npm run check:placement && npm run check:decor && tsc -b && vite build",
+    "build": "npm run check:pool && npm run check:structure && npm run check:cross && npm run check:trivia && npm run check:placement && npm run check:decor && tsc -b && vite build",
     "check:pool": "node scripts/check-pool.mjs",
     "check:cross": "node scripts/check-cross.mjs",
+    "check:trivia": "node scripts/check-trivia.mjs",
     "check:decor": "node scripts/check-decor-art.mjs",
     "check:placement": "node scripts/check-placement.mjs",
     "check:structure": "node scripts/check-structure.mjs",

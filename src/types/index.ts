@@ -5,12 +5,23 @@
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic'
 
 export interface Question {
-  /** The prompt, always about the *displayed* verse. */
+  /** The prompt. About the displayed verse unless `bonus` says otherwise. */
   prompt: string
   options: string[]
   answerIndex: number
   /** Shown after answering (win or lose) so a miss still teaches something. */
   teach: string
+  /**
+   * Set on a BONUS TRIVIA question, to the book it is about (see
+   * `data/bible/trivia.ts`). Undefined on every verse question, which is what
+   * keeps the difference honest: a bonus asks about the whole book rather than
+   * the card the player just read, so the run says so before it asks.
+   *
+   * It carries no score of its own. It rides in the LAST slot of a run, which
+   * the combo multiplier has already made the most valuable one — putting a
+   * weight on it as well would change every stored score in the app.
+   */
+  bonus?: string
 }
 
 export interface DailyVerse {

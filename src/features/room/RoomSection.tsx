@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Collapsible } from '@/components/Collapsible'
 import { useAuth } from '@/store/auth'
@@ -71,6 +71,28 @@ export function RoomSection() {
   const lampLit = usePrayer((s) => s.today > 0)
   const [praying, setPraying] = useState(false)
   const [prayerOffered, setPrayerOffered] = useState(false)
+
+  // ?pray=1 opens the sheet directly, the way ?customize=1 already opens the
+  // customizer on this tab. It exists because praying is the single most buried
+  // thing in the app — a tap on your own figure, inside a room, halfway down a
+  // tab — and the map (data/map.ts) needed somewhere honest to point.
+  //
+  // Read ONCE, frozen at mount, and the parameter is stripped immediately: left
+  // in the URL, a reload or a back-navigation would re-open the sheet over
+  // whatever the player had moved on to. Same reason ProfileScreen freezes
+  // ?inventory=1 into state rather than reading it per render.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [wantsPrayer] = useState(() => searchParams.get('pray') === '1')
+  useEffect(() => {
+    if (!wantsPrayer) return
+    setPraying(true)
+    const next = new URLSearchParams(searchParams)
+    next.delete('pray')
+    setSearchParams(next, { replace: true })
+    // Deliberately mount-only: this is a one-shot deep link, not a subscription
+    // to the query string.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wantsPrayer])
 
   // The room's own store, plus the two stores its REQUIREMENTS live in. Loading
   // only the first would quietly report 0 studied verses and 0 chapters read

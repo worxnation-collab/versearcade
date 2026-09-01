@@ -1,9 +1,12 @@
+import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useJuice } from '@/juice/useJuice'
+import { MapSheet } from '@/features/map/MapSheet'
 import { useBuddies } from '@/store/buddies'
 import { useGifts } from '@/store/gifts'
 import { useReviews } from '@/store/reviews'
+import { useSettings } from '@/store/settings'
 import { useAccountLocked } from '@/components/AccountWall'
 
 // Five tabs, one per thing you actually come here to do. Ranks folded into
@@ -72,6 +75,88 @@ function NavLock() {
   )
 }
 
+// The compass has been opened at least once on this device.
+//
+// Device-local in both modes, and deliberately so — the same break with the
+// two-mode invariant `store/looks.ts` and `store/music.ts` make. Whether this
+// phone has been shown where the map is is a fact about the phone, not a
+// possession: it grants nothing, and syncing it would mean a table and an RPC
+// to remember that somebody once tapped a button.
+const MAP_SEEN_KEY = 'va.map.seen'
+
+function readMapSeen(): boolean {
+  try {
+    return localStorage.getItem(MAP_SEEN_KEY) === '1'
+  } catch {
+    // Private mode / storage full: treat it as seen rather than pulsing at
+    // somebody forever. A hint that can never be dismissed is a nag.
+    return true
+  }
+}
+
+function markMapSeen() {
+  try {
+    localStorage.setItem(MAP_SEEN_KEY, '1')
+  } catch {
+    /* ignore */
+  }
+}
+
+// The compass — every place in this app, one tap from wherever you are.
+//
+// It sits BESIDE the nav pill rather than inside it, and both halves of that
+// are deliberate. Beside, because five tabs already have to clear a 320px
+// phone and a sixth would shrink every one of them. In the nav's own row,
+// because that band is the only strip of the screen the app shell already
+// reserves (96px of bottom padding) — a free-floating button anywhere else
+// lands on top of page content, and every screen here anchors its primary
+// action to the bottom. A control that covers the button somebody is reaching
+// for is the exact trap `StudyDropToast` moved to the top of the screen to
+// avoid.
+//
+// Round and gold-ringed so it reads as a different KIND of thing from the five
+// tabs: they are places, this is a directory of them. It is never a tab and
+// never shows as "active", because you are never on it.
+function CompassPuck({ onOpen, hint }: { onOpen: () => void; hint: boolean }) {
+  // The pulse is motion that never stops, which is exactly the kind this
+  // setting exists to turn off. The gold RING stays either way — that is the
+  // part carrying the meaning, and a hint that only exists as movement is a
+  // hint reduce-motion players never get.
+  const reduceMotion = useSettings((s) => s.reduceMotion)
+  const pulsing = hint && !reduceMotion
+  return (
+    <motion.button
+      onClick={onOpen}
+      aria-label="Find your way around"
+      whileTap={{ scale: 0.88 }}
+      animate={pulsing ? { scale: [1, 1.06, 1] } : { scale: 1 }}
+      transition={pulsing ? { duration: 2.4, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.2 }}
+      style={{
+        pointerEvents: 'auto',
+        flexShrink: 0,
+        width: 46,
+        height: 46,
+        borderRadius: 999,
+        display: 'grid',
+        placeItems: 'center',
+        fontSize: 21,
+        lineHeight: 1,
+        background: 'rgba(20,10,52,0.85)',
+        // The one visual difference that carries the meaning: a gold ring on
+        // the first run, so the thing that explains the app is itself findable.
+        // It stops the moment it is opened once — see MAP_SEEN_KEY above.
+        border: `1px solid ${hint ? 'var(--gold)' : 'var(--stroke)'}`,
+        boxShadow: hint
+          ? '0 10px 30px rgba(0,0,0,0.5), 0 0 0 3px rgba(255,210,63,0.18)'
+          : '0 10px 30px rgba(0,0,0,0.5)',
+        backdropFilter: 'blur(14px)',
+      }}
+    >
+      🧭
+    </motion.button>
+  )
+}
+
 // Native-feeling tab bar pinned above the home indicator. Springy icon pop on
 // the active tab. Tapping fires a light select sound/haptic.
 export function BottomNav() {
@@ -87,7 +172,21 @@ export function BottomNav() {
   // call on every screen.
   const reviewsDue = useReviews((s) => s.dueRefs.length)
   const locked = useAccountLocked()
+  const [mapOpen, setMapOpen] = useState(false)
+  // The pulse is read ONCE, at mount, and cleared the first time the compass is
+  // opened. Re-reading it per render would be a localStorage hit on every tab
+  // change, and the same freeze-at-mount habit the arcade invite uses for its
+  // have-they-played decision.
+  const [mapSeen, setMapSeen] = useState(readMapSeen)
+
+  const openMap = () => {
+    juice.select()
+    if (!mapSeen) { markMapSeen(); setMapSeen(true) }
+    setMapOpen(true)
+  }
+
   return (
+    <>
     <nav
       style={{
         position: 'fixed',
@@ -100,6 +199,19 @@ export function BottomNav() {
         pointerEvents: 'none',
       }}
     >
+      {/* The pill and the compass are centred together as one unit, so the
+          five tabs sit very slightly left of centre rather than the compass
+          hanging off the edge. 8px of gap and a 46px puck is 54px, which is
+          what the row's max-width below leaves room for on a 320px phone. */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          maxWidth: 'calc(100vw - 12px)',
+          marginBottom: 'calc(var(--safe-bottom) + 10px)',
+        }}
+      >
       <div
         style={{
           pointerEvents: 'auto',
@@ -107,9 +219,7 @@ export function BottomNav() {
           // Five tabs have to clear a 320px-wide phone, so the gaps and the pill
           // padding below are as tight as they can be without cramping the taps.
           gap: 2,
-          maxWidth: 'calc(100vw - 16px)',
-          margin: '0 auto',
-          marginBottom: 'calc(var(--safe-bottom) + 10px)',
+          minWidth: 0,
           padding: 6,
           borderRadius: 999,
           background: 'rgba(20,10,52,0.85)',
@@ -157,6 +267,17 @@ export function BottomNav() {
           </NavLink>
         ))}
       </div>
+      <CompassPuck onOpen={openMap} hint={!mapSeen} />
+      </div>
     </nav>
+
+    {/* Sibling of <nav>, never a child of it. The nav sets z-index 40, which
+        creates a stacking context — a sheet nested inside it would paint at 40
+        no matter what its own z-index said, and would end up UNDER the player
+        card and every other sheet in the app. */}
+    <AnimatePresence>
+      {mapOpen && <MapSheet key="map" onClose={() => setMapOpen(false)} />}
+    </AnimatePresence>
+    </>
   )
 }

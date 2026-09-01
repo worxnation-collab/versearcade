@@ -644,6 +644,10 @@ interface InfoRequest {
   // migration's comment predicted: a church picks Tile roof and nobody finds
   // out. `wants_promotion` (0078) is the sponsored-slot ask.
   skin: string | null; wants_promotion?: boolean
+  // 0090. Unlike the other two this one is NOT leadership-only — a member's
+  // "our youth group would love this" is a lead — so read `role` beside it
+  // before replying, to know whether you're talking to a decision-maker.
+  wants_trivia_night?: boolean
 }
 function InfoRequests() {
   const [rows, setRows] = useState<InfoRequest[] | null>(null)
@@ -680,7 +684,7 @@ function InfoRequests() {
               {r.contact_name || (r.username ? `@${r.username}` : 'anonymous')}
               {r.email && <> · <a href={`mailto:${r.email}`} style={{ color: 'var(--sky)' }}>{r.email}</a></>}
             </div>
-            {(r.skin || r.wants_promotion) && (
+            {(r.skin || r.wants_promotion || r.wants_trivia_night) && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
                 {r.skin && (
                   <span className="pill" style={{ fontSize: 11, padding: '3px 9px', borderColor: 'var(--grape)' }}>
@@ -690,6 +694,11 @@ function InfoRequests() {
                 {r.wants_promotion && (
                   <span className="pill" style={{ fontSize: 11, padding: '3px 9px', borderColor: 'var(--gold)', color: 'var(--gold)', fontWeight: 800 }}>
                     ⭐ asked about promotion
+                  </span>
+                )}
+                {r.wants_trivia_night && (
+                  <span className="pill" style={{ fontSize: 11, padding: '3px 9px', borderColor: 'var(--mint)', color: 'var(--mint)', fontWeight: 800 }}>
+                    ✨ asked about a trivia night
                   </span>
                 )}
               </div>

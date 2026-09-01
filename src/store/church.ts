@@ -176,6 +176,11 @@ export interface InfoRequestInput {
    * member path by the server, like `skin`.
    */
   wantsPromotion?: boolean
+  /** "Host a trivia night" (0090). Unlike the skin and the promotion this is
+   *  NOT leadership-only — an event request from a member is a lead, not a
+   *  decision — but the server does require a name and an email for it either
+   *  way, because an inquiry nobody can answer is not an inquiry. */
+  wantsTriviaNight?: boolean
   /**
    * The look the church is asking for — a `ChurchSkinChoice`, or undefined for
    * "no preference". Leadership only: `submit_church_info_request` (0051) drops
@@ -513,7 +518,7 @@ export const useChurch = create<ChurchState>((set, get) => ({
     return { ok: true }
   },
 
-  async requestInfo({ churchId, role, note, name, email, skin, wantsPromotion }) {
+  async requestInfo({ churchId, role, note, name, email, skin, wantsPromotion, wantsTriviaNight }) {
     if (!isOnline()) return { ok: false, reason: 'offline' }
     const { data, error } = await supabase!.rpc('submit_church_info_request', {
       p_church_id: churchId,
@@ -523,6 +528,7 @@ export const useChurch = create<ChurchState>((set, get) => ({
       p_email: email?.trim() || null,
       p_skin: skin ?? null,
       p_wants_promotion: !!wantsPromotion,
+      p_wants_trivia_night: !!wantsTriviaNight,
     })
     if (error) return { ok: false, reason: error.message }
     const payload = data as any

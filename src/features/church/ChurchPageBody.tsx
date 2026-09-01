@@ -6,6 +6,7 @@ import { Collapsible } from '@/components/Collapsible'
 import { useChurch, INFO_NOTE_MAX, INFO_NOTE_MIN, type InfoRequestRole } from '@/store/church'
 import { useChurchYard } from '@/store/churchYard'
 import { useJuice } from '@/juice/useJuice'
+import { TriviaNightArt } from './TriviaNightArt'
 import { formatMiles } from '@/lib/geo'
 import { churchLevelInfo, tierForLevel } from './levels'
 import { ChurchArt } from './ChurchArt'
@@ -310,12 +311,12 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: str
 // lib/commerce.ts for where a real storefront decision would live).
 function InfoSection({ page, loading }: { page: ChurchPage; loading: boolean }) {
   const { church, info, myRequestPending, canEdit } = page
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState<null | 'info' | 'trivia'>(null)
   const [editing, setEditing] = useState(false)
   const juice = useJuice()
 
   // A different church means a different form — reset when the sheet reopens.
-  useEffect(() => { setOpen(false); setEditing(false) }, [church.id])
+  useEffect(() => { setOpen(null); setEditing(false) }, [church.id])
 
   // Verified leadership writes straight through instead of joining a queue —
   // that's the whole point of a claim (0079). The operator still grants the
@@ -328,6 +329,7 @@ function InfoSection({ page, loading }: { page: ChurchPage; loading: boolean }) 
   if (open) {
     return (
       <InfoRequestForm
+        intent={open}
         churchId={church.id}
         churchName={church.name}
         // Preview the skin on the building this church has actually earned, and
@@ -335,7 +337,7 @@ function InfoSection({ page, loading }: { page: ChurchPage; loading: boolean }) 
         // somebody else's look reads as a proposal to change it.
         level={churchLevelInfo(church.xp).level}
         currentSkin={church.skin}
-        onDone={() => setOpen(false)}
+        onDone={() => setOpen(null)}
       />
     )
   }
@@ -356,7 +358,7 @@ function InfoSection({ page, loading }: { page: ChurchPage; loading: boolean }) 
         ) : !myRequestPending && (
           <motion.button
             whileTap={{ scale: 0.94 }}
-            onClick={() => { juice.select?.(); setOpen(true) }}
+            onClick={() => { juice.select?.(); setOpen('info') }}
             className="pill"
             style={{ borderColor: 'var(--gold)', color: 'var(--gold)', fontWeight: 800, fontSize: 12.5, flexShrink: 0 }}
           >
@@ -395,6 +397,42 @@ function InfoSection({ page, loading }: { page: ChurchPage; loading: boolean }) 
         <p className="faint" style={{ margin: info ? '10px 0 0' : '10px 0 0', fontSize: 12.5, lineHeight: 1.5 }}>
           ✅ Your note is in the queue. A person reads these — give us a few days.
         </p>
+      )}
+
+      {/* "Host a trivia night" — the third thing a church can be sold, asked
+          for the same way as the other two (0090).
+          
+          It sits on its OWN ROW rather than beside "Add info" in the header.
+          Three pills in that row is 141px of label on a 320px phone, which is
+          the measurement that already forced the churchyard's Landscaping
+          header to be bled to the card's edges — the word gets truncated
+          before the button is ever tapped.
+          
+          It carries NO PRICE, which is what keeps this surface identical on the
+          web and in the App Store build. It grants nothing: only an operator
+          can arrange a night, and there is nothing to arrange yet — this exists
+          to find out whether churches want one. */}
+      {!myRequestPending && (
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--stroke)' }}>
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={() => { juice.select?.(); setOpen('trivia') }}
+            className="pill"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+              padding: '9px 12px', textAlign: 'left',
+              borderColor: 'var(--gold)', color: 'var(--gold)', fontWeight: 800, fontSize: 12.5,
+            }}
+          >
+            <span style={{ fontSize: 15 }}>✨</span>
+            <span style={{ flex: 1, minWidth: 0 }}>Host a trivia night</span>
+            <span aria-hidden style={{ opacity: 0.7 }}>›</span>
+          </motion.button>
+          <p className="faint" style={{ margin: '6px 2px 0', fontSize: 11.5, lineHeight: 1.5 }}>
+            A quiz night for your hall, run from the questions in here. Ask us about it — nothing
+            is charged in the app.
+          </p>
+        </div>
       )}
     </div>
   )
@@ -544,12 +582,20 @@ function InfoRequestForm({
   churchName,
   level,
   currentSkin,
+  intent = 'info',
   onDone,
 }: {
   churchId: string
   churchName: string
   level: number
   currentSkin?: string | null
+  /**
+   * Which ask this is. ONE form serves both, rather than a second one that
+   * would drift: the role chips, the contact fields, the length cap, the
+   * one-open-ask rule and the error copy are all the same problem, and a
+   * trivia night differs only in what it is asking for.
+   */
+  intent?: 'info' | 'trivia'
   onDone: () => void
 }) {
   const requestInfo = useChurch((s) => s.requestInfo)
@@ -575,9 +621,15 @@ function InfoRequestForm({
     setErr(null)
   }
   const leadership = role === 'leadership'
+  const trivia = intent === 'trivia'
+  // Contact is required for leadership (they are claiming to speak for the
+  // church) and for ANY trivia-night ask — an inquiry nobody can answer is not
+  // an inquiry. KEEP IN SYNC with submit_church_info_request (0090), which
+  // enforces the same rule rather than trusting this.
+  const needsContact = leadership || trivia
   const valid =
     note.trim().length >= INFO_NOTE_MIN &&
-    (!leadership || (name.trim().length >= 2 && email.includes('@') && email.trim().length >= 5))
+    (!needsContact || (name.trim().length >= 2 && email.includes('@') && email.trim().length >= 5))
 
   const submit = async () => {
     if (!valid || busy) return
@@ -591,6 +643,7 @@ function InfoRequestForm({
       email,
       skin: leadership ? skin : undefined,
       wantsPromotion: leadership && wantsPromotion,
+      wantsTriviaNight: trivia,
     })
     setBusy(false)
     if (!res.ok) {
@@ -607,7 +660,9 @@ function InfoRequestForm({
         <div style={{ fontSize: 32 }}>🙏</div>
         <b style={{ fontFamily: 'var(--font-display)', fontSize: 17, display: 'block', marginTop: 6 }}>Thank you</b>
         <p className="dim" style={{ margin: '6px 0 14px', fontSize: 13.5, lineHeight: 1.55 }}>
-          {!leadership
+          {trivia
+            ? `We’ll email you about running a trivia night at ${churchName}.`
+            : !leadership
             ? `We'll use this to fill in ${churchName}'s page — and we'll reach out to the church too.`
             : skin === 'custom'
               ? `We'll email you about ${churchName}'s page, and about drawing the building itself.`
@@ -623,11 +678,31 @@ function InfoRequestForm({
   return (
     <div className="card" style={{ display: 'grid', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <b style={{ fontFamily: 'var(--font-display)', fontSize: 16, flex: 1 }}>Add info</b>
+        <b style={{ fontFamily: 'var(--font-display)', fontSize: 16, flex: 1 }}>
+          {trivia ? 'Host a trivia night' : 'Add info'}
+        </b>
         <button onClick={onDone} className="faint" style={{ fontSize: 12.5, textDecoration: 'underline', flexShrink: 0 }}>
           Cancel
         </button>
       </div>
+
+      {/* NO PRICE, NO PLAN NAMES, NO CHECKOUT — the surface is byte-identical
+          on the web and in the App Store build, so `commerce.ts` never has to
+          gate it and the App Store build never shows a shop it can't take
+          money through. The same rule the `custom` building and the sponsored
+          slot follow. It says the money is settled by email and it means it. */}
+      {trivia && (
+        <>
+          <div style={{ borderRadius: 'var(--r-sm)', overflow: 'hidden', background: 'rgba(0,0,0,0.22)', padding: '6px 4px' }}>
+            <TriviaNightArt />
+          </div>
+          <p className="dim" style={{ margin: 0, fontSize: 13, lineHeight: 1.55 }}>
+            A question on the screen at the front, everybody answering on their own phone, and
+            every answer teaching the room something whether they got it right or not.
+            Tell us about your night and we’ll write back — nothing is charged here.
+          </p>
+        </>
+      )}
 
       <p className="dim" style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>
         Who are you to {churchName}?
@@ -641,7 +716,7 @@ function InfoRequestForm({
         </RoleChip>
       </div>
 
-      {leadership && (
+      {needsContact && (
         <>
           <label style={labelStyle}>
             Your name
@@ -659,6 +734,16 @@ function InfoRequestForm({
               maxLength={120}
             />
           </label>
+        </>
+      )}
+
+      {/* The skin and the promotion stay LEADERSHIP-ONLY — those two are the
+          church exercising authority over itself (how the building looks,
+          whether it advertises), and a member cannot commit their congregation
+          to either. An event request is a different kind of thing, which is why
+          the trivia ask is open to anybody and these are not. */}
+      {leadership && (
+        <>
           <SkinPicker
             churchName={churchName}
             level={level}
@@ -706,7 +791,13 @@ function InfoRequestForm({
 
       <label style={labelStyle}>
         <span style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-          <span>{leadership ? 'What should be on the page?' : 'What should we put on this church’s page?'}</span>
+          <span>
+            {trivia
+              ? 'Tell us about your night'
+              : leadership
+                ? 'What should be on the page?'
+                : 'What should we put on this church’s page?'}
+          </span>
           <span style={{ flexShrink: 0, color: note.length >= max ? 'var(--tangerine)' : undefined }}>
             {note.length}/{max}
           </span>
@@ -717,17 +808,21 @@ function InfoRequestForm({
           rows={leadership ? 4 : 3}
           maxLength={max}
           placeholder={
-            leadership
-              ? 'Service times, a line about your congregation, your website…'
-              : 'Sundays 9 & 11am, Wednesday youth night…'
+            trivia
+              ? 'Roughly how many people, how often you’d run it, and what you use for a screen…'
+              : leadership
+                ? 'Service times, a line about your congregation, your website…'
+                : 'Sundays 9 & 11am, Wednesday youth night…'
           }
           style={{ resize: 'vertical' }}
         />
       </label>
       <p className="faint" style={{ margin: 0, fontSize: 11.5, lineHeight: 1.5 }}>
-        {leadership
-          ? 'We’ll email you to set the page up.'
-          : 'A short note — leadership can claim the page properly later.'}
+        {trivia
+          ? 'Goes to a person, not a form letter. Nothing is charged here.'
+          : leadership
+            ? 'We’ll email you to set the page up.'
+            : 'A short note — leadership can claim the page properly later.'}
       </p>
 
       {err && <p style={{ color: 'var(--coral)', fontSize: 13, margin: 0 }}>{err}</p>}
@@ -736,8 +831,14 @@ function InfoRequestForm({
         {busy ? 'Sending…' : 'Send'}
       </Button>
       <p className="faint" style={{ margin: 0, fontSize: 11.5, lineHeight: 1.5 }}>
-        Notes are read by a person before anything goes on the page — nothing you write here is
-        published to {churchName} straight away.
+        {trivia
+          // The info form's reassurance is about PUBLISHING, which a trivia ask
+          // isn't doing — leaving it there told somebody asking about a quiz
+          // night that their note wouldn't appear on the church's page, which
+          // is true and completely beside the point.
+          ? `Sending this arranges nothing and commits ${churchName} to nothing. It starts a conversation.`
+          : <>Notes are read by a person before anything goes on the page — nothing you write here is
+            published to {churchName} straight away.</>}
       </p>
     </div>
   )

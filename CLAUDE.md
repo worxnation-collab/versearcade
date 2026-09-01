@@ -573,6 +573,63 @@ It records no location (`sponsored_church` takes the coordinates
 "we never save it"), and `note_promotion_join` counts joins the server verified,
 which is the one number the slot produces and the only thing to renew on.
 
+### "Host a trivia night" — the third thing a church can be sold
+
+A pill under "About this church" opens an inquiry about running a quiz night in
+the church's own hall, off the app's 406 trivia questions. `0090`,
+`wants_trivia_night` on `church_info_requests`, `TriviaNightArt` for the little
+picture in the form.
+
+**It is the same rail as the `custom` building and the sponsored slot**, and
+that is the whole reason it is cheap: no price, no plan names, no checkout, so
+the surface is byte-identical on the web and in the App Store build,
+`commerce.ts` never has to gate it, and the money is settled off the device.
+Ticking it GRANTS NOTHING — there is nothing to grant yet, because the room
+doesn't exist. This surface exists to find out whether churches want one before
+anybody builds it. `scripts/trivia-night.mjs` generates the night they can run
+in the meantime.
+
+Three things about it are load-bearing:
+
+- **It is NOT leadership-only, unlike the skin and the promotion, and that is a
+  deliberate divergence.** Those two are a church exercising authority over
+  itself — how the building looks, whether it advertises to strangers — and a
+  member cannot commit their congregation to either, so the server nulls them
+  on the member path. An event request is a different kind of thing: "our youth
+  group would love this" is a LEAD, not a decision, and it is exactly the
+  demand signal the flag exists to collect. `role` travels with it, so the queue
+  can tell a decision-maker from somebody enthusiastic.
+- **Contact is required for it on BOTH paths**, which is the one rule it adds.
+  Leadership already has to give a name and an email; a trivia ask does too,
+  whoever sends it, because an inquiry nobody can answer is not an inquiry.
+  Enforced in `submit_church_info_request`, mirrored by `needsContact` in the
+  form — the usual keep-them-in-sync pair.
+- **ONE form serves both asks** (`InfoRequestForm`'s `intent`), rather than a
+  second one that would drift. The role chips, the contact fields, the length
+  cap, the one-open-ask rule and the error copy are all the same problem; a
+  trivia night differs only in what it asks for. Copy that is *about* publishing
+  to the page is switched, not shared — the info form's "nothing you write is
+  published straight away" is true of a trivia ask and completely beside the
+  point.
+
+**The pill sits on its own row, not beside "Add info" in the header.** Three
+pills in that row is 141px of label on a 320px phone — the same measurement that
+forced the churchyard's Landscaping header to be bled to the card's edges, and
+the word gets truncated before the button is ever tapped.
+
+**`admin_church_info_requests` renders the flag**, because the failure `0051`
+predicted for `skin` and `0078` had to come back and fix is a church asking for
+something and nobody ever finding out. When editing either function, copy the
+previous migration's text forward and change only the line you mean to: writing
+`admin_church_info_requests` from memory dropped `city`/`region`, changed the
+ordering, and moved the `LIMIT` somewhere it would not have limited anything.
+
+**The art is drawn, not generated**, a deliberate exception to the Nano Banana
+rule for the two reasons the church kit is drawn: it takes runtime colours, and
+it is a diagram of a feature that does not exist yet. Commissioning a painting
+of an unbuilt room is the wrong order. If churches say yes, `art/` is where it
+goes.
+
 ### The churchyard
 
 Giving grows the building for everybody; the same points, counted as *your*
@@ -1136,8 +1193,17 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0089` (the growth tab's timezone lookup, resolved once instead of
-per row), APPLIED on 2026-09-01 and verified: `admin_growth` read is 114ms where
+**`0090` (the "host a trivia night" ask) is WRITTEN AND NOT APPLIED.** It must be
+run against the live project BEFORE the client merges, and this one is not a
+degrade-gracefully case: it drops the 7-argument `submit_church_info_request` to
+replace it with an 8-argument one, so an un-applied 0090 means PostgREST cannot
+resolve the call the new client makes and **the whole "Add info" queue stops
+accepting anything**, not just the trivia ask. Apply it, then confirm there is
+exactly ONE signature for `submit_church_info_request` and that
+`admin_church_info_requests` still returns `city` and `region`.
+
+The latest APPLIED is `0089` (the growth tab's timezone lookup, resolved once
+instead of per row), applied on 2026-09-01 and verified: `admin_growth` read is 114ms where
 it was ~13,900ms, so it clears `authenticated`'s 8s `statement_timeout` instead
 of dying to it; `growth_today` and `admin_report_tz` are both plpgsql now, which
 is the part that matters — a `language sql` function gets INLINED into the
@@ -1222,9 +1288,10 @@ Numbering has scars: `0034` is used twice (`promo_codes`, `skin_purchases`),
 `public_church_page`), `0081` twice (`first_light`, and the Study library's
 card, which was applied to production under that number and renumbered to
 `0083` in the tree when the two branches met), and — from that same collision —
-`0082` and `0083` twice each. So the next free number is `0090` (0085 is taken by
+`0082` and `0083` twice each. So the next free number is `0091` (0085 is taken by
 erasure hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the
-lantern skin and 0089 by the growth tab's timezone fix, above),
+lantern skin, 0089 by the growth tab's timezone fix and **0090 by the
+trivia-night ask — NOT YET APPLIED, see below**),
 and this
 sentence has already gone stale twice: it said "0076" while 0077, 0078 and 0079
 were sitting in the folder. `ls supabase/migrations | tail -1` is the answer — on ORIGIN/MAIN, not your

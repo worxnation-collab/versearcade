@@ -10,6 +10,7 @@ import { QuickSheet } from '@/components/QuickSheet'
 import { DailyChest } from '@/features/chest/DailyChest'
 import { RoadStrip } from '@/features/season/RoadStrip'
 import { MapCompass } from '@/features/map/MapCompass'
+import { PlayedToday } from '@/features/presence/PlayedToday'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/store/auth'
 import { useGame } from '@/store/game'
@@ -43,6 +44,12 @@ import { msUntilNextLocalMidnight, formatCountdown } from '@/lib/date'
 //   3. **The compass**, at full size, glowing gold when something is open. It is
 //      the same door as the puck beside the nav — see `MapCompass`, and read
 //      `features/map/invitations.ts` before touching what makes it glow.
+//
+// Plus one LINE, not a card: how many people have played today, under the two
+// boxes. It is what survived of the presence ticker — the count was the part
+// doing the work, the drifting "@name +430" scores were the part that put one
+// player's number beside another's. Tapping it opens the people and never the
+// scores (`PlayedToday`, `0093`).
 //
 // Everything else that had a card here is now a BUTTON that opens its own
 // content in a sheet, which is First Light's own gesture generalised rather
@@ -169,6 +176,12 @@ export default function HomeScreen() {
           onPlay={() => navigate('/play/trivia')}
         />
       </div>
+
+      {/* How many people are in this with you today, directly under the two
+          boxes because it is a fact about the thing those boxes just offered.
+          A number and a door — never a score beside anybody's name. See
+          `PlayedToday` and `0093_daily_players.sql`. */}
+      <PlayedToday />
 
       {/* The Pilgrimage, under the two things that are new today. */}
       <div style={{ marginTop: 14 }}>

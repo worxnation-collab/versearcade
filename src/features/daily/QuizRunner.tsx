@@ -12,6 +12,7 @@ import { useDrops } from '@/store/drops'
 import { useSeason } from '@/store/season'
 import { scoreQuestion } from '@/lib/progress'
 import { SCORING } from '@/lib/config'
+import { clearRun, readRun, saveRun } from '@/lib/runProgress'
 import type { DailyVerse, PlayResult } from '@/types'
 
 type Phase = 'read' | 'question' | 'feedback' | 'submitting'
@@ -57,6 +58,31 @@ export interface QuizHudState {
 // (CpuVersusQuiz). It owns the run state and scoring; the caller decides what
 // "done" means via onComplete (which persists the result and navigates), and
 // gets a spot for a mode label + the exit target.
+//
+// ── A started run is LOCKED, and that lives here for the usual reason ────────
+//
+// Reading the verse is free: the ✕ is a real ✕ right up until the clock starts.
+// The moment it does, the run is committed — the ✕ becomes a lock that says so,
+// the browser/hardware Back is caught and put back, and a reload gets the
+// browser's own "leave site?" prompt. Every mode gets that from one place
+// rather than five screens deciding for themselves, the same choke-point rule
+// the scoring above follows.
+//
+// The point is not the exit, it's the RE-DEAL. A quiz you can walk out of is a
+// quiz you can start again knowing the answers — the daily drop's questions are
+// deterministic for the date, a practice replay is the same verse every time
+// and an accepted battle is a fixed seed. So locking the screen is only half of
+// it: `runId` parks the run (lib/runProgress) so that whatever gets a player
+// out anyway — a reload, a killed app — brings them back to the question they
+// left, with that question's clock still running. A caller that passes no
+// `runId` is still locked; it just has nothing to come back to, which is right
+// for the modes whose verse is a fresh random seed every time (a vs-CPU race, a
+// focus drill, a new battle) and for a live match, where nothing outlives the
+// match by design (docs/LIVE-BATTLE.md).
+//
+// Nothing here scolds anybody for wanting out: the lock says how many questions
+// are left and that the score is safe, and a run is five questions with a hard
+// per-question window, so the door it closes is measured in seconds.
 export function QuizRunner({
   verse,
   onComplete,
@@ -67,6 +93,7 @@ export function QuizRunner({
   onReveal,
   startGate,
   studyDrop = false,
+  runId,
 }: {
   verse: DailyVerse
   onComplete: (result: PlayResult) => Promise<void>
@@ -89,29 +116,68 @@ export function QuizRunner({
   onReveal?: (qi: number, correct: boolean, timeMs: number) => void
   /** Optional ready-check on the read phase — see StartGate. */
   startGate?: StartGate
+  /**
+   * Identifies THIS deal, so a run that is interrupted comes back instead of
+   * being dealt again — `daily:<dropDate>`, `practice:<date>`, `battle:<id>`.
+   * Pass one wherever the verse is fixed; omit it where a new run means a new
+   * random verse (there is nothing to re-deal) or where the run is synchronous.
+   * See lib/runProgress and the note above.
+   */
+  runId?: string
 }) {
   const juice = useJuice()
 
-  const [phase, setPhase] = useState<Phase>('read')
-  const [qi, setQi] = useState(0)
-  const [combo, setCombo] = useState(0)
-  const [comboMax, setComboMax] = useState(0)
-  const [score, setScore] = useState(0)
-  const [answered, setAnswered] = useState<Answered | null>(null)
-  const [answers, setAnswers] = useState<Answered[]>([])
+  const questions = verse.questions
+
+  // Resolved ONCE, on the first render: is there a run of this deal to come
+  // back to? `elapsed` is how much of the current question's window has already
+  // burned (null on a teach card, where nothing is being timed) — the clock
+  // does not stop while somebody is away, which is what makes handing a parked
+  // run back safe rather than a pause button. See lib/runProgress.
+  const [resume] = useState(() => {
+    const snap = runId ? readRun(runId, verse.reference, questions.length) : null
+    if (!snap) return null
+    return {
+      snap,
+      elapsed: snap.questionStartedAt === null ? null : Math.max(0, Date.now() - snap.questionStartedAt),
+    }
+  })
+
+  const [phase, setPhase] = useState<Phase>(resume ? (resume.elapsed === null ? 'feedback' : 'question') : 'read')
+  const [qi, setQi] = useState(resume?.snap.qi ?? 0)
+  const [combo, setCombo] = useState(resume?.snap.combo ?? 0)
+  const [comboMax, setComboMax] = useState(resume?.snap.comboMax ?? 0)
+  const [score, setScore] = useState(resume?.snap.score ?? 0)
+  // On a teach card the banked answer for this question is its last entry.
+  const [answered, setAnswered] = useState<Answered | null>(
+    resume && resume.elapsed === null ? (resume.snap.answers[resume.snap.qi] ?? null) : null,
+  )
+  const [answers, setAnswers] = useState<Answered[]>(resume?.snap.answers ?? [])
   const [pop, setPop] = useState<{ id: number; text: string } | null>(null)
   const [waitingToStart, setWaitingToStart] = useState(false)
-  const startTs = useRef(0)
+  // What is LEFT of this question's window — a full one normally, the remainder
+  // of it on a resumed question. Drives the countdown bar; the timeout below
+  // derives the same number from startTs.
+  const [windowMs, setWindowMs] = useState(
+    resume?.elapsed != null ? Math.max(0, SCORING.answerWindowMs - resume.elapsed) : SCORING.answerWindowMs,
+  )
+  const startTs = useRef(resume?.elapsed != null ? performance.now() - resume.elapsed : 0)
   const timeout = useRef<ReturnType<typeof setTimeout>>()
+  const [leaveNote, setLeaveNote] = useState(false)
 
-  const questions = verse.questions
   const q = questions[qi]
   const isLast = qi === questions.length - 1
   const multiplier = Math.min(SCORING.comboMax, 1 + combo * SCORING.comboStep)
+  // Questions still to answer — the one on screen counts until its card turns.
+  const left = questions.length - qi - (phase === 'feedback' ? 1 : 0)
 
   const beginQuestion = useCallback(() => {
     startTs.current = performance.now()
+    setWindowMs(SCORING.answerWindowMs)
     setAnswered(null)
+    // Moving on answers the note the lock put up — leaving it standing would
+    // push the next question down the screen for the rest of the run.
+    setLeaveNote(false)
     setPhase('question')
   }, [])
 
@@ -122,18 +188,112 @@ export function QuizRunner({
   }, [startGate?.open, phase, beginQuestion])
 
   // Per-question timer: running out = a gentle miss (still reveals the fact).
+  // The remaining window is derived from startTs rather than assumed to be the
+  // whole of it, so a resumed question gets what is left of its clock and one
+  // whose window has already passed lands on its teach card immediately.
   useEffect(() => {
     if (phase !== 'question') return
     onQuestionStart?.(qi)
-    timeout.current = setTimeout(() => handleAnswer(-1), SCORING.answerWindowMs)
+    const remaining = Math.max(0, SCORING.answerWindowMs - (performance.now() - startTs.current))
+    timeout.current = setTimeout(() => handleAnswer(-1), remaining)
     return () => clearTimeout(timeout.current)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, qi])
 
+  // ── The run lock ──────────────────────────────────────────────────────────
+  // Committed from the first tick of the clock until the run is handed to
+  // onComplete. See the note on this component for why.
+  const locked = phase === 'question' || phase === 'feedback'
+  // Set while the guard entry below is being handed back, so the popstate that
+  // does it isn't read as somebody trying to leave.
+  const releasing = useRef(false)
+  const guarded = useRef(false)
+
+  // Park the run wherever it stands, so an interruption comes back to this
+  // question instead of dealing a fresh one. Written on every move rather than
+  // at chosen call sites: the thing that ends a run without warning (a reload,
+  // a killed app, a crash) gets no chance to save on its way out.
+  useEffect(() => {
+    if (!runId || !locked) return
+    saveRun({
+      runId,
+      reference: verse.reference,
+      qi,
+      score,
+      combo,
+      comboMax,
+      answers,
+      // Wall time, converted from the monotonic clock the run is scored on.
+      questionStartedAt: phase === 'question' ? Date.now() - Math.round(performance.now() - startTs.current) : null,
+      savedAt: Date.now(),
+    })
+  }, [runId, locked, phase, qi, score, combo, comboMax, answers, verse.reference])
+
+  // Back — the browser's, and Android's hardware button, which Capacitor routes
+  // to the same place. There is no useBlocker to lean on (main.tsx mounts a
+  // BrowserRouter, not a data router), so the guard is an extra history entry
+  // for the SAME url: stepping back off it moves nothing on screen, and the
+  // handler puts it straight back. next() hands it in before the caller
+  // navigates, so a finished run leaves the history exactly as it found it.
+  useEffect(() => {
+    if (!locked) return
+    if (!guarded.current) {
+      guarded.current = true
+      window.history.pushState({ vaQuizRun: true }, '')
+    }
+    const onPop = () => {
+      if (releasing.current) return
+      window.history.pushState({ vaQuizRun: true }, '')
+      juice.select()
+      setLeaveNote(true)
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [locked, juice])
+
+  // A reload is the other way out of a locked run. The parked snapshot means it
+  // costs the player their place rather than handing them a new deal, but it's
+  // usually a mis-swipe, so let the browser ask first. (Native has no reload;
+  // there the listener simply never fires.)
+  useEffect(() => {
+    if (!locked) return
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [locked])
+
+  /** Give the guard entry back, before the caller navigates off a finished run. */
+  const releaseGuard = useCallback(async () => {
+    if (!guarded.current) return
+    guarded.current = false
+    releasing.current = true
+    await new Promise<void>((resolve) => {
+      const done = () => {
+        window.removeEventListener('popstate', done)
+        clearTimeout(t)
+        resolve()
+      }
+      // A browser that doesn't come back must not hang the results screen; the
+      // cost of missing it is one spare entry pointing at this same url.
+      const t = setTimeout(done, 250)
+      window.addEventListener('popstate', done)
+      window.history.back()
+    })
+    releasing.current = false
+  }, [])
+
   const handleAnswer = (choiceIndex: number) => {
     if (answered) return
     clearTimeout(timeout.current)
-    const timeMs = Math.round(performance.now() - startTs.current)
+    // Clamped to the window a question actually has. It can be overshot without
+    // anyone cheating — a backgrounded tab throttles timers, and a run resumed
+    // after its window has passed lands here with the whole absence on the
+    // clock — and PlayResult.timeMs is summed into a battle's tiebreak, where a
+    // 90-second question would be a number the game cannot otherwise produce.
+    const timeMs = Math.min(SCORING.answerWindowMs, Math.round(performance.now() - startTs.current))
     const correct = choiceIndex === q.answerIndex
     const points = scoreQuestion(correct, timeMs, combo)
 
@@ -163,9 +323,13 @@ export function QuizRunner({
       beginQuestion()
       return
     }
-    // Finalize the run.
+    // Finalize the run. It stops being lockable here: the parked copy has done
+    // its job (there is a result now, and nothing left to re-deal), and the
+    // history guard goes back before the caller navigates.
     setPhase('submitting')
     juice.whoosh()
+    if (runId) clearRun(runId)
+    await releaseGuard()
     const correctCount = answers.filter((a) => a.correct).length
     const totalTime = answers.reduce((s, a) => s + a.timeMs, 0)
     const result: PlayResult = {
@@ -210,7 +374,21 @@ export function QuizRunner({
     <Page noNav>
       {/* HUD */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: label ? 8 : 12 }}>
-        <button className="pill" onClick={onExit} aria-label="Back">✕</button>
+        {/* Free until the clock starts; a lock that explains itself after. */}
+        <button
+          className="pill"
+          onClick={() => {
+            if (!locked) {
+              onExit()
+              return
+            }
+            juice.select()
+            setLeaveNote(true)
+          }}
+          aria-label={locked ? 'Run in progress' : 'Back'}
+        >
+          {locked ? '🔒' : '✕'}
+        </button>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 22 }}>
           <CountUp to={score} /> <span className="faint" style={{ fontSize: 13 }}>pts</span>
         </div>
@@ -221,6 +399,39 @@ export function QuizRunner({
           <span className="pill">{label}</span>
         </div>
       )}
+      {/* Why the lock is there. It says what's left and that the score is safe —
+          nobody is being told off for wanting out. */}
+      <AnimatePresence>
+        {leaveNote && locked && (
+          <motion.div
+            key="leavenote"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div className="card" style={{ marginBottom: 14, background: 'rgba(94,231,223,0.1)', borderColor: 'var(--sky)' }}>
+              <b style={{ color: 'var(--sky)' }}>🔒 You’re mid-run</b>
+              <p style={{ marginTop: 6, fontSize: 15, lineHeight: 1.5 }}>
+                {left === 0
+                  ? 'Your score is one tap away.'
+                  : left === 1
+                    ? 'One question to go — see it through.'
+                    : `${left} questions to go — see it through.`}{' '}
+                {runId
+                  ? 'A run can’t be started over, so every point you’ve banked is safe right where it is.'
+                  : 'Every point you’ve banked so far is safe.'}
+              </p>
+              <div style={{ marginTop: 12 }}>
+                <Button variant="gold" full onClick={() => { juice.tap(); setLeaveNote(false) }}>
+                  Keep playing →
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {hud && (
         <div style={{ marginBottom: 14 }}>
           {hud({ score, qi, total: questions.length, phase, justCorrect: answered?.correct ?? null })}
@@ -274,9 +485,9 @@ export function QuizRunner({
               <div style={{ height: 8, borderRadius: 999, background: 'rgba(0,0,0,0.3)', overflow: 'hidden', marginBottom: 16 }}>
                 <motion.div
                   key={`timer${qi}`}
-                  initial={{ width: '100%' }}
+                  initial={{ width: `${(windowMs / SCORING.answerWindowMs) * 100}%` }}
                   animate={{ width: '0%' }}
-                  transition={{ duration: SCORING.answerWindowMs / 1000, ease: 'linear' }}
+                  transition={{ duration: windowMs / 1000, ease: 'linear' }}
                   style={{ height: '100%', background: 'linear-gradient(90deg, var(--gold), var(--coral))' }}
                 />
               </div>

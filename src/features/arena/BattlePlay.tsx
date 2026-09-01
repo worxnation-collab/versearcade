@@ -53,5 +53,16 @@ export default function BattlePlay() {
     )
   }
 
-  return <QuizRunner verse={verse} onComplete={onComplete} onExit={() => navigate(`/battle/${id}`)} label="⚔️ Bible Battle" />
+  // The battle's seed is fixed by the challenger, so this deal can't be
+  // re-rolled by walking out of it — naming it hands an interrupted run back
+  // where the old behaviour was a fresh attempt at the same five questions.
+  return (
+    <QuizRunner
+      verse={verse}
+      onComplete={onComplete}
+      onExit={() => navigate(`/battle/${id}`)}
+      label="⚔️ Bible Battle"
+      runId={`battle:${id}`}
+    />
+  )
 }

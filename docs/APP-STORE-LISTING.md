@@ -84,9 +84,11 @@ Start your streak today. It's one verse.
 > on the day you submit. Do not bump the version for a new feature — only an
 > *approved* version forces a bump.
 >
-> Last rebuilt against `git log --first-parent` on 2026-08-31, covering #157 to #191.
-> 3,826 characters, against Apple's 4,000 limit — there is room for about one more
-> short section before something has to give.
+> Last rebuilt against `git log --first-parent` on 2026-08-31, covering #157 to #191,
+> plus the run lock (2026-09-01). 3,963 characters against Apple's 4,000 limit — this
+> block is now FULL. The next thing that lands has to take something out, and the
+> cheapest cut is the section describing whatever turns out to have shipped in 1.2.0
+> already (see the note under the block).
 
 ```
 BATTLE ANYONE, RIGHT NOW
@@ -102,6 +104,8 @@ BATTLE ANYONE, RIGHT NOW
   there's no progress bar to grind, and nothing anywhere counts what you've lost.
 • Wrong answers still teach. The line explaining the answer is yours to read at
   your own pace, even if it costs you the round.
+• Once a run starts, it runs — no bailing out of a bad round to deal a fresh one,
+  and an interrupted run comes back where you left it.
 
 THERE'S AN ARCADE IN HERE NOW
 • A cabinet in your own room, and on the home screen once the day's verse is done.

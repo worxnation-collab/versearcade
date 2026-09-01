@@ -818,6 +818,65 @@ entirely white image (the magenta instruction ignored, the failure the church
 skins hit twice); it was re-rolled with the prompt hardened against exactly that
 and every pale garment on the figure recoloured.
 
+### A battle picks its questions: verse or trivia
+
+`/battle/new` asks who, then asks WHAT — verse questions about one verse, or
+five Bible trivia questions drawn across all 66 books. Both are five questions
+under identical scoring and both pay the same battle XP, so the choice changes
+what you are asked and nothing else. **There is deliberately no harder mode
+worth more**: a mode that paid better would be a ladder, and `xp` is the number
+that ranks people.
+
+**The mode rides in the SIGN OF THE SEED, and that is the load-bearing part.**
+A negative `battles.seed` means trivia; `battleMode()` is the only place the
+sign is read, and `battleVerse()` the only place it is acted on. Four reasons
+it is there rather than in a column of its own, written down because it will
+look like a hack otherwise:
+
+- **The seed is already the whole contract.** Both devices rebuild the entire
+  quiz from it, so a mode that rides in it cannot arrive separately from the
+  questions it describes.
+- **`battles.seed` is a `bigint` and `create_battle` does not validate it**, so
+  a negative one needs NO MIGRATION and works against the live project today —
+  including for the baked `dist` in already-approved iOS builds.
+- **Every battle ever created stays a verse battle**, because every seed ever
+  written is positive. A reserved bit or a parity would have silently
+  reclassified half the table.
+- **A column would not have helped the clients that matter.** An approved build
+  does not know the column exists, so it would ignore it and rebuild a verse
+  quiz from the seed — exactly what it does with a negative seed, since
+  `battleVerse` has always taken the absolute value. Same outcome, minus the
+  migration. Same habit as the tier riding a placement value
+  (`keep_woven_rug.3`) rather than earning a column.
+
+**A trivia battle keeps the verse battle's anchor verse and swaps only the
+questions.** `battleVerse(-n)` and `battleVerse(n)` return the same verse, which
+is what makes the old-client fallback gentle: a build that cannot read the sign
+opens on the very verse its opponent is looking at and asks its own questions
+about it. Both players still answer five questions under identical scoring, so
+the battle completes and the result is sound — they just read different
+questions. That is not new; the pool growing already changes distractors between
+app versions, which is why the seed rebuilds rather than the questions
+travelling.
+
+**Trivia is drawn across all 66 books, never scoped to one.** A single-book
+round in a COMPETITIVE mode is a lottery on whether you happen to know that
+book; a spread samples what both players actually know. The library's round is
+scoped precisely because it is not competitive.
+
+Branching inside `battleVerse` is what makes the whole thing cheap: `BattleNew`,
+`BattlePlay`, `BattleDetail`, `BattleCpu` and a live room all ask that one
+function and none of them knows a mode exists. What DOES know is copy — the run
+label, and the accept prompt on `BattleDetail`, which names the mode **before**
+the opponent accepts. The challenger picks it, so the least the app can do is
+say what is coming; a trivia round arriving unannounced reads as the quiz having
+lost the verse.
+
+**Live battles do not have this yet**, and adding it is not free: the room's
+seed is derived from the code (`seedForRoom`), so a mode would have to ride the
+handshake or the code itself. Worth doing, but it is a change to the one
+synchronous thing here rather than a copy of this.
+
 ### The crusades set: the one cosmetic earned by winning
 
 Four figures from 1095–1291 — Francis of Assisi, Hildegard of Bingen, Thomas

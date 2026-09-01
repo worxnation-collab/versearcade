@@ -9,7 +9,7 @@ import { useBattles } from '@/store/battles'
 import { useKeep } from '@/store/keep'
 import { useBuddies, type BuddyCard } from '@/store/buddies'
 import { useAuth } from '@/store/auth'
-import { newBattleSeed, battleVerse } from './battle'
+import { newBattleSeed, battleVerse, type BattleMode } from './battle'
 import { shareResult, inviteUrl } from '@/features/daily/shareCard'
 import { useJuice } from '@/juice/useJuice'
 import { FavoriteButton } from '@/components/FavoriteButton'
@@ -36,34 +36,151 @@ type Choice = { kind: 'player'; username: string } | { kind: 'later' }
 export default function BattleNew() {
   const navigate = useNavigate()
   const location = useLocation()
-  const seed = useMemo(() => newBattleSeed(), [])
-  const verse = useMemo(() => battleVerse(seed), [seed])
   const [result, setResult] = useState<PlayResult | null>(null)
   // Arriving from someone's player card or a buddy row ("⚔️ Battle") already
   // names the opponent, so that path skips the picker entirely.
   const target = (location.state as { challenge?: string } | null)?.challenge ?? null
   const [choice, setChoice] = useState<Choice | null>(target ? { kind: 'player', username: target } : null)
 
-  if (!choice) return <OpponentPicker onPick={setChoice} onExit={() => navigate('/battle')} />
+  // The seed is minted the moment the mode is chosen, because the mode LIVES in
+  // its sign (see battle.ts). One state, not two — a mode held separately from
+  // the seed it produced is a pair that can disagree, and the seed is what both
+  // devices actually rebuild from.
+  const [seed, setSeed] = useState<number | null>(null)
+  const verse = useMemo(() => (seed == null ? null : battleVerse(seed)), [seed])
 
-  if (!result) {
+  // OpponentPicker skips itself when there is nobody to list (a brand-new
+  // account, or offline). If it did, there is no step to go back to and the
+  // mode picker's ✕ has to leave — returning would just be forwarded here
+  // again, which reads as a dead button.
+  const [noPickerShown, setNoPickerShown] = useState(false)
+  if (!choice) {
+    return (
+      <OpponentPicker
+        onPick={(c, autoSkipped) => {
+          if (autoSkipped) setNoPickerShown(true)
+          setChoice(c)
+        }}
+        onExit={() => navigate('/battle')}
+      />
+    )
+  }
+
+  // Step two: what are you battling ON? Asked AFTER the opponent and BEFORE the
+  // run, so it is the challenger's decision and the run they play is the run
+  // that gets sent. The pre-picked path (from a player card) still comes through
+  // here — it skipped naming somebody, not deciding what the battle is.
+  if (seed == null) {
+    return (
+      <ModePicker
+        opponent={choice.kind === 'player' ? choice.username : null}
+        onPick={(m) => setSeed(newBattleSeed(m))}
+        onExit={() => (target || noPickerShown ? navigate('/battle') : setChoice(null))}
+      />
+    )
+  }
+
+  if (!result && verse) {
+    const trivia = seed < 0
+    const who = choice.kind === 'player' ? `vs @${choice.username}` : null
     return (
       <QuizRunner
         verse={verse}
         onComplete={async (r) => setResult(r)}
         onExit={() => navigate('/battle')}
         // Name the opponent for the whole run — otherwise the quiz looks like a
-        // solo game and nobody can tell whether picking them did anything.
-        label={choice.kind === 'player' ? `⚔️ Battle vs @${choice.username}` : '⚔️ Bible Battle'}
+        // solo game and nobody can tell whether picking them did anything. And
+        // name the MODE, so a trivia round is never mistaken for the quiz having
+        // gone wrong about the verse on the card.
+        label={
+          trivia
+            ? who ? `✨ Bible trivia ${who}` : '✨ Bible trivia battle'
+            : who ? `⚔️ Battle ${who}` : '⚔️ Bible Battle'
+        }
       />
     )
   }
+  if (!result) return null
   return <InvitePicker seed={seed} result={result} target={choice.kind === 'player' ? choice.username : null} />
+}
+
+// Step two: verse questions, or Bible trivia.
+//
+// Both are five questions under identical scoring and both pay the same battle
+// XP, so this changes what you're asked and nothing else — there is no harder
+// mode worth more, which is the thing that would turn a choice into a ladder.
+function ModePicker({
+  opponent,
+  onPick,
+  onExit,
+}: {
+  opponent: string | null
+  onPick: (mode: BattleMode) => void
+  onExit: () => void
+}) {
+  const juice = useJuice()
+  const pick = (m: BattleMode) => {
+    juice.coin()
+    onPick(m)
+  }
+  return (
+    <Page noNav>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+        <button className="pill" onClick={onExit} aria-label="Back">✕</button>
+        <b style={{ fontFamily: 'var(--font-display)', fontSize: 18 }}>
+          {opponent ? `Battling @${opponent}` : 'New battle'}
+        </b>
+      </div>
+
+      <div className="center" style={{ marginBottom: 18 }}>
+        <div className="floaty" style={{ fontSize: 44 }}>⚔️</div>
+        <h1 style={{ fontSize: 26, marginTop: 4 }}>What are you playing?</h1>
+        <p className="dim" style={{ marginTop: 4, lineHeight: 1.4 }}>
+          Five questions either way, scored the same. {opponent ? `@${opponent} plays` : 'Whoever takes it on plays'} the
+          exact same set.
+        </p>
+      </div>
+
+      <div style={{ display: 'grid', gap: 10 }}>
+        <ModeRow
+          icon="📖"
+          title="Verse questions"
+          sub="One verse to read, then five questions about it"
+          onClick={() => pick('verse')}
+        />
+        <ModeRow
+          icon="✨"
+          title="Bible trivia"
+          sub="Five questions from right across the 66 books"
+          onClick={() => pick('trivia')}
+        />
+      </div>
+      <div style={{ height: 30 }} />
+    </Page>
+  )
+}
+
+function ModeRow({ icon, title, sub, onClick }: { icon: string; title: string; sub: string; onClick: () => void }) {
+  return (
+    <motion.button
+      whileTap={{ scale: 0.98 }}
+      onClick={onClick}
+      className="card"
+      style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%', padding: '14px 16px' }}
+    >
+      <div style={{ fontSize: 30 }}>{icon}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <b style={{ fontWeight: 800, display: 'block' }}>{title}</b>
+        <span className="faint" style={{ fontSize: 12 }}>{sub}</span>
+      </div>
+      <span className="pill" style={{ background: 'var(--gold)', color: '#241f0a', fontWeight: 800, fontSize: 12, flexShrink: 0 }}>Play</span>
+    </motion.button>
+  )
 }
 
 // Step one: who are you battling? Shown before the quiz so the tap that names a
 // person is the tap that starts the battle.
-function OpponentPicker({ onPick, onExit }: { onPick: (c: Choice) => void; onExit: () => void }) {
+function OpponentPicker({ onPick, onExit }: { onPick: (c: Choice, autoSkipped?: boolean) => void; onExit: () => void }) {
   const juice = useJuice()
   const { buddies, suggested, load, loadSuggested } = useBuddies()
   const [ready, setReady] = useState(false)
@@ -77,7 +194,7 @@ function OpponentPicker({ onPick, onExit }: { onPick: (c: Choice) => void; onExi
   // offers the share link.
   const empty = ready && buddies.length === 0 && suggested.length === 0
   useEffect(() => {
-    if (empty) onPick({ kind: 'later' })
+    if (empty) onPick({ kind: 'later' }, true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [empty])
 
@@ -223,7 +340,11 @@ function InvitePicker({ seed, result, target }: { seed: number; result: PlayResu
       setShareId(id)
     }
     const link = inviteUrl(referralCode, `/battle/${id}`)
-    const r = await shareResult(`⚔️ I challenge you to a Bible Battle! Same quiz, beat my score:\n${link}`, link)
+    const pitch =
+      seed < 0
+        ? '✨ I challenge you to a Bible trivia battle! Same five questions, beat my score:'
+        : '⚔️ I challenge you to a Bible Battle! Same quiz, beat my score:'
+    const r = await shareResult(`${pitch}\n${link}`, link)
     setShareMsg(r === 'shared' ? 'Shared!' : r === 'copied' ? 'Link copied!' : 'Could not share')
   }
 

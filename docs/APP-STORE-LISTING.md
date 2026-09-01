@@ -85,7 +85,7 @@ Start your streak today. It's one verse.
 > *approved* version forces a bump.
 >
 > Last rebuilt against `git log --first-parent` on 2026-09-01, covering #157 to
-> bonus trivia (#193). **3,945 characters against Apple's 4,000 limit.**
+> trivia battles. **3,929 characters against Apple's 4,000 limit.**
 >
 > The previous revision said this block was at the wall with nothing left to shave,
 > and that the next thing to land had to TAKE A SECTION OUT. Bonus trivia did:
@@ -96,11 +96,16 @@ Start your streak today. It's one verse.
 > here) and bonus trivia's own `every answer teaches` line, which the BATTLE
 > section already says.
 >
-> That bought 55 characters of headroom, which is not a reprieve — the next feature
-> is in exactly the same position. The remaining honest cuts are **live battles**
-> and **the weekly church rivalry**, if the check below shows they shipped in 1.2.0
-> already. That check is owed before submission regardless, and it is the only
-> thing that will make real room.
+> Trivia battles then took the next turn at this, and proved the point: one
+> 100-character bullet cost the churchyard's "a plant at the front is nearer, so
+> it's bigger" line — a flourish explaining how the drag feels, where the bullet
+> above it already announces that you can drag. That was the cheapest thing left
+> that is not itself a feature, and there is not a second one like it.
+>
+> The remaining honest cuts are **live battles** and **the weekly church
+> rivalry**, if the check below shows they shipped in 1.2.0 already. That check is
+> owed before submission regardless, and it is now the only thing left that will
+> make real room.
 
 ```
 BONUS TRIVIA ON EVERY VERSE
@@ -109,6 +114,8 @@ BONUS TRIVIA ON EVERY VERSE
   books, and everybody playing that day gets the same one.
 • Tabitha lends whole rounds of it in the library: pick a book, answer five. No
   XP, no rank, nothing to fall behind on.
+• Or battle someone at it: pick trivia or verse questions before you play, and
+  they answer the very same five.
 
 BATTLE ANYONE, RIGHT NOW
 • Quick match: tap it and we'll put you with whoever else is looking. No code, no
@@ -160,8 +167,6 @@ ARRANGE EVERYTHING WITH YOUR THUMB
 • Pick up anything in your Upper Room, your keep's hall or your churchyard and
   drag it where you like. Rugs stay on floors, banners on walls, plants on grass,
   and nothing you place is ever lost or overwritten.
-• A plant at the front of the lawn is nearer, so it's bigger. Drag it back toward
-  the church and it settles into the distance.
 • Finer furnishings are their own rewards now: you earn Fine and Grand by playing
   instead of stacking duplicates, and a lesser copy upgrades where it stands.
 • Your congregation's statues move too, and any member can move them.

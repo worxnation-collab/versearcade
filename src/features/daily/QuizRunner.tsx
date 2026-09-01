@@ -174,11 +174,19 @@ export function QuizRunner({
   // question is about this exact verse.
   const bonusCount = questions.filter((x) => x.bonus).length
   const verseCount = questions.length - bonusCount
+  // An all-trivia run can be scoped to ONE book (the library's round, where the
+  // verse on screen comes from it) or spread across the whole Bible (a trivia
+  // battle, drawn from all 66). Saying "the book it comes from" in the second
+  // case is simply untrue, and the run has everything it needs to tell them
+  // apart without being told.
+  const bonusBooks = new Set(questions.map((x) => x.bonus).filter(Boolean))
   const readPromise =
     bonusCount === 0
       ? `In a second you’ll answer ${questions.length} quick questions about this exact verse.`
       : verseCount === 0
-        ? `In a second you’ll answer ${questions.length} quick questions about the book it comes from.`
+        ? bonusBooks.size === 1
+          ? `In a second you’ll answer ${questions.length} quick questions about the book it comes from.`
+          : `In a second you’ll answer ${questions.length} quick trivia questions from right across the Bible.`
         : `In a second you’ll answer ${questions.length} quick questions — ${verseCount} about this verse, ` +
           `then a bonus about the book it comes from.`
   const multiplier = Math.min(SCORING.comboMax, 1 + combo * SCORING.comboStep)

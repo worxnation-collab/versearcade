@@ -212,6 +212,21 @@ export function generateQuestions(seed: VerseSeed, rng: () => number): Question[
 }
 
 /**
+ * Just the questions for a trivia round, with no verse attached.
+ *
+ * The battle engine supplies its own anchor verse (`battleVerse`), so that a
+ * trivia battle and a verse battle built from the SAME seed open on the same
+ * verse and differ only in what they ask. That is what makes an old client's
+ * fallback graceful: handed a trivia battle it cannot read, it shows the very
+ * verse the other player is looking at, with its own questions about it.
+ *
+ * Drawn across all 66 books — `triviaRoundFor(null, …)`.
+ */
+export function triviaQuestionsForSeed(seed: number, n = 5): Question[] {
+  return triviaRoundFor(null, mulberry32(seed >>> 0), n)
+}
+
+/**
  * A whole round of bonus trivia about one book, as a `DailyVerse` the shared
  * `QuizRunner` can run — what the library lends.
  *

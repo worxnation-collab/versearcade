@@ -4,7 +4,7 @@ import { Page } from '@/components/Page'
 import { QuizRunner } from '@/features/daily/QuizRunner'
 import { useBattles } from '@/store/battles'
 import { useKeep } from '@/store/keep'
-import { battleVerse } from './battle'
+import { battleVerse, battleMode } from './battle'
 import type { PlayResult } from '@/types'
 
 // Opponent flow: load the battle, play the SAME seeded quiz, submit the result.
@@ -61,7 +61,7 @@ export default function BattlePlay() {
       verse={verse}
       onComplete={onComplete}
       onExit={() => navigate(`/battle/${id}`)}
-      label="⚔️ Bible Battle"
+      label={battleMode(seed ?? 0) === 'trivia' ? '✨ Bible trivia battle' : '⚔️ Bible Battle'}
       runId={`battle:${id}`}
     />
   )

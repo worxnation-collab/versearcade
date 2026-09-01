@@ -12,7 +12,7 @@ import { useJuice } from '@/juice/useJuice'
 import { useKeep } from '@/store/keep'
 import { FavoriteButton } from '@/components/FavoriteButton'
 import { BattleXpLine } from './BattleXpLine'
-import { battleVerse } from './battle'
+import { battleVerse, battleMode } from './battle'
 
 function myOutcome(b: Battle): 'won' | 'lost' | 'tie' | null {
   if (b.status !== 'complete' || !b.winner) return null
@@ -263,10 +263,15 @@ export default function BattleDetail() {
                 friendly battle.
               </p>
             )}
+            {/* Name the mode BEFORE they accept. The challenger chose it, so
+                the least this can do is say what is coming — and a trivia round
+                arriving unannounced reads as the quiz having lost the verse. */}
             <p style={{ fontSize: 15, lineHeight: 1.5 }}>
               <b>@{battle.challenger.username}</b> scored{' '}
-              <b style={{ color: 'var(--gold)' }}>{battle.challenger.score?.toLocaleString()}</b>. Play the same verse quiz and
-              beat it!
+              <b style={{ color: 'var(--gold)' }}>{battle.challenger.score?.toLocaleString()}</b>.{' '}
+              {battleMode(battle.seed) === 'trivia'
+                ? 'Play the same five Bible trivia questions and beat it!'
+                : 'Play the same verse quiz and beat it!'}
             </p>
             <div style={{ marginTop: 16 }}>
               <Button variant="gold" full onClick={() => navigate(`/battle/${id}/play`)}>

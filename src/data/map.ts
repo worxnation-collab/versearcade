@@ -77,6 +77,14 @@ export const MAP_PLACES: MapPlace[] = [
     area: 'play',
   },
   {
+    id: 'daily-trivia',
+    icon: '✨',
+    label: 'Today’s trivia',
+    line: 'A round about one book of the Bible, new every day',
+    to: '/play/trivia',
+    area: 'play',
+  },
+  {
     id: 'arcade',
     icon: '🕹️',
     label: 'The arcade',

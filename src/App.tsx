@@ -15,6 +15,7 @@ import AuthScreen from './features/auth/AuthScreen'
 import HomeScreen from './features/home/HomeScreen'
 import QuizScreen from './features/daily/QuizScreen'
 import ResultScreen from './features/daily/ResultScreen'
+import DailyTriviaScreen from './features/daily/DailyTriviaScreen'
 import PracticeQuizScreen from './features/practice/PracticeQuizScreen'
 import PracticeResultScreen from './features/practice/PracticeResultScreen'
 import ReviewScreen from './features/review/ReviewScreen'
@@ -286,6 +287,17 @@ export default function App() {
           element={
             <RequireProfile>
               <ResultScreen />
+            </RequireProfile>
+          }
+        />
+        {/* The day's trivia round — the Play tab's second box. Guest-open like
+            the rest of /play: it pays no XP and nothing rankable, and the one
+            thing it records (the verse, marked studied) has a guest path. */}
+        <Route
+          path="/play/trivia"
+          element={
+            <RequireProfile>
+              <DailyTriviaScreen />
             </RequireProfile>
           }
         />

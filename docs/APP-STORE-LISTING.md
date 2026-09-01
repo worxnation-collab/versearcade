@@ -84,31 +84,37 @@ Start your streak today. It's one verse.
 > on the day you submit. Do not bump the version for a new feature — only an
 > *approved* version forces a bump.
 >
-> Last rebuilt against `git log --first-parent` on 2026-09-01, covering #157 to
-> bonus trivia (#193). **3,945 characters against Apple's 4,000 limit.**
+> Last rebuilt against `git log --first-parent` on 2026-09-01, covering #157 to the
+> Play-tab redesign. **3,918 characters against Apple's 4,000 limit.**
 >
-> The previous revision said this block was at the wall with nothing left to shave,
-> and that the next thing to land had to TAKE A SECTION OUT. Bonus trivia did:
-> `THE STUDY TAB IS A LIBRARY` is gone, on that note's own reasoning — it appears
-> near-verbatim in 1.2.0's shipped notes below, so players have already been told.
-> Checked line by line before deleting rather than taken on trust. Also cut: the
-> `every church building is painted` bullet (art polish, the cheapest whole bullet
-> here) and bonus trivia's own `every answer teaches` line, which the BATTLE
-> section already says.
+> Two revisions ago this block was at the wall with nothing left to shave, and the
+> rule since has been that the next feature TAKES SOMETHING OUT. Bonus trivia paid
+> by deleting `THE STUDY TAB IS A LIBRARY` (it appears near-verbatim in 1.2.0's
+> shipped notes below, checked line by line rather than taken on trust), the
+> `every church building is painted` bullet, and its own `every answer teaches`
+> line, which the BATTLE section already says.
 >
-> That bought 55 characters of headroom, which is not a reprieve — the next feature
-> is in exactly the same position. The remaining honest cuts are **live battles**
-> and **the weekly church rivalry**, if the check below shows they shipped in 1.2.0
-> already. That check is owed before submission regardless, and it is the only
-> thing that will make real room.
+> The Play-tab redesign paid the same way. It also **corrected a line that would
+> have shipped false**: the arcade bullet said a cabinet sits "on the home screen
+> once today's verse is done", and that card is gone — the arcade is a row on the
+> compass now. What came out to make room: `Once a run starts, it runs`, the only
+> bullet here announcing a RESTRICTION rather than a thing you get, and the
+> statues-move nuance, which is a sub-case of the drag bullet above it.
+>
+> 82 characters of headroom is not a reprieve — the next feature is in exactly the
+> same position. The remaining honest cuts are **live battles** and **the weekly
+> church rivalry**, if the check below shows they shipped in 1.2.0 already. That
+> check is owed before submission regardless, and it is the only thing that will
+> make real room.
 
 ```
 BONUS TRIVIA ON EVERY VERSE
 • The last question of every run is now a bonus about the BOOK the verse came
   from — its people, its places, what happens in it. 406 of them across all 66
   books, and everybody playing that day gets the same one.
-• Tabitha lends whole rounds of it in the library: pick a book, answer five. No
-  XP, no rank, nothing to fall behind on.
+• A whole round of it now sits beside today's verse: five questions on one book,
+  the same book for everyone, new each morning. Tabitha lends more on any book
+  you pick. No XP, no rank, nothing to fall behind on.
 
 BATTLE ANYONE, RIGHT NOW
 • Quick match: tap it and we'll put you with whoever else is looking. No code, no
@@ -123,11 +129,9 @@ BATTLE ANYONE, RIGHT NOW
   progress bar to grind, and nothing anywhere counts what you've lost.
 • Wrong answers still teach. The line explaining one is yours to read at your own
   pace, even if it costs you the round.
-• Once a run starts, it runs — no bailing out of a bad round for a fresh one, and
-  an interrupted one comes back where you left it.
 
 THERE'S AN ARCADE IN HERE NOW
-• A cabinet in your own room, and on the home screen once today's verse is done.
+• A cabinet in your own room, and a row on the compass whenever you want one.
 • Manna Rush: seven days in the wilderness. Gather the fresh flakes, leave
   yesterday's, and on the seventh day the best thing to do is rest.
 • Word Catch: a verse comes loose from the page and you tap the words back into
@@ -164,11 +168,11 @@ ARRANGE EVERYTHING WITH YOUR THUMB
   the church and it settles into the distance.
 • Finer furnishings are their own rewards now: you earn Fine and Grand by playing
   instead of stacking duplicates, and a lesser copy upgrades where it stands.
-• Your congregation's statues move too, and any member can move them.
 
 FIND ANYTHING IN ONE TAP
-• A compass by the tabs maps everywhere in the app, and what's still open today.
-  Never a score, never a list of what you missed.
+• The Play tab is today's verse, today's trivia and your road. Nothing else.
+• A compass under them maps everywhere in the app and lights up while something
+  is open. Never a score, never a list of what you missed.
 ```
 
 **Three sections here may already be in players' hands, and the repo cannot settle

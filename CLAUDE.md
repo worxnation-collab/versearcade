@@ -968,6 +968,42 @@ round from a single book, and a book with four cannot fill one without repeating
 itself inside one round. The checker asserts that relationship rather than the
 number, so raising the round size fails the build instead of silently repeating.
 
+**And the day's own round is the second box on the Play tab** (`/play/trivia`,
+`features/daily/DailyTriviaScreen.tsx`, `dailyTriviaFor` in
+`data/bible/questions.ts`). Five questions about ONE book, the same book and
+the same five for every player on a date — the daily drop's bonus question
+turned into a whole round, sitting level with the verse rather than under it.
+Nothing in it is invented: the book rotation is `getVerseForDate`'s no-repeat
+shuffle under its own seed (`'trivia-order-v1'` — a history seed, so changing
+it re-deals every past and future day), the questions come from
+`triviaRoundFor`, and it is anchored on a real pool verse from that book, which
+`QuizRunner` reads first and the recap hands back.
+
+Three things about it are load-bearing:
+
+- **It pays what a study run pays and nothing else** — a relic roll and a
+  `study_run` step on the road, both from `QuizRunner`'s `studyDrop`. **No XP,
+  no points, no standing, and no migration.** `xp` is the worldwide leaderboard
+  (0006), so a second daily XP source sitting beside the verse is a decision
+  that needs a server-counted, server-paid, capped grant and its own argument —
+  not a client-side one bolted onto a box. Read the header in
+  `store/dailyTrivia.ts` before adding one.
+- **The rotation is over books the VERSE POOL can anchor**, not over all 66. A
+  book with trivia but no pool verse would hand the anchor back to "any book"
+  and ask about Obadiah over a verse from Luke. Fails closed like everything
+  else here: no eligible book at all ⇒ a whole-Bible round.
+- **It carries a `runId` (`daily-trivia:<date>`), and that is not decoration.**
+  The day's five are the same five for everybody, so walking out of a round
+  going badly and restarting it is a retry with the answers known — exactly what
+  `QuizRunner`'s lock exists to close. Verified by driving it: a reload mid-run
+  comes back to the question it left, with that question's clock still running.
+
+Which day is done is **device-local in both modes** — the deliberate break
+`store/crossword.ts` and `store/looks.ts` make, and for the same reason: the
+flag grants nothing (everything a round pays is capped elsewhere) and the half
+of a round that is really a record — the verse, marked studied — already
+follows the account through `store/bible.ts`.
+
 **The library round is the same questions, five at a time** (`/study/trivia`,
 `features/study/TriviaRoundScreen.tsx`, lent by Tabitha like everything else in
 Study). It is **anchored on a real verse** from the chosen book, which
@@ -1353,16 +1389,20 @@ card is the same machine again — offered only once the day's verse is done.
 Tapping either opens `/arcade` — a wall of machines you pick from. Three today:
 Manna Rush, Word Catch and the Cross Word. Full design: `docs/ARCADE.md`.
 
-- **Two doors, and the count is the design.** The cabinet stood in the keep's
-  hall and the churchyard too, and both were removed: those are the FACTION'S
-  room and the CONGREGATION'S yard, and a games machine wheeled into somebody
-  else's shared space reads as an advertisement standing in it. The two that
-  remain are the two places the offer is honestly the player's own — the room
-  that belongs to them alone, and the moment on the home screen when today's
-  verse is finished and the app has nothing left to ask. That second one is the
-  whole pitch: it answers the sentence the countdown above it already started.
-  `KeepScene` and `ChurchScene` no longer take an `onArcade` prop at all, so a
-  future surface can't quietly grow one back by passing a callback.
+- **The doors are counted deliberately, and the count is the design.** The
+  cabinet stood in the keep's hall and the churchyard too, and both were
+  removed: those are the FACTION'S room and the CONGREGATION'S yard, and a
+  games machine wheeled into somebody else's shared space reads as an
+  advertisement standing in it. `KeepScene` and `ChurchScene` no longer take an
+  `onArcade` prop at all, so a future surface can't quietly grow one back by
+  passing a callback. What remains is the cabinet in the Upper Room — the room
+  that belongs to the player alone — and **the compass's invitation list**,
+  which is where the Play tab's old "In the meantime…" card went when that tab
+  was cut back to four things (see the header in `features/home/HomeScreen.tsx`).
+  The offer did not get quieter: the compass sits on the Play tab, glows gold
+  while anything is open, and "The arcade is open" is the last row in it —
+  which is the same "when there is nothing else to do" placement the card had,
+  made once instead of twice.
 - **The cabinet opens the LOBBY, not a game.** It used to open Manna Rush
   directly, which was right when there was one game; with two, a door that
   always led to the same machine lies about what's behind it, and a second
@@ -2263,6 +2303,53 @@ Same idea elsewhere: `CpuVersusQuiz` for anything racing a simulated opponent,
 (respecting the user's reduce-motion and sound settings — always go through it),
 and `TabbedSection` wherever three or more foldable panels would otherwise stack
 down a screen.
+
+## The Play tab is four things
+
+`/play` accreted for a year: every card on it was individually right — the chest
+is the verse's reward, first light is a fact about today's verse, the worldwide
+ranks belong *somewhere* — and the sum was a column you had to scroll to reach
+the one thing the app is for. It is now four things and deliberately nothing
+else (`features/home/HomeScreen.tsx`, whose header is the long version):
+
+1. **The two daily boxes, side by side.** Today's verse and today's trivia round
+   are both "new today, gone tomorrow", so they sit level with each other rather
+   than one being buried under the other. The verse keeps the gold; the trivia
+   box is deliberately cooler, because the verse is still what this app is for.
+2. **The Harvest Road**, under them, unchanged.
+3. **The compass at full size** (`features/map/MapCompass.tsx`) — the same door
+   as the 46px puck beside the nav, made big on the one screen everybody lands
+   on, because the map is what answers "what now?".
+4. **A row of pills**, for what is genuinely there: first light, and a guest's
+   account offer. Each opens its own content in a `QuickSheet` rather than
+   spending a card on it — First Light's own gesture (a row, tapped, opening the
+   player card) generalised rather than three screens each inventing a sheet.
+
+Four rules fall out of it, and each is the thing a future session will want to
+break first:
+
+- **The test for a new card here is "is it NEW TODAY?"** If it isn't, it wants a
+  pill and a sheet, or a row on the map. That is what the presence strip and the
+  worldwide-ranks collapsible failed; ranks still have their own map row
+  (`/leaderboard`), so nothing was deleted, only moved.
+- **The chest lives INSIDE the drop box**, because it is the drop's reward — it
+  unlocks only once the verse is played, and it belongs next to the thing that
+  unlocked it. `DailyChest` is mounted unchanged inside the sheet; the reveal,
+  the duplicate line and the item drop are all still its own.
+- **The compass glows and does not count.** The gold is `useInvitations().length
+  > 0` and nothing else reaches the button — no badge, no "three open", no ring
+  that fills. Read `features/map/invitations.ts` before touching it: that panel
+  is deliberately not a checklist, and the button is the same single, countless
+  signal the nav's dot carries. Nothing marks it done; the list shortens on its
+  own and the glow stops, so a dark compass in the evening is a finished day and
+  never a failed one.
+- **A store that only loads behind a button can never turn that button on.**
+  `FirstLight` used to call `useFirstLight().load()` in its own effect; with the
+  card behind a pill gated on `available`, the pill never appeared. HomeScreen
+  owns that load now (and the re-read when `playedToday` flips, since
+  `submit_play` can have claimed the day). Found by driving the real app —
+  invisible in the diff, and the shape of bug any future move-a-card-into-a-sheet
+  will hit.
 
 ## The map: five tabs, twenty-six places
 

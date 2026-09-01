@@ -5,6 +5,7 @@ import { useCollection } from '@/store/collection'
 import { useReviews } from '@/store/reviews'
 import { usePrayer } from '@/store/prayer'
 import { useLibrary } from '@/store/library'
+import { useDailyTrivia } from '@/store/dailyTrivia'
 import { useArcadeXp } from '@/store/arcadeXp'
 import { useBuddies } from '@/store/buddies'
 import { useGifts } from '@/store/gifts'
@@ -65,6 +66,7 @@ export function useInvitations(): MapInvite[] {
   const reviewsDue = useReviews((s) => s.dueRefs.length)
   const prayedToday = usePrayer((s) => s.today > 0)
   const borrowedToday = useLibrary((s) => s.borrowedToday)
+  const triviaDone = useDailyTrivia((s) => !!s.done[todayDate])
   const paidGames = useArcadeXp((s) => s.paidToday.length)
   const buddyRequests = useBuddies((s) => s.requests.length)
   const unseenGifts = useGifts((s) => s.unseen)
@@ -77,6 +79,7 @@ export function useInvitations(): MapInvite[] {
     if (!useCollection.getState().loaded) void useCollection.getState().load()
     if (!usePrayer.getState().loaded) void usePrayer.getState().load()
     if (!useLibrary.getState().loaded) void useLibrary.getState().load()
+    if (!useDailyTrivia.getState().loaded) useDailyTrivia.getState().load()
     if (!useArcadeXp.getState().loaded) void useArcadeXp.getState().load()
   }, [])
 
@@ -91,6 +94,14 @@ export function useInvitations(): MapInvite[] {
     // Only once the verse is done: that is when the chest unlocks, and an
     // invitation to something still locked is a tease rather than an offer.
     out.push({ id: 'chest', icon: '🎁', label: 'Your chest is waiting to be opened', to: '/play' })
+  }
+
+  // The day's trivia round, right behind the verse: it is the Play tab's other
+  // box, it is open to a guest (it pays nothing rankable), and it is gone at
+  // midnight like everything else here. Deliberately not "you have not done it
+  // yet" — it is a round that is available, and it says so.
+  if (!triviaDone) {
+    out.push({ id: 'trivia', icon: '✨', label: 'Today’s trivia round is open', to: '/play/trivia' })
   }
 
   // Everything past here is walled for a guest who could get an account, and an

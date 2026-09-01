@@ -9,6 +9,7 @@ import {
   matchesQuery,
   mergePlaces,
   nearbyChurches,
+  nearbyChurchPlaces,
   searchChurchesByName,
   type ChurchPlace,
 } from '@/lib/churchSearch'
@@ -16,8 +17,14 @@ import {
 // Find your church: share your location once, type its name, tap it.
 //
 // The nearby list is fetched ONCE per location and filtered as you type, so
-// typing is instant and we're gentle on the free map endpoints. Only when the
-// local list comes up empty do we go back out for a wider name search.
+// typing is instant. Only when the local list comes up empty do we go back out
+// for a wider name search.
+//
+// Where the churches come from changed in 0089: our own Overture-loaded index
+// (`search_church_places`) leads, and live OpenStreetMap is now only the
+// fallback for a region we haven't loaded yet. See src/lib/churchSearch.ts for
+// why — the short version is that OSM was a year and a half stale on a real
+// congregation and kept offering its old name to the people adding its new one.
 //
 // The hard rule here, learned from a TestFlight build that sat on "Looking up
 // churches nearby…" forever: the map lookup NEVER blocks the screen. The moment
@@ -161,17 +168,35 @@ export function ChurchPicker() {
         if (!ctl.signal.aborted && rows.length) setPlaces((prev) => mergePlaces(rows, prev))
         return rows
       })
-      const mapped = nearbyChurches(at, SEARCH_RADIUS_MILES, ctl.signal).then(
-        (rows) => {
-          // Our own rows keep priority: they're already in `prev`.
-          if (!ctl.signal.aborted && rows.length) setPlaces((prev) => mergePlaces(prev, rows))
-          return rows
-        },
-        () => null,
-      )
 
-      const [knownRows, mappedRows] = await Promise.all([known, mapped])
+      // The index first. It's a bounding-box query on an indexed table, so it
+      // lands long before anything on the network could, and its names are the
+      // current ones.
+      const indexed = nearbyChurchPlaces(at, SEARCH_RADIUS_MILES).then((rows) => {
+        // Our own rows keep priority: they're already in `prev`.
+        if (!ctl.signal.aborted && rows.length) setPlaces((prev) => mergePlaces(prev, rows))
+        return rows
+      })
+
+      const [knownRows, indexRows] = await Promise.all([known, indexed])
       if (ctl.signal.aborted) return
+
+      // OSM only where the index came back empty — a region nobody has loaded
+      // yet, or a server that predates 0089. An empty picker is a dead end, and
+      // a stale name is better than no church at all; anywhere the index has
+      // rows, Overpass is never called and its slowness never seen.
+      let mappedRows: ChurchPlace[] | null = indexRows
+      if (indexRows.length === 0) {
+        mappedRows = await nearbyChurches(at, SEARCH_RADIUS_MILES, ctl.signal).then(
+          (rows) => {
+            if (!ctl.signal.aborted && rows.length) setPlaces((prev) => mergePlaces(prev, rows))
+            return rows
+          },
+          () => null,
+        )
+        if (ctl.signal.aborted) return
+      }
+
       setNearbyBusy(false)
       if (mappedRows === null && knownRows.length === 0) {
         setError("We couldn't reach the map just now. Search by name, or add your church by hand below.")
@@ -242,6 +267,15 @@ export function ChurchPicker() {
     searchRef.current = ctl
     setWideBusy(true)
     try {
+      // Same order as the nearby list: our index, then OSM only if it has
+      // nothing to say. With no location there is no box to search, so the
+      // index can't help and this is a plain worldwide name lookup.
+      const indexed = coords ? await nearbyChurchPlaces(coords, 60, query, 40) : []
+      if (ctl.signal.aborted) return
+      if (indexed.length) {
+        setWide(indexed)
+        return
+      }
       const found = await searchChurchesByName(query, coords, 60, ctl.signal)
       if (!ctl.signal.aborted) setWide(found)
     } catch {

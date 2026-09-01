@@ -402,6 +402,48 @@ The sheet sits at `z-index: 100` — the app's sheet tier. Don't raise it: the
 player card (110) is meant to open *over* a sheet, and tapping a face in the
 roster opens exactly that.
 
+### Where the churches themselves come from
+
+Every church in this app started as a row in `church_places` — our own index,
+loaded from the Overture Maps places theme (`0089`, `scripts/load-church-places.mjs`,
+`docs/CHURCH-PLACES.md`). It replaced live OpenStreetMap, and the reason is
+worth keeping because it is the kind of bug that looks like a typo:
+
+- **A source is only as fresh as its last edit.** Quay Church in Windermere,
+  Florida was renamed over a year ago; OSM still said "Lifebridge Church", so
+  the picker kept offering the old name to the people trying to add the new
+  one. Overture — which merges Meta, Microsoft and Foursquare — had the rename
+  three weeks after it happened.
+- **And a name was written once and never re-read.** `churches.name` was
+  frozen at join time, so even a perfect source would have gone stale the next
+  day. `refresh_church_names()` is that second half, and it is the half that
+  gets forgotten: applying the migration and loading the data fixes nothing
+  until it is called.
+
+Three rules hold it together:
+
+- **A licence that permits a permanent row.** Google and Foursquare both allow
+  storing their id and nothing else — no name, no address, no coordinates. A
+  church row is permanent (a congregation banks XP against it for years), so
+  neither can back this table without re-fetching a name every time a board
+  renders. Overture is Apache-2.0 / CDLA-Permissive-2.0. That is the constraint
+  that decided the source, not freshness alone.
+- **Linking legacy churches refuses to guess.** Overture places carries no OSM
+  ids at all, so a church joined under `0040` is matched by POSITION, once, into
+  `churches.place_ref` — and only where there is exactly one candidate. A church
+  campus routinely has four Overture entries at one address, and at the very
+  address that prompted this migration the highest-confidence one is *wrong*
+  ("Lifebridge Men", 0.99, against Quay Church's 0.97). `church_link_candidates()`
+  hands the ambiguous ones to a person. Don't replace that with a heuristic.
+- **A hand-added `geo:` church is never touched**, by either function. Somebody
+  typed that name themselves, and it is pinned at the *player's* position rather
+  than the building's — so proximity means nothing for it.
+
+OSM is still the fallback wherever the index has no rows, because the index is
+loaded a region at a time and an empty picker is a dead end. Anywhere the index
+answers, Overpass is never called — which also removes the slowest and least
+reliable network call in the app.
+
 ### The board reads three windows
 
 Every row on `/church`'s board is a church and a number, and until `0080` that
@@ -1007,7 +1049,15 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0088` (the "Light in the Darkness" creator-collab skin for Tyler
+The latest is `0089` (the church places index — churches now come from our own
+Overture-loaded table instead of live OpenStreetMap), **NOT YET APPLIED**. It is
+the one migration in this folder whose value depends on a data load: applying
+the schema alone leaves `church_places` empty, and an empty index makes the
+picker fall back to OSM exactly as it does today, so nothing breaks and nothing
+improves until `scripts/load-church-places.mjs` has run and
+`refresh_church_names()` has been called. Runbook: `docs/CHURCH-PLACES.md`.
+
+Before it, `0088` (the "Light in the Darkness" creator-collab skin for Tyler
 Talks 2 U), APPLIED on 2026-08-31 and verified: all TWELVE names survive in
 `enforce_skin_entitlement`'s protected list — the wholesale-restate trap this
 section warns about, checked name by name rather than assumed — the
@@ -1074,9 +1124,9 @@ Numbering has scars: `0034` is used twice (`promo_codes`, `skin_purchases`),
 `public_church_page`), `0081` twice (`first_light`, and the Study library's
 card, which was applied to production under that number and renumbered to
 `0083` in the tree when the two branches met), and — from that same collision —
-`0082` and `0083` twice each. So the next free number is `0089` (0085 is taken by
-erasure hardening, 0086 by battle XP, 0087 by battle wins and 0088 by the
-lantern skin, above),
+`0082` and `0083` twice each. So the next free number is `0090` (0085 is taken by
+erasure hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the
+lantern skin and 0089 by the church places index, above),
 and this
 sentence has already gone stale twice: it said "0076" while 0077, 0078 and 0079
 were sitting in the folder. `ls supabase/migrations | tail -1` is the answer — on ORIGIN/MAIN, not your

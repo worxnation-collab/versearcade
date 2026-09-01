@@ -1165,13 +1165,21 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-**`0093` (`daily_players`, who has played today) is WRITTEN AND NOT APPLIED.**
-The client that calls it fails closed — an unapplied 0093 means the Play tab's
-count is a plain line instead of a button, never an error — but the feature does
-not exist until somebody runs it against `visuppaucpzzigwtqmdd`. It is idempotent
-(`create or replace`), so a re-run is a no-op.
+The latest is `0093` (`daily_players` — who has played today), APPLIED on
+2026-09-01 and verified rather than assumed: exactly ONE signature, so no stale
+overload survives for PostgREST to resolve an old client's call to; `prosecdef`
+true and the ACL reads `{=X,postgres,anon,authenticated,service_role}` — the
+deliberately-public shape `get_daily_pulse` and `first_light` have, not the
+locked-down `grant_skins` one, because a guest seeing the day is populated IS
+the pitch. And the part worth checking by running it: against live data the
+payload's player keys are exactly `username, avatar_emoji, avatar_character,
+avatar_border, avatar_badge, denomination, is_me` — **no score, no xp, no rank,
+no per-person count**, so the "a crowd, not a ladder" guarantee is a fact about
+the deployed function rather than a claim in its header. The client fails closed
+either way: an unapplied 0093 makes the Play tab's count a plain line instead of
+a button, never an error.
 
-The latest APPLIED is `0092` (church name locks) and `0091` (the church places index —
+Before it, `0092` (church name locks) and `0091` (the church places index —
 churches now come from our own Overture-loaded table instead of live
 OpenStreetMap), both APPLIED on 2026-09-01. **606,272 US places are loaded**
 from Overture release `2026-08-19.0`, and `link_church_places()` +

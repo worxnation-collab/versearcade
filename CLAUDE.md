@@ -435,6 +435,16 @@ Three rules hold it together:
   address that prompted this migration the highest-confidence one is *wrong*
   ("Lifebridge Men", 0.99, against Quay Church's 0.97). `church_link_candidates()`
   hands the ambiguous ones to a person. Don't replace that with a heuristic.
+- **And an unambiguous link can still be wrong, which is what `0090` is for.**
+  The guard above stops a CHOICE the server can't make; it says nothing about a
+  lone candidate that is simply mis-named, and no positional rule can — the
+  building is right and the name is not. The first production run renamed
+  Lighthouse Charlottesville to "Hyphen Lighthouse" on exactly that shape.
+  `set_church_name(id, name, true)` sets `name_locked`, which every refresh and
+  every `join_church` honours; it locks the NAME only, so address and city still
+  fill in. And `church_name_key()` means a refresh fires on a changed name
+  rather than a changed spelling — without it the same run moved the app's
+  biggest congregation from "Saint" to "St." for nothing.
 - **A hand-added `geo:` church is never touched**, by either function. Somebody
   typed that name themselves, and it is pinned at the *player's* position rather
   than the building's — so proximity means nothing for it.
@@ -1049,13 +1059,18 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0089` (the church places index — churches now come from our own
-Overture-loaded table instead of live OpenStreetMap), **NOT YET APPLIED**. It is
-the one migration in this folder whose value depends on a data load: applying
-the schema alone leaves `church_places` empty, and an empty index makes the
-picker fall back to OSM exactly as it does today, so nothing breaks and nothing
-improves until `scripts/load-church-places.mjs` has run and
-`refresh_church_names()` has been called. Runbook: `docs/CHURCH-PLACES.md`.
+The latest is `0090` (church name locks), APPLIED on 2026-09-01 together with
+`0089` (the church places index — churches now come from our own Overture-loaded
+table instead of live OpenStreetMap). **606,272 US places are loaded** from
+Overture release `2026-08-19.0`, and `link_church_places()` +
+`refresh_church_names()` have been run. Runbook: `docs/CHURCH-PLACES.md`.
+
+0090 exists because 0089 was verified against production and two of its renames
+were wrong — read its header before touching the refresh, since both failures
+look like successes from the code. The live state to know: Lighthouse
+Charlottesville is `name_locked` (Overture calls it "Hyphen Lighthouse"), and
+Quay Church in Windermere is still a hand-added `geo:` row, deliberately
+untouched by either function.
 
 Before it, `0088` (the "Light in the Darkness" creator-collab skin for Tyler
 Talks 2 U), APPLIED on 2026-08-31 and verified: all TWELVE names survive in
@@ -1124,9 +1139,10 @@ Numbering has scars: `0034` is used twice (`promo_codes`, `skin_purchases`),
 `public_church_page`), `0081` twice (`first_light`, and the Study library's
 card, which was applied to production under that number and renumbered to
 `0083` in the tree when the two branches met), and — from that same collision —
-`0082` and `0083` twice each. So the next free number is `0090` (0085 is taken by
+`0082` and `0083` twice each. So the next free number is `0091` (0085 is taken by
 erasure hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the
-lantern skin and 0089 by the church places index, above),
+lantern skin, 0089 by the church places index and 0090 by the name locks,
+above),
 and this
 sentence has already gone stale twice: it said "0076" while 0077, 0078 and 0079
 were sitting in the folder. `ls supabase/migrations | tail -1` is the answer — on ORIGIN/MAIN, not your

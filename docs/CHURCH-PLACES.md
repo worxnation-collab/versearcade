@@ -96,6 +96,32 @@ links only where there is exactly one candidate, and
 `update ... set place_ref = …`. There is no automatic rule here that is not
 sometimes a wrong rename, and a wrong rename lands on somebody's congregation.
 
+**A single WRONG candidate is not the same as an ambiguous one, and only a
+person can tell.** This bit us on the first production run. Lighthouse
+Charlottesville linked perfectly — one Overture row, its own address, 0.012
+miles, no competition — to a row named "Hyphen Lighthouse", which the
+congregation uses nowhere. An ambiguity guard has nothing to say about that,
+and no positional rule can: the building is right and the name is wrong.
+
+So there is an override, and it is the thing to reach for when a source is
+wrong about a church:
+
+```sql
+select public.set_church_name('<church id>', 'Lighthouse Charlottesville', true);
+```
+
+`name_locked` survives every future `refresh_church_names()` and every
+`join_church`. It locks only the NAME — address, city and region still fill in,
+because the lock says the source is wrong about what the church is *called*, not
+about which building it is.
+
+**Renames fire on names, not spellings.** `church_name_key()` collapses case,
+punctuation, `St.`/`Saint`, `&`/`and` and a leading `The`, and a refresh only
+moves a name when those keys differ. Without it the first run renamed the app's
+largest congregation from "Saint Thomas Aquinas Catholic Church" to "St. Thomas
+Aquinas Catholic Church" — not wrong, just churn on 21,000 XP worth of
+congregation.
+
 **A hand-added `geo:` church is never touched.** Somebody typed that name in
 themselves, and a hand-added church is pinned at the *player's* position rather
 than the building's — so proximity means nothing for it. (That is also why the

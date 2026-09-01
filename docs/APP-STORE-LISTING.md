@@ -84,9 +84,13 @@ Start your streak today. It's one verse.
 > on the day you submit. Do not bump the version for a new feature — only an
 > *approved* version forces a bump.
 >
-> Last rebuilt against `git log --first-parent` on 2026-08-31, covering #157 to #191.
-> 3,826 characters, against Apple's 4,000 limit — there is room for about one more
-> short section before something has to give.
+> Last rebuilt against `git log --first-parent` on 2026-09-01, covering #157 to the
+> navigation map. 3,970 characters, against Apple's 4,000 limit — **the block is now
+> effectively full**, so the next feature to land has to displace something rather
+> than append — adding the map already displaced the "small ✕ puts it back on the
+> shelf" bullet from ARRANGE EVERYTHING. The oldest sections are the ones to cut
+> next: by submission day, some of what is here will have shipped in 1.2.0 anyway
+> (see the note under the block).
 
 ```
 BATTLE ANYONE, RIGHT NOW
@@ -142,8 +146,6 @@ ARRANGE EVERYTHING WITH YOUR THUMB
   the church and it settles into the distance.
 • Finer furnishings are their own rewards now: you earn Fine and Grand by playing
   instead of stacking duplicates, and a lesser copy upgrades where it stands.
-• Anything you're holding wears a small ✕. One tap puts it back on the shelf at
-  the tier you earned. Nothing is ever spent.
 • Your congregation's statues move too, and any member can move them.
 
 THE STUDY TAB IS A LIBRARY
@@ -151,6 +153,12 @@ THE STUDY TAB IS A LIBRARY
   she fetches it and stamps it out to you.
 • The first book you borrow each day is worth a little something. There are no due
   dates, nothing is ever overdue, and she has no opinion about how much you read.
+
+FIND ANYTHING IN ONE TAP
+• A compass beside the tabs opens a searchable map of every room, board and machine
+  in the app.
+• It opens with what's still open today — never a score, never a list of what you
+  missed, and it empties as the day goes instead of filling up.
 ```
 
 **Three sections here may already be in players' hands, and the repo cannot settle

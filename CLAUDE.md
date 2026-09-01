@@ -1007,7 +1007,26 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0088` (the "Light in the Darkness" creator-collab skin for Tyler
+The latest is `0089` (the growth tab's timezone lookup, resolved once instead of
+per row), APPLIED on 2026-09-01 and verified: `admin_growth` read is 114ms where
+it was ~13,900ms, so it clears `authenticated`'s 8s `statement_timeout` instead
+of dying to it; `growth_today` and `admin_report_tz` are both plpgsql now, which
+is the part that matters — a `language sql` function gets INLINED into the
+caller's expression tree, and that is how a ~50ms `pg_timezone_names` scan ended
+up in a per-row `Filter` on `profiles` (134 accounts x 2 scans = 14s). The
+returned JSON is byte-identical, checked against hand-computed counts across
+five zones including a bogus one and a day-ahead one, and `growth_today`'s ACL
+still reads `{postgres,service_role}` after the `create or replace`.
+
+**The lesson generalises past this function: never let `admin_report_tz` (or
+anything else that scans a catalog SRF) land in a query predicate.** Take the
+zone into a local variable at the top of a plpgsql function, the way
+`compute_growth_metrics` and `admin_overview` already do. The failure is
+invisible in the source and in the diff — it only shows in a query plan, and it
+scales with row count, so it arrives as "the dashboard broke" long after the
+commit that caused it.
+
+Before it, `0088` (the "Light in the Darkness" creator-collab skin for Tyler
 Talks 2 U), APPLIED on 2026-08-31 and verified: all TWELVE names survive in
 `enforce_skin_entitlement`'s protected list — the wholesale-restate trap this
 section warns about, checked name by name rather than assumed — the
@@ -1074,9 +1093,9 @@ Numbering has scars: `0034` is used twice (`promo_codes`, `skin_purchases`),
 `public_church_page`), `0081` twice (`first_light`, and the Study library's
 card, which was applied to production under that number and renumbered to
 `0083` in the tree when the two branches met), and — from that same collision —
-`0082` and `0083` twice each. So the next free number is `0089` (0085 is taken by
-erasure hardening, 0086 by battle XP, 0087 by battle wins and 0088 by the
-lantern skin, above),
+`0082` and `0083` twice each. So the next free number is `0090` (0085 is taken by
+erasure hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the
+lantern skin and 0089 by the growth tab's timezone fix, above),
 and this
 sentence has already gone stale twice: it said "0076" while 0077, 0078 and 0079
 were sitting in the folder. `ls supabase/migrations | tail -1` is the answer — on ORIGIN/MAIN, not your

@@ -15,10 +15,14 @@ Finish the puzzle and the squares turn into two timbers with your letters
 chiselled into them, and the verse is read underneath: *"KNOCK and OPENED both
 live in this verse."*
 
-Fifty-two crosses ship in the binary, Genesis to Revelation. It's a machine in
-the arcade at `/arcade/cross` — picked off the wall in the lobby, or reached by
-tapping the cabinet standing in the hall, the churchyard or your Upper Room. See
-`docs/ARCADE.md` for the lobby and the rules every game there keeps.
+Fifty-two **authored** crosses ship in the binary, Genesis to Revelation, and
+one of them is the daily. Behind them, `data/crossGen.ts` cuts a further ~10,900
+out of the pool on demand — a random verse, two of its words that will stand as
+a cross, and a clue apiece — which is what you get when you build a second one
+or come back later in the day. It's a machine in the arcade at `/arcade/cross` —
+picked off the wall in the lobby, or reached by tapping the cabinet standing in
+the hall, the churchyard or your Upper Room. See `docs/ARCADE.md` for the lobby
+and the rules every game there keeps.
 
 ## Why a two-word crossword rather than a crossword
 
@@ -59,8 +63,68 @@ shuffle of the whole set (seeded `'cross-order-v1'`), indexed by day number. So
 everyone gets the same cross on the same date, and every puzzle comes round once
 before any repeats. **Changing that seed reshuffles history — don't.**
 
-"Build another" draws from `pastCrosses()` — days already gone — so playing more
-can never spoil tomorrow's cross for you.
+**The daily is authored; everything after it is cut on demand.** The first
+visit on a given date gets `crossForDate()`. Once you've built that one, both
+"Build another" and simply re-opening the screen deal a fresh cross from
+`randomCross()` instead — because the screen used to reset to today's puzzle on
+every arrival, which made a machine holding fifty-two crosses feel like it held
+one. The opening choice is frozen at mount, for the reason `ArcadeInvite`'s
+have-they-played decision is: re-reading it would swap the board out at the
+moment `markSolved` lands.
+
+"Build another" no longer walks backwards through `pastCrosses()`. That was the
+only honest thing to do when fifty-two authored puzzles were the whole supply —
+drawing from days still to come would have spoiled tomorrow's daily — but with
+crosses cut on demand there is no tomorrow to spoil. `pastCrosses()` stays as
+the fallback, so the button can never do nothing.
+
+## Generated crosses (`data/crossGen.ts`)
+
+Given a verse, find every pair of its words that will stand as a cross, and clue
+each from the verse itself. The three rules the authored data keeps hold here,
+and two of them get *stronger* rather than weaker:
+
+1. **The shape reads as a cross** — `fitsCross()` re-derives the same geometry
+   the authored data is checked against, so a generated puzzle can't be a plus
+   sign or a T.
+2. **The verse is the source of truth** — both words are lifted *out* of the
+   verse's own text, so "both words appear in the verse" is true by construction
+   rather than by assertion.
+3. **A clue never contains its answer** — the clue is a window of the verse with
+   the answer blanked (`… never will I ____ you, never will I …`), and the same
+   SUBSTRING test the authored data gets, so "sitting" can't stand under an
+   answer of SIT.
+
+Two rules exist only here, and both were found by playing it:
+
+- **A clue window holds exactly ONE of the two answers.** Blanking both in both
+  clues was the first cut, and two adjacent words then gave *"… have ____ from
+  the ____ that you must walk …"* as the clue for each of them, with no way to
+  tell which blank you were being asked for. A pair standing too close together
+  in the verse is simply not a pair — there are ten thousand others.
+- **Neither clue leaks the OTHER answer**, by whole word or as a substring:
+  "a ransom for many" under an upright of MAN, or "perfected" under PERFECT.
+
+The trade this makes, stated plainly: a fill-in-the-blank clue shows four or
+five words of the verse before the reveal, which is a smaller payoff than an
+authored clue's *"oh — THAT's where those words live"*. That is exactly why the
+authored puzzle stays the daily and these are what you get afterwards. It is
+also the only clue style that is honestly generatable — the pool's
+speaker/theme/keyword metadata describes the VERSE, not a word in it, so a
+metadata clue would read the same for both halves of every cross.
+
+**`checkCrossGen()` runs every cross the pool can make through the real
+predicate**, at import in dev. The authored data gets two checkers (the
+in-module one plus `scripts/check-cross.mjs`, which re-derives the rules in
+plain JS so a mistake in the checker can't pass the build); a generator gets
+one, deliberately — re-deriving a *generator* in a build script would just be a
+second copy of it to keep in sync, which is the drift those two exist to
+prevent. What makes one enough is that it checks the real output, all 10,947 of
+them, not a sample. It also asserts coverage: at least 80% of pool verses must
+be able to carry a cross (today 667 of 726), because if the geometry rules and
+the pool's vocabulary ever drifted apart `randomCross()` would still return
+something — it walks the whole pool — and the machine would quietly serve
+crosses out of a handful of verses forever.
 
 ## What it pays, and where that goes
 
@@ -90,8 +154,11 @@ the same deliberate break with the two-mode invariant that `store/looks.ts` and
 - The part that's actually a record of study — **the verse** — does follow the
   account, through `bible_marks`.
 
-So all the solved set decides is which cross "Build another" offers next.
-Syncing that would mean a table, an RPC and a hand-applied migration.
+So all the solved set decides is which cross you're offered next — and, for the
+daily, whether you've already built today's. Syncing that would mean a table, an
+RPC and a hand-applied migration. A generated cross keys into the same map; its
+id is `x:<reference>:<DOWN><i>-<ACROSS><j>`, and the `x:` prefix is what tells
+the two apart (an authored id is a slug and can never collide with it).
 
 If it ever should follow the account, the shape is the house one:
 `cross_solves(user_id, puzzle_id, solved_on)` plus a security-definer

@@ -24,8 +24,8 @@ Three machines today:
 | Game | Route | What a minute of it is |
 |---|---|---|
 | Manna Rush | `/arcade/manna` | Tap the fresh flakes, leave yesterday's, keep the seventh day |
-| Word Catch | `/arcade/word-catch` | Today's verse, come loose from the page — tap the words back into order, then read it whole |
-| Cross Word | `/arcade/cross` | Two words sharing a letter, in the shape of a cross (`docs/CROSS-WORD.md`) |
+| Word Catch | `/arcade/word-catch` | A verse come loose from the page — tap the words back into order, then read it whole. Run 1 is today's; "Play again" deals another |
+| Cross Word | `/arcade/cross` | Two words sharing a letter, in the shape of a cross. Today's is authored; after that they're cut from the pool (`docs/CROSS-WORD.md`) |
 
 Manna Rush and Word Catch are two games on **one engine** (`TapRunner` +
 `lib/tapGame.ts`), and the split between them is the useful one: Manna Rush asks

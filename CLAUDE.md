@@ -1235,6 +1235,16 @@ Manna Rush, Word Catch and the Cross Word. Full design: `docs/ARCADE.md`.
   a beat after the tallies: "17 words, 1 of 4 lines clean" is a poor last thing
   to leave somebody looking at when scripture is the point. It shows on a free
   go too (it's the payoff, not a reward); the keep/read actions don't.
+- **Word Catch's first run is today's verse and every run after it is a
+  different one.** `TapGameScreen`'s `onDeal(run)` is the seam — it fires as a
+  run begins, BEFORE `playing` flips, so the new `game` and `surface` are on the
+  component by the time `TapRunner` remounts on `runs`. Run 1 stays the day's
+  shared verse, because that is what makes a share link mean anything; "Play
+  again" draws from the whole 726-verse pool, because re-reciting the verse you
+  have just finished reciting is the least this machine can teach. It is called
+  from a ref rather than inside the `setRuns` updater: a state updater is not a
+  safe place for a side effect, and StrictMode invoking it twice would deal two
+  verses and show the second.
 - **A tap game's pace is measured in READING, not reaction.** Word Catch shipped
   tuned like Manna Rush and was too fast on a real phone: a word lived 2.1s,
   which is enough to see a flake but not to read four words, work out which
@@ -1307,9 +1317,11 @@ Manna Rush, Word Catch and the Cross Word. Full design: `docs/ARCADE.md`.
 
 Two words that share a letter, standing as a cross — one upright, one crossbar —
 and finishing it turns the squares into two timbers with the letters chiselled
-into them, with the verse both words came from read underneath. Fifty-two of
-them ship; `/arcade/cross`, a machine in the arcade above (it stood on the Study
-shelf first, and `/study/cross` still redirects). Full design:
+into them, with the verse both words came from read underneath. Fifty-two
+AUTHORED ones ship and one of them is the daily; behind them `data/crossGen.ts`
+cuts ~10,900 more out of the pool on demand, which is what you get once you have
+built today's. `/arcade/cross`, a machine in the arcade above (it stood on the
+Study shelf first, and `/study/cross` still redirects). Full design:
 `docs/CROSS-WORD.md`.
 
 - **The data has three invisible failure modes, so they're a build failure.**
@@ -1323,8 +1335,38 @@ shelf first, and `/study/cross` still redirects). Full design:
   `VERSE_POOL` entry and BOTH words must appear in its text — the whole payoff
   is "that's where those two words live". `crossForDate()` is the same
   no-repeat rotation as `getVerseForDate` (seed `'cross-order-v1'` — changing
-  it reshuffles history), and "Build another" only ever draws from days already
-  past, so playing more can't spoil tomorrow's.
+  it reshuffles history).
+- **The daily is authored; everything after it is CUT ON DEMAND.**
+  `data/crossGen.ts` takes any pool verse and finds every pair of its words that
+  will stand as a cross, clued as a window of the verse with the answer blanked
+  — ~10,900 of them against fifty-two written ones. The first visit on a date
+  still gets `crossForDate()`, the same cross everybody else is building; once
+  you have built it, both "Build another" and simply re-opening the screen deal
+  a fresh one. **The screen used to reset to today's puzzle on every arrival**,
+  which is what made a machine holding fifty-two crosses feel like it held one.
+  The old rule that "Build another" may only draw from days already past was
+  right when the authored set was the whole supply — drawing from days to come
+  would have spoiled tomorrow's daily — and is now moot: there is no tomorrow to
+  spoil. `pastCrosses()` stays as the fallback, so the button can never do
+  nothing.
+- **A generated cross is held to the AUTHORED rules and two more, and both extra
+  ones came from playing it.** A clue window may hold exactly ONE of the two
+  answers — blanking both gave two adjacent words the identical clue "… have
+  ____ from the ____ that you must walk …" with no way to tell which blank was
+  being asked for, so a pair standing too close together in the verse is simply
+  not a pair. And neither clue may leak the other answer as a SUBSTRING ("a
+  ransom for many" under an upright of MAN, "perfected" under PERFECT), which is
+  the same strictness `checkCrossPuzzles` already applies to a clue's own
+  answer. `checkCrossGen()` runs EVERY cross the pool can make through the real
+  predicate at import in dev, and asserts 80% verse coverage — a generator gets
+  one checker rather than the authored data's two on purpose, because
+  re-deriving a *generator* in a build script is just a second copy of it to
+  keep in sync. Its ids carry an `x:` prefix so the solved map can tell the two
+  apart.
+- **`built` has no denominator any more.** It read "3 of 52 built" when
+  fifty-two was the supply; with crosses cut on demand a denominator is a bar
+  that cannot be filled, which is the one shape this app doesn't put in front of
+  anybody.
 - **It pays what a study run pays and nothing else** — a drop roll, a
   `study_run` step on the road (the prepacked verb; no new one needed), and the
   verse marked studied through `store/bible.ts`. What a thing is doesn't change

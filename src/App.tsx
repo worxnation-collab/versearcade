@@ -42,6 +42,7 @@ import StudyScreen from './features/study/StudyScreen'
 import StudyReportsScreen from './features/study/StudyReportsScreen'
 import StudyRecentScreen from './features/study/StudyRecentScreen'
 import StudyBagScreen from './features/study/StudyBagScreen'
+import TriviaRoundScreen from './features/study/TriviaRoundScreen'
 import CrossWordScreen from './features/arcade/CrossWordScreen'
 import BibleScreen from './features/bible/BibleScreen'
 import BibleBookScreen from './features/bible/BibleBookScreen'
@@ -574,6 +575,17 @@ export default function App() {
         {/* The Cross Word moved into the arcade when the arcade got a lobby.
             Anything already pointing here still lands somewhere true. */}
         <Route path="/study/cross" element={<Navigate to="/arcade/cross" replace />} />
+        {/* A whole round of the daily drop's bonus trivia, on a book you pick. */}
+        <Route
+          path="/study/trivia"
+          element={
+            <RequireProfile>
+              <RequireAccount copy={WALL.study}>
+                <TriviaRoundScreen />
+              </RequireAccount>
+            </RequireProfile>
+          }
+        />
         {/* Drill one book against a study companion, reached from Study. */}
         <Route
           path="/study/focus"

@@ -161,6 +161,15 @@ export const MAP_PLACES: MapPlace[] = [
     wall: 'study',
   },
   {
+    id: 'trivia',
+    icon: '✨',
+    label: 'Bonus trivia',
+    line: 'The daily verse’s last question, five at a time',
+    to: '/study/trivia',
+    area: 'study',
+    wall: 'study',
+  },
+  {
     id: 'cpu',
     icon: '🤖',
     label: 'Race a study partner',

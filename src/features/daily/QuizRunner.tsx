@@ -167,6 +167,20 @@ export function QuizRunner({
 
   const q = questions[qi]
   const isLast = qi === questions.length - 1
+
+  // What the read phase promises, derived from the run rather than passed in —
+  // a prop would let a caller describe a run it didn't build. A bonus question
+  // is about the whole BOOK, so a run that holds one must not still say every
+  // question is about this exact verse.
+  const bonusCount = questions.filter((x) => x.bonus).length
+  const verseCount = questions.length - bonusCount
+  const readPromise =
+    bonusCount === 0
+      ? `In a second you’ll answer ${questions.length} quick questions about this exact verse.`
+      : verseCount === 0
+        ? `In a second you’ll answer ${questions.length} quick questions about the book it comes from.`
+        : `In a second you’ll answer ${questions.length} quick questions — ${verseCount} about this verse, ` +
+          `then a bonus about the book it comes from.`
   const multiplier = Math.min(SCORING.comboMax, 1 + combo * SCORING.comboStep)
   // Questions still to answer — the one on screen counts until its card turns.
   const left = questions.length - qi - (phase === 'feedback' ? 1 : 0)
@@ -448,8 +462,7 @@ export function QuizRunner({
                 “{verse.text}”
               </p>
               <p className="faint" style={{ marginTop: 14, fontSize: 13 }}>
-                Read it once. In a second you’ll answer {questions.length} quick
-                questions about this exact verse.
+                Read it once. {readPromise}
               </p>
             </div>
             <div style={{ marginTop: 18 }}>
@@ -490,6 +503,17 @@ export function QuizRunner({
                   transition={{ duration: windowMs / 1000, ease: 'linear' }}
                   style={{ height: '100%', background: 'linear-gradient(90deg, var(--gold), var(--coral))' }}
                 />
+              </div>
+            )}
+
+            {/* The pill marks the ONE question that is not about the verse just
+                read. In a run where EVERY question is trivia (the library's
+                round) it marks nothing — it just restates the run's own label
+                on every screen — so it is suppressed there rather than being
+                decoration. */}
+            {q.bonus && verseCount > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <span className="pill">✨ Bonus trivia · {q.bonus}</span>
               </div>
             )}
 

@@ -85,7 +85,8 @@ Start your streak today. It's one verse.
 > *approved* version forces a bump.
 >
 > Last rebuilt against `git log --first-parent` on 2026-09-01, covering #157 to the
-> Play-tab redesign. **3,918 characters against Apple's 4,000 limit.**
+> daily drop dropping its bonus question. **3,914 characters against Apple's
+> 4,000 limit.**
 >
 > Two revisions ago this block was at the wall with nothing left to shave, and the
 > rule since has been that the next feature TAKES SOMETHING OUT. Bonus trivia paid
@@ -101,17 +102,24 @@ Start your streak today. It's one verse.
 > bullet here announcing a RESTRICTION rather than a thing you get, and the
 > statues-move nuance, which is a sub-case of the drag bullet above it.
 >
-> 82 characters of headroom is not a reprieve — the next feature is in exactly the
+> The daily drop's bonus trivia question was then REMOVED, so the bullet claiming
+> "the last question of every run is now a bonus about the BOOK" would have
+> shipped false — corrected, and the section renamed to what trivia actually is
+> now (rounds of its own, and a battle mode). That is the second false line this
+> block has been caught carrying in a day; both were found by re-reading it
+> against the change rather than by anything automatic, and nothing in CI checks
+> it.
+>
+> 86 characters of headroom is not a reprieve — the next feature is in exactly the
 > same position. The remaining honest cuts are **live battles** and **the weekly
 > church rivalry**, if the check below shows they shipped in 1.2.0 already. That
 > check is owed before submission regardless, and it is the only thing that will
 > make real room.
 
 ```
-BONUS TRIVIA ON EVERY VERSE
-• The last question of every run is now a bonus about the BOOK the verse came
-  from — its people, its places, what happens in it. 406 of them across all 66
-  books, and everybody playing that day gets the same one.
+BIBLE TRIVIA, A ROUND AT A TIME
+• Four hundred questions about the BOOKS of the Bible — their people, their
+  places, what happens in them — across all sixty-six.
 • A whole round of it now sits beside today's verse: five questions on one book,
   the same book for everyone, new each morning. Tabitha lends more on any book
   you pick. No XP, no rank, nothing to fall behind on.
@@ -121,6 +129,7 @@ BATTLE ANYONE, RIGHT NOW
   queue position, no rating — whoever's there is who you get.
 • Or share a room code. Either way you both read the same verse, you both tap
   ready, and a bar shows where the other player is the whole way down.
+• Pick what kind of round you're battling: the verse, or trivia on one book.
 • Battles pay 10 XP for turning up, three a day — winner and loser get exactly
   the same, because what's rewarded is playing, not beating anybody.
 • Six new looks earned in battle. Jonathan and Deborah come from playing live,

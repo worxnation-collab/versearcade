@@ -675,9 +675,21 @@ export function asQuestion(t: TriviaQuestion, rng: () => number, book: string): 
 /**
  * One bonus question about `book`, or null if this build has none for it.
  *
- * Null is a real answer, not a failure: `generateQuestions` falls back to a
- * fifth verse question, so a book the catalog has never heard of degrades to
- * exactly the run the app had before this file existed. Fail closed, per entry.
+ * **NOT CURRENTLY WIRED.** The daily drop used to end on one of these; it now
+ * asks five questions about the verse and nothing else, and trivia has rounds
+ * of its own instead (`/play/trivia`, `/study/trivia`, and the battle mode).
+ * Kept because it is the only thing that builds a single bonus question, so
+ * putting one back is a line rather than a rewrite — and because nothing about
+ * it is stale: `asQuestion` below is live and `BOOK_TRIVIA` is the same data
+ * the rounds draw from.
+ *
+ * If it is rewired, it must be appended AFTER the verse questions are drawn,
+ * exactly as `generateQuestions` used to do it. That ordering is what let the
+ * bonus be added and removed without re-dealing a single historic run.
+ *
+ * Null is a real answer, not a failure: a caller falls back to a verse
+ * question, so a book the catalog has never heard of degrades to the run the
+ * app has always had. Fail closed, per entry.
  */
 export function bonusTriviaFor(book: string, rng: () => number): Question | null {
   const pool = BOOK_TRIVIA[book]

@@ -357,12 +357,14 @@ function DropBox({
       {!played ? (
         <>
           <h2 style={{ fontSize: 18, lineHeight: 1.2 }}>A new verse is live</h2>
-          {/* "about it" stopped being true when the last question became a bonus
-              about the verse's BOOK — the run says so on the read screen, and
-              the pitch that gets somebody into it should agree. */}
+          {/* Every question is about the verse again — the bonus that used to
+              take the last slot is gone (see `generateQuestions`), and trivia
+              has the box next door. `QuizRunner` derives the same promise from
+              the run itself on the read screen; this is the pitch that gets
+              somebody into it, and the two must agree. */}
           <p className="dim" style={{ marginTop: 6, fontSize: 12.5, lineHeight: 1.45, flex: 1 }}>
-            {questionCount} quick questions — the last a bonus about its book.
-            Same verse everyone’s playing.
+            {questionCount} quick questions about it, against the clock. Same
+            verse everyone’s playing.
           </p>
 
           {/* The boost was a full-width row; at half width it is a toggle pill

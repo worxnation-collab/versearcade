@@ -24,6 +24,7 @@ import {
   pastCrosses,
   type CrossPuzzle,
 } from '@/data/crossword'
+import { isGeneratedCross, randomCross } from '@/data/crossGen'
 
 // The Cross Word: two words that share a letter, standing in the shape of a
 // cross. Finish it and the squares you filled in turn into two timbers with
@@ -241,7 +242,31 @@ export default function CrossWordScreen({ demo }: { demo?: boolean }) {
   const settingStill = useSettings((s) => s.reduceMotion)
   const reduceMotion = systemStill || settingStill
 
-  const [st, dispatch] = useReducer(reducer, crossForDate(today), init)
+  // What the screen opens on, decided ONCE at mount.
+  //
+  // The daily is still the daily: the first time you come here on a given date
+  // you get `crossForDate` — one authored puzzle, the same one everybody else
+  // is building today. Come back after you've built it and the screen deals a
+  // fresh one cut from the pool instead of showing you the cross you just
+  // solved, which is what it used to do and what made the machine feel like it
+  // only had one puzzle in it.
+  //
+  // Frozen at mount for the reason `ArcadeInvite`'s have-they-played decision
+  // is: re-reading it would swap the board out from under a solve the moment
+  // `markSolved` lands.
+  const [opening] = useState<CrossPuzzle>(() => {
+    const daily = crossForDate(today)
+    // Read the set off DISK before deciding. `solved` is empty until load()
+    // runs, and a deep link straight to /arcade/cross renders before the effect
+    // below fires — so trusting the hook here would make every arrival look
+    // like a first visit and re-serve a cross the player had already built.
+    if (!useCrossword.getState().loaded) useCrossword.getState().load()
+    const solved = useCrossword.getState().solved
+    if (!solved[daily.id]) return daily
+    return randomCross(Math.random, (p) => !!solved[p.id]) ?? daily
+  })
+
+  const [st, dispatch] = useReducer(reducer, opening, init)
   const { puzzle } = st
   const verse = useMemo(() => crossVerse(puzzle), [puzzle])
 
@@ -312,12 +337,26 @@ export default function CrossWordScreen({ demo }: { demo?: boolean }) {
     [juice],
   )
 
-  // "Build another" draws from days already past (see pastCrosses), so playing
-  // more can never spoil tomorrow's cross for you.
+  // "Build another" cuts a new cross out of the pool — a random verse, and two
+  // words of it that will stand as a cross (`data/crossGen.ts`).
+  //
+  // It used to walk BACKWARDS through `pastCrosses`, which was the only honest
+  // thing to do when the whole machine was fifty-two authored puzzles: drawing
+  // from days still to come would have spoiled tomorrow's daily. With 15,000
+  // crosses cut on demand from 726 verses there is no tomorrow to spoil, so the
+  // courtesy costs nothing and the repetition it caused is gone.
+  //
+  // The authored past is still the fallback, and deliberately so: it is what
+  // answers if a future pool ever stops yielding a legal cross, and it means
+  // this button can never do nothing.
   const another = () => {
+    const skip = (p: CrossPuzzle) => p.id === puzzle.id || !!solvedMap[p.id]
     const earlier = pastCrosses(today).filter((p) => p.id !== puzzle.id)
-    const fresh = earlier.filter((p) => !solvedMap[p.id])
-    const pick = fresh[0] ?? earlier[0] ?? CROSS_PUZZLES[0]
+    const pick =
+      randomCross(Math.random, skip) ??
+      earlier.find((p) => !solvedMap[p.id]) ??
+      earlier[0] ??
+      CROSS_PUZZLES[0]
     juice.whoosh()
     setReward(null)
     dispatch({ t: 'start', puzzle: pick })
@@ -327,6 +366,8 @@ export default function CrossWordScreen({ demo }: { demo?: boolean }) {
   const built = Object.keys(solvedMap).length
   const isToday = puzzle.id === crossForDate(today).id
   const seenBefore = !!solvedMap[puzzle.id] && !st.done
+  // Cut from a verse just now, rather than one of the fifty-two written ones.
+  const isFresh = isGeneratedCross(puzzle.id)
 
   return (
     <ArcadeShell
@@ -346,11 +387,16 @@ export default function CrossWordScreen({ demo }: { demo?: boolean }) {
           }}
         >
           <span style={{ color: 'var(--ink-dim)' }}>
-            {isToday ? 'Today’s cross' : 'An earlier cross'}
+            {isToday ? 'Today’s cross' : isFresh ? 'A fresh cross' : 'An earlier cross'}
             {seenBefore && ' · built before'}
           </span>
+          {/* Your own tally and NO denominator. It had one — "3 of 52" — back
+              when fifty-two authored puzzles were the whole supply. Crosses are
+              cut from the pool on demand now, so a denominator would be a bar
+              that cannot be filled, which is the one shape this app doesn't put
+              in front of anybody. */}
           <span style={{ color: 'var(--ink-faint)' }}>
-            {demo ? `1 of ${CROSS_PUZZLES.length} crosses` : `${built} of ${CROSS_PUZZLES.length} built`}
+            {demo ? 'A free go' : built === 1 ? '1 cross built' : `${built} crosses built`}
           </span>
         </div>
 

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { Avatar } from '@/components/Avatar'
+import { Collapsible } from '@/components/Collapsible'
 import { useAuth } from '@/store/auth'
 import { useBattles, type Battle, type BattleBoard, type DenomBoard } from '@/store/battles'
 import { DENOMINATIONS, DENOMINATION_GROUPS, denominationColor, denominationName, isOpenFaction } from '@/data/denominations'
@@ -51,22 +52,41 @@ export default function BattleHub() {
   const [openKeep, setOpenKeep] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<Turn | null>(null)
   /**
-   * The team picker only EXISTS inside the Teams rank tab, so "Choose a
-   * denomination" has to open that tab before it can scroll to it. It used to
-   * call getElementById straight away, which returned null on the default
-   * (Individual) tab and made the button do nothing at all. Opening the tab and
-   * scrolling in an effect — rather than in the same handler — is what
-   * guarantees the picker is mounted before we look for it.
+   * The team picker only EXISTS inside the Teams rank tab, which now also sits
+   * inside a folded "Battle ranks" section — so "Choose a team" has to open
+   * BOTH before it can scroll to it. Neither a closed Collapsible nor the
+   * unselected rank tab mounts its children, and `getElementById` on something
+   * that isn't mounted returns null and makes the button do nothing at all,
+   * silently. That bug shipped once already on the rank-tab half alone; folding
+   * the section re-armed it, which is why the fix is widened here in the same
+   * change rather than left to be rediscovered.
+   *
+   * Opening both and scrolling in an EFFECT — rather than in the same handler —
+   * is what guarantees the picker is mounted before we look for it. The beat of
+   * delay is for the Collapsible's own 250ms expand: scrolling while the
+   * section is still growing aims at a target that is still moving.
    */
   const [scrollToPicker, setScrollToPicker] = useState(false)
+  /** Edge-triggered open for the ranks fold — see Collapsible's defaultOpen. */
+  const [ranksOpen, setRanksOpen] = useState(false)
   const browseTeams = () => {
+    setRanksOpen(true)
     setRankTab('denomination')
     setScrollToPicker(true)
   }
   useEffect(() => {
     if (!scrollToPicker) return
-    setScrollToPicker(false)
-    document.getElementById('team-picker')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    // The flag is cleared INSIDE the timeout, not before it. Clearing it first
+    // re-renders, which changes this effect's dep, which runs its cleanup —
+    // cancelling the very timeout that does the scrolling. That shipped for
+    // about ten minutes and the button silently did nothing again, which is
+    // the same failure this whole block exists to prevent; found by driving
+    // the real tab rather than by reading the diff.
+    const t = setTimeout(() => {
+      document.getElementById('team-picker')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      setScrollToPicker(false)
+    }, 320)
+    return () => clearTimeout(t)
   }, [scrollToPicker])
 
   const isGuest = mode === 'local'
@@ -93,11 +113,16 @@ export default function BattleHub() {
 
   return (
     <Page>
-      <div className="center" style={{ marginBottom: 16 }}>
-        <div className="floaty" style={{ fontSize: 44 }}>⚔️</div>
-        <h1 style={{ fontSize: 28, marginTop: 4 }}>Bible Battle</h1>
-        <p className="dim" style={{ marginTop: 4 }}>Challenge a friend to the same verse quiz. Highest score wins.</p>
-      </div>
+      {/* One line, not a title card. This tab is reached by tapping a nav
+          button labelled "Battle", so a 44px floating sword over the word
+          "Bible Battle" was ~130px of the first screen spent restating what
+          the player just tapped — and it pushed the gold "Start a new battle"
+          button most of the way down a 390px phone. The Play and Study tabs
+          have never carried one. The explanatory line stays, because that part
+          is genuinely new information to somebody on their first visit. */}
+      <p className="dim" style={{ margin: '2px 0 14px', fontSize: 13.5, lineHeight: 1.5 }}>
+        ⚔️ Challenge a friend to the same verse quiz. Highest score wins.
+      </p>
 
       {isGuest ? (
         <>
@@ -230,140 +255,152 @@ export default function BattleHub() {
               labelled "Teams", not "Denominations": Agnostic and Atheist play
               on this board too, and a heading that reads past them is the
               first thing that would tell them they're guests. */}
-          <h3 className="dim" style={{ fontSize: 16, margin: '24px 0 10px' }}>Battle ranks</h3>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-            {(['individual', 'denomination'] as const).map((t) => (
-              <button key={t} onClick={() => { juice.select(); setRankTab(t) }} className="pill"
-                style={{ background: rankTab === t ? 'var(--grape)' : 'var(--card)', fontWeight: 800, textTransform: 'capitalize' }}>
-                {t === 'individual' ? 'Individual' : 'Teams'}
-              </button>
-            ))}
-          </div>
+          {/* Folded, and closed by default — the same call the Play tab makes
+              for "Worldwide Ranks", for the same reason: a board is something
+              you look up occasionally, and open by default it sat between the
+              battles you came to play and the keep ladder underneath, on every
+              visit, for everybody. The team picker rides inside it because the
+              team is a Battle-only faction and this is where it is used, and
+              because "Choose a denomination" already opens the tab and scrolls
+              to it.
 
-          {rankTab === 'individual' ? (
-            <div className="card">
-              {!board || board.top.length === 0 ? (
-                <p className="faint" style={{ fontSize: 14, textAlign: 'center', padding: '4px 0' }}>
-                  No battles finished yet — be the first to claim a win.
-                </p>
-              ) : (
-                <div style={{ display: 'grid', gap: 4 }}>
-                  {board.top.slice(0, 5).map((r) => (
-                    <div key={r.rank} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 2px' }}>
-                      <span style={{ width: 20, textAlign: 'center', fontFamily: 'var(--font-display)', color: 'var(--ink-faint)' }}>
-                        {r.rank === 1 ? '👑' : r.rank}
-                      </span>
-                      <span style={{ position: 'relative', flexShrink: 0 }}>
-                        <Avatar emoji={r.avatar_emoji} character={r.avatar_character} size={28} ring={false} username={r.username} />
-                        {r.denomination && (
-                          <span title={denominationName(r.denomination)} style={{ position: 'absolute', right: -2, bottom: -2, width: 10, height: 10, borderRadius: '50%', background: denominationColor(r.denomination), boxShadow: '0 0 0 2px var(--bg-1)' }} />
-                        )}
-                      </span>
-                      <span style={{ flex: 1, minWidth: 0, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        @{r.username}
-                      </span>
-                      <span style={{ fontFamily: 'var(--font-display)' }} className="gradient-text">{r.wins}</span>
-                      <span className="faint" style={{ fontSize: 11 }}>wins</span>
-                    </div>
-                  ))}
-                  {board.me && (
-                    <div className="faint" style={{ fontSize: 12, textAlign: 'center', marginTop: 8, borderTop: '1px solid var(--stroke)', paddingTop: 8 }}>
-                      You’re rank <b style={{ color: 'var(--gold)' }}>#{board.me.rank}</b> — {board.me.wins}W / {board.me.battles} battles
-                    </div>
-                  )}
-                </div>
-              )}
+              A closed Collapsible still says what is in it, so nothing here
+              got harder to find — it got shorter to scroll past. */}
+          <Collapsible icon="🏆" title="Battle ranks" defaultOpen={ranksOpen}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+              {(['individual', 'denomination'] as const).map((t) => (
+                <button key={t} onClick={() => { juice.select(); setRankTab(t) }} className="pill"
+                  style={{ background: rankTab === t ? 'var(--grape)' : 'var(--card)', fontWeight: 800, textTransform: 'capitalize' }}>
+                  {t === 'individual' ? 'Individual' : 'Teams'}
+                </button>
+              ))}
             </div>
-          ) : (
-            <>
-            {/* Your team lives here rather than in profile settings — it's a
-                Battle-only faction, so it's picked where it's used. */}
-            <div className="card" id="team-picker" style={{ marginBottom: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ width: 14, height: 14, borderRadius: '50%', flexShrink: 0, background: profile?.denomination ? denominationColor(profile.denomination) : 'var(--stroke)', boxShadow: profile?.denomination ? `0 0 8px ${denominationColor(profile.denomination)}` : 'none' }} />
-                <select
-                  aria-label="Who you're playing for"
-                  value={profile?.denomination ?? ''}
-                  onChange={async (e) => {
-                    juice.select()
-                    // Wait for the write to land before re-reading, or the board
-                    // comes back with the old membership.
-                    await updateProfile({ denomination: e.target.value || null })
-                    setDenomBoard(await denominationBoard())
-                  }}
-                  style={{ flex: 1, padding: '10px 8px', borderRadius: 10, background: 'var(--card-solid)', color: 'var(--ink)', border: '1px solid var(--stroke)', fontSize: 14 }}
-                >
-                  <option value="">Prefer not to say</option>
-                  {DENOMINATION_GROUPS.map((g) => (
-                    <optgroup key={g.key} label={g.label}>
-                      {DENOMINATIONS.filter((d) => d.group === g.key).map((d) => (
-                        <option key={d.key} value={d.key}>{d.name}</option>
-                      ))}
-                    </optgroup>
-                  ))}
-                  {/* `other` belongs to neither heading, so it sits after both. */}
-                  {DENOMINATIONS.filter((d) => !d.group).map((d) => (
-                    <option key={d.key} value={d.key}>{d.name}</option>
-                  ))}
-                </select>
-              </div>
-              <p className="faint" style={{ fontSize: 11, marginTop: 8, lineHeight: 1.4 }}>
-                Optional &amp; friendly — pick who you’re playing for. Your battle wins add to that team’s total automatically, and it never shows on the main leaderboard.
-              </p>
-              {/* Said once, only to the two teams that might wonder whether
-                  they're actually welcome. It's a welcome, not a badge: nothing
-                  else about these teams looks different anywhere in the app. */}
-              {isOpenFaction(profile?.denomination) && (
-                <p className="faint" style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
-                  You don’t have to believe it to be good at it — same verses, same board, no sermon attached.
-                </p>
-              )}
-            </div>
-            <div className="card">
-              {!denomBoard || denomBoard.top.length === 0 ? (
-                <p className="faint" style={{ fontSize: 14, textAlign: 'center', padding: '4px 0' }}>
-                  No teams yet. Pick yours above to start its total.
-                </p>
-              ) : (
-                <div style={{ display: 'grid', gap: 4 }}>
-                  {denomBoard.top.map((r) => {
-                    const color = denominationColor(r.denomination)
-                    const mine = denomBoard.me?.denomination === r.denomination
-                    return (
-                      <button
-                        key={r.denomination}
-                        onClick={() => { juice.select(); setOpenKeep(r.denomination) }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 8px', borderRadius: 10, borderLeft: `3px solid ${color}`, background: mine ? 'rgba(255,210,63,0.08)' : 'transparent', width: '100%', textAlign: 'left', cursor: 'pointer' }}
-                      >
-                        <span style={{ width: 18, textAlign: 'center', fontFamily: 'var(--font-display)', color: 'var(--ink-faint)' }}>
+
+            {rankTab === 'individual' ? (
+              <div className="card">
+                {!board || board.top.length === 0 ? (
+                  <p className="faint" style={{ fontSize: 14, textAlign: 'center', padding: '4px 0' }}>
+                    No battles finished yet — be the first to claim a win.
+                  </p>
+                ) : (
+                  <div style={{ display: 'grid', gap: 4 }}>
+                    {board.top.slice(0, 5).map((r) => (
+                      <div key={r.rank} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 2px' }}>
+                        <span style={{ width: 20, textAlign: 'center', fontFamily: 'var(--font-display)', color: 'var(--ink-faint)' }}>
                           {r.rank === 1 ? '👑' : r.rank}
                         </span>
-                        <span style={{ width: 12, height: 12, borderRadius: '50%', background: color, flexShrink: 0, boxShadow: `0 0 8px ${color}` }} />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <b style={{ fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
-                            {denominationName(r.denomination)}{mine && <span style={{ color: 'var(--gold)', fontSize: 11, marginLeft: 6 }}>you</span>}
-                          </b>
-                          <span className="faint" style={{ fontSize: 11 }}>{r.members} member{r.members === 1 ? '' : 's'}</span>
-                        </div>
+                        <span style={{ position: 'relative', flexShrink: 0 }}>
+                          <Avatar emoji={r.avatar_emoji} character={r.avatar_character} size={28} ring={false} username={r.username} />
+                          {r.denomination && (
+                            <span title={denominationName(r.denomination)} style={{ position: 'absolute', right: -2, bottom: -2, width: 10, height: 10, borderRadius: '50%', background: denominationColor(r.denomination), boxShadow: '0 0 0 2px var(--bg-1)' }} />
+                          )}
+                        </span>
+                        <span style={{ flex: 1, minWidth: 0, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          @{r.username}
+                        </span>
                         <span style={{ fontFamily: 'var(--font-display)' }} className="gradient-text">{r.wins}</span>
                         <span className="faint" style={{ fontSize: 11 }}>wins</span>
-                        <span style={{ color: 'var(--gold)', fontFamily: 'var(--font-display)' }}>›</span>
-                      </button>
-                    )
-                  })}
-                  <p className="faint" style={{ fontSize: 11, textAlign: 'center', margin: '6px 0 0' }}>
-                    Tap a team to walk into its keep.
-                  </p>
-                  {denomBoard.me && (
-                    <div className="faint" style={{ fontSize: 12, textAlign: 'center', marginTop: 8, borderTop: '1px solid var(--stroke)', paddingTop: 8 }}>
-                      {denominationName(denomBoard.me.denomination)} — rank <b style={{ color: 'var(--gold)' }}>#{denomBoard.me.rank}</b> · {denomBoard.me.wins} wins · {denomBoard.me.members} members
-                    </div>
-                  )}
+                      </div>
+                    ))}
+                    {board.me && (
+                      <div className="faint" style={{ fontSize: 12, textAlign: 'center', marginTop: 8, borderTop: '1px solid var(--stroke)', paddingTop: 8 }}>
+                        You’re rank <b style={{ color: 'var(--gold)' }}>#{board.me.rank}</b> — {board.me.wins}W / {board.me.battles} battles
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+              {/* Your team lives here rather than in profile settings — it's a
+                  Battle-only faction, so it's picked where it's used. */}
+              <div className="card" id="team-picker" style={{ marginBottom: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ width: 14, height: 14, borderRadius: '50%', flexShrink: 0, background: profile?.denomination ? denominationColor(profile.denomination) : 'var(--stroke)', boxShadow: profile?.denomination ? `0 0 8px ${denominationColor(profile.denomination)}` : 'none' }} />
+                  <select
+                    aria-label="Who you're playing for"
+                    value={profile?.denomination ?? ''}
+                    onChange={async (e) => {
+                      juice.select()
+                      // Wait for the write to land before re-reading, or the board
+                      // comes back with the old membership.
+                      await updateProfile({ denomination: e.target.value || null })
+                      setDenomBoard(await denominationBoard())
+                    }}
+                    style={{ flex: 1, padding: '10px 8px', borderRadius: 10, background: 'var(--card-solid)', color: 'var(--ink)', border: '1px solid var(--stroke)', fontSize: 14 }}
+                  >
+                    <option value="">Prefer not to say</option>
+                    {DENOMINATION_GROUPS.map((g) => (
+                      <optgroup key={g.key} label={g.label}>
+                        {DENOMINATIONS.filter((d) => d.group === g.key).map((d) => (
+                          <option key={d.key} value={d.key}>{d.name}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                    {/* `other` belongs to neither heading, so it sits after both. */}
+                    {DENOMINATIONS.filter((d) => !d.group).map((d) => (
+                      <option key={d.key} value={d.key}>{d.name}</option>
+                    ))}
+                  </select>
                 </div>
-              )}
-            </div>
-            </>
-          )}
+                <p className="faint" style={{ fontSize: 11, marginTop: 8, lineHeight: 1.4 }}>
+                  Optional &amp; friendly — pick who you’re playing for. Your battle wins add to that team’s total automatically, and it never shows on the main leaderboard.
+                </p>
+                {/* Said once, only to the two teams that might wonder whether
+                    they're actually welcome. It's a welcome, not a badge: nothing
+                    else about these teams looks different anywhere in the app. */}
+                {isOpenFaction(profile?.denomination) && (
+                  <p className="faint" style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
+                    You don’t have to believe it to be good at it — same verses, same board, no sermon attached.
+                  </p>
+                )}
+              </div>
+              <div className="card">
+                {!denomBoard || denomBoard.top.length === 0 ? (
+                  <p className="faint" style={{ fontSize: 14, textAlign: 'center', padding: '4px 0' }}>
+                    No teams yet. Pick yours above to start its total.
+                  </p>
+                ) : (
+                  <div style={{ display: 'grid', gap: 4 }}>
+                    {denomBoard.top.map((r) => {
+                      const color = denominationColor(r.denomination)
+                      const mine = denomBoard.me?.denomination === r.denomination
+                      return (
+                        <button
+                          key={r.denomination}
+                          onClick={() => { juice.select(); setOpenKeep(r.denomination) }}
+                          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 8px', borderRadius: 10, borderLeft: `3px solid ${color}`, background: mine ? 'rgba(255,210,63,0.08)' : 'transparent', width: '100%', textAlign: 'left', cursor: 'pointer' }}
+                        >
+                          <span style={{ width: 18, textAlign: 'center', fontFamily: 'var(--font-display)', color: 'var(--ink-faint)' }}>
+                            {r.rank === 1 ? '👑' : r.rank}
+                          </span>
+                          <span style={{ width: 12, height: 12, borderRadius: '50%', background: color, flexShrink: 0, boxShadow: `0 0 8px ${color}` }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <b style={{ fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+                              {denominationName(r.denomination)}{mine && <span style={{ color: 'var(--gold)', fontSize: 11, marginLeft: 6 }}>you</span>}
+                            </b>
+                            <span className="faint" style={{ fontSize: 11 }}>{r.members} member{r.members === 1 ? '' : 's'}</span>
+                          </div>
+                          <span style={{ fontFamily: 'var(--font-display)' }} className="gradient-text">{r.wins}</span>
+                          <span className="faint" style={{ fontSize: 11 }}>wins</span>
+                          <span style={{ color: 'var(--gold)', fontFamily: 'var(--font-display)' }}>›</span>
+                        </button>
+                      )
+                    })}
+                    <p className="faint" style={{ fontSize: 11, textAlign: 'center', margin: '6px 0 0' }}>
+                      Tap a team to walk into its keep.
+                    </p>
+                    {denomBoard.me && (
+                      <div className="faint" style={{ fontSize: 12, textAlign: 'center', marginTop: 8, borderTop: '1px solid var(--stroke)', paddingTop: 8 }}>
+                        {denominationName(denomBoard.me.denomination)} — rank <b style={{ color: 'var(--gold)' }}>#{denomBoard.me.rank}</b> · {denomBoard.me.wins} wins · {denomBoard.me.members} members
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              </>
+            )}
+          </Collapsible>
           {/* ── The Keep ─────────────────────────────────────────────── */}
           {/* No "open your keep" card down here any more: the hall itself is up
               under the battle button and tapping it opens the sheet, so a row

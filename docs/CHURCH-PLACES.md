@@ -2,7 +2,13 @@
 
 `church_places` is the app's own index of real-world churches, loaded from the
 [Overture Maps](https://overturemaps.org) places theme. It replaced live
-OpenStreetMap in `0089`.
+OpenStreetMap in `0091`.
+
+> **Numbering note.** These shipped as `0091` / `0092` in the tree but were
+> applied to production while they were still numbered `0089` / `0090`, because
+> another branch took `0089` the same day. Production's `schema_migrations`
+> therefore reads `0089_church_places_*` and `0090_church_name_locks*`. That is
+> expected — do not re-apply them to "fix" the numbers.
 
 ## Why we moved off OpenStreetMap
 

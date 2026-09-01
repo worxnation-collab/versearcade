@@ -1,4 +1,4 @@
--- Two things 0089 got wrong. Both were found by running it against production
+-- Two things 0091 got wrong. Both were found by running it against production
 -- rather than by reading it, and both had already renamed a real congregation.
 --
 -- 1. "EXACTLY ONE CANDIDATE" STOPS AMBIGUITY, NOT ERROR.
@@ -9,7 +9,7 @@
 --    Lighthouse Charlottesville), and it carries confidence 0.85 against the
 --    0.92 of the actual church down the road.
 --
---    0089's guard was built to refuse a CHOICE it couldn't make. It has
+--    0091's guard was built to refuse a CHOICE it couldn't make. It has
 --    nothing to say about a single candidate that is simply wrong, and no
 --    positional rule can — the building is right, the name is not. So the
 --    answer is not a cleverer heuristic but an override a person can set and
@@ -57,7 +57,7 @@ as $$
   '');
 $$;
 
--- As 0089, plus: never touch a locked name, and only rename when the normalised
+-- As 0091, plus: never touch a locked name, and only rename when the normalised
 -- key differs.
 create or replace function public.refresh_church_names()
 returns jsonb
@@ -139,9 +139,9 @@ $$;
 
 revoke all on function public.set_church_name(uuid, text, boolean) from public, anon, authenticated;
 
--- join_church corrects a name on contact (0089), so it obeys both rules too, or
+-- join_church corrects a name on contact (0091), so it obeys both rules too, or
 -- one player joining Lighthouse Charlottesville silently undoes the operator.
--- Identical to 0089's otherwise; reproduced whole because it is `create or
+-- Identical to 0091's otherwise; reproduced whole because it is `create or
 -- replace` and there is no partial form.
 create or replace function public.join_church(
   p_place_key text default null,

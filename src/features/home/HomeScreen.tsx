@@ -93,9 +93,13 @@ export default function HomeScreen() {
         {!playedToday ? (
           <>
             <h2 style={{ fontSize: 26, marginTop: 6 }}>A new verse is live</h2>
+            {/* "about it" stopped being true when the last question became a
+                bonus about the verse's BOOK — the run now says so on the read
+                screen, and the pitch that gets somebody into it should agree. */}
             <p className="dim" style={{ marginTop: 8 }}>
               Read it, then race the clock on {today?.questions.length ?? 5} quick
-              questions about it. Same verse everyone’s playing right now.
+              questions — the last one a bonus about the book it comes from.
+              Same verse everyone’s playing right now.
             </p>
             {profile.xpBoosts > 0 && (
               <motion.button

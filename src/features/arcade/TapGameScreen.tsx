@@ -1,4 +1,4 @@
-import { useCallback, useState, type ReactNode } from 'react'
+import { useCallback, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/Button'
@@ -26,6 +26,7 @@ export function TapGameScreen({
   how,
   cta,
   finale,
+  onDeal,
   demo,
 }: {
   /** The machine's id in `ARCADE_GAMES` — what a share hands out. */
@@ -44,6 +45,17 @@ export function TapGameScreen({
    * thing to leave somebody looking at when scripture is the point.
    */
   finale?: ReactNode
+  /**
+   * Called as each run begins, with the run's 1-based number, for a machine
+   * whose content changes between goes.
+   *
+   * Word Catch is the one that needs it: run 1 is the day's shared verse (which
+   * is what makes a share link mean anything), and "Play again" deals a
+   * different one rather than the same four lines over and over. It fires
+   * BEFORE `playing` flips, so the new `game` and `surface` are already on this
+   * component by the time `TapRunner` remounts on `runs`.
+   */
+  onDeal?: (run: number) => void
   /** A free go from a shared link: pays nothing, and offers no "again". */
   demo?: boolean
 }) {
@@ -53,12 +65,19 @@ export function TapGameScreen({
   const [result, setResult] = useState<TapResult | null>(null)
   const [reward, setReward] = useState<ArcadePlayResult | null>(null)
 
+  // The run number lives in a ref as well as in state because `onDeal` must be
+  // called exactly once per go: a state updater is not a safe place for a side
+  // effect (StrictMode invokes it twice, which would deal two verses and show
+  // the second).
+  const runNo = useRef(0)
   const start = useCallback(() => {
     setResult(null)
     setReward(null)
-    setRuns((n) => n + 1)
+    runNo.current += 1
+    onDeal?.(runNo.current)
+    setRuns(runNo.current)
     setPlaying(true)
-  }, [])
+  }, [onDeal])
 
   const done = useCallback(
     (r: TapResult) => {

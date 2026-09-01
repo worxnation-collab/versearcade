@@ -1,7 +1,7 @@
 // Finding your church on the map.
 //
 // The source of record is `church_places` — our own table, loaded from the
-// Overture Maps places theme (see supabase/migrations/0089_church_places.sql
+// Overture Maps places theme (see supabase/migrations/0091_church_places.sql
 // and scripts/load-church-places.mjs). It replaced live OpenStreetMap, which
 // this app shipped on until a real congregation in Windermere, Florida proved
 // the problem: the building had been renamed to Quay Church over a year
@@ -103,7 +103,7 @@ function fromIndex(row: PlaceRow, from: Coords | null): ChurchPlace | null {
 /**
  * The Overture index: every church within `radiusMiles`, nearest first, or an
  * optional name filter. Swallows its own failures — no keys, a server without
- * 0089, a network blip and "nothing loaded for this region yet" all land on an
+ * 0091, a network blip and "nothing loaded for this region yet" all land on an
  * empty list, and the caller falls back to OSM.
  */
 export async function nearbyChurchPlaces(

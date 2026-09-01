@@ -5,6 +5,7 @@ import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { Avatar } from '@/components/Avatar'
 import { Collapsible } from '@/components/Collapsible'
+import { TabbedSection } from '@/components/TabbedSection'
 import { CountUp } from '@/components/CountUp'
 import { useAuth } from '@/store/auth'
 import { useChurch } from '@/store/church'
@@ -70,12 +71,24 @@ export default function ChurchScreen() {
 
   return (
     <Page>
-      <Header />
-      {church ? <ChurchHome church={church} /> : <ChurchPicker />}
+      {/* The header only where there is no hero to name the screen — see the
+          note on Header below. With a church loaded, the churchyard and the
+          congregation's own name are the top of this tab. */}
+      {church ? <ChurchHome church={church} /> : <><Header /><ChurchPicker /></>}
     </Page>
   )
 }
 
+// Deliberately nothing on the tab where a church is already loaded — the
+// churchyard IS the header there, and it says the church's name in its own
+// hero. A 40px floating chapel over the words "My Church", on a tab reached by
+// tapping a nav button labelled "Church", was ~110px of the first screen spent
+// restating what the player just tapped, and it pushed the scene below the
+// fold on a 390px phone. The Play and Study tabs have never carried one.
+//
+// It survives for the two states that are NOT the churchyard — the guest card
+// and the picker — where there is no hero to name the screen and something has
+// to say what this tab is.
 function Header() {
   return (
     <div className="center" style={{ marginBottom: 16 }}>
@@ -449,78 +462,102 @@ function ChurchHome({ church }: { church: Church }) {
         </AnimatePresence>
       </div>
 
-      {/* Ranks — local by default, worldwide on the "All" chip -------------- */}
-      <div className="card">
-        <div className="center" style={{ marginBottom: 12 }}>
-          <b style={{ fontFamily: 'var(--font-display)', fontSize: 17 }}>
-            {worldwide ? 'Churches worldwide' : 'Churches near you'}
-          </b>
-          <p className="faint" style={{ margin: '2px 0 0', fontSize: 12 }}>
-            {/* The window slots into the sentence the caption has always been.
-                It is the empty string on all time, so the default scope reads
-                exactly as it did before the chips existed. */}
-            {worldwide
+      {/* ── The three panels under Give ───────────────────────────────────
+          The board, the congregation's thank-you list and the building ladder,
+          under ONE pill row instead of stacked down the tab. It is the same fix
+          the customizer and the profile make: three full-width blocks in a
+          column mean the third one is always a scroll away, and here that third
+          one sat below a board that can be dozens of rows long.
+
+          The board is the DEFAULT panel, so this tab opens looking exactly as
+          it did — nothing was hidden, two things were promoted to sit level
+          with it. That distinction is the whole reason this is safe: the board
+          is why a church can join the week rather than only climb it (see the
+          three-windows note in CLAUDE.md), and folding it away by default would
+          be a real change to what this tab is for.
+
+          Deliberately BELOW Give and the matchup, and the yard's Landscaping
+          shelf is deliberately NOT in here — the shelf lives on the card that
+          draws the yard, or tapping a plant changes a yard that is no longer on
+          screen. */}
+      <TabbedSection
+        defaultOpen
+        tabs={[
+          {
+            key: 'board',
+            label: worldwide ? '🌐 Worldwide' : '📍 Near you',
+            right: worldwide
               ? `Every church playing, ranked by points given${TIMEFRAME_PHRASE[timeframe]}`
-              : `Ranked by points given${TIMEFRAME_PHRASE[timeframe]}, measured from ${church.name}`}
-          </p>
-        </div>
-        <ChurchBoard />
-      </div>
-
-      {/* Congregation ------------------------------------------------------ */}
-      {givers.length > 0 && (
-        <Collapsible icon="🙌" title="Top givers" meta={`${givers.length}`}>
-          <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
-            {givers.map((g, i) => (
-              <div
-                key={g.username}
-                className="card"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '9px 12px',
-                  minWidth: 0,
-                  borderColor: g.isMe ? 'var(--gold)' : 'var(--stroke)',
-                  background: g.isMe ? 'rgba(255,210,63,0.08)' : undefined,
-                }}
-              >
-                <span className="faint" style={{ width: 20, fontWeight: 800, fontSize: 13 }}>{i + 1}</span>
-                <Avatar emoji={g.avatarEmoji} character={g.avatarCharacter} username={g.username} size={34} />
-                <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {g.username}{g.isMe ? ' (you)' : ''}
-                </span>
-                <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--gold)' }}>{g.points.toLocaleString()}</span>
+              : `Ranked by points given${TIMEFRAME_PHRASE[timeframe]}, measured from ${church.name}`,
+            content: (
+              <div className="card">
+                <ChurchBoard />
               </div>
-            ))}
-          </div>
-        </Collapsible>
-      )}
-
-      {/* The ladder -------------------------------------------------------- */}
-      <Collapsible icon="🏗️" title="Buildings to earn" meta={`${tierIndexForLevel(info.level) + 1}/${CHURCH_TIERS.length}`}>
-        <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
-          {CHURCH_TIERS.map((t) => {
-            const earned = info.level >= t.minLevel
-            return (
-              <div
-                key={t.id}
-                className="card"
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', minWidth: 0, borderColor: earned ? 'var(--gold)' : 'var(--stroke)' }}
-              >
-                <ChurchArt tier={t.id} skin={church.skin} size={56} locked={!earned} />
-                <span style={{ minWidth: 0, flex: 1 }}>
-                  <span style={{ display: 'block', fontWeight: 800, fontSize: 14 }}>{t.name}</span>
-                  <span className="faint" style={{ display: 'block', fontSize: 12 }}>
-                    {earned ? 'Earned' : `Unlocks at LVL ${t.minLevel}`}
-                  </span>
-                </span>
-                <span style={{ fontSize: 16 }}>{earned ? '✅' : '🔒'}</span>
+            ),
+          },
+          ...(givers.length > 0
+            ? [{
+                key: 'givers',
+                label: '🙌 Top givers',
+                right: 'Your own church’s thank-you list.',
+                content: (
+                  <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
+                    {givers.map((g, i) => (
+                      <div
+                        key={g.username}
+                        className="card"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          padding: '9px 12px',
+                          minWidth: 0,
+                          borderColor: g.isMe ? 'var(--gold)' : 'var(--stroke)',
+                          background: g.isMe ? 'rgba(255,210,63,0.08)' : undefined,
+                        }}
+                      >
+                        <span className="faint" style={{ width: 20, fontWeight: 800, fontSize: 13 }}>{i + 1}</span>
+                        <Avatar emoji={g.avatarEmoji} character={g.avatarCharacter} username={g.username} size={34} />
+                        <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {g.username}{g.isMe ? ' (you)' : ''}
+                        </span>
+                        <span style={{ fontWeight: 800, fontSize: 14, color: 'var(--gold)' }}>{g.points.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                ),
+              }]
+            : []),
+          {
+            key: 'buildings',
+            label: '🏗️ Buildings',
+            right: `${tierIndexForLevel(info.level) + 1} of ${CHURCH_TIERS.length} earned by playing — nothing buys one.`,
+            content: (
+              <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
+                {CHURCH_TIERS.map((t) => {
+                  const earned = info.level >= t.minLevel
+                  return (
+                    <div
+                      key={t.id}
+                      className="card"
+                      style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', minWidth: 0, borderColor: earned ? 'var(--gold)' : 'var(--stroke)' }}
+                    >
+                      <ChurchArt tier={t.id} skin={church.skin} size={56} locked={!earned} />
+                      <span style={{ minWidth: 0, flex: 1 }}>
+                        <span style={{ display: 'block', fontWeight: 800, fontSize: 14 }}>{t.name}</span>
+                        <span className="faint" style={{ display: 'block', fontSize: 12 }}>
+                          {earned ? 'Earned' : `Unlocks at LVL ${t.minLevel}`}
+                        </span>
+                      </span>
+                      <span style={{ fontSize: 16 }}>{earned ? '✅' : '🔒'}</span>
+                    </div>
+                  )
+                })}
               </div>
-            )
-          })}
-        </div>
-      </Collapsible>
+            ),
+          },
+        ]}
+      />
 
       {/* Change church ----------------------------------------------------- */}
       <div className="card center">

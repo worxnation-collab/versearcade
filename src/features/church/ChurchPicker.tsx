@@ -20,7 +20,7 @@ import {
 // typing is instant. Only when the local list comes up empty do we go back out
 // for a wider name search.
 //
-// Where the churches come from changed in 0089: our own Overture-loaded index
+// Where the churches come from changed in 0091: our own Overture-loaded index
 // (`search_church_places`) leads, and live OpenStreetMap is now only the
 // fallback for a region we haven't loaded yet. See src/lib/churchSearch.ts for
 // why — the short version is that OSM was a year and a half stale on a real
@@ -182,7 +182,7 @@ export function ChurchPicker() {
       if (ctl.signal.aborted) return
 
       // OSM only where the index came back empty — a region nobody has loaded
-      // yet, or a server that predates 0089. An empty picker is a dead end, and
+      // yet, or a server that predates 0091. An empty picker is a dead end, and
       // a stale name is better than no church at all; anywhere the index has
       // rows, Overpass is never called and its slowness never seen.
       let mappedRows: ChurchPlace[] | null = indexRows

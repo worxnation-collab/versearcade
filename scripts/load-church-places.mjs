@@ -3,7 +3,7 @@
 //   node scripts/load-church-places.mjs --release 2026-08-19.0
 //   node scripts/load-church-places.mjs --bbox -81.75,28.35,-81.45,28.65   # one town
 //
-// Why this exists: see the header of supabase/migrations/0089_church_places.sql.
+// Why this exists: see the header of supabase/migrations/0091_church_places.sql.
 // The short version is that OpenStreetMap was a year and a half stale on a real
 // congregation, and Overture — which merges Meta, Microsoft and Foursquare —
 // had the current name. Overture's licence (Apache-2.0 / CDLA-Permissive-2.0)

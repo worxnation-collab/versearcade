@@ -84,80 +84,91 @@ Start your streak today. It's one verse.
 > on the day you submit. Do not bump the version for a new feature — only an
 > *approved* version forces a bump.
 >
-> Last rebuilt against `git log --first-parent` on 2026-08-31, covering #157 to #191,
-> plus bonus trivia (this branch). **3,997 characters against Apple's 4,000 — this
-> block is now full.** Adding bonus trivia's section pushed it to 4,427, and getting
-> back under meant real cuts: the arcade's three per-game bullets became one, the
-> battle section's "wrong answers still teach" line was dropped (bonus trivia's
-> section says it now), and half a dozen lines were reworded shorter. So the next
-> feature does not append — decide what comes OUT first, and re-count.
+> Last rebuilt against `git log --first-parent` on 2026-09-01, covering #157 to
+> bonus trivia (#193). **3,945 characters against Apple's 4,000 limit.**
+>
+> The previous revision said this block was at the wall with nothing left to shave,
+> and that the next thing to land had to TAKE A SECTION OUT. Bonus trivia did:
+> `THE STUDY TAB IS A LIBRARY` is gone, on that note's own reasoning — it appears
+> near-verbatim in 1.2.0's shipped notes below, so players have already been told.
+> Checked line by line before deleting rather than taken on trust. Also cut: the
+> `every church building is painted` bullet (art polish, the cheapest whole bullet
+> here) and bonus trivia's own `every answer teaches` line, which the BATTLE
+> section already says.
+>
+> That bought 55 characters of headroom, which is not a reprieve — the next feature
+> is in exactly the same position. The remaining honest cuts are **live battles**
+> and **the weekly church rivalry**, if the check below shows they shipped in 1.2.0
+> already. That check is owed before submission regardless, and it is the only
+> thing that will make real room.
 
 ```
 BONUS TRIVIA ON EVERY VERSE
-• The last question of every run is now a bonus about the BOOK the verse comes
-  from — who's in it, where it happens, what happens in it. 406 questions across
-  all 66 books, and everybody playing that day gets the same one.
+• The last question of every run is now a bonus about the BOOK the verse came
+  from — its people, its places, what happens in it. 406 of them across all 66
+  books, and everybody playing that day gets the same one.
 • Tabitha lends whole rounds of it in the library: pick a book, answer five. No
-  XP, no rank, nothing to fall behind on, like everything on the Study shelf.
-• Every answer tells you something, right or wrong — even in a battle, and the
-  line is yours to read at your own pace.
+  XP, no rank, nothing to fall behind on.
 
 BATTLE ANYONE, RIGHT NOW
 • Quick match: tap it and we'll put you with whoever else is looking. No code, no
-  queue position, no rating — whoever's there is who you play.
+  queue position, no rating — whoever's there is who you get.
 • Or share a room code. Either way you both read the same verse, you both tap
   ready, and a bar shows where the other player is the whole way down.
 • Battles pay 10 XP for turning up, three a day — winner and loser get exactly
   the same, because what's rewarded is playing, not beating anybody.
 • Six new looks earned in battle. Jonathan and Deborah come from playing live,
   win or lose; Francis of Assisi, Hildegard of Bingen, Thomas Aquinas and
-  Melisende of Jerusalem from winning. You're told the moment one is yours —
-  no progress bar to grind, and nothing anywhere counts what you've lost.
+  Melisende of Jerusalem from winning. You're told the moment one is yours — no
+  progress bar to grind, and nothing anywhere counts what you've lost.
+• Wrong answers still teach. The line explaining one is yours to read at your own
+  pace, even if it costs you the round.
+• Once a run starts, it runs — no bailing out of a bad round for a fresh one, and
+  an interrupted one comes back where you left it.
+
 THERE'S AN ARCADE IN HERE NOW
-• A cabinet in your own room, and on the home screen once the verse is done.
-• Three machines: Manna Rush in the wilderness, Word Catch putting a verse back
-  in order, and Cross Word — two words sharing a letter, which turn to carved
-  wood when you solve it, with the verse underneath.
-• Your first go on each machine each day is worth 5 XP — for turning up, not for
-  doing well. No machine keeps a high score and nothing in here can be lost.
-• Share a machine: the link is one free go, no account, no download.
+• A cabinet in your own room, and on the home screen once today's verse is done.
+• Manna Rush: seven days in the wilderness. Gather the fresh flakes, leave
+  yesterday's, and on the seventh day the best thing to do is rest.
+• Word Catch: a verse comes loose from the page and you tap the words back into
+  order. Play again and a different one comes apart.
+• Cross Word: two words that share a letter, standing as a cross. Solve it and the
+  squares turn to wood with the verse carved underneath. A fresh cut every time.
+• Your first go on each machine is worth 5 XP a day — for turning up, not for doing
+  well. No high scores, and nothing in here can be lost.
+• Send a friend a machine: a shared link is one free go, no account or download.
 
 FIRST LIGHT: THE DAY BELONGS TO WHOEVER OPENS IT
 • The first person to open a day's verse holds its first light, and everyone who
-  opens it after is worth a point of XP to them. Nothing is taken from anybody —
-  the points are minted, not moved.
+  opens it after them is worth a point of XP to them. Nothing is taken from
+  anybody — the points are minted, not moved.
 • No second place, no leaderboard of who was quickest, and a fresh start at
   midnight.
 
 YOUR CHURCH HAS SOMEBODY TO PLAY THIS WEEK
 • Every Monday your church is matched against another its own size. Whoever gives
   more raises a statue in their churchyard, and your congregation picks which one.
-  Nobody is ever named on the losing side, and Monday starts everyone at nothing.
+  Nobody is named on the losing side, and Monday starts everyone at nothing.
 • Small congregations play other small congregations, so a church of four can
   actually win its week.
-• The board reads Today, This week or All time, so a church playing hard right now
+• The board reads Today, This week or All time, so a church playing hard now
   isn't buried under one that banked its points two years ago and went quiet.
 • Churches near you are suggested before you type a thing, and a verified leader
   can keep their own church's page up to date.
-• Every church building is painted now — all eight sizes, in four materials.
 
 ARRANGE EVERYTHING WITH YOUR THUMB
 • Pick up anything in your Upper Room, your keep's hall or your churchyard and
   drag it where you like. Rugs stay on floors, banners on walls, plants on grass,
-  and nothing you place can be lost or overwritten.
+  and nothing you place is ever lost or overwritten.
 • A plant at the front of the lawn is nearer, so it's bigger. Drag it back toward
   the church and it settles into the distance.
 • Finer furnishings are their own rewards now: you earn Fine and Grand by playing
   instead of stacking duplicates, and a lesser copy upgrades where it stands.
-• Anything you're holding wears a small ✕. One tap puts it back on the shelf at
-  the tier you earned. Nothing is ever spent.
 • Your congregation's statues move too, and any member can move them.
 
-THE STUDY TAB IS A LIBRARY
-• Shelves, lamplight, and Tabitha at the desk. Ask her for something to read and
-  she fetches it and stamps it out to you.
-• The first book you borrow each day is worth a little something. There are no due
-  dates, nothing is ever overdue, and she has no opinion about how much you read.
+FIND ANYTHING IN ONE TAP
+• A compass by the tabs maps everywhere in the app, and what's still open today.
+  Never a score, never a list of what you missed.
 ```
 
 **Three sections here may already be in players' hands, and the repo cannot settle

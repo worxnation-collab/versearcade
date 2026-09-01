@@ -1077,7 +1077,26 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0088` (the "Light in the Darkness" creator-collab skin for Tyler
+The latest is `0089` (the growth tab's timezone lookup, resolved once instead of
+per row), APPLIED on 2026-09-01 and verified: `admin_growth` read is 114ms where
+it was ~13,900ms, so it clears `authenticated`'s 8s `statement_timeout` instead
+of dying to it; `growth_today` and `admin_report_tz` are both plpgsql now, which
+is the part that matters — a `language sql` function gets INLINED into the
+caller's expression tree, and that is how a ~50ms `pg_timezone_names` scan ended
+up in a per-row `Filter` on `profiles` (134 accounts x 2 scans = 14s). The
+returned JSON is byte-identical, checked against hand-computed counts across
+five zones including a bogus one and a day-ahead one, and `growth_today`'s ACL
+still reads `{postgres,service_role}` after the `create or replace`.
+
+**The lesson generalises past this function: never let `admin_report_tz` (or
+anything else that scans a catalog SRF) land in a query predicate.** Take the
+zone into a local variable at the top of a plpgsql function, the way
+`compute_growth_metrics` and `admin_overview` already do. The failure is
+invisible in the source and in the diff — it only shows in a query plan, and it
+scales with row count, so it arrives as "the dashboard broke" long after the
+commit that caused it.
+
+Before it, `0088` (the "Light in the Darkness" creator-collab skin for Tyler
 Talks 2 U), APPLIED on 2026-08-31 and verified: all TWELVE names survive in
 `enforce_skin_entitlement`'s protected list — the wholesale-restate trap this
 section warns about, checked name by name rather than assumed — the
@@ -1144,9 +1163,9 @@ Numbering has scars: `0034` is used twice (`promo_codes`, `skin_purchases`),
 `public_church_page`), `0081` twice (`first_light`, and the Study library's
 card, which was applied to production under that number and renumbered to
 `0083` in the tree when the two branches met), and — from that same collision —
-`0082` and `0083` twice each. So the next free number is `0089` (0085 is taken by
-erasure hardening, 0086 by battle XP, 0087 by battle wins and 0088 by the
-lantern skin, above),
+`0082` and `0083` twice each. So the next free number is `0090` (0085 is taken by
+erasure hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the
+lantern skin and 0089 by the growth tab's timezone fix, above),
 and this
 sentence has already gone stale twice: it said "0076" while 0077, 0078 and 0079
 were sitting in the folder. `ls supabase/migrations | tail -1` is the answer — on ORIGIN/MAIN, not your
@@ -1286,6 +1305,16 @@ Manna Rush, Word Catch and the Cross Word. Full design: `docs/ARCADE.md`.
   a beat after the tallies: "17 words, 1 of 4 lines clean" is a poor last thing
   to leave somebody looking at when scripture is the point. It shows on a free
   go too (it's the payoff, not a reward); the keep/read actions don't.
+- **Word Catch's first run is today's verse and every run after it is a
+  different one.** `TapGameScreen`'s `onDeal(run)` is the seam — it fires as a
+  run begins, BEFORE `playing` flips, so the new `game` and `surface` are on the
+  component by the time `TapRunner` remounts on `runs`. Run 1 stays the day's
+  shared verse, because that is what makes a share link mean anything; "Play
+  again" draws from the whole 726-verse pool, because re-reciting the verse you
+  have just finished reciting is the least this machine can teach. It is called
+  from a ref rather than inside the `setRuns` updater: a state updater is not a
+  safe place for a side effect, and StrictMode invoking it twice would deal two
+  verses and show the second.
 - **A tap game's pace is measured in READING, not reaction.** Word Catch shipped
   tuned like Manna Rush and was too fast on a real phone: a word lived 2.1s,
   which is enough to see a flake but not to read four words, work out which
@@ -1358,9 +1387,11 @@ Manna Rush, Word Catch and the Cross Word. Full design: `docs/ARCADE.md`.
 
 Two words that share a letter, standing as a cross — one upright, one crossbar —
 and finishing it turns the squares into two timbers with the letters chiselled
-into them, with the verse both words came from read underneath. Fifty-two of
-them ship; `/arcade/cross`, a machine in the arcade above (it stood on the Study
-shelf first, and `/study/cross` still redirects). Full design:
+into them, with the verse both words came from read underneath. Fifty-two
+AUTHORED ones ship and one of them is the daily; behind them `data/crossGen.ts`
+cuts ~10,900 more out of the pool on demand, which is what you get once you have
+built today's. `/arcade/cross`, a machine in the arcade above (it stood on the
+Study shelf first, and `/study/cross` still redirects). Full design:
 `docs/CROSS-WORD.md`.
 
 - **The data has three invisible failure modes, so they're a build failure.**
@@ -1374,8 +1405,38 @@ shelf first, and `/study/cross` still redirects). Full design:
   `VERSE_POOL` entry and BOTH words must appear in its text — the whole payoff
   is "that's where those two words live". `crossForDate()` is the same
   no-repeat rotation as `getVerseForDate` (seed `'cross-order-v1'` — changing
-  it reshuffles history), and "Build another" only ever draws from days already
-  past, so playing more can't spoil tomorrow's.
+  it reshuffles history).
+- **The daily is authored; everything after it is CUT ON DEMAND.**
+  `data/crossGen.ts` takes any pool verse and finds every pair of its words that
+  will stand as a cross, clued as a window of the verse with the answer blanked
+  — ~10,900 of them against fifty-two written ones. The first visit on a date
+  still gets `crossForDate()`, the same cross everybody else is building; once
+  you have built it, both "Build another" and simply re-opening the screen deal
+  a fresh one. **The screen used to reset to today's puzzle on every arrival**,
+  which is what made a machine holding fifty-two crosses feel like it held one.
+  The old rule that "Build another" may only draw from days already past was
+  right when the authored set was the whole supply — drawing from days to come
+  would have spoiled tomorrow's daily — and is now moot: there is no tomorrow to
+  spoil. `pastCrosses()` stays as the fallback, so the button can never do
+  nothing.
+- **A generated cross is held to the AUTHORED rules and two more, and both extra
+  ones came from playing it.** A clue window may hold exactly ONE of the two
+  answers — blanking both gave two adjacent words the identical clue "… have
+  ____ from the ____ that you must walk …" with no way to tell which blank was
+  being asked for, so a pair standing too close together in the verse is simply
+  not a pair. And neither clue may leak the other answer as a SUBSTRING ("a
+  ransom for many" under an upright of MAN, "perfected" under PERFECT), which is
+  the same strictness `checkCrossPuzzles` already applies to a clue's own
+  answer. `checkCrossGen()` runs EVERY cross the pool can make through the real
+  predicate at import in dev, and asserts 80% verse coverage — a generator gets
+  one checker rather than the authored data's two on purpose, because
+  re-deriving a *generator* in a build script is just a second copy of it to
+  keep in sync. Its ids carry an `x:` prefix so the solved map can tell the two
+  apart.
+- **`built` has no denominator any more.** It read "3 of 52 built" when
+  fifty-two was the supply; with crosses cut on demand a denominator is a bar
+  that cannot be filled, which is the one shape this app doesn't put in front of
+  anybody.
 - **It pays what a study run pays and nothing else** — a drop roll, a
   `study_run` step on the road (the prepacked verb; no new one needed), and the
   verse marked studied through `store/bible.ts`. What a thing is doesn't change
@@ -1705,6 +1766,33 @@ and the row **wraps rather than scrolls sideways** — six names fit in two rows
 on every phone, where a scrolling chip rail would hide half the wardrobe behind
 a swipe nobody is told about. Adding a shelf is one more entry in the `tabs`
 array.
+
+**`TabbedSection` lives in `components/` now, not inside the customizer**, and
+three surfaces use it: the customizer, the profile's "Your people" / "Your
+things" rows, and the church tab's board / givers / buildings. The argument
+above generalised exactly — a column of identical closed rows means the one you
+want is always the last one — so it moved out rather than being copied, the same
+choke-point rule `QuizRunner` and the little worlds follow. A pill may carry a
+**dot** (somebody is waiting on you) and may never carry a **count**: the same
+single, countless signal the bottom nav uses, because a number there turns a
+wardrobe into a queue to be cleared.
+
+Two applications of it are worth knowing before changing them. On the profile
+the split into **two** rows is deliberate — people and things are different
+kinds of thing, and one undifferentiated row of five would undo the very
+distinction those headings were added to draw. On the church tab the **board is
+the default panel**, so that tab opens looking exactly as it did: nothing was
+folded away, two things were promoted to sit level with it. The board is why a
+church can *join* the week rather than only climb it (see the three-windows
+note above), so hiding it behind a pill by default would be a real change to
+what the tab is for, not a tidy-up.
+
+And the two page titles that used to head `/battle` and `/church` are gone: a
+44px floating sword over the words "Bible Battle", on a tab you reach by tapping
+a nav button labelled Battle, was ~130px of the first screen spent restating the
+tap — and it pushed the gold primary action most of the way down a 390px phone.
+Play and Study never had one. Church keeps its header only for the guest card
+and the picker, where there is no hero to name the screen.
 
 ### The starter character, and the parked armor
 
@@ -2096,7 +2184,105 @@ count for all modes belongs here, once, rather than in five screens.
 
 Same idea elsewhere: `CpuVersusQuiz` for anything racing a simulated opponent,
 `Page`/`Button`/`Avatar` for chrome, `useJuice()` for sound + haptics + confetti
-(respecting the user's reduce-motion and sound settings — always go through it).
+(respecting the user's reduce-motion and sound settings — always go through it),
+and `TabbedSection` wherever three or more foldable panels would otherwise stack
+down a screen.
+
+## The map: five tabs, twenty-six places
+
+The compass beside the bottom nav opens a directory of the whole app.
+`data/map.ts` is the one list, `features/map/MapSheet.tsx` draws it,
+`features/map/invitations.ts` is the panel at the top.
+
+It exists because every placement in this app is individually right and the sum
+of them was an app you had to already know: praying was behind tapping your own
+figure inside a room halfway down a tab, the arcade only advertised itself once
+the day's verse was done, the Journal and mailbox were pills on a card two
+screens down. The map does not move any of them — it adds a second way in.
+
+Four things about it are load-bearing:
+
+- **The map may never count anything.** A place carries an icon, a name and a
+  line saying what it *is*. No "12 cards", no "3 due", no completion state, no
+  ordering by how much you have used it — a map with counts on it is a progress
+  screen, and a progress screen is a list of the places you are behind on.
+  `scripts/check-map.mjs` fails the build on a digit in a place's copy.
+- **The invitations panel is not a checklist, and the distinction is the whole
+  design.** It lists only what is genuinely OPEN, so it gets shorter through the
+  day rather than filling with ticks; there is no denominator, nothing
+  remembered about a day that has passed, and no strikethrough state. Empty is a
+  warm line, never a zero. Read the header in `invitations.ts` before adding
+  anything to it: a completion number there is the thing the review dot, the
+  prayer lamp and the library's `borrowed_today` boolean were each deliberately
+  built without.
+- **The puck sits BESIDE the nav pill, in the nav's own row.** Five tabs already
+  have to clear a 320px phone, so a sixth would shrink every one of them; and
+  that band is the only strip the app shell already reserves, so a free-floating
+  button anywhere else lands on the bottom-anchored primary action — the trap
+  `StudyDropToast` moved to the top of the screen to avoid. Measured: pill 248 +
+  gap 8 + puck 47 = 303 of 320.
+- **The sheet is a SIBLING of `<nav>`, never a child.** The nav sets `z-index:
+  40`, which creates a stacking context, so a sheet nested inside it paints at
+  40 regardless of its own z-index — under the player card and every other
+  sheet. Same family of bug as the `backdrop-filter` note on `ChurchDetailSheet`
+  and the `perspective` one in `BookOpening`.
+
+`scripts/check-map.mjs` (in `npm run build`) asserts every `to` against the real
+`<Route>` table in `App.tsx`, re-derived by text rather than imported. A
+mistyped route does not throw and does not fail to compile — it falls through
+the catch-all to Landing, silently signing somebody out of their own app, on the
+one row nobody happened to tap.
+
+Two deep links exist so the map has somewhere honest to point: `?pray=1` on
+`/you` opens the prayer sheet and `?customize=1` opens the customizer. Both are
+frozen at mount and stripped from the URL immediately, or a reload re-opens them
+over whatever the player moved on to.
+
+### A started run is locked, and can't be re-dealt
+
+Reading the verse is free — the ✕ is a real ✕ right up until the clock starts.
+From its first tick the run is committed: the ✕ becomes a 🔒 that says how many
+questions are left, Back is caught and put back, and a reload gets the browser's
+own "leave site?" prompt. It lives in `QuizRunner` for the reason everything
+cross-mode does, so the daily drop, a replay, a drill, a CPU race, a battle and
+a live match all got it from one edit.
+
+**The point is the RE-DEAL, not the exit.** The day's five questions are the
+same five for everybody forever, a replay is the same past verse and an accepted
+battle is a fixed seed — so walking out of a run going badly and starting it
+again was a retry with the answers known, and the daily drop's `playedToday`
+guard never saw it because nothing had been submitted. Locking the screen is
+only half of that; the other half is `runId`, which parks the run
+(`lib/runProgress.ts`) so a reload or a killed app comes back to the question it
+left. Three callers pass one — `daily:<dropDate>`, `practice:<date>`,
+`battle:<id>`. The modes that don't are deliberate: a vs-CPU race, a focus drill
+and a new battle deal a fresh RANDOM verse every time, so there is nothing to
+re-deal, and a live match is not allowed to outlive itself
+(`docs/LIVE-BATTLE.md`). They are still locked; they just have nothing to come
+back to.
+
+Two things about the parked run are load-bearing:
+
+- **The clock never stops.** A snapshot stores when the current question's
+  window opened as WALL time, and resuming computes what is left of it from
+  there — so stepping out to think (or to look the answer up) costs exactly what
+  sitting there costs, and a question whose window has passed lands on its teach
+  card the moment you come back. Without that, "resume" would be a pause button
+  on a timed question, which is a smaller version of the thing being closed
+  rather than a fix for it. It is also why `handleAnswer` clamps a question's
+  recorded time to the answer window: a backgrounded tab throttles timers too,
+  and `PlayResult.timeMs` feeds a battle's tiebreak.
+- **It grants nothing, so it is safe to keep on the device.** Every reward in
+  this app is paid by `onComplete`, which only fires when a run ends, so there is
+  nothing here to farm by clearing it — clearing it costs you your progress and
+  buys you nothing. That is what lets it be device-local in both modes, the same
+  deliberate break with the two-mode invariant `store/looks.ts` makes.
+
+There is no "leave anyway" door, and a run is five questions with a hard
+per-question window, so what it closes is measured in seconds. It never scolds:
+the lock says what is left and that the banked score is safe. If a door is ever
+wanted, the honest shape is one that keeps the park — leave, come back to the
+same question — never one that deals again.
 
 ## UI conventions
 

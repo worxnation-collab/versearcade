@@ -63,15 +63,32 @@ export default function GrowthPanel() {
 
   const load = useCallback(async (force: boolean) => {
     setBusy(true); setErr(null)
-    const { data, error } = await supabase!.rpc('admin_growth', { p_force: force, p_tz: localTimeZone() })
-    if (error) setErr(error.message)
-    else setRes(data as GrowthResponse)
-    setBusy(false)
+    try {
+      const { data, error } = await supabase!.rpc('admin_growth', { p_force: force, p_tz: localTimeZone() })
+      if (error) setErr(error.message)
+      else setRes(data as GrowthResponse)
+    } catch (e) {
+      // A throw (network, abort) would otherwise latch busy true and leave the
+      // panel on "Loading…" forever with nothing to tap.
+      setErr(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
   }, [])
 
   useEffect(() => { load(false) }, [load])
 
-  if (err) return <p className="center" style={{ padding: 30, color: 'var(--coral)' }}>{err}</p>
+  // A failed read is a dead end without this: the panel showed the raw error
+  // and no way back, so the only recovery was reloading the whole dashboard.
+  if (err) return (
+    <div className="card" style={{ padding: 24, display: 'grid', gap: 10, justifyItems: 'center', textAlign: 'center' }}>
+      <div style={{ color: 'var(--coral)', fontSize: 13, lineHeight: 1.45 }}>{err}</div>
+      <button className="pill" onClick={() => load(false)} disabled={busy}
+        style={{ fontSize: 11, fontWeight: 800, background: 'var(--card-solid)', opacity: busy ? 0.5 : 1 }}>
+        {busy ? '…' : '↻ Try again'}
+      </button>
+    </div>
+  )
   if (!res) return <p className="faint center" style={{ padding: 30 }}>Loading…</p>
   const m = res.metrics
 
@@ -110,6 +127,9 @@ function Freshness({ res, busy, onRefresh }: { res: GrowthResponse; busy: boolea
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 12.5, fontWeight: 700 }}>
           Updated {ago(res.computed_at)}
+          {/* The RPC has always returned this and the panel dropped it, so a
+              snapshot past its rebuild window looked identical to a fresh one. */}
+          {res.stale && <span style={{ color: 'var(--warn)' }}> · stale</span>}
           {res.compute_ms != null && <span className="faint" style={{ fontWeight: 400 }}> · {res.compute_ms}ms</span>}
         </div>
         <div className="faint" style={{ fontSize: 11 }}>
@@ -165,33 +185,67 @@ function Headline({ m }: { m: GrowthMetrics }) {
 // 30-day dual line. Gold = signed-in players, mint = guests. That pair is the
 // one checked for deutan separation (see CLAUDE.md); both are also named in
 // text below, so nothing rides on colour alone.
+//
+// TODAY IS DRAWN AS PROVISIONAL, and that is the whole point of the split path
+// below. The last point is a day that is still happening — at 9am it holds a
+// few hours of play against yesterday's twenty-four — so joining it to the
+// series with the same solid stroke draws a near-vertical cliff and the tab
+// reads as a collapse every single morning. This panel's header already says
+// the current day must not be trended on; a footnote saying "partial" does not
+// undo a line the eye has already believed. So the completed days are the
+// solid line, and the step into today is DASHED with a hollow marker: visible,
+// because 0074's live-today overlay exists precisely so a 9am signup shows up,
+// but visibly not yet comparable to the days behind it.
 function ActivityChart({ daily, today }: { daily: GrowthMetrics['daily']; today: string }) {
   if (daily.length < 2) return null
   const W = 320, H = 88, PAD = 4
-  const max = Math.max(1, ...daily.map((d) => Math.max(d.players, d.guests)))
-  const x = (i: number) => PAD + ((W - PAD * 2) * i) / (daily.length - 1)
-  const y = (v: number) => PAD + (H - PAD * 2) * (1 - v / max)
-  const path = (key: 'players' | 'guests') =>
-    daily.map((d, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${y(d[key]).toFixed(1)}`).join(' ')
-
-  const last = daily[daily.length - 1]
+  const n = daily.length
+  const last = daily[n - 1]
   const isPartial = last.day === today
+  // max stays over EVERY point, today included: it is a max, so a small partial
+  // day cannot drag the scale, and a large one still has to fit in the box.
+  const max = Math.max(1, ...daily.map((d) => Math.max(d.players, d.guests)))
+  const x = (i: number) => PAD + ((W - PAD * 2) * i) / (n - 1)
+  const y = (v: number) => PAD + (H - PAD * 2) * (1 - v / max)
+  // Absolute indices, so a slice still lands on its own x position.
+  const seg = (key: 'players' | 'guests', from: number, to: number) =>
+    daily.slice(from, to)
+      .map((d, k) => `${k ? 'L' : 'M'}${x(from + k).toFixed(1)} ${y(d[key]).toFixed(1)}`)
+      .join(' ')
+  // Solid through the last COMPLETED day; dashed for the step into today.
+  const solidEnd = isPartial ? n - 1 : n
+  const line = (key: 'players' | 'guests', stroke: string) => (
+    <>
+      <path d={seg(key, 0, solidEnd)} fill="none" stroke={stroke} strokeWidth="2"
+        strokeLinejoin="round" strokeLinecap="round" />
+      {isPartial && (
+        <path d={seg(key, n - 2, n)} fill="none" stroke={stroke} strokeWidth="2" strokeDasharray="3 3"
+          strokeLinejoin="round" strokeLinecap="round" opacity={0.75} />
+      )}
+      <circle cx={x(n - 1)} cy={y(last[key])} r="3"
+        fill={isPartial ? 'var(--card-solid)' : stroke} stroke={stroke} strokeWidth={isPartial ? 1.5 : 0} />
+    </>
+  )
+
+  const lastFull = isPartial ? daily[n - 2] : null
 
   return (
-    <Section title="🕹️ Last 30 days" hint={`Gold = signed-in players · mint = guests. Peak ${max}/day.`}>
+    <Section title="🕹️ Last 30 days"
+      hint={`Gold = signed-in players · mint = guests. Peak ${max}/day.${isPartial ? ' Today is dashed — still counting.' : ''}`}>
       <div className="card" style={{ padding: '10px 8px 6px' }}>
         <svg viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', width: '100%', height: 'auto' }}
-          role="img" aria-label={`Daily activity over 30 days. Signed-in players and guests, peak ${max} per day.`}>
-          <path d={path('guests')} fill="none" stroke="var(--mint)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-          <path d={path('players')} fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-          <circle cx={x(daily.length - 1)} cy={y(last.players)} r="3" fill="var(--gold)" />
-          <circle cx={x(daily.length - 1)} cy={y(last.guests)} r="3" fill="var(--mint)" />
+          role="img" aria-label={`Daily activity over 30 days. Signed-in players and guests, peak ${max} per day.${
+            isPartial ? ' The final day is still in progress and is drawn as a dashed line.' : ''}`}>
+          {line('guests', 'var(--mint)')}
+          {line('players', 'var(--gold)')}
         </svg>
         <div className="faint" style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, marginTop: 2 }}>
           <span>{new Date(daily[0].day + 'T00:00').toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
           <span>
-            today {last.players} / {last.guests}
-            {isPartial && <span style={{ color: 'var(--ink-faint)' }}> · partial</span>}
+            {/* Yesterday is the last comparable number, so it is the one worth
+                putting beside today's running total. */}
+            {lastFull && <span>yesterday {lastFull.players} / {lastFull.guests} · </span>}
+            {isPartial ? 'today so far' : 'today'} {last.players} / {last.guests}
           </span>
         </div>
       </div>

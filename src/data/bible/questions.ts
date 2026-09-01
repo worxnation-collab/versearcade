@@ -5,7 +5,7 @@
 
 import type { DailyVerse, Question } from '@/types'
 import { VERSE_POOL, BIBLE_BOOKS, type VerseSeed } from './pool'
-import { bonusTriviaFor, triviaRoundFor } from './trivia'
+import { bonusTriviaFor, triviaBooks, triviaRoundFor } from './trivia'
 import { DEFAULT_TRANSLATION } from '@/lib/config'
 
 // --- seeded RNG (mulberry32) ------------------------------------------------
@@ -273,6 +273,63 @@ export function getVerseForDate(dateStr: string): DailyVerse {
   )
   const seed = VERSE_POOL[order[((dayNum % N) + N) % N]]
   return buildDailyVerse(seed, rng, dateStr)
+}
+
+// The day's trivia round — five questions about ONE book, and the same book and
+// the same five questions for every player on a given date.
+//
+// It is the daily drop's bonus question turned into a whole round, which is why
+// nothing here is invented: the book rotation is `getVerseForDate`'s no-repeat
+// shuffle with its own seed, the questions come from `triviaRoundFor` (the same
+// source the last slot of every run already draws from) and the round is
+// ANCHORED ON A REAL VERSE from that book, exactly as the library's round is —
+// a screenful of Bible facts with no scripture on it is a pub quiz.
+//
+// Two things about it are load-bearing:
+//
+//  - **The rotation is over books the VERSE POOL can anchor.** A book with
+//    trivia but no pool verse would hand the anchor back to "any book" and the
+//    round would ask about Obadiah over a verse from Luke. Fails closed the way
+//    everything else here does: no eligible book at all ⇒ a whole-Bible round.
+//  - **`'trivia-order-v1'` is a history seed like `'verse-order-v1'`.**
+//    Changing it re-deals every past and future day, so don't.
+export function dailyTriviaFor(dateStr: string): DailyVerse {
+  const book = dailyTriviaBook(dateStr)
+  const rng = mulberry32(hashString(`daily-trivia-${dateStr}`))
+  const scoped = book ? VERSE_POOL.filter((v) => v.book === book) : VERSE_POOL
+  const pool = scoped.length ? scoped : VERSE_POOL
+  const pick = pool[Math.floor(rng() * pool.length)]
+  // Drawn BEFORE the verse questions, so the round is stable for the date even
+  // if `generateQuestions` ever changes how much rng it consumes.
+  const questions = triviaRoundFor(book, rng)
+  const base = buildDailyVerse(pick, rng, `daily-trivia-${dateStr}`)
+  // Fail closed: a build with no trivia for this book gives an ordinary run
+  // rather than an empty screen, the same as `triviaVerseFromBook`.
+  return questions.length ? { ...base, questions } : base
+}
+
+/**
+ * Which book the day's trivia round is about — the one place the rotation is
+ * computed, so the card that offers the round and the round itself can't name
+ * two different books. Null only if no book in the pool has trivia.
+ */
+export function dailyTriviaBook(dateStr: string): string | null {
+  const books = dailyTriviaBooks()
+  const N = books.length
+  if (!N) return null
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const dayNum = Math.floor(Date.UTC(y || 1970, (m || 1) - 1, d || 1) / 86400000)
+  const order = shuffle(
+    Array.from({ length: N }, (_, i) => i),
+    mulberry32(hashString('trivia-order-v1')),
+  )
+  return books[order[((dayNum % N) + N) % N]]
+}
+
+/** Books that have trivia AND a verse in the pool to read the round on. */
+function dailyTriviaBooks(): string[] {
+  const inPool = new Set(VERSE_POOL.map((v) => v.book))
+  return triviaBooks().filter((b) => inPool.has(b))
 }
 
 // Distinct books present in the verse pool, in canonical Bible order (Genesis →

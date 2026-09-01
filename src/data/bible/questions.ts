@@ -309,6 +309,45 @@ export function dailyTriviaFor(dateStr: string): DailyVerse {
 }
 
 /**
+ * Which book a trivia battle is about, and the ONE place that is decided.
+ *
+ * It has its own rng rather than the first draw off the round's — otherwise the
+ * label above the run and the round itself would be two copies of the same
+ * derivation that have to agree, and this file already carries the scar of what
+ * that costs (`dailyTriviaFor` and `dailyTriviaBook`, deduped for the same
+ * reason). Nothing consumes this stream but the book.
+ */
+export function triviaBattleBook(seed: number): string | null {
+  const books = dailyTriviaBooks()
+  if (!books.length) return null
+  const rng = mulberry32(hashString(`battle-trivia-book-${seed >>> 0}`))
+  return books[Math.floor(rng() * books.length)]
+}
+
+/**
+ * A trivia round from a battle seed — five questions about ONE book, over a
+ * verse from that book, rebuilt identically on both players' devices.
+ *
+ * It is the machinery `dailyTriviaFor` uses, seeded off the battle's seed
+ * instead of the date, and that is what a battle needs: `battleVerse` maps a
+ * seed to a deal and both phones run it, so a trivia battle can only work if the
+ * book is a function of the seed too. Nothing is sent.
+ *
+ * Fails closed like everything else here: no book in the pool has trivia ⇒ a
+ * whole-Bible round rather than an empty one.
+ */
+export function triviaBattleVerse(seed: number): DailyVerse {
+  const book = triviaBattleBook(seed)
+  const rng = mulberry32(hashString(`battle-trivia-${seed >>> 0}`))
+  const scoped = book ? VERSE_POOL.filter((v) => v.book === book) : VERSE_POOL
+  const pool = scoped.length ? scoped : VERSE_POOL
+  const pick = pool[Math.floor(rng() * pool.length)]
+  const questions = triviaRoundFor(book, rng)
+  const base = buildDailyVerse(pick, rng, `battle-trivia-${book ?? 'any'}`)
+  return questions.length ? { ...base, questions } : base
+}
+
+/**
  * Which book the day's trivia round is about — the one place the rotation is
  * computed, so the card that offers the round and the round itself can't name
  * two different books. Null only if no book in the pool has trivia.

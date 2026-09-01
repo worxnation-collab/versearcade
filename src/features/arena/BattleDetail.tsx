@@ -12,7 +12,7 @@ import { useJuice } from '@/juice/useJuice'
 import { useKeep } from '@/store/keep'
 import { FavoriteButton } from '@/components/FavoriteButton'
 import { BattleXpLine } from './BattleXpLine'
-import { battleVerse } from './battle'
+import { battleVerse, asBattleMode } from './battle'
 
 function myOutcome(b: Battle): 'won' | 'lost' | 'tie' | null {
   if (b.status !== 'complete' || !b.winner) return null
@@ -61,7 +61,12 @@ export default function BattleDetail() {
 
   // The verse both sides raced over. Only ever rendered on a finished battle, so
   // it can't spoil a challenge that's still waiting to be played.
-  const verse = useMemo(() => (battle ? battleVerse(battle.seed) : null), [battle])
+  // The mode rides on the row, so a recap opened days later still shows the
+  // round that was actually played rather than a verse nobody saw.
+  const verse = useMemo(
+    () => (battle ? battleVerse(battle.seed, asBattleMode(battle.mode)) : null),
+    [battle],
+  )
 
   const link = inviteUrl(profile?.referralCode, `/battle/${id}`)
   const doShare = async () => {

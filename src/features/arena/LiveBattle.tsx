@@ -11,7 +11,9 @@ import { useLiveQueue } from '@/store/liveQueue'
 import { useJuice } from '@/juice/useJuice'
 import { LiveVersusQuiz } from './LiveVersusQuiz'
 import { BattleXpLine } from './BattleXpLine'
-import { liveWinner, newRoomCode, normalizeRoomCode, verseForRoom } from './live'
+import { liveWinner, modeForRoom, newRoomCode, normalizeRoomCode, verseForRoom } from './live'
+import { ModeNote } from './ModePicker'
+import type { BattleMode } from './battle'
 import { shareResult, inviteUrl } from '@/features/daily/shareCard'
 import type { PlayResult } from '@/types'
 
@@ -195,6 +197,9 @@ export function LiveRoom() {
   }, [code, isHost])
 
   const verse = useMemo(() => (code.length === 4 ? verseForRoom(code, round) : null), [code, round])
+  // Stated, never offered: the room decided it (see `modeForRoom`), so there is
+  // no picker here and nothing for one device to impose on the other.
+  const mode = useMemo(() => (code.length === 4 ? modeForRoom(code, round) : 'verse'), [code, round])
 
   const onFinish = (result: PlayResult) => {
     // Same keep-challenge tracking a real battle does — a live match IS a real
@@ -259,7 +264,7 @@ export function LiveRoom() {
 
   // Nobody else here yet: the code, big enough to read off a stream.
   if (!opponent || stage === 'joining' || stage === 'lobby') {
-    return <RoomWaiting code={code} joining={stage === 'joining'} onExit={() => navigate('/battle/live')} />
+    return <RoomWaiting code={code} mode={mode} joining={stage === 'joining'} onExit={() => navigate('/battle/live')} />
   }
 
   if (!verse) return <Page noNav><div style={{ display: 'grid', placeItems: 'center', height: '70dvh' }}><div className="floaty" style={{ fontSize: 56 }}>⚔️</div></div></Page>
@@ -277,7 +282,17 @@ export function LiveRoom() {
   )
 }
 
-function RoomWaiting({ code, joining, onExit }: { code: string; joining: boolean; onExit: () => void }) {
+function RoomWaiting({
+  code,
+  mode,
+  joining,
+  onExit,
+}: {
+  code: string
+  mode: BattleMode
+  joining: boolean
+  onExit: () => void
+}) {
   const [shared, setShared] = useState<'shared' | 'copied' | 'failed' | null>(null)
   const url = inviteUrl(null, `/battle/live/${code}`)
 
@@ -301,6 +316,11 @@ function RoomWaiting({ code, joining, onExit }: { code: string; joining: boolean
         >
           {joining ? 'Opening the room…' : 'Waiting for your opponent to join…'}
         </motion.p>
+
+        {/* What this room deals. Derived from the code, so both phones print the
+            same sentence without anyone announcing it — and a rematch is a new
+            round, so it can change. */}
+        <ModeNote mode={mode} />
       </div>
 
       <div style={{ marginTop: 18 }}>

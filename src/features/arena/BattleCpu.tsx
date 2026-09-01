@@ -8,7 +8,8 @@ import { useAuth } from '@/store/auth'
 import { useSeason } from '@/store/season'
 import { useKeep } from '@/store/keep'
 import { useJuice } from '@/juice/useJuice'
-import { newBattleSeed, battleVerse } from './battle'
+import { newBattleSeed, battleVerse, battleModeLabel, type BattleMode } from './battle'
+import { ModePicker } from './ModePicker'
 import { CpuVersusQuiz } from './CpuVersusQuiz'
 import { CPU_PROFILES, CPU_LEVELS, type CpuLevel, type CpuProfile } from './cpu'
 import { FavoriteButton } from '@/components/FavoriteButton'
@@ -22,15 +23,18 @@ export default function BattleCpu() {
   const navigate = useNavigate()
   const juice = useJuice()
   const [level, setLevel] = useState<CpuLevel | null>(null)
+  const [mode, setMode] = useState<BattleMode>('verse')
   const [seed, setSeed] = useState(() => newBattleSeed())
   const [outcome, setOutcome] = useState<{ player: PlayResult; cpuScore: number } | null>(null)
 
   const profile = level ? CPU_PROFILES[level] : null
-  const verse = useMemo(() => battleVerse(seed), [seed])
+  const verse = useMemo(() => battleVerse(seed, mode), [seed, mode])
 
   if (!level || !profile) {
     return (
       <CpuPicker
+        mode={mode}
+        onMode={setMode}
         onExit={() => navigate('/study')}
         onPick={(lv) => {
           juice.coin()
@@ -69,7 +73,7 @@ export default function BattleCpu() {
       verse={verse}
       seed={seed}
       profile={profile}
-      label={`🤖 vs ${profile.name}`}
+      label={`🤖 vs ${profile.name} · ${battleModeLabel(seed, mode)}`}
       onFinish={(player, cpuScore) => setOutcome({ player, cpuScore })}
       onExit={() => setLevel(null)}
       studyDrop
@@ -78,7 +82,17 @@ export default function BattleCpu() {
 }
 
 // ── Difficulty picker ──
-function CpuPicker({ onPick, onExit }: { onPick: (lv: CpuLevel) => void; onExit: () => void }) {
+function CpuPicker({
+  mode,
+  onMode,
+  onPick,
+  onExit,
+}: {
+  mode: BattleMode
+  onMode: (m: BattleMode) => void
+  onPick: (lv: CpuLevel) => void
+  onExit: () => void
+}) {
   return (
     <Page noNav>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
@@ -89,8 +103,13 @@ function CpuPicker({ onPick, onExit }: { onPick: (lv: CpuLevel) => void; onExit:
       <div className="center" style={{ marginBottom: 18 }}>
         <div className="floaty" style={{ fontSize: 46 }}>🤖</div>
         <h1 style={{ fontSize: 26, marginTop: 4 }}>Race the CPU</h1>
-        <p className="dim" style={{ marginTop: 4 }}>Same verse quiz, live head-to-head. Pick your challenger.</p>
+        <p className="dim" style={{ marginTop: 4 }}>Live head-to-head against the same round. Pick what you're playing, then who.</p>
       </div>
+
+      {/* Mode first, because the CPU rows are the START button — a control BELOW
+          them would never be seen, and picking a difficulty is the tap that
+          begins the run. */}
+      <ModePicker value={mode} onChange={onMode} />
 
       <div style={{ display: 'grid', gap: 10 }}>
         {CPU_LEVELS.map((lv) => {

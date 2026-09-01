@@ -1,20 +1,39 @@
 // Finding your church on the map.
 //
-// Source is OpenStreetMap, through two free, key-less endpoints:
-//   • Overpass — "every place of worship within N miles of here", fetched once
-//     when we get your location and then filtered locally as you type, so the
-//     list reacts instantly and we make one request instead of one per keypress.
-//   • Nominatim — a name search, used only as a fallback when Overpass is down
-//     or the building simply isn't tagged as a place of worship.
-// Anything the map doesn't know can still be added by hand (see ChurchScreen).
+// The source of record is `church_places` — our own table, loaded from the
+// Overture Maps places theme (see supabase/migrations/0091_church_places.sql
+// and scripts/load-church-places.mjs). It replaced live OpenStreetMap, which
+// this app shipped on until a real congregation in Windermere, Florida proved
+// the problem: the building had been renamed to Quay Church over a year
+// earlier, OSM still said "Lifebridge Church", and the picker kept offering
+// the old name to people trying to add the new one. Overture — which merges
+// Meta, Microsoft and Foursquare — had the rename three weeks after it
+// happened.
+//
+// Three sources, in this order:
+//   • `search_church_places` — the Overture index. One request per location,
+//     filtered locally as you type, so typing is instant. This is a bounding
+//     box query on an indexed table, so it is also the fastest of the three by
+//     a wide margin.
+//   • Overpass (OSM) — ONLY where the index has nothing. The index is loaded a
+//     region at a time, so somewhere we haven't loaded yet must still find its
+//     churches rather than showing an empty screen. Stale names there are the
+//     accepted cost of not having a dead picker abroad.
+//   • Nominatim (OSM) — the same fallback rule for the by-name search.
+// Anything none of them knows can still be added by hand (see ChurchScreen).
 //
 // Results are merged with churches already in our own database (search_churches)
 // so a congregation another player added always shows up, even offline-ish.
 
+import { supabase } from './supabase'
 import { milesBetween, type Coords } from './geo'
 
 export interface ChurchPlace {
-  /** Stable identity: 'osm:node/123' for a mapped place, 'geo:…' when typed in. */
+  /**
+   * Stable identity: 'ovt:<gers id>' for a place from the Overture index,
+   * 'osm:node/123' for one that came from the OSM fallback, 'geo:…' when typed
+   * in by hand. `join_church` only trusts the first two.
+   */
   placeKey: string
   name: string
   address?: string | null
@@ -35,6 +54,84 @@ export interface ChurchPlace {
   xp?: number
   level?: number
   members?: number
+  /**
+   * Overture's own 0..1 score for the place, on rows that came from the index.
+   * Carried so a thin record can be ranked below a solid one — never to hide
+   * one, because a small country church with a single source is exactly the
+   * congregation this app most wants to be findable.
+   */
+  confidence?: number
+}
+
+/** Our own index is Postgres; if it's slow we carry on with what we have. */
+const PLACES_TIMEOUT_MS = 10000
+
+interface PlaceRow {
+  place_key?: string
+  name?: string
+  address?: string | null
+  city?: string | null
+  region?: string | null
+  lat?: number
+  lng?: number
+  confidence?: number
+  miles?: number
+}
+
+function fromIndex(row: PlaceRow, from: Coords | null): ChurchPlace | null {
+  const name = (row.name || '').trim()
+  const lat = Number(row.lat)
+  const lng = Number(row.lng)
+  if (!row.place_key || !name || !Number.isFinite(lat) || !Number.isFinite(lng)) return null
+  return {
+    placeKey: row.place_key,
+    name,
+    address: row.address ?? null,
+    city: row.city ?? null,
+    region: row.region ?? null,
+    lat,
+    lng,
+    miles: Number.isFinite(Number(row.miles))
+      ? Number(row.miles)
+      : from
+        ? milesBetween(from, { lat, lng })
+        : NaN,
+    confidence: Number.isFinite(Number(row.confidence)) ? Number(row.confidence) : undefined,
+  }
+}
+
+/**
+ * The Overture index: every church within `radiusMiles`, nearest first, or an
+ * optional name filter. Swallows its own failures — no keys, a server without
+ * 0091, a network blip and "nothing loaded for this region yet" all land on an
+ * empty list, and the caller falls back to OSM.
+ */
+export async function nearbyChurchPlaces(
+  from: Coords,
+  radiusMiles = 30,
+  q: string | null = null,
+  limit = 60,
+): Promise<ChurchPlace[]> {
+  if (!supabase) return []
+  try {
+    const res = await Promise.race([
+      supabase.rpc('search_church_places', {
+        p_lat: from.lat,
+        p_lng: from.lng,
+        p_q: q,
+        p_radius_miles: radiusMiles,
+        p_limit: limit,
+      }),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), PLACES_TIMEOUT_MS)),
+    ])
+    if (!res || res.error || !Array.isArray(res.data)) return []
+    return (res.data as PlaceRow[])
+      .map((r) => fromIndex(r, from))
+      .filter((p): p is ChurchPlace => p !== null)
+      .sort((a, b) => a.miles - b.miles)
+  } catch {
+    return []
+  }
 }
 
 const OVERPASS_ENDPOINTS = [

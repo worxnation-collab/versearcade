@@ -402,6 +402,58 @@ The sheet sits at `z-index: 100` — the app's sheet tier. Don't raise it: the
 player card (110) is meant to open *over* a sheet, and tapping a face in the
 roster opens exactly that.
 
+### Where the churches themselves come from
+
+Every church in this app started as a row in `church_places` — our own index,
+loaded from the Overture Maps places theme (`0089`, `scripts/load-church-places.mjs`,
+`docs/CHURCH-PLACES.md`). It replaced live OpenStreetMap, and the reason is
+worth keeping because it is the kind of bug that looks like a typo:
+
+- **A source is only as fresh as its last edit.** Quay Church in Windermere,
+  Florida was renamed over a year ago; OSM still said "Lifebridge Church", so
+  the picker kept offering the old name to the people trying to add the new
+  one. Overture — which merges Meta, Microsoft and Foursquare — had the rename
+  three weeks after it happened.
+- **And a name was written once and never re-read.** `churches.name` was
+  frozen at join time, so even a perfect source would have gone stale the next
+  day. `refresh_church_names()` is that second half, and it is the half that
+  gets forgotten: applying the migration and loading the data fixes nothing
+  until it is called.
+
+Three rules hold it together:
+
+- **A licence that permits a permanent row.** Google and Foursquare both allow
+  storing their id and nothing else — no name, no address, no coordinates. A
+  church row is permanent (a congregation banks XP against it for years), so
+  neither can back this table without re-fetching a name every time a board
+  renders. Overture is Apache-2.0 / CDLA-Permissive-2.0. That is the constraint
+  that decided the source, not freshness alone.
+- **Linking legacy churches refuses to guess.** Overture places carries no OSM
+  ids at all, so a church joined under `0040` is matched by POSITION, once, into
+  `churches.place_ref` — and only where there is exactly one candidate. A church
+  campus routinely has four Overture entries at one address, and at the very
+  address that prompted this migration the highest-confidence one is *wrong*
+  ("Lifebridge Men", 0.99, against Quay Church's 0.97). `church_link_candidates()`
+  hands the ambiguous ones to a person. Don't replace that with a heuristic.
+- **And an unambiguous link can still be wrong, which is what `0090` is for.**
+  The guard above stops a CHOICE the server can't make; it says nothing about a
+  lone candidate that is simply mis-named, and no positional rule can — the
+  building is right and the name is not. The first production run renamed
+  Lighthouse Charlottesville to "Hyphen Lighthouse" on exactly that shape.
+  `set_church_name(id, name, true)` sets `name_locked`, which every refresh and
+  every `join_church` honours; it locks the NAME only, so address and city still
+  fill in. And `church_name_key()` means a refresh fires on a changed name
+  rather than a changed spelling — without it the same run moved the app's
+  biggest congregation from "Saint" to "St." for nothing.
+- **A hand-added `geo:` church is never touched**, by either function. Somebody
+  typed that name themselves, and it is pinned at the *player's* position rather
+  than the building's — so proximity means nothing for it.
+
+OSM is still the fallback wherever the index has no rows, because the index is
+loaded a region at a time and an empty picker is a dead end. Anywhere the index
+answers, Overpass is never called — which also removes the slowest and least
+reliable network call in the app.
+
 ### The board reads three windows
 
 Every row on `/church`'s board is a church and a number, and until `0080` that
@@ -1077,7 +1129,26 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0089` (the growth tab's timezone lookup, resolved once instead of
+The latest is `0092` (church name locks) and `0091` (the church places index —
+churches now come from our own Overture-loaded table instead of live
+OpenStreetMap), both APPLIED on 2026-09-01. **606,272 US places are loaded**
+from Overture release `2026-08-19.0`, and `link_church_places()` +
+`refresh_church_names()` have been run. Runbook: `docs/CHURCH-PLACES.md`.
+
+**Production knows those two by the numbers 0089 and 0090**, because two
+branches were in flight the same day and both took 0089; the tree side was
+renumbered to 0091/0092 when they met, which is the only cheap moment to do it.
+So `schema_migrations` reads `0089_church_places_*` and `0090_church_name_locks*`
+while the files say 0091/0092. That is expected — don't re-apply to "fix" it.
+
+0092 exists because 0091 was verified against production and two of its renames
+were wrong — read its header before touching the refresh, since both failures
+look like successes from the code. The live state to know: Lighthouse
+Charlottesville is `name_locked` (Overture calls it "Hyphen Lighthouse"), and
+Quay Church in Windermere is still a hand-added `geo:` row, deliberately
+untouched by either function.
+
+Before them, `0089` (the growth tab's timezone lookup, resolved once instead of
 per row), APPLIED on 2026-09-01 and verified: `admin_growth` read is 114ms where
 it was ~13,900ms, so it clears `authenticated`'s 8s `statement_timeout` instead
 of dying to it; `growth_today` and `admin_report_tz` are both plpgsql now, which
@@ -1163,9 +1234,14 @@ Numbering has scars: `0034` is used twice (`promo_codes`, `skin_purchases`),
 `public_church_page`), `0081` twice (`first_light`, and the Study library's
 card, which was applied to production under that number and renumbered to
 `0083` in the tree when the two branches met), and — from that same collision —
-`0082` and `0083` twice each. So the next free number is `0090` (0085 is taken by
-erasure hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the
-lantern skin and 0089 by the growth tab's timezone fix, above),
+`0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
+timezone fix landed on main while the church places index was in flight on a
+branch; the branch side became 0091, and its follow-up burned 0090 in
+production only). So the next free number is `0093` (0085 is taken by erasure
+hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
+0089 by the growth timezone fix AND by church places as production recorded it,
+0090 by the name locks as production recorded them, 0091 by church places in the
+tree and 0092 by the name locks in the tree, above),
 and this
 sentence has already gone stale twice: it said "0076" while 0077, 0078 and 0079
 were sitting in the folder. `ls supabase/migrations | tail -1` is the answer — on ORIGIN/MAIN, not your

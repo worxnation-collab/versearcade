@@ -85,12 +85,15 @@ Start your streak today. It's one verse.
 > *approved* version forces a bump.
 >
 > Last rebuilt against `git log --first-parent` on 2026-09-01, covering #157 to the
-> navigation map. 3,970 characters, against Apple's 4,000 limit — **the block is now
-> effectively full**, so the next feature to land has to displace something rather
-> than append — adding the map already displaced the "small ✕ puts it back on the
-> shelf" bullet from ARRANGE EVERYTHING. The oldest sections are the ones to cut
-> next: by submission day, some of what is here will have shipped in 1.2.0 anyway
-> (see the note under the block).
+> navigation map, including the run lock. **3,998 characters against Apple's 4,000
+> limit — this block is not merely full, it is at the wall.** Two branches both
+> declared it full on the same day and both added to it anyway; fitting the second
+> one meant cutting the "small ✕ puts it back on the shelf" bullet and writing the
+> map's own section twice as short. There is nothing left to shave.
+>
+> So the next thing that lands has to TAKE A SECTION OUT, and the cheapest cut is
+> whichever one turns out to have shipped in 1.2.0 already (see the note under the
+> block) — that check is owed before submission regardless.
 
 ```
 BATTLE ANYONE, RIGHT NOW
@@ -106,6 +109,8 @@ BATTLE ANYONE, RIGHT NOW
   there's no progress bar to grind, and nothing anywhere counts what you've lost.
 • Wrong answers still teach. The line explaining the answer is yours to read at
   your own pace, even if it costs you the round.
+• Once a run starts, it runs — no bailing out of a bad round to deal a fresh one,
+  and an interrupted run comes back where you left it.
 
 THERE'S AN ARCADE IN HERE NOW
 • A cabinet in your own room, and on the home screen once the day's verse is done.
@@ -155,10 +160,8 @@ THE STUDY TAB IS A LIBRARY
   dates, nothing is ever overdue, and she has no opinion about how much you read.
 
 FIND ANYTHING IN ONE TAP
-• A compass beside the tabs opens a searchable map of every room, board and machine
-  in the app.
-• It opens with what's still open today — never a score, never a list of what you
-  missed, and it empties as the day goes instead of filling up.
+• A compass by the tabs maps everywhere in the app, and what's still open today.
+  Never a score, and never a list of what you missed.
 ```
 
 **Three sections here may already be in players' hands, and the repo cannot settle

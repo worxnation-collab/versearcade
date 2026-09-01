@@ -2107,6 +2107,52 @@ Two deep links exist so the map has somewhere honest to point: `?pray=1` on
 frozen at mount and stripped from the URL immediately, or a reload re-opens them
 over whatever the player moved on to.
 
+### A started run is locked, and can't be re-dealt
+
+Reading the verse is free — the ✕ is a real ✕ right up until the clock starts.
+From its first tick the run is committed: the ✕ becomes a 🔒 that says how many
+questions are left, Back is caught and put back, and a reload gets the browser's
+own "leave site?" prompt. It lives in `QuizRunner` for the reason everything
+cross-mode does, so the daily drop, a replay, a drill, a CPU race, a battle and
+a live match all got it from one edit.
+
+**The point is the RE-DEAL, not the exit.** The day's five questions are the
+same five for everybody forever, a replay is the same past verse and an accepted
+battle is a fixed seed — so walking out of a run going badly and starting it
+again was a retry with the answers known, and the daily drop's `playedToday`
+guard never saw it because nothing had been submitted. Locking the screen is
+only half of that; the other half is `runId`, which parks the run
+(`lib/runProgress.ts`) so a reload or a killed app comes back to the question it
+left. Three callers pass one — `daily:<dropDate>`, `practice:<date>`,
+`battle:<id>`. The modes that don't are deliberate: a vs-CPU race, a focus drill
+and a new battle deal a fresh RANDOM verse every time, so there is nothing to
+re-deal, and a live match is not allowed to outlive itself
+(`docs/LIVE-BATTLE.md`). They are still locked; they just have nothing to come
+back to.
+
+Two things about the parked run are load-bearing:
+
+- **The clock never stops.** A snapshot stores when the current question's
+  window opened as WALL time, and resuming computes what is left of it from
+  there — so stepping out to think (or to look the answer up) costs exactly what
+  sitting there costs, and a question whose window has passed lands on its teach
+  card the moment you come back. Without that, "resume" would be a pause button
+  on a timed question, which is a smaller version of the thing being closed
+  rather than a fix for it. It is also why `handleAnswer` clamps a question's
+  recorded time to the answer window: a backgrounded tab throttles timers too,
+  and `PlayResult.timeMs` feeds a battle's tiebreak.
+- **It grants nothing, so it is safe to keep on the device.** Every reward in
+  this app is paid by `onComplete`, which only fires when a run ends, so there is
+  nothing here to farm by clearing it — clearing it costs you your progress and
+  buys you nothing. That is what lets it be device-local in both modes, the same
+  deliberate break with the two-mode invariant `store/looks.ts` makes.
+
+There is no "leave anyway" door, and a run is five questions with a hard
+per-question window, so what it closes is measured in seconds. It never scolds:
+the lock says what is left and that the banked score is safe. If a door is ever
+wanted, the honest shape is one that keeps the park — leave, come back to the
+same question — never one that deals again.
+
 ## UI conventions
 
 **The z-index ladder, written down once** (it was being re-derived from six

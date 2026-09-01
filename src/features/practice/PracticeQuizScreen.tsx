@@ -27,6 +27,10 @@ export default function PracticeQuizScreen() {
     <QuizRunner
       verse={verse}
       label="📖 Practice · study run"
+      // A replay is the same past verse every time, so a run walked out of and
+      // started again is a retry with the answers known — name the deal and
+      // QuizRunner hands the interrupted one back instead.
+      runId={`practice:${date}`}
       onExit={() => navigate('/study/recent')}
       studyDrop
       onComplete={async (result) => {

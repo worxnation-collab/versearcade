@@ -1193,17 +1193,37 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-**`0090` (the "host a trivia night" ask) is WRITTEN AND NOT APPLIED.** It must be
-run against the live project BEFORE the client merges, and this one is not a
-degrade-gracefully case: it drops the 7-argument `submit_church_info_request` to
-replace it with an 8-argument one, so an un-applied 0090 means PostgREST cannot
-resolve the call the new client makes and **the whole "Add info" queue stops
-accepting anything**, not just the trivia ask. Apply it, then confirm there is
-exactly ONE signature for `submit_church_info_request` and that
-`admin_church_info_requests` still returns `city` and `region`.
+The latest is `0090` (the "host a trivia night" ask), APPLIED on 2026-09-01 and
+verified. It drops the 7-argument `submit_church_info_request` to replace it with
+an 8-argument one, which is the reason it had to go in before the client: an
+un-applied 0090 would have meant PostgREST could not resolve the call and **the
+whole "Add info" queue stopped accepting anything**, not just the trivia ask.
 
-The latest APPLIED is `0089` (the growth tab's timezone lookup, resolved once
-instead of per row), applied on 2026-09-01 and verified: `admin_growth` read is 114ms where
+What the verification actually checked, because "applied" is not the same as
+"right": there is exactly ONE signature for `submit_church_info_request` (no
+stale 7-arg overload for PostgREST to resolve an old client's call to);
+`admin_church_info_requests` still returns `city` and `region` alongside the new
+flag; all 3 existing request rows survived and none was flagged; and the ACL
+matches its predecessor's rather than being tightened in isolation.
+
+**Both call shapes were tested over the real HTTP path**, which is the check that
+matters and the one a signature count cannot make. The 7-param body that
+already-deployed clients send and the 8-param body the merged client sends BOTH
+resolve and run — they return the function's own `P0001 not authenticated`
+guard, not `PGRST202 could not find the function`. A deliberate negative control
+(a bogus parameter name) DOES return `PGRST202`, which is what proves the test
+discriminates rather than passing for free. So the migration was safe to apply
+ahead of the merge, and the live site kept working throughout.
+
+The new contact rule was exercised against the live function inside a
+transaction that was rolled back: member + trivia with no contact returns
+`name_required`, member + trivia with contact returns ok, and member with no
+trivia and no contact still returns ok — the last of those being the regression
+check that the existing path is untouched. Row count and the pooled connection's
+`request.jwt.claims` were both confirmed clean afterwards.
+
+Before it, `0089` (the growth tab's timezone lookup, resolved once instead of
+per row), applied on 2026-09-01 and verified: `admin_growth` read is 114ms where
 it was ~13,900ms, so it clears `authenticated`'s 8s `statement_timeout` instead
 of dying to it; `growth_today` and `admin_report_tz` are both plpgsql now, which
 is the part that matters — a `language sql` function gets INLINED into the
@@ -1290,8 +1310,8 @@ card, which was applied to production under that number and renumbered to
 `0083` in the tree when the two branches met), and — from that same collision —
 `0082` and `0083` twice each. So the next free number is `0091` (0085 is taken by
 erasure hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the
-lantern skin, 0089 by the growth tab's timezone fix and **0090 by the
-trivia-night ask — NOT YET APPLIED, see below**),
+lantern skin, 0089 by the growth tab's timezone fix and 0090 by the
+trivia-night ask),
 and this
 sentence has already gone stale twice: it said "0076" while 0077, 0078 and 0079
 were sitting in the folder. `ls supabase/migrations | tail -1` is the answer — on ORIGIN/MAIN, not your

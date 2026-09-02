@@ -38,6 +38,7 @@ import {
   skinExpired,
   skinOwned,
   equippedSkinId,
+  isOverlaySkin,
   baseSkinId,
   passSkinEquipId,
   type BundleDef,
@@ -228,6 +229,8 @@ export function CustomizeSection() {
   const ownedSkins = profile.ownedSkins ?? []
   const seasonUnlocks = useSeason((st) => st.unlocks)
   const equippedSkin = equippedSkinId(spec)
+  /** A full look is worn (an overlay like the carried cross isn't one). */
+  const skinCovered = !!equippedSkin && !isOverlaySkin(equippedSkin)
   /** Reactive pass skins store their state in the id ('ruth_2'); compare bases. */
   const isEquipped = (skin: SkinDef) => !!equippedSkin && baseSkinId(equippedSkin) === skin.id
   const isSkinOwned = (skin: SkinDef) =>
@@ -299,7 +302,10 @@ export function CustomizeSection() {
       <Section
         title="Your Character"
         defaultOpen
-        right={savedFlash ? <span style={{ color: 'var(--good)', fontWeight: 700 }}>Saved ✓</span> : 'always free'}
+        // "always free" labels the swatches, so it goes with them when a full
+        // look is covering the picker — there is nothing free on screen to
+        // describe, and the skins below have their own access pills.
+        right={savedFlash ? <span style={{ color: 'var(--good)', fontWeight: 700 }}>Saved ✓</span> : skinCovered ? undefined : 'always free'}
       >
       <div className="card" style={{ marginBottom: 14 }}>
         {/* The SAME picker the sign-up flow uses (components/CharacterPicker) —
@@ -316,12 +322,19 @@ export function CustomizeSection() {
           onChange={(next: AvatarSpec) => { setAvatarCharacter(next); flashSaved() }}
           longestStreak={longest}
           admin={!!profile.isAdmin}
+          onRemoveSkin={() => { setAvatarCharacter({ ...spec, skinId: null, regalia: null }); flashSaved() }}
         />
 
-        <p className="faint" style={{ fontSize: 10, marginTop: 12, lineHeight: 1.4 }}>
-          Every tone and every colour here is free and always will be — this is
-          who you are, not something to unlock. It saves as you tap.
-        </p>
+        {/* The picker hides the tone and hair rows while a full skin is worn —
+            they'd be controls that visibly do nothing — so the line about them
+            being free goes with them rather than describing swatches that
+            aren't on screen. */}
+        {!skinCovered && (
+          <p className="faint" style={{ fontSize: 10, marginTop: 12, lineHeight: 1.4 }}>
+            Every tone and every colour here is free and always will be — this is
+            who you are, not something to unlock. It saves as you tap.
+          </p>
+        )}
       </div>
       </Section>
 

@@ -1064,6 +1064,15 @@ flag grants nothing (everything a round pays is capped elsewhere) and the half
 of a round that is really a record — the verse, marked studied — already
 follows the account through `store/bible.ts`.
 
+**The flag carries the day's numbers now** (score, correct, total), and the box
+on the Play tab shows them exactly as the drop box beside it does — a round that
+ends with no record of how it went reads as though it didn't count. It is
+**today's round only**: no best, no history, no total, and the entry is written
+once, so a replay can't rewrite it into a personal best to beat. A day recorded
+before the numbers were kept stores a bare `true` and still reads — don't drop
+that shape, the map lives on people's devices. Still no XP and still nothing
+rankable; the numbers never leave the device.
+
 **The library round is the same questions, five at a time** (`/study/trivia`,
 `features/study/TriviaRoundScreen.tsx`, lent by Tabitha like everything else in
 Study). It is **anchored on a real verse** from the chosen book, which
@@ -1950,6 +1959,19 @@ the Close button before that.
 
 ### Customizing is one shelf, not six
 
+**A worn full skin hides the character builder's own rows.** A skin REPLACES the
+figure (`Character.tsx` renders its art instead of the starter render), so while
+one is on, Figure / Skin tone / Hair are three controls you can tap and watch do
+nothing — you change the tone and Moses doesn't move. `CharacterPicker` hides
+them and says what's underneath instead, with a "Take it off" that puts the
+character back (the profile passes `onRemoveSkin`; the sign-up flow doesn't,
+because nothing is equipped at the door). Two things about it: an **overlay**
+skin — the carried cross — layers onto your own character rather than replacing
+it, so it keeps every row; and the rows are hidden, never dimmed or padlocked,
+because nothing here is locked — the character underneath is untouched and comes
+straight back.
+
+
 Everything you can equip — skins, pets, items, card backgrounds, borders,
 badges — lives under a single row of pills in `CustomizeSection`
 (`TabbedSection`), with the character builder above it. It used to be six
@@ -2149,7 +2171,7 @@ describes it:
 | World | Where it renders | Component |
 |---|---|---|
 | Harvest Road | top of `/season` | `RoadScene` |
-| The hall | under "Start a new battle", and in the sheet | `KeepScene` |
+| The hall | its own section on `/battle`, and in the sheet | `KeepScene` |
 | The churchyard | hero of `/church`, and on any church's page | `ChurchScene` |
 | The lending library | the whole of `/study` | `LibraryScene` |
 | You | top of `/you` | `ProfileHero` |
@@ -2456,6 +2478,52 @@ break first:
   `submit_play` can have claimed the day). Found by driving the real app —
   invisible in the diff, and the shape of bug any future move-a-card-into-a-sheet
   will hit.
+
+## The Battle tab leads with the turn you owe
+
+Every card on that tab was individually right and the sum of it opened on the
+one thing a player can do nothing about: the hall filled the first screen, and
+under it "Your battles" defaulted to whichever bucket had rows in it — so
+somebody with nothing to play and 23 battles out landed on 23 full-size
+"Waiting on their play" cards, with the boards and the team below the fold.
+The order is now: the two battle buttons, your battles, where you stand, the
+boards, then the hall and its ladder. Four rules fall out of it:
+
+- **The turn tabs default to Your turn, always**, never to whatever is
+  populated. An empty Your turn is one short line and the other two tabs are one
+  tap away with their counts on them — the counts were always the point of the
+  split.
+- **Only your move is a card.** `BattleRow` draws a slim single line for the
+  other two buckets (same facts, a third of the height, three at a time against
+  Your turn's six — `VISIBLE_ROWS` is per bucket now). A battle waiting on
+  somebody else is a fact to glance at, not a task. The slim row deliberately
+  does NOT pass `username` to its `Avatar`: that turns the avatar into its own
+  button for the player card, and a 26px second target inside a slim row is a
+  mis-tap.
+- **`RankStrip` is where you stand, above the fold.** Two tiles — your rank and
+  your team's — lifted out of `board.me` / `denomBoard.me`, which the boards
+  already ended with. It publishes **nothing new**: battle wins have been ranked
+  since `0020`, both tiles are your own row, and there is no losses column here
+  for the same reason there isn't one in the schema. The board behind it is
+  **open by default** now, reversing the earlier "a board is something you look
+  up occasionally" call — what makes that affordable is the strip, which keeps
+  both numbers on screen whether the fold is open or shut.
+- **The hall moved DOWN, and only the position moved.** The rule is that the
+  room itself is on the tab rather than a link to it; where on the tab is not
+  part of it. It stands with `KeepChallenges` now — a ~230px painting between
+  "Start a new battle" and the battle waiting on you is the one thing here that
+  can wait. `MyKeepScene` names its own faction and tier underneath, so the
+  section heading above it stays the plain "The Keep" rather than saying it
+  twice.
+
+**The two daily boxes point at each other now.** Finishing the verse puts a line
+about today's trivia directly under the score, and the trivia recap does the
+same for the verse — each rendered only while the other is genuinely unplayed,
+so a finished day says nothing rather than showing a tick (the invitations
+panel's rule). The trivia screen reads the drop's own state before it claims
+one is waiting: a deep link straight to `/play/trivia` never touched the Play
+tab, so `playedToday` is still its `false` default and the nudge would announce
+a verse the player finished this morning.
 
 ## The map: five tabs, twenty-six places
 

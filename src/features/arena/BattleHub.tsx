@@ -24,7 +24,16 @@ const TURN_EMPTY: Record<Turn, string> = {
   theirs: 'Nobody owes you a move. Start a battle and pick who to challenge — or share a link to invite someone new.',
   done: 'No finished battles yet. Play one out and the result lands here.',
 }
-const VISIBLE_ROWS = 5
+/**
+ * How many rows a bucket shows before "Show all".
+ *
+ * Your turn gets the room because every one of those rows is somebody waiting
+ * on YOU. The other two are a record, not a task list: 23 battles waiting on
+ * other people rendered as 23 full-size cards is most of a phone screen spent
+ * saying "nothing to do here", which is what pushed the ranks and the hall
+ * below the fold.
+ */
+const VISIBLE_ROWS: Record<Turn, number> = { yours: 6, theirs: 3, done: 3 }
 
 // Pending + you didn't send it ⇒ you're the invited opponent (list_my_battles
 // only ever returns battles you're the challenger, opponent, or invitee of).
@@ -67,8 +76,22 @@ export default function BattleHub() {
    * section is still growing aims at a target that is still moving.
    */
   const [scrollToPicker, setScrollToPicker] = useState(false)
-  /** Edge-triggered open for the ranks fold — see Collapsible's defaultOpen. */
-  const [ranksOpen, setRanksOpen] = useState(false)
+  /**
+   * Mirrors the ranks fold's own open state, and drives it.
+   *
+   * It starts OPEN. That reverses an earlier call ("a board is something you
+   * look up occasionally") on the app owner's read of what people come to this
+   * tab for: the standing IS the reason a lot of players battle, and it was the
+   * one thing on the tab you had to know to tap for. The strip above it means
+   * the number is on screen either way; this is the board behind it.
+   *
+   * Kept as a mirror rather than a one-way prop so "Choose a denomination" can
+   * still re-open a fold the player has closed — Collapsible only honours
+   * defaultOpen on its rising edge, so a stale `true` here would make that
+   * button silently do nothing, which is the bug this block already carries two
+   * scars from.
+   */
+  const [ranksOpen, setRanksOpen] = useState(true)
   const browseTeams = () => {
     setRanksOpen(true)
     setRankTab('denomination')
@@ -99,10 +122,15 @@ export default function BattleHub() {
     return b
   }, [mine])
 
-  const autoTurn: Turn = buckets.yours.length ? 'yours' : buckets.theirs.length ? 'theirs' : buckets.done.length ? 'done' : 'yours'
-  const turn = pickedTurn ?? autoTurn
+  // Always Your turn until the player says otherwise. It used to fall through
+  // to whichever bucket had anything in it, so a player with nothing to play
+  // and 23 battles out landed on a wall of "Waiting on their play" — the tab
+  // opening on the one bucket it can do nothing about. An empty Your turn is
+  // one short line, and the other two tabs are one tap away with their counts
+  // on them.
+  const turn = pickedTurn ?? 'yours'
   const list = buckets[turn]
-  const visible = expanded === turn ? list : list.slice(0, VISIBLE_ROWS)
+  const visible = expanded === turn ? list : list.slice(0, VISIBLE_ROWS[turn])
 
   useEffect(() => {
     if (isGuest) return
@@ -176,19 +204,10 @@ export default function BattleHub() {
             Quick match anyone who’s looking, or share a room code.
           </p>
 
-          {/* The hall, right under the button — the same place the Harvest Road
-              puts its road. A tab whose whole ladder is a room should show the
-              room, not a link to it. Someone with no team gets the invitation
-              instead, because a hall with nobody's colours on it is the one
-              version of this that says nothing. */}
-          <div style={{ marginTop: 14, marginBottom: 4 }}>
-            {profile?.denomination ? <MyKeepScene onOpen={() => { juice.select(); setOpenKeep(profile.denomination ?? '') }} /> : <PickATeam onBrowse={browseTeams} />}
-          </div>
-
           {/* Your battles, split by whose move it is. "Your turn" carries the
               invite count, so an incoming challenge is visible without opening
               anything — that's the whole point of the split. */}
-          <h3 className="dim" style={{ fontSize: 16, margin: '22px 0 10px' }}>Your battles</h3>
+          <h3 className="dim" style={{ fontSize: 16, margin: '18px 0 10px' }}>Your battles</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, marginBottom: 12 }}>
             {TURNS.map((t) => {
               const count = buckets[t].length
@@ -238,6 +257,7 @@ export default function BattleHub() {
               {visible.map((b) => (
                 <BattleRow key={b.id} b={b} turn={turn} onClick={() => navigate(`/battle/${b.id}`)} />
               ))}
+
               {list.length > visible.length && (
                 <button
                   onClick={() => { juice.select(); setExpanded(turn) }}
@@ -255,18 +275,25 @@ export default function BattleHub() {
               labelled "Teams", not "Denominations": Agnostic and Atheist play
               on this board too, and a heading that reads past them is the
               first thing that would tell them they're guests. */}
-          {/* Folded, and closed by default — the same call the Play tab makes
-              for "Worldwide Ranks", for the same reason: a board is something
-              you look up occasionally, and open by default it sat between the
-              battles you came to play and the keep ladder underneath, on every
-              visit, for everybody. The team picker rides inside it because the
-              team is a Battle-only faction and this is where it is used, and
-              because "Choose a denomination" already opens the tab and scrolls
-              to it.
+          {/* Folded, but OPEN by default now, directly under the strip that
+              carries the same two numbers. The earlier call was that a board is
+              something you look up occasionally; the tab's own evidence says
+              otherwise — the standing is a large part of why people battle at
+              all, and it was the only thing here you had to know to tap for.
+              What made that call affordable is above: the strip means your rank
+              and your team's are on screen whether the fold is open or shut, so
+              closing it now costs nothing.
 
-              A closed Collapsible still says what is in it, so nothing here
-              got harder to find — it got shorter to scroll past. */}
-          <Collapsible icon="🏆" title="Battle ranks" defaultOpen={ranksOpen}>
+              The team picker rides inside it because the team is a Battle-only
+              faction and this is where it is used, and because "Choose a
+              denomination" opens the tab and scrolls to it. */}
+          <RankStrip
+            board={board}
+            denomBoard={denomBoard}
+            onOpen={(tab) => { juice.select(); setRankTab(tab); setRanksOpen(true) }}
+          />
+
+          <Collapsible icon="🏆" title="Battle ranks" defaultOpen={ranksOpen} onToggle={setRanksOpen}>
             <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
               {(['individual', 'denomination'] as const).map((t) => (
                 <button key={t} onClick={() => { juice.select(); setRankTab(t) }} className="pill"
@@ -401,19 +428,30 @@ export default function BattleHub() {
               </>
             )}
           </Collapsible>
-          {/* ── The Keep ─────────────────────────────────────────────── */}
-          {/* No "open your keep" card down here any more: the hall itself is up
-              under the battle button and tapping it opens the sheet, so a row
-              that says the same thing in words is one thing too many. What's
-              left is the ladder, which the room can't show. */}
-          <h3 className="dim" style={{ fontSize: 16, margin: '24px 0 10px' }}>
-            {profile?.denomination ? `${denominationName(profile.denomination)} Keep` : 'The Keep'}
-          </h3>
+          {/* ── The Keep ─────────────────────────────────────────────────
+              The room itself on the tab, never a link to it — that's the rule;
+              WHERE on the tab is not, and it moved. It used to open the screen,
+              so a ~230px painting sat between "Start a new battle" and the
+              battle actually waiting on you: the one thing here that can wait,
+              since it's a room you furnish rather than a move you owe anybody.
+              It stands with its own ladder now, under the turn you have to take
+              and the standing you came to check.
+
+              Someone with no team gets the invitation instead, because a hall
+              with nobody's colours in it is the one version of this that says
+              nothing. There's still no "open your keep" row anywhere: tapping
+              the room opens the sheet, and the scene names its own faction and
+              tier underneath, so this heading stays the plain one. */}
+          <h3 className="dim" style={{ fontSize: 16, margin: '22px 0 10px' }}>The Keep</h3>
+          <div style={{ marginBottom: 4 }}>
+            {profile?.denomination ? <MyKeepScene onOpen={() => { juice.select(); setOpenKeep(profile.denomination ?? '') }} /> : <PickATeam onBrowse={browseTeams} />}
+          </div>
           {!profile?.denomination && (
-            <p className="faint" style={{ fontSize: 12.5, margin: '-4px 0 10px', lineHeight: 1.5 }}>
+            <p className="faint" style={{ fontSize: 12.5, margin: '10px 0', lineHeight: 1.5 }}>
               Pick a team above to share a hall — everything below is yours either way.
             </p>
           )}
+          <div style={{ height: 10 }} />
           <KeepChallenges />
 
           <div style={{ height: 90 }} />
@@ -424,6 +462,85 @@ export default function BattleHub() {
         <KeepSheet denomination={openKeep === '' ? null : openKeep} onClose={() => setOpenKeep(null)} />
       )}
     </Page>
+  )
+}
+
+/**
+ * Where you stand, and where your team stands — two tiles, above the fold.
+ *
+ * The boards themselves are a fold below this, and they always were; what was
+ * missing is that a player had to open one to learn their own rank at all. This
+ * is the same two numbers the boards already end with (`board.me`,
+ * `denomBoard.me`), lifted to where they're read.
+ *
+ * It adds NO comparison the tab didn't already publish: battle wins have been
+ * ranked since 0020, and both tiles are your own row out of a board you're
+ * already on. There is no losses column here for the same reason there isn't
+ * one in the schema. A tile with nothing to say — no battles finished, no team
+ * picked — renders as the invitation to start one rather than as a zero.
+ */
+function RankStrip({
+  board,
+  denomBoard,
+  onOpen,
+}: {
+  board: BattleBoard | null
+  denomBoard: DenomBoard | null
+  onOpen: (tab: 'individual' | 'denomination') => void
+}) {
+  const me = board?.me
+  const team = denomBoard?.me
+  const teamColor = team ? denominationColor(team.denomination) : 'var(--stroke)'
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, margin: '18px 0 10px' }}>
+      <motion.button
+        whileTap={{ scale: 0.97 }}
+        onClick={() => onOpen('individual')}
+        className="card"
+        style={{ padding: '11px 12px', textAlign: 'left', minWidth: 0, cursor: 'pointer' }}
+      >
+        <div className="faint" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>You</div>
+        {me ? (
+          <>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, lineHeight: 1.1 }} className="gradient-text">
+              #{me.rank}
+            </div>
+            <div className="faint" style={{ fontSize: 11.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {me.wins} win{me.wins === 1 ? '' : 's'} · {me.battles} battle{me.battles === 1 ? '' : 's'}
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, lineHeight: 1.2, marginTop: 2 }}>Unranked</div>
+            <div className="faint" style={{ fontSize: 11.5 }}>Win one and you’re on the board.</div>
+          </>
+        )}
+      </motion.button>
+
+      <motion.button
+        whileTap={{ scale: 0.97 }}
+        onClick={() => onOpen('denomination')}
+        className="card"
+        style={{ padding: '11px 12px', textAlign: 'left', minWidth: 0, cursor: 'pointer', borderLeft: `3px solid ${teamColor}` }}
+      >
+        <div className="faint" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Your team</div>
+        {team ? (
+          <>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, lineHeight: 1.1 }} className="gradient-text">
+              #{team.rank}
+            </div>
+            <div className="faint" style={{ fontSize: 11.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {denominationName(team.denomination)} · {team.wins.toLocaleString()} wins
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, lineHeight: 1.2, marginTop: 2 }}>No team</div>
+            <div className="faint" style={{ fontSize: 11.5 }}>Pick one — your wins add to its total.</div>
+          </>
+        )}
+      </motion.button>
+    </div>
   )
 }
 
@@ -545,21 +662,31 @@ function PickATeam({ onBrowse }: { onBrowse: () => void }) {
   )
 }
 
-function outcomeLabel(b: Battle, turn: Turn): { text: string; color: string } {
+/**
+ * What the row says about this battle.
+ *
+ * `short` is the same fact in a couple of words, for the slim rows the other
+ * two buckets use — it sits at the END of a single line beside the name, so
+ * "Open challenge · waiting for a taker" would eat the name it's next to.
+ */
+function outcomeLabel(b: Battle, turn: Turn): { text: string; short: string; color: string } {
   if (turn === 'yours') {
     // The tab, the gold card and the Play pill already say "your move", so the
     // line spends its width on the number instead of repeating that — it has to
     // survive the ellipsis at 320px.
-    return { text: `Beat ${b.challenger.score?.toLocaleString()} pts to win`, color: 'var(--gold)' }
+    const text = `Beat ${b.challenger.score?.toLocaleString()} pts to win`
+    return { text, short: 'Your move', color: 'var(--gold)' }
   }
   if (turn === 'theirs') {
     return b.invited && !b.broadcast
-      ? { text: 'Waiting on their play', color: 'var(--sky)' }
-      : { text: 'Open challenge · waiting for a taker', color: 'var(--sky)' }
+      ? { text: 'Waiting on their play', color: 'var(--sky)', short: 'Waiting' }
+      : { text: 'Open challenge · waiting for a taker', color: 'var(--sky)', short: 'Open' }
   }
   const won = (b.is_challenger && b.winner === 'challenger') || (b.is_opponent && b.winner === 'opponent')
-  if (b.winner === 'tie') return { text: 'Tie', color: 'var(--ink-faint)' }
-  return won ? { text: 'You won 🏆', color: 'var(--good)' } : { text: 'You lost', color: 'var(--coral)' }
+  if (b.winner === 'tie') return { text: 'Tie', short: 'Tie', color: 'var(--ink-faint)' }
+  return won
+    ? { text: 'You won 🏆', short: 'Won 🏆', color: 'var(--good)' }
+    : { text: 'You lost', short: 'Lost', color: 'var(--coral)' }
 }
 
 function BattleRow({ b, turn, onClick }: { b: Battle; turn: Turn; onClick: () => void }) {
@@ -568,6 +695,43 @@ function BattleRow({ b, turn, onClick }: { b: Battle; turn: Turn; onClick: () =>
   const name = other?.username ?? (b.status !== 'complete' ? b.invited : null)
   const label = outcomeLabel(b, turn)
   const mine = turn === 'yours'
+  const title = mine && b.is_welcome ? '👋 Your first battle' : name ? `@${name}` : 'Open challenge'
+
+  // Everything that isn't your move is a slim line rather than a card: same
+  // information, a third of the height. A battle waiting on somebody else is a
+  // fact to glance at, and 23 of them as full cards is the whole tab.
+  if (!mine) {
+    return (
+      <motion.button
+        whileTap={{ scale: 0.99 }}
+        onClick={onClick}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', width: '100%', minWidth: 0,
+          padding: '7px 10px', borderRadius: 12, cursor: 'pointer',
+          background: 'var(--card)', border: '1px solid var(--stroke)',
+        }}
+      >
+        {/* No `username` here on purpose: an Avatar that knows whose it is
+            renders as its own <button> (it opens the player card), and a 26px
+            second target inside a slim row is a mis-tap rather than a feature.
+            The whole line opens the battle. */}
+        <Avatar
+          emoji={other?.avatar_emoji ?? (b.status !== 'complete' ? '⏳' : '⚔️')}
+          character={other?.avatar_character}
+          size={26}
+          ring={false}
+        />
+        <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {title}
+        </span>
+        <span style={{ fontSize: 11.5, color: label.color, fontWeight: 700, flexShrink: 0 }}>
+          {label.short}
+        </span>
+        <span style={{ color: 'var(--gold)', fontFamily: 'var(--font-display)', fontSize: 15, flexShrink: 0 }}>›</span>
+      </motion.button>
+    )
+  }
+
   return (
     <motion.button
       whileTap={{ scale: 0.98 }}
@@ -575,23 +739,19 @@ function BattleRow({ b, turn, onClick }: { b: Battle; turn: Turn; onClick: () =>
       className="card"
       style={{
         display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%', minWidth: 0,
-        ...(mine ? { borderColor: 'var(--gold)', background: b.is_welcome ? 'rgba(255,210,63,0.14)' : 'rgba(255,210,63,0.08)' } : {}),
+        borderColor: 'var(--gold)', background: b.is_welcome ? 'rgba(255,210,63,0.14)' : 'rgba(255,210,63,0.08)',
       }}
     >
-      <Avatar emoji={other?.avatar_emoji ?? (b.status !== 'complete' ? '⏳' : '⚔️')} character={other?.avatar_character} size={40} ring={false} username={other?.username} />
+      <Avatar emoji={other?.avatar_emoji ?? '⏳'} character={other?.avatar_character} size={40} ring={false} username={other?.username} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <b style={{ fontWeight: 800, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {mine && b.is_welcome ? '👋 Your first battle' : name ? `@${name}` : 'Open challenge'}
+          {title}
         </b>
         <div style={{ fontSize: 12, color: label.color, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {label.text}
         </div>
       </div>
-      {mine ? (
-        <span className="pill" style={{ background: 'var(--gold)', color: '#241f0a', fontWeight: 800, fontSize: 12, flexShrink: 0 }}>Play</span>
-      ) : (
-        <span style={{ color: 'var(--gold)', fontFamily: 'var(--font-display)', fontSize: 18 }}>›</span>
-      )}
+      <span className="pill" style={{ background: 'var(--gold)', color: '#241f0a', fontWeight: 800, fontSize: 12, flexShrink: 0 }}>Play</span>
     </motion.button>
   )
 }

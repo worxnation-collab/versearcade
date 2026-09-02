@@ -7,6 +7,8 @@ import { Button } from '@/components/Button'
 import { CountUp } from '@/components/CountUp'
 import { StreakFlame } from '@/components/StreakFlame'
 import { useGame } from '@/store/game'
+import { useDailyTrivia } from '@/store/dailyTrivia'
+import { dailyTriviaBook } from '@/data/bible/questions'
 import { useAuth } from '@/store/auth'
 import { useAccountLocked } from '@/components/AccountWall'
 import { useSeason } from '@/store/season'
@@ -21,7 +23,19 @@ import { PushNudge } from '@/components/PushNudge'
 export default function ResultScreen() {
   const navigate = useNavigate()
   const juice = useJuice()
-  const { today, lastResult } = useGame()
+  const { today, todayDate, lastResult } = useGame()
+  // The other half of today. Both daily things sit level with each other on the
+  // Play tab, and this is the screen a player is on when they've just finished
+  // one of them — so it says what's left rather than letting them find out
+  // tomorrow. Loaded here because the store is device-local and this screen can
+  // be reached without the Play tab (a deep link into the run).
+  const triviaLoaded = useDailyTrivia((s) => s.loaded)
+  const loadTrivia = useDailyTrivia((s) => s.load)
+  const triviaDone = useDailyTrivia((s) => !!s.done[todayDate])
+  useEffect(() => {
+    if (!triviaLoaded) loadTrivia()
+  }, [triviaLoaded, loadTrivia])
+  const triviaBook = dailyTriviaBook(todayDate)
   const profile = useAuth((s) => s.profile)!
   const recordShare = useAuth((s) => s.recordShare)
   const isGuest = useAuth((s) => s.mode) === 'local'
@@ -89,6 +103,34 @@ export default function ResultScreen() {
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 64, lineHeight: 1 }}>
           <CountUp to={result.score} duration={1200} tickSound className="gradient-text" />
         </div>
+
+        {/* Up by the score, while the run is still the thing on screen: the
+            day's other box. It renders only while there IS one left to play —
+            a finished day says nothing here rather than showing a tick, which
+            is the same rule the map's invitations panel follows. */}
+        {!triviaDone && (
+          <motion.button
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            onClick={() => navigate('/play/trivia')}
+            className="card"
+            style={{
+              width: '100%', marginTop: 16, display: 'flex', alignItems: 'center', gap: 10,
+              textAlign: 'left', cursor: 'pointer',
+              borderColor: 'var(--sky)', background: 'rgba(93,211,255,0.10)',
+            }}
+          >
+            <span style={{ fontSize: 22, flexShrink: 0 }}>✨</span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <b style={{ display: 'block', fontSize: 14 }}>Today’s trivia is still waiting</b>
+              <span className="faint" style={{ fontSize: 12 }}>
+                Five on {triviaBook ?? 'the whole Bible'} — the book itself, not the verse.
+              </span>
+            </span>
+            <span style={{ color: 'var(--sky)', fontFamily: 'var(--font-display)', fontSize: 18 }}>→</span>
+          </motion.button>
+        )}
 
         {/* The teaching payoff: reveal what the verse actually was. */}
         <div className="card" style={{ marginTop: 18, textAlign: 'left' }}>

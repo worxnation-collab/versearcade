@@ -77,6 +77,13 @@ export default function HomeScreen() {
   const chestOpenedOn = useCollection((s) => s.chestOpenedOn)
   const loadTrivia = useDailyTrivia((s) => s.load)
   const triviaDone = useDailyTrivia((s) => !!s.done[todayDate])
+  // Today's numbers, or null for a day recorded before they were kept. Selected
+  // off the map rather than through `scoreOn` so the box re-renders the moment
+  // the round is marked.
+  const triviaScore = useDailyTrivia((s) => {
+    const v = s.done[todayDate]
+    return v && v !== true ? v : null
+  })
   const loadFirstLight = useFirstLight((s) => s.load)
   const firstLightAvailable = useFirstLight((s) => s.available)
   const tutorialSeen = useSettings((s) => s.tutorialSeen)
@@ -172,6 +179,9 @@ export default function HomeScreen() {
         <TriviaBox
           book={triviaBook}
           done={triviaDone}
+          score={triviaScore?.s}
+          correct={triviaScore?.c}
+          total={triviaScore?.t}
           countdown={formatCountdown(countdown)}
           onPlay={() => navigate('/play/trivia')}
         />
@@ -446,11 +456,17 @@ function DropBox({
 function TriviaBox({
   book,
   done,
+  score,
+  correct,
+  total,
   countdown,
   onPlay,
 }: {
   book: string | null
   done: boolean
+  score?: number
+  correct?: number
+  total?: number
   countdown: string
   onPlay: () => void
 }) {
@@ -485,9 +501,19 @@ function TriviaBox({
           >
             {label}
           </p>
-          {/* No score is kept and none is shown. The round pays a relic roll and
-              a step on the road and nothing rankable — so there is nothing here
-              to beat, including your own past self. */}
+          {/* The same two numbers the drop box shows, for the same reason: a
+              round that ends with no record of how it went reads as though it
+              didn't count. They are TODAY'S round and nothing else — no best,
+              no history, no total — so there is still nothing here to be behind
+              on, including your own past self. A day recorded before the numbers
+              were kept simply has none, and says so with a dash. */}
+          {(score !== undefined || correct !== undefined) && (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 10 }}>
+              <Stat label="Score" value={score?.toLocaleString() ?? '—'} />
+              <Stat label="Correct" value={correct !== undefined ? `${correct}/${total}` : '—'} />
+            </div>
+          )}
+
           <p className="faint" style={{ marginTop: 10, fontSize: 11.5, flex: 1 }}>
             New book in <b style={{ color: 'var(--sky)' }}>{countdown}</b>
           </p>

@@ -1278,15 +1278,16 @@ deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
 The latest is `0095` (the founding patron becomes the rock — `cephas` replaces
-the whale, plus the Cornerstone card), **NOT YET APPLIED**. Apply it before the
-client merges, as this section demands: without it a Stripe purchase of `cephas`
-comes back `bad_skin` and takes money for nothing, and `enforce_skin_entitlement`
-strips the id from any grant. When applying, verify rather than assume — the
-protected list must read THIRTEEN names (0088's twelve plus `cephas`, checked
-name by name; the wholesale-restate trap this file warns about), `fulfill_skin`
-must still be `{postgres,service_role}` after the replace, `set_card_background`
-must refuse `patron_cornerstone` for an account owning neither patron skin, and
-the backfill's row count should equal the number of accounts holding `whale`.
+the whale, plus the Cornerstone card), APPLIED on 2026-09-02 before the client
+merged, and verified rather than assumed: the protected list in
+`enforce_skin_entitlement` reads THIRTEEN names (0088's twelve plus `cephas`,
+checked name by name — the wholesale-restate trap this file warns about);
+`fulfill_skin`'s ACL still reads `{postgres,service_role}` after the replace,
+with `whale` kept in its allowlist so a late webhook retry still settles;
+`set_card_background` gates `patron_cornerstone` on owning EITHER patron skin;
+and the backfill granted `cephas` to every `whale` holder (one account, no
+`whale` left without it) through `grant_skins`, so the Sales tab shows no
+`manual` row for it.
 
 Before it, `0094` (battle modes — verse or trivia), APPLIED on 2026-09-01
 and verified: exactly ONE `create_battle` signature after the drop-and-recreate,

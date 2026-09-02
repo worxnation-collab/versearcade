@@ -266,7 +266,7 @@ export interface SkinDef {
    *            the shop, no limitedUntil — road skins are permanent for their
    *            owners and simply never return for anyone else.
    * 'paid'   = an entitlement in owned_skins. As of the de-monetisation this is
-   *            the founding-patron whale plus the promo-code exclusives, and
+   *            the founding-patron skin plus the promo-code exclusives, and
    *            nothing else should ever join them without a very good reason.
    */
   source: 'free' | 'earned' | 'paid' | 'pass'
@@ -286,6 +286,28 @@ export interface SkinDef {
   price?: string // paid: display "from" price (pay-what-you-want; no real IAP yet)
   patron?: boolean // paid: high-tier supporter reward
   exclusive?: boolean // paid: unlocked by a promo code (redeem), not for sale
+  /**
+   * paid: WITHDRAWN FROM SALE, and kept in the catalog only so its buyers keep
+   * wearing it. A retired skin is invisible to anyone who doesn't own one
+   * (`skinVisible`), has no price and no checkout in either store, and is
+   * excluded from `pricedOnShelf` — so it is exactly as much a storefront as a
+   * promo-code exclusive is, which is to say none.
+   *
+   * It is NOT the same thing as `limitedUntil`. An expired skin vanishes for
+   * its OWNERS too, which is the right shape for "a limited edition closed" and
+   * the wrong one for "we sell something else now": the buyer's side of the
+   * bargain hasn't changed. Retiring hides the offer and keeps the look.
+   */
+  retired?: boolean
+  /**
+   * paid: an OLDER entitlement id that also grants this skin. The founding
+   * patron changed product (whale → cephas) and the people who already paid for
+   * it must never be asked to pay again — `patronOffer` reads `skinOwned`, so
+   * without this a patron who hadn't yet restored would be shown the checkout.
+   * Migration 0095 backfills the same grant server-side; this is the half that
+   * works before the backfill lands and on a device that never calls Restore.
+   */
+  supersedes?: string
   limitedUntil?: string // limited edition: ISO date after which it vanishes for good
   /** pass: a reactive skin with numbered states (ruth_1..ruth_N). The unlock
    *  ids are `skin_<id>_<n>`; the equipped skinId carries the state so every
@@ -465,16 +487,51 @@ export const FULL_SKINS: SkinDef[] = [
     source: 'pass',
     blurb: 'Six wings and a live coal — the burning one of Isaiah 6.',
   },
+  // ——— The founding patron ———
+  // The app's one product. It was Jonah's whale and is now Cephas, and the
+  // reason for the swap is that the whale said nothing about what the money
+  // does: it was a nice animal with a crown on. "You are Peter, and on this
+  // rock I will build my church" is the same sentence a founding patron is
+  // actually buying — they are the foundation this thing stands on — so the
+  // skin, the card background and the copy on /you all say one thing now.
+  //
+  // NO `limitedUntil`, deliberately, and it is the one place this catalog
+  // breaks with the launch skins. An expired skin vanishes for its owners too
+  // (see `skinExpired` and the filter in CustomizeSection); a foundation that
+  // disappears out from under the people who paid for it is a bad joke rather
+  // than a limited edition. It also means the shop no longer retires itself on
+  // LIMITED_UNTIL — that constant now only governs 'shades'. Both halves of
+  // that are decisions, written down here and in CLAUDE.md rather than left to
+  // be rediscovered.
+  {
+    id: 'cephas',
+    name: 'Cephas',
+    source: 'paid',
+    pack: 'patron',
+    packName: 'Founding Patron',
+    price: '$9.99',
+    patron: true,
+    supersedes: 'whale',
+    blurb:
+      'The Rock — “on this rock I will build my church.” Peter with the keys, standing on the bedrock. The founding-patron look.',
+  },
   {
     id: 'whale',
     name: 'Jonah’s Whale',
     source: 'paid',
     pack: 'patron',
     packName: 'Founding Patron',
-    price: '$9.99',
-    patron: true,
-    limitedUntil: LIMITED_UNTIL,
-    blurb: 'A whale of a thank-you — the founding-supporter skin.',
+    // RETIRED, not deleted, and not expired. It was the founding-patron skin
+    // until Cephas replaced it; the people who bought it keep wearing it, and
+    // nobody else is ever shown it. So: no `price` (there is no checkout for it
+    // in either store), no `patron` flag (the support card asks about
+    // PATRON_SKU, which is Cephas now), and `limitedUntil` is GONE — it would
+    // have deleted the skin out of its buyers' wardrobes on 2026-10-12, which
+    // was defensible while it was still being advertised as a limited edition
+    // and is indefensible now that it is only theirs. They also get Cephas:
+    // `supersedes` above, and the backfill in migration 0095.
+    retired: true,
+    blurb: 'A whale of a thank-you — the original founding-supporter skin.',
   },
   {
     id: 'eden',
@@ -784,7 +841,15 @@ export function skinOwned(
     if (skin.winGoal != null) return (ctx.battleWins ?? 0) >= skin.winGoal
     return distinctSharedDays(ctx.sharedDays) >= (skin.shareGoal ?? Number.MAX_SAFE_INTEGER)
   }
-  return (ctx.ownedSkins ?? []).includes(skin.id)
+  const owned = ctx.ownedSkins ?? []
+  // A replaced product is still a paid-for one. Cephas `supersedes` the whale,
+  // so somebody who bought the founding patron before the swap owns the new
+  // look by the row they already have — the same reasoning that makes the
+  // `pass` branch above fall back to owned_skins for the angels. Without it the
+  // support card would read "not owned" and put a checkout in front of a person
+  // who has already paid, which is the one thing that card must never do.
+  if (skin.supersedes && owned.includes(skin.supersedes)) return true
+  return owned.includes(skin.id)
 }
 
 /**

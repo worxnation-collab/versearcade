@@ -238,12 +238,22 @@ export function CustomizeSection() {
   // Cosmetics aren't sold any more — the launch trio is free, the angels are
   // road rewards and the promo skins are free redemptions — so the copy under
   // the grid only mentions money while a listing that still HAS a price is
-  // actually on screen. That's the founding-patron whale, and it expires; the
-  // filters below are the same ones the grid itself uses, so the sentence and
-  // the tile appear and disappear together.
+  // actually on screen. That's the founding patron; the filters below are the
+  // same ones the grid itself uses, so the sentence and the tile appear and
+  // disappear together. `retired` is excluded for the same reason `exclusive`
+  // is — a patron's whale is still on their shelf and carries no price, so
+  // counting it would put a sentence about money under a grid that isn't
+  // selling anything.
   const pricedOnShelf =
     storefrontEnabled() &&
-    allSkins().some((sk) => sk.source === 'paid' && !sk.exclusive && !skinExpired(sk) && skinVisible(sk, isSkinOwned(sk)))
+    allSkins().some(
+      (sk) =>
+        sk.source === 'paid' &&
+        !sk.exclusive &&
+        !sk.retired &&
+        !skinExpired(sk) &&
+        skinVisible(sk, isSkinOwned(sk)),
+    )
   const onSkinTap = (skin: SkinDef) => {
     const owned = isSkinOwned(skin)
     if (!owned && skin.source === 'pass') {
@@ -278,7 +288,11 @@ export function CustomizeSection() {
       // is no sheet to open (see lib/commerce). The tile is already hidden
       // there; this is the second lock on the same door.
       if (skin.exclusive) { setRedeemMsg(null); setRedeemTarget(skin) }
-      else if (storefrontEnabled()) {
+      // A retired skin has no checkout in either store. `skinVisible` already
+      // hides its tile from anyone who doesn't own one, so this is the second
+      // lock on the same door — the one that matters if a future surface ever
+      // renders the catalog without asking commerce.ts first.
+      else if (!skin.retired && storefrontEnabled()) {
         const bundle = skin.bundleOnly ? BUNDLES.find((b) => b.id === skin.pack) : undefined
         if (bundle) setBundleTarget(bundle)
         else setBuyTarget(skin)

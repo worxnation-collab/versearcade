@@ -21,6 +21,7 @@ must never be written into a tracked file.
 | `library.json` | the Study tab (a library), the librarian in it, and the satchel on its floor | `public/keep/study-library.jpg`, `public/keep/study_satchel.png`, `public/skins/librarian.png` |
 | `skins-porchlight.json` | the Porchlight creator-collab skin (curls, cream knit, ukulele) | `public/skins/porchlight.png` |
 | `arcade.json` | the backdrops of the three arcade machines — the wilderness, the blank page, the workshop wall | `public/arcade/arcade_*.jpg` |
+| `skins-patron.json` | Cephas, the founding-patron skin — Peter with the keys, standing on the bedrock | `public/skins/cephas.png` |
 
 **Check what came back**, every time:
 

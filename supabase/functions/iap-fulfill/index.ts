@@ -63,7 +63,15 @@ const SKU_BY_PRODUCT_ID: Record<string, string> = {
   'com.versearcade.app.skin_moses': 'moses',
   'com.versearcade.app.skin_esther': 'esther',
   'com.versearcade.app.skin_elijah': 'elijah',
-  'com.versearcade.app.patron_founding': 'whale',
+  // The founding patron. The SKU here changed from 'whale' to 'cephas' when the
+  // rock replaced the whale, while the PRODUCT ID stayed — it is already
+  // approved, so the new skin went on sale with no submission (see the note in
+  // src/lib/iap.ts). This is therefore the one row in this map that was EDITED
+  // rather than added, and doing so is safe for the reason the paragraph above
+  // gives backwards: a whale buyer who restores is granted 'cephas' and keeps
+  // 'whale', because grant_skins unions and never removes. Migration 0095 gives
+  // every existing whale owner the same grant without waiting for a restore.
+  'com.versearcade.app.patron_founding': 'cephas',
 }
 
 const json = (body: unknown, status = 200) =>

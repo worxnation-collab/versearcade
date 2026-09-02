@@ -48,7 +48,7 @@ field, and its `source` union deliberately excludes `'paid'`. Whether this app
 may sell anything lives in `lib/commerce.ts` and nowhere else (see CLAUDE.md); a
 price in a row an operator can edit is a storefront that skipped review, which
 is against the rules in every storefront but the US one. This is also mostly
-moot now — cosmetics aren't sold at all, the founding-patron whale excepted.
+moot now — cosmetics aren’t sold at all, the founding patron (`cephas`) excepted.
 
 ## The three rules
 

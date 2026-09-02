@@ -41,8 +41,28 @@ export const REVENUECAT_IOS_KEY = import.meta.env.VITE_REVENUECAT_IOS_KEY || ''
  * (fail-closed) shows up as a missing tile rather than a crash.
  */
 export const APPLE_PRODUCT_IDS: Record<string, string> = {
-  whale: 'com.versearcade.app.patron_founding',
+  cephas: 'com.versearcade.app.patron_founding',
 }
+
+// THE SKU CHANGED AND THE PRODUCT ID DID NOT, on purpose. The founding patron
+// is the rock now rather than the whale, and this map is what says "the thing
+// Apple already approved is the thing we now sell". Three consequences worth
+// knowing before anyone tidies it:
+//
+//   * the new skin is purchasable in EVERY approved build the moment this JS
+//     ships, with no App Store submission. A new product id would instead mean
+//     creating the IAP, waiting on review, and — because commerce.ts fails
+//     closed — hiding the support card from every iOS user until it cleared.
+//   * nothing here is user-visible. `IapProduct` keeps only the sku, the
+//     product id and Apple's localized `priceString`; StoreKit's own display
+//     name is dropped at the mapping below and never rendered. Every word a
+//     player reads comes from data/avatar. The one place Apple's text does
+//     appear is its own purchase sheet and the receipt, which is why the IAP's
+//     display name in App Store Connect wants to read "Founding Patron" — a
+//     name that outlives whichever skin the patron currently gets.
+//   * `iap-fulfill` maps the same product id to 'cephas' server-side, so a
+//     patron who taps Restore is granted the rock. Their existing whale row is
+//     untouched: grants are a union, and nobody loses what they bought.
 
 // The four products that used to be here — pack_angels, skin_moses,
 // skin_esther, skin_elijah — are gone with the de-monetisation. Removing them

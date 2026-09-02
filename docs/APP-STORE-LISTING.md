@@ -110,6 +110,18 @@ Start your streak today. It's one verse.
 > against the change rather than by anything automatic, and nothing in CI checks
 > it.
 >
+> **The founding-patron skin swap (whale → Cephas) deliberately took NO space
+> here, and that is a judgement rather than an oversight.** What's New is for
+> what a player can now DO, and nothing they do changed: the app's one product
+> costs the same $9.99, buys the same kind of thing (a look — now a skin plus the
+> Cornerstone card background), and every existing patron keeps the whale and is
+> given the rock. There is no bullet worth 200 characters of a 4,000-character
+> budget in "the optional thank-you looks different". Two things it DOES need,
+> neither of them here: migration `0095` applied before this merges, and the IAP's
+> display name in App Store Connect read (and, if it names the whale, changed to
+> "Founding Patron" — a metadata edit that goes to review while the approved
+> version stays on sale, so there is no gap).
+>
 > 86 characters of headroom is not a reprieve — the next feature is in exactly the
 > same position. The remaining honest cuts are **live battles** and **the weekly
 > church rivalry**, if the check below shows they shipped in 1.2.0 already. That

@@ -42,6 +42,22 @@ typo means the product silently never loads and its tile stays hidden:
 | `com.versearcade.app.skin_elijah` | Elijah skin | $2.99 | "From $2.99" |
 | `com.versearcade.app.patron_founding` | Founding Patron | $9.99 | `$9.99` |
 
+**The last row is the only one still on sale, and its product id outlives the
+skin it grants.** It sold Jonah's whale and now sells `cephas` (the rock) plus
+the Cornerstone card background — the sku in `APPLE_PRODUCT_IDS` changed, the
+product id deliberately did not, because an approved product puts the new skin on
+sale in every build already on a phone with no submission. Two consequences:
+
+- **Name it for the tier, not the skin.** The reference name and, more
+  importantly, the *display name* a buyer sees on Apple's purchase sheet should
+  read "Founding Patron". If it currently names the whale, edit it — an IAP
+  metadata change goes to review while the approved version stays purchasable,
+  so there is no gap in sales. Nothing else Apple holds is user-visible: the app
+  reads only `priceString` off a StoreKit product and drops its display name.
+- **`iap-fulfill`'s map is what a purchase is WORTH.** That product id maps to
+  `cephas` there, so a patron who taps Restore is granted the rock; their whale
+  row is untouched, because grants union and never remove.
+
 Two deliberate changes from the web catalog, both forced by Apple's pricing
 model:
 

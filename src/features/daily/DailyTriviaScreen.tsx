@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
+import { CountUp } from '@/components/CountUp'
 import { FavoriteButton } from '@/components/FavoriteButton'
 import { QuizRunner } from '@/features/daily/QuizRunner'
 import { dailyTriviaBook, dailyTriviaFor } from '@/data/bible/questions'
@@ -36,13 +37,21 @@ import type { PlayResult } from '@/types'
 export default function DailyTriviaScreen() {
   const navigate = useNavigate()
   const todayDate = useGame((s) => s.todayDate)
+  const playedVerse = useGame((s) => s.playedToday)
+  const todayVerse = useGame((s) => s.today)
   const load = useDailyTrivia((s) => s.load)
+  const loadToday = useGame((s) => s.loadToday)
   const markPlayed = useDailyTrivia((s) => s.markPlayed)
   const [result, setResult] = useState<PlayResult | null>(null)
 
   useEffect(() => {
     load()
-  }, [load])
+    // A deep link straight here never touched the Play tab, so the drop's
+    // played flag is still its `false` default — and the nudge below would
+    // announce a verse the player finished this morning. Reading it is what
+    // makes that nudge honest.
+    if (!todayVerse) void loadToday()
+  }, [load, loadToday, todayVerse])
 
   const book = useMemo(() => dailyTriviaBook(todayDate), [todayDate])
   const verse = useMemo(() => dailyTriviaFor(todayDate), [todayDate])
@@ -56,14 +65,17 @@ export default function DailyTriviaScreen() {
         studyDrop
         runId={`daily-trivia:${todayDate}`}
         onComplete={async (r) => {
-          markPlayed(todayDate)
+          // The numbers ride with the flag so the Play tab's box can say how
+          // the round went, the way the drop box beside it does. Device-local,
+          // today's round only — see the header in `store/dailyTrivia.ts`.
+          markPlayed(todayDate, { s: r.score, c: r.correctCount, t: r.totalQuestions })
           setResult(r)
         }}
       />
     )
   }
 
-  const { correctCount, totalQuestions } = result
+  const { score, correctCount, totalQuestions } = result
 
   // Your own number against your own round, and nothing else. No best, no
   // percentage against anybody, nothing shareable — the same rule the library's
@@ -84,7 +96,11 @@ export default function DailyTriviaScreen() {
         style={{ textAlign: 'center', margin: '10px 0 16px' }}
       >
         <div style={{ fontSize: 52 }}>✨</div>
-        <h1 className="gradient-text" style={{ fontSize: 28, marginTop: 4 }}>
+        <p className="dim" style={{ marginTop: 2 }}>You scored</p>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 52, lineHeight: 1 }}>
+          <CountUp to={score} duration={1000} className="gradient-text" />
+        </div>
+        <h1 style={{ fontSize: 20, marginTop: 6 }}>
           {correctCount}/{totalQuestions} on {book ?? 'the whole Bible'}
         </h1>
         <p className="dim" style={{ marginTop: 4, lineHeight: 1.4 }}>
@@ -93,6 +109,35 @@ export default function DailyTriviaScreen() {
             : 'The ones you missed came with their answers — that’s the whole point of them.'}
         </p>
       </motion.div>
+
+      {/* The other half of today. The two daily things sit level with each other
+          on the Play tab, so each one's recap points at the other while it's
+          still open — a player who finished one has no other reason to learn the
+          other exists today. It renders only when there IS something left to
+          do, so a finished day says nothing rather than showing a tick. */}
+      {!playedVerse && (
+        <motion.button
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          onClick={() => navigate('/play/run')}
+          className="card"
+          style={{
+            width: '100%', display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left',
+            marginBottom: 14, cursor: 'pointer',
+            borderColor: 'var(--gold)', background: 'rgba(255,210,63,0.10)',
+          }}
+        >
+          <span style={{ fontSize: 22, flexShrink: 0 }}>✦</span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <b style={{ display: 'block', fontSize: 14 }}>Today’s verse is still waiting</b>
+            <span className="faint" style={{ fontSize: 12 }}>
+              {todayVerse?.reference ? `${todayVerse.reference} — the drop everyone’s playing.` : 'The drop everyone’s playing.'}
+            </span>
+          </span>
+          <span style={{ color: 'var(--gold)', fontFamily: 'var(--font-display)', fontSize: 18 }}>→</span>
+        </motion.button>
+      )}
 
       {/* The verse the round was read on. It is why this isn't a pub quiz. */}
       <div className="card" style={{ textAlign: 'left' }}>

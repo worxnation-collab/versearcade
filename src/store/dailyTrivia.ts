@@ -19,8 +19,14 @@ import { useAuth } from './auth'
 //    on — already follows the account: `QuizRunner` marks it studied through
 //    `store/bible.ts` (`bible_marks` online, `va.bible.*` for a guest).
 //
-// So all this decides is whether today's box says "play" or "done". Syncing it
-// would mean a table, an RPC and a hand-applied migration for that.
+// So all this decides is whether today's box says "play" or "done", and what
+// numbers that box shows back. Syncing it would mean a table, an RPC and a
+// hand-applied migration for that.
+//
+// The stored numbers are TODAY'S ROUND and nothing else: a score, a count, a
+// total. No best, no history, no total-rounds — the box says how you did on the
+// round you just played, exactly as the drop box beside it does, and there is
+// still nothing here to be behind on.
 //
 // If it ever should follow the account, the shape to use is the house one: a
 // `daily_trivia(user_id, played_on)` table plus a security-definer
@@ -32,8 +38,21 @@ function key(): string {
   return uid ? `va.dailytrivia.${uid}` : 'va.dailytrivia.guest'
 }
 
-/** local date → the round for that date is finished. */
-type Done = Record<string, true>
+/** What a finished round scored. `s`core, `c`orrect, `t`otal. */
+export interface TriviaScore {
+  s: number
+  c: number
+  t: number
+}
+
+/**
+ * local date → the round for that date is finished.
+ *
+ * `true` is the pre-score shape and still reads: every day recorded before the
+ * box started showing numbers stays "done" and simply has none to show. Don't
+ * drop it — the map lives on the device, so those entries are still out there.
+ */
+type Done = Record<string, true | TriviaScore>
 
 function read(): Done {
   try {
@@ -42,6 +61,10 @@ function read(): Done {
   } catch {
     return {}
   }
+}
+
+function isScore(v: true | TriviaScore | undefined): v is TriviaScore {
+  return !!v && v !== true && typeof v.s === 'number' && typeof v.c === 'number' && typeof v.t === 'number'
 }
 
 function write(done: Done) {
@@ -57,8 +80,10 @@ interface DailyTriviaState {
   done: Done
   loaded: boolean
   load: () => void
-  markPlayed: (localDate: string) => void
+  markPlayed: (localDate: string, score?: TriviaScore) => void
   playedOn: (localDate: string) => boolean
+  /** How that day's round went, or null for a day recorded before scores were. */
+  scoreOn: (localDate: string) => TriviaScore | null
 }
 
 export const useDailyTrivia = create<DailyTriviaState>((set, get) => ({
@@ -69,20 +94,28 @@ export const useDailyTrivia = create<DailyTriviaState>((set, get) => ({
     set({ done: read(), loaded: true })
   },
 
-  markPlayed(localDate) {
+  markPlayed(localDate, score) {
     if (!localDate) return
     // Merge onto what's on DISK, not onto in-memory state. A round can finish
     // before anything called load() (a deep link straight to /play/trivia, or a
     // reload mid-run), and merging onto an empty map would write that back and
     // erase every other day. Same trap as store/bookAccuracy.ts:record.
     const base = get().loaded ? get().done : read()
+    // A replay of a day already recorded doesn't overwrite it. The first run is
+    // the day's round; anything after it is practice, and letting a second go
+    // rewrite the number would turn the box into a personal best to beat.
     if (base[localDate]) return
-    const next = { ...base, [localDate]: true as const }
+    const next = { ...base, [localDate]: score ?? (true as const) }
     set({ done: next, loaded: true })
     write(next)
   },
 
   playedOn(localDate) {
     return !!get().done[localDate]
+  },
+
+  scoreOn(localDate) {
+    const v = get().done[localDate]
+    return isScore(v) ? v : null
   },
 }))

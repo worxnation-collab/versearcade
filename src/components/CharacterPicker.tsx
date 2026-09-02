@@ -7,7 +7,10 @@ import {
   SKINS,
   ROBES,
   accessOwned,
+  equippedSkinId,
   figureOf,
+  isOverlaySkin,
+  skinById,
   type Swatch,
 } from '@/data/avatar'
 import { GENERATED_ART } from '@/data/generatedArt'
@@ -32,6 +35,7 @@ export function CharacterPicker({
   showRobe = false,
   longestStreak = 0,
   admin = false,
+  onRemoveSkin,
 }: {
   value: AvatarSpec
   onChange: (spec: AvatarSpec) => void
@@ -44,10 +48,24 @@ export function CharacterPicker({
   showRobe?: boolean
   longestStreak?: number
   admin?: boolean
+  /** Given, a worn full skin can be taken off from right here — the one control
+   *  that's worth keeping when the rest of the picker has nothing to say. The
+   *  sign-up flow never passes it: nothing is equipped at the door. */
+  onRemoveSkin?: () => void
 }) {
   const juice = useJuice()
   const figure = figureOf(value)
   const hairKey = value.hair ?? 'espresso'
+  // A full skin REPLACES the figure (Character.tsx renders its art instead of
+  // the starter render), so while one is worn the figure, tone and hair rows
+  // are three controls that visibly do nothing — you tap a swatch and Moses
+  // doesn't change. They're hidden rather than dimmed: the character underneath
+  // is untouched and comes straight back when the skin comes off, so there is
+  // nothing here to explain with a padlock. An OVERLAY skin (the carried cross)
+  // layers onto your own character instead of replacing it, so it keeps them.
+  const wornSkinId = equippedSkinId(value)
+  const wornSkin = wornSkinId && !isOverlaySkin(wornSkinId) ? skinById(wornSkinId) : null
+  const covered = !!wornSkinId && !isOverlaySkin(wornSkinId)
 
   // The base character is a raster render per (figure, tone, hair) — see
   // Character.tsx — so a tap on a swatch swaps to a PNG the browser may not
@@ -90,6 +108,24 @@ export function CharacterPicker({
         </motion.div>
       </div>
 
+      {covered ? (
+        <div style={{ textAlign: 'center' }}>
+          <p className="dim" style={{ fontSize: 13, lineHeight: 1.5, margin: 0 }}>
+            You’re wearing <b>{wornSkin?.name ?? 'a full look'}</b>. Your own character is underneath,
+            exactly as you made it — take the look off and it’s back.
+          </p>
+          {onRemoveSkin && (
+            <button
+              className="pill"
+              onClick={() => { juice.select?.(); onRemoveSkin() }}
+              style={{ marginTop: 10, fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}
+            >
+              Take it off
+            </button>
+          )}
+        </div>
+      ) : (
+      <>
       {/* Male / female */}
       <div>
         <RowLabel>Figure</RowLabel>
@@ -133,6 +169,8 @@ export function CharacterPicker({
             owned={(s) => accessOwned(s.access, longestStreak, admin)}
           />
         </div>
+      )}
+      </>
       )}
     </div>
   )

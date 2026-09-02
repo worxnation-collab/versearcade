@@ -121,9 +121,10 @@ const PACK: CardBgDef[] = [
   // the whale buyers get the cornerstone too, without a second rule. The server
   // says the same thing in 0095's set_card_background; keep the two in sync.
   //
-  // No webp ships with it and that is not an omission: CardBg falls back to the
-  // drawn `stone` scene when the image 404s, so the card is complete from the
-  // first render and a painting can land later without touching this file.
+  // `/cards/patron_cornerstone.webp` is a Nano Banana painting (the first stone
+  // of a building not yet risen, one gold vein, dusk), cut to the same 1040x520
+  // as the rest of the shelf. CardBg still falls back to the drawn `stone`
+  // scene if the image 404s, so the card is complete either way.
   {
     key: 'patron_cornerstone',
     name: 'The Cornerstone',

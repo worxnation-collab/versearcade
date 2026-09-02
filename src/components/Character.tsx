@@ -42,6 +42,22 @@ const M_WOOD = '#7A5A34'
 const M_STONE = '#B9BBB1'
 const M_STONE_LINE = '#7E827A'
 
+// Cephas palette — Peter on the rock, the founding-patron skin.
+// Sea blue for the fisherman he was, sand for the tunic, gold for the two
+// things that have to survive a 44px avatar circle: the keys and the seam in
+// the bedrock he stands on.
+const P_CLOAK = '#2F5D86'
+const P_CLOAK_SHADE = '#24496B'
+const P_TUNIC = '#CDBA92'
+const P_TUNIC_SHADE = '#AC9A74'
+const P_SKIN = '#C08A5E'
+const P_HAIR = '#5A4E45'
+const P_BEARD = '#7B6E62'
+const P_GOLD = '#DCAB3A'
+const P_GOLD_DARK = '#9E7716'
+const P_ROCK = '#CFC9BA'
+const P_ROCK_SHADE = '#A29B8B'
+
 // David palette — the shepherd-king as a youthful giant-slayer
 const D_TUNIC = '#A65A3C'
 const D_TUNIC_SHADE = '#8C4A30'
@@ -412,6 +428,87 @@ export function Character({
 
           {/* gloved hand resting on the pommel */}
           <ellipse cx="43" cy="70" rx="3.6" ry="4.4" fill={ROBE_WHITE} stroke={ROBE_SHADE} strokeWidth="0.8" />
+        </>
+      ) : skinId === 'cephas' ? (
+        <>
+          {/* ── Cephas — Peter on the rock, the founding patron ──
+              The drawn floor under art/skins-patron.json. Composed so the two
+              things that carry the meaning survive the avatar crop: the keys
+              sit at chest height rather than down at a hip, and the bedrock
+              keeps a gold seam so the slab reads as cut stone and not as a
+              shadow at 44px. */}
+
+          {/* the bedrock he stands on — cut block, not a boulder */}
+          <path d="M24 150 L96 150 L100 166 L20 166 Z" fill={P_ROCK} />
+          <path d="M24 150 L96 150 L97.4 155.5 L22.6 155.5 Z" fill="#DED9CC" />
+          <path d="M20 166 L100 166 L98.6 160.5 L21.4 160.5 Z" fill={P_ROCK_SHADE} opacity="0.55" />
+          {/* the seam of gold through it */}
+          <path d="M27 158 L44 156 L58 159 L74 156.5 L93 158.5" stroke={P_GOLD} strokeWidth="1.4" fill="none" opacity="0.85" strokeLinecap="round" />
+          {/* chisel marks */}
+          <path d="M35 151.5 v3 M62 151.5 v3 M84 151.5 v3" stroke={P_ROCK_SHADE} strokeWidth="0.8" opacity="0.7" />
+
+          {/* feet, planted */}
+          <ellipse cx="52" cy="149" rx="6" ry="3.4" fill={P_TUNIC_SHADE} />
+          <ellipse cx="69" cy="149" rx="6" ry="3.4" fill={P_TUNIC_SHADE} />
+
+          {/* tunic */}
+          <path d="M44 68 Q60 63 76 68 L82 148 L38 148 Z" fill={P_TUNIC} />
+          <path d="M60 74 L60 146" stroke={P_TUNIC_SHADE} strokeWidth="1.2" opacity="0.45" />
+          <path d="M49 86 L45 146 M71 86 L75 146" stroke={P_TUNIC_SHADE} strokeWidth="0.8" opacity="0.4" />
+          {/* belt */}
+          <rect x="42" y="104" width="36" height="6" rx="2" fill="#8A6A44" />
+
+          {/* the fisherman's cloak, over one shoulder and down the back */}
+          <path d="M40 68 Q60 62 80 68 L86 120 Q74 126 72 118 L74 82 Q60 76 46 82 L48 118 Q46 126 34 120 Z" fill={P_CLOAK} />
+          <path d="M40 68 Q60 62 80 68 L79 76 Q60 70 41 76 Z" fill={P_CLOAK_SHADE} />
+          <path d="M36 112 Q46 118 48 112" stroke={P_CLOAK_SHADE} strokeWidth="1" fill="none" opacity="0.6" />
+
+          {/* sleeves. The right one is a path rather than a rect because that
+              arm is RAISED to hold the keys — a straight sleeve left the hand
+              floating four units clear of the cuff, which at hero size read as
+              a skin-coloured ball rather than a hand. Found by looking at it. */}
+          <rect x="36" y="72" width="9" height="31" rx="4.5" fill={P_CLOAK} />
+          <path d="M75.5 73 L84.5 73 L87.4 94.5 L78.6 96.5 Z" fill={P_CLOAK} />
+          <path d="M78.6 96.5 L87.4 94.5 L86.8 90 L78 92 Z" fill={P_CLOAK_SHADE} opacity="0.5" />
+
+          {/* THE KEYS OF THE KINGDOM — held up in his right hand, on one ring.
+              Two of them, crossing, because "keys" is plural in Matthew 16:19
+              and a single key reads as a house key. */}
+          <circle cx="86" cy="99" r="4.6" fill="none" stroke={P_GOLD} strokeWidth="2" />
+          <circle cx="86" cy="99" r="4.6" fill="none" stroke={P_GOLD_DARK} strokeWidth="0.6" />
+          <g stroke={P_GOLD} strokeLinecap="round" fill="none">
+            {/* first key: ring, shaft, wards */}
+            <circle cx="93" cy="107" r="4" strokeWidth="2.4" />
+            <path d="M95.5 110.2 L103 119" strokeWidth="2.4" />
+            <path d="M99.5 114.6 L102.4 112.2 M101.8 117.2 L104.6 114.8" strokeWidth="2" />
+            {/* second key, crossing behind it */}
+            <circle cx="84" cy="109" r="3.4" strokeWidth="2.2" />
+            <path d="M86.4 111.6 L93.5 120.5" strokeWidth="2.2" />
+            <path d="M90 116 L92.8 113.8" strokeWidth="1.8" />
+          </g>
+          {/* NO HANDS ARE DRAWN, and that is this set's convention rather than
+              an omission — Moses's staff meets his sleeve the same way. Two
+              attempts at a hand here produced a skin-coloured disc: on the cuff
+              it read as a ball being held, below it as a ball floating clear of
+              the arm. The ring overlaps the cuff instead, which is what makes
+              the keys read as carried. Both versions looked fine in the diff. */}
+
+          {/* neck + head */}
+          <rect x="55" y="56" width="10" height="10" rx="3" fill={P_SKIN} />
+          <circle cx="60" cy="50" r="12" fill={P_SKIN} />
+          {/* hair — receding, and drawn as a band that stays ON the head. Never
+              let it drop past the widest point of the circle: on the drawn
+              figures that reads as headphones at small sizes (see the starter
+              character's own note). */}
+          <path d="M47.6 51 a12.4 12.4 0 0 1 24.8 0 l-3.6 0 a8.9 8.9 0 0 0-17.6 0 z" fill={P_HAIR} />
+          {/* THE BEARD ENDS AT THE COLLAR, and that is a correction rather than
+              a style. It first ran to y=86 — Moses's length — which is fine in
+              his pale grey against a dark robe and became, in this darker grey
+              over a sand tunic, a bib covering half the chest. It is shorter,
+              narrower and lighter here for that reason: at hero size it has to
+              read as a beard, not as a shadow. */}
+          <path d="M50.5 55 Q52 67 60 73 Q68 67 69.5 55 Q60 61.5 50.5 55 Z" fill={P_BEARD} />
+          <path d="M53.5 57.5 Q60 62 66.5 57.5 Q60 66 53.5 57.5 Z" fill="#4E443C" opacity="0.45" />
         </>
       ) : skinId === 'whale' ? (
         <>

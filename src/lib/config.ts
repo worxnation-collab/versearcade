@@ -103,11 +103,27 @@ export const SUPPORT_URL = import.meta.env.VITE_SUPPORT_URL || ''
 //
 // ONE ENTRY, and that is the whole shop now. Cosmetics are no longer sold:
 // Moses, Esther and Elijah are free, the angels are road rewards, and the
-// founding-patron whale is the only thing left with a price on it. Their old
+// founding patron is the only thing left with a price on it. Their old
 // Payment Links are deleted rather than commented out — a live link with no
 // product behind it is a way to take somebody's money for nothing.
+//
+// THE LINK IS THE SAME ONE THE WHALE USED, AND THAT IS CORRECT. A Payment Link
+// is a price, not a product: what a payment GRANTS is decided by
+// `client_reference_id` ("<username>-<skinId>", see lib/checkout) and resolved
+// by fulfill_skin, so this one now settles as 'cephas'. Reusing it is what
+// keeps web sales unbroken the minute this merges — a new link would mean a
+// window with the patron card hidden (no URL ⇒ `patronOffer` returns 'hidden').
+// What DOES need doing by hand, once, is renaming the product in the Stripe
+// dashboard: the name on the checkout page is Stripe's, not ours, and it is the
+// one place a buyer would still be told they are buying a whale. Same price,
+// same link, no code change.
+//
+// The old `whale` key is gone with the retirement. Nothing asks for it — the
+// support card asks for PATRON_SKU and the Skins grid never opens a checkout
+// for a retired skin — and leaving a live $9.99 link keyed to a withdrawn
+// product is exactly the "take somebody's money for nothing" case above.
 export const SKIN_BUY_URLS: Record<string, string> = {
-  whale: import.meta.env.VITE_BUY_WHALE || 'https://buy.stripe.com/9B6fZh1Uk1lHdzC2Wda3u06',
+  cephas: import.meta.env.VITE_BUY_CEPHAS || 'https://buy.stripe.com/9B6fZh1Uk1lHdzC2Wda3u06',
 }
 
 export const skinBuyUrl = (id: string): string => SKIN_BUY_URLS[id] || SUPPORT_URL || ''

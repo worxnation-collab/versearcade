@@ -110,6 +110,30 @@ const THEMED: Omit<CardBgDef, 'name'>[] = [
 // the pack (data/avatar FULL_SKINS, pack 'angels'); the server enforces the same
 // rule in migration 0043.
 const PACK: CardBgDef[] = [
+  // ——— Founding Patron ———
+  // The second half of the app's one product. A skin is only ever seen by
+  // somebody looking at your figure; the player card is the surface that turns
+  // up beside your name everywhere in the app, which is what makes this the
+  // part of the pack other people actually see.
+  //
+  // It gates on the pack rather than on a collectible, like the angel cards, so
+  // `packEntitled('patron', …)` is satisfied by EITHER founding-patron skin —
+  // the whale buyers get the cornerstone too, without a second rule. The server
+  // says the same thing in 0095's set_card_background; keep the two in sync.
+  //
+  // No webp ships with it and that is not an omission: CardBg falls back to the
+  // drawn `stone` scene when the image 404s, so the card is complete from the
+  // first render and a painting can land later without touching this file.
+  {
+    key: 'patron_cornerstone',
+    name: 'The Cornerstone',
+    pack: 'patron',
+    rarity: 'legendary',
+    emoji: '🪨',
+    unlockHint: 'Comes with the Founding Patron',
+    scene: 'stone',
+    palette: { sky: ['#4a4130', '#15120c'], land: '#5c5443', glow: '#ffd76b', accent: '#fff2cf' },
+  },
   {
     key: 'angels_ladder',
     name: 'Jacob’s Ladder',

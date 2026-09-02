@@ -162,11 +162,46 @@ the bundled road is what an offline phone falls back to.
 
 **Cosmetics are no longer sold.** Moses, Esther and Elijah are `free`, the
 angels (Gabriel, Michael, Seraph) are `pass` — road rewards — and `BUNDLES` is
-empty. What still has a price is the founding-patron whale, and the promo-code
+empty. What still has a price is the founding patron — `cephas` since `0095`,
+the whale before it — and the promo-code
 exclusives (`eden`, `shades`, `sonshine`, `porchlight`) are still free
 redemptions. Everything
 below still holds for that one product, and for the machinery, which is kept
 rather than deleted so selling something again is a row rather than a rebuild.
+
+**The founding patron changed skin, and how it was done is the template.** The
+whale became `cephas` (Peter with the keys, on the bedrock — Matthew 16:18) plus
+a `patron_cornerstone` card background, at the same $9.99. Four things made that
+a data change rather than a re-launch, and all four are worth copying if the
+product ever changes again:
+
+- **The SKU changed; neither STORE did.** The Apple product id stays
+  `com.versearcade.app.patron_founding` — already approved, so the new skin went
+  on sale in every build already on a phone, no submission. `APPLE_PRODUCT_IDS`
+  is keyed on the sku, so it is one edit. Nothing Apple holds is user-visible
+  here: `IapProduct` keeps only sku, product id and `priceString`, and StoreKit's
+  display name is dropped at the mapping — every word a player reads comes from
+  `data/avatar.ts`. What DOES show Apple's text is its own purchase sheet, so the
+  IAP's display name in App Store Connect should read "Founding Patron" — a name
+  that outlives whichever skin the patron currently gets. Same on the web: a
+  Payment Link is a PRICE, and what it grants comes from `client_reference_id`,
+  so the same link now settles as `cephas` and only the product's *name* in the
+  Stripe dashboard needs changing by hand.
+- **`retired` is not `limitedUntil`, and confusing them takes something from a
+  buyer.** A retired skin (the whale) is hidden from everyone who doesn't own
+  one, has no price and no checkout, and is excluded from `pricedOnShelf` — but
+  its owners keep wearing it forever. An EXPIRED skin vanishes for its owners
+  too. Retiring hides the offer; expiring deletes the thing. So the whale's
+  `limitedUntil` was dropped in the same change.
+- **Nobody is asked to pay twice.** `cephas` carries `supersedes: 'whale'` and
+  `skinOwned` honours it, so a patron from before the swap reads as an owner and
+  `patronOffer` gives them the thank-you rather than a checkout. `0095` backfills
+  the same grant server-side, and `iap-fulfill` maps the product id to `cephas`
+  so a Restore does it too. Three paths to the same state, because the failure —
+  billing an existing patron again — is the one thing that card must never do.
+- **What was added was a LOOK, twice over.** A skin and a card background. No XP,
+  no rank, nothing countable; see `PatronCard`'s header and the `Perk` rows,
+  which are deliberately all looks and promises about the card's own behaviour.
 
 Two things about the de-monetisation that are load-bearing:
 
@@ -185,8 +220,8 @@ Two things about the de-monetisation that are load-bearing:
   the one way to unlock a paid skin for everybody by accident. The ONE
   legitimate reason to touch it is adding a new protected id, and then the whole
   list is copied forward from the migration that last set it. That chain is
-  0031 → 0034 → 0043 → 0044 → 0046 → 0057 → 0082 → **0088** (`lantern`); read
-  the latest one, never an earlier one.
+  0031 → 0034 → 0043 → 0044 → 0046 → 0057 → 0082 → 0088 → **0095** (`cephas`);
+  read the latest one, never an earlier one.
 
 **A creator-collab skin is a promo code, not a product**, and `sonshine` (0057),
 `porchlight` (0082) and `lantern` (0088) are the worked examples. The shape: `source: 'paid'`
@@ -231,11 +266,15 @@ account-gated Apple steps: `docs/APPLE-IAP.md`.
 **The founding patron has a card of its own now** (`PatronCard`, at the settled
 end of `/you` — after the room and the collection, before the account
 controls). It shipped reachable only by opening Customize, choosing Skins,
-scrolling to a locked whale and tapping it, which is not a shop; the app has one
-product and it was effectively invisible. Four things keep it from becoming a
+scrolling to a locked tile and tapping it, which is not a shop; the app has one
+product and it was effectively invisible. Its title is **"On this rock"** and it
+leads with Matthew 16:18, because a $9.99 ask needs a reason and the whale gave
+it none — what the money does IS the pitch, and the skin now says it. Four
+things keep it from becoming a
 nag, and they are why it can sit on a player-facing tab at all: it is asked
 **once** (a patron sees a thank-you and no checkout — `patronOffer` returns
-`owned`), it sells a **thank-you rather than power** (a skin; no XP, no rank,
+`owned`, and `supersedes` keeps that true across a change of product), it sells
+a **thank-you rather than power** (a skin and a card background; no XP, no rank,
 nothing a non-patron is behind on — the same rule that makes a paid church skin
 "not a bigger church"), it **hides entirely** rather than degrading to a greyed
 button or an "opening soon" line, and it is **hidden from guests**. That last
@@ -253,13 +292,17 @@ I pass it" is the drift the `QuizRunner` rule exists to prevent. The web path's
 `client_reference_id` is load-bearing rather than decorative — drop it and the
 money arrives with no way to tell whose it was.
 
-**The whole shop retires itself on 2026-10-12.** The whale carries
-`limitedUntil: LIMITED_UNTIL`, and `skinExpired` hides an expired skin from the
-grid *for owners too*; `patronOffer` follows the same rule on purpose, so the
-patron card disappears with it. Since cosmetics are de-monetised and `BUNDLES`
-is empty, that date is the moment this app has nothing purchasable at all.
-Extending it is one constant in `data/avatar.ts` — a decision, not an
-oversight, so it is written here rather than left to be discovered.
+**The shop no longer retires itself on a date, and that is a reversal.** It used
+to: the whale carried `limitedUntil: LIMITED_UNTIL`, `skinExpired` hides an
+expired skin from the grid *for owners too*, and `patronOffer` follows the same
+rule — so on 2026-10-12 this app would have had nothing purchasable at all, and
+its patrons would have lost the skin they paid for. `cephas` deliberately
+carries NO `limitedUntil`: a foundation that disappears out from under the
+people who funded it is a bad joke rather than a limited edition. `LIMITED_UNTIL`
+still exists and now governs only `shades`, and `patronOffer`'s expiry branch is
+kept though nothing reaches it — whether the patron product expires is a decision
+that belongs in the catalog, and `commerce.ts` should keep honouring either
+answer. Reinstating it is one field in `data/avatar.ts`.
 
 `lib/commerce.ts` is the only place the *decision* lives — `storefrontEnabled()`,
 `skinVisible()`, `cardBgVisible()`, `displayPrice()`. Every commerce surface asks
@@ -1234,7 +1277,18 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0094` (battle modes — verse or trivia), APPLIED on 2026-09-01
+The latest is `0095` (the founding patron becomes the rock — `cephas` replaces
+the whale, plus the Cornerstone card), **NOT YET APPLIED**. Apply it before the
+client merges, as this section demands: without it a Stripe purchase of `cephas`
+comes back `bad_skin` and takes money for nothing, and `enforce_skin_entitlement`
+strips the id from any grant. When applying, verify rather than assume — the
+protected list must read THIRTEEN names (0088's twelve plus `cephas`, checked
+name by name; the wholesale-restate trap this file warns about), `fulfill_skin`
+must still be `{postgres,service_role}` after the replace, `set_card_background`
+must refuse `patron_cornerstone` for an account owning neither patron skin, and
+the backfill's row count should equal the number of accounts holding `whale`.
+
+Before it, `0094` (battle modes — verse or trivia), APPLIED on 2026-09-01
 and verified: exactly ONE `create_battle` signature after the drop-and-recreate,
 so no stale seven-argument overload survives for PostgREST to resolve an old
 client's call to (the 0086 scar, checked rather than assumed); all 409 existing
@@ -1363,12 +1417,12 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0095` (0085 is taken by erasure
+production only). So the next free number is `0096` (0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the
 tree, 0092 by the name locks in the tree, above, 0093 by `daily_players` — who has played
-today — and 0094 by the battle mode),
+today — 0094 by the battle mode, and 0095 by the founding-patron rock),
 and this
 sentence has already gone stale twice: it said "0076" while 0077, 0078 and 0079
 were sitting in the folder. `ls supabase/migrations | tail -1` is the answer — on ORIGIN/MAIN, not your

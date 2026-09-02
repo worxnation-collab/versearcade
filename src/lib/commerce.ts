@@ -98,6 +98,14 @@ export function skinVisible(skin: SkinDef, owned: boolean): boolean {
   // redeem, which is what CLAUDE.md means by "native still has free promo-code
   // skins, identical to web".
   if (skin.exclusive) return true // redeemed with a free code, never sold
+  // A RETIRED skin is shown to its owners and to nobody else, in both stores.
+  // It was withdrawn from sale, so listing it to a non-owner would be a tile
+  // with no checkout behind it — the dead end the native rule below exists to
+  // prevent, and just as wrong on the web where there is no longer a Payment
+  // Link for it. Decided BEFORE the native branch for the reason `exclusive` is:
+  // it wears source 'paid', and `skuPurchasable` would otherwise hide it from
+  // the buyers it belongs to the moment StoreKit came up without it.
+  if (skin.retired) return owned
   // On native, a priced skin is listed only if Apple will actually sell it —
   // a tile with no product behind it is a dead end and a review risk.
   if (isNativeApp() && storefrontEnabled() && skin.source === 'paid' && !owned) {
@@ -120,10 +128,17 @@ export function cardBgVisible(def: { pack?: string }, unlocked: boolean): boolea
 
 /**
  * The founding patron is the ONE thing in this app that still has a price, and
- * `whale` is its sku in both stores — the Stripe link in `lib/config` and
+ * `cephas` is its sku in both stores — the Stripe link in `lib/config` and
  * `APPLE_PRODUCT_IDS` in `lib/iap` are keyed on it.
+ *
+ * It was `whale` until the rock replaced it. The SKU is ours and changed; the
+ * Apple PRODUCT ID deliberately did not (`com.versearcade.app.patron_founding`
+ * is already approved, so the new skin goes on sale in every existing build
+ * without waiting on review — see lib/iap). Anyone who bought the whale owns
+ * this by `supersedes` in data/avatar plus the backfill in migration 0095, so
+ * `patronOffer` returns 'owned' for them and they are never asked twice.
  */
-export const PATRON_SKU = 'whale'
+export const PATRON_SKU = 'cephas'
 
 /**
  * What the support card on /you should draw.
@@ -163,8 +178,14 @@ export function patronOffer(skin: SkinDef, owned: boolean, webUrl: string): Patr
   // deliberately the same rule the Skins grid already applies (`skinExpired` +
   // the filter in CustomizeSection): a limited thank-you that keeps advertising
   // itself after its window has closed is a different promise from the one the
-  // patron was sold. Note this currently retires the entire shop on the whale's
-  // `limitedUntil` — see data/avatar.
+  // patron was sold.
+  //
+  // As of the rock this is a dormant branch rather than a live one: Cephas
+  // carries no `limitedUntil`, so the shop no longer retires itself on a date
+  // (the whale's expiry did, and that entry is retired instead — see
+  // data/avatar). Kept, because whether the patron product expires is a
+  // decision that lives in the catalog, and this file should keep honouring it
+  // either way.
   if (skinExpired(skin)) return 'hidden'
   if (owned) return 'owned'
   if (!storefrontEnabled()) return 'hidden'

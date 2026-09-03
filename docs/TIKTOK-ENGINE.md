@@ -63,6 +63,33 @@ Best available wins, each made **once** and reused every day after:
 3. **Built-in** — nothing generated: the skin PNG at 2× with a breathing gold
    glow, over the road scene. Works with only the TTS secret set.
 
+## Everything is picked for you, and everything can be overridden
+
+`src/data/tiktokVoice.ts` fills the form in from the verse's own metadata,
+deterministically, so the same day gets the same post on every device:
+
+- **Reader** — from the book and speaker. Moses reads the Torah and the
+  histories, David the Psalms and wisdom books, Elijah the prophets (Kings
+  included), Esther her own book and Ruth, Mary the first two chapters of Luke,
+  Peter everything else. A named speaker wins over the book.
+- **Scene** — Advent from 30 November to Christmas Day; Lamplight for comfort
+  and warning verses; Harvest Road otherwise.
+- **Voice** — the figure's own (a steady one, a weightier one for the words of
+  God or Jesus, a softer one for comfort and praise).
+- **Delivery note** — whose words they are, plus a mood scored from the theme
+  and text.
+- **Caption, hook and hashtags** — Gemini Flash, from the verse.
+
+Each pick shows its reason in the panel ("David · Lamplight — Psalms",
+"Charon · comfort — a psalm"). Touching the reader or scene dropdown hands the
+cast back to the operator; touching the voice or the note does the same for the
+voice; an **↺ Auto** pill restores either. "Next 7 days" picks per day when
+automatic and applies the operator's override to the whole batch when not.
+
+A rotating cast means more figure+scene pairs; the built-in tier renders any
+pair with nothing generated, and a painted still or Veo loop is added per pair
+only when wanted.
+
 ## How the captions land on the words
 
 Gemini TTS returns no word timings, so `tiktokRender` measures the WAV: it finds
@@ -122,8 +149,6 @@ day of encoding for a 35-second post.
 
 ## Ideas parked
 
-- Rotate the reader by book (Moses for Exodus, David for Psalms) — the panel
-  already takes six figures; a map from `verse.book` to a reader id is one line.
 - Two-part format: the verse, then one of the day's trivia questions with the
   teach line as the reveal.
 - Word-level karaoke captions once a real aligner is worth adding (Gemini audio

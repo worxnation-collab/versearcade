@@ -17,6 +17,7 @@ export interface VoiceSeed {
   theme: string
   text: string
   book: string
+  chapter?: number
 }
 
 export interface VoicePick {
@@ -91,3 +92,56 @@ export function pickVoice(seed: VoiceSeed, reader: string): VoicePick {
 
 /** Every voice the picker can return — kept in step with the function's allowlist. */
 export const PICKER_VOICES = Array.from(new Set(Object.values(PALETTE).flatMap((p) => [p.steady, p.weighty, p.soft])))
+
+// ---- who reads it, and where -------------------------------------------------
+//
+// The cast is chosen from the verse's own book and speaker, so a Psalm is read
+// by David and Exodus by Moses, and the scene from the calendar and the mood.
+// Deterministic like the voice: the same day gets the same cast everywhere,
+// and the operator can override both in the panel.
+
+export interface CastPick {
+  reader: string
+  scene: string
+  why: string
+}
+
+const TORAH = ['Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy']
+const HISTORY = ['Joshua', 'Judges', '1 Samuel', '2 Samuel', '1 Chronicles', '2 Chronicles', 'Ezra', 'Nehemiah', 'Job']
+const SONGS = ['Psalms', 'Psalm', 'Proverbs', 'Ecclesiastes', 'Song of Solomon', 'Song of Songs']
+const PROPHETS = ['1 Kings', '2 Kings', 'Isaiah', 'Jeremiah', 'Lamentations', 'Ezekiel', 'Daniel', 'Hosea', 'Joel', 'Amos', 'Obadiah', 'Jonah', 'Micah', 'Nahum', 'Habakkuk', 'Zephaniah', 'Haggai', 'Zechariah', 'Malachi']
+const WOMEN = ['Esther', 'Ruth']
+
+export function readerFor(seed: VoiceSeed): string {
+  const sp = seed.speaker.toLowerCase()
+  if (sp.startsWith('mary')) return 'mary'
+  if (sp.startsWith('moses')) return 'moses'
+  if (sp.startsWith('david')) return 'david'
+  if (sp.startsWith('esther') || sp.startsWith('ruth')) return 'esther'
+  if (sp.startsWith('elijah') || sp.startsWith('elisha')) return 'elijah'
+  if (seed.book === 'Luke' && (seed.chapter ?? 99) <= 2) return 'mary'
+  if (TORAH.includes(seed.book) || HISTORY.includes(seed.book)) return 'moses'
+  if (SONGS.includes(seed.book)) return 'david'
+  if (WOMEN.includes(seed.book)) return 'esther'
+  if (PROPHETS.includes(seed.book)) return 'elijah'
+  return 'cephas'
+}
+
+export function sceneFor(seed: VoiceSeed, date: string): string {
+  const [, m, d] = date.split('-').map(Number)
+  if (m === 12 && d <= 25) return 'advent'
+  if (m === 11 && d >= 30) return 'advent'
+  const mood = moodFor(seed)
+  if (mood === 'comfort' || mood === 'warning') return 'lamplight'
+  return 'harvest'
+}
+
+const READER_NAMES: Record<string, string> = { cephas: 'Peter', moses: 'Moses', elijah: 'Elijah', david: 'David', esther: 'Esther', mary: 'Mary' }
+const SCENE_NAMES: Record<string, string> = { harvest: 'Harvest Road', lamplight: 'Lamplight', advent: 'Advent' }
+
+export function pickCast(seed: VoiceSeed, date: string): CastPick {
+  const reader = readerFor(seed)
+  const scene = sceneFor(seed, date)
+  const why = `${READER_NAMES[reader] ?? reader} · ${SCENE_NAMES[scene] ?? scene} — ${seed.book}${scene === 'advent' ? ', Advent' : ''}`
+  return { reader, scene, why }
+}

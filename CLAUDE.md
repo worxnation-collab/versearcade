@@ -1312,6 +1312,20 @@ pays twelve and records fourteen, and the report round-trips through
 file keeps warning about, caught by `list_migrations` before the apply rather
 than after.
 
+Before it, `0098` (what the card says about you — `favorite_verse`,
+`favorite_book`, `favorite_translation` on `profiles`, `set_card_about`, and
+`get_player_card` restated from 0071 to carry the three), APPLIED on 2026-09-03
+before the client merged, and verified: production's `get_player_card` was
+byte-identical to 0071 before the restate (checked, not assumed), all three
+columns exist, exactly ONE `set_card_about` signature, its ACL is the house
+`authenticated` shape, `get_player_card` returns seventeen keys including the
+three new ones against a live row, and the reference regex matches every
+citation form the pool writes and refuses a sentence. It is additive and fails
+closed either way: a server without it leaves the card exactly as it was (the
+modal reads three keys an old `get_player_card` simply omits). The three
+catalogs in it (66 books + the two citation spellings, 14 translation codes)
+must match `data/cardAbout.ts` and `BIBLE_BOOKS` name for name.
+
 **Migrations are applied by the session that writes them, not handed back.**
 The app's owner asked for this outright ("apply migration automatically every
 time"), so the rule is: write the migration, run it against a throwaway local
@@ -2080,6 +2094,47 @@ the hero's caption rather than being dropped with the identity block, and the
 dialog sets its own `maxHeight` + `overflowY` because hero + six stats + four
 action buttons is taller than a 600px phone — the centring grid was clipping
 the Close button before that.
+
+### What the card says about you
+
+The player card carries three optional facts now — a favorite verse, a favorite
+book and the translation you read (`0098`, `data/cardAbout.ts`,
+`features/profile/CardAboutEditor.tsx`, the customizer's **About** pill). They
+draw as ONE slim tile between the level bar and the six stats (`AboutStrip` in
+`PlayerCard.tsx`): the reference on the eyebrow's own line, the verse under it
+clamped to three lines, and the two short facts side by side under a hairline.
+A card with nothing set is byte-identical to the card before this existed.
+
+Three rules, and they are the whole reason a stranger's "about" can sit on the
+one surface in this app where a stranger's words reach you:
+
+- **Every field is a pick from a fixed catalog, never a string.** A verse is a
+  REFERENCE — the text is rehydrated from `VERSE_POOL` exactly as favorites are,
+  and a reference the arcade doesn't carry shows the reference alone — a book is
+  one of the 66, and a translation is a code from `CARD_TRANSLATIONS`. The
+  client normalises against the real shape of the Bible (`structure.ts`, so
+  verse 40 of a 31-verse chapter is refused) and `set_card_about` re-checks the
+  string's shape, the book and the code server-side, so no client can widen
+  any of them. The three lists exist twice on purpose (the usual
+  keep-them-in-sync pair); the migration header says which.
+- **`CARD_TRANSLATIONS` is a DECLARATION, not a data source.** It deliberately
+  lists the licensed versions people read at church (NIV, ESV, NLT…) that the
+  app cannot show a word of, because "the translation you read" is a fact about
+  a person. The chapter reader's `READING_TRANSLATIONS` stays what bible-api
+  serves; don't merge the two lists.
+- **None of it is a number, and none of it is counted anywhere.** No "12 verses
+  kept", no rank of favorite books, nothing on a board. A favorite is a taste,
+  and tastes don't rank — which is what lets this be public at all.
+
+Two-mode for real: `setCardAbout` in `store/auth.ts` validates first (so a
+guest gets exactly the refusal an account would), applies optimistically,
+saves to `localdb` as a guest and rolls back on a server no online. The picker
+searches the pool and pins the player's own shelf (`store/favorites.ts`) at the
+top; the one escape hatch is a typed reference that IS a real verse but isn't
+in the pool, offered as a row that says the reference alone goes on the card.
+Verified by driving it: set all three as a guest, reload, all three survive on
+the card and the page never scrolls sideways (the picker's rows hit the
+grid-item `min-width: auto` trap first time out).
 
 ### Customizing is one shelf, not six
 

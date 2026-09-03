@@ -29,8 +29,8 @@ import { supabase } from '@/lib/supabase'
 import { todayLocalDate } from '@/lib/date'
 import { getVerseForDate } from '@/data/bible/questions'
 import { VERSE_POOL } from '@/data/bible/pool'
-import { pickVoice, pickCast, PICKER_VOICES, type VoiceSeed } from '@/data/tiktokVoice'
-import type { Backdrop, TimedPhrase } from '@/lib/tiktokRender'
+import { pickVoice, pickCast, pickStoryVoice, storyCards, storyBeats, gradeFor, secondVoiceFor, PICKER_VOICES, type VoiceSeed } from '@/data/tiktokVoice'
+import type { Backdrop, TimedPhrase, StoryCard } from '@/lib/tiktokRender'
 
 const BUCKET = 'tiktok'
 const READERS = [
@@ -46,16 +46,33 @@ const SCENES = [
   { id: 'lamplight', name: 'Lamplight' },
   { id: 'advent', name: 'Advent' },
 ]
-const VOICES = Array.from(new Set([...PICKER_VOICES, 'Algenib', 'Sadaltager', 'Iapetus', 'Enceladus', 'Fenrir', 'Schedar', 'Kore', 'Aoede']))
+const VOICES = Array.from(new Set([...PICKER_VOICES, 'Algenib', 'Sadaltager', 'Iapetus', 'Enceladus', 'Fenrir', 'Schedar', 'Kore', 'Aoede', 'Sulafat', 'Vindemiatrix', 'Achernar']))
+
+// Story time: who tells it and where. Tabitha in her library by default; any
+// reader figure can stand in, and the rooms are the app's own paintings.
+const TELLERS = [{ id: 'tabitha', name: 'Tabitha (librarian)' }, ...READERS]
+const ROOMS = [
+  { id: '/keep/study-library.jpg', name: 'The library' },
+  { id: '/room/room-2.jpg', name: 'Upper Room' },
+  { id: '/room/room-4.jpg', name: 'Upper Room (finer)' },
+  { id: '/keep/hall.jpg', name: 'The keep' },
+  { id: '/road/lamplight.jpg', name: 'Lamplight road' },
+]
+const skinPath = (id: string) => (id === 'tabitha' ? '/skins/librarian.png' : `/skins/${id}.png`)
+interface Story { title: string; hook: string; paragraphs: string[] }
 
 // The automatic picks for a date (data/tiktokVoice.ts): the verse's book and
 // speaker choose the reader and the calendar and mood choose the scene; then
 // the figure decides the voice and the verse the delivery. The panel fills the
 // form with them and stops the moment the operator edits a field.
-function seedFor(date: string): VoiceSeed {
+type StorySeed = VoiceSeed & { before?: string; after?: string; audience?: string; facts?: string[] }
+function seedFor(date: string): StorySeed {
   const v = getVerseForDate(date)
   const seed = VERSE_POOL.find((x) => x.reference === v.reference)
-  return { speaker: seed?.speaker ?? 'The narrator', testament: seed?.testament ?? 'NT', theme: v.theme ?? '', text: v.text, book: v.book ?? '', chapter: v.chapter }
+  return {
+    speaker: seed?.speaker ?? 'The narrator', testament: seed?.testament ?? 'NT', theme: v.theme ?? '', text: v.text, book: v.book ?? '', chapter: v.chapter,
+    before: seed?.before, after: seed?.after, audience: seed?.audience, facts: seed?.facts,
+  }
 }
 function autoPick(date: string, reader: string) { return pickVoice(seedFor(date), reader) }
 function autoCast(date: string) { return pickCast(seedFor(date), date) }
@@ -97,10 +114,16 @@ function addDays(date: string, n: number): string {
 }
 
 interface Copy { hook: string; caption: string; hashtags: string[] }
-interface Made { date: string; reference: string; url: string; ext: string; size: number; copy: Copy | null; phrases: TimedPhrase[]; tier: string }
+interface Made { date: string; kind: 'verse' | 'story'; reference: string; url: string; ext: string; size: number; copy: Copy | null; phrases: TimedPhrase[]; tier: string }
 
 export default function TikTokPanel() {
   const [date, setDate] = useState(todayLocalDate())
+  const [mode, setMode] = useState<'verse' | 'story'>('verse')
+  const [teller, setTeller] = useState('tabitha')
+  const [room, setRoom] = useState(ROOMS[0].id)
+  const [storyCastAuto, setStoryCastAuto] = useState(true)
+  const [story, setStory] = useState<Story | null>(null)
+  const [storyPoster, setStoryPoster] = useState<string | null>(null)
   const [reader, setReader] = useState(() => autoCast(todayLocalDate()).reader)
   const [scene, setScene] = useState(() => autoCast(todayLocalDate()).scene)
   const [castAuto, setCastAuto] = useState(true)
@@ -108,6 +131,7 @@ export default function TikTokPanel() {
   const [style, setStyle] = useState(() => autoPick(todayLocalDate(), autoCast(todayLocalDate()).reader).style)
   const [voiceAuto, setVoiceAuto] = useState(true)
   const [withCopy, setWithCopy] = useState(true)
+  const [withMusic, setWithMusic] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
   const [err, setErr] = useState<string | null>(null)
@@ -125,12 +149,34 @@ export default function TikTokPanel() {
     setScene(cast.scene)
   }, [castAuto, cast.reader, cast.scene])
   const key = `${reader}-${scene}`
-  const pick = autoPick(date, reader)
+  const pick = mode === 'story' ? pickStoryVoice(seedFor(date), teller) : autoPick(date, reader)
   useEffect(() => {
     if (!voiceAuto) return
     setVoice(pick.voice)
     setStyle(pick.style)
   }, [voiceAuto, pick.voice, pick.style])
+  useEffect(() => {
+    if (!storyCastAuto) return
+    setTeller('tabitha')
+    setRoom(ROOMS[0].id)
+  }, [storyCastAuto, date])
+
+  // Story mode: fetch (or reuse) the day's story and draw a poster of it.
+  useEffect(() => {
+    if (mode !== 'story') return
+    let live = true
+    setStory(null); setStoryPoster(null)
+    ;(async () => {
+      try {
+        const st = await fetchStory(date, false)
+        if (!live) return
+        setStory(st)
+        setStoryPoster(await storyPosterFor(date, st))
+      } catch (e) { if (live) setErr(String((e as Error).message || e)) }
+    })()
+    return () => { live = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, date, teller, room])
   const stillUrl = publicUrl(`readers/${key}.png`)
   const loopUrl = publicUrl(`readers/${key}.mp4`)
 
@@ -151,12 +197,12 @@ export default function TikTokPanel() {
     setAssets({ still: false, loop: false })
     setPoster(null)
     ;(async () => {
-      const [still, loop] = await Promise.all([existsAt(stillUrl), existsAt(loopUrl)])
+      const [still, loop] = await Promise.all([existsAt(stillUrl), loopUrlFor(key).then((u) => !!u)])
       if (!live) return
       setAssets({ still, loop })
       try {
         const r = await import('@/lib/tiktokRender')
-        const bd = await backdropFor(r, still ? 'still' : 'builtin')
+        const bd = await backdropFor(r, loop ? 'loop' : still ? 'still' : 'builtin')
         const url = await r.renderPoster({ reference: verse.reference, text: verse.text, backdrop: bd })
         if (live) setPoster(url)
       } catch (e) { if (live) setErr(String((e as Error).message || e)) }
@@ -165,9 +211,16 @@ export default function TikTokPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, verse.reference])
 
+  // A loop lives in the bucket (made from the panel) or ships with the site
+  // (public/tiktok/loops, made once for the two hosts). Bucket wins.
+  async function loopUrlFor(k: string): Promise<string | null> {
+    if (await existsAt(publicUrl(`readers/${k}.mp4`))) return publicUrl(`readers/${k}.mp4`) + '?v=' + Date.now()
+    if (await existsAt(`/tiktok/loops/${k}.mp4`)) return `/tiktok/loops/${k}.mp4`
+    return null
+  }
   async function backdropFor(r: typeof import('@/lib/tiktokRender'), tier: 'loop' | 'still' | 'builtin', rd = reader, sc = scene): Promise<Backdrop> {
     const k = `${rd}-${sc}`
-    if (tier === 'loop') return { kind: 'loop', video: await r.loadVideo(publicUrl(`readers/${k}.mp4`) + '?v=' + Date.now()) }
+    if (tier === 'loop') return { kind: 'loop', video: await r.loadVideo((await loopUrlFor(k)) ?? publicUrl(`readers/${k}.mp4`)) }
     if (tier === 'still') return { kind: 'still', image: await r.loadImage(publicUrl(`readers/${k}.png`) + '?v=' + Date.now()) }
     const [sceneImg, figure] = await Promise.all([r.loadImage(`/road/${sc}.jpg`), r.loadImage(`/skins/${rd}.png`)])
     return { kind: 'builtin', scene: sceneImg, figure }
@@ -176,9 +229,98 @@ export default function TikTokPanel() {
   // with an automatic cast changes reader from one day to the next.
   async function tierFor(rd: string, sc: string): Promise<'loop' | 'still' | 'builtin'> {
     const k = `${rd}-${sc}`
-    if (await existsAt(publicUrl(`readers/${k}.mp4`))) return 'loop'
+    if (await loopUrlFor(k)) return 'loop'
     if (await existsAt(publicUrl(`readers/${k}.png`))) return 'still'
     return 'builtin'
+  }
+
+  // The room's own music under the reading, rendered to fit the post.
+  async function bedFor(r: typeof import('@/lib/tiktokRender'), audio: ArrayBuffer, hook: string | undefined, story: boolean, trackId: string): Promise<Float32Array | undefined> {
+    if (!withMusic) return undefined
+    try {
+      const m = await import('@/lib/tiktokMusic')
+      return await m.renderBed(trackId, await r.plannedDuration(audio, hook, story))
+    } catch { return undefined }
+  }
+  async function fetchStory(d: string, force: boolean): Promise<Story> {
+    const v = getVerseForDate(d)
+    const sd = seedFor(d)
+    return call<Story>('story', { date: d, force, reference: v.reference, text: v.text, theme: v.theme, speaker: sd.speaker, audience: sd.audience, before: sd.before, after: sd.after, facts: sd.facts })
+  }
+  async function storyAssets(d: string, st: Story, tellerId = teller, roomPath = room) {
+    const r = await import('@/lib/tiktokRender')
+    const v = getVerseForDate(d)
+    const picks = storyCards(seedFor(d), st.paragraphs.length + 1)
+    // A picture that fails to load (a deck scene not shipped yet, a bad
+    // path) falls back to the road rather than failing the whole story.
+    const safeImage = async (path?: string) => {
+      if (!path) return undefined
+      try { return await r.loadImage(path) } catch { return r.loadImage('/road/harvest.jpg') }
+    }
+    const cards: StoryCard[] = await Promise.all(picks.map(async (c) => ({
+      image: await safeImage(c.image),
+      figure: c.figure ? await r.loadImage(c.figure) : undefined,
+      label: c.label,
+    })))
+    const tellerImg = await r.loadImage(skinPath(tellerId))
+    // Tabitha in her library has a Veo loop of the two together; any other
+    // pairing draws the teller over the painting.
+    const loopKey = tellerId === 'tabitha' && roomPath === ROOMS[0].id ? 'tabitha-library' : null
+    const loopUrl = loopKey ? await loopUrlFor(loopKey) : null
+    const roomImg: HTMLImageElement | HTMLVideoElement = loopUrl ? await r.loadVideo(loopUrl) : await r.loadImage(roomPath)
+    // Her reaction loops, whichever have shipped; a missing one means that
+    // paragraph stays on the main loop.
+    const reactions: { listen?: HTMLVideoElement; laugh?: HTMLVideoElement; leanin?: HTMLVideoElement } = {}
+    if (loopUrl) {
+      for (const k of ['listen', 'laugh', 'leanin'] as const) {
+        const u = await loopUrlFor(`tabitha-${k}`)
+        if (u) { try { reactions[k] = await r.loadVideo(u) } catch { /* stays on the main loop */ } }
+      }
+    }
+    return { r, v, cards, roomImg, tellerImg, reactions }
+  }
+  async function storyPosterFor(d: string, st: Story): Promise<string> {
+    const { r, v, cards, roomImg, tellerImg } = await storyAssets(d, st)
+    return r.renderStoryPoster({ title: st.title, reference: v.reference, verseText: v.text, paragraphs: [...st.paragraphs, v.text], cards, hook: st.hook, room: roomImg, teller: tellerImg })
+  }
+
+  // The evening job for one date: story → voice → copy → render.
+  async function makeStory(d: string): Promise<Made> {
+    const v = getVerseForDate(d)
+    const sd = seedFor(d)
+    setBusy(`${d}: writing the story`)
+    setProgress(0)
+    const st = d === date && story ? story : await fetchStory(d, false)
+    const tellerId = storyCastAuto ? 'tabitha' : teller
+    const roomPath = storyCastAuto ? ROOMS[0].id : room
+    const p = voiceAuto ? pickStoryVoice(sd, tellerId) : { voice, style }
+    const second = voiceAuto ? secondVoiceFor(sd) : null
+    const tellerName = TELLERS.find((x) => x.id === tellerId)?.name.split(' ')[0] ?? 'Teller'
+    const spoken = second
+      ? [...st.paragraphs.map((pg) => `${tellerName}: ${pg}`), `${second.name}: ${v.text.trim()}`, `${tellerName}: ${spokenReference(v.reference)}.`].join('\n\n')
+      : [...st.paragraphs, `${v.text.trim()} ${spokenReference(v.reference)}.`].join('\n\n')
+    setBusy(`${d}: asking for the telling`)
+    const tts = await call<{ url: string; cached: boolean }>('tts', {
+      date: d, text: spoken, voice: p.voice, style: p.style,
+      speakers: second ? [{ name: tellerName, voice: p.voice }, { name: second.name, voice: second.voice }] : undefined,
+    })
+    const audio = await (await fetch(tts.url + '?v=' + Date.now())).arrayBuffer()
+    let copy: Copy | null = null
+    if (withCopy) {
+      setBusy(`${d}: writing the caption`)
+      try { copy = await call<Copy>('copy', { reference: v.reference, text: v.text, theme: v.theme, kind: 'story' }) } catch { copy = null }
+    }
+    setBusy(`${d}: rendering`)
+    const { r, cards, roomImg, tellerImg, reactions } = await storyAssets(d, st, tellerId, roomPath)
+    const paragraphs = [...st.paragraphs, `${v.text.trim()} ${v.reference}.`]
+    const bed = await bedFor(r, audio, st.hook || copy?.hook, true, 'cloister')
+    const out = await r.renderStory({
+      title: st.title, reference: v.reference, verseText: v.text,
+      paragraphs, cards, hook: st.hook || copy?.hook, audio, room: roomImg, teller: tellerImg, bed,
+      reactions, beats: storyBeats(sd, paragraphs.length),
+      onProgress: (f, label) => { setProgress(f); setBusy(`${d}: ${label}`) },
+    })
+    return { date: d, kind: 'story', reference: v.reference, url: URL.createObjectURL(out.blob), ext: out.ext, size: out.blob.size, copy, phrases: out.phrases, tier: `${TELLERS.find((x) => x.id === tellerId)?.name ?? tellerId} · story` }
   }
 
   // The whole daily job for one date: voice → copy → render.
@@ -186,12 +328,22 @@ export default function TikTokPanel() {
     const v = getVerseForDate(d)
     setBusy(`${d}: asking for the reading`)
     setProgress(0)
-    const spoken = `${v.text.trim()} ${spokenReference(v.reference)}.`
     // A batch reads each day in its own voice when the pick is automatic;
     // an operator's override applies to every day in the batch.
     const c = castAuto ? autoCast(d) : { reader, scene }
     const p = voiceAuto ? autoPick(d, c.reader) : { voice, style }
-    const tts = await call<{ url: string; cached: boolean }>('tts', { date: d, text: spoken, voice: p.voice, style: p.style })
+    const sd = seedFor(d)
+    // The words of God or Jesus are read by a second voice; the reader
+    // says the reference. Anyone else's verse is one voice as before.
+    const second = voiceAuto ? secondVoiceFor(sd) : null
+    const readerName = READERS.find((x) => x.id === c.reader)?.name.split(' ')[0] ?? 'Reader'
+    const spoken = second
+      ? `${second.name}: ${v.text.trim()}\n${readerName}: ${spokenReference(v.reference)}.`
+      : `${v.text.trim()} ${spokenReference(v.reference)}.`
+    const tts = await call<{ url: string; cached: boolean }>('tts', {
+      date: d, text: spoken, voice: p.voice, style: p.style,
+      speakers: second ? [{ name: second.name, voice: second.voice }, { name: readerName, voice: p.voice }] : undefined,
+    })
     const audio = await (await fetch(tts.url + '?v=' + Date.now())).arrayBuffer()
 
     let copy: Copy | null = null
@@ -204,11 +356,13 @@ export default function TikTokPanel() {
     const r = await import('@/lib/tiktokRender')
     const tier = tierOverride ?? (await tierFor(c.reader, c.scene))
     const backdrop = await backdropFor(r, tier, c.reader, c.scene)
+    const bed = await bedFor(r, audio, copy?.hook, false, 'morning')
     const out = await r.renderTikTok({
-      reference: v.reference, text: v.text, hook: copy?.hook, audio, backdrop,
+      reference: v.reference, text: v.text, hook: copy?.hook, audio, backdrop, bed,
+      grade: castAuto ? gradeFor(sd) : undefined,
       onProgress: (f, label) => { setProgress(f); setBusy(`${d}: ${label}`) },
     })
-    return { date: d, reference: v.reference, url: URL.createObjectURL(out.blob), ext: out.ext, size: out.blob.size, copy, phrases: out.phrases, tier: `${c.reader} · ${c.scene} · ${tier}` }
+    return { date: d, kind: 'verse', reference: v.reference, url: URL.createObjectURL(out.blob), ext: out.ext, size: out.blob.size, copy, phrases: out.phrases, tier: `${c.reader} · ${c.scene} · ${tier}` }
   }
 
   const run = async (dates: string[]) => {
@@ -218,8 +372,8 @@ export default function TikTokPanel() {
     try {
       for (const d of dates) {
         if (cancel.current) break
-        const m = await makeOne(d)
-        setMade((xs) => [m, ...xs.filter((x) => x.date !== d)])
+        const m = mode === 'story' ? await makeStory(d) : await makeOne(d)
+        setMade((xs) => [m, ...xs.filter((x) => !(x.date === d && x.kind === m.kind))])
       }
     } catch (e) {
       setErr(String((e as Error).message || e))
@@ -280,7 +434,87 @@ export default function TikTokPanel() {
         Needs <code>GEMINI_API_KEY</code> set in Supabase and the <code>tiktok-gen</code> function deployed. Use desktop Chrome — the video is encoded in this tab.
       </p>
 
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        {(['verse', 'story'] as const).map((m) => (
+          <button key={m} className="pill" onClick={() => setMode(m)}
+            style={{ background: mode === m ? 'var(--grape)' : 'var(--card)', fontWeight: 800 }}>
+            {m === 'verse' ? '☀️ Verse reading' : '🌙 Story time'}
+          </button>
+        ))}
+      </div>
+
+      {/* ---- story time ---- */}
+      {mode === 'story' && (
+        <div className="card" style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value || todayLocalDate())} style={{ width: 170 }} />
+            <button className="pill" style={{ fontSize: 12 }} onClick={() => setDate(todayLocalDate())}>Today</button>
+            <button className="pill" style={{ fontSize: 12 }} onClick={() => setDate(addDays(date, 1))}>+1 day</button>
+          </div>
+          <div>
+            <b style={{ fontFamily: 'var(--font-display)', fontSize: 18 }}>{verse.reference}</b>
+            <p className="faint" style={{ fontSize: 13, lineHeight: 1.45, marginTop: 4 }}>{verse.text}</p>
+          </div>
+          {story ? (
+            <div style={{ fontSize: 13, lineHeight: 1.5 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <b style={{ fontFamily: 'var(--font-display)', fontSize: 16 }}>{story.title}</b>
+                <span className="faint" style={{ fontSize: 11 }}>· {story.hook}</span>
+                <button className="pill" style={{ fontSize: 11, marginLeft: 'auto' }} disabled={!!busy}
+                  onClick={async () => { setErr(null); setBusy('rewriting the story'); try { const st = await fetchStory(date, true); setStory(st); setStoryPoster(await storyPosterFor(date, st)) } catch (e) { setErr(String((e as Error).message || e)) } finally { setBusy(null) } }}>
+                  ↻ Rewrite
+                </button>
+              </div>
+              {story.paragraphs.map((pg, i) => <p key={i} style={{ marginTop: 6 }}>{pg}</p>)}
+            </div>
+          ) : <p className="faint" style={{ fontSize: 12 }}>Writing tonight’s story…</p>}
+          {storyPoster && <img src={storyPoster} alt="" style={{ width: 180, borderRadius: 12, justifySelf: 'center' }} />}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <select value={teller} onChange={(e) => { setStoryCastAuto(false); setTeller(e.target.value) }}>{TELLERS.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select>
+            <select value={room} onChange={(e) => { setStoryCastAuto(false); setRoom(e.target.value) }}>{ROOMS.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select>
+          </div>
+          <div className="faint" style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>{storyCastAuto ? 'Picked: Tabitha · The library — the pictures follow the story' : `Yours: ${TELLERS.find((x) => x.id === teller)?.name} · ${ROOMS.find((x) => x.id === room)?.name}`}</span>
+            {!storyCastAuto && <button className="pill" style={{ fontSize: 11, marginLeft: 'auto' }} onClick={() => setStoryCastAuto(true)}>↺ Auto</button>}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <label className="faint" style={{ fontSize: 11 }}>Voice {voiceAuto ? '· auto' : '· yours'}
+              <select value={voice} onChange={(e) => { setVoiceAuto(false); setVoice(e.target.value) }} style={{ width: '100%', marginTop: 4 }}>
+                {VOICES.map((v) => <option key={v} value={v}>{v}</option>)}
+              </select>
+            </label>
+            <label className="faint" style={{ fontSize: 11, display: 'flex', alignItems: 'end', gap: 6, paddingBottom: 6 }}>
+              <input type="checkbox" checked={withCopy} onChange={(e) => setWithCopy(e.target.checked)} /> caption too
+            </label>
+            <label className="faint" style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <input type="checkbox" checked={withMusic} onChange={(e) => setWithMusic(e.target.checked)} /> the library’s music underneath
+            </label>
+          </div>
+          <div className="faint" style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>Picked: {pick.why}</span>
+            {!voiceAuto && <button className="pill" style={{ fontSize: 11, marginLeft: 'auto' }} onClick={() => setVoiceAuto(true)}>↺ Auto</button>}
+          </div>
+          <textarea value={style} onChange={(e) => { setVoiceAuto(false); setStyle(e.target.value.slice(0, 400)) }} rows={3}
+            style={{ padding: '8px', borderRadius: 10, background: 'var(--card-solid)', color: 'var(--ink)', border: '1px solid var(--stroke)', resize: 'vertical', font: 'inherit', fontSize: 12 }} />
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Button variant="gold" disabled={!!busy || !story} onClick={() => run([date])}>{busy ? 'Working…' : '🌙 Make tonight’s story'}</Button>
+            <button className="pill" disabled={!!busy} onClick={() => run(Array.from({ length: 7 }, (_, i) => addDays(date, i)))}>Next 7 nights</button>
+            {busy && <button className="pill" onClick={() => { cancel.current = true }}>Stop after this one</button>}
+          </div>
+          {busy && (
+            <div>
+              <div style={{ height: 6, borderRadius: 3, background: 'var(--card)', overflow: 'hidden' }}>
+                <div style={{ width: `${Math.round(progress * 100)}%`, height: '100%', background: 'var(--gold)', transition: 'width .2s' }} />
+              </div>
+              <div className="faint" style={{ fontSize: 11, marginTop: 4 }}>{busy}</div>
+            </div>
+          )}
+          {err && <p style={{ color: 'var(--coral)', fontSize: 13 }}>{err}</p>}
+        </div>
+      )}
+
       {/* ---- the day ---- */}
+      {mode === 'verse' && (
       <div className="card" style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value || todayLocalDate())} style={{ width: 170 }} />
@@ -300,6 +534,9 @@ export default function TikTokPanel() {
           </label>
           <label className="faint" style={{ fontSize: 11, display: 'flex', alignItems: 'end', gap: 6, paddingBottom: 6 }}>
             <input type="checkbox" checked={withCopy} onChange={(e) => setWithCopy(e.target.checked)} /> write the caption + hook too
+          </label>
+          <label className="faint" style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <input type="checkbox" checked={withMusic} onChange={(e) => setWithMusic(e.target.checked)} /> the road’s music underneath
           </label>
         </div>
         <div className="faint" style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -323,16 +560,17 @@ export default function TikTokPanel() {
         )}
         {err && <p style={{ color: 'var(--coral)', fontSize: 13 }}>{err}</p>}
       </div>
+      )}
 
       {/* ---- what got made ---- */}
       {made.map((m) => (
-        <div key={m.date} className="card" style={{ marginBottom: 12, display: 'grid', gap: 8 }}>
+        <div key={`${m.kind}-${m.date}`} className="card" style={{ marginBottom: 12, display: 'grid', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <b style={{ fontFamily: 'var(--font-display)' }}>{m.date} · {m.reference}</b>
+            <b style={{ fontFamily: 'var(--font-display)' }}>{m.kind === 'story' ? '🌙' : '☀️'} {m.date} · {m.reference}</b>
             <span className="faint" style={{ fontSize: 11, marginLeft: 'auto' }}>{(m.size / 1e6).toFixed(1)} MB · {m.ext} · {m.tier}</span>
           </div>
           <video src={m.url} controls playsInline style={{ width: 200, borderRadius: 12, justifySelf: 'center', background: '#000' }} />
-          <a href={m.url} download={`verse-arcade-${m.date}.${m.ext}`} className="pill" style={{ textAlign: 'center', fontWeight: 800 }}>⬇️ Download verse-arcade-{m.date}.{m.ext}</a>
+          <a href={m.url} download={`verse-arcade-${m.kind === 'story' ? 'story-' : ''}${m.date}.${m.ext}`} className="pill" style={{ textAlign: 'center', fontWeight: 800 }}>⬇️ Download verse-arcade-{m.kind === 'story' ? 'story-' : ''}{m.date}.{m.ext}</a>
           {m.copy && (
             <div style={{ fontSize: 13, lineHeight: 1.45 }}>
               <div><span className="faint">Hook:</span> {m.copy.hook}</div>
@@ -347,6 +585,7 @@ export default function TikTokPanel() {
         </div>
       ))}
 
+      {mode === 'verse' && (<>
       {/* ---- the reader ---- */}
       <div className="card" style={{ display: 'grid', gap: 8 }}>
         <b style={{ fontFamily: 'var(--font-display)' }}>The reader</b>
@@ -374,6 +613,7 @@ export default function TikTokPanel() {
         {assets.still && <a className="faint" style={{ fontSize: 11 }} href={stillUrl} target="_blank" rel="noreferrer">open still ↗</a>}
         {assets.loop && <a className="faint" style={{ fontSize: 11 }} href={loopUrl} target="_blank" rel="noreferrer">open loop ↗</a>}
       </div>
+      </>)}
     </div>
   )
 }

@@ -90,6 +90,82 @@ A rotating cast means more figure+scene pairs; the built-in tier renders any
 pair with nothing generated, and a painted still or Veo loop is added per pair
 only when wanted.
 
+## Story time: the evening post
+
+The same panel has a second mode. **Story time** is Tabitha, the app's
+librarian, telling the story BEHIND the day's verse: 60 to 90 seconds in her
+library, a picture card above her that changes with each paragraph, and the
+verse itself read plainly at the end. It is the morning post's other half —
+Peter reads the verse; Tabitha tells you what was happening — and it costs
+about three cents: a Gemini Flash script and a longer TTS.
+
+- **The script is written from the pool entry's own narrative fields** —
+  `before`, `after`, `speaker`, `audience`, `facts` — and the function's prompt
+  forbids anything not in the passage's plain narrative. Cached at
+  `days/<date>/story.json`; **↻ Rewrite** asks again. Three paragraphs: the
+  situation, what happens, what came after and why it matters, then the verse.
+- **The pictures are art the app already ships.** `storyCards()` in
+  `data/tiktokVoice.ts` picks, per paragraph: the place and the person for the
+  opening (a road or room scene with the book's reader figure standing in it),
+  a collectible-card illustration matched by keyword for the middle and the
+  aftermath, and the verse itself as the last card. Nothing is generated.
+- **Auto everything, same as the verse post.** Tabitha in the library by
+  default (any reader figure and any of five rooms can stand in), her own
+  voice (Sulafat, or Vindemiatrix for comfort) with a storytelling note, and
+  a story-flavoured caption. Every field flips to manual when touched.
+- `renderStory()` shares `produce()` with the verse layout — one copy of the
+  codec, timing, AAC and audible-track checks.
+
+## The few generated pieces, and why those
+
+Everything generated for these posts is chosen to be true EVERY day, never
+about one verse, so it is paid for once and used forever:
+
+- **Two Veo loops, `public/tiktok/loops/`** — `cephas-harvest.mp4` (Peter
+  hovering over the road) and `tabitha-library.mp4` (Tabitha at her desk,
+  talking). Eight seconds each, ping-ponged by the renderer so they never
+  seam. Made from the layouts' own base stills (`renderPoster` / 
+  `renderStoryPoster` with `chrome=false`), so the loop is framed exactly
+  where the captions and cards expect it. The panel's tier probe checks the
+  bucket first, then these bundled files, so a loop made from the Animate
+  button still wins.
+- **A scene deck, `public/tiktok/scenes/`** — twelve PLACES most Bible
+  stories happen in (shore, boat, road, wilderness camp, mountain, city
+  gate, palace, temple court, garden at night, a lamp-lit house, a prison,
+  a harvest field), Nano Banana in the house style from the road paintings
+  as references, empty of people so a reader figure can stand in them.
+  `SCENE_DECK` in `data/tiktokVoice.ts` keyword-matches them to the story's
+  own narrative; the road and room paintings stay as the fallback.
+
+Free polish drawn on every frame, both layouts: slow gold motes drifting up
+through the light (seeded, so the encoder never sees noise), a lamp-breath
+warmth, and a page-turn wipe when a story card changes.
+
+And the follow-ups, all in now:
+
+- **Tabitha's reaction set** — `tabitha-listen`, `tabitha-laugh`,
+  `tabitha-leanin` beside the main loop. `storyBeats()` gives each paragraph a
+  beat (talk, listen, a laugh for the bright moods, the lean-in for the
+  verse) and the renderer cuts to that loop on the paragraph boundary, timed
+  from the boundary so it starts on its first frame. The lean-in walks her up
+  to the camera, so the card shrinks and rises and the captions tuck under it.
+  The first listen render zoomed her to twice the size; it was re-rolled
+  with a locked-off wide shot in the prompt and the negative prompt.
+- **Dusk and night on the road, no new painting** — `gradeFor()` grades the
+  daytime road (multiply tint + vignette) for comfort and warning verses
+  instead of switching to the Lamplight still, because the host's loop only
+  exists for the road and a moving host beats a different still.
+- **The room's own music underneath** — `lib/tiktokMusic.ts` renders a BED
+  arrangement of the app's tracks (same note data from `data/music.ts`; pad,
+  arpeggio and a soft bell lead, no drums, no bass) into an
+  OfflineAudioContext, and `produce()` mixes it about 20 dB under the voice
+  with a fade over the lead-in and the end card. `cloister` under the story,
+  `morning` under the verse. A checkbox on each mode turns it off.
+- **A second voice for the words of God** — when the verse's speaker is God
+  or Jesus, the TTS call carries two `speakers` (Gemini's multi-speaker
+  config): Orus reads the verse, the host says the reference; in the story
+  Tabitha tells it and Orus speaks the verse. Cached under both voices.
+
 ## How the captions land on the words
 
 Gemini TTS returns no word timings, so `tiktokRender` measures the WAV: it finds

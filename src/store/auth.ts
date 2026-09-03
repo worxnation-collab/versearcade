@@ -8,6 +8,7 @@ import { newLocalProfile } from '@/lib/progress'
 import { allSkins, equippedSkinId, isDefaultAvatar } from '@/data/avatar'
 import { getVerseForDate } from '@/data/bible/questions'
 import { petUnlocked, type PetProgress } from '@/data/pets'
+import { normalizeBook, normalizeTranslation, normalizeVerseReference, type CardAbout } from '@/data/cardAbout'
 import { useSettings } from './settings'
 import type { Profile, AvatarSpec } from '@/types'
 
@@ -40,6 +41,9 @@ interface DbProfileRow {
   avatar_badge: string | null
   card_background: string | null
   pet?: string | null
+  favorite_verse?: string | null
+  favorite_book?: string | null
+  favorite_translation?: string | null
   // Not yet a real column — an online account reads back null and falls back to
   // the emoji until a profiles.avatar_character migration lands.
   avatar_character?: AvatarSpec | null
@@ -76,6 +80,9 @@ function mapRow(r: DbProfileRow): Profile {
     avatarBadge: r.avatar_badge ?? null,
     cardBackground: r.card_background ?? null,
     pet: r.pet ?? null,
+    favoriteVerse: r.favorite_verse ?? null,
+    favoriteBook: r.favorite_book ?? null,
+    favoriteTranslation: r.favorite_translation ?? null,
     avatarCharacter: r.avatar_character ?? null,
     sharedDays: r.shared_days ?? [],
     liveBattles: r.live_battles ?? 0,
@@ -138,6 +145,12 @@ interface AuthState {
    * why this store doesn't gather it itself.
    */
   setPet: (id: string | null, progress?: PetProgress) => Promise<{ ok: boolean; error?: string }>
+  /**
+   * Set what the card says about you — a favorite verse, book and translation
+   * (data/cardAbout). All three at once; null clears one. Both sides validate
+   * against the same fixed catalogs, so nothing typed is ever stored.
+   */
+  setCardAbout: (about: CardAbout) => Promise<{ ok: boolean; error?: string }>
   recordShare: (dropDate: string) => void
   grantItem: (itemId: string) => void
   grantSkin: (skinId: string) => void
@@ -758,6 +771,40 @@ export const useAuth = create<AuthState>((set, get) => ({
     if (error || !data?.ok) {
       set({ profile: cur }) // roll back the optimistic change
       return { ok: false, error: error?.message ?? 'That one isn’t unlocked yet' }
+    }
+    return { ok: true }
+  },
+
+  // What the card says about you. Same shape as setCardBackground: normalise
+  // against the catalogs first (so a guest gets exactly the refusal an account
+  // would), apply optimistically, and let the server (0098) have the last word
+  // online — rolling back if it says no.
+  async setCardAbout(about) {
+    const cur = get().profile
+    if (!cur) return { ok: false, error: 'No profile' }
+    const verse = about.verse ? normalizeVerseReference(about.verse) : null
+    if (about.verse && !verse) return { ok: false, error: 'That isn’t a verse the Bible has' }
+    const book = about.book ? normalizeBook(about.book) : null
+    if (about.book && !book) return { ok: false, error: 'That isn’t one of the 66 books' }
+    const translation = about.translation ? normalizeTranslation(about.translation) : null
+    if (about.translation && !translation) return { ok: false, error: 'That translation isn’t on the list' }
+
+    const next: Profile = { ...cur, favoriteVerse: verse, favoriteBook: book, favoriteTranslation: translation }
+    set({ profile: next })
+
+    if (get().mode === 'local' || !supabase) {
+      localdb.saveProfile(next)
+      return { ok: true }
+    }
+
+    const { data, error } = await supabase.rpc('set_card_about', {
+      p_verse: verse,
+      p_book: book,
+      p_translation: translation,
+    })
+    if (error || !data?.ok) {
+      set({ profile: cur }) // roll back the optimistic change
+      return { ok: false, error: error?.message ?? 'Couldn’t save that' }
     }
     return { ok: true }
   },

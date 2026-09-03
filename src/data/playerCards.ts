@@ -31,6 +31,14 @@ export interface CardBgDef {
   emoji?: string
   /** Shown on a locked tile in place of "Unlocks with <collectible>". */
   unlockHint?: string
+  /**
+   * A live effect CardBg draws OVER the painting. 'veins' is a breathing gold
+   * light with a slow sweep along it — the Cornerstone's gold seams lit from
+   * inside the rock. It is decoration and nothing else: no number, no state, no
+   * per-viewer difference, and it goes still under reduce-motion. Kept as a
+   * closed union so a card can't ship an effect the renderer doesn't know.
+   */
+  fx?: 'veins'
 }
 
 export const DEFAULT_CARD_BG = 'default'
@@ -121,10 +129,16 @@ const PACK: CardBgDef[] = [
   // the whale buyers get the cornerstone too, without a second rule. The server
   // says the same thing in 0095's set_card_background; keep the two in sync.
   //
-  // `/cards/patron_cornerstone.webp` is a Nano Banana painting (the first stone
-  // of a building not yet risen, one gold vein, dusk), cut to the same 1040x520
-  // as the rest of the shelf. CardBg still falls back to the drawn `stone`
-  // scene if the image 404s, so the card is complete either way.
+  // `/cards/patron_cornerstone.webp` is a Nano Banana painting of the bedrock
+  // seen CLOSE — pale limestone filling the whole frame, chisel marks, gold
+  // veins running through it — cut to the same 1040x520 as the rest of the
+  // shelf. It started as a wide dusk scene (the first stone of a building not
+  // yet risen) and was re-done as pure texture on purpose: at card size the
+  // scene read as a small grey box on a hill, and the stone itself is the
+  // point. `fx: 'veins'` is what makes it a wow rather than a wall — CardBg
+  // lights the gold from inside and sends a slow gleam along it. The palette
+  // is pale to match, so the gradient under a decoding image doesn't flash
+  // dark; the drawn `stone` scene is still the fallback if the image 404s.
   {
     key: 'patron_cornerstone',
     name: 'The Cornerstone',
@@ -133,7 +147,8 @@ const PACK: CardBgDef[] = [
     emoji: '🪨',
     unlockHint: 'Comes with the Founding Patron',
     scene: 'stone',
-    palette: { sky: ['#4a4130', '#15120c'], land: '#5c5443', glow: '#ffd76b', accent: '#fff2cf' },
+    fx: 'veins',
+    palette: { sky: ['#efe6d3', '#d9ccb0'], land: '#cbbc9c', glow: '#ffd76b', accent: '#fff2cf' },
   },
   {
     key: 'angels_ladder',
@@ -200,6 +215,9 @@ export function cardArtProps(key?: string | null): { scene: Scene; palette: Pale
 export const cardBgImage = (key?: string | null): string => `/cards/${cardBgByKey(key).key}.webp`
 
 /** A flat fallback fill, used under the image while it decodes and for tiny chips. */
+/** The live effect a background asks CardBg to draw over it, if any. */
+export const cardBgFx = (key?: string | null): CardBgDef['fx'] => cardBgByKey(key).fx
+
 export function cardBgStyle(key?: string | null): React.CSSProperties {
   const d = cardBgByKey(key)
   return { background: `linear-gradient(180deg, ${d.palette.sky[0]} 0%, ${d.palette.sky[1]} 100%)` }

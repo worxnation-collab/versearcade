@@ -105,7 +105,16 @@ export function ProfileHero({
         {caption != null && (
           <p
             className="faint"
-            style={{ margin: 0, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.12em', textAlign: 'center' }}
+            style={{
+              margin: 0,
+              fontSize: 11,
+              textTransform: 'uppercase',
+              letterSpacing: '0.12em',
+              textAlign: 'center',
+              // The Cornerstone is the first PALE card, and an 11px faint
+              // eyebrow over cream stone vanished. Same shadow XpBar wears.
+              textShadow: '0 1px 4px rgba(8,3,24,0.9), 0 0 10px rgba(8,3,24,0.7)',
+            }}
           >
             {caption}
           </p>

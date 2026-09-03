@@ -20,7 +20,7 @@
 // preview model is a dashboard setting rather than a redeploy:
 //   GEMINI_TTS_MODEL   (default gemini-2.5-flash-preview-tts)
 //   GEMINI_IMAGE_MODEL (default gemini-3-pro-image — what scripts/gen-art.mjs uses)
-//   GEMINI_TEXT_MODEL  (default gemini-2.5-flash)
+//   GEMINI_TEXT_MODEL  (default gemini-3.6-flash — 2.5-flash is closed to new keys)
 //   VEO_MODEL          (default veo-3.1-fast-generate-preview)
 //
 // Everything here is idempotent on its key: `tts` for a date that already has
@@ -35,7 +35,7 @@ const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const GEMINI_KEY = Deno.env.get('GEMINI_API_KEY') ?? ''
 const TTS_MODEL = Deno.env.get('GEMINI_TTS_MODEL') ?? 'gemini-2.5-flash-preview-tts'
 const IMAGE_MODEL = Deno.env.get('GEMINI_IMAGE_MODEL') ?? 'gemini-3-pro-image'
-const TEXT_MODEL = Deno.env.get('GEMINI_TEXT_MODEL') ?? 'gemini-2.5-flash'
+const TEXT_MODEL = Deno.env.get('GEMINI_TEXT_MODEL') ?? 'gemini-3.6-flash'
 const VEO_MODEL = Deno.env.get('VEO_MODEL') ?? 'veo-3.1-fast-generate-preview'
 
 const BUCKET = 'tiktok'
@@ -195,7 +195,8 @@ Deno.serve(async (req) => {
       }
       const data = await gemini(`models/${IMAGE_MODEL}:generateContent`, {
         contents: [{ parts }],
-        generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: '9:16' } },
+        // 2K comes back 1536x2752, so the still is never upscaled to 1080x1920.
+        generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: '9:16', imageSize: '2K' } },
       })
       const cands = data.candidates as Array<{ content?: { parts?: Array<{ inlineData?: { data: string; mimeType?: string } }> } }> | undefined
       const img = cands?.[0]?.content?.parts?.find((p) => p.inlineData?.data)

@@ -89,7 +89,7 @@ voice never reads a colon.
 
 ## Costs, roughly
 
-TTS ~1¢ a day, copy a fraction of that, a still ~4¢ once, a Veo loop $1–3 once
+TTS ~1¢ a day, copy a fraction of that, a 2K still ~25¢ once, a Veo loop $1–3 once
 per figure+scene. The video encode is free (your laptop). About 20–40 seconds a
 day of encoding for a 35-second post.
 

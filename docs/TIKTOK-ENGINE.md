@@ -78,15 +78,30 @@ voice never reads a colon.
 
 ## The audio track is checked, not assumed
 
-The first real render came out mute: the video was perfect and the MP4's AAC
-track decoded to nothing. An MP4 needs the two-byte AudioSpecificConfig in its
-`esds` box before any player will decode the audio, and it is supposed to
-arrive from the encoder in the first chunk's `decoderConfig.description`; when
-it doesn't, the muxer writes a track with no decoder info. `tiktokRender` now
-builds that header itself whenever the encoder's is missing, and after muxing
-it decodes the finished file's audio with the browser's own demuxer. A silent
-MP4 is re-rendered as WebM automatically rather than handed over — a file
-that can't be heard is never the output.
+The first real render came out mute: the video was perfect, the MP4 had an
+AAC track full of real speech with a correct decoder header — and QuickTime
+and TikTok played nothing. The cause was TIMING. AAC frames are always 1024
+samples, but the encoder had been fed 4800-sample chunks, which is not a
+multiple of 1024, and Chrome stamped the frame straddling each chunk boundary
+with the next chunk's time: the track's `stts` table read 704, 1024 and 1728.
+Chrome's own decoder tolerates that, which is why a decode-and-listen check
+passed while every real player dropped the track. (Opus packets are 960
+samples and 4800 IS a multiple of 960, which is why the WebM path never
+showed it.)
+
+So `tiktokRender` now does three things, and the third is the one that
+matters: it feeds the encoder in whole codec frames (4×1024 for AAC, 5×960
+for Opus); it stamps every AAC frame onto the 1024-sample grid itself instead
+of trusting the encoder's timestamps; and after muxing it walks the finished
+MP4's box tree (`mp4AudioDeltas`) and refuses any audio track whose deltas are
+not all 1024, then decodes the file with the browser's own demuxer to be sure
+it is audible. A file that fails either check is re-rendered as WebM rather
+than handed over. The checker is pure over bytes and was run against the mute
+file itself, which it rejects.
+
+It also builds the two-byte AAC AudioSpecificConfig whenever the encoder's
+`decoderConfig.description` is missing, since an `esds` without it is the
+other way to ship a silent track.
 
 ## Rules that carry over from the app
 

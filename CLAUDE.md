@@ -1298,7 +1298,21 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0098` (what the card says about you — `favorite_verse`,
+The latest is `0099` (the Prayer Wall — `prayer_requests`,
+`prayer_intercessions`, and the deal / kneel / report / admin RPCs), APPLIED
+on 2026-09-03 through the Supabase MCP as `0099_prayer_wall` and verified: the
+four helper functions' ACLs read `{postgres=X}` only (they were `revoke all`ed
+from public, anon AND authenticated — the 0052 lesson), and the ten player and
+admin RPCs carry `authenticated`. Before it was applied it was run end to end
+against a local Postgres 16 with a stub `profiles`/`buddies` schema: the line
+is cleaned, church-mates and buddies see it and a stranger does not, the cap
+pays twelve and records fourteen, and the report round-trips through
+`admin_resolve_prayer_report`. **It took 0099 because `0098` was already
+`0098_card_about` on main and in production** — the same-day collision this
+file keeps warning about, caught by `list_migrations` before the apply rather
+than after.
+
+Before it, `0098` (what the card says about you — `favorite_verse`,
 `favorite_book`, `favorite_translation` on `profiles`, `set_card_about`, and
 `get_player_card` restated from 0071 to carry the three), APPLIED on 2026-09-03
 before the client merged, and verified: production's `get_player_card` was
@@ -1311,6 +1325,17 @@ closed either way: a server without it leaves the card exactly as it was (the
 modal reads three keys an old `get_player_card` simply omits). The three
 catalogs in it (66 books + the two citation spellings, 14 translation codes)
 must match `data/cardAbout.ts` and `BIBLE_BOOKS` name for name.
+
+**Migrations are applied by the session that writes them, not handed back.**
+The app's owner asked for this outright ("apply migration automatically every
+time"), so the rule is: write the migration, run it against a throwaway local
+Postgres if one is available (`/usr/lib/postgresql/16/bin`, as a non-root
+user, with a stub of the tables it touches), then `list_migrations` on the
+live project to pick the number production will actually record, apply it
+through the Supabase MCP (`apply_migration`, project `visuppaucpzzigwtqmdd`)
+BEFORE the client is merged, verify the ACLs with the `pg_proc` query below,
+and record it here as applied with the date. "Apply the schema before merging
+the client" now means the session does it, in the same PR.
 
 Before it, `0097` (`tiktok_gemini_key()` — the TikTok engine's Gemini key
 read out of Vault, service_role only), APPLIED on 2026-09-03 and verified: the
@@ -1470,7 +1495,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0099` (0098 is taken by the card's About strip, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0100` (0099 is taken by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the
@@ -2519,6 +2544,42 @@ a number you passed; a rung you climb by praying is a rung you would pray to
 climb. The table stores a user and a date and nothing else — no occasion, no
 text, no streak — because counting the cap is all it exists to do, and no RPC
 asks how much anybody else has prayed.
+
+## The Prayer Wall: the first thing here one player writes for another
+
+`/pray`, on the map under You and in the compass. A player tucks ONE note into
+an old stone wall (a category, an optional line, signed or not); anybody else
+taps "Pray for someone", the wall DEALS them a note, and they HOLD the candle
+until the wick catches. `data/prayerWall.ts`, `store/prayerWall.ts`,
+`features/prayer/PrayerWallScreen.tsx`, `0099`. Full design and the whole
+safety argument: `docs/PRAYER-WALL.md`. Four things to know before touching it:
+
+- **The category is what travels; the line is for people who already know
+  you.** A stranger sees one of eight fixed tokens and nothing else. The line
+  (120 chars, cleaned on the way in) is returned by `prayer_line_visible` only
+  to the requester's church-mates and accepted buddies. That is what lets the
+  app's first player-authored text exist without a global moderation surface:
+  one report hides a note by itself, and Admin → Prayers puts it back or takes
+  it down. Anonymous by default.
+- **The wall deals; nobody browses.** `draw_prayer_request` hands out the open
+  note with the fewest kneelings, random among equals, never yours, never one
+  you knelt at today. The buried ones surface on their own, which is what lets
+  the wall be fair with **no number on any note** — `prayer_note_json` carries
+  no count, and every slip in `WallScene` is drawn identical. A wall where one
+  note blazes is a ladder of who is loved.
+- **The XP is the Basin's, exactly, and THE REQUESTER IS PAID NOTHING.** 1 XP
+  to the kneeler, twelve a day, once per note per day by the primary key,
+  server-counted under a row lock, local date clamped ±1. Give the requester a
+  point, a rung or a streak and people post notes to farm sympathy. What they
+  get is a lantern ("somebody knelt today" — the lamp's binary shape), a tally
+  only they see (`my_washings.received`'s rule), and a mailbox line for
+  everybody who knelt when they mark it answered. Over the cap the kneeling is
+  still recorded and not paid — the thirteenth prayer is still a prayer.
+- **Online-only, inherited** from washing feet: a note needs a stranger. The
+  screen fails closed (keyless build → account card; server without 0099 →
+  "isn't open on this server yet", and `available` keeps the compass from
+  inviting it). The Journal's "Candles held" ladder counts kneelings, and there
+  is deliberately no rung for being prayed for.
 
 ## Giving, and the mailbox
 

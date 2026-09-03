@@ -269,6 +269,15 @@ export const MAP_PLACES: MapPlace[] = [
     area: 'you',
   },
   {
+    id: 'wall',
+    icon: '🕯️',
+    label: 'The Prayer Wall',
+    line: 'Leave a note, or hold a candle for somebody else’s',
+    to: '/pray',
+    area: 'you',
+    wall: 'wall',
+  },
+  {
     id: 'customize',
     icon: '✨',
     label: 'Customize',

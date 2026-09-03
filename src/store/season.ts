@@ -98,6 +98,7 @@ export type TrackEvent =
   | 'track_unlocked'
   | 'pet_equipped'
   | 'feet_washed'
+  | 'prayed_for'
   | 'room_placed'
   | 'room_visited'
   | 'gift_given'
@@ -604,6 +605,8 @@ function deltaFor(verb: Quest['verb'], event: TrackEvent, p: TrackPayload, goal:
       return event === 'pet_equipped' ? n : 0
     case 'wash_feet':
       return event === 'feet_washed' ? n : 0
+    case 'pray_for':
+      return event === 'prayed_for' ? n : 0
     case 'furnish_room':
       return event === 'room_placed' ? n : 0
     case 'visit_room':
@@ -642,7 +645,7 @@ const SCORED_VERBS = new Set<string>([
   'study_runs', 'cpu_wins', 'save_verses', 'donate', 'share_daily', 'open_chest',
   'play_any', 'answers_in_run', 'focus_drills', 'replay_runs', 'battle_wins',
   'battles_played', 'place_decor', 'plant_flora', 'find_relic', 'give_offering',
-  'unlock_track', 'equip_pet', 'wash_feet', 'furnish_room', 'visit_room', 'give_gift', 'pray',
+  'unlock_track', 'equip_pet', 'wash_feet', 'pray_for', 'furnish_room', 'visit_room', 'give_gift', 'pray',
   'arcade_runs', 'arcade_gathered', 'keep_rest', 'statue_raised', 'borrow_book',
 ])
 

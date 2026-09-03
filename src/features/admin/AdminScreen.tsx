@@ -109,7 +109,7 @@ function PinGate({ onOk }: { onOk: () => void }) {
 function Dashboard() {
   const navigate = useNavigate()
   const [ov, setOv] = useState<Overview | null>(null)
-  const [tab, setTab] = useState<'stats' | 'growth' | 'users' | 'sales' | 'church' | 'codes' | 'push' | 'tiktok'>('stats')
+  const [tab, setTab] = useState<'stats' | 'growth' | 'users' | 'sales' | 'church' | 'codes' | 'push' | 'tiktok' | 'prayers'>('stats')
 
   useEffect(() => {
     supabase?.rpc('admin_overview', { p_tz: localTimeZone() }).then(({ data }) => setOv(data as Overview))
@@ -124,7 +124,7 @@ function Dashboard() {
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-        {(['stats', 'growth', 'users', 'sales', 'church', 'codes', 'push', 'tiktok'] as const).map((t) => (
+        {(['stats', 'growth', 'users', 'sales', 'church', 'codes', 'push', 'tiktok', 'prayers'] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)} className="pill"
             style={{ background: tab === t ? 'var(--grape)' : 'var(--card)', fontWeight: 800, textTransform: 'capitalize' }}>
             {t === 'church' ? 'Churches' : t === 'tiktok' ? 'TikTok' : t}
@@ -140,6 +140,7 @@ function Dashboard() {
       {tab === 'codes' && <Codes />}
       {tab === 'push' && <PushBroadcast />}
       {tab === 'tiktok' && <TikTokPanel />}
+      {tab === 'prayers' && <PrayerReports />}
       <div style={{ height: 40 }} />
     </Page>
   )
@@ -884,6 +885,66 @@ function PushBroadcast() {
         {msg && <p style={{ color: 'var(--good)', fontSize: 13 }}>{msg}</p>}
         {err && <p style={{ color: 'var(--coral)', fontSize: 13 }}>{err}</p>}
       </div>
+    </div>
+  )
+}
+
+// ── Prayer Wall reports ──────────────────────────────────────────────────────
+// The wall's one moderation surface. A report takes a note off the wall by
+// itself (0099); this is where the operator either puts it back or takes it
+// down for good. The line is the app's only player-authored text, and this is
+// the only screen that shows a line to somebody outside the requester's own
+// church and buddies.
+interface PrayerReportRow {
+  id: string
+  category: string
+  line: string | null
+  signed: boolean
+  username: string
+  reported_by: string | null
+  reported_at: string
+  created_at: string
+}
+
+function PrayerReports() {
+  const [rows, setRows] = useState<PrayerReportRow[] | null>(null)
+  const load = () => supabase?.rpc('admin_prayer_reports').then(({ data }) => setRows((data as PrayerReportRow[]) ?? []))
+  useEffect(() => { load() }, [])
+
+  const resolve = async (id: string, hide: boolean) => {
+    await supabase!.rpc('admin_resolve_prayer_report', { p_id: id, p_hide: hide })
+    load()
+  }
+
+  return (
+    <div>
+      <p className="faint" style={{ fontSize: 12, marginBottom: 10, lineHeight: 1.4 }}>
+        Notes somebody reported. A reported note is already off the wall; Keep puts it back, Take down hides it for good.
+        The owner is told only that it was taken off for a look.
+      </p>
+      {rows === null ? (
+        <p className="faint center" style={{ padding: 20 }}>Loading…</p>
+      ) : rows.length === 0 ? (
+        <p className="faint center" style={{ padding: 20 }}>Nothing reported.</p>
+      ) : (
+        <div style={{ display: 'grid', gap: 8 }}>
+          {rows.map((r) => (
+            <div key={r.id} className="card">
+              <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
+                <b style={{ fontFamily: 'var(--font-display)' }}>{r.category}</b>
+                <span className="faint" style={{ fontSize: 11 }}>
+                  @{r.username}{r.signed ? ' (signed)' : ''} · reported by @{r.reported_by ?? '?'} · {new Date(r.reported_at).toLocaleString()}
+                </span>
+              </div>
+              <p style={{ margin: '6px 0 10px', fontSize: 14, fontStyle: 'italic' }}>{r.line ? `“${r.line}”` : '(no line)'}</p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="pill" onClick={() => resolve(r.id, false)} style={{ fontWeight: 800, fontSize: 12, borderColor: 'var(--good)', color: 'var(--good)' }}>Keep</button>
+                <button className="pill" onClick={() => resolve(r.id, true)} style={{ fontWeight: 800, fontSize: 12, borderColor: 'var(--coral)', color: 'var(--coral)' }}>Take down</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

@@ -10,6 +10,7 @@ import { useArcadeXp } from '@/store/arcadeXp'
 import { useBuddies } from '@/store/buddies'
 import { useGifts } from '@/store/gifts'
 import { useWashing } from '@/store/washing'
+import { usePrayerWall } from '@/store/prayerWall'
 import { useAccountLocked } from '@/components/AccountWall'
 
 // What is open right now — and, deliberately, NOT a checklist.
@@ -73,6 +74,8 @@ export function useInvitations(): MapInvite[] {
   const unseenGifts = useGifts((s) => s.unseen)
   const online = useAuth((s) => s.mode === 'online')
   const washedSomeoneToday = useWashing((s) => s.today > 0)
+  const kneltAtWallToday = usePrayerWall((s) => s.today > 0)
+  const wallOpen = usePrayerWall((s) => s.available)
 
   // The four day-flags nothing else on a given screen necessarily loads. The
   // three app-wide ones (buddies, gifts, the road) are already pulled in
@@ -85,6 +88,7 @@ export function useInvitations(): MapInvite[] {
     if (!useDailyTrivia.getState().loaded) useDailyTrivia.getState().load()
     if (!useArcadeXp.getState().loaded) void useArcadeXp.getState().load()
     if (!useWashing.getState().loaded) void useWashing.getState().load()
+    if (!usePrayerWall.getState().loaded) void usePrayerWall.getState().load()
   }, [])
 
   const out: MapInvite[] = []
@@ -131,6 +135,12 @@ export function useInvitations(): MapInvite[] {
     // like the gesture itself: a keyless build has nobody's feet to wash.
     if (online && !washedSomeoneToday) {
       out.push({ id: 'wash', icon: '🪣', label: 'Kneel and wash a friend’s feet', to: '/you' })
+    }
+    // The wall. Same shape as the Basin's line: open until you have knelt for
+    // ONE note today, never "until your twelve are done". Gated on the server
+    // actually having the wall (0099), so an older backend never invites it.
+    if (online && wallOpen && !kneltAtWallToday) {
+      out.push({ id: 'wall', icon: '🕯️', label: 'Hold a candle for someone at the wall', to: '/pray' })
     }
     if (buddyRequests > 0) {
       out.push({ id: 'buddies', icon: '🤝', label: 'Someone is waiting on you', to: '/you' })

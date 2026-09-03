@@ -98,6 +98,7 @@ export const GENERATED_ART: Record<string, string> = {
   'pet_lion_cub': '/items/pet_lion_cub.png',
   'pet_raven': '/items/pet_raven.png',
   'porchlight': '/skins/porchlight.png',
+  'prayer-wall': '/keep/prayer-wall.jpg',
   'room-1': '/room/room-1.jpg',
   'room-2': '/room/room-2.jpg',
   'room-3': '/room/room-3.jpg',

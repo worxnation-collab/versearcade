@@ -144,6 +144,8 @@ export type QuestVerb =
   | 'equip_pet'
   /** Another player's feet washed — the Basin (John 13:14). */
   | 'wash_feet'
+  /** Candles held for other people's notes on the Prayer Wall (Galatians 6:2). */
+  | 'pray_for'
   /** Arcade runs finished — any tap game on the cabinet (features/arcade). */
   | 'arcade_runs'
   /** Things correctly taken in tap games, added up across runs. */
@@ -205,6 +207,7 @@ export const KNOWN_VERBS = new Set<string>([
   'unlock_track',
   'equip_pet',
   'wash_feet',
+  'pray_for',
   'furnish_room',
   'visit_room',
   'give_gift',

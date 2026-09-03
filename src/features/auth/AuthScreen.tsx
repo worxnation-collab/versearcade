@@ -125,7 +125,7 @@ export default function AuthScreen() {
         {isSupabaseConfigured && signingUpLook && (
           <>
             <div className="card">
-              <CharacterPicker value={spec} onChange={setSpec} />
+              <CharacterPicker value={spec} onChange={setSpec} layout="tiles" />
             </div>
 
             <Button

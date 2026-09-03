@@ -86,7 +86,7 @@ export default function Onboarding() {
               <p className="dim center" style={{ fontSize: 15, marginTop: -2 }}>
                 This is you, everywhere in the arcade. You can change it any time.
               </p>
-              <CharacterPicker value={spec} onChange={setSpec} />
+              <CharacterPicker value={spec} onChange={setSpec} layout="tiles" />
               <div style={{ marginTop: 4 }}>
                 <input
                   value={username}

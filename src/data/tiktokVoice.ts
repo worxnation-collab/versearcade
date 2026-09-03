@@ -41,6 +41,7 @@ const PALETTE: Record<string, { steady: string; weighty: string; soft: string; p
   david: { steady: 'Iapetus', weighty: 'Orus', soft: 'Enceladus', person: 'David — a singer, reading as though he could break into the song' },
   esther: { steady: 'Kore', weighty: 'Kore', soft: 'Aoede', person: 'Esther — a queen, composed and warm, speaking to her own people' },
   mary: { steady: 'Aoede', weighty: 'Kore', soft: 'Aoede', person: 'Mary — gentle and close, as if to one person sitting beside her' },
+  tabitha: { steady: 'Sulafat', weighty: 'Kore', soft: 'Vindemiatrix', person: 'Tabitha — the librarian, warm and unhurried, telling a story to a few people at her desk' },
 }
 const FALLBACK = PALETTE.cephas
 
@@ -144,4 +145,108 @@ export function pickCast(seed: VoiceSeed, date: string): CastPick {
   const scene = sceneFor(seed, date)
   const why = `${READER_NAMES[reader] ?? reader} · ${SCENE_NAMES[scene] ?? scene} — ${seed.book}${scene === 'advent' ? ', Advent' : ''}`
   return { reader, scene, why }
+}
+
+// ---- story time: the picture book ---------------------------------------------
+//
+// The evening post is Tabitha telling the story behind the verse, with a
+// picture card for each paragraph. Every picture is art the app already ships:
+// the collectible-card illustrations (public/cards), the reader figures, the
+// road scenes and the rooms. Chosen by keyword from the verse's own narrative
+// fields, so nothing is generated and the same story gets the same pictures.
+
+export interface StoryCardPick {
+  /** Public path of the picture, or undefined for the verse card. */
+  image?: string
+  /** Optional figure to stand in the corner of the card. */
+  figure?: string
+  label: string
+}
+
+// Collectible cards that depict something from the Bible (achievement cards
+// like "week warrior" are deliberately not here), each with the words that
+// call for it. Order matters: earlier rows win a tie.
+const CARD_CUES: Array<[string, string[]]> = [
+  ['tablets_law', ['commandment', 'law', 'sinai', 'covenant', 'statute', 'decree']],
+  ['covenant_rainbow', ['rainbow', 'flood', 'noah', 'ark', 'promise']],
+  ['manna', ['manna', 'wilderness', 'desert', 'bread from heaven', 'daily bread', 'provision', 'provide']],
+  ['jordan_water', ['jordan', 'river', 'baptis', 'cross over', 'red sea', 'sea', 'waters']],
+  ['shepherds_crook', ['shepherd', 'sheep', 'flock', 'lamb', 'pasture']],
+  ['davids_harp', ['harp', 'sing', 'song', 'psalm', 'praise', 'music', 'instrument']],
+  ['star_of_bethlehem', ['bethlehem', 'star', 'born', 'birth', 'manger', 'nativity', 'wise men']],
+  ['descending_dove', ['dove', 'spirit', 'holy spirit', 'baptized', 'peace']],
+  ['loaves_fish', ['loaves', 'fish', 'five thousand', 'fed', 'hungry', 'feast']],
+  ['mustard_seed', ['mustard', 'seed', 'sow', 'faith as small', 'grow', 'plant']],
+  ['pearl_price', ['pearl', 'treasure', 'merchant', 'kingdom of heaven is like', 'worth']],
+  ['kingdom_keys', ['keys', 'peter', 'rock', 'church', 'bind', 'loose']],
+  ['widows_mite', ['widow', 'coins', 'offering', 'gave all', 'poor', 'give']],
+  ['alabaster_jar', ['alabaster', 'perfume', 'anoint', 'ointment', 'feet']],
+  ['anointing_oil', ['anoint', 'oil', 'samuel', 'chosen king', 'horn']],
+  ['golden_chalice', ['cup', 'wine', 'supper', 'covenant in my blood', 'chalice', 'drink']],
+  ['clay_lamp', ['lamp', 'light', 'darkness', 'shine', 'lampstand', 'night']],
+  ['ancient_menorah', ['temple', 'menorah', 'priest', 'holy place', 'tabernacle']],
+  ['jubilee_trumpet', ['trumpet', 'jubilee', 'jericho', 'walls', 'shout', 'victory']],
+  ['palm_frond', ['palm', 'hosanna', 'jerusalem', 'triumph', 'branches']],
+  ['olive_branch', ['olive', 'gethsemane', 'garden', 'mount of olives', 'peace be']],
+  ['angels_host', ['angel', 'host', 'heavenly', 'glory to god', 'shepherds in the field']],
+  ['angels_ladder', ['ladder', 'jacob', 'dream', 'bethel', 'vision']],
+  ['centurion', ['centurion', 'soldier', 'roman', 'servant', 'authority', 'army', 'pharaoh']],
+  ['leper_king', ['leper', 'leprosy', 'heal', 'healed', 'naaman', 'clean']],
+  ['apostles_letter', ['letter', 'wrote', 'writes', 'paul', 'epistle', 'church in', 'brothers and sisters']],
+  ['scroll_fragment', ['scroll', 'scripture', 'word', 'read', 'prophet', 'written']],
+  ['water_jar', ['water', 'well', 'jar', 'thirst', 'cana', 'wedding', 'living water']],
+  ['saved_by_grace', ['grace', 'saved', 'gift', 'faith', 'mercy', 'forgive']],
+]
+
+const CARD_LABELS: Record<string, string> = {
+  tablets_law: 'The tablets of the law', covenant_rainbow: 'The covenant rainbow', manna: 'Manna in the wilderness', jordan_water: 'The waters', shepherds_crook: 'A shepherd\u2019s crook', davids_harp: 'David\u2019s harp', star_of_bethlehem: 'The star', descending_dove: 'The dove', loaves_fish: 'Loaves and fish', mustard_seed: 'A mustard seed', pearl_price: 'The pearl of great price', kingdom_keys: 'The keys of the kingdom', widows_mite: 'The widow\u2019s mite', alabaster_jar: 'The alabaster jar', anointing_oil: 'Anointing oil', golden_chalice: 'The cup', clay_lamp: 'A clay lamp', ancient_menorah: 'The menorah', jubilee_trumpet: 'The trumpet', palm_frond: 'Palm branches', olive_branch: 'An olive branch', angels_host: 'The heavenly host', angels_ladder: 'Jacob\u2019s ladder', centurion: 'A centurion', leper_king: 'The healing', apostles_letter: 'A letter', scroll_fragment: 'The scroll', water_jar: 'A water jar', saved_by_grace: 'Saved by grace',
+}
+
+function bestCard(text: string, exclude: Set<string>): string | null {
+  const s = text.toLowerCase()
+  let best: string | null = null, bestScore = 0
+  for (const [id, cues] of CARD_CUES) {
+    if (exclude.has(id)) continue
+    const score = cues.reduce((n, w) => n + (s.includes(w) ? 1 : 0), 0)
+    if (score > bestScore) { best = id; bestScore = score }
+  }
+  return best
+}
+
+const SCENE_BY_GROUP = (book: string, testament: 'OT' | 'NT'): string => {
+  if (TORAH.includes(book) || HISTORY.includes(book)) return '/road/harvest.jpg'
+  if (PROPHETS.includes(book)) return '/road/lamplight.jpg'
+  if (SONGS.includes(book)) return '/room/room-2.jpg'
+  if (['Matthew', 'Mark', 'Luke', 'John', 'Acts'].includes(book)) return '/road/harvest.jpg'
+  if (book === 'Revelation') return '/road/advent.jpg'
+  return testament === 'NT' ? '/room/room-3.jpg' : '/road/harvest.jpg'
+}
+
+/**
+ * One picture per paragraph: the place and the person for the opening, a
+ * collectible-card illustration matched to the middle, another for the
+ * aftermath (or the place again), and the verse itself for the close.
+ */
+export function storyCards(seed: VoiceSeed & { before?: string; after?: string }, paragraphs: number): StoryCardPick[] {
+  const reader = readerFor(seed)
+  const scene = SCENE_BY_GROUP(seed.book, seed.testament)
+  const used = new Set<string>()
+  const opening: StoryCardPick = { image: scene, figure: `/skins/${reader}.png`, label: `${seed.book}` }
+  const middleId = bestCard(`${seed.theme} ${seed.text} ${seed.before ?? ''}`, used)
+  if (middleId) used.add(middleId)
+  const middle: StoryCardPick = middleId ? { image: `/cards/${middleId}.webp`, label: CARD_LABELS[middleId] } : { image: '/keep/room_open_scroll.png', label: 'The scroll' }
+  const afterId = bestCard(`${seed.after ?? ''} ${seed.theme}`, used)
+  const aftermath: StoryCardPick = afterId ? { image: `/cards/${afterId}.webp`, label: CARD_LABELS[afterId] } : { image: scene, label: seed.book }
+  const cards = [opening, middle, aftermath].slice(0, Math.max(1, paragraphs - 1))
+  while (cards.length < paragraphs - 1) cards.push({ image: scene, label: seed.book })
+  cards.push({ label: seed.book }) // the verse card, drawn as text
+  return cards
+}
+
+export function pickStoryVoice(seed: VoiceSeed, teller: string): VoicePick {
+  const pal = PALETTE[teller] ?? PALETTE.tabitha
+  const mood = moodFor(seed)
+  const voice = mood === 'comfort' ? pal.soft : pal.steady
+  const style = `Read this as ${pal.person}. A story told aloud to a few people who are listening closely: warm, unhurried, natural. Let the sentences breathe; pause at full stops. ${MOOD_NOTE[mood === 'words-of-god' ? 'story' : mood]} When you reach the verse at the end, slow down a little and read it plainly, then say the reference gently.`
+  return { voice, style, why: `${voice} · story — ${seed.book}`, mood }
 }

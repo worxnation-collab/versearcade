@@ -14,7 +14,8 @@
 //   still       { key, prompt, refs[] }          → { url }           Nano Banana 9:16 poster at readers/<key>.png
 //   loop-start  { imageUrl | imageBase64, prompt } → { op }          Veo image→video, returns the operation name
 //   loop-status { key, op }                      → { done, url? }    polls Veo; on completion parks readers/<key>.mp4
-//   copy        { reference, text, theme }       → { hook, caption, hashtags[] }   post copy via Gemini Flash
+//   copy        { reference, text, theme, kind? }  → { hook, caption, hashtags[] }  post copy via Gemini Flash (kind 'story' for the evening post)
+//   story       { date, reference, text, ... }    → { title, hook, paragraphs[] }   the story behind the verse, cached at days/<date>/story.json
 //
 // Secrets: GEMINI_API_KEY — as a function secret, or in Vault under the same
 // name (read through `tiktok_gemini_key()`, 0097; the function secret wins if
@@ -58,6 +59,8 @@ const CORS = {
 const VOICES = new Set([
   'Charon', 'Orus', 'Fenrir', 'Enceladus', 'Algenib', 'Sadaltager', 'Iapetus', 'Schedar',
   'Kore', 'Aoede', 'Puck', 'Zephyr', 'Leda', 'Gacrux', 'Achird', 'Rasalgethi',
+  'Sulafat', 'Vindemiatrix', 'Achernar', 'Umbriel', 'Callirrhoe', 'Despina', 'Erinome',
+  'Laomedeia', 'Autonoe', 'Algieba', 'Alnilam', 'Pulcherrima', 'Zubenelgenubi', 'Sadachbia',
 ])
 
 // ---- helpers ----------------------------------------------------------------
@@ -169,7 +172,8 @@ Deno.serve(async (req) => {
     if (action === 'tts') {
       const date = String(input.date ?? '')
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: 'date must be YYYY-MM-DD' }, 400)
-      const text = String(input.text ?? '').slice(0, 1200)
+      // 2,400 characters: a three-paragraph story plus the verse, with room.
+      const text = String(input.text ?? '').slice(0, 2400)
       if (!text.trim()) return json({ error: 'text is required' }, 400)
       const voice = String(input.voice ?? 'Charon')
       if (!VOICES.has(voice)) return json({ error: `unknown voice ${voice}` }, 400)
@@ -277,15 +281,56 @@ Deno.serve(async (req) => {
       return json({ done: true, url })
     }
 
+    // ---- story: the story behind the verse, for Tabitha to tell ---------------
+    // Written ONLY from the pool entry's own narrative fields (before, after,
+    // facts, speaker, audience), so the script can't wander off into invented
+    // scripture. Cached per date; `force` rewrites.
+    if (action === 'story') {
+      const date = String(input.date ?? '')
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: 'date must be YYYY-MM-DD' }, 400)
+      const reference = String(input.reference ?? '').slice(0, 80)
+      const text = String(input.text ?? '').slice(0, 1200)
+      if (!reference || !text) return json({ error: 'reference and text are required' }, 400)
+      const path = `days/${date}/story.json`
+      if (!input.force && (await exists(path))) {
+        const { data: file } = await admin.storage.from(BUCKET).download(path)
+        if (file) return json({ ...JSON.parse(await file.text()), cached: true })
+      }
+      const f = (k: string, n = 300) => String(input[k] ?? '').slice(0, n)
+      const facts = Array.isArray(input.facts) ? (input.facts as unknown[]).slice(0, 6).map((x) => String(x).slice(0, 200)) : []
+      const data = await gemini(`models/${TEXT_MODEL}:generateContent`, {
+        contents: [{ parts: [{ text:
+          `You write short spoken scripts for Tabitha, the librarian in the Verse Arcade Bible app. Each evening she tells the story BEHIND that day's verse to a small audience — warm, plain, unhurried, like a bedtime story for grown-ups. Never preachy, never shaming, no jokes about the listener.\n\n` +
+          `Today's verse: ${reference} — "${text}"\nSpoken by: ${f('speaker', 80)}\nTo: ${f('audience', 120)}\nWhat came before: ${f('before')}\nWhat came after: ${f('after')}\nTheme: ${f('theme', 80)}\nFacts you may use: ${facts.join(' | ') || '(none)'}\n\n` +
+          `Use ONLY the situation described above and the plain narrative of that Bible passage. Do not invent names, numbers, dialogue or events that are not in the passage. Do not quote the verse itself in the paragraphs — it is read aloud separately at the end.\n\n` +
+          `Return JSON with: "title" (at most 6 words, no punctuation), "hook" (one on-screen opening line, at most 8 words, not a question, no emoji), and "paragraphs": exactly three strings. ` +
+          `Paragraph 1: where we are and who is there (the situation before). Paragraph 2: what happens or what is said, and why the words land the way they do. Paragraph 3: what came after, then one plain sentence about why it still matters, ending with a short lead-in such as "Here's the verse." ` +
+          `About 120 to 150 words in total. Simple sentences that read well aloud. No emoji, no hashtags.` }] }],
+        generationConfig: { responseMimeType: 'application/json', temperature: 0.7 },
+      })
+      const cands = data.candidates as Array<{ content?: { parts?: Array<{ text?: string }> } }> | undefined
+      const raw = cands?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? '{}'
+      let parsed: { title?: unknown; hook?: unknown; paragraphs?: unknown } = {}
+      try { parsed = JSON.parse(raw) } catch { return json({ error: 'story was not JSON', raw: raw.slice(0, 300) }, 502) }
+      const paragraphs = Array.isArray(parsed.paragraphs) ? (parsed.paragraphs as unknown[]).map((x) => String(x).trim()).filter(Boolean).slice(0, 4) : []
+      if (paragraphs.length < 2) return json({ error: 'story came back too short', raw: raw.slice(0, 300) }, 502)
+      const out = { title: String(parsed.title ?? '').slice(0, 60), hook: String(parsed.hook ?? '').slice(0, 80), paragraphs }
+      await park(path, new TextEncoder().encode(JSON.stringify(out)), 'application/json')
+      return json({ ...out, cached: false })
+    }
+
     // ---- copy: the words that go in the post ---------------------------------
     if (action === 'copy') {
       const reference = String(input.reference ?? '').slice(0, 80)
       const text = String(input.text ?? '').slice(0, 1200)
       const theme = String(input.theme ?? '').slice(0, 80)
       if (!reference || !text) return json({ error: 'reference and text are required' }, 400)
+      const who = input.kind === 'story'
+        ? `Tabitha, the app's librarian, tells the short story behind the verse of the day each evening (the morning post was the verse itself, read aloud). `
+        : `a painted figure of Peter (Cephas) reads the verse of the day. `
       const data = await gemini(`models/${TEXT_MODEL}:generateContent`, {
         contents: [{ parts: [{ text:
-          `You write captions for a faceless TikTok account called Verse Arcade, a Bible app where a painted figure of Peter (Cephas) reads the verse of the day. ` +
+          `You write captions for a faceless TikTok account called Verse Arcade, a Bible app where ${who}` +
           `Today's verse is ${reference}: "${text}" (theme: ${theme || 'unspecified'}).\n\n` +
           `Return JSON with: "hook" (one on-screen opening line, max 8 words, no emoji, not a question), ` +
           `"caption" (2-3 short sentences for the post body, warm and plain, no hashtags, no emoji, ends by inviting people to play today's verse at versearcade.org), ` +

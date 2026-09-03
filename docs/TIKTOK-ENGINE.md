@@ -141,9 +141,30 @@ Free polish drawn on every frame, both layouts: slow gold motes drifting up
 through the light (seeded, so the encoder never sees noise), a lamp-breath
 warmth, and a page-turn wipe when a story card changes.
 
-Parked for next: Tabitha's reaction set (three more short loops cut at
-paragraph boundaries), dawn/dusk/night roads, the room's own music under the
-narration, and a second voice for the words of God.
+And the follow-ups, all in now:
+
+- **Tabitha's reaction set** — `tabitha-listen`, `tabitha-laugh`,
+  `tabitha-leanin` beside the main loop. `storyBeats()` gives each paragraph a
+  beat (talk, listen, a laugh for the bright moods, the lean-in for the
+  verse) and the renderer cuts to that loop on the paragraph boundary, timed
+  from the boundary so it starts on its first frame. The lean-in walks her up
+  to the camera, so the card shrinks and rises and the captions tuck under it.
+  The first listen render zoomed her to twice the size; it was re-rolled
+  with a locked-off wide shot in the prompt and the negative prompt.
+- **Dusk and night on the road, no new painting** — `gradeFor()` grades the
+  daytime road (multiply tint + vignette) for comfort and warning verses
+  instead of switching to the Lamplight still, because the host's loop only
+  exists for the road and a moving host beats a different still.
+- **The room's own music underneath** — `lib/tiktokMusic.ts` renders a BED
+  arrangement of the app's tracks (same note data from `data/music.ts`; pad,
+  arpeggio and a soft bell lead, no drums, no bass) into an
+  OfflineAudioContext, and `produce()` mixes it about 20 dB under the voice
+  with a fade over the lead-in and the end card. `cloister` under the story,
+  `morning` under the verse. A checkbox on each mode turns it off.
+- **A second voice for the words of God** — when the verse's speaker is God
+  or Jesus, the TTS call carries two `speakers` (Gemini's multi-speaker
+  config): Orus reads the verse, the host says the reference; in the story
+  Tabitha tells it and Orus speaks the verse. Cached under both voices.
 
 ## How the captions land on the words
 

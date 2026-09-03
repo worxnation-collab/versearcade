@@ -10,7 +10,7 @@
 // CPU budget for 900 frames of 1080x1920.
 //
 // Actions (POST { action, ... }):
-//   tts         { date, text, voice?, style? }   → { url, cached }   Gemini TTS → WAV at days/<date>/<voice>-<hash>.wav
+//   tts         { date, text, voice?, style?, speakers? } → { url, cached }  Gemini TTS → WAV at days/<date>/<voice>-<hash>.wav (speakers: two {name, voice} for a two-voice read)
 //   still       { key, prompt, refs[] }          → { url }           Nano Banana 9:16 poster at readers/<key>.png
 //   loop-start  { imageUrl | imageBase64, prompt } → { op }          Veo image→video, returns the operation name
 //   loop-status { key, op }                      → { done, url? }    polls Veo; on completion parks readers/<key>.mp4
@@ -178,17 +178,29 @@ Deno.serve(async (req) => {
       const voice = String(input.voice ?? 'Charon')
       if (!VOICES.has(voice)) return json({ error: `unknown voice ${voice}` }, 400)
       const style = String(input.style ?? 'Read this slowly and warmly, like a fisherman reading scripture aloud to a small room. Pause at the punctuation.').slice(0, 400)
-      // Keyed on the voice and the delivery note, so changing either makes a
-      // new reading instead of quietly returning yesterday's file.
-      const path = `days/${date}/${voice}-${fnv(style + '\n' + text)}.wav`
+      // Two voices, optionally: the text then carries "Name: line" turns and
+      // `speakers` names which prebuilt voice each name gets (Gemini TTS
+      // allows exactly two). Used for the words of God — the teller tells,
+      // a second voice speaks the verse.
+      const speakers = Array.isArray(input.speakers)
+        ? (input.speakers as Array<{ name?: unknown; voice?: unknown }>).slice(0, 2)
+          .map((x) => ({ name: String(x.name ?? '').replace(/[^A-Za-z]/g, '').slice(0, 20), voice: String(x.voice ?? '') }))
+          .filter((x) => x.name && VOICES.has(x.voice))
+        : []
+      const multi = speakers.length === 2
+      // Keyed on the voice(s) and the delivery note, so changing either makes
+      // a new reading instead of quietly returning yesterday's file.
+      const voiceKey = multi ? speakers.map((x) => x.voice).join('+') : voice
+      const path = `days/${date}/${voiceKey}-${fnv(style + '\n' + text)}.wav`
       if (!input.force && (await exists(path))) return json({ url: publicUrl(path), cached: true })
 
+      const speechConfig = multi
+        ? { multiSpeakerVoiceConfig: { speakerVoiceConfigs: speakers.map((x) => ({ speaker: x.name, voiceConfig: { prebuiltVoiceConfig: { voiceName: x.voice } } })) } }
+        : { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } }
+      const lead = multi ? `${style}\n\nTTS the following, with the named speakers:\n\n` : `${style}\n\n`
       const data = await gemini(`models/${TTS_MODEL}:generateContent`, {
-        contents: [{ parts: [{ text: `${style}\n\n${text}` }] }],
-        generationConfig: {
-          responseModalities: ['AUDIO'],
-          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } },
-        },
+        contents: [{ parts: [{ text: `${lead}${text}` }] }],
+        generationConfig: { responseModalities: ['AUDIO'], speechConfig },
       })
       const cands = data.candidates as Array<{ content?: { parts?: Array<{ inlineData?: { data: string; mimeType?: string } }> } }> | undefined
       const part = cands?.[0]?.content?.parts?.find((p) => p.inlineData?.data)

@@ -5,6 +5,7 @@ import { Pet } from '@/components/Pet'
 import { cardBgStyle } from '@/data/playerCards'
 import { petById, petGlows } from '@/data/pets'
 import { useSettings } from '@/store/settings'
+import { FounderTag } from '@/components/FounderTag'
 import type { AvatarSpec } from '@/types'
 
 // "This is you" — the top of your own profile, and the top of anybody's card.
@@ -194,6 +195,10 @@ export function ProfileHero({
         >
           @{username}
         </p>
+        {/* The founder's tag. Nothing for everybody else — FounderTag decides. */}
+        <div style={{ textAlign: 'center', marginTop: 4 }}>
+          <FounderTag username={username} />
+        </div>
         {(title || companion) && (
           <p className="faint" style={{ margin: '2px 0 0', textAlign: 'center', fontSize: 12.5 }}>
             {[title, companion?.name].filter(Boolean).join(' · ')}

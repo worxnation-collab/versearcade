@@ -79,10 +79,6 @@ function Perk({
 export function PatronCard() {
   const profile = useAuth((s) => s.profile)
   const seasonUnlocks = useSeason((s) => s.unlocks)
-  const juice = useJuice()
-  const [busy, setBusy] = useState(false)
-  const [note, setNote] = useState<string | null>(null)
-
   const skin: SkinDef | undefined = allSkins().find((s) => s.id === PATRON_SKU)
   if (!profile || !skin) return null
 
@@ -186,37 +182,56 @@ export function PatronCard() {
       )}
 
       <div style={{ marginTop: 10 }}>
-        <Button
-          variant="gold"
-          full
-          disabled={busy}
-          onClick={async () => {
-            juice.coin()
-            setBusy(true)
-            const result = await startSkinCheckout(PATRON_SKU, profile.username)
-            setBusy(false)
-            // Never close a paid tap in silence. 'unconfirmed' is the one that
-            // matters: Apple charged and the entitlement hasn't landed, so the
-            // honest instruction is to wait and Restore, not an apology.
-            if (result === 'failed') {
-              setNote('That didn’t go through — you haven’t been charged.')
-            } else if (result === 'unconfirmed') {
-              setNote('Payment went through. Your skin should appear in a moment — if it doesn’t, tap Restore purchases in Customize.')
-            } else if (result === 'bought') {
-              setNote('Thank you. 🙏')
-            }
-          }}
-        >
-          {busy ? 'Opening…' : '💛 Become a founding patron'}
-        </Button>
+        <PatronBuyButton username={profile.username} />
         <p className="faint" style={{ fontSize: 10, marginTop: 8, textAlign: 'center', lineHeight: 1.4 }}>
           One payment, never a subscription. It buys a look and a thank-you — no
           points, no rank, nothing other players are behind on.
         </p>
-        {note && (
-          <p className="faint" style={{ fontSize: 11, marginTop: 6, textAlign: 'center' }}>{note}</p>
-        )}
       </div>
     </div>
+  )
+}
+
+/**
+ * The button that starts the patron checkout, with the line it says afterwards.
+ *
+ * Shared by this card and by the founder's player card (FounderSupport), which
+ * is the second surface to offer the same product. One button rather than two
+ * so the outcome copy can't drift — 'unconfirmed' in particular: Apple charged
+ * and the entitlement hasn't landed, so the honest instruction is to wait and
+ * Restore, not an apology. Whether it may render at all is still the caller's
+ * `patronOffer` check; this only starts a sale that has already been allowed.
+ */
+export function PatronBuyButton({ username }: { username: string }) {
+  const juice = useJuice()
+  const [busy, setBusy] = useState(false)
+  const [note, setNote] = useState<string | null>(null)
+  return (
+    <>
+      <Button
+        variant="gold"
+        full
+        disabled={busy}
+        onClick={async () => {
+          juice.coin()
+          setBusy(true)
+          const result = await startSkinCheckout(PATRON_SKU, username)
+          setBusy(false)
+          // Never close a paid tap in silence.
+          if (result === 'failed') {
+            setNote('That didn’t go through — you haven’t been charged.')
+          } else if (result === 'unconfirmed') {
+            setNote('Payment went through. Your skin should appear in a moment — if it doesn’t, tap Restore purchases in Customize.')
+          } else if (result === 'bought') {
+            setNote('Thank you. 🙏')
+          }
+        }}
+      >
+        {busy ? 'Opening…' : '💛 Become a founding patron'}
+      </Button>
+      {note && (
+        <p className="faint" style={{ fontSize: 11, marginTop: 6, textAlign: 'center' }}>{note}</p>
+      )}
+    </>
   )
 }

@@ -5,6 +5,7 @@ import { XpBar } from '@/components/XpBar'
 import { StreakFlame } from '@/components/StreakFlame'
 import { cardBgStyle } from '@/data/playerCards'
 import { CardBg } from '@/components/CardBg'
+import { FounderTag } from '@/components/FounderTag'
 import { denominationColor, denominationName } from '@/data/denominations'
 import type { AvatarSpec } from '@/types'
 
@@ -122,6 +123,7 @@ export function PlayerCard({
           >
             @{p.username}
           </h2>
+          <FounderTag username={p.username} size="sm" />
           {p.title && (
             <div
               className="faint"

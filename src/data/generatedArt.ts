@@ -58,6 +58,8 @@ export const GENERATED_ART: Record<string, string> = {
   'churchyard': '/church/churchyard.jpg',
   'cross_beam': '/items/cross_beam.png',
   'deborah': '/skins/deborah.png',
+  'eden': '/skins/eden.png',
+  'elijah': '/skins/elijah.png',
   'francis': '/skins/francis.png',
   'hall-2': '/keep/hall-2.png',
   'hall-3': '/keep/hall-3.png',

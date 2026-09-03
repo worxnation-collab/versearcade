@@ -12,6 +12,13 @@ export interface BorderDef {
   name: string
   requiredStreak: number
   blurb: string
+  /**
+   * A border that comes with a skin pack rather than a streak. `requiredStreak`
+   * is 0 for these and is NOT the gate — `packPreviewable` (data/avatar) is,
+   * on the client, and migration 0096's set_cosmetics on the server. Same rule
+   * the pack card backgrounds follow in data/playerCards.
+   */
+  pack?: 'patron'
 }
 
 export interface BadgeDef {
@@ -30,6 +37,9 @@ export const BORDERS: BorderDef[] = [
   { key: 'amethyst', name: 'Amethyst', requiredStreak: 180, blurb: 'Half a year of devotion.' },
   { key: 'aurora', name: 'Aurora', requiredStreak: 365, blurb: 'A full year — the sky celebrates.' },
   { key: 'halo', name: 'Halo of Light', requiredStreak: 1000, blurb: '1000 days. Truly radiant.' },
+  // The founding patron's ring — pale stone with a gold vein, matching the
+  // Cornerstone card. Comes with the pack (either patron skin), never a streak.
+  { key: 'cornerstone', name: 'Cornerstone', requiredStreak: 0, pack: 'patron', blurb: 'Pale stone, one gold vein — the founding patron’s ring.' },
 ]
 
 export const BADGES: BadgeDef[] = [
@@ -57,7 +67,7 @@ export const isUnlocked = (requiredStreak: number, longestStreak: number, founde
 // that). `halo` also animates (see the .va-halo rule in index.css).
 export type BorderRender =
   | { type: 'shadow'; boxShadow: string }
-  | { type: 'gradient'; gradient: string; animated?: boolean }
+  | { type: 'gradient'; gradient: string; animated?: boolean; glow?: string }
 
 const BASE_SHADOW = '0 6px 16px rgba(0,0,0,0.4)'
 
@@ -75,6 +85,14 @@ export function borderRender(key: string): BorderRender {
       return { type: 'gradient', gradient: 'conic-gradient(from 0deg, #5ee7df, #a06bff, #ffd23f, #43e97b, #ff6b6b, #5ee7df)' }
     case 'halo':
       return { type: 'gradient', gradient: 'conic-gradient(from 0deg, #fff6cf, #ffd23f, #fff6cf, #ffe58a, #ffffff, #ffd23f, #fff6cf)', animated: true }
+    case 'cornerstone':
+      // Mostly pale limestone, with two gold veins running through the ring —
+      // the card's texture wrapped round the face. Still, like the stone.
+      return {
+        type: 'gradient',
+        gradient: 'conic-gradient(from 200deg, #efe6d3 0%, #d9ccb0 9%, #ffd23f 13%, #f6eedc 18%, #e6dac2 40%, #f3ebd9 55%, #ffd23f 60%, #d9ccb0 64%, #efe6d3 80%, #e6dac2 100%)',
+        glow: '0 0 14px 2px rgba(255,210,63,0.35), 0 6px 16px rgba(0,0,0,0.4)',
+      }
     case 'default':
     default:
       return { type: 'shadow', boxShadow: `0 0 0 3px var(--gold), ${BASE_SHADOW}` }

@@ -1277,7 +1277,16 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0095` (the founding patron becomes the rock — `cephas` replaces
+The latest is `0096` (the Cornerstone avatar border — the third piece of the
+patron look, gated on the PACK rather than a streak), APPLIED on 2026-09-03
+before the client merged, and verified: the `cosmetics` row exists, exactly ONE
+`set_cosmetics` signature carries the pack gate (checked BEFORE the streak gate,
+since the row's `req_streak` is 0 and must not be reachable by streak alone),
+and the ACL is the house `authenticated` shape. `set_cosmetics` is restated
+wholesale from 0023 there; the next migration that edits it copies forward from
+0096, not 0023.
+
+Before it, `0095` (the founding patron becomes the rock — `cephas` replaces
 the whale, plus the Cornerstone card), APPLIED on 2026-09-02 before the client
 merged, and verified rather than assumed: the protected list in
 `enforce_skin_entitlement` reads THIRTEEN names (0088's twelve plus `cephas`,
@@ -1418,7 +1427,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0096` (0085 is taken by erasure
+production only). So the next free number is `0097` (0096 is taken by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

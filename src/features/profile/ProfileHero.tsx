@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { Character } from '@/components/Character'
 import { CardBg } from '@/components/CardBg'
 import { Pet } from '@/components/Pet'
-import { cardBgStyle } from '@/data/playerCards'
+import { cardBgInk, cardBgStyle } from '@/data/playerCards'
 import { petById, petGlows } from '@/data/pets'
 import { useSettings } from '@/store/settings'
 import { FounderTag } from '@/components/FounderTag'
@@ -182,6 +182,7 @@ export function ProfileHero({
         </div>
 
         <p
+          className={cardBgInk(cardBackground) === 'gold' ? 'gold-text' : undefined}
           style={{
             margin: '2px 0 0',
             textAlign: 'center',

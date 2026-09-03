@@ -39,6 +39,12 @@ export interface CardBgDef {
    * closed union so a card can't ship an effect the renderer doesn't know.
    */
   fx?: 'veins'
+  /**
+   * What colour the card writes in. 'gold' turns the name and the six numbers
+   * into gold gradient text — the Cornerstone's veins carried into the type.
+   * Decoration only; every host still paints its own scrim underneath.
+   */
+  ink?: 'gold'
 }
 
 export const DEFAULT_CARD_BG = 'default'
@@ -148,6 +154,7 @@ const PACK: CardBgDef[] = [
     unlockHint: 'Comes with the Founding Patron',
     scene: 'stone',
     fx: 'veins',
+    ink: 'gold',
     palette: { sky: ['#efe6d3', '#d9ccb0'], land: '#cbbc9c', glow: '#ffd76b', accent: '#fff2cf' },
   },
   {
@@ -215,6 +222,9 @@ export function cardArtProps(key?: string | null): { scene: Scene; palette: Pale
 export const cardBgImage = (key?: string | null): string => `/cards/${cardBgByKey(key).key}.webp`
 
 /** A flat fallback fill, used under the image while it decodes and for tiny chips. */
+/** The text colour a background asks its hosts to write in, if any. */
+export const cardBgInk = (key?: string | null): CardBgDef['ink'] => cardBgByKey(key).ink
+
 /** The live effect a background asks CardBg to draw over it, if any. */
 export const cardBgFx = (key?: string | null): CardBgDef['fx'] => cardBgByKey(key).fx
 

@@ -60,9 +60,11 @@ export function Avatar({
           borderRadius: '50%',
           padding: ringPad,
           background: render.gradient,
-          boxShadow: render.animated
-            ? '0 0 18px 3px rgba(255,210,63,0.55), 0 6px 16px rgba(0,0,0,0.4)'
-            : '0 0 14px 2px rgba(160,107,255,0.45), 0 6px 16px rgba(0,0,0,0.4)',
+          boxShadow: render.glow
+            ? render.glow
+            : render.animated
+              ? '0 0 18px 3px rgba(255,210,63,0.55), 0 6px 16px rgba(0,0,0,0.4)'
+              : '0 0 14px 2px rgba(160,107,255,0.45), 0 6px 16px rgba(0,0,0,0.4)',
           flexShrink: 0,
           display: 'grid',
           placeItems: 'center',

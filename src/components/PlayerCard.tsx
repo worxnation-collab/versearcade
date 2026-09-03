@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { Avatar } from '@/components/Avatar'
 import { XpBar } from '@/components/XpBar'
 import { StreakFlame } from '@/components/StreakFlame'
-import { cardBgStyle } from '@/data/playerCards'
+import { cardBgInk, cardBgStyle } from '@/data/playerCards'
 import { CardBg } from '@/components/CardBg'
 import { FounderTag } from '@/components/FounderTag'
 import { denominationColor, denominationName } from '@/data/denominations'
@@ -65,6 +65,9 @@ export function PlayerCard({
    */
   statsOnly?: boolean
 }) {
+  // The Cornerstone writes in gold; every other card in ink. Decided by the
+  // background's definition, never here.
+  const gold = cardBgInk(p.cardBackground) === 'gold'
   const denom = p.denomination ? denominationName(p.denomination) : null
   // SVG gradient ids must be unique per rendered card — the profile header and
   // an open pop-up can be on screen at once.
@@ -115,6 +118,7 @@ export function PlayerCard({
         />
         <div style={{ flex: 1, minWidth: 0 }}>
           <h2
+            className={gold ? 'gold-text' : undefined}
             style={{
               fontSize: compact ? 21 : 24, overflow: 'hidden', textOverflow: 'ellipsis',
               whiteSpace: 'nowrap', minWidth: 0,
@@ -164,11 +168,11 @@ export function PlayerCard({
       {/* The six stats, same set and order as the profile has always shown. */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
         <Stat label="Streak" node={<StreakFlame days={p.currentStreak} size={18} />} />
-        <Stat label="Longest" value={`${p.longestStreak}d`} />
-        <Stat label="Cards" value={`${p.cards}`} />
-        <Stat label="Level" value={`${p.level}`} />
-        <Stat label="Total XP" value={p.xp.toLocaleString()} />
-        <Stat label="Plays" value={`${p.totalPlays}`} />
+        <Stat label="Longest" value={`${p.longestStreak}d`} gold={gold} />
+        <Stat label="Cards" value={`${p.cards}`} gold={gold} />
+        <Stat label="Level" value={`${p.level}`} gold={gold} />
+        <Stat label="Total XP" value={p.xp.toLocaleString()} gold={gold} />
+        <Stat label="Plays" value={`${p.totalPlays}`} gold={gold} />
       </div>
       </div>
     </div>
@@ -177,7 +181,7 @@ export function PlayerCard({
 
 // Tiles sit on painted artwork, so they carry their own scrim instead of the
 // usual .card surface — otherwise a bright background washes the numbers out.
-function Stat({ label, value, node }: { label: string; value?: string; node?: ReactNode }) {
+function Stat({ label, value, node, gold }: { label: string; value?: string; node?: ReactNode; gold?: boolean }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
@@ -191,7 +195,10 @@ function Stat({ label, value, node }: { label: string; value?: string; node?: Re
         backdropFilter: 'blur(3px)',
       }}
     >
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, minHeight: 26, display: 'grid', placeItems: 'center' }}>
+      <div
+        className={gold && value != null ? 'gold-text' : undefined}
+        style={{ fontFamily: 'var(--font-display)', fontSize: 20, minHeight: 26, display: 'grid', placeItems: 'center' }}
+      >
         {node ?? value}
       </div>
       <div className="faint" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>

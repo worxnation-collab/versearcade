@@ -20,10 +20,17 @@ export function QuickSheet({
   title,
   onClose,
   children,
+  zIndex = 100,
 }: {
   title: ReactNode
   onClose: () => void
   children: ReactNode
+  /**
+   * 100 is the sheet tier. A sheet the PLAYER CARD opens (which sits at 110)
+   * passes 112 — the "opened from the card" tier RoomVisitSheet uses — or it
+   * paints under the card that opened it.
+   */
+  zIndex?: number
 }) {
   const juice = useJuice()
 
@@ -51,7 +58,7 @@ export function QuickSheet({
         style={{
           position: 'fixed',
           inset: 0,
-          zIndex: 100,
+          zIndex,
           background: 'rgba(8,3,24,0.78)',
           display: 'flex',
           alignItems: 'flex-end',

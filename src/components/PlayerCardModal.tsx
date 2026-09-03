@@ -15,7 +15,6 @@ import { ProfileHero } from '@/features/profile/ProfileHero'
 import { denominationColor, denominationName } from '@/data/denominations'
 import { RoomVisitSheet } from '@/features/room/RoomVisitSheet'
 import { GiveGiftSheet } from '@/features/gifts/GiveGiftSheet'
-import { FounderSupport } from '@/features/profile/FounderSupport'
 
 // Tap any avatar anywhere and their card pops up. A single provider owns the
 // one open card, so avatars stay dumb: they just say "open @handle".
@@ -244,11 +243,9 @@ function CardSheet({ username, onClose }: { username: string; onClose: () => voi
                 }
               />
             </div>
+            {/* The founder's card carries its own "become a founder" pill —
+                drawn by PlayerCard, see FounderPill. */}
             <PlayerCard p={data} compact statsOnly />
-            {/* The founder's card carries the founding-patron offer under the
-                numbers. Renders nothing for anybody else, and nothing for a
-                viewer who can't be sold to — see FounderSupport. */}
-            <FounderSupport username={data.username} />
           </>
         )}
 

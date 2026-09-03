@@ -6,6 +6,7 @@ import { StreakFlame } from '@/components/StreakFlame'
 import { cardBgInk, cardBgStyle } from '@/data/playerCards'
 import { CardBg } from '@/components/CardBg'
 import { FounderTag } from '@/components/FounderTag'
+import { FounderPill } from '@/features/profile/FounderSupport'
 import { denominationColor, denominationName } from '@/data/denominations'
 import type { AvatarSpec } from '@/types'
 
@@ -96,6 +97,12 @@ export function PlayerCard({
         }}
       />
       <div style={{ position: 'relative' }}>
+      {/* The founder's card sells the founding patron from the card itself —
+          a slim gold bar, so anyone who taps the founder on a board sees the
+          ask without scrolling. Nothing for anybody else's card, and nothing
+          when a sale can't be shown; FounderPill decides both. */}
+      <FounderPill username={p.username} />
+
       {/* Actions get their own row above the handle rather than sitting beside
           it, so neither a long username nor a wide button ("✨ Customize") ever
           crowds the other. */}

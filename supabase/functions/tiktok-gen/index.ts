@@ -16,7 +16,9 @@
 //   loop-status { key, op }                      → { done, url? }    polls Veo; on completion parks readers/<key>.mp4
 //   copy        { reference, text, theme }       → { hook, caption, hashtags[] }   post copy via Gemini Flash
 //
-// Secrets: GEMINI_API_KEY (required). Optional model overrides so a renamed
+// Secrets: GEMINI_API_KEY — as a function secret, or in Vault under the same
+// name (read through `tiktok_gemini_key()`, 0097; the function secret wins if
+// both exist). Optional model overrides so a renamed
 // preview model is a dashboard setting rather than a redeploy:
 //   GEMINI_TTS_MODEL   (default gemini-2.5-flash-preview-tts)
 //   GEMINI_IMAGE_MODEL (default gemini-3-pro-image — what scripts/gen-art.mjs uses)
@@ -32,7 +34,11 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const GEMINI_KEY = Deno.env.get('GEMINI_API_KEY') ?? ''
+// The key comes from the GEMINI_API_KEY function secret, or — when that is not
+// set — from Vault through `tiktok_gemini_key()` (0097, service_role only).
+// Resolved per request into this module-level slot so the helpers below stay
+// simple; it is the same value every time.
+let GEMINI_KEY = ''
 const TTS_MODEL = Deno.env.get('GEMINI_TTS_MODEL') ?? 'gemini-2.5-flash-preview-tts'
 const IMAGE_MODEL = Deno.env.get('GEMINI_IMAGE_MODEL') ?? 'gemini-3-pro-image'
 const TEXT_MODEL = Deno.env.get('GEMINI_TEXT_MODEL') ?? 'gemini-3.6-flash'
@@ -113,7 +119,6 @@ Deno.serve(async (req) => {
 
   try {
     if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405)
-    if (!GEMINI_KEY) return json({ error: 'GEMINI_API_KEY is not configured' }, 500)
 
     // Verify the caller is the admin (sharkbait) — byte-for-byte the push-send gate.
     const authHeader = req.headers.get('Authorization') ?? ''
@@ -124,6 +129,13 @@ Deno.serve(async (req) => {
     const admin = createClient(SUPABASE_URL, SERVICE_KEY)
     const { data: prof } = await admin.from('profiles').select('username').eq('id', user.id).single()
     if (!prof || prof.username !== 'sharkbait') return json({ error: 'forbidden' }, 403)
+
+    GEMINI_KEY = Deno.env.get('GEMINI_API_KEY') ?? ''
+    if (!GEMINI_KEY) {
+      const { data } = await admin.rpc('tiktok_gemini_key')
+      GEMINI_KEY = typeof data === 'string' ? data : ''
+    }
+    if (!GEMINI_KEY) return json({ error: 'GEMINI_API_KEY is not configured (function secret or Vault)' }, 500)
 
     // The bucket is created on first use. Public read is fine: everything in
     // it is a piece of a public video. Writes go through the service key only.

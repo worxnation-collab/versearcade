@@ -454,22 +454,14 @@ async function makeMuxer(codec: Codec) {
 
 function tick() { return new Promise<void>((r) => setTimeout(r, 0)) }
 
-export async function renderTikTok(input: RenderInput): Promise<RenderOutput> {
-  const progress = input.onProgress ?? (() => {})
-  progress(0, 'Decoding the reading')
-  const samples = await decodeAudio(input.audio)
-  const audioDur = samples.length / SAMPLE_RATE
-  const segments = speechSegments(samples, SAMPLE_RATE)
-  // The reading ends by saying the reference, so it is the last caption too —
-  // and a clause of its own, which keeps the clause count matching the pauses.
-  const verse = /[.!?]["'”’)]?$/.test(input.text.trim()) ? input.text.trim() : input.text.trim() + '.'
-  const phrases = alignPhrases([...splitPhrases(verse), input.reference + '.'], segments, audioDur)
-  const lead = input.hook?.trim() ? 1.8 : 1.0
-  const total = lead + audioDur + TAIL_SEC
-  const scene: Scene = { input, lead, audioDur, total, phrases }
-
-  try { await document.fonts.load(`800 88px "Baloo 2"`) } catch { /* fall back to the stack */ }
-
+// The shared encode pipeline: audio track from the reading, video frames from
+// `draw`, muxed and then CHECKED (see hasAudibleTrack). Both layouts go
+// through here, so there is one copy of the codec, timing and fallback logic.
+async function produce(
+  draw: (ctx: CanvasRenderingContext2D, t: number) => Promise<void>,
+  total: number, lead: number, samples: Float32Array,
+  progress: (f: number, label: string) => void,
+): Promise<{ blob: Blob; ext: 'mp4' | 'webm' }> {
   progress(0.02, 'Picking a codec')
   const codec = await pickCodec()
 
@@ -530,7 +522,7 @@ export async function renderTikTok(input: RenderInput): Promise<RenderOutput> {
     const frames = Math.ceil(total * FPS)
     for (let i = 0; i < frames; i++) {
       const t = i / FPS
-      await drawFrame(ctx, scene, t)
+      await draw(ctx, t)
       const frame = new VideoFrame(canvas, { timestamp: Math.round(t * 1e6), duration: Math.round(1e6 / FPS) })
       videoEncoder.encode(frame, { keyFrame: i % (FPS * 2) === 0 })
       frame.close()
@@ -561,8 +553,28 @@ export async function renderTikTok(input: RenderInput): Promise<RenderOutput> {
       throw new Error('The audio track came out silent.')
     }
   }
+  return { blob, ext: used.ext }
+}
+
+export async function renderTikTok(input: RenderInput): Promise<RenderOutput> {
+  const progress = input.onProgress ?? (() => {})
+  progress(0, 'Decoding the reading')
+  const samples = await decodeAudio(input.audio)
+  const audioDur = samples.length / SAMPLE_RATE
+  const segments = speechSegments(samples, SAMPLE_RATE)
+  // The reading ends by saying the reference, so it is the last caption too —
+  // and a clause of its own, which keeps the clause count matching the pauses.
+  const verse = /[.!?]["'”’)]?$/.test(input.text.trim()) ? input.text.trim() : input.text.trim() + '.'
+  const phrases = alignPhrases([...splitPhrases(verse), input.reference + '.'], segments, audioDur)
+  const lead = input.hook?.trim() ? 1.8 : 1.0
+  const total = lead + audioDur + TAIL_SEC
+  const scene: Scene = { input, lead, audioDur, total, phrases }
+
+  try { await document.fonts.load(`800 88px "Baloo 2"`) } catch { /* fall back to the stack */ }
+
+  const { blob, ext } = await produce((ctx, t) => drawFrame(ctx, scene, t), total, lead, samples, progress)
   progress(1, 'Done')
-  return { blob, ext: used.ext, durationSec: total, phrases }
+  return { blob, ext, durationSec: total, phrases }
 }
 
 // A single frame as a PNG data URL — the preview poster in the panel, and the
@@ -574,5 +586,232 @@ export async function renderPoster(input: Omit<RenderInput, 'audio' | 'onProgres
   if (!ctx) throw new Error('no 2d context')
   try { await document.fonts.load(`800 88px "Baloo 2"`) } catch { /* fine */ }
   await drawFrame(ctx, { input: { ...input, audio: new ArrayBuffer(0) }, lead: 1, audioDur: 30, total: 34, phrases: [] }, t, chrome)
+  return canvas.toDataURL('image/png')
+}
+
+// ---- story time -----------------------------------------------------------------
+//
+// The evening post: a teller (Tabitha) at the bottom-left of her room, a
+// picture card above her that changes with each paragraph, captions between
+// the two, and the verse itself as the last card. Same engine, same checks.
+
+export interface StoryCard {
+  image?: HTMLImageElement
+  figure?: HTMLImageElement
+  label?: string
+}
+
+export interface StoryInput {
+  title: string
+  reference: string
+  verseText: string
+  /** Spoken paragraphs, in order. The LAST one is the verse and its reference. */
+  paragraphs: string[]
+  /** One per paragraph; an entry with no image is drawn as the verse card. */
+  cards: StoryCard[]
+  hook?: string
+  audio: ArrayBuffer
+  room: HTMLImageElement
+  teller: HTMLImageElement
+  onProgress?: (fraction: number, label: string) => void
+}
+
+interface StoryScene {
+  input: StoryInput
+  lead: number
+  audioDur: number
+  total: number
+  phrases: TimedPhrase[]
+  /** Index of the paragraph each phrase belongs to. */
+  para: number[]
+  /** When each paragraph starts, seconds into the audio. */
+  paraStart: number[]
+}
+
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath()
+  ctx.moveTo(x + r, y)
+  ctx.arcTo(x + w, y, x + w, y + h, r)
+  ctx.arcTo(x + w, y + h, x, y + h, r)
+  ctx.arcTo(x, y + h, x, y, r)
+  ctx.arcTo(x, y, x + w, y, r)
+  ctx.closePath()
+}
+
+function contain(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number) {
+  const s = Math.min(w / img.naturalWidth, h / img.naturalHeight)
+  const dw = img.naturalWidth * s, dh = img.naturalHeight * s
+  ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh)
+}
+
+async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: number) {
+  const { input, lead, audioDur, total, phrases, para, paraStart } = sc
+  const at = t - lead
+
+  // 1. The room, with a slow push.
+  cover(ctx, input.room, input.room.naturalWidth, input.room.naturalHeight, 1 + 0.05 * (t / total))
+  const top = ctx.createLinearGradient(0, 0, 0, 480)
+  top.addColorStop(0, 'rgba(11,7,32,0.85)'); top.addColorStop(1, 'rgba(11,7,32,0)')
+  ctx.fillStyle = top; ctx.fillRect(0, 0, WIDTH, 480)
+  const bot = ctx.createLinearGradient(0, HEIGHT - 900, 0, HEIGHT)
+  bot.addColorStop(0, 'rgba(11,7,32,0)'); bot.addColorStop(1, 'rgba(11,7,32,0.92)')
+  ctx.fillStyle = bot; ctx.fillRect(0, HEIGHT - 900, WIDTH, 900)
+
+  // 2. Header.
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+  ctx.font = `800 32px ${FONT_DISPLAY}`
+  ctx.letterSpacing = '6px'
+  outlined(ctx, 'VERSE ARCADE · STORY TIME', WIDTH / 2, 170, '#ffd23f', 'rgba(11,7,32,0.85)', 8)
+  ctx.letterSpacing = '0px'
+  ctx.font = `700 54px ${FONT_DISPLAY}`
+  const titleLines = wrap(ctx, input.title, 900)
+  titleLines.forEach((l, i) => outlined(ctx, l, WIDTH / 2, 240 + i * 60))
+
+  // 3. The picture card for the current paragraph.
+  const endFade = easeOut((t - (lead + audioDur)) / 0.5)
+  let pi = 0
+  for (let i = 0; i < paraStart.length; i++) if (at >= paraStart[i] - 0.15) pi = i
+  const card = input.cards[Math.min(pi, input.cards.length - 1)]
+  const cardAge = easeOut((at - (paraStart[pi] ?? 0) + 0.15) / 0.4)
+  if (t >= lead - 0.6 && endFade < 1) {
+    const cx = 160, cy = 330, cw = 760, ch = 760
+    ctx.save()
+    ctx.globalAlpha = (1 - endFade) * Math.min(1, cardAge + 0.2)
+    const pop = 0.95 + 0.05 * cardAge
+    ctx.translate(cx + cw / 2, cy + ch / 2); ctx.scale(pop, pop); ctx.translate(-(cx + cw / 2), -(cy + ch / 2))
+    ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 40; ctx.shadowOffsetY = 18
+    roundRect(ctx, cx, cy, cw, ch, 44)
+    ctx.fillStyle = 'rgba(21,10,52,0.78)'
+    ctx.fill()
+    ctx.shadowColor = 'transparent'
+    ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(255,210,63,0.85)'; ctx.stroke()
+    ctx.save(); roundRect(ctx, cx + 4, cy + 4, cw - 8, ch - 8, 40); ctx.clip()
+    if (card?.image) {
+      if (card.image.naturalWidth > card.image.naturalHeight * 1.2 || card.figure) {
+        // A scene: fill the card, and stand the figure in it.
+        const s = Math.max(cw / card.image.naturalWidth, ch / card.image.naturalHeight)
+        ctx.drawImage(card.image, cx + (cw - card.image.naturalWidth * s) / 2, cy + (ch - card.image.naturalHeight * s) / 2, card.image.naturalWidth * s, card.image.naturalHeight * s)
+        if (card.figure) {
+          const fh = ch * 0.62
+          const fw = (card.figure.naturalWidth / card.figure.naturalHeight) * fh
+          ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 24; ctx.shadowOffsetY = 12
+          ctx.drawImage(card.figure, cx + cw / 2 - fw / 2, cy + ch - fh - 40, fw, fh)
+          ctx.shadowColor = 'transparent'
+        }
+      } else {
+        contain(ctx, card.image, cx + 40, cy + 40, cw - 80, ch - 80)
+      }
+    } else {
+      // The verse card.
+      ctx.font = `700 54px ${FONT_DISPLAY}`
+      const lines = wrap(ctx, input.verseText, cw - 120)
+      const lh = 66
+      const y0 = cy + ch / 2 - ((lines.length - 1) * lh) / 2 - 30
+      lines.forEach((l, i) => outlined(ctx, l, cx + cw / 2, y0 + i * lh, '#ffffff', 'rgba(11,7,32,0.6)', 6))
+      ctx.font = `800 40px ${FONT_DISPLAY}`
+      outlined(ctx, input.reference, cx + cw / 2, y0 + lines.length * lh + 16, '#ffd23f', 'rgba(11,7,32,0.6)', 6)
+    }
+    ctx.restore()
+    if (card?.label && card.image) {
+      ctx.font = `700 30px ${FONT_DISPLAY}`
+      ctx.fillStyle = 'rgba(11,7,32,0.75)'
+      const lw = ctx.measureText(card.label).width + 44
+      roundRect(ctx, cx + cw / 2 - lw / 2, cy + ch - 62, lw, 46, 23); ctx.fill()
+      ctx.fillStyle = '#ffd23f'; ctx.fillText(card.label, cx + cw / 2, cy + ch - 39)
+    }
+    ctx.restore()
+  }
+
+  // 4. The teller, bottom-left, with a warm glow.
+  const bob = Math.sin((t / 3.4) * Math.PI * 2)
+  const th = 640, tw = (input.teller.naturalWidth / input.teller.naturalHeight) * th
+  const tx = 60, ty = HEIGHT - 30 - th + bob * 8
+  const g = ctx.createRadialGradient(tx + tw / 2, ty + th * 0.6, 30, tx + tw / 2, ty + th * 0.6, 420)
+  g.addColorStop(0, 'rgba(255,210,63,0.22)'); g.addColorStop(1, 'rgba(255,210,63,0)')
+  ctx.fillStyle = g; ctx.fillRect(0, HEIGHT - 1000, WIDTH, 1000)
+  ctx.save()
+  ctx.imageSmoothingQuality = 'high'
+  ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 36; ctx.shadowOffsetY = 20
+  ctx.drawImage(input.teller, tx, ty, tw, th)
+  ctx.restore()
+
+  // 5. Captions, between the card and the teller.
+  let caption: string | null = null
+  let age = 1
+  if (t < lead) { caption = input.hook?.trim() || null; age = t / 0.35 }
+  else {
+    const idx = phrases.findIndex((x) => at >= x.start && at < x.end)
+    const p = idx >= 0 ? phrases[idx] : (at < audioDur ? phrases[phrases.length - 1] : null)
+    if (p && at < audioDur + 0.2) { caption = p.text.replace(/\.$/, ''); age = (at - p.start) / 0.22 }
+    void para
+  }
+  if (caption && endFade < 1) {
+    ctx.save()
+    ctx.globalAlpha = Math.min(1, easeOut(age) + 0.35) * (1 - endFade)
+    const pop = 0.94 + 0.06 * easeOut(age)
+    ctx.translate(WIDTH / 2 + 120, 1215); ctx.scale(pop, pop)
+    ctx.font = `800 70px ${FONT_DISPLAY}`
+    let lines = wrap(ctx, caption, 700)
+    let lh = 82
+    if (lines.length > 2) { ctx.font = `800 58px ${FONT_DISPLAY}`; lines = wrap(ctx, caption, 700); lh = 68 }
+    const y0 = -((lines.length - 1) * lh) / 2
+    lines.forEach((l, i) => outlined(ctx, l, 0, y0 + i * lh, '#ffffff', 'rgba(11,7,32,0.92)', 12))
+    ctx.restore()
+  }
+
+  // 6. End card.
+  if (endFade > 0) {
+    ctx.save()
+    ctx.globalAlpha = endFade
+    ctx.fillStyle = 'rgba(11,7,32,0.6)'; ctx.fillRect(0, 0, WIDTH, HEIGHT)
+    ctx.font = `700 56px ${FONT_DISPLAY}`
+    const lines = wrap(ctx, input.verseText, 880)
+    const lh = 68
+    const y0 = HEIGHT / 2 - 200 - ((lines.length - 1) * lh) / 2
+    lines.forEach((l, i) => outlined(ctx, l, WIDTH / 2, y0 + i * lh))
+    ctx.font = `800 44px ${FONT_DISPLAY}`
+    outlined(ctx, input.reference, WIDTH / 2, y0 + lines.length * lh + 20, '#ffd23f')
+    ctx.font = `800 64px ${FONT_DISPLAY}`
+    outlined(ctx, 'Play today’s verse', WIDTH / 2, HEIGHT / 2 + 380)
+    ctx.font = `800 52px ${FONT_DISPLAY}`
+    outlined(ctx, SITE, WIDTH / 2, HEIGHT / 2 + 470, '#ffd23f')
+    ctx.restore()
+  }
+}
+
+export async function renderStory(input: StoryInput): Promise<RenderOutput> {
+  const progress = input.onProgress ?? (() => {})
+  progress(0, 'Decoding the story')
+  const samples = await decodeAudio(input.audio)
+  const audioDur = samples.length / SAMPLE_RATE
+  const segments = speechSegments(samples, SAMPLE_RATE)
+  // Phrases per paragraph, so each paragraph's first phrase marks its card.
+  const texts: string[] = []
+  const para: number[] = []
+  input.paragraphs.forEach((p, i) => {
+    const t = p.trim()
+    const ended = /[.!?]["'”’)]?$/.test(t) ? t : t + '.'
+    // A story is read at a talking pace, so a card can hold a word more.
+    for (const ph of splitPhrases(ended, 7)) { texts.push(ph); para.push(i) }
+  })
+  const phrases = alignPhrases(texts, segments, audioDur)
+  const paraStart = input.paragraphs.map((_, i) => phrases[para.indexOf(i)]?.start ?? 0)
+  const lead = input.hook?.trim() ? 1.8 : 1.0
+  const total = lead + audioDur + TAIL_SEC + 1.2
+  try { await document.fonts.load(`800 70px "Baloo 2"`) } catch { /* fine */ }
+  const sc: StoryScene = { input, lead, audioDur, total, phrases, para, paraStart }
+  const { blob, ext } = await produce((ctx, t) => drawStoryFrame(ctx, sc, t), total, lead, samples, progress)
+  progress(1, 'Done')
+  return { blob, ext, durationSec: total, phrases }
+}
+
+export async function renderStoryPoster(input: Omit<StoryInput, 'audio' | 'onProgress'>, t = 2.5): Promise<string> {
+  const canvas = document.createElement('canvas')
+  canvas.width = WIDTH; canvas.height = HEIGHT
+  const ctx = canvas.getContext('2d', { alpha: false })
+  if (!ctx) throw new Error('no 2d context')
+  try { await document.fonts.load(`800 70px "Baloo 2"`) } catch { /* fine */ }
+  const n = input.paragraphs.length
+  await drawStoryFrame(ctx, { input: { ...input, audio: new ArrayBuffer(0) }, lead: 1, audioDur: 60, total: 65, phrases: [], para: [], paraStart: Array.from({ length: n }, (_, i) => i * (60 / n)) }, t)
   return canvas.toDataURL('image/png')
 }

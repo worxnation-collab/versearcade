@@ -90,6 +90,32 @@ A rotating cast means more figure+scene pairs; the built-in tier renders any
 pair with nothing generated, and a painted still or Veo loop is added per pair
 only when wanted.
 
+## Story time: the evening post
+
+The same panel has a second mode. **Story time** is Tabitha, the app's
+librarian, telling the story BEHIND the day's verse: 60 to 90 seconds in her
+library, a picture card above her that changes with each paragraph, and the
+verse itself read plainly at the end. It is the morning post's other half —
+Peter reads the verse; Tabitha tells you what was happening — and it costs
+about three cents: a Gemini Flash script and a longer TTS.
+
+- **The script is written from the pool entry's own narrative fields** —
+  `before`, `after`, `speaker`, `audience`, `facts` — and the function's prompt
+  forbids anything not in the passage's plain narrative. Cached at
+  `days/<date>/story.json`; **↻ Rewrite** asks again. Three paragraphs: the
+  situation, what happens, what came after and why it matters, then the verse.
+- **The pictures are art the app already ships.** `storyCards()` in
+  `data/tiktokVoice.ts` picks, per paragraph: the place and the person for the
+  opening (a road or room scene with the book's reader figure standing in it),
+  a collectible-card illustration matched by keyword for the middle and the
+  aftermath, and the verse itself as the last card. Nothing is generated.
+- **Auto everything, same as the verse post.** Tabitha in the library by
+  default (any reader figure and any of five rooms can stand in), her own
+  voice (Sulafat, or Vindemiatrix for comfort) with a storytelling note, and
+  a story-flavoured caption. Every field flips to manual when touched.
+- `renderStory()` shares `produce()` with the verse layout — one copy of the
+  codec, timing, AAC and audible-track checks.
+
 ## How the captions land on the words
 
 Gemini TTS returns no word timings, so `tiktokRender` measures the WAV: it finds

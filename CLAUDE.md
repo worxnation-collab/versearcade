@@ -408,6 +408,27 @@ church buildings used to be the second holdout ("a kit, because 32 images");
 they are painted now — see the church-skins section for what changed and why
 the kit still exists.
 
+## The TikTok engine: an operator tool, not a feature
+
+Admin → TikTok makes the daily post for a faceless TikTok account: Cephas
+hovering over a road scene reading the verse of the day, captioned, ending on
+the site. One click a day, a week at a time if you like; the human does the
+upload. Full design: `docs/TIKTOK-ENGINE.md`. Three things to know:
+
+- **The Gemini key lives in `supabase/functions/tiktok-gen` and nowhere else.**
+  Same `sharkbait` gate as `push-send`. It makes the reading (Gemini TTS), the
+  reader (a Nano Banana still, optionally a Veo loop) and the caption, and
+  parks them in the `tiktok` Storage bucket, which it creates itself — **no
+  migration**. Set `GEMINI_API_KEY` in Supabase secrets and deploy the function.
+- **The video is assembled in the browser** (`src/lib/tiktokRender.ts`,
+  WebCodecs + `mp4-muxer`, WebM fallback), dynamically imported by the panel so
+  the muxers never reach the player bundle. Captions are timed by measuring the
+  WAV's pauses against the verse's clauses, because TTS returns no word timings.
+- **It touches no player data and no player surface.** It reads
+  `getVerseForDate` and the app's own art, and it never ranks or names anyone.
+  It rides in the baked `dist` harmlessly because `/admin` renders nothing for
+  any other account.
+
 ## Church pages
 
 Every row on the church leaderboard opens `ChurchDetailSheet` — the building

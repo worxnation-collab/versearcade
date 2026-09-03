@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase'
 import { localTimeZone } from '@/lib/date'
 import { allSkins, BUNDLES } from '@/data/avatar'
 import GrowthPanel from './GrowthPanel'
+import TikTokPanel from './TikTokPanel'
 import type { AvatarSpec } from '@/types'
 
 // Private operator surface. THREE gates, strongest first:
@@ -108,7 +109,7 @@ function PinGate({ onOk }: { onOk: () => void }) {
 function Dashboard() {
   const navigate = useNavigate()
   const [ov, setOv] = useState<Overview | null>(null)
-  const [tab, setTab] = useState<'stats' | 'growth' | 'users' | 'sales' | 'church' | 'codes' | 'push'>('stats')
+  const [tab, setTab] = useState<'stats' | 'growth' | 'users' | 'sales' | 'church' | 'codes' | 'push' | 'tiktok'>('stats')
 
   useEffect(() => {
     supabase?.rpc('admin_overview', { p_tz: localTimeZone() }).then(({ data }) => setOv(data as Overview))
@@ -123,10 +124,10 @@ function Dashboard() {
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-        {(['stats', 'growth', 'users', 'sales', 'church', 'codes', 'push'] as const).map((t) => (
+        {(['stats', 'growth', 'users', 'sales', 'church', 'codes', 'push', 'tiktok'] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)} className="pill"
             style={{ background: tab === t ? 'var(--grape)' : 'var(--card)', fontWeight: 800, textTransform: 'capitalize' }}>
-            {t === 'church' ? 'Churches' : t}
+            {t === 'church' ? 'Churches' : t === 'tiktok' ? 'TikTok' : t}
           </button>
         ))}
       </div>
@@ -138,6 +139,7 @@ function Dashboard() {
       {tab === 'church' && <Churches />}
       {tab === 'codes' && <Codes />}
       {tab === 'push' && <PushBroadcast />}
+      {tab === 'tiktok' && <TikTokPanel />}
       <div style={{ height: 40 }} />
     </Page>
   )

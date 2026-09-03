@@ -132,6 +132,14 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .dim { color: var(--ink-dim); }
 .faint { color: var(--ink-faint); }
 .center { text-align: center; }
+.gold-text {
+  background: linear-gradient(92deg, #fff1b8, var(--gold) 45%, var(--tangerine));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  /* text-shadow paints THROUGH clipped text and muddies it; a filter shadows
+     the painted glyphs instead. Hosts must drop their text-shadow for gold. */
+  text-shadow: none !important;
+  filter: drop-shadow(0 1px 2px rgba(8,3,24,0.85));
+}
 .gradient-text {
   background: linear-gradient(92deg, var(--gold), var(--coral) 55%, var(--grape));
   -webkit-background-clip: text; background-clip: text; color: transparent;

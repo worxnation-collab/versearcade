@@ -781,7 +781,11 @@ export function CustomizeSection() {
               <div className="card" style={{ marginBottom: 14 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
                   {BORDERS.map((b) => {
-                    const unlocked = isUnlocked(b.requiredStreak, longest, profile.founder)
+                    // A pack border is gated on the pack, never the streak —
+                    // the server (0096) makes the same call in the same order.
+                    const unlocked = b.pack
+                      ? packPreviewable(b.pack, ownedSkins, profile.isAdmin) || !!profile.founder
+                      : isUnlocked(b.requiredStreak, longest, profile.founder)
                     const equipped = equippedBorder === b.key
                     return (
                       <CosmeticTile
@@ -790,6 +794,7 @@ export function CustomizeSection() {
                         unlocked={unlocked}
                         equipped={equipped}
                         requiredStreak={b.requiredStreak}
+                        lockHint={b.pack === 'patron' ? 'Comes with the Founding Patron' : undefined}
                         onClick={unlocked && !equipped ? () => equip({ border: b.key }) : undefined}
                         preview={
                           <Avatar
@@ -1087,6 +1092,7 @@ function CosmeticTile({
   unlocked,
   equipped,
   requiredStreak,
+  lockHint,
   preview,
   onClick,
 }: {
@@ -1094,6 +1100,8 @@ function CosmeticTile({
   unlocked: boolean
   equipped: boolean
   requiredStreak: number
+  /** Shown on a locked tile instead of the streak, for a pack cosmetic. */
+  lockHint?: string
   preview: React.ReactNode
   onClick?: () => void
 }) {
@@ -1122,7 +1130,7 @@ function CosmeticTile({
       </div>
       <div style={{ fontSize: 12, fontWeight: 700, textAlign: 'center' }}>{name}</div>
       <div className="faint" style={{ fontSize: 10, textAlign: 'center' }}>
-        {equipped ? 'Equipped' : unlocked ? 'Tap to equip' : unlockLabel(requiredStreak)}
+        {equipped ? 'Equipped' : unlocked ? 'Tap to equip' : lockHint ?? unlockLabel(requiredStreak)}
       </div>
     </button>
   )

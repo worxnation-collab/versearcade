@@ -2,7 +2,7 @@
 
 The design of record for prayer requests. Code: `src/data/prayerWall.ts`
 (categories, cap, ladder), `store/prayerWall.ts`, `features/prayer/PrayerWallScreen.tsx`
-(+ `WallScene.tsx`, `Candle.tsx`), migration `0098_prayer_wall.sql`, art
+(+ `WallScene.tsx`, `Candle.tsx`), migration `0099_prayer_wall.sql`, art
 `art/prayer-wall.json`. Route: `/pray`. On the map under You, and in the
 compass's invitations.
 
@@ -98,7 +98,7 @@ header names the shape to use if that ever changes, and why it shouldn't (the
 XP would be client-granted).
 
 The screen fails closed: a keyless build shows the wall and the account card;
-a server without 0098 shows the wall and "isn't open on this server yet", and
+a server without 0099 shows the wall and "isn't open on this server yet", and
 the compass never invites it (`available` gates the invitation).
 
 ## The hold

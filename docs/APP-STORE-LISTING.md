@@ -129,7 +129,7 @@ Start your streak today. It's one verse.
 > make real room.
 >
 > **The Prayer Wall landed after the 3,914-character count above** (leave a note,
-> the wall deals you somebody else's, hold a candle for it; migration `0098`). It
+> the wall deals you somebody else's, hold a candle for it; migration `0099`). It
 > is exactly the kind of thing What's New exists to say and there is no room for
 > it until the cut above is made — so the cut is no longer optional. Suggested
 > bullet, ~190 characters: "THE PRAYER WALL · Leave a note — a kind of thing,

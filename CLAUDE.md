@@ -1298,17 +1298,30 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0098` (the Prayer Wall — `prayer_requests`,
-`prayer_intercessions`, and the deal / kneel / report / admin RPCs), **NOT YET
-APPLIED** as of the PR that adds it. Apply it before merging the client, then
-verify: the four helper functions' ACLs read `{postgres}` only (they were
-`revoke all`ed from public, anon AND authenticated — the 0052 lesson), the ten
-player and admin RPCs carry `authenticated`, and `draw_prayer_request` returns
-null for a caller with nothing to draw rather than raising. The migration was
-run end to end against a local Postgres 16 with a stub `profiles`/`buddies`
-schema before it was committed: the line is cleaned, church-mates and buddies
-see it and a stranger does not, the cap pays twelve and records fourteen, and
-the report round-trips through `admin_resolve_prayer_report`.
+The latest is `0099` (the Prayer Wall — `prayer_requests`,
+`prayer_intercessions`, and the deal / kneel / report / admin RPCs), APPLIED
+on 2026-09-03 through the Supabase MCP as `0099_prayer_wall` and verified: the
+four helper functions' ACLs read `{postgres=X}` only (they were `revoke all`ed
+from public, anon AND authenticated — the 0052 lesson), and the ten player and
+admin RPCs carry `authenticated`. Before it was applied it was run end to end
+against a local Postgres 16 with a stub `profiles`/`buddies` schema: the line
+is cleaned, church-mates and buddies see it and a stranger does not, the cap
+pays twelve and records fourteen, and the report round-trips through
+`admin_resolve_prayer_report`. **It took 0099 because `0098` was already
+`0098_card_about` on main and in production** — the same-day collision this
+file keeps warning about, caught by `list_migrations` before the apply rather
+than after.
+
+**Migrations are applied by the session that writes them, not handed back.**
+The app's owner asked for this outright ("apply migration automatically every
+time"), so the rule is: write the migration, run it against a throwaway local
+Postgres if one is available (`/usr/lib/postgresql/16/bin`, as a non-root
+user, with a stub of the tables it touches), then `list_migrations` on the
+live project to pick the number production will actually record, apply it
+through the Supabase MCP (`apply_migration`, project `visuppaucpzzigwtqmdd`)
+BEFORE the client is merged, verify the ACLs with the `pg_proc` query below,
+and record it here as applied with the date. "Apply the schema before merging
+the client" now means the session does it, in the same PR.
 
 Before it, `0097` (`tiktok_gemini_key()` — the TikTok engine's Gemini key
 read out of Vault, service_role only), APPLIED on 2026-09-03 and verified: the
@@ -1468,7 +1481,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0099` (0098 is taken by the Prayer Wall, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0100` (0099 is taken by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the
@@ -2483,7 +2496,7 @@ asks how much anybody else has prayed.
 an old stone wall (a category, an optional line, signed or not); anybody else
 taps "Pray for someone", the wall DEALS them a note, and they HOLD the candle
 until the wick catches. `data/prayerWall.ts`, `store/prayerWall.ts`,
-`features/prayer/PrayerWallScreen.tsx`, `0098`. Full design and the whole
+`features/prayer/PrayerWallScreen.tsx`, `0099`. Full design and the whole
 safety argument: `docs/PRAYER-WALL.md`. Four things to know before touching it:
 
 - **The category is what travels; the line is for people who already know
@@ -2508,7 +2521,7 @@ safety argument: `docs/PRAYER-WALL.md`. Four things to know before touching it:
   everybody who knelt when they mark it answered. Over the cap the kneeling is
   still recorded and not paid — the thirteenth prayer is still a prayer.
 - **Online-only, inherited** from washing feet: a note needs a stranger. The
-  screen fails closed (keyless build → account card; server without 0098 →
+  screen fails closed (keyless build → account card; server without 0099 →
   "isn't open on this server yet", and `available` keeps the compass from
   inviting it). The Journal's "Candles held" ladder counts kneelings, and there
   is deliberately no rung for being prayed for.

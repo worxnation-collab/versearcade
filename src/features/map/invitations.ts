@@ -138,7 +138,7 @@ export function useInvitations(): MapInvite[] {
     }
     // The wall. Same shape as the Basin's line: open until you have knelt for
     // ONE note today, never "until your twelve are done". Gated on the server
-    // actually having the wall (0098), so an older backend never invites it.
+    // actually having the wall (0099), so an older backend never invites it.
     if (online && wallOpen && !kneltAtWallToday) {
       out.push({ id: 'wall', icon: '🕯️', label: 'Hold a candle for someone at the wall', to: '/pray' })
     }

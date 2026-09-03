@@ -20,7 +20,7 @@
 //   leave these.
 //
 //   THE XP IS THE BASIN'S. 1 XP per kneeling, twelve a day, once per note per
-//   day, never for your own note — server-counted and server-paid (0098), the
+//   day, never for your own note — server-counted and server-paid (0099), the
 //   client never sends an amount. THE REQUESTER IS PAID NOTHING, or people
 //   would post notes to farm sympathy.
 //
@@ -28,17 +28,17 @@
 //   no glow that says how loved it is, no tally, no ordering by need. The one
 //   count that exists is your OWN note's, returned to you alone.
 //
-// KEEP IN SYNC with supabase/migrations/0098 — the category list, the cap,
+// KEEP IN SYNC with supabase/migrations/0099 — the category list, the cap,
 // the line length and the expiry are enforced there; these are what the
 // screen draws.
 
-/** Twelve a day — one for each disciple, the Basin's cap. KEEP IN SYNC with 0098. */
+/** Twelve a day — one for each disciple, the Basin's cap. KEEP IN SYNC with 0099. */
 export const PRAY_FOR_DAILY_CAP = 12
 
 /** What one kneeling pays the person who did it. */
 export const PRAY_FOR_XP = 1
 
-/** A line on a note. KEEP IN SYNC with the check constraint in 0098. */
+/** A line on a note. KEEP IN SYNC with the check constraint in 0099. */
 export const PRAYER_LINE_MAX = 120
 
 /** A note lives this long, and can be renewed once. Server-enforced. */

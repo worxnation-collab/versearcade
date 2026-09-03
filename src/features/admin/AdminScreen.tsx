@@ -891,7 +891,7 @@ function PushBroadcast() {
 
 // ── Prayer Wall reports ──────────────────────────────────────────────────────
 // The wall's one moderation surface. A report takes a note off the wall by
-// itself (0098); this is where the operator either puts it back or takes it
+// itself (0099); this is where the operator either puts it back or takes it
 // down for good. The line is the app's only player-authored text, and this is
 // the only screen that shows a line to somebody outside the requester's own
 // church and buddies.

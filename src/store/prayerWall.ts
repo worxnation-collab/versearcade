@@ -24,7 +24,7 @@ import type { AvatarSpec } from '@/data/avatar'
 // the XP would then be client-granted, and this store's whole safety argument
 // is that the server counts the rows and pays the one point.
 //
-// The XP lands in profiles.xp server-side (0098). We fold the returned xp/level
+// The XP lands in profiles.xp server-side (0099). We fold the returned xp/level
 // back into the auth profile rather than re-fetching — the numbers are the
 // SERVER'S, not a guess, so there is nothing to roll back.
 
@@ -83,7 +83,7 @@ export type PostResult = {
 
 interface PrayerWallState {
   loaded: boolean
-  /** The server has 0098. False against an older backend, which draws nothing. */
+  /** The server has 0099. False against an older backend, which draws nothing. */
   available: boolean
   cap: number
   /** Kneelings today, against PRAY_FOR_DAILY_CAP. */

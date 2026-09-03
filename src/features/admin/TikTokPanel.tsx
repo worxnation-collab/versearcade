@@ -29,7 +29,7 @@ import { supabase } from '@/lib/supabase'
 import { todayLocalDate } from '@/lib/date'
 import { getVerseForDate } from '@/data/bible/questions'
 import { VERSE_POOL } from '@/data/bible/pool'
-import { pickVoice, PICKER_VOICES } from '@/data/tiktokVoice'
+import { pickVoice, pickCast, PICKER_VOICES, type VoiceSeed } from '@/data/tiktokVoice'
 import type { Backdrop, TimedPhrase } from '@/lib/tiktokRender'
 
 const BUCKET = 'tiktok'
@@ -48,14 +48,17 @@ const SCENES = [
 ]
 const VOICES = Array.from(new Set([...PICKER_VOICES, 'Algenib', 'Sadaltager', 'Iapetus', 'Enceladus', 'Fenrir', 'Schedar', 'Kore', 'Aoede']))
 
-// The automatic pick for a date and reader: the figure decides the voice, the
-// verse decides the delivery (data/tiktokVoice.ts). The panel fills the form
-// with it and stops the moment the operator edits either field.
-function autoPick(date: string, reader: string) {
+// The automatic picks for a date (data/tiktokVoice.ts): the verse's book and
+// speaker choose the reader and the calendar and mood choose the scene; then
+// the figure decides the voice and the verse the delivery. The panel fills the
+// form with them and stops the moment the operator edits a field.
+function seedFor(date: string): VoiceSeed {
   const v = getVerseForDate(date)
   const seed = VERSE_POOL.find((x) => x.reference === v.reference)
-  return pickVoice({ speaker: seed?.speaker ?? 'The narrator', testament: seed?.testament ?? 'NT', theme: v.theme ?? '', text: v.text, book: v.book ?? '' }, reader)
+  return { speaker: seed?.speaker ?? 'The narrator', testament: seed?.testament ?? 'NT', theme: v.theme ?? '', text: v.text, book: v.book ?? '', chapter: v.chapter }
 }
+function autoPick(date: string, reader: string) { return pickVoice(seedFor(date), reader) }
+function autoCast(date: string) { return pickCast(seedFor(date), date) }
 
 // Reference images for Nano Banana have to be https for the function to
 // fetch them, so a dev build points at production for the app's own art.
@@ -98,10 +101,11 @@ interface Made { date: string; reference: string; url: string; ext: string; size
 
 export default function TikTokPanel() {
   const [date, setDate] = useState(todayLocalDate())
-  const [reader, setReader] = useState('cephas')
-  const [scene, setScene] = useState('harvest')
-  const [voice, setVoice] = useState(() => autoPick(todayLocalDate(), 'cephas').voice)
-  const [style, setStyle] = useState(() => autoPick(todayLocalDate(), 'cephas').style)
+  const [reader, setReader] = useState(() => autoCast(todayLocalDate()).reader)
+  const [scene, setScene] = useState(() => autoCast(todayLocalDate()).scene)
+  const [castAuto, setCastAuto] = useState(true)
+  const [voice, setVoice] = useState(() => autoPick(todayLocalDate(), autoCast(todayLocalDate()).reader).voice)
+  const [style, setStyle] = useState(() => autoPick(todayLocalDate(), autoCast(todayLocalDate()).reader).style)
   const [voiceAuto, setVoiceAuto] = useState(true)
   const [withCopy, setWithCopy] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
@@ -114,6 +118,12 @@ export default function TikTokPanel() {
   const cancel = useRef(false)
 
   const verse = getVerseForDate(date)
+  const cast = autoCast(date)
+  useEffect(() => {
+    if (!castAuto) return
+    setReader(cast.reader)
+    setScene(cast.scene)
+  }, [castAuto, cast.reader, cast.scene])
   const key = `${reader}-${scene}`
   const pick = autoPick(date, reader)
   useEffect(() => {
@@ -155,11 +165,20 @@ export default function TikTokPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, verse.reference])
 
-  async function backdropFor(r: typeof import('@/lib/tiktokRender'), tier: 'loop' | 'still' | 'builtin'): Promise<Backdrop> {
-    if (tier === 'loop') return { kind: 'loop', video: await r.loadVideo(loopUrl + '?v=' + Date.now()) }
-    if (tier === 'still') return { kind: 'still', image: await r.loadImage(stillUrl + '?v=' + Date.now()) }
-    const [sceneImg, figure] = await Promise.all([r.loadImage(`/road/${scene}.jpg`), r.loadImage(`/skins/${reader}.png`)])
+  async function backdropFor(r: typeof import('@/lib/tiktokRender'), tier: 'loop' | 'still' | 'builtin', rd = reader, sc = scene): Promise<Backdrop> {
+    const k = `${rd}-${sc}`
+    if (tier === 'loop') return { kind: 'loop', video: await r.loadVideo(publicUrl(`readers/${k}.mp4`) + '?v=' + Date.now()) }
+    if (tier === 'still') return { kind: 'still', image: await r.loadImage(publicUrl(`readers/${k}.png`) + '?v=' + Date.now()) }
+    const [sceneImg, figure] = await Promise.all([r.loadImage(`/road/${sc}.jpg`), r.loadImage(`/skins/${rd}.png`)])
     return { kind: 'builtin', scene: sceneImg, figure }
+  }
+  // Best tier that exists for a figure+scene — probed per day, since a batch
+  // with an automatic cast changes reader from one day to the next.
+  async function tierFor(rd: string, sc: string): Promise<'loop' | 'still' | 'builtin'> {
+    const k = `${rd}-${sc}`
+    if (await existsAt(publicUrl(`readers/${k}.mp4`))) return 'loop'
+    if (await existsAt(publicUrl(`readers/${k}.png`))) return 'still'
+    return 'builtin'
   }
 
   // The whole daily job for one date: voice → copy → render.
@@ -170,7 +189,8 @@ export default function TikTokPanel() {
     const spoken = `${v.text.trim()} ${spokenReference(v.reference)}.`
     // A batch reads each day in its own voice when the pick is automatic;
     // an operator's override applies to every day in the batch.
-    const p = voiceAuto ? autoPick(d, reader) : { voice, style }
+    const c = castAuto ? autoCast(d) : { reader, scene }
+    const p = voiceAuto ? autoPick(d, c.reader) : { voice, style }
     const tts = await call<{ url: string; cached: boolean }>('tts', { date: d, text: spoken, voice: p.voice, style: p.style })
     const audio = await (await fetch(tts.url + '?v=' + Date.now())).arrayBuffer()
 
@@ -182,13 +202,13 @@ export default function TikTokPanel() {
 
     setBusy(`${d}: rendering`)
     const r = await import('@/lib/tiktokRender')
-    const tier = tierOverride ?? (assets.loop ? 'loop' : assets.still ? 'still' : 'builtin')
-    const backdrop = await backdropFor(r, tier)
+    const tier = tierOverride ?? (await tierFor(c.reader, c.scene))
+    const backdrop = await backdropFor(r, tier, c.reader, c.scene)
     const out = await r.renderTikTok({
       reference: v.reference, text: v.text, hook: copy?.hook, audio, backdrop,
       onProgress: (f, label) => { setProgress(f); setBusy(`${d}: ${label}`) },
     })
-    return { date: d, reference: v.reference, url: URL.createObjectURL(out.blob), ext: out.ext, size: out.blob.size, copy, phrases: out.phrases, tier }
+    return { date: d, reference: v.reference, url: URL.createObjectURL(out.blob), ext: out.ext, size: out.blob.size, copy, phrases: out.phrases, tier: `${c.reader} · ${c.scene} · ${tier}` }
   }
 
   const run = async (dates: string[]) => {
@@ -335,8 +355,12 @@ export default function TikTokPanel() {
           Without either, the app’s own skin bobs over the road — the post still works.
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <select value={reader} onChange={(e) => setReader(e.target.value)}>{READERS.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select>
-          <select value={scene} onChange={(e) => setScene(e.target.value)}>{SCENES.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
+          <select value={reader} onChange={(e) => { setCastAuto(false); setReader(e.target.value) }}>{READERS.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select>
+          <select value={scene} onChange={(e) => { setCastAuto(false); setScene(e.target.value) }}>{SCENES.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
+        </div>
+        <div className="faint" style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span>{castAuto ? 'Picked' : 'Yours'}: {castAuto ? cast.why : `${READERS.find((x) => x.id === reader)?.name} · ${SCENES.find((x) => x.id === scene)?.name}`}</span>
+          {!castAuto && <button className="pill" style={{ fontSize: 11, marginLeft: 'auto' }} onClick={() => setCastAuto(true)}>↺ Auto</button>}
         </div>
         {poster && <img src={poster} alt="" style={{ width: 180, borderRadius: 12, justifySelf: 'center' }} />}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>

@@ -22,6 +22,7 @@ must never be written into a tracked file.
 | `skins-porchlight.json` | the Porchlight creator-collab skin (curls, cream knit, ukulele) | `public/skins/porchlight.png` |
 | `arcade.json` | the backdrops of the three arcade machines — the wilderness, the blank page, the workshop wall | `public/arcade/arcade_*.jpg` |
 | `skins-patron.json` | Cephas, the founding-patron skin — Peter with the keys, standing on the bedrock | `public/skins/cephas.png` |
+| `skins-refit.json` | re-renders of pre-pipeline skins that shipped as busts (Eden cut at the hem, Elijah at the knees) — full length, head to feet | `public/skins/eden.png`, `public/skins/elijah.png` |
 
 **Check what came back**, every time:
 

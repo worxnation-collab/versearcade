@@ -41,7 +41,9 @@ const PALETTE: Record<string, { steady: string; weighty: string; soft: string; p
   david: { steady: 'Iapetus', weighty: 'Orus', soft: 'Enceladus', person: 'David — a singer, reading as though he could break into the song' },
   esther: { steady: 'Kore', weighty: 'Kore', soft: 'Aoede', person: 'Esther — a queen, composed and warm, speaking to her own people' },
   mary: { steady: 'Aoede', weighty: 'Kore', soft: 'Aoede', person: 'Mary — gentle and close, as if to one person sitting beside her' },
-  tabitha: { steady: 'Sulafat', weighty: 'Kore', soft: 'Vindemiatrix', person: 'Tabitha — the librarian, warm and unhurried, telling a story to a few people at her desk' },
+  // Gacrux is Google's "mature" voice; Vindemiatrix its "gentle" one. An older
+  // woman, soothing and slow — the ask was explicitly not a young narrator.
+  tabitha: { steady: 'Gacrux', weighty: 'Gacrux', soft: 'Vindemiatrix', person: 'Tabitha — an older librarian with a soothing, unhurried voice, telling a story to a few people at her desk' },
 }
 const FALLBACK = PALETTE.cephas
 
@@ -247,6 +249,6 @@ export function pickStoryVoice(seed: VoiceSeed, teller: string): VoicePick {
   const pal = PALETTE[teller] ?? PALETTE.tabitha
   const mood = moodFor(seed)
   const voice = mood === 'comfort' ? pal.soft : pal.steady
-  const style = `Read this as ${pal.person}. A story told aloud to a few people who are listening closely: warm, unhurried, natural. Let the sentences breathe; pause at full stops. ${MOOD_NOTE[mood === 'words-of-god' ? 'story' : mood]} When you reach the verse at the end, slow down a little and read it plainly, then say the reference gently.`
+  const style = `Read this as ${pal.person}. An older woman's voice: calm, low, soothing, a little slower than conversation, with a smile in it. A story told aloud to a few people who are listening closely. Let the sentences breathe; pause at full stops. ${MOOD_NOTE[mood === 'words-of-god' ? 'story' : mood]} When you reach the verse at the end, slow down a little more and read it plainly, then say the reference gently.`
   return { voice, style, why: `${voice} · story — ${seed.book}`, mood }
 }

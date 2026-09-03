@@ -10,7 +10,7 @@
 // CPU budget for 900 frames of 1080x1920.
 //
 // Actions (POST { action, ... }):
-//   tts         { date, text, voice?, style? }   → { url, cached }   Gemini TTS → WAV at days/<date>/voice.wav
+//   tts         { date, text, voice?, style? }   → { url, cached }   Gemini TTS → WAV at days/<date>/<voice>-<hash>.wav
 //   still       { key, prompt, refs[] }          → { url }           Nano Banana 9:16 poster at readers/<key>.png
 //   loop-start  { imageUrl | imageBase64, prompt } → { op }          Veo image→video, returns the operation name
 //   loop-status { key, op }                      → { done, url? }    polls Veo; on completion parks readers/<key>.mp4
@@ -106,6 +106,14 @@ async function gemini(path: string, body: unknown, method = 'POST'): Promise<Rec
   return JSON.parse(text)
 }
 
+// FNV-1a over a string, as 8 hex characters — enough to tell two delivery
+// notes apart in a filename, which is all it is for.
+function fnv(s: string): string {
+  let h = 0x811c9dc5
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0 }
+  return h.toString(16).padStart(8, '0')
+}
+
 // A key is one path segment of safe characters; it names a file in the bucket.
 function safeKey(s: unknown, fallback: string): string {
   const k = String(s ?? '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64)
@@ -166,7 +174,9 @@ Deno.serve(async (req) => {
       const voice = String(input.voice ?? 'Charon')
       if (!VOICES.has(voice)) return json({ error: `unknown voice ${voice}` }, 400)
       const style = String(input.style ?? 'Read this slowly and warmly, like a fisherman reading scripture aloud to a small room. Pause at the punctuation.').slice(0, 400)
-      const path = `days/${date}/voice.wav`
+      // Keyed on the voice and the delivery note, so changing either makes a
+      // new reading instead of quietly returning yesterday's file.
+      const path = `days/${date}/${voice}-${fnv(style + '\n' + text)}.wav`
       if (!input.force && (await exists(path))) return json({ url: publicUrl(path), cached: true })
 
       const data = await gemini(`models/${TTS_MODEL}:generateContent`, {

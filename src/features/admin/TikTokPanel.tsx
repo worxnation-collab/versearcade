@@ -28,6 +28,8 @@ import { Button } from '@/components/Button'
 import { supabase } from '@/lib/supabase'
 import { todayLocalDate } from '@/lib/date'
 import { getVerseForDate } from '@/data/bible/questions'
+import { VERSE_POOL } from '@/data/bible/pool'
+import { pickVoice, PICKER_VOICES } from '@/data/tiktokVoice'
 import type { Backdrop, TimedPhrase } from '@/lib/tiktokRender'
 
 const BUCKET = 'tiktok'
@@ -44,8 +46,16 @@ const SCENES = [
   { id: 'lamplight', name: 'Lamplight' },
   { id: 'advent', name: 'Advent' },
 ]
-const VOICES = ['Charon', 'Orus', 'Algenib', 'Sadaltager', 'Iapetus', 'Enceladus', 'Fenrir', 'Schedar', 'Kore', 'Aoede']
-const DEFAULT_STYLE = 'Read this slowly and warmly, like a fisherman reading scripture aloud to a small room. Pause at the punctuation.'
+const VOICES = Array.from(new Set([...PICKER_VOICES, 'Algenib', 'Sadaltager', 'Iapetus', 'Enceladus', 'Fenrir', 'Schedar', 'Kore', 'Aoede']))
+
+// The automatic pick for a date and reader: the figure decides the voice, the
+// verse decides the delivery (data/tiktokVoice.ts). The panel fills the form
+// with it and stops the moment the operator edits either field.
+function autoPick(date: string, reader: string) {
+  const v = getVerseForDate(date)
+  const seed = VERSE_POOL.find((x) => x.reference === v.reference)
+  return pickVoice({ speaker: seed?.speaker ?? 'The narrator', testament: seed?.testament ?? 'NT', theme: v.theme ?? '', text: v.text, book: v.book ?? '' }, reader)
+}
 
 // Reference images for Nano Banana have to be https for the function to
 // fetch them, so a dev build points at production for the app's own art.
@@ -90,8 +100,9 @@ export default function TikTokPanel() {
   const [date, setDate] = useState(todayLocalDate())
   const [reader, setReader] = useState('cephas')
   const [scene, setScene] = useState('harvest')
-  const [voice, setVoice] = useState('Charon')
-  const [style, setStyle] = useState(DEFAULT_STYLE)
+  const [voice, setVoice] = useState(() => autoPick(todayLocalDate(), 'cephas').voice)
+  const [style, setStyle] = useState(() => autoPick(todayLocalDate(), 'cephas').style)
+  const [voiceAuto, setVoiceAuto] = useState(true)
   const [withCopy, setWithCopy] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
@@ -104,6 +115,12 @@ export default function TikTokPanel() {
 
   const verse = getVerseForDate(date)
   const key = `${reader}-${scene}`
+  const pick = autoPick(date, reader)
+  useEffect(() => {
+    if (!voiceAuto) return
+    setVoice(pick.voice)
+    setStyle(pick.style)
+  }, [voiceAuto, pick.voice, pick.style])
   const stillUrl = publicUrl(`readers/${key}.png`)
   const loopUrl = publicUrl(`readers/${key}.mp4`)
 
@@ -151,7 +168,10 @@ export default function TikTokPanel() {
     setBusy(`${d}: asking for the reading`)
     setProgress(0)
     const spoken = `${v.text.trim()} ${spokenReference(v.reference)}.`
-    const tts = await call<{ url: string; cached: boolean }>('tts', { date: d, text: spoken, voice, style })
+    // A batch reads each day in its own voice when the pick is automatic;
+    // an operator's override applies to every day in the batch.
+    const p = voiceAuto ? autoPick(d, reader) : { voice, style }
+    const tts = await call<{ url: string; cached: boolean }>('tts', { date: d, text: spoken, voice: p.voice, style: p.style })
     const audio = await (await fetch(tts.url + '?v=' + Date.now())).arrayBuffer()
 
     let copy: Copy | null = null
@@ -253,8 +273,8 @@ export default function TikTokPanel() {
           <p style={{ fontSize: 14, lineHeight: 1.45, marginTop: 4 }}>{verse.text}</p>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <label className="faint" style={{ fontSize: 11 }}>Voice
-            <select value={voice} onChange={(e) => setVoice(e.target.value)} style={{ width: '100%', marginTop: 4 }}>
+          <label className="faint" style={{ fontSize: 11 }}>Voice {voiceAuto ? '· auto' : '· yours'}
+            <select value={voice} onChange={(e) => { setVoiceAuto(false); setVoice(e.target.value) }} style={{ width: '100%', marginTop: 4 }}>
               {VOICES.map((v) => <option key={v} value={v}>{v}</option>)}
             </select>
           </label>
@@ -262,7 +282,11 @@ export default function TikTokPanel() {
             <input type="checkbox" checked={withCopy} onChange={(e) => setWithCopy(e.target.checked)} /> write the caption + hook too
           </label>
         </div>
-        <textarea value={style} onChange={(e) => setStyle(e.target.value.slice(0, 400))} rows={2}
+        <div className="faint" style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span>Picked: {pick.why}</span>
+          {!voiceAuto && <button className="pill" style={{ fontSize: 11, marginLeft: 'auto' }} onClick={() => setVoiceAuto(true)}>↺ Auto</button>}
+        </div>
+        <textarea value={style} onChange={(e) => { setVoiceAuto(false); setStyle(e.target.value.slice(0, 400)) }} rows={3}
           style={{ padding: '8px', borderRadius: 10, background: 'var(--card-solid)', color: 'var(--ink)', border: '1px solid var(--stroke)', resize: 'vertical', font: 'inherit', fontSize: 12 }} />
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Button variant="gold" disabled={!!busy} onClick={() => run([date])}>{busy ? 'Working…' : '🎬 Make this day’s post'}</Button>

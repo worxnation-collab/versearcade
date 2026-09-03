@@ -20,6 +20,8 @@ export const HEIGHT = 1920
 export const FPS = 30
 const TAIL_SEC = 2.6
 const SAMPLE_RATE = 48000
+const AAC_FRAME = 1024 // samples per AAC frame; every MP4 audio delta must be this
+const OPUS_FRAME = 960 // samples per Opus packet at 48 kHz (20 ms)
 const SITE = 'versearcade.org'
 
 export type Backdrop =
@@ -375,12 +377,50 @@ function aacSpecificConfig(sampleRate: number, channels: number): Uint8Array {
   return new Uint8Array([(bits >> 8) & 0xff, bits & 0xff])
 }
 
+// AAC frames are always 1024 samples, so a finished MP4's audio timing table
+// (`stts`) must say 1024 for every frame. It didn't, once: the encoder was fed
+// 4800-sample chunks, which is not a multiple of 1024, and Chrome stamped the
+// frame straddling each chunk boundary with the NEXT chunk's time — deltas of
+// 704 and 1728 appeared, Chrome's own decoder shrugged, and QuickTime and
+// TikTok played the video mute. This walks the box tree and refuses any
+// audio track whose deltas are not all 1024. Pure over bytes so it can be run
+// against a file in Node as well as in the browser.
+export function mp4AudioDeltas(bytes: Uint8Array): number[] | null {
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  const tag = (o: number) => String.fromCharCode(bytes[o], bytes[o + 1], bytes[o + 2], bytes[o + 3])
+  let sttsOffset = -1
+  const walk = (off: number, end: number, inSound: boolean) => {
+    while (off + 8 <= end) {
+      let size = dv.getUint32(off)
+      const type = tag(off + 4)
+      let hdr = 8
+      if (size === 1) { size = Number(dv.getBigUint64(off + 8)); hdr = 16 } else if (size === 0) size = end - off
+      if (size < hdr) return
+      if (type === 'hdlr' && tag(off + hdr + 8) === 'soun') inSound = true
+      if (type === 'stts' && inSound && sttsOffset < 0) sttsOffset = off + hdr
+      if (['moov', 'trak', 'mdia', 'minf', 'stbl'].includes(type)) walk(off + hdr, off + size, type === 'trak' ? false : inSound)
+      off += size
+    }
+  }
+  walk(0, bytes.byteLength, false)
+  if (sttsOffset < 0) return null
+  const n = dv.getUint32(sttsOffset + 4)
+  const out: number[] = []
+  for (let i = 0; i < n; i++) out.push(dv.getUint32(sttsOffset + 12 + i * 8))
+  return out
+}
+
 // Does the finished file carry an audible track? Decoded with the browser's
 // own demuxer, so it answers the question a player would.
-async function hasAudibleTrack(blob: Blob): Promise<boolean> {
+async function hasAudibleTrack(blob: Blob, ext: 'mp4' | 'webm'): Promise<boolean> {
   try {
+    const buf = await blob.arrayBuffer()
+    if (ext === 'mp4') {
+      const deltas = mp4AudioDeltas(new Uint8Array(buf))
+      if (!deltas || deltas.some((d) => d !== AAC_FRAME)) return false
+    }
     const ctx = new OfflineAudioContext(1, 1, SAMPLE_RATE)
-    const dec = await ctx.decodeAudioData(await blob.arrayBuffer())
+    const dec = await ctx.decodeAudioData(buf)
     const ch = dec.getChannelData(0)
     let peak = 0
     for (let i = 0; i < ch.length; i += 16) { const a = Math.abs(ch[i]); if (a > peak) peak = a }
@@ -443,18 +483,27 @@ export async function renderTikTok(input: RenderInput): Promise<RenderOutput> {
     let encodeErr: Error | null = null
 
     const asc = aacSpecificConfig(SAMPLE_RATE, 1)
+    let aacIndex = 0
     const audioEncoder = new AudioEncoder({
       output: (chunk, meta) => {
         let m = meta
         if (codec.ext === 'mp4' && !m?.decoderConfig?.description) {
           m = { ...m, decoderConfig: { ...(m?.decoderConfig ?? {}), codec: 'mp4a.40.2', sampleRate: SAMPLE_RATE, numberOfChannels: 1, description: asc } }
         }
-        muxer.addAudioChunk(chunk, m)
+        if (codec.ext === 'mp4') {
+          // Stamp every AAC frame onto the 1024-sample grid ourselves rather
+          // than trusting the encoder's timestamps — see mp4AudioDeltas.
+          muxer.addAudioChunk(chunk, m, Math.round((aacIndex++ * AAC_FRAME * 1e6) / SAMPLE_RATE))
+        } else {
+          muxer.addAudioChunk(chunk, m)
+        }
       },
       error: (e) => { encodeErr = e as Error },
     })
     audioEncoder.configure(codec.audio)
-    const CHUNK = 4800
+    // Feed the encoder in whole codec frames, so no frame straddles an input
+    // boundary: 4 AAC frames, or 5 Opus packets.
+    const CHUNK = codec.ext === 'mp4' ? AAC_FRAME * 4 : OPUS_FRAME * 5
     for (let i = 0; i < totalFrames; i += CHUNK) {
       const n = Math.min(CHUNK, totalFrames - i)
       const data = new AudioData({
@@ -501,13 +550,13 @@ export async function renderTikTok(input: RenderInput): Promise<RenderOutput> {
   // The one check that matters: can a player hear it? An MP4 whose AAC track
   // decodes to nothing is re-rendered as WebM rather than handed over mute.
   progress(0.96, 'Checking the audio track')
-  if (!(await hasAudibleTrack(blob))) {
+  if (!(await hasAudibleTrack(blob, codec.ext))) {
     if (codec.ext === 'mp4') {
       used = WEBM
       const [v, a] = await Promise.all([VideoEncoder.isConfigSupported(WEBM.video), AudioEncoder.isConfigSupported(WEBM.audio)])
       if (!v.supported || !a.supported) throw new Error('The MP4 came out silent and this browser cannot encode WebM.')
       blob = await encode(WEBM)
-      if (!(await hasAudibleTrack(blob))) throw new Error('The audio track came out silent on both codecs.')
+      if (!(await hasAudibleTrack(blob, 'webm'))) throw new Error('The audio track came out silent on both codecs.')
     } else {
       throw new Error('The audio track came out silent.')
     }

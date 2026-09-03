@@ -1298,7 +1298,15 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0096` (the Cornerstone avatar border — the third piece of the
+The latest is `0097` (`tiktok_gemini_key()` — the TikTok engine's Gemini key
+read out of Vault, service_role only), APPLIED on 2026-09-03 and verified: the
+ACL reads `{postgres,service_role}` and the function returns the 53-character
+key. The key itself was written with `vault.create_secret` from a SQL console
+and is in no file; the `tiktok-gen` Edge Function (deployed the same day,
+`verify_jwt` on like `push-send`) prefers a `GEMINI_API_KEY` function secret
+and falls back to this.
+
+Before it, `0096` (the Cornerstone avatar border — the third piece of the
 patron look, gated on the PACK rather than a streak), APPLIED on 2026-09-03
 before the client merged, and verified: the `cosmetics` row exists, exactly ONE
 `set_cosmetics` signature carries the pack gate (checked BEFORE the streak gate,
@@ -1448,7 +1456,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0097` (0096 is taken by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0098` (0097 is taken by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

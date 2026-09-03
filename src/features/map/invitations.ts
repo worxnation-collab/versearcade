@@ -9,6 +9,7 @@ import { useDailyTrivia } from '@/store/dailyTrivia'
 import { useArcadeXp } from '@/store/arcadeXp'
 import { useBuddies } from '@/store/buddies'
 import { useGifts } from '@/store/gifts'
+import { useWashing } from '@/store/washing'
 import { useAccountLocked } from '@/components/AccountWall'
 
 // What is open right now — and, deliberately, NOT a checklist.
@@ -70,6 +71,8 @@ export function useInvitations(): MapInvite[] {
   const paidGames = useArcadeXp((s) => s.paidToday.length)
   const buddyRequests = useBuddies((s) => s.requests.length)
   const unseenGifts = useGifts((s) => s.unseen)
+  const online = useAuth((s) => s.mode === 'online')
+  const washedSomeoneToday = useWashing((s) => s.today > 0)
 
   // The four day-flags nothing else on a given screen necessarily loads. The
   // three app-wide ones (buddies, gifts, the road) are already pulled in
@@ -81,6 +84,7 @@ export function useInvitations(): MapInvite[] {
     if (!useLibrary.getState().loaded) void useLibrary.getState().load()
     if (!useDailyTrivia.getState().loaded) useDailyTrivia.getState().load()
     if (!useArcadeXp.getState().loaded) void useArcadeXp.getState().load()
+    if (!useWashing.getState().loaded) void useWashing.getState().load()
   }, [])
 
   const out: MapInvite[] = []
@@ -115,7 +119,18 @@ export function useInvitations(): MapInvite[] {
       out.push({ id: 'review', icon: '🧠', label: 'Some kept verses want another look', to: '/review' })
     }
     if (!borrowedToday) {
-      out.push({ id: 'library', icon: '📚', label: 'Tabitha has a book for you', to: '/study' })
+      // Says what to DO. "Tabitha has a book for you" read as a fact about the
+      // librarian, and people went to Study, did something else, and watched
+      // the line stay. Any study run now borrows the book (QuizRunner →
+      // useLibrary.borrowIfNeeded), so the door and the deed agree.
+      out.push({ id: 'library', icon: '📚', label: 'Borrow today’s book from Tabitha', to: '/study' })
+    }
+    // The Basin. Open until you have knelt for ONE person today — not "until
+    // your twelve are done", which would keep the compass lit all day for a
+    // thing few people can finish and turn a gift into a quota. Online-only
+    // like the gesture itself: a keyless build has nobody's feet to wash.
+    if (online && !washedSomeoneToday) {
+      out.push({ id: 'wash', icon: '🪣', label: 'Kneel and wash a friend’s feet', to: '/you' })
     }
     if (buddyRequests > 0) {
       out.push({ id: 'buddies', icon: '🤝', label: 'Someone is waiting on you', to: '/you' })

@@ -10,6 +10,7 @@ import { useBookAccuracy } from '@/store/bookAccuracy'
 import { useBible } from '@/store/bible'
 import { useDrops } from '@/store/drops'
 import { useSeason } from '@/store/season'
+import { useLibrary } from '@/store/library'
 import { scoreQuestion } from '@/lib/progress'
 import { SCORING } from '@/lib/config'
 import { clearRun, readRun, saveRun } from '@/lib/runProgress'
@@ -377,6 +378,8 @@ export function QuizRunner({
       comboMax,
     })
     if (studyDrop) void useSeason.getState().track('study_run')
+    // A study run IS borrowing the day's book — see useLibrary.borrowIfNeeded.
+    if (studyDrop) void useLibrary.getState().borrowIfNeeded()
     try {
       await onComplete(result)
     } catch {

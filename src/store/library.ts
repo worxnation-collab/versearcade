@@ -74,9 +74,23 @@ interface LibraryState {
   load: () => Promise<void>
   /** Borrow a book. Safe to call again — it simply pays nothing. */
   checkout: () => Promise<CheckoutResult>
+  /**
+   * A study run counts as borrowing the day's book. Every study surface —
+   * the trivia rounds, a replay, a drill, the Cross Word, a review — is a
+   * book Tabitha would have lent, and somebody who studied has done the thing
+   * "Tabitha has a book for you" was inviting them to do. Without this the
+   * compass kept the invitation open all day for anyone who reached Study by
+   * any door but her desk (the Play tab's trivia box, the map, /review), which
+   * read as an errand nobody could figure out how to run.
+   *
+   * No-ops once the day's book is borrowed, so the desk's own checkout is not
+   * paid twice and the `book_borrowed` verb fires once. Reads the store's
+   * loaded state first: a run can finish before anything called load().
+   */
+  borrowIfNeeded: () => Promise<void>
 }
 
-export const useLibrary = create<LibraryState>((set) => ({
+export const useLibrary = create<LibraryState>((set, get) => ({
   loaded: false,
   borrowedToday: false,
 
@@ -100,6 +114,12 @@ export const useLibrary = create<LibraryState>((set) => ({
     // than on write is what makes this reset at the player's own midnight
     // without anything having to fire at midnight (same as store/prayer.ts).
     set({ loaded: true, borrowedToday: readLocal() === todayLocalDate() })
+  },
+
+  async borrowIfNeeded() {
+    if (!get().loaded) await get().load()
+    if (get().borrowedToday) return
+    await get().checkout()
   },
 
   async checkout() {

@@ -1300,15 +1300,17 @@ a missing table. Apply the schema *before* merging the client.
 
 The latest is `0098` (what the card says about you — `favorite_verse`,
 `favorite_book`, `favorite_translation` on `profiles`, `set_card_about`, and
-`get_player_card` restated from 0071 to carry the three), **NOT YET APPLIED**
-as of the commit that added it. It is additive and fails closed: an unapplied
-0098 leaves the card exactly as it was (the modal reads three keys an old
-`get_player_card` simply omits), and only the customizer's About tab errors
-online, with "Couldn't save that". Apply it before the client merges anyway,
-per the rule above. When verifying: `set_card_about`'s ACL should be the house
-`authenticated` shape, and the three catalogs in it (66 books + the two
-citation spellings, 14 translation codes) must match `data/cardAbout.ts` and
-`BIBLE_BOOKS` name for name.
+`get_player_card` restated from 0071 to carry the three), APPLIED on 2026-09-03
+before the client merged, and verified: production's `get_player_card` was
+byte-identical to 0071 before the restate (checked, not assumed), all three
+columns exist, exactly ONE `set_card_about` signature, its ACL is the house
+`authenticated` shape, `get_player_card` returns seventeen keys including the
+three new ones against a live row, and the reference regex matches every
+citation form the pool writes and refuses a sentence. It is additive and fails
+closed either way: a server without it leaves the card exactly as it was (the
+modal reads three keys an old `get_player_card` simply omits). The three
+catalogs in it (66 books + the two citation spellings, 14 translation codes)
+must match `data/cardAbout.ts` and `BIBLE_BOOKS` name for name.
 
 Before it, `0097` (`tiktok_gemini_key()` — the TikTok engine's Gemini key
 read out of Vault, service_role only), APPLIED on 2026-09-03 and verified: the

@@ -339,25 +339,55 @@ async function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number,
 
 interface Codec { ext: 'mp4' | 'webm'; video: VideoEncoderConfig; audio: AudioEncoderConfig }
 
+const MP4: Codec = {
+  ext: 'mp4',
+  video: { codec: 'avc1.640028', width: WIDTH, height: HEIGHT, bitrate: 9_000_000, framerate: FPS, avc: { format: 'avc' } } as VideoEncoderConfig,
+  audio: { codec: 'mp4a.40.2', sampleRate: SAMPLE_RATE, numberOfChannels: 1, bitrate: 128_000, aac: { format: 'aac' } } as AudioEncoderConfig,
+}
+const WEBM: Codec = {
+  ext: 'webm',
+  video: { codec: 'vp09.00.40.08', width: WIDTH, height: HEIGHT, bitrate: 9_000_000, framerate: FPS },
+  audio: { codec: 'opus', sampleRate: SAMPLE_RATE, numberOfChannels: 1, bitrate: 96_000 },
+}
+
 async function pickCodec(): Promise<Codec> {
   if (typeof VideoEncoder === 'undefined' || typeof AudioEncoder === 'undefined') {
     throw new Error('This browser has no WebCodecs — use Chrome or Edge on a desktop.')
   }
-  const mp4: Codec = {
-    ext: 'mp4',
-    video: { codec: 'avc1.640028', width: WIDTH, height: HEIGHT, bitrate: 9_000_000, framerate: FPS, avc: { format: 'avc' } } as VideoEncoderConfig,
-    audio: { codec: 'mp4a.40.2', sampleRate: SAMPLE_RATE, numberOfChannels: 1, bitrate: 128_000 },
-  }
-  const webm: Codec = {
-    ext: 'webm',
-    video: { codec: 'vp09.00.40.08', width: WIDTH, height: HEIGHT, bitrate: 9_000_000, framerate: FPS },
-    audio: { codec: 'opus', sampleRate: SAMPLE_RATE, numberOfChannels: 1, bitrate: 96_000 },
-  }
-  for (const c of [mp4, webm]) {
+  for (const c of [MP4, WEBM]) {
     const [v, a] = await Promise.all([VideoEncoder.isConfigSupported(c.video), AudioEncoder.isConfigSupported(c.audio)])
     if (v.supported && a.supported) return c
   }
   throw new Error('This browser can encode neither H.264/AAC nor VP9/Opus.')
+}
+
+// AAC-LC AudioSpecificConfig (ISO 14496-3): the two bytes an MP4's `esds`
+// box needs before any player will decode the track. Chrome's encoder is
+// supposed to hand this over in the first chunk's decoderConfig.description;
+// when it doesn't, mp4-muxer writes an esds with no decoder info and every
+// player treats the track as silence. That shipped: the video was perfect and
+// mute. So the header is built here and used whenever the encoder's is absent.
+//   5 bits audioObjectType (2 = LC) | 4 bits samplingFrequencyIndex | 4 bits channelConfiguration | 3 bits 0
+function aacSpecificConfig(sampleRate: number, channels: number): Uint8Array {
+  const rates = [96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350]
+  const idx = Math.max(0, rates.indexOf(sampleRate))
+  const bits = (2 << 11) | (idx << 7) | (channels << 3)
+  return new Uint8Array([(bits >> 8) & 0xff, bits & 0xff])
+}
+
+// Does the finished file carry an audible track? Decoded with the browser's
+// own demuxer, so it answers the question a player would.
+async function hasAudibleTrack(blob: Blob): Promise<boolean> {
+  try {
+    const ctx = new OfflineAudioContext(1, 1, SAMPLE_RATE)
+    const dec = await ctx.decodeAudioData(await blob.arrayBuffer())
+    const ch = dec.getChannelData(0)
+    let peak = 0
+    for (let i = 0; i < ch.length; i += 16) { const a = Math.abs(ch[i]); if (a > peak) peak = a }
+    return peak > 0.01
+  } catch {
+    return false
+  }
 }
 
 async function makeMuxer(codec: Codec) {
@@ -402,58 +432,88 @@ export async function renderTikTok(input: RenderInput): Promise<RenderOutput> {
 
   progress(0.02, 'Picking a codec')
   const codec = await pickCodec()
-  const { muxer, buffer, mime } = await makeMuxer(codec)
 
   // Audio: lead-in silence, the reading, tail silence — one track, 48 kHz mono.
   const totalFrames = Math.ceil(total * SAMPLE_RATE)
   const track = new Float32Array(totalFrames)
   track.set(samples.subarray(0, Math.min(samples.length, totalFrames - Math.round(lead * SAMPLE_RATE))), Math.round(lead * SAMPLE_RATE))
 
-  let encodeErr: Error | null = null
-  const audioEncoder = new AudioEncoder({
-    output: (chunk, meta) => muxer.addAudioChunk(chunk, meta),
-    error: (e) => { encodeErr = e as Error },
-  })
-  audioEncoder.configure(codec.audio)
-  const CHUNK = 4800
-  for (let i = 0; i < totalFrames; i += CHUNK) {
-    const n = Math.min(CHUNK, totalFrames - i)
-    const data = new AudioData({
-      format: 'f32-planar', sampleRate: SAMPLE_RATE, numberOfFrames: n, numberOfChannels: 1,
-      timestamp: Math.round((i / SAMPLE_RATE) * 1e6), data: track.subarray(i, i + n),
-    })
-    audioEncoder.encode(data)
-    data.close()
-  }
-  await audioEncoder.flush()
-  if (encodeErr) throw encodeErr
+  const encode = async (codec: Codec): Promise<Blob> => {
+    const { muxer, buffer, mime } = await makeMuxer(codec)
+    let encodeErr: Error | null = null
 
-  // Video.
-  const canvas = document.createElement('canvas')
-  canvas.width = WIDTH; canvas.height = HEIGHT
-  const ctx = canvas.getContext('2d', { alpha: false })
-  if (!ctx) throw new Error('no 2d context')
-  const videoEncoder = new VideoEncoder({
-    output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-    error: (e) => { encodeErr = e as Error },
-  })
-  videoEncoder.configure(codec.video)
-  const frames = Math.ceil(total * FPS)
-  for (let i = 0; i < frames; i++) {
-    const t = i / FPS
-    await drawFrame(ctx, scene, t)
-    const frame = new VideoFrame(canvas, { timestamp: Math.round(t * 1e6), duration: Math.round(1e6 / FPS) })
-    videoEncoder.encode(frame, { keyFrame: i % (FPS * 2) === 0 })
-    frame.close()
-    while (videoEncoder.encodeQueueSize > 6) await tick()
+    const asc = aacSpecificConfig(SAMPLE_RATE, 1)
+    const audioEncoder = new AudioEncoder({
+      output: (chunk, meta) => {
+        let m = meta
+        if (codec.ext === 'mp4' && !m?.decoderConfig?.description) {
+          m = { ...m, decoderConfig: { ...(m?.decoderConfig ?? {}), codec: 'mp4a.40.2', sampleRate: SAMPLE_RATE, numberOfChannels: 1, description: asc } }
+        }
+        muxer.addAudioChunk(chunk, m)
+      },
+      error: (e) => { encodeErr = e as Error },
+    })
+    audioEncoder.configure(codec.audio)
+    const CHUNK = 4800
+    for (let i = 0; i < totalFrames; i += CHUNK) {
+      const n = Math.min(CHUNK, totalFrames - i)
+      const data = new AudioData({
+        format: 'f32-planar', sampleRate: SAMPLE_RATE, numberOfFrames: n, numberOfChannels: 1,
+        timestamp: Math.round((i / SAMPLE_RATE) * 1e6), data: track.subarray(i, i + n),
+      })
+      audioEncoder.encode(data)
+      data.close()
+    }
+    await audioEncoder.flush()
+    audioEncoder.close()
     if (encodeErr) throw encodeErr
-    if (i % 15 === 0) progress(0.05 + 0.93 * (i / frames), `Rendering ${Math.round(t)}s / ${Math.round(total)}s`)
+
+    // Video.
+    const canvas = document.createElement('canvas')
+    canvas.width = WIDTH; canvas.height = HEIGHT
+    const ctx = canvas.getContext('2d', { alpha: false })
+    if (!ctx) throw new Error('no 2d context')
+    const videoEncoder = new VideoEncoder({
+      output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+      error: (e) => { encodeErr = e as Error },
+    })
+    videoEncoder.configure(codec.video)
+    const frames = Math.ceil(total * FPS)
+    for (let i = 0; i < frames; i++) {
+      const t = i / FPS
+      await drawFrame(ctx, scene, t)
+      const frame = new VideoFrame(canvas, { timestamp: Math.round(t * 1e6), duration: Math.round(1e6 / FPS) })
+      videoEncoder.encode(frame, { keyFrame: i % (FPS * 2) === 0 })
+      frame.close()
+      while (videoEncoder.encodeQueueSize > 6) await tick()
+      if (encodeErr) throw encodeErr
+      if (i % 15 === 0) progress(0.05 + 0.9 * (i / frames), `Rendering ${Math.round(t)}s / ${Math.round(total)}s (${codec.ext})`)
+    }
+    await videoEncoder.flush()
+    videoEncoder.close()
+    if (encodeErr) throw encodeErr
+    muxer.finalize()
+    return new Blob([buffer()], { type: mime })
   }
-  await videoEncoder.flush()
-  if (encodeErr) throw encodeErr
-  muxer.finalize()
+
+  let used = codec
+  let blob = await encode(codec)
+  // The one check that matters: can a player hear it? An MP4 whose AAC track
+  // decodes to nothing is re-rendered as WebM rather than handed over mute.
+  progress(0.96, 'Checking the audio track')
+  if (!(await hasAudibleTrack(blob))) {
+    if (codec.ext === 'mp4') {
+      used = WEBM
+      const [v, a] = await Promise.all([VideoEncoder.isConfigSupported(WEBM.video), AudioEncoder.isConfigSupported(WEBM.audio)])
+      if (!v.supported || !a.supported) throw new Error('The MP4 came out silent and this browser cannot encode WebM.')
+      blob = await encode(WEBM)
+      if (!(await hasAudibleTrack(blob))) throw new Error('The audio track came out silent on both codecs.')
+    } else {
+      throw new Error('The audio track came out silent.')
+    }
+  }
   progress(1, 'Done')
-  return { blob: new Blob([buffer()], { type: mime }), ext: codec.ext, durationSec: total, phrases }
+  return { blob, ext: used.ext, durationSec: total, phrases }
 }
 
 // A single frame as a PNG data URL — the preview poster in the panel, and the

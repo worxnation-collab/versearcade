@@ -76,6 +76,18 @@ synthetic audio with four bursts: every clause boundary landed on its gap.
 The reference is spoken as "Matthew 16, verse 18" (`spokenReference`) so the
 voice never reads a colon.
 
+## The audio track is checked, not assumed
+
+The first real render came out mute: the video was perfect and the MP4's AAC
+track decoded to nothing. An MP4 needs the two-byte AudioSpecificConfig in its
+`esds` box before any player will decode the audio, and it is supposed to
+arrive from the encoder in the first chunk's `decoderConfig.description`; when
+it doesn't, the muxer writes a track with no decoder info. `tiktokRender` now
+builds that header itself whenever the encoder's is missing, and after muxing
+it decodes the finished file's audio with the browser's own demuxer. A silent
+MP4 is re-rendered as WebM automatically rather than handed over — a file
+that can't be heard is never the output.
+
 ## Rules that carry over from the app
 
 - **No comparison, no shame.** The copy prompt says so, and the end card is an

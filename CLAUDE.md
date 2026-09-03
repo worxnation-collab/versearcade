@@ -1773,6 +1773,12 @@ The store header names the shape to use if that ever changes, and says why it
 shouldn't: offline, the XP would be client-granted, which is the one thing this
 feature's safety argument rests on not happening.
 
+**The compass invites it once a day** — "Kneel and wash a friend's feet", open
+until you have knelt for ONE person today, never "until your twelve are done":
+a line that stays lit for a thing few people can finish is a quota, and the
+compass going dark in the evening is meant to mean a finished day. Online-only
+like the gesture (`mode === 'online'`), so a keyless build never invites it.
+
 `WashFeetButton` is the single control (`pill` in a row, `wide` on a card), so
 the rules can't drift between the player card, the buddy rows and the basin —
 the same choke-point habit as `QuizRunner`. A road can score the gesture through
@@ -2761,6 +2767,14 @@ something in the room. Full design: `docs/STUDY-LIBRARY.md`. Five things:
   asking how many times anybody has visited, and `borrowedToday` is a boolean on
   both paths. A daily reward you can fall BEHIND on is the version that would be
   wrong, and the guarantee is in what isn't stored.
+- **A study run IS borrowing the day's book.** `QuizRunner`'s `studyDrop` path
+  calls `useLibrary.borrowIfNeeded()` when a run finishes, so the trivia rounds,
+  a replay, a drill and the Cross Word all clear the compass's "Borrow today's
+  book from Tabitha" line — it used to clear only from her desk, and people who
+  reached Study by any other door watched it stay all day. `borrowIfNeeded`
+  no-ops once borrowed (loading the store first, since a run can finish before
+  anything called `load()`), so the desk's checkout is never paid twice and the
+  `book_borrowed` verb fires once.
 - **She never measures anybody**, and the reveal waits. No due dates, no "it's
   been a while", no count of visits. Every checkout after the day's first is a
   SUCCESS that pays nothing — never a refusal, and neither is a failed call,

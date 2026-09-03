@@ -313,6 +313,15 @@ export function CustomizeSection() {
   return (
     <>
       {/* ── Character builder ─────────────────────────────────────────── */}
+      {/* The WHOLE section goes while a full skin is worn, not just its rows.
+          A skin replaces the figure, so a builder headed "Your Character" with
+          the skin standing in it and nothing to change underneath was a card
+          that said "always free" over a look that may not be. The hero above
+          already shows what you're wearing, and the Skins shelf below says how
+          to take it off — so nothing is lost, and the character underneath
+          comes straight back with the section the moment the skin comes off.
+          (An OVERLAY skin keeps it: it layers onto your own character.) */}
+      {!skinCovered && (
       <Section
         title="Your Character"
         defaultOpen
@@ -343,14 +352,13 @@ export function CustomizeSection() {
             they'd be controls that visibly do nothing — so the line about them
             being free goes with them rather than describing swatches that
             aren't on screen. */}
-        {!skinCovered && (
-          <p className="faint" style={{ fontSize: 10, marginTop: 12, lineHeight: 1.4 }}>
-            Every tone and every colour here is free and always will be — this is
-            who you are, not something to unlock. It saves as you tap.
-          </p>
-        )}
+        <p className="faint" style={{ fontSize: 10, marginTop: 12, lineHeight: 1.4 }}>
+          Every tone and every colour here is free and always will be — this is
+          who you are, not something to unlock. It saves as you tap.
+        </p>
       </div>
       </Section>
+      )}
 
       {/* ── Full looks + companions ────────────────────────────────────
           One shelf with two pills instead of two collapsibles: skins and pets

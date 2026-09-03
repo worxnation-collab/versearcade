@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Character } from '@/components/Character'
 import {
@@ -36,6 +36,7 @@ export function CharacterPicker({
   longestStreak = 0,
   admin = false,
   onRemoveSkin,
+  layout = 'swatches',
 }: {
   value: AvatarSpec
   onChange: (spec: AvatarSpec) => void
@@ -52,6 +53,16 @@ export function CharacterPicker({
    *  that's worth keeping when the rest of the picker has nothing to say. The
    *  sign-up flow never passes it: nothing is equipped at the door. */
   onRemoveSkin?: () => void
+  /**
+   * How tone and hair are chosen. 'swatches' is two rows of colour dots — the
+   * profile's customizer, where you already know your character and are
+   * nudging it. 'tiles' is ONE row you swipe through, every combination drawn
+   * as the actual figure, for the front door: somebody who has never seen the
+   * character shouldn't have to build a face out of two colour charts, they
+   * should see the people and point at one. Same spec either way; the figure
+   * toggle stays in both.
+   */
+  layout?: 'swatches' | 'tiles'
 }) {
   const juice = useJuice()
   const figure = figureOf(value)
@@ -141,23 +152,42 @@ export function CharacterPicker({
         </div>
       </div>
 
-      <div>
-        <RowLabel>Skin tone</RowLabel>
-        <SwatchRow
-          swatches={SKINS}
-          selected={value.skin}
-          onPick={(s) => pick({ skin: s.key })}
-        />
-      </div>
+      {layout === 'tiles' ? (
+        // minWidth 0: a grid item's min-width is `auto`, which lets an
+        // overflowing child WIDEN the item instead of scrolling inside it —
+        // the row was 2,596px wide and the whole page scrolled sideways.
+        <div style={{ minWidth: 0, maxWidth: '100%' }}>
+          <RowLabel>Pick yourself</RowLabel>
+          <TileRow
+            figure={figure}
+            value={value}
+            onPick={(skin, hair) => pick({ skin, hair })}
+          />
+          <p className="faint" style={{ fontSize: 11, margin: '6px 0 0', textAlign: 'center' }}>
+            Swipe for more — every tone, every hair colour.
+          </p>
+        </div>
+      ) : (
+        <>
+          <div>
+            <RowLabel>Skin tone</RowLabel>
+            <SwatchRow
+              swatches={SKINS}
+              selected={value.skin}
+              onPick={(s) => pick({ skin: s.key })}
+            />
+          </div>
 
-      <div>
-        <RowLabel>Hair</RowLabel>
-        <SwatchRow
-          swatches={HAIRS}
-          selected={value.hair ?? 'espresso'}
-          onPick={(s) => pick({ hair: s.key })}
-        />
-      </div>
+          <div>
+            <RowLabel>Hair</RowLabel>
+            <SwatchRow
+              swatches={HAIRS}
+              selected={value.hair ?? 'espresso'}
+              onPick={(s) => pick({ hair: s.key })}
+            />
+          </div>
+        </>
+      )}
 
       {showRobe && (
         <div>
@@ -171,6 +201,99 @@ export function CharacterPicker({
         </div>
       )}
       </>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Every (tone, hair) combination for one figure, as a single swipeable row of
+ * the rendered figures — 36 tiles, grouped by tone so a swipe walks the tones
+ * and the hair varies inside each. Selected tile wears the gold ring and is
+ * scrolled into view on mount, so re-opening the picker lands on you.
+ *
+ * Each tile is a plain <img loading="lazy"> straight from GENERATED_ART rather
+ * than a <Character>: an SVG <image> loads whether or not it's on screen, and
+ * 36 renders at once on the sign-up screen is two megabytes nobody asked for.
+ * A combination whose render is missing (or 404s) falls back to <Character>,
+ * which draws the pilgrim — the batch can ship incomplete and the row still
+ * has 36 people in it.
+ */
+function TileRow({
+  figure,
+  value,
+  onPick,
+}: {
+  figure: Figure
+  value: AvatarSpec
+  onPick: (skin: string, hair: string) => void
+}) {
+  const hairKey = value.hair ?? 'espresso'
+  const selectedRef = useRef<HTMLButtonElement | null>(null)
+  useEffect(() => {
+    selectedRef.current?.scrollIntoView({ block: 'nearest', inline: 'center' })
+  }, [figure])
+  return (
+    <div
+      style={{
+        display: 'flex',
+        gap: 8,
+        overflowX: 'auto',
+        minWidth: 0,
+        maxWidth: 'calc(100% + 12px)',
+        // Bleed to the card edges so the first and last tiles can be reached
+        // without a dead margin, and hide the scrollbar chrome on desktop.
+        margin: '0 -6px',
+        padding: '4px 6px 6px',
+        scrollSnapType: 'x proximity',
+        WebkitOverflowScrolling: 'touch',
+        scrollbarWidth: 'none',
+      }}
+    >
+      {SKINS.map((s) =>
+        HAIRS.map((h) => {
+          const selected = value.skin === s.key && hairKey === h.key
+          const id = `starter_${figure}_${s.key}_${h.key}`
+          const src = GENERATED_ART[id]
+          return (
+            <motion.button
+              key={id}
+              ref={selected ? selectedRef : undefined}
+              whileTap={{ scale: 0.92 }}
+              onClick={() => onPick(s.key, h.key)}
+              aria-label={`${s.name} skin, ${h.name} hair`}
+              aria-pressed={selected}
+              style={{
+                flex: '0 0 auto',
+                width: 64,
+                height: 92,
+                padding: 0,
+                borderRadius: 14,
+                background: selected ? 'var(--grape)' : 'var(--card-solid)',
+                border: selected ? '2px solid var(--gold)' : '2px solid var(--stroke)',
+                boxShadow: selected ? '0 0 0 3px color-mix(in srgb, var(--gold) 35%, transparent)' : 'none',
+                cursor: 'pointer',
+                scrollSnapAlign: 'center',
+                overflow: 'hidden',
+                display: 'grid',
+                placeItems: 'end center',
+              }}
+            >
+              {src ? (
+                <img
+                  src={src}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  draggable={false}
+                  style={{ height: 84, width: 'auto', maxWidth: 60, objectFit: 'contain', display: 'block' }}
+                />
+              ) : (
+                <Character spec={{ ...value, figure, skin: s.key, hair: h.key, skinId: null, regalia: null }} size={84} fullBody />
+              )}
+            </motion.button>
+          )
+        }),
       )}
     </div>
   )

@@ -2023,17 +2023,31 @@ the Close button before that.
 
 ### Customizing is one shelf, not six
 
-**A worn full skin hides the character builder's own rows.** A skin REPLACES the
-figure (`Character.tsx` renders its art instead of the starter render), so while
-one is on, Figure / Skin tone / Hair are three controls you can tap and watch do
-nothing — you change the tone and Moses doesn't move. `CharacterPicker` hides
-them and says what's underneath instead, with a "Take it off" that puts the
-character back (the profile passes `onRemoveSkin`; the sign-up flow doesn't,
-because nothing is equipped at the door). Two things about it: an **overlay**
-skin — the carried cross — layers onto your own character rather than replacing
-it, so it keeps every row; and the rows are hidden, never dimmed or padlocked,
-because nothing here is locked — the character underneath is untouched and comes
-straight back.
+**A worn full skin hides the WHOLE "Your Character" section on the profile.** A
+skin REPLACES the figure (`Character.tsx` renders its art instead of the starter
+render), so while one is on, Figure / Skin tone / Hair are three controls you
+can tap and watch do nothing — you change the tone and Moses doesn't move. It
+used to hide only the rows and keep a header reading "always free" over the
+worn skin; now `CustomizeSection` drops the section entirely: the hero above
+already shows what you're wearing, and the Skins shelf says how to take it off.
+`CharacterPicker` still has its own covered state (the "You're wearing X" line
+and `onRemoveSkin`) for any surface that mounts it while a skin is on. Two
+things about it: an **overlay** skin — the carried cross — layers onto your own
+character rather than replacing it, so it keeps the section; and nothing is
+dimmed or padlocked, because nothing here is locked — the character underneath
+is untouched and comes straight back with the section the moment the skin comes
+off.
+
+**The front door picks a PERSON, not two colour charts.** `CharacterPicker`
+takes `layout`: `'swatches'` (the profile — two rows of dots, for nudging a
+character you already know) or `'tiles'` (both sign-up doors — the figure
+toggle, then ONE swipeable row of all 36 tone × hair combinations drawn as the
+actual figure, grouped by tone). The tiles are plain `<img loading="lazy">`
+straight from `GENERATED_ART`, not `<Character>`: an SVG `<image>` loads whether
+or not it is on screen, and 36 renders on the sign-up screen is two megabytes.
+One scar: the row's wrapper needs `minWidth: 0` — a grid item's min-width is
+`auto`, so the overflowing row widened the item to 2,596px and the whole page
+scrolled sideways. Found by measuring, invisible in the diff.
 
 
 Everything you can equip — skins, pets, items, card backgrounds, borders,

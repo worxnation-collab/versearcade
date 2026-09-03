@@ -104,6 +104,11 @@ export interface Profile {
   /** Equipped pet id (see data/pets), or null for none. Earned by player level
    *  and purely company — it touches no score, no board and no standing. */
   pet?: string | null
+  /** What the card says about you (data/cardAbout): a verse reference, one of
+   *  the 66 books, a translation code. Picks from fixed catalogs, never text. */
+  favoriteVerse?: string | null
+  favoriteBook?: string | null
+  favoriteTranslation?: string | null
   /** Distinct day-drops the player has shared (YYYY-MM-DD). Drives share-count
    *  unlocks like the King Baldwin set. */
   sharedDays?: string[]

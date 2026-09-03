@@ -8,6 +8,7 @@ import { CardBg } from '@/components/CardBg'
 import { FounderTag } from '@/components/FounderTag'
 import { FounderPill } from '@/features/profile/FounderSupport'
 import { denominationColor, denominationName } from '@/data/denominations'
+import { aboutVerseSeed, hasAbout, translationByCode } from '@/data/cardAbout'
 import type { AvatarSpec } from '@/types'
 
 // Everything a player card renders. Deliberately a plain data bag rather than a
@@ -23,6 +24,12 @@ export interface PlayerCardData {
   /** Equipped pet id (data/pets.ts). Drawn by ProfileHero above the card, never
    *  by the card itself — see the note on statsOnly. */
   pet?: string | null
+  /** What the player says about themselves (data/cardAbout) — a verse
+   *  reference, one of the 66 books, a translation code. Drawn as one slim
+   *  strip above the stats, and only when any of the three is set. */
+  favoriteVerse?: string | null
+  favoriteBook?: string | null
+  favoriteTranslation?: string | null
   xp: number
   level: number
   currentStreak: number
@@ -172,6 +179,19 @@ export function PlayerCard({
         </div>
       )}
 
+      {/* What they say about themselves — between the level and the numbers,
+          because it is the one thing on the card that is neither. Renders
+          nothing at all when nothing is set, so an untouched card is exactly
+          the card it always was. */}
+      {hasAbout({ verse: p.favoriteVerse, book: p.favoriteBook, translation: p.favoriteTranslation }) && (
+        <AboutStrip
+          verse={p.favoriteVerse}
+          book={p.favoriteBook}
+          translation={p.favoriteTranslation}
+          gold={gold}
+        />
+      )}
+
       {/* The six stats, same set and order as the profile has always shown. */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
         <Stat label="Streak" node={<StreakFlame days={p.currentStreak} size={18} />} />
@@ -186,6 +206,133 @@ export function PlayerCard({
   )
 }
 
+// The tile every block on the card sits in: its own scrim over the painting,
+// because a bright background would otherwise wash the text out.
+const TILE: React.CSSProperties = {
+  borderRadius: 'var(--r-md, 16px)',
+  background: 'rgba(10,4,28,0.5)',
+  border: '1px solid rgba(255,255,255,0.10)',
+  backdropFilter: 'blur(3px)',
+}
+
+const EYEBROW: React.CSSProperties = {
+  fontSize: 10,
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+}
+
+// The favorite-verse / favorite-book / translation strip. ONE tile rather than
+// three, so it reads as a sentence about a person instead of three more stats:
+// the verse across the top with its reference signed underneath, and the two
+// short facts side by side on one line below a hairline. Everything in it is a
+// pick from a fixed catalog (data/cardAbout) — the text is the pool's, never
+// anything the player typed — and none of it is a number.
+//
+// A verse the arcade doesn't carry shows its reference alone; a card with only
+// a book, or only a translation, gets the bottom row and nothing above it. The
+// tile never grows past three lines of verse (line-clamp), so the card stays
+// a card and not a page.
+function AboutStrip({
+  verse,
+  book,
+  translation,
+  gold,
+}: {
+  verse?: string | null
+  book?: string | null
+  translation?: string | null
+  gold: boolean
+}) {
+  const seed = verse ? aboutVerseSeed(verse) : undefined
+  const tr = translationByCode(translation)
+  const facts: { label: string; value: string; sub?: string }[] = []
+  if (book) facts.push({ label: 'Favorite book', value: book })
+  if (tr) facts.push({ label: 'Translation', value: tr.code, sub: tr.name })
+  const valueClass = gold ? 'gold-text' : undefined
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      style={{ ...TILE, padding: '9px 12px 10px', marginBottom: 10, display: 'grid', gap: 8 }}
+    >
+      {verse && (
+        <div style={{ minWidth: 0 }}>
+          {/* The reference shares the eyebrow's line rather than signing off
+              underneath: one line fewer, and the quote still reads as quoted. */}
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
+            <span className="faint" style={{ ...EYEBROW, flexShrink: 0 }}>Favorite verse</span>
+            <span
+              className={valueClass}
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 13,
+                fontWeight: 800,
+                minWidth: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                textShadow: '0 1px 4px rgba(0,0,0,0.5)',
+              }}
+            >
+              {verse}
+            </span>
+          </div>
+          {seed && (
+            <p
+              style={{
+                margin: '4px 0 0',
+                fontSize: 12.5,
+                lineHeight: 1.4,
+                fontStyle: 'italic',
+                display: '-webkit-box',
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                textShadow: '0 1px 4px rgba(0,0,0,0.5)',
+              }}
+            >
+              “{seed.text}”
+            </p>
+          )}
+        </div>
+      )}
+      {facts.length > 0 && (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: facts.length === 2 ? '1fr 1fr' : '1fr',
+            gap: 12,
+            borderTop: verse ? '1px solid rgba(255,255,255,0.10)' : 'none',
+            paddingTop: verse ? 8 : 0,
+          }}
+        >
+          {facts.map((f) => (
+            <div key={f.label} style={{ minWidth: 0 }}>
+              <div className="faint" style={EYEBROW}>{f.label}</div>
+              <div
+                style={{
+                  marginTop: 2,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  textShadow: '0 1px 4px rgba(0,0,0,0.5)',
+                }}
+                title={f.sub}
+              >
+                <span className={valueClass} style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 800 }}>
+                  {f.value}
+                </span>
+                {f.sub && <span className="faint" style={{ fontSize: 10.5, marginLeft: 6 }}>{f.sub}</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </motion.div>
+  )
+}
+
 // Tiles sit on painted artwork, so they carry their own scrim instead of the
 // usual .card surface — otherwise a bright background washes the numbers out.
 function Stat({ label, value, node, gold }: { label: string; value?: string; node?: ReactNode; gold?: boolean }) {
@@ -193,14 +340,7 @@ function Stat({ label, value, node, gold }: { label: string; value?: string; nod
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      style={{
-        padding: 12,
-        textAlign: 'center',
-        borderRadius: 'var(--r-md, 16px)',
-        background: 'rgba(10,4,28,0.5)',
-        border: '1px solid rgba(255,255,255,0.10)',
-        backdropFilter: 'blur(3px)',
-      }}
+      style={{ ...TILE, padding: 12, textAlign: 'center' }}
     >
       <div
         className={gold && value != null ? 'gold-text' : undefined}
@@ -208,7 +348,7 @@ function Stat({ label, value, node, gold }: { label: string; value?: string; nod
       >
         {node ?? value}
       </div>
-      <div className="faint" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+      <div className="faint" style={EYEBROW}>{label}</div>
     </motion.div>
   )
 }

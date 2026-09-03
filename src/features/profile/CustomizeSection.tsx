@@ -25,6 +25,7 @@ import { collectibleByKey } from '@/data/collectibles'
 import { CARD_BACKGROUNDS, DEFAULT_CARD_BG, cardBgStyle, cardArtProps, cardBgAccentColor, cardBgUnlocked } from '@/data/playerCards'
 import { CardArt } from '@/data/cardArt'
 import { SavedLooks } from './SavedLooks'
+import { CardAboutEditor } from './CardAboutEditor'
 import {
   DEFAULT_AVATAR,
   distinctSharedDays,
@@ -778,6 +779,16 @@ export function CustomizeSection() {
               </div>
               </>
             ),
+          },
+          {
+            // What the card SAYS, next to what it looks like. A verse, a book
+            // and a translation are the one kind of thing on the card that
+            // isn't a number or a picture, and they belong on the same shelf
+            // as the background they're written over.
+            key: 'about',
+            label: 'About',
+            right: 'your verse & book',
+            content: <CardAboutEditor onSaved={flashSaved} />,
           },
           {
             key: 'borders',

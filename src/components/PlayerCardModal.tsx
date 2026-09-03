@@ -119,6 +119,9 @@ function CardSheet({ username, onClose }: { username: string; onClose: () => voi
         avatarBadge: me.avatarBadge,
         cardBackground: me.cardBackground,
         pet: me.pet,
+        favoriteVerse: me.favoriteVerse,
+        favoriteBook: me.favoriteBook,
+        favoriteTranslation: me.favoriteTranslation,
         xp: me.xp,
         level: me.level,
         currentStreak: me.currentStreak,
@@ -148,6 +151,11 @@ function CardSheet({ username, onClose }: { username: string; onClose: () => voi
         // the hero draws a figure with no companion — the usual fail-closed
         // shape, not a crash.
         pet: (r.pet as string | null) ?? null,
+        // Added by 0098. An older server omits them and the strip simply
+        // doesn't render — nothing on the card moves.
+        favoriteVerse: (r.favorite_verse as string | null) ?? null,
+        favoriteBook: (r.favorite_book as string | null) ?? null,
+        favoriteTranslation: (r.favorite_translation as string | null) ?? null,
         xp: Number(r.xp ?? 0),
         level: Number(r.level ?? 1),
         currentStreak: Number(r.current_streak ?? 0),

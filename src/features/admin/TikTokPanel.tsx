@@ -29,7 +29,7 @@ import { supabase } from '@/lib/supabase'
 import { todayLocalDate } from '@/lib/date'
 import { getVerseForDate } from '@/data/bible/questions'
 import { VERSE_POOL } from '@/data/bible/pool'
-import { pickVoice, pickCast, pickStoryVoice, storyCards, PICKER_VOICES, type VoiceSeed } from '@/data/tiktokVoice'
+import { pickVoice, pickCast, pickStoryVoice, storyCards, storyBeats, gradeFor, secondVoiceFor, PICKER_VOICES, type VoiceSeed } from '@/data/tiktokVoice'
 import type { Backdrop, TimedPhrase, StoryCard } from '@/lib/tiktokRender'
 
 const BUCKET = 'tiktok'
@@ -131,6 +131,7 @@ export default function TikTokPanel() {
   const [style, setStyle] = useState(() => autoPick(todayLocalDate(), autoCast(todayLocalDate()).reader).style)
   const [voiceAuto, setVoiceAuto] = useState(true)
   const [withCopy, setWithCopy] = useState(true)
+  const [withMusic, setWithMusic] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
   const [err, setErr] = useState<string | null>(null)
@@ -233,6 +234,14 @@ export default function TikTokPanel() {
     return 'builtin'
   }
 
+  // The room's own music under the reading, rendered to fit the post.
+  async function bedFor(r: typeof import('@/lib/tiktokRender'), audio: ArrayBuffer, hook: string | undefined, story: boolean, trackId: string): Promise<Float32Array | undefined> {
+    if (!withMusic) return undefined
+    try {
+      const m = await import('@/lib/tiktokMusic')
+      return await m.renderBed(trackId, await r.plannedDuration(audio, hook, story))
+    } catch { return undefined }
+  }
   async function fetchStory(d: string, force: boolean): Promise<Story> {
     const v = getVerseForDate(d)
     const sd = seedFor(d)
@@ -259,7 +268,16 @@ export default function TikTokPanel() {
     const loopKey = tellerId === 'tabitha' && roomPath === ROOMS[0].id ? 'tabitha-library' : null
     const loopUrl = loopKey ? await loopUrlFor(loopKey) : null
     const roomImg: HTMLImageElement | HTMLVideoElement = loopUrl ? await r.loadVideo(loopUrl) : await r.loadImage(roomPath)
-    return { r, v, cards, roomImg, tellerImg }
+    // Her reaction loops, whichever have shipped; a missing one means that
+    // paragraph stays on the main loop.
+    const reactions: { listen?: HTMLVideoElement; laugh?: HTMLVideoElement; leanin?: HTMLVideoElement } = {}
+    if (loopUrl) {
+      for (const k of ['listen', 'laugh', 'leanin'] as const) {
+        const u = await loopUrlFor(`tabitha-${k}`)
+        if (u) { try { reactions[k] = await r.loadVideo(u) } catch { /* stays on the main loop */ } }
+      }
+    }
+    return { r, v, cards, roomImg, tellerImg, reactions }
   }
   async function storyPosterFor(d: string, st: Story): Promise<string> {
     const { r, v, cards, roomImg, tellerImg } = await storyAssets(d, st)
@@ -275,10 +293,17 @@ export default function TikTokPanel() {
     const st = d === date && story ? story : await fetchStory(d, false)
     const tellerId = storyCastAuto ? 'tabitha' : teller
     const roomPath = storyCastAuto ? ROOMS[0].id : room
-    const spoken = [...st.paragraphs, `${v.text.trim()} ${spokenReference(v.reference)}.`].join('\n\n')
     const p = voiceAuto ? pickStoryVoice(sd, tellerId) : { voice, style }
+    const second = voiceAuto ? secondVoiceFor(sd) : null
+    const tellerName = TELLERS.find((x) => x.id === tellerId)?.name.split(' ')[0] ?? 'Teller'
+    const spoken = second
+      ? [...st.paragraphs.map((pg) => `${tellerName}: ${pg}`), `${second.name}: ${v.text.trim()}`, `${tellerName}: ${spokenReference(v.reference)}.`].join('\n\n')
+      : [...st.paragraphs, `${v.text.trim()} ${spokenReference(v.reference)}.`].join('\n\n')
     setBusy(`${d}: asking for the telling`)
-    const tts = await call<{ url: string; cached: boolean }>('tts', { date: d, text: spoken, voice: p.voice, style: p.style })
+    const tts = await call<{ url: string; cached: boolean }>('tts', {
+      date: d, text: spoken, voice: p.voice, style: p.style,
+      speakers: second ? [{ name: tellerName, voice: p.voice }, { name: second.name, voice: second.voice }] : undefined,
+    })
     const audio = await (await fetch(tts.url + '?v=' + Date.now())).arrayBuffer()
     let copy: Copy | null = null
     if (withCopy) {
@@ -286,11 +311,13 @@ export default function TikTokPanel() {
       try { copy = await call<Copy>('copy', { reference: v.reference, text: v.text, theme: v.theme, kind: 'story' }) } catch { copy = null }
     }
     setBusy(`${d}: rendering`)
-    const { r, cards, roomImg, tellerImg } = await storyAssets(d, st, tellerId, roomPath)
+    const { r, cards, roomImg, tellerImg, reactions } = await storyAssets(d, st, tellerId, roomPath)
+    const paragraphs = [...st.paragraphs, `${v.text.trim()} ${v.reference}.`]
+    const bed = await bedFor(r, audio, st.hook || copy?.hook, true, 'cloister')
     const out = await r.renderStory({
       title: st.title, reference: v.reference, verseText: v.text,
-      paragraphs: [...st.paragraphs, `${v.text.trim()} ${v.reference}.`],
-      cards, hook: st.hook || copy?.hook, audio, room: roomImg, teller: tellerImg,
+      paragraphs, cards, hook: st.hook || copy?.hook, audio, room: roomImg, teller: tellerImg, bed,
+      reactions, beats: storyBeats(sd, paragraphs.length),
       onProgress: (f, label) => { setProgress(f); setBusy(`${d}: ${label}`) },
     })
     return { date: d, kind: 'story', reference: v.reference, url: URL.createObjectURL(out.blob), ext: out.ext, size: out.blob.size, copy, phrases: out.phrases, tier: `${TELLERS.find((x) => x.id === tellerId)?.name ?? tellerId} · story` }
@@ -301,12 +328,22 @@ export default function TikTokPanel() {
     const v = getVerseForDate(d)
     setBusy(`${d}: asking for the reading`)
     setProgress(0)
-    const spoken = `${v.text.trim()} ${spokenReference(v.reference)}.`
     // A batch reads each day in its own voice when the pick is automatic;
     // an operator's override applies to every day in the batch.
     const c = castAuto ? autoCast(d) : { reader, scene }
     const p = voiceAuto ? autoPick(d, c.reader) : { voice, style }
-    const tts = await call<{ url: string; cached: boolean }>('tts', { date: d, text: spoken, voice: p.voice, style: p.style })
+    const sd = seedFor(d)
+    // The words of God or Jesus are read by a second voice; the reader
+    // says the reference. Anyone else's verse is one voice as before.
+    const second = voiceAuto ? secondVoiceFor(sd) : null
+    const readerName = READERS.find((x) => x.id === c.reader)?.name.split(' ')[0] ?? 'Reader'
+    const spoken = second
+      ? `${second.name}: ${v.text.trim()}\n${readerName}: ${spokenReference(v.reference)}.`
+      : `${v.text.trim()} ${spokenReference(v.reference)}.`
+    const tts = await call<{ url: string; cached: boolean }>('tts', {
+      date: d, text: spoken, voice: p.voice, style: p.style,
+      speakers: second ? [{ name: second.name, voice: second.voice }, { name: readerName, voice: p.voice }] : undefined,
+    })
     const audio = await (await fetch(tts.url + '?v=' + Date.now())).arrayBuffer()
 
     let copy: Copy | null = null
@@ -319,8 +356,10 @@ export default function TikTokPanel() {
     const r = await import('@/lib/tiktokRender')
     const tier = tierOverride ?? (await tierFor(c.reader, c.scene))
     const backdrop = await backdropFor(r, tier, c.reader, c.scene)
+    const bed = await bedFor(r, audio, copy?.hook, false, 'morning')
     const out = await r.renderTikTok({
-      reference: v.reference, text: v.text, hook: copy?.hook, audio, backdrop,
+      reference: v.reference, text: v.text, hook: copy?.hook, audio, backdrop, bed,
+      grade: castAuto ? gradeFor(sd) : undefined,
       onProgress: (f, label) => { setProgress(f); setBusy(`${d}: ${label}`) },
     })
     return { date: d, kind: 'verse', reference: v.reference, url: URL.createObjectURL(out.blob), ext: out.ext, size: out.blob.size, copy, phrases: out.phrases, tier: `${c.reader} · ${c.scene} · ${tier}` }
@@ -445,7 +484,10 @@ export default function TikTokPanel() {
               </select>
             </label>
             <label className="faint" style={{ fontSize: 11, display: 'flex', alignItems: 'end', gap: 6, paddingBottom: 6 }}>
-              <input type="checkbox" checked={withCopy} onChange={(e) => setWithCopy(e.target.checked)} /> write the caption too
+              <input type="checkbox" checked={withCopy} onChange={(e) => setWithCopy(e.target.checked)} /> caption too
+            </label>
+            <label className="faint" style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <input type="checkbox" checked={withMusic} onChange={(e) => setWithMusic(e.target.checked)} /> the library’s music underneath
             </label>
           </div>
           <div className="faint" style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -492,6 +534,9 @@ export default function TikTokPanel() {
           </label>
           <label className="faint" style={{ fontSize: 11, display: 'flex', alignItems: 'end', gap: 6, paddingBottom: 6 }}>
             <input type="checkbox" checked={withCopy} onChange={(e) => setWithCopy(e.target.checked)} /> write the caption + hook too
+          </label>
+          <label className="faint" style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <input type="checkbox" checked={withMusic} onChange={(e) => setWithMusic(e.target.checked)} /> the road’s music underneath
           </label>
         </div>
         <div className="faint" style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 8 }}>

@@ -37,6 +37,10 @@ export interface RenderInput {
   /** The reading, as a WAV (or anything decodeAudioData reads). */
   audio: ArrayBuffer
   backdrop: Backdrop
+  /** A time-of-day grade over the backdrop: the mood without a new painting. */
+  grade?: 'dusk' | 'night'
+  /** A music bed (48 kHz mono) mixed under the reading; see lib/tiktokMusic. */
+  bed?: Float32Array
   onProgress?: (fraction: number, label: string) => void
 }
 
@@ -255,6 +259,24 @@ function drawMotes(ctx: CanvasRenderingContext2D, t: number, strength = 1) {
   ctx.restore()
 }
 
+// Dusk and night over the daytime road: a multiply tint and a darker vignette,
+// so a comfort verse at dusk and a warning at night keep the host's LOOP
+// (which only exists for the daytime road) rather than falling back to a
+// still of a different painting.
+function drawGrade(ctx: CanvasRenderingContext2D, grade?: 'dusk' | 'night') {
+  if (!grade) return
+  ctx.save()
+  ctx.globalCompositeOperation = 'multiply'
+  ctx.fillStyle = grade === 'dusk' ? 'rgba(255,160,90,0.55)' : 'rgba(70,90,170,0.75)'
+  ctx.fillRect(0, 0, WIDTH, HEIGHT)
+  if (grade === 'night') { ctx.fillStyle = 'rgba(20,20,60,0.35)'; ctx.fillRect(0, 0, WIDTH, HEIGHT) }
+  ctx.globalCompositeOperation = 'source-over'
+  const v = ctx.createRadialGradient(WIDTH / 2, HEIGHT * 0.5, HEIGHT * 0.25, WIDTH / 2, HEIGHT * 0.5, HEIGHT * 0.8)
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, grade === 'dusk' ? 'rgba(40,10,30,0.35)' : 'rgba(0,0,20,0.55)')
+  ctx.fillStyle = v; ctx.fillRect(0, 0, WIDTH, HEIGHT)
+  ctx.restore()
+}
+
 interface Scene {
   input: RenderInput
   lead: number
@@ -298,6 +320,7 @@ async function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number,
   }
   ctx.restore()
   if (!chrome) return
+  drawGrade(ctx, input.grade)
   drawMotes(ctx, t)
 
   // 2. Legibility washes, top and bottom.
@@ -483,10 +506,13 @@ function tick() { return new Promise<void>((r) => setTimeout(r, 0)) }
 // The shared encode pipeline: audio track from the reading, video frames from
 // `draw`, muxed and then CHECKED (see hasAudibleTrack). Both layouts go
 // through here, so there is one copy of the codec, timing and fallback logic.
+const BED_LEVEL = 0.2 // the music under the voice, as a fraction of the bed's normalised 0.6 peak (about -20 dB under speech)
+
 async function produce(
   draw: (ctx: CanvasRenderingContext2D, t: number) => Promise<void>,
   total: number, lead: number, samples: Float32Array,
   progress: (f: number, label: string) => void,
+  bed?: Float32Array,
 ): Promise<{ blob: Blob; ext: 'mp4' | 'webm' }> {
   progress(0.02, 'Picking a codec')
   const codec = await pickCodec()
@@ -495,6 +521,16 @@ async function produce(
   const totalFrames = Math.ceil(total * SAMPLE_RATE)
   const track = new Float32Array(totalFrames)
   track.set(samples.subarray(0, Math.min(samples.length, totalFrames - Math.round(lead * SAMPLE_RATE))), Math.round(lead * SAMPLE_RATE))
+  if (bed) {
+    // Fade the bed in over the lead and out over the end card, and keep it
+    // low: the reading is the point, the music is the room it happens in.
+    const fadeIn = Math.max(1, lead) * SAMPLE_RATE, fadeOut = 2.5 * SAMPLE_RATE
+    for (let i = 0; i < totalFrames; i++) {
+      const b = bed[i] ?? 0
+      const env = Math.min(1, i / fadeIn, (totalFrames - i) / fadeOut)
+      track[i] += b * BED_LEVEL * Math.max(0, env)
+    }
+  }
 
   const encode = async (codec: Codec): Promise<Blob> => {
     const { muxer, buffer, mime } = await makeMuxer(codec)
@@ -598,7 +634,7 @@ export async function renderTikTok(input: RenderInput): Promise<RenderOutput> {
 
   try { await document.fonts.load(`800 88px "Baloo 2"`) } catch { /* fall back to the stack */ }
 
-  const { blob, ext } = await produce((ctx, t) => drawFrame(ctx, scene, t), total, lead, samples, progress)
+  const { blob, ext } = await produce((ctx, t) => drawFrame(ctx, scene, t), total, lead, samples, progress, input.bed)
   progress(1, 'Done')
   return { blob, ext, durationSec: total, phrases }
 }
@@ -641,6 +677,11 @@ export interface StoryInput {
   room: HTMLImageElement | HTMLVideoElement
   /** The teller's render; not drawn when the room is a loop that already has her. */
   teller: HTMLImageElement
+  /** Reaction loops of the same room+teller, cut in per paragraph when present. */
+  reactions?: { listen?: HTMLVideoElement; laugh?: HTMLVideoElement; leanin?: HTMLVideoElement }
+  /** Which reaction each paragraph gets; 'talk' is the main room loop. */
+  beats?: Array<'talk' | 'listen' | 'laugh' | 'leanin'>
+  bed?: Float32Array
   onProgress?: (fraction: number, label: string) => void
 }
 
@@ -677,11 +718,19 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
   const at = t - lead
 
   // 1. The room: a Veo loop ping-ponged, or the painting with a slow push.
+  // With reaction loops, the paragraph decides which loop is on screen and
+  // the cut lands on the paragraph boundary, timed from that boundary so a
+  // new loop starts at its first frame.
   const roomIsLoop = input.room instanceof HTMLVideoElement
+  let piNow = 0
+  for (let i = 0; i < paraStart.length; i++) if (at >= paraStart[i] - 0.15) piNow = i
   if (input.room instanceof HTMLVideoElement) {
-    const v = input.room
+    const beat = input.beats?.[piNow] ?? 'talk'
+    const alt = beat !== 'talk' ? input.reactions?.[beat] : undefined
+    const v = alt ?? input.room
+    const since = alt ? Math.max(0, at - (paraStart[piNow] ?? 0) + 0.15) : t
     const d = Math.max(0.1, v.duration - 0.05)
-    const m = t % (2 * d)
+    const m = since % (2 * d)
     await seek(v, m < d ? m : 2 * d - m)
     cover(ctx, v, v.videoWidth, v.videoHeight)
   } else {
@@ -718,8 +767,12 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
   for (let i = 0; i < paraStart.length; i++) if (at >= paraStart[i] - 0.15) pi = i
   const card = input.cards[Math.min(pi, input.cards.length - 1)]
   const cardAge = easeOut((at - (paraStart[pi] ?? 0) + 0.15) / 0.4)
+  const leaning = (input.beats?.[pi] ?? 'talk') === 'leanin' && input.reactions?.leanin
   if (t >= lead - 0.6 && endFade < 1) {
-    const cx = 160, cy = 330, cw = 760, ch = 760
+    // The lean-in walks her up to the camera, so the card shrinks and rises
+    // to leave her the lower half of the frame.
+    const cw = leaning ? 600 : 760, ch = cw
+    const cx = (WIDTH - cw) / 2, cy = leaning ? 300 : 330
     ctx.save()
     ctx.globalAlpha = (1 - endFade) * Math.min(1, cardAge + 0.2)
     const pop = 0.95 + 0.05 * cardAge
@@ -807,11 +860,13 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
     ctx.save()
     ctx.globalAlpha = Math.min(1, easeOut(age) + 0.35) * (1 - endFade)
     const pop = 0.94 + 0.06 * easeOut(age)
-    ctx.translate(WIDTH / 2 + 120, 1215); ctx.scale(pop, pop)
-    ctx.font = `800 70px ${FONT_DISPLAY}`
-    let lines = wrap(ctx, caption, 700)
-    let lh = 82
-    if (lines.length > 2) { ctx.font = `800 58px ${FONT_DISPLAY}`; lines = wrap(ctx, caption, 700); lh = 68 }
+    // Captions sit between the card and the teller; when she has walked up
+    // to the camera they tuck under the smaller card instead.
+    ctx.translate(leaning ? WIDTH / 2 : WIDTH / 2 + 120, leaning ? 1000 : 1215); ctx.scale(pop, pop)
+    ctx.font = `800 ${leaning ? 60 : 70}px ${FONT_DISPLAY}`
+    let lines = wrap(ctx, caption, leaning ? 900 : 700)
+    let lh = leaning ? 70 : 82
+    if (lines.length > 2) { ctx.font = `800 58px ${FONT_DISPLAY}`; lines = wrap(ctx, caption, leaning ? 900 : 700); lh = 68 }
     const y0 = -((lines.length - 1) * lh) / 2
     lines.forEach((l, i) => outlined(ctx, l, 0, y0 + i * lh, '#ffffff', 'rgba(11,7,32,0.92)', 12))
     ctx.restore()
@@ -858,9 +913,16 @@ export async function renderStory(input: StoryInput): Promise<RenderOutput> {
   const total = lead + audioDur + TAIL_SEC + 1.2
   try { await document.fonts.load(`800 70px "Baloo 2"`) } catch { /* fine */ }
   const sc: StoryScene = { input, lead, audioDur, total, phrases, para, paraStart }
-  const { blob, ext } = await produce((ctx, t) => drawStoryFrame(ctx, sc, t), total, lead, samples, progress)
+  const { blob, ext } = await produce((ctx, t) => drawStoryFrame(ctx, sc, t), total, lead, samples, progress, input.bed)
   progress(1, 'Done')
   return { blob, ext, durationSec: total, phrases }
+}
+
+/** How long a story or verse post will run, so a music bed can be rendered to fit. */
+export async function plannedDuration(audio: ArrayBuffer, hook: string | undefined, story: boolean): Promise<number> {
+  const samples = await decodeAudio(audio)
+  const lead = hook?.trim() ? 1.8 : 1.0
+  return lead + samples.length / SAMPLE_RATE + TAIL_SEC + (story ? 1.2 : 0)
 }
 
 export async function renderStoryPoster(input: Omit<StoryInput, 'audio' | 'onProgress'>, t = 2.5, chrome = true): Promise<string> {

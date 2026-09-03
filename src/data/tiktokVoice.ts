@@ -134,9 +134,34 @@ export function sceneFor(seed: VoiceSeed, date: string): string {
   const [, m, d] = date.split('-').map(Number)
   if (m === 12 && d <= 25) return 'advent'
   if (m === 11 && d >= 30) return 'advent'
-  const mood = moodFor(seed)
-  if (mood === 'comfort' || mood === 'warning') return 'lamplight'
+  // The mood used to switch the painting (Lamplight for comfort and warning);
+  // now it GRADES the daytime road instead (gradeFor), because the host's
+  // Veo loop exists for the road and a moving host is worth more than a
+  // different still.
   return 'harvest'
+}
+
+/** The time-of-day grade the verse post wears: dusk for comfort, night for warning. */
+export function gradeFor(seed: VoiceSeed): 'dusk' | 'night' | undefined {
+  const mood = moodFor(seed)
+  return mood === 'comfort' ? 'dusk' : mood === 'warning' ? 'night' : undefined
+}
+
+/** The reaction beat each story paragraph gets: talk, listen, a laugh for the bright moods, and the lean-in for the verse. */
+export function storyBeats(seed: VoiceSeed, paragraphs: number): Array<'talk' | 'listen' | 'laugh' | 'leanin'> {
+  const mood = moodFor(seed)
+  const bright = mood === 'praise' || mood === 'promise' || mood === 'story'
+  return Array.from({ length: paragraphs }, (_, i) => {
+    if (i === paragraphs - 1) return 'leanin'
+    if (i === 1) return 'listen'
+    if (i === 2) return bright ? 'laugh' : 'talk'
+    return 'talk'
+  })
+}
+
+/** The second voice for the words of God or Jesus, or null when the verse is anyone else's. */
+export function secondVoiceFor(seed: VoiceSeed): { name: string; voice: string } | null {
+  return moodFor(seed) === 'words-of-god' ? { name: 'Voice', voice: 'Orus' } : null
 }
 
 const READER_NAMES: Record<string, string> = { cephas: 'Peter', moses: 'Moses', elijah: 'Elijah', david: 'David', esther: 'Esther', mary: 'Mary' }

@@ -127,6 +127,14 @@ Start your streak today. It's one verse.
 > church rivalry**, if the check below shows they shipped in 1.2.0 already. That
 > check is owed before submission regardless, and it is the only thing that will
 > make real room.
+>
+> **The Prayer Wall landed after the 3,914-character count above** (leave a note,
+> the wall deals you somebody else's, hold a candle for it; migration `0098`). It
+> is exactly the kind of thing What's New exists to say and there is no room for
+> it until the cut above is made — so the cut is no longer optional. Suggested
+> bullet, ~190 characters: "THE PRAYER WALL · Leave a note — a kind of thing,
+> a line if you want, signed or not. The wall hands you somebody else's; hold the
+> candle for them. When theirs is answered, you're told."
 
 ```
 BIBLE TRIVIA, A ROUND AT A TIME

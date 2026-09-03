@@ -22,6 +22,7 @@ import ReviewScreen from './features/review/ReviewScreen'
 import BuddiesScreen from './features/buddies/BuddiesScreen'
 import MailScreen from './features/mail/MailScreen'
 import JournalScreen from './features/journal/JournalScreen'
+import PrayerWallScreen from './features/prayer/PrayerWallScreen'
 import ChurchesScreen from './features/churches/ChurchesScreen'
 import ChurchScreen from './features/church/ChurchScreen'
 import ChurchPublicScreen from './features/church/ChurchPublicScreen'
@@ -142,6 +143,11 @@ const WALL: Record<string, WallCopy> = {
     icon: '\ud83e\udde0',
     title: 'Keeping verses needs an account',
     line: 'Reviews come back on a schedule built from what you got wrong \u2014 that schedule has to outlive this browser tab.',
+  },
+  wall: {
+    icon: '\ud83d\udd6f\ufe0f',
+    title: 'The Prayer Wall needs an account',
+    line: 'A note needs a stranger to kneel at it, and a candle needs a stranger\u2019s note. Two accounts \u2014 yours is free.',
   },
   replay: {
     icon: '\ud83d\udd01',
@@ -366,6 +372,21 @@ export default function App() {
               <TabShell>
                 <RequireAccount copy={WALL.mail}>
                   <MailScreen />
+                </RequireAccount>
+              </TabShell>
+            </RequireProfile>
+          }
+        />
+        {/* The Prayer Wall — leave a note, or hold a candle for somebody
+            else's. Online-only like washing feet, for the same reason: it
+            needs a second account on the other end. */}
+        <Route
+          path="/pray"
+          element={
+            <RequireProfile>
+              <TabShell>
+                <RequireAccount copy={WALL.wall}>
+                  <PrayerWallScreen />
                 </RequireAccount>
               </TabShell>
             </RequireProfile>

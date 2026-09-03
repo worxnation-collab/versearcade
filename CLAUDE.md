@@ -1298,7 +1298,19 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0097` (`tiktok_gemini_key()` — the TikTok engine's Gemini key
+The latest is `0098` (the Prayer Wall — `prayer_requests`,
+`prayer_intercessions`, and the deal / kneel / report / admin RPCs), **NOT YET
+APPLIED** as of the PR that adds it. Apply it before merging the client, then
+verify: the four helper functions' ACLs read `{postgres}` only (they were
+`revoke all`ed from public, anon AND authenticated — the 0052 lesson), the ten
+player and admin RPCs carry `authenticated`, and `draw_prayer_request` returns
+null for a caller with nothing to draw rather than raising. The migration was
+run end to end against a local Postgres 16 with a stub `profiles`/`buddies`
+schema before it was committed: the line is cleaned, church-mates and buddies
+see it and a stranger does not, the cap pays twelve and records fourteen, and
+the report round-trips through `admin_resolve_prayer_report`.
+
+Before it, `0097` (`tiktok_gemini_key()` — the TikTok engine's Gemini key
 read out of Vault, service_role only), APPLIED on 2026-09-03 and verified: the
 ACL reads `{postgres,service_role}` and the function returns the 53-character
 key. The key itself was written with `vault.create_secret` from a SQL console
@@ -1456,7 +1468,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0098` (0097 is taken by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0099` (0098 is taken by the Prayer Wall, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the
@@ -2464,6 +2476,42 @@ a number you passed; a rung you climb by praying is a rung you would pray to
 climb. The table stores a user and a date and nothing else — no occasion, no
 text, no streak — because counting the cap is all it exists to do, and no RPC
 asks how much anybody else has prayed.
+
+## The Prayer Wall: the first thing here one player writes for another
+
+`/pray`, on the map under You and in the compass. A player tucks ONE note into
+an old stone wall (a category, an optional line, signed or not); anybody else
+taps "Pray for someone", the wall DEALS them a note, and they HOLD the candle
+until the wick catches. `data/prayerWall.ts`, `store/prayerWall.ts`,
+`features/prayer/PrayerWallScreen.tsx`, `0098`. Full design and the whole
+safety argument: `docs/PRAYER-WALL.md`. Four things to know before touching it:
+
+- **The category is what travels; the line is for people who already know
+  you.** A stranger sees one of eight fixed tokens and nothing else. The line
+  (120 chars, cleaned on the way in) is returned by `prayer_line_visible` only
+  to the requester's church-mates and accepted buddies. That is what lets the
+  app's first player-authored text exist without a global moderation surface:
+  one report hides a note by itself, and Admin → Prayers puts it back or takes
+  it down. Anonymous by default.
+- **The wall deals; nobody browses.** `draw_prayer_request` hands out the open
+  note with the fewest kneelings, random among equals, never yours, never one
+  you knelt at today. The buried ones surface on their own, which is what lets
+  the wall be fair with **no number on any note** — `prayer_note_json` carries
+  no count, and every slip in `WallScene` is drawn identical. A wall where one
+  note blazes is a ladder of who is loved.
+- **The XP is the Basin's, exactly, and THE REQUESTER IS PAID NOTHING.** 1 XP
+  to the kneeler, twelve a day, once per note per day by the primary key,
+  server-counted under a row lock, local date clamped ±1. Give the requester a
+  point, a rung or a streak and people post notes to farm sympathy. What they
+  get is a lantern ("somebody knelt today" — the lamp's binary shape), a tally
+  only they see (`my_washings.received`'s rule), and a mailbox line for
+  everybody who knelt when they mark it answered. Over the cap the kneeling is
+  still recorded and not paid — the thirteenth prayer is still a prayer.
+- **Online-only, inherited** from washing feet: a note needs a stranger. The
+  screen fails closed (keyless build → account card; server without 0098 →
+  "isn't open on this server yet", and `available` keeps the compass from
+  inviting it). The Journal's "Candles held" ladder counts kneelings, and there
+  is deliberately no rung for being prayed for.
 
 ## Giving, and the mailbox
 

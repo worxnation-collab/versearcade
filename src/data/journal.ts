@@ -28,6 +28,7 @@ export type JournalTrackId =
   | 'room'
   | 'battles'
   | 'washing'
+  | 'wall'
 
 export interface JournalRung {
   goal: number
@@ -159,6 +160,19 @@ export const JOURNAL: JournalTrack[] = [
       { goal: 25, name: 'As Jesus Did' },
       { goal: 100, name: 'Towel and Water' },
       { goal: 500, name: 'Servant of All' },
+    ],
+  },
+  {
+    id: 'wall',
+    icon: '🕯️',
+    title: 'Candles held',
+    unit: 'for other people’s notes',
+    rungs: [
+      { goal: 1, name: 'One Candle' },
+      { goal: 12, name: 'A Whole Day' },
+      { goal: 50, name: 'Bearing Burdens' },
+      { goal: 150, name: 'A Hundred and Fifty' },
+      { goal: 500, name: 'Intercessor' },
     ],
   },
 ]

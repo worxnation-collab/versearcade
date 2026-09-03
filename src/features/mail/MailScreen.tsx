@@ -6,6 +6,8 @@ import { Button } from '@/components/Button'
 import { useBuddies } from '@/store/buddies'
 import { useGifts } from '@/store/gifts'
 import { useWashing } from '@/store/washing'
+import { usePrayerWall } from '@/store/prayerWall'
+import { prayerCategoryById } from '@/data/prayerWall'
 import { usePlayerCard } from '@/components/PlayerCardModal'
 import { useJuice } from '@/juice/useJuice'
 import { collectibleByKey } from '@/data/collectibles'
@@ -45,6 +47,12 @@ export default function MailScreen() {
   const requests = useBuddies((s) => s.requests)
   const respond = useBuddies((s) => s.respond)
   const washings = useWashing((s) => s.recent)
+  // The wall: the note you left (its tally is yours alone — my_prayer_wall
+  // returns it to the requester only), and the notes you knelt at that have
+  // since been answered. Neither is a comparison: one is a count of a thing
+  // done FOR you that nobody else can see, the other is good news.
+  const myNote = usePrayerWall((s) => s.mine)
+  const answered = usePrayerWall((s) => s.answered)
 
   // The news is a pure function of the clock against the fetched overlay, so it
   // needs no load of its own — the catalog store already refreshed it at boot.
@@ -54,10 +62,13 @@ export default function MailScreen() {
     void useGifts.getState().load().then(() => useGifts.getState().markSeen())
     void useBuddies.getState().load()
     void useWashing.getState().load()
+    void usePrayerWall.getState().load()
   }, [])
 
+  const noteLit = !!myNote && myNote.open && myNote.lit
   const empty =
-    giftsLoaded && !gifts.length && !requests.length && !washings.length && !news.length
+    giftsLoaded && !gifts.length && !requests.length && !washings.length && !news.length &&
+    !answered.length && !noteLit
 
   return (
     <Page>
@@ -77,7 +88,7 @@ export default function MailScreen() {
         <div className="card" style={{ textAlign: 'center', padding: 30 }}>
           <div style={{ fontSize: 34 }}>📭</div>
           <p className="dim" style={{ marginTop: 10, fontSize: 14, lineHeight: 1.5 }}>
-            Nothing today. Gifts, buddy requests and news land here.
+            Nothing today. Gifts, buddy requests, answered prayers and news land here.
           </p>
         </div>
       )}
@@ -181,6 +192,45 @@ export default function MailScreen() {
               </div>
             </div>
           ))}
+        </Section>
+      )}
+
+      {/* The wall. "Somebody knelt today" is the lantern's shape — today,
+          yes, or nothing — and the tally under it is the requester's alone. */}
+      {(noteLit || answered.length > 0) && (
+        <Section title="The Prayer Wall">
+          {noteLit && myNote && (
+            <button
+              className="card"
+              onClick={() => { juice.select(); navigate('/pray') }}
+              style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left' }}
+            >
+              <span style={{ fontSize: 26, lineHeight: 1 }}>🏮</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <b style={{ fontSize: 14, display: 'block' }}>Somebody knelt at your note today</b>
+                <span className="faint" style={{ fontSize: 12 }}>
+                  {prayerCategoryById(myNote.category).emoji} {prayerCategoryById(myNote.category).label}
+                  {myNote.prayedTotal > 1 ? ` · ${myNote.prayedTotal} candles so far, a number only you can see` : ''}
+                </span>
+              </div>
+            </button>
+          )}
+          {answered.map((n) => {
+            const cat = prayerCategoryById(n.category)
+            return (
+              <div key={n.id} className="card" style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 26, lineHeight: 1 }}>⭐</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <b style={{ fontSize: 14, display: 'block' }}>A prayer you prayed was answered</b>
+                  <span className="faint" style={{ fontSize: 12 }}>
+                    {cat.emoji} {cat.label}
+                    {n.signed && n.username ? ` · @${n.username}` : ''}
+                    {n.answeredAt ? ` · ${new Date(n.answeredAt).toLocaleDateString()}` : ''}
+                  </span>
+                </div>
+              </div>
+            )
+          })}
         </Section>
       )}
 

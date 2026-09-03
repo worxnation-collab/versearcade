@@ -7,6 +7,7 @@ import { useBible } from '@/store/bible'
 import { useCollection } from '@/store/collection'
 import { useKeep } from '@/store/keep'
 import { useWashing } from '@/store/washing'
+import { usePrayerWall } from '@/store/prayerWall'
 import { useJuice } from '@/juice/useJuice'
 import { roomProgress } from '@/lib/roomProgress'
 import { ownedFurnishings } from '@/data/room'
@@ -44,6 +45,7 @@ export default function JournalScreen() {
     if (!useCollection.getState().loaded) void useCollection.getState().load()
     if (!useKeep.getState().loaded) void useKeep.getState().load()
     void useWashing.getState().load()
+    void usePrayerWall.getState().load()
   }, [])
 
   const studied = useBible((s) => Object.keys(s.studied).length)
@@ -51,6 +53,7 @@ export default function JournalScreen() {
   const cards = useCollection((s) => s.owned.length)
   const battles = useKeep((s) => s.counters.battle_played + s.counters.cpu_played)
   const washed = useWashing((s) => s.lifetime)
+  const knelt = usePrayerWall((s) => s.lifetime)
 
   if (!profile) return null
 
@@ -64,6 +67,7 @@ export default function JournalScreen() {
     room: ownedFurnishings(roomProgress()).length,
     battles,
     washing: washed,
+    wall: knelt,
   }
 
   const passed = totalPassed(numbers)

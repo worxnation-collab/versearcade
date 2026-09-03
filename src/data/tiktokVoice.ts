@@ -215,6 +215,34 @@ function bestCard(text: string, exclude: Set<string>): string | null {
   return best
 }
 
+// The generated scene deck (public/tiktok/scenes): twelve PLACES most Bible
+// stories happen in, painted once in the house style and keyword-matched to
+// the story's own narrative. A reader figure stands in whichever one wins.
+export const SCENE_DECK: Array<[string, string, string[]]> = [
+  ['shore', 'The shore', ['shore', 'sea', 'red sea', 'beach', 'sand', 'coast', 'waves', 'across the water']],
+  ['fishing_boat', 'On the water', ['boat', 'fish', 'net', 'lake', 'galilee', 'storm', 'waves', 'sail']],
+  ['desert_road', 'The road', ['road', 'journey', 'travel', 'walk', 'damascus', 'emmaus', 'on the way', 'path']],
+  ['wilderness_camp', 'The wilderness', ['wilderness', 'desert', 'camp', 'tent', 'wander', 'forty', 'manna', 'tabernacle']],
+  ['mountain', 'The mountain', ['mountain', 'sinai', 'mount', 'hill', 'summit', 'carmel', 'horeb', 'transfigur']],
+  ['city_gate', 'The city', ['city', 'gate', 'jerusalem', 'jericho', 'walls', 'street', 'market', 'crowd', 'nineveh', 'babylon']],
+  ['throne_room', 'The palace', ['king', 'queen', 'throne', 'palace', 'pharaoh', 'royal', 'court', 'esther', 'solomon', 'herod', 'pilate']],
+  ['temple_court', 'The temple', ['temple', 'priest', 'altar', 'sacrifice', 'offering', 'worship', 'synagogue', 'holy place']],
+  ['garden_night', 'The garden', ['garden', 'gethsemane', 'olive', 'night', 'pray', 'prayed', 'eden']],
+  ['lamp_house', 'At home', ['house', 'home', 'table', 'supper', 'meal', 'family', 'mother', 'father', 'room', 'bethany', 'lamp']],
+  ['prison', 'The prison', ['prison', 'jail', 'chains', 'cell', 'arrest', 'guard', 'dungeon', 'captiv', 'exile']],
+  ['harvest_field', 'The field', ['field', 'harvest', 'sow', 'seed', 'vineyard', 'wheat', 'grain', 'reap', 'ruth', 'gleaning', 'shepherd']],
+]
+
+function deckScene(text: string): { image: string; label: string } | null {
+  const s = text.toLowerCase()
+  let best: [string, string] | null = null, bestScore = 0
+  for (const [id, label, cues] of SCENE_DECK) {
+    const score = cues.reduce((n, w) => n + (s.includes(w) ? 1 : 0), 0)
+    if (score > bestScore) { best = [id, label]; bestScore = score }
+  }
+  return best ? { image: `/tiktok/scenes/${best[0]}.jpg`, label: best[1] } : null
+}
+
 const SCENE_BY_GROUP = (book: string, testament: 'OT' | 'NT'): string => {
   if (TORAH.includes(book) || HISTORY.includes(book)) return '/road/harvest.jpg'
   if (PROPHETS.includes(book)) return '/road/lamplight.jpg'
@@ -231,14 +259,22 @@ const SCENE_BY_GROUP = (book: string, testament: 'OT' | 'NT'): string => {
  */
 export function storyCards(seed: VoiceSeed & { before?: string; after?: string }, paragraphs: number): StoryCardPick[] {
   const reader = readerFor(seed)
-  const scene = SCENE_BY_GROUP(seed.book, seed.testament)
+  const fallback = SCENE_BY_GROUP(seed.book, seed.testament)
+  // The deck wins when the story names a place it has; the road or room
+  // scenes stay as the fallback so a verse about nothing in particular still
+  // opens somewhere.
+  const deck = deckScene(`${seed.before ?? ''} ${seed.text} ${seed.theme} ${seed.book}`)
+  const scene = deck?.image ?? fallback
   const used = new Set<string>()
-  const opening: StoryCardPick = { image: scene, figure: `/skins/${reader}.png`, label: `${seed.book}` }
+  const opening: StoryCardPick = { image: scene, figure: `/skins/${reader}.png`, label: deck?.label ?? seed.book }
   const middleId = bestCard(`${seed.theme} ${seed.text} ${seed.before ?? ''}`, used)
   if (middleId) used.add(middleId)
   const middle: StoryCardPick = middleId ? { image: `/cards/${middleId}.webp`, label: CARD_LABELS[middleId] } : { image: '/keep/room_open_scroll.png', label: 'The scroll' }
   const afterId = bestCard(`${seed.after ?? ''} ${seed.theme}`, used)
-  const aftermath: StoryCardPick = afterId ? { image: `/cards/${afterId}.webp`, label: CARD_LABELS[afterId] } : { image: scene, label: seed.book }
+  const afterDeck = deckScene(`${seed.after ?? ''}`)
+  const aftermath: StoryCardPick = afterId
+    ? { image: `/cards/${afterId}.webp`, label: CARD_LABELS[afterId] }
+    : afterDeck && afterDeck.image !== scene ? afterDeck : { image: scene, label: deck?.label ?? seed.book }
   const cards = [opening, middle, aftermath].slice(0, Math.max(1, paragraphs - 1))
   while (cards.length < paragraphs - 1) cards.push({ image: scene, label: seed.book })
   cards.push({ label: seed.book }) // the verse card, drawn as text

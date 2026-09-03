@@ -116,6 +116,35 @@ about three cents: a Gemini Flash script and a longer TTS.
 - `renderStory()` shares `produce()` with the verse layout — one copy of the
   codec, timing, AAC and audible-track checks.
 
+## The few generated pieces, and why those
+
+Everything generated for these posts is chosen to be true EVERY day, never
+about one verse, so it is paid for once and used forever:
+
+- **Two Veo loops, `public/tiktok/loops/`** — `cephas-harvest.mp4` (Peter
+  hovering over the road) and `tabitha-library.mp4` (Tabitha at her desk,
+  talking). Eight seconds each, ping-ponged by the renderer so they never
+  seam. Made from the layouts' own base stills (`renderPoster` / 
+  `renderStoryPoster` with `chrome=false`), so the loop is framed exactly
+  where the captions and cards expect it. The panel's tier probe checks the
+  bucket first, then these bundled files, so a loop made from the Animate
+  button still wins.
+- **A scene deck, `public/tiktok/scenes/`** — twelve PLACES most Bible
+  stories happen in (shore, boat, road, wilderness camp, mountain, city
+  gate, palace, temple court, garden at night, a lamp-lit house, a prison,
+  a harvest field), Nano Banana in the house style from the road paintings
+  as references, empty of people so a reader figure can stand in them.
+  `SCENE_DECK` in `data/tiktokVoice.ts` keyword-matches them to the story's
+  own narrative; the road and room paintings stay as the fallback.
+
+Free polish drawn on every frame, both layouts: slow gold motes drifting up
+through the light (seeded, so the encoder never sees noise), a lamp-breath
+warmth, and a page-turn wipe when a story card changes.
+
+Parked for next: Tabitha's reaction set (three more short loops cut at
+paragraph boundaries), dawn/dusk/night roads, the room's own music under the
+narration, and a second voice for the words of God.
+
 ## How the captions land on the words
 
 Gemini TTS returns no word timings, so `tiktokRender` measures the WAV: it finds

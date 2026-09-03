@@ -230,6 +230,31 @@ function outlined(ctx: CanvasRenderingContext2D, text: string, x: number, y: num
 
 function easeOut(t: number) { return 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 3) }
 
+// Free polish drawn over every frame: slow gold motes drifting up through
+// the light, and a breathing warmth that reads as lamp flicker. Seeded per
+// mote so the drift is smooth frame to frame; nothing here is random at draw
+// time, or the encoder would see noise.
+const MOTES = Array.from({ length: 28 }, (_, i) => {
+  const r = (n: number) => { const x = Math.sin(i * 12.9898 + n * 78.233) * 43758.5453; return x - Math.floor(x) }
+  return { x: r(1), y: r(2), size: 2 + r(3) * 4, speed: 0.012 + r(4) * 0.02, sway: r(5) * 6.28, alpha: 0.25 + r(6) * 0.45 }
+})
+function drawMotes(ctx: CanvasRenderingContext2D, t: number, strength = 1) {
+  ctx.save()
+  for (const m of MOTES) {
+    const y = ((m.y - t * m.speed) % 1 + 1) % 1
+    const x = m.x + Math.sin(t * 0.6 + m.sway) * 0.012
+    const twinkle = 0.7 + 0.3 * Math.sin(t * 2.1 + m.sway * 3)
+    ctx.globalAlpha = m.alpha * twinkle * strength
+    ctx.fillStyle = '#ffe8a3'
+    ctx.beginPath(); ctx.arc(x * WIDTH, y * HEIGHT, m.size, 0, Math.PI * 2); ctx.fill()
+  }
+  // Lamp breath: a very slow warm pulse over the whole frame.
+  ctx.globalAlpha = 0.05 + 0.035 * Math.sin(t * 1.7) + 0.02 * Math.sin(t * 5.3)
+  ctx.fillStyle = '#ffb648'
+  ctx.fillRect(0, 0, WIDTH, HEIGHT)
+  ctx.restore()
+}
+
 interface Scene {
   input: RenderInput
   lead: number
@@ -273,6 +298,7 @@ async function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number,
   }
   ctx.restore()
   if (!chrome) return
+  drawMotes(ctx, t)
 
   // 2. Legibility washes, top and bottom.
   const top = ctx.createLinearGradient(0, 0, 0, 520)
@@ -611,7 +637,9 @@ export interface StoryInput {
   cards: StoryCard[]
   hook?: string
   audio: ArrayBuffer
-  room: HTMLImageElement
+  /** The room — a painting, or a Veo loop of the room WITH the teller in it. */
+  room: HTMLImageElement | HTMLVideoElement
+  /** The teller's render; not drawn when the room is a loop that already has her. */
   teller: HTMLImageElement
   onProgress?: (fraction: number, label: string) => void
 }
@@ -644,18 +672,35 @@ function contain(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number
   ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh)
 }
 
-async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: number) {
+async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: number, chrome = true) {
   const { input, lead, audioDur, total, phrases, para, paraStart } = sc
   const at = t - lead
 
-  // 1. The room, with a slow push.
-  cover(ctx, input.room, input.room.naturalWidth, input.room.naturalHeight, 1 + 0.05 * (t / total))
+  // 1. The room: a Veo loop ping-ponged, or the painting with a slow push.
+  const roomIsLoop = input.room instanceof HTMLVideoElement
+  if (input.room instanceof HTMLVideoElement) {
+    const v = input.room
+    const d = Math.max(0.1, v.duration - 0.05)
+    const m = t % (2 * d)
+    await seek(v, m < d ? m : 2 * d - m)
+    cover(ctx, v, v.videoWidth, v.videoHeight)
+  } else {
+    cover(ctx, input.room, input.room.naturalWidth, input.room.naturalHeight, 1 + 0.05 * (t / total))
+  }
+  drawMotes(ctx, t, 0.8)
   const top = ctx.createLinearGradient(0, 0, 0, 480)
   top.addColorStop(0, 'rgba(11,7,32,0.85)'); top.addColorStop(1, 'rgba(11,7,32,0)')
   ctx.fillStyle = top; ctx.fillRect(0, 0, WIDTH, 480)
   const bot = ctx.createLinearGradient(0, HEIGHT - 900, 0, HEIGHT)
   bot.addColorStop(0, 'rgba(11,7,32,0)'); bot.addColorStop(1, 'rgba(11,7,32,0.92)')
   ctx.fillStyle = bot; ctx.fillRect(0, HEIGHT - 900, WIDTH, 900)
+
+  if (!chrome) {
+    // The base still handed to Veo: the room and the teller, nothing drawn over.
+    const th0 = 640, tw0 = (input.teller.naturalWidth / input.teller.naturalHeight) * th0
+    if (!roomIsLoop) ctx.drawImage(input.teller, 60, HEIGHT - 30 - th0, tw0, th0)
+    return
+  }
 
   // 2. Header.
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
@@ -686,6 +731,16 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
     ctx.shadowColor = 'transparent'
     ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(255,210,63,0.85)'; ctx.stroke()
     ctx.save(); roundRect(ctx, cx + 4, cy + 4, cw - 8, ch - 8, 40); ctx.clip()
+    // A page turn: the new picture wipes in from the left edge with a soft
+    // bright edge, so a card change reads as a page, not a cut.
+    if (cardAge < 1) {
+      const px = cx + 4 + (cw - 8) * cardAge
+      ctx.beginPath(); ctx.rect(cx, cy, px - cx, ch); ctx.clip()
+      const edge = ctx.createLinearGradient(px - 60, 0, px, 0)
+      edge.addColorStop(0, 'rgba(255,232,163,0)'); edge.addColorStop(1, 'rgba(255,232,163,0.8)')
+      ctx.fillStyle = 'rgba(21,10,52,1)'; ctx.fillRect(cx, cy, cw, ch)
+      ctx.fillStyle = edge; ctx.fillRect(px - 60, cy, 60, ch)
+    }
     if (card?.image) {
       if (card.image.naturalWidth > card.image.naturalHeight * 1.2 || card.figure) {
         // A scene: fill the card, and stand the figure in it.
@@ -722,18 +777,21 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
     ctx.restore()
   }
 
-  // 4. The teller, bottom-left, with a warm glow.
-  const bob = Math.sin((t / 3.4) * Math.PI * 2)
-  const th = 640, tw = (input.teller.naturalWidth / input.teller.naturalHeight) * th
-  const tx = 60, ty = HEIGHT - 30 - th + bob * 8
-  const g = ctx.createRadialGradient(tx + tw / 2, ty + th * 0.6, 30, tx + tw / 2, ty + th * 0.6, 420)
-  g.addColorStop(0, 'rgba(255,210,63,0.22)'); g.addColorStop(1, 'rgba(255,210,63,0)')
-  ctx.fillStyle = g; ctx.fillRect(0, HEIGHT - 1000, WIDTH, 1000)
-  ctx.save()
-  ctx.imageSmoothingQuality = 'high'
-  ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 36; ctx.shadowOffsetY = 20
-  ctx.drawImage(input.teller, tx, ty, tw, th)
-  ctx.restore()
+  // 4. The teller, bottom-left, with a warm glow — unless the room is a loop
+  // that already has her in it.
+  if (!roomIsLoop) {
+    const bob = Math.sin((t / 3.4) * Math.PI * 2)
+    const th = 640, tw = (input.teller.naturalWidth / input.teller.naturalHeight) * th
+    const tx = 60, ty = HEIGHT - 30 - th + bob * 8
+    const g = ctx.createRadialGradient(tx + tw / 2, ty + th * 0.6, 30, tx + tw / 2, ty + th * 0.6, 420)
+    g.addColorStop(0, 'rgba(255,210,63,0.22)'); g.addColorStop(1, 'rgba(255,210,63,0)')
+    ctx.fillStyle = g; ctx.fillRect(0, HEIGHT - 1000, WIDTH, 1000)
+    ctx.save()
+    ctx.imageSmoothingQuality = 'high'
+    ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 36; ctx.shadowOffsetY = 20
+    ctx.drawImage(input.teller, tx, ty, tw, th)
+    ctx.restore()
+  }
 
   // 5. Captions, between the card and the teller.
   let caption: string | null = null
@@ -805,13 +863,13 @@ export async function renderStory(input: StoryInput): Promise<RenderOutput> {
   return { blob, ext, durationSec: total, phrases }
 }
 
-export async function renderStoryPoster(input: Omit<StoryInput, 'audio' | 'onProgress'>, t = 2.5): Promise<string> {
+export async function renderStoryPoster(input: Omit<StoryInput, 'audio' | 'onProgress'>, t = 2.5, chrome = true): Promise<string> {
   const canvas = document.createElement('canvas')
   canvas.width = WIDTH; canvas.height = HEIGHT
   const ctx = canvas.getContext('2d', { alpha: false })
   if (!ctx) throw new Error('no 2d context')
   try { await document.fonts.load(`800 70px "Baloo 2"`) } catch { /* fine */ }
   const n = input.paragraphs.length
-  await drawStoryFrame(ctx, { input: { ...input, audio: new ArrayBuffer(0) }, lead: 1, audioDur: 60, total: 65, phrases: [], para: [], paraStart: Array.from({ length: n }, (_, i) => i * (60 / n)) }, t)
+  await drawStoryFrame(ctx, { input: { ...input, audio: new ArrayBuffer(0) }, lead: 1, audioDur: 60, total: 65, phrases: [], para: [], paraStart: Array.from({ length: n }, (_, i) => i * (60 / n)) }, t, chrome)
   return canvas.toDataURL('image/png')
 }

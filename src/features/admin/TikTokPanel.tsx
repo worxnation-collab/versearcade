@@ -196,12 +196,12 @@ export default function TikTokPanel() {
     setAssets({ still: false, loop: false })
     setPoster(null)
     ;(async () => {
-      const [still, loop] = await Promise.all([existsAt(stillUrl), existsAt(loopUrl)])
+      const [still, loop] = await Promise.all([existsAt(stillUrl), loopUrlFor(key).then((u) => !!u)])
       if (!live) return
       setAssets({ still, loop })
       try {
         const r = await import('@/lib/tiktokRender')
-        const bd = await backdropFor(r, still ? 'still' : 'builtin')
+        const bd = await backdropFor(r, loop ? 'loop' : still ? 'still' : 'builtin')
         const url = await r.renderPoster({ reference: verse.reference, text: verse.text, backdrop: bd })
         if (live) setPoster(url)
       } catch (e) { if (live) setErr(String((e as Error).message || e)) }
@@ -210,9 +210,16 @@ export default function TikTokPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, verse.reference])
 
+  // A loop lives in the bucket (made from the panel) or ships with the site
+  // (public/tiktok/loops, made once for the two hosts). Bucket wins.
+  async function loopUrlFor(k: string): Promise<string | null> {
+    if (await existsAt(publicUrl(`readers/${k}.mp4`))) return publicUrl(`readers/${k}.mp4`) + '?v=' + Date.now()
+    if (await existsAt(`/tiktok/loops/${k}.mp4`)) return `/tiktok/loops/${k}.mp4`
+    return null
+  }
   async function backdropFor(r: typeof import('@/lib/tiktokRender'), tier: 'loop' | 'still' | 'builtin', rd = reader, sc = scene): Promise<Backdrop> {
     const k = `${rd}-${sc}`
-    if (tier === 'loop') return { kind: 'loop', video: await r.loadVideo(publicUrl(`readers/${k}.mp4`) + '?v=' + Date.now()) }
+    if (tier === 'loop') return { kind: 'loop', video: await r.loadVideo((await loopUrlFor(k)) ?? publicUrl(`readers/${k}.mp4`)) }
     if (tier === 'still') return { kind: 'still', image: await r.loadImage(publicUrl(`readers/${k}.png`) + '?v=' + Date.now()) }
     const [sceneImg, figure] = await Promise.all([r.loadImage(`/road/${sc}.jpg`), r.loadImage(`/skins/${rd}.png`)])
     return { kind: 'builtin', scene: sceneImg, figure }
@@ -221,7 +228,7 @@ export default function TikTokPanel() {
   // with an automatic cast changes reader from one day to the next.
   async function tierFor(rd: string, sc: string): Promise<'loop' | 'still' | 'builtin'> {
     const k = `${rd}-${sc}`
-    if (await existsAt(publicUrl(`readers/${k}.mp4`))) return 'loop'
+    if (await loopUrlFor(k)) return 'loop'
     if (await existsAt(publicUrl(`readers/${k}.png`))) return 'still'
     return 'builtin'
   }
@@ -235,12 +242,23 @@ export default function TikTokPanel() {
     const r = await import('@/lib/tiktokRender')
     const v = getVerseForDate(d)
     const picks = storyCards(seedFor(d), st.paragraphs.length + 1)
+    // A picture that fails to load (a deck scene not shipped yet, a bad
+    // path) falls back to the road rather than failing the whole story.
+    const safeImage = async (path?: string) => {
+      if (!path) return undefined
+      try { return await r.loadImage(path) } catch { return r.loadImage('/road/harvest.jpg') }
+    }
     const cards: StoryCard[] = await Promise.all(picks.map(async (c) => ({
-      image: c.image ? await r.loadImage(c.image) : undefined,
+      image: await safeImage(c.image),
       figure: c.figure ? await r.loadImage(c.figure) : undefined,
       label: c.label,
     })))
-    const [roomImg, tellerImg] = await Promise.all([r.loadImage(roomPath), r.loadImage(skinPath(tellerId))])
+    const tellerImg = await r.loadImage(skinPath(tellerId))
+    // Tabitha in her library has a Veo loop of the two together; any other
+    // pairing draws the teller over the painting.
+    const loopKey = tellerId === 'tabitha' && roomPath === ROOMS[0].id ? 'tabitha-library' : null
+    const loopUrl = loopKey ? await loopUrlFor(loopKey) : null
+    const roomImg: HTMLImageElement | HTMLVideoElement = loopUrl ? await r.loadVideo(loopUrl) : await r.loadImage(roomPath)
     return { r, v, cards, roomImg, tellerImg }
   }
   async function storyPosterFor(d: string, st: Story): Promise<string> {

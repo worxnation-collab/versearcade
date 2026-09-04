@@ -6,11 +6,12 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/Button'
 import { todayLocalDate } from '@/lib/date'
 import { getVerseForDate } from '@/data/bible/questions'
-import { pickStoryVoice, secondVoiceFor } from '@/data/tiktokVoice'
+import { pickStoryVoice } from '@/data/tiktokVoice'
+import { makeStory as makeStoryPost, storyAssets } from './make'
 import {
-  TELLERS, ROOMS, VOICES, TEXTAREA_STYLE, skinPath,
-  seedFor, spokenReference, call, addDays, bedFor, fetchStory, useDisplayFont, DateRow, Busy, MadeCard,
-  fetchCopy, type Copy, type Made, type Story, type Renderer,
+  TELLERS, ROOMS, VOICES, TEXTAREA_STYLE,
+  seedFor, addDays, fetchStory, useDisplayFont, DateRow, Busy, MadeCard,
+  type Made, type Story,
 } from './shared'
 
 export default function StoryPost() {
@@ -45,17 +46,9 @@ export default function StoryPost() {
     setRoom(ROOMS[0].id)
   }, [castAuto, date])
 
-  async function assets(r: Renderer, tellerId: string, roomPath: string) {
-    // The story circle already has Tabitha in it; any other room draws the
-    // teller's own render over the painting.
-    const hasTeller = !!ROOMS.find((x) => x.id === roomPath)?.hasTeller
-    const tellerImg = hasTeller ? undefined : await r.loadImage(skinPath(tellerId))
-    const roomImg = await r.loadImage(roomPath).catch(() => r.loadImage('/keep/study-library.jpg'))
-    return { roomImg, tellerImg }
-  }
   async function posterFor(d: string, st: Story): Promise<string> {
     const r = await import('@/lib/tiktokRender')
-    const { roomImg, tellerImg } = await assets(r, teller, room)
+    const { roomImg, tellerImg } = await storyAssets(r, teller, room)
     const v = getVerseForDate(d)
     return r.renderStoryPoster({ title: st.title, reference: v.reference, verseText: v.text, paragraphs: [...st.paragraphs, v.text], hook: st.hook, room: roomImg, teller: tellerImg })
   }
@@ -77,43 +70,16 @@ export default function StoryPost() {
   }, [date, teller, room])
 
   // The evening job for one date: story → voice → copy → render.
+  // The evening job for one date lives in make.ts; the story already on
+  // screen is handed over so it is not fetched twice.
   async function makeStory(d: string): Promise<Made> {
-    const v = getVerseForDate(d)
-    const sd = seedFor(d)
-    setBusy(`${d}: writing the story`)
     setProgress(0)
-    const st = d === date && story ? story : await fetchStory(d, false)
-    const tellerId = castAuto ? 'tabitha' : teller
-    const roomPath = castAuto ? ROOMS[0].id : room
-    const p = voiceAuto ? pickStoryVoice(sd, tellerId) : { voice, style }
-    const second = voiceAuto ? secondVoiceFor(sd) : null
-    const tellerName = TELLERS.find((x) => x.id === tellerId)?.name.split(' ')[0] ?? 'Teller'
-    const spoken = second
-      ? [...st.paragraphs.map((pg) => `${tellerName}: ${pg}`), `${second.name}: ${v.text.trim()}`, `${tellerName}: ${spokenReference(v.reference)}.`].join('\n\n')
-      : [...st.paragraphs, `${v.text.trim()} ${spokenReference(v.reference)}.`].join('\n\n')
-    setBusy(`${d}: asking for the telling`)
-    const tts = await call<{ url: string; cached: boolean }>('tts', {
-      date: d, text: spoken, voice: p.voice, style: p.style,
-      speakers: second ? [{ name: tellerName, voice: p.voice }, { name: second.name, voice: second.voice }] : undefined,
-    })
-    const audio = await (await fetch(tts.url + '?v=' + Date.now())).arrayBuffer()
-    let copy: Copy | null = null
-    if (withCopy) {
-      setBusy(`${d}: writing the caption`)
-      try { copy = await fetchCopy(d, 'story') } catch { copy = null }
-    }
-    setBusy(`${d}: rendering`)
-    const r = await import('@/lib/tiktokRender')
-    const { roomImg, tellerImg } = await assets(r, tellerId, roomPath)
-    const paragraphs = [...st.paragraphs, `${v.text.trim()} ${v.reference}.`]
-    const hook = st.hook || copy?.hook
-    const bed = withMusic ? await bedFor(await r.plannedDuration(audio, hook, true), 'cloister') : undefined
-    const out = await r.renderStory({
-      title: st.title, reference: v.reference, verseText: v.text,
-      paragraphs, hook, audio, room: roomImg, teller: tellerImg, bed,
-      onProgress: (f, label) => { setProgress(f); setBusy(`${d}: ${label}`) },
-    })
-    return { date: d, kind: 'story', reference: v.reference, url: URL.createObjectURL(out.blob), ext: out.ext, size: out.blob.size, copy, phrases: out.phrases, tier: `${TELLERS.find((x) => x.id === tellerId)?.name ?? tellerId} · story` }
+    return makeStoryPost(d, {
+      cast: castAuto ? undefined : { teller, room },
+      voice: voiceAuto ? undefined : { voice, style },
+      story: d === date && story ? story : undefined,
+      copy: withCopy, music: withMusic,
+    }, (f, label) => { setProgress(f); setBusy(`${d}: ${label}`) })
   }
 
   const run = async (dates: string[]) => {

@@ -38,6 +38,7 @@
 // still/loop is generated once and reused by every day after it.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { PLATFORMS, postBody, postResult, type DayCopy, type Platform } from './social.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
@@ -59,7 +60,7 @@ const GEMINI = 'https://generativelanguage.googleapis.com/v1beta'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-runner-token',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
@@ -139,6 +140,21 @@ function fnv(s: string): string {
   return h.toString(16).padStart(8, '0')
 }
 
+// The runner's token, compared as SHA-256 digests so a mismatch costs the
+// same time wherever the strings diverge. No header, no token in Vault, or
+// an empty one all read as "not the runner", never as a match.
+async function runnerOk(admin: ReturnType<typeof createClient>, header: string | null): Promise<boolean> {
+  if (!header || header.length < 16) return false
+  const { data } = await admin.rpc('tiktok_runner_token')
+  const want = typeof data === 'string' ? data : ''
+  if (want.length < 16) return false
+  const digest = async (t: string) => new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)))
+  const [a, b] = await Promise.all([digest(header), digest(want)])
+  let diff = 0
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i]
+  return diff === 0
+}
+
 // A key is one path segment of safe characters; it names a file in the bucket.
 function safeKey(s: unknown, fallback: string): string {
   const k = String(s ?? '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64)
@@ -153,15 +169,22 @@ Deno.serve(async (req) => {
   try {
     if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405)
 
-    // Verify the caller is the admin (sharkbait) — byte-for-byte the push-send gate.
+    // Verify the caller is the admin (sharkbait) — byte-for-byte the push-send
+    // gate — or the headless runner (scripts/tiktok-daily.mjs), which has no
+    // session and carries a token of its own instead: TIKTOK_RUNNER_TOKEN in
+    // Vault (0102), sent as `x-runner-token` beside the anon key that gets it
+    // past the gateway's JWT check. A token that can only make these posts is
+    // the most a CI secret should be able to do; the service-role key was the
+    // obvious credential and is deliberately NOT accepted here.
     const authHeader = req.headers.get('Authorization') ?? ''
-    const userClient = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: authHeader } } })
-    const { data: { user } } = await userClient.auth.getUser()
-    if (!user) return json({ error: 'unauthorized' }, 401)
-
     const admin = createClient(SUPABASE_URL, SERVICE_KEY)
-    const { data: prof } = await admin.from('profiles').select('username').eq('id', user.id).single()
-    if (!prof || prof.username !== 'sharkbait') return json({ error: 'forbidden' }, 403)
+    if (!(await runnerOk(admin, req.headers.get('x-runner-token')))) {
+      const userClient = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: authHeader } } })
+      const { data: { user } } = await userClient.auth.getUser()
+      if (!user) return json({ error: 'unauthorized' }, 401)
+      const { data: prof } = await admin.from('profiles').select('username').eq('id', user.id).single()
+      if (!prof || prof.username !== 'sharkbait') return json({ error: 'forbidden' }, 403)
+    }
 
     GEMINI_KEY = Deno.env.get('GEMINI_API_KEY') ?? ''
     if (!GEMINI_KEY) {
@@ -445,51 +468,20 @@ Deno.serve(async (req) => {
       const kind = input.kind === 'story' ? 'story' : input.kind === 'quiz' ? 'quiz' : 'verse'
       const videoUrl = String(input.videoUrl ?? '')
       if (!/^https:\/\/.+\.(mp4|mov)(\?.*)?$/i.test(videoUrl)) return json({ error: 'videoUrl must be an https .mp4 (TikTok and Instagram refuse WebM — render in Chrome)' }, 400)
-      const ALL = ['tiktok', 'youtube', 'facebook', 'instagram']
-      const platforms = (Array.isArray(input.platforms) ? (input.platforms as unknown[]).map(String) : ALL).filter((p) => ALL.includes(p))
+      const platforms = (Array.isArray(input.platforms) ? (input.platforms as unknown[]).map(String) : [...PLATFORMS]).filter((p): p is Platform => (PLATFORMS as string[]).includes(p))
       if (!platforms.length) return json({ error: 'no platforms' }, 400)
       const scheduleDate = typeof input.scheduleDate === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(input.scheduleDate) ? input.scheduleDate : undefined
 
       const { data: file } = await admin.storage.from(BUCKET).download(`days/${date}/copy-${kind}.json`)
       if (!file) return json({ error: `no copy for ${date} ${kind} yet — open Today's words first` }, 400)
-      const copy = JSON.parse(await file.text()) as { hook?: string; platforms?: Record<string, { title?: string; text?: string; tags?: string[] }> }
+      const copy = JSON.parse(await file.text()) as DayCopy
       const reference = String(input.reference ?? '').slice(0, 80)
-      const tagLine = (tags: string[] | undefined, n: number) => (tags ?? []).slice(0, n).map((t) => '#' + t).join(' ')
 
+      // The words per network live in social.ts, shared with the runner.
       const results: Array<Record<string, unknown>> = []
       for (const platform of platforms) {
-        const c = copy.platforms?.[platform] ?? {}
-        const body: Record<string, unknown> = {
-          platforms: [platform], mediaUrls: [videoUrl], isVideo: true,
-          idempotencyKey: `va-${date}-${kind}-${platform}`,
-          notes: `Verse Arcade ${kind} ${date}`,
-        }
-        if (scheduleDate) body.scheduleDate = scheduleDate
-        if (platform === 'tiktok') {
-          // TikTok ignores line breaks, so the caption is one line. The voice
-          // is synthetic and the figures are painted, so the post is labelled.
-          body.post = [c.text ?? '', tagLine(c.tags, 5)].filter(Boolean).join(' ').slice(0, 2200)
-          body.tikTokOptions = { visibility: 'public', isAIGenerated: true }
-        } else if (platform === 'youtube') {
-          body.post = [c.text ?? '', tagLine(c.tags, 5)].filter(Boolean).join('\n\n').slice(0, 5000)
-          body.youTubeOptions = { title: (c.title || `${reference || 'Verse Arcade'} · Verse Arcade`).slice(0, 100), visibility: 'public', shorts: true, madeForKids: false, containsSyntheticMedia: true }
-        } else if (platform === 'facebook') {
-          body.post = [c.text ?? '', tagLine(c.tags, 2)].filter(Boolean).join('\n\n').slice(0, 5000)
-          body.faceBookOptions = { reels: true, title: (copy.hook || reference || 'Verse Arcade').slice(0, 255) }
-        } else {
-          // Instagram: at most five hashtags through the posting API.
-          body.post = [c.text ?? '', tagLine(c.tags, 5)].filter(Boolean).join('\n\n').slice(0, 2200)
-          body.instagramOptions = { shareReelsFeed: true }
-        }
-        const r = await ayrshare('post', body)
-        const ids = Array.isArray(r.postIds) ? (r.postIds as Array<Record<string, unknown>>) : []
-        const errs = Array.isArray(r.errors) ? (r.errors as Array<Record<string, unknown>>) : []
-        results.push({
-          platform, status: String(r.status ?? 'error'), id: r.id ?? null,
-          postUrl: ids[0]?.postUrl ?? null, postId: ids[0]?.id ?? null,
-          error: errs[0]?.message ?? (r.status === 'error' ? String(r.message ?? r.raw ?? 'failed') : null),
-          scheduleDate: scheduleDate ?? null,
-        })
+        const r = await ayrshare('post', postBody(platform, copy, { date, kind, reference, videoUrl, scheduleDate }))
+        results.push(postResult(platform, r, scheduleDate))
       }
       const record = { date, kind, videoUrl, at: new Date().toISOString(), results }
       await park(`days/${date}/posted-${kind}.json`, new TextEncoder().encode(JSON.stringify(record)), 'application/json')

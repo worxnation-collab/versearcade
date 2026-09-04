@@ -22,3 +22,6 @@ yarn-error.log*
 
 # Playwright MCP scratch output (snapshots, console logs)
 .playwright-mcp/
+
+# tiktok-daily runner output
+.tiktok-daily/

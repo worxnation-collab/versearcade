@@ -55,7 +55,7 @@ the player bundle.
 
 Best available wins, each made **once** and reused every day after:
 
-1. **Veo loop** — real motion, 8 seconds ping-ponged so it has no seam. Started
+1. **Veo loop** — real motion, 8 seconds looped forward with a crossfade at the seam. Started
    with "Animate", polled every 8s for up to 8 minutes. Costs a few dollars once.
 2. **Painted still** — Nano Banana composes the figure over the scene at 9:16
    from two reference images (the skin PNG and the road JPEG, fetched from
@@ -123,7 +123,7 @@ about one verse, so it is paid for once and used forever:
 
 - **Two Veo loops, `public/tiktok/loops/`** — `cephas-harvest.mp4` (Peter
   hovering over the road) and `tabitha-library.mp4` (Tabitha at her desk,
-  talking). Eight seconds each, ping-ponged by the renderer so they never
+  talking). Eight seconds each, looped by the renderer with a crossfade at the seam so they never
   seam. Made from the layouts' own base stills (`renderPoster` / 
   `renderStoryPoster` with `chrome=false`), so the loop is framed exactly
   where the captions and cards expect it. The panel's tier probe checks the

@@ -5,12 +5,12 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/Button'
 import { todayLocalDate } from '@/lib/date'
 import { getVerseForDate } from '@/data/bible/questions'
-import { gradeFor, secondVoiceFor } from '@/data/tiktokVoice'
+import { makeVerse } from './make'
 import {
   READERS, SCENES, VOICES, ART_ORIGIN, STILL_PROMPT, LOOP_PROMPT, TEXTAREA_STYLE,
-  seedFor, autoPick, autoCast, spokenReference, call, publicUrl, existsAt, addDays,
-  loopUrlFor, backdropFor, tierFor, bedFor, useDisplayFont, DateRow, Busy, MadeCard,
-  fetchCopy, type Copy, type Made,
+  autoPick, autoCast, call, publicUrl, existsAt, addDays,
+  loopUrlFor, backdropFor, useDisplayFont, DateRow, Busy, MadeCard,
+  type Made,
 } from './shared'
 
 export default function VersePost() {
@@ -71,45 +71,16 @@ export default function VersePost() {
   }, [key, verse.reference])
 
   // The whole daily job for one date: voice → copy → render.
+  // The whole daily job for one date lives in make.ts; a batch reads each day
+  // in its own voice when the pick is automatic, and an operator's override
+  // applies to every day in the batch.
   async function makeOne(d: string): Promise<Made> {
-    const v = getVerseForDate(d)
-    setBusy(`${d}: asking for the reading`)
     setProgress(0)
-    // A batch reads each day in its own voice when the pick is automatic;
-    // an operator's override applies to every day in the batch.
-    const c = castAuto ? autoCast(d) : { reader, scene }
-    const p = voiceAuto ? autoPick(d, c.reader) : { voice, style }
-    const sd = seedFor(d)
-    // The words of God or Jesus are read by a second voice; the reader
-    // says the reference. Anyone else's verse is one voice as before.
-    const second = voiceAuto ? secondVoiceFor(sd) : null
-    const readerName = READERS.find((x) => x.id === c.reader)?.name.split(' ')[0] ?? 'Reader'
-    const spoken = second
-      ? `${second.name}: ${v.text.trim()}\n${readerName}: ${spokenReference(v.reference)}.`
-      : `${v.text.trim()} ${spokenReference(v.reference)}.`
-    const tts = await call<{ url: string; cached: boolean }>('tts', {
-      date: d, text: spoken, voice: p.voice, style: p.style,
-      speakers: second ? [{ name: second.name, voice: second.voice }, { name: readerName, voice: p.voice }] : undefined,
-    })
-    const audio = await (await fetch(tts.url + '?v=' + Date.now())).arrayBuffer()
-
-    let copy: Copy | null = null
-    if (withCopy) {
-      setBusy(`${d}: writing the caption`)
-      try { copy = await fetchCopy(d, 'verse') } catch { copy = null }
-    }
-
-    setBusy(`${d}: rendering`)
-    const r = await import('@/lib/tiktokRender')
-    const tier = await tierFor(c.reader, c.scene)
-    const backdrop = await backdropFor(r, tier, c.reader, c.scene)
-    const bed = withMusic ? await bedFor(await r.plannedDuration(audio, copy?.hook, false), 'morning') : undefined
-    const out = await r.renderTikTok({
-      reference: v.reference, text: v.text, hook: copy?.hook, audio, backdrop, bed,
-      grade: castAuto ? gradeFor(sd) : undefined,
-      onProgress: (f, label) => { setProgress(f); setBusy(`${d}: ${label}`) },
-    })
-    return { date: d, kind: 'verse', reference: v.reference, url: URL.createObjectURL(out.blob), ext: out.ext, size: out.blob.size, copy, phrases: out.phrases, tier: `${c.reader} · ${c.scene} · ${tier}` }
+    return makeVerse(d, {
+      cast: castAuto ? undefined : { reader, scene },
+      voice: voiceAuto ? undefined : { voice, style },
+      copy: withCopy, music: withMusic,
+    }, (f, label) => { setProgress(f); setBusy(`${d}: ${label}`) })
   }
 
   const run = async (dates: string[]) => {

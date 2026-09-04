@@ -84,8 +84,20 @@ export function spokenReference(ref: string): string {
   return m[4] ? `${m[1]} ${m[2]}, verses ${m[3]} to ${m[4]}` : `${m[1]} ${m[2]}, verse ${m[3]}`
 }
 
+// The headless runner (lib/tiktokDaily.ts) has no session: it calls the
+// function with the service key instead, which the function accepts as the
+// admin. Nothing in the app ever sets this; it exists for that one caller.
+// The headless runner (src/lib/tiktokDaily.ts) has no session; it carries
+// TIKTOK_RUNNER_TOKEN (Vault, 0102) as `x-runner-token`, and the function
+// takes that as the admin. The dashboard never sets it.
+let runnerToken: string | null = null
+export function setRunnerToken(token: string | null) { runnerToken = token }
+
 export async function call<T>(action: string, body: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase!.functions.invoke('tiktok-gen', { body: { action, ...body } })
+  const { data, error } = await supabase!.functions.invoke('tiktok-gen', {
+    body: { action, ...body },
+    ...(runnerToken ? { headers: { 'x-runner-token': runnerToken } } : {}),
+  })
   if (error) throw new Error((error as { message?: string }).message || String(error))
   if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error)
   return data as T

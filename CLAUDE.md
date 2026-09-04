@@ -458,6 +458,22 @@ design: `docs/TIKTOK-ENGINE.md`. Five things to know:
   platform, idempotent per (date, kind, platform). The key is in Vault
   (`tiktok_ayrshare_key()`, 0101). A WebM is refused before any quota is
   spent: TikTok and Instagram will not take one.
+- **The morning cron makes the same three posts with nobody at the
+  dashboard** (`.github/workflows/tiktok-daily.yml` → `scripts/tiktok-daily.mjs`,
+  09:30 UTC daily and on demand). It bundles `src/lib/tiktokDaily.ts`, which
+  calls the SAME `makeVerse`/`makeStory`/`makeQuiz` the three cards call
+  (`admin/tiktok/make.ts`), in headless Chromium — there is no second
+  renderer — transcodes to H.264 MP4 with ffmpeg, parks the file through
+  `upload-url`, and schedules each post at its own hour in `TIKTOK_TZ`
+  (verse 07:00, quiz 12:30, story 19:30). Its credential is
+  `TIKTOK_RUNNER_TOKEN` (Vault, 0102, sent as `x-runner-token` beside the
+  anon key), which the function takes as the admin and which can make these
+  posts and nothing else — deliberately NOT the service-role key, the obvious
+  credential and the one that can do anything to the project. The runner
+  needs exactly that token as a GitHub secret; the Gemini and Ayrshare keys
+  never reach CI. `tiktok-gen/social.ts` is the one copy of how a video is
+  described to each network, imported by the function and bundled into the
+  runner.
 
 ## Church pages
 
@@ -1328,7 +1344,16 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0101` (`tiktok_ayrshare_key()` — the Ayrshare key for the
+The latest is `0102` (`tiktok_runner_token()` — the headless runner's own
+credential for the `tiktok-gen` Edge Function, read out of Vault, service_role
+only), APPLIED on 2026-09-04 and verified: the ACL reads
+`{postgres,service_role}` and the function returns a 48-character token. The
+token was written with `vault.create_secret` and is in no file; `tiktok-gen`
+v10 compares the `x-runner-token` header against it as SHA-256 digests and
+takes a match as the admin. It exists so the GitHub Actions cron never holds
+the service-role key: a leaked CI secret can post videos and nothing else.
+
+Before it, `0101` (`tiktok_ayrshare_key()` — the Ayrshare key for the
 TikTok engine's `post` action, read out of Vault, service_role only), APPLIED
 on 2026-09-04 and verified: the ACL reads `{postgres,service_role}` and the
 function returns a 35-character key. The key was written with
@@ -1535,7 +1560,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0102` (0101 is taken by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0103` (0102 is taken by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

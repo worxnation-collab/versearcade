@@ -1,0 +1,73 @@
+# The day's three posts, made and scheduled with nobody at the dashboard.
+#
+# Runs every morning in UTC (05:30 America/New_York — before the verse's
+# 07:00 slot in TIKTOK_TZ, with the DST shift absorbed by the hour of slack)
+# and on demand. It renders EXACTLY what the dashboard renders
+# (scripts/tiktok-daily.mjs bundles the same generators), uploads each video
+# to the tiktok bucket and hands it to Ayrshare with the day's per-platform
+# copy, scheduled at that post's time of day. See docs/TIKTOK-ENGINE.md.
+#
+# Secrets (Settings → Secrets and variables → Actions):
+#   TIKTOK_RUNNER_TOKEN        required — the runner's own credential for the
+#                              tiktok-gen Edge Function (Vault, 0102: copy the
+#                              secret's value from Supabase → Vault). It can
+#                              make these posts and nothing else.
+#   SUPABASE_URL               optional (defaults to the project)
+#   SUPABASE_ANON_KEY          optional (the public key the site ships)
+# Variables:
+#   TIKTOK_TZ                  optional, IANA zone (default America/New_York)
+#   TIKTOK_POST_TIMES          optional, e.g. verse=07:00,quiz=12:30,story=19:30
+name: tiktok-daily
+
+on:
+  schedule:
+    - cron: '30 9 * * *'
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "Operator's date to make (YYYY-MM-DD, default today in TIKTOK_TZ)"
+        required: false
+      kinds:
+        description: 'Comma list of verse,story,quiz'
+        required: false
+        default: 'verse,story,quiz'
+      dry_run:
+        description: 'Render only — upload and schedule nothing'
+        type: boolean
+        default: false
+
+concurrency:
+  group: tiktok-daily
+  cancel-in-progress: false
+
+jobs:
+  make:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Make and schedule the day's posts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          TIKTOK_RUNNER_TOKEN: ${{ secrets.TIKTOK_RUNNER_TOKEN }}
+          TIKTOK_TZ: ${{ vars.TIKTOK_TZ }}
+          POST_TIMES: ${{ vars.TIKTOK_POST_TIMES }}
+          DATE: ${{ inputs.date }}
+          KINDS: ${{ inputs.kinds }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: node scripts/tiktok-daily.mjs
+      - name: Keep the videos and the results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiktok-daily-${{ github.run_id }}
+          path: .tiktok-daily/out
+          retention-days: 14
+          if-no-files-found: ignore

@@ -65,6 +65,70 @@ title and hashtag count. The key lives in Vault (`tiktok_ayrshare_key()`,
   count against the plan's quota; the hub shows it, and warns in coral on a
   plan that three videos on four networks (twelve posts a day) will exhaust.
 
+## The morning cron: the same three posts with nobody at the dashboard
+
+`scripts/tiktok-daily.mjs`, run by `.github/workflows/tiktok-daily.yml` every
+morning (09:30 UTC — 05:30 New York, an hour of slack under the verse's 07:00
+slot so the DST shift never lands a post late) and on demand from the Actions
+tab. It makes the day's three videos and hands them to Ayrshare, each
+SCHEDULED at its own time of day in `TIKTOK_TZ`:
+
+| Post | Default slot | Why then |
+|---|---|---|
+| The verse | 07:00 | the day's verse is what the morning is for; it lands before the commute and before anyone opens the app |
+| Yesterday's quiz | 12:30 | a lunch-break play-along, and by noon yesterday is safely yesterday everywhere the app is played |
+| Story time | 19:30 | Tabitha's is an evening story, told after the day's verse has been read |
+
+Override with the `TIKTOK_POST_TIMES` repository variable
+(`verse=07:00,quiz=12:30,story=19:30`). A slot already past when the runner
+gets there posts immediately rather than tomorrow.
+
+Four things about it are load-bearing:
+
+- **It renders EXACTLY what the button renders.** The runner bundles
+  `src/lib/tiktokDaily.ts`, which calls `makeVerse` / `makeStory` /
+  `makeQuiz` from `features/admin/tiktok/make.ts` — the same functions the
+  three generator cards call — in headless Chromium, and catches the finished
+  file as a download. There is no second renderer to drift. Headless Chromium
+  on Linux encodes VP9/Opus WebM, so every file goes through ffmpeg once into
+  H.264/AAC MP4 (the shape TikTok and Instagram accept) before upload.
+- **Function mode is the deployed one.** With `TIKTOK_RUNNER_TOKEN` the
+  runner calls `tiktok-gen` as the admin: the token lives in Vault (`0102`,
+  `tiktok_runner_token()`), travels as the `x-runner-token` header beside the
+  anon key (which is what gets it past the gateway's JWT check), and the
+  function compares digests. It was NOT built on the service-role key, the
+  obvious credential: that key can do anything to the project, and a CI
+  secret whose job is posting videos should be able to post videos and
+  nothing else. Rotating it is a new Vault row. The voice, the copy, the
+  story and the finished MP4 all land in the bucket and the dashboard shows
+  the day exactly as if it had been made by hand; `days/<date>/posted-<kind>.json`
+  is written by the same `post` action.
+- **Local mode exists for a machine with no service key** (`AYRSHARE_API_KEY`
+  + `GEMINI_API_KEY`): a shim stands in for the function, makes the reading
+  through Gemini directly, reads the day's copy and story from the bucket's
+  public cache and NEVER writes there, and the video goes to Ayrshare's own
+  media store — which is a Premium-plan endpoint, so on the free plan this
+  mode renders and cannot post. The words per network come from `tiktok-gen/social.ts`, which
+  the function imports and the runner bundles — one copy of what a TikTok
+  caption or a YouTube title looks like.
+- **A re-run cannot double-post.** Ayrshare's idempotency key is
+  `va-<date>-<kind>-<platform>` on both paths, so running the workflow twice
+  on a day (a retry, a manual dispatch after the cron) schedules nothing
+  twice.
+
+Secrets it needs, as GitHub Actions secrets: `TIKTOK_RUNNER_TOKEN`
+(required — the value of the Vault secret of the same name), `SUPABASE_URL`
+and `SUPABASE_ANON_KEY` (optional, defaulted to the project). `TIKTOK_TZ` is a
+repository variable. The Gemini and Ayrshare keys never reach the workflow:
+the function reads them from Vault.
+
+The aligner's Whisper model comes from huggingface.co on first use; a runner
+with no route there (an egress-filtered sandbox) can set `MODELS_DIR` to a
+directory holding `models/onnx-community/whisper-tiny.en_timestamped/…` and
+`ort/ort-wasm-simd-threaded*` and the page fetches them from the runner
+instead. Every render still falls back to the energy heuristic if the model
+fails to load, so a post is never blocked on it.
+
 ## The two halves
 
 | Piece | Where | Why there |

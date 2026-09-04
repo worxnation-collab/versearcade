@@ -16,41 +16,14 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/Button'
 import { todayLocalDate } from '@/lib/date'
 import { SCORING } from '@/lib/config'
-import { scoreQuestion } from '@/lib/progress'
 import { getVerseForDate } from '@/data/bible/questions'
-import { buildCpuPlan, CPU_LEVELS, CPU_PROFILES, type CpuLevel } from '@/features/arena/cpu'
-import type { QuizStep } from '@/lib/tiktokRender'
+import { CPU_LEVELS, CPU_PROFILES, type CpuLevel } from '@/features/arena/cpu'
+import { makeQuiz as makeQuizPost, quizPlan } from './make'
 import {
   READERS, SCENES, VOICES,
-  autoPick, autoCast, spokenReference, call, addDays, bedFor, useDisplayFont, DateRow, Busy, MadeCard,
-  fetchCopy, type Copy, type Made,
+  autoPick, autoCast, addDays, useDisplayFont, DateRow, Busy, MadeCard,
+  type Made,
 } from './shared'
-
-function hash(s: string): number {
-  let h = 2166136261
-  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) }
-  return h >>> 0
-}
-
-// The CPU's play for a date: the game's own plan, mapped onto the video's
-// shorter window. A wrong answer picks a wrong OPTION deterministically so the
-// same date replays the same way on every device. Points are the game's
-// (`scoreQuestion`, with the combo counted as the game counts it), scaled so
-// the CPU's speed means the same fraction of the window it would in the app.
-function planFor(date: string, level: CpuLevel, windowSec: number, questions: Array<{ answerIndex: number; options: string[] }>): QuizStep[] {
-  const steps = buildCpuPlan(hash(date), questions.length, CPU_PROFILES[level])
-  let combo = 0
-  return questions.map((q, i) => {
-    const s = steps[i]
-    const frac = s.answerMs / SCORING.answerWindowMs
-    const atSec = Math.max(1.2, Math.min(windowSec - 0.6, frac * windowSec))
-    const wrong = (hash(`${date}:${i}`) % (q.options.length - 1))
-    const pick = s.correct ? q.answerIndex : (wrong >= q.answerIndex ? wrong + 1 : wrong)
-    const points = scoreQuestion(s.correct, Math.round(frac * SCORING.answerWindowMs), combo)
-    combo = s.correct ? combo + 1 : 0
-    return { pick, atSec, points }
-  })
-}
 
 export default function QuizPost() {
   useDisplayFont()
@@ -83,7 +56,7 @@ export default function QuizPost() {
   const pick = autoPick(date, player)
   useEffect(() => { if (voiceAuto) setVoice(pick.voice) }, [voiceAuto, pick.voice])
   const playerName = READERS.find((x) => x.id === player)?.name.split(' ')[0] ?? 'Peter'
-  const plan = planFor(date, level, windowSec, verse.questions)
+  const plan = quizPlan(date, level, windowSec, verse.questions)
   const right = plan.filter((s, i) => s.pick === verse.questions[i].answerIndex).length
   const points = plan.reduce((a, s) => a + s.points, 0)
 
@@ -103,34 +76,15 @@ export default function QuizPost() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date, level, windowSec, player, scene])
 
+  // The replay job for one date lives in make.ts.
   async function makeQuiz(d: string): Promise<Made> {
-    const v = getVerseForDate(d)
-    const c = castAuto ? autoCast(d) : { reader: player, scene }
-    const name = READERS.find((x) => x.id === c.reader)?.name.split(' ')[0] ?? 'Peter'
-    const steps = planFor(d, level, windowSec, v.questions)
     setProgress(0)
-    let audio: ArrayBuffer | undefined
-    if (withVoice) {
-      // The same reading the morning post makes, so it is usually cached.
-      setBusy(`${d}: asking for the reading`)
-      const p = voiceAuto ? autoPick(d, c.reader) : { voice, style: autoPick(d, c.reader).style }
-      const tts = await call<{ url: string; cached: boolean }>('tts', { date: d, text: `${v.text.trim()} ${spokenReference(v.reference)}.`, voice: p.voice, style: p.style })
-      audio = await (await fetch(tts.url + '?v=' + Date.now())).arrayBuffer()
-    }
-    let copy: Copy | null = null
-    if (withCopy) {
-      setBusy(`${d}: writing the caption`)
-      try { copy = await fetchCopy(d, 'quiz') } catch { copy = null }
-    }
-    setBusy(`${d}: rendering`)
-    const r = await import('@/lib/tiktokRender')
-    const [backdrop, figure] = await Promise.all([r.loadImage(`/road/${c.scene}.jpg`), r.loadImage(`/skins/${c.reader}.png`)])
-    const base = { reference: v.reference, text: v.text, questions: v.questions, plan: steps, windowSec, playerName: name, figure, backdrop, hook: copy?.hook }
-    const tl = r.quizTimeline(audio ? await r.audioSeconds(audio) : null, base)
-    const [bed, cues] = await Promise.all([withMusic ? bedFor(tl.total, 'morning') : Promise.resolve(undefined), r.quizCues(tl.events, tl.total)])
-    const out = await r.renderQuiz({ ...base, audio, bed, cues, onProgress: (f, label) => { setProgress(f); setBusy(`${d}: ${label}`) } })
-    const won = steps.filter((s, i) => s.pick === v.questions[i].answerIndex).length
-    return { date: d, kind: 'quiz', reference: v.reference, url: URL.createObjectURL(out.blob), ext: out.ext, size: out.blob.size, copy, phrases: out.phrases, tier: `${name} · ${CPU_PROFILES[level].name} · ${won}/${v.questions.length}` }
+    return makeQuizPost(d, {
+      level, windowSec,
+      cast: castAuto ? undefined : { reader: player, scene },
+      voice: withVoice, voiceName: voiceAuto ? undefined : voice,
+      copy: withCopy, music: withMusic,
+    }, (f, label) => { setProgress(f); setBusy(`${d}: ${label}`) })
   }
 
   const run = async (dates: string[]) => {

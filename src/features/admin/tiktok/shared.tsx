@@ -296,8 +296,19 @@ export async function postVideo(m: Made, platforms: Platform[], scheduleDate: st
   const blob = await (await fetch(m.url)).blob()
   const { error } = await supabase!.storage.from(BUCKET).uploadToSignedUrl(up.path, up.token, blob, { contentType: 'video/mp4', upsert: true })
   if (error) throw new Error(`upload: ${error.message}`)
-  onStep(scheduleDate ? 'Scheduling' : 'Posting')
-  return call<Posted>('post', { date: m.date, kind: m.kind, videoUrl: up.publicUrl, platforms, scheduleDate, reference: m.reference })
+  // One call per platform: Ayrshare fetches the video inside the call, and
+  // six of those in one request ran past the function gateway's limit (the
+  // function finished; the browser saw a timeout). The function merges each
+  // call's rows over the day's record, so the result is the same.
+  const results: PostResult[] = []
+  let at: string | undefined
+  for (const platform of platforms) {
+    onStep(`${scheduleDate ? 'Scheduling' : 'Posting'} · ${PLATFORM_NAMES[platform]}`)
+    const r = await call<Posted>('post', { date: m.date, kind: m.kind, videoUrl: up.publicUrl, platforms: [platform], scheduleDate, reference: m.reference })
+    results.push(...(r.results ?? []))
+    at = r.at ?? at
+  }
+  return { at, results }
 }
 
 export function PostControls({ m }: { m: Made }) {

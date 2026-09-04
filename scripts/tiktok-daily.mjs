@@ -32,7 +32,7 @@
 // Environment: SUPABASE_URL, SUPABASE_ANON_KEY (public, defaulted), TIKTOK_TZ
 // (default America/New_York), DATE (override today), KINDS (default
 // verse,story,quiz), POST_TIMES (default verse=07:00,quiz=12:30,story=19:30),
-// PLATFORMS (default all five, X included), DRY_RUN (render only), FFMPEG (binary path),
+// PLATFORMS (default all six: TikTok, YouTube, Facebook, Instagram, X, Snapchat), DRY_RUN (render only), FFMPEG (binary path),
 // PW_CHROMIUM (executable path when Playwright's own browser is not installed),
 // RERENDER (make the video again even if the day's is already in the bucket),
 // MODELS_DIR (serve the aligner's Whisper model, ONNX runtime and, if
@@ -59,7 +59,7 @@ const GEMINI_KEY = env.GEMINI_API_KEY || ''
 const AYRSHARE_KEY = env.AYRSHARE_API_KEY || ''
 const TZ = env.TIKTOK_TZ || 'America/New_York'
 const KINDS = (env.KINDS || 'verse,story,quiz').split(',').map((s) => s.trim()).filter(Boolean)
-const PLATFORMS = (env.PLATFORMS || 'tiktok,youtube,facebook,instagram,x').split(',').map((s) => s.trim()).filter(Boolean)
+const PLATFORMS = (env.PLATFORMS || 'tiktok,youtube,facebook,instagram,x,snapchat').split(',').map((s) => s.trim()).filter(Boolean)
 const DRY = /^(1|true|yes)$/i.test(env.DRY_RUN || '')
 const FFMPEG = env.FFMPEG || 'ffmpeg'
 const TIMES = Object.fromEntries((env.POST_TIMES || 'verse=07:00,quiz=12:30,story=19:30').split(',').map((kv) => kv.split('=').map((s) => s.trim())))

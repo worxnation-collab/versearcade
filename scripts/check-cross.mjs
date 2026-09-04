@@ -57,6 +57,9 @@ const VERSE_POOL = literalAfter(
 // is the regression check-pool.mjs exists for and this one inherits.
 const MIN_PUZZLES = 50
 
+// Re-stated rather than imported from crossword.ts, like every rule here.
+const WORD_TYPES = ['noun', 'verb', 'adjective', 'adverb', 'pronoun', 'preposition', 'conjunction', 'name']
+
 const errors = []
 const fail = (msg) => errors.push(msg)
 
@@ -112,6 +115,12 @@ for (const p of CROSS_PUZZLES) {
       fail(`${at}: the clue for "${side.word}" contains the answer`)
     }
     if (!side?.clue || side.clue.length < 8) fail(`${at}: "${side?.word}" needs a real clue`)
+    // Every authored word says what kind of word it is, in its verse. Nothing
+    // renders wrong without one — the label just goes quiet — which is why it
+    // is checked here rather than noticed.
+    if (!WORD_TYPES.includes(side?.pos)) {
+      fail(`${at}: "${side?.word}" needs a word type (${WORD_TYPES.join(', ')})`)
+    }
   }
 }
 

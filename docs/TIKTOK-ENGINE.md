@@ -1,10 +1,19 @@
 # The TikTok engine (Admin → TikTok)
 
-One post a day for a faceless Verse Arcade TikTok: a painted figure — Peter
-(Cephas) by default — standing in a Verse Arcade scene, reading the verse of
-the day, captioned WORD BY WORD, ending on `versearcade.org`. This is an
-**operator tool**: admin-only, online-only, desktop Chrome. It changes nothing
-a player sees and it is behind the dashboard's three gates.
+Three posts a day for a faceless Verse Arcade TikTok, each behind its own pill
+in Admin → TikTok: the **verse reading** (a painted figure — Peter by default —
+standing in a Verse Arcade scene, reading the verse of the day, captioned WORD
+BY WORD), **story time** (Tabitha telling the story behind it) and
+**yesterday's quiz** (a CPU playing yesterday's five questions against the
+clock). All end on `versearcade.org`. This is an **operator tool**: admin-only,
+online-only, desktop Chrome. It changes nothing a player sees and it is behind
+the dashboard's three gates.
+
+The panel is a hub (`TikTokPanel.tsx`) and three generators
+(`admin/tiktok/VersePost.tsx`, `StoryPost.tsx`, `QuizPost.tsx`) over one
+`shared.tsx`. Tapping a pill opens that generator and nothing else — the forms
+used to share one page, and with the second one it was already a page you
+scrolled to find anything on.
 
 ## What one click produces
 
@@ -134,6 +143,41 @@ a Gemini Flash script and a longer TTS.
   and a story-flavoured caption. Every field flips to manual when touched.
 - `renderStory()` shares `produce()` with the verse layout — one copy of the
   codec, timing, AAC and audible-track checks.
+
+## Yesterday's quiz: the replay
+
+The third post. A CPU player — the reader figure the cast picked for that day,
+Peter by default — plays yesterday's five questions on a game board over the
+road, and the viewer plays along. Then the answers.
+
+- **Yesterday, by default and by name.** The five questions are the same five
+  for everybody on a date, so a public replay of today's would hand out
+  today's answers. The date row's home button reads "Yesterday", and the panel
+  warns in coral if the date isn't over.
+- **The CPU is the game's own CPU.** `features/arena/cpu.ts` — the same three
+  profiles (Rookie 55%, Deacon 74%, Prophet 90%), the same seeded plan (from
+  the date, so the same day replays the same way everywhere), the same
+  `scoreQuestion` with the combo counted as the game counts it. Nothing here
+  invents a player; the panel lists what it will pick and when before you
+  make the video.
+- **The clock runs all the way down on every question.** The CPU's chip lands
+  on its option partway through, but the reveal waits for zero, so a viewer
+  always has the whole window to pick. Twelve seconds by default against the
+  game's 16.5 — a video is not a game, and the game is the payoff at the end.
+  Adjustable from 6 to 16.
+- **A wrong answer teaches, exactly as in the app.** The reveal card carries
+  the question's own `teach` line, so the post is a lesson with a scoreboard on
+  it rather than a scoreboard.
+- **Its sounds are synthesised** (`quizCues`): a soft tick for the last five
+  seconds, a two-note click when the player locks in, a rising chime for a
+  right answer, a low pair for a miss — the bargain `juice/sound.ts` makes, no
+  files. The verse is read aloud over its card first (the same TTS as the
+  morning post, so it is usually cached), and the road's music sits under all
+  of it.
+- `renderQuiz()` shares `produce()` with the other two layouts — one copy of
+  the codec, timing, AAC and audible-track checks. `quizTimeline()` is the
+  one place the timing lives, so the bed and the cues are sized by the same
+  numbers the frames are drawn from.
 
 ## The few generated pieces, and why those
 

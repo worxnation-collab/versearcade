@@ -14,7 +14,7 @@
 //   still       { key, prompt, refs[] }          → { url }           Nano Banana 9:16 poster at readers/<key>.png
 //   loop-start  { imageUrl | imageBase64, prompt } → { op }          Veo image→video, returns the operation name
 //   loop-status { key, op }                      → { done, url? }    polls Veo; on completion parks readers/<key>.mp4
-//   copy        { reference, text, theme, kind? }  → { hook, caption, hashtags[] }  post copy via Gemini Flash (kind 'story' for the evening post)
+//   copy        { reference, text, theme, kind? }  → { hook, caption, hashtags[] }  post copy via Gemini Flash (kind 'story' for the evening post, 'quiz' for yesterday's quiz)
 //   story       { date, reference, text, ... }    → { title, hook, paragraphs[] }   the story behind the verse, cached at days/<date>/story.json
 //
 // Secrets: GEMINI_API_KEY — as a function secret, or in Vault under the same
@@ -339,7 +339,9 @@ Deno.serve(async (req) => {
       if (!reference || !text) return json({ error: 'reference and text are required' }, 400)
       const who = input.kind === 'story'
         ? `Tabitha, the app's librarian, tells the short story behind the verse of the day each evening (the morning post was the verse itself, read aloud). `
-        : `a painted figure of Peter (Cephas) reads the verse of the day. `
+        : input.kind === 'quiz'
+          ? `a painted character plays YESTERDAY's five-question quiz about the verse against a countdown clock, and viewers play along and see the answers (the post is a replay of yesterday's verse; today's is waiting in the app). `
+          : `a painted figure of Peter (Cephas) reads the verse of the day. `
       const data = await gemini(`models/${TEXT_MODEL}:generateContent`, {
         contents: [{ parts: [{ text:
           `You write captions for a faceless TikTok account called Verse Arcade, a Bible app where ${who}` +

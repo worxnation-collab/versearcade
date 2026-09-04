@@ -24,7 +24,12 @@ scrolled to find anything on.
   Facebook and Instagram Reels — each with its own length and its own number
   of hashtags, and a copy button per platform that copies exactly what gets
   pasted there. One Gemini call returns all four, and each block is sanitised
-  on its own so one bad key never costs the other three.
+  on its own so one bad key never costs the other three. It is written ONCE
+  per date and kind (`days/<date>/copy-<kind>.json`), so the hub's
+  **Today's words** card shows all three sets for today without a render —
+  the quiz's for yesterday, the day it replays — and swaps them at midnight
+  on its own (a minute-timer watches the local date). A render on the same
+  day gets the same words; ↻ Rewrite asks again.
 - "Next 7 days" queues a week — `getVerseForDate` is deterministic, so any date
   can be made ahead of time. Each result gets its own download link (browsers
   block a chain of automatic downloads).

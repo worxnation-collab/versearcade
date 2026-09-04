@@ -185,6 +185,14 @@ export async function fetchStory(d: string, force: boolean): Promise<Story> {
   return call<Story>('story', { date: d, force, reference: v.reference, text: v.text, theme: v.theme, speaker: sd.speaker, audience: sd.audience, before: sd.before, after: sd.after, facts: sd.facts })
 }
 
+// The words for a date's post of one kind, written once (cached in the
+// bucket by date and kind) so the hub can show today's without rendering a
+// video, and a render on the same day gets the same words.
+export async function fetchCopy(d: string, kind: Made['kind'], force = false): Promise<Copy> {
+  const v = getVerseForDate(d)
+  return call<Copy>('copy', { date: d, kind, force, reference: v.reference, text: v.text, theme: v.theme })
+}
+
 // ---- the bits of form every generator draws -----------------------------------
 
 export const TEXTAREA_STYLE = { padding: '8px', borderRadius: 10, background: 'var(--card-solid)', color: 'var(--ink)', border: '1px solid var(--stroke)', resize: 'vertical' as const, font: 'inherit', fontSize: 12 }
@@ -238,6 +246,18 @@ function PlatformBlock({ name, c }: { name: string; c: PlatformCopy }) {
   )
 }
 
+/** The hook and the four platform blocks of one post's copy. */
+export function CopyBlocks({ copy }: { copy: Copy }) {
+  return (
+    <div style={{ fontSize: 13, lineHeight: 1.45, display: 'grid', gap: 8 }}>
+      <div><span className="faint">Hook:</span> {copy.hook}</div>
+      {copy.platforms
+        ? PLATFORMS.map(([id, name]) => <PlatformBlock key={id} name={name} c={copy.platforms![id]} />)
+        : <PlatformBlock name="Caption" c={{ title: '', text: copy.caption, tags: copy.hashtags }} />}
+    </div>
+  )
+}
+
 export function MadeCard({ m }: { m: Made }) {
   const name = `${FILE[m.kind]}${m.date}.${m.ext}`
   return (
@@ -248,14 +268,7 @@ export function MadeCard({ m }: { m: Made }) {
       </div>
       <video src={m.url} controls playsInline style={{ width: 200, borderRadius: 12, justifySelf: 'center', background: '#000' }} />
       <a href={m.url} download={name} className="pill" style={{ textAlign: 'center', fontWeight: 800 }}>⬇️ Download {name}</a>
-      {m.copy && (
-        <div style={{ fontSize: 13, lineHeight: 1.45, display: 'grid', gap: 8 }}>
-          <div><span className="faint">Hook:</span> {m.copy.hook}</div>
-          {m.copy.platforms
-            ? PLATFORMS.map(([id, name]) => <PlatformBlock key={id} name={name} c={m.copy!.platforms![id]} />)
-            : <PlatformBlock name="Caption" c={{ title: '', text: m.copy.caption, tags: m.copy.hashtags }} />}
-        </div>
-      )}
+      {m.copy && <CopyBlocks copy={m.copy} />}
     </div>
   )
 }

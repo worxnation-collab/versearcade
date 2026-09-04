@@ -14,7 +14,7 @@
 //   still       { key, prompt, refs[] }          → { url }           Nano Banana 9:16 poster at readers/<key>.png
 //   loop-start  { imageUrl | imageBase64, prompt } → { op }          Veo image→video, returns the operation name
 //   loop-status { key, op }                      → { done, url? }    polls Veo; on completion parks readers/<key>.mp4
-//   copy        { reference, text, theme, kind? }  → { hook, caption, hashtags[], platforms }  post copy per platform (TikTok, YouTube, Facebook, Instagram) via Gemini Flash; kind 'story' or 'quiz' changes what the post is
+//   copy        { date?, reference, text, theme, kind?, force? } → { hook, caption, hashtags[], platforms }  post copy per platform (TikTok, YouTube, Facebook, Instagram) via Gemini Flash; kind 'story' or 'quiz' changes what the post is; cached at days/<date>/copy-<kind>.json
 //   story       { date, reference, text, ... }    → { title, hook, paragraphs[] }   the story behind the verse, cached at days/<date>/story.json
 //
 // Secrets: GEMINI_API_KEY — as a function secret, or in Vault under the same
@@ -332,11 +332,21 @@ Deno.serve(async (req) => {
     }
 
     // ---- copy: the words that go in the post ---------------------------------
+    // Cached per date and kind (days/<date>/copy-<kind>.json) so the words
+    // are written once and the dashboard can show today's without rendering
+    // anything; `force` rewrites. A call with no date is not cached.
     if (action === 'copy') {
       const reference = String(input.reference ?? '').slice(0, 80)
       const text = String(input.text ?? '').slice(0, 1200)
       const theme = String(input.theme ?? '').slice(0, 80)
       if (!reference || !text) return json({ error: 'reference and text are required' }, 400)
+      const kind = input.kind === 'story' ? 'story' : input.kind === 'quiz' ? 'quiz' : 'verse'
+      const date = String(input.date ?? '')
+      const path = /^\d{4}-\d{2}-\d{2}$/.test(date) ? `days/${date}/copy-${kind}.json` : null
+      if (path && !input.force && (await exists(path))) {
+        const { data: file } = await admin.storage.from(BUCKET).download(path)
+        if (file) return json({ ...JSON.parse(await file.text()), cached: true })
+      }
       const who = input.kind === 'story'
         ? `Tabitha, the app's librarian, tells the short story behind the verse of the day each evening (the morning post was the verse itself, read aloud). `
         : input.kind === 'quiz'
@@ -372,7 +382,9 @@ Deno.serve(async (req) => {
       // `caption` and `hashtags` are the TikTok block under the names older
       // clients read, so a dashboard that predates the per-platform copy
       // still gets a caption.
-      return json({ hook: String(parsed.hook ?? '').slice(0, 80), caption: platforms.tiktok.text, hashtags: platforms.tiktok.tags, platforms })
+      const out = { hook: String(parsed.hook ?? '').slice(0, 80), caption: platforms.tiktok.text, hashtags: platforms.tiktok.tags, platforms }
+      if (path) await park(path, new TextEncoder().encode(JSON.stringify(out)), 'application/json')
+      return json({ ...out, cached: false })
     }
 
     return json({ error: `unknown action ${action}` }, 400)

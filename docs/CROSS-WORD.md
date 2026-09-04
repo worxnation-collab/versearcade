@@ -52,9 +52,33 @@ checklist:
 | The letters must match where they cross | The puzzle can't be solved at all |
 | `reference` is in `VERSE_POOL`, and holds BOTH words | The reveal becomes a non sequitur: a verse that doesn't contain the words you just spelled |
 | A clue never contains its own answer | The puzzle is free |
+| Both words carry a `pos` (noun, verb, adjective…) | Nothing — the label just goes quiet, which is why it's checked rather than noticed |
 
 Adding one is: pick a pool verse, find two words in it that share a letter in
-the right places, write two clues, run `npm run check:cross`.
+the right places, write two clues, say what kind of word each answer is IN THAT
+VERSE, run `npm run check:cross`.
+
+## What kind of word it is
+
+Every clue's label says the answer's part of speech beside its length — "verb ·
+8 letters" — the way a printed crossword writes "(v.)" after a clue. It's a
+hint about the SHAPE of the answer rather than its meaning, which is exactly the
+kind of help a two-word puzzle can afford to give.
+
+The type is a fact about the word *in its verse*, not about the word: STILL is
+an adjective in "be still", whatever else it can be, and the authored puzzles
+say so by hand for all 104 of their words. Generated crosses look their words
+up in `data/crossWordTypes.ts`, a curated lexicon of the pool's cross-eligible
+vocabulary — and it deliberately refuses to answer for a word the pool uses two
+ways (LOVE, HOPE, REST, LIGHT, FEAR, TRUST…), because a per-word table can't
+tell "God is love" from "love one another". A word it can't answer for gets no
+type on its label, never a guess. About three-quarters of generated crosses
+carry a type on both words, and two in a hundred on neither.
+
+The eight types are `noun`, `verb`, `adjective`, `adverb`, `pronoun`,
+`preposition`, `conjunction` and `name` (a person or a place — labelled the way
+a player would say it rather than "proper noun"). Numbers are not a type here;
+SEVEN gets no label.
 
 ## The daily rotation
 

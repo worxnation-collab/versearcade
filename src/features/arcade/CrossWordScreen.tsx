@@ -23,6 +23,7 @@ import {
   crossVerse,
   pastCrosses,
   type CrossPuzzle,
+  type WordType,
 } from '@/data/crossword'
 import { isGeneratedCross, randomCross } from '@/data/crossGen'
 
@@ -403,6 +404,7 @@ export default function CrossWordScreen({ demo }: { demo?: boolean }) {
         <Clue
           label="Down — the upright"
           clue={puzzle.down.clue}
+          pos={puzzle.down.pos}
           length={puzzle.down.word.length}
           active={!st.done && st.direction === 'down'}
           faded={st.done}
@@ -411,6 +413,7 @@ export default function CrossWordScreen({ demo }: { demo?: boolean }) {
         <Clue
           label="Across — the crossbar"
           clue={puzzle.across.clue}
+          pos={puzzle.across.pos}
           length={puzzle.across.word.length}
           active={!st.done && st.direction === 'across'}
           faded={st.done}
@@ -530,10 +533,18 @@ export default function CrossWordScreen({ demo }: { demo?: boolean }) {
   )
 }
 
-/** One clue line. Tapping it moves you onto that word. */
+/**
+ * One clue line. Tapping it moves you onto that word.
+ *
+ * The label carries the word's type when the puzzle knows it — "verb · 6
+ * letters", the way a printed crossword says "(v.)" beside a clue. It's
+ * optional because a generated cross only says so when the lexicon is sure
+ * (`data/crossWordTypes.ts`); a missing type leaves the line exactly as it was.
+ */
 function Clue({
   label,
   clue,
+  pos,
   length,
   active,
   faded,
@@ -541,6 +552,7 @@ function Clue({
 }: {
   label: string
   clue: string
+  pos?: WordType
   length: number
   active: boolean
   faded: boolean
@@ -563,6 +575,10 @@ function Clue({
     >
       <div
         style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          columnGap: 10,
           fontSize: 10.5,
           letterSpacing: '0.09em',
           textTransform: 'uppercase',
@@ -570,7 +586,15 @@ function Clue({
           fontFamily: 'var(--font-display)',
         }}
       >
-        {label} · {length} letters
+        {/* Two spans rather than one string: with the type on it the line
+            is ~37 characters, which a 320px phone can't hold at this size.
+            Split, the facts about the word drop under the name as one piece
+            instead of breaking mid-phrase. */}
+        <span>{label}</span>
+        <span>
+          {pos ? `${pos} · ` : ''}
+          {length} letters
+        </span>
       </div>
       <div style={{ fontSize: 14, lineHeight: 1.4, marginTop: 2 }}>{clue}</div>
     </button>

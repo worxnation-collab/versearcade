@@ -1805,6 +1805,18 @@ Study shelf first, and `/study/cross` still redirects). Full design:
   HTML buttons while you play, SVG timbers once you're done — so nothing moves
   when it turns to wood. The shelf's *cover* still follows the house rule and
   has a prompt in `scripts/generate-study-covers.mjs`.
+- **Every clue says what kind of word it wants — "verb · 8 letters" — and a
+  wrong type is worse than none.** `CrossWord.pos` is REQUIRED on the authored
+  puzzles (both checkers refuse one without it) and written by hand *in the
+  verse*: STILL is an adjective in "be still". Generated crosses look theirs up
+  in `data/crossWordTypes.ts`, a hand-reviewed lexicon that deliberately holds
+  NO entry for a word the pool uses two ways (LOVE, HOPE, REST, LIGHT, FEAR,
+  TRUST, ~200 more) — so those labels simply omit the type rather than guess.
+  It was drafted with a part-of-speech tagger and then every word read against
+  its verses, because the tagger alone scored 90 of 104 on the authored words
+  and its misses were systematic (capitalised nouns as names, "the poor").
+  Add a word by hand, in context, to exactly one list; `checkCrossGen()`
+  fails on a word filed twice.
 - **All the puzzle state is in one reducer, and that's load-bearing.** Typing
   five letters inside one tick put all five in the same square when each handler
   planned against a hook snapshot — the same scar as `KeepSheet`'s double-tap,

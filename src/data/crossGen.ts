@@ -33,6 +33,7 @@
 
 import { VERSE_POOL, type VerseSeed } from './bible/pool'
 import type { CrossPuzzle } from './crossword'
+import { wordTypeEntries, wordTypeOf } from './crossWordTypes'
 
 /** Upright length, matching the authored data's own bounds. */
 const DOWN_MIN = 5
@@ -196,9 +197,11 @@ export function crossOptions(verse: VerseSeed): CrossPuzzle[] {
             // apart — an authored id is a slug and can never collide with this.
             id: `x:${verse.reference}:${d.word}${di}-${a.word}${ai}`,
             reference: verse.reference,
-            down: { word: d.word, clue: downClue },
+            // The type rides along only when the lexicon can say — see the
+            // header of crossWordTypes.ts for why LOVE has none.
+            down: { word: d.word, pos: wordTypeOf(d.word), clue: downClue },
             downIndex: di,
-            across: { word: a.word, clue: acrossClue },
+            across: { word: a.word, pos: wordTypeOf(a.word), clue: acrossClue },
             acrossIndex: ai,
           }
           if (cluesGiveItAway(puzzle)) continue
@@ -270,6 +273,16 @@ export function checkCrossGen(): string[] {
   const problems: string[] = []
   const ids = new Set<string>()
   let withCross = 0
+
+  // The word-type lexicon: A–Z entries, and no word filed under two types —
+  // the lookup map would silently keep whichever came last.
+  const typed = new Map<string, string>()
+  for (const [w, type] of wordTypeEntries()) {
+    if (!/^[A-Z]+$/.test(w)) problems.push(`word types: "${w}" is not A–Z`)
+    const prior = typed.get(w)
+    if (prior && prior !== type) problems.push(`word types: "${w}" is listed as ${prior} and ${type}`)
+    typed.set(w, type)
+  }
 
   for (const verse of VERSE_POOL) {
     const options = crossOptions(verse)

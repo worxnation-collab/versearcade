@@ -113,7 +113,9 @@ export function addDays(date: string, n: number): string {
   return t.toISOString().slice(0, 10)
 }
 
-export interface Copy { hook: string; caption: string; hashtags: string[] }
+export type Platform = 'tiktok' | 'youtube' | 'facebook' | 'instagram'
+export interface PlatformCopy { title: string; text: string; tags: string[] }
+export interface Copy { hook: string; caption: string; hashtags: string[]; platforms?: Record<Platform, PlatformCopy> }
 export interface Made { date: string; kind: 'verse' | 'story' | 'quiz'; reference: string; url: string; ext: string; size: number; copy: Copy | null; phrases: TimedPhrase[]; tier: string }
 
 export type Renderer = typeof import('@/lib/tiktokRender')
@@ -213,6 +215,29 @@ export function Busy({ busy, progress }: { busy: string | null; progress: number
 const ICON: Record<Made['kind'], string> = { verse: '☀️', story: '🌙', quiz: '🎮' }
 const FILE: Record<Made['kind'], string> = { verse: 'verse-arcade-', story: 'verse-arcade-story-', quiz: 'verse-arcade-quiz-' }
 
+const PLATFORMS: Array<[Platform, string]> = [['tiktok', 'TikTok'], ['youtube', 'YouTube Shorts'], ['facebook', 'Facebook'], ['instagram', 'Instagram Reels']]
+
+// One platform's words, with the button that copies exactly what gets pasted
+// there: the title on its own line for YouTube, the text, a blank line, the
+// tags. Each platform has its own block because each wants its own length
+// and its own number of hashtags, and one caption pasted four times reads
+// as one caption pasted four times.
+function PlatformBlock({ name, c }: { name: string; c: PlatformCopy }) {
+  const tags = c.tags.map((t) => '#' + t).join(' ')
+  const paste = [c.title, c.text, tags].filter(Boolean).join('\n\n')
+  return (
+    <div style={{ background: 'var(--card)', borderRadius: 12, padding: '8px 10px', display: 'grid', gap: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <b style={{ fontFamily: 'var(--font-display)', fontSize: 13 }}>{name}</b>
+        <button className="pill" style={{ fontSize: 11, marginLeft: 'auto' }} onClick={() => navigator.clipboard.writeText(paste)}>📋 Copy</button>
+      </div>
+      {c.title && <div style={{ fontWeight: 700 }}>{c.title}</div>}
+      <div style={{ whiteSpace: 'pre-wrap' }}>{c.text}</div>
+      {tags && <div className="faint" style={{ fontSize: 12 }}>{tags}</div>}
+    </div>
+  )
+}
+
 export function MadeCard({ m }: { m: Made }) {
   const name = `${FILE[m.kind]}${m.date}.${m.ext}`
   return (
@@ -224,14 +249,11 @@ export function MadeCard({ m }: { m: Made }) {
       <video src={m.url} controls playsInline style={{ width: 200, borderRadius: 12, justifySelf: 'center', background: '#000' }} />
       <a href={m.url} download={name} className="pill" style={{ textAlign: 'center', fontWeight: 800 }}>⬇️ Download {name}</a>
       {m.copy && (
-        <div style={{ fontSize: 13, lineHeight: 1.45 }}>
+        <div style={{ fontSize: 13, lineHeight: 1.45, display: 'grid', gap: 8 }}>
           <div><span className="faint">Hook:</span> {m.copy.hook}</div>
-          <div style={{ marginTop: 4 }}>{m.copy.caption}</div>
-          <div className="faint" style={{ marginTop: 4 }}>{m.copy.hashtags.map((t) => '#' + t).join(' ')}</div>
-          <button className="pill" style={{ marginTop: 6, fontSize: 12 }}
-            onClick={() => navigator.clipboard.writeText(`${m.copy!.caption}\n\n${m.copy!.hashtags.map((t) => '#' + t).join(' ')}`)}>
-            📋 Copy caption + tags
-          </button>
+          {m.copy.platforms
+            ? PLATFORMS.map(([id, name]) => <PlatformBlock key={id} name={name} c={m.copy!.platforms![id]} />)
+            : <PlatformBlock name="Caption" c={{ title: '', text: m.copy.caption, tags: m.copy.hashtags }} />}
         </div>
       )}
     </div>

@@ -14,7 +14,7 @@
 //   still       { key, prompt, refs[] }          → { url }           Nano Banana 9:16 poster at readers/<key>.png
 //   loop-start  { imageUrl | imageBase64, prompt } → { op }          Veo image→video, returns the operation name
 //   loop-status { key, op }                      → { done, url? }    polls Veo; on completion parks readers/<key>.mp4
-//   copy        { reference, text, theme, kind? }  → { hook, caption, hashtags[] }  post copy via Gemini Flash (kind 'story' for the evening post, 'quiz' for yesterday's quiz)
+//   copy        { reference, text, theme, kind? }  → { hook, caption, hashtags[], platforms }  post copy per platform (TikTok, YouTube, Facebook, Instagram) via Gemini Flash; kind 'story' or 'quiz' changes what the post is
 //   story       { date, reference, text, ... }    → { title, hook, paragraphs[] }   the story behind the verse, cached at days/<date>/story.json
 //
 // Secrets: GEMINI_API_KEY — as a function secret, or in Vault under the same
@@ -344,22 +344,35 @@ Deno.serve(async (req) => {
           : `a painted figure of Peter (Cephas) reads the verse of the day. `
       const data = await gemini(`models/${TEXT_MODEL}:generateContent`, {
         contents: [{ parts: [{ text:
-          `You write captions for a faceless TikTok account called Verse Arcade, a Bible app where ${who}` +
-          `Today's verse is ${reference}: "${text}" (theme: ${theme || 'unspecified'}).\n\n` +
-          `Return JSON with: "hook" (one on-screen opening line, max 8 words, no emoji, not a question), ` +
-          `"caption" (2-3 short sentences for the post body, warm and plain, no hashtags, no emoji, ends by inviting people to play today's verse at versearcade.org), ` +
-          `and "hashtags" (an array of 6 lowercase hashtags without the # sign, mixing #bible-style broad tags with the verse's own theme). ` +
-          `Never rank, compare or shame anyone. Never claim a fact that isn't in the verse.` }] }],
+          `You write post copy for a faceless short-video account called Verse Arcade, a Bible app where ${who}` +
+          `Today's verse is ${reference}: "${text}" (theme: ${theme || 'unspecified'}). The same vertical video is posted to TikTok, YouTube Shorts, Facebook and Instagram Reels, and each wants its own words.\n\n` +
+          `Return JSON with:\n` +
+          `"hook": one on-screen opening line, max 8 words, no emoji, not a question.\n` +
+          `"tiktok": { "text": 1-2 short sentences, casual and warm, under 150 characters, no hashtags in it, ends by inviting people to play today's verse at versearcade.org; "tags": 5 lowercase hashtags without the # sign }.\n` +
+          `"youtube": { "title": a Shorts title under 70 characters that names the verse reference and what the video is; "text": 2-4 sentences for the description, plain, with the line "Play today's verse: https://versearcade.org" on its own line at the end; "tags": 5 lowercase hashtags without the # sign, the first one "shorts" }.\n` +
+          `"facebook": { "text": 2-4 conversational sentences, a little longer and more personal than the others, no hashtags in it, ending with the link https://versearcade.org on its own line; "tags": 2 lowercase hashtags without the # sign }.\n` +
+          `"instagram": { "text": 2-3 short sentences with a line break between them, no hashtags in it, ending with "Play today's verse — link in bio."; "tags": 10 lowercase hashtags without the # sign, mixing broad #bible-style tags with the verse's own theme }.\n\n` +
+          `Never rank, compare or shame anyone. Never claim a fact that isn't in the verse. No emoji anywhere.` }] }],
         generationConfig: { responseMimeType: 'application/json', temperature: 0.8 },
       })
       const cands = data.candidates as Array<{ content?: { parts?: Array<{ text?: string }> } }> | undefined
       const raw = cands?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? '{}'
-      let parsed: { hook?: unknown; caption?: unknown; hashtags?: unknown } = {}
+      let parsed: Record<string, unknown> = {}
       try { parsed = JSON.parse(raw) } catch { return json({ error: 'copy was not JSON', raw: raw.slice(0, 300) }, 502) }
-      const tags = Array.isArray(parsed.hashtags)
-        ? (parsed.hashtags as unknown[]).map((t) => String(t).replace(/^#/, '').replace(/[^a-z0-9]/gi, '').toLowerCase()).filter(Boolean).slice(0, 8)
+      // Each platform's block is sanitised on its own and fails closed to an
+      // empty block, so one bad key never costs the other three.
+      const tagsOf = (v: unknown, n: number) => Array.isArray(v)
+        ? (v as unknown[]).map((t) => String(t).replace(/^#/, '').replace(/[^a-z0-9]/gi, '').toLowerCase()).filter(Boolean).slice(0, n)
         : []
-      return json({ hook: String(parsed.hook ?? '').slice(0, 80), caption: String(parsed.caption ?? '').slice(0, 600), hashtags: tags })
+      const block = (k: string, n: number) => {
+        const b = (parsed[k] ?? {}) as Record<string, unknown>
+        return { title: String(b.title ?? '').slice(0, 100), text: String(b.text ?? '').slice(0, 2000), tags: tagsOf(b.tags, n) }
+      }
+      const platforms = { tiktok: block('tiktok', 6), youtube: block('youtube', 6), facebook: block('facebook', 3), instagram: block('instagram', 12) }
+      // `caption` and `hashtags` are the TikTok block under the names older
+      // clients read, so a dashboard that predates the per-platform copy
+      // still gets a caption.
+      return json({ hook: String(parsed.hook ?? '').slice(0, 80), caption: platforms.tiktok.text, hashtags: platforms.tiktok.tags, platforms })
     }
 
     return json({ error: `unknown action ${action}` }, 400)

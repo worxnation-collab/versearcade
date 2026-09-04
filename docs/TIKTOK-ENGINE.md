@@ -20,7 +20,11 @@ scrolled to find anything on.
 - `verse-arcade-<date>.mp4` — 1080×1920, 30fps, H.264 + AAC (or VP9/Opus WebM
   if the browser can't do H.264), audio baked in. Lead-in with the reference and
   a hook line, the reading with captions, a 2.6s end card.
-- The **caption** and six hashtags, with a copy button.
+- The **copy for each platform** — TikTok, YouTube Shorts (with a title),
+  Facebook and Instagram Reels — each with its own length and its own number
+  of hashtags, and a copy button per platform that copies exactly what gets
+  pasted there. One Gemini call returns all four, and each block is sanitised
+  on its own so one bad key never costs the other three.
 - "Next 7 days" queues a week — `getVerseForDate` is deterministic, so any date
   can be made ahead of time. Each result gets its own download link (browsers
   block a chain of automatic downloads).

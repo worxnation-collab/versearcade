@@ -23,7 +23,7 @@ import type { QuizStep } from '@/lib/tiktokRender'
 import {
   READERS, SCENES, VOICES,
   autoPick, autoCast, spokenReference, call, addDays, bedFor, useDisplayFont, DateRow, Busy, MadeCard,
-  type Copy, type Made,
+  fetchCopy, type Copy, type Made,
 } from './shared'
 
 function hash(s: string): number {
@@ -120,7 +120,7 @@ export default function QuizPost() {
     let copy: Copy | null = null
     if (withCopy) {
       setBusy(`${d}: writing the caption`)
-      try { copy = await call<Copy>('copy', { reference: v.reference, text: v.text, theme: v.theme, kind: 'quiz' }) } catch { copy = null }
+      try { copy = await fetchCopy(d, 'quiz') } catch { copy = null }
     }
     setBusy(`${d}: rendering`)
     const r = await import('@/lib/tiktokRender')

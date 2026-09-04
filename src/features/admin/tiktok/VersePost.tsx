@@ -10,7 +10,7 @@ import {
   READERS, SCENES, VOICES, ART_ORIGIN, STILL_PROMPT, LOOP_PROMPT, TEXTAREA_STYLE,
   seedFor, autoPick, autoCast, spokenReference, call, publicUrl, existsAt, addDays,
   loopUrlFor, backdropFor, tierFor, bedFor, useDisplayFont, DateRow, Busy, MadeCard,
-  type Copy, type Made,
+  fetchCopy, type Copy, type Made,
 } from './shared'
 
 export default function VersePost() {
@@ -96,7 +96,7 @@ export default function VersePost() {
     let copy: Copy | null = null
     if (withCopy) {
       setBusy(`${d}: writing the caption`)
-      try { copy = await call<Copy>('copy', { reference: v.reference, text: v.text, theme: v.theme }) } catch { copy = null }
+      try { copy = await fetchCopy(d, 'verse') } catch { copy = null }
     }
 
     setBusy(`${d}: rendering`)

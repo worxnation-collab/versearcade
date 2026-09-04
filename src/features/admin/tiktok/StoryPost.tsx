@@ -10,7 +10,7 @@ import { pickStoryVoice, secondVoiceFor } from '@/data/tiktokVoice'
 import {
   TELLERS, ROOMS, VOICES, TEXTAREA_STYLE, skinPath,
   seedFor, spokenReference, call, addDays, bedFor, fetchStory, useDisplayFont, DateRow, Busy, MadeCard,
-  type Copy, type Made, type Story, type Renderer,
+  fetchCopy, type Copy, type Made, type Story, type Renderer,
 } from './shared'
 
 export default function StoryPost() {
@@ -100,7 +100,7 @@ export default function StoryPost() {
     let copy: Copy | null = null
     if (withCopy) {
       setBusy(`${d}: writing the caption`)
-      try { copy = await call<Copy>('copy', { reference: v.reference, text: v.text, theme: v.theme, kind: 'story' }) } catch { copy = null }
+      try { copy = await fetchCopy(d, 'story') } catch { copy = null }
     }
     setBusy(`${d}: rendering`)
     const r = await import('@/lib/tiktokRender')

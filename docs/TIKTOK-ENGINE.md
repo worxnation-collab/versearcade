@@ -61,8 +61,11 @@ title and hashtag count. The key lives in Vault (`tiktok_ayrshare_key()`,
   TikTok: public, `isAIGenerated` for the same reason, caption on one line
   because TikTok drops line breaks. Facebook: a Reel with the hook as its
   title. Instagram: a Reel shared to the feed, five hashtags at most. X: one
-  line under 280 characters with two tags, borrowing TikTok's line on a day
-  whose copy predates X.
+  line under 280 characters with two tags (and Ayrshare still calls it
+  `twitter` on the wire — `ayrshareName()` in `social.ts` is the one place
+  that translates). Snapchat: Spotlight AND a saved story on the public
+  profile, TikTok's short line with three tags. A platform with no block of
+  its own borrows TikTok's.
 - **A platform that isn't linked in Ayrshare yet is skipped, not failed.**
   `post` reads the account's active networks first and records a `skipped`
   row for the rest, so X can sit in every list before the account exists and

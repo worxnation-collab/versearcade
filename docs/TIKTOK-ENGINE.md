@@ -34,9 +34,36 @@ scrolled to find anything on.
   can be made ahead of time. Each result gets its own download link (browsers
   block a chain of automatic downloads).
 
-What's left for a human: upload to TikTok, paste the caption. There is no
-TikTok posting integration on purpose — their Content Posting API needs an
-audited app for public posts, and one upload a day is a thirty-second job.
+What's left for a human: pressing **Post it now** (or picking a time and
+pressing **Schedule it**) on the finished card.
+
+## Posting goes through Ayrshare
+
+Every platform's own posting API needs an audited developer app before a post
+can be public (TikTok's Content Posting API, YouTube's Data API, Meta's Graph
+API), and driving a logged-in browser instead is what their fraud detection
+looks for. So the four accounts are connected ONCE in Ayrshare's dashboard,
+and the function's `post` action hands it a public video URL and that day's
+per-platform words — one request per platform, so each gets its own text,
+title and hashtag count. The key lives in Vault (`tiktok_ayrshare_key()`,
+`0101`) or as an `AYRSHARE_API_KEY` function secret, never in the tree.
+
+- **The browser's two steps.** `upload-url` gives it a signed upload URL for
+  `days/<date>/<kind>.mp4` (the bucket is service-role write only, and a 20MB
+  MP4 is too big to route through the function); it puts the file there, then
+  calls `post` with the public URL. A WebM is refused up front: TikTok and
+  Instagram will not take one, so render in Chrome.
+- **Idempotent per (date, kind, platform).** A retry after a network blip
+  cannot post the same video twice. What went out is parked at
+  `days/<date>/posted-<kind>.json`, and the card shows it after a reload.
+- **The per-platform options are deliberate.** YouTube: `shorts`, public,
+  not made for kids, `containsSyntheticMedia` (the voice is synthetic).
+  TikTok: public, `isAIGenerated` for the same reason, caption on one line
+  because TikTok drops line breaks. Facebook: a Reel with the hook as its
+  title. Instagram: a Reel shared to the feed, five hashtags at most.
+- **`social`** reports what Ayrshare has connected and this month's post
+  count against the plan's quota; the hub shows it, and warns in coral on a
+  plan that three videos on four networks (twelve posts a day) will exhaust.
 
 ## The two halves
 

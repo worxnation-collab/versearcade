@@ -450,6 +450,14 @@ design: `docs/TIKTOK-ENGINE.md`. Five things to know:
   `features/arena/cpu.ts` with the game's scoring, seeded from the date; the
   clock runs all the way down on every question so a viewer can play along,
   and a wrong answer shows the question's own `teach` line.
+- **Posting goes through Ayrshare, never a platform app or a logged-in
+  browser.** The four accounts are connected once in Ayrshare's dashboard;
+  the function's `post` action uploads nothing itself — the browser parks the
+  MP4 in the bucket through a signed upload URL, then the function hands
+  Ayrshare the public URL with that day's per-platform words, one request per
+  platform, idempotent per (date, kind, platform). The key is in Vault
+  (`tiktok_ayrshare_key()`, 0101). A WebM is refused before any quota is
+  spent: TikTok and Instagram will not take one.
 
 ## Church pages
 
@@ -1320,7 +1328,17 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0099` (the Prayer Wall — `prayer_requests`,
+The latest is `0101` (`tiktok_ayrshare_key()` — the Ayrshare key for the
+TikTok engine's `post` action, read out of Vault, service_role only), APPLIED
+on 2026-09-04 and verified: the ACL reads `{postgres,service_role}` and the
+function returns a 35-character key. The key was written with
+`vault.create_secret` and is in no file; the `tiktok-gen` Edge Function (v8)
+prefers an `AYRSHARE_API_KEY` function secret and falls back to it. **It took
+0101 because `0100` was already `0100_daily_answer_poll` on main** — the
+same-day collision this file keeps warning about, caught by `list_migrations`
+before the apply.
+
+Before it, `0099` (the Prayer Wall — `prayer_requests`,
 `prayer_intercessions`, and the deal / kneel / report / admin RPCs), APPLIED
 on 2026-09-03 through the Supabase MCP as `0099_prayer_wall` and verified: the
 four helper functions' ACLs read `{postgres=X}` only (they were `revoke all`ed
@@ -1517,7 +1535,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0100` (0099 is taken by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0102` (0101 is taken by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

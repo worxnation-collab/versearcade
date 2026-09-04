@@ -16,10 +16,17 @@
 //   loop-status { key, op }                      → { done, url? }    polls Veo; on completion parks readers/<key>.mp4
 //   copy        { date?, reference, text, theme, kind?, force? } → { hook, caption, hashtags[], platforms }  post copy per platform (TikTok, YouTube, Facebook, Instagram) via Gemini Flash; kind 'story' or 'quiz' changes what the post is; cached at days/<date>/copy-<kind>.json
 //   story       { date, reference, text, ... }    → { title, hook, paragraphs[] }   the story behind the verse, cached at days/<date>/story.json
+//   upload-url  { path }                          → { path, token, publicUrl }  a signed upload URL for a finished video (days/<date>/<kind>.mp4), so the browser can put it in the bucket
+//   post        { date, kind, videoUrl, platforms[], scheduleDate? } → { results[] }  posts the video with that day's copy through Ayrshare, one call per platform; parked at days/<date>/posted-<kind>.json
+//   posted      { date, kind }                    → { results[] } | {}  what `post` recorded for that day, if anything
+//   social      {}                                → { accounts[], posts, quota }  the Ayrshare profile: which networks are connected and this month's post count
 //
 // Secrets: GEMINI_API_KEY — as a function secret, or in Vault under the same
 // name (read through `tiktok_gemini_key()`, 0097; the function secret wins if
-// both exist). Optional model overrides so a renamed
+// both exist). AYRSHARE_API_KEY the same way (`tiktok_ayrshare_key()`, 0101):
+// Ayrshare is the posting service in front of TikTok, YouTube, Facebook and
+// Instagram, so no platform app or token ever lives here. Optional model
+// overrides so a renamed
 // preview model is a dashboard setting rather than a redeploy:
 //   GEMINI_TTS_MODEL   (default gemini-2.5-flash-preview-tts)
 //   GEMINI_IMAGE_MODEL (default gemini-3-pro-image — what scripts/gen-art.mjs uses)
@@ -40,6 +47,8 @@ const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 // Resolved per request into this module-level slot so the helpers below stay
 // simple; it is the same value every time.
 let GEMINI_KEY = ''
+let AYRSHARE_KEY = ''
+const AYRSHARE = 'https://api.ayrshare.com/api'
 const TTS_MODEL = Deno.env.get('GEMINI_TTS_MODEL') ?? 'gemini-2.5-flash-preview-tts'
 const IMAGE_MODEL = Deno.env.get('GEMINI_IMAGE_MODEL') ?? 'gemini-3-pro-image'
 const TEXT_MODEL = Deno.env.get('GEMINI_TEXT_MODEL') ?? 'gemini-3.6-flash'
@@ -109,6 +118,19 @@ async function gemini(path: string, body: unknown, method = 'POST'): Promise<Rec
   return JSON.parse(text)
 }
 
+async function ayrshare(path: string, body: unknown, method = 'POST'): Promise<Record<string, unknown>> {
+  const res = await fetch(`${AYRSHARE}/${path}`, {
+    method,
+    headers: { 'content-type': 'application/json', Authorization: `Bearer ${AYRSHARE_KEY}` },
+    body: method === 'GET' ? undefined : JSON.stringify(body),
+  })
+  const text = await res.text()
+  let data: Record<string, unknown> = {}
+  try { data = JSON.parse(text) } catch { data = { status: 'error', raw: text.slice(0, 400) } }
+  if (!res.ok && !data.status) data.status = 'error'
+  return data
+}
+
 // FNV-1a over a string, as 8 hex characters — enough to tell two delivery
 // notes apart in a filename, which is all it is for.
 function fnv(s: string): string {
@@ -147,6 +169,17 @@ Deno.serve(async (req) => {
       GEMINI_KEY = typeof data === 'string' ? data : ''
     }
     if (!GEMINI_KEY) return json({ error: 'GEMINI_API_KEY is not configured (function secret or Vault)' }, 500)
+
+    // The posting actions need Ayrshare's key too — same two homes as Gemini's.
+    const peek = await req.clone().json().catch(() => ({}))
+    if (['post', 'social'].includes(String(peek.action ?? ''))) {
+      AYRSHARE_KEY = Deno.env.get('AYRSHARE_API_KEY') ?? ''
+      if (!AYRSHARE_KEY) {
+        const { data } = await admin.rpc('tiktok_ayrshare_key')
+        AYRSHARE_KEY = typeof data === 'string' ? data : ''
+      }
+      if (!AYRSHARE_KEY) return json({ error: 'AYRSHARE_API_KEY is not configured (function secret or Vault)' }, 500)
+    }
 
     // The bucket is created on first use. Public read is fine: everything in
     // it is a piece of a public video. Writes go through the service key only.
@@ -385,6 +418,102 @@ Deno.serve(async (req) => {
       const out = { hook: String(parsed.hook ?? '').slice(0, 80), caption: platforms.tiktok.text, hashtags: platforms.tiktok.tags, platforms }
       if (path) await park(path, new TextEncoder().encode(JSON.stringify(out)), 'application/json')
       return json({ ...out, cached: false })
+    }
+
+    // ---- upload-url: let the browser park a finished video ------------------
+    // The bucket takes writes from this function only, and a 20MB MP4 is too
+    // big to route through it, so the browser gets a signed upload URL for a
+    // path shaped exactly like the videos this engine makes.
+    if (action === 'upload-url') {
+      const path = String(input.path ?? '')
+      if (!/^days\/\d{4}-\d{2}-\d{2}\/(verse|story|quiz)\.(mp4|webm)$/.test(path)) return json({ error: 'bad path' }, 400)
+      const { data, error } = await admin.storage.from(BUCKET).createSignedUploadUrl(path, { upsert: true })
+      if (error || !data) return json({ error: error?.message ?? 'no upload url' }, 500)
+      return json({ path, token: data.token, publicUrl: publicUrl(path) })
+    }
+
+    // ---- post: hand a finished video to Ayrshare, one call per platform ------
+    // Each platform gets ITS OWN words (the per-platform copy cached for that
+    // day and kind), because one caption pasted four times reads as one caption
+    // pasted four times. One request per platform is what makes that possible;
+    // an idempotency key per (date, kind, platform) means a retry after a
+    // network blip can't post the same video twice. Results are parked so the
+    // dashboard can show what went out after a reload.
+    if (action === 'post') {
+      const date = String(input.date ?? '')
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: 'date must be YYYY-MM-DD' }, 400)
+      const kind = input.kind === 'story' ? 'story' : input.kind === 'quiz' ? 'quiz' : 'verse'
+      const videoUrl = String(input.videoUrl ?? '')
+      if (!/^https:\/\/.+\.(mp4|mov)(\?.*)?$/i.test(videoUrl)) return json({ error: 'videoUrl must be an https .mp4 (TikTok and Instagram refuse WebM — render in Chrome)' }, 400)
+      const ALL = ['tiktok', 'youtube', 'facebook', 'instagram']
+      const platforms = (Array.isArray(input.platforms) ? (input.platforms as unknown[]).map(String) : ALL).filter((p) => ALL.includes(p))
+      if (!platforms.length) return json({ error: 'no platforms' }, 400)
+      const scheduleDate = typeof input.scheduleDate === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(input.scheduleDate) ? input.scheduleDate : undefined
+
+      const { data: file } = await admin.storage.from(BUCKET).download(`days/${date}/copy-${kind}.json`)
+      if (!file) return json({ error: `no copy for ${date} ${kind} yet — open Today's words first` }, 400)
+      const copy = JSON.parse(await file.text()) as { hook?: string; platforms?: Record<string, { title?: string; text?: string; tags?: string[] }> }
+      const reference = String(input.reference ?? '').slice(0, 80)
+      const tagLine = (tags: string[] | undefined, n: number) => (tags ?? []).slice(0, n).map((t) => '#' + t).join(' ')
+
+      const results: Array<Record<string, unknown>> = []
+      for (const platform of platforms) {
+        const c = copy.platforms?.[platform] ?? {}
+        const body: Record<string, unknown> = {
+          platforms: [platform], mediaUrls: [videoUrl], isVideo: true,
+          idempotencyKey: `va-${date}-${kind}-${platform}`,
+          notes: `Verse Arcade ${kind} ${date}`,
+        }
+        if (scheduleDate) body.scheduleDate = scheduleDate
+        if (platform === 'tiktok') {
+          // TikTok ignores line breaks, so the caption is one line. The voice
+          // is synthetic and the figures are painted, so the post is labelled.
+          body.post = [c.text ?? '', tagLine(c.tags, 5)].filter(Boolean).join(' ').slice(0, 2200)
+          body.tikTokOptions = { visibility: 'public', isAIGenerated: true }
+        } else if (platform === 'youtube') {
+          body.post = [c.text ?? '', tagLine(c.tags, 5)].filter(Boolean).join('\n\n').slice(0, 5000)
+          body.youTubeOptions = { title: (c.title || `${reference || 'Verse Arcade'} · Verse Arcade`).slice(0, 100), visibility: 'public', shorts: true, madeForKids: false, containsSyntheticMedia: true }
+        } else if (platform === 'facebook') {
+          body.post = [c.text ?? '', tagLine(c.tags, 2)].filter(Boolean).join('\n\n').slice(0, 5000)
+          body.faceBookOptions = { reels: true, title: (copy.hook || reference || 'Verse Arcade').slice(0, 255) }
+        } else {
+          // Instagram: at most five hashtags through the posting API.
+          body.post = [c.text ?? '', tagLine(c.tags, 5)].filter(Boolean).join('\n\n').slice(0, 2200)
+          body.instagramOptions = { shareReelsFeed: true }
+        }
+        const r = await ayrshare('post', body)
+        const ids = Array.isArray(r.postIds) ? (r.postIds as Array<Record<string, unknown>>) : []
+        const errs = Array.isArray(r.errors) ? (r.errors as Array<Record<string, unknown>>) : []
+        results.push({
+          platform, status: String(r.status ?? 'error'), id: r.id ?? null,
+          postUrl: ids[0]?.postUrl ?? null, postId: ids[0]?.id ?? null,
+          error: errs[0]?.message ?? (r.status === 'error' ? String(r.message ?? r.raw ?? 'failed') : null),
+          scheduleDate: scheduleDate ?? null,
+        })
+      }
+      const record = { date, kind, videoUrl, at: new Date().toISOString(), results }
+      await park(`days/${date}/posted-${kind}.json`, new TextEncoder().encode(JSON.stringify(record)), 'application/json')
+      return json(record)
+    }
+
+    if (action === 'posted') {
+      const date = String(input.date ?? '')
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: 'date must be YYYY-MM-DD' }, 400)
+      const kind = input.kind === 'story' ? 'story' : input.kind === 'quiz' ? 'quiz' : 'verse'
+      const { data: file } = await admin.storage.from(BUCKET).download(`days/${date}/posted-${kind}.json`)
+      if (!file) return json({})
+      return json(JSON.parse(await file.text()))
+    }
+
+    // ---- social: what Ayrshare has connected, and the month's count ---------
+    if (action === 'social') {
+      const u = await ayrshare('user', null, 'GET')
+      if (u.status === 'error') return json({ error: String(u.message ?? u.raw ?? 'Ayrshare refused') }, 502)
+      const names = Array.isArray(u.displayNames) ? (u.displayNames as Array<Record<string, unknown>>) : []
+      return json({
+        accounts: names.map((n) => ({ platform: String(n.platform ?? ''), name: String(n.displayName ?? n.username ?? '') })),
+        posts: Number(u.monthlyPostCount ?? 0), quota: Number(u.monthlyPostQuota ?? 0),
+      })
     }
 
     return json({ error: `unknown action ${action}` }, 400)

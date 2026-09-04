@@ -14,7 +14,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { todayLocalDate } from '@/lib/date'
 import { getVerseForDate } from '@/data/bible/questions'
-import { addDays, fetchCopy, CopyBlocks, type Copy, type Made } from './tiktok/shared'
+import { addDays, call, fetchCopy, CopyBlocks, type Copy, type Made } from './tiktok/shared'
 
 const VersePost = lazy(() => import('./tiktok/VersePost'))
 const StoryPost = lazy(() => import('./tiktok/StoryPost'))
@@ -73,6 +73,21 @@ function TodaysWords() {
   )
 }
 
+// Which networks Ayrshare has connected, and how much of the month's quota is
+// used. A failed lookup renders nothing rather than a warning: the posting
+// buttons say what is wrong at the moment it matters.
+function SocialStatus() {
+  const [s, setS] = useState<{ accounts: Array<{ platform: string; name: string }>; posts: number; quota: number } | null>(null)
+  useEffect(() => { call<typeof s>('social', {}).then((x) => setS(x)).catch(() => setS(null)) }, [])
+  if (!s) return null
+  return (
+    <p className="faint" style={{ fontSize: 11, marginTop: 10, lineHeight: 1.5 }}>
+      Posting through Ayrshare · {s.accounts.map((a) => `${a.platform} (${a.name})`).join(' · ')} · {s.posts} of {s.quota} posts used this month
+      {s.quota > 0 && s.quota < 100 && <span style={{ color: 'var(--coral)' }}> — three videos on four networks is twelve a day; this plan will run out</span>}
+    </p>
+  )
+}
+
 export default function TikTokPanel() {
   const [open, setOpen] = useState<Kind | null>(null)
   const current = POSTS.find((p) => p.id === open)
@@ -98,6 +113,7 @@ export default function TikTokPanel() {
           ))}
         </div>
         <TodaysWords />
+        <SocialStatus />
       </div>
     )
   }

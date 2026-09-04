@@ -438,9 +438,12 @@ design: `docs/TIKTOK-ENGINE.md`. Five things to know:
   faceless account cannot afford. So: paintings held nearly still (a 1.5-2%
   push), a figure with its feet on the ground, no glow, and a painted still
   now beating the Veo loop in `tierFor`. What moves instead is the word being
-  spoken, lit gold — `timeWords()` places words inside a phrase by CUMULATIVE
-  SPEECH ENERGY rather than elapsed time, so a breath between two words moves
-  neither of them. Anything added here has to earn its motion.
+  spoken, lit gold — and it is lit where the word was HEARD:
+  `lib/tiktokAlign.ts` transcribes the reading in the browser (Whisper
+  tiny.en through transformers.js, ~40MB fetched once) and matches the words
+  back onto the caption. `timeWords()`'s energy heuristic is the fallback and
+  was measured a full second off on one word, which is why it is not the
+  answer. Anything added here has to earn its motion.
 - **The quiz replays YESTERDAY, and the CPU is the game's own.** The five
   questions are the same five for everybody on a date, so a public replay of
   today's would hand out today's answers. The player is `buildCpuPlan` from

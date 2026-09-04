@@ -34,7 +34,9 @@
 // verse,story,quiz), POST_TIMES (default verse=07:00,quiz=12:30,story=19:30),
 // PLATFORMS (default all four), DRY_RUN (render only), FFMPEG (binary path),
 // PW_CHROMIUM (executable path when Playwright's own browser is not installed),
-// MODELS_DIR (serve the aligner's Whisper model and ONNX runtime locally).
+// RERENDER (make the video again even if the day's is already in the bucket),
+// MODELS_DIR (serve the aligner's Whisper model, ONNX runtime and, if
+// `fonts/baloo2-{700,800}.ttf` are there, the display font locally).
 //
 // Idempotent per (date, kind, platform) on Ayrshare's side, so a re-run of the
 // same day cannot post the same video twice.
@@ -128,10 +130,16 @@ await build({
   outfile: path.join(OUT, 'social.mjs'), logLevel: 'error',
 })
 const social = await import(path.join(OUT, 'social.mjs'))
+// The verse for a date, for the reference a skipped render would have reported.
+await build({
+  entryPoints: [path.join(ROOT, 'src/data/bible/questions.ts')], bundle: true, format: 'esm', platform: 'node', target: 'es2022',
+  outfile: path.join(OUT, 'verses.mjs'), alias: { '@': path.join(ROOT, 'src') }, define: defines, logLevel: 'error',
+})
+const { getVerseForDate } = await import(path.join(OUT, 'verses.mjs'))
 fs.writeFileSync(path.join(OUT, 'daily.html'), '<!doctype html><meta charset="utf-8"><title>tiktok daily</title><body><script type="module" src="./daily.mjs"></script>')
 
 // ---- the server: the page, the app's art, and (local mode) a shim for the function --
-const MIME = { '.html': 'text/html', '.mjs': 'text/javascript', '.js': 'text/javascript', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.mp4': 'video/mp4', '.wav': 'audio/wav', '.svg': 'image/svg+xml', '.wasm': 'application/wasm' }
+const MIME = { '.ttf': 'font/ttf', '.html': 'text/html', '.mjs': 'text/javascript', '.js': 'text/javascript', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.mp4': 'video/mp4', '.wav': 'audio/wav', '.svg': 'image/svg+xml', '.wasm': 'application/wasm' }
 function serveFile(res, file) {
   if (!fs.existsSync(file) || !fs.statSync(file).isFile()) { res.writeHead(404); res.end(); return }
   res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream', 'content-length': fs.statSync(file).size })
@@ -203,8 +211,11 @@ const server = http.createServer(async (req, res) => {
         method: req.method, body: req.method === 'POST' ? Buffer.concat(chunks) : undefined,
         headers: { 'content-type': req.headers['content-type'] || 'application/json', apikey: ANON, Authorization: `Bearer ${ANON}`, 'x-runner-token': RUNNER_TOKEN },
       })
+      // Public URLs the function returns (the parked reading, a still) are
+      // rewritten onto this origin so the page fetches them through here too.
+      const text = (await r.text()).split(SUPABASE_URL).join(origin)
       res.writeHead(r.status, { 'content-type': r.headers.get('content-type') || 'application/json' })
-      res.end(Buffer.from(await r.arrayBuffer())); return
+      res.end(text); return
     }
     if (url.pathname.startsWith('/storage/v1/')) {
       // The app's art in the bucket (painted stills, loops): straight through.
@@ -214,7 +225,7 @@ const server = http.createServer(async (req, res) => {
       res.end(req.method === 'HEAD' ? undefined : Buffer.from(await r.arrayBuffer())); return
     }
     if (url.pathname === '/daily.html' || url.pathname === '/daily.mjs' || url.pathname.startsWith('/cache/')) return serveFile(res, path.join(OUT, url.pathname))
-    if (MODELS_DIR && (url.pathname.startsWith('/models/') || url.pathname.startsWith('/ort/'))) return serveFile(res, path.join(MODELS_DIR, decodeURIComponent(url.pathname)))
+    if (MODELS_DIR && (url.pathname.startsWith('/models/') || url.pathname.startsWith('/ort/') || url.pathname.startsWith('/fonts/'))) return serveFile(res, path.join(MODELS_DIR, decodeURIComponent(url.pathname)))
     return serveFile(res, path.join(ROOT, 'public', decodeURIComponent(url.pathname)))
   } catch (e) { res.writeHead(500); res.end(String(e)) }
 })
@@ -241,8 +252,9 @@ const proxy = env.PW_PROXY || env.HTTPS_PROXY || env.https_proxy || ''
 const browser = await chromium.launch({ headless: true, executablePath: env.PW_CHROMIUM || undefined, proxy: proxy ? { server: proxy, bypass: '127.0.0.1,localhost' } : undefined })
 const context = await browser.newContext({ acceptDownloads: true, ignoreHTTPSErrors: !!proxy })
 const page = await context.newPage()
-if (MODELS_DIR) await page.addInitScript((o) => { window.__vaModelBase = o }, origin)
-page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') log('  [page]', m.text().slice(0, 240)) })
+if (MODELS_DIR) await page.addInitScript((o) => { window.__vaModelBase = o.base; window.__vaLocalFonts = o.fonts }, { base: origin, fonts: fs.existsSync(path.join(MODELS_DIR, 'fonts', 'baloo2-700.ttf')) })
+page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') log('  [page]', m.text().slice(0, 240), m.location()?.url ? `(${m.location().url.slice(0, 160)})` : '') })
+page.on('requestfailed', (r) => log('  [net]', r.failure()?.errorText, r.url().slice(0, 160)))
 await page.goto(`${origin}/daily.html`, { waitUntil: 'load' })
 await page.waitForFunction(() => !!window.versearcadeDaily, null, { timeout: 60_000 })
 
@@ -252,6 +264,30 @@ for (const kind of KINDS) {
   const at = zonedToUtc(today, TIMES[kind] || '12:00', TZ)
   const scheduleDate = at.getTime() > Date.now() + 90_000 ? at.toISOString().replace(/\.\d{3}Z$/, 'Z') : undefined
   log(`${kind} ${date} → ${scheduleDate ? `scheduled ${TIMES[kind]} ${TZ} (${scheduleDate})` : 'posts now'}`)
+
+  // Make what is missing. A second run on the same day (a retry after the
+  // posting service refused, a manual dispatch after the cron) must not
+  // re-render five minutes of video or post a second time: a post already
+  // accepted for every platform is skipped, and a video already parked in
+  // the bucket is posted as it is unless RERENDER is set.
+  let videoUrl, posted
+  if (mode === 'function' && !DRY) {
+    const prior = await fn('posted', { date, kind }).catch(() => ({}))
+    const rows = Array.isArray(prior.results) ? prior.results : []
+    if (rows.length && rows.every((r) => r.status !== 'error')) {
+      log(`  already posted (${rows.map((r) => `${r.platform} ${r.status}`).join(', ')})`)
+      results.push({ kind, date, videoUrl: prior.videoUrl, results: rows, skipped: 'posted' }); continue
+    }
+    const parked = `${SUPABASE_URL}/storage/v1/object/public/tiktok/days/${date}/${kind}.mp4`
+    const head = await fetch(parked, { method: 'HEAD' }).catch(() => null)
+    if (!/^(1|true|yes)$/i.test(env.RERENDER || '') && head?.ok && /^video\//.test(head.headers.get('content-type') || '')) {
+      log(`  already rendered (${(Number(head.headers.get('content-length') || 0) / 1e6).toFixed(1)}MB in the bucket) — posting that`)
+      videoUrl = parked
+      posted = await fn('post', { date, kind, videoUrl, platforms: PLATFORMS, scheduleDate, reference: getVerseForDate(date).reference })
+      for (const r of posted.results) log(`  ${r.platform.padEnd(10)} ${r.status}${r.error ? ` — ${r.error}` : ''}${r.postUrl ? ` ${r.postUrl}` : ''}`)
+      results.push({ kind, date, videoUrl, scheduleDate, results: posted.results, skipped: 'render' }); continue
+    }
+  }
   const ticker = setInterval(async () => { try { log('  ', await page.evaluate(() => window.__progress)) } catch { /* between pages */ } }, 20_000)
   let rendered, dl
   try {
@@ -277,7 +313,6 @@ for (const kind of KINDS) {
   log(`  mp4 ${(fs.statSync(mp4).size / 1e6).toFixed(1)}MB`)
   if (DRY) { results.push({ kind, date, mp4, dryRun: true }); continue }
 
-  let videoUrl, posted
   if (mode === 'function') {
     const up = await fn('upload-url', { path: `days/${date}/${kind}.mp4` })
     const sb = createClient(SUPABASE_URL, ANON)

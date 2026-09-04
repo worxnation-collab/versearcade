@@ -34,6 +34,8 @@ declare global {
     __progress: string
     /** Set by the runner when it serves the aligner's model itself (MODELS_DIR). */
     __vaModelBase?: string
+    /** …and the display font, from the same directory. */
+    __vaLocalFonts?: boolean
   }
 }
 
@@ -52,6 +54,13 @@ function localModels() {
 
 function ensureFont() {
   if (document.getElementById('va-tiktok-font')) return
+  if (window.__vaLocalFonts && window.__vaModelBase) {
+    const style = document.createElement('style')
+    style.id = 'va-tiktok-font'
+    style.textContent = [700, 800].map((w) => `@font-face{font-family:'Baloo 2';font-weight:${w};src:url('${window.__vaModelBase}/fonts/baloo2-${w}.ttf') format('truetype')}`).join('\n')
+    document.head.appendChild(style)
+    return
+  }
   const link = document.createElement('link')
   link.id = 'va-tiktok-font'
   link.rel = 'stylesheet'

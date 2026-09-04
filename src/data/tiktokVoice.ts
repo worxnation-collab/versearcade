@@ -147,7 +147,15 @@ export function gradeFor(seed: VoiceSeed): 'dusk' | 'night' | undefined {
   return mood === 'comfort' ? 'dusk' : mood === 'warning' ? 'night' : undefined
 }
 
-/** The reaction beat each story paragraph gets: talk, listen, a laugh for the bright moods, and the lean-in for the verse. */
+/**
+ * The reaction beat each story paragraph gets: talk, listen, a laugh for the
+ * bright moods, and the lean-in for the verse.
+ *
+ * UNWIRED. The story post no longer cuts between Veo loops of Tabitha — the
+ * mouth movement was the most generated-looking thing in it, and the room is
+ * a painting now. Kept because putting the loops back should be a line rather
+ * than a rewrite; nothing calls this.
+ */
 export function storyBeats(seed: VoiceSeed, paragraphs: number): Array<'talk' | 'listen' | 'laugh' | 'leanin'> {
   const mood = moodFor(seed)
   const bright = mood === 'praise' || mood === 'promise' || mood === 'story'
@@ -281,6 +289,13 @@ const SCENE_BY_GROUP = (book: string, testament: 'OT' | 'NT'): string => {
  * One picture per paragraph: the place and the person for the opening, a
  * collectible-card illustration matched to the middle, another for the
  * aftermath (or the place again), and the verse itself for the close.
+ *
+ * UNWIRED, and the deck it draws from (`SCENE_DECK`, the twelve places in
+ * public/tiktok/scenes) with it. The picture card above Tabitha was replaced
+ * by the panel that holds her own words, lit a word at a time: a picture
+ * only loosely about the sentence being spoken was costing the frame that
+ * the scene itself now fills. Kept for the same reason `storyBeats` is —
+ * nothing calls it.
  */
 export function storyCards(seed: VoiceSeed & { before?: string; after?: string }, paragraphs: number): StoryCardPick[] {
   const reader = readerFor(seed)

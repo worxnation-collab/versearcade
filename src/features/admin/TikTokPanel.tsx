@@ -1,6 +1,6 @@
 // Admin → TikTok: the daily-post engine.
 //
-// One post a day: a painted figure (Peter/Cephas by default) hovering over a
+// One post a day: a painted figure (Peter/Cephas by default) standing in a
 // Verse Arcade scene, reading the verse of the day, captioned. This panel is
 // the whole workflow — pick a day, press one button, download the MP4 and copy
 // the caption. It is an OPERATOR surface (admin-only, online-only, desktop
@@ -29,8 +29,8 @@ import { supabase } from '@/lib/supabase'
 import { todayLocalDate } from '@/lib/date'
 import { getVerseForDate } from '@/data/bible/questions'
 import { VERSE_POOL } from '@/data/bible/pool'
-import { pickVoice, pickCast, pickStoryVoice, storyCards, storyBeats, gradeFor, secondVoiceFor, PICKER_VOICES, type VoiceSeed } from '@/data/tiktokVoice'
-import type { Backdrop, TimedPhrase, StoryCard } from '@/lib/tiktokRender'
+import { pickVoice, pickCast, pickStoryVoice, gradeFor, secondVoiceFor, PICKER_VOICES, type VoiceSeed } from '@/data/tiktokVoice'
+import type { Backdrop, TimedPhrase } from '@/lib/tiktokRender'
 
 const BUCKET = 'tiktok'
 const READERS = [
@@ -51,7 +51,12 @@ const VOICES = Array.from(new Set([...PICKER_VOICES, 'Algenib', 'Sadaltager', 'I
 // Story time: who tells it and where. Tabitha in her library by default; any
 // reader figure can stand in, and the rooms are the app's own paintings.
 const TELLERS = [{ id: 'tabitha', name: 'Tabitha (librarian)' }, ...READERS]
+// `hasTeller` means the painting already has the storyteller in it, so no
+// figure is drawn over it. The story circle is the default and the only one
+// of these painted for this: Tabitha on her stool with children sitting
+// cross-legged in front of her (art/tiktok-rooms.json).
 const ROOMS = [
+  { id: '/tiktok/rooms/story-circle.jpg', name: 'Story circle', hasTeller: true },
   { id: '/keep/study-library.jpg', name: 'The library' },
   { id: '/room/room-2.jpg', name: 'Upper Room' },
   { id: '/room/room-4.jpg', name: 'Upper Room (finer)' },
@@ -227,10 +232,15 @@ export default function TikTokPanel() {
   }
   // Best tier that exists for a figure+scene — probed per day, since a batch
   // with an automatic cast changes reader from one day to the next.
+  // A PAINTED STILL now wins over the Veo loop, which is a reversal: the loop
+  // was the top tier because it had real motion, and real motion is exactly
+  // what made the post look generated — the reader hovered. A still painting
+  // with a barely-there push reads as art. The loop stays above the built-in
+  // tier, since a loop that exists was made from the layout's own base frame.
   async function tierFor(rd: string, sc: string): Promise<'loop' | 'still' | 'builtin'> {
     const k = `${rd}-${sc}`
-    if (await loopUrlFor(k)) return 'loop'
     if (await existsAt(publicUrl(`readers/${k}.png`))) return 'still'
+    if (await loopUrlFor(k)) return 'loop'
     return 'builtin'
   }
 
@@ -247,41 +257,19 @@ export default function TikTokPanel() {
     const sd = seedFor(d)
     return call<Story>('story', { date: d, force, reference: v.reference, text: v.text, theme: v.theme, speaker: sd.speaker, audience: sd.audience, before: sd.before, after: sd.after, facts: sd.facts })
   }
-  async function storyAssets(d: string, st: Story, tellerId = teller, roomPath = room) {
+  async function storyAssets(tellerId = teller, roomPath = room) {
     const r = await import('@/lib/tiktokRender')
-    const v = getVerseForDate(d)
-    const picks = storyCards(seedFor(d), st.paragraphs.length + 1)
-    // A picture that fails to load (a deck scene not shipped yet, a bad
-    // path) falls back to the road rather than failing the whole story.
-    const safeImage = async (path?: string) => {
-      if (!path) return undefined
-      try { return await r.loadImage(path) } catch { return r.loadImage('/road/harvest.jpg') }
-    }
-    const cards: StoryCard[] = await Promise.all(picks.map(async (c) => ({
-      image: await safeImage(c.image),
-      figure: c.figure ? await r.loadImage(c.figure) : undefined,
-      label: c.label,
-    })))
-    const tellerImg = await r.loadImage(skinPath(tellerId))
-    // Tabitha in her library has a Veo loop of the two together; any other
-    // pairing draws the teller over the painting.
-    const loopKey = tellerId === 'tabitha' && roomPath === ROOMS[0].id ? 'tabitha-library' : null
-    const loopUrl = loopKey ? await loopUrlFor(loopKey) : null
-    const roomImg: HTMLImageElement | HTMLVideoElement = loopUrl ? await r.loadVideo(loopUrl) : await r.loadImage(roomPath)
-    // Her reaction loops, whichever have shipped; a missing one means that
-    // paragraph stays on the main loop.
-    const reactions: { listen?: HTMLVideoElement; laugh?: HTMLVideoElement; leanin?: HTMLVideoElement } = {}
-    if (loopUrl) {
-      for (const k of ['listen', 'laugh', 'leanin'] as const) {
-        const u = await loopUrlFor(`tabitha-${k}`)
-        if (u) { try { reactions[k] = await r.loadVideo(u) } catch { /* stays on the main loop */ } }
-      }
-    }
-    return { r, v, cards, roomImg, tellerImg, reactions }
+    // The story circle already has Tabitha in it; any other room draws the
+    // teller's own render over the painting.
+    const hasTeller = !!ROOMS.find((x) => x.id === roomPath)?.hasTeller
+    const tellerImg = hasTeller ? undefined : await r.loadImage(skinPath(tellerId))
+    const roomImg = await r.loadImage(roomPath).catch(() => r.loadImage('/keep/study-library.jpg'))
+    return { r, roomImg, tellerImg }
   }
   async function storyPosterFor(d: string, st: Story): Promise<string> {
-    const { r, v, cards, roomImg, tellerImg } = await storyAssets(d, st)
-    return r.renderStoryPoster({ title: st.title, reference: v.reference, verseText: v.text, paragraphs: [...st.paragraphs, v.text], cards, hook: st.hook, room: roomImg, teller: tellerImg })
+    const { r, roomImg, tellerImg } = await storyAssets()
+    const v = getVerseForDate(d)
+    return r.renderStoryPoster({ title: st.title, reference: v.reference, verseText: v.text, paragraphs: [...st.paragraphs, v.text], hook: st.hook, room: roomImg, teller: tellerImg })
   }
 
   // The evening job for one date: story → voice → copy → render.
@@ -311,13 +299,12 @@ export default function TikTokPanel() {
       try { copy = await call<Copy>('copy', { reference: v.reference, text: v.text, theme: v.theme, kind: 'story' }) } catch { copy = null }
     }
     setBusy(`${d}: rendering`)
-    const { r, cards, roomImg, tellerImg, reactions } = await storyAssets(d, st, tellerId, roomPath)
+    const { r, roomImg, tellerImg } = await storyAssets(tellerId, roomPath)
     const paragraphs = [...st.paragraphs, `${v.text.trim()} ${v.reference}.`]
     const bed = await bedFor(r, audio, st.hook || copy?.hook, true, 'cloister')
     const out = await r.renderStory({
       title: st.title, reference: v.reference, verseText: v.text,
-      paragraphs, cards, hook: st.hook || copy?.hook, audio, room: roomImg, teller: tellerImg, bed,
-      reactions, beats: storyBeats(sd, paragraphs.length),
+      paragraphs, hook: st.hook || copy?.hook, audio, room: roomImg, teller: tellerImg, bed,
       onProgress: (f, label) => { setProgress(f); setBusy(`${d}: ${label}`) },
     })
     return { date: d, kind: 'story', reference: v.reference, url: URL.createObjectURL(out.blob), ext: out.ext, size: out.blob.size, copy, phrases: out.phrases, tier: `${TELLERS.find((x) => x.id === tellerId)?.name ?? tellerId} · story` }
@@ -474,7 +461,7 @@ export default function TikTokPanel() {
             <select value={room} onChange={(e) => { setStoryCastAuto(false); setRoom(e.target.value) }}>{ROOMS.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select>
           </div>
           <div className="faint" style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span>{storyCastAuto ? 'Picked: Tabitha · The library — the pictures follow the story' : `Yours: ${TELLERS.find((x) => x.id === teller)?.name} · ${ROOMS.find((x) => x.id === room)?.name}`}</span>
+            <span>{storyCastAuto ? 'Picked: Tabitha · Story circle — the words light up as she says them' : `Yours: ${TELLERS.find((x) => x.id === teller)?.name} · ${ROOMS.find((x) => x.id === room)?.name}`}</span>
             {!storyCastAuto && <button className="pill" style={{ fontSize: 11, marginLeft: 'auto' }} onClick={() => setStoryCastAuto(true)}>↺ Auto</button>}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>

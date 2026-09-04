@@ -11,7 +11,7 @@
 // is assembled in the browser by src/lib/tiktokRender.ts, which every
 // generator imports dynamically so the muxers never reach the player bundle.
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { getVerseForDate } from '@/data/bible/questions'
 import { VERSE_POOL } from '@/data/bible/pool'
@@ -258,6 +258,88 @@ export function CopyBlocks({ copy }: { copy: Copy }) {
   )
 }
 
+// ---- posting ------------------------------------------------------------------
+//
+// A finished video goes out through Ayrshare — the four accounts are connected
+// once in its dashboard, and the function's `post` action hands it the video
+// and that day's per-platform words. The browser's part is two steps: put the
+// MP4 in the bucket (a signed upload URL, since the bucket is service-role
+// write only), then ask the function to post the public URL. What went out is
+// parked by the function, so a reload shows it.
+
+export type PostResult = { platform: string; status: string; postUrl?: string | null; error?: string | null; scheduleDate?: string | null }
+export interface Posted { at?: string; results?: PostResult[] }
+const PLATFORM_NAMES: Record<Platform, string> = { tiktok: 'TikTok', youtube: 'YouTube', facebook: 'Facebook', instagram: 'Instagram' }
+
+export async function fetchPosted(d: string, kind: Made['kind']): Promise<Posted> {
+  return call<Posted>('posted', { date: d, kind })
+}
+
+/** Upload the video to the bucket and post it; returns what Ayrshare said per platform. */
+export async function postVideo(m: Made, platforms: Platform[], scheduleDate: string | undefined, onStep: (label: string) => void): Promise<Posted> {
+  if (m.ext !== 'mp4') throw new Error('This one is a WebM; TikTok and Instagram refuse it. Render in Chrome for an MP4.')
+  onStep('Uploading the video')
+  const path = `days/${m.date}/${m.kind}.mp4`
+  const up = await call<{ path: string; token: string; publicUrl: string }>('upload-url', { path })
+  const blob = await (await fetch(m.url)).blob()
+  const { error } = await supabase!.storage.from(BUCKET).uploadToSignedUrl(up.path, up.token, blob, { contentType: 'video/mp4', upsert: true })
+  if (error) throw new Error(`upload: ${error.message}`)
+  onStep(scheduleDate ? 'Scheduling' : 'Posting')
+  return call<Posted>('post', { date: m.date, kind: m.kind, videoUrl: up.publicUrl, platforms, scheduleDate, reference: m.reference })
+}
+
+export function PostControls({ m }: { m: Made }) {
+  const [chosen, setChosen] = useState<Platform[]>(['tiktok', 'youtube', 'facebook', 'instagram'])
+  const [when, setWhen] = useState('')
+  const [busy, setBusy] = useState<string | null>(null)
+  const [posted, setPosted] = useState<Posted | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  useEffect(() => {
+    let live = true
+    fetchPosted(m.date, m.kind).then((p) => { if (live && p.results?.length) setPosted(p) }).catch(() => { /* nothing recorded */ })
+    return () => { live = false }
+  }, [m.date, m.kind])
+  const go = async () => {
+    if (busy) return
+    setErr(null); setBusy('Starting')
+    try {
+      // A local datetime from the picker becomes the UTC instant Ayrshare wants.
+      const schedule = when ? new Date(when).toISOString().replace(/\.\d{3}Z$/, 'Z') : undefined
+      setPosted(await postVideo(m, chosen, schedule, setBusy))
+    } catch (e) { setErr(String((e as Error).message || e)) } finally { setBusy(null) }
+  }
+  const toggle = (p: Platform) => setChosen((xs) => (xs.includes(p) ? xs.filter((x) => x !== p) : [...xs, p]))
+  return (
+    <div style={{ display: 'grid', gap: 6, borderTop: '1px solid var(--stroke)', paddingTop: 8 }}>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+        {(Object.keys(PLATFORM_NAMES) as Platform[]).map((p) => (
+          <label key={p} className="faint" style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <input type="checkbox" checked={chosen.includes(p)} onChange={() => toggle(p)} /> {PLATFORM_NAMES[p]}
+          </label>
+        ))}
+        <label className="faint" style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 4, marginLeft: 'auto' }}>
+          at <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} style={{ fontSize: 11 }} />
+        </label>
+      </div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <button className="pill" style={{ fontWeight: 800 }} disabled={!!busy || !chosen.length} onClick={go}>
+          {busy ? `${busy}…` : when ? '📤 Schedule it' : '📤 Post it now'}
+        </button>
+        {posted?.at && <span className="faint" style={{ fontSize: 11 }}>sent {new Date(posted.at).toLocaleString()}</span>}
+      </div>
+      {err && <p style={{ color: 'var(--coral)', fontSize: 12, margin: 0 }}>{err}</p>}
+      {posted?.results?.map((r) => (
+        <div key={r.platform} style={{ fontSize: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span style={{ width: 80 }}>{PLATFORM_NAMES[r.platform as Platform] ?? r.platform}</span>
+          <span style={{ color: r.status === 'error' ? 'var(--coral)' : 'var(--mint)' }}>{r.status}{r.scheduleDate ? ` for ${new Date(r.scheduleDate).toLocaleString()}` : ''}</span>
+          {r.postUrl && <a href={r.postUrl} target="_blank" rel="noreferrer" className="faint" style={{ fontSize: 11 }}>open ↗</a>}
+          {r.error && <span className="faint" style={{ fontSize: 11 }}>{r.error}</span>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function MadeCard({ m }: { m: Made }) {
   const name = `${FILE[m.kind]}${m.date}.${m.ext}`
   return (
@@ -269,6 +351,7 @@ export function MadeCard({ m }: { m: Made }) {
       <video src={m.url} controls playsInline style={{ width: 200, borderRadius: 12, justifySelf: 'center', background: '#000' }} />
       <a href={m.url} download={name} className="pill" style={{ textAlign: 'center', fontWeight: 800 }}>⬇️ Download {name}</a>
       {m.copy && <CopyBlocks copy={m.copy} />}
+      <PostControls m={m} />
     </div>
   )
 }

@@ -4,6 +4,7 @@ import { getVerseForDate } from '@/data/bible/questions'
 import { todayLocalDate } from '@/lib/date'
 import { localdb } from '@/lib/localdb'
 import { applyPlayLocal } from '@/lib/progress'
+import { dealFingerprint } from '@/data/poll'
 import { useAuth } from './auth'
 import type { DailyVerse, DailyPulse, PlayResult, SubmitOutcome } from '@/types'
 
@@ -105,6 +106,7 @@ export const useGame = create<GameState>((set, get) => ({
 
   async submitPlay(result) {
     const date = get().todayDate
+    const today = get().today
     const auth = useAuth.getState()
     const useBoost = get().boostArmed
 
@@ -152,6 +154,13 @@ export const useGame = create<GameState>((set, get) => ({
       p_total: result.totalQuestions,
       p_combo_max: result.comboMax,
       p_use_boost: useBoost,
+      // The poll (0100): one choice per question, -1 for a timeout, and the
+      // fingerprint of the deal they were made against. Counted server-side
+      // inside the same statement as the play, so one account is one vote.
+      // The rpc name is unchanged — a server without 0100 ignores nothing and
+      // errors nothing, because the old signature is gone and these default.
+      p_choices: result.perQuestion.map((p) => p.choiceIndex),
+      p_deal: today ? dealFingerprint(today.questions) : null,
     })
     if (error) throw error
     const outcome = normalizeOutcome(data)

@@ -14,6 +14,8 @@ import { useLibrary } from '@/store/library'
 import { scoreQuestion } from '@/lib/progress'
 import { SCORING } from '@/lib/config'
 import { clearRun, readRun, saveRun } from '@/lib/runProgress'
+import { AnswerPoll as AnswerPollBars } from '@/components/AnswerPoll'
+import type { AnswerPoll } from '@/data/poll'
 import type { DailyVerse, PlayResult } from '@/types'
 
 type Phase = 'read' | 'question' | 'feedback' | 'submitting'
@@ -95,8 +97,18 @@ export function QuizRunner({
   startGate,
   studyDrop = false,
   runId,
+  poll,
 }: {
   verse: DailyVerse
+  /**
+   * How everybody answered this deal — the daily drop's poll (data/poll.ts,
+   * 0100), drawn under the teach card AFTER an answer is locked and never
+   * before. Passed only by the surfaces whose deal is shared with everybody
+   * (the daily drop and a replay of a past day); a fresh random verse has no
+   * crowd to compare with. Null or a question the server withheld renders
+   * nothing — the run looks exactly as it did before the poll existed.
+   */
+  poll?: AnswerPoll | null
   onComplete: (result: PlayResult) => Promise<void>
   onExit: () => void
   /** Small pill under the HUD, e.g. "Practice" — omitted for the daily drop. */
@@ -582,6 +594,17 @@ export function QuizRunner({
                       {answered?.correct ? '🎯 Nice!' : answered?.choiceIndex === -1 ? '⏱️ Time!' : '💡 Good to know'}
                     </b>
                     <p style={{ marginTop: 6, fontSize: 15, lineHeight: 1.5 }}>{q.teach}</p>
+                    {/* The crowd, with this player's own tap folded in so the
+                        bars include the answer just given. A withheld question
+                        (under the floor) is simply absent from `poll`. */}
+                    {poll?.[qi] && answered && (
+                      <AnswerPollBars
+                        counts={poll[qi].map((n, i) => (i === answered.choiceIndex ? n + 1 : n))}
+                        options={q.options}
+                        answerIndex={q.answerIndex}
+                        chosenIndex={answered.choiceIndex}
+                      />
+                    )}
                   </div>
                   <div style={{ marginTop: 14 }}>
                     <Button variant="gold" full onClick={next}>

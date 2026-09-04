@@ -1247,6 +1247,49 @@ is granted to `anon`) and that's the pitch for the account. The card **renders
 nothing** with no keys or against a server without 0081 — the unclaimed state
 would otherwise announce that nobody has opened a verse somebody is holding.
 
+## The answer poll: how everyone answered
+
+After you lock an answer on the day's verse, the teach card grows four bars:
+how the crowd split across the options, the right one marked ✅ and yours 👉.
+`0100`, `data/poll.ts`, `store/poll.ts`, `components/AnswerPoll.tsx`, drawn by
+`QuizRunner` behind a `poll` prop. It is the same "a crowd, not a ladder" shape
+as `daily_players`, and the things that keep it there are in the data:
+
+- **A tally carries NO user.** `daily_answer_tallies` is (day, deal, question,
+  option) → a count. There is no row saying who picked what, so a "who got it
+  wrong" list can never be built out of it later, and erasure has nothing to
+  scrub. Global only — a per-church split is a comparison and the slope to
+  refuse first.
+- **After the answer, never before.** The day's five are the same five for
+  everybody, so a split shown before the tap is the answer key. The totals are
+  fetched ONCE before the clock starts (the client already holds every
+  `answerIndex`, so that leaks nothing new) and drawn only on the feedback
+  phase, with your own tap folded in.
+- **Accounts vote, once, inside `submit_play`.** The run's choices ride in as
+  `p_choices` + `p_deal` and are counted in the same statement as the play, so
+  the `plays` unique key is the guard and the idempotent early return never
+  reaches the count. Guests are not counted (a device id can stuff a public
+  number) but can SEE it — `daily_answer_poll` is granted to `anon`, the pitch.
+  A practice replay of a past day READS that day's poll and never writes it.
+- **A floor, and nothing under it.** The server withholds a question until
+  `POLL_MIN_ANSWERS` (10, ↔ `poll_min` in SQL) accounts have answered it; the
+  client renders nothing for a withheld question rather than "67%" off three
+  players. Raise it as the crowd grows.
+- **The deal is fingerprinted.** Distractors come out of `VERSE_POOL`, so two
+  app versions can show a date's question with different options in different
+  places. `dealFingerprint` (FNV-1a over prompts + options) keys the tally, so
+  a build whose deal differs sees NO poll rather than another build's crowd
+  under its own option text. Fails closed like the catalog.
+- **The one line of copy never says how few.** "You're in good company" shows
+  under a wrong answer a quarter of the crowd also gave, and nothing is ever
+  said about a small share. The split is the fact; the reader does the
+  arithmetic if they want it.
+
+Online-only, inherited from first light: offline there is one player and every
+bar is 100%. Today's trivia round is deliberately NOT in it yet — it is
+device-local with no server write at all, so a poll there is its first, through
+the same table with a `kind` of its own rather than `submit_play`.
+
 ## The player's Bible
 
 `/bible` draws **all 66 books, 1,189 chapters and 31,102 verse slots** with no
@@ -1317,7 +1360,21 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0099` (the Prayer Wall — `prayer_requests`,
+The latest is `0100` (the daily drop's answer poll — `daily_answer_tallies`,
+`daily_answer_poll`, `record_answer_tallies`, and `submit_play` restated from
+0081 with two trailing defaulted parameters), APPLIED on 2026-09-04 through the
+Supabase MCP as `0100_daily_answer_poll` and verified: exactly ONE
+`submit_play` signature after the drop-and-recreate (the 0086 scar — a second
+overload would 300 every baked iOS build's seven-argument call), its body
+byte-identical to the local run (md5 compared), `record_answer_tallies` reads
+`{postgres,service_role}`, `daily_answer_poll` is granted to `anon`, and the
+table has RLS on with no policies. Before the apply it was run end to end
+against a local Postgres 16 with a stub `profiles`/`plays` schema: the
+seven-argument call still resolves and writes no tally, a resubmit counts
+nothing, a timeout (-1) and an out-of-range choice are skipped, and the poll
+withholds every question under the floor. See "The answer poll" below.
+
+Before it, `0099` (the Prayer Wall — `prayer_requests`,
 `prayer_intercessions`, and the deal / kneel / report / admin RPCs), APPLIED
 on 2026-09-03 through the Supabase MCP as `0099_prayer_wall` and verified: the
 four helper functions' ACLs read `{postgres=X}` only (they were `revoke all`ed
@@ -1514,7 +1571,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0100` (0099 is taken by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0101` (0100 is taken by the answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

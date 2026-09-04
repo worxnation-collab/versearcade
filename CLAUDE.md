@@ -410,12 +410,13 @@ the kit still exists.
 
 ## The TikTok engine: an operator tool, not a feature
 
-Admin → TikTok makes the daily post for a faceless TikTok account: Cephas
-standing on a road scene reading the verse of the day, and an evening Story
-time with Tabitha telling the story behind it to a circle of children. Both
-are captioned word by word, ending on the site. One click a day, a week at a
-time if you like; the human does the upload. Full design:
-`docs/TIKTOK-ENGINE.md`. Four things to know:
+Admin → TikTok makes the daily posts for a faceless TikTok account: Cephas
+standing on a road scene reading the verse of the day, an evening Story time
+with Tabitha telling the story behind it to a circle of children, and a replay
+of YESTERDAY's quiz played by the game's own CPU against the clock. All are
+captioned word by word, ending on the site. Each is its own generator behind a
+pill (`admin/tiktok/*.tsx` over `shared.tsx`); the human does the upload. Full
+design: `docs/TIKTOK-ENGINE.md`. Five things to know:
 
 - **The Gemini key lives in `supabase/functions/tiktok-gen` and nowhere else.**
   Same `sharkbait` gate as `push-send`. It makes the reading (Gemini TTS), the
@@ -440,6 +441,12 @@ time if you like; the human does the upload. Full design:
   spoken, lit gold — `timeWords()` places words inside a phrase by CUMULATIVE
   SPEECH ENERGY rather than elapsed time, so a breath between two words moves
   neither of them. Anything added here has to earn its motion.
+- **The quiz replays YESTERDAY, and the CPU is the game's own.** The five
+  questions are the same five for everybody on a date, so a public replay of
+  today's would hand out today's answers. The player is `buildCpuPlan` from
+  `features/arena/cpu.ts` with the game's scoring, seeded from the date; the
+  clock runs all the way down on every question so a viewer can play along,
+  and a wrong answer shows the question's own `teach` line.
 
 ## Church pages
 

@@ -681,6 +681,7 @@ async function produce(
   total: number, lead: number, samples: Float32Array,
   progress: (f: number, label: string) => void,
   bed?: Float32Array,
+  cues?: Float32Array,
 ): Promise<{ blob: Blob; ext: 'mp4' | 'webm' }> {
   progress(0.02, 'Picking a codec')
   const codec = await pickCodec()
@@ -699,6 +700,8 @@ async function produce(
       track[i] += b * BED_LEVEL * Math.max(0, env)
     }
   }
+  // Game sounds (the quiz's ticks and chimes) are already at level.
+  if (cues) for (let i = 0; i < Math.min(totalFrames, cues.length); i++) track[i] += cues[i]
 
   const encode = async (codec: Codec): Promise<Blob> => {
     const { muxer, buffer, mime } = await makeMuxer(codec)
@@ -1009,6 +1012,12 @@ export async function renderStory(input: StoryInput): Promise<RenderOutput> {
   return { blob, ext, durationSec: total, phrases }
 }
 
+/** The length of a reading, for callers sizing a timeline around it. */
+export async function audioSeconds(audio: ArrayBuffer): Promise<number> {
+  const samples = await decodeAudio(audio)
+  return samples.length / SAMPLE_RATE
+}
+
 /** How long a story or verse post will run, so a music bed can be rendered to fit. */
 export async function plannedDuration(audio: ArrayBuffer, hook: string | undefined, story: boolean): Promise<number> {
   const samples = await decodeAudio(audio)
@@ -1029,5 +1038,335 @@ export async function renderStoryPoster(input: Omit<StoryInput, 'audio' | 'onPro
   const { texts, para } = storyTexts(input.paragraphs)
   const phrases = input.phrases ?? alignPhrases(texts, [[0, 60]], 60)
   await drawStoryFrame(ctx, { input: { ...input, audio: new ArrayBuffer(0) }, lead: 1, audioDur: 60, total: 65, phrases, para, paraStart: Array.from({ length: n }, (_, i) => i * (60 / n)) }, t, chrome)
+  return canvas.toDataURL('image/png')
+}
+
+// ---- yesterday's quiz ------------------------------------------------------------
+//
+// The third post: a CPU player plays YESTERDAY's five questions against the
+// clock, and the viewer plays along. The clock runs all the way down on every
+// question — the reveal waits for zero even when the CPU has locked in — so
+// there is always time to read four options and pick one before the answer
+// shows. It is a shade faster than the game's 16.5s window; the game itself
+// is the payoff at the end. Yesterday's verse, deliberately: today's answers
+// on a public feed would spoil today's drop.
+
+export interface QuizQuestionIn { prompt: string; options: string[]; answerIndex: number; teach: string }
+/** One question of the CPU's play: which option, how far into the window, and what it scored. */
+export interface QuizStep { pick: number; atSec: number; points: number }
+export interface QuizInput {
+  reference: string
+  text: string
+  questions: QuizQuestionIn[]
+  plan: QuizStep[]
+  /** Seconds each question's clock runs. */
+  windowSec: number
+  playerName: string
+  /** The CPU player's full-length render; the head is cropped for its chip. */
+  figure: HTMLImageElement
+  backdrop: HTMLImageElement
+  /** The verse read aloud while its card is up. Without it the card holds for a fixed beat. */
+  audio?: ArrayBuffer
+  hook?: string
+  bed?: Float32Array
+  /** Ticks and chimes, from `quizCues`. */
+  cues?: Float32Array
+  onProgress?: (fraction: number, label: string) => void
+}
+
+const QUIZ_REVEAL = 3.8
+const QUIZ_END = 3.4
+const QUIZ_LEAD_NO_AUDIO = 7
+
+export interface QuizTimeline {
+  lead: number
+  /** When each question's clock starts, seconds into the video. */
+  qStart: number[]
+  reveal: number
+  total: number
+  /** Sound cue events, for `quizCues`. */
+  events: Array<{ t: number; kind: 'tick' | 'lock' | 'right' | 'wrong' }>
+}
+
+/** The quiz's timing, so the caller can size a music bed and the cue track to it. */
+export function quizTimeline(audioSec: number | null, input: Pick<QuizInput, 'questions' | 'plan' | 'windowSec'>): QuizTimeline {
+  const lead = audioSec != null ? audioSec + 1.6 : QUIZ_LEAD_NO_AUDIO
+  const qStart: number[] = []
+  const events: QuizTimeline['events'] = []
+  let t = lead
+  input.questions.forEach((q, i) => {
+    qStart.push(t)
+    const step = input.plan[i]
+    for (let k = 5; k >= 1; k--) events.push({ t: t + input.windowSec - k, kind: 'tick' })
+    if (step) events.push({ t: t + Math.min(step.atSec, input.windowSec - 0.3), kind: 'lock' })
+    events.push({ t: t + input.windowSec, kind: step && step.pick === q.answerIndex ? 'right' : 'wrong' })
+    t += input.windowSec + QUIZ_REVEAL
+  })
+  return { lead, qStart, reveal: QUIZ_REVEAL, total: t + QUIZ_END, events }
+}
+
+/**
+ * The quiz's sounds, synthesised — the same bargain juice/sound.ts makes: no
+ * files. A soft tick for the last five seconds, a two-note click when the
+ * player locks in, a rising chime for a right answer, a low pair for a miss.
+ */
+export async function quizCues(events: QuizTimeline['events'], seconds: number): Promise<Float32Array> {
+  const c = new OfflineAudioContext(1, Math.ceil(seconds * SAMPLE_RATE), SAMPLE_RATE)
+  const note = (t: number, hz: number, dur: number, peak: number, type: OscillatorType = 'sine') => {
+    const o = c.createOscillator(); o.type = type; o.frequency.value = hz
+    const g = c.createGain()
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.exponentialRampToValueAtTime(peak, t + 0.008)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
+    o.connect(g); g.connect(c.destination)
+    o.start(t); o.stop(t + dur + 0.02)
+  }
+  for (const e of events) {
+    if (e.t < 0 || e.t > seconds - 0.5) continue
+    if (e.kind === 'tick') note(e.t, 1320, 0.06, 0.09, 'triangle')
+    else if (e.kind === 'lock') { note(e.t, 660, 0.09, 0.16); note(e.t + 0.07, 880, 0.1, 0.14) }
+    else if (e.kind === 'right') { note(e.t, 660, 0.3, 0.2); note(e.t + 0.1, 880, 0.3, 0.2); note(e.t + 0.2, 1320, 0.45, 0.22) }
+    else { note(e.t, 240, 0.28, 0.18, 'triangle'); note(e.t + 0.16, 190, 0.4, 0.18, 'triangle') }
+  }
+  const out = await c.startRendering()
+  return new Float32Array(out.getChannelData(0))
+}
+
+interface QuizScene {
+  input: QuizInput
+  tl: QuizTimeline
+  /** The verse's caption phrases with word timings, when it is read aloud. */
+  phrases: TimedPhrase[]
+}
+
+const GOLD = '#ffd23f', CORAL = '#ff6b6b', GRAPE = '#a06bff', INK_DIM = '#b8a9e0'
+
+function headChip(ctx: CanvasRenderingContext2D, figure: HTMLImageElement, cx: number, cy: number, r: number) {
+  // The top square of a full-length render is the head; the skins are drawn
+  // head-to-feet at roughly 1:2, so this crops the face for a chip.
+  const side = figure.naturalWidth
+  ctx.save()
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.closePath()
+  ctx.fillStyle = 'rgba(21,10,52,0.9)'; ctx.fill()
+  ctx.clip()
+  ctx.drawImage(figure, 0, side * 0.02, side, side, cx - r, cy - r, r * 2, r * 2)
+  ctx.restore()
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.lineWidth = 4; ctx.strokeStyle = GOLD; ctx.stroke()
+}
+
+async function drawQuizFrame(ctx: CanvasRenderingContext2D, sc: QuizScene, t: number, chrome = true) {
+  const { input, tl, phrases } = sc
+  const { lead, qStart, reveal, total } = tl
+  const W = input.windowSec
+
+  // 1. The road, held still, under a heavy wash: this frame is a game screen.
+  cover(ctx, input.backdrop, input.backdrop.naturalWidth, input.backdrop.naturalHeight, 1 + 0.015 * (t / total))
+  ctx.fillStyle = 'rgba(11,7,32,0.74)'; ctx.fillRect(0, 0, WIDTH, HEIGHT)
+  if (!chrome) return
+
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+  ctx.font = `800 32px ${FONT_DISPLAY}`
+  ctx.letterSpacing = '6px'
+  outlined(ctx, "VERSE ARCADE · YESTERDAY'S VERSE", WIDTH / 2, 150, GOLD, 'rgba(11,7,32,0.85)', 8)
+  ctx.letterSpacing = '0px'
+  ctx.font = `700 52px ${FONT_DISPLAY}`
+  outlined(ctx, input.reference, WIDTH / 2, 218)
+
+  const n = input.questions.length
+  const endAt = qStart.length ? qStart[n - 1] + W + reveal : lead
+  const endFade = easeOut((t - endAt) / 0.5)
+
+  // 2. The verse card, while it is read.
+  if (t < lead) {
+    const age = easeOut(t / 0.4)
+    const px = 90, pw = WIDTH - 180, py = 330, ph = 640
+    ctx.save()
+    ctx.globalAlpha = age
+    roundRect(ctx, px, py, pw, ph, 40)
+    ctx.fillStyle = 'rgba(21,10,52,0.82)'; ctx.fill()
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,210,63,0.7)'; ctx.stroke()
+    ctx.font = `800 26px ${FONT_DISPLAY}`; ctx.letterSpacing = '5px'
+    ctx.fillStyle = 'rgba(255,210,63,0.8)'; ctx.fillText('READ IT FIRST', WIDTH / 2, py + 46); ctx.letterSpacing = '0px'
+    const at = t - 0.6
+    const phrase = phrases.find((x) => at >= x.start && at < x.end) ?? null
+    if (phrase) {
+      // The verse is read aloud: one phrase at a time, lit by the word.
+      drawCaption(ctx, phrase, at, { x: WIDTH / 2, y: py + ph / 2, maxWidth: pw - 100, size: 64, small: 52, stroke: 8, dim: 0.42 })
+    } else {
+      ctx.font = `700 50px ${FONT_DISPLAY}`
+      const lines = wrap(ctx, input.text, pw - 100)
+      const lh = 62
+      const y0 = py + ph / 2 - ((lines.length - 1) * lh) / 2
+      lines.forEach((l, i) => outlined(ctx, l, WIDTH / 2, y0 + i * lh, '#ffffff', 'rgba(11,7,32,0.6)', 6))
+    }
+    ctx.restore()
+    // Who is playing, and the invitation.
+    ctx.save(); ctx.globalAlpha = age
+    headChip(ctx, input.figure, WIDTH / 2, 1130, 70)
+    ctx.font = `800 44px ${FONT_DISPLAY}`
+    outlined(ctx, `${input.playerName} plays it next.`, WIDTH / 2, 1250)
+    ctx.font = `700 40px ${FONT_DISPLAY}`
+    outlined(ctx, input.hook?.trim() || 'Five questions. Can you beat the clock?', WIDTH / 2, 1310, GOLD)
+    ctx.restore()
+    return
+  }
+
+  // 3. A question.
+  let qi = -1
+  for (let i = 0; i < n; i++) if (t >= qStart[i]) qi = i
+  const banked = (upto: number) => input.plan.slice(0, upto).reduce((a, s) => a + (s?.points ?? 0), 0)
+  if (qi >= 0 && endFade < 1) {
+    const q = input.questions[qi], step = input.plan[qi]
+    const elapsed = t - qStart[qi]
+    const inWindow = elapsed < W
+    const remaining = Math.max(0, W - elapsed)
+    const locked = step && elapsed >= Math.min(step.atSec, W - 0.3)
+    const revealed = !inWindow
+    const age = easeOut(elapsed / 0.35)
+    ctx.save()
+    ctx.globalAlpha = Math.min(1, age + 0.2) * (1 - endFade)
+
+    // Question number and the running score.
+    ctx.font = `800 28px ${FONT_DISPLAY}`; ctx.letterSpacing = '5px'
+    ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(255,210,63,0.85)'
+    ctx.fillText(`QUESTION ${qi + 1} OF ${n}`, 90, 318)
+    ctx.textAlign = 'right'; ctx.fillStyle = INK_DIM
+    ctx.fillText(`${input.playerName.toUpperCase()} · ${banked(qi + (revealed ? 1 : 0))}`, WIDTH - 90, 318)
+    ctx.letterSpacing = '0px'; ctx.textAlign = 'center'
+
+    // The prompt.
+    ctx.font = `800 56px ${FONT_DISPLAY}`
+    let lines = wrap(ctx, q.prompt, 900)
+    let lh = 68
+    if (lines.length > 3) { ctx.font = `800 46px ${FONT_DISPLAY}`; lines = wrap(ctx, q.prompt, 900); lh = 56 }
+    const py = 420
+    lines.forEach((l, i) => outlined(ctx, l, WIDTH / 2, py + i * lh, '#ffffff', 'rgba(11,7,32,0.9)', 10))
+
+    // The clock: a bar that empties, gold until the last three seconds.
+    const by = 640, bh = 22, bx = 90, bw = WIDTH - 180
+    roundRect(ctx, bx, by, bw, bh, bh / 2); ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fill()
+    const frac = remaining / W
+    if (frac > 0) {
+      roundRect(ctx, bx, by, Math.max(bh, bw * frac), bh, bh / 2)
+      ctx.fillStyle = remaining <= 3 ? CORAL : GOLD; ctx.fill()
+    }
+    ctx.font = `800 44px ${FONT_DISPLAY}`
+    outlined(ctx, revealed ? 'Time!' : `${Math.ceil(remaining)}`, WIDTH / 2, by + 68, remaining <= 3 && !revealed ? CORAL : '#ffffff', 'rgba(11,7,32,0.9)', 8)
+
+    // Four options.
+    const oy0 = 770, oh = 150, gap = 22
+    q.options.forEach((opt, i) => {
+      const y = oy0 + i * (oh + gap)
+      const isAnswer = i === q.answerIndex
+      const isPick = !!step && i === step.pick
+      let fill = 'rgba(21,10,52,0.82)', stroke = 'rgba(255,255,255,0.18)', ink = '#ffffff'
+      if (revealed && isAnswer) { fill = GOLD; stroke = GOLD; ink = '#1a0f36' }
+      else if (revealed && isPick) { fill = 'rgba(255,107,107,0.85)'; stroke = CORAL }
+      else if (locked && isPick) { stroke = GRAPE }
+      roundRect(ctx, 90, y, WIDTH - 180, oh, 30)
+      ctx.fillStyle = fill; ctx.fill()
+      ctx.lineWidth = locked && isPick && !revealed ? 6 : 3; ctx.strokeStyle = stroke; ctx.stroke()
+      // The letter.
+      ctx.beginPath(); ctx.arc(160, y + oh / 2, 34, 0, Math.PI * 2)
+      ctx.fillStyle = revealed && isAnswer ? '#1a0f36' : 'rgba(255,255,255,0.14)'; ctx.fill()
+      ctx.font = `800 34px ${FONT_DISPLAY}`; ctx.fillStyle = revealed && isAnswer ? GOLD : '#ffffff'
+      ctx.fillText('ABCD'[i], 160, y + oh / 2 + 1)
+      // The text, left-aligned beside it.
+      ctx.textAlign = 'left'
+      ctx.font = `700 40px ${FONT_DISPLAY}`
+      const maxW = WIDTH - 180 - 150 - (isPick && locked ? 110 : 40)
+      let ol = wrap(ctx, opt, maxW)
+      let olh = 46
+      if (ol.length > 2) { ctx.font = `700 32px ${FONT_DISPLAY}`; ol = wrap(ctx, opt, maxW); olh = 38 }
+      ctx.fillStyle = ink
+      const ty = y + oh / 2 - ((ol.length - 1) * olh) / 2
+      ol.forEach((l, k) => ctx.fillText(l, 220, ty + k * olh))
+      ctx.textAlign = 'center'
+      // The player's chip lands on the option it picked.
+      if (isPick && locked) {
+        const pop = 0.8 + 0.2 * easeOut((elapsed - Math.min(step.atSec, W - 0.3)) / 0.25)
+        ctx.save(); ctx.translate(WIDTH - 90 - 62, y + oh / 2); ctx.scale(pop, pop); ctx.translate(-(WIDTH - 90 - 62), -(y + oh / 2))
+        headChip(ctx, input.figure, WIDTH - 90 - 62, y + oh / 2, 40)
+        ctx.restore()
+      }
+      if (revealed && isAnswer) { ctx.font = `800 44px ${FONT_DISPLAY}`; ctx.fillStyle = '#1a0f36'; ctx.fillText('✓', WIDTH - 90 - 62 - (isPick ? 100 : 0), y + oh / 2 + 2) }
+    })
+
+    // The reveal: what it scored, and the line that teaches.
+    if (revealed) {
+      const ra = easeOut((elapsed - W) / 0.35)
+      ctx.save(); ctx.globalAlpha *= ra
+      const right = !!step && step.pick === q.answerIndex
+      ctx.font = `800 40px ${FONT_DISPLAY}`
+      outlined(ctx, right ? `${input.playerName} +${step.points}` : `${input.playerName} missed it`, WIDTH - 90 - 180, 318 + 52 - 8, right ? GOLD : CORAL, 'rgba(11,7,32,0.9)', 8)
+      const ty = 1470, th = 290
+      roundRect(ctx, 90, ty, WIDTH - 180, th, 30)
+      ctx.fillStyle = 'rgba(255,210,63,0.12)'; ctx.fill()
+      ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,210,63,0.6)'; ctx.stroke()
+      ctx.font = `700 36px ${FONT_DISPLAY}`
+      let tl2 = wrap(ctx, q.teach, WIDTH - 180 - 100)
+      let tlh = 46
+      if (tl2.length > 4) { ctx.font = `700 30px ${FONT_DISPLAY}`; tl2 = wrap(ctx, q.teach, WIDTH - 180 - 100); tlh = 38 }
+      const y0 = ty + th / 2 - ((tl2.length - 1) * tlh) / 2
+      tl2.forEach((l, k) => outlined(ctx, l, WIDTH / 2, y0 + k * tlh, '#ffffff', 'rgba(11,7,32,0.7)', 6))
+      ctx.restore()
+    } else if (!locked) {
+      ctx.font = `700 34px ${FONT_DISPLAY}`
+      outlined(ctx, `${input.playerName} is thinking… pick yours.`, WIDTH / 2, 1500, INK_DIM, 'rgba(11,7,32,0.8)', 6)
+    }
+    ctx.restore()
+  }
+
+  // 4. The end card: the CPU's game, and the invitation.
+  if (endFade > 0) {
+    const right = input.plan.filter((s, i) => s && s.pick === input.questions[i]?.answerIndex).length
+    ctx.save()
+    ctx.globalAlpha = endFade
+    ctx.fillStyle = 'rgba(11,7,32,0.7)'; ctx.fillRect(0, 0, WIDTH, HEIGHT)
+    headChip(ctx, input.figure, WIDTH / 2, HEIGHT / 2 - 330, 90)
+    ctx.font = `800 64px ${FONT_DISPLAY}`
+    outlined(ctx, `${input.playerName}: ${right} of ${n}`, WIDTH / 2, HEIGHT / 2 - 170)
+    ctx.font = `800 96px ${FONT_DISPLAY}`
+    outlined(ctx, `${banked(n)} points`, WIDTH / 2, HEIGHT / 2 - 60, GOLD)
+    ctx.font = `700 46px ${FONT_DISPLAY}`
+    outlined(ctx, 'How did you do?', WIDTH / 2, HEIGHT / 2 + 60)
+    ctx.font = `800 64px ${FONT_DISPLAY}`
+    outlined(ctx, 'Today’s verse is waiting', WIDTH / 2, HEIGHT / 2 + 380)
+    ctx.font = `800 52px ${FONT_DISPLAY}`
+    outlined(ctx, SITE, WIDTH / 2, HEIGHT / 2 + 470, GOLD)
+    ctx.restore()
+  }
+}
+
+export async function renderQuiz(input: QuizInput): Promise<RenderOutput> {
+  const progress = input.onProgress ?? (() => {})
+  progress(0, 'Setting up the board')
+  const samples = input.audio ? await decodeAudio(input.audio) : new Float32Array(0)
+  const audioDur = samples.length / SAMPLE_RATE
+  const tl = quizTimeline(input.audio ? audioDur : null, input)
+  let phrases: TimedPhrase[] = []
+  if (input.audio) {
+    const verse = /[.!?]["'”’)]?$/.test(input.text.trim()) ? input.text.trim() : input.text.trim() + '.'
+    phrases = timeWords(alignPhrases([...splitPhrases(verse), input.reference + '.'], speechSegments(samples, SAMPLE_RATE), audioDur), samples, SAMPLE_RATE)
+  }
+  try { await document.fonts.load(`800 56px "Baloo 2"`) } catch { /* fine */ }
+  const sc: QuizScene = { input, tl, phrases }
+  // The reading starts 0.6s in, so the card is up before the voice.
+  const { blob, ext } = await produce((ctx, t) => drawQuizFrame(ctx, sc, t), tl.total, 0.6, samples, progress, input.bed, input.cues)
+  progress(1, 'Done')
+  return { blob, ext, durationSec: tl.total, phrases }
+}
+
+export async function renderQuizPoster(input: Omit<QuizInput, 'audio' | 'onProgress' | 'bed' | 'cues'>, t?: number): Promise<string> {
+  const canvas = document.createElement('canvas')
+  canvas.width = WIDTH; canvas.height = HEIGHT
+  const ctx = canvas.getContext('2d', { alpha: false })
+  if (!ctx) throw new Error('no 2d context')
+  try { await document.fonts.load(`800 56px "Baloo 2"`) } catch { /* fine */ }
+  const tl = quizTimeline(null, input)
+  // Mid-clock on the first question, with the CPU locked in, unless told otherwise.
+  const at = t ?? tl.qStart[0] + Math.min(input.windowSec - 1, (input.plan[0]?.atSec ?? 0) + 0.5)
+  await drawQuizFrame(ctx, { input, tl, phrases: [] }, at)
   return canvas.toDataURL('image/png')
 }

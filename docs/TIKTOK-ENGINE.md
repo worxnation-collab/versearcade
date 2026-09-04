@@ -60,7 +60,15 @@ title and hashtag count. The key lives in Vault (`tiktok_ayrshare_key()`,
   not made for kids, `containsSyntheticMedia` (the voice is synthetic).
   TikTok: public, `isAIGenerated` for the same reason, caption on one line
   because TikTok drops line breaks. Facebook: a Reel with the hook as its
-  title. Instagram: a Reel shared to the feed, five hashtags at most.
+  title. Instagram: a Reel shared to the feed, five hashtags at most. X: one
+  line under 280 characters with two tags, borrowing TikTok's line on a day
+  whose copy predates X.
+- **A platform that isn't linked in Ayrshare yet is skipped, not failed.**
+  `post` reads the account's active networks first and records a `skipped`
+  row for the rest, so X can sit in every list before the account exists and
+  the first run after it is linked simply reaches it. The record is merged
+  over the earlier one, and the runner re-posts only to platforms not yet
+  accepted.
 - **`social`** reports what Ayrshare has connected and this month's post
   count against the plan's quota; the hub shows it, and warns in coral on a
   plan that three videos on four networks (twelve posts a day) will exhaust.

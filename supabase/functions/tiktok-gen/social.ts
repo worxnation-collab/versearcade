@@ -7,8 +7,8 @@
 // Pure: no I/O, no environment. Everything a network needs is either in the
 // day's per-platform copy or in the arguments.
 
-export type Platform = 'tiktok' | 'youtube' | 'facebook' | 'instagram'
-export const PLATFORMS: Platform[] = ['tiktok', 'youtube', 'facebook', 'instagram']
+export type Platform = 'tiktok' | 'youtube' | 'facebook' | 'instagram' | 'x'
+export const PLATFORMS: Platform[] = ['tiktok', 'youtube', 'facebook', 'instagram', 'x']
 
 export interface PlatformCopy { title?: string; text?: string; tags?: string[] }
 export interface DayCopy { hook?: string; platforms?: Partial<Record<Platform, PlatformCopy>> }
@@ -29,12 +29,14 @@ const tagLine = (tags: string[] | undefined, n: number) => (tags ?? []).slice(0,
  * made for kids, `containsSyntheticMedia` (the voice is synthetic); TikTok
  * public with `isAIGenerated` for the same reason, its caption on one line
  * because TikTok drops line breaks; Facebook as a Reel titled with the hook;
- * Instagram as a Reel shared to the feed, five hashtags at most. An
- * idempotency key per (date, kind, platform) means a retry after a network
- * blip cannot post the same video twice.
+ * Instagram as a Reel shared to the feed, five hashtags at most; X gets one
+ * line under 280 characters with two tags (a day whose copy predates X
+ * borrows TikTok's line, trimmed). An idempotency key per (date, kind,
+ * platform) means a retry after a network blip cannot post the same video
+ * twice.
  */
 export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record<string, unknown> {
-  const c = copy.platforms?.[platform] ?? {}
+  const c = copy.platforms?.[platform] ?? (platform === 'x' ? copy.platforms?.tiktok ?? {} : {})
   const body: Record<string, unknown> = {
     platforms: [platform], mediaUrls: [a.videoUrl], isVideo: true,
     idempotencyKey: `va-${a.date}-${a.kind}-${platform}`,
@@ -50,6 +52,10 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
   } else if (platform === 'facebook') {
     body.post = [c.text ?? '', tagLine(c.tags, 2)].filter(Boolean).join('\n\n').slice(0, 5000)
     body.faceBookOptions = { reels: true, title: (copy.hook || a.reference || 'Verse Arcade').slice(0, 255) }
+  } else if (platform === 'x') {
+    const tags = tagLine(c.tags, 2)
+    const text = (c.text ?? '').slice(0, Math.max(0, 279 - tags.length - 1))
+    body.post = [text, tags].filter(Boolean).join(' ')
   } else {
     body.post = [c.text ?? '', tagLine(c.tags, 5)].filter(Boolean).join('\n\n').slice(0, 2200)
     body.instagramOptions = { shareReelsFeed: true }

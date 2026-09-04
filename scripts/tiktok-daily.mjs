@@ -29,7 +29,8 @@
 //              and story read from the bucket's public cache, never rewritten)
 //              and the video is uploaded to Ayrshare's own media store.
 //
-// Environment: SUPABASE_URL, SUPABASE_ANON_KEY (public, defaulted), TIKTOK_TZ
+// Environment: SUPABASE_URL and SUPABASE_ANON_KEY (both defaulted to the
+// project; the anon key is public), TIKTOK_TZ
 // (default America/New_York), DATE (override today), KINDS (default
 // verse,story,quiz), POST_TIMES (default verse=07:00,quiz=12:30,story=19:30),
 // PLATFORMS (default all six: TikTok, YouTube, Facebook, Instagram, X, Snapchat), DRY_RUN (render only), FFMPEG (binary path),
@@ -53,7 +54,9 @@ const ROOT = process.cwd()
 const OUT = path.join(ROOT, '.tiktok-daily')
 const env = process.env
 const SUPABASE_URL = (env.SUPABASE_URL || 'https://visuppaucpzzigwtqmdd.supabase.co').replace(/\/$/, '')
-const ANON = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY || ''
+// The anon key is the PUBLIC key the site ships in every page, so it can be
+// defaulted here; an override is for pointing the runner at another project.
+const ANON = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpc3VwcGF1Y3B6emlnd3RxbWRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5MTY1MjEsImV4cCI6MjEwMTQ5MjUyMX0.YP_lJkV8ZD7J-oAqwkhh-6gQ0z1Q7pFR4Nql1NdhSa0'
 const RUNNER_TOKEN = env.TIKTOK_RUNNER_TOKEN || ''
 const GEMINI_KEY = env.GEMINI_API_KEY || ''
 const AYRSHARE_KEY = env.AYRSHARE_API_KEY || ''
@@ -75,7 +78,6 @@ const fail = (m) => { console.error('tiktok-daily:', m); process.exit(2) }
 const mode = RUNNER_TOKEN ? 'function' : AYRSHARE_KEY ? 'local' : null
 if (!mode) fail('set TIKTOK_RUNNER_TOKEN (function mode) or AYRSHARE_API_KEY + GEMINI_API_KEY (local mode)')
 if (mode === 'local' && !GEMINI_KEY) fail('local mode needs GEMINI_API_KEY for the reading')
-if (!ANON) fail('SUPABASE_ANON_KEY is required (it is the public key the site ships)')
 for (const k of KINDS) if (!['verse', 'story', 'quiz'].includes(k)) fail(`unknown kind ${k}`)
 
 // ---- dates and times in the operator's zone ---------------------------------------

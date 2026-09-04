@@ -176,9 +176,14 @@ export function loadVideo(url: string): Promise<HTMLVideoElement> {
     v.muted = true
     v.playsInline = true
     v.preload = 'auto'
-    v.onloadeddata = () => resolve(v)
-    v.onerror = () => reject(new Error(`could not load ${url}`))
+    // Never wait forever: a browser that quietly declines to load one more
+    // video (iOS, past its decoder budget) would otherwise stall the render
+    // with no error anywhere.
+    const timer = setTimeout(() => reject(new Error(`timed out loading ${url}`)), 30000)
+    v.onloadeddata = () => { clearTimeout(timer); resolve(v) }
+    v.onerror = () => { clearTimeout(timer); reject(new Error(`could not load ${url}`)) }
     v.src = url
+    v.load()
   })
 }
 
@@ -202,29 +207,43 @@ function seek(video: HTMLVideoElement, t: number): Promise<void> {
 // keyframe and decode forward to the target, which measured at 3x the cost of
 // a forward step (184ms against 59ms in software VP9). Half of every loop
 // lived in that path, and a 90-second story is 2,700 frames: the render was
-// not stuck, it was walking backwards through most of them. Now the clip
-// only ever advances, and a second element playing its first half-second is
-// faded in over its last — two forward seeks a frame for 7% of the frames
-// instead of one backward seek for 50% of them. The twin is loaded once per
-// clip and never touched otherwise.
+// not stuck, it was walking backwards through most of them.
+//
+// The crossfade partner is NOT a second video element. That shipped first and
+// hung an iPhone at exactly the first seam: iOS never fired `loadeddata` for
+// a fifth <video> on the page, and a promise with no timeout waited forever.
+// Instead the clip's first SEAM seconds are captured as half-size bitmaps as
+// they are drawn — every cut through a loop passes its head before its tail —
+// and faded in over the tail. One element per clip, no extra seeks, and a
+// capture that fails (no createImageBitmap, out of memory) degrades to a hard
+// cut at the seam rather than a stall.
 const SEAM = 0.6
-const twins = new WeakMap<HTMLVideoElement, Promise<HTMLVideoElement>>()
+const heads = new WeakMap<HTMLVideoElement, Map<number, ImageBitmap | null>>()
 async function drawLoop(ctx: CanvasRenderingContext2D, v: HTMLVideoElement, at: number) {
   const d = Math.max(0.1, v.duration - 0.05)
   const m = Math.max(0, at) % d
   await seek(v, m)
   cover(ctx, v, v.videoWidth, v.videoHeight)
-  const into = m - (d - SEAM)
-  if (into > 0 && d > SEAM * 2) {
-    let twin = twins.get(v)
-    if (!twin) { twin = loadVideo(v.currentSrc || v.src); twins.set(v, twin) }
-    const w = await twin
-    await seek(w, into)
-    ctx.save()
-    ctx.globalAlpha = Math.min(1, into / SEAM)
-    cover(ctx, w, w.videoWidth, w.videoHeight)
-    ctx.restore()
+  if (d <= SEAM * 2) return
+  let head = heads.get(v)
+  if (!head) { head = new Map(); heads.set(v, head) }
+  const idx = Math.round(m * FPS)
+  if (m < SEAM && !head.has(idx)) {
+    head.set(idx, null)
+    try {
+      head.set(idx, await createImageBitmap(v, { resizeWidth: WIDTH / 2, resizeHeight: HEIGHT / 2, resizeQuality: 'medium' }))
+    } catch { /* hard cut at the seam for this clip */ }
   }
+  const into = m - (d - SEAM)
+  if (into <= 0) return
+  const want = Math.round(into * FPS)
+  let bmp: ImageBitmap | null | undefined = head.get(want)
+  if (!bmp) for (let k = want - 1; k >= 0 && !bmp; k--) bmp = head.get(k)
+  if (!bmp) return
+  ctx.save()
+  ctx.globalAlpha = Math.min(1, into / SEAM)
+  cover(ctx, bmp, bmp.width, bmp.height)
+  ctx.restore()
 }
 
 async function decodeAudio(buf: ArrayBuffer): Promise<Float32Array> {

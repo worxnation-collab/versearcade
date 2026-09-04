@@ -165,6 +165,10 @@ export function loadImage(url: string): Promise<HTMLImageElement> {
   })
 }
 
+// Loaded from its URL, not as a blob: measured in Chromium, a seek on a
+// blob-backed <video> costs 200-360 ms against about 1 ms on a URL-backed one,
+// so "buffer it all first" made every frame slower. preload=auto lets the
+// browser pull the whole small clip on its own.
 export function loadVideo(url: string): Promise<HTMLVideoElement> {
   return new Promise((resolve, reject) => {
     const v = document.createElement('video')
@@ -178,13 +182,49 @@ export function loadVideo(url: string): Promise<HTMLVideoElement> {
   })
 }
 
+// A seek that cannot hang the render: if `seeked` hasn't fired in a second
+// and a half, the frame is drawn from wherever the element is. One late frame
+// beats a post that never finishes.
 function seek(video: HTMLVideoElement, t: number): Promise<void> {
   return new Promise((resolve) => {
     if (Math.abs(video.currentTime - t) < 1 / (FPS * 2)) return resolve()
-    const done = () => { video.removeEventListener('seeked', done); resolve() }
+    let settled = false
+    const done = () => { if (settled) return; settled = true; clearTimeout(timer); video.removeEventListener('seeked', done); resolve() }
+    const timer = setTimeout(done, 1500)
     video.addEventListener('seeked', done)
     video.currentTime = t
   })
+}
+
+// A loop is drawn FORWARD ONLY, with a crossfade at the seam. It used to
+// ping-pong (play the eight seconds, then play them backwards) so a Veo clip
+// never seamed — and every backward step made the browser seek to the previous
+// keyframe and decode forward to the target, which measured at 3x the cost of
+// a forward step (184ms against 59ms in software VP9). Half of every loop
+// lived in that path, and a 90-second story is 2,700 frames: the render was
+// not stuck, it was walking backwards through most of them. Now the clip
+// only ever advances, and a second element playing its first half-second is
+// faded in over its last — two forward seeks a frame for 7% of the frames
+// instead of one backward seek for 50% of them. The twin is loaded once per
+// clip and never touched otherwise.
+const SEAM = 0.6
+const twins = new WeakMap<HTMLVideoElement, Promise<HTMLVideoElement>>()
+async function drawLoop(ctx: CanvasRenderingContext2D, v: HTMLVideoElement, at: number) {
+  const d = Math.max(0.1, v.duration - 0.05)
+  const m = Math.max(0, at) % d
+  await seek(v, m)
+  cover(ctx, v, v.videoWidth, v.videoHeight)
+  const into = m - (d - SEAM)
+  if (into > 0 && d > SEAM * 2) {
+    let twin = twins.get(v)
+    if (!twin) { twin = loadVideo(v.currentSrc || v.src); twins.set(v, twin) }
+    const w = await twin
+    await seek(w, into)
+    ctx.save()
+    ctx.globalAlpha = Math.min(1, into / SEAM)
+    cover(ctx, w, w.videoWidth, w.videoHeight)
+    ctx.restore()
+  }
 }
 
 async function decodeAudio(buf: ArrayBuffer): Promise<Float32Array> {
@@ -292,12 +332,7 @@ async function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number,
   // 1. Backdrop.
   ctx.save()
   if (bd.kind === 'loop') {
-    const v = bd.video
-    const d = Math.max(0.1, v.duration - 0.05)
-    // Ping-pong through the clip so an 8-second loop has no seam.
-    const m = t % (2 * d)
-    await seek(v, m < d ? m : 2 * d - m)
-    cover(ctx, v, v.videoWidth, v.videoHeight)
+    await drawLoop(ctx, bd.video, t)
   } else if (bd.kind === 'still') {
     cover(ctx, bd.image, bd.image.naturalWidth, bd.image.naturalHeight, 1 + 0.06 * (t / total))
   } else {
@@ -501,11 +536,18 @@ async function makeMuxer(codec: Codec) {
   return { muxer, buffer: () => target.buffer, mime: 'video/webm' }
 }
 
-function tick() { return new Promise<void>((r) => setTimeout(r, 0)) }
+// Yield to the event loop WITHOUT a timer. setTimeout is throttled to once a
+// second in a background tab (and once a minute after five), which turned a
+// timer-paced 90-second render into something that looked stuck the moment
+// the operator switched tabs. A MessageChannel task is not throttled that
+// way. (Waiting on the encoder's `dequeue` event instead was measured at
+// nearly three times slower per frame here — polling keeps the queue fed.)
+const yieldChannel = typeof MessageChannel !== 'undefined' ? new MessageChannel() : null
+function tick(): Promise<void> {
+  if (!yieldChannel) return new Promise((r) => setTimeout(r, 0))
+  return new Promise((r) => { yieldChannel.port1.onmessage = () => r(); yieldChannel.port2.postMessage(null) })
+}
 
-// The shared encode pipeline: audio track from the reading, video frames from
-// `draw`, muxed and then CHECKED (see hasAudibleTrack). Both layouts go
-// through here, so there is one copy of the codec, timing and fallback logic.
 const BED_LEVEL = 0.2 // the music under the voice, as a fraction of the bed's normalised 0.6 peak (about -20 dB under speech)
 
 async function produce(
@@ -590,7 +632,7 @@ async function produce(
       frame.close()
       while (videoEncoder.encodeQueueSize > 6) await tick()
       if (encodeErr) throw encodeErr
-      if (i % 15 === 0) progress(0.05 + 0.9 * (i / frames), `Rendering ${Math.round(t)}s / ${Math.round(total)}s (${codec.ext})`)
+      if (i % 10 === 0) progress(0.05 + 0.9 * (i / frames), `Rendering ${Math.round(t)}s / ${Math.round(total)}s (${codec.ext}) · frame ${i}/${frames}`)
     }
     await videoEncoder.flush()
     videoEncoder.close()
@@ -717,7 +759,7 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
   const { input, lead, audioDur, total, phrases, para, paraStart } = sc
   const at = t - lead
 
-  // 1. The room: a Veo loop ping-ponged, or the painting with a slow push.
+  // 1. The room: a Veo loop played forward with a crossfaded seam, or the painting with a slow push.
   // With reaction loops, the paragraph decides which loop is on screen and
   // the cut lands on the paragraph boundary, timed from that boundary so a
   // new loop starts at its first frame.
@@ -729,10 +771,7 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
     const alt = beat !== 'talk' ? input.reactions?.[beat] : undefined
     const v = alt ?? input.room
     const since = alt ? Math.max(0, at - (paraStart[piNow] ?? 0) + 0.15) : t
-    const d = Math.max(0.1, v.duration - 0.05)
-    const m = since % (2 * d)
-    await seek(v, m < d ? m : 2 * d - m)
-    cover(ctx, v, v.videoWidth, v.videoHeight)
+    await drawLoop(ctx, v, since)
   } else {
     cover(ctx, input.room, input.room.naturalWidth, input.room.naturalHeight, 1 + 0.05 * (t / total))
   }

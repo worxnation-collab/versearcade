@@ -336,7 +336,11 @@ for (const kind of KINDS) {
   // Always through ffmpeg: one known-good H.264/AAC/yuv420p/faststart MP4.
   const mp4 = path.join(OUT, 'out', `${kind}-${date}.mp4`)
   const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', raw, '-c:v', 'libx264', '-preset', 'medium', '-crf', '20', '-pix_fmt', 'yuv420p', '-r', '30', '-c:a', 'aac', '-b:a', '160k', '-ar', '48000', '-movflags', '+faststart', mp4], { stdio: 'inherit' })
-  if (ff.status !== 0) { results.push({ kind, date, error: 'ffmpeg failed' }); continue }
+  if (ff.status !== 0) {
+    const why = ff.error ? `${FFMPEG}: ${ff.error.code === 'ENOENT' ? 'not found — install ffmpeg or set FFMPEG' : ff.error.message}` : `exit ${ff.status}`
+    log(`  ffmpeg failed: ${why}`)
+    results.push({ kind, date, error: `ffmpeg: ${why}` }); continue
+  }
   log(`  mp4 ${(fs.statSync(mp4).size / 1e6).toFixed(1)}MB`)
   if (DRY) { results.push({ kind, date, mp4, dryRun: true }); continue }
 

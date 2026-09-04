@@ -125,9 +125,9 @@ export function addDays(date: string, n: number): string {
   return t.toISOString().slice(0, 10)
 }
 
-export type Platform = 'tiktok' | 'youtube' | 'facebook' | 'instagram'
+export type Platform = 'tiktok' | 'youtube' | 'facebook' | 'instagram' | 'x'
 export interface PlatformCopy { title: string; text: string; tags: string[] }
-export interface Copy { hook: string; caption: string; hashtags: string[]; platforms?: Record<Platform, PlatformCopy> }
+export interface Copy { hook: string; caption: string; hashtags: string[]; platforms?: Partial<Record<Platform, PlatformCopy>> }
 export interface Made { date: string; kind: 'verse' | 'story' | 'quiz'; reference: string; url: string; ext: string; size: number; copy: Copy | null; phrases: TimedPhrase[]; tier: string }
 
 export type Renderer = typeof import('@/lib/tiktokRender')
@@ -235,7 +235,7 @@ export function Busy({ busy, progress }: { busy: string | null; progress: number
 const ICON: Record<Made['kind'], string> = { verse: '☀️', story: '🌙', quiz: '🎮' }
 const FILE: Record<Made['kind'], string> = { verse: 'verse-arcade-', story: 'verse-arcade-story-', quiz: 'verse-arcade-quiz-' }
 
-const PLATFORMS: Array<[Platform, string]> = [['tiktok', 'TikTok'], ['youtube', 'YouTube Shorts'], ['facebook', 'Facebook'], ['instagram', 'Instagram Reels']]
+const PLATFORMS: Array<[Platform, string]> = [['tiktok', 'TikTok'], ['youtube', 'YouTube Shorts'], ['facebook', 'Facebook'], ['instagram', 'Instagram Reels'], ['x', 'X']]
 
 // One platform's words, with the button that copies exactly what gets pasted
 // there: the title on its own line for YouTube, the text, a blank line, the
@@ -264,7 +264,7 @@ export function CopyBlocks({ copy }: { copy: Copy }) {
     <div style={{ fontSize: 13, lineHeight: 1.45, display: 'grid', gap: 8 }}>
       <div><span className="faint">Hook:</span> {copy.hook}</div>
       {copy.platforms
-        ? PLATFORMS.map(([id, name]) => <PlatformBlock key={id} name={name} c={copy.platforms![id]} />)
+        ? PLATFORMS.map(([id, name]) => copy.platforms![id] ? <PlatformBlock key={id} name={name} c={copy.platforms![id]!} /> : null)
         : <PlatformBlock name="Caption" c={{ title: '', text: copy.caption, tags: copy.hashtags }} />}
     </div>
   )
@@ -281,7 +281,7 @@ export function CopyBlocks({ copy }: { copy: Copy }) {
 
 export type PostResult = { platform: string; status: string; postUrl?: string | null; error?: string | null; scheduleDate?: string | null }
 export interface Posted { at?: string; results?: PostResult[] }
-const PLATFORM_NAMES: Record<Platform, string> = { tiktok: 'TikTok', youtube: 'YouTube', facebook: 'Facebook', instagram: 'Instagram' }
+const PLATFORM_NAMES: Record<Platform, string> = { tiktok: 'TikTok', youtube: 'YouTube', facebook: 'Facebook', instagram: 'Instagram', x: 'X' }
 
 export async function fetchPosted(d: string, kind: Made['kind']): Promise<Posted> {
   return call<Posted>('posted', { date: d, kind })
@@ -301,7 +301,7 @@ export async function postVideo(m: Made, platforms: Platform[], scheduleDate: st
 }
 
 export function PostControls({ m }: { m: Made }) {
-  const [chosen, setChosen] = useState<Platform[]>(['tiktok', 'youtube', 'facebook', 'instagram'])
+  const [chosen, setChosen] = useState<Platform[]>(['tiktok', 'youtube', 'facebook', 'instagram', 'x'])
   const [when, setWhen] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
   const [posted, setPosted] = useState<Posted | null>(null)

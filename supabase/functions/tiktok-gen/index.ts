@@ -17,7 +17,7 @@
 //   copy        { date?, reference, text, theme, kind?, force? } → { hook, caption, hashtags[], platforms }  post copy per platform (TikTok, YouTube, Facebook, Instagram) via Gemini Flash; kind 'story' or 'quiz' changes what the post is; cached at days/<date>/copy-<kind>.json
 //   story       { date, reference, text, ... }    → { title, hook, paragraphs[] }   the story behind the verse, cached at days/<date>/story.json
 //   upload-url  { path }                          → { path, token, publicUrl }  a signed upload URL for a finished video (days/<date>/<kind>.mp4), so the browser can put it in the bucket
-//   post        { date, kind, videoUrl, platforms[], scheduleDate? } → { results[] }  posts the video with that day's copy through Ayrshare, one call per platform; parked at days/<date>/posted-<kind>.json
+//   post        { date, kind, videoUrl, platforms[], scheduleDate? } → { results[] }  posts the video with that day's copy through Ayrshare, one call per platform (a platform not linked in Ayrshare is skipped, not failed); parked at days/<date>/posted-<kind>.json, merged over what an earlier call recorded
 //   posted      { date, kind }                    → { results[] } | {}  what `post` recorded for that day, if anything
 //   social      {}                                → { accounts[], posts, quota }  the Ayrshare profile: which networks are connected and this month's post count
 //
@@ -417,7 +417,8 @@ Deno.serve(async (req) => {
           `"tiktok": { "text": 1-2 short sentences, casual and warm, under 150 characters, no hashtags in it, ends by inviting people to play today's verse at versearcade.org; "tags": 5 lowercase hashtags without the # sign }.\n` +
           `"youtube": { "title": a Shorts title under 70 characters that names the verse reference and what the video is; "text": 2-4 sentences for the description, plain, with the line "Play today's verse: https://versearcade.org" on its own line at the end; "tags": 5 lowercase hashtags without the # sign, the first one "shorts" }.\n` +
           `"facebook": { "text": 2-4 conversational sentences, a little longer and more personal than the others, no hashtags in it, ending with the link https://versearcade.org on its own line; "tags": 2 lowercase hashtags without the # sign }.\n` +
-          `"instagram": { "text": 2-3 short sentences with a line break between them, no hashtags in it, ending with "Play today's verse — link in bio."; "tags": 10 lowercase hashtags without the # sign, mixing broad #bible-style tags with the verse's own theme }.\n\n` +
+          `"instagram": { "text": 2-3 short sentences with a line break between them, no hashtags in it, ending with "Play today's verse — link in bio."; "tags": 10 lowercase hashtags without the # sign, mixing broad #bible-style tags with the verse's own theme }.\n` +
+          `"x": { "text": one line under 200 characters, plain and direct, no hashtags in it, ending with versearcade.org; "tags": 2 lowercase hashtags without the # sign }.\n\n` +
           `Never rank, compare or shame anyone. Never claim a fact that isn't in the verse. No emoji anywhere.` }] }],
         generationConfig: { responseMimeType: 'application/json', temperature: 0.8 },
       })
@@ -434,7 +435,7 @@ Deno.serve(async (req) => {
         const b = (parsed[k] ?? {}) as Record<string, unknown>
         return { title: String(b.title ?? '').slice(0, 100), text: String(b.text ?? '').slice(0, 2000), tags: tagsOf(b.tags, n) }
       }
-      const platforms = { tiktok: block('tiktok', 6), youtube: block('youtube', 6), facebook: block('facebook', 3), instagram: block('instagram', 12) }
+      const platforms = { tiktok: block('tiktok', 6), youtube: block('youtube', 6), facebook: block('facebook', 3), instagram: block('instagram', 12), x: block('x', 3) }
       // `caption` and `hashtags` are the TikTok block under the names older
       // clients read, so a dashboard that predates the per-platform copy
       // still gets a caption.
@@ -477,15 +478,30 @@ Deno.serve(async (req) => {
       const copy = JSON.parse(await file.text()) as DayCopy
       const reference = String(input.reference ?? '').slice(0, 80)
 
+      // A platform the account has not linked yet is skipped with a row that
+      // says so, never sent: X can be in every list before the account
+      // exists, and the day it is linked the next run simply reaches it.
+      const u = await ayrshare('user', null, 'GET')
+      const active = new Set(Array.isArray(u.activeSocialAccounts) ? (u.activeSocialAccounts as unknown[]).map(String) : [])
+      // Ayrshare's name for X is still "twitter" on this endpoint.
+      const linked = (p: Platform) => active.size === 0 || active.has(p) || (p === 'x' && active.has('twitter'))
+
       // The words per network live in social.ts, shared with the runner.
       const results: Array<Record<string, unknown>> = []
       for (const platform of platforms) {
+        if (!linked(platform)) { results.push({ platform, status: 'skipped', id: null, postUrl: null, postId: null, error: 'not linked in Ayrshare', scheduleDate: null }); continue }
         const r = await ayrshare('post', postBody(platform, copy, { date, kind, reference, videoUrl, scheduleDate }))
         results.push(postResult(platform, r, scheduleDate))
       }
-      const record = { date, kind, videoUrl, at: new Date().toISOString(), results }
+      // Merged over the earlier record, so a call for the platforms that
+      // failed or were skipped last time keeps the rows that succeeded.
+      const { data: priorFile } = await admin.storage.from(BUCKET).download(`days/${date}/posted-${kind}.json`)
+      const prior = priorFile ? (JSON.parse(await priorFile.text()) as { results?: Array<Record<string, unknown>> }).results ?? [] : []
+      const asked = new Set(platforms as string[])
+      const merged = [...prior.filter((r) => !asked.has(String(r.platform))), ...results]
+      const record = { date, kind, videoUrl, at: new Date().toISOString(), results: merged }
       await park(`days/${date}/posted-${kind}.json`, new TextEncoder().encode(JSON.stringify(record)), 'application/json')
-      return json(record)
+      return json({ ...record, results })
     }
 
     if (action === 'posted') {

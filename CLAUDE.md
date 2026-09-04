@@ -455,7 +455,10 @@ design: `docs/TIKTOK-ENGINE.md`. Five things to know:
   the function's `post` action uploads nothing itself — the browser parks the
   MP4 in the bucket through a signed upload URL, then the function hands
   Ayrshare the public URL with that day's per-platform words, one request per
-  platform, idempotent per (date, kind, platform). The key is in Vault
+  platform, idempotent per (date, kind, platform). Five platforms (TikTok,
+  YouTube, Facebook, Instagram, X); one not linked in Ayrshare is skipped
+  with a row that says so, never failed, so a network can be wired in before
+  its account exists. The key is in Vault
   (`tiktok_ayrshare_key()`, 0101). A WebM is refused before any quota is
   spent: TikTok and Instagram will not take one.
 - **The morning cron makes the same three posts with nobody at the

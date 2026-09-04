@@ -32,7 +32,7 @@
 // Environment: SUPABASE_URL, SUPABASE_ANON_KEY (public, defaulted), TIKTOK_TZ
 // (default America/New_York), DATE (override today), KINDS (default
 // verse,story,quiz), POST_TIMES (default verse=07:00,quiz=12:30,story=19:30),
-// PLATFORMS (default all four), DRY_RUN (render only), FFMPEG (binary path),
+// PLATFORMS (default all five, X included), DRY_RUN (render only), FFMPEG (binary path),
 // PW_CHROMIUM (executable path when Playwright's own browser is not installed),
 // RERENDER (make the video again even if the day's is already in the bucket),
 // MODELS_DIR (serve the aligner's Whisper model, ONNX runtime and, if
@@ -59,7 +59,7 @@ const GEMINI_KEY = env.GEMINI_API_KEY || ''
 const AYRSHARE_KEY = env.AYRSHARE_API_KEY || ''
 const TZ = env.TIKTOK_TZ || 'America/New_York'
 const KINDS = (env.KINDS || 'verse,story,quiz').split(',').map((s) => s.trim()).filter(Boolean)
-const PLATFORMS = (env.PLATFORMS || 'tiktok,youtube,facebook,instagram').split(',').map((s) => s.trim()).filter(Boolean)
+const PLATFORMS = (env.PLATFORMS || 'tiktok,youtube,facebook,instagram,x').split(',').map((s) => s.trim()).filter(Boolean)
 const DRY = /^(1|true|yes)$/i.test(env.DRY_RUN || '')
 const FFMPEG = env.FFMPEG || 'ffmpeg'
 const TIMES = Object.fromEntries((env.POST_TIMES || 'verse=07:00,quiz=12:30,story=19:30').split(',').map((kv) => kv.split('=').map((s) => s.trim())))
@@ -274,16 +274,22 @@ for (const kind of KINDS) {
   if (mode === 'function' && !DRY) {
     const prior = await fn('posted', { date, kind }).catch(() => ({}))
     const rows = Array.isArray(prior.results) ? prior.results : []
-    if (rows.length && rows.every((r) => r.status !== 'error')) {
+    // Only the platforms that have not been accepted yet: a platform that
+    // failed, or was not linked last time, is tried again; one Ayrshare took
+    // is left alone (its idempotency key would refuse a repeat anyway).
+    const done = new Set(rows.filter((r) => r.status !== 'error' && r.status !== 'skipped').map((r) => r.platform))
+    const todo = PLATFORMS.filter((p) => !done.has(p))
+    if (!todo.length) {
       log(`  already posted (${rows.map((r) => `${r.platform} ${r.status}`).join(', ')})`)
       results.push({ kind, date, videoUrl: prior.videoUrl, results: rows, skipped: 'posted' }); continue
     }
+    if (done.size) log(`  already on ${[...done].join(', ')} — posting to ${todo.join(', ')}`)
     const parked = `${SUPABASE_URL}/storage/v1/object/public/tiktok/days/${date}/${kind}.mp4`
     const head = await fetch(parked, { method: 'HEAD' }).catch(() => null)
     if (!/^(1|true|yes)$/i.test(env.RERENDER || '') && head?.ok && /^video\//.test(head.headers.get('content-type') || '')) {
       log(`  already rendered (${(Number(head.headers.get('content-length') || 0) / 1e6).toFixed(1)}MB in the bucket) — posting that`)
       videoUrl = parked
-      posted = await fn('post', { date, kind, videoUrl, platforms: PLATFORMS, scheduleDate, reference: getVerseForDate(date).reference })
+      posted = await fn('post', { date, kind, videoUrl, platforms: todo, scheduleDate, reference: getVerseForDate(date).reference })
       for (const r of posted.results) log(`  ${r.platform.padEnd(10)} ${r.status}${r.error ? ` — ${r.error}` : ''}${r.postUrl ? ` ${r.postUrl}` : ''}`)
       results.push({ kind, date, videoUrl, scheduleDate, results: posted.results, skipped: 'render' }); continue
     }

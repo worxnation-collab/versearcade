@@ -52,7 +52,8 @@ export interface RenderOutput {
   phrases: TimedPhrase[]
 }
 
-export interface TimedPhrase { text: string; start: number; end: number }
+export interface TimedPhrase { text: string; start: number; end: number; words?: TimedWord[] }
+export interface TimedWord { text: string; start: number; end: number }
 
 // ---- text → phrases ----------------------------------------------------------
 
@@ -90,8 +91,10 @@ function weight(phrase: string): number {
 // Speech segments in the decoded audio: runs of sound between silences of at
 // least `gapSec`. Used to snap phrase boundaries onto the pauses the TTS
 // actually took, which is what makes captions land on the words.
-export function speechSegments(samples: Float32Array, sampleRate: number, gapSec = 0.22): Array<[number, number]> {
-  const win = Math.round(sampleRate * 0.01)
+const HOP = 0.01 // seconds per envelope window
+
+function envelope(samples: Float32Array, sampleRate: number): { rms: Float32Array; peak: number } {
+  const win = Math.round(sampleRate * HOP)
   const n = Math.floor(samples.length / win)
   const rms = new Float32Array(n)
   let peak = 0
@@ -101,21 +104,87 @@ export function speechSegments(samples: Float32Array, sampleRate: number, gapSec
     rms[i] = Math.sqrt(s / win)
     if (rms[i] > peak) peak = rms[i]
   }
+  return { rms, peak }
+}
+
+export function speechSegments(samples: Float32Array, sampleRate: number, gapSec = 0.22): Array<[number, number]> {
+  const { rms, peak } = envelope(samples, sampleRate)
+  const n = rms.length
   const thr = Math.max(0.004, peak * 0.05)
   const segs: Array<[number, number]> = []
   let start = -1, quiet = 0
-  const gapWins = Math.round(gapSec / 0.01)
+  const gapWins = Math.round(gapSec / HOP)
   for (let i = 0; i < n; i++) {
     if (rms[i] > thr) {
       if (start < 0) start = i
       quiet = 0
     } else if (start >= 0) {
       quiet++
-      if (quiet >= gapWins) { segs.push([start * 0.01, (i - quiet + 1) * 0.01]); start = -1; quiet = 0 }
+      if (quiet >= gapWins) { segs.push([start * HOP, (i - quiet + 1) * HOP]); start = -1; quiet = 0 }
     }
   }
-  if (start >= 0) segs.push([start * 0.01, n * 0.01])
+  if (start >= 0) segs.push([start * HOP, n * HOP])
   return segs
+}
+
+// How long a word takes to say, relative to the words beside it: syllables
+// (vowel groups, less a silent 'e'), a fixed cost for the consonants around
+// them, and the pause its punctuation buys.
+function wordWeight(word: string): number {
+  const s = word.toLowerCase().replace(/[^a-z']/g, '')
+  if (!s) return 0.5
+  let n = (s.match(/[aeiouy]+/g) ?? []).length
+  if (/[^aeiouy]e$/.test(s) && n > 1) n--
+  const pause = /[.!?]["'\u201d\u2019)]?$/.test(word) ? 1.2 : /[,;:\u2014]["'\u201d\u2019)]?$/.test(word) ? 0.6 : 0
+  return Math.max(1, n) + 0.3 + pause
+}
+
+/**
+ * Put a time on every WORD, so a caption can light the word being spoken.
+ *
+ * Gemini TTS returns no word timings, and asking a model to transcribe the
+ * audio back only resolves to the second — useless at this scale. So the
+ * words are laid over the audio's own ENERGY: within a phrase's span, the
+ * boundary after word k falls where the cumulative speech energy reaches
+ * k's share of the phrase's syllable weight. Energy rather than elapsed time
+ * is what makes it land: a pause inside a phrase contributes nothing, so a
+ * breath between two words moves neither of them, where proportional timing
+ * would slide every word after it late. The last word holds until the phrase
+ * ends, so it stays lit through the gap before the next one.
+ */
+export function timeWords(phrases: TimedPhrase[], samples: Float32Array, sampleRate: number): TimedPhrase[] {
+  const { rms, peak } = envelope(samples, sampleRate)
+  const floor = Math.max(0.004, peak * 0.05)
+  const pre = new Float64Array(rms.length + 1)
+  for (let i = 0; i < rms.length; i++) pre[i + 1] = pre[i] + Math.max(0, rms[i] - floor)
+  const idx = (t: number) => Math.min(rms.length, Math.max(0, Math.round(t / HOP)))
+  return phrases.map((p) => {
+    const toks = p.text.split(/\s+/).filter(Boolean)
+    if (toks.length < 2) return { ...p, words: toks.map((t) => ({ text: t, start: p.start, end: p.end })) }
+    const i0 = idx(p.start), i1 = Math.max(i0, idx(p.end))
+    const span = pre[i1] - pre[i0]
+    const w = toks.map(wordWeight)
+    const sum = w.reduce((a, b) => a + b, 0) || 1
+    const words: TimedWord[] = []
+    let acc = 0, from = p.start
+    for (let k = 0; k < toks.length; k++) {
+      acc += w[k]
+      let end: number
+      if (span > 0) {
+        const target = pre[i0] + (acc / sum) * span
+        let lo = i0, hi = i1
+        while (lo < hi) { const mid = (lo + hi) >> 1; if (pre[mid] < target) lo = mid + 1; else hi = mid }
+        end = lo * HOP
+      } else {
+        end = p.start + ((p.end - p.start) * acc) / sum
+      }
+      end = Math.min(p.end, Math.max(from + 0.05, end))
+      words.push({ text: toks[k], start: from, end })
+      from = end
+    }
+    words[words.length - 1].end = p.end
+    return { ...p, words }
+  })
 }
 
 // Lay the phrases over the audio. Clauses (phrases ending in punctuation) are
@@ -264,10 +333,10 @@ async function decodeAudio(buf: ArrayBuffer): Promise<Float32Array> {
 
 const FONT_DISPLAY = '"Baloo 2", "Fredoka", system-ui, -apple-system, "Segoe UI", sans-serif'
 
-function cover(ctx: CanvasRenderingContext2D, src: CanvasImageSource, sw: number, sh: number, zoom = 1) {
+function cover(ctx: CanvasRenderingContext2D, src: CanvasImageSource, sw: number, sh: number, zoom = 1, anchorY = 0.5) {
   const s = Math.max(WIDTH / sw, HEIGHT / sh) * zoom
   const w = sw * s, h = sh * s
-  ctx.drawImage(src, (WIDTH - w) / 2, (HEIGHT - h) / 2, w, h)
+  ctx.drawImage(src, (WIDTH - w) / 2, (HEIGHT - h) * anchorY, w, h)
 }
 
 function wrap(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
@@ -293,29 +362,77 @@ function outlined(ctx: CanvasRenderingContext2D, text: string, x: number, y: num
 
 function easeOut(t: number) { return 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 3) }
 
-// Free polish drawn over every frame: slow gold motes drifting up through
-// the light, and a breathing warmth that reads as lamp flicker. Seeded per
-// mote so the drift is smooth frame to frame; nothing here is random at draw
-// time, or the encoder would see noise.
-const MOTES = Array.from({ length: 28 }, (_, i) => {
-  const r = (n: number) => { const x = Math.sin(i * 12.9898 + n * 78.233) * 43758.5453; return x - Math.floor(x) }
-  return { x: r(1), y: r(2), size: 2 + r(3) * 4, speed: 0.012 + r(4) * 0.02, sway: r(5) * 6.28, alpha: 0.25 + r(6) * 0.45 }
-})
-function drawMotes(ctx: CanvasRenderingContext2D, t: number, strength = 1) {
-  ctx.save()
-  for (const m of MOTES) {
-    const y = ((m.y - t * m.speed) % 1 + 1) % 1
-    const x = m.x + Math.sin(t * 0.6 + m.sway) * 0.012
-    const twinkle = 0.7 + 0.3 * Math.sin(t * 2.1 + m.sway * 3)
-    ctx.globalAlpha = m.alpha * twinkle * strength
-    ctx.fillStyle = '#ffe8a3'
-    ctx.beginPath(); ctx.arc(x * WIDTH, y * HEIGHT, m.size, 0, Math.PI * 2); ctx.fill()
+// ---- captions ---------------------------------------------------------------
+//
+// A caption is drawn WORD BY WORD, with the word being spoken right now in
+// gold and the words still to come held back. Everything else about these
+// posts is deliberately still: an earlier cut had drifting motes, a breathing
+// warm pulse over the whole frame, a bobbing figure and a gold glow under it,
+// and together they read as generated rather than painted. The one thing
+// moving on screen is now the thing the voice is saying.
+
+interface CaptionOpts {
+  x: number
+  y: number
+  maxWidth: number
+  size: number
+  /** Font size to drop to when the phrase needs more than two lines. */
+  small?: number
+  stroke?: number
+  /** Alpha for words not yet spoken. */
+  dim?: number
+}
+
+function layoutWords(ctx: CanvasRenderingContext2D, words: TimedWord[], maxWidth: number) {
+  const space = ctx.measureText(' ').width
+  const lines: Array<Array<TimedWord & { w: number }>> = [[]]
+  let width = 0
+  for (const word of words) {
+    const w = ctx.measureText(word.text).width
+    const add = lines[lines.length - 1].length ? space + w : w
+    if (width + add > maxWidth && lines[lines.length - 1].length) { lines.push([]); width = w }
+    else width += add
+    lines[lines.length - 1].push({ ...word, w })
   }
-  // Lamp breath: a very slow warm pulse over the whole frame.
-  ctx.globalAlpha = 0.05 + 0.035 * Math.sin(t * 1.7) + 0.02 * Math.sin(t * 5.3)
-  ctx.fillStyle = '#ffb648'
-  ctx.fillRect(0, 0, WIDTH, HEIGHT)
-  ctx.restore()
+  return { lines, space }
+}
+
+/**
+ * Draw one caption, lighting the word being spoken. A phrase with no word
+ * timings (the lead-in hook) draws plain white — nothing is "coming up" in a
+ * line nobody is reading along with.
+ */
+function drawCaption(ctx: CanvasRenderingContext2D, phrase: TimedPhrase | null, at: number, o: CaptionOpts): void {
+  if (!phrase) return
+  const timed = !!phrase.words?.length
+  // Untimed text still has to WRAP, so it is split into words either way and
+  // simply drawn as all-spoken. (It shipped as one unbreakable token for a
+  // few minutes, and the lead-in hook ran off both edges of the frame.)
+  const words: TimedWord[] = timed
+    ? phrase.words!
+    : phrase.text.split(/\s+/).filter(Boolean).map((text) => ({ text, start: -1, end: Infinity }))
+  const fit = (size: number) => { ctx.font = `800 ${size}px ${FONT_DISPLAY}`; return layoutWords(ctx, words, o.maxWidth) }
+  let size = o.size
+  let out = fit(size)
+  if (out.lines.length > 2 && o.small) { size = o.small; out = fit(size) }
+  const lh = Math.round(size * 1.18)
+  const alpha = ctx.globalAlpha
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'middle'
+  const y0 = o.y - ((out.lines.length - 1) * lh) / 2
+  out.lines.forEach((line, i) => {
+    const total = line.reduce((n, w) => n + w.w, 0) + out.space * Math.max(0, line.length - 1)
+    let x = o.x - total / 2
+    for (const w of line) {
+      const current = timed && at >= w.start && at < w.end
+      const spoken = !timed || at >= w.start
+      ctx.globalAlpha = alpha * (spoken ? 1 : (o.dim ?? 0.5))
+      outlined(ctx, w.text, x, y0 + i * lh, current ? '#ffd23f' : '#ffffff', 'rgba(11,7,32,0.92)', o.stroke ?? 12)
+      x += w.w + out.space
+    }
+  })
+  ctx.globalAlpha = alpha
+  ctx.textAlign = 'center'
 }
 
 // Dusk and night over the daytime road: a multiply tint and a darker vignette,
@@ -353,29 +470,31 @@ async function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number,
   if (bd.kind === 'loop') {
     await drawLoop(ctx, bd.video, t)
   } else if (bd.kind === 'still') {
-    cover(ctx, bd.image, bd.image.naturalWidth, bd.image.naturalHeight, 1 + 0.06 * (t / total))
+    // A push of one and a half percent across the whole post: enough that the
+    // frame is not a photograph, far short of a Ken Burns pan.
+    cover(ctx, bd.image, bd.image.naturalWidth, bd.image.naturalHeight, 1 + 0.015 * (t / total))
   } else {
-    cover(ctx, bd.scene, bd.scene.naturalWidth, bd.scene.naturalHeight, 1 + 0.05 * (t / total))
-    // A soft gold glow under the figure, breathing with it.
-    const bob = Math.sin((t / 3.2) * Math.PI * 2)
-    const cx = WIDTH / 2, cy = HEIGHT * 0.5 + bob * 14
-    const g = ctx.createRadialGradient(cx, cy + 60, 40, cx, cy + 60, 520)
-    g.addColorStop(0, `rgba(255,210,63,${0.28 + 0.06 * bob})`)
-    g.addColorStop(1, 'rgba(255,210,63,0)')
-    ctx.fillStyle = g
-    ctx.fillRect(0, 0, WIDTH, HEIGHT)
-    const fh = HEIGHT * 0.46
+    cover(ctx, bd.scene, bd.scene.naturalWidth, bd.scene.naturalHeight, 1 + 0.012 * (t / total))
+    // The reader STANDS on the road. This used to float — bobbing on a sine
+    // and lit by a pulsing gold halo — which was the single most generated-
+    // looking thing in the post. A figure with its feet on the ground and one
+    // soft contact shadow reads as a painting instead.
+    const fh = HEIGHT * 0.42
     const fw = (bd.figure.naturalWidth / bd.figure.naturalHeight) * fh
+    // He stands ON the road rather than over it, and high enough that the
+    // captions land on the ground below him instead of across his robe.
+    const cx = WIDTH / 2, feet = HEIGHT * 0.68
+    ctx.save()
+    ctx.globalAlpha = 0.32
+    ctx.fillStyle = '#1a0f36'
+    ctx.beginPath(); ctx.ellipse(cx, feet - 6, fw * 0.3, 22, 0, 0, Math.PI * 2); ctx.fill()
+    ctx.restore()
     ctx.imageSmoothingQuality = 'high'
-    ctx.shadowColor = 'rgba(0,0,0,0.45)'
-    ctx.shadowBlur = 40
-    ctx.shadowOffsetY = 24
-    ctx.drawImage(bd.figure, cx - fw / 2, cy - fh / 2, fw, fh)
+    ctx.drawImage(bd.figure, cx - fw / 2, feet - fh, fw, fh)
   }
   ctx.restore()
   if (!chrome) return
   drawGrade(ctx, input.grade)
-  drawMotes(ctx, t)
 
   // 2. Legibility washes, top and bottom.
   const top = ctx.createLinearGradient(0, 0, 0, 520)
@@ -397,32 +516,20 @@ async function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number,
 
   // 4. Captions.
   const endFade = easeOut((t - (lead + audioDur)) / 0.45)
-  const captionY = 1400
-  const maxW = 880
-  let caption: string | null = null
+  const at = t - lead
+  let phrase: TimedPhrase | null = null
   let age = 1
   if (t < lead) {
-    caption = input.hook?.trim() || null
-    age = t / 0.35
+    const hook = input.hook?.trim()
+    if (hook) { phrase = { text: hook, start: 0, end: lead }; age = t / 0.35 }
   } else {
-    const at = t - lead
     const p = phrases.find((x) => at >= x.start && at < x.end) ?? (at >= audioDur ? null : phrases[phrases.length - 1])
-    if (p && at < audioDur + 0.2) { caption = p.text.replace(/\.$/, ''); age = (at - p.start) / 0.22 }
+    if (p && at < audioDur + 0.2) { phrase = p; age = (at - p.start) / 0.22 }
   }
-  if (caption && endFade < 1) {
-    const pop = 0.92 + 0.08 * easeOut(age)
+  if (phrase && endFade < 1) {
     ctx.save()
     ctx.globalAlpha = Math.min(1, easeOut(age) + 0.35) * (1 - endFade)
-    ctx.translate(WIDTH / 2, captionY)
-    ctx.scale(pop, pop)
-    // Two lines at full size; a longer card steps down rather than stacking
-    // three lines with an orphan word on the last.
-    ctx.font = `800 88px ${FONT_DISPLAY}`
-    let lines = wrap(ctx, caption, maxW)
-    let lh = 104
-    if (lines.length > 2) { ctx.font = `800 70px ${FONT_DISPLAY}`; lines = wrap(ctx, caption, maxW); lh = 84 }
-    const y0 = -((lines.length - 1) * lh) / 2
-    lines.forEach((line, i) => outlined(ctx, line, 0, y0 + i * lh, '#ffffff', 'rgba(11,7,32,0.92)', 14))
+    drawCaption(ctx, phrase, at, { x: WIDTH / 2, y: 1400, maxWidth: 880, size: 88, small: 70, stroke: 14 })
     ctx.restore()
   }
 
@@ -688,7 +795,7 @@ export async function renderTikTok(input: RenderInput): Promise<RenderOutput> {
   // The reading ends by saying the reference, so it is the last caption too —
   // and a clause of its own, which keeps the clause count matching the pauses.
   const verse = /[.!?]["'”’)]?$/.test(input.text.trim()) ? input.text.trim() : input.text.trim() + '.'
-  const phrases = alignPhrases([...splitPhrases(verse), input.reference + '.'], segments, audioDur)
+  const phrases = timeWords(alignPhrases([...splitPhrases(verse), input.reference + '.'], segments, audioDur), samples, SAMPLE_RATE)
   const lead = input.hook?.trim() ? 1.8 : 1.0
   const total = lead + audioDur + TAIL_SEC
   const scene: Scene = { input, lead, audioDur, total, phrases }
@@ -708,21 +815,19 @@ export async function renderPoster(input: Omit<RenderInput, 'audio' | 'onProgres
   const ctx = canvas.getContext('2d', { alpha: false })
   if (!ctx) throw new Error('no 2d context')
   try { await document.fonts.load(`800 88px "Baloo 2"`) } catch { /* fine */ }
-  await drawFrame(ctx, { input: { ...input, audio: new ArrayBuffer(0) }, lead: 1, audioDur: 30, total: 34, phrases: [] }, t, chrome)
+  // Real captions in the preview, timed proportionally over a nominal half
+  // minute — the same reason the story poster carries them.
+  const verse = /[.!?]["'\u201d\u2019)]?$/.test(input.text.trim()) ? input.text.trim() : input.text.trim() + '.'
+  const phrases = alignPhrases([...splitPhrases(verse), input.reference + '.'], [[0, 30]], 30)
+  await drawFrame(ctx, { input: { ...input, audio: new ArrayBuffer(0) }, lead: 1, audioDur: 30, total: 34, phrases }, t, chrome)
   return canvas.toDataURL('image/png')
 }
 
 // ---- story time -----------------------------------------------------------------
 //
-// The evening post: a teller (Tabitha) at the bottom-left of her room, a
-// picture card above her that changes with each paragraph, captions between
-// the two, and the verse itself as the last card. Same engine, same checks.
-
-export interface StoryCard {
-  image?: HTMLImageElement
-  figure?: HTMLImageElement
-  label?: string
-}
+// The evening post: Tabitha telling the story behind the day's verse to a
+// circle of children in her library, with the words she is saying on a panel
+// above her, lit a word at a time. Same engine, same checks as the verse post.
 
 export interface StoryInput {
   title: string
@@ -730,18 +835,12 @@ export interface StoryInput {
   verseText: string
   /** Spoken paragraphs, in order. The LAST one is the verse and its reference. */
   paragraphs: string[]
-  /** One per paragraph; an entry with no image is drawn as the verse card. */
-  cards: StoryCard[]
   hook?: string
   audio: ArrayBuffer
-  /** The room — a painting, or a Veo loop of the room WITH the teller in it. */
+  /** The room — a painting of the story circle, or a Veo loop of one. */
   room: HTMLImageElement | HTMLVideoElement
-  /** The teller's render; not drawn when the room is a loop that already has her. */
-  teller: HTMLImageElement
-  /** Reaction loops of the same room+teller, cut in per paragraph when present. */
-  reactions?: { listen?: HTMLVideoElement; laugh?: HTMLVideoElement; leanin?: HTMLVideoElement }
-  /** Which reaction each paragraph gets; 'talk' is the main room loop. */
-  beats?: Array<'talk' | 'listen' | 'laugh' | 'leanin'>
+  /** The teller's render, for a room that does not already have her in it. */
+  teller?: HTMLImageElement
   bed?: Float32Array
   onProgress?: (fraction: number, label: string) => void
 }
@@ -777,156 +876,83 @@ function contain(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number
 async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: number, chrome = true) {
   const { input, lead, audioDur, total, phrases, para, paraStart } = sc
   const at = t - lead
+  void para; void paraStart
 
-  // 1. The room: a Veo loop played forward with a crossfaded seam, or the painting with a slow push.
-  // With reaction loops, the paragraph decides which loop is on screen and
-  // the cut lands on the paragraph boundary, timed from that boundary so a
-  // new loop starts at its first frame.
+  // 1. The room. A painting held almost still — anchored to its BOTTOM edge,
+  // so the story circle sits low in the frame and the quiet upper half is
+  // where the caption panel goes — or a loop, played forward.
   const roomIsLoop = input.room instanceof HTMLVideoElement
-  let piNow = 0
-  for (let i = 0; i < paraStart.length; i++) if (at >= paraStart[i] - 0.15) piNow = i
   if (input.room instanceof HTMLVideoElement) {
-    const beat = input.beats?.[piNow] ?? 'talk'
-    const alt = beat !== 'talk' ? input.reactions?.[beat] : undefined
-    const v = alt ?? input.room
-    const since = alt ? Math.max(0, at - (paraStart[piNow] ?? 0) + 0.15) : t
-    await drawLoop(ctx, v, since)
+    await drawLoop(ctx, input.room, t)
   } else {
-    cover(ctx, input.room, input.room.naturalWidth, input.room.naturalHeight, 1 + 0.05 * (t / total))
+    cover(ctx, input.room, input.room.naturalWidth, input.room.naturalHeight, 1.08 + 0.02 * (t / total), 1)
   }
-  drawMotes(ctx, t, 0.8)
-  const top = ctx.createLinearGradient(0, 0, 0, 480)
-  top.addColorStop(0, 'rgba(11,7,32,0.85)'); top.addColorStop(1, 'rgba(11,7,32,0)')
-  ctx.fillStyle = top; ctx.fillRect(0, 0, WIDTH, 480)
-  const bot = ctx.createLinearGradient(0, HEIGHT - 900, 0, HEIGHT)
-  bot.addColorStop(0, 'rgba(11,7,32,0)'); bot.addColorStop(1, 'rgba(11,7,32,0.92)')
-  ctx.fillStyle = bot; ctx.fillRect(0, HEIGHT - 900, WIDTH, 900)
+  const top = ctx.createLinearGradient(0, 0, 0, 820)
+  top.addColorStop(0, 'rgba(11,7,32,0.9)'); top.addColorStop(1, 'rgba(11,7,32,0)')
+  ctx.fillStyle = top; ctx.fillRect(0, 0, WIDTH, 820)
+  const bot = ctx.createLinearGradient(0, HEIGHT - 420, 0, HEIGHT)
+  bot.addColorStop(0, 'rgba(11,7,32,0)'); bot.addColorStop(1, 'rgba(11,7,32,0.55)')
+  ctx.fillStyle = bot; ctx.fillRect(0, HEIGHT - 420, WIDTH, 420)
 
-  if (!chrome) {
-    // The base still handed to Veo: the room and the teller, nothing drawn over.
-    const th0 = 640, tw0 = (input.teller.naturalWidth / input.teller.naturalHeight) * th0
-    if (!roomIsLoop) ctx.drawImage(input.teller, 60, HEIGHT - 30 - th0, tw0, th0)
-    return
+  // 2. The teller, for a room that does not already have her.
+  if (input.teller && !roomIsLoop) {
+    const th = 640, tw = (input.teller.naturalWidth / input.teller.naturalHeight) * th
+    ctx.save()
+    ctx.imageSmoothingQuality = 'high'
+    ctx.globalAlpha = 0.32
+    ctx.fillStyle = '#1a0f36'
+    ctx.beginPath(); ctx.ellipse(60 + tw / 2, HEIGHT - 36, tw * 0.3, 20, 0, 0, Math.PI * 2); ctx.fill()
+    ctx.globalAlpha = 1
+    ctx.drawImage(input.teller, 60, HEIGHT - 30 - th, tw, th)
+    ctx.restore()
   }
 
-  // 2. Header.
+  if (!chrome) return
+
+  // 3. Header.
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
   ctx.font = `800 32px ${FONT_DISPLAY}`
   ctx.letterSpacing = '6px'
-  outlined(ctx, 'VERSE ARCADE · STORY TIME', WIDTH / 2, 170, '#ffd23f', 'rgba(11,7,32,0.85)', 8)
+  outlined(ctx, 'VERSE ARCADE · STORY TIME', WIDTH / 2, 150, '#ffd23f', 'rgba(11,7,32,0.85)', 8)
   ctx.letterSpacing = '0px'
   ctx.font = `700 54px ${FONT_DISPLAY}`
-  const titleLines = wrap(ctx, input.title, 900)
-  titleLines.forEach((l, i) => outlined(ctx, l, WIDTH / 2, 240 + i * 60))
+  wrap(ctx, input.title, 900).forEach((l, i) => outlined(ctx, l, WIDTH / 2, 218 + i * 60))
 
-  // 3. The picture card for the current paragraph.
+  // 4. The panel: the story's own words, lit a word at a time.
+  //
+  // This is where the picture cards used to be — a deck of app art that
+  // changed per paragraph. Two things were wrong with it: the pictures were
+  // only ever loosely about the sentence being spoken, and at that size they
+  // left the room itself as a strip behind them. A smaller panel gives the
+  // scene back the frame, and what it holds is the one thing that is exactly
+  // about the words: the words.
   const endFade = easeOut((t - (lead + audioDur)) / 0.5)
-  let pi = 0
-  for (let i = 0; i < paraStart.length; i++) if (at >= paraStart[i] - 0.15) pi = i
-  const card = input.cards[Math.min(pi, input.cards.length - 1)]
-  const cardAge = easeOut((at - (paraStart[pi] ?? 0) + 0.15) / 0.4)
-  const leaning = (input.beats?.[pi] ?? 'talk') === 'leanin' && input.reactions?.leanin
-  if (t >= lead - 0.6 && endFade < 1) {
-    // The lean-in walks her up to the camera, so the card shrinks and rises
-    // to leave her the lower half of the frame.
-    const cw = leaning ? 600 : 760, ch = cw
-    const cx = (WIDTH - cw) / 2, cy = leaning ? 300 : 330
-    ctx.save()
-    ctx.globalAlpha = (1 - endFade) * Math.min(1, cardAge + 0.2)
-    const pop = 0.95 + 0.05 * cardAge
-    ctx.translate(cx + cw / 2, cy + ch / 2); ctx.scale(pop, pop); ctx.translate(-(cx + cw / 2), -(cy + ch / 2))
-    ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 40; ctx.shadowOffsetY = 18
-    roundRect(ctx, cx, cy, cw, ch, 44)
-    ctx.fillStyle = 'rgba(21,10,52,0.78)'
-    ctx.fill()
-    ctx.shadowColor = 'transparent'
-    ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(255,210,63,0.85)'; ctx.stroke()
-    ctx.save(); roundRect(ctx, cx + 4, cy + 4, cw - 8, ch - 8, 40); ctx.clip()
-    // A page turn: the new picture wipes in from the left edge with a soft
-    // bright edge, so a card change reads as a page, not a cut.
-    if (cardAge < 1) {
-      const px = cx + 4 + (cw - 8) * cardAge
-      ctx.beginPath(); ctx.rect(cx, cy, px - cx, ch); ctx.clip()
-      const edge = ctx.createLinearGradient(px - 60, 0, px, 0)
-      edge.addColorStop(0, 'rgba(255,232,163,0)'); edge.addColorStop(1, 'rgba(255,232,163,0.8)')
-      ctx.fillStyle = 'rgba(21,10,52,1)'; ctx.fillRect(cx, cy, cw, ch)
-      ctx.fillStyle = edge; ctx.fillRect(px - 60, cy, 60, ch)
-    }
-    if (card?.image) {
-      if (card.image.naturalWidth > card.image.naturalHeight * 1.2 || card.figure) {
-        // A scene: fill the card, and stand the figure in it.
-        const s = Math.max(cw / card.image.naturalWidth, ch / card.image.naturalHeight)
-        ctx.drawImage(card.image, cx + (cw - card.image.naturalWidth * s) / 2, cy + (ch - card.image.naturalHeight * s) / 2, card.image.naturalWidth * s, card.image.naturalHeight * s)
-        if (card.figure) {
-          const fh = ch * 0.62
-          const fw = (card.figure.naturalWidth / card.figure.naturalHeight) * fh
-          ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 24; ctx.shadowOffsetY = 12
-          ctx.drawImage(card.figure, cx + cw / 2 - fw / 2, cy + ch - fh - 40, fw, fh)
-          ctx.shadowColor = 'transparent'
-        }
-      } else {
-        contain(ctx, card.image, cx + 40, cy + 40, cw - 80, ch - 80)
-      }
-    } else {
-      // The verse card.
-      ctx.font = `700 54px ${FONT_DISPLAY}`
-      const lines = wrap(ctx, input.verseText, cw - 120)
-      const lh = 66
-      const y0 = cy + ch / 2 - ((lines.length - 1) * lh) / 2 - 30
-      lines.forEach((l, i) => outlined(ctx, l, cx + cw / 2, y0 + i * lh, '#ffffff', 'rgba(11,7,32,0.6)', 6))
-      ctx.font = `800 40px ${FONT_DISPLAY}`
-      outlined(ctx, input.reference, cx + cw / 2, y0 + lines.length * lh + 16, '#ffd23f', 'rgba(11,7,32,0.6)', 6)
-    }
-    ctx.restore()
-    if (card?.label && card.image) {
-      ctx.font = `700 30px ${FONT_DISPLAY}`
-      ctx.fillStyle = 'rgba(11,7,32,0.75)'
-      const lw = ctx.measureText(card.label).width + 44
-      roundRect(ctx, cx + cw / 2 - lw / 2, cy + ch - 62, lw, 46, 23); ctx.fill()
-      ctx.fillStyle = '#ffd23f'; ctx.fillText(card.label, cx + cw / 2, cy + ch - 39)
-    }
-    ctx.restore()
-  }
-
-  // 4. The teller, bottom-left, with a warm glow — unless the room is a loop
-  // that already has her in it.
-  if (!roomIsLoop) {
-    const bob = Math.sin((t / 3.4) * Math.PI * 2)
-    const th = 640, tw = (input.teller.naturalWidth / input.teller.naturalHeight) * th
-    const tx = 60, ty = HEIGHT - 30 - th + bob * 8
-    const g = ctx.createRadialGradient(tx + tw / 2, ty + th * 0.6, 30, tx + tw / 2, ty + th * 0.6, 420)
-    g.addColorStop(0, 'rgba(255,210,63,0.22)'); g.addColorStop(1, 'rgba(255,210,63,0)')
-    ctx.fillStyle = g; ctx.fillRect(0, HEIGHT - 1000, WIDTH, 1000)
-    ctx.save()
-    ctx.imageSmoothingQuality = 'high'
-    ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 36; ctx.shadowOffsetY = 20
-    ctx.drawImage(input.teller, tx, ty, tw, th)
-    ctx.restore()
-  }
-
-  // 5. Captions, between the card and the teller.
-  let caption: string | null = null
+  const px = 90, pw = WIDTH - 180, py = 296, ph = 372
+  let phrase: TimedPhrase | null = null
   let age = 1
-  if (t < lead) { caption = input.hook?.trim() || null; age = t / 0.35 }
-  else {
-    const idx = phrases.findIndex((x) => at >= x.start && at < x.end)
-    const p = idx >= 0 ? phrases[idx] : (at < audioDur ? phrases[phrases.length - 1] : null)
-    if (p && at < audioDur + 0.2) { caption = p.text.replace(/\.$/, ''); age = (at - p.start) / 0.22 }
-    void para
+  if (t < lead) {
+    const hook = input.hook?.trim()
+    if (hook) { phrase = { text: hook, start: 0, end: lead }; age = t / 0.35 }
+  } else {
+    const p = phrases.find((x) => at >= x.start && at < x.end) ?? (at < audioDur ? phrases[phrases.length - 1] : null)
+    if (p && at < audioDur + 0.2) { phrase = p; age = (at - p.start) / 0.22 }
   }
-  if (caption && endFade < 1) {
+  if (t >= lead - 0.6 && endFade < 1) {
     ctx.save()
-    ctx.globalAlpha = Math.min(1, easeOut(age) + 0.35) * (1 - endFade)
-    const pop = 0.94 + 0.06 * easeOut(age)
-    // Captions sit between the card and the teller; when she has walked up
-    // to the camera they tuck under the smaller card instead.
-    ctx.translate(leaning ? WIDTH / 2 : WIDTH / 2 + 120, leaning ? 1000 : 1215); ctx.scale(pop, pop)
-    ctx.font = `800 ${leaning ? 60 : 70}px ${FONT_DISPLAY}`
-    let lines = wrap(ctx, caption, leaning ? 900 : 700)
-    let lh = leaning ? 70 : 82
-    if (lines.length > 2) { ctx.font = `800 58px ${FONT_DISPLAY}`; lines = wrap(ctx, caption, leaning ? 900 : 700); lh = 68 }
-    const y0 = -((lines.length - 1) * lh) / 2
-    lines.forEach((l, i) => outlined(ctx, l, 0, y0 + i * lh, '#ffffff', 'rgba(11,7,32,0.92)', 12))
+    ctx.globalAlpha = 1 - endFade
+    roundRect(ctx, px, py, pw, ph, 40)
+    ctx.fillStyle = 'rgba(21,10,52,0.82)'
+    ctx.fill()
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,210,63,0.7)'; ctx.stroke()
+    ctx.font = `800 26px ${FONT_DISPLAY}`
+    ctx.letterSpacing = '5px'
+    ctx.fillStyle = 'rgba(255,210,63,0.8)'
+    ctx.fillText(input.reference.toUpperCase(), WIDTH / 2, py + 44)
+    ctx.letterSpacing = '0px'
+    if (phrase) {
+      ctx.globalAlpha = (1 - endFade) * Math.min(1, easeOut(age) + 0.4)
+      drawCaption(ctx, phrase, at, { x: WIDTH / 2, y: py + ph / 2 + 22, maxWidth: pw - 96, size: 64, small: 54, stroke: 8, dim: 0.42 })
+    }
     ctx.restore()
   }
 
@@ -950,22 +976,29 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
   }
 }
 
+// A story's paragraphs as caption phrases, with the paragraph each belongs
+// to. One copy, because the poster has to split them exactly as the render
+// does or the preview is of a different post.
+function storyTexts(paragraphs: string[]): { texts: string[]; para: number[] } {
+  const texts: string[] = []
+  const para: number[] = []
+  paragraphs.forEach((p, i) => {
+    const trimmed = p.trim()
+    const ended = /[.!?]["'\u201d\u2019)]?$/.test(trimmed) ? trimmed : trimmed + '.'
+    // A story is read at a talking pace, so a caption can hold a word more.
+    for (const ph of splitPhrases(ended, 7)) { texts.push(ph); para.push(i) }
+  })
+  return { texts, para }
+}
+
 export async function renderStory(input: StoryInput): Promise<RenderOutput> {
   const progress = input.onProgress ?? (() => {})
   progress(0, 'Decoding the story')
   const samples = await decodeAudio(input.audio)
   const audioDur = samples.length / SAMPLE_RATE
   const segments = speechSegments(samples, SAMPLE_RATE)
-  // Phrases per paragraph, so each paragraph's first phrase marks its card.
-  const texts: string[] = []
-  const para: number[] = []
-  input.paragraphs.forEach((p, i) => {
-    const t = p.trim()
-    const ended = /[.!?]["'”’)]?$/.test(t) ? t : t + '.'
-    // A story is read at a talking pace, so a card can hold a word more.
-    for (const ph of splitPhrases(ended, 7)) { texts.push(ph); para.push(i) }
-  })
-  const phrases = alignPhrases(texts, segments, audioDur)
+  const { texts, para } = storyTexts(input.paragraphs)
+  const phrases = timeWords(alignPhrases(texts, segments, audioDur), samples, SAMPLE_RATE)
   const paraStart = input.paragraphs.map((_, i) => phrases[para.indexOf(i)]?.start ?? 0)
   const lead = input.hook?.trim() ? 1.8 : 1.0
   const total = lead + audioDur + TAIL_SEC + 1.2
@@ -983,13 +1016,18 @@ export async function plannedDuration(audio: ArrayBuffer, hook: string | undefin
   return lead + samples.length / SAMPLE_RATE + TAIL_SEC + (story ? 1.2 : 0)
 }
 
-export async function renderStoryPoster(input: Omit<StoryInput, 'audio' | 'onProgress'>, t = 2.5, chrome = true): Promise<string> {
+export async function renderStoryPoster(input: Omit<StoryInput, 'audio' | 'onProgress'> & { phrases?: TimedPhrase[] }, t = 2.5, chrome = true): Promise<string> {
   const canvas = document.createElement('canvas')
   canvas.width = WIDTH; canvas.height = HEIGHT
   const ctx = canvas.getContext('2d', { alpha: false })
   if (!ctx) throw new Error('no 2d context')
   try { await document.fonts.load(`800 70px "Baloo 2"`) } catch { /* fine */ }
   const n = input.paragraphs.length
-  await drawStoryFrame(ctx, { input: { ...input, audio: new ArrayBuffer(0) }, lead: 1, audioDur: 60, total: 65, phrases: [], para: [], paraStart: Array.from({ length: n }, (_, i) => i * (60 / n)) }, t, chrome)
+  // The preview carries real captions, timed proportionally over a nominal
+  // minute: a poster of this layout with an empty panel would be a poster of
+  // the wrong layout.
+  const { texts, para } = storyTexts(input.paragraphs)
+  const phrases = input.phrases ?? alignPhrases(texts, [[0, 60]], 60)
+  await drawStoryFrame(ctx, { input: { ...input, audio: new ArrayBuffer(0) }, lead: 1, audioDur: 60, total: 65, phrases, para, paraStart: Array.from({ length: n }, (_, i) => i * (60 / n)) }, t, chrome)
   return canvas.toDataURL('image/png')
 }

@@ -411,9 +411,11 @@ the kit still exists.
 ## The TikTok engine: an operator tool, not a feature
 
 Admin → TikTok makes the daily post for a faceless TikTok account: Cephas
-hovering over a road scene reading the verse of the day, captioned, ending on
-the site. One click a day, a week at a time if you like; the human does the
-upload. Full design: `docs/TIKTOK-ENGINE.md`. Three things to know:
+standing on a road scene reading the verse of the day, and an evening Story
+time with Tabitha telling the story behind it to a circle of children. Both
+are captioned word by word, ending on the site. One click a day, a week at a
+time if you like; the human does the upload. Full design:
+`docs/TIKTOK-ENGINE.md`. Four things to know:
 
 - **The Gemini key lives in `supabase/functions/tiktok-gen` and nowhere else.**
   Same `sharkbait` gate as `push-send`. It makes the reading (Gemini TTS), the
@@ -428,6 +430,16 @@ upload. Full design: `docs/TIKTOK-ENGINE.md`. Three things to know:
   `getVerseForDate` and the app's own art, and it never ranks or names anyone.
   It rides in the baked `dist` harmlessly because `/admin` renders nothing for
   any other account.
+- **The only thing moving is the caption, and that is a rule now.** These
+  posts had drifting motes, a warm pulse over the frame, a hovering figure
+  under a breathing halo, page-turn wipes and Veo loops of Tabitha talking —
+  and the sum read as generated rather than painted, which is the one thing a
+  faceless account cannot afford. So: paintings held nearly still (a 1.5-2%
+  push), a figure with its feet on the ground, no glow, and a painted still
+  now beating the Veo loop in `tierFor`. What moves instead is the word being
+  spoken, lit gold — `timeWords()` places words inside a phrase by CUMULATIVE
+  SPEECH ENERGY rather than elapsed time, so a breath between two words moves
+  neither of them. Anything added here has to earn its motion.
 
 ## Church pages
 

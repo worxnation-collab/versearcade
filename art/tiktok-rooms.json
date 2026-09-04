@@ -1,0 +1,13 @@
+[
+  {
+    "id": "story-circle",
+    "kind": "tiktok",
+    "refs": [
+      "public/skins/librarian.png",
+      "public/keep/study-library.jpg",
+      "public/skins/starter_fem_sand.png",
+      "public/skins/starter_masc_sand.png"
+    ],
+    "prompt": "A PORTRAIT FRAME, exactly 9:16 (nine wide by sixteen tall), a single painted illustration.\n\nA warm lamp-lit library story hour, seen straight on from a few steps back. The older woman librarian from the reference image — the SAME face, silver-grey hair, mustard-gold shawl over a deep teal robe — sits on a low wooden stool in the LOWER THIRD of the picture, slightly right of centre, an open book resting on her knee, turned toward the children with a gentle smile.\n\nFacing her, backs and three-quarter backs to the viewer, five or six small children sit cross-legged on a woven rug on the floor in a loose semicircle along the very BOTTOM of the frame, looking up at her. They wear simple painted robes in the same palette as the reference figures — teal, russet, sand, olive, plum — with different hair colours and skin tones. They are calm and still, listening.\n\nBehind and above them, tall wooden bookshelves warm with oil lamps recede into soft focus, exactly the library of the reference image: honey wood, deep violet-blue shadows, small pools of golden lamplight.\n\nCRITICAL COMPOSITION: the TOP HALF of the frame — everything above the middle — must be quiet, uncluttered background only: dim upper shelves and soft shadow, gently darker toward the top edge. No heads, no figures, no bright objects, no lamps in the upper half. Text panels are drawn over that area afterwards, so anything painted there will be covered.\n\nWarm hand-illustrated storybook style, clean flat shapes with soft painted shading, matching the reference images exactly. No photorealism, no line art, no text, no lettering, no numbers, no watermark, no border, no frame, no speech bubbles, no modern objects.\n\nREMEMBER: a 9:16 portrait frame; the librarian on a stool low and right of centre; the children seated cross-legged along the bottom with their backs to us; the entire upper half quiet and empty."
+  }
+]

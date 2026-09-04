@@ -64,11 +64,14 @@ const dirFor = (kind) =>
           ? 'public/church'
           : kind === 'arcade'
             ? 'public/arcade'
+          : kind === 'tiktok'
+            ? 'public/tiktok/rooms'
       : kind === 'item'
         ? 'public/items'
         : 'public/keep'
 
-// The paintings with a folder of their own — road, room, church, arcade — are
+// The paintings with a folder of their own — road, room, church, arcade and
+// the operator-only TikTok rooms — are
 // written as JPEG (opaque full-bleed; see gen-art.mjs), and this script reads
 // PNG only — so they are simply not among
 // the files it can check. That is correct rather than a gap: the whole check is
@@ -78,7 +81,7 @@ const dirFor = (kind) =>
 const files = process.argv.slice(2).length
   ? process.argv.slice(2)
   : Object.keys(kinds)
-      .filter((id) => !['road', 'room', 'church', 'arcade'].includes(kinds[id]))
+      .filter((id) => !['road', 'room', 'church', 'arcade', 'tiktok'].includes(kinds[id]))
       .map((id) => `${dirFor(kinds[id])}/${id}.png`)
       .filter(existsSync)
 

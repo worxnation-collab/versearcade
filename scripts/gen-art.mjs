@@ -54,7 +54,7 @@ const STYLE_REFS = ['public/skins/moses.png', 'public/skins/esther.png']
   .filter(existsSync)
   .map((p) => ({ inline_data: { mime_type: 'image/png', data: b64(p) } }))
 
-async function generate(prompt, withRefs, refPaths = []) {
+async function generate(prompt, withRefs, refPaths = [], imageConfig = null) {
   // Per-entry reference images, on top of the skin style refs. A scene needs
   // these for a reason the skins don't: the hall's anchor coordinates
   // (src/data/keep.ts) are measured against ONE painting, so every other hall
@@ -71,7 +71,10 @@ async function generate(prompt, withRefs, refPaths = []) {
       headers: { 'content-type': 'application/json', 'x-goog-api-key': KEY },
       body: JSON.stringify({
         contents: [{ parts }],
-        generationConfig: { responseModalities: ['IMAGE'] },
+        // `imageConfig` is how a batch asks for a shape the app's own art
+        // never needs — the TikTok rooms are 9:16 and land at 1080x1920, where
+        // every other painting here is landscape and caps at 640.
+        generationConfig: { responseModalities: ['IMAGE'], ...(imageConfig ? { imageConfig } : {}) },
       }),
     },
   )
@@ -237,8 +240,13 @@ for (const entry of manifest) {
     room: 'public/room',
     church: 'public/church',
     arcade: 'public/arcade',
+    // Operator-only: the backdrops of the daily TikTok posts. Portrait, and
+    // the one kind here that is never wired into GENERATED_ART, because no
+    // player-facing surface reads it.
+    tiktok: 'public/tiktok/rooms',
   }
   const sceneDir = SCENE_DIRS[entry.kind]
+  const isTikTok = entry.kind === 'tiktok'
   const isScene = entry.kind === 'scene' || !!sceneDir
   const isProp = entry.kind === 'prop'
   // A church building: a keyed cut-out like a prop, but it renders from 44px
@@ -269,7 +277,7 @@ for (const entry of manifest) {
           : `public/items/${entry.id}.png`
   process.stdout.write(`${entry.id} … `)
   try {
-    const raw = await generate(entry.prompt, isSkin, entry.refs ?? [])
+    const raw = await generate(entry.prompt, isSkin, entry.refs ?? [], isTikTok ? { aspectRatio: '9:16', imageSize: '2K' } : null)
     // The API returns JPEG or PNG depending on the model; sniff the magic bytes.
     let png
     if (raw[0] === 0x89 && raw[1] === 0x50) {
@@ -281,7 +289,9 @@ for (const entry of manifest) {
     }
     if (isScene) {
       // A full-bleed background: no key, no isolate — just cap the width.
-      png = padAndCap(png, { padBelowPct: 0, maxH: 640 })
+      // A TikTok room is the whole 1080x1920 frame, so it keeps the height
+      // the renderer draws at; every other scene is a card-sized backdrop.
+      png = padAndCap(png, { padBelowPct: 0, maxH: isTikTok ? 1920 : 640 })
     } else {
       png = keyMagenta(png)
       png = isolate(png)
@@ -300,7 +310,9 @@ for (const entry of manifest) {
     mkdirSync(dirname(dest), { recursive: true })
     writeFileSync(dest, buf)
     // The app serves public/ from the root, so the URL is the path minus it.
-    artMap[entry.id] = dest.replace(/^public/, '')
+    // A TikTok room is deliberately NOT wired: GENERATED_ART is what player
+    // surfaces look themselves up in, and an operator backdrop has no id there.
+    if (!isTikTok) artMap[entry.id] = dest.replace(/^public/, '')
     produced += 1
     console.log(`ok → ${dest} (${png.width}x${png.height}, ${(buf.length / 1024).toFixed(0)}KB)`)
   } catch (e) {

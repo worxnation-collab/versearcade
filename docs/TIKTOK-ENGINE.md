@@ -1,8 +1,8 @@
 # The TikTok engine (Admin → TikTok)
 
 One post a day for a faceless Verse Arcade TikTok: a painted figure — Peter
-(Cephas) by default — hovering over a Verse Arcade scene, reading the verse of
-the day, captioned phrase by phrase, ending on `versearcade.org`. This is an
+(Cephas) by default — standing in a Verse Arcade scene, reading the verse of
+the day, captioned WORD BY WORD, ending on `versearcade.org`. This is an
 **operator tool**: admin-only, online-only, desktop Chrome. It changes nothing
 a player sees and it is behind the dashboard's three gates.
 
@@ -55,13 +55,22 @@ the player bundle.
 
 Best available wins, each made **once** and reused every day after:
 
-1. **Veo loop** — real motion, 8 seconds looped forward with a crossfade at the seam. Started
-   with "Animate", polled every 8s for up to 8 minutes. Costs a few dollars once.
-2. **Painted still** — Nano Banana composes the figure over the scene at 9:16
+1. **Painted still** — Nano Banana composes the figure over the scene at 9:16
    from two reference images (the skin PNG and the road JPEG, fetched from
-   production so they're https). Drawn with a slow Ken Burns push.
-3. **Built-in** — nothing generated: the skin PNG at 2× with a breathing gold
-   glow, over the road scene. Works with only the TTS secret set.
+   production so they're https). Held almost still: a 1.5% push across the
+   whole post.
+2. **Veo loop** — 8 seconds looped forward with a crossfade at the seam.
+   Started with "Animate", polled every 8s for up to 8 minutes. A few dollars
+   once.
+3. **Built-in** — nothing generated: the skin PNG standing on the road scene
+   with one soft contact shadow. Works with only the TTS secret set.
+
+**The still wins over the loop, and that is a reversal.** The loop was the top
+tier because it had real motion — and real motion was what made the post look
+generated: the reader hovered, breathing on a sine under a pulsing gold halo.
+A painting with a barely-there push reads as art. The loop stays above the
+built-in tier because a loop that exists was made from that layout's own base
+frame.
 
 ## Everything is picked for you, and everything can be overridden
 
@@ -94,25 +103,35 @@ only when wanted.
 
 The same panel has a second mode. **Story time** is Tabitha, the app's
 librarian, telling the story BEHIND the day's verse: 60 to 90 seconds in her
-library, a picture card above her that changes with each paragraph, and the
-verse itself read plainly at the end. It is the morning post's other half —
-Peter reads the verse; Tabitha tells you what was happening — and it costs
-about three cents: a Gemini Flash script and a longer TTS.
+library, sitting on a stool with a circle of children cross-legged in front of
+her, the words she is saying on a panel above her, and the verse itself read
+plainly at the end. It is the morning post's other half — Peter reads the
+verse; Tabitha tells you what was happening — and it costs about three cents:
+a Gemini Flash script and a longer TTS.
 
 - **The script is written from the pool entry's own narrative fields** —
   `before`, `after`, `speaker`, `audience`, `facts` — and the function's prompt
   forbids anything not in the passage's plain narrative. Cached at
   `days/<date>/story.json`; **↻ Rewrite** asks again. Three paragraphs: the
   situation, what happens, what came after and why it matters, then the verse.
-- **The pictures are art the app already ships.** `storyCards()` in
-  `data/tiktokVoice.ts` picks, per paragraph: the place and the person for the
-  opening (a road or room scene with the book's reader figure standing in it),
-  a collectible-card illustration matched by keyword for the middle and the
-  aftermath, and the verse itself as the last card. Nothing is generated.
-- **Auto everything, same as the verse post.** Tabitha in the library by
-  default (any reader figure and any of five rooms can stand in), her own
-  voice (Sulafat, or Vindemiatrix for comfort) with a storytelling note, and
-  a story-flavoured caption. Every field flips to manual when touched.
+- **The panel above her holds the words, not pictures.** It used to be a
+  picture card that changed with each paragraph, drawn from the app's own art.
+  Two things were wrong with that: a picture matched by keyword is only ever
+  loosely about the sentence being spoken, and at card size it left the room
+  itself as a strip behind it. The panel is smaller, the scene has the frame
+  back, and what the panel holds is the one thing that is exactly about the
+  words — the words, with the one being spoken in gold. `storyCards()` and the
+  twelve-scene deck it drew from are still in `data/tiktokVoice.ts`, labelled
+  unwired.
+- **Nothing in the room moves.** The room is a painting (`story-circle.jpg`),
+  anchored to its bottom edge so the circle sits low and the quiet upper half
+  is where the panel goes, with a 2% push across the whole post. Tabitha's Veo
+  loops — talking, listening, laughing, leaning in — are no longer used by any
+  room: a face whose mouth moves for ninety seconds is the single clearest
+  tell that a video was generated, and it was the first thing anyone noticed.
+- **Auto everything, same as the verse post.** Tabitha in the story circle by
+  default, her own voice (an older, unhurried one) with a storytelling note,
+  and a story-flavoured caption. Every field flips to manual when touched.
 - `renderStory()` shares `produce()` with the verse layout — one copy of the
   codec, timing, AAC and audible-track checks.
 
@@ -121,60 +140,59 @@ about three cents: a Gemini Flash script and a longer TTS.
 Everything generated for these posts is chosen to be true EVERY day, never
 about one verse, so it is paid for once and used forever:
 
-- **Two Veo loops, `public/tiktok/loops/`** — `cephas-harvest.mp4` (Peter
-  hovering over the road) and `tabitha-library.mp4` (Tabitha at her desk,
-  talking). Eight seconds each, looped by the renderer with a crossfade at the seam so they never
-  seam. Made from the layouts' own base stills (`renderPoster` / 
-  `renderStoryPoster` with `chrome=false`), so the loop is framed exactly
-  where the captions and cards expect it. The panel's tier probe checks the
-  bucket first, then these bundled files, so a loop made from the Animate
-  button still wins.
-- **A scene deck, `public/tiktok/scenes/`** — twelve PLACES most Bible
-  stories happen in (shore, boat, road, wilderness camp, mountain, city
-  gate, palace, temple court, garden at night, a lamp-lit house, a prison,
-  a harvest field), Nano Banana in the house style from the road paintings
-  as references, empty of people so a reader figure can stand in them.
-  `SCENE_DECK` in `data/tiktokVoice.ts` keyword-matches them to the story's
-  own narrative; the road and room paintings stay as the fallback.
+- **The story circle, `public/tiktok/rooms/story-circle.jpg`** — Tabitha on a
+  stool in her library with five children sitting cross-legged in front of
+  her, painted from the librarian render, the Study library painting and two
+  starter characters as references. Its prompt insists the upper half stays
+  quiet and empty, because the caption panel is drawn over it.
+  `art/tiktok-rooms.json` is the manifest, and `tiktok` is a `kind` in
+  `scripts/gen-art.mjs`: 9:16, 2K, landing at 1080×1920 (every other painting
+  in the app is landscape and caps at 640) and deliberately NOT wired into
+  `GENERATED_ART`, since no player-facing surface reads it.
+- **A Veo loop of the reader, `public/tiktok/loops/cephas-harvest.mp4`** — used
+  only when no painted still exists for that figure+scene. Eight seconds,
+  looped forward with a crossfade at the seam.
+- **Still in the repo, unused:** `tabitha-*.mp4` (the four library loops) and
+  the twelve-place deck in `public/tiktok/scenes/`. Both were replaced rather
+  than found wanting, and both are one edit from coming back — but they are
+  megabytes in a `public/` folder that the App Store build bakes into the IPA,
+  so the honest next move is to park all of `public/tiktok/` in the Storage
+  bucket beside the stills.
 
-Free polish drawn on every frame, both layouts: slow gold motes drifting up
-through the light (seeded, so the encoder never sees noise), a lamp-breath
-warmth, and a page-turn wipe when a story card changes.
-
-And the follow-ups, all in now:
-
-- **Tabitha's reaction set** — `tabitha-listen`, `tabitha-laugh`,
-  `tabitha-leanin` beside the main loop. `storyBeats()` gives each paragraph a
-  beat (talk, listen, a laugh for the bright moods, the lean-in for the
-  verse) and the renderer cuts to that loop on the paragraph boundary, timed
-  from the boundary so it starts on its first frame. The lean-in walks her up
-  to the camera, so the card shrinks and rises and the captions tuck under it.
-  The first listen render zoomed her to twice the size; it was re-rolled
-  with a locked-off wide shot in the prompt and the negative prompt.
-- **Dusk and night on the road, no new painting** — `gradeFor()` grades the
-  daytime road (multiply tint + vignette) for comfort and warning verses
-  instead of switching to the Lamplight still, because the host's loop only
-  exists for the road and a moving host beats a different still.
-- **The room's own music underneath** — `lib/tiktokMusic.ts` renders a BED
-  arrangement of the app's tracks (same note data from `data/music.ts`; pad,
-  arpeggio and a soft bell lead, no drums, no bass) into an
-  OfflineAudioContext, and `produce()` mixes it about 20 dB under the voice
-  with a fade over the lead-in and the end card. `cloister` under the story,
-  `morning` under the verse. A checkbox on each mode turns it off.
-- **A second voice for the words of God** — when the verse's speaker is God
-  or Jesus, the TTS call carries two `speakers` (Gemini's multi-speaker
-  config): Orus reads the verse, the host says the reference; in the story
-  Tabitha tells it and Orus speaks the verse. Cached under both voices.
+The only thing moving on either layout is now the caption. An earlier cut had
+gold motes drifting up the frame, a warm pulse over everything, a bobbing
+figure and a page-turn wipe; together they read as generated rather than
+painted, which is exactly what a faceless account cannot afford.
 
 ## How the captions land on the words
 
-Gemini TTS returns no word timings, so `tiktokRender` measures the WAV: it finds
-the runs of speech between silences ≥ 220ms, and when their count matches the
-number of clauses in the verse (phrases ending in punctuation, plus the spoken
-reference as the last clause) each clause is pinned to its pause and the
-phrases inside it are spread by character count. When the counts don't match
-it falls back to proportional timing across the whole reading. Verified on
-synthetic audio with four bursts: every clause boundary landed on its gap.
+Two layers, because Gemini TTS returns no timings at all.
+
+**Phrases onto pauses.** `tiktokRender` measures the WAV: it finds the runs of
+speech between silences ≥ 220ms, and when their count matches the number of
+clauses (phrases ending in punctuation, plus the spoken reference as the last
+clause) each clause is pinned to its pause and the phrases inside it are
+spread by character count. When the counts don't match it falls back to
+proportional timing across the whole reading.
+
+**Words inside a phrase, by ENERGY.** `timeWords()` lays each word over the
+audio's own envelope: the boundary after word *k* falls where the cumulative
+speech energy inside the phrase reaches *k*'s share of the phrase's syllable
+weight. Energy rather than elapsed time is what makes it land — a pause inside
+a phrase contributes nothing, so a breath between two words moves neither of
+them, where proportional timing slides every word after it late. The last word
+holds until the phrase ends, so it stays lit through the gap.
+
+The word being spoken is drawn in gold; words already said are white; words
+still to come are held back (42% on the story panel, 50% over the verse). A
+caption with no word timings — the lead-in hook, and both posters — is drawn
+plain white, and is still split into words, because a single unbreakable token
+does not wrap. (It shipped that way for about ten minutes and the hook ran off
+both edges of the frame.)
+
+Asking a model to transcribe the audio back is the obvious alternative and
+does not work: Gemini's audio understanding timestamps to the second, which is
+three or four words at this pace.
 
 The reference is spoken as "Matthew 16, verse 18" (`spokenReference`) so the
 voice never reads a colon.
@@ -227,5 +245,7 @@ day of encoding for a 35-second post.
 
 - Two-part format: the verse, then one of the day's trivia questions with the
   teach line as the reveal.
-- Word-level karaoke captions once a real aligner is worth adding (Gemini audio
-  understanding can transcribe with timestamps, but only to the second).
+- Moving the operator's art (`public/tiktok/`) into the Storage bucket, so the
+  App Store build stops carrying megabytes only the dashboard reads.
+- A real forced aligner, if the energy-weighted word timing ever drifts
+  audibly on a voice with a very even delivery.

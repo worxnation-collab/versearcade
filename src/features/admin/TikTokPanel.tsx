@@ -108,8 +108,17 @@ async function call<T>(action: string, body: Record<string, unknown>): Promise<T
 function publicUrl(path: string): string {
   return supabase!.storage.from(BUCKET).getPublicUrl(path).data.publicUrl
 }
-async function existsAt(url: string): Promise<boolean> {
-  try { const r = await fetch(url, { method: 'HEAD', cache: 'no-store' }); return r.ok } catch { return false }
+// A 200 is NOT proof a file is there. The site serves index.html for any
+// unknown path (the SPA fallback), so a HEAD on a bundled asset that does not
+// exist comes back ok — which told the panel that every reader had a Veo loop
+// and then failed to load it. Anything under the app's own origin has to be
+// checked by CONTENT TYPE.
+async function existsAt(url: string, type?: string): Promise<boolean> {
+  try {
+    const r = await fetch(url, { method: 'HEAD', cache: 'no-store' })
+    if (!r.ok) return false
+    return !type || (r.headers.get('content-type') ?? '').startsWith(type)
+  } catch { return false }
 }
 
 function addDays(date: string, n: number): string {
@@ -202,7 +211,7 @@ export default function TikTokPanel() {
     setAssets({ still: false, loop: false })
     setPoster(null)
     ;(async () => {
-      const [still, loop] = await Promise.all([existsAt(stillUrl), loopUrlFor(key).then((u) => !!u)])
+      const [still, loop] = await Promise.all([existsAt(stillUrl, 'image/'), loopUrlFor(key).then((u) => !!u)])
       if (!live) return
       setAssets({ still, loop })
       try {
@@ -219,14 +228,23 @@ export default function TikTokPanel() {
   // A loop lives in the bucket (made from the panel) or ships with the site
   // (public/tiktok/loops, made once for the two hosts). Bucket wins.
   async function loopUrlFor(k: string): Promise<string | null> {
-    if (await existsAt(publicUrl(`readers/${k}.mp4`))) return publicUrl(`readers/${k}.mp4`) + '?v=' + Date.now()
-    if (await existsAt(`/tiktok/loops/${k}.mp4`)) return `/tiktok/loops/${k}.mp4`
+    if (await existsAt(publicUrl(`readers/${k}.mp4`), 'video/')) return publicUrl(`readers/${k}.mp4`) + '?v=' + Date.now()
+    if (await existsAt(`/tiktok/loops/${k}.mp4`, 'video/')) return `/tiktok/loops/${k}.mp4`
     return null
   }
+  // A tier that will not load FALLS THROUGH rather than failing the post: the
+  // built-in tier needs nothing generated and is always there, so there is no
+  // state where a missing file means no video.
   async function backdropFor(r: typeof import('@/lib/tiktokRender'), tier: 'loop' | 'still' | 'builtin', rd = reader, sc = scene): Promise<Backdrop> {
     const k = `${rd}-${sc}`
-    if (tier === 'loop') return { kind: 'loop', video: await r.loadVideo((await loopUrlFor(k)) ?? publicUrl(`readers/${k}.mp4`)) }
-    if (tier === 'still') return { kind: 'still', image: await r.loadImage(publicUrl(`readers/${k}.png`) + '?v=' + Date.now()) }
+    if (tier === 'loop') {
+      const url = await loopUrlFor(k)
+      if (url) { try { return { kind: 'loop', video: await r.loadVideo(url) } } catch { /* try the still */ } }
+      tier = 'still'
+    }
+    if (tier === 'still') {
+      try { return { kind: 'still', image: await r.loadImage(publicUrl(`readers/${k}.png`) + '?v=' + Date.now()) } } catch { /* the built-in tier always works */ }
+    }
     const [sceneImg, figure] = await Promise.all([r.loadImage(`/road/${sc}.jpg`), r.loadImage(`/skins/${rd}.png`)])
     return { kind: 'builtin', scene: sceneImg, figure }
   }
@@ -239,7 +257,7 @@ export default function TikTokPanel() {
   // tier, since a loop that exists was made from the layout's own base frame.
   async function tierFor(rd: string, sc: string): Promise<'loop' | 'still' | 'builtin'> {
     const k = `${rd}-${sc}`
-    if (await existsAt(publicUrl(`readers/${k}.png`))) return 'still'
+    if (await existsAt(publicUrl(`readers/${k}.png`), 'image/')) return 'still'
     if (await loopUrlFor(k)) return 'loop'
     return 'builtin'
   }

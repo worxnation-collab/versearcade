@@ -41,6 +41,8 @@ export interface RenderInput {
   grade?: 'dusk' | 'night'
   /** A music bed (48 kHz mono) mixed under the reading; see lib/tiktokMusic. */
   bed?: Float32Array
+  /** Time the captions by listening to the reading (default); false keeps the heuristic. */
+  align?: boolean
   onProgress?: (fraction: number, label: string) => void
 }
 
@@ -220,6 +222,26 @@ export function alignPhrases(phrases: string[], segments: Array<[number, number]
   for (let i = 0; i < out.length - 1; i++) out[i].end = out[i + 1].start
   if (out.length) out[out.length - 1].end = Math.max(out[out.length - 1].end, Math.min(audioDur, out[out.length - 1].end + 0.3))
   return out
+}
+
+/**
+ * The captions, timed. The heuristic (`alignPhrases` + `timeWords`) is
+ * computed first and is the fallback; then the reading is transcribed
+ * (lib/tiktokAlign, Whisper in the browser) and every word is put where it
+ * was actually heard. `align: false` keeps the heuristic — useful for a fast
+ * preview, never for a post.
+ */
+async function timedCaptions(texts: string[], samples: Float32Array, progress: (f: number, label: string) => void, align = true): Promise<TimedPhrase[]> {
+  const audioDur = samples.length / SAMPLE_RATE
+  const base = timeWords(alignPhrases(texts, speechSegments(samples, SAMPLE_RATE), audioDur), samples, SAMPLE_RATE)
+  if (!align) return base
+  try {
+    const m = await import('./tiktokAlign')
+    return await m.alignWords(samples, SAMPLE_RATE, base, (label) => progress(0.03, label))
+  } catch (e) {
+    console.warn('caption alignment fell back to the heuristic:', e)
+    return base
+  }
 }
 
 // ---- assets -----------------------------------------------------------------
@@ -794,11 +816,10 @@ export async function renderTikTok(input: RenderInput): Promise<RenderOutput> {
   progress(0, 'Decoding the reading')
   const samples = await decodeAudio(input.audio)
   const audioDur = samples.length / SAMPLE_RATE
-  const segments = speechSegments(samples, SAMPLE_RATE)
   // The reading ends by saying the reference, so it is the last caption too —
   // and a clause of its own, which keeps the clause count matching the pauses.
   const verse = /[.!?]["'”’)]?$/.test(input.text.trim()) ? input.text.trim() : input.text.trim() + '.'
-  const phrases = timeWords(alignPhrases([...splitPhrases(verse), input.reference + '.'], segments, audioDur), samples, SAMPLE_RATE)
+  const phrases = await timedCaptions([...splitPhrases(verse), input.reference + '.'], samples, progress, input.align)
   const lead = input.hook?.trim() ? 1.8 : 1.0
   const total = lead + audioDur + TAIL_SEC
   const scene: Scene = { input, lead, audioDur, total, phrases }
@@ -845,6 +866,7 @@ export interface StoryInput {
   /** The teller's render, for a room that does not already have her in it. */
   teller?: HTMLImageElement
   bed?: Float32Array
+  align?: boolean
   onProgress?: (fraction: number, label: string) => void
 }
 
@@ -999,9 +1021,8 @@ export async function renderStory(input: StoryInput): Promise<RenderOutput> {
   progress(0, 'Decoding the story')
   const samples = await decodeAudio(input.audio)
   const audioDur = samples.length / SAMPLE_RATE
-  const segments = speechSegments(samples, SAMPLE_RATE)
   const { texts, para } = storyTexts(input.paragraphs)
-  const phrases = timeWords(alignPhrases(texts, segments, audioDur), samples, SAMPLE_RATE)
+  const phrases = await timedCaptions(texts, samples, progress, input.align)
   const paraStart = input.paragraphs.map((_, i) => phrases[para.indexOf(i)]?.start ?? 0)
   const lead = input.hook?.trim() ? 1.8 : 1.0
   const total = lead + audioDur + TAIL_SEC + 1.2
@@ -1071,6 +1092,7 @@ export interface QuizInput {
   bed?: Float32Array
   /** Ticks and chimes, from `quizCues`. */
   cues?: Float32Array
+  align?: boolean
   onProgress?: (fraction: number, label: string) => void
 }
 
@@ -1348,7 +1370,7 @@ export async function renderQuiz(input: QuizInput): Promise<RenderOutput> {
   let phrases: TimedPhrase[] = []
   if (input.audio) {
     const verse = /[.!?]["'”’)]?$/.test(input.text.trim()) ? input.text.trim() : input.text.trim() + '.'
-    phrases = timeWords(alignPhrases([...splitPhrases(verse), input.reference + '.'], speechSegments(samples, SAMPLE_RATE), audioDur), samples, SAMPLE_RATE)
+    phrases = await timedCaptions([...splitPhrases(verse), input.reference + '.'], samples, progress, input.align)
   }
   try { await document.fonts.load(`800 56px "Baloo 2"`) } catch { /* fine */ }
   const sc: QuizScene = { input, tl, phrases }

@@ -219,33 +219,38 @@ painted, which is exactly what a faceless account cannot afford.
 
 ## How the captions land on the words
 
-Two layers, because Gemini TTS returns no timings at all.
+The reading is TRANSCRIBED, in the browser, and every word is put where it
+was heard. `lib/tiktokAlign.ts` runs Whisper (tiny.en, the
+`onnx-community/whisper-tiny.en_timestamped` export, whose cross-attentions
+yield word-level timestamps) through transformers.js — WebGPU where Chrome
+has an adapter, WASM otherwise — and matches the recognised words back onto
+the caption's own words by longest common subsequence over normalised tokens.
+The text is known in advance, which is what makes a tiny model enough: the
+transcript only has to be close enough to line up, never to be read. Words
+Whisper drops or mangles ("truth—and", "1:1") are interpolated between their
+matched neighbours; the first word starts no earlier than the first sound;
+each phrase holds until the next begins. About 40MB of model, fetched from
+Hugging Face on first use and cached by the browser; a 15-second reading
+transcribes in a second or two.
 
-**Phrases onto pauses.** `tiktokRender` measures the WAV: it finds the runs of
-speech between silences ≥ 220ms, and when their count matches the number of
-clauses (phrases ending in punctuation, plus the spoken reference as the last
-clause) each clause is pinned to its pause and the phrases inside it are
-spread by character count. When the counts don't match it falls back to
-proportional timing across the whole reading.
+**Why this and not the heuristic.** The energy-weighted timing
+(`timeWords`) is still computed first and is the fallback — no model, no
+network, an unsupported browser, a transcript that will not line up — so a
+post is never blocked on this. But it was measured against Whisper on a real
+reading and one word was 1.6 seconds late ("know" at 11.7s against 10.1s):
+a highlight that lands a beat off reads as wrong, and the whole point of the
+highlight is that it lands. `align: false` on any render keeps the heuristic
+for a fast preview.
 
-**Words inside a phrase, by ENERGY.** `timeWords()` lays each word over the
-audio's own envelope: the boundary after word *k* falls where the cumulative
-speech energy inside the phrase reaches *k*'s share of the phrase's syllable
-weight. Energy rather than elapsed time is what makes it land — a pause inside
-a phrase contributes nothing, so a breath between two words moves neither of
-them, where proportional timing slides every word after it late. The last word
-holds until the phrase ends, so it stays lit through the gap.
+Under it, the phrase layer is unchanged: clauses are pinned to the pauses
+Whisper's timestamps reveal, and when the model is unavailable, to the
+silences `speechSegments` finds (≥220ms), else proportionally.
 
 The word being spoken is drawn in gold; words already said are white; words
 still to come are held back (42% on the story panel, 50% over the verse). A
 caption with no word timings — the lead-in hook, and both posters — is drawn
 plain white, and is still split into words, because a single unbreakable token
-does not wrap. (It shipped that way for about ten minutes and the hook ran off
-both edges of the frame.)
-
-Asking a model to transcribe the audio back is the obvious alternative and
-does not work: Gemini's audio understanding timestamps to the second, which is
-three or four words at this pace.
+does not wrap.
 
 The reference is spoken as "Matthew 16, verse 18" (`spokenReference`) so the
 voice never reads a colon.
@@ -300,5 +305,3 @@ day of encoding for a 35-second post.
   teach line as the reveal.
 - Moving the operator's art (`public/tiktok/`) into the Storage bucket, so the
   App Store build stops carrying megabytes only the dashboard reads.
-- A real forced aligner, if the energy-weighted word timing ever drifts
-  audibly on a voice with a very even delivery.

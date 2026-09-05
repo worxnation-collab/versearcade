@@ -19,6 +19,7 @@ import { useCollection } from '@/store/collection'
 import { OAuthButtons } from '@/features/auth/oauthUi'
 import { FavoriteButton } from '@/components/FavoriteButton'
 import { PushNudge } from '@/components/PushNudge'
+import { WatchYesterday } from './WatchYesterday'
 
 export default function ResultScreen() {
   const navigate = useNavigate()
@@ -164,6 +165,12 @@ export default function ResultScreen() {
             📖 Read the full chapter →
           </button>
         </div>
+
+        {/* Under the verse, because it IS a verse — yesterday's, read aloud on
+            whichever network they already use. Renders nothing at all unless
+            there is a published video to point at, which is most days for most
+            platforms; see the header in WatchYesterday.tsx. */}
+        <WatchYesterday dropDate={today.dropDate} />
 
         {/* Level up / XP */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 16 }}>

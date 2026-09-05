@@ -128,6 +128,13 @@ Start your streak today. It's one verse.
 > check is owed before submission regardless, and it is the only thing that will
 > make real room.
 >
+> **"Watch yesterday's verse" deliberately takes NO space here**, the same
+> judgement the patron swap got. It is a row of links to the TikTok account's
+> video of yesterday's verse, shown on the result screen only when there is a
+> published video to point at — so it is not something a player can reliably DO,
+> and a bullet promising it would be false on any day the row is empty. It costs
+> nothing here, and nothing in App Store Connect either.
+>
 > **The Prayer Wall landed after the 3,914-character count above** (leave a note,
 > the wall deals you somebody else's, hold a candle for it; migration `0099`). It
 > is exactly the kind of thing What's New exists to say and there is no room for

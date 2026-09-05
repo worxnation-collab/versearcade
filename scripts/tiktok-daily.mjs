@@ -16,6 +16,9 @@
 //   4. Uploads it and schedules it through Ayrshare at that post's time of day
 //      in TIKTOK_TZ: the verse in the morning, the replay at lunch, the story
 //      in the evening. A time already past posts immediately.
+//   5. Fills in YESTERDAY's links: a scheduled post carries no URL until the
+//      network publishes it, and the app's "watch yesterday's verse" row can
+//      only link to what the record knows about.
 //
 // Two modes, by which keys are present:
 //   function — TIKTOK_RUNNER_TOKEN: every Gemini and Ayrshare call goes
@@ -367,6 +370,26 @@ for (const kind of KINDS) {
   }
   for (const r of posted.results) log(`  ${r.platform.padEnd(10)} ${r.status}${r.error ? ` — ${r.error}` : ''}${r.postUrl ? ` ${r.postUrl}` : ''}`)
   results.push({ kind, date, mp4, videoUrl, scheduleDate, results: posted.results })
+}
+
+// ---- yesterday's links ---------------------------------------------------------------
+// A scheduled post has no URL until the network publishes it, so the record
+// written yesterday morning still says nothing about where any of it ended up.
+// By now it has all gone out (the earliest slot is 07:00 and this runs the next
+// morning), so ask Ayrshare and fill the day's record in. That is what puts a
+// live link behind the app's "watch yesterday's verse" row; nothing else fills
+// it in, and nothing here is worth failing the run over.
+if (mode === 'function' && !DRY) {
+  for (const kind of KINDS) {
+    const date = kind === 'quiz' ? addDays(today, -2) : yesterday
+    try {
+      const r = await fn('links', { date, kind })
+      const live = (r.results ?? []).filter((x) => x.postUrl).length
+      log(`links ${kind} ${date} → ${live} of ${(r.results ?? []).length} live${r.changed ? ' (filled in)' : ''}`)
+    } catch (e) {
+      log(`links ${kind} ${date}: ${String(e?.message || e).slice(0, 140)}`)
+    }
+  }
 }
 
 await browser.close()

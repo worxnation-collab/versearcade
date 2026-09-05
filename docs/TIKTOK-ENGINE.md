@@ -6,8 +6,10 @@ standing in a Verse Arcade scene, reading the verse of the day, captioned WORD
 BY WORD), **story time** (Tabitha telling the story behind it) and
 **yesterday's quiz** (a CPU playing yesterday's five questions against the
 clock). All end on `versearcade.org`. This is an **operator tool**: admin-only,
-online-only, desktop Chrome. It changes nothing a player sees and it is behind
-the dashboard's three gates.
+online-only, desktop Chrome, behind the dashboard's three gates. It has exactly
+ONE player-facing surface — a row of links to yesterday's verse video on the
+result screen (see "What a player sees" below) — and nothing else it does
+reaches anybody's screen.
 
 The panel is a hub (`TikTokPanel.tsx`) and three generators
 (`admin/tiktok/VersePost.tsx`, `StoryPost.tsx`, `QuizPost.tsx`) over one
@@ -104,6 +106,11 @@ Override with the `TIKTOK_POST_TIMES` repository variable
 (`verse=07:00,quiz=12:30,story=19:30`). A slot already past when the runner
 gets there posts immediately rather than tomorrow.
 
+It finishes by calling `links` for YESTERDAY's three records: those posts have
+published by now, so this is where the URLs a scheduled post never carried get
+written down — and the app's "watch yesterday's verse" row has nothing to offer
+until they are.
+
 Four things about it are load-bearing:
 
 - **It renders EXACTLY what the button renders.** The runner bundles
@@ -149,6 +156,37 @@ directory holding `models/onnx-community/whisper-tiny.en_timestamped/…` and
 `ort/ort-wasm-simd-threaded*` and the page fetches them from the runner
 instead. Every render still falls back to the energy heuristic if the model
 fails to load, so a post is never blocked on it.
+
+## What a player sees: "Watch yesterday's verse"
+
+The app spent a year advertising nothing about the account advertising it. The
+one crossing point is a row on the result screen, right under the verse card,
+the moment somebody finishes the daily drop: **Watch yesterday's verse**, and a
+pill per network that actually has the video up (`WatchYesterday.tsx` over
+`src/lib/socialPosts.ts`).
+
+- **It reads the bucket, not an RPC.** `days/<date>/posted-<kind>.json` is
+  parked by the `post` action in a bucket that is public read, so the app gets
+  the day's links with a plain GET — no table, no migration, no auth, guests
+  included.
+- **It is YESTERDAY's, and that follows from how posting works.** A scheduled
+  post has no URL until the network publishes it, and the cron schedules all
+  three at their own hour — so today's links do not exist yet when today's
+  player finishes. Yesterday's were filled in by this morning's run.
+- **`links` is what fills them in.** `POST { action: 'links', date, kind }` asks
+  Ayrshare (`GET /post/<id>`) what became of each row that has an id and no URL,
+  and re-parks the record. The runner does it for yesterday every morning; the
+  **↻ Links** button on a posted card does it by hand. Nothing else would: the
+  record is written hours before the videos exist.
+- **It fails closed and says nothing when there is nothing.** No keys, no
+  record, a post still pending, a network not linked → the row does not render.
+  There is no error state and no "coming soon".
+- **A link may only go where it says it goes.** The URLs come from Ayrshare
+  rather than from us and land in an `href` on a player's screen, so each is
+  checked against the host of the platform it claims to be — https only, known
+  host only. Same rule as the catalog's `art` URLs.
+- **It carries no number.** No views, no likes, nothing countable — the app
+  doesn't count people at each other and a link out is no place to start.
 
 ## The two halves
 
@@ -404,6 +442,9 @@ other way to ship a silent track.
   `push-send` does; the panel only ever holds public URLs.
 - **Not a store surface.** The tab is inside `/admin`, which renders nothing for
   any other account, so the baked `dist` carries it harmlessly.
+- **The one player-facing row is a link, not a feature.** It grants nothing,
+  records nothing and counts nothing; it renders only when there is a published
+  video to point at.
 
 ## Costs, roughly
 

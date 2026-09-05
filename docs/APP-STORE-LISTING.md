@@ -394,16 +394,50 @@ a throwaway password; the account can be deleted from inside the app afterwards.
 ---
 
 ## Screenshots (required)
-Apple requires screenshots for at least the **6.7" iPhone** display (1290 × 2796).
-As of the current App Store Connect, a 6.7"/6.9" set is sufficient (iPad only if you
-mark the app iPad-compatible — recommend iPhone-only for v1).
 
-Minimum 3, up to 10. Recommended shots, in order:
-1. The Daily Drop / verse read screen ("A new verse is live").
-2. A question mid-play with the combo meter and points.
-3. A correct-answer celebration (confetti + points pop).
-4. A wrong-answer "did you know" teach reveal (shows the no-shame promise).
-5. The profile with streak flame + XP/level.
-6. Groups ("Play with friends, climb together").
+`npm run screenshots` makes them. It drives the real app in a headless iPhone
+viewport and writes a set per size, then re-measures every file out of its own
+PNG header — the size is the one thing App Store Connect rejects on, and it
+rejects *after* you have filled the rest of the listing in.
 
-See SUBMISSION runbook for how to capture these without a Mac.
+```bash
+npm run screenshots                 # both sizes → screenshots/
+npm run screenshots -- --device 6.9 # just the required set
+```
+
+| Slot | Pixels | Required? |
+|---|---|---|
+| iPhone 6.9" | **1320 × 2868** | **yes** — this is the only set Apple insists on |
+| iPhone 6.5" | 1242 × 2688 | optional; also what the Play listing reuses |
+
+App Store Connect also accepts 1290 × 2796 in the 6.9" slot. There is no iPad
+set because the app ships iPhone-only (`TARGETED_DEVICE_FAMILY = "1"`, set in
+`codemagic.yaml`) — mark it iPad-compatible and Apple demands a full 13" iPad
+set as well.
+
+Minimum 3, up to 10. The script produces ten, in upload order:
+
+1. `01-today` — the Play tab: today's verse, today's trivia, the road.
+2. `02-the-verse` — the verse itself, before the clock starts.
+3. `03-question` — a question mid-run, points and combo up.
+4. `04-every-answer-teaches` — a wrong answer's teach card. The no-shame promise
+   is the pitch; do not drop this one to make room.
+5. `05-recap` — the score, the XP, the streak, the verse handed back.
+6. `06-study` — the lending library.
+7. `07-you` — the player at full length over their card.
+8. `08-upper-room` — the room that belongs to the player alone.
+9. `09-arcade` — the three machines.
+10. `10-bible` — 66 books, and how far in you are.
+
+Two things about what is *not* in there. **Battle and Church are deliberately
+absent**: in the keyless LOCAL build the script runs, both are an account wall,
+and a padlock is a bad first impression. **Nothing is scaled or padded after
+capture** — a resized screenshot is a blurry screenshot, so the viewport maths
+(W × H at deviceScaleFactor 3) is what lands on the exact pixel size.
+
+The shots are of a seeded guest ("Hannah", 23-day streak, level 10) playing the
+real daily drop, so the verse in them is whatever verse that date deals. Nothing
+in them is mocked up — regenerate on the day you submit and they will be
+internally consistent.
+
+`screenshots/` is gitignored: a run is ~25MB and every release makes a new one.

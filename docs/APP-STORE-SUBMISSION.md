@@ -77,18 +77,25 @@ In App Store Connect → your app → the version (e.g. **1.0**), paste from
 - **Notes for reviewer** → paste from the listing doc, and fill in a demo account
   (create one real account in the app first).
 
-## Phase 7 — Screenshots (🧑, ~20 min)
-Apple requires **6.7-inch iPhone** screenshots at **1290 × 2796 px** (min 3, max 10).
-Three ways, easiest first:
-- **A. Real device (nicest):** open the TestFlight build on an iPhone 15/16 Pro Max
-  (or any 6.7" iPhone), play, and screenshot. Dimensions are already correct.
-- **B. Browser emulation (no device):** open <https://versearcade.org> (or the
-  netlify URL) in Chrome → DevTools (F12) → device toolbar → set a custom device
-  1290 × 2796 → capture full-size screenshots of the 6 screens listed in the listing doc.
-- **C. Ask me:** I can attempt to capture them from the running app at iPhone size and
-  hand you PNGs (works when the preview can render; otherwise fall back to A or B).
+## Phase 7 — Screenshots (🤖, ~3 min)
+```bash
+npm install          # playwright's chromium is a devDependency
+npm run screenshots  # → screenshots/iphone-6.9/ and screenshots/iphone-6.5/
+```
+It starts its own dev server, plays a real daily drop as a seeded guest, and
+writes ten shots per size — then re-measures each PNG and **exits non-zero if any
+file is the wrong size**, which is the failure that otherwise surfaces as an App
+Store Connect rejection after you have filled the whole listing in.
 
-Upload the 6 shots in the order recommended in `APP-STORE-LISTING.md`.
+Upload `screenshots/iphone-6.9/` (1320 × 2868) into the **iPhone 6.9" Display**
+slot, in filename order. That set alone satisfies Apple; the 6.5" set (1242 ×
+2688) is optional here and is what the Play listing reuses. There is no iPad set
+because the app is iPhone-only. Shot-by-shot notes: `APP-STORE-LISTING.md`.
+
+Regenerate on the day you submit — the shots contain that day's real verse.
+
+Still fine by hand if you'd rather: open the TestFlight build on a 6.9" iPhone
+(16 Pro Max) and screenshot; those come out at the right size already.
 
 ## Phase 8 — Submit for review (🧑, ~2 min)
 1. Ensure the processed TestFlight **Build** is attached to the 1.0 version.
@@ -180,7 +187,7 @@ The order that works:
    version in `package.json`):
    - [ ] Description, keywords, support + privacy URLs, category, age rating.
    - [ ] **"What's New" pasted in** from `APP-STORE-LISTING.md`.
-   - [ ] Screenshots (6.7" iPhone, 1290 × 2796, at least 3).
+   - [ ] Screenshots (iPhone 6.9", 1320 × 2868, at least 3) — `npm run screenshots`.
    - [ ] App Privacy answers — the table in the listing doc. No tracking.
    - [ ] **Demo account credentials in the review notes.** Mandatory since the account
          wall: a reviewer without them sees four padlocked tabs, which reads as

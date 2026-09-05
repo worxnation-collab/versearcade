@@ -16,6 +16,7 @@
     "check:structure": "node scripts/check-structure.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
+    "screenshots": "node scripts/screenshots.mjs",
     "cap:sync": "cap sync",
     "cap:ios": "cap open ios",
     "ios:add": "cap add ios"

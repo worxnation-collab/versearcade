@@ -57,8 +57,9 @@ Everything below is done on a browser — **zero Android tooling on your Windows
 ## Listing assets Play needs (that iOS didn't)
 
 - **Feature graphic** 1024×500 PNG/JPG (required).
-- Phone screenshots (min 2). The iOS 1284×2778 shots work — Play accepts 16:9–9:16,
-  1080px+ on the long edge.
+- Phone screenshots (min 2). `npm run screenshots` writes them; use
+  `screenshots/iphone-6.5/` (1242×2688) — Play wants 1080px+ on the long edge and
+  the 6.9" set is the same pictures at a taller ratio.
 - **Data safety** form (declare: account/email for auth, no data sold; analytics if any).
 - **Content rating** questionnaire (IARC) — Verse Arcade is "Everyone".
 - Privacy policy URL (reuse the one from the App Store listing).

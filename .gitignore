@@ -25,3 +25,6 @@ yarn-error.log*
 
 # tiktok-daily runner output
 .tiktok-daily/
+
+# store screenshots (scripts/screenshots.mjs regenerates them; ~25MB a run)
+screenshots/

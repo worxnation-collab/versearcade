@@ -3085,6 +3085,25 @@ The build number is separate and handled: Codemagic's `$BUILD_NUMBER` is monoton
 Don't reach for `get-latest-app-store-build-number`; it returns 0 until a build is on
 the actual App Store and has already caused a 409 duplicate here.
 
+**Screenshots are generated, and the size is the whole point.** `npm run
+screenshots` (`scripts/screenshots.mjs`) starts its own dev server, plays a real
+daily drop as a seeded guest in a headless iPhone viewport, and writes ten shots
+per size into `screenshots/` — gitignored, ~25MB a run. It's the same
+"drive the real app" habit the next section is about, pointed at the listing.
+
+Three things in it are load-bearing. **The size comes from the viewport, never
+from a resize afterwards**: W x H at `deviceScaleFactor: 3` captures at exactly
+3W x 3H, so 440x956 lands on the required 1320x2868 and 414x896 on 1242x2688 —
+and every file is re-measured out of its own PNG IHDR at the end, because a
+wrong size is rejected by App Store Connect *after* a full listing has been
+filled in, which is the same expensive shape as the version-train rejection
+above. **The run is played twice**: the daily questions are deterministic for a
+date, so a throwaway pass reads which option the app marks ✅ and the capture
+pass plays those answers back — with one thrown on purpose, because the teach
+card a wrong answer shows is the no-shame promise and has to be in the set.
+And **Battle and Church are deliberately not shot**: the script runs the keyless
+LOCAL build, where both are an account wall.
+
 ## Verify by running it, not by reading it
 
 The build passing means very little here — the bugs in this codebase have been

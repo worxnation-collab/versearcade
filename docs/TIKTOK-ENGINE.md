@@ -68,6 +68,14 @@ title and hashtag count. The key lives in Vault (`tiktok_ayrshare_key()`,
   with a saved story, Ayrshare posted only the story, which lives on the
   profile for people who already found it. TikTok's short line with three
   tags. A platform with no block of its own borrows TikTok's.
+- **Every post says the art and voice are AI-made.** TikTok
+  (`isAIGenerated`), YouTube (`containsSyntheticMedia`) and Instagram
+  (`isAIGenerated`) take it as a flag and draw their own label; Snapchat,
+  Facebook and X have no flag on Ayrshare's API, so the caption carries the
+  line `AI-generated art and voice.` — first on Snapchat, whose Spotlight
+  review rejected the first verse as "undisclosed AI-generated content". A
+  rejected post is re-sent with `attempt: 2`, which joins the idempotency key
+  so Ayrshare takes it as new.
 - **A platform that isn't linked in Ayrshare yet is skipped, not failed.**
   `post` reads the account's active networks first and records a `skipped`
   row for the rest, so X can sit in every list before the account exists and

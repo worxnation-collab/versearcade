@@ -472,6 +472,8 @@ Deno.serve(async (req) => {
       const platforms = (Array.isArray(input.platforms) ? (input.platforms as unknown[]).map(String) : [...PLATFORMS]).filter((p): p is Platform => (PLATFORMS as string[]).includes(p))
       if (!platforms.length) return json({ error: 'no platforms' }, 400)
       const scheduleDate = typeof input.scheduleDate === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(input.scheduleDate) ? input.scheduleDate : undefined
+      // A deliberate second try (a network rejected the first) joins the idempotency key.
+      const attempt = Number.isInteger(input.attempt) && input.attempt > 1 && input.attempt < 10 ? Number(input.attempt) : undefined
 
       const { data: file } = await admin.storage.from(BUCKET).download(`days/${date}/copy-${kind}.json`)
       if (!file) return json({ error: `no copy for ${date} ${kind} yet — open Today's words first` }, 400)
@@ -490,7 +492,7 @@ Deno.serve(async (req) => {
       const results: Array<Record<string, unknown>> = []
       for (const platform of platforms) {
         if (!linked(platform)) { results.push({ platform, status: 'skipped', id: null, postUrl: null, postId: null, error: 'not linked in Ayrshare', scheduleDate: null }); continue }
-        const r = await ayrshare('post', postBody(platform, copy, { date, kind, reference, videoUrl, scheduleDate }))
+        const r = await ayrshare('post', postBody(platform, copy, { date, kind, reference, videoUrl, scheduleDate, attempt }))
         results.push(postResult(platform, r, scheduleDate))
       }
       // Merged over the earlier record, so a call for the platforms that

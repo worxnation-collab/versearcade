@@ -38,3 +38,13 @@ export function localTimeZone(): string {
     return 'UTC'
   }
 }
+
+/**
+ * A calendar date, shifted by whole days. Date-only arithmetic in UTC so a
+ * DST boundary can't move the answer — "yesterday" is the day before on the
+ * calendar, not 24 hours ago.
+ */
+export function addDays(date: string, n: number): string {
+  const [y, m, d] = date.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10)
+}

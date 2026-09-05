@@ -18,6 +18,7 @@
 //   story       { date, reference, text, ... }    → { title, hook, paragraphs[] }   the story behind the verse, cached at days/<date>/story.json
 //   upload-url  { path }                          → { path, token, publicUrl }  a signed upload URL for a finished video (days/<date>/<kind>.mp4), so the browser can put it in the bucket
 //   post        { date, kind, videoUrl, platforms[], scheduleDate? } → { results[] }  posts the video with that day's copy through Ayrshare, one call per platform (a platform not linked in Ayrshare is skipped, not failed); parked at days/<date>/posted-<kind>.json, merged over what an earlier call recorded
+//   links       { date, kind }                     → the day's record          asks Ayrshare what became of each SCHEDULED post and fills in the postUrl a network only issues once it publishes
 //   posted      { date, kind }                    → { results[] } | {}  what `post` recorded for that day, if anything
 //   social      {}                                → { accounts[], posts, quota }  the Ayrshare profile: which networks are connected and this month's post count
 //
@@ -38,7 +39,7 @@
 // still/loop is generated once and reused by every day after it.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { PLATFORMS, postBody, postResult, type DayCopy, type Platform } from './social.ts'
+import { PLATFORMS, ayrshareName, postBody, postResult, type DayCopy, type Platform } from './social.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
@@ -195,7 +196,7 @@ Deno.serve(async (req) => {
 
     // The posting actions need Ayrshare's key too — same two homes as Gemini's.
     const peek = await req.clone().json().catch(() => ({}))
-    if (['post', 'social'].includes(String(peek.action ?? ''))) {
+    if (['post', 'links', 'social'].includes(String(peek.action ?? ''))) {
       AYRSHARE_KEY = Deno.env.get('AYRSHARE_API_KEY') ?? ''
       if (!AYRSHARE_KEY) {
         const { data } = await admin.rpc('tiktok_ayrshare_key')
@@ -513,6 +514,52 @@ Deno.serve(async (req) => {
       const { data: file } = await admin.storage.from(BUCKET).download(`days/${date}/posted-${kind}.json`)
       if (!file) return json({})
       return json(JSON.parse(await file.text()))
+    }
+
+    // ---- links: what became of the posts that were SCHEDULED ---------------
+    //
+    // Ayrshare answers a scheduled post with a status and an id and NO postUrl:
+    // a network only issues one when it actually publishes. That is the normal
+    // case here — the morning cron schedules all three of the day's posts at
+    // their own hour — so a day's record is written hours before there is
+    // anything to link to, and nothing would ever fill it in.
+    //
+    // This asks about each row that has an id and no URL yet, records what
+    // Ayrshare says, and re-parks the record. It posts nothing, drops no row,
+    // and leaves a post still pending exactly as it was for the next run to
+    // ask about again. The runner calls it for yesterday every morning, which
+    // is what puts a live link behind the app's "watch yesterday's verse" row —
+    // src/lib/socialPosts.ts reads this same file straight out of the bucket.
+    if (action === 'links') {
+      const date = String(input.date ?? '')
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: 'date must be YYYY-MM-DD' }, 400)
+      const kind = input.kind === 'story' ? 'story' : input.kind === 'quiz' ? 'quiz' : 'verse'
+      const { data: file } = await admin.storage.from(BUCKET).download(`days/${date}/posted-${kind}.json`)
+      if (!file) return json({})
+      const record = JSON.parse(await file.text()) as Record<string, unknown>
+      const rows = Array.isArray(record.results) ? (record.results as Array<Record<string, unknown>>) : []
+      let changed = false
+      for (const row of rows) {
+        const id = String(row.id ?? '')
+        // An id goes into a URL path, so it has to look like one; a row that
+        // already has its link, or never got an id (skipped, refused), is done.
+        if (row.postUrl || !/^[A-Za-z0-9_-]{6,64}$/.test(id)) continue
+        const r = await ayrshare(`post/${encodeURIComponent(id)}`, null, 'GET')
+        const ids = Array.isArray(r.postIds) ? (r.postIds as Array<Record<string, unknown>>) : []
+        const want = ayrshareName(String(row.platform ?? '') as Platform)
+        const hit = ids.find((x) => String(x.platform ?? '') === want) ?? ids[0]
+        const url = hit?.postUrl
+        if (typeof url !== 'string' || !url) continue
+        row.postUrl = url
+        row.postId = hit?.id ?? row.postId ?? null
+        if (typeof r.status === 'string' && r.status && r.status !== 'error') row.status = r.status
+        changed = true
+      }
+      if (changed) {
+        record.results = rows
+        await park(`days/${date}/posted-${kind}.json`, new TextEncoder().encode(JSON.stringify(record)), 'application/json')
+      }
+      return json({ ...record, changed })
     }
 
     // ---- social: what Ayrshare has connected, and the month's count ---------

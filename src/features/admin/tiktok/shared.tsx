@@ -13,6 +13,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { addDays } from '@/lib/date'
 import { getVerseForDate } from '@/data/bible/questions'
 import { VERSE_POOL } from '@/data/bible/pool'
 import { pickVoice, pickCast, PICKER_VOICES, type VoiceSeed } from '@/data/tiktokVoice'
@@ -119,11 +120,8 @@ export async function existsAt(url: string, type?: string): Promise<boolean> {
   } catch { return false }
 }
 
-export function addDays(date: string, n: number): string {
-  const [y, m, d] = date.split('-').map(Number)
-  const t = new Date(Date.UTC(y, m - 1, d + n))
-  return t.toISOString().slice(0, 10)
-}
+// One copy, in lib/date.ts — the player-facing side reads dates the same way.
+export { addDays }
 
 export type Platform = 'tiktok' | 'youtube' | 'facebook' | 'instagram' | 'x' | 'snapchat'
 export interface PlatformCopy { title: string; text: string; tags: string[] }
@@ -287,6 +285,16 @@ export async function fetchPosted(d: string, kind: Made['kind']): Promise<Posted
   return call<Posted>('posted', { date: d, kind })
 }
 
+/**
+ * Ask Ayrshare what became of the day's SCHEDULED posts and fill in the URLs a
+ * network only issues once it publishes. The morning runner does this for
+ * yesterday on its own; this is the button for a post made by hand, and the
+ * links it records are what the app's "watch yesterday's verse" row offers.
+ */
+export async function fetchLinks(d: string, kind: Made['kind']): Promise<Posted> {
+  return call<Posted>('links', { date: d, kind })
+}
+
 /** Upload the video to the bucket and post it; returns what Ayrshare said per platform. */
 export async function postVideo(m: Made, platforms: Platform[], scheduleDate: string | undefined, onStep: (label: string) => void): Promise<Posted> {
   if (m.ext !== 'mp4') throw new Error('This one is a WebM; TikTok and Instagram refuse it. Render in Chrome for an MP4.')
@@ -348,6 +356,17 @@ export function PostControls({ m }: { m: Made }) {
         <button className="pill" style={{ fontWeight: 800 }} disabled={!!busy || !chosen.length} onClick={go}>
           {busy ? `${busy}…` : when ? '📤 Schedule it' : '📤 Post it now'}
         </button>
+        {posted?.results?.length ? (
+          <button
+            className="pill"
+            style={{ fontSize: 11 }}
+            disabled={!!busy}
+            onClick={async () => {
+              setErr(null); setBusy('Checking links')
+              try { setPosted(await fetchLinks(m.date, m.kind)) } catch (e) { setErr(String((e as Error).message || e)) } finally { setBusy(null) }
+            }}
+          >↻ Links</button>
+        ) : null}
         {posted?.at && <span className="faint" style={{ fontSize: 11 }}>sent {new Date(posted.at).toLocaleString()}</span>}
       </div>
       {err && <p style={{ color: 'var(--coral)', fontSize: 12, margin: 0 }}>{err}</p>}

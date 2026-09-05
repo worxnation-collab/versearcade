@@ -427,10 +427,35 @@ design: `docs/TIKTOK-ENGINE.md`. Five things to know:
   WebCodecs + `mp4-muxer`, WebM fallback), dynamically imported by the panel so
   the muxers never reach the player bundle. Captions are timed by measuring the
   WAV's pauses against the verse's clauses, because TTS returns no word timings.
-- **It touches no player data and no player surface.** It reads
-  `getVerseForDate` and the app's own art, and it never ranks or names anyone.
-  It rides in the baked `dist` harmlessly because `/admin` renders nothing for
-  any other account.
+- **It touches no player data, and it has exactly ONE player-facing surface.**
+  It reads `getVerseForDate` and the app's own art, and it never ranks or names
+  anyone. It rides in the baked `dist` harmlessly because `/admin` renders
+  nothing for any other account. The one crossing point is **"Watch yesterday's
+  verse"** on the result screen (`features/daily/WatchYesterday.tsx` over
+  `lib/socialPosts.ts`) — a row of links to the networks that have yesterday's
+  verse video up. Four things keep it honest and are why it can sit on a player
+  screen at all. It reads `days/<date>/posted-verse.json` **straight out of the
+  public bucket**, so there is no table, no RPC and no migration, and a guest
+  gets it too. It is **yesterday's** because a SCHEDULED post has no URL until
+  the network publishes it — the cron fills a day's links in the next morning
+  (`links`, below), so today's would be a link that sometimes worked. It
+  **renders nothing** when there is nothing to watch — no keys, no record, a
+  post still pending, a network not linked — with no error state and no
+  "coming soon", the same fail-closed shape `FirstLight` has. And it **carries
+  no number**: no views, no likes, nothing countable, because a link out is no
+  place to start counting people at each other. The URLs come from Ayrshare
+  rather than from us and land in an `href`, so each one is checked against the
+  **host of the platform it claims to be** (https only, known host only) — the
+  catalog's "code is not content" rule, applied to a link.
+- **A scheduled post carries no URL, and `links` is the half that gets
+  forgotten.** Ayrshare answers a post sent for later with a status and an id
+  and nothing to link to; the network issues the URL when it publishes. So the
+  day's record is written hours before it means anything, and
+  `POST { action: 'links', date, kind }` is what asks what became of each row
+  and fills it in. The morning runner does yesterday's three on its way out and
+  the **↻ Links** button on a posted card does it by hand. Nothing else does —
+  without it the record stays URL-less forever and the player-facing row above
+  never appears.
 - **The only thing moving is the caption, and that is a rule now.** These
   posts had drifting motes, a warm pulse over the frame, a hovering figure
   under a breathing halo, page-turn wipes and Veo loops of Tabitha talking —

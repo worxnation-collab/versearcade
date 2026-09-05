@@ -23,7 +23,18 @@ export interface PostArgs {
   videoUrl: string
   /** UTC, `YYYY-MM-DDThh:mm:ssZ`; omitted posts now. */
   scheduleDate?: string
+  /** A deliberate re-post of the same day and kind (a rejected first try): joins the idempotency key so Ayrshare takes it. */
+  attempt?: number
 }
+
+/**
+ * The art is painted by a model and the voice is synthetic, and every network
+ * now asks that to be said. TikTok, YouTube and Instagram take it as a flag
+ * and put their own label on the post; Snapchat, Facebook and X have no flag
+ * on Ayrshare's API, so the caption says it — Snapchat's Spotlight review
+ * rejected the first verse as "undisclosed AI-generated content".
+ */
+export const AI_NOTE = 'AI-generated art and voice.'
 
 const tagLine = (tags: string[] | undefined, n: number) => (tags ?? []).slice(0, n).map((t) => '#' + t).join(' ')
 
@@ -46,7 +57,7 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
   const c = copy.platforms?.[platform] ?? copy.platforms?.tiktok ?? {}
   const body: Record<string, unknown> = {
     platforms: [ayrshareName(platform)], mediaUrls: [a.videoUrl], isVideo: true,
-    idempotencyKey: `va-${a.date}-${a.kind}-${platform}`,
+    idempotencyKey: `va-${a.date}-${a.kind}-${platform}${a.attempt && a.attempt > 1 ? `-${a.attempt}` : ''}`,
     notes: `Verse Arcade ${a.kind} ${a.date}`,
   }
   if (a.scheduleDate) body.scheduleDate = a.scheduleDate
@@ -57,18 +68,20 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
     body.post = [c.text ?? '', tagLine(c.tags, 5)].filter(Boolean).join('\n\n').slice(0, 5000)
     body.youTubeOptions = { title: (c.title || `${a.reference || 'Verse Arcade'} · Verse Arcade`).slice(0, 100), visibility: 'public', shorts: true, madeForKids: false, containsSyntheticMedia: true }
   } else if (platform === 'facebook') {
-    body.post = [c.text ?? '', tagLine(c.tags, 2)].filter(Boolean).join('\n\n').slice(0, 5000)
+    body.post = [c.text ?? '', AI_NOTE, tagLine(c.tags, 2)].filter(Boolean).join('\n\n').slice(0, 5000)
     body.faceBookOptions = { reels: true, title: (copy.hook || a.reference || 'Verse Arcade').slice(0, 255) }
   } else if (platform === 'x') {
-    const tags = tagLine(c.tags, 2)
-    const text = (c.text ?? '').slice(0, Math.max(0, 279 - tags.length - 1))
-    body.post = [text, tags].filter(Boolean).join(' ')
+    const tail = [AI_NOTE, tagLine(c.tags, 2)].filter(Boolean).join(' ')
+    const text = (c.text ?? '').slice(0, Math.max(0, 279 - tail.length - 1))
+    body.post = [text, tail].filter(Boolean).join(' ')
   } else if (platform === 'snapchat') {
-    body.post = [c.text ?? '', tagLine(c.tags, 3)].filter(Boolean).join(' ').slice(0, 160)
+    // The note goes FIRST: the caption is cut at 160 and the disclosure is
+    // the part that must survive.
+    body.post = [AI_NOTE, c.text ?? '', tagLine(c.tags, 3)].filter(Boolean).join(' ').slice(0, 160)
     body.snapChatOptions = { spotlight: true }
   } else {
     body.post = [c.text ?? '', tagLine(c.tags, 5)].filter(Boolean).join('\n\n').slice(0, 2200)
-    body.instagramOptions = { shareReelsFeed: true }
+    body.instagramOptions = { shareReelsFeed: true, isAIGenerated: true }
   }
   return body
 }

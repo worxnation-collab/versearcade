@@ -33,10 +33,12 @@ const tagLine = (tags: string[] | undefined, n: number) => (tags ?? []).slice(0,
  * public with `isAIGenerated` for the same reason, its caption on one line
  * because TikTok drops line breaks; Facebook as a Reel titled with the hook;
  * Instagram as a Reel shared to the feed, five hashtags at most; X gets one
- * line under 280 characters with two tags; Snapchat goes to Spotlight (its
- * discovery feed, where hashtags are live) AND is kept as a saved story on
- * the public profile, with TikTok's short line since the two read the same
- * way. A platform with no block of its own borrows TikTok's. An idempotency
+ * line under 280 characters with two tags; Snapchat goes to Spotlight, its
+ * discovery feed, where a video from an account nobody follows yet can still
+ * be shown to strangers and hashtags are live — asked for together with a
+ * saved story, Ayrshare posted ONLY the saved story, which sits on the
+ * profile for people who already found it, so Spotlight is asked for alone.
+ * A platform with no block of its own borrows TikTok's. An idempotency
  * key per (date, kind, platform) means a retry after a network blip cannot
  * post the same video twice.
  */
@@ -63,7 +65,7 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
     body.post = [text, tags].filter(Boolean).join(' ')
   } else if (platform === 'snapchat') {
     body.post = [c.text ?? '', tagLine(c.tags, 3)].filter(Boolean).join(' ').slice(0, 160)
-    body.snapChatOptions = { spotlight: true, savedStory: true }
+    body.snapChatOptions = { spotlight: true }
   } else {
     body.post = [c.text ?? '', tagLine(c.tags, 5)].filter(Boolean).join('\n\n').slice(0, 2200)
     body.instagramOptions = { shareReelsFeed: true }

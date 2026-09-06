@@ -271,7 +271,22 @@ function Tappable({
   const from = { x: down ? x - 8 : x - w / 2 + 8, y: y + h / 2 + bulge }
   const to = { x: down ? x - 20 : x - w / 2 - 26, y: from.y + (down ? 26 : 24) }
   return (
-    <g style={{ cursor: 'pointer' }} onClick={spot.onTap}>
+    <g
+      style={{ cursor: 'pointer' }}
+      onClick={spot.onTap}
+      // A real control, not a picture: this was the only way into three of the
+      // Study tab's doors and it was invisible to a screen reader and
+      // unreachable by keyboard. An SVG group takes focus and a role fine.
+      role="button"
+      tabIndex={0}
+      aria-label={spot.badge ? `${spot.label}, ${spot.badge}` : spot.label}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          spot.onTap()
+        }
+      }}
+    >
       {children}
       {/* The hit area, well beyond the marker — a 26px cloud is under Apple's
           44px minimum on its own, and the puffs are far too small to aim at.

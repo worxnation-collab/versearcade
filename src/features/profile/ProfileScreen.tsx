@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { Page } from '@/components/Page'
+import { FirstVisitTip } from '@/features/home/FirstVisitTip'
 import { BibleCover } from '@/features/bible/BibleCover'
 import { Button } from '@/components/Button'
 import { PlayerCard } from '@/components/PlayerCard'
@@ -236,6 +237,7 @@ export default function ProfileScreen() {
 
   return (
     <Page>
+      <FirstVisitTip id="you" />
       {/* You, at the size the skin was drawn for, with your pet and the
           background you earned. The tab is called You, so it opens with you in
           it — everywhere else your character is a 44px cropped circle. It's a

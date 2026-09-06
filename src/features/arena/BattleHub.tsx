@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Page } from '@/components/Page'
+import { FirstVisitTip } from '@/features/home/FirstVisitTip'
 import { Button } from '@/components/Button'
 import { Avatar } from '@/components/Avatar'
 import { Collapsible } from '@/components/Collapsible'
@@ -141,6 +142,7 @@ export default function BattleHub() {
 
   return (
     <Page>
+      <FirstVisitTip id="battle" />
       {/* One line, not a title card. This tab is reached by tapping a nav
           button labelled "Battle", so a 44px floating sword over the word
           "Bible Battle" was ~130px of the first screen spent restating what

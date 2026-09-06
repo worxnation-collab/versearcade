@@ -191,9 +191,6 @@ export default function AuthScreen() {
               {mode === 'up' && (
                 <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username" autoCapitalize="none" />
               )}
-              {mode === 'up' && (
-                <input value={refCode} onChange={(e) => onRefChange(e.target.value)} placeholder="referral code (optional)" autoCapitalize="characters" autoCorrect="off" maxLength={6} />
-              )}
               <input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -203,6 +200,11 @@ export default function AuthScreen() {
                 autoCorrect="off"
               />
               <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="password" type="password" />
+              {/* The one optional field goes last, so it doesn't interrupt the
+                  three required ones. */}
+              {mode === 'up' && (
+                <input value={refCode} onChange={(e) => onRefChange(e.target.value)} placeholder="referral code (optional)" autoCapitalize="characters" autoCorrect="off" maxLength={6} />
+              )}
             </div>
 
             {(localErr || error) && (

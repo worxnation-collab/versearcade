@@ -1,10 +1,11 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useMusic } from '@/store/music'
 import { useSettings } from '@/store/settings'
 import { useDrops } from '@/store/drops'
 import { trackById } from '@/data/music'
+import { useHeld } from '@/store/overlayHold'
 
 // The track card — a new tune turning up, announced the way the game this
 // borrows from announces one.
@@ -30,9 +31,25 @@ export function NowPlaying() {
   const dropShowing = useDrops((s) => !!s.found)
 
   const linger = announced?.intro ? LINGER_INTRO : LINGER_NEW
+  // Held back while the tutorial is up or a run is on — the card used to land
+  // over the first tutorial slide and over the run's own header. The clock
+  // restarts when the hold lifts, so a card that waited isn't already expired.
+  const held = useHeld()
+  const wasHeld = useRef(false)
 
   useEffect(() => {
-    if (!announced) return
+    if (!announced || held) {
+      wasHeld.current = held
+      return
+    }
+    // The hold just lifted: restamp and let the re-render start the clock.
+    // One effect, on purpose — a separate restamp effect ran in the same
+    // commit as this timer, which then read the stale `at` and dismissed.
+    if (wasHeld.current) {
+      wasHeld.current = false
+      useMusic.setState((s) => (s.announced ? { announced: { ...s.announced, at: Date.now() } } : {}))
+      return
+    }
     const left = announced.at + linger - Date.now()
     if (left <= 0) {
       dismiss()
@@ -40,14 +57,14 @@ export function NowPlaying() {
     }
     const t = setTimeout(() => useMusic.getState().dismiss(), left)
     return () => clearTimeout(t)
-  }, [announced, linger, dismiss])
+  }, [announced, linger, dismiss, held])
 
   if (typeof document === 'undefined') return null
   const def = trackById(announced?.id)
 
   return createPortal(
     <AnimatePresence>
-      {announced && def && (
+      {announced && def && !held && (
         <motion.div
           key={`${announced.id}-${announced.at}`}
           initial={{ opacity: 0, x: -18 }}

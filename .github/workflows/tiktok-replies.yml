@@ -1,0 +1,54 @@
+# Answer the comments under the challenge posts, every couple of hours.
+#
+# scripts/tiktok-replies.mjs asks the tiktok-gen function's `replies` action
+# to read the comments on today's and yesterday's two challenge posts through
+# Ayrshare, have Grok draft a one-line reply to each answer-shaped comment
+# and post it. No Chromium, no rendering: a minute of Node. Same credential
+# as the morning run (TIKTOK_RUNNER_TOKEN), which can make and answer these
+# posts and nothing else. The xAI and Ayrshare keys never reach CI.
+name: tiktok-replies
+
+on:
+  schedule:
+    - cron: '20 */2 * * *'
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "Operator's date (YYYY-MM-DD, default today in TIKTOK_TZ)"
+        required: false
+      dry_run:
+        description: 'Draft replies, post nothing'
+        type: boolean
+        default: false
+
+concurrency:
+  group: tiktok-replies
+  cancel-in-progress: false
+
+jobs:
+  reply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Answer the comments
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          TIKTOK_RUNNER_TOKEN: ${{ secrets.TIKTOK_RUNNER_TOKEN }}
+          TIKTOK_TZ: ${{ vars.TIKTOK_TZ }}
+          DATE: ${{ inputs.date }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: node scripts/tiktok-replies.mjs
+      - name: Keep the log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiktok-replies-${{ github.run_id }}
+          path: .tiktok-daily/replies.json
+          if-no-files-found: ignore

@@ -21,6 +21,7 @@
 //   post        { date, kind, videoUrl, platforms[], scheduleDate?, attempt?, seconds? } → { results[] }  posts the video with that day's copy through Ayrshare, one call per platform (a platform not linked in Ayrshare is skipped, not failed); parked at days/<date>/posted-<kind>.json, merged over what an earlier call recorded
 //   posted      { date, kind }                    → { results[] } | {}  what `post` recorded for that day, if anything
 //   analytics   { date, kind, force? }            → { rows[] }          Ayrshare's per-post numbers for that day's record, normalised (views, likes, comments, shares, watched, followers); cached six hours at days/<date>/analytics-<kind>.json
+//   replies     { date, kind, prompt, options[], answerIndex, teach, reference?, dryRun?, max? } → { replies[], added[], skipped[] }  reads the comments under a challenge post, has Grok draft a one-line reply to each answer-shaped one and posts it; the record at days/<date>/replies-<kind>.json is the memory
 //   social      {}                                → { accounts[], posts, quota }  the Ayrshare profile: which networks are connected and this month's post count
 //
 // Secrets: GEMINI_API_KEY — as a function secret, or in Vault under the same
@@ -30,7 +31,9 @@
 // Instagram, so no platform app or token ever lives here — with ONE
 // exception: X_API_KEY / X_API_SECRET (`tiktok_x_api_key()` /
 // `tiktok_x_api_secret()`, 0104), the account's own X developer app, which
-// Ayrshare requires as headers on every X-bound request since 2026-03-31. Optional model
+// Ayrshare requires as headers on every X-bound request since 2026-03-31; and
+// XAI_API_KEY (`tiktok_xai_key()`, 0105), the Grok key the comment replier
+// drafts with (XAI_MODEL overrides the model). Optional model
 // overrides so a renamed
 // preview model is a dashboard setting rather than a redeploy:
 //   GEMINI_TTS_MODEL   (default gemini-2.5-flash-preview-tts)
@@ -61,6 +64,11 @@ let AYRSHARE_KEY = ''
 // headers and Ayrshare refuses them as before.
 let X_KEY = ''
 let X_SECRET = ''
+// The xAI (Grok) key (0105), used by ONE action: `replies`, which drafts the
+// one-line answers to comments under a challenge post. Grok rather than
+// Gemini because the operator holds xAI credits and nothing else spends them.
+let XAI_KEY = ''
+const XAI_MODEL = Deno.env.get('XAI_MODEL') ?? 'grok-4-fast-non-reasoning'
 const AYRSHARE = 'https://api.ayrshare.com/api'
 const TTS_MODEL = Deno.env.get('GEMINI_TTS_MODEL') ?? 'gemini-2.5-flash-preview-tts'
 const IMAGE_MODEL = Deno.env.get('GEMINI_IMAGE_MODEL') ?? 'gemini-3-pro-image'
@@ -146,6 +154,21 @@ async function ayrshare(path: string, body: unknown, method = 'POST', forX = fal
   return data
 }
 
+// One JSON answer from Grok. OpenAI-shaped endpoint; `response_format`
+// makes the model return an object, and a reply that is not JSON is an
+// empty object rather than a throw, so one odd answer never stops the run.
+async function grok(system: string, user: string): Promise<Record<string, unknown>> {
+  const res = await fetch('https://api.x.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', Authorization: `Bearer ${XAI_KEY}` },
+    body: JSON.stringify({ model: XAI_MODEL, messages: [{ role: 'system', content: system }, { role: 'user', content: user }], temperature: 0.6, response_format: { type: 'json_object' } }),
+  })
+  const text = await res.text()
+  if (!res.ok) throw new Error(`xAI ${res.status}: ${text.slice(0, 400)}`)
+  const j = JSON.parse(text) as { choices?: Array<{ message?: { content?: string } }> }
+  try { return JSON.parse(j.choices?.[0]?.message?.content ?? '{}') } catch { return {} }
+}
+
 // FNV-1a over a string, as 8 hex characters — enough to tell two delivery
 // notes apart in a filename, which is all it is for.
 function fnv(s: string): string {
@@ -209,7 +232,7 @@ Deno.serve(async (req) => {
 
     // The posting actions need Ayrshare's key too — same two homes as Gemini's.
     const peek = await req.clone().json().catch(() => ({}))
-    if (['post', 'links', 'social', 'analytics'].includes(String(peek.action ?? ''))) {
+    if (['post', 'links', 'social', 'analytics', 'replies'].includes(String(peek.action ?? ''))) {
       AYRSHARE_KEY = Deno.env.get('AYRSHARE_API_KEY') ?? ''
       if (!AYRSHARE_KEY) {
         const { data } = await admin.rpc('tiktok_ayrshare_key')
@@ -223,6 +246,14 @@ Deno.serve(async (req) => {
         X_KEY = typeof k === 'string' ? k : ''
         X_SECRET = typeof sec === 'string' ? sec : ''
       }
+    }
+    if (String(peek.action ?? '') === 'replies') {
+      XAI_KEY = Deno.env.get('XAI_API_KEY') ?? ''
+      if (!XAI_KEY) {
+        const { data } = await admin.rpc('tiktok_xai_key')
+        XAI_KEY = typeof data === 'string' ? data : ''
+      }
+      if (!XAI_KEY) return json({ error: 'XAI_API_KEY is not configured (function secret or Vault)' }, 500)
     }
 
     // The bucket is created on first use. Public read is fine: everything in
@@ -650,6 +681,114 @@ Deno.serve(async (req) => {
       const out = { date, kind, at: new Date().toISOString(), rows }
       await park(cachePath, new TextEncoder().encode(JSON.stringify(out)), 'application/json')
       return json({ ...out, cached: false })
+    }
+
+    // ---- replies: answer the comments under a challenge post ----------------
+    //
+    // The challenges ask people to comment A, B, C or D. This reads the
+    // comments on each network's copy of the post through Ayrshare, has Grok
+    // draft a one-line reply to each ANSWER-shaped comment — whether they got
+    // it, the right answer, the teach line — and posts it as a reply to that
+    // comment. Four rules keep it a reply rather than a bot:
+    //   - Only answers. A comment is screened by a cheap rule first (a lone
+    //     letter, an option's words, a number), then Grok decides; anything
+    //     else is left alone. It never argues, never corrects a person's
+    //     opinion, never replies to a reply.
+    //   - Once per person per post, once per comment ever: the record at
+    //     days/<date>/replies-<kind>.json is the memory, so a re-run two hours
+    //     later reaches only new comments.
+    //   - Warm, plain, one sentence, no emoji, no link, and a wrong answer
+    //     gets the fact rather than a verdict — the app's own teach line, in
+    //     the app's own voice.
+    //   - Capped per run, and everything said is parked so the operator can
+    //     read every word the account has ever replied.
+    // The function has no verse data, so the caller (scripts/tiktok-replies.mjs
+    // or the dashboard) hands it the question, the options, the answer and
+    // the teach line — from lib/tiktokChallenge.ts, the same function the
+    // renderer used to pick the question.
+    if (action === 'replies') {
+      const date = String(input.date ?? '')
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: 'date must be YYYY-MM-DD' }, 400)
+      const kind = kindOf(input.kind)
+      if (kind !== 'challenge' && kind !== 'challenge2') return json({ error: 'replies are for the challenge posts' }, 400)
+      const prompt = String(input.prompt ?? '').slice(0, 300)
+      const options = Array.isArray(input.options) ? (input.options as unknown[]).map((o) => String(o).slice(0, 200)).slice(0, 6) : []
+      const answerIndex = Number(input.answerIndex)
+      const teach = String(input.teach ?? '').slice(0, 400)
+      const reference = String(input.reference ?? '').slice(0, 80)
+      if (!prompt || options.length < 2 || !Number.isInteger(answerIndex) || answerIndex < 0 || answerIndex >= options.length) return json({ error: 'prompt, options and answerIndex are required' }, 400)
+      const dryRun = !!input.dryRun
+      const max = Number.isInteger(input.max) ? Math.max(1, Math.min(40, Number(input.max))) : 20
+
+      const { data: postedFile } = await admin.storage.from(BUCKET).download(`days/${date}/posted-${kind}.json`)
+      if (!postedFile) return json({ date, kind, replies: [], added: [] })
+      const posted = JSON.parse(await postedFile.text()) as { results?: Array<Record<string, unknown>> }
+      const recordPath = `days/${date}/replies-${kind}.json`
+      const { data: recFile } = await admin.storage.from(BUCKET).download(recordPath)
+      const record = (recFile ? JSON.parse(await recFile.text()) : { date, kind, replies: [] }) as { date: string; kind: string; replies: Array<Record<string, unknown>> }
+      const done = new Set(record.replies.map((r) => `${r.platform}:${r.commentId}`))
+      const people = new Set(record.replies.filter((r) => r.status === 'success' || r.status === 'dry').map((r) => `${r.platform}:${String(r.username ?? '').toLowerCase()}`))
+
+      // Does the comment look like an answer at all? Cheap, before a token
+      // is spent: a lone letter A-D, a number 1-4, or a word from an option.
+      const optionWords = new Set(options.flatMap((o) => o.toLowerCase().match(/[a-z]{4,}/g) ?? []))
+      const looksLikeAnswer = (t: string) => {
+        const s = t.toLowerCase()
+        if (/(^|[^a-z])[abcd]([^a-z]|$)/i.test(t.trim()) && t.trim().length <= 40) return true
+        if (/(^|\D)[1-4](\D|$)/.test(s) && s.length <= 40) return true
+        return (s.match(/[a-z]{4,}/g) ?? []).some((w) => optionWords.has(w))
+      }
+      const letters = 'ABCD'
+      const system = `You reply, as the Verse Arcade account, to comments under a short Bible quiz video. The viewer was asked ONE multiple-choice question and told to comment their answer. You will be given the question, the options lettered A-D, the right answer, and a teach line (the fact behind the answer), then one comment. Decide whether the comment is an ANSWER to the question (a letter, a number, an option's words, or a clear guess). If it is, write ONE reply of at most 180 characters: warm and plain, say whether they got it, give the right answer, and work in the teach line's fact. Never scold, never rank, never compare them to anyone, never use emoji, hashtags or links, never mention being an AI. If the comment is not an answer (a question, praise, an opinion, spam, an argument), do not reply. Return JSON: {"answer": true|false, "reply": string|null}.`
+      const context = `Reference: ${reference}\nQuestion: ${prompt}\nOptions: ${options.map((o, i) => `${letters[i] ?? i + 1}) ${o}`).join(' | ')}\nRight answer: ${letters[answerIndex] ?? answerIndex + 1}) ${options[answerIndex]}\nTeach line: ${teach}`
+
+      const added: Array<Record<string, unknown>> = []
+      const skipped: Array<Record<string, unknown>> = []
+      outer: for (const row of posted.results ?? []) {
+        const platform = String(row.platform ?? '') as Platform
+        const status = String(row.status ?? '')
+        if (!row.id || status === 'error' || status === 'skipped' || !(PLATFORMS as string[]).includes(platform)) continue
+        const isX = platform === 'x'
+        const c = await ayrshare(`comments/${encodeURIComponent(String(row.id))}`, null, 'GET', isX)
+        const list = (c[ayrshareName(platform)] ?? c[platform] ?? []) as Array<Record<string, unknown>>
+        if (!Array.isArray(list)) continue
+        for (const cm of list) {
+          const commentId = String(cm.commentId ?? cm.id ?? '')
+          const text = String(cm.comment ?? '').trim()
+          const from = (cm.from ?? {}) as Record<string, unknown>
+          const username = String(cm.username ?? cm.userName ?? from.username ?? from.name ?? cm.name ?? cm.displayName ?? '').trim()
+          if (!commentId || !text) continue
+          // Never our own comments (or replies to them), never a reply thread.
+          if (cm.owner === true || /verse\s?arcade/i.test(username)) continue
+          if (Array.isArray((cm.referencedTweets as unknown[]) ?? null) && (cm.referencedTweets as Array<Record<string, unknown>>).some((t) => t.type === 'replied_to' && String(t.id ?? '') !== String(row.postId ?? ''))) continue
+          const key = `${platform}:${commentId}`
+          if (done.has(key)) continue
+          if (username && people.has(`${platform}:${username.toLowerCase()}`)) continue
+          if (text.length > 240 || !looksLikeAnswer(text)) { skipped.push({ platform, commentId, username, comment: text.slice(0, 120), why: 'not an answer' }); continue }
+          let draft: Record<string, unknown> = {}
+          try { draft = await grok(system, `${context}\n\nComment from @${username || 'someone'}: ${text}`) } catch (e) { draft = { error: String((e as Error).message ?? e) } }
+          const reply = typeof draft.reply === 'string' ? draft.reply.trim().slice(0, 200) : ''
+          if (draft.error) { skipped.push({ platform, commentId, username, comment: text.slice(0, 120), why: String(draft.error).slice(0, 200) }); continue }
+          if (draft.answer !== true || !reply) { skipped.push({ platform, commentId, username, comment: text.slice(0, 120), why: 'grok: not an answer' }); continue }
+          let out: Record<string, unknown> = { platform, commentId, username, comment: text.slice(0, 200), reply, at: new Date().toISOString(), status: 'dry', error: null }
+          if (!dryRun) {
+            const body: Record<string, unknown> = { platforms: [ayrshareName(platform)], comment: reply, commentId, searchPlatformId: true }
+            if (platform === 'tiktok' && cm.videoId) body.videoId = String(cm.videoId)
+            const r = await ayrshare(`comments/reply/${encodeURIComponent(commentId)}`, body, 'POST', isX)
+            const block = (r[ayrshareName(platform)] ?? {}) as Record<string, unknown>
+            const ok = r.status === 'success' && block.status !== 'error'
+            out = { ...out, status: ok ? 'success' : 'error', error: ok ? null : String(block.message ?? r.message ?? r.raw ?? JSON.stringify(r).slice(0, 200)), replyId: r.commentId ?? null }
+          }
+          record.replies.push(out)
+          added.push(out)
+          done.add(key)
+          if (username && (out.status === 'success' || out.status === 'dry')) people.add(`${platform}:${username.toLowerCase()}`)
+          if (added.length >= max) break outer
+        }
+      }
+      // A dry run records nothing, so the real run after it starts fresh.
+      if (!dryRun && added.length) await park(recordPath, new TextEncoder().encode(JSON.stringify(record)), 'application/json')
+      return json({ ...record, added, skipped, dryRun })
     }
 
     // ---- social: what Ayrshare has connected, and the month's count ---------

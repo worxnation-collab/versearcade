@@ -8,7 +8,7 @@ import { getVerseForDate } from '@/data/bible/questions'
 import { makeVerse } from './make'
 import {
   READERS, SCENES, VOICES, ART_ORIGIN, STILL_PROMPT, LOOP_PROMPT, TEXTAREA_STYLE,
-  autoPick, autoCast, call, publicUrl, existsAt, addDays,
+  autoPick, autoCast, call, publicUrl, existsAt, addDays, scenePath,
   loopUrlFor, backdropFor, useDisplayFont, DateRow, Busy, MadeCard,
   type Made,
 } from './shared'
@@ -107,7 +107,7 @@ export default function VersePost() {
       const name = READERS.find((x) => x.id === reader)?.name ?? reader
       await call('still', {
         key, prompt: STILL_PROMPT(name), force: true,
-        refs: [`${ART_ORIGIN}/skins/${reader}.png`, `${ART_ORIGIN}/road/${scene}.jpg`],
+        refs: [`${ART_ORIGIN}/skins/${reader}.png`, `${ART_ORIGIN}${scenePath(scene)}`],
       })
       setAssets((a) => ({ ...a, still: true }))
       const r = await import('@/lib/tiktokRender')

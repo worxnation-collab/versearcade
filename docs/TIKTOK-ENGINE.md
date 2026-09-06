@@ -20,8 +20,9 @@ scrolled to find anything on.
 ## What one click produces
 
 - `verse-arcade-<date>.mp4` — 1080×1920, 30fps, H.264 + AAC (or VP9/Opus WebM
-  if the browser can't do H.264), audio baked in. Lead-in with the reference and
-  a hook line, the reading with captions, a 2.6s end card.
+  if the browser can't do H.264), audio baked in. The hook line large on the
+  first frame with the voice starting under it at 0.35s, the reading with
+  captions, and a 2.6s end card that carries the brand and the reference.
 - The **copy for each platform** — TikTok, YouTube Shorts (with a title),
   Facebook and Instagram Reels — each with its own length and its own number
   of hashtags, and a copy button per platform that copies exactly what gets
@@ -38,6 +39,35 @@ scrolled to find anything on.
 
 What's left for a human: pressing **Post it now** (or picking a time and
 pressing **Schedule it**) on the finished card.
+
+## The first frame is the hook, and the voice does not wait for it
+
+Every layout used to open the same way: the brand at the top, the reference
+under it, and — for 1.8 seconds — the hook line in the caption slot over a
+silent painting. That is the shape of a title card, and a feed judges a post
+in the time a title card takes. So the order was turned around, once, in
+`lib/tiktokRender.ts` (`LEAD`, `HOOK_HOLD`, `drawHook`, `drawBrand`), for
+all three painted layouts:
+
+- **The hook is on screen at 0.0s, large, at the top of the frame** — gold,
+  outlined, two lines at most — and holds for about three seconds before the
+  painting has the top of the frame back. It is the thumbnail every network
+  cuts, and the one line a thumb reads.
+- **The voice starts at 0.35s**, under the hook, and the first caption lights
+  with the first word. Nothing is held back for a lead-in.
+- **The brand and the reference moved to the END card.** The reference is also
+  the last thing the reader says, so nobody leaves without it; what it no
+  longer does is spend the first second of every post on a label.
+- The story's hook is its own **most dramatic sentence** (the function's
+  `story` prompt asks for exactly that, at most ten words), and its first
+  paragraph opens on the same moment — the whole telling is two paragraphs
+  and about a minute now, where it was three and ninety seconds.
+- The challenge's hook is the **question itself**, which is why that layout
+  has no separate hook line: it opens on the prompt at 64px with the clock
+  already running.
+
+`plannedDuration()` follows the same constant, so the music bed is rendered
+to the length the frames actually take.
 
 ## Posting goes through Ayrshare
 
@@ -90,29 +120,49 @@ title and hashtag count. The key lives in Vault (`tiktok_ayrshare_key()`,
   the first run after it is linked simply reaches it. The record is merged
   over the earlier one, and the runner re-posts only to platforms not yet
   accepted.
+- **The ask at the end of a caption is per network, on purpose.** Nothing in
+  a TikTok or Snapchat caption is tappable, so a URL there is a dead string
+  and those two ask for the follow ("Follow for tomorrow's verse") — the one
+  number that decides whether tomorrow's post reaches anyone. Instagram's ask
+  is the bio link, YouTube's, Facebook's and X's are live URLs. A challenge
+  asks for the comment first. The copy prompt asks for each network's own
+  ask, and `callToAction()` / `withAsk()` in `social.ts` append it when the
+  words come back without one, so the guarantee does not rest on the model.
 - **`social`** reports what Ayrshare has connected and this month's post
   count against the plan's quota; the hub shows it, and warns in coral on a
-  plan that three videos on four networks (twelve posts a day) will exhaust.
+  plan that five videos on five networks (twenty-five posts a day) will
+  exhaust.
+- **`analytics`** reads Ayrshare's per-post numbers for one day's record of
+  one kind — views, likes, comments, shares, seconds watched, new followers,
+  under whatever name each network gives them — and caches them six hours at
+  `days/<date>/analytics-<kind>.json`. The hub's **The last seven days** card
+  fetches a week of them (35 calls, one per day and kind) and totals them per
+  network and per kind. Operator numbers about posts elsewhere; nothing here
+  is a player.
 
-## The morning cron: the same three posts with nobody at the dashboard
+## The morning cron: the same five posts with nobody at the dashboard
 
 `scripts/tiktok-daily.mjs`, run by `.github/workflows/tiktok-daily.yml` every
 morning (09:30 UTC — 05:30 New York, an hour of slack under the verse's 07:00
 slot so the DST shift never lands a post late) and on demand from the Actions
-tab. It makes the day's three videos and hands them to Ayrshare, each
+tab. It makes the day's five videos and hands them to Ayrshare, each
 SCHEDULED at its own time of day in `TIKTOK_TZ`:
 
 | Post | Default slot | Why then |
 |---|---|---|
 | The verse | 07:00 | the day's verse is what the morning is for; it lands before the commute and before anyone opens the app |
+| Challenge 1 | 10:00 | a twenty-second question in the mid-morning lull, about yesterday's verse |
 | Yesterday's quiz | 12:30 | a lunch-break play-along, and by noon yesterday is safely yesterday everywhere the app is played |
+| Challenge 2 | 16:00 | a different question, a different face, for the afternoon scroll |
 | Story time | 19:30 | Tabitha's is an evening story, told after the day's verse has been read |
 
 Override with the `TIKTOK_POST_TIMES` repository variable
-(`verse=07:00,quiz=12:30,story=19:30`). A slot already past when the runner
-gets there posts immediately rather than tomorrow.
+(`verse=07:00,challenge=10:00,quiz=12:30,challenge2=16:00,story=19:30`) and
+`KINDS` on a dispatch. A slot already past when the runner gets there posts
+immediately rather than tomorrow. Five posts on five networks is
+twenty-five a day, 750 a month against the plan's 1,000.
 
-It finishes by calling `links` for YESTERDAY's three records: those posts have
+It finishes by calling `links` for YESTERDAY's five records: those posts have
 published by now, so this is where the URLs a scheduled post never carried get
 written down — and the app's "watch yesterday's verse" row has nothing to offer
 until they are.
@@ -255,8 +305,10 @@ deterministically, so the same day gets the same post on every device:
   histories, David the Psalms and wisdom books, Elijah the prophets (Kings
   included), Esther her own book and Ruth, Mary the first two chapters of Luke,
   Peter everything else. A named speaker wins over the book.
-- **Scene** — Advent from 30 November to Christmas Day; Lamplight for comfort
-  and warning verses; Harvest Road otherwise.
+- **Scene** — Advent from 30 November to Christmas Day; otherwise one of
+  nine roads, preferred by mood (the lamplit road for comfort, the shore for
+  the words of Jesus, the city gate for a warning, the hills at dawn for
+  praise…) and rotated — see below.
 - **Voice** — the figure's own (a steady one, a weightier one for the words of
   God or Jesus, a softer one for comfort and praise).
 - **Delivery note** — whose words they are, plus a mood scored from the theme
@@ -273,21 +325,43 @@ A rotating cast means more figure+scene pairs; the built-in tier renders any
 pair with nothing generated, and a painted still or Veo loop is added per pair
 only when wanted.
 
+**The cast ROTATES, and the rotation is deterministic.** A week of Psalms was
+a week of David on the Harvest Road, which on an account posting daily read
+as one video reposted. Since the rotation epoch (`ROTATION_EPOCH` in
+`admin/tiktok/shared.tsx`, 2026-09-07) each pick is a preference list —
+`readerPrefs` / `scenePrefs` in `data/tiktokVoice.ts`, the verse's own
+choice first — and `autoCast(date)` takes the first entry not used in the
+last two days (readers) or six days (scenes). Each day is computed with the
+previous days' picks in view, walking forward from the epoch and memoised,
+so the dashboard and the morning runner arrive at the same cast for the
+same date by construction — the guarantee `getVerseForDate` makes, by the
+same means. Days before the epoch keep the old book-only cast, because their
+videos were made under it. The seven new roads are `art/tiktok-scenes.json`
+(a `tiktok-road` kind: 9:16, 2K, `public/tiktok/roads/`), painted with the
+Harvest Road and Lamplight as references so the ten read as one hand; a
+scene whose painting is missing falls back to the Harvest Road
+(`loadScene`) rather than failing the post.
+
 ## Story time: the evening post
 
 The same panel has a second mode. **Story time** is Tabitha, the app's
 librarian, telling the story BEHIND the day's verse: 60 to 90 seconds in her
 library, sitting on a stool with a circle of children cross-legged in front of
 her, the words she is saying on a panel above her, and the verse itself read
-plainly at the end. It is the morning post's other half — Peter reads the
+plainly at the end. About a minute since the hook-first change: two
+paragraphs, 80 to 100 words, opening on the dramatic moment. It is the morning post's other half — Peter reads the
 verse; Tabitha tells you what was happening — and it costs about three cents:
 a Gemini Flash script and a longer TTS.
 
 - **The script is written from the pool entry's own narrative fields** —
   `before`, `after`, `speaker`, `audience`, `facts` — and the function's prompt
   forbids anything not in the passage's plain narrative. Cached at
-  `days/<date>/story.json`; **↻ Rewrite** asks again. Three paragraphs: the
-  situation, what happens, what came after and why it matters, then the verse.
+  `days/<date>/story.json`; **↻ Rewrite** asks again. Two paragraphs: the
+  first OPENS on the dramatic moment and only then says where we are, the
+  second is what came after and why it matters, then the verse. (It was
+  three paragraphs and 120–150 words; a story that ran past ninety seconds
+  was also the one Facebook refused as a Reel.) A cached three-paragraph
+  story still renders.
 - **The panel above her holds the words, not pictures.** It used to be a
   picture card that changed with each paragraph, drawn from the app's own art.
   Two things were wrong with that: a picture matched by keyword is only ever
@@ -343,6 +417,42 @@ road, and the viewer plays along. Then the answers.
   the codec, timing, AAC and audible-track checks. `quizTimeline()` is the
   one place the timing lives, so the bed and the cues are sized by the same
   numbers the frames are drawn from.
+
+## The one-question challenge: "Can you beat Peter?"
+
+The fourth and fifth posts of a day (`makeChallenge` in `admin/tiktok/make.ts`,
+`ChallengePost.tsx`, kinds `challenge` and `challenge2`). ONE of yesterday's
+five questions, read aloud by the day's reader as a twelve-second clock
+starts, the reveal with the question's own teach line, and an ask to comment
+— about twenty seconds, which is the length a feed actually finishes. The
+five-question replay is the long form of the same idea; this is the one
+built to be watched to the end and answered in the comments.
+
+- **It is the quiz layout in `solo` mode**, not a fourth renderer:
+  `QuizInput.solo` drops the verse card, opens on the question at 64px with
+  the clock already running, holds the reveal for 5.5 seconds, and ends on
+  "Did you beat Peter? Comment your answer" instead of a score. Same
+  `quizTimeline`, same cues, same `produce()`.
+- **Two a day, and the second is a different post.** `challengeIndex(date,
+  slot)` picks the question two apart in the day's five, and `challengeCast`
+  gives the second slot the next reader on the next road, so the afternoon's
+  is not the morning's again. Both are `challenge*` kinds because every path
+  in the bucket and every idempotency key is per (date, kind).
+- **Yesterday's verse, like the replay**, for the replay's reason: today's
+  answers on a public feed would spoil the drop. And **the CPU's play is the
+  replay's play** — the same `quizPlan` for the same date, sliced to one
+  question — so the two posts never disagree about whether Peter got it.
+- **The caption teases the question and never answers it.** The `copy`
+  action takes the question for these kinds and the prompt says so twice.
+
+## Your own clip
+
+The one post a painted figure cannot make: the operator, on camera, once a
+week. The hub's **Your own clip** card takes an MP4 and a line about what it
+is, writes each network's words in the operator's own voice (`copy` with
+kind `own` and `about`), and hands it to the same `MadeCard` — upload,
+schedule, post — every generated post uses. Deliberately no AI note on it:
+nothing in it is generated. MP4 only, for the reason every other card has.
 
 ## The few generated pieces, and why those
 
@@ -460,7 +570,5 @@ day of encoding for a 35-second post.
 
 ## Ideas parked
 
-- Two-part format: the verse, then one of the day's trivia questions with the
-  teach line as the reveal.
 - Moving the operator's art (`public/tiktok/`) into the Storage bucket, so the
   App Store build stops carrying megabytes only the dashboard reads.

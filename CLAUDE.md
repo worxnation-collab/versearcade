@@ -410,13 +410,35 @@ the kit still exists.
 
 ## The TikTok engine: an operator tool, not a feature
 
-Admin → TikTok makes the daily posts for a faceless TikTok account: Cephas
-standing on a road scene reading the verse of the day, an evening Story time
-with Tabitha telling the story behind it to a circle of children, and a replay
-of YESTERDAY's quiz played by the game's own CPU against the clock. All are
-captioned word by word, ending on the site. Each is its own generator behind a
-pill (`admin/tiktok/*.tsx` over `shared.tsx`); the human does the upload. Full
-design: `docs/TIKTOK-ENGINE.md`. Five things to know:
+Admin → TikTok makes the daily posts for a faceless TikTok account: the day's
+reader standing on a road scene reading the verse of the day, two twenty-second
+"Can you beat Peter?" challenges (one of yesterday's questions each, a clock,
+the teach line, an ask to comment), a replay of YESTERDAY's quiz played by the
+game's own CPU against the clock, and an evening Story time with Tabitha
+telling the story behind the verse in about a minute. All are captioned word
+by word, ending on the site. Each is its own generator behind a pill
+(`admin/tiktok/*.tsx` over `shared.tsx`); the cron does the upload. Full
+design: `docs/TIKTOK-ENGINE.md`. Things to know:
+
+- **The first frame is the hook and the voice does not wait for it.** Every
+  layout opens on the hook line, large, at 0.0s, with the reading starting at
+  0.35s under it; the brand and the reference moved to the END card
+  (`LEAD`, `HOOK_HOLD`, `drawHook` in `lib/tiktokRender.ts`). The story's hook
+  is its own most dramatic sentence and the challenge's is the question. Do
+  not put a title card back in front of any of them.
+- **The cast rotates, deterministically.** `autoCast(date)` walks forward from
+  `ROTATION_EPOCH` taking the first preferred reader not used in two days and
+  the first preferred scene not used in six, memoised, so the dashboard and
+  the runner compute the same cast for a date. Nine roads all year
+  (`art/tiktok-scenes.json`, `public/tiktok/roads/`) plus Advent; a missing
+  painting falls back to the Harvest Road (`loadScene`) rather than failing
+  the post.
+- **Kinds are `verse`, `challenge`, `quiz`, `challenge2`, `story` and `own`**
+  (`Kind` in `shared.tsx`, `kindOf` in `tiktok-gen/social.ts`), and every
+  bucket path and idempotency key is per (date, kind) — which is why the
+  second challenge is its own kind rather than a slot. `own` is a clip the
+  operator recorded themselves, captioned in their voice and posted through
+  the same door with no AI note.
 
 - **The Gemini key lives in `supabase/functions/tiktok-gen` and nowhere else.**
   Same `sharkbait` gate as `push-send`. It makes the reading (Gemini TTS), the
@@ -493,7 +515,8 @@ design: `docs/TIKTOK-ENGINE.md`. Five things to know:
   (`admin/tiktok/make.ts`), in headless Chromium — there is no second
   renderer — transcodes to H.264 MP4 with ffmpeg, parks the file through
   `upload-url`, and schedules each post at its own hour in `TIKTOK_TZ`
-  (verse 07:00, quiz 12:30, story 19:30). Its credential is
+  (verse 07:00, challenge 10:00, quiz 12:30, challenge2 16:00, story 19:30).
+  Its credential is
   `TIKTOK_RUNNER_TOKEN` (Vault, 0102, sent as `x-runner-token` beside the
   anon key), which the function takes as the admin and which can make these
   posts and nothing else — deliberately NOT the service-role key, the obvious
@@ -501,7 +524,13 @@ design: `docs/TIKTOK-ENGINE.md`. Five things to know:
   needs exactly that token as a GitHub secret; the Gemini and Ayrshare keys
   never reach CI. `tiktok-gen/social.ts` is the one copy of how a video is
   described to each network, imported by the function and bundled into the
-  runner.
+  runner — including the per-network ASK (`callToAction`): TikTok and
+  Snapchat captions are not tappable, so those ask for the follow rather
+  than carrying a URL; a challenge asks for the comment first.
+- **`analytics` is the operator's only scoreboard.** It reads Ayrshare's
+  per-post numbers for one (date, kind), caches six hours, and the hub totals
+  a week per network and per kind. Numbers about posts on other people's
+  networks, never about a player.
 
 ## Church pages
 

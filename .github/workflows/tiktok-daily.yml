@@ -28,9 +28,9 @@ on:
         description: "Operator's date to make (YYYY-MM-DD, default today in TIKTOK_TZ)"
         required: false
       kinds:
-        description: 'Comma list of verse,story,quiz'
+        description: 'Comma list of verse,challenge,quiz,challenge2,story'
         required: false
-        default: 'verse,story,quiz'
+        default: 'verse,challenge,quiz,challenge2,story'
       dry_run:
         description: 'Render only — upload and schedule nothing'
         type: boolean

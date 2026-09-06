@@ -14,13 +14,13 @@
 //   still       { key, prompt, refs[] }          → { url }           Nano Banana 9:16 poster at readers/<key>.png
 //   loop-start  { imageUrl | imageBase64, prompt } → { op }          Veo image→video, returns the operation name
 //   loop-status { key, op }                      → { done, url? }    polls Veo; on completion parks readers/<key>.mp4
-//   copy        { date?, reference, text, theme, kind?, force? } → { hook, caption, hashtags[], platforms }  post copy per platform (TikTok, YouTube, Facebook, Instagram) via Gemini Flash; kind 'story' or 'quiz' changes what the post is; cached at days/<date>/copy-<kind>.json
+//   copy        { date?, reference, text, theme, kind?, force?, question?, about? } → { hook, caption, hashtags[], platforms }  post copy per platform via Gemini Flash; kind (verse, story, quiz, challenge, challenge2, own) changes what the post is — a challenge passes its question, an own clip what it is about; cached at days/<date>/copy-<kind>.json
 //   story       { date, reference, text, ... }    → { title, hook, paragraphs[] }   the story behind the verse, cached at days/<date>/story.json
 //   upload-url  { path }                          → { path, token, publicUrl }  a signed upload URL for a finished video (days/<date>/<kind>.mp4), so the browser can put it in the bucket
-//   post        { date, kind, videoUrl, platforms[], scheduleDate? } → { results[] }  posts the video with that day's copy through Ayrshare, one call per platform (a platform not linked in Ayrshare is skipped, not failed); parked at days/<date>/posted-<kind>.json, merged over what an earlier call recorded
 //   links       { date, kind }                     → the day's record          asks Ayrshare what became of each SCHEDULED post and fills in the postUrl a network only issues once it publishes
 //   post        { date, kind, videoUrl, platforms[], scheduleDate?, attempt?, seconds? } → { results[] }  posts the video with that day's copy through Ayrshare, one call per platform (a platform not linked in Ayrshare is skipped, not failed); parked at days/<date>/posted-<kind>.json, merged over what an earlier call recorded
 //   posted      { date, kind }                    → { results[] } | {}  what `post` recorded for that day, if anything
+//   analytics   { date, kind, force? }            → { rows[] }          Ayrshare's per-post numbers for that day's record, normalised (views, likes, comments, shares, watched, followers); cached six hours at days/<date>/analytics-<kind>.json
 //   social      {}                                → { accounts[], posts, quota }  the Ayrshare profile: which networks are connected and this month's post count
 //
 // Secrets: GEMINI_API_KEY — as a function secret, or in Vault under the same
@@ -40,7 +40,7 @@
 // still/loop is generated once and reused by every day after it.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { PLATFORMS, ayrshareName, postBody, postResult, type DayCopy, type Platform } from './social.ts'
+import { PLATFORMS, ayrshareName, kindOf, postBody, postResult, type DayCopy, type Platform } from './social.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
@@ -197,7 +197,7 @@ Deno.serve(async (req) => {
 
     // The posting actions need Ayrshare's key too — same two homes as Gemini's.
     const peek = await req.clone().json().catch(() => ({}))
-    if (['post', 'links', 'social'].includes(String(peek.action ?? ''))) {
+    if (['post', 'links', 'social', 'analytics'].includes(String(peek.action ?? ''))) {
       AYRSHARE_KEY = Deno.env.get('AYRSHARE_API_KEY') ?? ''
       if (!AYRSHARE_KEY) {
         const { data } = await admin.rpc('tiktok_ayrshare_key')
@@ -373,17 +373,17 @@ Deno.serve(async (req) => {
           `You write short spoken scripts for Tabitha, the librarian in the Verse Arcade Bible app. Each evening she tells the story BEHIND that day's verse to a small audience — warm, plain, unhurried, like a bedtime story for grown-ups. Never preachy, never shaming, no jokes about the listener.\n\n` +
           `Today's verse: ${reference} — "${text}"\nSpoken by: ${f('speaker', 80)}\nTo: ${f('audience', 120)}\nWhat came before: ${f('before')}\nWhat came after: ${f('after')}\nTheme: ${f('theme', 80)}\nFacts you may use: ${facts.join(' | ') || '(none)'}\n\n` +
           `Use ONLY the situation described above and the plain narrative of that Bible passage. Do not invent names, numbers, dialogue or events that are not in the passage. Do not quote the verse itself in the paragraphs — it is read aloud separately at the end.\n\n` +
-          `Return JSON with: "title" (at most 6 words, no punctuation), "hook" (one on-screen opening line, at most 8 words, not a question, no emoji), and "paragraphs": exactly three strings. ` +
-          `Paragraph 1: where we are and who is there (the situation before). Paragraph 2: what happens or what is said, and why the words land the way they do. Paragraph 3: what came after, then one plain sentence about why it still matters, ending with a short lead-in such as "Here's the verse." ` +
-          `About 120 to 150 words in total. Simple sentences that read well aloud. No emoji, no hashtags.` }] }],
+          `Return JSON with: "title" (at most 6 words, no punctuation), "hook" (the single most dramatic sentence of the story, at most 10 words, no emoji — it is the first thing on screen and it has to stop a thumb), and "paragraphs": exactly two strings. ` +
+          `Paragraph 1 OPENS ON THE DRAMATIC MOMENT — the hook's sentence or its twin, the thing that was at stake, in the first line — and only then says where we are and who is there. Paragraph 2: what happened next, what came after, and one plain sentence about why it still matters, ending with a short lead-in such as "Here's the verse." ` +
+          `About 80 to 100 words in total: the whole telling has to fit in a minute. Simple sentences that read well aloud. No emoji, no hashtags.` }] }],
         generationConfig: { responseMimeType: 'application/json', temperature: 0.7 },
       })
       const cands = data.candidates as Array<{ content?: { parts?: Array<{ text?: string }> } }> | undefined
       const raw = cands?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? '{}'
       let parsed: { title?: unknown; hook?: unknown; paragraphs?: unknown } = {}
       try { parsed = JSON.parse(raw) } catch { return json({ error: 'story was not JSON', raw: raw.slice(0, 300) }, 502) }
-      const paragraphs = Array.isArray(parsed.paragraphs) ? (parsed.paragraphs as unknown[]).map((x) => String(x).trim()).filter(Boolean).slice(0, 4) : []
-      if (paragraphs.length < 2) return json({ error: 'story came back too short', raw: raw.slice(0, 300) }, 502)
+      const paragraphs = Array.isArray(parsed.paragraphs) ? (parsed.paragraphs as unknown[]).map((x) => String(x).trim()).filter(Boolean).slice(0, 3) : []
+      if (paragraphs.length < 1) return json({ error: 'story came back too short', raw: raw.slice(0, 300) }, 502)
       const out = { title: String(parsed.title ?? '').slice(0, 60), hook: String(parsed.hook ?? '').slice(0, 80), paragraphs }
       await park(path, new TextEncoder().encode(JSON.stringify(out)), 'application/json')
       return json({ ...out, cached: false })
@@ -398,30 +398,44 @@ Deno.serve(async (req) => {
       const text = String(input.text ?? '').slice(0, 1200)
       const theme = String(input.theme ?? '').slice(0, 80)
       if (!reference || !text) return json({ error: 'reference and text are required' }, 400)
-      const kind = input.kind === 'story' ? 'story' : input.kind === 'quiz' ? 'quiz' : 'verse'
+      const kind = kindOf(input.kind)
       const date = String(input.date ?? '')
       const path = /^\d{4}-\d{2}-\d{2}$/.test(date) ? `days/${date}/copy-${kind}.json` : null
       if (path && !input.force && (await exists(path))) {
         const { data: file } = await admin.storage.from(BUCKET).download(path)
         if (file) return json({ ...JSON.parse(await file.text()), cached: true })
       }
-      const who = input.kind === 'story'
+      const challenge = kind === 'challenge' || kind === 'challenge2'
+      const question = String(input.question ?? '').slice(0, 200)
+      const about = String(input.about ?? '').slice(0, 400)
+      const who = kind === 'story'
         ? `Tabitha, the app's librarian, tells the short story behind the verse of the day each evening (the morning post was the verse itself, read aloud). `
-        : input.kind === 'quiz'
+        : kind === 'quiz'
           ? `a painted character plays YESTERDAY's five-question quiz about the verse against a countdown clock, and viewers play along and see the answers (the post is a replay of yesterday's verse; today's is waiting in the app). `
-          : `a painted figure of Peter (Cephas) reads the verse of the day. `
+          : challenge
+            ? `a painted character answers ONE question about YESTERDAY's verse against a twelve-second clock, and viewers are asked to comment their answer (A, B, C or D) before the reveal. The question is: "${question}". Tease it, never answer it. `
+            : kind === 'own'
+              ? `the app's maker speaks to camera. This clip: ${about || 'a personal word about this week\'s verses'}. Write in their voice, first person, plain. `
+              : `a painted figure of Peter (Cephas) reads the verse of the day. `
+      // What each caption asks for, and it differs by network on purpose:
+      // nothing in a TikTok or Snapchat caption is tappable, so a URL there
+      // is a dead string and the ask is the follow; the others carry a link.
+      // social.ts appends the same ask if the words come back without it.
+      const ask = challenge
+        ? { tiktok: 'ends by asking people to comment their answer and to follow for tomorrow\'s (NO URL: nothing in a TikTok caption is tappable)', yt: 'asks people to comment their answer, then', fb: 'asks people to comment their answer, then', ig: 'ends with "Comment your answer. Play it — link in bio."', x: 'asks people to comment their answer, ending with' }
+        : { tiktok: 'ends by inviting people to follow for tomorrow\'s verse (NO URL: nothing in a TikTok caption is tappable)', yt: '', fb: '', ig: 'ending with "Play today\'s verse — link in bio."', x: 'ending with' }
       const data = await gemini(`models/${TEXT_MODEL}:generateContent`, {
         contents: [{ parts: [{ text:
           `You write post copy for a faceless short-video account called Verse Arcade, a Bible app where ${who}` +
           `Today's verse is ${reference}: "${text}" (theme: ${theme || 'unspecified'}). The same vertical video is posted to TikTok, YouTube Shorts, Facebook and Instagram Reels, and each wants its own words.\n\n` +
           `Return JSON with:\n` +
           `"hook": one on-screen opening line, max 8 words, no emoji, not a question.\n` +
-          `"tiktok": { "text": 1-2 short sentences, casual and warm, under 150 characters, no hashtags in it, ends by inviting people to play today's verse at versearcade.org; "tags": 5 lowercase hashtags without the # sign }.\n` +
-          `"youtube": { "title": a Shorts title under 70 characters that names the verse reference and what the video is; "text": 2-4 sentences for the description, plain, with the line "Play today's verse: https://versearcade.org" on its own line at the end; "tags": 5 lowercase hashtags without the # sign, the first one "shorts" }.\n` +
-          `"facebook": { "text": 2-4 conversational sentences, a little longer and more personal than the others, no hashtags in it, ending with the link https://versearcade.org on its own line; "tags": 2 lowercase hashtags without the # sign }.\n` +
-          `"instagram": { "text": 2-3 short sentences with a line break between them, no hashtags in it, ending with "Play today's verse — link in bio."; "tags": 10 lowercase hashtags without the # sign, mixing broad #bible-style tags with the verse's own theme }.\n` +
-          `"x": { "text": one line under 200 characters, plain and direct, no hashtags in it, ending with versearcade.org; "tags": 2 lowercase hashtags without the # sign }.\n\n` +
-          `Never rank, compare or shame anyone. Never claim a fact that isn't in the verse. No emoji anywhere.` }] }],
+          `"tiktok": { "text": 1-2 short sentences, casual and warm, under 150 characters, no hashtags in it, ${ask.tiktok}; "tags": 5 lowercase hashtags without the # sign }.\n` +
+          `"youtube": { "title": a Shorts title under 70 characters that names the verse reference and what the video is; "text": 2-4 sentences for the description, plain, ${ask.yt} with the line "Play today's verse: https://versearcade.org" on its own line at the end; "tags": 5 lowercase hashtags without the # sign, the first one "shorts" }.\n` +
+          `"facebook": { "text": 2-4 conversational sentences, a little longer and more personal than the others, no hashtags in it, ${ask.fb} ending with the link https://versearcade.org on its own line; "tags": 2 lowercase hashtags without the # sign }.\n` +
+          `"instagram": { "text": 2-3 short sentences with a line break between them, no hashtags in it, ${ask.ig}; "tags": 10 lowercase hashtags without the # sign, mixing broad #bible-style tags with the verse's own theme }.\n` +
+          `"x": { "text": one line under 200 characters, plain and direct, no hashtags in it, ${ask.x} versearcade.org; "tags": 2 lowercase hashtags without the # sign }.\n\n` +
+          `Never rank, compare or shame anyone. Never claim a fact that isn't in the verse. Never give away a quiz answer. No emoji anywhere.` }] }],
         generationConfig: { responseMimeType: 'application/json', temperature: 0.8 },
       })
       const cands = data.candidates as Array<{ content?: { parts?: Array<{ text?: string }> } }> | undefined
@@ -452,7 +466,7 @@ Deno.serve(async (req) => {
     // path shaped exactly like the videos this engine makes.
     if (action === 'upload-url') {
       const path = String(input.path ?? '')
-      if (!/^days\/\d{4}-\d{2}-\d{2}\/(verse|story|quiz)\.(mp4|webm)$/.test(path)) return json({ error: 'bad path' }, 400)
+      if (!/^days\/\d{4}-\d{2}-\d{2}\/(verse|story|quiz|challenge|challenge2|own)\.(mp4|webm)$/.test(path)) return json({ error: 'bad path' }, 400)
       const { data, error } = await admin.storage.from(BUCKET).createSignedUploadUrl(path, { upsert: true })
       if (error || !data) return json({ error: error?.message ?? 'no upload url' }, 500)
       return json({ path, token: data.token, publicUrl: publicUrl(path) })
@@ -468,7 +482,7 @@ Deno.serve(async (req) => {
     if (action === 'post') {
       const date = String(input.date ?? '')
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: 'date must be YYYY-MM-DD' }, 400)
-      const kind = input.kind === 'story' ? 'story' : input.kind === 'quiz' ? 'quiz' : 'verse'
+      const kind = kindOf(input.kind)
       const videoUrl = String(input.videoUrl ?? '')
       if (!/^https:\/\/.+\.(mp4|mov)(\?.*)?$/i.test(videoUrl)) return json({ error: 'videoUrl must be an https .mp4 (TikTok and Instagram refuse WebM — render in Chrome)' }, 400)
       const platforms = (Array.isArray(input.platforms) ? (input.platforms as unknown[]).map(String) : [...PLATFORMS]).filter((p): p is Platform => (PLATFORMS as string[]).includes(p))
@@ -513,7 +527,7 @@ Deno.serve(async (req) => {
     if (action === 'posted') {
       const date = String(input.date ?? '')
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: 'date must be YYYY-MM-DD' }, 400)
-      const kind = input.kind === 'story' ? 'story' : input.kind === 'quiz' ? 'quiz' : 'verse'
+      const kind = kindOf(input.kind)
       const { data: file } = await admin.storage.from(BUCKET).download(`days/${date}/posted-${kind}.json`)
       if (!file) return json({})
       return json(JSON.parse(await file.text()))
@@ -536,7 +550,7 @@ Deno.serve(async (req) => {
     if (action === 'links') {
       const date = String(input.date ?? '')
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: 'date must be YYYY-MM-DD' }, 400)
-      const kind = input.kind === 'story' ? 'story' : input.kind === 'quiz' ? 'quiz' : 'verse'
+      const kind = kindOf(input.kind)
       const { data: file } = await admin.storage.from(BUCKET).download(`days/${date}/posted-${kind}.json`)
       if (!file) return json({})
       const record = JSON.parse(await file.text()) as Record<string, unknown>
@@ -563,6 +577,60 @@ Deno.serve(async (req) => {
         await park(`days/${date}/posted-${kind}.json`, new TextEncoder().encode(JSON.stringify(record)), 'application/json')
       }
       return json({ ...record, changed })
+    }
+
+    // ---- analytics: what a day's posts of one kind did, per network ------
+    //
+    // Ayrshare's per-post analytics, read for each row of a day's record
+    // that has an id, normalised to the numbers every network has some name
+    // for (views, likes, comments, shares, seconds watched, new followers),
+    // and cached in the bucket for six hours so a dashboard reload is not a
+    // round of API calls. One (date, kind) per call: a week of five kinds is
+    // 35 calls from the dashboard, each well inside the gateway's limit,
+    // where one call for the whole week would not be.
+    //
+    // These are numbers about POSTS on other people's networks, read by the
+    // operator alone; nothing here reaches a player or names one.
+    if (action === 'analytics') {
+      const date = String(input.date ?? '')
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: 'date must be YYYY-MM-DD' }, 400)
+      const kind = kindOf(input.kind)
+      const cachePath = `days/${date}/analytics-${kind}.json`
+      if (!input.force && (await exists(cachePath))) {
+        const { data: c } = await admin.storage.from(BUCKET).download(cachePath)
+        if (c) {
+          const cached = JSON.parse(await c.text()) as { at?: string }
+          if (cached.at && Date.now() - Date.parse(cached.at) < 6 * 3600_000) return json({ ...cached, cached: true })
+        }
+      }
+      const { data: file } = await admin.storage.from(BUCKET).download(`days/${date}/posted-${kind}.json`)
+      if (!file) return json({ date, kind, rows: [] })
+      const record = JSON.parse(await file.text()) as { results?: Array<Record<string, unknown>> }
+      const num = (o: Record<string, unknown>, keys: string[]): number | null => {
+        for (const k of keys) { const v = o[k]; if (typeof v === 'number' && Number.isFinite(v)) return v }
+        return null
+      }
+      const rows: Array<Record<string, unknown>> = []
+      for (const r of record.results ?? []) {
+        const platform = String(r.platform ?? '') as Platform
+        if (!r.id || !(PLATFORMS as string[]).includes(platform)) continue
+        const a = await ayrshare('analytics/post', { id: r.id, platforms: [ayrshareName(platform)] })
+        const block = (a[ayrshareName(platform)] ?? {}) as Record<string, unknown>
+        const an = ((block.analytics ?? block) as Record<string, unknown>) ?? {}
+        rows.push({
+          platform, postUrl: r.postUrl ?? block.postUrl ?? null, status: String(r.status ?? ''),
+          views: num(an, ['videoViews', 'views', 'viewsCount', 'viewCount', 'playCount', 'plays', 'impressions', 'totalVideoViews', 'video_views', 'reach', 'reachCount']),
+          likes: num(an, ['likeCount', 'likes', 'likesCount', 'reactions', 'totalReactions', 'favorites']),
+          comments: num(an, ['commentsCount', 'comments', 'commentCount']),
+          shares: num(an, ['shareCount', 'shares', 'sharesCount']),
+          watched: num(an, ['averageTimeWatched', 'averageViewDuration', 'avgTimeWatched']),
+          followers: num(an, ['newFollowers', 'subscribersGained', 'followers']),
+          error: a.status === 'error' ? String(a.message ?? a.raw ?? 'no analytics') : null,
+        })
+      }
+      const out = { date, kind, at: new Date().toISOString(), rows }
+      await park(cachePath, new TextEncoder().encode(JSON.stringify(out)), 'application/json')
+      return json({ ...out, cached: false })
     }
 
     // ---- social: what Ayrshare has connected, and the month's count ---------

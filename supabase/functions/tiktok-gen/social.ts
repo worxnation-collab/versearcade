@@ -16,9 +16,14 @@ export const ayrshareName = (p: Platform): string => (p === 'x' ? 'twitter' : p)
 export interface PlatformCopy { title?: string; text?: string; tags?: string[] }
 export interface DayCopy { hook?: string; platforms?: Partial<Record<Platform, PlatformCopy>> }
 
+/** The posts a day: see admin/tiktok/shared.tsx for what each is. */
+export type Kind = 'verse' | 'story' | 'quiz' | 'challenge' | 'challenge2' | 'own'
+export const KINDS: Kind[] = ['verse', 'story', 'quiz', 'challenge', 'challenge2', 'own']
+export const kindOf = (k: unknown): Kind => ((KINDS as string[]).includes(String(k)) ? (k as Kind) : 'verse')
+
 export interface PostArgs {
   date: string
-  kind: 'verse' | 'story' | 'quiz'
+  kind: Kind
   reference: string
   videoUrl: string
   /** UTC, `YYYY-MM-DDThh:mm:ssZ`; omitted posts now. */
@@ -44,6 +49,38 @@ export const AI_NOTE = 'AI-generated art and voice.'
 const tagLine = (tags: string[] | undefined, n: number) => (tags ?? []).slice(0, n).map((t) => '#' + t).join(' ')
 
 /**
+ * The ask at the end of a caption, per network, and it differs on purpose:
+ * a URL is a dead string on TikTok and Snapchat (nothing in a caption there
+ * is tappable), so those ask for the follow, which IS tappable and is the
+ * number that decides whether a day's post reaches anyone the next day.
+ * Instagram's is the bio link, YouTube's, Facebook's and X's are live URLs.
+ * A challenge asks for the comment first — a comment is what a one-question
+ * post exists to collect — and the follow second. The copy prompt asks for
+ * the same thing; this is the guarantee, over words a model may not have
+ * written that way.
+ */
+export function callToAction(platform: Platform, kind: Kind): string {
+  const challenge = kind === 'challenge' || kind === 'challenge2'
+  switch (platform) {
+    case 'tiktok': return challenge ? "Comment your answer. Follow for tomorrow's." : "Follow for tomorrow's verse."
+    case 'snapchat': return challenge ? 'Comment your answer.' : "Follow for tomorrow's verse."
+    case 'instagram': return challenge ? 'Comment your answer. Play it — link in bio.' : 'Play it — link in bio.'
+    case 'youtube': return challenge ? "Comment your answer. Play today's verse: https://versearcade.org" : "Play today's verse: https://versearcade.org"
+    case 'facebook': return challenge ? 'Comment your answer. https://versearcade.org' : 'https://versearcade.org'
+    case 'x': return challenge ? 'Comment your answer. versearcade.org' : 'versearcade.org'
+  }
+}
+
+/** The caption's text with the network's own ask on the end, unless the words already carry it. */
+function withAsk(text: string | undefined, platform: Platform, kind: Kind): string {
+  const t = (text ?? '').trim()
+  const ask = callToAction(platform, kind)
+  const has = (platform === 'tiktok' || platform === 'snapchat') ? /follow/i.test(t) : /versearcade\.org|link in bio/i.test(t)
+  if (has && (!/challenge/.test(kind) || /comment/i.test(t))) return t
+  return [t, ask].filter(Boolean).join(platform === 'tiktok' || platform === 'snapchat' || platform === 'x' ? ' ' : '\n')
+}
+
+/**
  * The per-platform options are deliberate: YouTube as a Short, public, not
  * made for kids, `containsSyntheticMedia` (the voice is synthetic); TikTok
  * public with `isAIGenerated` for the same reason, its caption on one line
@@ -67,13 +104,13 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
   }
   if (a.scheduleDate) body.scheduleDate = a.scheduleDate
   if (platform === 'tiktok') {
-    body.post = [c.text ?? '', tagLine(c.tags, 5)].filter(Boolean).join(' ').slice(0, 2200)
+    body.post = [withAsk(c.text, platform, a.kind), tagLine(c.tags, 5)].filter(Boolean).join(' ').slice(0, 2200)
     body.tikTokOptions = { visibility: 'public', isAIGenerated: true }
   } else if (platform === 'youtube') {
-    body.post = [c.text ?? '', tagLine(c.tags, 5)].filter(Boolean).join('\n\n').slice(0, 5000)
+    body.post = [withAsk(c.text, platform, a.kind), tagLine(c.tags, 5)].filter(Boolean).join('\n\n').slice(0, 5000)
     body.youTubeOptions = { title: (c.title || `${a.reference || 'Verse Arcade'} · Verse Arcade`).slice(0, 100), visibility: 'public', shorts: true, madeForKids: false, containsSyntheticMedia: true }
   } else if (platform === 'facebook') {
-    body.post = [c.text ?? '', AI_NOTE, tagLine(c.tags, 2)].filter(Boolean).join('\n\n').slice(0, 5000)
+    body.post = [withAsk(c.text, platform, a.kind), AI_NOTE, tagLine(c.tags, 2)].filter(Boolean).join('\n\n').slice(0, 5000)
     // A Reel where one is allowed (it is the surface Facebook shows to
     // strangers); over the ceiling, a plain video post on the page rather
     // than a refusal — Facebook rejected the quiz and a 91-second story as
@@ -82,15 +119,15 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
     body.faceBookOptions = { reels, title: (copy.hook || a.reference || 'Verse Arcade').slice(0, 255) }
   } else if (platform === 'x') {
     const tail = [AI_NOTE, tagLine(c.tags, 2)].filter(Boolean).join(' ')
-    const text = (c.text ?? '').slice(0, Math.max(0, 279 - tail.length - 1))
+    const text = withAsk(c.text, platform, a.kind).slice(0, Math.max(0, 279 - tail.length - 1))
     body.post = [text, tail].filter(Boolean).join(' ')
   } else if (platform === 'snapchat') {
     // The note goes FIRST: the caption is cut at 160 and the disclosure is
     // the part that must survive.
-    body.post = [AI_NOTE, c.text ?? '', tagLine(c.tags, 3)].filter(Boolean).join(' ').slice(0, 160)
+    body.post = [AI_NOTE, withAsk(c.text, platform, a.kind), tagLine(c.tags, 3)].filter(Boolean).join(' ').slice(0, 160)
     body.snapChatOptions = { spotlight: true }
   } else {
-    body.post = [c.text ?? '', tagLine(c.tags, 5)].filter(Boolean).join('\n\n').slice(0, 2200)
+    body.post = [withAsk(c.text, platform, a.kind), tagLine(c.tags, 5)].filter(Boolean).join('\n\n').slice(0, 2200)
     body.instagramOptions = { shareReelsFeed: true, isAIGenerated: true }
   }
   return body

@@ -244,9 +244,13 @@ for (const entry of manifest) {
     // the one kind here that is never wired into GENERATED_ART, because no
     // player-facing surface reads it.
     tiktok: 'public/tiktok/rooms',
+    // …and the roads its readers stand on (art/tiktok-scenes.json): portrait
+    // like a room, in a folder of their own so a scene id can never collide
+    // with a room's.
+    'tiktok-road': 'public/tiktok/roads',
   }
   const sceneDir = SCENE_DIRS[entry.kind]
-  const isTikTok = entry.kind === 'tiktok'
+  const isTikTok = entry.kind === 'tiktok' || entry.kind === 'tiktok-road'
   const isScene = entry.kind === 'scene' || !!sceneDir
   const isProp = entry.kind === 'prop'
   // A church building: a keyed cut-out like a prop, but it renders from 44px

@@ -15,8 +15,8 @@ import { pickStoryVoice, secondVoiceFor, gradeFor } from '@/data/tiktokVoice'
 import { buildCpuPlan, CPU_PROFILES, type CpuLevel } from '@/features/arena/cpu'
 import type { QuizStep } from '@/lib/tiktokRender'
 import {
-  READERS, TELLERS, ROOMS, skinPath,
-  seedFor, autoPick, autoCast, spokenReference, call, fetchCopy, fetchStory, bedFor, backdropFor, tierFor,
+  READERS, TELLERS, ROOMS, skinPath, loadScene,
+  seedFor, autoPick, autoCast, challengeCast, spokenReference, call, fetchCopy, fetchStory, bedFor, backdropFor, tierFor,
   type Copy, type Made, type Story, type Renderer,
 } from './shared'
 
@@ -204,11 +204,73 @@ export async function makeQuiz(d: string, o: QuizOptions, progress: Progress): P
   }
   progress(0, 'rendering')
   const r: Renderer = await import('@/lib/tiktokRender')
-  const [backdrop, figure] = await Promise.all([r.loadImage(`/road/${c.scene}.jpg`), r.loadImage(`/skins/${c.reader}.png`)])
+  const [backdrop, figure] = await Promise.all([loadScene(r, c.scene), r.loadImage(`/skins/${c.reader}.png`)])
   const base = { reference: v.reference, text: v.text, questions: v.questions, plan: steps, windowSec, playerName: name, figure, backdrop, hook: copy?.hook }
   const tl = r.quizTimeline(audio ? await r.audioSeconds(audio) : null, base)
   const [bed, cues] = await Promise.all([o.music !== false ? bedFor(tl.total, 'morning') : Promise.resolve(undefined), r.quizCues(tl.events, tl.total)])
   const out = await r.renderQuiz({ ...base, audio, bed, cues, align: o.align, onProgress: progress })
   const won = steps.filter((s, i) => s.pick === v.questions[i].answerIndex).length
   return made(d, 'quiz', v.reference, out, copy, `${name} · ${CPU_PROFILES[level].name} · ${won}/${v.questions.length}`)
+}
+
+// ---- the one-question challenge ------------------------------------------------
+//
+// "Can you beat Peter?" — ONE of yesterday's five questions, the clock, the
+// reveal with its teach line, and an ask to comment. About twenty seconds,
+// which is the length a feed actually finishes; the five-question replay is
+// the long form of the same idea. Two a day, on different questions and
+// with different faces (`challengeCast`), because the second is a different
+// post rather than the first one again.
+
+/** Which of the day's five each slot asks: two apart, so the two slots never share one. */
+export function challengeIndex(date: string, slot: 1 | 2, n: number): number {
+  return (hash(`${date}:challenge`) + (slot - 1) * 2) % Math.max(1, n)
+}
+
+export interface ChallengeOptions {
+  slot?: 1 | 2
+  level?: CpuLevel
+  windowSec?: number
+  cast?: { reader: string; scene: string }
+  /** Read the question aloud as the clock starts (default true). */
+  voice?: boolean
+  voiceName?: string
+  copy?: boolean
+  music?: boolean
+}
+
+export async function makeChallenge(d: string, o: ChallengeOptions, progress: Progress): Promise<MadeBlob> {
+  const v = getVerseForDate(d)
+  const slot = o.slot ?? 1
+  const kind: Made['kind'] = slot === 2 ? 'challenge2' : 'challenge'
+  const level = o.level ?? 'medium'
+  const windowSec = o.windowSec ?? 12
+  const c = o.cast ?? challengeCast(d, slot)
+  const name = READERS.find((x) => x.id === c.reader)?.name.split(' ')[0] ?? 'Peter'
+  const qi = challengeIndex(d, slot, v.questions.length)
+  const q = v.questions[qi]
+  // The same play the replay post shows for this question, so the two posts
+  // never disagree about whether Peter got it.
+  const step = quizPlan(d, level, windowSec, v.questions)[qi]
+  let audio: ArrayBuffer | undefined
+  if (o.voice !== false) {
+    progress(0, 'asking for the question')
+    const p = autoPick(d, c.reader)
+    const tts = await call<{ url: string; cached: boolean }>('tts', { date: d, text: q.prompt, voice: o.voiceName ?? p.voice, style: `Ask this as a quiz question to a friend: bright, curious, unhurried. ${p.style.split('. ').slice(0, 1).join('. ')}.` })
+    audio = await (await fetch(tts.url + '?v=' + Date.now())).arrayBuffer()
+  }
+  let copy: Copy | null = null
+  if (o.copy !== false) {
+    progress(0, 'writing the caption')
+    try { copy = await fetchCopy(d, kind, false, { question: q.prompt }) } catch { copy = null }
+  }
+  progress(0, 'rendering')
+  const r: Renderer = await import('@/lib/tiktokRender')
+  const [backdrop, figure] = await Promise.all([loadScene(r, c.scene), r.loadImage(`/skins/${c.reader}.png`)])
+  const base = { reference: v.reference, text: v.text, questions: [q], plan: [step], windowSec, playerName: name, figure, backdrop, hook: copy?.hook, solo: true }
+  const tl = r.quizTimeline(audio ? await r.audioSeconds(audio) : null, base)
+  const [bed, cues] = await Promise.all([o.music !== false ? bedFor(tl.total, 'morning') : Promise.resolve(undefined), r.quizCues(tl.events, tl.total)])
+  const out = await r.renderQuiz({ ...base, audio, bed, cues, onProgress: progress })
+  const won = step.pick === q.answerIndex
+  return made(d, kind, v.reference, out, copy, `${name} · Q${qi + 1} · ${won ? 'got it' : 'missed it'}`)
 }

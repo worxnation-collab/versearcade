@@ -19,6 +19,13 @@ export const WIDTH = 1080
 export const HEIGHT = 1920
 export const FPS = 30
 const TAIL_SEC = 2.6
+// The voice starts almost at once. A post used to open on 1.8 seconds of
+// hook over silence while the reader stood there; on a feed that is 1.8
+// seconds of a thumb deciding, and the reading is the thing worth staying
+// for. The hook still leads — large, on frame one — but over the first words.
+const LEAD = 0.35
+// How long the hook holds the top of the frame before the picture has it.
+const HOOK_HOLD = 3.2
 const SAMPLE_RATE = 48000
 const AAC_FRAME = 1024 // samples per AAC frame; every MP4 audio delta must be this
 const OPUS_FRAME = 960 // samples per Opus packet at 48 kHz (20 ms)
@@ -384,6 +391,18 @@ function outlined(ctx: CanvasRenderingContext2D, text: string, x: number, y: num
 
 function easeOut(t: number) { return 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 3) }
 
+/** The largest of `sizes` at which `text` wraps into `maxHeight`; sets ctx.font to it. */
+function fitText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, sizes: number[], maxHeight: number) {
+  let lines: string[] = [text], lh = 0
+  for (const size of sizes) {
+    ctx.font = `800 ${size}px ${FONT_DISPLAY}`
+    lines = wrap(ctx, text, maxWidth)
+    lh = Math.round(size * 1.2)
+    if (lines.length * lh <= maxHeight) break
+  }
+  return { lines, lh }
+}
+
 // ---- captions ---------------------------------------------------------------
 //
 // A caption is drawn WORD BY WORD, with the word being spoken right now in
@@ -461,6 +480,40 @@ function drawCaption(ctx: CanvasRenderingContext2D, phrase: TimedPhrase | null, 
 // so a comfort verse at dusk and a warning at night keep the host's LOOP
 // (which only exists for the daytime road) rather than falling back to a
 // still of a different painting.
+/**
+ * The hook: on screen from the first frame, large, for HOOK_HOLD seconds,
+ * then gone so the painting has the top of the frame. One copy for the three
+ * layouts, because the first frame is the one every network uses as the
+ * thumbnail and the one a thumb judges.
+ */
+function drawHook(ctx: CanvasRenderingContext2D, hook: string | undefined, t: number, cy: number, size: number, maxWidth: number) {
+  const text = hook?.trim()
+  if (!text || t >= HOOK_HOLD) return
+  ctx.save()
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+  ctx.globalAlpha = Math.min(1, easeOut(t / 0.25) + 0.5) * (1 - easeOut((t - (HOOK_HOLD - 0.4)) / 0.4))
+  ctx.font = `800 ${size}px ${FONT_DISPLAY}`
+  let lines = wrap(ctx, text, maxWidth)
+  let lh = Math.round(size * 1.12)
+  if (lines.length > 2) { const s2 = Math.round(size * 0.8); ctx.font = `800 ${s2}px ${FONT_DISPLAY}`; lines = wrap(ctx, text, maxWidth); lh = Math.round(s2 * 1.12) }
+  const y0 = cy - ((lines.length - 1) * lh) / 2
+  lines.forEach((l, i) => outlined(ctx, l, WIDTH / 2, y0 + i * lh, '#ffd23f', 'rgba(11,7,32,0.9)', Math.round(size / 7)))
+  ctx.restore()
+}
+
+/** The brand line and, under it, what this post was about — the end card's header. */
+function drawBrand(ctx: CanvasRenderingContext2D, brand: string, reference: string, y: number) {
+  ctx.save()
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+  ctx.font = `800 34px ${FONT_DISPLAY}`
+  ctx.letterSpacing = '6px'
+  outlined(ctx, brand, WIDTH / 2, y, '#ffd23f', 'rgba(11,7,32,0.85)', 8)
+  ctx.letterSpacing = '0px'
+  ctx.font = `700 62px ${FONT_DISPLAY}`
+  outlined(ctx, reference, WIDTH / 2, y + 72)
+  ctx.restore()
+}
+
 function drawGrade(ctx: CanvasRenderingContext2D, grade?: 'dusk' | 'night') {
   if (!grade) return
   ctx.save()
@@ -526,26 +579,25 @@ async function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number,
   bot.addColorStop(0, 'rgba(11,7,32,0)'); bot.addColorStop(1, 'rgba(11,7,32,0.9)')
   ctx.fillStyle = bot; ctx.fillRect(0, HEIGHT - 820, WIDTH, 820)
 
-  // 3. Header: the brand, then the reference.
+  // 3. The hook, first and large. The brand and the reference used to head
+  // every frame and the hook sat in the caption slot over silence; now the
+  // one line written to stop a thumb is the first thing on screen, at 0.0s,
+  // and both of the others wait for the end card (the reference is also the
+  // last thing the reader says, so nobody leaves without it).
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.font = `800 34px ${FONT_DISPLAY}`
-  ctx.letterSpacing = '6px'
-  outlined(ctx, 'VERSE ARCADE', WIDTH / 2, 190, '#ffd23f', 'rgba(11,7,32,0.85)', 8)
-  ctx.letterSpacing = '0px'
-  ctx.font = `700 62px ${FONT_DISPLAY}`
-  outlined(ctx, input.reference, WIDTH / 2, 262)
+  drawHook(ctx, input.hook, t, 250, 96, 920)
 
-  // 4. Captions.
+  // 4. Captions, from the first word.
   const endFade = easeOut((t - (lead + audioDur)) / 0.45)
   const at = t - lead
   let phrase: TimedPhrase | null = null
   let age = 1
-  if (t < lead) {
-    const hook = input.hook?.trim()
-    if (hook) { phrase = { text: hook, start: 0, end: lead }; age = t / 0.35 }
-  } else {
-    const p = phrases.find((x) => at >= x.start && at < x.end) ?? (at >= audioDur ? null : phrases[phrases.length - 1])
+  if (at >= 0) {
+    // Between two phrases the last one holds; before the FIRST there is
+    // nothing to hold, and holding the final phrase there put the reference
+    // on screen under the hook before a word had been said.
+    const p = phrases.find((x) => at >= x.start && at < x.end) ?? (at >= audioDur || at < (phrases[0]?.start ?? 0) ? null : phrases[phrases.length - 1])
     if (p && at < audioDur + 0.2) { phrase = p; age = (at - p.start) / 0.22 }
   }
   if (phrase && endFade < 1) {
@@ -561,6 +613,7 @@ async function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number,
     ctx.globalAlpha = endFade
     ctx.fillStyle = 'rgba(11,7,32,0.55)'
     ctx.fillRect(0, 0, WIDTH, HEIGHT)
+    drawBrand(ctx, 'VERSE ARCADE', input.reference, 190)
     ctx.font = `800 76px ${FONT_DISPLAY}`
     outlined(ctx, 'Play today’s verse', WIDTH / 2, HEIGHT / 2 + 470)
     ctx.font = `800 58px ${FONT_DISPLAY}`
@@ -820,7 +873,7 @@ export async function renderTikTok(input: RenderInput): Promise<RenderOutput> {
   // and a clause of its own, which keeps the clause count matching the pauses.
   const verse = /[.!?]["'”’)]?$/.test(input.text.trim()) ? input.text.trim() : input.text.trim() + '.'
   const phrases = await timedCaptions([...splitPhrases(verse), input.reference + '.'], samples, progress, input.align)
-  const lead = input.hook?.trim() ? 1.8 : 1.0
+  const lead = LEAD
   const total = lead + audioDur + TAIL_SEC
   const scene: Scene = { input, lead, audioDur, total, phrases }
 
@@ -843,7 +896,7 @@ export async function renderPoster(input: Omit<RenderInput, 'audio' | 'onProgres
   // minute — the same reason the story poster carries them.
   const verse = /[.!?]["'\u201d\u2019)]?$/.test(input.text.trim()) ? input.text.trim() : input.text.trim() + '.'
   const phrases = alignPhrases([...splitPhrases(verse), input.reference + '.'], [[0, 30]], 30)
-  await drawFrame(ctx, { input: { ...input, audio: new ArrayBuffer(0) }, lead: 1, audioDur: 30, total: 34, phrases }, t, chrome)
+  await drawFrame(ctx, { input: { ...input, audio: new ArrayBuffer(0) }, lead: LEAD, audioDur: 30, total: 34, phrases }, t, chrome)
   return canvas.toDataURL('image/png')
 }
 
@@ -934,14 +987,24 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
 
   if (!chrome) return
 
-  // 3. Header.
+  // 3. The hook first, where the header will be: the story's own most
+  // dramatic sentence, large, at 0.0s. The brand and the title take the
+  // top of the frame over from it once it has done its work.
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-  ctx.font = `800 32px ${FONT_DISPLAY}`
-  ctx.letterSpacing = '6px'
-  outlined(ctx, 'VERSE ARCADE · STORY TIME', WIDTH / 2, 150, '#ffd23f', 'rgba(11,7,32,0.85)', 8)
-  ctx.letterSpacing = '0px'
-  ctx.font = `700 54px ${FONT_DISPLAY}`
-  wrap(ctx, input.title, 900).forEach((l, i) => outlined(ctx, l, WIDTH / 2, 218 + i * 60))
+  const hasHook = !!input.hook?.trim()
+  drawHook(ctx, input.hook, t, 200, 72, 900)
+  const headIn = hasHook ? easeOut((t - (HOOK_HOLD - 0.3)) / 0.4) : 1
+  if (headIn > 0) {
+    ctx.save()
+    ctx.globalAlpha = headIn
+    ctx.font = `800 32px ${FONT_DISPLAY}`
+    ctx.letterSpacing = '6px'
+    outlined(ctx, 'VERSE ARCADE · STORY TIME', WIDTH / 2, 150, '#ffd23f', 'rgba(11,7,32,0.85)', 8)
+    ctx.letterSpacing = '0px'
+    ctx.font = `700 54px ${FONT_DISPLAY}`
+    wrap(ctx, input.title, 900).forEach((l, i) => outlined(ctx, l, WIDTH / 2, 218 + i * 60))
+    ctx.restore()
+  }
 
   // 4. The panel: the story's own words, lit a word at a time.
   //
@@ -955,14 +1018,11 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
   const px = 90, pw = WIDTH - 180, py = 296, ph = 372
   let phrase: TimedPhrase | null = null
   let age = 1
-  if (t < lead) {
-    const hook = input.hook?.trim()
-    if (hook) { phrase = { text: hook, start: 0, end: lead }; age = t / 0.35 }
-  } else {
-    const p = phrases.find((x) => at >= x.start && at < x.end) ?? (at < audioDur ? phrases[phrases.length - 1] : null)
+  if (at >= 0) {
+    const p = phrases.find((x) => at >= x.start && at < x.end) ?? (at < audioDur && at >= (phrases[0]?.start ?? 0) ? phrases[phrases.length - 1] : null)
     if (p && at < audioDur + 0.2) { phrase = p; age = (at - p.start) / 0.22 }
   }
-  if (t >= lead - 0.6 && endFade < 1) {
+  if (endFade < 1) {
     ctx.save()
     ctx.globalAlpha = 1 - endFade
     roundRect(ctx, px, py, pw, ph, 40)
@@ -986,6 +1046,7 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
     ctx.save()
     ctx.globalAlpha = endFade
     ctx.fillStyle = 'rgba(11,7,32,0.6)'; ctx.fillRect(0, 0, WIDTH, HEIGHT)
+    // The header (brand and title) is still drawn above; no second brand line.
     ctx.font = `700 56px ${FONT_DISPLAY}`
     const lines = wrap(ctx, input.verseText, 880)
     const lh = 68
@@ -1024,7 +1085,7 @@ export async function renderStory(input: StoryInput): Promise<RenderOutput> {
   const { texts, para } = storyTexts(input.paragraphs)
   const phrases = await timedCaptions(texts, samples, progress, input.align)
   const paraStart = input.paragraphs.map((_, i) => phrases[para.indexOf(i)]?.start ?? 0)
-  const lead = input.hook?.trim() ? 1.8 : 1.0
+  const lead = LEAD
   const total = lead + audioDur + TAIL_SEC + 1.2
   try { await document.fonts.load(`800 70px "Baloo 2"`) } catch { /* fine */ }
   const sc: StoryScene = { input, lead, audioDur, total, phrases, para, paraStart }
@@ -1041,9 +1102,9 @@ export async function audioSeconds(audio: ArrayBuffer): Promise<number> {
 
 /** How long a story or verse post will run, so a music bed can be rendered to fit. */
 export async function plannedDuration(audio: ArrayBuffer, hook: string | undefined, story: boolean): Promise<number> {
+  void hook // the hook no longer holds the voice back; it plays over the first words
   const samples = await decodeAudio(audio)
-  const lead = hook?.trim() ? 1.8 : 1.0
-  return lead + samples.length / SAMPLE_RATE + TAIL_SEC + (story ? 1.2 : 0)
+  return LEAD + samples.length / SAMPLE_RATE + TAIL_SEC + (story ? 1.2 : 0)
 }
 
 export async function renderStoryPoster(input: Omit<StoryInput, 'audio' | 'onProgress'> & { phrases?: TimedPhrase[] }, t = 2.5, chrome = true): Promise<string> {
@@ -1058,7 +1119,7 @@ export async function renderStoryPoster(input: Omit<StoryInput, 'audio' | 'onPro
   // the wrong layout.
   const { texts, para } = storyTexts(input.paragraphs)
   const phrases = input.phrases ?? alignPhrases(texts, [[0, 60]], 60)
-  await drawStoryFrame(ctx, { input: { ...input, audio: new ArrayBuffer(0) }, lead: 1, audioDur: 60, total: 65, phrases, para, paraStart: Array.from({ length: n }, (_, i) => i * (60 / n)) }, t, chrome)
+  await drawStoryFrame(ctx, { input: { ...input, audio: new ArrayBuffer(0) }, lead: LEAD, audioDur: 60, total: 65, phrases, para, paraStart: Array.from({ length: n }, (_, i) => i * (60 / n)) }, t, chrome)
   return canvas.toDataURL('image/png')
 }
 
@@ -1093,10 +1154,19 @@ export interface QuizInput {
   /** Ticks and chimes, from `quizCues`. */
   cues?: Float32Array
   align?: boolean
+  /**
+   * ONE question, no verse card: the question is the first frame, the clock
+   * starts at once, and `audio` (if any) is the question read aloud under it
+   * rather than the verse. The reveal holds longer, because the teach line is
+   * the whole second half of a 20-second post.
+   */
+  solo?: boolean
   onProgress?: (fraction: number, label: string) => void
 }
 
 const QUIZ_REVEAL = 3.8
+const QUIZ_REVEAL_SOLO = 5.5
+const QUIZ_LEAD_SOLO = 0.3
 const QUIZ_END = 3.4
 const QUIZ_LEAD_NO_AUDIO = 7
 
@@ -1111,8 +1181,11 @@ export interface QuizTimeline {
 }
 
 /** The quiz's timing, so the caller can size a music bed and the cue track to it. */
-export function quizTimeline(audioSec: number | null, input: Pick<QuizInput, 'questions' | 'plan' | 'windowSec'>): QuizTimeline {
-  const lead = audioSec != null ? audioSec + 1.6 : QUIZ_LEAD_NO_AUDIO
+export function quizTimeline(audioSec: number | null, input: Pick<QuizInput, 'questions' | 'plan' | 'windowSec' | 'solo'>): QuizTimeline {
+  // A solo post's clock runs from the first frame; its reading (the
+  // question, aloud) starts QUIZ_LEAD_SOLO in, under it.
+  const lead = input.solo ? 0 : audioSec != null ? audioSec + 1.6 : QUIZ_LEAD_NO_AUDIO
+  const reveal = input.solo ? QUIZ_REVEAL_SOLO : QUIZ_REVEAL
   const qStart: number[] = []
   const events: QuizTimeline['events'] = []
   let t = lead
@@ -1122,9 +1195,9 @@ export function quizTimeline(audioSec: number | null, input: Pick<QuizInput, 'qu
     for (let k = 5; k >= 1; k--) events.push({ t: t + input.windowSec - k, kind: 'tick' })
     if (step) events.push({ t: t + Math.min(step.atSec, input.windowSec - 0.3), kind: 'lock' })
     events.push({ t: t + input.windowSec, kind: step && step.pick === q.answerIndex ? 'right' : 'wrong' })
-    t += input.windowSec + QUIZ_REVEAL
+    t += input.windowSec + reveal
   })
-  return { lead, qStart, reveal: QUIZ_REVEAL, total: t + QUIZ_END, events }
+  return { lead, qStart, reveal, total: t + QUIZ_END, events }
 }
 
 /**
@@ -1187,10 +1260,12 @@ async function drawQuizFrame(ctx: CanvasRenderingContext2D, sc: QuizScene, t: nu
   ctx.fillStyle = 'rgba(11,7,32,0.74)'; ctx.fillRect(0, 0, WIDTH, HEIGHT)
   if (!chrome) return
 
+  const solo = !!input.solo
+  const NAME = input.playerName.toUpperCase()
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
   ctx.font = `800 32px ${FONT_DISPLAY}`
   ctx.letterSpacing = '6px'
-  outlined(ctx, "VERSE ARCADE · YESTERDAY'S VERSE", WIDTH / 2, 150, GOLD, 'rgba(11,7,32,0.85)', 8)
+  outlined(ctx, solo ? `CAN YOU BEAT ${NAME}?` : "VERSE ARCADE · YESTERDAY'S VERSE", WIDTH / 2, 150, GOLD, 'rgba(11,7,32,0.85)', 8)
   ctx.letterSpacing = '0px'
   ctx.font = `700 52px ${FONT_DISPLAY}`
   outlined(ctx, input.reference, WIDTH / 2, 218)
@@ -1199,8 +1274,9 @@ async function drawQuizFrame(ctx: CanvasRenderingContext2D, sc: QuizScene, t: nu
   const endAt = qStart.length ? qStart[n - 1] + W + reveal : lead
   const endFade = easeOut((t - endAt) / 0.5)
 
-  // 2. The verse card, while it is read.
-  if (t < lead) {
+  // 2. The verse card, while it is read. A solo post has none: its first
+  // frame is the question.
+  if (t < lead && !solo) {
     const age = easeOut(t / 0.4)
     const px = 90, pw = WIDTH - 180, py = 330, ph = 640
     ctx.save()
@@ -1245,25 +1321,26 @@ async function drawQuizFrame(ctx: CanvasRenderingContext2D, sc: QuizScene, t: nu
     const remaining = Math.max(0, W - elapsed)
     const locked = step && elapsed >= Math.min(step.atSec, W - 0.3)
     const revealed = !inWindow
-    const age = easeOut(elapsed / 0.35)
+    // A solo post's first frame is its thumbnail, so it does not fade in.
+    const age = solo && qi === 0 ? 1 : easeOut(elapsed / 0.35)
     ctx.save()
     ctx.globalAlpha = Math.min(1, age + 0.2) * (1 - endFade)
 
     // Question number and the running score.
     ctx.font = `800 28px ${FONT_DISPLAY}`; ctx.letterSpacing = '5px'
     ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(255,210,63,0.85)'
-    ctx.fillText(`QUESTION ${qi + 1} OF ${n}`, 90, 318)
+    // A solo post has no score to run: the label is the ask instead.
+    ctx.fillText(solo ? (revealed ? 'COMMENT YOUR ANSWER' : 'ONE QUESTION') : `QUESTION ${qi + 1} OF ${n}`, 90, 318)
     ctx.textAlign = 'right'; ctx.fillStyle = INK_DIM
-    ctx.fillText(`${input.playerName.toUpperCase()} · ${banked(qi + (revealed ? 1 : 0))}`, WIDTH - 90, 318)
+    if (!solo) ctx.fillText(`${NAME} · ${banked(qi + (revealed ? 1 : 0))}`, WIDTH - 90, 318)
     ctx.letterSpacing = '0px'; ctx.textAlign = 'center'
 
-    // The prompt.
-    ctx.font = `800 56px ${FONT_DISPLAY}`
-    let lines = wrap(ctx, q.prompt, 900)
-    let lh = 68
-    if (lines.length > 3) { ctx.font = `800 46px ${FONT_DISPLAY}`; lines = wrap(ctx, q.prompt, 900); lh = 56 }
-    const py = 420
-    lines.forEach((l, i) => outlined(ctx, l, WIDTH / 2, py + i * lh, '#ffffff', 'rgba(11,7,32,0.9)', 10))
+    // The prompt, sized to the room above the clock: a fill-in-the-blank
+    // quotes most of a verse and ran five lines into the clock bar at a
+    // fixed size. On a solo post it IS the hook, so it starts larger.
+    const fit = fitText(ctx, q.prompt, 900, solo ? [64, 56, 50, 44, 38, 32] : [56, 50, 46, 40, 36, 32], 236)
+    const py = 512 - ((fit.lines.length - 1) * fit.lh) / 2
+    fit.lines.forEach((l, i) => outlined(ctx, l, WIDTH / 2, py + i * fit.lh, '#ffffff', 'rgba(11,7,32,0.9)', 10))
 
     // The clock: a bar that empties, gold until the last three seconds.
     const by = 640, bh = 22, bx = 90, bw = WIDTH - 180
@@ -1321,7 +1398,7 @@ async function drawQuizFrame(ctx: CanvasRenderingContext2D, sc: QuizScene, t: nu
       ctx.save(); ctx.globalAlpha *= ra
       const right = !!step && step.pick === q.answerIndex
       ctx.font = `800 40px ${FONT_DISPLAY}`
-      outlined(ctx, right ? `${input.playerName} +${step.points}` : `${input.playerName} missed it`, WIDTH - 90 - 180, 318 + 52 - 8, right ? GOLD : CORAL, 'rgba(11,7,32,0.9)', 8)
+      outlined(ctx, right ? (solo ? `${input.playerName} got it` : `${input.playerName} +${step.points}`) : `${input.playerName} missed it`, WIDTH - 90 - 180, 318 + 52 - 8, right ? GOLD : CORAL, 'rgba(11,7,32,0.9)', 8)
       const ty = 1470, th = 290
       roundRect(ctx, 90, ty, WIDTH - 180, th, 30)
       ctx.fillStyle = 'rgba(255,210,63,0.12)'; ctx.fill()
@@ -1333,6 +1410,9 @@ async function drawQuizFrame(ctx: CanvasRenderingContext2D, sc: QuizScene, t: nu
       const y0 = ty + th / 2 - ((tl2.length - 1) * tlh) / 2
       tl2.forEach((l, k) => outlined(ctx, l, WIDTH / 2, y0 + k * tlh, '#ffffff', 'rgba(11,7,32,0.7)', 6))
       ctx.restore()
+    } else if (solo) {
+      ctx.font = `700 34px ${FONT_DISPLAY}`
+      outlined(ctx, locked ? `${input.playerName} locked in. Comment A, B, C or D.` : `Comment A, B, C or D before the clock runs out.`, WIDTH / 2, 1500, INK_DIM, 'rgba(11,7,32,0.8)', 6)
     } else if (!locked) {
       ctx.font = `700 34px ${FONT_DISPLAY}`
       outlined(ctx, `${input.playerName} is thinking… pick yours.`, WIDTH / 2, 1500, INK_DIM, 'rgba(11,7,32,0.8)', 6)
@@ -1347,12 +1427,20 @@ async function drawQuizFrame(ctx: CanvasRenderingContext2D, sc: QuizScene, t: nu
     ctx.globalAlpha = endFade
     ctx.fillStyle = 'rgba(11,7,32,0.7)'; ctx.fillRect(0, 0, WIDTH, HEIGHT)
     headChip(ctx, input.figure, WIDTH / 2, HEIGHT / 2 - 330, 90)
-    ctx.font = `800 64px ${FONT_DISPLAY}`
-    outlined(ctx, `${input.playerName}: ${right} of ${n}`, WIDTH / 2, HEIGHT / 2 - 170)
-    ctx.font = `800 96px ${FONT_DISPLAY}`
-    outlined(ctx, `${banked(n)} points`, WIDTH / 2, HEIGHT / 2 - 60, GOLD)
-    ctx.font = `700 46px ${FONT_DISPLAY}`
-    outlined(ctx, 'How did you do?', WIDTH / 2, HEIGHT / 2 + 60)
+    if (solo) {
+      // No score on a one-question post: the ask is the comment.
+      ctx.font = `800 72px ${FONT_DISPLAY}`
+      outlined(ctx, `Did you beat ${input.playerName}?`, WIDTH / 2, HEIGHT / 2 - 150)
+      ctx.font = `800 56px ${FONT_DISPLAY}`
+      outlined(ctx, 'Comment your answer', WIDTH / 2, HEIGHT / 2 - 40, GOLD)
+    } else {
+      ctx.font = `800 64px ${FONT_DISPLAY}`
+      outlined(ctx, `${input.playerName}: ${right} of ${n}`, WIDTH / 2, HEIGHT / 2 - 170)
+      ctx.font = `800 96px ${FONT_DISPLAY}`
+      outlined(ctx, `${banked(n)} points`, WIDTH / 2, HEIGHT / 2 - 60, GOLD)
+      ctx.font = `700 46px ${FONT_DISPLAY}`
+      outlined(ctx, 'How did you do?', WIDTH / 2, HEIGHT / 2 + 60)
+    }
     ctx.font = `800 64px ${FONT_DISPLAY}`
     outlined(ctx, 'Today’s verse is waiting', WIDTH / 2, HEIGHT / 2 + 380)
     ctx.font = `800 52px ${FONT_DISPLAY}`
@@ -1368,14 +1456,15 @@ export async function renderQuiz(input: QuizInput): Promise<RenderOutput> {
   const audioDur = samples.length / SAMPLE_RATE
   const tl = quizTimeline(input.audio ? audioDur : null, input)
   let phrases: TimedPhrase[] = []
-  if (input.audio) {
+  if (input.audio && !input.solo) {
     const verse = /[.!?]["'”’)]?$/.test(input.text.trim()) ? input.text.trim() : input.text.trim() + '.'
     phrases = await timedCaptions([...splitPhrases(verse), input.reference + '.'], samples, progress, input.align)
   }
   try { await document.fonts.load(`800 56px "Baloo 2"`) } catch { /* fine */ }
   const sc: QuizScene = { input, tl, phrases }
-  // The reading starts 0.6s in, so the card is up before the voice.
-  const { blob, ext } = await produce((ctx, t) => drawQuizFrame(ctx, sc, t), tl.total, 0.6, samples, progress, input.bed, input.cues)
+  // The reading starts 0.6s in, so the card is up before the voice; a solo
+  // post's question is read the moment its clock starts.
+  const { blob, ext } = await produce((ctx, t) => drawQuizFrame(ctx, sc, t), tl.total, input.solo ? QUIZ_LEAD_SOLO : 0.6, samples, progress, input.bed, input.cues)
   progress(1, 'Done')
   return { blob, ext, durationSec: tl.total, phrases }
 }

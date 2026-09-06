@@ -68,7 +68,7 @@ let X_SECRET = ''
 // one-line answers to comments under a challenge post. Grok rather than
 // Gemini because the operator holds xAI credits and nothing else spends them.
 let XAI_KEY = ''
-const XAI_MODEL = Deno.env.get('XAI_MODEL') ?? 'grok-4-fast-non-reasoning'
+const XAI_MODEL = Deno.env.get('XAI_MODEL') ?? 'grok-4.20-0309-non-reasoning'
 const AYRSHARE = 'https://api.ayrshare.com/api'
 const TTS_MODEL = Deno.env.get('GEMINI_TTS_MODEL') ?? 'gemini-2.5-flash-preview-tts'
 const IMAGE_MODEL = Deno.env.get('GEMINI_IMAGE_MODEL') ?? 'gemini-3-pro-image'

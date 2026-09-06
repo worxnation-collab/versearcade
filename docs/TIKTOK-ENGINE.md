@@ -114,6 +114,20 @@ title and hashtag count. The key lives in Vault (`tiktok_ayrshare_key()`,
   review rejected the first verse as "undisclosed AI-generated content". A
   rejected post is re-sent with `attempt: 2`, which joins the idempotency key
   so Ayrshare takes it as new.
+- **X posts with the account's OWN developer app, and the keys ride as
+  headers.** Since 2026-03-31 Ayrshare has no X keys of its own: every
+  account registers an X developer app (console.x.com — "Web App, Automated
+  App or Bot", callbacks `https://app.ayrshare.com/social-accounts` and
+  `https://profile.ayrshare.com/social-accounts`, Read and write) and its
+  Consumer **API Key** and **API Secret** go on every X-bound request as
+  `X-Twitter-OAuth1-Api-Key` / `X-Twitter-OAuth1-Api-Secret`. Ayrshare stores
+  neither, so the function carries them the way it carries the Ayrshare key:
+  `X_API_KEY` / `X_API_SECRET` function secrets first, then Vault through
+  `tiktok_x_api_key()` / `tiktok_x_api_secret()` (`0104`). `ayrshare()` takes a
+  `forX` flag and `post`, `links` and `analytics` set it for X rows. With no
+  keys the headers are simply absent and X is refused as before. The OAuth 2.0
+  Client ID / Secret, the Bearer Token and the Access Token pair on the same
+  X page are NOT what it wants.
 - **A platform that isn't linked in Ayrshare yet is skipped, not failed.**
   `post` reads the account's active networks first and records a `skipped`
   row for the rest, so X can sit in every list before the account exists and

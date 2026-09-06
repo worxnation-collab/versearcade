@@ -1401,7 +1401,18 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0102` (`tiktok_runner_token()` — the headless runner's own
+The latest is `0104` (`tiktok_x_api_key()` / `tiktok_x_api_secret()` — the
+account's own X developer app keys for the `tiktok-gen` Edge Function, read out
+of Vault, service_role only; Ayrshare requires them as headers on every X-bound
+request since 2026-03-31), APPLIED on 2026-09-06 and verified: both ACLs read
+`{postgres,service_role}` and the functions return a 25- and a 50-character
+value. The keys were written with `vault.create_secret` and are in no file;
+`tiktok-gen` v18 sends them. **It took 0104 because `0103` was already
+`0103_season_multi_road` in production** (another branch, applied the same
+day, not yet on main when this was written) — the same-day collision this
+file keeps warning about, caught by `list_migrations` before the apply.
+
+Before it, `0102` (`tiktok_runner_token()` — the headless runner's own
 credential for the `tiktok-gen` Edge Function, read out of Vault, service_role
 only), APPLIED on 2026-09-04 and verified: the ACL reads
 `{postgres,service_role}` and the function returns a 48-character token. The
@@ -1617,7 +1628,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0103` (0102 is taken by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0105` (0104 is taken by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

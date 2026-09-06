@@ -1415,8 +1415,13 @@ a missing table. Apply the schema *before* merging the client.
 The latest is `0105` (`tiktok_xai_key()` — the xAI/Grok key the TikTok
 engine's comment replier drafts with, read out of Vault, service_role only),
 APPLIED on 2026-09-06 and verified: the ACL reads `{postgres,service_role}`.
-The secret is written with `vault.create_secret` once the operator supplies
-it; until then the function returns null and `replies` fails closed.
+The secret was written with `vault.create_secret` on 2026-09-06 and the
+function returns the 84-character key; `tiktok-gen` v20 drafts with
+`grok-4.20-0309-non-reasoning` (the coded default — the earlier
+`grok-4-fast-non-reasoning` is not a model this account has; `XAI_MODEL`
+overrides it). Verified with a dry run against the two live challenge posts:
+the comment endpoint answers for all five networks, and nothing is posted
+until a comment is an answer.
 
 Before it, `0104` (`tiktok_x_api_key()` / `tiktok_x_api_secret()` — the
 account's own X developer app keys for the `tiktok-gen` Edge Function, read out

@@ -492,7 +492,7 @@ function the renderer used to pick the question, bundled alone for Node.
 Grok is the one thing here that is not Gemini, because the operator holds
 xAI credits: `XAI_API_KEY` as a function secret or Vault through
 `tiktok_xai_key()` (`0105`), model `XAI_MODEL` (default
-`grok-4-fast-non-reasoning`). With no key the action fails closed with a
+`grok-4.20-0309-non-reasoning`). With no key the action fails closed with a
 clear error and nothing is posted.
 
 ## Your own clip

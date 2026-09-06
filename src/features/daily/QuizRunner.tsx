@@ -6,6 +6,7 @@ import { Button } from '@/components/Button'
 import { ComboMeter } from '@/components/ComboMeter'
 import { CountUp } from '@/components/CountUp'
 import { useJuice } from '@/juice/useJuice'
+import { useOverlayHold } from '@/store/overlayHold'
 import { useBookAccuracy } from '@/store/bookAccuracy'
 import { useBible } from '@/store/bible'
 import { useDrops } from '@/store/drops'
@@ -219,6 +220,15 @@ export function QuizRunner({
   // Committed from the first tick of the clock until the run is handed to
   // onComplete. See the note on this component for why.
   const locked = phase === 'question' || phase === 'feedback'
+  // The run's own header owns the top of the screen; a toast landing on it
+  // covered the lock and the score. See store/overlayHold.
+  const hold = useOverlayHold((st) => st.hold)
+  const release = useOverlayHold((st) => st.release)
+  useEffect(() => {
+    if (locked) hold('run')
+    else release('run')
+    return () => release('run')
+  }, [locked, hold, release])
   // Set while the guard entry below is being handed back, so the popstate that
   // does it isn't read as somebody trying to leave.
   const releasing = useRef(false)
@@ -455,10 +465,32 @@ export function QuizRunner({
         </div>
       )}
 
-      <div>
+      {/* ── BOTTOM-ANCHORED ─────────────────────────────────────────────────
+          The phase below fills what's left of the screen and pushes its tap
+          targets to the bottom: the start button on the read card, the four
+          answers on a question, Next on the teach card. The house rule is that
+          every screen anchors its primary action to the bottom; this — the
+          most-tapped screen in the app — had them at the top with half a phone
+          of empty gradient underneath, and the fifth-question tap, the one
+          carrying the combo, was the furthest from the thumb. The shell pads
+          `safe-top + 8` above and `safe-bottom + 18` below (noNav), and the
+          header row is ~52px. */}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 'calc(100dvh - var(--safe-top) - var(--safe-bottom) - 96px)',
+        }}
+      >
         {/* READ PHASE — reference hidden so "which book" isn't spoiled */}
         {phase === 'read' && (
-          <motion.div key="read" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96 }}>
+          <motion.div
+            key="read"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            style={{ display: 'flex', flexDirection: 'column', flex: 1 }}
+          >
             <div className="card" style={{ padding: 26, textAlign: 'center' }}>
               <span className="pill">📖 {verse.translation}</span>
               <p style={{ fontSize: 24, lineHeight: 1.5, fontWeight: 700, marginTop: 18, fontFamily: 'var(--font-display)' }}>
@@ -468,7 +500,7 @@ export function QuizRunner({
                 Read it once. {readPromise}
               </p>
             </div>
-            <div style={{ marginTop: 18 }}>
+            <div style={{ marginTop: 'auto', paddingTop: 18 }}>
               {startGate ? (
                 <Button
                   variant="gold"
@@ -489,7 +521,13 @@ export function QuizRunner({
 
         {/* QUESTION / FEEDBACK */}
         {(phase === 'question' || phase === 'feedback') && q && (
-          <motion.div key={`q${qi}`} initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }}>
+          <motion.div
+            key={`q${qi}`}
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -30 }}
+            style={{ display: 'flex', flexDirection: 'column', flex: 1 }}
+          >
             {/* progress + timer */}
             <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
               {questions.map((_, i) => (
@@ -522,7 +560,7 @@ export function QuizRunner({
 
             <h2 style={{ fontSize: 22, marginBottom: 16 }}>{q.prompt}</h2>
 
-            <div style={{ display: 'grid', gap: 10, position: 'relative' }}>
+            <div style={{ display: 'grid', gap: 10, marginTop: 'auto' }}>
               {q.options.map((opt, i) => {
                 const isChosen = answered?.choiceIndex === i
                 const isAnswer = i === q.answerIndex
@@ -541,32 +579,35 @@ export function QuizRunner({
                     style={{
                       textAlign: 'left', padding: '16px 18px', borderRadius: 'var(--r-md)',
                       background: bg, border, color: '#fff', fontWeight: 700, fontSize: 16,
-                      display: 'flex', alignItems: 'center', gap: 12,
+                      display: 'flex', alignItems: 'center', gap: 12, position: 'relative',
                     }}
                   >
                     <span style={{ opacity: 0.6, fontFamily: 'var(--font-display)' }}>{'ABCD'[i]}</span>
                     <span style={{ flex: 1 }}>{opt}</span>
                     {showState && isAnswer && <span>✅</span>}
                     {showState && isChosen && !isAnswer && <span>💡</span>}
+
+                    {/* The points pop rises off the answer that earned them —
+                        it used to sit at the grid's top-right, on top of the
+                        question text. */}
+                    <AnimatePresence>
+                      {pop && showState && isChosen && answered?.correct && (
+                        <motion.span
+                          key={pop.id}
+                          initial={{ opacity: 0, y: 0, scale: 0.6 }}
+                          animate={{ opacity: 1, y: -44, scale: 1.15 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ type: 'spring', stiffness: 300, damping: 16 }}
+                          aria-hidden
+                          style={{ position: 'absolute', right: 14, top: -4, fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: 28, color: 'var(--gold)', textShadow: '0 2px 12px rgba(255,210,63,0.7)', pointerEvents: 'none' }}
+                        >
+                          {pop.text}
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
                   </motion.button>
                 )
               })}
-
-              {/* floating points pop */}
-              <AnimatePresence>
-                {pop && phase === 'feedback' && answered?.correct && (
-                  <motion.div
-                    key={pop.id}
-                    initial={{ opacity: 0, y: 0, scale: 0.6 }}
-                    animate={{ opacity: 1, y: -50, scale: 1.2 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 16 }}
-                    style={{ position: 'absolute', right: 10, top: -6, fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: 30, color: 'var(--gold)', textShadow: '0 2px 12px rgba(255,210,63,0.7)', pointerEvents: 'none' }}
-                  >
-                    {pop.text}
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </div>
 
             {/* Shame-free reveal: every answer (right OR wrong) teaches. */}

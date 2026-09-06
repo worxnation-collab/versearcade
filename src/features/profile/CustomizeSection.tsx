@@ -437,14 +437,18 @@ export function CustomizeSection() {
                               ? `${Math.min(profile.referralCount ?? 0, skin.referralGoal)}/${skin.referralGoal} friends`
                               : skin.liveGoal != null
                                 ? `${Math.min(profile.liveBattles ?? 0, skin.liveGoal)}/${skin.liveGoal} live battles`
-                                // The crusades set shows NO ladder — a padlock and
-                                // crossed swords, nothing countable. A player who
-                                // can see how far behind they are is a player who
-                                // can be behind, which is the thing this app
-                                // doesn't build. The number is revealed once, in
-                                // the toast that says it's theirs.
+                                // The crusades set shows NO ladder — no "3/10
+                                // wins", nothing countable. A player who can see
+                                // how far behind they are is a player who can be
+                                // behind, which is the thing this app doesn't
+                                // build. The number is revealed once, in the
+                                // toast that says it's theirs. But hiding the
+                                // BAR is not hiding the GOAL: a tile that said
+                                // only 🔒 ⚔️ was four commissioned figures nobody
+                                // could name as something to want. The condition
+                                // is stated in words, with no counter.
                                 : skin.winGoal != null
-                                  ? '\u{1F512} \u2694\uFE0F'
+                                  ? '\u2694\uFE0F Earned by winning battles'
                                   : `Shared ${Math.min(sharedCount, skin.shareGoal ?? 0)}/${skin.shareGoal ?? 0} days`
                             : skin.exclusive ? `🔒 ${skin.packName ?? 'Exclusive'}`
                               : skin.bundleOnly ? `🔒 ${skin.packName ?? 'Pack only'}`
@@ -464,10 +468,32 @@ export function CustomizeSection() {
                             cursor: 'pointer',
                           }}
                         >
-                          <div style={{ position: 'relative' }}>
+                          {/* A locked skin shows the FIGURE. The padlock used to
+                              sit over the face, so the one surface meant to make
+                              somebody want a look was the one where they couldn't
+                              see it. Dimmed and desaturated, with the lock as a
+                              corner chip — the same treatment every locked
+                              cosmetic below already gets. */}
+                          <div style={{ position: 'relative', opacity: owned ? 1 : 0.6, filter: owned ? 'none' : 'saturate(0.55)' }}>
                             <Avatar emoji={profile.avatarEmoji} character={preview} size={60} ring={false} />
                             {!owned && (
-                              <span style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: 20, filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.6))' }}>🔒</span>
+                              <span
+                                aria-hidden
+                                style={{
+                                  position: 'absolute',
+                                  right: -4,
+                                  bottom: -2,
+                                  fontSize: 13,
+                                  lineHeight: 1,
+                                  background: 'var(--card-solid)',
+                                  border: '1px solid var(--stroke)',
+                                  borderRadius: 999,
+                                  padding: 3,
+                                  filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.6))',
+                                }}
+                              >
+                                🔒
+                              </span>
                             )}
                           </div>
                           <span style={{ fontSize: 13, fontWeight: 800 }}>{skin.name}</span>
@@ -1144,7 +1170,22 @@ function CosmeticTile({
       <div style={{ position: 'relative' }}>
         {preview}
         {!unlocked && (
-          <span style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: 20 }}>🔒</span>
+          <span
+            aria-hidden
+            style={{
+              position: 'absolute',
+              right: -4,
+              bottom: -2,
+              fontSize: 12,
+              lineHeight: 1,
+              background: 'var(--card-solid)',
+              border: '1px solid var(--stroke)',
+              borderRadius: 999,
+              padding: 3,
+            }}
+          >
+            🔒
+          </span>
         )}
       </div>
       <div style={{ fontSize: 12, fontWeight: 700, textAlign: 'center' }}>{name}</div>

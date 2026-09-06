@@ -18,6 +18,9 @@ interface SettingsState {
   characterPromptDismissed: boolean
   /** Whether the how-to-play walkthrough has been shown once automatically. */
   tutorialSeen: boolean
+  /** First-visit tips already closed, by tab (`FirstVisitTip`). Grows once per
+   *  tab and never shrinks; a closed tip leaves no other trace. */
+  tipsSeen: string[]
   /** Whether the "add to home screen" nudge has been dismissed (one-time). */
   installPromptDismissed: boolean
   /**
@@ -65,6 +68,7 @@ export const useSettings = create<SettingsState>()(
       musicVolume: 0.55,
       characterPromptDismissed: false,
       tutorialSeen: false,
+      tipsSeen: [],
       installPromptDismissed: false,
       inventorySeen: false,
       inventoryNudgeDismissed: false,

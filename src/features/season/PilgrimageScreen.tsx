@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { Page } from '@/components/Page'
@@ -11,15 +11,25 @@ import {
   roadLength,
   activeRoad,
   daysLeft,
+  nextPayout,
   rewardLabel,
-  type Reward,
+  type RoadDef,
 } from '@/data/season'
 import { MILES_PER_WAYSTATION, milesProgress } from '@/lib/season'
 import { SeasonCosmetics } from './SeasonCosmetics'
 import { roadBackground } from './roadArt'
+import { RewardArt } from './RewardArt'
 
-// The road. A vertical scroller of waystations — vertical because the app is
-// 520px wide at most and a horizontal track on a phone is a swipe nobody makes.
+// The road. The waystations run as a HORIZONTAL rail of reward art now — the
+// battle-pass shape — with the next unclaimed one enlarged and scrolled into
+// the middle on load, so the first thing a player sees is the thing they are
+// walking toward, drawn rather than named. It used to be a vertical list of
+// text rows ("1 · Streak Freeze, Ruth the Gleaner"), which was the clearest
+// goal list in the app rendered as the least appetising surface in it.
+//
+// Every station is drawn, including the ones that pay nothing, as a plain
+// milestone dot — the gaps are pacing, and a list that skipped from 2 to 4
+// read as broken rather than sparse.
 //
 // What is deliberately NOT on this screen: any other player, any pace
 // indicator, any percentage of the road walked, any count of what was missed.
@@ -117,31 +127,8 @@ export default function PilgrimageScreen() {
       </div>
 
       {/* The road itself. */}
-      <h2 style={{ fontSize: 18, margin: '4px 0 12px' }}>The road</h2>
-      <div style={{ position: 'relative', paddingLeft: 46 }}>
-        {/* The rail. Sits behind the nodes and runs the length of the list. */}
-        <div
-          aria-hidden
-          style={{
-            position: 'absolute',
-            left: 17,
-            top: 16,
-            bottom: 16,
-            width: 3,
-            borderRadius: 2,
-            background: 'linear-gradient(180deg, var(--gold) 0%, var(--grape) 45%, rgba(160,107,255,0.25) 100%)',
-          }}
-        />
-        {road.waystations.map((w) => (
-          <WayRow
-            key={w.n}
-            n={w.n}
-            rewards={[...w.a, ...w.b]}
-            milestone={!!w.milestone}
-            reached={waystation >= w.n}
-          />
-        ))}
-      </div>
+      <h2 style={{ fontSize: 18, margin: '4px 0 10px' }}>The road</h2>
+      <RewardRail road={road} waystation={waystation} />
 
       <p className="faint" style={{ fontSize: 11.5, marginTop: 16, lineHeight: 1.5 }}>
         {roadLength(road)} waystations, {MILES_PER_WAYSTATION.toLocaleString()} miles each. Everything on
@@ -161,73 +148,161 @@ function BackBar({ onBack }: { onBack: () => void }) {
   )
 }
 
-function WayRow({
-  n,
-  rewards,
-  milestone,
-  reached,
-}: {
-  n: number
-  rewards: Reward[]
-  milestone: boolean
-  reached: boolean
-}) {
+function RewardRail({ road, waystation }: { road: RoadDef; waystation: number }) {
+  const me = useAuth((s) => s.profile)
+  const nextRef = useRef<HTMLDivElement>(null)
+  const next = nextPayout(road, waystation)
+  const length = roadLength(road)
+  const byN = new Map(road.waystations.map((w) => [w.n, w]))
+
+  // Centre the next prize on arrival, once. Not smooth: a rail that slides in
+  // from the left on every mount is motion that says nothing.
+  useEffect(() => {
+    nextRef.current?.scrollIntoView({ inline: 'center', block: 'nearest' })
+  }, [])
+
   return (
     <div
       style={{
-        position: 'relative',
-        padding: milestone ? '15px 0' : '11px 0',
-        borderTop: '1px solid rgba(255,255,255,0.07)',
+        overflowX: 'auto',
+        overflowY: 'hidden',
+        margin: '0 -18px',
+        padding: '6px 18px 10px',
+        scrollbarWidth: 'none',
+        WebkitOverflowScrolling: 'touch',
       }}
     >
-      <div
-        style={{
-          position: 'absolute',
-          left: -38,
-          top: milestone ? 15 : 11,
-          width: 33,
-          height: 33,
-          borderRadius: '50%',
-          display: 'grid',
-          placeItems: 'center',
-          fontFamily: 'var(--font-display)',
-          fontSize: 13,
-          fontWeight: 800,
-          background: milestone ? '#3a2a08' : 'var(--card-solid)',
-          border: `2px solid ${milestone ? 'var(--gold)' : 'var(--stroke)'}`,
-          color: milestone ? 'var(--gold)' : 'var(--ink-dim)',
-          boxShadow: milestone ? '0 0 14px rgba(255,210,63,0.4)' : 'none',
-          // Reached waystations read as solid; the rest are quieter but never
-          // "locked" — there is no lock icon on this screen, because nothing
-          // here is withheld, only not yet walked to.
-          opacity: reached ? 1 : 0.75,
-        }}
-      >
-        {n}
-      </div>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, position: 'relative', width: 'max-content' }}>
+        {Array.from({ length }, (_, i) => i + 1).map((n) => {
+          const w = byN.get(n)
+          const rewards = w ? [...w.a, ...w.b] : []
+          const reached = waystation >= n
+          const isNext = !!next && next.n === n
+          const milestone = !!w?.milestone
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, opacity: reached ? 1 : 0.72 }}>
-        {rewards.map((r, i) => {
-          const label = rewardLabel(r.id)
+          // A station with nothing at it: a dot on the line and its number.
+          if (rewards.length === 0) {
+            return (
+              <div
+                key={n}
+                aria-hidden
+                style={{ display: 'grid', justifyItems: 'center', gap: 4, width: 22, paddingBottom: 2 }}
+              >
+                <span
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 999,
+                    background: reached ? 'var(--gold)' : 'var(--stroke)',
+                  }}
+                />
+                <span className="faint" style={{ fontSize: 9.5, fontVariantNumeric: 'tabular-nums' }}>{n}</span>
+              </div>
+            )
+          }
+
+          const tile = isNext ? 70 : milestone ? 60 : 52
           return (
-            <span
-              key={`${r.id}-${i}`}
+            <div
+              key={n}
+              ref={isNext ? nextRef : undefined}
+              aria-label={`Waystation ${n}: ${rewards.map((r) => rewardLabel(r.id).name).join(', ')}${reached ? ', yours' : ''}`}
               style={{
-                fontSize: 12.5,
-                padding: '5px 10px',
-                borderRadius: 8,
-                border: `1px solid ${reached ? 'rgba(255,210,63,0.4)' : 'var(--stroke)'}`,
-                background: reached ? 'rgba(255,210,63,0.12)' : 'rgba(255,255,255,0.04)',
-                color: reached ? 'var(--gold)' : 'var(--ink-dim)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
+                display: 'grid',
+                justifyItems: 'center',
+                gap: 5,
+                scrollSnapAlign: 'center',
               }}
             >
-              <span aria-hidden>{label.glyph}</span>
-              {label.name}
-              {r.qty && r.qty > 1 ? ` ×${r.qty}` : ''}
-            </span>
+              {/* Both columns, stacked — and past two, a 2×2 block, so the
+                  road's finale (four prizes at 50) doesn't set the height of
+                  the whole rail and leave a band of nothing over every other
+                  station. Measured: it did, 108px of it. */}
+              <div style={{ display: 'grid', gap: 4, gridTemplateColumns: rewards.length > 2 ? '1fr 1fr' : '1fr' }}>
+                {rewards.map((r, i) => (
+                  <span
+                    key={`${r.id}-${i}`}
+                    style={{
+                      position: 'relative',
+                      borderRadius: 14,
+                      overflow: 'hidden',
+                      background: reached ? 'rgba(255,210,63,0.14)' : 'rgba(255,255,255,0.05)',
+                      border: `${isNext ? 2 : 1}px solid ${reached || isNext ? 'var(--gold)' : 'var(--stroke)'}`,
+                      boxShadow: isNext ? '0 0 22px rgba(255,210,63,0.35)' : undefined,
+                    }}
+                  >
+                    <RewardArt id={r.id} size={tile} spec={me?.avatarCharacter} dim={!reached && !isNext} />
+                    {r.qty && r.qty > 1 && (
+                      <span
+                        style={{
+                          position: 'absolute',
+                          right: 4,
+                          bottom: 3,
+                          fontFamily: 'var(--font-display)',
+                          fontSize: 10.5,
+                          fontWeight: 800,
+                          color: 'var(--gold)',
+                          background: 'rgba(10,4,28,0.75)',
+                          borderRadius: 6,
+                          padding: '1px 5px',
+                        }}
+                      >
+                        ×{r.qty}
+                      </span>
+                    )}
+                    {reached && (
+                      <span
+                        aria-hidden
+                        style={{
+                          position: 'absolute',
+                          left: 4,
+                          top: 3,
+                          fontSize: 10,
+                          lineHeight: 1,
+                          color: 'var(--good)',
+                        }}
+                      >
+                        ✓
+                      </span>
+                    )}
+                  </span>
+                ))}
+              </div>
+              <span
+                style={{
+                  width: milestone ? 26 : 22,
+                  height: milestone ? 26 : 22,
+                  borderRadius: '50%',
+                  display: 'grid',
+                  placeItems: 'center',
+                  fontFamily: 'var(--font-display)',
+                  fontSize: 11,
+                  fontWeight: 800,
+                  background: milestone ? '#3a2a08' : 'var(--card-solid)',
+                  border: `2px solid ${reached || isNext ? 'var(--gold)' : 'var(--stroke)'}`,
+                  color: reached || isNext ? 'var(--gold)' : 'var(--ink-dim)',
+                  boxShadow: milestone ? '0 0 12px rgba(255,210,63,0.4)' : 'none',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                {n}
+              </span>
+              <span
+                className="faint"
+                style={{
+                  fontSize: 10,
+                  maxWidth: Math.max(tile, 64),
+                  textAlign: 'center',
+                  lineHeight: 1.2,
+                  overflow: 'hidden',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                }}
+              >
+                {rewards.map((r) => rewardLabel(r.id).name).join(' · ')}
+              </span>
+            </div>
           )
         })}
       </div>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { Page } from '@/components/Page'
+import { FirstVisitTip } from '@/features/home/FirstVisitTip'
 import { LibraryScene } from './LibraryScene'
 import { LibrarianSheet } from './LibrarianSheet'
 import { useLibrary } from '@/store/library'
@@ -179,6 +180,7 @@ export default function StudyScreen() {
 
   return (
     <Page>
+      <FirstVisitTip id="study" />
       <div className="center" style={{ marginBottom: 12 }}>
         <h1 style={{ fontSize: 26 }}>Study</h1>
         <p className="dim" style={{ marginTop: 2, fontSize: 13 }}>

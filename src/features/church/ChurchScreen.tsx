@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Page } from '@/components/Page'
+import { FirstVisitTip } from '@/features/home/FirstVisitTip'
 import { Button } from '@/components/Button'
 import { Avatar } from '@/components/Avatar'
 import { Collapsible } from '@/components/Collapsible'
@@ -74,6 +75,7 @@ export default function ChurchScreen() {
       {/* The header only where there is no hero to name the screen — see the
           note on Header below. With a church loaded, the churchyard and the
           congregation's own name are the top of this tab. */}
+      <FirstVisitTip id="church" />
       {church ? <ChurchHome church={church} /> : <><Header /><ChurchPicker /></>}
     </Page>
   )

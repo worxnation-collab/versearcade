@@ -214,6 +214,19 @@ export function RoomScene({
                 cursor: editing ? (dragging ? 'grabbing' : lifted ? 'grab' : 'pointer') : undefined,
               }}
               {...(editing ? drag.bind(a.id, a.mount, u.x ?? a.x, u.y ?? a.y) : {})}
+              {...(editing
+                ? {
+                    role: 'button',
+                    tabIndex: 0,
+                    'aria-label': `${value.split(/[.~]/)[0].replace(/^room_/, '').replace(/_/g, ' ')}${lifted ? ', held' : ''}`,
+                    onKeyDown: (e: React.KeyboardEvent) => {
+                      if (e.key !== 'Enter' && e.key !== ' ') return
+                      e.preventDefault()
+                      if (picked && picked !== a.id) editing.onDrop(a.id)
+                      else editing.onPick(a.id)
+                    },
+                  }
+                : {})}
               onClick={
                 editing
                   ? (e) => {
@@ -251,6 +264,14 @@ export function RoomScene({
               key={`t-${a.id}`}
               onClick={(e) => {
                 e.stopPropagation()
+                editing.onDrop(a.id)
+              }}
+              role="button"
+              tabIndex={0}
+              aria-label={`Move here: ${a.id.replace(/_/g, ' ')}`}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter' && e.key !== ' ') return
+                e.preventDefault()
                 editing.onDrop(a.id)
               }}
               style={{ cursor: 'pointer' }}

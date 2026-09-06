@@ -2805,6 +2805,25 @@ break first:
   signal the nav's dot carries. Nothing marks it done; the list shortens on its
   own and the glow stops, so a dark compass in the evening is a finished day and
   never a failed one.
+- **The compass card names its first two invitations, and the road strip
+  carries today's three quests.** Both were found by playing: after the drop
+  the biggest thing left on the tab said "Something is open right now" with
+  the six open doors in scope on that very component, and the strip showed
+  `304/1000 miles` — the score — while the three things a player could DO
+  about it sat one route away. Neither adds a count: two rows and a compass,
+  three bars toward goals they name, and the rows fall away as the day goes.
+  `MapCompass` deliberately never renders `invites.length`; the rows are the
+  sheet's own rows, and the compass is the "and the rest". The road's reward
+  track is a horizontal rail of `RewardArt` now (next prize enlarged and
+  centred on load, empty stations drawn as dots so the gaps read as pacing) —
+  the same picture the strip shows for the next payout, so the two can't drift.
+- **Toasts wait for the tutorial and for a run** (`store/overlayHold.ts`).
+  `NowPlaying` landed over the first tutorial slide and over the run's own
+  lock/score header; both now hold it and its clock restarts when they let go.
+  A set of reasons rather than a boolean, so two holders can't un-hold each
+  other. The tutorial is two slides and opens the drop; the four tab slides it
+  used to carry are `FirstVisitTip`s on the tabs themselves, one line, closed
+  once, remembered in `settings.tipsSeen` and never counted.
 - **A store that only loads behind a button can never turn that button on.**
   `FirstLight` used to call `useFirstLight().load()` in its own effect; with the
   card behind a pill gated on `available`, the pill never appeared. HomeScreen

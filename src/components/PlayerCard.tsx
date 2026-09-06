@@ -192,14 +192,17 @@ export function PlayerCard({
         />
       )}
 
-      {/* The six stats, same set and order as the profile has always shown. */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-        <Stat label="Streak" node={<StreakFlame days={p.currentStreak} size={18} />} />
-        <Stat label="Longest" value={`${p.longestStreak}d`} gold={gold} />
-        <Stat label="Cards" value={`${p.cards}`} gold={gold} />
-        <Stat label="Level" value={`${p.level}`} gold={gold} />
-        <Stat label="Total XP" value={p.xp.toLocaleString()} gold={gold} />
-        <Stat label="Plays" value={`${p.totalPlays}`} gold={gold} />
+      {/* Five stats. Level was the sixth and it is already the headline of the
+          bar directly above ("LVL 7 · 83/100 XP"), so the tile said the same
+          number twice on one card. Three across, then two, each spanning
+          half — a six-column grid so the second row is two even halves rather
+          than an orphan. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10 }}>
+        <div style={{ gridColumn: 'span 2' }}><Stat label="Streak" node={<StreakFlame days={p.currentStreak} size={18} />} /></div>
+        <div style={{ gridColumn: 'span 2' }}><Stat label="Longest" value={`${p.longestStreak}d`} gold={gold} /></div>
+        <div style={{ gridColumn: 'span 2' }}><Stat label="Cards" value={`${p.cards}`} gold={gold} /></div>
+        <div style={{ gridColumn: 'span 3' }}><Stat label="Total XP" value={p.xp.toLocaleString()} gold={gold} /></div>
+        <div style={{ gridColumn: 'span 3' }}><Stat label="Plays" value={`${p.totalPlays}`} gold={gold} /></div>
       </div>
       </div>
     </div>

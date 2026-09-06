@@ -27,7 +27,10 @@
 // name (read through `tiktok_gemini_key()`, 0097; the function secret wins if
 // both exist). AYRSHARE_API_KEY the same way (`tiktok_ayrshare_key()`, 0101):
 // Ayrshare is the posting service in front of TikTok, YouTube, Facebook and
-// Instagram, so no platform app or token ever lives here. Optional model
+// Instagram, so no platform app or token ever lives here — with ONE
+// exception: X_API_KEY / X_API_SECRET (`tiktok_x_api_key()` /
+// `tiktok_x_api_secret()`, 0104), the account's own X developer app, which
+// Ayrshare requires as headers on every X-bound request since 2026-03-31. Optional model
 // overrides so a renamed
 // preview model is a dashboard setting rather than a redeploy:
 //   GEMINI_TTS_MODEL   (default gemini-2.5-flash-preview-tts)
@@ -51,6 +54,13 @@ const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 // simple; it is the same value every time.
 let GEMINI_KEY = ''
 let AYRSHARE_KEY = ''
+// The X developer app's consumer key and secret (0104). Since 2026-03-31
+// Ayrshare posts to X only with the account's OWN X app, and the pair rides
+// as two headers on every request that targets X — Ayrshare stores neither.
+// Empty when X is not set up, in which case X requests go out without the
+// headers and Ayrshare refuses them as before.
+let X_KEY = ''
+let X_SECRET = ''
 const AYRSHARE = 'https://api.ayrshare.com/api'
 const TTS_MODEL = Deno.env.get('GEMINI_TTS_MODEL') ?? 'gemini-2.5-flash-preview-tts'
 const IMAGE_MODEL = Deno.env.get('GEMINI_IMAGE_MODEL') ?? 'gemini-3-pro-image'
@@ -121,10 +131,12 @@ async function gemini(path: string, body: unknown, method = 'POST'): Promise<Rec
   return JSON.parse(text)
 }
 
-async function ayrshare(path: string, body: unknown, method = 'POST'): Promise<Record<string, unknown>> {
+async function ayrshare(path: string, body: unknown, method = 'POST', forX = false): Promise<Record<string, unknown>> {
+  const headers: Record<string, string> = { 'content-type': 'application/json', Authorization: `Bearer ${AYRSHARE_KEY}` }
+  if (forX && X_KEY && X_SECRET) { headers['X-Twitter-OAuth1-Api-Key'] = X_KEY; headers['X-Twitter-OAuth1-Api-Secret'] = X_SECRET }
   const res = await fetch(`${AYRSHARE}/${path}`, {
     method,
-    headers: { 'content-type': 'application/json', Authorization: `Bearer ${AYRSHARE_KEY}` },
+    headers,
     body: method === 'GET' ? undefined : JSON.stringify(body),
   })
   const text = await res.text()
@@ -204,6 +216,13 @@ Deno.serve(async (req) => {
         AYRSHARE_KEY = typeof data === 'string' ? data : ''
       }
       if (!AYRSHARE_KEY) return json({ error: 'AYRSHARE_API_KEY is not configured (function secret or Vault)' }, 500)
+      X_KEY = Deno.env.get('X_API_KEY') ?? ''
+      X_SECRET = Deno.env.get('X_API_SECRET') ?? ''
+      if (!X_KEY || !X_SECRET) {
+        const [{ data: k }, { data: sec }] = await Promise.all([admin.rpc('tiktok_x_api_key'), admin.rpc('tiktok_x_api_secret')])
+        X_KEY = typeof k === 'string' ? k : ''
+        X_SECRET = typeof sec === 'string' ? sec : ''
+      }
     }
 
     // The bucket is created on first use. Public read is fine: everything in
@@ -510,7 +529,7 @@ Deno.serve(async (req) => {
       const results: Array<Record<string, unknown>> = []
       for (const platform of platforms) {
         if (!linked(platform)) { results.push({ platform, status: 'skipped', id: null, postUrl: null, postId: null, error: 'not linked in Ayrshare', scheduleDate: null }); continue }
-        const r = await ayrshare('post', postBody(platform, copy, { date, kind, reference, videoUrl, scheduleDate, attempt, seconds }))
+        const r = await ayrshare('post', postBody(platform, copy, { date, kind, reference, videoUrl, scheduleDate, attempt, seconds }), 'POST', platform === 'x')
         results.push(postResult(platform, r, scheduleDate))
       }
       // Merged over the earlier record, so a call for the platforms that
@@ -561,7 +580,7 @@ Deno.serve(async (req) => {
         // An id goes into a URL path, so it has to look like one; a row that
         // already has its link, or never got an id (skipped, refused), is done.
         if (row.postUrl || !/^[A-Za-z0-9_-]{6,64}$/.test(id)) continue
-        const r = await ayrshare(`post/${encodeURIComponent(id)}`, null, 'GET')
+        const r = await ayrshare(`post/${encodeURIComponent(id)}`, null, 'GET', String(row.platform ?? '') === 'x')
         const ids = Array.isArray(r.postIds) ? (r.postIds as Array<Record<string, unknown>>) : []
         const want = ayrshareName(String(row.platform ?? '') as Platform)
         const hit = ids.find((x) => String(x.platform ?? '') === want) ?? ids[0]
@@ -614,7 +633,7 @@ Deno.serve(async (req) => {
       for (const r of record.results ?? []) {
         const platform = String(r.platform ?? '') as Platform
         if (!r.id || !(PLATFORMS as string[]).includes(platform)) continue
-        const a = await ayrshare('analytics/post', { id: r.id, platforms: [ayrshareName(platform)] })
+        const a = await ayrshare('analytics/post', { id: r.id, platforms: [ayrshareName(platform)] }, 'POST', platform === 'x')
         const block = (a[ayrshareName(platform)] ?? {}) as Record<string, unknown>
         const an = ((block.analytics ?? block) as Record<string, unknown>) ?? {}
         rows.push({

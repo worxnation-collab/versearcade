@@ -10,6 +10,7 @@ import { drawChestItem, itemById, DEFAULT_AVATAR } from '@/data/avatar'
 import { useJuice } from '@/juice/useJuice'
 import { useSeason } from '@/store/season'
 import { chestSkinById } from '@/data/season'
+import { GENERATED_ART } from '@/data/generatedArt'
 import { CARD_BACKGROUNDS } from '@/data/playerCards'
 
 // A once-a-day reward that reinforces the daily loop: it unlocks only after you
@@ -40,6 +41,23 @@ export function DailyChest() {
   // What the chest looks like — an equipped seasonal chest skin, or the default.
   // Cosmetic only: the skin never changes what's inside or how often it opens.
   const chest = chestSkinById(useSeason((s) => s.equipped.chest))
+  // The painted chest (art/chest.json), for the default skin only — a seasonal
+  // chest skin is its own glyph and stays one. Two states, closed and open, and
+  // the glyph is the drawn fallback for an ungenerated build.
+  const painted = chest.id === 'chest_classic' && GENERATED_ART['chest_closed'] && GENERATED_ART['chest_open']
+  const ChestArt = ({ open, size, dim }: { open: boolean; size: number; dim?: boolean }) =>
+    painted ? (
+      <img
+        src={open ? GENERATED_ART['chest_open'] : GENERATED_ART['chest_closed']}
+        alt=""
+        aria-hidden
+        width={size}
+        height={size}
+        style={{ width: size, height: size, objectFit: 'contain', display: 'block', margin: '0 auto', opacity: dim ? 0.55 : 1 }}
+      />
+    ) : (
+      <div style={{ fontSize: size * 0.85, lineHeight: 1, opacity: dim ? 0.5 : 1 }}>{chest.glyph}</div>
+    )
 
   useEffect(() => {
     load()
@@ -100,6 +118,7 @@ export function DailyChest() {
         {isBoost ? (
           // ——— Rare XP Boost reveal ———
           <motion.div key="boost" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            {painted && <ChestArt open size={64} />}
             <motion.div
               initial={{ scale: 0.3, rotate: -12, opacity: 0 }}
               animate={{ scale: 1, rotate: 0, opacity: 1 }}
@@ -122,6 +141,7 @@ export function DailyChest() {
         ) : relic ? (
           // ——— Relic reveal ———
           <motion.div key="reveal" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            {painted && <ChestArt open size={64} />}
             <motion.div
               initial={{ scale: 0.3, rotate: -12, opacity: 0 }}
               animate={{ scale: 1, rotate: 0, opacity: 1 }}
@@ -175,7 +195,7 @@ export function DailyChest() {
         ) : openedToday ? (
           // ——— Already opened today ———
           <motion.div key="done" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <div style={{ fontSize: 40, opacity: 0.5 }}>{chest.glyph}</div>
+            <ChestArt open size={56} dim />
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, marginTop: 6 }}>Chest opened</div>
             <p className="faint" style={{ fontSize: 13, marginTop: 4 }}>Come back tomorrow for a new relic.</p>
           </motion.div>
@@ -197,9 +217,9 @@ export function DailyChest() {
                   : { rotate: [0, -6, 6, -6, 0], y: [0, -3, 0] }
               }
               transition={opening ? { duration: 0.9, ease: 'easeInOut' } : { repeat: Infinity, repeatDelay: 1.4, duration: 0.7 }}
-              style={{ fontSize: 48, filter: opening ? 'drop-shadow(0 0 18px rgba(255,210,63,0.9))' : undefined }}
+              style={{ filter: opening ? 'drop-shadow(0 0 18px rgba(255,210,63,0.9))' : undefined }}
             >
-              {chest.glyph}
+              <ChestArt open={false} size={84} />
             </motion.div>
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, marginTop: 6 }}>Daily Chest</div>
             <p className="dim" style={{ fontSize: 13, marginTop: 4 }}>A relic is waiting inside.</p>
@@ -212,7 +232,7 @@ export function DailyChest() {
         ) : (
           // ——— Locked until they play ———
           <motion.div key="locked" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <div style={{ fontSize: 40, opacity: 0.5 }}>{chest.glyph}</div>
+            <ChestArt open={false} size={56} dim />
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, marginTop: 6 }}>Daily Chest</div>
             <p className="faint" style={{ fontSize: 13, marginTop: 4 }}>Play today’s verse to unlock your chest.</p>
           </motion.div>

@@ -16,6 +16,7 @@ import { FavoriteButton } from '@/components/FavoriteButton'
 import { MissedList, quoted } from '@/features/daily/MissedList'
 import { nearestKeepChallenge } from '@/store/unlocks'
 import { DecorThumb } from './KeepArt'
+import { CpuFace } from './CpuFace'
 import type { AvatarSpec, DailyVerse, PlayResult } from '@/types'
 
 // Solo Bible Battle vs a simulated CPU, reached from the Study tab. No account
@@ -125,7 +126,7 @@ function CpuPicker({
               className="card"
               style={{ display: 'flex', alignItems: 'center', gap: 14, textAlign: 'left', width: '100%', padding: '14px 16px' }}
             >
-              <div style={{ fontSize: 36, lineHeight: 1 }}>{p.emoji}</div>
+              <CpuFace profile={p} size={48} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <b style={{ fontWeight: 800, fontSize: 17 }}>{p.name}</b>
                 <div className="faint" style={{ fontSize: 12, marginTop: 2, lineHeight: 1.35 }}>{p.blurb}</div>
@@ -228,7 +229,7 @@ function CpuResult({
 
       <CpuScoreRow name={me?.username ? `@${me.username}` : 'You'} emoji={me?.avatarEmoji ?? '😇'} character={me?.avatarCharacter} score={you} winner={result === 'won'} />
       <div className="faint center" style={{ fontSize: 12, letterSpacing: '0.3em', margin: '2px 0' }}>VS</div>
-      <CpuScoreRow name={profile.name} emoji={profile.emoji} score={cpu} winner={result === 'lost'} />
+      <CpuScoreRow name={profile.name} emoji={profile.emoji} face={<CpuFace profile={profile} size={44} />} score={cpu} winner={result === 'lost'} />
 
       {/* The verse you just raced over — a battle is still a verse challenge, so
           it ends with the same chance to keep it. */}
@@ -275,12 +276,15 @@ function CpuScoreRow({
   name,
   emoji,
   character,
+  face,
   score,
   winner,
 }: {
   name: string
   emoji: string
   character?: AvatarSpec | null
+  /** A painted face for the CPU row; the player's row draws its Avatar. */
+  face?: React.ReactNode
   score: number
   winner: boolean
 }) {
@@ -295,7 +299,7 @@ function CpuScoreRow({
         background: winner ? 'rgba(255,210,63,0.1)' : undefined,
       }}
     >
-      <Avatar emoji={emoji} character={character} size={44} ring={false} />
+      {face ?? <Avatar emoji={emoji} character={character} size={44} ring={false} />}
       <div style={{ flex: 1, minWidth: 0 }}>
         <b style={{ fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{name}</b>
       </div>

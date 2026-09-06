@@ -42,7 +42,10 @@ const today = /^\d{4}-\d{2}-\d{2}$/.test(env.DATE || '') ? env.DATE : localDate(
 
 const OUT = path.join(ROOT, '.tiktok-daily')
 fs.mkdirSync(OUT, { recursive: true })
-const defines = { 'import.meta.env.DEV': 'false', 'import.meta.env.PROD': 'true', 'import.meta.env.MODE': '"production"' }
+// The verse data pulls in the app's env reads; every one is defined so the
+// bundle runs in Node (the same list the morning runner defines).
+const defines = { 'import.meta.env.DEV': 'false', 'import.meta.env.PROD': 'true', 'import.meta.env.MODE': '"production"', 'import.meta.env.VITE_SUPABASE_URL': '""', 'import.meta.env.VITE_SUPABASE_ANON_KEY': '""' }
+for (const k of ['VITE_AUTH_REDIRECT_URL', 'VITE_VAPID_PUBLIC_KEY', 'VITE_SUPPORT_URL', 'VITE_REVENUECAT_IOS_KEY', 'VITE_DEFAULT_TRANSLATION', 'VITE_BUY_CEPHAS']) defines[`import.meta.env.${k}`] = '""'
 await build({
   entryPoints: [path.join(ROOT, 'src/lib/tiktokChallenge.ts')], bundle: true, format: 'esm', platform: 'node', target: 'es2022',
   outfile: path.join(OUT, 'challenge.mjs'), alias: { '@': path.join(ROOT, 'src') }, define: defines, logLevel: 'error',

@@ -248,6 +248,15 @@ async function ayrshare(p, body, method = 'POST') {
 // timeout. The function merges each call's rows over the day's record, so
 // this is the same result in six short requests. A call that still fails is
 // recorded as an error row rather than ending the run.
+// The video's length in seconds, read by ffmpeg from a local file or a URL
+// (an MP4 with its index at the front — what the transcode writes — answers
+// from the first few kilobytes). Facebook Reels stop at 90s; the function
+// posts a longer one to the page as a plain video instead of being refused.
+function durationOf(src) {
+  const r = spawnSync(FFMPEG, ['-hide_banner', '-i', src], { encoding: 'utf8' })
+  const m = /Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/.exec((r.stderr || '') + (r.stdout || ''))
+  return m ? Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]) : undefined
+}
 async function postEach(platforms, body) {
   const results = []
   for (const platform of platforms) {
@@ -313,7 +322,7 @@ for (const kind of KINDS) {
     if (!/^(1|true|yes)$/i.test(env.RERENDER || '') && head?.ok && /^video\//.test(head.headers.get('content-type') || '')) {
       log(`  already rendered (${(Number(head.headers.get('content-length') || 0) / 1e6).toFixed(1)}MB in the bucket) — posting that`)
       videoUrl = parked
-      posted = await postEach(todo, { date, kind, videoUrl, scheduleDate, reference: getVerseForDate(date).reference })
+      posted = await postEach(todo, { date, kind, videoUrl, scheduleDate, reference: getVerseForDate(date).reference, seconds: durationOf(parked) })
       for (const r of posted.results) log(`  ${r.platform.padEnd(10)} ${r.status}${r.error ? ` — ${r.error}` : ''}${r.postUrl ? ` ${r.postUrl}` : ''}`)
       results.push({ kind, date, videoUrl, scheduleDate, results: posted.results, skipped: 'render' }); continue
     }
@@ -353,7 +362,7 @@ for (const kind of KINDS) {
     const { error } = await sb.storage.from('tiktok').uploadToSignedUrl(up.path, up.token, fs.readFileSync(mp4), { contentType: 'video/mp4', upsert: true })
     if (error) { results.push({ kind, date, error: `upload: ${error.message}` }); continue }
     videoUrl = up.publicUrl
-    posted = await postEach(PLATFORMS, { date, kind, videoUrl, scheduleDate, reference: rendered.reference })
+    posted = await postEach(PLATFORMS, { date, kind, videoUrl, scheduleDate, reference: rendered.reference, seconds: durationOf(mp4) })
   } else {
     const u = await ayrshare(`media/uploadUrl?fileName=${encodeURIComponent(`va-${kind}-${date}.mp4`)}&contentType=mp4`, null, 'GET')
     if (!u.uploadUrl) { results.push({ kind, date, error: `ayrshare upload url: ${JSON.stringify(u).slice(0, 200)}` }); continue }

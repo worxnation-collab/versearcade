@@ -25,7 +25,12 @@ export interface PostArgs {
   scheduleDate?: string
   /** A deliberate re-post of the same day and kind (a rejected first try): joins the idempotency key so Ayrshare takes it. */
   attempt?: number
+  /** The video's length. Facebook Reels stop at 90 seconds; a longer video goes to the page as a plain video post instead. */
+  seconds?: number
 }
+
+/** Facebook's Reels ceiling. The quiz (about 107s) and a long story (91s) both hit it on the first real day. */
+export const FACEBOOK_REEL_MAX_SECONDS = 90
 
 /**
  * The art is painted by a model and the voice is synthetic, and every network
@@ -69,7 +74,12 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
     body.youTubeOptions = { title: (c.title || `${a.reference || 'Verse Arcade'} · Verse Arcade`).slice(0, 100), visibility: 'public', shorts: true, madeForKids: false, containsSyntheticMedia: true }
   } else if (platform === 'facebook') {
     body.post = [c.text ?? '', AI_NOTE, tagLine(c.tags, 2)].filter(Boolean).join('\n\n').slice(0, 5000)
-    body.faceBookOptions = { reels: true, title: (copy.hook || a.reference || 'Verse Arcade').slice(0, 255) }
+    // A Reel where one is allowed (it is the surface Facebook shows to
+    // strangers); over the ceiling, a plain video post on the page rather
+    // than a refusal — Facebook rejected the quiz and a 91-second story as
+    // Reels on the first real day. Unknown length is treated as short.
+    const reels = !(a.seconds && a.seconds > FACEBOOK_REEL_MAX_SECONDS)
+    body.faceBookOptions = { reels, title: (copy.hook || a.reference || 'Verse Arcade').slice(0, 255) }
   } else if (platform === 'x') {
     const tail = [AI_NOTE, tagLine(c.tags, 2)].filter(Boolean).join(' ')
     const text = (c.text ?? '').slice(0, Math.max(0, 279 - tail.length - 1))

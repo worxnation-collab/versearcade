@@ -70,6 +70,12 @@ title and hashtag count. The key lives in Vault (`tiktok_ayrshare_key()`,
   with a saved story, Ayrshare posted only the story, which lives on the
   profile for people who already found it. TikTok's short line with three
   tags. A platform with no block of its own borrows TikTok's.
+- **A video over 90 seconds goes to Facebook as a plain video, not a Reel.**
+  Reels stop at 90s and Facebook refused the quiz (about 107s) and a
+  91-second story on the first real day. The runner reads the length with
+  ffmpeg and the dashboard from the video's metadata, both send it as
+  `seconds`, and `social.ts` drops `reels` over the ceiling. The other
+  networks take the length as it is.
 - **Every post says the art and voice are AI-made.** TikTok
   (`isAIGenerated`), YouTube (`containsSyntheticMedia`) and Instagram
   (`isAIGenerated`) take it as a flag and draw their own label; Snapchat,

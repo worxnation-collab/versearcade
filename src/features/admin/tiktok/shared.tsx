@@ -295,6 +295,17 @@ export async function fetchLinks(d: string, kind: Made['kind']): Promise<Posted>
   return call<Posted>('links', { date: d, kind })
 }
 
+/** A video's length from its metadata, or undefined if the browser cannot read it. */
+function videoSeconds(url: string): Promise<number | undefined> {
+  return new Promise((resolve) => {
+    const v = document.createElement('video')
+    v.preload = 'metadata'
+    v.onloadedmetadata = () => resolve(Number.isFinite(v.duration) ? v.duration : undefined)
+    v.onerror = () => resolve(undefined)
+    v.src = url
+  })
+}
+
 /** Upload the video to the bucket and post it; returns what Ayrshare said per platform. */
 export async function postVideo(m: Made, platforms: Platform[], scheduleDate: string | undefined, onStep: (label: string) => void): Promise<Posted> {
   if (m.ext !== 'mp4') throw new Error('This one is a WebM; TikTok and Instagram refuse it. Render in Chrome for an MP4.')
@@ -308,11 +319,14 @@ export async function postVideo(m: Made, platforms: Platform[], scheduleDate: st
   // six of those in one request ran past the function gateway's limit (the
   // function finished; the browser saw a timeout). The function merges each
   // call's rows over the day's record, so the result is the same.
+  // The length travels with the post: Facebook Reels stop at 90 seconds and
+  // the function posts a longer one to the page as a plain video instead.
+  const seconds = await videoSeconds(m.url)
   const results: PostResult[] = []
   let at: string | undefined
   for (const platform of platforms) {
     onStep(`${scheduleDate ? 'Scheduling' : 'Posting'} · ${PLATFORM_NAMES[platform]}`)
-    const r = await call<Posted>('post', { date: m.date, kind: m.kind, videoUrl: up.publicUrl, platforms: [platform], scheduleDate, reference: m.reference })
+    const r = await call<Posted>('post', { date: m.date, kind: m.kind, videoUrl: up.publicUrl, platforms: [platform], scheduleDate, reference: m.reference, seconds })
     results.push(...(r.results ?? []))
     at = r.at ?? at
   }

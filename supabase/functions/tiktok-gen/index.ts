@@ -19,6 +19,7 @@
 //   upload-url  { path }                          → { path, token, publicUrl }  a signed upload URL for a finished video (days/<date>/<kind>.mp4), so the browser can put it in the bucket
 //   post        { date, kind, videoUrl, platforms[], scheduleDate? } → { results[] }  posts the video with that day's copy through Ayrshare, one call per platform (a platform not linked in Ayrshare is skipped, not failed); parked at days/<date>/posted-<kind>.json, merged over what an earlier call recorded
 //   links       { date, kind }                     → the day's record          asks Ayrshare what became of each SCHEDULED post and fills in the postUrl a network only issues once it publishes
+//   post        { date, kind, videoUrl, platforms[], scheduleDate?, attempt?, seconds? } → { results[] }  posts the video with that day's copy through Ayrshare, one call per platform (a platform not linked in Ayrshare is skipped, not failed); parked at days/<date>/posted-<kind>.json, merged over what an earlier call recorded
 //   posted      { date, kind }                    → { results[] } | {}  what `post` recorded for that day, if anything
 //   social      {}                                → { accounts[], posts, quota }  the Ayrshare profile: which networks are connected and this month's post count
 //
@@ -475,6 +476,8 @@ Deno.serve(async (req) => {
       const scheduleDate = typeof input.scheduleDate === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(input.scheduleDate) ? input.scheduleDate : undefined
       // A deliberate second try (a network rejected the first) joins the idempotency key.
       const attempt = Number.isInteger(input.attempt) && input.attempt > 1 && input.attempt < 10 ? Number(input.attempt) : undefined
+      // The video's length, when the caller knows it: Facebook Reels stop at 90s.
+      const seconds = typeof input.seconds === 'number' && Number.isFinite(input.seconds) && input.seconds > 0 ? input.seconds : undefined
 
       const { data: file } = await admin.storage.from(BUCKET).download(`days/${date}/copy-${kind}.json`)
       if (!file) return json({ error: `no copy for ${date} ${kind} yet — open Today's words first` }, 400)
@@ -493,7 +496,7 @@ Deno.serve(async (req) => {
       const results: Array<Record<string, unknown>> = []
       for (const platform of platforms) {
         if (!linked(platform)) { results.push({ platform, status: 'skipped', id: null, postUrl: null, postId: null, error: 'not linked in Ayrshare', scheduleDate: null }); continue }
-        const r = await ayrshare('post', postBody(platform, copy, { date, kind, reference, videoUrl, scheduleDate, attempt }))
+        const r = await ayrshare('post', postBody(platform, copy, { date, kind, reference, videoUrl, scheduleDate, attempt, seconds }))
         results.push(postResult(platform, r, scheduleDate))
       }
       // Merged over the earlier record, so a call for the platforms that

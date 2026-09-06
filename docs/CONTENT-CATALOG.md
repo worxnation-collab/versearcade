@@ -50,6 +50,32 @@ price in a row an operator can edit is a storefront that skipped review, which
 is against the rules in every storefront but the US one. This is also mostly
 moot now — cosmetics aren’t sold at all, the founding patron (`cephas`) excepted.
 
+## The catalog is the SECOND lever, not the first
+
+Before reaching for it, check whether the season can simply be **bundled**.
+`activeRoad()` is a pure function of the clock against hard ISO windows, so a
+road compiled into today's binary switches itself on at its `start` with no
+fetch, no publish, no keys and no App Store submission — and it works on a phone
+that has been in aeroplane mode since October. Three roads ship that way now
+(Harvest, Lamplight, Advent; `ROADS` in `data/season.ts`), which is the whole of
+the 2026 season.
+
+So the split is:
+
+- **Decided before the binary is signed → bundle it.** Cheaper, offline-proof,
+  and it can hand out skins whose renders are also in the binary — which is the
+  only way a new FIGURE reaches a player without a submission, since a catalog
+  `art` URL still has to be fetched.
+- **Decided after → publish it.** A road nobody had thought of in September, a
+  reward table that needs changing, a window that has to move, a season for the
+  builds already on people's phones. That is what the rest of this document is
+  for.
+
+They compose: an overlay entry overrides a bundled road **by id**, so a
+pre-shipped Advent Road can have its dates or its rewards corrected later
+without a release, and an old binary that never fetches still gets the season it
+shipped with.
+
 ## The three rules
 
 **1. Merge, never replace.** An overlay entry with a known id overrides that one

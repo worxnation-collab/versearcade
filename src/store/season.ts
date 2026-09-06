@@ -150,6 +150,62 @@ function localKey(roadId: string): string {
   return uid ? `va.season.${roadId}.${uid}` : `va.season.${roadId}.guest`
 }
 
+// ── The wardrobe, which outlives the road ────────────────────────────────────
+// Unlocks are ACCOUNT-WIDE, not per road, mirroring `season_unlocks` on the
+// server (which season_json reads with no road filter). That is the whole
+// promise of the feature: miles reset at season end, what they bought never
+// does.
+//
+// They used to live inside the per-road blob, which was invisibly wrong for as
+// long as there was only one road: the morning a second one opened, a guest's
+// `unlocks` would have loaded as [] and every pass skin they earned on the
+// Harvest Road — Ruth, Boaz, and the three angels — would have read as
+// un-owned and vanished out of the customizer. Found by reading this file
+// against the Lamplight road rather than by anything failing.
+function unlocksKey(): string {
+  const uid = useAuth.getState().profile?.id
+  return `va.season.unlocks.${uid ?? 'guest'}`
+}
+
+/**
+ * Every reward this device has ever been granted for this account.
+ *
+ * Self-healing: it unions in the `unlocks` of every per-road blob still on
+ * disk, so a device upgrading from the one-road era keeps everything it
+ * earned without a migration step anybody has to remember to run. The union is
+ * written back on first read, so the legacy scan costs nothing after that.
+ */
+function readUnlocks(): string[] {
+  const out = new Set<string>()
+  const key = unlocksKey()
+  const suffix = `.${useAuth.getState().profile?.id ?? 'guest'}`
+  try {
+    const own = JSON.parse(localStorage.getItem(key) || 'null') as unknown
+    if (Array.isArray(own)) for (const x of own) if (typeof x === 'string') out.add(x)
+
+    // Legacy: the per-road blobs, from before this key existed.
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (!k || k === key || !k.startsWith('va.season.') || !k.endsWith(suffix)) continue
+      const blob = JSON.parse(localStorage.getItem(k) || 'null') as LocalSeason | null
+      if (blob && Array.isArray(blob.unlocks)) {
+        for (const x of blob.unlocks) if (typeof x === 'string') out.add(x)
+      }
+    }
+  } catch {
+    /* private mode / bad JSON — whatever we read is what we have */
+  }
+  return [...out]
+}
+
+function writeUnlocks(next: string[]): void {
+  try {
+    localStorage.setItem(unlocksKey(), JSON.stringify([...new Set(next)]))
+  } catch {
+    /* private mode / storage full — in-memory only for this session */
+  }
+}
+
 function readLocal(roadId: string): LocalSeason {
   try {
     const raw = JSON.parse(localStorage.getItem(localKey(roadId)) || 'null') as LocalSeason | null
@@ -223,12 +279,18 @@ export const useSeason = create<SeasonState>((set, get) => ({
     }
 
     const local = readLocal(road.id)
+    // Unlocks come from the account-wide key, never from the road's own blob —
+    // a cosmetic earned on the Harvest Road is still yours on the Lamplight
+    // one. The read folds any legacy per-road unlocks in and rewrites the
+    // union, so this heals a device from the one-road era on first load.
+    const unlocks = readUnlocks()
+    writeUnlocks(unlocks)
     set({
       loaded: true,
       roadId: road.id,
       miles: local.miles,
       waystation: waystationFor(local.miles),
-      unlocks: local.unlocks,
+      unlocks,
       quests: local.quests,
       equipped: local.equipped,
       rerolledOn: local.rerolledOn,
@@ -422,43 +484,58 @@ async function grantCrossed(roadId: string, from: number, to: number): Promise<v
 
   const auth = useAuth.getState()
   const fresh: string[] = []
+  const online = isOnline()
+
+  // Has this road already handed this reward over? PER ROAD, deliberately.
+  //
+  // It used to ask the cross-road `unlocks` set, which was invisibly wrong for
+  // as long as there was one road: a `freeze` banked on the Harvest Road would
+  // have made every freeze on every later road a silent no-op, so a player
+  // would walk a whole road and receive no consumables. Online the RPC is the
+  // authority (0103 keys the unlock per road); offline it is the road's own
+  // `granted` ledger, which is exactly what that field is for.
+  const grantedHere = new Set(online ? [] : readLocal(roadId).granted)
 
   for (const r of rewards) {
-    const already = useSeason.getState().unlocks.includes(r.id)
-    if (isOnline()) {
+    let isNew: boolean
+    if (online) {
       const { data } = await supabase!.rpc('claim_season_reward', {
         p_road: roadId,
         p_reward_id: r.id,
       })
-      if ((data as { granted?: boolean } | null)?.granted) fresh.push(r.id)
-    } else if (!already) {
-      fresh.push(r.id)
+      isNew = !!(data as { granted?: boolean } | null)?.granted
+    } else {
+      isNew = !grantedHere.has(r.id)
     }
+    if (!isNew) continue
+    grantedHere.add(r.id)
+    fresh.push(r.id)
 
     // Consumables are counters, not unlocks. Online the RPC already moved them;
     // mirror locally so the number on screen is right without a reload.
-    if (!already) {
-      const qty = r.qty ?? 1
-      if (r.id === 'boost' && auth.profile) {
-        void auth.updateProfile({ xpBoosts: (auth.profile.xpBoosts ?? 0) + qty })
-      } else if (r.id === 'freeze' && auth.profile) {
-        void auth.updateProfile({ streakFreezes: (auth.profile.streakFreezes ?? 0) + qty })
-      } else if (r.id.startsWith('item_')) {
-        // Wearable avatar items ride the existing owned_items path, so the
-        // customize grid picks them up with no season-specific code there.
-        auth.grantItem(r.id)
-      }
+    const qty = r.qty ?? 1
+    if (r.id === 'boost' && auth.profile) {
+      void auth.updateProfile({ xpBoosts: (auth.profile.xpBoosts ?? 0) + qty })
+    } else if (r.id === 'freeze' && auth.profile) {
+      void auth.updateProfile({ streakFreezes: (auth.profile.streakFreezes ?? 0) + qty })
+    } else if (r.id.startsWith('item_')) {
+      // Wearable avatar items ride the existing owned_items path, so the
+      // customize grid picks them up with no season-specific code there.
+      auth.grantItem(r.id)
     }
   }
 
   if (fresh.length) {
-    const unlocks = [...useSeason.getState().unlocks, ...fresh]
+    const unlocks = Array.from(new Set([...useSeason.getState().unlocks, ...fresh]))
     useSeason.setState({ unlocks })
-    if (!isOnline()) {
+    if (!online) {
+      // Two different ledgers, and the split is the fix above: the WARDROBE is
+      // account-wide and outlives the road, while `granted` records what THIS
+      // road has already paid out.
+      writeUnlocks(unlocks)
       const disk = readLocal(roadId)
       writeLocal(roadId, {
         ...disk,
-        unlocks: Array.from(new Set([...disk.unlocks, ...fresh])),
         granted: Array.from(new Set([...disk.granted, ...fresh])),
       })
     }

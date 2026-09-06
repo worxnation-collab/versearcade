@@ -59,16 +59,36 @@ the thing that gets a native build rejected.
 **Seasons are liturgical, because this app gets to do that.** A church already
 runs on seasons.
 
-| Road | Window | Days | Waystations |
-|---|---|---|---|
-| **The Harvest Road** | Sep 1 – Nov 15 | 76 | 50 |
-| **The Advent Road** | Nov 29 – Jan 6 | 39 | 30 |
-| **The Wilderness Road** (Lent) | Feb 17 – Apr 4 | 46 | 40 |
-| **The Emmaus Road** (Eastertide) | Apr 5 – May 24 | 50 | 40 |
+| Road | Window | Days | Waystations | State |
+|---|---|---|---|---|
+| **The Harvest Road** | Aug 27 – Nov 11 | 76 | 50 | live |
+| **The Lamplight Road** | Nov 11 – Nov 29 | 18 | 12 | **in the binary** |
+| **The Advent Road** | Nov 29 – Jan 7 | 39 | 30 | **in the binary** |
+| **The Wilderness Road** (Lent) | Feb 17 – Apr 4 | 46 | 40 | planned |
+| **The Emmaus Road** (Eastertide) | Apr 5 – May 24 | 50 | 40 | planned |
 
 Waystations ≈ 0.7 × days, so a player doing the dailies most days finishes with
-room to spare and a once-a-week player still lands a real haul. The week off
-between roads makes the next one an event instead of a treadmill.
+room to spare and a once-a-week player still lands a real haul. The ratio holds
+at every length — the Lamplight Road is a fifth of the Harvest Road and paces
+identically.
+
+**Two changes from the original plan, both deliberate.**
+
+The **Lamplight Road** was not in it. It exists because the art for it already
+did (`art/skins-lamplight.json`: a lamplighter, a watchman, one of the five wise
+virgins, a reaper and an olive keeper, plus a road scene) and because it is
+what actually belongs in the back half of November — the liturgical end of the
+church year is watchfulness, lamps kept burning, the last of the harvest in. It
+is a SHORT road on purpose: twelve waystations is a real haul in eighteen days,
+and a short season between two long ones reads as a breath rather than filler.
+
+And **there is no week off between roads.** `end` is exclusive and the next
+`start` is the same instant, so the roads butt-join and the switch happens at a
+UTC midnight. The rest-week argument above — that a gap makes the next road an
+event — lost to a simpler one: the Pilgrimage tab has exactly one thing on it,
+and a tab that reads "the road is resting" for a week is a tab people stop
+opening. The event is the new painting, the new figures and the new quests
+appearing overnight, which happens either way.
 
 `data/season.ts` holds the roads with hard ISO dates, like `LIMITED_UNTIL` in
 `data/avatar.ts`. The active road is a pure function of `Date.now()` — no
@@ -471,5 +491,11 @@ SVG, no `<defs>` (shared ids across instances silently repaint each other).
 4. **Online parity.** Migration, the three RPCs, the store's `isOnline()` branch.
    Apply the schema by hand against `visuppaucpzzigwtqmdd` before merging.
 5. **The art tiers** — items, companions, fortress props, then skins.
-6. **Season 2 as a config change.** If adding the Advent Road touches anything
+6. **Season 2 as a config change.** This was the test, and it passed with two
+   scars worth keeping: the Advent Road is a data change (a waystation table, a
+   quest pool, an `art` id and two ISO dates), but standing a SECOND road up at
+   all needed migration `0103` and a matching fix in `store/season.ts`, because
+   `season_unlocks` was keyed `(user_id, reward_id)` and guest unlocks lived
+   inside the per-road blob. Neither could fire while there was one road. If
+   adding the Advent Road touches anything
    outside `data/season.ts` and `public/`, step 1 was built wrong.

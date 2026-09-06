@@ -10,7 +10,8 @@ import { useJuice } from '@/juice/useJuice'
 import {
   roadLength,
   activeRoad,
-  daysLeft,
+  roadEmblem,
+  roadTimeLeft,
   nextPayout,
   rewardLabel,
   type RoadDef,
@@ -62,7 +63,10 @@ export default function PilgrimageScreen() {
   }
 
   const { into, span, pct } = milesProgress(miles)
-  const left = daysLeft(road)
+  // The same phrase the Play tab's strip shows, from the same function — two
+  // surfaces disagreeing about when a season ends is indistinguishable from a
+  // bug, and it is the sort that nobody notices for a week.
+  const left = roadTimeLeft(road)
 
   return (
     <Page>
@@ -86,7 +90,11 @@ export default function PilgrimageScreen() {
           }}
         />
         <div style={{ position: 'relative' }}>
-          <span className="pill" style={{ marginBottom: 10 }}>🌾 The Pilgrimage</span>
+          {/* The emblem is the ROAD's, from its own memento — a sheaf on the
+              Harvest Road, a lamp on the Lamplight one, a star on the Advent
+              one. A fixed 🌾 here is the same tell as a December road drawn
+              over a wheat field. */}
+          <span className="pill" style={{ marginBottom: 10 }}>{roadEmblem(road)} The Pilgrimage</span>
           <h1 style={{ fontSize: 24, marginBottom: 4 }}>{road.name}</h1>
           <p className="dim" style={{ fontSize: 13.5, margin: '0 0 14px', lineHeight: 1.5 }}>
             {road.blurb}
@@ -113,7 +121,7 @@ export default function PilgrimageScreen() {
             />
           </div>
           <p className="faint" style={{ fontSize: 11.5, margin: '8px 0 0' }}>
-            {miles.toLocaleString()} miles walked · {left} day{left === 1 ? '' : 's'} left on this road
+            {miles.toLocaleString()} miles walked · {left.text} on this road
           </p>
         </div>
       </motion.div>

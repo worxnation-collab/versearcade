@@ -346,6 +346,73 @@ export interface QuestPools {
   weekly: QuestDef[]
 }
 
+// ── The Lamplight Road's pools ───────────────────────────────────────────────
+// A road's pools are FROZEN once it starts (the draw is a seeded shuffle of the
+// whole array, so adding one entry re-deals every remaining day). These are
+// written before 2026-11-11 and must not be touched after it except to fix a
+// `text` typo.
+//
+// They lean on verbs that were PREPACKED and never used by a bundled quest —
+// pray, wash_feet, arcade_runs, visit_room, borrow_book, find_relic — which is
+// the whole reason the verb list was written far ahead of the quests using it.
+// A short road wants smaller goals: twelve waystations over eighteen days.
+export const LAMPLIGHT_DAILY: QuestDef[] = [
+  { key: 'l_play', verb: 'play_daily', goal: 1, text: 'Play today’s drop' },
+  { key: 'l_correct', verb: 'answer_correct', goal: 10, text: 'Answer 10 questions correctly' },
+  { key: 'l_pray', verb: 'pray', goal: 1, text: 'Say a prayer in your Upper Room' },
+  { key: 'l_read', verb: 'read_chapters', goal: 1, text: 'Read a chapter in your Bible' },
+  { key: 'l_study', verb: 'study_runs', goal: 2, text: 'Finish 2 study runs' },
+  { key: 'l_chest', verb: 'open_chest', goal: 1, text: 'Open the Daily Chest' },
+  { key: 'l_wash', verb: 'wash_feet', goal: 2, text: 'Wash 2 players’ feet' },
+  { key: 'l_borrow', verb: 'borrow_book', goal: 1, text: 'Borrow a book from Tabitha' },
+  { key: 'l_arcade', verb: 'arcade_runs', goal: 2, text: 'Play 2 rounds in the arcade' },
+  { key: 'l_save', verb: 'save_verses', goal: 1, text: 'Keep a verse' },
+]
+
+export const LAMPLIGHT_WEEKLY: QuestDef[] = [
+  { key: 'lw_correct', verb: 'answer_correct', goal: 50, text: 'Answer 50 questions correctly' },
+  { key: 'lw_read', verb: 'read_chapters', goal: 6, text: 'Read 6 chapters' },
+  { key: 'lw_pray', verb: 'pray', goal: 7, text: 'Say 7 prayers' },
+  { key: 'lw_relic', verb: 'find_relic', goal: 3, text: 'Find 3 relics by studying' },
+  { key: 'lw_wash', verb: 'wash_feet', goal: 10, text: 'Wash 10 players’ feet' },
+  { key: 'lw_prayfor', verb: 'pray_for', goal: 5, text: 'Hold a candle for 5 notes on the Prayer Wall' },
+  { key: 'lw_play', verb: 'play_daily', goal: 5, text: 'Play the drop on 5 days' },
+  { key: 'lw_track', verb: 'unlock_track', goal: 1, text: 'Walk into a room you haven’t heard yet' },
+  { key: 'lw_study', verb: 'study_runs', goal: 8, text: 'Finish 8 study runs' },
+]
+
+// ── The Advent Road's pools ─────────────────────────────────────────────────
+// Same freeze rule: written before 2026-11-29 and not touched after it.
+// Thirty waystations over thirty-eight days, so the goals sit slightly above
+// the Lamplight Road's and slightly under the Harvest Road's.
+export const ADVENT_DAILY: QuestDef[] = [
+  { key: 'a_play', verb: 'play_daily', goal: 1, text: 'Play today’s drop' },
+  { key: 'a_correct', verb: 'answer_correct', goal: 12, text: 'Answer 12 questions correctly' },
+  { key: 'a_read', verb: 'read_chapters', goal: 1, text: 'Read a chapter in your Bible' },
+  { key: 'a_pray', verb: 'pray', goal: 1, text: 'Say a prayer in your Upper Room' },
+  { key: 'a_chest', verb: 'open_chest', goal: 1, text: 'Open the Daily Chest' },
+  { key: 'a_study', verb: 'study_runs', goal: 2, text: 'Finish 2 study runs' },
+  { key: 'a_perfect', verb: 'perfect_run', goal: 1, text: 'Finish a run with no misses' },
+  { key: 'a_prayfor', verb: 'pray_for', goal: 1, text: 'Hold a candle on the Prayer Wall' },
+  { key: 'a_save', verb: 'save_verses', goal: 1, text: 'Keep a verse' },
+  { key: 'a_combo', verb: 'combo', goal: 4, text: 'Hit a 4× combo' },
+  { key: 'a_battle', verb: 'battles_played', goal: 1, text: 'Play a battle, win or lose' },
+  { key: 'a_room', verb: 'furnish_room', goal: 1, text: 'Set something in your Upper Room' },
+]
+
+export const ADVENT_WEEKLY: QuestDef[] = [
+  { key: 'aw_correct', verb: 'answer_correct', goal: 60, text: 'Answer 60 questions correctly' },
+  { key: 'aw_read', verb: 'read_chapters', goal: 7, text: 'Read 7 chapters' },
+  { key: 'aw_pray', verb: 'pray', goal: 10, text: 'Say 10 prayers' },
+  { key: 'aw_prayfor', verb: 'pray_for', goal: 7, text: 'Hold a candle for 7 notes on the Prayer Wall' },
+  { key: 'aw_play', verb: 'play_daily', goal: 5, text: 'Play the drop on 5 days' },
+  { key: 'aw_battles', verb: 'battles_played', goal: 5, text: 'Play 5 battles, won or lost' },
+  { key: 'aw_donate', verb: 'donate', goal: 2, text: 'Give 2 relics to your church' },
+  { key: 'aw_gift', verb: 'give_gift', goal: 1, text: 'Give a relic to another player' },
+  { key: 'aw_visit', verb: 'visit_room', goal: 3, text: 'Visit 3 players’ Upper Rooms' },
+  { key: 'aw_study', verb: 'study_runs', goal: 10, text: 'Finish 10 study runs' },
+]
+
 export const BUNDLED_POOLS = (): QuestPools => ({ daily: DAILY_QUESTS, weekly: WEEKLY_QUESTS })
 
 /** The three dailies for a given road day. Identical for every player. */

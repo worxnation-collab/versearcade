@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useSeason } from '@/store/season'
-import { rewardLabel } from '@/data/season'
+import { activeRoad, rewardLabel, roadEmblem } from '@/data/season'
 import { useJuice } from '@/juice/useJuice'
 
 // The reveal for reaching a waystation.
@@ -92,7 +92,10 @@ export function WaystationToast() {
                 transition={{ type: 'spring', stiffness: 260, damping: 12, delay: 0.05 }}
                 style={{ fontSize: 30, flexShrink: 0, lineHeight: 1 }}
               >
-                {milestone ? '🌟' : '🌾'}
+                {/* A milestone keeps its star; an ordinary waystation wears
+                    the ROAD's emblem, so the toast matches the header rather
+                    than showing a sheaf of barley in December. */}
+                {milestone ? '🌟' : roadEmblem(activeRoad())}
               </motion.span>
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span

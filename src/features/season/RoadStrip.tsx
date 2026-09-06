@@ -7,7 +7,7 @@ import { useSettings } from '@/store/settings'
 import { Character } from '@/components/Character'
 import { roadBackground } from './roadArt'
 import { RewardArt } from './RewardArt'
-import { activeRoad, nextPayout, rewardLabel } from '@/data/season'
+import { activeRoad, nextPayout, rewardLabel, roadTimeLeft } from '@/data/season'
 import { milesProgress } from '@/lib/season'
 
 // The Pilgrimage's front door, on the Play tab.
@@ -44,6 +44,9 @@ export function RoadStrip() {
   const road = activeRoad()
   const me = useAuth((s) => s.profile)
   const reduceMotion = useSettings((s) => s.reduceMotion)
+  // Computed once per mount, not on a ticking clock: this is the busiest screen
+  // in the app, and the smallest unit the countdown ever shows is an hour.
+  const left = road ? roadTimeLeft(road) : null
 
   useEffect(() => {
     void load()
@@ -100,6 +103,33 @@ export function RoadStrip() {
               background: 'linear-gradient(180deg, rgba(24,10,4,0) 0%, rgba(24,10,4,0.45) 100%)',
             }}
           />
+          {/* How long the road is open, ON the road — a badge in the corner of
+              its own painting.
+              It sat beside the road's NAME first, which cost "The Advent Road"
+              enough width to truncate it to "The A…" on a 390px phone. The
+              painting has room the text column does not, the badge is the same
+              fact either way, and the season is what the tile is a picture of.
+              Hence `short`: three characters, never the sentence. */}
+          {left && (
+            <span
+              style={{
+                position: 'absolute',
+                left: 4,
+                bottom: 4,
+                fontSize: 9.5,
+                fontWeight: 800,
+                letterSpacing: 0.3,
+                lineHeight: 1,
+                padding: '3px 5px',
+                borderRadius: 6,
+                color: left.urgent ? '#ffd9b0' : '#ffeaa8',
+                background: left.urgent ? 'rgba(140,45,0,0.78)' : 'rgba(24,10,4,0.72)',
+                border: `1px solid ${left.urgent ? 'rgba(255,159,28,0.6)' : 'rgba(255,210,63,0.35)'}`,
+              }}
+            >
+              {left.short}
+            </span>
+          )}
           {/* Centring and bobbing are on SEPARATE elements on purpose: the bob
               animates `transform`, which would overwrite the translateX that
               centres this and slam the figure against the left edge. */}
@@ -160,6 +190,19 @@ export function RoadStrip() {
           <div className="faint" style={{ fontSize: 11.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             Waystation {waystation} · {into}/{span} mi{next ? ' · next:' : ''}
           </div>
+          {/* The badge above lives inside the aria-hidden painting, so the
+              countdown would otherwise be silent. This is the same fact in the
+              long form, for a screen reader only. */}
+          {left && (
+            <span
+              style={{
+                position: 'absolute', width: 1, height: 1, padding: 0, margin: -1,
+                overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap', border: 0,
+              }}
+            >
+              {left.text} on this road
+            </span>
+          )}
         </div>
 
         {/* What's at the next waystation, as pictures. Up to two: a station

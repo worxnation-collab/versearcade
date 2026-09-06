@@ -149,7 +149,11 @@ hand out skins, cosmetics, boosts, freezes and mementos — not items.
 **A road's quest pools freeze when it starts.** `pick()` shuffles the whole pool
 from a day seed, so adding one entry re-draws every remaining day and two app
 versions show different dailies on the same date. The bundled `DAILY_QUESTS`
-belongs to the Harvest Road now; a new road carries its own `daily`/`weekly`.
+belongs to the Harvest Road now; a new road carries its own `daily`/`weekly` —
+`LAMPLIGHT_DAILY`/`LAMPLIGHT_WEEKLY` and `ADVENT_DAILY`/`ADVENT_WEEKLY` are the
+worked examples, and they are what finally spend the prepacked verbs (`pray`,
+`wash_feet`, `pray_for`, `borrow_book`, `arcade_runs`, `visit_room`,
+`give_gift`, `find_relic`, `unlock_track`, `battles_played`).
 Overlapping road windows resolve to the road that **starts latest**, so a short
 holiday road inside a long one wins.
 
@@ -157,6 +161,58 @@ And the free trick that needs no infrastructure at all: `activeRoad()` is a pure
 function of the clock against hard ISO windows, so a road can be **pre-shipped**
 in today's binary months early and switch itself on at its `start`. Do both —
 the bundled road is what an offline phone falls back to.
+
+**Three roads ship in the binary now, and the whole 2026 season is already in
+it.** Harvest (Aug 27 – Nov 11), **Lamplight** (Nov 11 – Nov 29, 12 waystations,
+the watchman / ten-virgins theme) and **Advent** (Nov 29 – Jan 7, 30
+waystations). Nobody publishes anything on those mornings and no fetch is
+involved: the clock is the switch. Four things about that set are load-bearing.
+
+- **The windows are BUTT-JOINED, with no gap**, since `end` is exclusive and the
+  next `start` is the same instant. `docs/BATTLE-PASS.md` argued for a rest week
+  between roads to make the next one an event; that is deliberately overridden,
+  because a Pilgrimage tab reading "the road is resting" for a week is a tab
+  people stop opening. The switch lands at a UTC midnight.
+- **Every road carries its OWN quest pools** (`RoadDef.daily`/`.weekly` in
+  `data/season.ts`, the arrays in `lib/season.ts`). Sharing the bundled ones
+  would have the Harvest Road's dailies naming barley in December — and, far
+  worse, editing them for one road re-deals every remaining day of the other,
+  since the draw is a seeded shuffle of the whole pool. **A road's pools freeze
+  at its `start`**; after that only a `text` typo may change.
+- **The new roads pay no ITEMS**, on purpose. `item_*` are hardcoded SVG per id
+  in `Character.tsx`, so neither a bundled-late road nor a catalog one can add a
+  wearable. They pay skins, titles, confetti, flames, chest skins, boosts,
+  freezes and a memento. If seasonal items ever matter, the fix is the prepack
+  move the verbs got: draw a batch of generic slots now, name them later.
+- **A road's EMBLEM is derived from its memento** (`roadEmblem`), not hardcoded.
+  The 🌾 was written into the Pilgrimage header pill and the waystation toast
+  back when there was one road; a sheaf of barley over Bethlehem is the same
+  tell as a December road drawn over a wheat field. A catalog road gets an
+  emblem free, since it has to name a memento anyway.
+
+**The ten seasonal skins were generated long before the roads that hand them
+out**, which is what made pre-shipping them possible at all: `art/skins-lamplight.json`
+(lamplighter, watchman, wise_lamp, harvest_reaper, olive_keeper) and
+`art/skins-advent.json` (mary, joseph, shepherd_night, magus,
+bethlehem_star_bearer). They sat in `public/skins/` and `GENERATED_ART` for
+months with no `FULL_SKINS` entry, so no player could reach them — art without
+wiring is not a feature. **Who is deliberately NOT in the Advent set: the
+child.** `docs/BATTLE-PASS.md` settles that outright; the road carries the
+travellers and the watchers, and that does not get revisited.
+
+**A road says how long it is open, and `roadTimeLeft()` is the one place that
+sentence is written.** The Pilgrimage header takes its long form and the Play
+tab's strip takes `short` as a badge in the corner of the road's own painting.
+Three limits keep a countdown from becoming the shame device this app doesn't
+build: it counts the ROAD and never the player (no pace bar, no "finish by", no
+waystations-to-go), it never shows seconds (below a day it drops to hours and
+below an hour it stops counting — a ticking clock on the busiest screen in the
+app is pressure, and it would re-render that card once a second for nothing),
+and **nothing is lost when it runs out**, because every reward already banked is
+kept forever. `urgent` changes a colour on the last day and adds no warning
+anywhere. The badge went on the painting rather than beside the road's NAME
+because the long form there truncated "The Advent Road" to "The A…" on a 390px
+phone — found by looking at it, invisible in the diff.
 
 ## Two checkouts, never the wrong one
 
@@ -1401,7 +1457,49 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0102` (`tiktok_runner_token()` — the headless runner's own
+The latest is `0103` (a second road — `season_unlocks` re-keyed per road),
+APPLIED on 2026-09-06 before the client merged, and verified: the PK reads
+`(user_id, reward_id, road_id)`, all 259 existing unlock rows survived the swap,
+and there is exactly ONE signature each for `claim_season_reward` and
+`season_json`. It was run end to end against a local Postgres 16 first, with a
+stub of 0058's tables and 0058's OWN `claim_season_reward` — which reproduced
+the bug before the fix was applied (`harvest freeze -> granted:true`,
+`lamplight freeze -> granted:false`) and then paid both after it.
+
+**It fixes two bugs that could not fire while there was only one road**, and
+both are the shape that is invisible in a diff and invisible in production until
+a date passes:
+
+- **Consumables were paid once per account, EVER.** `boost`/`freeze` ride
+  `season_unlocks`, which was keyed `(user_id, reward_id)`, and
+  `claim_season_reward` only increments `profiles.streak_freezes` when the
+  insert is new. 46 live accounts already hold a `freeze` row from the Harvest
+  Road, so on 2026-11-11 every one of them would have walked the whole Lamplight
+  Road and received no consumables at all, silently. Widening the key to include
+  `road_id` is the whole fix; a cosmetic is still granted once per road, so
+  there is no duplicate reveal.
+- **The wardrobe read must stay cross-road**, which is what makes "miles reset,
+  what they bought never does" true. `season_json` was already road-blind here
+  and stays that way; `distinct` was added because the wider key can now hold
+  one reward id under two road ids, and a duplicate in that array shows a player
+  two copies of one skin.
+
+The client half of the same two bugs is in `store/season.ts`, and is the more
+dangerous one because it needs no server: guest unlocks used to live INSIDE the
+per-road blob, so the morning a second road opened a guest's `unlocks` loaded as
+`[]` and every pass skin they had earned — Ruth, Boaz and the three angels —
+read as un-owned and vanished from the customizer. They now live in an
+account-wide `va.season.unlocks.<uid|guest>` key mirroring the server's table,
+and `readUnlocks()` folds any legacy per-road blob in and rewrites the union, so
+a device from the one-road era heals itself on first load with nothing to
+remember. The "has this already been paid?" check moved from the cross-road
+`unlocks` set to the road's own `granted` ledger for the same reason the SQL
+key moved. **Verified by driving the real app** with a faked clock across both
+switch instants: a guest carrying Harvest unlocks keeps Ruth, Boaz and Gabriel
+on the Lamplight and Advent roads, and a freeze already banked on Harvest is
+paid again at Lamplight's first waystation and not paid twice on a replay.
+
+Before it, `0102` (`tiktok_runner_token()` — the headless runner's own
 credential for the `tiktok-gen` Edge Function, read out of Vault, service_role
 only), APPLIED on 2026-09-04 and verified: the ACL reads
 `{postgres,service_role}` and the function returns a 48-character token. The
@@ -1617,7 +1715,8 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0103` (0102 is taken by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0104` (0103 is taken by the season's per-road
+unlock key, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

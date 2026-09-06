@@ -142,6 +142,28 @@ Start your streak today. It's one verse.
 > bullet, ~190 characters: "THE PRAYER WALL · Leave a note — a kind of thing,
 > a line if you want, signed or not. The wall hands you somebody else's; hold the
 > candle for them. When theirs is answered, you're told."
+>
+> **Two more seasons landed after that**, and they are the clearest What's New
+> material in this release — a player opens the app one morning and the whole
+> tab is a different place. The Lamplight Road (Nov 11) and the Advent Road
+> (Nov 29) are both PRE-SHIPPED in this binary and switch themselves on by the
+> clock, so the bullet is true for anyone who installs 1.3.0 and needs no
+> submission of its own. Suggested bullet, ~250 characters:
+>
+> "TWO NEW SEASONS, ALREADY IN HERE · The Harvest Road closes on Nov 11 and the
+> Lamplight Road opens the same morning — lamps lit, the harvest in, five new
+> figures to earn. The Advent Road follows on Nov 29 with ten more. Free, both
+> columns, as always."
+>
+> **The block is now over-subscribed by two features** (this and the Prayer
+> Wall, ~440 characters against 88 free), so the cut named above is owed twice
+> over and is no longer a judgement call. Do the 1.2.0 check on **live battles**
+> and **the weekly church rivalry** before submitting — that is where the room
+> is.
+>
+> Nothing in App Store Connect is owed for the seasons themselves. What IS owed
+> before this merges is migration `0103`, which is applied already (2026-09-06)
+> — without it every consumable on the Lamplight Road pays nothing, silently.
 
 ```
 BIBLE TRIVIA, A ROUND AT A TIME

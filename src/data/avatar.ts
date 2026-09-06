@@ -487,6 +487,81 @@ export const FULL_SKINS: SkinDef[] = [
     source: 'pass',
     blurb: 'Six wings and a live coal — the burning one of Isaiah 6.',
   },
+  // ——— The Lamplight Road (Nov 2026) ———
+  // Watchfulness at the end of the church year: lamps kept burning, a watchman
+  // on the wall, the last of the harvest and the olives in. Five figures, one
+  // per rung of a short road.
+  //
+  // Their renders SHIPPED IN THE BINARY MONTHS BEFORE THE ROAD OPENS
+  // (public/skins, wired through GENERATED_ART), which is what lets the road
+  // itself be pre-shipped too — `activeRoad()` is a pure function of the clock,
+  // so this whole set switches itself on with no submission and no fetch. An
+  // offline phone gets the same season as a connected one.
+  {
+    id: 'lamplighter',
+    name: 'The Lamplighter',
+    source: 'pass',
+    blurb: 'Coat, pole and a lantern at the belt — “let your lamps be burning.”',
+  },
+  {
+    id: 'watchman',
+    name: 'The Watchman',
+    source: 'pass',
+    blurb: 'The horn at his side on the city wall — “I have set watchmen upon thy walls.”',
+  },
+  {
+    id: 'wise_lamp',
+    name: 'The Wise Lamp',
+    source: 'pass',
+    blurb: 'One of the five who brought oil enough for the waiting (Matthew 25).',
+  },
+  {
+    id: 'harvest_reaper',
+    name: 'The Reaper',
+    source: 'pass',
+    blurb: 'In from the field at dusk, sleeves rolled, the last sheaf bound.',
+  },
+  {
+    id: 'olive_keeper',
+    name: 'The Olive Keeper',
+    source: 'pass',
+    blurb: 'The olives in from the grove, a sprig tucked behind her ear.',
+  },
+  // ——— The Advent Road (Nov 2026 – Jan 2027) ———
+  // The road to Bethlehem, walked by the people who were already on it. Note
+  // who is NOT here and never will be: the child. docs/BATTLE-PASS.md settles
+  // that outright — Jesus is never a wearable skin, in any form, on any road.
+  // These are the travellers, the watchers and the ones who said yes.
+  {
+    id: 'mary',
+    name: 'Mary',
+    source: 'pass',
+    blurb: 'Hands folded, a blue mantle — “be it unto me according to thy word.”',
+  },
+  {
+    id: 'joseph',
+    name: 'Joseph',
+    source: 'pass',
+    blurb: 'The carpenter who took the road to Bethlehem anyway, blanket over his shoulder.',
+  },
+  {
+    id: 'shepherd_night',
+    name: 'The Night Shepherd',
+    source: 'pass',
+    blurb: 'Keeping watch over the flock by night, a lamb held against his chest.',
+  },
+  {
+    id: 'magus',
+    name: 'The Magus',
+    source: 'pass',
+    blurb: 'One of the wise men from the east, a sealed jar of myrrh in both hands.',
+  },
+  {
+    id: 'bethlehem_star_bearer',
+    name: 'The Star Bearer',
+    source: 'pass',
+    blurb: 'Lantern raised, a hand shading the eyes — following the light west.',
+  },
   // ——— The founding patron ———
   // The app's one product. It was Jonah's whale and is now Cephas, and the
   // reason for the swap is that the whale said nothing about what the money

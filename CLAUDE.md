@@ -155,21 +155,53 @@ verbs (`pray`, `wash_feet`, `pray_for`, `borrow_book`, `arcade_runs`,
 `visit_room`, `give_gift`, `find_relic`, `unlock_track`, `battles_played`,
 `plant_flora`, `place_decor`, `furnish_room`, `give_offering`).
 
-**A weekly pool smaller than 5 × the road's weeks WILL repeat itself on screen,
-and that is a live pre-existing bug rather than something the new roads
-introduced.** `weeklyQuests` draws five per week seeded on the week, and
-weeklies persist to the end of the road — so the Harvest Road, with a 9-entry
-pool over 11 weeks, already shows the same line several times as several
-separate 600-mile quests, and `advanceQuests` advances every live quest watching
-a verb, so one action can complete two of them. Measured, not guessed: 4 weeks
-of Harvest issues 20 weeklies with 8 duplicated lines, today, in production.
-**It is deliberately NOT fixed here.** Harvest is mid-road and its pools are
-frozen — changing the draw re-deals every remaining week for everyone walking
-it, which is the exact failure the freeze rule exists to prevent. Miles rank
-nobody, so the cost is a list that reads oddly and some over-generous mileage.
-The honest fix is a bigger pool on a road that has not started, or a draw that
-skips keys still live; both need their own change, and the Sower's Road (~15
-weeks against a 10-entry pool) is where it will look worst.
+**Weeklies are FIVE SLOTS, TOPPED UP — `rollingWeeklies` in `lib/season.ts` —
+and every road but Harvest uses it.** The original draw issued five fresh
+weeklies a week and never retired one, so the list grew to `5 × weeks` from a
+pool of nine or ten. Measured on the real roads rather than reasoned about: on
+its last day the Harvest Road shows **55 weekly rows drawn from 9 lines**, one
+of them repeated ten times, and the Sower's Road would have shown **75 rows from
+10**. Three failures came out of that and only the first is cosmetic — the same
+sentence several times reads as broken; `advanceQuests` advances EVERY live
+quest watching a verb, so one action completed every open copy and paid for each;
+and a wall of 75 rows is unusable *even if every line in it were distinct*, which
+is why "write a bigger pool" was not the fix (there are not 75 different weekly
+asks worth writing).
+
+The rule now: **a player holds exactly five weeklies.** At the start of each week
+the ones finished in earlier weeks are replaced and the ones still open are not
+touched. That keeps the promise the accumulating draw existed for — an
+unfinished weekly is never taken away — and drops the part that promise never
+required, which is that finished ones pile up forever. **Nothing is lost by it**:
+a player who clears five a week is issued five a week, so the miles available
+over a road are unchanged for anyone actually doing them, and nothing anywhere
+counts completed quests (no Journal rung, no total, no RPC), so a finished weekly
+leaving the list costs no record.
+
+Two things about it are load-bearing:
+
+- **It is opt-in per road (`RoadDef.rollingWeeklies`) and HARVEST DOES NOT SET
+  IT.** Its pools froze when it started and it is mid-road with real players on
+  it; changing the draw under them would re-deal every remaining week, the exact
+  failure the freeze rule exists to prevent. Verified byte-identical afterwards
+  across all 76 of its days, with `isDone` forced true, rather than assumed. A
+  catalog road defaults it ON — a published road has by definition not started,
+  so there is no frozen deal to protect.
+- **The sweep runs for weeks that have ENDED, never the current one.** If it ran
+  on the current week, finishing a weekly would instantly replace it — turning
+  weeklies into dailies and snatching away the tick just earned. A quest
+  completed this week keeps its slot, and its ✓, until Monday.
+
+**Still open, and NOT fixed here: a gilded weekly underpays online.** The client
+promises `MILES.questWeekly * 2` (1,200) and the guest path pays it, but
+`track_season_quest` (0058) hardcodes 600 for every weekly and never learns which
+one is gilded — the gilding is derived client-side from `(roadId, week)` and
+never sent. So `MILES_CAP`'s 1,200 and `award_season_miles`' 1,200 ceiling are
+both unreachable for an account. It affects every road, including the six that
+have not started. The fix is a migration passing the amount through to the
+existing clamp, which changes a live road's payouts and needs a signature change
+with the PostgREST overload risk this file keeps warning about — so it wants its
+own change, not a rider on this one.
 Overlapping road windows resolve to the road that **starts latest**, so a short
 holiday road inside a long one wins.
 

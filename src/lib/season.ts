@@ -544,17 +544,24 @@ export function dailyQuests(roadId: string, day: number, pools: QuestPools = BUN
   }))
 }
 
+/** How many weeklies a player holds at once. Five, on every road. */
+export const WEEKLY_SLOTS = 5
+
 /**
  * The five weeklies for a given road week. They are issued once and persist to
  * the end of the road — miss a week and you lose nothing, you just have more to
  * do later. That is the single most important anti-shame mechanic here.
+ *
+ * THIS IS THE ORIGINAL, ACCUMULATING DRAW, and it is kept for the Harvest Road
+ * ALONE. Every road after it uses `rollingWeeklies` below; see the note there
+ * for what went wrong and why this one cannot simply be fixed in place.
  */
 export function weeklyQuests(
   roadId: string,
   week: number,
   pools: QuestPools = BUNDLED_POOLS(),
 ): Quest[] {
-  const chosen = pick(pools.weekly, 5, `${roadId}:w:${week}`)
+  const chosen = pick(pools.weekly, WEEKLY_SLOTS, `${roadId}:w:${week}`)
   // One gilded weekly per week, also seeded, paying double.
   const gildedAt = Math.floor(rng(seedFrom(`${roadId}:g:${week}`))() * chosen.length)
   return chosen.map((q, i) => ({
@@ -566,13 +573,116 @@ export function weeklyQuests(
   }))
 }
 
+/**
+ * FIVE WEEKLIES, TOPPED UP — the draw every road after Harvest uses.
+ *
+ * ## What was wrong
+ *
+ * The original draw issues five fresh weeklies every week and never retires
+ * one, so the list is `5 x weeks` long and each week re-shuffles the SAME small
+ * pool. Measured on the real roads rather than reasoned about: on its last day
+ * the Harvest Road shows **55 weekly rows drawn from 9 lines**, with one line
+ * repeated ten times; the Sower's Road would show **75 rows from 10 lines**.
+ *
+ * Three separate failures come out of that, and only the first is cosmetic:
+ *
+ * 1. The same sentence appears several times in a row, which reads as broken.
+ * 2. `advanceQuests` advances EVERY live quest watching a verb, so one action
+ *    completes every open copy at once and pays for each of them.
+ * 3. A wall of 75 rows is unusable, and it is unusable even if every line in it
+ *    were distinct — which is the reason "just write a bigger pool" is not the
+ *    fix. Removing repeats from the Sower's Road needs 75 genuinely different
+ *    weekly asks, and there are not 75 different things worth asking.
+ *
+ * ## The rule
+ *
+ * A player holds exactly FIVE weeklies. At the start of each week the ones
+ * finished in earlier weeks are replaced; the ones still open are not touched.
+ *
+ * That keeps the promise the accumulating draw was built for — **an unfinished
+ * weekly is never taken away** — and drops the thing that promise did not
+ * require, which is that finished ones pile up forever. It also makes the list
+ * honest: five things you have not done, rather than seventy-five rows in which
+ * they are hidden.
+ *
+ * Nothing is lost by it. A player who clears five a week is issued five a week,
+ * so the miles available over a road are unchanged for anyone actually doing
+ * them; only a lapsed player is issued fewer, and those were quests they were
+ * never going to finish. Nothing counts completed quests anywhere — no Journal
+ * rung, no total, no RPC — so a finished weekly leaving the list costs no record.
+ *
+ * ## Why the Harvest Road keeps the old one
+ *
+ * Its pools froze when it started (2026-08-27) and it is mid-road with real
+ * players on it. Changing the draw under them would re-deal every remaining
+ * week, which is the exact failure the freeze rule exists to prevent — so this
+ * is opted into per road by `RoadDef.rollingWeeklies`, and Harvest simply does
+ * not set it. Verified byte-identical afterwards rather than assumed.
+ *
+ * ## The one subtlety
+ *
+ * The sweep runs for weeks that have ENDED, never for the current one. If it
+ * ran on the current week, finishing a weekly would instantly replace it —
+ * turning weeklies into dailies and snatching away the tick you just earned.
+ * So a quest completed this week keeps its slot, and its ✓, until Monday.
+ */
+export function rollingWeeklies(
+  roadId: string,
+  week: number,
+  pools: QuestPools,
+  isDone: (questId: string) => boolean,
+): Quest[] {
+  // key -> the quest holding that slot. Insertion order is the display order,
+  // so a long-open quest stays put rather than jumping around week to week.
+  const held = new Map<string, Quest>()
+
+  for (let w = 0; w <= week; w++) {
+    const free = WEEKLY_SLOTS - held.size
+    if (free > 0) {
+      // Never re-issue something the player is already holding: that is the
+      // duplicate row, and the double payout, closed at the source.
+      const candidates = pools.weekly.filter((q) => !held.has(q.key))
+      const chosen = pick(candidates, free, `${roadId}:w:${w}`)
+      const gildedAt = Math.floor(rng(seedFrom(`${roadId}:g:${w}`))() * Math.max(1, chosen.length))
+      for (let i = 0; i < chosen.length; i++) {
+        const q = chosen[i]
+        held.set(q.key, {
+          ...q,
+          id: `w:${roadId}:${w}:${q.key}`,
+          kind: 'weekly' as const,
+          gilded: i === gildedAt,
+          miles: i === gildedAt ? MILES.questWeekly * 2 : MILES.questWeekly,
+        })
+      }
+    }
+    // Sweep only weeks that are OVER — see "the one subtlety" above.
+    if (w < week) {
+      for (const [key, q] of [...held]) if (isDone(q.id)) held.delete(key)
+    }
+  }
+
+  return [...held.values()]
+}
+
 /** Every quest currently live: today's three, plus every week issued so far. */
 export function activeQuests(
   roadId: string,
   day: number,
   pools: QuestPools = BUNDLED_POOLS(),
+  opts?: {
+    /** The road opts into the five-slot draw (`RoadDef.rollingWeeklies`). */
+    rolling?: boolean
+    /** Whether a quest id has been completed. Required for the rolling draw. */
+    isDone?: (questId: string) => boolean
+  },
 ): Quest[] {
   const week = Math.floor(day / 7)
+  // Defaults to the accumulating draw, so a caller that passes nothing gets
+  // exactly what it got before this existed — which is what keeps the Harvest
+  // Road, and any old client, untouched.
+  if (opts?.rolling && opts.isDone) {
+    return [...dailyQuests(roadId, day, pools), ...rollingWeeklies(roadId, week, pools, opts.isDone)]
+  }
   const weeks: Quest[] = []
   for (let w = 0; w <= week; w++) weeks.push(...weeklyQuests(roadId, w, pools))
   return [...dailyQuests(roadId, day, pools), ...weeks]

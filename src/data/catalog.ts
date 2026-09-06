@@ -148,6 +148,16 @@ export interface RoadDef {
   daily?: QuestDef[]
   weekly?: QuestDef[]
   /**
+   * Hold FIVE weeklies at a time, topping up as they are finished, instead of
+   * issuing five more every week forever (`rollingWeeklies` in lib/season).
+   *
+   * Every road should set this. It is opt-in rather than the default for one
+   * reason only: the Harvest Road started under the accumulating draw and its
+   * pools are frozen, so flipping it there would re-deal every remaining week
+   * for the players walking it. A catalog road has no such history — set it.
+   */
+  rollingWeeklies?: boolean
+  /**
    * Art id for the road's painting — the full-width scene at the top of
    * /pilgrimage and the window into it on the Play tab.
    *
@@ -409,6 +419,11 @@ export function sanitizeRoads(raw: unknown): RoadDef[] {
       ...(daily.length >= 3 ? { daily } : {}),
       ...(weekly.length >= 5 ? { weekly } : {}),
       ...(id(o.scene) ? { scene: o.scene } : {}),
+      // Defaults ON for a published road. Every road but Harvest wants the
+      // five-slot draw, and a catalog road is by definition one that has not
+      // started, so there is no frozen deal to protect — an operator has to
+      // say `false` on purpose to get the accumulating one.
+      rollingWeeklies: o.rollingWeeklies !== false,
     })
   }
   return out

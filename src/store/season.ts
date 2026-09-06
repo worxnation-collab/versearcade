@@ -373,7 +373,14 @@ export const useSeason = create<SeasonState>((set, get) => ({
     const swapped = rerolledOn === today ? rerolled : []
     // A catalog road may carry its own quest pools; poolsFor falls back to the
     // bundled ones, which is what keeps the Harvest Road exactly as it shipped.
-    return activeQuests(road.id, roadDay(road), poolsFor(road, BUNDLED_POOLS()))
+    // `rollingWeeklies` needs to know what has been finished, because the whole
+    // rule is "replace the ones you completed, keep the ones you didn't". The
+    // Harvest Road doesn't set the flag and so takes neither argument's effect
+    // — it gets the accumulating draw it started under, unchanged.
+    return activeQuests(road.id, roadDay(road), poolsFor(road, BUNDLED_POOLS()), {
+      rolling: road.rollingWeeklies === true,
+      isDone: (questId) => quests[questId]?.done === true,
+    })
       .filter((q) => !swapped.includes(q.key))
       .map((q) => ({ ...q, ...(quests[q.id] ?? { progress: 0, done: false }) }))
   },

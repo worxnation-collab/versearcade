@@ -577,6 +577,7 @@ export const ROADS: RoadDef[] = [
     memento: 'memento_lamplight',
     daily: LAMPLIGHT_DAILY,
     weekly: LAMPLIGHT_WEEKLY,
+    rollingWeeklies: true,
   },
   {
     id: 'advent',
@@ -590,6 +591,7 @@ export const ROADS: RoadDef[] = [
     memento: 'memento_advent',
     daily: ADVENT_DAILY,
     weekly: ADVENT_WEEKLY,
+    rollingWeeklies: true,
   },
   {
     id: 'jordan',
@@ -603,6 +605,7 @@ export const ROADS: RoadDef[] = [
     memento: 'memento_jordan',
     daily: JORDAN_DAILY,
     weekly: JORDAN_WEEKLY,
+    rollingWeeklies: true,
   },
   {
     id: 'wilderness',
@@ -616,6 +619,7 @@ export const ROADS: RoadDef[] = [
     memento: 'memento_wilderness',
     daily: WILDERNESS_DAILY,
     weekly: WILDERNESS_WEEKLY,
+    rollingWeeklies: true,
   },
   {
     id: 'emmaus',
@@ -629,6 +633,7 @@ export const ROADS: RoadDef[] = [
     memento: 'memento_emmaus',
     daily: EMMAUS_DAILY,
     weekly: EMMAUS_WEEKLY,
+    rollingWeeklies: true,
   },
   {
     id: 'sower',
@@ -642,6 +647,7 @@ export const ROADS: RoadDef[] = [
     memento: 'memento_sower',
     daily: SOWER_DAILY,
     weekly: SOWER_WEEKLY,
+    rollingWeeklies: true,
   },
 ]
 

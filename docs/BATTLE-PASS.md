@@ -157,6 +157,23 @@ reason to open the app.
 - **5 weeklies**, issued Monday, that **persist to the end of the road**. Miss a
   week and you lose nothing; you just have more to do later. This is the single
   most important anti-shame mechanic in the feature.
+
+  **Refined, because the literal reading of "persist" did not survive contact
+  with a long road.** Weeklies used to accumulate: five more every week, never
+  retired, so the list reached 55 rows on the Harvest Road and would have reached
+  75 on the Sower's Road — drawn from a pool of nine or ten, so the same line
+  appeared up to ten times, and one action completed and paid every open copy.
+  A player now holds **exactly five**: at the start of each week the finished
+  ones are replaced and the unfinished ones are left alone.
+
+  The anti-shame promise is intact and is arguably better served — an unfinished
+  weekly is still never taken away, and a lapsed player is met with five things
+  rather than seventy-five. What was dropped is only that *completed* ones pile
+  up, which the promise never required. A player who clears five a week is still
+  issued five a week, so the miles over a road are unchanged for anyone doing
+  them. `rollingWeeklies` in `lib/season.ts`; opt-in via `RoadDef.rollingWeeklies`
+  so the Harvest Road, whose pools froze when it started, keeps the draw it
+  began under.
 - **One reroll per day.** Swap a daily you don't want. Removes the one real
   friction point — being handed a quest for a mode you don't play.
 - **One gilded weekly per week**, marked, paying double. Costs nothing to

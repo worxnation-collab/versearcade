@@ -10,6 +10,7 @@ import { drawChestItem, itemById, DEFAULT_AVATAR } from '@/data/avatar'
 import { useJuice } from '@/juice/useJuice'
 import { useSeason } from '@/store/season'
 import { chestSkinById } from '@/data/season'
+import { CARD_BACKGROUNDS } from '@/data/playerCards'
 
 // A once-a-day reward that reinforces the daily loop: it unlocks only after you
 // play today's verse, then gives a random relic (common / uncommon / rare) —
@@ -23,6 +24,8 @@ export function DailyChest() {
   const juice = useJuice()
   const profile = useAuth((s) => s.profile)
   const grantItem = useAuth((s) => s.grantItem)
+  const setCardBackground = useAuth((s) => s.setCardBackground)
+  const [onCard, setOnCard] = useState(false)
   const [revealed, setRevealed] = useState<{
     kind: 'relic' | 'boost'
     key?: string
@@ -44,10 +47,15 @@ export function DailyChest() {
 
   const openedToday = chestOpenedOn(todayDate)
 
+  // Opening takes a beat. It used to be tap → reveal in the same frame, which
+  // is a vending machine; the shake-then-burst is what makes a chest a chest.
+  // The roll itself is instant and happens under the shake, so nothing here
+  // is a fake delay on a network call.
   const open = async () => {
     if (opening) return
     setOpening(true)
-    const res = await openChest(todayDate)
+    juice.whoosh()
+    const [res] = await Promise.all([openChest(todayDate), new Promise((r) => setTimeout(r, 950))])
     setOpening(false)
     if (res.alreadyOpened) return
     // Opening the chest is worth miles on the road, and finishes a quest.
@@ -133,9 +141,28 @@ export function DailyChest() {
                 — and a duplicate genuinely was nothing before inventory existed.
                 Now one presses a stamp and the other is something to give. */}
             {revealed?.newStamp ? (
-              <p style={{ fontSize: 12, marginTop: 10, color: 'var(--gold)', lineHeight: 1.5 }}>
-                ✦ Stamped into your Bible — its card background is yours now.
-              </p>
+              <>
+                <p style={{ fontSize: 12, marginTop: 10, color: 'var(--gold)', lineHeight: 1.5 }}>
+                  ✦ Stamped into your Bible — its card background is yours now.
+                </p>
+                {/* "Is yours now" with nowhere to tap was a reward described
+                    rather than handed over. One tap, right here. */}
+                {revealed.key && CARD_BACKGROUNDS.some((b) => b.key === revealed.key) && (onCard || profile?.cardBackground !== revealed.key) && (
+                  <div style={{ marginTop: 10 }}>
+                    <Button
+                      variant={onCard ? 'secondary' : 'gold'}
+                      full
+                      disabled={onCard}
+                      onClick={async () => {
+                        const r = await setCardBackground(revealed.key!)
+                        if (r.ok) { juice.coin(); setOnCard(true) }
+                      }}
+                    >
+                      {onCard ? '✓ On your card' : '🃏 Put it on my card'}
+                    </Button>
+                  </div>
+                )}
+              </>
             ) : (
               <p style={{ fontSize: 12, marginTop: 10, color: 'var(--mint)', lineHeight: 1.5 }}>
                 You already have this one{revealed?.qty && revealed.qty > 1 ? ` — that’s ${revealed.qty}` : ''}.
@@ -164,9 +191,13 @@ export function DailyChest() {
               }}
             />
             <motion.div
-              animate={{ rotate: [0, -6, 6, -6, 0], y: [0, -3, 0] }}
-              transition={{ repeat: Infinity, repeatDelay: 1.4, duration: 0.7 }}
-              style={{ fontSize: 48 }}
+              animate={
+                opening
+                  ? { rotate: [0, -14, 14, -12, 12, -8, 8, 0], y: [0, -6, 0, -6, 0, -8, 0], scale: [1, 1.05, 1.1, 1.15] }
+                  : { rotate: [0, -6, 6, -6, 0], y: [0, -3, 0] }
+              }
+              transition={opening ? { duration: 0.9, ease: 'easeInOut' } : { repeat: Infinity, repeatDelay: 1.4, duration: 0.7 }}
+              style={{ fontSize: 48, filter: opening ? 'drop-shadow(0 0 18px rgba(255,210,63,0.9))' : undefined }}
             >
               {chest.glyph}
             </motion.div>
@@ -174,7 +205,7 @@ export function DailyChest() {
             <p className="dim" style={{ fontSize: 13, marginTop: 4 }}>A relic is waiting inside.</p>
             <div style={{ marginTop: 14 }}>
               <Button variant="gold" full disabled={opening} onClick={open}>
-                {opening ? '…' : 'Open today’s chest ✨'}
+                {opening ? 'Opening…' : 'Open today’s chest ✨'}
               </Button>
             </div>
           </motion.div>

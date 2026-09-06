@@ -13,6 +13,9 @@ import { ModePicker } from './ModePicker'
 import { CpuVersusQuiz } from './CpuVersusQuiz'
 import { CPU_PROFILES, CPU_LEVELS, type CpuLevel, type CpuProfile } from './cpu'
 import { FavoriteButton } from '@/components/FavoriteButton'
+import { MissedList, quoted } from '@/features/daily/MissedList'
+import { nearestKeepChallenge } from '@/store/unlocks'
+import { DecorThumb } from './KeepArt'
 import type { AvatarSpec, DailyVerse, PlayResult } from '@/types'
 
 // Solo Bible Battle vs a simulated CPU, reached from the Study tab. No account
@@ -161,6 +164,24 @@ function CpuResult({
   const you = outcome.player.score
   const cpu = outcome.cpuScore
   const result: 'won' | 'lost' | 'tie' = you > cpu ? 'won' : you < cpu ? 'lost' : 'tie'
+  // The line under the verdict used to say "So close — run it back" whatever
+  // the margin, including 197 to 576. A player can see both numbers; copy that
+  // contradicts them reads as a form letter. So the line comes from the gap.
+  const gap = Math.abs(you - cpu)
+  const close = gap <= 150
+  const sub =
+    result === 'won'
+      ? close ? 'By a whisker. That was a real race.' : 'Faster and sharper. Nice run!'
+      : result === 'tie'
+        ? 'Down to the wire — rematch?'
+        : close
+          ? 'So close — run it back 👀'
+          : `${profile.name} had the pace today. The rematch is a fresh verse.`
+  // The next keep piece, read AFTER this run has been counted (the effect
+  // below tracks first, then this re-reads). A rematch is a tap away and this
+  // is the reason to take it.
+  const counters = useKeep((s) => s.counters)
+  const nextPiece = nearestKeepChallenge(counters)
 
   // One result = one payout. StrictMode remounts effects in dev, and this one
   // moves counters — the ref makes the double-invoke a no-op.
@@ -202,9 +223,7 @@ function CpuResult({
         <h1 className="gradient-text" style={{ fontSize: 30, marginTop: 4 }}>
           {result === 'won' ? 'You won!' : result === 'tie' ? "It's a tie!" : `${profile.name} wins`}
         </h1>
-        <p className="dim" style={{ marginTop: 4 }}>
-          {result === 'won' ? 'Faster and sharper. Nice run!' : result === 'tie' ? 'Down to the wire — rematch?' : 'So close — run it back 👀'}
-        </p>
+        <p className="dim" style={{ marginTop: 4 }}>{sub}</p>
       </motion.div>
 
       <CpuScoreRow name={me?.username ? `@${me.username}` : 'You'} emoji={me?.avatarEmoji ?? '😇'} character={me?.avatarCharacter} score={you} winner={result === 'won'} />
@@ -218,8 +237,29 @@ function CpuResult({
           <b style={{ fontFamily: 'var(--font-display)', fontSize: 17, flex: 1, minWidth: 0 }}>{verse.reference}</b>
           <FavoriteButton reference={verse.reference} variant="icon" />
         </div>
-        <p style={{ marginTop: 8, lineHeight: 1.5 }}>“{verse.text}”</p>
+        <p style={{ marginTop: 8, lineHeight: 1.5 }}>{quoted(verse.text)}</p>
       </div>
+
+      <MissedList questions={verse.questions} result={outcome.player} />
+
+      {/* What the next race is FOR. Keep challenges completed in silence and
+          the ladder sat folded on the Battle tab; the piece you are closest to
+          belongs on the screen with the rematch button. Never a count of what
+          is locked — one piece, one bar. */}
+      {nextPiece && (
+        <div className="card" style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', padding: '10px 14px' }}>
+          <span style={{ flexShrink: 0, display: 'grid', placeItems: 'center', width: 44, height: 44 }}>
+            <DecorThumb id={nextPiece.decor} size={42} />
+          </span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: 'block', fontSize: 10, color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              Next for your keep
+            </span>
+            <b style={{ fontFamily: 'var(--font-display)', fontSize: 14, display: 'block' }}>{nextPiece.name}</b>
+            <span className="faint" style={{ fontSize: 12 }}>{nextPiece.text} · {nextPiece.have}/{nextPiece.goal}</span>
+          </span>
+        </div>
+      )}
 
       <div style={{ marginTop: 18, display: 'grid', gap: 10 }}>
         <Button variant="gold" full onClick={onRematch}>🔁 Rematch {profile.name}</Button>

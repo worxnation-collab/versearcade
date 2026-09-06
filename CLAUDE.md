@@ -2203,6 +2203,50 @@ at Grand. A determined client can still fake counters and collect the 3,100 —
 that's accepted, it's written down in the migration, and **if the ladder ever
 grows past this size the counters have to become verifiable first.**
 
+## What a run says when it ends: the missed list, and the unlock toast
+
+Two things every run used to leave on the floor, both found by playing rather
+than reading, and both worth keeping in mind for any new mode:
+
+- **The misses are collected** (`features/daily/MissedList.tsx`), on the
+  drop's result, the trivia recap and the CPU result. Every wrong answer
+  already carried a teach line and then the run navigated away and the screen
+  showed a score. The list is framed as what was LEARNED — "3 things you now
+  know", the right answer, what you said, the fact — never as what was failed:
+  no ✗, no red, no "3 wrong". A perfect run renders nothing. Any screen that
+  ends a `QuizRunner` run should mount it; it reads `PlayResult.perQuestion`
+  against the run's own `questions`, so there is nothing to pass but those two.
+- **Earning a piece is announced** (`store/unlocks.ts`, `UnlockToast`). The
+  keep's fifteen challenges and the room's eighteen furnishings completed in
+  silence — race the CPU once, the Woven Rug is yours, and nothing anywhere said
+  so. The keep is TOLD (`useKeep.track()` diffs `ownedDecor`/`bestOwnedTier`
+  before and after, **against DISK, not memory**: a result screen can be the
+  first thing a session renders, and diffing an empty in-memory set re-announced
+  the rug on every race); the room is WATCHED (`checkRoom()` diffs
+  `ownedFurnishings(roomProgress())` against a device-remembered set, with the
+  skin toast's priming so a long-time player is not told about eighteen pieces at
+  once, and only once both stores it reads are loaded). Tapping opens the hall
+  (`/battle?keep=1`, frozen at mount and stripped like `/you?pray=1`) or the
+  room. It steps down under whichever other top toast is showing, and waits
+  behind `overlayHold` like `NowPlaying`. Same rule as every toast here: one
+  thing that happened, once, and what to do about it — no count of what is
+  locked.
+
+The CPU result also names the **nearest keep challenge** with its thumb
+(`nearestKeepChallenge`, closest by fraction — the room's own `nextFurnishing`
+rule), because the rematch button is on that screen and that is the reason to
+press it. And its verdict line is chosen by the MARGIN now; "So close — run it
+back" under 197 to 576 read as a form letter, and a player can see both numbers.
+
+Two smaller beats from the same afternoon: the keep shelf's locked tiles say
+what unlocks them with the count (the room's shelf already did; "🔒 Locked" on
+fourteen tiles told nobody what any of them was for), and a first placement in
+either room earns the coin and a line saying where it went. The daily chest
+takes a 950ms shake before the reveal — the roll is instant and happens under
+it, so it is not a fake wait on a network call — and a new stamp offers **"Put
+it on my card"** right there, because "its card background is yours now" with
+nowhere to tap was a reward described rather than handed over.
+
 ## The You tab opens with you in it
 
 `ProfileHero` is the top of `/you`: the full-body figure at the size the skin

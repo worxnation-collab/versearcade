@@ -61,11 +61,30 @@ runs on seasons.
 
 | Road | Window | Days | Waystations | State |
 |---|---|---|---|---|
-| **The Harvest Road** | Aug 27 – Nov 11 | 76 | 50 | live |
-| **The Lamplight Road** | Nov 11 – Nov 29 | 18 | 12 | **in the binary** |
-| **The Advent Road** | Nov 29 – Jan 7 | 39 | 30 | **in the binary** |
-| **The Wilderness Road** (Lent) | Feb 17 – Apr 4 | 46 | 40 | planned |
-| **The Emmaus Road** (Eastertide) | Apr 5 – May 24 | 50 | 40 | planned |
+| **The Harvest Road** | Aug 27 – Nov 11 2026 | 76 | 50 | live |
+| **The Lamplight Road** | Nov 11 – Nov 29 2026 | 18 | 12 | **in the binary** |
+| **The Advent Road** | Nov 29 2026 – Jan 7 2027 | 39 | 30 | **in the binary** |
+| **The Jordan Road** (Epiphany) | Jan 7 – Feb 10 2027 | 34 | 24 | **in the binary** |
+| **The Wilderness Road** (Lent) | Feb 10 – Mar 28 2027 | 46 | 32 | **in the binary** |
+| **The Emmaus Road** (Eastertide) | Mar 28 – May 16 2027 | 49 | 34 | **in the binary** |
+| **The Sower's Road** (Ordinary Time) | May 16 – Aug 27 2027 | 103 | 72 | **in the binary** |
+
+**A full year, with no day on which the road is resting** — verified by walking
+all 365 days against `activeRoad()` rather than by reading the table.
+
+**The 2027 dates are computed from that year's Easter (March 28), not shifted
+from 2026's.** Ash Wednesday is therefore Feb 10 and Pentecost May 16. Easter
+moves by up to a month between years, so extending this table past August 2027
+means recomputing from the new Easter — shifting these by 365 days would put
+Lent in the wrong place, and nothing in the app would complain.
+
+Two roads here were not in the original plan and exist because the plan left
+holes. **The Jordan Road** fills Epiphany (Jan 7 – Ash Wednesday), 34 days that
+were simply missing. **The Sower's Road** fills Ordinary Time — 103 days from
+Pentecost to the next Harvest, and by far the longest stretch the plan ignored.
+Its length is not a difficulty: at 72 waystations it runs the same ~0.7
+stations-per-day as everything else, with payouts spaced every three or four
+rather than every two, so the walk between them feels identical.
 
 Waystations ≈ 0.7 × days, so a player doing the dailies most days finishes with
 room to spare and a once-a-week player still lands a real haul. The ratio holds

@@ -150,10 +150,26 @@ hand out skins, cosmetics, boosts, freezes and mementos — not items.
 from a day seed, so adding one entry re-draws every remaining day and two app
 versions show different dailies on the same date. The bundled `DAILY_QUESTS`
 belongs to the Harvest Road now; a new road carries its own `daily`/`weekly` —
-`LAMPLIGHT_DAILY`/`LAMPLIGHT_WEEKLY` and `ADVENT_DAILY`/`ADVENT_WEEKLY` are the
-worked examples, and they are what finally spend the prepacked verbs (`pray`,
-`wash_feet`, `pray_for`, `borrow_book`, `arcade_runs`, `visit_room`,
-`give_gift`, `find_relic`, `unlock_track`, `battles_played`).
+all seven roads carry their own, and they are what finally spend the prepacked
+verbs (`pray`, `wash_feet`, `pray_for`, `borrow_book`, `arcade_runs`,
+`visit_room`, `give_gift`, `find_relic`, `unlock_track`, `battles_played`,
+`plant_flora`, `place_decor`, `furnish_room`, `give_offering`).
+
+**A weekly pool smaller than 5 × the road's weeks WILL repeat itself on screen,
+and that is a live pre-existing bug rather than something the new roads
+introduced.** `weeklyQuests` draws five per week seeded on the week, and
+weeklies persist to the end of the road — so the Harvest Road, with a 9-entry
+pool over 11 weeks, already shows the same line several times as several
+separate 600-mile quests, and `advanceQuests` advances every live quest watching
+a verb, so one action can complete two of them. Measured, not guessed: 4 weeks
+of Harvest issues 20 weeklies with 8 duplicated lines, today, in production.
+**It is deliberately NOT fixed here.** Harvest is mid-road and its pools are
+frozen — changing the draw re-deals every remaining week for everyone walking
+it, which is the exact failure the freeze rule exists to prevent. Miles rank
+nobody, so the cost is a list that reads oddly and some over-generous mileage.
+The honest fix is a bigger pool on a road that has not started, or a draw that
+skips keys still live; both need their own change, and the Sower's Road (~15
+weeks against a 10-entry pool) is where it will look worst.
 Overlapping road windows resolve to the road that **starts latest**, so a short
 holiday road inside a long one wins.
 
@@ -162,11 +178,25 @@ function of the clock against hard ISO windows, so a road can be **pre-shipped**
 in today's binary months early and switch itself on at its `start`. Do both —
 the bundled road is what an offline phone falls back to.
 
-**Three roads ship in the binary now, and the whole 2026 season is already in
-it.** Harvest (Aug 27 – Nov 11), **Lamplight** (Nov 11 – Nov 29, 12 waystations,
-the watchman / ten-virgins theme) and **Advent** (Nov 29 – Jan 7, 30
-waystations). Nobody publishes anything on those mornings and no fetch is
-involved: the clock is the switch. Four things about that set are load-bearing.
+**SEVEN roads ship in the binary, and they cover a full year with no gap.**
+`activeRoad()` returns something for every single day from 2026-08-27 to
+2027-08-27 — checked by walking all 365 of them, not reasoned about:
+
+| Road | Window | Length | Season |
+|---|---|---|---|
+| Harvest | Aug 27 – Nov 11 2026 | 50 | live |
+| Lamplight | Nov 11 – Nov 29 2026 | 12 | end of the church year |
+| Advent | Nov 29 2026 – Jan 7 2027 | 30 | Advent → Epiphany |
+| Jordan | Jan 7 – Feb 10 2027 | 24 | Epiphany |
+| Wilderness | Feb 10 – Mar 28 2027 | 32 | Lent |
+| Emmaus | Mar 28 – May 16 2027 | 34 | Eastertide |
+| Sower | May 16 – Aug 27 2027 | 72 | Ordinary Time |
+
+The 2027 dates are the real liturgical ones (Easter 2027 is Mar 28, so Ash
+Wednesday is Feb 10 and Pentecost May 16) — **if these are ever extended past
+Aug 2027, recompute them from that year's Easter rather than shifting these by
+365 days.** Nobody publishes anything on any of those mornings and no fetch is
+involved: the clock is the switch. Four things about the set are load-bearing.
 
 - **The windows are BUTT-JOINED, with no gap**, since `end` is exclusive and the
   next `start` is the same instant. `docs/BATTLE-PASS.md` argued for a rest week
@@ -190,8 +220,33 @@ involved: the clock is the switch. Four things about that set are load-bearing.
   tell as a December road drawn over a wheat field. A catalog road gets an
   emblem free, since it has to name a memento anyway.
 
-**The ten seasonal skins were generated long before the roads that hand them
-out**, which is what made pre-shipping them possible at all: `art/skins-lamplight.json`
+**Thirty seasonal skins are wired to the seven roads, and every one of them is
+in the binary.** A pass skin's render has to be, or the road can't hand out a
+figure without a submission — which is the whole point. Manifests:
+`art/skins-lamplight.json`, `-advent`, `-jordan`, `-wilderness`, `-emmaus`,
+`-sower`, plus `art/skins-reroll-2027.json` (below).
+
+**Three of the twenty generated in one sitting came back wrong, and BOTH failure
+modes matter more than the individual files.** One was a seven-figure character
+sheet — the "EXACTLY ONE FIGURE / NOT a turnaround" clause simply ignored — and
+two were torso crops with no head and no feet. The re-roll manifest is kept as
+the worked example of the house fix: put the violated instruction FIRST and in
+caps, negate *exactly what came back* ("if you are about to draw a second person,
+do not"), state the aspect ratio explicitly, and add a `refs` pointing at a
+known-good figure from the same batch, because showing works where describing
+does not. All three came back correct on one re-roll.
+
+**And `check-art.mjs` MISSED one of them, which is the more useful scar.** Its
+bust threshold was `ratio < 1.05`, set from a fifteen-skin sample; the headless
+torso measured 1.15 and was reported OK. Every genuine full figure in the app is
+1.75 or taller (43 of them, median 2.28), so the gate is now 1.5
+(`MIN_SKIN_RATIO`). The old comment claiming a 1.08 minimum is gone — it was
+stale, and a stale threshold in a checker is worse than no checker, because it
+buys false confidence. **Look at the file anyway**: the script cannot tell a
+well-drawn bust from a well-drawn figure, and it did not.
+
+The earlier ten were generated long before the roads that hand them
+out: `art/skins-lamplight.json`
 (lamplighter, watchman, wise_lamp, harvest_reaper, olive_keeper) and
 `art/skins-advent.json` (mary, joseph, shepherd_night, magus,
 bethlehem_star_bearer). They sat in `public/skins/` and `GENERATED_ART` for

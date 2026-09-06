@@ -164,6 +164,22 @@ Start your streak today. It's one verse.
 > Nothing in App Store Connect is owed for the seasons themselves. What IS owed
 > before this merges is migration `0103`, which is applied already (2026-09-06)
 > — without it every consumable on the Lamplight Road pays nothing, silently.
+>
+> **That grew to a full year: seven roads, no gaps, through August 2027** (the
+> Jordan Road at Epiphany, the Wilderness Road for Lent, the Emmaus Road for
+> Eastertide and the Sower's Road for Ordinary Time, thirty seasonal figures in
+> all). It does not change the bullet above or the character count — "two new
+> seasons" becomes "a year of seasons" and the suggested wording still fits.
+> Revised bullet, ~250 characters:
+>
+> "A YEAR OF SEASONS, ALREADY IN HERE · The Harvest Road closes on Nov 11 and
+> the Lamplight Road opens the same morning. Then Advent, Epiphany, Lent,
+> Eastertide and a long green summer — thirty figures to earn, a new road every
+> few weeks. Free, both columns, as always."
+>
+> It is worth saying plainly that this is the single biggest thing in 1.3.0 for
+> a player who already has the app: it is the difference between a tab that
+> stops in November and one that keeps going for a year.
 
 ```
 BIBLE TRIVIA, A ROUND AT A TIME

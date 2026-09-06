@@ -32,8 +32,16 @@
 import {
   ADVENT_DAILY,
   ADVENT_WEEKLY,
+  EMMAUS_DAILY,
+  EMMAUS_WEEKLY,
+  JORDAN_DAILY,
+  JORDAN_WEEKLY,
   LAMPLIGHT_DAILY,
   LAMPLIGHT_WEEKLY,
+  SOWER_DAILY,
+  SOWER_WEEKLY,
+  WILDERNESS_DAILY,
+  WILDERNESS_WEEKLY,
 } from '@/lib/season'
 import {
   DEFAULT_ROAD_LENGTH,
@@ -74,6 +82,18 @@ export const TITLES: TitleDef[] = [
   { id: 'title_starfollower', text: 'Star-Follower' },
   { id: 'title_lightbearer', text: 'Light-Bearer' },
   { id: 'title_dayspring', text: 'the Dayspring' },
+  // ── The Jordan Road ──
+  { id: 'title_jordan', text: 'of the Jordan' },
+  { id: 'title_lightnations', text: 'Light to the Nations' },
+  // ── The Wilderness Road ──
+  { id: 'title_sojourner', text: 'Sojourner' },
+  { id: 'title_atthewell', text: 'At the Well' },
+  // ── The Emmaus Road ──
+  { id: 'title_witness', text: 'the Witness' },
+  { id: 'title_breadbreaker', text: 'Bread-Breaker' },
+  // ── The Sower's Road ──
+  { id: 'title_sower', text: 'the Sower' },
+  { id: 'title_goodsoil', text: 'Good Soil' },
 ]
 
 /**
@@ -108,6 +128,17 @@ export const CONFETTI_THEMES: ConfettiDef[] = [
   { id: 'confetti_starlight', name: 'Starlight', colors: ['#ffffff', '#ffe9a8', '#cfe0ff', '#ffd23f'], shapes: ['circle'] },
   { id: 'confetti_frost', name: 'First Frost', colors: ['#e8f2ff', '#b9d4f0', '#ffffff', '#8fb6dd'] },
   { id: 'confetti_gifts', name: 'Three Gifts', colors: ['#ffd23f', '#c9950f', '#7a1f2b', '#2f5d43'] },
+  // ── The Jordan Road ──
+  { id: 'confetti_river', name: 'River Light', colors: ['#bfe3d8', '#8fc9c0', '#e8f5f0', '#5aa3a0'] },
+  // ── The Wilderness Road ──
+  { id: 'confetti_dust', name: 'Desert Dust', colors: ['#d9a86c', '#c98b5e', '#efd9b8', '#a8663f'] },
+  { id: 'confetti_violet', name: 'Violets', colors: ['#7b5ea7', '#a98cd0', '#4a3570', '#d9c9ef'] },
+  // ── The Emmaus Road ──
+  { id: 'confetti_blossom', name: 'Almond Blossom', colors: ['#ffd9e2', '#ffffff', '#f5b7c8', '#c98fa8'] },
+  { id: 'confetti_glory', name: 'Glory', colors: ['#ffd23f', '#ffffff', '#ffe9a8', '#ffb0c0'] },
+  // ── The Sower's Road ──
+  { id: 'confetti_seed', name: 'Broadcast Seed', colors: ['#c9b26a', '#8fae5a', '#e6d79a', '#5f7f3a'] },
+  { id: 'confetti_vineyard', name: 'Vineyard', colors: ['#6b3f7a', '#9c6bb0', '#7f9c5a', '#e0c8ef'] },
 ]
 
 export const DEFAULT_CONFETTI = 'confetti_arcade'
@@ -128,6 +159,14 @@ export const FLAMES: FlameDef[] = [
   // ── The Advent Road ──
   { id: 'flame_bethlehem', name: 'Bethlehem Star', glyph: '🌟', rgb: '255,235,180' },
   { id: 'flame_dayspring', name: 'Dayspring', glyph: '🌅', rgb: '255,150,110' },
+  // ── The Jordan Road ──
+  { id: 'flame_dove', name: 'Descending Dove', glyph: '🕊️', rgb: '210,235,255' },
+  // ── The Wilderness Road ──
+  { id: 'flame_noonday', name: 'Noonday', glyph: '☀️', rgb: '255,200,90' },
+  // ── The Emmaus Road ──
+  { id: 'flame_glory', name: 'Glory', glyph: '💫', rgb: '255,225,150' },
+  // ── The Sower's Road ──
+  { id: 'flame_summer', name: 'High Summer', glyph: '🔆', rgb: '255,215,110' },
 ]
 
 export const DEFAULT_FLAME = 'flame_ember'
@@ -146,6 +185,14 @@ export const CHEST_SKINS: ChestSkinDef[] = [
   // ── The Advent Road ──
   { id: 'chest_star', name: 'Star Chest', glyph: '⭐' },
   { id: 'chest_myrrh', name: 'Jar of Myrrh', glyph: '🫙' },
+  // ── The Jordan Road ──
+  { id: 'chest_waterjar', name: 'Water Jar', glyph: '🪣' },
+  // ── The Wilderness Road ──
+  { id: 'chest_sackcloth', name: 'Sackcloth Bundle', glyph: '🎒' },
+  // ── The Emmaus Road ──
+  { id: 'chest_bread', name: 'Broken Bread', glyph: '🍞' },
+  // ── The Sower's Road ──
+  { id: 'chest_seedbag', name: 'Seed Bag', glyph: '🌱' },
 ]
 
 export const DEFAULT_CHEST = 'chest_classic'
@@ -237,6 +284,10 @@ export function rewardLabel(id: string): { name: string; kindLabel: string; glyp
       memento_harvest: '🌾',
       memento_lamplight: '🪔',
       memento_advent: '🌟',
+      memento_jordan: '💧',
+      memento_wilderness: '🪨',
+      memento_emmaus: '🌿',
+      memento_sower: '🌻',
     }
     return { name: 'Road Memento', kindLabel: 'Keepsake', glyph: MEMENTOS[id] ?? '🌾' }
   }
@@ -356,6 +407,130 @@ const ADVENT_WAYS: Waystation[] = [
 ]
 
 /**
+ * The Jordan Road — Epiphany: the light shown to everybody.
+ *
+ * Twenty-four waystations over thirty-four days, Epiphany to the eve of Lent.
+ * The figures are the people who RECOGNISED something — Simeon and Anna in the
+ * temple, Nathanael under his fig tree, the steward at Cana who tasted the wine
+ * and could not account for it. John the Baptist opens it.
+ */
+const JORDAN_WAYS: Waystation[] = [
+  { n: 1, a: [{ id: 'freeze', qty: 1 }], b: [{ id: 'skin_john_baptist' }] },
+  { n: 2, a: [{ id: 'confetti_river' }], b: [{ id: 'title_jordan' }] },
+  { n: 4, a: [{ id: 'boost', qty: 1 }], b: [] },
+  { n: 6, a: [{ id: 'chest_waterjar' }], b: [{ id: 'skin_simeon' }] },
+  { n: 8, a: [{ id: 'freeze', qty: 1 }], b: [] },
+  { n: 10, a: [{ id: 'flame_dove' }], b: [{ id: 'boost', qty: 1 }], ...M(10) },
+  { n: 12, a: [{ id: 'freeze', qty: 2 }], b: [{ id: 'skin_anna_prophetess' }] },
+  { n: 14, a: [{ id: 'boost', qty: 2 }], b: [] },
+  { n: 16, a: [{ id: 'freeze', qty: 2 }], b: [{ id: 'skin_nathanael' }] },
+  { n: 18, a: [{ id: 'boost', qty: 2 }], b: [{ id: 'title_lightnations' }] },
+  { n: 20, a: [{ id: 'freeze', qty: 2 }], b: [], ...M(20) },
+  { n: 22, a: [{ id: 'boost', qty: 3 }], b: [] },
+  { n: 24, a: [{ id: 'memento_jordan' }], b: [{ id: 'skin_cana_steward' }], milestone: true },
+]
+
+/**
+ * The Wilderness Road — Lent.
+ *
+ * Thirty-two waystations over the forty-six days from Ash Wednesday to Easter.
+ * Its quest pool leans on praying and the Prayer Wall harder than any other
+ * road's, which is the one place a season is allowed to have a character: Lent's
+ * own practices are prayer and giving, and both are verbs this app already
+ * scores. NOTHING here asks a player to give anything UP — no fast to keep, no
+ * streak to break, no rung to lose. A season about repentance in an app with no
+ * losers has to be built out of things you do, not things you go without.
+ *
+ * The figures are all people the story treats gently: the woman at the well, the
+ * son coming home, the tax collector at the back of the temple, Bartimaeus on
+ * his feet, and Simon of Cyrene, who carried somebody else's load.
+ */
+const WILDERNESS_WAYS: Waystation[] = [
+  { n: 1, a: [{ id: 'freeze', qty: 1 }], b: [{ id: 'skin_samaritan_woman' }] },
+  { n: 2, a: [{ id: 'confetti_dust' }], b: [{ id: 'title_atthewell' }] },
+  { n: 4, a: [{ id: 'boost', qty: 1 }], b: [] },
+  { n: 6, a: [{ id: 'chest_sackcloth' }], b: [] },
+  { n: 8, a: [{ id: 'freeze', qty: 1 }], b: [{ id: 'skin_prodigal_return' }] },
+  { n: 10, a: [{ id: 'flame_noonday' }], b: [{ id: 'boost', qty: 1 }], ...M(10) },
+  { n: 12, a: [{ id: 'confetti_violet' }], b: [] },
+  { n: 14, a: [{ id: 'freeze', qty: 2 }], b: [{ id: 'skin_publican' }] },
+  { n: 16, a: [{ id: 'boost', qty: 2 }], b: [] },
+  { n: 18, a: [{ id: 'freeze', qty: 2 }], b: [{ id: 'title_sojourner' }] },
+  { n: 20, a: [{ id: 'boost', qty: 2 }], b: [{ id: 'skin_bartimaeus' }], ...M(20) },
+  { n: 22, a: [{ id: 'freeze', qty: 2 }], b: [] },
+  { n: 24, a: [{ id: 'boost', qty: 3 }], b: [] },
+  { n: 26, a: [{ id: 'freeze', qty: 3 }], b: [] },
+  { n: 28, a: [{ id: 'boost', qty: 3 }], b: [] },
+  { n: 30, a: [{ id: 'freeze', qty: 3 }], b: [], ...M(30) },
+  { n: 32, a: [{ id: 'memento_wilderness' }], b: [{ id: 'skin_simon_cyrene' }], milestone: true },
+]
+
+/**
+ * The Emmaus Road — Eastertide, Easter to Pentecost.
+ *
+ * Thirty-four waystations over forty-nine days. The outward-facing road: its
+ * quests are sharing, battling, visiting and giving, because Eastertide is the
+ * season of going and telling. It still never asks anybody to WIN —
+ * `battles_played`, never `battle_wins`.
+ */
+const EMMAUS_WAYS: Waystation[] = [
+  { n: 1, a: [{ id: 'freeze', qty: 1 }], b: [{ id: 'skin_mary_magdalene' }] },
+  { n: 2, a: [{ id: 'confetti_blossom' }], b: [{ id: 'title_witness' }] },
+  { n: 4, a: [{ id: 'boost', qty: 1 }], b: [] },
+  { n: 6, a: [{ id: 'chest_bread' }], b: [] },
+  { n: 8, a: [{ id: 'freeze', qty: 1 }], b: [{ id: 'skin_cleopas' }] },
+  { n: 10, a: [{ id: 'flame_glory' }], b: [{ id: 'boost', qty: 1 }], ...M(10) },
+  { n: 12, a: [{ id: 'confetti_glory' }], b: [] },
+  { n: 14, a: [{ id: 'freeze', qty: 2 }], b: [{ id: 'skin_thomas' }] },
+  { n: 16, a: [{ id: 'boost', qty: 2 }], b: [] },
+  { n: 18, a: [{ id: 'freeze', qty: 2 }], b: [{ id: 'title_breadbreaker' }] },
+  { n: 20, a: [{ id: 'boost', qty: 2 }], b: [{ id: 'skin_ethiopian_traveller' }], ...M(20) },
+  { n: 22, a: [{ id: 'freeze', qty: 2 }], b: [] },
+  { n: 24, a: [{ id: 'boost', qty: 3 }], b: [] },
+  { n: 26, a: [{ id: 'freeze', qty: 3 }], b: [] },
+  { n: 28, a: [{ id: 'boost', qty: 3 }], b: [] },
+  { n: 30, a: [{ id: 'freeze', qty: 3 }], b: [], ...M(30) },
+  { n: 32, a: [{ id: 'boost', qty: 3 }], b: [] },
+  { n: 34, a: [{ id: 'memento_emmaus' }], b: [{ id: 'skin_lydia' }], milestone: true },
+]
+
+/**
+ * The Sower's Road — Ordinary Time, Pentecost to the next Harvest.
+ *
+ * The long one: seventy-two waystations over a hundred and three days, which is
+ * the SAME ~0.7 stations-per-day the Harvest Road runs at. A summer season is
+ * not a harder season, it is a longer one, and the pacing has to say so — the
+ * payouts are simply spaced wider (every three or four rather than every two),
+ * so the walk between them feels identical.
+ *
+ * The figures are the parables: the sower, the vinedresser, the Samaritan on the
+ * road, the widow with her two coins, and Martha in her kitchen.
+ */
+const SOWER_WAYS: Waystation[] = [
+  { n: 1, a: [{ id: 'freeze', qty: 1 }], b: [{ id: 'skin_the_sower' }] },
+  { n: 3, a: [{ id: 'confetti_seed' }], b: [{ id: 'title_sower' }] },
+  { n: 6, a: [{ id: 'boost', qty: 1 }], b: [] },
+  { n: 9, a: [{ id: 'chest_seedbag' }], b: [] },
+  { n: 12, a: [{ id: 'freeze', qty: 1 }], b: [{ id: 'skin_vinedresser' }] },
+  { n: 15, a: [{ id: 'boost', qty: 2 }], b: [] },
+  { n: 18, a: [{ id: 'freeze', qty: 2 }], b: [] },
+  { n: 20, a: [{ id: 'flame_summer' }], b: [{ id: 'boost', qty: 1 }], ...M(20) },
+  { n: 24, a: [{ id: 'confetti_vineyard' }], b: [{ id: 'skin_good_samaritan' }] },
+  { n: 28, a: [{ id: 'freeze', qty: 2 }], b: [] },
+  { n: 32, a: [{ id: 'boost', qty: 2 }], b: [] },
+  { n: 36, a: [{ id: 'freeze', qty: 2 }], b: [{ id: 'title_goodsoil' }] },
+  { n: 40, a: [{ id: 'boost', qty: 3 }], b: [{ id: 'skin_widow_mite' }], ...M(40) },
+  { n: 44, a: [{ id: 'freeze', qty: 3 }], b: [] },
+  { n: 48, a: [{ id: 'boost', qty: 3 }], b: [] },
+  { n: 52, a: [{ id: 'freeze', qty: 3 }], b: [] },
+  { n: 56, a: [{ id: 'boost', qty: 3 }], b: [] },
+  { n: 60, a: [{ id: 'freeze', qty: 3 }], b: [], ...M(60) },
+  { n: 64, a: [{ id: 'boost', qty: 3 }], b: [] },
+  { n: 68, a: [{ id: 'freeze', qty: 3 }], b: [] },
+  { n: 72, a: [{ id: 'memento_sower' }], b: [{ id: 'skin_martha' }], milestone: true },
+]
+
+/**
  * Every road this binary ships with, in order.
  *
  * ALL THREE ARE PRE-SHIPPED AND SWITCH THEMSELVES ON. `activeRoad()` is a pure
@@ -415,6 +590,58 @@ export const ROADS: RoadDef[] = [
     memento: 'memento_advent',
     daily: ADVENT_DAILY,
     weekly: ADVENT_WEEKLY,
+  },
+  {
+    id: 'jordan',
+    name: 'The Jordan Road',
+    blurb: 'A light shown to everybody, and the people who recognised it. Walk down to the water.',
+    start: '2027-01-07T00:00:00Z',
+    end: '2027-02-10T00:00:00Z',
+    waystations: JORDAN_WAYS,
+    length: 24,
+    scene: 'jordan',
+    memento: 'memento_jordan',
+    daily: JORDAN_DAILY,
+    weekly: JORDAN_WEEKLY,
+  },
+  {
+    id: 'wilderness',
+    name: 'The Wilderness Road',
+    blurb: 'Forty days of dry country. Nothing to give up — only things to do, a day at a time.',
+    start: '2027-02-10T00:00:00Z',
+    end: '2027-03-28T00:00:00Z',
+    waystations: WILDERNESS_WAYS,
+    length: 32,
+    scene: 'wilderness',
+    memento: 'memento_wilderness',
+    daily: WILDERNESS_DAILY,
+    weekly: WILDERNESS_WEEKLY,
+  },
+  {
+    id: 'emmaus',
+    name: 'The Emmaus Road',
+    blurb: 'Seven miles out of the city with somebody you don’t recognise yet. Go and tell it.',
+    start: '2027-03-28T00:00:00Z',
+    end: '2027-05-16T00:00:00Z',
+    waystations: EMMAUS_WAYS,
+    length: 34,
+    scene: 'emmaus',
+    memento: 'memento_emmaus',
+    daily: EMMAUS_DAILY,
+    weekly: EMMAUS_WEEKLY,
+  },
+  {
+    id: 'sower',
+    name: 'The Sower’s Road',
+    blurb: 'A long green summer of parables. Scatter it wide and see what comes up.',
+    start: '2027-05-16T00:00:00Z',
+    end: '2027-08-27T00:00:00Z',
+    waystations: SOWER_WAYS,
+    length: 72,
+    scene: 'sower',
+    memento: 'memento_sower',
+    daily: SOWER_DAILY,
+    weekly: SOWER_WEEKLY,
   },
 ]
 

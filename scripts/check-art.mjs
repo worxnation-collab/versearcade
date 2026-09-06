@@ -27,13 +27,23 @@
 // app and turns into a floating torso the moment it stands somewhere. That is
 // exactly the kind of thing that ships.
 //
-// The signal is the ink's aspect ratio. Measured across all fifteen skins that
-// shipped, the narrowest full figure is 1.08 (Michael, whose wings are as wide
-// as he is tall) and most sit between 1.5 and 2.7; a tight bust is roughly
-// square or wider. So under 1.05 is reported — as CHECK, not BAD, because a
-// wide winged subject can legitimately approach it. It is a nudge to look, not
-// a verdict: nothing here can tell a well-drawn bust from a well-drawn figure,
-// so open the file.
+// The signal is the ink's aspect ratio. Re-measured across all 43 skins now in
+// the app, the narrowest genuine full figure is 1.75 (Nathanael) and the median
+// is 2.28; a tight bust is roughly square, and a torso crop lands near 1.1.
+//
+// **The threshold was 1.05 and that was too generous to be worth much.** It was
+// set from a fifteen-skin sample whose stated minimum (1.08, Michael's wings)
+// no longer holds — nothing in the app is under 1.75. A Lent re-roll came back
+// as a headless, footless torso at ratio 1.15 and this script reported it OK;
+// it was caught by opening the file, which is exactly the manual step the
+// script exists to make unnecessary. 1.5 sits comfortably under the real
+// minimum with room for a wide winged subject and still catches anything
+// torso-shaped.
+//
+// Still CHECK rather than BAD: it is a nudge to look, not a verdict, because
+// nothing here can tell a well-drawn bust from a well-drawn figure. Open the
+// file.
+const MIN_SKIN_RATIO = 1.5
 
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { PNG } from 'pngjs'
@@ -122,7 +132,7 @@ for (const f of files) {
   const inkH = bot - top + 1
   const ratio = inkW > 0 && inkH > 0 ? inkH / inkW : 0
   const isSkin = kinds[id] === 'skin'
-  const looksCropped = isSkin && ratio > 0 && ratio < 1.05
+  const looksCropped = isSkin && ratio > 0 && ratio < MIN_SKIN_RATIO
 
   let tag
   if (isScene) {

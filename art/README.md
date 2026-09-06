@@ -24,6 +24,23 @@ must never be written into a tracked file.
 | `skins-patron.json` | Cephas, the founding-patron skin — Peter with the keys, standing on the bedrock | `public/skins/cephas.png` |
 | `prayer-wall.json` | the Prayer Wall — bare weathered limestone with dark seams, prompted empty so the notes can be drawn into it | `public/keep/prayer-wall.jpg` |
 | `skins-refit.json` | re-renders of pre-pipeline skins that shipped as busts (Eden cut at the hem, Elijah at the knees) — full length, head to feet | `public/skins/eden.png`, `public/skins/elijah.png` |
+| `skins-lamplight.json` | the Lamplight Road's five, and its painting | `public/skins/*.png`, `public/road/lamplight.jpg` |
+| `skins-advent.json` | the Advent Road's five (the travellers and the watchers — never the child) | `public/skins/*.png` |
+| `skins-jordan.json` | the Jordan Road (Epiphany): five who recognised something, and the river | `public/skins/*.png`, `public/road/jordan.jpg` |
+| `skins-wilderness.json` | the Wilderness Road (Lent): five the story treats gently, and the desert | `public/skins/*.png`, `public/road/wilderness.jpg` |
+| `skins-emmaus.json` | the Emmaus Road (Eastertide): five who went and told it, and the spring road | `public/skins/*.png`, `public/road/emmaus.jpg` |
+| `skins-sower.json` | the Sower's Road (Ordinary Time): five parables, and the summer farmland | `public/skins/*.png`, `public/road/sower.jpg` |
+| `skins-reroll-2027.json` | **the worked example of a re-roll.** Three of the twenty 2027 figures came back wrong in one sitting — one as a seven-figure character sheet, two as headless torsos — and this is the hardened prompt that fixed all three first try | `public/skins/{anna_prophetess,publican,prodigal_return}.png` |
+
+**When a figure comes back wrong, harden against exactly what came back.** The
+re-roll manifest above is the pattern, and it is four moves: put the violated
+instruction FIRST and in caps; negate the specific thing you got ("if you are
+about to draw a second person anywhere in this image, do not"); state the aspect
+ratio explicitly ("a tall upright portrait rectangle, roughly twice as tall as
+it is wide — NOT square, NOT a wide landscape image"); and add a `refs` pointing
+at a good figure from the same batch, because showing the framing works where
+describing it does not. Do not simply re-run the same prompt hoping for a better
+roll.
 
 **Check what came back**, every time:
 

@@ -413,6 +413,125 @@ export const ADVENT_WEEKLY: QuestDef[] = [
   { key: 'aw_study', verb: 'study_runs', goal: 10, text: 'Finish 10 study runs' },
 ]
 
+// ── The Jordan Road's pools (Epiphany) ──────────────────────────────────────
+// Frozen at 2027-01-07, like every road's. See the note on LAMPLIGHT_DAILY.
+export const JORDAN_DAILY: QuestDef[] = [
+  { key: 'j_play', verb: 'play_daily', goal: 1, text: 'Play today’s drop' },
+  { key: 'j_correct', verb: 'answer_correct', goal: 12, text: 'Answer 12 questions correctly' },
+  { key: 'j_read', verb: 'read_chapters', goal: 1, text: 'Read a chapter in your Bible' },
+  { key: 'j_wash', verb: 'wash_feet', goal: 3, text: 'Wash 3 players’ feet' },
+  { key: 'j_study', verb: 'study_runs', goal: 2, text: 'Finish 2 study runs' },
+  { key: 'j_chest', verb: 'open_chest', goal: 1, text: 'Open the Daily Chest' },
+  { key: 'j_borrow', verb: 'borrow_book', goal: 1, text: 'Borrow a book from Tabitha' },
+  { key: 'j_save', verb: 'save_verses', goal: 2, text: 'Keep 2 verses' },
+  { key: 'j_pray', verb: 'pray', goal: 1, text: 'Say a prayer in your Upper Room' },
+  { key: 'j_share', verb: 'share_daily', goal: 1, text: 'Share today’s verse' },
+]
+
+export const JORDAN_WEEKLY: QuestDef[] = [
+  { key: 'jw_correct', verb: 'answer_correct', goal: 60, text: 'Answer 60 questions correctly' },
+  { key: 'jw_read', verb: 'read_chapters', goal: 7, text: 'Read 7 chapters' },
+  { key: 'jw_wash', verb: 'wash_feet', goal: 15, text: 'Wash 15 players’ feet' },
+  { key: 'jw_prayfor', verb: 'pray_for', goal: 7, text: 'Hold a candle for 7 notes on the Prayer Wall' },
+  { key: 'jw_play', verb: 'play_daily', goal: 5, text: 'Play the drop on 5 days' },
+  { key: 'jw_study', verb: 'study_runs', goal: 10, text: 'Finish 10 study runs' },
+  { key: 'jw_relic', verb: 'find_relic', goal: 4, text: 'Find 4 relics by studying' },
+  { key: 'jw_save', verb: 'save_verses', goal: 8, text: 'Keep 8 verses' },
+  { key: 'jw_battles', verb: 'battles_played', goal: 4, text: 'Play 4 battles, won or lost' },
+]
+
+// ── The Wilderness Road's pools (Lent) ──────────────────────────────────────
+// Leans on praying and the Prayer Wall harder than any other road, which is the
+// one place a season is allowed to have a character: Lent's own practices are
+// prayer and giving, and both are verbs this app already scores. It asks for
+// nothing a player cannot do alone.
+export const WILDERNESS_DAILY: QuestDef[] = [
+  { key: 'w_play', verb: 'play_daily', goal: 1, text: 'Play today’s drop' },
+  { key: 'w_pray', verb: 'pray', goal: 2, text: 'Say 2 prayers in your Upper Room' },
+  { key: 'w_prayfor', verb: 'pray_for', goal: 2, text: 'Hold a candle for 2 notes on the Prayer Wall' },
+  { key: 'w_read', verb: 'read_chapters', goal: 2, text: 'Read 2 chapters in your Bible' },
+  { key: 'w_correct', verb: 'answer_correct', goal: 12, text: 'Answer 12 questions correctly' },
+  { key: 'w_study', verb: 'study_runs', goal: 2, text: 'Finish 2 study runs' },
+  { key: 'w_donate', verb: 'donate', goal: 1, text: 'Give a relic to your church' },
+  { key: 'w_chest', verb: 'open_chest', goal: 1, text: 'Open the Daily Chest' },
+  { key: 'w_wash', verb: 'wash_feet', goal: 3, text: 'Wash 3 players’ feet' },
+  { key: 'w_save', verb: 'save_verses', goal: 2, text: 'Keep 2 verses' },
+]
+
+export const WILDERNESS_WEEKLY: QuestDef[] = [
+  { key: 'ww_pray', verb: 'pray', goal: 14, text: 'Say 14 prayers' },
+  { key: 'ww_prayfor', verb: 'pray_for', goal: 12, text: 'Hold a candle for 12 notes on the Prayer Wall' },
+  { key: 'ww_read', verb: 'read_chapters', goal: 10, text: 'Read 10 chapters' },
+  { key: 'ww_correct', verb: 'answer_correct', goal: 70, text: 'Answer 70 questions correctly' },
+  { key: 'ww_donate', verb: 'donate', goal: 3, text: 'Give 3 relics to your church' },
+  { key: 'ww_gift', verb: 'give_gift', goal: 2, text: 'Give 2 relics to other players' },
+  { key: 'ww_wash', verb: 'wash_feet', goal: 20, text: 'Wash 20 players’ feet' },
+  { key: 'ww_play', verb: 'play_daily', goal: 6, text: 'Play the drop on 6 days' },
+  { key: 'ww_study', verb: 'study_runs', goal: 12, text: 'Finish 12 study runs' },
+]
+
+// ── The Emmaus Road's pools (Eastertide) ────────────────────────────────────
+// The outward-facing road: sharing, battling, visiting, giving. Eastertide is
+// the season of going and telling, and every verb below is one that involves
+// somebody else — while still never asking a player to BEAT anybody
+// (`battles_played`, not `battle_wins`).
+export const EMMAUS_DAILY: QuestDef[] = [
+  { key: 'e_play', verb: 'play_daily', goal: 1, text: 'Play today’s drop' },
+  { key: 'e_share', verb: 'share_daily', goal: 1, text: 'Share today’s verse' },
+  { key: 'e_battle', verb: 'battles_played', goal: 2, text: 'Play 2 battles, won or lose' },
+  { key: 'e_correct', verb: 'answer_correct', goal: 14, text: 'Answer 14 questions correctly' },
+  { key: 'e_visit', verb: 'visit_room', goal: 2, text: 'Visit 2 players’ Upper Rooms' },
+  { key: 'e_wash', verb: 'wash_feet', goal: 3, text: 'Wash 3 players’ feet' },
+  { key: 'e_study', verb: 'study_runs', goal: 2, text: 'Finish 2 study runs' },
+  { key: 'e_read', verb: 'read_chapters', goal: 1, text: 'Read a chapter in your Bible' },
+  { key: 'e_arcade', verb: 'arcade_runs', goal: 3, text: 'Play 3 rounds in the arcade' },
+  { key: 'e_perfect', verb: 'perfect_run', goal: 1, text: 'Finish a run with no misses' },
+]
+
+export const EMMAUS_WEEKLY: QuestDef[] = [
+  { key: 'ew_share', verb: 'share_daily', goal: 4, text: 'Share the daily verse 4 times' },
+  { key: 'ew_battles', verb: 'battles_played', goal: 8, text: 'Play 8 battles, won or lost' },
+  { key: 'ew_visit', verb: 'visit_room', goal: 5, text: 'Visit 5 players’ Upper Rooms' },
+  { key: 'ew_gift', verb: 'give_gift', goal: 2, text: 'Give 2 relics to other players' },
+  { key: 'ew_correct', verb: 'answer_correct', goal: 70, text: 'Answer 70 questions correctly' },
+  { key: 'ew_wash', verb: 'wash_feet', goal: 20, text: 'Wash 20 players’ feet' },
+  { key: 'ew_read', verb: 'read_chapters', goal: 7, text: 'Read 7 chapters' },
+  { key: 'ew_play', verb: 'play_daily', goal: 6, text: 'Play the drop on 6 days' },
+  { key: 'ew_arcade', verb: 'arcade_runs', goal: 12, text: 'Play 12 rounds in the arcade' },
+]
+
+// ── The Sower's Road pools (Ordinary Time) ──────────────────────────────────
+// The long one: 103 days. Goals sit slightly HIGHER than the other roads' and
+// the road is proportionally longer, so the pace is identical — a summer season
+// is not a harder season, it is a longer one.
+export const SOWER_DAILY: QuestDef[] = [
+  { key: 's_play', verb: 'play_daily', goal: 1, text: 'Play today’s drop' },
+  { key: 's_correct', verb: 'answer_correct', goal: 14, text: 'Answer 14 questions correctly' },
+  { key: 's_read', verb: 'read_chapters', goal: 2, text: 'Read 2 chapters in your Bible' },
+  { key: 's_study', verb: 'study_runs', goal: 3, text: 'Finish 3 study runs' },
+  { key: 's_plant', verb: 'plant_flora', goal: 1, text: 'Plant something in your churchyard' },
+  { key: 's_room', verb: 'furnish_room', goal: 1, text: 'Set something in your Upper Room' },
+  { key: 's_decor', verb: 'place_decor', goal: 1, text: 'Put something out in the keep’s hall' },
+  { key: 's_chest', verb: 'open_chest', goal: 1, text: 'Open the Daily Chest' },
+  { key: 's_arcade', verb: 'arcade_runs', goal: 3, text: 'Play 3 rounds in the arcade' },
+  { key: 's_pray', verb: 'pray', goal: 1, text: 'Say a prayer in your Upper Room' },
+  { key: 's_relic', verb: 'find_relic', goal: 1, text: 'Find a relic by studying' },
+  { key: 's_combo', verb: 'combo', goal: 5, text: 'Hit a 5× combo' },
+]
+
+export const SOWER_WEEKLY: QuestDef[] = [
+  { key: 'sw_correct', verb: 'answer_correct', goal: 80, text: 'Answer 80 questions correctly' },
+  { key: 'sw_read', verb: 'read_chapters', goal: 12, text: 'Read 12 chapters' },
+  { key: 'sw_study', verb: 'study_runs', goal: 14, text: 'Finish 14 study runs' },
+  { key: 'sw_donate', verb: 'donate', goal: 3, text: 'Give 3 relics to your church' },
+  { key: 'sw_relic', verb: 'find_relic', goal: 6, text: 'Find 6 relics by studying' },
+  { key: 'sw_plant', verb: 'plant_flora', goal: 3, text: 'Plant 3 things in your churchyard' },
+  { key: 'sw_play', verb: 'play_daily', goal: 6, text: 'Play the drop on 6 days' },
+  { key: 'sw_offering', verb: 'give_offering', goal: 1, text: 'Offer a Grand piece to your church' },
+  { key: 'sw_track', verb: 'unlock_track', goal: 1, text: 'Walk into a room you haven’t heard yet' },
+  { key: 'sw_wash', verb: 'wash_feet', goal: 20, text: 'Wash 20 players’ feet' },
+]
+
 export const BUNDLED_POOLS = (): QuestPools => ({ daily: DAILY_QUESTS, weekly: WEEKLY_QUESTS })
 
 /** The three dailies for a given road day. Identical for every player. */

@@ -562,6 +562,143 @@ export const FULL_SKINS: SkinDef[] = [
     source: 'pass',
     blurb: 'Lantern raised, a hand shading the eyes — following the light west.',
   },
+  // ——— The Jordan Road (Jan – Feb 2027) ———
+  // Epiphany: the people who RECOGNISED something. Not one of them does
+  // anything except see clearly and say so, which is as close to this app's own
+  // subject as a set of figures gets.
+  {
+    id: 'john_baptist',
+    name: 'John the Baptist',
+    source: 'pass',
+    blurb: 'Camel hair and a leather belt — “make straight the way.”',
+  },
+  {
+    id: 'simeon',
+    name: 'Simeon',
+    source: 'pass',
+    blurb: 'Who waited in the temple his whole life and knew it the moment he saw it.',
+  },
+  {
+    id: 'anna_prophetess',
+    name: 'Anna',
+    source: 'pass',
+    blurb: 'The prophetess who never left the temple, and then told everybody.',
+  },
+  {
+    id: 'nathanael',
+    name: 'Nathanael',
+    source: 'pass',
+    blurb: '“Can anything good come out of Nazareth?” — he asked, then came and saw.',
+  },
+  {
+    id: 'cana_steward',
+    name: 'The Steward of Cana',
+    source: 'pass',
+    blurb: 'Who tasted the good wine last and could never account for it.',
+  },
+  // ——— The Wilderness Road (Feb – Mar 2027) ———
+  // Lent. Every figure here is one the story treats GENTLY — the woman who came
+  // for water at noon, the son seen while still a long way off, the man at the
+  // back of the temple, Bartimaeus on his feet. A season about repentance in an
+  // app with no losers is built out of people being met, not people being
+  // judged, and the road asks a player to give nothing up.
+  {
+    id: 'samaritan_woman',
+    name: 'The Woman at the Well',
+    source: 'pass',
+    blurb: 'Who came for water in the heat of the day and left her jar behind.',
+  },
+  {
+    id: 'prodigal_return',
+    name: 'The Son Come Home',
+    source: 'pass',
+    blurb: 'Barefoot on the last mile — and seen while he was yet a great way off.',
+  },
+  {
+    id: 'publican',
+    name: 'The Tax Collector',
+    source: 'pass',
+    blurb: 'Who stood at the back and would not lift his eyes, and went home justified.',
+  },
+  {
+    id: 'bartimaeus',
+    name: 'Bartimaeus',
+    source: 'pass',
+    blurb: 'Who threw off his cloak, stood up, and saw.',
+  },
+  {
+    id: 'simon_cyrene',
+    name: 'Simon of Cyrene',
+    source: 'pass',
+    blurb: 'Coming in from the country, and made to carry somebody else’s load.',
+  },
+  // ——— The Emmaus Road (Mar – May 2027) ———
+  // Eastertide: the ones who went and told it. Two of the five are from Acts
+  // rather than the gospels, because the season's own readings are.
+  {
+    id: 'mary_magdalene',
+    name: 'Mary Magdalene',
+    source: 'pass',
+    blurb: 'First at the tomb while it was still dark, and the first to be sent.',
+  },
+  {
+    id: 'cleopas',
+    name: 'Cleopas',
+    source: 'pass',
+    blurb: 'Seven miles of talking it over — and he knew him in the breaking of the bread.',
+  },
+  {
+    id: 'thomas',
+    name: 'Thomas',
+    source: 'pass',
+    blurb: 'Who asked for more than he had been given, and was given it.',
+  },
+  {
+    id: 'ethiopian_traveller',
+    name: 'The Ethiopian',
+    source: 'pass',
+    blurb: 'Reading Isaiah in his chariot — “how can I, unless someone guides me?”',
+  },
+  {
+    id: 'lydia',
+    name: 'Lydia',
+    source: 'pass',
+    blurb: 'The seller of purple, whose house became the first church in Europe.',
+  },
+  // ——— The Sower's Road (May – Aug 2027) ———
+  // Ordinary Time, which is the long green season the parables are read in. So
+  // the figures are the parables: people doing ordinary work, which is the only
+  // set here where nobody is present at a miracle.
+  {
+    id: 'the_sower',
+    name: 'The Sower',
+    source: 'pass',
+    blurb: 'Who went out to sow, and scattered it everywhere — path, rocks and good soil alike.',
+  },
+  {
+    id: 'vinedresser',
+    name: 'The Vinedresser',
+    source: 'pass',
+    blurb: '“Let it alone this year also, till I dig about it.”',
+  },
+  {
+    id: 'good_samaritan',
+    name: 'The Samaritan',
+    source: 'pass',
+    blurb: 'The one who stopped — oil, a rope, and his own money.',
+  },
+  {
+    id: 'widow_mite',
+    name: 'The Widow',
+    source: 'pass',
+    blurb: 'Two small coins, and more than all of them put together.',
+  },
+  {
+    id: 'martha',
+    name: 'Martha',
+    source: 'pass',
+    blurb: 'Who opened her house to everybody, and did the cooking.',
+  },
   // ——— The founding patron ———
   // The app's one product. It was Jonah's whale and is now Cephas, and the
   // reason for the swap is that the whale said nothing about what the money

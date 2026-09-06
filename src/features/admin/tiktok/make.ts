@@ -14,6 +14,7 @@ import { scoreQuestion } from '@/lib/progress'
 import { pickStoryVoice, secondVoiceFor, gradeFor } from '@/data/tiktokVoice'
 import { buildCpuPlan, CPU_PROFILES, type CpuLevel } from '@/features/arena/cpu'
 import type { QuizStep } from '@/lib/tiktokRender'
+import { challengeIndex } from '@/lib/tiktokChallenge'
 import {
   READERS, TELLERS, ROOMS, skinPath, loadScene,
   seedFor, autoPick, autoCast, challengeCast, spokenReference, call, fetchCopy, fetchStory, bedFor, backdropFor, tierFor,
@@ -222,10 +223,9 @@ export async function makeQuiz(d: string, o: QuizOptions, progress: Progress): P
 // with different faces (`challengeCast`), because the second is a different
 // post rather than the first one again.
 
-/** Which of the day's five each slot asks: two apart, so the two slots never share one. */
-export function challengeIndex(date: string, slot: 1 | 2, n: number): number {
-  return (hash(`${date}:challenge`) + (slot - 1) * 2) % Math.max(1, n)
-}
+// `challengeIndex` lives in lib/tiktokChallenge.ts (pure, so the comment
+// replier can bundle it without React); re-exported for the forms.
+export { challengeIndex }
 
 export interface ChallengeOptions {
   slot?: 1 | 2

@@ -527,6 +527,17 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   runner — including the per-network ASK (`callToAction`): TikTok and
   Snapchat captions are not tappable, so those ask for the follow rather
   than carrying a URL; a challenge asks for the comment first.
+- **The account answers comments, and Grok writes the answers.** The
+  `replies` action (run every two hours by `tiktok-replies.yml` →
+  `scripts/tiktok-replies.mjs`, and by the hub's Replies card) reads the
+  comments under the two challenge posts through Ayrshare, replies in one
+  line to each ANSWER-shaped comment — whether they got it, the right answer,
+  the teach line — and parks every word at `days/<date>/replies-<kind>.json`,
+  which is also its memory (once per comment, once per person per post).
+  Only answers, never a reply to a reply, never an argument, capped per run.
+  xAI key: `XAI_API_KEY` or Vault `tiktok_xai_key()` (0105); no key ⇒ a
+  clear error and nothing posted. `lib/tiktokChallenge.ts` is the pure
+  question picker both the renderer and the replier use.
 - **`analytics` is the operator's only scoreboard.** It reads Ayrshare's
   per-post numbers for one (date, kind), caches six hours, and the hub totals
   a week per network and per kind. Numbers about posts on other people's
@@ -1401,7 +1412,13 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0104` (`tiktok_x_api_key()` / `tiktok_x_api_secret()` — the
+The latest is `0105` (`tiktok_xai_key()` — the xAI/Grok key the TikTok
+engine's comment replier drafts with, read out of Vault, service_role only),
+APPLIED on 2026-09-06 and verified: the ACL reads `{postgres,service_role}`.
+The secret is written with `vault.create_secret` once the operator supplies
+it; until then the function returns null and `replies` fails closed.
+
+Before it, `0104` (`tiktok_x_api_key()` / `tiktok_x_api_secret()` — the
 account's own X developer app keys for the `tiktok-gen` Edge Function, read out
 of Vault, service_role only; Ayrshare requires them as headers on every X-bound
 request since 2026-03-31), APPLIED on 2026-09-06 and verified: both ACLs read
@@ -1628,7 +1645,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0105` (0104 is taken by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0106` (0105 is taken by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

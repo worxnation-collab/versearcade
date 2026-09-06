@@ -19,7 +19,8 @@ import { lazy, Suspense, useEffect, useState } from 'react'
 import { todayLocalDate } from '@/lib/date'
 import { getVerseForDate } from '@/data/bible/questions'
 import { Button } from '@/components/Button'
-import { addDays, call, fetchCopy, CopyBlocks, MadeCard, type Copy, type Made, type Kind, type Platform } from './tiktok/shared'
+import { addDays, call, fetchCopy, publicUrl, CopyBlocks, MadeCard, type Copy, type Made, type Kind, type Platform } from './tiktok/shared'
+import { challengeQuestion } from '@/lib/tiktokChallenge'
 
 const VersePost = lazy(() => import('./tiktok/VersePost'))
 const StoryPost = lazy(() => import('./tiktok/StoryPost'))
@@ -197,6 +198,77 @@ function WeekNumbers() {
   )
 }
 
+// What the account has said back. The challenge posts ask for a comment,
+// and the replier (the function's `replies` action, run every couple of
+// hours by .github/workflows/tiktok-replies.yml) answers each answer-shaped
+// one in one line — whether they got it, the right answer, the teach line.
+// This card is every word it has said in the last three days, read straight
+// out of the bucket, and a button to run it now. Nothing here names a
+// player of the app; these are strangers' comments on other people's
+// networks, and the operator should be able to read what was said to them.
+type Reply = { platform: string; username?: string; comment: string; reply: string; at: string; status: string; error?: string | null }
+function Replies() {
+  const [rows, setRows] = useState<Array<Reply & { date: string; kind: Kind }>>([])
+  const [busy, setBusy] = useState<string | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  const [note, setNote] = useState<string | null>(null)
+  const days = () => [1, 2, 3].map((i) => addDays(todayLocalDate(), -i))
+  const load = async () => {
+    const out: Array<Reply & { date: string; kind: Kind }> = []
+    for (const date of days()) {
+      for (const kind of ['challenge', 'challenge2'] as Kind[]) {
+        try {
+          const r = await fetch(publicUrl(`days/${date}/replies-${kind}.json`) + '?v=' + Date.now(), { cache: 'no-store' })
+          if (!r.ok) continue
+          const j = (await r.json()) as { replies?: Reply[] }
+          for (const x of j.replies ?? []) out.push({ ...x, date, kind })
+        } catch { /* no record */ }
+      }
+    }
+    out.sort((a, b) => (a.at < b.at ? 1 : -1))
+    setRows(out)
+  }
+  useEffect(() => { void load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  const run = async (dryRun: boolean) => {
+    if (busy) return
+    setErr(null); setNote(null)
+    let added = 0, skipped = 0
+    try {
+      for (const date of days().slice(0, 2)) {
+        for (const [kind, slot] of [['challenge', 1], ['challenge2', 2]] as Array<[Kind, 1 | 2]>) {
+          setBusy(`${date} · ${kind}`)
+          const q = challengeQuestion(date, slot)
+          const r = await call<{ added?: Reply[]; skipped?: unknown[] }>('replies', { date, kind, dryRun, ...q })
+          added += r.added?.length ?? 0
+          skipped += r.skipped?.length ?? 0
+          if (dryRun) for (const x of r.added ?? []) setRows((xs) => [{ ...x, date, kind }, ...xs])
+        }
+      }
+      setNote(`${added} ${dryRun ? 'drafted' : 'replied'}, ${skipped} left alone`)
+      if (!dryRun) await load()
+    } catch (e) { setErr(String((e as Error).message || e)) } finally { setBusy(null) }
+  }
+  return (
+    <div className="card" style={{ display: 'grid', gap: 8, marginTop: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <b style={{ fontFamily: 'var(--font-display)', fontSize: 16 }}>💬 Replies</b>
+        <span className="faint" style={{ fontSize: 11 }}>{busy ? `reading ${busy}…` : note ?? 'what the account said back to answers under the challenges, last three days'}</span>
+        <button className="pill" style={{ fontSize: 11, marginLeft: 'auto' }} disabled={!!busy} onClick={() => run(true)}>Draft only</button>
+        <button className="pill" style={{ fontSize: 11 }} disabled={!!busy} onClick={() => run(false)}>💬 Reply now</button>
+      </div>
+      {err && <p style={{ color: 'var(--coral)', fontSize: 12, margin: 0 }}>{err}</p>}
+      {rows.length === 0 && !busy && <p className="faint" style={{ fontSize: 12, margin: 0 }}>Nothing replied yet. The cron runs every two hours; "Reply now" runs it here.</p>}
+      {rows.slice(0, 40).map((r, i) => (
+        <div key={`${r.platform}-${r.at}-${i}`} style={{ fontSize: 12, lineHeight: 1.4, background: 'var(--card)', borderRadius: 10, padding: '6px 10px' }}>
+          <div className="faint" style={{ fontSize: 11 }}>{r.platform} · @{r.username || 'someone'} · {r.date} {r.kind === 'challenge2' ? '2nd' : '1st'} · {r.status}{r.error ? ` — ${r.error}` : ''}</div>
+          <div>“{r.comment}”</div>
+          <div style={{ color: 'var(--gold)' }}>↳ {r.reply}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // Which networks Ayrshare has connected, and how much of the month's quota is
 // used. A failed lookup renders nothing rather than a warning: the posting
 // buttons say what is wrong at the moment it matters.
@@ -239,6 +311,7 @@ export default function TikTokPanel() {
         <TodaysWords />
         <OwnClip />
         <WeekNumbers />
+        <Replies />
         <SocialStatus />
       </div>
     )

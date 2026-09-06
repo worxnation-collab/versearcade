@@ -459,6 +459,42 @@ built to be watched to the end and answered in the comments.
 - **The caption teases the question and never answers it.** The `copy`
   action takes the question for these kinds and the prompt says so twice.
 
+## The comment replier: the account answers
+
+The challenges ask people to comment A, B, C or D, and an account that
+answers gets shown more. `.github/workflows/tiktok-replies.yml` runs
+`scripts/tiktok-replies.mjs` every two hours: for today's and yesterday's two
+challenge posts it asks the function's `replies` action to read the comments
+on each network's copy through Ayrshare (`GET /comments/:id`), have **Grok**
+draft a one-line reply to each ANSWER-shaped comment, and post it as a reply
+to that comment (`POST /comments/reply/:commentId`, `searchPlatformId`, and
+TikTok's `videoId`). The hub's **Replies** card is every word it has said in
+the last three days, with **Draft only** and **Reply now** buttons.
+
+Four rules keep it a reply rather than a bot:
+
+- **Only answers.** A comment is screened by a cheap rule first (a lone
+  letter, a number 1-4, a word from an option), then Grok decides whether it
+  is an answer at all; a question, praise, an opinion or an argument is left
+  alone, and it never replies to a reply or to its own comments.
+- **Once per person per post, once per comment ever.** The record at
+  `days/<date>/replies-<kind>.json` is the memory, so a run two hours later
+  reaches only new comments. A dry run records nothing.
+- **Warm, one sentence, no emoji, no link, and a wrong answer gets the fact,
+  not a verdict** — the question's own teach line, in the account's own
+  voice. The prompt forbids ranking, comparing and mentioning an AI.
+- **Capped per run** (20 by default), and everything said is parked so the
+  operator can read every reply the account has ever made.
+
+The function has no verse data, so the caller hands it the question,
+options, answer and teach line from `lib/tiktokChallenge.ts` — the same pure
+function the renderer used to pick the question, bundled alone for Node.
+Grok is the one thing here that is not Gemini, because the operator holds
+xAI credits: `XAI_API_KEY` as a function secret or Vault through
+`tiktok_xai_key()` (`0105`), model `XAI_MODEL` (default
+`grok-4-fast-non-reasoning`). With no key the action fails closed with a
+clear error and nothing is posted.
+
 ## Your own clip
 
 The one post a painted figure cannot make: the operator, on camera, once a

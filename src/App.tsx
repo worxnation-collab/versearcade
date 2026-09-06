@@ -57,6 +57,7 @@ import { ChurchResume } from './features/church/ChurchResume'
 import { StudyDropToast } from './features/study/StudyDropToast'
 import { WaystationToast } from './features/season/WaystationToast'
 import { SkinUnlockToast } from './features/profile/SkinUnlockToast'
+import { UnlockToast } from './components/UnlockToast'
 import PilgrimageScreen from './features/season/PilgrimageScreen'
 import { MusicDirector } from './juice/MusicDirector'
 import { NowPlaying } from './components/NowPlaying'
@@ -260,6 +261,8 @@ export default function App() {
     {/* Mounted app-wide: the winner of an async battle isn't on any
         particular screen when their battle completes. See store/skinUnlocks. */}
     <SkinUnlockToast />
+    {/* And a piece for one of the two rooms — see store/unlocks.ts. */}
+    <UnlockToast />
     {/* The soundtrack follows the route rather than any one screen, so it lives
         up here with the other app-wide passengers. */}
     <MusicDirector />

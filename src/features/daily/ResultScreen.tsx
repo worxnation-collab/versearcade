@@ -20,6 +20,7 @@ import { OAuthButtons } from '@/features/auth/oauthUi'
 import { FavoriteButton } from '@/components/FavoriteButton'
 import { PushNudge } from '@/components/PushNudge'
 import { WatchYesterday } from './WatchYesterday'
+import { MissedList, quoted } from './MissedList'
 
 export default function ResultScreen() {
   const navigate = useNavigate()
@@ -144,7 +145,7 @@ export default function ResultScreen() {
             </div>
           </div>
           <b style={{ fontFamily: 'var(--font-display)', fontSize: 18 }}>{today.reference}</b>
-          <p style={{ marginTop: 6, lineHeight: 1.5 }}>“{today.text}”</p>
+          <p style={{ marginTop: 6, lineHeight: 1.5 }}>{quoted(today.text)}</p>
           {today.facts[0] && <p className="faint" style={{ marginTop: 10, fontSize: 13 }}>💡 {today.facts[0]}</p>}
           <button
             onClick={() => setReaderOpen(true)}
@@ -170,6 +171,10 @@ export default function ResultScreen() {
             whichever network they already use. Renders nothing at all unless
             there is a published video to point at, which is most days for most
             platforms; see the header in WatchYesterday.tsx. */}
+        {/* What the misses taught — collected here, where the player is looking
+            back, rather than left on five teach cards that already scrolled by. */}
+        <MissedList questions={today.questions} result={result} />
+
         <WatchYesterday dropDate={today.dropDate} />
 
         {/* Level up / XP */}

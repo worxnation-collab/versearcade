@@ -221,7 +221,9 @@ export function RoomSection() {
       juice.merge()
       setMerged({ anchor: plan.anchor, name: furnishingName(plan.value) })
     } else {
-      juice.select()
+      // Same beat as the keep: a first placement earns the coin and a line.
+      juice.coin()
+      setNote(`${furnishingName(plan.value)} is in the room — tap it to move or resize it.`)
     }
   }
 

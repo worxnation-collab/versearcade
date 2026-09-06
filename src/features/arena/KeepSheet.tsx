@@ -8,6 +8,7 @@ import { useJuice } from '@/juice/useJuice'
 import { denominationColor, denominationName } from '@/data/denominations'
 import {
   DECOR,
+  CHALLENGES,
   anchorsHolding,
   bestOwnedTier,
   decorName,
@@ -196,7 +197,10 @@ export function KeepSheet({
       juice.merge()
       setMerged({ anchor: plan.anchor, name: decorName(plan.value) })
     } else {
-      juice.select()
+      // A first placement is a small moment, not a form submit: the coin, and
+      // the line that says where it went, so the eye finds it in the hall.
+      juice.coin()
+      setNote(`${decorName(plan.value)} is in the hall — tap it to move or resize it.`)
     }
   }
 
@@ -572,7 +576,7 @@ function Shelf({
             <button
               onClick={() => has && onPick(d.id)}
               disabled={!has}
-              aria-label={has ? `Place ${d.name}` : `${d.name}, locked`}
+              aria-label={has ? `Place ${d.name}` : `${d.name}, locked — ${CHALLENGES.find((c) => c.decor === d.id)?.text ?? ''}`}
               style={{
                 display: 'block',
                 width: '100%',
@@ -589,10 +593,17 @@ function Shelf({
               <span style={{ display: 'block', fontSize: 11, fontWeight: 800, marginTop: 4, lineHeight: 1.25 }}>
                 {decorName(packDecor(d.id, Math.max(tier, best, 1)))}
               </span>
-              <span className="faint" style={{ display: 'block', fontSize: 10, marginTop: 2 }}>
+              {/* A locked tile says what unlocks it, the way the room's shelf
+                  already does — "🔒 Locked" on fourteen tiles told nobody what
+                  any of them was for. Still the room's rule: one bar, never a
+                  count of what is locked. */}
+              <span className="faint" style={{ display: 'block', fontSize: 10, marginTop: 2, lineHeight: 1.3 }}>
                 {has
                   ? `${out ? 'In the hall' : MOUNT_WORD[d.mount]}${next ? ` · ${next.name} at ${next.goal}` : ''}`
-                  : '🔒 Locked'}
+                  : (() => {
+                      const ch = CHALLENGES.find((c) => c.decor === d.id)
+                      return ch ? `🔒 ${ch.text} (${Math.min(counters[ch.counter] ?? 0, ch.goal)}/${ch.goal})` : '🔒 Locked'
+                    })()}
               </span>
             </button>
             {out && (

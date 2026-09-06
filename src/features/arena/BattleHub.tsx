@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Page } from '@/components/Page'
 import { FirstVisitTip } from '@/features/home/FirstVisitTip'
@@ -59,7 +59,14 @@ export default function BattleHub() {
   // tab that actually needs them is open before they touch anything.
   const [pickedTurn, setPickedTurn] = useState<Turn | null>(null)
   /** Faction key whose keep is open, '' for "my hall", null for closed. */
-  const [openKeep, setOpenKeep] = useState<string | null>(null)
+  // ?keep=1 opens your own hall straight away — the unlock toast's door. Read
+  // once at mount and stripped, like /you's ?pray=1, or a reload re-opens it.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [openKeep, setOpenKeep] = useState<string | null>(() => (searchParams.get('keep') === '1' ? '' : null))
+  useEffect(() => {
+    if (searchParams.get('keep') === '1') setSearchParams({}, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [expanded, setExpanded] = useState<Turn | null>(null)
   /**
    * The team picker only EXISTS inside the Teams rank tab, which now also sits

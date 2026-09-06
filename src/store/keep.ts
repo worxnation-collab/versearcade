@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from './auth'
 import { useSeason } from './season'
+import { useUnlocks } from './unlocks'
 import {
   EMPTY_COUNTERS,
   ownedDecor,
@@ -196,8 +197,17 @@ export const useKeep = create<KeepState>((set, get) => ({
     if (counter === 'battle_won') void useSeason.getState().track('battle_win')
     else if (counter === 'battle_played') void useSeason.getState().track('battle_played')
 
-    const next: KeepCounters = { ...get().counters, [counter]: (get().counters[counter] ?? 0) + 1 }
+    // Diff against DISK, not memory. A result screen can be the first thing a
+    // session renders, before load() has run, and an empty in-memory set would
+    // read every earned piece as new — the rug was re-announced on every race.
+    // Disk is also what the optimistic value should build on for the same
+    // reason: memory can be behind it, never ahead of it.
+    const before: KeepCounters = { ...EMPTY_COUNTERS, ...get().counters, ...disk.counters }
+    const next: KeepCounters = { ...before, [counter]: (before[counter] ?? 0) + 1 }
     set({ counters: next })
+    // Say what that just earned — a new piece, or one reaching Fine or Grand.
+    // The counter moved silently for a long time; see store/unlocks.ts.
+    useUnlocks.getState().noteKeep(before, next)
 
     if (isOnline()) {
       // The counted-battles guard still lives on this device's disk; the server
@@ -206,7 +216,13 @@ export const useKeep = create<KeepState>((set, get) => ({
       writeLocal({ ...disk, counters: next })
       const { data } = await supabase!.rpc('bump_keep_counter', { p_counter: counter, p_delta: 1 })
       const raw = data as { counters?: Partial<KeepCounters> } | null
-      if (raw?.counters) set({ counters: { ...EMPTY_COUNTERS, ...raw.counters } })
+      if (raw?.counters) {
+        const server: KeepCounters = { ...EMPTY_COUNTERS, ...raw.counters }
+        set({ counters: server })
+        writeLocal({ ...disk, counters: server })
+        // Another device may have moved a counter too; the queue de-dupes.
+        useUnlocks.getState().noteKeep(next, server)
+      }
       return
     }
 

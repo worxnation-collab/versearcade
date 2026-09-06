@@ -6,6 +6,7 @@ import { Button } from '@/components/Button'
 import { CountUp } from '@/components/CountUp'
 import { FavoriteButton } from '@/components/FavoriteButton'
 import { QuizRunner } from '@/features/daily/QuizRunner'
+import { MissedList, quoted } from '@/features/daily/MissedList'
 import { dailyTriviaBook, dailyTriviaFor } from '@/data/bible/questions'
 import { useDailyTrivia } from '@/store/dailyTrivia'
 import { useGame } from '@/store/game'
@@ -145,8 +146,13 @@ export default function DailyTriviaScreen() {
           <b style={{ fontFamily: 'var(--font-display)', fontSize: 17, flex: 1, minWidth: 0 }}>{verse.reference}</b>
           <FavoriteButton reference={verse.reference} variant="icon" />
         </div>
-        <p style={{ marginTop: 8, lineHeight: 1.5 }}>“{verse.text}”</p>
+        <p style={{ marginTop: 8, lineHeight: 1.5 }}>{quoted(verse.text)}</p>
       </div>
+
+      {/* The facts the misses carried. A round of book trivia is the one place
+          a wrong answer is MOST of the value — it is the only way to meet a
+          question about Habakkuk you didn't already know the answer to. */}
+      <MissedList questions={verse.questions} result={result} />
 
       {/* There is no "another round" here on purpose: this one is the DAY's, and
           a button that deals a second one would turn a shared daily thing into a

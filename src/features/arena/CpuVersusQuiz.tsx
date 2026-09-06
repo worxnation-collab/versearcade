@@ -6,6 +6,7 @@ import { QuizRunner, type QuizHudState } from '@/features/daily/QuizRunner'
 import { useAuth } from '@/store/auth'
 import { scoreQuestion } from '@/lib/progress'
 import { buildCpuPlan, type CpuProfile } from './cpu'
+import { CpuFace } from './CpuFace'
 import type { DailyVerse, PlayResult } from '@/types'
 
 // A quiz run with a live CPU opponent racing the same clock. Shared by Bible
@@ -142,9 +143,9 @@ function VersusBar({
           <motion.div
             animate={phase === 'question' && status === 'thinking' ? { rotate: [0, -8, 8, 0] } : { rotate: 0 }}
             transition={{ repeat: phase === 'question' && status === 'thinking' ? Infinity : 0, duration: 1.1 }}
-            style={{ fontSize: 26, lineHeight: 1 }}
+            style={{ lineHeight: 0, display: 'flex' }}
           >
-            {profile.emoji}
+            <CpuFace profile={profile} size={30} />
           </motion.div>
         </div>
       </div>

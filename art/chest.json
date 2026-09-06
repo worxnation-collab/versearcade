@@ -1,0 +1,15 @@
+[
+  {
+    "id": "chest_closed",
+    "kind": "prop",
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the object itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT brown, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a table, NOT a floor. No ground, no cast shadow on the backdrop, no horizon, no text, no watermark, no second copy of the object.\n\nONE SMALL WOODEN TREASURE CHEST, CLOSED, seen from slightly above and a little to the left, standing on nothing. A rounded barrel-top lid, warm honey-brown oak planks with visible grain, dark iron straps and studs, a brass lock plate on the front with a keyhole, and brass corner fittings catching the light. The lid is shut tight. Nothing sits on it, nothing spills from it, no coins, no gems, no key, no ribbon, no bow.\n\nWarm hand-illustrated storybook style with clean flat shapes and soft painted shading, no line art, no photorealism. Lit warmly from the upper left. Colours bright and readable at a small size; the whole chest inside the frame with a little magenta margin around it."
+  },
+  {
+    "id": "chest_open",
+    "kind": "prop",
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the object itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT brown, NOT a coloured wash, NOT a gradient, NOT a vignette, NOT a scene, NOT a table, NOT a floor. No ground, no cast shadow on the backdrop, no horizon, no text, no watermark, no second copy of the object.\n\nTHE SAME SMALL WOODEN TREASURE CHEST as the reference image, in the same style, same proportions, same warm honey-brown oak, same dark iron straps and brass fittings, seen from the same angle — BUT NOW OPEN: the rounded barrel-top lid swung fully up and back on its hinges, and a soft warm golden light glowing up out of the inside of the chest, brightest at the rim and fading upward. THE INSIDE IS EMPTY APART FROM THE GLOW: no coins, no gems, no scrolls, no relics, no jewellery, no objects of any kind inside or spilling out — something is drawn over this picture, so anything painted inside will be covered. The glow must stay INSIDE the chest's outline; no rays, sparkles, beams or halo extending onto the magenta.\n\nWarm hand-illustrated storybook style with clean flat shapes and soft painted shading, no line art, no photorealism. Lit warmly from the upper left. The whole open chest, lid included, inside the frame with a little magenta margin around it.",
+    "refs": [
+      "public/keep/chest_closed.png"
+    ]
+  }
+]

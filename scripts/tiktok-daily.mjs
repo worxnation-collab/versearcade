@@ -9,13 +9,15 @@
 //      worth trusting (CI sits in UTC), so the zone is explicit.
 //   2. Bundles src/lib/tiktokDaily.ts — the SAME generators the dashboard
 //      uses — opens it in headless Chromium and renders each post: the verse
-//      and the story for today, the quiz replay for YESTERDAY (its answers are
-//      public only once the day has rolled over).
+//      and the story for today, and for YESTERDAY the quiz replay and the two
+//      one-question challenges (its answers are public only once the day has
+//      rolled over).
 //   3. Transcodes each file with ffmpeg to H.264/AAC MP4 (headless Chromium on
 //      Linux encodes VP9/Opus WebM, and TikTok and Instagram refuse WebM).
 //   4. Uploads it and schedules it through Ayrshare at that post's time of day
-//      in TIKTOK_TZ: the verse in the morning, the replay at lunch, the story
-//      in the evening. A time already past posts immediately.
+//      in TIKTOK_TZ: the verse in the morning, a challenge mid-morning, the
+//      replay at lunch, the second challenge mid-afternoon, the story in the
+//      evening. A time already past posts immediately.
 //   5. Fills in YESTERDAY's links: a scheduled post carries no URL until the
 //      network publishes it, and the app's "watch yesterday's verse" row can
 //      only link to what the record knows about.
@@ -35,7 +37,8 @@
 // Environment: SUPABASE_URL and SUPABASE_ANON_KEY (both defaulted to the
 // project; the anon key is public), TIKTOK_TZ
 // (default America/New_York), DATE (override today), KINDS (default
-// verse,story,quiz), POST_TIMES (default verse=07:00,quiz=12:30,story=19:30),
+// verse,challenge,quiz,challenge2,story), POST_TIMES (default
+// verse=07:00,challenge=10:00,quiz=12:30,challenge2=16:00,story=19:30),
 // PLATFORMS (default all six: TikTok, YouTube, Facebook, Instagram, X, Snapchat), DRY_RUN (render only), FFMPEG (binary path),
 // PW_CHROMIUM (executable path when Playwright's own browser is not installed),
 // RERENDER (make the video again even if the day's is already in the bucket),
@@ -64,11 +67,11 @@ const RUNNER_TOKEN = env.TIKTOK_RUNNER_TOKEN || ''
 const GEMINI_KEY = env.GEMINI_API_KEY || ''
 const AYRSHARE_KEY = env.AYRSHARE_API_KEY || ''
 const TZ = env.TIKTOK_TZ || 'America/New_York'
-const KINDS = (env.KINDS || 'verse,story,quiz').split(',').map((s) => s.trim()).filter(Boolean)
+const KINDS = (env.KINDS || 'verse,challenge,quiz,challenge2,story').split(',').map((s) => s.trim()).filter(Boolean)
 const PLATFORMS = (env.PLATFORMS || 'tiktok,youtube,facebook,instagram,x,snapchat').split(',').map((s) => s.trim()).filter(Boolean)
 const DRY = /^(1|true|yes)$/i.test(env.DRY_RUN || '')
 const FFMPEG = env.FFMPEG || 'ffmpeg'
-const TIMES = Object.fromEntries((env.POST_TIMES || 'verse=07:00,quiz=12:30,story=19:30').split(',').map((kv) => kv.split('=').map((s) => s.trim())))
+const TIMES = Object.fromEntries((env.POST_TIMES || 'verse=07:00,challenge=10:00,quiz=12:30,challenge2=16:00,story=19:30').split(',').map((kv) => kv.split('=').map((s) => s.trim())))
 const TTS_MODEL = env.GEMINI_TTS_MODEL || 'gemini-2.5-flash-preview-tts'
 // A directory holding `models/onnx-community/whisper-tiny.en_timestamped/…` and
 // `ort/ort-wasm-simd-threaded*.{mjs,wasm}`: served to the page so the aligner
@@ -81,7 +84,10 @@ const fail = (m) => { console.error('tiktok-daily:', m); process.exit(2) }
 const mode = RUNNER_TOKEN ? 'function' : AYRSHARE_KEY ? 'local' : null
 if (!mode) fail('set TIKTOK_RUNNER_TOKEN (function mode) or AYRSHARE_API_KEY + GEMINI_API_KEY (local mode)')
 if (mode === 'local' && !GEMINI_KEY) fail('local mode needs GEMINI_API_KEY for the reading')
-for (const k of KINDS) if (!['verse', 'story', 'quiz'].includes(k)) fail(`unknown kind ${k}`)
+const ALL_KINDS = ['verse', 'story', 'quiz', 'challenge', 'challenge2']
+for (const k of KINDS) if (!ALL_KINDS.includes(k)) fail(`unknown kind ${k}`)
+// The kinds about YESTERDAY's verse: its answers are public only once the day has rolled over.
+const aboutYesterday = (k) => k === 'quiz' || k.startsWith('challenge')
 
 // ---- dates and times in the operator's zone ---------------------------------------
 function ymdIn(tz, d = new Date()) {
@@ -293,7 +299,7 @@ await page.waitForFunction(() => !!window.versearcadeDaily, null, { timeout: 60_
 
 const results = []
 for (const kind of KINDS) {
-  const date = kind === 'quiz' ? yesterday : today
+  const date = aboutYesterday(kind) ? yesterday : today
   const at = zonedToUtc(today, TIMES[kind] || '12:00', TZ)
   const scheduleDate = at.getTime() > Date.now() + 90_000 ? at.toISOString().replace(/\.\d{3}Z$/, 'Z') : undefined
   log(`${kind} ${date} → ${scheduleDate ? `scheduled ${TIMES[kind]} ${TZ} (${scheduleDate})` : 'posts now'}`)
@@ -390,7 +396,7 @@ for (const kind of KINDS) {
 // it in, and nothing here is worth failing the run over.
 if (mode === 'function' && !DRY) {
   for (const kind of KINDS) {
-    const date = kind === 'quiz' ? addDays(today, -2) : yesterday
+    const date = aboutYesterday(kind) ? addDays(today, -2) : yesterday
     try {
       const r = await fn('links', { date, kind })
       const live = (r.results ?? []).filter((x) => x.postUrl).length

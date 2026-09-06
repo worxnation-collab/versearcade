@@ -173,7 +173,76 @@ export function secondVoiceFor(seed: VoiceSeed): { name: string; voice: string }
 }
 
 const READER_NAMES: Record<string, string> = { cephas: 'Peter', moses: 'Moses', elijah: 'Elijah', david: 'David', esther: 'Esther', mary: 'Mary' }
-const SCENE_NAMES: Record<string, string> = { harvest: 'Harvest Road', lamplight: 'Lamplight', advent: 'Advent' }
+export const SCENE_NAMES: Record<string, string> = {
+  harvest: 'Harvest Road', lamplight: 'Lamplight', advent: 'Advent',
+  shore: 'The shore', 'dawn-hills': 'Hills at dawn', 'olive-garden': 'Olive garden, night', 'city-gate': 'The city gate',
+  'wheat-noon': 'Wheat at noon', 'mountain-path': 'Mountain path', 'temple-court': 'Temple court',
+}
+
+// ---- rotation: the same face two mornings running is what a feed notices ----
+//
+// The reader used to follow the book alone (a run of Psalms was a week of
+// David) and the scene was the Harvest Road every day but Advent — which,
+// on an account posting daily, read as one video reposted. Each pick is
+// now a PREFERENCE LIST, and the caller (autoCast in admin/tiktok/shared.tsx)
+// takes the first entry not used in the last few days. The preference is
+// still the verse's own: a psalm still prefers David, a comfort verse still
+// prefers the lamplit road; recency only decides what happens when the
+// first choice was on yesterday.
+
+/** Every backdrop a reader can stand on, all year. Advent is seasonal and joins by date. */
+export const VERSE_SCENES = ['harvest', 'lamplight', 'shore', 'dawn-hills', 'olive-garden', 'city-gate', 'wheat-noon', 'mountain-path', 'temple-court']
+export const READER_ORDER = ['cephas', 'moses', 'esther', 'david', 'elijah', 'mary']
+
+const SCENE_MOODS: Record<Mood, string[]> = {
+  'words-of-god': ['shore', 'mountain-path', 'olive-garden'],
+  comfort: ['lamplight', 'olive-garden', 'dawn-hills'],
+  praise: ['dawn-hills', 'wheat-noon', 'temple-court'],
+  promise: ['dawn-hills', 'harvest', 'temple-court'],
+  warning: ['city-gate', 'mountain-path', 'lamplight'],
+  wisdom: ['harvest', 'temple-court', 'city-gate'],
+  story: ['shore', 'city-gate', 'wheat-noon'],
+}
+
+function fnv(s: string): number {
+  let h = 2166136261
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) }
+  return h >>> 0
+}
+
+/** A list with its first `n` entries kept and the rest rotated by a seed, so ties break differently on different days. */
+function spin<T>(xs: T[], keep: number, salt: string): T[] {
+  const rest = xs.slice(keep)
+  const k = rest.length ? fnv(salt) % rest.length : 0
+  return [...xs.slice(0, keep), ...rest.slice(k), ...rest.slice(0, k)]
+}
+
+/** Readers in the order the verse prefers them: the book's own first, then the others from a date-seeded offset. */
+export function readerPrefs(seed: VoiceSeed, date: string): string[] {
+  const first = readerFor(seed)
+  return spin([first, ...READER_ORDER.filter((r) => r !== first)], 1, `reader:${date}`)
+}
+
+/** Scenes in the order the verse prefers them: Advent alone in its season, else the mood's three, then the rest. */
+export function scenePrefs(seed: VoiceSeed, date: string): string[] {
+  if (sceneFor(seed, date) === 'advent') return ['advent']
+  const pref = SCENE_MOODS[moodFor(seed)]
+  return spin([...pref, ...VERSE_SCENES.filter((x) => !pref.includes(x))], 0, `scene:${date}`)
+}
+
+/** The first preference not seen recently, or the first preference when every one has been. */
+export function rotate(prefs: string[], recent: string[]): string {
+  return prefs.find((x) => !recent.includes(x)) ?? prefs[0]
+}
+
+/** A cast chosen with the last few days in view. `recentReaders` and `recentScenes` are those days' picks, most recent first. */
+export function pickCastRotated(seed: VoiceSeed, date: string, recentReaders: string[], recentScenes: string[]): CastPick {
+  const reader = rotate(readerPrefs(seed, date), recentReaders)
+  const scene = rotate(scenePrefs(seed, date), recentScenes)
+  const base = readerFor(seed)
+  const why = `${READER_NAMES[reader] ?? reader}${reader !== base ? ` (${READER_NAMES[base]} read recently)` : ''} · ${SCENE_NAMES[scene] ?? scene} — ${seed.book}${scene === 'advent' ? ', Advent' : `, ${moodFor(seed).replaceAll('-', ' ')}`}`
+  return { reader, scene, why }
+}
 
 export function pickCast(seed: VoiceSeed, date: string): CastPick {
   const reader = readerFor(seed)

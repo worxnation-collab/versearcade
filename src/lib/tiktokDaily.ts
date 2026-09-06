@@ -13,10 +13,11 @@
 // is needed.
 
 import { setRunnerToken } from '@/features/admin/tiktok/shared'
-import { makeVerse, makeStory, makeQuiz, type Progress } from '@/features/admin/tiktok/make'
+import { makeVerse, makeStory, makeQuiz, makeChallenge, type Progress } from '@/features/admin/tiktok/make'
 import { env as tfEnv } from '@huggingface/transformers'
 
-export type Kind = 'verse' | 'story' | 'quiz'
+/** The kinds the runner renders. `own` is an operator's upload and is never rendered here. */
+export type Kind = 'verse' | 'story' | 'quiz' | 'challenge' | 'challenge2'
 
 export interface Rendered {
   kind: Kind
@@ -75,6 +76,8 @@ export async function renderPost(kind: Kind, date: string, token?: string): Prom
   const progress: Progress = (_f, label) => { window.__progress = `${kind} ${date}: ${label}` }
   const m = kind === 'verse' ? await makeVerse(date, {}, progress)
     : kind === 'story' ? await makeStory(date, {}, progress)
+    : kind === 'challenge' ? await makeChallenge(date, { slot: 1 }, progress)
+    : kind === 'challenge2' ? await makeChallenge(date, { slot: 2 }, progress)
     : await makeQuiz(date, {}, progress)
   // Hand the file to the runner: a download is the one channel that carries
   // 20MB out of a page without base64 round-trips.

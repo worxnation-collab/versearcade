@@ -1,0 +1,65 @@
+[
+  {
+    "id": "shore",
+    "kind": "tiktok-road",
+    "prompt": "Vertical 9:16 painted background for a short video, filling the entire frame edge to edge. No characters, no people, no animals, no text, no watermark, no border, no frame, no UI. The shore of the Sea of Galilee in early morning: calm blue-green water to the right and behind, a pale sandy beach with a few smooth stones, two small wooden fishing boats pulled up on the sand in the middle distance, low hills across the water going lavender in the haze, a soft gold sky. Composition for a standing figure drawn over it later: the BOTTOM 40% of the picture is open, level, walkable ground, plain and uncluttered, centred; the TOP quarter is quiet sky or soft distance with no detail, because words are drawn over it. Nothing important in the middle strip either side of centre. Flat stylised storybook painting, clean shapes, soft shading, warm and rich but never busy: it sits BEHIND a figure and captions and must never compete with them. Same painterly style as the reference road paintings.",
+    "refs": [
+      "public/road/harvest.jpg",
+      "public/road/lamplight.jpg"
+    ]
+  },
+  {
+    "id": "dawn-hills",
+    "kind": "tiktok-road",
+    "prompt": "Vertical 9:16 painted background for a short video, filling the entire frame edge to edge. No characters, no people, no animals, no text, no watermark, no border, no frame, no UI. Rolling hills of Judea at first light: terraced slopes with olive trees and low stone walls, a sky going from deep blue at the top through rose to gold at the horizon, the first sun catching the ridge tops, a dirt path in the open foreground. Composition for a standing figure drawn over it later: the BOTTOM 40% of the picture is open, level, walkable ground, plain and uncluttered, centred; the TOP quarter is quiet sky or soft distance with no detail, because words are drawn over it. Nothing important in the middle strip either side of centre. Flat stylised storybook painting, clean shapes, soft shading, warm and rich but never busy: it sits BEHIND a figure and captions and must never compete with them. Same painterly style as the reference road paintings.",
+    "refs": [
+      "public/road/harvest.jpg",
+      "public/road/lamplight.jpg"
+    ]
+  },
+  {
+    "id": "olive-garden",
+    "kind": "tiktok-road",
+    "prompt": "Vertical 9:16 painted background for a short video, filling the entire frame edge to edge. No characters, no people, no animals, no text, no watermark, no border, no frame, no UI. An olive garden at night: gnarled silver-green olive trees either side, a deep indigo sky full of stars, a full moon behind thin cloud lighting the ground pale, dark hills beyond, the open earth of the grove in the foreground. Composition for a standing figure drawn over it later: the BOTTOM 40% of the picture is open, level, walkable ground, plain and uncluttered, centred; the TOP quarter is quiet sky or soft distance with no detail, because words are drawn over it. Nothing important in the middle strip either side of centre. Flat stylised storybook painting, clean shapes, soft shading, warm and rich but never busy: it sits BEHIND a figure and captions and must never compete with them. Same painterly style as the reference road paintings.",
+    "refs": [
+      "public/road/harvest.jpg",
+      "public/road/lamplight.jpg"
+    ]
+  },
+  {
+    "id": "city-gate",
+    "kind": "tiktok-road",
+    "prompt": "Vertical 9:16 painted background for a short video, filling the entire frame edge to edge. No characters, no people, no animals, no text, no watermark, no border, no frame, no UI. An ancient stone city gate seen from outside, off to one side: honey-coloured limestone walls with a tall arched gateway, a few palm fronds visible over the wall, warm late-afternoon light, a dusty open road leading to it across the foreground, a clear sky above. Composition for a standing figure drawn over it later: the BOTTOM 40% of the picture is open, level, walkable ground, plain and uncluttered, centred; the TOP quarter is quiet sky or soft distance with no detail, because words are drawn over it. Nothing important in the middle strip either side of centre. Flat stylised storybook painting, clean shapes, soft shading, warm and rich but never busy: it sits BEHIND a figure and captions and must never compete with them. Same painterly style as the reference road paintings.",
+    "refs": [
+      "public/road/harvest.jpg",
+      "public/road/lamplight.jpg"
+    ]
+  },
+  {
+    "id": "wheat-noon",
+    "kind": "tiktok-road",
+    "prompt": "Vertical 9:16 painted background for a short video, filling the entire frame edge to edge. No characters, no people, no animals, no text, no watermark, no border, no frame, no UI. A field of ripe wheat under a high noon sun: gold stalks on either side swaying, a wide cut path of stubble through the middle, a few sheaves standing, a line of poplars far off, a bright pale blue sky with one small cloud. Composition for a standing figure drawn over it later: the BOTTOM 40% of the picture is open, level, walkable ground, plain and uncluttered, centred; the TOP quarter is quiet sky or soft distance with no detail, because words are drawn over it. Nothing important in the middle strip either side of centre. Flat stylised storybook painting, clean shapes, soft shading, warm and rich but never busy: it sits BEHIND a figure and captions and must never compete with them. Same painterly style as the reference road paintings.",
+    "refs": [
+      "public/road/harvest.jpg",
+      "public/road/lamplight.jpg"
+    ]
+  },
+  {
+    "id": "mountain-path",
+    "kind": "tiktok-road",
+    "prompt": "Vertical 9:16 painted background for a short video, filling the entire frame edge to edge. No characters, no people, no animals, no text, no watermark, no border, no frame, no UI. A high mountain path above the tree line: bare rock and pale scrub, the path climbing gently away from the viewer into cloud, a vast valley far below to one side going blue with distance, a cool clear sky, thin morning mist. Composition for a standing figure drawn over it later: the BOTTOM 40% of the picture is open, level, walkable ground, plain and uncluttered, centred; the TOP quarter is quiet sky or soft distance with no detail, because words are drawn over it. Nothing important in the middle strip either side of centre. Flat stylised storybook painting, clean shapes, soft shading, warm and rich but never busy: it sits BEHIND a figure and captions and must never compete with them. Same painterly style as the reference road paintings.",
+    "refs": [
+      "public/road/harvest.jpg",
+      "public/road/lamplight.jpg"
+    ]
+  },
+  {
+    "id": "temple-court",
+    "kind": "tiktok-road",
+    "prompt": "Vertical 9:16 painted background for a short video, filling the entire frame edge to edge. No characters, no people, no animals, no text, no watermark, no border, no frame, no UI. The outer court of a great temple: broad flagstones of pale stone stretching away, tall fluted columns and a colonnade to either side in warm afternoon light, long shadows, a glimpse of a golden roofline beyond, an open clear sky above. Composition for a standing figure drawn over it later: the BOTTOM 40% of the picture is open, level, walkable ground, plain and uncluttered, centred; the TOP quarter is quiet sky or soft distance with no detail, because words are drawn over it. Nothing important in the middle strip either side of centre. Flat stylised storybook painting, clean shapes, soft shading, warm and rich but never busy: it sits BEHIND a figure and captions and must never compete with them. Same painterly style as the reference road paintings.",
+    "refs": [
+      "public/road/harvest.jpg",
+      "public/road/lamplight.jpg"
+    ]
+  }
+]

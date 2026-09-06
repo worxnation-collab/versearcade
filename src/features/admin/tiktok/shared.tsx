@@ -16,7 +16,7 @@ import { supabase } from '@/lib/supabase'
 import { addDays } from '@/lib/date'
 import { getVerseForDate } from '@/data/bible/questions'
 import { VERSE_POOL } from '@/data/bible/pool'
-import { pickVoice, pickCast, PICKER_VOICES, type VoiceSeed } from '@/data/tiktokVoice'
+import { pickVoice, pickCast, pickCastRotated, PICKER_VOICES, SCENE_NAMES, VERSE_SCENES, READER_ORDER, type VoiceSeed, type CastPick } from '@/data/tiktokVoice'
 import type { Backdrop, TimedPhrase } from '@/lib/tiktokRender'
 
 export const BUCKET = 'tiktok'
@@ -28,11 +28,20 @@ export const READERS = [
   { id: 'elijah', name: 'Elijah' },
   { id: 'mary', name: 'Mary' },
 ]
-export const SCENES = [
-  { id: 'harvest', name: 'Harvest Road' },
-  { id: 'lamplight', name: 'Lamplight' },
-  { id: 'advent', name: 'Advent' },
-]
+// The three road paintings the app itself walks on, plus the portrait
+// scenes painted for these posts alone (public/tiktok/roads, art/tiktok-scenes.json).
+export const SCENES = [...VERSE_SCENES, 'advent'].map((id) => ({ id, name: SCENE_NAMES[id] ?? id }))
+const ROAD_IDS = ['harvest', 'lamplight', 'advent']
+/** Where a scene's painting lives: the app's own roads, or the TikTok-only folder. */
+export const scenePath = (id: string) => (ROAD_IDS.includes(id) ? `/road/${id}.jpg` : `/tiktok/roads/${id}.jpg`)
+/**
+ * A scene's painting, or the Harvest Road when it is not there: the rotation
+ * names paintings that ship with the site, and a build that predates one of
+ * them (or a 404) must still make the post rather than fail the morning.
+ */
+export async function loadScene(r: Pick<Renderer, 'loadImage'>, id: string): Promise<HTMLImageElement> {
+  try { return await r.loadImage(scenePath(id)) } catch { return r.loadImage('/road/harvest.jpg') }
+}
 export const VOICES = Array.from(new Set([...PICKER_VOICES, 'Algenib', 'Sadaltager', 'Iapetus', 'Enceladus', 'Fenrir', 'Schedar', 'Kore', 'Aoede', 'Sulafat', 'Vindemiatrix', 'Achernar']))
 
 // Story time: who tells it and where. Tabitha in her story circle by default;
@@ -67,7 +76,45 @@ export function seedFor(date: string): StorySeed {
   }
 }
 export function autoPick(date: string, reader: string) { return pickVoice(seedFor(date), reader) }
-export function autoCast(date: string) { return pickCast(seedFor(date), date) }
+
+// The cast rotates: a reader is not back within two days and a scene not
+// within six, so a week of posts is a week of different pictures. Each day
+// is picked with the previous days' picks in view, walking forward from a
+// fixed epoch, so every device (the dashboard, the morning runner) computes
+// the same sequence — the same guarantee getVerseForDate makes, by the same
+// means. Days before the epoch keep the old book-only cast, because their
+// videos were made under it.
+const ROTATION_EPOCH = '2026-09-07'
+const READER_MEMORY = 2, SCENE_MEMORY = 6
+const castMemo = new Map<string, CastPick>()
+export function autoCast(date: string): CastPick {
+  if (date < ROTATION_EPOCH) return pickCast(seedFor(date), date)
+  const hit = castMemo.get(date)
+  if (hit) return hit
+  const recent: CastPick[] = []
+  for (let i = 1; i <= SCENE_MEMORY; i++) {
+    const d = addDays(date, -i)
+    if (d < ROTATION_EPOCH) break
+    recent.push(autoCast(d))
+  }
+  const pick = pickCastRotated(seedFor(date), date, recent.slice(0, READER_MEMORY).map((c) => c.reader), recent.map((c) => c.scene))
+  castMemo.set(date, pick)
+  return pick
+}
+
+/**
+ * Who plays the one-question challenge, and where. The first of the day is
+ * the day's own cast; the second is a different face on a different road,
+ * so two challenge posts on one afternoon are not the same post twice.
+ */
+export function challengeCast(date: string, slot: 1 | 2): { reader: string; scene: string } {
+  const c = autoCast(date)
+  if (slot === 1) return { reader: c.reader, scene: c.scene }
+  const reader = READER_ORDER[(READER_ORDER.indexOf(c.reader) + 1) % READER_ORDER.length] ?? c.reader
+  const scenes = c.scene === 'advent' ? ['advent'] : VERSE_SCENES
+  const scene = scenes[(scenes.indexOf(c.scene) + 1) % scenes.length] ?? c.scene
+  return { reader, scene }
+}
 
 // Reference images for Nano Banana have to be https for the function to
 // fetch them, so a dev build points at production for the app's own art.
@@ -126,7 +173,17 @@ export { addDays }
 export type Platform = 'tiktok' | 'youtube' | 'facebook' | 'instagram' | 'x' | 'snapchat'
 export interface PlatformCopy { title: string; text: string; tags: string[] }
 export interface Copy { hook: string; caption: string; hashtags: string[]; platforms?: Partial<Record<Platform, PlatformCopy>> }
-export interface Made { date: string; kind: 'verse' | 'story' | 'quiz'; reference: string; url: string; ext: string; size: number; copy: Copy | null; phrases: TimedPhrase[]; tier: string }
+/**
+ * The five posts a day: the verse, the story, yesterday's five-question
+ * replay, and two one-question challenges ("Can you beat Peter?") about
+ * yesterday's verse — `challenge2` is the second, a different question by a
+ * different face, and its own kind because every path in the bucket
+ * (`copy-<kind>`, `<kind>.mp4`, `posted-<kind>`) and every idempotency key
+ * is per (date, kind). `own` is a clip the operator recorded themselves,
+ * captioned and posted through the same door.
+ */
+export type Kind = 'verse' | 'story' | 'quiz' | 'challenge' | 'challenge2' | 'own'
+export interface Made { date: string; kind: Kind; reference: string; url: string; ext: string; size: number; copy: Copy | null; phrases: TimedPhrase[]; tier: string }
 
 export type Renderer = typeof import('@/lib/tiktokRender')
 
@@ -163,7 +220,7 @@ export async function backdropFor(r: Renderer, tier: 'loop' | 'still' | 'builtin
   if (tier === 'still') {
     try { return { kind: 'still', image: await r.loadImage(publicUrl(`readers/${k}.png`) + '?v=' + Date.now()) } } catch { /* the built-in tier always works */ }
   }
-  const [sceneImg, figure] = await Promise.all([r.loadImage(`/road/${sc}.jpg`), r.loadImage(`/skins/${rd}.png`)])
+  const [sceneImg, figure] = await Promise.all([loadScene(r, sc), r.loadImage(`/skins/${rd}.png`)])
   return { kind: 'builtin', scene: sceneImg, figure }
 }
 // Best tier that exists for a figure+scene — probed per day, since a batch
@@ -198,9 +255,9 @@ export async function fetchStory(d: string, force: boolean): Promise<Story> {
 // The words for a date's post of one kind, written once (cached in the
 // bucket by date and kind) so the hub can show today's without rendering a
 // video, and a render on the same day gets the same words.
-export async function fetchCopy(d: string, kind: Made['kind'], force = false): Promise<Copy> {
+export async function fetchCopy(d: string, kind: Made['kind'], force = false, extra: { question?: string; about?: string } = {}): Promise<Copy> {
   const v = getVerseForDate(d)
-  return call<Copy>('copy', { date: d, kind, force, reference: v.reference, text: v.text, theme: v.theme })
+  return call<Copy>('copy', { date: d, kind, force, reference: v.reference, text: v.text, theme: v.theme, ...extra })
 }
 
 // ---- the bits of form every generator draws -----------------------------------
@@ -230,8 +287,8 @@ export function Busy({ busy, progress }: { busy: string | null; progress: number
   )
 }
 
-const ICON: Record<Made['kind'], string> = { verse: '☀️', story: '🌙', quiz: '🎮' }
-const FILE: Record<Made['kind'], string> = { verse: 'verse-arcade-', story: 'verse-arcade-story-', quiz: 'verse-arcade-quiz-' }
+const ICON: Record<Made['kind'], string> = { verse: '☀️', story: '🌙', quiz: '🎮', challenge: '⚡', challenge2: '⚡', own: '🎤' }
+const FILE: Record<Made['kind'], string> = { verse: 'verse-arcade-', story: 'verse-arcade-story-', quiz: 'verse-arcade-quiz-', challenge: 'verse-arcade-challenge-', challenge2: 'verse-arcade-challenge2-', own: 'verse-arcade-own-' }
 
 const PLATFORMS: Array<[Platform, string]> = [['tiktok', 'TikTok'], ['youtube', 'YouTube Shorts'], ['facebook', 'Facebook'], ['instagram', 'Instagram Reels'], ['x', 'X']]
 

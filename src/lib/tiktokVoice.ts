@@ -283,6 +283,13 @@ async function transcribePieces(samples: Float32Array, sampleRate: number, onPro
   return out
 }
 
+/**
+ * How far past the last matched verse word a later match may sit and still
+ * count as the same reading continuing rather than a re-quote inside the
+ * thought. A dozen heard words is a breath; a re-quote is thirty or more.
+ */
+const CONTINUES_WITHIN = 12
+
 export async function splitRecording(samples: Float32Array, sampleRate: number, verseText: string, reference: string, onProgress?: (label: string) => void): Promise<VoiceTrack> {
   const heard = await transcribePieces(samples, sampleRate, onProgress)
   if (heard.length < 8) throw new Error('Heard almost nothing — is the recording silent, or in another language?')
@@ -303,9 +310,29 @@ export async function splitRecording(samples: Float32Array, sampleRate: number, 
   const want = Math.max(4, Math.ceil(verseWords.length * 0.7))
   let fit = fitWords(verseWords, heard, seconds, onset)
   let windowEnd = heard.length
-  for (const b of breaks) {
-    const f = fitWords(verseWords, heard.slice(0, b), seconds, onset)
-    if (f.matched >= want) { fit = f; windowEnd = b; break }
+  for (let i = 0; i < breaks.length; i++) {
+    const f = fitWords(verseWords, heard.slice(0, breaks[i]), seconds, onset)
+    if (f.matched < want) continue
+    // The first pause past 70% is not necessarily the END of the verse: a
+    // long verse is read with pauses IN it, and 2 Kings 2:11 ("…separated
+    // the two of them, / and Elijah went up into heaven in a whirlwind")
+    // reached 24 of its 33 words at a pause two thirds of the way through.
+    // Cutting there crammed its last nine words onto one frame and opened
+    // the THOUGHT's caption over the tail he was still reading. So the
+    // window keeps extending while the next one adds matches — but only
+    // while those matches CONTINUE this one (`lastHeard` moving on by a
+    // few words) rather than appearing far later, which is the re-quote
+    // this walk exists to refuse: the first real recording said "to the
+    // saints" again inside its thought, and a match over everything heard
+    // took that copy as the verse's ending.
+    let cur = { f, b: breaks[i] }
+    for (let j = i + 1; j < breaks.length; j++) {
+      const nf = fitWords(verseWords, heard.slice(0, breaks[j]), seconds, onset)
+      if (nf.matched <= cur.f.matched || nf.lastHeard > cur.f.lastHeard + CONTINUES_WITHIN) break
+      cur = { f: nf, b: breaks[j] }
+    }
+    fit = cur.f; windowEnd = cur.b
+    break
   }
   if (fit.matched < Math.max(4, verseWords.length * 0.4)) throw new Error(`Only ${fit.matched} of the verse's ${verseWords.length} words were heard — read the verse first, then pause, then your thought.`)
   // The verse ends at the last of its words that was actually heard, not at

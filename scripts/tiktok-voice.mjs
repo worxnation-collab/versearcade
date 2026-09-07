@@ -22,6 +22,11 @@
 //       Decode any phone memo (m4a, mp3, wav, webm, ogg) to a WAV, park it,
 //       listen to it (Whisper base in the browser), park the transcript and
 //       rewrite the day's caption. Prints the transcript to check.
+//   node scripts/tiktok-voice.mjs fix <date> <text file>
+//       Put a corrected thought onto the timings already heard, and re-park.
+//       Whisper times a phone memo well and spells it badly, and these words
+//       are burned onto the screen — so this is the step between listening
+//       and rendering. No model, no second listen, no timing drift.
 //   node scripts/tiktok-voice.mjs render <date>
 //       The verse post with the parked recording, as an H.264 MP4 in
 //       .tiktok-voice/out/. Posts nothing.
@@ -63,7 +68,7 @@ if (!TOKEN) fail('set TIKTOK_RUNNER_TOKEN')
 const [cmd, ...rest] = process.argv.slice(2)
 const flags = Object.fromEntries(rest.filter((a) => a.startsWith('--')).map((a) => { const [k, v] = a.slice(2).split('='); return [k, v ?? true] }))
 const args = rest.filter((a) => !a.startsWith('--'))
-if (!['drafts', 'listen', 'render', 'post', 'clear', 'identify'].includes(cmd)) fail('usage: drafts | identify <files…> | listen <date> <file> | render <date> | post <date> [--at HH:MM|--now] | clear <date>')
+if (!['drafts', 'listen', 'fix', 'render', 'post', 'clear', 'identify'].includes(cmd)) fail('usage: drafts | identify <files…> | listen <date> <file> | fix <date> <text file> | render <date> | post <date> [--at HH:MM|--now] | clear <date>')
 const isDate = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d)
 
 function ymdIn(tz, d = new Date()) {
@@ -228,6 +233,16 @@ try {
     if (!toWav(file, inputWav)) fail(`ffmpeg could not read ${file}`)
     log(`listening to ${file} (${(durationOf(inputWav) ?? 0).toFixed(0)}s) for ${date}`)
     const r = await page.evaluate(([d, w, t]) => window.vaVoice.listen(d, w, t), [date, `${origin}/input.wav`, TOKEN])
+    console.log(JSON.stringify({ date, ...r }, null, 1))
+    await done()
+  }
+  if (cmd === 'fix') {
+    const [date, file] = args
+    if (!isDate(date) || !file || !fs.existsSync(file)) fail('fix <date> <text file>')
+    const text = fs.readFileSync(file, 'utf8').replace(/\s+/g, ' ').trim()
+    if (!text) fail(`${file} is empty`)
+    const r = await page.evaluate(([d, t, tok]) => window.vaVoice.fix(d, t, tok), [date, text, TOKEN])
+    log(`refit ${r.words} words onto ${r.heard} heard for ${date}`)
     console.log(JSON.stringify({ date, ...r }, null, 1))
     await done()
   }

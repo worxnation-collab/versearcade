@@ -17,6 +17,7 @@ import { env as tfEnv } from '@huggingface/transformers'
 export interface DraftRow { date: string; reference: string; verse: string; text: string; words: number; source: string; recorded: boolean; listened: boolean }
 export interface ListenResult { seconds: number; verseMatched: number; verseWords: number; verseEnd: number; thoughtStart: number; thoughtWords: number; text: string }
 export interface RenderResult { ext: 'mp4' | 'webm'; size: number; reference: string; tier: string; seconds: number }
+export interface FixResult { words: number; heard: number; text: string }
 
 declare global {
   interface Window {
@@ -24,6 +25,7 @@ declare global {
       drafts: (dates: string[], token: string, force?: boolean) => Promise<DraftRow[]>
       listen: (date: string, wavUrl: string, token: string) => Promise<ListenResult>
       render: (date: string, token: string) => Promise<RenderResult>
+      fix: (date: string, text: string, token: string) => Promise<FixResult>
       identify: (wavUrl: string, dates: string[], token: string) => Promise<{ best: { date: string; reference: string; matched: number; words: number } | null; opening: string }>
     }
     __progress: string
@@ -93,6 +95,28 @@ window.vaVoice = {
     say('rewriting the caption')
     try { await fetchCopy(date, 'verse', true) } catch { /* written at render time otherwise */ }
     return { seconds: dec.seconds, verseMatched: fixed.verseMatched, verseWords: fixed.verse.length, verseEnd: fixed.verse[fixed.verse.length - 1]?.end ?? 0, thoughtStart: fixed.thought[0]?.start ?? 0, thoughtWords: fixed.thought.length, text: fixed.text }
+  },
+
+  /**
+   * The operator's corrected thought put back onto the timings Whisper
+   * heard, and re-parked. Whisper writes a phone memo down well enough to
+   * time it and not well enough to CAPTION it — one week's batch came back
+   * with "Gobbliness", "the constant price" for "the constant Christ" and a
+   * gold "septic" for a gold scepter — and these words are burned onto the
+   * screen. `refit` needs no model and no second listen: it matches the
+   * corrected words against `heard` and keeps every timing, so a correction
+   * costs nothing and cannot drift the captions off the voice.
+   */
+  async fix(date, text, token) {
+    setRunnerToken(token)
+    const parked = await fetchVoice(date)
+    if (!parked || !Array.isArray(parked.heard) || !parked.heard.length) throw new Error(`nothing listened to for ${date} yet — run listen first`)
+    const m = await import('@/lib/tiktokVoice')
+    const fixed = m.refit(parked, text)
+    await parkFile(voiceJsonPath(date), new Blob([JSON.stringify(fixed)], { type: 'application/json' }), 'application/json')
+    say('rewriting the caption')
+    try { await fetchCopy(date, 'verse', true) } catch { /* written at render time otherwise */ }
+    return { words: fixed.thought.length, heard: parked.heard.length, text: fixed.text }
   },
 
   /** Which of the coming days a memo is for: its first half-minute against each day's verse. */

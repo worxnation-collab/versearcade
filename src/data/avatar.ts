@@ -611,8 +611,8 @@ export const FULL_SKINS: SkinDef[] = [
   },
   {
     id: 'cooldad',
-    // The app's owner, drawn as a character — coral polo, shades on the
-    // collar, a coffee and a tiny mint backpack on the other shoulder. The same
+    // The app's owner, drawn as a character — charcoal henley, aviators on the
+    // collar, a coffee, thumb hooked in a pocket. The same
     // shape as the creator-collab skins: 'paid' + exclusive so it rides the
     // owned_skins entitlement (protected in 0107), granted by code or by
     // grant_skins(), never sold. 'cooldad' is the entitlement key; keep it.
@@ -620,7 +620,7 @@ export const FULL_SKINS: SkinDef[] = [
     source: 'paid',
     exclusive: true,
     packName: 'Cool Dad',
-    blurb: 'Coffee in one hand, the little one\u2019s backpack on the other shoulder. Redeem the code to wear it.',
+    blurb: 'Coffee in one hand, thumb hooked in a pocket, shades on the collar. Redeem the code to wear it.',
   },
 ]
 

@@ -39,7 +39,7 @@
 // (default America/New_York), DATE (override today), KINDS (default
 // verse,challenge,quiz,challenge2,story), POST_TIMES (default
 // verse=07:00,challenge=10:00,quiz=12:30,challenge2=16:00,story=19:30),
-// PLATFORMS (default all seven: TikTok, YouTube, Facebook, Instagram, X, Snapchat, Threads — minus what social.postsOn says a network skips), DRY_RUN (render only), FFMPEG (binary path),
+// PLATFORMS (default all eight: TikTok, YouTube, Facebook, Instagram, X, Snapchat, Threads, Pinterest — minus what social.postsOn says a network skips), DRY_RUN (render only), FFMPEG (binary path),
 // PW_CHROMIUM (executable path when Playwright's own browser is not installed),
 // RERENDER (make the video again even if the day's is already in the bucket),
 // MODELS_DIR (serve the aligner's Whisper model, ONNX runtime and, if
@@ -68,7 +68,7 @@ const GEMINI_KEY = env.GEMINI_API_KEY || ''
 const AYRSHARE_KEY = env.AYRSHARE_API_KEY || ''
 const TZ = env.TIKTOK_TZ || 'America/New_York'
 const KINDS = (env.KINDS || 'verse,challenge,quiz,challenge2,story').split(',').map((s) => s.trim()).filter(Boolean)
-const PLATFORMS = (env.PLATFORMS || 'tiktok,youtube,facebook,instagram,x,snapchat,threads').split(',').map((s) => s.trim()).filter(Boolean)
+const PLATFORMS = (env.PLATFORMS || 'tiktok,youtube,facebook,instagram,x,snapchat,threads,pinterest').split(',').map((s) => s.trim()).filter(Boolean)
 const DRY = /^(1|true|yes)$/i.test(env.DRY_RUN || '')
 const FFMPEG = env.FFMPEG || 'ffmpeg'
 const TIMES = Object.fromEntries((env.POST_TIMES || 'verse=07:00,challenge=10:00,quiz=12:30,challenge2=16:00,story=19:30').split(',').map((kv) => kv.split('=').map((s) => s.trim())))
@@ -263,6 +263,29 @@ function durationOf(src) {
   const m = /Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/.exec((r.stderr || '') + (r.stdout || ''))
   return m ? Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]) : undefined
 }
+// Pinterest refuses a video pin without a cover image the size of the video,
+// so the first frame (0.3s: the hook line over the painting) goes into the
+// bucket beside the MP4 as days/<date>/<kind>-cover.jpg. ffmpeg reads a URL
+// as happily as a file, so a parked video gets one too. Best effort: a day
+// with no cover is skipped by the function with a row that says so.
+async function parkCover(date, kind, src) {
+  if (!social.postsOn('pinterest', kind) || !PLATFORMS.includes('pinterest')) return
+  const jpg = path.join(OUT, `${kind}-${date}-cover.jpg`)
+  // A parked video is fetched to disk first: ffmpeg's own HTTPS reader has
+  // crashed outright on one build, and a file is the one input it never fails.
+  if (/^https?:/.test(src)) {
+    const local = path.join(OUT, `${kind}-${date}-parked.mp4`)
+    try { fs.writeFileSync(local, Buffer.from(await (await fetch(src)).arrayBuffer())); src = local } catch (e) { log(`  cover: fetch failed — ${String(e?.message || e).slice(0, 120)}`); return }
+  }
+  const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-ss', '0.3', '-i', src, '-frames:v', '1', '-q:v', '3', jpg])
+  if (ff.status !== 0 || !fs.existsSync(jpg)) { log(`  cover: ffmpeg failed (${ff.error?.message || `exit ${ff.status}`})`); return }
+  try {
+    const up = await fn('upload-url', { path: `days/${date}/${kind}-cover.jpg` })
+    const sb = createClient(SUPABASE_URL, ANON)
+    const { error } = await sb.storage.from('tiktok').uploadToSignedUrl(up.path, up.token, fs.readFileSync(jpg), { contentType: 'image/jpeg', upsert: true })
+    if (error) log(`  cover: upload failed — ${error.message}`); else log(`  cover ${(fs.statSync(jpg).size / 1e3).toFixed(0)}KB`)
+  } catch (e) { log(`  cover: ${String(e?.message || e).slice(0, 160)}`) }
+}
 async function postEach(platforms, body) {
   const results = []
   for (const platform of platforms) {
@@ -328,6 +351,7 @@ for (const kind of KINDS) {
     if (!/^(1|true|yes)$/i.test(env.RERENDER || '') && head?.ok && /^video\//.test(head.headers.get('content-type') || '')) {
       log(`  already rendered (${(Number(head.headers.get('content-length') || 0) / 1e6).toFixed(1)}MB in the bucket) — posting that`)
       videoUrl = parked
+      if (todo.includes('pinterest')) await parkCover(date, kind, parked)
       posted = await postEach(todo, { date, kind, videoUrl, scheduleDate, reference: getVerseForDate(date).reference, seconds: durationOf(parked) })
       for (const r of posted.results) log(`  ${r.platform.padEnd(10)} ${r.status}${r.error ? ` — ${r.error}` : ''}${r.postUrl ? ` ${r.postUrl}` : ''}`)
       results.push({ kind, date, videoUrl, scheduleDate, results: posted.results, skipped: 'render' }); continue
@@ -368,6 +392,7 @@ for (const kind of KINDS) {
     const { error } = await sb.storage.from('tiktok').uploadToSignedUrl(up.path, up.token, fs.readFileSync(mp4), { contentType: 'video/mp4', upsert: true })
     if (error) { results.push({ kind, date, error: `upload: ${error.message}` }); continue }
     videoUrl = up.publicUrl
+    await parkCover(date, kind, mp4)
     posted = await postEach(PLATFORMS.filter((p) => social.postsOn(p, kind)), { date, kind, videoUrl, scheduleDate, reference: rendered.reference, seconds: durationOf(mp4) })
   } else {
     const u = await ayrshare(`media/uploadUrl?fileName=${encodeURIComponent(`va-${kind}-${date}.mp4`)}&contentType=mp4`, null, 'GET')
@@ -377,7 +402,8 @@ for (const kind of KINDS) {
     videoUrl = u.accessUrl
     const copy = (await bucketJson(`days/${date}/copy-${kind}.json`)) ?? {}
     const rows = []
-    for (const platform of PLATFORMS.filter((p) => social.postsOn(p, kind))) {
+    // Direct mode has no bucket to park a cover in, so Pinterest sits this path out.
+    for (const platform of PLATFORMS.filter((p) => p !== 'pinterest' && social.postsOn(p, kind))) {
       const r = await ayrshare('post', social.postBody(platform, copy, { date, kind, reference: rendered.reference, videoUrl, scheduleDate }))
       rows.push(social.postResult(platform, r, scheduleDate))
     }

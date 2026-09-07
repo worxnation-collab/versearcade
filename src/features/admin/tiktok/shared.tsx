@@ -170,7 +170,7 @@ export async function existsAt(url: string, type?: string): Promise<boolean> {
 // One copy, in lib/date.ts — the player-facing side reads dates the same way.
 export { addDays }
 
-export type Platform = 'tiktok' | 'youtube' | 'facebook' | 'instagram' | 'x' | 'snapchat' | 'threads'
+export type Platform = 'tiktok' | 'youtube' | 'facebook' | 'instagram' | 'x' | 'snapchat' | 'threads' | 'pinterest'
 export interface PlatformCopy { title: string; text: string; tags: string[] }
 export interface Copy { hook: string; caption: string; hashtags: string[]; platforms?: Partial<Record<Platform, PlatformCopy>> }
 /**
@@ -336,7 +336,7 @@ export function CopyBlocks({ copy }: { copy: Copy }) {
 
 export type PostResult = { platform: string; status: string; postUrl?: string | null; error?: string | null; scheduleDate?: string | null }
 export interface Posted { at?: string; results?: PostResult[] }
-const PLATFORM_NAMES: Record<Platform, string> = { tiktok: 'TikTok', youtube: 'YouTube', facebook: 'Facebook', instagram: 'Instagram', x: 'X', snapchat: 'Snapchat', threads: 'Threads' }
+const PLATFORM_NAMES: Record<Platform, string> = { tiktok: 'TikTok', youtube: 'YouTube', facebook: 'Facebook', instagram: 'Instagram', x: 'X', snapchat: 'Snapchat', threads: 'Threads', pinterest: 'Pinterest' }
 
 export async function fetchPosted(d: string, kind: Made['kind']): Promise<Posted> {
   return call<Posted>('posted', { date: d, kind })
@@ -350,6 +350,24 @@ export async function fetchPosted(d: string, kind: Made['kind']): Promise<Posted
  */
 export async function fetchLinks(d: string, kind: Made['kind']): Promise<Posted> {
   return call<Posted>('links', { date: d, kind })
+}
+
+/** The frame at 0.3s — the hook line over the painting — as a JPG the size of the video. */
+function coverJpeg(url: string): Promise<Blob | undefined> {
+  return new Promise((resolve) => {
+    const v = document.createElement('video')
+    v.preload = 'auto'; v.muted = true; v.playsInline = true
+    v.onerror = () => resolve(undefined)
+    v.onloadedmetadata = () => { v.currentTime = 0.3 }
+    v.onseeked = () => {
+      try {
+        const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight
+        c.getContext('2d')!.drawImage(v, 0, 0)
+        c.toBlob((b) => resolve(b ?? undefined), 'image/jpeg', 0.86)
+      } catch { resolve(undefined) }
+    }
+    v.src = url
+  })
 }
 
 /** A video's length from its metadata, or undefined if the browser cannot read it. */
@@ -372,6 +390,17 @@ export async function postVideo(m: Made, platforms: Platform[], scheduleDate: st
   const blob = await (await fetch(m.url)).blob()
   const { error } = await supabase!.storage.from(BUCKET).uploadToSignedUrl(up.path, up.token, blob, { contentType: 'video/mp4', upsert: true })
   if (error) throw new Error(`upload: ${error.message}`)
+  // Pinterest refuses a video pin without a cover the size of the video, so
+  // the first frame goes up beside the MP4. Best effort: no frame, no cover,
+  // and the function skips Pinterest with a row that says so.
+  if (platforms.includes('pinterest')) {
+    onStep('Making the cover')
+    const jpg = await coverJpeg(m.url)
+    if (jpg) {
+      const c = await call<{ path: string; token: string }>('upload-url', { path: `days/${m.date}/${m.kind}-cover.jpg` })
+      await supabase!.storage.from(BUCKET).uploadToSignedUrl(c.path, c.token, jpg, { contentType: 'image/jpeg', upsert: true })
+    }
+  }
   // One call per platform: Ayrshare fetches the video inside the call, and
   // six of those in one request ran past the function gateway's limit (the
   // function finished; the browser saw a timeout). The function merges each
@@ -391,7 +420,7 @@ export async function postVideo(m: Made, platforms: Platform[], scheduleDate: st
 }
 
 export function PostControls({ m }: { m: Made }) {
-  const [chosen, setChosen] = useState<Platform[]>(['tiktok', 'youtube', 'facebook', 'instagram', 'x', 'snapchat', 'threads'])
+  const [chosen, setChosen] = useState<Platform[]>(['tiktok', 'youtube', 'facebook', 'instagram', 'x', 'snapchat', 'threads', 'pinterest'])
   const [when, setWhen] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
   const [posted, setPosted] = useState<Posted | null>(null)

@@ -7,8 +7,8 @@
 // Pure: no I/O, no environment. Everything a network needs is either in the
 // day's per-platform copy or in the arguments.
 
-export type Platform = 'tiktok' | 'youtube' | 'facebook' | 'instagram' | 'x' | 'snapchat' | 'threads'
-export const PLATFORMS: Platform[] = ['tiktok', 'youtube', 'facebook', 'instagram', 'x', 'snapchat', 'threads']
+export type Platform = 'tiktok' | 'youtube' | 'facebook' | 'instagram' | 'x' | 'snapchat' | 'threads' | 'pinterest'
+export const PLATFORMS: Platform[] = ['tiktok', 'youtube', 'facebook', 'instagram', 'x', 'snapchat', 'threads', 'pinterest']
 
 /** Ayrshare's own name for a platform: X is still "twitter" on its API. */
 export const ayrshareName = (p: Platform): string => (p === 'x' ? 'twitter' : p)
@@ -25,11 +25,14 @@ export const kindOf = (k: unknown): Kind => ((KINDS as string[]).includes(String
  * Which kinds a network does NOT get. Ayrshare's plan is 1,000 posts a month
  * and five kinds on six networks already sits near 900, so a seventh network
  * has to give something up: Threads skips the quiz (the 107-second replay
- * is the weakest fit for a text-first feed anyway). The function's `post`
- * refuses the pair with a `skipped` row and the runner never asks, so the
- * hub and the cron cannot disagree about it.
+ * is the weakest fit for a text-first feed anyway). Pinterest gets the verse
+ * and the story ONLY: it is a search engine where a pin is found for years,
+ * and a "comment your answer" clock or a replay of yesterday's quiz is a
+ * pin nobody searches for. The function's `post` refuses the pair with a
+ * `skipped` row and the runner never asks, so the hub and the cron cannot
+ * disagree about it.
  */
-const KINDS_OFF: Partial<Record<Platform, Kind[]>> = { threads: ['quiz'] }
+const KINDS_OFF: Partial<Record<Platform, Kind[]>> = { threads: ['quiz'], pinterest: ['quiz', 'challenge', 'challenge2', 'own'] }
 export const postsOn = (platform: Platform, kind: Kind): boolean => !(KINDS_OFF[platform] ?? []).includes(kind)
 
 export interface PostArgs {
@@ -43,6 +46,8 @@ export interface PostArgs {
   attempt?: number
   /** The video's length. Facebook Reels stop at 90 seconds; a longer video goes to the page as a plain video post instead. */
   seconds?: number
+  /** A public JPG of the video's first frame, same size as the video. Pinterest refuses a video pin without one. */
+  cover?: string
 }
 
 /** Facebook's Reels ceiling. The quiz (about 107s) and a long story (91s) both hit it on the first real day. */
@@ -80,6 +85,7 @@ export function callToAction(platform: Platform, kind: Kind): string {
     case 'facebook': return challenge ? 'Comment your answer. https://versearcade.org' : 'https://versearcade.org'
     case 'x': return challenge ? 'Comment your answer. versearcade.org' : 'versearcade.org'
     case 'threads': return challenge ? 'Comment your answer. Play it: versearcade.org' : "Play today's verse: versearcade.org"
+    case 'pinterest': return "Play today's verse: versearcade.org"
   }
 }
 
@@ -137,6 +143,13 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
     // Threads: 500 characters, links tappable, no AI flag on the API so the
     // caption says it. Two tags at most — Threads treats a tag as a topic.
     body.post = [withAsk(c.text, platform, a.kind), AI_NOTE, tagLine(c.tags, 2)].filter(Boolean).join('\n\n').slice(0, 500)
+  } else if (platform === 'pinterest') {
+    // Pinterest is search: the title carries the reference and what the pin
+    // is, the description (500) the words somebody would type, the link is
+    // the pin's click-through, and the cover is the frame Pinterest shows
+    // before play — required for a video pin, same size as the video.
+    body.post = [withAsk(c.text, platform, a.kind), AI_NOTE, tagLine(c.tags, 3)].filter(Boolean).join('\n\n').slice(0, 500)
+    body.pinterestOptions = { title: (c.title || `${a.reference || 'Verse Arcade'} · Daily Bible Verse`).slice(0, 100), link: 'https://versearcade.org', thumbNail: a.cover, altText: [`${a.reference || 'A Bible verse'}, read aloud over a painted road — Verse Arcade`.slice(0, 500)] }
   } else if (platform === 'snapchat') {
     // The note goes FIRST: the caption is cut at 160 and the disclosure is
     // the part that must survive.

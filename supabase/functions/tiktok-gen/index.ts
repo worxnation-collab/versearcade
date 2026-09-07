@@ -474,10 +474,14 @@ Deno.serve(async (req) => {
       const ask = challenge
         ? { tiktok: 'ends by asking people to comment their answer and to follow for tomorrow\'s (NO URL: nothing in a TikTok caption is tappable)', yt: 'asks people to comment their answer, then', fb: 'asks people to comment their answer, then', ig: 'ends with "Comment your answer. Play it — link in bio."', x: 'asks people to comment their answer, ending with', th: 'asks people to comment their answer, ending with "Play it: versearcade.org"' }
         : { tiktok: 'ends by inviting people to follow for tomorrow\'s verse (NO URL: nothing in a TikTok caption is tappable)', yt: '', fb: '', ig: 'ending with "Play today\'s verse — link in bio."', x: 'ending with', th: 'ending with "Play today\'s verse: versearcade.org"' }
+      // Pinterest is a search engine, so its words are the ones somebody would
+      // type: the reference, the book, "Bible verse", the theme — in the
+      // title first, because the title is what Pinterest matches on.
+      const pinAsk = kind === 'story' ? 'the story behind the verse, told aloud' : 'the verse read aloud over a painting'
       const data = await gemini(`models/${TEXT_MODEL}:generateContent`, {
         contents: [{ parts: [{ text:
           `You write post copy for a faceless short-video account called Verse Arcade, a Bible app where ${who}` +
-          `Today's verse is ${reference}: "${text}" (theme: ${theme || 'unspecified'}). The same vertical video is posted to TikTok, YouTube Shorts, Facebook and Instagram Reels, X, Snapchat and Threads, and each wants its own words.\n\n` +
+          `Today's verse is ${reference}: "${text}" (theme: ${theme || 'unspecified'}). The same vertical video is posted to TikTok, YouTube Shorts, Facebook and Instagram Reels, X, Snapchat, Threads and Pinterest, and each wants its own words.\n\n` +
           `Return JSON with:\n` +
           `"hook": one on-screen opening line, max 8 words, no emoji, not a question.\n` +
           `"tiktok": { "text": 1-2 short sentences, casual and warm, under 150 characters, no hashtags in it, ${ask.tiktok}; "tags": 5 lowercase hashtags without the # sign }.\n` +
@@ -485,7 +489,8 @@ Deno.serve(async (req) => {
           `"facebook": { "text": 2-4 conversational sentences, a little longer and more personal than the others, no hashtags in it, ${ask.fb} ending with the link https://versearcade.org on its own line; "tags": 2 lowercase hashtags without the # sign }.\n` +
           `"instagram": { "text": 2-3 short sentences with a line break between them, no hashtags in it, ${ask.ig}; "tags": 10 lowercase hashtags without the # sign, mixing broad #bible-style tags with the verse's own theme }.\n` +
           `"x": { "text": one line under 200 characters, plain and direct, no hashtags in it, ${ask.x} versearcade.org; "tags": 2 lowercase hashtags without the # sign }.\n` +
-          `"threads": { "text": 1-3 short conversational sentences under 300 characters, the kind of thing a person would say rather than a brand, no hashtags in it, ${ask.th}; "tags": 2 lowercase hashtags without the # sign }.\n\n` +
+          `"threads": { "text": 1-3 short conversational sentences under 300 characters, the kind of thing a person would say rather than a brand, no hashtags in it, ${ask.th}; "tags": 2 lowercase hashtags without the # sign }.\n` +
+          `"pinterest": { "title": a pin title under 90 characters that starts with the verse reference, then a few plain words of what it says, then "| Daily Bible Verse" (it is ${pinAsk}); "text": 2-3 sentences under 400 characters written for SEARCH — name the book, the reference, the words "Bible verse" and the theme naturally, say what the pin is, no hashtags in it, ending with "Play today's verse: versearcade.org"; "tags": 3 lowercase hashtags without the # sign, the first "bibleverse" }.\n\n` +
           `Never rank, compare or shame anyone. Never claim a fact that isn't in the verse. Never give away a quiz answer. No emoji anywhere.` }] }],
         generationConfig: { responseMimeType: 'application/json', temperature: 0.8 },
       })
@@ -502,7 +507,7 @@ Deno.serve(async (req) => {
         const b = (parsed[k] ?? {}) as Record<string, unknown>
         return { title: String(b.title ?? '').slice(0, 100), text: String(b.text ?? '').slice(0, 2000), tags: tagsOf(b.tags, n) }
       }
-      const platforms = { tiktok: block('tiktok', 6), youtube: block('youtube', 6), facebook: block('facebook', 3), instagram: block('instagram', 12), x: block('x', 3), threads: block('threads', 3) }
+      const platforms = { tiktok: block('tiktok', 6), youtube: block('youtube', 6), facebook: block('facebook', 3), instagram: block('instagram', 12), x: block('x', 3), threads: block('threads', 3), pinterest: block('pinterest', 4) }
       // `caption` and `hashtags` are the TikTok block under the names older
       // clients read, so a dashboard that predates the per-platform copy
       // still gets a caption.
@@ -517,7 +522,9 @@ Deno.serve(async (req) => {
     // path shaped exactly like the videos this engine makes.
     if (action === 'upload-url') {
       const path = String(input.path ?? '')
-      if (!/^days\/\d{4}-\d{2}-\d{2}\/(verse|story|quiz|challenge|challenge2|own)\.(mp4|webm)$/.test(path)) return json({ error: 'bad path' }, 400)
+      // A video, or its cover — the first frame as a JPG, which Pinterest
+      // requires beside a video pin.
+      if (!/^days\/\d{4}-\d{2}-\d{2}\/(verse|story|quiz|challenge|challenge2|own)(\.(mp4|webm)|-cover\.jpg)$/.test(path)) return json({ error: 'bad path' }, 400)
       const { data, error } = await admin.storage.from(BUCKET).createSignedUploadUrl(path, { upsert: true })
       if (error || !data) return json({ error: error?.message ?? 'no upload url' }, 500)
       return json({ path, token: data.token, publicUrl: publicUrl(path) })
@@ -562,7 +569,15 @@ Deno.serve(async (req) => {
       for (const platform of platforms) {
         if (!linked(platform)) { results.push({ platform, status: 'skipped', id: null, postUrl: null, postId: null, error: 'not linked in Ayrshare', scheduleDate: null }); continue }
         if (!postsOn(platform, kind)) { results.push({ platform, status: 'skipped', id: null, postUrl: null, postId: null, error: `${kind} is not posted on ${platform} (quota)`, scheduleDate: null }); continue }
-        const r = await ayrshare('post', postBody(platform, copy, { date, kind, reference, videoUrl, scheduleDate, attempt, seconds }), 'POST', platform === 'x')
+        // Pinterest refuses a video pin without a cover image; a day whose
+        // cover never landed is skipped with the path it wanted, not failed.
+        let cover: string | undefined
+        if (platform === 'pinterest') {
+          const coverPath = `days/${date}/${kind}-cover.jpg`
+          if (!(await exists(coverPath))) { results.push({ platform, status: 'skipped', id: null, postUrl: null, postId: null, error: `no cover image yet (${coverPath})`, scheduleDate: null }); continue }
+          cover = publicUrl(coverPath)
+        }
+        const r = await ayrshare('post', postBody(platform, copy, { date, kind, reference, videoUrl, scheduleDate, attempt, seconds, cover }), 'POST', platform === 'x')
         results.push(postResult(platform, r, scheduleDate))
       }
       // Merged over the earlier record, so a call for the platforms that

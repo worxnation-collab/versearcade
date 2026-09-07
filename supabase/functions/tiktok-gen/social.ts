@@ -48,6 +48,8 @@ export interface PostArgs {
   seconds?: number
   /** A public JPG of the video's first frame, same size as the video. Pinterest refuses a video pin without one. */
   cover?: string
+  /** The voice on the video is the operator's own recording (days/<date>/voice-verse.json exists); the AI note then claims only the art. */
+  voiced?: boolean
 }
 
 /** Facebook's Reels ceiling. The quiz (about 107s) and a long story (91s) both hit it on the first real day. */
@@ -61,6 +63,9 @@ export const FACEBOOK_REEL_MAX_SECONDS = 90
  * rejected the first verse as "undisclosed AI-generated content".
  */
 export const AI_NOTE = 'AI-generated art and voice.'
+/** The same note for a post whose voice is a person's: the art is still painted by a model, and only that is claimed. */
+export const AI_NOTE_ART = 'AI-generated art; the voice is our own.'
+const aiNote = (a: PostArgs) => (a.voiced ? AI_NOTE_ART : AI_NOTE)
 
 const tagLine = (tags: string[] | undefined, n: number) => (tags ?? []).slice(0, n).map((t) => '#' + t).join(' ')
 
@@ -145,7 +150,7 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
     body.post = [withAsk(c.text, platform, a.kind), tagLine(c.tags, 5)].filter(Boolean).join('\n\n').slice(0, 5000)
     body.youTubeOptions = { title: (c.title || `${a.reference || 'Verse Arcade'} · Verse Arcade`).slice(0, 100), visibility: 'public', shorts: true, madeForKids: false, containsSyntheticMedia: true }
   } else if (platform === 'facebook') {
-    body.post = [withAsk(c.text, platform, a.kind), AI_NOTE, tagLine(c.tags, 2)].filter(Boolean).join('\n\n').slice(0, 5000)
+    body.post = [withAsk(c.text, platform, a.kind), aiNote(a), tagLine(c.tags, 2)].filter(Boolean).join('\n\n').slice(0, 5000)
     // A Reel where one is allowed (it is the surface Facebook shows to
     // strangers); over the ceiling, a plain video post on the page rather
     // than a refusal — Facebook rejected the quiz and a 91-second story as
@@ -156,7 +161,7 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
     // X counts every URL as 23 characters whatever its length, and the ask
     // carries the tracked link, so the budget is measured that way and the
     // model's words are what get shortened — never the ask, never the note.
-    const tail = [AI_NOTE, tagLine(c.tags, 2)].filter(Boolean).join(' ')
+    const tail = [aiNote(a), tagLine(c.tags, 2)].filter(Boolean).join(' ')
     const ask = callToAction(platform, a.kind)
     const xLen = (s: string) => s.replace(/https?:\/\/\S+/g, 'x'.repeat(23)).length
     // The model's own link sentence goes whole ("Play today's verse: versearcade.org"): the ask says it again with the tracked link.
@@ -168,18 +173,18 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
   } else if (platform === 'threads') {
     // Threads: 500 characters, links tappable, no AI flag on the API so the
     // caption says it. Two tags at most — Threads treats a tag as a topic.
-    body.post = [withAsk(c.text, platform, a.kind), AI_NOTE, tagLine(c.tags, 2)].filter(Boolean).join('\n\n').slice(0, 500)
+    body.post = [withAsk(c.text, platform, a.kind), aiNote(a), tagLine(c.tags, 2)].filter(Boolean).join('\n\n').slice(0, 500)
   } else if (platform === 'pinterest') {
     // Pinterest is search: the title carries the reference and what the pin
     // is, the description (500) the words somebody would type, the link is
     // the pin's click-through, and the cover is the frame Pinterest shows
     // before play — required for a video pin, same size as the video.
-    body.post = [withAsk(c.text, platform, a.kind), AI_NOTE, tagLine(c.tags, 3)].filter(Boolean).join('\n\n').slice(0, 500)
+    body.post = [withAsk(c.text, platform, a.kind), aiNote(a), tagLine(c.tags, 3)].filter(Boolean).join('\n\n').slice(0, 500)
     body.pinterestOptions = { title: (c.title || `${a.reference || 'Verse Arcade'} · Daily Bible Verse`).slice(0, 100), link: siteLink(platform), thumbNail: a.cover, altText: [`${a.reference || 'A Bible verse'}, read aloud over a painted road — Verse Arcade`.slice(0, 500)] }
   } else if (platform === 'snapchat') {
     // The note goes FIRST: the caption is cut at 160 and the disclosure is
     // the part that must survive.
-    body.post = [AI_NOTE, withAsk(c.text, platform, a.kind), tagLine(c.tags, 3)].filter(Boolean).join(' ').slice(0, 160)
+    body.post = [aiNote(a), withAsk(c.text, platform, a.kind), tagLine(c.tags, 3)].filter(Boolean).join(' ').slice(0, 160)
     body.snapChatOptions = { spotlight: true }
   } else {
     body.post = [withAsk(c.text, platform, a.kind), tagLine(c.tags, 5)].filter(Boolean).join('\n\n').slice(0, 2200)

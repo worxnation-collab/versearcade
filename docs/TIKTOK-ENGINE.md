@@ -534,6 +534,84 @@ xAI credits: `XAI_API_KEY` as a function secret or Vault through
 `grok-4.20-0309-non-reasoning`). With no key the action fails closed with a
 clear error and nothing is posted.
 
+## Your voice: the operator reads the verse
+
+The morning post is Gemini's voice unless a recording of the operator is
+parked for the date, and the hub's **Your voice** card
+(`admin/tiktok/YourVoice.tsx`) is where one gets parked. This is the human
+element the platforms that pay ask for: a person reading the verse and
+saying one thing about it is a human-produced video with AI visuals, where
+the same painting under a synthetic voice is not. Nothing else about the
+post changes — the painting, the reader figure, the gold captions and the
+end card are as they were — and the day's other four posts stay fully
+automated. Full workflow, in the order the operator does it:
+
+1. **Draft.** `thought` writes a ~110-word spoken reflection per date from
+   the verse's own data (speaker, audience, before, after, theme, facts —
+   never invented doctrine, nothing one tradition would say differently),
+   first person, short sentences, ending on a line that hands off. Cached
+   at `days/<date>/thought.json`; `force` redrafts, `save` parks the
+   operator's own edit, `peek` reads without drafting so opening the card
+   for a week costs nothing. Once a few recordings exist their transcripts
+   ride along as `samples`, so the draft starts sounding like the person
+   rather than like a devotional.
+2. **Record.** A phone voice memo: a beat of silence, the verse read a touch
+   slower than speech, no reference (the end card has it), a beat, the
+   thought, stop. One take, don't edit.
+3. **Upload.** `lib/tiktokVoice.ts` does the rest in the operator's tab.
+   `decodeRecording` turns whatever the phone produced into a mono 24 kHz
+   WAV, trimmed and levelled to where Gemini's readings sit, parked at
+   `days/<date>/voice-verse.wav`. `splitRecording` transcribes it with the
+   same Whisper the captions use and finds the VERSE inside the transcript
+   by matching the verse's words onto it (`fitWords` in `tiktokAlign`, the
+   LCS the aligner always used); everything heard after the verse's last
+   word is the THOUGHT, captioned from the transcript itself. A spoken
+   reference at the head of the thought is dropped. The hub shows the
+   transcript for correction — Whisper tiny mishears a word now and then —
+   and `refit` puts the corrected words back onto the timings Whisper
+   heard. **Save** parks `days/<date>/voice-verse.json` (`VoiceTrack`: the
+   timed verse words, the timed thought words, the raw heard words, the
+   text) and rewrites the day's verse copy, since a caption written earlier
+   credits a painted Peter with the voice.
+4. **Nothing else.** `makeVerse` asks `voice` for the date first; a parked
+   track means the WAV is the audio, the parked timings are the captions
+   (no Whisper at render time, so the 07:00 runner needs no model on a
+   voiced day), and the render carries `voice: { verse, thought, photo,
+   label }`. No track ⇒ Gemini's reading exactly as before. The Verse
+   reading card shows a parked recording and a tick to force Gemini's
+   voice for one render (`ownVoice: false`).
+
+What the render does with it (`tiktokRender.ts`): the verse's words light
+gold on the operator's own timing; the reference shows plain through the
+beat of silence after the verse; then the thought plays, and for that
+stretch a round photo of the operator (`founder/photo.jpg`, uploaded once
+from the card) sits above the captions with a thin gold ring that widens
+with the voice — the reading's RMS envelope, smoothed — and a small label
+under it. Deliberately not a waveform: the one motion added is the picture
+of a person speaking. The same photo, smaller, sits on the end card under
+"Made by Matthew". A day with a recording and no photo renders the thought
+over the painting alone.
+
+Two things learned on the first synthetic recording, both in the code:
+
+- **Whisper is run per stretch of speech, never over the whole file.** Its
+  30-second windows stopped early at the long pause between the verse and
+  the thought — exactly the pause the operator is asked to leave — and
+  eleven seconds of speech after it simply never appeared. `speechSegments`
+  cuts the audio on its own pauses, neighbouring runs are grouped into
+  pieces of about twenty seconds, and each piece is listened to alone with
+  its timestamps offset back.
+- **Whisper names what it can't read**, `[BLANK_AUDIO]`, `[ Pause ]`, and a
+  breath that tripped the speech detector comes back as one. Anything
+  bracketed is dropped before it can be captioned.
+
+The AI note follows the voice: `social.ts` takes `voiced` on `PostArgs`
+(the function sets it when the day's `voice-verse.json` exists) and the
+caption says `AI-generated art; the voice is our own.` instead of claiming
+the voice. TikTok's, YouTube's and Instagram's flags stay set — the painting
+is still generated. The `copy` prompt's description of the post changes the
+same way, which is why the hub rewrites the copy on Save.
+
 ## Your own clip
 
 The one post a painted figure cannot make: the operator, on camera, once a
@@ -653,8 +731,8 @@ other way to ship a silent track.
 
 ## Costs, roughly
 
-TTS ~1¢ a day, copy a fraction of that, a 2K still ~25¢ once, a Veo loop $1–3 once
-per figure+scene. The video encode is free (your laptop). About 20–40 seconds a
+TTS ~1¢ a day, copy a fraction of that, a thought draft about the same, a 2K still ~25¢ once, a Veo loop $1–3 once
+per figure+scene. A voiced day costs nothing at all: no TTS, and the transcription runs in the operator's tab. The video encode is free (your laptop). About 20–40 seconds a
 day of encoding for a 35-second post.
 
 ## Ideas parked

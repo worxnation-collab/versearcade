@@ -16,8 +16,9 @@ import { buildCpuPlan, CPU_PROFILES, type CpuLevel } from '@/features/arena/cpu'
 import type { QuizStep } from '@/lib/tiktokRender'
 import { challengeIndex } from '@/lib/tiktokChallenge'
 import {
-  READERS, TELLERS, ROOMS, skinPath, loadScene,
-  seedFor, autoPick, autoCast, challengeCast, spokenReference, call, fetchCopy, fetchStory, bedFor, backdropFor, tierFor,
+  READERS, TELLERS, ROOMS, skinPath, loadScene, publicUrl,
+  seedFor, autoPick, autoCast, challengeCast, spokenReference, call, fetchCopy, fetchStory, fetchVoice, bedFor, backdropFor, tierFor,
+  FOUNDER_PHOTO, VOICE_LABEL,
   type Copy, type Made, type Story, type Renderer,
 } from './shared'
 
@@ -40,16 +41,45 @@ export interface VerseOptions {
   copy?: boolean
   music?: boolean
   align?: boolean
+  /** Use the operator's parked recording for the date when there is one (default true); false forces Gemini's reading. */
+  ownVoice?: boolean
 }
 
 export async function makeVerse(d: string, o: VerseOptions, progress: Progress): Promise<MadeBlob> {
   const v = getVerseForDate(d)
+  const c = o.cast ?? autoCast(d)
+  const sd = seedFor(d)
+  // The operator's own recording, if one is parked for the date, replaces
+  // Gemini's reading and adds their thought after the verse — the words were
+  // timed once in the hub, so nothing here listens to anything. No recording
+  // (or `ownVoice: false`) is the morning as it always was.
+  const own = o.ownVoice === false ? null : await fetchVoice(d).catch(() => null)
+  if (own) {
+    progress(0, 'fetching your recording')
+    const audio = await (await fetch(own.wavUrl + '?v=' + Date.now())).arrayBuffer()
+    let copy: Copy | null = null
+    if (o.copy !== false) {
+      progress(0, 'writing the caption')
+      try { copy = await fetchCopy(d, 'verse') } catch { copy = null }
+    }
+    progress(0, 'rendering')
+    const r: Renderer = await import('@/lib/tiktokRender')
+    const tier = await tierFor(c.reader, c.scene)
+    const backdrop = await backdropFor(r, tier, c.reader, c.scene)
+    const photo = await r.loadImage(publicUrl(FOUNDER_PHOTO) + '?v=' + Date.now()).catch(() => undefined)
+    const bed = o.music !== false ? await bedFor(await r.plannedDuration(audio, copy?.hook, false), 'morning') : undefined
+    const out = await r.renderTikTok({
+      reference: v.reference, text: v.text, hook: copy?.hook, audio, backdrop, bed,
+      voice: { verse: own.verse, thought: own.thought, photo, label: VOICE_LABEL },
+      grade: o.cast ? undefined : gradeFor(sd),
+      onProgress: progress,
+    })
+    return made(d, 'verse', v.reference, out, copy, `${c.reader} · ${c.scene} · ${tier} · your voice`)
+  }
   progress(0, 'asking for the reading')
   // A batch reads each day in its own voice when the pick is automatic;
   // an operator's override applies to every day in the batch.
-  const c = o.cast ?? autoCast(d)
   const p = o.voice ?? autoPick(d, c.reader)
-  const sd = seedFor(d)
   // The words of God or Jesus are read by a second voice; the reader
   // says the reference. Anyone else's verse is one voice as before.
   const second = o.voice ? null : secondVoiceFor(sd)

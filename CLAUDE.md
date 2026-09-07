@@ -491,6 +491,25 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   back onto the caption. `timeWords()`'s energy heuristic is the fallback and
   was measured a full second off on one word, which is why it is not the
   answer. Anything added here has to earn its motion.
+- **The operator can read the verse, and the recording replaces Gemini's
+  voice for that date.** Admin → TikTok → Your voice: a drafted ~110-word
+  thought per date (`thought`, cached at `days/<date>/thought.json`), a
+  phone memo uploaded on its day, decoded to a WAV and transcribed IN THE
+  HUB (`lib/tiktokVoice.ts`: the verse is found in the transcript by
+  matching its own words, the rest is the thought, the operator corrects
+  the transcript, `refit` keeps the timings), parked as
+  `days/<date>/voice-verse.{wav,json}`. `makeVerse` asks `voice` first, so
+  the morning runner uses it with no Whisper and no TTS on a voiced day
+  and falls back to Gemini on any other. The render adds ONE thing for the
+  thought: the founder photo (`founder/photo.jpg`) in a round frame whose
+  gold ring breathes with the voice, plus the photo small on the end card
+  — not a waveform, and nothing before the hook. The AI note becomes
+  "AI-generated art; the voice is our own." (`voiced` on `PostArgs`) and
+  the copy is rewritten on Save. This is the platforms' human-producer
+  test being met on purpose; the four other daily posts stay automated.
+  Whisper is run per stretch of speech, because a 30-second window ending
+  on the long pause the operator is told to leave swallowed eleven seconds
+  of speech on the first try. `docs/TIKTOK-ENGINE.md` → "Your voice".
 - **The quiz replays YESTERDAY, and the CPU is the game's own.** The five
   questions are the same five for everybody on a date, so a public replay of
   today's would hand out today's answers. The player is `buildCpuPlan` from

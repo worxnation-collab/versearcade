@@ -9,7 +9,7 @@ import { makeVerse } from './make'
 import {
   READERS, SCENES, VOICES, ART_ORIGIN, STILL_PROMPT, LOOP_PROMPT, TEXTAREA_STYLE,
   autoPick, autoCast, call, publicUrl, existsAt, addDays, scenePath,
-  loopUrlFor, backdropFor, useDisplayFont, DateRow, Busy, MadeCard,
+  loopUrlFor, backdropFor, useDisplayFont, DateRow, Busy, MadeCard, fetchVoice,
   type Made,
 } from './shared'
 
@@ -24,6 +24,16 @@ export default function VersePost() {
   const [voiceAuto, setVoiceAuto] = useState(true)
   const [withCopy, setWithCopy] = useState(true)
   const [withMusic, setWithMusic] = useState(true)
+  // A recording of the operator parked for the date (Your voice) replaces
+  // Gemini's reading unless unticked; the label under the date says which.
+  const [own, setOwn] = useState<{ seconds: number; words: number } | null>(null)
+  const [useOwn, setUseOwn] = useState(true)
+  useEffect(() => {
+    let live = true
+    setOwn(null)
+    fetchVoice(date).then((v) => { if (live) setOwn(v ? { seconds: v.seconds, words: v.text.split(/\s+/).filter(Boolean).length } : null) }).catch(() => { /* none */ })
+    return () => { live = false }
+  }, [date])
   const [busy, setBusy] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
   const [err, setErr] = useState<string | null>(null)
@@ -79,7 +89,7 @@ export default function VersePost() {
     return makeVerse(d, {
       cast: castAuto ? undefined : { reader, scene },
       voice: voiceAuto ? undefined : { voice, style },
-      copy: withCopy, music: withMusic,
+      copy: withCopy, music: withMusic, ownVoice: useOwn,
     }, (f, label) => { setProgress(f); setBusy(`${d}: ${label}`) })
   }
 
@@ -153,6 +163,12 @@ export default function VersePost() {
           <b style={{ fontFamily: 'var(--font-display)', fontSize: 18 }}>{verse.reference}</b>
           <p style={{ fontSize: 14, lineHeight: 1.45, marginTop: 4 }}>{verse.text}</p>
         </div>
+        {own && (
+          <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, background: 'var(--card)', borderRadius: 10, padding: '6px 10px' }}>
+            <input type="checkbox" checked={useOwn} onChange={(e) => setUseOwn(e.target.checked)} />
+            🎙 Your recording is parked for this day ({Math.round(own.seconds)}s, a {own.words}-word thought) — use it instead of Gemini’s voice
+          </label>
+        )}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           <label className="faint" style={{ fontSize: 11 }}>Voice {voiceAuto ? '· auto' : '· yours'}
             <select value={voice} onChange={(e) => { setVoiceAuto(false); setVoice(e.target.value) }} style={{ width: '100%', marginTop: 4 }}>

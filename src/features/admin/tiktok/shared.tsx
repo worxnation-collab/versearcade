@@ -246,6 +246,47 @@ export async function bedFor(seconds: number, trackId: string): Promise<Float32A
   } catch { return undefined }
 }
 
+// ---- the operator's own voice ---------------------------------------------------
+//
+// A recording parked for a date (lib/tiktokVoice.ts) replaces Gemini's
+// reading of the verse and adds the operator's thought after it. Both paths
+// live in the bucket: the WAV at days/<date>/voice-verse.wav and the timed
+// transcript beside it. The founder photo the thought section draws is one
+// file, uploaded once. `fetchVoice` answers null on a day with nothing
+// parked, which is what makes the morning fall back to Gemini's voice.
+
+export const FOUNDER_PHOTO = 'founder/photo.jpg'
+export const VOICE_LABEL = 'Matthew · founder'
+export const voiceWavPath = (d: string) => `days/${d}/voice-verse.wav`
+export const voiceJsonPath = (d: string) => `days/${d}/voice-verse.json`
+export type VoiceTrack = import('@/lib/tiktokVoice').VoiceTrack
+export async function fetchVoice(d: string): Promise<(VoiceTrack & { wavUrl: string }) | null> {
+  const v = await call<Partial<VoiceTrack> & { wavUrl?: string }>('voice', { date: d })
+  return v && Array.isArray(v.verse) && Array.isArray(v.thought) && v.wavUrl ? (v as VoiceTrack & { wavUrl: string }) : null
+}
+/** The operator's spoken reflection for a date — drafted by Gemini, or their own saved edit. */
+export interface Thought { text: string; words: number; source: 'gemini' | 'operator'; at: string; cached?: boolean }
+export async function fetchThought(d: string, force = false, samples: string[] = []): Promise<Thought> {
+  const v = getVerseForDate(d)
+  const sd = seedFor(d)
+  return call<Thought>('thought', { date: d, force, reference: v.reference, text: v.text, theme: v.theme, speaker: sd.speaker, audience: sd.audience, before: sd.before, after: sd.after, facts: sd.facts, samples })
+}
+/** The draft already parked for a date, or null — never drafts. */
+export async function peekThought(d: string): Promise<Thought | null> {
+  const t = await call<Partial<Thought>>('thought', { date: d, peek: true })
+  return t && typeof t.text === 'string' ? (t as Thought) : null
+}
+export async function saveThought(d: string, text: string): Promise<Thought> {
+  return call<Thought>('thought', { date: d, save: text })
+}
+/** Park a file in the bucket through a signed upload URL (the bucket is service-role write only). */
+export async function parkFile(path: string, blob: Blob, contentType: string): Promise<string> {
+  const up = await call<{ path: string; token: string; publicUrl: string }>('upload-url', { path })
+  const { error } = await supabase!.storage.from(BUCKET).uploadToSignedUrl(up.path, up.token, blob, { contentType, upsert: true })
+  if (error) throw new Error(`upload: ${error.message}`)
+  return up.publicUrl
+}
+
 export async function fetchStory(d: string, force: boolean): Promise<Story> {
   const v = getVerseForDate(d)
   const sd = seedFor(d)

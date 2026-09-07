@@ -204,6 +204,13 @@ async function shim(input) {
     const j = await bucketJson(`days/${input.date}/story.json`)
     return j ?? { error: `no story cached for ${input.date}: open Story time in the dashboard first` }
   }
+  // The operator's own recording for the date, if one is parked: the timed
+  // transcript beside the WAV. Nothing parked is `{}`, and the verse is made
+  // with Gemini's voice as before.
+  if (a === 'voice') {
+    const j = await bucketJson(`days/${input.date}/voice-verse.json`)
+    return j ? { ...j, wavUrl: `${SUPABASE_URL}/storage/v1/object/public/tiktok/days/${input.date}/voice-verse.wav` } : {}
+  }
   return { error: `the runner's shim has no ${a}` }
 }
 const server = http.createServer(async (req, res) => {

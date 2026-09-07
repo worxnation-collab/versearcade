@@ -38,6 +38,17 @@ export function churchLevelInfo(xp: number): ChurchLevelInfo {
   }
 }
 
+/** Total church XP it takes to stand at `level` — the same curve, summed. */
+export function xpToReachLevel(level: number): number {
+  let total = 0
+  let need = BASE_COST
+  for (let l = 1; l < Math.min(level, MAX_LEVEL); l++) {
+    total += need
+    need = Math.round(need * GROWTH)
+  }
+  return total
+}
+
 // ---------------------------------------------------------------------------
 // The building ladder
 // ---------------------------------------------------------------------------

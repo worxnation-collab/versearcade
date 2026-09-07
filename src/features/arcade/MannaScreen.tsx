@@ -20,6 +20,7 @@ export default function MannaScreen({ demo }: { demo?: boolean }) {
         'Leave the pale lumpy ones — those were kept from yesterday, and they bred worms. On the seventh day nothing falls, and the best thing you can do is keep still.',
       ]}
       cta="Go out and gather"
+      hero="arcade_wilderness"
       demo={demo}
     />
   )

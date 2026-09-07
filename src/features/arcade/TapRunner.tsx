@@ -125,6 +125,8 @@ export function TapRunner({
   const gotRef = useRef(0)
   const cleanRef = useRef(true)
   const missedShown = useRef(false)
+  // Every teach line the run has shown, once each. See TapResult.taught.
+  const taught = useRef<TeachLine[]>([])
   const nextId = useRef(1)
   const timers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set())
   const totals = useRef({ taken: 0, cleanRounds: 0, restKept: null as boolean | null })
@@ -166,6 +168,16 @@ export function TapRunner({
       after(() => setTeach((t) => (t === line ? null : t)), ms)
     },
     [after],
+  )
+
+  /** A teach line: shown like any other, and remembered for the harvest. */
+  const teachLine = useCallback(
+    (line: TeachLine | undefined, ms?: number) => {
+      if (!line) return
+      if (!taught.current.some((t) => t.text === line.text)) taught.current = [...taught.current, line]
+      say(line, ms)
+    },
+    [say],
   )
 
   /** Take a target off the field: animate out, then drop it. */
@@ -210,7 +222,7 @@ export function TapRunner({
         if (cleanRef.current) totals.current.cleanRounds += 1
         if (reason === 'quota') {
           juice.merge()
-          say(game.teach.quota, 1900)
+          teachLine(game.teach.quota, 1900)
         }
       }
 
@@ -231,7 +243,7 @@ export function TapRunner({
         goPhase('intro')
       }, BEAT_MS)
     },
-    [after, clearTimers, game, goPhase, juice, rest, say],
+    [after, clearTimers, game, goPhase, juice, rest, say, teachLine],
   )
 
   const tap = useCallback(
@@ -249,7 +261,7 @@ export function TapRunner({
         // stops being a clean one, and the verse says why the rule exists.
         cleanRef.current = false
         juice.wrong()
-        say(game.teach.wrong)
+        teachLine(game.teach.wrong)
         retire(t.id, 'leaving')
         return
       }
@@ -260,7 +272,7 @@ export function TapRunner({
       retire(t.id, 'taken')
       if (def.quota > 0 && gotRef.current >= def.quota) endRound('quota')
     },
-    [context, def, endRound, game, juice, retire, say],
+    [context, def, endRound, game, juice, retire, teachLine],
   )
 
   /** Tapping the bare field — only meaningful in a round with nothing to take. */
@@ -268,8 +280,8 @@ export function TapRunner({
     if (phase !== 'play' || !rest) return
     cleanRef.current = false
     juice.wrong()
-    say(game.teach.ground)
-  }, [game.teach.ground, juice, phase, rest, say])
+    teachLine(game.teach.ground)
+  }, [game.teach.ground, juice, phase, rest, teachLine])
 
   const spawn = useCallback(() => {
     const free = surface.plots
@@ -303,11 +315,11 @@ export function TapRunner({
       // that fires every few seconds becomes one.
       if (!t.leave && !missedShown.current && game.teach.missed) {
         missedShown.current = true
-        say(game.teach.missed)
+        teachLine(game.teach.missed)
       }
       retire(t.id, 'leaving')
     }, def.lifeMs)
-  }, [after, context, def, game, retire, say, surface.plots])
+  }, [after, context, def, game, retire, surface.plots, teachLine])
 
   // ── the round clock ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -358,6 +370,7 @@ export function TapRunner({
       cleanRounds: totals.current.cleanRounds,
       scoringRounds: countScoringRounds(game),
       restKept: totals.current.restKept,
+      taught: taught.current,
     })
   }, [clearTimers, demo, game, juice, onDone, phase])
 

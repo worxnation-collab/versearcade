@@ -700,6 +700,23 @@ Four things about it are load-bearing:
   way 0074 dropped `admin_overview()` would blank the board in every approved
   build. It is a wrapper, not a second implementation, and must stay one.
 
+**The Give card says what a gift would DO before it is given, and what it did
+after.** Under the buttons, one gold line — "Giving all 1,200 would raise the
+Country Church and put your church at 58% of this week" — built from
+`churchLevelInfo(xp + available)` and the rivalry's own share formula
+(`weekShare`, mine / (mine + theirs), so the forecast and the bar can't
+disagree); the building first, then the level, then the week, and nothing when
+none of them would move. The post-give flash carries the same facts
+("+500 to St Mark's · LVL 7! · 61% of the week"), projected from the totals on
+screen and corrected by the server re-read within the second. In the Buildings
+panel only the NEXT locked building says how far away it is
+(`xpToReachLevel`, `levels.ts`) — one number on the one rung within reach is a
+goal; a column of them is a ladder you are behind on. Still no number about a
+person anywhere on the card: the week is two church totals, and the forecast
+is a church's. These shipped browser-unverified (the tab is online-only and
+the container has no demo account), reasoned from the store shapes; the bar
+they describe is the one `RivalryCard` already draws.
+
 The board keeps listing churches that gave nothing inside the window, sitting on
 0, rather than dropping them: a congregation vanishing from its own neighbourhood
 board at midnight reads as broken. What it does not do is put a **medal** on a
@@ -1892,6 +1909,22 @@ Manna Rush, Word Catch and the Cross Word. Full design: `docs/ARCADE.md`.
   painted one couldn't be tapped), a word has to be placed, and the cross is
   re-cut per puzzle. Every prompt therefore says the ground/page/wall is empty
   twice over, because whatever the model puts there gets drawn over.
+- **The gate is the room seen through the door, and the harvest hands back
+  what the run turned up.** A tap game's gate was a card of text over sixty
+  percent of an empty screen, on a machine whose whole field is a painting
+  one tap away — so `TapGameScreen` takes a `hero` (a `GENERATED_ART` id, the
+  same `arcade_*` scene the field draws) and bleeds it across the top of the
+  gate, with a strip of the run's rounds under it derived from the definition
+  (`RoundStrip`: seven chips with the seventh a sun says "six days to gather,
+  one to keep still" before a word of the how-to is read). Both fail closed to
+  the text gate. And every teach line a run shows is REMEMBERED
+  (`TapResult.taught`, collected by `teachLine()` in `TapRunner` — only the
+  `game.teach.*` lines, never a round's note or the rest stamp) and listed on
+  the harvest as "What the run turned up", cited lines only, in the missed
+  list's frame: what you now know, never how many times you tapped wrong. A
+  run that needed no teaching shows nothing. The Cross Word's "0 crosses
+  built" is gone for the same reason a locked tile never counts: the tally
+  appears with the first cross.
 - **Guest-open by default**, because a game that persists nothing has nothing an
   account would keep for you tomorrow. The exception is a game that writes to
   the player's own record: the Cross Word marks its verse studied, so it carries

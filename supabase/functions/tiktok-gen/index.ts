@@ -131,11 +131,18 @@ function rateFromMime(mime: string | undefined): number {
   return m ? Number(m[1]) : 24000
 }
 
+// Bounded: a TTS call for one voice hung on 2026-09-07 until the function
+// gateway answered 502 two minutes later, which the caller could not tell
+// from a refusal. Ninety seconds is longer than any reply this function
+// has ever waited for; past it the caller gets a clear error and its own
+// retry, not a gateway timeout.
+const GEMINI_TIMEOUT_MS = 90_000
 async function gemini(path: string, body: unknown, method = 'POST'): Promise<Record<string, unknown>> {
   const res = await fetch(`${GEMINI}/${path}`, {
     method,
     headers: { 'content-type': 'application/json', 'x-goog-api-key': GEMINI_KEY },
     body: method === 'GET' ? undefined : JSON.stringify(body),
+    signal: AbortSignal.timeout(GEMINI_TIMEOUT_MS),
   })
   const text = await res.text()
   if (!res.ok) throw new Error(`Gemini ${res.status}: ${text.slice(0, 600)}`)
@@ -309,12 +316,19 @@ Deno.serve(async (req) => {
         ? { multiSpeakerVoiceConfig: { speakerVoiceConfigs: speakers.map((x) => ({ speaker: x.name, voiceConfig: { prebuiltVoiceConfig: { voiceName: x.voice } } })) } }
         : { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } }
       const lead = multi ? `${style}\n\nTTS the following, with the named speakers:\n\n` : `${style}\n\n`
-      const data = await gemini(`models/${TTS_MODEL}:generateContent`, {
+      // Asked twice before giving up: the model answers a short text with
+      // no audio now and then (finishReason OTHER), and one more ask has
+      // always been enough.
+      const speak = () => gemini(`models/${TTS_MODEL}:generateContent`, {
         contents: [{ parts: [{ text: `${lead}${text}` }] }],
         generationConfig: { responseModalities: ['AUDIO'], speechConfig },
       })
-      const cands = data.candidates as Array<{ content?: { parts?: Array<{ inlineData?: { data: string; mimeType?: string } }> } }> | undefined
-      const part = cands?.[0]?.content?.parts?.find((p) => p.inlineData?.data)
+      type Part = { inlineData?: { data: string; mimeType?: string } }
+      const audioPart = (d: Record<string, unknown>) => (d.candidates as Array<{ content?: { parts?: Part[] } }> | undefined)?.[0]?.content?.parts?.find((p) => p.inlineData?.data)
+      let data: Record<string, unknown>
+      let part: Part | undefined
+      try { data = await speak(); part = audioPart(data) } catch (e) { console.warn('tts: first ask failed, asking again:', (e as Error).message); data = await speak(); part = audioPart(data) }
+      if (!part) { data = await speak(); part = audioPart(data) }
       if (!part?.inlineData) return json({ error: 'no audio in response', raw: JSON.stringify(data).slice(0, 400) }, 502)
       const pcm = b64ToBytes(part.inlineData.data)
       const wav = pcmToWav(pcm, rateFromMime(part.inlineData.mimeType))

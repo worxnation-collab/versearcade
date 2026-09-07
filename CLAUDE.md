@@ -568,6 +568,14 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
     thought; this is that rule arriving on the layout that grew a second
     speaker later. It rendered perfectly the whole time — only reading the
     captions off a frame found it.
+  - **And the caption a PAUSE holds is the last one SPOKEN, not the last one
+    in the array** (`heldPhrase`). Those were the same thing for as long as
+    the array was one speaker's words in order; they stopped being the same
+    thing the moment a story could open in his voice, because the beat
+    between his last word and Tabitha's first — about a second and a half —
+    then held HER closing reference line, flashed once at the handover and
+    gone. Both layouts share the lookup now. Found the same way as the clamp
+    above: by pulling the frame out of the MP4.
   - Her captions are also timed against HER samples alone: `timedCaptions`
     matches a transcript to a recording, and handing it her minute of words
     over audio that ends in somebody else's voice makes it chase the tail.

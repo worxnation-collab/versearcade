@@ -625,6 +625,13 @@ and the quiz stay automated and labelled.
   line since it grew a thought. It rendered perfectly throughout — only
   reading the captions off a real frame found it, which is why `render` now
   prints the caption count.
+- **A pause holds the last caption SPOKEN, not the last one in the array**
+  (`heldPhrase`, shared by both layouts). Those were the same thing while the
+  array was one speaker's words in order. With an introduction they are not:
+  the beat between his last word and Tabitha's first, about a second and a
+  half, held HER closing reference line — one frame of the end of the story
+  at the start of it. Found by pulling the frame out of the MP4, like every
+  other bug on this layout.
 - **Her captions are timed against HER samples only.** `timedCaptions`
   matches a transcript to a recording, so handing it her minute of words over
   audio that ends in somebody else's voice makes it chase the tail and

@@ -431,6 +431,28 @@ function outlined(ctx: CanvasRenderingContext2D, text: string, x: number, y: num
 
 function easeOut(t: number) { return 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 3) }
 
+/**
+ * The caption to show at `at`: the one being spoken, or — through a pause —
+ * the one that was spoken LAST, so a gap is a lingering line rather than a
+ * blank panel. Nothing before the first phrase or after the audio.
+ *
+ * The "held" half used to be `phrases[phrases.length - 1]`, which is the same
+ * thing only while the array is one speaker's words in order. It stopped
+ * being the same thing the moment a story could OPEN in the operator's voice:
+ * the array is then his half followed by hers, so the beat between them —
+ * his last word to her first, about a second and a half — held HER closing
+ * reference line, flashed once at the handover and gone. It rendered
+ * perfectly; only pulling the frame out of the MP4 found it.
+ */
+function heldPhrase(phrases: TimedPhrase[], at: number, audioDur: number): TimedPhrase | null {
+  const now = phrases.find((x) => at >= x.start && at < x.end)
+  if (now) return now
+  if (at >= audioDur || at < (phrases[0]?.start ?? 0)) return null
+  for (let i = phrases.length - 1; i >= 0; i--) if (phrases[i].start <= at) return phrases[i]
+  return null
+}
+
+
 /** The largest of `sizes` at which `text` wraps into `maxHeight`; sets ctx.font to it. */
 function fitText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, sizes: number[], maxHeight: number) {
   let lines: string[] = [text], lh = 0
@@ -687,7 +709,7 @@ async function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number,
     // Between two phrases the last one holds; before the FIRST there is
     // nothing to hold, and holding the final phrase there put the reference
     // on screen under the hook before a word had been said.
-    const p = phrases.find((x) => at >= x.start && at < x.end) ?? (at >= audioDur || at < (phrases[0]?.start ?? 0) ? null : phrases[phrases.length - 1])
+    const p = heldPhrase(phrases, at, audioDur)
     if (p && at < audioDur + 0.2) { phrase = p; age = (at - p.start) / 0.22 }
   }
   // 4b. The person speaking. An operator-voiced post carries a thought after
@@ -1186,7 +1208,7 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
   let phrase: TimedPhrase | null = null
   let age = 1
   if (at >= 0) {
-    const p = phrases.find((x) => at >= x.start && at < x.end) ?? (at < audioDur && at >= (phrases[0]?.start ?? 0) ? phrases[phrases.length - 1] : null)
+    const p = heldPhrase(phrases, at, audioDur)
     if (p && at < audioDur + 0.2) { phrase = p; age = (at - p.start) / 0.22 }
   }
   if (endFade < 1) {

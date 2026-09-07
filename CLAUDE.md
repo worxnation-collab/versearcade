@@ -585,7 +585,16 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
 - **Every posted link is the PLAYABLE verse, tagged with its network**
   (`siteLink` in `social.ts`: `versearcade.org/play?src=<platform>`), and
   `trackLinks` rewrites any bare site mention the model wrote into that
-  shape, so no caption goes out untagged. The client parks the first `src`
+  shape, so no caption goes out untagged. **Facebook is the exception and
+  it is deliberate**: a Reel with an outbound link in its caption is shown
+  to fewer people (Facebook's own Professional dashboard says so), so the
+  Facebook caption carries NO url — `dropLinkSentence` takes out whatever
+  the model wrote, the ask becomes share + follow, and the tracked link
+  rides as Ayrshare's `firstComment`, posted when the Reel publishes, which
+  is also the only moment a SCHEDULED post has an id to comment on. Two of
+  that dashboard's tips are NOT reachable from Ayrshare and stay manual:
+  there is no subtitle field for Facebook (the burned-in captions are what
+  ships) and no Reels-playlist endpoint at all. The client parks the first `src`
   it sees (`lib/attribution.ts`, `va.src`, stripped from the address bar on
   capture, same lifetime as the referral code) and hands it to
   `set_signup_source` (0106) once an account exists. **The server keeps only

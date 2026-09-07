@@ -82,6 +82,18 @@ const tagLine = (tags: string[] | undefined, n: number) => (tags ?? []).slice(0,
  */
 export const siteLink = (platform: Platform): string => `https://versearcade.org/play?src=${platform}`
 
+/**
+ * The sentence carrying a versearcade.org mention, removed whole (a bare
+ * mention as well as a real URL, since the model writes both). Two networks
+ * want the words without it: X re-adds the tracked link as its own ask and
+ * would otherwise say it twice, and FACEBOOK wants no link in the caption at
+ * all — a Reel with an outbound link is shown to fewer people, and Facebook's
+ * own Professional dashboard names "remove links from your caption" as the
+ * fix. Facebook's link moves to the post's first comment instead.
+ */
+const dropLinkSentence = (text: string): string =>
+  text.replace(/[^.!?\n]*(?:https?:\/\/)?(?:www\.)?versearcade\.org\S*[^.!?\n]*[.!?]?/gi, ' ')
+
 /** Any bare site mention the model wrote becomes the tracked link, so no caption goes out untagged. */
 const trackLinks = (text: string, platform: Platform): string =>
   text.replace(/(?:https?:\/\/)?(?:www\.)?versearcade\.org(?:\/[\w./?=&-]*)?/gi, siteLink(platform))
@@ -91,7 +103,10 @@ const trackLinks = (text: string, platform: Platform): string =>
  * a URL is a dead string on TikTok and Snapchat (nothing in a caption there
  * is tappable), so those ask for the follow, which IS tappable and is the
  * number that decides whether a day's post reaches anyone the next day.
- * Instagram's is the bio link, YouTube's, Facebook's and X's are live URLs.
+ * Instagram's is the bio link, YouTube's and X's are live URLs. Facebook's
+ * carries NO link at all — a Reel with one in its caption is shown to fewer
+ * people — and asks for the share and the follow instead; its link goes out
+ * as the post's first comment (see postBody).
  * A challenge asks for the comment first — a comment is what a one-question
  * post exists to collect — and the follow second. The copy prompt asks for
  * the same thing; this is the guarantee, over words a model may not have
@@ -104,7 +119,7 @@ export function callToAction(platform: Platform, kind: Kind): string {
     case 'snapchat': return challenge ? 'Comment your answer.' : "Follow for tomorrow's verse."
     case 'instagram': return challenge ? 'Comment your answer. Play it — link in bio.' : 'Play it — link in bio.'
     case 'youtube': return challenge ? `Comment your answer. Play today's verse: ${siteLink(platform)}` : `Play today's verse: ${siteLink(platform)}`
-    case 'facebook': return challenge ? `Comment your answer. ${siteLink(platform)}` : siteLink(platform)
+    case 'facebook': return challenge ? 'Comment your answer. Share it with someone who needs it today.' : "Share this with someone who needs it today. Follow Verse Arcade for tomorrow's verse."
     case 'x': return challenge ? `Comment your answer. ${siteLink(platform)}` : siteLink(platform)
     case 'threads': return challenge ? `Comment your answer. Play it: ${siteLink(platform)}` : `Play today's verse: ${siteLink(platform)}`
     case 'pinterest': return `Play today's verse: ${siteLink(platform)}`
@@ -150,7 +165,15 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
     body.post = [withAsk(c.text, platform, a.kind), tagLine(c.tags, 5)].filter(Boolean).join('\n\n').slice(0, 5000)
     body.youTubeOptions = { title: (c.title || `${a.reference || 'Verse Arcade'} · Verse Arcade`).slice(0, 100), visibility: 'public', shorts: true, madeForKids: false, containsSyntheticMedia: true }
   } else if (platform === 'facebook') {
-    body.post = [withAsk(c.text, platform, a.kind), aiNote(a), tagLine(c.tags, 2)].filter(Boolean).join('\n\n').slice(0, 5000)
+    // The caption carries no URL: the model's link sentence is dropped whole
+    // and the ask asks for a share and a follow, which is what Facebook's own
+    // dashboard says a Reel is rewarded for. The tracked link is still the
+    // only attribution path Facebook has, so it goes out as the post's FIRST
+    // COMMENT — Ayrshare adds it once the Reel is actually published, which
+    // is also the only moment a scheduled post has an id to comment on.
+    const lead = dropLinkSentence(c.text ?? '').replace(/[ \t]+/g, ' ').replace(/ ?\n ?/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
+    body.post = [[lead, callToAction(platform, a.kind)].filter(Boolean).join('\n'), aiNote(a), tagLine(c.tags, 2)].filter(Boolean).join('\n\n').slice(0, 5000)
+    body.firstComment = { comment: `Play today's verse: ${siteLink(platform)}` }
     // A Reel where one is allowed (it is the surface Facebook shows to
     // strangers); over the ceiling, a plain video post on the page rather
     // than a refusal — Facebook rejected the quiz and a 91-second story as
@@ -165,7 +188,7 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
     const ask = callToAction(platform, a.kind)
     const xLen = (s: string) => s.replace(/https?:\/\/\S+/g, 'x'.repeat(23)).length
     // The model's own link sentence goes whole ("Play today's verse: versearcade.org"): the ask says it again with the tracked link.
-    let lead = (c.text ?? '').replace(/[^.!?\n]*(?:https?:\/\/)?(?:www\.)?versearcade\.org\S*[^.!?\n]*[.!?]?/gi, ' ').replace(/\s+/g, ' ').trim()
+    let lead = dropLinkSentence(c.text ?? '').replace(/\s+/g, ' ').trim()
     const words = lead.split(' ')
     while (words.length > 1 && xLen([words.join(' '), ask, tail].join(' ')) > 280) words.pop()
     lead = words.join(' ')

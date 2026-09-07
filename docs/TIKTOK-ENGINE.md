@@ -92,7 +92,7 @@ title and hashtag count. The key lives in Vault (`tiktok_ayrshare_key()`,
   not made for kids, `containsSyntheticMedia` (the voice is synthetic).
   TikTok: public, `isAIGenerated` for the same reason, caption on one line
   because TikTok drops line breaks. Facebook: a Reel with the hook as its
-  title. Instagram: a Reel shared to the feed, five hashtags at most. X: one
+  title, no link in the caption, and the link as a first comment. Instagram: a Reel shared to the feed, five hashtags at most. X: one
   line under 280 characters with two tags (and Ayrshare still calls it
   `twitter` on the wire — `ayrshareName()` in `social.ts` is the one place
   that translates). Threads: 500 characters, links tappable, the AI note in
@@ -148,10 +148,31 @@ title and hashtag count. The key lives in Vault (`tiktok_ayrshare_key()`,
   a TikTok or Snapchat caption is tappable, so a URL there is a dead string
   and those two ask for the follow ("Follow for tomorrow's verse") — the one
   number that decides whether tomorrow's post reaches anyone. Instagram's ask
-  is the bio link, YouTube's, Facebook's and X's are live URLs. A challenge
+  is the bio link, YouTube's and X's are live URLs. A challenge
   asks for the comment first. The copy prompt asks for each network's own
   ask, and `callToAction()` / `withAsk()` in `social.ts` append it when the
   words come back without one, so the guarantee does not rest on the model.
+- **Facebook's caption carries no link, and the link goes in the FIRST
+  COMMENT instead.** Facebook's own Professional dashboard lists "remove
+  links from your caption" among the things a Reel is rewarded for, beside
+  asking the community to share and growing the following — so the Facebook
+  ask is now "Share this with someone who needs it today. Follow Verse
+  Arcade for tomorrow's verse.", the copy prompt is told to write no URL at
+  all, and `dropLinkSentence()` removes whole any link sentence the model
+  wrote anyway (the same helper X uses). Attribution is not lost: the
+  tracked `?src=facebook` link rides as Ayrshare's `firstComment`, which it
+  adds once the Reel is actually published — which is also the only moment a
+  SCHEDULED post has an id to comment on. Validated against the live API
+  before shipping (a scheduled Facebook post with `firstComment` is accepted
+  by Ayrshare's pre-validation, then deleted).
+- **Two of Facebook's tips are not reachable from the API and stay manual.**
+  Ayrshare's Facebook options carry no subtitle or caption-file field, so a
+  real CC track cannot be attached from here — the videos' burned-in
+  word-by-word captions are the accessibility that ships, and a CC track
+  would be uploaded by hand in Meta Business Suite. Reels PLAYLISTS have no
+  Ayrshare endpoint at all (its only playlist API is a YouTube analytics
+  read), so adding a Reel to one is a manual step on the page. Don't add
+  either to the runner as a silent no-op.
 - **`social`** reports what Ayrshare has connected and this month's post
   count against the plan's quota; the hub shows it, and warns in coral on a
   plan that five videos on five networks (twenty-five posts a day) will
@@ -521,7 +542,8 @@ mechanism anyway.
 
 Every link a post carries is `https://versearcade.org/play?src=<network>`
 (`siteLink` in `social.ts`; `trackLinks` rewrites any bare site mention the
-copy model wrote). `/play` is open to a guest, so the stranger plays today's
+copy model wrote — except on Facebook, where the link is the post's first
+comment rather than caption text). `/play` is open to a guest, so the stranger plays today's
 verse first and meets the account wall with a streak started — that is the
 conversion path, not the homepage. The client keeps the first `src` it sees
 (`lib/attribution.ts`), and `set_signup_source` (0106) files a NEW account

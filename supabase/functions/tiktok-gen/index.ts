@@ -568,7 +568,9 @@ Deno.serve(async (req) => {
                 : `a painted figure of Peter (Cephas) reads the verse of the day. `
       // What each caption asks for, and it differs by network on purpose:
       // nothing in a TikTok or Snapchat caption is tappable, so a URL there
-      // is a dead string and the ask is the follow; the others carry a link.
+      // is a dead string and the ask is the follow; the others carry a link —
+      // except FACEBOOK, whose caption carries none at all (a Reel with a link
+      // in it is shown to fewer people; social.ts puts it in the first comment).
       // social.ts appends the same ask if the words come back without it.
       const ask = challenge
         ? { tiktok: 'ends by asking people to comment their answer and to follow for tomorrow\'s (NO URL: nothing in a TikTok caption is tappable)', yt: 'asks people to comment their answer, then', fb: 'asks people to comment their answer, then', ig: 'ends with "Comment your answer. Play it — link in bio."', x: 'asks people to comment their answer, ending with', th: 'asks people to comment their answer, ending with "Play it: versearcade.org"' }
@@ -585,7 +587,7 @@ Deno.serve(async (req) => {
           `"hook": one on-screen opening line, max 8 words, no emoji, not a question.\n` +
           `"tiktok": { "text": 1-2 short sentences, casual and warm, under 150 characters, no hashtags in it, ${ask.tiktok}; "tags": 5 lowercase hashtags without the # sign }.\n` +
           `"youtube": { "title": a Shorts title under 70 characters that names the verse reference and what the video is; "text": 2-4 sentences for the description, plain, ${ask.yt} with the line "Play today's verse: https://versearcade.org" on its own line at the end; "tags": 5 lowercase hashtags without the # sign, the first one "shorts" }.\n` +
-          `"facebook": { "text": 2-4 conversational sentences, a little longer and more personal than the others, no hashtags in it, ${ask.fb} ending with the link https://versearcade.org on its own line; "tags": 2 lowercase hashtags without the # sign }.\n` +
+          `"facebook": { "text": 2-4 conversational sentences, a little longer and more personal than the others, no hashtags in it and NO LINK OR URL ANYWHERE (Facebook shows a Reel with a link in its caption to fewer people; the link goes in the first comment instead), ${ask.fb} ending by asking people to share it with someone who needs it today; "tags": 2 lowercase hashtags without the # sign }.\n` +
           `"instagram": { "text": 2-3 short sentences with a line break between them, no hashtags in it, ${ask.ig}; "tags": 10 lowercase hashtags without the # sign, mixing broad #bible-style tags with the verse's own theme }.\n` +
           `"x": { "text": one line under 200 characters, plain and direct, no hashtags in it, ${ask.x} versearcade.org; "tags": 2 lowercase hashtags without the # sign }.\n` +
           `"threads": { "text": 1-3 short conversational sentences under 300 characters, the kind of thing a person would say rather than a brand, no hashtags in it, ${ask.th}; "tags": 2 lowercase hashtags without the # sign }.\n` +

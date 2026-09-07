@@ -25,3 +25,6 @@ yarn-error.log*
 
 # tiktok-daily runner output
 .tiktok-daily/
+
+# tiktok-voice output
+.tiktok-voice/

@@ -17,7 +17,7 @@ import type { QuizStep } from '@/lib/tiktokRender'
 import { challengeIndex } from '@/lib/tiktokChallenge'
 import {
   READERS, TELLERS, ROOMS, skinPath, loadScene, publicUrl, existsAt, parkFile,
-  seedFor, autoPick, autoCast, challengeCast, spokenReference, call, fetchCopy, fetchStory, fetchVoice, bedFor, backdropFor, tierFor,
+  seedFor, autoPick, autoCast, challengeCast, spokenReference, call, fetchCopy, fetchStory, fetchVoice, bedFor, backdropFor, tierFor, speakerFor,
   FOUNDER_PHOTO, VOICE_LABEL, voiceWavPath, voiceJsonPath,
   type Copy, type Made, type Story, type Renderer, type VoiceTrack,
 } from './shared'
@@ -116,14 +116,19 @@ export async function makeVerse(d: string, o: VerseOptions, progress: Progress):
     const tier = await tierFor(c.reader, c.scene)
     const backdrop = await backdropFor(r, tier, c.reader, c.scene)
     const photo = await r.loadImage(publicUrl(FOUNDER_PHOTO) + '?v=' + Date.now()).catch(() => undefined)
+    // The day's reader hands the road to the maker as the thought begins, so
+    // the figure, the voice and the photo are one person for the rest of it.
+    // Null before the swap's start date, and on any day its art will not
+    // load — the reader simply stays put.
+    const speaker = (await speakerFor(r, d, c.scene)) ?? undefined
     const bed = o.music !== false ? await bedFor(await r.plannedDuration(audio, copy?.hook, false), 'morning') : undefined
     const out = await r.renderTikTok({
-      reference: v.reference, text: v.text, hook: copy?.hook, audio, backdrop, bed,
+      reference: v.reference, text: v.text, hook: copy?.hook, audio, backdrop, bed, speaker,
       voice: { verse: own.verse, thought: own.thought, photo, label: VOICE_LABEL },
       grade: o.cast ? undefined : gradeFor(sd),
       onProgress: progress,
     })
-    return made(d, 'verse', v.reference, out, copy, `${c.reader} · ${c.scene} · ${tier} · your voice`)
+    return made(d, 'verse', v.reference, out, copy, `${c.reader}${speaker ? ' → you' : ''} · ${c.scene} · ${tier} · your voice`)
   }
   progress(0, 'asking for the reading')
   // A batch reads each day in its own voice when the pick is automatic;

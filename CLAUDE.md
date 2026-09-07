@@ -526,6 +526,29 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   "AI-generated art; the voice is our own." (`voiced` on `PostArgs`) and
   the copy is rewritten on Save. This is the platforms' human-producer
   test being met on purpose; the four other daily posts stay automated.
+  - **And from 2026-09-15 the day's READER hands the road over to him**
+    (`SPEAKER_SKIN`, `speakerFor`, `RenderInput.speaker`, `standFigure`): as
+    the thought begins the reader turns edge-on and goes, and the `sharkey`
+    skin — the founder's own, one of one — turns in on the same spot at the
+    same size, so the figure, the voice and the photo are one person for the
+    rest of the post. Before that it was Cephas or Esther standing there
+    while Matthew read.
+    Three things about it are load-bearing. It carries a **`scene` as well as
+    a figure**, because on the two best backdrop tiers the reader is PAINTED
+    INTO the picture and there is no layer to take away — the swap brings the
+    bare road up over the painting, and only the built-in tier spins a figure
+    out. It is **dated rather than switched on**, because seven mornings were
+    already rendered and scheduled under the old look and a post should not
+    change shape mid-week. And it is **half a second**: the rule on this
+    layout is that the only thing moving is the caption, so a slow dissolve
+    between two figures would be a second moving thing for as long as it
+    lasted, where a flip is over before it reads as motion. Nothing here goes
+    through `skinVisible` — the art is read from `public/skins/` like every
+    reader's — so the skin staying `retired` and owned by one account is
+    untouched. A missing render is the reader staying put, never a failed
+    post. **The STORY deliberately does not get it**: that is Tabitha's
+    room, a second figure in it is a stranger in somebody else's library,
+    and the photo alone already says who is talking.
   `scripts/tiktok-voice.mjs` is the same loop from a terminal (drafts,
   listen, fix, render, post) for the sessions where the memos arrive here
   rather than at the hub. `docs/TIKTOK-ENGINE.md` → "Your voice".

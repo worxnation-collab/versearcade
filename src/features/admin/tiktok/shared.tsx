@@ -210,6 +210,42 @@ export async function loopUrlFor(k: string): Promise<string | null> {
 // A tier that will not load FALLS THROUGH rather than failing the post: the
 // built-in tier needs nothing generated and is always there, so there is no
 // state where a missing file means no video.
+/**
+ * The maker's own skin, which takes the reader's place for the thought on a
+ * VOICED verse post — so the figure on the road, the voice reading and the
+ * photo in the frame are all one person for the second half.
+ *
+ * Two things about it are deliberate. It is dated rather than switched on
+ * everywhere, because seven mornings were already rendered and scheduled
+ * under the old look and a post should not change shape mid-week; a date is
+ * also the one gate that needs nothing remembered. And it is the VERSE
+ * layout only — the evening story is Tabitha's room, where a second figure
+ * would be a stranger walking into somebody else's library, and the photo
+ * alone already says who is talking.
+ *
+ * The art is read straight out of `public/skins/`, the same path every
+ * reader uses; nothing here goes through `skinVisible`, so the skin being
+ * `retired` and owned by one account is untouched by it.
+ */
+export const SPEAKER_SKIN = 'sharkey'
+export const SPEAKER_SKIN_FROM = '2026-09-15'
+
+/**
+ * His figure and the bare road to stand it on, or null on a date before the
+ * swap begins. Both are needed together: on the two painted backdrop tiers
+ * the reader is IN the picture, so the road is what covers him.
+ */
+export async function speakerFor(r: Renderer, d: string, scene: string): Promise<{ figure: HTMLImageElement; scene: HTMLImageElement } | null> {
+  if (d < SPEAKER_SKIN_FROM) return null
+  try {
+    const [figure, sceneImg] = await Promise.all([r.loadImage(`/skins/${SPEAKER_SKIN}.png`), loadScene(r, scene)])
+    return { figure, scene: sceneImg }
+  } catch {
+    // A missing render is the day's reader staying put, never a failed post.
+    return null
+  }
+}
+
 export async function backdropFor(r: Renderer, tier: 'loop' | 'still' | 'builtin', rd: string, sc: string): Promise<Backdrop> {
   const k = `${rd}-${sc}`
   if (tier === 'loop') {

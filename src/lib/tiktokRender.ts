@@ -44,6 +44,21 @@ export interface RenderInput {
   /** The reading, as a WAV (or anything decodeAudioData reads). */
   audio: ArrayBuffer
   backdrop: Backdrop
+  /**
+   * The maker's own figure, which TAKES THE READER'S PLACE as the thought
+   * begins — the day's reader hands the road over to the person actually
+   * talking, so the figure, the voice and the photo are one person for the
+   * rest of the post. Absent on an automated post, which renders exactly as
+   * it always did.
+   *
+   * It carries a `scene` as well as a `figure` because on the two best
+   * backdrop tiers the reader is PAINTED INTO the picture and there is no
+   * layer to take away. So the swap crossfades the bare road over the
+   * painting rather than fading a figure, and the built-in tier — which does
+   * have a separate figure — spins that one out instead. Both halves land in
+   * the same place, at the same size, on the same road.
+   */
+  speaker?: { figure: HTMLImageElement; scene: HTMLImageElement }
   /** A time-of-day grade over the backdrop: the mood without a new painting. */
   grade?: 'dusk' | 'night'
   /** A music bed (48 kHz mono) mixed under the reading; see lib/tiktokMusic. */
@@ -648,11 +663,59 @@ function drawSpeaker(ctx: CanvasRenderingContext2D, photo: HTMLImageElement, lab
   ctx.restore()
 }
 
+/**
+ * The swap: it STARTS this long before the first word of the thought and
+ * takes this long in total, so the maker is standing there as he begins to
+ * speak rather than arriving late over his own sentence. Half a second, on
+ * purpose — the rule on this layout is that the only thing moving is the
+ * caption, and a slow dissolve between two figures would be a second moving
+ * thing for as long as it lasted. A flip is over before it reads as motion.
+ */
+const SWAP_LEAD = 0.3
+const SWAP_SEC = 0.5
+
+/**
+ * A figure STANDING on the road: feet on the ground, one soft contact
+ * shadow, at the size the skins are drawn for. `turn` is a card flip about
+ * the figure's own vertical axis — 0 is edge-on and invisible, 1 is facing
+ * the viewer — which is how one figure replaces another in the same spot
+ * without either of them sliding anywhere.
+ */
+function standFigure(ctx: CanvasRenderingContext2D, img: HTMLImageElement, alpha: number, turn = 1) {
+  if (alpha <= 0 || turn <= 0) return
+  const fh = HEIGHT * 0.42
+  const fw = (img.naturalWidth / img.naturalHeight) * fh
+  const cx = WIDTH / 2, feet = HEIGHT * 0.68
+  ctx.save()
+  ctx.globalAlpha = 0.32 * alpha * turn
+  ctx.fillStyle = '#1a0f36'
+  ctx.beginPath(); ctx.ellipse(cx, feet - 6, fw * 0.3, 22, 0, 0, Math.PI * 2); ctx.fill()
+  ctx.restore()
+  ctx.save()
+  ctx.globalAlpha = alpha
+  ctx.imageSmoothingQuality = 'high'
+  ctx.translate(cx, 0)
+  ctx.scale(turn, 1)
+  ctx.drawImage(img, -fw / 2, feet - fh, fw, fh)
+  ctx.restore()
+}
+
 async function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number, chrome = true) {
   const { input, lead, audioDur, total, phrases } = scene
   const bd = input.backdrop
+  const at = t - lead
 
   // 1. Backdrop.
+  //
+  // `swap` is the handover from the day's reader to the maker's own figure,
+  // 0 before it starts and 1 once he is standing there. It runs as a card
+  // flip in two halves: the reader turns edge-on and goes (or, on a painted
+  // tier, dissolves under the bare road), then he turns in. Nothing slides
+  // and nothing else on the frame moves.
+  const swapAt = scene.voice && input.speaker ? scene.voice.thoughtStart - SWAP_LEAD : Infinity
+  const swap = Math.min(1, Math.max(0, (at - swapAt) / SWAP_SEC))
+  const out = Math.max(0, 1 - swap * 2)
+  const inn = Math.max(0, swap * 2 - 1)
   ctx.save()
   if (bd.kind === 'loop') {
     await drawLoop(ctx, bd.video, t)
@@ -666,19 +729,19 @@ async function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number,
     // and lit by a pulsing gold halo — which was the single most generated-
     // looking thing in the post. A figure with its feet on the ground and one
     // soft contact shadow reads as a painting instead.
-    const fh = HEIGHT * 0.42
-    const fw = (bd.figure.naturalWidth / bd.figure.naturalHeight) * fh
-    // He stands ON the road rather than over it, and high enough that the
-    // captions land on the ground below him instead of across his robe.
-    const cx = WIDTH / 2, feet = HEIGHT * 0.68
-    ctx.save()
-    ctx.globalAlpha = 0.32
-    ctx.fillStyle = '#1a0f36'
-    ctx.beginPath(); ctx.ellipse(cx, feet - 6, fw * 0.3, 22, 0, 0, Math.PI * 2); ctx.fill()
-    ctx.restore()
-    ctx.imageSmoothingQuality = 'high'
-    ctx.drawImage(bd.figure, cx - fw / 2, feet - fh, fw, fh)
+    standFigure(ctx, bd.figure, 1, out)
   }
+  // The painted tiers have the reader IN the painting, so what covers him is
+  // the road he is standing on, brought up over the picture. It is the same
+  // road: `speaker.scene` is the scene the still was painted from.
+  if (swap > 0 && input.speaker && bd.kind !== 'builtin') {
+    ctx.save()
+    ctx.globalAlpha = 1 - out
+    const sc = input.speaker.scene
+    cover(ctx, sc, sc.naturalWidth, sc.naturalHeight, 1 + 0.012 * (t / total))
+    ctx.restore()
+  }
+  if (input.speaker) standFigure(ctx, input.speaker.figure, 1, inn)
   ctx.restore()
   if (!chrome) return
   drawGrade(ctx, input.grade)
@@ -702,7 +765,6 @@ async function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number,
 
   // 4. Captions, from the first word.
   const endFade = easeOut((t - (lead + audioDur)) / 0.45)
-  const at = t - lead
   let phrase: TimedPhrase | null = null
   let age = 1
   if (at >= 0) {

@@ -500,16 +500,20 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   the transcript, `refit` keeps the timings), parked as
   `days/<date>/voice-verse.{wav,json}`. `makeVerse` asks `voice` first, so
   the morning runner uses it with no Whisper and no TTS on a voiced day
-  and falls back to Gemini on any other. The render adds ONE thing for the
+  and falls back to Gemini on any other. **A phone only uploads** — the
+  listener (Whisper base, ~140MB in WASM) blanked the operator's iPhone tab
+  twice — so the transcript is made on a desktop ("Listen to it") or by the
+  runner itself (`ensureVoice`) when nothing has. The recording is tiled
+  into window-sized pieces cut at its quietest points and nothing is
+  skipped: a silence detector tuned for clean TTS called a phone memo one
+  run and Whisper's windows dropped half the thought. The render adds ONE thing for the
   thought: the founder photo (`founder/photo.jpg`) in a round frame whose
   gold ring breathes with the voice, plus the photo small on the end card
   — not a waveform, and nothing before the hook. The AI note becomes
   "AI-generated art; the voice is our own." (`voiced` on `PostArgs`) and
   the copy is rewritten on Save. This is the platforms' human-producer
   test being met on purpose; the four other daily posts stay automated.
-  Whisper is run per stretch of speech, because a 30-second window ending
-  on the long pause the operator is told to leave swallowed eleven seconds
-  of speech on the first try. `docs/TIKTOK-ENGINE.md` → "Your voice".
+  `docs/TIKTOK-ENGINE.md` → "Your voice".
 - **The quiz replays YESTERDAY, and the CPU is the game's own.** The five
   questions are the same five for everybody on a date, so a public replay of
   today's would hand out today's answers. The player is `buildCpuPlan` from

@@ -25,6 +25,7 @@ must never be written into a tracked file.
 | `prayer-wall.json` | the Prayer Wall — bare weathered limestone with dark seams, prompted empty so the notes can be drawn into it | `public/keep/prayer-wall.jpg` |
 | `chest.json` | the daily chest, closed and open — the open one is prompted EMPTY, because the relic is drawn over it | `public/keep/chest_closed.png`, `public/keep/chest_open.png` |
 | `cpu.json` | the three CPU opponents (Rookie, Deacon, Prophet) as full-length figures; `CpuFace` crops them to a portrait | `public/skins/cpu_*.png` |
+| `sharkey.json` | "Sharkey" — the founder's own one-of-one skin, from likeness photos not kept in the repo (see the manifest's `note`) | `public/skins/sharkey.png` |
 | `skins-refit.json` | re-renders of pre-pipeline skins that shipped as busts (Eden cut at the hem, Elijah at the knees) — full length, head to feet | `public/skins/eden.png`, `public/skins/elijah.png` |
 
 **Check what came back**, every time:

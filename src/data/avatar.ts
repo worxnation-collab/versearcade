@@ -609,6 +609,35 @@ export const FULL_SKINS: SkinDef[] = [
     // partnership skin must never do. It is a look, not a window.
     blurb: 'A lantern lit against the dark \u2014 the light shines in the darkness, and the darkness has not overcome it. Redeem Tyler\u2019s code to wear it.',
   },
+  {
+    id: 'sharkey',
+    // Sharkey — the founder's own skin, and the one thing in this app that
+    // exactly ONE account has. Charcoal henley, aviators on the collar, a
+    // coffee, thumb hooked in a pocket.
+    //
+    // The lock is three things and it needs all three:
+    //
+    //   - `retired: true` is the VISIBILITY half. `skinVisible` returns `owned`
+    //     for a retired skin, so it renders for its owner and for nobody else,
+    //     in both stores. There is deliberately NO `exclusive` here, and that
+    //     is the trap: `exclusive` is decided FIRST in `skinVisible` and
+    //     returns true unconditionally, so an exclusive+retired skin would be
+    //     visible to everybody. `exclusive` also means "there is a code for
+    //     it", and 0108 turned the code off.
+    //   - `source: 'paid'` is the ENTITLEMENT half. It rides `owned_skins`, so
+    //     0108's protected list in `enforce_skin_entitlement` is what stops any
+    //     client writing this id into its own profile.
+    //   - and it is in NEITHER `fulfill_skin` NOR `promo_codes`, so no purchase
+    //     and no code can ever grant it. `grant_skins()` is the only door, and
+    //     0108 walks through it exactly once.
+    //
+    // No price, no pack, no checkout anywhere — a look, not a product, so
+    // `pricedOnShelf` skips it by the same `retired` test the whale gets.
+    name: 'Sharkey',
+    source: 'paid',
+    retired: true,
+    blurb: 'One of one. The founder\u2019s own.',
+  },
 ]
 
 /** 'ruth_3' -> 'ruth': reactive pass skins bake their state into the equipped

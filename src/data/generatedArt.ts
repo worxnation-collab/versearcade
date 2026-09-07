@@ -58,6 +58,7 @@ export const GENERATED_ART: Record<string, string> = {
   'church_tile_parish': '/church/church_tile_parish.png',
   'church_tile_stone': '/church/church_tile_stone.png',
   'churchyard': '/church/churchyard.jpg',
+  'sharkey': '/skins/sharkey.png',
   'cpu_deacon': '/skins/cpu_deacon.png',
   'cpu_prophet': '/skins/cpu_prophet.png',
   'cpu_rookie': '/skins/cpu_rookie.png',

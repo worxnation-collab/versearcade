@@ -19,15 +19,24 @@
 
 import type { TimedPhrase, TimedWord } from './tiktokRender'
 
-const MODEL = 'onnx-community/whisper-tiny.en_timestamped'
+// Two sizes of the same model. `tiny` lines up KNOWN text (Gemini's reading
+// against the verse it was given) and is what the morning runner fetches
+// every day; `base` is four times the download and reads a person's own
+// words well enough to caption them — the operator's recording is the one
+// place the transcript IS the caption, and tiny turned "Jude writes this
+// letter" into "writes the slider" there.
+export type AsrModel = 'tiny' | 'base'
+const MODELS: Record<AsrModel, string> = { tiny: 'onnx-community/whisper-tiny.en_timestamped', base: 'onnx-community/whisper-base.en_timestamped' }
 const RATE = 16000
 
 interface Chunk { text: string; timestamp: [number, number | null] }
 
 type Asr = (audio: Float32Array, opts: Record<string, unknown>) => Promise<{ text: string; chunks?: Chunk[] }>
-let asrPromise: Promise<Asr> | null = null
+const asrPromises = new Map<AsrModel, Promise<Asr>>()
 
-async function loadAsr(onProgress?: (label: string) => void): Promise<Asr> {
+async function loadAsr(onProgress?: (label: string) => void, model: AsrModel = 'tiny'): Promise<Asr> {
+  const MODEL = MODELS[model]
+  let asrPromise = asrPromises.get(model) ?? null
   if (!asrPromise) {
     asrPromise = (async () => {
       const tf = await import('@huggingface/transformers')
@@ -60,7 +69,8 @@ async function loadAsr(onProgress?: (label: string) => void): Promise<Asr> {
         return (await make('wasm')) as unknown as Asr
       }
     })()
-    asrPromise.catch(() => { asrPromise = null })
+    asrPromises.set(model, asrPromise)
+    asrPromise.catch(() => { asrPromises.delete(model) })
   }
   return asrPromise
 }
@@ -105,8 +115,8 @@ function match(ours: string[], theirs: string[]): number[] {
 }
 
 /** Every word Whisper heard, in order, with where it heard it. */
-export async function transcribe(samples: Float32Array, sampleRate: number, onProgress?: (label: string) => void): Promise<TimedWord[]> {
-  const asr = await loadAsr(onProgress)
+export async function transcribe(samples: Float32Array, sampleRate: number, onProgress?: (label: string) => void, model: AsrModel = 'tiny'): Promise<TimedWord[]> {
+  const asr = await loadAsr(onProgress, model)
   onProgress?.('Listening to the reading')
   const audio = resample(samples, sampleRate, RATE)
   const res = await asr(audio, { return_timestamps: 'word', chunk_length_s: 30, stride_length_s: 5 })
@@ -129,9 +139,12 @@ export function onsetOf(samples: Float32Array, sampleRate: number): number {
  * words and how many of them were actually heard, so a caller can decide
  * whether the fit is trustworthy (`alignWords` refuses under half).
  */
-export function fitWords(ours: string[], heard: TimedWord[], audioDur: number, onset = 0): { words: TimedWord[]; matched: number } {
+export function fitWords(ours: string[], heard: TimedWord[], audioDur: number, onset = 0): { words: TimedWord[]; matched: number; lastHeard: number } {
   const hit = match(ours, heard.map((c) => c.text))
   const matched = hit.filter((h) => h >= 0).length
+  // The index of the last heard word that matched, so a caller can say where
+  // OUR text ends in THEIR transcript (-1 when nothing matched).
+  const lastHeard = hit.reduce((m, h) => Math.max(m, h), -1)
   const start = new Float64Array(ours.length).fill(-1)
   const end = new Float64Array(ours.length).fill(-1)
   hit.forEach((h, i) => { if (h >= 0) { start[i] = heard[h].start; end[i] = heard[h].end } })
@@ -150,7 +163,7 @@ export function fitWords(ours: string[], heard: TimedWord[], audioDur: number, o
     if (i > 0 && start[i] < end[i - 1]) start[i] = end[i - 1]
     if (end[i] < start[i] + 0.04) end[i] = start[i] + 0.04
   }
-  return { words: ours.map((text, i) => ({ text, start: start[i], end: end[i] })), matched }
+  return { words: ours.map((text, i) => ({ text, start: start[i], end: end[i] })), matched, lastHeard }
 }
 
 /**

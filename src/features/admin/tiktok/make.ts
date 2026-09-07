@@ -16,10 +16,10 @@ import { buildCpuPlan, CPU_PROFILES, type CpuLevel } from '@/features/arena/cpu'
 import type { QuizStep } from '@/lib/tiktokRender'
 import { challengeIndex } from '@/lib/tiktokChallenge'
 import {
-  READERS, TELLERS, ROOMS, skinPath, loadScene, publicUrl,
+  READERS, TELLERS, ROOMS, skinPath, loadScene, publicUrl, existsAt, parkFile,
   seedFor, autoPick, autoCast, challengeCast, spokenReference, call, fetchCopy, fetchStory, fetchVoice, bedFor, backdropFor, tierFor,
-  FOUNDER_PHOTO, VOICE_LABEL,
-  type Copy, type Made, type Story, type Renderer,
+  FOUNDER_PHOTO, VOICE_LABEL, voiceWavPath, voiceJsonPath,
+  type Copy, type Made, type Story, type Renderer, type VoiceTrack,
 } from './shared'
 
 export type Progress = (fraction: number, label: string) => void
@@ -45,15 +45,39 @@ export interface VerseOptions {
   ownVoice?: boolean
 }
 
+/**
+ * The operator's recording for a date, transcribed: the parked transcript
+ * when the hub already listened, else — a WAV in the bucket with nothing
+ * beside it, which is what an upload from a PHONE leaves — listened to here
+ * and parked, so the morning runner makes the post from a recording nobody
+ * has opened on a desktop. The caption is rewritten once at that moment,
+ * since the day's copy may already describe a painted reader.
+ */
+export async function ensureVoice(d: string, progress: Progress): Promise<(VoiceTrack & { wavUrl: string }) | null> {
+  const parked = await fetchVoice(d).catch(() => null)
+  if (parked) return parked
+  const wavUrl = publicUrl(voiceWavPath(d))
+  if (!(await existsAt(wavUrl + '?v=' + Date.now(), 'audio/'))) return null
+  const v = getVerseForDate(d)
+  progress(0, 'listening to your recording')
+  const m = await import('@/lib/tiktokVoice')
+  const dec = await m.decodeRecording(await (await fetch(wavUrl + '?v=' + Date.now())).blob())
+  const track = await m.splitRecording(dec.samples, dec.sampleRate, v.text, v.reference, (label) => progress(0, label))
+  await parkFile(voiceJsonPath(d), new Blob([JSON.stringify(track)], { type: 'application/json' }), 'application/json')
+  try { await fetchCopy(d, 'verse', true) } catch { /* written at render time otherwise */ }
+  return { ...track, wavUrl }
+}
+
 export async function makeVerse(d: string, o: VerseOptions, progress: Progress): Promise<MadeBlob> {
   const v = getVerseForDate(d)
   const c = o.cast ?? autoCast(d)
   const sd = seedFor(d)
   // The operator's own recording, if one is parked for the date, replaces
   // Gemini's reading and adds their thought after the verse — the words were
-  // timed once in the hub, so nothing here listens to anything. No recording
-  // (or `ownVoice: false`) is the morning as it always was.
-  const own = o.ownVoice === false ? null : await fetchVoice(d).catch(() => null)
+  // timed once (in the hub, or here from a phone upload nobody has opened on
+  // a desktop). No recording (or `ownVoice: false`) is the morning as it
+  // always was.
+  const own = o.ownVoice === false ? null : await ensureVoice(d, progress).catch((e) => { console.warn('own voice unavailable, falling back to Gemini:', e); return null })
   if (own) {
     progress(0, 'fetching your recording')
     const audio = await (await fetch(own.wavUrl + '?v=' + Date.now())).arrayBuffer()

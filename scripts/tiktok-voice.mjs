@@ -24,6 +24,16 @@
 //   story, `--intro` means he speaks FIRST and hands over to her by name;
 //   without it he answers her at the end.
 //
+//   node scripts/tiktok-voice.mjs split <audio file> <start date> [--days N]
+//                                       [--story] [--intro] [--dry]
+//       ONE memo holding a run of takes, cut into one recording per date and
+//       parked. The operator says the take's NUMBER before each one ("one",
+//       a pause, then the words), and that number is what the cut is made
+//       on — a silence threshold alone cannot tell the pause between takes
+//       from the pause inside a sentence, and a phone memo has plenty of
+//       both. Transcribed ONCE and sliced, so every take's timings are the
+//       ones actually heard and Whisper runs over the five minutes once
+//       rather than fourteen times. `--dry` prints the cut and parks nothing.
 //   node scripts/tiktok-voice.mjs listen <date> <audio file> [--story] [--intro]
 //       Decode any phone memo (m4a, mp3, wav, webm, ogg) to a WAV, park it,
 //       listen to it (Whisper base in the browser), park the transcript and
@@ -74,7 +84,7 @@ if (!TOKEN) fail('set TIKTOK_RUNNER_TOKEN')
 const [cmd, ...rest] = process.argv.slice(2)
 const flags = Object.fromEntries(rest.filter((a) => a.startsWith('--')).map((a) => { const [k, v] = a.slice(2).split('='); return [k, v ?? true] }))
 const args = rest.filter((a) => !a.startsWith('--'))
-if (!['drafts', 'listen', 'fix', 'render', 'post', 'clear', 'identify'].includes(cmd)) fail('usage: drafts | identify <files…> | listen <date> <file> [--story] | fix <date> <text file> [--story] | render <date> [--story] | post <date> [--story] [--at HH:MM|--now] | clear <date> [--story]')
+if (!['drafts', 'listen', 'fix', 'render', 'post', 'clear', 'identify', 'split'].includes(cmd)) fail('usage: drafts | identify <files…> | listen <date> <file> [--story] | fix <date> <text file> [--story] | render <date> [--story] | post <date> [--story] [--at HH:MM|--now] | clear <date> [--story]')
 const isDate = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d)
 // Two posts a day can carry the operator's voice: the morning VERSE (his
 // reading and his thought, in place of Gemini's) and his half of the evening
@@ -252,6 +262,58 @@ try {
       if (!toWav(file, inputWav)) { console.log(`${file}\tunreadable`); continue }
       const r = await page.evaluate(([w, d, t]) => window.vaVoice.identify(w, d, t), [`${origin}/input.wav`, dates, TOKEN])
       console.log(`${path.basename(file)}\t${r.best ? `${r.best.date}\t${r.best.reference}\t${r.best.matched}/${r.best.words}` : 'no match'}\t${(durationOf(inputWav) ?? 0).toFixed(0)}s\t${r.opening}`)
+    }
+    await done()
+  }
+  if (cmd === 'split') {
+    const file = args[0], start = args[1]
+    if (!file || !fs.existsSync(file) || !isDate(start)) fail('split <audio file> <start date> [--days N] [--story] [--intro] [--dry]')
+    const days = Math.max(1, Math.min(31, Number(flags.days || 14)))
+    inputWav = path.join(OUT, 'batch.wav')
+    if (!toWav(file, inputWav)) fail(`could not decode ${file}`)
+    const heard = await page.evaluate(([w, t]) => window.vaVoice.hear(w, t), [`${origin}/input.wav`, TOKEN])
+    log(`heard ${heard.seconds.toFixed(0)}s · ${heard.words.length} words`)
+    // The take numbers. Whisper writes them as words or as digits, so both
+    // are read, and a number only STARTS a take when a real pause sits in
+    // front of it — otherwise "one" inside a sentence would cut the take in
+    // half. The first word of the recording needs no pause before it.
+    const NUM = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20 }
+    const GAP = 0.9
+    const marks = []
+    heard.words.forEach((w, i) => {
+      const k = w.text.toLowerCase().replace(/[^a-z0-9]/g, '')
+      const n = NUM[k] ?? (/^\d{1,2}$/.test(k) ? Number(k) : 0)
+      if (!n || n > days) return
+      const prev = heard.words[i - 1]
+      if (prev && w.start - prev.end < GAP) return
+      if (marks.length && n !== marks[marks.length - 1].n + 1) return
+      if (!marks.length && n !== 1) return
+      marks.push({ n, i, at: w.start, end: w.end })
+    })
+    log(`found ${marks.length} of ${days} takes`)
+    if (marks.length !== days) log('  (the run stops at the last number found in order — check the cut below)')
+    const takes = marks.map((m, k) => {
+      const words = heard.words.slice(m.i + 1, marks[k + 1] ? marks[k + 1].i : heard.words.length)
+      const from = words[0] ? Math.max(m.end, words[0].start - 0.35) : m.end
+      const to = words.length ? Math.min(heard.seconds, words[words.length - 1].end + 0.5) : from
+      return { date: addDays(start, m.n - 1), n: m.n, from, to, words, text: words.map((w) => w.text).join(' ') }
+    })
+    for (const t of takes) log(`  ${String(t.n).padStart(2)} ${t.date}  ${t.from.toFixed(1)}–${t.to.toFixed(1)}s (${(t.to - t.from).toFixed(1)}s ${t.words.length}w)  ${t.text.slice(0, 74)}`)
+    if (flags.dry) { await done() }
+    for (const t of takes) {
+      const wav = path.join(OUT, `take-${t.date}.wav`)
+      const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', inputWav, '-ss', String(t.from), '-to', String(t.to), '-c:a', 'pcm_s16le', wav])
+      if (ff.status !== 0) { log(`  ${t.date} could not be cut`); continue }
+      // Timings are rebased onto the take's own clock, and the track is the
+      // shape `refit`, the correction step and the renderer already read.
+      const words = t.words.map((w) => ({ text: w.text, start: Math.max(0, w.start - t.from), end: Math.max(0, w.end - t.from) }))
+      const track = { seconds: t.to - t.from, verse: [], thought: words, heard: words, text: t.text, verseMatched: 0, place: PLACE, at: new Date().toISOString() }
+      await upload(`days/${t.date}/voice-${KIND}.wav`, wav, 'audio/wav')
+      const json = path.join(OUT, `take-${t.date}.json`)
+      fs.writeFileSync(json, JSON.stringify(track))
+      await upload(`days/${t.date}/voice-${KIND}.json`, json, 'application/json')
+      try { await fn('copy', { date: t.date, kind: KIND, force: true }) } catch { /* written at render time otherwise */ }
+      log(`  parked ${t.date} ${KIND}${KIND === 'story' ? ` (${PLACE})` : ''}`)
     }
     await done()
   }

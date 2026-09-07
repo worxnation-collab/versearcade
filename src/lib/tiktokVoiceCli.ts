@@ -12,6 +12,7 @@
 import { setRunnerToken, parkFile, fetchCopy, fetchThought, fetchStoryWord, fetchVoice, publicUrl, existsAt, voiceWavPath, voiceJsonPath, type VoiceKind } from '@/features/admin/tiktok/shared'
 import { makeVerse, makeStory, type Progress } from '@/features/admin/tiktok/make'
 import { getVerseForDate } from '@/data/bible/questions'
+import type { TimedWord } from '@/lib/tiktokRender'
 import { env as tfEnv } from '@huggingface/transformers'
 
 export interface DraftPart { text: string; words: number; source: string; recorded: boolean; listened: boolean }
@@ -24,6 +25,7 @@ declare global {
   interface Window {
     vaVoice: {
       drafts: (dates: string[], token: string, force?: boolean, place?: 'open' | 'close') => Promise<DraftRow[]>
+      hear: (wavUrl: string, token: string) => Promise<{ seconds: number; words: TimedWord[]; text: string }>
       listen: (date: string, wavUrl: string, token: string, kind?: VoiceKind, place?: 'open' | 'close') => Promise<ListenResult>
       render: (date: string, token: string, kind?: VoiceKind, place?: 'open' | 'close') => Promise<RenderResult>
       fix: (date: string, text: string, token: string, kind?: VoiceKind) => Promise<FixResult>
@@ -91,6 +93,24 @@ window.vaVoice = {
       out.push({ date, reference: v.reference, verse: v.text, verseWord, storyWord, storyPlace: place })
     }
     return out
+  },
+
+  /**
+   * Listen to a recording and hand back its words with their timings —
+   * parking nothing, deciding nothing. It exists for a BATCH: one memo
+   * holding a fortnight of takes is transcribed ONCE here and cut up by the
+   * script, rather than fourteen separate Whisper runs over the same five
+   * minutes. Every take's track is then derived from this one pass, so the
+   * timings inside a take are the ones actually heard.
+   */
+  async hear(wavUrl, token) {
+    setRunnerToken(token)
+    localModels()
+    const m = await import('@/lib/tiktokVoice')
+    say('decoding')
+    const dec = await m.decodeRecording(await (await fetch(wavUrl)).blob())
+    const track = await m.transcribeOwn(dec.samples, dec.sampleRate, 'close', say)
+    return { seconds: dec.seconds, words: track.heard, text: track.text }
   },
 
   /**

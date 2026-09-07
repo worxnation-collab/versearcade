@@ -1003,7 +1003,10 @@ export async function renderTikTok(input: RenderInput): Promise<RenderOutput> {
 
   try { await document.fonts.load(`800 88px "Baloo 2"`) } catch { /* fall back to the stack */ }
 
-  const { blob, ext } = await produce((ctx, t) => drawFrame(ctx, scene, t), total, lead, samples, progress, input.bed)
+  // The music sits a little lower under a person than under Gemini's
+  // reading: a real voice has quiet words a synthetic one does not.
+  const bed = input.voice && input.bed ? input.bed.map((x) => x * 0.65) : input.bed
+  const { blob, ext } = await produce((ctx, t) => drawFrame(ctx, scene, t), total, lead, samples, progress, bed)
   progress(1, 'Done')
   return { blob, ext, durationSec: total, phrases }
 }

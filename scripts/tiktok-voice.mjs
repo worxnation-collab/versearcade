@@ -14,6 +14,10 @@
 //   node scripts/tiktok-voice.mjs drafts [start=today] [days=7] [--redraft]
 //       The verses and drafted thoughts for the week, as Markdown, with what
 //       is already recorded and listened to. Drafts are cached per date.
+//   node scripts/tiktok-voice.mjs identify <audio files…>
+//       Which day each memo is for: its opening is listened to and matched
+//       against the coming fortnight's verses. For a batch that arrives
+//       without dates on it.
 //   node scripts/tiktok-voice.mjs listen <date> <audio file>
 //       Decode any phone memo (m4a, mp3, wav, webm, ogg) to a WAV, park it,
 //       listen to it (Whisper base in the browser), park the transcript and
@@ -59,7 +63,7 @@ if (!TOKEN) fail('set TIKTOK_RUNNER_TOKEN')
 const [cmd, ...rest] = process.argv.slice(2)
 const flags = Object.fromEntries(rest.filter((a) => a.startsWith('--')).map((a) => { const [k, v] = a.slice(2).split('='); return [k, v ?? true] }))
 const args = rest.filter((a) => !a.startsWith('--'))
-if (!['drafts', 'listen', 'render', 'post', 'clear'].includes(cmd)) fail('usage: drafts | listen <date> <file> | render <date> | post <date> [--at HH:MM|--now] | clear <date>')
+if (!['drafts', 'listen', 'render', 'post', 'clear', 'identify'].includes(cmd)) fail('usage: drafts | identify <files…> | listen <date> <file> | render <date> | post <date> [--at HH:MM|--now] | clear <date>')
 const isDate = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d)
 
 function ymdIn(tz, d = new Date()) {
@@ -92,6 +96,14 @@ async function upload(bucketPath, file, contentType) {
   const { error } = await sb.storage.from('tiktok').uploadToSignedUrl(up.path, up.token, fs.readFileSync(file), { contentType, upsert: true })
   if (error) throw new Error(`upload ${bucketPath}: ${error.message}`)
   return up.publicUrl
+}
+// A phone memo, cleaned for the post: mono, 48 kHz, the room's rumble and
+// hiss taken down, and the loudness brought to where Gemini's readings sit
+// (EBU R128 to -16 LUFS). The browser levels again on its own terms, which
+// is idempotent on a file already at that level.
+function toWav(file, wav) {
+  const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', file, '-ac', '1', '-ar', '48000', '-af', 'highpass=f=70,afftdn=nf=-28,loudnorm=I=-16:TP=-1.5:LRA=9', '-c:a', 'pcm_s16le', wav])
+  return ff.status === 0 && fs.existsSync(wav)
 }
 function durationOf(src) {
   const r = spawnSync(FFMPEG, ['-hide_banner', '-i', src], { encoding: 'utf8' })
@@ -197,12 +209,23 @@ try {
     console.log(md)
     await done()
   }
+  if (cmd === 'identify') {
+    if (!args.length) fail('identify <audio files…>')
+    const start = ymdIn(TZ)
+    const dates = Array.from({ length: 14 }, (_, i) => addDays(start, i))
+    for (const file of args) {
+      inputWav = path.join(OUT, `identify.wav`)
+      if (!toWav(file, inputWav)) { console.log(`${file}\tunreadable`); continue }
+      const r = await page.evaluate(([w, d, t]) => window.vaVoice.identify(w, d, t), [`${origin}/input.wav`, dates, TOKEN])
+      console.log(`${path.basename(file)}\t${r.best ? `${r.best.date}\t${r.best.reference}\t${r.best.matched}/${r.best.words}` : 'no match'}\t${(durationOf(inputWav) ?? 0).toFixed(0)}s\t${r.opening}`)
+    }
+    await done()
+  }
   if (cmd === 'listen') {
     const [date, file] = args
     if (!isDate(date) || !file || !fs.existsSync(file)) fail('listen <date> <audio file>')
     inputWav = path.join(OUT, `input-${date}.wav`)
-    const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', file, '-ac', '1', '-ar', '24000', '-c:a', 'pcm_s16le', inputWav])
-    if (ff.status !== 0) fail(`ffmpeg could not read ${file}`)
+    if (!toWav(file, inputWav)) fail(`ffmpeg could not read ${file}`)
     log(`listening to ${file} (${(durationOf(inputWav) ?? 0).toFixed(0)}s) for ${date}`)
     const r = await page.evaluate(([d, w, t]) => window.vaVoice.listen(d, w, t), [date, `${origin}/input.wav`, TOKEN])
     console.log(JSON.stringify({ date, ...r }, null, 1))

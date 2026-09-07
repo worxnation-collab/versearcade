@@ -47,9 +47,12 @@ export interface VoiceTrack {
   at: string
 }
 
-const OUT_RATE = 24000
+// A recording keeps 48 kHz: it is a real voice with a top octave, where
+// Gemini's reading is born at 24 kHz. Downsampling the first real memo to
+// 24 kHz was one of the three things that made it sound dull under the bed.
+const OUT_RATE = 48000
 
-/** Decode an uploaded recording to mono samples at 24 kHz, and a WAV of the same. */
+/** Decode an uploaded recording to mono samples at 48 kHz, and a WAV of the same. */
 export async function decodeRecording(file: Blob): Promise<{ samples: Float32Array; sampleRate: number; wav: Blob; seconds: number }> {
   const buf = await file.arrayBuffer()
   // Decode at whatever rate the file has, then resample through an offline
@@ -69,22 +72,40 @@ export async function decodeRecording(file: Blob): Promise<{ samples: Float32Arr
 
 /**
  * A phone memo starts with a second of fumbling and comes in at whatever
- * level the room was: trim the silence at both ends to a short beat and
- * bring the peak up to where Gemini's readings sit, so a voiced day and a
- * synthetic one play at the same loudness under the same music bed.
+ * level the room was — and a real voice is DYNAMIC: the first five memos
+ * averaged -25 dB with peaks near 0, where Gemini's readings average -17.
+ * Levelling to the peak (the first version) left the voice well under the
+ * music bed. So the level is set by the LOUDNESS of the speech — the RMS of
+ * the samples above the recording's noise floor — brought to Gemini's,
+ * with a soft knee over the peaks so the loud words don't clip. Then the
+ * silence at both ends is trimmed to a short beat.
  */
 function trimAndLevel(samples: Float32Array, rate: number): Float32Array {
   let peak = 0
   for (let i = 0; i < samples.length; i++) peak = Math.max(peak, Math.abs(samples[i]))
   if (peak < 1e-4) return samples
-  const gain = Math.min(8, 0.6 / peak)
-  const thr = 0.02 / gain
+  // Speech loudness: RMS over 10ms windows that sit above the noise floor.
+  const hop = Math.round(rate * 0.01)
+  const n = Math.floor(samples.length / hop)
+  const rms = new Float32Array(n)
+  for (let i = 0; i < n; i++) { let e = 0; for (let j = i * hop; j < (i + 1) * hop; j++) e += samples[j] * samples[j]; rms[i] = Math.sqrt(e / hop) }
+  const sorted = Float32Array.from(rms).sort()
+  const floor = sorted[Math.floor(n * 0.1)] ?? 0
+  const speechThr = Math.max(floor * 3, peak * 0.02)
+  let sum = 0, count = 0
+  for (let i = 0; i < n; i++) if (rms[i] > speechThr) { sum += rms[i] * rms[i]; count++ }
+  const speechRms = count ? Math.sqrt(sum / count) : peak / 3
+  const TARGET = 0.14 // about -17 dBFS, where Gemini's readings sit
+  const gain = Math.min(20, TARGET / Math.max(speechRms, 1e-4))
+  // Soft knee from 0.7: a peak of 1.0 lands at 0.79, one of 2.0 at 0.91.
+  const knee = (x: number) => { const a = Math.abs(x); const y = a <= 0.7 ? a : 0.7 + 0.3 * Math.tanh((a - 0.7) / 0.3); return x < 0 ? -y : y }
+  const thr = Math.max(0.02 / gain, floor * 2)
   let a = 0; while (a < samples.length && Math.abs(samples[a]) < thr) a++
   let b = samples.length; while (b > a && Math.abs(samples[b - 1]) < thr) b--
   const pad = Math.round(0.25 * rate)
   a = Math.max(0, a - pad); b = Math.min(samples.length, b + Math.round(0.6 * rate))
   const out = new Float32Array(b - a)
-  for (let i = a; i < b; i++) out[i - a] = Math.max(-1, Math.min(1, samples[i] * gain))
+  for (let i = a; i < b; i++) out[i - a] = knee(samples[i] * gain)
   return out
 }
 

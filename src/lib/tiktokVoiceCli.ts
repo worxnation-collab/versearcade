@@ -24,6 +24,7 @@ declare global {
       drafts: (dates: string[], token: string, force?: boolean) => Promise<DraftRow[]>
       listen: (date: string, wavUrl: string, token: string) => Promise<ListenResult>
       render: (date: string, token: string) => Promise<RenderResult>
+      identify: (wavUrl: string, dates: string[], token: string) => Promise<{ best: { date: string; reference: string; matched: number; words: number } | null; opening: string }>
     }
     __progress: string
     __vaModelBase?: string
@@ -92,6 +93,26 @@ window.vaVoice = {
     say('rewriting the caption')
     try { await fetchCopy(date, 'verse', true) } catch { /* written at render time otherwise */ }
     return { seconds: dec.seconds, verseMatched: fixed.verseMatched, verseWords: fixed.verse.length, verseEnd: fixed.verse[fixed.verse.length - 1]?.end ?? 0, thoughtStart: fixed.thought[0]?.start ?? 0, thoughtWords: fixed.thought.length, text: fixed.text }
+  },
+
+  /** Which of the coming days a memo is for: its first half-minute against each day's verse. */
+  async identify(wavUrl, dates, token) {
+    setRunnerToken(token)
+    localModels()
+    const m = await import('@/lib/tiktokVoice')
+    const a = await import('@/lib/tiktokAlign')
+    const dec = await m.decodeRecording(await (await fetch(wavUrl)).blob())
+    const head = dec.samples.subarray(0, Math.min(dec.samples.length, Math.round(28 * dec.sampleRate)))
+    const heard = await a.transcribe(head, dec.sampleRate, say, 'base')
+    let best: { date: string; reference: string; matched: number; words: number } | null = null
+    for (const date of dates) {
+      const v = getVerseForDate(date)
+      const words = v.text.trim().split(/\s+/).filter(Boolean)
+      const { matched } = a.fitWords(words, heard, head.length / dec.sampleRate)
+      if (!best || matched / words.length > best.matched / best.words) best = { date, reference: v.reference, matched, words: words.length }
+    }
+    if (best && best.matched / best.words < 0.5) best = null
+    return { best, opening: heard.slice(0, 12).map((w) => w.text).join(' ') }
   },
 
   /** The verse post for the date, with the parked recording, handed to the script as a download. */

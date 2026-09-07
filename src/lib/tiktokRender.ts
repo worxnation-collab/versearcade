@@ -50,7 +50,22 @@ export interface RenderInput {
   bed?: Float32Array
   /** Time the captions by listening to the reading (default); false keeps the heuristic. */
   align?: boolean
+  /**
+   * The operator's own recording instead of Gemini's reading: the verse's
+   * words and the thought's words already timed (lib/tiktokVoice), so nothing
+   * is listened to here, plus the photo the thought section draws.
+   */
+  voice?: VoiceInput
   onProgress?: (fraction: number, label: string) => void
+}
+
+export interface VoiceInput {
+  verse: TimedWord[]
+  thought: TimedWord[]
+  /** The person speaking, drawn in a round frame while the thought plays and on the end card. */
+  photo?: HTMLImageElement
+  /** Under the photo: who this is ("Matthew · founder"). */
+  label?: string
 }
 
 export interface RenderOutput {
@@ -91,6 +106,31 @@ export function splitPhrases(text: string, maxWords = 6): string[] {
 // How long a phrase takes to say, in arbitrary units: characters, plus a
 // pause for the punctuation it ends on. Proportional timing over the real
 // audio length gets within a couple hundred milliseconds of the TTS.
+/**
+ * Words that already carry their timing, handed to phrases: the phrase's
+ * text says which words it holds, in order, and each phrase runs from its
+ * first word to the next phrase's first word (the last word stays lit
+ * through the gap). Used for an operator's recording, whose words were
+ * timed once in the hub and parked — the renderer never listens again.
+ */
+export function groupWords(texts: string[], words: TimedWord[], audioDur: number): TimedPhrase[] {
+  const out: TimedPhrase[] = []
+  let i = 0
+  for (const text of texts) {
+    const n = text.split(/\s+/).filter(Boolean).length
+    const ws = words.slice(i, i + n).map((w) => ({ ...w }))
+    i += n
+    if (!ws.length) continue
+    out.push({ text, start: ws[0].start, end: ws[ws.length - 1].end, words: ws })
+  }
+  for (let k = 0; k < out.length; k++) {
+    const next = out[k + 1]
+    out[k].end = next ? next.start : Math.min(audioDur, out[k].end + 0.3)
+    out[k].words![out[k].words!.length - 1].end = out[k].end
+  }
+  return out
+}
+
 function weight(phrase: string): number {
   const base = phrase.replace(/[^a-zA-Z0-9]/g, '').length
   const pause = /[.!?]["'”’)]?$/.test(phrase) ? 9 : /[,;:—]["'”’)]?$/.test(phrase) ? 4 : 0
@@ -534,6 +574,56 @@ interface Scene {
   audioDur: number
   total: number
   phrases: TimedPhrase[]
+  /** The thought section of an operator-voiced post: when it starts, and the reading's loudness over time for the ring. */
+  voice?: { thoughtStart: number; rms: Float32Array; peak: number }
+}
+
+// The one thing that moves in the thought section: a thin gold ring around
+// the photo that widens with the voice — the picture of a person speaking,
+// not an equaliser. Loudness is the RMS envelope the caption timing already
+// measures, smoothed over ~120ms so the ring breathes rather than flickers.
+function voiceLevel(v: { rms: Float32Array; peak: number }, at: number): number {
+  const i = Math.round(at / HOP)
+  let sum = 0, n = 0
+  for (let k = i - 8; k <= i + 4; k++) if (k >= 0 && k < v.rms.length) { sum += v.rms[k]; n++ }
+  if (!n || !v.peak) return 0
+  return Math.min(1, Math.sqrt((sum / n) / v.peak) * 1.15)
+}
+
+function circleImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, cx: number, cy: number, r: number) {
+  ctx.save()
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.closePath(); ctx.clip()
+  // Cover the circle with the photo's centre — a portrait's face sits high,
+  // so the crop is anchored a little above the middle.
+  const s = Math.max((2 * r) / img.naturalWidth, (2 * r) / img.naturalHeight)
+  const w = img.naturalWidth * s, h = img.naturalHeight * s
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(img, cx - w / 2, cy - r - (h - 2 * r) * 0.38, w, h)
+  ctx.restore()
+}
+
+/** The person speaking: the photo in a round frame with the ring that breathes with the voice, and a small line saying who. */
+function drawSpeaker(ctx: CanvasRenderingContext2D, photo: HTMLImageElement, label: string | undefined, cx: number, cy: number, r: number, level: number, alpha: number) {
+  ctx.save()
+  ctx.globalAlpha = alpha
+  // A soft shadow so the frame sits on the painting rather than floating.
+  ctx.shadowColor = 'rgba(11,7,32,0.6)'; ctx.shadowBlur = 40; ctx.shadowOffsetY = 12
+  ctx.fillStyle = '#1a0f36'
+  ctx.beginPath(); ctx.arc(cx, cy, r + 6, 0, Math.PI * 2); ctx.fill()
+  ctx.shadowColor = 'transparent'
+  circleImage(ctx, photo, cx, cy, r)
+  // The ring: a hairline at rest, wider and brighter as the voice rises.
+  ctx.strokeStyle = '#ffd23f'
+  ctx.lineWidth = 5 + 5 * level
+  ctx.globalAlpha = alpha * (0.55 + 0.45 * level)
+  ctx.beginPath(); ctx.arc(cx, cy, r + 12 + 22 * level, 0, Math.PI * 2); ctx.stroke()
+  ctx.globalAlpha = alpha
+  if (label) {
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    ctx.font = `800 34px ${FONT_DISPLAY}`
+    outlined(ctx, label, cx, cy + r + 58, '#ffd23f', 'rgba(11,7,32,0.9)', 8)
+  }
+  ctx.restore()
 }
 
 async function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number, chrome = true) {
@@ -600,6 +690,16 @@ async function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number,
     const p = phrases.find((x) => at >= x.start && at < x.end) ?? (at >= audioDur || at < (phrases[0]?.start ?? 0) ? null : phrases[phrases.length - 1])
     if (p && at < audioDur + 0.2) { phrase = p; age = (at - p.start) / 0.22 }
   }
+  // 4b. The person speaking. An operator-voiced post carries a thought after
+  // the verse, and for that stretch the photo appears in a round frame above
+  // the captions — the painting stays, the reader figure stays, and the one
+  // thing added is the face of whoever is talking, its ring breathing with
+  // the voice. It fades in over the beat of silence before the first word.
+  const vo = scene.voice
+  if (vo && input.voice?.photo && at >= vo.thoughtStart - 0.5 && endFade < 1) {
+    const rise = easeOut((at - (vo.thoughtStart - 0.5)) / 0.5)
+    drawSpeaker(ctx, input.voice.photo, input.voice.label, WIDTH / 2, 1060, 135, voiceLevel(vo, at), rise * (1 - endFade))
+  }
   if (phrase && endFade < 1) {
     ctx.save()
     ctx.globalAlpha = Math.min(1, easeOut(age) + 0.35) * (1 - endFade)
@@ -614,6 +714,9 @@ async function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number,
     ctx.fillStyle = 'rgba(11,7,32,0.55)'
     ctx.fillRect(0, 0, WIDTH, HEIGHT)
     drawBrand(ctx, 'VERSE ARCADE', input.reference, 190)
+    // The maker, small, under the ask: the one place a face belongs on a
+    // post that opens on the verse — a person standing behind the link.
+    if (input.voice?.photo) drawSpeaker(ctx, input.voice.photo, input.voice.label ? `Made by ${input.voice.label.split(' · ')[0]}` : undefined, WIDTH / 2, HEIGHT / 2 + 250, 90, 0, endFade)
     ctx.font = `800 76px ${FONT_DISPLAY}`
     outlined(ctx, 'Play today’s verse', WIDTH / 2, HEIGHT / 2 + 470)
     ctx.font = `800 58px ${FONT_DISPLAY}`
@@ -872,10 +975,31 @@ export async function renderTikTok(input: RenderInput): Promise<RenderOutput> {
   // The reading ends by saying the reference, so it is the last caption too —
   // and a clause of its own, which keeps the clause count matching the pauses.
   const verse = /[.!?]["'”’)]?$/.test(input.text.trim()) ? input.text.trim() : input.text.trim() + '.'
-  const phrases = await timedCaptions([...splitPhrases(verse), input.reference + '.'], samples, progress, input.align)
+  let phrases: TimedPhrase[]
+  let voice: Scene['voice']
+  if (input.voice) {
+    // The operator's recording: the verse's words as written, timed to where
+    // they were said; the reference shown plain through the beat of silence
+    // after them (the operator does not say it — the end card does); then
+    // the thought, captioned from its own approved words.
+    const v = input.voice
+    const verseWords = verse.split(/\s+/).filter(Boolean)
+    const versePhrases = groupWords(splitPhrases(verse), verseWords.map((text, i) => ({ text, start: v.verse[i]?.start ?? 0, end: v.verse[i]?.end ?? 0 })), audioDur)
+    const thoughtText = v.thought.map((w) => w.text).join(' ')
+    const thoughtPhrases = groupWords(splitPhrases(thoughtText, 6), v.thought, audioDur)
+    const verseEnd = versePhrases.length ? Math.max(versePhrases[versePhrases.length - 1].start + 0.4, v.verse[v.verse.length - 1]?.end ?? 0) : 0
+    const thoughtStart = thoughtPhrases[0]?.start ?? audioDur
+    if (versePhrases.length) versePhrases[versePhrases.length - 1].end = Math.min(verseEnd, thoughtStart)
+    const between: TimedPhrase[] = thoughtStart - verseEnd > 0.3 ? [{ text: input.reference, start: verseEnd, end: thoughtStart }] : []
+    phrases = [...versePhrases, ...between, ...thoughtPhrases]
+    const env = envelope(samples, SAMPLE_RATE)
+    voice = { thoughtStart, rms: env.rms, peak: env.peak }
+  } else {
+    phrases = await timedCaptions([...splitPhrases(verse), input.reference + '.'], samples, progress, input.align)
+  }
   const lead = LEAD
   const total = lead + audioDur + TAIL_SEC
-  const scene: Scene = { input, lead, audioDur, total, phrases }
+  const scene: Scene = { input, lead, audioDur, total, phrases, voice }
 
   try { await document.fonts.load(`800 88px "Baloo 2"`) } catch { /* fall back to the stack */ }
 

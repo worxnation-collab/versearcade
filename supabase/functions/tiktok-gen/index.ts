@@ -16,7 +16,10 @@
 //   loop-status { key, op }                      → { done, url? }    polls Veo; on completion parks readers/<key>.mp4
 //   copy        { date?, reference, text, theme, kind?, force?, question?, about? } → { hook, caption, hashtags[], platforms }  post copy per platform via Gemini Flash; kind (verse, story, quiz, challenge, challenge2, own) changes what the post is — a challenge passes its question, an own clip what it is about; cached at days/<date>/copy-<kind>.json
 //   story       { date, reference, text, ... }    → { title, hook, paragraphs[] }   the story behind the verse, cached at days/<date>/story.json
-//   upload-url  { path }                          → { path, token, publicUrl }  a signed upload URL for a finished video (days/<date>/<kind>.mp4), so the browser can put it in the bucket
+//   thought     { date, reference, text, ..., force?, save?, peek? } → { text, words, source }  the ~110-word spoken reflection the OPERATOR reads after the verse (Gemini draft, cached at days/<date>/thought.json; `save` parks the operator's own edit; `force` redrafts)
+//   voice       { date }                          → the day's operator recording, if one is parked (days/<date>/voice-verse.json: the timed verse and thought words the hub transcribed), else {}
+//   voice-clear { date }                          → { ok }             removes a parked recording and its transcript, so the morning falls back to Gemini's voice
+//   upload-url  { path }                          → { path, token, publicUrl }  a signed upload URL for a finished video (days/<date>/<kind>.mp4), its cover, the operator's recording (voice-verse.wav/.json) or the founder photo (founder/photo.jpg), so the browser can put it in the bucket
 //   links       { date, kind }                     → the day's record          asks Ayrshare what became of each SCHEDULED post and fills in the postUrl a network only issues once it publishes
 //   post        { date, kind, videoUrl, platforms[], scheduleDate?, attempt?, seconds? } → { results[] }  posts the video with that day's copy through Ayrshare, one call per platform (a platform not linked in Ayrshare is skipped, not failed); parked at days/<date>/posted-<kind>.json, merged over what an earlier call recorded
 //   posted      { date, kind }                    → { results[] } | {}  what `post` recorded for that day, if anything
@@ -439,6 +442,82 @@ Deno.serve(async (req) => {
       return json({ ...out, cached: false })
     }
 
+    // ---- thought: what the operator says after the verse ----------------------
+    // The one piece of these posts a PERSON reads: a ~110-word reflection in
+    // the first person, drafted from the verse's own data (speaker, audience,
+    // before, after, theme, facts — never invented doctrine, nothing one
+    // tradition would say differently) so the operator has a runway to read
+    // or depart from. Written once per date; `force` redrafts and `save`
+    // parks the operator's own edit so a reopened card shows the words they
+    // rehearsed rather than a fresh draft.
+    if (action === 'thought') {
+      const date = String(input.date ?? '')
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: 'date must be YYYY-MM-DD' }, 400)
+      const path = `days/${date}/thought.json`
+      const count = (t: string) => t.split(/\s+/).filter(Boolean).length
+      if (typeof input.save === 'string') {
+        const text = input.save.replace(/\s+/g, ' ').trim().slice(0, 1600)
+        if (!text) return json({ error: 'nothing to save' }, 400)
+        const out = { text, words: count(text), source: 'operator', at: new Date().toISOString() }
+        await park(path, new TextEncoder().encode(JSON.stringify(out)), 'application/json')
+        return json({ ...out, cached: false })
+      }
+      if (!input.force && (await exists(path))) {
+        const { data: file } = await admin.storage.from(BUCKET).download(path)
+        if (file) return json({ ...JSON.parse(await file.text()), cached: true })
+      }
+      // `peek` reads what is parked and never drafts, so opening the card for
+      // a week of dates costs nothing until a Draft button is pressed.
+      if (input.peek) return json({})
+      const reference = String(input.reference ?? '').slice(0, 80)
+      const text = String(input.text ?? '').slice(0, 1200)
+      if (!reference || !text) return json({ error: 'reference and text are required' }, 400)
+      const f = (k: string, n = 300) => String(input[k] ?? '').slice(0, n)
+      const facts = Array.isArray(input.facts) ? (input.facts as unknown[]).slice(0, 6).map((x) => String(x).slice(0, 200)) : []
+      const samples = Array.isArray(input.samples) ? (input.samples as unknown[]).slice(0, 4).map((x) => String(x).slice(0, 1200)).filter(Boolean) : []
+      const data = await gemini(`models/${TEXT_MODEL}:generateContent`, {
+        contents: [{ parts: [{ text:
+          `You write a short SPOKEN reflection for the maker of Verse Arcade, a Bible app, to read aloud in his own voice on a short video right after he has read the day's verse. He is one person talking plainly to a phone, not a preacher and not a brand.\n\n` +
+          `Today's verse: ${reference} — "${text}"\nSpoken by: ${f('speaker', 80)}\nTo: ${f('audience', 120)}\nWhat came before: ${f('before')}\nWhat came after: ${f('after')}\nTheme: ${f('theme', 80)}\nFacts you may use: ${facts.join(' | ') || '(none)'}\n\n` +
+          (samples.length ? `Here is how he actually talks, from things he has recorded before — match this voice, its rhythm and its plainness, not its content:\n${samples.map((x) => `"${x}"`).join('\n')}\n\n` : '') +
+          `Rules. First person, present tense, short sentences that read well aloud — no sentence over about 15 words. ONE idea: who was speaking and why it was hard to say or hear, then one plain thing it asks of a person today. Use only the situation described above and the plain narrative of that passage; invent no names, numbers, events or dialogue. Nothing that one Christian tradition would say differently from another — no doctrine, no denominational language. Never shame the listener, never scold, no "we all" sermons, no rhetorical questions in a row. Do not quote the verse itself (he has just read it). Do not say "today's verse" or name the app. ` +
+          `End on one line that hands off to a question, for example "So here is what I keep asking myself." or "Sit with that one today." — not a call to action, not a link.\n\n` +
+          `Return JSON with: "text" — the reflection, 100 to 120 words, plain punctuation, no emoji, no headings, no line breaks.` }] }],
+        generationConfig: { responseMimeType: 'application/json', temperature: 0.8 },
+      })
+      const cands = data.candidates as Array<{ content?: { parts?: Array<{ text?: string }> } }> | undefined
+      const raw = cands?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? '{}'
+      let parsed: { text?: unknown } = {}
+      try { parsed = JSON.parse(raw) } catch { return json({ error: 'thought was not JSON', raw: raw.slice(0, 300) }, 502) }
+      const draft = String(parsed.text ?? '').replace(/\s+/g, ' ').trim().slice(0, 1600)
+      if (count(draft) < 40) return json({ error: 'thought came back too short', raw: raw.slice(0, 300) }, 502)
+      const out = { text: draft, words: count(draft), source: 'gemini', at: new Date().toISOString() }
+      await park(path, new TextEncoder().encode(JSON.stringify(out)), 'application/json')
+      return json({ ...out, cached: false })
+    }
+
+    // ---- voice: the operator's parked recording for a date -------------------
+    // The hub decodes the upload to a WAV, transcribes it in the browser and
+    // parks both; this reads the transcript back (the WAV is a public URL the
+    // renderer fetches itself) and `voice-clear` takes both down. There is
+    // no server-side transcription here on purpose: Whisper already runs in
+    // the operator's tab for the captions, and the Gemini key never has to
+    // hear a person's voice to make the post.
+    if (action === 'voice') {
+      const date = String(input.date ?? '')
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: 'date must be YYYY-MM-DD' }, 400)
+      const { data: file } = await admin.storage.from(BUCKET).download(`days/${date}/voice-verse.json`)
+      if (!file) return json({})
+      return json({ ...JSON.parse(await file.text()), wavUrl: publicUrl(`days/${date}/voice-verse.wav`) })
+    }
+    if (action === 'voice-clear') {
+      const date = String(input.date ?? '')
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: 'date must be YYYY-MM-DD' }, 400)
+      const { error } = await admin.storage.from(BUCKET).remove([`days/${date}/voice-verse.json`, `days/${date}/voice-verse.wav`])
+      if (error) return json({ error: error.message }, 500)
+      return json({ ok: true })
+    }
+
     // ---- copy: the words that go in the post ---------------------------------
     // Cached per date and kind (days/<date>/copy-<kind>.json) so the words
     // are written once and the dashboard can show today's without rendering
@@ -458,6 +537,10 @@ Deno.serve(async (req) => {
       const challenge = kind === 'challenge' || kind === 'challenge2'
       const question = String(input.question ?? '').slice(0, 200)
       const about = String(input.about ?? '').slice(0, 400)
+      // A verse the operator recorded is described as what it is — a person
+      // reading and saying one thing about it — so the caption stops
+      // crediting a painted Peter with a voice that is somebody's own.
+      const voiced = kind === 'verse' && path ? await exists(`days/${date}/voice-verse.json`) : false
       const who = kind === 'story'
         ? `Tabitha, the app's librarian, tells the short story behind the verse of the day each evening (the morning post was the verse itself, read aloud). `
         : kind === 'quiz'
@@ -466,7 +549,9 @@ Deno.serve(async (req) => {
             ? `a painted character answers ONE question about YESTERDAY's verse against a twelve-second clock, and viewers are asked to comment their answer (A, B, C or D) before the reveal. The question is: "${question}". Tease it, never answer it. `
             : kind === 'own'
               ? `the app's maker speaks to camera. This clip: ${about || 'a personal word about this week\'s verses'}. Write in their voice, first person, plain. `
-              : `a painted figure of Peter (Cephas) reads the verse of the day. `
+              : voiced
+                ? `the app's maker reads the verse of the day in his own voice over a painted road, then says one plain thing about it (about a minute). Write in his voice, first person, plain. `
+                : `a painted figure of Peter (Cephas) reads the verse of the day. `
       // What each caption asks for, and it differs by network on purpose:
       // nothing in a TikTok or Snapchat caption is tappable, so a URL there
       // is a dead string and the ask is the follow; the others carry a link.
@@ -523,8 +608,10 @@ Deno.serve(async (req) => {
     if (action === 'upload-url') {
       const path = String(input.path ?? '')
       // A video, or its cover — the first frame as a JPG, which Pinterest
-      // requires beside a video pin.
-      if (!/^days\/\d{4}-\d{2}-\d{2}\/(verse|story|quiz|challenge|challenge2|own)(\.(mp4|webm)|-cover\.jpg)$/.test(path)) return json({ error: 'bad path' }, 400)
+      // requires beside a video pin — or the operator's own recording of the
+      // verse (the WAV the hub decoded it to, and its transcript), or the
+      // founder photo the thought section draws.
+      if (!/^(days\/\d{4}-\d{2}-\d{2}\/((verse|story|quiz|challenge|challenge2|own)(\.(mp4|webm)|-cover\.jpg)|voice-verse\.(wav|json))|founder\/photo\.jpg)$/.test(path)) return json({ error: 'bad path' }, 400)
       const { data, error } = await admin.storage.from(BUCKET).createSignedUploadUrl(path, { upsert: true })
       if (error || !data) return json({ error: error?.message ?? 'no upload url' }, 500)
       return json({ path, token: data.token, publicUrl: publicUrl(path) })
@@ -555,6 +642,8 @@ Deno.serve(async (req) => {
       if (!file) return json({ error: `no copy for ${date} ${kind} yet — open Today's words first` }, 400)
       const copy = JSON.parse(await file.text()) as DayCopy
       const reference = String(input.reference ?? '').slice(0, 80)
+      // The AI note claims only the art when the voice on the verse is the operator's.
+      const voiced = kind === 'verse' && (await exists(`days/${date}/voice-verse.json`))
 
       // A platform the account has not linked yet is skipped with a row that
       // says so, never sent: X can be in every list before the account
@@ -577,7 +666,7 @@ Deno.serve(async (req) => {
           if (!(await exists(coverPath))) { results.push({ platform, status: 'skipped', id: null, postUrl: null, postId: null, error: `no cover image yet (${coverPath})`, scheduleDate: null }); continue }
           cover = publicUrl(coverPath)
         }
-        const r = await ayrshare('post', postBody(platform, copy, { date, kind, reference, videoUrl, scheduleDate, attempt, seconds, cover }), 'POST', platform === 'x')
+        const r = await ayrshare('post', postBody(platform, copy, { date, kind, reference, videoUrl, scheduleDate, attempt, seconds, cover, voiced }), 'POST', platform === 'x')
         results.push(postResult(platform, r, scheduleDate))
       }
       // Merged over the earlier record, so a call for the platforms that

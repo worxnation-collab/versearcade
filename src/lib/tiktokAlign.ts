@@ -104,6 +104,55 @@ function match(ours: string[], theirs: string[]): number[] {
   return out
 }
 
+/** Every word Whisper heard, in order, with where it heard it. */
+export async function transcribe(samples: Float32Array, sampleRate: number, onProgress?: (label: string) => void): Promise<TimedWord[]> {
+  const asr = await loadAsr(onProgress)
+  onProgress?.('Listening to the reading')
+  const audio = resample(samples, sampleRate, RATE)
+  const res = await asr(audio, { return_timestamps: 'word', chunk_length_s: 30, stride_length_s: 5 })
+  return (res.chunks ?? [])
+    .filter((c) => c.text.trim() && c.timestamp[0] != null)
+    .map((c) => ({ text: c.text.trim(), start: c.timestamp[0], end: c.timestamp[1] ?? c.timestamp[0] + 0.25 }))
+}
+
+/** The first sound in the recording, in seconds — Whisper stamps the first word at 0.00 whatever the lead-in silence. */
+export function onsetOf(samples: Float32Array, sampleRate: number): number {
+  let onset = 0
+  while (onset < samples.length && Math.abs(samples[onset]) < 0.02) onset++
+  return onset / sampleRate
+}
+
+/**
+ * Put OUR words where Whisper heard THEIRS: longest-common-subsequence over
+ * normalised tokens, matched words anchored, the rest interpolated between
+ * their neighbours, monotonic, none shorter than a frame. Returns the timed
+ * words and how many of them were actually heard, so a caller can decide
+ * whether the fit is trustworthy (`alignWords` refuses under half).
+ */
+export function fitWords(ours: string[], heard: TimedWord[], audioDur: number, onset = 0): { words: TimedWord[]; matched: number } {
+  const hit = match(ours, heard.map((c) => c.text))
+  const matched = hit.filter((h) => h >= 0).length
+  const start = new Float64Array(ours.length).fill(-1)
+  const end = new Float64Array(ours.length).fill(-1)
+  hit.forEach((h, i) => { if (h >= 0) { start[i] = heard[h].start; end[i] = heard[h].end } })
+  for (let i = 0; i < ours.length; i++) {
+    if (start[i] >= 0) continue
+    let lo = i - 1; while (lo >= 0 && start[lo] < 0) lo--
+    let hi = i + 1; while (hi < ours.length && start[hi] < 0) hi++
+    const from = lo >= 0 ? end[lo] : Math.max(0, onset)
+    const to = hi < ours.length ? start[hi] : Math.min(audioDur, from + 0.6 * (hi - lo))
+    const gap = hi - lo, k = i - lo
+    start[i] = from + ((to - from) * (k - 1)) / gap
+    end[i] = from + ((to - from) * k) / gap
+  }
+  if (ours.length) start[0] = Math.max(start[0], onset - 0.05)
+  for (let i = 0; i < ours.length; i++) {
+    if (i > 0 && start[i] < end[i - 1]) start[i] = end[i - 1]
+    if (end[i] < start[i] + 0.04) end[i] = start[i] + 0.04
+  }
+  return { words: ours.map((text, i) => ({ text, start: start[i], end: end[i] })), matched }
+}
+
 /**
  * Re-time every phrase's words from the audio. `phrases` carry the caption
  * text (their existing timings are the fallback); the result has each word
@@ -112,55 +161,32 @@ function match(ours: string[], theirs: string[]): number[] {
  * lined up at all, so the caller keeps the heuristic.
  */
 export async function alignWords(samples: Float32Array, sampleRate: number, phrases: TimedPhrase[], onProgress?: (label: string) => void): Promise<TimedPhrase[]> {
-  const asr = await loadAsr(onProgress)
-  onProgress?.('Listening to the reading')
-  const audio = resample(samples, sampleRate, RATE)
-  const res = await asr(audio, { return_timestamps: 'word', chunk_length_s: 30, stride_length_s: 5 })
-  const heard = (res.chunks ?? []).filter((c) => c.text.trim() && c.timestamp[0] != null)
+  const heard = await transcribe(samples, sampleRate, onProgress)
   if (heard.length < 3) throw new Error('heard too little')
   const audioDur = samples.length / sampleRate
 
   // Flatten the caption into words, remembering which phrase each is in.
   const words: Array<{ text: string; phrase: number }> = []
   phrases.forEach((p, pi) => { for (const t of p.text.split(/\s+/).filter(Boolean)) words.push({ text: t, phrase: pi }) })
-  const hit = match(words.map((w) => w.text), heard.map((c) => c.text.trim()))
-  const matched = hit.filter((h) => h >= 0).length
-  if (matched < Math.max(3, words.length * 0.5)) throw new Error(`only ${matched} of ${words.length} words lined up`)
+  const fit = fitWords(words.map((w) => w.text), heard, audioDur, onsetOf(samples, sampleRate))
+  if (fit.matched < Math.max(3, words.length * 0.5)) throw new Error(`only ${fit.matched} of ${words.length} words lined up`)
+  return regroup(phrases, words.map((w) => w.phrase), fit.words, audioDur)
+}
 
-  // Anchor matched words; interpolate the rest between their neighbours.
-  const start = new Float64Array(words.length).fill(-1)
-  const end = new Float64Array(words.length).fill(-1)
-  hit.forEach((h, i) => { if (h >= 0) { start[i] = heard[h].timestamp[0]; end[i] = heard[h].timestamp[1] ?? heard[h].timestamp[0] + 0.25 } })
-  for (let i = 0; i < words.length; i++) {
-    if (start[i] >= 0) continue
-    let lo = i - 1; while (lo >= 0 && start[lo] < 0) lo--
-    let hi = i + 1; while (hi < words.length && start[hi] < 0) hi++
-    const from = lo >= 0 ? end[lo] : 0
-    const to = hi < words.length ? start[hi] : Math.min(audioDur, from + 0.6 * (hi - lo))
-    const gap = hi - lo, k = i - lo
-    start[i] = from + ((to - from) * (k - 1)) / gap
-    end[i] = from + ((to - from) * k) / gap
-  }
-  // Whisper stamps the first word at 0.00 whatever the lead-in silence, so
-  // the first word starts no earlier than the first sound.
-  let onset = 0
-  while (onset < samples.length && Math.abs(samples[onset]) < 0.02) onset++
-  if (words.length) start[0] = Math.max(start[0], onset / sampleRate - 0.05)
-  // Monotonic, and a word is never shorter than a frame.
-  for (let i = 0; i < words.length; i++) {
-    if (i > 0 && start[i] < end[i - 1]) start[i] = end[i - 1]
-    if (end[i] < start[i] + 0.04) end[i] = start[i] + 0.04
-  }
-
+/**
+ * Hand timed words back to their phrases: each phrase starts on its first
+ * word and holds until the next phrase begins, and its last word stays lit
+ * through the gap.
+ */
+export function regroup(phrases: TimedPhrase[], phraseOf: number[], timed: TimedWord[], audioDur: number): TimedPhrase[] {
   const out: TimedPhrase[] = phrases.map((p) => ({ ...p, words: [] as TimedWord[] }))
-  words.forEach((w, i) => out[w.phrase].words!.push({ text: w.text, start: start[i], end: end[i] }))
+  timed.forEach((w, i) => out[phraseOf[i]].words!.push(w))
   out.forEach((p, pi) => {
     const ws = p.words!
     if (!ws.length) return
     p.start = ws[0].start
     const next = out.slice(pi + 1).find((q) => q.words!.length)
     p.end = next ? next.words![0].start : Math.min(audioDur, ws[ws.length - 1].end + 0.3)
-    // The last word holds until the phrase ends, so it stays lit through the gap.
     ws[ws.length - 1].end = p.end
   })
   return out

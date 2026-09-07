@@ -239,7 +239,7 @@ function RoundStrip({ game }: { game: TapGameDef }) {
         })}
       </div>
       <span style={{ fontSize: 11.5, color: 'var(--ink-faint)' }}>
-        {scoring} {noun}s{rests ? ` to gather · ${rests === 1 ? 'one' : rests} to keep still` : ' in a row'}
+        {scoring} {noun}s{rests ? ` to gather · ${rests === 1 ? 'one' : rests} to keep still` : ''}
       </span>
     </div>
   )

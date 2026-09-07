@@ -222,11 +222,16 @@ export async function makeQuiz(d: string, o: QuizOptions, progress: Progress): P
   const steps = quizPlan(d, level, windowSec, v.questions)
   let audio: ArrayBuffer | undefined
   if (o.voice !== false) {
-    // The same reading the morning post makes, so it is usually cached.
+    // The same reading the morning post makes, so it is usually cached. A
+    // reading that cannot be had (Gemini TTS hung for one voice on 2026-09-07
+    // until the gateway gave up) costs the post its voice, never the post:
+    // the quiz layout has always run without audio.
     progress(0, 'asking for the reading')
     const p = autoPick(d, c.reader)
-    const tts = await call<{ url: string; cached: boolean }>('tts', { date: d, text: `${v.text.trim()} ${spokenReference(v.reference)}.`, voice: o.voiceName ?? p.voice, style: p.style })
-    audio = await (await fetch(tts.url + '?v=' + Date.now())).arrayBuffer()
+    try {
+      const tts = await call<{ url: string; cached: boolean }>('tts', { date: d, text: `${v.text.trim()} ${spokenReference(v.reference)}.`, voice: o.voiceName ?? p.voice, style: p.style })
+      audio = await (await fetch(tts.url + '?v=' + Date.now())).arrayBuffer()
+    } catch (e) { console.warn('quiz: no reading, rendering without one:', e); audio = undefined }
   }
   let copy: Copy | null = null
   if (o.copy !== false) {
@@ -284,10 +289,15 @@ export async function makeChallenge(d: string, o: ChallengeOptions, progress: Pr
   const step = quizPlan(d, level, windowSec, v.questions)[qi]
   let audio: ArrayBuffer | undefined
   if (o.voice !== false) {
+    // Same rule as the quiz: a question that cannot be read aloud is asked
+    // on screen alone rather than not asked at all. The first challenge of
+    // 2026-09-07 was lost to a TTS hang before this existed.
     progress(0, 'asking for the question')
     const p = autoPick(d, c.reader)
-    const tts = await call<{ url: string; cached: boolean }>('tts', { date: d, text: q.prompt, voice: o.voiceName ?? p.voice, style: `Ask this as a quiz question to a friend: bright, curious, unhurried. ${p.style.split('. ').slice(0, 1).join('. ')}.` })
-    audio = await (await fetch(tts.url + '?v=' + Date.now())).arrayBuffer()
+    try {
+      const tts = await call<{ url: string; cached: boolean }>('tts', { date: d, text: q.prompt, voice: o.voiceName ?? p.voice, style: `Ask this as a quiz question to a friend: bright, curious, unhurried. ${p.style.split('. ').slice(0, 1).join('. ')}.` })
+      audio = await (await fetch(tts.url + '?v=' + Date.now())).arrayBuffer()
+    } catch (e) { console.warn('challenge: no reading, rendering without one:', e); audio = undefined }
   }
   let copy: Copy | null = null
   if (o.copy !== false) {

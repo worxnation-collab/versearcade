@@ -374,8 +374,20 @@ export async function splitRecording(samples: Float32Array, sampleRate: number, 
 export function refit(track: VoiceTrack, text: string): VoiceTrack {
   const words = text.replace(/\s+/g, ' ').trim().split(' ').filter(Boolean)
   if (!words.length || !track.heard.length) return { ...track, text: words.join(' '), thought: [] }
-  // The fit needs no model, only the words already heard.
-  const { words: timed } = fitWords(words, track.heard, track.seconds)
+  // The fit needs no model, only the words already heard — but it has to be
+  // told where the thought BEGINS. `fitWords` times a word it could not
+  // match by interpolating between its matched neighbours, and a word with
+  // no matched neighbour BEFORE it falls back to the onset, which defaults
+  // to zero. The first word of a thought is exactly the word a correction
+  // changes ("All wrote this letter" → "Paul wrote this letter"), so it
+  // matches nothing, lands at 0.00, and drags the whole thought's start to
+  // the top of the video: the renderer gates the founder's photo on
+  // `thoughtStart`, so the face appeared over the hook and over the verse
+  // for the whole minute. Three of one week's seven came out that way, and
+  // it is invisible in the transcript — only a rendered frame shows it.
+  // The thought cannot begin before its own first heard word, so that is
+  // the onset.
+  const { words: timed } = fitWords(words, track.heard, track.seconds, track.heard[0].start)
   return { ...track, text: words.join(' '), thought: timed }
 }
 

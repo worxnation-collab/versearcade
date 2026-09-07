@@ -150,6 +150,18 @@ function durationOf(src) {
   return m ? Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]) : undefined
 }
 
+// The local origin the browser bundle is served from. Declared HERE, above
+// the commands that need no browser, because `post` bundles the verse data
+// through `defines()` — which reads it — and a `const` further down the file
+// is in its temporal dead zone at that point. It threw `Cannot access
+// 'origin' before initialization` AFTER printing the line that says what it
+// is about to schedule, so a run that scheduled nothing at all read as seven
+// scheduled posts in a filtered log. Nothing here may be declared below its
+// first use.
+fs.mkdirSync(path.join(OUT, 'out'), { recursive: true })
+const port = 8890 + Math.floor(Math.random() * 100)
+const origin = `http://127.0.0.1:${port}`
+
 // ---- commands that need no browser ----------------------------------------------
 if (cmd === 'clear') {
   const date = args[0]; if (!isDate(date)) fail('clear <date>')
@@ -200,9 +212,6 @@ function defines() {
   for (const k of ['VITE_AUTH_REDIRECT_URL', 'VITE_VAPID_PUBLIC_KEY', 'VITE_SUPPORT_URL', 'VITE_REVENUECAT_IOS_KEY', 'VITE_DEFAULT_TRANSLATION', 'VITE_BUY_CEPHAS']) d[`import.meta.env.${k}`] = '""'
   return d
 }
-fs.mkdirSync(path.join(OUT, 'out'), { recursive: true })
-const port = 8890 + Math.floor(Math.random() * 100)
-const origin = `http://127.0.0.1:${port}`
 await build({
   entryPoints: [path.join(ROOT, 'src/lib/tiktokVoiceCli.ts')], bundle: true, format: 'esm', platform: 'browser', target: 'es2022',
   outfile: path.join(OUT, 'voice.mjs'), alias: { '@': path.join(ROOT, 'src') }, define: defines(), logLevel: 'error',

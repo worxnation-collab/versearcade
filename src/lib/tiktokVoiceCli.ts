@@ -25,7 +25,7 @@ declare global {
     vaVoice: {
       drafts: (dates: string[], token: string, force?: boolean, place?: 'open' | 'close') => Promise<DraftRow[]>
       listen: (date: string, wavUrl: string, token: string, kind?: VoiceKind, place?: 'open' | 'close') => Promise<ListenResult>
-      render: (date: string, token: string, kind?: VoiceKind) => Promise<RenderResult>
+      render: (date: string, token: string, kind?: VoiceKind, place?: 'open' | 'close') => Promise<RenderResult>
       fix: (date: string, text: string, token: string, kind?: VoiceKind) => Promise<FixResult>
       identify: (wavUrl: string, dates: string[], token: string) => Promise<{ best: { date: string; reference: string; matched: number; words: number } | null; opening: string }>
     }
@@ -163,13 +163,18 @@ window.vaVoice = {
     return { best, opening: heard.slice(0, 12).map((w) => w.text).join(' ') }
   },
 
-  /** The verse post for the date, with the parked recording, handed to the script as a download. */
-  async render(date, token, kind = 'verse') {
+  /**
+   * The post for the date, with the parked recording, handed to the script
+   * as a download. `place` only decides where a recording NOBODY has
+   * listened to yet belongs — one that carries its own wins, so a preview
+   * cannot move a word recorded as a closing one to the front.
+   */
+  async render(date, token, kind = 'verse', place = 'close') {
     setRunnerToken(token)
     ensureFont()
     localModels()
     const progress: Progress = (_f, label) => say(`${date}: ${label}`)
-    const m = kind === 'story' ? await makeStory(date, {}, progress) : await makeVerse(date, {}, progress)
+    const m = kind === 'story' ? await makeStory(date, { ownPlace: place }, progress) : await makeVerse(date, {}, progress)
     const a = document.createElement('a')
     a.href = m.url
     a.download = `${kind}-${date}.${m.ext}`
@@ -179,7 +184,7 @@ window.vaVoice = {
     const seconds = await new Promise<number>((res) => { const v = document.createElement('video'); v.preload = 'metadata'; v.onloadedmetadata = () => res(v.duration); v.onerror = () => res(0); v.src = m.url })
     // The caption count, because a post that renders perfectly with the
     // wrong words on it is the failure this loop keeps finding: a story
-    // whose coda was captioned in Tabitha's last phrase looked flawless in
+    // whose own half was captioned in Tabitha's last phrase looked flawless in
     // every frame and said the wrong thing for fourteen seconds.
     return { ext: m.ext === 'mp4' ? 'mp4' : 'webm', size: m.size, reference: m.reference, tier: m.tier, seconds, phrases: (m.phrases ?? []).length }
   },

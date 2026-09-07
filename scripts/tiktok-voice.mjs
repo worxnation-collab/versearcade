@@ -33,8 +33,8 @@
 //       Whisper times a phone memo well and spells it badly, and these words
 //       are burned onto the screen — so this is the step between listening
 //       and rendering. No model, no second listen, no timing drift.
-//   node scripts/tiktok-voice.mjs render <date>
-//       The verse post with the parked recording, as an H.264 MP4 in
+//   node scripts/tiktok-voice.mjs render <date> [--story] [--intro]
+//       The post with the parked recording, as an H.264 MP4 in
 //       .tiktok-voice/out/. Posts nothing.
 //   node scripts/tiktok-voice.mjs post <date> [--at HH:MM | --now] [--platforms a,b]
 //       Upload the rendered MP4 (and its cover) and schedule it at HH:MM in
@@ -277,7 +277,7 @@ try {
   }
   if (cmd === 'render') {
     const date = args[0]; if (!isDate(date)) fail('render <date>')
-    const [dl, r] = await Promise.all([page.waitForEvent('download', { timeout: 900_000 }), page.evaluate(([d, t, k]) => window.vaVoice.render(d, t, k), [date, TOKEN, KIND])])
+    const [dl, r] = await Promise.all([page.waitForEvent('download', { timeout: 900_000 }), page.evaluate(([d, t, k, pl]) => window.vaVoice.render(d, t, k, pl), [date, TOKEN, KIND, PLACE])])
     const raw = path.join(OUT, 'out', `${KIND}-${date}.${r.ext}`)
     await dl.saveAs(raw)
     log(`rendered ${r.ext} ${(r.size / 1e6).toFixed(1)}MB · ${r.reference} · ${r.tier} · ${r.seconds.toFixed(0)}s · ${r.phrases} captions`)

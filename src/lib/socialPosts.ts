@@ -27,7 +27,7 @@
 
 import { supabase } from './supabase'
 
-export type SocialPlatform = 'tiktok' | 'youtube' | 'facebook' | 'instagram' | 'x' | 'snapchat'
+export type SocialPlatform = 'tiktok' | 'youtube' | 'facebook' | 'instagram' | 'x' | 'snapchat' | 'threads'
 export type PostKind = 'verse' | 'story' | 'quiz'
 
 export interface SocialLink {
@@ -38,7 +38,7 @@ export interface SocialLink {
 }
 
 /** The order they are offered in — biggest audience first, not the record's order. */
-export const SOCIAL_ORDER: SocialPlatform[] = ['tiktok', 'youtube', 'instagram', 'facebook', 'x', 'snapchat']
+export const SOCIAL_ORDER: SocialPlatform[] = ['tiktok', 'youtube', 'instagram', 'facebook', 'threads', 'x', 'snapchat']
 
 export const SOCIAL_NAMES: Record<SocialPlatform, string> = {
   tiktok: 'TikTok',
@@ -47,6 +47,7 @@ export const SOCIAL_NAMES: Record<SocialPlatform, string> = {
   facebook: 'Facebook',
   x: 'X',
   snapchat: 'Snapchat',
+  threads: 'Threads',
 }
 
 /** Where a link for each platform is allowed to point. A host or a subdomain of one. */
@@ -57,6 +58,7 @@ const SOCIAL_HOSTS: Record<SocialPlatform, string[]> = {
   facebook: ['facebook.com', 'fb.watch', 'fb.com'],
   x: ['x.com', 'twitter.com'],
   snapchat: ['snapchat.com'],
+  threads: ['threads.net', 'threads.com'],
 }
 
 interface PostedRow {

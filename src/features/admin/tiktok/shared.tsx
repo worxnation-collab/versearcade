@@ -170,7 +170,7 @@ export async function existsAt(url: string, type?: string): Promise<boolean> {
 // One copy, in lib/date.ts — the player-facing side reads dates the same way.
 export { addDays }
 
-export type Platform = 'tiktok' | 'youtube' | 'facebook' | 'instagram' | 'x' | 'snapchat'
+export type Platform = 'tiktok' | 'youtube' | 'facebook' | 'instagram' | 'x' | 'snapchat' | 'threads'
 export interface PlatformCopy { title: string; text: string; tags: string[] }
 export interface Copy { hook: string; caption: string; hashtags: string[]; platforms?: Partial<Record<Platform, PlatformCopy>> }
 /**
@@ -336,7 +336,7 @@ export function CopyBlocks({ copy }: { copy: Copy }) {
 
 export type PostResult = { platform: string; status: string; postUrl?: string | null; error?: string | null; scheduleDate?: string | null }
 export interface Posted { at?: string; results?: PostResult[] }
-const PLATFORM_NAMES: Record<Platform, string> = { tiktok: 'TikTok', youtube: 'YouTube', facebook: 'Facebook', instagram: 'Instagram', x: 'X', snapchat: 'Snapchat' }
+const PLATFORM_NAMES: Record<Platform, string> = { tiktok: 'TikTok', youtube: 'YouTube', facebook: 'Facebook', instagram: 'Instagram', x: 'X', snapchat: 'Snapchat', threads: 'Threads' }
 
 export async function fetchPosted(d: string, kind: Made['kind']): Promise<Posted> {
   return call<Posted>('posted', { date: d, kind })
@@ -391,7 +391,7 @@ export async function postVideo(m: Made, platforms: Platform[], scheduleDate: st
 }
 
 export function PostControls({ m }: { m: Made }) {
-  const [chosen, setChosen] = useState<Platform[]>(['tiktok', 'youtube', 'facebook', 'instagram', 'x', 'snapchat'])
+  const [chosen, setChosen] = useState<Platform[]>(['tiktok', 'youtube', 'facebook', 'instagram', 'x', 'snapchat', 'threads'])
   const [when, setWhen] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
   const [posted, setPosted] = useState<Posted | null>(null)

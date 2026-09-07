@@ -7,8 +7,8 @@
 // Pure: no I/O, no environment. Everything a network needs is either in the
 // day's per-platform copy or in the arguments.
 
-export type Platform = 'tiktok' | 'youtube' | 'facebook' | 'instagram' | 'x' | 'snapchat'
-export const PLATFORMS: Platform[] = ['tiktok', 'youtube', 'facebook', 'instagram', 'x', 'snapchat']
+export type Platform = 'tiktok' | 'youtube' | 'facebook' | 'instagram' | 'x' | 'snapchat' | 'threads'
+export const PLATFORMS: Platform[] = ['tiktok', 'youtube', 'facebook', 'instagram', 'x', 'snapchat', 'threads']
 
 /** Ayrshare's own name for a platform: X is still "twitter" on its API. */
 export const ayrshareName = (p: Platform): string => (p === 'x' ? 'twitter' : p)
@@ -20,6 +20,17 @@ export interface DayCopy { hook?: string; platforms?: Partial<Record<Platform, P
 export type Kind = 'verse' | 'story' | 'quiz' | 'challenge' | 'challenge2' | 'own'
 export const KINDS: Kind[] = ['verse', 'story', 'quiz', 'challenge', 'challenge2', 'own']
 export const kindOf = (k: unknown): Kind => ((KINDS as string[]).includes(String(k)) ? (k as Kind) : 'verse')
+
+/**
+ * Which kinds a network does NOT get. Ayrshare's plan is 1,000 posts a month
+ * and five kinds on six networks already sits near 900, so a seventh network
+ * has to give something up: Threads skips the quiz (the 107-second replay
+ * is the weakest fit for a text-first feed anyway). The function's `post`
+ * refuses the pair with a `skipped` row and the runner never asks, so the
+ * hub and the cron cannot disagree about it.
+ */
+const KINDS_OFF: Partial<Record<Platform, Kind[]>> = { threads: ['quiz'] }
+export const postsOn = (platform: Platform, kind: Kind): boolean => !(KINDS_OFF[platform] ?? []).includes(kind)
 
 export interface PostArgs {
   date: string
@@ -68,6 +79,7 @@ export function callToAction(platform: Platform, kind: Kind): string {
     case 'youtube': return challenge ? "Comment your answer. Play today's verse: https://versearcade.org" : "Play today's verse: https://versearcade.org"
     case 'facebook': return challenge ? 'Comment your answer. https://versearcade.org' : 'https://versearcade.org'
     case 'x': return challenge ? 'Comment your answer. versearcade.org' : 'versearcade.org'
+    case 'threads': return challenge ? 'Comment your answer. Play it: versearcade.org' : "Play today's verse: versearcade.org"
   }
 }
 
@@ -121,6 +133,10 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
     const tail = [AI_NOTE, tagLine(c.tags, 2)].filter(Boolean).join(' ')
     const text = withAsk(c.text, platform, a.kind).slice(0, Math.max(0, 279 - tail.length - 1))
     body.post = [text, tail].filter(Boolean).join(' ')
+  } else if (platform === 'threads') {
+    // Threads: 500 characters, links tappable, no AI flag on the API so the
+    // caption says it. Two tags at most — Threads treats a tag as a topic.
+    body.post = [withAsk(c.text, platform, a.kind), AI_NOTE, tagLine(c.tags, 2)].filter(Boolean).join('\n\n').slice(0, 500)
   } else if (platform === 'snapchat') {
     // The note goes FIRST: the caption is cut at 160 and the disclosure is
     // the part that must survive.

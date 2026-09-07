@@ -95,7 +95,10 @@ title and hashtag count. The key lives in Vault (`tiktok_ayrshare_key()`,
   title. Instagram: a Reel shared to the feed, five hashtags at most. X: one
   line under 280 characters with two tags (and Ayrshare still calls it
   `twitter` on the wire — `ayrshareName()` in `social.ts` is the one place
-  that translates). Snapchat: Spotlight only — its discovery feed, where an
+  that translates). Threads: 500 characters, links tappable, the AI note in
+  the caption, two tags, and NO quiz — `postsOn` in `social.ts` keeps the
+  month under Ayrshare's 1,000-post plan by having a network give a kind up,
+  and Threads gives up the 107-second replay. Snapchat: Spotlight only — its discovery feed, where an
   account nobody follows yet is still shown to strangers; asked for together
   with a saved story, Ayrshare posted only the story, which lives on the
   profile for people who already found it. TikTok's short line with three

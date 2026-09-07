@@ -39,7 +39,7 @@
 // (default America/New_York), DATE (override today), KINDS (default
 // verse,challenge,quiz,challenge2,story), POST_TIMES (default
 // verse=07:00,challenge=10:00,quiz=12:30,challenge2=16:00,story=19:30),
-// PLATFORMS (default all six: TikTok, YouTube, Facebook, Instagram, X, Snapchat), DRY_RUN (render only), FFMPEG (binary path),
+// PLATFORMS (default all seven: TikTok, YouTube, Facebook, Instagram, X, Snapchat, Threads — minus what social.postsOn says a network skips), DRY_RUN (render only), FFMPEG (binary path),
 // PW_CHROMIUM (executable path when Playwright's own browser is not installed),
 // RERENDER (make the video again even if the day's is already in the bucket),
 // MODELS_DIR (serve the aligner's Whisper model, ONNX runtime and, if
@@ -68,7 +68,7 @@ const GEMINI_KEY = env.GEMINI_API_KEY || ''
 const AYRSHARE_KEY = env.AYRSHARE_API_KEY || ''
 const TZ = env.TIKTOK_TZ || 'America/New_York'
 const KINDS = (env.KINDS || 'verse,challenge,quiz,challenge2,story').split(',').map((s) => s.trim()).filter(Boolean)
-const PLATFORMS = (env.PLATFORMS || 'tiktok,youtube,facebook,instagram,x,snapchat').split(',').map((s) => s.trim()).filter(Boolean)
+const PLATFORMS = (env.PLATFORMS || 'tiktok,youtube,facebook,instagram,x,snapchat,threads').split(',').map((s) => s.trim()).filter(Boolean)
 const DRY = /^(1|true|yes)$/i.test(env.DRY_RUN || '')
 const FFMPEG = env.FFMPEG || 'ffmpeg'
 const TIMES = Object.fromEntries((env.POST_TIMES || 'verse=07:00,challenge=10:00,quiz=12:30,challenge2=16:00,story=19:30').split(',').map((kv) => kv.split('=').map((s) => s.trim())))
@@ -317,7 +317,7 @@ for (const kind of KINDS) {
     // failed, or was not linked last time, is tried again; one Ayrshare took
     // is left alone (its idempotency key would refuse a repeat anyway).
     const done = new Set(rows.filter((r) => r.status !== 'error' && r.status !== 'skipped').map((r) => r.platform))
-    const todo = PLATFORMS.filter((p) => !done.has(p))
+    const todo = PLATFORMS.filter((p) => !done.has(p) && social.postsOn(p, kind))
     if (!todo.length) {
       log(`  already posted (${rows.map((r) => `${r.platform} ${r.status}`).join(', ')})`)
       results.push({ kind, date, videoUrl: prior.videoUrl, results: rows, skipped: 'posted' }); continue
@@ -368,7 +368,7 @@ for (const kind of KINDS) {
     const { error } = await sb.storage.from('tiktok').uploadToSignedUrl(up.path, up.token, fs.readFileSync(mp4), { contentType: 'video/mp4', upsert: true })
     if (error) { results.push({ kind, date, error: `upload: ${error.message}` }); continue }
     videoUrl = up.publicUrl
-    posted = await postEach(PLATFORMS, { date, kind, videoUrl, scheduleDate, reference: rendered.reference, seconds: durationOf(mp4) })
+    posted = await postEach(PLATFORMS.filter((p) => social.postsOn(p, kind)), { date, kind, videoUrl, scheduleDate, reference: rendered.reference, seconds: durationOf(mp4) })
   } else {
     const u = await ayrshare(`media/uploadUrl?fileName=${encodeURIComponent(`va-${kind}-${date}.mp4`)}&contentType=mp4`, null, 'GET')
     if (!u.uploadUrl) { results.push({ kind, date, error: `ayrshare upload url: ${JSON.stringify(u).slice(0, 200)}` }); continue }
@@ -377,7 +377,7 @@ for (const kind of KINDS) {
     videoUrl = u.accessUrl
     const copy = (await bucketJson(`days/${date}/copy-${kind}.json`)) ?? {}
     const rows = []
-    for (const platform of PLATFORMS) {
+    for (const platform of PLATFORMS.filter((p) => social.postsOn(p, kind))) {
       const r = await ayrshare('post', social.postBody(platform, copy, { date, kind, reference: rendered.reference, videoUrl, scheduleDate }))
       rows.push(social.postResult(platform, r, scheduleDate))
     }

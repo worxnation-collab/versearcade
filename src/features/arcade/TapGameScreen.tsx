@@ -8,7 +8,8 @@ import { TapRunner, type TapSurface } from './TapRunner'
 import { useArcadeInvite } from '@/store/arcadeInvite'
 import { useArcadeXp, type ArcadePlayResult } from '@/store/arcadeXp'
 import { todayLocalDate } from '@/lib/date'
-import type { TapGameDef, TapResult } from '@/lib/tapGame'
+import { isRestRound, type TapGameDef, type TapResult } from '@/lib/tapGame'
+import { GENERATED_ART } from '@/data/generatedArt'
 
 // The screen every tap game wears: the gate that explains it, the run, and the
 // two numbers afterwards.
@@ -25,6 +26,7 @@ export function TapGameScreen({
   tagline,
   how,
   cta,
+  hero,
   finale,
   onDeal,
   demo,
@@ -37,6 +39,15 @@ export function TapGameScreen({
   /** How it works, in the player's terms. First line leads, the rest are dim. */
   how: string[]
   cta: string
+  /**
+   * The machine's painting, as a `GENERATED_ART` id, shown across the top of
+   * the gate so the door looks like the room behind it.
+   *
+   * The gate was a card of text over sixty percent of an empty screen, on a
+   * machine whose whole field is a painting one tap away. Absent (or not yet
+   * generated) the gate is the text it always was.
+   */
+  hero?: string
   /**
    * What the run was for, shown under the two numbers once it's over.
    *
@@ -118,25 +129,58 @@ export function TapGameScreen({
           {finale}
         </>
       ) : (
-        <Gate how={how} cta={cta} demo={demo} onStart={start} />
+        <Gate game={game} hero={hero} how={how} cta={cta} demo={demo} onStart={start} />
       )}
     </ArcadeShell>
   )
 }
 
 function Gate({
+  game,
+  hero,
   how,
   cta,
   demo,
   onStart,
 }: {
+  game: TapGameDef
+  hero?: string
   how: string[]
   cta: string
   demo?: boolean
   onStart: () => void
 }) {
+  const art = hero ? GENERATED_ART[hero] : undefined
   return (
-    <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: 20 }}>
+    <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: 20, overflow: 'hidden' }}>
+      {art && (
+        // Bled to the card's edges and faded into it at the bottom, so it reads
+        // as the room seen through the door rather than a picture on a card.
+        <div
+          aria-hidden
+          style={{
+            margin: '-20px -20px 0',
+            height: 168,
+            position: 'relative',
+            background: `url(${art}) center 48% / cover no-repeat`,
+          }}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'linear-gradient(180deg, rgba(20,10,52,0) 45%, var(--card-solid) 100%)',
+            }}
+          />
+        </div>
+      )}
+
+      {/* The run's shape, at a glance: every round as a chip, in order, with a
+          rest round drawn as one. Derived from the definition so it can't say
+          something the game doesn't do. "Day 1 … Day 7 (rest)" is the whole
+          of Manna Rush in one line; four "Line" chips is Word Catch's. */}
+      <RoundStrip game={game} />
+
       {how.map((line, i) => (
         <p
           key={i}
@@ -153,6 +197,50 @@ function Gate({
       <Button variant="gold" full onClick={onStart}>
         {cta}
       </Button>
+    </div>
+  )
+}
+
+function RoundStrip({ game }: { game: TapGameDef }) {
+  if (game.rounds.length < 2) return null
+  const rests = game.rounds.filter(isRestRound).length
+  const scoring = game.rounds.length - rests
+  // The chips carry a number and the caption carries the noun — "Day 1" and
+  // "Line 1 of 4" both start with it — because one word per round is all a
+  // strip of seven has room for on a 320px phone.
+  const noun = game.rounds[0].title.split(/\s/)[0].toLowerCase()
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+        {game.rounds.map((r, i) => {
+          const rest = isRestRound(r)
+          return (
+            <span
+              key={r.key}
+              title={r.title}
+              style={{
+                flex: '1 1 0',
+                minWidth: 30,
+                textAlign: 'center',
+                fontFamily: 'var(--font-display)',
+                fontWeight: 800,
+                fontSize: 11,
+                padding: '5px 0',
+                borderRadius: 8,
+                border: `1px solid ${rest ? 'var(--gold)' : 'var(--stroke)'}`,
+                color: rest ? 'var(--gold)' : 'var(--ink-dim)',
+                background: rest ? 'rgba(255,210,63,0.08)' : 'rgba(0,0,0,0.22)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {rest ? '☀' : i + 1}
+            </span>
+          )
+        })}
+      </div>
+      <span style={{ fontSize: 11.5, color: 'var(--ink-faint)' }}>
+        {scoring} {noun}s{rests ? ` to gather · ${rests === 1 ? 'one' : rests} to keep still` : ''}
+      </span>
     </div>
   )
 }
@@ -223,6 +311,8 @@ function Harvest({
           <span style={{ fontSize: 13.5, color: 'var(--ink-dim)' }}>{game.labels.restBroken}</span>
         ))}
 
+      <Taught lines={result.taught} />
+
       {onAgain && (
         <div style={{ display: 'flex', gap: 10, width: '100%' }}>
           <Button variant="gold" full onClick={onAgain}>
@@ -236,6 +326,63 @@ function Harvest({
         </div>
       )}
     </motion.div>
+  )
+}
+
+/**
+ * The verses the run turned up.
+ *
+ * Every teach line was a two-second toast under a falling flake, read once by
+ * whoever was quick enough. This hands them back in the same frame the missed
+ * list uses on a quiz result: what you now know, never what you got wrong — no
+ * count of taps, no ✗, and a run that never needed teaching shows nothing. Only
+ * lines with a citation land here; Word Catch's "that one comes later" is
+ * about the game, not the world.
+ */
+function Taught({ lines }: { lines: TapResult['taught'] }) {
+  const cited = lines.filter((l) => l.cite)
+  if (!cited.length) return null
+  return (
+    <div style={{ width: '100%', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <span
+        style={{
+          fontSize: 10,
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+          color: 'var(--ink-faint)',
+          textAlign: 'center',
+        }}
+      >
+        What the run turned up
+      </span>
+      {cited.map((l) => (
+        <div
+          key={l.text}
+          style={{
+            padding: '9px 12px',
+            borderRadius: 'var(--r-md)',
+            background: 'rgba(0,0,0,0.22)',
+            border: '1px solid var(--stroke)',
+            fontSize: 13.5,
+            lineHeight: 1.45,
+          }}
+        >
+          <span style={{ fontStyle: 'italic' }}>“{l.text}”</span>
+          <span
+            style={{
+              display: 'block',
+              marginTop: 3,
+              fontSize: 10.5,
+              letterSpacing: '0.09em',
+              textTransform: 'uppercase',
+              color: 'var(--gold)',
+            }}
+          >
+            {l.cite}
+          </span>
+        </div>
+      ))}
+    </div>
   )
 }
 

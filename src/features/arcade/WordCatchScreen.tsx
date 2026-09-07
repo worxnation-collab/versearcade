@@ -66,6 +66,7 @@ export default function WordCatchScreen({ demo }: { demo?: boolean }) {
         'The line at the top shows what you have put back and how long each missing word is. Tap one out of turn and it just drops back — it comes round again.',
       ]}
       cta="Put it back together"
+      hero="arcade_page"
       // The whole verse, whole, once the run is over. You have just spent a
       // minute with it in pieces — reading it through is the point of having
       // done that, and it lands a beat after the numbers so it reads as what

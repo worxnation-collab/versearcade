@@ -22,7 +22,7 @@ import { FloraIcon } from './ChurchFlora'
 import { FLORA, PLOTS, floraById, nextFlora, plantingId } from './yard'
 import { statueById } from './rivalry'
 import { ChurchPicker } from './ChurchPicker'
-import { CHURCH_TIERS, churchLevelInfo, nextTier, tierForLevel, tierIndexForLevel } from './levels'
+import { CHURCH_TIERS, churchLevelInfo, nextTier, tierForLevel, tierIndexForLevel, xpToReachLevel } from './levels'
 import type { Church } from '@/types'
 
 // The Church tab. Pick the church you actually attend, then pour the points
@@ -120,6 +120,10 @@ function ChurchHome({ church }: { church: Church }) {
   // The congregation's monuments stand in the same hero scene as its flowers.
   const statues = useRivalry((s) => s.statues)
   const loadRivalry = useRivalry((s) => s.load)
+  // This week's two totals, for saying what a gift would do to the bar above
+  // before it is given. Null when there is no matchup: a forecast against a
+  // bye is a share of nothing.
+  const week = useRivalry((s) => (s.loaded && s.opponent ? { mine: s.mine, theirs: s.theirs } : null))
   const congregation = useChurch((s) => s.congregation)
   const loadCongregation = useChurch((s) => s.loadCongregation)
   const [picked, setPicked] = useState<string | null>(null)
@@ -279,7 +283,20 @@ function ChurchHome({ church }: { church: Church }) {
     } else {
       juice.correct()
     }
-    setFlash(`+${res.given.toLocaleString()} to ${church.name}`)
+    // What it did, not only that it landed: the level it reached, and where
+    // the church now stands in the week. The share is projected from the
+    // totals on screen and the server's re-read below corrects it within the
+    // second — an estimate for 2.6 seconds is fine; a bar that doesn't move
+    // when you feed it is not.
+    const now = useChurch.getState().church?.xp ?? church.xp
+    const after = churchLevelInfo(now)
+    const parts = [`+${res.given.toLocaleString()} to ${church.name}`]
+    if (afterTier.id === beforeTier && res.leveledUp) parts.push(`LVL ${after.level}!`)
+    if (week) {
+      const share = weekShare(week.mine + res.given, week.theirs)
+      if (share !== null) parts.push(`${share}% of the week`)
+    }
+    setFlash(parts.join(' · '))
     // Giving is the only thing that opens landscaping, so the yard's ladder is
     // stale the moment this lands.
     void useChurchYard.getState().load()
@@ -297,6 +314,24 @@ function ChurchHome({ church }: { church: Church }) {
 
   // Offer round numbers you can actually afford, plus everything.
   const quick = [100, 500, 2500].filter((n) => n <= available)
+
+  // What giving everything would do — the reason to tap the gold button,
+  // said before it is tapped. The building is the big one, then the level,
+  // then the week; nothing here is a number about a person.
+  const forecast = useMemo(() => {
+    if (available <= 0) return null
+    const after = churchLevelInfo(church.xp + available)
+    const afterTier = tierForLevel(after.level)
+    const bits: string[] = []
+    if (afterTier.id !== tier.id) bits.push(`raise the ${afterTier.name}`)
+    else if (after.level > info.level) bits.push(`take the church to LVL ${after.level}`)
+    if (week) {
+      const share = weekShare(week.mine + available, week.theirs)
+      if (share !== null) bits.push(`put your church at ${share}% of this week`)
+    }
+    if (!bits.length) return null
+    return `Giving all ${available.toLocaleString()} would ${bits.join(' and ')}.`
+  }, [available, church.xp, info.level, tier.id, week])
 
   return (
     <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'minmax(0, 1fr)' }}>
@@ -443,6 +478,12 @@ function ChurchHome({ church }: { church: Church }) {
           </div>
         )}
 
+        {forecast && (
+          <p className="center" style={{ fontSize: 13, margin: '12px 0 0', color: 'var(--gold)', fontWeight: 700, lineHeight: 1.45 }}>
+            {forecast}
+          </p>
+        )}
+
         {myGiven > 0 && (
           <p className="faint center" style={{ fontSize: 12, margin: '12px 0 0' }}>
             You've given {myGiven.toLocaleString()} to {church.name}.
@@ -538,17 +579,34 @@ function ChurchHome({ church }: { church: Church }) {
               <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
                 {CHURCH_TIERS.map((t) => {
                   const earned = info.level >= t.minLevel
+                  // Only the NEXT building gets a distance. One number on the
+                  // one rung within reach is a goal; a column of them is a
+                  // ladder you are behind on.
+                  const isNext = !earned && upcoming?.id === t.id
+                  const away = isNext ? Math.max(0, xpToReachLevel(t.minLevel) - church.xp) : 0
                   return (
                     <div
                       key={t.id}
                       className="card"
-                      style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', minWidth: 0, borderColor: earned ? 'var(--gold)' : 'var(--stroke)' }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        padding: '10px 12px',
+                        minWidth: 0,
+                        borderColor: earned ? 'var(--gold)' : isNext ? 'rgba(255,210,63,0.45)' : 'var(--stroke)',
+                        borderStyle: isNext ? 'dashed' : undefined,
+                      }}
                     >
                       <ChurchArt tier={t.id} skin={church.skin} size={56} locked={!earned} />
                       <span style={{ minWidth: 0, flex: 1 }}>
                         <span style={{ display: 'block', fontWeight: 800, fontSize: 14 }}>{t.name}</span>
                         <span className="faint" style={{ display: 'block', fontSize: 12 }}>
-                          {earned ? 'Earned' : `Unlocks at LVL ${t.minLevel}`}
+                          {earned
+                            ? 'Earned'
+                            : isNext
+                              ? `Next up · ${away.toLocaleString()} XP away (LVL ${t.minLevel})`
+                              : `Unlocks at LVL ${t.minLevel}`}
                         </span>
                       </span>
                       <span style={{ fontSize: 16 }}>{earned ? '✅' : '🔒'}</span>
@@ -854,4 +912,15 @@ function Promotion({
       </motion.div>
     </motion.div>
   )
+}
+
+/**
+ * Your church's share of a week, as a whole percent — the RivalryCard's own
+ * number (mine / (mine + theirs)), so the forecast and the bar can't disagree.
+ * Null for an empty week, where a share of nothing would read as a lie.
+ */
+function weekShare(mine: number, theirs: number): number | null {
+  const total = mine + theirs
+  if (total <= 0) return null
+  return Math.round((mine / total) * 100)
 }

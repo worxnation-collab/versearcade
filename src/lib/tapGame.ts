@@ -133,6 +133,15 @@ export interface TapResult {
    * A game without a rest round simply doesn't show that line.
    */
   restKept: boolean | null
+  /**
+   * The teach lines this run actually showed, each once, in the order they
+   * first appeared — so the harvest can hand back the verses a run turned up
+   * rather than leaving them to a two-second toast under a falling flake.
+   *
+   * Only `game.teach.*` lines land here, never a round's own note or the rest
+   * stamp: those describe the game, and these describe the world.
+   */
+  taught: TeachLine[]
 }
 
 /** A round nobody is meant to tap. */

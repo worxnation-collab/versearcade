@@ -396,8 +396,11 @@ export default function CrossWordScreen({ demo }: { demo?: boolean }) {
               cut from the pool on demand now, so a denominator would be a bar
               that cannot be filled, which is the one shape this app doesn't put
               in front of anybody. */}
+          {/* And no ZERO: "0 crosses built" is the first thing a newcomer
+              reads on this machine, and a tally of nothing is a bar, not a
+              tally. It appears with the first cross. */}
           <span style={{ color: 'var(--ink-faint)' }}>
-            {demo ? 'A free go' : built === 1 ? '1 cross built' : `${built} crosses built`}
+            {demo ? 'A free go' : built === 0 ? '' : built === 1 ? '1 cross built' : `${built} crosses built`}
           </span>
         </div>
 

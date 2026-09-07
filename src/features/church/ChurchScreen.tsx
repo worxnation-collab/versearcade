@@ -15,6 +15,7 @@ import { useRivalry } from '@/store/rivalry'
 import { useJuice } from '@/juice/useJuice'
 import { supabase } from '@/lib/supabase'
 import { ChurchArt } from './ChurchArt'
+import { ShareChurch } from './ShareChurch'
 import { ChurchBoard, TIMEFRAME_PHRASE } from './ChurchBoard'
 import { ChurchScene } from './ChurchScene'
 import { RivalryCard } from './RivalryCard'
@@ -417,6 +418,18 @@ function ChurchHome({ church }: { church: Church }) {
             {upcoming ? ` · ${upcoming.name} at LVL ${upcoming.minLevel}` : ' · top of the ladder'}
           </p>
         </div>
+
+        {/* The congregation is the strongest hook this app has, because it is
+            a group people already belong to — and it grows by ONE person at a
+            time unless somebody can hand the whole church a link. The public
+            page (`/church/:id`) already had a share; this is the same share
+            on your own card, where the person most likely to send it is. */}
+        <ShareChurch
+          churchId={church.id}
+          churchName={church.name}
+          label="📣 Invite your congregation"
+          note="Sends the church’s own page — anyone can open it, and joining takes one tap."
+        />
 
         {/* The shelf you fill the yard from, ON the church's own card — the
             shape the Upper Room and the keep's hall both already use: the

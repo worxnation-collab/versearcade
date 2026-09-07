@@ -9,6 +9,7 @@ import {
   type ReminderPrefs,
 } from '@/lib/reminders'
 import { useReviews } from './reviews'
+import { useGame, usualPlayTime } from './game'
 
 // Reminder settings are a property of the DEVICE, not the account: they control
 // what this phone's notification centre does, and there is no sensible way to
@@ -28,7 +29,12 @@ const DEFAULTS: ReminderPrefs = {
 function readPrefs(): ReminderPrefs {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) || '{}') as Partial<ReminderPrefs>
-    return { ...DEFAULTS, ...raw }
+    // A drop time the player never SET defaults to the hour they usually play
+    // (store/game records it), not 9am: Duolingo's reminder lands at the hour
+    // you tend to open it, and that is most of why it works. Setting a time in
+    // Settings writes `dropTime` and wins from then on.
+    const usual = raw.dropTime ? null : usualPlayTime()
+    return { ...DEFAULTS, ...(usual ? { dropTime: usual } : {}), ...raw }
   } catch {
     return { ...DEFAULTS }
   }
@@ -126,7 +132,8 @@ export const useReminders = create<RemindersState>((set, get) => ({
         now: new Date(),
         prefs,
         schedule: reviews.schedule,
-        dueNow: reviews.dueRefs.length,
+        playedToday: useGame.getState().playedToday,
+      dueNow: reviews.dueRefs.length,
       }),
     )
   },

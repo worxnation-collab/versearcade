@@ -7,6 +7,7 @@ import { ArcadeWelcome } from './ArcadeWelcome'
 import { TapRunner, type TapSurface } from './TapRunner'
 import { useArcadeInvite } from '@/store/arcadeInvite'
 import { useArcadeXp, type ArcadePlayResult } from '@/store/arcadeXp'
+import { useSaveNudge } from '@/store/saveNudge'
 import { todayLocalDate } from '@/lib/date'
 import { isRestRound, type TapGameDef, type TapResult } from '@/lib/tapGame'
 import { GENERATED_ART } from '@/data/generatedArt'
@@ -27,6 +28,7 @@ export function TapGameScreen({
   how,
   cta,
   hero,
+  heroCaption,
   finale,
   onDeal,
   demo,
@@ -48,6 +50,12 @@ export function TapGameScreen({
    * generated) the gate is the text it always was.
    */
   hero?: string
+  /**
+   * A few words written on the hero, for a painting that is a blank page:
+   * Word Catch shows the opening of the verse it is about to pull apart, so
+   * the gate reads as a preview rather than an empty sheet of cream.
+   */
+  heroCaption?: string
   /**
    * What the run was for, shown under the two numbers once it's over.
    *
@@ -103,7 +111,18 @@ export function TapGameScreen({
       // into, and paying for one would make a share farmable in a way nothing
       // else in this app is — the same reason a demo records no relic, no road
       // step and no Bible mark.
-      if (!demo) void useArcadeXp.getState().record(id).then(setReward)
+      if (!demo) {
+        void useArcadeXp.getState().record(id).then((r) => {
+          setReward(r)
+          // A guest's first welcome from a machine: say where the XP lives.
+          if (r?.awarded) {
+            useSaveNudge.getState().offer({
+              thing: 'That +5 XP',
+              line: 'A guest’s XP, level and streak live on this device.',
+            })
+          }
+        })
+      }
       // On a shared link the run that just ended was the free go. The store
       // no-ops outside a demo, so this is flat rather than conditional.
       useArcadeInvite.getState().notePlayEnded(todayLocalDate())
@@ -129,7 +148,7 @@ export function TapGameScreen({
           {finale}
         </>
       ) : (
-        <Gate game={game} hero={hero} how={how} cta={cta} demo={demo} onStart={start} />
+        <Gate game={game} hero={hero} heroCaption={heroCaption} how={how} cta={cta} demo={demo} onStart={start} />
       )}
     </ArcadeShell>
   )
@@ -138,6 +157,7 @@ export function TapGameScreen({
 function Gate({
   game,
   hero,
+  heroCaption,
   how,
   cta,
   demo,
@@ -145,6 +165,7 @@ function Gate({
 }: {
   game: TapGameDef
   hero?: string
+  heroCaption?: string
   how: string[]
   cta: string
   demo?: boolean
@@ -165,6 +186,28 @@ function Gate({
             background: `url(${art}) center 48% / cover no-repeat`,
           }}
         >
+          {heroCaption && (
+            // Ink on the page: a warm dark serif-ish weight, left-aligned the
+            // way a verse sits on a page, never white text on a painting.
+            <p
+              style={{
+                position: 'absolute',
+                left: 28,
+                right: 28,
+                top: 26,
+                margin: 0,
+                fontFamily: 'var(--font-display)',
+                fontWeight: 700,
+                fontSize: 17,
+                lineHeight: 1.45,
+                color: '#3b2a12',
+                opacity: 0.86,
+                textShadow: '0 1px 0 rgba(255,250,235,0.5)',
+              }}
+            >
+              {heroCaption}
+            </p>
+          )}
           <div
             style={{
               position: 'absolute',

@@ -502,10 +502,14 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   the function's `post` action uploads nothing itself — the browser parks the
   MP4 in the bucket through a signed upload URL, then the function hands
   Ayrshare the public URL with that day's per-platform words, one request per
-  platform, idempotent per (date, kind, platform). Six platforms (TikTok,
-  YouTube, Facebook, Instagram, X, Snapchat); one not linked in Ayrshare is skipped
+  platform, idempotent per (date, kind, platform). Seven platforms (TikTok,
+  YouTube, Facebook, Instagram, X, Snapchat, Threads); one not linked in Ayrshare is skipped
   with a row that says so, never failed, so a network can be wired in before
-  its account exists. The key is in Vault
+  its account exists. **Ayrshare's plan is 1,000 posts a month**, and five
+  kinds on seven networks would be ~1,050, so `postsOn` in `social.ts` is
+  the one place a network gives a kind up (Threads skips the quiz); the
+  function refuses the pair with a `skipped` row and the runner never asks.
+  The key is in Vault
   (`tiktok_ayrshare_key()`, 0101). A WebM is refused before any quota is
   spent: TikTok and Instagram will not take one.
 - **The morning cron makes the same three posts with nobody at the

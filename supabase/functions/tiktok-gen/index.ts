@@ -46,7 +46,7 @@
 // still/loop is generated once and reused by every day after it.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { PLATFORMS, ayrshareName, kindOf, postBody, postResult, type DayCopy, type Platform } from './social.ts'
+import { PLATFORMS, ayrshareName, kindOf, postBody, postResult, postsOn, type DayCopy, type Platform } from './social.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
@@ -472,19 +472,20 @@ Deno.serve(async (req) => {
       // is a dead string and the ask is the follow; the others carry a link.
       // social.ts appends the same ask if the words come back without it.
       const ask = challenge
-        ? { tiktok: 'ends by asking people to comment their answer and to follow for tomorrow\'s (NO URL: nothing in a TikTok caption is tappable)', yt: 'asks people to comment their answer, then', fb: 'asks people to comment their answer, then', ig: 'ends with "Comment your answer. Play it — link in bio."', x: 'asks people to comment their answer, ending with' }
-        : { tiktok: 'ends by inviting people to follow for tomorrow\'s verse (NO URL: nothing in a TikTok caption is tappable)', yt: '', fb: '', ig: 'ending with "Play today\'s verse — link in bio."', x: 'ending with' }
+        ? { tiktok: 'ends by asking people to comment their answer and to follow for tomorrow\'s (NO URL: nothing in a TikTok caption is tappable)', yt: 'asks people to comment their answer, then', fb: 'asks people to comment their answer, then', ig: 'ends with "Comment your answer. Play it — link in bio."', x: 'asks people to comment their answer, ending with', th: 'asks people to comment their answer, ending with "Play it: versearcade.org"' }
+        : { tiktok: 'ends by inviting people to follow for tomorrow\'s verse (NO URL: nothing in a TikTok caption is tappable)', yt: '', fb: '', ig: 'ending with "Play today\'s verse — link in bio."', x: 'ending with', th: 'ending with "Play today\'s verse: versearcade.org"' }
       const data = await gemini(`models/${TEXT_MODEL}:generateContent`, {
         contents: [{ parts: [{ text:
           `You write post copy for a faceless short-video account called Verse Arcade, a Bible app where ${who}` +
-          `Today's verse is ${reference}: "${text}" (theme: ${theme || 'unspecified'}). The same vertical video is posted to TikTok, YouTube Shorts, Facebook and Instagram Reels, and each wants its own words.\n\n` +
+          `Today's verse is ${reference}: "${text}" (theme: ${theme || 'unspecified'}). The same vertical video is posted to TikTok, YouTube Shorts, Facebook and Instagram Reels, X, Snapchat and Threads, and each wants its own words.\n\n` +
           `Return JSON with:\n` +
           `"hook": one on-screen opening line, max 8 words, no emoji, not a question.\n` +
           `"tiktok": { "text": 1-2 short sentences, casual and warm, under 150 characters, no hashtags in it, ${ask.tiktok}; "tags": 5 lowercase hashtags without the # sign }.\n` +
           `"youtube": { "title": a Shorts title under 70 characters that names the verse reference and what the video is; "text": 2-4 sentences for the description, plain, ${ask.yt} with the line "Play today's verse: https://versearcade.org" on its own line at the end; "tags": 5 lowercase hashtags without the # sign, the first one "shorts" }.\n` +
           `"facebook": { "text": 2-4 conversational sentences, a little longer and more personal than the others, no hashtags in it, ${ask.fb} ending with the link https://versearcade.org on its own line; "tags": 2 lowercase hashtags without the # sign }.\n` +
           `"instagram": { "text": 2-3 short sentences with a line break between them, no hashtags in it, ${ask.ig}; "tags": 10 lowercase hashtags without the # sign, mixing broad #bible-style tags with the verse's own theme }.\n` +
-          `"x": { "text": one line under 200 characters, plain and direct, no hashtags in it, ${ask.x} versearcade.org; "tags": 2 lowercase hashtags without the # sign }.\n\n` +
+          `"x": { "text": one line under 200 characters, plain and direct, no hashtags in it, ${ask.x} versearcade.org; "tags": 2 lowercase hashtags without the # sign }.\n` +
+          `"threads": { "text": 1-3 short conversational sentences under 300 characters, the kind of thing a person would say rather than a brand, no hashtags in it, ${ask.th}; "tags": 2 lowercase hashtags without the # sign }.\n\n` +
           `Never rank, compare or shame anyone. Never claim a fact that isn't in the verse. Never give away a quiz answer. No emoji anywhere.` }] }],
         generationConfig: { responseMimeType: 'application/json', temperature: 0.8 },
       })
@@ -501,7 +502,7 @@ Deno.serve(async (req) => {
         const b = (parsed[k] ?? {}) as Record<string, unknown>
         return { title: String(b.title ?? '').slice(0, 100), text: String(b.text ?? '').slice(0, 2000), tags: tagsOf(b.tags, n) }
       }
-      const platforms = { tiktok: block('tiktok', 6), youtube: block('youtube', 6), facebook: block('facebook', 3), instagram: block('instagram', 12), x: block('x', 3) }
+      const platforms = { tiktok: block('tiktok', 6), youtube: block('youtube', 6), facebook: block('facebook', 3), instagram: block('instagram', 12), x: block('x', 3), threads: block('threads', 3) }
       // `caption` and `hashtags` are the TikTok block under the names older
       // clients read, so a dashboard that predates the per-platform copy
       // still gets a caption.
@@ -560,6 +561,7 @@ Deno.serve(async (req) => {
       const results: Array<Record<string, unknown>> = []
       for (const platform of platforms) {
         if (!linked(platform)) { results.push({ platform, status: 'skipped', id: null, postUrl: null, postId: null, error: 'not linked in Ayrshare', scheduleDate: null }); continue }
+        if (!postsOn(platform, kind)) { results.push({ platform, status: 'skipped', id: null, postUrl: null, postId: null, error: `${kind} is not posted on ${platform} (quota)`, scheduleDate: null }); continue }
         const r = await ayrshare('post', postBody(platform, copy, { date, kind, reference, videoUrl, scheduleDate, attempt, seconds }), 'POST', platform === 'x')
         results.push(postResult(platform, r, scheduleDate))
       }

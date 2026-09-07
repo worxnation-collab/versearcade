@@ -609,6 +609,19 @@ export const FULL_SKINS: SkinDef[] = [
     // partnership skin must never do. It is a look, not a window.
     blurb: 'A lantern lit against the dark \u2014 the light shines in the darkness, and the darkness has not overcome it. Redeem Tyler\u2019s code to wear it.',
   },
+  {
+    id: 'cooldad',
+    // The app's owner, drawn as a character — coral polo, shades on the
+    // collar, a coffee and a tiny mint backpack on the other shoulder. The same
+    // shape as the creator-collab skins: 'paid' + exclusive so it rides the
+    // owned_skins entitlement (protected in 0107), granted by code or by
+    // grant_skins(), never sold. 'cooldad' is the entitlement key; keep it.
+    name: 'Cool Dad',
+    source: 'paid',
+    exclusive: true,
+    packName: 'Cool Dad',
+    blurb: 'Coffee in one hand, the little one\u2019s backpack on the other shoulder. Redeem the code to wear it.',
+  },
 ]
 
 /** 'ruth_3' -> 'ruth': reactive pass skins bake their state into the equipped

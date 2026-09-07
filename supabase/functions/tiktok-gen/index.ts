@@ -16,10 +16,10 @@
 //   loop-status { key, op }                      → { done, url? }    polls Veo; on completion parks readers/<key>.mp4
 //   copy        { date?, reference, text, theme, kind?, force?, question?, about? } → { hook, caption, hashtags[], platforms }  post copy per platform via Gemini Flash; kind (verse, story, quiz, challenge, challenge2, own) changes what the post is — a challenge passes its question, an own clip what it is about; cached at days/<date>/copy-<kind>.json
 //   story       { date, reference, text, ... }    → { title, hook, paragraphs[] }   the story behind the verse, cached at days/<date>/story.json
-//   thought     { date, reference, text, ..., force?, save?, peek? } → { text, words, source }  the ~110-word spoken reflection the OPERATOR reads after the verse (Gemini draft, cached at days/<date>/thought.json; `save` parks the operator's own edit; `force` redrafts)
-//   voice       { date }                          → the day's operator recording, if one is parked (days/<date>/voice-verse.json: the timed verse and thought words the hub transcribed), else {}
-//   voice-clear { date }                          → { ok }             removes a parked recording and its transcript, so the morning falls back to Gemini's voice
-//   upload-url  { path }                          → { path, token, publicUrl }  a signed upload URL for a finished video (days/<date>/<kind>.mp4), its cover, the operator's recording (voice-verse.wav/.json) or the founder photo (founder/photo.jpg), so the browser can put it in the bucket
+//   thought     { date, kind?, reference, text, paragraphs?, ..., force?, save?, peek? } → { text, words, source }  what the OPERATOR reads in his own voice: the ~110-word reflection after the verse (kind 'verse', days/<date>/thought.json) or the ~50-word closing word after the story, written from that story's own paragraphs (kind 'story', days/<date>/thought-story.json). `save` parks his edit; `force` redrafts
+//   voice       { date, kind? }                   → the day's operator recording for that kind, if one is parked (days/<date>/voice-<verse|story>.json: the timed words the hub transcribed — a story coda carries an empty `verse`), else {}
+//   voice-clear { date, kind? }                   → { ok }             removes a parked recording and its transcript, so that post falls back to Gemini's voice alone
+//   upload-url  { path }                          → { path, token, publicUrl }  a signed upload URL for a finished video (days/<date>/<kind>.mp4), its cover, one of the operator's recordings (voice-verse|story.wav/.json) or the founder photo (founder/photo.jpg), so the browser can put it in the bucket
 //   links       { date, kind }                     → the day's record          asks Ayrshare what became of each SCHEDULED post and fills in the postUrl a network only issues once it publishes
 //   post        { date, kind, videoUrl, platforms[], scheduleDate?, attempt?, seconds? } → { results[] }  posts the video with that day's copy through Ayrshare, one call per platform (a platform not linked in Ayrshare is skipped, not failed); parked at days/<date>/posted-<kind>.json, merged over what an earlier call recorded
 //   posted      { date, kind }                    → { results[] } | {}  what `post` recorded for that day, if anything
@@ -467,7 +467,12 @@ Deno.serve(async (req) => {
     if (action === 'thought') {
       const date = String(input.date ?? '')
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: 'date must be YYYY-MM-DD' }, 400)
-      const path = `days/${date}/thought.json`
+      // Two things a person reads on a day: the ~110-word THOUGHT after the
+      // morning verse, and the ~50-word closing word after the evening
+      // story. They are cached apart because they are written from different
+      // material — the verse's own data, and the story Tabitha just told.
+      const forStory = input.kind === 'story'
+      const path = `days/${date}/thought${forStory ? '-story' : ''}.json`
       const count = (t: string) => t.split(/\s+/).filter(Boolean).length
       if (typeof input.save === 'string') {
         const text = input.save.replace(/\s+/g, ' ').trim().slice(0, 1600)
@@ -489,11 +494,40 @@ Deno.serve(async (req) => {
       const f = (k: string, n = 300) => String(input[k] ?? '').slice(0, n)
       const facts = Array.isArray(input.facts) ? (input.facts as unknown[]).slice(0, 6).map((x) => String(x).slice(0, 200)) : []
       const samples = Array.isArray(input.samples) ? (input.samples as unknown[]).slice(0, 4).map((x) => String(x).slice(0, 1200)).filter(Boolean) : []
+      const voiceNote = samples.length ? `Here is how he actually talks, from things he has recorded before — match this voice, its rhythm and its plainness, not its content:\n${samples.map((x) => `"${x}"`).join('\n')}\n\n` : ''
+      // The story's closing word: he speaks LAST, after Tabitha has told the
+      // story and read the verse, with his face growing into the middle of
+      // the frame. Deliberately about a third the length of the morning
+      // thought — it is a coda, not a second sermon, and the post is already
+      // a minute long before he opens his mouth.
+      if (forStory) {
+        const paragraphs = Array.isArray(input.paragraphs) ? (input.paragraphs as unknown[]).slice(0, 4).map((x) => String(x).slice(0, 900)).filter(Boolean) : []
+        if (!paragraphs.length) return json({ error: 'paragraphs are required for a story summary' }, 400)
+        const sd = await gemini(`models/${TEXT_MODEL}:generateContent`, {
+          contents: [{ parts: [{ text:
+            `The maker of Verse Arcade, a Bible app, closes a short video in his own voice. The video has just told the story behind today's verse and read the verse aloud; he now speaks last, to camera, for about twenty seconds. He is one person talking plainly to a phone, not a preacher and not a brand.\n\n` +
+            `The story that was just told: ${paragraphs.join(' ')}\n\nThe verse that was just read: ${String(input.reference ?? '').slice(0, 80)} — "${String(input.text ?? '').slice(0, 600)}"\n\n` +
+            voiceNote +
+            `Rules. First person, present tense, short sentences that read well aloud — no sentence over about 15 words. Open by naming in ONE breath the thing the story turned on, so somebody who half-watched still has it. Then ONE plain thing he carries from it today. Do not retell the story beat by beat — the viewer just watched it. Do not quote the verse (it was just read). Do not say "today's verse", name the app, or thank anyone for watching. Nothing that one Christian tradition would say differently from another. Never shame the listener, no "we all" sermons, no call to action, no link.\n` +
+            `End on a closing STATEMENT: one plain sentence, first person, naming something specific from THIS story that he is choosing or carrying today. It must settle the thought and let the video end — not a question, not an instruction, not a stock closer.\n\n` +
+            `Return JSON with: "text" — the closing word, 45 to 60 words, plain punctuation, no emoji, no headings, no line breaks.` }] }],
+          generationConfig: { responseMimeType: 'application/json', temperature: 0.8 },
+        })
+        const sc = sd.candidates as Array<{ content?: { parts?: Array<{ text?: string }> } }> | undefined
+        const sraw = sc?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? '{}'
+        let sp: { text?: unknown } = {}
+        try { sp = JSON.parse(sraw) } catch { return json({ error: 'summary was not JSON', raw: sraw.slice(0, 300) }, 502) }
+        const sdraft = String(sp.text ?? '').replace(/\s+/g, ' ').trim().slice(0, 800)
+        if (count(sdraft) < 20) return json({ error: 'summary came back too short', raw: sraw.slice(0, 300) }, 502)
+        const sout = { text: sdraft, words: count(sdraft), source: 'gemini', at: new Date().toISOString() }
+        await park(path, new TextEncoder().encode(JSON.stringify(sout)), 'application/json')
+        return json({ ...sout, cached: false })
+      }
       const data = await gemini(`models/${TEXT_MODEL}:generateContent`, {
         contents: [{ parts: [{ text:
           `You write a short SPOKEN reflection for the maker of Verse Arcade, a Bible app, to read aloud in his own voice on a short video right after he has read the day's verse. He is one person talking plainly to a phone, not a preacher and not a brand.\n\n` +
           `Today's verse: ${reference} — "${text}"\nSpoken by: ${f('speaker', 80)}\nTo: ${f('audience', 120)}\nWhat came before: ${f('before')}\nWhat came after: ${f('after')}\nTheme: ${f('theme', 80)}\nFacts you may use: ${facts.join(' | ') || '(none)'}\n\n` +
-          (samples.length ? `Here is how he actually talks, from things he has recorded before — match this voice, its rhythm and its plainness, not its content:\n${samples.map((x) => `"${x}"`).join('\n')}\n\n` : '') +
+          voiceNote +
           `Rules. First person, present tense, short sentences that read well aloud — no sentence over about 15 words. ONE idea: who was speaking and why it was hard to say or hear, then one plain thing it asks of a person today. Use only the situation described above and the plain narrative of that passage; invent no names, numbers, events or dialogue. Nothing that one Christian tradition would say differently from another — no doctrine, no denominational language. Never shame the listener, never scold, no "we all" sermons, no rhetorical questions in a row. Do not quote the verse itself (he has just read it). Do not say "today's verse" or name the app. ` +
           `End on a closing STATEMENT: one plain sentence, first person, saying what he is choosing or carrying TODAY because of this passage. It must settle the thought and let the video end — not a question, not an instruction to the listener, not a call to action, not a link, and never a dangling hand-off like "here is what I keep asking myself" (which is what the first week of real recordings ended on, and it reads as a sentence cut in half). Do NOT begin it with "I am left". Do NOT describe the scene again. Do NOT reuse a stock closer. It should name something specific from this passage and be a sentence only this reflection could end on.\n\n` +
           `Return JSON with: "text" — the reflection, 100 to 120 words, plain punctuation, no emoji, no headings, no line breaks.` }] }],
@@ -510,24 +544,34 @@ Deno.serve(async (req) => {
       return json({ ...out, cached: false })
     }
 
-    // ---- voice: the operator's parked recording for a date -------------------
+    // ---- voice: the operator's parked recordings for a date ------------------
     // The hub decodes the upload to a WAV, transcribes it in the browser and
     // parks both; this reads the transcript back (the WAV is a public URL the
     // renderer fetches itself) and `voice-clear` takes both down. There is
     // no server-side transcription here on purpose: Whisper already runs in
     // the operator's tab for the captions, and the Gemini key never has to
     // hear a person's voice to make the post.
+    //
+    // TWO posts a day can carry his voice: the VERSE (his reading plus his
+    // thought, which replaces Gemini's outright) and the STORY's closing word
+    // (a coda appended after Tabitha's telling, which replaces nothing). Same
+    // shape and same transcript format — a coda is simply one whose `verse`
+    // is empty — so one pair of actions serves both, keyed on kind. A day may
+    // carry either, both or neither.
+    const voiceKind = (k: unknown): 'verse' | 'story' => (k === 'story' ? 'story' : 'verse')
     if (action === 'voice') {
       const date = String(input.date ?? '')
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: 'date must be YYYY-MM-DD' }, 400)
-      const { data: file } = await admin.storage.from(BUCKET).download(`days/${date}/voice-verse.json`)
+      const vk = voiceKind(input.kind)
+      const { data: file } = await admin.storage.from(BUCKET).download(`days/${date}/voice-${vk}.json`)
       if (!file) return json({})
-      return json({ ...JSON.parse(await file.text()), wavUrl: publicUrl(`days/${date}/voice-verse.wav`) })
+      return json({ ...JSON.parse(await file.text()), wavUrl: publicUrl(`days/${date}/voice-${vk}.wav`) })
     }
     if (action === 'voice-clear') {
       const date = String(input.date ?? '')
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: 'date must be YYYY-MM-DD' }, 400)
-      const { error } = await admin.storage.from(BUCKET).remove([`days/${date}/voice-verse.json`, `days/${date}/voice-verse.wav`])
+      const vk = voiceKind(input.kind)
+      const { error } = await admin.storage.from(BUCKET).remove([`days/${date}/voice-${vk}.json`, `days/${date}/voice-${vk}.wav`])
       if (error) return json({ error: error.message }, 500)
       return json({ ok: true })
     }
@@ -554,9 +598,9 @@ Deno.serve(async (req) => {
       // A verse the operator recorded is described as what it is — a person
       // reading and saying one thing about it — so the caption stops
       // crediting a painted Peter with a voice that is somebody's own.
-      const voiced = kind === 'verse' && path ? await exists(`days/${date}/voice-verse.json`) : false
+      const voiced = path && (kind === 'verse' || kind === 'story') ? await exists(`days/${date}/voice-${kind}.json`) : false
       const who = kind === 'story'
-        ? `Tabitha, the app's librarian, tells the short story behind the verse of the day each evening (the morning post was the verse itself, read aloud). `
+        ? `Tabitha, the app's librarian, tells the short story behind the verse of the day each evening (the morning post was the verse itself, read aloud). ${voiced ? `At the end the app's maker speaks last, in his own voice, with one plain closing word about it. ` : ''}`
         : kind === 'quiz'
           ? `a painted character plays YESTERDAY's five-question quiz about the verse against a countdown clock, and viewers play along and see the answers (the post is a replay of yesterday's verse; today's is waiting in the app). `
           : challenge
@@ -627,10 +671,10 @@ Deno.serve(async (req) => {
     if (action === 'upload-url') {
       const path = String(input.path ?? '')
       // A video, or its cover — the first frame as a JPG, which Pinterest
-      // requires beside a video pin — or the operator's own recording of the
-      // verse (the WAV the hub decoded it to, and its transcript), or the
-      // founder photo the thought section draws.
-      if (!/^(days\/\d{4}-\d{2}-\d{2}\/((verse|story|quiz|challenge|challenge2|own)(\.(mp4|webm)|-cover\.jpg)|voice-verse\.(wav|json))|founder\/photo\.jpg)$/.test(path)) return json({ error: 'bad path' }, 400)
+      // requires beside a video pin — or one of the operator's own recordings
+      // (the WAV the hub decoded it to, and its transcript), or the founder
+      // photo the thought section draws.
+      if (!/^(days\/\d{4}-\d{2}-\d{2}\/((verse|story|quiz|challenge|challenge2|own)(\.(mp4|webm)|-cover\.jpg)|voice-(verse|story)\.(wav|json))|founder\/photo\.jpg)$/.test(path)) return json({ error: 'bad path' }, 400)
       const { data, error } = await admin.storage.from(BUCKET).createSignedUploadUrl(path, { upsert: true })
       if (error || !data) return json({ error: error?.message ?? 'no upload url' }, 500)
       return json({ path, token: data.token, publicUrl: publicUrl(path) })
@@ -661,8 +705,9 @@ Deno.serve(async (req) => {
       if (!file) return json({ error: `no copy for ${date} ${kind} yet — open Today's words first` }, 400)
       const copy = JSON.parse(await file.text()) as DayCopy
       const reference = String(input.reference ?? '').slice(0, 80)
-      // The AI note claims only the art when the voice on the verse is the operator's.
-      const voiced = kind === 'verse' && (await exists(`days/${date}/voice-verse.json`))
+      // The AI note claims only the art when a voice on the post is the
+      // operator's — his reading on the verse, or his closing word on the story.
+      const voiced = (kind === 'verse' || kind === 'story') && (await exists(`days/${date}/voice-${kind}.json`))
 
       // A platform the account has not linked yet is skipped with a row that
       // says so, never sent: X can be in every list before the account

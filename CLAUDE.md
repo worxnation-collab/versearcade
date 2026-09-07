@@ -514,8 +514,42 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   the copy is rewritten on Save. This is the platforms' human-producer
   test being met on purpose; the four other daily posts stay automated.
   `scripts/tiktok-voice.mjs` is the same loop from a terminal (drafts,
-  listen, render, post) for the sessions where the memos arrive here
+  listen, fix, render, post) for the sessions where the memos arrive here
   rather than at the hub. `docs/TIKTOK-ENGINE.md` → "Your voice".
+- **The evening STORY carries his closing word too, and it is a CODA rather
+  than a replacement.** The verse post is his outright — his reading stands
+  in for Gemini's — while the story keeps Tabitha's telling whole and joins
+  ~20 seconds of him onto the end of it, with his photo growing into the
+  middle of the frame as he starts (`StoryInput.coda`, `CODA_GAP`). Two
+  voiced posts a day is the cadence that was chosen over voicing all five:
+  YouTube judges a channel, TikTok and Meta judge each post, and 28 extra
+  recordings a week is a cadence that stops. The challenges and the quiz
+  stay automated and honestly labelled.
+  - **One shape serves both.** A coda parks the same `VoiceTrack` at
+    `days/<date>/voice-story.{wav,json}` with an EMPTY `verse`, so `refit`,
+    the correction step, the caption path and `voice`/`voice-clear`/
+    `upload-url` are the ones that already existed, keyed on kind.
+    `transcribeCoda` is the only new listener: there is no verse in it to
+    find. `ensureCoda` mirrors `ensureVoice`, so the morning runner can do
+    the listening itself when a phone only uploaded.
+  - **The summary is drafted FROM the telling** (`thought` with
+    `kind: 'story'`, cached at `thought-story.json`), which is why it is a
+    second call rather than a flag — the morning thought comes off the
+    verse's own data and can be written a week early, while a word about a
+    story cannot exist before the story does.
+  - **Her captions are closed where he begins, and that line was earned.**
+    A caption HOLDS until the next one so a pause is not a blank panel, and
+    with nothing after it Tabitha's last phrase held fourteen seconds into
+    his half — his voice, her words on screen. The frame lookup takes the
+    first phrase whose span covers the moment and hers come first in the
+    array, so it shadowed his. Every phrase is now closed at `codaAt`. The
+    verse layout has carried the same line since it grew a thought; this is
+    that rule arriving on the layout that grew a second speaker later. It
+    rendered perfectly the whole time — only reading the captions off a
+    frame found it.
+  - Her captions are also timed against HER samples alone: `timedCaptions`
+    matches a transcript to a recording, and handing it her minute of words
+    over audio that ends in somebody else's voice makes it chase the tail.
 - **The quiz replays YESTERDAY, and the CPU is the game's own.** The five
   questions are the same five for everybody on a date, so a public replay of
   today's would hand out today's answers. The player is `buildCpuPlan` from

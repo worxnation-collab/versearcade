@@ -9,23 +9,24 @@
 // the runner token and catches the finished video as a download — the shape
 // lib/tiktokDaily.ts already has. Never imported by the app.
 
-import { setRunnerToken, parkFile, fetchCopy, fetchThought, fetchVoice, publicUrl, existsAt, voiceWavPath, voiceJsonPath } from '@/features/admin/tiktok/shared'
-import { makeVerse, type Progress } from '@/features/admin/tiktok/make'
+import { setRunnerToken, parkFile, fetchCopy, fetchThought, fetchStoryWord, fetchVoice, publicUrl, existsAt, voiceWavPath, voiceJsonPath, type VoiceKind } from '@/features/admin/tiktok/shared'
+import { makeVerse, makeStory, type Progress } from '@/features/admin/tiktok/make'
 import { getVerseForDate } from '@/data/bible/questions'
 import { env as tfEnv } from '@huggingface/transformers'
 
-export interface DraftRow { date: string; reference: string; verse: string; text: string; words: number; source: string; recorded: boolean; listened: boolean }
+export interface DraftPart { text: string; words: number; source: string; recorded: boolean; listened: boolean }
+export interface DraftRow { date: string; reference: string; verse: string; verseWord: DraftPart; storyWord: DraftPart | null }
 export interface ListenResult { seconds: number; verseMatched: number; verseWords: number; verseEnd: number; thoughtStart: number; thoughtWords: number; text: string }
-export interface RenderResult { ext: 'mp4' | 'webm'; size: number; reference: string; tier: string; seconds: number }
+export interface RenderResult { ext: 'mp4' | 'webm'; size: number; reference: string; tier: string; seconds: number; phrases: number }
 export interface FixResult { words: number; heard: number; text: string }
 
 declare global {
   interface Window {
     vaVoice: {
       drafts: (dates: string[], token: string, force?: boolean) => Promise<DraftRow[]>
-      listen: (date: string, wavUrl: string, token: string) => Promise<ListenResult>
-      render: (date: string, token: string) => Promise<RenderResult>
-      fix: (date: string, text: string, token: string) => Promise<FixResult>
+      listen: (date: string, wavUrl: string, token: string, kind?: VoiceKind) => Promise<ListenResult>
+      render: (date: string, token: string, kind?: VoiceKind) => Promise<RenderResult>
+      fix: (date: string, text: string, token: string, kind?: VoiceKind) => Promise<FixResult>
       identify: (wavUrl: string, dates: string[], token: string) => Promise<{ best: { date: string; reference: string; matched: number; words: number } | null; opening: string }>
     }
     __progress: string
@@ -63,37 +64,58 @@ function ensureFont() {
 const say = (s: string) => { window.__progress = s }
 
 window.vaVoice = {
-  /** The week's verses with a drafted thought under each, and what is already parked for the date. */
+  /**
+   * The week's verses with BOTH of a day's readings under each: the morning
+   * thought that follows the verse, and the evening closing word that
+   * follows the story. Drafting the second one generates that day's story if
+   * it has not been told yet — it is written from the telling, so it cannot
+   * exist before one — and fails closed to no word rather than costing the
+   * whole row.
+   */
   async drafts(dates, token, force = false) {
     setRunnerToken(token)
     const out: DraftRow[] = []
+    const part = async (date: string, kind: VoiceKind, draft: () => Promise<{ text: string; words: number; source: string }>): Promise<DraftPart> => {
+      const t = await draft()
+      const listened = !!(await fetchVoice(date, kind).catch(() => null))
+      const recorded = listened || (await existsAt(publicUrl(voiceWavPath(date, kind)) + '?v=' + Date.now(), 'audio/'))
+      return { text: t.text, words: t.words, source: t.source, recorded, listened }
+    }
     for (const date of dates) {
       say(`drafting ${date}`)
       const v = getVerseForDate(date)
-      const t = await fetchThought(date, force)
-      const listened = !!(await fetchVoice(date).catch(() => null))
-      const recorded = listened || (await existsAt(publicUrl(voiceWavPath(date)) + '?v=' + Date.now(), 'audio/'))
-      out.push({ date, reference: v.reference, verse: v.text, text: t.text, words: t.words, source: t.source, recorded, listened })
+      const verseWord = await part(date, 'verse', () => fetchThought(date, force))
+      say(`drafting ${date} · the story's closing word`)
+      const storyWord = await part(date, 'story', () => fetchStoryWord(date, force)).catch(() => null)
+      out.push({ date, reference: v.reference, verse: v.text, verseWord, storyWord })
     }
     return out
   },
 
-  /** A recording (served by the script as a WAV): decoded, parked, listened to, its transcript parked, the day's copy rewritten. */
-  async listen(date, wavUrl, token) {
+  /**
+   * A recording (served by the script as a WAV): decoded, parked, listened
+   * to, its transcript parked, the day's copy rewritten. A VERSE recording
+   * is his reading followed by his thought, so the verse has to be found
+   * inside it; a story CODA is all thought, and there is no verse in it to
+   * look for.
+   */
+  async listen(date, wavUrl, token, kind = 'verse') {
     setRunnerToken(token)
     localModels()
-    const v = getVerseForDate(date)
     const m = await import('@/lib/tiktokVoice')
     say('decoding')
     const dec = await m.decodeRecording(await (await fetch(wavUrl)).blob())
     say('parking the recording')
-    await parkFile(voiceWavPath(date), dec.wav, 'audio/wav')
-    const track = await m.splitRecording(dec.samples, dec.sampleRate, v.text, v.reference, say)
+    await parkFile(voiceWavPath(date, kind), dec.wav, 'audio/wav')
+    const v = getVerseForDate(date)
+    const track = kind === 'story'
+      ? await m.transcribeCoda(dec.samples, dec.sampleRate, say)
+      : await m.splitRecording(dec.samples, dec.sampleRate, v.text, v.reference, say)
     const fixed = m.refit(track, track.text)
     say('parking the transcript')
-    await parkFile(voiceJsonPath(date), new Blob([JSON.stringify(fixed)], { type: 'application/json' }), 'application/json')
+    await parkFile(voiceJsonPath(date, kind), new Blob([JSON.stringify(fixed)], { type: 'application/json' }), 'application/json')
     say('rewriting the caption')
-    try { await fetchCopy(date, 'verse', true) } catch { /* written at render time otherwise */ }
+    try { await fetchCopy(date, kind, true) } catch { /* written at render time otherwise */ }
     return { seconds: dec.seconds, verseMatched: fixed.verseMatched, verseWords: fixed.verse.length, verseEnd: fixed.verse[fixed.verse.length - 1]?.end ?? 0, thoughtStart: fixed.thought[0]?.start ?? 0, thoughtWords: fixed.thought.length, text: fixed.text }
   },
 
@@ -107,15 +129,15 @@ window.vaVoice = {
    * corrected words against `heard` and keeps every timing, so a correction
    * costs nothing and cannot drift the captions off the voice.
    */
-  async fix(date, text, token) {
+  async fix(date, text, token, kind = 'verse') {
     setRunnerToken(token)
-    const parked = await fetchVoice(date)
-    if (!parked || !Array.isArray(parked.heard) || !parked.heard.length) throw new Error(`nothing listened to for ${date} yet — run listen first`)
+    const parked = await fetchVoice(date, kind)
+    if (!parked || !Array.isArray(parked.heard) || !parked.heard.length) throw new Error(`nothing listened to for ${date} ${kind} yet — run listen first`)
     const m = await import('@/lib/tiktokVoice')
     const fixed = m.refit(parked, text)
-    await parkFile(voiceJsonPath(date), new Blob([JSON.stringify(fixed)], { type: 'application/json' }), 'application/json')
+    await parkFile(voiceJsonPath(date, kind), new Blob([JSON.stringify(fixed)], { type: 'application/json' }), 'application/json')
     say('rewriting the caption')
-    try { await fetchCopy(date, 'verse', true) } catch { /* written at render time otherwise */ }
+    try { await fetchCopy(date, kind, true) } catch { /* written at render time otherwise */ }
     return { words: fixed.thought.length, heard: parked.heard.length, text: fixed.text }
   },
 
@@ -140,19 +162,23 @@ window.vaVoice = {
   },
 
   /** The verse post for the date, with the parked recording, handed to the script as a download. */
-  async render(date, token) {
+  async render(date, token, kind = 'verse') {
     setRunnerToken(token)
     ensureFont()
     localModels()
     const progress: Progress = (_f, label) => say(`${date}: ${label}`)
-    const m = await makeVerse(date, {}, progress)
+    const m = kind === 'story' ? await makeStory(date, {}, progress) : await makeVerse(date, {}, progress)
     const a = document.createElement('a')
     a.href = m.url
-    a.download = `voice-${date}.${m.ext}`
+    a.download = `${kind}-${date}.${m.ext}`
     document.body.appendChild(a)
     a.click()
     say('done')
     const seconds = await new Promise<number>((res) => { const v = document.createElement('video'); v.preload = 'metadata'; v.onloadedmetadata = () => res(v.duration); v.onerror = () => res(0); v.src = m.url })
-    return { ext: m.ext === 'mp4' ? 'mp4' : 'webm', size: m.size, reference: m.reference, tier: m.tier, seconds }
+    // The caption count, because a post that renders perfectly with the
+    // wrong words on it is the failure this loop keeps finding: a story
+    // whose coda was captioned in Tabitha's last phrase looked flawless in
+    // every frame and said the wrong thing for fourteen seconds.
+    return { ext: m.ext === 'mp4' ? 'mp4' : 'webm', size: m.size, reference: m.reference, tier: m.tier, seconds, phrases: (m.phrases ?? []).length }
   },
 }

@@ -370,6 +370,31 @@ export async function splitRecording(samples: Float32Array, sampleRate: number, 
   return { seconds, verse: fit.words, thought: thoughtHeard.map((w, i) => ({ ...w, text: text.split(' ')[i] ?? w.text })), heard: thoughtHeard, text, verseMatched: fit.matched, at: new Date().toISOString() }
 }
 
+/**
+ * A recording that is ALL thought: the story's closing word, spoken after a
+ * telling the operator did not read himself, so there is no verse in it to
+ * find and nothing to split. It returns the SAME shape `splitRecording`
+ * does with an empty `verse` — which is what lets `refit`, the parked JSON,
+ * the CLI's correction step and the renderer's caption path all be the ones
+ * that already exist rather than a second set of each.
+ */
+export async function transcribeCoda(samples: Float32Array, sampleRate: number, onProgress?: (label: string) => void): Promise<VoiceTrack> {
+  const heard = await transcribePieces(samples, sampleRate, onProgress)
+  if (heard.length < 5) throw new Error('Heard almost nothing — is the recording silent, or in another language?')
+  const thought = heard.map((w) => ({ ...w }))
+  const text = sentenceCase(thought.map((w) => w.text)).join(' ')
+  const words = text.split(' ')
+  return {
+    seconds: samples.length / sampleRate,
+    verse: [],
+    thought: thought.map((w, i) => ({ ...w, text: words[i] ?? w.text })),
+    heard: thought,
+    text,
+    verseMatched: 0,
+    at: new Date().toISOString(),
+  }
+}
+
 /** Put the operator's corrected thought onto the timings Whisper heard. */
 export function refit(track: VoiceTrack, text: string): VoiceTrack {
   const words = text.replace(/\s+/g, ' ').trim().split(' ').filter(Boolean)

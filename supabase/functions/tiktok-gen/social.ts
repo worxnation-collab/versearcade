@@ -48,7 +48,7 @@ export interface PostArgs {
   seconds?: number
   /** A public JPG of the video's first frame, same size as the video. Pinterest refuses a video pin without one. */
   cover?: string
-  /** The voice on the video is the operator's own recording (days/<date>/voice-verse.json exists); the AI note then claims only the art. */
+  /** A voice on the video is the operator's own recording (days/<date>/voice-<kind>.json exists); the AI note then claims only the art. */
   voiced?: boolean
 }
 

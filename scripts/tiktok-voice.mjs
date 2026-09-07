@@ -18,7 +18,11 @@
 //       Which day each memo is for: its opening is listened to and matched
 //       against the coming fortnight's verses. For a batch that arrives
 //       without dates on it.
-//   node scripts/tiktok-voice.mjs listen <date> <audio file>
+//   Every command below takes `--story` to mean the EVENING post's closing
+//   word — the coda spoken after Tabitha's telling — instead of the morning
+//   verse. Without it they mean the verse, exactly as they always did.
+//
+//   node scripts/tiktok-voice.mjs listen <date> <audio file> [--story]
 //       Decode any phone memo (m4a, mp3, wav, webm, ogg) to a WAV, park it,
 //       listen to it (Whisper base in the browser), park the transcript and
 //       rewrite the day's caption. Prints the transcript to check.
@@ -68,8 +72,16 @@ if (!TOKEN) fail('set TIKTOK_RUNNER_TOKEN')
 const [cmd, ...rest] = process.argv.slice(2)
 const flags = Object.fromEntries(rest.filter((a) => a.startsWith('--')).map((a) => { const [k, v] = a.slice(2).split('='); return [k, v ?? true] }))
 const args = rest.filter((a) => !a.startsWith('--'))
-if (!['drafts', 'listen', 'fix', 'render', 'post', 'clear', 'identify'].includes(cmd)) fail('usage: drafts | identify <files…> | listen <date> <file> | fix <date> <text file> | render <date> | post <date> [--at HH:MM|--now] | clear <date>')
+if (!['drafts', 'listen', 'fix', 'render', 'post', 'clear', 'identify'].includes(cmd)) fail('usage: drafts | identify <files…> | listen <date> <file> [--story] | fix <date> <text file> [--story] | render <date> [--story] | post <date> [--story] [--at HH:MM|--now] | clear <date> [--story]')
 const isDate = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d)
+// Two posts a day can carry the operator's voice: the morning VERSE (his
+// reading and his thought, in place of Gemini's) and the evening STORY's
+// closing word (a coda after Tabitha's telling). `--story` picks the second;
+// everything defaults to the verse, so every command that worked before
+// works unchanged.
+const KIND = flags.story ? 'story' : 'verse'
+const HOUR = { verse: '07:00', story: '19:30' }
+const mp4For = (date, kind) => path.join(OUT, 'out', `${kind}-${date}.mp4`)
 
 function ymdIn(tz, d = new Date()) {
   const p = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(d)
@@ -119,28 +131,29 @@ function durationOf(src) {
 // ---- commands that need no browser ----------------------------------------------
 if (cmd === 'clear') {
   const date = args[0]; if (!isDate(date)) fail('clear <date>')
-  await fn('voice-clear', { date }); log(`cleared ${date}`); process.exit(0)
+  await fn('voice-clear', { date, kind: KIND }); log(`cleared ${KIND} ${date}`); process.exit(0)
 }
 if (cmd === 'post') {
   const date = args[0]; if (!isDate(date)) fail('post <date> [--at HH:MM|--now]')
-  const mp4 = path.join(OUT, 'out', `voice-${date}.mp4`)
+  const mp4 = mp4For(date, KIND)
   if (!fs.existsSync(mp4)) fail(`no ${mp4} — run render first`)
   await build({ entryPoints: [path.join(ROOT, 'supabase/functions/tiktok-gen/social.ts')], bundle: true, format: 'esm', platform: 'node', outfile: path.join(OUT, 'social.mjs'), logLevel: 'error' })
   const social = await import(path.join(OUT, 'social.mjs'))
-  const platforms = String(flags.platforms || 'tiktok,youtube,facebook,instagram,x,snapchat,threads,pinterest').split(',').map((s) => s.trim()).filter((p) => social.postsOn(p, 'verse'))
-  const scheduleDate = flags.now ? undefined : zonedToUtc(date, String(flags.at || '07:00'), TZ).toISOString().replace(/\.\d{3}Z$/, 'Z')
-  log(`post verse ${date} → ${scheduleDate ? `scheduled ${flags.at || '07:00'} ${TZ} (${scheduleDate})` : 'now'} · ${platforms.join(',')}`)
-  const videoUrl = await upload(`days/${date}/verse.mp4`, mp4, 'video/mp4')
-  const jpg = path.join(OUT, 'out', `voice-${date}-cover.jpg`)
+  const platforms = String(flags.platforms || 'tiktok,youtube,facebook,instagram,x,snapchat,threads,pinterest').split(',').map((s) => s.trim()).filter((p) => social.postsOn(p, KIND))
+  const at = String(flags.at || HOUR[KIND])
+  const scheduleDate = flags.now ? undefined : zonedToUtc(date, at, TZ).toISOString().replace(/\.\d{3}Z$/, 'Z')
+  log(`post ${KIND} ${date} → ${scheduleDate ? `scheduled ${at} ${TZ} (${scheduleDate})` : 'now'} · ${platforms.join(',')}`)
+  const videoUrl = await upload(`days/${date}/${KIND}.mp4`, mp4, 'video/mp4')
+  const jpg = path.join(OUT, 'out', `${KIND}-${date}-cover.jpg`)
   const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-ss', '0.3', '-i', mp4, '-frames:v', '1', '-q:v', '3', jpg])
-  if (ff.status === 0 && fs.existsSync(jpg)) await upload(`days/${date}/verse-cover.jpg`, jpg, 'image/jpeg'); else log('  no cover (Pinterest will be skipped)')
+  if (ff.status === 0 && fs.existsSync(jpg)) await upload(`days/${date}/${KIND}-cover.jpg`, jpg, 'image/jpeg'); else log('  no cover (Pinterest will be skipped)')
   const seconds = durationOf(mp4)
   const bundle = await build({ entryPoints: [path.join(ROOT, 'src/data/bible/questions.ts')], bundle: true, format: 'esm', platform: 'node', target: 'es2022', outfile: path.join(OUT, 'verses.mjs'), alias: { '@': path.join(ROOT, 'src') }, define: defines(), logLevel: 'error' })
   void bundle
   const { getVerseForDate } = await import(path.join(OUT, 'verses.mjs'))
   for (const platform of platforms) {
     try {
-      const r = await fn('post', { date, kind: 'verse', videoUrl, platforms: [platform], scheduleDate, reference: getVerseForDate(date).reference, seconds })
+      const r = await fn('post', { date, kind: KIND, videoUrl, platforms: [platform], scheduleDate, reference: getVerseForDate(date).reference, seconds })
       for (const row of r.results ?? []) log(`  ${row.platform.padEnd(10)} ${row.status}${row.error ? ` — ${row.error}` : ''}${row.postUrl ? ` ${row.postUrl}` : ''}`)
     } catch (e) { log(`  ${platform.padEnd(10)} error — ${String(e?.message || e).slice(0, 200)}`) }
   }
@@ -210,7 +223,15 @@ try {
     const n = Math.max(1, Math.min(14, Number(args[1] || 7)))
     const dates = Array.from({ length: n }, (_, i) => addDays(start, i))
     const rows = await page.evaluate(([d, t, f]) => window.vaVoice.drafts(d, t, f), [dates, TOKEN, !!flags.redraft])
-    const md = rows.map((r) => `## ${r.date} · ${r.reference}${r.listened ? ' · 🎙 recorded and listened' : r.recorded ? ' · ⏳ recorded, not listened' : ''}\n\n> ${r.verse}\n\n${r.text}\n\n*${r.words} words · ~${Math.round(r.words / 2.4)}s · ${r.source === 'operator' ? 'your edit' : 'drafted'}*\n`).join('\n')
+    const mark = (p) => (p.listened ? ' · 🎙 recorded and listened' : p.recorded ? ' · ⏳ recorded, not listened' : '')
+    const body = (p) => `${p.text}\n\n*${p.words} words · ~${Math.round(p.words / 2.4)}s · ${p.source === 'operator' ? 'your edit' : 'drafted'}*`
+    const md = rows.map((r) => [
+      `## ${r.date} · ${r.reference}`,
+      `> ${r.verse}`,
+      `### Morning — after the verse${mark(r.verseWord)}`,
+      body(r.verseWord),
+      ...(r.storyWord ? [`### Evening — after the story${mark(r.storyWord)}`, body(r.storyWord)] : []),
+    ].join('\n\n') + '\n').join('\n')
     console.log(md)
     await done()
   }
@@ -229,11 +250,11 @@ try {
   if (cmd === 'listen') {
     const [date, file] = args
     if (!isDate(date) || !file || !fs.existsSync(file)) fail('listen <date> <audio file>')
-    inputWav = path.join(OUT, `input-${date}.wav`)
+    inputWav = path.join(OUT, `input-${date}-${KIND}.wav`)
     if (!toWav(file, inputWav)) fail(`ffmpeg could not read ${file}`)
-    log(`listening to ${file} (${(durationOf(inputWav) ?? 0).toFixed(0)}s) for ${date}`)
-    const r = await page.evaluate(([d, w, t]) => window.vaVoice.listen(d, w, t), [date, `${origin}/input.wav`, TOKEN])
-    console.log(JSON.stringify({ date, ...r }, null, 1))
+    log(`listening to ${file} (${(durationOf(inputWav) ?? 0).toFixed(0)}s) for ${date} ${KIND}`)
+    const r = await page.evaluate(([d, w, t, k]) => window.vaVoice.listen(d, w, t, k), [date, `${origin}/input.wav`, TOKEN, KIND])
+    console.log(JSON.stringify({ date, kind: KIND, ...r }, null, 1))
     await done()
   }
   if (cmd === 'fix') {
@@ -241,18 +262,18 @@ try {
     if (!isDate(date) || !file || !fs.existsSync(file)) fail('fix <date> <text file>')
     const text = fs.readFileSync(file, 'utf8').replace(/\s+/g, ' ').trim()
     if (!text) fail(`${file} is empty`)
-    const r = await page.evaluate(([d, t, tok]) => window.vaVoice.fix(d, t, tok), [date, text, TOKEN])
-    log(`refit ${r.words} words onto ${r.heard} heard for ${date}`)
-    console.log(JSON.stringify({ date, ...r }, null, 1))
+    const r = await page.evaluate(([d, t, tok, k]) => window.vaVoice.fix(d, t, tok, k), [date, text, TOKEN, KIND])
+    log(`refit ${r.words} words onto ${r.heard} heard for ${date} ${KIND}`)
+    console.log(JSON.stringify({ date, kind: KIND, ...r }, null, 1))
     await done()
   }
   if (cmd === 'render') {
     const date = args[0]; if (!isDate(date)) fail('render <date>')
-    const [dl, r] = await Promise.all([page.waitForEvent('download', { timeout: 900_000 }), page.evaluate(([d, t]) => window.vaVoice.render(d, t), [date, TOKEN])])
-    const raw = path.join(OUT, 'out', `voice-${date}.${r.ext}`)
+    const [dl, r] = await Promise.all([page.waitForEvent('download', { timeout: 900_000 }), page.evaluate(([d, t, k]) => window.vaVoice.render(d, t, k), [date, TOKEN, KIND])])
+    const raw = path.join(OUT, 'out', `${KIND}-${date}.${r.ext}`)
     await dl.saveAs(raw)
-    log(`rendered ${r.ext} ${(r.size / 1e6).toFixed(1)}MB · ${r.reference} · ${r.tier} · ${r.seconds.toFixed(0)}s`)
-    const mp4 = path.join(OUT, 'out', `voice-${date}.mp4`)
+    log(`rendered ${r.ext} ${(r.size / 1e6).toFixed(1)}MB · ${r.reference} · ${r.tier} · ${r.seconds.toFixed(0)}s · ${r.phrases} captions`)
+    const mp4 = mp4For(date, KIND)
     const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', raw, '-c:v', 'libx264', '-preset', 'medium', '-crf', '20', '-pix_fmt', 'yuv420p', '-r', '30', '-c:a', 'aac', '-b:a', '160k', '-ar', '48000', '-movflags', '+faststart', mp4], { stdio: 'inherit' })
     if (ff.status !== 0) fail(`ffmpeg failed (${ff.error?.message || `exit ${ff.status}`})`)
     if (raw !== mp4) fs.unlinkSync(raw)

@@ -257,11 +257,20 @@ export async function bedFor(seconds: number, trackId: string): Promise<Float32A
 
 export const FOUNDER_PHOTO = 'founder/photo.jpg'
 export const VOICE_LABEL = 'Matthew · founder'
-export const voiceWavPath = (d: string) => `days/${d}/voice-verse.wav`
-export const voiceJsonPath = (d: string) => `days/${d}/voice-verse.json`
+/**
+ * The two posts a day the operator can speak on. The VERSE is his outright —
+ * his reading replaces Gemini's and his thought follows it — while the STORY
+ * keeps Tabitha's telling and appends his closing word to the end of it. Both
+ * park the same shape (`VoiceTrack`); a story CODA is simply one whose
+ * `verse` is empty, which is what lets one set of actions, one transcript
+ * format and one `refit` serve both.
+ */
+export type VoiceKind = 'verse' | 'story'
+export const voiceWavPath = (d: string, kind: VoiceKind = 'verse') => `days/${d}/voice-${kind}.wav`
+export const voiceJsonPath = (d: string, kind: VoiceKind = 'verse') => `days/${d}/voice-${kind}.json`
 export type VoiceTrack = import('@/lib/tiktokVoice').VoiceTrack
-export async function fetchVoice(d: string): Promise<(VoiceTrack & { wavUrl: string }) | null> {
-  const v = await call<Partial<VoiceTrack> & { wavUrl?: string }>('voice', { date: d })
+export async function fetchVoice(d: string, kind: VoiceKind = 'verse'): Promise<(VoiceTrack & { wavUrl: string }) | null> {
+  const v = await call<Partial<VoiceTrack> & { wavUrl?: string }>('voice', { date: d, kind })
   return v && Array.isArray(v.verse) && Array.isArray(v.thought) && v.wavUrl ? (v as VoiceTrack & { wavUrl: string }) : null
 }
 /** The operator's spoken reflection for a date — drafted by Gemini, or their own saved edit. */
@@ -271,13 +280,25 @@ export async function fetchThought(d: string, force = false, samples: string[] =
   const sd = seedFor(d)
   return call<Thought>('thought', { date: d, force, reference: v.reference, text: v.text, theme: v.theme, speaker: sd.speaker, audience: sd.audience, before: sd.before, after: sd.after, facts: sd.facts, samples })
 }
+/**
+ * The story's closing word — written FROM the story, so it has to be told
+ * one. That is the whole reason this is a second call rather than a flag:
+ * the morning thought is drafted off the verse's own data and can be written
+ * a week early, while a summary of a telling cannot exist until the telling
+ * does.
+ */
+export async function fetchStoryWord(d: string, force = false, samples: string[] = []): Promise<Thought> {
+  const v = getVerseForDate(d)
+  const st = await fetchStory(d, false)
+  return call<Thought>('thought', { date: d, kind: 'story', force, reference: v.reference, text: v.text, paragraphs: st.paragraphs, samples })
+}
 /** The draft already parked for a date, or null — never drafts. */
-export async function peekThought(d: string): Promise<Thought | null> {
-  const t = await call<Partial<Thought>>('thought', { date: d, peek: true })
+export async function peekThought(d: string, kind: VoiceKind = 'verse'): Promise<Thought | null> {
+  const t = await call<Partial<Thought>>('thought', { date: d, kind, peek: true })
   return t && typeof t.text === 'string' ? (t as Thought) : null
 }
-export async function saveThought(d: string, text: string): Promise<Thought> {
-  return call<Thought>('thought', { date: d, save: text })
+export async function saveThought(d: string, text: string, kind: VoiceKind = 'verse'): Promise<Thought> {
+  return call<Thought>('thought', { date: d, kind, save: text })
 }
 /** Park a file in the bucket through a signed upload URL (the bucket is service-role write only). */
 export async function parkFile(path: string, blob: Blob, contentType: string): Promise<string> {

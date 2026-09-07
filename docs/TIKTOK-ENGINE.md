@@ -556,6 +556,64 @@ automated replies (the second is the keyword-search case by name), both are
 the shape of account that gets restricted, and X's API now blocks the
 mechanism anyway.
 
+## The story's closing word
+
+The evening story is Tabitha's telling, and since the operator's voice
+arrived it can carry ~20 seconds of him on the end of it: his photo grows
+into the middle of the frame as he starts, his words are captioned from
+their own timings, and the end card keeps him small under the ask. It is a
+CODA — the telling is unchanged and complete without it, so a day with no
+recording renders exactly as it always did.
+
+Two voiced posts a day (the morning verse and this) was chosen over voicing
+all five deliberately. YouTube judges a channel and one genuinely human
+format lifts the whole of it; TikTok and Meta judge each post, so those two
+are the ones that earn. Four extra recordings a day is 28 a week, and a
+cadence that stops looks worse than one that never started. The challenges
+and the quiz stay automated and labelled.
+
+- **A coda is the same shape as a verse recording with an empty `verse`.**
+  It parks at `days/<date>/voice-story.{wav,json}`, so `refit`, the `fix`
+  correction step, `voice` / `voice-clear` / `upload-url` and the renderer's
+  caption path are all the ones that already existed, keyed on kind.
+  `transcribeCoda` (`lib/tiktokVoice.ts`) is the only new listener — there is
+  no verse inside it to find — and `ensureCoda` mirrors `ensureVoice` so the
+  morning runner can listen for itself when a phone only uploaded.
+- **The summary is written FROM the telling** — `thought` with
+  `kind: 'story'`, cached at `days/<date>/thought-story.json`, 45–60 words
+  (about twenty seconds). It opens by naming in one breath the thing the
+  story turned on, so somebody who half-watched still has it, then one plain
+  thing he carries from it, and ends on a statement. It is a second call
+  rather than a flag on the first because the morning thought comes off the
+  verse's own data and can be drafted a week early, while a word about a
+  story cannot exist before the story does. `drafts` prints both per day, so
+  one sitting records the week.
+- **Her captions are closed where he begins.** A caption holds until the next
+  one so a pause is not a blank panel; with nothing after it, Tabitha's last
+  phrase held FOURTEEN SECONDS into his half — his voice, her words on the
+  screen. The frame lookup takes the first phrase whose span covers the
+  moment and hers come first in the array, so it shadowed his. Every phrase
+  is now closed at `codaAt`; the verse layout has carried the same line since
+  it grew a thought. It rendered perfectly throughout — only reading the
+  captions off a real frame found it, which is why `render` now prints the
+  caption count.
+- **Her captions are timed against HER samples only.** `timedCaptions`
+  matches a transcript to a recording, so handing it her minute of words over
+  audio that ends in somebody else's voice makes it chase the tail and
+  stretch her last phrases across his.
+- **The music bed covers both.** `plannedDuration` takes the coda's audio, or
+  the bed runs out under the one part of the post a person actually spoke.
+
+From a terminal it is the same loop as the verse with `--story` on the end:
+
+```bash
+node scripts/tiktok-voice.mjs drafts 2026-09-08 7          # both readings a day
+node scripts/tiktok-voice.mjs listen 2026-09-08 memo.m4a --story
+node scripts/tiktok-voice.mjs fix    2026-09-08 fixed.txt  --story
+node scripts/tiktok-voice.mjs render 2026-09-08            --story
+node scripts/tiktok-voice.mjs post   2026-09-08            --story   # 19:30 by default
+```
+
 ## Where the sign-ups come from
 
 No caption carries a link. The tracked link is

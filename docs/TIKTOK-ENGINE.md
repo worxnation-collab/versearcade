@@ -490,6 +490,23 @@ The function has no verse data, so the caller hands it the question,
 options, answer and teach line from `lib/tiktokChallenge.ts` — the same pure
 function the renderer used to pick the question, bundled alone for Node.
 Grok is the one thing here that is not Gemini, because the operator holds
+**X is read and never answered.** X's automation rules
+([help.x.com/…/x-automation](https://help.x.com/en/rules-and-policies/x-automation))
+allow automated replies only to people who asked to be contacted, forbid
+replies driven by keyword search, and require X's prior written approval for
+any AI reply bot; and since February 2026 `POST /2/tweets` refuses a
+programmatic reply unless the original author @mentioned or quoted the
+account. So the `replies` action lists X's comments under `skipped` with the
+reason and posts nothing there — the operator answers those by hand from the
+X app. The other five networks are replies on the account's OWN posts to
+people who commented on them, which is the case every platform's automation
+policy allows. Two ideas were looked at and rejected on the same page:
+replying to a curated list of Christian influencers' posts every few hours,
+and replying to people whose posts ask a Bible question. Both are unsolicited
+automated replies (the second is the keyword-search case by name), both are
+the shape of account that gets restricted, and X's API now blocks the
+mechanism anyway.
+
 xAI credits: `XAI_API_KEY` as a function secret or Vault through
 `tiktok_xai_key()` (`0105`), model `XAI_MODEL` (default
 `grok-4.20-0309-non-reasoning`). With no key the action fails closed with a

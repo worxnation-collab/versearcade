@@ -535,6 +535,13 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   the teach line — and parks every word at `days/<date>/replies-<kind>.json`,
   which is also its memory (once per comment, once per person per post).
   Only answers, never a reply to a reply, never an argument, capped per run.
+  **Never on X, in any mode.** X's automation rules require prior written
+  approval from X for an AI reply bot, and since February 2026 its API refuses
+  a programmatic reply unless the author @mentioned or quoted the account. The
+  function reads X's comments and lists them as `skipped` for the operator to
+  answer by hand; nothing is posted there. The same rules forbid what looks
+  like the obvious growth move — automated replies to influencers or to
+  keyword searches ("what does this verse mean") — outright, so don't build it.
   xAI key: `XAI_API_KEY` or Vault `tiktok_xai_key()` (0105); no key ⇒ a
   clear error and nothing posted. `lib/tiktokChallenge.ts` is the pure
   question picker both the renderer and the replier use.

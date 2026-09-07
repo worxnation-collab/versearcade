@@ -21,7 +21,7 @@
 //   post        { date, kind, videoUrl, platforms[], scheduleDate?, attempt?, seconds? } → { results[] }  posts the video with that day's copy through Ayrshare, one call per platform (a platform not linked in Ayrshare is skipped, not failed); parked at days/<date>/posted-<kind>.json, merged over what an earlier call recorded
 //   posted      { date, kind }                    → { results[] } | {}  what `post` recorded for that day, if anything
 //   analytics   { date, kind, force? }            → { rows[] }          Ayrshare's per-post numbers for that day's record, normalised (views, likes, comments, shares, watched, followers); cached six hours at days/<date>/analytics-<kind>.json
-//   replies     { date, kind, prompt, options[], answerIndex, teach, reference?, dryRun?, max? } → { replies[], added[], skipped[] }  reads the comments under a challenge post, has Grok draft a one-line reply to each answer-shaped one and posts it; the record at days/<date>/replies-<kind>.json is the memory
+//   replies     { date, kind, prompt, options[], answerIndex, teach, reference?, dryRun?, max? } → { replies[], added[], skipped[] }  reads the comments under a challenge post, has Grok draft a one-line reply to each answer-shaped one and posts it — on every network but X, where it only lists them (X's rules); the record at days/<date>/replies-<kind>.json is the memory
 //   social      {}                                → { accounts[], posts, quota }  the Ayrshare profile: which networks are connected and this month's post count
 //
 // Secrets: GEMINI_API_KEY — as a function secret, or in Vault under the same
@@ -748,6 +748,22 @@ Deno.serve(async (req) => {
         const platform = String(row.platform ?? '') as Platform
         const status = String(row.status ?? '')
         if (!row.id || status === 'error' || status === 'skipped' || !(PLATFORMS as string[]).includes(platform)) continue
+        // X is deliberately NOT replied to by this action, in any mode. X's
+        // automation rules say an AI reply bot needs X's prior written
+        // approval, and since February 2026 its API refuses a programmatic
+        // reply unless the author @mentioned or quoted the account. The
+        // comments there are read and listed so the operator can answer by
+        // hand; nothing is posted. Lift this only with that approval in hand.
+        if (platform === 'x') {
+          const c = await ayrshare(`comments/${encodeURIComponent(String(row.id))}`, null, 'GET', true)
+          const list = (c.twitter ?? c.x ?? []) as Array<Record<string, unknown>>
+          if (Array.isArray(list)) for (const cm of list) {
+            const commentId = String(cm.commentId ?? cm.id ?? '')
+            const text = String(cm.comment ?? '').trim()
+            if (commentId && text && !done.has(`x:${commentId}`)) skipped.push({ platform, commentId, username: String(cm.username ?? cm.userName ?? '').trim(), comment: text.slice(0, 120), why: 'X: answered by hand (automated replies need X approval)' })
+          }
+          continue
+        }
         const isX = platform === 'x'
         const c = await ayrshare(`comments/${encodeURIComponent(String(row.id))}`, null, 'GET', isX)
         const list = (c[ayrshareName(platform)] ?? c[platform] ?? []) as Array<Record<string, unknown>>

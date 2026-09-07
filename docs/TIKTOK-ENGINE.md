@@ -98,7 +98,14 @@ title and hashtag count. The key lives in Vault (`tiktok_ayrshare_key()`,
   that translates). Threads: 500 characters, links tappable, the AI note in
   the caption, two tags, and NO quiz — `postsOn` in `social.ts` keeps the
   month under Ayrshare's 1,000-post plan by having a network give a kind up,
-  and Threads gives up the 107-second replay. Snapchat: Spotlight only — its discovery feed, where an
+  and Threads gives up the 107-second replay. Pinterest: the verse and the
+  story only — it is a search engine, so the copy prompt writes a title that
+  leads with the reference and a description in the words somebody would
+  type, the pin links to the site, and a video pin needs a same-size cover
+  (`days/<date>/<kind>-cover.jpg`, the frame at 0.3s: the hook line over
+  the painting), which the runner cuts with ffmpeg and the hub with a
+  `<video>` and a canvas; no cover ⇒ skipped with the path, never failed.
+  Snapchat: Spotlight only — its discovery feed, where an
   account nobody follows yet is still shown to strangers; asked for together
   with a saved story, Ayrshare posted only the story, which lives on the
   profile for people who already found it. TikTok's short line with three

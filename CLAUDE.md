@@ -502,13 +502,21 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   the function's `post` action uploads nothing itself — the browser parks the
   MP4 in the bucket through a signed upload URL, then the function hands
   Ayrshare the public URL with that day's per-platform words, one request per
-  platform, idempotent per (date, kind, platform). Seven platforms (TikTok,
-  YouTube, Facebook, Instagram, X, Snapchat, Threads); one not linked in Ayrshare is skipped
+  platform, idempotent per (date, kind, platform). Eight platforms (TikTok,
+  YouTube, Facebook, Instagram, X, Snapchat, Threads, Pinterest); one not linked in Ayrshare is skipped
   with a row that says so, never failed, so a network can be wired in before
   its account exists. **Ayrshare's plan is 1,000 posts a month**, and five
   kinds on seven networks would be ~1,050, so `postsOn` in `social.ts` is
-  the one place a network gives a kind up (Threads skips the quiz); the
-  function refuses the pair with a `skipped` row and the runner never asks.
+  the one place a network gives a kind up (Threads skips the quiz; Pinterest
+  takes the verse and the story only, because it is a search engine and a
+  clock nobody searches for is a dead pin); the function refuses the pair
+  with a `skipped` row and the runner never asks. **Pinterest refuses a
+  video pin without a cover image the size of the video**, so the first
+  frame goes into the bucket beside the MP4 as `days/<date>/<kind>-cover.jpg`
+  (ffmpeg in the runner, a `<video>` + canvas in the hub); a day with no
+  cover is skipped with the path it wanted, never failed. The runner fetches
+  a parked video to disk before cutting the frame — ffmpeg's HTTPS reader
+  segfaulted outright on one build.
   The key is in Vault
   (`tiktok_ayrshare_key()`, 0101). A WebM is refused before any quota is
   spent: TikTok and Instagram will not take one.

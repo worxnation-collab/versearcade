@@ -18,11 +18,13 @@
 //       Which day each memo is for: its opening is listened to and matched
 //       against the coming fortnight's verses. For a batch that arrives
 //       without dates on it.
-//   Every command below takes `--story` to mean the EVENING post's closing
-//   word — the coda spoken after Tabitha's telling — instead of the morning
-//   verse. Without it they mean the verse, exactly as they always did.
+//   Every command below takes `--story` to mean the operator's half of the
+//   EVENING post — spoken around Tabitha's telling — instead of the morning
+//   verse. Without it they mean the verse, exactly as they always did. On a
+//   story, `--intro` means he speaks FIRST and hands over to her by name;
+//   without it he answers her at the end.
 //
-//   node scripts/tiktok-voice.mjs listen <date> <audio file> [--story]
+//   node scripts/tiktok-voice.mjs listen <date> <audio file> [--story] [--intro]
 //       Decode any phone memo (m4a, mp3, wav, webm, ogg) to a WAV, park it,
 //       listen to it (Whisper base in the browser), park the transcript and
 //       rewrite the day's caption. Prints the transcript to check.
@@ -75,11 +77,17 @@ const args = rest.filter((a) => !a.startsWith('--'))
 if (!['drafts', 'listen', 'fix', 'render', 'post', 'clear', 'identify'].includes(cmd)) fail('usage: drafts | identify <files…> | listen <date> <file> [--story] | fix <date> <text file> [--story] | render <date> [--story] | post <date> [--story] [--at HH:MM|--now] | clear <date> [--story]')
 const isDate = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d)
 // Two posts a day can carry the operator's voice: the morning VERSE (his
-// reading and his thought, in place of Gemini's) and the evening STORY's
-// closing word (a coda after Tabitha's telling). `--story` picks the second;
-// everything defaults to the verse, so every command that worked before
-// works unchanged.
+// reading and his thought, in place of Gemini's) and his half of the evening
+// STORY. `--story` picks the second; everything defaults to the verse, so
+// every command that worked before works unchanged.
+//
+// A story half sits at one END of Tabitha's telling: `--intro` hands it over
+// to her before she starts, and without it he answers her afterwards. A day
+// carries one or the other, so both use the same parked recording and the
+// same path — `--intro` is what a recording is LISTENED to as, and it is
+// written into the transcript so a later render cannot move it.
 const KIND = flags.story ? 'story' : 'verse'
+const PLACE = flags.intro ? 'open' : 'close'
 const HOUR = { verse: '07:00', story: '19:30' }
 const mp4For = (date, kind) => path.join(OUT, 'out', `${kind}-${date}.mp4`)
 
@@ -222,7 +230,7 @@ try {
     const start = isDate(args[0]) ? args[0] : ymdIn(TZ)
     const n = Math.max(1, Math.min(14, Number(args[1] || 7)))
     const dates = Array.from({ length: n }, (_, i) => addDays(start, i))
-    const rows = await page.evaluate(([d, t, f]) => window.vaVoice.drafts(d, t, f), [dates, TOKEN, !!flags.redraft])
+    const rows = await page.evaluate(([d, t, f, pl]) => window.vaVoice.drafts(d, t, f, pl), [dates, TOKEN, !!flags.redraft, PLACE])
     const mark = (p) => (p.listened ? ' · 🎙 recorded and listened' : p.recorded ? ' · ⏳ recorded, not listened' : '')
     const body = (p) => `${p.text}\n\n*${p.words} words · ~${Math.round(p.words / 2.4)}s · ${p.source === 'operator' ? 'your edit' : 'drafted'}*`
     const md = rows.map((r) => [
@@ -230,7 +238,7 @@ try {
       `> ${r.verse}`,
       `### Morning — after the verse${mark(r.verseWord)}`,
       body(r.verseWord),
-      ...(r.storyWord ? [`### Evening — after the story${mark(r.storyWord)}`, body(r.storyWord)] : []),
+      ...(r.storyWord ? [`### Evening — ${r.storyPlace === 'open' ? 'introducing the story' : 'after the story'}${mark(r.storyWord)}`, body(r.storyWord)] : []),
     ].join('\n\n') + '\n').join('\n')
     console.log(md)
     await done()
@@ -253,7 +261,7 @@ try {
     inputWav = path.join(OUT, `input-${date}-${KIND}.wav`)
     if (!toWav(file, inputWav)) fail(`ffmpeg could not read ${file}`)
     log(`listening to ${file} (${(durationOf(inputWav) ?? 0).toFixed(0)}s) for ${date} ${KIND}`)
-    const r = await page.evaluate(([d, w, t, k]) => window.vaVoice.listen(d, w, t, k), [date, `${origin}/input.wav`, TOKEN, KIND])
+    const r = await page.evaluate(([d, w, t, k, pl]) => window.vaVoice.listen(d, w, t, k, pl), [date, `${origin}/input.wav`, TOKEN, KIND, PLACE])
     console.log(JSON.stringify({ date, kind: KIND, ...r }, null, 1))
     await done()
   }

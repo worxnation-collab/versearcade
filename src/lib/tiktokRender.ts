@@ -1048,25 +1048,32 @@ export interface StoryInput {
   bed?: Float32Array
   align?: boolean
   /**
-   * The operator's own closing word, spoken AFTER the telling. His recording
-   * is joined onto Tabitha's with a beat between them, his words are
-   * captioned from their own timings, and his photo grows into the middle of
-   * the frame as he begins. Absent on an automated story, which then renders
+   * The operator's own half of the story, in his own voice. His recording is
+   * joined onto Tabitha's with a beat between them, his words are captioned
+   * from their own timings, and his photo grows into the middle of the frame
+   * while he speaks. Absent on an automated story, which then renders
    * exactly as it always did.
    */
-  coda?: {
+  own?: {
     audio: ArrayBuffer
     /** His words, timed against his OWN recording — 0 is the start of it, not of the video. */
     words: TimedWord[]
     text: string
+    /**
+     * Which end he speaks at. 'close' answers the telling; 'open' introduces
+     * it and hands over to Tabitha by name. A day carries one or the other,
+     * never both — two turns from the same voice around one story is a
+     * conversation, and there is only one person in it.
+     */
+    place: 'open' | 'close'
     photo?: HTMLImageElement
     label?: string
   }
   onProgress?: (fraction: number, label: string) => void
 }
 
-/** The beat between Tabitha's last word and the operator's first. */
-const CODA_GAP = 0.9
+/** The beat between the two voices, whichever order they speak in. */
+const OWN_GAP = 0.9
 
 interface StoryScene {
   input: StoryInput
@@ -1078,10 +1085,21 @@ interface StoryScene {
   para: number[]
   /** When each paragraph starts, seconds into the audio. */
   paraStart: number[]
-  /** When the operator's closing word begins, seconds into the joined audio; Infinity with no coda. */
-  codaAt: number
+  /** When the operator speaks, seconds into the joined audio; Infinity when he doesn't. */
+  ownAt: number
+  /** When he stops. */
+  ownEnd: number
+  /**
+   * When his photo starts growing in, and when it starts going back out —
+   * both in audio time. Introducing, he waits for the HOOK to have had the
+   * opening frames to itself (the one rule this layout may not break) and
+   * steps back out as Tabitha begins; closing, he arrives just before his
+   * first word and stays, because there is nothing after him.
+   */
+  ownShow: number
+  ownHide: number
   /** His voice's envelope, so the ring breathes with him rather than with her. */
-  codaVoice?: { rms: Float32Array; peak: number }
+  ownVoice?: { rms: Float32Array; peak: number }
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -1101,7 +1119,7 @@ function contain(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number
 }
 
 async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: number, chrome = true) {
-  const { input, lead, audioDur, total, phrases, para, paraStart, codaAt, codaVoice } = sc
+  const { input, lead, audioDur, total, phrases, para, paraStart, ownAt, ownShow, ownHide, ownVoice } = sc
   const at = t - lead
   void para; void paraStart
 
@@ -1190,19 +1208,22 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
     ctx.restore()
   }
 
-  // 5b. The maker, speaking last.
+  // 5b. The maker, speaking.
   //
-  // The ONE thing a coda adds to the frame, and it is added only once
-  // Tabitha has finished: his photo grows into the middle of the picture as
-  // he begins, its ring breathing with HIS voice rather than hers. It is
+  // The ONE thing his half adds to the frame, and it is on screen only while
+  // he is talking: his photo grows into the middle of the picture as he
+  // begins, its ring breathing with HIS voice rather than hers. It is
   // deliberately not a small corner circle carried through the whole video —
   // a permanent overlay is what made these posts read as generated in the
   // first place, and on the verse layout a photo held over the reader was
   // taken for a badge pinned to their chest.
-  if (input.coda?.photo && at >= codaAt - 0.35 && endFade < 1) {
-    const grow = easeOut((at - (codaAt - 0.35)) / 0.55)
-    drawSpeaker(ctx, input.coda.photo, input.coda.label, WIDTH / 2, 1080, 44 + 126 * grow,
-      codaVoice ? voiceLevel(codaVoice, at - codaAt) : 0, grow * (1 - endFade))
+  if (input.own?.photo && at >= ownShow && endFade < 1) {
+    const grow = easeOut((at - ownShow) / 0.55)
+    // Introducing, he goes back out as she starts, so the last thing before
+    // her first word is her room and not his face.
+    const out = 1 - easeOut((at - ownHide) / 0.55)
+    if (out > 0) drawSpeaker(ctx, input.own.photo, input.own.label, WIDTH / 2, 1080, 44 + 126 * grow * out,
+      ownVoice ? voiceLevel(ownVoice, at - ownAt) : 0, grow * out * (1 - endFade))
   }
 
   // 6. End card.
@@ -1220,7 +1241,7 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
     outlined(ctx, input.reference, WIDTH / 2, y0 + lines.length * lh + 20, '#ffd23f')
     // A person standing behind the link, exactly as the verse post's end card
     // does it — only on a day he actually spoke.
-    if (input.coda?.photo) drawSpeaker(ctx, input.coda.photo, input.coda.label ? `Made by ${input.coda.label.split(' · ')[0]}` : undefined, WIDTH / 2, HEIGHT / 2 + 150, 78, 0, endFade)
+    if (input.own?.photo) drawSpeaker(ctx, input.own.photo, input.own.label ? `Made by ${input.own.label.split(' · ')[0]}` : undefined, WIDTH / 2, HEIGHT / 2 + 150, 78, 0, endFade)
     ctx.font = `800 64px ${FONT_DISPLAY}`
     outlined(ctx, 'Play today’s verse', WIDTH / 2, HEIGHT / 2 + 380)
     ctx.font = `800 52px ${FONT_DISPLAY}`
@@ -1248,18 +1269,31 @@ export async function renderStory(input: StoryInput): Promise<RenderOutput> {
   const progress = input.onProgress ?? (() => {})
   progress(0, 'Decoding the story')
   const told = await decodeAudio(input.audio)
+  const open = input.own?.place === 'open'
   let samples = told
-  let codaAt = Infinity
-  let codaVoice: { rms: Float32Array; peak: number } | undefined
-  if (input.coda) {
-    const his = await decodeAudio(input.coda.audio)
-    const gap = Math.round(CODA_GAP * SAMPLE_RATE)
+  let ownAt = Infinity
+  let ownEnd = Infinity
+  // Where Tabitha's own timeline sits inside the joined audio. Zero unless
+  // he speaks first, and every caption of hers is shifted by it.
+  let toldAt = 0
+  let ownVoice: { rms: Float32Array; peak: number } | undefined
+  if (input.own) {
+    const his = await decodeAudio(input.own.audio)
+    const gap = Math.round(OWN_GAP * SAMPLE_RATE)
     const joined = new Float32Array(told.length + gap + his.length)
-    joined.set(told, 0)
-    joined.set(his, told.length + gap)
+    if (open) {
+      joined.set(his, 0)
+      joined.set(told, his.length + gap)
+      ownAt = 0
+      toldAt = (his.length + gap) / SAMPLE_RATE
+    } else {
+      joined.set(told, 0)
+      joined.set(his, told.length + gap)
+      ownAt = (told.length + gap) / SAMPLE_RATE
+    }
     samples = joined
-    codaAt = (told.length + gap) / SAMPLE_RATE
-    codaVoice = envelope(his, SAMPLE_RATE)
+    ownEnd = ownAt + his.length / SAMPLE_RATE
+    ownVoice = envelope(his, SAMPLE_RATE)
   }
   const audioDur = samples.length / SAMPLE_RATE
   const { texts, para } = storyTexts(input.paragraphs)
@@ -1267,29 +1301,43 @@ export async function renderStory(input: StoryInput): Promise<RenderOutput> {
   // matches a transcript to a recording, so handing it her minute of words
   // over audio that ends in somebody else's voice makes it chase the tail
   // and stretch her last phrases across his.
-  const phrases = await timedCaptions(texts, told, progress, input.align)
-  const paraStart = input.paragraphs.map((_, i) => phrases[para.indexOf(i)]?.start ?? 0)
-  if (input.coda) {
-    // Her last caption HOLDS until the next one begins, so that it is not a
-    // blank panel through a pause — and with nothing after it, it held all
-    // the way into his half. The frame lookup takes the first phrase whose
-    // span covers the moment, and hers comes first in the array, so it
-    // shadowed the opening fourteen seconds of the coda: his voice, her
-    // words on screen. Every phrase is therefore closed at the moment he
-    // starts. The verse layout has carried the same line since it gained a
-    // thought (`versePhrases[last].end = min(verseEnd, thoughtStart)`); this
-    // is that rule, on the layout that grew a second speaker later.
-    for (const p of phrases) {
-      if (p.end > codaAt) p.end = codaAt
-      if (p.start > codaAt) p.start = codaAt
+  const hers = await timedCaptions(texts, told, progress, input.align)
+  if (toldAt) for (const p of hers) { p.start += toldAt; p.end += toldAt }
+  const paraStart = input.paragraphs.map((_, i) => hers[para.indexOf(i)]?.start ?? 0)
+  let phrases = hers
+  if (input.own) {
+    // A caption HOLDS until the next one begins, so that it is not a blank
+    // panel through a pause — and the last caption of a half has nothing
+    // after it to stop it running into the other speaker's. The frame lookup
+    // takes the FIRST phrase whose span covers the moment, so the one that
+    // over-ran simply shadowed the one that should be showing: fourteen
+    // seconds of his voice under her words, and it rendered perfectly the
+    // whole time. Every phrase is therefore closed at the moment the other
+    // voice starts, and the two halves are concatenated in SPEAKING order so
+    // the lookup finds the right one first. The verse layout has carried the
+    // same line since it gained a thought
+    // (`versePhrases[last].end = min(verseEnd, thoughtStart)`); this is that
+    // rule on the layout that grew a second speaker later.
+    const handover = open ? toldAt : ownAt
+    const shifted = input.own.words.map((w) => ({ ...w, start: w.start + ownAt, end: w.end + ownAt }))
+    const his = groupWords(splitPhrases(input.own.text, 6), shifted, open ? toldAt : audioDur)
+    for (const p of open ? his : hers) {
+      if (p.end > handover) p.end = handover
+      if (p.start > handover) p.start = handover
     }
-    const shifted = input.coda.words.map((w) => ({ ...w, start: w.start + codaAt, end: w.end + codaAt }))
-    phrases.push(...groupWords(splitPhrases(input.coda.text, 6), shifted, audioDur))
+    phrases = open ? [...his, ...hers] : [...hers, ...his]
   }
   const lead = LEAD
   const total = lead + audioDur + TAIL_SEC + 1.2
   try { await document.fonts.load(`800 70px "Baloo 2"`) } catch { /* fine */ }
-  const sc: StoryScene = { input, lead, audioDur, total, phrases, para, paraStart, codaAt, codaVoice }
+  // The hook owns the opening frames and nothing may be put in front of it,
+  // so an INTRODUCTION's photo waits for the hook to fade rather than
+  // arriving with his first word. A closing word has no such contest.
+  const ownShow = input.own
+    ? (open ? Math.max(ownAt - 0.35, (input.hook ? HOOK_HOLD - 0.4 : 0) - lead) : ownAt - 0.35)
+    : Infinity
+  const ownHide = open ? ownEnd : Infinity
+  const sc: StoryScene = { input, lead, audioDur, total, phrases, para, paraStart, ownAt, ownEnd, ownShow, ownHide, ownVoice }
   const { blob, ext } = await produce((ctx, t) => drawStoryFrame(ctx, sc, t), total, lead, samples, progress, input.bed)
   progress(1, 'Done')
   return { blob, ext, durationSec: total, phrases }
@@ -1302,13 +1350,13 @@ export async function audioSeconds(audio: ArrayBuffer): Promise<number> {
 }
 
 /** How long a story or verse post will run, so a music bed can be rendered to fit. */
-export async function plannedDuration(audio: ArrayBuffer, hook: string | undefined, story: boolean, coda?: ArrayBuffer): Promise<number> {
+export async function plannedDuration(audio: ArrayBuffer, hook: string | undefined, story: boolean, own?: ArrayBuffer): Promise<number> {
   void hook // the hook no longer holds the voice back; it plays over the first words
   const samples = await decodeAudio(audio)
-  // A coda lengthens the post, and a bed rendered for the telling alone would
+  // His half lengthens the post, and a bed rendered for the telling alone would
   // run out under the operator's own voice — silence under the one part of
   // the post a person actually spoke.
-  const extra = coda ? CODA_GAP + (await decodeAudio(coda)).length / SAMPLE_RATE : 0
+  const extra = own ? OWN_GAP + (await decodeAudio(own)).length / SAMPLE_RATE : 0
   return LEAD + samples.length / SAMPLE_RATE + extra + TAIL_SEC + (story ? 1.2 : 0)
 }
 
@@ -1324,7 +1372,7 @@ export async function renderStoryPoster(input: Omit<StoryInput, 'audio' | 'onPro
   // the wrong layout.
   const { texts, para } = storyTexts(input.paragraphs)
   const phrases = input.phrases ?? alignPhrases(texts, [[0, 60]], 60)
-  await drawStoryFrame(ctx, { input: { ...input, audio: new ArrayBuffer(0) }, lead: LEAD, audioDur: 60, total: 65, phrases, para, paraStart: Array.from({ length: n }, (_, i) => i * (60 / n)), codaAt: Infinity }, t, chrome)
+  await drawStoryFrame(ctx, { input: { ...input, audio: new ArrayBuffer(0) }, lead: LEAD, audioDur: 60, total: 65, phrases, para, paraStart: Array.from({ length: n }, (_, i) => i * (60 / n)), ownAt: Infinity, ownEnd: Infinity, ownShow: Infinity, ownHide: Infinity }, t, chrome)
   return canvas.toDataURL('image/png')
 }
 

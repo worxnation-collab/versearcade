@@ -287,18 +287,26 @@ export async function fetchThought(d: string, force = false, samples: string[] =
  * a week early, while a summary of a telling cannot exist until the telling
  * does.
  */
-export async function fetchStoryWord(d: string, force = false, samples: string[] = []): Promise<Thought> {
+/**
+ * Which end of a story the operator speaks at. 'close' answers Tabitha's
+ * telling; 'open' introduces her and hands over by name. The two are drafted
+ * from opposite ends of the same material and cached apart, so a day can
+ * carry a draft of each and only one recording.
+ */
+export type Place = 'open' | 'close'
+
+export async function fetchStoryWord(d: string, force = false, samples: string[] = [], place: Place = 'close'): Promise<Thought> {
   const v = getVerseForDate(d)
   const st = await fetchStory(d, false)
-  return call<Thought>('thought', { date: d, kind: 'story', force, reference: v.reference, text: v.text, paragraphs: st.paragraphs, samples })
+  return call<Thought>('thought', { date: d, kind: 'story', place, force, reference: v.reference, text: v.text, paragraphs: st.paragraphs, samples })
 }
 /** The draft already parked for a date, or null — never drafts. */
-export async function peekThought(d: string, kind: VoiceKind = 'verse'): Promise<Thought | null> {
-  const t = await call<Partial<Thought>>('thought', { date: d, kind, peek: true })
+export async function peekThought(d: string, kind: VoiceKind = 'verse', place: Place = 'close'): Promise<Thought | null> {
+  const t = await call<Partial<Thought>>('thought', { date: d, kind, place, peek: true })
   return t && typeof t.text === 'string' ? (t as Thought) : null
 }
-export async function saveThought(d: string, text: string, kind: VoiceKind = 'verse'): Promise<Thought> {
-  return call<Thought>('thought', { date: d, kind, save: text })
+export async function saveThought(d: string, text: string, kind: VoiceKind = 'verse', place: Place = 'close'): Promise<Thought> {
+  return call<Thought>('thought', { date: d, kind, place, save: text })
 }
 /** Park a file in the bucket through a signed upload URL (the bucket is service-role write only). */
 export async function parkFile(path: string, blob: Blob, contentType: string): Promise<string> {

@@ -15,7 +15,7 @@ import { getVerseForDate } from '@/data/bible/questions'
 import { env as tfEnv } from '@huggingface/transformers'
 
 export interface DraftPart { text: string; words: number; source: string; recorded: boolean; listened: boolean }
-export interface DraftRow { date: string; reference: string; verse: string; verseWord: DraftPart; storyWord: DraftPart | null }
+export interface DraftRow { date: string; reference: string; verse: string; verseWord: DraftPart; storyWord: DraftPart | null; storyPlace: 'open' | 'close' }
 export interface ListenResult { seconds: number; verseMatched: number; verseWords: number; verseEnd: number; thoughtStart: number; thoughtWords: number; text: string }
 export interface RenderResult { ext: 'mp4' | 'webm'; size: number; reference: string; tier: string; seconds: number; phrases: number }
 export interface FixResult { words: number; heard: number; text: string }
@@ -23,8 +23,8 @@ export interface FixResult { words: number; heard: number; text: string }
 declare global {
   interface Window {
     vaVoice: {
-      drafts: (dates: string[], token: string, force?: boolean) => Promise<DraftRow[]>
-      listen: (date: string, wavUrl: string, token: string, kind?: VoiceKind) => Promise<ListenResult>
+      drafts: (dates: string[], token: string, force?: boolean, place?: 'open' | 'close') => Promise<DraftRow[]>
+      listen: (date: string, wavUrl: string, token: string, kind?: VoiceKind, place?: 'open' | 'close') => Promise<ListenResult>
       render: (date: string, token: string, kind?: VoiceKind) => Promise<RenderResult>
       fix: (date: string, text: string, token: string, kind?: VoiceKind) => Promise<FixResult>
       identify: (wavUrl: string, dates: string[], token: string) => Promise<{ best: { date: string; reference: string; matched: number; words: number } | null; opening: string }>
@@ -66,13 +66,14 @@ const say = (s: string) => { window.__progress = s }
 window.vaVoice = {
   /**
    * The week's verses with BOTH of a day's readings under each: the morning
-   * thought that follows the verse, and the evening closing word that
-   * follows the story. Drafting the second one generates that day's story if
-   * it has not been told yet — it is written from the telling, so it cannot
-   * exist before one — and fails closed to no word rather than costing the
-   * whole row.
+   * thought that follows the verse, and the operator's half of the evening
+   * story — its closing word by default, or the INTRODUCTION that hands over
+   * to Tabitha when `place` is 'open'. Drafting either of the second pair
+   * generates that day's story if it has not been told yet — both are
+   * written from the telling, so neither can exist before one — and fails
+   * closed to no word rather than costing the whole row.
    */
-  async drafts(dates, token, force = false) {
+  async drafts(dates, token, force = false, place = 'close') {
     setRunnerToken(token)
     const out: DraftRow[] = []
     const part = async (date: string, kind: VoiceKind, draft: () => Promise<{ text: string; words: number; source: string }>): Promise<DraftPart> => {
@@ -85,9 +86,9 @@ window.vaVoice = {
       say(`drafting ${date}`)
       const v = getVerseForDate(date)
       const verseWord = await part(date, 'verse', () => fetchThought(date, force))
-      say(`drafting ${date} · the story's closing word`)
-      const storyWord = await part(date, 'story', () => fetchStoryWord(date, force)).catch(() => null)
-      out.push({ date, reference: v.reference, verse: v.text, verseWord, storyWord })
+      say(`drafting ${date} · the story's ${place === 'open' ? 'introduction' : 'closing word'}`)
+      const storyWord = await part(date, 'story', () => fetchStoryWord(date, force, [], place)).catch(() => null)
+      out.push({ date, reference: v.reference, verse: v.text, verseWord, storyWord, storyPlace: place })
     }
     return out
   },
@@ -96,10 +97,11 @@ window.vaVoice = {
    * A recording (served by the script as a WAV): decoded, parked, listened
    * to, its transcript parked, the day's copy rewritten. A VERSE recording
    * is his reading followed by his thought, so the verse has to be found
-   * inside it; a story CODA is all thought, and there is no verse in it to
-   * look for.
+   * inside it; the operator's own half of a STORY is all thought, and there
+   * is no verse in it to look for — only which end of the telling it belongs
+   * at, which is parked with it.
    */
-  async listen(date, wavUrl, token, kind = 'verse') {
+  async listen(date, wavUrl, token, kind = 'verse', place = 'close') {
     setRunnerToken(token)
     localModels()
     const m = await import('@/lib/tiktokVoice')
@@ -109,7 +111,7 @@ window.vaVoice = {
     await parkFile(voiceWavPath(date, kind), dec.wav, 'audio/wav')
     const v = getVerseForDate(date)
     const track = kind === 'story'
-      ? await m.transcribeCoda(dec.samples, dec.sampleRate, say)
+      ? await m.transcribeOwn(dec.samples, dec.sampleRate, place, say)
       : await m.splitRecording(dec.samples, dec.sampleRate, v.text, v.reference, say)
     const fixed = m.refit(track, track.text)
     say('parking the transcript')

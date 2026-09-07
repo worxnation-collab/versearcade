@@ -516,37 +516,58 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   `scripts/tiktok-voice.mjs` is the same loop from a terminal (drafts,
   listen, fix, render, post) for the sessions where the memos arrive here
   rather than at the hub. `docs/TIKTOK-ENGINE.md` → "Your voice".
-- **The evening STORY carries his closing word too, and it is a CODA rather
-  than a replacement.** The verse post is his outright — his reading stands
-  in for Gemini's — while the story keeps Tabitha's telling whole and joins
-  ~20 seconds of him onto the end of it, with his photo growing into the
-  middle of the frame as he starts (`StoryInput.coda`, `CODA_GAP`). Two
-  voiced posts a day is the cadence that was chosen over voicing all five:
-  YouTube judges a channel, TikTok and Meta judge each post, and 28 extra
-  recordings a week is a cadence that stops. The challenges and the quiz
-  stay automated and honestly labelled.
-  - **One shape serves both.** A coda parks the same `VoiceTrack` at
-    `days/<date>/voice-story.{wav,json}` with an EMPTY `verse`, so `refit`,
-    the correction step, the caption path and `voice`/`voice-clear`/
-    `upload-url` are the ones that already existed, keyed on kind.
-    `transcribeCoda` is the only new listener: there is no verse in it to
-    find. `ensureCoda` mirrors `ensureVoice`, so the morning runner can do
-    the listening itself when a phone only uploaded.
-  - **The summary is drafted FROM the telling** (`thought` with
-    `kind: 'story'`, cached at `thought-story.json`), which is why it is a
-    second call rather than a flag — the morning thought comes off the
-    verse's own data and can be written a week early, while a word about a
-    story cannot exist before the story does.
-  - **Her captions are closed where he begins, and that line was earned.**
-    A caption HOLDS until the next one so a pause is not a blank panel, and
-    with nothing after it Tabitha's last phrase held fourteen seconds into
-    his half — his voice, her words on screen. The frame lookup takes the
-    first phrase whose span covers the moment and hers come first in the
-    array, so it shadowed his. Every phrase is now closed at `codaAt`. The
-    verse layout has carried the same line since it grew a thought; this is
-    that rule arriving on the layout that grew a second speaker later. It
-    rendered perfectly the whole time — only reading the captions off a
-    frame found it.
+- **The evening STORY carries his voice too, at ONE END of the telling.**
+  The verse post is his outright — his reading stands in for Gemini's —
+  while the story keeps Tabitha's telling whole and joins ~20 seconds of him
+  to it, with his photo growing into the middle of the frame while he speaks
+  (`StoryInput.own`, `OWN_GAP`). Two voiced posts a day is the cadence that
+  was chosen over voicing all five: YouTube judges a channel, TikTok and
+  Meta judge each post, and 28 extra recordings a week is a cadence that
+  stops. The challenges and the quiz stay automated and honestly labelled.
+  - **Two ends, one at a time.** `place: 'close'` answers her telling;
+    `place: 'open'` introduces her and hands over by name ("In this
+    round-up, Tabitha…"). A day carries one or the other and never both:
+    two turns from the same voice around one story is a conversation with
+    one person in it. So they share the one parked recording
+    (`voice-story.{wav,json}`) and the place is written into its transcript
+    when it is LISTENED to (`--intro`), which is what stops a later render
+    moving a word recorded as a closing one to the front. Drafts are cached
+    apart (`thought-story.json` / `thought-story-intro.json`) so both can be
+    written and one chosen.
+  - **An introduction may not push the hook off frame 0.** That is the one
+    rule this layout has, so his photo waits for the hook to fade rather
+    than arriving with his first word (`ownShow`) — his voice starts at
+    0.35s under the hook exactly as the verse layout's reading does, and it
+    is his WORDS that open, never a title card. He steps back out as she
+    begins (`ownHide`), so the last thing before her first word is her room.
+  - **One shape serves both, and the verse.** His half parks the same
+    `VoiceTrack` with an EMPTY `verse`, so `refit`, the correction step, the
+    caption path and `voice`/`voice-clear`/`upload-url` are the ones that
+    already existed, keyed on kind. `transcribeOwn` is the only listener
+    added: there is no verse in it to find, and `place` is metadata it
+    carries rather than anything it does. `ensureOwn` mirrors `ensureVoice`,
+    so the morning runner can do the listening itself when a phone only
+    uploaded.
+  - **Both drafts are written FROM the telling** (`thought` with
+    `kind: 'story'` and a `place`), which is why they are a second call
+    rather than a flag — the morning thought comes off the verse's own data
+    and can be written a week early, while a word about a story cannot exist
+    before the story does. The two prompts pull opposite ways: a closing
+    word names what the story turned on, an introduction is forbidden from
+    giving it away, because the hook on screen is already saying the
+    dramatic thing.
+  - **The other speaker's captions are closed where this one begins, and
+    that line was earned.** A caption HOLDS until the next one so a pause is
+    not a blank panel, and the last caption of a half has nothing after it
+    to stop it: Tabitha's last phrase held fourteen seconds into his — his
+    voice, her words on screen. The frame lookup takes the first phrase
+    whose span covers the moment, so the over-running one simply shadowed
+    the right one. Every phrase is now closed at the handover, and the two
+    halves are concatenated in SPEAKING order so the lookup finds the right
+    one first. The verse layout has carried the same line since it grew a
+    thought; this is that rule arriving on the layout that grew a second
+    speaker later. It rendered perfectly the whole time — only reading the
+    captions off a frame found it.
   - Her captions are also timed against HER samples alone: `timedCaptions`
     matches a transcript to a recording, and handing it her minute of words
     over audio that ends in somebody else's voice makes it chase the tail.

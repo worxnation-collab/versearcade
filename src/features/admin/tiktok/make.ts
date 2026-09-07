@@ -54,21 +54,25 @@ export interface VerseOptions {
  * since the day's copy may already describe a painted reader.
  */
 /**
- * The story's closing word, listened to if a recording is parked and nothing
- * has transcribed it yet — `ensureVoice`'s twin, and it exists for the same
- * reason: a phone only uploads, so the morning runner has to be able to do
- * the listening itself. The difference is that a coda is all thought, so
- * there is no verse to find in it (`transcribeCoda`).
+ * The operator's own half of a story, listened to if a recording is parked
+ * and nothing has transcribed it yet — `ensureVoice`'s twin, and it exists
+ * for the same reason: a phone only uploads, so the morning runner has to be
+ * able to do the listening itself. The difference is that this half is all
+ * thought, so there is no verse to find in it (`transcribeOwn`).
+ *
+ * `place` is only used when this function does the listening. A recording
+ * somebody already transcribed carries its own, which is what stops a render
+ * moving a word that was recorded as a closing one to the front.
  */
-export async function ensureCoda(d: string, progress: Progress): Promise<(VoiceTrack & { wavUrl: string }) | null> {
+export async function ensureOwn(d: string, progress: Progress, place: 'open' | 'close' = 'close'): Promise<(VoiceTrack & { wavUrl: string }) | null> {
   const parked = await fetchVoice(d, 'story').catch(() => null)
   if (parked) return parked
   const wavUrl = publicUrl(voiceWavPath(d, 'story'))
   if (!(await existsAt(wavUrl + '?v=' + Date.now(), 'audio/'))) return null
-  progress(0, 'listening to your closing word')
+  progress(0, place === 'open' ? 'listening to your introduction' : 'listening to your closing word')
   const m = await import('@/lib/tiktokVoice')
   const dec = await m.decodeRecording(await (await fetch(wavUrl + '?v=' + Date.now())).blob())
-  const track = await m.transcribeCoda(dec.samples, dec.sampleRate, (label) => progress(0, label))
+  const track = await m.transcribeOwn(dec.samples, dec.sampleRate, place, (label) => progress(0, label))
   await parkFile(voiceJsonPath(d, 'story'), new Blob([JSON.stringify(track)], { type: 'application/json' }), 'application/json')
   try { await fetchCopy(d, 'story', true) } catch { /* written at render time otherwise */ }
   return { ...track, wavUrl }
@@ -168,8 +172,14 @@ export interface StoryOptions {
   copy?: boolean
   music?: boolean
   align?: boolean
-  /** Render the telling alone, ignoring any closing word parked for the date. */
+  /** Render the telling alone, ignoring anything parked in the operator's voice for the date. */
   ownVoice?: boolean
+  /**
+   * Where a recording that has NOT yet been transcribed belongs — 'open' to
+   * introduce Tabitha, 'close' to answer her. A recording already listened
+   * to carries its own and wins, so this only decides the first render.
+   */
+  ownPlace?: 'open' | 'close'
 }
 
 export async function storyAssets(r: Renderer, tellerId: string, roomPath: string) {
@@ -185,9 +195,9 @@ export async function makeStory(d: string, o: StoryOptions, progress: Progress):
   const v = getVerseForDate(d)
   const sd = seedFor(d)
   // Asked FIRST, like makeVerse: the caption's words differ on a day the
-  // maker speaks (`voiced` on the copy action), so the coda has to be known
+  // maker speaks (`voiced` on the copy action), so his half has to be known
   // and its transcript parked before `fetchCopy` runs below.
-  const own = o.ownVoice === false ? null : await ensureCoda(d, progress).catch((e) => { console.warn('closing word unavailable, telling it without one:', e); return null })
+  const own = o.ownVoice === false ? null : await ensureOwn(d, progress, o.ownPlace).catch((e) => { console.warn('your voice unavailable, telling it without one:', e); return null })
   progress(0, 'writing the story')
   const st = o.story ?? await fetchStory(d, false)
   const tellerId = o.cast?.teller ?? 'tabitha'
@@ -214,16 +224,18 @@ export async function makeStory(d: string, o: StoryOptions, progress: Progress):
   const { roomImg, tellerImg } = await storyAssets(r, tellerId, roomPath)
   const paragraphs = [...st.paragraphs, `${v.text.trim()} ${v.reference}.`]
   const hook = st.hook || copy?.hook
-  // The operator's closing word, when one is parked for the date. The
-  // telling is unchanged either way — the coda is appended to it, never in
-  // place of it — so a day with no recording renders exactly as before.
-  const codaAudio = own ? await (await fetch(own.wavUrl + '?v=' + Date.now())).arrayBuffer() : undefined
+  // The operator's own half, when one is parked for the date. The telling is
+  // unchanged either way — his recording is joined to it, never in place of
+  // it — so a day with no recording renders exactly as before.
+  const ownAudio = own ? await (await fetch(own.wavUrl + '?v=' + Date.now())).arrayBuffer() : undefined
   const photo = own ? await r.loadImage(publicUrl(FOUNDER_PHOTO) + '?v=' + Date.now()).catch(() => undefined) : undefined
-  const bed = o.music !== false ? await bedFor(await r.plannedDuration(audio, hook, true, codaAudio), 'cloister') : undefined
+  const bed = o.music !== false ? await bedFor(await r.plannedDuration(audio, hook, true, ownAudio), 'cloister') : undefined
   const out = await r.renderStory({
     title: st.title, reference: v.reference, verseText: v.text,
     paragraphs, hook, audio, room: roomImg, teller: tellerImg, bed, align: o.align,
-    coda: own && codaAudio ? { audio: codaAudio, words: own.thought, text: own.text, photo, label: VOICE_LABEL } : undefined,
+    own: own && ownAudio
+      ? { audio: ownAudio, words: own.thought, text: own.text, place: own.place ?? o.ownPlace ?? 'close', photo, label: VOICE_LABEL }
+      : undefined,
     onProgress: progress,
   })
   const teller = TELLERS.find((x) => x.id === tellerId)?.name ?? tellerId

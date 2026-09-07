@@ -16,7 +16,7 @@
 //   loop-status { key, op }                      → { done, url? }    polls Veo; on completion parks readers/<key>.mp4
 //   copy        { date?, reference, text, theme, kind?, force?, question?, about? } → { hook, caption, hashtags[], platforms }  post copy per platform via Gemini Flash; kind (verse, story, quiz, challenge, challenge2, own) changes what the post is — a challenge passes its question, an own clip what it is about; cached at days/<date>/copy-<kind>.json
 //   story       { date, reference, text, ... }    → { title, hook, paragraphs[] }   the story behind the verse, cached at days/<date>/story.json
-//   thought     { date, kind?, reference, text, paragraphs?, ..., force?, save?, peek? } → { text, words, source }  what the OPERATOR reads in his own voice: the ~110-word reflection after the verse (kind 'verse', days/<date>/thought.json) or the ~50-word closing word after the story, written from that story's own paragraphs (kind 'story', days/<date>/thought-story.json). `save` parks his edit; `force` redrafts
+//   thought     { date, kind?, place?, reference, text, paragraphs?, ..., force?, save?, peek? } → { text, words, source }  what the OPERATOR reads in his own voice: the ~110-word reflection after the verse (kind 'verse', days/<date>/thought.json), or — written from the story's own paragraphs (kind 'story') — the ~50-word closing word after it (place 'close', days/<date>/thought-story.json) or the ~35-word introduction handing over to Tabitha before it (place 'open', days/<date>/thought-story-intro.json). `save` parks his edit; `force` redrafts
 //   voice       { date, kind? }                   → the day's operator recording for that kind, if one is parked (days/<date>/voice-<verse|story>.json: the timed words the hub transcribed — a story coda carries an empty `verse`), else {}
 //   voice-clear { date, kind? }                   → { ok }             removes a parked recording and its transcript, so that post falls back to Gemini's voice alone
 //   upload-url  { path }                          → { path, token, publicUrl }  a signed upload URL for a finished video (days/<date>/<kind>.mp4), its cover, one of the operator's recordings (voice-verse|story.wav/.json) or the founder photo (founder/photo.jpg), so the browser can put it in the bucket
@@ -472,7 +472,12 @@ Deno.serve(async (req) => {
       // story. They are cached apart because they are written from different
       // material — the verse's own data, and the story Tabitha just told.
       const forStory = input.kind === 'story'
-      const path = `days/${date}/thought${forStory ? '-story' : ''}.json`
+      // A story is spoken over EITHER an introduction or a closing word,
+      // never both — but the two are drafted from opposite ends of the same
+      // material and are cached apart, so an operator can read both and
+      // choose. `place` is 'close' unless asked for.
+      const place = input.place === 'open' ? 'open' : 'close'
+      const path = `days/${date}/thought${forStory ? (place === 'open' ? '-story-intro' : '-story') : ''}.json`
       const count = (t: string) => t.split(/\s+/).filter(Boolean).length
       if (typeof input.save === 'string') {
         const text = input.save.replace(/\s+/g, ' ').trim().slice(0, 1600)
@@ -503,16 +508,33 @@ Deno.serve(async (req) => {
       if (forStory) {
         const paragraphs = Array.isArray(input.paragraphs) ? (input.paragraphs as unknown[]).slice(0, 4).map((x) => String(x).slice(0, 900)).filter(Boolean) : []
         if (!paragraphs.length) return json({ error: 'paragraphs are required for a story summary' }, 400)
-        const sd = await gemini(`models/${TEXT_MODEL}:generateContent`, {
-          contents: [{ parts: [{ text:
-            `The maker of Verse Arcade, a Bible app, closes a short video in his own voice. The video has just told the story behind today's verse and read the verse aloud; he now speaks last, to camera, for about twenty seconds. He is one person talking plainly to a phone, not a preacher and not a brand.\n\n` +
-            `The story that was just told: ${paragraphs.join(' ')}\n\nThe verse that was just read: ${String(input.reference ?? '').slice(0, 80)} — "${String(input.text ?? '').slice(0, 600)}"\n\n` +
-            voiceNote +
-            `Rules. First person, present tense, short sentences that read well aloud — no sentence over about 15 words. Open by naming in ONE breath the thing the story turned on, so somebody who half-watched still has it. Then ONE plain thing he carries from it today. Do not retell the story beat by beat — the viewer just watched it. Do not quote the verse (it was just read). Do not say "today's verse", name the app, or thank anyone for watching. Nothing that one Christian tradition would say differently from another. Never shame the listener, no "we all" sermons, no call to action, no link.\n` +
-            `End on a closing STATEMENT: one plain sentence, first person, naming something specific from THIS story that he is choosing or carrying today. It must settle the thought and let the video end — not a question, not an instruction, not a stock closer.\n\n` +
-            `Return JSON with: "text" — the closing word, 45 to 60 words, plain punctuation, no emoji, no headings, no line breaks.` }] }],
-          generationConfig: { responseMimeType: 'application/json', temperature: 0.8 },
-        })
+        // The INTRODUCTION: he speaks FIRST, hands the telling to Tabitha and
+        // steps out. It is shorter than the coda because it is spending the
+        // opening seconds of the video — the ones the hook owns — so it has
+        // to be over before a viewer wonders what they are watching. It must
+        // not spoil the turn: the hook line is already on screen saying the
+        // dramatic thing, and an intro that repeats it wastes both.
+        const sd = place === 'open'
+          ? await gemini(`models/${TEXT_MODEL}:generateContent`, {
+              contents: [{ parts: [{ text:
+                `The maker of Verse Arcade, a Bible app, opens a short video in his own voice and hands it over to Tabitha, the app's librarian, who tells the story behind today's verse. He speaks first, to camera, for about fifteen seconds. He is one person talking plainly to a phone, not a preacher and not a brand.\n\n` +
+                `The story Tabitha is about to tell: ${paragraphs.join(' ')}\n\nThe verse it is about: ${String(input.reference ?? '').slice(0, 80)} — "${String(input.text ?? '').slice(0, 600)}"\n\n` +
+                voiceNote +
+                `Rules. First person, present tense, short sentences that read well aloud — no sentence over about 15 words. Open by naming the QUESTION or the situation the story is about to answer, in one breath, so a stranger knows why to stay. Do NOT tell the story, do NOT give away how it turns out, and do NOT quote the verse — Tabitha does all three in a moment. Say ONE true sentence about why this one stopped you. Do not say "today's verse", name the app, thank anyone for watching, or ask for a follow, a comment or a share.\n` +
+                `End by handing over to Tabitha BY NAME, in a plain spoken sentence — something in the shape of "In this round-up, Tabitha…" or "Tabitha has the rest". Vary it; do not use the same hand-off twice.\n\n` +
+                `Return JSON with: "text" — the introduction, 30 to 45 words, plain punctuation, no emoji, no headings, no line breaks.` }] }],
+              generationConfig: { responseMimeType: 'application/json', temperature: 0.8 },
+            })
+          : await gemini(`models/${TEXT_MODEL}:generateContent`, {
+              contents: [{ parts: [{ text:
+                `The maker of Verse Arcade, a Bible app, closes a short video in his own voice. The video has just told the story behind today's verse and read the verse aloud; he now speaks last, to camera, for about twenty seconds. He is one person talking plainly to a phone, not a preacher and not a brand.\n\n` +
+                `The story that was just told: ${paragraphs.join(' ')}\n\nThe verse that was just read: ${String(input.reference ?? '').slice(0, 80)} — "${String(input.text ?? '').slice(0, 600)}"\n\n` +
+                voiceNote +
+                `Rules. First person, present tense, short sentences that read well aloud — no sentence over about 15 words. Open by naming in ONE breath the thing the story turned on, so somebody who half-watched still has it. Then ONE plain thing he carries from it today. Do not retell the story beat by beat — the viewer just watched it. Do not quote the verse (it was just read). Do not say "today's verse", name the app, or thank anyone for watching. Nothing that one Christian tradition would say differently from another. Never shame the listener, no "we all" sermons, no call to action, no link.\n` +
+                `End on a closing STATEMENT: one plain sentence, first person, naming something specific from THIS story that he is choosing or carrying today. It must settle the thought and let the video end — not a question, not an instruction, not a stock closer.\n\n` +
+                `Return JSON with: "text" — the closing word, 45 to 60 words, plain punctuation, no emoji, no headings, no line breaks.` }] }],
+              generationConfig: { responseMimeType: 'application/json', temperature: 0.8 },
+            })
         const sc = sd.candidates as Array<{ content?: { parts?: Array<{ text?: string }> } }> | undefined
         const sraw = sc?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? '{}'
         let sp: { text?: unknown } = {}

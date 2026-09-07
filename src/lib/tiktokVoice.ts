@@ -44,6 +44,14 @@ export interface VoiceTrack {
   text: string
   /** How many of the verse's words were actually heard, for the hub's confidence line. */
   verseMatched: number
+  /**
+   * For a story recording, which end of the telling it belongs at — 'open'
+   * introduces Tabitha and hands over, 'close' answers her. Absent on every
+   * recording parked before introductions existed, and on every VERSE
+   * recording, where it means nothing; both read as 'close', so nothing
+   * already on disk moves.
+   */
+  place?: 'open' | 'close'
   at: string
 }
 
@@ -371,14 +379,17 @@ export async function splitRecording(samples: Float32Array, sampleRate: number, 
 }
 
 /**
- * A recording that is ALL thought: the story's closing word, spoken after a
- * telling the operator did not read himself, so there is no verse in it to
- * find and nothing to split. It returns the SAME shape `splitRecording`
- * does with an empty `verse` — which is what lets `refit`, the parked JSON,
- * the CLI's correction step and the renderer's caption path all be the ones
- * that already exist rather than a second set of each.
+ * A recording that is ALL thought: the operator's own half of a story —
+ * either the closing word after a telling he did not read himself, or the
+ * introduction that hands over to Tabitha. There is no verse in it to find
+ * and nothing to split, and `place` is only carried through to the parked
+ * JSON so the renderer knows which end it belongs at. It returns the SAME
+ * shape `splitRecording` does with an empty `verse` — which is what lets
+ * `refit`, the parked JSON, the CLI's correction step and the renderer's
+ * caption path all be the ones that already exist rather than a second set
+ * of each.
  */
-export async function transcribeCoda(samples: Float32Array, sampleRate: number, onProgress?: (label: string) => void): Promise<VoiceTrack> {
+export async function transcribeOwn(samples: Float32Array, sampleRate: number, place: 'open' | 'close' = 'close', onProgress?: (label: string) => void): Promise<VoiceTrack> {
   const heard = await transcribePieces(samples, sampleRate, onProgress)
   if (heard.length < 5) throw new Error('Heard almost nothing — is the recording silent, or in another language?')
   const thought = heard.map((w) => ({ ...w }))
@@ -390,6 +401,7 @@ export async function transcribeCoda(samples: Float32Array, sampleRate: number, 
     thought: thought.map((w, i) => ({ ...w, text: words[i] ?? w.text })),
     heard: thought,
     text,
+    place,
     verseMatched: 0,
     at: new Date().toISOString(),
   }

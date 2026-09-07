@@ -556,14 +556,34 @@ automated replies (the second is the keyword-search case by name), both are
 the shape of account that gets restricted, and X's API now blocks the
 mechanism anyway.
 
-## The story's closing word
+## The story's own word: a closing one, or an introduction
 
 The evening story is Tabitha's telling, and since the operator's voice
-arrived it can carry ~20 seconds of him on the end of it: his photo grows
-into the middle of the frame as he starts, his words are captioned from
-their own timings, and the end card keeps him small under the ask. It is a
-CODA — the telling is unchanged and complete without it, so a day with no
-recording renders exactly as it always did.
+arrived it can carry ~20 seconds of him at ONE END of it: his photo grows
+into the middle of the frame while he speaks, his words are captioned from
+their own timings, and the end card keeps him small under the ask. The
+telling is unchanged and complete without him, so a day with no recording
+renders exactly as it always did.
+
+`place` picks the end. **`close`** answers her — the thing the story turned
+on, then one plain thing he carries from it. **`open`** introduces her and
+hands over by name ("In this round-up, Tabitha…"), which is shorter (30–45
+words, ~15 seconds) because it is spending the opening of the video.
+
+A day carries ONE of them, never both: two turns from the same voice around
+one story is a conversation with one person in it. So both use the single
+parked recording, and the place is written into the transcript when it is
+listened to (`--intro`) rather than chosen at render time — a recording made
+as a closing word cannot then be moved to the front. Only the DRAFTS are
+cached apart (`thought-story.json` / `thought-story-intro.json`), so both
+can be written and one chosen.
+
+**An introduction may not push the hook off frame 0**, which is the one rule
+this layout has. His photo therefore waits for the hook to fade rather than
+arriving with his first word (`ownShow`); his voice starts at 0.35s under
+the hook exactly as the verse layout's reading does, and it is his WORDS
+that open, never a title card. He steps back out as she begins (`ownHide`),
+so the last thing before her first word is her room and not his face.
 
 Two voiced posts a day (the morning verse and this) was chosen over voicing
 all five deliberately. YouTube judges a channel and one genuinely human
@@ -572,43 +592,53 @@ are the ones that earn. Four extra recordings a day is 28 a week, and a
 cadence that stops looks worse than one that never started. The challenges
 and the quiz stay automated and labelled.
 
-- **A coda is the same shape as a verse recording with an empty `verse`.**
+- **His half is the same shape as a verse recording with an empty `verse`.**
   It parks at `days/<date>/voice-story.{wav,json}`, so `refit`, the `fix`
   correction step, `voice` / `voice-clear` / `upload-url` and the renderer's
   caption path are all the ones that already existed, keyed on kind.
-  `transcribeCoda` (`lib/tiktokVoice.ts`) is the only new listener — there is
-  no verse inside it to find — and `ensureCoda` mirrors `ensureVoice` so the
-  morning runner can listen for itself when a phone only uploaded.
-- **The summary is written FROM the telling** — `thought` with
-  `kind: 'story'`, cached at `days/<date>/thought-story.json`, 45–60 words
-  (about twenty seconds). It opens by naming in one breath the thing the
-  story turned on, so somebody who half-watched still has it, then one plain
-  thing he carries from it, and ends on a statement. It is a second call
-  rather than a flag on the first because the morning thought comes off the
-  verse's own data and can be drafted a week early, while a word about a
-  story cannot exist before the story does. `drafts` prints both per day, so
-  one sitting records the week.
-- **Her captions are closed where he begins.** A caption holds until the next
-  one so a pause is not a blank panel; with nothing after it, Tabitha's last
-  phrase held FOURTEEN SECONDS into his half — his voice, her words on the
-  screen. The frame lookup takes the first phrase whose span covers the
-  moment and hers come first in the array, so it shadowed his. Every phrase
-  is now closed at `codaAt`; the verse layout has carried the same line since
-  it grew a thought. It rendered perfectly throughout — only reading the
-  captions off a real frame found it, which is why `render` now prints the
-  caption count.
+  `transcribeOwn` (`lib/tiktokVoice.ts`) is the only new listener — there is
+  no verse inside it to find, and `place` is metadata it carries rather than
+  anything it does — and `ensureOwn` mirrors `ensureVoice` so the morning
+  runner can listen for itself when a phone only uploaded.
+- **Both drafts are written FROM the telling** — `thought` with
+  `kind: 'story'` and a `place`. The closing word is 45–60 words (about
+  twenty seconds): it opens by naming in one breath the thing the story
+  turned on, so somebody who half-watched still has it, then one plain thing
+  he carries from it, and ends on a statement. The introduction is 30–45
+  words and pulls the opposite way — it names the QUESTION the story is
+  about to answer, is forbidden from telling it, giving away the turn or
+  quoting the verse (Tabitha does all three in a moment, and the hook on
+  screen is already saying the dramatic thing), and ends by handing over to
+  her by name. Both are a second call rather than a flag on the first
+  because the morning thought comes off the verse's own data and can be
+  drafted a week early, while a word about a story cannot exist before the
+  story does. `drafts` prints the day's two, so one sitting records the week;
+  `--intro` swaps which story half it drafts.
+- **The other speaker's captions are closed where this one begins.** A
+  caption holds until the next one so a pause is not a blank panel; the last
+  caption of a half has nothing after it to stop it, and Tabitha's held
+  FOURTEEN SECONDS into his — his voice, her words on the screen. The frame
+  lookup takes the first phrase whose span covers the moment, so the
+  over-running one shadowed the right one. Every phrase is now closed at the
+  handover, and the two halves are concatenated in SPEAKING order so the
+  lookup finds the right one first; the verse layout has carried the same
+  line since it grew a thought. It rendered perfectly throughout — only
+  reading the captions off a real frame found it, which is why `render` now
+  prints the caption count.
 - **Her captions are timed against HER samples only.** `timedCaptions`
   matches a transcript to a recording, so handing it her minute of words over
   audio that ends in somebody else's voice makes it chase the tail and
-  stretch her last phrases across his.
-- **The music bed covers both.** `plannedDuration` takes the coda's audio, or
+  stretch her last phrases across his. When he opens, her timings are
+  computed against her own recording and then SHIFTED by where it starts.
+- **The music bed covers both.** `plannedDuration` takes his audio too, or
   the bed runs out under the one part of the post a person actually spoke.
 
 From a terminal it is the same loop as the verse with `--story` on the end:
 
 ```bash
-node scripts/tiktok-voice.mjs drafts 2026-09-08 7          # both readings a day
-node scripts/tiktok-voice.mjs listen 2026-09-08 memo.m4a --story
+node scripts/tiktok-voice.mjs drafts 2026-09-08 7          # verse + closing word
+node scripts/tiktok-voice.mjs drafts 2026-09-08 7 --intro  # verse + introduction
+node scripts/tiktok-voice.mjs listen 2026-09-08 memo.m4a --story [--intro]
 node scripts/tiktok-voice.mjs fix    2026-09-08 fixed.txt  --story
 node scripts/tiktok-voice.mjs render 2026-09-08            --story
 node scripts/tiktok-voice.mjs post   2026-09-08            --story   # 19:30 by default

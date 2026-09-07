@@ -24,8 +24,8 @@
 //   story, `--intro` means he speaks FIRST and hands over to her by name;
 //   without it he answers her at the end.
 //
-//   node scripts/tiktok-voice.mjs split <audio file> <start date> [--days N]
-//                                       [--story] [--intro] [--dry]
+//   node scripts/tiktok-voice.mjs split <audio file> <start date> [--days=N]
+//                                       [--story] [--intro] [--dry] [--reuse]
 //       ONE memo holding a run of takes, cut into one recording per date and
 //       parked. The operator says the take's NUMBER before each one ("one",
 //       a pause, then the words), and that number is what the cut is made
@@ -267,12 +267,23 @@ try {
   }
   if (cmd === 'split') {
     const file = args[0], start = args[1]
-    if (!file || !fs.existsSync(file) || !isDate(start)) fail('split <audio file> <start date> [--days N] [--story] [--intro] [--dry]')
-    const days = Math.max(1, Math.min(31, Number(flags.days || 14)))
+    if (!file || !fs.existsSync(file) || !isDate(start)) fail('split <audio file> <start date> [--days=N] [--story] [--intro] [--dry] [--reuse]')
+    // `--days=14`, not `--days 14`: the flags here are all `--key=value`, and
+    // a bare `--days` reads as TRUE, which Number() turns into 1 — a silent
+    // one-take split rather than an error. Refuse it instead.
+    if (flags.days === true) fail('use --days=N')
+    const days = Math.max(1, Math.min(31, Number(flags.days) || 14))
     inputWav = path.join(OUT, 'batch.wav')
     if (!toWav(file, inputWav)) fail(`could not decode ${file}`)
-    const heard = await page.evaluate(([w, t]) => window.vaVoice.hear(w, t), [`${origin}/input.wav`, TOKEN])
+    // Listening to five minutes takes about three, and the cut usually wants
+    // a second look — so the pass is cached against the decoded WAV and
+    // `--reuse` reads it back rather than hearing it again.
+    const heardPath = path.join(OUT, 'batch.json')
+    let heard
+    if (flags.reuse && fs.existsSync(heardPath)) { heard = JSON.parse(fs.readFileSync(heardPath, 'utf8')); log('reusing the last transcript') }
+    else { heard = await page.evaluate(([w, t]) => window.vaVoice.hear(w, t), [`${origin}/input.wav`, TOKEN]); fs.writeFileSync(heardPath, JSON.stringify(heard)) }
     log(`heard ${heard.seconds.toFixed(0)}s · ${heard.words.length} words`)
+    if (flags.dry) log(`  transcript: ${heard.text.slice(0, 600)}`)
     // The take numbers. Whisper writes them as words or as digits, so both
     // are read, and a number only STARTS a take when a real pause sits in
     // front of it — otherwise "one" inside a sentence would cut the take in

@@ -557,6 +557,20 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   xAI key: `XAI_API_KEY` or Vault `tiktok_xai_key()` (0105); no key ⇒ a
   clear error and nothing posted. `lib/tiktokChallenge.ts` is the pure
   question picker both the renderer and the replier use.
+- **Every posted link is the PLAYABLE verse, tagged with its network**
+  (`siteLink` in `social.ts`: `versearcade.org/play?src=<platform>`), and
+  `trackLinks` rewrites any bare site mention the model wrote into that
+  shape, so no caption goes out untagged. The client parks the first `src`
+  it sees (`lib/attribution.ts`, `va.src`, stripped from the address bar on
+  capture, same lifetime as the referral code) and hands it to
+  `set_signup_source` (0106) once an account exists. **The server keeps only
+  the first value and only for an account under seven days old**, so a
+  long-time player opening a tracked link is never re-filed. The hub's
+  weekly table carries a Sign-ups column per network from
+  `admin_signup_sources`; that is the number goal one is judged by, and it
+  reaches no player, no board, nothing that ranks a person by where they
+  came from. TikTok, Snapchat and Instagram captions are not tappable, so
+  their bio links are set BY HAND to the same shape.
 - **`analytics` is the operator's only scoreboard.** It reads Ayrshare's
   per-post numbers for one (date, kind), caches six hours, and the hub totals
   a week per network and per kind. Numbers about posts on other people's
@@ -1431,7 +1445,15 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0105` (`tiktok_xai_key()` — the xAI/Grok key the TikTok
+The latest is `0106` (`profiles.signup_source` + `set_signup_source` +
+`admin_signup_sources` — which network a sign-up came from), APPLIED on
+2026-09-07 before the client merged and verified: exactly ONE signature each,
+both ACLs the house `authenticated` shape, `set_signup_source` refuses a bad
+slug and answers `already`/`not_new` for an account older than seven days
+(checked against the admin's own row), and `admin_signup_sources` returns
+the grouped counts.
+
+Before it, `0105` (`tiktok_xai_key()` — the xAI/Grok key the TikTok
 engine's comment replier drafts with, read out of Vault, service_role only),
 APPLIED on 2026-09-06 and verified: the ACL reads `{postgres,service_role}`.
 The secret was written with `vault.create_secret` on 2026-09-06 and the
@@ -1669,7 +1691,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0106` (0105 is taken by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0107` (0106 is taken by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

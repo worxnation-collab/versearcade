@@ -65,6 +65,23 @@ export const AI_NOTE = 'AI-generated art and voice.'
 const tagLine = (tags: string[] | undefined, n: number) => (tags ?? []).slice(0, n).map((t) => '#' + t).join(' ')
 
 /**
+ * The link every post carries: the PLAYABLE verse, not the homepage, tagged
+ * with the network it was posted on. `/play` is open to a guest, so a
+ * stranger plays today's verse in thirty seconds and meets the account wall
+ * with a streak already started — the conversion path the app was built
+ * for. `?src=` is what `set_signup_source` (0106) files the sign-up under,
+ * so the hub can say which network sends people who sign up rather than
+ * people who watch. Networks whose captions are not tappable (TikTok,
+ * Snapchat, Instagram) get it through the bio link, set by hand to the
+ * same shape.
+ */
+export const siteLink = (platform: Platform): string => `https://versearcade.org/play?src=${platform}`
+
+/** Any bare site mention the model wrote becomes the tracked link, so no caption goes out untagged. */
+const trackLinks = (text: string, platform: Platform): string =>
+  text.replace(/(?:https?:\/\/)?(?:www\.)?versearcade\.org(?:\/[\w./?=&-]*)?/gi, siteLink(platform))
+
+/**
  * The ask at the end of a caption, per network, and it differs on purpose:
  * a URL is a dead string on TikTok and Snapchat (nothing in a caption there
  * is tappable), so those ask for the follow, which IS tappable and is the
@@ -81,17 +98,17 @@ export function callToAction(platform: Platform, kind: Kind): string {
     case 'tiktok': return challenge ? "Comment your answer. Follow for tomorrow's." : "Follow for tomorrow's verse."
     case 'snapchat': return challenge ? 'Comment your answer.' : "Follow for tomorrow's verse."
     case 'instagram': return challenge ? 'Comment your answer. Play it — link in bio.' : 'Play it — link in bio.'
-    case 'youtube': return challenge ? "Comment your answer. Play today's verse: https://versearcade.org" : "Play today's verse: https://versearcade.org"
-    case 'facebook': return challenge ? 'Comment your answer. https://versearcade.org' : 'https://versearcade.org'
-    case 'x': return challenge ? 'Comment your answer. versearcade.org' : 'versearcade.org'
-    case 'threads': return challenge ? 'Comment your answer. Play it: versearcade.org' : "Play today's verse: versearcade.org"
-    case 'pinterest': return "Play today's verse: versearcade.org"
+    case 'youtube': return challenge ? `Comment your answer. Play today's verse: ${siteLink(platform)}` : `Play today's verse: ${siteLink(platform)}`
+    case 'facebook': return challenge ? `Comment your answer. ${siteLink(platform)}` : siteLink(platform)
+    case 'x': return challenge ? `Comment your answer. ${siteLink(platform)}` : siteLink(platform)
+    case 'threads': return challenge ? `Comment your answer. Play it: ${siteLink(platform)}` : `Play today's verse: ${siteLink(platform)}`
+    case 'pinterest': return `Play today's verse: ${siteLink(platform)}`
   }
 }
 
 /** The caption's text with the network's own ask on the end, unless the words already carry it. */
 function withAsk(text: string | undefined, platform: Platform, kind: Kind): string {
-  const t = (text ?? '').trim()
+  const t = trackLinks((text ?? '').trim(), platform)
   const ask = callToAction(platform, kind)
   const has = (platform === 'tiktok' || platform === 'snapchat') ? /follow/i.test(t) : /versearcade\.org|link in bio/i.test(t)
   if (has && (!/challenge/.test(kind) || /comment/i.test(t))) return t
@@ -136,9 +153,18 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
     const reels = !(a.seconds && a.seconds > FACEBOOK_REEL_MAX_SECONDS)
     body.faceBookOptions = { reels, title: (copy.hook || a.reference || 'Verse Arcade').slice(0, 255) }
   } else if (platform === 'x') {
+    // X counts every URL as 23 characters whatever its length, and the ask
+    // carries the tracked link, so the budget is measured that way and the
+    // model's words are what get shortened — never the ask, never the note.
     const tail = [AI_NOTE, tagLine(c.tags, 2)].filter(Boolean).join(' ')
-    const text = withAsk(c.text, platform, a.kind).slice(0, Math.max(0, 279 - tail.length - 1))
-    body.post = [text, tail].filter(Boolean).join(' ')
+    const ask = callToAction(platform, a.kind)
+    const xLen = (s: string) => s.replace(/https?:\/\/\S+/g, 'x'.repeat(23)).length
+    // The model's own link sentence goes whole ("Play today's verse: versearcade.org"): the ask says it again with the tracked link.
+    let lead = (c.text ?? '').replace(/[^.!?\n]*(?:https?:\/\/)?(?:www\.)?versearcade\.org\S*[^.!?\n]*[.!?]?/gi, ' ').replace(/\s+/g, ' ').trim()
+    const words = lead.split(' ')
+    while (words.length > 1 && xLen([words.join(' '), ask, tail].join(' ')) > 280) words.pop()
+    lead = words.join(' ')
+    body.post = [lead, ask, tail].filter(Boolean).join(' ')
   } else if (platform === 'threads') {
     // Threads: 500 characters, links tappable, no AI flag on the API so the
     // caption says it. Two tags at most — Threads treats a tag as a topic.
@@ -149,7 +175,7 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
     // the pin's click-through, and the cover is the frame Pinterest shows
     // before play — required for a video pin, same size as the video.
     body.post = [withAsk(c.text, platform, a.kind), AI_NOTE, tagLine(c.tags, 3)].filter(Boolean).join('\n\n').slice(0, 500)
-    body.pinterestOptions = { title: (c.title || `${a.reference || 'Verse Arcade'} · Daily Bible Verse`).slice(0, 100), link: 'https://versearcade.org', thumbNail: a.cover, altText: [`${a.reference || 'A Bible verse'}, read aloud over a painted road — Verse Arcade`.slice(0, 500)] }
+    body.pinterestOptions = { title: (c.title || `${a.reference || 'Verse Arcade'} · Daily Bible Verse`).slice(0, 100), link: siteLink(platform), thumbNail: a.cover, altText: [`${a.reference || 'A Bible verse'}, read aloud over a painted road — Verse Arcade`.slice(0, 500)] }
   } else if (platform === 'snapchat') {
     // The note goes FIRST: the caption is cut at 160 and the disclosure is
     // the part that must survive.

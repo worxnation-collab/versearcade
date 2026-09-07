@@ -64,6 +64,7 @@ import { NowPlaying } from './components/NowPlaying'
 import { BottomNav } from './components/BottomNav'
 import { PlayerCardProvider } from './components/PlayerCardModal'
 import { AccountWall, useAccountLocked, type WallCopy } from './components/AccountWall'
+import { captureSource } from './lib/attribution'
 
 function RequireProfile({ children }: { children: JSX.Element }) {
   const { ready, profile } = useAuth()
@@ -214,6 +215,8 @@ export default function App() {
     } catch {
       /* ignore */
     }
+    // And which network sent them (?src=tiktok…), same lifetime, same reason.
+    captureSource()
     init()
     // The content catalog, BEFORE the season store reads it. Its cache is
     // already applied at import (store/catalog.ts), so this only refreshes;

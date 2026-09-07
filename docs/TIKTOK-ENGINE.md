@@ -517,6 +517,18 @@ automated replies (the second is the keyword-search case by name), both are
 the shape of account that gets restricted, and X's API now blocks the
 mechanism anyway.
 
+## Where the sign-ups come from
+
+Every link a post carries is `https://versearcade.org/play?src=<network>`
+(`siteLink` in `social.ts`; `trackLinks` rewrites any bare site mention the
+copy model wrote). `/play` is open to a guest, so the stranger plays today's
+verse first and meets the account wall with a streak started — that is the
+conversion path, not the homepage. The client keeps the first `src` it sees
+(`lib/attribution.ts`), and `set_signup_source` (0106) files a NEW account
+under it, once, server-side. The hub's weekly table shows Sign-ups beside
+views per network. Bio links for TikTok, Snapchat and Instagram are set by
+hand to the same shape, since nothing in those captions is tappable.
+
 xAI credits: `XAI_API_KEY` as a function secret or Vault through
 `tiktok_xai_key()` (`0105`), model `XAI_MODEL` (default
 `grok-4.20-0309-non-reasoning`). With no key the action fails closed with a

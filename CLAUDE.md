@@ -526,7 +526,7 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   "AI-generated art; the voice is our own." (`voiced` on `PostArgs`) and
   the copy is rewritten on Save. This is the platforms' human-producer
   test being met on purpose; the four other daily posts stay automated.
-  - **And from 2026-09-15 the day's READER hands the road over to him**
+  - **And from 2026-09-08 the day's READER hands the road over to him**
     (`SPEAKER_SKIN`, `speakerFor`, `RenderInput.speaker`, `standFigure`): as
     the thought begins the reader turns edge-on and goes, and the `sharkey`
     skin — the founder's own, one of one — turns in on the same spot at the
@@ -537,9 +537,12 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
     a figure**, because on the two best backdrop tiers the reader is PAINTED
     INTO the picture and there is no layer to take away — the swap brings the
     bare road up over the painting, and only the built-in tier spins a figure
-    out. It is **dated rather than switched on**, because seven mornings were
-    already rendered and scheduled under the old look and a post should not
-    change shape mid-week. And it is **half a second**: the rule on this
+    out. It is **dated rather than switched on**, which is the cheap gate for a
+    look that starts on a day rather than on a deploy — and the date moved
+    once, from the 15th to the 8th, because the owner wanted it on the week
+    already scheduled. Moving it forward is not free: a scheduled post is
+    not a draft, so those seven had to be re-rendered, taken down with
+    `unpost` and posted again. And it is **half a second**: the rule on this
     layout is that the only thing moving is the caption, so a slow dissolve
     between two figures would be a second moving thing for as long as it
     lasted, where a flip is over before it reads as motion. Nothing here goes
@@ -710,6 +713,19 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   caption text. Two of that dashboard's tips are NOT reachable from Ayrshare
   and stay manual: there is no subtitle field for Facebook (the burned-in
   captions are what ships) and no Reels-playlist endpoint at all.
+- **A SCHEDULED post can be replaced, and only through `unpost`.** Ayrshare
+  has already taken the video by then and holds it against an id, so
+  re-rendering and replacing the file in the bucket reaches nothing, and
+  `post` alone would not replace the row either — it merges by platform and
+  would leave the day with TWO scheduled posts. `unpost` deletes by the id
+  in the day's own `posted-<kind>.json` (never by anything a caller sends,
+  so nothing outside this account's posts can be reached), treats a row
+  Ayrshare has forgotten as a success, and re-parks the record without the
+  deleted rows. **The re-post then needs `--attempt=2`**: Ayrshare refuses a
+  repeated `idempotencyKey` even for a post it has deleted, so without it the
+  replacement is rejected as a duplicate and the day ends up with nothing
+  scheduled at all — the one failure mode here that looks like success until
+  the morning it doesn't post.
 - **`analytics` is the operator's only scoreboard.** It reads Ayrshare's
   per-post numbers for one (date, kind), caches six hours, and the hub totals
   a week per network and per kind. Numbers about posts on other people's

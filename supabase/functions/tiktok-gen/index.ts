@@ -16,6 +16,7 @@
 //   loop-status { key, op }                      → { done, url? }    polls Veo; on completion parks readers/<key>.mp4
 //   copy        { date?, reference, text, theme, kind?, force?, question?, about? } → { hook, caption, hashtags[], platforms }  post copy per platform via Gemini Flash; kind (verse, story, quiz, challenge, challenge2, own) changes what the post is — a challenge passes its question, an own clip what it is about; cached at days/<date>/copy-<kind>.json
 //   story       { date, reference, text, ... }    → { title, hook, paragraphs[] }   the story behind the verse, cached at days/<date>/story.json
+//   unpost      { date, kind?, platforms? } → { results }  takes a SCHEDULED post back down by the id in the day's own record, so a re-rendered video can be posted again without leaving two
 //   thought     { date, kind?, place?, reference, text, paragraphs?, ..., force?, save?, peek? } → { text, words, source }  what the OPERATOR reads in his own voice: the ~110-word reflection after the verse (kind 'verse', days/<date>/thought.json), or — written from the story's own paragraphs (kind 'story') — the ~50-word closing word after it (place 'close', days/<date>/thought-story.json) or the ~35-word introduction handing over to Tabitha before it (place 'open', days/<date>/thought-story-intro.json). `save` parks his edit; `force` redrafts
 //   voice       { date, kind? }                   → the day's operator recording for that kind, if one is parked (days/<date>/voice-<verse|story>.json: the timed words the hub transcribed — a story coda carries an empty `verse`), else {}
 //   voice-clear { date, kind? }                   → { ok }             removes a parked recording and its transcript, so that post falls back to Gemini's voice alone
@@ -764,6 +765,45 @@ Deno.serve(async (req) => {
       const record = { date, kind, videoUrl, at: new Date().toISOString(), results: merged }
       await park(`days/${date}/posted-${kind}.json`, new TextEncoder().encode(JSON.stringify(record)), 'application/json')
       return json({ ...record, results })
+    }
+
+    // ---- unpost: take a SCHEDULED post back down --------------------------
+    //
+    // A scheduled post is not a draft — Ayrshare has already taken the video
+    // and holds it against an id. So a re-render cannot reach it by replacing
+    // the file in the bucket, and `post` would not replace the row either: it
+    // merges by platform and would leave the day with TWO scheduled posts.
+    // Taking the old one down first is the only honest way to change a post
+    // that has not gone out yet.
+    //
+    // It deletes by the id in the day's own record, never by anything a
+    // caller sends, so nothing outside this account's own posts can be
+    // reached. A row Ayrshare no longer knows about is a success, not a
+    // failure — the point is that it is gone. The record is re-parked with
+    // the deleted rows dropped, which is what lets `post` run again cleanly.
+    if (action === 'unpost') {
+      const date = String(input.date ?? '')
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: 'date must be YYYY-MM-DD' }, 400)
+      const kind = kindOf(input.kind)
+      const only = Array.isArray(input.platforms) ? new Set((input.platforms as unknown[]).map(String)) : null
+      const { data: file } = await admin.storage.from(BUCKET).download(`days/${date}/posted-${kind}.json`)
+      if (!file) return json({ error: `nothing posted for ${date} ${kind}` }, 400)
+      const record = JSON.parse(await file.text()) as Record<string, unknown>
+      const rows = Array.isArray(record.results) ? (record.results as Array<Record<string, unknown>>) : []
+      const out: Array<Record<string, unknown>> = []
+      const kept: Array<Record<string, unknown>> = []
+      for (const row of rows) {
+        const id = typeof row.id === 'string' ? row.id : ''
+        const platform = String(row.platform ?? '')
+        if (!id || (only && !only.has(platform))) { kept.push(row); if (!id) out.push({ platform, status: 'skipped', error: 'no id to delete' }); continue }
+        const r = await ayrshare('post', { id }, 'DELETE')
+        const gone = r.status === 'success' || /not found|does not exist/i.test(String(r.message ?? r.raw ?? ''))
+        out.push({ platform, id, status: gone ? 'deleted' : 'error', error: gone ? null : String(r.message ?? r.raw ?? r.status ?? 'unknown') })
+        if (!gone) kept.push(row)
+      }
+      const next = { ...record, at: new Date().toISOString(), results: kept }
+      await park(`days/${date}/posted-${kind}.json`, new TextEncoder().encode(JSON.stringify(next)), 'application/json')
+      return json({ date, kind, results: out })
     }
 
     if (action === 'posted') {

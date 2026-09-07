@@ -46,6 +46,10 @@
 //   node scripts/tiktok-voice.mjs render <date> [--story] [--intro]
 //       The post with the parked recording, as an H.264 MP4 in
 //       .tiktok-voice/out/. Posts nothing.
+//   node scripts/tiktok-voice.mjs unpost <date> [--story] [--platforms=a,b]
+//       Take a SCHEDULED post back down, so a re-rendered video can replace
+//       it. Re-post with --attempt=2: Ayrshare refuses a repeated
+//       idempotency key even for a post it has deleted.
 //   node scripts/tiktok-voice.mjs post <date> [--at HH:MM | --now] [--platforms a,b]
 //       Upload the rendered MP4 (and its cover) and schedule it at HH:MM in
 //       TIKTOK_TZ on that date (default: the verse's 07:00). Every network,
@@ -84,7 +88,7 @@ if (!TOKEN) fail('set TIKTOK_RUNNER_TOKEN')
 const [cmd, ...rest] = process.argv.slice(2)
 const flags = Object.fromEntries(rest.filter((a) => a.startsWith('--')).map((a) => { const [k, v] = a.slice(2).split('='); return [k, v ?? true] }))
 const args = rest.filter((a) => !a.startsWith('--'))
-if (!['drafts', 'listen', 'fix', 'render', 'post', 'clear', 'identify', 'split'].includes(cmd)) fail('usage: drafts | identify <files…> | listen <date> <file> [--story] | fix <date> <text file> [--story] | render <date> [--story] | post <date> [--story] [--at HH:MM|--now] | clear <date> [--story]')
+if (!['drafts', 'listen', 'fix', 'render', 'post', 'unpost', 'clear', 'identify', 'split'].includes(cmd)) fail('usage: drafts | identify <files…> | listen <date> <file> [--story] | fix <date> <text file> [--story] | render <date> [--story] | post <date> [--story] [--at HH:MM|--now] | clear <date> [--story]')
 const isDate = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d)
 // Two posts a day can carry the operator's voice: the morning VERSE (his
 // reading and his thought, in place of Gemini's) and his half of the evening
@@ -151,14 +155,26 @@ if (cmd === 'clear') {
   const date = args[0]; if (!isDate(date)) fail('clear <date>')
   await fn('voice-clear', { date, kind: KIND }); log(`cleared ${KIND} ${date}`); process.exit(0)
 }
+if (cmd === 'unpost') {
+  const date = args[0]; if (!isDate(date)) fail('unpost <date> [--story] [--platforms=a,b]')
+  const platforms = flags.platforms ? String(flags.platforms).split(',').map((x) => x.trim()) : undefined
+  const r = await fn('unpost', { date, kind: KIND, platforms })
+  for (const row of r.results ?? []) log(`  ${String(row.platform).padEnd(10)} ${row.status}${row.error ? ` — ${row.error}` : ''}`)
+  process.exit(0)
+}
 if (cmd === 'post') {
-  const date = args[0]; if (!isDate(date)) fail('post <date> [--at HH:MM|--now]')
+  const date = args[0]; if (!isDate(date)) fail('post <date> [--at HH:MM|--now] [--attempt=N]')
   const mp4 = mp4For(date, KIND)
   if (!fs.existsSync(mp4)) fail(`no ${mp4} — run render first`)
   await build({ entryPoints: [path.join(ROOT, 'supabase/functions/tiktok-gen/social.ts')], bundle: true, format: 'esm', platform: 'node', outfile: path.join(OUT, 'social.mjs'), logLevel: 'error' })
   const social = await import(path.join(OUT, 'social.mjs'))
   const platforms = String(flags.platforms || 'tiktok,youtube,facebook,instagram,x,snapchat,threads,pinterest').split(',').map((s) => s.trim()).filter((p) => social.postsOn(p, KIND))
   const at = String(flags.at || HOUR[KIND])
+  // Ayrshare refuses a repeated idempotency key even when the post it named
+  // was DELETED, so re-posting a date after `unpost` needs a new attempt
+  // number — without it the replacement is rejected as a duplicate and the
+  // day ends up with nothing scheduled at all.
+  const attempt = flags.attempt ? Number(flags.attempt) : undefined
   const scheduleDate = flags.now ? undefined : zonedToUtc(date, at, TZ).toISOString().replace(/\.\d{3}Z$/, 'Z')
   log(`post ${KIND} ${date} → ${scheduleDate ? `scheduled ${at} ${TZ} (${scheduleDate})` : 'now'} · ${platforms.join(',')}`)
   const videoUrl = await upload(`days/${date}/${KIND}.mp4`, mp4, 'video/mp4')
@@ -171,7 +187,7 @@ if (cmd === 'post') {
   const { getVerseForDate } = await import(path.join(OUT, 'verses.mjs'))
   for (const platform of platforms) {
     try {
-      const r = await fn('post', { date, kind: KIND, videoUrl, platforms: [platform], scheduleDate, reference: getVerseForDate(date).reference, seconds })
+      const r = await fn('post', { date, kind: KIND, videoUrl, platforms: [platform], scheduleDate, reference: getVerseForDate(date).reference, seconds, attempt })
       for (const row of r.results ?? []) log(`  ${row.platform.padEnd(10)} ${row.status}${row.error ? ` — ${row.error}` : ''}${row.postUrl ? ` ${row.postUrl}` : ''}`)
     } catch (e) { log(`  ${platform.padEnd(10)} error — ${String(e?.message || e).slice(0, 200)}`) }
   }

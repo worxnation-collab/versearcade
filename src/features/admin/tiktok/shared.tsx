@@ -228,7 +228,7 @@ export async function loopUrlFor(k: string): Promise<string | null> {
  * `retired` and owned by one account is untouched by it.
  */
 export const SPEAKER_SKIN = 'sharkey'
-export const SPEAKER_SKIN_FROM = '2026-09-15'
+export const SPEAKER_SKIN_FROM = '2026-09-08'
 
 /**
  * His figure and the bare road to stand it on, or null on a date before the

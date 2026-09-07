@@ -513,7 +513,9 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   "AI-generated art; the voice is our own." (`voiced` on `PostArgs`) and
   the copy is rewritten on Save. This is the platforms' human-producer
   test being met on purpose; the four other daily posts stay automated.
-  `docs/TIKTOK-ENGINE.md` → "Your voice".
+  `scripts/tiktok-voice.mjs` is the same loop from a terminal (drafts,
+  listen, render, post) for the sessions where the memos arrive here
+  rather than at the hub. `docs/TIKTOK-ENGINE.md` → "Your voice".
 - **The quiz replays YESTERDAY, and the CPU is the game's own.** The five
   questions are the same five for everybody on a date, so a public replay of
   today's would hand out today's answers. The player is `buildCpuPlan` from

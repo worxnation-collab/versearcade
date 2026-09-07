@@ -587,6 +587,15 @@ automated. Full workflow, in the order the operator does it:
    reading card shows a parked recording and a tick to force Gemini's
    voice for one render (`ownVoice: false`).
 
+**Or without the dashboard at all: `scripts/tiktok-voice.mjs`.** The same
+loop from a terminal, which is what a Claude Code session runs when the
+operator sends memos there instead of opening the hub — `drafts [start]
+[days]` prints the week as Markdown, `listen <date> <file>` parks and
+transcribes any phone memo, `render <date>` makes the verse post as an MP4
+to look at, and `post <date> [--at HH:MM]` schedules it only when asked.
+It bundles `src/lib/tiktokVoiceCli.ts` into headless Chromium the way the
+morning runner does, so all three doors render the same video.
+
 What the render does with it (`tiktokRender.ts`): the verse's words light
 gold on the operator's own timing; the reference shows plain through the
 beat of silence after the verse; then the thought plays, and for that

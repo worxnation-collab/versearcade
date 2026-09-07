@@ -36,7 +36,7 @@ function HowTo() {
       <ol style={{ fontSize: 13, lineHeight: 1.5, margin: 0, paddingLeft: 20, display: 'grid', gap: 4 }}>
         <li><b>Draft</b> a thought under each day’s verse (or write your own in the box). About 110 words is 45 seconds; the count is under the box.</li>
         <li><b>Record</b> on your phone — Voice Memos, in a quiet room, a hand’s width from your mouth. One take per verse: a beat of silence, <b>read the verse</b> a touch slower than you’d speak it, <b>don’t say the reference</b>, a beat of silence, then <b>say your thought</b>, then stop. A stumble is fine: restart the sentence and keep going.</li>
-        <li><b>Upload</b> the memo on its day. It’s decoded, listened to, and split into the verse and your thought. Read the transcript, fix any word it misheard, and <b>Save</b>.</li>
+        <li><b>Upload</b> the memo on its day — from the phone is fine. On a desktop it’s listened to right away and split into the verse and your thought: read the transcript, fix any word it misheard, and <b>Save</b>. From a phone it just uploads; the morning run listens on its own, or press <b>Listen</b> here on a desktop first if you want to check the words.</li>
         <li>That’s it. The 07:00 runner uses your recording for that date and Gemini’s voice for any date you skipped. <b>Make the post</b> here first if you want to see it.</li>
       </ol>
       <p className="faint" style={{ fontSize: 12, margin: 0, lineHeight: 1.4 }}>
@@ -98,6 +98,11 @@ function Day({ date, samples, onVoiced }: { date: string; samples: string[]; onV
   const [text, setText] = useState('')
   const [voice, setVoice] = useState<(VoiceTrack & { wavUrl: string }) | null>(null)
   const [pending, setPending] = useState<VoiceTrack | null>(null)
+  // A recording that was uploaded but never listened to: the WAV is in the
+  // bucket with no transcript beside it (the tab was closed mid-listen, or
+  // the listener failed). It is offered back rather than left invisible.
+  const [orphan, setOrphan] = useState<string | null>(null)
+  const [phoneNote, setPhoneNote] = useState(false)
   const [transcript, setTranscript] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
@@ -110,12 +115,17 @@ function Day({ date, samples, onVoiced }: { date: string; samples: string[]; onV
   useEffect(() => {
     let on = true
     setThought('loading'); setVoice(null); setPending(null); setMade(null)
+    setOrphan(null); setPhoneNote(false)
     ;(async () => {
       const [t, v] = await Promise.all([peekThought(date).catch(() => null), fetchVoice(date).catch(() => null)])
       if (!on) return
       setThought(t); setText(t?.text ?? '')
       setVoice(v); setTranscript(v?.text ?? '')
       if (v) onVoiced(date, v.text)
+      if (!v) {
+        const wav = publicUrl(voiceWavPath(date)) + '?v=' + Date.now()
+        if (await existsAt(wav, 'audio/') && on) setOrphan(wav)
+      }
     })()
     return () => { on = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -138,6 +148,10 @@ function Day({ date, samples, onVoiced }: { date: string; samples: string[]; onV
 
   // The recording: decode → park the WAV → listen → split. The transcript is
   // shown for correction before anything the renderer reads is written.
+  const listen = async (m: typeof import('@/lib/tiktokVoice'), dec: { samples: Float32Array; sampleRate: number }) => {
+    const track = await m.splitRecording(dec.samples, dec.sampleRate, verse.text, verse.reference, (label) => { setBusy(label); setProgress(0.5) })
+    setPending(track); setTranscript(track.text); setOrphan(null)
+  }
   const upload = (f: File | undefined) => {
     if (!f) return
     void run('Decoding', async () => {
@@ -147,10 +161,21 @@ function Day({ date, samples, onVoiced }: { date: string; samples: string[]; onV
       setBusy('Uploading the recording'); setProgress(0.1)
       await parkFile(voiceWavPath(date), dec.wav, 'audio/wav')
       setProgress(0.2)
-      const track = await m.splitRecording(dec.samples, dec.sampleRate, verse.text, verse.reference, (label) => { setBusy(label); setProgress(0.5) })
-      setPending(track); setTranscript(track.text)
+      // A phone uploads and stops there: the listener is more than a phone's
+      // tab can hold (it crashed the page on the first two real uploads).
+      // The desktop hub or the morning runner listens to it.
+      if (m.isPhone()) { setOrphan(publicUrl(voiceWavPath(date)) + '?v=' + Date.now()); setPhoneNote(true); return }
+      await listen(m, dec)
     })
   }
+  // Listen again to the WAV already in the bucket — no re-upload.
+  const relisten = () => run('Fetching the recording', async () => {
+    const m = await import('@/lib/tiktokVoice')
+    const src = orphan ?? (voice ? voice.wavUrl + '?v=' + Date.now() : null)
+    if (!src) return
+    const dec = await m.decodeRecording(await (await fetch(src)).blob())
+    await listen(m, dec)
+  })
   const commit = () => run('Saving', async () => {
     const m = await import('@/lib/tiktokVoice')
     const base = pending ?? voice
@@ -165,7 +190,7 @@ function Day({ date, samples, onVoiced }: { date: string; samples: string[]; onV
   })
   const remove = () => run('Removing', async () => {
     await call('voice-clear', { date })
-    setVoice(null); setPending(null); setTranscript('')
+    setVoice(null); setPending(null); setTranscript(''); setOrphan(null)
     onVoiced(date, null)
   })
   const make = () => run('Making the post', async () => {
@@ -175,13 +200,14 @@ function Day({ date, samples, onVoiced }: { date: string; samples: string[]; onV
 
   const status = voice ? `🎙 parked · ${Math.round(voice.seconds)}s · verse ${voice.verseMatched}/${voice.verse.length} words heard · thought ${wordCount(voice.text)} words`
     : pending ? 'listened — read the transcript, then Save'
+      : orphan ? 'recording uploaded · the morning run will listen to it, or press Listen on a desktop'
       : thought && thought !== 'loading' ? `draft ready · ${thought.words} words · ~${Math.round(thought.words / 2.4)}s` : 'nothing yet'
   const total = voice ? Math.round(voice.seconds + 3) : null
 
   return (
     <div className="card" style={{ display: 'grid', gap: 8, marginBottom: 10 }}>
       <button onClick={() => setOpen((o) => !o)} style={{ all: 'unset', cursor: 'pointer', display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 10, alignItems: 'center' }}>
-        <span style={{ fontSize: 22 }}>{voice ? '🎙️' : pending ? '👂' : '📅'}</span>
+        <span style={{ fontSize: 22 }}>{voice ? '🎙️' : pending ? '👂' : orphan ? '⏳' : '📅'}</span>
         <span>
           <b style={{ fontFamily: 'var(--font-display)', fontSize: 15 }}>{date} · {verse.reference}</b>
           <span className="faint" style={{ fontSize: 11, display: 'block' }}>{status}{total ? ` · post ≈ ${total}s${total < 60 ? ' (under a minute — say a little more for TikTok’s rewards floor)' : ''}` : ''}</span>
@@ -211,9 +237,13 @@ function Day({ date, samples, onVoiced }: { date: string; samples: string[]; onV
                 {voice ? '🎙 Replace the recording' : '🎙 Upload the recording'}
                 <input type="file" accept="audio/*,.m4a,.mp3,.wav,.webm,.ogg,.aac" style={{ display: 'none' }} disabled={!!busy} onChange={(e) => { upload(e.target.files?.[0]); e.target.value = '' }} />
               </label>
-              {voice && <a className="faint" style={{ fontSize: 11 }} href={voice.wavUrl} target="_blank" rel="noreferrer">listen ↗</a>}
-              {voice && <button className="pill" style={{ fontSize: 11, marginLeft: 'auto' }} disabled={!!busy} onClick={remove}>✕ Remove</button>}
+              {(orphan || voice) && !pending && !phoneNote && <button className="pill" style={{ fontSize: 12 }} disabled={!!busy} onClick={relisten}>{orphan ? '👂 Listen to it' : '👂 Listen again'}</button>}
+              {voice && <a className="faint" style={{ fontSize: 11 }} href={voice.wavUrl} target="_blank" rel="noreferrer">play ↗</a>}
+              {(voice || orphan) && <button className="pill" style={{ fontSize: 11, marginLeft: 'auto' }} disabled={!!busy} onClick={remove}>✕ Remove</button>}
             </div>
+            {orphan && !pending && (phoneNote
+              ? <p style={{ fontSize: 12, margin: 0, color: 'var(--mint)' }}>✓ Uploaded. A phone doesn’t listen to it (too much for the browser): open this card on a desktop and press Listen to read the transcript, or leave it — the morning run listens on its own and uses your voice.</p>
+              : <p className="faint" style={{ fontSize: 12, margin: 0 }}>The recording is uploaded but not listened to yet. Listen to it takes about half a minute on a desktop and shows the transcript. Left alone, the morning run listens on its own.</p>)}
             {(pending || voice) && (
               <>
                 <div className="faint" style={{ fontSize: 11 }}>

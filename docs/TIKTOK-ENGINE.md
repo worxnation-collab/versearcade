@@ -558,7 +558,13 @@ automated. Full workflow, in the order the operator does it:
 2. **Record.** A phone voice memo: a beat of silence, the verse read a touch
    slower than speech, no reference (the end card has it), a beat, the
    thought, stop. One take, don't edit.
-3. **Upload.** `lib/tiktokVoice.ts` does the rest in the operator's tab.
+3. **Upload — from the phone is fine, and a phone only uploads.** The
+   listener is ~140MB of Whisper in WASM and blanked an iPhone tab twice, so
+   on a phone the card stops at the parked WAV; the desktop hub offers
+   **Listen to it** for a recording with no transcript beside it, and the
+   morning runner listens on its own (`ensureVoice`, `make.ts`) when nothing
+   has, rewriting the day's copy at that moment. On a desktop
+   `lib/tiktokVoice.ts` does the rest in the operator's tab.
    `decodeRecording` turns whatever the phone produced into a mono 24 kHz
    WAV, trimmed and levelled to where Gemini's readings sit, parked at
    `days/<date>/voice-verse.wav`. `splitRecording` transcribes it with the
@@ -594,13 +600,21 @@ over the painting alone.
 
 Two things learned on the first synthetic recording, both in the code:
 
-- **Whisper is run per stretch of speech, never over the whole file.** Its
-  30-second windows stopped early at the long pause between the verse and
-  the thought — exactly the pause the operator is asked to leave — and
-  eleven seconds of speech after it simply never appeared. `speechSegments`
-  cuts the audio on its own pauses, neighbouring runs are grouped into
-  pieces of about twenty seconds, and each piece is listened to alone with
-  its timestamps offset back.
+- **The recording is tiled into window-sized pieces, and nothing is
+  skipped.** Whisper's 30-second windows stopped early at the long pause
+  between the verse and the thought and dropped the speech after it; a
+  silence detector tuned for clean TTS then called a 79-second phone memo
+  ONE run and half the thought vanished the same way. `tilePieces` cuts the
+  whole file at its quietest quarter-seconds (a pause is the quietest thing
+  in reach, so cuts land in pauses), each piece is heard with a margin and
+  keeps the words whose midpoint falls in it, a piece that comes back with
+  speech left unheard is heard again, and a piece's first word starts at
+  its first sound rather than Whisper's 0.00. The verse is matched in the
+  opening stretch only and ends at its last heard word, because a re-quoted
+  "to the saints" inside the thought was once taken as the verse's ending.
+  The operator's words are read by Whisper **base** (tiny turned "Jude
+  writes this letter" into "writes the slider"); when base's word clock
+  collapses on a short piece, tiny's clock stands in.
 - **Whisper names what it can't read**, `[BLANK_AUDIO]`, `[ Pause ]`, and a
   breath that tripped the speech detector comes back as one. Anything
   bracketed is dropped before it can be captioned.

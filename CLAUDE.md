@@ -582,29 +582,35 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   xAI key: `XAI_API_KEY` or Vault `tiktok_xai_key()` (0105); no key ⇒ a
   clear error and nothing posted. `lib/tiktokChallenge.ts` is the pure
   question picker both the renderer and the replier use.
-- **Every posted link is the PLAYABLE verse, tagged with its network**
-  (`siteLink` in `social.ts`: `versearcade.org/play?src=<platform>`), and
-  `trackLinks` rewrites any bare site mention the model wrote into that
-  shape, so no caption goes out untagged. **Facebook is the exception and
-  it is deliberate**: a Reel with an outbound link in its caption is shown
-  to fewer people (Facebook's own Professional dashboard says so), so the
-  Facebook caption carries NO url — `dropLinkSentence` takes out whatever
-  the model wrote, the ask becomes share + follow, and the tracked link
-  rides as Ayrshare's `firstComment`, posted when the Reel publishes, which
-  is also the only moment a SCHEDULED post has an id to comment on. Two of
-  that dashboard's tips are NOT reachable from Ayrshare and stay manual:
-  there is no subtitle field for Facebook (the burned-in captions are what
-  ships) and no Reels-playlist endpoint at all. The client parks the first `src`
-  it sees (`lib/attribution.ts`, `va.src`, stripped from the address bar on
-  capture, same lifetime as the referral code) and hands it to
-  `set_signup_source` (0106) once an account exists. **The server keeps only
-  the first value and only for an account under seven days old**, so a
-  long-time player opening a tracked link is never re-filed. The hub's
-  weekly table carries a Sign-ups column per network from
-  `admin_signup_sources`; that is the number goal one is judged by, and it
-  reaches no player, no board, nothing that ranks a person by where they
-  came from. TikTok, Snapchat and Instagram captions are not tappable, so
-  their bio links are set BY HAND to the same shape.
+- **NO CAPTION CARRIES A LINK, on any network, and the ask is always the
+  share.** Two reasons, and only the first is measurable: Facebook's own
+  Professional dashboard names "remove links from your caption" among the
+  things a Reel is rewarded for, and every feed that ranks video treats an
+  outbound link the same way. The one that decided it is that a post ending
+  in a URL reads as an advertisement, and these have to read as something a
+  person would say and pass on — the brand is IN the video (end card, site,
+  reference), so the caption is just the words. `dropLinkSentence` removes
+  whole any sentence carrying a versearcade.org mention and `callToAction`
+  ends every caption with "Share this with someone who needs to hear it
+  today." (a challenge asks for the comment first). There is deliberately no
+  second ask: a caption asking for a share AND a follow AND a comment asks
+  for none of them, and a share reaches a stranger's feed where a follow ask
+  reaches only people already watching.
+- **The tracked link moves rather than goes** (`siteLink` in `social.ts`:
+  `versearcade.org/play?src=<platform>`, what `set_signup_source` (0106)
+  files a sign-up under — the number goal one is judged by, so losing it was
+  never an option). It rides as Ayrshare's `firstComment` on **Facebook,
+  YouTube and X**, added when the post publishes, which is also the only
+  moment a SCHEDULED post has an id to comment on; all three were validated
+  against the live API before shipping. Ayrshare would post a first comment
+  on TikTok and Instagram too, but a link in a comment there is dead text,
+  and Snapchat, Threads and Pinterest have no comment endpoint at all — so
+  those five carry `?src=` in their **bio link, set BY HAND** (TikTok,
+  Snapchat and Instagram already did; **Threads joins them**). Pinterest also
+  keeps it in `pinterestOptions.link`, the pin's destination rather than
+  caption text. Two of that dashboard's tips are NOT reachable from Ayrshare
+  and stay manual: there is no subtitle field for Facebook (the burned-in
+  captions are what ships) and no Reels-playlist endpoint at all.
 - **`analytics` is the operator's only scoreboard.** It reads Ayrshare's
   per-post numbers for one (date, kind), caches six hours, and the hub totals
   a week per network and per kind. Numbers about posts on other people's

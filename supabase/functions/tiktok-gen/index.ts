@@ -566,15 +566,16 @@ Deno.serve(async (req) => {
               : voiced
                 ? `the app's maker reads the verse of the day in his own voice over a painted road, then says one plain thing about it (about a minute). Write in his voice, first person, plain. `
                 : `a painted figure of Peter (Cephas) reads the verse of the day. `
-      // What each caption asks for, and it differs by network on purpose:
-      // nothing in a TikTok or Snapchat caption is tappable, so a URL there
-      // is a dead string and the ask is the follow; the others carry a link —
-      // except FACEBOOK, whose caption carries none at all (a Reel with a link
-      // in it is shown to fewer people; social.ts puts it in the first comment).
-      // social.ts appends the same ask if the words come back without it.
-      const ask = challenge
-        ? { tiktok: 'ends by asking people to comment their answer and to follow for tomorrow\'s (NO URL: nothing in a TikTok caption is tappable)', yt: 'asks people to comment their answer, then', fb: 'asks people to comment their answer, then', ig: 'ends with "Comment your answer. Play it — link in bio."', x: 'asks people to comment their answer, ending with', th: 'asks people to comment their answer, ending with "Play it: versearcade.org"' }
-        : { tiktok: 'ends by inviting people to follow for tomorrow\'s verse (NO URL: nothing in a TikTok caption is tappable)', yt: '', fb: '', ig: 'ending with "Play today\'s verse — link in bio."', x: 'ending with', th: 'ending with "Play today\'s verse: versearcade.org"' }
+      // NO CAPTION CARRIES A LINK, on any network, and the ask is the same
+      // everywhere: share it with somebody. See dropLinkSentence and
+      // callToAction in social.ts for why, and for where the tracked link
+      // goes instead (a first comment on three networks, the bio link on the
+      // other five). social.ts strips a link and appends the ask if the words
+      // come back with one or without the other, so this prompt is the tone
+      // rather than the guarantee.
+      const shareAsk = challenge
+        ? 'ends by asking people to comment their answer and then share it with someone who needs to hear it'
+        : 'ends by inviting people to share it with someone who needs to hear it'
       // Pinterest is a search engine, so its words are the ones somebody would
       // type: the reference, the book, "Bible verse", the theme — in the
       // title first, because the title is what Pinterest matches on.
@@ -585,13 +586,15 @@ Deno.serve(async (req) => {
           `Today's verse is ${reference}: "${text}" (theme: ${theme || 'unspecified'}). The same vertical video is posted to TikTok, YouTube Shorts, Facebook and Instagram Reels, X, Snapchat, Threads and Pinterest, and each wants its own words.\n\n` +
           `Return JSON with:\n` +
           `"hook": one on-screen opening line, max 8 words, no emoji, not a question.\n` +
-          `"tiktok": { "text": 1-2 short sentences, casual and warm, under 150 characters, no hashtags in it, ${ask.tiktok}; "tags": 5 lowercase hashtags without the # sign }.\n` +
-          `"youtube": { "title": a Shorts title under 70 characters that names the verse reference and what the video is; "text": 2-4 sentences for the description, plain, ${ask.yt} with the line "Play today's verse: https://versearcade.org" on its own line at the end; "tags": 5 lowercase hashtags without the # sign, the first one "shorts" }.\n` +
-          `"facebook": { "text": 2-4 conversational sentences, a little longer and more personal than the others, no hashtags in it and NO LINK OR URL ANYWHERE (Facebook shows a Reel with a link in its caption to fewer people; the link goes in the first comment instead), ${ask.fb} ending by asking people to share it with someone who needs it today; "tags": 2 lowercase hashtags without the # sign }.\n` +
-          `"instagram": { "text": 2-3 short sentences with a line break between them, no hashtags in it, ${ask.ig}; "tags": 10 lowercase hashtags without the # sign, mixing broad #bible-style tags with the verse's own theme }.\n` +
-          `"x": { "text": one line under 200 characters, plain and direct, no hashtags in it, ${ask.x} versearcade.org; "tags": 2 lowercase hashtags without the # sign }.\n` +
-          `"threads": { "text": 1-3 short conversational sentences under 300 characters, the kind of thing a person would say rather than a brand, no hashtags in it, ${ask.th}; "tags": 2 lowercase hashtags without the # sign }.\n` +
-          `"pinterest": { "title": a pin title under 90 characters that starts with the verse reference, then a few plain words of what it says, then "| Daily Bible Verse" (it is ${pinAsk}); "text": 2-3 sentences under 400 characters written for SEARCH — name the book, the reference, the words "Bible verse" and the theme naturally, say what the pin is, no hashtags in it, ending with "Play today's verse: versearcade.org"; "tags": 3 lowercase hashtags without the # sign, the first "bibleverse" }.\n\n` +
+          `"tiktok": { "text": 1-2 short sentences, casual and warm, under 150 characters, no hashtags in it, ${shareAsk}; "tags": 5 lowercase hashtags without the # sign }.\n` +
+          `"youtube": { "title": a Shorts title under 70 characters that names the verse reference and what the video is; "text": 2-4 sentences for the description, plain, ${shareAsk}; "tags": 5 lowercase hashtags without the # sign, the first one "shorts" }.\n` +
+          `"facebook": { "text": 2-4 conversational sentences, a little longer and more personal than the others, no hashtags in it, ${shareAsk}; "tags": 2 lowercase hashtags without the # sign }.\n` +
+          `"instagram": { "text": 2-3 short sentences with a line break between them, no hashtags in it, ${shareAsk}; "tags": 10 lowercase hashtags without the # sign, mixing broad #bible-style tags with the verse's own theme }.\n` +
+          `"x": { "text": one line under 180 characters, plain and direct, no hashtags in it, ${shareAsk}; "tags": 2 lowercase hashtags without the # sign }.\n` +
+          `"threads": { "text": 1-3 short conversational sentences under 300 characters, the kind of thing a person would say rather than a brand, no hashtags in it, ${shareAsk}; "tags": 2 lowercase hashtags without the # sign }.\n` +
+          `"pinterest": { "title": a pin title under 90 characters that starts with the verse reference, then a few plain words of what it says, then "| Daily Bible Verse" (it is ${pinAsk}); "text": 2-3 sentences under 400 characters written for SEARCH — name the book, the reference, the words "Bible verse" and the theme naturally, say what the pin is, no hashtags in it, ${shareAsk}; "tags": 3 lowercase hashtags without the # sign, the first "bibleverse" }.\n\n` +
+          `Write like a person who was struck by this verse and is telling a friend — plain, warm, specific. Not a brand, not an ad, no slogans, no "don't miss", no urgency. Each post has to make sense and be worth passing on ON ITS OWN, with nothing to click.\n` +
+          `NO LINKS ANYWHERE: no URL, no versearcade.org, no domain, no "link in bio", no "in the app", and never name the app. The video says who made it.\n` +
           `Never rank, compare or shame anyone. Never claim a fact that isn't in the verse. Never give away a quiz answer. No emoji anywhere.` }] }],
         generationConfig: { responseMimeType: 'application/json', temperature: 0.8 },
       })

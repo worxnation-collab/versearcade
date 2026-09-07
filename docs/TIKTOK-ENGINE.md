@@ -91,8 +91,9 @@ title and hashtag count. The key lives in Vault (`tiktok_ayrshare_key()`,
 - **The per-platform options are deliberate.** YouTube: `shorts`, public,
   not made for kids, `containsSyntheticMedia` (the voice is synthetic).
   TikTok: public, `isAIGenerated` for the same reason, caption on one line
-  because TikTok drops line breaks. Facebook: a Reel with the hook as its
-  title, no link in the caption, and the link as a first comment. Instagram: a Reel shared to the feed, five hashtags at most. X: one
+  because TikTok drops line breaks (`withAsk` collapses the model's own
+  paragraph breaks for the two networks that flatten them). Facebook: a Reel
+  with the hook as its title. Instagram: a Reel shared to the feed, five hashtags at most. X: one
   line under 280 characters with two tags (and Ayrshare still calls it
   `twitter` on the wire — `ayrshareName()` in `social.ts` is the one place
   that translates). Threads: 500 characters, links tappable, the AI note in
@@ -144,27 +145,44 @@ title and hashtag count. The key lives in Vault (`tiktok_ayrshare_key()`,
   the first run after it is linked simply reaches it. The record is merged
   over the earlier one, and the runner re-posts only to platforms not yet
   accepted.
-- **The ask at the end of a caption is per network, on purpose.** Nothing in
-  a TikTok or Snapchat caption is tappable, so a URL there is a dead string
-  and those two ask for the follow ("Follow for tomorrow's verse") — the one
-  number that decides whether tomorrow's post reaches anyone. Instagram's ask
-  is the bio link, YouTube's and X's are live URLs. A challenge
-  asks for the comment first. The copy prompt asks for each network's own
-  ask, and `callToAction()` / `withAsk()` in `social.ts` append it when the
-  words come back without one, so the guarantee does not rest on the model.
-- **Facebook's caption carries no link, and the link goes in the FIRST
-  COMMENT instead.** Facebook's own Professional dashboard lists "remove
-  links from your caption" among the things a Reel is rewarded for, beside
-  asking the community to share and growing the following — so the Facebook
-  ask is now "Share this with someone who needs it today. Follow Verse
-  Arcade for tomorrow's verse.", the copy prompt is told to write no URL at
-  all, and `dropLinkSentence()` removes whole any link sentence the model
-  wrote anyway (the same helper X uses). Attribution is not lost: the
-  tracked `?src=facebook` link rides as Ayrshare's `firstComment`, which it
-  adds once the Reel is actually published — which is also the only moment a
-  SCHEDULED post has an id to comment on. Validated against the live API
-  before shipping (a scheduled Facebook post with `firstComment` is accepted
-  by Ayrshare's pre-validation, then deleted).
+- **No caption carries a link, on any network, and the ask is the same
+  everywhere: share it.** Two reasons. The measurable one is Facebook's own
+  Professional dashboard, which lists "remove links from your caption" among
+  the things a Reel is rewarded for, and every feed that ranks video treats
+  an outbound link the same way. The one that decided it is that a post
+  ending in a URL reads as an advertisement, and these have to read as
+  something a person would say and pass on. The brand is IN the video — the
+  end card, the site, the reference — so the caption is just the words.
+  `dropLinkSentence()` removes whole any sentence carrying a versearcade.org
+  mention (a bare mention as well as a real URL: the model writes both) and
+  `callToAction()` puts "Share this with someone who needs to hear it today."
+  on the end. A challenge asks for the comment first and the share second.
+  There is deliberately NO second ask — a caption asking for a share and a
+  follow and a comment asks for none of them, and the follow is the weaker
+  one anyway: it reaches people already watching, where a share reaches a
+  stranger's feed. The copy prompt asks for the same tone; social.ts is the
+  guarantee, over words a model may not have written that way.
+- **The tracked link is not lost — it moves.** On **Facebook, YouTube and X**
+  it goes out as Ayrshare's `firstComment`, added when the post actually
+  publishes, which is also the only moment a SCHEDULED post has an id to
+  comment on. All three were validated against the live API before shipping
+  (a scheduled post carrying `firstComment` is accepted by Ayrshare's
+  pre-validation, then deleted). The other five are deliberate omissions:
+  Ayrshare will post a first comment on **TikTok** and **Instagram**, but a
+  link in a comment there is dead text, so one would buy nothing; **Snapchat,
+  Threads and Pinterest** have no comment endpoint on Ayrshare at all. Those
+  five carry `?src=<network>` in their **bio link, set by hand** — which is
+  what TikTok, Snapchat and Instagram already did, with **Threads joining
+  them**. Pinterest also keeps its tracked URL in `pinterestOptions.link`,
+  which is the pin's DESTINATION rather than caption text: tapping a pin is
+  following the link.
+- **Snapchat's 160 characters are budgeted by what must survive them.** The
+  AI disclosure first (its Spotlight review rejected the first verse as
+  "undisclosed AI-generated content"), then the words, then a SHORT form of
+  the ask, then a tag if there is room. What gets shortened is the model's
+  words, cut at a whole SENTENCE where one fits and only otherwise at a word
+  — a `slice(0, 160)` over the assembled post ended one halfway through the
+  word "share".
 - **Two of Facebook's tips are not reachable from the API and stay manual.**
   Ayrshare's Facebook options carry no subtitle or caption-file field, so a
   real CC track cannot be attached from here — the videos' burned-in
@@ -540,16 +558,17 @@ mechanism anyway.
 
 ## Where the sign-ups come from
 
-Every link a post carries is `https://versearcade.org/play?src=<network>`
-(`siteLink` in `social.ts`; `trackLinks` rewrites any bare site mention the
-copy model wrote — except on Facebook, where the link is the post's first
-comment rather than caption text). `/play` is open to a guest, so the stranger plays today's
+No caption carries a link. The tracked link is
+`https://versearcade.org/play?src=<network>` (`siteLink` in `social.ts`) and
+it reaches people two ways: as the post's FIRST COMMENT on Facebook, YouTube
+and X, and as the profile's BIO LINK — set by hand, same shape — on TikTok,
+Snapchat, Instagram and Threads. Pinterest carries it as the pin's own
+destination. `/play` is open to a guest, so the stranger plays today's
 verse first and meets the account wall with a streak started — that is the
 conversion path, not the homepage. The client keeps the first `src` it sees
 (`lib/attribution.ts`), and `set_signup_source` (0106) files a NEW account
 under it, once, server-side. The hub's weekly table shows Sign-ups beside
-views per network. Bio links for TikTok, Snapchat and Instagram are set by
-hand to the same shape, since nothing in those captions is tappable.
+views per network.
 
 xAI credits: `XAI_API_KEY` as a function secret or Vault through
 `tiktok_xai_key()` (`0105`), model `XAI_MODEL` (default

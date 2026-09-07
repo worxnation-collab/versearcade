@@ -285,28 +285,42 @@ try {
     log(`heard ${heard.seconds.toFixed(0)}s · ${heard.words.length} words`)
     if (flags.dry) log(`  transcript: ${heard.text.slice(0, 600)}`)
     // The take numbers. Whisper writes them as words or as digits, so both
-    // are read, and a number only STARTS a take when a real pause sits in
-    // front of it — otherwise "one" inside a sentence would cut the take in
-    // half. The first word of the recording needs no pause before it.
+    // are read, and the operator may say "day four" or just "four" — the
+    // marker is the number with an optional lead word in front of it.
+    //
+    // A number only STARTS a take when a real pause sits before the MARKER,
+    // not before the number: "Day 4" has no gap between the two words, so
+    // testing the number alone found nothing at all in the first real batch.
+    // And a marker must follow the last one in order, so a "one" inside a
+    // sentence cannot cut a take in half.
     const NUM = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20 }
+    const LEAD = new Set(['day', 'take', 'number', 'no'])
     const GAP = 0.9
+    const word = (i) => (heard.words[i] ? heard.words[i].text.toLowerCase().replace(/[^a-z0-9]/g, '') : '')
     const marks = []
     heard.words.forEach((w, i) => {
-      const k = w.text.toLowerCase().replace(/[^a-z0-9]/g, '')
+      const k = word(i)
       const n = NUM[k] ?? (/^\d{1,2}$/.test(k) ? Number(k) : 0)
       if (!n || n > days) return
-      const prev = heard.words[i - 1]
-      if (prev && w.start - prev.end < GAP) return
+      const head = LEAD.has(word(i - 1)) ? i - 1 : i
+      const prev = heard.words[head - 1]
+      if (prev && heard.words[head].start - prev.end < GAP) return
       if (marks.length && n !== marks[marks.length - 1].n + 1) return
       if (!marks.length && n !== 1) return
-      marks.push({ n, i, at: w.start, end: w.end })
+      marks.push({ n, i, at: heard.words[head].start, end: w.end })
     })
     log(`found ${marks.length} of ${days} takes`)
     if (marks.length !== days) log('  (the run stops at the last number found in order — check the cut below)')
     const takes = marks.map((m, k) => {
       const words = heard.words.slice(m.i + 1, marks[k + 1] ? marks[k + 1].i : heard.words.length)
       const from = words[0] ? Math.max(m.end, words[0].start - 0.35) : m.end
-      const to = words.length ? Math.min(heard.seconds, words[words.length - 1].end + 0.5) : from
+      // The tail is clamped to before the NEXT marker, not just to the last
+      // word plus a beat: the words are sliced correctly either way, so a
+      // take that ran long would carry "day nine" as audio with no caption
+      // under it — a stray spoken number in the finished video, and the one
+      // failure here that a transcript check cannot see.
+      const next = marks[k + 1] ? marks[k + 1].at - 0.15 : heard.seconds
+      const to = words.length ? Math.min(next, words[words.length - 1].end + 0.5) : from
       return { date: addDays(start, m.n - 1), n: m.n, from, to, words, text: words.map((w) => w.text).join(' ') }
     })
     for (const t of takes) log(`  ${String(t.n).padStart(2)} ${t.date}  ${t.from.toFixed(1)}–${t.to.toFixed(1)}s (${(t.to - t.from).toFixed(1)}s ${t.words.length}w)  ${t.text.slice(0, 74)}`)

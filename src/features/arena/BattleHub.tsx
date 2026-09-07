@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { gatheringLabel, gatheringOpen } from '@/data/gathering'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Page } from '@/components/Page'
@@ -206,8 +207,11 @@ export default function BattleHub() {
               battle that always works. */}
           <div style={{ marginTop: 10 }}>
             <Button full onClick={() => { juice.coin(); navigate('/battle/live') }}>
-              🔴 Live battle — same verse, same moment
+              {gatheringOpen() ? '🔴 Live battle — it’s the gathering hour' : '🔴 Live battle — same verse, same moment'}
             </Button>
+            <p className="faint center" style={{ fontSize: 11, margin: '6px 0 0', lineHeight: 1.4 }}>
+              {gatheringOpen() ? 'People are likeliest to be looking right now.' : `Everyone’s told to come at ${gatheringLabel()} — the gathering hour.`}
+            </p>
           </div>
           <p className="faint center" style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
             Quick match anyone who’s looking, or share a room code.

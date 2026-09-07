@@ -19,6 +19,11 @@ import { useSettings } from '@/store/settings'
 import { useCollection } from '@/store/collection'
 import { useDailyTrivia } from '@/store/dailyTrivia'
 import { useFirstLight } from '@/store/firstLight'
+import { useWeekly } from '@/store/weekly'
+import { useReminders } from '@/store/reminders'
+import { useBible } from '@/store/bible'
+import { useKeep } from '@/store/keep'
+import { WeekRecapBody } from './WeekRecap'
 import { Tutorial } from './Tutorial'
 import { InstallPrompt } from './InstallPrompt'
 import { AppStoreNudge } from './AppStoreNudge'
@@ -90,7 +95,13 @@ export default function HomeScreen() {
   const setSettings = useSettings((s) => s.set)
   const [countdown, setCountdown] = useState(msUntilNextLocalMidnight())
   const [tutorialOpen, setTutorialOpen] = useState(false)
-  const [sheet, setSheet] = useState<null | 'chest' | 'lantern' | 'account'>(null)
+  const [sheet, setSheet] = useState<null | 'chest' | 'lantern' | 'account' | 'week'>(null)
+  const recap = useWeekly((s) => s.recap)
+  const recapSeen = useWeekly((s) => s.seen)
+  const snapshotWeek = useWeekly((s) => s.snapshot)
+  const bibleLoaded = useBible((s) => s.loaded)
+  const collectionLoaded = useCollection((s) => s.loaded)
+  const keepLoaded = useKeep((s) => s.loaded)
 
   useEffect(() => {
     loadToday()
@@ -113,6 +124,31 @@ export default function HomeScreen() {
       setSettings({ tutorialSeen: true })
     }
   }, [tutorialSeen, playedToday, profile.totalPlays, setSettings])
+
+  // "Your week": record today's numbers once the three stores it reads are in,
+  // and re-record as they move (a play, a chapter, a chest) so the last snapshot
+  // of a day is never a stale one. Cheap — one localStorage write.
+  useEffect(() => {
+    if (!bibleLoaded || !collectionLoaded || !keepLoaded) {
+      if (!useBible.getState().loaded) void useBible.getState().load()
+      if (!useKeep.getState().loaded) void useKeep.getState().load()
+      return
+    }
+    snapshotWeek()
+  }, [snapshotWeek, bibleLoaded, collectionLoaded, keepLoaded, profile.xp, profile.totalPlays, playedToday])
+
+  // The recap opens ITSELF once, the first time it is ready on a device — a
+  // pill nobody knows to tap is a recap nobody reads. After that it waits in
+  // the pill row for the rest of the week.
+  useEffect(() => {
+    if (recap && !recapSeen && !tutorialOpen) setSheet('week')
+  }, [recap, recapSeen, tutorialOpen])
+
+  // The device's reminders read `playedToday` (a played day's nudge is
+  // dropped), so a finished run has to re-plan them. No-op off native.
+  useEffect(() => {
+    if (playedToday && useReminders.getState().supported) void useReminders.getState().reschedule()
+  }, [playedToday])
 
   // Finishing a run can have claimed the day (`submit_play` records the open
   // too), so re-read when the played flag flips rather than leaving a stale
@@ -146,10 +182,16 @@ export default function HomeScreen() {
         </div>
       </div>
 
-      {/* Streak-freeze reassurance (kind loss-aversion made visible) */}
-      {profile.streakFreezes > 0 && profile.currentStreak > 0 && (
+      {/* The streak's safety net, made visible — and only while it matters.
+          Once today's verse is played the streak is safe whatever happens, so
+          the line goes; before that it says what the freezes are FOR. A streak
+          with no freeze behind it gets the plain fact and nothing louder: the
+          verse box below is the answer, and a warning is not this app's voice. */}
+      {!playedToday && profile.currentStreak > 0 && (
         <p className="faint" style={{ fontSize: 12, marginBottom: 10 }}>
-          🛟 {profile.streakFreezes} streak freeze{profile.streakFreezes > 1 ? 's' : ''} — miss a day and your streak survives.
+          {profile.streakFreezes > 0
+            ? `🛟 Your ${profile.currentStreak}-day streak is safe tonight even if you miss — ${profile.streakFreezes} freeze${profile.streakFreezes > 1 ? 's' : ''} held.`
+            : `🔥 ${profile.currentStreak} day${profile.currentStreak > 1 ? 's' : ''} running — today’s verse keeps it going.`}
         </p>
       )}
 
@@ -205,8 +247,11 @@ export default function HomeScreen() {
           What is left of this screen's old cards, each one tap from its own
           content. Only what is genuinely there renders: no placeholder row, no
           disabled state, so an empty row is simply no row. */}
-      {(firstLightAvailable || guest) && (
+      {(firstLightAvailable || guest || recap) && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+          {recap && (
+            <PillButton icon="📆" label="Your week" gold={!recapSeen} onClick={() => setSheet('week')} />
+          )}
           {firstLightAvailable && (
             <PillButton icon="🌅" label="First light" onClick={() => setSheet('lantern')} />
           )}
@@ -239,6 +284,17 @@ export default function HomeScreen() {
           the holder's player card from inside here — the player card sits at
           110, above this sheet's 100, which is the tier ladder working as
           designed rather than a coincidence. */}
+      {/* Last week, in your own numbers. Opens itself once when it is ready and
+          lives in the pill row until the next Sunday. See store/weekly.ts. */}
+      {sheet === 'week' && recap && (
+        <QuickSheet
+          title="📆 Your week"
+          onClose={() => { useWeekly.getState().markSeen(); setSheet(null) }}
+        >
+          <WeekRecapBody recap={recap} onClose={() => { useWeekly.getState().markSeen(); setSheet(null) }} />
+        </QuickSheet>
+      )}
+
       {sheet === 'lantern' && (
         <QuickSheet title="🌅 First light" onClose={() => setSheet(null)}>
           <FirstLight />

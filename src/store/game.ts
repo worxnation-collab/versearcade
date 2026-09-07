@@ -22,6 +22,39 @@ interface GameState {
   armBoost: (v: boolean) => void
 }
 
+// The hours of the day the last few plays landed at, device-local, so the
+// drop reminder can default to when this person actually plays. Never sent
+// anywhere and never shown; a list of hours is a habit, not a score.
+const HOURS_KEY = 'va.playHours'
+
+function notePlayHour() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(HOURS_KEY) || '[]') as unknown
+    const hours = (Array.isArray(raw) ? raw : []).filter((h) => typeof h === 'number').slice(-13)
+    hours.push(new Date().getHours())
+    localStorage.setItem(HOURS_KEY, JSON.stringify(hours))
+  } catch {
+    /* fine */
+  }
+}
+
+/** 'HH:MM' one hour before the player's median play hour, or null with too few plays. */
+export function usualPlayTime(): string | null {
+  try {
+    const raw = JSON.parse(localStorage.getItem(HOURS_KEY) || '[]') as unknown
+    const hours = (Array.isArray(raw) ? raw : []).filter((h): h is number => typeof h === 'number')
+    if (hours.length < 3) return null
+    const sorted = [...hours].sort((a, b) => a - b)
+    const median = sorted[Math.floor(sorted.length / 2)]
+    // An hour before, so the nudge arrives ahead of the habit rather than
+    // after it — and never in the small hours.
+    const h = Math.max(7, Math.min(21, median - 1))
+    return `${String(h).padStart(2, '0')}:00`
+  } catch {
+    return null
+  }
+}
+
 export const useGame = create<GameState>((set, get) => ({
   today: null,
   todayDate: todayLocalDate(),
@@ -140,6 +173,7 @@ export const useGame = create<GameState>((set, get) => ({
             () => {},
           )
       }
+      notePlayHour()
       set({ playedToday: true, lastResult: { result, outcome }, boostArmed: false })
       return outcome
     }
@@ -156,6 +190,7 @@ export const useGame = create<GameState>((set, get) => ({
     if (error) throw error
     const outcome = normalizeOutcome(data)
     await auth.refreshProfile()
+    notePlayHour()
     set({ playedToday: true, lastResult: { result, outcome }, boostArmed: false })
     return outcome
   },

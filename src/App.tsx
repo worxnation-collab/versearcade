@@ -58,6 +58,7 @@ import { StudyDropToast } from './features/study/StudyDropToast'
 import { WaystationToast } from './features/season/WaystationToast'
 import { SkinUnlockToast } from './features/profile/SkinUnlockToast'
 import { UnlockToast } from './components/UnlockToast'
+import { SaveThisSheet } from './components/SaveThisSheet'
 import PilgrimageScreen from './features/season/PilgrimageScreen'
 import { MusicDirector } from './juice/MusicDirector'
 import { NowPlaying } from './components/NowPlaying'
@@ -266,6 +267,9 @@ export default function App() {
     <SkinUnlockToast />
     {/* And a piece for one of the two rooms — see store/unlocks.ts. */}
     <UnlockToast />
+    {/* The account ask, made once, at the first thing a guest earns — see
+        store/saveNudge.ts. */}
+    <SaveThisSheet />
     {/* The soundtrack follows the route rather than any one screen, so it lives
         up here with the other app-wide passengers. */}
     <MusicDirector />

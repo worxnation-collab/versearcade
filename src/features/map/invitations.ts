@@ -12,6 +12,8 @@ import { useGifts } from '@/store/gifts'
 import { useWashing } from '@/store/washing'
 import { usePrayerWall } from '@/store/prayerWall'
 import { useAccountLocked } from '@/components/AccountWall'
+import { gatheringOpen } from '@/data/gathering'
+import { todayLocalDate } from '@/lib/date'
 
 // What is open right now — and, deliberately, NOT a checklist.
 //
@@ -45,6 +47,55 @@ import { useAccountLocked } from '@/components/AccountWall'
 // tweak to this file: it is the thing four other features in this app were
 // deliberately built without.
 
+// ── The first week ──────────────────────────────────────────────────────────
+//
+// A brand-new player used to get every open door on day one — six rows on a
+// screen they had opened for the first time, which is a menu, not an
+// invitation. So the rows PACE THEMSELVES over the first days: the verse and
+// its chest on day one, trivia the next, then the arcade and praying, then
+// Study, then the two gestures toward other people. Clash Royale staggers its
+// features by arena for the same reason.
+//
+// Three things about it are deliberate. It gates INVITATIONS ONLY — every
+// door on the map is reachable from the first minute, and a player who finds
+// the arcade on day one is welcome in it. It is measured from the day this
+// device first ran the panel (`va.firstSeen`), and it stands down entirely for
+// anyone with five plays behind them, so a long-time player on a new phone is
+// never treated as new. And a row about a PERSON waiting on you (a buddy
+// request, the mailbox) is never held back: somebody else is on the other end
+// of those.
+const FIRST_SEEN_KEY = 'va.firstSeen'
+const VETERAN_PLAYS = 5
+
+function daysSinceFirstSeen(): number {
+  try {
+    const today = todayLocalDate()
+    let first = localStorage.getItem(FIRST_SEEN_KEY)
+    if (!first) {
+      localStorage.setItem(FIRST_SEEN_KEY, today)
+      first = today
+    }
+    const ms = new Date(`${today}T12:00:00`).getTime() - new Date(`${first}T12:00:00`).getTime()
+    return Math.max(0, Math.round(ms / 86_400_000))
+  } catch {
+    return 99
+  }
+}
+
+/** The day (0-based, from first sight) each invitation starts being made. */
+const OPENS_ON: Record<string, number> = {
+  verse: 0,
+  chest: 0,
+  trivia: 1,
+  arcade: 2,
+  pray: 2,
+  library: 3,
+  review: 3,
+  wash: 4,
+  wall: 4,
+  gathering: 4,
+}
+
 export interface MapInvite {
   id: string
   icon: string
@@ -76,6 +127,8 @@ export function useInvitations(): MapInvite[] {
   const washedSomeoneToday = useWashing((s) => s.today > 0)
   const kneltAtWallToday = usePrayerWall((s) => s.today > 0)
   const wallOpen = usePrayerWall((s) => s.available)
+  const totalPlays = useAuth((s) => s.profile?.totalPlays ?? 0)
+  const gathering = gatheringOpen()
 
   // The four day-flags nothing else on a given screen necessarily loads. The
   // three app-wide ones (buddies, gifts, the road) are already pulled in
@@ -93,6 +146,8 @@ export function useInvitations(): MapInvite[] {
 
   const out: MapInvite[] = []
   if (!profile) return out
+  const day = totalPlays >= VETERAN_PLAYS ? 99 : daysSinceFirstSeen()
+  const opens = (id: string) => (OPENS_ON[id] ?? 0) <= day
 
   // Today's verse first, always — it is the one thing this app is actually for,
   // and every other entry here is something to do around it.
@@ -108,7 +163,7 @@ export function useInvitations(): MapInvite[] {
   // box, it is open to a guest (it pays nothing rankable), and it is gone at
   // midnight like everything else here. Deliberately not "you have not done it
   // yet" — it is a round that is available, and it says so.
-  if (!triviaDone) {
+  if (!triviaDone && opens('trivia')) {
     out.push({ id: 'trivia', icon: '✨', label: 'Today’s trivia round is open', to: '/play/trivia' })
   }
 
@@ -117,12 +172,12 @@ export function useInvitations(): MapInvite[] {
   // shows these places with their padlocks — that is the pitch — but this panel
   // is about what you can do in the next minute.
   if (!locked) {
-    if (reviewsDue > 0) {
+    if (reviewsDue > 0 && opens('review')) {
       // No number. "15 verses overdue" is a backlog to feel behind on; the nav
       // dot has said this without a count since it replaced a whole card.
       out.push({ id: 'review', icon: '🧠', label: 'Some kept verses want another look', to: '/review' })
     }
-    if (!borrowedToday) {
+    if (!borrowedToday && opens('library')) {
       // Says what to DO. "Tabitha has a book for you" read as a fact about the
       // librarian, and people went to Study, did something else, and watched
       // the line stay. Any study run now borrows the book (QuizRunner →
@@ -133,14 +188,21 @@ export function useInvitations(): MapInvite[] {
     // your twelve are done", which would keep the compass lit all day for a
     // thing few people can finish and turn a gift into a quota. Online-only
     // like the gesture itself: a keyless build has nobody's feet to wash.
-    if (online && !washedSomeoneToday) {
+    if (online && !washedSomeoneToday && opens('wash')) {
       out.push({ id: 'wash', icon: '🪣', label: 'Kneel and wash a friend’s feet', to: '/you' })
     }
     // The wall. Same shape as the Basin's line: open until you have knelt for
     // ONE note today, never "until your twelve are done". Gated on the server
     // actually having the wall (0099), so an older backend never invites it.
-    if (online && wallOpen && !kneltAtWallToday) {
+    if (online && wallOpen && !kneltAtWallToday && opens('wall')) {
       out.push({ id: 'wall', icon: '🕯️', label: 'Hold a candle for someone at the wall', to: '/pray' })
+    }
+    // The gathering hour — the one time a day everybody is told to come
+    // looking for a live match (data/gathering.ts). Only while it is open, so
+    // the row is an invitation to something happening NOW rather than a
+    // schedule; and online-only, like the match itself.
+    if (online && gathering && opens('gathering')) {
+      out.push({ id: 'gathering', icon: '🎲', label: 'It’s the gathering hour — find a live match', to: '/battle/live' })
     }
     if (buddyRequests > 0) {
       out.push({ id: 'buddies', icon: '🤝', label: 'Someone is waiting on you', to: '/you' })
@@ -152,10 +214,10 @@ export function useInvitations(): MapInvite[] {
 
   // The two that ask nothing of anybody, last: praying is not a task, and a
   // machine is what is left when everything else is done.
-  if (!prayedToday) {
+  if (!prayedToday && opens('pray')) {
     out.push({ id: 'pray', icon: '🙏', label: 'Pray, in your own room', to: '/you?pray=1' })
   }
-  if (paidGames === 0) {
+  if (paidGames === 0 && opens('arcade')) {
     out.push({ id: 'arcade', icon: '🕹️', label: 'The arcade is open', to: '/arcade' })
   }
 

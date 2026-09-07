@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { gatheringLine, gatheringOpen } from '@/data/gathering'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Page } from '@/components/Page'
@@ -116,6 +117,15 @@ export default function LiveLobby() {
       </div>
       <p className="faint center" style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
         We’ll put you with whoever else is looking. No code needed.
+      </p>
+      {/* The gathering hour: one stated time a day, so the people who want a
+          stranger arrive together. A clock on the wall and nothing more — see
+          data/gathering.ts for what it deliberately isn't. */}
+      <p
+        className="center"
+        style={{ fontSize: 12, marginTop: 8, lineHeight: 1.45, color: gatheringOpen() ? 'var(--gold)' : 'var(--ink-dim)', fontWeight: gatheringOpen() ? 800 : undefined }}
+      >
+        🕗 {gatheringLine()}
       </p>
       {queueError && (
         <p className="dim center" style={{ fontSize: 13, marginTop: 8 }}>{queueError}</p>

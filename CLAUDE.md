@@ -3012,6 +3012,63 @@ break first:
   invisible in the diff, and the shape of bug any future move-a-card-into-a-sheet
   will hit.
 
+## Retention beats: the streak's net, your week, the gathering hour, the first week
+
+Five small systems added in one round, all client-side, none with a migration,
+and every one built inside the no-losers rule. Read the file headers before
+touching any of them; this is the map.
+
+- **The streak's safety net is visible only while it matters**
+  (`HomeScreen`): before today's verse is played, one line says the streak is
+  safe tonight and how many freezes are held — or, with none, the plain fact
+  that today's verse keeps it going. Once the drop is played the line goes;
+  the streak is safe and the line would be noise. Never a warning.
+- **The drop reminder lands at the hour this person plays** (`store/game.ts`
+  `notePlayHour` / `usualPlayTime`, read by `store/reminders.ts`): the last
+  fourteen plays' hours are kept on the device (`va.playHours`, never sent,
+  never shown), and a drop time the player never SET defaults to an hour
+  before their median. Setting a time in Settings writes `dropTime` and wins.
+  And `buildPlan` drops today's nudge once today is played (`playedToday`),
+  re-planned by the Play tab when the flag flips — a reminder for a thing you
+  did an hour ago is the first notification anybody switches off.
+- **"Your week"** (`lib/weekRecap.ts` pure, `store/weekly.ts` snapshots,
+  `features/home/WeekRecap.tsx`): the Play tab records today's lifetime
+  numbers on every open (`va.week.<uid>`, 28 days kept), and last week's recap
+  is the newest snapshot on or before this Sunday against the newest on or
+  before the one before. Your own numbers only — plays, verses, chapters,
+  relics, battles, given, XP — each tile shown only when it moved, a quiet
+  week gets one warm line, nothing compared to last week or anybody. It opens
+  ITSELF once when it is first ready (a pill nobody knows to tap is a recap
+  nobody reads), then waits in the pill row for the week. Device-local in
+  both modes on purpose: it grants nothing and stores nothing rankable — the
+  `store/looks.ts` break. The snapshot waits for the bible, collection and
+  keep stores to load, or the last snapshot of a day would be a stale one.
+  Push and email delivery of it would need a server and are NOT built.
+- **The gathering hour** (`data/gathering.ts`): 8pm America/New_York, every
+  day, ONE instant worldwide shown in local time — a per-viewer "8pm local"
+  would scatter the players again, which is the exact problem. It is a clock
+  on the wall and nothing more: no bonus, no attendance, no streak for
+  coming, because an hour that pays more is an hour you can be behind on. It
+  shows on the live lobby, under the hub's live button, and as a compass
+  invitation only while it is OPEN (online-only, like the match).
+- **The first week paces the invitations** (`invitations.ts`, `OPENS_ON`):
+  verse and chest on day 0, trivia on day 1, arcade and praying on day 2,
+  Study and reviews on day 3, the two gestures toward other people on day 4.
+  Measured from `va.firstSeen` on the device; stands down entirely at five
+  plays, so a long-time player on a new phone is never treated as new. It
+  gates INVITATIONS ONLY — every door on the map is open from the first
+  minute — and a row about a PERSON waiting (buddies, mail) is never held.
+- **"Save this?"** (`store/saveNudge.ts`, `components/SaveThisSheet.tsx`):
+  the account ask made at the first thing a guest EARNS — the chest's first
+  stamp, a machine's first +5 XP — instead of at a locked tab. Once per
+  device ever (`va.saveNudge`), only when an account is obtainable (the
+  `useAccountLocked` condition, so a keyless build never sees it), and it says
+  what would be saved in the words of the thing just earned. Add a trigger by
+  calling `offer()` at the reward; it no-ops everywhere it should.
+- **Your own church card carries "Invite your congregation"** — the public
+  page's `ShareChurch`, with a `label`, on the card of the person likeliest to
+  send it. Same link, same referral credit.
+
 ## The Battle tab leads with the turn you owe
 
 Every card on that tab was individually right and the sum of it opened on the

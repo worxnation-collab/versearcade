@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSaveNudge } from '@/store/saveNudge'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/Button'
 import { useGame } from '@/store/game'
@@ -84,6 +85,14 @@ export function DailyChest() {
     } else if (res.key) {
       setRevealed({ kind: 'relic', key: res.key, rarity: res.rarity, newStamp: res.newStamp, qty: res.qty })
       juice.celebrate()
+      // A guest's first stamp is the moment to say where it lives. No-op for
+      // an account, in a keyless build, and after the first time.
+      if (res.newStamp) {
+        useSaveNudge.getState().offer({
+          thing: 'That stamp',
+          line: 'The chest, the relics it turns up and the card backgrounds they unlock are kept on this device.',
+        })
+      }
     }
     // Bonus: a chest may also drop a wearable avatar item (free, cosmetic).
     if (Math.random() < 0.45) {

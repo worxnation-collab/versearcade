@@ -67,6 +67,7 @@ export default function WordCatchScreen({ demo }: { demo?: boolean }) {
       ]}
       cta="Put it back together"
       hero="arcade_page"
+      heroCaption={`${verse.text.split(/\s+/).slice(0, 7).join(' ')} …`}
       // The whole verse, whole, once the run is over. You have just spent a
       // minute with it in pieces — reading it through is the point of having
       // done that, and it lands a beat after the numbers so it reads as what

@@ -93,14 +93,21 @@ export function buildPlan(opts: {
   schedule: ReviewSchedule
   /** Verses due right now. Anything overdue stays overdue until reviewed. */
   dueNow: number
+  /**
+   * Today's drop is already done. Its nudge is dropped rather than fired at
+   * somebody who has played — a reminder for a thing you did an hour ago is
+   * the first notification people switch off.
+   */
+  playedToday?: boolean
 }): PlannedReminder[] {
-  const { now, prefs, schedule, dueNow } = opts
+  const { now, prefs, schedule, dueNow, playedToday = false } = opts
   const out: PlannedReminder[] = []
 
   if (prefs.dropEnabled) {
     for (let i = 0; i < DROP_HORIZON_DAYS; i++) {
       const at = slot(now, i, prefs.dropTime)
       if (at <= now) continue // today's slot has already passed
+      if (i === 0 && playedToday) continue // already played: nothing to say
       out.push({
         id: DROP_ID_BASE + i,
         title: 'A new verse is live',

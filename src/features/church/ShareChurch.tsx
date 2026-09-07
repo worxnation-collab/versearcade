@@ -13,7 +13,18 @@ import { useJuice } from '@/juice/useJuice'
 //
 // It rides the referral code like every other invite here, so a church shared
 // by one of its own members still credits them.
-export function ShareChurch({ churchId, churchName }: { churchId: string; churchName: string }) {
+export function ShareChurch({
+  churchId,
+  churchName,
+  label = '🔗 Share this church',
+  note = 'Anyone can open this page — no account needed to look.',
+}: {
+  churchId: string
+  churchName: string
+  /** The button. Your own church's card says "Invite your congregation". */
+  label?: string
+  note?: string
+}) {
   const referralCode = useAuth((s) => s.profile?.referralCode)
   const juice = useJuice()
   const [msg, setMsg] = useState<string | null>(null)
@@ -28,12 +39,12 @@ export function ShareChurch({ churchId, churchName }: { churchId: string; church
 
   return (
     <div style={{ marginTop: 12 }}>
-      <Button variant="secondary" full onClick={share}>🔗 Share this church</Button>
+      <Button variant="secondary" full onClick={share}>{label}</Button>
       {msg && (
         <p className="faint center" style={{ margin: '8px 0 0', fontSize: 12.5 }}>{msg}</p>
       )}
       <p className="faint center" style={{ margin: '6px 0 0', fontSize: 11.5, lineHeight: 1.5 }}>
-        Anyone can open this page — no account needed to look.
+        {note}
       </p>
     </div>
   )

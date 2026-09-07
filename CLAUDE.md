@@ -220,8 +220,21 @@ Two things about the de-monetisation that are load-bearing:
   the one way to unlock a paid skin for everybody by accident. The ONE
   legitimate reason to touch it is adding a new protected id, and then the whole
   list is copied forward from the migration that last set it. That chain is
-  0031 → 0034 → 0043 → 0044 → 0046 → 0057 → 0082 → 0088 → 0095 → **0107**
-  (`cooldad`); read the latest one, never an earlier one.
+  0031 → 0034 → 0043 → 0044 → 0046 → 0057 → 0082 → 0088 → 0095 → 0107 →
+  **0108** (`sharkey`); read the latest one, never an earlier one.
+
+**A ONE-OF-ONE skin is `retired`, not `exclusive`, and the branch ORDER is why.**
+`sharkey` (0108) is the founder's own look and the one thing here exactly one
+account has. `skinVisible` decides `exclusive` BEFORE `retired` and returns
+true unconditionally for it — so an `exclusive: true` + `retired: true` skin is
+visible to *everybody*, which is the exact opposite of the intent and is
+invisible in a diff. The shape is therefore `source: 'paid'` (to ride the
+`owned_skins` entitlement) + `retired: true` (so `skinVisible` returns `owned`
+and it renders for its holder and nobody else) and deliberately NO `exclusive`,
+NO `packName`, NO price, NO `promo_codes` row and NO entry in `fulfill_skin`.
+That leaves `grant_skins()` as the only door. `pricedOnShelf` already skips it
+by the same `retired` test the whale gets, so no "is any of this paid?" copy
+appears under a grid that is selling nothing.
 
 **A creator-collab skin is a promo code, not a product**, and `sonshine` (0057),
 `porchlight` (0082) and `lantern` (0088) are the worked examples. The shape: `source: 'paid'`
@@ -1487,7 +1500,24 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0107` (the "Cool Dad" skin — `cooldad` joins
+The latest is `0108` ("Sharkey" — the founder's own skin, locked to one
+account), APPLIED on 2026-09-07 before the client merged and verified four
+ways: the protected list reads FIFTEEN names, `sharkey` is absent from
+`fulfill_skin` and has no `promo_codes` row, exactly one profile owns it
+(`sharkbait`, granted through `grant_skins` so no `manual` row shows in the
+Sales tab), and — the check worth running rather than reasoning about — a
+direct write of `sharkey` onto a real non-admin profile was STRIPPED by the
+trigger, with that profile restored intact afterwards.
+
+**It renamed a live entitlement id, which is normally forbidden**, and the
+only reason it was safe is that it was checked first: `cooldad` had zero
+owners, zero `skin_purchases` rows, and had existed for about an hour. Do not
+read 0108 as licence to rename an id anybody holds. `cooldad` is KEPT in the
+protected list even though nothing reads it — guarding a dead id is free, and
+dropping names from that list is the one way to unlock a protected skin for
+everybody by accident.
+
+Before it, `0107` (the "Cool Dad" skin — `cooldad` joins
 `enforce_skin_entitlement`'s protected list, now FOURTEEN names restated
 wholesale from 0095, plus an active `COOLDAD` promo row; deliberately absent
 from `fulfill_skin`), APPLIED on 2026-09-07 before the client merged and
@@ -1743,7 +1773,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0108` (0107 is taken by the Cool Dad skin, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0109` (0108 is taken by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

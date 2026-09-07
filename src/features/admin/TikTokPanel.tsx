@@ -16,6 +16,7 @@
 // same three gates as the rest of the dashboard.
 
 import { lazy, Suspense, useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
 import { todayLocalDate } from '@/lib/date'
 import { getVerseForDate } from '@/data/bible/questions'
 import { Button } from '@/components/Button'
@@ -142,6 +143,11 @@ function OwnClip() {
 type Row = { platform: Platform; views: number | null; likes: number | null; comments: number | null; shares: number | null; watched: number | null; followers: number | null; error: string | null }
 function WeekNumbers() {
   const [rows, setRows] = useState<Array<Row & { date: string; kind: Kind }> | null>(null)
+  // Sign-ups in the same seven days, by the network their first tracked link
+  // named (0106, `?src=` on every posted link). The one column here that is
+  // about the app rather than about the posts — and the one goal one is
+  // judged by. '' is an account that arrived with no source at all.
+  const [signups, setSignups] = useState<Record<string, number>>({})
   const [busy, setBusy] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const fetchAll = async (force = false) => {
@@ -149,6 +155,11 @@ function WeekNumbers() {
     setErr(null)
     const out: Array<Row & { date: string; kind: Kind }> = []
     try {
+      setBusy('sign-ups')
+      const { data: srcRows } = await supabase!.rpc('admin_signup_sources', { p_days: 7 })
+      const map: Record<string, number> = {}
+      for (const r of (Array.isArray(srcRows) ? srcRows : []) as Array<{ src?: string; n?: number }>) map[String(r.src ?? '')] = Number(r.n ?? 0)
+      setSignups(map)
       for (let i = 1; i <= 7; i++) {
         const date = addDays(todayLocalDate(), -i)
         for (const kind of WORD_KINDS) {
@@ -175,13 +186,17 @@ function WeekNumbers() {
       {rows && rows.length > 0 && (
         <div style={{ overflowX: 'auto', fontSize: 12 }}>
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-            <thead><tr className="faint"><th style={{ ...cell, textAlign: 'left' }}>Network</th><th style={cell}>Posts</th><th style={cell}>Views</th><th style={cell}>Likes</th><th style={cell}>Comments</th><th style={cell}>Shares</th><th style={cell}>New followers</th></tr></thead>
+            <thead><tr className="faint"><th style={{ ...cell, textAlign: 'left' }}>Network</th><th style={cell}>Posts</th><th style={cell}>Views</th><th style={cell}>Likes</th><th style={cell}>Comments</th><th style={cell}>Shares</th><th style={cell}>New followers</th><th style={{ ...cell, color: 'var(--gold)' }}>Sign-ups</th></tr></thead>
             <tbody>
               {platforms.map((p) => { const xs = rows.filter((r) => r.platform === p); return (
-                <tr key={p}><td style={{ ...cell, textAlign: 'left', fontWeight: 700 }}>{p}</td><td style={cell}>{xs.length}</td><td style={cell}>{sum(xs, 'views')}</td><td style={cell}>{sum(xs, 'likes')}</td><td style={cell}>{sum(xs, 'comments')}</td><td style={cell}>{sum(xs, 'shares')}</td><td style={cell}>{sum(xs, 'followers')}</td></tr>
+                <tr key={p}><td style={{ ...cell, textAlign: 'left', fontWeight: 700 }}>{p}</td><td style={cell}>{xs.length}</td><td style={cell}>{sum(xs, 'views')}</td><td style={cell}>{sum(xs, 'likes')}</td><td style={cell}>{sum(xs, 'comments')}</td><td style={cell}>{sum(xs, 'shares')}</td><td style={cell}>{sum(xs, 'followers')}</td><td style={{ ...cell, fontWeight: 700 }}>{signups[p] ?? 0}</td></tr>
               ) })}
             </tbody>
           </table>
+          <p className="faint" style={{ fontSize: 11, margin: '4px 0 0' }}>
+            Sign-ups are accounts made in the last seven days, filed by the first tracked link this device saw (<code>?src=</code>).
+            {' '}{signups[''] ?? 0} arrived with no source{Object.entries(signups).filter(([k]) => k && !platforms.includes(k as Platform)).map(([k, n]) => `, ${n} from ${k}`).join('')}.
+          </p>
           <table style={{ borderCollapse: 'collapse', width: '100%', marginTop: 8 }}>
             <thead><tr className="faint"><th style={{ ...cell, textAlign: 'left' }}>Kind</th><th style={cell}>Posts</th><th style={cell}>Views</th><th style={cell}>Likes</th><th style={cell}>Comments</th><th style={cell}>Shares</th></tr></thead>
             <tbody>

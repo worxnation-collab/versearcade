@@ -6,6 +6,7 @@ import { isSupabaseConfigured } from '@/lib/config'
 import { localdb } from '@/lib/localdb'
 import { newLocalProfile } from '@/lib/progress'
 import { allSkins, equippedSkinId, isDefaultAvatar } from '@/data/avatar'
+import { applyPendingSource } from '@/lib/attribution'
 import { getVerseForDate } from '@/data/bible/questions'
 import { petUnlocked, type PetProgress } from '@/data/pets'
 import { normalizeBook, normalizeTranslation, normalizeVerseReference, type CardAbout } from '@/data/cardAbout'
@@ -237,6 +238,8 @@ export const useAuth = create<AuthState>((set, get) => ({
     get().applyPendingCharacter()
     get().autoEquipGrantedSkin()
     void get().loadReferral()
+    // Which network sent this person, if a tracked link said so (0106).
+    void applyPendingSource()
   },
 
   // Apply any pending referral code (captured from a ?ref=… link before signup),

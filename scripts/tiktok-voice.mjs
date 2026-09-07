@@ -332,12 +332,16 @@ try {
       if (prev && heard.words[head].start - prev.end < GAP) return
       if (marks.length && n !== marks[marks.length - 1].n + 1) return
       if (!marks.length && n !== 1) return
-      marks.push({ n, i, at: heard.words[head].start, end: w.end })
+      marks.push({ n, i, head, at: heard.words[head].start, end: w.end })
     })
     log(`found ${marks.length} of ${days} takes`)
     if (marks.length !== days) log('  (the run stops at the last number found in order — check the cut below)')
     const takes = marks.map((m, k) => {
-      const words = heard.words.slice(m.i + 1, marks[k + 1] ? marks[k + 1].i : heard.words.length)
+      // Up to the next marker's HEAD, not its number: slicing to the number
+      // leaves the lead word behind, and "day" then rode the end of all
+      // fourteen takes' captions — burned into the video, and invisible in
+      // the audio, which the clamp above had already trimmed correctly.
+      const words = heard.words.slice(m.i + 1, marks[k + 1] ? marks[k + 1].head : heard.words.length)
       const from = words[0] ? Math.max(m.end, words[0].start - 0.35) : m.end
       // The tail is clamped to before the NEXT marker, not just to the last
       // word plus a beat: the words are sliced correctly either way, so a

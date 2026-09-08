@@ -61,6 +61,7 @@ const SPACE = svgSpace(ROOM_SURFACE)
 
 export function RoomScene({
   tier,
+  skin,
   placements,
   members,
   editing,
@@ -72,6 +73,9 @@ export function RoomScene({
   lampLit = true,
 }: {
   tier: number
+  /** What the room is made of. Undefined draws the default, which is the room
+   *  exactly as it has always been drawn. */
+  skin?: string | null
   placements: RoomPlacements
   members: CrowdMember[]
   /**
@@ -175,7 +179,7 @@ export function RoomScene({
           if (picked) editing?.onCancel?.()
         }}
       >
-        <RoomChamber tier={tier} flat={flat} />
+        <RoomChamber tier={tier} flat={flat} skin={skin} />
 
         {/* Tucked into the left corner, clear of floor_1 at x=96. */}
         {onArcade && <ArcadeCabinet x={52} y={284} scale={0.86} screen="attract" onOpen={onArcade} />}

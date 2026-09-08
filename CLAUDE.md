@@ -1589,7 +1589,21 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0109` (the reading cosmetics — four borders and four badges
+The latest is `0110` (room skins — `profiles.room_skin` plus a check
+constraint, `set_room_skin`, and `my_room` / `room_json` restated WHOLESALE
+from 0069 and 0072 respectively; a future migration editing either copies
+forward from HERE). APPLIED on 2026-09-08 before the client merged, and
+verified: production's two functions matched 0069/0072 before the restate
+(checked, not assumed), exactly ONE signature each afterwards, both payloads
+carry `skin`, **0072's `pet` survived the `room_json` restate** — the
+wholesale-restate trap this file keeps warning about, checked rather than
+hoped — the constraint is present, and all 152 profiles read `clay` with no
+nulls. Run end to end against a local Postgres 16 first: ten cases including a
+quoted-SQL id, which is refused as `unknown_skin`, and a direct
+`update … set room_skin='marble'` past the RPC, which the check constraint
+rejects.
+
+Before it, `0109` (the reading cosmetics — four borders and four badges
 gated on chapters of the Bible opened, and `set_cosmetics` restated WHOLESALE
 from 0096 plus that one branch; a future migration editing it copies forward
 from HERE). APPLIED on 2026-09-08 before the client merged, and verified:
@@ -1876,7 +1890,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0110` (0109 is taken by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0111` (0110 is taken by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the
@@ -2943,6 +2957,56 @@ latent bug on a fast double-tap and got the same fix). And the window and the
 alcove overlapped by 22 viewBox units and drew two arches in one place: three
 fixtures own three bands of the back wall (shelf 110..214, window 400..460,
 alcove 470..540) and they must not touch.
+
+### Room skins: what the Upper Room is MADE of
+
+The five rooms are the ladder — level 1, 5, 12, 25, 40, each a real change of
+silhouette. `features/room/skins.ts` is the other axis, and it is exactly the
+split `levels.ts` and `skins.ts` have made for churches since 0051: the
+material the same room is made of, never its size, its tier, or anything
+rankable. The church has had four material languages for months; the one space
+in this app that belongs to the player alone had one. `0110`, four ids —
+`clay` (the room as it always was), `limestone`, `cedar`, `dusk`.
+
+- **Every skin is FREE, from the first minute**, and this follows the CHARACTER
+  BUILDER's rule rather than the church's: figure, six tones, six hairs, "all
+  free, none of them a number". A material is a taste, and tastes do not rank.
+  There is also nothing here for a gate to protect — every skin is the same
+  room.
+- **A skin may only repaint what the TIER already draws.** `DrawnChamber` reads
+  `s` for the booleans (`plastered`, `window`, `beams`, `upper`, `gilt`) and
+  `pal` for every colour, so a Bare Chamber in cedar is still a bare chamber.
+  Same guarantee "a skinned church is not a bigger church" gives, in the shape
+  of the code rather than in care.
+- **The painting is keyed on the SKIN, and it had to be.** The five bundled
+  paintings are the CLAY room and they are laid OVER the drawn chamber, so a
+  flat `room-<tier>` lookup would have repainted the SVG underneath and then
+  drawn the clay painting on top — the material invisible, which is the whole
+  feature. `room-<skin>-<tier>` first, the default falling back to the historic
+  ids (`art/room-skins.json`, fifteen renders).
+- **And the fallback is ALL-OR-NOTHING PER MATERIAL**, which is narrower than
+  `ChurchArt`'s per-entry rule and was earned during the batch: `dusk` sat for
+  an hour with two tiers painted and three lost to a run of 503s from the image
+  API. Per entry, that player's room would have been a painting to level 5 and a
+  drawing from level 12 — and unlike a church's building, which somebody meets
+  once on a ladder climbed over months, YOUR OWN ROOM changes tier under them. A
+  material that switches medium halfway up reads as the art breaking. All
+  fifteen exist now, so nothing is drawn; the rule stays because it is what
+  makes adding a FIFTH material safe.
+- **The image API 503s under load and the generator does not retry.** Nine of
+  the fifteen came back `503 UNAVAILABLE` on the first pass and every one of
+  them succeeded on a later attempt with no prompt change. A failed render is a
+  capacity problem, not a bad prompt — check the message before rewriting
+  anything. The other drift worth knowing: tiers 1-3 say "ABSOLUTELY NO CEILING
+  BEAMS" and a beam still appears at the very top of some of them. It is above
+  the `xMidYMid slice` crop and the ladder still reads (the arched window and
+  the gilt are what separate the tiers), so it was left.
+- **Nothing is stored but the id**, checked against a literal list of four in
+  `set_room_skin` and by a check constraint on the column, so there is nowhere
+  here to write a string — 0069's "no player-authored text", which is what
+  keeps a room safe to let a stranger walk into. `room_json` carries it so a
+  visitor sees the material, exactly as they already see the owner's character
+  and pet, and it is no more rankable than their robe.
 
 ## Praying: the one thing here that isn't a game
 

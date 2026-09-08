@@ -142,9 +142,48 @@ wheat field. Generate them with `kind: 'road'` (`art/road-scenes.json` →
 `public/road/`), keeping the bottom third walkable — `CrowdLife` stands figures
 on it.
 
-**Items are still code, and that's a known gap.** `item_*` are drawn as
-hardcoded SVG per id in `Character.tsx`, so a catalog can't add one. Roads can
-hand out skins, cosmetics, boosts, freezes and mementos — not items.
+**Items are content now, and this is how the last gap closed.** `item_*` used to
+be hardcoded SVG per id in `Character.tsx`, which made a hat the CHEAPEST
+cosmetic in the game to design and the ONLY one that needed a release to ship.
+`data/itemArt.tsx` turns the drawing into DATA — a list of primitives (path,
+rect, circle, ellipse) with numbers and `#rrggbb` colours — and `catalog.items`
+carries them, so a road can now hand out a hat as well as skins, cosmetics,
+boosts, freezes and mementos.
+
+Four things about it are load-bearing:
+
+- **The vocabulary's smallness IS the security argument**, not a shortcut. No
+  href, no `url()`, no `var()`, no transform but a rotation, no attribute
+  passthrough, no text. The worst a hostile row can do is draw an ugly shape on
+  its own owner's avatar — "code is not content" applied to a drawing rather
+  than to a link. Verified by feeding a live catalog a `url(#evil)` fill, a
+  `t: 'script'` row and a rect with no width: three good shapes rendered, three
+  bad ones dropped, per shape.
+- **`allItems()` is a FUNCTION, not a constant**, exactly as `allSkins()` is.
+  The overlay is fetched at runtime, so anything computed at module load reads
+  an empty catalog and a season's hat never appears. This was written as a
+  constant first and caught before it shipped.
+- **A shape with no `fill` now draws `fill="none"`** where the old JSX omitted
+  the attribute and got SVG's default of black. Every bundled item was diffed
+  node by node against the previous build: eight byte-identical, three differing
+  only on that attribute, all on paths with zero area. `none` is also the right
+  default going forward.
+- **`scripts/check-item-art.mjs`** (in `npm run build`) asserts every bundled
+  item has art, every shape carries its required coordinates, every colour is
+  hex, and that `Character.tsx` no longer hardcodes any item. All three failure
+  modes RENDER — a missing entry is a slot that does nothing, a bad colour is
+  silently dropped by the sanitiser, a missing coordinate draws at the origin —
+  so they are a build failure, the `check-trivia` habit.
+
+**Sets are a NAME and a completion, and deliberately nothing else.** Eleven
+items sat as a flat list of which five were already the Harvest Road's outfit,
+with nothing saying so. `ITEM_SETS` names them; completion is derived from what
+you own, so there is nothing to migrate and nothing to revoke, and it grants
+NOTHING — no XP, no rank, no stat, no odds. It is never drawn as a bar: the
+shelf says which set a piece belongs to and says when one is whole, and does
+not put "2 of 3" in front of anybody, for the reason the Seals page draws no bar
+toward 66. There is a Journal rung, because a set completed is a number you
+passed.
 
 **A road's quest pools freeze when it starts.** `pick()` shuffles the whole pool
 from a day seed, so adding one entry re-draws every remaining day and two app

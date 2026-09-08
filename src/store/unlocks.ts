@@ -6,6 +6,7 @@ import { CHALLENGES, DECOR, bestOwnedTier, decorById, ownedDecor, type KeepCount
 import { FURNISHINGS, REQUIREMENT_NOUN, ownedFurnishings } from '@/data/room'
 import { roomProgress } from '@/lib/roomProgress'
 import { pressedSeals, sealFor } from '@/data/seals'
+import { completedSets, itemsInSet } from '@/data/avatar'
 
 // "You've earned a piece" — for the two rooms.
 //
@@ -39,7 +40,7 @@ import { pressedSeals, sealFor } from '@/data/seals'
 export interface Unlock {
   /** Stable, for keys and de-duping: `keep:<decor>:<tier>` or `room:<id>`. */
   id: string
-  kind: 'keep' | 'room' | 'seal'
+  kind: 'keep' | 'room' | 'seal' | 'set'
   /** The piece, for the thumb. */
   piece: string
   /** Eyebrow: "New for your keep", "Woven Rug is Fine now". */
@@ -61,6 +62,8 @@ interface UnlockState {
   checkRoom: () => void
   /** Re-derive the seal collection and announce anything new. Cheap to spam. */
   checkSeals: () => void
+  /** Re-derive completed item sets and announce anything new. Cheap to spam. */
+  checkSets: () => void
 }
 
 const TIER_WORD: Record<number, string> = { 2: 'Fine', 3: 'Grand' }
@@ -71,6 +74,10 @@ function roomKey(uid: string) {
 
 function sealKey(uid: string) {
   return `va.seals.seen.${uid}`
+}
+
+function setKey(uid: string) {
+  return `va.sets.seen.${uid}`
 }
 
 function readSeen(k: string): string[] | null {
@@ -211,6 +218,40 @@ export const useUnlocks = create<UnlockState>((set, get) => ({
           title: book,
           line: `You've read all ${seal?.chapters ?? 0} chapter${seal?.chapters === 1 ? '' : 's'}. Tap to see your seals →`,
           to: '/bible/seals',
+        }
+      }),
+    )
+  },
+
+  checkSets() {
+    const profile = useAuth.getState().profile
+    if (!profile?.id) return
+    // Owned items live on the profile, which is loaded before anything renders,
+    // so there is no store to wait for here — unlike the seals and the room.
+    const owned = completedSets(profile.ownedItems ?? []).map((s) => s.id)
+    const k = setKey(profile.id)
+    const seen = readSeen(k)
+    if (seen === null) {
+      writeSeen(k, owned)
+      return
+    }
+    const fresh = owned.filter((id) => !seen.includes(id))
+    if (!fresh.length) return
+    writeSeen(k, [...new Set([...seen, ...owned])])
+    get().push(
+      fresh.map((id) => {
+        const set = completedSets(profile.ownedItems ?? []).find((s) => s.id === id)!
+        const pieces = itemsInSet(id)
+        return {
+          id: `set:${id}`,
+          kind: 'set' as const,
+          // The thumb is one of the set's own pieces — the hat where there is
+          // one, since that is the piece that reads at 46px.
+          piece: (pieces.find((p) => p.slot === 'hat') ?? pieces[0])?.id ?? '',
+          kicker: 'That set is whole',
+          title: set.name,
+          line: `${set.blurb} Tap to wear it →`,
+          to: '/you?customize=1',
         }
       }),
     )

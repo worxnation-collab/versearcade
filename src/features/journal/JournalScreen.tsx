@@ -5,6 +5,7 @@ import { Button } from '@/components/Button'
 import { useAuth } from '@/store/auth'
 import { useBible } from '@/store/bible'
 import { pressedSeals } from '@/data/seals'
+import { completedSets } from '@/data/avatar'
 import { useCollection } from '@/store/collection'
 import { useKeep } from '@/store/keep'
 import { useWashing } from '@/store/washing'
@@ -66,6 +67,7 @@ export default function JournalScreen() {
     study: studied,
     reading: chapters,
     seals,
+    sets: completedSets(profile.ownedItems ?? []).length,
     collection: cards,
     room: ownedFurnishings(roomProgress()).length,
     battles,

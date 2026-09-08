@@ -493,7 +493,15 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   recoverable and a strike on an account with no distribution is not. The flag
   goes back on the day a post carries a realistic-looking person or a cloned
   voice; words are not a substitute for it on content the rules actually
-  cover.
+  cover. **Instagram got the same edit, with weaker evidence — say so.** Meta
+  publishes no reach or monetization penalty for the label (its enforcement
+  targets UNORIGINAL content, not AI), so unlike TikTok there is no known
+  mechanism costing anything; what holds is that Meta's labelling aims at
+  photorealistic and deceptive media, which illustrated characters over a
+  painted road are not. Its caption never carried the note either, so the same
+  swap applies. **`instagramOptions` is the `else` branch of that chain**, so
+  a ninth platform added without its own branch would silently be posted as
+  Instagram.
 - **TikTok is on a warm-up, and the numbers are why.** Fifteen posts over four
   days drew SEVEN views between them — uniformly 0-2 each, across five
   formats, every one published successfully. Content that varies that much

@@ -345,8 +345,22 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
     body.post = (fits.length <= 160 ? fits : [note, lead, ask].filter(Boolean).join(' ')).slice(0, 160)
     body.snapChatOptions = { spotlight: true }
   } else {
-    body.post = [withAsk(c.text, a.kind), tagLine(c.tags, 5)].filter(Boolean).join('\n\n').slice(0, 2200)
-    body.instagramOptions = { shareReelsFeed: true, isAIGenerated: true }
+    // Instagram, and the same trade as TikTok's above — with weaker evidence,
+    // stated so nobody mistakes it for a measured result. Meta publishes no
+    // reach or monetization penalty for the AI label (its enforcement targets
+    // UNORIGINAL content, not AI), so unlike TikTok there is no known
+    // mechanism costing us anything here. What holds is the other half:
+    // Meta's labelling is aimed at photorealistic and deceptive media, and
+    // illustrated characters over a painted road are neither — so the flag is
+    // not required, and Instagram sits at zero views alongside TikTok.
+    //
+    // The note goes into the caption for the reason it did there: this branch
+    // never carried one, so the flag was the whole disclosure, and dropping it
+    // alone would leave Instagram saying nothing. Snapchat's Spotlight review
+    // has already rejected a verse from this account as "undisclosed
+    // AI-generated content".
+    body.post = [withAsk(c.text, a.kind), aiNote(a), tagLine(c.tags, 5)].filter(Boolean).join('\n\n').slice(0, 2200)
+    body.instagramOptions = { shareReelsFeed: true }
   }
   return body
 }

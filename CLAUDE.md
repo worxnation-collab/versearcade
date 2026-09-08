@@ -483,8 +483,16 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   TikTok's `isAIGenerated` is the one label with a real cost, since a Nov 2025
   preference slider lets viewers dial labelled content down, and TikTok's own
   guidelines exempt "artistic styles" and "generic text-to-speech" from
-  needing it at all — **so it is gone, and the note moved into TikTok's
-  CAPTION in the same edit.** Dropping one without adding the other is the
+  needing it at all. **It was briefly removed on that reasoning and then put
+  BACK, and the correction is the part worth keeping:** TikTok's own Creator
+  Academy says adding the label "won't affect the distribution of your video",
+  so removing it bought nothing — while carrying real risk, since unlabelled
+  AI can be taken down, the label cannot be added after posting, and
+  Snapchat's Spotlight review has already rejected a verse from this account
+  as "undisclosed AI-generated content". The November 2025 preference slider
+  is a VIEWER setting, not a ranking penalty, and conflating the two is what
+  caused the mistake. What DID survive the round trip is the note in TikTok's
+  CAPTION, which it never had: Dropping one without adding the other is the
   trap: TikTok's caption never carried the note, so the flag was its whole
   disclosure, and removing it alone would have left TikTok the one network
   here saying nothing. Snapchat's Spotlight review has already rejected a
@@ -493,13 +501,18 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   recoverable and a strike on an account with no distribution is not. The flag
   goes back on the day a post carries a realistic-looking person or a cloned
   voice; words are not a substitute for it on content the rules actually
-  cover. **Instagram got the same edit, with weaker evidence — say so.** Meta
-  publishes no reach or monetization penalty for the label (its enforcement
-  targets UNORIGINAL content, not AI), so unlike TikTok there is no known
-  mechanism costing anything; what holds is that Meta's labelling aims at
-  photorealistic and deceptive media, which illustrated characters over a
-  painted road are not. Its caption never carried the note either, so the same
-  swap applies. **`instagramOptions` is the `else` branch of that chain**, so
+  cover. Instagram carries both for the same reasons; Meta never published a
+  reach penalty for the label at all.
+  **The note claims the VOICE and not the words**, and that distinction is
+  load-bearing: the thought is drafted for him and he departs from it as he
+  reads, so "the words are mine" would be the one false line in a sentence
+  whose whole job is being true.
+  **The gap to watch: an UNVOICED day.** TikTok, Instagram and YouTube now get
+  only the verse and the story — chosen because they are the posts a person
+  makes — but `voiced` is false on any day no recording was parked, and those
+  networks then receive a fully synthetic post carrying "AI-generated art and
+  voice." on the strength of a warm-up argued on human presence. Either the
+  recordings keep up, or those three should skip a day that has none. **`instagramOptions` is the `else` branch of that chain**, so
   a ninth platform added without its own branch would silently be posted as
   Instagram.
 - **TikTok is on a warm-up, and the numbers are why.** Fifteen posts over four

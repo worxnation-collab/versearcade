@@ -111,8 +111,18 @@ export const FACEBOOK_REEL_MAX_SECONDS = 90
  * rejected the first verse as "undisclosed AI-generated content".
  */
 export const AI_NOTE = 'AI-generated art and voice.'
-/** The same note for a post whose voice is a person's: the art is still painted by a model, and only that is claimed. */
-export const AI_NOTE_ART = 'AI-generated art; the voice is our own.'
+/**
+ * The note for a post a PERSON read. The platform flag is a binary that says
+ * "synthetic" and cannot say anything else, so this is the only place the
+ * difference can be drawn — and on the two networks now warming up, every
+ * post is one of these, because they get the verse and the story and nothing
+ * else.
+ *
+ * It claims the VOICE and not the words. The thought is drafted for him and
+ * he departs from it as he reads; saying the words are his would be the one
+ * false note in a line whose whole job is being true.
+ */
+export const AI_NOTE_ART = 'AI-generated art. The voice you hear is mine, not synthetic.'
 const aiNote = (a: PostArgs) => (a.voiced ? AI_NOTE_ART : AI_NOTE)
 
 const tagLine = (tags: string[] | undefined, n: number) => (tags ?? []).slice(0, n).map((t) => '#' + t).join(' ')
@@ -240,45 +250,22 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
   // tappable. Everywhere else it is the bio link, set by hand.
   if (FIRST_COMMENT_ON.includes(platform)) body.firstComment = { comment: `Play today's verse: ${siteLink(platform)}` }
   if (platform === 'tiktok') {
-    // The note moves from the FLAG into the CAPTION, and dropping one without
-    // adding the other is the mistake this was two minutes from making.
-    // TikTok's caption never carried it — the flag was the whole disclosure —
-    // so removing the flag alone would have left TikTok the one network here
-    // saying nothing. Snapchat's Spotlight review has already rejected a verse
-    // from this very account as "undisclosed AI-generated content", so the
-    // failure is not hypothetical, and it is asymmetric: a rejected post is
-    // recoverable, a strike on an account with no distribution is not.
+    // BOTH: the flag AND the note in the caption.
+    //
+    // The flag was briefly removed on the belief that it cost reach. TikTok's
+    // own Creator Academy says the opposite — adding the label "won't affect
+    // the distribution of your video" — so removing it bought nothing and
+    // carried real risk: unlabelled AI can be taken down, the label cannot be
+    // added after posting, and Snapchat's Spotlight review has already
+    // rejected a verse from this account as "undisclosed AI-generated
+    // content". The November 2025 preference slider is a VIEWER setting, not a
+    // ranking penalty, and conflating the two is what caused the mistake.
+    //
+    // The caption note stays, because it says the thing the flag cannot: the
+    // flag is a binary that reads "synthetic", and these posts are not. The
+    // art is a model's; the voice is a person's.
     body.post = [withAsk(c.text, a.kind, ' '), aiNote(a), tagLine(c.tags, 5)].filter(Boolean).join(' ').slice(0, 2200)
-    // NO `isAIGenerated`, and that is a decision rather than an omission.
-    //
-    // TikTok requires the AIGC label only for content that "shows
-    // realistic-looking scenes or people", and its guidelines name two
-    // exemptions this account sits inside twice over: "using artistic styles,
-    // like anime", and "using generic text-to-speech (TTS) narration, when the
-    // TTS isn't a recognizable voice of a known individual". Every figure here
-    // is an illustration and every synthetic voice is generic Gemini TTS —
-    // and the two voiced posts a day are a real person, which needs no label
-    // at all. So the flag was never required.
-    //
-    // What it cost is real: TikTok shipped an AIGC preference slider in
-    // November 2025 that lets a viewer dial labelled content DOWN in their For
-    // You feed, and it cannot be switched off. It is the only place across
-    // eight networks where the label itself carries a mechanical reach
-    // penalty. Fifteen posts over four days drew seven views in total with it
-    // set, alongside an off-platform link in the caption (since removed) —
-    // neither is proof, and both were the suppressors we could control.
-    //
-    // This is NOT a retreat from disclosure. YouTube keeps
-    // `containsSyntheticMedia` below, because YouTube states outright that
-    // disclosing "won't limit a video's audience or impact its eligibility to
-    // earn money" — free there, costly here, so the answer differs by network.
-    // The visible AI note stays in the caption where a caption carries one,
-    // and the honest line about the voice ("AI-generated art; the voice is our
-    // own") is untouched — and now says it on TikTok too, in the caption. If a
-    // post ever carries a realistic-looking person or a cloned voice, the flag
-    // goes back on: that is what it is for, and words are not a substitute for
-    // it on content the rules actually cover.
-    body.tikTokOptions = { visibility: 'public' }
+    body.tikTokOptions = { visibility: 'public', isAIGenerated: true }
   } else if (platform === 'youtube') {
     body.post = [withAsk(c.text, a.kind), tagLine(c.tags, 5)].filter(Boolean).join('\n\n').slice(0, 5000)
     body.youTubeOptions = { title: (c.title || `${a.reference || 'Verse Arcade'} · Verse Arcade`).slice(0, 100), visibility: 'public', shorts: true, madeForKids: false, containsSyntheticMedia: true }
@@ -345,22 +332,11 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
     body.post = (fits.length <= 160 ? fits : [note, lead, ask].filter(Boolean).join(' ')).slice(0, 160)
     body.snapChatOptions = { spotlight: true }
   } else {
-    // Instagram, and the same trade as TikTok's above — with weaker evidence,
-    // stated so nobody mistakes it for a measured result. Meta publishes no
-    // reach or monetization penalty for the AI label (its enforcement targets
-    // UNORIGINAL content, not AI), so unlike TikTok there is no known
-    // mechanism costing us anything here. What holds is the other half:
-    // Meta's labelling is aimed at photorealistic and deceptive media, and
-    // illustrated characters over a painted road are neither — so the flag is
-    // not required, and Instagram sits at zero views alongside TikTok.
-    //
-    // The note goes into the caption for the reason it did there: this branch
-    // never carried one, so the flag was the whole disclosure, and dropping it
-    // alone would leave Instagram saying nothing. Snapchat's Spotlight review
-    // has already rejected a verse from this account as "undisclosed
-    // AI-generated content".
+    // Instagram, same as TikTok above: the flag AND the note. The flag was
+    // briefly dropped here too, on the same mistaken premise, and Meta never
+    // published a reach penalty for it in the first place.
     body.post = [withAsk(c.text, a.kind), aiNote(a), tagLine(c.tags, 5)].filter(Boolean).join('\n\n').slice(0, 2200)
-    body.instagramOptions = { shareReelsFeed: true }
+    body.instagramOptions = { shareReelsFeed: true, isAIGenerated: true }
   }
   return body
 }

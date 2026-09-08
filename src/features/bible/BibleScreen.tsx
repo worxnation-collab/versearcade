@@ -19,6 +19,7 @@ import {
   type BibleMarks,
 } from '@/lib/bibleProgress'
 import { TOTAL_VERSES, type BookShape } from '@/data/bible/structure'
+import { pressedSeals } from '@/data/seals'
 
 // The contents page of the player's own Bible: all 66 books, every one present
 // from the first day, each carrying a bar of how much of it they've touched.
@@ -56,6 +57,7 @@ export default function BibleScreen() {
 
   const overall = useMemo(() => wholeBibleTiers(marks), [marks])
   const opened = overall.saved + overall.studied + overall.read
+  const seals = useMemo(() => pressedSeals(marks.chapters).length, [marks.chapters])
 
   useEffect(() => {
     loadCollection()
@@ -136,6 +138,40 @@ export default function BibleScreen() {
             {overall.saved > 0
               ? 'Every verse you’ve kept, in one place'
               : 'Tap the heart after a challenge to keep a verse here'}
+          </div>
+        </div>
+        <span style={{ color: PAPER.accent }}>›</span>
+      </button>
+
+      {/* A seal for every book finished. It sits with the other two records
+          rather than on a tab of its own: highlights, stamps and seals are the
+          same kind of thing — what this reader has kept. */}
+      <button
+        onClick={() => { juice.select(); navigate('/bible/seals') }}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          textAlign: 'left',
+          width: '100%',
+          marginTop: 10,
+          padding: 14,
+          borderRadius: 14,
+          border: `1px solid ${seals > 0 ? PAPER.gilt : PAPER.rule}`,
+          background: seals > 0 ? 'rgba(184,137,43,0.10)' : 'rgba(255,255,255,0.45)',
+          cursor: 'pointer',
+        }}
+      >
+        <span style={{ fontSize: 20 }}>🔖</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <b style={{ fontSize: 14, color: PAPER.ink }}>
+            Seals
+            {seals > 0 && <span style={{ color: PAPER.inkFaint, fontWeight: 400 }}> · {seals}</span>}
+          </b>
+          <div style={{ fontSize: 12, color: PAPER.inkFaint, marginTop: 1 }}>
+            {seals > 0
+              ? 'One for every book you’ve read all the way through'
+              : 'Read every chapter of a book and its seal is pressed here'}
           </div>
         </div>
         <span style={{ color: PAPER.accent }}>›</span>

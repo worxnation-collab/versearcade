@@ -1493,6 +1493,56 @@ the profile tab carries the book itself. The two testaments fold (66 books is a
 lot of thumb) and a folded section still reports what's inside it, so closing one
 never hides progress; the choice is remembered in `va.bible.open`.
 
+### The Book Collection: the one thing you unlock by reading
+
+Every unlock axis in this app was streak, share, referral, live battles, battle
+wins, level or money. Not one of them was READING, in an app whose whole subject
+is the text — a player could open forty chapters and nothing anywhere would say
+so. `data/seals.ts` + `/bible/seals` is the axis that was missing, and it comes
+in two halves that are deliberately gated on different numbers:
+
+- **66 seals, one per book, PURELY DERIVED.** A seal is pressed when every
+  chapter of a book is marked read. No table, no grant, no migration and
+  nothing to revoke — the keep-challenge bargain, and it works in both modes
+  because `bible_marks` / `va.bible.*` already do. Marks are cumulative and
+  never removed, so a pressed seal is pressed forever.
+- **Four borders and four badges gated on CHAPTERS OPENED** (10 / 60 / 250 /
+  1,189 — `requiredChapters` in `data/cosmetics.ts` ↔ `0109`). That is the
+  number the server can verify in one count; a *seal* needs the 1,189-number
+  structure table, which belongs in the client and must not be grown into SQL.
+  So the collection is honest on the client and the equippables ride a number
+  Postgres can see.
+
+Four things are load-bearing:
+
+- **The chapter gate is checked BEFORE the streak gate and instead of it.**
+  These rows carry `req_streak 0` and must not be reachable by showing up
+  alone — the same trap `0096`'s pack gate closes, in the same order. `founder`
+  bypasses; `is_admin` deliberately does not, because the client's `isUnlocked`
+  doesn't either, and a grid offering LESS than the RPC allows is the harmless
+  direction (the 0067 trap is the other one).
+- **It fills the hole in the ladder.** Borders went 7 → 30 → 90 → 180 → 365 →
+  1000 days, so a player between their first week and their first month had
+  nothing to earn at all. Ten chapters is a first week. That gap is the reason
+  this shipped as a ladder rather than as one prize at the end.
+- **There is no denominator.** The Seals page names the closest book and the
+  next cosmetic and never draws a bar toward 66 — a denominator you will be
+  under for years is what `built` stopped showing when the Cross Word started
+  cutting crosses on demand. Same reason the seal count reaches no card, no
+  board and no RPC: this is a fact about your own Bible.
+- **The toast diffs against DISK and primes.** A seal is pressed by the last
+  chapter of a book being opened, in a reader with no result screen to hang a
+  reward off — the async-battle-winner problem `store/skinUnlocks.ts` solves.
+  `checkSeals()` in `store/unlocks.ts` waits for the bible store to load, and a
+  device meeting an account for the first time records silently, or a reader
+  with forty books finished would be told about forty at once.
+
+The wax is drawn, not generated, for the church kit's reason: it takes a
+runtime colour (its division's, seven of them) and a baked image can't take
+one. Unpressed is the same shape in outline — never a padlock, never a greyed
+copy — because an unread book is an invitation, which is the call the reader's
+`unread` tier already makes.
+
 ## Supabase
 
 Migrations live in `supabase/migrations/`, numbered, and are **applied by hand**
@@ -1500,7 +1550,21 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0108` ("Sharkey" — the founder's own skin, locked to one
+The latest is `0109` (the reading cosmetics — four borders and four badges
+gated on chapters of the Bible opened, and `set_cosmetics` restated WHOLESALE
+from 0096 plus that one branch; a future migration editing it copies forward
+from HERE). APPLIED on 2026-09-08 before the client merged, and verified:
+production's `set_cosmetics` was byte-identical to 0096 before the restate
+(checked, not assumed), there is exactly ONE signature after it, the ACL is
+still the house `authenticated` shape, both the patron gate and the new reading
+gate are present in the deployed body, and all eight catalog rows exist. Before
+the apply it was run end to end against a local Postgres 16 with a stub
+`profiles`/`cosmetics`/`bible_marks` schema — sixteen cases including the one
+worth checking rather than reasoning about: a profile with 10 `read` marks and
+200 `studied` marks is still refused the 60-chapter border, so `studied` cannot
+be farmed into a reading cosmetic.
+
+Before it, `0108` ("Sharkey" — the founder's own skin, locked to one
 account), APPLIED on 2026-09-07 before the client merged and verified four
 ways: the protected list reads FIFTEEN names, `sharkey` is absent from
 `fulfill_skin` and has no `promo_codes` row, exactly one profile owns it
@@ -1773,7 +1837,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0109` (0108 is taken by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0110` (0109 is taken by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

@@ -223,6 +223,15 @@ export const MAP_PLACES: MapPlace[] = [
     wall: 'bible',
   },
   {
+    id: 'seals',
+    icon: '🔖',
+    label: 'Your seals',
+    line: 'A seal for every book you finish reading',
+    to: '/bible/seals',
+    area: 'study',
+    wall: 'bible',
+  },
+  {
     id: 'highlights',
     icon: '💛',
     label: 'Verses you’ve kept',

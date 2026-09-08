@@ -92,7 +92,7 @@ Start your streak today. It's one verse.
 > at 3,914 of Apple's 4,000 characters with nothing left to shave, which is why this
 > is a rewrite rather than an append: the old block spent its budget on mechanics
 > nuance (how banding works, what a rating would have been) that a store listing
-> does not owe anybody. **3,940 characters against Apple's 4,000 limit, leaving 60 spare** — counted on the fenced body, which is what Apple measures.
+> does not owe anybody. **3,983 characters against Apple's 4,000 limit, leaving 17 spare** — counted on the fenced body, which is what Apple measures.
 >
 > **Three things are deliberately absent, and each is a judgement rather than an
 > oversight:**
@@ -117,8 +117,14 @@ Start your streak today. It's one verse.
 > borders got their own two-line block, and the budget for it came from trimming
 > six bullets and dropping two (the church picker's "suggested before you type",
 > and the chest card going straight onto the profile — both true, both the least
-> a reader loses by not reading). This is what "a running draft" means in
-> practice: a new feature costs an old sentence, not a version bump.
+> a reader loses by not reading), and again for the Wardrobe, paid for by
+> shortening five more. This is what "a running draft" means in practice: a new
+> feature costs an old sentence, not a version bump.
+>
+> **At 17 spare this block is now genuinely full**, and shortening is spent — the
+> easy wordiness is gone. The next feature that lands under 1.3.0 should DROP a
+> bullet rather than trim five, and the honest candidates in order are the
+> gathering hour, the streak's safety-net line, and "see who played today".
 >
 > **Before submitting, two checks this file cannot do for itself:** open App Store
 > Connect and read what is actually approved (the version paragraph in CLAUDE.md is a
@@ -143,7 +149,7 @@ EVERY RUN ENDS WITH WHAT YOU LEARNED
 
 BATTLE ANYONE, RIGHT NOW
 • Quick match: tap it and we put you with whoever else is looking. No code, no
-  queue position, no rating.
+  queue, no rating.
 • Or share a room code. Either way you both read the same verse, you both tap
   ready, and a bar shows where the other player is.
 • Pick the round: the verse, or trivia on one book.
@@ -155,18 +161,18 @@ BATTLE ANYONE, RIGHT NOW
 
 THERE IS AN ARCADE IN HERE
 • Manna Rush: seven days in the wilderness. Gather the fresh flakes, leave
-  yesterday's, and on the seventh day the best thing to do is rest.
-• Word Catch: a verse comes loose from the page and you tap the words back into
+  yesterday's, and on the seventh day the best thing is to rest.
+• Word Catch: a verse comes loose from the page and you tap the words back in
   order.
-• Cross Word: two words that share a letter, standing as a cross. Solve it and the
-  squares turn to wood with the verse carved underneath.
+• Cross Word: two words that share a letter, standing as a cross. Solve it and
+  the squares turn to wood with the verse carved underneath.
 • Your first go on each machine is worth 5 XP a day, for turning up rather than for
   doing well. No high scores, and nothing here can be lost.
-• Send a friend a machine: a shared link is one free go, no account, no download.
+• Share a machine: one free go, no account, no download.
 
 PRAY, AND BE PRAYED FOR
-• The Prayer Wall: tuck one note into the stones, and the wall deals somebody
-  else's to you. Hold the candle until the wick catches.
+• The Prayer Wall: tuck a note into the stones, and the wall deals somebody else's
+  to you. Hold the candle until the wick catches.
 • A stranger only ever sees the category. Your own words reach your church and
   buddies, or nobody at all. Anonymous unless you sign it.
 • No note carries a count, so no note can become a ladder of who is loved.
@@ -174,13 +180,15 @@ PRAY, AND BE PRAYED FOR
 READING FINALLY UNLOCKS SOMETHING
 • Read every chapter of a book and its seal is pressed into your Bible. Sixty-six
   to find, and the short ones take an evening.
+• A wardrobe page: everything there is to wear and what brings it. No counts, no
+  bars.
 • Four rings and four badges for chapters opened, the first at ten. Nothing here can
   be taken back.
 
 FIRST LIGHT
 • Whoever opens a day's verse first holds its light, and everyone who opens it
-  after them is worth a point to them. Nothing is taken from anybody — the points
-  are minted, not moved. No second place, and a fresh start at midnight.
+  after is worth a point to them. Nothing is taken from anybody — the points are
+  minted, not moved. No second place, and a fresh start at midnight.
 
 YOUR CHURCH HAS SOMEBODY TO PLAY THIS WEEK
 • Every Monday your church meets another its own size. Whoever gives more raises a
@@ -193,8 +201,8 @@ YOUR CHURCH HAS SOMEBODY TO PLAY THIS WEEK
 THE REST
 • Your week, on a Sunday: what you did over seven days. Your own numbers, nothing
   compared to anybody.
-• Your streak says it is safe before the day runs out, and your reminder learns the
-  hour you actually play.
+• Your streak says it is safe before the day runs out, and your reminder learns
+  the hour you actually play.
 • Put a favourite verse, book and translation on your card.
 • Drag anything in your Upper Room, hall or churchyard exactly where you want it.
   Fine and Grand pieces are earned by playing now, not by stacking duplicates.

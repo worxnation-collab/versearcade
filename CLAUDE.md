@@ -3077,6 +3077,42 @@ marks gifts read; the dot goes because you looked, not because you cleared a
 queue. It is a pill on your own card rather than a sixth tab, because five
 already have to clear a 320px phone.
 
+### The Wardrobe: what there is to earn, and the door to it
+
+Everything wearable lived behind `/you` → Customize → a pill, which is three
+taps from anywhere and a screen you only open once you already know what you
+are looking for. So a player who had never opened it had no idea that
+twenty-two skins, six pets, fifteen borders and badges and eleven items
+existed. You cannot play toward something you have never seen. `/wardrobe`
+(`data/wardrobe.ts`, `features/wardrobe/WardrobeScreen.tsx`) is the gallery,
+grouped by **how a thing is earned** rather than by what kind of thing it is.
+
+One rule, and it is the whole reason it can exist here:
+
+> **It shows the THING and the DOOR, never the DISTANCE.**
+
+Every tile carries its art and a sentence saying what earns it. Not one carries
+a count, a bar, a percentage, an "N of M", or an ordering by how close you are —
+the same line the crusades set already holds inside the customizer, the Seals
+page holds against its 66, and the map holds absolutely. A gallery of what
+exists is an invitation; the same gallery with progress on it is a list of what
+you are behind on.
+
+Three more things:
+
+- **Locked draws the thing, dimmed and desaturated, with the lock as a corner
+  chip** — never a padlock over the face. That is the skins grid's own scar:
+  the one surface meant to make somebody want a look was the one where they
+  could not see it.
+- **It adds no way around `lib/commerce`.** `skinVisible` still decides, so a
+  retired look stays with its owners and a priced one stays off a native shelf
+  that cannot sell it. This is a second door onto the same content, not a
+  bypass.
+- **It is purely derived and open to guests**, like the Journal — no wall entry,
+  because what there is to earn IS the pitch for an account. It reads the same
+  accessors the customizer does (`skinOwned`, `petUnlocked`, `isUnlocked`), so
+  the two can never disagree about what is owned.
+
 ## The Journal, and saved looks
 
 `/journal` is the page that says what you have done — five features had milestone

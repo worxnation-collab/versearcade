@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Avatar } from '@/components/Avatar'
 import { TabbedSection } from '@/components/TabbedSection'
@@ -124,6 +125,7 @@ export function CustomizeSection() {
     savedTimer.current = setTimeout(() => setSavedFlash(false), 1500)
   }
 
+  const navigate = useNavigate()
   const setAvatarCharacter = useAuth((s) => s.setAvatarCharacter)
   const setCardBackground = useAuth((s) => s.setCardBackground)
   const setPet = useAuth((s) => s.setPet)
@@ -524,6 +526,17 @@ export function CustomizeSection() {
                     off — your own character is underneath, exactly as you made it.
                     {pricedOnShelf && ' The one listing with a price is the founding-patron thank-you — nothing in the game is behind it.'}
                   </p>
+                  {/* The wardrobe is the same content laid out by DOOR rather
+                      than by shelf — "what brings this" instead of "what kind of
+                      thing is this". It is on the map too; this is the door for
+                      somebody who is already standing in front of the grid. */}
+                  <button
+                    className="pill"
+                    onClick={() => { juice.select(); navigate('/wardrobe') }}
+                    style={{ width: '100%', marginTop: 10, fontWeight: 800, fontSize: 12.5, padding: '9px 14px' }}
+                  >
+                    🧺 See everything there is to wear →
+                  </button>
                   {/* Restore Purchases — REQUIRED by Apple for non-consumable in-app
                       purchases (Guideline 3.1.1): a buyer who reinstalls, or signs in on a
                       second device, has to be able to get their packs back without paying

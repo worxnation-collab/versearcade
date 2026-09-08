@@ -756,7 +756,13 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   (`admin/tiktok/make.ts`), in headless Chromium — there is no second
   renderer — transcodes to H.264 MP4 with ffmpeg, parks the file through
   `upload-url`, and schedules each post at its own hour in `TIKTOK_TZ`
-  (verse 07:00, challenge 10:00, quiz 12:30, challenge2 16:00, story 19:30).
+  (verse 07:00, challenge 10:00, note 12:00, quiz 12:30, challenge2 16:00,
+  story 19:30). **The note is the one kind that leaves that pipeline early**:
+  it renders a JPEG, so it skips the ffmpeg transcode (nothing to normalise)
+  and the Pinterest cover (a poster for something that plays), and it parks
+  at `note-card.jpg` rather than `<kind>.mp4` because that is the path
+  `upload-url` allows. `isPhoto`/`mediaName` in the runner are the whole of
+  that branch — add a second photo kind there, never a second code path.
   Its credential is
   `TIKTOK_RUNNER_TOKEN` (Vault, 0102, sent as `x-runner-token` beside the
   anon key), which the function takes as the admin and which can make these

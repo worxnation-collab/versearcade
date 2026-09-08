@@ -67,11 +67,11 @@ const RUNNER_TOKEN = env.TIKTOK_RUNNER_TOKEN || ''
 const GEMINI_KEY = env.GEMINI_API_KEY || ''
 const AYRSHARE_KEY = env.AYRSHARE_API_KEY || ''
 const TZ = env.TIKTOK_TZ || 'America/New_York'
-const KINDS = (env.KINDS || 'verse,challenge,quiz,challenge2,story').split(',').map((s) => s.trim()).filter(Boolean)
+const KINDS = (env.KINDS || 'verse,challenge,note,quiz,challenge2,story').split(',').map((s) => s.trim()).filter(Boolean)
 const PLATFORMS = (env.PLATFORMS || 'tiktok,youtube,facebook,instagram,x,snapchat,threads,pinterest').split(',').map((s) => s.trim()).filter(Boolean)
 const DRY = /^(1|true|yes)$/i.test(env.DRY_RUN || '')
 const FFMPEG = env.FFMPEG || 'ffmpeg'
-const TIMES = Object.fromEntries((env.POST_TIMES || 'verse=07:00,challenge=10:00,quiz=12:30,challenge2=16:00,story=19:30').split(',').map((kv) => kv.split('=').map((s) => s.trim())))
+const TIMES = Object.fromEntries((env.POST_TIMES || 'verse=07:00,challenge=10:00,note=12:00,quiz=12:30,challenge2=16:00,story=19:30').split(',').map((kv) => kv.split('=').map((s) => s.trim())))
 const TTS_MODEL = env.GEMINI_TTS_MODEL || 'gemini-2.5-flash-preview-tts'
 // A directory holding `models/onnx-community/whisper-tiny.en_timestamped/…` and
 // `ort/ort-wasm-simd-threaded*.{mjs,wasm}`: served to the page so the aligner
@@ -84,10 +84,18 @@ const fail = (m) => { console.error('tiktok-daily:', m); process.exit(2) }
 const mode = RUNNER_TOKEN ? 'function' : AYRSHARE_KEY ? 'local' : null
 if (!mode) fail('set TIKTOK_RUNNER_TOKEN (function mode) or AYRSHARE_API_KEY + GEMINI_API_KEY (local mode)')
 if (mode === 'local' && !GEMINI_KEY) fail('local mode needs GEMINI_API_KEY for the reading')
-const ALL_KINDS = ['verse', 'story', 'quiz', 'challenge', 'challenge2']
+const ALL_KINDS = ['verse', 'story', 'quiz', 'challenge', 'challenge2', 'note']
 for (const k of KINDS) if (!ALL_KINDS.includes(k)) fail(`unknown kind ${k}`)
 // The kinds about YESTERDAY's verse: its answers are public only once the day has rolled over.
 const aboutYesterday = (k) => k === 'quiz' || k.startsWith('challenge')
+// The NOTE is the one post here that is not a video: a 4:5 card and the words,
+// Facebook's photo-and-text post (and Pinterest's pin). So it skips the two
+// steps every other kind takes — the ffmpeg transcode, which has nothing to
+// transcode, and the Pinterest cover, which is the frame shown before a video
+// PLAYS and means nothing on a still. Its bucket name is `note-card.jpg`
+// rather than `note.jpg` because that is the path `upload-url` allows.
+const isPhoto = (k) => k === 'note'
+const mediaName = (k) => (isPhoto(k) ? 'note-card.jpg' : `${k}.mp4`)
 
 // ---- dates and times in the operator's zone ---------------------------------------
 function ymdIn(tz, d = new Date()) {
@@ -353,13 +361,14 @@ for (const kind of KINDS) {
       results.push({ kind, date, videoUrl: prior.videoUrl, results: rows, skipped: 'posted' }); continue
     }
     if (done.size) log(`  already on ${[...done].join(', ')} — posting to ${todo.join(', ')}`)
-    const parked = `${SUPABASE_URL}/storage/v1/object/public/tiktok/days/${date}/${kind}.mp4`
+    const parked = `${SUPABASE_URL}/storage/v1/object/public/tiktok/days/${date}/${mediaName(kind)}`
     const head = await fetch(parked, { method: 'HEAD' }).catch(() => null)
-    if (!/^(1|true|yes)$/i.test(env.RERENDER || '') && head?.ok && /^video\//.test(head.headers.get('content-type') || '')) {
+    const want = isPhoto(kind) ? /^image\// : /^video\//
+    if (!/^(1|true|yes)$/i.test(env.RERENDER || '') && head?.ok && want.test(head.headers.get('content-type') || '')) {
       log(`  already rendered (${(Number(head.headers.get('content-length') || 0) / 1e6).toFixed(1)}MB in the bucket) — posting that`)
       videoUrl = parked
-      if (todo.includes('pinterest')) await parkCover(date, kind, parked)
-      posted = await postEach(todo, { date, kind, videoUrl, scheduleDate, reference: getVerseForDate(date).reference, seconds: durationOf(parked) })
+      if (todo.includes('pinterest') && !isPhoto(kind)) await parkCover(date, kind, parked)
+      posted = await postEach(todo, { date, kind, videoUrl, scheduleDate, reference: getVerseForDate(date).reference, seconds: isPhoto(kind) ? undefined : durationOf(parked) })
       for (const r of posted.results) log(`  ${r.platform.padEnd(10)} ${r.status}${r.error ? ` — ${r.error}` : ''}${r.postUrl ? ` ${r.postUrl}` : ''}`)
       results.push({ kind, date, videoUrl, scheduleDate, results: posted.results, skipped: 'render' }); continue
     }
@@ -382,25 +391,33 @@ for (const kind of KINDS) {
   await dl.saveAs(raw)
   log(`  rendered ${rendered.ext} ${(rendered.size / 1e6).toFixed(1)}MB · ${rendered.reference} · ${rendered.tier}`)
 
-  // Always through ffmpeg: one known-good H.264/AAC/yuv420p/faststart MP4.
-  const mp4 = path.join(OUT, 'out', `${kind}-${date}.mp4`)
-  const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', raw, '-c:v', 'libx264', '-preset', 'medium', '-crf', '20', '-pix_fmt', 'yuv420p', '-r', '30', '-c:a', 'aac', '-b:a', '160k', '-ar', '48000', '-movflags', '+faststart', mp4], { stdio: 'inherit' })
-  if (ff.status !== 0) {
-    const why = ff.error ? `${FFMPEG}: ${ff.error.code === 'ENOENT' ? 'not found — install ffmpeg or set FFMPEG' : ff.error.message}` : `exit ${ff.status}`
-    log(`  ffmpeg failed: ${why}`)
-    results.push({ kind, date, error: `ffmpeg: ${why}` }); continue
+  // A photo is finished the moment it is rendered — there is no stream to
+  // normalise, and handing a JPEG to the H.264 encoder below would produce a
+  // one-frame video nobody asked for.
+  let mp4 = raw
+  if (isPhoto(kind)) {
+    log(`  card ${(fs.statSync(raw).size / 1e3).toFixed(0)}KB`)
+  } else {
+    // Always through ffmpeg: one known-good H.264/AAC/yuv420p/faststart MP4.
+    mp4 = path.join(OUT, 'out', `${kind}-${date}.mp4`)
+    const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', raw, '-c:v', 'libx264', '-preset', 'medium', '-crf', '20', '-pix_fmt', 'yuv420p', '-r', '30', '-c:a', 'aac', '-b:a', '160k', '-ar', '48000', '-movflags', '+faststart', mp4], { stdio: 'inherit' })
+    if (ff.status !== 0) {
+      const why = ff.error ? `${FFMPEG}: ${ff.error.code === 'ENOENT' ? 'not found — install ffmpeg or set FFMPEG' : ff.error.message}` : `exit ${ff.status}`
+      log(`  ffmpeg failed: ${why}`)
+      results.push({ kind, date, error: `ffmpeg: ${why}` }); continue
+    }
+    log(`  mp4 ${(fs.statSync(mp4).size / 1e6).toFixed(1)}MB`)
   }
-  log(`  mp4 ${(fs.statSync(mp4).size / 1e6).toFixed(1)}MB`)
   if (DRY) { results.push({ kind, date, mp4, dryRun: true }); continue }
 
   if (mode === 'function') {
-    const up = await fn('upload-url', { path: `days/${date}/${kind}.mp4` })
+    const up = await fn('upload-url', { path: `days/${date}/${mediaName(kind)}` })
     const sb = createClient(SUPABASE_URL, ANON)
-    const { error } = await sb.storage.from('tiktok').uploadToSignedUrl(up.path, up.token, fs.readFileSync(mp4), { contentType: 'video/mp4', upsert: true })
+    const { error } = await sb.storage.from('tiktok').uploadToSignedUrl(up.path, up.token, fs.readFileSync(mp4), { contentType: isPhoto(kind) ? 'image/jpeg' : 'video/mp4', upsert: true })
     if (error) { results.push({ kind, date, error: `upload: ${error.message}` }); continue }
     videoUrl = up.publicUrl
-    await parkCover(date, kind, mp4)
-    posted = await postEach(PLATFORMS.filter((p) => social.postsOn(p, kind)), { date, kind, videoUrl, scheduleDate, reference: rendered.reference, seconds: durationOf(mp4) })
+    if (!isPhoto(kind)) await parkCover(date, kind, mp4)
+    posted = await postEach(PLATFORMS.filter((p) => social.postsOn(p, kind)), { date, kind, videoUrl, scheduleDate, reference: rendered.reference, seconds: isPhoto(kind) ? undefined : durationOf(mp4) })
   } else {
     const u = await ayrshare(`media/uploadUrl?fileName=${encodeURIComponent(`va-${kind}-${date}.mp4`)}&contentType=mp4`, null, 'GET')
     if (!u.uploadUrl) { results.push({ kind, date, error: `ayrshare upload url: ${JSON.stringify(u).slice(0, 200)}` }); continue }

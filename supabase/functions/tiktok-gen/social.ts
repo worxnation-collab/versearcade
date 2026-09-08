@@ -300,11 +300,14 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
     // Pinterest is search: the title carries the reference and what the pin
     // is, the description (500) the words somebody would type, and the cover
     // is the frame Pinterest shows before play — required for a video pin,
-    // same size as the video. `link` is the pin's DESTINATION rather than
+    // same size as the video. A NOTE is already a still, so it carries no
+    // thumbnail at all: `thumbNail` is Pinterest's poster for something that
+    // PLAYS, and handing one to an image pin describes a frame of a video
+    // that does not exist. `link` is the pin's DESTINATION rather than
     // caption text (tapping a pin is following it), so it keeps the tracked
     // URL while the description has none.
     body.post = [withAsk(c.text, a.kind), aiNote(a), tagLine(c.tags, 3)].filter(Boolean).join('\n\n').slice(0, 500)
-    body.pinterestOptions = { title: (c.title || `${a.reference || 'Verse Arcade'} · Daily Bible Verse`).slice(0, 100), link: siteLink(platform), thumbNail: a.cover, altText: [`${a.reference || 'A Bible verse'}, read aloud over a painted road — Verse Arcade`.slice(0, 500)] }
+    body.pinterestOptions = { title: (c.title || `${a.reference || 'Verse Arcade'} · Daily Bible Verse`).slice(0, 100), link: siteLink(platform), thumbNail: photo ? undefined : a.cover, altText: [`${a.reference || 'A Bible verse'}, read aloud over a painted road — Verse Arcade`.slice(0, 500)] }
   } else if (platform === 'snapchat') {
     // 160 characters, hard, and everything here is ordered by what must
     // survive it: the AI disclosure first (Spotlight's review rejected the

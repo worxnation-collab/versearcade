@@ -13,16 +13,16 @@
 // is needed.
 
 import { setRunnerToken } from '@/features/admin/tiktok/shared'
-import { makeVerse, makeStory, makeQuiz, makeChallenge, type Progress } from '@/features/admin/tiktok/make'
+import { makeVerse, makeStory, makeQuiz, makeChallenge, makeNote, type Progress } from '@/features/admin/tiktok/make'
 import { env as tfEnv } from '@huggingface/transformers'
 
 /** The kinds the runner renders. `own` is an operator's upload and is never rendered here. */
-export type Kind = 'verse' | 'story' | 'quiz' | 'challenge' | 'challenge2'
+export type Kind = 'verse' | 'story' | 'quiz' | 'challenge' | 'challenge2' | 'note'
 
 export interface Rendered {
   kind: Kind
   date: string
-  ext: 'mp4' | 'webm'
+  ext: 'mp4' | 'webm' | 'jpg'
   size: number
   reference: string
   tier: string
@@ -78,6 +78,7 @@ export async function renderPost(kind: Kind, date: string, token?: string): Prom
     : kind === 'story' ? await makeStory(date, {}, progress)
     : kind === 'challenge' ? await makeChallenge(date, { slot: 1 }, progress)
     : kind === 'challenge2' ? await makeChallenge(date, { slot: 2 }, progress)
+    : kind === 'note' ? await makeNote(date, {}, progress)
     : await makeQuiz(date, {}, progress)
   // Hand the file to the runner: a download is the one channel that carries
   // 20MB out of a page without base64 round-trips.
@@ -87,7 +88,7 @@ export async function renderPost(kind: Kind, date: string, token?: string): Prom
   document.body.appendChild(a)
   a.click()
   window.__progress = `${kind} ${date}: done`
-  return { kind, date, ext: m.ext === 'mp4' ? 'mp4' : 'webm', size: m.size, reference: m.reference, tier: m.tier, hook: m.copy?.hook ?? null }
+  return { kind, date, ext: m.ext === 'mp4' ? 'mp4' : m.ext === 'jpg' ? 'jpg' : 'webm', size: m.size, reference: m.reference, tier: m.tier, hook: m.copy?.hook ?? null }
 }
 
 window.versearcadeDaily = { renderPost }

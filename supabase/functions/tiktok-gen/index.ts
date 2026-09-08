@@ -798,10 +798,12 @@ Deno.serve(async (req) => {
       for (const platform of platforms) {
         if (!linked(platform)) { results.push({ platform, status: 'skipped', id: null, postUrl: null, postId: null, error: 'not linked in Ayrshare', scheduleDate: null }); continue }
         if (!postsOn(platform, kind)) { results.push({ platform, status: 'skipped', id: null, postUrl: null, postId: null, error: `${kind} is not posted on ${platform} (quota)`, scheduleDate: null }); continue }
-        // Pinterest refuses a video pin without a cover image; a day whose
+        // Pinterest refuses a VIDEO pin without a cover image; a day whose
         // cover never landed is skipped with the path it wanted, not failed.
+        // A note is a photo pin and has no frame to show before play, so it
+        // is exempt — requiring one would skip the pin this kind exists for.
         let cover: string | undefined
-        if (platform === 'pinterest') {
+        if (platform === 'pinterest' && !wantsImage) {
           const coverPath = `days/${date}/${kind}-cover.jpg`
           if (!(await exists(coverPath))) { results.push({ platform, status: 'skipped', id: null, postUrl: null, postId: null, error: `no cover image yet (${coverPath})`, scheduleDate: null }); continue }
           cover = publicUrl(coverPath)

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { AvatarSpec, ArmorSlot } from '@/types'
 import { skinHex, robeHex, hairHex, figureOf, equippedSkinId, skinArtUrl, isOverlaySkin, ARMOR_ENABLED } from '@/data/avatar'
 import { itemArtFor, itemNodes } from '@/data/itemArt'
+import { overlayFor } from '@/data/overlays'
 import { GENERATED_ART } from '@/data/generatedArt'
 
 // A composable character figure, drawn from an AvatarSpec. Two looks share one
@@ -78,8 +79,6 @@ const E_HAIR = '#2A1E22'
 const E_JEWEL = '#8B1E2E'
 
 // Take Up Your Cross — a bare-wood cross borne by the player's own character
-const CROSS_WOOD = '#6B4E2E'
-const CROSS_GRAIN = '#4E3A22'
 
 // Elijah palette — the prophet of fire
 const L_ROBE = '#9A8B5E'
@@ -277,13 +276,14 @@ export function Character({
     ? GENERATED_ART[`starter_${fem ? 'fem' : 'masc'}_${spec.skin}_${spec.hair ?? 'espresso'}`]
     : undefined
   const raster = baseSkinId ? skinArtUrl(baseSkinId) : starterRaster
-  // The cross prefers its own render and falls back to the drawn paths below —
-  // the same bargain generatedArt.ts makes everywhere else, so the batch can
-  // ship late and nothing breaks. Deliberately NOT keyed 'cross': that id
-  // resolves through skinArtUrl, and a render sitting there would be drawn as
-  // a whole replacement figure rather than as the beam.
-  const crossRaster = overlaySkin === 'cross' ? GENERATED_ART['cross_beam'] : undefined
-  const useCrossRaster = !!crossRaster && crossFailed !== crossRaster
+  // An overlay prefers its own render and falls back to its drawn paths — the
+  // same bargain generatedArt.ts makes everywhere else, so a batch can ship
+  // late and nothing breaks. The art id is deliberately NOT the skin id: that
+  // resolves through skinArtUrl, and a render sitting there would be drawn as a
+  // whole replacement figure rather than as the thing behind the character.
+  const overlay = overlayFor(overlaySkin)
+  const overlayRaster = overlay ? GENERATED_ART[overlay.art] : undefined
+  const useOverlayRaster = !!overlayRaster && crossFailed !== overlayRaster
   const useRaster = !!raster && failedSrc !== raster
   // Everywhere the player actually reads an avatar — chips, lists, the profile
   // header, the customise grid — a full-length figure in a small circle throws
@@ -321,36 +321,45 @@ export function Character({
           midpoint is (59,100) and whose angle off vertical is 31.7 degrees —
           so the two versions land in the same place and swapping one for the
           other moves nothing. */}
-      {overlaySkin === 'cross' && (
+      {overlay && (
         <>
-          {/* glowing golden aura around the cross (bright, pulsing) */}
-          <g className="va-cross-glow">
-            <path d="M22 160 L96 40" stroke="#FFE7A0" strokeWidth="28" strokeLinecap="round" opacity="0.30" />
-            <path d="M69 46 L103 60" stroke="#FFE7A0" strokeWidth="25" strokeLinecap="round" opacity="0.30" />
-            <path d="M22 160 L96 40" stroke="#FFD23F" strokeWidth="19" strokeLinecap="round" opacity="0.48" />
-            <path d="M69 46 L103 60" stroke="#FFD23F" strokeWidth="17" strokeLinecap="round" opacity="0.48" />
-            <path d="M22 160 L96 40" stroke="#FFF6CE" strokeWidth="13" strokeLinecap="round" opacity="0.6" />
-            <path d="M69 46 L103 60" stroke="#FFF6CE" strokeWidth="11" strokeLinecap="round" opacity="0.6" />
-          </g>
-          {useCrossRaster ? (
-            <image
-              href={crossRaster}
-              x="15"
-              y="27"
-              width="88"
-              height="146"
-              transform="rotate(31.7 59 100)"
-              preserveAspectRatio="xMidYMid meet"
-              onError={() => setCrossFailed(crossRaster ?? null)}
-            />
-          ) : (
+          {overlay.glow && (
+            <g className={overlay.glowClass}>{itemNodes(overlay.glow, `ov-glow-${overlay.id}-`)}</g>
+          )}
+          {useOverlayRaster ? (
             <>
-              {/* the cross itself */}
-              <path d="M22 160 L96 40" stroke={CROSS_WOOD} strokeWidth="11" strokeLinecap="round" />
-              <path d="M69 46 L103 60" stroke={CROSS_WOOD} strokeWidth="9" strokeLinecap="round" />
-              <path d="M27 156 L92 46" stroke={CROSS_GRAIN} strokeWidth="1.3" opacity="0.5" />
-              <path d="M71 49 L100 60" stroke={CROSS_GRAIN} strokeWidth="1.1" opacity="0.5" />
+              <image
+                href={overlayRaster}
+                x={overlay.box.x}
+                y={overlay.box.y}
+                width={overlay.box.w}
+                height={overlay.box.h}
+                transform={
+                  overlay.box.rotate
+                    ? `rotate(${overlay.box.rotate[0]} ${overlay.box.rotate[1]} ${overlay.box.rotate[2]})`
+                    : undefined
+                }
+                preserveAspectRatio="xMidYMid meet"
+                onError={() => setCrossFailed(overlayRaster ?? null)}
+              />
+              {overlay.box.mirror && (
+                /* The same render flipped about x = 60. `scale(-1,1)` then a
+                   translate is the standard SVG mirror; doing it on the image
+                   rather than on a wrapping <g> keeps the un-mirrored copy's
+                   own coordinates readable in the table. */
+                <image
+                  href={overlayRaster}
+                  x={overlay.box.x}
+                  y={overlay.box.y}
+                  width={overlay.box.w}
+                  height={overlay.box.h}
+                  transform="translate(120 0) scale(-1 1)"
+                  preserveAspectRatio="xMidYMid meet"
+                />
+              )}
             </>
+          ) : (
+            itemNodes(overlay.drawn, `ov-${overlay.id}-`)
           )}
         </>
       )}

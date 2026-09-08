@@ -92,7 +92,7 @@ Start your streak today. It's one verse.
 > at 3,914 of Apple's 4,000 characters with nothing left to shave, which is why this
 > is a rewrite rather than an append: the old block spent its budget on mechanics
 > nuance (how banding works, what a rating would have been) that a store listing
-> does not owe anybody. **3,983 characters against Apple's 4,000 limit, leaving 17 spare** — counted on the fenced body, which is what Apple measures.
+> does not owe anybody. **3,928 characters against Apple's 4,000 limit, leaving 72 spare** — counted on the fenced body, which is what Apple measures.
 >
 > **Three things are deliberately absent, and each is a judgement rather than an
 > oversight:**
@@ -121,10 +121,14 @@ Start your streak today. It's one verse.
 > shortening five more. This is what "a running draft" means in practice: a new
 > feature costs an old sentence, not a version bump.
 >
-> **At 17 spare this block is now genuinely full**, and shortening is spent — the
-> easy wordiness is gone. The next feature that lands under 1.3.0 should DROP a
-> bullet rather than trim five, and the honest candidates in order are the
-> gathering hour, the streak's safety-net line, and "see who played today".
+> **This block is genuinely full and shortening is spent** — the easy wordiness is
+> gone, so a new feature now costs a whole bullet. The overlay skins were paid for
+> exactly that way: the **gathering hour** line came out, which was the first
+> candidate named here when the rule was written, and the streak's safety-net line
+> was cut back to its reminder half, and "see who played today" went too — all
+> three of the candidates this note had already named, spent in one round. There
+> is no obvious fourth: from here, adding a bullet means deciding which FEATURE
+> the listing stops mentioning.
 >
 > **Before submitting, two checks this file cannot do for itself:** open App Store
 > Connect and read what is actually approved (the version paragraph in CLAUDE.md is a
@@ -140,7 +144,6 @@ TODAY IS TWO THINGS NOW
   each morning, the same book for everyone. No XP, no rank, nothing to fall behind
   on.
 • A compass names what is open right now and goes quiet once your day is done. Never a score, never a list of what you missed.
-• See how many people played today, and who they are. No number beside anyone.
 
 EVERY RUN ENDS WITH WHAT YOU LEARNED
 • Miss a question and the fact behind it is waiting at the end — "3 things you now
@@ -157,7 +160,6 @@ BATTLE ANYONE, RIGHT NOW
 • Six looks earned in battle. Jonathan and Deborah from playing live, win or lose;
   Francis, Hildegard, Aquinas and Melisende from winning. No progress bar to grind,
   and nothing counts what you have lost.
-• One hour a day everyone is told to come looking, so there is somebody there.
 
 THERE IS AN ARCADE IN HERE
 • Manna Rush: seven days in the wilderness. Gather the fresh flakes, leave
@@ -184,6 +186,8 @@ READING FINALLY UNLOCKS SOMETHING
   bars.
 • Four rings and four badges for chapters opened, the first at ten. Nothing here can
   be taken back.
+• Three looks that layer BEHIND your own character instead of replacing it — a
+  vine, a pillar of fire, sheltering wings. Your face, your robe, your items stay.
 
 FIRST LIGHT
 • Whoever opens a day's verse first holds its light, and everyone who opens it
@@ -201,8 +205,7 @@ YOUR CHURCH HAS SOMEBODY TO PLAY THIS WEEK
 THE REST
 • Your week, on a Sunday: what you did over seven days. Your own numbers, nothing
   compared to anybody.
-• Your streak says it is safe before the day runs out, and your reminder learns
-  the hour you actually play.
+• Your reminder learns the hour you actually play.
 • Put a favourite verse, book and translation on your card.
 • Drag anything in your Upper Room, hall or churchyard exactly where you want it.
   Fine and Grand pieces are earned by playing now, not by stacking duplicates.

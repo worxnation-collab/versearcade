@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { allSkins, skinOwned, type SkinDef } from '@/data/avatar'
 import { useAuth } from './auth'
+import { useBible } from './bible'
+import { chaptersOpened } from '@/data/seals'
 
 // "You've earned a skin" — the notification, and the only place the crusades
 // ladder's numbers are ever spoken out loud.
@@ -88,6 +90,12 @@ export const useSkinUnlocks = create<SkinUnlockState>((set, get) => ({
   check() {
     const profile = useAuth.getState().profile
     if (!profile?.id) return
+    // `vine` is gated on chapters opened, which live in the bible store. An
+    // unloaded store reads as zero, and the load that follows would then
+    // announce the skin as though it had just been earned — or, on a first
+    // sight, prime it as owned when it isn't. Wait, the way checkRoom does.
+    if (!useBible.getState().loaded) return
+    const chaptersRead = chaptersOpened(useBible.getState().chapters)
 
     // Only the EARNED axis. A paid or road skin arrives with its own screen
     // saying so, and announcing those here would double up on both.
@@ -100,6 +108,8 @@ export const useSkinUnlocks = create<SkinUnlockState>((set, get) => ({
           referralCount: profile.referralCount,
           liveBattles: profile.liveBattles,
           battleWins: profile.battleWins,
+          chaptersRead,
+          level: profile.level,
           // NOT admin: the operator preview owns every skin, and priming an
           // operator's device would announce the whole wardrobe at once.
         }),

@@ -88,6 +88,8 @@ function skinDoor(skin: SkinDef): WardrobeDoor {
   if (skin.source === 'pass') return 'road'
   if (skin.exclusive) return 'code'
   if (skin.source === 'paid') return 'patron'
+  if (skin.chapterGoal != null) return 'reading'
+  if (skin.levelGoal != null) return 'streak'
   if (skin.liveGoal != null || skin.winGoal != null) return 'battle'
   return 'sharing'
 }
@@ -98,6 +100,8 @@ function skinHow(skin: SkinDef): string {
   if (skin.source === 'pass') return 'A reward on the Harvest Road.'
   if (skin.exclusive) return `Redeemed with a code${skin.packName ? ` — ${skin.packName}` : ''}.`
   if (skin.source === 'paid') return 'Comes with the founding patron.'
+  if (skin.chapterGoal != null) return `Earned by opening ${skin.chapterGoal} chapters of your Bible.`
+  if (skin.levelGoal != null) return `Earned at level ${skin.levelGoal}.`
   if (skin.liveGoal != null) return 'Earned by playing live battles — win or lose, they all count.'
   if (skin.winGoal != null) return 'Earned by winning battles.'
   if (skin.referralGoal != null) return 'Earned by bringing friends in.'

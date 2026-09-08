@@ -56,6 +56,8 @@ export default function WardrobeScreen() {
         liveBattles: profile.liveBattles ?? 0,
         battleWins: profile.battleWins ?? 0,
         seasonUnlocks,
+        chaptersRead,
+        level: profile.level,
         admin: profile.isAdmin,
       })
     return wardrobe({

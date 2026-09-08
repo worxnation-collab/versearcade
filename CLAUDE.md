@@ -2690,6 +2690,51 @@ tap — and it pushed the gold primary action most of the way down a 390px phone
 Play and Study never had one. Church keeps its header only for the guest card
 and the picker, where there is no hero to name the screen.
 
+### Overlay skins: the ones that DON'T kill the wardrobe
+
+Every skin in this app REPLACES the figure. Equip Moses and the 72 starter
+renders, the six tones, the six hairs and all eleven items go dark at once —
+the wardrobe's biggest content investment switched off by its second biggest,
+and the reason `CustomizeSection` hides the whole "Your Character" section
+while one is on. "Take Up Your Cross" was always the exception, drawn BEHIND
+the player's own character in their own robe.
+
+`data/overlays.ts` generalises that one exception into a table, and there are
+four of them now: `cross`, `vine` (John 15:5), `pillar` (Exodus 13:21) and
+`refuge` (Psalm 17:8). An overlay is a ROW — where its art sits, what rotation
+it takes, the glow under it and the DRAWN fallback — where `cross` used to be a
+hardcoded branch whose own comment said "adding one here is half the job".
+Same move `data/itemArt.tsx` made for items, for the same reason.
+
+Four things:
+
+- **An overlay never resolves through `skinArtUrl`.** That path draws a whole
+  replacement figure, so a render sitting on the skin's own id would quietly
+  delete the character built at the front door — the exact thing these exist
+  not to do. The art id is separate (`art` on the row), and it is drawn BEHIND
+  the figure, always.
+- **`mirror` draws the same render twice, flipped about x = 60.** `refuge` came
+  back from the generator as ONE wing rather than the spread pair the prompt
+  asked for, and one wing mirrored is strictly better: symmetrical by
+  construction, the gap where the character stands can't drift, and there is no
+  chance of a BODY appearing between the wings — the failure a person-shaped
+  prompt keeps inviting. Every overlay prompt says "no person, no hands, no
+  shoulders, no silhouette" for that reason.
+- **The prompts leave an empty centre column** — "the middle third must be empty
+  magenta, a person will stand in that gap". That is what makes an overlay an
+  overlay rather than a backdrop.
+- **A tall thin render inside a shorter box shrinks until it reads wrong.**
+  `pillar` is 101x220; in its first box `meet` scaled it until the cloud sat on
+  the character's head like a hat. It starts at `y = -10` now, above the frame.
+  Check an overlay on the real figure, not in the PNG.
+
+`vine` is earned by opening **40 chapters** — the reading axis 0109 opened, and
+the first SKIN in this app that comes from the text. `pillar` is level 20, and
+`refuge` is free from the first minute. `skinOwned` gained `chaptersRead` and
+`level`, so every caller has to pass them or the two read as locked;
+`store/skinUnlocks.ts` also waits for the bible store, or an unloaded store
+would prime `vine` as owned when it isn't.
+
 ### The starter character, and the parked armor
 
 The first thing anyone does — as a guest at `/welcome`, or on the first beat of

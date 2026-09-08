@@ -14,6 +14,7 @@
 // to the device via the auth store.
 
 import { catalogArtUrl, catalogOverlay, mergeById, type CatalogSkin } from './catalog'
+import { overlayFor } from './overlays'
 import type { ArmorSlot, AvatarSpec, Figure, ItemSlot } from '@/types'
 
 export type { ArmorSlot, AvatarSpec, Figure, ItemSlot }
@@ -353,6 +354,14 @@ export interface SkinDef {
   shareGoal?: number // earned: distinct shared days required
   referralGoal?: number // earned: referred signups required
   liveGoal?: number // earned: live battles played (room code or quick match)
+  /** earned: chapters of the Bible opened, ever (bible_marks kind='read'). The
+   *  reading axis, shared with the borders and badges 0109 gates — and the one
+   *  unlock in this app that comes from the text itself. */
+  chapterGoal?: number
+  /** earned: account level reached. Level only ever goes up and is written by
+   *  submit_play, so this can never be taken back — the same promise
+   *  `longest_streak` makes. */
+  levelGoal?: number
   /** earned: battles WON, live or async. Deliberately never shown as a
    *  goal anywhere — a locked one draws a padlock and crossed swords and
    *  nothing else, and the number appears exactly once, in the toast that
@@ -421,6 +430,33 @@ export const FULL_SKINS: SkinDef[] = [
     source: 'earned',
     referralGoal: 5,
     blurb: 'Carry your cross (Luke 9:23) — earned when 5 friends join with your code.',
+  },
+  // ——— The other overlays ———
+  // Every skin above and below REPLACES the figure: equip Moses and the 72
+  // starter renders, the six tones, the six hairs and all eleven items go dark.
+  // These four (with the cross) are the ones that DON'T — they layer behind the
+  // player's own character, so the wardrobe keeps working underneath. That is
+  // the whole reason they exist and the reason to add more of them rather than
+  // more replacements. Where each is drawn lives in data/overlays.ts.
+  {
+    id: 'vine',
+    name: 'The Vine',
+    source: 'earned',
+    chapterGoal: 40,
+    blurb: 'The vine and the branches (John 15:5) — earned by reading 40 chapters of your Bible.',
+  },
+  {
+    id: 'pillar',
+    name: 'Pillar of Fire',
+    source: 'earned',
+    levelGoal: 20,
+    blurb: 'Cloud by day, fire by night (Exodus 13:21) — earned at level 20.',
+  },
+  {
+    id: 'refuge',
+    name: 'Shadow of Your Wings',
+    source: 'free',
+    blurb: 'Hidden in the shadow of your wings (Psalm 17:8). Yours from the start.',
   },
   // ——— The live battles ———
   // Earned by turning up to a live battle — a room code or a quick match, both
@@ -825,13 +861,14 @@ export function skinArtUrl(skinId?: string | null): string | undefined {
  * it — preferring a generated prop, falling back to the drawn paths, the same
  * bargain every other render makes.
  *
- * Adding one here is half the job: Character has to know how to draw it.
+ * The list itself lives in data/overlays.ts along with WHERE each one is drawn
+ * and its fallback paths, so adding one is a row rather than a branch in
+ * Character — the same move data/itemArt.tsx made for wearable items. This
+ * function is kept because half the app asks the question without needing the
+ * geometry.
  */
-const OVERLAY_SKINS = new Set(['cross'])
-
-/** True when this skin layers onto the player's character rather than replacing it. */
 export function isOverlaySkin(skinId?: string | null): boolean {
-  return !!skinId && OVERLAY_SKINS.has(skinId)
+  return !!overlayFor(skinId)
 }
 
 // ── Bundles ───────────────────────────────────────────────────────────────────
@@ -927,6 +964,10 @@ export function skinOwned(
     admin?: boolean
     /** Reward ids unlocked on the seasonal road (store/season). */
     seasonUnlocks?: string[]
+    /** Chapters of the Bible opened, ever — data/seals chaptersOpened(). */
+    chaptersRead?: number
+    /** Account level. */
+    level?: number
   },
 ): boolean {
   if (ctx.admin) return true // operator account has every skin unlocked
@@ -944,6 +985,10 @@ export function skinOwned(
     // Live battles played, lifetime — win or lose, the counter never reads a
     // score (see the Jonathan/Deborah entries above and award_battle_xp).
     if (skin.liveGoal != null) return (ctx.liveBattles ?? 0) >= skin.liveGoal
+    // Chapters opened, ever. Same number 0109's reading cosmetics ride, so the
+    // Bible unlocks a look as well as a ring.
+    if (skin.chapterGoal != null) return (ctx.chaptersRead ?? 0) >= skin.chapterGoal
+    if (skin.levelGoal != null) return (ctx.level ?? 1) >= skin.levelGoal
     // Battles won, live or async (0087). The only cosmetic axis here that reads
     // a result rather than a turn-up — see the crusades set above.
     if (skin.winGoal != null) return (ctx.battleWins ?? 0) >= skin.winGoal

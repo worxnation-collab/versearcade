@@ -251,7 +251,7 @@ export function CustomizeSection() {
   /** Reactive pass skins store their state in the id ('ruth_2'); compare bases. */
   const isEquipped = (skin: SkinDef) => !!equippedSkin && baseSkinId(equippedSkin) === skin.id
   const isSkinOwned = (skin: SkinDef) =>
-    skinOwned(skin, { sharedDays: profile.sharedDays, ownedSkins, referralCount: profile.referralCount, liveBattles: profile.liveBattles, battleWins: profile.battleWins, admin: profile.isAdmin, seasonUnlocks })
+    skinOwned(skin, { sharedDays: profile.sharedDays, ownedSkins, referralCount: profile.referralCount, liveBattles: profile.liveBattles, battleWins: profile.battleWins, chaptersRead, level: profile.level, admin: profile.isAdmin, seasonUnlocks })
   // Cosmetics aren't sold any more — the launch trio is free, the angels are
   // road rewards and the promo skins are free redemptions — so the copy under
   // the grid only mentions money while a listing that still HAS a price is
@@ -465,7 +465,16 @@ export function CustomizeSection() {
                                 // is stated in words, with no counter.
                                 : skin.winGoal != null
                                   ? '\u2694\uFE0F Earned by winning battles'
-                                  : `Shared ${Math.min(sharedCount, skin.shareGoal ?? 0)}/${skin.shareGoal ?? 0} days`
+                                  // The reading and level overlays. Both show a
+                                  // COUNT because both are numbers the player
+                                  // can already see elsewhere (the Seals page,
+                                  // the level bar) — unlike battles won, which
+                                  // is deliberately never drawn as a ladder.
+                                  : skin.chapterGoal != null
+                                    ? `${Math.min(chaptersRead, skin.chapterGoal)}/${skin.chapterGoal} chapters`
+                                    : skin.levelGoal != null
+                                      ? `Level ${skin.levelGoal}`
+                                      : `Shared ${Math.min(sharedCount, skin.shareGoal ?? 0)}/${skin.shareGoal ?? 0} days`
                             : skin.exclusive ? `🔒 ${skin.packName ?? 'Exclusive'}`
                               : skin.bundleOnly ? `🔒 ${skin.packName ?? 'Pack only'}`
                                 : `🔒 ${skin.price}`

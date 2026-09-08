@@ -321,7 +321,15 @@ try {
     // testing the number alone found nothing at all in the first real batch.
     // And a marker must follow the last one in order, so a "one" inside a
     // sentence cannot cut a take in half.
-    const NUM = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20 }
+    const NUM = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20,
+      // Homophones, because a marker is heard in isolation with no sentence
+      // around it to disambiguate — the one place Whisper has nothing to go
+      // on. A real batch lost five takes to "Day FOUR" coming back as "Day
+      // or": the number simply was not in the transcript, the run stopped at
+      // three, and takes four to eight were lumped into one 342-second take
+      // that still looked like a successful split. `for`, `to`/`too` and
+      // `ate` are the same failure waiting on other numbers.
+      or: 4, for: 4, fore: 4, to: 2, too: 2, tu: 2, ate: 8, won: 1, free: 3, tree: 3, sicks: 6, sex: 6, nyne: 9 }
     const LEAD = new Set(['day', 'take', 'number', 'no'])
     const GAP = 0.9
     const word = (i) => (heard.words[i] ? heard.words[i].text.toLowerCase().replace(/[^a-z0-9]/g, '') : '')
@@ -330,11 +338,24 @@ try {
       const k = word(i)
       const n = NUM[k] ?? (/^\d{1,2}$/.test(k) ? Number(k) : 0)
       if (!n || n > days) return
-      const head = LEAD.has(word(i - 1)) ? i - 1 : i
-      const prev = heard.words[head - 1]
-      if (prev && heard.words[head].start - prev.end < GAP) return
+      // A homophone is only ever a marker behind a lead word ("day or"):
+      // taken bare it would cut a take in half on the word "to".
+      const led = LEAD.has(word(i - 1))
+      if (!led && !(k in NUM ? /^(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty)$/.test(k) : true)) return
+      const head = led ? i - 1 : i
+      // The SEQUENCE is the strong guard, so it is tested first: a marker
+      // must be the next number in order, and the first must be 1.
       if (marks.length && n !== marks[marks.length - 1].n + 1) return
       if (!marks.length && n !== 1) return
+      // …which is why a LEAD word plus the next number needs no pause in
+      // front of it. Requiring one cost take 8 of a real batch: he ran
+      // "…my own emptiness. Day 8." together and Whisper timed the gap at
+      // MINUS 0.03s, so takes 8 through the end were swallowed by take 7 —
+      // and the split still reported a clean cut. A bare number keeps the
+      // pause test, because there the sequence alone is not enough ("he is
+      // ONE of our kinsmen" sits mid-sentence in this very recording).
+      const prev = heard.words[head - 1]
+      if (!led && prev && heard.words[head].start - prev.end < GAP) return
       marks.push({ n, i, head, at: heard.words[head].start, end: w.end })
     })
     log(`found ${marks.length} of ${days} takes`)
@@ -357,10 +378,35 @@ try {
     })
     for (const t of takes) log(`  ${String(t.n).padStart(2)} ${t.date}  ${t.from.toFixed(1)}–${t.to.toFixed(1)}s (${(t.to - t.from).toFixed(1)}s ${t.words.length}w)  ${t.text.slice(0, 74)}`)
     if (flags.dry) { await done() }
+    // Cutting reads the batch; the verse path below re-points `inputWav` at
+    // each take, so hold on to it rather than reading a moving variable.
+    const batchWav = inputWav
     for (const t of takes) {
       const wav = path.join(OUT, `take-${t.date}.wav`)
-      const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', inputWav, '-ss', String(t.from), '-to', String(t.to), '-c:a', 'pcm_s16le', wav])
+      const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', batchWav, '-ss', String(t.from), '-to', String(t.to), '-c:a', 'pcm_s16le', wav])
       if (ff.status !== 0) { log(`  ${t.date} could not be cut`); continue }
+      // A VERSE take has a verse INSIDE it, and the batch pass cannot find
+      // one: `hear` is the story listener — all thought, nothing to look for
+      // — so a verse batch parked with `verse: []` files the reading itself
+      // as thought. Nothing errors, and the renderer then captions the verse
+      // from the TRANSCRIPT rather than from its known text: a real batch
+      // would have burned "Calassay" for Colossae, "responsibly" for
+      // responsively and "pray without seizing" onto the screen as
+      // scripture. So each verse take is heard again on its own, through the
+      // same `listen` every single recording uses, which finds the verse and
+      // parks the WAV and the track itself. A story take keeps the fast path
+      // — there is genuinely no verse in one.
+      if (KIND !== 'story') {
+        inputWav = wav
+        try {
+          const r = await page.evaluate(([d, w, tk, k]) => window.vaVoice.listen(d, w, tk, k), [t.date, `${origin}/input.wav`, TOKEN, 'verse'])
+          log(`  parked ${t.date} verse (${r.verseMatched}/${r.verseWords} of the verse heard, ${r.thoughtWords}w thought)`)
+        } catch (e) {
+          log(`  ${t.date} could not be heard: ${String(e?.message || e).split('\n')[0].slice(0, 160)}`)
+        }
+        inputWav = batchWav
+        continue
+      }
       // Timings are rebased onto the take's own clock, and the track is the
       // shape `refit`, the correction step and the renderer already read.
       const words = t.words.map((w) => ({ text: w.text, start: Math.max(0, w.start - t.from), end: Math.max(0, w.end - t.from) }))
@@ -370,7 +416,7 @@ try {
       fs.writeFileSync(json, JSON.stringify(track))
       await upload(`days/${t.date}/voice-${KIND}.json`, json, 'application/json')
       try { await fn('copy', { date: t.date, kind: KIND, force: true }) } catch { /* written at render time otherwise */ }
-      log(`  parked ${t.date} ${KIND}${KIND === 'story' ? ` (${PLACE})` : ''}`)
+      log(`  parked ${t.date} ${KIND} (${PLACE})`)
     }
     await done()
   }

@@ -694,6 +694,35 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   `scripts/tiktok-voice.mjs` is the same loop from a terminal (drafts,
   listen, fix, render, post) for the sessions where the memos arrive here
   rather than at the hub. `docs/TIKTOK-ENGINE.md` → "Your voice".
+  - **`split` is TWO paths, and it was one for a while.** The batch pass
+    hears the whole memo once with `hear` — the STORY listener, which has no
+    verse to look for — and that is right for a story batch and silently
+    wrong for a verse one: every take parks with `verse: []` and the reading
+    itself filed as thought, so the renderer captions the verse from the
+    TRANSCRIPT instead of from its known text. The first real verse batch
+    would have burned "Calassay" for Colossae, "responsibly" for
+    responsively and "pray without seizing" onto the screen AS SCRIPTURE.
+    Nothing throws and the split reports a clean cut. A verse take is now
+    heard again on its own through the same `listen` a single recording
+    uses; a story take keeps the fast path.
+  - **The take marker survives a mis-hearing and a missing pause**, because
+    both cost a real batch. Whisper heard "Day FOUR" as "Day or" — the number
+    was simply not in the transcript, the run stopped at three, and takes
+    four to eight were swallowed into one 342-second "take 3" that still
+    looked like a successful cut. `NUM` now carries the homophones (`or`,
+    `for` → four; `to`, `too` → two; `ate` → eight), accepted only behind a
+    LEAD word so "to" can never cut a sentence in half. And the pause test
+    applies only to a BARE number now: "…my own emptiness. Day 8." was run
+    together and timed at MINUS 0.03s, where the sequence check (a marker
+    must be the next number in order) already identifies it. A bare number
+    keeps the pause, because there the sequence is not enough — "he is ONE of
+    our kinsmen" sits mid-sentence in that same recording.
+  - **The models can be served locally**, which is what a container with no
+    browser egress needs: `MODELS_DIR` holding `models/onnx-community/whisper-{base,tiny}.en_timestamped/`
+    and `ort/`. transformers.js loads the **quantized** ONNX weights by
+    default, so `*_quantized.onnx` are the files it actually asks for — a
+    cache holding only the full-precision ones fails at load with
+    `local_files_only=true … was not found locally`.
 - **The evening STORY carries his voice too, at ONE END of the telling.**
   The verse post is his outright — his reading stands in for Gemini's —
   while the story keeps Tabitha's telling whole and joins ~20 seconds of him

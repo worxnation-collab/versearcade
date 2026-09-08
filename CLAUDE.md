@@ -2404,6 +2404,22 @@ than reading, and both worth keeping in mind for any new mode:
   thing that happened, once, and what to do about it — no count of what is
   locked.
 
+**A run that scored NOTHING is the one place the no-shame rule was thin, and
+both halves of the fix are on the result screen.** It led with a 64px zero in
+the app's brightest gradient, and the "5 things you now know" list that rescues
+it sat BELOW the verse card — off the bottom of a 390px phone. So the list moved
+ABOVE the verse card (a perfect run renders it as nothing, so that screen is
+byte-identical, and the verse still gets the last word as the keepsake the heart
+belongs to), the star became a 📖 at zero correct (a star over a zero reads as
+sarcasm), and one line under the number says nothing was lost and points at the
+list. **The score itself is never hidden** — it is the player's own number and
+taking it away would be a worse lie than a big zero; what changed is that the
+zero is no longer the last word. The line shows ONLY at zero: at 1/5 the list's
+own "4 things you now know" already does the job. The Play tab's drop box was
+deliberately NOT touched — "a round that ends with no record of how it went
+reads as though it didn't count" is a written decision (see the daily-trivia
+section), and it covers that box.
+
 The CPU result also names the **nearest keep challenge** with its thumb
 (`nearestKeepChallenge`, closest by fraction — the room's own `nextFurnishing`
 rule), because the rematch button is on that screen and that is the reason to

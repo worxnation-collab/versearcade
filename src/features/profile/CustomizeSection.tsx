@@ -20,6 +20,7 @@ import { petProgress } from '@/lib/petProgress'
 import { useBible } from '@/store/bible'
 import { useKeep } from '@/store/keep'
 import { BORDERS, BADGES, isUnlocked } from '@/data/cosmetics'
+import { chaptersOpened } from '@/data/seals'
 import { useCollection } from '@/store/collection'
 import { collectibleByKey } from '@/data/collectibles'
 import { CARD_BACKGROUNDS, DEFAULT_CARD_BG, cardBgStyle, cardArtProps, cardBgAccentColor, cardBgUnlocked } from '@/data/playerCards'
@@ -137,6 +138,10 @@ export function CustomizeSection() {
   const loadBible = useBible((st) => st.load)
   const loadKeep = useKeep((st) => st.load)
   const bibleLoaded = useBible((st) => st.loaded)
+  // Chapters opened, ever — the gate on the reading borders and badges (0109).
+  // The store above is already loaded for the pet requirements, so this costs
+  // nothing extra; without it every reading cosmetic would read as locked.
+  const chaptersRead = chaptersOpened(useBible((st) => st.chapters))
   const keepLoaded = useKeep((st) => st.loaded)
   useEffect(() => {
     if (!bibleLoaded) void loadBible()
@@ -819,7 +824,7 @@ export function CustomizeSection() {
           {
             key: 'borders',
             label: 'Borders',
-            right: `Best streak: ${longest}d`,
+            right: `${longest}d streak · ${chaptersRead} ch`,
             content: (
               <>
               {/* ── Streak-unlocked borders + badges ──────────────────────────── */}
@@ -830,7 +835,7 @@ export function CustomizeSection() {
                     // the server (0096) makes the same call in the same order.
                     const unlocked = b.pack
                       ? packPreviewable(b.pack, ownedSkins, profile.isAdmin) || !!profile.founder
-                      : isUnlocked(b.requiredStreak, longest, profile.founder)
+                      : isUnlocked(b, longest, profile.founder, chaptersRead)
                     const equipped = equippedBorder === b.key
                     return (
                       <CosmeticTile
@@ -839,7 +844,13 @@ export function CustomizeSection() {
                         unlocked={unlocked}
                         equipped={equipped}
                         requiredStreak={b.requiredStreak}
-                        lockHint={b.pack === 'patron' ? 'Comes with the Founding Patron' : undefined}
+                        lockHint={
+                          b.pack === 'patron'
+                            ? 'Comes with the Founding Patron'
+                            : b.requiredChapters != null
+                              ? `${b.requiredChapters.toLocaleString()} chapters read`
+                              : undefined
+                        }
                         onClick={unlocked && !equipped ? () => equip({ border: b.key }) : undefined}
                         preview={
                           <Avatar
@@ -862,13 +873,14 @@ export function CustomizeSection() {
           {
             key: 'badges',
             label: 'Badges',
+            right: `${longest}d streak · ${chaptersRead} ch`,
             content: (
               <>
               {/* Badges */}
               <div className="card" style={{ marginBottom: 14 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
                   {BADGES.map((b) => {
-                    const unlocked = isUnlocked(b.requiredStreak, longest, profile.founder)
+                    const unlocked = isUnlocked(b, longest, profile.founder, chaptersRead)
                     const equipped = equippedBadge === b.key
                     return (
                       <CosmeticTile
@@ -877,6 +889,11 @@ export function CustomizeSection() {
                         unlocked={unlocked}
                         equipped={equipped}
                         requiredStreak={b.requiredStreak}
+                        lockHint={
+                          b.requiredChapters != null
+                            ? `${b.requiredChapters.toLocaleString()} chapters read`
+                            : undefined
+                        }
                         onClick={unlocked && !equipped ? () => equip({ badge: b.key }) : undefined}
                         preview={
                           <Avatar

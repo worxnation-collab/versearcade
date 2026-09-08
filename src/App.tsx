@@ -51,6 +51,7 @@ import BibleBookScreen from './features/bible/BibleBookScreen'
 import BibleChapterScreen from './features/bible/BibleChapterScreen'
 import HighlightsScreen from './features/bible/HighlightsScreen'
 import StampsScreen from './features/bible/StampsScreen'
+import SealsScreen from './features/bible/SealsScreen'
 import FocusPracticeScreen from './features/practice/FocusPracticeScreen'
 import { BattleResume } from './features/arena/BattleResume'
 import { ChurchResume } from './features/church/ChurchResume'
@@ -556,6 +557,16 @@ export default function App() {
             <RequireProfile>
               <RequireAccount copy={WALL.bible}>
                 <StampsScreen />
+              </RequireAccount>
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/bible/seals"
+          element={
+            <RequireProfile>
+              <RequireAccount copy={WALL.bible}>
+                <SealsScreen />
               </RequireAccount>
             </RequireProfile>
           }

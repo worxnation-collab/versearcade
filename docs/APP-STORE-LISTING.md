@@ -92,7 +92,7 @@ Start your streak today. It's one verse.
 > at 3,914 of Apple's 4,000 characters with nothing left to shave, which is why this
 > is a rewrite rather than an append: the old block spent its budget on mechanics
 > nuance (how banding works, what a rating would have been) that a store listing
-> does not owe anybody. **3,943 characters against Apple's 4,000 limit, leaving 57 spare** — counted on the fenced body, which is what Apple measures.
+> does not owe anybody. **3,940 characters against Apple's 4,000 limit, leaving 60 spare** — counted on the fenced body, which is what Apple measures.
 >
 > **Three things are deliberately absent, and each is a judgement rather than an
 > oversight:**
@@ -113,6 +113,13 @@ Start your streak today. It's one verse.
 > "Founding Patron" if it names the whale — a metadata edit that goes to review while
 > the approved version stays on sale, so there is no gap.
 >
+> **Updated 2026-09-08** for the Book Collection (#PR): the seals and the reading
+> borders got their own two-line block, and the budget for it came from trimming
+> six bullets and dropping two (the church picker's "suggested before you type",
+> and the chest card going straight onto the profile — both true, both the least
+> a reader loses by not reading). This is what "a running draft" means in
+> practice: a new feature costs an old sentence, not a version bump.
+>
 > **Before submitting, two checks this file cannot do for itself:** open App Store
 > Connect and read what is actually approved (the version paragraph in CLAUDE.md is a
 > claim about Apple, not about the repo, and it has gone stale silently before), and
@@ -123,30 +130,27 @@ Everything here is new since 1.2.0.
 
 TODAY IS TWO THINGS NOW
 • The Play tab is today's verse, today's trivia round and your road. Nothing else.
-• Trivia is four hundred questions about the BOOKS of the Bible, across all
-  sixty-six. Five on one book each morning, the same book for everyone. No XP, no
-  rank, nothing to fall behind on.
-• A compass under them names what is open right now and goes quiet once your day
-  is done. Never a score, never a list of what you missed.
+• Trivia is four hundred questions about the BOOKS of the Bible. Five on one book
+  each morning, the same book for everyone. No XP, no rank, nothing to fall behind
+  on.
+• A compass names what is open right now and goes quiet once your day is done. Never a score, never a list of what you missed.
 • See how many people played today, and who they are. No number beside anyone.
 
 EVERY RUN ENDS WITH WHAT YOU LEARNED
 • Miss a question and the fact behind it is waiting at the end — "3 things you now
   know", never "3 wrong".
 • Earn a piece for one of your rooms and you are told the moment it is yours.
-• A new card from the daily chest goes straight on your profile from there.
 
 BATTLE ANYONE, RIGHT NOW
 • Quick match: tap it and we put you with whoever else is looking. No code, no
   queue position, no rating.
 • Or share a room code. Either way you both read the same verse, you both tap
-  ready, and a bar shows where the other player is the whole way down.
+  ready, and a bar shows where the other player is.
 • Pick the round: the verse, or trivia on one book.
 • 10 XP for turning up, three a day — winner and loser get exactly the same.
-• Six looks earned in battle. Jonathan and Deborah come from playing live, win or
-  lose; Francis of Assisi, Hildegard of Bingen, Thomas Aquinas and Melisende of
-  Jerusalem from winning. No progress bar to grind, and nothing anywhere counts
-  what you have lost.
+• Six looks earned in battle. Jonathan and Deborah from playing live, win or lose;
+  Francis, Hildegard, Aquinas and Melisende from winning. No progress bar to grind,
+  and nothing counts what you have lost.
 • One hour a day everyone is told to come looking, so there is somebody there.
 
 THERE IS AN ARCADE IN HERE
@@ -157,15 +161,21 @@ THERE IS AN ARCADE IN HERE
 • Cross Word: two words that share a letter, standing as a cross. Solve it and the
   squares turn to wood with the verse carved underneath.
 • Your first go on each machine is worth 5 XP a day, for turning up rather than for
-  doing well. No high scores, and nothing in here can be lost.
+  doing well. No high scores, and nothing here can be lost.
 • Send a friend a machine: a shared link is one free go, no account, no download.
 
 PRAY, AND BE PRAYED FOR
 • The Prayer Wall: tuck one note into the stones, and the wall deals somebody
   else's to you. Hold the candle until the wick catches.
-• A stranger only ever sees the category. Your own words reach your church and your
+• A stranger only ever sees the category. Your own words reach your church and
   buddies, or nobody at all. Anonymous unless you sign it.
 • No note carries a count, so no note can become a ladder of who is loved.
+
+READING FINALLY UNLOCKS SOMETHING
+• Read every chapter of a book and its seal is pressed into your Bible. Sixty-six
+  to find, and the short ones take an evening.
+• Four rings and four badges for chapters opened, the first at ten. Nothing here can
+  be taken back.
 
 FIRST LIGHT
 • Whoever opens a day's verse first holds its light, and everyone who opens it
@@ -174,22 +184,20 @@ FIRST LIGHT
 
 YOUR CHURCH HAS SOMEBODY TO PLAY THIS WEEK
 • Every Monday your church meets another its own size. Whoever gives more raises a
-  statue in their churchyard, and your congregation picks which one. Nobody is
-  named on the losing side, and Monday starts everyone at nothing.
+  statue in their churchyard, and your congregation picks which one. Nobody is named
+  on the losing side, and Monday starts everyone at nothing.
 • Small congregations play small ones, so a church of four can win its week.
 • The board reads Today, This week or All time, so a church playing hard now is not
-  buried under one that banked its points two years ago.
-• Churches near you are suggested before you type a thing.
+  buried under one that banked points two years ago.
 
 THE REST
-• Your week, on a Sunday: what you did over seven days, your own numbers, nothing
+• Your week, on a Sunday: what you did over seven days. Your own numbers, nothing
   compared to anybody.
 • Your streak says it is safe before the day runs out, and your reminder learns the
   hour you actually play.
 • Put a favourite verse, book and translation on your card.
-• Drag anything in your Upper Room, your hall or your churchyard exactly where you
-  want it. Fine and Grand pieces are earned by playing now, not by stacking
-  duplicates.
+• Drag anything in your Upper Room, hall or churchyard exactly where you want it.
+  Fine and Grand pieces are earned by playing now, not by stacking duplicates.
 
 No ads, no tracking, and a wrong answer still teaches you something.
 ```

@@ -15,6 +15,8 @@ import { DecorThumb } from '@/features/arena/KeepArt'
 import { FurnishingThumb } from '@/features/room/RoomArt'
 import { Seal } from '@/components/Seal'
 import { sealFor } from '@/data/seals'
+import { ItemShapeThumb } from '@/data/itemArt'
+import { itemById } from '@/data/avatar'
 
 // "You've earned a piece" — for the keep and the Upper Room, mounted once,
 // app-wide. See the header in store/unlocks.ts for why it exists.
@@ -34,6 +36,7 @@ export function UnlockToast() {
   const dismiss = useUnlocks((s) => s.dismiss)
   const checkRoom = useUnlocks((s) => s.checkRoom)
   const checkSeals = useUnlocks((s) => s.checkSeals)
+  const checkSets = useUnlocks((s) => s.checkSets)
   const held = useHeld()
   const timer = useRef<ReturnType<typeof setTimeout>>()
   // The other top-of-screen reveals. A CPU race can land a waystation, a study
@@ -54,13 +57,15 @@ export function UnlockToast() {
   const read = useBible((s) => Object.keys(s.chapters).length)
   const bibleLoaded = useBible((s) => s.loaded)
   const cards = useCollection((s) => s.owned.length)
+  const itemCount = useAuth((s) => s.profile?.ownedItems?.length ?? 0)
   const collectionLoaded = useCollection((s) => s.loaded)
   useEffect(() => {
     checkRoom()
     // `read` is the chapter-mark count, so this fires on the very chapter that
     // finishes a book — which is the only moment a seal can be pressed.
     checkSeals()
-  }, [checkRoom, checkSeals, uid, level, longest, plays, studied, read, cards, bibleLoaded, collectionLoaded])
+    checkSets()
+  }, [checkRoom, checkSeals, checkSets, uid, level, longest, plays, studied, read, cards, itemCount, bibleLoaded, collectionLoaded])
 
   useEffect(() => {
     clearTimeout(timer.current)
@@ -122,6 +127,8 @@ export function UnlockToast() {
                   <DecorThumb id={pending.piece} size={46} />
                 ) : pending.kind === 'seal' ? (
                   <Seal seal={sealFor(pending.piece)!} pressed size={46} />
+                ) : pending.kind === 'set' ? (
+                  <ItemShapeThumb id={pending.piece} slot={itemById(pending.piece)?.slot ?? 'hat'} size={46} />
                 ) : (
                   <FurnishingThumb id={pending.piece} size={46} />
                 )}

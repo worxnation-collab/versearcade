@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { AvatarSpec, ArmorSlot } from '@/types'
 import { skinHex, robeHex, hairHex, figureOf, equippedSkinId, skinArtUrl, isOverlaySkin, ARMOR_ENABLED } from '@/data/avatar'
+import { itemArtFor, itemNodes } from '@/data/itemArt'
 import { GENERATED_ART } from '@/data/generatedArt'
 
 // A composable character figure, drawn from an AvatarSpec. Two looks share one
@@ -1079,20 +1080,7 @@ export function Character({
         <>
           {/* ── Default pilgrim + Armor of God ── */}
           {/* cape / cloak item — drawn behind the body */}
-          {items.cape === 'item_cloak' && (
-            <>
-              <path d="M40 64 Q60 60 80 64 L94 152 L26 152 Z" fill="#6B5030" />
-              <rect x="53" y="63" width="14" height="4" rx="2" fill="#8A6A3E" />
-            </>
-          )}
-          {items.cape === 'item_gleaner_shawl' && (
-            <>
-              <path d="M42 63 Q60 58 78 63 L90 148 L30 148 Z" fill="#B49B6C" />
-              {/* barley-stitch hem */}
-              <path d="M32 144 L88 144" stroke="#8A6F42" strokeWidth="2" strokeDasharray="3 3" />
-              <rect x="54" y="62" width="12" height="4" rx="2" fill="#CBB584" />
-            </>
-          )}
+          {itemNodes(itemArtFor(items.cape), 'cape')}
 
           {/* legs */}
           <rect x="50" y="118" width="9" height="34" rx="4" fill={LEG} />
@@ -1155,46 +1143,7 @@ export function Character({
           )}
 
           {/* held item — in the right hand */}
-          {items.held === 'item_staff' && (
-            <>
-              <rect x="83" y="52" width="3.6" height="98" rx="1.8" fill="#7A5A34" />
-              <path d="M84.8 52 q7 -3 7 5 q0 6 -6 6" fill="none" stroke="#7A5A34" strokeWidth="3.4" strokeLinecap="round" />
-            </>
-          )}
-          {items.held === 'item_scroll' && (
-            <>
-              <rect x="79" y="98" width="14" height="7" rx="3.5" fill="#EBE0C6" stroke="#B9A67E" />
-              <circle cx="79" cy="101.5" r="3.6" fill="#DED0AE" stroke="#B9A67E" />
-              <circle cx="93" cy="101.5" r="3.6" fill="#DED0AE" stroke="#B9A67E" />
-            </>
-          )}
-          {items.held === 'item_lamp' && (
-            <>
-              <ellipse cx="85" cy="104" rx="7" ry="4" fill="#C99A2E" stroke="#9E7716" />
-              <path d="M91 104 h4" stroke="#9E7716" strokeWidth="2" />
-              <ellipse cx="80" cy="99" rx="1.8" ry="3.4" fill="#FFB33E" />
-            </>
-          )}
-          {items.held === 'item_sickle' && (
-            <>
-              <rect x="82.5" y="96" width="4" height="18" rx="2" fill="#7A5A34" />
-              <path d="M84.5 96 q-14 -14 0 -26 q4 10 10 14 q-2 8 -10 12 z" fill="#B98A3C" stroke="#8A6420" strokeWidth="1.2" />
-            </>
-          )}
-          {items.held === 'item_winnowing_fork' && (
-            <>
-              <rect x="83" y="60" width="3.6" height="90" rx="1.8" fill="#8A6438" />
-              <path d="M78 60 v-14 M84.8 62 v-18 M91.5 60 v-14" stroke="#8A6438" strokeWidth="3" strokeLinecap="round" />
-              <path d="M77 61 h15" stroke="#8A6438" strokeWidth="3.4" strokeLinecap="round" />
-            </>
-          )}
-          {items.held === 'item_water_skin' && (
-            <>
-              <path d="M80 96 q10 -3 12 6 q2 9 -7 10 q-9 1 -10 -7 q-1 -7 5 -9 z" fill="#A66A38" stroke="#7C4C22" strokeWidth="1.2" />
-              <rect x="88.5" y="92" width="4" height="6" rx="1.5" fill="#7C4C22" />
-              <path d="M80 98 q6 6 11 3" stroke="#C89864" strokeWidth="1.4" fill="none" />
-            </>
-          )}
+          {itemNodes(itemArtFor(items.held), 'held')}
 
           {/* longer hair, drawn BEHIND the head so its inner edge is hidden by
               the face and only the length shows (same trick as Esther). A bob
@@ -1233,27 +1182,7 @@ export function Character({
           )}
 
           {/* hat items — on the crown of the head */}
-          {items.hat === 'item_harvest_headscarf' && (
-            <>
-              <path d="M47 47 a13 13 0 0 1 26 0 l0 4 a13 13 0 0 0-26 0 z" fill="#E4D2A8" stroke="#B8A06C" strokeWidth="0.8" />
-              <path d="M48 44 a12 12 0 0 1 24 0" fill="none" stroke="#C8863C" strokeWidth="2.2" />
-              <path d="M71 48 q6 9 1 21 l-5 -2 q4 -10 0 -17 z" fill="#E4D2A8" stroke="#B8A06C" strokeWidth="0.8" />
-            </>
-          )}
-          {items.hat === 'item_headwrap' && (
-            <>
-              <path d="M47 47 a13 13 0 0 1 26 0 l0 3 a13 13 0 0 0-26 0 z" fill="#CDB183" stroke="#A98C5C" strokeWidth="0.8" />
-              <path d="M70 46 q7 8 3 22 l-5 -1 q3 -12 -2 -20 z" fill="#CDB183" stroke="#A98C5C" strokeWidth="0.8" />
-            </>
-          )}
-          {items.hat === 'item_olive_wreath' && (
-            <>
-              <path d="M47 47 q13 -11 26 0" fill="none" stroke="#5E7D1E" strokeWidth="3.4" strokeLinecap="round" />
-              <ellipse cx="51" cy="44" rx="2.4" ry="1.4" fill="#7BA02E" transform="rotate(-35 51 44)" />
-              <ellipse cx="60" cy="40.5" rx="2.4" ry="1.4" fill="#7BA02E" />
-              <ellipse cx="69" cy="44" rx="2.4" ry="1.4" fill="#7BA02E" transform="rotate(35 69 44)" />
-            </>
-          )}
+          {itemNodes(itemArtFor(items.hat), 'hat')}
 
           {/* Day One (live exclusive) — sunglasses + a gold flex sparkle */}
           {skinId === 'shades' && (

@@ -40,6 +40,7 @@
 
 import { GENERATED_ART } from './generatedArt'
 import { sanitizeQuestDefs, type QuestDef, type QuestPools } from '@/lib/season'
+import type { ItemShape, ShapeBase } from './itemArt'
 
 // ── The shapes ───────────────────────────────────────────────────────────────
 // These live here rather than in data/season.ts so the sanitisers can see them
@@ -180,6 +181,28 @@ export interface CatalogSkin {
   referralGoal?: number
 }
 
+/**
+ * A wearable item a season can ship. Same shape as `ItemDef` in data/avatar,
+ * plus the drawing — because an item's art is a list of primitives rather than
+ * a URL (see data/itemArt.tsx), it is the one cosmetic here a catalog can
+ * define OUTRIGHT rather than merely re-skin.
+ *
+ * What it deliberately cannot do: name a slot the figure doesn't have, or
+ * carry a price. `slot` is checked against the three real ones and there is no
+ * sku, pack or source field, for the reason CatalogSkin has none.
+ */
+export interface CatalogItem {
+  id: string
+  name: string
+  slot: 'hat' | 'held' | 'cape'
+  rarity: 'common' | 'uncommon' | 'rare'
+  blurb: string
+  /** The set it belongs to, if any — see ITEM_SETS in data/avatar. */
+  set?: string
+  /** Drawn primitives in Character.tsx's 120x160 space. */
+  art: ItemShape[]
+}
+
 export interface ContentCatalog {
   /** Bumped by whoever publishes; only ever used for logging and cache busting. */
   version: number
@@ -189,6 +212,8 @@ export interface ContentCatalog {
   flames: FlameDef[]
   chests: ChestSkinDef[]
   skins: CatalogSkin[]
+  /** Wearable items — the cosmetic that used to need a release. */
+  items: CatalogItem[]
   /** Mailbox posts — how a season announces itself. See NewsDef. */
   news: NewsDef[]
   /**
@@ -210,6 +235,7 @@ export const EMPTY_CATALOG: ContentCatalog = {
   flames: [],
   chests: [],
   skins: [],
+  items: [],
   news: [],
   art: {},
 }
@@ -445,6 +471,109 @@ function sanitizeSkins(raw: unknown): CatalogSkin[] {
   return out
 }
 
+// ── A catalog item's drawing ─────────────────────────────────────────────────
+// The vocabulary itself is in data/itemArt.tsx; this is the gate on it, and it
+// lives here with the other sanitisers because catalog.ts is where untrusted
+// input is turned into something renderable. See that file's header for why the
+// vocabulary is as small as it is — its smallness IS the security argument.
+
+const shapeNum = (v: unknown, min: number, max: number): number | null =>
+  typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max ? v : null
+
+// `hex` above returns null for a miss; a shape wants undefined so the key is
+// simply absent rather than serialised as null into an SVG attribute.
+const shapeColour = (v: unknown): string | undefined => hex(v) ?? undefined
+
+/**
+ * A path's `d`. Only the commands and the characters a path is made of — a
+ * whitelist rather than a blacklist, because `d` is the one field here that is
+ * a language rather than a number.
+ */
+const pathData = (v: unknown): string | null =>
+  typeof v === 'string' && v.length > 0 && v.length <= 600 && /^[MmLlHhVvCcSsQqTtAaZz0-9eE ,.+-]+$/.test(v)
+    ? v
+    : null
+
+function base(o: Record<string, unknown>): ShapeBase {
+  const out: ShapeBase = {}
+  const f = shapeColour(o.fill); if (f) out.fill = f
+  const s = shapeColour(o.stroke); if (s) out.stroke = s
+  const sw = shapeNum(o.sw, 0, 20); if (sw != null) out.sw = sw
+  if (o.cap === 'round' || o.cap === 'butt' || o.cap === 'square') out.cap = o.cap
+  if (typeof o.dash === 'string' && /^[0-9. ]{1,20}$/.test(o.dash)) out.dash = o.dash
+  const op = shapeNum(o.opacity, 0, 1); if (op != null) out.opacity = op
+  if (Array.isArray(o.rot) && o.rot.length === 3) {
+    const r = o.rot.map((n) => shapeNum(n, -360, 360))
+    if (r.every((n) => n != null)) out.rot = r as [number, number, number]
+  }
+  return out
+}
+
+/** One item's shapes, dropping any primitive that can't be read. */
+export function sanitizeItemArt(raw: unknown): ItemShape[] {
+  if (!Array.isArray(raw)) return []
+  const out: ItemShape[] = []
+  // A ceiling, so one row can't hand every phone a thousand nodes to lay out.
+  for (const entry of raw.slice(0, 24)) {
+    if (!entry || typeof entry !== 'object') continue
+    const o = entry as Record<string, unknown>
+    const b = base(o)
+    if (o.t === 'path') {
+      const d = pathData(o.d)
+      if (d) out.push({ t: 'path', d, ...b })
+    } else if (o.t === 'rect') {
+      const x = shapeNum(o.x, -200, 400), y = shapeNum(o.y, -200, 400)
+      const w = shapeNum(o.w, 0, 400), h = shapeNum(o.h, 0, 400)
+      if (x != null && y != null && w != null && h != null) {
+        const rx = shapeNum(o.rx, 0, 200)
+        out.push({ t: 'rect', x, y, w, h, ...(rx != null ? { rx } : {}), ...b })
+      }
+    } else if (o.t === 'circle') {
+      const cx = shapeNum(o.cx, -200, 400), cy = shapeNum(o.cy, -200, 400), r = shapeNum(o.r, 0, 200)
+      if (cx != null && cy != null && r != null) out.push({ t: 'circle', cx, cy, r, ...b })
+    } else if (o.t === 'ellipse') {
+      const cx = shapeNum(o.cx, -200, 400), cy = shapeNum(o.cy, -200, 400)
+      const rx = shapeNum(o.rx, 0, 200), ry = shapeNum(o.ry, 0, 200)
+      if (cx != null && cy != null && rx != null && ry != null) {
+        out.push({ t: 'ellipse', cx, cy, rx, ry, ...b })
+      }
+    }
+  }
+  return out
+}
+
+
+const ITEM_SLOTS = ['hat', 'held', 'cape'] as const
+const ITEM_RARITIES = ['common', 'uncommon', 'rare'] as const
+
+function sanitizeItems(raw: unknown): CatalogItem[] {
+  if (!Array.isArray(raw)) return []
+  const out: CatalogItem[] = []
+  for (const entry of raw.slice(0, 100)) {
+    if (!entry || typeof entry !== 'object') continue
+    const o = entry as Record<string, unknown>
+    const itemId = id(o.id)
+    const name = str(o.name, 60)
+    const slot = ITEM_SLOTS.find((sl) => sl === o.slot)
+    if (!itemId || !name || !slot) continue
+    const art = sanitizeItemArt(o.art)
+    // An item that drew nothing would be an equippable the player can put on
+    // and never see. Fail closed, per entry, like every sanitiser here.
+    if (!art.length) continue
+    const setId = id(o.set)
+    out.push({
+      id: itemId,
+      name,
+      slot,
+      rarity: ITEM_RARITIES.find((r) => r === o.rarity) ?? 'common',
+      blurb: str(o.blurb, 140) ?? '',
+      ...(setId ? { set: setId } : {}),
+      art,
+    })
+  }
+  return out
+}
+
 function sanitizeArt(raw: unknown): Record<string, string> {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
   const out: Record<string, string> = {}
@@ -503,6 +632,7 @@ export function sanitizeCatalog(raw: unknown): ContentCatalog {
     flames: sanitizeFlames(o.flames),
     chests: sanitizeChests(o.chests),
     skins: sanitizeSkins(o.skins),
+    items: sanitizeItems(o.items),
     news: sanitizeNews(o.news),
     art: sanitizeArt(o.art),
   }

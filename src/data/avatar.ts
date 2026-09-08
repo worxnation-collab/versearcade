@@ -28,25 +28,98 @@ export interface ItemDef {
   name: string
   rarity: ItemRarity
   blurb: string
+  /** The set it belongs to — see ITEM_SETS. Undefined for a loose item. */
+  set?: string
 }
 
-export const ITEMS: ItemDef[] = [
-  { id: 'item_headwrap', slot: 'hat', name: 'Shepherd’s Headwrap', rarity: 'common', blurb: 'Cloth against the desert sun.' },
+export const BUNDLED_ITEMS: ItemDef[] = [
+  { id: 'item_headwrap', slot: 'hat', name: 'Shepherd’s Headwrap', rarity: 'common', blurb: 'Cloth against the desert sun.', set: 'shepherd' },
   { id: 'item_olive_wreath', slot: 'hat', name: 'Olive Wreath', rarity: 'uncommon', blurb: 'A crown of peace.' },
-  { id: 'item_staff', slot: 'held', name: 'Shepherd’s Staff', rarity: 'common', blurb: 'For leading the flock.' },
+  { id: 'item_staff', slot: 'held', name: 'Shepherd’s Staff', rarity: 'common', blurb: 'For leading the flock.', set: 'shepherd' },
   { id: 'item_scroll', slot: 'held', name: 'Scroll', rarity: 'common', blurb: 'The Word, close at hand.' },
   { id: 'item_lamp', slot: 'held', name: 'Oil Lamp', rarity: 'uncommon', blurb: 'A lamp unto my feet.' },
-  { id: 'item_cloak', slot: 'cape', name: 'Traveler’s Cloak', rarity: 'uncommon', blurb: 'Worn on the long road.' },
+  { id: 'item_cloak', slot: 'cape', name: 'Traveler’s Cloak', rarity: 'uncommon', blurb: 'Worn on the long road.', set: 'shepherd' },
   // ——— Harvest Road items ———
   // Earned on the Pilgrimage (data/season), never dropped by the chest: the
   // pool below in drawChestItem deliberately excludes them so the road stays
   // the only way to get one. Granted through the same owned_items set.
-  { id: 'item_sickle', slot: 'held', name: 'Harvest Sickle', rarity: 'rare', blurb: 'For the standing grain.' },
-  { id: 'item_winnowing_fork', slot: 'held', name: 'Winnowing Fork', rarity: 'rare', blurb: 'Chaff to the wind.' },
-  { id: 'item_water_skin', slot: 'held', name: 'Water Skin', rarity: 'uncommon', blurb: 'Drawn for the reapers.' },
-  { id: 'item_harvest_headscarf', slot: 'hat', name: 'Harvest Headscarf', rarity: 'uncommon', blurb: 'Cloth for the field.' },
-  { id: 'item_gleaner_shawl', slot: 'cape', name: 'Gleaner’s Shawl', rarity: 'rare', blurb: 'Ruth wore one like it.' },
+  { id: 'item_sickle', slot: 'held', name: 'Harvest Sickle', rarity: 'rare', blurb: 'For the standing grain.', set: 'harvest' },
+  { id: 'item_winnowing_fork', slot: 'held', name: 'Winnowing Fork', rarity: 'rare', blurb: 'Chaff to the wind.', set: 'harvest' },
+  { id: 'item_water_skin', slot: 'held', name: 'Water Skin', rarity: 'uncommon', blurb: 'Drawn for the reapers.', set: 'harvest' },
+  { id: 'item_harvest_headscarf', slot: 'hat', name: 'Harvest Headscarf', rarity: 'uncommon', blurb: 'Cloth for the field.', set: 'harvest' },
+  { id: 'item_gleaner_shawl', slot: 'cape', name: 'Gleaner’s Shawl', rarity: 'rare', blurb: 'Ruth wore one like it.', set: 'harvest' },
 ]
+
+/**
+ * Items a catalog added, merged over the bundled floor by id — the same
+ * merge-never-replace rule the skins and roads follow, so an old binary still
+ * renders everything it shipped with and an equipped item can't vanish.
+ *
+ * This is the gap CLAUDE.md used to call out as known and unfixable: items were
+ * hardcoded SVG per id inside Character.tsx, so a road could hand out skins,
+ * cosmetics, boosts, freezes and mementos but not a hat. `data/itemArt.tsx`
+ * made the drawing into data; this is the other half.
+ */
+// A FUNCTION, not a constant, and that distinction is the whole thing working:
+// the overlay is fetched at runtime, so anything computed at module load reads
+// an empty catalog and a season's hat never appears. `allSkins()` is a function
+// for exactly this reason; this is the same shape.
+export const allItems = (): ItemDef[] =>
+  mergeById(
+    BUNDLED_ITEMS,
+    catalogOverlay().items.map((c) => ({
+      id: c.id,
+      slot: c.slot as ItemSlot,
+      name: c.name,
+      rarity: c.rarity as ItemRarity,
+      blurb: c.blurb,
+      ...(c.set ? { set: c.set } : {}),
+    })),
+  )
+
+// ── Sets ─────────────────────────────────────────────────────────────────────
+//
+// Eleven items sat as a flat list, of which five were already the Harvest Road's
+// outfit and nothing said so. A set is a NAME and a completion, and that is
+// deliberately all it is:
+//
+//  - It grants NOTHING. No XP, no rank, no stat, no odds — the same line every
+//    look in this app holds, and the reason a set can exist next to the
+//    rank-free rule at all.
+//  - Completion is DERIVED from what you own, so there is nothing to migrate,
+//    nothing to revoke, and a set stays complete forever (owned items only ever
+//    accumulate).
+//  - It is never a bar. The shelf names the set on its items and says when one
+//    is whole; it does not draw "2 of 3" at anybody, for the reason the Seals
+//    page draws no bar toward 66.
+//
+// A catalog item may name a set that does not exist here — `setById` returns
+// undefined and the item is simply loose, which is the fail-closed shape.
+export interface ItemSetDef {
+  id: string
+  name: string
+  blurb: string
+}
+
+export const ITEM_SETS: ItemSetDef[] = [
+  { id: 'shepherd', name: 'The Shepherd', blurb: 'Headwrap, staff and cloak — everything for the long walk.' },
+  { id: 'harvest', name: 'The Gleaner', blurb: 'The five pieces from the Harvest Road, worn as one.' },
+]
+
+export const setById = (id?: string | null): ItemSetDef | undefined =>
+  ITEM_SETS.find((s) => s.id === id)
+
+/** Every item filed under a set, in catalog order. */
+export const itemsInSet = (setId: string): ItemDef[] => allItems().filter((i) => i.set === setId)
+
+/** Sets whose every piece is owned. Derived; never stored. */
+export function completedSets(owned: string[]): ItemSetDef[] {
+  const have = new Set(owned)
+  return ITEM_SETS.filter((s) => {
+    const pieces = itemsInSet(s.id)
+    return pieces.length > 0 && pieces.every((p) => have.has(p.id))
+  })
+}
 
 /** Item ids that only the seasonal road grants — kept out of the chest pool. */
 export const ROAD_ITEM_IDS = new Set([
@@ -57,18 +130,24 @@ export const ROAD_ITEM_IDS = new Set([
   'item_gleaner_shawl',
 ])
 
-export const itemById = (id?: string | null): ItemDef | undefined => ITEMS.find((i) => i.id === id)
+export const itemById = (id?: string | null): ItemDef | undefined =>
+  allItems().find((i) => i.id === id)
 
 /** Illustration for a chest item, served from public/items. Ids are prefixed
  *  `item_`; the files are not. */
 export const itemArt = (id: string): string => `/items/${id.replace(/^item_/, '')}.png`
-export const itemsBySlot = (slot: ItemSlot): ItemDef[] => ITEMS.filter((i) => i.slot === slot)
+
+/** Whether `id` has a rendered PNG in public/items. Bundled items do; an item a
+ *  catalog added never will, and draws its own shapes instead. */
+export const itemHasRaster = (id: string): boolean =>
+  BUNDLED_ITEMS.some((i) => i.id === id)
+export const itemsBySlot = (slot: ItemSlot): ItemDef[] => allItems().filter((i) => i.slot === slot)
 
 // Pick a random item the player doesn't own yet (rarity-weighted), for a chest
 // drop. Returns null once everything is collected. Caller supplies a 0..1 roll
 // so it stays deterministic/testable.
 export function drawChestItem(owned: string[], roll: number): string | null {
-  const pool = ITEMS.filter((i) => !owned.includes(i.id) && !ROAD_ITEM_IDS.has(i.id))
+  const pool = allItems().filter((i) => !owned.includes(i.id) && !ROAD_ITEM_IDS.has(i.id))
   if (pool.length === 0) return null
   const weight = (r: ItemRarity) => (r === 'common' ? 6 : r === 'uncommon' ? 3 : 1)
   const total = pool.reduce((s, i) => s + weight(i.rarity), 0)

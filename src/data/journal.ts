@@ -25,6 +25,7 @@ export type JournalTrackId =
   | 'study'
   | 'reading'
   | 'seals'
+  | 'sets'
   | 'collection'
   | 'room'
   | 'battles'
@@ -125,6 +126,16 @@ export const JOURNAL: JournalTrack[] = [
       { goal: 15, name: 'A Shelf of Them' },
       { goal: 39, name: 'The Whole Old Testament’s Worth' },
       { goal: 66, name: 'Every Book' },
+    ],
+  },
+  {
+    id: 'sets',
+    icon: '👗',
+    title: 'Outfits completed',
+    unit: 'sets of items',
+    rungs: [
+      { goal: 1, name: 'Dressed for It' },
+      { goal: 2, name: 'Two Whole Outfits' },
     ],
   },
   {

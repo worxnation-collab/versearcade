@@ -25,12 +25,15 @@ import { useCollection } from '@/store/collection'
 import { collectibleByKey } from '@/data/collectibles'
 import { CARD_BACKGROUNDS, DEFAULT_CARD_BG, cardBgStyle, cardArtProps, cardBgAccentColor, cardBgUnlocked } from '@/data/playerCards'
 import { CardArt } from '@/data/cardArt'
+import { ItemShapeThumb } from '@/data/itemArt'
 import { SavedLooks } from './SavedLooks'
 import { CardAboutEditor } from './CardAboutEditor'
 import {
   DEFAULT_AVATAR,
   distinctSharedDays,
-  ITEMS,
+  allItems,
+  completedSets,
+  setById,
   allSkins,
   BUNDLES,
   bundleExpired,
@@ -47,6 +50,7 @@ import {
   type ItemDef,
   type SkinDef,
   itemArt,
+  itemHasRaster,
 } from '@/data/avatar'
 import { BundleSheet } from './BundleSheet'
 import type { AvatarSpec } from '@/types'
@@ -219,7 +223,12 @@ export function CustomizeSection() {
   }
 
   const ownedItems = profile.ownedItems ?? []
-  const myItems = profile.isAdmin ? ITEMS : ITEMS.filter((i) => ownedItems.includes(i.id))
+  const everyItem = allItems()
+  const myItems = profile.isAdmin ? everyItem : everyItem.filter((i) => ownedItems.includes(i.id))
+  // Sets are a NAME and a completion and nothing else — see ITEM_SETS in
+  // data/avatar. Never rendered as "2 of 3": the shelf says which set a piece
+  // belongs to, and says so differently once the set is whole.
+  const wholeSets = completedSets(profile.isAdmin ? everyItem.map((i) => i.id) : ownedItems)
   const toggleItem = (item: ItemDef) => {
     setErr(null)
     juice.select()
@@ -697,7 +706,7 @@ export function CustomizeSection() {
           {
             key: 'items',
             label: 'Items',
-            right: `${myItems.length} collected`,
+            right: wholeSets.length > 0 ? `${myItems.length} · ${wholeSets.length} set${wholeSets.length === 1 ? '' : 's'}` : `${myItems.length} collected`,
             content: (
               <>
               {/* ── Collected items (from the Daily Chest) ────────────────────── */}
@@ -731,22 +740,49 @@ export function CustomizeSection() {
                             cursor: 'pointer',
                           }}
                         >
-                          <img
-                            src={itemArt(item.id)}
-                            alt=""
-                            aria-hidden
-                            width={40}
-                            height={40}
-                            loading="lazy"
-                            style={{ gridArea: 'art', width: 40, height: 40, objectFit: 'contain', alignSelf: 'center' }}
-                          />
+                          <span style={{ gridArea: 'art', width: 40, height: 40, alignSelf: 'center', display: 'grid', placeItems: 'center' }}>
+                            {itemHasRaster(item.id) ? (
+                              <img
+                                src={itemArt(item.id)}
+                                alt=""
+                                aria-hidden
+                                width={40}
+                                height={40}
+                                loading="lazy"
+                                style={{ width: 40, height: 40, objectFit: 'contain' }}
+                              />
+                            ) : (
+                              /* A catalog item has no PNG by design — it draws itself. */
+                              <ItemShapeThumb id={item.id} slot={item.slot} size={40} />
+                            )}
+                          </span>
                           <span style={{ gridArea: 'name', fontSize: 12, fontWeight: 800, lineHeight: 1.15 }}>{item.name}</span>
-                          <span className="faint" style={{ gridArea: 'meta', fontSize: 10, textTransform: 'capitalize' }}>{item.slot} · {item.rarity}</span>
+                          <span className="faint" style={{ gridArea: 'meta', fontSize: 10, textTransform: 'capitalize' }}>
+                            {item.slot} · {item.rarity}
+                            {item.set && (
+                              <>
+                                {' · '}
+                                <span style={{ color: wholeSets.some((w) => w.id === item.set) ? 'var(--gold)' : undefined }}>
+                                  {setById(item.set)?.name ?? item.set}
+                                </span>
+                              </>
+                            )}
+                          </span>
                           <span style={{ ...pillStyle(on ? 'studio' : 'free'), gridArea: 'pill', marginTop: 2 }}>{on ? '✓ Worn' : 'Tap to wear'}</span>
                         </button>
                       )
                     })}
                   </div>
+                )}
+                {/* A set is a name and a completion. Never "2 of 3": a bar
+                    toward a set you don't have is a list of what you're behind
+                    on, which is the one shape this app doesn't draw. */}
+                {wholeSets.length > 0 && (
+                  <p style={{ fontSize: 11.5, marginTop: 10, lineHeight: 1.5, color: 'var(--gold)' }}>
+                    {wholeSets.map((w) => w.name).join(' · ')} —{' '}
+                    {wholeSets.length === 1 ? 'that set is whole.' : 'those sets are whole.'}{' '}
+                    <span className="faint">{wholeSets.map((w) => w.blurb).join(' ')}</span>
+                  </p>
                 )}
               </div>
               </>

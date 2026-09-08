@@ -553,7 +553,12 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   And it is a **photo end to end**: `isVideo: false`, `faceBookOptions.reels`
   forced off, and the `post` action takes an https `.jpg` where every other
   kind is refused anything but an MP4. Asking Facebook to make a Reel out of a
-  JPG is a refusal, not a post.
+  JPG is a refusal, not a post. **Which is also why it carries its own AI
+  note** (`AI_NOTE_STILL`, chosen by KIND rather than by `voiced`): the other
+  two lines both name a voice, and "AI-generated art and voice." on a card
+  that cannot make a sound describes something that is not in the post — the
+  one thing a disclosure must never do. A voiced DAY says nothing about a
+  picture, so it reads the same on both.
 
 - **The Gemini key lives in `supabase/functions/tiktok-gen` and nowhere else.**
   Same `sharkbait` gate as `push-send`. It makes the reading (Gemini TTS), the
@@ -868,7 +873,12 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   reference), so the caption is just the words. `dropLinkSentence` removes
   whole any sentence carrying a versearcade.org mention and `callToAction`
   ends every caption with "Share this with someone who needs to hear it
-  today." (a challenge asks for the comment first). There is deliberately no
+  today." (a challenge asks for the comment first). **The ask is separated the
+  way the words themselves are** — a blank line under a text that already has
+  blank lines, the given join under a one-liner. A single newline under the
+  NOTE's three paragraphs hung the share line off the end of the closing
+  sentence like a fourth clause of it, where every other break in the post was
+  a paragraph; a space-joined network (TikTok, Snapchat) is untouched. There is deliberately no
   second ask: a caption asking for a share AND a follow AND a comment asks
   for none of them, and a share reaches a stranger's feed where a follow ask
   reaches only people already watching.

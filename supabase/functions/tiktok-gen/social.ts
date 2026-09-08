@@ -123,7 +123,16 @@ export const AI_NOTE = 'AI-generated art and voice.'
  * false note in a line whose whole job is being true.
  */
 export const AI_NOTE_ART = 'AI-generated art. The voice you hear is mine, not synthetic.'
-const aiNote = (a: PostArgs) => (a.voiced ? AI_NOTE_ART : AI_NOTE)
+/**
+ * And the note for the one post that is a PHOTO. Both lines above name a
+ * voice, and a still has none — "AI-generated art and voice." on a card that
+ * cannot make a sound describes something that is not in the post, which is
+ * the one thing a disclosure must never do. It does not vary with `voiced`
+ * either: a voiced DAY says nothing about a picture, so the note stays the
+ * same on both.
+ */
+export const AI_NOTE_STILL = 'AI-generated art.'
+const aiNote = (a: PostArgs) => (a.kind === 'note' ? AI_NOTE_STILL : a.voiced ? AI_NOTE_ART : AI_NOTE)
 
 const tagLine = (tags: string[] | undefined, n: number) => (tags ?? []).slice(0, n).map((t) => '#' + t).join(' ')
 
@@ -215,7 +224,14 @@ function withAsk(text: string | undefined, kind: Kind, join = '\n'): string {
   const challenge = kind === 'challenge' || kind === 'challenge2'
   const has = /\bshare\b/i.test(t) && (!challenge || /comment/i.test(t))
   if (has) return t
-  return [t, callToAction(kind)].filter(Boolean).join(join)
+  // The ask is separated the way the words themselves are. A single newline
+  // under the NOTE — three paragraphs split by blank lines — hung the share
+  // line off the end of the closing sentence like a fourth clause of it,
+  // where every other break in the post was a paragraph. So a text that
+  // already contains a blank line gets one; a one-line caption keeps the
+  // join it was given, and a space-joined network is untouched.
+  const gap = join === '\n' && /\n\n/.test(t) ? '\n\n' : join
+  return [t, callToAction(kind)].filter(Boolean).join(gap)
 }
 
 /**

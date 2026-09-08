@@ -242,8 +242,18 @@ Deno.serve(async (req) => {
     if (!GEMINI_KEY) return json({ error: 'GEMINI_API_KEY is not configured (function secret or Vault)' }, 500)
 
     // The posting actions need Ayrshare's key too — same two homes as Gemini's.
+    //
+    // `unpost` belongs on this list and was missing from it, which is the
+    // nastiest shape of bug this file collects: AYRSHARE_KEY is module-level,
+    // so a warm isolate that had already served a `post` still had the key in
+    // hand and every unpost worked. Only a COLD one — the first call after a
+    // deploy — sent `Bearer ` and got "API Key not valid" back, per row, as a
+    // per-platform `error` rather than a thrown failure. The record then
+    // keeps the rows it could not delete, so the day still looks scheduled,
+    // and the re-post that follows lands a SECOND scheduled post on the same
+    // day. Found by running it against a freshly deployed function.
     const peek = await req.clone().json().catch(() => ({}))
-    if (['post', 'links', 'social', 'analytics', 'replies'].includes(String(peek.action ?? ''))) {
+    if (['post', 'unpost', 'links', 'social', 'analytics', 'replies'].includes(String(peek.action ?? ''))) {
       AYRSHARE_KEY = Deno.env.get('AYRSHARE_API_KEY') ?? ''
       if (!AYRSHARE_KEY) {
         const { data } = await admin.rpc('tiktok_ayrshare_key')

@@ -127,7 +127,8 @@ window.vaVoice = {
     localModels()
     const m = await import('@/lib/tiktokVoice')
     say('decoding')
-    const dec = await m.decodeRecording(await (await fetch(wavUrl)).blob())
+    // A story half plays beside Tabitha and needs her level, not the verse's.
+    const dec = await m.decodeRecording(await (await fetch(wavUrl)).blob(), kind === 'story' ? m.SPEECH_TARGET.story : m.SPEECH_TARGET.verse)
     say('parking the recording')
     await parkFile(voiceWavPath(date, kind), dec.wav, 'audio/wav')
     const v = getVerseForDate(date)

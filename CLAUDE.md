@@ -593,6 +593,29 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   the **↻ Links** button on a posted card does it by hand. Nothing else does —
   without it the record stays URL-less forever and the player-facing row above
   never appears.
+- **Two layouts, two speech levels — one constant described only one of
+  them.** `trimAndLevel` brought a recording to `TARGET = 0.14`, calibrated
+  against Gemini's VERSE readings, and the story's own-voice half inherited it
+  without anyone measuring what it played NEXT to. Off the shipped MP4s:
+  Tabitha's telling renders at -13.2 LUFS and his half at -19.4 — a six-decibel
+  step down, and since every scheduled story is `place: 'open'`, that step is
+  the FIRST FOURTEEN SECONDS, the window that decides whether a short video is
+  distributed at all. Platform loudness normalisation does not save it: a
+  network normalises the whole file toward a target and leaves an imbalance
+  INSIDE it exactly as it found it. `SPEECH_TARGET` is now `{ verse: 0.14,
+  story: 0.26 }`, passed by `ensureOwn` and by the CLI's `listen` (the hub's
+  card is verse-only and keeps the default). Measure a change here off the
+  RENDER, never the WAV — the music bed sits under both voices and only the
+  finished mix says what a viewer hears.
+- **A level fix does NOT need a re-render, and that is worth remembering.** The
+  fourteen scheduled stories were corrected in place with the video stream
+  COPIED and only the audio filtered — a gain over his half, ramped back to
+  unity across `OWN_GAP`, about two seconds a file against minutes to re-render.
+  Two things it needs: the gain must come from the day's OWN parked recording
+  length (his half is 10.3-15.6s across the fortnight, never a constant), and it
+  needs a limiter — a naive +6 dB measured **+3.1 dBFS true peak**, which is
+  distortion, where `alimiter=limit=0.89` lands it at -0.9. All fourteen now sit
+  within 1.6 LUFS of Tabitha, from a 3.0-6.3 gap.
 - **A figure stands on its FEET, not on its file's bottom edge.** Every skin
   render is a full-length figure on a transparent field and every one carries
   empty space under the sandals — david and esther are 400px tall with content

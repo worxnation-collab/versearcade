@@ -60,8 +60,36 @@ export interface VoiceTrack {
 // 24 kHz was one of the three things that made it sound dull under the bed.
 const OUT_RATE = 48000
 
-/** Decode an uploaded recording to mono samples at 48 kHz, and a WAV of the same. */
-export async function decodeRecording(file: Blob): Promise<{ samples: Float32Array; sampleRate: number; wav: Blob; seconds: number }> {
+/**
+ * How loud a levelled recording ends up, as the RMS of its speech.
+ *
+ * There are TWO of these because there are two layouts and only one of them
+ * ever has a second voice in it. On the VERSE post the maker's reading IS the
+ * audio — nothing else speaks, so any sane level reads as correct. On the
+ * STORY his half plays directly against Tabitha's telling, and that telling
+ * is not where this constant said it was: measured off the shipped MP4s, her
+ * half renders at -13.2 LUFS against his -19.4, a step of six decibels at the
+ * exact moment a viewer decides whether to keep watching (every scheduled
+ * story is `place: 'open'`, so he is the first fourteen seconds).
+ *
+ * The original 0.14 was calibrated against Gemini's VERSE readings and is
+ * right for that layout. It was then applied to the story half by inheritance
+ * rather than by measurement, which is the whole bug: one number describing
+ * two different neighbourhoods.
+ *
+ * Measured, not guessed — and measured off the RENDER rather than the WAV,
+ * because the music bed sits under both voices and only the finished mix says
+ * what a viewer hears.
+ */
+export const SPEECH_TARGET = { verse: 0.14, story: 0.26 } as const
+
+/**
+ * Decode an uploaded recording to mono samples at 48 kHz, and a WAV of the
+ * same. `target` is the speech loudness to land on — pass the story's when
+ * the recording is going to play beside Tabitha, or his half arrives six
+ * decibels under her.
+ */
+export async function decodeRecording(file: Blob, target: number = SPEECH_TARGET.verse): Promise<{ samples: Float32Array; sampleRate: number; wav: Blob; seconds: number }> {
   const buf = await file.arrayBuffer()
   // Decode at whatever rate the file has, then resample through an offline
   // graph to the one rate the bucket holds.
@@ -74,7 +102,7 @@ export async function decodeRecording(file: Blob): Promise<{ samples: Float32Arr
   src.connect(off.destination)
   src.start()
   const rendered = await off.startRendering()
-  const samples = trimAndLevel(rendered.getChannelData(0), OUT_RATE)
+  const samples = trimAndLevel(rendered.getChannelData(0), OUT_RATE, target)
   return { samples, sampleRate: OUT_RATE, wav: wavBlob(samples, OUT_RATE), seconds: samples.length / OUT_RATE }
 }
 
@@ -88,7 +116,7 @@ export async function decodeRecording(file: Blob): Promise<{ samples: Float32Arr
  * with a soft knee over the peaks so the loud words don't clip. Then the
  * silence at both ends is trimmed to a short beat.
  */
-function trimAndLevel(samples: Float32Array, rate: number): Float32Array {
+function trimAndLevel(samples: Float32Array, rate: number, target: number): Float32Array {
   let peak = 0
   for (let i = 0; i < samples.length; i++) peak = Math.max(peak, Math.abs(samples[i]))
   if (peak < 1e-4) return samples
@@ -103,8 +131,7 @@ function trimAndLevel(samples: Float32Array, rate: number): Float32Array {
   let sum = 0, count = 0
   for (let i = 0; i < n; i++) if (rms[i] > speechThr) { sum += rms[i] * rms[i]; count++ }
   const speechRms = count ? Math.sqrt(sum / count) : peak / 3
-  const TARGET = 0.14 // about -17 dBFS, where Gemini's readings sit
-  const gain = Math.min(20, TARGET / Math.max(speechRms, 1e-4))
+  const gain = Math.min(20, target / Math.max(speechRms, 1e-4))
   // Soft knee from 0.7: a peak of 1.0 lands at 0.79, one of 2.0 at 0.91.
   const knee = (x: number) => { const a = Math.abs(x); const y = a <= 0.7 ? a : 0.7 + 0.3 * Math.tanh((a - 0.7) / 0.3); return x < 0 ? -y : y }
   const thr = Math.max(0.02 / gain, floor * 2)

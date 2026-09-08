@@ -71,7 +71,8 @@ export async function ensureOwn(d: string, progress: Progress, place: 'open' | '
   if (!(await existsAt(wavUrl + '?v=' + Date.now(), 'audio/'))) return null
   progress(0, place === 'open' ? 'listening to your introduction' : 'listening to your closing word')
   const m = await import('@/lib/tiktokVoice')
-  const dec = await m.decodeRecording(await (await fetch(wavUrl + '?v=' + Date.now())).blob())
+  // The STORY's target: this half plays against Tabitha, not alone.
+  const dec = await m.decodeRecording(await (await fetch(wavUrl + '?v=' + Date.now())).blob(), m.SPEECH_TARGET.story)
   const track = await m.transcribeOwn(dec.samples, dec.sampleRate, place, (label) => progress(0, label))
   await parkFile(voiceJsonPath(d, 'story'), new Blob([JSON.stringify(track)], { type: 'application/json' }), 'application/json')
   try { await fetchCopy(d, 'story', true) } catch { /* written at render time otherwise */ }

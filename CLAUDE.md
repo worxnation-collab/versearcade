@@ -452,8 +452,40 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   second challenge is its own kind rather than a slot. `own` is a clip the
   operator recorded themselves, captioned in their voice and posted through
   the same door with no AI note.
+- **Volume is a LIABILITY on three of the eight, so those three get only the
+  posts a person actually made.** YouTube's inauthentic-content policy (July
+  2025) demonetizes "mass-produced, generic, repetitive" output and names AI
+  made "with generic or unoriginal templates… without adding the creator's
+  original, authentic insights"; Meta's originality policy does the same for
+  Facebook and Instagram and applies its penalty ACROSS EVERYTHING THE
+  ACCOUNT POSTS, so one thin post drags the good ones down. Five templated
+  posts a day is the exact shape both describe.
+  So YouTube, Facebook and Instagram get the morning VERSE and the evening
+  STORY — the two carrying the operator's own recorded voice — plus `own`,
+  which is him on camera outright, and Facebook's `note`. The quiz and the two
+  challenges, the three no human voice touches, go to TikTok, X, Snapchat and
+  Threads, where no volume rule was found and the only constraint is
+  per-video. **Every post on a platform that judges a CHANNEL now has a human
+  in it.**
+  What it costs is the comment ask: only the challenges carry one, so Meta
+  loses its single engagement-driving format. That was the deliberate trade.
+  It also fixed the budget — the schedule was 36 a day (~1,080 a month)
+  against a 1,000 plan, silently over, and is now 28 (~840).
+  **This is a posture, not a payout.** The thresholds are far off (YouTube
+  wants 500 subs for the first tier, TikTok 10k followers, and TikTok's
+  rewards need videos over 60s — the verse runs 44-59s and both challenges
+  are 20s by design). The point is not to be earning; it is not to be
+  disqualified while posting this often. And note two things checked rather
+  than assumed: TikTok's terms say **nothing** about AI excluding a video
+  from Creator Rewards (the widely repeated claim is uncited), and YouTube
+  states outright that disclosure "won't limit a video's audience or impact
+  its eligibility to earn money" — so `containsSyntheticMedia` is free.
+  TikTok's `isAIGenerated` is the one label with a real cost, since a Nov 2025
+  preference slider lets viewers dial labelled content down, and TikTok's own
+  guidelines exempt "artistic styles" and "generic text-to-speech" from
+  needing it at all.
 - **`note` is the one post here that is NOT a video**, and it is Facebook's
-  alone: a 4:5 card and 120-200 words that retell the story behind the day's
+  alone (the card also goes to Pinterest): a 4:5 card and 120-200 words that retell the story behind the day's
   verse. Facebook distributes a photo-and-text post through different
   machinery than a Reel, so it is reach the video is not already buying, and
   it is the only format where that story can be READ rather than watched.
@@ -462,6 +494,10 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   the schedule was already at ~36 a day, so Pinterest gave up the story pin
   to fund it (`KINDS_OFF`). Do the arithmetic before adding a kind or a
   network — the budget does not stretch, and going over is silent.
+  **Pinterest takes the note's CARD as well as the verse**, and got the
+  better end of that swap: it is a search engine where a pin is found for
+  years, and a static, readable, evergreen image is the shape a pin is found
+  BY — where a 90-second telling was the weakest thing in the schedule.
   It has its **own card renderer** (`renderNoteCard`, 1080x1350) rather than
   `renderPoster`, because a feed photo is shown at 4:5 at most and the video
   poster carries a caption panel and an end card — chrome for a thing that is

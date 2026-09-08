@@ -22,37 +22,56 @@ export const KINDS: Kind[] = ['verse', 'story', 'quiz', 'challenge', 'challenge2
 export const kindOf = (k: unknown): Kind => ((KINDS as string[]).includes(String(k)) ? (k as Kind) : 'verse')
 
 /**
- * Which kinds a network does NOT get. Ayrshare's plan is 1,000 posts a month,
- * so every network added and every kind added has to be paid for out of the
- * same budget. Do the arithmetic before adding either: five kinds on six
- * networks is 900 a month on its own, and the schedule below comes to
- * 36 posts a day — Threads skips the quiz (the 107-second replay is the
- * weakest fit for a text-first feed anyway) and Pinterest takes the verse
- * ONLY, because it is a search engine where a pin is found for years and a
- * clock, a replay or a 90-second telling is a pin nobody searches for.
+ * Which kinds a network does NOT get, and it is now two rules rather than one.
  *
- * **`note` is Facebook's alone, and it is the one post here that is not a
- * video.** Facebook distributes a photo-and-text post through different
- * machinery than a Reel, so it is reach the video is not already buying, and
- * it is the only format where the story behind a verse can be READ. It was
- * paid for rather than added: Pinterest gave up the story pin for it, which
- * is why `pinterest` lost `story` in the same edit that gave `facebook` the
- * note. If a future session gives Pinterest the story back, something else
- * has to go — the budget does not stretch.
+ * **The budget.** Ayrshare's plan is 1,000 posts a month, so every network and
+ * every kind is paid for out of the same purse. Do the arithmetic before
+ * adding either: the schedule below is 28 posts a day (~840 a month), and it
+ * used to be 36 (~1,080) — over the cap, silently, because the comment here
+ * still claimed "near 900" from back when six networks carried five kinds.
+ *
+ * **And volume is a liability on three of the eight.** YouTube's inauthentic
+ * content policy (July 2025) demonetizes "mass-produced, generic, repetitive"
+ * output, naming AI made "with generic or unoriginal templates... without
+ * adding the creator's original, authentic insights"; Meta's originality
+ * policy does the same for Facebook and Instagram and applies its penalty
+ * ACROSS EVERYTHING THE ACCOUNT POSTS, so one thin post drags the good ones
+ * down with it. Five templated posts a day is the exact shape both describe.
+ *
+ * So those three get only what a person actually made: the morning VERSE and
+ * the evening STORY, which carry the operator's own recorded voice, plus
+ * `own`, which is him on camera outright. The quiz and the two challenges —
+ * the three no human voice touches — go to TikTok, X, Snapchat and Threads,
+ * where no volume rule was found and the only constraint is per-video.
+ *
+ * That is a posture, not a payout: every post on the platforms that judge a
+ * CHANNEL has a human in it. What it costs is the comment ask, which only the
+ * challenges carry — Meta loses its one engagement-driving format, and that
+ * was the deliberate trade.
  *
  * The function's `post` refuses a pair it is not given with a `skipped` row
  * and the runner never asks, so the hub and the cron cannot disagree about it.
  */
-const OFF_EVERYWHERE_BUT_FACEBOOK: Kind[] = ['note']
+const NOTE_ONLY_ON: Platform[] = ['facebook', 'pinterest']
+/** The three formats no human voice touches: they go where volume is not held against you. */
+const AUTOMATED: Kind[] = ['quiz', 'challenge', 'challenge2']
 const KINDS_OFF: Partial<Record<Platform, Kind[]>> = {
-  tiktok: OFF_EVERYWHERE_BUT_FACEBOOK,
-  youtube: OFF_EVERYWHERE_BUT_FACEBOOK,
-  instagram: OFF_EVERYWHERE_BUT_FACEBOOK,
-  x: OFF_EVERYWHERE_BUT_FACEBOOK,
-  snapchat: OFF_EVERYWHERE_BUT_FACEBOOK,
-  threads: ['quiz', ...OFF_EVERYWHERE_BUT_FACEBOOK],
-  pinterest: ['quiz', 'challenge', 'challenge2', 'own', 'story', ...OFF_EVERYWHERE_BUT_FACEBOOK],
+  tiktok: ['note'],
+  x: ['note'],
+  snapchat: ['note'],
+  threads: ['quiz', 'note'],
+  // The volume-sensitive three: the VOICED posts and the operator's own clips
+  // only. See above.
+  youtube: [...AUTOMATED, 'note'],
+  facebook: [...AUTOMATED],
+  instagram: [...AUTOMATED, 'note'],
+  // A search engine: the verse video, and the note's card — which is a static,
+  // readable, evergreen image, the exact shape a pin is found by. It gave up
+  // the story pin to fund the note and got a better pin back for it.
+  pinterest: [...AUTOMATED, 'own', 'story'],
 }
+void NOTE_ONLY_ON
+
 export const postsOn = (platform: Platform, kind: Kind): boolean => !(KINDS_OFF[platform] ?? []).includes(kind)
 
 export interface PostArgs {

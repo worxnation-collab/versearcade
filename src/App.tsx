@@ -22,6 +22,7 @@ import ReviewScreen from './features/review/ReviewScreen'
 import BuddiesScreen from './features/buddies/BuddiesScreen'
 import MailScreen from './features/mail/MailScreen'
 import JournalScreen from './features/journal/JournalScreen'
+import WardrobeScreen from './features/wardrobe/WardrobeScreen'
 import PrayerWallScreen from './features/prayer/PrayerWallScreen'
 import ChurchesScreen from './features/churches/ChurchesScreen'
 import ChurchScreen from './features/church/ChurchScreen'
@@ -369,6 +370,16 @@ export default function App() {
             <RequireProfile>
               <TabShell>
                 <JournalScreen />
+              </TabShell>
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/wardrobe"
+          element={
+            <RequireProfile>
+              <TabShell>
+                <WardrobeScreen />
               </TabShell>
             </RequireProfile>
           }

@@ -295,6 +295,14 @@ export const MAP_PLACES: MapPlace[] = [
     area: 'you',
   },
   {
+    id: 'wardrobe',
+    icon: '🧺',
+    label: 'The Wardrobe',
+    line: 'Everything there is to wear, and what brings it',
+    to: '/wardrobe',
+    area: 'you',
+  },
+  {
     id: 'journal',
     icon: '📔',
     label: 'The Journal',

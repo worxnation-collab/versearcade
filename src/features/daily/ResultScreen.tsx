@@ -98,13 +98,40 @@ export default function ResultScreen() {
     <Page noNav>
       <div style={{ textAlign: 'center', paddingTop: 12 }}>
         <motion.div initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 240, damping: 12 }}>
-          <div style={{ fontSize: 60 }}>{outcome.leveledUp ? '🎉' : result.correctCount === result.totalQuestions ? '💎' : '⭐'}</div>
+          {/* A star over a zero reads as sarcasm. A run that taught five facts
+              and scored none of them gets the book instead — the same beat,
+              naming what actually happened. */}
+          <div style={{ fontSize: 60 }}>
+            {outcome.leveledUp ? '🎉' : result.correctCount === result.totalQuestions ? '💎' : result.correctCount === 0 ? '📖' : '⭐'}
+          </div>
         </motion.div>
 
         <p className="dim" style={{ marginTop: 4 }}>You scored</p>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 64, lineHeight: 1 }}>
           <CountUp to={result.score} duration={1200} tickSound className="gradient-text" />
         </div>
+
+        {/* THE SCORE IS NEVER HIDDEN — it is the player's own number and taking
+            it away would be a worse lie than a big zero. What this line does is
+            stop the zero being the LAST word: on the one run where the screen
+            has nothing else warm to say, it says the true thing (nothing was
+            lost, and the facts are directly below) and points at the list that
+            is now the very next thing on screen. This app's rule is stickiness
+            without shame, and a first-ever run scoring nothing is exactly where
+            that rule is thinnest. Shown only at zero: at 1/5 the missed list's
+            own "4 things you now know" already does this job. */}
+        {result.correctCount === 0 && (
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.9 }}
+            className="dim"
+            style={{ margin: '10px auto 0', maxWidth: 320, fontSize: 13.5, lineHeight: 1.5 }}
+          >
+            Nothing lost — a wrong answer here is just a fact you hadn’t met yet.
+            All {result.totalQuestions} of them are below.
+          </motion.p>
+        )}
 
         {/* Up by the score, while the run is still the thing on screen: the
             day's other box. It renders only while there IS one left to play —
@@ -133,6 +160,15 @@ export default function ResultScreen() {
             <span style={{ color: 'var(--sky)', fontFamily: 'var(--font-display)', fontSize: 18 }}>→</span>
           </motion.button>
         )}
+
+        {/* What the misses taught, ABOVE the verse card rather than under it.
+            It used to sit below, which put the rescue below the fold on the one
+            screen that needs it most: a first run scoring zero showed a 64px
+            zero and nothing else without scrolling. A perfect run renders this
+            as nothing, so the verse card is still directly under the score
+            there and that screen is unchanged. The verse keeps the last word —
+            it is the keepsake, and the heart that keeps it lives with it. */}
+        <MissedList questions={today.questions} result={result} />
 
         {/* The teaching payoff: reveal what the verse actually was. */}
         <div className="card" style={{ marginTop: 18, textAlign: 'left' }}>
@@ -171,10 +207,6 @@ export default function ResultScreen() {
             whichever network they already use. Renders nothing at all unless
             there is a published video to point at, which is most days for most
             platforms; see the header in WatchYesterday.tsx. */}
-        {/* What the misses taught — collected here, where the player is looking
-            back, rather than left on five teach cards that already scrolled by. */}
-        <MissedList questions={today.questions} result={result} />
-
         <WatchYesterday dropDate={today.dropDate} />
 
         {/* Level up / XP */}

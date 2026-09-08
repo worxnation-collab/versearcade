@@ -56,7 +56,16 @@ const NOTE_ONLY_ON: Platform[] = ['facebook', 'pinterest']
 /** The three formats no human voice touches: they go where volume is not held against you. */
 const AUTOMATED: Kind[] = ['quiz', 'challenge', 'challenge2']
 const KINDS_OFF: Partial<Record<Platform, Kind[]>> = {
-  tiktok: ['note'],
+  // TikTok is on a WARM-UP, and for a different reason than the three below.
+  // Fifteen posts over four days drew seven views between them — uniformly
+  // 0-2 each, across five formats, every one published. Content varying that
+  // much and performing identically at zero is an account with no
+  // distribution, not a format problem. Five posts a day from a two-week-old
+  // account with no followers, every one through a third-party API, is itself
+  // the shape of the thing being filtered. So it gets the two posts a person
+  // actually made until there is traction to measure, and the automated three
+  // go to the networks that are at least delivering.
+  tiktok: [...AUTOMATED, 'note'],
   x: ['note'],
   snapchat: ['note'],
   threads: ['quiz', 'note'],
@@ -231,8 +240,45 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
   // tappable. Everywhere else it is the bio link, set by hand.
   if (FIRST_COMMENT_ON.includes(platform)) body.firstComment = { comment: `Play today's verse: ${siteLink(platform)}` }
   if (platform === 'tiktok') {
-    body.post = [withAsk(c.text, a.kind, ' '), tagLine(c.tags, 5)].filter(Boolean).join(' ').slice(0, 2200)
-    body.tikTokOptions = { visibility: 'public', isAIGenerated: true }
+    // The note moves from the FLAG into the CAPTION, and dropping one without
+    // adding the other is the mistake this was two minutes from making.
+    // TikTok's caption never carried it — the flag was the whole disclosure —
+    // so removing the flag alone would have left TikTok the one network here
+    // saying nothing. Snapchat's Spotlight review has already rejected a verse
+    // from this very account as "undisclosed AI-generated content", so the
+    // failure is not hypothetical, and it is asymmetric: a rejected post is
+    // recoverable, a strike on an account with no distribution is not.
+    body.post = [withAsk(c.text, a.kind, ' '), aiNote(a), tagLine(c.tags, 5)].filter(Boolean).join(' ').slice(0, 2200)
+    // NO `isAIGenerated`, and that is a decision rather than an omission.
+    //
+    // TikTok requires the AIGC label only for content that "shows
+    // realistic-looking scenes or people", and its guidelines name two
+    // exemptions this account sits inside twice over: "using artistic styles,
+    // like anime", and "using generic text-to-speech (TTS) narration, when the
+    // TTS isn't a recognizable voice of a known individual". Every figure here
+    // is an illustration and every synthetic voice is generic Gemini TTS —
+    // and the two voiced posts a day are a real person, which needs no label
+    // at all. So the flag was never required.
+    //
+    // What it cost is real: TikTok shipped an AIGC preference slider in
+    // November 2025 that lets a viewer dial labelled content DOWN in their For
+    // You feed, and it cannot be switched off. It is the only place across
+    // eight networks where the label itself carries a mechanical reach
+    // penalty. Fifteen posts over four days drew seven views in total with it
+    // set, alongside an off-platform link in the caption (since removed) —
+    // neither is proof, and both were the suppressors we could control.
+    //
+    // This is NOT a retreat from disclosure. YouTube keeps
+    // `containsSyntheticMedia` below, because YouTube states outright that
+    // disclosing "won't limit a video's audience or impact its eligibility to
+    // earn money" — free there, costly here, so the answer differs by network.
+    // The visible AI note stays in the caption where a caption carries one,
+    // and the honest line about the voice ("AI-generated art; the voice is our
+    // own") is untouched — and now says it on TikTok too, in the caption. If a
+    // post ever carries a realistic-looking person or a cloned voice, the flag
+    // goes back on: that is what it is for, and words are not a substitute for
+    // it on content the rules actually cover.
+    body.tikTokOptions = { visibility: 'public' }
   } else if (platform === 'youtube') {
     body.post = [withAsk(c.text, a.kind), tagLine(c.tags, 5)].filter(Boolean).join('\n\n').slice(0, 5000)
     body.youTubeOptions = { title: (c.title || `${a.reference || 'Verse Arcade'} · Verse Arcade`).slice(0, 100), visibility: 'public', shorts: true, madeForKids: false, containsSyntheticMedia: true }

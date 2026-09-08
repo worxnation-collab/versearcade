@@ -483,7 +483,29 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   TikTok's `isAIGenerated` is the one label with a real cost, since a Nov 2025
   preference slider lets viewers dial labelled content down, and TikTok's own
   guidelines exempt "artistic styles" and "generic text-to-speech" from
-  needing it at all.
+  needing it at all — **so it is gone, and the note moved into TikTok's
+  CAPTION in the same edit.** Dropping one without adding the other is the
+  trap: TikTok's caption never carried the note, so the flag was its whole
+  disclosure, and removing it alone would have left TikTok the one network
+  here saying nothing. Snapchat's Spotlight review has already rejected a
+  verse from this account as "undisclosed AI-generated content", so that
+  failure is not hypothetical — and it is asymmetric, since a rejected post is
+  recoverable and a strike on an account with no distribution is not. The flag
+  goes back on the day a post carries a realistic-looking person or a cloned
+  voice; words are not a substitute for it on content the rules actually
+  cover.
+- **TikTok is on a warm-up, and the numbers are why.** Fifteen posts over four
+  days drew SEVEN views between them — uniformly 0-2 each, across five
+  formats, every one published successfully. Content that varies that much
+  performing identically at zero is an account with no distribution rather
+  than a format problem. Two things were feeding it: every caption carried
+  "Play today's verse at versearcade.org" (an off-platform link, which that
+  feed deprioritises, since removed by `dropLinkSentence`) and every post wore
+  the AIGC label. So TikTok drops to the verse and the story until there is
+  traction to measure — five posts a day from a two-week-old account with no
+  followers, all through a third-party API, is itself the shape of the thing
+  being filtered. **Read `analytics` before spending posts**: this was found
+  by asking, and nobody had asked.
 - **`note` is the one post here that is NOT a video**, and it is Facebook's
   alone (the card also goes to Pinterest): a 4:5 card and 120-200 words that retell the story behind the day's
   verse. Facebook distributes a photo-and-text post through different

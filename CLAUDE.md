@@ -593,6 +593,20 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   the **↻ Links** button on a posted card does it by hand. Nothing else does —
   without it the record stays URL-less forever and the player-facing row above
   never appears.
+- **A figure stands on its FEET, not on its file's bottom edge.** Every skin
+  render is a full-length figure on a transparent field and every one carries
+  empty space under the sandals — david and esther are 400px tall with content
+  ending at 367, sharkey at 370. `standFigure` and `renderNoteCard` both drew
+  the image so its BOX met the ground line, which left the figure hovering by
+  8% of its drawn height — ~65px on a 1920 frame, ~45px on the card — with its
+  own contact shadow sitting in the gap. It read as pasted on rather than
+  painted, which is the exact thing the hold-the-paintings-still rule exists to
+  prevent, and it had been shipping in every road post. `bottomPad` measures
+  the file's empty bottom once per image (an alpha scan, cached by `src`,
+  never per frame) and both renderers offset by it. Measured rather than
+  assumed with a constant: the padding differs per skin and a new one lands
+  whenever a render does. **Found by looking at the JPEG, not the log** — the
+  runner reported a clean render every time.
 - **The only thing moving is the caption, and that is a rule now.** These
   posts had drifting motes, a warm pulse over the frame, a hovering figure
   under a breathing halo, page-turn wipes and Veo loops of Tabitha talking —

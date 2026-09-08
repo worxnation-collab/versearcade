@@ -675,17 +675,68 @@ const SWAP_LEAD = 0.3
 const SWAP_SEC = 0.5
 
 /**
+ * How much of a figure's PNG is EMPTY below its feet, as a fraction of the
+ * file's height — and the reason this function exists rather than a constant.
+ *
+ * A skin render is a full-length figure on a transparent field, and every one
+ * of them carries space under the sandals: david and esther are 400px tall
+ * with content ending at 367, sharkey at 370. Drawing the image so its BOX
+ * sits on the ground line therefore leaves the figure hovering by that much —
+ * 8% of its drawn height, which is ~65px on a 1920 frame, with its own
+ * contact shadow sitting in the gap underneath it. That is the one thing this
+ * account cannot afford: it reads as pasted-on rather than painted, which is
+ * the whole argument for holding the paintings still in the first place.
+ *
+ * Measured rather than assumed, because the padding is not the same on every
+ * skin and a new one lands whenever a render does. It is one scan of the
+ * alpha channel, cached by `src`, so the cost is paid once per image per
+ * session and never per frame. A canvas that refuses to be read (a tainted
+ * one — these are same-origin, but the guard is free) falls back to 0, which
+ * is exactly the behaviour this replaced.
+ */
+const footPad = new Map<string, number>()
+function bottomPad(img: HTMLImageElement): number {
+  const key = img.src
+  const seen = footPad.get(key)
+  if (seen !== undefined) return seen
+  let pad = 0
+  try {
+    const w = img.naturalWidth, h = img.naturalHeight
+    const c = document.createElement('canvas')
+    c.width = w; c.height = h
+    const cx = c.getContext('2d', { willReadFrequently: true })
+    if (cx && w && h) {
+      cx.drawImage(img, 0, 0)
+      const data = cx.getImageData(0, 0, w, h).data
+      let bot = h - 1
+      for (; bot >= 0; bot--) {
+        let any = false
+        for (let x = 3; x < w * 4; x += 4) if (data[bot * w * 4 + x] > 8) { any = true; break }
+        if (any) break
+      }
+      pad = bot >= 0 ? (h - 1 - bot) / h : 0
+    }
+  } catch { pad = 0 }
+  footPad.set(key, pad)
+  return pad
+}
+
+/**
  * A figure STANDING on the road: feet on the ground, one soft contact
  * shadow, at the size the skins are drawn for. `turn` is a card flip about
  * the figure's own vertical axis — 0 is edge-on and invisible, 1 is facing
  * the viewer — which is how one figure replaces another in the same spot
  * without either of them sliding anywhere.
+ *
+ * The drawn box is pushed DOWN by the file's empty bottom (`bottomPad`) so
+ * that the feet, not the file, land on the ground line.
  */
 function standFigure(ctx: CanvasRenderingContext2D, img: HTMLImageElement, alpha: number, turn = 1) {
   if (alpha <= 0 || turn <= 0) return
   const fh = HEIGHT * 0.42
   const fw = (img.naturalWidth / img.naturalHeight) * fh
   const cx = WIDTH / 2, feet = HEIGHT * 0.68
+  const top = feet - fh + bottomPad(img) * fh
   ctx.save()
   ctx.globalAlpha = 0.32 * alpha * turn
   ctx.fillStyle = '#1a0f36'
@@ -696,7 +747,7 @@ function standFigure(ctx: CanvasRenderingContext2D, img: HTMLImageElement, alpha
   ctx.imageSmoothingQuality = 'high'
   ctx.translate(cx, 0)
   ctx.scale(turn, 1)
-  ctx.drawImage(img, -fw / 2, feet - fh, fw, fh)
+  ctx.drawImage(img, -fw / 2, top, fw, fh)
   ctx.restore()
 }
 
@@ -1163,7 +1214,9 @@ export async function renderNoteCard(input: { reference: string; text: string; b
     ctx.beginPath(); ctx.ellipse(cx, feet - 6, fw * 0.3, 18, 0, 0, Math.PI * 2); ctx.fill()
     ctx.restore()
     ctx.imageSmoothingQuality = 'high'
-    ctx.drawImage(bd.figure, cx - fw / 2, feet - fh, fw, fh)
+    // Same offset as the video's `standFigure`: the FEET go on the ground
+    // line, not the file's empty bottom edge.
+    ctx.drawImage(bd.figure, cx - fw / 2, feet - fh + bottomPad(bd.figure) * fh, fw, fh)
   }
 
   if (input.grade) {

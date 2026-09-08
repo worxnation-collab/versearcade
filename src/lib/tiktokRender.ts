@@ -1111,6 +1111,100 @@ export async function renderPoster(input: Omit<RenderInput, 'audio' | 'onProgres
   return canvas.toDataURL('image/png')
 }
 
+/**
+ * The day's NOTE card — a still, for the one post that is not a video.
+ *
+ * Facebook distributes a photo-and-text post through different machinery
+ * than a Reel, so it is reach the video is not already buying; and it is the
+ * one format where the story behind a verse can be READ rather than watched.
+ * The card is what sits above the words.
+ *
+ * It is **4:5 (1080x1350), not the video's 9:16**, which is the whole reason
+ * it is a second renderer rather than `renderPoster`. A feed photo is shown
+ * at 4:5 at most; handing the feed a 9:16 frame gets it cropped or pillared,
+ * and the video poster carries a caption panel and an end-card besides — both
+ * of them chrome for a thing that is playing, on a card that never plays.
+ *
+ * So it draws the day's own painting, the reader standing on it, and the
+ * verse set as large as it will go. No caption panel, no hook, no ask: the
+ * words are in the post, and a graphic repeating them is a graphic nobody
+ * reads twice.
+ */
+export const CARD_W = 1080
+export const CARD_H = 1350
+
+export async function renderNoteCard(input: { reference: string; text: string; backdrop: Backdrop; grade?: 'dusk' | 'night' }): Promise<Blob> {
+  const canvas = document.createElement('canvas')
+  canvas.width = CARD_W; canvas.height = CARD_H
+  const ctx = canvas.getContext('2d', { alpha: false })
+  if (!ctx) throw new Error('no 2d context')
+  try { await document.fonts.load(`800 88px "Baloo 2"`) } catch { /* fine */ }
+
+  // The card's own cover: the module's `cover` is sized to the video frame.
+  const fill = (src: CanvasImageSource, sw: number, sh: number, anchorY = 0.5) => {
+    const sc = Math.max(CARD_W / sw, CARD_H / sh)
+    const w = sw * sc, h = sh * sc
+    ctx.drawImage(src, (CARD_W - w) / 2, (CARD_H - h) * anchorY, w, h)
+  }
+
+  const bd = input.backdrop
+  if (bd.kind === 'still') fill(bd.image, bd.image.naturalWidth, bd.image.naturalHeight, 0.35)
+  else if (bd.kind === 'loop') fill(bd.video, bd.video.videoWidth || 1080, bd.video.videoHeight || 1920, 0.35)
+  else {
+    fill(bd.scene, bd.scene.naturalWidth, bd.scene.naturalHeight, 0.35)
+    // The reader stands on the road, feet on the ground, exactly as in the
+    // video — a floating figure is the thing this account cannot afford.
+    const fh = CARD_H * 0.42
+    const fw = (bd.figure.naturalWidth / bd.figure.naturalHeight) * fh
+    const cx = CARD_W / 2, feet = CARD_H * 0.56
+    ctx.save()
+    ctx.globalAlpha = 0.32
+    ctx.fillStyle = '#1a0f36'
+    ctx.beginPath(); ctx.ellipse(cx, feet - 6, fw * 0.3, 18, 0, 0, Math.PI * 2); ctx.fill()
+    ctx.restore()
+    ctx.imageSmoothingQuality = 'high'
+    ctx.drawImage(bd.figure, cx - fw / 2, feet - fh, fw, fh)
+  }
+
+  if (input.grade) {
+    ctx.save()
+    ctx.globalCompositeOperation = 'multiply'
+    ctx.fillStyle = input.grade === 'dusk' ? 'rgba(255,160,90,0.55)' : 'rgba(70,90,170,0.75)'
+    ctx.fillRect(0, 0, CARD_W, CARD_H)
+    ctx.restore()
+  }
+
+  // Legibility washes: a band under the brand and a deeper one under the verse.
+  const top = ctx.createLinearGradient(0, 0, 0, 300)
+  top.addColorStop(0, 'rgba(11,7,32,0.78)'); top.addColorStop(1, 'rgba(11,7,32,0)')
+  ctx.fillStyle = top; ctx.fillRect(0, 0, CARD_W, 300)
+  const bot = ctx.createLinearGradient(0, CARD_H - 700, 0, CARD_H)
+  bot.addColorStop(0, 'rgba(11,7,32,0)'); bot.addColorStop(0.45, 'rgba(11,7,32,0.82)'); bot.addColorStop(1, 'rgba(11,7,32,0.96)')
+  ctx.fillStyle = bot; ctx.fillRect(0, CARD_H - 700, CARD_W, 700)
+
+  ctx.save()
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+  ctx.font = `800 30px ${FONT_DISPLAY}`
+  ctx.letterSpacing = '6px'
+  ctx.fillStyle = '#ffd23f'
+  ctx.fillText('VERSE ARCADE', CARD_W / 2, 74)
+  ctx.letterSpacing = '0px'
+
+  const verse = input.text.trim()
+  const { lines, lh } = fitText(ctx, `\u201c${verse}\u201d`, CARD_W - 130, [76, 68, 60, 54, 48, 42, 38], 560)
+  let y = CARD_H - 190 - (lines.length - 1) * lh
+  ctx.fillStyle = '#ffffff'
+  for (const line of lines) { ctx.fillText(line, CARD_W / 2, y); y += lh }
+
+  ctx.font = `700 46px ${FONT_DISPLAY}`
+  ctx.fillStyle = '#ffd23f'
+  ctx.fillText(input.reference, CARD_W / 2, CARD_H - 96)
+  ctx.restore()
+
+  return await new Promise<Blob>((res, rej) =>
+    canvas.toBlob((b) => (b ? res(b) : rej(new Error('no blob'))), 'image/jpeg', 0.9))
+}
+
 // ---- story time -----------------------------------------------------------------
 //
 // The evening post: Tabitha telling the story behind the day's verse to a

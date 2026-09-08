@@ -182,7 +182,7 @@ export interface Copy { hook: string; caption: string; hashtags: string[]; platf
  * is per (date, kind). `own` is a clip the operator recorded themselves,
  * captioned and posted through the same door.
  */
-export type Kind = 'verse' | 'story' | 'quiz' | 'challenge' | 'challenge2' | 'own'
+export type Kind = 'verse' | 'story' | 'quiz' | 'challenge' | 'challenge2' | 'own' | 'note'
 export interface Made { date: string; kind: Kind; reference: string; url: string; ext: string; size: number; copy: Copy | null; phrases: TimedPhrase[]; tier: string }
 
 export type Renderer = typeof import('@/lib/tiktokRender')
@@ -393,8 +393,8 @@ export function Busy({ busy, progress }: { busy: string | null; progress: number
   )
 }
 
-const ICON: Record<Made['kind'], string> = { verse: '☀️', story: '🌙', quiz: '🎮', challenge: '⚡', challenge2: '⚡', own: '🎤' }
-const FILE: Record<Made['kind'], string> = { verse: 'verse-arcade-', story: 'verse-arcade-story-', quiz: 'verse-arcade-quiz-', challenge: 'verse-arcade-challenge-', challenge2: 'verse-arcade-challenge2-', own: 'verse-arcade-own-' }
+const ICON: Record<Made['kind'], string> = { verse: '☀️', story: '🌙', quiz: '🎮', challenge: '⚡', challenge2: '⚡', own: '🎤', note: '📖' }
+const FILE: Record<Made['kind'], string> = { verse: 'verse-arcade-', story: 'verse-arcade-story-', quiz: 'verse-arcade-quiz-', challenge: 'verse-arcade-challenge-', challenge2: 'verse-arcade-challenge2-', own: 'verse-arcade-own-', note: 'verse-arcade-note-' }
 
 const PLATFORMS: Array<[Platform, string]> = [['tiktok', 'TikTok'], ['youtube', 'YouTube Shorts'], ['facebook', 'Facebook'], ['instagram', 'Instagram Reels'], ['x', 'X']]
 

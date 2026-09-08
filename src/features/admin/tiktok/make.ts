@@ -196,6 +196,39 @@ export async function storyAssets(r: Renderer, tellerId: string, roomPath: strin
   return { roomImg, tellerImg }
 }
 
+/**
+ * The day's NOTE: Facebook's photo-and-text post, the one thing this engine
+ * makes that is not a video.
+ *
+ * It reuses the day's own cast and painting so the note and the morning Reel
+ * are visibly the same day, and it asks for the STORY first — the note's
+ * words are written from the same paragraphs Tabitha tells in the evening,
+ * so the two cannot contradict each other about what happened. A story that
+ * will not generate is not fatal: the copy falls back to the verse's own
+ * data, which is what the caption path has always had.
+ */
+export async function makeNote(d: string, o: { cast?: { reader: string; scene: string }; copy?: boolean }, progress: Progress): Promise<MadeBlob> {
+  const v = getVerseForDate(d)
+  const c = o.cast ?? autoCast(d)
+  const sd = seedFor(d)
+  progress(0, 'writing the note')
+  let copy: Copy | null = null
+  if (o.copy !== false) {
+    let paragraphs: string[] = []
+    try { paragraphs = (await fetchStory(d, false)).paragraphs } catch { paragraphs = [] }
+    try { copy = await call<Copy>('copy', { date: d, kind: 'note', reference: v.reference, text: v.text, theme: v.theme, paragraphs }) } catch { copy = null }
+  }
+  progress(0, 'painting the card')
+  const r: Renderer = await import('@/lib/tiktokRender')
+  const tier = await tierFor(c.reader, c.scene)
+  const backdrop = await backdropFor(r, tier, c.reader, c.scene)
+  const blob = await r.renderNoteCard({ reference: v.reference, text: v.text, backdrop, grade: o.cast ? undefined : gradeFor(sd) })
+  return {
+    date: d, kind: 'note', reference: v.reference, url: URL.createObjectURL(blob), ext: 'jpg',
+    size: blob.size, copy, phrases: [], tier: `${c.reader} · ${c.scene} · ${tier} · note`, blob,
+  }
+}
+
 export async function makeStory(d: string, o: StoryOptions, progress: Progress): Promise<MadeBlob> {
   const v = getVerseForDate(d)
   const sd = seedFor(d)

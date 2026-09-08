@@ -10,7 +10,7 @@
 // lib/tiktokDaily.ts already has. Never imported by the app.
 
 import { setRunnerToken, parkFile, fetchCopy, fetchThought, fetchStoryWord, fetchVoice, publicUrl, existsAt, voiceWavPath, voiceJsonPath, type VoiceKind } from '@/features/admin/tiktok/shared'
-import { makeVerse, makeStory, type Progress } from '@/features/admin/tiktok/make'
+import { makeVerse, makeStory, makeNote, type Progress } from '@/features/admin/tiktok/make'
 import { getVerseForDate } from '@/data/bible/questions'
 import type { TimedWord } from '@/lib/tiktokRender'
 import { env as tfEnv } from '@huggingface/transformers'
@@ -28,6 +28,7 @@ declare global {
       hear: (wavUrl: string, token: string) => Promise<{ seconds: number; words: TimedWord[]; text: string }>
       listen: (date: string, wavUrl: string, token: string, kind?: VoiceKind, place?: 'open' | 'close') => Promise<ListenResult>
       render: (date: string, token: string, kind?: VoiceKind, place?: 'open' | 'close') => Promise<RenderResult>
+      note: (date: string, token: string) => Promise<{ size: number; reference: string; tier: string; words: number; text: string }>
       fix: (date: string, text: string, token: string, kind?: VoiceKind) => Promise<FixResult>
       identify: (wavUrl: string, dates: string[], token: string) => Promise<{ best: { date: string; reference: string; matched: number; words: number } | null; opening: string }>
     }
@@ -181,6 +182,27 @@ window.vaVoice = {
     }
     if (best && best.matched / best.words < 0.5) best = null
     return { best, opening: heard.slice(0, 12).map((w) => w.text).join(' ') }
+  },
+
+  /**
+   * The day's NOTE — Facebook's photo-and-text post — handed to the script as
+   * a JPG download, with its words returned so a terminal can read them
+   * before anything is scheduled. Posts nothing.
+   */
+  async note(date, token) {
+    setRunnerToken(token)
+    ensureFont()
+    localModels()
+    const progress: Progress = (_f, label) => say(`${date}: ${label}`)
+    const m = await makeNote(date, {}, progress)
+    const a = document.createElement('a')
+    a.href = m.url
+    a.download = `note-${date}.jpg`
+    document.body.appendChild(a)
+    a.click()
+    say('done')
+    const text = m.copy?.platforms?.facebook?.text ?? ''
+    return { size: m.size, reference: m.reference, tier: m.tier, words: text.split(/\s+/).filter(Boolean).length, text }
   },
 
   /**

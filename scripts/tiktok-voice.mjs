@@ -43,6 +43,9 @@
 //       Whisper times a phone memo well and spells it badly, and these words
 //       are burned onto the screen — so this is the step between listening
 //       and rendering. No model, no second listen, no timing drift.
+//   node scripts/tiktok-voice.mjs note <date>
+//       The day's Facebook note — the 4:5 card as a JPG and its words
+//       printed. Posts nothing.
 //   node scripts/tiktok-voice.mjs render <date> [--story] [--intro]
 //       The post with the parked recording, as an H.264 MP4 in
 //       .tiktok-voice/out/. Posts nothing.
@@ -88,7 +91,7 @@ if (!TOKEN) fail('set TIKTOK_RUNNER_TOKEN')
 const [cmd, ...rest] = process.argv.slice(2)
 const flags = Object.fromEntries(rest.filter((a) => a.startsWith('--')).map((a) => { const [k, v] = a.slice(2).split('='); return [k, v ?? true] }))
 const args = rest.filter((a) => !a.startsWith('--'))
-if (!['drafts', 'listen', 'fix', 'render', 'post', 'unpost', 'clear', 'identify', 'split'].includes(cmd)) fail('usage: drafts | identify <files…> | listen <date> <file> [--story] | fix <date> <text file> [--story] | render <date> [--story] | post <date> [--story] [--at HH:MM|--now] | clear <date> [--story]')
+if (!['drafts', 'listen', 'fix', 'render', 'note', 'post', 'unpost', 'clear', 'identify', 'split'].includes(cmd)) fail('usage: drafts | identify <files…> | listen <date> <file> [--story] | fix <date> <text file> [--story] | render <date> [--story] | post <date> [--story] [--at HH:MM|--now] | clear <date> [--story]')
 const isDate = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d)
 // Two posts a day can carry the operator's voice: the morning VERSE (his
 // reading and his thought, in place of Gemini's) and his half of the evening
@@ -369,6 +372,21 @@ try {
       try { await fn('copy', { date: t.date, kind: KIND, force: true }) } catch { /* written at render time otherwise */ }
       log(`  parked ${t.date} ${KIND}${KIND === 'story' ? ` (${PLACE})` : ''}`)
     }
+    await done()
+  }
+  if (cmd === 'note') {
+    const date = args[0]; if (!isDate(date)) fail('note <date>')
+    const [dl, r] = await Promise.all([
+      page.waitForEvent('download', { timeout: 300_000 }),
+      page.evaluate(([d, t]) => window.vaVoice.note(d, t), [date, TOKEN]),
+    ])
+    const jpg = path.join(OUT, 'out', `note-${date}.jpg`)
+    await dl.saveAs(jpg)
+    log(`note ${date} · ${r.reference} · ${r.tier} · ${(r.size / 1024).toFixed(0)}KB · ${r.words} words`)
+    log('')
+    for (const line of r.text.split('\n')) log(`  ${line}`)
+    log('')
+    log(`  → ${jpg}`)
     await done()
   }
   if (cmd === 'listen') {

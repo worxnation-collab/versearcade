@@ -17,22 +17,42 @@ export interface PlatformCopy { title?: string; text?: string; tags?: string[] }
 export interface DayCopy { hook?: string; platforms?: Partial<Record<Platform, PlatformCopy>> }
 
 /** The posts a day: see admin/tiktok/shared.tsx for what each is. */
-export type Kind = 'verse' | 'story' | 'quiz' | 'challenge' | 'challenge2' | 'own'
-export const KINDS: Kind[] = ['verse', 'story', 'quiz', 'challenge', 'challenge2', 'own']
+export type Kind = 'verse' | 'story' | 'quiz' | 'challenge' | 'challenge2' | 'own' | 'note'
+export const KINDS: Kind[] = ['verse', 'story', 'quiz', 'challenge', 'challenge2', 'own', 'note']
 export const kindOf = (k: unknown): Kind => ((KINDS as string[]).includes(String(k)) ? (k as Kind) : 'verse')
 
 /**
- * Which kinds a network does NOT get. Ayrshare's plan is 1,000 posts a month
- * and five kinds on six networks already sits near 900, so a seventh network
- * has to give something up: Threads skips the quiz (the 107-second replay
- * is the weakest fit for a text-first feed anyway). Pinterest gets the verse
- * and the story ONLY: it is a search engine where a pin is found for years,
- * and a "comment your answer" clock or a replay of yesterday's quiz is a
- * pin nobody searches for. The function's `post` refuses the pair with a
- * `skipped` row and the runner never asks, so the hub and the cron cannot
- * disagree about it.
+ * Which kinds a network does NOT get. Ayrshare's plan is 1,000 posts a month,
+ * so every network added and every kind added has to be paid for out of the
+ * same budget. Do the arithmetic before adding either: five kinds on six
+ * networks is 900 a month on its own, and the schedule below comes to
+ * 36 posts a day — Threads skips the quiz (the 107-second replay is the
+ * weakest fit for a text-first feed anyway) and Pinterest takes the verse
+ * ONLY, because it is a search engine where a pin is found for years and a
+ * clock, a replay or a 90-second telling is a pin nobody searches for.
+ *
+ * **`note` is Facebook's alone, and it is the one post here that is not a
+ * video.** Facebook distributes a photo-and-text post through different
+ * machinery than a Reel, so it is reach the video is not already buying, and
+ * it is the only format where the story behind a verse can be READ. It was
+ * paid for rather than added: Pinterest gave up the story pin for it, which
+ * is why `pinterest` lost `story` in the same edit that gave `facebook` the
+ * note. If a future session gives Pinterest the story back, something else
+ * has to go — the budget does not stretch.
+ *
+ * The function's `post` refuses a pair it is not given with a `skipped` row
+ * and the runner never asks, so the hub and the cron cannot disagree about it.
  */
-const KINDS_OFF: Partial<Record<Platform, Kind[]>> = { threads: ['quiz'], pinterest: ['quiz', 'challenge', 'challenge2', 'own'] }
+const OFF_EVERYWHERE_BUT_FACEBOOK: Kind[] = ['note']
+const KINDS_OFF: Partial<Record<Platform, Kind[]>> = {
+  tiktok: OFF_EVERYWHERE_BUT_FACEBOOK,
+  youtube: OFF_EVERYWHERE_BUT_FACEBOOK,
+  instagram: OFF_EVERYWHERE_BUT_FACEBOOK,
+  x: OFF_EVERYWHERE_BUT_FACEBOOK,
+  snapchat: OFF_EVERYWHERE_BUT_FACEBOOK,
+  threads: ['quiz', ...OFF_EVERYWHERE_BUT_FACEBOOK],
+  pinterest: ['quiz', 'challenge', 'challenge2', 'own', 'story', ...OFF_EVERYWHERE_BUT_FACEBOOK],
+}
 export const postsOn = (platform: Platform, kind: Kind): boolean => !(KINDS_OFF[platform] ?? []).includes(kind)
 
 export interface PostArgs {
@@ -177,8 +197,13 @@ function withAsk(text: string | undefined, kind: Kind, join = '\n'): string {
  */
 export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record<string, unknown> {
   const c = copy.platforms?.[platform] ?? copy.platforms?.tiktok ?? {}
+  // A note is a PHOTO post: one 4:5 card and the words. `isVideo` false is
+  // not cosmetic — Ayrshare routes a video and a photo down different
+  // endpoints, and a JPG sent as a video is refused by Facebook rather than
+  // posted wrong.
+  const photo = a.kind === 'note'
   const body: Record<string, unknown> = {
-    platforms: [ayrshareName(platform)], mediaUrls: [a.videoUrl], isVideo: true,
+    platforms: [ayrshareName(platform)], mediaUrls: [a.videoUrl], isVideo: !photo,
     idempotencyKey: `va-${a.date}-${a.kind}-${platform}${a.attempt && a.attempt > 1 ? `-${a.attempt}` : ''}`,
     notes: `Verse Arcade ${a.kind} ${a.date}`,
   }
@@ -198,7 +223,9 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
     // strangers); over the ceiling, a plain video post on the page rather
     // than a refusal — Facebook rejected the quiz and a 91-second story as
     // Reels on the first real day. Unknown length is treated as short.
-    const reels = !(a.seconds && a.seconds > FACEBOOK_REEL_MAX_SECONDS)
+    // A NOTE is never a Reel — it is a photo, and asking Facebook to make a
+    // Reel out of a JPG is a refusal rather than a post.
+    const reels = !photo && !(a.seconds && a.seconds > FACEBOOK_REEL_MAX_SECONDS)
     body.faceBookOptions = { reels, title: (copy.hook || a.reference || 'Verse Arcade').slice(0, 255) }
   } else if (platform === 'x') {
     // 280 characters, and now none of them are a URL — the link is the first

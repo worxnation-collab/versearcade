@@ -446,12 +446,35 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   (`art/tiktok-scenes.json`, `public/tiktok/roads/`) plus Advent; a missing
   painting falls back to the Harvest Road (`loadScene`) rather than failing
   the post.
-- **Kinds are `verse`, `challenge`, `quiz`, `challenge2`, `story` and `own`**
-  (`Kind` in `shared.tsx`, `kindOf` in `tiktok-gen/social.ts`), and every
-  bucket path and idempotency key is per (date, kind) — which is why the
+- **Kinds are `verse`, `challenge`, `quiz`, `challenge2`, `story`, `own` and
+  `note`** (`Kind` in `shared.tsx`, `kindOf` in `tiktok-gen/social.ts`), and
+  every bucket path and idempotency key is per (date, kind) — which is why the
   second challenge is its own kind rather than a slot. `own` is a clip the
   operator recorded themselves, captioned in their voice and posted through
   the same door with no AI note.
+- **`note` is the one post here that is NOT a video**, and it is Facebook's
+  alone: a 4:5 card and 120-200 words that retell the story behind the day's
+  verse. Facebook distributes a photo-and-text post through different
+  machinery than a Reel, so it is reach the video is not already buying, and
+  it is the only format where that story can be READ rather than watched.
+  Four things about it are load-bearing.
+  It was **paid for, not added**: Ayrshare's plan is 1,000 posts a month and
+  the schedule was already at ~36 a day, so Pinterest gave up the story pin
+  to fund it (`KINDS_OFF`). Do the arithmetic before adding a kind or a
+  network — the budget does not stretch, and going over is silent.
+  It has its **own card renderer** (`renderNoteCard`, 1080x1350) rather than
+  `renderPoster`, because a feed photo is shown at 4:5 at most and the video
+  poster carries a caption panel and an end card — chrome for a thing that is
+  playing, on a card that never plays.
+  It has its **own copy prompt**, because every other kind writes a CAPTION —
+  words read after a video, or not at all — and here the words ARE the post:
+  three short paragraphs, the situation, the verse quoted once, and the share
+  ask. It is written from the SAME `paragraphs` Tabitha tells in the evening,
+  so the two can never contradict each other about what happened.
+  And it is a **photo end to end**: `isVideo: false`, `faceBookOptions.reels`
+  forced off, and the `post` action takes an https `.jpg` where every other
+  kind is refused anything but an MP4. Asking Facebook to make a Reel out of a
+  JPG is a refusal, not a post.
 
 - **The Gemini key lives in `supabase/functions/tiktok-gen` and nowhere else.**
   Same `sharkbait` gate as `push-send`. It makes the reading (Gemini TTS), the

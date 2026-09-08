@@ -42,7 +42,7 @@ const POSTS: Array<{ id: Door; icon: string; name: string; when: string; line: s
 ]
 /** The kinds the day's words are written for on their own: everything a generator makes. */
 const WORD_KINDS: Kind[] = ['verse', 'challenge', 'quiz', 'challenge2', 'story']
-const KIND_LABEL: Record<Kind, string> = { verse: '☀️ Verse', challenge: '⚡ Challenge 1', quiz: '🎮 Quiz', challenge2: '⚡ Challenge 2', story: '🌙 Story', own: '🎤 Own clip' }
+const KIND_LABEL: Record<Kind, string> = { verse: '☀️ Verse', challenge: '⚡ Challenge 1', quiz: '🎮 Quiz', challenge2: '⚡ Challenge 2', story: '🌙 Story', own: '🎤 Own clip', note: '📖 Note' }
 
 // The day's words, without a video. The copy for each post is written once
 // per date (cached by the function), so this card shows all three sets for

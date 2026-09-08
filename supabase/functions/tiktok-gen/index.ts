@@ -615,6 +615,51 @@ Deno.serve(async (req) => {
         const { data: file } = await admin.storage.from(BUCKET).download(path)
         if (file) return json({ ...JSON.parse(await file.text()), cached: true })
       }
+      // ---- the NOTE: Facebook's one post that is not a video --------------
+      //
+      // Everything else here writes a CAPTION — words that sit under a video
+      // and are read after it, or not at all. A note has no video under it,
+      // so the words ARE the post and the shape is different in kind: longer,
+      // paragraphed, and finished on its own. It gets its own prompt rather
+      // than a longer `facebook` block for that reason, and it returns the
+      // same block shape so `postBody` needs no special case for the words.
+      //
+      // The story behind the verse is what it tells, because that is the one
+      // thing the video says out loud and a reader cannot skim — and it is
+      // written from the SAME `paragraphs` Tabitha tells in the evening, so
+      // the two never contradict each other about what happened.
+      if (kind === 'note') {
+        const paragraphs = Array.isArray(input.paragraphs) ? (input.paragraphs as unknown[]).slice(0, 4).map((x) => String(x).slice(0, 900)).filter(Boolean) : []
+        const nd = await gemini(`models/${TEXT_MODEL}:generateContent`, {
+          contents: [{ parts: [{ text:
+            `You write ONE Facebook post for Verse Arcade, a Bible app. It is a photo and words — there is no video — so the words have to be worth reading on their own and worth passing on with nothing to click.\n\n` +
+            `Today's verse is ${reference}: "${text}" (theme: ${theme || 'unspecified'}).\n` +
+            (paragraphs.length ? `The story behind it, which you are retelling in your own words: ${paragraphs.join(' ')}\n` : '') +
+            `\nShape it in three short paragraphs, blank line between each:\n` +
+            `1. The situation the verse comes out of — who is speaking, to whom, and what was happening. Two or three sentences. Concrete and specific; this is the part a reader stays for.\n` +
+            `2. What the verse actually says, quoted once in full with the reference after it, and one plain sentence about why it lands differently once you know where it came from.\n` +
+            `3. One short closing paragraph, first person plural or neutral, and an invitation to share it with someone who needs to hear it today.\n\n` +
+            `Rules. 120 to 200 words in total. Plain, warm, specific — a person telling a friend something they found, never a brand. No slogans, no urgency, no "don't miss". Invent nothing that is not in the verse or the story above. Nothing one Christian tradition would say differently from another. Never rank, compare or shame anyone. No emoji.\n` +
+            `NO LINKS: no URL, no versearcade.org, no domain, no "link in bio", no "in the app", and never name the app.\n\n` +
+            `Return JSON with "hook" (a 6-word line for the card, no emoji, not a question) and "facebook": { "text": the post, "tags": 2 lowercase hashtags without the # sign }.` }] }],
+          generationConfig: { responseMimeType: 'application/json', temperature: 0.8 },
+        })
+        const ncands = nd.candidates as Array<{ content?: { parts?: Array<{ text?: string }> } }> | undefined
+        const nraw = ncands?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? '{}'
+        let np: Record<string, unknown> = {}
+        try { np = JSON.parse(nraw) } catch { return json({ error: 'note copy was not JSON', raw: nraw.slice(0, 300) }, 502) }
+        const nb = (np.facebook ?? {}) as Record<string, unknown>
+        const ntext = String(nb.text ?? '').slice(0, 3000).trim()
+        if (ntext.split(/\s+/).filter(Boolean).length < 60) return json({ error: 'note copy came back too short', raw: nraw.slice(0, 300) }, 502)
+        const ntags = Array.isArray(nb.tags)
+          ? (nb.tags as unknown[]).map((t) => String(t).replace(/^#/, '').replace(/[^a-z0-9]/gi, '').toLowerCase()).filter(Boolean).slice(0, 3)
+          : []
+        const fb = { title: '', text: ntext, tags: ntags }
+        const nout = { hook: String(np.hook ?? '').slice(0, 80), caption: ntext, hashtags: ntags, platforms: { facebook: fb } }
+        if (path) await park(path, new TextEncoder().encode(JSON.stringify(nout)), 'application/json')
+        return json({ ...nout, cached: false })
+      }
+
       const challenge = kind === 'challenge' || kind === 'challenge2'
       const question = String(input.question ?? '').slice(0, 200)
       const about = String(input.about ?? '').slice(0, 400)
@@ -697,7 +742,7 @@ Deno.serve(async (req) => {
       // requires beside a video pin — or one of the operator's own recordings
       // (the WAV the hub decoded it to, and its transcript), or the founder
       // photo the thought section draws.
-      if (!/^(days\/\d{4}-\d{2}-\d{2}\/((verse|story|quiz|challenge|challenge2|own)(\.(mp4|webm)|-cover\.jpg)|voice-(verse|story)\.(wav|json))|founder\/photo\.jpg)$/.test(path)) return json({ error: 'bad path' }, 400)
+      if (!/^(days\/\d{4}-\d{2}-\d{2}\/((verse|story|quiz|challenge|challenge2|own)(\.(mp4|webm)|-cover\.jpg)|note-card\.jpg|voice-(verse|story)\.(wav|json))|founder\/photo\.jpg)$/.test(path)) return json({ error: 'bad path' }, 400)
       const { data, error } = await admin.storage.from(BUCKET).createSignedUploadUrl(path, { upsert: true })
       if (error || !data) return json({ error: error?.message ?? 'no upload url' }, 500)
       return json({ path, token: data.token, publicUrl: publicUrl(path) })
@@ -715,7 +760,15 @@ Deno.serve(async (req) => {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: 'date must be YYYY-MM-DD' }, 400)
       const kind = kindOf(input.kind)
       const videoUrl = String(input.videoUrl ?? '')
-      if (!/^https:\/\/.+\.(mp4|mov)(\?.*)?$/i.test(videoUrl)) return json({ error: 'videoUrl must be an https .mp4 (TikTok and Instagram refuse WebM — render in Chrome)' }, 400)
+      // A NOTE carries a still instead: it is Facebook's photo-and-text post,
+      // the one thing here that is not a video. Every other kind keeps the
+      // MP4-only rule, which is what stops a WebM reaching TikTok or
+      // Instagram and being refused after the quota is spent.
+      const wantsImage = kind === 'note'
+      const okMedia = wantsImage
+        ? /^https:\/\/.+\.(jpg|jpeg|png)(\?.*)?$/i.test(videoUrl)
+        : /^https:\/\/.+\.(mp4|mov)(\?.*)?$/i.test(videoUrl)
+      if (!okMedia) return json({ error: wantsImage ? 'a note takes an https .jpg card' : 'videoUrl must be an https .mp4 (TikTok and Instagram refuse WebM — render in Chrome)' }, 400)
       const platforms = (Array.isArray(input.platforms) ? (input.platforms as unknown[]).map(String) : [...PLATFORMS]).filter((p): p is Platform => (PLATFORMS as string[]).includes(p))
       if (!platforms.length) return json({ error: 'no platforms' }, 400)
       const scheduleDate = typeof input.scheduleDate === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(input.scheduleDate) ? input.scheduleDate : undefined

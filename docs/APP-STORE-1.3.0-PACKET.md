@@ -74,15 +74,26 @@ screenshot against the display size of the slot and refuses a mismatch — *"The
 dimensions of one or more screenshots are wrong"* — even though the file is a
 perfectly good screenshot. So both sizes are generated:
 
-| Slot on the record | Folder | Pixels |
-|---|---|---|
-| iPhone 6.9" (also accepted at 6.7") | `docs/app-store/screenshots/6.9-1290x2796/` | 1290 × 2796 |
-| iPhone 6.5" — legacy, still on this record | `docs/app-store/screenshots/6.5-1284x2778/` | 1284 × 2778 |
+| Slot on the record | Folder | Pixels | Slot also accepts |
+|---|---|---|---|
+| **iPhone 6.9" — the one to fill** | `docs/app-store/screenshots/6.9-1290x2796/` | 1290 × 2796 | 1260 × 2736, 1320 × 2868 |
+| iPhone 6.5" — legacy, optional | `docs/app-store/screenshots/6.5-1284x2778/` | 1284 × 2778 | 1242 × 2688 |
 
-The **6.5" slot takes 1242 × 2688 or 1284 × 2778 and nothing else.** The three
-screenshots sitting in it are from an earlier release and show screens this update
-changed or deleted — a "Bible Battle" page title that 1.3.0 removed, and a Play tab
-that is now two daily boxes — so replace them rather than leaving them.
+**Fill the 6.9" slot and you are done — it covers every other size.** Its own help
+text says so: *"we'll use these screenshots for all iOS display sizes and
+localizations."* So the 6.9" set is the one that matters, and the 6.5" slot is
+optional.
+
+What it is NOT is harmless to leave alone. A 6.5" set, if one exists, is what 6.5"
+devices are shown — and the three sitting there are from an earlier release, showing
+screens this update changed or deleted (a "Bible Battle" page title 1.3.0 removed,
+and a Play tab that is two daily boxes now). So either **delete them**, which lets
+the 6.9" set serve those devices too, or **replace them** with the 6.5" folder.
+Deleting is simpler and is the recommendation.
+
+Note the two slots take disjoint sizes — 6.9" will not accept 1284 × 2778 and 6.5"
+will not accept 1290 × 2796 — so a file that is refused is almost always in the
+wrong box rather than the wrong size.
 
 Thirteen files in each folder, each **captured at its own viewport** rather than
 resized from the other, and `npm run shots` asserts every file against its set's

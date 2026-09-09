@@ -495,11 +495,16 @@ Minimum 3, up to 10.
 **Captured and ready, in TWO sizes**, because App Store Connect validates a file
 against the display slot it is dropped into and refuses a mismatch outright:
 
-- `docs/app-store/screenshots/6.9-1290x2796/` — the current iPhone slot (6.9",
-  also accepted at 6.7").
-- `docs/app-store/screenshots/6.5-1284x2778/` — the legacy 6.5" slot this app's
-  record still carries from an earlier release. It takes 1242 x 2688 or
-  1284 x 2778 and **nothing else** — a 6.9" file dropped here is rejected.
+- `docs/app-store/screenshots/6.9-1290x2796/` — **the slot to fill.** App Store
+  Connect uses this set for every other iOS display size, so on its own it is a
+  complete submission. It also takes 1260 x 2736 or 1320 x 2868.
+- `docs/app-store/screenshots/6.5-1284x2778/` — the legacy 6.5" slot this record
+  still carries. Optional, but not inert: whatever sits in it is what 6.5" devices
+  are shown, so an empty slot is better than a stale one. It takes 1242 x 2688 or
+  1284 x 2778 and **nothing else**.
+
+The two sizes are disjoint, so a refused file is almost always in the wrong box
+rather than the wrong size.
 
 `npm run shots` regenerates both from the running dev server, each captured at its
 own viewport rather than resized from the other, and asserts every file against its

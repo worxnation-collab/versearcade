@@ -67,10 +67,25 @@ engine and operator voice loop** (`/admin` renders nothing for any other account
 
 ## 3 — Screenshots
 
-**`docs/app-store/screenshots/` — thirteen PNGs, every one exactly 1290 × 2796**,
-which is the 6.7" iPhone size Apple requires. `npm run shots` regenerates them by
-driving the real app; the script asserts the size and fails rather than handing you
-an upload App Store Connect will refuse.
+**Which SLOT you drop a file into is what decides whether it is accepted**, and
+this is the one that bit on the first attempt: App Store Connect validates a
+screenshot against the display size of the slot and refuses a mismatch — *"The
+dimensions of one or more screenshots are wrong"* — even though the file is a
+perfectly good screenshot. So both sizes are generated:
+
+| Slot on the record | Folder | Pixels |
+|---|---|---|
+| iPhone 6.9" (also accepted at 6.7") | `docs/app-store/screenshots/6.9-1290x2796/` | 1290 × 2796 |
+| iPhone 6.5" — legacy, still on this record | `docs/app-store/screenshots/6.5-1284x2778/` | 1284 × 2778 |
+
+The **6.5" slot takes 1242 × 2688 or 1284 × 2778 and nothing else.** The three
+screenshots sitting in it are from an earlier release and show screens this update
+changed or deleted — a "Bible Battle" page title that 1.3.0 removed, and a Play tab
+that is now two daily boxes — so replace them rather than leaving them.
+
+Thirteen files in each folder, each **captured at its own viewport** rather than
+resized from the other, and `npm run shots` asserts every file against its set's
+size before it exits.
 
 Upload the first eight, in this order. Minimum is three, maximum ten.
 
@@ -90,11 +105,7 @@ Spares: `06-arcade`, `09-bible`, `11-wardrobe`, `12-road`, `13-journal`.
 Church, Battle and the Prayer Wall are **not** in the set on purpose: they are
 online-only, so in a keyless build they draw their own "create an account" card.
 That is the honest state and a poor advertisement. Shoot those from the signed-in
-TestFlight build on a real 6.7" phone if you want them.
-
-> Existing screenshots carry over if you upload nothing. These are newer than the
-> app they show if the last set was captured for 1.2.0 — the Play tab alone is a
-> different screen now.
+TestFlight build on a real phone if you want them.
 
 ---
 

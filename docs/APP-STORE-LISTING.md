@@ -408,9 +408,19 @@ mark the app iPad-compatible — recommend iPhone-only for v1).
 
 Minimum 3, up to 10.
 
-**Captured and ready: `docs/app-store/screenshots/*.png`, all exactly 1290 x 2796.**
-`npm run shots` regenerates them from the running dev server (see that script's
-header). Upload the first eight in this order; the last five are spares:
+**Captured and ready, in TWO sizes**, because App Store Connect validates a file
+against the display slot it is dropped into and refuses a mismatch outright:
+
+- `docs/app-store/screenshots/6.9-1290x2796/` — the current iPhone slot (6.9",
+  also accepted at 6.7").
+- `docs/app-store/screenshots/6.5-1284x2778/` — the legacy 6.5" slot this app's
+  record still carries from an earlier release. It takes 1242 x 2688 or
+  1284 x 2778 and **nothing else** — a 6.9" file dropped here is rejected.
+
+`npm run shots` regenerates both from the running dev server, each captured at its
+own viewport rather than resized from the other, and asserts every file against its
+set's size before exiting (see that script's header). Upload the first eight in
+this order; the last five are spares:
 
 1. `01-play-tab` — the two daily boxes, the road, the compass. The whole tab.
 2. `02-verse-read` — the verse, before the clock starts.

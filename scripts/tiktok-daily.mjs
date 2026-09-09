@@ -368,7 +368,14 @@ for (const kind of KINDS) {
       log(`  already rendered (${(Number(head.headers.get('content-length') || 0) / 1e6).toFixed(1)}MB in the bucket) — posting that`)
       videoUrl = parked
       if (todo.includes('pinterest') && !isPhoto(kind)) await parkCover(date, kind, parked)
-      posted = await postEach(todo, { date, kind, videoUrl, scheduleDate, reference: getVerseForDate(date).reference, seconds: isPhoto(kind) ? undefined : durationOf(parked) })
+      // Whether the operator's voice is IN that parked file is not something
+      // this path can see — it did not render it. The day's own record knows
+      // (the function writes `voiced` into it), and a run reaching here has
+      // one whenever anything was posted before; failing that the function
+      // falls back to looking for a parked recording, which is what it did
+      // before any of this and is only ever wrong about a video rendered by
+      // an older build.
+      posted = await postEach(todo, { date, kind, videoUrl, scheduleDate, reference: getVerseForDate(date).reference, seconds: isPhoto(kind) ? undefined : durationOf(parked), voiced: typeof prior.voiced === 'boolean' ? prior.voiced : undefined })
       for (const r of posted.results) log(`  ${r.platform.padEnd(10)} ${r.status}${r.error ? ` — ${r.error}` : ''}${r.postUrl ? ` ${r.postUrl}` : ''}`)
       results.push({ kind, date, videoUrl, scheduleDate, results: posted.results, skipped: 'render' }); continue
     }
@@ -417,7 +424,7 @@ for (const kind of KINDS) {
     if (error) { results.push({ kind, date, error: `upload: ${error.message}` }); continue }
     videoUrl = up.publicUrl
     if (!isPhoto(kind)) await parkCover(date, kind, mp4)
-    posted = await postEach(PLATFORMS.filter((p) => social.postsOn(p, kind)), { date, kind, videoUrl, scheduleDate, reference: rendered.reference, seconds: isPhoto(kind) ? undefined : durationOf(mp4) })
+    posted = await postEach(PLATFORMS.filter((p) => social.postsOn(p, kind)), { date, kind, videoUrl, scheduleDate, reference: rendered.reference, seconds: isPhoto(kind) ? undefined : durationOf(mp4), voiced: rendered.voiced })
   } else {
     const u = await ayrshare(`media/uploadUrl?fileName=${encodeURIComponent(`va-${kind}-${date}.mp4`)}&contentType=mp4`, null, 'GET')
     if (!u.uploadUrl) { results.push({ kind, date, error: `ayrshare upload url: ${JSON.stringify(u).slice(0, 200)}` }); continue }
@@ -428,7 +435,7 @@ for (const kind of KINDS) {
     const rows = []
     // Direct mode has no bucket to park a cover in, so Pinterest sits this path out.
     for (const platform of PLATFORMS.filter((p) => p !== 'pinterest' && social.postsOn(p, kind))) {
-      const r = await ayrshare('post', social.postBody(platform, copy, { date, kind, reference: rendered.reference, videoUrl, scheduleDate }))
+      const r = await ayrshare('post', social.postBody(platform, copy, { date, kind, reference: rendered.reference, videoUrl, scheduleDate, voiced: rendered.voiced }))
       rows.push(social.postResult(platform, r, scheduleDate))
     }
     posted = { date, kind, videoUrl, at: new Date().toISOString(), results: rows }

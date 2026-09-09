@@ -183,7 +183,16 @@ export interface Copy { hook: string; caption: string; hashtags: string[]; platf
  * captioned and posted through the same door.
  */
 export type Kind = 'verse' | 'story' | 'quiz' | 'challenge' | 'challenge2' | 'own' | 'note'
-export interface Made { date: string; kind: Kind; reference: string; url: string; ext: string; size: number; copy: Copy | null; phrases: TimedPhrase[]; tier: string }
+/**
+ * `voiced` is whether the operator's own recording actually reached this
+ * render — not whether one is parked for the date. The two came apart once
+ * and the post said so: a build without the story's own-voice half told the
+ * day with Tabitha alone while the wav sat in the bucket, and the `post`
+ * action, inferring from the file, captioned a fully synthetic video "the
+ * voice you hear is mine". The renderer is the only thing that knows, so it
+ * says, and `post` takes its answer.
+ */
+export interface Made { date: string; kind: Kind; reference: string; url: string; ext: string; size: number; copy: Copy | null; phrases: TimedPhrase[]; tier: string; voiced: boolean }
 
 export type Renderer = typeof import('@/lib/tiktokRender')
 
@@ -361,7 +370,7 @@ export async function fetchStory(d: string, force: boolean): Promise<Story> {
 // The words for a date's post of one kind, written once (cached in the
 // bucket by date and kind) so the hub can show today's without rendering a
 // video, and a render on the same day gets the same words.
-export async function fetchCopy(d: string, kind: Made['kind'], force = false, extra: { question?: string; about?: string } = {}): Promise<Copy> {
+export async function fetchCopy(d: string, kind: Made['kind'], force = false, extra: { question?: string; about?: string; voiced?: boolean } = {}): Promise<Copy> {
   const v = getVerseForDate(d)
   return call<Copy>('copy', { date: d, kind, force, reference: v.reference, text: v.text, theme: v.theme, ...extra })
 }
@@ -518,7 +527,7 @@ export async function postVideo(m: Made, platforms: Platform[], scheduleDate: st
   let at: string | undefined
   for (const platform of platforms) {
     onStep(`${scheduleDate ? 'Scheduling' : 'Posting'} · ${PLATFORM_NAMES[platform]}`)
-    const r = await call<Posted>('post', { date: m.date, kind: m.kind, videoUrl: up.publicUrl, platforms: [platform], scheduleDate, reference: m.reference, seconds })
+    const r = await call<Posted>('post', { date: m.date, kind: m.kind, videoUrl: up.publicUrl, platforms: [platform], scheduleDate, reference: m.reference, seconds, voiced: m.voiced })
     results.push(...(r.results ?? []))
     at = r.at ?? at
   }

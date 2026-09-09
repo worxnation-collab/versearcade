@@ -27,8 +27,8 @@ export type Progress = (fraction: number, label: string) => void
 /** What every generator returns: the finished file plus what the card shows. */
 export interface MadeBlob extends Made { blob: Blob }
 
-function made(d: string, kind: Made['kind'], reference: string, out: { blob: Blob; ext: 'mp4' | 'webm'; phrases: Made['phrases'] }, copy: Copy | null, tier: string): MadeBlob {
-  return { date: d, kind, reference, url: URL.createObjectURL(out.blob), ext: out.ext, size: out.blob.size, copy, phrases: out.phrases, tier, blob: out.blob }
+function made(d: string, kind: Made['kind'], reference: string, out: { blob: Blob; ext: 'mp4' | 'webm'; phrases: Made['phrases'] }, copy: Copy | null, tier: string, voiced = false): MadeBlob {
+  return { date: d, kind, reference, url: URL.createObjectURL(out.blob), ext: out.ext, size: out.blob.size, copy, phrases: out.phrases, tier, voiced, blob: out.blob }
 }
 
 // ---- the verse reading -----------------------------------------------------------
@@ -75,7 +75,7 @@ export async function ensureOwn(d: string, progress: Progress, place: 'open' | '
   const dec = await m.decodeRecording(await (await fetch(wavUrl + '?v=' + Date.now())).blob(), m.SPEECH_TARGET.story)
   const track = await m.transcribeOwn(dec.samples, dec.sampleRate, place, (label) => progress(0, label))
   await parkFile(voiceJsonPath(d, 'story'), new Blob([JSON.stringify(track)], { type: 'application/json' }), 'application/json')
-  try { await fetchCopy(d, 'story', true) } catch { /* written at render time otherwise */ }
+  try { await fetchCopy(d, 'story', true, { voiced: true }) } catch { /* written at render time otherwise */ }
   return { ...track, wavUrl }
 }
 
@@ -90,7 +90,7 @@ export async function ensureVoice(d: string, progress: Progress): Promise<(Voice
   const dec = await m.decodeRecording(await (await fetch(wavUrl + '?v=' + Date.now())).blob())
   const track = await m.splitRecording(dec.samples, dec.sampleRate, v.text, v.reference, (label) => progress(0, label))
   await parkFile(voiceJsonPath(d), new Blob([JSON.stringify(track)], { type: 'application/json' }), 'application/json')
-  try { await fetchCopy(d, 'verse', true) } catch { /* written at render time otherwise */ }
+  try { await fetchCopy(d, 'verse', true, { voiced: true }) } catch { /* written at render time otherwise */ }
   return { ...track, wavUrl }
 }
 
@@ -110,7 +110,7 @@ export async function makeVerse(d: string, o: VerseOptions, progress: Progress):
     let copy: Copy | null = null
     if (o.copy !== false) {
       progress(0, 'writing the caption')
-      try { copy = await fetchCopy(d, 'verse') } catch { copy = null }
+      try { copy = await fetchCopy(d, 'verse', false, { voiced: true }) } catch { copy = null }
     }
     progress(0, 'rendering')
     const r: Renderer = await import('@/lib/tiktokRender')
@@ -129,7 +129,7 @@ export async function makeVerse(d: string, o: VerseOptions, progress: Progress):
       grade: o.cast ? undefined : gradeFor(sd),
       onProgress: progress,
     })
-    return made(d, 'verse', v.reference, out, copy, `${c.reader}${speaker ? ' → you' : ''} · ${c.scene} · ${tier} · your voice`)
+    return made(d, 'verse', v.reference, out, copy, `${c.reader}${speaker ? ' → you' : ''} · ${c.scene} · ${tier} · your voice`, true)
   }
   progress(0, 'asking for the reading')
   // A batch reads each day in its own voice when the pick is automatic;
@@ -151,7 +151,7 @@ export async function makeVerse(d: string, o: VerseOptions, progress: Progress):
   let copy: Copy | null = null
   if (o.copy !== false) {
     progress(0, 'writing the caption')
-    try { copy = await fetchCopy(d, 'verse') } catch { copy = null }
+    try { copy = await fetchCopy(d, 'verse', false, { voiced: false }) } catch { copy = null }
   }
 
   progress(0, 'rendering')
@@ -226,7 +226,7 @@ export async function makeNote(d: string, o: { cast?: { reader: string; scene: s
   const blob = await r.renderNoteCard({ reference: v.reference, text: v.text, backdrop, grade: o.cast ? undefined : gradeFor(sd) })
   return {
     date: d, kind: 'note', reference: v.reference, url: URL.createObjectURL(blob), ext: 'jpg',
-    size: blob.size, copy, phrases: [], tier: `${c.reader} · ${c.scene} · ${tier} · note`, blob,
+    size: blob.size, copy, phrases: [], tier: `${c.reader} · ${c.scene} · ${tier} · note`, voiced: false, blob,
   }
 }
 
@@ -256,7 +256,7 @@ export async function makeStory(d: string, o: StoryOptions, progress: Progress):
   let copy: Copy | null = null
   if (o.copy !== false) {
     progress(0, 'writing the caption')
-    try { copy = await fetchCopy(d, 'story') } catch { copy = null }
+    try { copy = await fetchCopy(d, 'story', false, { voiced: !!own }) } catch { copy = null }
   }
   progress(0, 'rendering')
   const r: Renderer = await import('@/lib/tiktokRender')
@@ -278,7 +278,7 @@ export async function makeStory(d: string, o: StoryOptions, progress: Progress):
     onProgress: progress,
   })
   const teller = TELLERS.find((x) => x.id === tellerId)?.name ?? tellerId
-  return made(d, 'story', v.reference, out, copy, `${teller} · story${own ? ' · your voice' : ''}`)
+  return made(d, 'story', v.reference, out, copy, `${teller} · story${own ? ' · your voice' : ''}`, !!(own && ownAudio))
 }
 
 // ---- yesterday's quiz ----------------------------------------------------------------

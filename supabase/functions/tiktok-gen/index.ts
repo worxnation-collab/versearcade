@@ -676,7 +676,14 @@ Deno.serve(async (req) => {
       // A verse the operator recorded is described as what it is — a person
       // reading and saying one thing about it — so the caption stops
       // crediting a painted Peter with a voice that is somebody's own.
-      const voiced = path && (kind === 'verse' || kind === 'story') ? await exists(`days/${date}/voice-${kind}.json`) : false
+      // Same rule as `post` below: a parked recording is the ceiling, and a
+      // caller that rendered the video gets the last word on whether its
+      // voice is actually in there. Otherwise the words are drafted for a
+      // closing that the video does not contain.
+      const claimedVoice = typeof input.voiced === 'boolean' ? (input.voiced as boolean) : undefined
+      const voiced = path && (kind === 'verse' || kind === 'story')
+        ? (await exists(`days/${date}/voice-${kind}.json`)) && claimedVoice !== false
+        : false
       const who = kind === 'story'
         ? `Tabitha, the app's librarian, tells the short story behind the verse of the day each evening (the morning post was the verse itself, read aloud). ${voiced ? `At the end the app's maker speaks last, in his own voice, with one plain closing word about it. ` : ''}`
         : kind === 'quiz'
@@ -792,8 +799,20 @@ Deno.serve(async (req) => {
       const copy = JSON.parse(await file.text()) as DayCopy
       const reference = String(input.reference ?? '').slice(0, 80)
       // The AI note claims only the art when a voice on the post is the
-      // operator's — his reading on the verse, or his closing word on the story.
-      const voiced = (kind === 'verse' || kind === 'story') && (await exists(`days/${date}/voice-${kind}.json`))
+      // operator's — his reading on the verse, or his closing word on the
+      // story. A PARKED recording is not proof one was USED: the renderer is
+      // the only thing that knows whether it reached the file. Inferring from
+      // the file alone shipped "the voice you hear is mine, not synthetic."
+      // on a story told entirely by Gemini, because the build that rendered
+      // it had no own-voice half for the story and the wav sat in the bucket
+      // regardless. A disclosure describing something that is not in the post
+      // is the one thing it must never do. So the caller's answer WINS when
+      // it sends one, the parked file remains the ceiling (nothing can claim
+      // a voice with no recording behind it), and a caller too old to send
+      // one keeps the old behaviour.
+      const claimed = typeof input.voiced === 'boolean' ? (input.voiced as boolean) : undefined
+      const parkedVoice = (kind === 'verse' || kind === 'story') && (await exists(`days/${date}/voice-${kind}.json`))
+      const voiced = parkedVoice && claimed !== false
 
       // A platform the account has not linked yet is skipped with a row that
       // says so, never sent: X can be in every list before the account
@@ -827,7 +846,10 @@ Deno.serve(async (req) => {
       const prior = priorFile ? (JSON.parse(await priorFile.text()) as { results?: Array<Record<string, unknown>> }).results ?? [] : []
       const asked = new Set(platforms as string[])
       const merged = [...prior.filter((r) => !asked.has(String(r.platform))), ...results]
-      const record = { date, kind, videoUrl, at: new Date().toISOString(), results: merged }
+      // `voiced` rides in the record so a later call for the platforms that
+      // failed — a different process, which rendered nothing — says the same
+      // thing about the same video rather than inferring it again.
+      const record = { date, kind, videoUrl, at: new Date().toISOString(), voiced, results: merged }
       await park(`days/${date}/posted-${kind}.json`, new TextEncoder().encode(JSON.stringify(record)), 'application/json')
       return json({ ...record, results })
     }

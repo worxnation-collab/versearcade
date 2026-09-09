@@ -118,7 +118,8 @@ function OwnClip() {
     setBusy('Writing the caption')
     try {
       const copy = await fetchCopy(date, 'own', true, { about })
-      setMade({ date, kind: 'own', reference: getVerseForDate(date).reference, url: URL.createObjectURL(file), ext: 'mp4', size: file.size, copy, phrases: [], tier: 'your clip' })
+      // His own clip: the voice in it is his, so the note claims the art alone.
+      setMade({ date, kind: 'own', reference: getVerseForDate(date).reference, url: URL.createObjectURL(file), ext: 'mp4', size: file.size, copy, phrases: [], tier: 'your clip', voiced: true })
     } catch (e) { setErr(String((e as Error).message || e)) } finally { setBusy(null) }
   }
   return (

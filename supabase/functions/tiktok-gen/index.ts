@@ -908,9 +908,18 @@ Deno.serve(async (req) => {
         const id = typeof row.id === 'string' ? row.id : ''
         const platform = String(row.platform ?? '')
         if (!id || (only && !only.has(platform))) { kept.push(row); if (!id) out.push({ platform, status: 'skipped', error: 'no id to delete' }); continue }
-        const r = await ayrshare('post', { id }, 'DELETE')
+        // X needs the account's own developer keys as HEADERS on a DELETE
+        // exactly as it does on a POST — Ayrshare answers 419
+        // `x_credentials_required` without them. `post` has sent them since
+        // v18 and this did not, which is the same shape as `unpost` never
+        // loading the Ayrshare key at all: the failure is PER ROW, so six
+        // platforms report `deleted`, X reports `error`, and the day's record
+        // keeps that one row while the summary looks like a clean sweep.
+        // Found by reading the rows after a real unpost, not from a throw.
+        const r = await ayrshare('post', { id }, 'DELETE', platform === 'x')
         const gone = r.status === 'success' || /not found|does not exist/i.test(String(r.message ?? r.raw ?? ''))
-        out.push({ platform, id, status: gone ? 'deleted' : 'error', error: gone ? null : String(r.message ?? r.raw ?? r.status ?? 'unknown') })
+        const why = (r as { twitter?: { message?: unknown } }).twitter?.message ?? r.message ?? r.raw ?? r.status ?? 'unknown'
+        out.push({ platform, id, status: gone ? 'deleted' : 'error', error: gone ? null : String(why) })
         if (!gone) kept.push(row)
       }
       const next = { ...record, at: new Date().toISOString(), results: kept }

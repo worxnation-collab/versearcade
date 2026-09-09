@@ -1512,9 +1512,20 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
     const p = heldPhrase(phrases, at, audioDur)
     if (p && at < audioDur + 0.2) { phrase = p; age = (at - p.start) / 0.22 }
   }
-  if (endFade < 1) {
+  // The panel arrives WITH the first word, not before it.
+  //
+  // A caption holds through a pause on purpose — a blank panel mid-sentence
+  // reads as a dropout — but that argument says nothing about the seconds
+  // BEFORE anybody has spoken, and there an empty bordered box under the hook
+  // reads as a layout that failed to load. It never showed on the story
+  // layout because Tabitha's telling starts under the hook; a reading whose
+  // recording opens with a breath put it on screen. Found by pulling the
+  // frame, not from the log.
+  const first = phrases[0]?.start ?? 0
+  const panelIn = easeOut((at - (first - 0.25)) / 0.3)
+  if (endFade < 1 && panelIn > 0) {
     ctx.save()
-    ctx.globalAlpha = 1 - endFade
+    ctx.globalAlpha = (1 - endFade) * panelIn
     roundRect(ctx, px, py, pw, ph, 40)
     ctx.fillStyle = 'rgba(21,10,52,0.82)'
     ctx.fill()
@@ -1525,7 +1536,7 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
     ctx.fillText(input.reference.toUpperCase(), WIDTH / 2, py + 44)
     ctx.letterSpacing = '0px'
     if (phrase) {
-      ctx.globalAlpha = (1 - endFade) * Math.min(1, easeOut(age) + 0.4)
+      ctx.globalAlpha = (1 - endFade) * panelIn * Math.min(1, easeOut(age) + 0.4)
       drawCaption(ctx, phrase, at, { x: WIDTH / 2, y: py + ph / 2 + 22, maxWidth: pw - 96, size: 64, small: 54, stroke: 8, dim: 0.42 })
     }
     ctx.restore()

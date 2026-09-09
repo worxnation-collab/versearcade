@@ -21,7 +21,9 @@ import {
   FOUNDER_PHOTO, VOICE_LABEL, voiceWavPath, voiceJsonPath,
   type Copy, type Made, type Story, type Renderer, type VoiceTrack,
 } from './shared'
-import { sanitizeStages } from '@/data/tiktokStages'
+import { sanitizeStages, stagePath } from '@/data/tiktokStages'
+import { READINGS, stageForReading, type ReadingKind } from '@/data/tiktokWeek'
+import { MOMENTS, momentPath } from '@/data/tiktokMoments'
 
 export type Progress = (fraction: number, label: string) => void
 
@@ -331,6 +333,105 @@ export interface QuizOptions {
   copy?: boolean
   music?: boolean
   align?: boolean
+}
+
+// ---- the weekday readings ------------------------------------------------------------
+//
+// Six forms, ONE generator, because they are one layout: his recording IS the
+// telling (`renderStory` with no `audio`), over held paintings that cut, ending
+// on the day's verse. What differs between a book summary and a prayer is the
+// PICTURES and the SCRIPT — not a line of rendering. Full design:
+// docs/TIKTOK-WEEK.md.
+//
+// It fails closed in one direction only, and deliberately: **no recording, no
+// post.** The morning verse falls back to Gemini because it always has and it
+// is labelled honestly; a reading does not, because the entire reason these
+// exist is that a person made them. `makeReading` throws rather than
+// substituting a synthetic voice, and the runner reports it as a skip.
+
+export interface ReadingOptions {
+  copy?: boolean
+  music?: boolean
+  align?: boolean
+}
+
+/** His parked recording for a (date, reading kind), listening to it here if a phone only uploaded. */
+export async function ensureReading(d: string, kind: ReadingKind, progress: Progress): Promise<(VoiceTrack & { wavUrl: string }) | null> {
+  const parked = await fetchVoice(d, kind).catch(() => null)
+  if (parked) return parked
+  const wavUrl = publicUrl(voiceWavPath(d, kind))
+  if (!(await existsAt(wavUrl + '?v=' + Date.now(), 'audio/'))) return null
+  progress(0, `listening to your ${READINGS[kind].name.toLowerCase()}`)
+  const m = await import('@/lib/tiktokVoice')
+  const dec = await m.decodeRecording(await (await fetch(wavUrl + '?v=' + Date.now())).blob(), m.SPEECH_TARGET.story)
+  const track = await m.transcribeOwn(dec.samples, dec.sampleRate, 'close', (label) => progress(0, label))
+  await parkFile(voiceJsonPath(d, kind), new Blob([JSON.stringify(track)], { type: 'application/json' }), 'application/json')
+  return { ...track, wavUrl }
+}
+
+/**
+ * The pictures a reading is told over.
+ *
+ * Every id resolves to a file this build ships, and anything that will not
+ * load is dropped rather than failing the post — a reading with no backdrop
+ * falls back to the library, which is what `renderStory` does with an empty
+ * list anyway.
+ */
+async function readingScenes(r: Renderer, d: string, kind: ReadingKind): Promise<Array<HTMLImageElement | null>> {
+  const load = (p: string) => r.loadImage(p).catch(() => null)
+  if (kind === 'moment') {
+    const m = MOMENTS[pickIndex(d, 'moment', MOMENTS.length)]
+    return [await load(momentPath(m.id))]
+  }
+  if (kind === 'figure') {
+    // One stage, held: the figure stands on it and the clues are the motion.
+    return [await load(stagePath(stageForReading(d, kind)))]
+  }
+  if (kind === 'before') {
+    // Two: where it was heading, and where it went.
+    return [await load(stagePath(stageForReading(d, kind))), await load(stagePath(stageForReading(d, kind, 3)))]
+  }
+  if (kind === 'prayer') return [await load('/room/room-dusk-4.jpg')]
+  return [await load(stagePath(stageForReading(d, kind)))]
+}
+
+/** A no-repeat pick over a list, seeded per (date, kind) the way every rotation here is. */
+function pickIndex(d: string, salt: string, n: number): number {
+  let h = 2166136261
+  for (const c of `${d}:${salt}`) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619) }
+  h ^= h >>> 16; h = Math.imul(h, 2246822507); h ^= h >>> 13; h = Math.imul(h, 3266489909); h ^= h >>> 16
+  return (h >>> 0) % Math.max(1, n)
+}
+
+export async function makeReading(d: string, kind: ReadingKind, o: ReadingOptions, progress: Progress): Promise<MadeBlob> {
+  const v = getVerseForDate(d)
+  const def = READINGS[kind]
+  progress(0, 'looking for your recording')
+  const own = await ensureReading(d, kind, progress)
+  if (!own) throw new Error(`no recording parked for ${d} ${kind} — a reading is never posted in a synthetic voice`)
+  let copy: Copy | null = null
+  if (o.copy !== false) {
+    progress(0, 'writing the caption')
+    try { copy = await fetchCopy(d, kind, false, { voiced: true }) } catch { copy = null }
+  }
+  progress(0, 'rendering')
+  const r: Renderer = await import('@/lib/tiktokRender')
+  const ownAudio = await (await fetch(own.wavUrl + '?v=' + Date.now())).arrayBuffer()
+  const photo = await r.loadImage(publicUrl(FOUNDER_PHOTO) + '?v=' + Date.now()).catch(() => undefined)
+  const scenes = await readingScenes(r, d, kind)
+  const room = scenes.find(Boolean) ?? (await r.loadImage(ROOMS[0].id).catch(() => r.loadImage('/keep/study-library.jpg')))
+  const bed = o.music !== false ? await bedFor(await r.plannedDuration(undefined, copy?.hook, true, ownAudio), kind === 'quiet' || kind === 'prayer' ? 'cloister' : 'morning') : undefined
+  const title = kind === 'moment' ? MOMENTS[pickIndex(d, 'moment', MOMENTS.length)].title
+    : kind === 'figure' ? 'Who is this?'
+    : kind === 'book' ? `The book of ${v.book}`
+    : copy?.hook || def.name
+  const out = await r.renderStory({
+    title, reference: v.reference, verseText: v.text,
+    paragraphs: [], hook: copy?.hook, room, eyebrow: def.eyebrow, scenes, bed, align: o.align,
+    own: { audio: ownAudio, words: own.thought, text: own.text, place: 'close', photo, label: VOICE_LABEL },
+    onProgress: progress,
+  })
+  return made(d, kind, v.reference, out, copy, `${def.name} · your voice`, true)
 }
 
 export async function makeQuiz(d: string, o: QuizOptions, progress: Progress): Promise<MadeBlob> {

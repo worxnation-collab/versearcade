@@ -24,9 +24,9 @@ repeated.
 |---|---|---|---|
 | **Mon** | Story time | Tabitha tells the story behind the verse; his voice opens or closes it | as today |
 | **Tue** | A book in 30 seconds | THE DAY'S OWN BOOK: how long it is, what happens in it, how it ends | `structure.ts`, `trivia.ts`, the day's verse |
-| **Wed** | The moment | one painted biblical scene and the story it is holding | the 46 card paintings |
+| **Wed** | The moment | one painted biblical scene and the story it is holding | 28 of the card paintings |
 | **Thu** | What happened just before | what led to today's verse, the verse, what came after | pool `before` / `after` |
-| **Fri** | Who is this? | three clues in his voice, a beat, then the name | 31 named character skins |
+| **Fri** | Who is this? | three clues in his voice, a beat, then the name | 13 named biblical figures |
 | **Sat** | A quiet minute | one held painting, the verse, read slowly, music up | any backdrop |
 | **Sun** | A prayer, read | a generated prayer, read aloud over the Upper Room | `data/prayers.ts` |
 
@@ -110,10 +110,22 @@ six formats drifting apart.
    (parsed at noon UTC so no offset can land it on the wrong day), used by the
    hub and the runner so they cannot disagree about what today is.
 5. **Two prepack tables**, both checked at build time like `check-stages`:
-   - `data/tiktokMoments.ts` — 46 rows, one per card painting: what it depicts
-     and which pool reference it belongs to.
-   - `data/tiktokFigures.ts` — 31 rows, one per named skin: the name, and three
-     clues drawn from the pool's own facts.
+   - `data/tiktokMoments.ts` — **28 rows**, not 46. Checking the art rather
+     than the filenames is what settled it: two thirds of the card paintings
+     depict a specific biblical scene, and the rest are atmospheric landscapes
+     belonging to achievement stamps (a shaft of light on hills, a mountain at
+     dusk). Those make good backdrops for a quiet minute and poor subjects for
+     a telling. A row's REFERENCE is a citation and is deliberately NOT
+     required to be in `VERSE_POOL` — 22 of the 28 passages are not, because
+     the pool is a curated 727 verses; citing what the arcade happens to carry
+     instead of where the alabaster jar actually is would be a lie on screen.
+     The end card carries the DAY'S verse, which is a pool verse with real
+     text, so scripture is on screen exactly as on every other kind.
+   - `data/tiktokFigures.ts` — **13 rows**, not 31. The 31 skins include the
+     72-render starter set, promo exclusives and five historical figures; the
+     named biblical people are thirteen. Three months of Fridays, and the
+     five historical ones (Francis, Hildegard, Aquinas, Melisende, Baldwin)
+     are the obvious extension when it runs low.
 
 No migration. No new art.
 
@@ -131,8 +143,8 @@ to a rotation; it is not worth the second seed now.
 | Format | Supply | At once a week |
 |---|---|---|
 | Book | the day's own book | indefinite, unevenly |
-| Moment | 46 paintings | 10 months |
-| Figure | 31 skins | 7 months |
+| Moment | 28 paintings | 6 months |
+| Figure | 13 figures | 3 months |
 | Before / Quiet / Prayer | 727 verses | indefinite |
 
 The three finite ones use the same no-repeat rotation `getVerseForDate` uses,

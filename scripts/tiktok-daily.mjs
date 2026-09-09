@@ -37,8 +37,9 @@
 // Environment: SUPABASE_URL and SUPABASE_ANON_KEY (both defaulted to the
 // project; the anon key is public), TIKTOK_TZ
 // (default America/New_York), DATE (override today), KINDS (default
-// verse,challenge,quiz,challenge2,story), POST_TIMES (default
-// verse=07:00,challenge=10:00,quiz=12:30,challenge2=16:00,story=19:30),
+// the day's own two — see docs/TIKTOK-WEEK.md), POST_TIMES (default
+// verse=07:00 and the day's second post at 19:30; the note rides at 12:00 on
+// the day the story runs),
 // PLATFORMS (default all eight: TikTok, YouTube, Facebook, Instagram, X, Snapchat, Threads, Pinterest — minus what social.postsOn says a network skips), DRY_RUN (render only), FFMPEG (binary path),
 // PW_CHROMIUM (executable path when Playwright's own browser is not installed),
 // RERENDER (make the video again even if the day's is already in the bucket),
@@ -67,11 +68,16 @@ const RUNNER_TOKEN = env.TIKTOK_RUNNER_TOKEN || ''
 const GEMINI_KEY = env.GEMINI_API_KEY || ''
 const AYRSHARE_KEY = env.AYRSHARE_API_KEY || ''
 const TZ = env.TIKTOK_TZ || 'America/New_York'
-const KINDS = (env.KINDS || 'verse,challenge,note,quiz,challenge2,story').split(',').map((s) => s.trim()).filter(Boolean)
+// The day's posts: the verse every morning, and ONE second post whose form is
+// the weekday's (docs/TIKTOK-WEEK.md). The note rides along on the day the
+// story runs, because it is written from the same paragraphs Tabitha tells.
+const WEEK = ['prayer', 'story', 'book', 'moment', 'before', 'figure', 'quiet']
+const kindForDate = (d) => WEEK[new Date(`${d}T12:00:00Z`).getUTCDay()]
+const defaultKinds = (d) => ['verse', kindForDate(d), ...(kindForDate(d) === 'story' ? ['note'] : [])].join(',')
 const PLATFORMS = (env.PLATFORMS || 'tiktok,youtube,facebook,instagram,x,snapchat,threads,pinterest').split(',').map((s) => s.trim()).filter(Boolean)
 const DRY = /^(1|true|yes)$/i.test(env.DRY_RUN || '')
 const FFMPEG = env.FFMPEG || 'ffmpeg'
-const TIMES = Object.fromEntries((env.POST_TIMES || 'verse=07:00,challenge=10:00,note=12:00,quiz=12:30,challenge2=16:00,story=19:30').split(',').map((kv) => kv.split('=').map((s) => s.trim())))
+const TIMES = Object.fromEntries((env.POST_TIMES || 'verse=07:00,challenge=10:00,note=12:00,quiz=12:30,book=19:30,moment=19:30,before=19:30,figure=19:30,quiet=19:30,prayer=19:30,challenge2=16:00,story=19:30').split(',').map((kv) => kv.split('=').map((s) => s.trim())))
 const TTS_MODEL = env.GEMINI_TTS_MODEL || 'gemini-2.5-flash-preview-tts'
 // A directory holding `models/onnx-community/whisper-tiny.en_timestamped/…` and
 // `ort/ort-wasm-simd-threaded*.{mjs,wasm}`: served to the page so the aligner
@@ -84,8 +90,7 @@ const fail = (m) => { console.error('tiktok-daily:', m); process.exit(2) }
 const mode = RUNNER_TOKEN ? 'function' : AYRSHARE_KEY ? 'local' : null
 if (!mode) fail('set TIKTOK_RUNNER_TOKEN (function mode) or AYRSHARE_API_KEY + GEMINI_API_KEY (local mode)')
 if (mode === 'local' && !GEMINI_KEY) fail('local mode needs GEMINI_API_KEY for the reading')
-const ALL_KINDS = ['verse', 'story', 'quiz', 'challenge', 'challenge2', 'note']
-for (const k of KINDS) if (!ALL_KINDS.includes(k)) fail(`unknown kind ${k}`)
+const ALL_KINDS = ['verse', 'story', 'quiz', 'challenge', 'challenge2', 'note', 'book', 'moment', 'before', 'figure', 'quiet', 'prayer']
 // The kinds about YESTERDAY's verse: its answers are public only once the day has rolled over.
 const aboutYesterday = (k) => k === 'quiz' || k.startsWith('challenge')
 // The NOTE is the one post here that is not a video: a 4:5 card and the words,
@@ -122,6 +127,8 @@ function zonedToUtc(ymd, hhmm, tz) {
   return new Date(t)
 }
 const today = env.DATE || ymdIn(TZ)
+const KINDS = (env.KINDS || defaultKinds(today)).split(',').map((s) => s.trim()).filter(Boolean)
+for (const k of KINDS) if (!ALL_KINDS.includes(k)) fail(`unknown kind ${k}`)
 const yesterday = addDays(today, -1)
 log(`mode ${mode} · ${TZ} · today ${today} · kinds ${KINDS.join(',')} · platforms ${PLATFORMS.join(',')}${DRY ? ' · DRY RUN' : ''}`)
 

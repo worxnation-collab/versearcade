@@ -109,7 +109,8 @@ title and hashtag count. The key lives in Vault (`tiktok_ayrshare_key()`,
   Snapchat: Spotlight only — its discovery feed, where an
   account nobody follows yet is still shown to strangers; asked for together
   with a saved story, Ayrshare posted only the story, which lives on the
-  profile for people who already found it. TikTok's short line with three
+  profile for people who already found it. **Snapchat takes the verse and the
+  story only**, for the reason below. TikTok's short line with three
   tags. A platform with no block of its own borrows TikTok's.
 - **A video over 90 seconds goes to Facebook as a plain video, not a Reel.**
   Reels stop at 90s and Facebook refused the quiz (about 107s) and a
@@ -202,6 +203,48 @@ title and hashtag count. The key lives in Vault (`tiktok_ayrshare_key()`,
   fetches a week of them (35 calls, one per day and kind) and totals them per
   network and per kind. Operator numbers about posts elsewhere; nothing here
   is a player.
+
+
+### Snapchat says the quiet part out loud
+
+Snap's **quality** page for recommendation eligibility
+(`values.snap.com/policy/content-guidelines-recommendation-eligibility/recommendation-eligibility/quality`)
+is the only place any of these networks states the AI penalty as a RANKING
+fact rather than as a review outcome:
+
+> "Our content ranking algorithm rewards authentic, human-made content over
+> wholly AI-generated content created outside of Snapchat, **even when
+> AI-generated content has transparency disclosures**."
+
+Two things follow, and both reverse decisions written here earlier.
+
+**The automated three cannot go to Snapchat at all.** They are wholly
+AI-generated and made off-platform, so they are demoted if labelled and
+rejected if not — Spotlight has already refused a verse from this account as
+"undisclosed AI-generated content". Labelling is still right (the rejection is
+real and a strike is worse than a demotion); it just buys nothing here, which
+is exactly what the sentence above says.
+
+**Snapchat has a volume rule after all.** The same page lists as ineligible
+"repeatedly posting the same content, whether it's your own or someone else's,
+with minimal creative differences" — applied to RECOMMENDATION, not to one
+Snap. Snapchat was receiving five templated posts a day, more than any network
+here.
+
+So it joins the volume-sensitive group and keeps the verse, the story and
+`own`. The word carrying the weight is **wholly**: those two have a real
+recorded voice in them, which is the same fact that put them on YouTube and
+Meta. On a day with no recording they are wholly AI again — the unvoiced-day
+gap, which this network makes measurable rather than theoretical.
+
+**Read the QUALITY page, not the top-level recommendation guidelines.** The
+top-level page mentions AI exactly once, about nudity; reading it alone is
+what left this wrong. It also names two things this engine already avoids and
+must keep avoiding: off-platform links inside content (the captions carry
+none — see `dropLinkSentence`) and promoting accounts on other platforms.
+
+The schedule is **22 posts a day (~670 a month)** after the change, from 25 —
+about 90 a month of headroom against the 1,000 plan.
 
 ## The morning cron: the same five posts with nobody at the dashboard
 

@@ -53,7 +53,12 @@ export const kindOf = (k: unknown): Kind => ((KINDS as string[]).includes(String
  * and the runner never asks, so the hub and the cron cannot disagree about it.
  */
 const NOTE_ONLY_ON: Platform[] = ['facebook', 'pinterest']
-/** The three formats no human voice touches: they go where volume is not held against you. */
+/**
+ * The three formats no human voice touches: they go where volume is not held
+ * against you — which is now X and Threads alone. TikTok is on a warm-up and
+ * Snapchat turned out to publish both a volume rule and an explicit ranking
+ * demotion for AI made off-platform; see their entries below.
+ */
 const AUTOMATED: Kind[] = ['quiz', 'challenge', 'challenge2']
 const KINDS_OFF: Partial<Record<Platform, Kind[]>> = {
   // TikTok is on a WARM-UP, and for a different reason than the three below.
@@ -67,7 +72,32 @@ const KINDS_OFF: Partial<Record<Platform, Kind[]>> = {
   // go to the networks that are at least delivering.
   tiktok: [...AUTOMATED, 'note'],
   x: ['note'],
-  snapchat: ['note'],
+  // SNAPCHAT is the one network that states the AI penalty outright, in the
+  // RANKING rather than in a review queue, and says in the same sentence that
+  // disclosing does not undo it:
+  //
+  //   "Our content ranking algorithm rewards authentic, human-made content
+  //    over wholly AI-generated content created outside of Snapchat, EVEN
+  //    WHEN AI-generated content has transparency disclosures."
+  //   — values.snap.com/policy/content-guidelines-recommendation-eligibility
+  //     /recommendation-eligibility/quality
+  //
+  // That closes a door the schedule was leaning on. The three automated
+  // formats are wholly AI-generated and made OUTSIDE Snapchat, so on this
+  // network they are demoted if labelled and rejected if not — Spotlight has
+  // already refused a verse from this account as "undisclosed AI-generated
+  // content". There is no version of sending them here that works.
+  //
+  // The same page also carries the volume rule this file said Snapchat did
+  // not have ("repeatedly posting the same content, whether it's your own or
+  // someone else's, with minimal creative differences"), applied to
+  // RECOMMENDATION rather than to a single Snap — and Snapchat was receiving
+  // FIVE templated posts a day, more than any other network here.
+  //
+  // So it joins the volume-sensitive group. The word doing the work is
+  // WHOLLY: the verse and the story carry a real recorded human voice, which
+  // is the same fact that put them on YouTube and Meta.
+  snapchat: [...AUTOMATED, 'note'],
   threads: ['quiz', 'note'],
   // The volume-sensitive three: the VOICED posts and the operator's own clips
   // only. See above.

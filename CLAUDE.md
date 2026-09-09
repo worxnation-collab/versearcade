@@ -502,10 +502,32 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   So YouTube, Facebook and Instagram get the morning VERSE and the evening
   STORY — the two carrying the operator's own recorded voice — plus `own`,
   which is him on camera outright, and Facebook's `note`. The quiz and the two
-  challenges, the three no human voice touches, go to TikTok, X, Snapchat and
-  Threads, where no volume rule was found and the only constraint is
-  per-video. **Every post on a platform that judges a CHANNEL now has a human
-  in it.**
+  challenges, the three no human voice touches, go to X and Threads, where no
+  volume rule was found and the only constraint is per-video. **Every post on
+  a platform that judges a CHANNEL now has a human in it.**
+  **SNAPCHAT was on that second list and is not any more, and it is the
+  sharpest statement of this rule anywhere.** Its quality page for
+  recommendation eligibility says outright: *"Our content ranking algorithm
+  rewards authentic, human-made content over wholly AI-generated content
+  created outside of Snapchat, EVEN WHEN AI-generated content has transparency
+  disclosures."* That is the AI penalty stated in the RANKING rather than in a
+  review queue, and it says in the same sentence that labelling does not undo
+  it — so on Snapchat the automated three are demoted if labelled and rejected
+  if not (Spotlight has already refused a verse from this account as
+  "undisclosed AI-generated content"). There is no version of sending them
+  there that works. The SAME page carries the volume rule this file said
+  Snapchat did not have — *"repeatedly posting the same content, whether it's
+  your own or someone else's, with minimal creative differences"*, applied to
+  RECOMMENDATION — and Snapchat was receiving five templated posts a day, more
+  than any other network here. The word doing the work in Snap's sentence is
+  **WHOLLY**: the verse and the story carry a real recorded voice, which is
+  the same fact that put them on YouTube and Meta, so Snapchat keeps exactly
+  those two plus `own`. **Read the linked QUALITY page, not the top-level
+  recommendation guidelines** — the top-level page mentions AI once, about
+  nudity, and reading it alone is what left this wrong for a fortnight. It
+  also names two things this engine already avoids and should keep avoiding:
+  off-platform links in content, and promoting accounts on other platforms.
+  The schedule is 22 a day (~670 a month) after the change, from 25.
   What it costs is the comment ask: only the challenges carry one, so Meta
   loses its single engagement-driving format. That was the deliberate trade.
   It also fixed the budget — the schedule was 36 a day (~1,080 a month)

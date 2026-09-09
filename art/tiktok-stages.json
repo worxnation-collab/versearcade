@@ -1,0 +1,101 @@
+[
+  {
+    "id": "road",
+    "kind": "tiktok-stage",
+    "prompt": "Vertical 9:16 painted background for a short video, filling the entire frame edge to edge. NO PEOPLE, no figures, no faces, no silhouettes, no animals, no text, no letters, no watermark, no border, no frame, no UI. Composition: the TOP 40% of the picture is quiet \u2014 open sky, plain wall, soft distance, nothing important \u2014 because a title and a panel of words are drawn over it. The lower half carries the place. Nothing is centred that must be seen whole. A dry stone-walled road winding away between low hills at late afternoon. Dust, scattered olive trees, a milestone at the verge, the road empty and going somewhere out of frame. Warm gold light raking from the left. Flat stylised storybook painting, clean shapes, soft shading, warm and rich but never busy: it sits BEHIND captions and must never compete with them. Same painterly style as the reference paintings.",
+    "refs": [
+      "public/road/harvest.jpg",
+      "public/road/lamplight.jpg"
+    ]
+  },
+  {
+    "id": "house",
+    "kind": "tiktok-stage",
+    "prompt": "Vertical 9:16 painted background for a short video, filling the entire frame edge to edge. NO PEOPLE, no figures, no faces, no silhouettes, no animals, no text, no letters, no watermark, no border, no frame, no UI. Composition: the TOP 40% of the picture is quiet \u2014 open sky, plain wall, soft distance, nothing important \u2014 because a title and a panel of words are drawn over it. The lower half carries the place. Nothing is centred that must be seen whole. The inside of a small first-century stone house by lamplight. A low wooden table with a clay bowl and a flat loaf, a rolled sleeping mat against the far wall, a doorway to a dark courtyard, an oil lamp on a ledge throwing a warm pool of light. Plain plastered walls above. Flat stylised storybook painting, clean shapes, soft shading, warm and rich but never busy: it sits BEHIND captions and must never compete with them. Same painterly style as the reference paintings.",
+    "refs": [
+      "public/road/harvest.jpg",
+      "public/road/lamplight.jpg"
+    ]
+  },
+  {
+    "id": "hills",
+    "kind": "tiktok-stage",
+    "prompt": "Vertical 9:16 painted background for a short video, filling the entire frame edge to edge. NO PEOPLE, no figures, no faces, no silhouettes, no animals, no text, no letters, no watermark, no border, no frame, no UI. Composition: the TOP 40% of the picture is quiet \u2014 open sky, plain wall, soft distance, nothing important \u2014 because a title and a panel of words are drawn over it. The lower half carries the place. Nothing is centred that must be seen whole. Open green-gold hill country under a wide pale sky. Rolling slopes, a scatter of grey rock and low scrub, a footpath traversing the middle distance, distant hills going blue. Nothing on the ground but grass and stone. Flat stylised storybook painting, clean shapes, soft shading, warm and rich but never busy: it sits BEHIND captions and must never compete with them. Same painterly style as the reference paintings.",
+    "refs": [
+      "public/road/harvest.jpg",
+      "public/road/lamplight.jpg"
+    ]
+  },
+  {
+    "id": "water",
+    "kind": "tiktok-stage",
+    "prompt": "Vertical 9:16 painted background for a short video, filling the entire frame edge to edge. NO PEOPLE, no figures, no faces, no silhouettes, no animals, no text, no letters, no watermark, no border, no frame, no UI. Composition: the TOP 40% of the picture is quiet \u2014 open sky, plain wall, soft distance, nothing important \u2014 because a title and a panel of words are drawn over it. The lower half carries the place. Nothing is centred that must be seen whole. The shore of a wide freshwater lake at first light. Calm blue-green water, a pale shingle beach in the foreground, one empty wooden fishing boat drawn up on the stones with a net folded over its bow, hills across the water in lavender haze. Flat stylised storybook painting, clean shapes, soft shading, warm and rich but never busy: it sits BEHIND captions and must never compete with them. Same painterly style as the reference paintings.",
+    "refs": [
+      "public/road/harvest.jpg",
+      "public/road/lamplight.jpg"
+    ]
+  },
+  {
+    "id": "gate",
+    "kind": "tiktok-stage",
+    "prompt": "Vertical 9:16 painted background for a short video, filling the entire frame edge to edge. NO PEOPLE, no figures, no faces, no silhouettes, no animals, no text, no letters, no watermark, no border, no frame, no UI. Composition: the TOP 40% of the picture is quiet \u2014 open sky, plain wall, soft distance, nothing important \u2014 because a title and a panel of words are drawn over it. The lower half carries the place. Nothing is centred that must be seen whole. The gate of a walled town from just outside it, late afternoon. Massive limestone blocks, a deep arched gateway in shadow, empty market stalls and stacked baskets along the wall, a worn stone bench beside the arch. Warm dusty light. Flat stylised storybook painting, clean shapes, soft shading, warm and rich but never busy: it sits BEHIND captions and must never compete with them. Same painterly style as the reference paintings.",
+    "refs": [
+      "public/road/harvest.jpg",
+      "public/road/lamplight.jpg"
+    ]
+  },
+  {
+    "id": "temple",
+    "kind": "tiktok-stage",
+    "prompt": "Vertical 9:16 painted background for a short video, filling the entire frame edge to edge. NO PEOPLE, no figures, no faces, no silhouettes, no animals, no text, no letters, no watermark, no border, no frame, no UI. Composition: the TOP 40% of the picture is quiet \u2014 open sky, plain wall, soft distance, nothing important \u2014 because a title and a panel of words are drawn over it. The lower half carries the place. Nothing is centred that must be seen whole. Broad stone steps rising to a colonnade of tall pale columns, a temple court beyond in shadow. Polished worn stone, a low balustrade, a brazier of coals to one side sending up thin smoke. Cool morning light, high quiet sky above. Flat stylised storybook painting, clean shapes, soft shading, warm and rich but never busy: it sits BEHIND captions and must never compete with them. Same painterly style as the reference paintings.",
+    "refs": [
+      "public/road/harvest.jpg",
+      "public/road/lamplight.jpg"
+    ]
+  },
+  {
+    "id": "prison",
+    "kind": "tiktok-stage",
+    "prompt": "Vertical 9:16 painted background for a short video, filling the entire frame edge to edge. NO PEOPLE, no figures, no faces, no silhouettes, no animals, no text, no letters, no watermark, no border, no frame, no UI. Composition: the TOP 40% of the picture is quiet \u2014 open sky, plain wall, soft distance, nothing important \u2014 because a title and a panel of words are drawn over it. The lower half carries the place. Nothing is centred that must be seen whole. The inside of a stone cell. Rough dark blocks, a heavy iron-barred window high on the wall throwing one hard shaft of light onto the floor, straw in the corner, an iron ring set in the stone. Deep shadow everywhere else. Flat stylised storybook painting, clean shapes, soft shading, warm and rich but never busy: it sits BEHIND captions and must never compete with them. Same painterly style as the reference paintings.",
+    "refs": [
+      "public/road/harvest.jpg",
+      "public/road/lamplight.jpg"
+    ]
+  },
+  {
+    "id": "field",
+    "kind": "tiktok-stage",
+    "prompt": "Vertical 9:16 painted background for a short video, filling the entire frame edge to edge. NO PEOPLE, no figures, no faces, no silhouettes, no animals, no text, no letters, no watermark, no border, no frame, no UI. Composition: the TOP 40% of the picture is quiet \u2014 open sky, plain wall, soft distance, nothing important \u2014 because a title and a panel of words are drawn over it. The lower half carries the place. Nothing is centred that must be seen whole. A field of ripe barley at harvest, late in the day. Heavy gold heads bending, a swathe already cut and bound into sheaves, a threshing floor of flat stone at the field's edge with a winnowing fork leaning on it, hills beyond. Flat stylised storybook painting, clean shapes, soft shading, warm and rich but never busy: it sits BEHIND captions and must never compete with them. Same painterly style as the reference paintings.",
+    "refs": [
+      "public/road/harvest.jpg",
+      "public/road/lamplight.jpg"
+    ]
+  },
+  {
+    "id": "upper",
+    "kind": "tiktok-stage",
+    "prompt": "Vertical 9:16 painted background for a short video, filling the entire frame edge to edge. NO PEOPLE, no figures, no faces, no silhouettes, no animals, no text, no letters, no watermark, no border, no frame, no UI. Composition: the TOP 40% of the picture is quiet \u2014 open sky, plain wall, soft distance, nothing important \u2014 because a title and a panel of words are drawn over it. The lower half carries the place. Nothing is centred that must be seen whole. A small upper room by lamplight, seen from the doorway. A low table with cups and a jug, cushions and mats set around it, a shuttered window, three oil lamps burning. The plastered wall above is plain and dim. Flat stylised storybook painting, clean shapes, soft shading, warm and rich but never busy: it sits BEHIND captions and must never compete with them. Same painterly style as the reference paintings.",
+    "refs": [
+      "public/road/harvest.jpg",
+      "public/road/lamplight.jpg"
+    ]
+  },
+  {
+    "id": "wilderness",
+    "kind": "tiktok-stage",
+    "prompt": "Vertical 9:16 painted background for a short video, filling the entire frame edge to edge. NO PEOPLE, no figures, no faces, no silhouettes, no animals, no text, no letters, no watermark, no border, no frame, no UI. Composition: the TOP 40% of the picture is quiet \u2014 open sky, plain wall, soft distance, nothing important \u2014 because a title and a panel of words are drawn over it. The lower half carries the place. Nothing is centred that must be seen whole. A stony desert under a hard high sun. Broken red-brown rock, deep-cut dry wadi, thorn scrub, a few bleached bones of a fallen branch, ridges going pale to the horizon. Nothing green, nothing man-made. Flat stylised storybook painting, clean shapes, soft shading, warm and rich but never busy: it sits BEHIND captions and must never compete with them. Same painterly style as the reference paintings.",
+    "refs": [
+      "public/road/harvest.jpg",
+      "public/road/lamplight.jpg"
+    ]
+  },
+  {
+    "id": "own",
+    "kind": "tiktok-stage",
+    "prompt": "Vertical 9:16 painted background for a short video, filling the entire frame edge to edge. NO PEOPLE, no figures, no faces, no silhouettes, no animals, no text, no letters, no watermark, no border, no frame, no UI. A dark, plain, empty stage: a deep indigo-black space with no walls and no objects that can be named, and a soft warm pool of light on a flat dark floor. THE POOL OF LIGHT SITS LOW: its centre is in the BOTTOM THIRD of the picture, about 85% of the way down, and it is wide and shallow like light falling from a lamp directly above. The pool is EMPTY \u2014 a person will be drawn standing in it later, so nothing may occupy it. The TOP TWO THIRDS of the picture are near-black and completely empty, with only the faintest warm haze where the dark meets the floor, because a title and a panel of words are drawn over them. Quiet, still, intimate. Flat stylised storybook painting, clean shapes, soft shading: it sits BEHIND a figure and captions and must never compete with them. Same painterly style as the reference paintings.",
+    "refs": [
+      "public/road/harvest.jpg",
+      "public/road/lamplight.jpg"
+    ]
+  }
+]

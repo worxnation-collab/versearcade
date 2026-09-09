@@ -707,6 +707,53 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   back onto the caption. `timeWords()`'s energy heuristic is the fallback and
   was measured a full second off on one word, which is why it is not the
   answer. Anything added here has to earn its motion.
+  - **A CUT is not motion, and that is what let the story grow stages.**
+    `data/tiktokStages.ts` + `art/tiktok-stages.json` + `public/tiktok/stages/`:
+    ten held paintings of where a paragraph HAPPENS — road, house, hills,
+    water, gate, temple, prison, field, upper room, wilderness — cut to on
+    that paragraph's first word, and back to the library for the verse. A
+    picture book is entirely still images and reads as story; a floating
+    figure or a Veo shot of the same scene would have spent the whole of the
+    rule above to buy the same thing. What a cut adds besides the picture is
+    one camera being PLACED: the new shot arrives 3.5% wide and settles over
+    0.9s (`SHOT_PUSH`/`SHOT_SETTLE`), the same on every cut, so it is a
+    grammar rather than an effect on one moment.
+    **The stage list is the PREPACK**, exactly as `KNOWN_VERBS` is for a
+    season's quests: the client sends the ids IT has with the `story`
+    request, Gemini picks inside that list, and the function validates
+    against exactly what it was sent and keeps no list of its own — the
+    paintings ship in the bundle, so the build is the only thing that knows
+    which exist. Adding a stage costs a release; choosing one is content.
+    It **fails closed at every step** (a story cached before stages existed,
+    an unknown id, a 404, an ungenerated batch — all of them the library),
+    the **last paragraph is never staged** (the verse is read in her own
+    room, and coming back is what makes the middle feel like somewhere she
+    took you), the drawn teller is **not drawn on a stage** (she is narrating
+    what happened there, not standing in it), and **consecutive identical
+    shots collapse** or a cut to itself settles for 0.9s mid-sentence and
+    reads as a glitch. Ten rather than fifty on purpose: a stage only loosely
+    about the sentence being spoken is worse than one steady picture, which
+    is why the per-paragraph picture CARDS came out of this layout once
+    already. `npm run check:stages` asserts every declared stage has a
+    painting, because that failure renders perfectly — the id is one this
+    build carries, so nothing drops it, and the paragraph is quietly told in
+    the library forever.
+  - **And his half stands on a stage of its own** (`own.jpg` — a dark empty
+    space with one warm pool of light — plus the `sharkey` figure). His half
+    used to play over her library with his photo growing into the middle of
+    it, and the objection that kept the morning post's reader swap off this
+    layout ("a second figure in it is a stranger in somebody else's library")
+    applies to that too — it is about the ROOM rather than about him. A stage
+    of his own narrows that rule rather than overturning it: her room is
+    still hers. The figure **replaces the photo ring** while it is up (he is
+    already on screen; two of him is one too many) and the photo still closes
+    the post on the end card. Where he stands is **measured, not chosen** —
+    the pool of light is centred at 0.77 of the frame once `cover` has
+    anchored the painting to its bottom edge and the caption panel ends at
+    y=668, so `STORY_STAND` is feet 0.79, height 0.41; **re-render `own.jpg`
+    and both numbers have to be checked again**, because the light moves. No
+    stage painting, or no figure render, is his photo over the library
+    exactly as before.
 - **The operator can read the verse, and the recording replaces Gemini's
   voice for that date.** Admin → TikTok → Your voice: a drafted ~110-word
   thought per date (`thought`, cached at `days/<date>/thought.json`), a

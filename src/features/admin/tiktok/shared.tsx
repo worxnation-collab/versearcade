@@ -18,6 +18,7 @@ import { getVerseForDate } from '@/data/bible/questions'
 import { VERSE_POOL } from '@/data/bible/pool'
 import { pickVoice, pickCast, pickCastRotated, PICKER_VOICES, SCENE_NAMES, VERSE_SCENES, READER_ORDER, type VoiceSeed, type CastPick } from '@/data/tiktokVoice'
 import type { Backdrop, TimedPhrase } from '@/lib/tiktokRender'
+import { STORY_STAGES, stagePath, OWN_STAGE_PATH } from '@/data/tiktokStages'
 
 export const BUCKET = 'tiktok'
 export const READERS = [
@@ -60,7 +61,13 @@ export const ROOMS = [
   { id: '/road/lamplight.jpg', name: 'Lamplight road' },
 ]
 export const skinPath = (id: string) => (id === 'tabitha' ? '/skins/librarian.png' : `/skins/${id}.png`)
-export interface Story { title: string; hook: string; paragraphs: string[] }
+/**
+ * `scenes` is one stage id per TOLD paragraph — where that paragraph is set.
+ * Absent on every story written before stages existed (they are cached per
+ * date and never rewritten), which renders as the one steady library
+ * painting it always was.
+ */
+export interface Story { title: string; hook: string; paragraphs: string[]; scenes?: Array<string | null> }
 
 // The automatic picks for a date (data/tiktokVoice.ts): the verse's book and
 // speaker choose the reader and the calendar and mood choose the scene; then
@@ -255,6 +262,27 @@ export async function speakerFor(r: Renderer, d: string, scene: string): Promise
   }
 }
 
+/**
+ * The operator's own stage: a dark, plain place that is nobody's story, and
+ * his figure standing on it.
+ *
+ * The STORY deliberately did not get the morning post's reader swap — "that
+ * is Tabitha's room, a second figure in it is a stranger in somebody else's
+ * library" — and that objection is about the ROOM rather than about him. On a
+ * stage of his own it does not apply, so this is that rule narrowed rather
+ * than overturned: he stands somewhere else, and her room is still hers.
+ *
+ * Either half missing (an ungenerated batch, a 404) returns null and his half
+ * plays over the library with his photo growing into it, exactly as it did
+ * before this existed.
+ */
+export async function ownStage(r: Pick<Renderer, 'loadImage'>): Promise<{ backdrop: HTMLImageElement; figure?: HTMLImageElement } | null> {
+  const backdrop = await r.loadImage(OWN_STAGE_PATH).catch(() => null)
+  if (!backdrop) return null
+  const figure = await r.loadImage(`/skins/${SPEAKER_SKIN}.png`).catch(() => undefined)
+  return { backdrop, figure }
+}
+
 export async function backdropFor(r: Renderer, tier: 'loop' | 'still' | 'builtin', rd: string, sc: string): Promise<Backdrop> {
   const k = `${rd}-${sc}`
   if (tier === 'loop') {
@@ -364,7 +392,23 @@ export async function parkFile(path: string, blob: Blob, contentType: string): P
 export async function fetchStory(d: string, force: boolean): Promise<Story> {
   const v = getVerseForDate(d)
   const sd = seedFor(d)
-  return call<Story>('story', { date: d, force, reference: v.reference, text: v.text, theme: v.theme, speaker: sd.speaker, audience: sd.audience, before: sd.before, after: sd.after, facts: sd.facts })
+  // The stage list travels WITH the request: the paintings ship in this
+  // bundle, so this is the only place that knows which exist, and the
+  // function validates the answer against exactly what it was sent. See
+  // data/tiktokStages.ts for why that is the prepack rather than a list in
+  // the function.
+  return call<Story>('story', { date: d, force, reference: v.reference, text: v.text, theme: v.theme, speaker: sd.speaker, audience: sd.audience, before: sd.before, after: sd.after, facts: sd.facts, stages: STORY_STAGES.map((x) => ({ id: x.id, when: x.when })) })
+}
+
+/**
+ * A stage's painting, or null when it is not there — the `loadScene` shape,
+ * with the difference that a missing stage falls back to the LIBRARY rather
+ * than to another painting, because the library is where the telling would
+ * have happened anyway. `sanitizeStages` has already dropped anything this
+ * build does not carry; this drops anything that does not load.
+ */
+export async function loadStages(r: Pick<Renderer, 'loadImage'>, ids: Array<string | null>): Promise<Array<HTMLImageElement | null>> {
+  return Promise.all(ids.map(async (id) => (id ? await r.loadImage(stagePath(id)).catch(() => null) : null)))
 }
 
 // The words for a date's post of one kind, written once (cached in the

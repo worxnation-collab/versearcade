@@ -17,10 +17,11 @@ import type { QuizStep } from '@/lib/tiktokRender'
 import { challengeIndex } from '@/lib/tiktokChallenge'
 import {
   READERS, TELLERS, ROOMS, skinPath, loadScene, publicUrl, existsAt, parkFile,
-  seedFor, autoPick, autoCast, challengeCast, spokenReference, call, fetchCopy, fetchStory, fetchVoice, bedFor, backdropFor, tierFor, speakerFor,
+  seedFor, autoPick, autoCast, challengeCast, spokenReference, call, fetchCopy, fetchStory, fetchVoice, bedFor, backdropFor, tierFor, speakerFor, loadStages, ownStage,
   FOUNDER_PHOTO, VOICE_LABEL, voiceWavPath, voiceJsonPath,
   type Copy, type Made, type Story, type Renderer, type VoiceTrack,
 } from './shared'
+import { sanitizeStages } from '@/data/tiktokStages'
 
 export type Progress = (fraction: number, label: string) => void
 
@@ -262,6 +263,16 @@ export async function makeStory(d: string, o: StoryOptions, progress: Progress):
   const r: Renderer = await import('@/lib/tiktokRender')
   const { roomImg, tellerImg } = await storyAssets(r, tellerId, roomPath)
   const paragraphs = [...st.paragraphs, `${v.text.trim()} ${v.reference}.`]
+  // Where each paragraph is set. The VERSE — always the last one — is never
+  // staged: Tabitha reads it from her own book in her own room, and coming
+  // back is what makes the middle feel like somewhere she took you.
+  const scenes = st.scenes?.length
+    ? [...await loadStages(r, sanitizeStages(st.scenes, st.paragraphs.length)), null]
+    : undefined
+  // His own dark stage, and his figure standing on it — the same one-of-one
+  // skin the morning post's reader hands the road to. A missing painting is
+  // his photo over the library exactly as before, never a failed post.
+  const stage = own ? await ownStage(r) : null
   const hook = st.hook || copy?.hook
   // The operator's own half, when one is parked for the date. The telling is
   // unchanged either way — his recording is joined to it, never in place of
@@ -271,7 +282,7 @@ export async function makeStory(d: string, o: StoryOptions, progress: Progress):
   const bed = o.music !== false ? await bedFor(await r.plannedDuration(audio, hook, true, ownAudio), 'cloister') : undefined
   const out = await r.renderStory({
     title: st.title, reference: v.reference, verseText: v.text,
-    paragraphs, hook, audio, room: roomImg, teller: tellerImg, bed, align: o.align,
+    paragraphs, hook, audio, room: roomImg, teller: tellerImg, bed, align: o.align, scenes, stage: stage ?? undefined,
     own: own && ownAudio
       ? { audio: ownAudio, words: own.thought, text: own.text, place: own.place ?? o.ownPlace ?? 'close', photo, label: VOICE_LABEL }
       : undefined,

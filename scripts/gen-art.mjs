@@ -248,9 +248,13 @@ for (const entry of manifest) {
     // like a room, in a folder of their own so a scene id can never collide
     // with a room's.
     'tiktok-road': 'public/tiktok/roads',
+    // …and the STAGES the evening story is set on (art/tiktok-stages.json):
+    // where each paragraph happens, cut to on its first word. Portrait and
+    // full-bleed like a road, in a folder of their own.
+    'tiktok-stage': 'public/tiktok/stages',
   }
   const sceneDir = SCENE_DIRS[entry.kind]
-  const isTikTok = entry.kind === 'tiktok' || entry.kind === 'tiktok-road'
+  const isTikTok = entry.kind === 'tiktok' || entry.kind === 'tiktok-road' || entry.kind === 'tiktok-stage'
   const isScene = entry.kind === 'scene' || !!sceneDir
   const isProp = entry.kind === 'prop'
   // A church building: a keyed cut-out like a prop, but it renders from 44px

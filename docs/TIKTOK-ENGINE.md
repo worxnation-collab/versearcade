@@ -446,6 +446,83 @@ a Gemini Flash script and a longer TTS.
 - `renderStory()` shares `produce()` with the verse layout — one copy of the
   codec, timing, AAC and audible-track checks.
 
+### The stages: where each paragraph is SET
+
+The telling used to be one picture — her library — held for a minute while she
+told what happened somewhere else entirely. It now CUTS: one held painting per
+paragraph, to the place that paragraph happens in, and back to the library for
+the verse. `data/tiktokStages.ts` is the list, `art/tiktok-stages.json` the
+prompts, `public/tiktok/stages/` the paintings.
+
+**A cut is the whole of the motion this adds, and that is the point.** The rule
+on these layouts is that the only thing moving is the caption, and it exists
+because drifting motes, a warm pulse, a hovering figure, page-turn wipes and Veo
+loops summed to something that read as GENERATED rather than painted. None of
+that is a cut. A picture book is entirely still images and reads as story, so
+this buys the story feel at no cost against the rule — where a floating figure
+or a Veo shot of the scene would spend the whole of it.
+
+What each cut carries besides the picture is **one camera being placed**: the
+new shot arrives 3.5% wide and settles over 0.9s (`SHOT_PUSH`, `SHOT_SETTLE`),
+the same on every cut including the handover, so it is a grammar rather than an
+effect on one moment.
+
+Five rules:
+
+- **The stage list is the PREPACK.** The client sends the ids IT has with the
+  `story` request; Gemini picks inside that list; the function validates the
+  answer against exactly what it was sent and keeps no list of its own. The
+  paintings ship in the app bundle, so the build is the only thing that knows
+  which exist. Adding a stage costs a release, CHOOSING one is content — the
+  same bargain `KNOWN_VERBS` makes for a season's quests.
+- **It fails closed at every step.** A story cached before stages existed (no
+  `scenes` key), an id this build lacks, a painting that 404s, an ungenerated
+  batch: all of them are the library, which is a complete post and is exactly
+  what shipped before this.
+- **The last paragraph is never staged.** `makeStory` appends the verse and its
+  reference, and Tabitha reads that from her own book in her own room. Coming
+  back is what makes the middle feel like somewhere she took you.
+- **Tabitha is not drawn on a stage.** The drawn teller (for a room that does
+  not already have her painted in) renders only while the library is up: she is
+  narrating what happened there, not standing in it.
+- **Consecutive identical shots collapse.** Two paragraphs on the same stage is
+  one held painting, not a cut to itself — which would settle for 0.9s in the
+  middle of a sentence and read as a glitch.
+
+Ten stages, chosen for the settings the narrative books keep returning to
+rather than for variety: `road`, `house`, `hills`, `water`, `gate`, `temple`,
+`prison`, `field`, `upper`, `wilderness`. A throne room is the obvious
+eleventh. Deliberately not fifty: a stage only loosely about the sentence being
+spoken is worse than one steady picture, which is exactly why the per-paragraph
+picture CARDS came out of this layout once already.
+
+`npm run check:stages` (in `npm run build`) asserts every declared stage has a
+painting, because the failure renders perfectly — the model picks the id,
+`sanitizeStages` keeps it (it IS an id this build carries), the load 404s, and
+that paragraph is quietly told in the library forever.
+
+### His own stage
+
+His half used to play over her library with his photo growing into the middle
+of it. The objection that kept the morning post's reader swap off this layout —
+"that is Tabitha's room, a second figure in it is a stranger in somebody else's
+library" — applies to that too, and it is about the ROOM rather than about him.
+So he gets a stage: `own.jpg`, a dark empty space with one warm pool of light,
+and the `sharkey` figure standing in it. That narrows the old rule rather than
+overturning it. Her room is still hers.
+
+- **The figure REPLACES the photo ring** while it is up. He is already on
+  screen; a photograph of the same person floating over him is him twice. The
+  photo still closes the post on the end card.
+- **Where he stands is measured, not chosen.** The pool of light is centred at
+  0.77 of the frame once `cover` has anchored the painting to its bottom edge,
+  and the caption panel ends at y=668, so `STORY_STAND` is feet at 0.79, 0.41
+  high — in the light, head clear of the panel, at the same size the road's
+  figure is drawn. **Re-render `own.jpg` and both numbers have to be checked
+  again**, because the light moves.
+- **It fails closed twice.** No stage painting, or no figure render, is his
+  photo over the library exactly as before — never a failed post.
+
 ## Yesterday's quiz: the replay
 
 The third post. A CPU player — the reader figure the cast picked for that day,

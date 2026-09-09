@@ -446,6 +446,20 @@ Deno.serve(async (req) => {
       }
       const f = (k: string, n = 300) => String(input[k] ?? '').slice(0, n)
       const facts = Array.isArray(input.facts) ? (input.facts as unknown[]).slice(0, 6).map((x) => String(x).slice(0, 200)) : []
+      // WHERE each paragraph is set, chosen from the stages the CALLER says
+      // it has. The function keeps no list of its own on purpose: the
+      // paintings ship in the app bundle, so the build is the only thing
+      // that knows which exist, and a story naming one this build lacks
+      // would be a backdrop that never loads. Same prepack shape as a
+      // season's quest verbs — the client declares the vocabulary, the model
+      // picks inside it, and anything else is dropped here as well as there.
+      // No stages sent (an older caller) ⇒ no `scenes` key, and the post is
+      // the one steady painting it always was.
+      const stages = (Array.isArray(input.stages) ? (input.stages as unknown[]) : [])
+        .slice(0, 24)
+        .map((x) => ({ id: String((x as { id?: unknown })?.id ?? '').slice(0, 24), when: String((x as { when?: unknown })?.when ?? '').slice(0, 160) }))
+        .filter((x) => /^[a-z0-9_-]+$/.test(x.id))
+      const stageIds = new Set(stages.map((x) => x.id))
       const data = await gemini(`models/${TEXT_MODEL}:generateContent`, {
         contents: [{ parts: [{ text:
           `You write short spoken scripts for Tabitha, the librarian in the Verse Arcade Bible app. Each evening she tells the story BEHIND that day's verse to a small audience — warm, plain, unhurried, like a bedtime story for grown-ups. Never preachy, never shaming, no jokes about the listener.\n\n` +
@@ -453,16 +467,27 @@ Deno.serve(async (req) => {
           `Use ONLY the situation described above and the plain narrative of that Bible passage. Do not invent names, numbers, dialogue or events that are not in the passage. Do not quote the verse itself in the paragraphs — it is read aloud separately at the end.\n\n` +
           `Return JSON with: "title" (at most 6 words, no punctuation), "hook" (the single most dramatic sentence of the story, at most 10 words, no emoji — it is the first thing on screen and it has to stop a thumb), and "paragraphs": exactly two strings. ` +
           `Paragraph 1 OPENS ON THE DRAMATIC MOMENT — the hook's sentence or its twin, the thing that was at stake, in the first line — and only then says where we are and who is there. Paragraph 2: what happened next, what came after, and one plain sentence about why it still matters, ending with a short lead-in such as "Here's the verse." ` +
-          `About 80 to 100 words in total: the whole telling has to fit in a minute. Simple sentences that read well aloud. No emoji, no hashtags.` }] }],
+          `About 80 to 100 words in total: the whole telling has to fit in a minute. Simple sentences that read well aloud. No emoji, no hashtags.` +
+          (stages.length
+            ? `\n\nAlso return "scenes": exactly two strings, one per paragraph, each the id of the painted backdrop that paragraph is SET IN. Choose ONLY from this list, using the id exactly as written:\n${stages.map((x) => `${x.id} — ${x.when}`).join('\n')}\nPick where the events of that paragraph HAPPEN, not what they are about. If a paragraph is not clearly set anywhere on the list, repeat the previous id rather than reaching for a loose one.`
+            : '') }] }],
         generationConfig: { responseMimeType: 'application/json', temperature: 0.7 },
       })
       const cands = data.candidates as Array<{ content?: { parts?: Array<{ text?: string }> } }> | undefined
       const raw = cands?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? '{}'
-      let parsed: { title?: unknown; hook?: unknown; paragraphs?: unknown } = {}
+      let parsed: { title?: unknown; hook?: unknown; paragraphs?: unknown; scenes?: unknown } = {}
       try { parsed = JSON.parse(raw) } catch { return json({ error: 'story was not JSON', raw: raw.slice(0, 300) }, 502) }
       const paragraphs = Array.isArray(parsed.paragraphs) ? (parsed.paragraphs as unknown[]).map((x) => String(x).trim()).filter(Boolean).slice(0, 3) : []
       if (paragraphs.length < 1) return json({ error: 'story came back too short', raw: raw.slice(0, 300) }, 502)
-      const out = { title: String(parsed.title ?? '').slice(0, 60), hook: String(parsed.hook ?? '').slice(0, 80), paragraphs }
+      // Dropped per entry, like every sanitiser here: an id this build does
+      // not carry becomes null and that paragraph is told in the library.
+      const scenes = stages.length
+        ? paragraphs.map((_, i) => {
+            const id = String((Array.isArray(parsed.scenes) ? (parsed.scenes as unknown[])[i] : '') ?? '').trim().toLowerCase()
+            return stageIds.has(id) ? id : null
+          })
+        : undefined
+      const out = { title: String(parsed.title ?? '').slice(0, 60), hook: String(parsed.hook ?? '').slice(0, 80), paragraphs, ...(scenes ? { scenes } : {}) }
       await park(path, new TextEncoder().encode(JSON.stringify(out)), 'application/json')
       return json({ ...out, cached: false })
     }

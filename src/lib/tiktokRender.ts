@@ -731,11 +731,11 @@ function bottomPad(img: HTMLImageElement): number {
  * The drawn box is pushed DOWN by the file's empty bottom (`bottomPad`) so
  * that the feet, not the file, land on the ground line.
  */
-function standFigure(ctx: CanvasRenderingContext2D, img: HTMLImageElement, alpha: number, turn = 1) {
+function standFigure(ctx: CanvasRenderingContext2D, img: HTMLImageElement, alpha: number, turn = 1, place = { feet: 0.68, height: 0.42 }) {
   if (alpha <= 0 || turn <= 0) return
-  const fh = HEIGHT * 0.42
+  const fh = HEIGHT * place.height
   const fw = (img.naturalWidth / img.naturalHeight) * fh
-  const cx = WIDTH / 2, feet = HEIGHT * 0.68
+  const cx = WIDTH / 2, feet = HEIGHT * place.feet
   const top = feet - fh + bottomPad(img) * fh
   ctx.save()
   ctx.globalAlpha = 0.32 * alpha * turn
@@ -1276,6 +1276,34 @@ export interface StoryInput {
   room: HTMLImageElement | HTMLVideoElement
   /** The teller's render, for a room that does not already have her in it. */
   teller?: HTMLImageElement
+  /**
+   * Where each paragraph is SET: one held painting per paragraph, cut to on
+   * that paragraph's first word. A null entry (and a missing array) is the
+   * room, so a story with no stages renders exactly as it always did — and
+   * the LAST paragraph is the verse, which is read in the library by
+   * construction, because coming back is what makes the middle feel like
+   * somewhere she took you.
+   *
+   * A cut is the whole of the motion this adds. The rule on this layout is
+   * that the only thing moving is the caption; a hard cut between two held
+   * paintings is not movement, which is exactly why it is affordable here
+   * where a Veo loop or a drifting mote is not.
+   */
+  scenes?: Array<HTMLImageElement | null>
+  /**
+   * The dark stage the operator's own half stands on, with his figure on it.
+   *
+   * His half used to play over Tabitha's library with his photo growing into
+   * the middle of it, and the objection that kept the day's READER swap off
+   * this layout applies to that too: a second person in her room is a
+   * stranger in somebody else's library. A stage of his own dissolves it —
+   * it is not her room, so he is not standing in it. The figure REPLACES the
+   * photo ring while it is up (he is already on screen; two of him is one
+   * too many) and the photo still closes the post on the end card. No
+   * figure, or no stage, falls back to the ring over the library exactly as
+   * before.
+   */
+  stage?: { backdrop: HTMLImageElement; figure?: HTMLImageElement }
   bed?: Float32Array
   align?: boolean
   /**
@@ -1331,7 +1359,47 @@ interface StoryScene {
   ownHide: number
   /** His voice's envelope, so the ring breathes with him rather than with her. */
   ownVoice?: { rms: Float32Array; peak: number }
+  /**
+   * The cuts, in order, in AUDIO time: what is behind the words from this
+   * moment until the next entry. Built once in `renderStory` rather than
+   * decided per frame, so the settle below can be measured from the cut and
+   * the poster can be told to draw any moment of it.
+   */
+  shots: Shot[]
 }
+
+interface Shot {
+  at: number
+  /** Null draws the room — the library, and the fallback for everything. */
+  img: HTMLImageElement | null
+  /** His stage, which also carries his figure instead of the photo ring. */
+  own?: boolean
+}
+
+/**
+ * How long a fresh shot takes to settle, and how much wider it starts.
+ *
+ * The paintings on this layout are held nearly still — a 2% push over the
+ * whole minute — and that is the rule rather than a taste. What a cut adds is
+ * one camera being PLACED: the new picture arrives fractionally wide and
+ * settles, which reads as a shot rather than as a slide. It is the same
+ * grammar on every cut, including the handover into the library, so it is not
+ * an effect applied to one moment.
+ */
+const SHOT_SETTLE = 0.9
+const SHOT_PUSH = 0.035
+/**
+ * Where he stands on his own stage.
+ *
+ * Measured against two fixed things rather than chosen: the pool of light in
+ * `own.jpg` is centred at 0.77 of the frame once `cover` has anchored the
+ * painting to its bottom edge, and this layout's caption panel ends at y=668.
+ * Feet at 0.79 put him IN the light; 0.41 high puts his head at ~730, clear
+ * of the panel with room to spare, and at the same size the morning post's
+ * figure is drawn. Re-render the stage and both numbers have to be checked
+ * again — the light moves.
+ */
+const STORY_STAND = { feet: 0.79, height: 0.41 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath()
@@ -1349,19 +1417,32 @@ function contain(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number
   ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh)
 }
 
+/** The shot covering a moment, and when it was cut to. */
+function shotAt(shots: Shot[], at: number): Shot {
+  let hit = shots[0]
+  for (const s of shots) { if (s.at <= at) hit = s; else break }
+  return hit
+}
+
 async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: number, chrome = true) {
-  const { input, lead, audioDur, total, phrases, para, paraStart, ownAt, ownShow, ownHide, ownVoice } = sc
+  const { input, lead, audioDur, total, phrases, para, paraStart, ownAt, ownShow, ownHide, ownVoice, shots } = sc
   const at = t - lead
   void para; void paraStart
 
-  // 1. The room. A painting held almost still — anchored to its BOTTOM edge,
-  // so the story circle sits low in the frame and the quiet upper half is
-  // where the caption panel goes — or a loop, played forward.
-  const roomIsLoop = input.room instanceof HTMLVideoElement
-  if (input.room instanceof HTMLVideoElement) {
-    await drawLoop(ctx, input.room, t)
+  // 1. Where we are. A painting held almost still — anchored to its BOTTOM
+  // edge, so the ground sits low in the frame and the quiet upper half is
+  // where the caption panel goes — with a fresh shot arriving fractionally
+  // wide and settling. A loop is still played forward, and is only ever the
+  // library.
+  const shot = shotAt(shots, at)
+  const settle = SHOT_PUSH * (1 - easeOut((at - shot.at) / SHOT_SETTLE))
+  const zoom = 1.08 + 0.02 * (t / total) + Math.max(0, settle)
+  const roomIsLoop = !shot.img && input.room instanceof HTMLVideoElement
+  if (roomIsLoop) {
+    await drawLoop(ctx, input.room as HTMLVideoElement, t)
   } else {
-    cover(ctx, input.room, input.room.naturalWidth, input.room.naturalHeight, 1.08 + 0.02 * (t / total), 1)
+    const bg = shot.img ?? (input.room as HTMLImageElement)
+    cover(ctx, bg, bg.naturalWidth, bg.naturalHeight, zoom, 1)
   }
   const top = ctx.createLinearGradient(0, 0, 0, 820)
   top.addColorStop(0, 'rgba(11,7,32,0.9)'); top.addColorStop(1, 'rgba(11,7,32,0)')
@@ -1370,8 +1451,10 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
   bot.addColorStop(0, 'rgba(11,7,32,0)'); bot.addColorStop(1, 'rgba(11,7,32,0.55)')
   ctx.fillStyle = bot; ctx.fillRect(0, HEIGHT - 420, WIDTH, 420)
 
-  // 2. The teller, for a room that does not already have her.
-  if (input.teller && !roomIsLoop) {
+  // 2. The teller, for a room that does not already have her — and only
+  // where she IS. On a stage she is narrating what happened there, not
+  // standing in it, and on his stage she is not in the post at all.
+  if (input.teller && !roomIsLoop && !shot.img) {
     const th = 640, tw = (input.teller.naturalWidth / input.teller.naturalHeight) * th
     ctx.save()
     ctx.imageSmoothingQuality = 'high'
@@ -1448,7 +1531,19 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
   // a permanent overlay is what made these posts read as generated in the
   // first place, and on the verse layout a photo held over the reader was
   // taken for a badge pinned to their chest.
-  if (input.own?.photo && at >= ownShow && endFade < 1) {
+  //
+  // On his own stage the FIGURE carries it instead — he is already on
+  // screen, and a photograph of the same person floating over him is him
+  // twice. The photo still closes the post on the end card.
+  const onStage = shot.own && !!input.stage?.figure
+  if (input.own && onStage && endFade < 1) {
+    const grow = easeOut((at - ownShow) / 0.55)
+    const out = 1 - easeOut((at - ownHide) / 0.55)
+    // Lower and larger than the road's figure, because this layout's caption
+    // panel occupies the band the road leaves empty: his head has to clear
+    // 668, which is the bottom of it.
+    if (out > 0) standFigure(ctx, input.stage!.figure!, grow * out * (1 - endFade), 1, STORY_STAND)
+  } else if (input.own?.photo && at >= ownShow && endFade < 1) {
     const grow = easeOut((at - ownShow) / 0.55)
     // Introducing, he goes back out as she starts, so the last thing before
     // her first word is her room and not his face.
@@ -1494,6 +1589,50 @@ function storyTexts(paragraphs: string[]): { texts: string[]; para: number[] } {
     for (const ph of splitPhrases(ended, 7)) { texts.push(ph); para.push(i) }
   })
   return { texts, para }
+}
+
+/**
+ * The cuts, in speaking order.
+ *
+ * His half owns the frame for as long as he is talking — his own dark stage,
+ * introducing or answering — and the telling cuts once per paragraph to
+ * wherever that paragraph is set. Two guarantees are worth stating because
+ * they are what stop this becoming a slideshow:
+ *
+ *   - **A shot never starts before the words it belongs to.** Cuts are the
+ *     paragraph starts `renderStory` already measured off the recording, so
+ *     one lands on a sentence boundary or not at all.
+ *   - **Consecutive identical shots are collapsed.** Two paragraphs on the
+ *     same stage, or a stage that fell back to the library beside the
+ *     library, is ONE held painting rather than a cut to itself — which
+ *     would settle for 0.9s in the middle of a sentence and read as a
+ *     glitch.
+ */
+function storyShots(input: StoryInput, paraStart: number[], ownAt: number, ownEnd: number, toldAt: number, open: boolean): Shot[] {
+  const staged = (i: number): HTMLImageElement | null => input.scenes?.[i] ?? null
+  const told: Shot[] = paraStart.map((at, i) => ({ at, img: staged(i) }))
+  const his: Shot[] | null = input.own && input.stage
+    ? [{ at: open ? 0 : ownAt, img: input.stage.backdrop, own: true }]
+    : null
+  let shots: Shot[] = his
+    ? open
+      // He opens on his stage; the telling cuts in as Tabitha begins, so the
+      // first thing after his last word is where the story happens.
+      //
+      // At `toldAt` — where her AUDIO starts — and deliberately not at her
+      // first captioned WORD. Measured off a real render, her reading carries
+      // 2.8s of lead-in before it, and holding his stage across it left three
+      // and a half seconds of an empty pool of light after he had already
+      // faded out. What is left is the 0.9s `OWN_GAP`, which is the beat
+      // between the two voices and is meant to be there.
+      ? [...his, ...told.map((s, i) => (i === 0 ? { ...s, at: toldAt } : s))]
+      // He answers it, so his stage is the last shot before the end card.
+      : [...told, ...his]
+    : told
+  shots = shots.filter((s, i) => i === 0 || s.img !== shots[i - 1].img || !!s.own !== !!shots[i - 1].own)
+  // The lead-in belongs to whatever is first.
+  if (shots.length) shots[0] = { ...shots[0], at: -Infinity }
+  return shots.length ? shots : [{ at: -Infinity, img: null }]
 }
 
 export async function renderStory(input: StoryInput): Promise<RenderOutput> {
@@ -1568,7 +1707,7 @@ export async function renderStory(input: StoryInput): Promise<RenderOutput> {
     ? (open ? Math.max(ownAt - 0.35, (input.hook ? HOOK_HOLD - 0.4 : 0) - lead) : ownAt - 0.35)
     : Infinity
   const ownHide = open ? ownEnd : Infinity
-  const sc: StoryScene = { input, lead, audioDur, total, phrases, para, paraStart, ownAt, ownEnd, ownShow, ownHide, ownVoice }
+  const sc: StoryScene = { input, lead, audioDur, total, phrases, para, paraStart, ownAt, ownEnd, ownShow, ownHide, ownVoice, shots: storyShots(input, paraStart, ownAt, ownEnd, toldAt, open) }
   const { blob, ext } = await produce((ctx, t) => drawStoryFrame(ctx, sc, t), total, lead, samples, progress, input.bed)
   progress(1, 'Done')
   return { blob, ext, durationSec: total, phrases }
@@ -1603,7 +1742,7 @@ export async function renderStoryPoster(input: Omit<StoryInput, 'audio' | 'onPro
   // the wrong layout.
   const { texts, para } = storyTexts(input.paragraphs)
   const phrases = input.phrases ?? alignPhrases(texts, [[0, 60]], 60)
-  await drawStoryFrame(ctx, { input: { ...input, audio: new ArrayBuffer(0) }, lead: LEAD, audioDur: 60, total: 65, phrases, para, paraStart: Array.from({ length: n }, (_, i) => i * (60 / n)), ownAt: Infinity, ownEnd: Infinity, ownShow: Infinity, ownHide: Infinity }, t, chrome)
+  await drawStoryFrame(ctx, { input: { ...input, audio: new ArrayBuffer(0) }, lead: LEAD, audioDur: 60, total: 65, phrases, para, paraStart: Array.from({ length: n }, (_, i) => i * (60 / n)), ownAt: Infinity, ownEnd: Infinity, ownShow: Infinity, ownHide: Infinity, shots: storyShots({ ...input, audio: new ArrayBuffer(0), own: undefined }, Array.from({ length: n }, (_, i) => i * (60 / n)), Infinity, Infinity, 0, false) }, t, chrome)
   return canvas.toDataURL('image/png')
 }
 

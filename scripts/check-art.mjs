@@ -68,6 +68,8 @@ const dirFor = (kind) =>
             ? 'public/tiktok/rooms'
             : kind === 'tiktok-road'
               ? 'public/tiktok/roads'
+          : kind === 'tiktok-stage'
+              ? 'public/tiktok/stages'
       : kind === 'item'
         ? 'public/items'
         : 'public/keep'
@@ -83,7 +85,7 @@ const dirFor = (kind) =>
 const files = process.argv.slice(2).length
   ? process.argv.slice(2)
   : Object.keys(kinds)
-      .filter((id) => !['road', 'room', 'church', 'arcade', 'tiktok', 'tiktok-road'].includes(kinds[id]))
+      .filter((id) => !['road', 'room', 'church', 'arcade', 'tiktok', 'tiktok-road', 'tiktok-stage'].includes(kinds[id]))
       .map((id) => `${dirFor(kinds[id])}/${id}.png`)
       .filter(existsSync)
 

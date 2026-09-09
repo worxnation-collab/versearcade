@@ -182,6 +182,42 @@ function toWav(file, wav) {
   const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', file, '-ac', '1', '-ar', '48000', '-af', af, '-c:a', 'pcm_s16le', wav])
   return ff.status === 0 && fs.existsSync(wav)
 }
+/**
+ * Where the recording is actually QUIET, measured off the samples.
+ *
+ * Whisper's word timings are not a clock. On a real 5m46s batch its
+ * timestamps ran about 1.1 SECONDS EARLY against the audio: it placed the
+ * end of "Day 1" at 2.2s where the words are genuinely spoken from 3.33 to
+ * 4.44, with the take proper starting at 5.93. Cutting on those numbers is
+ * wrong at BOTH ends of every take — the front keeps the spoken "Day N"
+ * marker, and the tail loses real words (take one lost 1.1s: "…he has put
+ * down." simply stopped). It rendered perfectly, was captioned correctly,
+ * and posted to eight networks before anybody watched it.
+ *
+ * So the cut comes from the WAVEFORM and only the identity of a take comes
+ * from Whisper. `-38dB` is well under speech and well over this room's
+ * -73dB floor; 0.30s is shorter than the pause he leaves around a marker
+ * and longer than the gap inside a sentence.
+ */
+function silences(wav, floorDb = -38, minLen = 0.3) {
+  const r = spawnSync(FFMPEG, ['-hide_banner', '-nostats', '-i', wav, '-af', `silencedetect=n=${floorDb}dB:d=${minLen}`, '-f', 'null', '-'], { encoding: 'utf8' })
+  const out = [], text = (r.stderr || '') + (r.stdout || '')
+  let start = null
+  for (const m of text.matchAll(/silence_(start|end):\s*(-?[0-9.]+)/g)) {
+    if (m[1] === 'start') start = Number(m[2])
+    else if (start !== null) { out.push([start, Number(m[2])]); start = null }
+  }
+  return out
+}
+/** The speech between the silences: [start, end] per island. */
+function islands(sil, total) {
+  const out = []
+  let at = 0
+  for (const [a, b] of sil) { if (a > at + 0.05) out.push([at, a]); at = b }
+  if (total > at + 0.05) out.push([at, total])
+  return out
+}
+
 function durationOf(src) {
   const r = spawnSync(FFMPEG, ['-hide_banner', '-i', src], { encoding: 'utf8' })
   const m = /Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/.exec((r.stderr || '') + (r.stdout || ''))
@@ -426,6 +462,86 @@ try {
       const date = addDays(start, m.n - 1)
       return { date, kind: kindFor(date), n: m.n, from, to, words, text: words.map((w) => w.text).join(' ') }
     })
+    // ---- snap every boundary onto real silence -------------------------------
+    //
+    // Everything above this point is Whisper's, and Whisper's clock is wrong
+    // (see `silences`). What it is RIGHT about is which take is which, so it
+    // names them and the waveform places them.
+    //
+    // The marker is found rather than computed: its island is short, sits
+    // between two real pauses, and is near — never exactly at — where Whisper
+    // put it. Several innocent islands fit that shape too (a short sentence
+    // between two breaths), so each candidate is HEARD, one second of audio at
+    // a time, and accepted only if it actually says the take's number. On this
+    // recording the two nearest candidates for take 4 sat four seconds apart
+    // with the wrong one closer, so proximity alone would have cut a take in
+    // the middle of the one before it.
+    //
+    // It fails closed per take: a take whose marker is not found keeps the
+    // Whisper bounds it would have had anyway, and says so.
+    const sil = silences(inputWav)
+    const isl = islands(sil, heard.seconds)
+    const silAfter = (t) => sil.find(([a]) => a >= t - 0.01)
+    const silBefore = (t) => [...sil].reverse().find(([, b]) => b <= t + 0.01)
+    const NUMWORD = Object.entries(NUM).reduce((m, [w, n]) => ((m[n] ??= []).push(w), m), {})
+    const batchProbeWav = inputWav
+    let snapped = 0
+    for (const t of takes) {
+      // Candidate markers: a SHORT island with a real pause on both sides,
+      // somewhere near where Whisper thinks the number is. Several innocent
+      // islands fit that shape — take four's true marker sat between "It's
+      // Moses." (the end of take three) and "Suddenly, a chariot of fire"
+      // (the start of its own body), all three short and all three bounded
+      // by pauses — so the shape narrows the search and never decides it.
+      const near = isl.filter(([x, y]) => y - x < 2.5 && x >= t.from - 6 && x <= t.from + 12
+        && ((silBefore(x) ?? [0, 0])[1] - (silBefore(x) ?? [0, 0])[0]) >= 0.6
+        && ((silAfter(y) ?? [0, 0])[1] - (silAfter(y) ?? [0, 0])[0]) >= 0.6)
+      if (!near.length) continue
+      // So the boundary is HEARD — but in a window, not a clip. Two things
+      // force the width: the listener refuses a second of audio outright
+      // ("Heard almost nothing"), and Whisper's drift is a LONG-file effect,
+      // about 2.2s at the top of a six-minute batch and about 0.3s inside a
+      // sixteen-second window. Within one window its timings are good enough
+      // to say which island the number is, which is all that is asked of it.
+      const wa = Math.max(0, near[0][0] - 2)
+      const wb = Math.min(heard.seconds, near[near.length - 1][1] + 8)
+      const win = path.join(OUT, 'probe.wav')
+      if (spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', batchProbeWav, '-ss', String(wa), '-to', String(wb), '-c:a', 'pcm_s16le', win]).status !== 0) continue
+      inputWav = win
+      let words = []
+      try { words = (await page.evaluate(([w, tk]) => window.vaVoice.hear(w, tk), [`${origin}/input.wav`, TOKEN])).words ?? [] } catch { words = [] }
+      inputWav = batchProbeWav
+      if (!words.length) continue
+      // The window is trimmed of its own leading silence before it is heard,
+      // so the clock is rebased on the first island inside it rather than on
+      // the window's own edge.
+      const first = isl.find(([x]) => x >= wa - 0.01)
+      if (!first) continue
+      const offset = first[0] - words[0].start
+      const hit = words.find((w, i) => {
+        const k = w.text.toLowerCase().replace(/[^a-z0-9]/g, '')
+        const lead = i > 0 && LEAD.has(words[i - 1].text.toLowerCase().replace(/[^a-z0-9]/g, ''))
+        return (k === String(t.n) || (NUMWORD[t.n] ?? []).includes(k)) && (lead || /^[a-z]+$/.test(k) === false || (NUMWORD[t.n] ?? []).includes(k))
+      })
+      if (!hit) continue
+      const at = offset + hit.start
+      t.marker = near.find(([x, y]) => at >= x - 0.6 && at <= y + 0.6)
+        ?? near.reduce((best, c) => (Math.abs((c[0] + c[1]) / 2 - at) < Math.abs((best[0] + best[1]) / 2 - at) ? c : best))
+    }
+    for (let k = 0; k < takes.length; k++) {
+      const t = takes[k]
+      if (!t.marker) { log(`  ${t.date}: marker not found in the audio — keeping the heard bounds`); continue }
+      // The body opens where the pause after the spoken marker closes, and
+      // runs to where the pause before the NEXT marker opens. The small pads
+      // are there because `trimAndLevel` trims the ends itself; erring wide
+      // costs a beat of room tone, erring narrow costs a word.
+      const open = silAfter(t.marker[1])
+      const shut = takes[k + 1]?.marker ? silBefore(takes[k + 1].marker[0]) : undefined
+      if (open) t.from = Math.max(0, open[1] - 0.15)
+      t.to = shut ? Math.min(heard.seconds, shut[0] + 0.3) : heard.seconds
+      snapped++
+    }
+    log(`snapped ${snapped} of ${takes.length} takes onto the waveform`)
     for (const t of takes) log(`  ${String(t.n).padStart(2)} ${t.date} ${t.kind.padEnd(7)} ${t.from.toFixed(1)}–${t.to.toFixed(1)}s (${(t.to - t.from).toFixed(1)}s ${t.words.length}w)  ${t.text.slice(0, 66)}`)
     if (flags.dry) { await done() }
     // Cutting reads the batch; parking re-points `inputWav` at each take, so

@@ -77,7 +77,46 @@ const defaultKinds = (d) => ['verse', kindForDate(d), ...(kindForDate(d) === 'st
 const PLATFORMS = (env.PLATFORMS || 'tiktok,youtube,facebook,instagram,x,snapchat,threads,pinterest').split(',').map((s) => s.trim()).filter(Boolean)
 const DRY = /^(1|true|yes)$/i.test(env.DRY_RUN || '')
 const FFMPEG = env.FFMPEG || 'ffmpeg'
-const TIMES = Object.fromEntries((env.POST_TIMES || 'verse=07:00,challenge=10:00,note=12:00,quiz=12:30,book=19:30,moment=19:30,before=19:30,figure=19:30,quiet=19:30,prayer=19:30,challenge2=16:00,story=19:30').split(',').map((kv) => kv.split('=').map((s) => s.trim())))
+// WHEN each network gets it, and it is per (kind, platform) rather than per
+// kind. `postEach` already sends one request per platform, so this costs
+// nothing but the table.
+//
+// Two of the reasons are arithmetic and one is a guess, and they are marked
+// as such because the difference matters:
+//
+//   - **07:00 ET is 04:00 Pacific.** The morning post was landing before a
+//     third of the country was awake. That is not a theory about feeds, it is
+//     a clock.
+//   - **Eight identical uploads at the same minute is a machine signature.**
+//     Spreading them costs nothing and is the one thing here that is true
+//     whatever any platform's ranking does.
+//   - **Which hour is BEST per network is a prior, not a measurement.** This
+//     account has no per-hour data — Ayrshare reports totals, and Snapchat
+//     reports nothing at all. What it does say, off the 09-07 verse, is that
+//     YouTube delivers (766 views) where TikTok does not (0), so YouTube gets
+//     the strongest slot and the rest are industry defaults. Revisit with
+//     `analytics` once a few weeks have run at these times.
+//
+// `kind@platform` overrides `kind`. Anything unset falls back to the kind's
+// own time, so a new kind needs no rows here.
+const DEFAULT_TIMES = [
+  // The morning verse: the ritual, moved off 4am Pacific.
+  'verse=08:00', 'verse@youtube=08:00', 'verse@facebook=08:15', 'verse@instagram=08:30',
+  'verse@tiktok=09:00', 'verse@snapchat=09:15', 'verse@threads=12:00', 'verse@x=12:15',
+  // Pinterest is a SEARCH engine — a pin is found for years and its posting
+  // hour barely matters, so it sits off the cluster entirely.
+  'verse@pinterest=14:00',
+  // The day's second post, in the evening.
+  'second=19:30', 'second@facebook=19:00', 'second@instagram=19:15', 'second@youtube=19:30',
+  'second@tiktok=20:00', 'second@snapchat=20:15', 'second@threads=20:30', 'second@x=21:00',
+  'second@pinterest=15:00',
+  // Monday's note, and the parked formats if they are ever switched back on.
+  'note=12:00', 'challenge=10:00', 'quiz=12:30', 'challenge2=16:00',
+].join(',')
+const TIMES = Object.fromEntries((env.POST_TIMES || DEFAULT_TIMES).split(',').map((kv) => kv.split('=').map((s) => s.trim())))
+/** Every weekday reading and the story share the evening slot under the alias `second`. */
+const slotOf = (kind) => (kind === 'verse' || kind === 'note' || kind === 'challenge' || kind === 'quiz' || kind === 'challenge2' ? kind : 'second')
+const timeFor = (kind, platform) => TIMES[`${slotOf(kind)}@${platform}`] || TIMES[slotOf(kind)] || TIMES[kind] || '12:00'
 const TTS_MODEL = env.GEMINI_TTS_MODEL || 'gemini-2.5-flash-preview-tts'
 // A directory holding `models/onnx-community/whisper-tiny.en_timestamped/…` and
 // `ort/ort-wasm-simd-threaded*.{mjs,wasm}`: served to the page so the aligner
@@ -312,7 +351,11 @@ async function postEach(platforms, body) {
   const results = []
   for (const platform of platforms) {
     try {
-      const r = await fn('post', { ...body, platforms: [platform] })
+      // Each network gets its OWN time. A slot already past posts now rather
+      // than being skipped — the same rule the single time had.
+      const at = zonedToUtc(body.date, timeFor(body.kind, platform), TZ)
+      const scheduleDate = at.getTime() > Date.now() + 90_000 ? at.toISOString().replace(/\.\d{3}Z$/, 'Z') : undefined
+      const r = await fn('post', { ...body, scheduleDate, platforms: [platform] })
       results.push(...(Array.isArray(r.results) ? r.results : [{ platform, status: 'error', error: `no result: ${JSON.stringify(r).slice(0, 160)}` }]))
     } catch (e) {
       results.push({ platform, status: 'error', error: String(e?.message || e).slice(0, 200) })
@@ -345,9 +388,11 @@ await page.waitForFunction(() => !!window.versearcadeDaily, null, { timeout: 60_
 const results = []
 for (const kind of KINDS) {
   const date = aboutYesterday(kind) ? yesterday : today
-  const at = zonedToUtc(today, TIMES[kind] || '12:00', TZ)
+  // The per-PLATFORM time is decided in postEach; this line is the summary.
+  const slot = slotOf(kind)
+  const at = zonedToUtc(today, TIMES[slot] || '12:00', TZ)
   const scheduleDate = at.getTime() > Date.now() + 90_000 ? at.toISOString().replace(/\.\d{3}Z$/, 'Z') : undefined
-  log(`${kind} ${date} → ${scheduleDate ? `scheduled ${TIMES[kind]} ${TZ} (${scheduleDate})` : 'posts now'}`)
+  log(`${kind} ${date} → ${PLATFORMS.filter((p) => social.postsOn(p, kind)).map((p) => `${p} ${timeFor(kind, p)}`).join(', ')} ${TZ}`)
 
   // Make what is missing. A second run on the same day (a retry after the
   // posting service refused, a manual dispatch after the cron) must not
@@ -442,8 +487,11 @@ for (const kind of KINDS) {
     const rows = []
     // Direct mode has no bucket to park a cover in, so Pinterest sits this path out.
     for (const platform of PLATFORMS.filter((p) => p !== 'pinterest' && social.postsOn(p, kind))) {
-      const r = await ayrshare('post', social.postBody(platform, copy, { date, kind, reference: rendered.reference, videoUrl, scheduleDate, voiced: rendered.voiced }))
-      rows.push(social.postResult(platform, r, scheduleDate))
+      // Direct mode takes the same per-platform time as the function path.
+      const pAt = zonedToUtc(date, timeFor(kind, platform), TZ)
+      const pWhen = pAt.getTime() > Date.now() + 90_000 ? pAt.toISOString().replace(/\.\d{3}Z$/, 'Z') : undefined
+      const r = await ayrshare('post', social.postBody(platform, copy, { date, kind, reference: rendered.reference, videoUrl, scheduleDate: pWhen, voiced: rendered.voiced }))
+      rows.push(social.postResult(platform, r, pWhen))
     }
     posted = { date, kind, videoUrl, at: new Date().toISOString(), results: rows }
   }

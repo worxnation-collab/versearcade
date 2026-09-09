@@ -1,6 +1,17 @@
 // Renders the SVG source art in assets/ to the PNGs Capacitor/App Store need.
 // Run locally with a prebuilt sharp:  npm i --no-save sharp && node scripts/render-assets.mjs
 // (CI regenerates the full icon set from icon.png via @capacitor/assets.)
+//
+// IT NO LONGER RENDERS THE APP ICON, and that removal is the point. The icon is a
+// painting now (`assets/icon-source.jpg` -> `assets/icon.png`), not a drawing, so
+// the line that used to rasterise `icon.svg` over the top of it would have
+// silently restored the old mark for anyone who ran this — a one-command way to
+// ship the wrong icon, with nothing failing and nothing to see in a diff. The old
+// drawing is kept as `icon-legacy.svg` so it can't be mistaken for the source.
+//
+// @capacitor/assets resolves `icon` by extension in the order .png, .webp, .jpg,
+// .jpeg, .svg (checked in its own source, not assumed), so the PNG is what the
+// build uses either way — which is exactly why the trap was invisible.
 import sharp from 'sharp'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -22,6 +33,5 @@ async function render(svg, out, size) {
   console.log(`${out}: ${meta.width}x${meta.height} (${meta.channels}ch, alpha=${meta.hasAlpha})`)
 }
 
-await render('icon.svg', 'icon.png', 1024)   // App Store marketing icon + source for the set
 await render('splash.svg', 'splash.png', 2732) // launch screen source
 console.log('done')

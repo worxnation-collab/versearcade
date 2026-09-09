@@ -61,9 +61,25 @@ Codemagic does that automatically in Phase 4.
 > on your iPhone with your Apple ID.
 
 ## Phase 5 — App icon (🤖 source ready / ☁️ applied at build)
-The icon source lives at `assets/icon.png` (1024×1024) and `assets/splash.png`.
-`codemagic.yaml` regenerates the full iOS icon set from it during the build via
-`@capacitor/assets`. To change the icon, replace `assets/icon.png` and push.
+The icon source is **`assets/icon.png`** — 1024×1024, **RGB with no alpha channel**
+(the App Store rejects a transparent icon, `ITMS-90717`) and **no rounded corners**
+of its own, since iOS applies the mask. `codemagic.yaml` regenerates the full iOS
+set from it during the build via `@capacitor/assets`. To change the icon, replace
+that file and push; never edit `ios/`, which is regenerated every build.
+
+Three things about it that are not obvious:
+
+- **`icon.png` wins over `icon.svg`.** `@capacitor/assets` resolves `icon` by
+  extension in the order `.png, .webp, .jpg, .jpeg, .svg` — read out of its own
+  source rather than assumed — so an SVG sitting beside the PNG is never used.
+  Editing one and expecting the icon to change is a silent no-op.
+- **The icon is a painting now, so `scripts/render-assets.mjs` no longer touches
+  it.** That script used to rasterise `icon.svg` over `icon.png`, which after the
+  change would have been a one-command way to restore the old mark with nothing
+  failing. The drawing is kept as `icon-legacy.svg` so it cannot be mistaken for
+  the source; `assets/icon-source.jpg` is the real one.
+- **A new icon needs a new build**, because it is baked into the binary. Whatever
+  is already on TestFlight keeps the icon it was built with.
 
 ## Phase 6 — Fill the listing (🧑, ~30 min)
 In App Store Connect → your app → the version (e.g. **1.0**), paste from

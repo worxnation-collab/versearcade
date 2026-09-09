@@ -133,17 +133,28 @@ second review for a text edit.
 
 ## 4 — Review notes, and the demo account
 
-**The demo account is mandatory, not optional.** Since the account wall landed, a
-reviewer without credentials reaches today's verse and their own profile and finds
-four padlocked tabs, which reads as Guideline 2.1. The notes block in
-`APP-STORE-LISTING.md` § "Review notes" is unchanged from 1.2.0 and still correct —
-it explains the padlocks, the single in-app purchase, and the read-aloud voices.
+- [x] **The account exists.** `applereview@versearcade.org` is in App Review
+      Information → Sign-In Information with "Sign-in required" checked. Its
+      password stays there and is deliberately not in this repo.
+- [ ] **Play a round on it**, so the profile a reviewer lands on is not empty.
+- [ ] **Join a church on it**, so the Church tab shows a congregation and a yard
+      instead of the picker. A minute's work, and it turns two screens that look
+      unfinished into the ones the description promises.
+- [ ] **Replace the Notes text.** `APP-STORE-LISTING.md` § "Review notes" is
+      REWRITTEN for 1.3.0 — do not leave what is in the field now.
 
-- [ ] Create one real account in the app (App Store Connect wants an email and a
-      password, not a social sign-in).
-- [ ] Play a round on it so the profile is not empty.
-- [ ] Paste its credentials over the two `[FILL IN]` lines in the notes.
-- [ ] Delete it afterwards from inside the app if you want to.
+**The note currently in that field opens with "No account is required", and that
+sentence is now a liability.** It was true at 1.0 and stopped being true the moment
+the account wall landed: a reviewer who reads it, declines to sign in and then
+meets four padlocks has been told by the developer that what they are looking at
+should not be there. That is Guideline 2.1 handed over voluntarily — and it also
+contradicts the "Sign-in required" box checked directly above it.
+
+The new note also volunteers something 1.3.0 needs: **the Prayer Wall is the first
+user-generated text in this app**, so it describes the Guideline 1.2 controls (fixed
+categories to strangers, the free line visible only to church-mates and accepted
+buddies, report-hides-immediately, no browsing and no way to aim a note at a person)
+before a reviewer has to go looking for them.
 
 ---
 
@@ -166,6 +177,17 @@ than re-enter:
   name should read "Founding Patron", which outlives whichever skin the patron
   currently gets. That is a metadata edit and goes to review while the approved
   version stays on sale, so there is no gap.
+
+---
+
+## 5b — One availability question worth answering deliberately
+
+The Notes field carries Apple's boilerplate about **Chinese law requiring permits
+for apps with religious content** on the China mainland App Store. This app has no
+such permit, and Apple has removed Bible apps from that storefront before. Nothing
+here is broken by it, but the honest options are: **exclude China mainland** in
+Pricing and Availability, or accept that the listing may be refused or pulled
+there. It is a checkbox either way and it is better decided than discovered.
 
 ---
 

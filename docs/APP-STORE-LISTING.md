@@ -386,53 +386,102 @@ lands at 12+ / 9+; either is fine.
 
 ## Review notes (App Information → Notes for reviewer)
 
-Two things a reviewer hits in the first thirty seconds, so they are said first and
-plainly: most tabs ask for an account, and the app carries one in-app purchase. Both
-have been true since 1.2.0 and are unchanged in 1.3.0 — this block is not
-version-specific and does not need rewriting each release, unlike "What's New" above.
+Rewritten for 1.3.0. Two things a reviewer hits in the first thirty seconds are
+said first and plainly — most tabs ask for an account, and the app carries one
+in-app purchase — and 1.3.0 adds a third that is worth volunteering rather than
+being asked about: **the Prayer Wall is the first user-generated text in the app**,
+so the Guideline 1.2 controls are described before anyone has to go looking for
+them.
+
+**The credentials are deliberately NOT in this file.** App Store Connect has its
+own Sign-In Information fields (App Review Information → "Sign-in required") and
+they are the only place that account's password belongs; a live password in a git
+repo outlives the review by years. The notes point at those fields instead.
 
 ```
-Verse Arcade is a Bible-learning game. Tap "Play today's verse" on the home screen to
-play the full daily quiz immediately as a guest — no account, no email, no paywall.
+Verse Arcade is a Bible-learning game. Today's verse can be played immediately as a
+guest — on the home screen, tap "Play today's verse". That runs the full core loop
+with no account, no email and no paywall.
 
-PLEASE SIGN IN WITH THE ACCOUNT BELOW TO REVIEW THE REST. Beyond today's verse and your
-own profile, the tabs (Battle, Study, Bible, Church) show a padlock and a "create an
-account" card rather than their contents. This is intentional, not a bug or a broken
-screen: those features are multiplayer or synced — a shared church building, a battle
-against another person, a record of what you have read — and they have nowhere to live
-on a single device without an account.
+PLEASE SIGN IN WITH THE ACCOUNT IN THE SIGN-IN INFORMATION FIELDS TO REVIEW THE
+REST. Beyond today's verse and your own profile, the tabs (Battle, Study, Bible,
+Church) and the Prayer Wall show a padlock and a "create an account" card rather
+than their contents. This is intentional, not a bug or a broken screen: those
+features are multiplayer or synced — a shared church building, a match against
+another person, a record of what you have read — and they have nowhere to live on
+a single device without an account.
 
-  Email: [FILL IN — create one before submitting]
-  Password: [FILL IN]
+WORTH SEEING, all from the bottom tab bar and the compass button beside it:
+- Play: today's verse, plus a second daily round of five questions on one book of
+  the Bible.
+- Battle: "Quick match" pairs you with anyone else looking right now; a room code
+  works between two devices.
+- The arcade: compass button -> "The arcade". Three small games, none of them
+  scored against anybody.
+- You: your character, your Upper Room, and tapping your own figure offers to pray
+  with you.
+- Pray: the Prayer Wall, below.
+
+USER-GENERATED CONTENT (new in this version). The Prayer Wall is the one place a
+player types something another player reads, and it is deliberately narrow:
+- A stranger is only ever shown one of eight fixed categories ("health", "family",
+  and so on). The optional free-text line — 120 characters, cleaned on the way in —
+  is returned only to members of the writer's own church and to buddies they have
+  accepted. It is never public.
+- Notes are anonymous unless the writer signs them, and the wall DEALS one at
+  random. Nobody can browse the wall or aim a note at a person.
+- Every note carries a Report control. One report hides the note immediately,
+  before any human looks at it; we then restore it or remove it for good.
+- One open note per person at a time, expiring after seven days. Nothing
+  accumulates.
+Everywhere else there is no chat and no free text at all: the figures in the crowd
+scenes speak in a fixed list of ten emoji, a gift has no message field, and church
+pages are written only by us.
 
 IN-APP PURCHASE: there is exactly one, a non-consumable "founding patron" tip
-(com.versearcade.app.patron_founding). It buys a cosmetic thank-you and nothing that
-affects play, scores or standing. Cosmetics are otherwise earned or free. The shop is
-hidden entirely unless StoreKit returns approved products, so it may not appear in a
-sandbox build — that is deliberate fail-closed behaviour, not a missing screen. A
-"Restore purchases" control is in Profile → Skins whenever StoreKit is reachable.
+(com.versearcade.app.patron_founding). It buys a cosmetic thank-you — a character
+look and a card background — and nothing that affects play, scores or standing.
+Every other cosmetic is earned or free. The shop is hidden entirely unless StoreKit
+returns approved products, so it may not appear in a sandbox build; that is
+deliberate fail-closed behaviour, not a missing screen. A "Restore purchases"
+control is in You -> Customize -> Skins whenever StoreKit is reachable.
 
 There are no external purchase links or steering of any kind. Everything digital is
 sold through Apple's in-app purchase.
 
-READ-ALOUD: the Upper Room's prayer sheet can read a prayer out loud. It uses the
-voices already on the device through the standard speech synthesis API — nothing is
-recorded, and no text is sent anywhere. A device with no installed voices shows a line
-saying so rather than a dead button.
+READ-ALOUD: the prayer sheet can read a prayer out loud. It uses the voices already
+on the device through the standard speech synthesis API — nothing is recorded, and
+no text is sent anywhere. A device with no installed voices shows a line saying so
+rather than a dead button.
 
-Account deletion: Profile tab → "Delete my account".
-Sound, music and haptics: Settings.
+Account deletion: You tab, at the bottom — "Delete my account".
+Sound, music and haptics: You tab -> the gear icon.
 ```
+
+> **The old note said "No account is required" and that sentence is now a
+> liability**, which is why this is a rewrite rather than an edit. It was true at
+> 1.0 and stopped being true the moment `WALL` landed: a reviewer who reads it,
+> declines to sign in, and then meets four padlocks has been told by the developer
+> that the thing they are looking at should not be there. That is Guideline 2.1
+> handed over voluntarily. The account is also now checked as "Sign-in required" in
+> App Store Connect, so a note claiming otherwise contradicts the form it sits in.
 
 ## Demo account (REQUIRED before submitting)
 This is no longer optional. Since the account wall landed, a reviewer without
 credentials can only reach today's verse and the profile tab — everything else is a
-padlock, which reads as "features behind a login" (Guideline 2.1) if the notes do not
-explain it and hand them a way in.
+padlock, which reads as "features behind a login" (Guideline 2.1) if the notes do
+not explain it and hand them a way in.
 
-Create one real account in the app, play a round on it so the profile is not empty,
-then paste its credentials into the review notes above. Use an address you control and
-a throwaway password; the account can be deleted from inside the app afterwards.
+**Done for 1.3.0.** A real account (`applereview@versearcade.org`) is in App Store
+Connect's App Review Information → Sign-In Information, with "Sign-in required"
+checked. Its password lives only there, on purpose — see the note above the review
+notes.
+
+Two things to do once, before submitting: **play a round on that account** so the
+profile a reviewer lands on is not empty, and **join a church on it**, so the
+Church tab shows a congregation and a yard rather than the picker. Both take a
+minute and both turn a screen that looks unfinished into the screen the listing
+describes.
 
 ---
 

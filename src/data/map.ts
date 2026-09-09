@@ -223,6 +223,15 @@ export const MAP_PLACES: MapPlace[] = [
     wall: 'bible',
   },
   {
+    id: 'seals',
+    icon: '🔖',
+    label: 'Your seals',
+    line: 'A seal for every book you finish reading',
+    to: '/bible/seals',
+    area: 'study',
+    wall: 'bible',
+  },
+  {
     id: 'highlights',
     icon: '💛',
     label: 'Verses you’ve kept',
@@ -283,6 +292,14 @@ export const MAP_PLACES: MapPlace[] = [
     label: 'Customize',
     line: 'Skins, pets, items, cards, borders and badges',
     to: '/you?customize=1',
+    area: 'you',
+  },
+  {
+    id: 'wardrobe',
+    icon: '🧺',
+    label: 'The Wardrobe',
+    line: 'Everything there is to wear, and what brings it',
+    to: '/wardrobe',
     area: 'you',
   },
   {

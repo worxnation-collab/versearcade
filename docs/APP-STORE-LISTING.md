@@ -84,145 +84,134 @@ Start your streak today. It's one verse.
 > on the day you submit. Do not bump the version for a new feature — only an
 > *approved* version forces a bump.
 >
-> Last rebuilt against `git log --first-parent` on 2026-09-01, covering #157 to the
-> daily drop dropping its bonus question. **3,914 characters against Apple's
-> 4,000 limit.**
+> **Rebuilt from scratch on 2026-09-08** against `git log --first-parent`, covering
+> everything from the 1.3.0 cut (#191/#195) to the Sharkey skin (#265). The previous
+> draft was rebuilt on 2026-09-01 and had gone **71 merges stale**, missing whole
+> features — the Prayer Wall, the card's About strip, the missed list, unlock
+> toasts, "Your week", the streak's safety net and the gathering hour. It was also
+> at 3,914 of Apple's 4,000 characters with nothing left to shave, which is why this
+> is a rewrite rather than an append: the old block spent its budget on mechanics
+> nuance (how banding works, what a rating would have been) that a store listing
+> does not owe anybody. **3,928 characters against Apple's 4,000 limit, leaving 72 spare** — counted on the fenced body, which is what Apple measures.
 >
-> Two revisions ago this block was at the wall with nothing left to shave, and the
-> rule since has been that the next feature TAKES SOMETHING OUT. Bonus trivia paid
-> by deleting `THE STUDY TAB IS A LIBRARY` (it appears near-verbatim in 1.2.0's
-> shipped notes below, checked line by line rather than taken on trust), the
-> `every church building is painted` bullet, and its own `every answer teaches`
-> line, which the BATTLE section already says.
+> **Three things are deliberately absent, and each is a judgement rather than an
+> oversight:**
 >
-> The Play-tab redesign paid the same way. It also **corrected a line that would
-> have shipped false**: the arcade bullet said a cabinet sits "on the home screen
-> once today's verse is done", and that card is gone — the arcade is a row on the
-> compass now. What came out to make room: `Once a run starts, it runs`, the only
-> bullet here announcing a RESTRICTION rather than a thing you get, and the
-> statues-move nuance, which is a sub-case of the drag bullet above it.
+> - **The Sharkey skin.** It is locked to one account and nobody else can ever have
+>   it (`0108`). A bullet announcing a look no reader can obtain is worse than no
+>   bullet.
+> - **"Watch yesterday's verse."** It is a row of links shown only when the TikTok
+>   account has published a video for yesterday, so it is not something a player can
+>   reliably DO, and a bullet promising it would be false on any day the row is
+>   empty. Unchanged judgement from the previous draft.
+> - **The whole TikTok engine, the operator's voice loop and sign-up sources.** They
+>   are operator tools. `/admin` renders nothing for any other account.
 >
-> The daily drop's bonus trivia question was then REMOVED, so the bullet claiming
-> "the last question of every run is now a bonus about the BOOK" would have
-> shipped false — corrected, and the section renamed to what trivia actually is
-> now (rounds of its own, and a battle mode). That is the second false line this
-> block has been caught carrying in a day; both were found by re-reading it
-> against the change rather than by anything automatic, and nothing in CI checks
-> it.
+> The founding-patron skin swap (whale → Cephas) also takes no space, for the reason
+> the last draft gave and which still holds: nothing a player DOES changed. What it
+> does still need is the IAP's display name in App Store Connect read, and changed to
+> "Founding Patron" if it names the whale — a metadata edit that goes to review while
+> the approved version stays on sale, so there is no gap.
 >
-> **The founding-patron skin swap (whale → Cephas) deliberately took NO space
-> here, and that is a judgement rather than an oversight.** What's New is for
-> what a player can now DO, and nothing they do changed: the app's one product
-> costs the same $9.99, buys the same kind of thing (a look — now a skin plus the
-> Cornerstone card background), and every existing patron keeps the whale and is
-> given the rock. There is no bullet worth 200 characters of a 4,000-character
-> budget in "the optional thank-you looks different". Two things it DOES need,
-> neither of them here: migration `0095` applied before this merges, and the IAP's
-> display name in App Store Connect read (and, if it names the whale, changed to
-> "Founding Patron" — a metadata edit that goes to review while the approved
-> version stays on sale, so there is no gap).
+> **Updated 2026-09-08** for the Book Collection (#PR): the seals and the reading
+> borders got their own two-line block, and the budget for it came from trimming
+> six bullets and dropping two (the church picker's "suggested before you type",
+> and the chest card going straight onto the profile — both true, both the least
+> a reader loses by not reading), and again for the Wardrobe, paid for by
+> shortening five more. This is what "a running draft" means in practice: a new
+> feature costs an old sentence, not a version bump.
 >
-> 86 characters of headroom is not a reprieve — the next feature is in exactly the
-> same position. The remaining honest cuts are **live battles** and **the weekly
-> church rivalry**, if the check below shows they shipped in 1.2.0 already. That
-> check is owed before submission regardless, and it is the only thing that will
-> make real room.
+> **This block is genuinely full and shortening is spent** — the easy wordiness is
+> gone, so a new feature now costs a whole bullet. The overlay skins were paid for
+> exactly that way: the **gathering hour** line came out, which was the first
+> candidate named here when the rule was written, and the streak's safety-net line
+> was cut back to its reminder half, and "see who played today" went too — all
+> three of the candidates this note had already named, spent in one round. There
+> is no obvious fourth: from here, adding a bullet means deciding which FEATURE
+> the listing stops mentioning.
 >
-> **"Watch yesterday's verse" deliberately takes NO space here**, the same
-> judgement the patron swap got. It is a row of links to the TikTok account's
-> video of yesterday's verse, shown on the result screen only when there is a
-> published video to point at — so it is not something a player can reliably DO,
-> and a bullet promising it would be false on any day the row is empty. It costs
-> nothing here, and nothing in App Store Connect either.
->
-> **The Prayer Wall landed after the 3,914-character count above** (leave a note,
-> the wall deals you somebody else's, hold a candle for it; migration `0099`). It
-> is exactly the kind of thing What's New exists to say and there is no room for
-> it until the cut above is made — so the cut is no longer optional. Suggested
-> bullet, ~190 characters: "THE PRAYER WALL · Leave a note — a kind of thing,
-> a line if you want, signed or not. The wall hands you somebody else's; hold the
-> candle for them. When theirs is answered, you're told."
+> **Before submitting, two checks this file cannot do for itself:** open App Store
+> Connect and read what is actually approved (the version paragraph in CLAUDE.md is a
+> claim about Apple, not about the repo, and it has gone stale silently before), and
+> re-read this block against `git log` for anything that merged after today.
 
 ```
-BIBLE TRIVIA, A ROUND AT A TIME
-• Four hundred questions about the BOOKS of the Bible — their people, their
-  places, what happens in them — across all sixty-six.
-• A whole round of it now sits beside today's verse: five questions on one book,
-  the same book for everyone, new each morning. Tabitha lends more on any book
-  you pick. No XP, no rank, nothing to fall behind on.
+Everything here is new since 1.2.0.
+
+TODAY IS TWO THINGS NOW
+• The Play tab is today's verse, today's trivia round and your road. Nothing else.
+• Trivia is four hundred questions about the BOOKS of the Bible. Five on one book
+  each morning, the same book for everyone. No XP, no rank, nothing to fall behind
+  on.
+• A compass names what is open right now and goes quiet once your day is done. Never a score, never a list of what you missed.
+
+EVERY RUN ENDS WITH WHAT YOU LEARNED
+• Miss a question and the fact behind it is waiting at the end — "3 things you now
+  know", never "3 wrong".
+• Earn a piece for one of your rooms and you are told the moment it is yours.
 
 BATTLE ANYONE, RIGHT NOW
-• Quick match: tap it and we'll put you with whoever else is looking. No code, no
-  queue position, no rating — whoever's there is who you get.
+• Quick match: tap it and we put you with whoever else is looking. No code, no
+  queue, no rating.
 • Or share a room code. Either way you both read the same verse, you both tap
-  ready, and a bar shows where the other player is the whole way down.
-• Pick what kind of round you're battling: the verse, or trivia on one book.
-• Battles pay 10 XP for turning up, three a day — winner and loser get exactly
-  the same, because what's rewarded is playing, not beating anybody.
-• Six new looks earned in battle. Jonathan and Deborah come from playing live,
-  win or lose; Francis of Assisi, Hildegard of Bingen, Thomas Aquinas and
-  Melisende of Jerusalem from winning. You're told the moment one is yours — no
-  progress bar to grind, and nothing anywhere counts what you've lost.
-• Wrong answers still teach. The line explaining one is yours to read at your own
-  pace, even if it costs you the round.
+  ready, and a bar shows where the other player is.
+• Pick the round: the verse, or trivia on one book.
+• 10 XP for turning up, three a day — winner and loser get exactly the same.
+• Six looks earned in battle. Jonathan and Deborah from playing live, win or lose;
+  Francis, Hildegard, Aquinas and Melisende from winning. No progress bar to grind,
+  and nothing counts what you have lost.
 
-THERE'S AN ARCADE IN HERE NOW
-• A cabinet in your own room, and a row on the compass whenever you want one.
+THERE IS AN ARCADE IN HERE
 • Manna Rush: seven days in the wilderness. Gather the fresh flakes, leave
-  yesterday's, and on the seventh day the best thing to do is rest.
-• Word Catch: a verse comes loose from the page and you tap the words back into
-  order. Play again and a different one comes apart.
-• Cross Word: two words that share a letter, standing as a cross. Solve it and the
-  squares turn to wood with the verse carved underneath. A fresh cut every time.
-• Your first go on each machine is worth 5 XP a day — for turning up, not for doing
-  well. No high scores, and nothing in here can be lost.
-• Send a friend a machine: a shared link is one free go, no account or download.
+  yesterday's, and on the seventh day the best thing is to rest.
+• Word Catch: a verse comes loose from the page and you tap the words back in
+  order.
+• Cross Word: two words that share a letter, standing as a cross. Solve it and
+  the squares turn to wood with the verse carved underneath.
+• Your first go on each machine is worth 5 XP a day, for turning up rather than for
+  doing well. No high scores, and nothing here can be lost.
+• Share a machine: one free go, no account, no download.
 
-FIRST LIGHT: THE DAY BELONGS TO WHOEVER OPENS IT
-• The first person to open a day's verse holds its first light, and everyone who
-  opens it after them is worth a point of XP to them. Nothing is taken from
-  anybody — the points are minted, not moved.
-• No second place, no leaderboard of who was quickest, and a fresh start at
-  midnight.
+PRAY, AND BE PRAYED FOR
+• The Prayer Wall: tuck a note into the stones, and the wall deals somebody else's
+  to you. Hold the candle until the wick catches.
+• A stranger only ever sees the category. Your own words reach your church and
+  buddies, or nobody at all. Anonymous unless you sign it.
+• No note carries a count, so no note can become a ladder of who is loved.
+
+READING FINALLY UNLOCKS SOMETHING
+• Read every chapter of a book and its seal is pressed into your Bible. Sixty-six
+  to find, and the short ones take an evening.
+• A wardrobe page: everything there is to wear and what brings it. No counts, no
+  bars.
+• Four rings and four badges for chapters opened, the first at ten. Nothing here can
+  be taken back.
+• Three looks that layer BEHIND your own character instead of replacing it — a
+  vine, a pillar of fire, sheltering wings. Your face, your robe, your items stay.
+
+FIRST LIGHT
+• Whoever opens a day's verse first holds its light, and everyone who opens it
+  after is worth a point to them. Nothing is taken from anybody — the points are
+  minted, not moved. No second place, and a fresh start at midnight.
 
 YOUR CHURCH HAS SOMEBODY TO PLAY THIS WEEK
-• Every Monday your church is matched against another its own size. Whoever gives
-  more raises a statue in their churchyard, and your congregation picks which one.
-  Nobody is named on the losing side, and Monday starts everyone at nothing.
-• Small congregations play other small congregations, so a church of four can
-  actually win its week.
-• The board reads Today, This week or All time, so a church playing hard now
-  isn't buried under one that banked its points two years ago and went quiet.
-• Churches near you are suggested before you type a thing, and a verified leader
-  can keep their own church's page up to date.
+• Every Monday your church meets another its own size. Whoever gives more raises a
+  statue in their churchyard, and your congregation picks which one. Nobody is named
+  on the losing side, and Monday starts everyone at nothing.
+• Small congregations play small ones, so a church of four can win its week.
+• The board reads Today, This week or All time, so a church playing hard now is not
+  buried under one that banked points two years ago.
 
-ARRANGE EVERYTHING WITH YOUR THUMB
-• Pick up anything in your Upper Room, your keep's hall or your churchyard and
-  drag it where you like. Rugs stay on floors, banners on walls, plants on grass,
-  and nothing you place is ever lost or overwritten.
-• A plant at the front of the lawn is nearer, so it's bigger. Drag it back toward
-  the church and it settles into the distance.
-• Finer furnishings are their own rewards now: you earn Fine and Grand by playing
-  instead of stacking duplicates, and a lesser copy upgrades where it stands.
+THE REST
+• Your week, on a Sunday: what you did over seven days. Your own numbers, nothing
+  compared to anybody.
+• Your reminder learns the hour you actually play.
+• Put a favourite verse, book and translation on your card.
+• Drag anything in your Upper Room, hall or churchyard exactly where you want it.
+  Fine and Grand pieces are earned by playing now, not by stacking duplicates.
 
-FIND ANYTHING IN ONE TAP
-• The Play tab is today's verse, today's trivia and your road. Nothing else.
-• A compass under them maps everywhere in the app and lights up while something
-  is open. Never a score, never a list of what you missed.
+No ads, no tracking, and a wrong answer still teaches you something.
 ```
-
-**Three sections here may already be in players' hands, and the repo cannot settle
-it.** `1.2.0 is live: close its train` (#158) landed *after* the weekly rivalry
-(#157) and live battles (#156), and the Study library (#169) landed after it — so
-the merge order says one thing and the 1.2.0 release notes below, which describe
-the library as shipped, say another. A binary is cut before it is approved, and
-only App Store Connect knows what was in it.
-
-So before submitting: open the uploaded 1.2.0 build and check whether **live
-battles**, **the weekly church rivalry** and **the Study library** are in it. Cut
-whatever is — announcing a feature the store already showed people is worse than a
-short release note. Everything else in the block above merged well after 1.2.0 was
-live and is safe.
 
 ### 1.2.0 — the release after 1.1.0 (SHIPPED, approved and live)
 ```

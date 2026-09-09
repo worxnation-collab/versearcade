@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Avatar } from '@/components/Avatar'
 import { TabbedSection } from '@/components/TabbedSection'
@@ -20,16 +21,20 @@ import { petProgress } from '@/lib/petProgress'
 import { useBible } from '@/store/bible'
 import { useKeep } from '@/store/keep'
 import { BORDERS, BADGES, isUnlocked } from '@/data/cosmetics'
+import { chaptersOpened } from '@/data/seals'
 import { useCollection } from '@/store/collection'
 import { collectibleByKey } from '@/data/collectibles'
 import { CARD_BACKGROUNDS, DEFAULT_CARD_BG, cardBgStyle, cardArtProps, cardBgAccentColor, cardBgUnlocked } from '@/data/playerCards'
 import { CardArt } from '@/data/cardArt'
+import { ItemShapeThumb } from '@/data/itemArt'
 import { SavedLooks } from './SavedLooks'
 import { CardAboutEditor } from './CardAboutEditor'
 import {
   DEFAULT_AVATAR,
   distinctSharedDays,
-  ITEMS,
+  allItems,
+  completedSets,
+  setById,
   allSkins,
   BUNDLES,
   bundleExpired,
@@ -46,6 +51,7 @@ import {
   type ItemDef,
   type SkinDef,
   itemArt,
+  itemHasRaster,
 } from '@/data/avatar'
 import { BundleSheet } from './BundleSheet'
 import type { AvatarSpec } from '@/types'
@@ -119,6 +125,7 @@ export function CustomizeSection() {
     savedTimer.current = setTimeout(() => setSavedFlash(false), 1500)
   }
 
+  const navigate = useNavigate()
   const setAvatarCharacter = useAuth((s) => s.setAvatarCharacter)
   const setCardBackground = useAuth((s) => s.setCardBackground)
   const setPet = useAuth((s) => s.setPet)
@@ -137,6 +144,10 @@ export function CustomizeSection() {
   const loadBible = useBible((st) => st.load)
   const loadKeep = useKeep((st) => st.load)
   const bibleLoaded = useBible((st) => st.loaded)
+  // Chapters opened, ever — the gate on the reading borders and badges (0109).
+  // The store above is already loaded for the pet requirements, so this costs
+  // nothing extra; without it every reading cosmetic would read as locked.
+  const chaptersRead = chaptersOpened(useBible((st) => st.chapters))
   const keepLoaded = useKeep((st) => st.loaded)
   useEffect(() => {
     if (!bibleLoaded) void loadBible()
@@ -214,7 +225,12 @@ export function CustomizeSection() {
   }
 
   const ownedItems = profile.ownedItems ?? []
-  const myItems = profile.isAdmin ? ITEMS : ITEMS.filter((i) => ownedItems.includes(i.id))
+  const everyItem = allItems()
+  const myItems = profile.isAdmin ? everyItem : everyItem.filter((i) => ownedItems.includes(i.id))
+  // Sets are a NAME and a completion and nothing else — see ITEM_SETS in
+  // data/avatar. Never rendered as "2 of 3": the shelf says which set a piece
+  // belongs to, and says so differently once the set is whole.
+  const wholeSets = completedSets(profile.isAdmin ? everyItem.map((i) => i.id) : ownedItems)
   const toggleItem = (item: ItemDef) => {
     setErr(null)
     juice.select()
@@ -235,7 +251,7 @@ export function CustomizeSection() {
   /** Reactive pass skins store their state in the id ('ruth_2'); compare bases. */
   const isEquipped = (skin: SkinDef) => !!equippedSkin && baseSkinId(equippedSkin) === skin.id
   const isSkinOwned = (skin: SkinDef) =>
-    skinOwned(skin, { sharedDays: profile.sharedDays, ownedSkins, referralCount: profile.referralCount, liveBattles: profile.liveBattles, battleWins: profile.battleWins, admin: profile.isAdmin, seasonUnlocks })
+    skinOwned(skin, { sharedDays: profile.sharedDays, ownedSkins, referralCount: profile.referralCount, liveBattles: profile.liveBattles, battleWins: profile.battleWins, chaptersRead, level: profile.level, admin: profile.isAdmin, seasonUnlocks })
   // Cosmetics aren't sold any more — the launch trio is free, the angels are
   // road rewards and the promo skins are free redemptions — so the copy under
   // the grid only mentions money while a listing that still HAS a price is
@@ -449,7 +465,16 @@ export function CustomizeSection() {
                                 // is stated in words, with no counter.
                                 : skin.winGoal != null
                                   ? '\u2694\uFE0F Earned by winning battles'
-                                  : `Shared ${Math.min(sharedCount, skin.shareGoal ?? 0)}/${skin.shareGoal ?? 0} days`
+                                  // The reading and level overlays. Both show a
+                                  // COUNT because both are numbers the player
+                                  // can already see elsewhere (the Seals page,
+                                  // the level bar) — unlike battles won, which
+                                  // is deliberately never drawn as a ladder.
+                                  : skin.chapterGoal != null
+                                    ? `${Math.min(chaptersRead, skin.chapterGoal)}/${skin.chapterGoal} chapters`
+                                    : skin.levelGoal != null
+                                      ? `Level ${skin.levelGoal}`
+                                      : `Shared ${Math.min(sharedCount, skin.shareGoal ?? 0)}/${skin.shareGoal ?? 0} days`
                             : skin.exclusive ? `🔒 ${skin.packName ?? 'Exclusive'}`
                               : skin.bundleOnly ? `🔒 ${skin.packName ?? 'Pack only'}`
                                 : `🔒 ${skin.price}`
@@ -510,6 +535,17 @@ export function CustomizeSection() {
                     off — your own character is underneath, exactly as you made it.
                     {pricedOnShelf && ' The one listing with a price is the founding-patron thank-you — nothing in the game is behind it.'}
                   </p>
+                  {/* The wardrobe is the same content laid out by DOOR rather
+                      than by shelf — "what brings this" instead of "what kind of
+                      thing is this". It is on the map too; this is the door for
+                      somebody who is already standing in front of the grid. */}
+                  <button
+                    className="pill"
+                    onClick={() => { juice.select(); navigate('/wardrobe') }}
+                    style={{ width: '100%', marginTop: 10, fontWeight: 800, fontSize: 12.5, padding: '9px 14px' }}
+                  >
+                    🧺 See everything there is to wear →
+                  </button>
                   {/* Restore Purchases — REQUIRED by Apple for non-consumable in-app
                       purchases (Guideline 3.1.1): a buyer who reinstalls, or signs in on a
                       second device, has to be able to get their packs back without paying
@@ -692,7 +728,7 @@ export function CustomizeSection() {
           {
             key: 'items',
             label: 'Items',
-            right: `${myItems.length} collected`,
+            right: wholeSets.length > 0 ? `${myItems.length} · ${wholeSets.length} set${wholeSets.length === 1 ? '' : 's'}` : `${myItems.length} collected`,
             content: (
               <>
               {/* ── Collected items (from the Daily Chest) ────────────────────── */}
@@ -726,22 +762,49 @@ export function CustomizeSection() {
                             cursor: 'pointer',
                           }}
                         >
-                          <img
-                            src={itemArt(item.id)}
-                            alt=""
-                            aria-hidden
-                            width={40}
-                            height={40}
-                            loading="lazy"
-                            style={{ gridArea: 'art', width: 40, height: 40, objectFit: 'contain', alignSelf: 'center' }}
-                          />
+                          <span style={{ gridArea: 'art', width: 40, height: 40, alignSelf: 'center', display: 'grid', placeItems: 'center' }}>
+                            {itemHasRaster(item.id) ? (
+                              <img
+                                src={itemArt(item.id)}
+                                alt=""
+                                aria-hidden
+                                width={40}
+                                height={40}
+                                loading="lazy"
+                                style={{ width: 40, height: 40, objectFit: 'contain' }}
+                              />
+                            ) : (
+                              /* A catalog item has no PNG by design — it draws itself. */
+                              <ItemShapeThumb id={item.id} slot={item.slot} size={40} />
+                            )}
+                          </span>
                           <span style={{ gridArea: 'name', fontSize: 12, fontWeight: 800, lineHeight: 1.15 }}>{item.name}</span>
-                          <span className="faint" style={{ gridArea: 'meta', fontSize: 10, textTransform: 'capitalize' }}>{item.slot} · {item.rarity}</span>
+                          <span className="faint" style={{ gridArea: 'meta', fontSize: 10, textTransform: 'capitalize' }}>
+                            {item.slot} · {item.rarity}
+                            {item.set && (
+                              <>
+                                {' · '}
+                                <span style={{ color: wholeSets.some((w) => w.id === item.set) ? 'var(--gold)' : undefined }}>
+                                  {setById(item.set)?.name ?? item.set}
+                                </span>
+                              </>
+                            )}
+                          </span>
                           <span style={{ ...pillStyle(on ? 'studio' : 'free'), gridArea: 'pill', marginTop: 2 }}>{on ? '✓ Worn' : 'Tap to wear'}</span>
                         </button>
                       )
                     })}
                   </div>
+                )}
+                {/* A set is a name and a completion. Never "2 of 3": a bar
+                    toward a set you don't have is a list of what you're behind
+                    on, which is the one shape this app doesn't draw. */}
+                {wholeSets.length > 0 && (
+                  <p style={{ fontSize: 11.5, marginTop: 10, lineHeight: 1.5, color: 'var(--gold)' }}>
+                    {wholeSets.map((w) => w.name).join(' · ')} —{' '}
+                    {wholeSets.length === 1 ? 'that set is whole.' : 'those sets are whole.'}{' '}
+                    <span className="faint">{wholeSets.map((w) => w.blurb).join(' ')}</span>
+                  </p>
                 )}
               </div>
               </>
@@ -819,7 +882,7 @@ export function CustomizeSection() {
           {
             key: 'borders',
             label: 'Borders',
-            right: `Best streak: ${longest}d`,
+            right: `${longest}d streak · ${chaptersRead} ch`,
             content: (
               <>
               {/* ── Streak-unlocked borders + badges ──────────────────────────── */}
@@ -830,7 +893,7 @@ export function CustomizeSection() {
                     // the server (0096) makes the same call in the same order.
                     const unlocked = b.pack
                       ? packPreviewable(b.pack, ownedSkins, profile.isAdmin) || !!profile.founder
-                      : isUnlocked(b.requiredStreak, longest, profile.founder)
+                      : isUnlocked(b, longest, profile.founder, chaptersRead)
                     const equipped = equippedBorder === b.key
                     return (
                       <CosmeticTile
@@ -839,7 +902,13 @@ export function CustomizeSection() {
                         unlocked={unlocked}
                         equipped={equipped}
                         requiredStreak={b.requiredStreak}
-                        lockHint={b.pack === 'patron' ? 'Comes with the Founding Patron' : undefined}
+                        lockHint={
+                          b.pack === 'patron'
+                            ? 'Comes with the Founding Patron'
+                            : b.requiredChapters != null
+                              ? `${b.requiredChapters.toLocaleString()} chapters read`
+                              : undefined
+                        }
                         onClick={unlocked && !equipped ? () => equip({ border: b.key }) : undefined}
                         preview={
                           <Avatar
@@ -862,13 +931,14 @@ export function CustomizeSection() {
           {
             key: 'badges',
             label: 'Badges',
+            right: `${longest}d streak · ${chaptersRead} ch`,
             content: (
               <>
               {/* Badges */}
               <div className="card" style={{ marginBottom: 14 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
                   {BADGES.map((b) => {
-                    const unlocked = isUnlocked(b.requiredStreak, longest, profile.founder)
+                    const unlocked = isUnlocked(b, longest, profile.founder, chaptersRead)
                     const equipped = equippedBadge === b.key
                     return (
                       <CosmeticTile
@@ -877,6 +947,11 @@ export function CustomizeSection() {
                         unlocked={unlocked}
                         equipped={equipped}
                         requiredStreak={b.requiredStreak}
+                        lockHint={
+                          b.requiredChapters != null
+                            ? `${b.requiredChapters.toLocaleString()} chapters read`
+                            : undefined
+                        }
                         onClick={unlocked && !equipped ? () => equip({ badge: b.key }) : undefined}
                         preview={
                           <Avatar

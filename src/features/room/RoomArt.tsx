@@ -1,3 +1,4 @@
+import { DEFAULT_ROOM_SKIN, roomPalette } from './skins'
 import { GENERATED_ART } from '@/data/generatedArt'
 import { furnishingById, roomTierName, type RoomMount } from '@/data/room'
 import { unpackDecor } from '@/data/placement'
@@ -86,21 +87,64 @@ const TIERS: RoomTierStyle[] = [
 export const roomTierCount = TIERS.length
 
 /**
- * A painting for this tier if one has been generated (art/upper-room.json →
- * `room-1` … `room-5`), otherwise nothing — the drawn chamber underneath is
- * always rendered, so a tier without art still reads as its own room rather
- * than as the wrong one. Wiring is automatic: the generator writes
- * data/generatedArt.ts, so a room starts being painted the moment its file
- * lands and no id can point at a 404.
+ * A painting for this (skin, tier) if one has been generated, otherwise
+ * nothing — the drawn chamber underneath is always rendered, so a room without
+ * art still reads as itself rather than as the wrong one. Wiring is automatic:
+ * the generator writes data/generatedArt.ts, so a room starts being painted the
+ * moment its file lands and no id can point at a 404.
+ *
+ * The SKIN is part of the key, and it has to be. The five bundled paintings
+ * (art/upper-room.json → `room-1` … `room-5`) are the CLAY room — they were
+ * painted before materials existed — and they are laid OVER the drawn chamber,
+ * so with a flat `room-<tier>` lookup a player choosing cedar would repaint the
+ * SVG underneath and then have the clay painting drawn on top of it. The
+ * material would be invisible, which is the whole feature.
+ *
+ * So a skinned room looks for `room-<skin>-<tier>`, and the default skin falls
+ * back to the historic `room-<tier>` ids. Paint a material later and it wires
+ * itself in with no code change, the `GENERATED_ART` bargain.
+ *
+ * The fallback is ALL-OR-NOTHING PER MATERIAL, which is a narrower rule than
+ * the per-entry one `ChurchArt` uses, and the difference was earned during this
+ * batch: `dusk` sat for an hour with tiers 1 and 2 painted and 3-5 lost to a
+ * run of 503s from the image API. Per entry, that player's room would have been
+ * a painting up to level 5 and a drawing from level 12 — and unlike a church's
+ * building, which somebody meets once on a ladder climbed over months, YOUR OWN
+ * ROOM changes tier under you. A material that switches medium halfway up reads
+ * as the art breaking rather than as the room growing.
+ *
+ * All fifteen renders exist now, so nothing is currently drawn. The rule stays
+ * because it is what makes adding a FIFTH material safe: paint it one tier at a
+ * time and players see the old drawn room until the set is whole, rather than a
+ * half-painted one.
  */
-const roomImage = (tier: number): string | null => GENERATED_ART[`room-${tier + 1}`] ?? null
+const PAINTED_SKINS: Record<string, boolean> = {}
+const roomPainted = (skin: string): boolean => {
+  if (PAINTED_SKINS[skin] === undefined) {
+    PAINTED_SKINS[skin] = Array.from({ length: TIERS.length }, (_, i) =>
+      skin === DEFAULT_ROOM_SKIN
+        ? GENERATED_ART[`room-${skin}-${i + 1}`] ?? GENERATED_ART[`room-${i + 1}`]
+        : GENERATED_ART[`room-${skin}-${i + 1}`],
+    ).every(Boolean)
+  }
+  return PAINTED_SKINS[skin]
+}
 
-export function RoomChamber({ tier = 0, flat = false }: { tier?: number; flat?: boolean }) {
+const roomImage = (tier: number, skin?: string | null): string | null => {
+  const id = skin ?? DEFAULT_ROOM_SKIN
+  if (!roomPainted(id)) return null
+  return (
+    GENERATED_ART[`room-${id}-${tier + 1}`] ??
+    (id === DEFAULT_ROOM_SKIN ? GENERATED_ART[`room-${tier + 1}`] ?? null : null)
+  )
+}
+
+export function RoomChamber({ tier = 0, flat = false, skin }: { tier?: number; flat?: boolean; skin?: string | null }) {
   const t = Math.min(TIERS.length - 1, Math.max(0, tier))
-  const painting = flat ? null : roomImage(t)
+  const painting = flat ? null : roomImage(t, skin)
   return (
     <>
-      <DrawnChamber tier={t} />
+      <DrawnChamber tier={t} skin={skin} />
       {painting && (
         <image
           href={painting}
@@ -124,22 +168,28 @@ export function RoomChamber({ tier = 0, flat = false }: { tier?: number; flat?: 
  * alcove on top of each other and drew two arches in the same place; the anchor
  * table in data/room.ts carries the same warning.
  */
-function DrawnChamber({ tier }: { tier: number }) {
+// The tier decides the room's SHAPE — plaster, window, beams, gilt — and the
+// skin decides only what it is MADE of. So `s` is read for the booleans and
+// `pal` for every colour of wall, floor and fixture wood: a skin can repaint a
+// Bare Chamber but can never make it look like a higher one. Same guarantee
+// "a skinned church is not a bigger church" gives, in the shape of the code.
+function DrawnChamber({ tier, skin }: { tier: number; skin?: string | null }) {
   const s = TIERS[tier]
+  const pal = roomPalette(skin, tier)
   return (
     <g>
       {/* Back wall + floor */}
-      <rect x="0" y="0" width="560" height="300" fill={s.wall} />
+      <rect x="0" y="0" width="560" height="300" fill={pal.wall} />
       {/* The wall darkens toward the ceiling, so a flat fill doesn't read as a
           blank rectangle behind everything. */}
-      <rect x="0" y="0" width="560" height="46" fill={s.wallDark} />
-      <rect x="0" y="46" width="560" height="10" fill={s.wallDark} opacity="0.45" />
-      <rect x="0" y="216" width="560" height="84" fill={s.floor} />
-      <rect x="0" y="216" width="560" height="6" fill={s.floorDark} />
+      <rect x="0" y="0" width="560" height="46" fill={pal.wallDark} />
+      <rect x="0" y="46" width="560" height="10" fill={pal.wallDark} opacity="0.45" />
+      <rect x="0" y="216" width="560" height="84" fill={pal.floor} />
+      <rect x="0" y="216" width="560" height="6" fill={pal.floorDark} />
 
       {/* Brick coursing on the bare chamber; smooth plaster above it. */}
       {!s.plastered && (
-        <g stroke={s.wallDark} strokeWidth="1.4" opacity="0.65">
+        <g stroke={pal.wallDark} strokeWidth="1.4" opacity="0.65">
           {[62, 92, 122, 152, 182].map((y) => (
             <line key={y} x1="0" y1={y} x2="560" y2={y} />
           ))}
@@ -159,7 +209,7 @@ function DrawnChamber({ tier }: { tier: number }) {
 
       {/* Floorboards, once the floor is boarded rather than beaten earth. */}
       {s.plastered && (
-        <g stroke={s.floorDark} strokeWidth="1.2" opacity="0.5">
+        <g stroke={pal.floorDark} strokeWidth="1.2" opacity="0.5">
           {[236, 256, 278, 296].map((y) => (
             <line key={y} x1="0" y1={y} x2="560" y2={y} />
           ))}
@@ -169,8 +219,8 @@ function DrawnChamber({ tier }: { tier: number }) {
       {/* Ceiling beams */}
       {s.beams && (
         <g>
-          <rect x="0" y="0" width="560" height="15" fill={WOOD} />
-          <g fill={WOOD_DARK}>
+          <rect x="0" y="0" width="560" height="15" fill={pal.wood} />
+          <g fill={pal.woodDark}>
             {[70, 190, 310, 430].map((x) => (
               <rect key={x} x={x} y="0" width="16" height="34" />
             ))}
@@ -187,53 +237,53 @@ function DrawnChamber({ tier }: { tier: number }) {
           <path
             d="M400 150 v-52 a30 30 0 0 1 60 0 v52 z"
             fill="none"
-            stroke={s.gilt ? GOLD_DEEP : s.wallDark}
+            stroke={s.gilt ? GOLD_DEEP : pal.wallDark}
             strokeWidth="5"
           />
           <circle cx="444" cy="110" r="6.5" fill={STAR} opacity="0.85" />
           <circle cx="415" cy="126" r="2" fill={STAR} opacity="0.7" />
           <circle cx="428" cy="96" r="1.6" fill={STAR} opacity="0.55" />
-          {s.upper && <rect x="428" y="72" width="4" height="78" fill={s.wallDark} />}
+          {s.upper && <rect x="428" y="72" width="4" height="78" fill={pal.wallDark} />}
           {/* The sill the sill-mount anchor stands on. */}
           <rect x="392" y="148" width="76" height="7" rx="2" fill={s.gilt ? GOLD_DEEP : WOOD} />
-          <rect x="392" y="155" width="76" height="3" fill={WOOD_DARK} />
+          <rect x="392" y="155" width="76" height="3" fill={pal.woodDark} />
         </g>
       ) : (
         <g>
           <rect x="420" y="86" width="20" height="58" rx="9" fill={NIGHT} />
           <circle cx="430" cy="104" r="2" fill={STAR} opacity="0.6" />
-          <rect x="396" y="146" width="68" height="7" rx="2" fill={WOOD_DARK} />
+          <rect x="396" y="146" width="68" height="7" rx="2" fill={pal.woodDark} />
         </g>
       )}
 
       {/* THE SHELF — 110..214 on the left wall. Two anchors stand on it. */}
       <g>
-        <rect x="110" y="126" width="104" height="7" rx="2" fill={WOOD} />
-        <rect x="110" y="133" width="104" height="3" fill={WOOD_DARK} />
-        <rect x="118" y="136" width="6" height="10" fill={WOOD_DARK} />
-        <rect x="200" y="136" width="6" height="10" fill={WOOD_DARK} />
+        <rect x="110" y="126" width="104" height="7" rx="2" fill={pal.wood} />
+        <rect x="110" y="133" width="104" height="3" fill={pal.woodDark} />
+        <rect x="118" y="136" width="6" height="10" fill={pal.woodDark} />
+        <rect x="200" y="136" width="6" height="10" fill={pal.woodDark} />
         {s.gilt && <rect x="110" y="123.5" width="104" height="2.5" fill={GOLD_DEEP} />}
       </g>
 
       {/* THE ALCOVE — 470..540 on the far right, clear of the window. */}
       <g>
-        <path d="M470 248 v-62 a35 35 0 0 1 70 0 v62 z" fill={s.wallDark} />
+        <path d="M470 248 v-62 a35 35 0 0 1 70 0 v62 z" fill={pal.wallDark} />
         <path d="M474 248 v-60 a31 31 0 0 1 62 0 v60 z" fill="#241d15" opacity="0.7" />
         <path
           d="M470 248 v-62 a35 35 0 0 1 70 0 v62 z"
           fill="none"
-          stroke={s.gilt ? GOLD_DEEP : s.floorDark}
+          stroke={s.gilt ? GOLD_DEEP : pal.floorDark}
           strokeWidth="4"
         />
-        {s.upper && <rect x="464" y="246" width="82" height="8" rx="2" fill={s.floorDark} />}
+        {s.upper && <rect x="464" y="246" width="82" height="8" rx="2" fill={pal.floorDark} />}
       </g>
 
       {/* THE LOW TABLE, mid-floor. Two anchors stand on its top. */}
       <g>
-        <rect x="262" y="212" width="104" height="9" rx="3" fill={WOOD} />
-        <rect x="262" y="221" width="104" height="4" fill={WOOD_DARK} />
-        <rect x="272" y="225" width="8" height="28" fill={WOOD_DARK} />
-        <rect x="348" y="225" width="8" height="28" fill={WOOD_DARK} />
+        <rect x="262" y="212" width="104" height="9" rx="3" fill={pal.wood} />
+        <rect x="262" y="221" width="104" height="4" fill={pal.woodDark} />
+        <rect x="272" y="225" width="8" height="28" fill={pal.woodDark} />
+        <rect x="348" y="225" width="8" height="28" fill={pal.woodDark} />
         {s.gilt && <rect x="262" y="209.5" width="104" height="2.5" fill={GOLD_DEEP} />}
       </g>
 

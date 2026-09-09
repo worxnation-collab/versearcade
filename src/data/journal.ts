@@ -24,6 +24,8 @@ export type JournalTrackId =
   | 'level'
   | 'study'
   | 'reading'
+  | 'seals'
+  | 'sets'
   | 'collection'
   | 'room'
   | 'battles'
@@ -111,6 +113,29 @@ export const JOURNAL: JournalTrack[] = [
       { goal: 260, name: 'A Quarter of It' },
       { goal: 595, name: 'Halfway Through' },
       { goal: 1189, name: 'The Whole Bible' },
+    ],
+  },
+  {
+    id: 'seals',
+    icon: '🔖',
+    title: 'Books sealed',
+    unit: 'read end to end',
+    rungs: [
+      { goal: 1, name: 'One Book Finished' },
+      { goal: 5, name: 'Five Books' },
+      { goal: 15, name: 'A Shelf of Them' },
+      { goal: 39, name: 'The Whole Old Testament’s Worth' },
+      { goal: 66, name: 'Every Book' },
+    ],
+  },
+  {
+    id: 'sets',
+    icon: '👗',
+    title: 'Outfits completed',
+    unit: 'sets of items',
+    rungs: [
+      { goal: 1, name: 'Dressed for It' },
+      { goal: 2, name: 'Two Whole Outfits' },
     ],
   },
   {

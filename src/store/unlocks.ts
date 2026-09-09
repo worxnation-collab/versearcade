@@ -5,6 +5,8 @@ import { useCollection } from './collection'
 import { CHALLENGES, DECOR, bestOwnedTier, decorById, ownedDecor, type KeepCounters } from '@/data/keep'
 import { FURNISHINGS, REQUIREMENT_NOUN, ownedFurnishings } from '@/data/room'
 import { roomProgress } from '@/lib/roomProgress'
+import { pressedSeals, sealFor } from '@/data/seals'
+import { completedSets, itemsInSet } from '@/data/avatar'
 
 // "You've earned a piece" — for the two rooms.
 //
@@ -21,6 +23,10 @@ import { roomProgress } from '@/lib/roomProgress'
 //  - **The keep is TOLD.** Every counter moves through `useKeep.track()`, so
 //    it hands this store the counters before and after and the diff is exact —
 //    a new piece, or a piece reaching Fine or Grand.
+//  - **The seals are WATCHED too**, by the same diff-against-disk rule. A seal
+//    is pressed by the LAST chapter of a book being opened, which happens in
+//    the reader with no result screen to hang a reward off — the same problem
+//    an async battle's winner has in store/skinUnlocks.ts, and the same answer.
 //  - **The room is WATCHED.** Its six requirements are lifetime numbers on the
 //    profile and two other stores, written by a dozen call sites; there is no
 //    one place to hook. So `checkRoom()` diffs what is owned now against what
@@ -34,7 +40,7 @@ import { roomProgress } from '@/lib/roomProgress'
 export interface Unlock {
   /** Stable, for keys and de-duping: `keep:<decor>:<tier>` or `room:<id>`. */
   id: string
-  kind: 'keep' | 'room'
+  kind: 'keep' | 'room' | 'seal' | 'set'
   /** The piece, for the thumb. */
   piece: string
   /** Eyebrow: "New for your keep", "Woven Rug is Fine now". */
@@ -54,12 +60,24 @@ interface UnlockState {
   noteKeep: (before: KeepCounters, after: KeepCounters) => void
   /** Re-derive the room's shelf and announce anything new. Cheap to spam. */
   checkRoom: () => void
+  /** Re-derive the seal collection and announce anything new. Cheap to spam. */
+  checkSeals: () => void
+  /** Re-derive completed item sets and announce anything new. Cheap to spam. */
+  checkSets: () => void
 }
 
 const TIER_WORD: Record<number, string> = { 2: 'Fine', 3: 'Grand' }
 
 function roomKey(uid: string) {
   return `va.room.seen.${uid}`
+}
+
+function sealKey(uid: string) {
+  return `va.seals.seen.${uid}`
+}
+
+function setKey(uid: string) {
+  return `va.sets.seen.${uid}`
 }
 
 function readSeen(k: string): string[] | null {
@@ -163,6 +181,77 @@ export const useUnlocks = create<UnlockState>((set, get) => ({
           title: f.name,
           line: `${REQUIREMENT_NOUN[f.req](f.goal)} — done. Tap to put it in the room →`,
           to: '/you',
+        }
+      }),
+    )
+  },
+
+  checkSeals() {
+    const profile = useAuth.getState().profile
+    if (!profile?.id) return
+    // A seal is derived from chapter marks, so an unloaded store reads as zero
+    // books finished — and the load that follows would then announce every
+    // seal the player already had. Same wait the room makes.
+    if (!useBible.getState().loaded) return
+
+    const owned = pressedSeals(useBible.getState().chapters)
+    const k = sealKey(profile.id)
+    const seen = readSeen(k)
+    // Priming: a device meeting an account for the first time records silently.
+    // Without it, a reader with forty books finished would be told about forty
+    // of them at once — the trap 0087's backfill taught the skin toast.
+    if (seen === null) {
+      writeSeen(k, owned)
+      return
+    }
+    const fresh = owned.filter((book) => !seen.includes(book))
+    if (!fresh.length) return
+    writeSeen(k, [...new Set([...seen, ...owned])])
+    get().push(
+      fresh.map((book) => {
+        const seal = sealFor(book)
+        return {
+          id: `seal:${book}`,
+          kind: 'seal' as const,
+          piece: book,
+          kicker: 'A seal is pressed',
+          title: book,
+          line: `You've read all ${seal?.chapters ?? 0} chapter${seal?.chapters === 1 ? '' : 's'}. Tap to see your seals →`,
+          to: '/bible/seals',
+        }
+      }),
+    )
+  },
+
+  checkSets() {
+    const profile = useAuth.getState().profile
+    if (!profile?.id) return
+    // Owned items live on the profile, which is loaded before anything renders,
+    // so there is no store to wait for here — unlike the seals and the room.
+    const owned = completedSets(profile.ownedItems ?? []).map((s) => s.id)
+    const k = setKey(profile.id)
+    const seen = readSeen(k)
+    if (seen === null) {
+      writeSeen(k, owned)
+      return
+    }
+    const fresh = owned.filter((id) => !seen.includes(id))
+    if (!fresh.length) return
+    writeSeen(k, [...new Set([...seen, ...owned])])
+    get().push(
+      fresh.map((id) => {
+        const set = completedSets(profile.ownedItems ?? []).find((s) => s.id === id)!
+        const pieces = itemsInSet(id)
+        return {
+          id: `set:${id}`,
+          kind: 'set' as const,
+          // The thumb is one of the set's own pieces — the hat where there is
+          // one, since that is the piece that reads at 46px.
+          piece: (pieces.find((p) => p.slot === 'hat') ?? pieces[0])?.id ?? '',
+          kicker: 'That set is whole',
+          title: set.name,
+          line: `${set.blurb} Tap to wear it →`,
+          to: '/you?customize=1',
         }
       }),
     )

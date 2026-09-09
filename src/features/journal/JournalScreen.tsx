@@ -4,6 +4,8 @@ import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { useAuth } from '@/store/auth'
 import { useBible } from '@/store/bible'
+import { pressedSeals } from '@/data/seals'
+import { completedSets } from '@/data/avatar'
 import { useCollection } from '@/store/collection'
 import { useKeep } from '@/store/keep'
 import { useWashing } from '@/store/washing'
@@ -50,6 +52,7 @@ export default function JournalScreen() {
 
   const studied = useBible((s) => Object.keys(s.studied).length)
   const chapters = useBible((s) => Object.keys(s.chapters).length)
+  const seals = useBible((s) => pressedSeals(s.chapters).length)
   const cards = useCollection((s) => s.owned.length)
   const battles = useKeep((s) => s.counters.battle_played + s.counters.cpu_played)
   const washed = useWashing((s) => s.lifetime)
@@ -63,6 +66,8 @@ export default function JournalScreen() {
     level: profile.level,
     study: studied,
     reading: chapters,
+    seals,
+    sets: completedSets(profile.ownedItems ?? []).length,
     collection: cards,
     room: ownedFurnishings(roomProgress()).length,
     battles,

@@ -142,9 +142,48 @@ wheat field. Generate them with `kind: 'road'` (`art/road-scenes.json` →
 `public/road/`), keeping the bottom third walkable — `CrowdLife` stands figures
 on it.
 
-**Items are still code, and that's a known gap.** `item_*` are drawn as
-hardcoded SVG per id in `Character.tsx`, so a catalog can't add one. Roads can
-hand out skins, cosmetics, boosts, freezes and mementos — not items.
+**Items are content now, and this is how the last gap closed.** `item_*` used to
+be hardcoded SVG per id in `Character.tsx`, which made a hat the CHEAPEST
+cosmetic in the game to design and the ONLY one that needed a release to ship.
+`data/itemArt.tsx` turns the drawing into DATA — a list of primitives (path,
+rect, circle, ellipse) with numbers and `#rrggbb` colours — and `catalog.items`
+carries them, so a road can now hand out a hat as well as skins, cosmetics,
+boosts, freezes and mementos.
+
+Four things about it are load-bearing:
+
+- **The vocabulary's smallness IS the security argument**, not a shortcut. No
+  href, no `url()`, no `var()`, no transform but a rotation, no attribute
+  passthrough, no text. The worst a hostile row can do is draw an ugly shape on
+  its own owner's avatar — "code is not content" applied to a drawing rather
+  than to a link. Verified by feeding a live catalog a `url(#evil)` fill, a
+  `t: 'script'` row and a rect with no width: three good shapes rendered, three
+  bad ones dropped, per shape.
+- **`allItems()` is a FUNCTION, not a constant**, exactly as `allSkins()` is.
+  The overlay is fetched at runtime, so anything computed at module load reads
+  an empty catalog and a season's hat never appears. This was written as a
+  constant first and caught before it shipped.
+- **A shape with no `fill` now draws `fill="none"`** where the old JSX omitted
+  the attribute and got SVG's default of black. Every bundled item was diffed
+  node by node against the previous build: eight byte-identical, three differing
+  only on that attribute, all on paths with zero area. `none` is also the right
+  default going forward.
+- **`scripts/check-item-art.mjs`** (in `npm run build`) asserts every bundled
+  item has art, every shape carries its required coordinates, every colour is
+  hex, and that `Character.tsx` no longer hardcodes any item. All three failure
+  modes RENDER — a missing entry is a slot that does nothing, a bad colour is
+  silently dropped by the sanitiser, a missing coordinate draws at the origin —
+  so they are a build failure, the `check-trivia` habit.
+
+**Sets are a NAME and a completion, and deliberately nothing else.** Eleven
+items sat as a flat list of which five were already the Harvest Road's outfit,
+with nothing saying so. `ITEM_SETS` names them; completion is derived from what
+you own, so there is nothing to migrate and nothing to revoke, and it grants
+NOTHING — no XP, no rank, no stat, no odds. It is never drawn as a bar: the
+shelf says which set a piece belongs to and says when one is whole, and does
+not put "2 of 3" in front of anybody, for the reason the Seals page draws no bar
+toward 66. There is a Journal rung, because a set completed is a number you
+passed.
 
 **A road's quest pools freeze when it starts.** `pick()` shuffles the whole pool
 from a day seed, so adding one entry re-draws every remaining day and two app
@@ -1814,6 +1853,56 @@ the profile tab carries the book itself. The two testaments fold (66 books is a
 lot of thumb) and a folded section still reports what's inside it, so closing one
 never hides progress; the choice is remembered in `va.bible.open`.
 
+### The Book Collection: the one thing you unlock by reading
+
+Every unlock axis in this app was streak, share, referral, live battles, battle
+wins, level or money. Not one of them was READING, in an app whose whole subject
+is the text — a player could open forty chapters and nothing anywhere would say
+so. `data/seals.ts` + `/bible/seals` is the axis that was missing, and it comes
+in two halves that are deliberately gated on different numbers:
+
+- **66 seals, one per book, PURELY DERIVED.** A seal is pressed when every
+  chapter of a book is marked read. No table, no grant, no migration and
+  nothing to revoke — the keep-challenge bargain, and it works in both modes
+  because `bible_marks` / `va.bible.*` already do. Marks are cumulative and
+  never removed, so a pressed seal is pressed forever.
+- **Four borders and four badges gated on CHAPTERS OPENED** (10 / 60 / 250 /
+  1,189 — `requiredChapters` in `data/cosmetics.ts` ↔ `0109`). That is the
+  number the server can verify in one count; a *seal* needs the 1,189-number
+  structure table, which belongs in the client and must not be grown into SQL.
+  So the collection is honest on the client and the equippables ride a number
+  Postgres can see.
+
+Four things are load-bearing:
+
+- **The chapter gate is checked BEFORE the streak gate and instead of it.**
+  These rows carry `req_streak 0` and must not be reachable by showing up
+  alone — the same trap `0096`'s pack gate closes, in the same order. `founder`
+  bypasses; `is_admin` deliberately does not, because the client's `isUnlocked`
+  doesn't either, and a grid offering LESS than the RPC allows is the harmless
+  direction (the 0067 trap is the other one).
+- **It fills the hole in the ladder.** Borders went 7 → 30 → 90 → 180 → 365 →
+  1000 days, so a player between their first week and their first month had
+  nothing to earn at all. Ten chapters is a first week. That gap is the reason
+  this shipped as a ladder rather than as one prize at the end.
+- **There is no denominator.** The Seals page names the closest book and the
+  next cosmetic and never draws a bar toward 66 — a denominator you will be
+  under for years is what `built` stopped showing when the Cross Word started
+  cutting crosses on demand. Same reason the seal count reaches no card, no
+  board and no RPC: this is a fact about your own Bible.
+- **The toast diffs against DISK and primes.** A seal is pressed by the last
+  chapter of a book being opened, in a reader with no result screen to hang a
+  reward off — the async-battle-winner problem `store/skinUnlocks.ts` solves.
+  `checkSeals()` in `store/unlocks.ts` waits for the bible store to load, and a
+  device meeting an account for the first time records silently, or a reader
+  with forty books finished would be told about forty at once.
+
+The wax is drawn, not generated, for the church kit's reason: it takes a
+runtime colour (its division's, seven of them) and a baked image can't take
+one. Unpressed is the same shape in outline — never a padlock, never a greyed
+copy — because an unread book is an invitation, which is the call the reader's
+`unread` tier already makes.
+
 ## Supabase
 
 Migrations live in `supabase/migrations/`, numbered, and are **applied by hand**
@@ -1821,7 +1910,35 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0108` ("Sharkey" — the founder's own skin, locked to one
+The latest is `0110` (room skins — `profiles.room_skin` plus a check
+constraint, `set_room_skin`, and `my_room` / `room_json` restated WHOLESALE
+from 0069 and 0072 respectively; a future migration editing either copies
+forward from HERE). APPLIED on 2026-09-08 before the client merged, and
+verified: production's two functions matched 0069/0072 before the restate
+(checked, not assumed), exactly ONE signature each afterwards, both payloads
+carry `skin`, **0072's `pet` survived the `room_json` restate** — the
+wholesale-restate trap this file keeps warning about, checked rather than
+hoped — the constraint is present, and all 152 profiles read `clay` with no
+nulls. Run end to end against a local Postgres 16 first: ten cases including a
+quoted-SQL id, which is refused as `unknown_skin`, and a direct
+`update … set room_skin='marble'` past the RPC, which the check constraint
+rejects.
+
+Before it, `0109` (the reading cosmetics — four borders and four badges
+gated on chapters of the Bible opened, and `set_cosmetics` restated WHOLESALE
+from 0096 plus that one branch; a future migration editing it copies forward
+from HERE). APPLIED on 2026-09-08 before the client merged, and verified:
+production's `set_cosmetics` was byte-identical to 0096 before the restate
+(checked, not assumed), there is exactly ONE signature after it, the ACL is
+still the house `authenticated` shape, both the patron gate and the new reading
+gate are present in the deployed body, and all eight catalog rows exist. Before
+the apply it was run end to end against a local Postgres 16 with a stub
+`profiles`/`cosmetics`/`bible_marks` schema — sixteen cases including the one
+worth checking rather than reasoning about: a profile with 10 `read` marks and
+200 `studied` marks is still refused the 60-chapter border, so `studied` cannot
+be farmed into a reading cosmetic.
+
+Before it, `0108` ("Sharkey" — the founder's own skin, locked to one
 account), APPLIED on 2026-09-07 before the client merged and verified four
 ways: the protected list reads FIFTEEN names, `sharkey` is absent from
 `fulfill_skin` and has no `promo_codes` row, exactly one profile owns it
@@ -2094,7 +2211,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0109` (0108 is taken by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0111` (0110 is taken by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the
@@ -2725,6 +2842,22 @@ than reading, and both worth keeping in mind for any new mode:
   thing that happened, once, and what to do about it — no count of what is
   locked.
 
+**A run that scored NOTHING is the one place the no-shame rule was thin, and
+both halves of the fix are on the result screen.** It led with a 64px zero in
+the app's brightest gradient, and the "5 things you now know" list that rescues
+it sat BELOW the verse card — off the bottom of a 390px phone. So the list moved
+ABOVE the verse card (a perfect run renders it as nothing, so that screen is
+byte-identical, and the verse still gets the last word as the keepsake the heart
+belongs to), the star became a 📖 at zero correct (a star over a zero reads as
+sarcasm), and one line under the number says nothing was lost and points at the
+list. **The score itself is never hidden** — it is the player's own number and
+taking it away would be a worse lie than a big zero; what changed is that the
+zero is no longer the last word. The line shows ONLY at zero: at 1/5 the list's
+own "4 things you now know" already does the job. The Play tab's drop box was
+deliberately NOT touched — "a round that ends with no record of how it went
+reads as though it didn't count" is a written decision (see the daily-trivia
+section), and it covers that box.
+
 The CPU result also names the **nearest keep challenge** with its thumb
 (`nearestKeepChallenge`, closest by fraction — the room's own `nextFurnishing`
 rule), because the rematch button is on that screen and that is the reason to
@@ -2877,6 +3010,51 @@ a nav button labelled Battle, was ~130px of the first screen spent restating the
 tap — and it pushed the gold primary action most of the way down a 390px phone.
 Play and Study never had one. Church keeps its header only for the guest card
 and the picker, where there is no hero to name the screen.
+
+### Overlay skins: the ones that DON'T kill the wardrobe
+
+Every skin in this app REPLACES the figure. Equip Moses and the 72 starter
+renders, the six tones, the six hairs and all eleven items go dark at once —
+the wardrobe's biggest content investment switched off by its second biggest,
+and the reason `CustomizeSection` hides the whole "Your Character" section
+while one is on. "Take Up Your Cross" was always the exception, drawn BEHIND
+the player's own character in their own robe.
+
+`data/overlays.ts` generalises that one exception into a table, and there are
+four of them now: `cross`, `vine` (John 15:5), `pillar` (Exodus 13:21) and
+`refuge` (Psalm 17:8). An overlay is a ROW — where its art sits, what rotation
+it takes, the glow under it and the DRAWN fallback — where `cross` used to be a
+hardcoded branch whose own comment said "adding one here is half the job".
+Same move `data/itemArt.tsx` made for items, for the same reason.
+
+Four things:
+
+- **An overlay never resolves through `skinArtUrl`.** That path draws a whole
+  replacement figure, so a render sitting on the skin's own id would quietly
+  delete the character built at the front door — the exact thing these exist
+  not to do. The art id is separate (`art` on the row), and it is drawn BEHIND
+  the figure, always.
+- **`mirror` draws the same render twice, flipped about x = 60.** `refuge` came
+  back from the generator as ONE wing rather than the spread pair the prompt
+  asked for, and one wing mirrored is strictly better: symmetrical by
+  construction, the gap where the character stands can't drift, and there is no
+  chance of a BODY appearing between the wings — the failure a person-shaped
+  prompt keeps inviting. Every overlay prompt says "no person, no hands, no
+  shoulders, no silhouette" for that reason.
+- **The prompts leave an empty centre column** — "the middle third must be empty
+  magenta, a person will stand in that gap". That is what makes an overlay an
+  overlay rather than a backdrop.
+- **A tall thin render inside a shorter box shrinks until it reads wrong.**
+  `pillar` is 101x220; in its first box `meet` scaled it until the cloud sat on
+  the character's head like a hat. It starts at `y = -10` now, above the frame.
+  Check an overlay on the real figure, not in the PNG.
+
+`vine` is earned by opening **40 chapters** — the reading axis 0109 opened, and
+the first SKIN in this app that comes from the text. `pillar` is level 20, and
+`refuge` is free from the first minute. `skinOwned` gained `chaptersRead` and
+`level`, so every caller has to pass them or the two read as locked;
+`store/skinUnlocks.ts` also waits for the bible store, or an unloaded store
+would prime `vine` as owned when it isn't.
 
 ### The starter character, and the parked armor
 
@@ -3146,6 +3324,56 @@ alcove overlapped by 22 viewBox units and drew two arches in one place: three
 fixtures own three bands of the back wall (shelf 110..214, window 400..460,
 alcove 470..540) and they must not touch.
 
+### Room skins: what the Upper Room is MADE of
+
+The five rooms are the ladder — level 1, 5, 12, 25, 40, each a real change of
+silhouette. `features/room/skins.ts` is the other axis, and it is exactly the
+split `levels.ts` and `skins.ts` have made for churches since 0051: the
+material the same room is made of, never its size, its tier, or anything
+rankable. The church has had four material languages for months; the one space
+in this app that belongs to the player alone had one. `0110`, four ids —
+`clay` (the room as it always was), `limestone`, `cedar`, `dusk`.
+
+- **Every skin is FREE, from the first minute**, and this follows the CHARACTER
+  BUILDER's rule rather than the church's: figure, six tones, six hairs, "all
+  free, none of them a number". A material is a taste, and tastes do not rank.
+  There is also nothing here for a gate to protect — every skin is the same
+  room.
+- **A skin may only repaint what the TIER already draws.** `DrawnChamber` reads
+  `s` for the booleans (`plastered`, `window`, `beams`, `upper`, `gilt`) and
+  `pal` for every colour, so a Bare Chamber in cedar is still a bare chamber.
+  Same guarantee "a skinned church is not a bigger church" gives, in the shape
+  of the code rather than in care.
+- **The painting is keyed on the SKIN, and it had to be.** The five bundled
+  paintings are the CLAY room and they are laid OVER the drawn chamber, so a
+  flat `room-<tier>` lookup would have repainted the SVG underneath and then
+  drawn the clay painting on top — the material invisible, which is the whole
+  feature. `room-<skin>-<tier>` first, the default falling back to the historic
+  ids (`art/room-skins.json`, fifteen renders).
+- **And the fallback is ALL-OR-NOTHING PER MATERIAL**, which is narrower than
+  `ChurchArt`'s per-entry rule and was earned during the batch: `dusk` sat for
+  an hour with two tiers painted and three lost to a run of 503s from the image
+  API. Per entry, that player's room would have been a painting to level 5 and a
+  drawing from level 12 — and unlike a church's building, which somebody meets
+  once on a ladder climbed over months, YOUR OWN ROOM changes tier under them. A
+  material that switches medium halfway up reads as the art breaking. All
+  fifteen exist now, so nothing is drawn; the rule stays because it is what
+  makes adding a FIFTH material safe.
+- **The image API 503s under load and the generator does not retry.** Nine of
+  the fifteen came back `503 UNAVAILABLE` on the first pass and every one of
+  them succeeded on a later attempt with no prompt change. A failed render is a
+  capacity problem, not a bad prompt — check the message before rewriting
+  anything. The other drift worth knowing: tiers 1-3 say "ABSOLUTELY NO CEILING
+  BEAMS" and a beam still appears at the very top of some of them. It is above
+  the `xMidYMid slice` crop and the ladder still reads (the arched window and
+  the gilt are what separate the tiers), so it was left.
+- **Nothing is stored but the id**, checked against a literal list of four in
+  `set_room_skin` and by a check constraint on the column, so there is nowhere
+  here to write a string — 0069's "no player-authored text", which is what
+  keeps a room safe to let a stranger walk into. `room_json` carries it so a
+  visitor sees the material, exactly as they already see the owner's character
+  and pet, and it is no more rankable than their robe.
+
 ## Praying: the one thing here that isn't a game
 
 Tap your own figure standing in your Upper Room and it offers to pray with you.
@@ -3278,6 +3506,42 @@ buddies scored, no count of anything belonging to somebody else. Opening it
 marks gifts read; the dot goes because you looked, not because you cleared a
 queue. It is a pill on your own card rather than a sixth tab, because five
 already have to clear a 320px phone.
+
+### The Wardrobe: what there is to earn, and the door to it
+
+Everything wearable lived behind `/you` → Customize → a pill, which is three
+taps from anywhere and a screen you only open once you already know what you
+are looking for. So a player who had never opened it had no idea that
+twenty-two skins, six pets, fifteen borders and badges and eleven items
+existed. You cannot play toward something you have never seen. `/wardrobe`
+(`data/wardrobe.ts`, `features/wardrobe/WardrobeScreen.tsx`) is the gallery,
+grouped by **how a thing is earned** rather than by what kind of thing it is.
+
+One rule, and it is the whole reason it can exist here:
+
+> **It shows the THING and the DOOR, never the DISTANCE.**
+
+Every tile carries its art and a sentence saying what earns it. Not one carries
+a count, a bar, a percentage, an "N of M", or an ordering by how close you are —
+the same line the crusades set already holds inside the customizer, the Seals
+page holds against its 66, and the map holds absolutely. A gallery of what
+exists is an invitation; the same gallery with progress on it is a list of what
+you are behind on.
+
+Three more things:
+
+- **Locked draws the thing, dimmed and desaturated, with the lock as a corner
+  chip** — never a padlock over the face. That is the skins grid's own scar:
+  the one surface meant to make somebody want a look was the one where they
+  could not see it.
+- **It adds no way around `lib/commerce`.** `skinVisible` still decides, so a
+  retired look stays with its owners and a priced one stays off a native shelf
+  that cannot sell it. This is a second door onto the same content, not a
+  bypass.
+- **It is purely derived and open to guests**, like the Journal — no wall entry,
+  because what there is to earn IS the pitch for an account. It reads the same
+  accessors the customizer does (`skinOwned`, `petUnlocked`, `isUnlocked`), so
+  the two can never disagree about what is owned.
 
 ## The Journal, and saved looks
 

@@ -22,6 +22,7 @@ import ReviewScreen from './features/review/ReviewScreen'
 import BuddiesScreen from './features/buddies/BuddiesScreen'
 import MailScreen from './features/mail/MailScreen'
 import JournalScreen from './features/journal/JournalScreen'
+import WardrobeScreen from './features/wardrobe/WardrobeScreen'
 import PrayerWallScreen from './features/prayer/PrayerWallScreen'
 import ChurchesScreen from './features/churches/ChurchesScreen'
 import ChurchScreen from './features/church/ChurchScreen'
@@ -51,6 +52,7 @@ import BibleBookScreen from './features/bible/BibleBookScreen'
 import BibleChapterScreen from './features/bible/BibleChapterScreen'
 import HighlightsScreen from './features/bible/HighlightsScreen'
 import StampsScreen from './features/bible/StampsScreen'
+import SealsScreen from './features/bible/SealsScreen'
 import FocusPracticeScreen from './features/practice/FocusPracticeScreen'
 import { BattleResume } from './features/arena/BattleResume'
 import { ChurchResume } from './features/church/ChurchResume'
@@ -372,6 +374,16 @@ export default function App() {
             </RequireProfile>
           }
         />
+        <Route
+          path="/wardrobe"
+          element={
+            <RequireProfile>
+              <TabShell>
+                <WardrobeScreen />
+              </TabShell>
+            </RequireProfile>
+          }
+        />
         {/* The mailbox — everything addressed to you, in one place. Reachable
             from the 📬 pill on your own card; not a tab, because a sixth tab
             would not clear a 320px phone. */}
@@ -556,6 +568,16 @@ export default function App() {
             <RequireProfile>
               <RequireAccount copy={WALL.bible}>
                 <StampsScreen />
+              </RequireAccount>
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="/bible/seals"
+          element={
+            <RequireProfile>
+              <RequireAccount copy={WALL.bible}>
+                <SealsScreen />
               </RequireAccount>
             </RequireProfile>
           }

@@ -23,54 +23,81 @@ Daily Bible verse game
 
 ## Promotional text (max 170 chars — editable anytime without review)
 ```
-One verse a day. Race the clock, keep your streak, battle a friend, and play for your church. No shame, no pop quiz energy — miss one and you still learn something.
+Two rounds a day: today's verse, and five on one book of the Bible. Race a stranger, play for your church, and miss one without ever being made to feel behind.
 ```
+> 157 chars. This is the ONE field that changes without a review, so it is the place
+> to say what is new between releases — swap it freely. The previous line ("battle a
+> friend") outlived the feature: quick match puts you against a stranger in one tap
+> now, and a friend is no longer the only opponent.
 
 ## Description (max 4000 chars)
-```
-Open the Bible and actually want to. Verse Arcade turns Scripture into a fast, friendly daily game.
 
-THE DAILY DROP
-Every day, one verse goes live for everyone at the same time — your shared ritual. Read it, then race the clock through five quick questions about that exact verse: which book it's from, who's speaking, who's being addressed, what happens next. Answer fast and accurately to rack up points.
+> **Rewritten for 1.3.0 on 2026-09-09. 3,974 characters, leaving 26.** The previous
+> one was written for 1.0 and had gone quietly false in one place and thin in six:
+> it said "Battle a friend" when the app now puts you against a stranger in one tap,
+> and it did not mention the second daily round, the arcade, the Prayer Wall, the
+> Upper Room, praying, the seals, or that a run now ends by telling you what you
+> learned. A description is the evergreen pitch, so it describes the app as it IS —
+> "What's New" is where the changes go, and nothing here should read as a change log.
+>
+> Two things in it are load-bearing and should survive any future edit. The
+> **no-losers rule is stated three separate times** in the app's own words ("nobody
+> loses", "winner and loser earn exactly the same", "no board anywhere ranks a person
+> against a friend"), because that is the one claim this app is actually built on and
+> a store page is where somebody decides whether to believe it. And **no number in it
+> is a promise the app cannot keep**: 66 books, 1,189 chapters, 31,102 verses and
+> "over 400" trivia questions are all checked by `npm run build`, and the count of
+> skins, pets and machines is deliberately left out because those grow.
+>
+> **The counts to re-check before pasting**, since they are the only things here that
+> rot: the trivia bank is 406 questions (`data/bible/trivia.ts`) and the verse pool is
+> 726 (`data/bible/pool.ts`). Both are floors written as "over 400" and left unstated
+> respectively, so growth never makes this text wrong — only a shrink would.
+
+```
+Open the Bible and actually want to. Verse Arcade turns Scripture into a fast, friendly daily game — and nobody loses.
+
+TWO THINGS EVERY DAY
+One verse goes live for everyone at the same time. Read it, then race the clock through five questions about that exact verse: which book it's from, who's speaking, who's being addressed, what happens next. Beside it, a second round: five questions about one book of the Bible, the same book for everybody, from a bank of over 400.
 
 YOU CAN'T LOSE, ONLY LEARN
-Miss a question? No buzzer, no shame. A wrong answer reveals a genuinely interesting fact about the verse, so you walk away knowing more than you did a second ago. This app is built for people who feel behind — nobody starts knowing every verse.
+Miss one? No buzzer, no shame. A wrong answer reveals a genuinely interesting fact, and the run ends with "3 things you now know" — never "3 wrong". This app is built for people who feel behind. Nobody starts knowing every verse.
 
-BUILD A STREAK YOU'LL WANT TO KEEP
-Earn XP, level up, and grow a daily streak with a flame that gets hotter the longer you go. Busy day? A streak freeze quietly saves you, so real life doesn't punish you.
+A STREAK, WITH A NET
+Earn XP, level up, and grow a streak with a flame that gets hotter the longer you go. Busy day? A streak freeze quietly saves you. Your reminder learns the hour you actually play.
 
-BATTLE A FRIEND
-Challenge someone to the same verse quiz and see who scores higher — or race a study partner whose score ticks up live beside yours. Pick Rookie, Deacon or Prophet.
+BATTLE ANYONE, RIGHT NOW
+Tap quick match and we put you with whoever else is looking — no code, no queue, no rating. Or share a room code and race a friend: the same verse, you both tap ready, and a bar shows where they are. Prefer a machine? Race Rookie, Deacon or Prophet. Winner and loser earn exactly the same.
+
+AN ARCADE IN THE BACK
+Manna Rush: seven days in the wilderness, and on the seventh the best thing is to rest. Word Catch: a verse comes loose from the page and you tap the words back in order. Cross Word: two words that share a letter, standing as a cross — solve it and the squares turn to wood with the verse carved underneath. No high scores. Nothing ranked.
 
 PLAY FOR YOUR CHURCH
-Find your church, then give it the points you earn. Giving costs you nothing — your own XP and rank stay exactly where they are — and your congregation levels up and climbs the board. Can't find yours? Add it in seconds.
+Find your congregation and give it the points you earn. Giving costs you nothing — your own XP and rank stay exactly where they are. Every Monday your church meets another its own size, and whoever gives more raises a statue in their churchyard. Small churches play small ones, so a congregation of four can win its week.
 
-STUDY WHAT YOU'RE ACTUALLY WEAK AT
-See your accuracy book by book, weakest first, and drill the ones that need it. Keep the verses that mattered, review them before they fade, and read the whole chapter in KJV, WEB or BBE. Nothing in Study is ranked or scored against anyone.
+A ROOM THAT IS YOURS
+An Upper Room under your player card that belongs to nobody else. Furnish it, choose what it's made of, and let friends knock. Pray in it: a prayer is built for you out of four movements, so you always know what comes next, and it will read itself aloud if you'd rather listen.
+
+THE PRAYER WALL
+Tuck a note into the stones and the wall deals somebody else's to you. Hold the candle until the wick catches. A stranger only ever sees the category — your own words reach your church and your buddies, or nobody at all. Anonymous unless you sign it.
 
 YOUR WHOLE BIBLE, FILLING IN
-All 66 books, 1,189 chapters and 31,102 verses are in here, and every one you read, study or keep lights up on your own copy. Open a chapter with no signal and it still draws every verse. Most of the Bible isn't in the daily rotation, and the reader says so plainly — it's there to read, not to grade you.
+All 66 books, 1,189 chapters and 31,102 verses. Every one you read, study or keep lights up on your own copy, and reading a book all the way through presses its seal. Open a chapter with no signal and it still draws every verse. Read in KJV, WEB or BBE.
 
-MAKE A CHARACTER, AND FURNISH A WORLD
-Build yourself at the door, then earn full-look skins and a companion by showing up. Your faction's keep grows with the battles you play — decorate the hall, plant the churchyard, and offer your finest piece to your congregation. Earned is earned: a missed day never takes one away.
+STUDY, WITHOUT A SCORE
+The Study tab is a library with a librarian in it. See your accuracy book by book, weakest first, drill what needs it, and review the verses you kept before they fade. Nothing in Study is ranked or scored against anyone.
 
-WASH SOMEBODY'S FEET
-Every other way to act on a player here is a challenge. This one isn't. Tap someone's face, kneel, and they'll see it — twelve a day, one for each disciple. There is no score for being washed and no way to see anyone's total but your own.
-
-A SOUNDTRACK THAT UNLOCKS BY WALKING IN
-Every room has its own instrumental, and hearing one for the first time adds it to your music player. You can't miss one, and there's nothing to buy.
-
-GENTLE REMINDERS
-Turn on a nudge for the daily verse and it'll tell you which verse is waiting, even offline. Study reminders only arrive on days you actually have something to review.
+PEOPLE, NOT A SCOREBOARD
+Build your character at the door — figure, skin tone and hair, all free — then earn full-look skins and a companion that walks beside you. Tap somebody's face and wash their feet: twelve a day, one for each disciple, and the only thing here you can do to a person that isn't a challenge. There is no count of who likes you, and no board anywhere ranks a person against a friend.
 
 MADE THOUGHTFULLY
-- Play today's verse as a guest. A free account opens the rest and keeps your streak.
-- Sign in with Apple, Google, or email to sync your streak across devices.
-- Sound and haptics you can dial down or off anytime.
-- Delete your account and all data in-app, whenever you want.
-- No ads. No tracking. We never sell your data.
+• Play today's verse as a guest. A free account opens the rest and keeps your streak.
+• Sign in with Apple, Google or email to sync across devices.
+• Sound, music and haptics you can dial down or off anytime.
+• Delete your account and all your data in-app, whenever you want.
+• No ads. No tracking. We never sell your data.
 
-Verse text uses the Berean Standard Bible (BSB), a modern, public-domain translation. Scripture is always free — and always will be.
+Verse text is the Berean Standard Bible (BSB), a modern, public-domain translation. Scripture is always free — and always will be.
 
 Start your streak today. It's one verse.
 ```
@@ -121,6 +148,17 @@ Start your streak today. It's one verse.
 > shortening five more. This is what "a running draft" means in practice: a new
 > feature costs an old sentence, not a version bump.
 >
+> **Updated 2026-09-09** for ROOM SKINS (#270), which merged the day the block above
+> was rebuilt and was missed by it — the Upper Room now comes in four materials. It
+> was paid for the way this note says it has to be: the "Fine and Grand are earned by
+> playing now" clause came out of the same bullet (a mechanics nuance about how a tier
+> is reached, where the material is a thing you can SEE), and the room-code bullet lost
+> its "Either way". **3,962 of 4,000, leaving 38 spare.**
+>
+> Everything else that merged after the rebuild (#271 overlay skins, already in;
+> #272-#275) is the TikTok engine and the operator's own voice loop — operator tools,
+> excluded on the standing judgement above.
+>
 > **This block is genuinely full and shortening is spent** — the easy wordiness is
 > gone, so a new feature now costs a whole bullet. The overlay skins were paid for
 > exactly that way: the **gathering hour** line came out, which was the first
@@ -153,8 +191,8 @@ EVERY RUN ENDS WITH WHAT YOU LEARNED
 BATTLE ANYONE, RIGHT NOW
 • Quick match: tap it and we put you with whoever else is looking. No code, no
   queue, no rating.
-• Or share a room code. Either way you both read the same verse, you both tap
-  ready, and a bar shows where the other player is.
+• Or share a room code. You both read the same verse, you both tap ready, and a
+  bar shows where the other player is.
 • Pick the round: the verse, or trivia on one book.
 • 10 XP for turning up, three a day — winner and loser get exactly the same.
 • Six looks earned in battle. Jonathan and Deborah from playing live, win or lose;
@@ -207,8 +245,9 @@ THE REST
   compared to anybody.
 • Your reminder learns the hour you actually play.
 • Put a favourite verse, book and translation on your card.
-• Drag anything in your Upper Room, hall or churchyard exactly where you want it.
-  Fine and Grand pieces are earned by playing now, not by stacking duplicates.
+• Drag anything in your Upper Room, hall or churchyard exactly where you want it,
+  and pick what the room is made of: clay, limestone, cedar or dusk. All four free,
+  and none of them makes a bigger room.
 
 No ads, no tracking, and a wrong answer still teaches you something.
 ```
@@ -273,8 +312,16 @@ As always: no ads, no tracking, and a wrong answer still teaches you something.
 
 ## Keywords (max 100 chars, comma-separated, no spaces)
 ```
-bible,verse,scripture,daily,trivia,christian,faith,devotional,quiz,streak,church,battle,study,god
+bible,verse,scripture,daily,trivia,christian,faith,devotional,quiz,streak,church,prayer,study,game
 ```
+> 98 of 100. Two changes from the 1.0 set, both because the app moved: `prayer` is
+> in (the Prayer Wall and the prayer sheet are whole features now and neither existed
+> then), and `battle` is out — it is already in the description and the title race is
+> not winnable against the actual battle games. `god` came out for `game`, which is
+> what people who would like this actually search alongside "bible".
+>
+> Do NOT repeat words from the app NAME or SUBTITLE here: Apple indexes those
+> separately and a duplicate spends one of your hundred characters for nothing.
 
 ## Support URL
 ```
@@ -339,53 +386,102 @@ lands at 12+ / 9+; either is fine.
 
 ## Review notes (App Information → Notes for reviewer)
 
-Two things a reviewer hits in the first thirty seconds, so they are said first and
-plainly: most tabs ask for an account, and the app carries one in-app purchase. Both
-have been true since 1.2.0 and are unchanged in 1.3.0 — this block is not
-version-specific and does not need rewriting each release, unlike "What's New" above.
+Rewritten for 1.3.0. Two things a reviewer hits in the first thirty seconds are
+said first and plainly — most tabs ask for an account, and the app carries one
+in-app purchase — and 1.3.0 adds a third that is worth volunteering rather than
+being asked about: **the Prayer Wall is the first user-generated text in the app**,
+so the Guideline 1.2 controls are described before anyone has to go looking for
+them.
+
+**The credentials are deliberately NOT in this file.** App Store Connect has its
+own Sign-In Information fields (App Review Information → "Sign-in required") and
+they are the only place that account's password belongs; a live password in a git
+repo outlives the review by years. The notes point at those fields instead.
 
 ```
-Verse Arcade is a Bible-learning game. Tap "Play today's verse" on the home screen to
-play the full daily quiz immediately as a guest — no account, no email, no paywall.
+Verse Arcade is a Bible-learning game. Today's verse can be played immediately as a
+guest — on the home screen, tap "Play today's verse". That runs the full core loop
+with no account, no email and no paywall.
 
-PLEASE SIGN IN WITH THE ACCOUNT BELOW TO REVIEW THE REST. Beyond today's verse and your
-own profile, the tabs (Battle, Study, Bible, Church) show a padlock and a "create an
-account" card rather than their contents. This is intentional, not a bug or a broken
-screen: those features are multiplayer or synced — a shared church building, a battle
-against another person, a record of what you have read — and they have nowhere to live
-on a single device without an account.
+PLEASE SIGN IN WITH THE ACCOUNT IN THE SIGN-IN INFORMATION FIELDS TO REVIEW THE
+REST. Beyond today's verse and your own profile, the tabs (Battle, Study, Bible,
+Church) and the Prayer Wall show a padlock and a "create an account" card rather
+than their contents. This is intentional, not a bug or a broken screen: those
+features are multiplayer or synced — a shared church building, a match against
+another person, a record of what you have read — and they have nowhere to live on
+a single device without an account.
 
-  Email: [FILL IN — create one before submitting]
-  Password: [FILL IN]
+WORTH SEEING, all from the bottom tab bar and the compass button beside it:
+- Play: today's verse, plus a second daily round of five questions on one book of
+  the Bible.
+- Battle: "Quick match" pairs you with anyone else looking right now; a room code
+  works between two devices.
+- The arcade: compass button -> "The arcade". Three small games, none of them
+  scored against anybody.
+- You: your character, your Upper Room, and tapping your own figure offers to pray
+  with you.
+- Pray: the Prayer Wall, below.
+
+USER-GENERATED CONTENT (new in this version). The Prayer Wall is the one place a
+player types something another player reads, and it is deliberately narrow:
+- A stranger is only ever shown one of eight fixed categories ("health", "family",
+  and so on). The optional free-text line — 120 characters, cleaned on the way in —
+  is returned only to members of the writer's own church and to buddies they have
+  accepted. It is never public.
+- Notes are anonymous unless the writer signs them, and the wall DEALS one at
+  random. Nobody can browse the wall or aim a note at a person.
+- Every note carries a Report control. One report hides the note immediately,
+  before any human looks at it; we then restore it or remove it for good.
+- One open note per person at a time, expiring after seven days. Nothing
+  accumulates.
+Everywhere else there is no chat and no free text at all: the figures in the crowd
+scenes speak in a fixed list of ten emoji, a gift has no message field, and church
+pages are written only by us.
 
 IN-APP PURCHASE: there is exactly one, a non-consumable "founding patron" tip
-(com.versearcade.app.patron_founding). It buys a cosmetic thank-you and nothing that
-affects play, scores or standing. Cosmetics are otherwise earned or free. The shop is
-hidden entirely unless StoreKit returns approved products, so it may not appear in a
-sandbox build — that is deliberate fail-closed behaviour, not a missing screen. A
-"Restore purchases" control is in Profile → Skins whenever StoreKit is reachable.
+(com.versearcade.app.patron_founding). It buys a cosmetic thank-you — a character
+look and a card background — and nothing that affects play, scores or standing.
+Every other cosmetic is earned or free. The shop is hidden entirely unless StoreKit
+returns approved products, so it may not appear in a sandbox build; that is
+deliberate fail-closed behaviour, not a missing screen. A "Restore purchases"
+control is in You -> Customize -> Skins whenever StoreKit is reachable.
 
 There are no external purchase links or steering of any kind. Everything digital is
 sold through Apple's in-app purchase.
 
-READ-ALOUD: the Upper Room's prayer sheet can read a prayer out loud. It uses the
-voices already on the device through the standard speech synthesis API — nothing is
-recorded, and no text is sent anywhere. A device with no installed voices shows a line
-saying so rather than a dead button.
+READ-ALOUD: the prayer sheet can read a prayer out loud. It uses the voices already
+on the device through the standard speech synthesis API — nothing is recorded, and
+no text is sent anywhere. A device with no installed voices shows a line saying so
+rather than a dead button.
 
-Account deletion: Profile tab → "Delete my account".
-Sound, music and haptics: Settings.
+Account deletion: You tab, at the bottom — "Delete my account".
+Sound, music and haptics: You tab -> the gear icon.
 ```
+
+> **The old note said "No account is required" and that sentence is now a
+> liability**, which is why this is a rewrite rather than an edit. It was true at
+> 1.0 and stopped being true the moment `WALL` landed: a reviewer who reads it,
+> declines to sign in, and then meets four padlocks has been told by the developer
+> that the thing they are looking at should not be there. That is Guideline 2.1
+> handed over voluntarily. The account is also now checked as "Sign-in required" in
+> App Store Connect, so a note claiming otherwise contradicts the form it sits in.
 
 ## Demo account (REQUIRED before submitting)
 This is no longer optional. Since the account wall landed, a reviewer without
 credentials can only reach today's verse and the profile tab — everything else is a
-padlock, which reads as "features behind a login" (Guideline 2.1) if the notes do not
-explain it and hand them a way in.
+padlock, which reads as "features behind a login" (Guideline 2.1) if the notes do
+not explain it and hand them a way in.
 
-Create one real account in the app, play a round on it so the profile is not empty,
-then paste its credentials into the review notes above. Use an address you control and
-a throwaway password; the account can be deleted from inside the app afterwards.
+**Done for 1.3.0.** A real account (`applereview@versearcade.org`) is in App Store
+Connect's App Review Information → Sign-In Information, with "Sign-in required"
+checked. Its password lives only there, on purpose — see the note above the review
+notes.
+
+Two things to do once, before submitting: **play a round on that account** so the
+profile a reviewer lands on is not empty, and **join a church on it**, so the
+Church tab shows a congregation and a yard rather than the picker. Both take a
+minute and both turn a screen that looks unfinished into the screen the listing
+describes.
 
 ---
 
@@ -394,12 +490,38 @@ Apple requires screenshots for at least the **6.7" iPhone** display (1290 × 279
 As of the current App Store Connect, a 6.7"/6.9" set is sufficient (iPad only if you
 mark the app iPad-compatible — recommend iPhone-only for v1).
 
-Minimum 3, up to 10. Recommended shots, in order:
-1. The Daily Drop / verse read screen ("A new verse is live").
-2. A question mid-play with the combo meter and points.
-3. A correct-answer celebration (confetti + points pop).
-4. A wrong-answer "did you know" teach reveal (shows the no-shame promise).
-5. The profile with streak flame + XP/level.
-6. Groups ("Play with friends, climb together").
+Minimum 3, up to 10.
 
-See SUBMISSION runbook for how to capture these without a Mac.
+**Captured and ready, in TWO sizes**, because App Store Connect validates a file
+against the display slot it is dropped into and refuses a mismatch outright:
+
+- `docs/app-store/screenshots/6.9-1290x2796/` — **the slot to fill.** App Store
+  Connect uses this set for every other iOS display size, so on its own it is a
+  complete submission. It also takes 1260 x 2736 or 1320 x 2868.
+- `docs/app-store/screenshots/6.5-1284x2778/` — the legacy 6.5" slot this record
+  still carries. Optional, but not inert: whatever sits in it is what 6.5" devices
+  are shown, so an empty slot is better than a stale one. It takes 1242 x 2688 or
+  1284 x 2778 and **nothing else**.
+
+The two sizes are disjoint, so a refused file is almost always in the wrong box
+rather than the wrong size.
+
+`npm run shots` regenerates both from the running dev server, each captured at its
+own viewport rather than resized from the other, and asserts every file against its
+set's size before exiting (see that script's header). Upload the first eight in
+this order; the last five are spares:
+
+1. `01-play-tab` — the two daily boxes, the road, the compass. The whole tab.
+2. `02-verse-read` — the verse, before the clock starts.
+3. `03-question` — a question mid-run, points and the five-question rail.
+4. `04-teach` — the wrong-answer reveal. This is the no-shame promise on screen.
+5. `05-result` — the score with "one thing you now know" above the verse card.
+6. `07-you-room` — the full-length character and the Upper Room under it.
+7. `08-study-library` — Tabitha at the desk. The tab that is a room.
+8. `10-seals` — the Book Collection, wax pressed per book read.
+9. `06-arcade`, `09-bible`, `11-wardrobe`, `12-road`, `13-journal` — spares.
+
+The account-gated screens (Church, Battle, the Prayer Wall) are deliberately NOT in
+the set: they render their own "create an account" card in a keyless build, which is
+the honest state and a poor advertisement. Shoot those from a signed-in TestFlight
+build on a real 6.7" phone if they are wanted.

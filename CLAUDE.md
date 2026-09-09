@@ -515,6 +515,26 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   recordings keep up, or those three should skip a day that has none. **`instagramOptions` is the `else` branch of that chain**, so
   a ninth platform added without its own branch would silently be posted as
   Instagram.
+  **And `voiced` is now something the RENDERER says, not something the bucket
+  is asked.** It was inferred from the existence of `days/<date>/voice-<kind>.json`,
+  which is a claim about a FILE and not about the post: the morning cron
+  checks out `main`, `main` had no own-voice half for the STORY, and a
+  recording parked during testing was enough to caption a telling that is
+  entirely Gemini's "The voice you hear is mine, not synthetic." — a
+  disclosure describing something that is not in the post, which is the one
+  thing it must never do. It shipped to seven networks on 2026-09-08. So
+  `Made.voiced` travels from the generator through `postVideo`/`Rendered` to
+  the `post` and `copy` actions, the parked file is only the CEILING (nothing
+  claims a voice with no recording behind it), an explicit `false` wins, and
+  the answer rides in `posted-<kind>.json` so a later call for the platforms
+  that failed says the same thing about the same video. **Found by measuring
+  the MP4, not by reading the log**: cross-correlating the parked wav against
+  the posted audio gives r=0.22 where a genuinely voiced render gives 0.99,
+  and the runner reported a clean render either way. The reverse of this
+  mistake is still live and unfixed: an `own` clip — him on camera, no
+  generated voice in it at all — is captioned "AI-generated art and voice."
+  and carries TikTok's and Instagram's AIGC flag, because `aiNote` has no
+  branch for it and the flags are unconditional.
 - **TikTok is on a warm-up, and the numbers are why.** Fifteen posts over four
   days drew SEVEN views between them — uniformly 0-2 each, across five
   formats, every one published successfully. Content that varies that much

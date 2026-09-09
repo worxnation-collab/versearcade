@@ -9,6 +9,7 @@
 // VP9/Opus WebM, which TikTok also accepts.
 //
 // Nothing here is a player-facing surface: it is dynamically imported by the
+import { levelSpeech, SPEECH_TARGET } from './speechLevel'
 // admin panel only, so the muxers never reach the app bundle.
 //
 // Timeline: [lead: reference / hook] [voice, captioned phrase by phrase] [end card]
@@ -1673,7 +1674,12 @@ export async function renderStory(input: StoryInput): Promise<RenderOutput> {
   progress(0, 'Decoding the story')
   // No telling ⇒ a READING: his recording is the whole track. Nothing below
   // special-cases it beyond this — an empty `told` makes the joins no-ops.
-  const told = input.audio ? await decodeAudio(input.audio) : new Float32Array(0)
+  // Tabitha is levelled the same way his half is. Her loudness is whatever
+  // the text-to-speech returned that run — two runs of the same kind of
+  // telling measured 4.2 LU apart — so leaving it raw makes the balance
+  // between the two speakers a matter of luck, and the handover sits in the
+  // first twenty seconds of the post. See speechLevel.ts.
+  const told = input.audio ? levelSpeech(await decodeAudio(input.audio), SAMPLE_RATE, SPEECH_TARGET.story) : new Float32Array(0)
   const reading = !input.audio
   const open = input.own?.place === 'open'
   let samples = told

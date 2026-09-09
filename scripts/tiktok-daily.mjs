@@ -56,6 +56,32 @@ import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { chromium } from 'playwright'
 import { createClient } from '@supabase/supabase-js'
+import { timesFrom, slotOf, timeFor as sharedTimeFor } from './tiktok-times.mjs'
+
+// The last thing between the mix and the file: a ceiling.
+//
+// Two voices and a music bed can sum past full scale even when every part of
+// the mix was levelled politely — the soft knee bounds a SAMPLE, and what
+// clips a listener is the INTER-SAMPLE peak an encoder reconstructs. After
+// the recording chain was rebuilt, all eight posts of a week measured
+// between +0.2 and +1.6 dBFS true peak where the last known-good post sat at
+// -0.2. It is the same trap a naive +6 dB gain hit once before, at +3.1.
+//
+// `level=disabled` is the whole of it and is NOT optional: ffmpeg's
+// alimiter AUTO-LEVELS by default, so it normalises up to the ceiling
+// instead of only holding things down. With it left on, lowering the limit
+// made the file LOUDER — 0.89 through 0.74 all came back at the same +0.7
+// dBFS with loudness rising as the limit fell, which reads as the filter
+// doing nothing rather than as it doing the opposite.
+//
+// And the ceiling is on the SAMPLE peak while the ear hears the INTER-SAMPLE
+// peak the decoder reconstructs, about a decibel higher — 0.89 measured
+// +0.1 dBFS true peak through AAC. 0.79 lands at -0.9, which is where the
+// fourteen corrected stories were brought to and where the last known-good
+// post sits. Measure with `ebur128=peak=true`, never `astats` — sample peak
+// reads under.
+const MASTER = 'alimiter=limit=0.79:level=disabled'
+
 
 const ROOT = process.cwd()
 const OUT = path.join(ROOT, '.tiktok-daily')
@@ -99,24 +125,8 @@ const FFMPEG = env.FFMPEG || 'ffmpeg'
 //
 // `kind@platform` overrides `kind`. Anything unset falls back to the kind's
 // own time, so a new kind needs no rows here.
-const DEFAULT_TIMES = [
-  // The morning verse: the ritual, moved off 4am Pacific.
-  'verse=08:00', 'verse@youtube=08:00', 'verse@facebook=08:15', 'verse@instagram=08:30',
-  'verse@tiktok=09:00', 'verse@snapchat=09:15', 'verse@threads=12:00', 'verse@x=12:15',
-  // Pinterest is a SEARCH engine — a pin is found for years and its posting
-  // hour barely matters, so it sits off the cluster entirely.
-  'verse@pinterest=14:00',
-  // The day's second post, in the evening.
-  'second=19:30', 'second@facebook=19:00', 'second@instagram=19:15', 'second@youtube=19:30',
-  'second@tiktok=20:00', 'second@snapchat=20:15', 'second@threads=20:30', 'second@x=21:00',
-  'second@pinterest=15:00',
-  // Monday's note, and the parked formats if they are ever switched back on.
-  'note=12:00', 'challenge=10:00', 'quiz=12:30', 'challenge2=16:00',
-].join(',')
-const TIMES = Object.fromEntries((env.POST_TIMES || DEFAULT_TIMES).split(',').map((kv) => kv.split('=').map((s) => s.trim())))
-/** Every weekday reading and the story share the evening slot under the alias `second`. */
-const slotOf = (kind) => (kind === 'verse' || kind === 'note' || kind === 'challenge' || kind === 'quiz' || kind === 'challenge2' ? kind : 'second')
-const timeFor = (kind, platform) => TIMES[`${slotOf(kind)}@${platform}`] || TIMES[slotOf(kind)] || TIMES[kind] || '12:00'
+const TIMES = timesFrom(env)
+const timeFor = (kind, platform) => sharedTimeFor(TIMES, kind, platform)
 const TTS_MODEL = env.GEMINI_TTS_MODEL || 'gemini-2.5-flash-preview-tts'
 // A directory holding `models/onnx-community/whisper-tiny.en_timestamped/…` and
 // `ort/ort-wasm-simd-threaded*.{mjs,wasm}`: served to the page so the aligner
@@ -459,7 +469,7 @@ for (const kind of KINDS) {
   } else {
     // Always through ffmpeg: one known-good H.264/AAC/yuv420p/faststart MP4.
     mp4 = path.join(OUT, 'out', `${kind}-${date}.mp4`)
-    const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', raw, '-c:v', 'libx264', '-preset', 'medium', '-crf', '20', '-pix_fmt', 'yuv420p', '-r', '30', '-c:a', 'aac', '-b:a', '160k', '-ar', '48000', '-movflags', '+faststart', mp4], { stdio: 'inherit' })
+    const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', raw, '-c:v', 'libx264', '-preset', 'medium', '-crf', '20', '-pix_fmt', 'yuv420p', '-r', '30', '-af', MASTER, '-c:a', 'aac', '-b:a', '160k', '-ar', '48000', '-movflags', '+faststart', mp4], { stdio: 'inherit' })
     if (ff.status !== 0) {
       const why = ff.error ? `${FFMPEG}: ${ff.error.code === 'ENOENT' ? 'not found — install ffmpeg or set FFMPEG' : ff.error.message}` : `exit ${ff.status}`
       log(`  ffmpeg failed: ${why}`)

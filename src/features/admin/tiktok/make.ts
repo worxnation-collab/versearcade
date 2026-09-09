@@ -397,14 +397,27 @@ async function readingScenes(r: Renderer, d: string, kind: ReadingKind, pick?: s
   }
   if (kind === 'figure') {
     // One stage, held: the figure stands on it and the clues are the motion.
-    return [await load(stagePath(pick && STORY_STAGES.some((x) => x.id === pick) ? pick : stageForReading(d, kind)))]
+    return [await load(stagePath(picks(pick)[0] ?? stageForReading(d, kind)))]
   }
   if (kind === 'before') {
-    // Two: where it was heading, and where it went.
-    return [await load(stagePath(stageForReading(d, kind))), await load(stagePath(stageForReading(d, kind, 3)))]
+    // Two: where it was heading, and where it went — so `pick` names both,
+    // comma-separated. The derived pair is a rotation over ten paintings and
+    // knows nothing about the passage: it stood Esther walking into the
+    // king's court in a wheat field, and then on a coast road. A reading
+    // says where it happens; the rotation is only the fallback.
+    const [a, b] = picks(pick)
+    return [
+      await load(stagePath(a ?? stageForReading(d, kind))),
+      await load(stagePath(b ?? stageForReading(d, kind, 3))),
+    ]
   }
   if (kind === 'prayer') return [await load('/room/room-dusk-4.jpg')]
-  return [await load(stagePath(stageForReading(d, kind)))]
+  return [await load(stagePath(picks(pick)[0] ?? stageForReading(d, kind)))]
+}
+
+/** The stage ids an operator named, in order, keeping only ones this build ships. */
+function picks(pick?: string): Array<string | undefined> {
+  return String(pick ?? '').split(',').map((x) => x.trim()).map((x) => (STORY_STAGES.some((s) => s.id === x) ? x : undefined))
 }
 
 /** The moment a date is ABOUT: the operator's own choice where there is one, the rotation otherwise. */

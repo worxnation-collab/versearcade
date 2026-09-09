@@ -74,6 +74,32 @@ import { fileURLToPath } from 'node:url'
 import { build } from 'esbuild'
 import { chromium } from 'playwright'
 import { createClient } from '@supabase/supabase-js'
+import { timesFrom, timeFor as sharedTimeFor } from './tiktok-times.mjs'
+
+// The last thing between the mix and the file: a ceiling.
+//
+// Two voices and a music bed can sum past full scale even when every part of
+// the mix was levelled politely — the soft knee bounds a SAMPLE, and what
+// clips a listener is the INTER-SAMPLE peak an encoder reconstructs. After
+// the recording chain was rebuilt, all eight posts of a week measured
+// between +0.2 and +1.6 dBFS true peak where the last known-good post sat at
+// -0.2. It is the same trap a naive +6 dB gain hit once before, at +3.1.
+//
+// `level=disabled` is the whole of it and is NOT optional: ffmpeg's
+// alimiter AUTO-LEVELS by default, so it normalises up to the ceiling
+// instead of only holding things down. With it left on, lowering the limit
+// made the file LOUDER — 0.89 through 0.74 all came back at the same +0.7
+// dBFS with loudness rising as the limit fell, which reads as the filter
+// doing nothing rather than as it doing the opposite.
+//
+// And the ceiling is on the SAMPLE peak while the ear hears the INTER-SAMPLE
+// peak the decoder reconstructs, about a decibel higher — 0.89 measured
+// +0.1 dBFS true peak through AAC. 0.79 lands at -0.9, which is where the
+// fourteen corrected stories were brought to and where the last known-good
+// post sits. Measure with `ebur128=peak=true`, never `astats` — sample peak
+// reads under.
+const MASTER = 'alimiter=limit=0.79:level=disabled'
+
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const OUT = path.join(ROOT, '.tiktok-voice')
@@ -113,9 +139,6 @@ if (flags.kind === true) fail(`use --kind=<${['verse', 'story', ...READING].join
 const KIND = flags.kind ? String(flags.kind) : flags.story ? 'story' : 'verse'
 if (!['verse', 'story', ...READING].includes(KIND)) fail(`unknown kind ${KIND}`)
 const PLACE = flags.intro ? 'open' : 'close'
-// The evening slot is one hour for every second post of the day — the story
-// and all six readings — because exactly one of them ever runs on a date.
-const HOUR = Object.fromEntries([['verse', '07:00'], ...['story', ...READING].map((k) => [k, '19:30'])])
 const mp4For = (date, kind) => path.join(OUT, 'out', `${kind}-${date}.mp4`)
 
 function ymdIn(tz, d = new Date()) {
@@ -255,14 +278,21 @@ if (cmd === 'post') {
   await build({ entryPoints: [path.join(ROOT, 'supabase/functions/tiktok-gen/social.ts')], bundle: true, format: 'esm', platform: 'node', outfile: path.join(OUT, 'social.mjs'), logLevel: 'error' })
   const social = await import(path.join(OUT, 'social.mjs'))
   const platforms = String(flags.platforms || 'tiktok,youtube,facebook,instagram,x,snapchat,threads,pinterest').split(',').map((s) => s.trim()).filter((p) => social.postsOn(p, KIND))
-  const at = String(flags.at || HOUR[KIND])
+  // Each network gets its own hour by default, from the SAME table the
+  // morning runner schedules from (`tiktok-times.mjs`) — a post rendered by
+  // hand and a post rendered by the cron are the same post on the same
+  // feeds, so two tables of hours would drift the first time either was
+  // tuned. `--at=HH:MM` overrides every platform at once, and `--now`
+  // still means now.
+  const times = timesFrom(process.env)
+  const hourFor = (p) => String(flags.at || sharedTimeFor(times, KIND, p))
   // Ayrshare refuses a repeated idempotency key even when the post it named
   // was DELETED, so re-posting a date after `unpost` needs a new attempt
   // number — without it the replacement is rejected as a duplicate and the
   // day ends up with nothing scheduled at all.
   const attempt = flags.attempt ? Number(flags.attempt) : undefined
-  const scheduleDate = flags.now ? undefined : zonedToUtc(date, at, TZ).toISOString().replace(/\.\d{3}Z$/, 'Z')
-  log(`post ${KIND} ${date} → ${scheduleDate ? `scheduled ${at} ${TZ} (${scheduleDate})` : 'now'} · ${platforms.join(',')}`)
+  const whenFor = (p) => (flags.now ? undefined : zonedToUtc(date, hourFor(p), TZ).toISOString().replace(/\.\d{3}Z$/, 'Z'))
+  log(`post ${KIND} ${date} → ${flags.now ? 'now' : `scheduled ${TZ}`} · ${platforms.map((p) => (flags.now ? p : `${p} ${hourFor(p)}`)).join(', ')}`)
   const videoUrl = await upload(`days/${date}/${KIND}.mp4`, mp4, 'video/mp4')
   const jpg = path.join(OUT, 'out', `${KIND}-${date}-cover.jpg`)
   const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-ss', '0.3', '-i', mp4, '-frames:v', '1', '-q:v', '3', jpg])
@@ -273,7 +303,7 @@ if (cmd === 'post') {
   const { getVerseForDate } = await import(path.join(OUT, 'verses.mjs'))
   for (const platform of platforms) {
     try {
-      const r = await fn('post', { date, kind: KIND, videoUrl, platforms: [platform], scheduleDate, reference: getVerseForDate(date).reference, seconds, attempt })
+      const r = await fn('post', { date, kind: KIND, videoUrl, platforms: [platform], scheduleDate: whenFor(platform), reference: getVerseForDate(date).reference, seconds, attempt })
       for (const row of r.results ?? []) log(`  ${row.platform.padEnd(10)} ${row.status}${row.error ? ` — ${row.error}` : ''}${row.postUrl ? ` ${row.postUrl}` : ''}`)
     } catch (e) { log(`  ${platform.padEnd(10)} error — ${String(e?.message || e).slice(0, 200)}`) }
   }
@@ -645,7 +675,7 @@ try {
     await dl.saveAs(raw)
     log(`rendered ${r.ext} ${(r.size / 1e6).toFixed(1)}MB · ${r.reference} · ${r.tier} · ${r.seconds.toFixed(0)}s · ${r.phrases} captions`)
     const mp4 = mp4For(date, KIND)
-    const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', raw, '-c:v', 'libx264', '-preset', 'medium', '-crf', '20', '-pix_fmt', 'yuv420p', '-r', '30', '-c:a', 'aac', '-b:a', '160k', '-ar', '48000', '-movflags', '+faststart', mp4], { stdio: 'inherit' })
+    const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', raw, '-c:v', 'libx264', '-preset', 'medium', '-crf', '20', '-pix_fmt', 'yuv420p', '-r', '30', '-af', MASTER, '-c:a', 'aac', '-b:a', '160k', '-ar', '48000', '-movflags', '+faststart', mp4], { stdio: 'inherit' })
     if (ff.status !== 0) fail(`ffmpeg failed (${ff.error?.message || `exit ${ff.status}`})`)
     if (raw !== mp4) fs.unlinkSync(raw)
     log(`mp4 ${(fs.statSync(mp4).size / 1e6).toFixed(1)}MB → ${mp4}`)

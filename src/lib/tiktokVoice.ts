@@ -44,13 +44,52 @@ export interface VoiceTrack {
   text: string
   /** How many of the verse's words were actually heard, for the hub's confidence line. */
   verseMatched: number
+  /**
+   * For a story recording, which end of the telling it belongs at — 'open'
+   * introduces Tabitha and hands over, 'close' answers her. Absent on every
+   * recording parked before introductions existed, and on every VERSE
+   * recording, where it means nothing; both read as 'close', so nothing
+   * already on disk moves.
+   */
+  place?: 'open' | 'close'
   at: string
 }
 
-const OUT_RATE = 24000
+// A recording keeps 48 kHz: it is a real voice with a top octave, where
+// Gemini's reading is born at 24 kHz. Downsampling the first real memo to
+// 24 kHz was one of the three things that made it sound dull under the bed.
+const OUT_RATE = 48000
 
-/** Decode an uploaded recording to mono samples at 24 kHz, and a WAV of the same. */
-export async function decodeRecording(file: Blob): Promise<{ samples: Float32Array; sampleRate: number; wav: Blob; seconds: number }> {
+/**
+ * How loud a levelled recording ends up, as the RMS of its speech.
+ *
+ * There are TWO of these because there are two layouts and only one of them
+ * ever has a second voice in it. On the VERSE post the maker's reading IS the
+ * audio — nothing else speaks, so any sane level reads as correct. On the
+ * STORY his half plays directly against Tabitha's telling, and that telling
+ * is not where this constant said it was: measured off the shipped MP4s, her
+ * half renders at -13.2 LUFS against his -19.4, a step of six decibels at the
+ * exact moment a viewer decides whether to keep watching (every scheduled
+ * story is `place: 'open'`, so he is the first fourteen seconds).
+ *
+ * The original 0.14 was calibrated against Gemini's VERSE readings and is
+ * right for that layout. It was then applied to the story half by inheritance
+ * rather than by measurement, which is the whole bug: one number describing
+ * two different neighbourhoods.
+ *
+ * Measured, not guessed — and measured off the RENDER rather than the WAV,
+ * because the music bed sits under both voices and only the finished mix says
+ * what a viewer hears.
+ */
+export const SPEECH_TARGET = { verse: 0.14, story: 0.26 } as const
+
+/**
+ * Decode an uploaded recording to mono samples at 48 kHz, and a WAV of the
+ * same. `target` is the speech loudness to land on — pass the story's when
+ * the recording is going to play beside Tabitha, or his half arrives six
+ * decibels under her.
+ */
+export async function decodeRecording(file: Blob, target: number = SPEECH_TARGET.verse): Promise<{ samples: Float32Array; sampleRate: number; wav: Blob; seconds: number }> {
   const buf = await file.arrayBuffer()
   // Decode at whatever rate the file has, then resample through an offline
   // graph to the one rate the bucket holds.
@@ -63,28 +102,45 @@ export async function decodeRecording(file: Blob): Promise<{ samples: Float32Arr
   src.connect(off.destination)
   src.start()
   const rendered = await off.startRendering()
-  const samples = trimAndLevel(rendered.getChannelData(0), OUT_RATE)
+  const samples = trimAndLevel(rendered.getChannelData(0), OUT_RATE, target)
   return { samples, sampleRate: OUT_RATE, wav: wavBlob(samples, OUT_RATE), seconds: samples.length / OUT_RATE }
 }
 
 /**
  * A phone memo starts with a second of fumbling and comes in at whatever
- * level the room was: trim the silence at both ends to a short beat and
- * bring the peak up to where Gemini's readings sit, so a voiced day and a
- * synthetic one play at the same loudness under the same music bed.
+ * level the room was — and a real voice is DYNAMIC: the first five memos
+ * averaged -25 dB with peaks near 0, where Gemini's readings average -17.
+ * Levelling to the peak (the first version) left the voice well under the
+ * music bed. So the level is set by the LOUDNESS of the speech — the RMS of
+ * the samples above the recording's noise floor — brought to Gemini's,
+ * with a soft knee over the peaks so the loud words don't clip. Then the
+ * silence at both ends is trimmed to a short beat.
  */
-function trimAndLevel(samples: Float32Array, rate: number): Float32Array {
+function trimAndLevel(samples: Float32Array, rate: number, target: number): Float32Array {
   let peak = 0
   for (let i = 0; i < samples.length; i++) peak = Math.max(peak, Math.abs(samples[i]))
   if (peak < 1e-4) return samples
-  const gain = Math.min(8, 0.6 / peak)
-  const thr = 0.02 / gain
+  // Speech loudness: RMS over 10ms windows that sit above the noise floor.
+  const hop = Math.round(rate * 0.01)
+  const n = Math.floor(samples.length / hop)
+  const rms = new Float32Array(n)
+  for (let i = 0; i < n; i++) { let e = 0; for (let j = i * hop; j < (i + 1) * hop; j++) e += samples[j] * samples[j]; rms[i] = Math.sqrt(e / hop) }
+  const sorted = Float32Array.from(rms).sort()
+  const floor = sorted[Math.floor(n * 0.1)] ?? 0
+  const speechThr = Math.max(floor * 3, peak * 0.02)
+  let sum = 0, count = 0
+  for (let i = 0; i < n; i++) if (rms[i] > speechThr) { sum += rms[i] * rms[i]; count++ }
+  const speechRms = count ? Math.sqrt(sum / count) : peak / 3
+  const gain = Math.min(20, target / Math.max(speechRms, 1e-4))
+  // Soft knee from 0.7: a peak of 1.0 lands at 0.79, one of 2.0 at 0.91.
+  const knee = (x: number) => { const a = Math.abs(x); const y = a <= 0.7 ? a : 0.7 + 0.3 * Math.tanh((a - 0.7) / 0.3); return x < 0 ? -y : y }
+  const thr = Math.max(0.02 / gain, floor * 2)
   let a = 0; while (a < samples.length && Math.abs(samples[a]) < thr) a++
   let b = samples.length; while (b > a && Math.abs(samples[b - 1]) < thr) b--
   const pad = Math.round(0.25 * rate)
   a = Math.max(0, a - pad); b = Math.min(samples.length, b + Math.round(0.6 * rate))
   const out = new Float32Array(b - a)
-  for (let i = a; i < b; i++) out[i - a] = Math.max(-1, Math.min(1, samples[i] * gain))
+  for (let i = a; i < b; i++) out[i - a] = knee(samples[i] * gain)
   return out
 }
 
@@ -262,6 +318,13 @@ async function transcribePieces(samples: Float32Array, sampleRate: number, onPro
   return out
 }
 
+/**
+ * How far past the last matched verse word a later match may sit and still
+ * count as the same reading continuing rather than a re-quote inside the
+ * thought. A dozen heard words is a breath; a re-quote is thirty or more.
+ */
+const CONTINUES_WITHIN = 12
+
 export async function splitRecording(samples: Float32Array, sampleRate: number, verseText: string, reference: string, onProgress?: (label: string) => void): Promise<VoiceTrack> {
   const heard = await transcribePieces(samples, sampleRate, onProgress)
   if (heard.length < 8) throw new Error('Heard almost nothing — is the recording silent, or in another language?')
@@ -282,9 +345,29 @@ export async function splitRecording(samples: Float32Array, sampleRate: number, 
   const want = Math.max(4, Math.ceil(verseWords.length * 0.7))
   let fit = fitWords(verseWords, heard, seconds, onset)
   let windowEnd = heard.length
-  for (const b of breaks) {
-    const f = fitWords(verseWords, heard.slice(0, b), seconds, onset)
-    if (f.matched >= want) { fit = f; windowEnd = b; break }
+  for (let i = 0; i < breaks.length; i++) {
+    const f = fitWords(verseWords, heard.slice(0, breaks[i]), seconds, onset)
+    if (f.matched < want) continue
+    // The first pause past 70% is not necessarily the END of the verse: a
+    // long verse is read with pauses IN it, and 2 Kings 2:11 ("…separated
+    // the two of them, / and Elijah went up into heaven in a whirlwind")
+    // reached 24 of its 33 words at a pause two thirds of the way through.
+    // Cutting there crammed its last nine words onto one frame and opened
+    // the THOUGHT's caption over the tail he was still reading. So the
+    // window keeps extending while the next one adds matches — but only
+    // while those matches CONTINUE this one (`lastHeard` moving on by a
+    // few words) rather than appearing far later, which is the re-quote
+    // this walk exists to refuse: the first real recording said "to the
+    // saints" again inside its thought, and a match over everything heard
+    // took that copy as the verse's ending.
+    let cur = { f, b: breaks[i] }
+    for (let j = i + 1; j < breaks.length; j++) {
+      const nf = fitWords(verseWords, heard.slice(0, breaks[j]), seconds, onset)
+      if (nf.matched <= cur.f.matched || nf.lastHeard > cur.f.lastHeard + CONTINUES_WITHIN) break
+      cur = { f: nf, b: breaks[j] }
+    }
+    fit = cur.f; windowEnd = cur.b
+    break
   }
   if (fit.matched < Math.max(4, verseWords.length * 0.4)) throw new Error(`Only ${fit.matched} of the verse's ${verseWords.length} words were heard — read the verse first, then pause, then your thought.`)
   // The verse ends at the last of its words that was actually heard, not at
@@ -322,12 +405,53 @@ export async function splitRecording(samples: Float32Array, sampleRate: number, 
   return { seconds, verse: fit.words, thought: thoughtHeard.map((w, i) => ({ ...w, text: text.split(' ')[i] ?? w.text })), heard: thoughtHeard, text, verseMatched: fit.matched, at: new Date().toISOString() }
 }
 
+/**
+ * A recording that is ALL thought: the operator's own half of a story —
+ * either the closing word after a telling he did not read himself, or the
+ * introduction that hands over to Tabitha. There is no verse in it to find
+ * and nothing to split, and `place` is only carried through to the parked
+ * JSON so the renderer knows which end it belongs at. It returns the SAME
+ * shape `splitRecording` does with an empty `verse` — which is what lets
+ * `refit`, the parked JSON, the CLI's correction step and the renderer's
+ * caption path all be the ones that already exist rather than a second set
+ * of each.
+ */
+export async function transcribeOwn(samples: Float32Array, sampleRate: number, place: 'open' | 'close' = 'close', onProgress?: (label: string) => void): Promise<VoiceTrack> {
+  const heard = await transcribePieces(samples, sampleRate, onProgress)
+  if (heard.length < 5) throw new Error('Heard almost nothing — is the recording silent, or in another language?')
+  const thought = heard.map((w) => ({ ...w }))
+  const text = sentenceCase(thought.map((w) => w.text)).join(' ')
+  const words = text.split(' ')
+  return {
+    seconds: samples.length / sampleRate,
+    verse: [],
+    thought: thought.map((w, i) => ({ ...w, text: words[i] ?? w.text })),
+    heard: thought,
+    text,
+    place,
+    verseMatched: 0,
+    at: new Date().toISOString(),
+  }
+}
+
 /** Put the operator's corrected thought onto the timings Whisper heard. */
 export function refit(track: VoiceTrack, text: string): VoiceTrack {
   const words = text.replace(/\s+/g, ' ').trim().split(' ').filter(Boolean)
   if (!words.length || !track.heard.length) return { ...track, text: words.join(' '), thought: [] }
-  // The fit needs no model, only the words already heard.
-  const { words: timed } = fitWords(words, track.heard, track.seconds)
+  // The fit needs no model, only the words already heard — but it has to be
+  // told where the thought BEGINS. `fitWords` times a word it could not
+  // match by interpolating between its matched neighbours, and a word with
+  // no matched neighbour BEFORE it falls back to the onset, which defaults
+  // to zero. The first word of a thought is exactly the word a correction
+  // changes ("All wrote this letter" → "Paul wrote this letter"), so it
+  // matches nothing, lands at 0.00, and drags the whole thought's start to
+  // the top of the video: the renderer gates the founder's photo on
+  // `thoughtStart`, so the face appeared over the hook and over the verse
+  // for the whole minute. Three of one week's seven came out that way, and
+  // it is invisible in the transcript — only a rendered frame shows it.
+  // The thought cannot begin before its own first heard word, so that is
+  // the onset.
+  const { words: timed } = fitWords(words, track.heard, track.seconds, track.heard[0].start)
   return { ...track, text: words.join(' '), thought: timed }
 }
 

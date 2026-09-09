@@ -44,6 +44,21 @@ export interface RenderInput {
   /** The reading, as a WAV (or anything decodeAudioData reads). */
   audio: ArrayBuffer
   backdrop: Backdrop
+  /**
+   * The maker's own figure, which TAKES THE READER'S PLACE as the thought
+   * begins — the day's reader hands the road over to the person actually
+   * talking, so the figure, the voice and the photo are one person for the
+   * rest of the post. Absent on an automated post, which renders exactly as
+   * it always did.
+   *
+   * It carries a `scene` as well as a `figure` because on the two best
+   * backdrop tiers the reader is PAINTED INTO the picture and there is no
+   * layer to take away. So the swap crossfades the bare road over the
+   * painting rather than fading a figure, and the built-in tier — which does
+   * have a separate figure — spins that one out instead. Both halves land in
+   * the same place, at the same size, on the same road.
+   */
+  speaker?: { figure: HTMLImageElement; scene: HTMLImageElement }
   /** A time-of-day grade over the backdrop: the mood without a new painting. */
   grade?: 'dusk' | 'night'
   /** A music bed (48 kHz mono) mixed under the reading; see lib/tiktokMusic. */
@@ -431,6 +446,28 @@ function outlined(ctx: CanvasRenderingContext2D, text: string, x: number, y: num
 
 function easeOut(t: number) { return 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 3) }
 
+/**
+ * The caption to show at `at`: the one being spoken, or — through a pause —
+ * the one that was spoken LAST, so a gap is a lingering line rather than a
+ * blank panel. Nothing before the first phrase or after the audio.
+ *
+ * The "held" half used to be `phrases[phrases.length - 1]`, which is the same
+ * thing only while the array is one speaker's words in order. It stopped
+ * being the same thing the moment a story could OPEN in the operator's voice:
+ * the array is then his half followed by hers, so the beat between them —
+ * his last word to her first, about a second and a half — held HER closing
+ * reference line, flashed once at the handover and gone. It rendered
+ * perfectly; only pulling the frame out of the MP4 found it.
+ */
+function heldPhrase(phrases: TimedPhrase[], at: number, audioDur: number): TimedPhrase | null {
+  const now = phrases.find((x) => at >= x.start && at < x.end)
+  if (now) return now
+  if (at >= audioDur || at < (phrases[0]?.start ?? 0)) return null
+  for (let i = phrases.length - 1; i >= 0; i--) if (phrases[i].start <= at) return phrases[i]
+  return null
+}
+
+
 /** The largest of `sizes` at which `text` wraps into `maxHeight`; sets ctx.font to it. */
 function fitText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, sizes: number[], maxHeight: number) {
   let lines: string[] = [text], lh = 0
@@ -626,11 +663,110 @@ function drawSpeaker(ctx: CanvasRenderingContext2D, photo: HTMLImageElement, lab
   ctx.restore()
 }
 
+/**
+ * The swap: it STARTS this long before the first word of the thought and
+ * takes this long in total, so the maker is standing there as he begins to
+ * speak rather than arriving late over his own sentence. Half a second, on
+ * purpose — the rule on this layout is that the only thing moving is the
+ * caption, and a slow dissolve between two figures would be a second moving
+ * thing for as long as it lasted. A flip is over before it reads as motion.
+ */
+const SWAP_LEAD = 0.3
+const SWAP_SEC = 0.5
+
+/**
+ * How much of a figure's PNG is EMPTY below its feet, as a fraction of the
+ * file's height — and the reason this function exists rather than a constant.
+ *
+ * A skin render is a full-length figure on a transparent field, and every one
+ * of them carries space under the sandals: david and esther are 400px tall
+ * with content ending at 367, sharkey at 370. Drawing the image so its BOX
+ * sits on the ground line therefore leaves the figure hovering by that much —
+ * 8% of its drawn height, which is ~65px on a 1920 frame, with its own
+ * contact shadow sitting in the gap underneath it. That is the one thing this
+ * account cannot afford: it reads as pasted-on rather than painted, which is
+ * the whole argument for holding the paintings still in the first place.
+ *
+ * Measured rather than assumed, because the padding is not the same on every
+ * skin and a new one lands whenever a render does. It is one scan of the
+ * alpha channel, cached by `src`, so the cost is paid once per image per
+ * session and never per frame. A canvas that refuses to be read (a tainted
+ * one — these are same-origin, but the guard is free) falls back to 0, which
+ * is exactly the behaviour this replaced.
+ */
+const footPad = new Map<string, number>()
+function bottomPad(img: HTMLImageElement): number {
+  const key = img.src
+  const seen = footPad.get(key)
+  if (seen !== undefined) return seen
+  let pad = 0
+  try {
+    const w = img.naturalWidth, h = img.naturalHeight
+    const c = document.createElement('canvas')
+    c.width = w; c.height = h
+    const cx = c.getContext('2d', { willReadFrequently: true })
+    if (cx && w && h) {
+      cx.drawImage(img, 0, 0)
+      const data = cx.getImageData(0, 0, w, h).data
+      let bot = h - 1
+      for (; bot >= 0; bot--) {
+        let any = false
+        for (let x = 3; x < w * 4; x += 4) if (data[bot * w * 4 + x] > 8) { any = true; break }
+        if (any) break
+      }
+      pad = bot >= 0 ? (h - 1 - bot) / h : 0
+    }
+  } catch { pad = 0 }
+  footPad.set(key, pad)
+  return pad
+}
+
+/**
+ * A figure STANDING on the road: feet on the ground, one soft contact
+ * shadow, at the size the skins are drawn for. `turn` is a card flip about
+ * the figure's own vertical axis — 0 is edge-on and invisible, 1 is facing
+ * the viewer — which is how one figure replaces another in the same spot
+ * without either of them sliding anywhere.
+ *
+ * The drawn box is pushed DOWN by the file's empty bottom (`bottomPad`) so
+ * that the feet, not the file, land on the ground line.
+ */
+function standFigure(ctx: CanvasRenderingContext2D, img: HTMLImageElement, alpha: number, turn = 1) {
+  if (alpha <= 0 || turn <= 0) return
+  const fh = HEIGHT * 0.42
+  const fw = (img.naturalWidth / img.naturalHeight) * fh
+  const cx = WIDTH / 2, feet = HEIGHT * 0.68
+  const top = feet - fh + bottomPad(img) * fh
+  ctx.save()
+  ctx.globalAlpha = 0.32 * alpha * turn
+  ctx.fillStyle = '#1a0f36'
+  ctx.beginPath(); ctx.ellipse(cx, feet - 6, fw * 0.3, 22, 0, 0, Math.PI * 2); ctx.fill()
+  ctx.restore()
+  ctx.save()
+  ctx.globalAlpha = alpha
+  ctx.imageSmoothingQuality = 'high'
+  ctx.translate(cx, 0)
+  ctx.scale(turn, 1)
+  ctx.drawImage(img, -fw / 2, top, fw, fh)
+  ctx.restore()
+}
+
 async function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number, chrome = true) {
   const { input, lead, audioDur, total, phrases } = scene
   const bd = input.backdrop
+  const at = t - lead
 
   // 1. Backdrop.
+  //
+  // `swap` is the handover from the day's reader to the maker's own figure,
+  // 0 before it starts and 1 once he is standing there. It runs as a card
+  // flip in two halves: the reader turns edge-on and goes (or, on a painted
+  // tier, dissolves under the bare road), then he turns in. Nothing slides
+  // and nothing else on the frame moves.
+  const swapAt = scene.voice && input.speaker ? scene.voice.thoughtStart - SWAP_LEAD : Infinity
+  const swap = Math.min(1, Math.max(0, (at - swapAt) / SWAP_SEC))
+  const out = Math.max(0, 1 - swap * 2)
+  const inn = Math.max(0, swap * 2 - 1)
   ctx.save()
   if (bd.kind === 'loop') {
     await drawLoop(ctx, bd.video, t)
@@ -644,19 +780,19 @@ async function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number,
     // and lit by a pulsing gold halo — which was the single most generated-
     // looking thing in the post. A figure with its feet on the ground and one
     // soft contact shadow reads as a painting instead.
-    const fh = HEIGHT * 0.42
-    const fw = (bd.figure.naturalWidth / bd.figure.naturalHeight) * fh
-    // He stands ON the road rather than over it, and high enough that the
-    // captions land on the ground below him instead of across his robe.
-    const cx = WIDTH / 2, feet = HEIGHT * 0.68
-    ctx.save()
-    ctx.globalAlpha = 0.32
-    ctx.fillStyle = '#1a0f36'
-    ctx.beginPath(); ctx.ellipse(cx, feet - 6, fw * 0.3, 22, 0, 0, Math.PI * 2); ctx.fill()
-    ctx.restore()
-    ctx.imageSmoothingQuality = 'high'
-    ctx.drawImage(bd.figure, cx - fw / 2, feet - fh, fw, fh)
+    standFigure(ctx, bd.figure, 1, out)
   }
+  // The painted tiers have the reader IN the painting, so what covers him is
+  // the road he is standing on, brought up over the picture. It is the same
+  // road: `speaker.scene` is the scene the still was painted from.
+  if (swap > 0 && input.speaker && bd.kind !== 'builtin') {
+    ctx.save()
+    ctx.globalAlpha = 1 - out
+    const sc = input.speaker.scene
+    cover(ctx, sc, sc.naturalWidth, sc.naturalHeight, 1 + 0.012 * (t / total))
+    ctx.restore()
+  }
+  if (input.speaker) standFigure(ctx, input.speaker.figure, 1, inn)
   ctx.restore()
   if (!chrome) return
   drawGrade(ctx, input.grade)
@@ -680,14 +816,13 @@ async function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number,
 
   // 4. Captions, from the first word.
   const endFade = easeOut((t - (lead + audioDur)) / 0.45)
-  const at = t - lead
   let phrase: TimedPhrase | null = null
   let age = 1
   if (at >= 0) {
     // Between two phrases the last one holds; before the FIRST there is
     // nothing to hold, and holding the final phrase there put the reference
     // on screen under the hook before a word had been said.
-    const p = phrases.find((x) => at >= x.start && at < x.end) ?? (at >= audioDur || at < (phrases[0]?.start ?? 0) ? null : phrases[phrases.length - 1])
+    const p = heldPhrase(phrases, at, audioDur)
     if (p && at < audioDur + 0.2) { phrase = p; age = (at - p.start) / 0.22 }
   }
   // 4b. The person speaking. An operator-voiced post carries a thought after
@@ -1003,7 +1138,10 @@ export async function renderTikTok(input: RenderInput): Promise<RenderOutput> {
 
   try { await document.fonts.load(`800 88px "Baloo 2"`) } catch { /* fall back to the stack */ }
 
-  const { blob, ext } = await produce((ctx, t) => drawFrame(ctx, scene, t), total, lead, samples, progress, input.bed)
+  // The music sits a little lower under a person than under Gemini's
+  // reading: a real voice has quiet words a synthetic one does not.
+  const bed = input.voice && input.bed ? input.bed.map((x) => x * 0.65) : input.bed
+  const { blob, ext } = await produce((ctx, t) => drawFrame(ctx, scene, t), total, lead, samples, progress, bed)
   progress(1, 'Done')
   return { blob, ext, durationSec: total, phrases }
 }
@@ -1022,6 +1160,102 @@ export async function renderPoster(input: Omit<RenderInput, 'audio' | 'onProgres
   const phrases = alignPhrases([...splitPhrases(verse), input.reference + '.'], [[0, 30]], 30)
   await drawFrame(ctx, { input: { ...input, audio: new ArrayBuffer(0) }, lead: LEAD, audioDur: 30, total: 34, phrases }, t, chrome)
   return canvas.toDataURL('image/png')
+}
+
+/**
+ * The day's NOTE card — a still, for the one post that is not a video.
+ *
+ * Facebook distributes a photo-and-text post through different machinery
+ * than a Reel, so it is reach the video is not already buying; and it is the
+ * one format where the story behind a verse can be READ rather than watched.
+ * The card is what sits above the words.
+ *
+ * It is **4:5 (1080x1350), not the video's 9:16**, which is the whole reason
+ * it is a second renderer rather than `renderPoster`. A feed photo is shown
+ * at 4:5 at most; handing the feed a 9:16 frame gets it cropped or pillared,
+ * and the video poster carries a caption panel and an end-card besides — both
+ * of them chrome for a thing that is playing, on a card that never plays.
+ *
+ * So it draws the day's own painting, the reader standing on it, and the
+ * verse set as large as it will go. No caption panel, no hook, no ask: the
+ * words are in the post, and a graphic repeating them is a graphic nobody
+ * reads twice.
+ */
+export const CARD_W = 1080
+export const CARD_H = 1350
+
+export async function renderNoteCard(input: { reference: string; text: string; backdrop: Backdrop; grade?: 'dusk' | 'night' }): Promise<Blob> {
+  const canvas = document.createElement('canvas')
+  canvas.width = CARD_W; canvas.height = CARD_H
+  const ctx = canvas.getContext('2d', { alpha: false })
+  if (!ctx) throw new Error('no 2d context')
+  try { await document.fonts.load(`800 88px "Baloo 2"`) } catch { /* fine */ }
+
+  // The card's own cover: the module's `cover` is sized to the video frame.
+  const fill = (src: CanvasImageSource, sw: number, sh: number, anchorY = 0.5) => {
+    const sc = Math.max(CARD_W / sw, CARD_H / sh)
+    const w = sw * sc, h = sh * sc
+    ctx.drawImage(src, (CARD_W - w) / 2, (CARD_H - h) * anchorY, w, h)
+  }
+
+  const bd = input.backdrop
+  if (bd.kind === 'still') fill(bd.image, bd.image.naturalWidth, bd.image.naturalHeight, 0.35)
+  else if (bd.kind === 'loop') fill(bd.video, bd.video.videoWidth || 1080, bd.video.videoHeight || 1920, 0.35)
+  else {
+    fill(bd.scene, bd.scene.naturalWidth, bd.scene.naturalHeight, 0.35)
+    // The reader stands on the road, feet on the ground, exactly as in the
+    // video — a floating figure is the thing this account cannot afford.
+    const fh = CARD_H * 0.42
+    const fw = (bd.figure.naturalWidth / bd.figure.naturalHeight) * fh
+    const cx = CARD_W / 2, feet = CARD_H * 0.56
+    ctx.save()
+    ctx.globalAlpha = 0.32
+    ctx.fillStyle = '#1a0f36'
+    ctx.beginPath(); ctx.ellipse(cx, feet - 6, fw * 0.3, 18, 0, 0, Math.PI * 2); ctx.fill()
+    ctx.restore()
+    ctx.imageSmoothingQuality = 'high'
+    // Same offset as the video's `standFigure`: the FEET go on the ground
+    // line, not the file's empty bottom edge.
+    ctx.drawImage(bd.figure, cx - fw / 2, feet - fh + bottomPad(bd.figure) * fh, fw, fh)
+  }
+
+  if (input.grade) {
+    ctx.save()
+    ctx.globalCompositeOperation = 'multiply'
+    ctx.fillStyle = input.grade === 'dusk' ? 'rgba(255,160,90,0.55)' : 'rgba(70,90,170,0.75)'
+    ctx.fillRect(0, 0, CARD_W, CARD_H)
+    ctx.restore()
+  }
+
+  // Legibility washes: a band under the brand and a deeper one under the verse.
+  const top = ctx.createLinearGradient(0, 0, 0, 300)
+  top.addColorStop(0, 'rgba(11,7,32,0.78)'); top.addColorStop(1, 'rgba(11,7,32,0)')
+  ctx.fillStyle = top; ctx.fillRect(0, 0, CARD_W, 300)
+  const bot = ctx.createLinearGradient(0, CARD_H - 700, 0, CARD_H)
+  bot.addColorStop(0, 'rgba(11,7,32,0)'); bot.addColorStop(0.45, 'rgba(11,7,32,0.82)'); bot.addColorStop(1, 'rgba(11,7,32,0.96)')
+  ctx.fillStyle = bot; ctx.fillRect(0, CARD_H - 700, CARD_W, 700)
+
+  ctx.save()
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+  ctx.font = `800 30px ${FONT_DISPLAY}`
+  ctx.letterSpacing = '6px'
+  ctx.fillStyle = '#ffd23f'
+  ctx.fillText('VERSE ARCADE', CARD_W / 2, 74)
+  ctx.letterSpacing = '0px'
+
+  const verse = input.text.trim()
+  const { lines, lh } = fitText(ctx, `\u201c${verse}\u201d`, CARD_W - 130, [76, 68, 60, 54, 48, 42, 38], 560)
+  let y = CARD_H - 190 - (lines.length - 1) * lh
+  ctx.fillStyle = '#ffffff'
+  for (const line of lines) { ctx.fillText(line, CARD_W / 2, y); y += lh }
+
+  ctx.font = `700 46px ${FONT_DISPLAY}`
+  ctx.fillStyle = '#ffd23f'
+  ctx.fillText(input.reference, CARD_W / 2, CARD_H - 96)
+  ctx.restore()
+
+  return await new Promise<Blob>((res, rej) =>
+    canvas.toBlob((b) => (b ? res(b) : rej(new Error('no blob'))), 'image/jpeg', 0.9))
 }
 
 // ---- story time -----------------------------------------------------------------
@@ -1044,8 +1278,33 @@ export interface StoryInput {
   teller?: HTMLImageElement
   bed?: Float32Array
   align?: boolean
+  /**
+   * The operator's own half of the story, in his own voice. His recording is
+   * joined onto Tabitha's with a beat between them, his words are captioned
+   * from their own timings, and his photo grows into the middle of the frame
+   * while he speaks. Absent on an automated story, which then renders
+   * exactly as it always did.
+   */
+  own?: {
+    audio: ArrayBuffer
+    /** His words, timed against his OWN recording — 0 is the start of it, not of the video. */
+    words: TimedWord[]
+    text: string
+    /**
+     * Which end he speaks at. 'close' answers the telling; 'open' introduces
+     * it and hands over to Tabitha by name. A day carries one or the other,
+     * never both — two turns from the same voice around one story is a
+     * conversation, and there is only one person in it.
+     */
+    place: 'open' | 'close'
+    photo?: HTMLImageElement
+    label?: string
+  }
   onProgress?: (fraction: number, label: string) => void
 }
+
+/** The beat between the two voices, whichever order they speak in. */
+const OWN_GAP = 0.9
 
 interface StoryScene {
   input: StoryInput
@@ -1057,6 +1316,21 @@ interface StoryScene {
   para: number[]
   /** When each paragraph starts, seconds into the audio. */
   paraStart: number[]
+  /** When the operator speaks, seconds into the joined audio; Infinity when he doesn't. */
+  ownAt: number
+  /** When he stops. */
+  ownEnd: number
+  /**
+   * When his photo starts growing in, and when it starts going back out —
+   * both in audio time. Introducing, he waits for the HOOK to have had the
+   * opening frames to itself (the one rule this layout may not break) and
+   * steps back out as Tabitha begins; closing, he arrives just before his
+   * first word and stays, because there is nothing after him.
+   */
+  ownShow: number
+  ownHide: number
+  /** His voice's envelope, so the ring breathes with him rather than with her. */
+  ownVoice?: { rms: Float32Array; peak: number }
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -1076,7 +1350,7 @@ function contain(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number
 }
 
 async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: number, chrome = true) {
-  const { input, lead, audioDur, total, phrases, para, paraStart } = sc
+  const { input, lead, audioDur, total, phrases, para, paraStart, ownAt, ownShow, ownHide, ownVoice } = sc
   const at = t - lead
   void para; void paraStart
 
@@ -1143,7 +1417,7 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
   let phrase: TimedPhrase | null = null
   let age = 1
   if (at >= 0) {
-    const p = phrases.find((x) => at >= x.start && at < x.end) ?? (at < audioDur && at >= (phrases[0]?.start ?? 0) ? phrases[phrases.length - 1] : null)
+    const p = heldPhrase(phrases, at, audioDur)
     if (p && at < audioDur + 0.2) { phrase = p; age = (at - p.start) / 0.22 }
   }
   if (endFade < 1) {
@@ -1165,6 +1439,24 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
     ctx.restore()
   }
 
+  // 5b. The maker, speaking.
+  //
+  // The ONE thing his half adds to the frame, and it is on screen only while
+  // he is talking: his photo grows into the middle of the picture as he
+  // begins, its ring breathing with HIS voice rather than hers. It is
+  // deliberately not a small corner circle carried through the whole video —
+  // a permanent overlay is what made these posts read as generated in the
+  // first place, and on the verse layout a photo held over the reader was
+  // taken for a badge pinned to their chest.
+  if (input.own?.photo && at >= ownShow && endFade < 1) {
+    const grow = easeOut((at - ownShow) / 0.55)
+    // Introducing, he goes back out as she starts, so the last thing before
+    // her first word is her room and not his face.
+    const out = 1 - easeOut((at - ownHide) / 0.55)
+    if (out > 0) drawSpeaker(ctx, input.own.photo, input.own.label, WIDTH / 2, 1080, 44 + 126 * grow * out,
+      ownVoice ? voiceLevel(ownVoice, at - ownAt) : 0, grow * out * (1 - endFade))
+  }
+
   // 6. End card.
   if (endFade > 0) {
     ctx.save()
@@ -1178,6 +1470,9 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
     lines.forEach((l, i) => outlined(ctx, l, WIDTH / 2, y0 + i * lh))
     ctx.font = `800 44px ${FONT_DISPLAY}`
     outlined(ctx, input.reference, WIDTH / 2, y0 + lines.length * lh + 20, '#ffd23f')
+    // A person standing behind the link, exactly as the verse post's end card
+    // does it — only on a day he actually spoke.
+    if (input.own?.photo) drawSpeaker(ctx, input.own.photo, input.own.label ? `Made by ${input.own.label.split(' · ')[0]}` : undefined, WIDTH / 2, HEIGHT / 2 + 150, 78, 0, endFade)
     ctx.font = `800 64px ${FONT_DISPLAY}`
     outlined(ctx, 'Play today’s verse', WIDTH / 2, HEIGHT / 2 + 380)
     ctx.font = `800 52px ${FONT_DISPLAY}`
@@ -1204,15 +1499,76 @@ function storyTexts(paragraphs: string[]): { texts: string[]; para: number[] } {
 export async function renderStory(input: StoryInput): Promise<RenderOutput> {
   const progress = input.onProgress ?? (() => {})
   progress(0, 'Decoding the story')
-  const samples = await decodeAudio(input.audio)
+  const told = await decodeAudio(input.audio)
+  const open = input.own?.place === 'open'
+  let samples = told
+  let ownAt = Infinity
+  let ownEnd = Infinity
+  // Where Tabitha's own timeline sits inside the joined audio. Zero unless
+  // he speaks first, and every caption of hers is shifted by it.
+  let toldAt = 0
+  let ownVoice: { rms: Float32Array; peak: number } | undefined
+  if (input.own) {
+    const his = await decodeAudio(input.own.audio)
+    const gap = Math.round(OWN_GAP * SAMPLE_RATE)
+    const joined = new Float32Array(told.length + gap + his.length)
+    if (open) {
+      joined.set(his, 0)
+      joined.set(told, his.length + gap)
+      ownAt = 0
+      toldAt = (his.length + gap) / SAMPLE_RATE
+    } else {
+      joined.set(told, 0)
+      joined.set(his, told.length + gap)
+      ownAt = (told.length + gap) / SAMPLE_RATE
+    }
+    samples = joined
+    ownEnd = ownAt + his.length / SAMPLE_RATE
+    ownVoice = envelope(his, SAMPLE_RATE)
+  }
   const audioDur = samples.length / SAMPLE_RATE
   const { texts, para } = storyTexts(input.paragraphs)
-  const phrases = await timedCaptions(texts, samples, progress, input.align)
-  const paraStart = input.paragraphs.map((_, i) => phrases[para.indexOf(i)]?.start ?? 0)
+  // Tabitha's captions are timed against HER samples alone. `timedCaptions`
+  // matches a transcript to a recording, so handing it her minute of words
+  // over audio that ends in somebody else's voice makes it chase the tail
+  // and stretch her last phrases across his.
+  const hers = await timedCaptions(texts, told, progress, input.align)
+  if (toldAt) for (const p of hers) { p.start += toldAt; p.end += toldAt }
+  const paraStart = input.paragraphs.map((_, i) => hers[para.indexOf(i)]?.start ?? 0)
+  let phrases = hers
+  if (input.own) {
+    // A caption HOLDS until the next one begins, so that it is not a blank
+    // panel through a pause — and the last caption of a half has nothing
+    // after it to stop it running into the other speaker's. The frame lookup
+    // takes the FIRST phrase whose span covers the moment, so the one that
+    // over-ran simply shadowed the one that should be showing: fourteen
+    // seconds of his voice under her words, and it rendered perfectly the
+    // whole time. Every phrase is therefore closed at the moment the other
+    // voice starts, and the two halves are concatenated in SPEAKING order so
+    // the lookup finds the right one first. The verse layout has carried the
+    // same line since it gained a thought
+    // (`versePhrases[last].end = min(verseEnd, thoughtStart)`); this is that
+    // rule on the layout that grew a second speaker later.
+    const handover = open ? toldAt : ownAt
+    const shifted = input.own.words.map((w) => ({ ...w, start: w.start + ownAt, end: w.end + ownAt }))
+    const his = groupWords(splitPhrases(input.own.text, 6), shifted, open ? toldAt : audioDur)
+    for (const p of open ? his : hers) {
+      if (p.end > handover) p.end = handover
+      if (p.start > handover) p.start = handover
+    }
+    phrases = open ? [...his, ...hers] : [...hers, ...his]
+  }
   const lead = LEAD
   const total = lead + audioDur + TAIL_SEC + 1.2
   try { await document.fonts.load(`800 70px "Baloo 2"`) } catch { /* fine */ }
-  const sc: StoryScene = { input, lead, audioDur, total, phrases, para, paraStart }
+  // The hook owns the opening frames and nothing may be put in front of it,
+  // so an INTRODUCTION's photo waits for the hook to fade rather than
+  // arriving with his first word. A closing word has no such contest.
+  const ownShow = input.own
+    ? (open ? Math.max(ownAt - 0.35, (input.hook ? HOOK_HOLD - 0.4 : 0) - lead) : ownAt - 0.35)
+    : Infinity
+  const ownHide = open ? ownEnd : Infinity
+  const sc: StoryScene = { input, lead, audioDur, total, phrases, para, paraStart, ownAt, ownEnd, ownShow, ownHide, ownVoice }
   const { blob, ext } = await produce((ctx, t) => drawStoryFrame(ctx, sc, t), total, lead, samples, progress, input.bed)
   progress(1, 'Done')
   return { blob, ext, durationSec: total, phrases }
@@ -1225,10 +1581,14 @@ export async function audioSeconds(audio: ArrayBuffer): Promise<number> {
 }
 
 /** How long a story or verse post will run, so a music bed can be rendered to fit. */
-export async function plannedDuration(audio: ArrayBuffer, hook: string | undefined, story: boolean): Promise<number> {
+export async function plannedDuration(audio: ArrayBuffer, hook: string | undefined, story: boolean, own?: ArrayBuffer): Promise<number> {
   void hook // the hook no longer holds the voice back; it plays over the first words
   const samples = await decodeAudio(audio)
-  return LEAD + samples.length / SAMPLE_RATE + TAIL_SEC + (story ? 1.2 : 0)
+  // His half lengthens the post, and a bed rendered for the telling alone would
+  // run out under the operator's own voice — silence under the one part of
+  // the post a person actually spoke.
+  const extra = own ? OWN_GAP + (await decodeAudio(own)).length / SAMPLE_RATE : 0
+  return LEAD + samples.length / SAMPLE_RATE + extra + TAIL_SEC + (story ? 1.2 : 0)
 }
 
 export async function renderStoryPoster(input: Omit<StoryInput, 'audio' | 'onProgress'> & { phrases?: TimedPhrase[] }, t = 2.5, chrome = true): Promise<string> {
@@ -1243,7 +1603,7 @@ export async function renderStoryPoster(input: Omit<StoryInput, 'audio' | 'onPro
   // the wrong layout.
   const { texts, para } = storyTexts(input.paragraphs)
   const phrases = input.phrases ?? alignPhrases(texts, [[0, 60]], 60)
-  await drawStoryFrame(ctx, { input: { ...input, audio: new ArrayBuffer(0) }, lead: LEAD, audioDur: 60, total: 65, phrases, para, paraStart: Array.from({ length: n }, (_, i) => i * (60 / n)) }, t, chrome)
+  await drawStoryFrame(ctx, { input: { ...input, audio: new ArrayBuffer(0) }, lead: LEAD, audioDur: 60, total: 65, phrases, para, paraStart: Array.from({ length: n }, (_, i) => i * (60 / n)), ownAt: Infinity, ownEnd: Infinity, ownShow: Infinity, ownHide: Infinity }, t, chrome)
   return canvas.toDataURL('image/png')
 }
 

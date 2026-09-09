@@ -182,8 +182,17 @@ export interface Copy { hook: string; caption: string; hashtags: string[]; platf
  * is per (date, kind). `own` is a clip the operator recorded themselves,
  * captioned and posted through the same door.
  */
-export type Kind = 'verse' | 'story' | 'quiz' | 'challenge' | 'challenge2' | 'own'
-export interface Made { date: string; kind: Kind; reference: string; url: string; ext: string; size: number; copy: Copy | null; phrases: TimedPhrase[]; tier: string }
+export type Kind = 'verse' | 'story' | 'quiz' | 'challenge' | 'challenge2' | 'own' | 'note'
+/**
+ * `voiced` is whether the operator's own recording actually reached this
+ * render — not whether one is parked for the date. The two came apart once
+ * and the post said so: a build without the story's own-voice half told the
+ * day with Tabitha alone while the wav sat in the bucket, and the `post`
+ * action, inferring from the file, captioned a fully synthetic video "the
+ * voice you hear is mine". The renderer is the only thing that knows, so it
+ * says, and `post` takes its answer.
+ */
+export interface Made { date: string; kind: Kind; reference: string; url: string; ext: string; size: number; copy: Copy | null; phrases: TimedPhrase[]; tier: string; voiced: boolean }
 
 export type Renderer = typeof import('@/lib/tiktokRender')
 
@@ -210,6 +219,42 @@ export async function loopUrlFor(k: string): Promise<string | null> {
 // A tier that will not load FALLS THROUGH rather than failing the post: the
 // built-in tier needs nothing generated and is always there, so there is no
 // state where a missing file means no video.
+/**
+ * The maker's own skin, which takes the reader's place for the thought on a
+ * VOICED verse post — so the figure on the road, the voice reading and the
+ * photo in the frame are all one person for the second half.
+ *
+ * Two things about it are deliberate. It is dated rather than switched on
+ * everywhere, because seven mornings were already rendered and scheduled
+ * under the old look and a post should not change shape mid-week; a date is
+ * also the one gate that needs nothing remembered. And it is the VERSE
+ * layout only — the evening story is Tabitha's room, where a second figure
+ * would be a stranger walking into somebody else's library, and the photo
+ * alone already says who is talking.
+ *
+ * The art is read straight out of `public/skins/`, the same path every
+ * reader uses; nothing here goes through `skinVisible`, so the skin being
+ * `retired` and owned by one account is untouched by it.
+ */
+export const SPEAKER_SKIN = 'sharkey'
+export const SPEAKER_SKIN_FROM = '2026-09-08'
+
+/**
+ * His figure and the bare road to stand it on, or null on a date before the
+ * swap begins. Both are needed together: on the two painted backdrop tiers
+ * the reader is IN the picture, so the road is what covers him.
+ */
+export async function speakerFor(r: Renderer, d: string, scene: string): Promise<{ figure: HTMLImageElement; scene: HTMLImageElement } | null> {
+  if (d < SPEAKER_SKIN_FROM) return null
+  try {
+    const [figure, sceneImg] = await Promise.all([r.loadImage(`/skins/${SPEAKER_SKIN}.png`), loadScene(r, scene)])
+    return { figure, scene: sceneImg }
+  } catch {
+    // A missing render is the day's reader staying put, never a failed post.
+    return null
+  }
+}
+
 export async function backdropFor(r: Renderer, tier: 'loop' | 'still' | 'builtin', rd: string, sc: string): Promise<Backdrop> {
   const k = `${rd}-${sc}`
   if (tier === 'loop') {
@@ -257,11 +302,20 @@ export async function bedFor(seconds: number, trackId: string): Promise<Float32A
 
 export const FOUNDER_PHOTO = 'founder/photo.jpg'
 export const VOICE_LABEL = 'Matthew · founder'
-export const voiceWavPath = (d: string) => `days/${d}/voice-verse.wav`
-export const voiceJsonPath = (d: string) => `days/${d}/voice-verse.json`
+/**
+ * The two posts a day the operator can speak on. The VERSE is his outright —
+ * his reading replaces Gemini's and his thought follows it — while the STORY
+ * keeps Tabitha's telling and appends his closing word to the end of it. Both
+ * park the same shape (`VoiceTrack`); a story CODA is simply one whose
+ * `verse` is empty, which is what lets one set of actions, one transcript
+ * format and one `refit` serve both.
+ */
+export type VoiceKind = 'verse' | 'story'
+export const voiceWavPath = (d: string, kind: VoiceKind = 'verse') => `days/${d}/voice-${kind}.wav`
+export const voiceJsonPath = (d: string, kind: VoiceKind = 'verse') => `days/${d}/voice-${kind}.json`
 export type VoiceTrack = import('@/lib/tiktokVoice').VoiceTrack
-export async function fetchVoice(d: string): Promise<(VoiceTrack & { wavUrl: string }) | null> {
-  const v = await call<Partial<VoiceTrack> & { wavUrl?: string }>('voice', { date: d })
+export async function fetchVoice(d: string, kind: VoiceKind = 'verse'): Promise<(VoiceTrack & { wavUrl: string }) | null> {
+  const v = await call<Partial<VoiceTrack> & { wavUrl?: string }>('voice', { date: d, kind })
   return v && Array.isArray(v.verse) && Array.isArray(v.thought) && v.wavUrl ? (v as VoiceTrack & { wavUrl: string }) : null
 }
 /** The operator's spoken reflection for a date — drafted by Gemini, or their own saved edit. */
@@ -271,13 +325,33 @@ export async function fetchThought(d: string, force = false, samples: string[] =
   const sd = seedFor(d)
   return call<Thought>('thought', { date: d, force, reference: v.reference, text: v.text, theme: v.theme, speaker: sd.speaker, audience: sd.audience, before: sd.before, after: sd.after, facts: sd.facts, samples })
 }
+/**
+ * The story's closing word — written FROM the story, so it has to be told
+ * one. That is the whole reason this is a second call rather than a flag:
+ * the morning thought is drafted off the verse's own data and can be written
+ * a week early, while a summary of a telling cannot exist until the telling
+ * does.
+ */
+/**
+ * Which end of a story the operator speaks at. 'close' answers Tabitha's
+ * telling; 'open' introduces her and hands over by name. The two are drafted
+ * from opposite ends of the same material and cached apart, so a day can
+ * carry a draft of each and only one recording.
+ */
+export type Place = 'open' | 'close'
+
+export async function fetchStoryWord(d: string, force = false, samples: string[] = [], place: Place = 'close'): Promise<Thought> {
+  const v = getVerseForDate(d)
+  const st = await fetchStory(d, false)
+  return call<Thought>('thought', { date: d, kind: 'story', place, force, reference: v.reference, text: v.text, paragraphs: st.paragraphs, samples })
+}
 /** The draft already parked for a date, or null — never drafts. */
-export async function peekThought(d: string): Promise<Thought | null> {
-  const t = await call<Partial<Thought>>('thought', { date: d, peek: true })
+export async function peekThought(d: string, kind: VoiceKind = 'verse', place: Place = 'close'): Promise<Thought | null> {
+  const t = await call<Partial<Thought>>('thought', { date: d, kind, place, peek: true })
   return t && typeof t.text === 'string' ? (t as Thought) : null
 }
-export async function saveThought(d: string, text: string): Promise<Thought> {
-  return call<Thought>('thought', { date: d, save: text })
+export async function saveThought(d: string, text: string, kind: VoiceKind = 'verse', place: Place = 'close'): Promise<Thought> {
+  return call<Thought>('thought', { date: d, kind, place, save: text })
 }
 /** Park a file in the bucket through a signed upload URL (the bucket is service-role write only). */
 export async function parkFile(path: string, blob: Blob, contentType: string): Promise<string> {
@@ -296,7 +370,7 @@ export async function fetchStory(d: string, force: boolean): Promise<Story> {
 // The words for a date's post of one kind, written once (cached in the
 // bucket by date and kind) so the hub can show today's without rendering a
 // video, and a render on the same day gets the same words.
-export async function fetchCopy(d: string, kind: Made['kind'], force = false, extra: { question?: string; about?: string } = {}): Promise<Copy> {
+export async function fetchCopy(d: string, kind: Made['kind'], force = false, extra: { question?: string; about?: string; voiced?: boolean } = {}): Promise<Copy> {
   const v = getVerseForDate(d)
   return call<Copy>('copy', { date: d, kind, force, reference: v.reference, text: v.text, theme: v.theme, ...extra })
 }
@@ -328,8 +402,8 @@ export function Busy({ busy, progress }: { busy: string | null; progress: number
   )
 }
 
-const ICON: Record<Made['kind'], string> = { verse: '☀️', story: '🌙', quiz: '🎮', challenge: '⚡', challenge2: '⚡', own: '🎤' }
-const FILE: Record<Made['kind'], string> = { verse: 'verse-arcade-', story: 'verse-arcade-story-', quiz: 'verse-arcade-quiz-', challenge: 'verse-arcade-challenge-', challenge2: 'verse-arcade-challenge2-', own: 'verse-arcade-own-' }
+const ICON: Record<Made['kind'], string> = { verse: '☀️', story: '🌙', quiz: '🎮', challenge: '⚡', challenge2: '⚡', own: '🎤', note: '📖' }
+const FILE: Record<Made['kind'], string> = { verse: 'verse-arcade-', story: 'verse-arcade-story-', quiz: 'verse-arcade-quiz-', challenge: 'verse-arcade-challenge-', challenge2: 'verse-arcade-challenge2-', own: 'verse-arcade-own-', note: 'verse-arcade-note-' }
 
 const PLATFORMS: Array<[Platform, string]> = [['tiktok', 'TikTok'], ['youtube', 'YouTube Shorts'], ['facebook', 'Facebook'], ['instagram', 'Instagram Reels'], ['x', 'X']]
 
@@ -453,7 +527,7 @@ export async function postVideo(m: Made, platforms: Platform[], scheduleDate: st
   let at: string | undefined
   for (const platform of platforms) {
     onStep(`${scheduleDate ? 'Scheduling' : 'Posting'} · ${PLATFORM_NAMES[platform]}`)
-    const r = await call<Posted>('post', { date: m.date, kind: m.kind, videoUrl: up.publicUrl, platforms: [platform], scheduleDate, reference: m.reference, seconds })
+    const r = await call<Posted>('post', { date: m.date, kind: m.kind, videoUrl: up.publicUrl, platforms: [platform], scheduleDate, reference: m.reference, seconds, voiced: m.voiced })
     results.push(...(r.results ?? []))
     at = r.at ?? at
   }

@@ -91,8 +91,9 @@ title and hashtag count. The key lives in Vault (`tiktok_ayrshare_key()`,
 - **The per-platform options are deliberate.** YouTube: `shorts`, public,
   not made for kids, `containsSyntheticMedia` (the voice is synthetic).
   TikTok: public, `isAIGenerated` for the same reason, caption on one line
-  because TikTok drops line breaks. Facebook: a Reel with the hook as its
-  title. Instagram: a Reel shared to the feed, five hashtags at most. X: one
+  because TikTok drops line breaks (`withAsk` collapses the model's own
+  paragraph breaks for the two networks that flatten them). Facebook: a Reel
+  with the hook as its title. Instagram: a Reel shared to the feed, five hashtags at most. X: one
   line under 280 characters with two tags (and Ayrshare still calls it
   `twitter` on the wire — `ayrshareName()` in `social.ts` is the one place
   that translates). Threads: 500 characters, links tappable, the AI note in
@@ -144,14 +145,52 @@ title and hashtag count. The key lives in Vault (`tiktok_ayrshare_key()`,
   the first run after it is linked simply reaches it. The record is merged
   over the earlier one, and the runner re-posts only to platforms not yet
   accepted.
-- **The ask at the end of a caption is per network, on purpose.** Nothing in
-  a TikTok or Snapchat caption is tappable, so a URL there is a dead string
-  and those two ask for the follow ("Follow for tomorrow's verse") — the one
-  number that decides whether tomorrow's post reaches anyone. Instagram's ask
-  is the bio link, YouTube's, Facebook's and X's are live URLs. A challenge
-  asks for the comment first. The copy prompt asks for each network's own
-  ask, and `callToAction()` / `withAsk()` in `social.ts` append it when the
-  words come back without one, so the guarantee does not rest on the model.
+- **No caption carries a link, on any network, and the ask is the same
+  everywhere: share it.** Two reasons. The measurable one is Facebook's own
+  Professional dashboard, which lists "remove links from your caption" among
+  the things a Reel is rewarded for, and every feed that ranks video treats
+  an outbound link the same way. The one that decided it is that a post
+  ending in a URL reads as an advertisement, and these have to read as
+  something a person would say and pass on. The brand is IN the video — the
+  end card, the site, the reference — so the caption is just the words.
+  `dropLinkSentence()` removes whole any sentence carrying a versearcade.org
+  mention (a bare mention as well as a real URL: the model writes both) and
+  `callToAction()` puts "Share this with someone who needs to hear it today."
+  on the end. A challenge asks for the comment first and the share second.
+  There is deliberately NO second ask — a caption asking for a share and a
+  follow and a comment asks for none of them, and the follow is the weaker
+  one anyway: it reaches people already watching, where a share reaches a
+  stranger's feed. The copy prompt asks for the same tone; social.ts is the
+  guarantee, over words a model may not have written that way.
+- **The tracked link is not lost — it moves.** On **Facebook, YouTube and X**
+  it goes out as Ayrshare's `firstComment`, added when the post actually
+  publishes, which is also the only moment a SCHEDULED post has an id to
+  comment on. All three were validated against the live API before shipping
+  (a scheduled post carrying `firstComment` is accepted by Ayrshare's
+  pre-validation, then deleted). The other five are deliberate omissions:
+  Ayrshare will post a first comment on **TikTok** and **Instagram**, but a
+  link in a comment there is dead text, so one would buy nothing; **Snapchat,
+  Threads and Pinterest** have no comment endpoint on Ayrshare at all. Those
+  five carry `?src=<network>` in their **bio link, set by hand** — which is
+  what TikTok, Snapchat and Instagram already did, with **Threads joining
+  them**. Pinterest also keeps its tracked URL in `pinterestOptions.link`,
+  which is the pin's DESTINATION rather than caption text: tapping a pin is
+  following the link.
+- **Snapchat's 160 characters are budgeted by what must survive them.** The
+  AI disclosure first (its Spotlight review rejected the first verse as
+  "undisclosed AI-generated content"), then the words, then a SHORT form of
+  the ask, then a tag if there is room. What gets shortened is the model's
+  words, cut at a whole SENTENCE where one fits and only otherwise at a word
+  — a `slice(0, 160)` over the assembled post ended one halfway through the
+  word "share".
+- **Two of Facebook's tips are not reachable from the API and stay manual.**
+  Ayrshare's Facebook options carry no subtitle or caption-file field, so a
+  real CC track cannot be attached from here — the videos' burned-in
+  word-by-word captions are the accessibility that ships, and a CC track
+  would be uploaded by hand in Meta Business Suite. Reels PLAYLISTS have no
+  Ayrshare endpoint at all (its only playlist API is a YouTube analytics
+  read), so adding a Reel to one is a manual step on the page. Don't add
+  either to the runner as a silent no-op.
 - **`social`** reports what Ayrshare has connected and this month's post
   count against the plan's quota; the hub shows it, and warns in coral on a
   plan that five videos on five networks (twenty-five posts a day) will
@@ -517,17 +556,114 @@ automated replies (the second is the keyword-search case by name), both are
 the shape of account that gets restricted, and X's API now blocks the
 mechanism anyway.
 
+## The story's own word: a closing one, or an introduction
+
+The evening story is Tabitha's telling, and since the operator's voice
+arrived it can carry ~20 seconds of him at ONE END of it: his photo grows
+into the middle of the frame while he speaks, his words are captioned from
+their own timings, and the end card keeps him small under the ask. The
+telling is unchanged and complete without him, so a day with no recording
+renders exactly as it always did.
+
+`place` picks the end. **`close`** answers her — the thing the story turned
+on, then one plain thing he carries from it. **`open`** introduces her and
+hands over by name ("In this round-up, Tabitha…"), which is shorter (30–45
+words, ~15 seconds) because it is spending the opening of the video.
+
+A day carries ONE of them, never both: two turns from the same voice around
+one story is a conversation with one person in it. So both use the single
+parked recording, and the place is written into the transcript when it is
+listened to (`--intro`) rather than chosen at render time — a recording made
+as a closing word cannot then be moved to the front. Only the DRAFTS are
+cached apart (`thought-story.json` / `thought-story-intro.json`), so both
+can be written and one chosen.
+
+**An introduction may not push the hook off frame 0**, which is the one rule
+this layout has. His photo therefore waits for the hook to fade rather than
+arriving with his first word (`ownShow`); his voice starts at 0.35s under
+the hook exactly as the verse layout's reading does, and it is his WORDS
+that open, never a title card. He steps back out as she begins (`ownHide`),
+so the last thing before her first word is her room and not his face.
+
+Two voiced posts a day (the morning verse and this) was chosen over voicing
+all five deliberately. YouTube judges a channel and one genuinely human
+format lifts the whole of it; TikTok and Meta judge each post, so those two
+are the ones that earn. Four extra recordings a day is 28 a week, and a
+cadence that stops looks worse than one that never started. The challenges
+and the quiz stay automated and labelled.
+
+- **His half is the same shape as a verse recording with an empty `verse`.**
+  It parks at `days/<date>/voice-story.{wav,json}`, so `refit`, the `fix`
+  correction step, `voice` / `voice-clear` / `upload-url` and the renderer's
+  caption path are all the ones that already existed, keyed on kind.
+  `transcribeOwn` (`lib/tiktokVoice.ts`) is the only new listener — there is
+  no verse inside it to find, and `place` is metadata it carries rather than
+  anything it does — and `ensureOwn` mirrors `ensureVoice` so the morning
+  runner can listen for itself when a phone only uploaded.
+- **Both drafts are written FROM the telling** — `thought` with
+  `kind: 'story'` and a `place`. The closing word is 45–60 words (about
+  twenty seconds): it opens by naming in one breath the thing the story
+  turned on, so somebody who half-watched still has it, then one plain thing
+  he carries from it, and ends on a statement. The introduction is 30–45
+  words and pulls the opposite way — it names the QUESTION the story is
+  about to answer, is forbidden from telling it, giving away the turn or
+  quoting the verse (Tabitha does all three in a moment, and the hook on
+  screen is already saying the dramatic thing), and ends by handing over to
+  her by name. Both are a second call rather than a flag on the first
+  because the morning thought comes off the verse's own data and can be
+  drafted a week early, while a word about a story cannot exist before the
+  story does. `drafts` prints the day's two, so one sitting records the week;
+  `--intro` swaps which story half it drafts.
+- **The other speaker's captions are closed where this one begins.** A
+  caption holds until the next one so a pause is not a blank panel; the last
+  caption of a half has nothing after it to stop it, and Tabitha's held
+  FOURTEEN SECONDS into his — his voice, her words on the screen. The frame
+  lookup takes the first phrase whose span covers the moment, so the
+  over-running one shadowed the right one. Every phrase is now closed at the
+  handover, and the two halves are concatenated in SPEAKING order so the
+  lookup finds the right one first; the verse layout has carried the same
+  line since it grew a thought. It rendered perfectly throughout — only
+  reading the captions off a real frame found it, which is why `render` now
+  prints the caption count.
+- **A pause holds the last caption SPOKEN, not the last one in the array**
+  (`heldPhrase`, shared by both layouts). Those were the same thing while the
+  array was one speaker's words in order. With an introduction they are not:
+  the beat between his last word and Tabitha's first, about a second and a
+  half, held HER closing reference line — one frame of the end of the story
+  at the start of it. Found by pulling the frame out of the MP4, like every
+  other bug on this layout.
+- **Her captions are timed against HER samples only.** `timedCaptions`
+  matches a transcript to a recording, so handing it her minute of words over
+  audio that ends in somebody else's voice makes it chase the tail and
+  stretch her last phrases across his. When he opens, her timings are
+  computed against her own recording and then SHIFTED by where it starts.
+- **The music bed covers both.** `plannedDuration` takes his audio too, or
+  the bed runs out under the one part of the post a person actually spoke.
+
+From a terminal it is the same loop as the verse with `--story` on the end:
+
+```bash
+node scripts/tiktok-voice.mjs drafts 2026-09-08 7          # verse + closing word
+node scripts/tiktok-voice.mjs drafts 2026-09-08 7 --intro  # verse + introduction
+node scripts/tiktok-voice.mjs listen 2026-09-08 memo.m4a --story [--intro]
+node scripts/tiktok-voice.mjs fix    2026-09-08 fixed.txt  --story
+node scripts/tiktok-voice.mjs render 2026-09-08            --story
+node scripts/tiktok-voice.mjs post   2026-09-08            --story   # 19:30 by default
+```
+
 ## Where the sign-ups come from
 
-Every link a post carries is `https://versearcade.org/play?src=<network>`
-(`siteLink` in `social.ts`; `trackLinks` rewrites any bare site mention the
-copy model wrote). `/play` is open to a guest, so the stranger plays today's
+No caption carries a link. The tracked link is
+`https://versearcade.org/play?src=<network>` (`siteLink` in `social.ts`) and
+it reaches people two ways: as the post's FIRST COMMENT on Facebook, YouTube
+and X, and as the profile's BIO LINK — set by hand, same shape — on TikTok,
+Snapchat, Instagram and Threads. Pinterest carries it as the pin's own
+destination. `/play` is open to a guest, so the stranger plays today's
 verse first and meets the account wall with a streak started — that is the
 conversion path, not the homepage. The client keeps the first `src` it sees
 (`lib/attribution.ts`), and `set_signup_source` (0106) files a NEW account
 under it, once, server-side. The hub's weekly table shows Sign-ups beside
-views per network. Bio links for TikTok, Snapchat and Instagram are set by
-hand to the same shape, since nothing in those captions is tappable.
+views per network.
 
 xAI credits: `XAI_API_KEY` as a function secret or Vault through
 `tiktok_xai_key()` (`0105`), model `XAI_MODEL` (default

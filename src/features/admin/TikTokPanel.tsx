@@ -42,7 +42,7 @@ const POSTS: Array<{ id: Door; icon: string; name: string; when: string; line: s
 ]
 /** The kinds the day's words are written for on their own: everything a generator makes. */
 const WORD_KINDS: Kind[] = ['verse', 'challenge', 'quiz', 'challenge2', 'story']
-const KIND_LABEL: Record<Kind, string> = { verse: '☀️ Verse', challenge: '⚡ Challenge 1', quiz: '🎮 Quiz', challenge2: '⚡ Challenge 2', story: '🌙 Story', own: '🎤 Own clip' }
+const KIND_LABEL: Record<Kind, string> = { verse: '☀️ Verse', challenge: '⚡ Challenge 1', quiz: '🎮 Quiz', challenge2: '⚡ Challenge 2', story: '🌙 Story', own: '🎤 Own clip', note: '📖 Note' }
 
 // The day's words, without a video. The copy for each post is written once
 // per date (cached by the function), so this card shows all three sets for
@@ -118,7 +118,8 @@ function OwnClip() {
     setBusy('Writing the caption')
     try {
       const copy = await fetchCopy(date, 'own', true, { about })
-      setMade({ date, kind: 'own', reference: getVerseForDate(date).reference, url: URL.createObjectURL(file), ext: 'mp4', size: file.size, copy, phrases: [], tier: 'your clip' })
+      // His own clip: the voice in it is his, so the note claims the art alone.
+      setMade({ date, kind: 'own', reference: getVerseForDate(date).reference, url: URL.createObjectURL(file), ext: 'mp4', size: file.size, copy, phrases: [], tier: 'your clip', voiced: true })
     } catch (e) { setErr(String((e as Error).message || e)) } finally { setBusy(null) }
   }
   return (

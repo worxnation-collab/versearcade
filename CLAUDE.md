@@ -485,12 +485,139 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   (`art/tiktok-scenes.json`, `public/tiktok/roads/`) plus Advent; a missing
   painting falls back to the Harvest Road (`loadScene`) rather than failing
   the post.
-- **Kinds are `verse`, `challenge`, `quiz`, `challenge2`, `story` and `own`**
-  (`Kind` in `shared.tsx`, `kindOf` in `tiktok-gen/social.ts`), and every
-  bucket path and idempotency key is per (date, kind) — which is why the
+- **Kinds are `verse`, `challenge`, `quiz`, `challenge2`, `story`, `own` and
+  `note`** (`Kind` in `shared.tsx`, `kindOf` in `tiktok-gen/social.ts`), and
+  every bucket path and idempotency key is per (date, kind) — which is why the
   second challenge is its own kind rather than a slot. `own` is a clip the
   operator recorded themselves, captioned in their voice and posted through
   the same door with no AI note.
+- **Volume is a LIABILITY on three of the eight, so those three get only the
+  posts a person actually made.** YouTube's inauthentic-content policy (July
+  2025) demonetizes "mass-produced, generic, repetitive" output and names AI
+  made "with generic or unoriginal templates… without adding the creator's
+  original, authentic insights"; Meta's originality policy does the same for
+  Facebook and Instagram and applies its penalty ACROSS EVERYTHING THE
+  ACCOUNT POSTS, so one thin post drags the good ones down. Five templated
+  posts a day is the exact shape both describe.
+  So YouTube, Facebook and Instagram get the morning VERSE and the evening
+  STORY — the two carrying the operator's own recorded voice — plus `own`,
+  which is him on camera outright, and Facebook's `note`. The quiz and the two
+  challenges, the three no human voice touches, go to TikTok, X, Snapchat and
+  Threads, where no volume rule was found and the only constraint is
+  per-video. **Every post on a platform that judges a CHANNEL now has a human
+  in it.**
+  What it costs is the comment ask: only the challenges carry one, so Meta
+  loses its single engagement-driving format. That was the deliberate trade.
+  It also fixed the budget — the schedule was 36 a day (~1,080 a month)
+  against a 1,000 plan, silently over, and is now 28 (~840).
+  **This is a posture, not a payout.** The thresholds are far off (YouTube
+  wants 500 subs for the first tier, TikTok 10k followers, and TikTok's
+  rewards need videos over 60s — the verse runs 44-59s and both challenges
+  are 20s by design). The point is not to be earning; it is not to be
+  disqualified while posting this often. And note two things checked rather
+  than assumed: TikTok's terms say **nothing** about AI excluding a video
+  from Creator Rewards (the widely repeated claim is uncited), and YouTube
+  states outright that disclosure "won't limit a video's audience or impact
+  its eligibility to earn money" — so `containsSyntheticMedia` is free.
+  TikTok's `isAIGenerated` is the one label with a real cost, since a Nov 2025
+  preference slider lets viewers dial labelled content down, and TikTok's own
+  guidelines exempt "artistic styles" and "generic text-to-speech" from
+  needing it at all. **It was briefly removed on that reasoning and then put
+  BACK, and the correction is the part worth keeping:** TikTok's own Creator
+  Academy says adding the label "won't affect the distribution of your video",
+  so removing it bought nothing — while carrying real risk, since unlabelled
+  AI can be taken down, the label cannot be added after posting, and
+  Snapchat's Spotlight review has already rejected a verse from this account
+  as "undisclosed AI-generated content". The November 2025 preference slider
+  is a VIEWER setting, not a ranking penalty, and conflating the two is what
+  caused the mistake. What DID survive the round trip is the note in TikTok's
+  CAPTION, which it never had: Dropping one without adding the other is the
+  trap: TikTok's caption never carried the note, so the flag was its whole
+  disclosure, and removing it alone would have left TikTok the one network
+  here saying nothing. Snapchat's Spotlight review has already rejected a
+  verse from this account as "undisclosed AI-generated content", so that
+  failure is not hypothetical — and it is asymmetric, since a rejected post is
+  recoverable and a strike on an account with no distribution is not. The flag
+  goes back on the day a post carries a realistic-looking person or a cloned
+  voice; words are not a substitute for it on content the rules actually
+  cover. Instagram carries both for the same reasons; Meta never published a
+  reach penalty for the label at all.
+  **The note claims the VOICE and not the words**, and that distinction is
+  load-bearing: the thought is drafted for him and he departs from it as he
+  reads, so "the words are mine" would be the one false line in a sentence
+  whose whole job is being true.
+  **The gap to watch: an UNVOICED day.** TikTok, Instagram and YouTube now get
+  only the verse and the story — chosen because they are the posts a person
+  makes — but `voiced` is false on any day no recording was parked, and those
+  networks then receive a fully synthetic post carrying "AI-generated art and
+  voice." on the strength of a warm-up argued on human presence. Either the
+  recordings keep up, or those three should skip a day that has none. **`instagramOptions` is the `else` branch of that chain**, so
+  a ninth platform added without its own branch would silently be posted as
+  Instagram.
+  **And `voiced` is now something the RENDERER says, not something the bucket
+  is asked.** It was inferred from the existence of `days/<date>/voice-<kind>.json`,
+  which is a claim about a FILE and not about the post: the morning cron
+  checks out `main`, `main` had no own-voice half for the STORY, and a
+  recording parked during testing was enough to caption a telling that is
+  entirely Gemini's "The voice you hear is mine, not synthetic." — a
+  disclosure describing something that is not in the post, which is the one
+  thing it must never do. It shipped to seven networks on 2026-09-08. So
+  `Made.voiced` travels from the generator through `postVideo`/`Rendered` to
+  the `post` and `copy` actions, the parked file is only the CEILING (nothing
+  claims a voice with no recording behind it), an explicit `false` wins, and
+  the answer rides in `posted-<kind>.json` so a later call for the platforms
+  that failed says the same thing about the same video. **Found by measuring
+  the MP4, not by reading the log**: cross-correlating the parked wav against
+  the posted audio gives r=0.22 where a genuinely voiced render gives 0.99,
+  and the runner reported a clean render either way. The reverse of this
+  mistake is still live and unfixed: an `own` clip — him on camera, no
+  generated voice in it at all — is captioned "AI-generated art and voice."
+  and carries TikTok's and Instagram's AIGC flag, because `aiNote` has no
+  branch for it and the flags are unconditional.
+- **TikTok is on a warm-up, and the numbers are why.** Fifteen posts over four
+  days drew SEVEN views between them — uniformly 0-2 each, across five
+  formats, every one published successfully. Content that varies that much
+  performing identically at zero is an account with no distribution rather
+  than a format problem. Two things were feeding it: every caption carried
+  "Play today's verse at versearcade.org" (an off-platform link, which that
+  feed deprioritises, since removed by `dropLinkSentence`) and every post wore
+  the AIGC label. So TikTok drops to the verse and the story until there is
+  traction to measure — five posts a day from a two-week-old account with no
+  followers, all through a third-party API, is itself the shape of the thing
+  being filtered. **Read `analytics` before spending posts**: this was found
+  by asking, and nobody had asked.
+- **`note` is the one post here that is NOT a video**, and it is Facebook's
+  alone (the card also goes to Pinterest): a 4:5 card and 120-200 words that retell the story behind the day's
+  verse. Facebook distributes a photo-and-text post through different
+  machinery than a Reel, so it is reach the video is not already buying, and
+  it is the only format where that story can be READ rather than watched.
+  Four things about it are load-bearing.
+  It was **paid for, not added**: Ayrshare's plan is 1,000 posts a month and
+  the schedule was already at ~36 a day, so Pinterest gave up the story pin
+  to fund it (`KINDS_OFF`). Do the arithmetic before adding a kind or a
+  network — the budget does not stretch, and going over is silent.
+  **Pinterest takes the note's CARD as well as the verse**, and got the
+  better end of that swap: it is a search engine where a pin is found for
+  years, and a static, readable, evergreen image is the shape a pin is found
+  BY — where a 90-second telling was the weakest thing in the schedule.
+  It has its **own card renderer** (`renderNoteCard`, 1080x1350) rather than
+  `renderPoster`, because a feed photo is shown at 4:5 at most and the video
+  poster carries a caption panel and an end card — chrome for a thing that is
+  playing, on a card that never plays.
+  It has its **own copy prompt**, because every other kind writes a CAPTION —
+  words read after a video, or not at all — and here the words ARE the post:
+  three short paragraphs, the situation, the verse quoted once, and the share
+  ask. It is written from the SAME `paragraphs` Tabitha tells in the evening,
+  so the two can never contradict each other about what happened.
+  And it is a **photo end to end**: `isVideo: false`, `faceBookOptions.reels`
+  forced off, and the `post` action takes an https `.jpg` where every other
+  kind is refused anything but an MP4. Asking Facebook to make a Reel out of a
+  JPG is a refusal, not a post. **Which is also why it carries its own AI
+  note** (`AI_NOTE_STILL`, chosen by KIND rather than by `voiced`): the other
+  two lines both name a voice, and "AI-generated art and voice." on a card
+  that cannot make a sound describes something that is not in the post — the
+  one thing a disclosure must never do. A voiced DAY says nothing about a
+  picture, so it reads the same on both.
 
 - **The Gemini key lives in `supabase/functions/tiktok-gen` and nowhere else.**
   Same `sharkbait` gate as `push-send`. It makes the reading (Gemini TTS), the
@@ -530,6 +657,43 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   the **↻ Links** button on a posted card does it by hand. Nothing else does —
   without it the record stays URL-less forever and the player-facing row above
   never appears.
+- **Two layouts, two speech levels — one constant described only one of
+  them.** `trimAndLevel` brought a recording to `TARGET = 0.14`, calibrated
+  against Gemini's VERSE readings, and the story's own-voice half inherited it
+  without anyone measuring what it played NEXT to. Off the shipped MP4s:
+  Tabitha's telling renders at -13.2 LUFS and his half at -19.4 — a six-decibel
+  step down, and since every scheduled story is `place: 'open'`, that step is
+  the FIRST FOURTEEN SECONDS, the window that decides whether a short video is
+  distributed at all. Platform loudness normalisation does not save it: a
+  network normalises the whole file toward a target and leaves an imbalance
+  INSIDE it exactly as it found it. `SPEECH_TARGET` is now `{ verse: 0.14,
+  story: 0.26 }`, passed by `ensureOwn` and by the CLI's `listen` (the hub's
+  card is verse-only and keeps the default). Measure a change here off the
+  RENDER, never the WAV — the music bed sits under both voices and only the
+  finished mix says what a viewer hears.
+- **A level fix does NOT need a re-render, and that is worth remembering.** The
+  fourteen scheduled stories were corrected in place with the video stream
+  COPIED and only the audio filtered — a gain over his half, ramped back to
+  unity across `OWN_GAP`, about two seconds a file against minutes to re-render.
+  Two things it needs: the gain must come from the day's OWN parked recording
+  length (his half is 10.3-15.6s across the fortnight, never a constant), and it
+  needs a limiter — a naive +6 dB measured **+3.1 dBFS true peak**, which is
+  distortion, where `alimiter=limit=0.89` lands it at -0.9. All fourteen now sit
+  within 1.6 LUFS of Tabitha, from a 3.0-6.3 gap.
+- **A figure stands on its FEET, not on its file's bottom edge.** Every skin
+  render is a full-length figure on a transparent field and every one carries
+  empty space under the sandals — david and esther are 400px tall with content
+  ending at 367, sharkey at 370. `standFigure` and `renderNoteCard` both drew
+  the image so its BOX met the ground line, which left the figure hovering by
+  8% of its drawn height — ~65px on a 1920 frame, ~45px on the card — with its
+  own contact shadow sitting in the gap. It read as pasted on rather than
+  painted, which is the exact thing the hold-the-paintings-still rule exists to
+  prevent, and it had been shipping in every road post. `bottomPad` measures
+  the file's empty bottom once per image (an alpha scan, cached by `src`,
+  never per frame) and both renderers offset by it. Measured rather than
+  assumed with a constant: the padding differs per skin and a new one lands
+  whenever a render does. **Found by looking at the JPEG, not the log** — the
+  runner reported a clean render every time.
 - **The only thing moving is the caption, and that is a rule now.** These
   posts had drifting motes, a warm pulse over the frame, a hovering figure
   under a breathing halo, page-turn wipes and Veo loops of Tabitha talking —
@@ -565,9 +729,127 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   "AI-generated art; the voice is our own." (`voiced` on `PostArgs`) and
   the copy is rewritten on Save. This is the platforms' human-producer
   test being met on purpose; the four other daily posts stay automated.
+  - **And from 2026-09-08 the day's READER hands the road over to him**
+    (`SPEAKER_SKIN`, `speakerFor`, `RenderInput.speaker`, `standFigure`): as
+    the thought begins the reader turns edge-on and goes, and the `sharkey`
+    skin — the founder's own, one of one — turns in on the same spot at the
+    same size, so the figure, the voice and the photo are one person for the
+    rest of the post. Before that it was Cephas or Esther standing there
+    while Matthew read.
+    Three things about it are load-bearing. It carries a **`scene` as well as
+    a figure**, because on the two best backdrop tiers the reader is PAINTED
+    INTO the picture and there is no layer to take away — the swap brings the
+    bare road up over the painting, and only the built-in tier spins a figure
+    out. It is **dated rather than switched on**, which is the cheap gate for a
+    look that starts on a day rather than on a deploy — and the date moved
+    once, from the 15th to the 8th, because the owner wanted it on the week
+    already scheduled. Moving it forward is not free: a scheduled post is
+    not a draft, so those seven had to be re-rendered, taken down with
+    `unpost` and posted again. And it is **half a second**: the rule on this
+    layout is that the only thing moving is the caption, so a slow dissolve
+    between two figures would be a second moving thing for as long as it
+    lasted, where a flip is over before it reads as motion. Nothing here goes
+    through `skinVisible` — the art is read from `public/skins/` like every
+    reader's — so the skin staying `retired` and owned by one account is
+    untouched. A missing render is the reader staying put, never a failed
+    post. **The STORY deliberately does not get it**: that is Tabitha's
+    room, a second figure in it is a stranger in somebody else's library,
+    and the photo alone already says who is talking.
   `scripts/tiktok-voice.mjs` is the same loop from a terminal (drafts,
-  listen, render, post) for the sessions where the memos arrive here
+  listen, fix, render, post) for the sessions where the memos arrive here
   rather than at the hub. `docs/TIKTOK-ENGINE.md` → "Your voice".
+  - **`split` is TWO paths, and it was one for a while.** The batch pass
+    hears the whole memo once with `hear` — the STORY listener, which has no
+    verse to look for — and that is right for a story batch and silently
+    wrong for a verse one: every take parks with `verse: []` and the reading
+    itself filed as thought, so the renderer captions the verse from the
+    TRANSCRIPT instead of from its known text. The first real verse batch
+    would have burned "Calassay" for Colossae, "responsibly" for
+    responsively and "pray without seizing" onto the screen AS SCRIPTURE.
+    Nothing throws and the split reports a clean cut. A verse take is now
+    heard again on its own through the same `listen` a single recording
+    uses; a story take keeps the fast path.
+  - **The take marker survives a mis-hearing and a missing pause**, because
+    both cost a real batch. Whisper heard "Day FOUR" as "Day or" — the number
+    was simply not in the transcript, the run stopped at three, and takes
+    four to eight were swallowed into one 342-second "take 3" that still
+    looked like a successful cut. `NUM` now carries the homophones (`or`,
+    `for` → four; `to`, `too` → two; `ate` → eight), accepted only behind a
+    LEAD word so "to" can never cut a sentence in half. And the pause test
+    applies only to a BARE number now: "…my own emptiness. Day 8." was run
+    together and timed at MINUS 0.03s, where the sequence check (a marker
+    must be the next number in order) already identifies it. A bare number
+    keeps the pause, because there the sequence is not enough — "he is ONE of
+    our kinsmen" sits mid-sentence in that same recording.
+  - **The models can be served locally**, which is what a container with no
+    browser egress needs: `MODELS_DIR` holding `models/onnx-community/whisper-{base,tiny}.en_timestamped/`
+    and `ort/`. transformers.js loads the **quantized** ONNX weights by
+    default, so `*_quantized.onnx` are the files it actually asks for — a
+    cache holding only the full-precision ones fails at load with
+    `local_files_only=true … was not found locally`.
+- **The evening STORY carries his voice too, at ONE END of the telling.**
+  The verse post is his outright — his reading stands in for Gemini's —
+  while the story keeps Tabitha's telling whole and joins ~20 seconds of him
+  to it, with his photo growing into the middle of the frame while he speaks
+  (`StoryInput.own`, `OWN_GAP`). Two voiced posts a day is the cadence that
+  was chosen over voicing all five: YouTube judges a channel, TikTok and
+  Meta judge each post, and 28 extra recordings a week is a cadence that
+  stops. The challenges and the quiz stay automated and honestly labelled.
+  - **Two ends, one at a time.** `place: 'close'` answers her telling;
+    `place: 'open'` introduces her and hands over by name ("In this
+    round-up, Tabitha…"). A day carries one or the other and never both:
+    two turns from the same voice around one story is a conversation with
+    one person in it. So they share the one parked recording
+    (`voice-story.{wav,json}`) and the place is written into its transcript
+    when it is LISTENED to (`--intro`), which is what stops a later render
+    moving a word recorded as a closing one to the front. Drafts are cached
+    apart (`thought-story.json` / `thought-story-intro.json`) so both can be
+    written and one chosen.
+  - **An introduction may not push the hook off frame 0.** That is the one
+    rule this layout has, so his photo waits for the hook to fade rather
+    than arriving with his first word (`ownShow`) — his voice starts at
+    0.35s under the hook exactly as the verse layout's reading does, and it
+    is his WORDS that open, never a title card. He steps back out as she
+    begins (`ownHide`), so the last thing before her first word is her room.
+  - **One shape serves both, and the verse.** His half parks the same
+    `VoiceTrack` with an EMPTY `verse`, so `refit`, the correction step, the
+    caption path and `voice`/`voice-clear`/`upload-url` are the ones that
+    already existed, keyed on kind. `transcribeOwn` is the only listener
+    added: there is no verse in it to find, and `place` is metadata it
+    carries rather than anything it does. `ensureOwn` mirrors `ensureVoice`,
+    so the morning runner can do the listening itself when a phone only
+    uploaded.
+  - **Both drafts are written FROM the telling** (`thought` with
+    `kind: 'story'` and a `place`), which is why they are a second call
+    rather than a flag — the morning thought comes off the verse's own data
+    and can be written a week early, while a word about a story cannot exist
+    before the story does. The two prompts pull opposite ways: a closing
+    word names what the story turned on, an introduction is forbidden from
+    giving it away, because the hook on screen is already saying the
+    dramatic thing.
+  - **The other speaker's captions are closed where this one begins, and
+    that line was earned.** A caption HOLDS until the next one so a pause is
+    not a blank panel, and the last caption of a half has nothing after it
+    to stop it: Tabitha's last phrase held fourteen seconds into his — his
+    voice, her words on screen. The frame lookup takes the first phrase
+    whose span covers the moment, so the over-running one simply shadowed
+    the right one. Every phrase is now closed at the handover, and the two
+    halves are concatenated in SPEAKING order so the lookup finds the right
+    one first. The verse layout has carried the same line since it grew a
+    thought; this is that rule arriving on the layout that grew a second
+    speaker later. It rendered perfectly the whole time — only reading the
+    captions off a frame found it.
+  - **And the caption a PAUSE holds is the last one SPOKEN, not the last one
+    in the array** (`heldPhrase`). Those were the same thing for as long as
+    the array was one speaker's words in order; they stopped being the same
+    thing the moment a story could open in his voice, because the beat
+    between his last word and Tabitha's first — about a second and a half —
+    then held HER closing reference line, flashed once at the handover and
+    gone. Both layouts share the lookup now. Found the same way as the clamp
+    above: by pulling the frame out of the MP4.
+  - Her captions are also timed against HER samples alone: `timedCaptions`
+    matches a transcript to a recording, and handing it her minute of words
+    over audio that ends in somebody else's voice makes it chase the tail.
 - **The quiz replays YESTERDAY, and the CPU is the game's own.** The five
   questions are the same five for everybody on a date, so a public replay of
   today's would hand out today's answers. The player is `buildCpuPlan` from
@@ -604,7 +886,13 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   (`admin/tiktok/make.ts`), in headless Chromium — there is no second
   renderer — transcodes to H.264 MP4 with ffmpeg, parks the file through
   `upload-url`, and schedules each post at its own hour in `TIKTOK_TZ`
-  (verse 07:00, challenge 10:00, quiz 12:30, challenge2 16:00, story 19:30).
+  (verse 07:00, challenge 10:00, note 12:00, quiz 12:30, challenge2 16:00,
+  story 19:30). **The note is the one kind that leaves that pipeline early**:
+  it renders a JPEG, so it skips the ffmpeg transcode (nothing to normalise)
+  and the Pinterest cover (a poster for something that plays), and it parks
+  at `note-card.jpg` rather than `<kind>.mp4` because that is the path
+  `upload-url` allows. `isPhoto`/`mediaName` in the runner are the whole of
+  that branch — add a second photo kind there, never a second code path.
   Its credential is
   `TIKTOK_RUNNER_TOKEN` (Vault, 0102, sent as `x-runner-token` beside the
   anon key), which the function takes as the admin and which can make these
@@ -634,20 +922,53 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   xAI key: `XAI_API_KEY` or Vault `tiktok_xai_key()` (0105); no key ⇒ a
   clear error and nothing posted. `lib/tiktokChallenge.ts` is the pure
   question picker both the renderer and the replier use.
-- **Every posted link is the PLAYABLE verse, tagged with its network**
-  (`siteLink` in `social.ts`: `versearcade.org/play?src=<platform>`), and
-  `trackLinks` rewrites any bare site mention the model wrote into that
-  shape, so no caption goes out untagged. The client parks the first `src`
-  it sees (`lib/attribution.ts`, `va.src`, stripped from the address bar on
-  capture, same lifetime as the referral code) and hands it to
-  `set_signup_source` (0106) once an account exists. **The server keeps only
-  the first value and only for an account under seven days old**, so a
-  long-time player opening a tracked link is never re-filed. The hub's
-  weekly table carries a Sign-ups column per network from
-  `admin_signup_sources`; that is the number goal one is judged by, and it
-  reaches no player, no board, nothing that ranks a person by where they
-  came from. TikTok, Snapchat and Instagram captions are not tappable, so
-  their bio links are set BY HAND to the same shape.
+- **NO CAPTION CARRIES A LINK, on any network, and the ask is always the
+  share.** Two reasons, and only the first is measurable: Facebook's own
+  Professional dashboard names "remove links from your caption" among the
+  things a Reel is rewarded for, and every feed that ranks video treats an
+  outbound link the same way. The one that decided it is that a post ending
+  in a URL reads as an advertisement, and these have to read as something a
+  person would say and pass on — the brand is IN the video (end card, site,
+  reference), so the caption is just the words. `dropLinkSentence` removes
+  whole any sentence carrying a versearcade.org mention and `callToAction`
+  ends every caption with "Share this with someone who needs to hear it
+  today." (a challenge asks for the comment first). **The ask is separated the
+  way the words themselves are** — a blank line under a text that already has
+  blank lines, the given join under a one-liner. A single newline under the
+  NOTE's three paragraphs hung the share line off the end of the closing
+  sentence like a fourth clause of it, where every other break in the post was
+  a paragraph; a space-joined network (TikTok, Snapchat) is untouched. There is deliberately no
+  second ask: a caption asking for a share AND a follow AND a comment asks
+  for none of them, and a share reaches a stranger's feed where a follow ask
+  reaches only people already watching.
+- **The tracked link moves rather than goes** (`siteLink` in `social.ts`:
+  `versearcade.org/play?src=<platform>`, what `set_signup_source` (0106)
+  files a sign-up under — the number goal one is judged by, so losing it was
+  never an option). It rides as Ayrshare's `firstComment` on **Facebook,
+  YouTube and X**, added when the post publishes, which is also the only
+  moment a SCHEDULED post has an id to comment on; all three were validated
+  against the live API before shipping. Ayrshare would post a first comment
+  on TikTok and Instagram too, but a link in a comment there is dead text,
+  and Snapchat, Threads and Pinterest have no comment endpoint at all — so
+  those five carry `?src=` in their **bio link, set BY HAND** (TikTok,
+  Snapchat and Instagram already did; **Threads joins them**). Pinterest also
+  keeps it in `pinterestOptions.link`, the pin's destination rather than
+  caption text. Two of that dashboard's tips are NOT reachable from Ayrshare
+  and stay manual: there is no subtitle field for Facebook (the burned-in
+  captions are what ships) and no Reels-playlist endpoint at all.
+- **A SCHEDULED post can be replaced, and only through `unpost`.** Ayrshare
+  has already taken the video by then and holds it against an id, so
+  re-rendering and replacing the file in the bucket reaches nothing, and
+  `post` alone would not replace the row either — it merges by platform and
+  would leave the day with TWO scheduled posts. `unpost` deletes by the id
+  in the day's own `posted-<kind>.json` (never by anything a caller sends,
+  so nothing outside this account's posts can be reached), treats a row
+  Ayrshare has forgotten as a success, and re-parks the record without the
+  deleted rows. **The re-post then needs `--attempt=2`**: Ayrshare refuses a
+  repeated `idempotencyKey` even for a post it has deleted, so without it the
+  replacement is rejected as a duplicate and the day ends up with nothing
+  scheduled at all — the one failure mode here that looks like success until
+  the morning it doesn't post.
 - **`analytics` is the operator's only scoreboard.** It reads Ayrshare's
   per-post numbers for one (date, kind), caches six hours, and the hub totals
   a week per network and per kind. Numbers about posts on other people's

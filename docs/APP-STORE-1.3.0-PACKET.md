@@ -6,24 +6,25 @@ is the whole pipeline from an empty account; this is the short path for one
 update. The copy lives in `APP-STORE-LISTING.md` and is not duplicated here
 except for "What's New", which is the one block you have to paste today.
 
-**An update carries its own metadata forward.** Description, keywords, subtitle,
-support and privacy URLs, category and age rating are already on the app record
-from 1.2.0 and stay unless you change them. Four things are genuinely per-version:
-**What's New**, the **build**, the **screenshots** (optional to replace) and the
-**demo account** in the review notes. Everything below is one of those four, or a
-check.
+**An update carries its own metadata forward**, so most of the record needs
+nothing. What this one changes: **What's New**, the **build**, the
+**screenshots**, the **demo account** in the review notes — and, this release,
+the **description, promotional text and keywords**, which were written for 1.0
+and had gone stale enough to be worth replacing. Subtitle, support and privacy
+URLs, category and age rating are untouched.
 
 ---
 
-## 0 — Two things this repo cannot check for itself
+## 0 — The two checks this repo cannot make for itself
 
-Do these first. Both have silently cost a build before.
+Do these first. Both have silently cost a build before. The first is now answered.
 
-- [ ] **Read what is actually APPROVED in App Store Connect.** The repo says 1.2.0
-      is live and that `package.json`'s **1.3.0** is strictly higher. That is a
-      claim about Apple's console, not about this repo, and nothing in CI verifies
-      it. An approved version's train is closed: a build carrying it is rejected
-      (`90062` + `90186`) about twenty minutes into a signed archive.
+- [x] **What is APPROVED.** Confirmed on 2026-09-09 by the app's owner reading the
+      console: **1.2.0 is live**, so `package.json`'s **1.3.0** is strictly higher
+      and its train is open. No bump. (Kept as a step because it is the check that
+      has gone stale silently before — an approved version's train is closed and a
+      build carrying it is rejected, `90062` + `90186`, twenty minutes into a signed
+      archive.)
 - [ ] **Confirm the TestFlight build actually contains what "What's New" claims.**
       Open the build in App Store Connect (or Codemagic) and read the commit it
       was built from, then check it against `git log --first-parent origin/main`.
@@ -109,6 +110,27 @@ TestFlight build on a real phone if you want them.
 
 ---
 
+## 3b — Description, promotional text, keywords
+
+All three are in `APP-STORE-LISTING.md` under their own headings, already inside
+Apple's limits (3,974 / 4,000 · 159 / 170 · 98 / 100). Paste each over what is
+there.
+
+- **Description** — rewritten. The old one was written for 1.0: it said "Battle a
+  friend" when quick match now puts you against a stranger in one tap, and it never
+  mentioned the second daily round, the arcade, the Prayer Wall, the Upper Room,
+  praying, or the seals. It is the evergreen pitch, so it describes the app as it
+  IS — the changes belong in "What's New" and nothing in it reads as a change log.
+- **Promotional text** — the one field that changes with no review at all. Use it
+  between releases whenever there is something to say.
+- **Keywords** — `battle` out, `prayer` in, `god` → `game`.
+
+**Changing the description sends this version to review, which it is going to
+anyway.** Doing it in the same submission costs nothing; doing it later is a
+second review for a text edit.
+
+---
+
 ## 4 — Review notes, and the demo account
 
 **The demo account is mandatory, not optional.** Since the account wall landed, a
@@ -127,7 +149,8 @@ it explains the padlocks, the single in-app purchase, and the read-aloud voices.
 
 ## 5 — The answers that do not change
 
-Already on the record from 1.2.0. Confirm rather than re-enter:
+Already on the record from 1.2.0 and untouched by this update. Confirm rather
+than re-enter:
 
 - **App Privacy** — the table in `APP-STORE-LISTING.md`. Email, name, user ID and
   gameplay content, all **linked**, **none used to track**. No tracking bucket.

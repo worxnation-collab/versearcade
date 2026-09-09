@@ -23,54 +23,81 @@ Daily Bible verse game
 
 ## Promotional text (max 170 chars — editable anytime without review)
 ```
-One verse a day. Race the clock, keep your streak, battle a friend, and play for your church. No shame, no pop quiz energy — miss one and you still learn something.
+Two rounds a day: today's verse, and five on one book of the Bible. Race a stranger, play for your church, and miss one without ever being made to feel behind.
 ```
+> 157 chars. This is the ONE field that changes without a review, so it is the place
+> to say what is new between releases — swap it freely. The previous line ("battle a
+> friend") outlived the feature: quick match puts you against a stranger in one tap
+> now, and a friend is no longer the only opponent.
 
 ## Description (max 4000 chars)
-```
-Open the Bible and actually want to. Verse Arcade turns Scripture into a fast, friendly daily game.
 
-THE DAILY DROP
-Every day, one verse goes live for everyone at the same time — your shared ritual. Read it, then race the clock through five quick questions about that exact verse: which book it's from, who's speaking, who's being addressed, what happens next. Answer fast and accurately to rack up points.
+> **Rewritten for 1.3.0 on 2026-09-09. 3,974 characters, leaving 26.** The previous
+> one was written for 1.0 and had gone quietly false in one place and thin in six:
+> it said "Battle a friend" when the app now puts you against a stranger in one tap,
+> and it did not mention the second daily round, the arcade, the Prayer Wall, the
+> Upper Room, praying, the seals, or that a run now ends by telling you what you
+> learned. A description is the evergreen pitch, so it describes the app as it IS —
+> "What's New" is where the changes go, and nothing here should read as a change log.
+>
+> Two things in it are load-bearing and should survive any future edit. The
+> **no-losers rule is stated three separate times** in the app's own words ("nobody
+> loses", "winner and loser earn exactly the same", "no board anywhere ranks a person
+> against a friend"), because that is the one claim this app is actually built on and
+> a store page is where somebody decides whether to believe it. And **no number in it
+> is a promise the app cannot keep**: 66 books, 1,189 chapters, 31,102 verses and
+> "over 400" trivia questions are all checked by `npm run build`, and the count of
+> skins, pets and machines is deliberately left out because those grow.
+>
+> **The counts to re-check before pasting**, since they are the only things here that
+> rot: the trivia bank is 406 questions (`data/bible/trivia.ts`) and the verse pool is
+> 726 (`data/bible/pool.ts`). Both are floors written as "over 400" and left unstated
+> respectively, so growth never makes this text wrong — only a shrink would.
+
+```
+Open the Bible and actually want to. Verse Arcade turns Scripture into a fast, friendly daily game — and nobody loses.
+
+TWO THINGS EVERY DAY
+One verse goes live for everyone at the same time. Read it, then race the clock through five questions about that exact verse: which book it's from, who's speaking, who's being addressed, what happens next. Beside it, a second round: five questions about one book of the Bible, the same book for everybody, from a bank of over 400.
 
 YOU CAN'T LOSE, ONLY LEARN
-Miss a question? No buzzer, no shame. A wrong answer reveals a genuinely interesting fact about the verse, so you walk away knowing more than you did a second ago. This app is built for people who feel behind — nobody starts knowing every verse.
+Miss one? No buzzer, no shame. A wrong answer reveals a genuinely interesting fact, and the run ends with "3 things you now know" — never "3 wrong". This app is built for people who feel behind. Nobody starts knowing every verse.
 
-BUILD A STREAK YOU'LL WANT TO KEEP
-Earn XP, level up, and grow a daily streak with a flame that gets hotter the longer you go. Busy day? A streak freeze quietly saves you, so real life doesn't punish you.
+A STREAK, WITH A NET
+Earn XP, level up, and grow a streak with a flame that gets hotter the longer you go. Busy day? A streak freeze quietly saves you. Your reminder learns the hour you actually play.
 
-BATTLE A FRIEND
-Challenge someone to the same verse quiz and see who scores higher — or race a study partner whose score ticks up live beside yours. Pick Rookie, Deacon or Prophet.
+BATTLE ANYONE, RIGHT NOW
+Tap quick match and we put you with whoever else is looking — no code, no queue, no rating. Or share a room code and race a friend: the same verse, you both tap ready, and a bar shows where they are. Prefer a machine? Race Rookie, Deacon or Prophet. Winner and loser earn exactly the same.
+
+AN ARCADE IN THE BACK
+Manna Rush: seven days in the wilderness, and on the seventh the best thing is to rest. Word Catch: a verse comes loose from the page and you tap the words back in order. Cross Word: two words that share a letter, standing as a cross — solve it and the squares turn to wood with the verse carved underneath. No high scores. Nothing ranked.
 
 PLAY FOR YOUR CHURCH
-Find your church, then give it the points you earn. Giving costs you nothing — your own XP and rank stay exactly where they are — and your congregation levels up and climbs the board. Can't find yours? Add it in seconds.
+Find your congregation and give it the points you earn. Giving costs you nothing — your own XP and rank stay exactly where they are. Every Monday your church meets another its own size, and whoever gives more raises a statue in their churchyard. Small churches play small ones, so a congregation of four can win its week.
 
-STUDY WHAT YOU'RE ACTUALLY WEAK AT
-See your accuracy book by book, weakest first, and drill the ones that need it. Keep the verses that mattered, review them before they fade, and read the whole chapter in KJV, WEB or BBE. Nothing in Study is ranked or scored against anyone.
+A ROOM THAT IS YOURS
+An Upper Room under your player card that belongs to nobody else. Furnish it, choose what it's made of, and let friends knock. Pray in it: a prayer is built for you out of four movements, so you always know what comes next, and it will read itself aloud if you'd rather listen.
+
+THE PRAYER WALL
+Tuck a note into the stones and the wall deals somebody else's to you. Hold the candle until the wick catches. A stranger only ever sees the category — your own words reach your church and your buddies, or nobody at all. Anonymous unless you sign it.
 
 YOUR WHOLE BIBLE, FILLING IN
-All 66 books, 1,189 chapters and 31,102 verses are in here, and every one you read, study or keep lights up on your own copy. Open a chapter with no signal and it still draws every verse. Most of the Bible isn't in the daily rotation, and the reader says so plainly — it's there to read, not to grade you.
+All 66 books, 1,189 chapters and 31,102 verses. Every one you read, study or keep lights up on your own copy, and reading a book all the way through presses its seal. Open a chapter with no signal and it still draws every verse. Read in KJV, WEB or BBE.
 
-MAKE A CHARACTER, AND FURNISH A WORLD
-Build yourself at the door, then earn full-look skins and a companion by showing up. Your faction's keep grows with the battles you play — decorate the hall, plant the churchyard, and offer your finest piece to your congregation. Earned is earned: a missed day never takes one away.
+STUDY, WITHOUT A SCORE
+The Study tab is a library with a librarian in it. See your accuracy book by book, weakest first, drill what needs it, and review the verses you kept before they fade. Nothing in Study is ranked or scored against anyone.
 
-WASH SOMEBODY'S FEET
-Every other way to act on a player here is a challenge. This one isn't. Tap someone's face, kneel, and they'll see it — twelve a day, one for each disciple. There is no score for being washed and no way to see anyone's total but your own.
-
-A SOUNDTRACK THAT UNLOCKS BY WALKING IN
-Every room has its own instrumental, and hearing one for the first time adds it to your music player. You can't miss one, and there's nothing to buy.
-
-GENTLE REMINDERS
-Turn on a nudge for the daily verse and it'll tell you which verse is waiting, even offline. Study reminders only arrive on days you actually have something to review.
+PEOPLE, NOT A SCOREBOARD
+Build your character at the door — figure, skin tone and hair, all free — then earn full-look skins and a companion that walks beside you. Tap somebody's face and wash their feet: twelve a day, one for each disciple, and the only thing here you can do to a person that isn't a challenge. There is no count of who likes you, and no board anywhere ranks a person against a friend.
 
 MADE THOUGHTFULLY
-- Play today's verse as a guest. A free account opens the rest and keeps your streak.
-- Sign in with Apple, Google, or email to sync your streak across devices.
-- Sound and haptics you can dial down or off anytime.
-- Delete your account and all data in-app, whenever you want.
-- No ads. No tracking. We never sell your data.
+• Play today's verse as a guest. A free account opens the rest and keeps your streak.
+• Sign in with Apple, Google or email to sync across devices.
+• Sound, music and haptics you can dial down or off anytime.
+• Delete your account and all your data in-app, whenever you want.
+• No ads. No tracking. We never sell your data.
 
-Verse text uses the Berean Standard Bible (BSB), a modern, public-domain translation. Scripture is always free — and always will be.
+Verse text is the Berean Standard Bible (BSB), a modern, public-domain translation. Scripture is always free — and always will be.
 
 Start your streak today. It's one verse.
 ```
@@ -285,8 +312,16 @@ As always: no ads, no tracking, and a wrong answer still teaches you something.
 
 ## Keywords (max 100 chars, comma-separated, no spaces)
 ```
-bible,verse,scripture,daily,trivia,christian,faith,devotional,quiz,streak,church,battle,study,god
+bible,verse,scripture,daily,trivia,christian,faith,devotional,quiz,streak,church,prayer,study,game
 ```
+> 98 of 100. Two changes from the 1.0 set, both because the app moved: `prayer` is
+> in (the Prayer Wall and the prayer sheet are whole features now and neither existed
+> then), and `battle` is out — it is already in the description and the title race is
+> not winnable against the actual battle games. `god` came out for `game`, which is
+> what people who would like this actually search alongside "bible".
+>
+> Do NOT repeat words from the app NAME or SUBTITLE here: Apple indexes those
+> separately and a duplicate spends one of your hundred characters for nothing.
 
 ## Support URL
 ```

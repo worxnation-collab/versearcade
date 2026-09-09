@@ -103,9 +103,19 @@ const isDate = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d)
 // carries one or the other, so both use the same parked recording and the
 // same path — `--intro` is what a recording is LISTENED to as, and it is
 // written into the transcript so a later render cannot move it.
-const KIND = flags.story ? 'story' : 'verse'
+//
+// `--kind=<k>` names one of the week's six readings; `--story` is the
+// shorthand that predates them and `verse` is the default. A bare `--kind`
+// reads as TRUE, which would silently render a verse — refuse it, the
+// `--days` lesson.
+const READING = ['book', 'moment', 'before', 'figure', 'quiet', 'prayer']
+if (flags.kind === true) fail(`use --kind=<${['verse', 'story', ...READING].join('|')}>`)
+const KIND = flags.kind ? String(flags.kind) : flags.story ? 'story' : 'verse'
+if (!['verse', 'story', ...READING].includes(KIND)) fail(`unknown kind ${KIND}`)
 const PLACE = flags.intro ? 'open' : 'close'
-const HOUR = { verse: '07:00', story: '19:30' }
+// The evening slot is one hour for every second post of the day — the story
+// and all six readings — because exactly one of them ever runs on a date.
+const HOUR = Object.fromEntries([['verse', '07:00'], ...['story', ...READING].map((k) => [k, '19:30'])])
 const mp4For = (date, kind) => path.join(OUT, 'out', `${kind}-${date}.mp4`)
 
 function ymdIn(tz, d = new Date()) {
@@ -139,12 +149,37 @@ async function upload(bucketPath, file, contentType) {
   if (error) throw new Error(`upload ${bucketPath}: ${error.message}`)
   return up.publicUrl
 }
-// A phone memo, cleaned for the post: mono, 48 kHz, the room's rumble and
-// hiss taken down, and the loudness brought to where Gemini's readings sit
-// (EBU R128 to -16 LUFS). The browser levels again on its own terms, which
-// is idempotent on a file already at that level.
+// A phone memo, cleaned for the post: mono, 48 kHz, the room taken out of
+// the low end, presence lifted where a phone mic is weakest, and the range
+// closed enough that a quiet clause survives a bus.
+//
+// Two things are DELIBERATELY absent, and both were measured off a real memo
+// rather than reasoned about:
+//
+//   - No DENOISER. `afftdn` was here on the assumption that a phone in a
+//     room is noisy. The memo measures a -73.5 dB floor against a -18 dB
+//     voice — a 55 dB gap — so there is nothing for it to remove, and what
+//     it actually did was chew the breath off the front of words. Check the
+//     floor (`ffmpeg -af astats`) before putting one back; a genuinely noisy
+//     take is the case for it, not a phone.
+//   - No LOUDNORM. Level is set per LAYOUT downstream — `trimAndLevel`
+//     against `SPEECH_TARGET` ({ verse: 0.14, story: 0.26 }) — and two
+//     things fighting over loudness is exactly what produced the six-decibel
+//     step between his half and Tabitha's that had to be corrected in place
+//     across fourteen scheduled stories. One owner, and it is the renderer.
+//
+// So this chain shapes TONE and DYNAMICS only, and leaves loudness alone.
+// The 4.5 kHz lift is the one that does the work (+2.8 dB of presence at
+// matched loudness); the limiter is a safety rail, not a level.
 function toWav(file, wav) {
-  const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', file, '-ac', '1', '-ar', '48000', '-af', 'highpass=f=70,afftdn=nf=-28,loudnorm=I=-16:TP=-1.5:LRA=9', '-c:a', 'pcm_s16le', wav])
+  const af = [
+    'highpass=f=70',                                       // room rumble, handling
+    'equalizer=f=250:t=q:w=1.2:g=-2.5',                     // boxiness of a small room
+    'equalizer=f=4500:t=q:w=1.0:g=3',                       // presence — consonants a phone mic loses
+    'acompressor=threshold=-18dB:ratio=2.5:attack=8:release=180:makeup=1',
+    'alimiter=limit=0.94',
+  ].join(',')
+  const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', file, '-ac', '1', '-ar', '48000', '-af', af, '-c:a', 'pcm_s16le', wav])
   return ff.status === 0 && fs.existsSync(wav)
 }
 function durationOf(src) {
@@ -295,7 +330,21 @@ try {
   }
   if (cmd === 'split') {
     const file = args[0], start = args[1]
-    if (!file || !fs.existsSync(file) || !isDate(start)) fail('split <audio file> <start date> [--days=N] [--story] [--intro] [--dry] [--reuse]')
+    if (!file || !fs.existsSync(file) || !isDate(start)) fail('split <audio file> <start date> [--days=N] [--story] [--intro] [--week] [--dry] [--reuse]')
+    // `--week` is the ROLLOUT shape: one sitting, one take per day, and the
+    // kind is whatever that DATE's second post is rather than one kind for
+    // the whole batch. It comes from `kindForDate` — the same rotation the
+    // runner schedules from — so a take can never be parked under a kind the
+    // day will not render. Without it the eight takes of a week would all
+    // park as `voice-story`, six of them under a day that never asks for one,
+    // and every one of those days would fall back to Gemini with nothing
+    // saying so.
+    let kindFor = () => KIND
+    if (flags.week) {
+      await build({ entryPoints: [path.join(ROOT, 'src/data/tiktokWeek.ts')], bundle: true, format: 'esm', platform: 'node', outfile: path.join(OUT, 'week.mjs'), logLevel: 'error' })
+      const week = await import(path.join(OUT, 'week.mjs'))
+      kindFor = (d) => week.kindForDate(d)
+    }
     // `--days=14`, not `--days 14`: the flags here are all `--key=value`, and
     // a bare `--days` reads as TRUE, which Number() turns into 1 — a silent
     // one-take split rather than an error. Refuse it instead.
@@ -374,49 +423,61 @@ try {
       // failure here that a transcript check cannot see.
       const next = marks[k + 1] ? marks[k + 1].at - 0.15 : heard.seconds
       const to = words.length ? Math.min(next, words[words.length - 1].end + 0.5) : from
-      return { date: addDays(start, m.n - 1), n: m.n, from, to, words, text: words.map((w) => w.text).join(' ') }
+      const date = addDays(start, m.n - 1)
+      return { date, kind: kindFor(date), n: m.n, from, to, words, text: words.map((w) => w.text).join(' ') }
     })
-    for (const t of takes) log(`  ${String(t.n).padStart(2)} ${t.date}  ${t.from.toFixed(1)}–${t.to.toFixed(1)}s (${(t.to - t.from).toFixed(1)}s ${t.words.length}w)  ${t.text.slice(0, 74)}`)
+    for (const t of takes) log(`  ${String(t.n).padStart(2)} ${t.date} ${t.kind.padEnd(7)} ${t.from.toFixed(1)}–${t.to.toFixed(1)}s (${(t.to - t.from).toFixed(1)}s ${t.words.length}w)  ${t.text.slice(0, 66)}`)
     if (flags.dry) { await done() }
-    // Cutting reads the batch; the verse path below re-points `inputWav` at
-    // each take, so hold on to it rather than reading a moving variable.
+    // Cutting reads the batch; parking re-points `inputWav` at each take, so
+    // hold on to the batch rather than reading a moving variable.
     const batchWav = inputWav
     for (const t of takes) {
       const wav = path.join(OUT, `take-${t.date}.wav`)
       const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', batchWav, '-ss', String(t.from), '-to', String(t.to), '-c:a', 'pcm_s16le', wav])
       if (ff.status !== 0) { log(`  ${t.date} could not be cut`); continue }
-      // A VERSE take has a verse INSIDE it, and the batch pass cannot find
-      // one: `hear` is the story listener — all thought, nothing to look for
-      // — so a verse batch parked with `verse: []` files the reading itself
-      // as thought. Nothing errors, and the renderer then captions the verse
-      // from the TRANSCRIPT rather than from its known text: a real batch
-      // would have burned "Calassay" for Colossae, "responsibly" for
-      // responsively and "pray without seizing" onto the screen as
-      // scripture. So each verse take is heard again on its own, through the
-      // same `listen` every single recording uses, which finds the verse and
-      // parks the WAV and the track itself. A story take keeps the fast path
-      // — there is genuinely no verse in one.
-      if (KIND !== 'story') {
-        inputWav = wav
-        try {
-          const r = await page.evaluate(([d, w, tk, k]) => window.vaVoice.listen(d, w, tk, k), [t.date, `${origin}/input.wav`, TOKEN, 'verse'])
-          log(`  parked ${t.date} verse (${r.verseMatched}/${r.verseWords} of the verse heard, ${r.thoughtWords}w thought)`)
-        } catch (e) {
-          log(`  ${t.date} could not be heard: ${String(e?.message || e).split('\n')[0].slice(0, 160)}`)
+      // EVERY take is parked through the same `listen` a single recording
+      // uses, and it costs a re-hearing per take on purpose. `split` used to
+      // park the cut WAV itself and rebase the batch's own timings onto it,
+      // which was faster and wrong twice over:
+      //
+      //   - It skipped `decodeRecording`, so nothing applied `trimAndLevel`
+      //     and the parked recording sat at whatever level the phone left
+      //     it. That was invisible while `toWav` ended in `loudnorm`, which
+      //     was quietly the only thing setting speech level on this path;
+      //     the first render after the denoiser and loudnorm came out at
+      //     -26.8 LUFS against a story's -13.2. One owner of loudness, and
+      //     it is the renderer.
+      //   - It parked the transcript of a VERSE take from the batch pass,
+      //     which is the story listener and has no verse to look for, so the
+      //     reading was captioned from what Whisper heard rather than from
+      //     its known words.
+      //
+      // Both are the same bug: a second way of doing what `listen` does.
+      // There is now one.
+      inputWav = wav
+      try {
+        const r = await page.evaluate(([d, w, tk, k, pl]) => window.vaVoice.listen(d, w, tk, k, pl), [t.date, `${origin}/input.wav`, TOKEN, t.kind, PLACE])
+        // …and then the BATCH's words are put back onto those timings.
+        //
+        // The re-hearing is for the LEVEL and the timings; it is not a better
+        // transcript. Hearing forty seconds on its own loses both ends: the
+        // marker that was cut ("Day 8." survived the cut in every take of the
+        // first real batch, because Whisper's word-end timing sits a beat
+        // early) and the last few words (its windows drop a short tail). The
+        // batch pass heard the whole sitting with the sentences either side
+        // for context and already sliced the take's words correctly, so it is
+        // the better text — and `fix` is the step that exists for exactly
+        // this: corrected words, refitted onto the timings actually heard.
+        let words = r.thoughtWords
+        if (t.text) {
+          const f = await page.evaluate(([d, tx, tk, k]) => window.vaVoice.fix(d, tx, tk, k), [t.date, t.text, TOKEN, t.kind])
+          words = f.words
         }
-        inputWav = batchWav
-        continue
+        log(`  parked ${t.date} ${t.kind}${t.kind === 'story' ? ` (${PLACE})` : ''} · ${r.seconds.toFixed(0)}s${t.kind === 'verse' ? ` (${r.verseMatched}/${r.verseWords} of the verse heard)` : ''} ${words}w`)
+      } catch (e) {
+        log(`  ${t.date} could not be heard: ${String(e?.message || e).split('\n')[0].slice(0, 160)}`)
       }
-      // Timings are rebased onto the take's own clock, and the track is the
-      // shape `refit`, the correction step and the renderer already read.
-      const words = t.words.map((w) => ({ text: w.text, start: Math.max(0, w.start - t.from), end: Math.max(0, w.end - t.from) }))
-      const track = { seconds: t.to - t.from, verse: [], thought: words, heard: words, text: t.text, verseMatched: 0, place: PLACE, at: new Date().toISOString() }
-      await upload(`days/${t.date}/voice-${KIND}.wav`, wav, 'audio/wav')
-      const json = path.join(OUT, `take-${t.date}.json`)
-      fs.writeFileSync(json, JSON.stringify(track))
-      await upload(`days/${t.date}/voice-${KIND}.json`, json, 'application/json')
-      try { await fn('copy', { date: t.date, kind: KIND, force: true }) } catch { /* written at render time otherwise */ }
-      log(`  parked ${t.date} ${KIND} (${PLACE})`)
+      inputWav = batchWav
     }
     await done()
   }
@@ -457,7 +518,13 @@ try {
   }
   if (cmd === 'render') {
     const date = args[0]; if (!isDate(date)) fail('render <date>')
-    const [dl, r] = await Promise.all([page.waitForEvent('download', { timeout: 900_000 }), page.evaluate(([d, t, k, pl]) => window.vaVoice.render(d, t, k, pl), [date, TOKEN, KIND, PLACE])])
+    // A reading is about ONE thing and the recording already named it, so
+    // `--pick` (a moment id, a stage) and `--ref` say which rather than
+    // leaving a hash to choose a painting his own voice contradicts.
+    if (flags.pick === true || flags.ref === true) fail('use --pick=<id> --ref="Book c:v"')
+    const pick = flags.pick ? String(flags.pick) : undefined
+    const ref = flags.ref ? String(flags.ref) : undefined
+    const [dl, r] = await Promise.all([page.waitForEvent('download', { timeout: 900_000 }), page.evaluate(([d, t, k, pl, pk, rf]) => window.vaVoice.render(d, t, k, pl, pk, rf), [date, TOKEN, KIND, PLACE, pick, ref])])
     const raw = path.join(OUT, 'out', `${KIND}-${date}.${r.ext}`)
     await dl.saveAs(raw)
     log(`rendered ${r.ext} ${(r.size / 1e6).toFixed(1)}MB · ${r.reference} · ${r.tier} · ${r.seconds.toFixed(0)}s · ${r.phrases} captions`)

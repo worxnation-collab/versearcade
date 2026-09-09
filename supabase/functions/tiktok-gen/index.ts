@@ -50,7 +50,7 @@
 // still/loop is generated once and reused by every day after it.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { PLATFORMS, ayrshareName, kindOf, postBody, postResult, postsOn, type DayCopy, type Platform } from './social.ts'
+import { PLATFORMS, READING, ayrshareName, kindOf, postBody, postResult, postsOn, type DayCopy, type Platform } from './social.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
@@ -757,6 +757,23 @@ Deno.serve(async (req) => {
       const voiced = path && VOICED_KINDS.includes(kind)
         ? (await exists(`days/${date}/voice-${kind}.json`)) && claimedVoice !== false
         : false
+      // What he actually SAID, for the six weekday readings.
+      //
+      // A reading is not about the day's verse — the moment for one date is
+      // the bow in the cloud while the verse of the day is Hebrews 13:8 —
+      // and a prompt handed only the verse writes a caption about a passage
+      // that is not in the video. It shipped once that way: a post about
+      // Genesis 9 captioned "Jesus stays the same yesterday, today and
+      // forever" on all eight networks, with hashtags for the wrong
+      // reference. The transcript is the only thing that knows what the post
+      // is about, and it is parked before anything is rendered.
+      let said = ''
+      if ((READING as string[]).includes(kind)) {
+        const { data: heard } = await admin.storage.from(BUCKET).download(`days/${date}/voice-${kind}.json`)
+        if (heard) {
+          try { said = String((JSON.parse(await heard.text()) as { text?: unknown }).text ?? '').slice(0, 2000).trim() } catch { said = '' }
+        }
+      }
       // The six weekday READINGS: every one is him talking to camera over a
       // painting, so the caption is written in his voice like the verse's is.
       const READING_WHO: Record<string, string> = {
@@ -796,7 +813,10 @@ Deno.serve(async (req) => {
       const data = await gemini(`models/${TEXT_MODEL}:generateContent`, {
         contents: [{ parts: [{ text:
           `You write post copy for a faceless short-video account called Verse Arcade, a Bible app where ${who}` +
-          `Today's verse is ${reference}: "${text}" (theme: ${theme || 'unspecified'}). The same vertical video is posted to TikTok, YouTube Shorts, Facebook and Instagram Reels, X, Snapchat, Threads and Pinterest, and each wants its own words.\n\n` +
+          (said
+            ? `THIS post is his own recording, word for word: "${said}"\nWrite every caption about THAT — the passage and the thing he talks about in it. Today's verse of the day is ${reference}, and it is only the app's daily verse: do not write about it, do not name it, and do not tag it unless he names it himself above.\n`
+            : `Today's verse is ${reference}: "${text}" (theme: ${theme || 'unspecified'}). `) +
+          `The same vertical video is posted to TikTok, YouTube Shorts, Facebook and Instagram Reels, X, Snapchat, Threads and Pinterest, and each wants its own words.\n\n` +
           `Return JSON with:\n` +
           `"hook": one on-screen opening line, max 8 words, no emoji, not a question.\n` +
           `"tiktok": { "text": 1-2 short sentences, casual and warm, under 150 characters, no hashtags in it, ${shareAsk}; "tags": 5 lowercase hashtags without the # sign }.\n` +

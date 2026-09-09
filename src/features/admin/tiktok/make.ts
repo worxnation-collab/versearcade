@@ -21,7 +21,7 @@ import {
   FOUNDER_PHOTO, VOICE_LABEL, voiceWavPath, voiceJsonPath,
   type Copy, type Made, type Story, type Renderer, type VoiceTrack,
 } from './shared'
-import { sanitizeStages, stagePath } from '@/data/tiktokStages'
+import { sanitizeStages, stagePath, STORY_STAGES } from '@/data/tiktokStages'
 import { READINGS, stageForReading, type ReadingKind } from '@/data/tiktokWeek'
 import { MOMENTS, momentPath } from '@/data/tiktokMoments'
 
@@ -353,6 +353,19 @@ export interface ReadingOptions {
   copy?: boolean
   music?: boolean
   align?: boolean
+  /**
+   * WHICH thing the reading is about — a moment id, a figure's skin, a stage
+   * id — and the reference its end card carries.
+   *
+   * A reading is a RECORDING, and a recording is about one specific thing:
+   * the take parked for 2026-09-09 is about the bow in the cloud, so a
+   * derived pick landing on the cup would put the wrong painting and the
+   * wrong reference under his own voice saying otherwise. `pickIndex` is
+   * the fallback for a date nobody chose for — never the authority over a
+   * date somebody recorded for.
+   */
+  pick?: string
+  reference?: string
 }
 
 /** His parked recording for a (date, reading kind), listening to it here if a phone only uploaded. */
@@ -377,15 +390,14 @@ export async function ensureReading(d: string, kind: ReadingKind, progress: Prog
  * falls back to the library, which is what `renderStory` does with an empty
  * list anyway.
  */
-async function readingScenes(r: Renderer, d: string, kind: ReadingKind): Promise<Array<HTMLImageElement | null>> {
+async function readingScenes(r: Renderer, d: string, kind: ReadingKind, pick?: string): Promise<Array<HTMLImageElement | null>> {
   const load = (p: string) => r.loadImage(p).catch(() => null)
   if (kind === 'moment') {
-    const m = MOMENTS[pickIndex(d, 'moment', MOMENTS.length)]
-    return [await load(momentPath(m.id))]
+    return [await load(momentPath(momentFor(d, pick).id))]
   }
   if (kind === 'figure') {
     // One stage, held: the figure stands on it and the clues are the motion.
-    return [await load(stagePath(stageForReading(d, kind)))]
+    return [await load(stagePath(pick && STORY_STAGES.some((x) => x.id === pick) ? pick : stageForReading(d, kind)))]
   }
   if (kind === 'before') {
     // Two: where it was heading, and where it went.
@@ -393,6 +405,11 @@ async function readingScenes(r: Renderer, d: string, kind: ReadingKind): Promise
   }
   if (kind === 'prayer') return [await load('/room/room-dusk-4.jpg')]
   return [await load(stagePath(stageForReading(d, kind)))]
+}
+
+/** The moment a date is ABOUT: the operator's own choice where there is one, the rotation otherwise. */
+function momentFor(d: string, pick?: string) {
+  return MOMENTS.find((m) => m.id === pick) ?? MOMENTS[pickIndex(d, 'moment', MOMENTS.length)]
 }
 
 /** A no-repeat pick over a list, seeded per (date, kind) the way every rotation here is. */
@@ -418,20 +435,25 @@ export async function makeReading(d: string, kind: ReadingKind, o: ReadingOption
   const r: Renderer = await import('@/lib/tiktokRender')
   const ownAudio = await (await fetch(own.wavUrl + '?v=' + Date.now())).arrayBuffer()
   const photo = await r.loadImage(publicUrl(FOUNDER_PHOTO) + '?v=' + Date.now()).catch(() => undefined)
-  const scenes = await readingScenes(r, d, kind)
+  const scenes = await readingScenes(r, d, kind, o.pick)
   const room = scenes.find(Boolean) ?? (await r.loadImage(ROOMS[0].id).catch(() => r.loadImage('/keep/study-library.jpg')))
   const bed = o.music !== false ? await bedFor(await r.plannedDuration(undefined, copy?.hook, true, ownAudio), kind === 'quiet' || kind === 'prayer' ? 'cloister' : 'morning') : undefined
-  const title = kind === 'moment' ? MOMENTS[pickIndex(d, 'moment', MOMENTS.length)].title
+  const moment = kind === 'moment' ? momentFor(d, o.pick) : null
+  const title = moment ? moment.title
     : kind === 'figure' ? 'Who is this?'
     : kind === 'book' ? `The book of ${v.book}`
     : copy?.hook || def.name
+  // The end card names what was just READ, which is only the day's verse when
+  // the reading is about the day's verse. A moment carries its own citation,
+  // and an operator who recorded against a different passage says so.
+  const reference = o.reference || moment?.reference || v.reference
   const out = await r.renderStory({
-    title, reference: v.reference, verseText: v.text,
+    title, reference, verseText: reference === v.reference ? v.text : '',
     paragraphs: [], hook: copy?.hook, room, eyebrow: def.eyebrow, scenes, bed, align: o.align,
     own: { audio: ownAudio, words: own.thought, text: own.text, place: 'close', photo, label: VOICE_LABEL },
     onProgress: progress,
   })
-  return made(d, kind, v.reference, out, copy, `${def.name} · your voice`, true)
+  return made(d, kind, reference, out, copy, `${def.name} · your voice`, true)
 }
 
 export async function makeQuiz(d: string, o: QuizOptions, progress: Progress): Promise<MadeBlob> {

@@ -23,7 +23,7 @@ repeated.
 | | Second post | What it is | Runs on |
 |---|---|---|---|
 | **Mon** | Story time | Tabitha tells the story behind the verse; his voice opens or closes it | as today |
-| **Tue** | A book in 30 seconds | one of the 66: who wrote it, how long it is, one thing that happens, one verse | `BIBLE_BOOKS`, `structure.ts`, `trivia.ts` |
+| **Tue** | A book in 30 seconds | THE DAY'S OWN BOOK: how long it is, what happens in it, how it ends | `structure.ts`, `trivia.ts`, the day's verse |
 | **Wed** | The moment | one painted biblical scene and the story it is holding | the 46 card paintings |
 | **Thu** | What happened just before | what led to today's verse, the verse, what came after | pool `before` / `after` |
 | **Fri** | Who is this? | three clues in his voice, a beat, then the name | 31 named character skins |
@@ -119,9 +119,18 @@ No migration. No new art.
 
 ## Runway
 
+**Tuesday's book is the book the day's VERSE came from**, rather than an
+independent rotation over all 66. Drafting the first fortnight is what decided
+it: on 2026-10-20 the verse is Joel 3:10 — "beat your plowshares into swords",
+Joel deliberately reversing the famous line — and a Joel summary beside it
+makes the two posts of that day one argument instead of two subjects. The cost
+is coverage: common books come up often and Obadiah may wait years. That is
+fixable later by skipping a book seen in the last N Tuesdays and falling back
+to a rotation; it is not worth the second seed now.
+
 | Format | Supply | At once a week |
 |---|---|---|
-| Book | 66 books | 15 months |
+| Book | the day's own book | indefinite, unevenly |
 | Moment | 46 paintings | 10 months |
 | Figure | 31 skins | 7 months |
 | Before / Quiet / Prayer | 727 verses | indefinite |

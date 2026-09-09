@@ -10,6 +10,7 @@
     "check:pool": "node scripts/check-pool.mjs",
     "check:cross": "node scripts/check-cross.mjs",
     "check:trivia": "node scripts/check-trivia.mjs",
+    "shots": "node scripts/app-store-shots.mjs",
     "check:decor": "node scripts/check-decor-art.mjs",
     "check:map": "node scripts/check-map.mjs",
     "check:stages": "node scripts/check-stages.mjs",

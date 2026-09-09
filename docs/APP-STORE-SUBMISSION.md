@@ -5,6 +5,7 @@ with no Mac. Do the phases in order. Each step says who does it:
 🧑 = you (browser clicks) · 🤖 = already done in the codebase · ☁️ = Codemagic (automatic).
 
 Legend of the other docs:
+- Shipping the 1.3.0 update whose build is already up → `APP-STORE-1.3.0-PACKET.md`
 - Apple identifiers / Sign in with Apple keys → `SETUP-APPLE.md`
 - Listing copy, keywords, privacy answers, review notes → `APP-STORE-LISTING.md`
 - The build pipeline → `codemagic.yaml`
@@ -119,12 +120,12 @@ version absorbs any amount of work, and a per-feature bump just burns numbers. B
 again only once 1.3.0 itself is approved. What a new feature changes is "What's New",
 not the version.
 
-So far 1.3.0 carries live battles (`/battle/live`) and the weekly church rivalry, and
-more is expected before it goes up — treat the list in `APP-STORE-LISTING.md` as a
-running draft and re-read it against `git log` on the day you submit, not before.
-**Also check the uploaded 1.2.0 binary before trusting that split**: if live battles
-were inside it, trim them rather than announcing a feature the store already showed
-people.
+**A 1.3.0 build is on TestFlight as of 2026-09-09**, so the running draft has stopped
+running: `docs/APP-STORE-1.3.0-PACKET.md` is the ordered list of what to do with it,
+and it opens with the two checks nothing here can make — what Apple actually has
+approved, and which commit that TestFlight build was cut from. Read the "What's New"
+block against `git log --first-parent` on the day you submit, not before, and cut a
+bullet for anything that merged after the build rather than shipping the claim.
 
 This paragraph is a claim about App Store Connect, not about the repo, and nothing in
 CI verifies it. It has gone stale once already. Re-read it against the real console

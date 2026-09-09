@@ -121,6 +121,17 @@ Start your streak today. It's one verse.
 > shortening five more. This is what "a running draft" means in practice: a new
 > feature costs an old sentence, not a version bump.
 >
+> **Updated 2026-09-09** for ROOM SKINS (#270), which merged the day the block above
+> was rebuilt and was missed by it — the Upper Room now comes in four materials. It
+> was paid for the way this note says it has to be: the "Fine and Grand are earned by
+> playing now" clause came out of the same bullet (a mechanics nuance about how a tier
+> is reached, where the material is a thing you can SEE), and the room-code bullet lost
+> its "Either way". **3,962 of 4,000, leaving 38 spare.**
+>
+> Everything else that merged after the rebuild (#271 overlay skins, already in;
+> #272-#275) is the TikTok engine and the operator's own voice loop — operator tools,
+> excluded on the standing judgement above.
+>
 > **This block is genuinely full and shortening is spent** — the easy wordiness is
 > gone, so a new feature now costs a whole bullet. The overlay skins were paid for
 > exactly that way: the **gathering hour** line came out, which was the first
@@ -153,8 +164,8 @@ EVERY RUN ENDS WITH WHAT YOU LEARNED
 BATTLE ANYONE, RIGHT NOW
 • Quick match: tap it and we put you with whoever else is looking. No code, no
   queue, no rating.
-• Or share a room code. Either way you both read the same verse, you both tap
-  ready, and a bar shows where the other player is.
+• Or share a room code. You both read the same verse, you both tap ready, and a
+  bar shows where the other player is.
 • Pick the round: the verse, or trivia on one book.
 • 10 XP for turning up, three a day — winner and loser get exactly the same.
 • Six looks earned in battle. Jonathan and Deborah from playing live, win or lose;
@@ -207,8 +218,9 @@ THE REST
   compared to anybody.
 • Your reminder learns the hour you actually play.
 • Put a favourite verse, book and translation on your card.
-• Drag anything in your Upper Room, hall or churchyard exactly where you want it.
-  Fine and Grand pieces are earned by playing now, not by stacking duplicates.
+• Drag anything in your Upper Room, hall or churchyard exactly where you want it,
+  and pick what the room is made of: clay, limestone, cedar or dusk. All four free,
+  and none of them makes a bigger room.
 
 No ads, no tracking, and a wrong answer still teaches you something.
 ```
@@ -394,12 +406,23 @@ Apple requires screenshots for at least the **6.7" iPhone** display (1290 × 279
 As of the current App Store Connect, a 6.7"/6.9" set is sufficient (iPad only if you
 mark the app iPad-compatible — recommend iPhone-only for v1).
 
-Minimum 3, up to 10. Recommended shots, in order:
-1. The Daily Drop / verse read screen ("A new verse is live").
-2. A question mid-play with the combo meter and points.
-3. A correct-answer celebration (confetti + points pop).
-4. A wrong-answer "did you know" teach reveal (shows the no-shame promise).
-5. The profile with streak flame + XP/level.
-6. Groups ("Play with friends, climb together").
+Minimum 3, up to 10.
 
-See SUBMISSION runbook for how to capture these without a Mac.
+**Captured and ready: `docs/app-store/screenshots/*.png`, all exactly 1290 x 2796.**
+`npm run shots` regenerates them from the running dev server (see that script's
+header). Upload the first eight in this order; the last five are spares:
+
+1. `01-play-tab` — the two daily boxes, the road, the compass. The whole tab.
+2. `02-verse-read` — the verse, before the clock starts.
+3. `03-question` — a question mid-run, points and the five-question rail.
+4. `04-teach` — the wrong-answer reveal. This is the no-shame promise on screen.
+5. `05-result` — the score with "one thing you now know" above the verse card.
+6. `07-you-room` — the full-length character and the Upper Room under it.
+7. `08-study-library` — Tabitha at the desk. The tab that is a room.
+8. `10-seals` — the Book Collection, wax pressed per book read.
+9. `06-arcade`, `09-bible`, `11-wardrobe`, `12-road`, `13-journal` — spares.
+
+The account-gated screens (Church, Battle, the Prayer Wall) are deliberately NOT in
+the set: they render their own "create an account" card in a keyless build, which is
+the honest state and a poor advertisement. Shoot those from a signed-in TestFlight
+build on a real 6.7" phone if they are wanted.

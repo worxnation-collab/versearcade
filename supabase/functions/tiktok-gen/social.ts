@@ -75,11 +75,38 @@ const AUTOMATED: Kind[] = ['quiz', 'challenge', 'challenge2']
  * on is the exact shape all three policies describe. The replacement is two
  * posts a day with his voice on both — see docs/TIKTOK-WEEK.md.
  */
-const PARKED: Kind[] = [...AUTOMATED]
+const PARKED: Kind[] = [...AUTOMATED, ...READING]
+
+/**
+ * The networks this account actually posts to.
+ *
+ * Everything else is PARKED at the platform level for the reason the three
+ * automated kinds are parked at the kind level: it was measured, not assumed.
+ * Across five days of the same daily verse, YouTube delivered 983, 951 and
+ * 777 views a post. Over the same posts TikTok delivered 1, 2 and 0, Instagram
+ * 0, 2 and 5, Threads 10, 2 and 0, and Pinterest zero impressions of anything.
+ * The account totals say the same thing louder: 73 YouTube subscribers and
+ * 4,625 views against 4 TikTok followers, 0 on Instagram, 0 on Threads and 1
+ * board follower on Pinterest.
+ *
+ * Five networks at single digits are not a small win — they are a cost. They
+ * spend Ayrshare quota, they carry the AI-disclosure exposure (Snapchat has
+ * already rejected a post from this account), and on the feeds that judge a
+ * CHANNEL they make the account look like exactly the spray-and-pray bot the
+ * policies are written against. Facebook stays because it is the only other
+ * one with a pulse (6 to 104 views a post) and costs one extra API call.
+ *
+ * This is a LIST, not a rewrite: `postsOn` still decides per (platform, kind)
+ * and every generator is untouched, so a network comes back as a row here the
+ * day there is a reason for it.
+ */
+const LIVE_PLATFORMS: Platform[] = ['youtube', 'facebook']
 
 const KINDS_OFF: Partial<Record<Platform, Kind[]>> = Object.fromEntries(
   PLATFORMS.map((p) => [p, [
     ...PARKED,
+    // A network that is not live takes nothing at all.
+    ...(LIVE_PLATFORMS.includes(p) ? [] : (['verse', 'story', 'own', 'note'] as Kind[])),
     // The NOTE is a photo rather than a video, so Facebook distributes it
     // through machinery a Reel never reaches and Pinterest can pin it. It is
     // written from the same paragraphs Tabitha tells, so it belongs to the day

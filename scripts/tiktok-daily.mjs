@@ -97,7 +97,8 @@ const TZ = env.TIKTOK_TZ || 'America/New_York'
 // The day's posts: the verse every morning, and ONE second post whose form is
 // the weekday's (docs/TIKTOK-WEEK.md). The note rides along on the day the
 // story runs, because it is written from the same paragraphs Tabitha tells.
-const WEEK = ['prayer', 'story', 'book', 'moment', 'before', 'figure', 'quiet']
+// Every day is the story now — see the note on WEEK in src/data/tiktokWeek.ts.
+const WEEK = ['story', 'story', 'story', 'story', 'story', 'story', 'story']
 const kindForDate = (d) => WEEK[new Date(`${d}T12:00:00Z`).getUTCDay()]
 const defaultKinds = (d) => ['verse', kindForDate(d), ...(kindForDate(d) === 'story' ? ['note'] : [])].join(',')
 const PLATFORMS = (env.PLATFORMS || 'tiktok,youtube,facebook,instagram,x,snapchat,threads,pinterest').split(',').map((s) => s.trim()).filter(Boolean)

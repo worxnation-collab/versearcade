@@ -94,7 +94,14 @@ your **Services ID** and a generated **client secret / key**.
    fields it wants; fill the ones it shows. 🔑 **PASTE** accordingly.
 4. **Save**.
 
-> In the native apps, Sign in with Apple/Google opens inside the app (Safari View
+> **For the NATIVE Sign in with Apple sheet** (iOS, `src/lib/appleSignIn.ts`) the
+> Apple provider's **Client IDs** field must list the app's BUNDLE ID as well as
+> the Services ID — comma-separated: `com.versearcade.signin,com.versearcade.app`.
+> A native token's audience is the bundle id; a Supabase that only knows the
+> Services ID answers "Unacceptable audience" and the app falls back to the
+> browser sign-in below (slower, still works).
+>
+> In the native apps, Sign in with Google opens inside the app (Safari View
 > Controller / Custom Tab — never the system browser, which App Review rejects).
 > Supabase redirects to the bridge page `https://versearcade.org/auth/native/`,
 > which hands the session to `com.versearcade.app://auth/callback` (both added in

@@ -3,7 +3,7 @@
   "version": "1.3.0",
   "private": true,
   "type": "module",
-  "description": "Verse Arcade \u2014 make opening the Bible feel exciting and habitual.",
+  "description": "Verse Arcade — make opening the Bible feel exciting and habitual.",
   "scripts": {
     "dev": "vite",
     "build": "npm run check:pool && npm run check:structure && npm run check:cross && npm run check:trivia && npm run check:placement && npm run check:decor && npm run check:map && npm run check:items && npm run check:stages && npm run check:week && tsc -b && vite build",
@@ -25,6 +25,7 @@
     "check:items": "node scripts/check-item-art.mjs"
   },
   "dependencies": {
+    "@capacitor-community/apple-sign-in": "^6.0.0",
     "@capacitor/android": "^6.2.1",
     "@capacitor/app": "^6.0.0",
     "@capacitor/browser": "^6.0.6",

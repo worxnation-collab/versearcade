@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { Capacitor } from '@capacitor/core'
 import { Browser } from '@capacitor/browser'
+import { nativeAppleAvailable, nativeAppleSignIn } from '@/lib/appleSignIn'
 import { supabase } from '@/lib/supabase'
 import { isSupabaseConfigured } from '@/lib/config'
 import { localdb } from '@/lib/localdb'
@@ -448,6 +449,30 @@ export const useAuth = create<AuthState>((set, get) => ({
     // so this must be persisted before we hand off to the provider.
     get().beginGuestClaim()
     const native = Capacitor.isNativePlatform()
+    // iOS + Apple: the system sheet first (lib/appleSignIn.ts) — no web view at
+    // all. The token goes to Supabase directly and onAuthStateChange finishes
+    // the sign-in exactly as a password sign-in does. A cancelled sheet stops
+    // here; anything else that keeps the sheet from working (no entitlement in
+    // this build, Supabase not yet told the bundle id) falls through to the
+    // in-app browser below, so the button always signs somebody in.
+    if (provider === 'apple' && nativeAppleAvailable()) {
+      const r = await nativeAppleSignIn(NATIVE_AUTH_BRIDGE_URL)
+      if (r.kind === 'cancelled') return
+      if (r.kind === 'token') {
+        const { error } = await supabase.auth.signInWithIdToken({
+          provider: 'apple',
+          token: r.token,
+          nonce: r.nonce,
+        })
+        if (!error) return
+        // A rejected token is almost always the audience (bundle id) missing
+        // from the Supabase Apple provider. Say so where a developer looks,
+        // then take the door that is known to work.
+        console.warn('[auth] native Apple token refused, using the browser:', error.message)
+      } else {
+        console.warn('[auth] native Apple sheet unavailable, using the browser:', r.reason)
+      }
+    }
     // Native: Supabase must redirect to an https page (the bridge, below), which
     // hands the session on to com.versearcade.app://auth/callback. Web: the
     // site's own callback route, where detectSessionInUrl finishes it.

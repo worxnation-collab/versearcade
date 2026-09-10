@@ -413,6 +413,25 @@ URL must be on Supabase's redirect allow-list, exactly as written with the
 trailing slash** (Authentication → URL Configuration), or Supabase falls back
 to the Site URL and the app never hears back. Web sign-in is untouched.
 
+**And on iOS, Sign in with Apple is the SYSTEM SHEET first** (`lib/appleSignIn.ts`,
+`@capacitor-community/apple-sign-in`): Face ID, Hide My Email, no web view at
+all. The identity token goes straight to `signInWithIdToken` and
+`onAuthStateChange` finishes the sign-in exactly as a password does. Three
+things are load-bearing. **Every failure is a value, and the fallback is the
+browser path above** — a build without the entitlement, a Supabase that has
+not been told the bundle id, a plugin that rejects — so the button always
+signs somebody in; the ONE exception is a cancelled sheet (AuthorizationError
+1001), which stops, because opening a browser at somebody who just said no is
+worse than nothing. **The entitlement is written by Codemagic only when the
+provisioning profile carries the capability** (it reads the profile
+`fetch-signing-files` just fetched and grep's for `applesignin`), because an
+entitlement the profile lacks fails the archive twenty minutes in, where a
+missing entitlement only costs the fallback. **Supabase's Apple provider must
+list the bundle id under Client IDs** beside the Services ID — a native
+token's audience is the bundle id, and without it every native sign-in is
+refused and quietly takes the browser. Google stays on the in-app browser;
+Android takes it for Apple too (the plugin's Android half is its own web flow).
+
 ## Every image comes from Nano Banana
 
 House rule, not a preference: art we add is **generated through

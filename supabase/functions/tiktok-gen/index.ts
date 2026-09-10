@@ -928,9 +928,38 @@ Deno.serve(async (req) => {
       // Ayrshare's name for X is still "twitter" on this endpoint.
       const linked = (p: Platform) => active.size === 0 || active.has(p) || (p === 'x' && active.has('twitter'))
 
+      // What this day already sent, read BEFORE anything is posted.
+      //
+      // Two schedulers now reach the same (date, kind): the morning cron and
+      // an operator at a terminal. Nothing stopped the second one repeating
+      // the first — `post` only ever MERGED its rows over the record, so a
+      // day already scheduled by hand would be scheduled again by the cron a
+      // few hours later and go out twice. Ayrshare will not save you from
+      // it: its idempotency key carries the attempt number, so a second
+      // caller passing a different attempt is a genuinely new post to it.
+      //
+      // So a platform that already has a LIVE row for this day and kind is
+      // skipped. That is narrower than it looks and leaves both existing
+      // flows alone: `unpost` re-parks the record WITHOUT the rows it
+      // deleted, so the sanctioned replace (unpost, then post with a fresh
+      // attempt) sees nothing standing; and a row that failed or was skipped
+      // is not live, so calling again for the platforms that missed still
+      // works, which is the whole reason this record is merged rather than
+      // replaced.
+      //
+      // Deliberately NO override flag. `unpost` is the one way to change a
+      // post that has not gone out, and a `force` here would be a second one
+      // that skips the taking-down — which on a network with no delete (a
+      // published TikTok video cannot be recalled through the API) is how
+      // one day ends up on the account three times.
+      const { data: priorFile } = await admin.storage.from(BUCKET).download(`days/${date}/posted-${kind}.json`)
+      const prior = priorFile ? (JSON.parse(await priorFile.text()) as { results?: Array<Record<string, unknown>> }).results ?? [] : []
+      const standing = new Set(prior.filter((r) => r.status === 'scheduled' || r.status === 'success').map((r) => String(r.platform)))
+
       // The words per network live in social.ts, shared with the runner.
       const results: Array<Record<string, unknown>> = []
       for (const platform of platforms) {
+        if (standing.has(platform)) { results.push({ platform, status: 'skipped', id: null, postUrl: null, postId: null, error: 'already posted for this date and kind — unpost it first', scheduleDate: null }); continue }
         if (!linked(platform)) { results.push({ platform, status: 'skipped', id: null, postUrl: null, postId: null, error: 'not linked in Ayrshare', scheduleDate: null }); continue }
         if (!postsOn(platform, kind)) { results.push({ platform, status: 'skipped', id: null, postUrl: null, postId: null, error: `${kind} is not posted on ${platform} (quota)`, scheduleDate: null }); continue }
         // Pinterest refuses a VIDEO pin without a cover image; a day whose
@@ -947,11 +976,15 @@ Deno.serve(async (req) => {
         results.push(postResult(platform, r, scheduleDate))
       }
       // Merged over the earlier record, so a call for the platforms that
-      // failed or were skipped last time keeps the rows that succeeded.
-      const { data: priorFile } = await admin.storage.from(BUCKET).download(`days/${date}/posted-${kind}.json`)
-      const prior = priorFile ? (JSON.parse(await priorFile.text()) as { results?: Array<Record<string, unknown>> }).results ?? [] : []
+      // failed or were skipped last time keeps the rows that succeeded. The
+      // record was read above, before anything was sent — re-reading it here
+      // would be reading a file this very call may have changed.
       const asked = new Set(platforms as string[])
-      const merged = [...prior.filter((r) => !asked.has(String(r.platform))), ...results]
+      // …and a row that was skipped BECAUSE it is already live must not
+      // then overwrite the live row it was protecting: the record would lose
+      // the post's id and `unpost` would have nothing to delete by.
+      const kept = new Set(results.filter((r) => standing.has(String(r.platform))).map((r) => String(r.platform)))
+      const merged = [...prior.filter((r) => kept.has(String(r.platform)) || !asked.has(String(r.platform))), ...results.filter((r) => !kept.has(String(r.platform)))]
       // `voiced` rides in the record so a later call for the platforms that
       // failed — a different process, which rendered nothing — says the same
       // thing about the same video rather than inferring it again.

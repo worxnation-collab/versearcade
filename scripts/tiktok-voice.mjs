@@ -135,9 +135,15 @@ const isDate = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d)
 // reads as TRUE, which would silently render a verse — refuse it, the
 // `--days` lesson.
 const READING = ['book', 'moment', 'before', 'figure', 'quiet', 'prayer']
-if (flags.kind === true) fail(`use --kind=<${['verse', 'story', ...READING].join('|')}>`)
+// Every kind the engine has, not just the ones this CLI RENDERS: `unpost`,
+// `clear` and `post` are addressed by kind too, and refusing `note` here
+// meant twelve days of an old schedule could not be taken down from a
+// terminal at all — the command answered `unknown kind note` and the run
+// read as "nothing to delete".
+const KINDS = ['verse', 'story', 'note', 'quiz', 'challenge', 'challenge2', 'own', ...READING]
+if (flags.kind === true) fail(`use --kind=<${KINDS.join('|')}>`)
 const KIND = flags.kind ? String(flags.kind) : flags.story ? 'story' : 'verse'
-if (!['verse', 'story', ...READING].includes(KIND)) fail(`unknown kind ${KIND}`)
+if (!KINDS.includes(KIND)) fail(`unknown kind ${KIND}`)
 const PLACE = flags.intro ? 'open' : 'close'
 const mp4For = (date, kind) => path.join(OUT, 'out', `${kind}-${date}.mp4`)
 

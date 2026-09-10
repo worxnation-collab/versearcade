@@ -18,7 +18,10 @@ export interface DayCopy { hook?: string; platforms?: Partial<Record<Platform, P
 
 /** The posts a day: see admin/tiktok/shared.tsx for what each is. */
 export type Kind = 'verse' | 'story' | 'quiz' | 'challenge' | 'challenge2' | 'own' | 'note'
-export const KINDS: Kind[] = ['verse', 'story', 'quiz', 'challenge', 'challenge2', 'own', 'note']
+  | 'book' | 'moment' | 'before' | 'figure' | 'quiet' | 'prayer'
+/** The six READING kinds: the weekday rotation's second post, all in his own voice. */
+export const READING: Kind[] = ['book', 'moment', 'before', 'figure', 'quiet', 'prayer']
+export const KINDS: Kind[] = ['verse', 'story', 'quiz', 'challenge', 'challenge2', 'own', 'note', ...READING]
 export const kindOf = (k: unknown): Kind => ((KINDS as string[]).includes(String(k)) ? (k as Kind) : 'verse')
 
 /**
@@ -60,56 +63,30 @@ const NOTE_ONLY_ON: Platform[] = ['facebook', 'pinterest']
  * demotion for AI made off-platform; see their entries below.
  */
 const AUTOMATED: Kind[] = ['quiz', 'challenge', 'challenge2']
-const KINDS_OFF: Partial<Record<Platform, Kind[]>> = {
-  // TikTok is on a WARM-UP, and for a different reason than the three below.
-  // Fifteen posts over four days drew seven views between them — uniformly
-  // 0-2 each, across five formats, every one published. Content varying that
-  // much and performing identically at zero is an account with no
-  // distribution, not a format problem. Five posts a day from a two-week-old
-  // account with no followers, every one through a third-party API, is itself
-  // the shape of the thing being filtered. So it gets the two posts a person
-  // actually made until there is traction to measure, and the automated three
-  // go to the networks that are at least delivering.
-  tiktok: [...AUTOMATED, 'note'],
-  x: ['note'],
-  // SNAPCHAT is the one network that states the AI penalty outright, in the
-  // RANKING rather than in a review queue, and says in the same sentence that
-  // disclosing does not undo it:
-  //
-  //   "Our content ranking algorithm rewards authentic, human-made content
-  //    over wholly AI-generated content created outside of Snapchat, EVEN
-  //    WHEN AI-generated content has transparency disclosures."
-  //   — values.snap.com/policy/content-guidelines-recommendation-eligibility
-  //     /recommendation-eligibility/quality
-  //
-  // That closes a door the schedule was leaning on. The three automated
-  // formats are wholly AI-generated and made OUTSIDE Snapchat, so on this
-  // network they are demoted if labelled and rejected if not — Spotlight has
-  // already refused a verse from this account as "undisclosed AI-generated
-  // content". There is no version of sending them here that works.
-  //
-  // The same page also carries the volume rule this file said Snapchat did
-  // not have ("repeatedly posting the same content, whether it's your own or
-  // someone else's, with minimal creative differences"), applied to
-  // RECOMMENDATION rather than to a single Snap — and Snapchat was receiving
-  // FIVE templated posts a day, more than any other network here.
-  //
-  // So it joins the volume-sensitive group. The word doing the work is
-  // WHOLLY: the verse and the story carry a real recorded human voice, which
-  // is the same fact that put them on YouTube and Meta.
-  snapchat: [...AUTOMATED, 'note'],
-  threads: ['quiz', 'note'],
-  // The volume-sensitive three: the VOICED posts and the operator's own clips
-  // only. See above.
-  youtube: [...AUTOMATED, 'note'],
-  facebook: [...AUTOMATED],
-  instagram: [...AUTOMATED, 'note'],
-  // A search engine: the verse video, and the note's card — which is a static,
-  // readable, evergreen image, the exact shape a pin is found by. It gave up
-  // the story pin to fund the note and got a better pin back for it.
-  pinterest: [...AUTOMATED, 'own', 'story'],
-}
-void NOTE_ONLY_ON
+/**
+ * The three formats no human voice touches. PARKED, not deleted: `makeQuiz`
+ * and `makeChallenge` still work and the `replies` action still runs, so an
+ * account with traction can have them back as a row rather than a rebuild —
+ * the `bonusTriviaFor` bargain. What they no longer have is a network.
+ *
+ * They came off because every platform that judges a CHANNEL says the same
+ * thing about wholly AI-generated content, and Snapchat says it in its
+ * ranking: a schedule of five templated posts a day with three nobody spoke
+ * on is the exact shape all three policies describe. The replacement is two
+ * posts a day with his voice on both — see docs/TIKTOK-WEEK.md.
+ */
+const PARKED: Kind[] = [...AUTOMATED]
+
+const KINDS_OFF: Partial<Record<Platform, Kind[]>> = Object.fromEntries(
+  PLATFORMS.map((p) => [p, [
+    ...PARKED,
+    // The NOTE is a photo rather than a video, so Facebook distributes it
+    // through machinery a Reel never reaches and Pinterest can pin it. It is
+    // written from the same paragraphs Tabitha tells, so it belongs to the day
+    // the story runs and moves with it.
+    ...(NOTE_ONLY_ON.includes(p) ? [] : (['note'] as Kind[])),
+  ]]),
+) as Partial<Record<Platform, Kind[]>>
 
 export const postsOn = (platform: Platform, kind: Kind): boolean => !(KINDS_OFF[platform] ?? []).includes(kind)
 
@@ -230,6 +207,10 @@ const FIRST_COMMENT_ON: Platform[] = ['facebook', 'youtube', 'x']
  * reaches a stranger's feed.
  */
 export function callToAction(kind: Kind, short = false): string {
+  // Friday's "who is this?" is the one format left that asks for a comment,
+  // and it is the whole reason the week keeps a guessing post at all: the
+  // challenges took the comment ask with them when they were parked.
+  if (kind === 'figure') return short ? 'Guess before the reveal.' : 'Comment your guess before the reveal — then share it with someone who would get it.'
   const challenge = kind === 'challenge' || kind === 'challenge2'
   if (short) return challenge ? 'Comment your answer, then share it.' : 'Share this with someone who needs it.'
   return challenge

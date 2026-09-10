@@ -10,7 +10,8 @@
 // lib/tiktokDaily.ts already has. Never imported by the app.
 
 import { setRunnerToken, parkFile, fetchCopy, fetchThought, fetchStoryWord, fetchVoice, publicUrl, existsAt, voiceWavPath, voiceJsonPath, type VoiceKind } from '@/features/admin/tiktok/shared'
-import { makeVerse, makeStory, makeNote, type Progress } from '@/features/admin/tiktok/make'
+import { makeVerse, makeStory, makeNote, makeReading, type Progress } from '@/features/admin/tiktok/make'
+import { isReadingKind } from '@/data/tiktokWeek'
 import { getVerseForDate } from '@/data/bible/questions'
 import type { TimedWord } from '@/lib/tiktokRender'
 import { env as tfEnv } from '@huggingface/transformers'
@@ -27,7 +28,7 @@ declare global {
       drafts: (dates: string[], token: string, force?: boolean, place?: 'open' | 'close') => Promise<DraftRow[]>
       hear: (wavUrl: string, token: string) => Promise<{ seconds: number; words: TimedWord[]; text: string }>
       listen: (date: string, wavUrl: string, token: string, kind?: VoiceKind, place?: 'open' | 'close') => Promise<ListenResult>
-      render: (date: string, token: string, kind?: VoiceKind, place?: 'open' | 'close') => Promise<RenderResult>
+      render: (date: string, token: string, kind?: VoiceKind, place?: 'open' | 'close', pick?: string, reference?: string) => Promise<RenderResult>
       note: (date: string, token: string) => Promise<{ size: number; reference: string; tier: string; words: number; text: string }>
       fix: (date: string, text: string, token: string, kind?: VoiceKind) => Promise<FixResult>
       identify: (wavUrl: string, dates: string[], token: string) => Promise<{ best: { date: string; reference: string; matched: number; words: number } | null; opening: string }>
@@ -127,12 +128,17 @@ window.vaVoice = {
     localModels()
     const m = await import('@/lib/tiktokVoice')
     say('decoding')
-    // A story half plays beside Tabitha and needs her level, not the verse's.
-    const dec = await m.decodeRecording(await (await fetch(wavUrl)).blob(), kind === 'story' ? m.SPEECH_TARGET.story : m.SPEECH_TARGET.verse)
+    // A story half plays beside Tabitha and needs her level, not the verse's
+    // — and so does every weekday reading, which is his voice carrying a
+    // whole post with a bed under it rather than a thought after a reading.
+    const own = kind === 'story' || isReadingKind(kind)
+    const dec = await m.decodeRecording(await (await fetch(wavUrl)).blob(), own ? m.SPEECH_TARGET.story : m.SPEECH_TARGET.verse)
     say('parking the recording')
     await parkFile(voiceWavPath(date, kind), dec.wav, 'audio/wav')
     const v = getVerseForDate(date)
-    const track = kind === 'story'
+    // There is no verse to FIND in an own-voice half: a reading is his words
+    // end to end, and a story's half is all thought.
+    const track = own
       ? await m.transcribeOwn(dec.samples, dec.sampleRate, place, say)
       : await m.splitRecording(dec.samples, dec.sampleRate, v.text, v.reference, say)
     const fixed = m.refit(track, track.text)
@@ -212,12 +218,20 @@ window.vaVoice = {
    * listened to yet belongs — one that carries its own wins, so a preview
    * cannot move a word recorded as a closing one to the front.
    */
-  async render(date, token, kind = 'verse', place = 'close') {
+  async render(date, token, kind = 'verse', place = 'close', pick, reference) {
     setRunnerToken(token)
     ensureFont()
     localModels()
     const progress: Progress = (_f, label) => say(`${date}: ${label}`)
-    const m = kind === 'story' ? await makeStory(date, { ownPlace: place }, progress) : await makeVerse(date, {}, progress)
+    // The week's six second-post kinds all render through one generator —
+    // they are the same shape (his reading over held paintings) and differ
+    // only in what the paintings are of. Anything not in that rotation is
+    // the verse or the story, as it always was.
+    const m = isReadingKind(kind)
+      ? await makeReading(date, kind, { pick, reference }, progress)
+      : kind === 'story'
+        ? await makeStory(date, { ownPlace: place }, progress)
+        : await makeVerse(date, {}, progress)
     const a = document.createElement('a')
     a.href = m.url
     a.download = `${kind}-${date}.${m.ext}`

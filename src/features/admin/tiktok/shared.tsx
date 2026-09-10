@@ -190,6 +190,7 @@ export interface Copy { hook: string; caption: string; hashtags: string[]; platf
  * captioned and posted through the same door.
  */
 export type Kind = 'verse' | 'story' | 'quiz' | 'challenge' | 'challenge2' | 'own' | 'note'
+  | 'book' | 'moment' | 'before' | 'figure' | 'quiet' | 'prayer'
 /**
  * `voiced` is whether the operator's own recording actually reached this
  * render — not whether one is parked for the date. The two came apart once
@@ -338,7 +339,8 @@ export const VOICE_LABEL = 'Matthew · founder'
  * `verse` is empty, which is what lets one set of actions, one transcript
  * format and one `refit` serve both.
  */
-export type VoiceKind = 'verse' | 'story'
+/** Every kind that can carry his own recording — the verse, the story's half, and the six weekday readings. */
+export type VoiceKind = 'verse' | 'story' | 'book' | 'moment' | 'before' | 'figure' | 'quiet' | 'prayer'
 export const voiceWavPath = (d: string, kind: VoiceKind = 'verse') => `days/${d}/voice-${kind}.wav`
 export const voiceJsonPath = (d: string, kind: VoiceKind = 'verse') => `days/${d}/voice-${kind}.json`
 export type VoiceTrack = import('@/lib/tiktokVoice').VoiceTrack
@@ -446,8 +448,10 @@ export function Busy({ busy, progress }: { busy: string | null; progress: number
   )
 }
 
-const ICON: Record<Made['kind'], string> = { verse: '☀️', story: '🌙', quiz: '🎮', challenge: '⚡', challenge2: '⚡', own: '🎤', note: '📖' }
-const FILE: Record<Made['kind'], string> = { verse: 'verse-arcade-', story: 'verse-arcade-story-', quiz: 'verse-arcade-quiz-', challenge: 'verse-arcade-challenge-', challenge2: 'verse-arcade-challenge2-', own: 'verse-arcade-own-', note: 'verse-arcade-note-' }
+const ICON: Record<Made['kind'], string> = { verse: '☀️', story: '🌙', quiz: '🎮', challenge: '⚡', challenge2: '⚡', own: '🎤', note: '📖',
+  book: '📚', moment: '🖼️', before: '⏪', figure: '❓', quiet: '🕯️', prayer: '🙏' }
+const FILE: Record<Made['kind'], string> = { verse: 'verse-arcade-', story: 'verse-arcade-story-', quiz: 'verse-arcade-quiz-', challenge: 'verse-arcade-challenge-', challenge2: 'verse-arcade-challenge2-', own: 'verse-arcade-own-', note: 'verse-arcade-note-',
+  book: 'verse-arcade-book-', moment: 'verse-arcade-moment-', before: 'verse-arcade-before-', figure: 'verse-arcade-figure-', quiet: 'verse-arcade-quiet-', prayer: 'verse-arcade-prayer-' }
 
 const PLATFORMS: Array<[Platform, string]> = [['tiktok', 'TikTok'], ['youtube', 'YouTube Shorts'], ['facebook', 'Facebook'], ['instagram', 'Instagram Reels'], ['x', 'X']]
 

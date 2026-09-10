@@ -81,7 +81,8 @@ const OUT_RATE = 48000
  * because the music bed sits under both voices and only the finished mix says
  * what a viewer hears.
  */
-export const SPEECH_TARGET = { verse: 0.14, story: 0.26 } as const
+export { SPEECH_TARGET } from './speechLevel'
+import { speechGain, knee, SPEECH_TARGET } from './speechLevel'
 
 /**
  * Decode an uploaded recording to mono samples at 48 kHz, and a WAV of the
@@ -117,23 +118,11 @@ export async function decodeRecording(file: Blob, target: number = SPEECH_TARGET
  * silence at both ends is trimmed to a short beat.
  */
 function trimAndLevel(samples: Float32Array, rate: number, target: number): Float32Array {
-  let peak = 0
-  for (let i = 0; i < samples.length; i++) peak = Math.max(peak, Math.abs(samples[i]))
+  // The GAIN is `speechLevel.ts`'s, shared with the renderer so the two
+  // speakers in a story cannot be levelled by two different rules. What is
+  // local here is the TRIM, which only a recording wants.
+  const { gain, floor, peak } = speechGain(samples, rate, target)
   if (peak < 1e-4) return samples
-  // Speech loudness: RMS over 10ms windows that sit above the noise floor.
-  const hop = Math.round(rate * 0.01)
-  const n = Math.floor(samples.length / hop)
-  const rms = new Float32Array(n)
-  for (let i = 0; i < n; i++) { let e = 0; for (let j = i * hop; j < (i + 1) * hop; j++) e += samples[j] * samples[j]; rms[i] = Math.sqrt(e / hop) }
-  const sorted = Float32Array.from(rms).sort()
-  const floor = sorted[Math.floor(n * 0.1)] ?? 0
-  const speechThr = Math.max(floor * 3, peak * 0.02)
-  let sum = 0, count = 0
-  for (let i = 0; i < n; i++) if (rms[i] > speechThr) { sum += rms[i] * rms[i]; count++ }
-  const speechRms = count ? Math.sqrt(sum / count) : peak / 3
-  const gain = Math.min(20, target / Math.max(speechRms, 1e-4))
-  // Soft knee from 0.7: a peak of 1.0 lands at 0.79, one of 2.0 at 0.91.
-  const knee = (x: number) => { const a = Math.abs(x); const y = a <= 0.7 ? a : 0.7 + 0.3 * Math.tanh((a - 0.7) / 0.3); return x < 0 ? -y : y }
   const thr = Math.max(0.02 / gain, floor * 2)
   let a = 0; while (a < samples.length && Math.abs(samples[a]) < thr) a++
   let b = samples.length; while (b > a && Math.abs(samples[b - 1]) < thr) b--

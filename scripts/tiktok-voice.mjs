@@ -74,6 +74,32 @@ import { fileURLToPath } from 'node:url'
 import { build } from 'esbuild'
 import { chromium } from 'playwright'
 import { createClient } from '@supabase/supabase-js'
+import { timesFrom, timeFor as sharedTimeFor } from './tiktok-times.mjs'
+
+// The last thing between the mix and the file: a ceiling.
+//
+// Two voices and a music bed can sum past full scale even when every part of
+// the mix was levelled politely — the soft knee bounds a SAMPLE, and what
+// clips a listener is the INTER-SAMPLE peak an encoder reconstructs. After
+// the recording chain was rebuilt, all eight posts of a week measured
+// between +0.2 and +1.6 dBFS true peak where the last known-good post sat at
+// -0.2. It is the same trap a naive +6 dB gain hit once before, at +3.1.
+//
+// `level=disabled` is the whole of it and is NOT optional: ffmpeg's
+// alimiter AUTO-LEVELS by default, so it normalises up to the ceiling
+// instead of only holding things down. With it left on, lowering the limit
+// made the file LOUDER — 0.89 through 0.74 all came back at the same +0.7
+// dBFS with loudness rising as the limit fell, which reads as the filter
+// doing nothing rather than as it doing the opposite.
+//
+// And the ceiling is on the SAMPLE peak while the ear hears the INTER-SAMPLE
+// peak the decoder reconstructs, about a decibel higher — 0.89 measured
+// +0.1 dBFS true peak through AAC. 0.79 lands at -0.9, which is where the
+// fourteen corrected stories were brought to and where the last known-good
+// post sits. Measure with `ebur128=peak=true`, never `astats` — sample peak
+// reads under.
+const MASTER = 'alimiter=limit=0.79:level=disabled'
+
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const OUT = path.join(ROOT, '.tiktok-voice')
@@ -103,9 +129,22 @@ const isDate = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d)
 // carries one or the other, so both use the same parked recording and the
 // same path — `--intro` is what a recording is LISTENED to as, and it is
 // written into the transcript so a later render cannot move it.
-const KIND = flags.story ? 'story' : 'verse'
+//
+// `--kind=<k>` names one of the week's six readings; `--story` is the
+// shorthand that predates them and `verse` is the default. A bare `--kind`
+// reads as TRUE, which would silently render a verse — refuse it, the
+// `--days` lesson.
+const READING = ['book', 'moment', 'before', 'figure', 'quiet', 'prayer']
+// Every kind the engine has, not just the ones this CLI RENDERS: `unpost`,
+// `clear` and `post` are addressed by kind too, and refusing `note` here
+// meant twelve days of an old schedule could not be taken down from a
+// terminal at all — the command answered `unknown kind note` and the run
+// read as "nothing to delete".
+const KINDS = ['verse', 'story', 'note', 'quiz', 'challenge', 'challenge2', 'own', ...READING]
+if (flags.kind === true) fail(`use --kind=<${KINDS.join('|')}>`)
+const KIND = flags.kind ? String(flags.kind) : flags.story ? 'story' : 'verse'
+if (!KINDS.includes(KIND)) fail(`unknown kind ${KIND}`)
 const PLACE = flags.intro ? 'open' : 'close'
-const HOUR = { verse: '07:00', story: '19:30' }
 const mp4For = (date, kind) => path.join(OUT, 'out', `${kind}-${date}.mp4`)
 
 function ymdIn(tz, d = new Date()) {
@@ -139,14 +178,75 @@ async function upload(bucketPath, file, contentType) {
   if (error) throw new Error(`upload ${bucketPath}: ${error.message}`)
   return up.publicUrl
 }
-// A phone memo, cleaned for the post: mono, 48 kHz, the room's rumble and
-// hiss taken down, and the loudness brought to where Gemini's readings sit
-// (EBU R128 to -16 LUFS). The browser levels again on its own terms, which
-// is idempotent on a file already at that level.
+// A phone memo, cleaned for the post: mono, 48 kHz, the room taken out of
+// the low end, presence lifted where a phone mic is weakest, and the range
+// closed enough that a quiet clause survives a bus.
+//
+// Two things are DELIBERATELY absent, and both were measured off a real memo
+// rather than reasoned about:
+//
+//   - No DENOISER. `afftdn` was here on the assumption that a phone in a
+//     room is noisy. The memo measures a -73.5 dB floor against a -18 dB
+//     voice — a 55 dB gap — so there is nothing for it to remove, and what
+//     it actually did was chew the breath off the front of words. Check the
+//     floor (`ffmpeg -af astats`) before putting one back; a genuinely noisy
+//     take is the case for it, not a phone.
+//   - No LOUDNORM. Level is set per LAYOUT downstream — `trimAndLevel`
+//     against `SPEECH_TARGET` ({ verse: 0.14, story: 0.26 }) — and two
+//     things fighting over loudness is exactly what produced the six-decibel
+//     step between his half and Tabitha's that had to be corrected in place
+//     across fourteen scheduled stories. One owner, and it is the renderer.
+//
+// So this chain shapes TONE and DYNAMICS only, and leaves loudness alone.
+// The 4.5 kHz lift is the one that does the work (+2.8 dB of presence at
+// matched loudness); the limiter is a safety rail, not a level.
 function toWav(file, wav) {
-  const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', file, '-ac', '1', '-ar', '48000', '-af', 'highpass=f=70,afftdn=nf=-28,loudnorm=I=-16:TP=-1.5:LRA=9', '-c:a', 'pcm_s16le', wav])
+  const af = [
+    'highpass=f=70',                                       // room rumble, handling
+    'equalizer=f=250:t=q:w=1.2:g=-2.5',                     // boxiness of a small room
+    'equalizer=f=4500:t=q:w=1.0:g=3',                       // presence — consonants a phone mic loses
+    'acompressor=threshold=-18dB:ratio=2.5:attack=8:release=180:makeup=1',
+    'alimiter=limit=0.94',
+  ].join(',')
+  const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', file, '-ac', '1', '-ar', '48000', '-af', af, '-c:a', 'pcm_s16le', wav])
   return ff.status === 0 && fs.existsSync(wav)
 }
+/**
+ * Where the recording is actually QUIET, measured off the samples.
+ *
+ * Whisper's word timings are not a clock. On a real 5m46s batch its
+ * timestamps ran about 1.1 SECONDS EARLY against the audio: it placed the
+ * end of "Day 1" at 2.2s where the words are genuinely spoken from 3.33 to
+ * 4.44, with the take proper starting at 5.93. Cutting on those numbers is
+ * wrong at BOTH ends of every take — the front keeps the spoken "Day N"
+ * marker, and the tail loses real words (take one lost 1.1s: "…he has put
+ * down." simply stopped). It rendered perfectly, was captioned correctly,
+ * and posted to eight networks before anybody watched it.
+ *
+ * So the cut comes from the WAVEFORM and only the identity of a take comes
+ * from Whisper. `-38dB` is well under speech and well over this room's
+ * -73dB floor; 0.30s is shorter than the pause he leaves around a marker
+ * and longer than the gap inside a sentence.
+ */
+function silences(wav, floorDb = -38, minLen = 0.3) {
+  const r = spawnSync(FFMPEG, ['-hide_banner', '-nostats', '-i', wav, '-af', `silencedetect=n=${floorDb}dB:d=${minLen}`, '-f', 'null', '-'], { encoding: 'utf8' })
+  const out = [], text = (r.stderr || '') + (r.stdout || '')
+  let start = null
+  for (const m of text.matchAll(/silence_(start|end):\s*(-?[0-9.]+)/g)) {
+    if (m[1] === 'start') start = Number(m[2])
+    else if (start !== null) { out.push([start, Number(m[2])]); start = null }
+  }
+  return out
+}
+/** The speech between the silences: [start, end] per island. */
+function islands(sil, total) {
+  const out = []
+  let at = 0
+  for (const [a, b] of sil) { if (a > at + 0.05) out.push([at, a]); at = b }
+  if (total > at + 0.05) out.push([at, total])
+  return out
+}
+
 function durationOf(src) {
   const r = spawnSync(FFMPEG, ['-hide_banner', '-i', src], { encoding: 'utf8' })
   const m = /Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/.exec((r.stderr || '') + (r.stdout || ''))
@@ -184,14 +284,21 @@ if (cmd === 'post') {
   await build({ entryPoints: [path.join(ROOT, 'supabase/functions/tiktok-gen/social.ts')], bundle: true, format: 'esm', platform: 'node', outfile: path.join(OUT, 'social.mjs'), logLevel: 'error' })
   const social = await import(path.join(OUT, 'social.mjs'))
   const platforms = String(flags.platforms || 'tiktok,youtube,facebook,instagram,x,snapchat,threads,pinterest').split(',').map((s) => s.trim()).filter((p) => social.postsOn(p, KIND))
-  const at = String(flags.at || HOUR[KIND])
+  // Each network gets its own hour by default, from the SAME table the
+  // morning runner schedules from (`tiktok-times.mjs`) — a post rendered by
+  // hand and a post rendered by the cron are the same post on the same
+  // feeds, so two tables of hours would drift the first time either was
+  // tuned. `--at=HH:MM` overrides every platform at once, and `--now`
+  // still means now.
+  const times = timesFrom(process.env)
+  const hourFor = (p) => String(flags.at || sharedTimeFor(times, KIND, p))
   // Ayrshare refuses a repeated idempotency key even when the post it named
   // was DELETED, so re-posting a date after `unpost` needs a new attempt
   // number — without it the replacement is rejected as a duplicate and the
   // day ends up with nothing scheduled at all.
   const attempt = flags.attempt ? Number(flags.attempt) : undefined
-  const scheduleDate = flags.now ? undefined : zonedToUtc(date, at, TZ).toISOString().replace(/\.\d{3}Z$/, 'Z')
-  log(`post ${KIND} ${date} → ${scheduleDate ? `scheduled ${at} ${TZ} (${scheduleDate})` : 'now'} · ${platforms.join(',')}`)
+  const whenFor = (p) => (flags.now ? undefined : zonedToUtc(date, hourFor(p), TZ).toISOString().replace(/\.\d{3}Z$/, 'Z'))
+  log(`post ${KIND} ${date} → ${flags.now ? 'now' : `scheduled ${TZ}`} · ${platforms.map((p) => (flags.now ? p : `${p} ${hourFor(p)}`)).join(', ')}`)
   const videoUrl = await upload(`days/${date}/${KIND}.mp4`, mp4, 'video/mp4')
   const jpg = path.join(OUT, 'out', `${KIND}-${date}-cover.jpg`)
   const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-ss', '0.3', '-i', mp4, '-frames:v', '1', '-q:v', '3', jpg])
@@ -202,7 +309,7 @@ if (cmd === 'post') {
   const { getVerseForDate } = await import(path.join(OUT, 'verses.mjs'))
   for (const platform of platforms) {
     try {
-      const r = await fn('post', { date, kind: KIND, videoUrl, platforms: [platform], scheduleDate, reference: getVerseForDate(date).reference, seconds, attempt })
+      const r = await fn('post', { date, kind: KIND, videoUrl, platforms: [platform], scheduleDate: whenFor(platform), reference: getVerseForDate(date).reference, seconds, attempt })
       for (const row of r.results ?? []) log(`  ${row.platform.padEnd(10)} ${row.status}${row.error ? ` — ${row.error}` : ''}${row.postUrl ? ` ${row.postUrl}` : ''}`)
     } catch (e) { log(`  ${platform.padEnd(10)} error — ${String(e?.message || e).slice(0, 200)}`) }
   }
@@ -295,7 +402,21 @@ try {
   }
   if (cmd === 'split') {
     const file = args[0], start = args[1]
-    if (!file || !fs.existsSync(file) || !isDate(start)) fail('split <audio file> <start date> [--days=N] [--story] [--intro] [--dry] [--reuse]')
+    if (!file || !fs.existsSync(file) || !isDate(start)) fail('split <audio file> <start date> [--days=N] [--story] [--intro] [--week] [--dry] [--reuse]')
+    // `--week` is the ROLLOUT shape: one sitting, one take per day, and the
+    // kind is whatever that DATE's second post is rather than one kind for
+    // the whole batch. It comes from `kindForDate` — the same rotation the
+    // runner schedules from — so a take can never be parked under a kind the
+    // day will not render. Without it the eight takes of a week would all
+    // park as `voice-story`, six of them under a day that never asks for one,
+    // and every one of those days would fall back to Gemini with nothing
+    // saying so.
+    let kindFor = () => KIND
+    if (flags.week) {
+      await build({ entryPoints: [path.join(ROOT, 'src/data/tiktokWeek.ts')], bundle: true, format: 'esm', platform: 'node', outfile: path.join(OUT, 'week.mjs'), logLevel: 'error' })
+      const week = await import(path.join(OUT, 'week.mjs'))
+      kindFor = (d) => week.kindForDate(d)
+    }
     // `--days=14`, not `--days 14`: the flags here are all `--key=value`, and
     // a bare `--days` reads as TRUE, which Number() turns into 1 — a silent
     // one-take split rather than an error. Refuse it instead.
@@ -374,49 +495,141 @@ try {
       // failure here that a transcript check cannot see.
       const next = marks[k + 1] ? marks[k + 1].at - 0.15 : heard.seconds
       const to = words.length ? Math.min(next, words[words.length - 1].end + 0.5) : from
-      return { date: addDays(start, m.n - 1), n: m.n, from, to, words, text: words.map((w) => w.text).join(' ') }
+      const date = addDays(start, m.n - 1)
+      return { date, kind: kindFor(date), n: m.n, from, to, words, text: words.map((w) => w.text).join(' ') }
     })
-    for (const t of takes) log(`  ${String(t.n).padStart(2)} ${t.date}  ${t.from.toFixed(1)}–${t.to.toFixed(1)}s (${(t.to - t.from).toFixed(1)}s ${t.words.length}w)  ${t.text.slice(0, 74)}`)
+    // ---- snap every boundary onto real silence -------------------------------
+    //
+    // Everything above this point is Whisper's, and Whisper's clock is wrong
+    // (see `silences`). What it is RIGHT about is which take is which, so it
+    // names them and the waveform places them.
+    //
+    // The marker is found rather than computed: its island is short, sits
+    // between two real pauses, and is near — never exactly at — where Whisper
+    // put it. Several innocent islands fit that shape too (a short sentence
+    // between two breaths), so each candidate is HEARD, one second of audio at
+    // a time, and accepted only if it actually says the take's number. On this
+    // recording the two nearest candidates for take 4 sat four seconds apart
+    // with the wrong one closer, so proximity alone would have cut a take in
+    // the middle of the one before it.
+    //
+    // It fails closed per take: a take whose marker is not found keeps the
+    // Whisper bounds it would have had anyway, and says so.
+    const sil = silences(inputWav)
+    const isl = islands(sil, heard.seconds)
+    const silAfter = (t) => sil.find(([a]) => a >= t - 0.01)
+    const silBefore = (t) => [...sil].reverse().find(([, b]) => b <= t + 0.01)
+    const NUMWORD = Object.entries(NUM).reduce((m, [w, n]) => ((m[n] ??= []).push(w), m), {})
+    const batchProbeWav = inputWav
+    let snapped = 0
+    for (const t of takes) {
+      // Candidate markers: a SHORT island with a real pause on both sides,
+      // somewhere near where Whisper thinks the number is. Several innocent
+      // islands fit that shape — take four's true marker sat between "It's
+      // Moses." (the end of take three) and "Suddenly, a chariot of fire"
+      // (the start of its own body), all three short and all three bounded
+      // by pauses — so the shape narrows the search and never decides it.
+      const near = isl.filter(([x, y]) => y - x < 2.5 && x >= t.from - 6 && x <= t.from + 12
+        && ((silBefore(x) ?? [0, 0])[1] - (silBefore(x) ?? [0, 0])[0]) >= 0.6
+        && ((silAfter(y) ?? [0, 0])[1] - (silAfter(y) ?? [0, 0])[0]) >= 0.6)
+      if (!near.length) continue
+      // So the boundary is HEARD — but in a window, not a clip. Two things
+      // force the width: the listener refuses a second of audio outright
+      // ("Heard almost nothing"), and Whisper's drift is a LONG-file effect,
+      // about 2.2s at the top of a six-minute batch and about 0.3s inside a
+      // sixteen-second window. Within one window its timings are good enough
+      // to say which island the number is, which is all that is asked of it.
+      const wa = Math.max(0, near[0][0] - 2)
+      const wb = Math.min(heard.seconds, near[near.length - 1][1] + 8)
+      const win = path.join(OUT, 'probe.wav')
+      if (spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', batchProbeWav, '-ss', String(wa), '-to', String(wb), '-c:a', 'pcm_s16le', win]).status !== 0) continue
+      inputWav = win
+      let words = []
+      try { words = (await page.evaluate(([w, tk]) => window.vaVoice.hear(w, tk), [`${origin}/input.wav`, TOKEN])).words ?? [] } catch { words = [] }
+      inputWav = batchProbeWav
+      if (!words.length) continue
+      // The window is trimmed of its own leading silence before it is heard,
+      // so the clock is rebased on the first island inside it rather than on
+      // the window's own edge.
+      const first = isl.find(([x]) => x >= wa - 0.01)
+      if (!first) continue
+      const offset = first[0] - words[0].start
+      const hit = words.find((w, i) => {
+        const k = w.text.toLowerCase().replace(/[^a-z0-9]/g, '')
+        const lead = i > 0 && LEAD.has(words[i - 1].text.toLowerCase().replace(/[^a-z0-9]/g, ''))
+        return (k === String(t.n) || (NUMWORD[t.n] ?? []).includes(k)) && (lead || /^[a-z]+$/.test(k) === false || (NUMWORD[t.n] ?? []).includes(k))
+      })
+      if (!hit) continue
+      const at = offset + hit.start
+      t.marker = near.find(([x, y]) => at >= x - 0.6 && at <= y + 0.6)
+        ?? near.reduce((best, c) => (Math.abs((c[0] + c[1]) / 2 - at) < Math.abs((best[0] + best[1]) / 2 - at) ? c : best))
+    }
+    for (let k = 0; k < takes.length; k++) {
+      const t = takes[k]
+      if (!t.marker) { log(`  ${t.date}: marker not found in the audio — keeping the heard bounds`); continue }
+      // The body opens where the pause after the spoken marker closes, and
+      // runs to where the pause before the NEXT marker opens. The small pads
+      // are there because `trimAndLevel` trims the ends itself; erring wide
+      // costs a beat of room tone, erring narrow costs a word.
+      const open = silAfter(t.marker[1])
+      const shut = takes[k + 1]?.marker ? silBefore(takes[k + 1].marker[0]) : undefined
+      if (open) t.from = Math.max(0, open[1] - 0.15)
+      t.to = shut ? Math.min(heard.seconds, shut[0] + 0.3) : heard.seconds
+      snapped++
+    }
+    log(`snapped ${snapped} of ${takes.length} takes onto the waveform`)
+    for (const t of takes) log(`  ${String(t.n).padStart(2)} ${t.date} ${t.kind.padEnd(7)} ${t.from.toFixed(1)}–${t.to.toFixed(1)}s (${(t.to - t.from).toFixed(1)}s ${t.words.length}w)  ${t.text.slice(0, 66)}`)
     if (flags.dry) { await done() }
-    // Cutting reads the batch; the verse path below re-points `inputWav` at
-    // each take, so hold on to it rather than reading a moving variable.
+    // Cutting reads the batch; parking re-points `inputWav` at each take, so
+    // hold on to the batch rather than reading a moving variable.
     const batchWav = inputWav
     for (const t of takes) {
       const wav = path.join(OUT, `take-${t.date}.wav`)
       const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', batchWav, '-ss', String(t.from), '-to', String(t.to), '-c:a', 'pcm_s16le', wav])
       if (ff.status !== 0) { log(`  ${t.date} could not be cut`); continue }
-      // A VERSE take has a verse INSIDE it, and the batch pass cannot find
-      // one: `hear` is the story listener — all thought, nothing to look for
-      // — so a verse batch parked with `verse: []` files the reading itself
-      // as thought. Nothing errors, and the renderer then captions the verse
-      // from the TRANSCRIPT rather than from its known text: a real batch
-      // would have burned "Calassay" for Colossae, "responsibly" for
-      // responsively and "pray without seizing" onto the screen as
-      // scripture. So each verse take is heard again on its own, through the
-      // same `listen` every single recording uses, which finds the verse and
-      // parks the WAV and the track itself. A story take keeps the fast path
-      // — there is genuinely no verse in one.
-      if (KIND !== 'story') {
-        inputWav = wav
-        try {
-          const r = await page.evaluate(([d, w, tk, k]) => window.vaVoice.listen(d, w, tk, k), [t.date, `${origin}/input.wav`, TOKEN, 'verse'])
-          log(`  parked ${t.date} verse (${r.verseMatched}/${r.verseWords} of the verse heard, ${r.thoughtWords}w thought)`)
-        } catch (e) {
-          log(`  ${t.date} could not be heard: ${String(e?.message || e).split('\n')[0].slice(0, 160)}`)
+      // EVERY take is parked through the same `listen` a single recording
+      // uses, and it costs a re-hearing per take on purpose. `split` used to
+      // park the cut WAV itself and rebase the batch's own timings onto it,
+      // which was faster and wrong twice over:
+      //
+      //   - It skipped `decodeRecording`, so nothing applied `trimAndLevel`
+      //     and the parked recording sat at whatever level the phone left
+      //     it. That was invisible while `toWav` ended in `loudnorm`, which
+      //     was quietly the only thing setting speech level on this path;
+      //     the first render after the denoiser and loudnorm came out at
+      //     -26.8 LUFS against a story's -13.2. One owner of loudness, and
+      //     it is the renderer.
+      //   - It parked the transcript of a VERSE take from the batch pass,
+      //     which is the story listener and has no verse to look for, so the
+      //     reading was captioned from what Whisper heard rather than from
+      //     its known words.
+      //
+      // Both are the same bug: a second way of doing what `listen` does.
+      // There is now one.
+      inputWav = wav
+      try {
+        const r = await page.evaluate(([d, w, tk, k, pl]) => window.vaVoice.listen(d, w, tk, k, pl), [t.date, `${origin}/input.wav`, TOKEN, t.kind, PLACE])
+        // …and then the BATCH's words are put back onto those timings.
+        //
+        // The re-hearing is for the LEVEL and the timings; it is not a better
+        // transcript. Hearing forty seconds on its own loses both ends: the
+        // marker that was cut ("Day 8." survived the cut in every take of the
+        // first real batch, because Whisper's word-end timing sits a beat
+        // early) and the last few words (its windows drop a short tail). The
+        // batch pass heard the whole sitting with the sentences either side
+        // for context and already sliced the take's words correctly, so it is
+        // the better text — and `fix` is the step that exists for exactly
+        // this: corrected words, refitted onto the timings actually heard.
+        let words = r.thoughtWords
+        if (t.text) {
+          const f = await page.evaluate(([d, tx, tk, k]) => window.vaVoice.fix(d, tx, tk, k), [t.date, t.text, TOKEN, t.kind])
+          words = f.words
         }
-        inputWav = batchWav
-        continue
+        log(`  parked ${t.date} ${t.kind}${t.kind === 'story' ? ` (${PLACE})` : ''} · ${r.seconds.toFixed(0)}s${t.kind === 'verse' ? ` (${r.verseMatched}/${r.verseWords} of the verse heard)` : ''} ${words}w`)
+      } catch (e) {
+        log(`  ${t.date} could not be heard: ${String(e?.message || e).split('\n')[0].slice(0, 160)}`)
       }
-      // Timings are rebased onto the take's own clock, and the track is the
-      // shape `refit`, the correction step and the renderer already read.
-      const words = t.words.map((w) => ({ text: w.text, start: Math.max(0, w.start - t.from), end: Math.max(0, w.end - t.from) }))
-      const track = { seconds: t.to - t.from, verse: [], thought: words, heard: words, text: t.text, verseMatched: 0, place: PLACE, at: new Date().toISOString() }
-      await upload(`days/${t.date}/voice-${KIND}.wav`, wav, 'audio/wav')
-      const json = path.join(OUT, `take-${t.date}.json`)
-      fs.writeFileSync(json, JSON.stringify(track))
-      await upload(`days/${t.date}/voice-${KIND}.json`, json, 'application/json')
-      try { await fn('copy', { date: t.date, kind: KIND, force: true }) } catch { /* written at render time otherwise */ }
-      log(`  parked ${t.date} ${KIND} (${PLACE})`)
+      inputWav = batchWav
     }
     await done()
   }
@@ -457,12 +670,18 @@ try {
   }
   if (cmd === 'render') {
     const date = args[0]; if (!isDate(date)) fail('render <date>')
-    const [dl, r] = await Promise.all([page.waitForEvent('download', { timeout: 900_000 }), page.evaluate(([d, t, k, pl]) => window.vaVoice.render(d, t, k, pl), [date, TOKEN, KIND, PLACE])])
+    // A reading is about ONE thing and the recording already named it, so
+    // `--pick` (a moment id, a stage) and `--ref` say which rather than
+    // leaving a hash to choose a painting his own voice contradicts.
+    if (flags.pick === true || flags.ref === true) fail('use --pick=<id> --ref="Book c:v"')
+    const pick = flags.pick ? String(flags.pick) : undefined
+    const ref = flags.ref ? String(flags.ref) : undefined
+    const [dl, r] = await Promise.all([page.waitForEvent('download', { timeout: 900_000 }), page.evaluate(([d, t, k, pl, pk, rf]) => window.vaVoice.render(d, t, k, pl, pk, rf), [date, TOKEN, KIND, PLACE, pick, ref])])
     const raw = path.join(OUT, 'out', `${KIND}-${date}.${r.ext}`)
     await dl.saveAs(raw)
     log(`rendered ${r.ext} ${(r.size / 1e6).toFixed(1)}MB · ${r.reference} · ${r.tier} · ${r.seconds.toFixed(0)}s · ${r.phrases} captions`)
     const mp4 = mp4For(date, KIND)
-    const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', raw, '-c:v', 'libx264', '-preset', 'medium', '-crf', '20', '-pix_fmt', 'yuv420p', '-r', '30', '-c:a', 'aac', '-b:a', '160k', '-ar', '48000', '-movflags', '+faststart', mp4], { stdio: 'inherit' })
+    const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', raw, '-c:v', 'libx264', '-preset', 'medium', '-crf', '20', '-pix_fmt', 'yuv420p', '-r', '30', '-af', MASTER, '-c:a', 'aac', '-b:a', '160k', '-ar', '48000', '-movflags', '+faststart', mp4], { stdio: 'inherit' })
     if (ff.status !== 0) fail(`ffmpeg failed (${ff.error?.message || `exit ${ff.status}`})`)
     if (raw !== mp4) fs.unlinkSync(raw)
     log(`mp4 ${(fs.statSync(mp4).size / 1e6).toFixed(1)}MB → ${mp4}`)

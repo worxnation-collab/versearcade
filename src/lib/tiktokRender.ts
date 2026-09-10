@@ -9,6 +9,7 @@
 // VP9/Opus WebM, which TikTok also accepts.
 //
 // Nothing here is a player-facing surface: it is dynamically imported by the
+import { levelSpeech, SPEECH_TARGET } from './speechLevel'
 // admin panel only, so the muxers never reach the app bundle.
 //
 // Timeline: [lead: reference / hook] [voice, captioned phrase by phrase] [end card]
@@ -1271,11 +1272,20 @@ export interface StoryInput {
   /** Spoken paragraphs, in order. The LAST one is the verse and its reference. */
   paragraphs: string[]
   hook?: string
-  audio: ArrayBuffer
+  /**
+   * Tabitha's telling. OPTIONAL, and its absence is what makes the weekday
+   * readings possible: with no telling, `own` is not a half joined to hers —
+   * it is the whole post, his voice over held paintings. Everything else on
+   * this layout (the cuts, the settle, the caption clamp, the end card) is
+   * the same code either way. See docs/TIKTOK-WEEK.md.
+   */
+  audio?: ArrayBuffer
   /** The room — a painting of the story circle, or a Veo loop of one. */
   room: HTMLImageElement | HTMLVideoElement
   /** The teller's render, for a room that does not already have her in it. */
   teller?: HTMLImageElement
+  /** The small-caps line over the title. Defaults to the story's own. */
+  eyebrow?: string
   /**
    * Where each paragraph is SET: one held painting per paragraph, cut to on
    * that paragraph's first word. A null entry (and a missing array) is the
@@ -1480,7 +1490,7 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
     ctx.globalAlpha = headIn
     ctx.font = `800 32px ${FONT_DISPLAY}`
     ctx.letterSpacing = '6px'
-    outlined(ctx, 'VERSE ARCADE · STORY TIME', WIDTH / 2, 150, '#ffd23f', 'rgba(11,7,32,0.85)', 8)
+    outlined(ctx, input.eyebrow ?? 'VERSE ARCADE · STORY TIME', WIDTH / 2, 150, '#ffd23f', 'rgba(11,7,32,0.85)', 8)
     ctx.letterSpacing = '0px'
     ctx.font = `700 54px ${FONT_DISPLAY}`
     wrap(ctx, input.title, 900).forEach((l, i) => outlined(ctx, l, WIDTH / 2, 218 + i * 60))
@@ -1503,9 +1513,20 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
     const p = heldPhrase(phrases, at, audioDur)
     if (p && at < audioDur + 0.2) { phrase = p; age = (at - p.start) / 0.22 }
   }
-  if (endFade < 1) {
+  // The panel arrives WITH the first word, not before it.
+  //
+  // A caption holds through a pause on purpose — a blank panel mid-sentence
+  // reads as a dropout — but that argument says nothing about the seconds
+  // BEFORE anybody has spoken, and there an empty bordered box under the hook
+  // reads as a layout that failed to load. It never showed on the story
+  // layout because Tabitha's telling starts under the hook; a reading whose
+  // recording opens with a breath put it on screen. Found by pulling the
+  // frame, not from the log.
+  const first = phrases[0]?.start ?? 0
+  const panelIn = easeOut((at - (first - 0.25)) / 0.3)
+  if (endFade < 1 && panelIn > 0) {
     ctx.save()
-    ctx.globalAlpha = 1 - endFade
+    ctx.globalAlpha = (1 - endFade) * panelIn
     roundRect(ctx, px, py, pw, ph, 40)
     ctx.fillStyle = 'rgba(21,10,52,0.82)'
     ctx.fill()
@@ -1516,7 +1537,7 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
     ctx.fillText(input.reference.toUpperCase(), WIDTH / 2, py + 44)
     ctx.letterSpacing = '0px'
     if (phrase) {
-      ctx.globalAlpha = (1 - endFade) * Math.min(1, easeOut(age) + 0.4)
+      ctx.globalAlpha = (1 - endFade) * panelIn * Math.min(1, easeOut(age) + 0.4)
       drawCaption(ctx, phrase, at, { x: WIDTH / 2, y: py + ph / 2 + 22, maxWidth: pw - 96, size: 64, small: 54, stroke: 8, dim: 0.42 })
     }
     ctx.restore()
@@ -1608,8 +1629,21 @@ function storyTexts(paragraphs: string[]): { texts: string[]; para: number[] } {
  *     would settle for 0.9s in the middle of a sentence and read as a
  *     glitch.
  */
-function storyShots(input: StoryInput, paraStart: number[], ownAt: number, ownEnd: number, toldAt: number, open: boolean): Shot[] {
+function storyShots(input: StoryInput, paraStart: number[], ownAt: number, ownEnd: number, toldAt: number, open: boolean, reading = false): Shot[] {
   const staged = (i: number): HTMLImageElement | null => input.scenes?.[i] ?? null
+  // A READING has no paragraph timings to cut on — there is no telling to
+  // measure — so its pictures are spread evenly across his recording. Even
+  // rather than clever: a shot that lands mid-clause reads as a glitch, and
+  // without a transcript-to-audio match there is nothing better than equal
+  // shares to land it on.
+  if (reading) {
+    const n = input.scenes?.length ?? 0
+    if (!n) return [{ at: -Infinity, img: null }]
+    const span = Math.max(ownEnd - ownAt, 1) / n
+    const shots = input.scenes!.map((img, i) => ({ at: ownAt + i * span, img }))
+      .filter((s, i, a) => i === 0 || s.img !== a[i - 1].img)
+    return [{ ...shots[0], at: -Infinity }, ...shots.slice(1)]
+  }
   const told: Shot[] = paraStart.map((at, i) => ({ at, img: staged(i) }))
   const his: Shot[] | null = input.own && input.stage
     ? [{ at: open ? 0 : ownAt, img: input.stage.backdrop, own: true }]
@@ -1638,7 +1672,15 @@ function storyShots(input: StoryInput, paraStart: number[], ownAt: number, ownEn
 export async function renderStory(input: StoryInput): Promise<RenderOutput> {
   const progress = input.onProgress ?? (() => {})
   progress(0, 'Decoding the story')
-  const told = await decodeAudio(input.audio)
+  // No telling ⇒ a READING: his recording is the whole track. Nothing below
+  // special-cases it beyond this — an empty `told` makes the joins no-ops.
+  // Tabitha is levelled the same way his half is. Her loudness is whatever
+  // the text-to-speech returned that run — two runs of the same kind of
+  // telling measured 4.2 LU apart — so leaving it raw makes the balance
+  // between the two speakers a matter of luck, and the handover sits in the
+  // first twenty seconds of the post. See speechLevel.ts.
+  const told = input.audio ? levelSpeech(await decodeAudio(input.audio), SAMPLE_RATE, SPEECH_TARGET.story) : new Float32Array(0)
+  const reading = !input.audio
   const open = input.own?.place === 'open'
   let samples = told
   let ownAt = Infinity
@@ -1649,7 +1691,8 @@ export async function renderStory(input: StoryInput): Promise<RenderOutput> {
   let ownVoice: { rms: Float32Array; peak: number } | undefined
   if (input.own) {
     const his = await decodeAudio(input.own.audio)
-    const gap = Math.round(OWN_GAP * SAMPLE_RATE)
+    // A reading has nothing to leave a beat between.
+    const gap = reading ? 0 : Math.round(OWN_GAP * SAMPLE_RATE)
     const joined = new Float32Array(told.length + gap + his.length)
     if (open) {
       joined.set(his, 0)
@@ -1671,7 +1714,7 @@ export async function renderStory(input: StoryInput): Promise<RenderOutput> {
   // matches a transcript to a recording, so handing it her minute of words
   // over audio that ends in somebody else's voice makes it chase the tail
   // and stretch her last phrases across his.
-  const hers = await timedCaptions(texts, told, progress, input.align)
+  const hers = reading ? [] : await timedCaptions(texts, told, progress, input.align)
   if (toldAt) for (const p of hers) { p.start += toldAt; p.end += toldAt }
   const paraStart = input.paragraphs.map((_, i) => hers[para.indexOf(i)]?.start ?? 0)
   let phrases = hers
@@ -1703,11 +1746,19 @@ export async function renderStory(input: StoryInput): Promise<RenderOutput> {
   // The hook owns the opening frames and nothing may be put in front of it,
   // so an INTRODUCTION's photo waits for the hook to fade rather than
   // arriving with his first word. A closing word has no such contest.
-  const ownShow = input.own
-    ? (open ? Math.max(ownAt - 0.35, (input.hook ? HOOK_HOLD - 0.4 : 0) - lead) : ownAt - 0.35)
-    : Infinity
+  //
+  // A READING draws no photo ring at all. On the story layout the ring is on
+  // screen only while he speaks, and in a reading he speaks throughout — a
+  // photograph held over the whole post is the permanent overlay that made
+  // these read as generated in the first place, and on the verse layout one
+  // held over the reader was taken for a badge pinned to their chest. The
+  // painting carries the post; he closes it on the end card, as he already
+  // does.
+  const ownShow = !input.own || reading
+    ? Infinity
+    : (open ? Math.max(ownAt - 0.35, (input.hook ? HOOK_HOLD - 0.4 : 0) - lead) : ownAt - 0.35)
   const ownHide = open ? ownEnd : Infinity
-  const sc: StoryScene = { input, lead, audioDur, total, phrases, para, paraStart, ownAt, ownEnd, ownShow, ownHide, ownVoice, shots: storyShots(input, paraStart, ownAt, ownEnd, toldAt, open) }
+  const sc: StoryScene = { input, lead, audioDur, total, phrases, para, paraStart, ownAt, ownEnd, ownShow, ownHide, ownVoice, shots: storyShots(input, paraStart, ownAt, ownEnd, toldAt, open, reading) }
   const { blob, ext } = await produce((ctx, t) => drawStoryFrame(ctx, sc, t), total, lead, samples, progress, input.bed)
   progress(1, 'Done')
   return { blob, ext, durationSec: total, phrases }
@@ -1720,9 +1771,12 @@ export async function audioSeconds(audio: ArrayBuffer): Promise<number> {
 }
 
 /** How long a story or verse post will run, so a music bed can be rendered to fit. */
-export async function plannedDuration(audio: ArrayBuffer, hook: string | undefined, story: boolean, own?: ArrayBuffer): Promise<number> {
+export async function plannedDuration(audio: ArrayBuffer | undefined, hook: string | undefined, story: boolean, own?: ArrayBuffer): Promise<number> {
   void hook // the hook no longer holds the voice back; it plays over the first words
-  const samples = await decodeAudio(audio)
+  // A reading has no telling; `own` is the whole track and there is no beat
+  // to leave between two voices.
+  const samples = audio ? await decodeAudio(audio) : new Float32Array(0)
+  if (!audio) return LEAD + (own ? (await decodeAudio(own)).length / SAMPLE_RATE : 0) + TAIL_SEC + (story ? 1.2 : 0)
   // His half lengthens the post, and a bed rendered for the telling alone would
   // run out under the operator's own voice — silence under the one part of
   // the post a person actually spoke.

@@ -13,11 +13,13 @@
 // is needed.
 
 import { setRunnerToken } from '@/features/admin/tiktok/shared'
-import { makeVerse, makeStory, makeQuiz, makeChallenge, makeNote, type Progress } from '@/features/admin/tiktok/make'
+import { makeVerse, makeStory, makeQuiz, makeChallenge, makeNote, makeReading, type Progress } from '@/features/admin/tiktok/make'
+import { isReadingKind } from '@/data/tiktokWeek'
 import { env as tfEnv } from '@huggingface/transformers'
 
 /** The kinds the runner renders. `own` is an operator's upload and is never rendered here. */
 export type Kind = 'verse' | 'story' | 'quiz' | 'challenge' | 'challenge2' | 'note'
+  | 'book' | 'moment' | 'before' | 'figure' | 'quiet' | 'prayer'
 
 export interface Rendered {
   kind: Kind
@@ -76,7 +78,13 @@ export async function renderPost(kind: Kind, date: string, token?: string): Prom
   ensureFont()
   localModels()
   const progress: Progress = (_f, label) => { window.__progress = `${kind} ${date}: ${label}` }
-  const m = kind === 'verse' ? await makeVerse(date, {}, progress)
+  // A READING is its own generator for all six weekday forms — one layout,
+  // his recording as the whole telling. It THROWS on a day with nothing
+  // parked rather than falling back to a synthetic voice; the runner reports
+  // that as a skip, which is the deliberate half of "a quiet day beats a thin
+  // one".
+  const m = isReadingKind(kind) ? await makeReading(date, kind, {}, progress)
+    : kind === 'verse' ? await makeVerse(date, {}, progress)
     : kind === 'story' ? await makeStory(date, {}, progress)
     : kind === 'challenge' ? await makeChallenge(date, { slot: 1 }, progress)
     : kind === 'challenge2' ? await makeChallenge(date, { slot: 2 }, progress)

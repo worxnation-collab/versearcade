@@ -55,6 +55,10 @@ In **Xcode**:
    the code registration is stubbed in `src/lib/native.ts`).
 5. **Info** tab → add a **URL Type** with URL Scheme `com.versearcade.app` so the
    OAuth deep link `com.versearcade.app://auth/callback` returns to the app.
+   (Codemagic patches this into the regenerated Info.plist on every build.) The
+   sign-in itself runs in an in-app Safari View Controller and lands on the
+   site's bridge page first — see `docs/SETUP-SUPABASE.md` step 1.5 for the two
+   redirect URLs Supabase needs.
 6. Run on a simulator/device (▶). The synthesized sounds + haptics work on device.
 
 ---

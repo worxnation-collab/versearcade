@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="referrer" content="no-referrer" />
+  <title>Returning to Verse Arcade…</title>
+  <link rel="icon" href="/favicon.png" />
+  <!--
+    The native sign-in bridge.
+
+    The App Store build signs in with Apple/Google inside an in-app Safari
+    view (SFSafariViewController via @capacitor/browser). Supabase finishes the
+    OAuth dance by redirecting to whatever `redirectTo` named — and that view
+    REFUSES an automatic redirect to a custom URL scheme
+    (com.versearcade.app://…) unless the user has just interacted with the
+    page: a server 302, a meta refresh and a JS location change all land on a
+    blank page. A redirect the USER taps is honoured every time.
+
+    So the app sends Supabase here — an https page it can load — and this page
+    hands the credentials on to the app: it tries the automatic hop first (it
+    usually works, because the tap on the provider's page was a moment ago)
+    and shows a button that does the same thing for the times it doesn't.
+
+    It forwards the query string and the fragment VERBATIM and reads neither.
+    The tokens ride in the fragment, which never reaches a server; this page
+    has no script but the one below, loads nothing from anywhere, and sends no
+    referrer. Keep it that way — it is the one page on the site that handles
+    a session.
+  -->
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #0b0720;
+      color: #ece9ff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      padding-top: max(24px, env(safe-area-inset-top));
+      padding-bottom: max(24px, env(safe-area-inset-bottom));
+      text-align: center;
+    }
+    .card { max-width: 380px; width: 100%; }
+    .mark { font-size: 44px; line-height: 1; margin-bottom: 14px; }
+    h1 { font-size: 22px; margin: 0 0 8px; }
+    p { margin: 0 0 22px; color: #a49dce; line-height: 1.5; font-size: 15px; }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 16px 20px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #ffd166, #f4a742);
+      color: #1a1730;
+      font-weight: 700;
+      font-size: 17px;
+      text-decoration: none;
+    }
+    .btn:active { filter: brightness(0.94); }
+    .err { color: #ff8fa3; }
+    .site { margin-top: 18px; font-size: 13px; }
+    .site a { color: #b79bff; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="mark" aria-hidden="true">📖</div>
+    <h1 id="title">Signed in</h1>
+    <p id="lead">One more tap to get back to the app.</p>
+    <a id="open" class="btn" href="#">Return to Verse Arcade</a>
+    <p id="nothing" class="site" hidden>
+      Nothing to finish here. <a href="https://versearcade.org/">Open Verse Arcade</a>
+    </p>
+  </main>
+  <script>
+    (function () {
+      var search = window.location.search || '';
+      var hash = window.location.hash || '';
+      var btn = document.getElementById('open');
+      var title = document.getElementById('title');
+      var lead = document.getElementById('lead');
+
+      // No credentials and no error: somebody opened this page by hand.
+      if (!search && !hash) {
+        btn.hidden = true;
+        title.textContent = 'Verse Arcade';
+        lead.textContent = 'This page finishes a sign-in started in the app.';
+        document.getElementById('nothing').hidden = false;
+        return;
+      }
+
+      var target = 'com.versearcade.app://auth/callback' + search + hash;
+      btn.setAttribute('href', target);
+
+      // A provider error rides in the same place a session would. Say so, and
+      // still offer the way back: the app shows the message on its own screen.
+      var params = new URLSearchParams(search.slice(1));
+      var frag = new URLSearchParams(hash.slice(1));
+      var err = params.get('error_description') || frag.get('error_description');
+      if (err) {
+        title.textContent = 'Sign-in didn’t finish';
+        lead.textContent = err;
+        lead.className = 'err';
+        btn.textContent = 'Back to Verse Arcade';
+        return;
+      }
+
+      // Try the hop by itself. When the in-app view allows it the app takes
+      // over before this page is even seen; when it doesn't, the button is
+      // already on screen and does the same thing.
+      setTimeout(function () {
+        try { window.location.href = target; } catch (e) { /* the button remains */ }
+      }, 50);
+    })();
+  </script>
+</body>
+</html>

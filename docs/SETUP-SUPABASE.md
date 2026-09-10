@@ -45,8 +45,13 @@ Where you see 🔑 **PASTE**, that value goes into a specific box — I say exac
    (Or use the Supabase CLI: `supabase db push`.)
 5. **Authentication → URL Configuration**:
    - **Site URL**: `http://localhost:5173` (change to your real domain later).
-   - **Redirect URLs**: add `http://localhost:5173/auth/callback` and, for iOS,
-     `com.versearcade.app://auth/callback`.
+   - **Redirect URLs**: add `http://localhost:5173/auth/callback`,
+     `https://versearcade.org/auth/callback`, and for the native apps
+     **`https://versearcade.org/auth/native/`** (trailing slash included — the
+     bridge page the App Store / Play build lands on; see `public/auth/native`)
+     plus `com.versearcade.app://auth/callback` (the deep link the bridge hands
+     the session to). A missing bridge URL makes Supabase fall back to the Site
+     URL and native sign-in silently never returns to the app.
 
 ---
 
@@ -89,8 +94,12 @@ your **Services ID** and a generated **client secret / key**.
    fields it wants; fill the ones it shows. 🔑 **PASTE** accordingly.
 4. **Save**.
 
-> On iOS, "Sign in with Apple" uses the native sheet; the deep-link redirect
-> `com.versearcade.app://auth/callback` (added in step 1.5) carries the session back.
+> In the native apps, Sign in with Apple/Google opens inside the app (Safari View
+> Controller / Custom Tab — never the system browser, which App Review rejects).
+> Supabase redirects to the bridge page `https://versearcade.org/auth/native/`,
+> which hands the session to `com.versearcade.app://auth/callback` (both added in
+> step 1.5). The in-app view refuses an *automatic* redirect to an app scheme, which
+> is why the bridge exists: it offers the hop as a button, and a tapped one works.
 
 ---
 

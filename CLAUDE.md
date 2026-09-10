@@ -391,6 +391,28 @@ haptics, the OAuth redirect (`store/auth.ts`), the install prompt, and
 `appStoreAsk()` (review vs. download). There is no other divergence — keep it
 that way.
 
+**Native sign-in never leaves the app, and App Review checks.** The 1.3.0
+submission was rejected on 2026-09-10 for exactly this: Sign in with
+Apple/Google opened real Safari (`window.open(url, '_system')`), and the
+reviewer's note said what they accept — sign in inside the app, or the Safari
+View Controller. So `signInOAuth` opens the provider with `@capacitor/browser`
+(SFSafariViewController on iOS, a Custom Tab on Android). The reason it was
+bounced out to Safari in the first place is the trap: that in-app view REFUSES
+an automatic redirect to a custom URL scheme (a 302, a meta refresh, a JS
+location change — Apple's own forums say so), so Supabase redirecting straight
+to `com.versearcade.app://auth/callback` landed on a blank page and a previous
+session blamed the view. The fix is an **https bridge page**
+(`public/auth/native/index.html`, live at `versearcade.org/auth/native/`):
+native `redirectTo` points there, the page tries the hop to the app scheme by
+itself and offers it as a button, and a redirect the user TAPS is honoured
+every time. The deep link then fires `appUrlOpen` → `completeNativeOAuth`,
+which closes the view. The bridge forwards the query and fragment verbatim,
+reads neither, loads nothing external and sends no referrer — it is the one
+page on the site that handles a session, so keep it that small. **The bridge
+URL must be on Supabase's redirect allow-list, exactly as written with the
+trailing slash** (Authentication → URL Configuration), or Supabase falls back
+to the Site URL and the app never hears back. Web sign-in is untouched.
+
 ## Every image comes from Nano Banana
 
 House rule, not a preference: art we add is **generated through

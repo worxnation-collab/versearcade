@@ -128,6 +128,13 @@ export interface PostArgs {
   attempt?: number
   /** The video's length. Facebook Reels stop at 90 seconds; a longer video goes to the page as a plain video post instead. */
   seconds?: number
+  /**
+   * He OPENED this post and an AI voice read the verse. Travels from the
+   * generator with `voiced`, never inferred from a parked file — the same
+   * rule, for the same reason: a claim about a FILE is not a claim about the
+   * post, and this line is a disclosure.
+   */
+  opened?: boolean
   /** A public JPG of the video's first frame, same size as the video. Pinterest refuses a video pin without one. */
   cover?: string
   /** A voice on the video is the operator's own recording (days/<date>/voice-<kind>.json exists); the AI note then claims only the art. */
@@ -166,7 +173,26 @@ export const AI_NOTE_ART = 'AI-generated art. The voice you hear is mine, not sy
  * same on both.
  */
 export const AI_NOTE_STILL = 'AI-generated art.'
-const aiNote = (a: PostArgs) => (a.kind === 'note' ? AI_NOTE_STILL : a.voiced ? AI_NOTE_ART : AI_NOTE)
+/**
+ * And the note for a post he OPENS but does not read.
+ *
+ * This one is the whole reason `voiced` could not stay a boolean. An opener
+ * post carries BOTH voices — his introduction, then a synthesised reading of
+ * the verse — so `AI_NOTE_ART` would claim a voice that is only half his,
+ * about the half that is not. That is precisely the failure this engine has
+ * already shipped once, when a story was captioned "The voice you hear is
+ * mine" over a telling that was entirely Gemini's, and it went to seven
+ * networks before anybody measured the audio.
+ *
+ * So the line names both, and names which is which. It is longer than the
+ * others and that is the cost of it being true.
+ */
+export const AI_NOTE_OPENED = 'AI-generated art, and the verse is read by an AI voice. The introduction is mine.'
+const aiNote = (a: PostArgs) =>
+  a.kind === 'note' ? AI_NOTE_STILL
+    : a.opened ? AI_NOTE_OPENED
+      : a.voiced ? AI_NOTE_ART
+        : AI_NOTE
 
 const tagLine = (tags: string[] | undefined, n: number) => (tags ?? []).slice(0, n).map((t) => '#' + t).join(' ')
 

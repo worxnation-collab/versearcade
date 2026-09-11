@@ -72,6 +72,20 @@ export interface RenderInput {
    * is listened to here, plus the photo the thought section draws.
    */
   voice?: VoiceInput
+  /**
+   * His recording as the OPENING instead — a hook and an introduction, after
+   * which Gemini reads the verse.
+   *
+   * This is the shape that lets one sitting cover many days. `voice` above
+   * replaces the reading, so a voiced day costs a take of that day's verse and
+   * an unvoiced day has no human in it at all; an opener is about the verse
+   * without being it, so a batch of them can be recorded ahead and the reading
+   * underneath is always there. Mutually exclusive with `voice` — a post where
+   * he both introduces the verse and reads it is one voice having a
+   * conversation with itself, which is the same objection that keeps a story
+   * from carrying his word at both ends.
+   */
+  opener?: OpenerInput
   onProgress?: (fraction: number, label: string) => void
 }
 
@@ -79,6 +93,15 @@ export interface VoiceInput {
   verse: TimedWord[]
   thought: TimedWord[]
   /** The person speaking, drawn in a round frame while the thought plays and on the end card. */
+  photo?: HTMLImageElement
+  /** Under the photo: who this is ("Matthew · founder"). */
+  label?: string
+}
+
+/** His hook, ahead of the reading: already-timed words (lib/tiktokVoice) and the photo. */
+export interface OpenerInput {
+  audio: ArrayBuffer
+  words: TimedWord[]
   photo?: HTMLImageElement
   /** Under the photo: who this is ("Matthew · founder"). */
   label?: string
@@ -614,6 +637,8 @@ interface Scene {
   phrases: TimedPhrase[]
   /** The thought section of an operator-voiced post: when it starts, and the reading's loudness over time for the ring. */
   voice?: { thoughtStart: number; rms: Float32Array; peak: number }
+  /** Where his OPENING half ends, so the photo steps back out as the reading begins. */
+  openEnd?: number
 }
 
 // The one thing that moves in the thought section: a thin gold ring around
@@ -836,6 +861,16 @@ async function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number,
     const rise = easeOut((at - (vo.thoughtStart - 0.5)) / 0.5)
     drawSpeaker(ctx, input.voice.photo, input.voice.label, WIDTH / 2, 1060, 135, voiceLevel(vo, at), rise * (1 - endFade))
   }
+  // An OPENER may not push the hook off frame 0 — the one rule this layout
+  // has. His voice still starts at LEAD under the hook, exactly as a reading
+  // does; it is his WORDS that open, never a title card and never a face. So
+  // the photo waits for the hook to fade and steps back out as the reading
+  // begins, leaving the verse the frame it is read over.
+  if (vo && input.opener?.photo && endFade < 1) {
+    const show = HOOK_HOLD + 0.2
+    const alpha = easeOut((at - show) / 0.5) * (1 - easeOut((at - (scene.openEnd ?? 0)) / 0.4))
+    if (alpha > 0.01) drawSpeaker(ctx, input.opener.photo, input.opener.label, WIDTH / 2, 1060, 135, voiceLevel(vo, at), alpha * (1 - endFade))
+  }
   if (phrase && endFade < 1) {
     ctx.save()
     ctx.globalAlpha = Math.min(1, easeOut(age) + 0.35) * (1 - endFade)
@@ -852,7 +887,9 @@ async function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number,
     drawBrand(ctx, 'VERSE ARCADE', input.reference, 190)
     // The maker, small, under the ask: the one place a face belongs on a
     // post that opens on the verse — a person standing behind the link.
-    if (input.voice?.photo) drawSpeaker(ctx, input.voice.photo, input.voice.label ? `Made by ${input.voice.label.split(' · ')[0]}` : undefined, WIDTH / 2, HEIGHT / 2 + 250, 90, 0, endFade)
+    const face = input.voice?.photo ?? input.opener?.photo
+    const faceLabel = input.voice?.label ?? input.opener?.label
+    if (face) drawSpeaker(ctx, face, faceLabel ? `Made by ${faceLabel.split(' · ')[0]}` : undefined, WIDTH / 2, HEIGHT / 2 + 250, 90, 0, endFade)
     ctx.font = `800 76px ${FONT_DISPLAY}`
     outlined(ctx, 'Play today’s verse', WIDTH / 2, HEIGHT / 2 + 470)
     ctx.font = `800 58px ${FONT_DISPLAY}`
@@ -1106,7 +1143,28 @@ async function produce(
 export async function renderTikTok(input: RenderInput): Promise<RenderOutput> {
   const progress = input.onProgress ?? (() => {})
   progress(0, 'Decoding the reading')
-  const samples = await decodeAudio(input.audio)
+  // Both voices are levelled the same way, for the reason speechLevel.ts
+  // exists: his half and a synthesised half have landed six decibels apart in
+  // both directions on this engine, and with an opener the handover is the
+  // first ten seconds of the post.
+  const read = levelSpeech(await decodeAudio(input.audio), SAMPLE_RATE, SPEECH_TARGET.verse)
+  // His hook, then a beat, then the reading — the story layout's join
+  // (`OWN_GAP`), reused rather than re-derived.
+  let samples = read
+  let readAt = 0
+  let openEnd = 0
+  let openerVoice: { rms: Float32Array; peak: number } | undefined
+  if (input.opener) {
+    const his = levelSpeech(await decodeAudio(input.opener.audio), SAMPLE_RATE, SPEECH_TARGET.verse)
+    const gap = Math.round(OWN_GAP * SAMPLE_RATE)
+    const joined = new Float32Array(his.length + gap + read.length)
+    joined.set(his, 0)
+    joined.set(read, his.length + gap)
+    samples = joined
+    openEnd = his.length / SAMPLE_RATE
+    readAt = (his.length + gap) / SAMPLE_RATE
+    openerVoice = envelope(his, SAMPLE_RATE)
+  }
   const audioDur = samples.length / SAMPLE_RATE
   // The reading ends by saying the reference, so it is the last caption too —
   // and a clause of its own, which keeps the clause count matching the pauses.
@@ -1130,18 +1188,38 @@ export async function renderTikTok(input: RenderInput): Promise<RenderOutput> {
     phrases = [...versePhrases, ...between, ...thoughtPhrases]
     const env = envelope(samples, SAMPLE_RATE)
     voice = { thoughtStart, rms: env.rms, peak: env.peak }
+  } else if (input.opener) {
+    // His words from their own approved transcript, then the verse's own
+    // KNOWN text timed against the reading alone.
+    //
+    // Timing the reading needs the reading BY ITSELF: `timedCaptions` matches a
+    // transcript to audio, and handing it the verse over a buffer that opens in
+    // somebody else's voice makes it chase the wrong half — the same mistake
+    // that made Tabitha's captions chase the tail of his.
+    const openText = input.opener.words.map((w) => w.text).join(' ')
+    const openPhrases = groupWords(splitPhrases(openText, 6), input.opener.words, openEnd)
+    const readPhrases = (await timedCaptions([...splitPhrases(verse), input.reference + '.'], read, progress, input.align))
+      .map((ph) => ({ ...ph, start: ph.start + readAt, end: ph.end + readAt }))
+    // Every phrase of his is CLOSED at the handover. A caption holds until the
+    // next one so a pause is not a blank panel, and the last one of a half has
+    // nothing after it to stop it — which once left his closing words on screen
+    // fourteen seconds into Tabitha's telling. Concatenated in SPEAKING order
+    // for the same reason, so the frame lookup finds the right one first.
+    for (const ph of openPhrases) ph.end = Math.min(ph.end, readAt)
+    phrases = [...openPhrases, ...readPhrases]
+    voice = openerVoice ? { thoughtStart: 0, rms: openerVoice.rms, peak: openerVoice.peak } : undefined
   } else {
     phrases = await timedCaptions([...splitPhrases(verse), input.reference + '.'], samples, progress, input.align)
   }
   const lead = LEAD
   const total = lead + audioDur + TAIL_SEC
-  const scene: Scene = { input, lead, audioDur, total, phrases, voice }
+  const scene: Scene = { input, lead, audioDur, total, phrases, voice, openEnd }
 
   try { await document.fonts.load(`800 88px "Baloo 2"`) } catch { /* fall back to the stack */ }
 
   // The music sits a little lower under a person than under Gemini's
   // reading: a real voice has quiet words a synthetic one does not.
-  const bed = input.voice && input.bed ? input.bed.map((x) => x * 0.65) : input.bed
+  const bed = (input.voice || input.opener) && input.bed ? input.bed.map((x) => x * 0.65) : input.bed
   const { blob, ext } = await produce((ctx, t) => drawFrame(ctx, scene, t), total, lead, samples, progress, bed)
   progress(1, 'Done')
   return { blob, ext, durationSec: total, phrases }

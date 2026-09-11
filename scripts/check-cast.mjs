@@ -41,7 +41,12 @@ if (missing.length) fail(`${missing.length} cast figure(s) have no render in pub
 // catch-all: a verse whose speaker is unnamed AND whose book is unmapped is
 // the only way to reach the generic fallback, and on a pool this curated that
 // is a gap rather than a long tail.
-const books = new Set([...pool.matchAll(/^\s*book:\s*'([^']+)'/gm)].map((m) => m[1]))
+// `book:` sits MID-LINE in the pool (`reference: 'Genesis 1:1', book: 'Genesis', …`),
+// so an anchored pattern matches nothing and this check quietly passes on an
+// empty set — which it did, reporting "0 books OK". A checker that validates
+// nothing is worse than no checker, so the count is asserted below.
+const books = new Set([...pool.matchAll(/\bbook:\s*'([^']+)'/g)].map((m) => m[1]))
+if (books.size < 40) fail(`only ${books.size} books parsed from the pool — the pattern stopped matching`)
 const bookBlock = cast.slice(cast.indexOf('export const BOOK_FIGURE'), cast.indexOf('\n}', cast.indexOf('export const BOOK_FIGURE')))
 const mapped = new Set([...bookBlock.matchAll(/(?:^|[{,\s])'?([A-Za-z0-9 ]+?)'?\s*:\s*'[a-z0-9_]+'/gm)].map((m) => m[1].trim()))
 const unmapped = [...books].filter((b) => !mapped.has(b))

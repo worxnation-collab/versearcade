@@ -51,8 +51,10 @@ const TOKEN = process.env.TIKTOK_RUNNER_TOKEN || ''
 if (!KEY) fail('set GEMINI_API_KEY')
 if (!ANON || !TOKEN) fail('set SUPABASE_ANON_KEY and TIKTOK_RUNNER_TOKEN')
 
-const IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-3-pro-image-preview'
-const TEXT_MODEL = process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash'
+const IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-3-pro-image'
+// Keep these in step with tiktok-gen/index.ts — `gemini-2.5-flash` was retired
+// out from under this script and answered 404 on the first real run.
+const TEXT_MODEL = process.env.GEMINI_TEXT_MODEL || 'gemini-3.6-flash'
 
 /** `John 3:16` → `john-3-16`. Must match the path the function allows. */
 export const sceneSlug = (reference) =>
@@ -169,13 +171,16 @@ async function main() {
   let made = 0, had = 0, bad = 0
   for (const v of verses) {
     const p = scenePath(v.reference)
-    if (!flags.force && (await parked(p))) { had++; log(`  ${v.reference.padEnd(22)} already parked`); continue }
+    if (!flags.force && !flags.local && (await parked(p))) { had++; log(`  ${v.reference.padEnd(22)} already parked`); continue }
     try {
       const prompt = await scenePrompt(v)
       if (flags.dry) { log(`  ${v.reference.padEnd(22)} ${prompt.slice(0, 150)}…`); continue }
       const png = await renderScene(prompt)
       const local = path.join(OUT, `${sceneSlug(v.reference)}.jpg`)
       fs.writeFileSync(local, png)
+      // `--local` stops at the file, for a preview render that serves the
+      // painting off disk rather than the bucket.
+      if (flags.local) { made++; log(`  ${v.reference.padEnd(22)} ${(png.length / 1024).toFixed(0)}KB → ${local}`); continue }
       const up = await fn('upload-url', { path: p })
       const sb = createClient(SUPABASE_URL, ANON)
       const { error } = await sb.storage.from('tiktok').uploadToSignedUrl(up.path, up.token, fs.readFileSync(local), {

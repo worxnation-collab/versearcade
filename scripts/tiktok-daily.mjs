@@ -438,7 +438,7 @@ for (const kind of KINDS) {
       // falls back to looking for a parked recording, which is what it did
       // before any of this and is only ever wrong about a video rendered by
       // an older build.
-      posted = await postEach(todo, { date, kind, videoUrl, scheduleDate, reference: getVerseForDate(date).reference, seconds: isPhoto(kind) ? undefined : durationOf(parked), voiced: typeof prior.voiced === 'boolean' ? prior.voiced : undefined })
+      posted = await postEach(todo, { date, kind, videoUrl, scheduleDate, reference: getVerseForDate(date).reference, seconds: isPhoto(kind) ? undefined : durationOf(parked), voiced: typeof prior.voiced === 'boolean' ? prior.voiced : undefined, opened: typeof prior.opened === 'boolean' ? prior.opened : undefined })
       for (const r of posted.results) log(`  ${r.platform.padEnd(10)} ${r.status}${r.error ? ` — ${r.error}` : ''}${r.postUrl ? ` ${r.postUrl}` : ''}`)
       results.push({ kind, date, videoUrl, scheduleDate, results: posted.results, skipped: 'render' }); continue
     }
@@ -487,7 +487,7 @@ for (const kind of KINDS) {
     if (error) { results.push({ kind, date, error: `upload: ${error.message}` }); continue }
     videoUrl = up.publicUrl
     if (!isPhoto(kind)) await parkCover(date, kind, mp4)
-    posted = await postEach(PLATFORMS.filter((p) => social.postsOn(p, kind)), { date, kind, videoUrl, scheduleDate, reference: rendered.reference, seconds: isPhoto(kind) ? undefined : durationOf(mp4), voiced: rendered.voiced })
+    posted = await postEach(PLATFORMS.filter((p) => social.postsOn(p, kind)), { date, kind, videoUrl, scheduleDate, reference: rendered.reference, seconds: isPhoto(kind) ? undefined : durationOf(mp4), voiced: rendered.voiced, opened: rendered.opened })
   } else {
     const u = await ayrshare(`media/uploadUrl?fileName=${encodeURIComponent(`va-${kind}-${date}.mp4`)}&contentType=mp4`, null, 'GET')
     if (!u.uploadUrl) { results.push({ kind, date, error: `ayrshare upload url: ${JSON.stringify(u).slice(0, 200)}` }); continue }
@@ -501,7 +501,7 @@ for (const kind of KINDS) {
       // Direct mode takes the same per-platform time as the function path.
       const pAt = zonedToUtc(date, timeFor(kind, platform), TZ)
       const pWhen = pAt.getTime() > Date.now() + 90_000 ? pAt.toISOString().replace(/\.\d{3}Z$/, 'Z') : undefined
-      const r = await ayrshare('post', social.postBody(platform, copy, { date, kind, reference: rendered.reference, videoUrl, scheduleDate: pWhen, voiced: rendered.voiced }))
+      const r = await ayrshare('post', social.postBody(platform, copy, { date, kind, reference: rendered.reference, videoUrl, scheduleDate: pWhen, voiced: rendered.voiced, opened: rendered.opened }))
       rows.push(social.postResult(platform, r, pWhen))
     }
     posted = { date, kind, videoUrl, at: new Date().toISOString(), results: rows }

@@ -133,6 +133,55 @@ function trimAndLevel(samples: Float32Array, rate: number, target: number): Floa
   return out
 }
 
+/**
+ * The OPENER half of a morning recording, cut out as its own WAV.
+ *
+ * A morning take is his reading of the verse and THEN his hook. The format
+ * uses only the hook — the verse is read by a synthetic voice, so his reading
+ * is not in the post at all — and the parked transcript already says where
+ * that second half begins: `thought[0].start`, the first word heard after the
+ * reading. The cut is that, less a short lead so no word loses its own onset.
+ *
+ * It hands back the words REBASED onto the cut as well as the audio, and that
+ * is the point of doing it here rather than handing the renderer a bare clip.
+ * These words were timed ONCE, against this very recording; subtracting a
+ * constant cannot drift them, where a second alignment pass over the clip
+ * would be a fresh chance to be wrong — and a wrong one is a caption on the
+ * screen under the wrong word.
+ *
+ * Decoded PLAIN on purpose. `decodeRecording` trims and levels, and a trim
+ * moves the clock the parked timings were measured against; the renderer
+ * levels both voices itself (`levelSpeech`) and trims the opener's tail, so
+ * nothing is lost by decoding faithfully here.
+ *
+ * Null rather than a throw when there is no second half to take — a recording
+ * that is all reading, or a clip under a second — because the caller's answer
+ * to that is the morning as it was, not a failed post.
+ */
+const OPENER_LEAD = 0.25
+export async function openerOf(wav: Blob, track: VoiceTrack): Promise<{ audio: ArrayBuffer; words: TimedWord[]; seconds: number } | null> {
+  const first = track.thought[0]
+  if (!first || !Number.isFinite(first.start)) return null
+  const buf = await wav.arrayBuffer()
+  const probe = new OfflineAudioContext(1, 1, 48000)
+  const decoded = await probe.decodeAudioData(buf.slice(0))
+  const off = new OfflineAudioContext(1, Math.ceil(decoded.duration * OUT_RATE), OUT_RATE)
+  const src = off.createBufferSource()
+  src.buffer = decoded
+  src.connect(off.destination)
+  src.start()
+  const samples = (await off.startRendering()).getChannelData(0)
+  const from = Math.max(0, first.start - OPENER_LEAD)
+  const a = Math.min(samples.length, Math.round(from * OUT_RATE))
+  if (samples.length - a < OUT_RATE) return null
+  const cut = samples.slice(a)
+  return {
+    audio: await wavBlob(cut, OUT_RATE).arrayBuffer(),
+    words: track.thought.map((w) => ({ ...w, start: Math.max(0, w.start - from), end: Math.max(0, w.end - from) })),
+    seconds: cut.length / OUT_RATE,
+  }
+}
+
 function wavBlob(samples: Float32Array, rate: number): Blob {
   const data = new DataView(new ArrayBuffer(44 + samples.length * 2))
   const str = (o: number, s: string) => { for (let i = 0; i < s.length; i++) data.setUint8(o + i, s.charCodeAt(i)) }

@@ -31,6 +31,8 @@ export interface Rendered {
   hook: string | null
   /** Whether the operator's own recording actually reached this render. */
   voiced: boolean
+  /** He opened it and a synthetic voice did the rest — a different disclosure from either. */
+  opened?: boolean
 }
 
 declare global {
@@ -98,7 +100,7 @@ export async function renderPost(kind: Kind, date: string, token?: string): Prom
   document.body.appendChild(a)
   a.click()
   window.__progress = `${kind} ${date}: done`
-  return { kind, date, ext: m.ext === 'mp4' ? 'mp4' : m.ext === 'jpg' ? 'jpg' : 'webm', size: m.size, reference: m.reference, tier: m.tier, hook: m.copy?.hook ?? null, voiced: m.voiced }
+  return { kind, date, ext: m.ext === 'mp4' ? 'mp4' : m.ext === 'jpg' ? 'jpg' : 'webm', size: m.size, reference: m.reference, tier: m.tier, hook: m.copy?.hook ?? null, voiced: m.voiced, opened: m.opened ?? false }
 }
 
 window.versearcadeDaily = { renderPost }

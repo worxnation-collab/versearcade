@@ -200,7 +200,16 @@ export type Kind = 'verse' | 'story' | 'quiz' | 'challenge' | 'challenge2' | 'ow
  * voice you hear is mine". The renderer is the only thing that knows, so it
  * says, and `post` takes its answer.
  */
-export interface Made { date: string; kind: Kind; reference: string; url: string; ext: string; size: number; copy: Copy | null; phrases: TimedPhrase[]; tier: string; voiced: boolean }
+/**
+ * `opened` is the third state of the disclosure, and it travels beside
+ * `voiced` rather than being derived from it for exactly the reason `voiced`
+ * itself travels: a claim about a FILE is not a claim about the POST. A post
+ * where he opens and a synthetic voice does the rest is `voiced` (a recording
+ * of his is genuinely in it) AND `opened` — and with only the first of those,
+ * the caption reads "the voice you hear is mine, not synthetic" over audio
+ * that is mostly not.
+ */
+export interface Made { date: string; kind: Kind; reference: string; url: string; ext: string; size: number; copy: Copy | null; phrases: TimedPhrase[]; tier: string; voiced: boolean; opened?: boolean }
 
 export type Renderer = typeof import('@/lib/tiktokRender')
 
@@ -575,7 +584,7 @@ export async function postVideo(m: Made, platforms: Platform[], scheduleDate: st
   let at: string | undefined
   for (const platform of platforms) {
     onStep(`${scheduleDate ? 'Scheduling' : 'Posting'} · ${PLATFORM_NAMES[platform]}`)
-    const r = await call<Posted>('post', { date: m.date, kind: m.kind, videoUrl: up.publicUrl, platforms: [platform], scheduleDate, reference: m.reference, seconds, voiced: m.voiced })
+    const r = await call<Posted>('post', { date: m.date, kind: m.kind, videoUrl: up.publicUrl, platforms: [platform], scheduleDate, reference: m.reference, seconds, voiced: m.voiced, opened: m.opened })
     results.push(...(r.results ?? []))
     at = r.at ?? at
   }

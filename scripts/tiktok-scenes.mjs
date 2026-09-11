@@ -56,6 +56,11 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 // filed by reference; one folder holding both would be two ideas under one
 // name, and the day somebody clears it out they would take the wrong half.
 const OUT = path.join(ROOT, 'public', 'tiktok', 'verse')
+// Build output, kept OUT of `public/`. `OUT` used to be a scratch directory
+// and served as both the paintings' home and the esbuild bundle's; pointing it
+// at the repo quietly started committing a 700KB bundle of the verse pool into
+// the app's static assets, where it would have shipped to every phone.
+const WORK = path.join(ROOT, '.tiktok-voice', 'scenes')
 const args = process.argv.slice(2).filter((a) => !a.startsWith('--'))
 const flags = Object.fromEntries(process.argv.slice(2).filter((a) => a.startsWith('--')).map((a) => {
   const [k, ...v] = a.slice(2).split('='); return [k, v.length ? v.join('=') : true]
@@ -205,16 +210,17 @@ const parked = async (p) => (await fetch(publicUrl(p), { method: 'HEAD' })).ok
 
 async function main() {
   fs.mkdirSync(OUT, { recursive: true })
+  fs.mkdirSync(WORK, { recursive: true })
   await build({
     entryPoints: [path.join(ROOT, 'src/data/bible/questions.ts')], bundle: true, format: 'esm', platform: 'node',
-    outfile: path.join(OUT, 'q.mjs'), alias: { '@': path.join(ROOT, 'src') }, logLevel: 'error',
+    outfile: path.join(WORK, 'q.mjs'), alias: { '@': path.join(ROOT, 'src') }, logLevel: 'error',
     define: { 'import.meta.env': 'VA_ENV' }, banner: { js: 'const VA_ENV = {};' },
   })
-  const { getVerseForDate } = await import(path.join(OUT, 'q.mjs'))
+  const { getVerseForDate } = await import(path.join(WORK, 'q.mjs'))
 
   let verses = []
   if (flags.refs) {
-    const { VERSE_POOL } = await import(path.join(OUT, 'q.mjs')).catch(() => ({}))
+    const { VERSE_POOL } = await import(path.join(WORK, 'q.mjs')).catch(() => ({}))
     const wanted = String(flags.refs).split(',').map((s) => s.trim())
     const pool = VERSE_POOL ?? []
     for (const w of wanted) {

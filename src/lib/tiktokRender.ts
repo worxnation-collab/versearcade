@@ -1891,7 +1891,27 @@ function storyShots(input: StoryInput, paraStart: number[], ownAt: number, ownEn
       .filter((s, i, a) => i === 0 || s.img !== a[i - 1].img)
     return [{ ...shots[0], at: -Infinity }, ...shots.slice(1)]
   }
-  const told: Shot[] = paraStart.map((at, i) => ({ at, img: staged(i) }))
+  // Her telling OPENS IN THE ROOM, and only then goes anywhere.
+  //
+  // The first paragraph's stage used to arrive on her first word, so a
+  // viewer met the story already somewhere else and the library was
+  // something only his half had been in front of. What the layout is for is
+  // the moment of leaving: she starts reading, in her room, and the room
+  // becomes the place she is reading about. Without a beat of room first
+  // there is no departure to see — just a post that happens to be set at a
+  // gate.
+  //
+  // `LIBRARY_LEAD` is measured against the dissolve rather than chosen: the
+  // room has to be the whole frame for long enough to register as a room
+  // (about a second) before 0.75s of dissolve begins, and the first stage
+  // still has to arrive inside the first paragraph. Consecutive-identical
+  // collapsing below means a story whose first paragraph is unstaged simply
+  // stays in the library, exactly as it did.
+  const LIBRARY_LEAD = 1.6
+  const told: Shot[] = paraStart.flatMap((at, i) =>
+    i === 0 && staged(0)
+      ? [{ at, img: null }, { at: at + LIBRARY_LEAD, img: staged(0) }]
+      : [{ at, img: staged(i) }])
   const his: Shot[] | null = input.own && input.stage
     ? [{ at: open ? 0 : ownAt, img: input.stage.backdrop, own: true }]
     : null

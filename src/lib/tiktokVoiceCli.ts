@@ -28,7 +28,7 @@ declare global {
       drafts: (dates: string[], token: string, force?: boolean, place?: 'open' | 'close') => Promise<DraftRow[]>
       hear: (wavUrl: string, token: string) => Promise<{ seconds: number; words: TimedWord[]; text: string }>
       listen: (date: string, wavUrl: string, token: string, kind?: VoiceKind, place?: 'open' | 'close') => Promise<ListenResult>
-      render: (date: string, token: string, kind?: VoiceKind, place?: 'open' | 'close', pick?: string, reference?: string) => Promise<RenderResult>
+      render: (date: string, token: string, kind?: VoiceKind, place?: 'open' | 'close', pick?: string, reference?: string, restory?: boolean) => Promise<RenderResult>
       note: (date: string, token: string) => Promise<{ size: number; reference: string; tier: string; words: number; text: string }>
       preview: (date: string, token: string, a: { hookUrl: string; verseUrl: string; sceneUrl: string; figureUrl: string; hookText: string; hookLine: string; photoUrl?: string }) => Promise<{ ext: 'mp4' | 'webm'; size: number; reference: string; seconds: number; phrases: number; figure: string }>
       fix: (date: string, text: string, token: string, kind?: VoiceKind) => Promise<FixResult>
@@ -269,7 +269,7 @@ window.vaVoice = {
    * listened to yet belongs — one that carries its own wins, so a preview
    * cannot move a word recorded as a closing one to the front.
    */
-  async render(date, token, kind = 'verse', place = 'close', pick, reference) {
+  async render(date, token, kind = 'verse', place = 'close', pick, reference, restory = false) {
     setRunnerToken(token)
     ensureFont()
     localModels()
@@ -281,7 +281,7 @@ window.vaVoice = {
     const m = isReadingKind(kind)
       ? await makeReading(date, kind, { pick, reference }, progress)
       : kind === 'story'
-        ? await makeStory(date, { ownPlace: place }, progress)
+        ? await makeStory(date, { ownPlace: place, restory }, progress)
         : await makeVerse(date, {}, progress)
     const a = document.createElement('a')
     a.href = m.url

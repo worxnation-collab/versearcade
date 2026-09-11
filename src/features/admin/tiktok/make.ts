@@ -277,6 +277,8 @@ export interface StoryOptions {
   align?: boolean
   /** Render the telling alone, ignoring anything parked in the operator's voice for the date. */
   ownVoice?: boolean
+  /** Rewrite the telling instead of reading the cached one — the way a story parked before stages existed gets its `scenes`. */
+  restory?: boolean
   /**
    * Where a recording that has NOT yet been transcribed belongs — 'open' to
    * introduce Tabitha, 'close' to answer her. A recording already listened
@@ -339,7 +341,15 @@ export async function makeStory(d: string, o: StoryOptions, progress: Progress):
   // and its transcript parked before `fetchCopy` runs below.
   const own = o.ownVoice === false ? null : await ensureOwn(d, progress, o.ownPlace).catch((e) => { console.warn('your voice unavailable, telling it without one:', e); return null })
   progress(0, 'writing the story')
-  const st = o.story ?? await fetchStory(d, false)
+  // `restory` rewrites the telling rather than reading the cached one, and it
+  // exists because of a specific gap: every story parked before stages
+  // existed has no `scenes` key at all, so it renders as Tabitha in her
+  // library from the first word to the last and the whole staging feature is
+  // silently inert. Nothing about the cached file says it is missing
+  // anything — it has a title, a hook and its paragraphs, and it renders
+  // perfectly. The same shape as every other stale-artefact trap in this
+  // engine: the code was fixed and what the code had already written was not.
+  const st = o.story ?? await fetchStory(d, o.restory === true)
   const tellerId = o.cast?.teller ?? 'tabitha'
   const roomPath = o.cast?.room ?? ROOMS[0].id
   // Tabitha and the children, held in front of every backdrop. Loaded here

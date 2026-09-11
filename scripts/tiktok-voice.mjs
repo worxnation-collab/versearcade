@@ -117,7 +117,7 @@ if (!TOKEN) fail('set TIKTOK_RUNNER_TOKEN')
 const [cmd, ...rest] = process.argv.slice(2)
 const flags = Object.fromEntries(rest.filter((a) => a.startsWith('--')).map((a) => { const [k, ...v] = a.slice(2).split('='); return [k, v.length ? v.join('=') : true] }))
 const args = rest.filter((a) => !a.startsWith('--'))
-if (!['drafts', 'listen', 'fix', 'render', 'note', 'post', 'unpost', 'clear', 'identify', 'split', 'preview'].includes(cmd)) fail('usage: drafts | identify <files…> | listen <date> <file> | fix <date> <text file> | render <date> [--kind=K] | preview <date> --hook=<wav> --verse=<wav> --scene=<jpg> --line="…" | post <date> [--at HH:MM|--now] | unpost <date> | clear <date> | split <file> <date>')
+if (!['drafts', 'listen', 'fix', 'render', 'note', 'post', 'unpost', 'clear', 'identify', 'split', 'preview'].includes(cmd)) fail('usage: drafts | identify <files…> | listen <date> <file> | fix <date> <text file> | render <date> [--kind=K] [--restory] | preview <date> --hook=<wav> --verse=<wav> --scene=<jpg> --line="…" | post <date> [--at HH:MM|--now] | unpost <date> | clear <date> | split <file> <date>')
 const isDate = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d)
 // Two posts a day can carry the operator's voice: the morning VERSE (his
 // reading and his thought, in place of Gemini's) and his half of the evening
@@ -851,7 +851,7 @@ try {
     if (flags.pick === true || flags.ref === true) fail('use --pick=<id> --ref="Book c:v"')
     const pick = flags.pick ? String(flags.pick) : undefined
     const ref = flags.ref ? String(flags.ref) : undefined
-    const [dl, r] = await Promise.all([page.waitForEvent('download', { timeout: 900_000 }), page.evaluate(([d, t, k, pl, pk, rf]) => window.vaVoice.render(d, t, k, pl, pk, rf), [date, TOKEN, KIND, PLACE, pick, ref])])
+    const [dl, r] = await Promise.all([page.waitForEvent('download', { timeout: 900_000 }), page.evaluate(([d, t, k, pl, pk, rf, rs]) => window.vaVoice.render(d, t, k, pl, pk, rf, rs), [date, TOKEN, KIND, PLACE, pick, ref, !!flags.restory])])
     const raw = path.join(OUT, 'out', `${KIND}-${date}.${r.ext}`)
     await dl.saveAs(raw)
     log(`rendered ${r.ext} ${(r.size / 1e6).toFixed(1)}MB · ${r.reference} · ${r.tier} · ${r.seconds.toFixed(0)}s · ${r.phrases} captions`)

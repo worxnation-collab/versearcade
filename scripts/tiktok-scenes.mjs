@@ -36,7 +36,26 @@ import { build } from 'esbuild'
 import { createClient } from '@supabase/supabase-js'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const OUT = path.join(ROOT, '.tiktok-voice', 'scenes')
+// Scenes live in the REPO, under `public/`, and the bucket is the option
+// rather than the home.
+//
+// The morning runner serves `public/` on its own origin (see the catch-all in
+// `scripts/tiktok-daily.mjs`), so a painting checked in here is reachable by
+// the renderer with no Storage call, no signed upload and no deploy — the
+// cron already has the checkout. The bucket path exists for the admin hub,
+// which is a browser with no repo, and for shipping a painting to an already
+// approved build; neither is how these are made.
+//
+// It is also the cheaper default by a mile: a verse is shown once per
+// rotation and its painting outlives the date, so parking by day would
+// repaint the same verse every cycle. Filed by reference, it is painted once
+// ever.
+//
+// NOT `public/tiktok/scenes/`, which is already a deck of twelve GENERIC
+// places (`data/tiktokVoice.ts` picks one by theme). These are per-verse and
+// filed by reference; one folder holding both would be two ideas under one
+// name, and the day somebody clears it out they would take the wrong half.
+const OUT = path.join(ROOT, 'public', 'tiktok', 'verse')
 const args = process.argv.slice(2).filter((a) => !a.startsWith('--'))
 const flags = Object.fromEntries(process.argv.slice(2).filter((a) => a.startsWith('--')).map((a) => {
   const [k, ...v] = a.slice(2).split('='); return [k, v.length ? v.join('=') : true]
@@ -59,7 +78,10 @@ const TEXT_MODEL = process.env.GEMINI_TEXT_MODEL || 'gemini-3.6-flash'
 /** `John 3:16` → `john-3-16`. Must match the path the function allows. */
 export const sceneSlug = (reference) =>
   String(reference).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+/** In the bucket (the hub's path). On disk it is `public/tiktok/verse/`; see OUT. */
 export const scenePath = (reference) => `scenes/${sceneSlug(reference)}.jpg`
+/** The URL the renderer fetches, served out of the repo by the CLI and the cron. */
+export const sceneUrl = (reference) => `/tiktok/verse/${sceneSlug(reference)}.jpg`
 
 async function gemini(model, body) {
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {

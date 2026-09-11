@@ -858,6 +858,13 @@ Deno.serve(async (req) => {
     // big to route through it, so the browser gets a signed upload URL for a
     // path shaped exactly like the videos this engine makes.
     if (action === 'upload-url') {
+      // `scenes/<slug>.jpg` is a painted backdrop for ONE VERSE, keyed on a
+      // slug of its reference (`john-3-16`). It is not under `days/` on
+      // purpose: a verse is shown once per rotation and the painting outlives
+      // the date it happened to fall on, so filing it by day would repaint the
+      // same verse every cycle. The slug charset is deliberately narrow —
+      // these land in an <image href> in the renderer, the catalog's "code is
+      // not content" rule applied to a path.
       const path = String(input.path ?? '')
       // A video, or its cover — the first frame as a JPG, which Pinterest
       // requires beside a video pin — or one of the operator's own recordings
@@ -865,7 +872,7 @@ Deno.serve(async (req) => {
       // photo the thought section draws.
       // The six READING kinds join both halves: they park an MP4 like any
       // other post and a recording like the verse and the story do.
-      if (!/^(days\/\d{4}-\d{2}-\d{2}\/((verse|story|quiz|challenge|challenge2|own|book|moment|before|figure|quiet|prayer)(\.(mp4|webm)|-cover\.jpg)|note-card\.jpg|voice-(verse|story|book|moment|before|figure|quiet|prayer)\.(wav|json))|founder\/photo\.jpg)$/.test(path)) return json({ error: 'bad path' }, 400)
+      if (!/^(days\/\d{4}-\d{2}-\d{2}\/((verse|story|quiz|challenge|challenge2|own|book|moment|before|figure|quiet|prayer)(\.(mp4|webm)|-cover\.jpg)|note-card\.jpg|voice-(verse|story|book|moment|before|figure|quiet|prayer)\.(wav|json))|founder\/photo\.jpg|scenes\/[a-z0-9-]{1,60}\.jpg)$/.test(path)) return json({ error: 'bad path' }, 400)
       const { data, error } = await admin.storage.from(BUCKET).createSignedUploadUrl(path, { upsert: true })
       if (error || !data) return json({ error: error?.message ?? 'no upload url' }, 500)
       return json({ path, token: data.token, publicUrl: publicUrl(path) })

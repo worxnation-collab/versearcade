@@ -462,15 +462,69 @@ the kit still exists.
 
 ## The TikTok engine: an operator tool, not a feature
 
-Admin → TikTok makes the daily posts for a faceless TikTok account: the day's
-reader standing on a road scene reading the verse of the day, two twenty-second
-"Can you beat Peter?" challenges (one of yesterday's questions each, a clock,
-the teach line, an ask to comment), a replay of YESTERDAY's quiz played by the
-game's own CPU against the clock, and an evening Story time with Tabitha
-telling the story behind the verse in about a minute. All are captioned word
-by word, ending on the site. Each is its own generator behind a pill
-(`admin/tiktok/*.tsx` over `shared.tsx`); the cron does the upload. Full
-design: `docs/TIKTOK-ENGINE.md`. Things to know:
+**Read this first: the engine is TWO POSTS A DAY ON TWO NETWORKS, and most of
+what follows this paragraph is the history of how it got there.** Everything
+below is still worth reading — the scars are real and several of them are
+invisible in a diff — but the bullets describe formats and networks that are
+now parked, so take the shape from here and the lessons from there.
+
+**What it makes now.** A MORNING VERSE and an EVENING STORY, both carrying the
+operator's own recorded voice, posted to YouTube and Facebook only:
+
+- **The verse.** His recorded HOOK opens it (about fifteen seconds, his face
+  beside the caption), then a synthesised voice reads the verse. Standing in
+  the frame is the verse's OWN speaker — `castFor` in `data/tiktokCast.ts`:
+  Paul for Paul, and for a divine speaker the prophet who RECORDED it, because
+  God is never drawn. Behind them is a painting made for that verse
+  (`scripts/tiktok-scenes.mjs` → `public/tiktok/verse/<slug>.jpg`), not one of
+  nine roads.
+- **The story.** His recorded INTRODUCTION opens it, then Tabitha tells the
+  story in her library — and the library DISSOLVES to where the story happens
+  while she and the children stay sat in front of it, returning to the library
+  for the verse.
+
+**Why the reading moved off him**, since it is the half that looks like a
+downgrade: a reading has to be recorded for THAT DAY'S verse, so a day he
+misses has no human in it at all, and he was committed to fourteen full
+readings a week. A hook is ABOUT the verse without being it, so a batch can be
+recorded ahead and the reading underneath is always there.
+
+**Why two networks.** Measured, not assumed. Across five days of the same
+verse post YouTube delivered 983, 951 and 777 views; TikTok delivered 1, 2 and
+0, Instagram 0, 2 and 5, Threads 10, 2 and 0, and Pinterest zero impressions of
+anything. 156 sign-ups had a null source. Five networks at single digits are a
+cost, not a small win: quota, AI-disclosure exposure, and on feeds that judge a
+CHANNEL they make the account look like the spray-and-pray bot the policies are
+written against. `LIVE_PLATFORMS` in `social.ts` is a LIST — `postsOn` still
+decides per (platform, kind) and every generator is untouched, so a network
+comes back as a row the day there is a reason for it.
+
+**The disclosure has four lines now, and which one a post carries is decided by
+what is actually IN it** (`aiNote`): `AI_NOTE` when nothing human is,
+`AI_NOTE_ART` when the voice is entirely his, `AI_NOTE_OPENED` when he opens a
+post whose VERSE is read by a synthetic voice, and `AI_NOTE_OPENED_STORY` when
+he opens one whose STORY is told by one. The third and fourth exist because
+`voiced` alone captioned an opener post "the voice you hear is mine, not
+synthetic" over audio that is mostly not — the same failure this engine shipped
+in September, arriving by a new road. **`opened` travels from the render to the
+post body beside `voiced`**, never derived at the far end, for the reason
+`voiced` does: a claim about a FILE is not a claim about the POST.
+
+**And the pattern that caused four separate bugs in one day, which is the most
+useful thing on this page: A FIX TO THE CODE IS NOT A FIX TO WHAT THE CODE HAS
+ALREADY WRITTEN.** Parked recordings cut on superseded boundaries; MP4s
+rendered in a superseded format; a post record restating what was asked for
+rather than what is queued; and stories written before staging existed, which
+made the whole staging feature inert with nothing anywhere saying so. Every one
+of those artefacts looked completely valid — right shape, right word count,
+rendered perfectly. When you change a step of this pipeline, go and look at
+what the old step already put in the bucket. `split` now measures a parked
+take's length against its cut for exactly this reason, and `--restory` exists
+because a cached telling has no way to say what it is missing.
+
+Each generator is its own pill (`admin/tiktok/*.tsx` over `shared.tsx`); the
+cron does the upload. Full design: `docs/TIKTOK-ENGINE.md`. Things to know —
+**historical where they describe the parked formats**:
 
 - **The first frame is the hook and the voice does not wait for it.** Every
   layout opens on the hook line, large, at 0.0s, with the reading starting at

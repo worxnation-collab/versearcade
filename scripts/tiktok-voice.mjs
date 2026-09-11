@@ -658,7 +658,8 @@ try {
     const cast = castFor(v)
     const figure = path.join(ROOT, 'public/skins', `${cast.figure}.png`)
     if (!fs.existsSync(figure)) fail(`no render for ${cast.figure}`)
-    previewFiles = { hook: String(flags.hook), verse: String(flags.verse), scene: String(flags.scene), figure }
+    const photo = flags.photo ? String(flags.photo) : ''
+    previewFiles = { hook: String(flags.hook), verse: String(flags.verse), scene: String(flags.scene), figure, ...(photo && fs.existsSync(photo) ? { photo } : {}) }
     const hookText = flags.text && fs.existsSync(String(flags.text)) ? fs.readFileSync(String(flags.text), 'utf8').replace(/\s+/g, ' ').trim() : String(flags.text || '')
     log(`preview ${date} · ${v.reference} · ${cast.figure} (${cast.why})`)
     const [dl, r] = await Promise.all([
@@ -666,7 +667,7 @@ try {
       page.evaluate(([d, t, a]) => window.vaVoice.preview(d, t, a), [date, TOKEN, {
         hookUrl: `${origin}/prev-hook.wav`, verseUrl: `${origin}/prev-verse.wav`,
         sceneUrl: `${origin}/prev-scene.jpg`, figureUrl: `${origin}/prev-figure.png`,
-        hookText, hookLine: String(flags.line),
+        hookText, hookLine: String(flags.line), ...(previewFiles.photo ? { photoUrl: `${origin}/prev-photo.jpg` } : {}),
       }]),
     ])
     const raw = path.join(OUT, 'out', `preview-${date}.${r.ext}`)

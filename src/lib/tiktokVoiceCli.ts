@@ -9,7 +9,7 @@
 // the runner token and catches the finished video as a download — the shape
 // lib/tiktokDaily.ts already has. Never imported by the app.
 
-import { setRunnerToken, parkFile, fetchCopy, fetchThought, fetchStoryWord, fetchVoice, publicUrl, existsAt, voiceWavPath, voiceJsonPath, type VoiceKind } from '@/features/admin/tiktok/shared'
+import { VOICE_LABEL, setRunnerToken, parkFile, fetchCopy, fetchThought, fetchStoryWord, fetchVoice, publicUrl, existsAt, voiceWavPath, voiceJsonPath, type VoiceKind } from '@/features/admin/tiktok/shared'
 import { makeVerse, makeStory, makeNote, makeReading, type Progress } from '@/features/admin/tiktok/make'
 import { isReadingKind } from '@/data/tiktokWeek'
 import { getVerseForDate } from '@/data/bible/questions'
@@ -30,7 +30,7 @@ declare global {
       listen: (date: string, wavUrl: string, token: string, kind?: VoiceKind, place?: 'open' | 'close') => Promise<ListenResult>
       render: (date: string, token: string, kind?: VoiceKind, place?: 'open' | 'close', pick?: string, reference?: string) => Promise<RenderResult>
       note: (date: string, token: string) => Promise<{ size: number; reference: string; tier: string; words: number; text: string }>
-      preview: (date: string, token: string, a: { hookUrl: string; verseUrl: string; sceneUrl: string; figureUrl: string; hookText: string; hookLine: string }) => Promise<{ ext: 'mp4' | 'webm'; size: number; reference: string; seconds: number; phrases: number; figure: string }>
+      preview: (date: string, token: string, a: { hookUrl: string; verseUrl: string; sceneUrl: string; figureUrl: string; hookText: string; hookLine: string; photoUrl?: string }) => Promise<{ ext: 'mp4' | 'webm'; size: number; reference: string; seconds: number; phrases: number; figure: string }>
       fix: (date: string, text: string, token: string, kind?: VoiceKind) => Promise<FixResult>
       identify: (wavUrl: string, dates: string[], token: string) => Promise<{ best: { date: string; reference: string; matched: number; words: number } | null; opening: string }>
     }
@@ -221,12 +221,14 @@ window.vaVoice = {
       fetch(a.verseUrl).then((x) => x.arrayBuffer()),
     ])
     const [scene, figure] = await Promise.all([r.loadImage(a.sceneUrl), r.loadImage(a.figureUrl)])
+    // The face, if one is served — the ring around it breathes with his voice.
+    const photo = a.photoUrl ? await r.loadImage(a.photoUrl).catch(() => undefined) : undefined
     const { bedFor } = await import('@/features/admin/tiktok/shared')
     const bed = await bedFor(await r.plannedDuration(verse, a.hookLine, false, hook), 'morning')
     const out = await r.renderTikTok({
       reference: v.reference, text: v.text, hook: a.hookLine, audio: verse,
       backdrop: { kind: 'builtin', scene, figure },
-      opener: { audio: hook, words: [], text: a.hookText },
+      opener: { audio: hook, words: [], text: a.hookText, photo, label: VOICE_LABEL },
       bed, onProgress: progress,
     })
     const el = document.createElement('a')

@@ -882,7 +882,16 @@ async function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number,
   if (vo && input.opener?.photo && endFade < 1) {
     const show = HOOK_HOLD + 0.2
     const alpha = easeOut((at - show) / 0.5) * (1 - easeOut((at - (scene.openEnd ?? 0)) / 0.4))
-    if (alpha > 0.01) drawSpeaker(ctx, input.opener.photo, input.opener.label, WIDTH / 2, 1060, 135, voiceLevel(vo, at), alpha * (1 - endFade))
+    // HIGH in the frame, not at 1060 where the thought's photo sits.
+    //
+    // That position was measured for a post where the figure on screen WAS
+    // him — the reader had already handed the road over — so a face over the
+    // middle was a face over himself. Here the verse's own speaker stands
+    // there for the whole post and never leaves, so the same coordinates put
+    // his photo flat on Paul's chest: two subjects and one centre. The hook
+    // has finished by the time this fades in, so the top of the frame is
+    // empty and clears the figure's head.
+    if (alpha > 0.01) drawSpeaker(ctx, input.opener.photo, input.opener.label, WIDTH / 2, 380, 130, voiceLevel(vo, at), alpha * (1 - endFade))
   }
   if (phrase && endFade < 1) {
     ctx.save()

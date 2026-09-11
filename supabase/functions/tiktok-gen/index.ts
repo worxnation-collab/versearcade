@@ -970,7 +970,8 @@ Deno.serve(async (req) => {
       // published TikTok video cannot be recalled through the API) is how
       // one day ends up on the account three times.
       const { data: priorFile } = await admin.storage.from(BUCKET).download(`days/${date}/posted-${kind}.json`)
-      const prior = priorFile ? (JSON.parse(await priorFile.text()) as { results?: Array<Record<string, unknown>> }).results ?? [] : []
+      const priorRec = priorFile ? JSON.parse(await priorFile.text()) as Record<string, unknown> : {}
+      const prior = (Array.isArray(priorRec.results) ? priorRec.results : []) as Array<Record<string, unknown>>
       const standing = new Set(prior.filter((r) => r.status === 'scheduled' || r.status === 'success').map((r) => String(r.platform)))
 
       // The words per network live in social.ts, shared with the runner.
@@ -1005,7 +1006,27 @@ Deno.serve(async (req) => {
       // `voiced` rides in the record so a later call for the platforms that
       // failed — a different process, which rendered nothing — says the same
       // thing about the same video rather than inferring it again.
-      const record = { date, kind, videoUrl, at: new Date().toISOString(), voiced, opened, results: merged }
+      //
+      // But a call that sent NOTHING must not restate them, and that is a
+      // trap rather than a nicety. `post` rewrites this record even when
+      // every platform was skipped, so re-posting a day that is already live
+      // stamped the CALLER'S answer over a record describing a different
+      // video: a day holding an old scheduled post came back reading
+      // `opened: true` because the caller asked for that, while Ayrshare
+      // still held the old one with the old caption. The record then
+      // describes what was ASKED FOR rather than what is out there — which
+      // is the same failure as a disclosure describing something absent, and
+      // this file is where the day's truth is kept.
+      //
+      // So the video and its two disclosure flags are only restated when
+      // something was actually SENT. A skipped-only call still re-parks the
+      // rows (it may have added a `skipped` note worth keeping) and leaves
+      // what they are about alone.
+      const sent = results.some((r) => r.status === 'scheduled' || r.status === 'success')
+      const about = sent || !prior.length
+        ? { videoUrl, voiced, opened }
+        : { videoUrl: typeof priorRec.videoUrl === 'string' ? priorRec.videoUrl : videoUrl, voiced: typeof priorRec.voiced === 'boolean' ? priorRec.voiced : voiced, opened: typeof priorRec.opened === 'boolean' ? priorRec.opened : opened }
+      const record = { date, kind, ...about, at: new Date().toISOString(), results: merged }
       await park(`days/${date}/posted-${kind}.json`, new TextEncoder().encode(JSON.stringify(record)), 'application/json')
       return json({ ...record, results })
     }

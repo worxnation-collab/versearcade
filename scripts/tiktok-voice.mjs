@@ -742,7 +742,25 @@ try {
           const f = await page.evaluate(([d, tx, tk, k]) => window.vaVoice.fix(d, tx, tk, k), [t.date, t.text, TOKEN, t.kind])
           words = f.words
         }
-        log(`  parked ${t.date} ${t.kind}${t.kind === 'story' ? ` (${PLACE})` : ''} · ${r.seconds.toFixed(0)}s${t.kind === 'verse' ? ` (${r.verseMatched}/${r.verseWords} of the verse heard)` : ''} ${words}w`)
+        // What was PARKED, measured against what was CUT.
+        //
+        // This is the check that was missing when it mattered. The placement
+        // was fixed and verified against the waveform, correctly — and every
+        // recording already in the bucket had been parked from the OLD
+        // boundaries and stayed that way, because fixing a pipeline does not
+        // fix what the pipeline has already written. One of them opened with
+        // him saying "Day 2" and stopped mid-sentence, and it was scheduled
+        // to go out that evening. Nothing anywhere said so: the transcript
+        // had been corrected by hand, so the TEXT was perfect and only the
+        // audio was short.
+        //
+        // `decodeRecording` trims the ends, so a parked take is always a
+        // little shorter than its cut; a whole second is more than trimming
+        // and means the two disagree about where the take is.
+        const want = t.to - t.from
+        const drift = want - r.seconds
+        const off = drift > 1.2 || drift < -0.2 ? `  ** parked ${r.seconds.toFixed(1)}s against a ${want.toFixed(1)}s cut — re-run this take **` : ''
+        log(`  parked ${t.date} ${t.kind}${t.kind === 'story' ? ` (${PLACE})` : ''} · ${r.seconds.toFixed(0)}s${t.kind === 'verse' ? ` (${r.verseMatched}/${r.verseWords} of the verse heard)` : ''} ${words}w${off}`)
       } catch (e) {
         log(`  ${t.date} could not be heard: ${String(e?.message || e).split('\n')[0].slice(0, 160)}`)
       }

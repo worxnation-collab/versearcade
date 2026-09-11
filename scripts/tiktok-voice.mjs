@@ -410,7 +410,7 @@ try {
   }
   if (cmd === 'split') {
     const file = args[0], start = args[1]
-    if (!file || !fs.existsSync(file) || !isDate(start)) fail('split <audio file> <start date> [--days=N] [--story] [--intro] [--week] [--dry] [--reuse]')
+    if (!file || !fs.existsSync(file) || !isDate(start)) fail('split <audio file> <start date> [--days=N] [--story] [--intro] [--week] [--pairs] [--dry] [--reuse]')
     // `--week` is the ROLLOUT shape: one sitting, one take per day, and the
     // kind is whatever that DATE's second post is rather than one kind for
     // the whole batch. It comes from `kindForDate` — the same rotation the
@@ -420,6 +420,19 @@ try {
     // and every one of those days would fall back to Gemini with nothing
     // saying so.
     let kindFor = () => KIND
+    // `--pairs` is the shape of the NEW format, and it is the only one where
+    // the date does not advance with the take. Two recordings belong to one
+    // day — the morning opener and the evening introduction — so take 1 and
+    // take 2 are both day 0, takes 3 and 4 are day 1, and the kind alternates
+    // instead of the date. Without it a fourteen-take sitting lands on
+    // fourteen consecutive days, every one of them under one kind, and seven
+    // days that were recorded for silently get nothing: the split still
+    // reports a clean cut, because nothing it can see is wrong.
+    let dateFor = (n) => addDays(start, n - 1)
+    if (flags.pairs) {
+      dateFor = (n) => addDays(start, Math.floor((n - 1) / 2))
+      kindFor = (_d, n) => (n % 2 === 1 ? 'verse' : 'story')
+    }
     if (flags.week) {
       await build({ entryPoints: [path.join(ROOT, 'src/data/tiktokWeek.ts')], bundle: true, format: 'esm', platform: 'node', outfile: path.join(OUT, 'week.mjs'), logLevel: 'error' })
       const week = await import(path.join(OUT, 'week.mjs'))
@@ -503,8 +516,8 @@ try {
       // failure here that a transcript check cannot see.
       const next = marks[k + 1] ? marks[k + 1].at - 0.15 : heard.seconds
       const to = words.length ? Math.min(next, words[words.length - 1].end + 0.5) : from
-      const date = addDays(start, m.n - 1)
-      return { date, kind: kindFor(date), n: m.n, from, to, words, text: words.map((w) => w.text).join(' ') }
+      const date = dateFor(m.n)
+      return { date, kind: kindFor(date, m.n), n: m.n, from, to, words, text: words.map((w) => w.text).join(' ') }
     })
     // ---- snap every boundary onto real silence -------------------------------
     //
@@ -592,7 +605,10 @@ try {
     // hold on to the batch rather than reading a moving variable.
     const batchWav = inputWav
     for (const t of takes) {
-      const wav = path.join(OUT, `take-${t.date}.wav`)
+      // Keyed on the KIND as well as the date: `--pairs` parks two takes on
+      // one day, and a name that carried only the date would cut the second
+      // over the first and park the same audio twice.
+      const wav = path.join(OUT, `take-${t.date}-${t.kind}.wav`)
       const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', batchWav, '-ss', String(t.from), '-to', String(t.to), '-c:a', 'pcm_s16le', wav])
       if (ff.status !== 0) { log(`  ${t.date} could not be cut`); continue }
       // EVERY take is parked through the same `listen` a single recording

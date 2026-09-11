@@ -652,6 +652,8 @@ interface Scene {
   voice?: { thoughtStart: number; rms: Float32Array; peak: number }
   /** Where his OPENING half ends, so the photo steps back out as the reading begins. */
   openEnd?: number
+  /** Where the READING begins — the far side of `OWN_GAP`, and the moment his half is over on screen. */
+  readAt?: number
 }
 
 // The one thing that moves in the thought section: a thin gold ring around
@@ -677,6 +679,35 @@ function circleImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, cx: n
   ctx.drawImage(img, cx - w / 2, cy - r - (h - 2 * r) * 0.38, w, h)
   ctx.restore()
 }
+
+/**
+ * Where his face goes while he opens a reading, and what the caption does to
+ * make room for it.
+ *
+ * It shipped ABOVE the figure (`WIDTH / 2, 380, r 130`) and that was wrong in
+ * the way a layout is wrong rather than the way a bug is: the frame then had
+ * two things in the middle of it competing to be the subject — the verse's own
+ * speaker standing there for the whole post, and a photograph hanging over his
+ * head. The face belongs with the WORDS it is saying, so it sits beside the
+ * caption panel at the bottom of the frame, where it reads as a byline on the
+ * line being spoken rather than as a second character in the picture.
+ *
+ * The three numbers are measured against each other and must move together:
+ *
+ *  - The ring is not `r`. `drawSpeaker` breathes it out to `r + 12 + 22` at
+ *    full voice, so the footprint is `r + 34` — 120 here, not 86 — and a gap
+ *    that clears the still photo would be crossed on every loud syllable.
+ *  - `OPENER_CAPTION` therefore starts at `x + r + 34` plus a gap, and its
+ *    centre is the midpoint of what is left before the frame's own 60px
+ *    margin. Narrower text also wraps sooner, which is why the sizes step
+ *    down from 88/70 to 82/66: the drop to `small` happens past two lines, and
+ *    at the old size a three-line phrase climbed into the figure's feet.
+ *  - The LABEL ("Matthew · founder") is drawn under the photo at `cy + r + 58`
+ *    — below the caption's own deepest line — so it may safely be wider than
+ *    the ring.
+ */
+const OPENER_FACE = { x: 196, y: 1400, r: 86 }
+const OPENER_CAPTION = { x: 684, maxWidth: 672 }
 
 /** The person speaking: the photo in a round frame with the ring that breathes with the voice, and a small line saying who. */
 function drawSpeaker(ctx: CanvasRenderingContext2D, photo: HTMLImageElement, label: string | undefined, cx: number, cy: number, r: number, level: number, alpha: number) {
@@ -879,24 +910,29 @@ async function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number,
   // does; it is his WORDS that open, never a title card and never a face. So
   // the photo waits for the hook to fade and steps back out as the reading
   // begins, leaving the verse the frame it is read over.
+  //
+  // His half ENDS on screen at `readAt`, not at `openEnd`. A caption holds
+  // until the next one, so his last phrase is still up through the 0.9s
+  // `OWN_GAP` between the two voices — and the caption is narrowed and pushed
+  // right for the whole of his half to make room for the face beside it. If
+  // the face left at `openEnd` and the caption widened at `readAt`, the two
+  // halves of one change would happen half a second apart; if both moved at
+  // `openEnd`, a caption still on screen would reflow under the reader's eye.
+  // So both end at `readAt`: the photo finishes fading exactly as the
+  // reading's first caption arrives, and no caption ever reflows mid-sentence.
+  const openerOut = scene.readAt ?? scene.openEnd ?? 0
+  const opening = !!input.opener && at < openerOut
   if (vo && input.opener?.photo && endFade < 1) {
     const show = HOOK_HOLD + 0.2
-    const alpha = easeOut((at - show) / 0.5) * (1 - easeOut((at - (scene.openEnd ?? 0)) / 0.4))
-    // HIGH in the frame, not at 1060 where the thought's photo sits.
-    //
-    // That position was measured for a post where the figure on screen WAS
-    // him — the reader had already handed the road over — so a face over the
-    // middle was a face over himself. Here the verse's own speaker stands
-    // there for the whole post and never leaves, so the same coordinates put
-    // his photo flat on Paul's chest: two subjects and one centre. The hook
-    // has finished by the time this fades in, so the top of the frame is
-    // empty and clears the figure's head.
-    if (alpha > 0.01) drawSpeaker(ctx, input.opener.photo, input.opener.label, WIDTH / 2, 380, 130, voiceLevel(vo, at), alpha * (1 - endFade))
+    const alpha = easeOut((at - show) / 0.5) * (1 - easeOut((at - (openerOut - 0.4)) / 0.4))
+    if (alpha > 0.01) drawSpeaker(ctx, input.opener.photo, input.opener.label, OPENER_FACE.x, OPENER_FACE.y, OPENER_FACE.r, voiceLevel(vo, at), alpha * (1 - endFade))
   }
   if (phrase && endFade < 1) {
     ctx.save()
     ctx.globalAlpha = Math.min(1, easeOut(age) + 0.35) * (1 - endFade)
-    drawCaption(ctx, phrase, at, { x: WIDTH / 2, y: 1400, maxWidth: 880, size: 88, small: 70, stroke: 14 })
+    drawCaption(ctx, phrase, at, opening
+      ? { x: OPENER_CAPTION.x, y: 1400, maxWidth: OPENER_CAPTION.maxWidth, size: 82, small: 66, stroke: 14 }
+      : { x: WIDTH / 2, y: 1400, maxWidth: 880, size: 88, small: 70, stroke: 14 })
     ctx.restore()
   }
 
@@ -1241,7 +1277,7 @@ export async function renderTikTok(input: RenderInput): Promise<RenderOutput> {
   }
   const lead = LEAD
   const total = lead + audioDur + TAIL_SEC
-  const scene: Scene = { input, lead, audioDur, total, phrases, voice, openEnd }
+  const scene: Scene = { input, lead, audioDur, total, phrases, voice, openEnd, readAt }
 
   try { await document.fonts.load(`800 88px "Baloo 2"`) } catch { /* fall back to the stack */ }
 

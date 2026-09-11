@@ -423,6 +423,8 @@ export async function transcribeOwn(samples: Float32Array, sampleRate: number, p
   }
 }
 
+export { dropVerse } from './dropVerse'
+
 /** Put the operator's corrected thought onto the timings Whisper heard. */
 export function refit(track: VoiceTrack, text: string): VoiceTrack {
   const words = text.replace(/\s+/g, ' ').trim().split(' ').filter(Boolean)

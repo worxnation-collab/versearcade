@@ -165,7 +165,14 @@ window.vaVoice = {
     const parked = await fetchVoice(date, kind)
     if (!parked || !Array.isArray(parked.heard) || !parked.heard.length) throw new Error(`nothing listened to for ${date} ${kind} yet — run listen first`)
     const m = await import('@/lib/tiktokVoice')
-    const fixed = m.refit(parked, text)
+    // A verse take is the READING and then the thought, and `refit` has only
+    // the thought's timings to fit onto — so a correction carrying both
+    // halves has to lose the reading first, or the verse is spread across
+    // the thought. See `dropVerse`, which refuses to cut anything it is not
+    // sure about. This is the one place that knows the day's verse, which is
+    // why it happens here rather than in whatever handed the text over.
+    const supplied = kind === 'verse' ? m.dropVerse(text, getVerseForDate(date).text) : text
+    const fixed = m.refit(parked, supplied)
     await parkFile(voiceJsonPath(date, kind), new Blob([JSON.stringify(fixed)], { type: 'application/json' }), 'application/json')
     say('rewriting the caption')
     try { await fetchCopy(date, kind, true) } catch { /* written at render time otherwise */ }

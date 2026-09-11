@@ -926,6 +926,16 @@ Deno.serve(async (req) => {
       const claimed = typeof input.voiced === 'boolean' ? (input.voiced as boolean) : undefined
       const parkedVoice = VOICED_KINDS.includes(kind) && (await exists(`days/${date}/voice-${kind}.json`))
       const voiced = parkedVoice && claimed !== false
+      // OPENED is a third state, and without it this post would have carried
+      // the one disclosure it must never carry. A morning verse now has his
+      // introduction over the top of a reading done by a synthetic voice —
+      // so `voiced` is true (there IS a recording of his behind it) while
+      // "the voice you hear is mine, not synthetic" is FALSE of the verse,
+      // which is most of what a viewer hears. `AI_NOTE_OPENED` says both
+      // halves. It rides in the record with `voiced` for the same reason:
+      // a later call for the platforms that failed rendered nothing and must
+      // say the same thing about the same video.
+      const opened = voiced && input.opened === true
 
       // A platform the account has not linked yet is skipped with a row that
       // says so, never sent: X can be in every list before the account
@@ -979,7 +989,7 @@ Deno.serve(async (req) => {
           if (!(await exists(coverPath))) { results.push({ platform, status: 'skipped', id: null, postUrl: null, postId: null, error: `no cover image yet (${coverPath})`, scheduleDate: null }); continue }
           cover = publicUrl(coverPath)
         }
-        const r = await ayrshare('post', postBody(platform, copy, { date, kind, reference, videoUrl, scheduleDate, attempt, seconds, cover, voiced }), 'POST', platform === 'x')
+        const r = await ayrshare('post', postBody(platform, copy, { date, kind, reference, videoUrl, scheduleDate, attempt, seconds, cover, voiced, opened }), 'POST', platform === 'x')
         results.push(postResult(platform, r, scheduleDate))
       }
       // Merged over the earlier record, so a call for the platforms that
@@ -995,7 +1005,7 @@ Deno.serve(async (req) => {
       // `voiced` rides in the record so a later call for the platforms that
       // failed — a different process, which rendered nothing — says the same
       // thing about the same video rather than inferring it again.
-      const record = { date, kind, videoUrl, at: new Date().toISOString(), voiced, results: merged }
+      const record = { date, kind, videoUrl, at: new Date().toISOString(), voiced, opened, results: merged }
       await park(`days/${date}/posted-${kind}.json`, new TextEncoder().encode(JSON.stringify(record)), 'application/json')
       return json({ ...record, results })
     }

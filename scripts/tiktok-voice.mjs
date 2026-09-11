@@ -307,7 +307,7 @@ if (cmd === 'unpost') {
   process.exit(0)
 }
 if (cmd === 'post') {
-  const date = args[0]; if (!isDate(date)) fail('post <date> [--at HH:MM|--now] [--attempt=N]')
+  const date = args[0]; if (!isDate(date)) fail('post <date> [--at HH:MM|--now] [--attempt=N] [--opened] [--voiced=false]')
   const mp4 = mp4For(date, KIND)
   if (!fs.existsSync(mp4)) fail(`no ${mp4} — run render first`)
   await build({ entryPoints: [path.join(ROOT, 'supabase/functions/tiktok-gen/social.ts')], bundle: true, format: 'esm', platform: 'node', outfile: path.join(OUT, 'social.mjs'), logLevel: 'error' })
@@ -338,7 +338,17 @@ if (cmd === 'post') {
   const { getVerseForDate } = await import(path.join(OUT, 'verses.mjs'))
   for (const platform of platforms) {
     try {
-      const r = await fn('post', { date, kind: KIND, videoUrl, platforms: [platform], scheduleDate: whenFor(platform), reference: getVerseForDate(date).reference, seconds, attempt })
+      // `--opened` says the post carries his introduction over a reading done
+      // by a synthetic voice, which is a different disclosure from either of
+      // the two that existed: `voiced` alone would claim "the voice you hear
+      // is mine, not synthetic" of a verse that is not.
+      // `--opened` says the post carries his introduction over a reading done
+      // by a synthetic voice. `--voiced=false` is the fallback for a server
+      // that has no branch for that yet: it under-claims him rather than
+      // over-claiming him, which is the only safe direction when the two
+      // available lines are "the voice you hear is mine" (false of the verse)
+      // and "AI-generated art and voice" (false only of his introduction).
+      const r = await fn('post', { date, kind: KIND, videoUrl, platforms: [platform], scheduleDate: whenFor(platform), reference: getVerseForDate(date).reference, seconds, attempt, ...(flags.opened ? { opened: true } : {}), ...(flags.voiced === 'false' ? { voiced: false } : {}) })
       for (const row of r.results ?? []) log(`  ${row.platform.padEnd(10)} ${row.status}${row.error ? ` — ${row.error}` : ''}${row.postUrl ? ` ${row.postUrl}` : ''}`)
     } catch (e) { log(`  ${platform.padEnd(10)} error — ${String(e?.message || e).slice(0, 200)}`) }
   }

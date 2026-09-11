@@ -80,11 +80,26 @@ async function gemini(model, body) {
  *
  *  - NO PEOPLE. A figure is composited on top; a painted crowd puts a second
  *    person in the shot and the centred character stops being the subject.
- *  - The LOWER MIDDLE stays calm and uncluttered — that is where the figure
- *    stands, and a busy patch behind the head is the difference between a
- *    character and a smudge.
+ *  - The MIDDLE of the frame is reserved top to bottom, not merely the lower
+ *    middle. Clearing only the ground is not enough: the first scene obeyed
+ *    that and still put the cross dead centre, so the crossbar came out of the
+ *    standing figure's skull. The subject belongs near one edge.
  *  - The TOP THIRD is covered by the caption panel, so nothing that carries
  *    meaning may live up there.
+ *
+ * **How that middle is ASKED FOR is load-bearing, and it cost two renders.**
+ * Saying "reserve the centre column" or "keep the middle third clear" makes an
+ * image model draw the geometry it was handed: both attempts came back as two
+ * or three flat vertical STRIPES of colour with a literal empty band down the
+ * middle, which is not a painting at all. Column, band, third, panel and
+ * stripe are all words about the CANVAS, and a picture is not a canvas. What
+ * works is a director's note about the SCENE — put the cross over by the left
+ * edge, let the rest fall away into open ground — plus an explicit refusal of
+ * the failure ("it is ONE continuous scene, no vertical bands or seams"). Keep
+ * both halves; the refusal alone let the subject drift back to the middle.
+ *
+ * The STYLE is shown rather than described (`STYLE_REFS`), for the reason
+ * given there.
  */
 async function scenePrompt(v) {
   const j = await gemini(TEXT_MODEL, {
@@ -98,9 +113,21 @@ async function scenePrompt(v) {
       `and two or three concrete objects that belong to it.\n\n` +
       `Hard rules, all of which must appear in your prompt:\n` +
       `- ABSOLUTELY NO PEOPLE, no figures, no faces, no crowds, no silhouettes, no animals in the foreground.\n` +
-      `- The LOWER MIDDLE of the frame must be open, calm and uncluttered — plain ground, water or floor.\n` +
-      `- The TOP THIRD must be simple and quiet — open sky, mist or shadow — with nothing important in it.\n` +
-      `- Warm hand-illustrated storybook style, soft painted shading, rich saturated colour, no text, no watermark, no border.\n` +
+      `- COMPOSITION. A standing person is painted into the middle of this image afterwards, so the middle of the ` +
+      `frame must be OPEN — plain ground, water, floor or sky — from top to bottom. Place the main subject of the scene ` +
+      `(the cross, the tree, the gate, the boat, whatever it is) well off to one side, near the left or right edge, and ` +
+      `let the rest fall away into open space. Think of a wide landscape photograph with the subject at one edge and ` +
+      `nothing but ground in the middle distance.\n` +
+      `- It is ONE continuous scene. Do not divide the canvas. No vertical bands, stripes, panels, columns, blocks of ` +
+      `flat colour, borders or seams of any kind — earlier attempts rendered this as two or three flat vertical stripes ` +
+      `and were rejected. Ground, horizon and sky run unbroken from edge to edge.\n` +
+      `- The LOWER MIDDLE especially must be open, calm and uncluttered — plain ground, water or floor, for the figure to ` +
+      `stand on.\n` +
+      `- The TOP THIRD must be simple and quiet — open sky or plain shadow — with nothing important in it.\n` +
+      `- STYLE, and be emphatic about it: flat graphic vector-like shapes with CLEAN HARD EDGES and DEEP SATURATED colour ` +
+      `blocks, in the manner of the two reference images supplied. Rich warm earth tones — burnt orange, ochre, terracotta, ` +
+      `deep slate blue. NOT pale, NOT washed out, NOT pastel, NOT hazy, NOT misty, NOT airbrushed, NOT soft-focus, NOT ` +
+      `photographic. Bold blocks of colour rather than gentle gradients. No text, no watermark, no border.\n` +
       `- Vertical 9:16 composition.\n\n` +
       `Return ONLY the prompt text, 80-140 words, no preamble and no quotation marks.` }] }],
     generationConfig: { temperature: 0.9 },
@@ -110,9 +137,28 @@ async function scenePrompt(v) {
   return t
 }
 
+/**
+ * The app's own road paintings, shown to the model as references.
+ *
+ * Words were not enough and that is the whole reason these are here. The first
+ * real scene came back soft, hazy and pale — a perfectly good picture in a
+ * different hand from the rest of the account, and a saturated cut-out figure
+ * standing on it reads as pasted on rather than painted in. The house style is
+ * flat graphic shapes, clean edges and saturated colour blocks, and the
+ * quickest way to say that is to show it, exactly as `gen-art.mjs` shows every
+ * skin the two starter figures.
+ *
+ * Roads rather than figures on purpose: a person-shaped reference invites a
+ * person into a backdrop whose first rule is that it has none.
+ */
+const STYLE_REFS = ['public/tiktok/roads/mountain-path.jpg', 'public/tiktok/roads/dawn-hills.jpg']
+const b64 = (f) => fs.readFileSync(path.join(ROOT, f)).toString('base64')
+
 async function renderScene(prompt) {
+  const refs = STYLE_REFS.filter((f) => fs.existsSync(path.join(ROOT, f)))
+    .map((f) => ({ inline_data: { mime_type: 'image/jpeg', data: b64(f) } }))
   const j = await gemini(IMAGE_MODEL, {
-    contents: [{ parts: [{ text: prompt }] }],
+    contents: [{ parts: [{ text: prompt }, ...refs] }],
     generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: '9:16', imageSize: '2K' } },
   })
   const part = (j.candidates?.[0]?.content?.parts ?? []).find((p) => p.inline_data ?? p.inlineData)

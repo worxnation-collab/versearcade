@@ -252,6 +252,8 @@ function buildDailyVerse(seed: VerseSeed, rng: () => number, dropDate: string): 
     translation: DEFAULT_TRANSLATION,
     reference: seed.reference,
     book: seed.book,
+    speaker: seed.speaker,
+    testament: seed.testament,
     chapter: seed.chapter,
     verseStart: seed.verseStart,
     verseEnd: seed.verseEnd,

@@ -170,18 +170,18 @@ export interface Cast {
 }
 
 /** The figure that stands in the frame for this verse. */
-export function castFor(seed: Pick<VerseSeed, 'speaker' | 'book' | 'testament'>): Cast {
+export function castFor(seed: { speaker?: string; book: string; testament?: VerseSeed['testament'] }): Cast {
   // God first, so no later edit can name a divine speaker in SPEAKER_FIGURE.
-  if (isDivine(seed.speaker)) {
+  if (isDivine(seed.speaker ?? '')) {
     const byBook = BOOK_FIGURE[seed.book]
     if (byBook) return { figure: byBook, why: 'divine-to-book' }
-    return { figure: FALLBACK[seed.testament] ?? FALLBACK.OT, why: 'fallback' }
+    return { figure: FALLBACK[seed.testament ?? 'OT'] ?? FALLBACK.OT, why: 'fallback' }
   }
-  const named = SPEAKER_FIGURE[speakerKey(seed.speaker)]
+  const named = SPEAKER_FIGURE[speakerKey(seed.speaker ?? '')]
   if (named) return { figure: named, why: 'speaker' }
   const byBook = BOOK_FIGURE[seed.book]
   if (byBook) return { figure: byBook, why: 'book' }
-  return { figure: FALLBACK[seed.testament] ?? FALLBACK.OT, why: 'fallback' }
+  return { figure: FALLBACK[seed.testament ?? 'OT'] ?? FALLBACK.OT, why: 'fallback' }
 }
 
 /** Every figure id this file can ever return — what `art/tiktok-cast.json` must cover. */

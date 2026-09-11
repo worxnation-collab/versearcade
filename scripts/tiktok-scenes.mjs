@@ -29,6 +29,8 @@
 // and the renderer FAILS CLOSED: no parked scene is the road rotation exactly
 // as before, never a failed post.
 
+import jpeg from 'jpeg-js'
+import { PNG } from 'pngjs'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -61,6 +63,45 @@ const OUT = path.join(ROOT, 'public', 'tiktok', 'verse')
 // at the repo quietly started committing a 700KB bundle of the verse pool into
 // the app's static assets, where it would have shipped to every phone.
 const WORK = path.join(ROOT, '.tiktok-voice', 'scenes')
+
+/**
+ * The model answers at 2K (1536x2752) and the frame is 1080x1920, so every
+ * painting arrived about eight times the size it is ever drawn at — 1.6MB
+ * each, and these are COMMITTED, one per verse, against a pool of 726. Capped
+ * to the frame's own height and re-encoded, they land near 200KB with nothing
+ * visible given up: the renderer was downsampling them on every frame anyway.
+ *
+ * Same box-downsample `gen-art.mjs` uses for the roads, and the same codecs,
+ * which are real dependencies rather than something that happens to be in
+ * node_modules today.
+ */
+const MAX_H = 1920
+function capJpeg(bytes) {
+  const isPng = bytes[0] === 0x89 && bytes[1] === 0x50
+  const img = isPng ? PNG.sync.read(Buffer.from(bytes)) : jpeg.decode(Buffer.from(bytes), { maxMemoryUsageInMB: 1024 })
+  const { width: w, height: h } = img
+  if (h <= MAX_H) return isPng ? Buffer.from(jpeg.encode({ data: Buffer.from(img.data), width: w, height: h }, 86).data) : Buffer.from(bytes)
+  const nh = MAX_H
+  const nw = Math.max(1, Math.round((w * nh) / h))
+  const out = Buffer.alloc(nw * nh * 4)
+  // Box filter: average the source pixels each destination pixel covers, which
+  // is what keeps a flat graphic painting's hard edges clean where a nearest
+  // sample would crawl along them.
+  for (let y = 0; y < nh; y++) {
+    const y0 = Math.floor((y * h) / nh), y1 = Math.max(y0 + 1, Math.floor(((y + 1) * h) / nh))
+    for (let x = 0; x < nw; x++) {
+      const x0 = Math.floor((x * w) / nw), x1 = Math.max(x0 + 1, Math.floor(((x + 1) * w) / nw))
+      let r = 0, g = 0, b = 0, n = 0
+      for (let sy = y0; sy < y1; sy++) for (let sx = x0; sx < x1; sx++) {
+        const i = (sy * w + sx) * 4
+        r += img.data[i]; g += img.data[i + 1]; b += img.data[i + 2]; n++
+      }
+      const o = (y * nw + x) * 4
+      out[o] = r / n; out[o + 1] = g / n; out[o + 2] = b / n; out[o + 3] = 255
+    }
+  }
+  return Buffer.from(jpeg.encode({ data: out, width: nw, height: nh }, 86).data)
+}
 const args = process.argv.slice(2).filter((a) => !a.startsWith('--'))
 const flags = Object.fromEntries(process.argv.slice(2).filter((a) => a.startsWith('--')).map((a) => {
   const [k, ...v] = a.slice(2).split('='); return [k, v.length ? v.join('=') : true]
@@ -249,7 +290,8 @@ async function main() {
     try {
       const prompt = await scenePrompt(v)
       if (flags.dry) { log(`  ${v.reference.padEnd(22)} ${prompt.slice(0, 150)}…`); continue }
-      const png = await renderScene(prompt)
+      const raw = await renderScene(prompt)
+      const png = capJpeg(raw)
       const local = path.join(OUT, `${sceneSlug(v.reference)}.jpg`)
       fs.writeFileSync(local, png)
       // `--local` stops at the file, for a preview render that serves the

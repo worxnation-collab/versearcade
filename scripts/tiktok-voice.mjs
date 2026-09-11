@@ -595,7 +595,15 @@ try {
       const open = silAfter(t.marker[1])
       const shut = takes[k + 1]?.marker ? silBefore(takes[k + 1].marker[0]) : undefined
       if (open) t.from = Math.max(0, open[1] - 0.15)
-      t.to = shut ? Math.min(heard.seconds, shut[0] + 0.3) : heard.seconds
+      // The tail falls back to the take's OWN heard bound when the next
+      // take's marker was not found, never to the end of the recording.
+      // `heard.seconds` is right for the LAST take and catastrophic for any
+      // other: one unsnapped marker made the take before it 315 seconds long
+      // — the whole rest of the sitting, thirteen other takes inside it —
+      // and the run still reported a clean cut, because the take it broke
+      // was not the take that failed. Erring onto Whisper's own bound costs
+      // the ~1s of drift this snapping exists to remove, on one take.
+      t.to = shut ? Math.min(heard.seconds, shut[0] + 0.3) : (takes[k + 1] ? t.to : heard.seconds)
       snapped++
     }
     log(`snapped ${snapped} of ${takes.length} takes onto the waveform`)

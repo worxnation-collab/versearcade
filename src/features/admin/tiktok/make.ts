@@ -342,6 +342,10 @@ export async function makeStory(d: string, o: StoryOptions, progress: Progress):
   const st = o.story ?? await fetchStory(d, false)
   const tellerId = o.cast?.teller ?? 'tabitha'
   const roomPath = o.cast?.room ?? ROOMS[0].id
+  // Tabitha and the children, held in front of every backdrop. Loaded here
+  // rather than inside the render so a missing file is one `null` and the
+  // post falls back to her alone in the library — the layout as it was.
+  const listenersImg = await (await import('@/lib/tiktokRender')).loadImage('/skins/story_listeners.png').catch(() => null)
   const p = o.voice ?? pickStoryVoice(sd, tellerId)
   const second = o.voice ? null : secondVoiceFor(sd)
   const tellerName = TELLERS.find((x) => x.id === tellerId)?.name.split(' ')[0] ?? 'Teller'
@@ -382,7 +386,7 @@ export async function makeStory(d: string, o: StoryOptions, progress: Progress):
   const bed = o.music !== false ? await bedFor(await r.plannedDuration(audio, hook, true, ownAudio), 'cloister') : undefined
   const out = await r.renderStory({
     title: st.title, reference: v.reference, verseText: v.text,
-    paragraphs, hook, audio, room: roomImg, teller: tellerImg, bed, align: o.align, scenes, stage: stage ?? undefined,
+    paragraphs, hook, audio, room: roomImg, teller: tellerImg, listeners: listenersImg ?? undefined, bed, align: o.align, scenes, stage: stage ?? undefined,
     own: own && ownAudio
       ? { audio: ownAudio, words: own.thought, text: own.text, place: own.place ?? o.ownPlace ?? 'close', photo, label: VOICE_LABEL }
       : undefined,

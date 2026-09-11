@@ -1484,6 +1484,25 @@ export interface StoryInput {
    * before.
    */
   stage?: { backdrop: HTMLImageElement; figure?: HTMLImageElement }
+  /**
+   * Tabitha and the children, held in front of whatever the backdrop is.
+   *
+   * This is the layout the owner asked for and it overturns a written rule:
+   * the teller used to be drawn ONLY in her library, on the reasoning that on
+   * a stage "she is narrating what happened there, not standing in it". That
+   * is a coherent fiction and this is a better one — the room stays the room,
+   * the group stays put, and the story appears BEHIND them, which is how a
+   * picture book works and how anyone who has been read to remembers it.
+   *
+   * It also pays for the dissolve. The old cut was legible because the whole
+   * frame changed at once; with the group held, only the backdrop moves, and
+   * a hard cut behind a still foreground reads as a glitch. The two changes
+   * are one change.
+   *
+   * Absent (no render, an older caller) falls back to `teller` in the library
+   * exactly as before, so nothing here can leave the frame empty.
+   */
+  listeners?: HTMLImageElement
   bed?: Float32Array
   align?: boolean
   /**
@@ -1604,6 +1623,37 @@ function shotAt(shots: Shot[], at: number): Shot {
   return hit
 }
 
+/**
+ * How long the room takes to become the place the story is happening in.
+ *
+ * This layout used to CUT, and a cut was the right answer while Tabitha
+ * vanished at the cut — you were being taken somewhere, so arriving there
+ * abruptly read as a page turn. Now she and the children stay put and only
+ * what is BEHIND them changes, and a hard cut behind a held foreground reads
+ * as the backdrop glitching rather than as the story opening up. So it
+ * dissolves.
+ *
+ * 0.75s: long enough to read as one picture becoming another rather than a
+ * flicker, short enough to be finished well inside the sentence that caused
+ * it. The `SHOT_PUSH` settle still rides on the arriving shot, so the new
+ * place is also being LOOKED at rather than swapped in.
+ */
+const SHOT_FADE = 0.75
+
+/** The shot at a moment, what it is dissolving FROM, and how far through. */
+function shotMix(shots: Shot[], at: number): { shot: Shot; from: Shot | null; mix: number } {
+  let i = 0
+  for (let k = 0; k < shots.length; k++) { if (shots[k].at <= at) i = k; else break }
+  const shot = shots[i]
+  const mix = Math.min(1, Math.max(0, (at - shot.at) / SHOT_FADE))
+  // Nothing to dissolve from at the very start, and nothing to dissolve
+  // between two shots that are the same painting — `storyShots` already
+  // collapses those, but his stage and the library are different objects
+  // that can sit either side of a handover.
+  const from = i > 0 && mix < 1 && shots[i - 1].img !== shot.img ? shots[i - 1] : null
+  return { shot, from, mix: from ? mix : 1 }
+}
+
 async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: number, chrome = true) {
   const { input, lead, audioDur, total, phrases, para, paraStart, ownAt, ownShow, ownHide, ownVoice, shots } = sc
   const at = t - lead
@@ -1614,15 +1664,27 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
   // where the caption panel goes — with a fresh shot arriving fractionally
   // wide and settling. A loop is still played forward, and is only ever the
   // library.
-  const shot = shotAt(shots, at)
+  const { shot, from, mix } = shotMix(shots, at)
   const settle = SHOT_PUSH * (1 - easeOut((at - shot.at) / SHOT_SETTLE))
   const zoom = 1.08 + 0.02 * (t / total) + Math.max(0, settle)
   const roomIsLoop = !shot.img && input.room instanceof HTMLVideoElement
   if (roomIsLoop) {
     await drawLoop(ctx, input.room as HTMLVideoElement, t)
   } else {
+    // The place the story is in, dissolving from the place it was in. The
+    // outgoing shot is drawn first at full strength and the incoming one
+    // over it — rather than both at partial alpha — so the frame is never
+    // momentarily see-through to the background, which is what a naive
+    // cross-dissolve does at the midpoint.
+    if (from) {
+      const out = from.img ?? (input.room as HTMLImageElement)
+      cover(ctx, out, out.naturalWidth, out.naturalHeight, zoom, 1)
+    }
     const bg = shot.img ?? (input.room as HTMLImageElement)
+    ctx.save()
+    ctx.globalAlpha = mix
     cover(ctx, bg, bg.naturalWidth, bg.naturalHeight, zoom, 1)
+    ctx.restore()
   }
   const top = ctx.createLinearGradient(0, 0, 0, 820)
   top.addColorStop(0, 'rgba(11,7,32,0.9)'); top.addColorStop(1, 'rgba(11,7,32,0)')
@@ -1631,10 +1693,25 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
   bot.addColorStop(0, 'rgba(11,7,32,0)'); bot.addColorStop(1, 'rgba(11,7,32,0.55)')
   ctx.fillStyle = bot; ctx.fillRect(0, HEIGHT - 420, WIDTH, 420)
 
-  // 2. The teller, for a room that does not already have her — and only
-  // where she IS. On a stage she is narrating what happened there, not
-  // standing in it, and on his stage she is not in the post at all.
-  if (input.teller && !roomIsLoop && !shot.img) {
+  // 2. The group, held. Tabitha and the children sit where they sit for the
+  // whole telling, whatever is behind them — that is the point of the
+  // layout. Not on HIS stage, where she is not in the post at all, and not
+  // over a video loop, which is the library already moving.
+  //
+  // Bottom-anchored on the figure's FEET rather than on its file's edge
+  // (`bottomPad`, the same alpha scan every standing figure uses), and never
+  // higher than the caption panel's bottom edge, which is the only fixed
+  // thing it could collide with.
+  if (input.listeners && !roomIsLoop && !shot.own) {
+    const img = input.listeners
+    const gh = Math.round(HEIGHT * 0.62)
+    const gw = (img.naturalWidth / img.naturalHeight) * gh
+    const pad = bottomPad(img) * (gh / img.naturalHeight)
+    ctx.save()
+    ctx.imageSmoothingQuality = 'high'
+    ctx.drawImage(img, (WIDTH - gw) / 2, HEIGHT - gh + pad, gw, gh)
+    ctx.restore()
+  } else if (input.teller && !roomIsLoop && !shot.img) {
     const th = 640, tw = (input.teller.naturalWidth / input.teller.naturalHeight) * th
     ctx.save()
     ctx.imageSmoothingQuality = 'high'

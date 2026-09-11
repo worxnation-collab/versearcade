@@ -247,6 +247,35 @@ function islands(sil, total) {
   return out
 }
 
+/**
+ * Islands merged into SPOKEN BLOCKS — the unit a take is actually made of.
+ *
+ * An island is a run of sound between two detected silences, and a person
+ * breathing mid-sentence makes several of them per clause; a block is what a
+ * listener would call one stretch of talking. Merging at `BLOCK_JOIN` is what
+ * turns a 45-line structure out of a six-minute sitting into something that
+ * reads directly: fourteen short blocks (the spoken markers) with the takes
+ * between them.
+ *
+ * The join has to be LONGER than a breath and SHORTER than the pause a person
+ * leaves around a take number. 0.75s sits between those on this recording:
+ * the largest gap inside a take's own sentence is 0.67s, the smallest gap
+ * around a marker is 0.78s. It also does the work that killed the old island
+ * scan outright — "Day Day 3", said with a quarter-second between the two
+ * words, is ONE block of 1.21s here and was two islands each failing a
+ * neighbour test there.
+ */
+const BLOCK_JOIN = 0.75
+function blocks(sil, total) {
+  const out = []
+  for (const [a, b] of islands(sil, total)) {
+    const last = out[out.length - 1]
+    if (last && a - last[1] < BLOCK_JOIN) last[1] = b
+    else out.push([a, b])
+  }
+  return out
+}
+
 function durationOf(src) {
   const r = spawnSync(FFMPEG, ['-hide_banner', '-i', src], { encoding: 'utf8' })
   const m = /Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/.exec((r.stderr || '') + (r.stdout || ''))
@@ -519,91 +548,137 @@ try {
       const date = dateFor(m.n)
       return { date, kind: kindFor(date, m.n), n: m.n, from, to, words, text: words.map((w) => w.text).join(' ') }
     })
-    // ---- snap every boundary onto real silence -------------------------------
+    // ---- place every take on the waveform ------------------------------------
     //
-    // Everything above this point is Whisper's, and Whisper's clock is wrong
-    // (see `silences`). What it is RIGHT about is which take is which, so it
-    // names them and the waveform places them.
+    // Everything above this point is Whisper's, and Whisper's clock is wrong:
+    // it drifts from about 1s early at the top of a six-minute sitting to
+    // nearly 4s by the end of it. What it is RIGHT about is which take is
+    // which and what order they come in, so it NAMES them and the waveform
+    // PLACES them.
     //
-    // The marker is found rather than computed: its island is short, sits
-    // between two real pauses, and is near — never exactly at — where Whisper
-    // put it. Several innocent islands fit that shape too (a short sentence
-    // between two breaths), so each candidate is HEARD, one second of audio at
-    // a time, and accepted only if it actually says the take's number. On this
-    // recording the two nearest candidates for take 4 sat four seconds apart
-    // with the wrong one closer, so proximity alone would have cut a take in
-    // the middle of the one before it.
+    // The placing is structural rather than acoustic, and that is the whole
+    // change. A sitting is [marker, body] fourteen times over, and in merged
+    // spoken blocks (`blocks`) that reads straight off the waveform: a marker
+    // is a short block, a body is a long one. So for each take, walk forward
+    // from roughly where Whisper heard its number to the first block long
+    // enough to BE a body — the marker is the block in front of it, and the
+    // take runs to the last block before the NEXT take's marker.
     //
-    // It fails closed per take: a take whose marker is not found keeps the
-    // Whisper bounds it would have had anyway, and says so.
+    // What this replaces is a scan that found candidate islands by shape and
+    // then transcribed a window around each one to ask which held the number.
+    // It failed silently and expensively on a real fourteen-take batch:
+    //
+    //   - "Day Day 3" — he said the word twice, a quarter-second apart —
+    //     split into two islands, each failing the pause test on one side, so
+    //     take 3 was never placed at all and kept bounds that were 5s out.
+    //   - Take 2's marker was matched to the WRONG island, because the probe's
+    //     own timings drift too and the fallback took the nearest by midpoint.
+    //     The island it chose was the last sentence of take 1 — so take 1 lost
+    //     its closing line, and take 2 opened with him saying "Day two". Both
+    //     of those reached a rendered video before anybody noticed, and the
+    //     log said "snapped 12 of 14".
+    //
+    // It is also about 90 seconds a batch faster, because it transcribes
+    // nothing.
     const sil = silences(inputWav)
-    const isl = islands(sil, heard.seconds)
-    const silAfter = (t) => sil.find(([a]) => a >= t - 0.01)
-    const silBefore = (t) => [...sil].reverse().find(([, b]) => b <= t + 0.01)
-    const NUMWORD = Object.entries(NUM).reduce((m, [w, n]) => ((m[n] ??= []).push(w), m), {})
-    const batchProbeWav = inputWav
+    // The FILE's length, not Whisper's idea of it. `heard.seconds` is what the
+    // listener reports and it came back 5.3s short of a real six-minute memo —
+    // which silently truncates the last take, the one place there is no next
+    // marker to bound it.
+    const total = durationOf(inputWav) ?? heard.seconds
+    const blk = blocks(sil, total)
+    // A body is a block long enough that it cannot be a spoken take number.
+    // 3s is chosen against the real extremes: the shortest body block in a
+    // recorded week is 4.12s (Numbers 6:25, a fifteen-word verse) and the
+    // longest marker block is 1.46s. The gap between those is wide, which is
+    // what makes a fixed number safe here.
+    const BODY = 3
     let snapped = 0
+    let after = 0
     for (const t of takes) {
-      // Candidate markers: a SHORT island with a real pause on both sides,
-      // somewhere near where Whisper thinks the number is. Several innocent
-      // islands fit that shape — take four's true marker sat between "It's
-      // Moses." (the end of take three) and "Suddenly, a chariot of fire"
-      // (the start of its own body), all three short and all three bounded
-      // by pauses — so the shape narrows the search and never decides it.
-      const near = isl.filter(([x, y]) => y - x < 2.5 && x >= t.from - 6 && x <= t.from + 12
-        && ((silBefore(x) ?? [0, 0])[1] - (silBefore(x) ?? [0, 0])[0]) >= 0.6
-        && ((silAfter(y) ?? [0, 0])[1] - (silAfter(y) ?? [0, 0])[0]) >= 0.6)
-      if (!near.length) continue
-      // So the boundary is HEARD — but in a window, not a clip. Two things
-      // force the width: the listener refuses a second of audio outright
-      // ("Heard almost nothing"), and Whisper's drift is a LONG-file effect,
-      // about 2.2s at the top of a six-minute batch and about 0.3s inside a
-      // sixteen-second window. Within one window its timings are good enough
-      // to say which island the number is, which is all that is asked of it.
-      const wa = Math.max(0, near[0][0] - 2)
-      const wb = Math.min(heard.seconds, near[near.length - 1][1] + 8)
-      const win = path.join(OUT, 'probe.wav')
-      if (spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', batchProbeWav, '-ss', String(wa), '-to', String(wb), '-c:a', 'pcm_s16le', win]).status !== 0) continue
-      inputWav = win
-      let words = []
-      try { words = (await page.evaluate(([w, tk]) => window.vaVoice.hear(w, tk), [`${origin}/input.wav`, TOKEN])).words ?? [] } catch { words = [] }
-      inputWav = batchProbeWav
-      if (!words.length) continue
-      // The window is trimmed of its own leading silence before it is heard,
-      // so the clock is rebased on the first island inside it rather than on
-      // the window's own edge.
-      const first = isl.find(([x]) => x >= wa - 0.01)
-      if (!first) continue
-      const offset = first[0] - words[0].start
-      const hit = words.find((w, i) => {
-        const k = w.text.toLowerCase().replace(/[^a-z0-9]/g, '')
-        const lead = i > 0 && LEAD.has(words[i - 1].text.toLowerCase().replace(/[^a-z0-9]/g, ''))
-        return (k === String(t.n) || (NUMWORD[t.n] ?? []).includes(k)) && (lead || /^[a-z]+$/.test(k) === false || (NUMWORD[t.n] ?? []).includes(k))
-      })
-      if (!hit) continue
-      const at = offset + hit.start
-      t.marker = near.find(([x, y]) => at >= x - 0.6 && at <= y + 0.6)
-        ?? near.reduce((best, c) => (Math.abs((c[0] + c[1]) / 2 - at) < Math.abs((best[0] + best[1]) / 2 - at) ? c : best))
+      // Whisper runs EARLY, never late, so the seed is its marker time minus
+      // a tolerance and the walk only ever goes forward — and never back past
+      // the take already placed, which is what keeps the sequence honest when
+      // a number is fumbled and said twice (one real batch has "Day 11 but
+      // let's day 11", three short blocks in a row before the body).
+      const seed = Math.max(after, t.from - 2)
+      const bi = blk.findIndex(([x], i) => i > 0 && x >= seed && blk[i][1] - blk[i][0] >= BODY)
+      if (bi <= 0) { log(`  ${t.date} ${t.kind}: no body block found — keeping the heard bounds`); continue }
+      t.body = bi
+      after = blk[bi][0]
     }
+    const shortAt = (i) => blk[i][1] - blk[i][0] < BODY
+    // The trailing run of short blocks between a take's last long block and
+    // the next take's body. One of them is the spoken take number; the rest,
+    // if any, belong to one side or the other.
+    const runOf = (t, next) => {
+      const out = []
+      for (let i = (next ? next.body : blk.length) - 1; i > t.body && shortAt(i); i--) out.unshift(i)
+      return out
+    }
+    const nextOf = (k) => takes.slice(k + 1).find((x) => x.body != null)
+    // A take's own SPEAKING RATE is what settles an ambiguous run, and it is
+    // the only signal here that survived contact with a real recording.
+    //
+    // Three others did not. Block LENGTH cannot separate "Day five" (1.01s)
+    // from "Tabitha tells you why." (1.42s). The PAUSE in front cannot
+    // either, and it is worse than useless because it inverts: 0.97s before a
+    // genuine marker at one boundary, 0.78s before a genuine closing phrase
+    // at another. Whisper's own measured gap is no better — it reported 2.28s
+    // where the waveform says 0.97s, and 0.04s across a four-second silence
+    // it simply did not hear. And HEARING the block is hopeless, which was
+    // the surprise: a listener handed one second of speech, padded with
+    // silence, answered "Boston.", "8 -5" and "[BLANK_AUDIO]" for three
+    // stretches that plainly say a take number.
+    //
+    // What is left is arithmetic. Whisper is reliable about WHICH WORDS are
+    // in a take even when it is wrong about when; a person talks at roughly
+    // one pace across one sitting; so the right boundary is the one that
+    // makes the take read at that pace. Including a marker and its silences
+    // makes a take read far too slow (1.8 words a second against a sitting's
+    // 2.85), and clipping the take's last clause makes it read far too fast
+    // (4.5). Both are off by more than half again, which is a wide enough
+    // margin to decide on.
+    const rateOf = (t, end) => t.words.length / Math.max(0.5, blk[end][1] - blk[t.body][0])
+    const clean = takes.filter((t, k) => t.body != null && runOf(t, nextOf(k)).length <= 1)
+    const rates = clean.map((t, i) => rateOf(t, (runOf(t, nextOf(takes.indexOf(t))) [0] ?? (nextOf(takes.indexOf(t))?.body ?? blk.length)) - 1)).filter((r) => r > 0.5 && r < 6).sort((x, y) => x - y)
+    // 2.85 is this recording's own median; it is only ever the fallback for a
+    // sitting too short to have a clean boundary to measure.
+    const PACE = rates.length ? rates[Math.floor(rates.length / 2)] : 2.85
+    log(`pace ${PACE.toFixed(2)} words/second, from ${rates.length} unambiguous take${rates.length === 1 ? '' : 's'}`)
     for (let k = 0; k < takes.length; k++) {
       const t = takes[k]
-      if (!t.marker) { log(`  ${t.date}: marker not found in the audio — keeping the heard bounds`); continue }
-      // The body opens where the pause after the spoken marker closes, and
-      // runs to where the pause before the NEXT marker opens. The small pads
-      // are there because `trimAndLevel` trims the ends itself; erring wide
-      // costs a beat of room tone, erring narrow costs a word.
-      const open = silAfter(t.marker[1])
-      const shut = takes[k + 1]?.marker ? silBefore(takes[k + 1].marker[0]) : undefined
-      if (open) t.from = Math.max(0, open[1] - 0.15)
-      // The tail falls back to the take's OWN heard bound when the next
-      // take's marker was not found, never to the end of the recording.
-      // `heard.seconds` is right for the LAST take and catastrophic for any
-      // other: one unsnapped marker made the take before it 315 seconds long
-      // — the whole rest of the sitting, thirteen other takes inside it —
-      // and the run still reported a clean cut, because the take it broke
-      // was not the take that failed. Erring onto Whisper's own bound costs
-      // the ~1s of drift this snapping exists to remove, on one take.
-      t.to = shut ? Math.min(heard.seconds, shut[0] + 0.3) : (takes[k + 1] ? t.to : heard.seconds)
+      if (t.body == null) continue
+      const next = takes.slice(k + 1).find((x) => x.body != null)
+      // The take ends where the NEXT take's marker run begins, and "run" is
+      // the word that matters: a marker is usually one short block and
+      // sometimes three. One recorded batch has "Day 11 · but · let's day 11"
+      // — a fumble, restated — and taking the single block before the body
+      // left the two false starts on the end of the take before, which is
+      // seven seconds of him saying the wrong number into somebody's post.
+      //
+      // A short block on its own says nothing, because a take may legitimately
+      // END on a short one: "Tabitha tells you why." is 1.42s and is the last
+      // thing said in its take. What separates the two is the PAUSE in front
+      // of it — 0.78s there against 3.71s before the real marker that follows
+      // it. So the run is the longest sequence of short blocks, ending at the
+      // next body's own marker, whose FIRST block is preceded by a real pause.
+      const run = runOf(t, next)
+      // Every place the take could end: before the run, or after any block in
+      // it. With no run at all there is nothing to choose.
+      const ends = run.length ? [run[0] - 1, ...run] : [(next ? next.body : blk.length) - 1]
+      let endBlock = ends[0]
+      if (ends.length > 1) {
+        let best = Infinity
+        for (const e of ends) {
+          if (e < t.body) continue
+          const off = Math.abs(rateOf(t, e) - PACE)
+          if (off < best) { best = off; endBlock = e }
+        }
+      }
+      if (endBlock < t.body) { log(`  ${t.date} ${t.kind}: blocks out of order — keeping the heard bounds`); continue }
+      t.from = Math.max(0, blk[t.body][0] - 0.15)
+      t.to = Math.min(total, blk[endBlock][1] + 0.3)
       snapped++
     }
     log(`snapped ${snapped} of ${takes.length} takes onto the waveform`)

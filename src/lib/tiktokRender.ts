@@ -709,6 +709,26 @@ function circleImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, cx: n
 const OPENER_FACE = { x: 196, y: 1400, r: 86 }
 const OPENER_CAPTION = { x: 684, maxWidth: 672 }
 
+/**
+ * A buffer with its trailing silence removed, to within a short tail.
+ *
+ * Measured in 20ms frames against a floor well under speech but over room
+ * tone, and it keeps `KEEP` of quiet after the last loud frame so a word is
+ * never clipped on its own decay.
+ */
+function trimTail(buf: Float32Array): Float32Array {
+  const FRAME = Math.round(SAMPLE_RATE * 0.02)
+  const FLOOR = 0.006
+  const KEEP = Math.round(SAMPLE_RATE * 0.08)
+  let end = buf.length
+  for (let i = buf.length - FRAME; i >= 0; i -= FRAME) {
+    let peak = 0
+    for (let k = i; k < i + FRAME && k < buf.length; k++) { const v = Math.abs(buf[k]); if (v > peak) peak = v }
+    if (peak >= FLOOR) { end = Math.min(buf.length, i + FRAME + KEEP); break }
+  }
+  return end >= buf.length ? buf : buf.subarray(0, end)
+}
+
 /** The person speaking: the photo in a round frame with the ring that breathes with the voice, and a small line saying who. */
 function drawSpeaker(ctx: CanvasRenderingContext2D, photo: HTMLImageElement, label: string | undefined, cx: number, cy: number, r: number, level: number, alpha: number) {
   ctx.save()
@@ -1213,7 +1233,15 @@ export async function renderTikTok(input: RenderInput): Promise<RenderOutput> {
   let openEnd = 0
   let openerVoice: { rms: Float32Array; peak: number } | undefined
   if (input.opener) {
-    const his = levelSpeech(await decodeAudio(input.opener.audio), SAMPLE_RATE, SPEECH_TARGET.verse)
+    // Trimmed at the END only, then levelled. `OWN_GAP` is meant to BE the
+    // beat between the two voices, and it is only that if the opener stops
+    // where he stops: a take cut a third of a second wide of his last word
+    // made the handover 1.2s of nothing with his caption still up, which
+    // reads as the post having died. Trimming the tail moves no word — every
+    // one of them is before the cut — which is why this is safe here where
+    // `levelSpeech` deliberately does not trim at all (doing it at the FRONT
+    // would slide every caption).
+    const his = levelSpeech(trimTail(await decodeAudio(input.opener.audio)), SAMPLE_RATE, SPEECH_TARGET.verse)
     const gap = Math.round(OWN_GAP * SAMPLE_RATE)
     const joined = new Float32Array(his.length + gap + read.length)
     joined.set(his, 0)

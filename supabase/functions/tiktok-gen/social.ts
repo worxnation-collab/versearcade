@@ -188,9 +188,24 @@ export const AI_NOTE_STILL = 'AI-generated art.'
  * others and that is the cost of it being true.
  */
 export const AI_NOTE_OPENED = 'AI-generated art, and the verse is read by an AI voice. The introduction is mine.'
+/**
+ * The same shape for the EVENING post, and it needs its own words rather than
+ * the verse's.
+ *
+ * Both posts are now his introduction over a synthetic voice, so both take an
+ * opened note — but what that voice DOES differs, and the line has to say the
+ * one that is in the post. On the morning post the synthetic voice reads the
+ * verse and nothing else. In the evening it is Tabitha telling a story for a
+ * minute and then reading the verse, which is most of the audio. "The verse is
+ * read by an AI voice" is true of that and badly incomplete: a viewer hears a
+ * whole telling in a voice the line has not accounted for, and a disclosure
+ * that leaves out the largest thing in the post is the same failure as one
+ * that describes something absent, arriving from the other side.
+ */
+export const AI_NOTE_OPENED_STORY = 'AI-generated art, and the story is told by an AI voice. The introduction is mine.'
 const aiNote = (a: PostArgs) =>
   a.kind === 'note' ? AI_NOTE_STILL
-    : a.opened ? AI_NOTE_OPENED
+    : a.opened ? (a.kind === 'story' ? AI_NOTE_OPENED_STORY : AI_NOTE_OPENED)
       : a.voiced ? AI_NOTE_ART
         : AI_NOTE
 

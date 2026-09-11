@@ -101,7 +101,20 @@ export interface VoiceInput {
 /** His hook, ahead of the reading: already-timed words (lib/tiktokVoice) and the photo. */
 export interface OpenerInput {
   audio: ArrayBuffer
+  /**
+   * The words, already timed — a real recording arrives this way, because it
+   * was listened to once when it was parked and the operator corrected the
+   * transcript.
+   *
+   * EMPTY is a supported case and not a bug: a synthesised opener (a preview,
+   * or a placeholder while a recording is pending) has never been through
+   * Whisper, and there is nothing to correct because the words are the ones we
+   * sent. Then `text` is timed against the opener's own audio instead, the
+   * same way an unvoiced reading is.
+   */
   words: TimedWord[]
+  /** What he says, for the case above. Ignored when `words` is supplied. */
+  text?: string
   photo?: HTMLImageElement
   /** Under the photo: who this is ("Matthew · founder"). */
   label?: string
@@ -1196,8 +1209,14 @@ export async function renderTikTok(input: RenderInput): Promise<RenderOutput> {
     // transcript to audio, and handing it the verse over a buffer that opens in
     // somebody else's voice makes it chase the wrong half — the same mistake
     // that made Tabitha's captions chase the tail of his.
-    const openText = input.opener.words.map((w) => w.text).join(' ')
-    const openPhrases = groupWords(splitPhrases(openText, 6), input.opener.words, openEnd)
+    const openText = input.opener.words.length ? input.opener.words.map((w) => w.text).join(' ') : (input.opener.text ?? '')
+    // Timed against HIS audio alone, for the reason the reading is: matching a
+    // transcript to a buffer that also contains another voice makes it chase
+    // the wrong half.
+    const openPhrases = input.opener.words.length
+      ? groupWords(splitPhrases(openText, 6), input.opener.words, openEnd)
+      : await timedCaptions(splitPhrases(openText, 6), await decodeAudio(input.opener.audio), progress, input.align)
+    const openPhrases2 = openPhrases
     const readPhrases = (await timedCaptions([...splitPhrases(verse), input.reference + '.'], read, progress, input.align))
       .map((ph) => ({ ...ph, start: ph.start + readAt, end: ph.end + readAt }))
     // Every phrase of his is CLOSED at the handover. A caption holds until the
@@ -1205,8 +1224,8 @@ export async function renderTikTok(input: RenderInput): Promise<RenderOutput> {
     // nothing after it to stop it — which once left his closing words on screen
     // fourteen seconds into Tabitha's telling. Concatenated in SPEAKING order
     // for the same reason, so the frame lookup finds the right one first.
-    for (const ph of openPhrases) ph.end = Math.min(ph.end, readAt)
-    phrases = [...openPhrases, ...readPhrases]
+    for (const ph of openPhrases2) ph.end = Math.min(ph.end, readAt)
+    phrases = [...openPhrases2, ...readPhrases]
     voice = openerVoice ? { thoughtStart: 0, rms: openerVoice.rms, peak: openerVoice.peak } : undefined
   } else {
     phrases = await timedCaptions([...splitPhrases(verse), input.reference + '.'], samples, progress, input.align)

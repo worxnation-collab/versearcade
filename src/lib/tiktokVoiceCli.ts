@@ -30,6 +30,7 @@ declare global {
       listen: (date: string, wavUrl: string, token: string, kind?: VoiceKind, place?: 'open' | 'close') => Promise<ListenResult>
       render: (date: string, token: string, kind?: VoiceKind, place?: 'open' | 'close', pick?: string, reference?: string) => Promise<RenderResult>
       note: (date: string, token: string) => Promise<{ size: number; reference: string; tier: string; words: number; text: string }>
+      preview: (date: string, token: string, a: { hookUrl: string; verseUrl: string; sceneUrl: string; figureUrl: string; hookText: string; hookLine: string }) => Promise<{ ext: 'mp4' | 'webm'; size: number; reference: string; seconds: number; phrases: number; figure: string }>
       fix: (date: string, text: string, token: string, kind?: VoiceKind) => Promise<FixResult>
       identify: (wavUrl: string, dates: string[], token: string) => Promise<{ best: { date: string; reference: string; matched: number; words: number } | null; opening: string }>
     }
@@ -196,6 +197,47 @@ window.vaVoice = {
    * a JPG download, with its words returned so a terminal can read them
    * before anything is scheduled. Posts nothing.
    */
+  /**
+   * The new morning post, end to end, with a SYNTHESISED stand-in for his
+   * opener — so the shape can be judged before a word of it is recorded.
+   *
+   * It goes through the real `renderTikTok` with the real cast figure and the
+   * real per-verse painting; the only thing that is a placeholder is whose
+   * voice says the hook. Nothing here is a mock-up of the layout, because a
+   * mock-up of this layout would tell you nothing about the only question
+   * worth asking of it, which is whether the two voices sit together.
+   */
+  async preview(date, token, a) {
+    setRunnerToken(token)
+    ensureFont()
+    localModels()
+    const progress: Progress = (_f, label) => say(`${date}: ${label}`)
+    const r = await import('@/lib/tiktokRender')
+    const v = getVerseForDate(date)
+    const { castFor } = await import('@/data/tiktokCast')
+    const cast = castFor(v)
+    const [hook, verse] = await Promise.all([
+      fetch(a.hookUrl).then((x) => x.arrayBuffer()),
+      fetch(a.verseUrl).then((x) => x.arrayBuffer()),
+    ])
+    const [scene, figure] = await Promise.all([r.loadImage(a.sceneUrl), r.loadImage(a.figureUrl)])
+    const { bedFor } = await import('@/features/admin/tiktok/shared')
+    const bed = await bedFor(await r.plannedDuration(verse, a.hookLine, false, hook), 'morning')
+    const out = await r.renderTikTok({
+      reference: v.reference, text: v.text, hook: a.hookLine, audio: verse,
+      backdrop: { kind: 'builtin', scene, figure },
+      opener: { audio: hook, words: [], text: a.hookText },
+      bed, onProgress: progress,
+    })
+    const el = document.createElement('a')
+    el.href = URL.createObjectURL(out.blob)
+    el.download = `preview-${date}.${out.ext}`
+    document.body.appendChild(el)
+    el.click()
+    say('done')
+    return { ext: out.ext === 'mp4' ? 'mp4' : 'webm', size: out.blob.size, reference: v.reference, seconds: out.durationSec, phrases: (out.phrases ?? []).length, figure: cast.figure }
+  },
+
   async note(date, token) {
     setRunnerToken(token)
     ensureFont()

@@ -115,9 +115,9 @@ const fail = (m) => { console.error('tiktok-voice:', m); process.exit(2) }
 if (!TOKEN) fail('set TIKTOK_RUNNER_TOKEN')
 
 const [cmd, ...rest] = process.argv.slice(2)
-const flags = Object.fromEntries(rest.filter((a) => a.startsWith('--')).map((a) => { const [k, v] = a.slice(2).split('='); return [k, v ?? true] }))
+const flags = Object.fromEntries(rest.filter((a) => a.startsWith('--')).map((a) => { const [k, ...v] = a.slice(2).split('='); return [k, v.length ? v.join('=') : true] }))
 const args = rest.filter((a) => !a.startsWith('--'))
-if (!['drafts', 'listen', 'fix', 'render', 'note', 'post', 'unpost', 'clear', 'identify', 'split'].includes(cmd)) fail('usage: drafts | identify <files…> | listen <date> <file> [--story] | fix <date> <text file> [--story] | render <date> [--story] | post <date> [--story] [--at HH:MM|--now] | clear <date> [--story]')
+if (!['drafts', 'listen', 'fix', 'render', 'note', 'post', 'unpost', 'clear', 'identify', 'split', 'preview'].includes(cmd)) fail('usage: drafts | identify <files…> | listen <date> <file> | fix <date> <text file> | render <date> [--kind=K] | preview <date> --hook=<wav> --verse=<wav> --scene=<jpg> --line="…" | post <date> [--at HH:MM|--now] | unpost <date> | clear <date> | split <file> <date>')
 const isDate = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d)
 // Two posts a day can carry the operator's voice: the morning VERSE (his
 // reading and his thought, in place of Gemini's) and his half of the evening
@@ -335,6 +335,10 @@ function serveFile(res, file) {
   fs.createReadStream(file).pipe(res)
 }
 let inputWav = ''
+// The four files a preview render serves off disk rather than out of the
+// bucket: his stand-in hook, the reading, the verse's own painting and the
+// cast figure. Local because a preview should not need a deploy to exist.
+let previewFiles = null
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, origin)
@@ -353,6 +357,10 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === '/voice.html' || url.pathname === '/voice.mjs') return serveFile(res, path.join(OUT, url.pathname))
     if (url.pathname === '/input.wav') return serveFile(res, inputWav)
+    if (previewFiles && url.pathname.startsWith('/prev-')) {
+      const k = url.pathname.slice(6).replace(/\.(wav|jpg|png)$/, '')
+      if (previewFiles[k]) return serveFile(res, previewFiles[k])
+    }
     if (MODELS_DIR && (url.pathname.startsWith('/models/') || url.pathname.startsWith('/ort/') || url.pathname.startsWith('/fonts/'))) return serveFile(res, path.join(MODELS_DIR, decodeURIComponent(url.pathname)))
     return serveFile(res, path.join(ROOT, 'public', decodeURIComponent(url.pathname)))
   } catch (e) { res.writeHead(500); res.end(String(e)) }
@@ -631,6 +639,45 @@ try {
       }
       inputWav = batchWav
     }
+    await done()
+  }
+  if (cmd === 'preview') {
+    // The new morning post, rendered with a SYNTHESISED stand-in for his
+    // opener, so the shape can be judged before anything is recorded.
+    const date = args[0]; if (!isDate(date)) fail('preview <date> --hook=<wav> --verse=<wav> --scene=<jpg> --line="on-screen hook" [--text=<txt>]')
+    const need = ['hook', 'verse', 'scene', 'line']
+    for (const k of need) if (!flags[k] || flags[k] === true) fail(`--${k} is required`)
+    for (const k of ['hook', 'verse', 'scene']) if (!fs.existsSync(String(flags[k]))) fail(`${flags[k]} not found`)
+    // The figure is not a choice here: it is whoever `castFor` says stands in
+    // this verse's frame, read from the same table the runner will use.
+    await build({ entryPoints: [path.join(ROOT, 'src/data/tiktokCast.ts')], bundle: true, format: 'esm', platform: 'node', outfile: path.join(OUT, 'cast.mjs'), alias: { '@': path.join(ROOT, 'src') }, logLevel: 'error', define: defines(), banner: { js: 'const VA_ENV = {};' } })
+    await build({ entryPoints: [path.join(ROOT, 'src/data/bible/questions.ts')], bundle: true, format: 'esm', platform: 'node', outfile: path.join(OUT, 'qp.mjs'), alias: { '@': path.join(ROOT, 'src') }, logLevel: 'error', define: defines(), banner: { js: 'const VA_ENV = {};' } })
+    const { castFor } = await import(path.join(OUT, 'cast.mjs'))
+    const { getVerseForDate } = await import(path.join(OUT, 'qp.mjs'))
+    const v = getVerseForDate(date)
+    const cast = castFor(v)
+    const figure = path.join(ROOT, 'public/skins', `${cast.figure}.png`)
+    if (!fs.existsSync(figure)) fail(`no render for ${cast.figure}`)
+    previewFiles = { hook: String(flags.hook), verse: String(flags.verse), scene: String(flags.scene), figure }
+    const hookText = flags.text && fs.existsSync(String(flags.text)) ? fs.readFileSync(String(flags.text), 'utf8').replace(/\s+/g, ' ').trim() : String(flags.text || '')
+    log(`preview ${date} · ${v.reference} · ${cast.figure} (${cast.why})`)
+    const [dl, r] = await Promise.all([
+      page.waitForEvent('download', { timeout: 900_000 }),
+      page.evaluate(([d, t, a]) => window.vaVoice.preview(d, t, a), [date, TOKEN, {
+        hookUrl: `${origin}/prev-hook.wav`, verseUrl: `${origin}/prev-verse.wav`,
+        sceneUrl: `${origin}/prev-scene.jpg`, figureUrl: `${origin}/prev-figure.png`,
+        hookText, hookLine: String(flags.line),
+      }]),
+    ])
+    const raw = path.join(OUT, 'out', `preview-${date}.${r.ext}`)
+    await dl.saveAs(raw)
+    log(`rendered ${r.ext} ${(r.size / 1e6).toFixed(1)}MB · ${r.reference} · ${r.figure} · ${r.seconds.toFixed(0)}s · ${r.phrases} captions`)
+    const mp4 = path.join(OUT, 'out', `preview-${date}.mp4`)
+    const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', raw, '-c:v', 'libx264', '-preset', 'medium', '-crf', '20', '-pix_fmt', 'yuv420p', '-r', '30', '-af', MASTER, '-c:a', 'aac', '-b:a', '160k', '-ar', '48000', '-movflags', '+faststart', mp4], { stdio: 'inherit' })
+    if (ff.status !== 0) fail(`ffmpeg failed (${ff.error?.message || `exit ${ff.status}`})`)
+    if (raw !== mp4) fs.unlinkSync(raw)
+    log(`mp4 ${(fs.statSync(mp4).size / 1e6).toFixed(1)}MB → ${mp4}`)
+    console.log(mp4)
     await done()
   }
   if (cmd === 'note') {

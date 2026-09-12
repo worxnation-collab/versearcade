@@ -662,6 +662,15 @@ cron does the upload. Full design: `docs/TIKTOK-ENGINE.md`. Things to know —
   followers, all through a third-party API, is itself the shape of the thing
   being filtered. **Read `analytics` before spending posts**: this was found
   by asking, and nobody had asked.
+- **`note` is PARKED with the quiz and the challenges, and it was the last
+  third post to go.** It is Facebook's alone, it is not a video, and no voice
+  is on it — so the one network still getting three posts a day was getting
+  the only wholly-generated one, sitting beside the two that carry a person,
+  under a policy that applies its penalty ACROSS EVERYTHING THE ACCOUNT POSTS.
+  Everything below still describes it and everything it names still works
+  (`renderNoteCard`, its own copy prompt, `isPhoto`/`mediaName` in the runner);
+  what it no longer has is a network. It is a row in `PARKED` — historical
+  from here on:
 - **`note` is the one post here that is NOT a video**, and it is Facebook's
   alone (the card also goes to Pinterest): a 4:5 card and 120-200 words that retell the story behind the day's
   verse. Facebook distributes a photo-and-text post through different

@@ -94,13 +94,20 @@ const RUNNER_TOKEN = env.TIKTOK_RUNNER_TOKEN || ''
 const GEMINI_KEY = env.GEMINI_API_KEY || ''
 const AYRSHARE_KEY = env.AYRSHARE_API_KEY || ''
 const TZ = env.TIKTOK_TZ || 'America/New_York'
-// The day's posts: the verse every morning, and ONE second post whose form is
-// the weekday's (docs/TIKTOK-WEEK.md). The note rides along on the day the
-// story runs, because it is written from the same paragraphs Tabitha tells.
-// Every day is the story now — see the note on WEEK in src/data/tiktokWeek.ts.
-const WEEK = ['story', 'story', 'story', 'story', 'story', 'story', 'story']
-const kindForDate = (d) => WEEK[new Date(`${d}T12:00:00Z`).getUTCDay()]
-const defaultKinds = (d) => ['verse', kindForDate(d), ...(kindForDate(d) === 'story' ? ['note'] : [])].join(',')
+// The day's posts: TWO, every day — the morning VERSE and the evening STORY,
+// the two that carry the operator's own recorded voice. That is the whole
+// schedule now; there is no weekday rotation and no third post.
+//
+// The NOTE came out with the rest. It is a wholly-generated photo card, and
+// Meta's originality policy applies its penalty ACROSS EVERYTHING THE ACCOUNT
+// POSTS — so one thin post a day on the one network it went to drags down the
+// two that have a person in them. It is PARKED rather than deleted, in
+// social.ts with the quiz and the challenges (`renderNoteCard` and its copy
+// prompt still work), so it comes back as a row the day there is a reason.
+//
+// `kindForDate` is gone with the rotation; a day that wants something else
+// passes KINDS explicitly, which is what that variable has always been for.
+const defaultKinds = () => 'verse,story'
 const PLATFORMS = (env.PLATFORMS || 'tiktok,youtube,facebook,instagram,x,snapchat,threads,pinterest').split(',').map((s) => s.trim()).filter(Boolean)
 const DRY = /^(1|true|yes)$/i.test(env.DRY_RUN || '')
 const FFMPEG = env.FFMPEG || 'ffmpeg'
@@ -177,7 +184,7 @@ function zonedToUtc(ymd, hhmm, tz) {
   return new Date(t)
 }
 const today = env.DATE || ymdIn(TZ)
-const KINDS = (env.KINDS || defaultKinds(today)).split(',').map((s) => s.trim()).filter(Boolean)
+const KINDS = (env.KINDS || defaultKinds()).split(',').map((s) => s.trim()).filter(Boolean)
 for (const k of KINDS) if (!ALL_KINDS.includes(k)) fail(`unknown kind ${k}`)
 const yesterday = addDays(today, -1)
 log(`mode ${mode} · ${TZ} · today ${today} · kinds ${KINDS.join(',')} · platforms ${PLATFORMS.join(',')}${DRY ? ' · DRY RUN' : ''}`)

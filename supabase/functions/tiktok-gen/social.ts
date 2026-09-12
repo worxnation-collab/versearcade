@@ -75,7 +75,17 @@ const AUTOMATED: Kind[] = ['quiz', 'challenge', 'challenge2']
  * on is the exact shape all three policies describe. The replacement is two
  * posts a day with his voice on both — see docs/TIKTOK-WEEK.md.
  */
-const PARKED: Kind[] = [...AUTOMATED, ...READING]
+/**
+ * The NOTE is parked with them, and for the same reason stated the other way
+ * round. It is not a video and no voice is on it — a 4:5 card and 120-200
+ * generated words — and it went to Facebook, whose originality policy applies
+ * its penalty ACROSS EVERYTHING THE ACCOUNT POSTS. So the one network getting
+ * a third post a day was getting the only wholly-generated one, sitting beside
+ * the two that carry a person. `renderNoteCard`, its own copy prompt and the
+ * runner's `isPhoto`/`mediaName` branch are all kept: it is a row here, not a
+ * rebuild, the day a still earns its place back.
+ */
+const PARKED: Kind[] = [...AUTOMATED, ...READING, 'note']
 
 /**
  * The networks this account actually posts to.

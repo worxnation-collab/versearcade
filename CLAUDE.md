@@ -478,10 +478,26 @@ operator's own recorded voice, posted to YouTube and Facebook only:
   God is never drawn. Behind them is a painting made for that verse
   (`scripts/tiktok-scenes.mjs` → `public/tiktok/verse/<slug>.jpg`), not one of
   nine roads.
-- **The story.** His recorded INTRODUCTION opens it, then Tabitha tells the
-  story in her library — and the library DISSOLVES to where the story happens
-  while she and the children stay sat in front of it, returning to the library
-  for the verse.
+- **The story.** ONE ROOM, held, for the whole telling. It opens on the
+  library — Tabitha, the children, the lamps — with his recorded INTRODUCTION
+  over it and HIS OWN FIGURE standing in the corner by the shelves, behind the
+  circle, at their scale. He fades out slowly as she begins, and she tells the
+  rest of it in the room he left.
+
+  **Two things this reversed, both the owner's call, and both worth reading
+  before reversing them again.** His half used to play over a DARK STAGE of
+  his own (`own.jpg`) — which answered a real objection, that a second person
+  in her room is a stranger in it, and paid for the answer with the FIRST
+  FRAME OF THE POST being an empty pool of light. That is the worst possible
+  opening for a video that has to be picked out of a feed, and what it was
+  hiding is the strongest single image this engine owns. And the telling used
+  to DISSOLVE to a painting of where each paragraph happens
+  (`data/tiktokStages.ts`), with the group held in front of it — which read as
+  a slideshow of generated pictures, the exact impression this layout's
+  hold-everything-still rule exists to avoid. `STORY_CORNER` in
+  `lib/tiktokRender.ts` carries the argument and the three measured numbers;
+  the staging is PARKED rather than deleted, because the reading kinds are
+  built on the same machinery.
 
 **Why the reading moved off him**, since it is the half that looks like a
 downgrade: a reading has to be recorded for THAT DAY'S verse, so a day he
@@ -792,7 +808,12 @@ cron does the upload. Full design: `docs/TIKTOK-ENGINE.md`. Things to know —
   back onto the caption. `timeWords()`'s energy heuristic is the fallback and
   was measured a full second off on one word, which is why it is not the
   answer. Anything added here has to earn its motion.
-  - **A CUT is not motion, and that is what let the story grow stages.**
+  - **A CUT is not motion, and that is what let the story grow stages — which
+    are now PARKED on the evening story and live only on the readings.** The
+    argument below still holds on its own terms and the machinery is
+    untouched; what it did not weigh is that four changes of setting inside
+    one telling read, in the aggregate, as the slideshow of generated
+    pictures this whole section is trying not to be. Historical from here:
     `data/tiktokStages.ts` + `art/tiktok-stages.json` + `public/tiktok/stages/`:
     ten held paintings of where a paragraph HAPPENS — road, house, hills,
     water, gate, temple, prison, field, upper room, wilderness — cut to on
@@ -823,22 +844,33 @@ cron does the upload. Full design: `docs/TIKTOK-ENGINE.md`. Things to know —
     painting, because that failure renders perfectly — the id is one this
     build carries, so nothing drops it, and the paragraph is quietly told in
     the library forever.
-  - **And his half stands on a stage of its own** (`own.jpg` — a dark empty
-    space with one warm pool of light — plus the `sharkey` figure). His half
-    used to play over her library with his photo growing into the middle of
-    it, and the objection that kept the morning post's reader swap off this
-    layout ("a second figure in it is a stranger in somebody else's library")
-    applies to that too — it is about the ROOM rather than about him. A stage
-    of his own narrows that rule rather than overturning it: her room is
-    still hers. The figure **replaces the photo ring** while it is up (he is
-    already on screen; two of him is one too many) and the photo still closes
-    the post on the end card. Where he stands is **measured, not chosen** —
-    the pool of light is centred at 0.77 of the frame once `cover` has
-    anchored the painting to its bottom edge and the caption panel ends at
-    y=668, so `STORY_STAND` is feet 0.79, height 0.41; **re-render `own.jpg`
-    and both numbers have to be checked again**, because the light moves. No
-    stage painting, or no figure render, is his photo over the library
-    exactly as before.
+  - **And his half stands IN THE CORNER OF HER LIBRARY** — `sharkey` by the
+    left bookshelf, behind the seated circle, going slowly as she begins. It
+    replaced a dark stage of his own (`own.jpg`), and the stage replaced his
+    photograph growing into the middle of her room; the chain is worth
+    knowing because each step answered the step before. The objection that
+    produced the stage — "a second figure in it is a stranger in somebody
+    else's library", the same one that keeps the morning post's reader swap
+    off this layout — is about the ROOM rather than about him, and the corner
+    answers it without leaving: he is behind the children, off to one side, at
+    their size, and her room is still hers. What the stage cost, and the
+    reason it went, is that the post then OPENED ON A DARK SCREEN. The figure
+    **replaces the photo ring** while it is up (he is already on screen; two
+    of him is one too many) and the photo still closes the post on the end
+    card. Where he stands is **measured, not chosen** — `STORY_CORNER` is
+    x 0.165, feet 0.72, height 0.335, each read off a real frame of the real
+    figure over the real room at the real `cover` zoom; **re-render
+    `story-circle.jpg` or `sharkey.png` and all three have to be checked
+    again**, because the floor line and the shelves move. No figure render is
+    his photo over the library exactly as before, never a failed post.
+  - **The `listeners` cut-out went with the stages, and it was drawing a
+    second Tabitha.** Tabitha and the children held in front of the backdrop
+    existed to keep the group put while the SCENE changed behind them. With
+    one room there is nothing to hold them against — and drawn over the
+    library, which already has her and the children in it, it painted a
+    second Tabitha in different clothes on top of the first, inside a visible
+    rectangle of the cut-out's own matte. It shipped that way and rendered
+    perfectly every time; only pulling a frame showed it.
 - **The operator can read the verse, and the recording replaces Gemini's
   voice for that date.** Admin → TikTok → Your voice: a drafted ~110-word
   thought per date (`thought`, cached at `days/<date>/thought.json`), a

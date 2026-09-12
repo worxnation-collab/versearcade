@@ -821,11 +821,13 @@ function bottomPad(img: HTMLImageElement): number {
  * The drawn box is pushed DOWN by the file's empty bottom (`bottomPad`) so
  * that the feet, not the file, land on the ground line.
  */
-function standFigure(ctx: CanvasRenderingContext2D, img: HTMLImageElement, alpha: number, turn = 1, place = { feet: 0.68, height: 0.42 }) {
+function standFigure(ctx: CanvasRenderingContext2D, img: HTMLImageElement, alpha: number, turn = 1, place: { feet: number; height: number; x?: number } = { feet: 0.68, height: 0.42 }) {
   if (alpha <= 0 || turn <= 0) return
   const fh = HEIGHT * place.height
   const fw = (img.naturalWidth / img.naturalHeight) * fh
-  const cx = WIDTH / 2, feet = HEIGHT * place.feet
+  // `x` is a fraction of the frame, and defaults to the middle — which is
+  // where every figure stood until one of them had to stand out of the way.
+  const cx = WIDTH * (place.x ?? 0.5), feet = HEIGHT * place.feet
   const top = feet - fh + bottomPad(img) * fh
   ctx.save()
   ctx.globalAlpha = 0.32 * alpha * turn
@@ -1457,52 +1459,43 @@ export interface StoryInput {
   /** The small-caps line over the title. Defaults to the story's own. */
   eyebrow?: string
   /**
-   * Where each paragraph is SET: one held painting per paragraph, cut to on
-   * that paragraph's first word. A null entry (and a missing array) is the
-   * room, so a story with no stages renders exactly as it always did — and
-   * the LAST paragraph is the verse, which is read in the library by
-   * construction, because coming back is what makes the middle feel like
-   * somewhere she took you.
+   * One held painting per paragraph, cut to on that paragraph's first word.
+   * A null entry, and a missing array, is the room.
    *
-   * A cut is the whole of the motion this adds. The rule on this layout is
-   * that the only thing moving is the caption; a hard cut between two held
-   * paintings is not movement, which is exactly why it is affordable here
-   * where a Veo loop or a drifting mote is not.
+   * **The evening STORY no longer passes this**, and that is the owner's
+   * call. A telling that changes where it is set four times reads as a
+   * slideshow of generated pictures, which is the exact impression this
+   * layout's hold-everything-still rule exists to avoid — and the library
+   * (Tabitha, the children, the lamps) is the one image here nobody has to be
+   * sold on. One room, held, for the whole telling.
+   *
+   * It stays wired because the parked READING kinds are built on it —
+   * `storyShots(reading)` spreads their pictures across the recording — so
+   * this is the reading layout's only way of having a picture at all, not
+   * dead code left behind by the change above.
    */
   scenes?: Array<HTMLImageElement | null>
   /**
-   * The dark stage the operator's own half stands on, with his figure on it.
+   * The operator's own render, standing in the corner of the library while he
+   * speaks and fading out as Tabitha begins — `STORY_CORNER`, `OWN_OUT`.
    *
-   * His half used to play over Tabitha's library with his photo growing into
-   * the middle of it, and the objection that kept the day's READER swap off
-   * this layout applies to that too: a second person in her room is a
-   * stranger in somebody else's library. A stage of his own dissolves it —
-   * it is not her room, so he is not standing in it. The figure REPLACES the
-   * photo ring while it is up (he is already on screen; two of him is one
-   * too many) and the photo still closes the post on the end card. No
-   * figure, or no stage, falls back to the ring over the library exactly as
-   * before.
+   * It replaces a dark stage of his own, which itself replaced his photograph
+   * growing into the middle of her room; the argument for the corner is on
+   * `STORY_CORNER`. The figure REPLACES the photo ring while it is up (he is
+   * already on screen, and a photograph of the same person floating over him
+   * is him twice), and the photo still closes the post on the end card. No
+   * render falls back to the ring over the library exactly as before, so a
+   * missing file is never a failed post.
+   *
+   * It went out with the `listeners` cut-out — Tabitha and the children held
+   * in front of whatever the backdrop was. That existed to keep the group put
+   * while the SCENE changed behind them; with the scenes gone there is
+   * nothing to hold them against, and drawing it over the library painted a
+   * second Tabitha (in different clothes) on top of the one already in the
+   * room, inside a visible rectangle of the cut-out's own matte. It rendered
+   * perfectly and only a frame showed it.
    */
-  stage?: { backdrop: HTMLImageElement; figure?: HTMLImageElement }
-  /**
-   * Tabitha and the children, held in front of whatever the backdrop is.
-   *
-   * This is the layout the owner asked for and it overturns a written rule:
-   * the teller used to be drawn ONLY in her library, on the reasoning that on
-   * a stage "she is narrating what happened there, not standing in it". That
-   * is a coherent fiction and this is a better one — the room stays the room,
-   * the group stays put, and the story appears BEHIND them, which is how a
-   * picture book works and how anyone who has been read to remembers it.
-   *
-   * It also pays for the dissolve. The old cut was legible because the whole
-   * frame changed at once; with the group held, only the backdrop moves, and
-   * a hard cut behind a still foreground reads as a glitch. The two changes
-   * are one change.
-   *
-   * Absent (no render, an older caller) falls back to `teller` in the library
-   * exactly as before, so nothing here can leave the frame empty.
-   */
-  listeners?: HTMLImageElement
+  figure?: HTMLImageElement
   bed?: Float32Array
   align?: boolean
   /**
@@ -1571,8 +1564,6 @@ interface Shot {
   at: number
   /** Null draws the room — the library, and the fallback for everything. */
   img: HTMLImageElement | null
-  /** His stage, which also carries his figure instead of the photo ring. */
-  own?: boolean
 }
 
 /**
@@ -1588,17 +1579,48 @@ interface Shot {
 const SHOT_SETTLE = 0.9
 const SHOT_PUSH = 0.035
 /**
- * Where he stands on his own stage.
+ * Where he stands IN THE LIBRARY while he speaks: the corner by the left
+ * bookshelf, behind the circle of children, at the painted figures' scale.
  *
- * Measured against two fixed things rather than chosen: the pool of light in
- * `own.jpg` is centred at 0.77 of the frame once `cover` has anchored the
- * painting to its bottom edge, and this layout's caption panel ends at y=668.
- * Feet at 0.79 put him IN the light; 0.41 high puts his head at ~730, clear
- * of the panel with room to spare, and at the same size the morning post's
- * figure is drawn. Re-render the stage and both numbers have to be checked
- * again — the light moves.
+ * This replaces a dark stage of his own. That stage answered a real
+ * objection — a second person in her room is a stranger in somebody else's
+ * library — and the answer it gave was to take him out of the room. The
+ * owner's call, and the better one, because the objection never weighed what
+ * the stage cost: THE STORY OPENED ON A DARK SCREEN. Fourteen seconds of an
+ * empty pool of light is the worst possible first frame for a video that has
+ * to be picked out of a feed, and what it was hiding is the strongest single
+ * image this engine owns. Standing him in the CORNER keeps her room hers —
+ * behind the circle, off to one side, at their size — and opens the post on
+ * the painting.
+ *
+ * All three numbers are measured rather than chosen, by drawing the real
+ * figure over the real room at the real `cover` zoom:
+ *
+ *   - `x` 0.165 sets him against the left shelves, clear of Tabitha (who sits
+ *     centre-right) and of the desk and lamp on the right.
+ *   - `feet` 0.72 puts him on the floorboards BEHIND the seated circle rather
+ *     than among it: the boy nearest him reads as in front, which is the
+ *     depth cue that makes him part of the room instead of pasted onto it.
+ *   - `height` 0.335 matches the painted figures at that depth and puts his
+ *     head near y=790, well clear of the caption panel's bottom edge at 668.
+ *
+ * Re-render `story-circle.jpg` or `sharkey.png` and all three have to be
+ * checked again on a real frame — the floor line and the shelves move.
  */
-const STORY_STAND = { feet: 0.79, height: 0.41 }
+const STORY_CORNER = { x: 0.165, feet: 0.72, height: 0.335 }
+
+/**
+ * How long he takes to arrive, and how long he takes to go.
+ *
+ * Going is deliberately much slower than arriving, and slower than both used
+ * to be (0.55s each). He is handing the telling over, not being cut away
+ * from: the fade starts on his last word and is still finishing as Tabitha's
+ * first words land, which is what the owner asked for — he "slowly fades away
+ * as Tabitha begins". `OWN_GAP` is 0.9s, so about half of the fade plays
+ * under her opening, on purpose.
+ */
+const OWN_IN = 0.7
+const OWN_OUT = 1.8
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath()
@@ -1693,25 +1715,13 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
   bot.addColorStop(0, 'rgba(11,7,32,0)'); bot.addColorStop(1, 'rgba(11,7,32,0.55)')
   ctx.fillStyle = bot; ctx.fillRect(0, HEIGHT - 420, WIDTH, 420)
 
-  // 2. The group, held. Tabitha and the children sit where they sit for the
-  // whole telling, whatever is behind them — that is the point of the
-  // layout. Not on HIS stage, where she is not in the post at all, and not
-  // over a video loop, which is the library already moving.
+  // 2. The teller, when the room does not already have her in it.
   //
-  // Bottom-anchored on the figure's FEET rather than on its file's edge
-  // (`bottomPad`, the same alpha scan every standing figure uses), and never
-  // higher than the caption panel's bottom edge, which is the only fixed
-  // thing it could collide with.
-  if (input.listeners && !roomIsLoop && !shot.own) {
-    const img = input.listeners
-    const gh = Math.round(HEIGHT * 0.62)
-    const gw = (img.naturalWidth / img.naturalHeight) * gh
-    const pad = bottomPad(img) * (gh / img.naturalHeight)
-    ctx.save()
-    ctx.imageSmoothingQuality = 'high'
-    ctx.drawImage(img, (WIDTH - gw) / 2, HEIGHT - gh + pad, gw, gh)
-    ctx.restore()
-  } else if (input.teller && !roomIsLoop && !shot.img) {
+  // The story circle DOES (`hasTeller`), so on the evening post nothing is
+  // drawn here at all and the painting carries the whole scene — which is
+  // the point of holding one room. This branch is for a room painted without
+  // her.
+  if (input.teller && !roomIsLoop && !shot.img) {
     const th = 640, tw = (input.teller.naturalWidth / input.teller.naturalHeight) * th
     ctx.save()
     ctx.imageSmoothingQuality = 'high'
@@ -1800,22 +1810,22 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
   // first place, and on the verse layout a photo held over the reader was
   // taken for a badge pinned to their chest.
   //
-  // On his own stage the FIGURE carries it instead — he is already on
-  // screen, and a photograph of the same person floating over him is him
-  // twice. The photo still closes the post on the end card.
-  const onStage = shot.own && !!input.stage?.figure
-  if (input.own && onStage && endFade < 1) {
-    const grow = easeOut((at - ownShow) / 0.55)
-    const out = 1 - easeOut((at - ownHide) / 0.55)
-    // Lower and larger than the road's figure, because this layout's caption
-    // panel occupies the band the road leaves empty: his head has to clear
-    // 668, which is the bottom of it.
-    if (out > 0) standFigure(ctx, input.stage!.figure!, grow * out * (1 - endFade), 1, STORY_STAND)
+  // When he has a render of his own the FIGURE carries it instead — he is
+  // already on screen, and a photograph of the same person floating over him
+  // is him twice. The photo still closes the post on the end card.
+  //
+  // He stands in the room rather than over it: the corner by the shelves,
+  // behind the circle, arriving once the hook has faded and going slowly as
+  // she begins. See `STORY_CORNER`.
+  if (input.own && input.figure && endFade < 1) {
+    const grow = easeOut((at - ownShow) / OWN_IN)
+    const out = 1 - easeOut((at - ownHide) / OWN_OUT)
+    if (out > 0) standFigure(ctx, input.figure, grow * out * (1 - endFade), 1, STORY_CORNER)
   } else if (input.own?.photo && at >= ownShow && endFade < 1) {
-    const grow = easeOut((at - ownShow) / 0.55)
+    const grow = easeOut((at - ownShow) / OWN_IN)
     // Introducing, he goes back out as she starts, so the last thing before
     // her first word is her room and not his face.
-    const out = 1 - easeOut((at - ownHide) / 0.55)
+    const out = 1 - easeOut((at - ownHide) / OWN_OUT)
     if (out > 0) drawSpeaker(ctx, input.own.photo, input.own.label, WIDTH / 2, 1080, 44 + 126 * grow * out,
       ownVoice ? voiceLevel(ownVoice, at - ownAt) : 0, grow * out * (1 - endFade))
   }
@@ -1912,25 +1922,20 @@ function storyShots(input: StoryInput, paraStart: number[], ownAt: number, ownEn
     i === 0 && staged(0)
       ? [{ at, img: null }, { at: at + LIBRARY_LEAD, img: staged(0) }]
       : [{ at, img: staged(i) }])
-  const his: Shot[] | null = input.own && input.stage
-    ? [{ at: open ? 0 : ownAt, img: input.stage.backdrop, own: true }]
-    : null
-  let shots: Shot[] = his
-    ? open
-      // He opens on his stage; the telling cuts in as Tabitha begins, so the
-      // first thing after his last word is where the story happens.
-      //
-      // At `toldAt` — where her AUDIO starts — and deliberately not at her
-      // first captioned WORD. Measured off a real render, her reading carries
-      // 2.8s of lead-in before it, and holding his stage across it left three
-      // and a half seconds of an empty pool of light after he had already
-      // faded out. What is left is the 0.9s `OWN_GAP`, which is the beat
-      // between the two voices and is meant to be there.
-      ? [...his, ...told.map((s, i) => (i === 0 ? { ...s, at: toldAt } : s))]
-      // He answers it, so his stage is the last shot before the end card.
-      : [...told, ...his]
-    : told
-  shots = shots.filter((s, i) => i === 0 || s.img !== shots[i - 1].img || !!s.own !== !!shots[i - 1].own)
+  // His half no longer changes what is on screen. It used to cut to a dark
+  // stage of his own for as long as he talked, which put an empty pool of
+  // light on the FIRST FRAME of every post that he introduced — see
+  // `STORY_CORNER` for why that was the wrong trade. He now stands in the
+  // library and the library never leaves, so there is nothing here to add:
+  // `told` is the whole shot list, and on a story with no `scenes` it
+  // collapses below to one held painting for the whole video.
+  //
+  // `toldAt` and `open` are still taken because a READING uses neither and
+  // the signature is shared; keeping them named documents that the handover
+  // needs no shot of its own rather than that it was forgotten.
+  void toldAt; void open
+  let shots: Shot[] = told
+  shots = shots.filter((s, i) => i === 0 || s.img !== shots[i - 1].img)
   // The lead-in belongs to whatever is first.
   if (shots.length) shots[0] = { ...shots[0], at: -Infinity }
   return shots.length ? shots : [{ at: -Infinity, img: null }]

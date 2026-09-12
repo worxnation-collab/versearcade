@@ -17,11 +17,11 @@ import type { QuizStep } from '@/lib/tiktokRender'
 import { challengeIndex } from '@/lib/tiktokChallenge'
 import {
   READERS, TELLERS, ROOMS, skinPath, loadScene, publicUrl, existsAt, parkFile,
-  seedFor, autoPick, autoCast, challengeCast, spokenReference, call, fetchCopy, fetchStory, fetchVoice, bedFor, backdropFor, tierFor, speakerFor, loadStages, ownStage,
+  seedFor, autoPick, autoCast, challengeCast, spokenReference, call, fetchCopy, fetchStory, fetchVoice, bedFor, backdropFor, tierFor, speakerFor, ownFigure,
   FOUNDER_PHOTO, VOICE_LABEL, voiceWavPath, voiceJsonPath,
   type Copy, type Made, type Story, type Renderer, type VoiceTrack,
 } from './shared'
-import { sanitizeStages, stagePath, STORY_STAGES } from '@/data/tiktokStages'
+import { stagePath, STORY_STAGES } from '@/data/tiktokStages'
 import { READINGS, stageForReading, type ReadingKind } from '@/data/tiktokWeek'
 import { MOMENTS, momentPath } from '@/data/tiktokMoments'
 import { castFor } from '@/data/tiktokCast'
@@ -352,10 +352,6 @@ export async function makeStory(d: string, o: StoryOptions, progress: Progress):
   const st = o.story ?? await fetchStory(d, o.restory === true)
   const tellerId = o.cast?.teller ?? 'tabitha'
   const roomPath = o.cast?.room ?? ROOMS[0].id
-  // Tabitha and the children, held in front of every backdrop. Loaded here
-  // rather than inside the render so a missing file is one `null` and the
-  // post falls back to her alone in the library — the layout as it was.
-  const listenersImg = await (await import('@/lib/tiktokRender')).loadImage('/skins/story_listeners.png').catch(() => null)
   const p = o.voice ?? pickStoryVoice(sd, tellerId)
   const second = o.voice ? null : secondVoiceFor(sd)
   const tellerName = TELLERS.find((x) => x.id === tellerId)?.name.split(' ')[0] ?? 'Teller'
@@ -377,16 +373,21 @@ export async function makeStory(d: string, o: StoryOptions, progress: Progress):
   const r: Renderer = await import('@/lib/tiktokRender')
   const { roomImg, tellerImg } = await storyAssets(r, tellerId, roomPath)
   const paragraphs = [...st.paragraphs, `${v.text.trim()} ${v.reference}.`]
-  // Where each paragraph is set. The VERSE — always the last one — is never
-  // staged: Tabitha reads it from her own book in her own room, and coming
-  // back is what makes the middle feel like somewhere she took you.
-  const scenes = st.scenes?.length
-    ? [...await loadStages(r, sanitizeStages(st.scenes, st.paragraphs.length)), null]
-    : undefined
-  // His own dark stage, and his figure standing on it — the same one-of-one
-  // skin the morning post's reader hands the road to. A missing painting is
-  // his photo over the library exactly as before, never a failed post.
-  const stage = own ? await ownStage(r) : null
+  // The telling stays in ONE ROOM. No `scenes`, so no cuts: the library is
+  // the whole of the picture from the first frame to the end card.
+  //
+  // The staging is not deleted — `st.scenes` is still written by the story
+  // prompt, `sanitizeStages` and `loadStages` still work, and the parked READING
+  // kinds still use the same machinery — it is simply not asked for here.
+  // Read the note on `StoryInput.scenes` before turning it back on: what it
+  // cost was that a telling read as a slideshow of generated pictures, and
+  // what it saved was the one image on this channel nobody has to be sold on.
+  //
+  // His own render, which stands in the corner of her library while he speaks
+  // — the same one-of-one skin the morning post's reader hands the road to.
+  // A missing file is his photo over the library exactly as before, never a
+  // failed post.
+  const figure = own ? await ownFigure(r) : null
   const hook = st.hook || copy?.hook
   // The operator's own half, when one is parked for the date. The telling is
   // unchanged either way — his recording is joined to it, never in place of
@@ -396,7 +397,7 @@ export async function makeStory(d: string, o: StoryOptions, progress: Progress):
   const bed = o.music !== false ? await bedFor(await r.plannedDuration(audio, hook, true, ownAudio), 'cloister') : undefined
   const out = await r.renderStory({
     title: st.title, reference: v.reference, verseText: v.text,
-    paragraphs, hook, audio, room: roomImg, teller: tellerImg, listeners: listenersImg ?? undefined, bed, align: o.align, scenes, stage: stage ?? undefined,
+    paragraphs, hook, audio, room: roomImg, teller: tellerImg, bed, align: o.align, figure: figure ?? undefined,
     own: own && ownAudio
       ? { audio: ownAudio, words: own.thought, text: own.text, place: own.place ?? o.ownPlace ?? 'close', photo, label: VOICE_LABEL }
       : undefined,

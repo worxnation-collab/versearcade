@@ -18,7 +18,7 @@ import { getVerseForDate } from '@/data/bible/questions'
 import { VERSE_POOL } from '@/data/bible/pool'
 import { pickVoice, pickCast, pickCastRotated, PICKER_VOICES, SCENE_NAMES, VERSE_SCENES, READER_ORDER, type VoiceSeed, type CastPick } from '@/data/tiktokVoice'
 import type { Backdrop, TimedPhrase } from '@/lib/tiktokRender'
-import { STORY_STAGES, stagePath, OWN_STAGE_PATH } from '@/data/tiktokStages'
+import { STORY_STAGES, stagePath } from '@/data/tiktokStages'
 
 export const BUCKET = 'tiktok'
 export const READERS = [
@@ -286,11 +286,16 @@ export async function speakerFor(r: Renderer, d: string, scene: string): Promise
  * plays over the library with his photo growing into it, exactly as it did
  * before this existed.
  */
-export async function ownStage(r: Pick<Renderer, 'loadImage'>): Promise<{ backdrop: HTMLImageElement; figure?: HTMLImageElement } | null> {
-  const backdrop = await r.loadImage(OWN_STAGE_PATH).catch(() => null)
-  if (!backdrop) return null
-  const figure = await r.loadImage(`/skins/${SPEAKER_SKIN}.png`).catch(() => undefined)
-  return { backdrop, figure }
+/**
+ * The operator's own render, for the corner of Tabitha's library while he
+ * speaks. It used to come back with a dark stage to stand it on
+ * (`OWN_STAGE_PATH`); the stage is gone because it made the first frame of
+ * every introduced story a dark screen — see `STORY_CORNER` in
+ * tiktokRender.ts. A missing file is null, and the render falls back to his
+ * photo over the library exactly as it did before either existed.
+ */
+export async function ownFigure(r: Pick<Renderer, 'loadImage'>): Promise<HTMLImageElement | null> {
+  return await r.loadImage(`/skins/${SPEAKER_SKIN}.png`).catch(() => null)
 }
 
 export async function backdropFor(r: Renderer, tier: 'loop' | 'still' | 'builtin', rd: string, sc: string): Promise<Backdrop> {

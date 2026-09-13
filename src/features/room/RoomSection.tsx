@@ -8,7 +8,8 @@ import { useCollection } from '@/store/collection'
 import { useRoom } from '@/store/room'
 import { useJuice } from '@/juice/useJuice'
 import { roomProgress } from '@/lib/roomProgress'
-import { packDecor, unpackDecor } from '@/data/placement'
+import { packDecor } from '@/data/placement'
+import { ARRANGEMENTS, arrangementById } from '@/data/layouts'
 import {
   FURNISHINGS,
   REQUIREMENT_NOUN,
@@ -41,18 +42,6 @@ import { usePrayer } from '@/store/prayer'
 // no `editing` prop, so a room you are visiting is inert by construction rather
 // than by everyone remembering not to write to it.
 
-const SIZE_BTN: React.CSSProperties = {
-  width: 32,
-  height: 32,
-  borderRadius: 10,
-  border: '1px solid var(--stroke)',
-  background: 'rgba(255,255,255,0.06)',
-  color: 'var(--ink)',
-  fontSize: 16,
-  fontWeight: 800,
-  cursor: 'pointer',
-}
-
 export function RoomSection() {
   const juice = useJuice()
   const navigate = useNavigate()
@@ -60,8 +49,9 @@ export function RoomSection() {
   const placements = useRoom((s) => s.placements)
   const skin = useRoom((s) => s.skin)
   const setSkin = useRoom((s) => s.setSkin)
+  const layout = useRoom((s) => s.layout)
+  const setLayout = useRoom((s) => s.setLayout)
   const [merged, setMerged] = useState<{ anchor: string; name: string } | null>(null)
-  const [picked, setPicked] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
   const [sharing, setSharing] = useState(false)
   // Tapping your own figure in your own room offers to pray. Two steps rather
@@ -142,53 +132,25 @@ export function RoomSection() {
   const nextLevel = levelForTier(tier)
   const upNext = nextFurnishing(progress)
 
-  // Tap a placed piece: lift it, or put it back down where it was.
-  const pickUp = (anchor: string) => {
-    juice.tap()
-    setPicked((cur) => (cur === anchor ? null : anchor))
-  }
-
-  // Tap a spot while carrying: move it there. An occupied spot trades places
-  // rather than overwriting (see planRoomMove).
-  const dropOn = async (anchor: string) => {
-    const from = picked
-    if (!from) return
-    setPicked(null)
-    const res = await useRoom.getState().move(from, anchor)
-    if (!res) return
-    juice.select()
-    if (res.swapped) setNote('Swapped.')
-  }
-
-  // Where a dragged piece was let go: stand it right there, clamped to its own
-  // mount's band. Selection is kept so a nudge can follow a nudge.
-  const dropAt = async (x: number, y: number) => {
-    if (!picked) return
-    juice.select()
-    await useRoom.getState().moveTo(picked, x, y)
-  }
-
-  // The ✕ on the lifted piece: take that one back out of the room. It loses
-  // nothing — ownership is derived from lifetime numbers that only go up, so
-  // the piece is back on the shelf at the same tier before the toast fades.
+  // Tap a placed piece: take it back out of the room.
+  //
+  // That is the ONLY gesture the scene has now. Lifting, dragging, dropping on
+  // a spot, trading places and resizing all came out with free placement — see
+  // data/layouts.ts — and taking a piece out is the one thing left that only
+  // makes sense with the piece in front of you rather than on the shelf.
+  //
+  // It loses nothing, which is why it is one tap with no confirmation:
+  // ownership is derived from lifetime numbers that only go up, so the piece is
+  // back on the shelf at the same tier before the note fades.
   const removeAt = async (anchor: string) => {
     juice.select()
     const name = furnishingName(useRoom.getState().placements[anchor])
-    setPicked(null)
     const res = await useRoom.getState().place(anchor, null)
     if (res.failed) {
       setNote('That didn’t save. Try again in a moment.')
       return
     }
     setNote(name ? `Took the ${name} back out — it’s on the shelf.` : null)
-  }
-
-  // Grow or shrink the selected furnishing a step. Bounds live in the planner.
-  const resizePicked = async (delta: number) => {
-    if (!picked) return
-    const cur = unpackDecor(useRoom.getState().placements[picked]).s ?? 1
-    juice.tap()
-    await useRoom.getState().resize(picked, cur + delta)
   }
 
   // Tap a piece on the shelf: it goes where it belongs, or upgrades the one
@@ -206,7 +168,7 @@ export function RoomSection() {
     const plan = planRoomPick(useRoom.getState().placements, id, tier)
     if (plan.kind === 'already') {
       juice.select()
-      setNote('That’s already out — tap it in the room to drag, resize or take it out.')
+      setNote('That’s already out — tap it in the room to take it back out.')
       return
     }
     if (plan.kind === 'full') {
@@ -226,7 +188,7 @@ export function RoomSection() {
     } else {
       // Same beat as the keep: a first placement earns the coin and a line.
       juice.coin()
-      setNote(`${furnishingName(plan.value)} is in the room — tap it to move or resize it.`)
+      setNote(`${furnishingName(plan.value)} is in the room — the room found it a place.`)
     }
   }
 
@@ -323,15 +285,8 @@ export function RoomSection() {
           pet: me.pet,
           isMe: true,
         }]}
-        editing={{
-          picked,
-          mergedAnchor: merged?.anchor ?? null,
-          onPick: pickUp,
-          onDrop: (a) => void dropOn(a),
-          onDropAt: (x, y) => void dropAt(x, y),
-          onCancel: () => { juice.tap(); setPicked(null) },
-          onRemove: (a) => void removeAt(a),
-        }}
+        layout={layout}
+        onRemove={(a) => void removeAt(a)}
         lampLit={lampLit}
         onTapSelf={() => { juice.tap(); setPrayerOffered(true) }}
         onArcade={() => { juice.select(); navigate('/arcade') }}
@@ -378,22 +333,6 @@ export function RoomSection() {
       )}
 
       <AnimatePresence>
-        {picked && (
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', marginTop: 8 }}>
-            <span className="faint" style={{ fontSize: 12, fontWeight: 700 }}>
-              {furnishingName(useRoom.getState().placements[picked])}
-            </span>
-            <button onClick={() => void resizePicked(-0.1)} aria-label="Smaller" style={SIZE_BTN}>
-              −
-            </button>
-            <button onClick={() => void resizePicked(0.1)} aria-label="Bigger" style={SIZE_BTN}>
-              ＋
-            </button>
-            <button onClick={() => setPicked(null)} style={{ ...SIZE_BTN, width: 'auto', padding: '0 10px' }}>
-              Done
-            </button>
-          </div>
-        )}
         {merged && (
           <motion.p
             key="room-merge"
@@ -408,13 +347,11 @@ export function RoomSection() {
         )}
       </AnimatePresence>
 
-      {/* Carrying, or a note about the last thing that happened. One slot,
-          because two stacked status lines under a picture is a form. */}
-      {(picked || note) && (
+      {/* One slot for what just happened — two stacked status lines under a
+          picture is a form. There is no "holding" state to report any more. */}
+      {note && (
         <p className="center" style={{ margin: '8px 0 0', fontSize: 12.5, fontWeight: 700, color: 'var(--gold)' }}>
-          {picked
-            ? `Holding the ${furnishingName(placements[picked])} — drag it anywhere, tap a marked spot to swap, ✕ to take it out, or tap the floor to let go.`
-            : note}
+          {note}
         </p>
       )}
 
@@ -455,8 +392,8 @@ export function RoomSection() {
                     gap: 5,
                     padding: '8px 4px',
                     borderRadius: 12,
-                    background: on ? 'var(--grape)' : 'var(--card-solid)',
-                    border: on ? '1px solid var(--gold)' : '1px solid var(--stroke)',
+                    background: on ? 'var(--select)' : 'var(--card-solid)',
+                    border: on ? '1px solid var(--edge)' : '1px solid var(--stroke)',
                     cursor: 'pointer',
                     minWidth: 0,
                   }}
@@ -470,7 +407,58 @@ export function RoomSection() {
                     <rect x="0" y="21" width="46" height="1.5" fill={pal.floorDark} />
                     <rect x="8" y="11" width="18" height="2.4" rx="1" fill={pal.wood} />
                   </svg>
-                  <span style={{ fontSize: 11, fontWeight: 800, textAlign: 'center', lineHeight: 1.2 }}>{sk.name}</span>
+                  <span style={{ fontSize: 11, fontWeight: 800, textAlign: 'center', lineHeight: 1.2, color: on ? 'var(--gold)' : undefined }}>
+                    {sk.name}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </Collapsible>
+      </div>
+
+      {/* The other half of the one lever of agency. You choose what the room is
+          MADE of and how it is LAID OUT; where each piece stands is the app's
+          job. Three arrangements, every one composed, none of them a number —
+          see data/layouts.ts for why this replaced dragging. */}
+      <div style={{ marginTop: 12 }}>
+        <Collapsible icon="📐" title="Arrangement" meta={arrangementById(layout).name}>
+          <p className="faint" style={{ fontSize: 11.5, margin: '0 0 10px', lineHeight: 1.5 }}>
+            How the room lays itself out. Everything you've put in stays in — this only changes
+            where it stands, and you can switch as often as you like.
+          </p>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {ARRANGEMENTS.map((ar) => {
+              const on = ar.id === arrangementById(layout).id
+              return (
+                <button
+                  key={ar.id}
+                  onClick={() => { juice.select(); void setLayout(ar.id) }}
+                  style={{
+                    display: 'grid',
+                    gap: 2,
+                    textAlign: 'left',
+                    padding: '9px 12px',
+                    borderRadius: 12,
+                    // `--select`, not `--grape`: this tile carries a whole
+                    // sentence, and `--ink-faint` on grape measures 1.63:1.
+                    // Which is also why the line below takes `--ink-dim` when
+                    // the tile is on — see the token's note in index.css.
+                    background: on ? 'var(--select)' : 'var(--card-solid)',
+                    border: on ? '1px solid var(--edge)' : '1px solid var(--stroke)',
+                    color: 'var(--ink)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <span style={{ fontSize: 12.5, fontWeight: 800, color: on ? 'var(--gold)' : undefined }}>
+                    {on ? '✓ ' : ''}{ar.name}
+                  </span>
+                  <span
+                    className={on ? undefined : 'faint'}
+                    style={{ fontSize: 11.5, lineHeight: 1.4, color: on ? 'var(--ink-dim)' : undefined }}
+                  >
+                    {ar.line}
+                  </span>
                 </button>
               )
             })}
@@ -481,11 +469,10 @@ export function RoomSection() {
       <div style={{ marginTop: 12 }}>
         <Collapsible icon="🪑" title="Furnish" meta={`${owned.length}/${FURNISHINGS.length} earned`}>
           <p className="faint" style={{ fontSize: 11.5, margin: '0 0 10px', lineHeight: 1.5 }}>
-            Tap a piece to put it in the room — the finest version you've earned. Keep at it and
-            it <b style={{ color: 'var(--gold)' }}>upgrades</b> where it stands. Tap anything in the
-            room above to pick it up, then <b style={{ color: 'var(--gold)' }}>drag it</b> wherever
-            you like — or resize it, or tap its ✕ to take it back out. Tapping anywhere else in
-            the room puts it down. Nothing you place can ever be lost.
+            Tap a piece to put it in the room — the finest version you've earned, and{' '}
+            <b style={{ color: 'var(--gold)' }}>the room finds it a place</b>. Keep at it and it
+            upgrades where it stands. Tap anything in the room above to take it back out.
+            Nothing you place can ever be lost.
           </p>
           <Shelf
             owned={owned}

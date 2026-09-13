@@ -1,9 +1,8 @@
 import { motion } from 'framer-motion'
+import { useMemo } from 'react'
 import { CrowdLife, type CrowdMember, type CrowdWaypoint } from '@/components/CrowdLife'
-import { SceneRemoveBadge } from '@/components/SceneRemoveBadge'
-import { ROOM_ANCHORS, ROOM_SURFACE, roomAnchorById, furnishingName } from '@/data/room'
-import { unpackDecor } from '@/data/placement'
-import { svgSpace, useSceneDrag } from '@/lib/sceneDrag'
+import { ROOM_SURFACE, furnishingName, type RoomMount } from '@/data/room'
+import { arrangeAnchors, arrangementById } from '@/data/layouts'
 import type { RoomPlacements } from '@/store/room'
 import { RoomChamber, FurnishingProp } from './RoomArt'
 import { ArcadeCabinet } from '@/features/arcade/ArcadeCabinet'
@@ -56,15 +55,13 @@ const WAYPOINTS: CrowdWaypoint[] = [
  */
 const sizeFor = (b: number) => Math.round(146 - ((Math.min(Math.max(b, 5), 17) - 5) / 12) * 46)
 
-/** The scene's coordinate system — fixed, so it is built once. */
-const SPACE = svgSpace(ROOM_SURFACE)
-
 export function RoomScene({
   tier,
   skin,
+  layout,
   placements,
   members,
-  editing,
+  onRemove,
   onOpen,
   onArcade,
   onTapSelf,
@@ -76,85 +73,39 @@ export function RoomScene({
   /** What the room is made of. Undefined draws the default, which is the room
    *  exactly as it has always been drawn. */
   skin?: string | null
+  /** Which arrangement the owner picked (`data/layouts.ts`, 0112). Undefined
+   *  is `settled`, the room exactly as it has always been laid out. */
+  layout?: string | null
   placements: RoomPlacements
   members: CrowdMember[]
   /**
-   * Tap-to-move, for the ONE surface that owns the furnishing (RoomSection).
-   * Absent everywhere else. A room you can rearrange from somebody else's
-   * screen is the church-page rule broken; a room you can rearrange from a
-   * summary card lets you redecorate by accident.
-   */
-  editing?: {
-    picked: string | null
-    mergedAnchor?: string | null
-    onPick: (anchor: string) => void
-    onDrop: (anchor: string) => void
-    /**
-     * Where a DRAGGED piece was let go: stand it at that exact point, clamped
-     * to its mount's band by the planner. Optional so a surface can offer
-     * anchor-only moving; passing it is also what turns dragging on.
-     *
-     * It used to fire on a tap of open ground too, which is how you positioned
-     * a piece before dragging existed. Now that you can drag one, that gesture
-     * had to give the tap back: see onCancel.
-     */
-    onDropAt?: (x: number, y: number) => void
-    /**
-     * Tapping anywhere that isn't a piece or a target: put the held piece
-     * down — it stays exactly where it stands and stops being held.
-     *
-     * "Click away to stop holding it" is what every other selection in every
-     * other app does, and until now the ground was the one place a tap MOVED
-     * the thing instead, which meant there was no way to let go by tapping at
-     * all: you had to find the piece again, or the Done button under the scene.
-     */
-    onCancel?: () => void
-    /** Take the lifted piece back out of the room — the ✕ on its ring. */
-    onRemove?: (anchor: string) => void
-  }
-  onOpen?: () => void
-  /**
-   * Tapping the arcade machine in the corner. Only your own room passes it, and
-   * without it the cabinet is not drawn — a visited room stays a picture, and
-   * the postcard (which serialises this scene into an <img>) must not carry a
-   * control nobody can press.
-   */
-  onArcade?: () => void
-  flat?: boolean
-  /** Tapping YOUR OWN figure in the room. Only the editable surface passes it:
-   *  a visited room shows its owner, and tapping them opens their card as it
-   *  does in every other scene. */
-  onTapSelf?: () => void
-  /**
-   * Whether the lampstand is burning — true when you have prayed today.
+   * Your own room only. The scene used to take a whole editing protocol here —
+   * pick, drop, drag-commit, resize, remove — and it is one callback now.
    *
-   * Defaults to true, and only your own room passes the real value. A visited
-   * room shows the lamp exactly as it has always looked, so nobody can read
-   * somebody else's prayer life off their furniture. See FurnishingProp.
+   * **The room arranges itself** (`data/layouts.ts`): you choose the material
+   * and the arrangement, and where each piece stands is the app's job. Tapping
+   * a piece takes it back out, which is the one thing left that only makes
+   * sense with the piece in front of you; everything else is the shelf.
    */
+  onRemove?: (anchor: string) => void
+  /** Tapping the picture itself — the summary card opens the full section. */
+  onOpen?: () => void
+  /** The cabinet in the corner. Only the room that belongs to the player. */
+  onArcade?: () => void
+  /** Tapping your OWN figure offers to pray — the one place in the app where
+   *  a figure does something other than open a player card. */
+  onTapSelf?: () => void
+  /** Skip the generated painting — the postcard can only serialise drawn SVG. */
+  flat?: boolean
   lampLit?: boolean
 }) {
-  const picked = editing?.picked ?? null
-  const pickedAnchor = picked ? roomAnchorById(picked) : undefined
-  const pickedMount = pickedAnchor?.mount
-
-  // Drag the piece you are holding. Only the lifted one moves this way, which
-  // is what keeps the gesture from fighting the page's own scroll — see
-  // lib/sceneDrag.ts. Tapping still does everything it did.
-  const drag = useSceneDrag({
-    space: SPACE,
-    picked,
-    enabled: !!editing?.onDropAt,
-    onCommit: (_anchor, x, y) => editing?.onDropAt?.(x, y),
-  })
-
-  // Where the lifted piece is standing, for the ✕ that hangs off its ring. It
-  // is drawn as the scene's LAST layer rather than inside the piece's own <g>,
-  // because the move targets are drawn after the pieces: a ✕ inside the group
-  // sat under the target ring of the next spot along, and tapping it moved the
-  // piece there instead of taking it out. Found by driving the real app.
-  const pickedValue = picked ? placements[picked] : undefined
-  const pickedPos = pickedAnchor && pickedValue ? unpackDecor(pickedValue) : undefined
+  // Where everything stands, as this arrangement has it. Memoised because it
+  // is pure over (surface, arrangement) and the scene re-renders on every
+  // crowd tick.
+  const anchors = useMemo(
+    () => arrangeAnchors(ROOM_SURFACE, arrangementById(layout)),
+    [layout],
+  )
 
   return (
     <div
@@ -168,152 +119,65 @@ export function RoomScene({
       onClick={onOpen}
     >
       <svg
-        ref={drag.sceneRef}
         viewBox="0 0 560 300"
         style={{ display: 'block', width: '100%', height: 'auto' }}
         data-room-scene=""
-        onClick={() => {
-          // Holding something + a tap on open ground = put it down where it
-          // stands. Pieces, targets and the ✕ all stop propagation, so this
-          // only ever fires for the ground itself.
-          if (picked) editing?.onCancel?.()
-        }}
       >
         <RoomChamber tier={tier} flat={flat} skin={skin} />
 
         {/* Tucked into the left corner, clear of floor_1 at x=96. */}
         {onArcade && <ArcadeCabinet x={52} y={284} scale={0.86} screen="attract" onOpen={onArcade} />}
 
-        {ROOM_ANCHORS.map((a) => {
+        {anchors.map((a, i) => {
           const value = placements[a.id]
           if (!value) return null
-          const lifted = picked === a.id
-          const u = unpackDecor(value)
-          // Mid-drag the piece follows the finger; otherwise a moved piece
-          // stands where its value says and an untouched one stands on its
-          // anchor, exactly as every placement written before free positioning
-          // existed still should.
-          const at = drag.live?.anchor === a.id ? drag.live : null
-          const px = at?.x ?? u.x ?? a.x
-          const py = at?.y ?? u.y ?? a.y
-          const dragging = !!at
-          // The spot that just absorbed a duplicate gives one pulse — the eye
-          // needs telling where to look when the thing you tapped isn't the
-          // thing that changed.
+          // The piece is DRAWN on its designed anchor and the group is
+          // TRANSLATED to where this arrangement puts it. Drawing it at the
+          // arranged point instead would snap between arrangements, because the
+          // position would be an SVG attribute rather than a motion value —
+          // which is what this did on its first pass, and it is invisible in a
+          // diff because both render identically while nothing changes.
+          const base = ROOM_SURFACE.anchors[i]
+          const bx = (base as { x?: number }).x ?? 0
+          const by = (base as { y?: number }).y ?? 0
+          const ax = (a as { x?: number }).x ?? bx
+          const ay = (a as { y?: number }).y ?? by
+          // The value's own `~x..y..s..` suffix is deliberately NOT read any
+          // more: a piece stands where the arrangement puts it. Old values
+          // still parse — `unpackDecor` is untouched and no row was rewritten —
+          // the suffix simply stops meaning anything here, which is what let
+          // this ship with no placement migration at all.
           return (
             <motion.g
               key={a.id}
               initial={false}
-              animate={
-                editing?.mergedAnchor === a.id
-                  ? { scale: [1, 1.22, 1], y: 0 }
-                  : lifted
-                    ? { scale: 1.08, y: dragging ? 0 : -6 }
-                    : { scale: 1, y: 0 }
-              }
-              // A dragged piece must track the finger, not spring after it.
-              transition={{ duration: dragging ? 0 : lifted ? 0.18 : 0.5 }}
-              style={{
-                transformOrigin: `${px}px ${py}px`,
-                cursor: editing ? (dragging ? 'grabbing' : lifted ? 'grab' : 'pointer') : undefined,
-              }}
-              {...(editing ? drag.bind(a.id, a.mount, u.x ?? a.x, u.y ?? a.y) : {})}
-              {...(editing
+              // The whole of the motion left in this scene: a piece slides to
+              // its new spot when the arrangement changes. Nothing tracks a
+              // finger, because nothing is dragged.
+              animate={{ x: ax - bx, y: ay - by }}
+              transition={{ type: 'spring', stiffness: 160, damping: 24 }}
+              style={{ cursor: onRemove ? 'pointer' : undefined }}
+              {...(onRemove
                 ? {
-                    role: 'button',
+                    role: 'button' as const,
                     tabIndex: 0,
-                    'aria-label': `${value.split(/[.~]/)[0].replace(/^room_/, '').replace(/_/g, ' ')}${lifted ? ', held' : ''}`,
+                    'aria-label': `Take the ${furnishingName(value)} back out`,
                     onKeyDown: (e: React.KeyboardEvent) => {
                       if (e.key !== 'Enter' && e.key !== ' ') return
                       e.preventDefault()
-                      if (picked && picked !== a.id) editing.onDrop(a.id)
-                      else editing.onPick(a.id)
+                      onRemove(a.id)
+                    },
+                    onClick: (e: React.MouseEvent) => {
+                      e.stopPropagation()
+                      onRemove(a.id)
                     },
                   }
                 : {})}
-              onClick={
-                editing
-                  ? (e) => {
-                      // The svg behind this drops the carried piece at the tap
-                      // point; a tap ON a piece must not also be a tap on the
-                      // ground under it.
-                      e.stopPropagation()
-                      // The click a finished drag fires is not a tap: letting
-                      // it through would put down what you just dragged.
-                      if (drag.consumeClick()) return
-                      if (picked && picked !== a.id) editing.onDrop(a.id)
-                      else editing.onPick(a.id)
-                    }
-                  : undefined
-              }
             >
-              <FurnishingProp value={value} x={px} y={py} mount={a.mount} lit={lampLit} sizeScale={u.s ?? 1} />
-              {lifted && (
-                <>
-                  {/* A grab area over the whole selection, so dragging doesn't
-                      mean hitting the one filled pixel of a candlestick. */}
-                  <circle cx={px} cy={py} r="28" fill="transparent" data-scene-edit="" />
-                  <circle cx={px} cy={py} r="28" fill="none" stroke="var(--gold)" strokeWidth="2" strokeDasharray="5 5" opacity="0.9" />
-                </>
-              )}
+              <FurnishingProp value={value} x={bx} y={by} mount={a.mount as RoomMount} lit={lampLit} />
             </motion.g>
           )
         })}
-
-        {/* Where the carried piece can go: every OTHER spot of its own kind.
-            The constraint made visible, rather than an error after the fact. */}
-        {editing && picked &&
-          ROOM_ANCHORS.filter((a) => a.id !== picked && a.mount === pickedMount).map((a) => (
-            <g
-              key={`t-${a.id}`}
-              onClick={(e) => {
-                e.stopPropagation()
-                editing.onDrop(a.id)
-              }}
-              role="button"
-              tabIndex={0}
-              aria-label={`Move here: ${a.id.replace(/_/g, ' ')}`}
-              onKeyDown={(e) => {
-                if (e.key !== 'Enter' && e.key !== ' ') return
-                e.preventDefault()
-                editing.onDrop(a.id)
-              }}
-              style={{ cursor: 'pointer' }}
-            >
-              {/* Generous invisible hit area — the visible ring is a 12px tap. */}
-              <circle cx={a.x} cy={a.y} r="26" fill="transparent" />
-              <circle
-                cx={a.x}
-                cy={a.y}
-                r="13"
-                fill={placements[a.id] ? 'rgba(10,5,26,0.86)' : 'rgba(255,210,63,0.16)'}
-                stroke="var(--gold)"
-                strokeWidth="2"
-                strokeDasharray="4 4"
-              />
-              {placements[a.id] && (
-                // Two arrows: this spot is taken, so dropping here trades.
-                <path
-                  d={`M${a.x - 6} ${a.y - 3} h12 l-3 -3 M${a.x + 6} ${a.y + 3} h-12 l3 3`}
-                  fill="none"
-                  stroke="var(--gold)"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              )}
-            </g>
-          ))}
-
-        {editing?.onRemove && picked && pickedAnchor && pickedPos && !drag.live && (
-          <SceneRemoveBadge
-            x={pickedPos.x ?? pickedAnchor.x}
-            y={pickedPos.y ?? pickedAnchor.y}
-            ring={28}
-            label={`Take the ${furnishingName(pickedValue)} back out`}
-            onRemove={() => editing.onRemove!(picked)}
-          />
-        )}
       </svg>
 
       {/* Alive, not pasted — the same engine the hall, the churchyard and the
@@ -329,7 +193,6 @@ export function RoomScene({
         sizeFor={sizeFor}
         max={3}
         onTapSelf={onTapSelf}
-        inert={!!picked}
       />
     </div>
   )

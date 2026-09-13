@@ -83,6 +83,25 @@ for (const [ink, min] of TEXT) {
   }
 }
 
+// ── The SELECTED surface ───────────────────────────────────────────────────
+// Every "this one is on" chip, tile and pill in the app used to be painted
+// `--grape`, which is an ACCENT: white ink on it measures 3.37:1 and
+// `--ink-faint` 1.63:1, so a selected tile could not carry its own label, let
+// alone the line under it. `--select` is the same hue taken down to where the
+// two readable inks clear AA. `--ink-faint` is deliberately NOT required to
+// pass here — it doesn't, and it must not be used on a selected surface.
+const select = need('--select')
+if (select) {
+  for (const ink of ['--ink', '--ink-dim']) {
+    const v = need(ink)
+    if (!v) continue
+    const r = ratio(v, select)
+    if (r < 4.5) fail(`${ink} (${v}) on --select (${select}) is ${r.toFixed(2)}:1 — a selected tile has to carry its own words`)
+  }
+  const vsCard = ratio(select, need('--card'))
+  if (vsCard < 1.5) fail(`--select (${select}) is only ${vsCard.toFixed(2)}:1 from --card — "on" has to be visible without reading the text`)
+}
+
 // ── The gold ration ────────────────────────────────────────────────────────
 // `--edge` exists so a decorative frame stops competing with the action. If it
 // ever drifts close enough to `--gold` to be mistaken for it, the ration has
@@ -101,4 +120,5 @@ if (failed) {
 }
 const show = (a, b) => `${a}→${b} ${ratio(need(a), need(b)).toFixed(2)}:1`
 console.log(`✓ contrast: ${show('--bg-1', '--card')}, ${show('--card', '--card-raised')}; ` +
-  `faint on card ${ratio(need('--ink-faint'), need('--card')).toFixed(2)}:1`)
+  `faint on card ${ratio(need('--ink-faint'), need('--card')).toFixed(2)}:1; ` +
+  `ink on select ${ratio(need('--ink'), need('--select')).toFixed(2)}:1`)

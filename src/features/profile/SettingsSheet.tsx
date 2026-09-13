@@ -270,7 +270,7 @@ export function SettingsSheet({
                     flex: 1,
                     padding: '10px 4px',
                     borderRadius: 12,
-                    background: on ? 'var(--grape)' : 'var(--card-solid)',
+                    background: on ? 'var(--select)' : 'var(--card-solid)',
                     border: on ? '1px solid var(--gold)' : '1px solid var(--stroke)',
                     cursor: 'pointer',
                     color: 'var(--ink)',
@@ -299,7 +299,7 @@ export function SettingsSheet({
                   style={{
                     display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%',
                     padding: '11px 12px', borderRadius: 12,
-                    background: on ? 'var(--grape)' : 'var(--card-solid)',
+                    background: on ? 'var(--select)' : 'var(--card-solid)',
                     border: on ? '1px solid var(--gold)' : '1px solid var(--stroke)', cursor: 'pointer',
                   }}
                 >
@@ -332,8 +332,8 @@ export function SettingsSheet({
                     onClick={() => { juice.select?.(); settings.set({ readingVoice: v.id }) }}
                     style={{
                       flex: 1, padding: '11px 12px', borderRadius: 12, cursor: 'pointer',
-                      background: on ? 'var(--grape)' : 'var(--card-raised)',
-                      border: `1px solid ${on ? 'var(--grape)' : 'var(--stroke)'}`,
+                      background: on ? 'var(--select)' : 'var(--card-raised)',
+                      border: `1px solid ${on ? 'var(--select)' : 'var(--stroke)'}`,
                       color: 'var(--ink)', fontWeight: 800, fontSize: 14,
                     }}
                   >

@@ -92,8 +92,8 @@ export function TabbedSection({
                   fontWeight: 800,
                   cursor: 'pointer',
                   color: on ? 'var(--ink)' : 'var(--ink-dim)',
-                  background: on ? 'var(--grape)' : 'var(--card)',
-                  borderColor: t.dot && !on ? 'var(--edge)' : on ? 'var(--grape)' : 'var(--stroke)',
+                  background: on ? 'var(--select)' : 'var(--card)',
+                  borderColor: t.dot && !on ? 'var(--edge)' : on ? 'var(--select)' : 'var(--stroke)',
                 }}
               >
                 {t.label}

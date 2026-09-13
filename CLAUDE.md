@@ -2020,7 +2020,20 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0111` (verse highlights and private notes — `verse_notes`,
+The latest is `0112` (the room's ARRANGEMENT — `profiles.room_layout` plus a
+check constraint, `set_room_layout`, and `my_room` / `room_json` restated
+WHOLESALE from 0110; a future migration editing either copies forward from
+HERE). APPLIED on 2026-09-13 before the client merged, and verified: exactly
+ONE signature each, `room_json` still carries BOTH `pet` (0072) and `skin`
+(0110) after the restate — the wholesale-restate trap this file keeps warning
+about, checked rather than hoped — the constraint is present, and all 157
+profiles read `settled` with no nulls. Run end to end against a local
+Postgres 16 first, including a direct `update … set room_layout='sprawl'`
+past the RPC, which the check constraint rejects. It is stored server-side
+rather than on the device because a room is VISITABLE and a visitor has to see
+the owner's arrangement — the same argument 0110 makes for the material.
+
+Before it, `0111` (verse highlights and private notes — `verse_notes`,
 `set_verse_note`, `my_verse_notes`). APPLIED on 2026-09-13 before the client
 merged, and verified: exactly ONE signature each, both `security definer`, both
 ACLs the house `authenticated` shape, RLS on with two policies, and all three
@@ -2344,7 +2357,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0112` (0111 is taken by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0113` (0112 is taken by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the
@@ -2814,27 +2827,74 @@ Three things to know before touching it:
 - **One copy per decoration.** The shelf refuses to stand a second copy;
   `planPickOn` returns `already` where it used to merge.
 
-### Placement is free, inside a mount's band
+### The rooms arrange THEMSELVES: you pick the skin and the layout
 
-A placement value may carry a position and size: `keep_woven_rug.2~x412y188s120`
-(scene units; s is scale×100, clamped 0.7–1.4). The two halves are independent
-— `~s120` alone, `~x412y188` alone — and entangling them shipped for about a
-minute: a resize on a never-moved piece defaulted x/y to 0 and teleported the
-mat to the corner. Found by driving the real app; the grammar lives ONLY in
-`packDecor`/`unpackDecor` and is fuzzed against 0083's regexes.
+Both rooms let you drag every piece anywhere inside its mount's band and resize
+it in ten steps. That is **gone**, deliberately, and `data/layouts.ts` carries
+the long version of why. The short one: it cost about 2,500 lines across
+sixteen files, two migrations, a build check and three of the nastiest scars in
+this codebase — `touch-action` silently not working on an SVG child, a finished
+drag firing a click that put the piece back down, and two shelf taps in one tick
+planning against a stale snapshot — and it bought less than it cost. Every scene
+in this app that people love is a PAINTING composed by one hand; the rooms were
+the one place composition was handed to the player and the one place the app
+looked least like its own art. The clearest evidence is that `keep_placements`
+sat at ZERO ROWS in production for months because the RPC was never awaited, and
+nobody reported it.
 
-The ANCHOR became a row key, not a location: it still bounds rows per player
-and is still validated server-side, but a piece stands wherever its value says,
-falling back to its anchor when the value carries no position — which is what
-keeps every pre-0081 row rendering exactly where it always did. Free movement
-clamps into per-mount BANDS (`Surface.bands`), so "put it where you like"
-never becomes "hang the brazier from the ceiling". Resizing is deliberately
-bounded: a rug scaled to fill the hall stops being furniture.
+So: **you pick the material and the arrangement; the app places things.** The
+unlock gets better rather than worse — a piece you earn appears where it
+belongs, in a room that still looks composed.
 
-**0083 is applied** (2026-08-31, before the client merged — the order the
-Supabase section demands). It relaxes both value regexes (`set_keep_placement`,
-`set_room_placement`); against the 0060/0069 versions every reposition is
-rejected as 'bad decor'.
+- **An arrangement is CONTENT, which is why it is a TRANSFORM.** `Arrangement`
+  is a handful of numbers (`pull`, `rise`) applied to the anchors a room already
+  has, not a table of 27 hand-placed coordinates per variant — so it is the
+  shape `data/catalog.ts` can ship without a submission, the way a road is "a
+  reward table, five hex codes and an emoji". A new arrangement is a row, not a
+  release. Three ship: `settled` (the rooms exactly as they always were, and the
+  default, so nothing moves for anybody who does not go looking), `gathered`,
+  `spread`.
+- **It MOVES anchors and never removes one**, so every placement stays valid,
+  nothing can be orphaned, and switching is purely visual. And **every position
+  is clamped to its own mount's band** by the same `clampToBand` the free-drag
+  path used — so an arrangement cannot hang the brazier from the ceiling however
+  its numbers are set, including numbers that arrive from a catalog.
+  `npm run check:layouts` drives the real `arrangeAnchors` over both surfaces
+  with four hostile arrangements and asserts all 168 placements land inside
+  their mount.
+- **There is NO placement migration, and that is the whole reason this was
+  cheap.** The wire format is unchanged and old values still parse
+  (`unpackDecor` is untouched) — the `~x412y188s120` suffix simply stops being
+  READ by the two rooms, and stops being written. A hand-arranged room
+  re-composes itself, which is the feature rather than a side effect.
+- **The piece is DRAWN on its designed anchor and the group is TRANSLATED** to
+  where the arrangement puts it. Drawing it at the arranged point instead makes
+  the position an SVG attribute rather than a motion value, so switching
+  arrangement SNAPS — which is what the first pass did, and it is invisible in a
+  diff because both render identically while nothing changes.
+- **The keep deliberately has NO arrangement picker.** An arrangement is a thing
+  the owner of a room chooses, and nobody owns a faction hall: it is thousands of
+  strangers and its placements are a BLEND of theirs, so there is no person whose
+  taste it would be. The hall reads as `settled`.
+- **The churchyard is NOT part of this** and keeps free placement (`0084`,
+  `lib/sceneDrag.ts`, `SceneRemoveBadge`) — a congregation's shared space where
+  any member may plant and move is its own argument. Which is also why those two
+  files survive: they are the churchyard's now, not the rooms'.
+
+`0112` (`profiles.room_layout` + `set_room_layout`, `my_room`/`room_json`
+restated wholesale from 0110) is APPLIED. The arrangement is stored
+SERVER-SIDE rather than on the device for the reason 0110 stores the skin
+there: a room is visitable, and a visitor has to see the OWNER's room.
+
+**What is left in a room is one gesture: tap a piece to take it back out.** It
+is the one thing that only makes sense with the piece in front of you rather
+than on the shelf, and it loses nothing — ownership is derived from lifetime
+counters that only go up, so the piece is back on the shelf at the same tier
+before the note fades. In a FACTION hall the placements are a blend, so the
+handler refuses somebody else's piece and says so rather than reporting a
+removal that didn't happen. The crowd no longer needs `inert` in either room:
+nothing is being held, so there is no arranging tap for a wandering figure to
+intercept.
 
 ### The picker is a shelf of pictures
 
@@ -2855,80 +2915,6 @@ belongs** — the first free anchor of its mount, or the first free plot.
 mount because props are drawn around their GROUND POINT rather than centred — a
 banner hangs down from it, a wall piece straddles it, a rug sits on it, and one
 box for all three crops two of them.
-
-### Anything placed can be moved, anywhere in its band — and resized
-
-Tap a piece to lift it, then **drag it wherever you like** (clamped to its
-mount's band; it stays held, so a nudge can follow a nudge), or tap an anchor
-target to trade places. **Tapping anywhere else puts it down** — it stays where
-it stands and stops being held. While held, a small bar under the scene resizes
-it in 0.1 steps. `planMoveOn`, `planMoveToPointOn` and `planResizeOn` in
-`data/placement.ts` are the choke points and the room copies them exactly.
-Nothing is ever overwritten.
-
-**A tap on open ground used to MOVE the piece there, and giving that gesture
-back is the point.** It was how you positioned something before dragging
-existed; once you could drag, it left the worlds with no way to let go by
-tapping at all — you had to find the piece again or reach the Done button under
-the scene, which is not what a selection anywhere else does. `onDropAt` is now
-the drag's commit only, and `onCancel` is the tap.
-
-**The crowd goes INERT while a piece is held** (`CrowdLife`'s `inert`, and the
-churchyard also passes it whenever the Landscaping shelf is open). Figures are
-27-42px, they wander on their own schedule, and one standing in front of the
-thing you are arranging turned the tap meant for it into somebody's player
-card — not a rare miss but most of the scene, most of the time. Inertness
-rather than a second behaviour: a figure that answered an arranging tap would
-be inventing a gesture, and a crowd is a picture of the place rather than a
-control surface. The cards come back the moment you put the piece down.
-
-**Dragging is only ever available on the piece you have already LIFTED, and that
-is the whole reason it is safe.** These halls are 300-unit viewBoxes inside
-scrolling surfaces, and for a long time that ruled dragging out entirely — a
-grab anywhere on the picture fights the scroll. Selecting first is what makes
-the two gestures separable: one tap says which object you are holding, and only
-that object's pointer stream is taken. Every other pixel of every scene — the
-floor, the walls, an unselected piece — still scrolls exactly as before, and
-tapping is untouched (a drag inside a 4px slop radius is still a tap).
-
-`lib/sceneDrag.ts` is the one copy of the mechanics, bound by both scenes. Three
-things in it were learned by driving the real app and are invisible in a diff:
-
-- **`touch-action: none` does NOT work on an SVG child** — it was set, read back
-  empty, and the page scrolled out from under the piece. What actually cancels
-  the scroll is a hand-registered NON-PASSIVE `touchmove` listener on the
-  scene's `<svg>` that preventDefaults only while a drag is in flight (React
-  attaches its own touch listeners passively, so it can't be done through JSX).
-  Putting `touch-action` on the wrapper instead would kill scrolling over the
-  whole picture for as long as anything is selected.
-- **A finished drag fires a click**, which would otherwise read as "tap the
-  piece" and put down what you just dragged. `consumeClick()` latches that one
-  click; a drag that never left the slop radius does not latch it, so a tap
-  still toggles.
-- **The commit is one write, on release** (through `onDropAt`, the same planner
-  the tap path uses). The position mid-drag is local preview state — writing on
-  every pointer move would be an RPC per frame.
-
-### The ✕ on a lifted piece takes it back out
-
-A selected piece wears a small ✕ on its ring (`components/SceneRemoveBadge`),
-and it clears that one placement. The shelf tile's ✕ still exists and still
-clears every copy; this one is for the thought you have while looking at the
-room, rather than making you find the piece again in a grid of eighteen.
-
-Two things about it are load-bearing. It is drawn as the scene's LAST layer,
-NOT inside the piece's own `<g>` — the move targets are drawn after the pieces,
-so a ✕ inside the group sat under the target ring of the next spot along and
-tapping it moved the piece there instead of removing it. And it marks itself
-`data-scene-edit`, which `lib/postcard.ts` strips along with the dashed rings:
-a ✕ on a picture somebody sends is a stray dark blob, and its `var(--gold)`
-doesn't resolve in a detached document anyway.
-
-Nothing is lost by it, which is why it can be one tap with no confirmation:
-ownership is derived from lifetime counters that only go up, so a piece taken
-out is back on the shelf at the same tier before the note fades. In a FACTION
-hall the placements are a blend, so the ✕ refuses somebody else's piece and says
-so rather than reporting a removal that didn't happen.
 
 ### A Grand piece can be given to your church
 
@@ -3360,7 +3346,7 @@ Two rules fall out of that:
   the room in the sheet are the same room. Same rule as `QuizRunner` and
   `CrowdLife`.
 - **Editing belongs to exactly one surface.** The scene takes an optional
-  `editing`/`floraEditing` prop and is inert without it. Two editable copies of
+  `onRemove`/`floraEditing` prop and is inert without it. Two editable copies of
   the same world on one screen means you can't tell which one you're touching —
   that's why the church tab's hero is the editable yard and the Landscaping
   shelf under it is only a picker.
@@ -3407,7 +3393,7 @@ card, eighteen furnishings, five tiers earned by your own level. Full design:
 `docs/UPPER-ROOM.md`.
 
 **The placement rules now live in one file, and that is the load-bearing part.**
-`planPlacement`, `planMove` and `planPick` were hardcoded against the keep's
+`planPlacement` and `planPick` were hardcoded against the keep's
 `ANCHORS`; they are now `data/placement.ts`, parameterised by a `Surface`
 (`{ anchors, mountOf }`), and `data/keep.ts` keeps every one of its exports as a
 thin wrapper — **no keep call site changed**. Copying them would have been the
@@ -3421,9 +3407,10 @@ Three rules the room adds to the ones it inherits:
 - **A visitor can only look, by construction.** `room_json` (0069) returns
   placements, an *architecture tier* instead of the owner's level, and **no
   number at all** — a room you can rank is a scoreboard with a rug on it.
-  `RoomScene` takes no `editing` prop on the visit path, so a visited room is
-  inert because the scene was never handed the ability to change, not because a
-  handler decided to say no. And nothing records the visit: there is no visitor
+  `RoomScene` takes no `onRemove` on the visit path, so a visited room is inert
+  because the scene was never handed the ability to change, not because a
+  handler decided to say no. It DOES take the owner's `layout` — a visitor sees
+  the room as its owner arranged it, exactly as they see its material. And nothing records the visit: there is no visitor
   log to build "12 people looked at your room" out of later, same rule as
   `my_washings` being recipient-only.
 - **Ownership is derived from six lifetime numbers that only go up** (level,
@@ -4064,6 +4051,68 @@ tapping it. Any future overlay inside a scene needs the same treatment.
 Design tokens live at the top of `src/index.css` — use the CSS variables, never
 raw hexes. Numbers and headings wear `var(--font-display)`; that's the brand.
 Motion is springy `framer-motion`, mobile-first, max width 520px.
+
+### The palette has four rules, and every one is MEASURED
+
+`scripts/check-contrast.mjs` re-derives all four in `npm run build`, because a
+value step and a contrast ratio are exactly the kind of thing that renders
+perfectly while saying nothing. Each rule exists because the app was failing it.
+
+- **The ground is WARM.** It was violet (`#0b0720`) and every painting in this
+  app is warm — amber wood in the library, clay in the Upper Room, wheat on the
+  road. A cool frame around warm art does not make the frame look cool, it makes
+  the art look wrong. The ACCENTS did not move, so this is a re-ground rather
+  than a rebrand.
+- **Surfaces are a LADDER, not a wash.** `--card` was
+  `rgba(255,255,255,0.06)`, which composites to **1.14:1** over the ground — so
+  the page, a card on it and a tile inside that card all sat within a hair of
+  each other and a screen read as one flat field. Three opaque steps now:
+  ground → card **1.40:1**, card → raised **1.26:1**. Opaque also let `.card`
+  drop `backdrop-filter`, which is a containing block for `position: fixed` and
+  is the whole reason `ChurchDetailSheet` is portalled — new code inside a card
+  no longer inherits that trap.
+- **Every ink clears AA on BOTH surfaces.** `--ink-faint` was `#7a6ba8`, which
+  measured **3.51:1** on the card it is printed on, and it is the colour of
+  every 11-12px caption in the app. That was an accessibility bug rather than a
+  taste. The checker tests each ink against `--card` AND `--card-raised`,
+  because a tile inside a card is the lighter of the two and is where it gets
+  closest.
+- **The gold is RATIONED.** `--gold` meant "important" in eight places at once
+  — the primary button, the compass, every tip banner's border, the Pray pill,
+  the XP bar, the quest chevrons, the reward frames, the nav star — and a colour
+  that marks eight things marks none. It has ONE job now: **the thing to do
+  next**. `--edge` is where the decorative half went, and the checker asserts it
+  stays ≥1.8:1 from gold (or the ration is undone) and ≥3:1 on card (a border
+  nobody can see is a deletion, not a demotion).
+
+**And `--select` is not `--grape`.** Every "this one is on" chip, tile and pill
+was painted `--grape`, which is an ACCENT: white ink on it measures **3.37:1**
+and `--ink-faint` **1.63:1**, so a selected tile could not carry its own label,
+let alone a line under it. `--select` is the same hue taken down to where the
+two readable inks clear AA (ink 6.13, ink-dim 4.78), which the checker asserts
+along with it staying ≥1.5:1 from `--card` so "on" is visible without reading
+the text. **`--ink-faint` is deliberately NOT legible on it and must not be
+used there** — a selected tile's own description takes `--ink-dim`.
+
+### Icons are DRAWN, not emoji and not generated
+
+`data/icons.tsx` is 41 hand-written paths behind one `<Icon id>`, and
+`scripts/check-icons.mjs` asserts the union and the table agree, that every path
+parses, that every nav and map id exists, and that **no emoji survives in the
+nav or the map** — it caught the compass puck's 🧭 still sitting there.
+
+Two things about it. Emoji are the loudest indie tell in a mobile app: they are
+a different artist's work at a different weight in every row, they render
+differently on every platform, and they cannot take a colour. Which is also the
+carve-out that keeps them drawn rather than generated — **anything taking a
+runtime colour can't be a baked image**, the same rule the church kit, the
+denomination shield and the seals' wax already live under.
+
+And `fillRule="evenodd"` is on every icon on purpose: a same-fill inner subpath
+PAINTS rather than punches, so a robot's eyes, a calendar's cells, a book's
+spines and a road's centre line were all invisible until it was set. `battle`
+read as the letter X and `road` as the letter A; both were fixed by computing
+the geometry rather than by nudging it.
 
 ### The Study tab IS a library
 

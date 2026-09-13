@@ -30,6 +30,16 @@
 
   --grape: #a06bff;
   --grape-deep: #7a3ff2;
+  /* The SELECTED surface — a chip, tile or pill that is on.
+   *
+   * `--grape` is an ACCENT and cannot carry text: white ink on it measures
+   * 3.37:1 and `--ink-faint` 1.63:1, and it was the background of every
+   * selected state in the app. This is the same hue taken down to where the
+   * two readable inks clear 4.5:1 (ink 6.13, ink-dim 4.78), which is what
+   * scripts/check-contrast.mjs asserts. `--ink-faint` is deliberately NOT
+   * legible on it and must not be used here — a selected tile's own
+   * description takes `--ink-dim`. */
+  --select: #6f45c4;
   --gold: #ffd23f;
   --coral: #ff6b6b;
   --mint: #4ecdc4;

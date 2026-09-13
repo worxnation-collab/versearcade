@@ -1,6 +1,8 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Page } from '@/components/Page'
+import { STREAK_BADGES } from '@/data/streakBadges'
+import { StreakBadgeArt } from './StreakBadgeArt'
 import { Button } from '@/components/Button'
 import { useAuth } from '@/store/auth'
 import { useBible } from '@/store/bible'
@@ -154,6 +156,30 @@ export default function JournalScreen() {
                 }}
               />
             </div>
+
+            {/* The streak is the app's biggest ladder and its only reward was a
+                44px ring nobody sees. The badges are purely derived from the
+                same number this row already shows, they grant NOTHING, and
+                there is deliberately no bar under them and no "day 12 of 30" —
+                the row's own next-rung line is the only forward-looking thing
+                here. See data/streakBadges.ts. */}
+            {track.id === 'streak' && (
+              <div style={{ display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
+                {STREAK_BADGES.map((b) => (
+                  <div key={b.id} style={{ width: 56, textAlign: 'center' }}>
+                    <StreakBadgeArt badge={b} size={52} earned={n >= b.days} />
+                    <div
+                      style={{
+                        fontSize: 9.5, lineHeight: 1.25, marginTop: 3, fontWeight: 700,
+                        color: n >= b.days ? 'var(--ink-dim)' : 'var(--ink-faint)',
+                      }}
+                    >
+                      {b.name}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <p className="faint" style={{ fontSize: 11.5, margin: '8px 0 0', lineHeight: 1.5 }}>
               {next

@@ -95,7 +95,7 @@ export function ChapterReader({ verse, onClose }: { verse: DailyVerse; onClose: 
           gap: 12,
           padding: 'calc(var(--safe-top) + 12px) 16px 12px',
           borderBottom: '1px solid var(--stroke)',
-          background: 'rgba(11,7,32,0.6)',
+          background: 'rgba(14, 10, 12,0.6)',
           backdropFilter: 'blur(8px)',
         }}
       >

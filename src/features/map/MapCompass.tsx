@@ -68,9 +68,13 @@ export function MapCompass() {
         style={{
           width: '100%',
           padding: '14px 14px 12px',
-          borderColor: glowing ? 'var(--gold)' : 'var(--stroke)',
-          background: glowing ? 'rgba(255,210,63,0.07)' : undefined,
-          boxShadow: glowing ? '0 0 0 3px rgba(255,210,63,0.10)' : undefined,
+          // The FRAME steps down and the rows inside keep the gold: they are
+          // the doors, and the card is only what holds them. Two golds on one
+          // screen is what the ration exists to stop — the Play button above
+          // is already the action.
+          borderColor: glowing ? 'var(--edge)' : 'var(--stroke)',
+          background: undefined,
+          boxShadow: undefined,
         }}
       >
         {/* The header IS the door to the whole map. Buttons can't nest, so the
@@ -108,11 +112,9 @@ export function MapCompass() {
               placeItems: 'center',
               fontSize: 24,
               lineHeight: 1,
-              background: 'rgba(20,10,52,0.85)',
-              border: `1px solid ${glowing ? 'var(--gold)' : 'var(--stroke)'}`,
-              boxShadow: glowing
-                ? '0 6px 20px rgba(0,0,0,0.45), 0 0 18px rgba(255,210,63,0.28)'
-                : '0 6px 20px rgba(0,0,0,0.45)',
+              background: 'rgba(30, 21, 28,0.85)',
+              border: `1px solid ${glowing ? 'var(--edge)' : 'var(--stroke)'}`,
+              boxShadow: '0 6px 20px rgba(0,0,0,0.45)',
             }}
           >
             🧭

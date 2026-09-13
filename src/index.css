@@ -3,13 +3,30 @@
    accents, chunky rounded shapes, springy motion. Mobile-first. */
 
 :root {
-  /* palette */
-  --bg-0: #0b0720;
-  --bg-1: #150a34;
-  --bg-2: #1e0f47;
-  --ink: #ffffff;
-  --ink-dim: #b8a9e0;
-  --ink-faint: #7a6ba8;
+  /* ── The ground: a warm, lamplit dark ────────────────────────────────────
+     It was violet (#0b0720), and every painting in this app is warm — amber
+     wood in the library, clay in the Upper Room, wheat on the road, stone in
+     the churchyard. A cool frame around warm art does not make the frame look
+     cool; it makes the art look wrong, and it was the single loudest thing
+     separating this app from the ones it is judged against. So the GROUND
+     moved to meet the art. The accents did not move: grape is still the
+     interactive colour and gold is still the action, so this is a re-ground
+     rather than a rebrand. */
+  --bg-0: #0e0a0c;
+  --bg-1: #171014;
+  --bg-2: #211820;
+
+  /* ── Ink ─────────────────────────────────────────────────────────────────
+     `--ink-faint` was #7a6ba8, which measured **3.51:1** on the card it is
+     printed on — under AA for normal text, and it is the colour of every
+     11-12px caption in this app (the road strip's mileage, the map's place
+     lines, every `.faint` line on every card). That was an accessibility bug
+     rather than a taste, and it is the one value here that had to move. */
+  --ink: #fdfbfc;
+  --ink-dim: #e8dde4;    /* 10.5:1 on --card */
+  --ink-faint: #beadba;  /* 6.31:1 on --card, 5.00:1 on a tile inside one —
+                            it was 3.51:1, which is under AA for the 11-12px
+                            captions this colour is used for everywhere */
 
   --grape: #a06bff;
   --grape-deep: #7a3ff2;
@@ -23,16 +40,43 @@
   --good-deep: #1fb85a;
   --warn: #ffb648;
 
-  --card: rgba(255, 255, 255, 0.06);
-  --card-solid: #241353;
-  --stroke: rgba(255, 255, 255, 0.12);
+  /* ── Surfaces are a measured LADDER, not a wash ──────────────────────────
+     `--card` used to be `rgba(255,255,255,0.06)`, which composites over the
+     ground to **1.14:1** — so the page, a card on it and a tile inside that
+     card all sat within a hair of each other, and a screen of chrome read as
+     one flat field with things floating in it. Three opaque steps instead,
+     measured rather than chosen: ground → card is **1.40:1** and card →
+     raised is **1.26:1**. `npm run check:contrast` re-measures every pair in
+     `npm run build`, because a value step is exactly the kind of thing that
+     renders perfectly while saying nothing.
+
+     Opaque also buys a bug family: `.card` no longer needs `backdrop-filter`,
+     which is a containing block for `position: fixed` and is why
+     `ChurchDetailSheet` has to be portalled to document.body. New code inside
+     a card no longer inherits that trap. */
+  --card: #3a2a36;         /* a card on the page */
+  --card-raised: #4b3947;  /* a tile INSIDE a card */
+  --card-sunken: #070506;  /* a well — a progress track, an inset */
+  --card-solid: #3a2a36;   /* kept as an alias: --card is opaque now */
+  --stroke: rgba(255, 255, 255, 0.10);
+  --stroke-strong: rgba(255, 255, 255, 0.19);
+
+  /* ── The gold ration ─────────────────────────────────────────────────────
+     `--gold` meant "important" in eight places at once — the primary button,
+     the compass, every tip banner's border, the Pray pill, the XP bar, the
+     quest chevrons, the reward frames and the nav star — and a colour that
+     marks eight things marks none. It now has ONE job: **the thing to do
+     next**. `--edge` is where the decorative half went: a dim brass for a
+     frame, a chevron or a hairline that wants to read as warm and tappable
+     without claiming to be the action on the screen. */
+  --edge: #9a7c45;
 
   --r-sm: 12px;
   --r-md: 18px;
   --r-lg: 28px;
   --r-pill: 999px;
 
-  --shadow-pop: 0 10px 0 rgba(0, 0, 0, 0.35), 0 18px 40px rgba(122, 63, 242, 0.35);
+  --shadow-pop: 0 10px 0 rgba(0, 0, 0, 0.35), 0 18px 40px rgba(52, 30, 44, 0.55);
   --shadow-soft: 0 8px 30px rgba(0, 0, 0, 0.35);
 
   --font-display: 'Baloo 2', 'Fredoka', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -51,8 +95,8 @@ body {
   font-family: var(--font-body);
   color: var(--ink);
   background:
-    radial-gradient(1200px 700px at 50% -10%, #2a1568 0%, transparent 60%),
-    radial-gradient(900px 600px at 100% 100%, #3a1a5c 0%, transparent 55%),
+    radial-gradient(1200px 700px at 50% -10%, #2b1d26 0%, transparent 60%),
+    radial-gradient(900px 600px at 100% 100%, #33212b 0%, transparent 55%),
     linear-gradient(180deg, var(--bg-1), var(--bg-0));
   background-attachment: fixed;
   overflow-x: hidden;
@@ -105,8 +149,8 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   background: linear-gradient(
     180deg,
     var(--bg-0) 0%,
-    rgba(11, 7, 32, 0.86) 68%,
-    rgba(11, 7, 32, 0) 100%
+    rgba(14, 10, 12, 0.86) 68%,
+    rgba(14, 10, 12, 0) 100%
   );
 }
 
@@ -116,7 +160,6 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   border: 1px solid var(--stroke);
   border-radius: var(--r-lg);
   padding: 18px;
-  backdrop-filter: blur(8px);
   box-shadow: var(--shadow-soft);
 }
 
@@ -138,7 +181,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   /* text-shadow paints THROUGH clipped text and muddies it; a filter shadows
      the painted glyphs instead. Hosts must drop their text-shadow for gold. */
   text-shadow: none !important;
-  filter: drop-shadow(0 1px 2px rgba(8,3,24,0.85));
+  filter: drop-shadow(0 1px 2px rgba(9, 6, 8,0.85));
 }
 .gradient-text {
   background: linear-gradient(92deg, var(--gold), var(--coral) 55%, var(--grape));

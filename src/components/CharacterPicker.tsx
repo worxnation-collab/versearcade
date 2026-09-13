@@ -270,7 +270,7 @@ function TileRow({
                 padding: 0,
                 borderRadius: 14,
                 background: selected ? 'var(--grape)' : 'var(--card-solid)',
-                border: selected ? '2px solid var(--gold)' : '2px solid var(--stroke)',
+                border: selected ? '2px solid var(--grape)' : '2px solid var(--stroke)',
                 boxShadow: selected ? '0 0 0 3px color-mix(in srgb, var(--gold) 35%, transparent)' : 'none',
                 cursor: 'pointer',
                 scrollSnapAlign: 'center',
@@ -323,7 +323,7 @@ function FigureTab({ name, selected, onClick }: { name: string; selected: boolea
         fontWeight: 800,
         fontSize: 14,
         background: selected ? 'var(--grape)' : 'var(--card-solid)',
-        border: selected ? '1px solid var(--gold)' : '1px solid var(--stroke)',
+        border: selected ? '1px solid var(--grape)' : '1px solid var(--stroke)',
         color: 'inherit',
         cursor: 'pointer',
       }}
@@ -363,7 +363,7 @@ function SwatchRow({
               height: 36,
               borderRadius: '50%',
               background: s.hex,
-              border: selected === s.key ? '2px solid var(--gold)' : '2px solid var(--stroke)',
+              border: selected === s.key ? '2px solid var(--grape)' : '2px solid var(--stroke)',
               boxShadow:
                 selected === s.key ? '0 0 0 3px color-mix(in srgb, var(--gold) 35%, transparent)' : 'none',
               opacity: have ? 1 : 0.45,

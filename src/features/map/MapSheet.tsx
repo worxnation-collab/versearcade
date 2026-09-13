@@ -77,7 +77,7 @@ export function MapSheet({ onClose }: { onClose: () => void }) {
           // The app's sheet tier — opened from the nav rather than from the
           // player card, so 100 like the keep, church and library sheets.
           zIndex: 100,
-          background: 'rgba(8,3,24,0.78)',
+          background: 'rgba(9, 6, 8,0.78)',
           display: 'flex',
           alignItems: 'flex-end',
           justifyContent: 'center',
@@ -138,7 +138,7 @@ export function MapSheet({ onClose }: { onClose: () => void }) {
                   >
                     <span style={{ fontSize: 20, flexShrink: 0 }}>{inv.icon}</span>
                     <span style={{ flex: 1, minWidth: 0, fontWeight: 800, fontSize: 14 }}>{inv.label}</span>
-                    <span style={{ color: 'var(--gold)', flexShrink: 0 }}>›</span>
+                    <span style={{ color: 'var(--ink-faint)', flexShrink: 0 }}>›</span>
                   </motion.button>
                 ))}
               </div>

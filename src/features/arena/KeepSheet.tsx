@@ -281,7 +281,7 @@ export function KeepSheet({
           position: 'fixed',
           inset: 0,
           zIndex: 100,
-          background: 'rgba(8,3,24,0.72)',
+          background: 'rgba(9, 6, 8,0.72)',
           display: 'flex',
           alignItems: 'flex-end',
           justifyContent: 'center',

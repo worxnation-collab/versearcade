@@ -40,8 +40,8 @@ export function FirstVisitTip({ id }: { id: TipId }) {
             gap: 10,
             padding: '10px 12px',
             marginBottom: 12,
-            borderColor: 'var(--gold)',
-            background: 'rgba(255,210,63,0.07)',
+            borderColor: 'var(--edge)',
+            background: 'transparent',
             overflow: 'hidden',
           }}
         >

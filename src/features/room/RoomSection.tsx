@@ -355,8 +355,8 @@ export function RoomSection() {
                 fontWeight: 800,
                 fontSize: 13.5,
                 padding: '10px 18px',
-                borderColor: 'var(--gold)',
-                color: 'var(--gold)',
+                borderColor: 'var(--edge)',
+                color: 'var(--ink)',
               }}
             >
               🙏 Pray

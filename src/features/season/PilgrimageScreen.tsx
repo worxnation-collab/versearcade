@@ -425,7 +425,7 @@ function QuestRow({
           GILDED
         </span>
       )}
-      {to && <span style={{ color: 'var(--gold)', marginLeft: 6 }}>›</span>}
+      {to && <span style={{ color: 'var(--edge)', marginLeft: 6 }}>›</span>}
     </>
   )
   return (

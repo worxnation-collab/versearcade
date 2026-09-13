@@ -699,7 +699,7 @@ function Board({
               position: 'absolute',
               inset: 0,
               background:
-                'linear-gradient(180deg, rgba(11,7,32,0.72) 0%, rgba(11,7,32,0.62) 50%, rgba(11,7,32,0.76) 100%)',
+                'linear-gradient(180deg, rgba(14, 10, 12,0.72) 0%, rgba(14, 10, 12,0.62) 50%, rgba(14, 10, 12,0.76) 100%)',
             }}
           />
         </div>

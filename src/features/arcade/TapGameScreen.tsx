@@ -212,7 +212,7 @@ function Gate({
             style={{
               position: 'absolute',
               inset: 0,
-              background: 'linear-gradient(180deg, rgba(20,10,52,0) 45%, var(--card-solid) 100%)',
+              background: 'linear-gradient(180deg, rgba(30, 21, 28,0) 45%, var(--card-solid) 100%)',
             }}
           />
         </div>

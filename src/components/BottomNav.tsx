@@ -48,7 +48,7 @@ function NavDot() {
         height: 9,
         borderRadius: 999,
         background: 'var(--gold)',
-        border: '2px solid rgba(20,10,52,0.95)',
+        border: '2px solid rgba(30, 21, 28,0.95)',
         boxSizing: 'content-box',
       }}
     />
@@ -141,7 +141,7 @@ function CompassPuck({ onOpen, hint }: { onOpen: () => void; hint: boolean }) {
         placeItems: 'center',
         fontSize: 21,
         lineHeight: 1,
-        background: 'rgba(20,10,52,0.85)',
+        background: 'rgba(30, 21, 28,0.85)',
         // The one visual difference that carries the meaning: a gold ring on
         // the first run, so the thing that explains the app is itself findable.
         // It stops the moment it is opened once — see MAP_SEEN_KEY above.
@@ -222,7 +222,7 @@ export function BottomNav() {
           minWidth: 0,
           padding: 6,
           borderRadius: 999,
-          background: 'rgba(20,10,52,0.85)',
+          background: 'rgba(30, 21, 28,0.85)',
           border: '1px solid var(--stroke)',
           backdropFilter: 'blur(14px)',
           boxShadow: '0 10px 30px rgba(0,0,0,0.5)',

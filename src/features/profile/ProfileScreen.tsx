@@ -322,7 +322,7 @@ export default function ProfileScreen() {
                     style={{
                       position: 'absolute', top: -2, right: -2, width: 8, height: 8,
                       borderRadius: 999, background: 'var(--gold)',
-                      border: '2px solid rgba(20,10,52,0.95)', boxSizing: 'content-box',
+                      border: '2px solid rgba(30, 21, 28,0.95)', boxSizing: 'content-box',
                     }}
                   />
                 )}

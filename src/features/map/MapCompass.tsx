@@ -6,6 +6,7 @@ import { useJuice } from '@/juice/useJuice'
 import { useSettings } from '@/store/settings'
 import { MapSheet } from './MapSheet'
 import { useInvitations } from './invitations'
+import { Icon } from '@/data/icons'
 
 // The compass, at full size, standing on the Play tab.
 //
@@ -110,14 +111,13 @@ export function MapCompass() {
               borderRadius: 999,
               display: 'grid',
               placeItems: 'center',
-              fontSize: 24,
-              lineHeight: 1,
+              color: glowing ? 'var(--gold)' : 'var(--ink-dim)',
               background: 'rgba(30, 21, 28,0.85)',
               border: `1px solid ${glowing ? 'var(--edge)' : 'var(--stroke)'}`,
               boxShadow: '0 6px 20px rgba(0,0,0,0.45)',
             }}
           >
-            🧭
+            <Icon id="compass" size={25} />
           </motion.span>
           <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
             <b style={{ fontFamily: 'var(--font-display)', fontSize: 16 }}>
@@ -157,7 +157,9 @@ export function MapCompass() {
                   background: 'rgba(255,210,63,0.08)',
                 }}
               >
-                <span style={{ fontSize: 20, flexShrink: 0 }}>{inv.icon}</span>
+                <span style={{ flexShrink: 0, lineHeight: 0, color: 'var(--gold)' }}>
+                  <Icon id={inv.icon} size={20} />
+                </span>
                 <span style={{ flex: 1, minWidth: 0, fontWeight: 800, fontSize: 14 }}>{inv.label}</span>
                 <span style={{ color: 'var(--gold)', flexShrink: 0 }}>›</span>
               </motion.button>

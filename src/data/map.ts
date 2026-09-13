@@ -1,3 +1,4 @@
+import type { IconId } from './icons'
 // Everywhere you can go, as data.
 //
 // This app has five tabs and around two dozen destinations, and the gap between
@@ -30,21 +31,21 @@ export type MapArea = 'play' | 'battle' | 'study' | 'church' | 'you'
 export interface MapAreaDef {
   id: MapArea
   /** Matches the bottom nav's icon for the tab, so the map reads as the app. */
-  icon: string
+  icon: IconId
   title: string
 }
 
 export const MAP_AREAS: MapAreaDef[] = [
-  { id: 'play', icon: '🎮', title: 'Play' },
-  { id: 'battle', icon: '⚔️', title: 'Battle' },
-  { id: 'study', icon: '📚', title: 'Study' },
-  { id: 'church', icon: '⛪', title: 'Church' },
-  { id: 'you', icon: '⭐', title: 'You' },
+  { id: 'play', icon: 'play', title: 'Play' },
+  { id: 'battle', icon: 'battle', title: 'Battle' },
+  { id: 'study', icon: 'study', title: 'Study' },
+  { id: 'church', icon: 'church', title: 'Church' },
+  { id: 'you', icon: 'you', title: 'You' },
 ]
 
 export interface MapPlace {
   id: string
-  icon: string
+  icon: IconId
   label: string
   /** One line saying what it IS. Not a slogan, and never a number. */
   line: string
@@ -70,7 +71,7 @@ export const MAP_PLACES: MapPlace[] = [
   // ── Play ────────────────────────────────────────────────────────────────
   {
     id: 'home',
-    icon: '✦',
+    icon: 'verse',
     label: 'Today’s drop',
     line: 'The verse everyone is playing right now',
     to: '/play',
@@ -78,7 +79,7 @@ export const MAP_PLACES: MapPlace[] = [
   },
   {
     id: 'daily-trivia',
-    icon: '✨',
+    icon: 'sparkle',
     label: 'Today’s trivia',
     line: 'A round about one book of the Bible, new every day',
     to: '/play/trivia',
@@ -86,7 +87,7 @@ export const MAP_PLACES: MapPlace[] = [
   },
   {
     id: 'arcade',
-    icon: '🕹️',
+    icon: 'arcade',
     label: 'The arcade',
     line: 'Three machines · a minute each',
     to: '/arcade',
@@ -94,7 +95,7 @@ export const MAP_PLACES: MapPlace[] = [
   },
   {
     id: 'road',
-    icon: '🌾',
+    icon: 'road',
     label: 'The Harvest Road',
     line: 'The season’s road and everything along it',
     to: '/pilgrimage',
@@ -103,7 +104,7 @@ export const MAP_PLACES: MapPlace[] = [
   },
   {
     id: 'ranks',
-    icon: '🏆',
+    icon: 'trophy',
     label: 'Worldwide ranks',
     line: 'Where the day’s players stand',
     to: '/leaderboard',
@@ -114,7 +115,7 @@ export const MAP_PLACES: MapPlace[] = [
   // ── Battle ──────────────────────────────────────────────────────────────
   {
     id: 'battle',
-    icon: '⚔️',
+    icon: 'battle',
     label: 'Your battles',
     line: 'Whose move it is, and your faction’s hall',
     to: '/battle',
@@ -123,7 +124,7 @@ export const MAP_PLACES: MapPlace[] = [
   },
   {
     id: 'battle-new',
-    icon: '➕',
+    icon: 'plus',
     label: 'Start a battle',
     line: 'Challenge a buddy, or share a link',
     to: '/battle/new',
@@ -132,7 +133,7 @@ export const MAP_PLACES: MapPlace[] = [
   },
   {
     id: 'battle-live',
-    icon: '⚡',
+    icon: 'bolt',
     label: 'Live battle',
     line: 'One clock, both reading · room code or quick match',
     to: '/battle/live',
@@ -143,7 +144,7 @@ export const MAP_PLACES: MapPlace[] = [
   // ── Study ───────────────────────────────────────────────────────────────
   {
     id: 'study',
-    icon: '📚',
+    icon: 'study',
     label: 'The library',
     line: 'Tabitha lends what you feel like working on',
     to: '/study',
@@ -152,7 +153,7 @@ export const MAP_PLACES: MapPlace[] = [
   },
   {
     id: 'review',
-    icon: '🧠',
+    icon: 'brain',
     label: 'Verses to review',
     line: 'The ones you kept, coming back around',
     to: '/review',
@@ -161,7 +162,7 @@ export const MAP_PLACES: MapPlace[] = [
   },
   {
     id: 'focus',
-    icon: '🎯',
+    icon: 'target',
     label: 'Focus drill',
     line: 'One book, over and over, until it sticks',
     to: '/study/focus',
@@ -170,7 +171,7 @@ export const MAP_PLACES: MapPlace[] = [
   },
   {
     id: 'trivia',
-    icon: '✨',
+    icon: 'sparkle',
     label: 'Bonus trivia',
     line: 'The daily verse’s last question, five at a time',
     to: '/study/trivia',
@@ -179,7 +180,7 @@ export const MAP_PLACES: MapPlace[] = [
   },
   {
     id: 'cpu',
-    icon: '🤖',
+    icon: 'robot',
     label: 'Race a study partner',
     line: 'A battle that counts for nothing but practice',
     to: '/battle/cpu',
@@ -188,7 +189,7 @@ export const MAP_PLACES: MapPlace[] = [
   },
   {
     id: 'cross',
-    icon: '✝️',
+    icon: 'cross',
     label: 'The Cross Word',
     line: 'Two words that share a letter, and the verse they came from',
     to: '/arcade/cross',
@@ -197,7 +198,7 @@ export const MAP_PLACES: MapPlace[] = [
   },
   {
     id: 'reports',
-    icon: '📈',
+    icon: 'chart',
     label: 'How you’re doing',
     line: 'Your accuracy, book by book',
     to: '/study/reports',
@@ -206,7 +207,7 @@ export const MAP_PLACES: MapPlace[] = [
   },
   {
     id: 'bag',
-    icon: '🎒',
+    icon: 'bag',
     label: 'Your bag',
     line: 'The relics study runs have turned up',
     to: '/study/bag',
@@ -215,7 +216,7 @@ export const MAP_PLACES: MapPlace[] = [
   },
   {
     id: 'bible',
-    icon: '📖',
+    icon: 'book',
     label: 'Your Bible',
     line: 'All 66 books, shading in as you play',
     to: '/bible',
@@ -224,7 +225,7 @@ export const MAP_PLACES: MapPlace[] = [
   },
   {
     id: 'seals',
-    icon: '🔖',
+    icon: 'seal',
     label: 'Your seals',
     line: 'A seal for every book you finish reading',
     to: '/bible/seals',
@@ -233,7 +234,7 @@ export const MAP_PLACES: MapPlace[] = [
   },
   {
     id: 'highlights',
-    icon: '💛',
+    icon: 'heart',
     label: 'Verses you’ve kept',
     line: 'Everything you’ve highlighted, in one place',
     to: '/bible/highlights',
@@ -244,7 +245,7 @@ export const MAP_PLACES: MapPlace[] = [
   // ── Church ──────────────────────────────────────────────────────────────
   {
     id: 'church',
-    icon: '⛪',
+    icon: 'church',
     label: 'Your church',
     line: 'The building, the yard, and this week’s rivalry',
     to: '/church',
@@ -253,7 +254,7 @@ export const MAP_PLACES: MapPlace[] = [
   },
   {
     id: 'churches',
-    icon: '📣',
+    icon: 'megaphone',
     label: 'For churches',
     line: 'Bring your congregation in — get in touch',
     to: '/churches',
@@ -263,7 +264,7 @@ export const MAP_PLACES: MapPlace[] = [
   // ── You ─────────────────────────────────────────────────────────────────
   {
     id: 'you',
-    icon: '⭐',
+    icon: 'you',
     label: 'Your profile',
     line: 'You, your room and your card',
     to: '/you',
@@ -271,7 +272,7 @@ export const MAP_PLACES: MapPlace[] = [
   },
   {
     id: 'pray',
-    icon: '🙏',
+    icon: 'pray',
     label: 'Pray',
     line: 'A prayer built one movement at a time, in your own room',
     to: '/you?pray=1',
@@ -279,7 +280,7 @@ export const MAP_PLACES: MapPlace[] = [
   },
   {
     id: 'wall',
-    icon: '🕯️',
+    icon: 'candle',
     label: 'The Prayer Wall',
     line: 'Leave a note, or hold a candle for somebody else’s',
     to: '/pray',
@@ -288,7 +289,7 @@ export const MAP_PLACES: MapPlace[] = [
   },
   {
     id: 'customize',
-    icon: '✨',
+    icon: 'sparkle',
     label: 'Customize',
     line: 'Skins, pets, items, cards, borders and badges',
     to: '/you?customize=1',
@@ -296,7 +297,7 @@ export const MAP_PLACES: MapPlace[] = [
   },
   {
     id: 'wardrobe',
-    icon: '🧺',
+    icon: 'basin',
     label: 'The Wardrobe',
     line: 'Everything there is to wear, and what brings it',
     to: '/wardrobe',
@@ -304,7 +305,7 @@ export const MAP_PLACES: MapPlace[] = [
   },
   {
     id: 'journal',
-    icon: '📔',
+    icon: 'journal',
     label: 'The Journal',
     line: 'Everything you’ve passed so far',
     to: '/journal',
@@ -312,7 +313,7 @@ export const MAP_PLACES: MapPlace[] = [
   },
   {
     id: 'mail',
-    icon: '📬',
+    icon: 'mail',
     label: 'Mailbox',
     line: 'Gifts, buddy requests and the season’s news',
     to: '/mail',
@@ -321,7 +322,7 @@ export const MAP_PLACES: MapPlace[] = [
   },
   {
     id: 'buddies',
-    icon: '🤝',
+    icon: 'buddies',
     label: 'Bible Buddies',
     line: 'The people you play alongside',
     to: '/buddies',
@@ -330,7 +331,7 @@ export const MAP_PLACES: MapPlace[] = [
   },
   {
     id: 'cards',
-    icon: '🃏',
+    icon: 'card',
     label: 'Your collection',
     line: 'Verse cards and relics you’ve gathered',
     to: '/collection',
@@ -339,7 +340,7 @@ export const MAP_PLACES: MapPlace[] = [
   },
   {
     id: 'admin',
-    icon: '🛠️',
+    icon: 'tools',
     label: 'Admin',
     line: 'Operator dashboard',
     to: '/admin',

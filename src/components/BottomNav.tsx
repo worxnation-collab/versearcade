@@ -8,6 +8,7 @@ import { useGifts } from '@/store/gifts'
 import { useReviews } from '@/store/reviews'
 import { useSettings } from '@/store/settings'
 import { useAccountLocked } from '@/components/AccountWall'
+import { Icon, type IconId } from '@/data/icons'
 
 // Five tabs, one per thing you actually come here to do. Ranks folded into
 // Play; Buddies and Cards folded into You — each still a full screen at its own
@@ -18,12 +19,19 @@ import { useAccountLocked } from '@/components/AccountWall'
 // drawn). The tabs stay VISIBLE and tappable for guests on purpose — a locked
 // tab you can look into is the pitch, and hiding half the nav would make the
 // app look smaller than it is.
-const tabs = [
-  { to: '/play', label: 'Play', icon: '🎮', guest: true },
-  { to: '/battle', label: 'Battle', icon: '⚔️', guest: false },
-  { to: '/study', label: 'Study', icon: '📚', guest: false },
-  { to: '/church', label: 'Church', icon: '⛪', guest: false },
-  { to: '/you', label: 'You', icon: '⭐', guest: true },
+//
+// The icons are DRAWN (`data/icons.tsx`), not emoji and not renders. An emoji
+// is a different typeface on every platform, at a size this app does not
+// control, in a colour it cannot set — and all three of those matter here,
+// because a tab is white when you are on it, faint when you are not, and dim
+// behind a padlock. That is the runtime-colour carve-out the church kit and
+// the seals' wax already sit in.
+const tabs: { to: string; label: string; icon: IconId; guest: boolean }[] = [
+  { to: '/play', label: 'Play', icon: 'play', guest: true },
+  { to: '/battle', label: 'Battle', icon: 'battle', guest: false },
+  { to: '/study', label: 'Study', icon: 'study', guest: false },
+  { to: '/church', label: 'Church', icon: 'church', guest: false },
+  { to: '/you', label: 'You', icon: 'you', guest: true },
 ]
 
 // A pending buddy request lives two taps deep on the You tab, so nothing out
@@ -65,12 +73,11 @@ function NavLock() {
         position: 'absolute',
         top: 2,
         right: 2,
-        fontSize: 9,
-        lineHeight: 1,
-        opacity: 0.85,
+        lineHeight: 0,
+        opacity: 0.8,
       }}
     >
-      🔒
+      <Icon id="lock" size={10} />
     </span>
   )
 }
@@ -150,9 +157,10 @@ function CompassPuck({ onOpen, hint }: { onOpen: () => void; hint: boolean }) {
           ? '0 10px 30px rgba(0,0,0,0.5), 0 0 0 3px rgba(255,210,63,0.18)'
           : '0 10px 30px rgba(0,0,0,0.5)',
         backdropFilter: 'blur(14px)',
+        color: hint ? 'var(--gold)' : 'var(--ink-dim)',
       }}
     >
-      🧭
+      <Icon id="compass" size={23} />
     </motion.button>
   )
 }
@@ -255,7 +263,7 @@ export function BottomNav() {
                   boxShadow: isActive ? '0 4px 14px rgba(122,63,242,0.5)' : 'none',
                 }}
               >
-                <span style={{ fontSize: 20 }}>{t.icon}</span>
+                <Icon id={t.icon} size={21} />
                 <span style={{ fontSize: 10, fontWeight: 800, whiteSpace: 'nowrap' }}>{t.label}</span>
                 {t.to === '/you' && buddyRequests + unseenGifts > 0 && <NavDot />}
                 {/* Not while the tab is locked: the padlock sits in the same

@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSettings } from '@/store/settings'
 import { useJuice } from '@/juice/useJuice'
+import { Icon, type IconId } from '@/data/icons'
 
 // One line about a tab, the first time it is opened.
 //
@@ -9,14 +10,14 @@ import { useJuice } from '@/juice/useJuice'
 // than a modal in front of the Play tab. One sentence, one ✕, remembered per
 // tip, and never shown again — not a coach mark that returns, not a checklist
 // of tabs to visit. A tip that has been closed leaves no trace.
-export const TIPS = {
-  battle: { icon: '⚔️', text: 'Challenge a friend to the same quiz, head to head. Your wins raise your team’s keep — a hall you get to furnish.' },
-  study: { icon: '📚', text: 'Nothing in here touches your rank. Race the CPU, drill one book, replay a verse, or open your own Bible — all 66, lighting up as you read.' },
-  church: { icon: '⛪', text: 'Play for the church you actually go to. Your points pool with everyone there, the building grows for all of you, and you plant the garden out front.' },
-  you: { icon: '⭐', text: 'Build your character, earn borders and badges, unlock hero skins — and furnish your own Upper Room, with a quiet place in it to pray.' },
-} as const
+export const TIPS: Record<string, { icon: IconId; text: string }> = {
+  battle: { icon: 'battle', text: 'Challenge a friend to the same quiz, head to head. Your wins raise your team’s keep — a hall you get to furnish.' },
+  study: { icon: 'study', text: 'Nothing in here touches your rank. Race the CPU, drill one book, replay a verse, or open your own Bible — all 66, lighting up as you read.' },
+  church: { icon: 'church', text: 'Play for the church you actually go to. Your points pool with everyone there, the building grows for all of you, and you plant the garden out front.' },
+  you: { icon: 'you', text: 'Build your character, earn borders and badges, unlock hero skins — and furnish your own Upper Room, with a quiet place in it to pray.' },
+}
 
-export type TipId = keyof typeof TIPS
+export type TipId = 'battle' | 'study' | 'church' | 'you'
 
 export function FirstVisitTip({ id }: { id: TipId }) {
   const juice = useJuice()
@@ -45,7 +46,9 @@ export function FirstVisitTip({ id }: { id: TipId }) {
             overflow: 'hidden',
           }}
         >
-          <span aria-hidden style={{ fontSize: 18, lineHeight: 1.2, flexShrink: 0 }}>{tip.icon}</span>
+          <span aria-hidden style={{ lineHeight: 0, flexShrink: 0, marginTop: 1, color: 'var(--edge)' }}>
+            <Icon id={tip.icon} size={17} />
+          </span>
           <p className="dim" style={{ margin: 0, fontSize: 13, lineHeight: 1.45, flex: 1, minWidth: 0 }}>{tip.text}</p>
           <button
             className="pill"

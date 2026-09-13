@@ -3418,11 +3418,22 @@ Three rules the room adds to the ones it inherits:
   `lib/roomProgress.ts`, the `petProgress` shape). No grant table, nothing to
   revoke, and **the screen showing the room has to `load()` the bible and
   collection stores** or it quietly reports 0 and locks three earned pieces.
-- **Furnishings stay drawn SVG even once the room is painted.** `lib/postcard.ts`
-  serialises the scene into an `<img>` and an SVG loaded that way never fetches
-  external resources — a room made of `<image href>` exports blank. The chamber
-  may become a Nano Banana painting (`art/upper-room.json` → `room-1`…`room-5`,
-  wired through `GENERATED_ART` like every other tier ladder); the props may not.
+- **Furnishings are painted cut-outs over a drawn fallback**, like everything
+  else here — 17 of the 18 (`art/upper-room-props.json` → `public/keep/`), the
+  keep's 14 of 15 (`art/keep-props.json`, `RASTER_DECOR` in `data/keepArt.ts`).
+  The two holdouts are the documented runtime-colour carve-out: `room_lampstand`
+  takes `lit` and `keep_kite_shield` takes the denomination's colour, and a
+  baked image can't take a colour.
+
+  **This reversed a hard constraint, so read why before assuming it never was.**
+  `lib/postcard.ts` serialises the room into an `<img>`, and an SVG loaded that
+  way never fetches external resources — so a room made of `<image href>`
+  exported BLANK, and furnishings had to be drawn. The postcard INLINES every
+  href as a data: URI now, which is not a fetch, so a raster furnishing survives
+  the export and anything that fails to fetch is dropped rather than left
+  broken. What has NOT changed is that **a drawn fallback still has to exist**:
+  generated art layers OVER a drawing rather than instead of it, and a
+  furnishing with no drawing is an empty anchor the moment a PNG 404s.
 
 **The postcard has to go through Capacitor on native, and the reason is a whole
 class of bug.** `lib/postcard.ts` used to end at an `<a download>` click, which a

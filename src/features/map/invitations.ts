@@ -46,6 +46,19 @@ import { todayLocalDate } from '@/lib/date'
 // If a future session wants a completion number here, understand it is not a
 // tweak to this file: it is the thing four other features in this app were
 // deliberately built without.
+//
+// **`to` is where the deed is DONE, never the tab it lives on.** A row that
+// says "kneel and wash a friend's feet" and lands somebody at the top of the
+// You tab has told them what to do and then made them find it — which is
+// exactly the state the map was built to fix, reproduced one level down. So the
+// Basin's row opens the Basin's own list of people, the librarian's row opens
+// her desk, the chest's row opens the chest, and the buddy row goes to the
+// buddies list rather than to the tab it is folded inside. Four of these need a
+// deep link because the destination is a SHEET or a folded panel rather than a
+// route (`?chest=1` on the Play tab, `?desk=1` on Study, `?people=basin` and
+// `?pray=1` on You); each is read once at mount and stripped from the URL, the
+// house pattern, or a reload re-opens it over whatever the player moved on to.
+// Adding a row here means finding its door, not its neighbourhood.
 
 // ── The first week ──────────────────────────────────────────────────────────
 //
@@ -152,11 +165,11 @@ export function useInvitations(): MapInvite[] {
   // Today's verse first, always — it is the one thing this app is actually for,
   // and every other entry here is something to do around it.
   if (!playedToday) {
-    out.push({ id: 'verse', icon: '✦', label: 'Today’s verse is live', to: '/play' })
+    out.push({ id: 'verse', icon: '✦', label: 'Today’s verse is live', to: '/play/run' })
   } else if (!chestOpenedOn(todayDate)) {
     // Only once the verse is done: that is when the chest unlocks, and an
     // invitation to something still locked is a tease rather than an offer.
-    out.push({ id: 'chest', icon: '🎁', label: 'Your chest is waiting to be opened', to: '/play' })
+    out.push({ id: 'chest', icon: '🎁', label: 'Your chest is waiting to be opened', to: '/play?chest=1' })
   }
 
   // The day's trivia round, right behind the verse: it is the Play tab's other
@@ -182,14 +195,14 @@ export function useInvitations(): MapInvite[] {
       // librarian, and people went to Study, did something else, and watched
       // the line stay. Any study run now borrows the book (QuizRunner →
       // useLibrary.borrowIfNeeded), so the door and the deed agree.
-      out.push({ id: 'library', icon: '📚', label: 'Borrow today’s book from Tabitha', to: '/study' })
+      out.push({ id: 'library', icon: '📚', label: 'Borrow today’s book from Tabitha', to: '/study?desk=1' })
     }
     // The Basin. Open until you have knelt for ONE person today — not "until
     // your twelve are done", which would keep the compass lit all day for a
     // thing few people can finish and turn a gift into a quota. Online-only
     // like the gesture itself: a keyless build has nobody's feet to wash.
     if (online && !washedSomeoneToday && opens('wash')) {
-      out.push({ id: 'wash', icon: '🪣', label: 'Kneel and wash a friend’s feet', to: '/you' })
+      out.push({ id: 'wash', icon: '🪣', label: 'Kneel and wash a friend’s feet', to: '/you?people=basin' })
     }
     // The wall. Same shape as the Basin's line: open until you have knelt for
     // ONE note today, never "until your twelve are done". Gated on the server
@@ -205,7 +218,7 @@ export function useInvitations(): MapInvite[] {
       out.push({ id: 'gathering', icon: '🎲', label: 'It’s the gathering hour — find a live match', to: '/battle/live' })
     }
     if (buddyRequests > 0) {
-      out.push({ id: 'buddies', icon: '🤝', label: 'Someone is waiting on you', to: '/you' })
+      out.push({ id: 'buddies', icon: '🤝', label: 'Someone is waiting on you', to: '/buddies' })
     }
     if (unseenGifts > 0) {
       out.push({ id: 'mail', icon: '📬', label: 'There’s something in your mailbox', to: '/mail' })

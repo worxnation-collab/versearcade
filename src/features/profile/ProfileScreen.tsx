@@ -53,6 +53,18 @@ export default function ProfileScreen() {
   // and the section must stay open when it goes.
   const [openInventory] = useState(() => searchParams.get('inventory') === '1')
   const inventoryRef = useRef<HTMLDivElement>(null)
+  // ?people=basin|buddies opens the "Your people" row on that panel and puts it
+  // under the thumb. The compass's "kneel and wash a friend's feet" row points
+  // at the Basin — it used to land on this tab's masthead, several screens above
+  // the list of people whose feet you can actually wash, which is the same
+  // "here's the neighbourhood, find it yourself" gap the map was built to
+  // close. Captured once, because the param is stripped straight after and the
+  // panel has to stay open when it goes.
+  const [openPeople] = useState(() => {
+    const v = searchParams.get('people')
+    return v === 'basin' || v === 'buddies' ? v : null
+  })
+  const peopleRef = useRef<HTMLHeadingElement>(null)
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   const [nameErr, setNameErr] = useState<string | null>(null)
@@ -115,6 +127,23 @@ export default function ProfileScreen() {
     }, 60)
     return () => clearTimeout(t)
   }, [openInventory, setSearchParams])
+
+  // Same beat, same reason, for "Your people".
+  useEffect(() => {
+    if (!openPeople) return
+    const t = setTimeout(() => {
+      peopleRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          next.delete('people')
+          return next
+        },
+        { replace: true },
+      )
+    }, 60)
+    return () => clearTimeout(t)
+  }, [openPeople, setSearchParams])
 
   if (!profile) return null
   const cards = owned.length
@@ -342,15 +371,17 @@ export default function ProfileScreen() {
           things are different kinds of thing, and one undifferentiated pill row
           of five would undo the very distinction these headings were added to
           draw. */}
-      <h3 style={{ fontSize: 16, margin: '18px 0 10px' }} className="dim">Your people</h3>
+      <h3 ref={peopleRef} style={{ fontSize: 16, margin: '18px 0 10px', scrollMarginTop: 8 }} className="dim">Your people</h3>
       {/* Open rather than folded, and first: it's the only row here that's an
           invitation instead of a drawer, and a player with no church has
           nothing to open. It removes itself the moment there is one — or when
           they say it isn't for them. */}
       <ChurchNudge />
+      {/* A deep link wins over the waiting-request default: somebody who tapped
+          "wash a friend's feet" asked for the Basin by name. */}
       <TabbedSection
-        defaultOpen={buddyRequests > 0}
-        defaultTab={buddyRequests > 0 ? 'buddies' : undefined}
+        defaultOpen={!!openPeople || buddyRequests > 0}
+        defaultTab={openPeople ?? (buddyRequests > 0 ? 'buddies' : undefined)}
         tabs={[
           {
             key: 'buddies',

@@ -3920,10 +3920,47 @@ mistyped route does not throw and does not fail to compile — it falls through
 the catch-all to Landing, silently signing somebody out of their own app, on the
 one row nobody happened to tap.
 
-Two deep links exist so the map has somewhere honest to point: `?pray=1` on
-`/you` opens the prayer sheet and `?customize=1` opens the customizer. Both are
-frozen at mount and stripped from the URL immediately, or a reload re-opens them
-over whatever the player moved on to.
+**Every row lands where the deed is DONE, not on the tab it lives on.** That is
+the rule for the invitations panel and for the quest rows alike, and it was a
+real gap rather than a polish pass: "kneel and wash a friend's feet" landed on
+the You tab's masthead — several screens above the list of people whose feet you
+can wash — and "borrow today's book" landed in the library with no hint that the
+librarian is the thing to tap. A row that names the deed and then makes you find
+it is the map's own problem reproduced one level down. So the Basin's row opens
+the Basin's panel, the librarian's opens her desk, the chest's opens the chest,
+the verse's opens the run (the start gate still reads the verse first, so it is
+the drop box's own button rather than a way past it), and the buddy row goes to
+`/buddies` rather than the tab it is folded inside.
+
+**A quest is a door too, and `data/questDoors.ts` is the map.** Every verb in
+`KNOWN_VERBS` names the place it is scored, and an OPEN daily on the road strip
+and the Pilgrimage screen is a button to it — "Keep a verse" opens the Bible,
+where the heart is. Four things hold it inside the rules this file already has:
+it is a door and never a shortcut (nothing about tapping one completes a quest
+or pays a mile); a DONE quest is plain text again, because there is nowhere left
+to send anybody; it adds no number, so the row still carries only the quest's
+own bar; and it **fails closed per verb** — a verb with no entry renders as the
+text it always was, never as a button that goes nowhere. `unlock_track` is the
+one deliberate `DOORLESS` entry: it is scored by walking into a room you have
+not been in, and there is no single room to open.
+
+Deep links exist so all of that has somewhere honest to point: `?pray=1` on
+`/you` opens the prayer sheet, `?customize=1` the customizer, `?inventory=1` the
+bag, `?people=basin|buddies` the "Your people" row on that panel, `?chest=1` on
+`/play` the chest, `?desk=1` on `/study` Tabitha, `?keep=1` on `/battle` the
+hall. All are frozen at mount and stripped from the URL immediately, or a reload
+re-opens them over whatever the player moved on to — and `?chest=1` also
+suppresses the weekly recap's auto-open, because arriving on a row you tapped by
+name and being shown last week's numbers instead is that row not working.
+
+`scripts/check-quest-doors.mjs` (in `npm run build`) is check-map's argument
+applied to the two route tables it doesn't read: it asserts every quest door and
+every invitation `to` against `App.tsx`, that `KNOWN_VERBS` and `questDoors`
+agree (a verb added for a new road with no door would ship as a row that says
+what to do and not where), and that every `?x=` written in either table is
+actually read by some screen — a deep link nobody answers lands on the right tab
+and does nothing, which is this same bug one level quieter. All three failures
+RENDER, so they are a build failure, the `check-trivia` habit.
 
 ### A started run is locked, and can't be re-dealt
 

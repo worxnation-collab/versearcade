@@ -55,8 +55,29 @@ export default function StudyScreen() {
 
   // Old deep links (the drop toast used to send ?bag=1 here) land on the bag's
   // own page now that it's a place of its own.
-  const [params] = useSearchParams()
-  const [atDesk, setAtDesk] = useState(false)
+  //
+  // ?desk=1 opens Tabitha straight away. The compass's "borrow today's book"
+  // row and any quest naming `borrow_book` point here, because the checkout is
+  // a HOTSPOT in the room rather than a route — landing in the library and
+  // leaving somebody to work out that the librarian is the thing to tap is the
+  // gap that row exists to close. Frozen at mount and the param dropped on the
+  // way past, so a reload doesn't re-open the desk over whatever they went on
+  // to do.
+  const [params, setParams] = useSearchParams()
+  const [wantsDesk] = useState(() => params.get('desk') === '1')
+  const [atDesk, setAtDesk] = useState(wantsDesk)
+
+  useEffect(() => {
+    if (!wantsDesk) return
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('desk')
+        return next
+      },
+      { replace: true },
+    )
+  }, [wantsDesk, setParams])
 
   useEffect(() => {
     loadDue()

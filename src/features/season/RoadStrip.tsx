@@ -9,6 +9,7 @@ import { roadBackground } from './roadArt'
 import { RewardArt } from './RewardArt'
 import { activeRoad, nextPayout, rewardLabel } from '@/data/season'
 import { milesProgress } from '@/lib/season'
+import { questDoor } from '@/data/questDoors'
 
 // The Pilgrimage's front door, on the Play tab.
 //
@@ -24,6 +25,17 @@ import { milesProgress } from '@/lib/season'
 // the score. Same rules as the road screen: the three are everyone's three,
 // each is a bar toward a goal it names, and a finished one simply reads as
 // finished — no streak of days, no count of days missed.
+//
+// **And an unfinished quest is a DOOR.** The row used to be text with a bar
+// under it — "Keep a verse" says what to do and leaves you to remember that the
+// heart lives in the Bible, which is fine once you know this app and is the
+// whole problem before then. Each open daily now goes where its verb is scored
+// (`data/questDoors.ts`); a finished one stays plain text, because there is
+// nowhere left to send anybody. It is a door and not a shortcut: nothing about
+// tapping it completes the quest or pays a mile.
+//
+// That is also why this card is a DIV with buttons inside it rather than one
+// big button — buttons can't nest, the same shape `MapCompass` takes.
 //
 // It shows what's NEXT and never how far behind you are. There is no pace bar,
 // no "63% of players are past this", no percentage of the road walked — that
@@ -59,9 +71,7 @@ export function RoadStrip() {
   const dailies = quests.filter((q) => q.kind === 'daily')
 
   return (
-    <motion.button
-      onClick={() => navigate('/pilgrimage')}
-      whileTap={{ scale: 0.98 }}
+    <motion.div
       className="card"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
@@ -72,10 +82,25 @@ export function RoadStrip() {
         display: 'flex',
         flexDirection: 'column',
         gap: 12,
-        cursor: 'pointer',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
+      <motion.button
+        onClick={() => navigate('/pilgrimage')}
+        whileTap={{ scale: 0.98 }}
+        aria-label={`${road.name} — open the road`}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          width: '100%',
+          padding: 0,
+          background: 'none',
+          border: 0,
+          color: 'inherit',
+          textAlign: 'left',
+          cursor: 'pointer',
+        }}
+      >
         {/* The window. Deliberately still — CrowdLife's glide between waypoints
             reads as pacing rather than walking at this size, and this sits on the
             busiest screen in the app, so the figure just breathes. */}
@@ -187,7 +212,7 @@ export function RoadStrip() {
         ) : (
           <div style={{ fontFamily: 'var(--font-display)', color: 'var(--gold)', fontSize: 18, flexShrink: 0 }}>→</div>
         )}
-      </div>
+      </motion.button>
 
       {/* Today's three, under the road. The bars are the road screen's own,
           slimmed: what to do, and how close it is. */}
@@ -195,8 +220,12 @@ export function RoadStrip() {
         <div style={{ display: 'grid', gap: 6, width: '100%', borderTop: '1px solid var(--stroke)', paddingTop: 10 }}>
           {dailies.map((q) => {
             const p = Math.min(1, q.goal > 0 ? q.progress / q.goal : 0)
-            return (
-              <div key={q.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: '2px 10px', alignItems: 'center' }}>
+            // Only an OPEN quest is a door; a finished one has nowhere left to
+            // send anybody, and a verb with no entry falls back to the text it
+            // has always been rather than to a button that goes nowhere.
+            const door = q.done ? undefined : questDoor(q.verb)
+            const body = (
+              <>
                 <span
                   style={{
                     fontSize: 12.5,
@@ -214,6 +243,7 @@ export function RoadStrip() {
                   style={{ fontSize: 11, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}
                 >
                   {q.done ? `+${q.miles} mi` : `${Math.min(q.progress, q.goal)}/${q.goal}`}
+                  {door && <span style={{ color: 'var(--gold)', marginLeft: 6 }}>›</span>}
                 </span>
                 <div
                   style={{
@@ -232,11 +262,43 @@ export function RoadStrip() {
                     }}
                   />
                 </div>
-              </div>
+              </>
+            )
+            const grid = {
+              display: 'grid',
+              gridTemplateColumns: 'minmax(0,1fr) auto',
+              gap: '2px 10px',
+              alignItems: 'center',
+              width: '100%',
+            } as const
+            if (!door) return <div key={q.id} style={grid}>{body}</div>
+            return (
+              <motion.button
+                key={q.id}
+                whileTap={{ scale: 0.98 }}
+                onClick={(e) => {
+                  // The card's own tap opens the road; this one opens the place
+                  // the quest is done, so it must not do both.
+                  e.stopPropagation()
+                  navigate(door)
+                }}
+                aria-label={`${q.text} — go there`}
+                style={{
+                  ...grid,
+                  padding: 0,
+                  background: 'none',
+                  border: 0,
+                  color: 'inherit',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                }}
+              >
+                {body}
+              </motion.button>
             )
           })}
         </div>
       )}
-    </motion.button>
+    </motion.div>
   )
 }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
@@ -95,7 +95,29 @@ export default function HomeScreen() {
   const setSettings = useSettings((s) => s.set)
   const [countdown, setCountdown] = useState(msUntilNextLocalMidnight())
   const [tutorialOpen, setTutorialOpen] = useState(false)
-  const [sheet, setSheet] = useState<null | 'chest' | 'lantern' | 'account' | 'week'>(null)
+  // ?chest=1 opens the chest straight away — the compass's "your chest is
+  // waiting" row and any quest naming `open_chest` point here, because the
+  // chest is a SHEET on this tab rather than a route and landing on the tab
+  // leaves somebody hunting for the thing they just tapped. Frozen at mount and
+  // the param dropped on the way past, the house pattern: a reload must not
+  // re-open it over whatever they moved on to.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [wantsChest] = useState(() => searchParams.get('chest') === '1')
+  const [sheet, setSheet] = useState<null | 'chest' | 'lantern' | 'account' | 'week'>(
+    wantsChest ? 'chest' : null,
+  )
+
+  useEffect(() => {
+    if (!wantsChest) return
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('chest')
+        return next
+      },
+      { replace: true },
+    )
+  }, [wantsChest, setSearchParams])
   const recap = useWeekly((s) => s.recap)
   const recapSeen = useWeekly((s) => s.seen)
   const snapshotWeek = useWeekly((s) => s.snapshot)
@@ -141,8 +163,10 @@ export default function HomeScreen() {
   // pill nobody knows to tap is a recap nobody reads. After that it waits in
   // the pill row for the rest of the week.
   useEffect(() => {
-    if (recap && !recapSeen && !tutorialOpen) setSheet('week')
-  }, [recap, recapSeen, tutorialOpen])
+    // ...unless something was asked for by name. Arriving on ?chest=1 and being
+    // shown last week's numbers instead is the row not working.
+    if (recap && !recapSeen && !tutorialOpen && !wantsChest) setSheet('week')
+  }, [recap, recapSeen, tutorialOpen, wantsChest])
 
   // The device's reminders read `playedToday` (a played day's nudge is
   // dropped), so a finished run has to re-plan them. No-op off native.

@@ -16,6 +16,7 @@ import {
   type RoadDef,
 } from '@/data/season'
 import { MILES_PER_WAYSTATION, milesProgress } from '@/lib/season'
+import { questDoor } from '@/data/questDoors'
 import { SeasonCosmetics } from './SeasonCosmetics'
 import { roadBackground } from './roadArt'
 import { RewardArt } from './RewardArt'
@@ -348,6 +349,7 @@ function QuestSection() {
             goal={q.goal}
             done={q.done}
             miles={q.miles}
+            to={q.done ? undefined : questDoor(q.verb)}
             onReroll={
               !q.done && canReroll
                 ? () => {
@@ -376,6 +378,7 @@ function QuestSection() {
                 done={q.done}
                 miles={q.miles}
                 gilded={q.gilded}
+                to={q.done ? undefined : questDoor(q.verb)}
               />
             ))}
           </>
@@ -385,6 +388,11 @@ function QuestSection() {
   )
 }
 
+// One quest. The TEXT is the door when the quest is still open — tapping "Keep
+// a verse" opens the Bible, where the heart is. See `data/questDoors.ts` for
+// the map and for why it is only ever a door: it opens the place, it never
+// completes the quest. A finished quest, and a verb with no single place to
+// send anybody, render exactly as they always did.
 function QuestRow({
   text,
   progress,
@@ -392,6 +400,7 @@ function QuestRow({
   done,
   miles,
   gilded,
+  to,
   onReroll,
 }: {
   text: string
@@ -400,21 +409,52 @@ function QuestRow({
   done: boolean
   miles: number
   gilded?: boolean
+  /** Where this is done. Undefined ⇒ the row is plain text, as before. */
+  to?: string
   onReroll?: () => void
 }) {
+  const navigate = useNavigate()
+  const juice = useJuice()
   const pct = Math.min(1, goal > 0 ? progress / goal : 0)
+  const label = (
+    <>
+      {done ? '✓ ' : ''}
+      {text}
+      {gilded && (
+        <span style={{ color: 'var(--gold)', fontSize: 11, marginLeft: 6, fontWeight: 700 }}>
+          GILDED
+        </span>
+      )}
+      {to && <span style={{ color: 'var(--gold)', marginLeft: 6 }}>›</span>}
+    </>
+  )
   return (
     <div style={{ padding: '9px 0', borderBottom: '1px solid var(--stroke)' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-        <span style={{ fontSize: 13.5, flex: 1, color: done ? 'var(--ink-faint)' : 'var(--ink)' }}>
-          {done ? '✓ ' : ''}
-          {text}
-          {gilded && (
-            <span style={{ color: 'var(--gold)', fontSize: 11, marginLeft: 6, fontWeight: 700 }}>
-              GILDED
-            </span>
-          )}
-        </span>
+        {to ? (
+          <button
+            onClick={() => { juice.select?.(); navigate(to) }}
+            aria-label={`${text} — go there`}
+            style={{
+              fontSize: 13.5,
+              flex: 1,
+              minWidth: 0,
+              padding: 0,
+              background: 'none',
+              border: 0,
+              color: 'var(--ink)',
+              font: 'inherit',
+              textAlign: 'left',
+              cursor: 'pointer',
+            }}
+          >
+            {label}
+          </button>
+        ) : (
+          <span style={{ fontSize: 13.5, flex: 1, color: done ? 'var(--ink-faint)' : 'var(--ink)' }}>
+            {label}
+          </span>
+        )}
         <span
           style={{
             fontFamily: 'var(--font-display)',

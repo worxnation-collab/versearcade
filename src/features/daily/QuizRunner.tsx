@@ -3,6 +3,8 @@ import type { ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
+import { ListenButton } from '@/components/ListenButton'
+import { Icon } from '@/data/icons'
 import { ComboMeter } from '@/components/ComboMeter'
 import { CountUp } from '@/components/CountUp'
 import { useJuice } from '@/juice/useJuice'
@@ -492,7 +494,17 @@ export function QuizRunner({
             style={{ display: 'flex', flexDirection: 'column', flex: 1 }}
           >
             <div className="card" style={{ padding: 26, textAlign: 'center' }}>
-              <span className="pill">📖 {verse.translation}</span>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <span className="pill">
+                  <Icon id="book" size={13} />
+                  {verse.translation}
+                </span>
+                {/* The TEXT alone, never the reference: this phase hides which
+                    book it is on purpose, and a voice saying "John 3:16" would
+                    hand over the answer to the first question. The clock has
+                    not started, so listening costs exactly what reading does. */}
+                <ListenButton text={verse.text} compact />
+              </div>
               <p style={{ fontSize: 24, lineHeight: 1.5, fontWeight: 700, marginTop: 18, fontFamily: 'var(--font-display)' }}>
                 “{verse.text}”
               </p>

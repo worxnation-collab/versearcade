@@ -37,6 +37,10 @@ interface SettingsState {
   appNudgeDone: boolean
   /** Preferred translation for reading the full chapter (bible-api code). */
   readingTranslation: string
+  /** Which of the device's two chosen voices reads scripture aloud. Shared
+   *  with the prayer sheet on purpose: it is one person's preferred reading
+   *  voice, not a per-feature setting. */
+  readingVoice: 'female' | 'male'
   /**
    * How big the verse text is inside the book. 1 is the drawn default; the
    * chapter reader multiplies its own sizes by this.
@@ -75,6 +79,7 @@ export const useSettings = create<SettingsState>()(
       appNudgeSnoozedAt: 0,
       appNudgeDone: false,
       readingTranslation: 'web',
+      readingVoice: 'female',
       readingTextScale: 1,
       prayerShowShape: false,
       prayerVoice: 'female',

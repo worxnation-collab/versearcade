@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { useJuice } from '@/juice/useJuice'
+import { ListenButton } from '@/components/ListenButton'
 import { useSettings } from '@/store/settings'
 import { useBible } from '@/store/bible'
 import { useSeason } from '@/store/season'
@@ -233,6 +234,7 @@ export default function BibleChapterScreen() {
                     chapter={chapter}
                     verse={verse}
                     tier={tier}
+                    body={body ?? undefined}
                     playable={seed?.reference ?? null}
                     onClose={() => setOpen(null)}
                   />
@@ -281,6 +283,7 @@ function VerseActions({
   chapter,
   verse,
   tier,
+  body,
   playable,
   onClose,
 }: {
@@ -288,6 +291,9 @@ function VerseActions({
   chapter: number
   verse: number
   tier: VerseTier
+  /** The words, when the chapter's text loaded. Undefined ⇒ no Listen, rather
+   *  than a button that would read the reference and nothing else. */
+  body?: string
   playable: string | null
   onClose: () => void
 }) {
@@ -339,6 +345,23 @@ function VerseActions({
         </div>
 
         <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+          {body && (
+            <ListenButton
+              text={`${reference}. ${body}`}
+              label="Listen to this verse"
+              style={{
+                justifyContent: 'center',
+                padding: '10px 14px',
+                borderRadius: 'var(--r-pill)',
+                border: `1px solid ${PAPER.rule}`,
+                background: 'rgba(255,255,255,0.6)',
+                color: PAPER.ink,
+                fontFamily: 'var(--font-display)',
+                fontWeight: 800,
+                fontSize: 14,
+              }}
+            />
+          )}
           <button
             onClick={onSave}
             aria-pressed={saved}

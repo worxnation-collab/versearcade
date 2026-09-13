@@ -519,7 +519,7 @@ export default function CrossWordScreen({ demo }: { demo?: boolean }) {
                   they are an offer that goes nowhere and a link that bounces.
                   The verse itself — the whole payoff — stays. */}
               {!demo && (
-                <VerseActions reference={verse.reference} book={verse.book} chapter={verse.chapter} />
+                <VerseActions reference={verse.reference} book={verse.book} chapter={verse.chapter} text={verse.text} />
               )}
               {!demo && (
                 <div style={{ marginTop: 14 }}>

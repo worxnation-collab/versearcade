@@ -210,7 +210,7 @@ export function RoadStrip() {
             ))}
           </div>
         ) : (
-          <div style={{ fontFamily: 'var(--font-display)', color: 'var(--gold)', fontSize: 18, flexShrink: 0 }}>→</div>
+          <div style={{ fontFamily: 'var(--font-display)', color: 'var(--edge)', fontSize: 18, flexShrink: 0 }}>→</div>
         )}
       </motion.button>
 
@@ -243,7 +243,7 @@ export function RoadStrip() {
                   style={{ fontSize: 11, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}
                 >
                   {q.done ? `+${q.miles} mi` : `${Math.min(q.progress, q.goal)}/${q.goal}`}
-                  {door && <span style={{ color: 'var(--gold)', marginLeft: 6 }}>›</span>}
+                  {door && <span style={{ color: 'var(--edge)', marginLeft: 6 }}>›</span>}
                 </span>
                 <div
                   style={{

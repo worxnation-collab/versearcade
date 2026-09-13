@@ -92,8 +92,8 @@ export function TabbedSection({
                   fontWeight: 800,
                   cursor: 'pointer',
                   color: on ? 'var(--ink)' : 'var(--ink-dim)',
-                  background: on ? 'var(--grape)' : 'var(--card)',
-                  borderColor: t.dot && !on ? 'var(--gold)' : on ? 'var(--gold)' : 'var(--stroke)',
+                  background: on ? 'var(--select)' : 'var(--card)',
+                  borderColor: t.dot && !on ? 'var(--edge)' : on ? 'var(--select)' : 'var(--stroke)',
                 }}
               >
                 {t.label}
@@ -103,7 +103,7 @@ export function TabbedSection({
                     style={{
                       position: 'absolute', top: -3, right: -3, width: 8, height: 8,
                       borderRadius: 999, background: 'var(--gold)',
-                      border: '2px solid rgba(20,10,52,0.95)', boxSizing: 'content-box',
+                      border: '2px solid rgba(30, 21, 28,0.95)', boxSizing: 'content-box',
                     }}
                   />
                 )}
@@ -115,7 +115,7 @@ export function TabbedSection({
           onClick={() => { juice.select(); setOpen((o) => !o) }}
           aria-expanded={open}
           aria-label={open ? `Hide ${current.label}` : `Show ${current.label}`}
-          style={{ background: 'transparent', border: 'none', padding: '4px 0 0', cursor: 'pointer', color: 'var(--gold)', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}
+          style={{ background: 'transparent', border: 'none', padding: '4px 0 0', cursor: 'pointer', color: 'var(--ink-faint)', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}
         >
           ▾
         </button>

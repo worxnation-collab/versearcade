@@ -4,13 +4,9 @@ import {
   anchorsHoldingOn,
   packDecor as packOn,
   placedTierOn,
-  planMoveOn,
-  planMoveToPointOn,
   planPickOn,
-  planResizeOn,
   planPlacementOn,
   unpackDecor as unpackOn,
-  type MovePlan,
   type PickOutcome,
   type PlacementMap,
   type PlacementPlan,
@@ -364,7 +360,7 @@ export const KEEP_SURFACE: Surface = {
 export const MAX_DECOR_TIER = MAX_TIER
 
 export { packOn as packDecor, unpackOn as unpackDecor }
-export type { MovePlan, PickOutcome, PlacementPlan }
+export type { PickOutcome, PlacementPlan }
 
 /** 'Grand Woven Rug' — the name a tiered decoration wears in the UI. */
 export function decorName(value?: string | null): string {
@@ -380,19 +376,6 @@ export function planPlacement(
   decorId: string | null,
 ): PlacementPlan {
   return planPlacementOn(KEEP_SURFACE, placements, anchor, decorId)
-}
-
-export function planMove(placements: PlacementMap, from: string, to: string): MovePlan | null {
-  return planMoveOn(KEEP_SURFACE, placements, from, to)
-}
-
-/** Move a placed piece to a free point inside its own mount's band. */
-export function planMoveToPoint(placements: PlacementMap, from: string, x: number, y: number): MovePlan | null {
-  return planMoveToPointOn(KEEP_SURFACE, placements, from, x, y)
-}
-
-export function planResize(placements: PlacementMap, anchor: string, scale: number): MovePlan | null {
-  return planResizeOn(placements, anchor, scale)
 }
 
 export function planPick(placements: PlacementMap, decorId: string, tier = 1): PickOutcome {

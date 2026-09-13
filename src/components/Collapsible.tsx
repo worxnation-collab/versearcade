@@ -47,7 +47,7 @@ export function Collapsible({
         style={{
           width: '100%', display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'space-between',
           padding: '13px 14px', marginBottom: 10, cursor: 'pointer',
-          borderColor: open ? 'var(--gold)' : 'var(--stroke)',
+          borderColor: open ? 'var(--stroke-strong)' : 'var(--stroke)',
         }}
       >
         {/* One line, always — a wrapped title would slide under the pill. */}

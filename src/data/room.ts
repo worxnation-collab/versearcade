@@ -31,13 +31,9 @@ import {
   TIER_PREFIX,
   anchorsHoldingOn,
   placedTierOn,
-  planMoveOn,
-  planMoveToPointOn,
   planPickOn,
-  planResizeOn,
   planPlacementOn,
   unpackDecor,
-  type MovePlan,
   type PickOutcome,
   type PlacementMap,
   type PlacementPlan,
@@ -275,19 +271,6 @@ export function planRoomPlacement(
   id: string | null,
 ): PlacementPlan {
   return planPlacementOn(ROOM_SURFACE, placements, anchor, id)
-}
-
-export function planRoomMove(placements: PlacementMap, from: string, to: string): MovePlan | null {
-  return planMoveOn(ROOM_SURFACE, placements, from, to)
-}
-
-/** Move a placed furnishing to a free point inside its own mount's band. */
-export function planRoomMoveToPoint(placements: PlacementMap, from: string, x: number, y: number): MovePlan | null {
-  return planMoveToPointOn(ROOM_SURFACE, placements, from, x, y)
-}
-
-export function planRoomResize(placements: PlacementMap, anchor: string, scale: number): MovePlan | null {
-  return planResizeOn(placements, anchor, scale)
 }
 
 export function planRoomPick(placements: PlacementMap, id: string, tier = 1): PickOutcome {

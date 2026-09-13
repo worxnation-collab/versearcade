@@ -94,6 +94,7 @@ export default function WordCatchScreen({ demo }: { demo?: boolean }) {
                 reference={verse.reference}
                 book={verse.book}
                 chapter={verse.chapter}
+                text={verse.text}
               />
             )}
           </VerseCard>

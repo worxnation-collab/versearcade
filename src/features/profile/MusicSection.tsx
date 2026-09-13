@@ -79,7 +79,7 @@ export function MusicSection() {
               style={{
                 display: 'flex', alignItems: 'center', gap: 11, width: '100%', textAlign: 'left',
                 padding: '9px 10px', borderRadius: 12,
-                background: isPlaying ? 'var(--grape)' : 'var(--card-solid)',
+                background: isPlaying ? 'var(--select)' : 'var(--card-solid)',
                 border: `1px solid ${isPlaying ? 'var(--gold)' : 'var(--stroke)'}`,
                 cursor: found && on ? 'pointer' : 'default',
               }}

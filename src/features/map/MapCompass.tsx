@@ -6,6 +6,7 @@ import { useJuice } from '@/juice/useJuice'
 import { useSettings } from '@/store/settings'
 import { MapSheet } from './MapSheet'
 import { useInvitations } from './invitations'
+import { Icon } from '@/data/icons'
 
 // The compass, at full size, standing on the Play tab.
 //
@@ -68,9 +69,13 @@ export function MapCompass() {
         style={{
           width: '100%',
           padding: '14px 14px 12px',
-          borderColor: glowing ? 'var(--gold)' : 'var(--stroke)',
-          background: glowing ? 'rgba(255,210,63,0.07)' : undefined,
-          boxShadow: glowing ? '0 0 0 3px rgba(255,210,63,0.10)' : undefined,
+          // The FRAME steps down and the rows inside keep the gold: they are
+          // the doors, and the card is only what holds them. Two golds on one
+          // screen is what the ration exists to stop — the Play button above
+          // is already the action.
+          borderColor: glowing ? 'var(--edge)' : 'var(--stroke)',
+          background: undefined,
+          boxShadow: undefined,
         }}
       >
         {/* The header IS the door to the whole map. Buttons can't nest, so the
@@ -106,16 +111,13 @@ export function MapCompass() {
               borderRadius: 999,
               display: 'grid',
               placeItems: 'center',
-              fontSize: 24,
-              lineHeight: 1,
-              background: 'rgba(20,10,52,0.85)',
-              border: `1px solid ${glowing ? 'var(--gold)' : 'var(--stroke)'}`,
-              boxShadow: glowing
-                ? '0 6px 20px rgba(0,0,0,0.45), 0 0 18px rgba(255,210,63,0.28)'
-                : '0 6px 20px rgba(0,0,0,0.45)',
+              color: glowing ? 'var(--gold)' : 'var(--ink-dim)',
+              background: 'rgba(30, 21, 28,0.85)',
+              border: `1px solid ${glowing ? 'var(--edge)' : 'var(--stroke)'}`,
+              boxShadow: '0 6px 20px rgba(0,0,0,0.45)',
             }}
           >
-            🧭
+            <Icon id="compass" size={25} />
           </motion.span>
           <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
             <b style={{ fontFamily: 'var(--font-display)', fontSize: 16 }}>
@@ -155,7 +157,9 @@ export function MapCompass() {
                   background: 'rgba(255,210,63,0.08)',
                 }}
               >
-                <span style={{ fontSize: 20, flexShrink: 0 }}>{inv.icon}</span>
+                <span style={{ flexShrink: 0, lineHeight: 0, color: 'var(--gold)' }}>
+                  <Icon id={inv.icon} size={20} />
+                </span>
                 <span style={{ flex: 1, minWidth: 0, fontWeight: 800, fontSize: 14 }}>{inv.label}</span>
                 <span style={{ color: 'var(--gold)', flexShrink: 0 }}>›</span>
               </motion.button>

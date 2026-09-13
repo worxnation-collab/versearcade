@@ -107,7 +107,7 @@ export default function ChallengePost() {
           right={date >= todayLocalDate() ? <span style={{ fontSize: 11, marginLeft: 'auto', color: 'var(--coral)' }}>this day isn’t over — posting it spoils the drop</span> : undefined} />
         <div style={{ display: 'flex', gap: 6 }}>
           {([1, 2] as const).map((s) => (
-            <button key={s} className="pill" onClick={() => setSlot(s)} style={{ fontSize: 12, background: slot === s ? 'var(--grape)' : 'var(--card)', fontWeight: 800 }}>
+            <button key={s} className="pill" onClick={() => setSlot(s)} style={{ fontSize: 12, background: slot === s ? 'var(--select)' : 'var(--card)', fontWeight: 800 }}>
               {s === 1 ? '⚡ First of the day' : '⚡ Second of the day'}
             </button>
           ))}

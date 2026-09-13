@@ -38,7 +38,7 @@ export function XpBar({ xp }: { xp: number }) {
           marginBottom: 6,
           fontSize: 12,
           fontWeight: 700,
-          textShadow: '0 1px 4px rgba(8,3,24,0.9), 0 0 10px rgba(8,3,24,0.7)',
+          textShadow: '0 1px 4px rgba(9, 6, 8,0.9), 0 0 10px rgba(9, 6, 8,0.7)',
         }}
       >
         <span className="dim">LVL {level}</span>

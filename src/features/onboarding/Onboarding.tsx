@@ -169,7 +169,7 @@ function Toggle({ label, on, onClick }: { label: string; on: boolean; onClick: (
     <button
       onClick={onClick}
       className="pill"
-      style={{ background: on ? 'var(--grape)' : 'var(--card)', fontWeight: 800 }}
+      style={{ background: on ? 'var(--select)' : 'var(--card)', fontWeight: 800 }}
     >
       {label} {on ? 'ON' : 'OFF'}
     </button>

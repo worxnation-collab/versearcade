@@ -2020,7 +2020,30 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0110` (room skins — `profiles.room_skin` plus a check
+The latest is `0111` (verse highlights and private notes — `verse_notes`,
+`set_verse_note`, `my_verse_notes`). APPLIED on 2026-09-13 before the client
+merged, and verified: exactly ONE signature each, both `security definer`, both
+ACLs the house `authenticated` shape, RLS on with two policies, and all three
+check constraints present. Run end to end against a local Postgres 16 first —
+eleven cases including the two worth checking rather than reasoning about: a
+SECOND user's `my_verse_notes()` returns `{}` (the whole privacy argument, as a
+fact about the deployed function rather than a claim in its header), and a
+direct `insert` past the RPC with an invented colour or with neither a colour
+nor a note is refused by the column constraints.
+
+**It is the app's second player-authored text and it needs NO moderation
+surface, which is the whole design.** The Prayer Wall's line (0099) is shown to
+church-mates and buddies, so it needed a report path, an admin queue and a
+visibility function. A verse note is shown to NOBODY — not a buddy, not a
+church-mate, not leadership, not a card, not a board, not a crowd scene — so
+there is nothing to moderate, and that is enforced in the shape of the data:
+every function derives the owner from `auth.uid()` and none takes a user id, so
+there is no signature that could return somebody else's; RLS is self-only for
+SELECT as well as write; and no existing payload was touched. Shared notes
+would not be an extension of this — they would open the problem this design
+does not have, and need the Prayer Wall's whole apparatus.
+
+Before it, `0110` (room skins — `profiles.room_skin` plus a check
 constraint, `set_room_skin`, and `my_room` / `room_json` restated WHOLESALE
 from 0069 and 0072 respectively; a future migration editing either copies
 forward from HERE). APPLIED on 2026-09-08 before the client merged, and
@@ -2321,7 +2344,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0111` (0110 is taken by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0112` (0111 is taken by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

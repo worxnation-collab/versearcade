@@ -3,6 +3,8 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { useJuice } from '@/juice/useJuice'
 import { ListenButton } from '@/components/ListenButton'
+import { Icon } from '@/data/icons'
+import { NOTE_COLOURS, NOTE_MAX, useVerseNotes, type VerseNote } from '@/store/verseNotes'
 import { useSettings } from '@/store/settings'
 import { useBible } from '@/store/bible'
 import { useSeason } from '@/store/season'
@@ -12,7 +14,7 @@ import { FAVORITES_CAP } from '@/lib/favorites'
 import { useBibleMarks } from './useBibleMarks'
 import { BookHeader, BookPage } from './BookPage'
 import { PaperCard, TierLegend } from './tiers'
-import { PAPER, PAPER_TIER } from './paper'
+import { PAPER, PAPER_TIER, PAPER_HIGHLIGHT } from './paper'
 import { quizSeedAt, TIER_LABEL, tierAt, type VerseTier } from '@/lib/bibleProgress'
 import {
   canonBook,
@@ -42,7 +44,7 @@ export default function BibleChapterScreen() {
   const readingCode = useSettings((s) => s.readingTranslation)
   const textScale = useSettings((s) => s.readingTextScale ?? 1)
   const markChapterRead = useBible((s) => s.markChapterRead)
-  const { marks } = useBibleMarks()
+  const { marks, notes } = useBibleMarks()
 
   const [text, setText] = useState<Chapter | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
@@ -163,6 +165,11 @@ export default function BibleChapterScreen() {
       <div style={{ display: 'grid', gap: 1 }}>
         {verses.map(({ verse, body }) => {
           const tier = tierAt(book, chapter, verse, marks)
+          // The player's OWN mark, which beats the derived wash — see
+          // PAPER_HIGHLIGHT. The tier's left rule is untouched, so what the app
+          // worked out is still legible by shape underneath what they chose.
+          const mine = notes[verseReference(book, chapter, verse)]
+          const hl = mine?.colour ? PAPER_HIGHLIGHT[mine.colour] : null
           // Opening this chapter marked every verse in it read, so washing them
           // all would say nothing and turn the page into stripes. Inside a
           // chapter you've opened, `read` IS the page — what earns a mark here
@@ -185,7 +192,7 @@ export default function BibleChapterScreen() {
                   textAlign: 'left',
                   padding: '7px 10px 7px 8px',
                   borderRadius: 6,
-                  background: PAPER_TIER[paint].wash,
+                  background: hl ? hl.wash : PAPER_TIER[paint].wash,
                   // A left rule carries the tier as shape as well as color, so
                   // the states stay separable without relying on hue.
                   borderLeft: `3px solid ${PAPER_TIER[paint].rule}`,
@@ -224,6 +231,15 @@ export default function BibleChapterScreen() {
                     </span>
                   )}
                   {seed && <span aria-hidden style={{ fontSize: 10, marginLeft: 5 }}>✨</span>}
+                  {mine?.note && (
+                    <span
+                      aria-label="You wrote a note here"
+                      title="You wrote a note here"
+                      style={{ marginLeft: 6, color: PAPER.inkFaint, lineHeight: 0, display: 'inline-block', verticalAlign: '-2px' }}
+                    >
+                      <Icon id="journal" size={11} />
+                    </span>
+                  )}
                 </span>
               </button>
 
@@ -235,6 +251,7 @@ export default function BibleChapterScreen() {
                     verse={verse}
                     tier={tier}
                     body={body ?? undefined}
+                    mine={mine}
                     playable={seed?.reference ?? null}
                     onClose={() => setOpen(null)}
                   />
@@ -284,6 +301,7 @@ function VerseActions({
   verse,
   tier,
   body,
+  mine,
   playable,
   onClose,
 }: {
@@ -294,6 +312,8 @@ function VerseActions({
   /** The words, when the chapter's text loaded. Undefined ⇒ no Listen, rather
    *  than a button that would read the reference and nothing else. */
   body?: string
+  /** This player's own highlight and note on this verse, if any. */
+  mine?: VerseNote
   playable: string | null
   onClose: () => void
 }) {
@@ -380,6 +400,8 @@ function VerseActions({
             {saved ? '🔖 Kept in your Bible' : '🤍 Keep this verse'}
           </button>
 
+          <MarkUp reference={savedKey} mine={mine} />
+
           {playable ? (
             <button
               onClick={() => {
@@ -419,3 +441,91 @@ function VerseActions({
     </motion.div>
   )
 }
+
+/**
+ * The player's own mark on a verse: a colour, and a line only they will see.
+ *
+ * Two rules hold it inside this app's grain. It is **shown to nobody** — no
+ * card, no board, no roster, no crowd scene, and `my_verse_notes()` takes no
+ * user id — which is the entire reason the app's second player-authored text
+ * needs no moderation surface where the Prayer Wall's needed a whole one. And
+ * it **counts nothing**: no "12 highlighted", no bar toward 31,102, no rung.
+ *
+ * The note saves on blur rather than per keystroke — one RPC when you stop
+ * typing, not one per letter.
+ */
+function MarkUp({ reference, mine }: { reference: string; mine?: VerseNote }) {
+  const juice = useJuice()
+  const setNote = useVerseNotes((s) => s.set)
+  const [draft, setDraft] = useState(mine?.note ?? '')
+  const [open, setOpen] = useState(!!mine?.note)
+
+  const pick = (c: (typeof NOTE_COLOURS)[number]) => {
+    juice.select()
+    // Tapping the colour you already have takes it off — one control, both ways.
+    void setNote(reference, mine?.colour === c ? null : c, draft || null)
+  }
+
+  return (
+    <div style={{ display: 'grid', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+        {NOTE_COLOURS.map((c) => {
+          const on = mine?.colour === c
+          return (
+            <button
+              key={c}
+              onClick={() => pick(c)}
+              aria-label={on ? `Remove the ${c} highlight` : `Highlight this verse ${c}`}
+              aria-pressed={on}
+              style={{
+                width: 26, height: 26, borderRadius: '50%', cursor: 'pointer',
+                background: PAPER_HIGHLIGHT[c].dot,
+                border: on ? `2.5px solid ${PAPER.ink}` : `1px solid ${PAPER.rule}`,
+                boxSizing: 'border-box',
+              }}
+            />
+          )
+        })}
+        <button
+          onClick={() => { juice.select(); setOpen((o) => !o) }}
+          aria-label={open ? 'Hide the note' : 'Write a note'}
+          className="pill"
+          style={{
+            marginLeft: 'auto', fontSize: 12, padding: '5px 10px',
+            background: 'rgba(255,255,255,0.6)', border: `1px solid ${PAPER.rule}`,
+            color: PAPER.inkDim,
+          }}
+        >
+          <Icon id="journal" size={12} />
+          {mine?.note ? 'Note' : 'Add a note'}
+        </button>
+      </div>
+
+      {open && (
+        <>
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value.slice(0, NOTE_MAX))}
+            // On blur, not per keystroke: one write when you stop typing.
+            onBlur={() => {
+              const next = draft.trim()
+              if ((mine?.note ?? '') === next) return
+              void setNote(reference, mine?.colour ?? null, next || null)
+            }}
+            placeholder="Just for you — nobody else sees this."
+            rows={3}
+            style={{
+              width: '100%', resize: 'vertical', padding: '9px 11px', borderRadius: 10,
+              border: `1px solid ${PAPER.rule}`, background: 'rgba(255,255,255,0.72)',
+              color: PAPER.ink, fontFamily: 'inherit', fontSize: 14, lineHeight: 1.5,
+            }}
+          />
+          <div className="faint" style={{ fontSize: 11, color: PAPER.inkFaint, textAlign: 'right' }}>
+            {draft.length}/{NOTE_MAX}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+

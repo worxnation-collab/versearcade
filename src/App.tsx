@@ -22,6 +22,7 @@ import ReviewScreen from './features/review/ReviewScreen'
 import BuddiesScreen from './features/buddies/BuddiesScreen'
 import MailScreen from './features/mail/MailScreen'
 import JournalScreen from './features/journal/JournalScreen'
+import CalendarScreen from './features/liturgy/CalendarScreen'
 import WardrobeScreen from './features/wardrobe/WardrobeScreen'
 import PrayerWallScreen from './features/prayer/PrayerWallScreen'
 import ChurchesScreen from './features/churches/ChurchesScreen'
@@ -364,6 +365,17 @@ export default function App() {
         {/* The Journal — what you have done. Open to a guest, like /you itself:
             it is derived entirely from numbers this device already has, so it
             reads correctly with no account and walls nothing off. */}
+        {/* The church year. Open to a guest and behind no wall, like the
+            Journal and the Wardrobe: it is purely derived from the date, it
+            grants nothing, and what a day IS is not the app's to gate. */}
+        <Route
+          path="/calendar"
+          element={
+            <TabShell>
+              <CalendarScreen />
+            </TabShell>
+          }
+        />
         <Route
           path="/journal"
           element={

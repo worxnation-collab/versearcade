@@ -11,6 +11,9 @@ import { DailyChest } from '@/features/chest/DailyChest'
 import { RoadStrip } from '@/features/season/RoadStrip'
 import { MapCompass } from '@/features/map/MapCompass'
 import { PlayedToday } from '@/features/presence/PlayedToday'
+import { liturgyFor } from '@/data/liturgy'
+import { useJuice } from '@/juice/useJuice'
+import { todayLocalDate } from '@/lib/date'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/store/auth'
 import { useGame } from '@/store/game'
@@ -258,6 +261,18 @@ export default function HomeScreen() {
           A number and a door — never a score beside anybody's name. See
           `PlayedToday` and `0093_daily_players.sql`. */}
       <PlayedToday />
+
+      {/* ── What today IS in the church year ──────────────────────────────
+          One line, only on a day that is actually one of the kept days, and
+          nothing at all on the other ~355. That is this tab's own test applied
+          honestly: "is it NEW TODAY?" — Good Friday is, an ordinary Tuesday in
+          Ordinary Time is not, and a permanent row naming the season would be
+          the kind of card this tab was cut back to remove.
+
+          It is a FACT and not an invitation, which is why it is a line here
+          rather than a row in the compass: the compass lists what is open to
+          do, and nobody can do Easter. It asks nothing and pays nothing. */}
+      <FeastLine />
 
       {/* The Pilgrimage, under the two things that are new today. */}
       <div style={{ marginTop: 14 }}>
@@ -645,3 +660,37 @@ function Stat({ label, value }: { label: string; value: string }) {
     </div>
   )
 }
+
+/**
+ * Today's kept day, when there is one.
+ *
+ * Renders nothing on an ordinary day — no season badge, no "Ordinary Time"
+ * row — for the same reason `PlayedToday` renders nothing at zero: a line that
+ * is always there stops being news and becomes furniture.
+ */
+function FeastLine() {
+  const navigate = useNavigate()
+  const juice = useJuice()
+  const today = todayLocalDate()
+  const day = useMemo(() => liturgyFor(today), [today])
+  if (!day.feast) return null
+  return (
+    <motion.button
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      onClick={() => { juice.select?.(); navigate('/calendar') }}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 9, margin: '10px auto 0',
+        background: 'none', border: 0, padding: '2px 4px', cursor: 'pointer',
+        color: 'var(--ink-dim)', fontSize: 13,
+      }}
+    >
+      <span aria-hidden style={{ width: 8, height: 8, borderRadius: 2, background: day.season.hex, flexShrink: 0 }} />
+      <span>
+        Today is <b style={{ color: 'var(--ink)' }}>{day.feast.name}</b>
+      </span>
+      <span style={{ color: 'var(--edge)' }}>›</span>
+    </motion.button>
+  )
+}
+

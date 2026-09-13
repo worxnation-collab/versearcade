@@ -86,6 +86,14 @@ export const MAP_PLACES: MapPlace[] = [
     area: 'play',
   },
   {
+    id: 'calendar',
+    area: 'play',
+    icon: 'calendar',
+    to: '/calendar',
+    label: 'The church year',
+    line: 'What today is in the seasons, and what is coming',
+  },
+  {
     id: 'arcade',
     icon: 'arcade',
     label: 'The arcade',

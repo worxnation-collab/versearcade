@@ -28,6 +28,7 @@ import PrayerWallScreen from './features/prayer/PrayerWallScreen'
 import ChurchesScreen from './features/churches/ChurchesScreen'
 import ChurchScreen from './features/church/ChurchScreen'
 import ChurchPublicScreen from './features/church/ChurchPublicScreen'
+import ChurchInviteSheet from './features/church/ChurchInviteSheet'
 import AdminScreen from './features/admin/AdminScreen'
 import LeaderboardScreen from './features/leaderboard/LeaderboardScreen'
 import CollectionScreen from './features/collection/CollectionScreen'
@@ -461,6 +462,10 @@ export default function App() {
             Distinct from /church above (the player-facing tab) and /churches
             below (the B2B funnel). */}
         <Route path="/church/:id" element={<ChurchPublicScreen />} />
+        {/* The Sunday sheet — the public page as something to project or print.
+            Public and behind no wall for the same reason the page is: the
+            laptop running a church projector is signed in to nothing. */}
+        <Route path="/church/:id/invite" element={<ChurchInviteSheet />} />
         <Route path="/churches" element={<ChurchesScreen />} />
         {/* Old Groups deep links now land on the churches page. */}
         <Route path="/groups" element={<Navigate to="/churches" replace />} />

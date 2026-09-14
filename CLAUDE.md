@@ -1348,6 +1348,85 @@ top of them — a paid row lengthens nobody's list. And **typing removes it**:
 search is distance-ordered and unpaid, so the sponsor can only ever raise a
 church on the list you didn't ask for, never on the one you did.
 
+### The Sunday sheet, and the door a church comes in by
+
+The church page is the one thing here a pastor can put in front of a whole
+congregation at once, and for a long time the funnel around it was broken at
+both ends.
+
+**The invite stopped one tap short.** A signed-in visitor on `/church/:id` was
+offered a SHARE button and nothing else — so a member who followed their
+pastor's link, made an account and was carried back by `ChurchResume` was
+invited to forward a church they had not joined, and to actually join it they
+had to leave, open the Church tab and search for their own congregation by
+name. `PlayForThis` closes that with three states, because a person arriving is
+in one of exactly three and the wrong copy for any is worse than none: no
+church (the join is the primary action, and a TAP — somebody who opened a link
+to LOOK at a congregation must not be quietly enrolled in it), this church (the
+share, labelled as the invite), a different church (named, offered as a switch
+in plain words — nothing is lost, since lifetime giving follows you, which is
+exactly why the swap must be deliberate). It joins by id, never by place key: a
+stored key may be an Overture or OSM id we cannot reconstruct, and re-deriving
+one forks a second row for the same building.
+
+**`/church/:id/invite` is the same invite as something to project or print** —
+the building, the name, and a QR big enough to scan from the back row. Public
+and behind no wall for the reason the page is: the laptop running a church
+projector is signed in to nothing. It carries **no number about anybody** — no
+congregation size, no points — because a poster is the wrong place to start
+counting people. **The code is always dark-on-white in both themes and on
+paper**, which is correctness rather than taste: plenty of scanners will not
+read an inverted code, and this app is dark everywhere else.
+
+**The QR is generated here** (`lib/qr.ts`), the bargain `juice/music.ts` makes
+for audio: nothing to ship, cache or license, and it is DATA rather than art —
+a matrix is a pure function of the URL, so it could never be a baked render.
+Byte mode only, error correction level Q rather than M because a sheet gets
+creased, glared on and photographed from a distance.
+
+**`scripts/check-qr.mjs` compares it module by module against the `qrcode` npm
+package**, installed OUTSIDE the repo for the check alone (it must never become
+a dependency). A wrong QR renders perfectly and scans wrong, which is the
+`check-trivia` shape exactly. TWO things about that comparison were learned the
+hard way and both made a CORRECT encoder look broken:
+
+- **The reference optimises segments.** `qrcode.create(text)` splits a string
+  into numeric/alphanumeric/byte runs — a church id's digit runs go numeric —
+  and produces an entirely different matrix. It must be forced to a single byte
+  segment, or the diff is meaningless: it reported ~500 differing modules on
+  versions 7 and 8 while the encoder was exactly right.
+- **The reference's rule 4 deviates from the spec**, scoring
+  `|ceil(percent / 5) - 10|` and charging 10 points across the (50%, 55%) dark
+  band where the spec charges none — so the two pick different MASKS on some
+  payloads. Both codes are valid; rule 4 is about how even a code looks, not
+  whether it decodes. Proven rather than assumed: substituting the reference's
+  formula makes all 65 corpus payloads module-identical.
+
+So the strong assertion is at all eight FORCED masks (where the two must agree
+exactly, and do, across 68 payloads and every version the corpus reaches), plus
+an independently-entered table asserting each of the 40 versions leaves exactly
+the spec's data modules — a misplaced function pattern shifts every module
+after it and reads as noise rather than as a missing square.
+
+**And a church can now FIND the claim door.** Everything a congregation can do
+with its own page runs through `church_admins` (0079), and the only way in was
+a pill labelled "＋ Add info" — the words a STRANGER uses to correct a detail —
+with the leadership half a chip INSIDE that form. A pastor had to tap a button
+that sounded like it was not for them to discover the thing that was. The page
+asks the question now ("Is this your church?") and opens the same form already
+on the leadership side. **Nothing about the grant changed**: verification is
+still manual, still an operator reading the request, still revocable in one
+call, and the pill is still a REQUEST that publishes nothing and names no price
+in either build.
+
+**Sign-ups from all this are attributed** (`?src=church` on both the shared link
+and the sheet) and have their own card on the growth tab. That number existed
+before and was unreachable: the only render of `admin_signup_sources` was a
+trailing clause of a footnote inside the TikTok panel, and it appeared only
+after that panel fetched seven days x six kinds of Ayrshare analytics first — so
+"did Sunday work?" was gated behind an unrelated, slow, rate-limited fetch on a
+tab named after one network.
+
 **A church asks through the pill that already existed.** The leadership path of
 "Add info" carries a `wants_promotion` box (`0078`) that the admin queue flags —
 an ask, not a sale: it grants nothing and names no price, so the surface stays

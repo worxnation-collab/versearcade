@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/Button'
 import { useAuth } from '@/store/auth'
 import { shareResult, inviteUrl } from '@/features/daily/shareCard'
@@ -18,14 +19,26 @@ export function ShareChurch({
   churchName,
   label = '🔗 Share this church',
   note = 'Anyone can open this page — no account needed to look.',
+  sheet = true,
 }: {
   churchId: string
   churchName: string
   /** The button. Your own church's card says "Invite your congregation". */
   label?: string
   note?: string
+  /**
+   * Offer the Sunday sheet beside the link.
+   *
+   * A shared link reaches whoever reads the group chat; the sheet is the same
+   * invite as something to put on a projector or a noticeboard, which is the
+   * only version of this that reaches a whole congregation at once. It sits
+   * here rather than on its own card because the two are one decision — "pass
+   * this church on" — and a second card would be a second thing to find.
+   */
+  sheet?: boolean
 }) {
   const referralCode = useAuth((s) => s.profile?.referralCode)
+  const navigate = useNavigate()
   const juice = useJuice()
   const [msg, setMsg] = useState<string | null>(null)
 
@@ -55,6 +68,19 @@ export function ShareChurch({
   return (
     <div style={{ marginTop: 12 }}>
       <Button variant="secondary" full onClick={share}>{label}</Button>
+      {sheet && (
+        <button
+          onClick={() => { juice.select(); navigate(`/church/${churchId}/invite`) }}
+          className="pill"
+          style={{
+            display: 'block', width: '100%', marginTop: 8,
+            fontWeight: 800, fontSize: 12.5, padding: '8px 12px',
+            borderColor: 'var(--edge)',
+          }}
+        >
+          🖨️ Sunday sheet — a QR to print or project
+        </button>
+      )}
       {msg && (
         <p className="faint center" style={{ margin: '8px 0 0', fontSize: 12.5 }}>{msg}</p>
       )}

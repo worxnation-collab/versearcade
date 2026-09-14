@@ -310,12 +310,12 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: str
 // lib/commerce.ts for where a real storefront decision would live).
 function InfoSection({ page, loading }: { page: ChurchPage; loading: boolean }) {
   const { church, info, myRequestPending, canEdit } = page
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState<InfoRequestRole | null>(null)
   const [editing, setEditing] = useState(false)
   const juice = useJuice()
 
   // A different church means a different form — reset when the sheet reopens.
-  useEffect(() => { setOpen(false); setEditing(false) }, [church.id])
+  useEffect(() => { setOpen(null); setEditing(false) }, [church.id])
 
   // Verified leadership writes straight through instead of joining a queue —
   // that's the whole point of a claim (0079). The operator still grants the
@@ -330,12 +330,13 @@ function InfoSection({ page, loading }: { page: ChurchPage; loading: boolean }) 
       <InfoRequestForm
         churchId={church.id}
         churchName={church.name}
+        startRole={open}
         // Preview the skin on the building this church has actually earned, and
         // start from the one it's already wearing — a chooser that opens on
         // somebody else's look reads as a proposal to change it.
         level={churchLevelInfo(church.xp).level}
         currentSkin={church.skin}
-        onDone={() => setOpen(false)}
+        onDone={() => setOpen(null)}
       />
     )
   }
@@ -356,14 +357,48 @@ function InfoSection({ page, loading }: { page: ChurchPage; loading: boolean }) 
         ) : !myRequestPending && (
           <motion.button
             whileTap={{ scale: 0.94 }}
-            onClick={() => { juice.select?.(); setOpen(true) }}
+            onClick={() => { juice.select?.(); setOpen('member') }}
             className="pill"
-            style={{ borderColor: 'var(--gold)', color: 'var(--gold)', fontWeight: 800, fontSize: 12.5, flexShrink: 0 }}
+            style={{ borderColor: 'var(--edge)', fontWeight: 800, fontSize: 12.5, flexShrink: 0 }}
           >
             {info ? 'Suggest an edit' : '＋ Add info'}
           </motion.button>
         )}
       </div>
+
+      {/* THE CLAIM DOOR, and it did not exist before.
+          ------------------------------------------------------------------
+          Everything a church can do with its own page — correct the service
+          times, write the about, ask about a look — runs through
+          `church_admins` (0079), and the only way in was a pill labelled
+          "＋ Add info": the words a STRANGER uses to correct a detail. The
+          leadership half was a chip INSIDE that form, so a pastor had to tap a
+          button that sounded like it was not for them to discover the thing
+          that was. Nothing on the page asked the question.
+
+          So the question is asked, in one line, and it opens the same form
+          already on the leadership side. Nothing about the grant changed:
+          verification is still MANUAL and still an operator reading the
+          request (see docs/CHURCH-CLAIM.md for why that does not scale on
+          purpose), this is a REQUEST and publishes nothing, and there is no
+          price here in either build. What changed is that a church can find
+          the door. */}
+      {!canEdit && !myRequestPending && (
+        <button
+          onClick={() => { juice.select?.(); setOpen('leadership') }}
+          style={{
+            display: 'block', width: '100%', textAlign: 'left',
+            marginTop: 10, padding: '10px 12px',
+            borderRadius: 12, border: '1px solid var(--edge)',
+            background: 'var(--card-raised)', color: 'var(--ink)',
+          }}
+        >
+          <b style={{ fontSize: 13.5, fontWeight: 800 }}>Is this your church?</b>
+          <span className="faint" style={{ display: 'block', fontSize: 12, marginTop: 2, lineHeight: 1.5 }}>
+            If you're on staff here, ask for the page — you can keep the details right yourself.
+          </span>
+        </button>
+      )}
 
       {info ? (
         <div style={{ display: 'grid', gap: 8 }}>
@@ -544,17 +579,20 @@ function InfoRequestForm({
   churchName,
   level,
   currentSkin,
+  startRole = 'member',
   onDone,
 }: {
   churchId: string
   churchName: string
   level: number
   currentSkin?: string | null
+  /** Which side of "who are you to this church?" the form opens on. */
+  startRole?: InfoRequestRole
   onDone: () => void
 }) {
   const requestInfo = useChurch((s) => s.requestInfo)
   const juice = useJuice()
-  const [role, setRoleState] = useState<InfoRequestRole>('member')
+  const [role, setRoleState] = useState<InfoRequestRole>(startRole)
   const [skin, setSkin] = useState<ChurchSkinChoice>(
     (CHURCH_SKINS.find((s) => s.id === currentSkin)?.id ?? DEFAULT_CHURCH_SKIN) as ChurchSkinChoice,
   )

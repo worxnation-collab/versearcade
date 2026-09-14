@@ -102,6 +102,7 @@ export default function GrowthPanel() {
       <GuestFunnel g={m.guests} />
       <Features features={m.features} players={m.headline.players} />
       <ViralLoops v={m.viral} accounts={m.headline.accounts} />
+      <SignupSources />
       <Quality q={m.quality} money={m.money} />
       <Health h={m.health} />
     </div>
@@ -109,6 +110,123 @@ export default function GrowthPanel() {
 }
 
 // ————————————————————————————————— pieces —————————————————————————————————
+
+/**
+ * Where sign-ups came from — the one number a distribution push is judged on.
+ *
+ * It EXISTED before this card and was effectively unreachable: the only render
+ * of `admin_signup_sources` was a trailing clause of a footnote inside the
+ * TikTok panel ("…, 4 from church."), and it only appeared after that panel's
+ * Fetch ran seven days x six kinds of Ayrshare analytics — forty-odd network
+ * calls — first. So the answer to "did Sunday work?" was gated behind an
+ * unrelated, slow, rate-limited fetch on a tab named after one network, and
+ * every channel that is not a social post was a sentence fragment.
+ *
+ * It is its own card here because it is its own question. One cheap RPC, no
+ * dependency on the social engine, on the tab that already answers "is this
+ * growing and where is it leaking".
+ *
+ * `church` is the row that matters for the invite sheet and the shared page
+ * (`?src=church`, set in ShareChurch and the Sunday sheet). An empty result is
+ * a plain line rather than a zero: on a quiet week a table of noughts reads as
+ * a broken panel.
+ */
+function SignupSources() {
+  const [rows, setRows] = useState<Array<{ src: string; n: number }> | null>(null)
+  const [days, setDays] = useState(7)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  const load = useCallback(async (d: number) => {
+    setBusy(true); setErr(null)
+    try {
+      const { data, error } = await supabase!.rpc('admin_signup_sources', { p_days: d })
+      if (error) setErr(error.message)
+      else {
+        const list = (Array.isArray(data) ? data : []) as Array<{ src?: string; n?: number }>
+        setRows(list.map((r) => ({ src: String(r.src ?? ''), n: Number(r.n ?? 0) })).sort((a, b) => b.n - a.n))
+      }
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e))
+    } finally { setBusy(false) }
+  }, [])
+
+  useEffect(() => { load(days) }, [load, days])
+
+  const total = (rows ?? []).reduce((a, r) => a + r.n, 0)
+  const tracked = (rows ?? []).filter((r) => r.src)
+  const untracked = (rows ?? []).find((r) => !r.src)?.n ?? 0
+  const cell = { padding: '4px 8px', textAlign: 'right' as const }
+
+  return (
+    <Section
+      title="Where sign-ups came from"
+      hint={`New accounts in the last ${days} days, by the first tracked link the device saw (?src=). "church" is a shared church page or a Sunday sheet.`}
+    >
+      <div className="card" style={{ display: 'grid', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          {[7, 30, 90].map((d) => (
+            <button
+              key={d}
+              className="pill"
+              onClick={() => setDays(d)}
+              style={{
+                fontSize: 11, fontWeight: 800,
+                background: d === days ? 'var(--select)' : 'var(--card-solid)',
+                borderColor: d === days ? 'var(--edge)' : undefined,
+              }}
+            >
+              {d}d
+            </button>
+          ))}
+          <span className="faint" style={{ fontSize: 11, marginLeft: 'auto' }}>
+            {busy ? 'reading…' : `${total} sign-up${total === 1 ? '' : 's'}`}
+          </span>
+        </div>
+
+        {err && <p style={{ color: 'var(--coral)', fontSize: 12, margin: 0 }}>{err}</p>}
+
+        {!err && rows && tracked.length === 0 && (
+          <p className="faint" style={{ fontSize: 12, margin: 0, lineHeight: 1.5 }}>
+            No tracked sign-ups in this window{untracked ? ` — all ${untracked} arrived with no source.` : ' yet.'}
+          </p>
+        )}
+
+        {!err && tracked.length > 0 && (
+          <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12.5 }}>
+            <thead>
+              <tr className="faint">
+                <th style={{ ...cell, textAlign: 'left' }}>Source</th>
+                <th style={cell}>Sign-ups</th>
+                <th style={cell}>Share</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tracked.map((r) => (
+                <tr key={r.src}>
+                  <td style={{ ...cell, textAlign: 'left', fontWeight: 800 }}>
+                    {r.src === 'church' ? '⛪ church' : r.src}
+                  </td>
+                  <td style={{ ...cell, fontWeight: 700 }}>{r.n.toLocaleString()}</td>
+                  <td style={cell} className="faint">
+                    {total ? `${Math.round((r.n / total) * 100)}%` : '—'}
+                  </td>
+                </tr>
+              ))}
+              {untracked > 0 && (
+                <tr className="faint">
+                  <td style={{ ...cell, textAlign: 'left' }}>no source</td>
+                  <td style={cell}>{untracked.toLocaleString()}</td>
+                  <td style={cell}>{total ? `${Math.round((untracked / total) * 100)}%` : '—'}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </Section>
+  )
+}
 
 function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (

@@ -31,7 +31,22 @@ export function ShareChurch({
 
   const share = async () => {
     juice.coin()
-    const link = inviteUrl(referralCode, `/church/${churchId}`)
+    // `?src=church` beside the referral code, because the two answer different
+    // questions and only one of them was being asked. `ref` credits the PERSON
+    // who sent it; `src` files the CHANNEL, and a church invite carried no
+    // channel at all — so every sign-up a pastor drove landed in the growth
+    // tab as untracked, next to the social posts that do carry one. That is
+    // the number this whole route is judged on. `set_signup_source` (0106)
+    // validates a slug by SHAPE rather than against a list, so this needs no
+    // migration, and the server keeps only the first value on a NEW account —
+    // a hint it verifies, never a fact the client asserts.
+    //
+    // Joined with the right separator rather than a bare `&`: `inviteUrl`
+    // returns the path UNCHANGED when there is no referral code, so an
+    // appended `&src=church` would have produced `…/church/<id>&src=church`
+    // — one broken link for every sharer who has no code yet.
+    const base = inviteUrl(referralCode, `/church/${churchId}`)
+    const link = `${base}${base.includes('?') ? '&' : '?'}src=church`
     const text = `${churchName} is on Verse Arcade — come play for it:\n${link}`
     const r = await shareResult(text, link)
     setMsg(r === 'shared' ? 'Shared!' : r === 'copied' ? 'Link copied!' : 'Could not share')

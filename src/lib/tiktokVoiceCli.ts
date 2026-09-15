@@ -25,7 +25,7 @@ export interface FixResult { words: number; heard: number; text: string }
 declare global {
   interface Window {
     vaVoice: {
-      drafts: (dates: string[], token: string, force?: boolean, place?: 'open' | 'close') => Promise<DraftRow[]>
+      drafts: (dates: string[], token: string, force?: boolean | VoiceKind[], place?: 'open' | 'close') => Promise<DraftRow[]>
       hear: (wavUrl: string, token: string) => Promise<{ seconds: number; words: TimedWord[]; text: string }>
       listen: (date: string, wavUrl: string, token: string, kind?: VoiceKind, place?: 'open' | 'close') => Promise<ListenResult>
       render: (date: string, token: string, kind?: VoiceKind, place?: 'open' | 'close', pick?: string, reference?: string, restory?: boolean) => Promise<RenderResult>
@@ -80,6 +80,13 @@ window.vaVoice = {
    */
   async drafts(dates, token, force = false, place = 'close') {
     setRunnerToken(token)
+    // Redrafting is PER KIND, and that is not a convenience. The two halves
+    // of a day are recorded at different sittings, so a batch routinely has
+    // his voice parked against one of them and nothing against the other —
+    // and rewriting the draft he already read would leave the printed script
+    // saying something he never said, on a post that renders perfectly from
+    // its own parked transcript. `force: ['verse']` redraws only the morning.
+    const forced = (k: VoiceKind) => (Array.isArray(force) ? force.includes(k) : !!force)
     const out: DraftRow[] = []
     const part = async (date: string, kind: VoiceKind, draft: () => Promise<{ text: string; words: number; source: string }>): Promise<DraftPart> => {
       const t = await draft()
@@ -90,9 +97,9 @@ window.vaVoice = {
     for (const date of dates) {
       say(`drafting ${date}`)
       const v = getVerseForDate(date)
-      const verseWord = await part(date, 'verse', () => fetchThought(date, force))
+      const verseWord = await part(date, 'verse', () => fetchThought(date, forced('verse')))
       say(`drafting ${date} · the story's ${place === 'open' ? 'introduction' : 'closing word'}`)
-      const storyWord = await part(date, 'story', () => fetchStoryWord(date, force, [], place)).catch(() => null)
+      const storyWord = await part(date, 'story', () => fetchStoryWord(date, forced('story'), [], place)).catch(() => null)
       out.push({ date, reference: v.reference, verse: v.text, verseWord, storyWord, storyPlace: place })
     }
     return out

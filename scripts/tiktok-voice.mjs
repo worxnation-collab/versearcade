@@ -422,13 +422,22 @@ try {
     const start = isDate(args[0]) ? args[0] : ymdIn(TZ)
     const n = Math.max(1, Math.min(14, Number(args[1] || 7)))
     const dates = Array.from({ length: n }, (_, i) => addDays(start, i))
-    const rows = await page.evaluate(([d, t, f, pl]) => window.vaVoice.drafts(d, t, f, pl), [dates, TOKEN, !!flags.redraft, PLACE])
+    // `--redraft` rewrites both halves of every day; `--redraft=verse` (or
+    // `=story`, or `=verse,story`) rewrites only that one. The narrow form is
+    // what a real batch needs: his voice is usually parked against one half
+    // and not the other, and redrawing the script he already read leaves the
+    // printout describing a recording that does not exist.
+    const redraft = flags.redraft === true ? true
+      : flags.redraft ? String(flags.redraft).split(',').map((x) => x.trim()).filter((x) => KINDS.includes(x))
+      : false
+    if (Array.isArray(redraft) && !redraft.length) fail('use --redraft or --redraft=verse|story')
+    const rows = await page.evaluate(([d, t, f, pl]) => window.vaVoice.drafts(d, t, f, pl), [dates, TOKEN, redraft, PLACE])
     const mark = (p) => (p.listened ? ' · 🎙 recorded and listened' : p.recorded ? ' · ⏳ recorded, not listened' : '')
     const body = (p) => `${p.text}\n\n*${p.words} words · ~${Math.round(p.words / 2.4)}s · ${p.source === 'operator' ? 'your edit' : 'drafted'}*`
     const md = rows.map((r) => [
       `## ${r.date} · ${r.reference}`,
       `> ${r.verse}`,
-      `### Morning — after the verse${mark(r.verseWord)}`,
+      `### Morning — opening the post${mark(r.verseWord)}`,
       body(r.verseWord),
       ...(r.storyWord ? [`### Evening — ${r.storyPlace === 'open' ? 'introducing the story' : 'after the story'}${mark(r.storyWord)}`, body(r.storyWord)] : []),
     ].join('\n\n') + '\n').join('\n')

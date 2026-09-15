@@ -17,7 +17,7 @@
 //   copy        { date?, reference, text, theme, kind?, force?, question?, about? } → { hook, caption, hashtags[], platforms }  post copy per platform via Gemini Flash; kind (verse, story, quiz, challenge, challenge2, own) changes what the post is — a challenge passes its question, an own clip what it is about; cached at days/<date>/copy-<kind>.json
 //   story       { date, reference, text, ... }    → { title, hook, paragraphs[] }   the story behind the verse, cached at days/<date>/story.json
 //   unpost      { date, kind?, platforms? } → { results }  takes a SCHEDULED post back down by the id in the day's own record, so a re-rendered video can be posted again without leaving two
-//   thought     { date, kind?, place?, reference, text, paragraphs?, ..., force?, save?, peek? } → { text, words, source }  what the OPERATOR reads in his own voice: the ~110-word reflection after the verse (kind 'verse', days/<date>/thought.json), or — written from the story's own paragraphs (kind 'story') — the ~50-word closing word after it (place 'close', days/<date>/thought-story.json) or the ~35-word introduction handing over to Tabitha before it (place 'open', days/<date>/thought-story-intro.json). `save` parks his edit; `force` redrafts
+//   thought     { date, kind?, place?, reference, text, paragraphs?, ..., force?, save?, peek? } → { text, words, source }  what the OPERATOR reads in his own voice: the ~40-word HOOK that OPENS the morning post, before a synthetic voice reads the verse (kind 'verse', days/<date>/thought.json), or — written from the story's own paragraphs (kind 'story') — the ~50-word closing word after it (place 'close', days/<date>/thought-story.json) or the ~35-word introduction handing over to Tabitha before it (place 'open', days/<date>/thought-story-intro.json). `save` parks his edit; `force` redrafts
 //   voice       { date, kind? }                   → the day's operator recording for that kind, if one is parked (days/<date>/voice-<verse|story>.json: the timed words the hub transcribed — a story coda carries an empty `verse`), else {}
 //   voice-clear { date, kind? }                   → { ok }             removes a parked recording and its transcript, so that post falls back to Gemini's voice alone
 //   upload-url  { path }                          → { path, token, publicUrl }  a signed upload URL for a finished video (days/<date>/<kind>.mp4), its cover, one of the operator's recordings (voice-verse|story.wav/.json) or the founder photo (founder/photo.jpg), so the browser can put it in the bucket
@@ -511,10 +511,20 @@ Deno.serve(async (req) => {
     if (action === 'thought') {
       const date = String(input.date ?? '')
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: 'date must be YYYY-MM-DD' }, 400)
-      // Two things a person reads on a day: the ~110-word THOUGHT after the
-      // morning verse, and the ~50-word closing word after the evening
-      // story. They are cached apart because they are written from different
-      // material — the verse's own data, and the story Tabitha just told.
+      // Two things a person reads on a day: the ~40-word HOOK that OPENS the
+      // morning post, and the word at one end of the evening story. They are
+      // cached apart because they are written from different material — the
+      // verse's own data, and the story Tabitha just told.
+      //
+      // **The morning half was a ~110-word REFLECTION and this prompt was not
+      // changed when the layout was**, which is the pattern this engine keeps
+      // hitting from the other side: the render moved his half to the FRONT
+      // of the post as a fifteen-second hook, and the drafter went on writing
+      // forty-five seconds of him to read after a verse he no longer reads.
+      // Five takes were recorded against it before anyone measured one. A
+      // draft is an artefact like a parked wav or a rendered MP4 — when a
+      // step of this pipeline changes, go and look at what the old step has
+      // already written.
       const forStory = input.kind === 'story'
       // The six weekday READINGS each draft their own script, cached under
       // their own kind. They are the whole post rather than a coda, so they
@@ -627,12 +637,12 @@ Deno.serve(async (req) => {
       }
       const data = await gemini(`models/${TEXT_MODEL}:generateContent`, {
         contents: [{ parts: [{ text:
-          `You write a short SPOKEN reflection for the maker of Verse Arcade, a Bible app, to read aloud in his own voice on a short video right after he has read the day's verse. He is one person talking plainly to a phone, not a preacher and not a brand.\n\n` +
+          `You write the HOOK for the maker of Verse Arcade, a Bible app, to read aloud in his own voice at the very START of a short daily video — about fifteen seconds of him, and then a reading of the verse begins under him. He is one person talking plainly to a phone, not a preacher and not a brand.\n\n` +
           `Today's verse: ${reference} — "${text}"\nSpoken by: ${f('speaker', 80)}\nTo: ${f('audience', 120)}\nWhat came before: ${f('before')}\nWhat came after: ${f('after')}\nTheme: ${f('theme', 80)}\nFacts you may use: ${facts.join(' | ') || '(none)'}\n\n` +
           voiceNote +
-          `Rules. First person, present tense, short sentences that read well aloud — no sentence over about 15 words. ONE idea: who was speaking and why it was hard to say or hear, then one plain thing it asks of a person today. Use only the situation described above and the plain narrative of that passage; invent no names, numbers, events or dialogue. Nothing that one Christian tradition would say differently from another — no doctrine, no denominational language. Never shame the listener, never scold, no "we all" sermons, no rhetorical questions in a row. Do not quote the verse itself (he has just read it). Do not say "today's verse" or name the app. ` +
-          `End on a closing STATEMENT: one plain sentence, first person, saying what he is choosing or carrying TODAY because of this passage. It must settle the thought and let the video end — not a question, not an instruction to the listener, not a call to action, not a link, and never a dangling hand-off like "here is what I keep asking myself" (which is what the first week of real recordings ended on, and it reads as a sentence cut in half). Do NOT begin it with "I am left". Do NOT describe the scene again. Do NOT reuse a stock closer. It should name something specific from this passage and be a sentence only this reflection could end on.\n\n` +
-          `Return JSON with: "text" — the reflection, 100 to 120 words, plain punctuation, no emoji, no headings, no line breaks.` }] }],
+          `Rules. First person, present tense, short sentences that read well aloud — no sentence over about 15 words. It is a HOOK, not a reflection: it has to stop a thumb in the first breath and then get out of the way. Open by naming the situation or the difficulty the verse is about to speak into, in ONE sentence, so a stranger knows why to stay. Then ONE true sentence about why this verse stopped him. Then hand over to the reading — a short plain line that makes the next thing a person hears feel like the answer.\n` +
+          `Do NOT quote the verse or give away its words: it is read aloud immediately after he stops, and saying it twice is the one thing this post must not do. Do NOT summarise the passage, explain it, or apply it — there is no room, and the verse does that itself. Use only the situation described above and the plain narrative of that passage; invent no names, numbers, events or dialogue. Nothing that one Christian tradition would say differently from another — no doctrine, no denominational language. Never shame the listener, never scold, no "we all" sermons. Do not say "today's verse", name the app, thank anyone for watching, or ask for a follow, a comment or a share.\n\n` +
+          `Return JSON with: "text" — the hook, 34 to 46 words and NOT ONE WORD MORE, plain punctuation, no emoji, no headings, no line breaks.` }] }],
         generationConfig: { responseMimeType: 'application/json', temperature: 0.8 },
       })
       const cands = data.candidates as Array<{ content?: { parts?: Array<{ text?: string }> } }> | undefined
@@ -640,7 +650,10 @@ Deno.serve(async (req) => {
       let parsed: { text?: unknown } = {}
       try { parsed = JSON.parse(raw) } catch { return json({ error: 'thought was not JSON', raw: raw.slice(0, 300) }, 502) }
       const draft = String(parsed.text ?? '').replace(/\s+/g, ' ').trim().slice(0, 1600)
-      if (count(draft) < 40) return json({ error: 'thought came back too short', raw: raw.slice(0, 300) }, 502)
+      // The floor was 40 when the morning half was a ~110-word reflection; a
+      // HOOK is 34-46 words by design, so 40 refused perfectly good drafts.
+      // It still exists to catch an empty or one-line answer.
+      if (count(draft) < 20) return json({ error: 'thought came back too short', raw: raw.slice(0, 300) }, 502)
       const out = { text: draft, words: count(draft), source: 'gemini', at: new Date().toISOString() }
       await park(path, new TextEncoder().encode(JSON.stringify(out)), 'application/json')
       return json({ ...out, cached: false })

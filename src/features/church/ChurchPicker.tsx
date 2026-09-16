@@ -11,6 +11,7 @@ import {
   nearbyChurches,
   nearbyChurchPlaces,
   searchChurchesByName,
+  searchChurchPlacesByName,
   type ChurchPlace,
 } from '@/lib/churchSearch'
 
@@ -25,6 +26,22 @@ import {
 // fallback for a region we haven't loaded yet. See src/lib/churchSearch.ts for
 // why — the short version is that OSM was a year and a half stale on a real
 // congregation and kept offering its old name to the people adding its new one.
+//
+// Your church is NOT necessarily near you, and that assumption was this
+// screen's worst bug (0113). The nearby list is 30 miles because that is the
+// right default; the way PAST it has to be reachable at every moment, not only
+// when the nearby list happens to come back empty. A student at college, anyone
+// who moved, anyone travelling has a hometown church hundreds of miles away,
+// and the old screen answered them by offering the add-by-hand card — which
+// pins a church AT THE PLAYER'S CURRENT POSITION. That is how a real
+// congregation became a Chipotle 155 miles from itself. Two things follow, and
+// both are load-bearing:
+//   • "Search everywhere by name" is offered whenever anything is typed, never
+//     gated on the local list being empty. A partial local match used to hide
+//     the only way out.
+//   • Adding by hand LOOKS FIRST (see `addManually`). The name a player types
+//     is usually in the index already; offering those rows before creating a
+//     pin is the difference between joining a church and inventing one.
 //
 // The hard rule here, learned from a TestFlight build that sat on "Looking up
 // churches nearby…" forever: the map lookup NEVER blocks the screen. The moment
@@ -44,6 +61,17 @@ const SEARCH_RADIUS_MILES = 30
 const SUGGEST_COUNT = 3
 /** Our own churches come from Postgres; if that's slow, we carry on without it. */
 const KNOWN_TIMEOUT_MS = 10000
+/**
+ * How many a nationwide name search returns.
+ *
+ * Deliberately not large. "St Josephs" matches hundreds of real churches and
+ * the server hands them back nearest-first, so the useful ones are at the top
+ * and everything past the first screen is a wall of the same name at
+ * increasing distances — which reads as "it isn't here" rather than as more
+ * choice. Somebody looking for a specific distant church types its town too,
+ * and the copy under a full list says so.
+ */
+const WIDE_LIMIT = 25
 
 type Phase = 'idle' | 'locating' | 'ready'
 
@@ -60,9 +88,16 @@ export function ChurchPicker() {
   const [joining, setJoining] = useState<string | null>(null)
   const [wide, setWide] = useState<ChurchPlace[]>([])
   const [wideBusy, setWideBusy] = useState(false)
+  /** Have we actually been everywhere for this query? Drives the empty copy. */
+  const [wideDone, setWideDone] = useState(false)
   const [sponsored, setSponsored] = useState<ChurchPlace | null>(null)
   const [manual, setManual] = useState(false)
   const [manualName, setManualName] = useState('')
+  // The "look before you pin" step. `null` = haven't looked; an array = these
+  // are what the index knows by that name, and the player picks one or says
+  // plainly that none of them is it.
+  const [manualFound, setManualFound] = useState<ChurchPlace[] | null>(null)
+  const [manualBusy, setManualBusy] = useState(false)
   const searchRef = useRef<AbortController | null>(null)
   const nearbyRef = useRef<AbortController | null>(null)
 
@@ -266,28 +301,58 @@ export function ChurchPicker() {
     const ctl = new AbortController()
     searchRef.current = ctl
     setWideBusy(true)
+    setWideDone(false)
     try {
-      // Same order as the nearby list: our index, then OSM only if it has
-      // nothing to say. With no location there is no box to search, so the
-      // index can't help and this is a plain worldwide name lookup.
-      const indexed = coords ? await nearbyChurchPlaces(coords, 60, query, 40) : []
+      // NO RADIUS. This used to be `nearbyChurchPlaces(coords, 60, …)` — a
+      // sixty-mile box, which is not "a wider area" to anyone whose church is
+      // in another part of the state, and which asked the server for a single
+      // contiguous substring match so "Appleton Alliance" could never find
+      // "Alliance Church - Appleton" at any distance. Both are fixed in 0113.
+      const indexed = await searchChurchPlacesByName(query, coords, WIDE_LIMIT)
       if (ctl.signal.aborted) return
       if (indexed.length) {
         setWide(indexed)
         return
       }
+      // OSM only where our own index has nothing — a region nobody has loaded,
+      // or a server that predates 0113. Unbounded when we have no location.
       const found = await searchChurchesByName(query, coords, 60, ctl.signal)
       if (!ctl.signal.aborted) setWide(found)
     } catch {
       if (!ctl.signal.aborted) setWide([])
     } finally {
-      if (!ctl.signal.aborted) setWideBusy(false)
+      if (!ctl.signal.aborted) {
+        setWideBusy(false)
+        setWideDone(true)
+      }
     }
   }, [coords, query])
 
   useEffect(() => {
     setWide([])
+    setWideDone(false)
   }, [query])
+
+  // A typed query that matches nothing nearby goes to the server BY ITSELF,
+  // because "nothing nearby" is usually a lie told by a cap rather than a fact
+  // about the map. `loadPlaces` fetches the 60 NEAREST churches once and the
+  // box filters that list as you type — and 60 nearest in a town is not 30
+  // miles, it is 2.2 (measured, Eau Claire). So St Joseph's Chapel at 2.7 miles
+  // was not in the list at all, could not be matched by any amount of client
+  // filtering, and the screen said "nothing within 30 miles matches" about a
+  // church a five-minute drive away.
+  //
+  // Only when the local answer is genuinely empty, only once per query, and
+  // only after the nearby fetch has finished — otherwise this races the list it
+  // is meant to be a fallback for. The button below still exists for the other
+  // case: local matches that simply aren't the right church.
+  useEffect(() => {
+    const q = query.trim()
+    if (q.length < 3 || nearbyBusy || matches.length > 0) return
+    if (wide.length > 0 || wideBusy || wideDone) return
+    const t = setTimeout(() => { void searchWider() }, 350)
+    return () => clearTimeout(t)
+  }, [query, nearbyBusy, matches.length, wide.length, wideBusy, wideDone, searchWider])
 
   const pick = async (place: ChurchPlace) => {
     setJoining(place.placeKey)
@@ -310,7 +375,29 @@ export function ChurchPicker() {
     }
   }
 
-  const addManually = async () => {
+  // Look before you pin. The name somebody types is usually IN the index
+  // already — under a different word order, or with the punctuation they left
+  // out — and a hand-added church is pinned at wherever they happen to be
+  // standing, permanently, for everybody. So the name goes to the nationwide
+  // search first and the matches are offered; only once the player has seen
+  // them and said none is theirs does `addHere` create one.
+  const lookBeforeAdding = async () => {
+    const name = manualName.trim()
+    if (name.length < 2) return
+    setManualBusy(true)
+    try {
+      const found = await searchChurchPlacesByName(name, coords, 8)
+      setManualFound(found)
+    } catch {
+      // A failed look must never block adding — that would make a network blip
+      // the reason somebody can't join their church.
+      setManualFound([])
+    } finally {
+      setManualBusy(false)
+    }
+  }
+
+  const addHere = async () => {
     if (!coords || manualName.trim().length < 2) return
     await pick({
       // No place key: the server turns name + position into a stable one, so
@@ -321,6 +408,11 @@ export function ChurchPicker() {
       lng: coords.lng,
       miles: 0,
     })
+  }
+
+  const resetManual = () => {
+    setManual(false)
+    setManualFound(null)
   }
 
   return (
@@ -417,26 +509,62 @@ export function ChurchPicker() {
           {matches.length === 0 && !nearbyBusy && (
             <div className="card center" style={{ padding: 20 }}>
               <div style={{ fontSize: 30 }}>🔎</div>
+              {/* Deliberately NOT "nothing within 30 miles": the list this
+                  filtered is the 60 nearest churches, which is about two miles
+                  in a town, so that sentence was false about anything just
+                  outside it. Say what is true — none of the ones near you —
+                  and let the everywhere search say the rest. */}
               <p className="dim" style={{ margin: '8px 0 0', fontSize: 14 }}>
                 {!coords
                   ? 'Type your church name, then search.'
                   : query.trim()
-                    ? `Nothing within ${SEARCH_RADIUS_MILES} miles matches “${query.trim()}”.`
+                    ? wideBusy
+                      ? `Looking everywhere for “${query.trim()}”…`
+                      : `None of the churches near you matches “${query.trim()}”.`
                     : `We didn't find any churches within ${SEARCH_RADIUS_MILES} miles.`}
               </p>
-              {query.trim().length >= 3 && (
-                <div style={{ marginTop: 12 }}>
-                  <Button variant="secondary" disabled={wideBusy} onClick={searchWider}>
-                    {wideBusy ? 'Searching…' : coords ? 'Search a wider area' : 'Search by name'}
-                  </Button>
-                </div>
+            </div>
+          )}
+
+          {/* The way past the 30-mile list, and it is offered WHENEVER anything
+              is typed — never only when the nearby list came back empty. A
+              church three hours away is the ordinary case for a student or
+              anyone who moved, and gating this on "no local matches" meant one
+              unrelated match nearby hid the only door. It sits under the
+              results rather than above them, because the nearby list is still
+              the right first answer for most people. */}
+          {query.trim().length >= 3 && wide.length === 0 && (
+            <div className="card" style={{ padding: 14 }}>
+              <p className="dim" style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>
+                {matches.length > 0
+                  ? 'Not one of these? Your church doesn’t have to be near you.'
+                  : 'Your church doesn’t have to be near you — we can look everywhere.'}
+              </p>
+              <div style={{ marginTop: 10 }}>
+                <Button variant="secondary" full disabled={wideBusy} onClick={searchWider}>
+                  {wideBusy ? 'Looking everywhere…' : `🔎 Search everywhere for “${query.trim()}”`}
+                </Button>
+              </div>
+              {wideDone && !wideBusy && (
+                <p className="faint" style={{ margin: '10px 0 0', fontSize: 12, lineHeight: 1.5 }}>
+                  No church by that name anywhere we know of. Check the spelling, try fewer
+                  words, or add it by hand below.
+                </p>
               )}
             </div>
           )}
 
           {wide.length > 0 && (
             <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
-              <SectionLabel>{coords ? 'Further out' : 'Name matches'}</SectionLabel>
+              {/* Not "Further out": these come from a search with no radius at
+                  all, and the nearest may well be the furthest away. */}
+              <SectionLabel>Found by name</SectionLabel>
+              {wide.length >= WIDE_LIMIT && (
+                <p className="faint" style={{ fontSize: 12, margin: 0, lineHeight: 1.5 }}>
+                  Lots of churches share that name. Add your town to narrow it down — try
+                  “{query.trim()} {wide[0]?.city ?? 'your town'}”.
+                </p>
+              )}
               {wide.map((p) => (
                 <PlaceRow key={p.placeKey} place={p} busy={joining === p.placeKey} onPick={() => pick(p)} />
               ))}
@@ -445,7 +573,13 @@ export function ChurchPicker() {
 
           {/* Plenty of congregations meet in a school gym or a living room and
               aren't on any map. They should still get a building — but we can
-              only pin one where the player is, so it needs a location. */}
+              only pin one WHERE THE PLAYER IS, which is the sharp edge on this
+              card and the reason it now has two steps. Somebody 155 miles from
+              home typed a church that was already in the index and got a pin on
+              a Chipotle, permanently, because the card took the name and made a
+              row out of it without ever looking. So: look first, say plainly
+              where the pin lands, and let "it's not here" be a deliberate tap
+              rather than the default path. */}
           <div className="card">
             {!coords ? (
               <p className="dim" style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>
@@ -457,20 +591,69 @@ export function ChurchPicker() {
                 <b style={{ fontFamily: 'var(--font-display)', fontSize: 15 }}>Add your church</b>
                 <input
                   value={manualName}
-                  onChange={(e) => setManualName(e.target.value)}
+                  onChange={(e) => { setManualName(e.target.value); setManualFound(null) }}
                   placeholder="Church name"
                   maxLength={80}
                   autoCapitalize="words"
                 />
-                <p className="faint" style={{ fontSize: 12, margin: 0 }}>
-                  We'll pin it where you are now, so the people around you can find and join it too.
-                </p>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <Button variant="gold" disabled={manualName.trim().length < 2 || !!joining} onClick={addManually}>
-                    {joining ? 'Adding…' : 'Add & join'}
-                  </Button>
-                  <Button variant="ghost" onClick={() => setManual(false)}>Cancel</Button>
-                </div>
+
+                {manualFound === null ? (
+                  <>
+                    <p className="faint" style={{ fontSize: 12, margin: 0, lineHeight: 1.5 }}>
+                      We'll check whether it's already on the map first — most churches are.
+                    </p>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <Button
+                        variant="gold"
+                        disabled={manualName.trim().length < 2 || manualBusy}
+                        onClick={lookBeforeAdding}
+                      >
+                        {manualBusy ? 'Checking…' : 'Continue'}
+                      </Button>
+                      <Button variant="ghost" onClick={resetManual}>Cancel</Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {manualFound.length > 0 && (
+                      <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
+                        <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>
+                          {manualFound.length === 1
+                            ? 'We found this one. Is it yours?'
+                            : 'We found these. Is one of them yours?'}
+                        </p>
+                        {manualFound.map((p) => (
+                          <PlaceRow
+                            key={p.placeKey}
+                            place={p}
+                            busy={joining === p.placeKey}
+                            onPick={() => pick(p)}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    {/* The consequence, stated where the decision is made and in
+                        ink rather than faint. It is the one thing on this screen
+                        a player cannot undo themselves. */}
+                    <p className="dim" style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>
+                      {manualFound.length > 0 ? 'If none of those is it, we’ll' : 'We’ll'} add{' '}
+                      <b>{manualName.trim()}</b> and pin it{' '}
+                      <b>at your current location</b> — so only add one you're actually at. If your
+                      church is somewhere else, search for it by name above instead.
+                    </p>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <Button
+                        variant={manualFound.length > 0 ? 'secondary' : 'gold'}
+                        disabled={manualName.trim().length < 2 || !!joining}
+                        onClick={addHere}
+                      >
+                        {joining ? 'Adding…' : 'Add it here anyway'}
+                      </Button>
+                      <Button variant="ghost" onClick={resetManual}>Cancel</Button>
+                    </div>
+                  </>
+                )}
               </div>
             ) : (
               <button

@@ -6,12 +6,16 @@ import { useJuice } from '@/juice/useJuice'
 import { useChurch } from '@/store/church'
 import { formatMiles, getPosition, geoErrorMessage, LocationError, milesBetween, type Coords } from '@/lib/geo'
 import {
+  churchesInCity,
+  cityLabel,
   matchesQuery,
   mergePlaces,
   nearbyChurches,
   nearbyChurchPlaces,
+  searchChurchCities,
   searchChurchesByName,
   searchChurchPlacesByName,
+  type ChurchCity,
   type ChurchPlace,
 } from '@/lib/churchSearch'
 
@@ -43,6 +47,27 @@ import {
 //     is usually in the index already; offering those rows before creating a
 //     pin is the difference between joining a church and inventing one.
 //
+// And the front door is TWO doors now (0114), which is the other half of that
+// same bug rather than a separate feature. Sharing a location was mandatory to
+// get past the first screen, so the app asked everybody the one question —
+// "where are you standing?" — whose answer is irrelevant to a player whose
+// church is in their hometown. "Which town?" is the question they can actually
+// answer, and it is strictly more capable than a name search: somebody who
+// knows where their church is but not exactly what it is called has nothing to
+// type into a name box, and "every church in Appleton" answers them.
+//
+// Three things about the city door are load-bearing:
+//   • It is an EQUAL door, not a fallback. It stands beside "Use my location"
+//     on the first screen rather than behind a "can't share?" link, because for
+//     a whole class of player it is the RIGHT answer and not a consolation.
+//   • A city carries no distances, and the list says so by simply not showing
+//     any — `miles` is null on every row and the address takes its place. A
+//     distance measured from a town centre would be a number about nothing.
+//   • The town's centre is used for exactly two things: pinning a church added
+//     by hand (the right town, which is the whole complaint this fixes) and
+//     asking about the sponsored slot. It is never shown as a location and
+//     never called "you".
+//
 // The hard rule here, learned from a TestFlight build that sat on "Looking up
 // churches nearby…" forever: the map lookup NEVER blocks the screen. The moment
 // we have coordinates — or fail to get any — the search box, the list and the
@@ -73,7 +98,25 @@ const KNOWN_TIMEOUT_MS = 10000
  */
 const WIDE_LIMIT = 25
 
-type Phase = 'idle' | 'locating' | 'ready'
+type Phase = 'idle' | 'choosing' | 'locating' | 'ready'
+
+/**
+ * WHERE the screen is looking, and the reason this is one value rather than a
+ * nullable `coords` plus a nullable city.
+ *
+ * Every downstream decision — which list to load, whether a row has a distance,
+ * where a hand-added church is pinned, what the copy says — depends on the
+ * ANSWER TO THE SAME QUESTION, and the two ways of answering it must not be
+ * able to be half-set at once. A city always carries coordinates (its centre)
+ * so the two paths that genuinely need a point never have to branch; nothing
+ * else may read `coords` off a city and call it the player's position.
+ */
+type Origin =
+  | { kind: 'here'; coords: Coords }
+  | { kind: 'city'; city: ChurchCity }
+
+const originCoords = (o: Origin | null): Coords | null =>
+  o === null ? null : o.kind === 'here' ? o.coords : o.city.coords
 
 export function ChurchPicker() {
   const juice = useJuice()
@@ -81,7 +124,12 @@ export function ChurchPicker() {
   const [phase, setPhase] = useState<Phase>('idle')
   const [error, setError] = useState<string | null>(null)
   const [locationError, setLocationError] = useState<string | null>(null)
-  const [coords, setCoords] = useState<Coords | null>(null)
+  const [origin, setOrigin] = useState<Origin | null>(null)
+  // The city door's own typeahead, live only while `phase === 'choosing'`.
+  const [cityQuery, setCityQuery] = useState('')
+  const [cityHits, setCityHits] = useState<ChurchCity[]>([])
+  const [cityBusy, setCityBusy] = useState(false)
+  const [citySearched, setCitySearched] = useState(false)
   const [places, setPlaces] = useState<ChurchPlace[]>([])
   const [nearbyBusy, setNearbyBusy] = useState(false)
   const [query, setQuery] = useState('')
@@ -100,11 +148,16 @@ export function ChurchPicker() {
   const [manualBusy, setManualBusy] = useState(false)
   const searchRef = useRef<AbortController | null>(null)
   const nearbyRef = useRef<AbortController | null>(null)
+  const cityRef = useRef<AbortController | null>(null)
+
+  const coords = originCoords(origin)
+  const city = origin?.kind === 'city' ? origin.city : null
 
   useEffect(
     () => () => {
       searchRef.current?.abort()
       nearbyRef.current?.abort()
+      cityRef.current?.abort()
     },
     [],
   )
@@ -244,23 +297,96 @@ export function ChurchPicker() {
     setPhase('locating')
     setError(null)
     setLocationError(null)
+    setPlaces([])
     let at: Coords
     try {
       at = await getPosition()
     } catch (e) {
-      // No location is not a dead end — name search still works, it just can't
-      // be sorted by distance.
-      setCoords(null)
+      // No location is not a dead end — the city door and the name search both
+      // still work, and the refusal copy now points at the city door rather
+      // than leaving somebody on a screen that can only be typed into.
+      setOrigin(null)
       setLocationError(
         e instanceof LocationError ? geoErrorMessage(e.kind) : geoErrorMessage('unavailable'),
       )
       setPhase('ready')
       return
     }
-    setCoords(at)
+    setOrigin({ kind: 'here', coords: at })
     setPhase('ready')
     void loadPlaces(at)
   }, [loadPlaces])
+
+  /** Everything the index holds for one town. The city door's equivalent of
+   *  `loadPlaces`, and deliberately much simpler: one source, no map fallback
+   *  and no merge, because a town is a filter on our own index rather than a
+   *  circle that several sources can each answer differently. */
+  const loadCity = useCallback(async (picked: ChurchCity) => {
+    nearbyRef.current?.abort()
+    const ctl = new AbortController()
+    nearbyRef.current = ctl
+    setNearbyBusy(true)
+    setError(null)
+
+    void loadSponsored(picked.coords).then((row) => {
+      if (!ctl.signal.aborted) setSponsored(row)
+    })
+
+    // Our own churches in that town come from the same `search_churches` the
+    // nearby path uses, so a congregation already playing keeps its level and
+    // its member count here too.
+    // Our own churches near that town, narrowed to the town itself — and with
+    // their DISTANCES STRIPPED. `loadKnown` measures from the point it is given,
+    // which here is the town centre, so leaving them would print "3.0 mi"
+    // against a church in the town you are already looking at: a number
+    // measured from nowhere the player is, beside rows that correctly show
+    // none. A town's list has no distances at all.
+    const known = loadKnown(picked.coords).then((rows) =>
+      rows
+        .filter((r) => (r.city ?? '').trim().toLowerCase() === picked.city.trim().toLowerCase())
+        .map((r) => ({ ...r, miles: NaN })),
+    )
+    const [knownRows, cityRows] = await Promise.all([known, churchesInCity(picked.cityKey, null, 60)])
+    if (ctl.signal.aborted) return
+
+    setPlaces(mergePlaces(knownRows, cityRows))
+    setNearbyBusy(false)
+    if (knownRows.length === 0 && cityRows.length === 0) {
+      setError(`We don't have any churches listed in ${cityLabel(picked)} yet — search by name, or add yours by hand below.`)
+    }
+  }, [loadKnown, loadSponsored])
+
+  const pickCity = useCallback((picked: ChurchCity) => {
+    juice.select()
+    setOrigin({ kind: 'city', city: picked })
+    setLocationError(null)
+    setQuery('')
+    setPlaces([])
+    setWide([])
+    setWideDone(false)
+    setPhase('ready')
+    void loadCity(picked)
+  }, [juice, loadCity])
+
+  /** Back to the front door, keeping nothing — a new origin is a new search. */
+  const startOver = useCallback(() => {
+    nearbyRef.current?.abort()
+    searchRef.current?.abort()
+    setOrigin(null)
+    setPlaces([])
+    setSponsored(null)
+    setQuery('')
+    setWide([])
+    setWideDone(false)
+    setError(null)
+    setLocationError(null)
+    setManual(false)
+    setManualFound(null)
+    setCityQuery('')
+    setCityHits([])
+    setCitySearched(false)
+    setPhase('idle')
+  }, [])
 
   // Before anyone types, the screen leads with a short list rather than a long
   // one: the top few are what we'd pick for them, the remainder is the honest
@@ -289,9 +415,16 @@ export function ChurchPicker() {
   // The sponsored church takes one of the three suggestion slots rather than
   // being added on top of them: a paid row lengthens nobody's list, and the
   // strip stays the same size whether or not anybody bought it.
+  // "Suggested for you" is a DISTANCE idea — the nearest few, read without
+  // scrolling. A town has no distances, so in city mode there is nothing to
+  // suggest and the list is simply the town's, with the sponsored row (which
+  // is still geographically honest: its radius is measured from the church's
+  // own position, and the town centre is inside it) kept at the top and
+  // labelled. Splitting it there would promote three arbitrary rows.
   const promoted = browsing ? sponsored : null
-  const suggested = browsing ? matches.slice(0, SUGGEST_COUNT - (promoted ? 1 : 0)) : []
-  const rest = browsing ? matches.slice(suggested.length) : matches
+  const splitting = browsing && !city
+  const suggested = splitting ? matches.slice(0, SUGGEST_COUNT - (promoted ? 1 : 0)) : []
+  const rest = splitting ? matches.slice(suggested.length) : matches
 
   // Nothing nearby matched what they typed — go back out and search by name.
   // Works without coordinates too, just unbounded by distance.
@@ -303,6 +436,20 @@ export function ChurchPicker() {
     setWideBusy(true)
     setWideDone(false)
     try {
+      // In a town, look INSIDE it first. The loaded list is capped at 60 and a
+      // city like Houston holds thousands, so "not in the list" is usually the
+      // cap talking rather than the town — asking the server about the whole
+      // town before leaving it is the difference between finding a church and
+      // being told to go and look somewhere else.
+      if (city) {
+        const inTown = await churchesInCity(city.cityKey, query, WIDE_LIMIT)
+        if (ctl.signal.aborted) return
+        if (inTown.length) {
+          setWide(inTown)
+          return
+        }
+      }
+
       // NO RADIUS. This used to be `nearbyChurchPlaces(coords, 60, …)` — a
       // sixty-mile box, which is not "a wider area" to anyone whose church is
       // in another part of the state, and which asked the server for a single
@@ -326,7 +473,33 @@ export function ChurchPicker() {
         setWideDone(true)
       }
     }
-  }, [coords, query])
+  }, [coords, city, query])
+
+  // The city typeahead. Debounced because it fires per keystroke, and aborted
+  // on the next one so a slow answer can never overwrite a newer query's.
+  useEffect(() => {
+    if (phase !== 'choosing') return
+    const q = cityQuery.trim()
+    if (q.length < 2) {
+      setCityHits([])
+      setCitySearched(false)
+      setCityBusy(false)
+      return
+    }
+    cityRef.current?.abort()
+    const ctl = new AbortController()
+    cityRef.current = ctl
+    setCityBusy(true)
+    const t = setTimeout(() => {
+      void searchChurchCities(q, 12).then((rows) => {
+        if (ctl.signal.aborted) return
+        setCityHits(rows)
+        setCitySearched(true)
+        setCityBusy(false)
+      })
+    }, 250)
+    return () => { clearTimeout(t); ctl.abort() }
+  }, [cityQuery, phase])
 
   useEffect(() => {
     setWide([])
@@ -397,6 +570,9 @@ export function ChurchPicker() {
     }
   }
 
+  // `coords` is the ORIGIN's point: the player's position in location mode, the
+  // town's centre in city mode. That one substitution is what stops a church
+  // being pinned 155 miles from itself.
   const addHere = async () => {
     if (!coords || manualName.trim().length < 2) return
     await pick({
@@ -419,22 +595,124 @@ export function ChurchPicker() {
     <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'minmax(0, 1fr)' }}>
       <div className="card">
         <b style={{ fontFamily: 'var(--font-display)', fontSize: 17 }}>
-          {phase === 'ready' ? 'Churches near you' : 'Find your church'}
+          {phase !== 'ready'
+            ? 'Find your church'
+            : city
+              ? `Churches in ${cityLabel(city)}`
+              : coords
+                ? 'Churches near you'
+                : 'Find your church'}
         </b>
         <p className="dim" style={{ margin: '6px 0 0', fontSize: 14, lineHeight: 1.5 }}>
           {phase === 'ready'
             ? "Tap yours and the points you earn pool with everyone else who goes there. Not sure it's listed? Search by name, or add it by hand at the bottom."
-            : "Share your location once and we'll suggest the churches around you. Type the name to narrow it down, then tap yours."}
+            : phase === 'choosing'
+              ? "Pick the town your church is in and we'll show you what's there — no location needed."
+              : "Use your location, or pick the town your church is in. Then type the name to narrow it down and tap yours."}
         </p>
+        {/* The privacy line is about a location, so it only makes a claim when
+            one was actually shared. In city mode there is no location at all,
+            which is a stronger statement and worth making plainly. */}
         <p className="faint" style={{ margin: '8px 0 0', fontSize: 12 }}>
-          Your location is only used to search — we never save it. Only the church you pick is stored.
+          {city
+            ? 'We never asked for your location, and we never save one. Only the church you pick is stored.'
+            : 'Your location is only used to search — we never save it. Only the church you pick is stored.'}
         </p>
+        {phase === 'ready' && (
+          <div style={{ marginTop: 10 }}>
+            <button
+              onClick={startOver}
+              style={{ padding: 0, color: 'var(--gold)', fontWeight: 800, fontSize: 13 }}
+            >
+              {city ? 'Look somewhere else →' : 'Search a different town →'}
+            </button>
+          </div>
+        )}
       </div>
 
+      {/* TWO DOORS, side by side and equal (0114). The city is not a "can't
+          share your location?" fallback tucked under a link — for a student, or
+          anybody whose church is back home, it is the RIGHT answer, and the
+          location button is the one that cannot help them. */}
       {phase === 'idle' && (
-        <Button variant="gold" full onClick={locate}>
-          📍 Use my location
-        </Button>
+        <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'minmax(0, 1fr)' }}>
+          <Button variant="gold" full onClick={locate}>
+            📍 Use my location
+          </Button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ flex: 1, height: 1, background: 'var(--edge)' }} />
+            <span className="faint" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              or
+            </span>
+            <span style={{ flex: 1, height: 1, background: 'var(--edge)' }} />
+          </div>
+          <Button variant="secondary" full onClick={() => { juice.select(); setPhase('choosing') }}>
+            🏙️ Choose a city
+          </Button>
+          <p className="faint" style={{ margin: 0, fontSize: 12, lineHeight: 1.5, textAlign: 'center' }}>
+            Your church doesn't have to be near you — pick the town it's in.
+          </p>
+        </div>
+      )}
+
+      {phase === 'choosing' && (
+        <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'minmax(0, 1fr)' }}>
+          <input
+            value={cityQuery}
+            onChange={(e) => setCityQuery(e.target.value)}
+            placeholder="Town or city — e.g. Appleton, WI"
+            maxLength={60}
+            autoCapitalize="words"
+            autoCorrect="off"
+            autoFocus
+            aria-label="Search for a town or city"
+          />
+
+          {cityQuery.trim().length < 2 ? (
+            <p className="faint" style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>
+              Start typing a town. Add the state if there's more than one — “Springfield IL”.
+            </p>
+          ) : cityBusy ? (
+            <p className="faint" style={{ margin: 0, fontSize: 13 }} aria-live="polite">Looking…</p>
+          ) : cityHits.length === 0 && citySearched ? (
+            <p className="dim" style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>
+              No town by that name. Check the spelling, or use your location instead.
+            </p>
+          ) : null}
+
+          {cityHits.map((c) => (
+            <motion.button
+              key={c.cityKey}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => pickCity(c)}
+              className="card"
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: '12px 14px',
+                minWidth: 0,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: 22, flexShrink: 0 }}>🏙️</span>
+              <span style={{ minWidth: 0, flex: 1 }}>
+                <span style={{ display: 'block', fontWeight: 800, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {cityLabel(c)}
+                </span>
+                {/* A count of CHURCHES, which is a fact about a town — never a
+                    number about a person, and nothing here is ranked by it. */}
+                <span className="faint" style={{ display: 'block', fontSize: 12 }}>
+                  {c.churches.toLocaleString()} {c.churches === 1 ? 'church' : 'churches'} listed
+                </span>
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--gold)', flexShrink: 0 }}>Pick</span>
+            </motion.button>
+          ))}
+
+          <Button variant="ghost" full onClick={startOver}>Back</Button>
+        </div>
       )}
 
       {phase === 'locating' && (
@@ -446,10 +724,19 @@ export function ChurchPicker() {
 
       {phase === 'ready' && (
         <>
+          {/* A refused location is no longer a dead end with a retry button on
+              it: the city door answers this case completely, so it is offered
+              first and the retry stands beside it. */}
           {locationError && (
             <div className="card">
               <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>{locationError}</p>
-              <div style={{ marginTop: 12 }}>
+              <p className="dim" style={{ margin: '8px 0 0', fontSize: 14, lineHeight: 1.5 }}>
+                You don't need it — pick the town your church is in instead.
+              </p>
+              <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <Button variant="gold" onClick={() => { juice.select(); setPhase('choosing') }}>
+                  🏙️ Choose a city
+                </Button>
                 <Button variant="secondary" onClick={locate}>Try again</Button>
               </div>
             </div>
@@ -475,7 +762,7 @@ export function ChurchPicker() {
 
           {(promoted || suggested.length > 0) && (
             <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
-              <SectionLabel>Suggested for you</SectionLabel>
+              <SectionLabel>{city ? `In ${cityLabel(city)}` : 'Suggested for you'}</SectionLabel>
               {promoted && (
                 <PlaceRow
                   key={promoted.placeKey}
@@ -499,14 +786,34 @@ export function ChurchPicker() {
 
           {rest.length > 0 && (
             <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
-              {browsing && <SectionLabel>More churches nearby</SectionLabel>}
+              {browsing && (
+                <SectionLabel>
+                  {city ? `In ${cityLabel(city)}` : 'More churches nearby'}
+                </SectionLabel>
+              )}
+              {/* The cap, stated. The old screen's equivalent silently showed
+                  the 60 nearest and called it 30 miles; a town that holds more
+                  than we loaded says so and says what to do about it, because
+                  a list that quietly stops is the bug this whole round fixed. */}
+              {browsing && city && city.churches > places.length && (
+                <p className="faint" style={{ fontSize: 12, margin: 0, lineHeight: 1.5 }}>
+                  Showing {places.length} of {city.churches.toLocaleString()} in{' '}
+                  {cityLabel(city)} — type a name to search the rest.
+                </p>
+              )}
               {rest.map((p) => (
                 <PlaceRow key={p.placeKey} place={p} busy={joining === p.placeKey} onPick={() => pick(p)} />
               ))}
             </div>
           )}
 
-          {matches.length === 0 && !nearbyBusy && (
+          {/* `wide.length === 0` is load-bearing: the auto-search fires the
+              moment the LOCAL list misses, so without it this card printed
+              "Nothing in Appleton, WI matches 'sacred heart'" directly above a
+              Sacred Heart Parish in Appleton that the city search had just
+              found. The local list is a cache, not the answer — it may not
+              speak for the town. Found by driving it. */}
+          {matches.length === 0 && wide.length === 0 && !nearbyBusy && (
             <div className="card center" style={{ padding: 20 }}>
               <div style={{ fontSize: 30 }}>🔎</div>
               {/* Deliberately NOT "nothing within 30 miles": the list this
@@ -520,8 +827,12 @@ export function ChurchPicker() {
                   : query.trim()
                     ? wideBusy
                       ? `Looking everywhere for “${query.trim()}”…`
-                      : `None of the churches near you matches “${query.trim()}”.`
-                    : `We didn't find any churches within ${SEARCH_RADIUS_MILES} miles.`}
+                      : city
+                        ? `Nothing in ${cityLabel(city)} matches “${query.trim()}”.`
+                        : `None of the churches near you matches “${query.trim()}”.`
+                    : city
+                      ? `We don't have any churches listed in ${cityLabel(city)} yet.`
+                      : `We didn't find any churches within ${SEARCH_RADIUS_MILES} miles.`}
               </p>
             </div>
           )}
@@ -536,9 +847,13 @@ export function ChurchPicker() {
           {query.trim().length >= 3 && wide.length === 0 && (
             <div className="card" style={{ padding: 14 }}>
               <p className="dim" style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>
-                {matches.length > 0
-                  ? 'Not one of these? Your church doesn’t have to be near you.'
-                  : 'Your church doesn’t have to be near you — we can look everywhere.'}
+                {city
+                  ? matches.length > 0
+                    ? `Not one of these? We can search all of ${cityLabel(city)}, then everywhere.`
+                    : `We can search all of ${cityLabel(city)}, then everywhere.`
+                  : matches.length > 0
+                    ? 'Not one of these? Your church doesn’t have to be near you.'
+                    : 'Your church doesn’t have to be near you — we can look everywhere.'}
               </p>
               <div style={{ marginTop: 10 }}>
                 <Button variant="secondary" full disabled={wideBusy} onClick={searchWider}>
@@ -583,8 +898,9 @@ export function ChurchPicker() {
           <div className="card">
             {!coords ? (
               <p className="dim" style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>
-                Adding a church by hand pins it where you are, so it needs your location. Turn it on
-                and tap <b>Try again</b> — or find yours by name above.
+                Adding a church by hand needs somewhere to pin it. Pick the town it's in with{' '}
+                <b>Choose a city</b> above, turn your location on and tap <b>Try again</b>, or find
+                yours by name.
               </p>
             ) : manual ? (
               <div style={{ display: 'grid', gap: 10 }}>
@@ -636,11 +952,25 @@ export function ChurchPicker() {
                     {/* The consequence, stated where the decision is made and in
                         ink rather than faint. It is the one thing on this screen
                         a player cannot undo themselves. */}
+                    {/* Where the pin lands, stated where the decision is made.
+                        In city mode it is the TOWN's centre, which is the whole
+                        repair: the old screen pinned at the player's position
+                        whatever they were looking at, and a church added while
+                        browsing Appleton from Eau Claire landed in Eau Claire. */}
                     <p className="dim" style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>
                       {manualFound.length > 0 ? 'If none of those is it, we’ll' : 'We’ll'} add{' '}
                       <b>{manualName.trim()}</b> and pin it{' '}
-                      <b>at your current location</b> — so only add one you're actually at. If your
-                      church is somewhere else, search for it by name above instead.
+                      {city ? (
+                        <>
+                          <b>in {cityLabel(city)}</b> — so only add a church that meets there.
+                          Looking in the wrong town? Change it above.
+                        </>
+                      ) : (
+                        <>
+                          <b>at your current location</b> — so only add one you're actually at. If
+                          your church is somewhere else, search for it by name above instead.
+                        </>
+                      )}
                     </p>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       <Button
@@ -648,7 +978,14 @@ export function ChurchPicker() {
                         disabled={manualName.trim().length < 2 || !!joining}
                         onClick={addHere}
                       >
-                        {joining ? 'Adding…' : 'Add it here anyway'}
+                        {joining
+                          ? 'Adding…'
+                          // "here" is a place the player is standing, which in
+                          // city mode they are not — the whole point is that
+                          // they are looking at a town from somewhere else.
+                          : city
+                            ? `Add it in ${cityLabel(city)}`
+                            : 'Add it here anyway'}
                       </Button>
                       <Button variant="ghost" onClick={resetManual}>Cancel</Button>
                     </div>

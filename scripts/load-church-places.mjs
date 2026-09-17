@@ -218,5 +218,10 @@ for (let start = 0; start < rows.length; start += ROWS_PER_FILE) {
 
 console.log(`\nWrote ${files.length} file(s) to ${OUT_DIR}/`)
 console.log('\nApply in order, then link and refresh:')
-console.log('  select public.link_church_places();   -- once, after the first load')
-console.log('  select public.refresh_church_names(); -- after every load')
+console.log('  select public.link_church_places();    -- once, after the first load')
+console.log('  select public.refresh_church_names();  -- after every load')
+// The city picker reads `church_cities`, which is DERIVED from church_places
+// and rebuilt only when asked. Skip this and a newly loaded region's towns are
+// simply missing from the picker, with nothing failing anywhere to say so —
+// the same shape of trap refresh_church_names() already is.
+console.log('  select public.refresh_church_cities(); -- after every load (0114)')

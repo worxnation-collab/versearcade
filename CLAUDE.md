@@ -1248,6 +1248,56 @@ left alone**: they have real congregations and banked XP, they were added where
 their player actually was, and "a hand-added `geo:` church is never touched" is
 still the rule.
 
+### Two doors: your location, or a town
+
+The picker asked everybody one question — "where are you standing?" — and made
+it mandatory. `0114` puts a second door beside it, and it is the other half of
+the bug above rather than a separate feature: for a student, anyone who moved
+and anyone travelling, "which town is your church in" is the question they can
+actually answer, and the location button is the one that cannot help them.
+
+It is also strictly more capable than the name search 0113 added. Somebody who
+knows WHERE their church is but not exactly what it is called has nothing to
+type into a name box; "every church in Appleton" answers them. And it removes a
+requirement rather than adding one — a refused prompt, a desktop browser or
+simply not wanting to share a location used to leave a player with a name box
+and no way to browse anything.
+
+Five things are load-bearing:
+
+- **The city is an EQUAL door, not a fallback.** It stands beside "Use my
+  location" on the first screen, not behind a "can't share?" link. A refused
+  location now leads with it too.
+- **A town has NO distances, and the list shows none.** `miles` is null on every
+  row from `search_church_places_in_city`, and rows from `search_churches` — which
+  measures from whatever point it was given — have their distance **stripped** in
+  city mode. A distance from a town centre is a number measured from nowhere
+  anybody is. This bit twice: `Number(null)` is `0` and `Number.isFinite(0)` is
+  true, so a null distance read as ZERO and the list said **"right here"** against
+  a church in another state (`fromIndex` now tests `== null` first — it was also
+  doing this to the nationwide search whenever location was off), and the known
+  rows printed a real "3.0 mi" from the centroid until they were stripped.
+  Both found by looking at rendered rows; the JSON was right the whole time.
+- **The town centre is used for exactly two things** — pinning a church added by
+  hand, and asking about the sponsored slot — and is never shown or called
+  "you". The pin is the repair: a church added while browsing Appleton from Eau
+  Claire now lands in Appleton. The sponsored row stays honest because a
+  promotion's radius is measured from the CHURCH's own position, so a town
+  centre inside it is genuinely in range.
+- **The cap is STATED.** A town's list loads 60 and Houston holds 4,975, so the
+  header says "Showing 61 of 103 in Appleton, WI — type a name to search the
+  rest", and typing asks the SERVER about the whole town before it leaves it.
+  Never write "nothing in X" about a list that was truncated by count — that is
+  the same lie the 30-mile copy was telling.
+- **"Suggested for you" is a DISTANCE idea and is not drawn in city mode.** The
+  nearest few, readable without scrolling, is meaningless in a town; splitting
+  the list there would promote three arbitrary rows.
+
+One more scar from driving it: the empty-state card has to test `wide.length
+=== 0` as well as the local list, or it prints "Nothing in Appleton, WI matches
+'sacred heart'" directly above the Sacred Heart Parish in Appleton that the
+city search just found. **The loaded list is a cache, not the answer.**
+
 OSM is still the fallback wherever the index has no rows, because the index is
 loaded a region at a time and an empty picker is a dead end. Anywhere the index
 answers, Overpass is never called — which also removes the slowest and least
@@ -2100,7 +2150,19 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0113` (finding a church that is NOT near you —
+The latest is `0114` (choose a city instead of standing in one —
+`church_cities` + `refresh_church_cities()`, `church_cities_search`,
+`search_church_places_in_city`, `church_city_key`). APPLIED on 2026-09-17
+before the client merged, and verified: exactly ONE signature each, the two
+player-facing ones carrying the public `{anon,authenticated}` shape while
+`refresh_church_cities` is revoked from all three roles, and the table built
+with **35,730 towns** against real data. Run end to end against a local
+Postgres 16 first — thirteen cases including the two worth checking rather
+than reasoning about: "St. Louis" and "St Louis" collapse to ONE town whose
+list still returns BOTH churches, and the refresh run twice in a row reuses
+its own primary keys.
+
+Before it, `0113` (finding a church that is NOT near you —
 `search_church_places_named`, a nationwide by-name search over the Overture
 index, plus `church_place_haystack` and a trigram index). APPLIED on
 2026-09-16, in THREE parts (`0113_church_name_search`, `…_b_normalised`,
@@ -2449,7 +2511,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0114` (0113 is taken by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0115` (0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

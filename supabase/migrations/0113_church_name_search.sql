@@ -135,12 +135,15 @@ begin
   -- patterns are substrings, so "st." still finds "St. Mark's" and a hyphen in
   -- "Alliance Church - Appleton" is simply never looked at.
   --
-  -- LIKE's own metacharacters ARE stripped, and that is not paranoia about
-  -- injection (these are parameters, never concatenated SQL) — it is that a
-  -- player types a search box, not a pattern. Unescaped, "Gr_ce" silently
-  -- matches "Grace" and a lone "%" matches all 606,272 rows and sorts them by
-  -- confidence, which is a nationwide directory dump dressed as a search
-  -- result. Backslash first, or the escapes escape each other.
+  -- The LIKE-metacharacter escaping is UNREACHABLE, and is kept deliberately
+  -- rather than removed — checked by running it, not assumed. The needle has
+  -- already been through `church_place_haystack`, which keeps only [a-z0-9]
+  -- and spaces, so `%`, `_` and `\` cannot survive into a pattern: a lone "%"
+  -- normalises to nothing and is refused, and "Gr_ce" becomes the two words
+  -- "gr" and "ce", which the 3-character driver floor then refuses. It costs
+  -- nothing and it is what stops a future change to the normaliser from
+  -- quietly turning a search box into a pattern box. Backslash first, or the
+  -- escapes would escape each other.
   -- The needle goes through the SAME normaliser as the haystack, so "St. Mark's",
   -- "St Marks" and "st marks" are one query. LIKE's own metacharacters survive
   -- it (they are not punctuation to a regex class that keeps only a-z0-9), so

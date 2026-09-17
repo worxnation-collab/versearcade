@@ -68,7 +68,15 @@ is ~90MB of INSERTs). Apply the files in order, then:
 ```sql
 select public.link_church_places();    -- once, after the first load
 select public.refresh_church_names();  -- after EVERY load. This is the half people forget.
+select public.refresh_church_cities(); -- after EVERY load (0114). So is this one.
 ```
+
+`church_cities` is the city picker's list — one row per town, derived from
+`church_places` and rebuilt only when asked. It exists because the obvious
+`group by city, region` over the 606k places is a 493ms seq scan, which is
+per keystroke on a typeahead. Load a region without rebuilding it and that
+region's towns are simply absent from the picker, with nothing failing
+anywhere to say so.
 
 Overture publishes monthly and keeps roughly two releases live, so `--release`
 goes stale; a retired one fails loudly at S3 rather than quietly. There is no

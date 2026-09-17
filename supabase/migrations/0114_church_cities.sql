@@ -271,3 +271,18 @@ end;
 $$;
 
 grant execute on function public.search_church_places_in_city(text, text, integer) to anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Fill it on the way in
+-- ---------------------------------------------------------------------------
+-- The migration POPULATES the table rather than leaving it to a runbook step,
+-- because the runbook is exactly what this file has already said gets
+-- forgotten — and leaving it out fails in the quietest possible way: a fresh
+-- deploy would create an empty `church_cities`, the city door would answer
+-- every query with "no town by that name", and nothing anywhere would error.
+--
+-- Safe in both directions. On a project that already holds places (this one,
+-- 606,272 of them) it builds the ~36k towns in about a second. On a brand new
+-- project the source table is empty, so it inserts nothing and costs nothing —
+-- and the loader's own final file rebuilds it when the data does arrive.
+select public.refresh_church_cities();

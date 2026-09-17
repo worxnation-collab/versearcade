@@ -1298,6 +1298,22 @@ One more scar from driving it: the empty-state card has to test `wide.length
 'sacred heart'" directly above the Sacred Heart Parish in Appleton that the
 city search just found. **The loaded list is a cache, not the answer.**
 
+**`church_cities` is DERIVED, and nothing rebuilds it on its own — so neither
+of the two ways it can go stale is left to a person remembering.** Both fail in
+the quietest possible way, which is why this got closed rather than documented:
+
+- **A fresh deploy** would create the table empty, and the city door would
+  answer every query with "no town by that name" with nothing erroring. So the
+  migration ENDS by calling `refresh_church_cities()` — a no-op on a project
+  with no places yet, about a second on this one.
+- **A later region load** would leave that region's towns missing. So
+  `scripts/load-church-places.mjs` now writes `NNN_refresh.sql` as its last
+  numbered file, calling `refresh_church_names()` (0091) and
+  `refresh_church_cities()`, and "apply the files in order" performs them. It
+  used to print the two calls at the end of a multi-gigabyte download, which is
+  an instruction that gets scrolled past — and `refresh_church_names()` has
+  carried that trap since 0091, so this fixes the older one too.
+
 OSM is still the fallback wherever the index has no rows, because the index is
 loaded a region at a time and an empty picker is a dead end. Anywhere the index
 answers, Overpass is never called — which also removes the slowest and least
@@ -2156,7 +2172,9 @@ The latest is `0114` (choose a city instead of standing in one —
 before the client merged, and verified: exactly ONE signature each, the two
 player-facing ones carrying the public `{anon,authenticated}` shape while
 `refresh_church_cities` is revoked from all three roles, and the table built
-with **35,730 towns** against real data. Run end to end against a local
+with **35,730 towns** against real data (by hand at apply time; the repo file
+now ends with `select public.refresh_church_cities();` so a fresh deploy does
+it itself — see below). Run end to end against a local
 Postgres 16 first — thirteen cases including the two worth checking rather
 than reasoning about: "St. Louis" and "St Louis" collapse to ONE town whose
 list still returns BOTH churches, and the refresh run twice in a row reuses

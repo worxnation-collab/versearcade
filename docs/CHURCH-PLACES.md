@@ -65,18 +65,26 @@ node scripts/load-church-places.mjs --bbox -81.75,28.35,-81.45,28.65   # one tow
 It writes chunked SQL to `supabase/seed/church-places/` (gitignored — the US set
 is ~90MB of INSERTs). Apply the files in order, then:
 
-```sql
-select public.link_church_places();    -- once, after the first load
-select public.refresh_church_names();  -- after EVERY load. This is the half people forget.
-select public.refresh_church_cities(); -- after EVERY load (0114). So is this one.
-```
+**The refreshes are the LAST FILE, so applying in order does them.** The
+generator writes `NNN_refresh.sql` after the data files; it calls
+`refresh_church_names()` (0091) and `refresh_church_cities()` (0114), both of
+which rebuild tables DERIVED from `church_places`. That used to be a line
+printed at the end of a long run, which is an instruction that gets scrolled
+past — and skipping it fails silently in both directions: a renamed
+congregation keeps its old name, and a newly loaded region's towns are simply
+absent from the city picker. Nothing errors either way.
 
-`church_cities` is the city picker's list — one row per town, derived from
-`church_places` and rebuilt only when asked. It exists because the obvious
-`group by city, region` over the 606k places is a 493ms seq scan, which is
-per keystroke on a typeahead. Load a region without rebuilding it and that
-region's towns are simply absent from the picker, with nothing failing
-anywhere to say so.
+`church_cities` is the city picker's list — one row per town. It exists because
+the obvious `group by city, region` over the 606k places is a 493ms seq scan,
+which is per keystroke on a typeahead. Migration 0114 populates it on apply, so
+a fresh deploy is correct before any data arrives; the refresh file is what
+keeps it correct afterwards.
+
+One extra step, after the FIRST load only:
+
+```sql
+select public.link_church_places();
+```
 
 Overture publishes monthly and keeps roughly two releases live, so `--release`
 goes stale; a retired one fails loudly at S3 rather than quietly. There is no

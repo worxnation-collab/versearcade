@@ -1168,6 +1168,152 @@ Three rules hold it together:
   typed that name themselves, and it is pinned at the *player's* position rather
   than the building's — so proximity means nothing for it.
 
+### The picker assumed your church is near you
+
+It is not, for an entire class of player, and that assumption was this screen's
+worst bug (`0113`). A student at college, anybody who moved, anybody travelling
+has a church that is their HOMETOWN's — and every lookup here was bounded by a
+box around the player: 30 miles browsing, 60 for "a wider area". So the picker's
+answer to "my church is three hours away" was to push them at the add-by-hand
+card, **which pins a church at the player's current position, permanently, for
+everybody**. That is how "Appleton Alliance Church" became a Chipotle in Eau
+Claire, 155 miles from itself, while the real building sat in `church_places`
+as `ovt:a432f2d0-…` with an address and a 0.97 confidence. Every ingredient of
+the right answer was already loaded; there was no query that could reach it.
+
+Four things were wrong at once, and they are worth keeping apart because only
+the first one is the one anybody would have guessed:
+
+- **No search without a radius.** `search_church_places_named` (0113) is the
+  door that did not exist: the same index, by name, nationwide, coordinates
+  optional. It adds NO promotion and no distance claim — the sponsored slot
+  (0077) is untouched and still capped at 30 miles, so a paid row can never
+  reach nationwide through it.
+- **The server matched ONE contiguous substring.** `search_church_places`
+  filters `name ilike '%' || p_q || '%'`, so "Appleton Alliance" could not find
+  "Alliance Church - Appleton" **from any distance, standing in the car park
+  included**. The two halves of the same screen disagreed about what "matches"
+  means — the client filtered the nearby list per WORD and the server did not —
+  which is why browsing found churches the by-name search could not.
+- **The escape hatch was gated on the local list being EMPTY.** One unrelated
+  match nearby hid the only way out. It is offered whenever anything is typed
+  now, and it fires BY ITSELF when a typed query matches nothing nearby.
+- **"Nothing within 30 miles" was a lie told by a cap.** `loadPlaces` fetches
+  the 60 NEAREST churches once and filters that list as you type — and 60
+  nearest in a town is 2.2 miles, not 30 (measured, Eau Claire). St Joseph's
+  Chapel at 2.7 miles was not in the list at all, could not be matched by any
+  amount of client filtering, and the screen said "nothing within 30 miles
+  matches" about a five-minute drive. Never write that sentence about a list
+  that was truncated by count.
+
+Three rules now hold it together, and two of them were earned by MEASURING
+rather than reading — both failures rendered perfectly:
+
+- **One normaliser, both sides.** `church_place_haystack` (SQL) and
+  `searchText`/`searchWords` (`lib/churchSearch.ts`) are the keep-them-in-sync
+  pair. Apostrophes are DELETED and every other run of punctuation becomes one
+  space, so "St. Mark's", "St Marks" and "st marks" are one query — deleting
+  rather than spacing is the point, because spacing gives "mark s", which
+  "marks" still does not match. A trailing "s" is dropped from the NEEDLE only
+  ("St. Joseph Parish" and "St Joseph's Church" are both in this table); that
+  is safe one-sidedly because a substring stem is always a PREFIX of the word
+  it came from, so it can never find less, and it needs no index rebuild.
+- **`like all (array)` CANNOT USE AN INDEX, and the redundant predicate beside
+  it is load-bearing.** The planner does not decompose a ScalarArrayOp over
+  LIKE into index conditions, so it plans a parallel seq scan — 760ms and
+  13,998 buffers over the 606k rows, with the new trigram index sitting right
+  there unused. One word (the longest, so the most selective) is restated as a
+  plain `like` the GIN index does answer, and the `all (...)` stays as the
+  filter over the few rows that come back: 9ms. **Do not "simplify" the
+  duplicated-looking WHERE clause.** A word under 3 characters has no trigram
+  at all, which is why a query made only of those is refused rather than
+  quietly seq-scanning.
+- **LIKE's metacharacters are escaped**, not against injection (they are
+  parameters) but because a player types a search box, not a pattern:
+  unescaped, "Gr_ce" silently matches "Grace" and a lone "%" returns all
+  606,272 rows sorted by confidence — a nationwide directory dump dressed as a
+  search result.
+
+And the half that is not code: **adding by hand now LOOKS FIRST.** The name is
+run through the nationwide search and the matches are offered before anything is
+created, with where the pin lands stated in ink rather than faint. The
+`join_church` side needed no change at all — it already copies an `ovt:` place's
+own lat/lng and ignores what the client sent, which is why a church found this
+way lands at its real building.
+
+The one damaged row was repaired by hand (repointed onto its Overture place,
+`name_locked` so neither refresh nor a join renames it) because it had no
+members, no XP and no history. **The other ten `geo:` churches were deliberately
+left alone**: they have real congregations and banked XP, they were added where
+their player actually was, and "a hand-added `geo:` church is never touched" is
+still the rule.
+
+### Two doors: your location, or a town
+
+The picker asked everybody one question — "where are you standing?" — and made
+it mandatory. `0114` puts a second door beside it, and it is the other half of
+the bug above rather than a separate feature: for a student, anyone who moved
+and anyone travelling, "which town is your church in" is the question they can
+actually answer, and the location button is the one that cannot help them.
+
+It is also strictly more capable than the name search 0113 added. Somebody who
+knows WHERE their church is but not exactly what it is called has nothing to
+type into a name box; "every church in Appleton" answers them. And it removes a
+requirement rather than adding one — a refused prompt, a desktop browser or
+simply not wanting to share a location used to leave a player with a name box
+and no way to browse anything.
+
+Five things are load-bearing:
+
+- **The city is an EQUAL door, not a fallback.** It stands beside "Use my
+  location" on the first screen, not behind a "can't share?" link. A refused
+  location now leads with it too.
+- **A town has NO distances, and the list shows none.** `miles` is null on every
+  row from `search_church_places_in_city`, and rows from `search_churches` — which
+  measures from whatever point it was given — have their distance **stripped** in
+  city mode. A distance from a town centre is a number measured from nowhere
+  anybody is. This bit twice: `Number(null)` is `0` and `Number.isFinite(0)` is
+  true, so a null distance read as ZERO and the list said **"right here"** against
+  a church in another state (`fromIndex` now tests `== null` first — it was also
+  doing this to the nationwide search whenever location was off), and the known
+  rows printed a real "3.0 mi" from the centroid until they were stripped.
+  Both found by looking at rendered rows; the JSON was right the whole time.
+- **The town centre is used for exactly two things** — pinning a church added by
+  hand, and asking about the sponsored slot — and is never shown or called
+  "you". The pin is the repair: a church added while browsing Appleton from Eau
+  Claire now lands in Appleton. The sponsored row stays honest because a
+  promotion's radius is measured from the CHURCH's own position, so a town
+  centre inside it is genuinely in range.
+- **The cap is STATED.** A town's list loads 60 and Houston holds 4,975, so the
+  header says "Showing 61 of 103 in Appleton, WI — type a name to search the
+  rest", and typing asks the SERVER about the whole town before it leaves it.
+  Never write "nothing in X" about a list that was truncated by count — that is
+  the same lie the 30-mile copy was telling.
+- **"Suggested for you" is a DISTANCE idea and is not drawn in city mode.** The
+  nearest few, readable without scrolling, is meaningless in a town; splitting
+  the list there would promote three arbitrary rows.
+
+One more scar from driving it: the empty-state card has to test `wide.length
+=== 0` as well as the local list, or it prints "Nothing in Appleton, WI matches
+'sacred heart'" directly above the Sacred Heart Parish in Appleton that the
+city search just found. **The loaded list is a cache, not the answer.**
+
+**`church_cities` is DERIVED, and nothing rebuilds it on its own — so neither
+of the two ways it can go stale is left to a person remembering.** Both fail in
+the quietest possible way, which is why this got closed rather than documented:
+
+- **A fresh deploy** would create the table empty, and the city door would
+  answer every query with "no town by that name" with nothing erroring. So the
+  migration ENDS by calling `refresh_church_cities()` — a no-op on a project
+  with no places yet, about a second on this one.
+- **A later region load** would leave that region's towns missing. So
+  `scripts/load-church-places.mjs` now writes `NNN_refresh.sql` as its last
+  numbered file, calling `refresh_church_names()` (0091) and
+  `refresh_church_cities()`, and "apply the files in order" performs them. It
+  used to print the two calls at the end of a multi-gigabyte download, which is
+  an instruction that gets scrolled past — and `refresh_church_names()` has
+  carried that trap since 0091, so this fixes the older one too.
+
 OSM is still the fallback wherever the index has no rows, because the index is
 loaded a region at a time and an empty picker is a dead end. Anywhere the index
 answers, Overpass is never called — which also removes the slowest and least
@@ -2020,7 +2166,33 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0112` (the room's ARRANGEMENT — `profiles.room_layout` plus a
+The latest is `0114` (choose a city instead of standing in one —
+`church_cities` + `refresh_church_cities()`, `church_cities_search`,
+`search_church_places_in_city`, `church_city_key`). APPLIED on 2026-09-17
+before the client merged, and verified: exactly ONE signature each, the two
+player-facing ones carrying the public `{anon,authenticated}` shape while
+`refresh_church_cities` is revoked from all three roles, and the table built
+with **35,730 towns** against real data (by hand at apply time; the repo file
+now ends with `select public.refresh_church_cities();` so a fresh deploy does
+it itself — see below). Run end to end against a local
+Postgres 16 first — thirteen cases including the two worth checking rather
+than reasoning about: "St. Louis" and "St Louis" collapse to ONE town whose
+list still returns BOTH churches, and the refresh run twice in a row reuses
+its own primary keys.
+
+Before it, `0113` (finding a church that is NOT near you —
+`search_church_places_named`, a nationwide by-name search over the Overture
+index, plus `church_place_haystack` and a trigram index). APPLIED on
+2026-09-16, in THREE parts (`0113_church_name_search`, `…_b_normalised`,
+`…_c_stem`) because two defects were found by measuring AFTER the first
+apply; the repo's single `0113_church_name_search.sql` is the final state and
+a fresh deploy gets it in one. Verified: exactly ONE signature, `security
+definer`, ACL the public `{anon,authenticated}` shape `search_church_places`
+has, and — the part worth checking rather than reasoning about — the query
+plan, because BOTH corrections were invisible in the diff and rendered
+perfectly. See "The picker assumed your church is near you" above.
+
+Before it, `0112` (the room's ARRANGEMENT — `profiles.room_layout` plus a
 check constraint, `set_room_layout`, and `my_room` / `room_json` restated
 WHOLESALE from 0110; a future migration editing either copies forward from
 HERE). APPLIED on 2026-09-13 before the client merged, and verified: exactly
@@ -2357,7 +2529,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0113` (0112 is taken by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0115` (0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

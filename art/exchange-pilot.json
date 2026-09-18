@@ -1,0 +1,12 @@
+[
+  {
+    "id": "exchange_forgive_seventy",
+    "kind": "tiktok-stage",
+    "format": "jpg",
+    "refs": [
+      "public/tiktok/roads/mountain-path.jpg",
+      "public/tiktok/roads/dawn-hills.jpg"
+    ],
+    "prompt": "A wide, calm painted backdrop for a short vertical video. 9:16 portrait.\n\nThe scene: a quiet stone courtyard in first-century Galilee at late afternoon \u2014 warm flagstones underfoot, a low wall, a doorway in deep shadow to one side, soft hills beyond. Nobody is in it. EMPTY OF PEOPLE \u2014 two figures will be drawn over this later and anything you put in the middle will be covered.\n\n- It is ONE continuous scene. Do not divide the canvas. No vertical bands, stripes, panels, columns, blocks of flat colour, borders or seams of any kind. Ground, horizon and sky run unbroken from edge to edge.\n- The LOWER MIDDLE especially must be open, calm and uncluttered \u2014 plain ground for figures to stand on.\n- The TOP THIRD must be simple and quiet \u2014 open sky or plain shadow \u2014 with nothing important in it.\n- STYLE, and be emphatic about it: flat graphic vector-like shapes with CLEAN HARD EDGES and DEEP SATURATED colour, matching the reference images exactly. Warm ochres, terracotta and deep blue shadow. No texture, no photographic detail, no gradients except broad simple ones.\n- No text, no watermark, no border, no frame."
+  }
+]

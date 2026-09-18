@@ -534,9 +534,21 @@ try {
       if (!led && !(k in NUM ? /^(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty)$/.test(k) : true)) return
       const head = led ? i - 1 : i
       // The SEQUENCE is the strong guard, so it is tested first: a marker
-      // must be the next number in order, and the first must be 1.
-      if (marks.length && n !== marks[marks.length - 1].n + 1) return
-      if (!marks.length && n !== 1) return
+      // must come AFTER the last one, and no number may repeat.
+      //
+      // It used to demand the NEXT number exactly, and the first to be 1,
+      // and that cost an entire eleven-take sitting: he began take 1 without
+      // saying "Day 1" at all, so the walk never started, and it reported
+      // "found 1 of 11" — one take, holding the wrong day's words. Whisper
+      // had also lost "Day 3" and "Day 5" outright, either of which would
+      // have stopped it just as dead a few takes in.
+      //
+      // A missing number is not a reason to abandon the takes around it, so
+      // a gap is now allowed and REPORTED. What the guard still enforces is
+      // what actually protects a cut: monotonic order, no repeats, and
+      // nothing past the number of days asked for — so a "one" inside a
+      // sentence still cannot cut a take in half.
+      if (marks.length && n <= marks[marks.length - 1].n) return
       // …which is why a LEAD word plus the next number needs no pause in
       // front of it. Requiring one cost take 8 of a real batch: he ran
       // "…my own emptiness. Day 8." together and Whisper timed the gap at
@@ -549,7 +561,17 @@ try {
       marks.push({ n, i, head, at: heard.words[head].start, end: w.end })
     })
     log(`found ${marks.length} of ${days} takes`)
-    if (marks.length !== days) log('  (the run stops at the last number found in order — check the cut below)')
+    if (marks.length !== days) {
+      // Name the ones that are missing. "found 9 of 11" says a take is gone;
+      // it does not say WHICH, and the difference is between re-reading one
+      // boundary and re-cutting the sitting by hand.
+      const got = new Set(marks.map((m) => m.n))
+      const lost = Array.from({ length: days }, (_, i) => i + 1).filter((n) => !got.has(n))
+      log(`  MISSING: ${lost.map((n) => `day ${n}`).join(', ')} — not in the transcript`)
+      log('  A take whose number is missing is SWALLOWED by the one before it.')
+      log('  Check the cut below, and re-cut by hand (--dry prints the transcript) if a')
+      log('  take spans two days. Say the number before EVERY take, day 1 included.')
+    }
     const takes = marks.map((m, k) => {
       // Up to the next marker's HEAD, not its number: slicing to the number
       // leaves the lead word behind, and "day" then rode the end of all

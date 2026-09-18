@@ -18,10 +18,10 @@ export interface DayCopy { hook?: string; platforms?: Partial<Record<Platform, P
 
 /** The posts a day: see admin/tiktok/shared.tsx for what each is. */
 export type Kind = 'verse' | 'story' | 'quiz' | 'challenge' | 'challenge2' | 'own' | 'note'
-  | 'book' | 'moment' | 'before' | 'figure' | 'quiet' | 'prayer'
+  | 'book' | 'moment' | 'before' | 'figure' | 'quiet' | 'prayer' | 'exchange'
 /** The six READING kinds: the weekday rotation's second post, all in his own voice. */
 export const READING: Kind[] = ['book', 'moment', 'before', 'figure', 'quiet', 'prayer']
-export const KINDS: Kind[] = ['verse', 'story', 'quiz', 'challenge', 'challenge2', 'own', 'note', ...READING]
+export const KINDS: Kind[] = ['verse', 'story', 'quiz', 'challenge', 'challenge2', 'own', 'note', 'exchange', ...READING]
 export const kindOf = (k: unknown): Kind => ((KINDS as string[]).includes(String(k)) ? (k as Kind) : 'verse')
 
 /**
@@ -116,7 +116,7 @@ const KINDS_OFF: Partial<Record<Platform, Kind[]>> = Object.fromEntries(
   PLATFORMS.map((p) => [p, [
     ...PARKED,
     // A network that is not live takes nothing at all.
-    ...(LIVE_PLATFORMS.includes(p) ? [] : (['verse', 'story', 'own', 'note'] as Kind[])),
+    ...(LIVE_PLATFORMS.includes(p) ? [] : (['verse', 'story', 'own', 'note', 'exchange'] as Kind[])),
     // The NOTE is a photo rather than a video, so Facebook distributes it
     // through machinery a Reel never reaches and Pinterest can pin it. It is
     // written from the same paragraphs Tabitha tells, so it belongs to the day
@@ -213,11 +213,28 @@ export const AI_NOTE_OPENED = 'AI-generated art, and the verse is read by an AI 
  * that describes something absent, arriving from the other side.
  */
 export const AI_NOTE_OPENED_STORY = 'AI-generated art, and the story is told by an AI voice. The introduction is mine.'
+/**
+ * The EXCHANGE, and it needs a fourth line for the reason the third one
+ * exists: neither of the others describes what is in this post.
+ *
+ * `AI_NOTE_OPENED` says "the verse is read by an AI voice", singular, and
+ * there is no verse read here at all — there are TWO synthetic voices playing
+ * two named people talking to each other, which is a larger claim about what
+ * a viewer is hearing than any line above makes. And his own voice is at BOTH
+ * ends of it rather than only the front, so "the introduction is mine" would
+ * understate the true half while the rest overstated nothing.
+ *
+ * A disclosure that leaves out the largest thing in the post is the same
+ * failure as one that describes something absent. So this names the two
+ * voices, and names which words are his.
+ */
+export const AI_NOTE_EXCHANGE = 'AI-generated art, and both speakers are AI voices. The opening and closing words are mine.'
 const aiNote = (a: PostArgs) =>
   a.kind === 'note' ? AI_NOTE_STILL
-    : a.opened ? (a.kind === 'story' ? AI_NOTE_OPENED_STORY : AI_NOTE_OPENED)
-      : a.voiced ? AI_NOTE_ART
-        : AI_NOTE
+    : a.kind === 'exchange' && a.opened ? AI_NOTE_EXCHANGE
+      : a.opened ? (a.kind === 'story' ? AI_NOTE_OPENED_STORY : AI_NOTE_OPENED)
+        : a.voiced ? AI_NOTE_ART
+          : AI_NOTE
 
 const tagLine = (tags: string[] | undefined, n: number) => (tags ?? []).slice(0, n).map((t) => '#' + t).join(' ')
 

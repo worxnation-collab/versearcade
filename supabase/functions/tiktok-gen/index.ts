@@ -156,7 +156,7 @@ async function gemini(path: string, body: unknown, method = 'POST'): Promise<Rec
  * paths and by both places `voiced` is decided, so a kind cannot be voiced for
  * the caption and unvoiced for the disclosure.
  */
-const VOICED_KINDS: string[] = ['verse', 'story', 'book', 'moment', 'before', 'figure', 'quiet', 'prayer']
+const VOICED_KINDS: string[] = ['verse', 'story', 'exchange', 'book', 'moment', 'before', 'figure', 'quiet', 'prayer']
 
 async function ayrshare(path: string, body: unknown, method = 'POST', forX = false): Promise<Record<string, unknown>> {
   const headers: Record<string, string> = { 'content-type': 'application/json', Authorization: `Bearer ${AYRSHARE_KEY}` }
@@ -885,7 +885,7 @@ Deno.serve(async (req) => {
       // photo the thought section draws.
       // The six READING kinds join both halves: they park an MP4 like any
       // other post and a recording like the verse and the story do.
-      if (!/^(days\/\d{4}-\d{2}-\d{2}\/((verse|story|quiz|challenge|challenge2|own|book|moment|before|figure|quiet|prayer)(\.(mp4|webm)|-cover\.jpg)|note-card\.jpg|voice-(verse|story|book|moment|before|figure|quiet|prayer)\.(wav|json))|founder\/photo\.jpg|scenes\/[a-z0-9-]{1,60}\.jpg)$/.test(path)) return json({ error: 'bad path' }, 400)
+      if (!/^(days\/\d{4}-\d{2}-\d{2}\/((verse|story|quiz|challenge|challenge2|own|exchange|book|moment|before|figure|quiet|prayer)(\.(mp4|webm)|-cover\.jpg)|note-card\.jpg|voice-(verse|story|exchange|book|moment|before|figure|quiet|prayer)\.(wav|json))|founder\/photo\.jpg|scenes\/[a-z0-9-]{1,60}\.jpg)$/.test(path)) return json({ error: 'bad path' }, 400)
       const { data, error } = await admin.storage.from(BUCKET).createSignedUploadUrl(path, { upsert: true })
       if (error || !data) return json({ error: error?.message ?? 'no upload url' }, 500)
       return json({ path, token: data.token, publicUrl: publicUrl(path) })

@@ -798,6 +798,8 @@ Deno.serve(async (req) => {
         prayer: `the app's maker prays a short prayer aloud, drawn from today's verse. `,
       }
       const who = READING_WHO[kind] ? `${READING_WHO[kind]}Write in his voice, first person, plain. `
+        : kind === 'exchange'
+        ? `the app's maker opens in his own voice, then TWO painted biblical figures speak one recorded exchange from scripture to each other — one asks, one answers — and he closes it in his own voice with a question to the viewer. This exchange: ${about || 'a question and its answer'}. Write about THAT exchange, not about the verse of the day. `
         : kind === 'story'
         ? `Tabitha, the app's librarian, tells the short story behind the verse of the day each evening (the morning post was the verse itself, read aloud). ${voiced ? `At the end the app's maker speaks last, in his own voice, with one plain closing word about it. ` : ''}`
         : kind === 'quiz'

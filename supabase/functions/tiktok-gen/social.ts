@@ -306,6 +306,11 @@ export function callToAction(kind: Kind, short = false): string {
   // and it is the whole reason the week keeps a guessing post at all: the
   // challenges took the comment ask with them when they were parked.
   if (kind === 'figure') return short ? 'Guess before the reveal.' : 'Comment your guess before the reveal — then share it with someone who would get it.'
+  // The EXCHANGE ends on a question asked out loud — "who are you still
+  // counting?" — so the comment ask is not bolted on here, it is the last
+  // thing the video says. Asking for a share instead would answer a question
+  // with an errand. It keeps the share second, as the challenges do.
+  if (kind === 'exchange') return short ? 'Answer in the comments.' : 'Answer in the comments — then share this with someone who needs to hear it.'
   const challenge = kind === 'challenge' || kind === 'challenge2'
   if (short) return challenge ? 'Comment your answer, then share it.' : 'Share this with someone who needs it.'
   return challenge
@@ -327,17 +332,31 @@ function withAsk(text: string | undefined, kind: Kind, join = '\n'): string {
   const t = join === ' '
     ? stripped.replace(/\s+/g, ' ').trim()
     : stripped.replace(/[ \t]+/g, ' ').replace(/ ?\n ?/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
-  const challenge = kind === 'challenge' || kind === 'challenge2'
-  const has = /\bshare\b/i.test(t) && (!challenge || /comment/i.test(t))
+  // Every kind whose ask LEADS with the comment, so a model caption that says
+  // only "share" does not suppress it. The exchange joins the challenges here
+  // rather than being special-cased: they are the formats that end on a
+  // question, and the guard is about the ask, not about the format.
+  const asksComment = kind === 'challenge' || kind === 'challenge2' || kind === 'exchange'
+  const hasShare = /\bshare\b/i.test(t)
+  const has = hasShare && (!asksComment || /comment/i.test(t))
   if (has) return t
+  // A HALF-MATCH is the case that shipped a doubled ask: on a comment-asking
+  // kind the model wrote "Share this with someone who needs to hear it." and
+  // no comment, so the guard above fell through and appended the full line —
+  // two share asks in three sentences, which reads as a caption arguing with
+  // itself. The model's own share sentence comes out, and ours goes on the
+  // end whole, so the post asks for exactly one thing first and one second.
+  const body = asksComment && hasShare
+    ? t.replace(/[^.!?\n]*\bshare\b[^.!?\n]*[.!?]?/gi, ' ').replace(/[ \t]+/g, ' ').replace(/ ?\n ?/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
+    : t
   // The ask is separated the way the words themselves are. A single newline
   // under the NOTE — three paragraphs split by blank lines — hung the share
   // line off the end of the closing sentence like a fourth clause of it,
   // where every other break in the post was a paragraph. So a text that
   // already contains a blank line gets one; a one-line caption keeps the
   // join it was given, and a space-joined network is untouched.
-  const gap = join === '\n' && /\n\n/.test(t) ? '\n\n' : join
-  return [t, callToAction(kind)].filter(Boolean).join(gap)
+  const gap = join === '\n' && /\n\n/.test(body) ? '\n\n' : join
+  return [body, callToAction(kind)].filter(Boolean).join(gap)
 }
 
 /**

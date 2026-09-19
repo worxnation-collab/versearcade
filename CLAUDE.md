@@ -468,8 +468,9 @@ below is still worth reading — the scars are real and several of them are
 invisible in a diff — but the bullets describe formats and networks that are
 now parked, so take the shape from here and the lessons from there.
 
-**What it makes now.** A MORNING VERSE and an EVENING STORY, both carrying the
-operator's own recorded voice, posted to YouTube and Facebook only:
+**What it makes now.** A MORNING VERSE and an EVENING STORY every day, plus an
+EXCHANGE three days a week — all carrying the operator's own recorded voice,
+posted to YouTube and Facebook only:
 
 - **The verse.** His recorded HOOK opens it (about fifteen seconds, his face
   beside the caption), then a synthesised voice reads the verse. Standing in
@@ -498,6 +499,58 @@ operator's own recorded voice, posted to YouTube and Facebook only:
   `lib/tiktokRender.ts` carries the argument and the three measured numbers;
   the staging is PARKED rather than deleted, because the reading kinds are
   built on the same machinery.
+
+- **The exchange.** Mon/Wed/Fri at 12:30, and the one format with no
+  synthetic fallback: he opens, two figures out of the text ask and answer
+  each other, the answer lands as one whole-frame word, and he closes on a
+  question that is the caption's comment ask. Full design:
+  `docs/TIKTOK-EXCHANGE.md`. Four things are load-bearing and each is a
+  narrowing of a rule stated absolutely elsewhere on this page:
+
+  **It REFUSES a day with no takes.** Every other generator degrades to a
+  fully synthetic version, because it still has something to say. An exchange
+  with nobody in it is two synthesised characters talking over a painting,
+  going to the two networks that judge a CHANNEL — the exact shape the
+  originality policies describe. `makeExchange` throws and the day quietly
+  makes two posts. That is the "unvoiced day" gap this page warns about,
+  closed for the one format where it could not be tolerated.
+
+  **THE CAMERA MOVES**, which is a deliberate exception to "the only thing
+  moving is the caption". That rule was written for one figure at 42% of the
+  frame; here there are two at full length and the face carrying the turn is
+  ~90px tall, so the expression swap changed nothing a viewer could see. The
+  push is motivated — it creeps through the setup, lands hard on the answer,
+  snaps wide for the payoff — and nothing else moves but the walk-in.
+
+  **There is no silence in it.** The first cut held the payoff over 2.8s of
+  dead air and that was the owner's first note. The four speech blocks butt
+  up with beats of a few hundred ms and the payoff plays OVER his close.
+
+  **And the voice fault was SWING, not pitch.** Peter shipped on `Puck` and
+  read as performed; measured, Puck's median is 115 Hz — an ordinary man's
+  voice — against `Orus`'s 114. What differs is the intonation range inside a
+  sentence: 102 Hz against 50. `Algenib` is the LOWEST voice in the set and
+  the swingiest of all, so deeper is not flatter. `SPEAKER_VOICE` picks for
+  swing and every delivery note ends "no lilt, no brightness, no theatrical
+  flair" — the note does as much work as the id.
+
+  **And it found a bug that had been live in the runner all along.** The
+  runner proxies the bucket to the page READS ONLY — a PUT went out as a GET
+  and came back as `Bucket not found` — so `ensureVoice`, `ensureReading` and
+  `ensureExchangeVoice` could never park a transcript they had just made, and
+  "the morning runner can do the listening itself when a phone only uploaded"
+  was false in the runner for as long as it existed. Every other kind hid it
+  by falling back to a synthetic voice. The signed-upload path is forwarded
+  now, and only that path.
+
+  Its rotation exists because Jesus and Paul are 59% of the verse pool's
+  speakers: `pickExchange` refuses anyone from the last `SPEAKER_MEMORY`
+  posts. That was written as 5 before a single exchange existed and starves
+  the bank (Jesus once a month); it is **2**, which gives nobody adjacent to
+  their own post and Jesus every third. `check:exchanges` fails the build on
+  a cast id missing its `_asking`/`_struck`/`_settled` renders, on two
+  speakers sharing a voice, on a missing painting, and on the runner's copy
+  of the calendar drifting from the app's — every one of those RENDERS.
 
 **Why the reading moved off him**, since it is the half that looks like a
 downgrade: a reading has to be recorded for THAT DAY'S verse, so a day he

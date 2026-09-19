@@ -157,6 +157,15 @@ async function gemini(path: string, body: unknown, method = 'POST'): Promise<Rec
  * the caption and unvoiced for the disclosure.
  */
 const VOICED_KINDS: string[] = ['verse', 'story', 'exchange', 'book', 'moment', 'before', 'figure', 'quiet', 'prayer']
+/**
+ * Every kind with a PARKED RECORDING of its own, which is a longer list than
+ * the one above: the exchange is spoken at both ends, so it has two, and the
+ * closing half is not a post kind. `VOICED_KINDS` answers "can this POST
+ * claim a human voice"; this answers "is `voice-<k>.wav` a path we serve".
+ * Conflating them let `voice`/`voice-clear` silently coerce the closing half
+ * to the verse's file.
+ */
+const VOICE_KINDS: string[] = [...VOICED_KINDS, 'exchange-close']
 
 async function ayrshare(path: string, body: unknown, method = 'POST', forX = false): Promise<Record<string, unknown>> {
   const headers: Record<string, string> = { 'content-type': 'application/json', Authorization: `Bearer ${AYRSHARE_KEY}` }
@@ -677,7 +686,7 @@ Deno.serve(async (req) => {
     // weekday readings joined the verse and the story here rather than
     // getting a path of their own — `refit`, the correction step, the caption
     // path and voice/voice-clear/upload-url are all keyed on kind already.
-    const voiceKind = (k: unknown): string => (VOICED_KINDS.includes(String(k)) ? String(k) : 'verse')
+    const voiceKind = (k: unknown): string => (VOICE_KINDS.includes(String(k)) ? String(k) : 'verse')
     if (action === 'voice') {
       const date = String(input.date ?? '')
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: 'date must be YYYY-MM-DD' }, 400)
@@ -887,7 +896,7 @@ Deno.serve(async (req) => {
       // photo the thought section draws.
       // The six READING kinds join both halves: they park an MP4 like any
       // other post and a recording like the verse and the story do.
-      if (!/^(days\/\d{4}-\d{2}-\d{2}\/((verse|story|quiz|challenge|challenge2|own|exchange|book|moment|before|figure|quiet|prayer)(\.(mp4|webm)|-cover\.jpg)|note-card\.jpg|voice-(verse|story|exchange|book|moment|before|figure|quiet|prayer)\.(wav|json))|founder\/photo\.jpg|scenes\/[a-z0-9-]{1,60}\.jpg)$/.test(path)) return json({ error: 'bad path' }, 400)
+      if (!/^(days\/\d{4}-\d{2}-\d{2}\/((verse|story|quiz|challenge|challenge2|own|exchange|book|moment|before|figure|quiet|prayer)(\.(mp4|webm)|-cover\.jpg)|note-card\.jpg|voice-(verse|story|exchange|exchange-close|book|moment|before|figure|quiet|prayer)\.(wav|json))|founder\/photo\.jpg|scenes\/[a-z0-9-]{1,60}\.jpg)$/.test(path)) return json({ error: 'bad path' }, 400)
       const { data, error } = await admin.storage.from(BUCKET).createSignedUploadUrl(path, { upsert: true })
       if (error || !data) return json({ error: error?.message ?? 'no upload url' }, 500)
       return json({ path, token: data.token, publicUrl: publicUrl(path) })

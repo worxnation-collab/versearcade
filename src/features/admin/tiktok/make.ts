@@ -25,6 +25,7 @@ import { stagePath, STORY_STAGES } from '@/data/tiktokStages'
 import { READINGS, stageForReading, type ReadingKind } from '@/data/tiktokWeek'
 import { MOMENTS, momentPath } from '@/data/tiktokMoments'
 import { castFor } from '@/data/tiktokCast'
+import { EXCHANGES, exchangeForDate, isExchangeDay, voiceFor } from '@/data/tiktokExchanges'
 import type { TimedWord } from '@/lib/tiktokRender'
 
 export type Progress = (fraction: number, label: string) => void
@@ -692,4 +693,133 @@ export async function makeChallenge(d: string, o: ChallengeOptions, progress: Pr
   const out = await r.renderQuiz({ ...base, audio, bed, cues, onProgress: progress })
   const won = step.pick === q.answerIndex
   return made(d, kind, v.reference, out, copy, `${name} · Q${qi + 1} · ${won ? 'got it' : 'missed it'}`)
+}
+
+// ---- the exchange ------------------------------------------------------------------
+//
+// The third post: he opens, two figures out of the text ask and answer each
+// other, the answer lands as one whole-frame word, and he closes on a
+// question. Three a week (Mon/Wed/Fri — `EXCHANGE_DAYS`), and which exchange
+// a date gets is derived from the calendar on both sides, so the hub and the
+// runner never have to agree about anything but the date.
+
+export interface ExchangeOptions {
+  /** A fixed exchange; omitted means the date's own. */
+  pick?: string
+  copy?: boolean
+  music?: boolean
+  align?: boolean
+}
+
+/**
+ * One end of his recording for an exchange, listened to here if a phone only
+ * uploaded. `ensureOwn`'s twin, and it exists for the same reason: a phone
+ * cannot run Whisper, so the morning runner has to be able to do the
+ * listening itself or a day he recorded on his sofa has no voice in it.
+ */
+export async function ensureExchangeVoice(d: string, half: 'exchange' | 'exchange-close', progress: Progress): Promise<(VoiceTrack & { wavUrl: string }) | null> {
+  const parked = await fetchVoice(d, half).catch(() => null)
+  if (parked) return parked
+  const wavUrl = publicUrl(voiceWavPath(d, half))
+  if (!(await existsAt(wavUrl + '?v=' + Date.now(), 'audio/'))) return null
+  progress(0, `listening to your ${half === 'exchange' ? 'opening' : 'closing'} take`)
+  const m = await import('@/lib/tiktokVoice')
+  const dec = await m.decodeRecording(await (await fetch(wavUrl + '?v=' + Date.now())).blob(), m.SPEECH_TARGET.story)
+  // Both halves are all thought — there is no verse read in this format at
+  // all — so `transcribeOwn` is the listener, as it is for a story's half.
+  const track = await m.transcribeOwn(dec.samples, dec.sampleRate, half === 'exchange' ? 'open' : 'close', (label) => progress(0, label))
+  await parkFile(voiceJsonPath(d, half), new Blob([JSON.stringify(track)], { type: 'application/json' }), 'application/json')
+  return { ...track, wavUrl }
+}
+
+/** His recording, fetched and cut to what he actually said. */
+async function halfOf(v: VoiceTrack & { wavUrl: string }): Promise<{ audio: ArrayBuffer; words: TimedWord[]; text: string }> {
+  const audio = await (await fetch(v.wavUrl + '?v=' + Date.now())).arrayBuffer()
+  return { audio, words: v.thought, text: v.text }
+}
+
+export async function makeExchange(d: string, o: ExchangeOptions, progress: Progress): Promise<MadeBlob> {
+  const e = (o.pick ? EXCHANGES.find((x) => x.id === o.pick) : null) ?? exchangeForDate(d)
+  if (!e) throw new Error(`no exchange for ${d} — ${isExchangeDay(d) ? 'the bank is empty' : 'not an exchange day'}`)
+
+  // **Both halves are required, and this is the one generator that refuses
+  // rather than falling back.** Every other post here degrades to a fully
+  // synthetic version when no recording is parked, because it still has
+  // something to say — a verse gets read, a story gets told. An exchange with
+  // no human voice in it is two synthesised characters talking to each other
+  // over a painting, with nothing a person made anywhere in it, going to the
+  // two networks that judge a CHANNEL. That is the exact shape the
+  // originality policies describe, and the warmth argument that put this
+  // format on YouTube and Facebook at all rests on him being in it.
+  //
+  // So a day with no takes makes NO POST rather than a thin one. The runner
+  // reports it and moves on; the verse and the story still go out.
+  progress(0, 'finding your takes')
+  const [openV, closeV] = await Promise.all([
+    ensureExchangeVoice(d, 'exchange', progress),
+    ensureExchangeVoice(d, 'exchange-close', progress),
+  ])
+  if (!openV || !closeV) {
+    const missing = [!openV && 'opening', !closeV && 'closing'].filter(Boolean).join(' and ')
+    throw new Error(`no ${missing} take parked for ${d} — an exchange is voiced at both ends by design, so this day makes no exchange`)
+  }
+  const [open, close] = await Promise.all([halfOf(openV), halfOf(closeV)])
+
+  // The two synthesised speakers. Each figure has its own voice and its own
+  // delivery note; `check:exchanges` asserts the two never share a voice,
+  // because an exchange in one voice is one person talking to himself.
+  progress(0, 'asking for the two voices')
+  const av = voiceFor(e.asker), bv = voiceFor(e.answerer)
+  const [askTts, answerTts] = await Promise.all([
+    call<{ url: string }>('tts', { date: d, text: e.question, voice: av.voice, style: av.style }),
+    call<{ url: string }>('tts', { date: d, text: e.answer, voice: bv.voice, style: bv.style }),
+  ])
+  const [askAudio, answerAudio] = await Promise.all([
+    fetch(askTts.url + '?v=' + Date.now()).then((r) => r.arrayBuffer()),
+    fetch(answerTts.url + '?v=' + Date.now()).then((r) => r.arrayBuffer()),
+  ])
+
+  progress(0, 'loading the scene')
+  const r: Renderer = await import('@/lib/tiktokRender')
+  const load = (p: string) => r.loadImage(p).catch(() => null)
+  // The painting fails closed to the Harvest Road, exactly as a missing
+  // per-verse painting does — an ungenerated backdrop is never a failed post.
+  const scene = (await load(`/tiktok/exchange/${e.scene}.jpg`)) ?? (await loadScene(r, 'harvest'))
+  const [askFig, askAsking, askStruck, ansFig, ansSettled] = await Promise.all([
+    load(skinPath(e.asker)), load(`/skins/${e.asker}_asking.png`), load(`/skins/${e.asker}_struck.png`),
+    load(skinPath(e.answerer)), load(`/skins/${e.answerer}_settled.png`),
+  ])
+  // The BASE renders are the only ones that must exist: an expression variant
+  // that will not load leaves that figure's face unchanged, which is a
+  // quieter post rather than a broken one.
+  if (!askFig || !ansFig) throw new Error(`no render for ${!askFig ? e.asker : e.answerer} — check:exchanges should have caught this`)
+
+  let copy: Copy | null = null
+  if (o.copy !== false) {
+    progress(0, 'writing the caption')
+    try {
+      copy = await fetchCopy(d, 'exchange', false, {
+        voiced: true,
+        about: `${e.hook}. ${e.question} — ${e.answer} The payoff on screen is ${e.payoff}. He opens by saying: ${e.open} He closes by saying: ${e.close}`,
+      })
+    } catch { copy = null }
+  }
+
+  progress(0, 'rendering')
+  const photo = await r.loadImage(publicUrl(FOUNDER_PHOTO) + '?v=' + Date.now()).catch(() => undefined)
+  const bed = o.music !== false
+    ? await bedFor(await r.exchangeDuration({ open: open.audio, ask: askAudio, answer: answerAudio, close: close.audio }), 'morning')
+    : undefined
+  const out = await r.renderExchange({
+    reference: e.reference, verseText: e.verseText, hook: e.hook,
+    scene,
+    asker: { figure: askFig, speaking: askAsking, turned: askStruck, audio: askAudio, text: e.question },
+    answerer: { figure: ansFig, turned: ansSettled, audio: answerAudio, text: e.answer },
+    payoff: e.payoff, payoffNote: e.payoffNote,
+    own: { open, close, photo, label: VOICE_LABEL },
+    bed, align: o.align, onProgress: progress,
+  })
+  // `voiced` and `opened` are BOTH true and never inferred: he speaks at two
+  // ends of this one, which is what `AI_NOTE_EXCHANGE` says out loud.
+  return made(d, 'exchange', e.reference, out, copy, `${e.asker} → ${e.answerer} · ${e.payoff} · your voice at both ends`, true, true)
 }

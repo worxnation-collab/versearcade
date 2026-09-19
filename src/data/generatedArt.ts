@@ -83,7 +83,6 @@ export const GENERATED_ART: Record<string, string> = {
   'deborah': '/skins/deborah.png',
   'eden': '/skins/eden.png',
   'elijah': '/skins/elijah.png',
-  'exchange_forgive_seventy': '/tiktok/stages/exchange_forgive_seventy.jpg',
   'ezekiel': '/skins/ezekiel.png',
   'ezekiel_asking': '/skins/ezekiel_asking.png',
   'ezekiel_settled': '/skins/ezekiel_settled.png',

@@ -13,13 +13,13 @@
 // is needed.
 
 import { setRunnerToken } from '@/features/admin/tiktok/shared'
-import { makeVerse, makeStory, makeQuiz, makeChallenge, makeNote, makeReading, type Progress } from '@/features/admin/tiktok/make'
+import { makeVerse, makeStory, makeQuiz, makeChallenge, makeNote, makeReading, makeExchange, type Progress } from '@/features/admin/tiktok/make'
 import { isReadingKind } from '@/data/tiktokWeek'
 import { env as tfEnv } from '@huggingface/transformers'
 
 /** The kinds the runner renders. `own` is an operator's upload and is never rendered here. */
 export type Kind = 'verse' | 'story' | 'quiz' | 'challenge' | 'challenge2' | 'note'
-  | 'book' | 'moment' | 'before' | 'figure' | 'quiet' | 'prayer'
+  | 'book' | 'moment' | 'before' | 'figure' | 'quiet' | 'prayer' | 'exchange'
 
 export interface Rendered {
   kind: Kind
@@ -85,7 +85,11 @@ export async function renderPost(kind: Kind, date: string, token?: string): Prom
   // parked rather than falling back to a synthetic voice; the runner reports
   // that as a skip, which is the deliberate half of "a quiet day beats a thin
   // one".
+  // An EXCHANGE throws on a day with neither take parked, for the same
+  // reason a reading does and a stronger one: it has no synthetic fallback
+  // that is worth posting. See `makeExchange`.
   const m = isReadingKind(kind) ? await makeReading(date, kind, {}, progress)
+    : kind === 'exchange' ? await makeExchange(date, {}, progress)
     : kind === 'verse' ? await makeVerse(date, {}, progress)
     : kind === 'story' ? await makeStory(date, {}, progress)
     : kind === 'challenge' ? await makeChallenge(date, { slot: 1 }, progress)

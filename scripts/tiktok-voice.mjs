@@ -140,7 +140,12 @@ const READING = ['book', 'moment', 'before', 'figure', 'quiet', 'prayer']
 // meant twelve days of an old schedule could not be taken down from a
 // terminal at all — the command answered `unknown kind note` and the run
 // read as "nothing to delete".
-const KINDS = ['verse', 'story', 'note', 'quiz', 'challenge', 'challenge2', 'own', ...READING]
+// The exchange is TWO recordings for one post, so both halves are addressable
+// here while only `exchange` is a post kind — `listen --kind=exchange-close`
+// parks his closing take, and `render`/`post`/`unpost --kind=exchange` address
+// the video. Leaving the closing half out meant it could only be listened to
+// by the morning runner, which is the opposite of what a CLI is for.
+const KINDS = ['verse', 'story', 'note', 'quiz', 'challenge', 'challenge2', 'own', 'exchange', 'exchange-close', ...READING]
 if (flags.kind === true) fail(`use --kind=<${KINDS.join('|')}>`)
 const KIND = flags.kind ? String(flags.kind) : flags.story ? 'story' : 'verse'
 if (!KINDS.includes(KIND)) fail(`unknown kind ${KIND}`)

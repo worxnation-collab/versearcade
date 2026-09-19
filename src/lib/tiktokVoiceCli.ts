@@ -9,8 +9,8 @@
 // the runner token and catches the finished video as a download — the shape
 // lib/tiktokDaily.ts already has. Never imported by the app.
 
-import { VOICE_LABEL, setRunnerToken, parkFile, fetchCopy, fetchThought, fetchStoryWord, fetchVoice, publicUrl, existsAt, voiceWavPath, voiceJsonPath, type VoiceKind } from '@/features/admin/tiktok/shared'
-import { makeVerse, makeStory, makeNote, makeReading, type Progress } from '@/features/admin/tiktok/make'
+import { VOICE_LABEL, setRunnerToken, parkFile, fetchCopy, fetchThought, fetchStoryWord, fetchVoice, publicUrl, existsAt, voiceWavPath, voiceJsonPath, postKindOf, type VoiceKind } from '@/features/admin/tiktok/shared'
+import { makeVerse, makeStory, makeNote, makeReading, makeExchange, type Progress } from '@/features/admin/tiktok/make'
 import { isReadingKind } from '@/data/tiktokWeek'
 import { getVerseForDate } from '@/data/bible/questions'
 import type { TimedWord } from '@/lib/tiktokRender'
@@ -153,7 +153,7 @@ window.vaVoice = {
     say('parking the transcript')
     await parkFile(voiceJsonPath(date, kind), new Blob([JSON.stringify(fixed)], { type: 'application/json' }), 'application/json')
     say('rewriting the caption')
-    try { await fetchCopy(date, kind, true) } catch { /* written at render time otherwise */ }
+    try { await fetchCopy(date, postKindOf(kind), true) } catch { /* written at render time otherwise */ }
     return { seconds: dec.seconds, verseMatched: fixed.verseMatched, verseWords: fixed.verse.length, verseEnd: fixed.verse[fixed.verse.length - 1]?.end ?? 0, thoughtStart: fixed.thought[0]?.start ?? 0, thoughtWords: fixed.thought.length, text: fixed.text }
   },
 
@@ -182,7 +182,7 @@ window.vaVoice = {
     const fixed = m.refit(parked, supplied)
     await parkFile(voiceJsonPath(date, kind), new Blob([JSON.stringify(fixed)], { type: 'application/json' }), 'application/json')
     say('rewriting the caption')
-    try { await fetchCopy(date, kind, true) } catch { /* written at render time otherwise */ }
+    try { await fetchCopy(date, postKindOf(kind), true) } catch { /* written at render time otherwise */ }
     return { words: fixed.thought.length, heard: parked.heard.length, text: fixed.text }
   },
 
@@ -285,11 +285,16 @@ window.vaVoice = {
     // they are the same shape (his reading over held paintings) and differ
     // only in what the paintings are of. Anything not in that rotation is
     // the verse or the story, as it always was.
+    // An EXCHANGE takes its `pick` as an exchange id rather than a painting,
+    // so `--pick=who-do-you-say` renders a chosen one out of the bank on a
+    // date the rotation would have dealt something else.
     const m = isReadingKind(kind)
       ? await makeReading(date, kind, { pick, reference }, progress)
-      : kind === 'story'
-        ? await makeStory(date, { ownPlace: place, restory }, progress)
-        : await makeVerse(date, {}, progress)
+      : kind === 'exchange'
+        ? await makeExchange(date, { pick }, progress)
+        : kind === 'story'
+          ? await makeStory(date, { ownPlace: place, restory }, progress)
+          : await makeVerse(date, {}, progress)
     const a = document.createElement('a')
     a.href = m.url
     a.download = `${kind}-${date}.${m.ext}`

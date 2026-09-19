@@ -2430,3 +2430,376 @@ export async function renderQuizPoster(input: Omit<QuizInput, 'audio' | 'onProgr
   await drawQuizFrame(ctx, { input, tl, phrases: [] }, at)
   return canvas.toDataURL('image/png')
 }
+
+// ---- the exchange: two figures, one question, one answer --------------------
+//
+// The third format. He opens in his own voice, a figure asks a real question
+// out of the text, a second figure answers it, the answer lands as one
+// whole-frame number, and he closes on a question to the viewer. Two voiced
+// ends, two synthesised speakers, one held painting.
+//
+// **This layout MOVES THE CAMERA, and that is a deliberate exception to the
+// rule the other two are built on.** "The only thing moving is the caption"
+// was written for a layout with ONE figure standing centre-frame at 42% of
+// the height, where a face is big enough to read at a thumb's distance. Here
+// there are two of them, full length, and the face that carries the whole
+// post — the asker's, on the beat the answer lands — is about ninety pixels
+// tall at rest. Swapping it changed nothing a viewer could see.
+//
+// So the push is MOTIVATED rather than decorative: it creeps through the
+// setup, lands hard on the answer (the one moment the faces matter), snaps
+// wide for the payoff, and drifts in again under his close. It is one camera
+// being placed, which is the same argument `SHOT_PUSH` makes for a cut — not
+// an effect applied to one moment. Nothing else moves: the painting is held,
+// the figures stand, and the only other animation is the walk-in.
+//
+// **And there is no silence in it.** The first cut of this format held the
+// payoff over 2.8 seconds of dead air, which is the single worst thing a
+// short video can do — the owner's first note on seeing it. The four speech
+// blocks are butted up with beats of a few hundred milliseconds, and the
+// payoff card plays OVER the opening of his close rather than instead of it.
+
+/** The beats between the four voices. A reply that waits reads as a sermon. */
+const EX_GAP_ASK = 0.55
+const EX_GAP_ANSWER = 0.30
+const EX_GAP_CLOSE = 0.35
+/** How long the payoff card holds, over the first words of his close. */
+const EX_PAYOFF = 2.6
+/** How long the two figures take to walk in from the edges of the frame. */
+const EX_WALK = 0.6
+
+/**
+ * Where the two stand, as fractions of the frame.
+ *
+ * They CONVERGE as the camera pushes, and that is load-bearing rather than
+ * pretty: at their opening marks the pair spans 90% of the width, so any
+ * zoom at all cuts the asker in half. Measured on a real frame — at the
+ * close-up's 1.42 the converged pair loses only the outer hand of each
+ * figure. It also reads as two people closing the distance while they talk,
+ * which is free.
+ */
+const EX_ASKER = { from: -0.25, mark: 0.245, close: 0.29 }
+const EX_ANSWERER = { from: 1.25, mark: 0.755, close: 0.71 }
+const EX_STAND = { feet: 0.75, height: 0.55 }
+/** Out of phase, so the two never breathe together and read as one object. */
+const EX_BOB = [3.6, 3.4]
+
+export interface ExchangeSpeaker {
+  /** Resting face, the `_asking` variant, and the face after the turn. */
+  figure: HTMLImageElement
+  speaking?: HTMLImageElement | null
+  turned?: HTMLImageElement | null
+  audio: ArrayBuffer
+  text: string
+}
+
+export interface ExchangeOwn {
+  audio: ArrayBuffer
+  /** Timed against HIS OWN recording — 0 is the start of that half, not of the video. */
+  words: TimedWord[]
+  text: string
+}
+
+export interface ExchangeInput {
+  reference: string
+  verseText: string
+  hook: string
+  /** The held painting. */
+  scene: HTMLImageElement
+  asker: ExchangeSpeaker
+  answerer: ExchangeSpeaker
+  /** The whole-frame change, and the small word under it. */
+  payoff: string
+  payoffNote?: string
+  /** His two halves. Both are required: this format is voiced at both ends by design. */
+  own: { open: ExchangeOwn; close: ExchangeOwn; photo?: HTMLImageElement; label?: string }
+  bed?: Float32Array
+  align?: boolean
+  onProgress?: (fraction: number, label: string) => void
+}
+
+interface ExchangeScene {
+  input: ExchangeInput
+  lead: number
+  audioDur: number
+  total: number
+  phrases: TimedPhrase[]
+  /** Every block's start and end, in audio time. */
+  openEnd: number
+  askAt: number
+  askEnd: number
+  answerAt: number
+  answerEnd: number
+  closeAt: number
+}
+
+/**
+ * The camera, in audio time: how far in, and around what.
+ *
+ * Piecewise and explicit rather than eased through a curve, because each
+ * segment answers a different thing and a future session should be able to
+ * move one without moving the rest. `anchor` is biased ABOVE centre so a
+ * push travels toward the faces rather than toward the pavement.
+ */
+const EX_ANCHOR = 0.44
+function exchangeCamera(sc: ExchangeScene, at: number): number {
+  const { askAt, answerAt, closeAt } = sc
+  const span = (a: number, b: number, from: number, to: number) =>
+    from + (to - from) * Math.min(1, Math.max(0, (at - a) / Math.max(0.001, b - a)))
+  if (at < EX_WALK) return 1
+  if (at < askAt) return span(EX_WALK, askAt, 1.0, 1.18)
+  if (at < answerAt) return span(askAt, answerAt, 1.18, 1.30)
+  // The turn: the one fast move in the post, and the only reason the faces
+  // are legible at all.
+  if (at < answerAt + 0.8) return span(answerAt, answerAt + 0.8, 1.30, 1.42)
+  if (at < closeAt) return span(answerAt + 0.8, closeAt, 1.42, 1.46)
+  // The payoff snaps WIDE — the whole-frame change is the format's one cut.
+  if (at < closeAt + EX_PAYOFF) return 1
+  return span(closeAt + EX_PAYOFF, sc.audioDur, 1.0, 1.2)
+}
+
+/** Where a figure stands at this moment: off-frame, on its mark, or converged. */
+function exchangeX(m: { from: number; mark: number; close: number }, sc: ExchangeScene, at: number): number {
+  if (at < EX_WALK) return m.from + (m.mark - m.from) * easeOut(at / EX_WALK)
+  if (at < sc.askAt) return m.mark
+  if (at >= sc.answerAt + 0.8) return m.close
+  const f = (at - sc.askAt) / Math.max(0.001, sc.answerAt + 0.8 - sc.askAt)
+  return m.mark + (m.close - m.mark) * f
+}
+
+/** The payoff: the frame goes down and one thing is left on it. */
+function drawPayoff(ctx: CanvasRenderingContext2D, text: string, note: string | undefined, f: number) {
+  if (f <= 0) return
+  ctx.save()
+  ctx.globalAlpha = f
+  ctx.fillStyle = 'rgba(6,4,20,0.55)'
+  ctx.fillRect(0, 0, WIDTH, HEIGHT)
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+  // A long payoff ("IF I PERISH") has to fit the frame as readily as "490",
+  // so the size is chosen from the text rather than fixed. `fitText` leaves
+  // the chosen font on the context, so the number is drawn before anything
+  // else touches it.
+  const { lines, lh } = fitText(ctx, text, 940, [330, 260, 200, 150, 120, 96], 480)
+  const cy = HEIGHT / 2 - (note ? 50 : 0)
+  const y0 = cy - ((lines.length - 1) * lh) / 2
+  lines.forEach((l, i) => outlined(ctx, l, WIDTH / 2, y0 + i * lh, '#ffd23f', 'rgba(11,7,32,0.9)', Math.round(lh / 9)))
+  if (note) {
+    ctx.font = `800 64px ${FONT_DISPLAY}`
+    outlined(ctx, note, WIDTH / 2, y0 + lines.length * lh + 26)
+  }
+  ctx.restore()
+}
+
+async function drawExchangeFrame(ctx: CanvasRenderingContext2D, sc: ExchangeScene, t: number, chrome = true) {
+  const { input, lead, audioDur, total, phrases } = sc
+  const at = t - lead
+  const endFade = Math.min(1, Math.max(0, (t - (total - TAIL_SEC)) / 0.6))
+
+  ctx.fillStyle = '#0b0720'
+  ctx.fillRect(0, 0, WIDTH, HEIGHT)
+
+  // 1. The world — painting and figures — under the camera. Everything drawn
+  //    inside this transform moves together, which is what makes it read as
+  //    one camera rather than as things being resized.
+  const z = exchangeCamera(sc, at)
+  ctx.save()
+  ctx.translate(WIDTH / 2, HEIGHT * EX_ANCHOR)
+  ctx.scale(z, z)
+  ctx.translate(-WIDTH / 2, -HEIGHT * EX_ANCHOR)
+  cover(ctx, input.scene, input.scene.naturalWidth, input.scene.naturalHeight, 1.02)
+
+  const face = (s: ExchangeSpeaker, speaking: boolean, turned: boolean) =>
+    (turned ? s.turned : speaking ? s.speaking : null) ?? s.figure
+  const bob = (i: number) => Math.sin((2 * Math.PI * (at + i * 1.8)) / EX_BOB[i]) * 0.0035
+  const turned = at >= sc.answerAt
+  standFigure(ctx, face(input.asker, at >= sc.askAt && at < sc.answerAt, turned), 1, 1,
+    { x: exchangeX(EX_ASKER, sc, at), feet: EX_STAND.feet + bob(0), height: EX_STAND.height })
+  standFigure(ctx, face(input.answerer, false, turned), 1, 1,
+    { x: exchangeX(EX_ANSWERER, sc, at), feet: EX_STAND.feet + bob(1), height: EX_STAND.height })
+  ctx.restore()
+
+  // A wash under the caption band, so white words over a pale pavement stay
+  // readable without a panel drawn around them.
+  const g = ctx.createLinearGradient(0, HEIGHT * 0.62, 0, HEIGHT)
+  g.addColorStop(0, 'rgba(6,4,20,0)'); g.addColorStop(1, 'rgba(6,4,20,0.62)')
+  ctx.fillStyle = g; ctx.fillRect(0, HEIGHT * 0.62, WIDTH, HEIGHT * 0.38)
+
+  if (!chrome) return
+
+  // 2. The payoff, over the opening of his close.
+  const payAt = sc.closeAt
+  if (at >= payAt && at < payAt + EX_PAYOFF && endFade < 1) {
+    const f = Math.min(1, easeOut((at - payAt) / 0.18)) * (1 - easeOut((at - (payAt + EX_PAYOFF - 0.35)) / 0.35))
+    drawPayoff(ctx, input.payoff, input.payoffNote, f * (1 - endFade))
+  }
+
+  // 3. The hook card, PINNED for the whole post.
+  //
+  // Deliberately not `drawHook`, which is the other two layouts' hook and
+  // fades at `HOOK_HOLD`. Those posts have a reading or a telling that
+  // carries the rest of the video; an exchange is a question and an answer
+  // with a turn in the middle, and a scroller who lands on it at second
+  // twenty has to be able to see what the argument IS or the turn means
+  // nothing. So it is a card rather than free text — a dark plate with a gold
+  // rule, which reads at any point over any of the paintings, where outlined
+  // text over the temple's pale colonnade does not.
+  if (endFade < 1) {
+    ctx.save()
+    ctx.globalAlpha = (1 - endFade) * Math.min(1, easeOut(t / 0.3) + 0.2)
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    const { lines, lh } = fitText(ctx, input.hook, 860, [54, 48, 42], 160)
+    const w = Math.min(940, Math.max(...lines.map((l) => ctx.measureText(l).width)) + 72)
+    const h = lines.length * lh + 44
+    const cy = 268
+    ctx.fillStyle = 'rgba(8,6,24,0.86)'
+    roundRect(ctx, (WIDTH - w) / 2, cy - h / 2, w, h, 22)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(245,197,66,0.9)'; ctx.lineWidth = 3
+    roundRect(ctx, (WIDTH - w) / 2, cy - h / 2, w, h, 22)
+    ctx.stroke()
+    ctx.fillStyle = '#ffffff'
+    const y0 = cy - ((lines.length - 1) * lh) / 2
+    lines.forEach((l, i) => ctx.fillText(l, WIDTH / 2, y0 + i * lh))
+    ctx.restore()
+  }
+
+  // 4. The caption.
+  if (endFade < 1) {
+    ctx.save()
+    ctx.globalAlpha = 1 - endFade
+    drawCaption(ctx, heldPhrase(phrases, at, audioDur), at, { x: WIDTH / 2, y: HEIGHT * 0.79, maxWidth: 950, size: 68, small: 58 })
+    ctx.restore()
+  }
+
+  // 5. The end card — the verse this came out of, then the link.
+  if (endFade > 0) {
+    ctx.save()
+    ctx.globalAlpha = endFade
+    ctx.fillStyle = 'rgba(11,7,32,0.72)'; ctx.fillRect(0, 0, WIDTH, HEIGHT)
+    drawBrand(ctx, 'VERSE ARCADE', input.reference, 300)
+    // Say the alignment rather than inheriting it. `drawCaption` restores
+    // `center` on its way out — but it returns EARLY when there is no phrase
+    // to draw, which on the end card is every frame, so whatever the last
+    // caption left behind was still set and the verse wrapped to 880 then
+    // drew from the middle leftwards, off the right edge of the frame.
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    ctx.font = `700 52px ${FONT_DISPLAY}`
+    const lines = wrap(ctx, input.verseText, 860)
+    const lh = 64
+    const y0 = HEIGHT / 2 - 120 - ((lines.length - 1) * lh) / 2
+    lines.forEach((l, i) => outlined(ctx, l, WIDTH / 2, y0 + i * lh))
+    const below = Math.max(HEIGHT / 2 + 300, y0 + lines.length * lh + 130)
+    if (input.own.photo) drawSpeaker(ctx, input.own.photo, input.own.label ? `Made by ${input.own.label.split(' · ')[0]}` : undefined, WIDTH / 2, below, 78, 0, endFade)
+    ctx.font = `800 62px ${FONT_DISPLAY}`
+    outlined(ctx, 'Play today’s verse', WIDTH / 2, HEIGHT / 2 + 500)
+    ctx.font = `800 50px ${FONT_DISPLAY}`
+    outlined(ctx, SITE, WIDTH / 2, HEIGHT / 2 + 580, '#ffd23f')
+    ctx.restore()
+  }
+}
+
+/**
+ * Join the four voices into one track, and every caption onto one timeline.
+ *
+ * All four are levelled to the SAME target before they are mixed. His phone
+ * memo and Gemini's reading landed five decibels apart raw on the first cut
+ * of this format, and a step that size inside one post is not fixed by a
+ * network's loudness normalisation — it normalises the whole file and leaves
+ * the imbalance inside it exactly as it found it.
+ */
+export async function renderExchange(input: ExchangeInput): Promise<RenderOutput> {
+  const progress = input.onProgress ?? (() => {})
+  progress(0, 'Decoding the voices')
+  const T = SPEECH_TARGET.story
+  const [open, ask, answer, close] = await Promise.all([
+    decodeAudio(input.own.open.audio).then((s) => levelSpeech(trimTail(s), SAMPLE_RATE, T)),
+    decodeAudio(input.asker.audio).then((s) => levelSpeech(s, SAMPLE_RATE, T)),
+    decodeAudio(input.answerer.audio).then((s) => levelSpeech(s, SAMPLE_RATE, T)),
+    decodeAudio(input.own.close.audio).then((s) => levelSpeech(trimTail(s), SAMPLE_RATE, T)),
+  ])
+  const sec = (n: number) => n / SAMPLE_RATE
+  const openEnd = sec(open.length)
+  const askAt = openEnd + EX_GAP_ASK
+  const askEnd = askAt + sec(ask.length)
+  const answerAt = askEnd + EX_GAP_ANSWER
+  const answerEnd = answerAt + sec(answer.length)
+  const closeAt = answerEnd + EX_GAP_CLOSE
+  const audioDur = closeAt + sec(close.length)
+
+  const samples = new Float32Array(Math.ceil(audioDur * SAMPLE_RATE))
+  const put = (block: Float32Array, at: number) => samples.set(block, Math.round(at * SAMPLE_RATE))
+  put(open, 0); put(ask, askAt); put(answer, answerAt); put(close, closeAt)
+
+  // His two halves are captioned from the timings his recording was listened
+  // to with; the two synthesised lines are captioned by measuring them, the
+  // way every generated reading on this engine is.
+  progress(0.02, 'Timing the captions')
+  const shift = (ps: TimedPhrase[], by: number) => ps.map((p) => ({
+    ...p, start: p.start + by, end: p.end + by,
+    words: p.words?.map((w) => ({ ...w, start: w.start + by, end: w.end + by })),
+  }))
+  const hisOpen = groupWords(splitPhrases(input.own.open.text, 6), input.own.open.words, openEnd)
+  const hisClose = shift(groupWords(splitPhrases(input.own.close.text, 6), input.own.close.words, audioDur - closeAt), closeAt)
+  const asked = shift(await timedCaptions(splitPhrases(input.asker.text, 6), ask, progress, input.align), askAt)
+  const answered = shift(await timedCaptions(splitPhrases(input.answerer.text, 6), answer, progress, input.align), answerAt)
+
+  // A caption HOLDS until the next one begins so a pause is not a blank
+  // panel — and the last caption of a block has nothing after it to stop it.
+  // On a layout with FOUR speakers that is four chances to leave one man's
+  // words on screen under another's voice, which is the bug the story layout
+  // shipped with two. Every block is closed at the moment the next voice
+  // starts, and they are concatenated in SPEAKING order so the frame lookup
+  // finds the right one first.
+  const clamp = (ps: TimedPhrase[], end: number) => {
+    for (const p of ps) { if (p.end > end) p.end = end; if (p.start > end) p.start = end }
+    return ps
+  }
+  const phrases = [
+    ...clamp(hisOpen, askAt),
+    ...clamp(asked, answerAt),
+    ...clamp(answered, closeAt),
+    ...hisClose,
+  ]
+
+  const lead = LEAD
+  const total = lead + audioDur + TAIL_SEC
+  try { await document.fonts.load(`800 70px "Baloo 2"`) } catch { /* fine */ }
+  const sc: ExchangeScene = { input, lead, audioDur, total, phrases, openEnd, askAt, askEnd, answerAt, answerEnd, closeAt }
+  const { blob, ext } = await produce((ctx, t) => drawExchangeFrame(ctx, sc, t), total, lead, samples, progress, input.bed)
+  progress(1, 'Done')
+  return { blob, ext, durationSec: total, phrases }
+}
+
+/** How long an exchange will run, so a music bed can be rendered to fit. */
+export async function exchangeDuration(i: { open: ArrayBuffer; ask: ArrayBuffer; answer: ArrayBuffer; close: ArrayBuffer }): Promise<number> {
+  const [a, b, c, d] = await Promise.all([i.open, i.ask, i.answer, i.close].map((x) => decodeAudio(x)))
+  return LEAD + (a.length + b.length + c.length + d.length) / SAMPLE_RATE
+    + EX_GAP_ASK + EX_GAP_ANSWER + EX_GAP_CLOSE + TAIL_SEC
+}
+
+/** A still of the exchange, for the Pinterest cover and the hub's preview. */
+export async function renderExchangePoster(input: Omit<ExchangeInput, 'onProgress'>, t = 0.9, chrome = true): Promise<string> {
+  const canvas = document.createElement('canvas')
+  canvas.width = WIDTH; canvas.height = HEIGHT
+  const ctx = canvas.getContext('2d', { alpha: false })
+  if (!ctx) throw new Error('no 2d context')
+  try { await document.fonts.load(`800 70px "Baloo 2"`) } catch { /* fine */ }
+  // A poster has no audio to measure, so the blocks are sized from the words
+  // at a plain reading pace. It is a picture of the first seconds, not a
+  // frame-accurate preview.
+  const words = (s: string) => s.split(/\s+/).filter(Boolean).length
+  const pace = (s: string) => Math.max(1.2, words(s) / 2.6)
+  const openEnd = pace(input.own.open.text)
+  const askAt = openEnd + EX_GAP_ASK
+  const askEnd = askAt + pace(input.asker.text)
+  const answerAt = askEnd + EX_GAP_ANSWER
+  const answerEnd = answerAt + pace(input.answerer.text)
+  const closeAt = answerEnd + EX_GAP_CLOSE
+  const audioDur = closeAt + pace(input.own.close.text)
+  const sc: ExchangeScene = {
+    input: input as ExchangeInput, lead: LEAD, audioDur, total: LEAD + audioDur + TAIL_SEC,
+    phrases: [], openEnd, askAt, askEnd, answerAt, answerEnd, closeAt,
+  }
+  await drawExchangeFrame(ctx, sc, t, chrome)
+  return canvas.toDataURL('image/jpeg', 0.9)
+}

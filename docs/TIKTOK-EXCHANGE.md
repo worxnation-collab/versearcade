@@ -23,7 +23,7 @@ at 12:30, the story at 19:30.
 | after a beat | the answerer (synthesised) | **camera pushes hard**; both faces turn |
 | on his close | **his voice** | the frame darkens and the **payoff** lands over it |
 | | | camera wide, then drifting in again |
-| end | — | end card: the verse, then the link |
+| end | — | end card: the ask and the address |
 
 ---
 
@@ -58,7 +58,16 @@ other as the camera pushes (`EX_ASKER.close`, `EX_ANSWERER.close`), which at
 the close-up's 1.42 loses only the outer hand of each figure — and reads as
 two people closing the distance while they talk.
 
-**5. No two speakers share a voice.** An exchange in one voice is one person
+**5. The end card is the ask and the address, and nothing else.** It carried
+the whole verse in five lines and does not any more: this format has just
+SPOKEN the passage, in two voices, with the words on screen as they were said.
+A wall of text between the payoff and the link is a second reading of a post
+that is over, and it pushed the only line with a job to do — the address —
+into the last two seconds under it. The reference stays under the brand,
+because a viewer who wants to look the passage up needs it and it costs one
+line.
+
+**6. No two speakers share a voice.** An exchange in one voice is one person
 talking to himself; it sounds like a rendering bug and is a data bug.
 `check:exchanges` asserts it per entry.
 

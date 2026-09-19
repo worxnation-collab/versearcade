@@ -2502,6 +2502,13 @@ export interface ExchangeOwn {
 
 export interface ExchangeInput {
   reference: string
+  /**
+   * The passage, for a caller that wants it — the hub's card, a future
+   * poster. The RENDER no longer draws it: the end card used to carry the
+   * whole verse and does not, because this format has just spoken it in two
+   * voices with the words on screen. Kept on the input rather than dropped,
+   * so the data a post is made from still says what it is about.
+   */
   verseText: string
   hook: string
   /** The held painting. */
@@ -2671,29 +2678,35 @@ async function drawExchangeFrame(ctx: CanvasRenderingContext2D, sc: ExchangeScen
     ctx.restore()
   }
 
-  // 5. The end card — the verse this came out of, then the link.
+  // 5. The end card — the ASK and the address, and deliberately nothing else.
+  //
+  // It carried the whole verse in five lines of 52px, which is the one thing
+  // on this layout nobody needs: the exchange has just SAID it, in two
+  // voices, with the words on screen as they were spoken. A wall of text
+  // between the payoff and the link is a second reading of a post that is
+  // over, and it pushed the only line with a job to do — the address — into
+  // the last two seconds under it.
+  //
+  // So the last frame is what the last frame is for: where to go, and the
+  // face of the person who made it. The reference stays under the brand
+  // because a viewer who wants to look the passage up needs it and it costs
+  // one line; the verse itself is in the video.
   if (endFade > 0) {
     ctx.save()
     ctx.globalAlpha = endFade
-    ctx.fillStyle = 'rgba(11,7,32,0.72)'; ctx.fillRect(0, 0, WIDTH, HEIGHT)
-    drawBrand(ctx, 'VERSE ARCADE', input.reference, 300)
+    ctx.fillStyle = 'rgba(11,7,32,0.82)'; ctx.fillRect(0, 0, WIDTH, HEIGHT)
     // Say the alignment rather than inheriting it. `drawCaption` restores
     // `center` on its way out — but it returns EARLY when there is no phrase
     // to draw, which on the end card is every frame, so whatever the last
-    // caption left behind was still set and the verse wrapped to 880 then
-    // drew from the middle leftwards, off the right edge of the frame.
+    // caption left behind was still set: the old verse block wrapped to 880
+    // and then drew from the middle leftwards, off the right edge.
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-    ctx.font = `700 52px ${FONT_DISPLAY}`
-    const lines = wrap(ctx, input.verseText, 860)
-    const lh = 64
-    const y0 = HEIGHT / 2 - 120 - ((lines.length - 1) * lh) / 2
-    lines.forEach((l, i) => outlined(ctx, l, WIDTH / 2, y0 + i * lh))
-    const below = Math.max(HEIGHT / 2 + 300, y0 + lines.length * lh + 130)
-    if (input.own.photo) drawSpeaker(ctx, input.own.photo, input.own.label ? `Made by ${input.own.label.split(' · ')[0]}` : undefined, WIDTH / 2, below, 78, 0, endFade)
-    ctx.font = `800 62px ${FONT_DISPLAY}`
-    outlined(ctx, 'Play today’s verse', WIDTH / 2, HEIGHT / 2 + 500)
-    ctx.font = `800 50px ${FONT_DISPLAY}`
-    outlined(ctx, SITE, WIDTH / 2, HEIGHT / 2 + 580, '#ffd23f')
+    drawBrand(ctx, 'VERSE ARCADE', input.reference, 560)
+    if (input.own.photo) drawSpeaker(ctx, input.own.photo, input.own.label ? `Made by ${input.own.label.split(' · ')[0]}` : undefined, WIDTH / 2, 900, 96, 0, endFade)
+    ctx.font = `800 82px ${FONT_DISPLAY}`
+    outlined(ctx, 'Play today’s verse', WIDTH / 2, 1200)
+    ctx.font = `800 72px ${FONT_DISPLAY}`
+    outlined(ctx, SITE, WIDTH / 2, 1320, '#ffd23f')
     ctx.restore()
   }
 }

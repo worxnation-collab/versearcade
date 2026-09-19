@@ -29,7 +29,12 @@ import path from 'node:path'
 const root = path.resolve(import.meta.dirname, '..')
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8')
 const src = read('src/data/tiktokExchanges.ts')
-const runner = read('scripts/tiktok-daily.mjs')
+// EVERY copy of the calendar, not just the first two. There are three: the
+// app's (the source of truth), the runner's (KINDS is decided in Node before
+// the bundle exists) and the voice CLI's (`split --exchange` walks the dates
+// to park a batch under). A copy that drifts parks takes on days that never
+// ask for them, and the split still reports a clean cut.
+const COPIES = ['scripts/tiktok-daily.mjs', 'scripts/tiktok-voice.mjs']
 const fail = []
 
 // ---- the bank -------------------------------------------------------------
@@ -74,10 +79,13 @@ for (const e of entries) {
 const one = (s, re, what) => { const m = s.match(re); if (!m) fail.push(`could not read ${what}`); return m?.[1] }
 const appEpoch = one(src, /EXCHANGE_EPOCH = '([\d-]+)'/, "the app's EXCHANGE_EPOCH")
 const appDays = one(src, /EXCHANGE_DAYS = \[([\d, ]+)\]/, "the app's EXCHANGE_DAYS")
-const runEpoch = one(runner, /EXCHANGE_EPOCH = '([\d-]+)'/, "the runner's EXCHANGE_EPOCH")
-const runDays = one(runner, /EXCHANGE_DAYS = \[([\d, ]+)\]/, "the runner's EXCHANGE_DAYS")
-if (appEpoch && runEpoch && appEpoch !== runEpoch) fail.push(`epoch drift: app ${appEpoch}, runner ${runEpoch}`)
-if (appDays && runDays && appDays.replace(/\s/g, '') !== runDays.replace(/\s/g, '')) fail.push(`day drift: app [${appDays}], runner [${runDays}]`)
+for (const file of COPIES) {
+  const t = read(file)
+  const ep = one(t, /EX(?:CHANGE)?_EPOCH = '([\d-]+)'/, `${file}'s exchange epoch`)
+  const dy = one(t, /EX(?:CHANGE)?_DAYS = \[([\d, ]+)\]/, `${file}'s exchange days`)
+  if (appEpoch && ep && appEpoch !== ep) fail.push(`epoch drift: app ${appEpoch}, ${file} ${ep}`)
+  if (appDays && dy && appDays.replace(/\s/g, '') !== dy.replace(/\s/g, '')) fail.push(`day drift: app [${appDays}], ${file} [${dy}]`)
+}
 
 // ---- the schedule ---------------------------------------------------------
 // An exchange that falls into the `second` slot is scheduled on top of the
@@ -91,4 +99,4 @@ if (fail.length) {
   for (const f of fail) console.error('  ✗ ' + f)
   process.exit(1)
 }
-console.log(`check-exchanges: ${entries.length} exchanges, ${new Set(entries.flatMap((e) => [e.asker, e.answerer])).size} speakers, calendar in sync`)
+console.log(`check-exchanges: ${entries.length} exchanges, ${new Set(entries.flatMap((e) => [e.asker, e.answerer])).size} speakers, calendar in sync across ${COPIES.length + 1} files`)

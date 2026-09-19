@@ -6,10 +6,7 @@ import { useUnlocks } from './unlocks'
 import {
   EMPTY_COUNTERS,
   ownedDecor,
-  planMove,
-  planMoveToPoint,
   planPlacement,
-  planResize,
   type KeepCounter,
   type KeepCounters,
 } from '@/data/keep'
@@ -109,18 +106,6 @@ interface KeepState {
    */
   place: (anchor: string, decorId: string | null) => Promise<PlaceResult>
   /**
-   * Move a placed piece to another anchor of the same mount. Empty target takes
-   * it, anything else trades places — see planMove. Returns null when the move
-   * isn't legal (wrong mount, nothing to move).
-   */
-  move: (from: string, to: string) => Promise<MoveResult | null>
-  /** Apply pre-planned writes (moveTo/resize) through the usual two paths. */
-  arrange: (writes: { anchor: string; value: string | null }[]) => Promise<boolean>
-  /** Stand the piece on `from` at a free point inside its mount's band. */
-  moveTo: (from: string, x: number, y: number) => Promise<boolean>
-  /** Resize the piece on `anchor`, clamped to SCALE_MIN..SCALE_MAX. */
-  resize: (anchor: string, scale: number) => Promise<boolean>
-  /**
    * Give a Grand piece to your church. Online + a church only: the points are
    * banked against a shared congregation, which is not a thing a guest device
    * has (store/church.ts). Once ever per decoration — see 0062.
@@ -130,12 +115,6 @@ interface KeepState {
   owned: () => string[]
 }
 
-export interface MoveResult {
-  swapped: boolean
-  tier: number
-  /** Where the moved piece ended up. */
-  anchor: string
-}
 
 export interface OfferResult {
   ok: boolean
@@ -279,86 +258,6 @@ export const useKeep = create<KeepState>((set, get) => ({
     }
 
     return { anchor: plan.anchor, tier: plan.tier, value: plan.value }
-  },
-
-  async move(from, to) {
-    const plan = planMove(get().placements, from, to)
-    if (!plan) return null
-
-    const next = { ...get().placements }
-    for (const w of plan.writes) {
-      if (w.value) next[w.anchor] = w.value
-      else delete next[w.anchor]
-    }
-    set({ placements: next })
-
-    if (isOnline()) {
-      // Two rows move, so two calls — awaited for the reason in place() above.
-      // set_keep_placement is per-anchor and idempotent, and a half-applied
-      // move is two well-formed placements rather than a lost decoration, which
-      // is why the plan never overwrites.
-      const results = await Promise.all(
-        plan.writes.map((w) => supabase!.rpc('set_keep_placement', { p_anchor: w.anchor, p_decor: w.value })),
-      )
-      if (results.some((r) => r.error)) {
-        await get().load()
-        return null
-      }
-    } else {
-      const disk = readLocal()
-      const placements = { ...disk.placements }
-      for (const w of plan.writes) {
-        if (w.value) placements[w.anchor] = w.value
-        else delete placements[w.anchor]
-      }
-      writeLocal({ ...disk, placements })
-    }
-
-    return { swapped: plan.swapped, tier: plan.tier, anchor: to }
-  },
-
-  // Free position and size. One write each, applied through the same
-  // online/guest pair as place() — and NOT through place() itself, whose no-op
-  // guard would (correctly) refuse to rewrite the same id at the same tier,
-  // which is exactly what a reposition is.
-  async arrange(writes) {
-    if (!writes.length) return true
-    const next = { ...get().placements }
-    for (const w of writes) {
-      if (w.value) next[w.anchor] = w.value
-      else delete next[w.anchor]
-    }
-    set({ placements: next })
-    if (isOnline()) {
-      const results = await Promise.all(
-        writes.map((w) => supabase!.rpc('set_keep_placement', { p_anchor: w.anchor, p_decor: w.value })),
-      )
-      if (results.some((r) => r.error)) {
-        await get().load()
-        return false
-      }
-    } else {
-      const disk = readLocal()
-      const placements = { ...disk.placements }
-      for (const w of writes) {
-        if (w.value) placements[w.anchor] = w.value
-        else delete placements[w.anchor]
-      }
-      writeLocal({ ...disk, placements })
-    }
-    return true
-  },
-
-  async moveTo(from, x, y) {
-    const plan = planMoveToPoint(get().placements, from, x, y)
-    if (!plan) return false
-    return get().arrange(plan.writes)
-  },
-
-  async resize(anchor, scale) {
-    const plan = planResize(get().placements, anchor, scale)
-    if (!plan) return false
-    return get().arrange(plan.writes)
   },
 
   async offer(decorId) {

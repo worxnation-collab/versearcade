@@ -488,7 +488,7 @@ export function CustomizeSection() {
                             gap: 6,
                             padding: '10px 8px',
                             borderRadius: 14,
-                            background: equipped ? 'var(--grape)' : 'var(--card-solid)',
+                            background: equipped ? 'var(--select)' : 'var(--card-solid)',
                             border: equipped ? '1px solid var(--gold)' : '1px solid var(--stroke)',
                             cursor: 'pointer',
                           }}
@@ -757,7 +757,7 @@ export function CustomizeSection() {
                             alignItems: 'start',
                             padding: '9px 10px',
                             borderRadius: 12,
-                            background: on ? 'var(--grape)' : 'var(--card-solid)',
+                            background: on ? 'var(--select)' : 'var(--card-solid)',
                             border: on ? '1px solid var(--gold)' : '1px solid var(--stroke)',
                             cursor: 'pointer',
                           }}
@@ -1235,7 +1235,7 @@ function CosmeticTile({
         gap: 6,
         padding: '8px 4px',
         borderRadius: 14,
-        background: equipped ? 'var(--grape)' : 'transparent',
+        background: equipped ? 'var(--select)' : 'transparent',
         border: equipped ? '1px solid var(--gold)' : '1px solid transparent',
         cursor: onClick ? 'pointer' : 'default',
         opacity: unlocked ? 1 : 0.5,

@@ -126,7 +126,7 @@ function Dashboard() {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
         {(['stats', 'growth', 'users', 'sales', 'church', 'codes', 'push', 'tiktok', 'prayers'] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)} className="pill"
-            style={{ background: tab === t ? 'var(--grape)' : 'var(--card)', fontWeight: 800, textTransform: 'capitalize' }}>
+            style={{ background: tab === t ? 'var(--select)' : 'var(--card)', fontWeight: 800, textTransform: 'capitalize' }}>
             {t === 'church' ? 'Churches' : t === 'tiktok' ? 'TikTok' : t}
           </button>
         ))}

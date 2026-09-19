@@ -86,7 +86,7 @@ function TodaysWords() {
       </div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {WORD_KINDS.map((k) => (
-          <button key={k} className="pill" onClick={() => setOpen(k)} style={{ fontSize: 12, background: open === k ? 'var(--grape)' : 'var(--card)', fontWeight: 800 }}>
+          <button key={k} className="pill" onClick={() => setOpen(k)} style={{ fontSize: 12, background: open === k ? 'var(--select)' : 'var(--card)', fontWeight: 800 }}>
             {KIND_LABEL[k]}
           </button>
         ))}

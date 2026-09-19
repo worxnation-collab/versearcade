@@ -5,6 +5,7 @@ with no Mac. Do the phases in order. Each step says who does it:
 🧑 = you (browser clicks) · 🤖 = already done in the codebase · ☁️ = Codemagic (automatic).
 
 Legend of the other docs:
+- Shipping the 1.3.0 update whose build is already up → `APP-STORE-1.3.0-PACKET.md`
 - Apple identifiers / Sign in with Apple keys → `SETUP-APPLE.md`
 - Listing copy, keywords, privacy answers, review notes → `APP-STORE-LISTING.md`
 - The build pipeline → `codemagic.yaml`
@@ -60,9 +61,25 @@ Codemagic does that automatically in Phase 4.
 > on your iPhone with your Apple ID.
 
 ## Phase 5 — App icon (🤖 source ready / ☁️ applied at build)
-The icon source lives at `assets/icon.png` (1024×1024) and `assets/splash.png`.
-`codemagic.yaml` regenerates the full iOS icon set from it during the build via
-`@capacitor/assets`. To change the icon, replace `assets/icon.png` and push.
+The icon source is **`assets/icon.png`** — 1024×1024, **RGB with no alpha channel**
+(the App Store rejects a transparent icon, `ITMS-90717`) and **no rounded corners**
+of its own, since iOS applies the mask. `codemagic.yaml` regenerates the full iOS
+set from it during the build via `@capacitor/assets`. To change the icon, replace
+that file and push; never edit `ios/`, which is regenerated every build.
+
+Three things about it that are not obvious:
+
+- **`icon.png` wins over `icon.svg`.** `@capacitor/assets` resolves `icon` by
+  extension in the order `.png, .webp, .jpg, .jpeg, .svg` — read out of its own
+  source rather than assumed — so an SVG sitting beside the PNG is never used.
+  Editing one and expecting the icon to change is a silent no-op.
+- **The icon is a painting now, so `scripts/render-assets.mjs` no longer touches
+  it.** That script used to rasterise `icon.svg` over `icon.png`, which after the
+  change would have been a one-command way to restore the old mark with nothing
+  failing. The drawing is kept as `icon-legacy.svg` so it cannot be mistaken for
+  the source; `assets/icon-source.jpg` is the real one.
+- **A new icon needs a new build**, because it is baked into the binary. Whatever
+  is already on TestFlight keeps the icon it was built with.
 
 ## Phase 6 — Fill the listing (🧑, ~30 min)
 In App Store Connect → your app → the version (e.g. **1.0**), paste from
@@ -119,12 +136,12 @@ version absorbs any amount of work, and a per-feature bump just burns numbers. B
 again only once 1.3.0 itself is approved. What a new feature changes is "What's New",
 not the version.
 
-So far 1.3.0 carries live battles (`/battle/live`) and the weekly church rivalry, and
-more is expected before it goes up — treat the list in `APP-STORE-LISTING.md` as a
-running draft and re-read it against `git log` on the day you submit, not before.
-**Also check the uploaded 1.2.0 binary before trusting that split**: if live battles
-were inside it, trim them rather than announcing a feature the store already showed
-people.
+**A 1.3.0 build is on TestFlight as of 2026-09-09**, so the running draft has stopped
+running: `docs/APP-STORE-1.3.0-PACKET.md` is the ordered list of what to do with it,
+and it opens with the two checks nothing here can make — what Apple actually has
+approved, and which commit that TestFlight build was cut from. Read the "What's New"
+block against `git log --first-parent` on the day you submit, not before, and cut a
+bullet for anything that merged after the build rather than shipping the claim.
 
 This paragraph is a claim about App Store Connect, not about the repo, and nothing in
 CI verifies it. It has gone stale once already. Re-read it against the real console

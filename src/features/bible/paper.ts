@@ -67,3 +67,31 @@ export const PAPER_TIER = {
     dot: 'transparent',
   },
 } as const
+
+// ── The player's own highlights (0111) ─────────────────────────────────────
+//
+// The four tiers above are DERIVED — saved, studied, read, unread — and until
+// 0111 a reader could not mark a verse themselves. These six are that: a
+// marker colour somebody chose, on their own page, shown to nobody.
+//
+// **A highlight REPLACES the tier wash and keeps the tier's RULE.** A choice a
+// person made beats a state the app worked out, so the wash is theirs — but
+// the derived tier is still legible, because it is carried by the left rule
+// rather than by the wash. That is deliberately the channel the note above
+// says "survives any color vision at all", so the four states stay readable
+// under a highlight of any colour.
+//
+// Measured over the page at the same alpha, the way the tiers were:
+// ink clears 9.5:1 on the worst of them (rose) against WCAG's 4.5:1 for body
+// text. `npm run check:contrast` does not read these — they composite over
+// paper rather than over a token — so the numbers are recorded here:
+//   amber 12.1  peach 10.8  mint 10.6  sky 9.9  violet 9.6  rose 9.5
+export const PAPER_HIGHLIGHT = {
+  amber:  { wash: 'rgba(255,196,0,0.42)',  dot: '#e8b73d' },
+  rose:   { wash: 'rgba(226,110,140,0.42)', dot: '#d8657f' },
+  mint:   { wash: 'rgba(86,190,150,0.42)',  dot: '#4fae86' },
+  sky:    { wash: 'rgba(90,160,215,0.42)',  dot: '#5a94c4' },
+  violet: { wash: 'rgba(160,130,220,0.42)', dot: '#8f77c9' },
+  peach:  { wash: 'rgba(245,150,95,0.42)',  dot: '#dd8b55' },
+} as const
+

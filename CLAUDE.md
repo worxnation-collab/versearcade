@@ -391,6 +391,47 @@ haptics, the OAuth redirect (`store/auth.ts`), the install prompt, and
 `appStoreAsk()` (review vs. download). There is no other divergence — keep it
 that way.
 
+**Native sign-in never leaves the app, and App Review checks.** The 1.3.0
+submission was rejected on 2026-09-10 for exactly this: Sign in with
+Apple/Google opened real Safari (`window.open(url, '_system')`), and the
+reviewer's note said what they accept — sign in inside the app, or the Safari
+View Controller. So `signInOAuth` opens the provider with `@capacitor/browser`
+(SFSafariViewController on iOS, a Custom Tab on Android). The reason it was
+bounced out to Safari in the first place is the trap: that in-app view REFUSES
+an automatic redirect to a custom URL scheme (a 302, a meta refresh, a JS
+location change — Apple's own forums say so), so Supabase redirecting straight
+to `com.versearcade.app://auth/callback` landed on a blank page and a previous
+session blamed the view. The fix is an **https bridge page**
+(`public/auth/native/index.html`, live at `versearcade.org/auth/native/`):
+native `redirectTo` points there, the page tries the hop to the app scheme by
+itself and offers it as a button, and a redirect the user TAPS is honoured
+every time. The deep link then fires `appUrlOpen` → `completeNativeOAuth`,
+which closes the view. The bridge forwards the query and fragment verbatim,
+reads neither, loads nothing external and sends no referrer — it is the one
+page on the site that handles a session, so keep it that small. **The bridge
+URL must be on Supabase's redirect allow-list, exactly as written with the
+trailing slash** (Authentication → URL Configuration), or Supabase falls back
+to the Site URL and the app never hears back. Web sign-in is untouched.
+
+**And on iOS, Sign in with Apple is the SYSTEM SHEET first** (`lib/appleSignIn.ts`,
+`@capacitor-community/apple-sign-in`): Face ID, Hide My Email, no web view at
+all. The identity token goes straight to `signInWithIdToken` and
+`onAuthStateChange` finishes the sign-in exactly as a password does. Three
+things are load-bearing. **Every failure is a value, and the fallback is the
+browser path above** — a build without the entitlement, a Supabase that has
+not been told the bundle id, a plugin that rejects — so the button always
+signs somebody in; the ONE exception is a cancelled sheet (AuthorizationError
+1001), which stops, because opening a browser at somebody who just said no is
+worse than nothing. **The entitlement is written by Codemagic only when the
+provisioning profile carries the capability** (it reads the profile
+`fetch-signing-files` just fetched and grep's for `applesignin`), because an
+entitlement the profile lacks fails the archive twenty minutes in, where a
+missing entitlement only costs the fallback. **Supabase's Apple provider must
+list the bundle id under Client IDs** beside the Services ID — a native
+token's audience is the bundle id, and without it every native sign-in is
+refused and quietly takes the browser. Google stays on the in-app browser;
+Android takes it for Apple too (the plugin's Android half is its own web flow).
+
 ## Every image comes from Nano Banana
 
 House rule, not a preference: art we add is **generated through
@@ -1275,6 +1316,152 @@ Three rules hold it together:
   typed that name themselves, and it is pinned at the *player's* position rather
   than the building's — so proximity means nothing for it.
 
+### The picker assumed your church is near you
+
+It is not, for an entire class of player, and that assumption was this screen's
+worst bug (`0113`). A student at college, anybody who moved, anybody travelling
+has a church that is their HOMETOWN's — and every lookup here was bounded by a
+box around the player: 30 miles browsing, 60 for "a wider area". So the picker's
+answer to "my church is three hours away" was to push them at the add-by-hand
+card, **which pins a church at the player's current position, permanently, for
+everybody**. That is how "Appleton Alliance Church" became a Chipotle in Eau
+Claire, 155 miles from itself, while the real building sat in `church_places`
+as `ovt:a432f2d0-…` with an address and a 0.97 confidence. Every ingredient of
+the right answer was already loaded; there was no query that could reach it.
+
+Four things were wrong at once, and they are worth keeping apart because only
+the first one is the one anybody would have guessed:
+
+- **No search without a radius.** `search_church_places_named` (0113) is the
+  door that did not exist: the same index, by name, nationwide, coordinates
+  optional. It adds NO promotion and no distance claim — the sponsored slot
+  (0077) is untouched and still capped at 30 miles, so a paid row can never
+  reach nationwide through it.
+- **The server matched ONE contiguous substring.** `search_church_places`
+  filters `name ilike '%' || p_q || '%'`, so "Appleton Alliance" could not find
+  "Alliance Church - Appleton" **from any distance, standing in the car park
+  included**. The two halves of the same screen disagreed about what "matches"
+  means — the client filtered the nearby list per WORD and the server did not —
+  which is why browsing found churches the by-name search could not.
+- **The escape hatch was gated on the local list being EMPTY.** One unrelated
+  match nearby hid the only way out. It is offered whenever anything is typed
+  now, and it fires BY ITSELF when a typed query matches nothing nearby.
+- **"Nothing within 30 miles" was a lie told by a cap.** `loadPlaces` fetches
+  the 60 NEAREST churches once and filters that list as you type — and 60
+  nearest in a town is 2.2 miles, not 30 (measured, Eau Claire). St Joseph's
+  Chapel at 2.7 miles was not in the list at all, could not be matched by any
+  amount of client filtering, and the screen said "nothing within 30 miles
+  matches" about a five-minute drive. Never write that sentence about a list
+  that was truncated by count.
+
+Three rules now hold it together, and two of them were earned by MEASURING
+rather than reading — both failures rendered perfectly:
+
+- **One normaliser, both sides.** `church_place_haystack` (SQL) and
+  `searchText`/`searchWords` (`lib/churchSearch.ts`) are the keep-them-in-sync
+  pair. Apostrophes are DELETED and every other run of punctuation becomes one
+  space, so "St. Mark's", "St Marks" and "st marks" are one query — deleting
+  rather than spacing is the point, because spacing gives "mark s", which
+  "marks" still does not match. A trailing "s" is dropped from the NEEDLE only
+  ("St. Joseph Parish" and "St Joseph's Church" are both in this table); that
+  is safe one-sidedly because a substring stem is always a PREFIX of the word
+  it came from, so it can never find less, and it needs no index rebuild.
+- **`like all (array)` CANNOT USE AN INDEX, and the redundant predicate beside
+  it is load-bearing.** The planner does not decompose a ScalarArrayOp over
+  LIKE into index conditions, so it plans a parallel seq scan — 760ms and
+  13,998 buffers over the 606k rows, with the new trigram index sitting right
+  there unused. One word (the longest, so the most selective) is restated as a
+  plain `like` the GIN index does answer, and the `all (...)` stays as the
+  filter over the few rows that come back: 9ms. **Do not "simplify" the
+  duplicated-looking WHERE clause.** A word under 3 characters has no trigram
+  at all, which is why a query made only of those is refused rather than
+  quietly seq-scanning.
+- **LIKE's metacharacters are escaped**, not against injection (they are
+  parameters) but because a player types a search box, not a pattern:
+  unescaped, "Gr_ce" silently matches "Grace" and a lone "%" returns all
+  606,272 rows sorted by confidence — a nationwide directory dump dressed as a
+  search result.
+
+And the half that is not code: **adding by hand now LOOKS FIRST.** The name is
+run through the nationwide search and the matches are offered before anything is
+created, with where the pin lands stated in ink rather than faint. The
+`join_church` side needed no change at all — it already copies an `ovt:` place's
+own lat/lng and ignores what the client sent, which is why a church found this
+way lands at its real building.
+
+The one damaged row was repaired by hand (repointed onto its Overture place,
+`name_locked` so neither refresh nor a join renames it) because it had no
+members, no XP and no history. **The other ten `geo:` churches were deliberately
+left alone**: they have real congregations and banked XP, they were added where
+their player actually was, and "a hand-added `geo:` church is never touched" is
+still the rule.
+
+### Two doors: your location, or a town
+
+The picker asked everybody one question — "where are you standing?" — and made
+it mandatory. `0114` puts a second door beside it, and it is the other half of
+the bug above rather than a separate feature: for a student, anyone who moved
+and anyone travelling, "which town is your church in" is the question they can
+actually answer, and the location button is the one that cannot help them.
+
+It is also strictly more capable than the name search 0113 added. Somebody who
+knows WHERE their church is but not exactly what it is called has nothing to
+type into a name box; "every church in Appleton" answers them. And it removes a
+requirement rather than adding one — a refused prompt, a desktop browser or
+simply not wanting to share a location used to leave a player with a name box
+and no way to browse anything.
+
+Five things are load-bearing:
+
+- **The city is an EQUAL door, not a fallback.** It stands beside "Use my
+  location" on the first screen, not behind a "can't share?" link. A refused
+  location now leads with it too.
+- **A town has NO distances, and the list shows none.** `miles` is null on every
+  row from `search_church_places_in_city`, and rows from `search_churches` — which
+  measures from whatever point it was given — have their distance **stripped** in
+  city mode. A distance from a town centre is a number measured from nowhere
+  anybody is. This bit twice: `Number(null)` is `0` and `Number.isFinite(0)` is
+  true, so a null distance read as ZERO and the list said **"right here"** against
+  a church in another state (`fromIndex` now tests `== null` first — it was also
+  doing this to the nationwide search whenever location was off), and the known
+  rows printed a real "3.0 mi" from the centroid until they were stripped.
+  Both found by looking at rendered rows; the JSON was right the whole time.
+- **The town centre is used for exactly two things** — pinning a church added by
+  hand, and asking about the sponsored slot — and is never shown or called
+  "you". The pin is the repair: a church added while browsing Appleton from Eau
+  Claire now lands in Appleton. The sponsored row stays honest because a
+  promotion's radius is measured from the CHURCH's own position, so a town
+  centre inside it is genuinely in range.
+- **The cap is STATED.** A town's list loads 60 and Houston holds 4,975, so the
+  header says "Showing 61 of 103 in Appleton, WI — type a name to search the
+  rest", and typing asks the SERVER about the whole town before it leaves it.
+  Never write "nothing in X" about a list that was truncated by count — that is
+  the same lie the 30-mile copy was telling.
+- **"Suggested for you" is a DISTANCE idea and is not drawn in city mode.** The
+  nearest few, readable without scrolling, is meaningless in a town; splitting
+  the list there would promote three arbitrary rows.
+
+One more scar from driving it: the empty-state card has to test `wide.length
+=== 0` as well as the local list, or it prints "Nothing in Appleton, WI matches
+'sacred heart'" directly above the Sacred Heart Parish in Appleton that the
+city search just found. **The loaded list is a cache, not the answer.**
+
+**`church_cities` is DERIVED, and nothing rebuilds it on its own — so neither
+of the two ways it can go stale is left to a person remembering.** Both fail in
+the quietest possible way, which is why this got closed rather than documented:
+
+- **A fresh deploy** would create the table empty, and the city door would
+  answer every query with "no town by that name" with nothing erroring. So the
+  migration ENDS by calling `refresh_church_cities()` — a no-op on a project
+  with no places yet, about a second on this one.
+- **A later region load** would leave that region's towns missing. So
+  `scripts/load-church-places.mjs` now writes `NNN_refresh.sql` as its last
+  numbered file, calling `refresh_church_names()` (0091) and
+  `refresh_church_cities()`, and "apply the files in order" performs them. It
+  used to print the two calls at the end of a multi-gigabyte download, which is
+  an instruction that gets scrolled past — and `refresh_church_names()` has
+  carried that trap since 0091, so this fixes the older one too.
+
 OSM is still the fallback wherever the index has no rows, because the index is
 loaded a region at a time and an empty picker is a dead end. Anywhere the index
 answers, Overpass is never called — which also removes the slowest and least
@@ -2127,7 +2314,69 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0110` (room skins — `profiles.room_skin` plus a check
+The latest is `0114` (choose a city instead of standing in one —
+`church_cities` + `refresh_church_cities()`, `church_cities_search`,
+`search_church_places_in_city`, `church_city_key`). APPLIED on 2026-09-17
+before the client merged, and verified: exactly ONE signature each, the two
+player-facing ones carrying the public `{anon,authenticated}` shape while
+`refresh_church_cities` is revoked from all three roles, and the table built
+with **35,730 towns** against real data (by hand at apply time; the repo file
+now ends with `select public.refresh_church_cities();` so a fresh deploy does
+it itself — see below). Run end to end against a local
+Postgres 16 first — thirteen cases including the two worth checking rather
+than reasoning about: "St. Louis" and "St Louis" collapse to ONE town whose
+list still returns BOTH churches, and the refresh run twice in a row reuses
+its own primary keys.
+
+Before it, `0113` (finding a church that is NOT near you —
+`search_church_places_named`, a nationwide by-name search over the Overture
+index, plus `church_place_haystack` and a trigram index). APPLIED on
+2026-09-16, in THREE parts (`0113_church_name_search`, `…_b_normalised`,
+`…_c_stem`) because two defects were found by measuring AFTER the first
+apply; the repo's single `0113_church_name_search.sql` is the final state and
+a fresh deploy gets it in one. Verified: exactly ONE signature, `security
+definer`, ACL the public `{anon,authenticated}` shape `search_church_places`
+has, and — the part worth checking rather than reasoning about — the query
+plan, because BOTH corrections were invisible in the diff and rendered
+perfectly. See "The picker assumed your church is near you" above.
+
+Before it, `0112` (the room's ARRANGEMENT — `profiles.room_layout` plus a
+check constraint, `set_room_layout`, and `my_room` / `room_json` restated
+WHOLESALE from 0110; a future migration editing either copies forward from
+HERE). APPLIED on 2026-09-13 before the client merged, and verified: exactly
+ONE signature each, `room_json` still carries BOTH `pet` (0072) and `skin`
+(0110) after the restate — the wholesale-restate trap this file keeps warning
+about, checked rather than hoped — the constraint is present, and all 157
+profiles read `settled` with no nulls. Run end to end against a local
+Postgres 16 first, including a direct `update … set room_layout='sprawl'`
+past the RPC, which the check constraint rejects. It is stored server-side
+rather than on the device because a room is VISITABLE and a visitor has to see
+the owner's arrangement — the same argument 0110 makes for the material.
+
+Before it, `0111` (verse highlights and private notes — `verse_notes`,
+`set_verse_note`, `my_verse_notes`). APPLIED on 2026-09-13 before the client
+merged, and verified: exactly ONE signature each, both `security definer`, both
+ACLs the house `authenticated` shape, RLS on with two policies, and all three
+check constraints present. Run end to end against a local Postgres 16 first —
+eleven cases including the two worth checking rather than reasoning about: a
+SECOND user's `my_verse_notes()` returns `{}` (the whole privacy argument, as a
+fact about the deployed function rather than a claim in its header), and a
+direct `insert` past the RPC with an invented colour or with neither a colour
+nor a note is refused by the column constraints.
+
+**It is the app's second player-authored text and it needs NO moderation
+surface, which is the whole design.** The Prayer Wall's line (0099) is shown to
+church-mates and buddies, so it needed a report path, an admin queue and a
+visibility function. A verse note is shown to NOBODY — not a buddy, not a
+church-mate, not leadership, not a card, not a board, not a crowd scene — so
+there is nothing to moderate, and that is enforced in the shape of the data:
+every function derives the owner from `auth.uid()` and none takes a user id, so
+there is no signature that could return somebody else's; RLS is self-only for
+SELECT as well as write; and no existing payload was touched. Shared notes
+would not be an extension of this — they would open the problem this design
+does not have, and need the Prayer Wall's whole apparatus.
+
+Before it, `0110` (room skins — `profiles.room_skin` plus a check
 constraint, `set_room_skin`, and `my_room` / `room_json` restated WHOLESALE
 from 0069 and 0072 respectively; a future migration editing either copies
 forward from HERE). APPLIED on 2026-09-08 before the client merged, and
@@ -2428,7 +2677,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0111` (0110 is taken by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0115` (0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the
@@ -2898,27 +3147,74 @@ Three things to know before touching it:
 - **One copy per decoration.** The shelf refuses to stand a second copy;
   `planPickOn` returns `already` where it used to merge.
 
-### Placement is free, inside a mount's band
+### The rooms arrange THEMSELVES: you pick the skin and the layout
 
-A placement value may carry a position and size: `keep_woven_rug.2~x412y188s120`
-(scene units; s is scale×100, clamped 0.7–1.4). The two halves are independent
-— `~s120` alone, `~x412y188` alone — and entangling them shipped for about a
-minute: a resize on a never-moved piece defaulted x/y to 0 and teleported the
-mat to the corner. Found by driving the real app; the grammar lives ONLY in
-`packDecor`/`unpackDecor` and is fuzzed against 0083's regexes.
+Both rooms let you drag every piece anywhere inside its mount's band and resize
+it in ten steps. That is **gone**, deliberately, and `data/layouts.ts` carries
+the long version of why. The short one: it cost about 2,500 lines across
+sixteen files, two migrations, a build check and three of the nastiest scars in
+this codebase — `touch-action` silently not working on an SVG child, a finished
+drag firing a click that put the piece back down, and two shelf taps in one tick
+planning against a stale snapshot — and it bought less than it cost. Every scene
+in this app that people love is a PAINTING composed by one hand; the rooms were
+the one place composition was handed to the player and the one place the app
+looked least like its own art. The clearest evidence is that `keep_placements`
+sat at ZERO ROWS in production for months because the RPC was never awaited, and
+nobody reported it.
 
-The ANCHOR became a row key, not a location: it still bounds rows per player
-and is still validated server-side, but a piece stands wherever its value says,
-falling back to its anchor when the value carries no position — which is what
-keeps every pre-0081 row rendering exactly where it always did. Free movement
-clamps into per-mount BANDS (`Surface.bands`), so "put it where you like"
-never becomes "hang the brazier from the ceiling". Resizing is deliberately
-bounded: a rug scaled to fill the hall stops being furniture.
+So: **you pick the material and the arrangement; the app places things.** The
+unlock gets better rather than worse — a piece you earn appears where it
+belongs, in a room that still looks composed.
 
-**0083 is applied** (2026-08-31, before the client merged — the order the
-Supabase section demands). It relaxes both value regexes (`set_keep_placement`,
-`set_room_placement`); against the 0060/0069 versions every reposition is
-rejected as 'bad decor'.
+- **An arrangement is CONTENT, which is why it is a TRANSFORM.** `Arrangement`
+  is a handful of numbers (`pull`, `rise`) applied to the anchors a room already
+  has, not a table of 27 hand-placed coordinates per variant — so it is the
+  shape `data/catalog.ts` can ship without a submission, the way a road is "a
+  reward table, five hex codes and an emoji". A new arrangement is a row, not a
+  release. Three ship: `settled` (the rooms exactly as they always were, and the
+  default, so nothing moves for anybody who does not go looking), `gathered`,
+  `spread`.
+- **It MOVES anchors and never removes one**, so every placement stays valid,
+  nothing can be orphaned, and switching is purely visual. And **every position
+  is clamped to its own mount's band** by the same `clampToBand` the free-drag
+  path used — so an arrangement cannot hang the brazier from the ceiling however
+  its numbers are set, including numbers that arrive from a catalog.
+  `npm run check:layouts` drives the real `arrangeAnchors` over both surfaces
+  with four hostile arrangements and asserts all 168 placements land inside
+  their mount.
+- **There is NO placement migration, and that is the whole reason this was
+  cheap.** The wire format is unchanged and old values still parse
+  (`unpackDecor` is untouched) — the `~x412y188s120` suffix simply stops being
+  READ by the two rooms, and stops being written. A hand-arranged room
+  re-composes itself, which is the feature rather than a side effect.
+- **The piece is DRAWN on its designed anchor and the group is TRANSLATED** to
+  where the arrangement puts it. Drawing it at the arranged point instead makes
+  the position an SVG attribute rather than a motion value, so switching
+  arrangement SNAPS — which is what the first pass did, and it is invisible in a
+  diff because both render identically while nothing changes.
+- **The keep deliberately has NO arrangement picker.** An arrangement is a thing
+  the owner of a room chooses, and nobody owns a faction hall: it is thousands of
+  strangers and its placements are a BLEND of theirs, so there is no person whose
+  taste it would be. The hall reads as `settled`.
+- **The churchyard is NOT part of this** and keeps free placement (`0084`,
+  `lib/sceneDrag.ts`, `SceneRemoveBadge`) — a congregation's shared space where
+  any member may plant and move is its own argument. Which is also why those two
+  files survive: they are the churchyard's now, not the rooms'.
+
+`0112` (`profiles.room_layout` + `set_room_layout`, `my_room`/`room_json`
+restated wholesale from 0110) is APPLIED. The arrangement is stored
+SERVER-SIDE rather than on the device for the reason 0110 stores the skin
+there: a room is visitable, and a visitor has to see the OWNER's room.
+
+**What is left in a room is one gesture: tap a piece to take it back out.** It
+is the one thing that only makes sense with the piece in front of you rather
+than on the shelf, and it loses nothing — ownership is derived from lifetime
+counters that only go up, so the piece is back on the shelf at the same tier
+before the note fades. In a FACTION hall the placements are a blend, so the
+handler refuses somebody else's piece and says so rather than reporting a
+removal that didn't happen. The crowd no longer needs `inert` in either room:
+nothing is being held, so there is no arranging tap for a wandering figure to
+intercept.
 
 ### The picker is a shelf of pictures
 
@@ -2939,80 +3235,6 @@ belongs** — the first free anchor of its mount, or the first free plot.
 mount because props are drawn around their GROUND POINT rather than centred — a
 banner hangs down from it, a wall piece straddles it, a rug sits on it, and one
 box for all three crops two of them.
-
-### Anything placed can be moved, anywhere in its band — and resized
-
-Tap a piece to lift it, then **drag it wherever you like** (clamped to its
-mount's band; it stays held, so a nudge can follow a nudge), or tap an anchor
-target to trade places. **Tapping anywhere else puts it down** — it stays where
-it stands and stops being held. While held, a small bar under the scene resizes
-it in 0.1 steps. `planMoveOn`, `planMoveToPointOn` and `planResizeOn` in
-`data/placement.ts` are the choke points and the room copies them exactly.
-Nothing is ever overwritten.
-
-**A tap on open ground used to MOVE the piece there, and giving that gesture
-back is the point.** It was how you positioned something before dragging
-existed; once you could drag, it left the worlds with no way to let go by
-tapping at all — you had to find the piece again or reach the Done button under
-the scene, which is not what a selection anywhere else does. `onDropAt` is now
-the drag's commit only, and `onCancel` is the tap.
-
-**The crowd goes INERT while a piece is held** (`CrowdLife`'s `inert`, and the
-churchyard also passes it whenever the Landscaping shelf is open). Figures are
-27-42px, they wander on their own schedule, and one standing in front of the
-thing you are arranging turned the tap meant for it into somebody's player
-card — not a rare miss but most of the scene, most of the time. Inertness
-rather than a second behaviour: a figure that answered an arranging tap would
-be inventing a gesture, and a crowd is a picture of the place rather than a
-control surface. The cards come back the moment you put the piece down.
-
-**Dragging is only ever available on the piece you have already LIFTED, and that
-is the whole reason it is safe.** These halls are 300-unit viewBoxes inside
-scrolling surfaces, and for a long time that ruled dragging out entirely — a
-grab anywhere on the picture fights the scroll. Selecting first is what makes
-the two gestures separable: one tap says which object you are holding, and only
-that object's pointer stream is taken. Every other pixel of every scene — the
-floor, the walls, an unselected piece — still scrolls exactly as before, and
-tapping is untouched (a drag inside a 4px slop radius is still a tap).
-
-`lib/sceneDrag.ts` is the one copy of the mechanics, bound by both scenes. Three
-things in it were learned by driving the real app and are invisible in a diff:
-
-- **`touch-action: none` does NOT work on an SVG child** — it was set, read back
-  empty, and the page scrolled out from under the piece. What actually cancels
-  the scroll is a hand-registered NON-PASSIVE `touchmove` listener on the
-  scene's `<svg>` that preventDefaults only while a drag is in flight (React
-  attaches its own touch listeners passively, so it can't be done through JSX).
-  Putting `touch-action` on the wrapper instead would kill scrolling over the
-  whole picture for as long as anything is selected.
-- **A finished drag fires a click**, which would otherwise read as "tap the
-  piece" and put down what you just dragged. `consumeClick()` latches that one
-  click; a drag that never left the slop radius does not latch it, so a tap
-  still toggles.
-- **The commit is one write, on release** (through `onDropAt`, the same planner
-  the tap path uses). The position mid-drag is local preview state — writing on
-  every pointer move would be an RPC per frame.
-
-### The ✕ on a lifted piece takes it back out
-
-A selected piece wears a small ✕ on its ring (`components/SceneRemoveBadge`),
-and it clears that one placement. The shelf tile's ✕ still exists and still
-clears every copy; this one is for the thought you have while looking at the
-room, rather than making you find the piece again in a grid of eighteen.
-
-Two things about it are load-bearing. It is drawn as the scene's LAST layer,
-NOT inside the piece's own `<g>` — the move targets are drawn after the pieces,
-so a ✕ inside the group sat under the target ring of the next spot along and
-tapping it moved the piece there instead of removing it. And it marks itself
-`data-scene-edit`, which `lib/postcard.ts` strips along with the dashed rings:
-a ✕ on a picture somebody sends is a stray dark blob, and its `var(--gold)`
-doesn't resolve in a detached document anyway.
-
-Nothing is lost by it, which is why it can be one tap with no confirmation:
-ownership is derived from lifetime counters that only go up, so a piece taken
-out is back on the shelf at the same tier before the note fades. In a FACTION
-hall the placements are a blend, so the ✕ refuses somebody else's piece and says
-so rather than reporting a removal that didn't happen.
 
 ### A Grand piece can be given to your church
 
@@ -3444,7 +3666,7 @@ Two rules fall out of that:
   the room in the sheet are the same room. Same rule as `QuizRunner` and
   `CrowdLife`.
 - **Editing belongs to exactly one surface.** The scene takes an optional
-  `editing`/`floraEditing` prop and is inert without it. Two editable copies of
+  `onRemove`/`floraEditing` prop and is inert without it. Two editable copies of
   the same world on one screen means you can't tell which one you're touching —
   that's why the church tab's hero is the editable yard and the Landscaping
   shelf under it is only a picker.
@@ -3491,7 +3713,7 @@ card, eighteen furnishings, five tiers earned by your own level. Full design:
 `docs/UPPER-ROOM.md`.
 
 **The placement rules now live in one file, and that is the load-bearing part.**
-`planPlacement`, `planMove` and `planPick` were hardcoded against the keep's
+`planPlacement` and `planPick` were hardcoded against the keep's
 `ANCHORS`; they are now `data/placement.ts`, parameterised by a `Surface`
 (`{ anchors, mountOf }`), and `data/keep.ts` keeps every one of its exports as a
 thin wrapper — **no keep call site changed**. Copying them would have been the
@@ -3505,9 +3727,10 @@ Three rules the room adds to the ones it inherits:
 - **A visitor can only look, by construction.** `room_json` (0069) returns
   placements, an *architecture tier* instead of the owner's level, and **no
   number at all** — a room you can rank is a scoreboard with a rug on it.
-  `RoomScene` takes no `editing` prop on the visit path, so a visited room is
-  inert because the scene was never handed the ability to change, not because a
-  handler decided to say no. And nothing records the visit: there is no visitor
+  `RoomScene` takes no `onRemove` on the visit path, so a visited room is inert
+  because the scene was never handed the ability to change, not because a
+  handler decided to say no. It DOES take the owner's `layout` — a visitor sees
+  the room as its owner arranged it, exactly as they see its material. And nothing records the visit: there is no visitor
   log to build "12 people looked at your room" out of later, same rule as
   `my_washings` being recipient-only.
 - **Ownership is derived from six lifetime numbers that only go up** (level,
@@ -3515,11 +3738,22 @@ Three rules the room adds to the ones it inherits:
   `lib/roomProgress.ts`, the `petProgress` shape). No grant table, nothing to
   revoke, and **the screen showing the room has to `load()` the bible and
   collection stores** or it quietly reports 0 and locks three earned pieces.
-- **Furnishings stay drawn SVG even once the room is painted.** `lib/postcard.ts`
-  serialises the scene into an `<img>` and an SVG loaded that way never fetches
-  external resources — a room made of `<image href>` exports blank. The chamber
-  may become a Nano Banana painting (`art/upper-room.json` → `room-1`…`room-5`,
-  wired through `GENERATED_ART` like every other tier ladder); the props may not.
+- **Furnishings are painted cut-outs over a drawn fallback**, like everything
+  else here — 17 of the 18 (`art/upper-room-props.json` → `public/keep/`), the
+  keep's 14 of 15 (`art/keep-props.json`, `RASTER_DECOR` in `data/keepArt.ts`).
+  The two holdouts are the documented runtime-colour carve-out: `room_lampstand`
+  takes `lit` and `keep_kite_shield` takes the denomination's colour, and a
+  baked image can't take a colour.
+
+  **This reversed a hard constraint, so read why before assuming it never was.**
+  `lib/postcard.ts` serialises the room into an `<img>`, and an SVG loaded that
+  way never fetches external resources — so a room made of `<image href>`
+  exported BLANK, and furnishings had to be drawn. The postcard INLINES every
+  href as a data: URI now, which is not a fetch, so a raster furnishing survives
+  the export and anything that fails to fetch is dropped rather than left
+  broken. What has NOT changed is that **a drawn fallback still has to exist**:
+  generated art layers OVER a drawing rather than instead of it, and a
+  furnishing with no drawing is an empty anchor the moment a PNG 404s.
 
 **The postcard has to go through Capacitor on native, and the reason is a whole
 class of bug.** `lib/postcard.ts` used to end at an `<a download>` click, which a
@@ -4027,10 +4261,47 @@ mistyped route does not throw and does not fail to compile — it falls through
 the catch-all to Landing, silently signing somebody out of their own app, on the
 one row nobody happened to tap.
 
-Two deep links exist so the map has somewhere honest to point: `?pray=1` on
-`/you` opens the prayer sheet and `?customize=1` opens the customizer. Both are
-frozen at mount and stripped from the URL immediately, or a reload re-opens them
-over whatever the player moved on to.
+**Every row lands where the deed is DONE, not on the tab it lives on.** That is
+the rule for the invitations panel and for the quest rows alike, and it was a
+real gap rather than a polish pass: "kneel and wash a friend's feet" landed on
+the You tab's masthead — several screens above the list of people whose feet you
+can wash — and "borrow today's book" landed in the library with no hint that the
+librarian is the thing to tap. A row that names the deed and then makes you find
+it is the map's own problem reproduced one level down. So the Basin's row opens
+the Basin's panel, the librarian's opens her desk, the chest's opens the chest,
+the verse's opens the run (the start gate still reads the verse first, so it is
+the drop box's own button rather than a way past it), and the buddy row goes to
+`/buddies` rather than the tab it is folded inside.
+
+**A quest is a door too, and `data/questDoors.ts` is the map.** Every verb in
+`KNOWN_VERBS` names the place it is scored, and an OPEN daily on the road strip
+and the Pilgrimage screen is a button to it — "Keep a verse" opens the Bible,
+where the heart is. Four things hold it inside the rules this file already has:
+it is a door and never a shortcut (nothing about tapping one completes a quest
+or pays a mile); a DONE quest is plain text again, because there is nowhere left
+to send anybody; it adds no number, so the row still carries only the quest's
+own bar; and it **fails closed per verb** — a verb with no entry renders as the
+text it always was, never as a button that goes nowhere. `unlock_track` is the
+one deliberate `DOORLESS` entry: it is scored by walking into a room you have
+not been in, and there is no single room to open.
+
+Deep links exist so all of that has somewhere honest to point: `?pray=1` on
+`/you` opens the prayer sheet, `?customize=1` the customizer, `?inventory=1` the
+bag, `?people=basin|buddies` the "Your people" row on that panel, `?chest=1` on
+`/play` the chest, `?desk=1` on `/study` Tabitha, `?keep=1` on `/battle` the
+hall. All are frozen at mount and stripped from the URL immediately, or a reload
+re-opens them over whatever the player moved on to — and `?chest=1` also
+suppresses the weekly recap's auto-open, because arriving on a row you tapped by
+name and being shown last week's numbers instead is that row not working.
+
+`scripts/check-quest-doors.mjs` (in `npm run build`) is check-map's argument
+applied to the two route tables it doesn't read: it asserts every quest door and
+every invitation `to` against `App.tsx`, that `KNOWN_VERBS` and `questDoors`
+agree (a verb added for a new road with no door would ship as a row that says
+what to do and not where), and that every `?x=` written in either table is
+actually read by some screen — a deep link nobody answers lands on the right tab
+and does nothing, which is this same bug one level quieter. All three failures
+RENDER, so they are a build failure, the `check-trivia` habit.
 
 ### A started run is locked, and can't be re-dealt
 
@@ -4111,6 +4382,68 @@ tapping it. Any future overlay inside a scene needs the same treatment.
 Design tokens live at the top of `src/index.css` — use the CSS variables, never
 raw hexes. Numbers and headings wear `var(--font-display)`; that's the brand.
 Motion is springy `framer-motion`, mobile-first, max width 520px.
+
+### The palette has four rules, and every one is MEASURED
+
+`scripts/check-contrast.mjs` re-derives all four in `npm run build`, because a
+value step and a contrast ratio are exactly the kind of thing that renders
+perfectly while saying nothing. Each rule exists because the app was failing it.
+
+- **The ground is WARM.** It was violet (`#0b0720`) and every painting in this
+  app is warm — amber wood in the library, clay in the Upper Room, wheat on the
+  road. A cool frame around warm art does not make the frame look cool, it makes
+  the art look wrong. The ACCENTS did not move, so this is a re-ground rather
+  than a rebrand.
+- **Surfaces are a LADDER, not a wash.** `--card` was
+  `rgba(255,255,255,0.06)`, which composites to **1.14:1** over the ground — so
+  the page, a card on it and a tile inside that card all sat within a hair of
+  each other and a screen read as one flat field. Three opaque steps now:
+  ground → card **1.40:1**, card → raised **1.26:1**. Opaque also let `.card`
+  drop `backdrop-filter`, which is a containing block for `position: fixed` and
+  is the whole reason `ChurchDetailSheet` is portalled — new code inside a card
+  no longer inherits that trap.
+- **Every ink clears AA on BOTH surfaces.** `--ink-faint` was `#7a6ba8`, which
+  measured **3.51:1** on the card it is printed on, and it is the colour of
+  every 11-12px caption in the app. That was an accessibility bug rather than a
+  taste. The checker tests each ink against `--card` AND `--card-raised`,
+  because a tile inside a card is the lighter of the two and is where it gets
+  closest.
+- **The gold is RATIONED.** `--gold` meant "important" in eight places at once
+  — the primary button, the compass, every tip banner's border, the Pray pill,
+  the XP bar, the quest chevrons, the reward frames, the nav star — and a colour
+  that marks eight things marks none. It has ONE job now: **the thing to do
+  next**. `--edge` is where the decorative half went, and the checker asserts it
+  stays ≥1.8:1 from gold (or the ration is undone) and ≥3:1 on card (a border
+  nobody can see is a deletion, not a demotion).
+
+**And `--select` is not `--grape`.** Every "this one is on" chip, tile and pill
+was painted `--grape`, which is an ACCENT: white ink on it measures **3.37:1**
+and `--ink-faint` **1.63:1**, so a selected tile could not carry its own label,
+let alone a line under it. `--select` is the same hue taken down to where the
+two readable inks clear AA (ink 6.13, ink-dim 4.78), which the checker asserts
+along with it staying ≥1.5:1 from `--card` so "on" is visible without reading
+the text. **`--ink-faint` is deliberately NOT legible on it and must not be
+used there** — a selected tile's own description takes `--ink-dim`.
+
+### Icons are DRAWN, not emoji and not generated
+
+`data/icons.tsx` is 41 hand-written paths behind one `<Icon id>`, and
+`scripts/check-icons.mjs` asserts the union and the table agree, that every path
+parses, that every nav and map id exists, and that **no emoji survives in the
+nav or the map** — it caught the compass puck's 🧭 still sitting there.
+
+Two things about it. Emoji are the loudest indie tell in a mobile app: they are
+a different artist's work at a different weight in every row, they render
+differently on every platform, and they cannot take a colour. Which is also the
+carve-out that keeps them drawn rather than generated — **anything taking a
+runtime colour can't be a baked image**, the same rule the church kit, the
+denomination shield and the seals' wax already live under.
+
+And `fillRule="evenodd"` is on every icon on purpose: a same-fill inner subpath
+PAINTS rather than punches, so a robot's eyes, a calendar's cells, a book's
+spines and a road's centre line were all invisible until it was set. `battle`
+read as the letter X and `road` as the letter A; both were fixed by computing
+the geometry rather than by nudging it.
 
 ### The Study tab IS a library
 

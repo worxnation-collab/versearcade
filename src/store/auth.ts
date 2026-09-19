@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { Capacitor } from '@capacitor/core'
 import { Browser } from '@capacitor/browser'
+import { nativeAppleAvailable, nativeAppleSignIn } from '@/lib/appleSignIn'
 import { supabase } from '@/lib/supabase'
 import { isSupabaseConfigured } from '@/lib/config'
 import { localdb } from '@/lib/localdb'
@@ -21,6 +22,12 @@ const PENDING_CHARACTER_KEY = 'va.pendingCharacter'
 // account. Device-local on purpose: it records what has been shown, not what
 // is owned — the entitlement itself lives in owned_skins, server-side.
 const SEEN_SKINS_KEY = 'va.skinsSeen'
+// Where Supabase sends a NATIVE sign-in when the provider is done: an https
+// page on the site that hands the session on to the app's URL scheme (see
+// signInOAuth). It must be on Supabase's redirect allow-list, exactly as
+// written, trailing slash included. Overridable so a preview site can test it.
+const NATIVE_AUTH_BRIDGE_URL =
+  import.meta.env.VITE_NATIVE_AUTH_BRIDGE_URL || 'https://versearcade.org/auth/native/'
 
 interface DbProfileRow {
   id: string
@@ -442,9 +449,35 @@ export const useAuth = create<AuthState>((set, get) => ({
     // so this must be persisted before we hand off to the provider.
     get().beginGuestClaim()
     const native = Capacitor.isNativePlatform()
-    // Native must return to the app via the custom URL scheme, not the website.
+    // iOS + Apple: the system sheet first (lib/appleSignIn.ts) — no web view at
+    // all. The token goes to Supabase directly and onAuthStateChange finishes
+    // the sign-in exactly as a password sign-in does. A cancelled sheet stops
+    // here; anything else that keeps the sheet from working (no entitlement in
+    // this build, Supabase not yet told the bundle id) falls through to the
+    // in-app browser below, so the button always signs somebody in.
+    if (provider === 'apple' && nativeAppleAvailable()) {
+      const r = await nativeAppleSignIn(NATIVE_AUTH_BRIDGE_URL)
+      if (r.kind === 'cancelled') return
+      if (r.kind === 'token') {
+        const { error } = await supabase.auth.signInWithIdToken({
+          provider: 'apple',
+          token: r.token,
+          nonce: r.nonce,
+        })
+        if (!error) return
+        // A rejected token is almost always the audience (bundle id) missing
+        // from the Supabase Apple provider. Say so where a developer looks,
+        // then take the door that is known to work.
+        console.warn('[auth] native Apple token refused, using the browser:', error.message)
+      } else {
+        console.warn('[auth] native Apple sheet unavailable, using the browser:', r.reason)
+      }
+    }
+    // Native: Supabase must redirect to an https page (the bridge, below), which
+    // hands the session on to com.versearcade.app://auth/callback. Web: the
+    // site's own callback route, where detectSessionInUrl finishes it.
     const redirectTo = native
-      ? 'com.versearcade.app://auth/callback'
+      ? NATIVE_AUTH_BRIDGE_URL
       : import.meta.env.VITE_AUTH_REDIRECT_URL || window.location.origin + '/auth/callback'
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
@@ -457,12 +490,20 @@ export const useAuth = create<AuthState>((set, get) => ({
       throw error
     }
     if (native && data?.url) {
-      // Open in the SYSTEM browser (real Safari), NOT the in-app Safari view.
-      // SFSafariViewController (what @capacitor/browser opens) refuses to hand a
-      // custom-scheme redirect (com.versearcade.app://) back to the app — it just
-      // shows a blank page with a "type a URL" bar. Real Safari opens the app via
-      // the registered URL scheme, which fires appUrlOpen -> completeNativeOAuth.
-      window.open(data.url, '_system')
+      // Open the provider IN THE APP — SFSafariViewController on iOS, a Custom
+      // Tab on Android — never the system browser. App Review rejected a build
+      // that bounced out to Safari to sign in ("taken to the default web
+      // browser… a poor user experience", 2026-09-10) and named the Safari View
+      // Controller as what they accept.
+      //
+      // The reason this used to bounce out: the in-app view refuses an
+      // AUTOMATIC redirect to a custom URL scheme, so Supabase's 302 straight
+      // to com.versearcade.app://auth/callback landed on a blank page. Sending
+      // it to the https bridge instead (public/auth/native/index.html), which
+      // offers the hop as a button, is what makes the in-app view usable — a
+      // redirect the user TAPS is honoured every time. The deep link then
+      // fires appUrlOpen -> completeNativeOAuth, which also closes this view.
+      await Browser.open({ url: data.url })
     }
     // Web: the browser navigates automatically and detectSessionInUrl finishes it.
   },

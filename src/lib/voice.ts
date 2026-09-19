@@ -110,3 +110,111 @@ export const CALM = { rate: 0.84, pitch: 0.92 } as const
 
 /** How long to leave between lines, so a prayer breathes instead of running on. */
 export const LINE_PAUSE_MS = 420
+
+// ── Reading scripture aloud ────────────────────────────────────────────────
+//
+// The prayer sheet had the only read-aloud in the app, and its mechanics were
+// written inside that component — which was right while there was one caller
+// and is the drift the `QuizRunner` rule exists to prevent now that there are
+// several. `speakLines` is that logic lifted out unchanged in behaviour, and
+// `ListenButton` (components/ListenButton.tsx) is the one control.
+//
+// Two things about reading SCRIPTURE rather than a prayer:
+//
+// - **A verse is read whole.** A prayer is four movements and the line you can
+//   hear is meant to be the line lit up, so it is chained one line at a time.
+//   A verse is one sentence and chopping it at commas makes it sound like a
+//   list. `splitForReading` only breaks on sentence ends, and only past a
+//   length where a single utterance starts to be refused by some engines.
+// - **It stops when you leave.** A prayer sheet closing cancels it; a verse can
+//   be started on a card that scrolls away, so every caller cancels on unmount.
+//   A voice that follows somebody to another tab is the worst version of this.
+
+/** Break a passage for reading: sentence ends only, and only when it is long. */
+export function splitForReading(text: string, softLimit = 220): string[] {
+  const clean = text.replace(/\s+/g, ' ').trim()
+  if (!clean) return []
+  if (clean.length <= softLimit) return [clean]
+  const parts: string[] = []
+  let buf = ''
+  for (const piece of clean.split(/(?<=[.!?;])\s+/)) {
+    if (buf && (buf + ' ' + piece).length > softLimit) { parts.push(buf); buf = piece }
+    else buf = buf ? `${buf} ${piece}` : piece
+  }
+  if (buf) parts.push(buf)
+  return parts
+}
+
+export interface SpeakHandle {
+  /** Stop and forget. Safe to call any number of times, including unmounted. */
+  cancel: () => void
+}
+
+/**
+ * Read lines aloud in order, calling back as each starts and when it all ends.
+ *
+ * Chained on `onend` rather than on `boundary`: Safari fires boundary events
+ * sparsely or not at all, and `onend` is the one signal every engine actually
+ * sends. Returns a handle rather than a promise so a caller can stop it.
+ */
+export function speakLines(
+  lines: string[],
+  opts: {
+    voice?: SpeechSynthesisVoice | null
+    pauseMs?: number
+    onLine?: (index: number) => void
+    onDone?: () => void
+    /** A real failure — not us calling cancel(). A device can have the API and
+     *  no voices at all, and then speak() does nothing and reads as a dead
+     *  button, so callers are told rather than left silent. */
+    onFail?: () => void
+  } = {},
+): SpeakHandle {
+  const synth = typeof window !== 'undefined' ? window.speechSynthesis : undefined
+  if (!synth || lines.length === 0) {
+    opts.onDone?.()
+    return { cancel: () => {} }
+  }
+  let stopped = false
+  let timer: number | undefined
+  let i = 0
+
+  const finish = () => { if (!stopped) { stopped = true; opts.onDone?.() } }
+  const next = () => {
+    if (stopped) return
+    if (i >= lines.length) return finish()
+    const idx = i++
+    opts.onLine?.(idx)
+    const u = new SpeechSynthesisUtterance(lines[idx])
+    // The setter THROWS SYNCHRONOUSLY on anything that is not a live
+    // SpeechSynthesisVoice, and a voice list goes stale under you when the
+    // engine restarts or the user installs one. Unguarded that takes the whole
+    // read-aloud down instead of falling back to the engine's default.
+    try {
+      if (opts.voice) { u.voice = opts.voice; u.lang = opts.voice.lang }
+    } catch { /* stale or foreign voice object — the default is fine */ }
+    u.rate = CALM.rate
+    u.pitch = CALM.pitch
+    u.onend = () => { timer = window.setTimeout(next, opts.pauseMs ?? LINE_PAUSE_MS) }
+    u.onerror = (e) => {
+      if (stopped) return
+      // `interrupted` and `canceled` are us calling cancel().
+      if (e.error !== 'interrupted' && e.error !== 'canceled') { stopped = true; opts.onFail?.() }
+      else stopped = true
+    }
+    synth.speak(u)
+  }
+  next()
+  return {
+    cancel: () => {
+      stopped = true
+      if (timer) window.clearTimeout(timer)
+      try { synth.cancel() } catch { /* nothing playing */ }
+    },
+  }
+}
+
+/** Does this device have the API at all? Callers render nothing when it does not. */
+export function canSpeak(): boolean {
+  return typeof window !== 'undefined' && 'speechSynthesis' in window
+}

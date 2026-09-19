@@ -463,7 +463,7 @@ try {
   }
   if (cmd === 'split') {
     const file = args[0], start = args[1]
-    if (!file || !fs.existsSync(file) || !isDate(start)) fail('split <audio file> <start date> [--days=N] [--story] [--intro] [--week] [--pairs] [--dry] [--reuse]')
+    if (!file || !fs.existsSync(file) || !isDate(start)) fail('split <audio file> <start date> [--days=N] [--story] [--intro] [--week] [--pairs] [--exchange] [--dry] [--reuse]')
     // `--week` is the ROLLOUT shape: one sitting, one take per day, and the
     // kind is whatever that DATE's second post is rather than one kind for
     // the whole batch. It comes from `kindForDate` — the same rotation the
@@ -485,6 +485,27 @@ try {
     if (flags.pairs) {
       dateFor = (n) => addDays(start, Math.floor((n - 1) / 2))
       kindFor = (_d, n) => (n % 2 === 1 ? 'verse' : 'story')
+    }
+    // `--exchange` is the THIRD format's shape, and it needs its own because
+    // neither of the two above fits it. Two takes belong to one post (his
+    // opening and his closing), so the date advances every second take like
+    // `--pairs` — but the date does NOT advance by one day: an exchange runs
+    // Mon/Wed/Fri, so take 3 belongs to the next EXCHANGE day, not to
+    // tomorrow. Without this a fourteen-take sitting lands on fourteen
+    // consecutive days under one kind, and every day it was recorded for gets
+    // nothing while the split reports a clean cut — the same silent failure
+    // `--pairs` was added to close, one calendar further along.
+    if (flags.exchange) {
+      // Keep in sync with EXCHANGE_DAYS / EXCHANGE_EPOCH in
+      // src/data/tiktokExchanges.ts — `npm run check:exchanges` asserts it.
+      const EX_EPOCH = '2026-09-19'
+      const EX_DAYS = [1, 3, 5]
+      const isEx = (d) => d === EX_EPOCH || EX_DAYS.includes(new Date(`${d}T00:00:00Z`).getUTCDay())
+      const nth = (n) => { let d = start, seen = 0
+        for (let i = 0; i < 400; i++) { if (isEx(d)) { if (seen === n) return d; seen++ } d = addDays(d, 1) }
+        return d }
+      dateFor = (n) => nth(Math.floor((n - 1) / 2))
+      kindFor = (_d, n) => (n % 2 === 1 ? 'exchange' : 'exchange-close')
     }
     if (flags.week) {
       await build({ entryPoints: [path.join(ROOT, 'src/data/tiktokWeek.ts')], bundle: true, format: 'esm', platform: 'node', outfile: path.join(OUT, 'week.mjs'), logLevel: 'error' })

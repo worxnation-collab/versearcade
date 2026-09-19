@@ -18,10 +18,10 @@ export interface DayCopy { hook?: string; platforms?: Partial<Record<Platform, P
 
 /** The posts a day: see admin/tiktok/shared.tsx for what each is. */
 export type Kind = 'verse' | 'story' | 'quiz' | 'challenge' | 'challenge2' | 'own' | 'note'
-  | 'book' | 'moment' | 'before' | 'figure' | 'quiet' | 'prayer'
+  | 'book' | 'moment' | 'before' | 'figure' | 'quiet' | 'prayer' | 'exchange'
 /** The six READING kinds: the weekday rotation's second post, all in his own voice. */
 export const READING: Kind[] = ['book', 'moment', 'before', 'figure', 'quiet', 'prayer']
-export const KINDS: Kind[] = ['verse', 'story', 'quiz', 'challenge', 'challenge2', 'own', 'note', ...READING]
+export const KINDS: Kind[] = ['verse', 'story', 'quiz', 'challenge', 'challenge2', 'own', 'note', 'exchange', ...READING]
 export const kindOf = (k: unknown): Kind => ((KINDS as string[]).includes(String(k)) ? (k as Kind) : 'verse')
 
 /**
@@ -75,11 +75,48 @@ const AUTOMATED: Kind[] = ['quiz', 'challenge', 'challenge2']
  * on is the exact shape all three policies describe. The replacement is two
  * posts a day with his voice on both — see docs/TIKTOK-WEEK.md.
  */
-const PARKED: Kind[] = [...AUTOMATED]
+/**
+ * The NOTE is parked with them, and for the same reason stated the other way
+ * round. It is not a video and no voice is on it — a 4:5 card and 120-200
+ * generated words — and it went to Facebook, whose originality policy applies
+ * its penalty ACROSS EVERYTHING THE ACCOUNT POSTS. So the one network getting
+ * a third post a day was getting the only wholly-generated one, sitting beside
+ * the two that carry a person. `renderNoteCard`, its own copy prompt and the
+ * runner's `isPhoto`/`mediaName` branch are all kept: it is a row here, not a
+ * rebuild, the day a still earns its place back.
+ */
+const PARKED: Kind[] = [...AUTOMATED, ...READING, 'note']
+
+/**
+ * The networks this account actually posts to.
+ *
+ * Everything else is PARKED at the platform level for the reason the three
+ * automated kinds are parked at the kind level: it was measured, not assumed.
+ * Across five days of the same daily verse, YouTube delivered 983, 951 and
+ * 777 views a post. Over the same posts TikTok delivered 1, 2 and 0, Instagram
+ * 0, 2 and 5, Threads 10, 2 and 0, and Pinterest zero impressions of anything.
+ * The account totals say the same thing louder: 73 YouTube subscribers and
+ * 4,625 views against 4 TikTok followers, 0 on Instagram, 0 on Threads and 1
+ * board follower on Pinterest.
+ *
+ * Five networks at single digits are not a small win — they are a cost. They
+ * spend Ayrshare quota, they carry the AI-disclosure exposure (Snapchat has
+ * already rejected a post from this account), and on the feeds that judge a
+ * CHANNEL they make the account look like exactly the spray-and-pray bot the
+ * policies are written against. Facebook stays because it is the only other
+ * one with a pulse (6 to 104 views a post) and costs one extra API call.
+ *
+ * This is a LIST, not a rewrite: `postsOn` still decides per (platform, kind)
+ * and every generator is untouched, so a network comes back as a row here the
+ * day there is a reason for it.
+ */
+const LIVE_PLATFORMS: Platform[] = ['youtube', 'facebook']
 
 const KINDS_OFF: Partial<Record<Platform, Kind[]>> = Object.fromEntries(
   PLATFORMS.map((p) => [p, [
     ...PARKED,
+    // A network that is not live takes nothing at all.
+    ...(LIVE_PLATFORMS.includes(p) ? [] : (['verse', 'story', 'own', 'note', 'exchange'] as Kind[])),
     // The NOTE is a photo rather than a video, so Facebook distributes it
     // through machinery a Reel never reaches and Pinterest can pin it. It is
     // written from the same paragraphs Tabitha tells, so it belongs to the day
@@ -101,6 +138,13 @@ export interface PostArgs {
   attempt?: number
   /** The video's length. Facebook Reels stop at 90 seconds; a longer video goes to the page as a plain video post instead. */
   seconds?: number
+  /**
+   * He OPENED this post and an AI voice read the verse. Travels from the
+   * generator with `voiced`, never inferred from a parked file — the same
+   * rule, for the same reason: a claim about a FILE is not a claim about the
+   * post, and this line is a disclosure.
+   */
+  opened?: boolean
   /** A public JPG of the video's first frame, same size as the video. Pinterest refuses a video pin without one. */
   cover?: string
   /** A voice on the video is the operator's own recording (days/<date>/voice-<kind>.json exists); the AI note then claims only the art. */
@@ -139,7 +183,58 @@ export const AI_NOTE_ART = 'AI-generated art. The voice you hear is mine, not sy
  * same on both.
  */
 export const AI_NOTE_STILL = 'AI-generated art.'
-const aiNote = (a: PostArgs) => (a.kind === 'note' ? AI_NOTE_STILL : a.voiced ? AI_NOTE_ART : AI_NOTE)
+/**
+ * And the note for a post he OPENS but does not read.
+ *
+ * This one is the whole reason `voiced` could not stay a boolean. An opener
+ * post carries BOTH voices — his introduction, then a synthesised reading of
+ * the verse — so `AI_NOTE_ART` would claim a voice that is only half his,
+ * about the half that is not. That is precisely the failure this engine has
+ * already shipped once, when a story was captioned "The voice you hear is
+ * mine" over a telling that was entirely Gemini's, and it went to seven
+ * networks before anybody measured the audio.
+ *
+ * So the line names both, and names which is which. It is longer than the
+ * others and that is the cost of it being true.
+ */
+export const AI_NOTE_OPENED = 'AI-generated art, and the verse is read by an AI voice. The introduction is mine.'
+/**
+ * The same shape for the EVENING post, and it needs its own words rather than
+ * the verse's.
+ *
+ * Both posts are now his introduction over a synthetic voice, so both take an
+ * opened note — but what that voice DOES differs, and the line has to say the
+ * one that is in the post. On the morning post the synthetic voice reads the
+ * verse and nothing else. In the evening it is Tabitha telling a story for a
+ * minute and then reading the verse, which is most of the audio. "The verse is
+ * read by an AI voice" is true of that and badly incomplete: a viewer hears a
+ * whole telling in a voice the line has not accounted for, and a disclosure
+ * that leaves out the largest thing in the post is the same failure as one
+ * that describes something absent, arriving from the other side.
+ */
+export const AI_NOTE_OPENED_STORY = 'AI-generated art, and the story is told by an AI voice. The introduction is mine.'
+/**
+ * The EXCHANGE, and it needs a fourth line for the reason the third one
+ * exists: neither of the others describes what is in this post.
+ *
+ * `AI_NOTE_OPENED` says "the verse is read by an AI voice", singular, and
+ * there is no verse read here at all — there are TWO synthetic voices playing
+ * two named people talking to each other, which is a larger claim about what
+ * a viewer is hearing than any line above makes. And his own voice is at BOTH
+ * ends of it rather than only the front, so "the introduction is mine" would
+ * understate the true half while the rest overstated nothing.
+ *
+ * A disclosure that leaves out the largest thing in the post is the same
+ * failure as one that describes something absent. So this names the two
+ * voices, and names which words are his.
+ */
+export const AI_NOTE_EXCHANGE = 'AI-generated art, and both speakers are AI voices. The opening and closing words are mine.'
+const aiNote = (a: PostArgs) =>
+  a.kind === 'note' ? AI_NOTE_STILL
+    : a.kind === 'exchange' && a.opened ? AI_NOTE_EXCHANGE
+      : a.opened ? (a.kind === 'story' ? AI_NOTE_OPENED_STORY : AI_NOTE_OPENED)
+        : a.voiced ? AI_NOTE_ART
+          : AI_NOTE
 
 const tagLine = (tags: string[] | undefined, n: number) => (tags ?? []).slice(0, n).map((t) => '#' + t).join(' ')
 
@@ -211,6 +306,11 @@ export function callToAction(kind: Kind, short = false): string {
   // and it is the whole reason the week keeps a guessing post at all: the
   // challenges took the comment ask with them when they were parked.
   if (kind === 'figure') return short ? 'Guess before the reveal.' : 'Comment your guess before the reveal — then share it with someone who would get it.'
+  // The EXCHANGE ends on a question asked out loud — "who are you still
+  // counting?" — so the comment ask is not bolted on here, it is the last
+  // thing the video says. Asking for a share instead would answer a question
+  // with an errand. It keeps the share second, as the challenges do.
+  if (kind === 'exchange') return short ? 'Answer in the comments.' : 'Answer in the comments — then share this with someone who needs to hear it.'
   const challenge = kind === 'challenge' || kind === 'challenge2'
   if (short) return challenge ? 'Comment your answer, then share it.' : 'Share this with someone who needs it.'
   return challenge
@@ -232,17 +332,31 @@ function withAsk(text: string | undefined, kind: Kind, join = '\n'): string {
   const t = join === ' '
     ? stripped.replace(/\s+/g, ' ').trim()
     : stripped.replace(/[ \t]+/g, ' ').replace(/ ?\n ?/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
-  const challenge = kind === 'challenge' || kind === 'challenge2'
-  const has = /\bshare\b/i.test(t) && (!challenge || /comment/i.test(t))
+  // Every kind whose ask LEADS with the comment, so a model caption that says
+  // only "share" does not suppress it. The exchange joins the challenges here
+  // rather than being special-cased: they are the formats that end on a
+  // question, and the guard is about the ask, not about the format.
+  const asksComment = kind === 'challenge' || kind === 'challenge2' || kind === 'exchange'
+  const hasShare = /\bshare\b/i.test(t)
+  const has = hasShare && (!asksComment || /comment/i.test(t))
   if (has) return t
+  // A HALF-MATCH is the case that shipped a doubled ask: on a comment-asking
+  // kind the model wrote "Share this with someone who needs to hear it." and
+  // no comment, so the guard above fell through and appended the full line —
+  // two share asks in three sentences, which reads as a caption arguing with
+  // itself. The model's own share sentence comes out, and ours goes on the
+  // end whole, so the post asks for exactly one thing first and one second.
+  const body = asksComment && hasShare
+    ? t.replace(/[^.!?\n]*\bshare\b[^.!?\n]*[.!?]?/gi, ' ').replace(/[ \t]+/g, ' ').replace(/ ?\n ?/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
+    : t
   // The ask is separated the way the words themselves are. A single newline
   // under the NOTE — three paragraphs split by blank lines — hung the share
   // line off the end of the closing sentence like a fourth clause of it,
   // where every other break in the post was a paragraph. So a text that
   // already contains a blank line gets one; a one-line caption keeps the
   // join it was given, and a space-joined network is untouched.
-  const gap = join === '\n' && /\n\n/.test(t) ? '\n\n' : join
-  return [t, callToAction(kind)].filter(Boolean).join(gap)
+  const gap = join === '\n' && /\n\n/.test(body) ? '\n\n' : join
+  return [body, callToAction(kind)].filter(Boolean).join(gap)
 }
 
 /**

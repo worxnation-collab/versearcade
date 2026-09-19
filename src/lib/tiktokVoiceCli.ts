@@ -9,8 +9,8 @@
 // the runner token and catches the finished video as a download — the shape
 // lib/tiktokDaily.ts already has. Never imported by the app.
 
-import { setRunnerToken, parkFile, fetchCopy, fetchThought, fetchStoryWord, fetchVoice, publicUrl, existsAt, voiceWavPath, voiceJsonPath, type VoiceKind } from '@/features/admin/tiktok/shared'
-import { makeVerse, makeStory, makeNote, makeReading, type Progress } from '@/features/admin/tiktok/make'
+import { VOICE_LABEL, setRunnerToken, parkFile, fetchCopy, fetchThought, fetchStoryWord, fetchVoice, publicUrl, existsAt, voiceWavPath, voiceJsonPath, postKindOf, type VoiceKind } from '@/features/admin/tiktok/shared'
+import { makeVerse, makeStory, makeNote, makeReading, makeExchange, type Progress } from '@/features/admin/tiktok/make'
 import { isReadingKind } from '@/data/tiktokWeek'
 import { getVerseForDate } from '@/data/bible/questions'
 import type { TimedWord } from '@/lib/tiktokRender'
@@ -25,11 +25,12 @@ export interface FixResult { words: number; heard: number; text: string }
 declare global {
   interface Window {
     vaVoice: {
-      drafts: (dates: string[], token: string, force?: boolean, place?: 'open' | 'close') => Promise<DraftRow[]>
+      drafts: (dates: string[], token: string, force?: boolean | VoiceKind[], place?: 'open' | 'close') => Promise<DraftRow[]>
       hear: (wavUrl: string, token: string) => Promise<{ seconds: number; words: TimedWord[]; text: string }>
       listen: (date: string, wavUrl: string, token: string, kind?: VoiceKind, place?: 'open' | 'close') => Promise<ListenResult>
-      render: (date: string, token: string, kind?: VoiceKind, place?: 'open' | 'close', pick?: string, reference?: string) => Promise<RenderResult>
+      render: (date: string, token: string, kind?: VoiceKind, place?: 'open' | 'close', pick?: string, reference?: string, restory?: boolean) => Promise<RenderResult>
       note: (date: string, token: string) => Promise<{ size: number; reference: string; tier: string; words: number; text: string }>
+      preview: (date: string, token: string, a: { hookUrl: string; verseUrl: string; sceneUrl: string; figureUrl: string; hookText: string; hookLine: string; photoUrl?: string }) => Promise<{ ext: 'mp4' | 'webm'; size: number; reference: string; seconds: number; phrases: number; figure: string }>
       fix: (date: string, text: string, token: string, kind?: VoiceKind) => Promise<FixResult>
       identify: (wavUrl: string, dates: string[], token: string) => Promise<{ best: { date: string; reference: string; matched: number; words: number } | null; opening: string }>
     }
@@ -79,6 +80,13 @@ window.vaVoice = {
    */
   async drafts(dates, token, force = false, place = 'close') {
     setRunnerToken(token)
+    // Redrafting is PER KIND, and that is not a convenience. The two halves
+    // of a day are recorded at different sittings, so a batch routinely has
+    // his voice parked against one of them and nothing against the other —
+    // and rewriting the draft he already read would leave the printed script
+    // saying something he never said, on a post that renders perfectly from
+    // its own parked transcript. `force: ['verse']` redraws only the morning.
+    const forced = (k: VoiceKind) => (Array.isArray(force) ? force.includes(k) : !!force)
     const out: DraftRow[] = []
     const part = async (date: string, kind: VoiceKind, draft: () => Promise<{ text: string; words: number; source: string }>): Promise<DraftPart> => {
       const t = await draft()
@@ -89,9 +97,9 @@ window.vaVoice = {
     for (const date of dates) {
       say(`drafting ${date}`)
       const v = getVerseForDate(date)
-      const verseWord = await part(date, 'verse', () => fetchThought(date, force))
+      const verseWord = await part(date, 'verse', () => fetchThought(date, forced('verse')))
       say(`drafting ${date} · the story's ${place === 'open' ? 'introduction' : 'closing word'}`)
-      const storyWord = await part(date, 'story', () => fetchStoryWord(date, force, [], place)).catch(() => null)
+      const storyWord = await part(date, 'story', () => fetchStoryWord(date, forced('story'), [], place)).catch(() => null)
       out.push({ date, reference: v.reference, verse: v.text, verseWord, storyWord, storyPlace: place })
     }
     return out
@@ -145,7 +153,7 @@ window.vaVoice = {
     say('parking the transcript')
     await parkFile(voiceJsonPath(date, kind), new Blob([JSON.stringify(fixed)], { type: 'application/json' }), 'application/json')
     say('rewriting the caption')
-    try { await fetchCopy(date, kind, true) } catch { /* written at render time otherwise */ }
+    try { await fetchCopy(date, postKindOf(kind), true) } catch { /* written at render time otherwise */ }
     return { seconds: dec.seconds, verseMatched: fixed.verseMatched, verseWords: fixed.verse.length, verseEnd: fixed.verse[fixed.verse.length - 1]?.end ?? 0, thoughtStart: fixed.thought[0]?.start ?? 0, thoughtWords: fixed.thought.length, text: fixed.text }
   },
 
@@ -164,10 +172,17 @@ window.vaVoice = {
     const parked = await fetchVoice(date, kind)
     if (!parked || !Array.isArray(parked.heard) || !parked.heard.length) throw new Error(`nothing listened to for ${date} ${kind} yet — run listen first`)
     const m = await import('@/lib/tiktokVoice')
-    const fixed = m.refit(parked, text)
+    // A verse take is the READING and then the thought, and `refit` has only
+    // the thought's timings to fit onto — so a correction carrying both
+    // halves has to lose the reading first, or the verse is spread across
+    // the thought. See `dropVerse`, which refuses to cut anything it is not
+    // sure about. This is the one place that knows the day's verse, which is
+    // why it happens here rather than in whatever handed the text over.
+    const supplied = kind === 'verse' ? m.dropVerse(text, getVerseForDate(date).text) : text
+    const fixed = m.refit(parked, supplied)
     await parkFile(voiceJsonPath(date, kind), new Blob([JSON.stringify(fixed)], { type: 'application/json' }), 'application/json')
     say('rewriting the caption')
-    try { await fetchCopy(date, kind, true) } catch { /* written at render time otherwise */ }
+    try { await fetchCopy(date, postKindOf(kind), true) } catch { /* written at render time otherwise */ }
     return { words: fixed.thought.length, heard: parked.heard.length, text: fixed.text }
   },
 
@@ -196,6 +211,49 @@ window.vaVoice = {
    * a JPG download, with its words returned so a terminal can read them
    * before anything is scheduled. Posts nothing.
    */
+  /**
+   * The new morning post, end to end, with a SYNTHESISED stand-in for his
+   * opener — so the shape can be judged before a word of it is recorded.
+   *
+   * It goes through the real `renderTikTok` with the real cast figure and the
+   * real per-verse painting; the only thing that is a placeholder is whose
+   * voice says the hook. Nothing here is a mock-up of the layout, because a
+   * mock-up of this layout would tell you nothing about the only question
+   * worth asking of it, which is whether the two voices sit together.
+   */
+  async preview(date, token, a) {
+    setRunnerToken(token)
+    ensureFont()
+    localModels()
+    const progress: Progress = (_f, label) => say(`${date}: ${label}`)
+    const r = await import('@/lib/tiktokRender')
+    const v = getVerseForDate(date)
+    const { castFor } = await import('@/data/tiktokCast')
+    const cast = castFor(v)
+    const [hook, verse] = await Promise.all([
+      fetch(a.hookUrl).then((x) => x.arrayBuffer()),
+      fetch(a.verseUrl).then((x) => x.arrayBuffer()),
+    ])
+    const [scene, figure] = await Promise.all([r.loadImage(a.sceneUrl), r.loadImage(a.figureUrl)])
+    // The face, if one is served — the ring around it breathes with his voice.
+    const photo = a.photoUrl ? await r.loadImage(a.photoUrl).catch(() => undefined) : undefined
+    const { bedFor } = await import('@/features/admin/tiktok/shared')
+    const bed = await bedFor(await r.plannedDuration(verse, a.hookLine, false, hook), 'morning')
+    const out = await r.renderTikTok({
+      reference: v.reference, text: v.text, hook: a.hookLine, audio: verse,
+      backdrop: { kind: 'builtin', scene, figure },
+      opener: { audio: hook, words: [], text: a.hookText, photo, label: VOICE_LABEL },
+      bed, onProgress: progress,
+    })
+    const el = document.createElement('a')
+    el.href = URL.createObjectURL(out.blob)
+    el.download = `preview-${date}.${out.ext}`
+    document.body.appendChild(el)
+    el.click()
+    say('done')
+    return { ext: out.ext === 'mp4' ? 'mp4' : 'webm', size: out.blob.size, reference: v.reference, seconds: out.durationSec, phrases: (out.phrases ?? []).length, figure: cast.figure }
+  },
+
   async note(date, token) {
     setRunnerToken(token)
     ensureFont()
@@ -218,7 +276,7 @@ window.vaVoice = {
    * listened to yet belongs — one that carries its own wins, so a preview
    * cannot move a word recorded as a closing one to the front.
    */
-  async render(date, token, kind = 'verse', place = 'close', pick, reference) {
+  async render(date, token, kind = 'verse', place = 'close', pick, reference, restory = false) {
     setRunnerToken(token)
     ensureFont()
     localModels()
@@ -227,11 +285,16 @@ window.vaVoice = {
     // they are the same shape (his reading over held paintings) and differ
     // only in what the paintings are of. Anything not in that rotation is
     // the verse or the story, as it always was.
+    // An EXCHANGE takes its `pick` as an exchange id rather than a painting,
+    // so `--pick=who-do-you-say` renders a chosen one out of the bank on a
+    // date the rotation would have dealt something else.
     const m = isReadingKind(kind)
       ? await makeReading(date, kind, { pick, reference }, progress)
-      : kind === 'story'
-        ? await makeStory(date, { ownPlace: place }, progress)
-        : await makeVerse(date, {}, progress)
+      : kind === 'exchange'
+        ? await makeExchange(date, { pick }, progress)
+        : kind === 'story'
+          ? await makeStory(date, { ownPlace: place, restory }, progress)
+          : await makeVerse(date, {}, progress)
     const a = document.createElement('a')
     a.href = m.url
     a.download = `${kind}-${date}.${m.ext}`

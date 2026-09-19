@@ -25,6 +25,7 @@ import { challengeQuestion } from '@/lib/tiktokChallenge'
 
 const VersePost = lazy(() => import('./tiktok/VersePost'))
 const StoryPost = lazy(() => import('./tiktok/StoryPost'))
+const ExchangePost = lazy(() => import('./tiktok/ExchangePost'))
 const QuizPost = lazy(() => import('./tiktok/QuizPost'))
 const ChallengePost = lazy(() => import('./tiktok/ChallengePost'))
 const YourVoice = lazy(() => import('./tiktok/YourVoice'))
@@ -36,14 +37,15 @@ const POSTS: Array<{ id: Door; icon: string; name: string; when: string; line: s
   { id: 'verse', icon: '☀️', name: 'Verse reading', when: 'morning', line: 'The day’s reader stands on a road and reads the verse, the words lighting up as they are said. The hook is the first frame.' },
   { id: 'challenge', icon: '⚡', name: 'Beat the reader', when: 'twice a day', line: 'One of yesterday’s questions, a twelve-second clock, the answer and why. Two a day, different questions, different faces.' },
   { id: 'quiz', icon: '🎮', name: 'Yesterday’s quiz', when: 'replay', line: 'Yesterday’s five questions played against the clock. Viewers play along and see the answers.' },
+  { id: 'exchange', icon: '💬', name: 'The exchange', when: 'Mon · Wed · Fri', line: 'You open it, two figures out of the text ask and answer each other, the answer lands as one word on the whole frame, and you close on a question. Both takes have to be recorded.' },
   { id: 'story', icon: '🌙', name: 'Story time', when: 'evening', line: 'Tabitha tells the story behind it in about a minute, opening on the dramatic moment.' },
   { id: 'voice', icon: '🎙️', name: 'Your voice', when: 'Sunday batch', line: 'Read the verse yourself and say one thing about it. Drafts to read, a slot per day; the morning post uses your recording when there is one.' },
   { id: 'own', icon: '🎤', name: 'Your own clip', when: 'weekly', line: 'A clip you recorded yourself — your face, your voice — captioned for every network and posted through the same door.' },
 ]
 /** The kinds the day's words are written for on their own: everything a generator makes. */
-const WORD_KINDS: Kind[] = ['verse', 'challenge', 'quiz', 'challenge2', 'story']
+const WORD_KINDS: Kind[] = ['verse', 'challenge', 'quiz', 'challenge2', 'story', 'exchange']
 const KIND_LABEL: Record<Kind, string> = { verse: '☀️ Verse', challenge: '⚡ Challenge 1', quiz: '🎮 Quiz', challenge2: '⚡ Challenge 2', story: '🌙 Story', own: '🎤 Own clip', note: '📖 Note',
-  book: '📚 Book', moment: '🖼️ Moment', before: '⏪ Just before', figure: '❓ Who is this', quiet: '🕯️ Quiet minute', prayer: '🙏 Prayer' }
+  book: '📚 Book', moment: '🖼️ Moment', before: '⏪ Just before', figure: '❓ Who is this', quiet: '🕯️ Quiet minute', prayer: '🙏 Prayer', exchange: '💬 Exchange' }
 
 // The day's words, without a video. The copy for each post is written once
 // per date (cached by the function), so this card shows all three sets for
@@ -349,6 +351,7 @@ export default function TikTokPanel() {
       <Suspense fallback={<p className="faint" style={{ fontSize: 12 }}>Opening…</p>}>
         {open === 'verse' && <VersePost />}
         {open === 'story' && <StoryPost />}
+        {open === 'exchange' && <ExchangePost />}
         {open === 'quiz' && <QuizPost />}
         {(open === 'challenge' || open === 'challenge2') && <ChallengePost />}
         {open === 'own' && <OwnClip />}

@@ -503,15 +503,138 @@ the kit still exists.
 
 ## The TikTok engine: an operator tool, not a feature
 
-Admin → TikTok makes the daily posts for a faceless TikTok account: the day's
-reader standing on a road scene reading the verse of the day, two twenty-second
-"Can you beat Peter?" challenges (one of yesterday's questions each, a clock,
-the teach line, an ask to comment), a replay of YESTERDAY's quiz played by the
-game's own CPU against the clock, and an evening Story time with Tabitha
-telling the story behind the verse in about a minute. All are captioned word
-by word, ending on the site. Each is its own generator behind a pill
-(`admin/tiktok/*.tsx` over `shared.tsx`); the cron does the upload. Full
-design: `docs/TIKTOK-ENGINE.md`. Things to know:
+**Read this first: the engine is TWO POSTS A DAY ON TWO NETWORKS, and most of
+what follows this paragraph is the history of how it got there.** Everything
+below is still worth reading — the scars are real and several of them are
+invisible in a diff — but the bullets describe formats and networks that are
+now parked, so take the shape from here and the lessons from there.
+
+**What it makes now.** A MORNING VERSE and an EVENING STORY every day, plus an
+EXCHANGE three days a week — all carrying the operator's own recorded voice,
+posted to YouTube and Facebook only:
+
+- **The verse.** His recorded HOOK opens it (about fifteen seconds, his face
+  beside the caption), then a synthesised voice reads the verse. Standing in
+  the frame is the verse's OWN speaker — `castFor` in `data/tiktokCast.ts`:
+  Paul for Paul, and for a divine speaker the prophet who RECORDED it, because
+  God is never drawn. Behind them is a painting made for that verse
+  (`scripts/tiktok-scenes.mjs` → `public/tiktok/verse/<slug>.jpg`), not one of
+  nine roads.
+- **The story.** ONE ROOM, held, for the whole telling. It opens on the
+  library — Tabitha, the children, the lamps — with his recorded INTRODUCTION
+  over it and HIS OWN FIGURE standing in the corner by the shelves, behind the
+  circle, at their scale. He fades out slowly as she begins, and she tells the
+  rest of it in the room he left.
+
+  **Two things this reversed, both the owner's call, and both worth reading
+  before reversing them again.** His half used to play over a DARK STAGE of
+  his own (`own.jpg`) — which answered a real objection, that a second person
+  in her room is a stranger in it, and paid for the answer with the FIRST
+  FRAME OF THE POST being an empty pool of light. That is the worst possible
+  opening for a video that has to be picked out of a feed, and what it was
+  hiding is the strongest single image this engine owns. And the telling used
+  to DISSOLVE to a painting of where each paragraph happens
+  (`data/tiktokStages.ts`), with the group held in front of it — which read as
+  a slideshow of generated pictures, the exact impression this layout's
+  hold-everything-still rule exists to avoid. `STORY_CORNER` in
+  `lib/tiktokRender.ts` carries the argument and the three measured numbers;
+  the staging is PARKED rather than deleted, because the reading kinds are
+  built on the same machinery.
+
+- **The exchange.** Mon/Wed/Fri at 12:30, and the one format with no
+  synthetic fallback: he opens, two figures out of the text ask and answer
+  each other, the answer lands as one whole-frame word, and he closes on a
+  question that is the caption's comment ask. Full design:
+  `docs/TIKTOK-EXCHANGE.md`. Four things are load-bearing and each is a
+  narrowing of a rule stated absolutely elsewhere on this page:
+
+  **It REFUSES a day with no takes.** Every other generator degrades to a
+  fully synthetic version, because it still has something to say. An exchange
+  with nobody in it is two synthesised characters talking over a painting,
+  going to the two networks that judge a CHANNEL — the exact shape the
+  originality policies describe. `makeExchange` throws and the day quietly
+  makes two posts. That is the "unvoiced day" gap this page warns about,
+  closed for the one format where it could not be tolerated.
+
+  **THE CAMERA MOVES**, which is a deliberate exception to "the only thing
+  moving is the caption". That rule was written for one figure at 42% of the
+  frame; here there are two at full length and the face carrying the turn is
+  ~90px tall, so the expression swap changed nothing a viewer could see. The
+  push is motivated — it creeps through the setup, lands hard on the answer,
+  snaps wide for the payoff — and nothing else moves but the walk-in.
+
+  **There is no silence in it.** The first cut held the payoff over 2.8s of
+  dead air and that was the owner's first note. The four speech blocks butt
+  up with beats of a few hundred ms and the payoff plays OVER his close.
+
+  **And the voice fault was SWING, not pitch.** Peter shipped on `Puck` and
+  read as performed; measured, Puck's median is 115 Hz — an ordinary man's
+  voice — against `Orus`'s 114. What differs is the intonation range inside a
+  sentence: 102 Hz against 50. `Algenib` is the LOWEST voice in the set and
+  the swingiest of all, so deeper is not flatter. `SPEAKER_VOICE` picks for
+  swing and every delivery note ends "no lilt, no brightness, no theatrical
+  flair" — the note does as much work as the id.
+
+  **And it found a bug that had been live in the runner all along.** The
+  runner proxies the bucket to the page READS ONLY — a PUT went out as a GET
+  and came back as `Bucket not found` — so `ensureVoice`, `ensureReading` and
+  `ensureExchangeVoice` could never park a transcript they had just made, and
+  "the morning runner can do the listening itself when a phone only uploaded"
+  was false in the runner for as long as it existed. Every other kind hid it
+  by falling back to a synthetic voice. The signed-upload path is forwarded
+  now, and only that path.
+
+  Its rotation exists because Jesus and Paul are 59% of the verse pool's
+  speakers: `pickExchange` refuses anyone from the last `SPEAKER_MEMORY`
+  posts. That was written as 5 before a single exchange existed and starves
+  the bank (Jesus once a month); it is **2**, which gives nobody adjacent to
+  their own post and Jesus every third. `check:exchanges` fails the build on
+  a cast id missing its `_asking`/`_struck`/`_settled` renders, on two
+  speakers sharing a voice, on a missing painting, and on the runner's copy
+  of the calendar drifting from the app's — every one of those RENDERS.
+
+**Why the reading moved off him**, since it is the half that looks like a
+downgrade: a reading has to be recorded for THAT DAY'S verse, so a day he
+misses has no human in it at all, and he was committed to fourteen full
+readings a week. A hook is ABOUT the verse without being it, so a batch can be
+recorded ahead and the reading underneath is always there.
+
+**Why two networks.** Measured, not assumed. Across five days of the same
+verse post YouTube delivered 983, 951 and 777 views; TikTok delivered 1, 2 and
+0, Instagram 0, 2 and 5, Threads 10, 2 and 0, and Pinterest zero impressions of
+anything. 156 sign-ups had a null source. Five networks at single digits are a
+cost, not a small win: quota, AI-disclosure exposure, and on feeds that judge a
+CHANNEL they make the account look like the spray-and-pray bot the policies are
+written against. `LIVE_PLATFORMS` in `social.ts` is a LIST — `postsOn` still
+decides per (platform, kind) and every generator is untouched, so a network
+comes back as a row the day there is a reason for it.
+
+**The disclosure has four lines now, and which one a post carries is decided by
+what is actually IN it** (`aiNote`): `AI_NOTE` when nothing human is,
+`AI_NOTE_ART` when the voice is entirely his, `AI_NOTE_OPENED` when he opens a
+post whose VERSE is read by a synthetic voice, and `AI_NOTE_OPENED_STORY` when
+he opens one whose STORY is told by one. The third and fourth exist because
+`voiced` alone captioned an opener post "the voice you hear is mine, not
+synthetic" over audio that is mostly not — the same failure this engine shipped
+in September, arriving by a new road. **`opened` travels from the render to the
+post body beside `voiced`**, never derived at the far end, for the reason
+`voiced` does: a claim about a FILE is not a claim about the POST.
+
+**And the pattern that caused four separate bugs in one day, which is the most
+useful thing on this page: A FIX TO THE CODE IS NOT A FIX TO WHAT THE CODE HAS
+ALREADY WRITTEN.** Parked recordings cut on superseded boundaries; MP4s
+rendered in a superseded format; a post record restating what was asked for
+rather than what is queued; and stories written before staging existed, which
+made the whole staging feature inert with nothing anywhere saying so. Every one
+of those artefacts looked completely valid — right shape, right word count,
+rendered perfectly. When you change a step of this pipeline, go and look at
+what the old step already put in the bucket. `split` now measures a parked
+take's length against its cut for exactly this reason, and `--restory` exists
+because a cached telling has no way to say what it is missing.
+
+Each generator is its own pill (`admin/tiktok/*.tsx` over `shared.tsx`); the
+cron does the upload. Full design: `docs/TIKTOK-ENGINE.md`. Things to know —
+**historical where they describe the parked formats**:
 
 - **The first frame is the hook and the voice does not wait for it.** Every
   layout opens on the hook line, large, at 0.0s, with the reading starting at
@@ -649,6 +772,15 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   followers, all through a third-party API, is itself the shape of the thing
   being filtered. **Read `analytics` before spending posts**: this was found
   by asking, and nobody had asked.
+- **`note` is PARKED with the quiz and the challenges, and it was the last
+  third post to go.** It is Facebook's alone, it is not a video, and no voice
+  is on it — so the one network still getting three posts a day was getting
+  the only wholly-generated one, sitting beside the two that carry a person,
+  under a policy that applies its penalty ACROSS EVERYTHING THE ACCOUNT POSTS.
+  Everything below still describes it and everything it names still works
+  (`renderNoteCard`, its own copy prompt, `isPhoto`/`mediaName` in the runner);
+  what it no longer has is a network. It is a row in `PARKED` — historical
+  from here on:
 - **`note` is the one post here that is NOT a video**, and it is Facebook's
   alone (the card also goes to Pinterest): a 4:5 card and 120-200 words that retell the story behind the day's
   verse. Facebook distributes a photo-and-text post through different
@@ -770,7 +902,12 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
   back onto the caption. `timeWords()`'s energy heuristic is the fallback and
   was measured a full second off on one word, which is why it is not the
   answer. Anything added here has to earn its motion.
-  - **A CUT is not motion, and that is what let the story grow stages.**
+  - **A CUT is not motion, and that is what let the story grow stages — which
+    are now PARKED on the evening story and live only on the readings.** The
+    argument below still holds on its own terms and the machinery is
+    untouched; what it did not weigh is that four changes of setting inside
+    one telling read, in the aggregate, as the slideshow of generated
+    pictures this whole section is trying not to be. Historical from here:
     `data/tiktokStages.ts` + `art/tiktok-stages.json` + `public/tiktok/stages/`:
     ten held paintings of where a paragraph HAPPENS — road, house, hills,
     water, gate, temple, prison, field, upper room, wilderness — cut to on
@@ -801,22 +938,33 @@ design: `docs/TIKTOK-ENGINE.md`. Things to know:
     painting, because that failure renders perfectly — the id is one this
     build carries, so nothing drops it, and the paragraph is quietly told in
     the library forever.
-  - **And his half stands on a stage of its own** (`own.jpg` — a dark empty
-    space with one warm pool of light — plus the `sharkey` figure). His half
-    used to play over her library with his photo growing into the middle of
-    it, and the objection that kept the morning post's reader swap off this
-    layout ("a second figure in it is a stranger in somebody else's library")
-    applies to that too — it is about the ROOM rather than about him. A stage
-    of his own narrows that rule rather than overturning it: her room is
-    still hers. The figure **replaces the photo ring** while it is up (he is
-    already on screen; two of him is one too many) and the photo still closes
-    the post on the end card. Where he stands is **measured, not chosen** —
-    the pool of light is centred at 0.77 of the frame once `cover` has
-    anchored the painting to its bottom edge and the caption panel ends at
-    y=668, so `STORY_STAND` is feet 0.79, height 0.41; **re-render `own.jpg`
-    and both numbers have to be checked again**, because the light moves. No
-    stage painting, or no figure render, is his photo over the library
-    exactly as before.
+  - **And his half stands IN THE CORNER OF HER LIBRARY** — `sharkey` by the
+    left bookshelf, behind the seated circle, going slowly as she begins. It
+    replaced a dark stage of his own (`own.jpg`), and the stage replaced his
+    photograph growing into the middle of her room; the chain is worth
+    knowing because each step answered the step before. The objection that
+    produced the stage — "a second figure in it is a stranger in somebody
+    else's library", the same one that keeps the morning post's reader swap
+    off this layout — is about the ROOM rather than about him, and the corner
+    answers it without leaving: he is behind the children, off to one side, at
+    their size, and her room is still hers. What the stage cost, and the
+    reason it went, is that the post then OPENED ON A DARK SCREEN. The figure
+    **replaces the photo ring** while it is up (he is already on screen; two
+    of him is one too many) and the photo still closes the post on the end
+    card. Where he stands is **measured, not chosen** — `STORY_CORNER` is
+    x 0.165, feet 0.72, height 0.335, each read off a real frame of the real
+    figure over the real room at the real `cover` zoom; **re-render
+    `story-circle.jpg` or `sharkey.png` and all three have to be checked
+    again**, because the floor line and the shelves move. No figure render is
+    his photo over the library exactly as before, never a failed post.
+  - **The `listeners` cut-out went with the stages, and it was drawing a
+    second Tabitha.** Tabitha and the children held in front of the backdrop
+    existed to keep the group put while the SCENE changed behind them. With
+    one room there is nothing to hold them against — and drawn over the
+    library, which already has her and the children in it, it painted a
+    second Tabitha in different clothes on top of the first, inside a visible
+    rectangle of the cut-out's own matte. It shipped that way and rendered
+    perfectly every time; only pulling a frame showed it.
 - **The operator can read the verse, and the recording replaces Gemini's
   voice for that date.** Admin → TikTok → Your voice: a drafted ~110-word
   thought per date (`thought`, cached at `days/<date>/thought.json`), a

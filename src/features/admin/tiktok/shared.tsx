@@ -18,7 +18,7 @@ import { getVerseForDate } from '@/data/bible/questions'
 import { VERSE_POOL } from '@/data/bible/pool'
 import { pickVoice, pickCast, pickCastRotated, PICKER_VOICES, SCENE_NAMES, VERSE_SCENES, READER_ORDER, type VoiceSeed, type CastPick } from '@/data/tiktokVoice'
 import type { Backdrop, TimedPhrase } from '@/lib/tiktokRender'
-import { STORY_STAGES, stagePath, OWN_STAGE_PATH } from '@/data/tiktokStages'
+import { STORY_STAGES, stagePath } from '@/data/tiktokStages'
 
 export const BUCKET = 'tiktok'
 export const READERS = [
@@ -190,7 +190,7 @@ export interface Copy { hook: string; caption: string; hashtags: string[]; platf
  * captioned and posted through the same door.
  */
 export type Kind = 'verse' | 'story' | 'quiz' | 'challenge' | 'challenge2' | 'own' | 'note'
-  | 'book' | 'moment' | 'before' | 'figure' | 'quiet' | 'prayer'
+  | 'book' | 'moment' | 'before' | 'figure' | 'quiet' | 'prayer' | 'exchange'
 /**
  * `voiced` is whether the operator's own recording actually reached this
  * render — not whether one is parked for the date. The two came apart once
@@ -200,7 +200,16 @@ export type Kind = 'verse' | 'story' | 'quiz' | 'challenge' | 'challenge2' | 'ow
  * voice you hear is mine". The renderer is the only thing that knows, so it
  * says, and `post` takes its answer.
  */
-export interface Made { date: string; kind: Kind; reference: string; url: string; ext: string; size: number; copy: Copy | null; phrases: TimedPhrase[]; tier: string; voiced: boolean }
+/**
+ * `opened` is the third state of the disclosure, and it travels beside
+ * `voiced` rather than being derived from it for exactly the reason `voiced`
+ * itself travels: a claim about a FILE is not a claim about the POST. A post
+ * where he opens and a synthetic voice does the rest is `voiced` (a recording
+ * of his is genuinely in it) AND `opened` — and with only the first of those,
+ * the caption reads "the voice you hear is mine, not synthetic" over audio
+ * that is mostly not.
+ */
+export interface Made { date: string; kind: Kind; reference: string; url: string; ext: string; size: number; copy: Copy | null; phrases: TimedPhrase[]; tier: string; voiced: boolean; opened?: boolean }
 
 export type Renderer = typeof import('@/lib/tiktokRender')
 
@@ -277,11 +286,16 @@ export async function speakerFor(r: Renderer, d: string, scene: string): Promise
  * plays over the library with his photo growing into it, exactly as it did
  * before this existed.
  */
-export async function ownStage(r: Pick<Renderer, 'loadImage'>): Promise<{ backdrop: HTMLImageElement; figure?: HTMLImageElement } | null> {
-  const backdrop = await r.loadImage(OWN_STAGE_PATH).catch(() => null)
-  if (!backdrop) return null
-  const figure = await r.loadImage(`/skins/${SPEAKER_SKIN}.png`).catch(() => undefined)
-  return { backdrop, figure }
+/**
+ * The operator's own render, for the corner of Tabitha's library while he
+ * speaks. It used to come back with a dark stage to stand it on
+ * (`OWN_STAGE_PATH`); the stage is gone because it made the first frame of
+ * every introduced story a dark screen — see `STORY_CORNER` in
+ * tiktokRender.ts. A missing file is null, and the render falls back to his
+ * photo over the library exactly as it did before either existed.
+ */
+export async function ownFigure(r: Pick<Renderer, 'loadImage'>): Promise<HTMLImageElement | null> {
+  return await r.loadImage(`/skins/${SPEAKER_SKIN}.png`).catch(() => null)
 }
 
 export async function backdropFor(r: Renderer, tier: 'loop' | 'still' | 'builtin', rd: string, sc: string): Promise<Backdrop> {
@@ -339,8 +353,30 @@ export const VOICE_LABEL = 'Matthew · founder'
  * `verse` is empty, which is what lets one set of actions, one transcript
  * format and one `refit` serve both.
  */
-/** Every kind that can carry his own recording — the verse, the story's half, and the six weekday readings. */
+/**
+ * Every kind that can carry his own recording — the verse, the story's half,
+ * the six weekday readings, and BOTH ends of an exchange.
+ *
+ * The exchange is the first post here he speaks at two ends of, so it is the
+ * first to need two parked recordings for one video. They are two KINDS
+ * rather than two halves of one file, which is the same call `challenge2`
+ * made: every path in this engine — `voice`, `voice-clear`, `upload-url`,
+ * `refit`, the correction step — is already keyed on kind, so a second kind
+ * is a row and a second slot inside a file would be a new shape for all of
+ * them to learn.
+ */
 export type VoiceKind = 'verse' | 'story' | 'book' | 'moment' | 'before' | 'figure' | 'quiet' | 'prayer'
+  | 'exchange' | 'exchange-close'
+
+/**
+ * The POST a recording belongs to. Every voice kind is its own post except
+ * the exchange's closing half, which is the same video as its opening one —
+ * so anything keyed on the post (the caption, the day's record) has to ask
+ * this rather than reuse the voice kind. Without it, listening to his closing
+ * take rewrote the caption under the key `exchange-close`, which nothing
+ * reads, and left the post's real caption as it was.
+ */
+export const postKindOf = (k: VoiceKind): Kind => (k === 'exchange-close' ? 'exchange' : k)
 export const voiceWavPath = (d: string, kind: VoiceKind = 'verse') => `days/${d}/voice-${kind}.wav`
 export const voiceJsonPath = (d: string, kind: VoiceKind = 'verse') => `days/${d}/voice-${kind}.json`
 export type VoiceTrack = import('@/lib/tiktokVoice').VoiceTrack
@@ -449,9 +485,9 @@ export function Busy({ busy, progress }: { busy: string | null; progress: number
 }
 
 const ICON: Record<Made['kind'], string> = { verse: '☀️', story: '🌙', quiz: '🎮', challenge: '⚡', challenge2: '⚡', own: '🎤', note: '📖',
-  book: '📚', moment: '🖼️', before: '⏪', figure: '❓', quiet: '🕯️', prayer: '🙏' }
+  book: '📚', moment: '🖼️', before: '⏪', figure: '❓', quiet: '🕯️', prayer: '🙏', exchange: '💬' }
 const FILE: Record<Made['kind'], string> = { verse: 'verse-arcade-', story: 'verse-arcade-story-', quiz: 'verse-arcade-quiz-', challenge: 'verse-arcade-challenge-', challenge2: 'verse-arcade-challenge2-', own: 'verse-arcade-own-', note: 'verse-arcade-note-',
-  book: 'verse-arcade-book-', moment: 'verse-arcade-moment-', before: 'verse-arcade-before-', figure: 'verse-arcade-figure-', quiet: 'verse-arcade-quiet-', prayer: 'verse-arcade-prayer-' }
+  book: 'verse-arcade-book-', moment: 'verse-arcade-moment-', before: 'verse-arcade-before-', figure: 'verse-arcade-figure-', quiet: 'verse-arcade-quiet-', prayer: 'verse-arcade-prayer-', exchange: 'verse-arcade-exchange-' }
 
 const PLATFORMS: Array<[Platform, string]> = [['tiktok', 'TikTok'], ['youtube', 'YouTube Shorts'], ['facebook', 'Facebook'], ['instagram', 'Instagram Reels'], ['x', 'X']]
 
@@ -575,7 +611,7 @@ export async function postVideo(m: Made, platforms: Platform[], scheduleDate: st
   let at: string | undefined
   for (const platform of platforms) {
     onStep(`${scheduleDate ? 'Scheduling' : 'Posting'} · ${PLATFORM_NAMES[platform]}`)
-    const r = await call<Posted>('post', { date: m.date, kind: m.kind, videoUrl: up.publicUrl, platforms: [platform], scheduleDate, reference: m.reference, seconds, voiced: m.voiced })
+    const r = await call<Posted>('post', { date: m.date, kind: m.kind, videoUrl: up.publicUrl, platforms: [platform], scheduleDate, reference: m.reference, seconds, voiced: m.voiced, opened: m.opened })
     results.push(...(r.results ?? []))
     at = r.at ?? at
   }

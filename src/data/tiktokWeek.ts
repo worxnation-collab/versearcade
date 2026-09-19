@@ -35,8 +35,22 @@ export type ReadingKind = 'book' | 'moment' | 'before' | 'figure' | 'quiet' | 'p
 export const READING_KINDS: ReadingKind[] = ['book', 'moment', 'before', 'figure', 'quiet', 'prayer']
 export const isReadingKind = (k: unknown): k is ReadingKind => (READING_KINDS as string[]).includes(String(k))
 
-/** Sunday-first, matching `Date#getUTCDay`. */
-const WEEK = ['prayer', 'story', 'book', 'moment', 'before', 'figure', 'quiet'] as const
+/**
+ * Sunday-first, matching `Date#getUTCDay`.
+ *
+ * Every day is the STORY now, and the six weekday readings are parked beside
+ * the quiz and the challenges (`PARKED` in tiktok-gen/social.ts). They were
+ * built to put a second voiced post on every network, and then the numbers
+ * came in: the one evening story with analytics against it earned ZERO views
+ * on YouTube, which is the only network of the eight with any reach at all.
+ * Seven recordings a week were about to go into the slot with the worst
+ * evidence in the whole dataset.
+ *
+ * They are parked rather than deleted for the `bonusTriviaFor` reason —
+ * `makeReading`, the stages, the moments and the figures all still work, so
+ * bringing one back is an entry in this array rather than a rebuild.
+ */
+const WEEK = ['story', 'story', 'story', 'story', 'story', 'story', 'story'] as const
 export type WeekKind = (typeof WEEK)[number]
 
 /**

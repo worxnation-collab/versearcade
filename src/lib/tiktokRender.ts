@@ -72,6 +72,20 @@ export interface RenderInput {
    * is listened to here, plus the photo the thought section draws.
    */
   voice?: VoiceInput
+  /**
+   * His recording as the OPENING instead — a hook and an introduction, after
+   * which Gemini reads the verse.
+   *
+   * This is the shape that lets one sitting cover many days. `voice` above
+   * replaces the reading, so a voiced day costs a take of that day's verse and
+   * an unvoiced day has no human in it at all; an opener is about the verse
+   * without being it, so a batch of them can be recorded ahead and the reading
+   * underneath is always there. Mutually exclusive with `voice` — a post where
+   * he both introduces the verse and reads it is one voice having a
+   * conversation with itself, which is the same objection that keeps a story
+   * from carrying his word at both ends.
+   */
+  opener?: OpenerInput
   onProgress?: (fraction: number, label: string) => void
 }
 
@@ -79,6 +93,28 @@ export interface VoiceInput {
   verse: TimedWord[]
   thought: TimedWord[]
   /** The person speaking, drawn in a round frame while the thought plays and on the end card. */
+  photo?: HTMLImageElement
+  /** Under the photo: who this is ("Matthew · founder"). */
+  label?: string
+}
+
+/** His hook, ahead of the reading: already-timed words (lib/tiktokVoice) and the photo. */
+export interface OpenerInput {
+  audio: ArrayBuffer
+  /**
+   * The words, already timed — a real recording arrives this way, because it
+   * was listened to once when it was parked and the operator corrected the
+   * transcript.
+   *
+   * EMPTY is a supported case and not a bug: a synthesised opener (a preview,
+   * or a placeholder while a recording is pending) has never been through
+   * Whisper, and there is nothing to correct because the words are the ones we
+   * sent. Then `text` is timed against the opener's own audio instead, the
+   * same way an unvoiced reading is.
+   */
+  words: TimedWord[]
+  /** What he says, for the case above. Ignored when `words` is supplied. */
+  text?: string
   photo?: HTMLImageElement
   /** Under the photo: who this is ("Matthew · founder"). */
   label?: string
@@ -614,6 +650,10 @@ interface Scene {
   phrases: TimedPhrase[]
   /** The thought section of an operator-voiced post: when it starts, and the reading's loudness over time for the ring. */
   voice?: { thoughtStart: number; rms: Float32Array; peak: number }
+  /** Where his OPENING half ends, so the photo steps back out as the reading begins. */
+  openEnd?: number
+  /** Where the READING begins — the far side of `OWN_GAP`, and the moment his half is over on screen. */
+  readAt?: number
 }
 
 // The one thing that moves in the thought section: a thin gold ring around
@@ -638,6 +678,55 @@ function circleImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, cx: n
   ctx.imageSmoothingQuality = 'high'
   ctx.drawImage(img, cx - w / 2, cy - r - (h - 2 * r) * 0.38, w, h)
   ctx.restore()
+}
+
+/**
+ * Where his face goes while he opens a reading, and what the caption does to
+ * make room for it.
+ *
+ * It shipped ABOVE the figure (`WIDTH / 2, 380, r 130`) and that was wrong in
+ * the way a layout is wrong rather than the way a bug is: the frame then had
+ * two things in the middle of it competing to be the subject — the verse's own
+ * speaker standing there for the whole post, and a photograph hanging over his
+ * head. The face belongs with the WORDS it is saying, so it sits beside the
+ * caption panel at the bottom of the frame, where it reads as a byline on the
+ * line being spoken rather than as a second character in the picture.
+ *
+ * The three numbers are measured against each other and must move together:
+ *
+ *  - The ring is not `r`. `drawSpeaker` breathes it out to `r + 12 + 22` at
+ *    full voice, so the footprint is `r + 34` — 120 here, not 86 — and a gap
+ *    that clears the still photo would be crossed on every loud syllable.
+ *  - `OPENER_CAPTION` therefore starts at `x + r + 34` plus a gap, and its
+ *    centre is the midpoint of what is left before the frame's own 60px
+ *    margin. Narrower text also wraps sooner, which is why the sizes step
+ *    down from 88/70 to 82/66: the drop to `small` happens past two lines, and
+ *    at the old size a three-line phrase climbed into the figure's feet.
+ *  - The LABEL ("Matthew · founder") is drawn under the photo at `cy + r + 58`
+ *    — below the caption's own deepest line — so it may safely be wider than
+ *    the ring.
+ */
+const OPENER_FACE = { x: 196, y: 1400, r: 86 }
+const OPENER_CAPTION = { x: 684, maxWidth: 672 }
+
+/**
+ * A buffer with its trailing silence removed, to within a short tail.
+ *
+ * Measured in 20ms frames against a floor well under speech but over room
+ * tone, and it keeps `KEEP` of quiet after the last loud frame so a word is
+ * never clipped on its own decay.
+ */
+function trimTail(buf: Float32Array): Float32Array {
+  const FRAME = Math.round(SAMPLE_RATE * 0.02)
+  const FLOOR = 0.006
+  const KEEP = Math.round(SAMPLE_RATE * 0.08)
+  let end = buf.length
+  for (let i = buf.length - FRAME; i >= 0; i -= FRAME) {
+    let peak = 0
+    for (let k = i; k < i + FRAME && k < buf.length; k++) { const v = Math.abs(buf[k]); if (v > peak) peak = v }
+    if (peak >= FLOOR) { end = Math.min(buf.length, i + FRAME + KEEP); break }
+  }
+  return end >= buf.length ? buf : buf.subarray(0, end)
 }
 
 /** The person speaking: the photo in a round frame with the ring that breathes with the voice, and a small line saying who. */
@@ -732,11 +821,13 @@ function bottomPad(img: HTMLImageElement): number {
  * The drawn box is pushed DOWN by the file's empty bottom (`bottomPad`) so
  * that the feet, not the file, land on the ground line.
  */
-function standFigure(ctx: CanvasRenderingContext2D, img: HTMLImageElement, alpha: number, turn = 1, place = { feet: 0.68, height: 0.42 }) {
+function standFigure(ctx: CanvasRenderingContext2D, img: HTMLImageElement, alpha: number, turn = 1, place: { feet: number; height: number; x?: number } = { feet: 0.68, height: 0.42 }) {
   if (alpha <= 0 || turn <= 0) return
   const fh = HEIGHT * place.height
   const fw = (img.naturalWidth / img.naturalHeight) * fh
-  const cx = WIDTH / 2, feet = HEIGHT * place.feet
+  // `x` is a fraction of the frame, and defaults to the middle — which is
+  // where every figure stood until one of them had to stand out of the way.
+  const cx = WIDTH * (place.x ?? 0.5), feet = HEIGHT * place.feet
   const top = feet - fh + bottomPad(img) * fh
   ctx.save()
   ctx.globalAlpha = 0.32 * alpha * turn
@@ -836,10 +927,34 @@ async function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number,
     const rise = easeOut((at - (vo.thoughtStart - 0.5)) / 0.5)
     drawSpeaker(ctx, input.voice.photo, input.voice.label, WIDTH / 2, 1060, 135, voiceLevel(vo, at), rise * (1 - endFade))
   }
+  // An OPENER may not push the hook off frame 0 — the one rule this layout
+  // has. His voice still starts at LEAD under the hook, exactly as a reading
+  // does; it is his WORDS that open, never a title card and never a face. So
+  // the photo waits for the hook to fade and steps back out as the reading
+  // begins, leaving the verse the frame it is read over.
+  //
+  // His half ENDS on screen at `readAt`, not at `openEnd`. A caption holds
+  // until the next one, so his last phrase is still up through the 0.9s
+  // `OWN_GAP` between the two voices — and the caption is narrowed and pushed
+  // right for the whole of his half to make room for the face beside it. If
+  // the face left at `openEnd` and the caption widened at `readAt`, the two
+  // halves of one change would happen half a second apart; if both moved at
+  // `openEnd`, a caption still on screen would reflow under the reader's eye.
+  // So both end at `readAt`: the photo finishes fading exactly as the
+  // reading's first caption arrives, and no caption ever reflows mid-sentence.
+  const openerOut = scene.readAt ?? scene.openEnd ?? 0
+  const opening = !!input.opener && at < openerOut
+  if (vo && input.opener?.photo && endFade < 1) {
+    const show = HOOK_HOLD + 0.2
+    const alpha = easeOut((at - show) / 0.5) * (1 - easeOut((at - (openerOut - 0.4)) / 0.4))
+    if (alpha > 0.01) drawSpeaker(ctx, input.opener.photo, input.opener.label, OPENER_FACE.x, OPENER_FACE.y, OPENER_FACE.r, voiceLevel(vo, at), alpha * (1 - endFade))
+  }
   if (phrase && endFade < 1) {
     ctx.save()
     ctx.globalAlpha = Math.min(1, easeOut(age) + 0.35) * (1 - endFade)
-    drawCaption(ctx, phrase, at, { x: WIDTH / 2, y: 1400, maxWidth: 880, size: 88, small: 70, stroke: 14 })
+    drawCaption(ctx, phrase, at, opening
+      ? { x: OPENER_CAPTION.x, y: 1400, maxWidth: OPENER_CAPTION.maxWidth, size: 82, small: 66, stroke: 14 }
+      : { x: WIDTH / 2, y: 1400, maxWidth: 880, size: 88, small: 70, stroke: 14 })
     ctx.restore()
   }
 
@@ -852,7 +967,9 @@ async function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number,
     drawBrand(ctx, 'VERSE ARCADE', input.reference, 190)
     // The maker, small, under the ask: the one place a face belongs on a
     // post that opens on the verse — a person standing behind the link.
-    if (input.voice?.photo) drawSpeaker(ctx, input.voice.photo, input.voice.label ? `Made by ${input.voice.label.split(' · ')[0]}` : undefined, WIDTH / 2, HEIGHT / 2 + 250, 90, 0, endFade)
+    const face = input.voice?.photo ?? input.opener?.photo
+    const faceLabel = input.voice?.label ?? input.opener?.label
+    if (face) drawSpeaker(ctx, face, faceLabel ? `Made by ${faceLabel.split(' · ')[0]}` : undefined, WIDTH / 2, HEIGHT / 2 + 250, 90, 0, endFade)
     ctx.font = `800 76px ${FONT_DISPLAY}`
     outlined(ctx, 'Play today’s verse', WIDTH / 2, HEIGHT / 2 + 470)
     ctx.font = `800 58px ${FONT_DISPLAY}`
@@ -1106,7 +1223,36 @@ async function produce(
 export async function renderTikTok(input: RenderInput): Promise<RenderOutput> {
   const progress = input.onProgress ?? (() => {})
   progress(0, 'Decoding the reading')
-  const samples = await decodeAudio(input.audio)
+  // Both voices are levelled the same way, for the reason speechLevel.ts
+  // exists: his half and a synthesised half have landed six decibels apart in
+  // both directions on this engine, and with an opener the handover is the
+  // first ten seconds of the post.
+  const read = levelSpeech(await decodeAudio(input.audio), SAMPLE_RATE, SPEECH_TARGET.verse)
+  // His hook, then a beat, then the reading — the story layout's join
+  // (`OWN_GAP`), reused rather than re-derived.
+  let samples = read
+  let readAt = 0
+  let openEnd = 0
+  let openerVoice: { rms: Float32Array; peak: number } | undefined
+  if (input.opener) {
+    // Trimmed at the END only, then levelled. `OWN_GAP` is meant to BE the
+    // beat between the two voices, and it is only that if the opener stops
+    // where he stops: a take cut a third of a second wide of his last word
+    // made the handover 1.2s of nothing with his caption still up, which
+    // reads as the post having died. Trimming the tail moves no word — every
+    // one of them is before the cut — which is why this is safe here where
+    // `levelSpeech` deliberately does not trim at all (doing it at the FRONT
+    // would slide every caption).
+    const his = levelSpeech(trimTail(await decodeAudio(input.opener.audio)), SAMPLE_RATE, SPEECH_TARGET.verse)
+    const gap = Math.round(OWN_GAP * SAMPLE_RATE)
+    const joined = new Float32Array(his.length + gap + read.length)
+    joined.set(his, 0)
+    joined.set(read, his.length + gap)
+    samples = joined
+    openEnd = his.length / SAMPLE_RATE
+    readAt = (his.length + gap) / SAMPLE_RATE
+    openerVoice = envelope(his, SAMPLE_RATE)
+  }
   const audioDur = samples.length / SAMPLE_RATE
   // The reading ends by saying the reference, so it is the last caption too —
   // and a clause of its own, which keeps the clause count matching the pauses.
@@ -1130,18 +1276,44 @@ export async function renderTikTok(input: RenderInput): Promise<RenderOutput> {
     phrases = [...versePhrases, ...between, ...thoughtPhrases]
     const env = envelope(samples, SAMPLE_RATE)
     voice = { thoughtStart, rms: env.rms, peak: env.peak }
+  } else if (input.opener) {
+    // His words from their own approved transcript, then the verse's own
+    // KNOWN text timed against the reading alone.
+    //
+    // Timing the reading needs the reading BY ITSELF: `timedCaptions` matches a
+    // transcript to audio, and handing it the verse over a buffer that opens in
+    // somebody else's voice makes it chase the wrong half — the same mistake
+    // that made Tabitha's captions chase the tail of his.
+    const openText = input.opener.words.length ? input.opener.words.map((w) => w.text).join(' ') : (input.opener.text ?? '')
+    // Timed against HIS audio alone, for the reason the reading is: matching a
+    // transcript to a buffer that also contains another voice makes it chase
+    // the wrong half.
+    const openPhrases = input.opener.words.length
+      ? groupWords(splitPhrases(openText, 6), input.opener.words, openEnd)
+      : await timedCaptions(splitPhrases(openText, 6), await decodeAudio(input.opener.audio), progress, input.align)
+    const openPhrases2 = openPhrases
+    const readPhrases = (await timedCaptions([...splitPhrases(verse), input.reference + '.'], read, progress, input.align))
+      .map((ph) => ({ ...ph, start: ph.start + readAt, end: ph.end + readAt }))
+    // Every phrase of his is CLOSED at the handover. A caption holds until the
+    // next one so a pause is not a blank panel, and the last one of a half has
+    // nothing after it to stop it — which once left his closing words on screen
+    // fourteen seconds into Tabitha's telling. Concatenated in SPEAKING order
+    // for the same reason, so the frame lookup finds the right one first.
+    for (const ph of openPhrases2) ph.end = Math.min(ph.end, readAt)
+    phrases = [...openPhrases2, ...readPhrases]
+    voice = openerVoice ? { thoughtStart: 0, rms: openerVoice.rms, peak: openerVoice.peak } : undefined
   } else {
     phrases = await timedCaptions([...splitPhrases(verse), input.reference + '.'], samples, progress, input.align)
   }
   const lead = LEAD
   const total = lead + audioDur + TAIL_SEC
-  const scene: Scene = { input, lead, audioDur, total, phrases, voice }
+  const scene: Scene = { input, lead, audioDur, total, phrases, voice, openEnd, readAt }
 
   try { await document.fonts.load(`800 88px "Baloo 2"`) } catch { /* fall back to the stack */ }
 
   // The music sits a little lower under a person than under Gemini's
   // reading: a real voice has quiet words a synthetic one does not.
-  const bed = input.voice && input.bed ? input.bed.map((x) => x * 0.65) : input.bed
+  const bed = (input.voice || input.opener) && input.bed ? input.bed.map((x) => x * 0.65) : input.bed
   const { blob, ext } = await produce((ctx, t) => drawFrame(ctx, scene, t), total, lead, samples, progress, bed)
   progress(1, 'Done')
   return { blob, ext, durationSec: total, phrases }
@@ -1287,33 +1459,43 @@ export interface StoryInput {
   /** The small-caps line over the title. Defaults to the story's own. */
   eyebrow?: string
   /**
-   * Where each paragraph is SET: one held painting per paragraph, cut to on
-   * that paragraph's first word. A null entry (and a missing array) is the
-   * room, so a story with no stages renders exactly as it always did — and
-   * the LAST paragraph is the verse, which is read in the library by
-   * construction, because coming back is what makes the middle feel like
-   * somewhere she took you.
+   * One held painting per paragraph, cut to on that paragraph's first word.
+   * A null entry, and a missing array, is the room.
    *
-   * A cut is the whole of the motion this adds. The rule on this layout is
-   * that the only thing moving is the caption; a hard cut between two held
-   * paintings is not movement, which is exactly why it is affordable here
-   * where a Veo loop or a drifting mote is not.
+   * **The evening STORY no longer passes this**, and that is the owner's
+   * call. A telling that changes where it is set four times reads as a
+   * slideshow of generated pictures, which is the exact impression this
+   * layout's hold-everything-still rule exists to avoid — and the library
+   * (Tabitha, the children, the lamps) is the one image here nobody has to be
+   * sold on. One room, held, for the whole telling.
+   *
+   * It stays wired because the parked READING kinds are built on it —
+   * `storyShots(reading)` spreads their pictures across the recording — so
+   * this is the reading layout's only way of having a picture at all, not
+   * dead code left behind by the change above.
    */
   scenes?: Array<HTMLImageElement | null>
   /**
-   * The dark stage the operator's own half stands on, with his figure on it.
+   * The operator's own render, standing in the corner of the library while he
+   * speaks and fading out as Tabitha begins — `STORY_CORNER`, `OWN_OUT`.
    *
-   * His half used to play over Tabitha's library with his photo growing into
-   * the middle of it, and the objection that kept the day's READER swap off
-   * this layout applies to that too: a second person in her room is a
-   * stranger in somebody else's library. A stage of his own dissolves it —
-   * it is not her room, so he is not standing in it. The figure REPLACES the
-   * photo ring while it is up (he is already on screen; two of him is one
-   * too many) and the photo still closes the post on the end card. No
-   * figure, or no stage, falls back to the ring over the library exactly as
-   * before.
+   * It replaces a dark stage of his own, which itself replaced his photograph
+   * growing into the middle of her room; the argument for the corner is on
+   * `STORY_CORNER`. The figure REPLACES the photo ring while it is up (he is
+   * already on screen, and a photograph of the same person floating over him
+   * is him twice), and the photo still closes the post on the end card. No
+   * render falls back to the ring over the library exactly as before, so a
+   * missing file is never a failed post.
+   *
+   * It went out with the `listeners` cut-out — Tabitha and the children held
+   * in front of whatever the backdrop was. That existed to keep the group put
+   * while the SCENE changed behind them; with the scenes gone there is
+   * nothing to hold them against, and drawing it over the library painted a
+   * second Tabitha (in different clothes) on top of the one already in the
+   * room, inside a visible rectangle of the cut-out's own matte. It rendered
+   * perfectly and only a frame showed it.
    */
-  stage?: { backdrop: HTMLImageElement; figure?: HTMLImageElement }
+  figure?: HTMLImageElement
   bed?: Float32Array
   align?: boolean
   /**
@@ -1382,8 +1564,6 @@ interface Shot {
   at: number
   /** Null draws the room — the library, and the fallback for everything. */
   img: HTMLImageElement | null
-  /** His stage, which also carries his figure instead of the photo ring. */
-  own?: boolean
 }
 
 /**
@@ -1399,17 +1579,48 @@ interface Shot {
 const SHOT_SETTLE = 0.9
 const SHOT_PUSH = 0.035
 /**
- * Where he stands on his own stage.
+ * Where he stands IN THE LIBRARY while he speaks: the corner by the left
+ * bookshelf, behind the circle of children, at the painted figures' scale.
  *
- * Measured against two fixed things rather than chosen: the pool of light in
- * `own.jpg` is centred at 0.77 of the frame once `cover` has anchored the
- * painting to its bottom edge, and this layout's caption panel ends at y=668.
- * Feet at 0.79 put him IN the light; 0.41 high puts his head at ~730, clear
- * of the panel with room to spare, and at the same size the morning post's
- * figure is drawn. Re-render the stage and both numbers have to be checked
- * again — the light moves.
+ * This replaces a dark stage of his own. That stage answered a real
+ * objection — a second person in her room is a stranger in somebody else's
+ * library — and the answer it gave was to take him out of the room. The
+ * owner's call, and the better one, because the objection never weighed what
+ * the stage cost: THE STORY OPENED ON A DARK SCREEN. Fourteen seconds of an
+ * empty pool of light is the worst possible first frame for a video that has
+ * to be picked out of a feed, and what it was hiding is the strongest single
+ * image this engine owns. Standing him in the CORNER keeps her room hers —
+ * behind the circle, off to one side, at their size — and opens the post on
+ * the painting.
+ *
+ * All three numbers are measured rather than chosen, by drawing the real
+ * figure over the real room at the real `cover` zoom:
+ *
+ *   - `x` 0.165 sets him against the left shelves, clear of Tabitha (who sits
+ *     centre-right) and of the desk and lamp on the right.
+ *   - `feet` 0.72 puts him on the floorboards BEHIND the seated circle rather
+ *     than among it: the boy nearest him reads as in front, which is the
+ *     depth cue that makes him part of the room instead of pasted onto it.
+ *   - `height` 0.335 matches the painted figures at that depth and puts his
+ *     head near y=790, well clear of the caption panel's bottom edge at 668.
+ *
+ * Re-render `story-circle.jpg` or `sharkey.png` and all three have to be
+ * checked again on a real frame — the floor line and the shelves move.
  */
-const STORY_STAND = { feet: 0.79, height: 0.41 }
+const STORY_CORNER = { x: 0.165, feet: 0.72, height: 0.335 }
+
+/**
+ * How long he takes to arrive, and how long he takes to go.
+ *
+ * Going is deliberately much slower than arriving, and slower than both used
+ * to be (0.55s each). He is handing the telling over, not being cut away
+ * from: the fade starts on his last word and is still finishing as Tabitha's
+ * first words land, which is what the owner asked for — he "slowly fades away
+ * as Tabitha begins". `OWN_GAP` is 0.9s, so about half of the fade plays
+ * under her opening, on purpose.
+ */
+const OWN_IN = 0.7
+const OWN_OUT = 1.8
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath()
@@ -1434,6 +1645,37 @@ function shotAt(shots: Shot[], at: number): Shot {
   return hit
 }
 
+/**
+ * How long the room takes to become the place the story is happening in.
+ *
+ * This layout used to CUT, and a cut was the right answer while Tabitha
+ * vanished at the cut — you were being taken somewhere, so arriving there
+ * abruptly read as a page turn. Now she and the children stay put and only
+ * what is BEHIND them changes, and a hard cut behind a held foreground reads
+ * as the backdrop glitching rather than as the story opening up. So it
+ * dissolves.
+ *
+ * 0.75s: long enough to read as one picture becoming another rather than a
+ * flicker, short enough to be finished well inside the sentence that caused
+ * it. The `SHOT_PUSH` settle still rides on the arriving shot, so the new
+ * place is also being LOOKED at rather than swapped in.
+ */
+const SHOT_FADE = 0.75
+
+/** The shot at a moment, what it is dissolving FROM, and how far through. */
+function shotMix(shots: Shot[], at: number): { shot: Shot; from: Shot | null; mix: number } {
+  let i = 0
+  for (let k = 0; k < shots.length; k++) { if (shots[k].at <= at) i = k; else break }
+  const shot = shots[i]
+  const mix = Math.min(1, Math.max(0, (at - shot.at) / SHOT_FADE))
+  // Nothing to dissolve from at the very start, and nothing to dissolve
+  // between two shots that are the same painting — `storyShots` already
+  // collapses those, but his stage and the library are different objects
+  // that can sit either side of a handover.
+  const from = i > 0 && mix < 1 && shots[i - 1].img !== shot.img ? shots[i - 1] : null
+  return { shot, from, mix: from ? mix : 1 }
+}
+
 async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: number, chrome = true) {
   const { input, lead, audioDur, total, phrases, para, paraStart, ownAt, ownShow, ownHide, ownVoice, shots } = sc
   const at = t - lead
@@ -1444,15 +1686,27 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
   // where the caption panel goes — with a fresh shot arriving fractionally
   // wide and settling. A loop is still played forward, and is only ever the
   // library.
-  const shot = shotAt(shots, at)
+  const { shot, from, mix } = shotMix(shots, at)
   const settle = SHOT_PUSH * (1 - easeOut((at - shot.at) / SHOT_SETTLE))
   const zoom = 1.08 + 0.02 * (t / total) + Math.max(0, settle)
   const roomIsLoop = !shot.img && input.room instanceof HTMLVideoElement
   if (roomIsLoop) {
     await drawLoop(ctx, input.room as HTMLVideoElement, t)
   } else {
+    // The place the story is in, dissolving from the place it was in. The
+    // outgoing shot is drawn first at full strength and the incoming one
+    // over it — rather than both at partial alpha — so the frame is never
+    // momentarily see-through to the background, which is what a naive
+    // cross-dissolve does at the midpoint.
+    if (from) {
+      const out = from.img ?? (input.room as HTMLImageElement)
+      cover(ctx, out, out.naturalWidth, out.naturalHeight, zoom, 1)
+    }
     const bg = shot.img ?? (input.room as HTMLImageElement)
+    ctx.save()
+    ctx.globalAlpha = mix
     cover(ctx, bg, bg.naturalWidth, bg.naturalHeight, zoom, 1)
+    ctx.restore()
   }
   const top = ctx.createLinearGradient(0, 0, 0, 820)
   top.addColorStop(0, 'rgba(11,7,32,0.9)'); top.addColorStop(1, 'rgba(11,7,32,0)')
@@ -1461,9 +1715,12 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
   bot.addColorStop(0, 'rgba(11,7,32,0)'); bot.addColorStop(1, 'rgba(11,7,32,0.55)')
   ctx.fillStyle = bot; ctx.fillRect(0, HEIGHT - 420, WIDTH, 420)
 
-  // 2. The teller, for a room that does not already have her — and only
-  // where she IS. On a stage she is narrating what happened there, not
-  // standing in it, and on his stage she is not in the post at all.
+  // 2. The teller, when the room does not already have her in it.
+  //
+  // The story circle DOES (`hasTeller`), so on the evening post nothing is
+  // drawn here at all and the painting carries the whole scene — which is
+  // the point of holding one room. This branch is for a room painted without
+  // her.
   if (input.teller && !roomIsLoop && !shot.img) {
     const th = 640, tw = (input.teller.naturalWidth / input.teller.naturalHeight) * th
     ctx.save()
@@ -1553,22 +1810,22 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
   // first place, and on the verse layout a photo held over the reader was
   // taken for a badge pinned to their chest.
   //
-  // On his own stage the FIGURE carries it instead — he is already on
-  // screen, and a photograph of the same person floating over him is him
-  // twice. The photo still closes the post on the end card.
-  const onStage = shot.own && !!input.stage?.figure
-  if (input.own && onStage && endFade < 1) {
-    const grow = easeOut((at - ownShow) / 0.55)
-    const out = 1 - easeOut((at - ownHide) / 0.55)
-    // Lower and larger than the road's figure, because this layout's caption
-    // panel occupies the band the road leaves empty: his head has to clear
-    // 668, which is the bottom of it.
-    if (out > 0) standFigure(ctx, input.stage!.figure!, grow * out * (1 - endFade), 1, STORY_STAND)
+  // When he has a render of his own the FIGURE carries it instead — he is
+  // already on screen, and a photograph of the same person floating over him
+  // is him twice. The photo still closes the post on the end card.
+  //
+  // He stands in the room rather than over it: the corner by the shelves,
+  // behind the circle, arriving once the hook has faded and going slowly as
+  // she begins. See `STORY_CORNER`.
+  if (input.own && input.figure && endFade < 1) {
+    const grow = easeOut((at - ownShow) / OWN_IN)
+    const out = 1 - easeOut((at - ownHide) / OWN_OUT)
+    if (out > 0) standFigure(ctx, input.figure, grow * out * (1 - endFade), 1, STORY_CORNER)
   } else if (input.own?.photo && at >= ownShow && endFade < 1) {
-    const grow = easeOut((at - ownShow) / 0.55)
+    const grow = easeOut((at - ownShow) / OWN_IN)
     // Introducing, he goes back out as she starts, so the last thing before
     // her first word is her room and not his face.
-    const out = 1 - easeOut((at - ownHide) / 0.55)
+    const out = 1 - easeOut((at - ownHide) / OWN_OUT)
     if (out > 0) drawSpeaker(ctx, input.own.photo, input.own.label, WIDTH / 2, 1080, 44 + 126 * grow * out,
       ownVoice ? voiceLevel(ownVoice, at - ownAt) : 0, grow * out * (1 - endFade))
   }
@@ -1644,26 +1901,41 @@ function storyShots(input: StoryInput, paraStart: number[], ownAt: number, ownEn
       .filter((s, i, a) => i === 0 || s.img !== a[i - 1].img)
     return [{ ...shots[0], at: -Infinity }, ...shots.slice(1)]
   }
-  const told: Shot[] = paraStart.map((at, i) => ({ at, img: staged(i) }))
-  const his: Shot[] | null = input.own && input.stage
-    ? [{ at: open ? 0 : ownAt, img: input.stage.backdrop, own: true }]
-    : null
-  let shots: Shot[] = his
-    ? open
-      // He opens on his stage; the telling cuts in as Tabitha begins, so the
-      // first thing after his last word is where the story happens.
-      //
-      // At `toldAt` — where her AUDIO starts — and deliberately not at her
-      // first captioned WORD. Measured off a real render, her reading carries
-      // 2.8s of lead-in before it, and holding his stage across it left three
-      // and a half seconds of an empty pool of light after he had already
-      // faded out. What is left is the 0.9s `OWN_GAP`, which is the beat
-      // between the two voices and is meant to be there.
-      ? [...his, ...told.map((s, i) => (i === 0 ? { ...s, at: toldAt } : s))]
-      // He answers it, so his stage is the last shot before the end card.
-      : [...told, ...his]
-    : told
-  shots = shots.filter((s, i) => i === 0 || s.img !== shots[i - 1].img || !!s.own !== !!shots[i - 1].own)
+  // Her telling OPENS IN THE ROOM, and only then goes anywhere.
+  //
+  // The first paragraph's stage used to arrive on her first word, so a
+  // viewer met the story already somewhere else and the library was
+  // something only his half had been in front of. What the layout is for is
+  // the moment of leaving: she starts reading, in her room, and the room
+  // becomes the place she is reading about. Without a beat of room first
+  // there is no departure to see — just a post that happens to be set at a
+  // gate.
+  //
+  // `LIBRARY_LEAD` is measured against the dissolve rather than chosen: the
+  // room has to be the whole frame for long enough to register as a room
+  // (about a second) before 0.75s of dissolve begins, and the first stage
+  // still has to arrive inside the first paragraph. Consecutive-identical
+  // collapsing below means a story whose first paragraph is unstaged simply
+  // stays in the library, exactly as it did.
+  const LIBRARY_LEAD = 1.6
+  const told: Shot[] = paraStart.flatMap((at, i) =>
+    i === 0 && staged(0)
+      ? [{ at, img: null }, { at: at + LIBRARY_LEAD, img: staged(0) }]
+      : [{ at, img: staged(i) }])
+  // His half no longer changes what is on screen. It used to cut to a dark
+  // stage of his own for as long as he talked, which put an empty pool of
+  // light on the FIRST FRAME of every post that he introduced — see
+  // `STORY_CORNER` for why that was the wrong trade. He now stands in the
+  // library and the library never leaves, so there is nothing here to add:
+  // `told` is the whole shot list, and on a story with no `scenes` it
+  // collapses below to one held painting for the whole video.
+  //
+  // `toldAt` and `open` are still taken because a READING uses neither and
+  // the signature is shared; keeping them named documents that the handover
+  // needs no shot of its own rather than that it was forgotten.
+  void toldAt; void open
+  let shots: Shot[] = told
+  shots = shots.filter((s, i) => i === 0 || s.img !== shots[i - 1].img)
   // The lead-in belongs to whatever is first.
   if (shots.length) shots[0] = { ...shots[0], at: -Infinity }
   return shots.length ? shots : [{ at: -Infinity, img: null }]
@@ -2157,4 +2429,390 @@ export async function renderQuizPoster(input: Omit<QuizInput, 'audio' | 'onProgr
   const at = t ?? tl.qStart[0] + Math.min(input.windowSec - 1, (input.plan[0]?.atSec ?? 0) + 0.5)
   await drawQuizFrame(ctx, { input, tl, phrases: [] }, at)
   return canvas.toDataURL('image/png')
+}
+
+// ---- the exchange: two figures, one question, one answer --------------------
+//
+// The third format. He opens in his own voice, a figure asks a real question
+// out of the text, a second figure answers it, the answer lands as one
+// whole-frame number, and he closes on a question to the viewer. Two voiced
+// ends, two synthesised speakers, one held painting.
+//
+// **This layout MOVES THE CAMERA, and that is a deliberate exception to the
+// rule the other two are built on.** "The only thing moving is the caption"
+// was written for a layout with ONE figure standing centre-frame at 42% of
+// the height, where a face is big enough to read at a thumb's distance. Here
+// there are two of them, full length, and the face that carries the whole
+// post — the asker's, on the beat the answer lands — is about ninety pixels
+// tall at rest. Swapping it changed nothing a viewer could see.
+//
+// So the push is MOTIVATED rather than decorative: it creeps through the
+// setup, lands hard on the answer (the one moment the faces matter), snaps
+// wide for the payoff, and drifts in again under his close. It is one camera
+// being placed, which is the same argument `SHOT_PUSH` makes for a cut — not
+// an effect applied to one moment. Nothing else moves: the painting is held,
+// the figures stand, and the only other animation is the walk-in.
+//
+// **And there is no silence in it.** The first cut of this format held the
+// payoff over 2.8 seconds of dead air, which is the single worst thing a
+// short video can do — the owner's first note on seeing it. The four speech
+// blocks are butted up with beats of a few hundred milliseconds, and the
+// payoff card plays OVER the opening of his close rather than instead of it.
+
+/** The beats between the four voices. A reply that waits reads as a sermon. */
+const EX_GAP_ASK = 0.55
+const EX_GAP_ANSWER = 0.30
+const EX_GAP_CLOSE = 0.35
+/** How long the payoff card holds, over the first words of his close. */
+const EX_PAYOFF = 2.6
+/** How long the two figures take to walk in from the edges of the frame. */
+const EX_WALK = 0.6
+
+/**
+ * Where the two stand, as fractions of the frame.
+ *
+ * They CONVERGE as the camera pushes, and that is load-bearing rather than
+ * pretty: at their opening marks the pair spans 90% of the width, so any
+ * zoom at all cuts the asker in half. Measured on a real frame — at the
+ * close-up's 1.42 the converged pair loses only the outer hand of each
+ * figure. It also reads as two people closing the distance while they talk,
+ * which is free.
+ */
+const EX_ASKER = { from: -0.25, mark: 0.245, close: 0.29 }
+const EX_ANSWERER = { from: 1.25, mark: 0.755, close: 0.71 }
+const EX_STAND = { feet: 0.75, height: 0.55 }
+/** Out of phase, so the two never breathe together and read as one object. */
+const EX_BOB = [3.6, 3.4]
+
+export interface ExchangeSpeaker {
+  /** Resting face, the `_asking` variant, and the face after the turn. */
+  figure: HTMLImageElement
+  speaking?: HTMLImageElement | null
+  turned?: HTMLImageElement | null
+  audio: ArrayBuffer
+  text: string
+}
+
+export interface ExchangeOwn {
+  audio: ArrayBuffer
+  /** Timed against HIS OWN recording — 0 is the start of that half, not of the video. */
+  words: TimedWord[]
+  text: string
+}
+
+export interface ExchangeInput {
+  reference: string
+  /**
+   * The passage, for a caller that wants it — the hub's card, a future
+   * poster. The RENDER no longer draws it: the end card used to carry the
+   * whole verse and does not, because this format has just spoken it in two
+   * voices with the words on screen. Kept on the input rather than dropped,
+   * so the data a post is made from still says what it is about.
+   */
+  verseText: string
+  hook: string
+  /** The held painting. */
+  scene: HTMLImageElement
+  asker: ExchangeSpeaker
+  answerer: ExchangeSpeaker
+  /** The whole-frame change, and the small word under it. */
+  payoff: string
+  payoffNote?: string
+  /** His two halves. Both are required: this format is voiced at both ends by design. */
+  own: { open: ExchangeOwn; close: ExchangeOwn; photo?: HTMLImageElement; label?: string }
+  bed?: Float32Array
+  align?: boolean
+  onProgress?: (fraction: number, label: string) => void
+}
+
+interface ExchangeScene {
+  input: ExchangeInput
+  lead: number
+  audioDur: number
+  total: number
+  phrases: TimedPhrase[]
+  /** Every block's start and end, in audio time. */
+  openEnd: number
+  askAt: number
+  askEnd: number
+  answerAt: number
+  answerEnd: number
+  closeAt: number
+}
+
+/**
+ * The camera, in audio time: how far in, and around what.
+ *
+ * Piecewise and explicit rather than eased through a curve, because each
+ * segment answers a different thing and a future session should be able to
+ * move one without moving the rest. `anchor` is biased ABOVE centre so a
+ * push travels toward the faces rather than toward the pavement.
+ */
+const EX_ANCHOR = 0.44
+function exchangeCamera(sc: ExchangeScene, at: number): number {
+  const { askAt, answerAt, closeAt } = sc
+  const span = (a: number, b: number, from: number, to: number) =>
+    from + (to - from) * Math.min(1, Math.max(0, (at - a) / Math.max(0.001, b - a)))
+  if (at < EX_WALK) return 1
+  if (at < askAt) return span(EX_WALK, askAt, 1.0, 1.18)
+  if (at < answerAt) return span(askAt, answerAt, 1.18, 1.30)
+  // The turn: the one fast move in the post, and the only reason the faces
+  // are legible at all.
+  if (at < answerAt + 0.8) return span(answerAt, answerAt + 0.8, 1.30, 1.42)
+  if (at < closeAt) return span(answerAt + 0.8, closeAt, 1.42, 1.46)
+  // The payoff snaps WIDE — the whole-frame change is the format's one cut.
+  if (at < closeAt + EX_PAYOFF) return 1
+  return span(closeAt + EX_PAYOFF, sc.audioDur, 1.0, 1.2)
+}
+
+/** Where a figure stands at this moment: off-frame, on its mark, or converged. */
+function exchangeX(m: { from: number; mark: number; close: number }, sc: ExchangeScene, at: number): number {
+  if (at < EX_WALK) return m.from + (m.mark - m.from) * easeOut(at / EX_WALK)
+  if (at < sc.askAt) return m.mark
+  if (at >= sc.answerAt + 0.8) return m.close
+  const f = (at - sc.askAt) / Math.max(0.001, sc.answerAt + 0.8 - sc.askAt)
+  return m.mark + (m.close - m.mark) * f
+}
+
+/** The payoff: the frame goes down and one thing is left on it. */
+function drawPayoff(ctx: CanvasRenderingContext2D, text: string, note: string | undefined, f: number) {
+  if (f <= 0) return
+  ctx.save()
+  ctx.globalAlpha = f
+  ctx.fillStyle = 'rgba(6,4,20,0.55)'
+  ctx.fillRect(0, 0, WIDTH, HEIGHT)
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+  // A long payoff ("IF I PERISH") has to fit the frame as readily as "490",
+  // so the size is chosen from the text rather than fixed. `fitText` leaves
+  // the chosen font on the context, so the number is drawn before anything
+  // else touches it.
+  const { lines, lh } = fitText(ctx, text, 940, [330, 260, 200, 150, 120, 96], 480)
+  const cy = HEIGHT / 2 - (note ? 50 : 0)
+  const y0 = cy - ((lines.length - 1) * lh) / 2
+  lines.forEach((l, i) => outlined(ctx, l, WIDTH / 2, y0 + i * lh, '#ffd23f', 'rgba(11,7,32,0.9)', Math.round(lh / 9)))
+  if (note) {
+    ctx.font = `800 64px ${FONT_DISPLAY}`
+    outlined(ctx, note, WIDTH / 2, y0 + lines.length * lh + 26)
+  }
+  ctx.restore()
+}
+
+async function drawExchangeFrame(ctx: CanvasRenderingContext2D, sc: ExchangeScene, t: number, chrome = true) {
+  const { input, lead, audioDur, total, phrases } = sc
+  const at = t - lead
+  const endFade = Math.min(1, Math.max(0, (t - (total - TAIL_SEC)) / 0.6))
+
+  ctx.fillStyle = '#0b0720'
+  ctx.fillRect(0, 0, WIDTH, HEIGHT)
+
+  // 1. The world — painting and figures — under the camera. Everything drawn
+  //    inside this transform moves together, which is what makes it read as
+  //    one camera rather than as things being resized.
+  const z = exchangeCamera(sc, at)
+  ctx.save()
+  ctx.translate(WIDTH / 2, HEIGHT * EX_ANCHOR)
+  ctx.scale(z, z)
+  ctx.translate(-WIDTH / 2, -HEIGHT * EX_ANCHOR)
+  cover(ctx, input.scene, input.scene.naturalWidth, input.scene.naturalHeight, 1.02)
+
+  const face = (s: ExchangeSpeaker, speaking: boolean, turned: boolean) =>
+    (turned ? s.turned : speaking ? s.speaking : null) ?? s.figure
+  const bob = (i: number) => Math.sin((2 * Math.PI * (at + i * 1.8)) / EX_BOB[i]) * 0.0035
+  const turned = at >= sc.answerAt
+  standFigure(ctx, face(input.asker, at >= sc.askAt && at < sc.answerAt, turned), 1, 1,
+    { x: exchangeX(EX_ASKER, sc, at), feet: EX_STAND.feet + bob(0), height: EX_STAND.height })
+  standFigure(ctx, face(input.answerer, false, turned), 1, 1,
+    { x: exchangeX(EX_ANSWERER, sc, at), feet: EX_STAND.feet + bob(1), height: EX_STAND.height })
+  ctx.restore()
+
+  // A wash under the caption band, so white words over a pale pavement stay
+  // readable without a panel drawn around them.
+  const g = ctx.createLinearGradient(0, HEIGHT * 0.62, 0, HEIGHT)
+  g.addColorStop(0, 'rgba(6,4,20,0)'); g.addColorStop(1, 'rgba(6,4,20,0.62)')
+  ctx.fillStyle = g; ctx.fillRect(0, HEIGHT * 0.62, WIDTH, HEIGHT * 0.38)
+
+  if (!chrome) return
+
+  // 2. The payoff, over the opening of his close.
+  const payAt = sc.closeAt
+  if (at >= payAt && at < payAt + EX_PAYOFF && endFade < 1) {
+    const f = Math.min(1, easeOut((at - payAt) / 0.18)) * (1 - easeOut((at - (payAt + EX_PAYOFF - 0.35)) / 0.35))
+    drawPayoff(ctx, input.payoff, input.payoffNote, f * (1 - endFade))
+  }
+
+  // 3. The hook card, PINNED for the whole post.
+  //
+  // Deliberately not `drawHook`, which is the other two layouts' hook and
+  // fades at `HOOK_HOLD`. Those posts have a reading or a telling that
+  // carries the rest of the video; an exchange is a question and an answer
+  // with a turn in the middle, and a scroller who lands on it at second
+  // twenty has to be able to see what the argument IS or the turn means
+  // nothing. So it is a card rather than free text — a dark plate with a gold
+  // rule, which reads at any point over any of the paintings, where outlined
+  // text over the temple's pale colonnade does not.
+  if (endFade < 1) {
+    ctx.save()
+    ctx.globalAlpha = (1 - endFade) * Math.min(1, easeOut(t / 0.3) + 0.2)
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    const { lines, lh } = fitText(ctx, input.hook, 860, [54, 48, 42], 160)
+    const w = Math.min(940, Math.max(...lines.map((l) => ctx.measureText(l).width)) + 72)
+    const h = lines.length * lh + 44
+    const cy = 268
+    ctx.fillStyle = 'rgba(8,6,24,0.86)'
+    roundRect(ctx, (WIDTH - w) / 2, cy - h / 2, w, h, 22)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(245,197,66,0.9)'; ctx.lineWidth = 3
+    roundRect(ctx, (WIDTH - w) / 2, cy - h / 2, w, h, 22)
+    ctx.stroke()
+    ctx.fillStyle = '#ffffff'
+    const y0 = cy - ((lines.length - 1) * lh) / 2
+    lines.forEach((l, i) => ctx.fillText(l, WIDTH / 2, y0 + i * lh))
+    ctx.restore()
+  }
+
+  // 4. The caption.
+  if (endFade < 1) {
+    ctx.save()
+    ctx.globalAlpha = 1 - endFade
+    drawCaption(ctx, heldPhrase(phrases, at, audioDur), at, { x: WIDTH / 2, y: HEIGHT * 0.79, maxWidth: 950, size: 68, small: 58 })
+    ctx.restore()
+  }
+
+  // 5. The end card — the ASK and the address, and deliberately nothing else.
+  //
+  // It carried the whole verse in five lines of 52px, which is the one thing
+  // on this layout nobody needs: the exchange has just SAID it, in two
+  // voices, with the words on screen as they were spoken. A wall of text
+  // between the payoff and the link is a second reading of a post that is
+  // over, and it pushed the only line with a job to do — the address — into
+  // the last two seconds under it.
+  //
+  // So the last frame is what the last frame is for: where to go, and the
+  // face of the person who made it. The reference stays under the brand
+  // because a viewer who wants to look the passage up needs it and it costs
+  // one line; the verse itself is in the video.
+  if (endFade > 0) {
+    ctx.save()
+    ctx.globalAlpha = endFade
+    ctx.fillStyle = 'rgba(11,7,32,0.82)'; ctx.fillRect(0, 0, WIDTH, HEIGHT)
+    // Say the alignment rather than inheriting it. `drawCaption` restores
+    // `center` on its way out — but it returns EARLY when there is no phrase
+    // to draw, which on the end card is every frame, so whatever the last
+    // caption left behind was still set: the old verse block wrapped to 880
+    // and then drew from the middle leftwards, off the right edge.
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    drawBrand(ctx, 'VERSE ARCADE', input.reference, 560)
+    if (input.own.photo) drawSpeaker(ctx, input.own.photo, input.own.label ? `Made by ${input.own.label.split(' · ')[0]}` : undefined, WIDTH / 2, 900, 96, 0, endFade)
+    ctx.font = `800 82px ${FONT_DISPLAY}`
+    outlined(ctx, 'Play today’s verse', WIDTH / 2, 1200)
+    ctx.font = `800 72px ${FONT_DISPLAY}`
+    outlined(ctx, SITE, WIDTH / 2, 1320, '#ffd23f')
+    ctx.restore()
+  }
+}
+
+/**
+ * Join the four voices into one track, and every caption onto one timeline.
+ *
+ * All four are levelled to the SAME target before they are mixed. His phone
+ * memo and Gemini's reading landed five decibels apart raw on the first cut
+ * of this format, and a step that size inside one post is not fixed by a
+ * network's loudness normalisation — it normalises the whole file and leaves
+ * the imbalance inside it exactly as it found it.
+ */
+export async function renderExchange(input: ExchangeInput): Promise<RenderOutput> {
+  const progress = input.onProgress ?? (() => {})
+  progress(0, 'Decoding the voices')
+  const T = SPEECH_TARGET.story
+  const [open, ask, answer, close] = await Promise.all([
+    decodeAudio(input.own.open.audio).then((s) => levelSpeech(trimTail(s), SAMPLE_RATE, T)),
+    decodeAudio(input.asker.audio).then((s) => levelSpeech(s, SAMPLE_RATE, T)),
+    decodeAudio(input.answerer.audio).then((s) => levelSpeech(s, SAMPLE_RATE, T)),
+    decodeAudio(input.own.close.audio).then((s) => levelSpeech(trimTail(s), SAMPLE_RATE, T)),
+  ])
+  const sec = (n: number) => n / SAMPLE_RATE
+  const openEnd = sec(open.length)
+  const askAt = openEnd + EX_GAP_ASK
+  const askEnd = askAt + sec(ask.length)
+  const answerAt = askEnd + EX_GAP_ANSWER
+  const answerEnd = answerAt + sec(answer.length)
+  const closeAt = answerEnd + EX_GAP_CLOSE
+  const audioDur = closeAt + sec(close.length)
+
+  const samples = new Float32Array(Math.ceil(audioDur * SAMPLE_RATE))
+  const put = (block: Float32Array, at: number) => samples.set(block, Math.round(at * SAMPLE_RATE))
+  put(open, 0); put(ask, askAt); put(answer, answerAt); put(close, closeAt)
+
+  // His two halves are captioned from the timings his recording was listened
+  // to with; the two synthesised lines are captioned by measuring them, the
+  // way every generated reading on this engine is.
+  progress(0.02, 'Timing the captions')
+  const shift = (ps: TimedPhrase[], by: number) => ps.map((p) => ({
+    ...p, start: p.start + by, end: p.end + by,
+    words: p.words?.map((w) => ({ ...w, start: w.start + by, end: w.end + by })),
+  }))
+  const hisOpen = groupWords(splitPhrases(input.own.open.text, 6), input.own.open.words, openEnd)
+  const hisClose = shift(groupWords(splitPhrases(input.own.close.text, 6), input.own.close.words, audioDur - closeAt), closeAt)
+  const asked = shift(await timedCaptions(splitPhrases(input.asker.text, 6), ask, progress, input.align), askAt)
+  const answered = shift(await timedCaptions(splitPhrases(input.answerer.text, 6), answer, progress, input.align), answerAt)
+
+  // A caption HOLDS until the next one begins so a pause is not a blank
+  // panel — and the last caption of a block has nothing after it to stop it.
+  // On a layout with FOUR speakers that is four chances to leave one man's
+  // words on screen under another's voice, which is the bug the story layout
+  // shipped with two. Every block is closed at the moment the next voice
+  // starts, and they are concatenated in SPEAKING order so the frame lookup
+  // finds the right one first.
+  const clamp = (ps: TimedPhrase[], end: number) => {
+    for (const p of ps) { if (p.end > end) p.end = end; if (p.start > end) p.start = end }
+    return ps
+  }
+  const phrases = [
+    ...clamp(hisOpen, askAt),
+    ...clamp(asked, answerAt),
+    ...clamp(answered, closeAt),
+    ...hisClose,
+  ]
+
+  const lead = LEAD
+  const total = lead + audioDur + TAIL_SEC
+  try { await document.fonts.load(`800 70px "Baloo 2"`) } catch { /* fine */ }
+  const sc: ExchangeScene = { input, lead, audioDur, total, phrases, openEnd, askAt, askEnd, answerAt, answerEnd, closeAt }
+  const { blob, ext } = await produce((ctx, t) => drawExchangeFrame(ctx, sc, t), total, lead, samples, progress, input.bed)
+  progress(1, 'Done')
+  return { blob, ext, durationSec: total, phrases }
+}
+
+/** How long an exchange will run, so a music bed can be rendered to fit. */
+export async function exchangeDuration(i: { open: ArrayBuffer; ask: ArrayBuffer; answer: ArrayBuffer; close: ArrayBuffer }): Promise<number> {
+  const [a, b, c, d] = await Promise.all([i.open, i.ask, i.answer, i.close].map((x) => decodeAudio(x)))
+  return LEAD + (a.length + b.length + c.length + d.length) / SAMPLE_RATE
+    + EX_GAP_ASK + EX_GAP_ANSWER + EX_GAP_CLOSE + TAIL_SEC
+}
+
+/** A still of the exchange, for the Pinterest cover and the hub's preview. */
+export async function renderExchangePoster(input: Omit<ExchangeInput, 'onProgress'>, t = 0.9, chrome = true): Promise<string> {
+  const canvas = document.createElement('canvas')
+  canvas.width = WIDTH; canvas.height = HEIGHT
+  const ctx = canvas.getContext('2d', { alpha: false })
+  if (!ctx) throw new Error('no 2d context')
+  try { await document.fonts.load(`800 70px "Baloo 2"`) } catch { /* fine */ }
+  // A poster has no audio to measure, so the blocks are sized from the words
+  // at a plain reading pace. It is a picture of the first seconds, not a
+  // frame-accurate preview.
+  const words = (s: string) => s.split(/\s+/).filter(Boolean).length
+  const pace = (s: string) => Math.max(1.2, words(s) / 2.6)
+  const openEnd = pace(input.own.open.text)
+  const askAt = openEnd + EX_GAP_ASK
+  const askEnd = askAt + pace(input.asker.text)
+  const answerAt = askEnd + EX_GAP_ANSWER
+  const answerEnd = answerAt + pace(input.answerer.text)
+  const closeAt = answerEnd + EX_GAP_CLOSE
+  const audioDur = closeAt + pace(input.own.close.text)
+  const sc: ExchangeScene = {
+    input: input as ExchangeInput, lead: LEAD, audioDur, total: LEAD + audioDur + TAIL_SEC,
+    phrases: [], openEnd, askAt, askEnd, answerAt, answerEnd, closeAt,
+  }
+  await drawExchangeFrame(ctx, sc, t, chrome)
+  return canvas.toDataURL('image/jpeg', 0.9)
 }

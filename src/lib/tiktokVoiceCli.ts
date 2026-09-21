@@ -139,15 +139,32 @@ window.vaVoice = {
     // A story half plays beside Tabitha and needs her level, not the verse's
     // — and so does every weekday reading, which is his voice carrying a
     // whole post with a bed under it rather than a thought after a reading.
-    const own = kind === 'story' || isReadingKind(kind)
+    //
+    // An EXCHANGE's two halves are the same shape and were missing from this
+    // test for as long as the format existed. `split --exchange` parks
+    // through here, so every take in a batch went to the VERSE listener,
+    // which hunts the day's daily verse inside a recording that has never
+    // contained one — and the whole sitting was refused, take by take, with
+    // "read the verse first". The hub never hit it because
+    // `ensureExchangeVoice` has its own call to `transcribeOwn`; two ways of
+    // doing one thing, and only one of them knew about the third format.
+    // Its level is the story's for the story's reason: he is speaking either
+    // side of other voices, not after a reading.
+    const isExchange = kind === 'exchange' || kind === 'exchange-close'
+    const own = kind === 'story' || isExchange || isReadingKind(kind)
     const dec = await m.decodeRecording(await (await fetch(wavUrl)).blob(), own ? m.SPEECH_TARGET.story : m.SPEECH_TARGET.verse)
     say('parking the recording')
     await parkFile(voiceWavPath(date, kind), dec.wav, 'audio/wav')
     const v = getVerseForDate(date)
     // There is no verse to FIND in an own-voice half: a reading is his words
     // end to end, and a story's half is all thought.
+    // Which END of the exchange a take belongs at is the KIND, not the
+    // caller's `place`: `split --exchange` alternates the kind and passes one
+    // place for the whole batch, so reading `place` here would file every
+    // closing take as an opening one.
+    const at = isExchange ? (kind === 'exchange-close' ? 'close' : 'open') : place
     const track = own
-      ? await m.transcribeOwn(dec.samples, dec.sampleRate, place, say)
+      ? await m.transcribeOwn(dec.samples, dec.sampleRate, at, say)
       : await m.splitRecording(dec.samples, dec.sampleRate, v.text, v.reference, say)
     const fixed = m.refit(track, track.text)
     say('parking the transcript')

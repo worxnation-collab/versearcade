@@ -80,6 +80,20 @@ export async function ensureOwn(d: string, progress: Progress, place: 'open' | '
   // The STORY's target: this half plays against Tabitha, not alone.
   const dec = await m.decodeRecording(await (await fetch(wavUrl + '?v=' + Date.now())).blob(), m.SPEECH_TARGET.story)
   const track = await m.transcribeOwn(dec.samples, dec.sampleRate, place, (label) => progress(0, label))
+  // THE PARKED TAKE HAS TO REACH THE END OF ITS OWN WORDS, and this is the
+  // door the CLI's `listen` already puts every take through (`refit`). The
+  // runner's four listeners did not, which is the half that mattered: a
+  // phone only uploads, so on a day he records on his sofa THIS is what
+  // parks the transcript, and a take cut short by the batch splitter went
+  // straight to the render with a caption that finished a sentence the
+  // audio never got to. Three posts went out that way before anybody
+  // noticed. `refit(track, track.text)` is a no-op on a sound take and
+  // throws on a short one, and what a throw MEANS is already decided by the
+  // caller: the verse and the story catch it and fall back to the synthetic
+  // voice, and an exchange refuses the day outright. Both are the honest
+  // answer, and neither is a truncated sentence on screen. The same line is
+  // on `ensureVoice`, `ensureReading` and `ensureExchangeVoice`.
+  m.refit(track, track.text)
   await parkFile(voiceJsonPath(d, 'story'), new Blob([JSON.stringify(track)], { type: 'application/json' }), 'application/json')
   try { await fetchCopy(d, 'story', true, { voiced: true }) } catch { /* written at render time otherwise */ }
   return { ...track, wavUrl }
@@ -95,6 +109,7 @@ export async function ensureVoice(d: string, progress: Progress): Promise<(Voice
   const m = await import('@/lib/tiktokVoice')
   const dec = await m.decodeRecording(await (await fetch(wavUrl + '?v=' + Date.now())).blob())
   const track = await m.splitRecording(dec.samples, dec.sampleRate, v.text, v.reference, (label) => progress(0, label))
+  m.refit(track, track.text)
   await parkFile(voiceJsonPath(d), new Blob([JSON.stringify(track)], { type: 'application/json' }), 'application/json')
   try { await fetchCopy(d, 'verse', true, { voiced: true }) } catch { /* written at render time otherwise */ }
   return { ...track, wavUrl }
@@ -502,6 +517,7 @@ export async function ensureReading(d: string, kind: ReadingKind, progress: Prog
   const m = await import('@/lib/tiktokVoice')
   const dec = await m.decodeRecording(await (await fetch(wavUrl + '?v=' + Date.now())).blob(), m.SPEECH_TARGET.story)
   const track = await m.transcribeOwn(dec.samples, dec.sampleRate, 'close', (label) => progress(0, label))
+  m.refit(track, track.text)
   await parkFile(voiceJsonPath(d, kind), new Blob([JSON.stringify(track)], { type: 'application/json' }), 'application/json')
   return { ...track, wavUrl }
 }
@@ -728,6 +744,7 @@ export async function ensureExchangeVoice(d: string, half: 'exchange' | 'exchang
   // Both halves are all thought — there is no verse read in this format at
   // all — so `transcribeOwn` is the listener, as it is for a story's half.
   const track = await m.transcribeOwn(dec.samples, dec.sampleRate, half === 'exchange' ? 'open' : 'close', (label) => progress(0, label))
+  m.refit(track, track.text)
   await parkFile(voiceJsonPath(d, half), new Blob([JSON.stringify(track)], { type: 'application/json' }), 'application/json')
   return { ...track, wavUrl }
 }

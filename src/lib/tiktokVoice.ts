@@ -330,10 +330,23 @@ async function transcribePieces(samples: Float32Array, sampleRate: number, onPro
     }
     // Whisper names what it cannot read — "[BLANK_AUDIO]", "[ Pause ]",
     // "(music)" — and a breath comes back as one of those. Not words.
+    // A word cannot be timed outside the piece it was heard in.
+    //
+    // `collapsed` catches a piece whose timestamps ALL land on one instant
+    // and re-clocks it against the tiny model. What it does not catch is a
+    // PARTIAL collapse — the last few words of an otherwise well-timed piece
+    // stamped together, past its end. One take came back
+    // "bring[10.7-24.8] his[24.8] brothers[24.8] bread[24.8]" out of a 12.4s
+    // recording: every word right, the last four timed into a file that is
+    // not that long. Nothing threw. The caption then held its closing words
+    // for twelve seconds of a video that had already finished.
+    const dur = piece.length / sampleRate
     for (const w of words) {
       if (/[[\]()]/.test(w.text)) continue
-      const mid = off + (w.start + w.end) / 2
-      if (mid >= lo && mid < hi) out.push({ text: w.text, start: w.start + off, end: w.end + off })
+      const s = Math.min(Math.max(0, w.start), dur)
+      const e = Math.min(Math.max(s, w.end), dur)
+      const mid = off + (s + e) / 2
+      if (mid >= lo && mid < hi) out.push({ text: w.text, start: s + off, end: e + off })
     }
   }
   // Is there speech (a second of it, above the noise floor) between two times?
@@ -491,7 +504,27 @@ export function refit(track: VoiceTrack, text: string): VoiceTrack {
   // it is invisible in the transcript — only a rendered frame shows it.
   // The thought cannot begin before its own first heard word, so that is
   // the onset.
-  const { words: timed } = fitWords(words, track.heard, track.seconds, track.heard[0].start)
+  const { words: timed, tail } = fitWords(words, track.heard, track.seconds, track.heard[0].start)
+  // THE RECORDING HAS TO REACH THE END OF THE WORDS.
+  //
+  // A take cut short at the end still parks, still renders and still posts:
+  // the corrected text is fitted onto the timings that exist, the words with
+  // nothing behind them are stretched past the last thing he actually said,
+  // and the caption plays on over silence. Six verse takes went out that way
+  // before anybody noticed, every one stopping mid-sentence — "…Paul
+  // connects this weight directly to" — while the caption finished the
+  // sentence on screen. Nothing threw; the transcript was perfect, because
+  // the transcript is the thing that was WRONG.
+  //
+  // So a trailing run of words that matched NOTHING is refused here rather
+  // than drawn. Four is well past a corrected word or two at the end (the
+  // whole point of `fix`) and well under the ten-to-fourteen a real
+  // truncation loses.
+  const lastEnd = timed[timed.length - 1]?.end ?? 0
+  if (tail >= 4 || lastEnd > track.seconds + 0.5) {
+    const missing = words.slice(words.length - Math.max(tail, 1)).join(' ')
+    throw new Error(`the recording stops before the words do — ${tail} word${tail === 1 ? '' : 's'} have no audio behind them ("…${missing.slice(0, 60)}") and the caption would run to ${lastEnd.toFixed(1)}s of a ${track.seconds.toFixed(1)}s take. Re-cut this take.`)
+  }
   return { ...track, text: words.join(' '), thought: timed }
 }
 

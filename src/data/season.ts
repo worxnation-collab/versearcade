@@ -41,6 +41,7 @@ import {
   type TitleDef,
   type Waystation,
 } from './catalog'
+import type { QuestDef } from '@/lib/season'
 
 // The shapes moved to data/catalog.ts so the sanitisers there can see them
 // without importing this file's content (which would be a cycle). Re-exported
@@ -60,6 +61,9 @@ export const TITLES: TitleDef[] = [
   { id: 'title_redeemer', text: 'Kinsman-Redeemer' },
   { id: 'title_lamplighter', text: 'Lamplighter' },
   { id: 'title_wayfarer', text: 'Wayfarer' },
+  // The Lamplight Road
+  { id: 'title_thankful', text: 'the Thankful' },
+  { id: 'title_lampkeeper', text: 'Lamp-Keeper' },
 ]
 
 /**
@@ -87,6 +91,7 @@ export const CONFETTI_THEMES: ConfettiDef[] = [
   { id: 'confetti_coins', name: 'Gold Coins', colors: ['#ffd23f', '#ffb648', '#fff2c2', '#c9950f'], shapes: ['circle'] },
   { id: 'confetti_doves', name: 'Doves', colors: ['#ffffff', '#dfe7ff', '#b8c8f0', '#8fa3c8'] },
   { id: 'confetti_petals', name: 'Rose Petals', colors: ['#ff6b6b', '#ff9fb0', '#e0518b', '#ffd6de'] },
+  { id: 'confetti_leaves', name: 'Autumn Leaves', colors: ['#c8553d', '#e08e45', '#f2c14e', '#8c3b2e', '#b5651d'] },
 ]
 
 export const DEFAULT_CONFETTI = 'confetti_arcade'
@@ -102,6 +107,7 @@ export const FLAMES: FlameDef[] = [
   { id: 'flame_pillar', name: 'Pillar of Fire', glyph: '🌋', rgb: '255,140,60' },
   { id: 'flame_candle', name: 'Candle', glyph: '🕯️', rgb: '255,225,160' },
   { id: 'flame_star', name: 'Morning Star', glyph: '✨', rgb: '255,210,63' },
+  { id: 'flame_hearth', name: 'Hearth', glyph: '🔥', rgb: '232,120,56' },
 ]
 
 export const DEFAULT_FLAME = 'flame_ember'
@@ -115,6 +121,7 @@ export const CHEST_SKINS: ChestSkinDef[] = [
   { id: 'chest_cedar', name: 'Cedar Chest', glyph: '🗃️' },
   { id: 'chest_jar', name: 'Clay Jar', glyph: '🏺' },
   { id: 'chest_sack', name: 'Treasure Sack', glyph: '💰' },
+  { id: 'chest_bushel', name: 'Bushel of Apples', glyph: '🍎' },
 ]
 
 export const DEFAULT_CHEST = 'chest_classic'
@@ -234,6 +241,56 @@ const HARVEST_WAYS: Waystation[] = [
   },
 ]
 
+/**
+ * The Lamplight Road — "Your word is a lamp to my feet" (Psalm 119:105), and
+ * giving thanks in all things. Fifteen waystations over eighteen days — the
+ * same pace as Advent, so the last one is reachable without a perfect run.
+ */
+const LAMPLIGHT_LENGTH = 15
+
+const LAMPLIGHT_WAYS: Waystation[] = [
+  { n: 1, a: [{ id: 'freeze', qty: 1 }], b: [{ id: 'title_thankful' }] },
+  { n: 2, a: [{ id: 'confetti_leaves' }], b: [] },
+  { n: 3, a: [{ id: 'boost', qty: 1 }], b: [] },
+  { n: 4, a: [{ id: 'chest_bushel' }], b: [{ id: 'freeze', qty: 1 }] },
+  { n: 6, a: [{ id: 'boost', qty: 1 }], b: [{ id: 'title_lampkeeper' }] },
+  { n: 8, a: [{ id: 'flame_hearth' }], b: [{ id: 'skin_michael' }], milestone: true },
+  { n: 10, a: [{ id: 'freeze', qty: 1 }], b: [{ id: 'boost', qty: 2 }] },
+  { n: 12, a: [{ id: 'boost', qty: 2 }], b: [] },
+  {
+    n: 15,
+    a: [{ id: 'memento_lamplight' }],
+    b: [{ id: 'skin_seraph' }],
+    milestone: true,
+  },
+]
+
+// Frozen once the road starts (2026-11-11) — see RoadDef.daily.
+const LAMPLIGHT_DAILY: QuestDef[] = [
+  { key: 'lamp_play', verb: 'play_daily', goal: 1, text: 'Play today’s drop' },
+  { key: 'lamp_correct', verb: 'answer_correct', goal: 10, text: 'Answer 10 questions correctly' },
+  { key: 'lamp_read', verb: 'read_chapters', goal: 1, text: 'Read a chapter in your Bible' },
+  { key: 'lamp_chest', verb: 'open_chest', goal: 1, text: 'Open the Daily Chest' },
+  { key: 'lamp_pray', verb: 'pray', goal: 1, text: 'Say a prayer of thanks' },
+  { key: 'lamp_save', verb: 'save_verses', goal: 1, text: 'Keep a verse' },
+  { key: 'lamp_study', verb: 'study_runs', goal: 2, text: 'Finish 2 study runs' },
+  { key: 'lamp_borrow', verb: 'borrow_book', goal: 1, text: 'Borrow a book from Tabitha' },
+  { key: 'lamp_arcade', verb: 'arcade_runs', goal: 1, text: 'Play a machine in the arcade' },
+  { key: 'lamp_perfect', verb: 'perfect_run', goal: 1, text: 'Finish a run with no misses' },
+]
+
+const LAMPLIGHT_WEEKLY: QuestDef[] = [
+  { key: 'lampw_play', verb: 'play_daily', goal: 5, text: 'Play the drop on 5 days' },
+  { key: 'lampw_read', verb: 'read_chapters', goal: 7, text: 'Read 7 chapters' },
+  { key: 'lampw_pray', verb: 'pray', goal: 7, text: 'Say 7 prayers' },
+  { key: 'lampw_prayfor', verb: 'pray_for', goal: 3, text: 'Pray for 3 people at the Prayer Wall' },
+  { key: 'lampw_wash', verb: 'wash_feet', goal: 3, text: 'Wash 3 friends’ feet' },
+  { key: 'lampw_study', verb: 'study_runs', goal: 8, text: 'Finish 8 study runs' },
+  { key: 'lampw_share', verb: 'share_daily', goal: 2, text: 'Share the daily verse twice' },
+  { key: 'lampw_correct', verb: 'answer_correct', goal: 50, text: 'Answer 50 questions correctly' },
+  { key: 'lampw_any', verb: 'play_any', goal: 10, text: 'Finish 10 runs in any mode' },
+]
+
 export const ROADS: RoadDef[] = [
   {
     id: 'harvest',
@@ -243,6 +300,23 @@ export const ROADS: RoadDef[] = [
     end: '2026-11-11T00:00:00Z',
     waystations: HARVEST_WAYS,
     memento: 'memento_harvest',
+  },
+  {
+    // The eighteen days between the harvest coming in and Advent beginning —
+    // Thanksgiving's road. Pre-shipped here so an offline phone gets it too;
+    // the same road is published in the content catalog for binaries that
+    // shipped before it. Ends where the Advent Road (catalog) starts.
+    id: 'lamplight',
+    name: 'The Lamplight Road',
+    blurb: 'The harvest is in. Light a lamp, give thanks, and walk the short road to Advent.',
+    start: '2026-11-11T00:00:00Z',
+    end: '2026-11-29T00:00:00Z',
+    length: LAMPLIGHT_LENGTH,
+    scene: 'lamplight',
+    waystations: LAMPLIGHT_WAYS,
+    memento: 'memento_lamplight',
+    daily: LAMPLIGHT_DAILY,
+    weekly: LAMPLIGHT_WEEKLY,
   },
 ]
 

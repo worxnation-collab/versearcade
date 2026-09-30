@@ -377,3 +377,58 @@ workflows:
       #   credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
       #   track: internal            # internal | alpha | beta | production
       #   submit_as_draft: true      # first upload must be promoted manually in Play Console
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Combo Clock — the watchOS prototype in watch/ComboClock. A SEPARATE app
+  # (own bundle id, own App Store Connect record), watch-only, TestFlight only.
+  # Manual start; nothing here touches the Verse Arcade workflows above.
+  #
+  # ONE-TIME SETUP: App Store Connect > Apps > "+" > New App, platform iOS
+  # (watch-only apps are filed under iOS), bundle id com.versearcade.comboclock,
+  # name "Combo Clock". The API can't create an app record; everything else
+  # (bundle id, cert, profile) is created below by fetch-signing-files --create.
+  watch-comboclock:
+    name: Combo Clock — watchOS TestFlight
+    max_build_duration: 45
+    instance_type: mac_mini_m2
+    working_directory: watch/ComboClock
+    integrations:
+      app_store_connect: VerseArcade
+    environment:
+      groups:
+        - appstore
+      vars:
+        BUNDLE_ID: "com.versearcade.comboclock"
+      xcode: latest
+    scripts:
+      - name: RoundCore tests
+        script: cd RoundCore && swift test
+      - name: Generate Xcode project
+        script: |
+          brew install xcodegen
+          xcodegen generate
+          agvtool new-version -all "$BUILD_NUMBER"
+      - name: Set up code signing
+        script: |
+          keychain initialize
+          printf '%s' "$CERTIFICATE_PRIVATE_KEY" | openssl base64 -d -A > /tmp/cert_key.pem
+          openssl rsa -in /tmp/cert_key.pem -check -noout
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --certificate-key=@file:/tmp/cert_key.pem \
+            --create
+          keychain add-certificates
+          xcode-project use-profiles
+      - name: Build signed IPA
+        script: |
+          xcode-project build-ipa \
+            --project "ComboClock.xcodeproj" \
+            --scheme "ComboClock"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: false
+        submit_to_app_store: false

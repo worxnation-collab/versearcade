@@ -1,0 +1,44 @@
+name: Combo Clock (watchOS)
+
+# The watch prototype lives in watch/ComboClock and has nothing to do with the
+# web build, so it only runs when that folder changes. Two proofs:
+#   1. RoundCore's tests (the clock, scoring, combo and haptic patterns) —
+#      also run on Linux, so they're checked first and cheaply.
+#   2. The SwiftUI app compiles for the watchOS simulator, unsigned.
+
+on:
+  push:
+    paths: ['watch/ComboClock/**', '.github/workflows/combo-clock.yml']
+  pull_request:
+    paths: ['watch/ComboClock/**', '.github/workflows/combo-clock.yml']
+  workflow_dispatch:
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    container: swift:6.1
+    steps:
+      - uses: actions/checkout@v4
+      - name: RoundCore tests
+        working-directory: watch/ComboClock/RoundCore
+        run: swift test
+
+  watch-app:
+    needs: core
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        working-directory: watch/ComboClock
+        run: xcodegen generate
+      - name: Build for watchOS Simulator
+        working-directory: watch/ComboClock
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project ComboClock.xcodeproj \
+            -scheme ComboClock \
+            -destination 'generic/platform=watchOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO | tail -40

@@ -29,10 +29,13 @@ const ExchangePost = lazy(() => import('./tiktok/ExchangePost'))
 const QuizPost = lazy(() => import('./tiktok/QuizPost'))
 const ChallengePost = lazy(() => import('./tiktok/ChallengePost'))
 const YourVoice = lazy(() => import('./tiktok/YourVoice'))
+const RoundupPost = lazy(() => import('./tiktok/RoundupPost'))
 
 // `voice` is not a post kind: it is the operator's recording that changes
 // how the VERSE post is made on the days one is parked (tiktok/YourVoice.tsx).
-type Door = Kind | 'voice'
+// `roundup` is not one either: the operator's personal weekly countdown,
+// rendered here and downloaded, never posted by the engine.
+type Door = Kind | 'voice' | 'roundup'
 const POSTS: Array<{ id: Door; icon: string; name: string; when: string; line: string }> = [
   { id: 'verse', icon: '☀️', name: 'Verse reading', when: 'morning', line: 'The day’s reader stands on a road and reads the verse, the words lighting up as they are said. The hook is the first frame.' },
   { id: 'challenge', icon: '⚡', name: 'Beat the reader', when: 'twice a day', line: 'One of yesterday’s questions, a twelve-second clock, the answer and why. Two a day, different questions, different faces.' },
@@ -40,6 +43,7 @@ const POSTS: Array<{ id: Door; icon: string; name: string; when: string; line: s
   { id: 'exchange', icon: '💬', name: 'The exchange', when: 'Mon · Wed · Fri', line: 'You open it, two figures out of the text ask and answer each other, the answer lands as one word on the whole frame, and you close on a question. Both takes have to be recorded.' },
   { id: 'story', icon: '🌙', name: 'Story time', when: 'evening', line: 'Tabitha tells the story behind it in about a minute, opening on the dramatic moment.' },
   { id: 'voice', icon: '🎙️', name: 'Your voice', when: 'Sunday batch', line: 'Read the verse yourself and say one thing about it. Drafts to read, a slot per day; the morning post uses your recording when there is one.' },
+  { id: 'roundup', icon: '🏁', name: 'Weekly roundup', when: 'personal', line: 'Your figure counts down your week’s top posts on your own profile — driveway, garage, yard — holding up each photo while your recording plays. Download only.' },
   { id: 'own', icon: '🎤', name: 'Your own clip', when: 'weekly', line: 'A clip you recorded yourself — your face, your voice — captioned for every network and posted through the same door.' },
 ]
 /** The kinds the day's words are written for on their own: everything a generator makes. */
@@ -356,6 +360,7 @@ export default function TikTokPanel() {
         {(open === 'challenge' || open === 'challenge2') && <ChallengePost />}
         {open === 'own' && <OwnClip />}
         {open === 'voice' && <YourVoice />}
+        {open === 'roundup' && <RoundupPost />}
       </Suspense>
     </div>
   )

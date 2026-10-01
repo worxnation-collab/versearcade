@@ -257,9 +257,13 @@ for (const entry of manifest) {
     // full-bleed like a road, and in a folder of their own for the same
     // reason — an exchange called `shore` must not collide with the road.
     'tiktok-exchange': 'public/tiktok/exchange',
+    // …and the operator's personal weekly roundup (art/roundup-scenes.json):
+    // modern scenes for his own profile, not Verse Arcade's, so they live in
+    // a folder of their own and never mix into the daily posts' rotation.
+    roundup: 'public/roundup',
   }
   const sceneDir = SCENE_DIRS[entry.kind]
-  const isTikTok = entry.kind === 'tiktok' || entry.kind === 'tiktok-road' || entry.kind === 'tiktok-stage' || entry.kind === 'tiktok-exchange'
+  const isTikTok = entry.kind === 'tiktok' || entry.kind === 'tiktok-road' || entry.kind === 'tiktok-stage' || entry.kind === 'tiktok-exchange' || entry.kind === 'roundup'
   const isScene = entry.kind === 'scene' || !!sceneDir
   const isProp = entry.kind === 'prop'
   // A church building: a keyed cut-out like a prop, but it renders from 44px

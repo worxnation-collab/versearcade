@@ -2036,6 +2036,235 @@ export async function renderStory(input: StoryInput): Promise<RenderOutput> {
   return { blob, ext, durationSec: total, phrases }
 }
 
+// ---- the weekly roundup -----------------------------------------------------
+
+/**
+ * The operator's own weekly countdown, for HIS personal profile rather than
+ * for Verse Arcade: his figure (`sharkey`) standing in modern scenes —
+ * driveway, garage, yard, kitchen — counting down the week's top posts in his
+ * own recorded voice. It is the story layout's grammar with a different cast:
+ * one held painting per segment, cut on that segment's first word and settled
+ * the same way (`SHOT_PUSH`/`SHOT_SETTLE`), captions lit where the words were
+ * heard. What it adds is the countdown chip over the panel and the post's own
+ * photo held up as a polaroid beside him while he talks about it — the
+ * picture is what made the post, so the roundup shows it.
+ *
+ * Nothing here carries the Verse Arcade brand; `brand` is whatever the
+ * operator types. It reads no player data and is never posted by the engine —
+ * a personal profile has no publishing API, so the MP4 is downloaded and
+ * posted by hand.
+ */
+export interface RoundupItem {
+  /** The chip over the panel: "#5", "Honorable mention", "#1". */
+  label: string
+  /** The post in a few words — the panel's eyebrow. */
+  title: string
+  /** One line on the polaroid's strip, e.g. "$2.40 · 6,100 views". */
+  stat?: string
+  /** The post's own photo, held up while he talks about it. */
+  photo?: HTMLImageElement | null
+  /** Where he stands for this one. Null keeps the home scene. */
+  scene?: HTMLImageElement | null
+  /** What he says about it: one paragraph of the recording, in order. */
+  text: string
+}
+
+export interface RoundupInput {
+  /** The first frame, large, at 0.0s — the same rule every layout here keeps. */
+  hook: string
+  /** The small gold line over the countdown chip, e.g. "THE WEEKLY ROUNDUP". */
+  brand: string
+  intro: string
+  items: RoundupItem[]
+  outro: string
+  /** The end card's big line. */
+  signoff: string
+  /** His recording of intro + items + outro, read in that order. */
+  audio: ArrayBuffer
+  figure: HTMLImageElement | null
+  /** The intro's and outro's scene, and every item's fallback. */
+  home: HTMLImageElement
+  bed?: Float32Array
+  align?: boolean
+  onProgress?: (fraction: number, label: string) => void
+}
+
+/** Feet low and a little off-centre, so the polaroid has the right half. */
+const ROUNDUP_STAND = { feet: 0.88, height: 0.42 }
+const ROUNDUP_X = { alone: 0.5, beside: 0.3 }
+
+interface RoundupScene {
+  input: RoundupInput
+  lead: number
+  audioDur: number
+  total: number
+  phrases: TimedPhrase[]
+  /** Segment starts in speaking time: intro, each item, outro. */
+  starts: number[]
+  shots: Shot[]
+}
+
+function segmentAt(starts: number[], at: number): number {
+  let k = 0
+  for (let i = 0; i < starts.length; i++) if (starts[i] <= at) k = i
+  return k
+}
+
+/** A square crop of the middle of a photo, the way a print is trimmed. */
+function drawSquare(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, size: number) {
+  const s = Math.min(img.naturalWidth, img.naturalHeight)
+  ctx.drawImage(img, (img.naturalWidth - s) / 2, (img.naturalHeight - s) / 2, s, s, x, y, size, size)
+}
+
+function drawPolaroid(ctx: CanvasRenderingContext2D, img: HTMLImageElement, stat: string | undefined, cx: number, cy: number, tilt: number, scale: number, alpha: number) {
+  if (alpha <= 0) return
+  const pad = 22, photo = 390, strip = stat ? 86 : pad
+  const w = photo + pad * 2, h = photo + pad + strip
+  ctx.save()
+  ctx.globalAlpha = alpha
+  ctx.translate(cx, cy)
+  ctx.rotate(tilt)
+  ctx.scale(scale, scale)
+  ctx.shadowColor = 'rgba(11,7,32,0.45)'; ctx.shadowBlur = 30; ctx.shadowOffsetY = 12
+  ctx.fillStyle = '#fbf7ee'
+  ctx.fillRect(-w / 2, -h / 2, w, h)
+  ctx.shadowColor = 'transparent'
+  drawSquare(ctx, img, -w / 2 + pad, -h / 2 + pad, photo)
+  if (stat) {
+    ctx.fillStyle = '#2a1f3d'
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    ctx.font = `800 38px ${FONT_DISPLAY}`
+    ctx.fillText(stat, 0, h / 2 - strip / 2, w - pad * 2)
+  }
+  ctx.restore()
+}
+
+async function drawRoundupFrame(ctx: CanvasRenderingContext2D, sc: RoundupScene, t: number) {
+  const { input, lead, audioDur, total, phrases, starts, shots } = sc
+  const at = t - lead
+  const n = input.items.length
+
+  // 1. Where he is: held still, a fresh shot settling on each cut.
+  const shot = shotAt(shots, at)
+  const settle = SHOT_PUSH * (1 - easeOut((at - shot.at) / SHOT_SETTLE))
+  const zoom = 1.08 + 0.02 * (t / total) + Math.max(0, settle)
+  const bg = shot.img ?? input.home
+  cover(ctx, bg, bg.naturalWidth, bg.naturalHeight, zoom, 1)
+  const top = ctx.createLinearGradient(0, 0, 0, 820)
+  top.addColorStop(0, 'rgba(11,7,32,0.9)'); top.addColorStop(1, 'rgba(11,7,32,0)')
+  ctx.fillStyle = top; ctx.fillRect(0, 0, WIDTH, 820)
+  const bot = ctx.createLinearGradient(0, HEIGHT - 420, 0, HEIGHT)
+  bot.addColorStop(0, 'rgba(11,7,32,0)'); bot.addColorStop(1, 'rgba(11,7,32,0.55)')
+  ctx.fillStyle = bot; ctx.fillRect(0, HEIGHT - 420, WIDTH, 420)
+
+  const endFade = easeOut((t - (lead + audioDur)) / 0.5)
+  if (endFade > 0) { ctx.fillStyle = `rgba(11,7,32,${0.6 * endFade})`; ctx.fillRect(0, 0, WIDTH, HEIGHT) }
+
+  // 2. Him, stepping aside for a photo and back for the bits with none.
+  const seg = segmentAt(starts, at)
+  const item = seg >= 1 && seg <= n ? input.items[seg - 1] : null
+  const prev = seg >= 2 && seg - 2 < n ? input.items[seg - 2] : null
+  const xOf = (it: RoundupItem | null) => (it?.photo && endFade < 1 ? ROUNDUP_X.beside : ROUNDUP_X.alone)
+  const since = at - (Number.isFinite(starts[seg]) ? starts[seg] : -Infinity)
+  const slide = easeOut(since / 0.35)
+  const x = xOf(prev) + (xOf(item) - xOf(prev)) * slide
+  if (input.figure) standFigure(ctx, input.figure, 1, 1, { ...ROUNDUP_STAND, x })
+
+  // 3. The post itself, held up beside him.
+  if (item?.photo && endFade < 1) {
+    const next = starts[seg + 1] ?? audioDur
+    const pop = easeOut(since / 0.45)
+    const out = 1 - easeOut((at - (next - 0.25)) / 0.25)
+    drawPolaroid(ctx, item.photo, item.stat, 760, 1150, seg % 2 ? -0.055 : 0.05, 0.82 + 0.18 * pop, pop * out * (1 - endFade))
+  }
+
+  // 4. The hook, then the countdown chip where it was.
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+  drawHook(ctx, input.hook, t, 200, 76, 900)
+  const headIn = (input.hook.trim() ? easeOut((t - (HOOK_HOLD - 0.3)) / 0.4) : 1) * (1 - endFade)
+  if (headIn > 0) {
+    ctx.save()
+    ctx.globalAlpha = headIn
+    ctx.font = `800 30px ${FONT_DISPLAY}`
+    ctx.letterSpacing = '6px'
+    outlined(ctx, input.brand.toUpperCase(), WIDTH / 2, 120, '#ffd23f', 'rgba(11,7,32,0.85)', 8)
+    ctx.letterSpacing = '0px'
+    if (item) {
+      const pop = easeOut(since / 0.3)
+      ctx.translate(WIDTH / 2, 208)
+      ctx.scale(1.25 - 0.25 * pop, 1.25 - 0.25 * pop)
+      ctx.font = `800 ${item.label.length > 4 ? 64 : 104}px ${FONT_DISPLAY}`
+      outlined(ctx, item.label, 0, 0, '#ffffff', 'rgba(11,7,32,0.9)', 10)
+    }
+    ctx.restore()
+  }
+
+  // 5. The panel: what he is saying, lit a word at a time.
+  const px = 90, pw = WIDTH - 180, py = 296, ph = 330
+  if (endFade < 1 && at >= 0) {
+    const p = heldPhrase(phrases, at, audioDur)
+    ctx.save()
+    ctx.globalAlpha = 1 - endFade
+    roundRect(ctx, px, py, pw, ph, 40)
+    ctx.fillStyle = 'rgba(21,10,52,0.82)'
+    ctx.fill()
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,210,63,0.7)'; ctx.stroke()
+    const eyebrow = item ? item.title : seg === 0 ? 'THIS WEEK' : ''
+    if (eyebrow) {
+      ctx.font = `800 26px ${FONT_DISPLAY}`
+      ctx.letterSpacing = '5px'
+      ctx.fillStyle = 'rgba(255,210,63,0.85)'
+      ctx.fillText(eyebrow.toUpperCase(), WIDTH / 2, py + 44, pw - 80)
+      ctx.letterSpacing = '0px'
+    }
+    if (p && at < audioDur + 0.2) {
+      ctx.globalAlpha = (1 - endFade) * Math.min(1, easeOut((at - p.start) / 0.22) + 0.4)
+      drawCaption(ctx, p, at, { x: WIDTH / 2, y: py + ph / 2 + 22, maxWidth: pw - 96, size: 64, small: 54, stroke: 8, dim: 0.42 })
+    }
+    ctx.restore()
+  }
+
+  // 6. End card.
+  if (endFade > 0) {
+    ctx.save()
+    ctx.globalAlpha = endFade
+    ctx.font = `800 84px ${FONT_DISPLAY}`
+    wrap(ctx, input.signoff, 900).forEach((l, i) => outlined(ctx, l, WIDTH / 2, 420 + i * 94, '#ffffff', 'rgba(11,7,32,0.9)', 10))
+    ctx.font = `800 32px ${FONT_DISPLAY}`
+    ctx.letterSpacing = '6px'
+    outlined(ctx, input.brand.toUpperCase(), WIDTH / 2, 300, '#ffd23f', 'rgba(11,7,32,0.85)', 8)
+    ctx.letterSpacing = '0px'
+    ctx.restore()
+  }
+}
+
+export async function renderRoundup(input: RoundupInput): Promise<RenderOutput> {
+  const progress = input.onProgress ?? (() => {})
+  progress(0, 'Decoding the recording')
+  const samples = await decodeAudio(input.audio)
+  const audioDur = samples.length / SAMPLE_RATE
+  const paragraphs = [input.intro, ...input.items.map((i) => i.text), input.outro].map((p) => p.trim())
+  const { texts, para } = storyTexts(paragraphs.map((p) => p || '…'))
+  const phrases = await timedCaptions(texts, samples, progress, input.align)
+  const starts = paragraphs.map((_, i) => (i === 0 ? -Infinity : phrases[para.indexOf(i)]?.start ?? Infinity))
+  // One shot per segment, collapsed where two in a row stand in the same
+  // place — a cut to the same picture is a 0.9s settle mid-sentence.
+  const shots: Shot[] = []
+  const imgs = [input.home, ...input.items.map((i) => i.scene ?? input.home), input.home]
+  imgs.forEach((img, i) => {
+    if (!Number.isFinite(starts[i]) && i !== 0) return
+    if (shots.length && shots[shots.length - 1].img === img) return
+    shots.push({ at: starts[i], img })
+  })
+  const lead = LEAD
+  const total = lead + audioDur + TAIL_SEC
+  try { await document.fonts.load(`800 70px "Baloo 2"`) } catch { /* fine */ }
+  const sc: RoundupScene = { input, lead, audioDur, total, phrases, starts, shots }
+  const { blob, ext } = await produce((ctx, t) => drawRoundupFrame(ctx, sc, t), total, lead, samples, progress, input.bed)
+  progress(1, 'Done')
+  return { blob, ext, durationSec: total, phrases }
+}
+
 /** The length of a reading, for callers sizing a timeline around it. */
 export async function audioSeconds(audio: ArrayBuffer): Promise<number> {
   const samples = await decodeAudio(audio)

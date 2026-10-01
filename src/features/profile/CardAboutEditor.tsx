@@ -201,7 +201,7 @@ export function CardAboutEditor({ onSaved }: { onSaved?: () => void }) {
                   fontSize: 12,
                   fontWeight: 800,
                   padding: '6px 11px',
-                  background: on ? 'var(--grape)' : 'var(--card-solid)',
+                  background: on ? 'var(--select)' : 'var(--card-solid)',
                   border: on ? '1px solid var(--gold)' : '1px solid var(--stroke)',
                   cursor: 'pointer',
                 }}
@@ -251,7 +251,7 @@ function VerseRow({
       style={{
         display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', width: '100%', minWidth: 0,
         padding: '8px 11px', borderRadius: 12, cursor: 'pointer',
-        background: selected ? 'var(--grape)' : 'var(--card-solid)',
+        background: selected ? 'var(--select)' : 'var(--card-solid)',
         border: selected ? '1px solid var(--gold)' : '1px solid var(--stroke)',
       }}
     >

@@ -24,6 +24,8 @@ export interface Question {
   bonus?: string
 }
 
+export type Testament = 'OT' | 'NT'
+
 export interface DailyVerse {
   dropDate: string // YYYY-MM-DD
   translation: string
@@ -34,6 +36,19 @@ export interface DailyVerse {
   verseEnd?: number
   text: string
   theme?: string
+  /**
+   * Who SAID it, and which testament — carried through from the pool seed.
+   *
+   * Additive, and added for one reason: the TikTok engine picks the figure who
+   * stands in the frame from the speaker (`data/tiktokCast.ts`), and every
+   * renderer reaches a verse through `getVerseForDate`, which returns this
+   * shape rather than the seed. Without them the cast still resolves — the book
+   * map is a total function — but it resolves by BOOK every time, so 70% of
+   * verses quietly lose the more precise answer and Paul's own letters are the
+   * only reason it looks right. A silent downgrade, not a crash.
+   */
+  speaker?: string
+  testament?: Testament
   questions: Question[]
   /** "Did you know" facts revealed on wrong answers / at the end. */
   facts: string[]

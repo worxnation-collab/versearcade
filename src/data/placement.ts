@@ -281,88 +281,14 @@ export function planPlacementOn(
 
 // ── Moving a placed piece ───────────────────────────────────────────────────
 
-export interface MovePlan {
-  /** anchor -> new packed value, or null to clear. Applied in this order. */
-  writes: { anchor: string; value: string | null }[]
-  /** True when two different pieces traded places. */
-  swapped: boolean
-  tier: number
-}
-
-/**
- * Move the piece on `from` to the anchor `to`. Never loses either one — an
- * occupied target trades places. Both pieces drop any free position they
- * carried (each now stands on its new anchor, which is what the tap said) but
- * keep their size: where something stands is the thing being changed, how big
- * it is isn't.
- */
-export function planMoveOn(
-  surface: Surface,
-  placements: PlacementMap,
-  from: string,
-  to: string,
-): MovePlan | null {
-  if (from === to) return null
-  const fromDef = surface.anchors.find((a) => a.id === from)
-  const toDef = surface.anchors.find((a) => a.id === to)
-  if (!fromDef || !toDef || fromDef.mount !== toDef.mount) return null
-
-  const moving = unpackDecor(placements[from])
-  if (!moving.id) return null
-  const target = unpackDecor(placements[to])
-
-  return {
-    writes: [
-      { anchor: to, value: packDecor(moving.id, moving.tier, { s: moving.s }) },
-      {
-        anchor: from,
-        value: target.id ? packDecor(target.id, target.tier, { s: target.s }) : null,
-      },
-    ],
-    swapped: !!target.id,
-    tier: moving.tier,
-  }
-}
-
-/**
- * Move the piece on `from` to a free point within its own mount's band. The
- * piece keeps its anchor row — position is display, the anchor is the key —
- * so this is one write, and clearing the piece later works exactly as before.
- */
-export function planMoveToPointOn(
-  surface: Surface,
-  placements: PlacementMap,
-  from: string,
-  x: number,
-  y: number,
-): MovePlan | null {
-  const fromDef = surface.anchors.find((a) => a.id === from)
-  const moving = unpackDecor(placements[from])
-  if (!fromDef || !moving.id) return null
-  const p = clampToBand(surface, fromDef.mount, x, y)
-  return {
-    writes: [{ anchor: from, value: repackPos(placements[from], { x: p.x, y: p.y }) }],
-    swapped: false,
-    tier: moving.tier,
-  }
-}
-
-/** Resize the piece on `anchor`, clamped to SCALE_MIN..SCALE_MAX. */
-export function planResizeOn(
-  placements: PlacementMap,
-  anchor: string,
-  s: number,
-): MovePlan | null {
-  const cur = unpackDecor(placements[anchor])
-  if (!cur.id) return null
-  return {
-    writes: [{ anchor, value: repackPos(placements[anchor], { s: clampScale(s) }) }],
-    swapped: false,
-    tier: cur.tier,
-  }
-}
-
-// ── Tapping the shelf ───────────────────────────────────────────────────────
+// The two rooms USED to move and resize a placed piece freely inside its
+// mount's band (`planMoveOn`, `planMoveToPointOn`, `planResizeOn`). Those are
+// gone with dragging — see `data/layouts.ts` for why — and `clampToBand` above
+// survives them, because it is what keeps an ARRANGEMENT honest: however an
+// arrangement's numbers are set, every position it produces is clamped into the
+// band the piece belongs in. The churchyard keeps its own free placement and
+// its own percent-space clamp, which is a congregation's shared space and its
+// own argument (0084).
 
 export type PickOutcome =
   /** Goes to a free anchor of its mount. */

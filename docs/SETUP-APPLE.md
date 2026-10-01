@@ -50,11 +50,20 @@ npm run cap:ios      # opens Xcode
 In **Xcode**:
 1. Select the **App** target → **Signing & Capabilities**.
 2. Set **Team** (your Apple developer team). Confirm **Bundle Identifier** = `com.versearcade.app`.
-3. **+ Capability → Sign in with Apple**.
+3. **+ Capability → Sign in with Apple**. (Codemagic does this for the CI build:
+   it writes `App.entitlements` when — and only when — the provisioning profile
+   carries the capability, which it does if the App ID had it enabled when the
+   profile was created. If the build log says "no provisioning profile … carries
+   Sign in with Apple", enable it on the App ID, delete the old profile, and
+   rebuild; the app falls back to the in-app browser sign-in until then.)
 4. **+ Capability → Push Notifications** (needed later for the daily reminder;
    the code registration is stubbed in `src/lib/native.ts`).
 5. **Info** tab → add a **URL Type** with URL Scheme `com.versearcade.app` so the
    OAuth deep link `com.versearcade.app://auth/callback` returns to the app.
+   (Codemagic patches this into the regenerated Info.plist on every build.) The
+   sign-in itself runs in an in-app Safari View Controller and lands on the
+   site's bridge page first — see `docs/SETUP-SUPABASE.md` step 1.5 for the two
+   redirect URLs Supabase needs.
 6. Run on a simulator/device (▶). The synthesized sounds + haptics work on device.
 
 ---

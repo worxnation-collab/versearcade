@@ -17,19 +17,24 @@ import type { QuizStep } from '@/lib/tiktokRender'
 import { challengeIndex } from '@/lib/tiktokChallenge'
 import {
   READERS, TELLERS, ROOMS, skinPath, loadScene, publicUrl, existsAt, parkFile,
-  seedFor, autoPick, autoCast, challengeCast, spokenReference, call, fetchCopy, fetchStory, fetchVoice, bedFor, backdropFor, tierFor, speakerFor, loadStages, ownStage,
+  seedFor, autoPick, autoCast, challengeCast, spokenReference, call, fetchCopy, fetchStory, fetchVoice, bedFor, backdropFor, tierFor, speakerFor, ownFigure,
   FOUNDER_PHOTO, VOICE_LABEL, voiceWavPath, voiceJsonPath,
   type Copy, type Made, type Story, type Renderer, type VoiceTrack,
 } from './shared'
-import { sanitizeStages } from '@/data/tiktokStages'
+import { stagePath, STORY_STAGES } from '@/data/tiktokStages'
+import { READINGS, stageForReading, type ReadingKind } from '@/data/tiktokWeek'
+import { MOMENTS, momentPath } from '@/data/tiktokMoments'
+import { castFor } from '@/data/tiktokCast'
+import { EXCHANGES, exchangeForDate, isExchangeDay, voiceFor } from '@/data/tiktokExchanges'
+import type { TimedWord } from '@/lib/tiktokRender'
 
 export type Progress = (fraction: number, label: string) => void
 
 /** What every generator returns: the finished file plus what the card shows. */
 export interface MadeBlob extends Made { blob: Blob }
 
-function made(d: string, kind: Made['kind'], reference: string, out: { blob: Blob; ext: 'mp4' | 'webm'; phrases: Made['phrases'] }, copy: Copy | null, tier: string, voiced = false): MadeBlob {
-  return { date: d, kind, reference, url: URL.createObjectURL(out.blob), ext: out.ext, size: out.blob.size, copy, phrases: out.phrases, tier, voiced, blob: out.blob }
+function made(d: string, kind: Made['kind'], reference: string, out: { blob: Blob; ext: 'mp4' | 'webm'; phrases: Made['phrases'] }, copy: Copy | null, tier: string, voiced = false, opened = false): MadeBlob {
+  return { date: d, kind, reference, url: URL.createObjectURL(out.blob), ext: out.ext, size: out.blob.size, copy, phrases: out.phrases, tier, voiced, opened, blob: out.blob }
 }
 
 // ---- the verse reading -----------------------------------------------------------
@@ -75,6 +80,20 @@ export async function ensureOwn(d: string, progress: Progress, place: 'open' | '
   // The STORY's target: this half plays against Tabitha, not alone.
   const dec = await m.decodeRecording(await (await fetch(wavUrl + '?v=' + Date.now())).blob(), m.SPEECH_TARGET.story)
   const track = await m.transcribeOwn(dec.samples, dec.sampleRate, place, (label) => progress(0, label))
+  // THE PARKED TAKE HAS TO REACH THE END OF ITS OWN WORDS, and this is the
+  // door the CLI's `listen` already puts every take through (`refit`). The
+  // runner's four listeners did not, which is the half that mattered: a
+  // phone only uploads, so on a day he records on his sofa THIS is what
+  // parks the transcript, and a take cut short by the batch splitter went
+  // straight to the render with a caption that finished a sentence the
+  // audio never got to. Three posts went out that way before anybody
+  // noticed. `refit(track, track.text)` is a no-op on a sound take and
+  // throws on a short one, and what a throw MEANS is already decided by the
+  // caller: the verse and the story catch it and fall back to the synthetic
+  // voice, and an exchange refuses the day outright. Both are the honest
+  // answer, and neither is a truncated sentence on screen. The same line is
+  // on `ensureVoice`, `ensureReading` and `ensureExchangeVoice`.
+  m.refit(track, track.text)
   await parkFile(voiceJsonPath(d, 'story'), new Blob([JSON.stringify(track)], { type: 'application/json' }), 'application/json')
   try { await fetchCopy(d, 'story', true, { voiced: true }) } catch { /* written at render time otherwise */ }
   return { ...track, wavUrl }
@@ -90,14 +109,50 @@ export async function ensureVoice(d: string, progress: Progress): Promise<(Voice
   const m = await import('@/lib/tiktokVoice')
   const dec = await m.decodeRecording(await (await fetch(wavUrl + '?v=' + Date.now())).blob())
   const track = await m.splitRecording(dec.samples, dec.sampleRate, v.text, v.reference, (label) => progress(0, label))
+  m.refit(track, track.text)
   await parkFile(voiceJsonPath(d), new Blob([JSON.stringify(track)], { type: 'application/json' }), 'application/json')
   try { await fetchCopy(d, 'verse', true, { voiced: true }) } catch { /* written at render time otherwise */ }
   return { ...track, wavUrl }
 }
 
+/**
+ * The day the format changed: from here on the morning post is his hook over a
+ * synthetic reading, on a painting made for the verse, with the verse's own
+ * speaker standing in it.
+ *
+ * A DATE rather than a flag, because it is a look that starts on a day rather
+ * than on a deploy — and because a recording parked before it is a different
+ * thing (his full reading plus a long thought), which this layout would throw
+ * most of away.
+ */
+const OPENER_FROM = '2026-09-11'
+
+/** `Galatians 2:20` → the painting made for it, served out of the repo. */
+const versePainting = (reference: string): string =>
+  `/tiktok/verse/${String(reference).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}.jpg`
+
+/**
+ * His half of a morning recording, cut to the hook alone.
+ *
+ * The parked WAV is fetched rather than re-listened to: the words were timed
+ * when it was listened to and corrected, and `openerOf` only rebases them onto
+ * the cut. Nothing here transcribes anything.
+ */
+async function openerFor(own: { wavUrl: string; thought: TimedWord[] }, progress: Progress) {
+  if (!own.thought?.length) return null
+  progress(0, 'fetching your recording')
+  const wav = await (await fetch(own.wavUrl + '?v=' + Date.now())).blob()
+  const m = await import('@/lib/tiktokVoice')
+  return m.openerOf(wav, { seconds: 0, verse: [], thought: own.thought, heard: own.thought, text: '', verseMatched: 0 } as never)
+}
+
 export async function makeVerse(d: string, o: VerseOptions, progress: Progress): Promise<MadeBlob> {
   const v = getVerseForDate(d)
   const c = o.cast ?? autoCast(d)
+  // Who the verse is actually spoken by, for the format below. Computed here
+  // rather than inside the branch so a caller reading the log can see which
+  // rule picked the figure even on a day that falls back.
+  const c2 = castFor(v)
   const sd = seedFor(d)
   // The operator's own recording, if one is parked for the date, replaces
   // Gemini's reading and adds their thought after the verse — the words were
@@ -105,6 +160,63 @@ export async function makeVerse(d: string, o: VerseOptions, progress: Progress):
   // a desktop). No recording (or `ownVoice: false`) is the morning as it
   // always was.
   const own = o.ownVoice === false ? null : await ensureVoice(d, progress).catch((e) => { console.warn('own voice unavailable, falling back to Gemini:', e); return null })
+
+  // ---- the format from OPENER_FROM: he opens, a synthetic voice reads ------
+  //
+  // Three things change at once and they only make sense together. The figure
+  // in the frame is the verse's OWN speaker rather than a rotation (Paul
+  // stands for Paul; a divine speaker resolves to the prophet who recorded it,
+  // and God is never drawn — `castFor`). The backdrop is a painting made for
+  // THIS verse rather than one of nine roads. And his recording is the HOOK
+  // rather than the reading: the verse is read by Gemini underneath it.
+  //
+  // Why the reading moved off him, since it is the part that looks like a
+  // downgrade: a reading has to be recorded for that day's verse, so a day he
+  // misses has no human in it at all, and he was committed to fourteen full
+  // readings a week. A hook is ABOUT the verse without being it, so a batch
+  // can be recorded ahead and the reading underneath is always there. Two
+  // posts a day keep a person in them without a day ever going empty.
+  //
+  // Dated rather than flagged, the cheap gate for a look that starts on a day
+  // rather than on a deploy (`SPEAKER_SKIN` does the same). It matters here
+  // beyond neatness: a recording parked BEFORE this date is his full reading
+  // plus a 110-word thought, and rendering that as an opener would drop the
+  // reading — which is the whole post — on the floor.
+  //
+  // It fails closed at every step, and the fallback is never a failed post:
+  // no recording, no second half in it, no painting for the verse, no render
+  // for the cast figure — any of them and the day is the morning as it was.
+  const opener = d >= OPENER_FROM && own ? await openerFor(own, progress).catch(() => null) : null
+  if (opener) {
+    const r: Renderer = await import('@/lib/tiktokRender')
+    const scene = await r.loadImage(versePainting(v.reference)).catch(() => null)
+    const figure = await r.loadImage(`/skins/${c2.figure}.png`).catch(() => null)
+    if (scene && figure) {
+      progress(0, 'asking for the reading')
+      const p2 = o.voice ?? autoPick(d, c.reader)
+      const tts2 = await call<{ url: string; cached: boolean }>('tts', {
+        date: d, text: `${v.text.trim()} ${spokenReference(v.reference)}.`, voice: p2.voice, style: p2.style,
+      })
+      const reading = await (await fetch(tts2.url + '?v=' + Date.now())).arrayBuffer()
+      let copy2: Copy | null = null
+      if (o.copy !== false) {
+        progress(0, 'writing the caption')
+        try { copy2 = await fetchCopy(d, 'verse', false, { voiced: true }) } catch { copy2 = null }
+      }
+      progress(0, 'rendering')
+      const photo2 = await r.loadImage(publicUrl(FOUNDER_PHOTO) + '?v=' + Date.now()).catch(() => undefined)
+      const bed2 = o.music !== false ? await bedFor(await r.plannedDuration(reading, copy2?.hook, false, opener.audio), 'morning') : undefined
+      const out2 = await r.renderTikTok({
+        reference: v.reference, text: v.text, hook: copy2?.hook, audio: reading,
+        backdrop: { kind: 'builtin', scene, figure },
+        opener: { audio: opener.audio, words: opener.words, photo: photo2, label: VOICE_LABEL },
+        bed: bed2, onProgress: progress,
+      })
+      return made(d, 'verse', v.reference, out2, copy2, `${c2.figure} (${c2.why}) · painted for the verse · you open it`, true, true)
+    }
+    console.warn('opener format unavailable (no painting or no figure) — falling back')
+  }
+
   if (own) {
     progress(0, 'fetching your recording')
     const audio = await (await fetch(own.wavUrl + '?v=' + Date.now())).arrayBuffer()
@@ -181,6 +293,8 @@ export interface StoryOptions {
   align?: boolean
   /** Render the telling alone, ignoring anything parked in the operator's voice for the date. */
   ownVoice?: boolean
+  /** Rewrite the telling instead of reading the cached one — the way a story parked before stages existed gets its `scenes`. */
+  restory?: boolean
   /**
    * Where a recording that has NOT yet been transcribed belongs — 'open' to
    * introduce Tabitha, 'close' to answer her. A recording already listened
@@ -212,6 +326,10 @@ export async function storyAssets(r: Renderer, tellerId: string, roomPath: strin
 export async function makeNote(d: string, o: { cast?: { reader: string; scene: string }; copy?: boolean }, progress: Progress): Promise<MadeBlob> {
   const v = getVerseForDate(d)
   const c = o.cast ?? autoCast(d)
+  // Who the verse is actually spoken by, for the format below. Computed here
+  // rather than inside the branch so a caller reading the log can see which
+  // rule picked the figure even on a day that falls back.
+  const c2 = castFor(v)
   const sd = seedFor(d)
   progress(0, 'writing the note')
   let copy: Copy | null = null
@@ -239,7 +357,15 @@ export async function makeStory(d: string, o: StoryOptions, progress: Progress):
   // and its transcript parked before `fetchCopy` runs below.
   const own = o.ownVoice === false ? null : await ensureOwn(d, progress, o.ownPlace).catch((e) => { console.warn('your voice unavailable, telling it without one:', e); return null })
   progress(0, 'writing the story')
-  const st = o.story ?? await fetchStory(d, false)
+  // `restory` rewrites the telling rather than reading the cached one, and it
+  // exists because of a specific gap: every story parked before stages
+  // existed has no `scenes` key at all, so it renders as Tabitha in her
+  // library from the first word to the last and the whole staging feature is
+  // silently inert. Nothing about the cached file says it is missing
+  // anything — it has a title, a hook and its paragraphs, and it renders
+  // perfectly. The same shape as every other stale-artefact trap in this
+  // engine: the code was fixed and what the code had already written was not.
+  const st = o.story ?? await fetchStory(d, o.restory === true)
   const tellerId = o.cast?.teller ?? 'tabitha'
   const roomPath = o.cast?.room ?? ROOMS[0].id
   const p = o.voice ?? pickStoryVoice(sd, tellerId)
@@ -263,16 +389,21 @@ export async function makeStory(d: string, o: StoryOptions, progress: Progress):
   const r: Renderer = await import('@/lib/tiktokRender')
   const { roomImg, tellerImg } = await storyAssets(r, tellerId, roomPath)
   const paragraphs = [...st.paragraphs, `${v.text.trim()} ${v.reference}.`]
-  // Where each paragraph is set. The VERSE — always the last one — is never
-  // staged: Tabitha reads it from her own book in her own room, and coming
-  // back is what makes the middle feel like somewhere she took you.
-  const scenes = st.scenes?.length
-    ? [...await loadStages(r, sanitizeStages(st.scenes, st.paragraphs.length)), null]
-    : undefined
-  // His own dark stage, and his figure standing on it — the same one-of-one
-  // skin the morning post's reader hands the road to. A missing painting is
-  // his photo over the library exactly as before, never a failed post.
-  const stage = own ? await ownStage(r) : null
+  // The telling stays in ONE ROOM. No `scenes`, so no cuts: the library is
+  // the whole of the picture from the first frame to the end card.
+  //
+  // The staging is not deleted — `st.scenes` is still written by the story
+  // prompt, `sanitizeStages` and `loadStages` still work, and the parked READING
+  // kinds still use the same machinery — it is simply not asked for here.
+  // Read the note on `StoryInput.scenes` before turning it back on: what it
+  // cost was that a telling read as a slideshow of generated pictures, and
+  // what it saved was the one image on this channel nobody has to be sold on.
+  //
+  // His own render, which stands in the corner of her library while he speaks
+  // — the same one-of-one skin the morning post's reader hands the road to.
+  // A missing file is his photo over the library exactly as before, never a
+  // failed post.
+  const figure = own ? await ownFigure(r) : null
   const hook = st.hook || copy?.hook
   // The operator's own half, when one is parked for the date. The telling is
   // unchanged either way — his recording is joined to it, never in place of
@@ -282,14 +413,24 @@ export async function makeStory(d: string, o: StoryOptions, progress: Progress):
   const bed = o.music !== false ? await bedFor(await r.plannedDuration(audio, hook, true, ownAudio), 'cloister') : undefined
   const out = await r.renderStory({
     title: st.title, reference: v.reference, verseText: v.text,
-    paragraphs, hook, audio, room: roomImg, teller: tellerImg, bed, align: o.align, scenes, stage: stage ?? undefined,
+    paragraphs, hook, audio, room: roomImg, teller: tellerImg, bed, align: o.align, figure: figure ?? undefined,
     own: own && ownAudio
       ? { audio: ownAudio, words: own.thought, text: own.text, place: own.place ?? o.ownPlace ?? 'close', photo, label: VOICE_LABEL }
       : undefined,
     onProgress: progress,
   })
   const teller = TELLERS.find((x) => x.id === tellerId)?.name ?? tellerId
-  return made(d, 'story', v.reference, out, copy, `${teller} · story${own ? ' · your voice' : ''}`, !!(own && ownAudio))
+  // `opened` where his half OPENS the post, which is every scheduled story in
+  // this format. The evening disclosure then names what the synthetic voice
+  // actually does — tell the story — instead of claiming the voice is his,
+  // which is true of about twelve seconds of seventy.
+  //
+  // Deliberately NOT set for `place: 'close'`. That shape (Tabitha, then his
+  // closing word) has the same problem and predates this; naming his half an
+  // "introduction" when it is the last thing said would be a new falsehood to
+  // fix an old one. It wants its own line, and it is not what ships.
+  const opensIt = !!(own && ownAudio) && (own.place ?? o.ownPlace ?? 'close') === 'open'
+  return made(d, 'story', v.reference, out, copy, `${teller} · story${own ? ' · your voice' : ''}`, !!(own && ownAudio), opensIt)
 }
 
 // ---- yesterday's quiz ----------------------------------------------------------------
@@ -331,6 +472,141 @@ export interface QuizOptions {
   copy?: boolean
   music?: boolean
   align?: boolean
+}
+
+// ---- the weekday readings ------------------------------------------------------------
+//
+// Six forms, ONE generator, because they are one layout: his recording IS the
+// telling (`renderStory` with no `audio`), over held paintings that cut, ending
+// on the day's verse. What differs between a book summary and a prayer is the
+// PICTURES and the SCRIPT — not a line of rendering. Full design:
+// docs/TIKTOK-WEEK.md.
+//
+// It fails closed in one direction only, and deliberately: **no recording, no
+// post.** The morning verse falls back to Gemini because it always has and it
+// is labelled honestly; a reading does not, because the entire reason these
+// exist is that a person made them. `makeReading` throws rather than
+// substituting a synthetic voice, and the runner reports it as a skip.
+
+export interface ReadingOptions {
+  copy?: boolean
+  music?: boolean
+  align?: boolean
+  /**
+   * WHICH thing the reading is about — a moment id, a figure's skin, a stage
+   * id — and the reference its end card carries.
+   *
+   * A reading is a RECORDING, and a recording is about one specific thing:
+   * the take parked for 2026-09-09 is about the bow in the cloud, so a
+   * derived pick landing on the cup would put the wrong painting and the
+   * wrong reference under his own voice saying otherwise. `pickIndex` is
+   * the fallback for a date nobody chose for — never the authority over a
+   * date somebody recorded for.
+   */
+  pick?: string
+  reference?: string
+}
+
+/** His parked recording for a (date, reading kind), listening to it here if a phone only uploaded. */
+export async function ensureReading(d: string, kind: ReadingKind, progress: Progress): Promise<(VoiceTrack & { wavUrl: string }) | null> {
+  const parked = await fetchVoice(d, kind).catch(() => null)
+  if (parked) return parked
+  const wavUrl = publicUrl(voiceWavPath(d, kind))
+  if (!(await existsAt(wavUrl + '?v=' + Date.now(), 'audio/'))) return null
+  progress(0, `listening to your ${READINGS[kind].name.toLowerCase()}`)
+  const m = await import('@/lib/tiktokVoice')
+  const dec = await m.decodeRecording(await (await fetch(wavUrl + '?v=' + Date.now())).blob(), m.SPEECH_TARGET.story)
+  const track = await m.transcribeOwn(dec.samples, dec.sampleRate, 'close', (label) => progress(0, label))
+  m.refit(track, track.text)
+  await parkFile(voiceJsonPath(d, kind), new Blob([JSON.stringify(track)], { type: 'application/json' }), 'application/json')
+  return { ...track, wavUrl }
+}
+
+/**
+ * The pictures a reading is told over.
+ *
+ * Every id resolves to a file this build ships, and anything that will not
+ * load is dropped rather than failing the post — a reading with no backdrop
+ * falls back to the library, which is what `renderStory` does with an empty
+ * list anyway.
+ */
+async function readingScenes(r: Renderer, d: string, kind: ReadingKind, pick?: string): Promise<Array<HTMLImageElement | null>> {
+  const load = (p: string) => r.loadImage(p).catch(() => null)
+  if (kind === 'moment') {
+    return [await load(momentPath(momentFor(d, pick).id))]
+  }
+  if (kind === 'figure') {
+    // One stage, held: the figure stands on it and the clues are the motion.
+    return [await load(stagePath(picks(pick)[0] ?? stageForReading(d, kind)))]
+  }
+  if (kind === 'before') {
+    // Two: where it was heading, and where it went — so `pick` names both,
+    // comma-separated. The derived pair is a rotation over ten paintings and
+    // knows nothing about the passage: it stood Esther walking into the
+    // king's court in a wheat field, and then on a coast road. A reading
+    // says where it happens; the rotation is only the fallback.
+    const [a, b] = picks(pick)
+    return [
+      await load(stagePath(a ?? stageForReading(d, kind))),
+      await load(stagePath(b ?? stageForReading(d, kind, 3))),
+    ]
+  }
+  if (kind === 'prayer') return [await load('/room/room-dusk-4.jpg')]
+  return [await load(stagePath(picks(pick)[0] ?? stageForReading(d, kind)))]
+}
+
+/** The stage ids an operator named, in order, keeping only ones this build ships. */
+function picks(pick?: string): Array<string | undefined> {
+  return String(pick ?? '').split(',').map((x) => x.trim()).map((x) => (STORY_STAGES.some((s) => s.id === x) ? x : undefined))
+}
+
+/** The moment a date is ABOUT: the operator's own choice where there is one, the rotation otherwise. */
+function momentFor(d: string, pick?: string) {
+  return MOMENTS.find((m) => m.id === pick) ?? MOMENTS[pickIndex(d, 'moment', MOMENTS.length)]
+}
+
+/** A no-repeat pick over a list, seeded per (date, kind) the way every rotation here is. */
+function pickIndex(d: string, salt: string, n: number): number {
+  let h = 2166136261
+  for (const c of `${d}:${salt}`) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619) }
+  h ^= h >>> 16; h = Math.imul(h, 2246822507); h ^= h >>> 13; h = Math.imul(h, 3266489909); h ^= h >>> 16
+  return (h >>> 0) % Math.max(1, n)
+}
+
+export async function makeReading(d: string, kind: ReadingKind, o: ReadingOptions, progress: Progress): Promise<MadeBlob> {
+  const v = getVerseForDate(d)
+  const def = READINGS[kind]
+  progress(0, 'looking for your recording')
+  const own = await ensureReading(d, kind, progress)
+  if (!own) throw new Error(`no recording parked for ${d} ${kind} — a reading is never posted in a synthetic voice`)
+  let copy: Copy | null = null
+  if (o.copy !== false) {
+    progress(0, 'writing the caption')
+    try { copy = await fetchCopy(d, kind, false, { voiced: true }) } catch { copy = null }
+  }
+  progress(0, 'rendering')
+  const r: Renderer = await import('@/lib/tiktokRender')
+  const ownAudio = await (await fetch(own.wavUrl + '?v=' + Date.now())).arrayBuffer()
+  const photo = await r.loadImage(publicUrl(FOUNDER_PHOTO) + '?v=' + Date.now()).catch(() => undefined)
+  const scenes = await readingScenes(r, d, kind, o.pick)
+  const room = scenes.find(Boolean) ?? (await r.loadImage(ROOMS[0].id).catch(() => r.loadImage('/keep/study-library.jpg')))
+  const bed = o.music !== false ? await bedFor(await r.plannedDuration(undefined, copy?.hook, true, ownAudio), kind === 'quiet' || kind === 'prayer' ? 'cloister' : 'morning') : undefined
+  const moment = kind === 'moment' ? momentFor(d, o.pick) : null
+  const title = moment ? moment.title
+    : kind === 'figure' ? 'Who is this?'
+    : kind === 'book' ? `The book of ${v.book}`
+    : copy?.hook || def.name
+  // The end card names what was just READ, which is only the day's verse when
+  // the reading is about the day's verse. A moment carries its own citation,
+  // and an operator who recorded against a different passage says so.
+  const reference = o.reference || moment?.reference || v.reference
+  const out = await r.renderStory({
+    title, reference, verseText: reference === v.reference ? v.text : '',
+    paragraphs: [], hook: copy?.hook, room, eyebrow: def.eyebrow, scenes, bed, align: o.align,
+    own: { audio: ownAudio, words: own.thought, text: own.text, place: 'close', photo, label: VOICE_LABEL },
+    onProgress: progress,
+  })
+  return made(d, kind, reference, out, copy, `${def.name} · your voice`, true)
 }
 
 export async function makeQuiz(d: string, o: QuizOptions, progress: Progress): Promise<MadeBlob> {
@@ -433,4 +709,134 @@ export async function makeChallenge(d: string, o: ChallengeOptions, progress: Pr
   const out = await r.renderQuiz({ ...base, audio, bed, cues, onProgress: progress })
   const won = step.pick === q.answerIndex
   return made(d, kind, v.reference, out, copy, `${name} · Q${qi + 1} · ${won ? 'got it' : 'missed it'}`)
+}
+
+// ---- the exchange ------------------------------------------------------------------
+//
+// The third post: he opens, two figures out of the text ask and answer each
+// other, the answer lands as one whole-frame word, and he closes on a
+// question. Three a week (Mon/Wed/Fri — `EXCHANGE_DAYS`), and which exchange
+// a date gets is derived from the calendar on both sides, so the hub and the
+// runner never have to agree about anything but the date.
+
+export interface ExchangeOptions {
+  /** A fixed exchange; omitted means the date's own. */
+  pick?: string
+  copy?: boolean
+  music?: boolean
+  align?: boolean
+}
+
+/**
+ * One end of his recording for an exchange, listened to here if a phone only
+ * uploaded. `ensureOwn`'s twin, and it exists for the same reason: a phone
+ * cannot run Whisper, so the morning runner has to be able to do the
+ * listening itself or a day he recorded on his sofa has no voice in it.
+ */
+export async function ensureExchangeVoice(d: string, half: 'exchange' | 'exchange-close', progress: Progress): Promise<(VoiceTrack & { wavUrl: string }) | null> {
+  const parked = await fetchVoice(d, half).catch(() => null)
+  if (parked) return parked
+  const wavUrl = publicUrl(voiceWavPath(d, half))
+  if (!(await existsAt(wavUrl + '?v=' + Date.now(), 'audio/'))) return null
+  progress(0, `listening to your ${half === 'exchange' ? 'opening' : 'closing'} take`)
+  const m = await import('@/lib/tiktokVoice')
+  const dec = await m.decodeRecording(await (await fetch(wavUrl + '?v=' + Date.now())).blob(), m.SPEECH_TARGET.story)
+  // Both halves are all thought — there is no verse read in this format at
+  // all — so `transcribeOwn` is the listener, as it is for a story's half.
+  const track = await m.transcribeOwn(dec.samples, dec.sampleRate, half === 'exchange' ? 'open' : 'close', (label) => progress(0, label))
+  m.refit(track, track.text)
+  await parkFile(voiceJsonPath(d, half), new Blob([JSON.stringify(track)], { type: 'application/json' }), 'application/json')
+  return { ...track, wavUrl }
+}
+
+/** His recording, fetched and cut to what he actually said. */
+async function halfOf(v: VoiceTrack & { wavUrl: string }): Promise<{ audio: ArrayBuffer; words: TimedWord[]; text: string }> {
+  const audio = await (await fetch(v.wavUrl + '?v=' + Date.now())).arrayBuffer()
+  return { audio, words: v.thought, text: v.text }
+}
+
+export async function makeExchange(d: string, o: ExchangeOptions, progress: Progress): Promise<MadeBlob> {
+  const e = (o.pick ? EXCHANGES.find((x) => x.id === o.pick) : null) ?? exchangeForDate(d)
+  if (!e) throw new Error(`no exchange for ${d} — ${isExchangeDay(d) ? 'the bank is empty' : 'not an exchange day'}`)
+
+  // **Both halves are required, and this is the one generator that refuses
+  // rather than falling back.** Every other post here degrades to a fully
+  // synthetic version when no recording is parked, because it still has
+  // something to say — a verse gets read, a story gets told. An exchange with
+  // no human voice in it is two synthesised characters talking to each other
+  // over a painting, with nothing a person made anywhere in it, going to the
+  // two networks that judge a CHANNEL. That is the exact shape the
+  // originality policies describe, and the warmth argument that put this
+  // format on YouTube and Facebook at all rests on him being in it.
+  //
+  // So a day with no takes makes NO POST rather than a thin one. The runner
+  // reports it and moves on; the verse and the story still go out.
+  progress(0, 'finding your takes')
+  const [openV, closeV] = await Promise.all([
+    ensureExchangeVoice(d, 'exchange', progress),
+    ensureExchangeVoice(d, 'exchange-close', progress),
+  ])
+  if (!openV || !closeV) {
+    const missing = [!openV && 'opening', !closeV && 'closing'].filter(Boolean).join(' and ')
+    throw new Error(`no ${missing} take parked for ${d} — an exchange is voiced at both ends by design, so this day makes no exchange`)
+  }
+  const [open, close] = await Promise.all([halfOf(openV), halfOf(closeV)])
+
+  // The two synthesised speakers. Each figure has its own voice and its own
+  // delivery note; `check:exchanges` asserts the two never share a voice,
+  // because an exchange in one voice is one person talking to himself.
+  progress(0, 'asking for the two voices')
+  const av = voiceFor(e.asker), bv = voiceFor(e.answerer)
+  const [askTts, answerTts] = await Promise.all([
+    call<{ url: string }>('tts', { date: d, text: e.question, voice: av.voice, style: av.style }),
+    call<{ url: string }>('tts', { date: d, text: e.answer, voice: bv.voice, style: bv.style }),
+  ])
+  const [askAudio, answerAudio] = await Promise.all([
+    fetch(askTts.url + '?v=' + Date.now()).then((r) => r.arrayBuffer()),
+    fetch(answerTts.url + '?v=' + Date.now()).then((r) => r.arrayBuffer()),
+  ])
+
+  progress(0, 'loading the scene')
+  const r: Renderer = await import('@/lib/tiktokRender')
+  const load = (p: string) => r.loadImage(p).catch(() => null)
+  // The painting fails closed to the Harvest Road, exactly as a missing
+  // per-verse painting does — an ungenerated backdrop is never a failed post.
+  const scene = (await load(`/tiktok/exchange/${e.scene}.jpg`)) ?? (await loadScene(r, 'harvest'))
+  const [askFig, askAsking, askStruck, ansFig, ansSettled] = await Promise.all([
+    load(skinPath(e.asker)), load(`/skins/${e.asker}_asking.png`), load(`/skins/${e.asker}_struck.png`),
+    load(skinPath(e.answerer)), load(`/skins/${e.answerer}_settled.png`),
+  ])
+  // The BASE renders are the only ones that must exist: an expression variant
+  // that will not load leaves that figure's face unchanged, which is a
+  // quieter post rather than a broken one.
+  if (!askFig || !ansFig) throw new Error(`no render for ${!askFig ? e.asker : e.answerer} — check:exchanges should have caught this`)
+
+  let copy: Copy | null = null
+  if (o.copy !== false) {
+    progress(0, 'writing the caption')
+    try {
+      copy = await fetchCopy(d, 'exchange', false, {
+        voiced: true,
+        about: `${e.hook}. ${e.question} — ${e.answer} The payoff on screen is ${e.payoff}. He opens by saying: ${e.open} He closes by saying: ${e.close}`,
+      })
+    } catch { copy = null }
+  }
+
+  progress(0, 'rendering')
+  const photo = await r.loadImage(publicUrl(FOUNDER_PHOTO) + '?v=' + Date.now()).catch(() => undefined)
+  const bed = o.music !== false
+    ? await bedFor(await r.exchangeDuration({ open: open.audio, ask: askAudio, answer: answerAudio, close: close.audio }), 'morning')
+    : undefined
+  const out = await r.renderExchange({
+    reference: e.reference, verseText: e.verseText, hook: e.hook,
+    scene,
+    asker: { figure: askFig, speaking: askAsking, turned: askStruck, audio: askAudio, text: e.question },
+    answerer: { figure: ansFig, turned: ansSettled, audio: answerAudio, text: e.answer },
+    payoff: e.payoff, payoffNote: e.payoffNote,
+    own: { open, close, photo, label: VOICE_LABEL },
+    bed, align: o.align, onProgress: progress,
+  })
+  // `voiced` and `opened` are BOTH true and never inferred: he speaks at two
+  // ends of this one, which is what `AI_NOTE_EXCHANGE` says out loud.
+  return made(d, 'exchange', e.reference, out, copy, `${e.asker} → ${e.answerer} · ${e.payoff} · your voice at both ends`, true, true)
 }

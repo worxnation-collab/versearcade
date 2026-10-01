@@ -2,8 +2,9 @@ import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from './auth'
 import { useSeason } from './season'
-import { planRoomMove, planRoomMoveToPoint, planRoomPlacement, planRoomResize } from '@/data/room'
+import { planRoomPlacement } from '@/data/room'
 import { DEFAULT_ROOM_SKIN, ROOM_SKINS, type RoomSkinId } from '@/features/room/skins'
+import { ARRANGEMENTS, DEFAULT_ARRANGEMENT } from '@/data/layouts'
 import type { AvatarSpec } from '@/types'
 
 // The Upper Room — where your own furnishings sit.
@@ -30,11 +31,6 @@ export interface RoomPlaceResult {
   failed?: boolean
 }
 
-export interface RoomMoveResult {
-  swapped: boolean
-  tier: number
-  anchor: string
-}
 
 function localKey(): string {
   const uid = useAuth.getState().profile?.id
@@ -46,6 +42,21 @@ function localKey(): string {
 function skinKey(): string {
   const uid = useAuth.getState().profile?.id
   return uid ? `va.room.skin.${uid}` : 'va.room.skin.guest'
+}
+
+/** The chosen arrangement — its own key, for the same two reasons. */
+function layoutKey(): string {
+  const uid = useAuth.getState().profile?.id
+  return uid ? `va.room.layout.${uid}` : 'va.room.layout.guest'
+}
+
+function readLocalLayout(): string {
+  try {
+    const raw = localStorage.getItem(layoutKey())
+    return ARRANGEMENTS.some((a) => a.id === raw) ? (raw as string) : DEFAULT_ARRANGEMENT
+  } catch {
+    return DEFAULT_ARRANGEMENT
+  }
 }
 
 function readLocalSkin(): RoomSkinId {
@@ -84,6 +95,8 @@ interface RoomState {
   /** What the room is made of. Free, chosen, and never a number — see
    *  features/room/skins.ts. */
   skin: RoomSkinId
+  /** How the room lays itself out (`data/layouts.ts`, 0112). */
+  layout: string
   load: () => Promise<void>
   /**
    * Put a furnishing on an anchor (null clears it). A duplicate MERGES rather
@@ -92,41 +105,60 @@ interface RoomState {
    * cannot disagree about what a second stool means.
    */
   place: (anchor: string, id: string | null) => Promise<RoomPlaceResult>
-  /** Move a placed piece to another anchor of the same mount. */
-  move: (from: string, to: string) => Promise<RoomMoveResult | null>
-  /** Apply pre-planned writes (moveTo/resize) through the usual two paths. */
-  arrange: (writes: { anchor: string; value: string | null }[]) => Promise<boolean>
-  /** Stand the furnishing on `from` at a free point inside its mount's band. */
-  moveTo: (from: string, x: number, y: number) => Promise<boolean>
-  /** Resize the furnishing on `anchor`, clamped to SCALE_MIN..SCALE_MAX. */
-  resize: (anchor: string, scale: number) => Promise<boolean>
   /** Repaint the room. Optimistic, then persisted on whichever path applies. */
   setSkin: (id: RoomSkinId) => Promise<boolean>
+  setLayout: (id: string) => Promise<boolean>
 }
 
 export const useRoom = create<RoomState>((set, get) => ({
   loaded: false,
   placements: {},
   skin: DEFAULT_ROOM_SKIN,
+  layout: DEFAULT_ARRANGEMENT,
 
   async load() {
     if (isOnline()) {
       const { data, error } = await supabase!.rpc('my_room')
       if (!error && data) {
-        const raw = data as { placements?: RoomPlacements; skin?: string }
+        const raw = data as { placements?: RoomPlacements; skin?: string; layout?: string }
         // A server without 0110 simply omits `skin`, and the room is clay —
-        // which is what it has always looked like. Fails closed either way.
+        // which is what it has always looked like. One without 0112 omits
+        // `layout`, and the room is `settled`, which is how it has always been
+        // laid out. Fails closed on both.
         set({
           loaded: true,
           placements: raw.placements ?? {},
           skin: ROOM_SKINS.some((s) => s.id === raw.skin) ? (raw.skin as RoomSkinId) : DEFAULT_ROOM_SKIN,
+          layout: ARRANGEMENTS.some((a) => a.id === raw.layout) ? (raw.layout as string) : DEFAULT_ARRANGEMENT,
         })
         return
       }
       set({ loaded: true })
       return
     }
-    set({ loaded: true, placements: readLocal(), skin: readLocalSkin() })
+    set({ loaded: true, placements: readLocal(), skin: readLocalSkin(), layout: readLocalLayout() })
+  },
+
+  async setLayout(id) {
+    if (!ARRANGEMENTS.some((a) => a.id === id)) return false
+    const before = get().layout
+    set({ layout: id })
+    if (isOnline()) {
+      // Awaited and checked, the postgrest-js rule — and on a refusal the old
+      // arrangement goes back rather than leaving an optimistic lie on screen.
+      const { error } = await supabase!.rpc('set_room_layout', { p_layout: id })
+      if (error) {
+        set({ layout: before })
+        return false
+      }
+    } else {
+      try {
+        localStorage.setItem(layoutKey(), id)
+      } catch {
+        /* private mode: re-arranged for this session only */
+      }
+    }
+    return true
   },
 
   async setSkin(id) {
@@ -192,83 +224,6 @@ export const useRoom = create<RoomState>((set, get) => ({
     return { anchor: plan.anchor, tier: plan.tier, value: plan.value }
   },
 
-  async move(from, to) {
-    const plan = planRoomMove(get().placements, from, to)
-    if (!plan) return null
-
-    const next = { ...get().placements }
-    for (const w of plan.writes) {
-      if (w.value) next[w.anchor] = w.value
-      else delete next[w.anchor]
-    }
-    set({ placements: next })
-
-    if (isOnline()) {
-      // Two rows move, so two calls — awaited, for the reason in place(). The
-      // RPC is per-anchor and idempotent, and a half-applied move is two
-      // well-formed placements rather than a lost piece, which is why the
-      // planner never overwrites.
-      const results = await Promise.all(
-        plan.writes.map((w) =>
-          supabase!.rpc('set_room_placement', { p_anchor: w.anchor, p_item: w.value }),
-        ),
-      )
-      if (results.some((r) => r.error)) {
-        await get().load()
-        return null
-      }
-    } else {
-      const disk = readLocal()
-      for (const w of plan.writes) {
-        if (w.value) disk[w.anchor] = w.value
-        else delete disk[w.anchor]
-      }
-      writeLocal(disk)
-    }
-
-    return { swapped: plan.swapped, tier: plan.tier, anchor: to }
-  },
-
-  // Free position and size — see store/keep.ts arrange() for why this does not
-  // go through place().
-  async arrange(writes) {
-    if (!writes.length) return true
-    const next = { ...get().placements }
-    for (const w of writes) {
-      if (w.value) next[w.anchor] = w.value
-      else delete next[w.anchor]
-    }
-    set({ placements: next })
-    if (isOnline()) {
-      const results = await Promise.all(
-        writes.map((w) => supabase!.rpc('set_room_placement', { p_anchor: w.anchor, p_item: w.value })),
-      )
-      if (results.some((r) => r.error)) {
-        await get().load()
-        return false
-      }
-    } else {
-      const disk = readLocal()
-      for (const w of writes) {
-        if (w.value) disk[w.anchor] = w.value
-        else delete disk[w.anchor]
-      }
-      writeLocal(disk)
-    }
-    return true
-  },
-
-  async moveTo(from, x, y) {
-    const plan = planRoomMoveToPoint(get().placements, from, x, y)
-    if (!plan) return false
-    return get().arrange(plan.writes)
-  },
-
-  async resize(anchor, scale) {
-    const plan = planRoomResize(get().placements, anchor, scale)
-    if (!plan) return false
-    return get().arrange(plan.writes)
-  },
 }))
 
 // ── Visiting ────────────────────────────────────────────────────────────────

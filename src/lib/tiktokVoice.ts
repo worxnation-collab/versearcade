@@ -81,7 +81,8 @@ const OUT_RATE = 48000
  * because the music bed sits under both voices and only the finished mix says
  * what a viewer hears.
  */
-export const SPEECH_TARGET = { verse: 0.14, story: 0.26 } as const
+export { SPEECH_TARGET } from './speechLevel'
+import { speechGain, knee, SPEECH_TARGET } from './speechLevel'
 
 /**
  * Decode an uploaded recording to mono samples at 48 kHz, and a WAV of the
@@ -117,23 +118,11 @@ export async function decodeRecording(file: Blob, target: number = SPEECH_TARGET
  * silence at both ends is trimmed to a short beat.
  */
 function trimAndLevel(samples: Float32Array, rate: number, target: number): Float32Array {
-  let peak = 0
-  for (let i = 0; i < samples.length; i++) peak = Math.max(peak, Math.abs(samples[i]))
+  // The GAIN is `speechLevel.ts`'s, shared with the renderer so the two
+  // speakers in a story cannot be levelled by two different rules. What is
+  // local here is the TRIM, which only a recording wants.
+  const { gain, floor, peak } = speechGain(samples, rate, target)
   if (peak < 1e-4) return samples
-  // Speech loudness: RMS over 10ms windows that sit above the noise floor.
-  const hop = Math.round(rate * 0.01)
-  const n = Math.floor(samples.length / hop)
-  const rms = new Float32Array(n)
-  for (let i = 0; i < n; i++) { let e = 0; for (let j = i * hop; j < (i + 1) * hop; j++) e += samples[j] * samples[j]; rms[i] = Math.sqrt(e / hop) }
-  const sorted = Float32Array.from(rms).sort()
-  const floor = sorted[Math.floor(n * 0.1)] ?? 0
-  const speechThr = Math.max(floor * 3, peak * 0.02)
-  let sum = 0, count = 0
-  for (let i = 0; i < n; i++) if (rms[i] > speechThr) { sum += rms[i] * rms[i]; count++ }
-  const speechRms = count ? Math.sqrt(sum / count) : peak / 3
-  const gain = Math.min(20, target / Math.max(speechRms, 1e-4))
-  // Soft knee from 0.7: a peak of 1.0 lands at 0.79, one of 2.0 at 0.91.
-  const knee = (x: number) => { const a = Math.abs(x); const y = a <= 0.7 ? a : 0.7 + 0.3 * Math.tanh((a - 0.7) / 0.3); return x < 0 ? -y : y }
   const thr = Math.max(0.02 / gain, floor * 2)
   let a = 0; while (a < samples.length && Math.abs(samples[a]) < thr) a++
   let b = samples.length; while (b > a && Math.abs(samples[b - 1]) < thr) b--
@@ -142,6 +131,55 @@ function trimAndLevel(samples: Float32Array, rate: number, target: number): Floa
   const out = new Float32Array(b - a)
   for (let i = a; i < b; i++) out[i - a] = knee(samples[i] * gain)
   return out
+}
+
+/**
+ * The OPENER half of a morning recording, cut out as its own WAV.
+ *
+ * A morning take is his reading of the verse and THEN his hook. The format
+ * uses only the hook — the verse is read by a synthetic voice, so his reading
+ * is not in the post at all — and the parked transcript already says where
+ * that second half begins: `thought[0].start`, the first word heard after the
+ * reading. The cut is that, less a short lead so no word loses its own onset.
+ *
+ * It hands back the words REBASED onto the cut as well as the audio, and that
+ * is the point of doing it here rather than handing the renderer a bare clip.
+ * These words were timed ONCE, against this very recording; subtracting a
+ * constant cannot drift them, where a second alignment pass over the clip
+ * would be a fresh chance to be wrong — and a wrong one is a caption on the
+ * screen under the wrong word.
+ *
+ * Decoded PLAIN on purpose. `decodeRecording` trims and levels, and a trim
+ * moves the clock the parked timings were measured against; the renderer
+ * levels both voices itself (`levelSpeech`) and trims the opener's tail, so
+ * nothing is lost by decoding faithfully here.
+ *
+ * Null rather than a throw when there is no second half to take — a recording
+ * that is all reading, or a clip under a second — because the caller's answer
+ * to that is the morning as it was, not a failed post.
+ */
+const OPENER_LEAD = 0.25
+export async function openerOf(wav: Blob, track: VoiceTrack): Promise<{ audio: ArrayBuffer; words: TimedWord[]; seconds: number } | null> {
+  const first = track.thought[0]
+  if (!first || !Number.isFinite(first.start)) return null
+  const buf = await wav.arrayBuffer()
+  const probe = new OfflineAudioContext(1, 1, 48000)
+  const decoded = await probe.decodeAudioData(buf.slice(0))
+  const off = new OfflineAudioContext(1, Math.ceil(decoded.duration * OUT_RATE), OUT_RATE)
+  const src = off.createBufferSource()
+  src.buffer = decoded
+  src.connect(off.destination)
+  src.start()
+  const samples = (await off.startRendering()).getChannelData(0)
+  const from = Math.max(0, first.start - OPENER_LEAD)
+  const a = Math.min(samples.length, Math.round(from * OUT_RATE))
+  if (samples.length - a < OUT_RATE) return null
+  const cut = samples.slice(a)
+  return {
+    audio: await wavBlob(cut, OUT_RATE).arrayBuffer(),
+    words: track.thought.map((w) => ({ ...w, start: Math.max(0, w.start - from), end: Math.max(0, w.end - from) })),
+    seconds: cut.length / OUT_RATE,
+  }
 }
 
 function wavBlob(samples: Float32Array, rate: number): Blob {
@@ -292,10 +330,23 @@ async function transcribePieces(samples: Float32Array, sampleRate: number, onPro
     }
     // Whisper names what it cannot read — "[BLANK_AUDIO]", "[ Pause ]",
     // "(music)" — and a breath comes back as one of those. Not words.
+    // A word cannot be timed outside the piece it was heard in.
+    //
+    // `collapsed` catches a piece whose timestamps ALL land on one instant
+    // and re-clocks it against the tiny model. What it does not catch is a
+    // PARTIAL collapse — the last few words of an otherwise well-timed piece
+    // stamped together, past its end. One take came back
+    // "bring[10.7-24.8] his[24.8] brothers[24.8] bread[24.8]" out of a 12.4s
+    // recording: every word right, the last four timed into a file that is
+    // not that long. Nothing threw. The caption then held its closing words
+    // for twelve seconds of a video that had already finished.
+    const dur = piece.length / sampleRate
     for (const w of words) {
       if (/[[\]()]/.test(w.text)) continue
-      const mid = off + (w.start + w.end) / 2
-      if (mid >= lo && mid < hi) out.push({ text: w.text, start: w.start + off, end: w.end + off })
+      const s = Math.min(Math.max(0, w.start), dur)
+      const e = Math.min(Math.max(s, w.end), dur)
+      const mid = off + (s + e) / 2
+      if (mid >= lo && mid < hi) out.push({ text: w.text, start: s + off, end: e + off })
     }
   }
   // Is there speech (a second of it, above the noise floor) between two times?
@@ -434,6 +485,8 @@ export async function transcribeOwn(samples: Float32Array, sampleRate: number, p
   }
 }
 
+export { dropVerse } from './dropVerse'
+
 /** Put the operator's corrected thought onto the timings Whisper heard. */
 export function refit(track: VoiceTrack, text: string): VoiceTrack {
   const words = text.replace(/\s+/g, ' ').trim().split(' ').filter(Boolean)
@@ -451,7 +504,27 @@ export function refit(track: VoiceTrack, text: string): VoiceTrack {
   // it is invisible in the transcript — only a rendered frame shows it.
   // The thought cannot begin before its own first heard word, so that is
   // the onset.
-  const { words: timed } = fitWords(words, track.heard, track.seconds, track.heard[0].start)
+  const { words: timed, tail } = fitWords(words, track.heard, track.seconds, track.heard[0].start)
+  // THE RECORDING HAS TO REACH THE END OF THE WORDS.
+  //
+  // A take cut short at the end still parks, still renders and still posts:
+  // the corrected text is fitted onto the timings that exist, the words with
+  // nothing behind them are stretched past the last thing he actually said,
+  // and the caption plays on over silence. Six verse takes went out that way
+  // before anybody noticed, every one stopping mid-sentence — "…Paul
+  // connects this weight directly to" — while the caption finished the
+  // sentence on screen. Nothing threw; the transcript was perfect, because
+  // the transcript is the thing that was WRONG.
+  //
+  // So a trailing run of words that matched NOTHING is refused here rather
+  // than drawn. Four is well past a corrected word or two at the end (the
+  // whole point of `fix`) and well under the ten-to-fourteen a real
+  // truncation loses.
+  const lastEnd = timed[timed.length - 1]?.end ?? 0
+  if (tail >= 4 || lastEnd > track.seconds + 0.5) {
+    const missing = words.slice(words.length - Math.max(tail, 1)).join(' ')
+    throw new Error(`the recording stops before the words do — ${tail} word${tail === 1 ? '' : 's'} have no audio behind them ("…${missing.slice(0, 60)}") and the caption would run to ${lastEnd.toFixed(1)}s of a ${track.seconds.toFixed(1)}s take. Re-cut this take.`)
+  }
   return { ...track, text: words.join(' '), thought: timed }
 }
 

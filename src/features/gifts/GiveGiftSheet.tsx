@@ -98,7 +98,7 @@ export function GiveGiftSheet({ username, onClose }: { username: string; onClose
           // opened it. Putting this at 100 drew the card over the room you had
           // just asked to see, and 120 would have buried the toasts.
           zIndex: 112,
-          background: 'rgba(8,3,24,0.72)',
+          background: 'rgba(9, 6, 8,0.72)',
           display: 'flex',
           alignItems: 'flex-end',
           justifyContent: 'center',

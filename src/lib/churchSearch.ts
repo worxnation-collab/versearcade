@@ -19,6 +19,15 @@
 //     region at a time, so somewhere we haven't loaded yet must still find its
 //     churches rather than showing an empty screen. Stale names there are the
 //     accepted cost of not having a dead picker abroad.
+//   • `search_church_places_named` — the SAME index, searched by name with no
+//     radius at all (0113). The answer for a church that is not near you, and
+//     the one source here that can find a hometown church from three hours
+//     away. Tried before Nominatim for the by-name search.
+//   • `search_church_places_in_city` + `church_cities_search` — the SAME index
+//     asked a different question: which town, then every church in it (0114).
+//     The answer for somebody who knows where their church is but not exactly
+//     what it is called, and for anybody who would rather not share a location
+//     at all.
 //   • Nominatim (OSM) — the same fallback rule for the by-name search.
 // Anything none of them knows can still be added by hand (see ChurchScreen).
 //
@@ -91,11 +100,18 @@ function fromIndex(row: PlaceRow, from: Coords | null): ChurchPlace | null {
     region: row.region ?? null,
     lat,
     lng,
-    miles: Number.isFinite(Number(row.miles))
-      ? Number(row.miles)
-      : from
-        ? milesBetween(from, { lat, lng })
-        : NaN,
+    // `row.miles == null` FIRST, because `Number(null)` is 0 and
+    // `Number.isFinite(0)` is true — so a row that carries no distance (every
+    // row from `search_church_places_in_city`, and every row from the
+    // nationwide name search when location is off) read as ZERO miles and the
+    // list said "right here" against a church in another state. Found by
+    // looking at the rendered rows; the JSON was right the whole time.
+    miles:
+      row.miles == null || !Number.isFinite(Number(row.miles))
+        ? from
+          ? milesBetween(from, { lat, lng })
+          : NaN
+        : Number(row.miles),
     confidence: Number.isFinite(Number(row.confidence)) ? Number(row.confidence) : undefined,
   }
 }
@@ -368,14 +384,198 @@ export async function searchChurchesByName(
   return from ? found.sort((a, b) => a.miles - b.miles) : found
 }
 
+/**
+ * A church that is NOT near you: the index searched by NAME, nationwide.
+ *
+ * This is the door that did not exist. Every other lookup here is bounded by a
+ * box around the player — 30 miles browsing, 60 for "a wider area" — which is
+ * the right default and the wrong ONLY option: a student at college, somebody
+ * who moved, anybody travelling has a church that is their hometown's, and the
+ * picker's answer was to push them at the add-by-hand card, which pins a church
+ * AT THEIR CURRENT POSITION. That is how "Appleton Alliance Church" came to be
+ * a Chipotle in Eau Claire, 155 miles away, while the real building sat in this
+ * very index with an address and a 0.97 confidence.
+ *
+ * `from` is optional and only orders the results — with no location this is a
+ * plain nationwide name lookup, which is also the only way in when location is
+ * refused. Swallows its own failures like every other source here: a server
+ * without 0113 returns an empty list and the caller falls through to OSM.
+ */
+export async function searchChurchPlacesByName(
+  q: string,
+  from: Coords | null,
+  limit = 40,
+): Promise<ChurchPlace[]> {
+  if (!supabase) return []
+  if (q.trim().length < 3) return []
+  try {
+    const res = await Promise.race([
+      supabase.rpc('search_church_places_named', {
+        p_q: q.trim(),
+        p_lat: from?.lat ?? null,
+        p_lng: from?.lng ?? null,
+        p_limit: limit,
+      }),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), PLACES_TIMEOUT_MS)),
+    ])
+    if (!res || res.error || !Array.isArray(res.data)) return []
+    // Already ordered by the server (name match, then distance, then
+    // confidence); do NOT re-sort by miles here or a nationwide search snaps
+    // back to being a nearest-first one, which is the thing it exists not to be.
+    return (res.data as PlaceRow[])
+      .map((r) => fromIndex(r, from))
+      .filter((p): p is ChurchPlace => p !== null)
+  } catch {
+    return []
+  }
+}
+
+/** A town in the index: what the city picker offers, from `church_cities`. */
+export interface ChurchCity {
+  /** `appleton|wi` — the normalised key `search_church_places_in_city` takes. */
+  cityKey: string
+  city: string
+  region: string | null
+  /** How many churches the index holds for it. Shown so a capped list can be honest. */
+  churches: number
+  /**
+   * The town centre, averaged over its churches. NOT a claim about where the
+   * player is: it exists so a hand-added church lands in the right town, and so
+   * the sponsored slot has a point to be asked about.
+   */
+  coords: Coords
+}
+
+/**
+ * The city picker's list (0114).
+ *
+ * ~36k towns is not a `<select>`, so the "drop down" is a list you type into.
+ * Two characters rather than three, because a state code IS two letters and
+ * "wi" is a real query. Swallows its own failures like every other source here:
+ * a server without 0114 returns nothing and the city door simply never offers
+ * anything, which the caller renders as "no towns by that name".
+ */
+export async function searchChurchCities(q: string, limit = 12): Promise<ChurchCity[]> {
+  if (!supabase) return []
+  if (q.trim().length < 2) return []
+  try {
+    const res = await Promise.race([
+      supabase.rpc('church_cities_search', { p_q: q.trim(), p_limit: limit }),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), PLACES_TIMEOUT_MS)),
+    ])
+    if (!res || res.error || !Array.isArray(res.data)) return []
+    return (res.data as any[])
+      .map((r): ChurchCity | null => {
+        const lat = Number(r.lat)
+        const lng = Number(r.lng)
+        const city = String(r.city ?? '').trim()
+        if (!r.city_key || !city || !Number.isFinite(lat) || !Number.isFinite(lng)) return null
+        return {
+          cityKey: String(r.city_key),
+          city,
+          region: r.region ? String(r.region) : null,
+          churches: Number(r.churches ?? 0),
+          coords: { lat, lng },
+        }
+      })
+      .filter((c): c is ChurchCity => c !== null)
+  } catch {
+    return []
+  }
+}
+
+/** "Appleton, WI" — one spelling of a town, used everywhere it is named. */
+export function cityLabel(c: { city: string; region: string | null }): string {
+  return c.region ? `${c.city}, ${c.region}` : c.city
+}
+
+/**
+ * Every church the index holds for ONE town, optionally filtered by name (0114).
+ *
+ * This is the question a radius cannot ask. `search_church_places` can only
+ * answer "within N miles of a point", so a player who knows the town but not
+ * the exact name had nothing to type — and a player who would rather not share
+ * their location had no way in at all.
+ *
+ * Rows come back with `miles` NULL on purpose: there is no observer here to be
+ * a distance from, so the row shows its address instead. `fromIndex` already
+ * renders that as NaN, which `formatMiles` draws as nothing.
+ */
+export async function churchesInCity(
+  cityKey: string,
+  q: string | null = null,
+  limit = 60,
+): Promise<ChurchPlace[]> {
+  if (!supabase) return []
+  if (!cityKey) return []
+  try {
+    const res = await Promise.race([
+      supabase.rpc('search_church_places_in_city', {
+        p_city_key: cityKey,
+        p_q: q && q.trim() ? q.trim() : null,
+        p_limit: limit,
+      }),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), PLACES_TIMEOUT_MS)),
+    ])
+    if (!res || res.error || !Array.isArray(res.data)) return []
+    // Server-ordered (best-attested first); do NOT re-sort by miles, which is
+    // null for every row here and would shuffle the list into arrival order.
+    return (res.data as PlaceRow[])
+      .map((r) => fromIndex(r, null))
+      .filter((p): p is ChurchPlace => p !== null)
+  } catch {
+    return []
+  }
+}
+
+/**
+ * The one normalisation, and it must MATCH THE SQL — `church_place_haystack`
+ * in 0113. The usual keep-them-in-sync pair, and this half is the one people
+ * see first: it is what filters the nearby list as you type.
+ *
+ * Apostrophes are DELETED and every other run of punctuation becomes a single
+ * space, so "St. Mark's", "St Marks" and "st marks" are one query. Deleting
+ * rather than spacing the apostrophe is the point — spacing gives "mark s",
+ * which "marks" still does not match, and half the saints in this table carry
+ * one.
+ */
+export function searchText(s: string): string {
+  return s.toLowerCase().replace(/'/g, '').replace(/[^a-z0-9]+/g, ' ')
+}
+
+/**
+ * What the player typed, as the words to look for. NEEDLE ONLY — the haystack
+ * keeps its own spelling.
+ *
+ * The one thing it does beyond `searchText` is drop a trailing "s", and that is
+ * a real gap rather than polish: this table holds "St. Joseph Parish" AND
+ * "St Joseph's Church", a person types whichever they say, and "josephs" is not
+ * a substring of "st joseph parish". Because these are SUBSTRING patterns the
+ * stem is always a prefix of the word it came from, so asking for "joseph"
+ * finds both spellings and can never find less than the full word would —
+ * which is why this is safe to do one-sidedly and needs no change to the index.
+ *
+ * Four characters or more only, so "is"/"us" are left alone and every word
+ * stays long enough for pg_trgm to have a trigram for it.
+ *
+ * KEEP IN SYNC with `search_church_places_named` in 0113, which does the same
+ * to its own needle — the usual pair.
+ */
+export function searchWords(q: string): string[] {
+  return searchText(q)
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => (w.length >= 4 && w.endsWith('s') ? w.slice(0, -1) : w))
+}
+
 /** Case/punctuation-insensitive "does this church match what they typed". */
 export function matchesQuery(place: ChurchPlace, q: string): boolean {
-  const needle = q.trim().toLowerCase()
-  if (!needle) return true
-  const hay = `${place.name} ${place.city ?? ''} ${place.address ?? ''}`.toLowerCase()
+  const words = searchWords(q)
+  if (!words.length) return true
+  const hay = searchText(`${place.name} ${place.city ?? ''} ${place.address ?? ''}`)
   // Every word has to appear somewhere, so "grace baptist" finds
   // "Grace Missionary Baptist Church" without needing the exact phrase.
-  return needle.split(/\s+/).every((word) => hay.includes(word))
+  return words.every((word) => hay.includes(word))
 }
 
 /**

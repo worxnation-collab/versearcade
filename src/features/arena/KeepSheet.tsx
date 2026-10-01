@@ -43,18 +43,6 @@ import { KeepScene } from './KeepScene'
 // ChurchDetailSheet / BookOpening family of bug). z-index 100 is the sheet
 // tier: the player card (110) opens OVER this when you tap a figure.
 
-const SIZE_BTN: React.CSSProperties = {
-  width: 32,
-  height: 32,
-  borderRadius: 10,
-  border: '1px solid var(--stroke)',
-  background: 'rgba(255,255,255,0.06)',
-  color: 'var(--ink)',
-  fontSize: 16,
-  fontWeight: 800,
-  cursor: 'pointer',
-}
-
 export function KeepSheet({
   denomination,
   onClose,
@@ -71,12 +59,6 @@ export function KeepSheet({
   // words what just happened. Tapping a second rug and watching a DIFFERENT
   // corner of the room change is the one confusing moment in the mechanic.
   const [merged, setMerged] = useState<{ anchor: string; name: string } | null>(null)
-  // The piece currently picked up, by anchor. Tap a prop to lift it, then drag
-  // it anywhere inside its mount's band or tap a spot of the same kind to trade
-  // places. Dragging is deliberately only available on the LIFTED piece: the
-  // hall is 300 viewBox units inside a scrolling sheet, so anything that grabbed
-  // the scroll before you had said what you were holding would fight it.
-  const [picked, setPicked] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
   const church = useChurch((s) => s.church)
 
@@ -108,34 +90,12 @@ export function KeepSheet({
     if (!useChurch.getState().loaded) void useChurch.getState().load()
   }, [])
 
-  // Tap a placed piece: lift it, or put it back down where it was.
-  const pickUp = (anchor: string) => {
-    juice.tap()
-    setPicked((cur) => (cur === anchor ? null : anchor))
-  }
-
-  // Tap a spot while carrying: move it there. An occupied spot trades places
-  // rather than overwriting (see planMove).
-  const dropOn = async (anchor: string) => {
-    const from = picked
-    if (!from) return
-    setPicked(null)
-    const res = await useKeep.getState().move(from, anchor)
-    if (!res) return
-    juice.select()
-    if (res.swapped) setNote('Swapped.')
-  }
-
-  // Where a dragged piece was let go: stand it right there. The planner clamps
-  // the point into the piece's own mount band, and the piece stays selected so
-  // a nudge can follow a nudge.
-  const dropAt = async (x: number, y: number) => {
-    if (!picked) return
-    juice.select()
-    await useKeep.getState().moveTo(picked, x, y)
-  }
-
-  // The ✕ on the lifted piece: take that one back down. It loses nothing —
+  // Tap a placed piece: take it back down.
+  //
+  // That is the ONLY gesture the hall has now. Lifting, dragging, dropping on a
+  // spot, trading places and resizing all came out with free placement — see
+  // data/layouts.ts — and taking a piece down is the one thing left that only
+  // makes sense with the piece in front of you rather than on the shelf. It loses nothing —
   // ownership is derived from the counters, which never move — so the piece is
   // back on the shelf at the same tier before the note fades.
   const removeAt = async (anchor: string) => {
@@ -144,7 +104,6 @@ export function KeepSheet({
     // members'. You can only take down your own, and saying so beats a note
     // claiming something came down while it stands there.
     const mine = useKeep.getState().placements[anchor]
-    setPicked(null)
     if (!mine) {
       setNote('That one is another member’s — you only furnish your own view.')
       return
@@ -156,14 +115,6 @@ export function KeepSheet({
       return
     }
     setNote(name ? `Took the ${name} back down — it’s on the shelf.` : null)
-  }
-
-  // Grow or shrink the selected piece a step. Bounds live in the planner.
-  const resizePicked = async (delta: number) => {
-    if (!picked) return
-    const cur = unpackDecor(useKeep.getState().placements[picked]).s ?? 1
-    juice.tap()
-    await useKeep.getState().resize(picked, cur + delta)
   }
 
   // Tap a piece on the shelf: it goes where it belongs, or upgrades the one
@@ -180,7 +131,7 @@ export function KeepSheet({
     const plan = planPick(useKeep.getState().placements, decorId, tier)
     if (plan.kind === 'already') {
       juice.select()
-      setNote('That’s already out — tap it in the hall to drag, resize or take it down.')
+      setNote('That’s already out — tap it in the hall to take it back down.')
       return
     }
     if (plan.kind === 'full') {
@@ -200,7 +151,7 @@ export function KeepSheet({
       // A first placement is a small moment, not a form submit: the coin, and
       // the line that says where it went, so the eye finds it in the hall.
       juice.coin()
-      setNote(`${decorName(plan.value)} is in the hall — tap it to move or resize it.`)
+      setNote(`${decorName(plan.value)} is in the hall — the hall found it a place.`)
     }
   }
 
@@ -281,7 +232,7 @@ export function KeepSheet({
           position: 'fixed',
           inset: 0,
           zIndex: 100,
-          background: 'rgba(8,3,24,0.72)',
+          background: 'rgba(9, 6, 8,0.72)',
           display: 'flex',
           alignItems: 'flex-end',
           justifyContent: 'center',
@@ -318,40 +269,10 @@ export function KeepSheet({
             level={level}
             placements={placements}
             members={lifeMembers}
-            editing={
-              ownHall
-                ? {
-                    picked,
-                    mergedAnchor: merged?.anchor ?? null,
-                    onPick: pickUp,
-                    onDrop: (a) => void dropOn(a),
-                    onDropAt: (x, y) => void dropAt(x, y),
-                    onCancel: () => { juice.tap(); setPicked(null) },
-                    onRemove: (a) => void removeAt(a),
-                  }
-                : undefined
-            }
+            onRemove={ownHall ? (a) => void removeAt(a) : undefined}
           />
 
           <AnimatePresence>
-            {picked && (
-              <div
-                style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', marginTop: 8 }}
-              >
-                <span className="faint" style={{ fontSize: 12, fontWeight: 700 }}>
-                  {decorName(keep.placements[picked])}
-                </span>
-                <button onClick={() => void resizePicked(-0.1)} aria-label="Smaller" style={SIZE_BTN}>
-                  −
-                </button>
-                <button onClick={() => void resizePicked(0.1)} aria-label="Bigger" style={SIZE_BTN}>
-                  ＋
-                </button>
-                <button onClick={() => setPicked(null)} style={{ ...SIZE_BTN, width: 'auto', padding: '0 10px' }}>
-                  Done
-                </button>
-              </div>
-            )}
             {merged && (
               <motion.p
                 key="merge-flash"
@@ -366,13 +287,11 @@ export function KeepSheet({
             )}
           </AnimatePresence>
 
-          {/* Carrying, or a note about the last thing that happened. One slot,
-              because two stacked status lines under a picture is a form. */}
-          {(picked || note) && (
+          {/* One slot for what just happened — two stacked status lines under a
+              picture is a form. There is no "holding" state to report any more. */}
+          {note && (
             <p className="center" style={{ margin: '8px 0 0', fontSize: 12.5, fontWeight: 700, color: 'var(--gold)' }}>
-              {picked
-                ? `Holding the ${decorName(placements[picked])} — drag it anywhere, tap a marked spot to swap, ✕ to take it down, or tap the floor to let go.`
-                : note}
+              {note}
             </p>
           )}
 
@@ -407,12 +326,10 @@ export function KeepSheet({
             <div style={{ marginTop: 12 }}>
               <Collapsible icon="🛋️" title="Decorate" meta={`${keep.owned().length}/${DECOR.length} earned`}>
                 <p className="faint" style={{ fontSize: 11.5, margin: '0 0 10px', lineHeight: 1.5 }}>
-                  Tap a piece to put it in the hall — the finest version you've earned. Keep
-                  playing and it <b style={{ color: 'var(--gold)' }}>upgrades</b> where it stands.
-                  Tap anything in the hall to pick it up, then{' '}
-                  <b style={{ color: 'var(--gold)' }}>drag it</b> wherever you like — or resize it,
-                  or tap its ✕ to take it back down. Tapping anywhere else in the hall puts it
-                  down. Members each furnish their own view.
+                  Tap a piece to put it in the hall — the finest version you've earned, and{' '}
+                  <b style={{ color: 'var(--gold)' }}>the hall finds it a place</b>. Keep playing
+                  and it upgrades where it stands. Tap anything in the hall to take it back down.
+                  Members each furnish their own view.
                 </p>
                 <Shelf
                   counters={keep.counters}

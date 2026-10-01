@@ -1,0 +1,32 @@
+[
+  {
+    "id": "streak_3",
+    "kind": "prop",
+    "prompt": "THE BACKGROUND MUST BE FLAT SOLID MAGENTA #FF00FF, filling every pixel behind the emblem, edge to edge. NOT white, NOT cream, NOT parchment, NOT a gradient, NOT a sky, NOT a wall, NOT a vignette. No drop shadow on the backdrop, no ground plane, no frame around the image, no text, no letters, no numerals, no watermark. A previous attempt returned a pale background and was rejected; the backdrop must be unmistakably hot magenta.\n\nA small round medallion of warm hammered COPPER, its rim a simple twisted rope of metal. At its centre, in relief, a low sunrise over a bare horizon line — three short rays rising. A short dusty-ochre ribbon hangs from the bottom of the medallion.\n\nWarm hand-illustrated storybook style with clean flat shapes and soft painted shading, matching the reference figures exactly in line weight and palette warmth. A single centred emblem, drawn large and filling the frame, ABSOLUTELY NO TEXT OR NUMBERS anywhere in the image."
+  },
+  {
+    "id": "streak_7",
+    "kind": "prop",
+    "prompt": "THE BACKGROUND MUST BE FLAT SOLID MAGENTA #FF00FF, filling every pixel behind the emblem, edge to edge. NOT white, NOT cream, NOT parchment, NOT a gradient, NOT a sky, NOT a wall, NOT a vignette. No drop shadow on the backdrop, no ground plane, no frame around the image, no text, no letters, no numerals, no watermark. A previous attempt returned a pale background and was rejected; the backdrop must be unmistakably hot magenta.\n\nA round medallion of warm polished BRASS with a beaded rim. At its centre, in relief, a simple oil lamp with a single lit flame. Seven small raised dots run around the inside of the rim like beads on a cord. A warm amber ribbon hangs below.\n\nWarm hand-illustrated storybook style with clean flat shapes and soft painted shading, matching the reference figures exactly in line weight and palette warmth. A single centred emblem, drawn large and filling the frame, ABSOLUTELY NO TEXT OR NUMBERS anywhere in the image."
+  },
+  {
+    "id": "streak_30",
+    "kind": "prop",
+    "prompt": "THE BACKGROUND MUST BE FLAT SOLID MAGENTA #FF00FF, filling every pixel behind the emblem, edge to edge. NOT white, NOT cream, NOT parchment, NOT a gradient, NOT a sky, NOT a wall, NOT a vignette. No drop shadow on the backdrop, no ground plane, no frame around the image, no text, no letters, no numerals, no watermark. A previous attempt returned a pale background and was rejected; the backdrop must be unmistakably hot magenta.\n\nA round medallion of cool brushed SILVER with a plain stepped rim. At its centre, in relief, a crescent moon cradling a small round seed or grain. A slate-blue ribbon hangs below the medallion.\n\nWarm hand-illustrated storybook style with clean flat shapes and soft painted shading, matching the reference figures exactly in line weight and palette warmth. A single centred emblem, drawn large and filling the frame, ABSOLUTELY NO TEXT OR NUMBERS anywhere in the image."
+  },
+  {
+    "id": "streak_100",
+    "kind": "prop",
+    "prompt": "THE BACKGROUND MUST BE FLAT SOLID MAGENTA #FF00FF, filling every pixel behind the emblem, edge to edge. NOT white, NOT cream, NOT parchment, NOT a gradient, NOT a sky, NOT a wall, NOT a vignette. No drop shadow on the backdrop, no ground plane, no frame around the image, no text, no letters, no numerals, no watermark. A previous attempt returned a pale background and was rejected; the backdrop must be unmistakably hot magenta.\n\nA round medallion of deep GOLD with a laurel wreath worked into its rim. At its centre, in relief, a stone well-head with a rope over it. A rich gold ribbon hangs below.\n\nWarm hand-illustrated storybook style with clean flat shapes and soft painted shading, matching the reference figures exactly in line weight and palette warmth. A single centred emblem, drawn large and filling the frame, ABSOLUTELY NO TEXT OR NUMBERS anywhere in the image."
+  },
+  {
+    "id": "streak_365",
+    "kind": "prop",
+    "prompt": "THE BACKGROUND MUST BE FLAT SOLID MAGENTA #FF00FF, filling every pixel behind the emblem, edge to edge. NOT white, NOT cream, NOT parchment, NOT a gradient, NOT a sky, NOT a wall, NOT a vignette. No drop shadow on the backdrop, no ground plane, no frame around the image, no text, no letters, no numerals, no watermark. A previous attempt returned a pale background and was rejected; the backdrop must be unmistakably hot magenta.\n\nA round medallion of deep AMETHYST-PURPLE enamel set in a gold rim, the rim worked as twelve small segments like months. At its centre, in relief, a full wheat sheaf bound with cord. A violet ribbon hangs below.\n\nWarm hand-illustrated storybook style with clean flat shapes and soft painted shading, matching the reference figures exactly in line weight and palette warmth. A single centred emblem, drawn large and filling the frame, ABSOLUTELY NO TEXT OR NUMBERS anywhere in the image."
+  },
+  {
+    "id": "streak_1000",
+    "kind": "prop",
+    "prompt": "THE BACKGROUND MUST BE FLAT SOLID MAGENTA #FF00FF, filling every pixel behind the emblem, edge to edge. NOT white, NOT cream, NOT parchment, NOT a gradient, NOT a sky, NOT a wall, NOT a vignette. No drop shadow on the backdrop, no ground plane, no frame around the image, no text, no letters, no numerals, no watermark. A previous attempt returned a pale background and was rejected; the backdrop must be unmistakably hot magenta.\n\nA large ornate medallion of radiant GOLD with a sunburst rim of many fine rays. At its centre, in relief, a narrow road running to a distant horizon between two low hills. A deep crimson ribbon hangs below the medallion.\n\nWarm hand-illustrated storybook style with clean flat shapes and soft painted shading, matching the reference figures exactly in line weight and palette warmth. A single centred emblem, ABSOLUTELY NO TEXT OR NUMBERS anywhere in the image.\n\nTHE OBJECT MUST NOT TOUCH ANY EDGE OF THE IMAGE. Draw it smaller, in the MIDDLE of the frame, with a clear empty margin of pure magenta RGB(255,0,255) all the way around it on all four sides — at least a tenth of the image height of plain magenta above the top of the medallion and below the bottom of the ribbon, and the same to its left and right. The four corners of the image are pure magenta and nothing else. A previous attempt was CROPPED FLAT along the top edge and was rejected: the crown of the medallion must be fully inside the frame with magenta above it."
+  }
+]

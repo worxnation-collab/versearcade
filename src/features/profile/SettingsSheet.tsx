@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { useAuth } from '@/store/auth'
 import { useSettings } from '@/store/settings'
 import { useJuice } from '@/juice/useJuice'
+import { VOICE_KINDS, canSpeak } from '@/lib/voice'
 import { READING_TRANSLATIONS } from '@/lib/config'
 import { pushSupported, pushPermission, isPushSubscribed, enablePush, disablePush } from '@/lib/push'
 import { useReminders } from '@/store/reminders'
@@ -269,7 +270,7 @@ export function SettingsSheet({
                     flex: 1,
                     padding: '10px 4px',
                     borderRadius: 12,
-                    background: on ? 'var(--grape)' : 'var(--card-solid)',
+                    background: on ? 'var(--select)' : 'var(--card-solid)',
                     border: on ? '1px solid var(--gold)' : '1px solid var(--stroke)',
                     cursor: 'pointer',
                     color: 'var(--ink)',
@@ -298,7 +299,7 @@ export function SettingsSheet({
                   style={{
                     display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%',
                     padding: '11px 12px', borderRadius: 12,
-                    background: on ? 'var(--grape)' : 'var(--card-solid)',
+                    background: on ? 'var(--select)' : 'var(--card-solid)',
                     border: on ? '1px solid var(--gold)' : '1px solid var(--stroke)', cursor: 'pointer',
                   }}
                 >
@@ -313,6 +314,40 @@ export function SettingsSheet({
         <p className="faint" style={{ fontSize: 11, lineHeight: 1.4 }}>
           Used when you read the full chapter. All free &amp; public domain — more versions coming. The daily quiz uses the Berean Standard Bible.
         </p>
+
+        {/* Reading voice — which of the device's two voices reads scripture and
+            prayers aloud. One setting for both, because which voice somebody
+            prefers is a fact about them rather than about the screen. Hidden
+            entirely on a device with no SpeechSynthesis, the fail-closed shape
+            the Listen button itself takes. */}
+        {canSpeak() && (
+          <>
+            <h3 style={{ fontSize: 14, margin: '18px 0 8px' }} className="dim">Reading voice</h3>
+            <div className="card" style={{ marginBottom: 6, display: 'flex', gap: 8 }}>
+              {VOICE_KINDS.map((v) => {
+                const on = settings.readingVoice === v.id
+                return (
+                  <button
+                    key={v.id}
+                    onClick={() => { juice.select?.(); settings.set({ readingVoice: v.id }) }}
+                    style={{
+                      flex: 1, padding: '11px 12px', borderRadius: 12, cursor: 'pointer',
+                      background: on ? 'var(--select)' : 'var(--card-raised)',
+                      border: `1px solid ${on ? 'var(--select)' : 'var(--stroke)'}`,
+                      color: 'var(--ink)', fontWeight: 800, fontSize: 14,
+                    }}
+                  >
+                    {v.label}
+                  </button>
+                )
+              })}
+            </div>
+            <p className="faint" style={{ fontSize: 11, lineHeight: 1.4 }}>
+              Read by your phone’s own voice, so nothing you read or pray leaves the device. Which two
+              are offered depends on what it has installed.
+            </p>
+          </>
+        )}
       </motion.div>
     </div>
   )

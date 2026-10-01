@@ -13,11 +13,13 @@
 // is needed.
 
 import { setRunnerToken } from '@/features/admin/tiktok/shared'
-import { makeVerse, makeStory, makeQuiz, makeChallenge, makeNote, type Progress } from '@/features/admin/tiktok/make'
+import { makeVerse, makeStory, makeQuiz, makeChallenge, makeNote, makeReading, makeExchange, type Progress } from '@/features/admin/tiktok/make'
+import { isReadingKind } from '@/data/tiktokWeek'
 import { env as tfEnv } from '@huggingface/transformers'
 
 /** The kinds the runner renders. `own` is an operator's upload and is never rendered here. */
 export type Kind = 'verse' | 'story' | 'quiz' | 'challenge' | 'challenge2' | 'note'
+  | 'book' | 'moment' | 'before' | 'figure' | 'quiet' | 'prayer' | 'exchange'
 
 export interface Rendered {
   kind: Kind
@@ -29,6 +31,8 @@ export interface Rendered {
   hook: string | null
   /** Whether the operator's own recording actually reached this render. */
   voiced: boolean
+  /** He opened it and a synthetic voice did the rest — a different disclosure from either. */
+  opened?: boolean
 }
 
 declare global {
@@ -76,7 +80,17 @@ export async function renderPost(kind: Kind, date: string, token?: string): Prom
   ensureFont()
   localModels()
   const progress: Progress = (_f, label) => { window.__progress = `${kind} ${date}: ${label}` }
-  const m = kind === 'verse' ? await makeVerse(date, {}, progress)
+  // A READING is its own generator for all six weekday forms — one layout,
+  // his recording as the whole telling. It THROWS on a day with nothing
+  // parked rather than falling back to a synthetic voice; the runner reports
+  // that as a skip, which is the deliberate half of "a quiet day beats a thin
+  // one".
+  // An EXCHANGE throws on a day with neither take parked, for the same
+  // reason a reading does and a stronger one: it has no synthetic fallback
+  // that is worth posting. See `makeExchange`.
+  const m = isReadingKind(kind) ? await makeReading(date, kind, {}, progress)
+    : kind === 'exchange' ? await makeExchange(date, {}, progress)
+    : kind === 'verse' ? await makeVerse(date, {}, progress)
     : kind === 'story' ? await makeStory(date, {}, progress)
     : kind === 'challenge' ? await makeChallenge(date, { slot: 1 }, progress)
     : kind === 'challenge2' ? await makeChallenge(date, { slot: 2 }, progress)
@@ -90,7 +104,7 @@ export async function renderPost(kind: Kind, date: string, token?: string): Prom
   document.body.appendChild(a)
   a.click()
   window.__progress = `${kind} ${date}: done`
-  return { kind, date, ext: m.ext === 'mp4' ? 'mp4' : m.ext === 'jpg' ? 'jpg' : 'webm', size: m.size, reference: m.reference, tier: m.tier, hook: m.copy?.hook ?? null, voiced: m.voiced }
+  return { kind, date, ext: m.ext === 'mp4' ? 'mp4' : m.ext === 'jpg' ? 'jpg' : 'webm', size: m.size, reference: m.reference, tier: m.tier, hook: m.copy?.hook ?? null, voiced: m.voiced, opened: m.opened ?? false }
 }
 
 window.versearcadeDaily = { renderPost }

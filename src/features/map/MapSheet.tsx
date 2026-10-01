@@ -5,6 +5,7 @@ import { useJuice } from '@/juice/useJuice'
 import { useAuth } from '@/store/auth'
 import { useAccountLocked } from '@/components/AccountWall'
 import { MAP_AREAS, placesIn, type MapPlace } from '@/data/map'
+import { Icon } from '@/data/icons'
 import { useInvitations } from './invitations'
 
 // The map — every place in this app, on one screen, one tap from anywhere.
@@ -77,7 +78,7 @@ export function MapSheet({ onClose }: { onClose: () => void }) {
           // The app's sheet tier — opened from the nav rather than from the
           // player card, so 100 like the keep, church and library sheets.
           zIndex: 100,
-          background: 'rgba(8,3,24,0.78)',
+          background: 'rgba(9, 6, 8,0.78)',
           display: 'flex',
           alignItems: 'flex-end',
           justifyContent: 'center',
@@ -106,7 +107,8 @@ export function MapSheet({ onClose }: { onClose: () => void }) {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <b style={{ fontFamily: 'var(--font-display)', fontSize: 18, flex: 1, minWidth: 0 }}>
-              🧭 Find your way around
+              <Icon id="compass" size={17} style={{ display: 'inline-block', verticalAlign: '-2px', marginRight: 7 }} />
+              Find your way around
             </b>
             <button className="pill" onClick={() => { juice.select?.(); onClose() }} aria-label="Close">✕</button>
           </div>
@@ -136,9 +138,11 @@ export function MapSheet({ onClose }: { onClose: () => void }) {
                       background: 'rgba(255,210,63,0.08)',
                     }}
                   >
-                    <span style={{ fontSize: 20, flexShrink: 0 }}>{inv.icon}</span>
+                    <span style={{ flexShrink: 0, lineHeight: 0, color: 'var(--gold)' }}>
+                      <Icon id={inv.icon} size={20} />
+                    </span>
                     <span style={{ flex: 1, minWidth: 0, fontWeight: 800, fontSize: 14 }}>{inv.label}</span>
-                    <span style={{ color: 'var(--gold)', flexShrink: 0 }}>›</span>
+                    <span style={{ color: 'var(--ink-faint)', flexShrink: 0 }}>›</span>
                   </motion.button>
                 ))}
               </div>
@@ -191,7 +195,8 @@ export function MapSheet({ onClose }: { onClose: () => void }) {
           {areas.map((area) => (
             <div key={area.id} style={{ marginBottom: 16 }}>
               <SectionLabel>
-                {area.icon} {area.title}
+                <Icon id={area.icon} size={13} style={{ display: 'inline-block', verticalAlign: '-2px', marginRight: 5 }} />
+                {area.title}
               </SectionLabel>
               <div style={{ display: 'grid', gap: 7 }}>
                 {area.places.map((p) => (
@@ -255,8 +260,8 @@ function PlaceRow({
         cursor: 'pointer',
       }}
     >
-      <span style={{ fontSize: 19, flexShrink: 0, width: 24, textAlign: 'center', opacity: isLocked ? 0.7 : 1 }}>
-        {place.icon}
+      <span style={{ width: 24, display: 'grid', placeItems: 'center', flexShrink: 0, color: isLocked ? 'var(--ink-faint)' : 'var(--ink-dim)' }}>
+        <Icon id={place.icon} size={19} />
       </span>
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

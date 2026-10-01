@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
@@ -11,6 +11,9 @@ import { DailyChest } from '@/features/chest/DailyChest'
 import { RoadStrip } from '@/features/season/RoadStrip'
 import { MapCompass } from '@/features/map/MapCompass'
 import { PlayedToday } from '@/features/presence/PlayedToday'
+import { liturgyFor } from '@/data/liturgy'
+import { useJuice } from '@/juice/useJuice'
+import { todayLocalDate } from '@/lib/date'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/store/auth'
 import { useGame } from '@/store/game'
@@ -95,7 +98,29 @@ export default function HomeScreen() {
   const setSettings = useSettings((s) => s.set)
   const [countdown, setCountdown] = useState(msUntilNextLocalMidnight())
   const [tutorialOpen, setTutorialOpen] = useState(false)
-  const [sheet, setSheet] = useState<null | 'chest' | 'lantern' | 'account' | 'week'>(null)
+  // ?chest=1 opens the chest straight away — the compass's "your chest is
+  // waiting" row and any quest naming `open_chest` point here, because the
+  // chest is a SHEET on this tab rather than a route and landing on the tab
+  // leaves somebody hunting for the thing they just tapped. Frozen at mount and
+  // the param dropped on the way past, the house pattern: a reload must not
+  // re-open it over whatever they moved on to.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [wantsChest] = useState(() => searchParams.get('chest') === '1')
+  const [sheet, setSheet] = useState<null | 'chest' | 'lantern' | 'account' | 'week'>(
+    wantsChest ? 'chest' : null,
+  )
+
+  useEffect(() => {
+    if (!wantsChest) return
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('chest')
+        return next
+      },
+      { replace: true },
+    )
+  }, [wantsChest, setSearchParams])
   const recap = useWeekly((s) => s.recap)
   const recapSeen = useWeekly((s) => s.seen)
   const snapshotWeek = useWeekly((s) => s.snapshot)
@@ -141,8 +166,10 @@ export default function HomeScreen() {
   // pill nobody knows to tap is a recap nobody reads. After that it waits in
   // the pill row for the rest of the week.
   useEffect(() => {
-    if (recap && !recapSeen && !tutorialOpen) setSheet('week')
-  }, [recap, recapSeen, tutorialOpen])
+    // ...unless something was asked for by name. Arriving on ?chest=1 and being
+    // shown last week's numbers instead is the row not working.
+    if (recap && !recapSeen && !tutorialOpen && !wantsChest) setSheet('week')
+  }, [recap, recapSeen, tutorialOpen, wantsChest])
 
   // The device's reminders read `playedToday` (a played day's nudge is
   // dropped), so a finished run has to re-plan them. No-op off native.
@@ -234,6 +261,18 @@ export default function HomeScreen() {
           A number and a door — never a score beside anybody's name. See
           `PlayedToday` and `0093_daily_players.sql`. */}
       <PlayedToday />
+
+      {/* ── What today IS in the church year ──────────────────────────────
+          One line, only on a day that is actually one of the kept days, and
+          nothing at all on the other ~355. That is this tab's own test applied
+          honestly: "is it NEW TODAY?" — Good Friday is, an ordinary Tuesday in
+          Ordinary Time is not, and a permanent row naming the season would be
+          the kind of card this tab was cut back to remove.
+
+          It is a FACT and not an invitation, which is why it is a line here
+          rather than a row in the compass: the compass lists what is open to
+          do, and nobody can do Easter. It asks nothing and pays nothing. */}
+      <FeastLine />
 
       {/* The Pilgrimage, under the two things that are new today. */}
       <div style={{ marginTop: 14 }}>
@@ -621,3 +660,37 @@ function Stat({ label, value }: { label: string; value: string }) {
     </div>
   )
 }
+
+/**
+ * Today's kept day, when there is one.
+ *
+ * Renders nothing on an ordinary day — no season badge, no "Ordinary Time"
+ * row — for the same reason `PlayedToday` renders nothing at zero: a line that
+ * is always there stops being news and becomes furniture.
+ */
+function FeastLine() {
+  const navigate = useNavigate()
+  const juice = useJuice()
+  const today = todayLocalDate()
+  const day = useMemo(() => liturgyFor(today), [today])
+  if (!day.feast) return null
+  return (
+    <motion.button
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      onClick={() => { juice.select?.(); navigate('/calendar') }}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 9, margin: '10px auto 0',
+        background: 'none', border: 0, padding: '2px 4px', cursor: 'pointer',
+        color: 'var(--ink-dim)', fontSize: 13,
+      }}
+    >
+      <span aria-hidden style={{ width: 8, height: 8, borderRadius: 2, background: day.season.hex, flexShrink: 0 }} />
+      <span>
+        Today is <b style={{ color: 'var(--ink)' }}>{day.feast.name}</b>
+      </span>
+      <span style={{ color: 'var(--edge)' }}>›</span>
+    </motion.button>
+  )
+}
+

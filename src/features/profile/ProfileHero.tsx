@@ -98,7 +98,7 @@ export function ProfileHero({
         style={{
           position: 'absolute',
           inset: 0,
-          background: 'linear-gradient(180deg, rgba(8,3,24,0.18) 0%, rgba(8,3,24,0.52) 100%)',
+          background: 'linear-gradient(180deg, rgba(9, 6, 8,0.18) 0%, rgba(9, 6, 8,0.52) 100%)',
         }}
       />
 
@@ -114,7 +114,7 @@ export function ProfileHero({
               textAlign: 'center',
               // The Cornerstone is the first PALE card, and an 11px faint
               // eyebrow over cream stone vanished. Same shadow XpBar wears.
-              textShadow: '0 1px 4px rgba(8,3,24,0.9), 0 0 10px rgba(8,3,24,0.7)',
+              textShadow: '0 1px 4px rgba(9, 6, 8,0.9), 0 0 10px rgba(9, 6, 8,0.7)',
             }}
           >
             {caption}

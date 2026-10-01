@@ -66,7 +66,7 @@ export default function GroupsScreen() {
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         {(['mine', 'join', 'new'] as const).map((t) => (
           <button key={t} onClick={() => { juice.select(); setFlash(null); setTab(t) }} className="pill"
-            style={{ background: tab === t ? 'var(--grape)' : 'var(--card)', fontWeight: 800, textTransform: 'capitalize' }}>
+            style={{ background: tab === t ? 'var(--select)' : 'var(--card)', fontWeight: 800, textTransform: 'capitalize' }}>
             {t === 'mine' ? 'My groups' : t === 'join' ? 'Join' : 'New'}
           </button>
         ))}
@@ -105,7 +105,7 @@ export default function GroupsScreen() {
           <div style={{ display: 'flex', gap: 8 }}>
             {['🔥', '🙌', '📖', '🕊️', '⚡', '🌿'].map((e) => (
               <button key={e} onClick={() => { juice.select(); setEmoji(e) }} className="pill"
-                style={{ fontSize: 20, background: e === emoji ? 'var(--grape)' : 'var(--card)' }}>{e}</button>
+                style={{ fontSize: 20, background: e === emoji ? 'var(--select)' : 'var(--card)' }}>{e}</button>
             ))}
           </div>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Group name (e.g. Youth Group)" maxLength={30} />

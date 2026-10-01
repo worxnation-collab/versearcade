@@ -238,8 +238,8 @@ export default function BattleHub() {
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                     padding: '10px 6px', fontSize: 13, fontWeight: 800, cursor: 'pointer',
-                    background: active ? 'var(--grape)' : nudge ? 'rgba(255,210,63,0.10)' : 'var(--card)',
-                    border: `1px solid ${active ? 'var(--grape)' : nudge ? 'var(--gold)' : 'var(--stroke)'}`,
+                    background: active ? 'var(--select)' : nudge ? 'rgba(255,210,63,0.10)' : 'var(--card)',
+                    border: `1px solid ${active ? 'var(--select)' : nudge ? 'var(--gold)' : 'var(--stroke)'}`,
                   }}
                 >
                   <span>{TURN_LABEL[t]}</span>
@@ -310,7 +310,7 @@ export default function BattleHub() {
             <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
               {(['individual', 'denomination'] as const).map((t) => (
                 <button key={t} onClick={() => { juice.select(); setRankTab(t) }} className="pill"
-                  style={{ background: rankTab === t ? 'var(--grape)' : 'var(--card)', fontWeight: 800, textTransform: 'capitalize' }}>
+                  style={{ background: rankTab === t ? 'var(--select)' : 'var(--card)', fontWeight: 800, textTransform: 'capitalize' }}>
                   {t === 'individual' ? 'Individual' : 'Teams'}
                 </button>
               ))}

@@ -126,7 +126,7 @@ export function LibrarianSheet({ items, onClose }: { items: StudyBook[]; onClose
           // The app's sheet tier. Opened from a page rather than from the
           // player card, so 100 like the keep, church and prayer sheets.
           zIndex: 100,
-          background: 'rgba(8,3,24,0.78)',
+          background: 'rgba(9, 6, 8,0.78)',
           display: 'flex',
           alignItems: 'flex-end',
           justifyContent: 'center',

@@ -29,7 +29,7 @@ export function CpuFace({ profile, size = 36 }: { profile: CpuProfile; size?: nu
         overflow: 'hidden',
         display: 'inline-block',
         flexShrink: 0,
-        background: 'radial-gradient(circle at 50% 30%, rgba(255,210,63,0.25), rgba(20,10,52,0.9))',
+        background: 'radial-gradient(circle at 50% 30%, rgba(255,210,63,0.25), rgba(30, 21, 28,0.9))',
         border: '1px solid var(--stroke)',
       }}
     >

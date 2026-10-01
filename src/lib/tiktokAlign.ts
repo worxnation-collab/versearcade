@@ -139,12 +139,23 @@ export function onsetOf(samples: Float32Array, sampleRate: number): number {
  * words and how many of them were actually heard, so a caller can decide
  * whether the fit is trustworthy (`alignWords` refuses under half).
  */
-export function fitWords(ours: string[], heard: TimedWord[], audioDur: number, onset = 0): { words: TimedWord[]; matched: number; lastHeard: number } {
+export function fitWords(ours: string[], heard: TimedWord[], audioDur: number, onset = 0): { words: TimedWord[]; matched: number; lastHeard: number; tail: number } {
   const hit = match(ours, heard.map((c) => c.text))
   const matched = hit.filter((h) => h >= 0).length
   // The index of the last heard word that matched, so a caller can say where
   // OUR text ends in THEIR transcript (-1 when nothing matched).
   const lastHeard = hit.reduce((m, h) => Math.max(m, h), -1)
+  // How many of OUR words, at the very END, matched nothing at all.
+  //
+  // This is the number that says the recording STOPS BEFORE THE WORDS DO,
+  // and it is deliberately the trailing run rather than the total: Whisper
+  // drops words out of the middle of a good recording all the time (one
+  // parked take heard 19 of its 29 and contained every one of them), so a
+  // total would cry wolf. A tail is different — there is nothing after it to
+  // interpolate against, so those words get stretched past the last thing
+  // actually said, and the caption keeps going over silence.
+  let tail = 0
+  while (tail < hit.length && hit[hit.length - 1 - tail] < 0) tail++
   const start = new Float64Array(ours.length).fill(-1)
   const end = new Float64Array(ours.length).fill(-1)
   hit.forEach((h, i) => { if (h >= 0) { start[i] = heard[h].start; end[i] = heard[h].end } })
@@ -163,7 +174,7 @@ export function fitWords(ours: string[], heard: TimedWord[], audioDur: number, o
     if (i > 0 && start[i] < end[i - 1]) start[i] = end[i - 1]
     if (end[i] < start[i] + 0.04) end[i] = start[i] + 0.04
   }
-  return { words: ours.map((text, i) => ({ text, start: start[i], end: end[i] })), matched, lastHeard }
+  return { words: ours.map((text, i) => ({ text, start: start[i], end: end[i] })), matched, lastHeard, tail }
 }
 
 /**

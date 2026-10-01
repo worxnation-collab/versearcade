@@ -187,6 +187,59 @@ workflows:
           cd ios/App
           xcode-project use-profiles
 
+      - name: Sign in with Apple entitlement (only if the profile carries it)
+        script: |
+          set -e
+          # The native Sign in with Apple sheet (src/lib/appleSignIn.ts) needs the
+          # com.apple.developer.applesignin entitlement, and cap add ios regenerates
+          # the Xcode project without one every build — like the URL scheme above.
+          # But an entitlement the PROVISIONING PROFILE does not carry fails the
+          # archive twenty minutes in ("doesn't include the … entitlement"), and
+          # the profile only carries it if the App ID had the capability when the
+          # profile was made. So: read the profile fetch-signing-files just
+          # downloaded, and write the entitlement ONLY when it is there. Without
+          # it the app still builds and the button falls back to the in-app
+          # browser at runtime — a slower sign-in, never a dead one.
+          FOUND=""
+          for P in "$HOME/Library/MobileDevice/Provisioning Profiles"/*.mobileprovision; do
+            [ -f "$P" ] || continue
+            DEC=$(security cms -D -i "$P" 2>/dev/null || true)
+            echo "$DEC" | grep -q "$BUNDLE_ID" || continue
+            if echo "$DEC" | grep -q "com.apple.developer.applesignin"; then FOUND="$P"; fi
+          done
+          if [ -z "$FOUND" ]; then
+            echo "WARNING: no provisioning profile for $BUNDLE_ID carries Sign in with Apple."
+            echo "         Enable the capability on the App ID (developer.apple.com > Identifiers),"
+            echo "         delete the stale profile so fetch-signing-files --create makes a new one,"
+            echo "         and the native sheet turns on next build. Building WITHOUT it."
+            exit 0
+          fi
+          echo "OK: profile carries Sign in with Apple ($FOUND)"
+          cat > ios/App/App/App.entitlements <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>com.apple.developer.applesignin</key>
+            <array>
+              <string>Default</string>
+            </array>
+          </dict>
+          </plist>
+          PLIST
+          # Point both build configurations of the App target at it. xcodeproj is
+          # the gem CocoaPods itself depends on, so it is already on the machine.
+          ruby -e '
+            require "xcodeproj"
+            proj = Xcodeproj::Project.open("ios/App/App.xcodeproj")
+            t = proj.targets.find { |x| x.name == "App" } or abort "App target not found"
+            t.build_configurations.each { |c| c.build_settings["CODE_SIGN_ENTITLEMENTS"] = "App/App.entitlements" }
+            proj.save
+          '
+          N=$(grep -c "CODE_SIGN_ENTITLEMENTS = App/App.entitlements" ios/App/App.xcodeproj/project.pbxproj)
+          [ "$N" -ge 2 ] || { echo "FATAL: CODE_SIGN_ENTITLEMENTS landed in $N configs, expected 2"; exit 1; }
+          echo "OK: Sign in with Apple entitlement wired into $N build configurations"
+
       - name: Build signed IPA
         script: |
           cd ios/App

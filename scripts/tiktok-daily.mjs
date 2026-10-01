@@ -37,8 +37,9 @@
 // Environment: SUPABASE_URL and SUPABASE_ANON_KEY (both defaulted to the
 // project; the anon key is public), TIKTOK_TZ
 // (default America/New_York), DATE (override today), KINDS (default
-// verse,challenge,quiz,challenge2,story), POST_TIMES (default
-// verse=07:00,challenge=10:00,quiz=12:30,challenge2=16:00,story=19:30),
+// the day's own two — see docs/TIKTOK-WEEK.md), POST_TIMES (default
+// verse=07:00 and the day's second post at 19:30; the note rides at 12:00 on
+// the day the story runs),
 // PLATFORMS (default all eight: TikTok, YouTube, Facebook, Instagram, X, Snapchat, Threads, Pinterest — minus what social.postsOn says a network skips), DRY_RUN (render only), FFMPEG (binary path),
 // PW_CHROMIUM (executable path when Playwright's own browser is not installed),
 // RERENDER (make the video again even if the day's is already in the bucket),
@@ -55,6 +56,32 @@ import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { chromium } from 'playwright'
 import { createClient } from '@supabase/supabase-js'
+import { timesFrom, slotOf, timeFor as sharedTimeFor } from './tiktok-times.mjs'
+
+// The last thing between the mix and the file: a ceiling.
+//
+// Two voices and a music bed can sum past full scale even when every part of
+// the mix was levelled politely — the soft knee bounds a SAMPLE, and what
+// clips a listener is the INTER-SAMPLE peak an encoder reconstructs. After
+// the recording chain was rebuilt, all eight posts of a week measured
+// between +0.2 and +1.6 dBFS true peak where the last known-good post sat at
+// -0.2. It is the same trap a naive +6 dB gain hit once before, at +3.1.
+//
+// `level=disabled` is the whole of it and is NOT optional: ffmpeg's
+// alimiter AUTO-LEVELS by default, so it normalises up to the ceiling
+// instead of only holding things down. With it left on, lowering the limit
+// made the file LOUDER — 0.89 through 0.74 all came back at the same +0.7
+// dBFS with loudness rising as the limit fell, which reads as the filter
+// doing nothing rather than as it doing the opposite.
+//
+// And the ceiling is on the SAMPLE peak while the ear hears the INTER-SAMPLE
+// peak the decoder reconstructs, about a decibel higher — 0.89 measured
+// +0.1 dBFS true peak through AAC. 0.79 lands at -0.9, which is where the
+// fourteen corrected stories were brought to and where the last known-good
+// post sits. Measure with `ebur128=peak=true`, never `astats` — sample peak
+// reads under.
+const MASTER = 'alimiter=limit=0.79:level=disabled'
+
 
 const ROOT = process.cwd()
 const OUT = path.join(ROOT, '.tiktok-daily')
@@ -67,11 +94,64 @@ const RUNNER_TOKEN = env.TIKTOK_RUNNER_TOKEN || ''
 const GEMINI_KEY = env.GEMINI_API_KEY || ''
 const AYRSHARE_KEY = env.AYRSHARE_API_KEY || ''
 const TZ = env.TIKTOK_TZ || 'America/New_York'
-const KINDS = (env.KINDS || 'verse,challenge,note,quiz,challenge2,story').split(',').map((s) => s.trim()).filter(Boolean)
+// The day's posts: TWO, every day — the morning VERSE and the evening STORY,
+// the two that carry the operator's own recorded voice. That is the whole
+// schedule now; there is no weekday rotation and no third post.
+//
+// The NOTE came out with the rest. It is a wholly-generated photo card, and
+// Meta's originality policy applies its penalty ACROSS EVERYTHING THE ACCOUNT
+// POSTS — so one thin post a day on the one network it went to drags down the
+// two that have a person in them. It is PARKED rather than deleted, in
+// social.ts with the quiz and the challenges (`renderNoteCard` and its copy
+// prompt still work), so it comes back as a row the day there is a reason.
+//
+// `kindForDate` is gone with the rotation; a day that wants something else
+// passes KINDS explicitly, which is what that variable has always been for.
+// The EXCHANGE joins them on its own three days a week (Mon/Wed/Fri —
+// `EXCHANGE_DAYS`, read in UTC so the runner and the hub agree). It is added
+// by the CALENDAR rather than by a rotation table, which is what lets it be a
+// third post on some days and nothing at all on the rest; `makeExchange`
+// still refuses a day with no recording parked, so a Monday he did not record
+// for quietly makes two posts instead of three.
+//
+// **Kept in sync with `EXCHANGE_EPOCH` / `EXCHANGE_DAYS` in
+// `src/data/tiktokExchanges.ts` by `npm run check:exchanges`**, which parses
+// both files and fails the build when they disagree. The app's copy is the
+// source of truth; this one exists because KINDS is decided in Node before
+// the browser bundle is built, and the alternative — bundling the whole data
+// module to answer one boolean — costs more than a checked duplicate. Same
+// bargain `check-placement.mjs` makes for the two placement grammars.
+const EXCHANGE_EPOCH = '2026-09-19'
+const EXCHANGE_DAYS = [1, 3, 5]
+const isExchangeDay = (d) => d === EXCHANGE_EPOCH || EXCHANGE_DAYS.includes(new Date(`${d}T00:00:00Z`).getUTCDay())
+const defaultKinds = (d) => (isExchangeDay(d) ? 'verse,exchange,story' : 'verse,story')
 const PLATFORMS = (env.PLATFORMS || 'tiktok,youtube,facebook,instagram,x,snapchat,threads,pinterest').split(',').map((s) => s.trim()).filter(Boolean)
 const DRY = /^(1|true|yes)$/i.test(env.DRY_RUN || '')
 const FFMPEG = env.FFMPEG || 'ffmpeg'
-const TIMES = Object.fromEntries((env.POST_TIMES || 'verse=07:00,challenge=10:00,note=12:00,quiz=12:30,challenge2=16:00,story=19:30').split(',').map((kv) => kv.split('=').map((s) => s.trim())))
+// WHEN each network gets it, and it is per (kind, platform) rather than per
+// kind. `postEach` already sends one request per platform, so this costs
+// nothing but the table.
+//
+// Two of the reasons are arithmetic and one is a guess, and they are marked
+// as such because the difference matters:
+//
+//   - **07:00 ET is 04:00 Pacific.** The morning post was landing before a
+//     third of the country was awake. That is not a theory about feeds, it is
+//     a clock.
+//   - **Eight identical uploads at the same minute is a machine signature.**
+//     Spreading them costs nothing and is the one thing here that is true
+//     whatever any platform's ranking does.
+//   - **Which hour is BEST per network is a prior, not a measurement.** This
+//     account has no per-hour data — Ayrshare reports totals, and Snapchat
+//     reports nothing at all. What it does say, off the 09-07 verse, is that
+//     YouTube delivers (766 views) where TikTok does not (0), so YouTube gets
+//     the strongest slot and the rest are industry defaults. Revisit with
+//     `analytics` once a few weeks have run at these times.
+//
+// `kind@platform` overrides `kind`. Anything unset falls back to the kind's
+// own time, so a new kind needs no rows here.
+const TIMES = timesFrom(env)
+const timeFor = (kind, platform) => sharedTimeFor(TIMES, kind, platform)
 const TTS_MODEL = env.GEMINI_TTS_MODEL || 'gemini-2.5-flash-preview-tts'
 // A directory holding `models/onnx-community/whisper-tiny.en_timestamped/…` and
 // `ort/ort-wasm-simd-threaded*.{mjs,wasm}`: served to the page so the aligner
@@ -84,8 +164,7 @@ const fail = (m) => { console.error('tiktok-daily:', m); process.exit(2) }
 const mode = RUNNER_TOKEN ? 'function' : AYRSHARE_KEY ? 'local' : null
 if (!mode) fail('set TIKTOK_RUNNER_TOKEN (function mode) or AYRSHARE_API_KEY + GEMINI_API_KEY (local mode)')
 if (mode === 'local' && !GEMINI_KEY) fail('local mode needs GEMINI_API_KEY for the reading')
-const ALL_KINDS = ['verse', 'story', 'quiz', 'challenge', 'challenge2', 'note']
-for (const k of KINDS) if (!ALL_KINDS.includes(k)) fail(`unknown kind ${k}`)
+const ALL_KINDS = ['verse', 'story', 'quiz', 'challenge', 'challenge2', 'note', 'book', 'moment', 'before', 'figure', 'quiet', 'prayer', 'exchange']
 // The kinds about YESTERDAY's verse: its answers are public only once the day has rolled over.
 const aboutYesterday = (k) => k === 'quiz' || k.startsWith('challenge')
 // The NOTE is the one post here that is not a video: a 4:5 card and the words,
@@ -122,6 +201,8 @@ function zonedToUtc(ymd, hhmm, tz) {
   return new Date(t)
 }
 const today = env.DATE || ymdIn(TZ)
+const KINDS = (env.KINDS || defaultKinds(today)).split(',').map((s) => s.trim()).filter(Boolean)
+for (const k of KINDS) if (!ALL_KINDS.includes(k)) fail(`unknown kind ${k}`)
 const yesterday = addDays(today, -1)
 log(`mode ${mode} · ${TZ} · today ${today} · kinds ${KINDS.join(',')} · platforms ${PLATFORMS.join(',')}${DRY ? ' · DRY RUN' : ''}`)
 
@@ -243,9 +324,35 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(r.status, { 'content-type': r.headers.get('content-type') || 'application/json' })
       res.end(text); return
     }
+    // A SIGNED UPLOAD the page makes with a token the function just issued.
+    //
+    // This branch used to be reads only, and the comment said so — the
+    // finished MP4 is uploaded from Node, below, so nothing in the page was
+    // believed to write. That was wrong about one path and had been for as
+    // long as the runner could listen for itself: `ensureVoice`,
+    // `ensureReading` and `ensureExchangeVoice` all park a TRANSCRIPT from
+    // the page after transcribing a WAV that a phone uploaded with nothing
+    // beside it. Every one of them got `upload: Bucket not found`, because
+    // the PUT was being forwarded as a GET and the storage client read the
+    // answer as a missing bucket. So the documented "the morning runner can
+    // do the listening itself" was false in the runner, and only the format
+    // that REFUSES to fall back to a synthetic voice ever surfaced it.
+    //
+    // It is still not a general write proxy: only the signed-upload path is
+    // forwarded, and the token in it was minted by `upload-url`, which
+    // validates the path against exactly the shapes this engine writes.
+    if (url.pathname.startsWith('/storage/v1/object/upload/sign/') && (req.method === 'POST' || req.method === 'PUT')) {
+      const body = await new Promise((ok, no) => { const c = []; req.on('data', (d) => c.push(d)); req.on('end', () => ok(Buffer.concat(c))); req.on('error', no) })
+      const headers = {}
+      for (const h of ['content-type', 'x-upsert', 'authorization', 'apikey']) if (req.headers[h]) headers[h] = req.headers[h]
+      const r = await fetch(SUPABASE_URL + url.pathname + url.search, { method: req.method, headers, body })
+      const t = await r.text()
+      res.writeHead(r.status, { 'content-type': r.headers.get('content-type') || 'application/json' })
+      res.end(t); return
+    }
     if (url.pathname.startsWith('/storage/v1/')) {
-      // The app's art in the bucket (painted stills, loops): straight through.
-      // (Reads only: the upload goes from Node with the signed URL below.)
+      // Everything else in the bucket — the app's art, a parked reading — is
+      // a read, straight through.
       const r = await fetch(SUPABASE_URL + url.pathname + url.search, { method: req.method === 'HEAD' ? 'HEAD' : 'GET' })
       res.writeHead(r.status, { 'content-type': r.headers.get('content-type') || 'application/octet-stream' })
       res.end(req.method === 'HEAD' ? undefined : Buffer.from(await r.arrayBuffer())); return
@@ -305,7 +412,11 @@ async function postEach(platforms, body) {
   const results = []
   for (const platform of platforms) {
     try {
-      const r = await fn('post', { ...body, platforms: [platform] })
+      // Each network gets its OWN time. A slot already past posts now rather
+      // than being skipped — the same rule the single time had.
+      const at = zonedToUtc(body.date, timeFor(body.kind, platform), TZ)
+      const scheduleDate = at.getTime() > Date.now() + 90_000 ? at.toISOString().replace(/\.\d{3}Z$/, 'Z') : undefined
+      const r = await fn('post', { ...body, scheduleDate, platforms: [platform] })
       results.push(...(Array.isArray(r.results) ? r.results : [{ platform, status: 'error', error: `no result: ${JSON.stringify(r).slice(0, 160)}` }]))
     } catch (e) {
       results.push({ platform, status: 'error', error: String(e?.message || e).slice(0, 200) })
@@ -338,9 +449,11 @@ await page.waitForFunction(() => !!window.versearcadeDaily, null, { timeout: 60_
 const results = []
 for (const kind of KINDS) {
   const date = aboutYesterday(kind) ? yesterday : today
-  const at = zonedToUtc(today, TIMES[kind] || '12:00', TZ)
+  // The per-PLATFORM time is decided in postEach; this line is the summary.
+  const slot = slotOf(kind)
+  const at = zonedToUtc(today, TIMES[slot] || '12:00', TZ)
   const scheduleDate = at.getTime() > Date.now() + 90_000 ? at.toISOString().replace(/\.\d{3}Z$/, 'Z') : undefined
-  log(`${kind} ${date} → ${scheduleDate ? `scheduled ${TIMES[kind]} ${TZ} (${scheduleDate})` : 'posts now'}`)
+  log(`${kind} ${date} → ${PLATFORMS.filter((p) => social.postsOn(p, kind)).map((p) => `${p} ${timeFor(kind, p)}`).join(', ')} ${TZ}`)
 
   // Make what is missing. A second run on the same day (a retry after the
   // posting service refused, a manual dispatch after the cron) must not
@@ -375,7 +488,7 @@ for (const kind of KINDS) {
       // falls back to looking for a parked recording, which is what it did
       // before any of this and is only ever wrong about a video rendered by
       // an older build.
-      posted = await postEach(todo, { date, kind, videoUrl, scheduleDate, reference: getVerseForDate(date).reference, seconds: isPhoto(kind) ? undefined : durationOf(parked), voiced: typeof prior.voiced === 'boolean' ? prior.voiced : undefined })
+      posted = await postEach(todo, { date, kind, videoUrl, scheduleDate, reference: getVerseForDate(date).reference, seconds: isPhoto(kind) ? undefined : durationOf(parked), voiced: typeof prior.voiced === 'boolean' ? prior.voiced : undefined, opened: typeof prior.opened === 'boolean' ? prior.opened : undefined })
       for (const r of posted.results) log(`  ${r.platform.padEnd(10)} ${r.status}${r.error ? ` — ${r.error}` : ''}${r.postUrl ? ` ${r.postUrl}` : ''}`)
       results.push({ kind, date, videoUrl, scheduleDate, results: posted.results, skipped: 'render' }); continue
     }
@@ -407,7 +520,7 @@ for (const kind of KINDS) {
   } else {
     // Always through ffmpeg: one known-good H.264/AAC/yuv420p/faststart MP4.
     mp4 = path.join(OUT, 'out', `${kind}-${date}.mp4`)
-    const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', raw, '-c:v', 'libx264', '-preset', 'medium', '-crf', '20', '-pix_fmt', 'yuv420p', '-r', '30', '-c:a', 'aac', '-b:a', '160k', '-ar', '48000', '-movflags', '+faststart', mp4], { stdio: 'inherit' })
+    const ff = spawnSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', raw, '-c:v', 'libx264', '-preset', 'medium', '-crf', '20', '-pix_fmt', 'yuv420p', '-r', '30', '-af', MASTER, '-c:a', 'aac', '-b:a', '160k', '-ar', '48000', '-movflags', '+faststart', mp4], { stdio: 'inherit' })
     if (ff.status !== 0) {
       const why = ff.error ? `${FFMPEG}: ${ff.error.code === 'ENOENT' ? 'not found — install ffmpeg or set FFMPEG' : ff.error.message}` : `exit ${ff.status}`
       log(`  ffmpeg failed: ${why}`)
@@ -424,7 +537,7 @@ for (const kind of KINDS) {
     if (error) { results.push({ kind, date, error: `upload: ${error.message}` }); continue }
     videoUrl = up.publicUrl
     if (!isPhoto(kind)) await parkCover(date, kind, mp4)
-    posted = await postEach(PLATFORMS.filter((p) => social.postsOn(p, kind)), { date, kind, videoUrl, scheduleDate, reference: rendered.reference, seconds: isPhoto(kind) ? undefined : durationOf(mp4), voiced: rendered.voiced })
+    posted = await postEach(PLATFORMS.filter((p) => social.postsOn(p, kind)), { date, kind, videoUrl, scheduleDate, reference: rendered.reference, seconds: isPhoto(kind) ? undefined : durationOf(mp4), voiced: rendered.voiced, opened: rendered.opened })
   } else {
     const u = await ayrshare(`media/uploadUrl?fileName=${encodeURIComponent(`va-${kind}-${date}.mp4`)}&contentType=mp4`, null, 'GET')
     if (!u.uploadUrl) { results.push({ kind, date, error: `ayrshare upload url: ${JSON.stringify(u).slice(0, 200)}` }); continue }
@@ -435,8 +548,11 @@ for (const kind of KINDS) {
     const rows = []
     // Direct mode has no bucket to park a cover in, so Pinterest sits this path out.
     for (const platform of PLATFORMS.filter((p) => p !== 'pinterest' && social.postsOn(p, kind))) {
-      const r = await ayrshare('post', social.postBody(platform, copy, { date, kind, reference: rendered.reference, videoUrl, scheduleDate, voiced: rendered.voiced }))
-      rows.push(social.postResult(platform, r, scheduleDate))
+      // Direct mode takes the same per-platform time as the function path.
+      const pAt = zonedToUtc(date, timeFor(kind, platform), TZ)
+      const pWhen = pAt.getTime() > Date.now() + 90_000 ? pAt.toISOString().replace(/\.\d{3}Z$/, 'Z') : undefined
+      const r = await ayrshare('post', social.postBody(platform, copy, { date, kind, reference: rendered.reference, videoUrl, scheduleDate: pWhen, voiced: rendered.voiced, opened: rendered.opened }))
+      rows.push(social.postResult(platform, r, pWhen))
     }
     posted = { date, kind, videoUrl, at: new Date().toISOString(), results: rows }
   }

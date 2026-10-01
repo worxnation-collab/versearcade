@@ -289,10 +289,10 @@ function Row({ r, me }: { r: LbRow; me: boolean }) {
           position: 'absolute',
           inset: 0,
           background: isKing
-            ? 'linear-gradient(90deg, rgba(8,3,24,0.80) 0%, rgba(8,3,24,0.52) 55%, rgba(255,210,63,0.12) 100%)'
+            ? 'linear-gradient(90deg, rgba(9, 6, 8,0.80) 0%, rgba(9, 6, 8,0.52) 55%, rgba(255,210,63,0.12) 100%)'
             : me
-              ? 'linear-gradient(90deg, rgba(8,3,24,0.82) 0%, rgba(255,209,102,0.10) 100%)'
-              : 'linear-gradient(90deg, rgba(8,3,24,0.84) 0%, rgba(8,3,24,0.56) 100%)',
+              ? 'linear-gradient(90deg, rgba(9, 6, 8,0.82) 0%, rgba(255,209,102,0.10) 100%)'
+              : 'linear-gradient(90deg, rgba(9, 6, 8,0.84) 0%, rgba(9, 6, 8,0.56) 100%)',
         }}
       />
       <div

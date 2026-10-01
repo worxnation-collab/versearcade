@@ -33,7 +33,7 @@ export function BookPage({
         display: 'flex',
         justifyContent: 'center',
         // The dark the book is lying on.
-        background: 'radial-gradient(120% 80% at 50% 0%, #241353 0%, var(--bg-0) 70%)',
+        background: 'radial-gradient(120% 80% at 50% 0%, #2b1d26 0%, var(--bg-0) 70%)',
       }}
     >
       <div

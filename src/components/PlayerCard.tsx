@@ -100,7 +100,7 @@ export function PlayerCard({
         aria-hidden
         style={{
           position: 'absolute', inset: 0,
-          background: 'linear-gradient(180deg, rgba(8,3,24,0.20) 0%, rgba(8,3,24,0.44) 100%)',
+          background: 'linear-gradient(180deg, rgba(9, 6, 8,0.20) 0%, rgba(9, 6, 8,0.44) 100%)',
         }}
       />
       <div style={{ position: 'relative' }}>

@@ -59,7 +59,7 @@ export function QuickSheet({
           position: 'fixed',
           inset: 0,
           zIndex,
-          background: 'rgba(8,3,24,0.78)',
+          background: 'rgba(9, 6, 8,0.78)',
           display: 'flex',
           alignItems: 'flex-end',
           justifyContent: 'center',

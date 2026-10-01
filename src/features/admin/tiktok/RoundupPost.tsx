@@ -27,12 +27,21 @@ interface Item { label: string; title: string; stat: string; scene: string; text
 
 const blank = (label: string, scene: string): Item => ({ label, title: '', stat: '', scene, text: '', photo: null })
 
+// This week's script (Sep 24 - Oct 1), pre-filled so the card opens ready to
+// record. Replace each week; the words must match what is read.
 const START: Item[] = [
-  { ...blank('#5', 'roundup-kitchen'), title: 'Brock, Pokémon', stat: '$1.70' },
-  { ...blank('#4', 'roundup-driveway'), title: 'Is it normal', stat: '$1.87' },
-  { ...blank('#3', 'roundup-garage'), title: 'Robots, $3 air', stat: '$2.05' },
-  { ...blank('#2', 'roundup-front-yard'), title: 'Beetle or roach', stat: '$2.22' },
-  { ...blank('#1', 'roundup-living-room'), title: 'Boom boom', stat: '$2.40' },
+  { ...blank('#5', 'roundup-living-room'), title: 'Brock', stat: '$1.70',
+    text: 'Number five. Brock. A Poke-a-man card. One dollar seventy. Brock is just a chill guy, and apparently so are you, because nobody argued. One comment. Peaceful.' },
+  { ...blank('#4', 'roundup-driveway'), title: 'Is it normal?', stat: '$1.87',
+    text: 'Number four. I asked if something on my car was normal. Ten of you said no. None of you said what it was. One eighty-seven, and I am still bothered.' },
+  { ...blank('#3', 'roundup-garage'), title: 'Three dollars for air', stat: '$2.05',
+    text: 'Number three. The robots charge three dollars for air now. We should have seen it coming. Two oh five, which is not enough to fill one tire.' },
+  { ...blank('#2', 'roundup-kitchen'), title: 'Beetle or roach', stat: '$2.22',
+    text: 'Number two. Beetle or roach. Almost ten thousand of you looked at it. One person hit like. Sixteen people fought in the comments. Team Roach, you know who you are.' },
+  { ...blank('Honorable mention', 'roundup-garage'), title: 'Mac, and the brake job',
+    text: 'Honorable mentions. Should I switch to Mac. Forty-eight comments, fifty-four cents. You argued for free. And the brake job. Eleven thousand views, the most of anything, sixty-two cents. Pics for attention. Attention received.' },
+  { ...blank('#1', 'roundup-front-yard'), title: 'Boom boom', stat: '$2.40',
+    text: 'And number one. Boom boom. Two dollars and forty cents. I do not know what boom boom was trying to say. Neither do you. That is why it won.' },
 ]
 
 async function sceneImage(id: string, load: (u: string) => Promise<HTMLImageElement>) {
@@ -46,11 +55,11 @@ function fileImage(f: File, load: (u: string) => Promise<HTMLImageElement>) {
 export default function RoundupPost() {
   useDisplayFont()
   const [brand, setBrand] = useState('The weekly roundup')
-  const [hook, setHook] = useState('')
+  const [hook, setHook] = useState('Thirty-six posts. One of them is a bug.')
   const [home, setHome] = useState('roundup-driveway')
-  const [intro, setIntro] = useState('')
+  const [intro, setIntro] = useState('Alright. Weekly roundup. Thirty-six posts this week, and Facebook paid me in what I can only describe as couch change. Let us count it down.')
   const [items, setItems] = useState<Item[]>(START)
-  const [outro, setOutro] = useState('')
+  const [outro, setOutro] = useState('That is the week. Seventeen dollars and sixty-four cents. Like I said, couch change. See you next week.')
   const [signoff, setSignoff] = useState('See you next week')
   const [audio, setAudio] = useState<File | null>(null)
   const [align, setAlign] = useState(true)

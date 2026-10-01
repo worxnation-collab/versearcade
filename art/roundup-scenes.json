@@ -1,0 +1,32 @@
+[
+  {
+    "id": "roundup-driveway",
+    "kind": "roundup",
+    "prompt": "Vertical 9:16 painted background for a short video, filling the entire frame edge to edge. No characters, no people, no animals, no text, no lettering, no badges, no license plates, no watermark, no border, no frame, no UI. A suburban Central Florida driveway at golden hour: a dark grey Dodge Durango SUV parked on the LEFT side of a wide concrete driveway and a deep green Dodge Charger muscle car parked on the RIGHT side, both shown three-quarter from the front, clean and glossy; behind them a single-storey stucco ranch house with a two-car garage door, a couple of tall palm trees, a neatly cut St. Augustine lawn at the edges, a wide warm peach and lavender sunset sky with one or two soft clouds. Composition for a standing figure drawn over it later: the BOTTOM 40% of the picture is open, level, empty concrete driveway, plain and uncluttered, centred BETWEEN the two vehicles; the TOP quarter is quiet sky with no detail, because words are drawn over it. Nothing important in the middle strip either side of centre. Flat stylised storybook painting, clean shapes, soft shading, warm and rich but never busy: it sits BEHIND a figure and captions and must never compete with them. Same painterly style as the reference paintings.",
+    "refs": ["public/road/harvest.jpg", "public/road/lamplight.jpg"]
+  },
+  {
+    "id": "roundup-garage",
+    "kind": "roundup",
+    "prompt": "Vertical 9:16 painted background for a short video, filling the entire frame edge to edge. No characters, no people, no animals, no text, no lettering, no logos, no posters with words, no watermark, no border, no frame, no UI. Inside a lived-in suburban two-car garage at evening with the overhead light on: a tall red rolling tool chest on the LEFT, a wooden workbench along the back wall with a pegboard of hand tools above it, a small orange kid's minibike leaning on its kickstand on the RIGHT, a coiled extension cord, a shop fan, a warm fluorescent glow. Composition for a standing figure drawn over it later: the BOTTOM 40% of the picture is open, clean, level grey concrete floor, plain and uncluttered, centred; the TOP quarter is a plain dim garage ceiling with no detail, because words are drawn over it. Nothing important in the middle strip either side of centre. Flat stylised storybook painting, clean shapes, soft shading, warm and rich but never busy: it sits BEHIND a figure and captions and must never compete with them. Same painterly style as the reference paintings.",
+    "refs": ["public/road/harvest.jpg", "public/road/lamplight.jpg"]
+  },
+  {
+    "id": "roundup-front-yard",
+    "kind": "roundup",
+    "prompt": "Vertical 9:16 painted background for a short video, filling the entire frame edge to edge. No characters, no people, no animals, no text, no lettering, no house numbers, no watermark, no border, no frame, no UI. The front yard of a single-storey Central Florida family home on a bright late morning: cream stucco walls, a small covered front porch with two rocking chairs, a palm tree and a few tropical shrubs by the walk, a kid's bicycle lying on the grass at the far right edge, a basketball in the flower bed, a big clean blue sky with puffy white clouds. Composition for a standing figure drawn over it later: the BOTTOM 40% of the picture is open, level, freshly mowed green lawn with a pale concrete walkway, plain and uncluttered, centred; the TOP quarter is quiet blue sky with no detail, because words are drawn over it. Nothing important in the middle strip either side of centre. Flat stylised storybook painting, clean shapes, soft shading, warm and rich but never busy: it sits BEHIND a figure and captions and must never compete with them. Same painterly style as the reference paintings.",
+    "refs": ["public/road/harvest.jpg", "public/road/lamplight.jpg"]
+  },
+  {
+    "id": "roundup-kitchen",
+    "kind": "roundup",
+    "prompt": "Vertical 9:16 painted background for a short video, filling the entire frame edge to edge. No characters, no people, no animals, no text, no lettering, no logos, no watermark, no border, no frame, no UI. A busy family kitchen in the evening: white shaker cabinets, a big stainless fridge on the LEFT covered in children's crayon drawings shown as blank coloured shapes, a kitchen island in the background with a fruit bowl and a stack of lunchboxes, a window over the sink showing a dusky sky, warm pendant lights. Composition for a standing figure drawn over it later: the BOTTOM 40% of the picture is open, level, light wood-look tile floor, plain and uncluttered, centred; the TOP quarter is plain upper cabinets and ceiling with no detail, because words are drawn over it. Nothing important in the middle strip either side of centre. Flat stylised storybook painting, clean shapes, soft shading, warm and rich but never busy: it sits BEHIND a figure and captions and must never compete with them. Same painterly style as the reference paintings.",
+    "refs": ["public/road/harvest.jpg", "public/road/lamplight.jpg"]
+  },
+  {
+    "id": "roundup-living-room",
+    "kind": "roundup",
+    "prompt": "Vertical 9:16 painted background for a short video, filling the entire frame edge to edge. No characters, no people, no animals, no text, no lettering, no logos, no picture on any screen, no watermark, no border, no frame, no UI. A cosy family living room at night: a big grey sectional couch along the back wall with a throw blanket, a dark switched-off TV on a low stand to the RIGHT with a game controller beside it, a few toy building bricks scattered near a basket, a floor lamp casting a warm pool of light, a wooden cross hung simply on the wall above the couch. Composition for a standing figure drawn over it later: the BOTTOM 40% of the picture is open, level floor with a plain soft rug, uncluttered, centred; the TOP quarter is a plain dim wall and ceiling with no detail, because words are drawn over it. Nothing important in the middle strip either side of centre. Flat stylised storybook painting, clean shapes, soft shading, warm and rich but never busy: it sits BEHIND a figure and captions and must never compete with them. Same painterly style as the reference paintings.",
+    "refs": ["public/road/harvest.jpg", "public/road/lamplight.jpg"]
+  }
+]

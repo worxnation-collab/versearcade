@@ -252,9 +252,13 @@ for (const entry of manifest) {
     // where each paragraph happens, cut to on its first word. Portrait and
     // full-bleed like a road, in a folder of their own.
     'tiktok-stage': 'public/tiktok/stages',
+    // …and the operator's personal weekly roundup (art/roundup-scenes.json):
+    // modern scenes for his own profile, not Verse Arcade's, so they live in
+    // a folder of their own and never mix into the daily posts' rotation.
+    roundup: 'public/roundup',
   }
   const sceneDir = SCENE_DIRS[entry.kind]
-  const isTikTok = entry.kind === 'tiktok' || entry.kind === 'tiktok-road' || entry.kind === 'tiktok-stage'
+  const isTikTok = entry.kind === 'tiktok' || entry.kind === 'tiktok-road' || entry.kind === 'tiktok-stage' || entry.kind === 'roundup'
   const isScene = entry.kind === 'scene' || !!sceneDir
   const isProp = entry.kind === 'prop'
   // A church building: a keyed cut-out like a prop, but it renders from 44px

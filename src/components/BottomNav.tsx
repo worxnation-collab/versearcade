@@ -8,6 +8,7 @@ import { useGifts } from '@/store/gifts'
 import { useReviews } from '@/store/reviews'
 import { useSettings } from '@/store/settings'
 import { useAccountLocked } from '@/components/AccountWall'
+import { useBuildingHidden } from '@/lib/onboardingGate'
 import { Icon, type IconId } from '@/data/icons'
 
 // Five tabs, one per thing you actually come here to do. Ranks folded into
@@ -180,6 +181,14 @@ export function BottomNav() {
   // call on every screen.
   const reviewsDue = useReviews((s) => s.dueRefs.length)
   const locked = useAccountLocked()
+  // Until the third run, this is a two-tab app: Play and You. The other three
+  // are not rendered and the compass is not drawn — see `lib/onboardingGate`.
+  // Note this is the opposite treatment from `locked` directly above it: a
+  // walled tab stays visible WITH a padlock because the locked thing is the
+  // pitch for an account, where a hidden tab has nothing to pitch yet and a
+  // padlock on it would just be a list of what somebody is behind on.
+  const hidden = useBuildingHidden()
+  const shown = hidden ? tabs.filter((t) => t.to === '/play' || t.to === '/you') : tabs
   const [mapOpen, setMapOpen] = useState(false)
   // The pulse is read ONCE, at mount, and cleared the first time the compass is
   // opened. Re-reading it per render would be a localStorage hit on every tab
@@ -236,7 +245,7 @@ export function BottomNav() {
           boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
         }}
       >
-        {tabs.map((t) => (
+        {shown.map((t) => (
           <NavLink
             key={t.to}
             to={t.to}
@@ -275,7 +284,9 @@ export function BottomNav() {
           </NavLink>
         ))}
       </div>
-      <CompassPuck onOpen={openMap} hint={!mapSeen} />
+      {/* The directory of a building that is still folded away says nothing,
+          so it is not drawn until the third run either. */}
+      {!hidden && <CompassPuck onOpen={openMap} hint={!mapSeen} />}
       </div>
     </nav>
 

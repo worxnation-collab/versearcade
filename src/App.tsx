@@ -69,6 +69,7 @@ import { BottomNav } from './components/BottomNav'
 import { PlayerCardProvider } from './components/PlayerCardModal'
 import { AccountWall, useAccountLocked, type WallCopy } from './components/AccountWall'
 import { captureSource } from './lib/attribution'
+import { buildingHidden } from './lib/onboardingGate'
 
 function RequireProfile({ children }: { children: JSX.Element }) {
   const { ready, profile } = useAuth()
@@ -165,6 +166,21 @@ const WALL: Record<string, WallCopy> = {
 function RequireAccount({ copy, children }: { copy: WallCopy; children: JSX.Element }) {
   const locked = useAccountLocked()
   if (locked) return <AccountWall {...copy} />
+  return children
+}
+
+/**
+ * The routes that are not part of the app until three runs are done
+ * (`lib/onboardingGate`). A deep link to one lands on /play rather than on a
+ * wall, because there is nothing here to offer: the tab is not being withheld,
+ * it has not arrived yet. `replace` so Back does not bounce between the two.
+ *
+ * It is a WRAPPER for the same reason `RequireAccount` is — lifting the gate
+ * is deleting it from four routes, not rewriting four screens, and none of the
+ * screens inside knows this exists.
+ */
+function RequireOpened({ children }: { children: JSX.Element }) {
+  if (buildingHidden()) return <Navigate to="/play" replace />
   return children
 }
 
@@ -390,9 +406,11 @@ export default function App() {
           path="/wardrobe"
           element={
             <RequireProfile>
+              <RequireOpened>
               <TabShell>
                 <WardrobeScreen />
               </TabShell>
+              </RequireOpened>
             </RequireProfile>
           }
         />
@@ -432,11 +450,13 @@ export default function App() {
           path="/church"
           element={
             <RequireProfile>
+              <RequireOpened>
               <TabShell>
                 <RequireAccount copy={WALL.church}>
                   <ChurchScreen />
                 </RequireAccount>
               </TabShell>
+              </RequireOpened>
             </RequireProfile>
           }
         />
@@ -477,11 +497,13 @@ export default function App() {
           path="/battle"
           element={
             <RequireProfile>
+              <RequireOpened>
               <TabShell>
                 <RequireAccount copy={WALL.battle}>
                   <BattleHub />
                 </RequireAccount>
               </TabShell>
+              </RequireOpened>
             </RequireProfile>
           }
         />
@@ -541,11 +563,13 @@ export default function App() {
           path="/study"
           element={
             <RequireProfile>
+              <RequireOpened>
               <TabShell>
                 <RequireAccount copy={WALL.study}>
                   <StudyScreen />
                 </RequireAccount>
               </TabShell>
+              </RequireOpened>
             </RequireProfile>
           }
         />

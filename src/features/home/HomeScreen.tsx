@@ -10,6 +10,7 @@ import { QuickSheet } from '@/components/QuickSheet'
 import { DailyChest } from '@/features/chest/DailyChest'
 import { RoadStrip } from '@/features/season/RoadStrip'
 import { MapCompass } from '@/features/map/MapCompass'
+import { useBuildingHidden } from '@/lib/onboardingGate'
 import { PlayedToday } from '@/features/presence/PlayedToday'
 import { liturgyFor } from '@/data/liturgy'
 import { useJuice } from '@/juice/useJuice'
@@ -79,6 +80,8 @@ export default function HomeScreen() {
   const navigate = useNavigate()
   const profile = useAuth((s) => s.profile)!
   const mode = useAuth((s) => s.mode)
+  // Until the third run the compass is not drawn; see `lib/onboardingGate`.
+  const buildingHidden = useBuildingHidden()
   const { today, todayDate, playedToday, lastResult, loadToday, boostArmed, armBoost } = useGame()
   const { loadDue } = useReviews()
   const loadCollection = useCollection((s) => s.load)
@@ -280,7 +283,10 @@ export default function HomeScreen() {
       </div>
 
       {/* And the way to everywhere else. */}
-      <MapCompass />
+      {/* Hidden with the three tabs it leads to, until the third run — a
+          compass pointing at places that are not in the app yet is a list of
+          doors that do not open. See `lib/onboardingGate`. */}
+      {!buildingHidden && <MapCompass />}
 
       {/* ── The buttons ────────────────────────────────────────────────────
           What is left of this screen's old cards, each one tap from its own

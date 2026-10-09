@@ -124,7 +124,28 @@ const TZ = env.TIKTOK_TZ || 'America/New_York'
 const EXCHANGE_EPOCH = '2026-09-19'
 const EXCHANGE_DAYS = [1, 3, 5]
 const isExchangeDay = (d) => d === EXCHANGE_EPOCH || EXCHANGE_DAYS.includes(new Date(`${d}T00:00:00Z`).getUTCDay())
-const defaultKinds = (d) => (isExchangeDay(d) ? 'verse,exchange,story' : 'verse,story')
+// ONE POST A DAY, AND IT IS THE STORY.
+//
+// Measured, not assumed: YouTube is the only audience this engine has (242
+// subscribers, 16.6K views, about one in ten viewers liking) and the STORY is
+// the post people stop for. The verse reading and the exchange were the other
+// two thirds of the schedule and were not earning their place beside it —
+// three posts a day from one small channel is the volume shape both YouTube's
+// inauthentic-content policy and Meta's originality policy describe, and it
+// spreads the attention of a channel that has one thing worth watching.
+//
+// So the cron schedules the STORY and nothing else. The verse reading, the
+// quiz and the exchange all still WORK and are all still in the hub as manual
+// pills — `makeVerse`, `makeQuiz` and `makeExchange` are untouched, and a day
+// that wants one passes KINDS explicitly, which is what that variable has
+// always been for. Nothing is deleted; what changed is what fires by itself.
+//
+// `isExchangeDay` / `EXCHANGE_EPOCH` / `EXCHANGE_DAYS` are kept, and so is
+// `npm run check:exchanges` that holds them in sync with the app's copy: the
+// exchange's own calendar is still how the hub decides which exchange a date
+// draws, and deleting the constants here would fail that check for nothing.
+// They are simply no longer consulted when picking the day's kinds.
+const defaultKinds = (_d) => 'story'
 const PLATFORMS = (env.PLATFORMS || 'tiktok,youtube,facebook,instagram,x,snapchat,threads,pinterest').split(',').map((s) => s.trim()).filter(Boolean)
 const DRY = /^(1|true|yes)$/i.test(env.DRY_RUN || '')
 const FFMPEG = env.FFMPEG || 'ffmpeg'

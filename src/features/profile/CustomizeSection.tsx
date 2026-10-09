@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useBuildingHidden } from '@/lib/onboardingGate'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Avatar } from '@/components/Avatar'
@@ -66,6 +67,8 @@ import type { AvatarSpec } from '@/types'
 // just the sections.
 export function CustomizeSection() {
   const profile = useAuth((s) => s.profile)!
+  // The /wardrobe door, held with the three tabs until the third run.
+  const wardrobeHidden = useBuildingHidden()
   const setCosmetics = useAuth((s) => s.setCosmetics)
   const juice = useJuice()
   const [err, setErr] = useState<string | null>(null)
@@ -539,6 +542,13 @@ export function CustomizeSection() {
                       than by shelf — "what brings this" instead of "what kind of
                       thing is this". It is on the map too; this is the door for
                       somebody who is already standing in front of the grid. */}
+                  {/* Not until the third run, with the three tabs and the
+                      compass — `/wardrobe` redirects to /play while the gate
+                      holds, so a door to it would be a dead tap. The shelves
+                      right here are untouched: what you own is still visible
+                      and still equippable from day one. See
+                      `lib/onboardingGate`. */}
+                  {!wardrobeHidden && (
                   <button
                     className="pill"
                     onClick={() => { juice.select(); navigate('/wardrobe') }}
@@ -546,6 +556,7 @@ export function CustomizeSection() {
                   >
                     🧺 See everything there is to wear →
                   </button>
+                  )}
                   {/* Restore Purchases — REQUIRED by Apple for non-consumable in-app
                       purchases (Guideline 3.1.1): a buyer who reinstalls, or signs in on a
                       second device, has to be able to get their packs back without paying

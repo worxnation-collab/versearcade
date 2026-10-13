@@ -124,3 +124,50 @@ The original list, for the record:
 The repo file is idempotent. **Paste all of `0116_church_packages.sql` into the
 Supabase SQL editor once** and it completes. Until then, `church_verses` has RLS
 on with no policies, which is fully locked, so the partial state fails closed.
+
+## The admin dashboard (0118)
+
+`/church/:id/admin` (`features/church/admin/`). It's reached from "⛪ Leadership
+tools" on your own church card and on the church's page, and drawn only for
+someone `church_admin_settings` says leads THIS church. Every RPC re-checks
+leadership server-side, so the route is a door, not a lock.
+
+| Panel | Who | What |
+|---|---|---|
+| Verse | verified | Schedule a verse (pick from the library or type one), an optional note, start/end dates, and a live preview of the member's Play tab. It says up front whether members will PLAY it (in the pool) or READ it. |
+| How we're doing | verified | Members, played at least once this week, and live-streak buckets (1–3, 4–6, 7–29, 30+, none). **All floored at 5 members.** Plus the opt-in check-in list, with Copy (and CSV download on the web). |
+| Notices | any claimed church | ONE live notice; a new one replaces the last. Giving link: verified only, https only, and hidden in the App Store build. |
+
+**The check-in list is opt-in** (`profiles.church_care_optin`, off by default,
+set only by the member through `set_church_care_optin`). A member shows up only
+if they said yes AND haven't played in 3+ days. The list gives a name and a
+last-active date and nothing else. That was the owner's choice of the three
+options offered, and it is why the list may exist next to CLAUDE.md's "no
+per-member data for leadership".
+
+A streak counts as **live** only if its owner played today or yesterday.
+`current_streak` is only rewritten on the next play, so a stale 40 belongs to
+somebody who has already stopped and is counted as "not on a run".
+
+**Still to paste** (the MCP can't apply destructive statements from this
+session). Add this beneath the policy block above:
+
+```sql
+create or replace function public.delete_church_verse(p_verse_id uuid)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare v_church uuid;
+begin
+  if auth.uid() is null then raise exception 'not authenticated'; end if;
+  select church_id into v_church from public.church_verses where id = p_verse_id;
+  if v_church is null then return jsonb_build_object('ok', true); end if;
+  if not public.is_church_admin(v_church) then
+    return jsonb_build_object('ok', false, 'reason', 'not_leadership');
+  end if;
+  delete from public.church_verses where id = p_verse_id;
+  return jsonb_build_object('ok', true);
+end; $$;
+grant execute on function public.delete_church_verse(uuid) to authenticated;
+```
+
+Until it is pasted, "Remove" on a scheduled verse says it couldn't be removed;
+nothing else is affected.

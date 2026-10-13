@@ -100,6 +100,13 @@ export default function ChurchPublicScreen() {
             signedIn ? (
               <>
                 <JoinChurchButton church={page.church} isMember={!!extras?.isMember} />
+                {extras?.isAdmin && (
+                  <div style={{ marginTop: 12 }}>
+                    <Button variant="secondary" full onClick={() => navigate(`/church/${page.church.id}/admin`)}>
+                      ⛪ Leadership tools
+                    </Button>
+                  </div>
+                )}
                 <ShareChurch churchId={page.church.id} churchName={page.church.name} />
                 {/* The QR code is the verified package's; the link above is
                     every church's, free, and stays that way. */}

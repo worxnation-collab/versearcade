@@ -16,6 +16,8 @@ import { useJuice } from '@/juice/useJuice'
 import { supabase } from '@/lib/supabase'
 import { ChurchArt } from './ChurchArt'
 import { ShareChurch } from './ShareChurch'
+import { useChurchExtras } from './ChurchExtras'
+import { CareOptinToggle } from './CareOptinToggle'
 import { ChurchBoard, TIMEFRAME_PHRASE } from './ChurchBoard'
 import { ChurchScene } from './ChurchScene'
 import { RivalryCard } from './RivalryCard'
@@ -106,6 +108,10 @@ function Header() {
 // ---------------------------------------------------------------------------
 function ChurchHome({ church }: { church: Church }) {
   const juice = useJuice()
+  const navigate = useNavigate()
+  // Verified, and whether YOU lead it (0117) — what decides the check-in switch
+  // and the Leadership door below.
+  const extras = useChurchExtras(church.id)
   const { available, myGiven, givers, contribute, leave, radiusMiles, timeframe } = useChurch()
   const worldwide = radiusMiles === 'all'
   const [busy, setBusy] = useState(false)
@@ -430,6 +436,19 @@ function ChurchHome({ church }: { church: Church }) {
           label="📣 Invite your congregation"
           note="Sends the church’s own page — anyone can open it, and joining takes one tap."
         />
+
+        {/* The member's own switch onto the check-in list (0118) — only where
+            there IS a list, a verified church. Off by default. */}
+        {extras?.verified && <CareOptinToggle churchName={church.name} />}
+
+        {/* Leadership's door, on the one card a leader opens every day. */}
+        {extras?.isAdmin && (
+          <div style={{ marginTop: 12 }}>
+            <Button variant="secondary" full onClick={() => navigate(`/church/${church.id}/admin`)}>
+              ⛪ Leadership tools
+            </Button>
+          </div>
+        )}
 
         {/* The shelf you fill the yard from, ON the church's own card — the
             shape the Upper Room and the keep's hall both already use: the

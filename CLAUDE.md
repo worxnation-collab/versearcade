@@ -1595,6 +1595,16 @@ What a claim buys is narrow, and each exclusion is load-bearing:
   operator could undo.
 - **Nothing about a member**, and this is the rule someone will try to break.
 
+**One narrow, OPT-IN exception, the owner's call (2026-10-13, `0118`):** a
+verified church's leadership sees a *check-in list* — the name and last-active
+date of members who have been away three or more days — but ONLY members who
+switched on "Let my church's leaders know when I've been away" themselves
+(`profiles.church_care_optin`, default false, `CareOptinToggle` on the church
+tab). Nobody is on it without saying yes, nothing tells leadership who said no,
+and it carries no score, streak or count. Everything else leadership sees is an
+aggregate floored at five members (`church_admin_overview`). Widening the list
+to members who did not opt in is exactly the shape the paragraph below forbids.
+
 **No per-member data for leadership.** The roster carries no per-person numbers
 ("a crowd, not a ladder"), and a pastor-facing view of who played and who lapsed
 is that shape *with authority attached* — the person who played less becomes
@@ -2314,7 +2324,24 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0117` (church discovery — `church_directory`, `church_extras`,
+The latest is `0118` (the church admin dashboard — `schedule_church_verse`,
+`list_church_verses`, `delete_church_verse`, `set_church_announcement`,
+`church_admin_settings`, `church_admin_overview`, `church_care_list`,
+`set_church_care_optin` + `profiles.church_care_optin`; `docs/CHURCH-PACKAGES.md`).
+APPLIED 2026-10-13 as `0118_church_admin_a_optin` / `_b_schedule_list` /
+`_c_announcement` / `_d_overview_care` — **except `delete_church_verse`**,
+which is in the paste-it snippet with the 0116/0117 policies. Every admin write
+is a definer RPC, so the dashboard works without those policies.
+
+**Why some Supabase MCP applies hang, found this time rather than guessed:**
+the MCP asks for a user confirmation on DESTRUCTIVE statements — `DROP …`,
+`DELETE FROM` — and that confirmation never reaches a cloud session, so the
+call simply times out (and has twice restarted the worker). Every payload that
+hung carried one; every one that went through had none, including a
+`delete`-free retry of the same function minutes later. Do not reword around
+the check: split the destructive part out and hand it to the owner to paste.
+
+Before it, `0117` (church discovery — `church_directory`, `church_extras`,
 `churches.giving_url` + `set_church_giving_url`, announcements opened to any
 claimed church, `my_church_today` restated with the church's name and giving
 link; `docs/CHURCH-PACKAGES.md`). APPLIED 2026-10-13 except its two policies,
@@ -2709,7 +2736,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0118` (0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0119` (0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

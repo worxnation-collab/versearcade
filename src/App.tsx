@@ -29,6 +29,7 @@ import ChurchesScreen from './features/churches/ChurchesScreen'
 import ChurchDirectoryScreen from './features/churches/ChurchDirectoryScreen'
 import ChurchScreen from './features/church/ChurchScreen'
 import ChurchPublicScreen from './features/church/ChurchPublicScreen'
+import ChurchAdminScreen from './features/church/admin/ChurchAdminScreen'
 import AdminScreen from './features/admin/AdminScreen'
 import LeaderboardScreen from './features/leaderboard/LeaderboardScreen'
 import CollectionScreen from './features/collection/CollectionScreen'
@@ -462,6 +463,19 @@ export default function App() {
             Distinct from /church above (the player-facing tab) and /churches
             below (the B2B funnel). */}
         <Route path="/church/:id" element={<ChurchPublicScreen />} />
+        {/* A church's leadership tools. Behind the church wall (an account) —
+            and every RPC under it re-checks leadership server-side, so the
+            route is a door, not a lock. */}
+        <Route
+          path="/church/:id/admin"
+          element={
+            <RequireProfile>
+              <RequireAccount copy={WALL.church}>
+                <ChurchAdminScreen />
+              </RequireAccount>
+            </RequireProfile>
+          }
+        />
         <Route path="/churches" element={<ChurchesScreen />} />
         {/* Public: every church on the app, by name — the free layer's front
             door. Open to a guest for the reason /church/:id is: somebody who

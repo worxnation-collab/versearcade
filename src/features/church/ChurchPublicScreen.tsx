@@ -7,6 +7,9 @@ import { fetchChurchPage } from '@/store/church'
 import { setPendingChurch } from './pending'
 import { ChurchPageBody } from './ChurchPageBody'
 import { ShareChurch } from './ShareChurch'
+import { useChurchExtras } from './ChurchExtras'
+import { JoinChurchButton } from './JoinChurchButton'
+import { ChurchInviteQR } from './ChurchInviteQR'
 import type { ChurchPage } from '@/types'
 
 // /church/:id — a congregation, linkable by anybody.
@@ -33,6 +36,9 @@ export default function ChurchPublicScreen() {
   const [loading, setLoading] = useState(true)
 
   const signedIn = !!profile && mode === 'online'
+  // Badge, logo, announcement, giving link and membership (0117). Re-asked on
+  // sign-in so `isMember` is about the person now looking.
+  const extras = useChurchExtras(id, signedIn)
 
   useEffect(() => {
     if (!ready) return
@@ -89,11 +95,18 @@ export default function ChurchPublicScreen() {
           named={signedIn}
           canAsk={signedIn}
           withYard={signedIn}
+          extras={extras}
           footer={
             signedIn ? (
-              <ShareChurch churchId={page.church.id} churchName={page.church.name} />
+              <>
+                <JoinChurchButton church={page.church} isMember={!!extras?.isMember} />
+                <ShareChurch churchId={page.church.id} churchName={page.church.name} />
+                {/* The QR code is the verified package's; the link above is
+                    every church's, free, and stays that way. */}
+                {extras?.verified && <ChurchInviteQR churchId={page.church.id} churchName={page.church.name} />}
+              </>
             ) : (
-              <JoinIn churchId={page.church.id} churchName={page.church.name} />
+              <JoinIn churchId={page.church.id} churchName={page.church.name} verified={!!extras?.verified} />
             )
           }
         />
@@ -109,7 +122,7 @@ export default function ChurchPublicScreen() {
 // feature list, because that is the thing the visitor is looking at and can't
 // have yet. Same no-scolding rule as AccountWall: nothing here suggests they
 // did something wrong by arriving without one.
-function JoinIn({ churchId, churchName }: { churchId: string; churchName: string }) {
+function JoinIn({ churchId, churchName, verified }: { churchId: string; churchName: string; verified: boolean }) {
   const navigate = useNavigate()
   const go = () => {
     setPendingChurch(churchId)
@@ -121,9 +134,11 @@ function JoinIn({ churchId, churchName }: { churchId: string; churchName: string
         Play for {churchName}
       </b>
       <p className="dim" style={{ margin: '6px 0 12px', fontSize: 13.5, lineHeight: 1.55 }}>
-        One Bible verse a day, the same one for everybody. The points you earn you can give to this
-        church — giving costs you nothing, and it's how the building grows. Make a free account and
-        you'll see who else plays here.
+        {verified
+          ? `One Bible verse a day — the one ${churchName} chose for its members — and a quick quiz on it.`
+          : 'One Bible verse a day, the same one for everybody, and a quick quiz on it.'}{' '}
+        The points you earn you can give to this church — giving costs you nothing, and it's how the
+        building grows. Make a free account and you'll see who else plays here.
       </p>
       <Button variant="gold" full onClick={go}>Create a free account</Button>
       <button

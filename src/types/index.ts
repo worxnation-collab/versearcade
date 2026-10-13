@@ -28,6 +28,13 @@ export type Testament = 'OT' | 'NT'
 
 export interface DailyVerse {
   dropDate: string // YYYY-MM-DD
+  /**
+   * Set when this is a VERIFIED church's scheduled verse standing in for the
+   * global one (0116/0117, `useChurchToday`). Absent on every other run — the
+   * global drop, practice, battles — so nothing that does not look for it can
+   * be changed by it.
+   */
+  church?: { id: string; name: string; pastorNote: string | null }
   translation: string
   reference: string // "John 3:16"
   book: string

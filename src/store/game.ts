@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
-import { getVerseForDate } from '@/data/bible/questions'
+import { getVerseForDate, churchVerseForDate } from '@/data/bible/questions'
+import { aboutVerseSeed } from '@/data/cardAbout'
+import { useChurchToday } from './churchPackage'
 import { todayLocalDate } from '@/lib/date'
 import { localdb } from '@/lib/localdb'
 import { applyPlayLocal } from '@/lib/progress'
@@ -55,6 +57,31 @@ export function usualPlayTime(): string | null {
   }
 }
 
+// A VERIFIED church's scheduled verse stands in for the global one — for its
+// members, on the dates it covers, and only when the arcade can build a run
+// from it (`aboutVerseSeed`: the pool carries the verse). Every other case
+// returns the global verse untouched: a guest, no church, an unverified church,
+// no verse scheduled, a reference outside the pool, a slow or failed call.
+// `store/churchPackage` gives the call a 2.5s deadline, so a church can make
+// the drop different but can never make it late.
+//
+// What deliberately does NOT change: `dropDate`, so the streak, `plays`,
+// first light and the run lock are keyed exactly as before, and
+// `ensure_daily_verse`, which keeps writing the GLOBAL verse — that row is the
+// shared record of the day and one congregation must not overwrite it.
+async function churchVerseOr(global: DailyVerse, date: string): Promise<DailyVerse> {
+  const ct = await useChurchToday.getState().load()
+  const v = ct?.verified ? ct.verse : null
+  if (!v || !ct?.church_id) return global
+  const seed = aboutVerseSeed(v.reference)
+  if (!seed) return global
+  return churchVerseForDate(seed, date, {
+    id: ct.church_id,
+    name: ct.church_name ?? 'Your church',
+    pastorNote: v.pastor_note ?? null,
+  })
+}
+
 export const useGame = create<GameState>((set, get) => ({
   today: null,
   todayDate: todayLocalDate(),
@@ -80,6 +107,8 @@ export const useGame = create<GameState>((set, get) => ({
     }
 
     // ONLINE: make sure the shared row exists, then check if the user played.
+    // The church lookup runs beside it, so it adds no wait of its own.
+    const servedP = churchVerseOr(verse, date)
     await supabase.rpc('ensure_daily_verse', {
       p_drop_date: date,
       p_translation: verse.translation,
@@ -133,7 +162,8 @@ export const useGame = create<GameState>((set, get) => ({
       }
     }
     // Keep an accurate just-played result if we have one; else use the rebuilt one.
-    set({ today: verse, todayDate: date, playedToday: played, lastResult: get().lastResult ?? restored })
+    const served = await servedP
+    set({ today: served, todayDate: date, playedToday: played, lastResult: get().lastResult ?? restored })
   },
 
   async submitPlay(result) {

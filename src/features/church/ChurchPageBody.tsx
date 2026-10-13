@@ -13,6 +13,9 @@ import { ChurchScene } from './ChurchScene'
 import { useRivalry } from '@/store/rivalry'
 import { CHURCH_SKINS, DEFAULT_CHURCH_SKIN, type ChurchSkinChoice } from './skins'
 import type { Church, ChurchInfo, ChurchMember, ChurchPage } from '@/types'
+import type { ChurchExtras } from '@/types/churchPackages'
+import { VerifiedBadge } from './VerifiedBadge'
+import { ChurchExtrasBlock } from './ChurchExtras'
 
 /** Stable empty yard — a fresh {} from the selector would re-render forever. */
 const EMPTY_YARD = {}
@@ -37,6 +40,7 @@ export function ChurchPageBody({
   canAsk = true,
   withYard = true,
   footer,
+  extras = null,
 }: {
   page: ChurchPage
   loading: boolean
@@ -60,6 +64,13 @@ export function ChurchPageBody({
   withYard?: boolean
   /** Sits under the page — the public screen's way in. */
   footer?: React.ReactNode
+  /**
+   * The verified badge, logo, announcement and giving link (0117,
+   * `useChurchExtras`). Passed in rather than fetched here because the public
+   * screen needs the same answer for its Join button and QR code, and two
+   * reads of one fact can disagree for a frame.
+   */
+  extras?: ChurchExtras | null
 }) {
   const { church, members, memberTotal } = page
   // The yard is a second read on purpose: the sheet is seeded from the row and
@@ -92,8 +103,22 @@ export function ChurchPageBody({
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
+        {extras?.logoUrl && (
+          <img
+            src={extras.logoUrl}
+            alt=""
+            draggable={false}
+            referrerPolicy="no-referrer"
+            style={{ width: 44, height: 44, borderRadius: 10, objectFit: 'cover', flexShrink: 0, background: 'var(--card-raised)' }}
+          />
+        )}
         <div style={{ minWidth: 0, flex: 1 }}>
           <h2 style={{ fontSize: 21, margin: 0, overflowWrap: 'anywhere' }}>{church.name}</h2>
+          {extras?.verified && (
+            <div style={{ marginTop: 5 }}>
+              <VerifiedBadge size="md" />
+            </div>
+          )}
           <p className="faint" style={{ margin: '3px 0 0', fontSize: 12.5 }}>
             {where || 'Location not listed'}
             {church.miles != null && !church.isMine ? ` · ${formatMiles(church.miles)} away` : ''}
@@ -147,6 +172,10 @@ export function ChurchPageBody({
           Ranked <b style={{ color: 'var(--gold)' }}>#{church.rank}</b> on the board you're looking at.
         </p>
       )}
+
+      {/* The free announcement, and a verified church's giving link — above
+          the congregation, because it is the newest thing on the page. */}
+      <ChurchExtrasBlock extras={extras} churchName={church.name} />
 
       {named ? (
         <Congregation members={members} total={memberTotal} loading={loading} />

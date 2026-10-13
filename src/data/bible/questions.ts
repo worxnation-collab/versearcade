@@ -420,3 +420,24 @@ export function verseFromReference(reference: string): DailyVerse | null {
   if (!seed) return null
   return buildDailyVerse(seed, mulberry32(hashString(`favorite-${reference}`)), `favorite-${reference}`)
 }
+
+// A verified church's scheduled verse, as the day's drop for its members.
+//
+// The questions are seeded off the CHURCH and the date, so everybody in one
+// congregation gets the same five on the same day — the shared-drop promise,
+// kept at the scale the church chose. `dropDate` stays the real date, because
+// the streak, `plays`, the run lock and first light are all keyed on it and
+// none of them should notice which verse was played.
+//
+// Only a verse the pool carries can be a drop: the question generator needs
+// the seed's speaker, audience, context and facts. The caller resolves the
+// reference (`aboutVerseSeed`) and falls back to `getVerseForDate` when it
+// can't — never an empty run.
+export function churchVerseForDate(
+  seed: VerseSeed,
+  dateStr: string,
+  church: { id: string; name: string; pastorNote: string | null },
+): DailyVerse {
+  const rng = mulberry32(hashString(`church:${church.id}:${dateStr}`))
+  return { ...buildDailyVerse(seed, rng, dateStr), church }
+}

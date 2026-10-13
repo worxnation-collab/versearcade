@@ -26,6 +26,7 @@ import CalendarScreen from './features/liturgy/CalendarScreen'
 import WardrobeScreen from './features/wardrobe/WardrobeScreen'
 import PrayerWallScreen from './features/prayer/PrayerWallScreen'
 import ChurchesScreen from './features/churches/ChurchesScreen'
+import ChurchDirectoryScreen from './features/churches/ChurchDirectoryScreen'
 import ChurchScreen from './features/church/ChurchScreen'
 import ChurchPublicScreen from './features/church/ChurchPublicScreen'
 import AdminScreen from './features/admin/AdminScreen'
@@ -462,6 +463,11 @@ export default function App() {
             below (the B2B funnel). */}
         <Route path="/church/:id" element={<ChurchPublicScreen />} />
         <Route path="/churches" element={<ChurchesScreen />} />
+        {/* Public: every church on the app, by name — the free layer's front
+            door. Open to a guest for the reason /church/:id is: somebody who
+            heard about their church on a Sunday should be able to find it
+            before being asked for anything. */}
+        <Route path="/churches/find" element={<ChurchDirectoryScreen />} />
         {/* Old Groups deep links now land on the churches page. */}
         <Route path="/groups" element={<Navigate to="/churches" replace />} />
         {/* Private operator surface — gated to the admin account + PIN inside. */}

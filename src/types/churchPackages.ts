@@ -63,7 +63,9 @@ export type ChurchAnnouncementInsert = Pick<ChurchAnnouncementRow, 'church_id' |
 /** `my_church_today(p_local_date)` */
 export interface ChurchToday {
   church_id: string | null
+  church_name?: string | null
   verified: boolean
+  giving_url?: string | null
   /** Null unless the church is verified and a verse covers the date. */
   verse: {
     id: string
@@ -93,3 +95,27 @@ export type ChurchParticipation =
       completions: number | null
       floored: boolean
     }
+
+/** One row of `church_directory` (0117). Public. */
+export interface ChurchDirectoryRow {
+  id: string
+  name: string
+  city: string | null
+  region: string | null
+  /** The published tagline, or null. */
+  tagline: string | null
+  verified: boolean
+  logo_url: string | null
+  members: number
+}
+
+/** `church_extras(church)` (0117) — what the profile adds. Public. */
+export interface ChurchExtras {
+  verified: boolean
+  logoUrl: string | null
+  /** Only while verified. Whether a BUILD may show it: `givingLinkVisible()`. */
+  givingUrl: string | null
+  announcement: { id: string; message: string; createdAt: string } | null
+  isMember: boolean
+  isAdmin: boolean
+}

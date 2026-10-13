@@ -2314,7 +2314,22 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0114` (choose a city instead of standing in one —
+The latest is `0116` (church packages — `churches.verified`/`logo_url`,
+`church_billing`, `church_verses`, `church_announcements`, the `church_members`
+view, `my_church_today`, `church_participation_7d`; `docs/CHURCH-PACKAGES.md`).
+**PARTIALLY APPLIED** on 2026-10-13: production records `0116_church_packages_a_columns`,
+`_b_billing` and `_c_verses` (table only). The Supabase MCP's `apply_migration`
+hung on every payload containing `CREATE POLICY` even though the same SQL runs
+instantly via a direct probe, so the rest — the verse policies, announcements,
+the two RPCs and the view — has to be finished by pasting the (idempotent) repo
+file into the SQL editor. Until then `church_verses` is RLS-on with no policy,
+i.e. fully locked: the partial state fails closed. **`0115` is taken in
+production by `0115_church_cities_rls`**, which is not on main — check
+`list_migrations`, not the folder. Run end to end against a local Postgres 16
+first, twelve cases, including an unverified church's admin refused a write, an
+outsider reading nothing, and participation reading null below five players.
+
+Before it, `0114` (choose a city instead of standing in one —
 `church_cities` + `refresh_church_cities()`, `church_cities_search`,
 `search_church_places_in_city`, `church_city_key`). APPLIED on 2026-09-17
 before the client merged, and verified: exactly ONE signature each, the two
@@ -2677,7 +2692,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0115` (0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0117` (0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

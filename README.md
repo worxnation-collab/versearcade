@@ -1,55 +1,56 @@
-# 📖 Verse Arcade
+# Verse Arcade
 
-Make opening the Bible feel exciting and habitual. A shared daily verse, a timed
-arcade quiz about *that exact verse*, streaks, XP, co-op groups, and relentless
-game "juice" — built React + Supabase + Capacitor, one codebase for web and iOS.
+**Make opening the Bible feel exciting and habitual.**
 
-> **Mission:** stickiness without shame. Wrong answers teach instead of punish.
-> No leaderboards — just warmth, streaks, and the pull to come back tomorrow.
+A shared daily verse, a timed arcade quiz about *that exact verse*, streaks, XP, co-op groups, and game juice — one codebase for web and iOS.
 
----
+> **Mission:** stickiness without shame. Wrong answers teach instead of punish. No leaderboards — just warmth, streaks, and the pull to come back tomorrow.
 
-## Quick start (play in 30 seconds, no backend)
+## What it does
+- Daily verse + timed quiz built specifically around that verse
+- Streaks, XP, and collectibles that reward showing up
+- Co-op groups and a church tab (find, give, local board)
+- Works fully offline/local with no backend; switches to online when Supabase is connected
+- Built with React + Supabase + Capacitor
+
+## Tech
+React · TypeScript · Supabase (Postgres, Auth, RLS) · Capacitor · Tailwind
+
+## Quick start (no backend required)
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open the URL it prints. With **no Supabase keys**, the app runs in **LOCAL mode**:
-the full solo daily loop, juice, streaks, XP, collectibles, and a demo group all
-work, saved to your device. This is intentional — solo play is complete on its own.
+With no Supabase keys the app runs in **LOCAL mode**: the full solo daily loop, juice, streaks, XP, and a demo group all work and save to the device.
 
-## Connect the backend (accounts, sync, real groups, ambient presence)
-
+## Connect Supabase
 1. Create a Supabase project and run the SQL in `supabase/migrations/` in order.
-2. Copy `.env.example` → `.env.local` and paste your URL + anon key.
-3. Enable Google + Apple providers — see **`docs/SETUP-SUPABASE.md`** (click-by-click).
+2. Copy `.env.example` → `.env.local` and add your URL + anon key.
+3. Enable Google + Apple providers (see `docs/SETUP-SUPABASE.md`).
 4. Restart `npm run dev`. The app auto-detects the keys and switches to ONLINE mode.
 
 ## Ship to iOS
-
 ```bash
 npm run build
 npx cap add ios      # first time only
 npm run cap:sync
-npm run cap:ios      # opens Xcode
+npm run cap:ios
 ```
 
-Full Apple Developer portal + Sign in with Apple + IAP checklist: **`docs/SETUP-APPLE.md`**.
+See `docs/SETUP-APPLE.md` for Sign in with Apple and IAP.
 
 ## What's inside
 
 | Area | Where |
 |---|---|
-| Data model + RLS + scoring functions | `supabase/migrations/` |
+| Data model + RLS + scoring | `supabase/migrations/` |
 | Juice system (sound/haptics/confetti) | `src/juice/` |
 | Core daily loop | `src/features/daily/` |
-| Ambient presence | `src/features/presence/` |
-| Co-op groups | `src/features/groups/`, `src/store/groups.ts` |
-| Church tab (find, give, level, local board) | `src/features/church/`, `src/store/church.ts` |
-| Bible content engine | `src/data/bible/` |
-| Auth (email/Google/Apple + guest) | `src/features/auth/`, `src/store/auth.ts` |
+| Groups & presence | `src/features/groups/`, `src/features/presence/` |
+| Church tab | `src/features/church/` |
+| Bible content | `src/data/bible/` |
+| Auth | `src/features/auth/` |
 
-See **`docs/ARCHITECTURE.md`** for the full design, the retention-feature
-rationale, and the list of what's stubbed/deferred.
+Full design and retention rationale: `docs/ARCHITECTURE.md`.

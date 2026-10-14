@@ -258,8 +258,8 @@ export default function HomeScreen() {
         />
       </div>
 
-      {/* A verified church's layer on the day — whose verse it is, the pastor's
-          note, the church's banner and its giving link. One slim card, and
+      {/* A verified church's layer on the day — whose verse it is, the
+          church's banner and its giving link. One slim card, and
           nothing at all for anybody not in a verified church. */}
       <ChurchTodayStrip />
 

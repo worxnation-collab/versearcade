@@ -17,7 +17,6 @@ import { supabase } from '@/lib/supabase'
 import { ChurchArt } from './ChurchArt'
 import { ShareChurch } from './ShareChurch'
 import { useChurchExtras } from './ChurchExtras'
-import { CareOptinToggle } from './CareOptinToggle'
 import { ChurchBoard, TIMEFRAME_PHRASE } from './ChurchBoard'
 import { ChurchScene } from './ChurchScene'
 import { RivalryCard } from './RivalryCard'
@@ -436,10 +435,6 @@ function ChurchHome({ church }: { church: Church }) {
           label="📣 Invite your congregation"
           note="Sends the church’s own page — anyone can open it, and joining takes one tap."
         />
-
-        {/* The member's own switch onto the check-in list (0118) — only where
-            there IS a list, a verified church. Off by default. */}
-        {extras?.verified && <CareOptinToggle churchName={church.name} />}
 
         {/* Leadership's door, on the one card a leader opens every day. */}
         {extras?.isAdmin && (

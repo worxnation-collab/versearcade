@@ -1595,15 +1595,12 @@ What a claim buys is narrow, and each exclusion is load-bearing:
   operator could undo.
 - **Nothing about a member**, and this is the rule someone will try to break.
 
-**One narrow, OPT-IN exception, the owner's call (2026-10-13, `0118`):** a
-verified church's leadership sees a *check-in list* — the name and last-active
-date of members who have been away three or more days — but ONLY members who
-switched on "Let my church's leaders know when I've been away" themselves
-(`profiles.church_care_optin`, default false, `CareOptinToggle` on the church
-tab). Nobody is on it without saying yes, nothing tells leadership who said no,
-and it carries no score, streak or count. Everything else leadership sees is an
-aggregate floored at five members (`church_admin_overview`). Widening the list
-to members who did not opt in is exactly the shape the paragraph below forbids.
+**The opt-in check-in list (0118) was RETIRED a day later (`0119`, the
+owner's call, 2026-10-14).** Leadership of a VERIFIED church sees
+`get_church_participation`, and only that: congregation totals with every number
+under five withheld (zero included), no usernames, no per-person row and nothing
+about who did not play. `docs/CHURCH-SHARED-VERSE.md`. The rule below is
+absolute again. Don't bring a list of people back as an "opt-in".
 
 **No per-member data for leadership.** The roster carries no per-person numbers
 ("a crowd, not a ladder"), and a pastor-facing view of who played and who lapsed
@@ -2324,14 +2321,25 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0118` (the church admin dashboard — `schedule_church_verse`,
-`list_church_verses`, `delete_church_verse`, `set_church_announcement`,
-`church_admin_settings`, `church_admin_overview`, `church_care_list`,
-`set_church_care_optin` + `profiles.church_care_optin`; `docs/CHURCH-PACKAGES.md`).
-APPLIED 2026-10-13 as `0118_church_admin_a_optin` / `_b_schedule_list` /
-`_c_announcement` / `_d_overview_care` — **except `delete_church_verse`**,
-which is in the paste-it snippet with the 0116/0117 policies. Every admin write
-is a definer RPC, so the dashboard works without those policies.
+The latest is `0119` (the verified-church layer: `church_verses` reshaped to
+one row per church per day with five questions, `set_church_verse`,
+`church_verse_for`, `get_effective_verse`, `get_church_participation`, and
+`my_church_today` restated without the verse; `docs/CHURCH-SHARED-VERSE.md`).
+APPLIED 2026-10-14 as `0119_church_shared_verse_a_table` / `_b_rpcs`, after a
+local Postgres 16 run of nine cases: an unverified admin refused, a member
+refused, five malformed payloads refused, an upsert normalised away extra keys,
+direct table access denied, null for another church / far date / guest /
+unverified church, the floor withholding a bucket of 2, and a re-run being a
+no-op. It contains NO `drop`, `delete` or `create policy`. The 0116 table is
+RENAMED to `church_verses_0116`, and the 0118 scheduler, overview and care-list
+RPCs are REVOKED from every client role (ACL `{postgres,service_role}`, verified
+live). Dropping them is a safe paste-it cleanup.
+
+Before it, `0118` (the church admin dashboard — `schedule_church_verse`,
+`list_church_verses`, `set_church_announcement`, `church_admin_settings`,
+`church_admin_overview`, `church_care_list`, `set_church_care_optin` +
+`profiles.church_care_optin`). APPLIED 2026-10-13, and largely superseded by
+0119; `delete_church_verse` was never applied and no longer needs to be.
 
 **Why some Supabase MCP applies hang, found this time rather than guessed:**
 the MCP asks for a user confirmation on DESTRUCTIVE statements — `DROP …`,
@@ -2736,7 +2744,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0119` (0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0120` (0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

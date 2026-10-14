@@ -3,8 +3,7 @@ import { fetchChurchExtras } from '@/store/churchPackage'
 import { givingLinkVisible } from '@/lib/commerce'
 import type { ChurchExtras } from '@/types/churchPackages'
 
-// What a church page adds on top of the free profile (0117): the verified
-// badge, a logo, its one live announcement, and — for a verified church — the
+// What a church page adds on top of the free profile (0117): a logo, its one live announcement, and — for a verified church — the
 // giving link. Fetched separately from `get_church_page`/`public_church_page`
 // on purpose, so neither of those had to be restated (a wholesale restate of a
 // function every board reads is the trap this codebase keeps warning about).

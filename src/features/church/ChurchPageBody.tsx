@@ -14,7 +14,6 @@ import { useRivalry } from '@/store/rivalry'
 import { CHURCH_SKINS, DEFAULT_CHURCH_SKIN, type ChurchSkinChoice } from './skins'
 import type { Church, ChurchInfo, ChurchMember, ChurchPage } from '@/types'
 import type { ChurchExtras } from '@/types/churchPackages'
-import { VerifiedBadge } from './VerifiedBadge'
 import { ChurchExtrasBlock } from './ChurchExtras'
 
 /** Stable empty yard — a fresh {} from the selector would re-render forever. */
@@ -114,11 +113,6 @@ export function ChurchPageBody({
         )}
         <div style={{ minWidth: 0, flex: 1 }}>
           <h2 style={{ fontSize: 21, margin: 0, overflowWrap: 'anywhere' }}>{church.name}</h2>
-          {extras?.verified && (
-            <div style={{ marginTop: 5 }}>
-              <VerifiedBadge size="md" />
-            </div>
-          )}
           <p className="faint" style={{ margin: '3px 0 0', fontSize: 12.5 }}>
             {where || 'Location not listed'}
             {church.miles != null && !church.isMine ? ` · ${formatMiles(church.miles)} away` : ''}

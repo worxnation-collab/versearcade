@@ -142,7 +142,7 @@ function JoinIn({ churchId, churchName, verified }: { churchId: string; churchNa
       </b>
       <p className="dim" style={{ margin: '6px 0 12px', fontSize: 13.5, lineHeight: 1.55 }}>
         {verified
-          ? `One Bible verse a day — the one ${churchName} chose for its members — and a quick quiz on it.`
+          ? `One Bible verse a day — on the days ${churchName} picks one, theirs — and a quick quiz on it.`
           : 'One Bible verse a day, the same one for everybody, and a quick quiz on it.'}{' '}
         The points you earn you can give to this church — giving costs you nothing, and it's how the
         building grows. Make a free account and you'll see who else plays here.

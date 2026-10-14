@@ -1,8 +1,10 @@
 import { supabase } from '@/lib/supabase'
 import { todayLocalDate } from '@/lib/date'
 import { useAuth } from './auth'
+import type { Question } from '@/types'
+import type { ChurchParticipation } from '@/types/churchPackages'
 
-// Church leadership's reads and writes (0118). Every call is a security-definer
+// Church leadership's reads and writes (0118, 0119). Every call is a security-definer
 // RPC that re-checks `is_church_admin` (and, for the paid half, `verified`)
 // server-side, so nothing here is a gate — a non-admin calling any of it gets
 // `not_leadership` back. The screen uses the answers to decide what to draw.
@@ -62,113 +64,77 @@ export async function saveGivingUrl(churchId: string, url: string) {
 }
 
 // ---------------------------------------------------------------------------
-// The shared verse
+// The shared verse (0119): one per day, with the church's own five questions.
 // ---------------------------------------------------------------------------
-export interface ScheduledVerse {
-  id: string
+export interface DayVerse {
   reference: string
   text: string
-  pastorNote: string | null
-  startsOn: string
-  endsOn: string | null
+  questions: Question[]
 }
 
-export async function listScheduledVerses(churchId: string) {
-  const r = await call('list_church_verses', { p_church_id: churchId, p_local_date: todayLocalDate() })
+/** What leadership already set for a date, or null — so the form edits rather than overwrites blind. */
+export async function fetchDayVerse(churchId: string, date: string) {
+  const r = await call('church_verse_for', { p_church_id: churchId, p_drop_date: date })
   if (!r.ok) return r
-  const verses: ScheduledVerse[] = ((r.data.verses ?? []) as any[]).map((v) => ({
-    id: String(v.id),
-    reference: String(v.reference),
-    text: String(v.text),
-    pastorNote: v.pastor_note ?? null,
-    startsOn: String(v.starts_on),
-    endsOn: v.ends_on ?? null,
-  }))
-  return { ok: true as const, data: verses }
+  const v = r.data.verse
+  const verse: DayVerse | null = v
+    ? { reference: String(v.reference), text: String(v.text), questions: (v.questions ?? []) as Question[] }
+    : null
+  return { ok: true as const, data: verse }
 }
 
-export async function scheduleVerse(
-  churchId: string,
-  v: { reference: string; text: string; pastorNote: string; startsOn: string; endsOn: string | null },
-) {
-  return call<{ id: string }>('schedule_church_verse', {
+/** Idempotent per (church, date): saving the same day again replaces it. */
+export async function saveDayVerse(churchId: string, date: string, v: DayVerse) {
+  return call<{ drop_date: string }>('set_church_verse', {
     p_church_id: churchId,
+    p_drop_date: date,
     p_reference: v.reference,
     p_text: v.text,
-    p_note: v.pastorNote || null,
-    p_starts_on: v.startsOn,
-    p_ends_on: v.endsOn || null,
+    p_questions: cleanQuestions(v.questions),
   })
 }
 
-export async function deleteScheduledVerse(verseId: string) {
-  return call('delete_church_verse', { p_verse_id: verseId })
+/**
+ * The client half of `church_clean_questions` (0119) — keep them in sync.
+ * Trims, drops blank options, and returns null for anything the server would
+ * refuse, so the form can say what's wrong before a round trip.
+ */
+export function cleanQuestions(qs: Question[]): Question[] | null {
+  if (qs.length !== 5) return null
+  const out: Question[] = []
+  for (const q of qs) {
+    const prompt = q.prompt.trim()
+    const teach = q.teach.trim()
+    if (prompt.length < 1 || prompt.length > 300 || teach.length < 1 || teach.length > 400) return null
+    const options = q.options.map((o) => o.trim())
+    if (options.length < 2 || options.length > 4) return null
+    if (options.some((o) => o.length < 1 || o.length > 120)) return null
+    if (new Set(options.map((o) => o.toLowerCase())).size !== options.length) return null
+    if (!Number.isInteger(q.answerIndex) || q.answerIndex < 0 || q.answerIndex >= options.length) return null
+    out.push({ prompt, options, answerIndex: q.answerIndex, teach })
+  }
+  return out
 }
 
 // ---------------------------------------------------------------------------
-// Participation — aggregates, floored server-side
+// Participation — congregation totals, every number under five withheld.
 // ---------------------------------------------------------------------------
-export interface Overview {
-  from: string
-  to: string
-  members: number
-  /** Null below the floor (fewer than five members). */
-  played7d: number | null
-  streaks: { s1_3: number; s4_6: number; s7_29: number; s30: number; none: number } | null
-  floored: boolean
-}
+const num = (x: unknown) => (x == null ? null : Number(x))
 
-export async function fetchOverview(churchId: string) {
-  const r = await call('church_admin_overview', { p_church_id: churchId, p_local_date: todayLocalDate() })
+export async function fetchParticipation(churchId: string, days = 14) {
+  const r = await call('get_church_participation', { p_church_id: churchId, p_days: days, p_local_date: todayLocalDate() })
   if (!r.ok) return r
   const d = r.data
-  const ov: Overview = {
+  const p: ChurchParticipation = {
+    days: Number(d.days),
     from: String(d.from),
     to: String(d.to),
-    members: Number(d.members ?? 0),
-    played7d: d.played_7d == null ? null : Number(d.played_7d),
-    streaks: d.streaks
-      ? {
-          s1_3: Number(d.streaks.s1_3 ?? 0),
-          s4_6: Number(d.streaks.s4_6 ?? 0),
-          s7_29: Number(d.streaks.s7_29 ?? 0),
-          s30: Number(d.streaks.s30 ?? 0),
-          none: Number(d.streaks.none ?? 0),
-        }
-      : null,
-    floored: !!d.floored,
+    members: num(d.members),
+    players: num(d.players),
+    plays: num(d.plays),
+    avg_score: num(d.avg_score),
+    pct_played_today: num(d.pct_played_today),
+    streaks: { s1: num(d.streaks?.s1), s2_6: num(d.streaks?.s2_6), s7: num(d.streaks?.s7) },
   }
-  return { ok: true as const, data: ov }
-}
-
-/** Members who CHOSE to be on it (`church_care_optin`) and have been away 3+ days. */
-export interface CareRow {
-  username: string
-  lastActive: string | null
-}
-
-export async function fetchCareList(churchId: string) {
-  const r = await call('church_care_list', { p_church_id: churchId, p_local_date: todayLocalDate() })
-  if (!r.ok) return r
-  const rows: CareRow[] = ((r.data.rows ?? []) as any[]).map((x) => ({
-    username: String(x.username ?? ''),
-    lastActive: x.last_active ?? null,
-  }))
-  return { ok: true as const, data: rows }
-}
-
-// ---------------------------------------------------------------------------
-// The MEMBER's own switch — the only way onto the care list.
-// ---------------------------------------------------------------------------
-export async function fetchMyCareOptin(): Promise<boolean | null> {
-  if (!online()) return null
-  const uid = useAuth.getState().profile?.id
-  if (!uid) return null
-  const { data, error } = await supabase!.from('profiles').select('church_care_optin').eq('id', uid).maybeSingle()
-  if (error || !data) return null
-  return !!(data as any).church_care_optin
-}
-
-export async function setMyCareOptin(on: boolean) {
-  return call<{ on: boolean }>('set_church_care_optin', { p_on: on })
+  return { ok: true as const, data: p }
 }

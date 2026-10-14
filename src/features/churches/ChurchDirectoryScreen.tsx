@@ -4,7 +4,6 @@ import { Page } from '@/components/Page'
 import { useAuth } from '@/store/auth'
 import { useJuice } from '@/juice/useJuice'
 import { fetchChurchDirectory } from '@/store/churchPackage'
-import { VerifiedBadge } from '@/features/church/VerifiedBadge'
 import type { ChurchDirectoryRow } from '@/types/churchPackages'
 
 // /churches/find — every church playing on Verse Arcade, by name. PUBLIC.
@@ -18,9 +17,10 @@ import type { ChurchDirectoryRow } from '@/types/churchPackages'
 //
 // Three rules hold it:
 //   • Free churches are never hidden or demoted. The order is the server's —
-//     congregation size, then name — and `verified` plays no part in it. A
-//     verified church gets a badge, not a better seat: ranking congregations
-//     by what they paid is the auction the sponsored slot refuses (0077).
+//     congregation size, then name — and `verified` plays no part in it, and
+//     draws nothing either (0119: no paid badge in front of a player). Ranking
+//     congregations by what they paid is the auction the sponsored slot
+//     refuses (0077).
 //   • No number about a person. A row is a church: a name, a town, its own
 //     line about itself.
 //   • It fails to an honest line. No keys, a server without 0117, a network
@@ -149,7 +149,6 @@ function Row({ row, onOpen }: { row: ChurchDirectoryRow; onOpen: () => void }) {
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
           <b style={{ fontSize: 14.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.name}</b>
-          {row.verified && <VerifiedBadge />}
         </div>
         <div className="faint" style={{ fontSize: 12, marginTop: 2 }}>{where || 'Location not listed'}</div>
         {row.tagline && (

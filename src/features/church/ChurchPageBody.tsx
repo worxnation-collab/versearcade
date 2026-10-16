@@ -461,8 +461,32 @@ function InfoFacts({ info }: { info: ChurchInfo }) {
   )
 }
 
+/**
+ * A published website as a link — https only. An `https://` URL is used as is;
+ * a bare host ("grace.org", "grace.org/visit") gets `https://` in front; any
+ * other scheme (http:, javascript:, data:, mailto:…) is shown as text and never
+ * linked. The result is re-parsed, so a string that only looks like a host
+ * cannot smuggle anything else into the href.
+ */
+export function httpsLink(raw: string | undefined): string | undefined {
+  const v = raw?.trim()
+  if (!v) return undefined
+  const candidate = /^https:\/\//i.test(v)
+    ? v
+    : /^[a-z0-9-]+(\.[a-z0-9-]+)+(?:[/?#]|$)/i.test(v)
+      ? `https://${v}`
+      : null
+  if (!candidate) return undefined
+  try {
+    const u = new URL(candidate)
+    return u.protocol === 'https:' && u.hostname.includes('.') ? u.toString() : undefined
+  } catch {
+    return undefined
+  }
+}
+
 function Detail({ icon, label, value, href }: { icon: string; label: string; value: string; href?: string }) {
-  const link = href && /^https?:\/\//i.test(href) ? href : href ? `https://${href}` : undefined
+  const link = httpsLink(href)
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', fontSize: 13.5, minWidth: 0 }}>
       <span style={{ flexShrink: 0 }}>{icon}</span>

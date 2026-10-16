@@ -1,5 +1,7 @@
 # The weekly rivalry
 
+> **Folded away (2026-10-16).** On the church tab the card sits inside a fold titled "A week of giving", closed by default. Its wording never says beat, rival, opponent, ahead or behind. `/church/:id` and the leaderboard sheet show no "weeks won", no other church and no score. Pairing, scoring and statues are unchanged.
+
 Every Monday your church is matched against another church its own size. Whoever
 gives more over the week wins, and a win buys a statue for the churchyard.
 

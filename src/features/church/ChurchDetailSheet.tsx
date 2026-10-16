@@ -5,6 +5,7 @@ import { useChurch } from '@/store/church'
 import { useJuice } from '@/juice/useJuice'
 import { ChurchPageBody } from './ChurchPageBody'
 import { ShareChurch } from './ShareChurch'
+import { useChurchExtras } from './ChurchExtras'
 
 // A church's page: what's behind tapping a row on the leaderboard.
 //
@@ -17,6 +18,8 @@ export function ChurchDetailSheet() {
   const loading = useChurch((s) => s.pageLoading)
   const close = useChurch((s) => s.closeChurch)
   const juice = useJuice()
+  // Keyed on the open church; an empty id fetches nothing useful and resolves null.
+  const extras = useChurchExtras(page?.church.id ?? '')
 
   // Escape closes it, same as tapping the scrim — this is reachable with a
   // keyboard on the web build.
@@ -74,7 +77,8 @@ export function ChurchDetailSheet() {
               page={page}
               loading={loading}
               onClose={close}
-              footer={<ShareChurch churchId={page.church.id} churchName={page.church.name} />}
+              extras={extras}
+              footer={<ShareChurch churchId={page.church.id} churchName={page.church.name} city={page.church.city} />}
             />
           </motion.div>
         </motion.div>

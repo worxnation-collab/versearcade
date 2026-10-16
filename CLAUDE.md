@@ -1255,6 +1255,24 @@ Two rules here are load-bearing:
   a storefront that `commerce.ts` would have to gate. If a church page ever gets
   a real price, that decision goes in `commerce.ts` and nowhere else.
 
+**What a stranger sees on `/church/:id` (2026-10-16), and it is the page a
+church hands its congregation.** Signed out, `canAsk` hides the WRITE half
+only: the published profile (tagline, the "This week" line, about, services,
+contact, website) renders read-only through `PublishedInfo`, an unpublished
+church gets one sentence, and none of Add info / Suggest an edit / Edit page /
+the form / the skin chooser appear. Website links are https only
+(`httpsLink`). The congregation is drawn as PLAIN starter figures — one per
+returned member, no equipped skin, pet or frame — so a novelty skin can't make
+anybody identifiable on a lawn behind a QR code; the payload is unchanged and
+signed in everyone looks like themselves. No "Ranked #n" (`showRank`, true only
+in the leaderboard sheet) and no "weeks won" anywhere `ChurchPageBody` draws.
+Signed in with no church, the footer is "Play for {name}" through the store's
+own `join`; with a church already, it names that church and moves nobody.
+Church surfaces fire no confetti and no coin sting — a select tick — and the
+church's name is set in `--font-body`, not the arcade face. `ShareChurch` names
+the church and its city and says the page opens with no account; church-og
+puts the city in the preview's description.
+
 The page names the congregation ("Who plays here") as well as drawing it. Both
 the roster and the scene are ordered by join date and carry no per-person
 points: a crowd, not a ladder. "Top givers" stays your own church's thank-you
@@ -1529,7 +1547,10 @@ tiebreak, and a gold medal there claims somebody won a day nobody has played.
 
 Two axes, and only one is for sale. `levels.ts` decides *which* of the eight
 buildings a church has — earned by playing, and nothing buys it. `skins.ts`
-decides what it's *made of*: `classic` (default), `modern`, `glass`, `tile`. A
+decides what it's *made of*: `tile` (the default since 2026-10-16 — `classic`'s
+violet roof is the app's own grape, and a church that chose nothing stood on
+its page in the game's colours; no stored row changed), `classic`, `modern`,
+`glass`. A
 skinned church is not a bigger church — no number distinguishes it, which is the
 point: the thing a church pays for is the thing that can't beat anybody.
 
@@ -1595,6 +1616,13 @@ What a claim buys is narrow, and each exclusion is load-bearing:
   operator could undo.
 - **Nothing about a member**, and this is the rule someone will try to break.
 
+**The opt-in check-in list (0118) was RETIRED a day later (`0119`, the
+owner's call, 2026-10-14).** Leadership of a VERIFIED church sees
+`get_church_participation`, and only that: congregation totals with every number
+under five withheld (zero included), no usernames, no per-person row and nothing
+about who did not play. `docs/CHURCH-SHARED-VERSE.md`. The rule below is
+absolute again. Don't bring a list of people back as an "opt-in".
+
 **No per-member data for leadership.** The roster carries no per-person numbers
 ("a crowd, not a ladder"), and a pastor-facing view of who played and who lapsed
 is that shape *with authority attached* — the person who played less becomes
@@ -1610,6 +1638,12 @@ any other scheme is refused rather than mangled. `Detail` already neutralised a
 reader and shouldn't have to know that.
 
 ### The sponsored slot
+
+**RETIRED FROM THE PICKER (2026-10-16).** `ChurchPicker` no longer calls
+`sponsored_church` and draws no paid row: "Suggested for you" is the unpaid
+nearby churches only. 0077, the admin panel and its rows are untouched (end a
+live promotion from admin), and the `wants_promotion` note on the info form
+stays an operator note. What follows is the history of how the slot worked.
 
 A player with no church sees "Suggested for you" at the top of `/church` — the
 picker has always fetched the churches around you before you type, it just led
@@ -1718,6 +1752,15 @@ a flowerpot in front of. `store/churchYard.ts` names the shape to use if that
 ever changes. Still no prices, either mode. See `docs/CHURCHYARD.md`.
 
 ### The weekly rivalry, and the statues it buys
+
+**Folded away and never on a church's page (2026-10-16).** On the church tab
+`RivalryCard` lives inside a `Collapsible` titled "A week of giving", closed by
+default and placed after Give; its words never say beat, rival, opponent,
+ahead or behind, and last week is one neutral line. The Give card's forecast
+and flash no longer quote the week's share. `/church/:id` and the leaderboard
+sheet show no "weeks won", no other church and no score. Statues already
+raised still stand in the yard. Pairing, scoring, statues and the schema are
+unchanged.
 
 The one place in this app where something can lose. Every Monday (**UTC** — see
 below) your church is matched against another church its own size; whoever gives
@@ -2314,7 +2357,81 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0114` (choose a city instead of standing in one —
+The latest is `0120` (the church page's "This week" line —
+`church_profiles.this_week`, capped at 140 by a check constraint, written only
+by `update_my_church_profile` and returned by `public_church_page` and
+`get_church_page`; `docs/CHURCH-CLAIM.md`). APPLIED 2026-10-16 as
+`0120_church_this_week`. The writer gained a parameter, and `create or replace`
+would have left two overloads that PostgREST cannot resolve for a named call,
+so the six-argument 0079 function was RENAMED to
+`update_my_church_profile_0079` and revoked (ACL `{postgres,service_role}`)
+rather than dropped. `p_this_week` NULL means "leave it", so an older client
+that never sends it cannot wipe the line; '' clears it. Verified on a local
+Postgres 16 (eight cases) and live inside a rolled-back transaction: an admin
+publishes, `anon` reads it back, a non-admin member gets `not_leadership` and
+the line is unchanged.
+
+Before it, `0119` (the verified-church layer: `church_verses` reshaped to
+one row per church per day with five questions, `set_church_verse`,
+`church_verse_for`, `get_effective_verse`, `get_church_participation`, and
+`my_church_today` restated without the verse; `docs/CHURCH-SHARED-VERSE.md`).
+APPLIED 2026-10-14 as `0119_church_shared_verse_a_table` / `_b_rpcs`, after a
+local Postgres 16 run of nine cases: an unverified admin refused, a member
+refused, five malformed payloads refused, an upsert normalised away extra keys,
+direct table access denied, null for another church / far date / guest /
+unverified church, the floor withholding a bucket of 2, and a re-run being a
+no-op. It contains NO `drop`, `delete` or `create policy`. The 0116 table is
+RENAMED to `church_verses_0116`, and the 0118 scheduler, overview and care-list
+RPCs are REVOKED from every client role (ACL `{postgres,service_role}`, verified
+live). Dropping them is a safe paste-it cleanup.
+
+Before it, `0118` (the church admin dashboard — `schedule_church_verse`,
+`list_church_verses`, `set_church_announcement`, `church_admin_settings`,
+`church_admin_overview`, `church_care_list`, `set_church_care_optin` +
+`profiles.church_care_optin`). APPLIED 2026-10-13, and largely superseded by
+0119; `delete_church_verse` was never applied and no longer needs to be.
+
+**Why some Supabase MCP applies hang, found this time rather than guessed:**
+the MCP asks for a user confirmation on DESTRUCTIVE statements — `DROP …`,
+`DELETE FROM` — and that confirmation never reaches a cloud session, so the
+call simply times out (and has twice restarted the worker). Every payload that
+hung carried one; every one that went through had none, including a
+`delete`-free retry of the same function minutes later. Do not reword around
+the check: split the destructive part out and hand it to the owner to paste.
+
+Before it, `0117` (church discovery — `church_directory`, `church_extras`,
+`churches.giving_url` + `set_church_giving_url`, announcements opened to any
+claimed church, `my_church_today` restated with the church's name and giving
+link; `docs/CHURCH-PACKAGES.md`). APPLIED 2026-10-13 except its two policies,
+as `0117_church_discovery_a_giving` / `_b_directory_today`. Verified live: one
+signature each, the house ACL shape, `church_directory` returning all 23
+churches. **A verified church's verse now REPLACES the global drop for its
+members** — the owner's call — keyed so the date, `plays`, the streak, first
+light and the run lock cannot tell (see the doc). The giving link is hidden in
+the App Store build by `givingLinkVisible()` in `lib/commerce.ts`.
+
+**The Supabase MCP hangs on any `apply_migration` containing `CREATE POLICY`**
+(three tries, and each one also restarted the session's worker). Functions,
+tables and views apply fine, so split a migration and leave its policies for
+the SQL editor. The 0116+0117 policies are still pending — the exact SQL is in
+`docs/CHURCH-PACKAGES.md`.
+
+Before it, `0116` (church packages — `churches.verified`/`logo_url`,
+`church_billing`, `church_verses`, `church_announcements`, the `church_members`
+view, `my_church_today`, `church_participation_7d`; `docs/CHURCH-PACKAGES.md`).
+**APPLIED in pieces** on 2026-10-13 (`_a` … `_e`); only its RLS policies are
+still pending. The Supabase MCP's `apply_migration`
+hung on every payload containing `CREATE POLICY` even though the same SQL runs
+instantly via a direct probe, so the rest — the verse policies, announcements,
+the two RPCs and the view — has to be finished by pasting the (idempotent) repo
+file into the SQL editor. Until then `church_verses` is RLS-on with no policy,
+i.e. fully locked: the partial state fails closed. **`0115` is taken in
+production by `0115_church_cities_rls`**, which is not on main — check
+`list_migrations`, not the folder. Run end to end against a local Postgres 16
+first, twelve cases, including an unverified church's admin refused a write, an
+outsider reading nothing, and participation reading null below five players.
+
+Before it, `0114` (choose a city instead of standing in one —
 `church_cities` + `refresh_church_cities()`, `church_cities_search`,
 `search_church_places_in_city`, `church_city_key`). APPLIED on 2026-09-17
 before the client merged, and verified: exactly ONE signature each, the two
@@ -2677,7 +2794,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0115` (0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0121` (0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

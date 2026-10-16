@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Avatar } from '@/components/Avatar'
 import { Button } from '@/components/Button'
@@ -11,8 +11,11 @@ import { churchLevelInfo, tierForLevel } from './levels'
 import { ChurchArt } from './ChurchArt'
 import { ChurchScene } from './ChurchScene'
 import { useRivalry } from '@/store/rivalry'
-import { CHURCH_SKINS, DEFAULT_CHURCH_SKIN, type ChurchSkinChoice } from './skins'
+import { CHURCH_SKINS, DEFAULT_CHURCH_SKIN, churchSkin, type ChurchSkinChoice } from './skins'
+import { DEFAULT_AVATAR } from '@/data/avatar'
 import type { Church, ChurchInfo, ChurchMember, ChurchPage } from '@/types'
+import type { ChurchExtras } from '@/types/churchPackages'
+import { ChurchExtrasBlock } from './ChurchExtras'
 
 /** Stable empty yard — a fresh {} from the selector would re-render forever. */
 const EMPTY_YARD = {}
@@ -26,8 +29,8 @@ const EMPTY_YARD = {}
 // right on their own, which is how that kind of bug survives for months.
 //
 // The sheet renders it with everything on. The public page turns off the three
-// things a stranger may not have — the congregation's NAMES, the "Add info"
-// queue and the yard read — and each of those is a prop rather than a check
+// things a stranger may not have — the congregation's NAMES, the WRITE half of
+// the info card (the published facts still show) and the yard read — and each of those is a prop rather than a check
 // inside, so the surface can't decide to be public by accident.
 export function ChurchPageBody({
   page,
@@ -36,7 +39,9 @@ export function ChurchPageBody({
   named = true,
   canAsk = true,
   withYard = true,
+  showRank = true,
   footer,
+  extras = null,
 }: {
   page: ChurchPage
   loading: boolean
@@ -53,13 +58,32 @@ export function ChurchPageBody({
    * role and nobody else (0002) has always said.
    */
   named?: boolean
-  /** `submit_church_info_request` is authenticated-only (0050). */
+  /**
+   * May this viewer WRITE to the page — the "Add info" queue, "Suggest an
+   * edit", and a claimed church's "Edit page". `submit_church_info_request` is
+   * authenticated-only (0050). It hides the form and nothing else: the
+   * published facts are drawn either way, because they are what a link handed
+   * out by a church is FOR.
+   */
   canAsk?: boolean
   /** `church_yard_json` is authenticated-only (0061), so the public page has no
    *  landscaping to draw and shouldn't fire the call to find that out. */
   withYard?: boolean
+  /**
+   * "Ranked #n on the board you're looking at". True in the leaderboard sheet,
+   * which is opened FROM a board; false on /church/:id signed out, where the
+   * page is a church's own front door and must not compare it with anybody.
+   */
+  showRank?: boolean
   /** Sits under the page — the public screen's way in. */
   footer?: React.ReactNode
+  /**
+   * The verified badge, logo, announcement and giving link (0117,
+   * `useChurchExtras`). Passed in rather than fetched here because the public
+   * screen needs the same answer for its Join button and QR code, and two
+   * reads of one fact can disagree for a frame.
+   */
+  extras?: ChurchExtras | null
 }) {
   const { church, members, memberTotal } = page
   // The yard is a second read on purpose: the sheet is seeded from the row and
@@ -77,13 +101,30 @@ export function ChurchPageBody({
   // these are NOT sampled per viewer: a statue belongs to the congregation, so
   // everybody who opens this page sees the same one standing there.
   const statues = useRivalry((s) => (s.pageChurchId === church.id ? s.pageStatues : EMPTY_YARD))
-  const pageWins = useRivalry((s) => (s.pageChurchId === church.id ? s.pageWins : 0))
   const loadPageStatues = useRivalry((s) => s.loadPageStatues)
   useEffect(() => {
     if (!withYard) return
     void loadPageStatues(church.id)
     return () => { void loadPageStatues(null) }
   }, [church.id, loadPageStatues, withYard])
+
+  // Signed out, the congregation is drawn as PLAIN figures: one neutral
+  // starter character per returned member, with no equipped skin, no pet and
+  // no frame. `public_church_page` still returns each member's look (the
+  // payload is unchanged); the page just doesn't wear it, so a novelty or paid
+  // skin can't make a stranger on a lawn behind a QR code identifiable. The
+  // head count stays the real one.
+  const plainMembers = useMemo(
+    () => members.map((m, i): ChurchMember => ({
+      username: '',
+      seed: m.seed ?? `anon-${i}`,
+      avatarEmoji: '🙂',
+      avatarCharacter: { ...DEFAULT_AVATAR, figure: i % 2 ? 'fem' : 'masc' },
+      pet: null,
+      isMe: false,
+    })),
+    [members],
+  )
 
   const level = churchLevelInfo(church.xp)
   const tier = tierForLevel(level.level)
@@ -92,8 +133,17 @@ export function ChurchPageBody({
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
+        {extras?.logoUrl && (
+          <img
+            src={extras.logoUrl}
+            alt=""
+            draggable={false}
+            referrerPolicy="no-referrer"
+            style={{ width: 44, height: 44, borderRadius: 10, objectFit: 'cover', flexShrink: 0, background: 'var(--card-raised)' }}
+          />
+        )}
         <div style={{ minWidth: 0, flex: 1 }}>
-          <h2 style={{ fontSize: 21, margin: 0, overflowWrap: 'anywhere' }}>{church.name}</h2>
+          <h2 style={{ fontSize: 21, margin: 0, overflowWrap: 'anywhere', fontFamily: 'var(--font-body)', fontWeight: 800 }}>{church.name}</h2>
           <p className="faint" style={{ margin: '3px 0 0', fontSize: 12.5 }}>
             {where || 'Location not listed'}
             {church.miles != null && !church.isMine ? ` · ${formatMiles(church.miles)} away` : ''}
@@ -111,27 +161,16 @@ export function ChurchPageBody({
           the people who play for it. */}
       <ChurchScene
         level={level.level}
-        members={members}
+        members={named ? members : plainMembers}
         skin={church.skin}
         flora={yard}
         statues={statues}
       />
 
-      {/* Weeks won, and deliberately nothing to weigh it against.
-          This is the ONE number the rivalry publishes about a church, and it is
-          safe for the same reason the win ladder is safe everywhere else here:
-          it says a congregation showed up, and it cannot say that anybody else
-          didn't. There is no losses figure to pair it with — not on this page,
-          not in the payload, not in the schema. It appears only once a church
-          has won something, so a page never reads "0 weeks won". */}
-      {pageWins > 0 && (
-        <p
-          className="center"
-          style={{ margin: '10px 0 0', fontSize: 12.5, fontWeight: 700, color: 'var(--gold)' }}
-        >
-          🏛 {pageWins} {pageWins === 1 ? 'week' : 'weeks'} won
-        </p>
-      )}
+      {/* No "weeks won" here, on any surface that draws this body (2026-10-16).
+          The weekly pairing lives folded on your own church tab and nowhere
+          else; a church's page shows the statues standing in its yard and
+          never the week that bought them. */}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, margin: '12px 0 14px' }}>
         <Stat label={tier.name} value={`LVL ${level.level}`} tone="var(--gold)" />
@@ -142,11 +181,15 @@ export function ChurchPageBody({
         />
       </div>
 
-      {church.rank != null && (
+      {showRank && church.rank != null && (
         <p className="dim center" style={{ margin: '0 0 14px', fontSize: 13 }}>
           Ranked <b style={{ color: 'var(--gold)' }}>#{church.rank}</b> on the board you're looking at.
         </p>
       )}
+
+      {/* The free announcement, and a verified church's giving link — above
+          the congregation, because it is the newest thing on the page. */}
+      <ChurchExtrasBlock extras={extras} churchName={church.name} />
 
       {named ? (
         <Congregation members={members} total={memberTotal} loading={loading} />
@@ -154,7 +197,7 @@ export function ChurchPageBody({
         <Crowd total={memberTotal} loading={loading} />
       )}
 
-      {canAsk && <InfoSection page={page} loading={loading} />}
+      {canAsk ? <InfoSection page={page} loading={loading} /> : <PublishedInfo page={page} loading={loading} />}
       {footer}
       <div style={{ height: 8 }} />
     </>
@@ -366,13 +409,7 @@ function InfoSection({ page, loading }: { page: ChurchPage; loading: boolean }) 
       </div>
 
       {info ? (
-        <div style={{ display: 'grid', gap: 8 }}>
-          {info.tagline && <p style={{ margin: 0, fontSize: 14.5, fontWeight: 700 }}>{info.tagline}</p>}
-          {info.about && <p className="dim" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55 }}>{info.about}</p>}
-          {info.serviceTimes && <Detail icon="🕘" label="Services" value={info.serviceTimes} />}
-          {info.contact && <Detail icon="✉️" label="Contact" value={info.contact} />}
-          {info.website && <Detail icon="🌐" label="Website" value={info.website} href={info.website} />}
-        </div>
+        <InfoFacts info={info} />
       ) : loading ? (
         <p className="faint" style={{ margin: 0, fontSize: 13 }}>Looking…</p>
       ) : myRequestPending ? (
@@ -400,8 +437,80 @@ function InfoSection({ page, loading }: { page: ChurchPage; loading: boolean }) 
   )
 }
 
+// The published profile on its own, for a viewer who may not write to it —
+// somebody who followed a church's link without an account. The same facts in
+// the same shape as `InfoSection`, and none of its doors: no "Add info", no
+// "Suggest an edit", no "Edit page", no form, no skin chooser, and none of the
+// queue's copy (there is no queue a stranger can join). An unpublished church
+// gets one sentence; the page's footer is already the way in.
+function PublishedInfo({ page, loading }: { page: ChurchPage; loading: boolean }) {
+  const { church, info } = page
+  return (
+    <div className="card">
+      <b style={{ fontFamily: 'var(--font-display)', fontSize: 16, display: 'block', marginBottom: info ? 10 : 6 }}>
+        About this church
+      </b>
+      {info ? (
+        <InfoFacts info={info} />
+      ) : loading ? (
+        <p className="faint" style={{ margin: 0, fontSize: 13 }}>Looking…</p>
+      ) : (
+        <p className="dim" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55 }}>
+          {church.name} hasn&rsquo;t published anything about itself here yet.
+        </p>
+      )}
+    </div>
+  )
+}
+
+function InfoFacts({ info }: { info: ChurchInfo }) {
+  return (
+    <div style={{ display: 'grid', gap: 8 }}>
+      {info.tagline && <p style={{ margin: 0, fontSize: 14.5, fontWeight: 700 }}>{info.tagline}</p>}
+      {/* Leadership's line for now (0120). Plain text in a text node — never
+          HTML — so anything in it renders as the characters it is. */}
+      {info.thisWeek && (
+        <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, overflowWrap: 'anywhere' }}>
+          <span className="faint" style={{ fontSize: 11.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 6 }}>
+            This week
+          </span>
+          {info.thisWeek}
+        </p>
+      )}
+      {info.about && <p className="dim" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55 }}>{info.about}</p>}
+      {info.serviceTimes && <Detail icon="🕘" label="Services" value={info.serviceTimes} />}
+      {info.contact && <Detail icon="✉️" label="Contact" value={info.contact} />}
+      {info.website && <Detail icon="🌐" label="Website" value={info.website} href={info.website} />}
+    </div>
+  )
+}
+
+/**
+ * A published website as a link — https only. An `https://` URL is used as is;
+ * a bare host ("grace.org", "grace.org/visit") gets `https://` in front; any
+ * other scheme (http:, javascript:, data:, mailto:…) is shown as text and never
+ * linked. The result is re-parsed, so a string that only looks like a host
+ * cannot smuggle anything else into the href.
+ */
+export function httpsLink(raw: string | undefined): string | undefined {
+  const v = raw?.trim()
+  if (!v) return undefined
+  const candidate = /^https:\/\//i.test(v)
+    ? v
+    : /^[a-z0-9-]+(\.[a-z0-9-]+)+(?:[/?#]|$)/i.test(v)
+      ? `https://${v}`
+      : null
+  if (!candidate) return undefined
+  try {
+    const u = new URL(candidate)
+    return u.protocol === 'https:' && u.hostname.includes('.') ? u.toString() : undefined
+  } catch {
+    return undefined
+  }
+}
+
 function Detail({ icon, label, value, href }: { icon: string; label: string; value: string; href?: string }) {
-  const link = href && /^https?:\/\//i.test(href) ? href : href ? `https://${href}` : undefined
+  const link = httpsLink(href)
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', fontSize: 13.5, minWidth: 0 }}>
       <span style={{ flexShrink: 0 }}>{icon}</span>
@@ -454,6 +563,7 @@ function ChurchPageEditor({
   const [serviceTimes, setServiceTimes] = useState(info?.serviceTimes ?? '')
   const [website, setWebsite] = useState(info?.website ?? '')
   const [contact, setContact] = useState(info?.contact ?? '')
+  const [thisWeek, setThisWeek] = useState(info?.thisWeek ?? '')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
@@ -462,7 +572,7 @@ function ChurchPageEditor({
     setBusy(true)
     setErr(null)
     const res = await updateChurchPage({
-      churchId: church.id, tagline, about, serviceTimes, website, contact,
+      churchId: church.id, tagline, thisWeek, about, serviceTimes, website, contact,
     })
     setBusy(false)
     if (!res.ok) {
@@ -475,7 +585,7 @@ function ChurchPageEditor({
       )
       return
     }
-    juice.celebrate()
+    juice.select?.()
     onDone()
   }
 
@@ -492,6 +602,7 @@ function ChurchPageEditor({
       </p>
 
       <Field label="Tagline" value={tagline} onChange={setTagline} max={120} placeholder="Come as you are" />
+      <Field label="This week" value={thisWeek} onChange={setThisWeek} max={140} placeholder="This month we are in John" />
       <Field label="Service times" value={serviceTimes} onChange={setServiceTimes} max={200} placeholder="Sundays 9 & 11am, Wednesday 7pm" />
       <Field label="Website" value={website} onChange={setWebsite} max={200} placeholder="grace.org" />
       <Field label="Contact" value={contact} onChange={setContact} max={120} placeholder="hello@grace.org" />
@@ -555,6 +666,7 @@ function InfoRequestForm({
   const requestInfo = useChurch((s) => s.requestInfo)
   const juice = useJuice()
   const [role, setRoleState] = useState<InfoRequestRole>('member')
+  const wearing = churchSkin(currentSkin).id
   const [skin, setSkin] = useState<ChurchSkinChoice>(
     (CHURCH_SKINS.find((s) => s.id === currentSkin)?.id ?? DEFAULT_CHURCH_SKIN) as ChurchSkinChoice,
   )
@@ -597,7 +709,7 @@ function InfoRequestForm({
       setErr(REASONS[res.reason ?? ''] ?? 'That didn’t go through. Try again in a moment.')
       return
     }
-    juice.celebrate()
+    juice.select?.()
     setSent(true)
   }
 
@@ -662,6 +774,7 @@ function InfoRequestForm({
           <SkinPicker
             churchName={churchName}
             level={level}
+            wearing={wearing}
             value={skin}
             onPick={(next) => { juice.select?.(); setSkin(next) }}
           />
@@ -790,11 +903,14 @@ const labelStyle: React.CSSProperties = { display: 'grid', gap: 5, fontSize: 12,
 function SkinPicker({
   churchName,
   level,
+  wearing,
   value,
   onPick,
 }: {
   churchName: string
   level: number
+  /** What the building is drawn in now — its own skin, or the default. */
+  wearing: ChurchSkinChoice
   value: ChurchSkinChoice
   onPick: (skin: ChurchSkinChoice) => void
 }) {
@@ -809,7 +925,7 @@ function SkinPicker({
             <ChurchArt level={level} skin={s.id} size={98} />
             <b style={{ fontSize: 12.5, marginTop: 2 }}>{s.name}</b>
             <span className="faint" style={{ fontSize: 10.5, lineHeight: 1.35, textAlign: 'center' }}>
-              {s.id === DEFAULT_CHURCH_SKIN ? 'The one you have now' : s.blurb}
+              {s.id === wearing ? 'The one you have now' : s.blurb}
             </span>
           </SkinTile>
         ))}

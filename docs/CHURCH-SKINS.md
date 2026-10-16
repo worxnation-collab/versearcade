@@ -1,5 +1,7 @@
 # Church skins
 
+> **Default is `tile` (2026-10-16).** A church with no skin, an unknown skin or an undrawn `custom` renders as stucco and terracotta. `classic` is now an ordinary optional skin, and a church saved as classic stays classic. No stored rows changed.
+
 How a church ends up wearing one, and the rules that make the feature safe to
 sell.
 

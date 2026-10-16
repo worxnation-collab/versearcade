@@ -3,7 +3,7 @@
   "version": "1.3.0",
   "private": true,
   "type": "module",
-  "description": "Verse Arcade \u2014 make opening the Bible feel exciting and habitual.",
+  "description": "Verse Arcade — make opening the Bible feel exciting and habitual.",
   "scripts": {
     "dev": "vite",
     "build": "npm run check:pool && npm run check:structure && npm run check:cross && npm run check:trivia && npm run check:placement && npm run check:decor && npm run check:map && npm run check:items && npm run check:stages && npm run check:week && npm run check:quest-doors && npm run check:contrast && npm run check:icons && npm run check:liturgy && npm run check:layouts && npm run check:cast && npm run check:exchanges && npm run check:dropverse && tsc -b && npm run check:faces && vite build",
@@ -54,6 +54,7 @@
     "canvas-confetti": "^1.9.3",
     "framer-motion": "^11.3.0",
     "mp4-muxer": "^5.2.2",
+    "qrcode-generator": "1.4.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.0",

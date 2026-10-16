@@ -25,8 +25,17 @@
 
 export type ChurchSkinId = 'classic' | 'modern' | 'glass' | 'tile'
 
-/** The default every church wears until it's given another one. */
-export const DEFAULT_CHURCH_SKIN: ChurchSkinId = 'classic'
+/**
+ * The look every church wears until it's given another one — the fallback for
+ * a null, an unknown id, and a `custom` that hasn't been drawn yet.
+ *
+ * Tile since 2026-10-16. It was `classic`, whose violet roof is the app's own
+ * grape — so a congregation that never chose anything stood on its own page
+ * dressed in the game's colours. Stucco and terracotta read as a building on a
+ * street. Nothing stored changed: a church explicitly set to `classic` is
+ * still classic, and only the rows with no skin follow this line.
+ */
+export const DEFAULT_CHURCH_SKIN: ChurchSkinId = 'tile'
 
 /**
  * What a church can ASK for, which is the four skins plus `custom` — "draw our
@@ -106,7 +115,7 @@ export const CHURCH_SKINS: ChurchSkin[] = [
   {
     id: 'classic',
     name: 'Classic',
-    blurb: 'Cream walls, a violet roof and a gold cross. The house style.',
+    blurb: 'Cream walls, a violet roof and a gold cross.',
     palette: {
       wall: '#f3ecdd',
       wallShade: '#cfc3ad',

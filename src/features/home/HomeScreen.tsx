@@ -11,6 +11,7 @@ import { DailyChest } from '@/features/chest/DailyChest'
 import { RoadStrip } from '@/features/season/RoadStrip'
 import { MapCompass } from '@/features/map/MapCompass'
 import { PlayedToday } from '@/features/presence/PlayedToday'
+import { ChurchTodayStrip } from './ChurchTodayStrip'
 import { liturgyFor } from '@/data/liturgy'
 import { useJuice } from '@/juice/useJuice'
 import { todayLocalDate } from '@/lib/date'
@@ -232,6 +233,7 @@ export default function HomeScreen() {
         <DropBox
           played={playedToday}
           reference={today?.reference}
+          churchName={today?.church?.name}
           questionCount={today?.questions.length ?? 5}
           score={lastResult?.result.score}
           correct={lastResult?.result.correctCount}
@@ -255,6 +257,11 @@ export default function HomeScreen() {
           onPlay={() => navigate('/play/trivia')}
         />
       </div>
+
+      {/* A verified church's layer on the day — whose verse it is, the
+          church's banner and its giving link. One slim card, and
+          nothing at all for anybody not in a verified church. */}
+      <ChurchTodayStrip />
 
       {/* How many people are in this with you today, directly under the two
           boxes because it is a fact about the thing those boxes just offered.
@@ -427,6 +434,7 @@ function BoxShell({
 function DropBox({
   played,
   reference,
+  churchName,
   questionCount,
   score,
   correct,
@@ -442,6 +450,8 @@ function DropBox({
 }: {
   played: boolean
   reference?: string
+  /** Set when a verified church's verse is today's drop for this player. */
+  churchName?: string
   questionCount: number
   score?: number
   correct?: number
@@ -468,8 +478,8 @@ function DropBox({
               the run itself on the read screen; this is the pitch that gets
               somebody into it, and the two must agree. */}
           <p className="dim" style={{ marginTop: 6, fontSize: 12.5, lineHeight: 1.45, flex: 1 }}>
-            {questionCount} quick questions about it, against the clock. Same
-            verse everyone’s playing.
+            {questionCount} quick questions about it, against the clock.{' '}
+            {churchName ? `Chosen by ${churchName} for its members.` : 'Same verse everyone’s playing.'}
           </p>
 
           {/* The boost was a full-width row; at half width it is a toggle pill

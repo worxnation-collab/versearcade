@@ -261,6 +261,14 @@ export const MAP_PLACES: MapPlace[] = [
     wall: 'church',
   },
   {
+    id: 'church-directory',
+    icon: 'church',
+    label: 'Find a church',
+    line: 'Every church playing on Verse Arcade, and the way to join one',
+    to: '/churches/find',
+    area: 'church',
+  },
+  {
     id: 'churches',
     icon: 'megaphone',
     label: 'For churches',

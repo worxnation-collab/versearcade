@@ -194,3 +194,18 @@ export function patronOffer(skin: SkinDef, owned: boolean, webUrl: string): Patr
   // that opens nothing.
   return (isNativeApp() ? skuPurchasable(PATRON_SKU) : !!webUrl) ? 'buy' : 'hidden'
 }
+
+/**
+ * May this build show a church's external GIVING link?
+ *
+ * A giving link is not a sale — nothing is bought and nothing is unlocked — but
+ * it is money leaving through the app, so the decision lives here with every
+ * other one. Web: yes. Native: NO, fail closed. App Review Guideline 3.2.2(iv)
+ * lets an app that is not an approved nonprofit point at donations only
+ * "outside of the app, such as via Safari", and this app's in-app browser is
+ * SFSafariViewController — which a reviewer may well not count as outside. A
+ * hidden link is compliant; a rejected build costs a release. Turning it on
+ * natively later (opening real Safari, or a US-storefront check) is one edit,
+ * here.
+ */
+export const givingLinkVisible = (): boolean => !isNativeApp()

@@ -71,7 +71,7 @@ interface Kit {
   Wheel: (p: { cx: number; cy: number; r: number }) => JSX.Element
   Spire: (p: { x: number; topY: number; baseY: number; halfW: number }) => JSX.Element
   Topper: (p: { x: number; y: number; h: number; sw?: number }) => JSX.Element
-  Ground: (p: { rx?: number }) => JSX.Element
+  Ground: (p: { rx?: number; fill?: string }) => JSX.Element
 }
 
 /** A round-topped opening. `x` is the centre, `y` the top of the arch. */
@@ -400,8 +400,8 @@ function buildKit(skin: ChurchSkin): Kit {
     )
   }
 
-  const Ground = ({ rx = 46 }: { rx?: number }) => (
-    <ellipse cx="100" cy="151" rx={rx} ry="7" fill={p.ground} opacity="0.4" />
+  const Ground = ({ rx = 46, fill }: { rx?: number; fill?: string }) => (
+    <ellipse cx="100" cy="151" rx={rx} ry="7" fill={fill ?? p.ground} opacity="0.4" />
   )
 
   return { skin, Wall, Gable, Opening, Wheel, Spire, Topper, Ground }
@@ -640,9 +640,15 @@ interface Props {
   animate?: boolean
   /** Draw it flat and dim — used to preview a building you haven't earned. */
   locked?: boolean
+  /**
+   * The shadow ellipse's colour, for a scene with ground of its own
+   * (ChurchScene's lawn). Absent everywhere else, so a board row keeps the
+   * skin's dark ground and still sits on its card.
+   */
+  ground?: string
 }
 
-export function ChurchArt({ level = 1, tier, skin, size = 200, animate = false, locked = false }: Props) {
+export function ChurchArt({ level = 1, tier, skin, size = 200, animate = false, locked = false, ground }: Props) {
   const tierId = tier ?? tierForLevel(level).id
   const Art = TIER_ART[tierId]
   const kit = kitFor(skin)
@@ -678,7 +684,7 @@ export function ChurchArt({ level = 1, tier, skin, size = 200, animate = false, 
     >
       {raster ? (
         <>
-          <kit.Ground rx={42 + tierIdx * 4} />
+          <kit.Ground rx={42 + tierIdx * 4} fill={ground} />
           {/* Bottom-anchored so the foundation sits on the ground ellipse at
               every tier, whatever shape the building came back. */}
           <image href={raster} x={14} y={4} width={172} height={148} preserveAspectRatio="xMidYMax meet" />

@@ -6,9 +6,14 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/store/auth'
 import { useJuice } from '@/juice/useJuice'
 
-// For Churches — the congregation/partnership funnel that replaces the old
-// user-facing Groups tab. Churches inquire here; the co-op group engine lives on
-// behind the scenes as the future church-cohort backend.
+// For Churches — what a church actually gets here, and the inquiry form.
+//
+// It used to sell a product that does not exist: a private congregation group,
+// a pooled weekly points climb and Bible Battles between members. Rewritten
+// (2026-10-16) to say only what is true today — a public page, one shared daily
+// verse, giving that grows the building at no cost to the player, and edit
+// access for a staff member — and nothing about rivalry, sponsorship, ranks,
+// factions or prices. The form and `submit_church_inquiry` are unchanged.
 export default function ChurchesScreen() {
   const navigate = useNavigate()
   const juice = useJuice()
@@ -45,7 +50,7 @@ export default function ChurchesScreen() {
     if (!valid || !supabase) return
     setBusy(true)
     setErr(null)
-    juice.coin()
+    juice.select?.()
     const { data, error } = await supabase.rpc('submit_church_inquiry', {
       p_church: church, p_name: name, p_email: email, p_size: size || null, p_message: message || null,
     })
@@ -54,7 +59,6 @@ export default function ChurchesScreen() {
       setErr('Something went wrong — please try again.')
       return
     }
-    juice.celebrate()
     setSent(true)
   }
 
@@ -65,11 +69,12 @@ export default function ChurchesScreen() {
           <div className="floaty" style={{ fontSize: 56 }}>⛪</div>
           <h1 style={{ fontSize: 28, marginTop: 8 }}>Thank you!</h1>
           <p className="dim" style={{ marginTop: 8, maxWidth: 320 }}>
-            We got your inquiry and will reach out to <b>{email}</b> to walk through how Verse Arcade can work for your congregation.
+            A person reads every one of these, and we'll write back to <b>{email}</b>. In the
+            meantime, today's verse is open — it's the same one your congregation will play.
           </p>
           <div style={{ marginTop: 20 }}>
-            <Button variant="gold" full onClick={exit}>
-              {profile ? 'Back to the app' : 'Back'}
+            <Button variant="gold" full onClick={() => navigate('/play')}>
+              Play today's verse
             </Button>
           </div>
         </div>
@@ -86,19 +91,19 @@ export default function ChurchesScreen() {
       <div className="center" style={{ marginBottom: 16 }}>
         <div className="floaty" style={{ fontSize: 44 }}>⛪</div>
         <h1 style={{ fontSize: 28, marginTop: 4 }}>Verse Arcade for Churches</h1>
-        <p className="dim" style={{ marginTop: 4 }}>Bring your whole congregation into the Word — together.</p>
+        <p className="dim" style={{ marginTop: 4 }}>One Bible verse a day, played by your congregation.</p>
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <b style={{ fontFamily: 'var(--font-display)', fontSize: 16 }}>What a church cohort can do</b>
+        <b style={{ fontFamily: 'var(--font-display)', fontSize: 16 }}>What your church gets</b>
         <ul style={{ margin: '10px 0 0', paddingLeft: 18, lineHeight: 1.7, fontSize: 14 }}>
-          <li>A private group for your congregation — everyone on the same daily verse.</li>
-          <li>A group climb: members pool points toward a shared weekly goal.</li>
-          <li>Friendly Bible Battles between members and small groups.</li>
-          <li>Youth-group friendly — safe, encouragement-first, no shame for a missed day.</li>
+          <li>A public page anyone can open from a link — no account needed to look.</li>
+          <li>One daily verse and a short quiz on it, the same verse for everyone who plays.</li>
+          <li>Points people give to your church grow its building. Giving costs them nothing.</li>
+          <li>A staff member can be given edit access to put service times and a website on the page.</li>
         </ul>
         <p className="faint" style={{ fontSize: 12, marginTop: 10 }}>
-          Tell us a little about your church and we’ll set you up and go over how it works.
+          Tell us about your church below and a person will get back to you.
         </p>
       </div>
 

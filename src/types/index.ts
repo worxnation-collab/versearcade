@@ -28,6 +28,13 @@ export type Testament = 'OT' | 'NT'
 
 export interface DailyVerse {
   dropDate: string // YYYY-MM-DD
+  /**
+   * Set when this is a VERIFIED church's verse for the day standing in for the
+   * global one (0119, `get_effective_verse`). Absent on every other run — the
+   * global drop, practice, battles — so nothing that does not look for it can
+   * be changed by it.
+   */
+  church?: { id: string; name: string }
   translation: string
   reference: string // "John 3:16"
   book: string
@@ -297,6 +304,12 @@ export interface ChurchMember {
 // arrives from the server already vetted.
 export interface ChurchInfo {
   tagline?: string | null
+  /**
+   * One short line a claimed church publishes for now — "This month we are in
+   * John" (0120). Plain text, at most 140 characters, written only by verified
+   * leadership. Absent means there is no line, never a placeholder.
+   */
+  thisWeek?: string | null
   about?: string | null
   serviceTimes?: string | null
   website?: string | null

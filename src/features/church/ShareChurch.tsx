@@ -16,11 +16,14 @@ import { useJuice } from '@/juice/useJuice'
 export function ShareChurch({
   churchId,
   churchName,
+  city,
   label = '🔗 Share this church',
   note = 'Anyone can open this page — no account needed to look.',
 }: {
   churchId: string
   churchName: string
+  /** Named in the shared line so the link reads as THIS church, not the game. */
+  city?: string | null
   /** The button. Your own church's card says "Invite your congregation". */
   label?: string
   note?: string
@@ -30,9 +33,13 @@ export function ShareChurch({
   const [msg, setMsg] = useState<string | null>(null)
 
   const share = async () => {
-    juice.coin()
+    juice.select()
     const link = inviteUrl(referralCode, `/church/${churchId}`)
-    const text = `${churchName} is on Verse Arcade — come play for it:\n${link}`
+    // The church first, then where it is, then that the page opens without an
+    // account. No "beat", "score", "rank" or "win" — this is a church's link,
+    // and the game's own share line is a different thing.
+    const where = city ? ` in ${city}` : ''
+    const text = `${churchName}${where} on Verse Arcade. Open its page — no account needed:\n${link}`
     const r = await shareResult(text, link)
     setMsg(r === 'shared' ? 'Shared!' : r === 'copied' ? 'Link copied!' : 'Could not share')
   }

@@ -28,8 +28,8 @@ const EMPTY_YARD = {}
 // right on their own, which is how that kind of bug survives for months.
 //
 // The sheet renders it with everything on. The public page turns off the three
-// things a stranger may not have — the congregation's NAMES, the "Add info"
-// queue and the yard read — and each of those is a prop rather than a check
+// things a stranger may not have — the congregation's NAMES, the WRITE half of
+// the info card (the published facts still show) and the yard read — and each of those is a prop rather than a check
 // inside, so the surface can't decide to be public by accident.
 export function ChurchPageBody({
   page,
@@ -56,7 +56,13 @@ export function ChurchPageBody({
    * role and nobody else (0002) has always said.
    */
   named?: boolean
-  /** `submit_church_info_request` is authenticated-only (0050). */
+  /**
+   * May this viewer WRITE to the page — the "Add info" queue, "Suggest an
+   * edit", and a claimed church's "Edit page". `submit_church_info_request` is
+   * authenticated-only (0050). It hides the form and nothing else: the
+   * published facts are drawn either way, because they are what a link handed
+   * out by a church is FOR.
+   */
   canAsk?: boolean
   /** `church_yard_json` is authenticated-only (0061), so the public page has no
    *  landscaping to draw and shouldn't fire the call to find that out. */
@@ -177,7 +183,7 @@ export function ChurchPageBody({
         <Crowd total={memberTotal} loading={loading} />
       )}
 
-      {canAsk && <InfoSection page={page} loading={loading} />}
+      {canAsk ? <InfoSection page={page} loading={loading} /> : <PublishedInfo page={page} loading={loading} />}
       {footer}
       <div style={{ height: 8 }} />
     </>
@@ -389,13 +395,7 @@ function InfoSection({ page, loading }: { page: ChurchPage; loading: boolean }) 
       </div>
 
       {info ? (
-        <div style={{ display: 'grid', gap: 8 }}>
-          {info.tagline && <p style={{ margin: 0, fontSize: 14.5, fontWeight: 700 }}>{info.tagline}</p>}
-          {info.about && <p className="dim" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55 }}>{info.about}</p>}
-          {info.serviceTimes && <Detail icon="🕘" label="Services" value={info.serviceTimes} />}
-          {info.contact && <Detail icon="✉️" label="Contact" value={info.contact} />}
-          {info.website && <Detail icon="🌐" label="Website" value={info.website} href={info.website} />}
-        </div>
+        <InfoFacts info={info} />
       ) : loading ? (
         <p className="faint" style={{ margin: 0, fontSize: 13 }}>Looking…</p>
       ) : myRequestPending ? (
@@ -419,6 +419,44 @@ function InfoSection({ page, loading }: { page: ChurchPage; loading: boolean }) 
           ✅ Your note is in the queue. A person reads these — give us a few days.
         </p>
       )}
+    </div>
+  )
+}
+
+// The published profile on its own, for a viewer who may not write to it —
+// somebody who followed a church's link without an account. The same facts in
+// the same shape as `InfoSection`, and none of its doors: no "Add info", no
+// "Suggest an edit", no "Edit page", no form, no skin chooser, and none of the
+// queue's copy (there is no queue a stranger can join). An unpublished church
+// gets one sentence; the page's footer is already the way in.
+function PublishedInfo({ page, loading }: { page: ChurchPage; loading: boolean }) {
+  const { church, info } = page
+  return (
+    <div className="card">
+      <b style={{ fontFamily: 'var(--font-display)', fontSize: 16, display: 'block', marginBottom: info ? 10 : 6 }}>
+        About this church
+      </b>
+      {info ? (
+        <InfoFacts info={info} />
+      ) : loading ? (
+        <p className="faint" style={{ margin: 0, fontSize: 13 }}>Looking…</p>
+      ) : (
+        <p className="dim" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55 }}>
+          {church.name} hasn&rsquo;t published anything about itself here yet.
+        </p>
+      )}
+    </div>
+  )
+}
+
+function InfoFacts({ info }: { info: ChurchInfo }) {
+  return (
+    <div style={{ display: 'grid', gap: 8 }}>
+      {info.tagline && <p style={{ margin: 0, fontSize: 14.5, fontWeight: 700 }}>{info.tagline}</p>}
+      {info.about && <p className="dim" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55 }}>{info.about}</p>}
+      {info.serviceTimes && <Detail icon="🕘" label="Services" value={info.serviceTimes} />}
+      {info.contact && <Detail icon="✉️" label="Contact" value={info.contact} />}
+      {info.website && <Detail icon="🌐" label="Website" value={info.website} href={info.website} />}
     </div>
   )
 }

@@ -7,26 +7,33 @@ import type { Church } from '@/types'
 
 // "Play for this church" on a church's own page — the join flow's front door
 // for anybody who arrived by link, QR or the directory rather than through the
-// picker.
+// picker, so nobody who was HANDED this church has to find it again in a
+// radius search.
 //
 // It joins BY ID (`join_church`'s `p_church_id`, 0092), which is the only
 // honest way to join a church that already exists: re-deriving a place key
 // from the row would fork a second church. The rest is the store's own `join`,
 // so this and the picker cannot disagree about what joining does.
 //
-// Switching is allowed and said plainly, never hidden behind a second screen:
-// a player plays for ONE church (`profiles.church_id`), and what they gave stays
-// given — lifetime giving follows them, the churchyard's own rule.
+// It never MOVES anybody. A player who already plays for a church is told which
+// one and sent to it; switching stays the existing leave-then-join flow on the
+// church tab, where the move is the subject of the screen rather than a side
+// effect of opening somebody else's link. And nothing is drawn until the
+// player's own church has loaded: a join button that flashes up for a frame in
+// front of somebody who already has a church is a button that moves them.
+//
+// Joining only ever happens on the tap. Arriving here from sign-up (OAuth
+// included, via `ChurchResume`) pre-selects the church and does nothing else.
 export function JoinChurchButton({ church, isMember }: { church: Church; isMember: boolean }) {
   const navigate = useNavigate()
   const juice = useJuice()
   const mine = useChurch((s) => s.church)
+  const loaded = useChurch((s) => s.loaded)
+  const loadError = useChurch((s) => s.error)
   const loadMine = useChurch((s) => s.load)
-  const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
-  // Who you play for now, so a switch can name what it is switching FROM.
   useEffect(() => {
     void loadMine()
   }, [loadMine])
@@ -42,13 +49,35 @@ export function JoinChurchButton({ church, isMember }: { church: Church; isMembe
     )
   }
 
-  const switching = !!mine && mine.id !== church.id
+  if (!loaded) return <div className="skeleton" style={{ height: 120, borderRadius: 18, marginTop: 4 }} />
+
+  // Couldn't tell whether they already have a church — so don't offer a join
+  // that might move them. Same fail-closed rule as the loading state above.
+  if (!mine && loadError) {
+    return (
+      <div className="card center" style={{ marginTop: 4 }}>
+        <p className="dim" style={{ margin: '0 0 12px', fontSize: 13, lineHeight: 1.5 }}>
+          We couldn&rsquo;t check which church you play for just now.
+        </p>
+        <Button variant="secondary" full onClick={() => void loadMine()}>Try again</Button>
+      </div>
+    )
+  }
+
+  if (mine) {
+    return (
+      <div className="card center" style={{ marginTop: 4 }}>
+        <b style={{ fontFamily: 'var(--font-display)', fontSize: 15, display: 'block' }}>You play for {mine.name}</b>
+        <p className="dim" style={{ margin: '6px 0 12px', fontSize: 13, lineHeight: 1.5 }}>
+          A player plays for one church at a time. To play for {church.name} instead, leave yours from
+          your church tab first.
+        </p>
+        <Button variant="secondary" full onClick={() => navigate('/church')}>Go to {mine.name}</Button>
+      </div>
+    )
+  }
 
   const join = async () => {
-    if (switching && !confirming) {
-      setConfirming(true)
-      return
-    }
     setBusy(true)
     setErr(null)
     const joined = await useChurch.getState().join({
@@ -75,22 +104,12 @@ export function JoinChurchButton({ church, isMember }: { church: Church; isMembe
     <div className="card" style={{ marginTop: 4 }}>
       <b style={{ fontFamily: 'var(--font-display)', fontSize: 16, display: 'block' }}>Play for {church.name}</b>
       <p className="dim" style={{ margin: '6px 0 12px', fontSize: 13, lineHeight: 1.5 }}>
-        {confirming && mine
-          ? `This moves you from ${mine.name}. Everything you've already given stays given.`
-          : 'Your daily verse stays the same game — you just play it with this congregation.'}
+        Your daily verse stays the same game — you just play it with this congregation, and the points
+        you give build its church.
       </p>
       <Button variant="gold" full disabled={busy} onClick={join}>
-        {busy ? 'Joining…' : confirming ? `Yes, play for ${church.name}` : 'Join this church'}
+        {busy ? 'Joining…' : `Play for ${church.name}`}
       </Button>
-      {confirming && (
-        <button
-          className="faint"
-          onClick={() => setConfirming(false)}
-          style={{ display: 'block', width: '100%', marginTop: 10, fontSize: 12.5, textDecoration: 'underline' }}
-        >
-          Stay with {mine?.name}
-        </button>
-      )}
       {err && <p style={{ color: 'var(--coral)', fontSize: 12.5, margin: '8px 0 0' }}>{err}</p>}
     </div>
   )

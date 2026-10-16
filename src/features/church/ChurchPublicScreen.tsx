@@ -89,9 +89,11 @@ export default function ChurchPublicScreen() {
         <ChurchPageBody
           page={page}
           loading={loading}
-          // Names, the "Add info" queue and the landscaping all need an
+          // Names, WRITING to the page and the landscaping all need an
           // account — the first because 0074 doesn't return usernames, the
-          // other two because their RPCs are authenticated-only.
+          // other two because their RPCs are authenticated-only. The
+          // published facts (service times, website…) are drawn either way:
+          // `canAsk` hides the form, not the page.
           named={signedIn}
           canAsk={signedIn}
           withYard={signedIn}

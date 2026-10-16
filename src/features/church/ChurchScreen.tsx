@@ -126,10 +126,6 @@ function ChurchHome({ church }: { church: Church }) {
   // The congregation's monuments stand in the same hero scene as its flowers.
   const statues = useRivalry((s) => s.statues)
   const loadRivalry = useRivalry((s) => s.load)
-  // This week's two totals, for saying what a gift would do to the bar above
-  // before it is given. Null when there is no matchup: a forecast against a
-  // bye is a share of nothing.
-  const week = useRivalry((s) => (s.loaded && s.opponent ? { mine: s.mine, theirs: s.theirs } : null))
   const congregation = useChurch((s) => s.congregation)
   const loadCongregation = useChurch((s) => s.loadCongregation)
   const [picked, setPicked] = useState<string | null>(null)
@@ -268,7 +264,7 @@ function ChurchHome({ church }: { church: Church }) {
     if (busy || points <= 0) return
     setBusy(true)
     const beforeTier = tier.id
-    juice.coin()
+    juice.select()
     const res = await contribute(points)
     setBusy(false)
     if (!res.ok) {
@@ -283,32 +279,22 @@ function ChurchHome({ church }: { church: Church }) {
     if (afterTier.id !== beforeTier) {
       // The building itself changed — that's the big moment, not the level.
       setPromoted(afterTier.name)
-      juice.celebrate()
-    } else if (res.leveledUp) {
-      juice.levelUp()
-    } else {
-      juice.correct()
     }
-    // What it did, not only that it landed: the level it reached, and where
-    // the church now stands in the week. The share is projected from the
-    // totals on screen and the server's re-read below corrects it within the
-    // second — an estimate for 2.6 seconds is fine; a bar that doesn't move
-    // when you feed it is not.
+    // No confetti and no coin sting here (2026-10-16): those belong to the
+    // quiz. Giving to a church is acknowledged with the select tick above and
+    // the line below, nothing louder.
+    // What it did, not only that it landed: the level it reached. The week's
+    // share is deliberately not here — that lives inside the folded week card.
     const now = useChurch.getState().church?.xp ?? church.xp
     const after = churchLevelInfo(now)
     const parts = [`+${res.given.toLocaleString()} to ${church.name}`]
     if (afterTier.id === beforeTier && res.leveledUp) parts.push(`LVL ${after.level}!`)
-    if (week) {
-      const share = weekShare(week.mine + res.given, week.theirs)
-      if (share !== null) parts.push(`${share}% of the week`)
-    }
     setFlash(parts.join(' · '))
     // Giving is the only thing that opens landscaping, so the yard's ladder is
     // stale the moment this lands.
     void useChurchYard.getState().load()
-    // And it just moved this week's matchup — the whole point of the card above
-    // is that a gift changes the bar you can see. Re-read rather than adding
-    // optimistically: the opponent's half moves too, and only the server knows.
+    // And it moved the week's totals inside the fold — re-read rather than
+    // adding optimistically, since only the server knows both halves.
     void useRivalry.getState().load()
   }
 
@@ -322,8 +308,8 @@ function ChurchHome({ church }: { church: Church }) {
   const quick = [100, 500, 2500].filter((n) => n <= available)
 
   // What giving everything would do — the reason to tap the gold button,
-  // said before it is tapped. The building is the big one, then the level,
-  // then the week; nothing here is a number about a person.
+  // said before it is tapped. The building, then the level; nothing here is
+  // a number about a person, and nothing here is the week's pairing.
   const forecast = useMemo(() => {
     if (available <= 0) return null
     const after = churchLevelInfo(church.xp + available)
@@ -331,13 +317,9 @@ function ChurchHome({ church }: { church: Church }) {
     const bits: string[] = []
     if (afterTier.id !== tier.id) bits.push(`raise the ${afterTier.name}`)
     else if (after.level > info.level) bits.push(`take the church to LVL ${after.level}`)
-    if (week) {
-      const share = weekShare(week.mine + available, week.theirs)
-      if (share !== null) bits.push(`put your church at ${share}% of this week`)
-    }
     if (!bits.length) return null
     return `Giving all ${available.toLocaleString()} would ${bits.join(' and ')}.`
-  }, [available, church.xp, info.level, tier.id, week])
+  }, [available, church.xp, info.level, tier.id])
 
   return (
     <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'minmax(0, 1fr)' }}>
@@ -388,7 +370,7 @@ function ChurchHome({ church }: { church: Church }) {
                 : yardNote}
           </p>
         )}
-        <h2 style={{ fontSize: 22, marginTop: 8, overflowWrap: 'anywhere' }}>{church.name}</h2>
+        <h2 style={{ fontSize: 22, marginTop: 8, overflowWrap: 'anywhere', fontFamily: 'var(--font-body)', fontWeight: 800 }}>{church.name}</h2>
         <p className="faint" style={{ margin: '2px 0 0', fontSize: 12.5 }}>
           {where || 'Your congregation'} · {church.members} {church.members === 1 ? 'player' : 'players'}
         </p>
@@ -432,6 +414,7 @@ function ChurchHome({ church }: { church: Church }) {
         <ShareChurch
           churchId={church.id}
           churchName={church.name}
+          city={church.city}
           label="📣 Invite your congregation"
           note="Sends the church’s own page — anyone can open it, and joining takes one tap."
         />
@@ -466,12 +449,6 @@ function ChurchHome({ church }: { church: Church }) {
           />
         </div>
       </div>
-
-      {/* This week's matchup ------------------------------------------------
-          Above the Give card on purpose: it is the reason to tap Give this
-          week, and an argument placed below its own call to action is an
-          argument nobody reads. */}
-      <RivalryCard mine={church} />
 
       {/* Give -------------------------------------------------------------- */}
       <div className="card">
@@ -531,6 +508,17 @@ function ChurchHome({ church }: { church: Church }) {
           )}
         </AnimatePresence>
       </div>
+
+      {/* The week of giving, FOLDED and closed by default (2026-10-16). It used
+          to sit above Give as the reason to tap it, which made a contest the
+          first argument on the tab. The pairing, scoring and statues are
+          untouched; what changed is that nobody meets the other congregation's
+          name or the two totals without opening this. Statues already raised
+          still stand in the yard above — the yard can show a statue, never who
+          gave less. */}
+      <Collapsible icon="🤝" title="A week of giving">
+        <RivalryCard mine={church} />
+      </Collapsible>
 
       {/* ── The three panels under Give ───────────────────────────────────
           The board, the congregation's thank-you list and the building ladder,
@@ -741,7 +729,6 @@ function Landscaping({
       )
       return
     }
-    juice.coin()
     setFlash(`Planted — ${floraById(floraId)?.name}.`)
   }
 
@@ -931,7 +918,7 @@ function Promotion({
           Your church grew
         </p>
         <ChurchArt level={level} skin={skin} size={200} animate />
-        <h2 className="gradient-text" style={{ fontSize: 26, marginTop: 4 }}>{name}</h2>
+        <h2 className="gradient-text" style={{ fontSize: 26, marginTop: 4, fontFamily: 'var(--font-body)', fontWeight: 800 }}>{name}</h2>
         <p className="dim" style={{ margin: '8px 0 14px', fontSize: 14 }}>
           Everyone who gave built this. Keep going — there's more house to raise.
         </p>
@@ -939,15 +926,4 @@ function Promotion({
       </motion.div>
     </motion.div>
   )
-}
-
-/**
- * Your church's share of a week, as a whole percent — the RivalryCard's own
- * number (mine / (mine + theirs)), so the forecast and the bar can't disagree.
- * Null for an empty week, where a share of nothing would read as a lie.
- */
-function weekShare(mine: number, theirs: number): number | null {
-  const total = mine + theirs
-  if (total <= 0) return null
-  return Math.round((mine / total) * 100)
 }

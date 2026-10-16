@@ -1,5 +1,7 @@
 # The sponsored slot
 
+> **Retired from the picker (2026-10-16).** `ChurchPicker` no longer calls `sponsored_church` and shows no paid row; "Suggested for you" lists only the unpaid nearby churches. The migration, the admin panel and its rows remain, so end a live promotion from admin. Everything below describes how the slot worked.
+
 One church, at the top of "Suggested for you", labelled **Sponsored**, for
 players nearby who haven't picked a church yet. It is the only thing in this
 app a third party can pay to put in front of a player, and the rules below are

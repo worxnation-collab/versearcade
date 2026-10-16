@@ -87,3 +87,21 @@ Admin → Churches → **Church leadership**.
    "Add info" pill, on both the leaderboard sheet and `/church/:id`.
 4. **Revoke** removes it. Their edits stay published; the ability to make new
    ones stops.
+
+## The "This week" line (0120)
+
+A claimed church's editor has one more field: **This week**, a single plain-text
+line such as "This month we are in John". It appears inside the published
+profile, above the about text, for everybody who opens the page, signed in or
+not.
+
+- **Who can write it:** only `update_my_church_profile`, which already refuses
+  anyone who isn't verified leadership. The suggestion queue does not take it,
+  and a stranger never sees an editor.
+- **What it can be:** plain text with control characters collapsed, capped at
+  140 characters on the server, rendered as text and never as HTML.
+- **What it isn't:** there is no expiry and no date, and it earns no XP. Empty
+  means the line is absent.
+- **Older apps:** an app built before 0120 never sends the field, and a missing
+  value means "leave it as it is", so saving the other five fields from an old
+  build cannot wipe it.

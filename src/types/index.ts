@@ -304,6 +304,12 @@ export interface ChurchMember {
 // arrives from the server already vetted.
 export interface ChurchInfo {
   tagline?: string | null
+  /**
+   * One short line a claimed church publishes for now — "This month we are in
+   * John" (0120). Plain text, at most 140 characters, written only by verified
+   * leadership. Absent means there is no line, never a placeholder.
+   */
+  thisWeek?: string | null
   about?: string | null
   serviceTimes?: string | null
   website?: string | null

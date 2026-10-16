@@ -64,9 +64,8 @@ import {
 //     any — `miles` is null on every row and the address takes its place. A
 //     distance measured from a town centre would be a number about nothing.
 //   • The town's centre is used for exactly two things: pinning a church added
-//     by hand (the right town, which is the whole complaint this fixes) and
-//     asking about the sponsored slot. It is never shown as a location and
-//     never called "you".
+//     by hand (the right town, which is the whole complaint this fixes). It is
+//     never shown as a location and never called "you".
 //
 // The hard rule here, learned from a TestFlight build that sat on "Looking up
 // churches nearby…" forever: the map lookup NEVER blocks the screen. The moment
@@ -138,7 +137,6 @@ export function ChurchPicker() {
   const [wideBusy, setWideBusy] = useState(false)
   /** Have we actually been everywhere for this query? Drives the empty copy. */
   const [wideDone, setWideDone] = useState(false)
-  const [sponsored, setSponsored] = useState<ChurchPlace | null>(null)
   const [manual, setManual] = useState(false)
   const [manualName, setManualName] = useState('')
   // The "look before you pin" step. `null` = haven't looked; an array = these
@@ -204,40 +202,12 @@ export function ChurchPicker() {
     }))
   }, [])
 
-  // The one paid slot, if this spot has one (0077). Everything about this call
-  // fails to `null`: no keys, a server that predates the migration, a network
-  // blip, or simply no promotion in this area — all four land on "no sponsored
-  // row", and the picker renders exactly as it did before the feature existed.
-  const loadSponsored = useCallback(async (at: Coords): Promise<ChurchPlace | null> => {
-    if (!supabase) return null
-    try {
-      const res = await Promise.race([
-        supabase.rpc('sponsored_church', { p_lat: at.lat, p_lng: at.lng }),
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), KNOWN_TIMEOUT_MS)),
-      ])
-      if (!res || res.error || !res.data) return null
-      const c = res.data as any
-      if (!c.id || !c.promotion_id) return null
-      return {
-        placeKey: `known:${c.id}`,
-        churchId: c.id as string,
-        promotionId: c.promotion_id as string,
-        sponsored: true,
-        name: c.name as string,
-        address: c.address ?? null,
-        city: c.city ?? null,
-        region: c.region ?? null,
-        lat: Number(c.lat),
-        lng: Number(c.lng),
-        miles: Number(c.miles ?? milesBetween(at, { lat: Number(c.lat), lng: Number(c.lng) })),
-        xp: Number(c.xp ?? 0),
-        level: Number(c.level ?? 1),
-        members: Number(c.members ?? 0),
-      }
-    } catch {
-      return null
-    }
-  }, [])
+  // NO PAID SLOT (2026-10-16). This screen used to ask `sponsored_church`
+  // (0077) and draw one paid church at the top of "Suggested for you". It no
+  // longer asks and no longer draws one: suggestions are the unpaid nearby
+  // churches, exactly as they were whenever no promotion was running. The
+  // migration, the admin panel and its rows are untouched — a live promotion
+  // is ended from admin, not from here.
 
   // Both sources run at once and each renders the moment it lands, so a slow
   // map endpoint can't hide the churches we already know about.
@@ -247,10 +217,6 @@ export function ChurchPicker() {
       const ctl = new AbortController()
       nearbyRef.current = ctl
       setNearbyBusy(true)
-
-      void loadSponsored(at).then((row) => {
-        if (!ctl.signal.aborted) setSponsored(row)
-      })
 
       const known = loadKnown(at).then((rows) => {
         if (!ctl.signal.aborted && rows.length) setPlaces((prev) => mergePlaces(rows, prev))
@@ -290,7 +256,7 @@ export function ChurchPicker() {
         setError("We couldn't reach the map just now. Search by name, or add your church by hand below.")
       }
     },
-    [loadKnown, loadSponsored],
+    [loadKnown],
   )
 
   const locate = useCallback(async () => {
@@ -328,10 +294,6 @@ export function ChurchPicker() {
     setNearbyBusy(true)
     setError(null)
 
-    void loadSponsored(picked.coords).then((row) => {
-      if (!ctl.signal.aborted) setSponsored(row)
-    })
-
     // Our own churches in that town come from the same `search_churches` the
     // nearby path uses, so a congregation already playing keeps its level and
     // its member count here too.
@@ -354,7 +316,7 @@ export function ChurchPicker() {
     if (knownRows.length === 0 && cityRows.length === 0) {
       setError(`We don't have any churches listed in ${cityLabel(picked)} yet — search by name, or add yours by hand below.`)
     }
-  }, [loadKnown, loadSponsored])
+  }, [loadKnown])
 
   const pickCity = useCallback((picked: ChurchCity) => {
     juice.select()
@@ -374,7 +336,6 @@ export function ChurchPicker() {
     searchRef.current?.abort()
     setOrigin(null)
     setPlaces([])
-    setSponsored(null)
     setQuery('')
     setWide([])
     setWideDone(false)
@@ -392,17 +353,13 @@ export function ChurchPicker() {
   // one: the top few are what we'd pick for them, the remainder is the honest
   // "everything within 30 miles" list underneath. The moment a query exists the
   // split disappears — someone typing a name wants matches, not our opinion,
-  // and the sponsored row goes with it (see below).
+  // and nothing is promoted.
   const browsing = !query.trim()
 
   const matches = useMemo(() => {
     const found = places.filter(
       (p) =>
-        matchesQuery(p, query) &&
-        // While browsing, the sponsored church is drawn once, at the top, with
-        // its label — not twice. Once someone types, it's back to being an
-        // ordinary row that has to earn its place by matching what they wrote.
-        !(browsing && sponsored?.churchId && p.churchId === sponsored.churchId),
+        matchesQuery(p, query),
     )
     // Churches already playing first (they have a level to climb), then by
     // distance — a 4-mile neighbour matters more than one 25 miles out.
@@ -410,20 +367,14 @@ export function ChurchPicker() {
       .slice()
       .sort((a, b) => (b.churchId ? 1 : 0) - (a.churchId ? 1 : 0) || a.miles - b.miles)
       .slice(0, 40)
-  }, [places, query, browsing, sponsored])
+  }, [places, query])
 
-  // The sponsored church takes one of the three suggestion slots rather than
-  // being added on top of them: a paid row lengthens nobody's list, and the
-  // strip stays the same size whether or not anybody bought it.
   // "Suggested for you" is a DISTANCE idea — the nearest few, read without
   // scrolling. A town has no distances, so in city mode there is nothing to
-  // suggest and the list is simply the town's, with the sponsored row (which
-  // is still geographically honest: its radius is measured from the church's
-  // own position, and the town centre is inside it) kept at the top and
-  // labelled. Splitting it there would promote three arbitrary rows.
-  const promoted = browsing ? sponsored : null
+  // suggest and the list is simply the town's. Splitting it there would
+  // promote three arbitrary rows.
   const splitting = browsing && !city
-  const suggested = splitting ? matches.slice(0, SUGGEST_COUNT - (promoted ? 1 : 0)) : []
+  const suggested = splitting ? matches.slice(0, SUGGEST_COUNT) : []
   const rest = splitting ? matches.slice(suggested.length) : matches
 
   // Nothing nearby matched what they typed — go back out and search by name.
@@ -529,20 +480,11 @@ export function ChurchPicker() {
 
   const pick = async (place: ChurchPlace) => {
     setJoining(place.placeKey)
-    juice.coin()
+    juice.select()
     const church = await join(place)
     setJoining(null)
     if (church) {
-      juice.celebrate()
-      // What the slot actually delivered, so it can be sold again honestly.
-      // Verified rather than asserted — `note_promotion_join` checks the caller
-      // really does play for that church before it counts anything — and
-      // best-effort: nothing about this may cost somebody the church they just
-      // joined. `.then()` rather than a bare `void`, because a postgrest
-      // builder only sends its request inside then() (see CLAUDE.md).
-      if (place.promotionId && supabase) {
-        void supabase.rpc('note_promotion_join', { p_promotion: place.promotionId }).then(() => {})
-      }
+      // A quiet tick — confetti belongs to the quiz (2026-10-16).
     } else {
       setError("We couldn't save that pick — check your connection and try again.")
     }
@@ -760,18 +702,9 @@ export function ChurchPicker() {
             </p>
           )}
 
-          {(promoted || suggested.length > 0) && (
+          {suggested.length > 0 && (
             <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
               <SectionLabel>{city ? `In ${cityLabel(city)}` : 'Suggested for you'}</SectionLabel>
-              {promoted && (
-                <PlaceRow
-                  key={promoted.placeKey}
-                  place={promoted}
-                  featured
-                  busy={joining === promoted.placeKey}
-                  onPick={() => pick(promoted)}
-                />
-              )}
               {suggested.map((p) => (
                 <PlaceRow
                   key={p.placeKey}
@@ -1051,24 +984,6 @@ function PlaceRow({
     >
       <span style={{ fontSize: featured ? 28 : 24, flexShrink: 0 }}>⛪</span>
       <span style={{ minWidth: 0, flex: 1 }}>
-        {/* The disclosure, and it is not decoration: a paid row on a list of
-            churches has to say it is paid, above the name where it can't be
-            missed, in ink-dim rather than faint so it reads at a glance. */}
-        {place.sponsored && (
-          <span
-            style={{
-              display: 'block',
-              fontSize: 10,
-              fontWeight: 800,
-              letterSpacing: '0.09em',
-              textTransform: 'uppercase',
-              color: 'var(--ink-dim)',
-              marginBottom: 2,
-            }}
-          >
-            Sponsored
-          </span>
-        )}
         <span style={{ display: 'block', fontWeight: 800, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {place.name}
         </span>

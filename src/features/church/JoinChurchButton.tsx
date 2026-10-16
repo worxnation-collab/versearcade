@@ -96,7 +96,9 @@ export function JoinChurchButton({ church, isMember }: { church: Church; isMembe
       setErr("That didn't go through — check your connection and try again.")
       return
     }
-    juice.celebrate()
+    // A quiet tick, not the quiz's confetti — joining a church is a choice,
+    // not a high score.
+    juice.select()
     navigate('/church')
   }
 

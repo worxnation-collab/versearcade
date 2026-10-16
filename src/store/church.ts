@@ -135,6 +135,7 @@ function toInfo(raw: any): ChurchInfo | null {
   if (!raw) return null
   const info: ChurchInfo = {
     tagline: raw.tagline ?? null,
+    thisWeek: typeof raw.thisWeek === 'string' && raw.thisWeek.trim() ? raw.thisWeek : null,
     about: raw.about ?? null,
     serviceTimes: raw.serviceTimes ?? null,
     website: raw.website ?? null,
@@ -242,10 +243,12 @@ interface ChurchState {
   updateChurchPage: (input: ChurchPageEdit) => Promise<{ ok: boolean; reason?: string }>
 }
 
-/** The five things a claimed church may say about itself. Never the skin. */
+/** What a claimed church may say about itself. Never the skin. */
 export interface ChurchPageEdit {
   churchId: string
   tagline: string
+  /** '' clears the line; the server caps it at 140 characters (0120). */
+  thisWeek: string
   about: string
   serviceTimes: string
   website: string
@@ -480,7 +483,7 @@ export const useChurch = create<ChurchState>((set, get) => ({
     set({ congregation: ((data as any).members ?? []).map(toMember) })
   },
 
-  async updateChurchPage({ churchId, tagline, about, serviceTimes, website, contact }) {
+  async updateChurchPage({ churchId, tagline, thisWeek, about, serviceTimes, website, contact }) {
     if (!isOnline()) return { ok: false, reason: 'offline' }
     const { data, error } = await supabase!.rpc('update_my_church_profile', {
       p_church_id: churchId,
@@ -489,6 +492,9 @@ export const useChurch = create<ChurchState>((set, get) => ({
       p_service_times: serviceTimes.trim() || null,
       p_website: website.trim() || null,
       p_contact: contact.trim() || null,
+      // Always sent, '' to clear: the server reads NULL as "not sent" and
+      // keeps the old line, which is how an older app avoids wiping it.
+      p_this_week: thisWeek.trim(),
     })
     if (error) return { ok: false, reason: error.message }
     const payload = data as any
@@ -499,6 +505,7 @@ export const useChurch = create<ChurchState>((set, get) => ({
     // published-but-blank profile — otherwise the page draws an empty panel.
     const next: ChurchInfo = {
       tagline: tagline.trim() || null,
+      thisWeek: thisWeek.trim().replace(/[\u0000-\u001f\u007f]+/g, ' ').slice(0, 140) || null,
       about: about.trim() || null,
       serviceTimes: serviceTimes.trim() || null,
       website: website.trim() || null,

@@ -113,7 +113,7 @@ export function TodayVerseForm({ churchId, churchName }: { churchId: string; chu
     const r = await saveDayVerse(churchId, date, { reference: reference.trim(), text: text.trim(), questions: built as Question[] })
     setBusy(false)
     if (!r.ok) return setMsg({ ok: false, text: REASONS[r.reason] ?? 'That didn’t save — check your connection and try again.' })
-    juice.coin()
+    juice.select?.()
     setExisting(true)
     setMsg({
       ok: true,

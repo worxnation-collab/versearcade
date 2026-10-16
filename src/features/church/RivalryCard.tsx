@@ -9,14 +9,20 @@ import {
   PLINTHS,
   bandLabel,
   outcomeEarnsStatue,
-  outcomeLine,
   plinthById,
   statueById,
   timeLeftLabel,
   raisedId,
 } from './rivalry'
 
-// This week's matchup, and the statue a win buys.
+// A week of giving with another congregation, and the statue it can buy.
+//
+// FOLDED AWAY, AND NOT A CONTEST ON THE SURFACE (2026-10-16). The church tab
+// mounts this inside a Collapsible that is closed by default, and it never
+// appears on /church/:id. The visible words say what it is — a week of giving
+// alongside another congregation about your size, where giving less changes
+// nothing — and never "beat", "rival", "opponent", ahead or behind. The other
+// church's name and the two totals live only inside the fold.
 //
 // EVERY LINE ON THIS CARD IS WRITTEN TO BE READ BY THE CHURCH THAT IS BEHIND.
 // That is the design constraint, not a tone preference — see the header of
@@ -39,7 +45,7 @@ import {
 
 export function RivalryCard({ mine: myChurch }: { mine: Church }) {
   const {
-    loaded, mine, theirs, opponent, last, wins, band, weekEndsAt,
+    loaded, mine, theirs, opponent, last, band, weekEndsAt,
   } = useRivalry()
 
   // Recomputed on a slow tick rather than a timer: a week-long contest with a
@@ -60,10 +66,10 @@ export function RivalryCard({ mine: myChurch }: { mine: Church }) {
   if (!opponent) {
     return (
       <div className="card">
-        <Heading wins={wins} />
+        <Heading />
         <p className="dim" style={{ margin: '10px 0 0', fontSize: 13.5, lineHeight: 1.5 }}>
-          No matchup this week — there's no other church your size playing yet. Everything you give
-          still counts for your church, and you'll be matched as soon as somebody's in range.
+          No other congregation your size is playing this week. Everything you give still counts for
+          your church, and you'll be paired as soon as one is.
         </p>
         {last && <LastWeek last={last} />}
         <StatueShelf />
@@ -75,12 +81,10 @@ export function RivalryCard({ mine: myChurch }: { mine: Church }) {
   // A 0-0 week is drawn as level rather than as an empty bar, so the first
   // person to open the tab on Monday sees a contest rather than a defeat.
   const share = total > 0 ? mine / total : 0.5
-  const ahead = mine > theirs
-  const level = mine === theirs
 
   return (
     <div className="card">
-      <Heading wins={wins} />
+      <Heading />
 
       {/* BOTH churches, as buildings, at exactly the same size. Drawing only
           one of them puts a building in the middle that belongs to neither
@@ -88,11 +92,8 @@ export function RivalryCard({ mine: myChurch }: { mine: Church }) {
           the picture before the numbers get a chance to say it's close. */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: 10, marginTop: 12 }}>
         <Side church={myChurch} label="Your church" points={mine} />
-        <div
-          className="faint"
-          style={{ fontFamily: 'var(--font-display)', fontSize: 12, letterSpacing: 1, paddingTop: 22, flex: '0 0 auto' }}
-        >
-          VS
+        <div className="faint" aria-hidden="true" style={{ fontSize: 14, paddingTop: 20, flex: '0 0 auto' }}>
+          &amp;
         </div>
         <Side church={opponent} label={opponent.name} points={theirs} />
       </div>
@@ -120,18 +121,9 @@ export function RivalryCard({ mine: myChurch }: { mine: Church }) {
         />
       </div>
 
-      <p style={{ margin: '10px 0 0', fontSize: 13.5, lineHeight: 1.5, textAlign: 'center' }}>
-        <b style={{ color: 'var(--gold)' }}>
-          {level
-            ? 'Dead level.'
-            : ahead
-              ? 'Your church is ahead.'
-              : "There's a week to close it."}
-        </b>{' '}
-        <span className="dim">
-          You have {Math.round(share * 100)}% of everything played between the two of you.
-          Every point anyone gives adds to it.
-        </span>
+      <p className="dim" style={{ margin: '10px 0 0', fontSize: 13.5, lineHeight: 1.5, textAlign: 'center' }}>
+        {Math.round(share * 100)}% of this week's giving between the two churches is yours. Every point
+        anyone gives adds to it.
       </p>
 
       <p className="faint center" style={{ margin: '8px 0 0', fontSize: 12 }}>
@@ -143,7 +135,7 @@ export function RivalryCard({ mine: myChurch }: { mine: Church }) {
           reassurance a four-person congregation actually needs, and it is the
           reason pairing is banded at all. */}
       <p className="faint center" style={{ margin: '2px 0 0', fontSize: 11.5 }}>
-        Matched with a church your own size — {bandLabel(band).toLowerCase()}.
+        Paired with a church your own size — {bandLabel(band).toLowerCase()}.
       </p>
 
       {last && <LastWeek last={last} />}
@@ -152,16 +144,13 @@ export function RivalryCard({ mine: myChurch }: { mine: Church }) {
   )
 }
 
-function Heading({ wins }: { wins: number }) {
+function Heading() {
   return (
     <div className="center">
-      <b style={{ fontFamily: 'var(--font-display)', fontSize: 17 }}>This week's matchup</b>
-      <p className="faint" style={{ margin: '2px 0 0', fontSize: 12 }}>
-        {/* Wins, and nothing to compare them against. There is no losses column
-            anywhere in this feature — not in the UI, not in the schema. */}
-        {wins > 0
-          ? `${wins} ${wins === 1 ? 'week' : 'weeks'} won · ${wins === 1 ? 'a statue' : 'statues'} for the yard`
-          : 'Win a week and raise a statue in your churchyard'}
+      <b style={{ fontFamily: 'var(--font-display)', fontSize: 17 }}>A week of giving</b>
+      <p className="faint" style={{ margin: '2px 0 0', fontSize: 12, lineHeight: 1.5 }}>
+        Alongside another congregation about your size. Whichever gives more this week may raise a
+        statue in its yard; for the other, nothing changes.
       </p>
     </div>
   )
@@ -212,6 +201,9 @@ function Side({
   )
 }
 
+// Last week, in one neutral line: whether there is a statue to raise, and
+// otherwise that nothing changed. No totals, no other church's name, no
+// verdict word — the line a congregation that gave less reads on Monday.
 function LastWeek({ last }: { last: RivalryResult }) {
   const won = outcomeEarnsStatue(last.outcome)
   return (
@@ -225,21 +217,13 @@ function LastWeek({ last }: { last: RivalryResult }) {
       <div className="faint" style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6 }}>
         LAST WEEK
       </div>
-      <p style={{ margin: '4px 0 0', fontSize: 13.5, lineHeight: 1.5 }}>
-        <b style={{ color: won ? 'var(--gold)' : 'var(--text)' }}>
-          {outcomeLine(last.outcome, last.opponentName)}
-        </b>
+      <p className="dim" style={{ margin: '4px 0 0', fontSize: 13.5, lineHeight: 1.5 }}>
+        {won
+          ? 'Your church can raise a statue in the yard for last week.'
+          : last.outcome === 'quiet'
+            ? 'A quiet week. A new one has started.'
+            : 'Last week is banked — nothing changes. A new week has started.'}
       </p>
-      {/* The final numbers, small and equal-weight. Shown at all because hiding
-          them after a loss would be the app deciding the church can't handle
-          its own result — and because "we were 200 short" is the sentence that
-          brings a congregation back on Monday. */}
-      {(last.mine > 0 || last.theirs > 0) && (
-        <p className="faint" style={{ margin: '4px 0 0', fontSize: 12 }}>
-          {last.mine.toLocaleString()} · {last.theirs.toLocaleString()}
-          {last.opponentName ? ` to ${last.opponentName}` : ''}
-        </p>
-      )}
     </div>
   )
 }
@@ -283,12 +267,12 @@ function StatueShelf() {
     if (!res.ok) {
       setNote(
         res.reason === 'locked'
-          ? 'Win another week to raise a second one.'
+          ? 'Another week of giving more raises a second one.'
           : "Couldn't raise it just now — try again in a moment.",
       )
       return
     }
-    juice.correct()
+    juice.select()
     setNote(`${statueById(statueId)?.name} is standing in the yard.`)
   }
 
@@ -297,7 +281,7 @@ function StatueShelf() {
     setBusy(true)
     await useRivalry.getState().raise(plinth, null)
     setBusy(false)
-    setNote('Taken down. Raise it again whenever you like — the week stays won.')
+    setNote('Taken down. Raise it again whenever you like.')
   }
 
   return (
@@ -309,7 +293,7 @@ function StatueShelf() {
         </span>
       </div>
       <p className="dim" style={{ margin: '4px 0 0', fontSize: 12.5, lineHeight: 1.5 }}>
-        A won week buys one statue, and the congregation picks it. Anyone who plays here can raise
+        A week where your church gave more buys one statue, and the congregation picks it. Anyone who plays here can raise
         or change one — it belongs to the church, not to whoever tapped it.
       </p>
 

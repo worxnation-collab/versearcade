@@ -130,10 +130,18 @@ export function ChurchScene({
   emptyNote?: boolean
 }) {
   // The painted backdrop, layered OVER the drawn one rather than instead of it
-  // — the house rule every other render follows. The gradient below stays as
-  // the fallback, and the two pieces it supersedes (the sky and the grass) both
-  // ask this same question, so the scene is never half painted.
-  const backdrop = GENERATED_ART['churchyard']
+  // — the house rule every other render follows. The gradients below are the
+  // fallback, and the pieces it supersedes (the sky and the grass) both ask
+  // this same question, so the scene is never half painted.
+  //
+  // A LATE-AFTERNOON lawn since 2026-10-16, keyed `churchyard_day`. The scene
+  // used to be a violet night over a blue-green lawn (`churchyard`), and the
+  // building's shadow sat on the app's own lampblack — so on /church/:id the
+  // church read as a sticker on the game rather than a place in a town. The
+  // night painting is not read any more; `art/church-scene.json` carries the
+  // daytime prompt, and until it is generated the drawn sky and grass below
+  // are the scene.
+  const backdrop = GENERATED_ART['churchyard_day']
 
   const holding = !!floraEditing?.picked || !!statueEditing?.picked
 
@@ -148,8 +156,11 @@ export function ChurchScene({
         borderRadius: 'var(--r-md)',
         overflow: 'hidden',
         border: '1px solid var(--stroke)',
+        // A low warm sky: pale at the top, gold toward the horizon, where a
+        // late sun sits behind the building.
         background:
-          'radial-gradient(120% 90% at 50% 8%, #35197a 0%, #1b0d43 55%, #120829 100%)',
+          'radial-gradient(70% 55% at 50% 64%, rgba(255,214,140,0.85) 0%, rgba(255,214,140,0) 70%),' +
+          'linear-gradient(180deg, #a9c6d6 0%, #e9d3a8 58%, #f2c58a 72%)',
         cursor: holding && onBackgroundTap ? 'pointer' : undefined,
       }}
     >
@@ -175,21 +186,23 @@ export function ChurchScene({
         />
       )}
 
-      {/* A few stars, fixed so they don't twinkle differently on every render. */}
-      {STARS.map((s, i) => (
-        <span
-          key={i}
+      {/* A low line of distant trees on the horizon, either side of the
+          building and thinning toward the middle, so the lawn has an edge. */}
+      {!backdrop && (
+        <div
+          aria-hidden
           style={{
             position: 'absolute',
-            left: `${s[0]}%`,
-            top: `${s[1]}%`,
-            width: s[2],
-            height: s[2],
-            borderRadius: '50%',
-            background: 'rgba(255,255,255,0.65)',
+            left: 0,
+            right: 0,
+            bottom: GROUND + 4,
+            height: 16,
+            background: 'linear-gradient(90deg, #6d7a3f 0%, #7d8748 30%, rgba(125,135,72,0) 44%, rgba(125,135,72,0) 56%, #7d8748 70%, #6d7a3f 100%)',
+            borderRadius: '50% 50% 0 0 / 100% 100% 0 0',
+            opacity: 0.85,
           }}
         />
-      ))}
+      )}
 
       {/* Grass. The building's own shadow ellipse sits right on this line.
           Skipped when the painting is present, which carries its own lawn and
@@ -203,8 +216,9 @@ export function ChurchScene({
             right: 0,
             bottom: 0,
             height: GROUND + 6,
-            background: 'linear-gradient(180deg, #24404a 0%, #16262f 100%)',
-            borderTop: '1px solid rgba(94,231,223,0.18)',
+            // Warm grass in late sun: lighter at the horizon, deeper at your feet.
+            background: 'linear-gradient(180deg, #9db35a 0%, #7f9a43 45%, #637d33 100%)',
+            borderTop: '1px solid rgba(255,236,170,0.45)',
           }}
         />
       )}
@@ -220,7 +234,7 @@ export function ChurchScene({
           width: 120,
           height: GROUND + 6,
           transform: 'translateX(-50%)',
-          background: 'linear-gradient(0deg, rgba(243,236,221,0.16), rgba(243,236,221,0.05))',
+          background: 'linear-gradient(0deg, rgba(236,214,168,0.75), rgba(236,214,168,0.35))',
           clipPath: 'polygon(0% 100%, 100% 100%, 60% 0%, 40% 0%)',
         }}
       />
@@ -231,7 +245,7 @@ export function ChurchScene({
           Dropped so the building clearly stands ON the grass; the path is
           drawn before this div, so it still runs up to the door. */}
       <div style={{ position: 'absolute', left: '50%', bottom: GROUND - 26, transform: 'translateX(-50%)' }}>
-        <ChurchArt level={level} skin={skin} size={CHURCH_W} />
+        <ChurchArt level={level} skin={skin} size={CHURCH_W} ground="#3f5420" />
       </div>
 
       {/* Planted in front of the wall, behind the people: flowers earned by
@@ -280,10 +294,3 @@ export function ChurchScene({
     </div>
   )
 }
-
-// Fixed constellation — decorative only, and identical for every church so the
-// scene reads as one place rather than a random field.
-const STARS: [number, number, number][] = [
-  [8, 12, 2], [17, 30, 1.5], [26, 8, 1.5], [38, 20, 2], [47, 6, 1.5],
-  [58, 16, 2], [69, 9, 1.5], [78, 26, 2], [88, 14, 1.5], [93, 32, 2],
-]

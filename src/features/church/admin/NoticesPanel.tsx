@@ -36,7 +36,7 @@ export function NoticesPanel({ churchId, settings, onSaved }: { churchId: string
       setNoticeMsg({ ok: false, text: r.reason === 'too_long' ? `Keep it under ${MAX} characters.` : r.reason === 'expires_in_past' ? 'Pick a date from today on.' : 'That didn’t save — try again.' })
       return
     }
-    juice.coin()
+    juice.select?.()
     if (clear) {
       setMessage('')
       setUntil('')
@@ -57,7 +57,7 @@ export function NoticesPanel({ churchId, settings, onSaved }: { churchId: string
       })
       return
     }
-    juice.coin()
+    juice.select?.()
     if (r.data.giving_url) setGiving(r.data.giving_url)
     setGivingMsg({ ok: true, text: giving.trim() ? 'Saved.' : 'Giving link removed.' })
     onSaved()

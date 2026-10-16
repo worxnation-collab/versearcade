@@ -78,7 +78,7 @@ export function ChurchDetailSheet() {
               loading={loading}
               onClose={close}
               extras={extras}
-              footer={<ShareChurch churchId={page.church.id} churchName={page.church.name} />}
+              footer={<ShareChurch churchId={page.church.id} churchName={page.church.name} city={page.church.city} />}
             />
           </motion.div>
         </motion.div>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Avatar } from '@/components/Avatar'
 import { Button } from '@/components/Button'
@@ -11,7 +11,8 @@ import { churchLevelInfo, tierForLevel } from './levels'
 import { ChurchArt } from './ChurchArt'
 import { ChurchScene } from './ChurchScene'
 import { useRivalry } from '@/store/rivalry'
-import { CHURCH_SKINS, DEFAULT_CHURCH_SKIN, type ChurchSkinChoice } from './skins'
+import { CHURCH_SKINS, DEFAULT_CHURCH_SKIN, churchSkin, type ChurchSkinChoice } from './skins'
+import { DEFAULT_AVATAR } from '@/data/avatar'
 import type { Church, ChurchInfo, ChurchMember, ChurchPage } from '@/types'
 import type { ChurchExtras } from '@/types/churchPackages'
 import { ChurchExtrasBlock } from './ChurchExtras'
@@ -38,6 +39,7 @@ export function ChurchPageBody({
   named = true,
   canAsk = true,
   withYard = true,
+  showRank = true,
   footer,
   extras = null,
 }: {
@@ -67,6 +69,12 @@ export function ChurchPageBody({
   /** `church_yard_json` is authenticated-only (0061), so the public page has no
    *  landscaping to draw and shouldn't fire the call to find that out. */
   withYard?: boolean
+  /**
+   * "Ranked #n on the board you're looking at". True in the leaderboard sheet,
+   * which is opened FROM a board; false on /church/:id signed out, where the
+   * page is a church's own front door and must not compare it with anybody.
+   */
+  showRank?: boolean
   /** Sits under the page — the public screen's way in. */
   footer?: React.ReactNode
   /**
@@ -93,13 +101,30 @@ export function ChurchPageBody({
   // these are NOT sampled per viewer: a statue belongs to the congregation, so
   // everybody who opens this page sees the same one standing there.
   const statues = useRivalry((s) => (s.pageChurchId === church.id ? s.pageStatues : EMPTY_YARD))
-  const pageWins = useRivalry((s) => (s.pageChurchId === church.id ? s.pageWins : 0))
   const loadPageStatues = useRivalry((s) => s.loadPageStatues)
   useEffect(() => {
     if (!withYard) return
     void loadPageStatues(church.id)
     return () => { void loadPageStatues(null) }
   }, [church.id, loadPageStatues, withYard])
+
+  // Signed out, the congregation is drawn as PLAIN figures: one neutral
+  // starter character per returned member, with no equipped skin, no pet and
+  // no frame. `public_church_page` still returns each member's look (the
+  // payload is unchanged); the page just doesn't wear it, so a novelty or paid
+  // skin can't make a stranger on a lawn behind a QR code identifiable. The
+  // head count stays the real one.
+  const plainMembers = useMemo(
+    () => members.map((m, i): ChurchMember => ({
+      username: '',
+      seed: m.seed ?? `anon-${i}`,
+      avatarEmoji: '🙂',
+      avatarCharacter: { ...DEFAULT_AVATAR, figure: i % 2 ? 'fem' : 'masc' },
+      pet: null,
+      isMe: false,
+    })),
+    [members],
+  )
 
   const level = churchLevelInfo(church.xp)
   const tier = tierForLevel(level.level)
@@ -118,7 +143,7 @@ export function ChurchPageBody({
           />
         )}
         <div style={{ minWidth: 0, flex: 1 }}>
-          <h2 style={{ fontSize: 21, margin: 0, overflowWrap: 'anywhere' }}>{church.name}</h2>
+          <h2 style={{ fontSize: 21, margin: 0, overflowWrap: 'anywhere', fontFamily: 'var(--font-body)', fontWeight: 800 }}>{church.name}</h2>
           <p className="faint" style={{ margin: '3px 0 0', fontSize: 12.5 }}>
             {where || 'Location not listed'}
             {church.miles != null && !church.isMine ? ` · ${formatMiles(church.miles)} away` : ''}
@@ -136,27 +161,16 @@ export function ChurchPageBody({
           the people who play for it. */}
       <ChurchScene
         level={level.level}
-        members={members}
+        members={named ? members : plainMembers}
         skin={church.skin}
         flora={yard}
         statues={statues}
       />
 
-      {/* Weeks won, and deliberately nothing to weigh it against.
-          This is the ONE number the rivalry publishes about a church, and it is
-          safe for the same reason the win ladder is safe everywhere else here:
-          it says a congregation showed up, and it cannot say that anybody else
-          didn't. There is no losses figure to pair it with — not on this page,
-          not in the payload, not in the schema. It appears only once a church
-          has won something, so a page never reads "0 weeks won". */}
-      {pageWins > 0 && (
-        <p
-          className="center"
-          style={{ margin: '10px 0 0', fontSize: 12.5, fontWeight: 700, color: 'var(--gold)' }}
-        >
-          🏛 {pageWins} {pageWins === 1 ? 'week' : 'weeks'} won
-        </p>
-      )}
+      {/* No "weeks won" here, on any surface that draws this body (2026-10-16).
+          The weekly pairing lives folded on your own church tab and nowhere
+          else; a church's page shows the statues standing in its yard and
+          never the week that bought them. */}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, margin: '12px 0 14px' }}>
         <Stat label={tier.name} value={`LVL ${level.level}`} tone="var(--gold)" />
@@ -167,7 +181,7 @@ export function ChurchPageBody({
         />
       </div>
 
-      {church.rank != null && (
+      {showRank && church.rank != null && (
         <p className="dim center" style={{ margin: '0 0 14px', fontSize: 13 }}>
           Ranked <b style={{ color: 'var(--gold)' }}>#{church.rank}</b> on the board you're looking at.
         </p>
@@ -453,6 +467,16 @@ function InfoFacts({ info }: { info: ChurchInfo }) {
   return (
     <div style={{ display: 'grid', gap: 8 }}>
       {info.tagline && <p style={{ margin: 0, fontSize: 14.5, fontWeight: 700 }}>{info.tagline}</p>}
+      {/* Leadership's line for now (0120). Plain text in a text node — never
+          HTML — so anything in it renders as the characters it is. */}
+      {info.thisWeek && (
+        <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, overflowWrap: 'anywhere' }}>
+          <span className="faint" style={{ fontSize: 11.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 6 }}>
+            This week
+          </span>
+          {info.thisWeek}
+        </p>
+      )}
       {info.about && <p className="dim" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55 }}>{info.about}</p>}
       {info.serviceTimes && <Detail icon="🕘" label="Services" value={info.serviceTimes} />}
       {info.contact && <Detail icon="✉️" label="Contact" value={info.contact} />}
@@ -539,6 +563,7 @@ function ChurchPageEditor({
   const [serviceTimes, setServiceTimes] = useState(info?.serviceTimes ?? '')
   const [website, setWebsite] = useState(info?.website ?? '')
   const [contact, setContact] = useState(info?.contact ?? '')
+  const [thisWeek, setThisWeek] = useState(info?.thisWeek ?? '')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
@@ -547,7 +572,7 @@ function ChurchPageEditor({
     setBusy(true)
     setErr(null)
     const res = await updateChurchPage({
-      churchId: church.id, tagline, about, serviceTimes, website, contact,
+      churchId: church.id, tagline, thisWeek, about, serviceTimes, website, contact,
     })
     setBusy(false)
     if (!res.ok) {
@@ -560,7 +585,7 @@ function ChurchPageEditor({
       )
       return
     }
-    juice.celebrate()
+    juice.select?.()
     onDone()
   }
 
@@ -577,6 +602,7 @@ function ChurchPageEditor({
       </p>
 
       <Field label="Tagline" value={tagline} onChange={setTagline} max={120} placeholder="Come as you are" />
+      <Field label="This week" value={thisWeek} onChange={setThisWeek} max={140} placeholder="This month we are in John" />
       <Field label="Service times" value={serviceTimes} onChange={setServiceTimes} max={200} placeholder="Sundays 9 & 11am, Wednesday 7pm" />
       <Field label="Website" value={website} onChange={setWebsite} max={200} placeholder="grace.org" />
       <Field label="Contact" value={contact} onChange={setContact} max={120} placeholder="hello@grace.org" />
@@ -640,6 +666,7 @@ function InfoRequestForm({
   const requestInfo = useChurch((s) => s.requestInfo)
   const juice = useJuice()
   const [role, setRoleState] = useState<InfoRequestRole>('member')
+  const wearing = churchSkin(currentSkin).id
   const [skin, setSkin] = useState<ChurchSkinChoice>(
     (CHURCH_SKINS.find((s) => s.id === currentSkin)?.id ?? DEFAULT_CHURCH_SKIN) as ChurchSkinChoice,
   )
@@ -682,7 +709,7 @@ function InfoRequestForm({
       setErr(REASONS[res.reason ?? ''] ?? 'That didn’t go through. Try again in a moment.')
       return
     }
-    juice.celebrate()
+    juice.select?.()
     setSent(true)
   }
 
@@ -747,6 +774,7 @@ function InfoRequestForm({
           <SkinPicker
             churchName={churchName}
             level={level}
+            wearing={wearing}
             value={skin}
             onPick={(next) => { juice.select?.(); setSkin(next) }}
           />
@@ -875,11 +903,14 @@ const labelStyle: React.CSSProperties = { display: 'grid', gap: 5, fontSize: 12,
 function SkinPicker({
   churchName,
   level,
+  wearing,
   value,
   onPick,
 }: {
   churchName: string
   level: number
+  /** What the building is drawn in now — its own skin, or the default. */
+  wearing: ChurchSkinChoice
   value: ChurchSkinChoice
   onPick: (skin: ChurchSkinChoice) => void
 }) {
@@ -894,7 +925,7 @@ function SkinPicker({
             <ChurchArt level={level} skin={s.id} size={98} />
             <b style={{ fontSize: 12.5, marginTop: 2 }}>{s.name}</b>
             <span className="faint" style={{ fontSize: 10.5, lineHeight: 1.35, textAlign: 'center' }}>
-              {s.id === DEFAULT_CHURCH_SKIN ? 'The one you have now' : s.blurb}
+              {s.id === wearing ? 'The one you have now' : s.blurb}
             </span>
           </SkinTile>
         ))}

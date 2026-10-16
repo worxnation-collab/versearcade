@@ -97,6 +97,9 @@ export default function ChurchPublicScreen() {
           named={signedIn}
           canAsk={signedIn}
           withYard={signedIn}
+          // A church's own front door compares it with nobody. The rank only
+          // means something on the board it came from, so the sheet keeps it.
+          showRank={signedIn}
           extras={extras}
           footer={
             signedIn ? (
@@ -109,7 +112,7 @@ export default function ChurchPublicScreen() {
                     </Button>
                   </div>
                 )}
-                <ShareChurch churchId={page.church.id} churchName={page.church.name} />
+                <ShareChurch churchId={page.church.id} churchName={page.church.name} city={page.church.city} />
                 {/* The QR code is the verified package's; the link above is
                     every church's, free, and stays that way. */}
                 {extras?.verified && <ChurchInviteQR churchId={page.church.id} churchName={page.church.name} />}

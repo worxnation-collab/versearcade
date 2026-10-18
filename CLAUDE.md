@@ -2357,7 +2357,17 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0120` (the church page's "This week" line —
+The latest is `0121` (a one-time leadership invite link —
+`church_claim_codes` (hashed codes, no client access),
+`admin_create_church_claim_code`, anon-callable `church_claim_preview`,
+`redeem_church_claim_code`; `docs/CHURCH-CLAIM.md`). APPLIED 2026-10-18 as
+`0121_church_claim_codes`, after a local Postgres 16 run of twelve cases
+(non-admin refused, stored hashed, anon can't read/redeem/hash, wrong church,
+used, expired, same-user second tap, signed-out raise, re-run no-op). Live
+ACLs verified: `church_claim_hash` `{postgres,service_role}`, the two writers
+`authenticated`, the preview public.
+
+Before it, `0120` (the church page's "This week" line —
 `church_profiles.this_week`, capped at 140 by a check constraint, written only
 by `update_my_church_profile` and returned by `public_church_page` and
 `get_church_page`; `docs/CHURCH-CLAIM.md`). APPLIED 2026-10-16 as
@@ -2794,7 +2804,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0121` (0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0122` (0121 is the church leader invite link, 0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

@@ -1,3 +1,4 @@
+import { createClaimCode } from '@/store/churchClaim'
 import { useEffect, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { Page } from '@/components/Page'
@@ -400,6 +401,21 @@ function FoundingChurches() {
     void load()
   }
 
+  // A one-time leadership invite (0121): replaces "send me your username".
+  // Shown once here and copied; the server keeps only its hash.
+  const [links, setLinks] = useState<Record<string, string>>({})
+  const invite = async (c: FoundingRow) => {
+    setBusy(`inv:${c.id}`)
+    setMsg(null)
+    const r = await createClaimCode(c.id)
+    setBusy(null)
+    if (!r.ok) return setMsg(`Couldn't make an invite for ${c.name}.`)
+    setLinks((m) => ({ ...m, [c.id]: r.url }))
+    let copied = false
+    try { await navigator.clipboard.writeText(r.url); copied = true } catch { /* shown below to copy by hand */ }
+    setMsg(`${copied ? 'Copied' : 'Made'} a leader invite for ${c.name} — one use, 14 days. Send it to the person you verified.`)
+  }
+
   const where = (c: { city: string | null; region: string | null }) => [c.city, c.region].filter(Boolean).join(', ')
 
   const row = (c: FoundingRow) => (
@@ -414,6 +430,14 @@ function FoundingChurches() {
         <Button variant={c.verified ? 'ghost' : 'gold'} disabled={busy === c.id} onClick={() => set(c, !c.verified)}>
           {busy === c.id ? '…' : c.verified ? 'Turn off' : 'Turn on'}
         </Button>
+      </div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <button className="pill" disabled={busy === `inv:${c.id}`} onClick={() => invite(c)} style={{ fontSize: 12, fontWeight: 800 }}>
+          {busy === `inv:${c.id}` ? '…' : '🔗 Copy leader invite link'}
+        </button>
+        {links[c.id] && (
+          <span className="faint" style={{ fontSize: 11, wordBreak: 'break-all', flex: 1, minWidth: 0 }}>{links[c.id]}</span>
+        )}
       </div>
       <input
         value={logo[c.id] ?? c.logo_url ?? ''}

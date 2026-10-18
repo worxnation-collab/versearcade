@@ -105,3 +105,30 @@ not.
 - **Older apps:** an app built before 0120 never sends the field, and a missing
   value means "leave it as it is", so saving the other five fields from an old
   build cannot wipe it.
+
+## The invite link (0121)
+
+The operator no longer needs the pastor's username.
+
+1. In **Admin → Churches → Founding Churches**, choose **Copy leader invite
+   link** for the church. You get
+   `versearcade.org/church/<id>/claim#<code>`, one use, valid for 14 days.
+2. Send it to the person you verified. **Verification is still yours:** the
+   link only replaces the username relay.
+3. They open it, make an account or sign in (the code is parked and
+   `ChurchResume` brings them back once), and tap **Claim leadership**.
+   `redeem_church_claim_code` checks the church, the expiry and that the code
+   is unused, writes the `church_admins` row with `note = 'invite link · …'`,
+   and burns the code. They land in Leadership tools.
+4. Revoking is unchanged: Church leadership → Revoke.
+
+How the code is protected:
+
+- **Stored hashed.** The table holds only sha256 of the code, so a read of the
+  table is not a working link.
+- **Kept out of server logs.** It rides in the URL fragment, so it never
+  reaches a server log or a Referer header.
+- **Stripped from the address bar** as soon as the claim screen reads it.
+- **Guessing is pointless.** `church_claim_preview` is anon-callable so the page
+  can say "expired" before asking anybody to sign up, but a code is 244 random
+  bits.

@@ -28,6 +28,7 @@ import PrayerWallScreen from './features/prayer/PrayerWallScreen'
 import ChurchesScreen from './features/churches/ChurchesScreen'
 import ChurchDirectoryScreen from './features/churches/ChurchDirectoryScreen'
 import ChurchTryScreen from './features/churches/ChurchTryScreen'
+import ChurchClaimScreen from './features/church/ChurchClaimScreen'
 import ChurchScreen from './features/church/ChurchScreen'
 import ChurchPublicScreen from './features/church/ChurchPublicScreen'
 import ChurchAdminScreen from './features/church/admin/ChurchAdminScreen'
@@ -464,6 +465,9 @@ export default function App() {
             Distinct from /church above (the player-facing tab) and /churches
             below (the B2B funnel). */}
         <Route path="/church/:id" element={<ChurchPublicScreen />} />
+        {/* Public: a pastor's one-time leadership invite (0121). Handles its
+            own sign-up resume, like the page above. */}
+        <Route path="/church/:id/claim" element={<ChurchClaimScreen />} />
         {/* A church's leadership tools. Behind the church wall (an account) —
             and every RPC under it re-checks leadership server-side, so the
             route is a door, not a lock. */}

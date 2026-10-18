@@ -98,6 +98,7 @@ export function QuizRunner({
   startGate,
   studyDrop = false,
   runId,
+  demo = false,
 }: {
   verse: DailyVerse
   onComplete: (result: PlayResult) => Promise<void>
@@ -128,6 +129,13 @@ export function QuizRunner({
    * See lib/runProgress and the note above.
    */
   runId?: string
+  /**
+   * A run that RECORDS NOTHING — the public church demo (/churches/try), where
+   * a pastor plays questions they just wrote. No book accuracy, no Bible mark,
+   * no road miles, no drop, no library; `onComplete` still fires so the caller
+   * can show the result. Pass no `runId` with it, so nothing is parked either.
+   */
+  demo?: boolean
 }) {
   const juice = useJuice()
 
@@ -370,28 +378,30 @@ export function QuizRunner({
     // Every finished run feeds per-book accuracy, whatever mode it came from —
     // knowing Romans is knowing Romans whether it was a daily drop or a battle.
     // (An abandoned run doesn't count: a quit isn't a wrong answer.)
-    useBookAccuracy.getState().record(verse.book, correctCount, answers.length)
+    if (!demo) useBookAccuracy.getState().record(verse.book, correctCount, answers.length)
     // …and lights the verse up in the player's own Bible, from whichever mode it
     // came. Studying a verse is studying it whether it was the daily drop or a
     // battle, and the Bible is the one place that shows all of it at once.
-    useBible.getState().markStudied(verse.reference)
+    if (!demo) useBible.getState().markStudied(verse.reference)
     // A finished study run rolls for a relic — here, at the same choke point as
     // the two marks above, so every study mode counts without five call sites.
     // Fire-and-forget: the reveal is a toast that follows the player to whatever
     // screen onComplete sends them to, and a failed roll is simply no find.
-    if (studyDrop) void useDrops.getState().roll()
+    if (studyDrop && !demo) void useDrops.getState().roll()
     // …and it walks the road. Same choke point, same reason: every quiz mode
     // counts once, from here, rather than from five screens. Miles are not XP
     // and appear on no board (see lib/season), so paying them from a battle is
     // safe in a way paying points from a study run would not be.
-    void useSeason.getState().track('quiz_complete', {
-      correct: correctCount,
-      perfect: correctCount === questions.length,
-      comboMax,
-    })
-    if (studyDrop) void useSeason.getState().track('study_run')
+    if (!demo) {
+      void useSeason.getState().track('quiz_complete', {
+        correct: correctCount,
+        perfect: correctCount === questions.length,
+        comboMax,
+      })
+    }
+    if (studyDrop && !demo) void useSeason.getState().track('study_run')
     // A study run IS borrowing the day's book — see useLibrary.borrowIfNeeded.
-    if (studyDrop) void useLibrary.getState().borrowIfNeeded()
+    if (studyDrop && !demo) void useLibrary.getState().borrowIfNeeded()
     try {
       await onComplete(result)
     } catch {

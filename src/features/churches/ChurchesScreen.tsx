@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
@@ -72,7 +72,10 @@ export default function ChurchesScreen() {
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('')
   const [size, setSize] = useState('')
-  const [message, setMessage] = useState('')
+  // Arriving from the demo (/churches/try) carries a line about what they tried,
+  // so the first call can start from their sermon.
+  const prefill = (location.state as { prefill?: string } | null)?.prefill ?? ''
+  const [message, setMessage] = useState(prefill)
   const [sent, setSent] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -95,6 +98,10 @@ export default function ChurchesScreen() {
     }
     setSent(true)
   }
+
+  useEffect(() => {
+    if (prefill) document.getElementById('founding-form')?.scrollIntoView({ block: 'start' })
+  }, [prefill])
 
   const toForm = () => {
     juice.select?.()
@@ -136,6 +143,11 @@ export default function ChurchesScreen() {
         </p>
         <div style={{ marginTop: 14 }}>
           <Button variant="gold" full onClick={toForm}>Become a Founding Church</Button>
+          <div style={{ marginTop: 8 }}>
+            <Button variant="secondary" full onClick={() => { juice.select?.(); navigate('/churches/try') }}>
+              Try the leadership tools — no sign-up
+            </Button>
+          </div>
         </div>
       </div>
 

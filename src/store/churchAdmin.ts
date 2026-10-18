@@ -95,6 +95,37 @@ export async function saveDayVerse(churchId: string, date: string, v: DayVerse) 
 }
 
 // ---------------------------------------------------------------------------
+// Where the leadership form reads and writes a day. The server is the only real
+// one; `memoryVerseBackend` exists for the public demo (/churches/try), so a
+// pastor can use the REAL form before their church is set up, with nothing
+// leaving the page. Same result shapes, so the form cannot tell them apart.
+// ---------------------------------------------------------------------------
+type Res<T> = { ok: true; data: T } | { ok: false; reason: AdminFail }
+export interface VerseBackend {
+  get: (churchId: string, date: string) => Promise<Res<DayVerse | null>>
+  save: (churchId: string, date: string, v: DayVerse) => Promise<Res<unknown>>
+}
+
+export const serverVerseBackend: VerseBackend = {
+  get: (c, d) => fetchDayVerse(c, d),
+  save: (c, d, v) => saveDayVerse(c, d, v),
+}
+
+/** In-memory days, seeded with `initial`. Validates exactly as the server does. */
+export function memoryVerseBackend(initial: Record<string, DayVerse> = {}): VerseBackend {
+  const days = new Map(Object.entries(initial))
+  return {
+    get: async (_c, d) => ({ ok: true, data: days.get(d) ?? null }),
+    save: async (_c, d, v) => {
+      const questions = cleanQuestions(v.questions)
+      if (!questions) return { ok: false, reason: 'bad_questions' }
+      days.set(d, { ...v, questions })
+      return { ok: true, data: { drop_date: d } }
+    },
+  }
+}
+
+// ---------------------------------------------------------------------------
 // The week: seven dates at once, because a pastor prepares weekly.
 // ---------------------------------------------------------------------------
 export interface WeekDay {
@@ -104,9 +135,9 @@ export interface WeekDay {
 
 /** Seven consecutive dates from `start`, each with what is set for it. Fails
  *  whole rather than half-drawn: a strip with holes would read as unset days. */
-export async function fetchWeek(churchId: string, start: string) {
+export async function fetchWeek(churchId: string, start: string, be: VerseBackend = serverVerseBackend) {
   const dates = Array.from({ length: 7 }, (_, i) => addDays(start, i))
-  const rows = await Promise.all(dates.map((d) => fetchDayVerse(churchId, d)))
+  const rows = await Promise.all(dates.map((d) => be.get(churchId, d)))
   const bad = rows.find((r) => !r.ok)
   if (bad && !bad.ok) return { ok: false as const, reason: bad.reason }
   return { ok: true as const, data: dates.map((date, i) => ({ date, verse: (rows[i] as { ok: true; data: DayVerse | null }).data })) }
@@ -120,13 +151,13 @@ export async function fetchWeek(churchId: string, start: string) {
  * different order, seeded by the date — the same verse all week, but not the
  * same five taps in the same five places every morning.
  */
-export async function fillDays(churchId: string, dates: string[], v: DayVerse, mix: boolean) {
+export async function fillDays(churchId: string, dates: string[], v: DayVerse, mix: boolean, be: VerseBackend = serverVerseBackend) {
   const filled: string[] = []
   const skipped: string[] = []
   for (const date of dates) {
-    const cur = await fetchDayVerse(churchId, date)
+    const cur = await be.get(churchId, date)
     if (!cur.ok || cur.data) { skipped.push(date); continue }
-    const r = await saveDayVerse(churchId, date, mix ? mixForDate(v, date) : v)
+    const r = await be.save(churchId, date, mix ? mixForDate(v, date) : v)
     if (r.ok) filled.push(date)
     else skipped.push(date)
   }

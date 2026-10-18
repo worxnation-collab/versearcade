@@ -4,7 +4,7 @@ import { useJuice } from '@/juice/useJuice'
 import { todayLocalDate, addDays } from '@/lib/date'
 import { parseReference } from '@/lib/bibleProgress'
 import { verseFromReference } from '@/data/bible/questions'
-import { cleanQuestions, fetchDayVerse, fetchWeek, fillDays, saveDayVerse, type DayVerse, type WeekDay } from '@/store/churchAdmin'
+import { cleanQuestions, fetchWeek, fillDays, serverVerseBackend, type DayVerse, type VerseBackend, type WeekDay } from '@/store/churchAdmin'
 import type { Question } from '@/types'
 
 // "Set today's verse" — the verified layer's one write (0119).
@@ -66,7 +66,19 @@ const REASONS: Record<string, string> = {
   not_leadership: 'Only this church’s leadership can set the verse.',
 }
 
-export function TodayVerseForm({ churchId, churchName }: { churchId: string; churchName: string }) {
+export function TodayVerseForm({
+  churchId,
+  churchName,
+  backend = serverVerseBackend,
+  onSaved,
+}: {
+  churchId: string
+  churchName: string
+  /** Where days are read and written — the server, or memory for the demo. */
+  backend?: VerseBackend
+  /** After a successful save, with the verse as saved. */
+  onSaved?: (date: string, v: DayVerse) => void
+}) {
   const juice = useJuice()
   const today = todayLocalDate()
   const [date, setDate] = useState(today)
@@ -85,10 +97,10 @@ export function TodayVerseForm({ churchId, churchName }: { churchId: string; chu
   const [filling, setFilling] = useState(false)
 
   const loadWeek = async (start = weekStart) => {
-    const r = await fetchWeek(churchId, start)
+    const r = await fetchWeek(churchId, start, backend)
     if (r.ok) { setWeek(r.data); setWeekErr(false) } else { setWeek(null); setWeekErr(true) }
   }
-  useEffect(() => { void loadWeek(weekStart) }, [churchId, weekStart]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { void loadWeek(weekStart) }, [churchId, weekStart, backend]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const pick = (d: string) => {
     if (d < weekStart || d > addDays(weekStart, 6)) setWeekStart(d < today ? today : d)
@@ -99,7 +111,7 @@ export function TodayVerseForm({ churchId, churchName }: { churchId: string; chu
   const fillWeek = async () => {
     if (!saved || !emptyLater.length) return
     setFilling(true)
-    const { filled } = await fillDays(churchId, emptyLater, saved, mix)
+    const { filled } = await fillDays(churchId, emptyLater, saved, mix, backend)
     setFilling(false)
     juice.select?.()
     setSaved(null)
@@ -115,7 +127,7 @@ export function TodayVerseForm({ churchId, churchName }: { churchId: string; chu
     setLoading(true)
     setMsg(null)
     setSaved(null)
-    fetchDayVerse(churchId, date).then((r) => {
+    backend.get(churchId, date).then((r) => {
       if (!alive) return
       const v = r.ok ? r.data : null
       setExisting(!!v)
@@ -125,7 +137,7 @@ export function TodayVerseForm({ churchId, churchName }: { churchId: string; chu
       setLoading(false)
     })
     return () => { alive = false }
-  }, [churchId, date])
+  }, [churchId, date, backend])
 
   const library = useMemo(() => (parseReference(reference) ? verseFromReference(reference.trim()) : null), [reference])
 
@@ -150,12 +162,13 @@ export function TodayVerseForm({ churchId, churchName }: { churchId: string; chu
 
     setBusy(true)
     const v: DayVerse = { reference: reference.trim(), text: text.trim(), questions: built as Question[] }
-    const r = await saveDayVerse(churchId, date, v)
+    const r = await backend.save(churchId, date, v)
     setBusy(false)
     if (!r.ok) return setMsg({ ok: false, text: REASONS[r.reason] ?? 'That didn’t save — check your connection and try again.' })
     juice.select?.()
     setExisting(true)
     setSaved(v)
+    onSaved?.(date, v)
     void loadWeek()
     setMsg({
       ok: true,

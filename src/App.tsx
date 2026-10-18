@@ -27,6 +27,7 @@ import WardrobeScreen from './features/wardrobe/WardrobeScreen'
 import PrayerWallScreen from './features/prayer/PrayerWallScreen'
 import ChurchesScreen from './features/churches/ChurchesScreen'
 import ChurchDirectoryScreen from './features/churches/ChurchDirectoryScreen'
+import ChurchTryScreen from './features/churches/ChurchTryScreen'
 import ChurchScreen from './features/church/ChurchScreen'
 import ChurchPublicScreen from './features/church/ChurchPublicScreen'
 import ChurchAdminScreen from './features/church/admin/ChurchAdminScreen'
@@ -482,6 +483,10 @@ export default function App() {
             heard about their church on a Sunday should be able to find it
             before being asked for anything. */}
         <Route path="/churches/find" element={<ChurchDirectoryScreen />} />
+        {/* Public: the leadership tools on a church that exists only in the
+            page's memory, so a pastor can try them before signing up. Nothing
+            is written anywhere — see the screen's header. */}
+        <Route path="/churches/try" element={<ChurchTryScreen />} />
         {/* Old Groups deep links now land on the churches page. */}
         <Route path="/groups" element={<Navigate to="/churches" replace />} />
         {/* Private operator surface — gated to the admin account + PIN inside. */}

@@ -120,5 +120,8 @@ The role a person picks rides at the top of the inquiry message
 (`Role: Youth pastor`), so `submit_church_inquiry` (0025) is unchanged.
 `netlify/edge-functions/churches-og.ts` gives the link its own preview card.
 
-Turning a church on after the call is still `admin_set_church_package`, run by
-an operator. There is no Admin button for it yet.
+Turning a church on after the call is **Admin → Churches → Founding
+Churches**: find the church, Turn on, optionally paste an https logo. It calls
+`admin_set_church_package` and reads `verified` off the public `churches` table,
+so it needed no migration. It only does anything for a church whose leadership
+has been granted a claim (the panel below it).

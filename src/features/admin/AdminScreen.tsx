@@ -334,6 +334,7 @@ function Churches() {
   }, [])
   return (
     <div style={{ display: 'grid', gap: 18 }}>
+      <FoundingChurches />
       <ChurchClaims />
       <Promotions />
       <InfoRequests />
@@ -345,6 +346,122 @@ function Churches() {
       </div>
     </div>
   )
+}
+
+// Founding Churches: the switch for the verified layer (0116's
+// `admin_set_church_package`, which `require_admin()`s on the server).
+//
+// Turning a church on gives its CLAIMED leadership the shared verse, the
+// congregation numbers, the logo, the giving link and the QR
+// (docs/CHURCH-SHARED-VERSE.md). It does nothing for a church with no claim, so
+// the panel says so — grant the claim below first. Turning it off freezes those
+// writes and the church falls back to the global verse; nothing is deleted.
+//
+// Verified state is read straight off `churches`, which is public by design
+// (0040), so this needs no new RPC. The payment reference column
+// (`p_stripe_subscription_id`) is deliberately not exposed: Founding Churches
+// are a free pilot, and a billing row should come from billing, not a text box.
+function FoundingChurches() {
+  const [live, setLive] = useState<FoundingRow[] | null>(null)
+  const [q, setQ] = useState('')
+  const [found, setFound] = useState<FoundingRow[] | null>(null)
+  const [logo, setLogo] = useState<Record<string, string>>({})
+  const [msg, setMsg] = useState<string | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+
+  const load = () =>
+    supabase?.from('churches').select('id,name,city,region,verified,logo_url').eq('verified', true).order('name')
+      .then(({ data }) => setLive((data as FoundingRow[]) ?? []))
+  useEffect(() => { void load() }, [])
+
+  const search = async () => {
+    const { data } = await supabase!.rpc('admin_find_churches', { p_search: q || null, p_limit: 20 })
+    const ids = ((data as AdminChurch[]) ?? []).map((c) => c.id)
+    if (!ids.length) return setFound([])
+    const { data: rows } = await supabase!.from('churches').select('id,name,city,region,verified,logo_url').in('id', ids)
+    setFound((rows as FoundingRow[]) ?? [])
+  }
+
+  const set = async (c: FoundingRow, verified: boolean) => {
+    setBusy(c.id)
+    setMsg(null)
+    const url = (logo[c.id] ?? '').trim()
+    const { data, error } = await supabase!.rpc('admin_set_church_package', {
+      p_church_id: c.id, p_verified: verified, p_logo_url: url ? url : null,
+    })
+    setBusy(null)
+    const res = data as { ok?: boolean; reason?: string } | null
+    if (error || !res?.ok) {
+      setMsg(res?.reason === 'invalid_logo' ? 'The logo has to be an https:// image link.' : `Couldn't update ${c.name}.`)
+      return
+    }
+    setMsg(verified ? `${c.name} is a Founding Church.` : `${c.name} is back on the free tier.`)
+    setFound((all) => all?.map((r) => (r.id === c.id ? { ...r, verified, logo_url: url || r.logo_url } : r)) ?? null)
+    void load()
+  }
+
+  const where = (c: { city: string | null; region: string | null }) => [c.city, c.region].filter(Boolean).join(', ')
+
+  const row = (c: FoundingRow) => (
+    <div key={c.id} className="card" style={{ display: 'grid', gap: 8, padding: '10px 12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <b style={{ fontSize: 14 }}>{c.name}</b>
+          <div className="faint" style={{ fontSize: 11 }}>
+            {where(c) || 'Location not listed'} · {c.verified ? 'Founding Church' : 'Free'}
+          </div>
+        </div>
+        <Button variant={c.verified ? 'ghost' : 'gold'} disabled={busy === c.id} onClick={() => set(c, !c.verified)}>
+          {busy === c.id ? '…' : c.verified ? 'Turn off' : 'Turn on'}
+        </Button>
+      </div>
+      <input
+        value={logo[c.id] ?? c.logo_url ?? ''}
+        onChange={(e) => setLogo((m) => ({ ...m, [c.id]: e.target.value }))}
+        placeholder="Logo image (https://…, optional)"
+        autoCapitalize="none" autoCorrect="off" inputMode="url"
+      />
+    </div>
+  )
+
+  return (
+    <div>
+      <h3 style={{ fontSize: 14, margin: '0 0 8px' }} className="dim">Founding Churches</h3>
+      <p className="faint" style={{ fontSize: 12, marginBottom: 10, lineHeight: 1.4 }}>
+        Turning a church on gives its <b>claimed</b> leadership the shared verse, congregation numbers,
+        logo, giving link and QR. Grant the claim under Church leadership first — with no claim, nobody
+        can use it. Turning it off keeps everything and returns members to the global verse.
+      </p>
+
+      <div className="card" style={{ marginBottom: 12, display: 'grid', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find the church"
+            onKeyDown={(e) => { if (e.key === 'Enter') void search() }} style={{ flex: 1, minWidth: 0 }} />
+          <Button variant="secondary" onClick={search}>Find</Button>
+        </div>
+        {found?.length === 0 && <p className="faint" style={{ fontSize: 12, margin: 0 }}>No churches match.</p>}
+        {found && found.length > 0 && <div style={{ display: 'grid', gap: 6 }}>{found.map(row)}</div>}
+        {msg && <p style={{ color: 'var(--good)', fontSize: 13, margin: 0 }}>{msg}</p>}
+      </div>
+
+      {live === null ? (
+        <p className="faint center" style={{ padding: 20 }}>Loading…</p>
+      ) : live.length === 0 ? (
+        <p className="faint center" style={{ padding: 20 }}>No Founding Churches yet.</p>
+      ) : (
+        <div style={{ display: 'grid', gap: 8 }}>{live.map(row)}</div>
+      )}
+    </div>
+  )
+}
+
+interface FoundingRow {
+  id: string
+  name: string
+  city: string | null
+  region: string | null
+  verified: boolean
+  logo_url: string | null
 }
 
 // Church leadership claims (0079). Verification is MANUAL and this panel is

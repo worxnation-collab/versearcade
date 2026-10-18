@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import { todayLocalDate } from '@/lib/date'
+import { addDays, todayLocalDate } from '@/lib/date'
 import { useAuth } from './auth'
 import type { Question } from '@/types'
 import type { ChurchParticipation } from '@/types/churchPackages'
@@ -92,6 +92,75 @@ export async function saveDayVerse(churchId: string, date: string, v: DayVerse) 
     p_text: v.text,
     p_questions: cleanQuestions(v.questions),
   })
+}
+
+// ---------------------------------------------------------------------------
+// The week: seven dates at once, because a pastor prepares weekly.
+// ---------------------------------------------------------------------------
+export interface WeekDay {
+  date: string
+  verse: DayVerse | null
+}
+
+/** Seven consecutive dates from `start`, each with what is set for it. Fails
+ *  whole rather than half-drawn: a strip with holes would read as unset days. */
+export async function fetchWeek(churchId: string, start: string) {
+  const dates = Array.from({ length: 7 }, (_, i) => addDays(start, i))
+  const rows = await Promise.all(dates.map((d) => fetchDayVerse(churchId, d)))
+  const bad = rows.find((r) => !r.ok)
+  if (bad && !bad.ok) return { ok: false as const, reason: bad.reason }
+  return { ok: true as const, data: dates.map((date, i) => ({ date, verse: (rows[i] as { ok: true; data: DayVerse | null }).data })) }
+}
+
+/**
+ * Fill every UNSET date in `dates` with `v`, never touching a day that already
+ * has a verse (the caller passes only the empty ones, and this re-checks each
+ * right before writing, since another leader may have filled one meanwhile).
+ * With `mix`, each day's copy deals its questions and their options in a
+ * different order, seeded by the date — the same verse all week, but not the
+ * same five taps in the same five places every morning.
+ */
+export async function fillDays(churchId: string, dates: string[], v: DayVerse, mix: boolean) {
+  const filled: string[] = []
+  const skipped: string[] = []
+  for (const date of dates) {
+    const cur = await fetchDayVerse(churchId, date)
+    if (!cur.ok || cur.data) { skipped.push(date); continue }
+    const r = await saveDayVerse(churchId, date, mix ? mixForDate(v, date) : v)
+    if (r.ok) filled.push(date)
+    else skipped.push(date)
+  }
+  return { filled, skipped }
+}
+
+/** Deterministic per date: the same date always deals the same order. */
+export function mixForDate(v: DayVerse, date: string): DayVerse {
+  const rand = rng(date)
+  const questions = shuffle(v.questions, rand).map((q) => {
+    const order = shuffle(q.options.map((_, i) => i), rand)
+    return { ...q, options: order.map((i) => q.options[i]), answerIndex: order.indexOf(q.answerIndex) }
+  })
+  return { ...v, questions }
+}
+
+function rng(seed: string): () => number {
+  let h = 2166136261
+  for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 16777619)
+  return () => {
+    h = Math.imul(h ^ (h >>> 15), 2246822507)
+    h = Math.imul(h ^ (h >>> 13), 3266489909)
+    h ^= h >>> 16
+    return (h >>> 0) / 4294967296
+  }
+}
+
+function shuffle<T>(xs: T[], rand: () => number): T[] {
+  const a = xs.slice()
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
 }
 
 /**

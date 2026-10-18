@@ -39,6 +39,17 @@ the same pattern skins and promotions follow.
     rather than overwrite it.
   - When the arcade's library has the verse, one tap fills in its five
     questions as a starting point.
+  - **The week planner** sits above the form: seven day chips, each marked
+    set or not, tapping one edits it, with ‹ › to step a week. After a save,
+    one tap copies the verse to that window's other EMPTY days through the
+    same `set_church_verse`. It re-reads each day just before writing, so a
+    day already set is never overwritten. "Mix the order" (on by default)
+    deals each copy's questions and options in a date-seeded order
+    (`mixForDate`), with `answerIndex` remapped.
+  - **Verified leadership sees one line on their own church card**
+    (`WeekGapLine`): how many of the next seven days play the global verse.
+    It is a fact about the schedule, never about a person, and it renders
+    nothing once the week is covered.
 
 ## The congregation's numbers: aggregates only, floored at five
 

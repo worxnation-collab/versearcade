@@ -4,7 +4,7 @@ import { useJuice } from '@/juice/useJuice'
 import { todayLocalDate, addDays } from '@/lib/date'
 import { parseReference } from '@/lib/bibleProgress'
 import { verseFromReference } from '@/data/bible/questions'
-import { cleanQuestions, fetchDayVerse, saveDayVerse } from '@/store/churchAdmin'
+import { cleanQuestions, fetchDayVerse, fetchWeek, fillDays, saveDayVerse, type DayVerse, type WeekDay } from '@/store/churchAdmin'
 import type { Question } from '@/types'
 
 // "Set today's verse" — the verified layer's one write (0119).
@@ -14,6 +14,13 @@ import type { Question } from '@/types'
 // upsert), so the form loads whatever is already there first and edits it
 // rather than overwriting blind. Members of the church play it as that day's
 // drop; everybody else is untouched.
+//
+// A pastor prepares weekly, so the form sits under a WEEK STRIP: seven days,
+// each marked set or not, tapping one edits it. A day nobody set quietly plays
+// the global verse, and the strip is what makes that visible before it happens.
+// After a save, one tap copies the verse to the window's other EMPTY days —
+// never over a day already set — optionally dealing each day's questions in a
+// different order so the week isn't the same five taps every morning.
 //
 // When the arcade's library already carries the verse, one tap fills its words
 // and the five questions the app would have asked — a starting point to edit,
@@ -70,12 +77,44 @@ export function TodayVerseForm({ churchId, churchName }: { churchId: string; chu
   const [existing, setExisting] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [weekStart, setWeekStart] = useState(today)
+  const [week, setWeek] = useState<WeekDay[] | null>(null)
+  const [weekErr, setWeekErr] = useState(false)
+  const [saved, setSaved] = useState<DayVerse | null>(null)
+  const [mix, setMix] = useState(true)
+  const [filling, setFilling] = useState(false)
+
+  const loadWeek = async (start = weekStart) => {
+    const r = await fetchWeek(churchId, start)
+    if (r.ok) { setWeek(r.data); setWeekErr(false) } else { setWeek(null); setWeekErr(true) }
+  }
+  useEffect(() => { void loadWeek(weekStart) }, [churchId, weekStart]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const pick = (d: string) => {
+    if (d < weekStart || d > addDays(weekStart, 6)) setWeekStart(d < today ? today : d)
+    setDate(d)
+  }
+  const emptyLater = (week ?? []).filter((w) => !w.verse && w.date !== date && w.date >= today).map((w) => w.date)
+
+  const fillWeek = async () => {
+    if (!saved || !emptyLater.length) return
+    setFilling(true)
+    const { filled } = await fillDays(churchId, emptyLater, saved, mix)
+    setFilling(false)
+    juice.select?.()
+    setSaved(null)
+    setMsg({ ok: true, text: filled.length
+      ? `Copied to ${filled.length} more ${filled.length === 1 ? 'day' : 'days'}. Tap any day to change it.`
+      : 'Those days were already set — nothing was overwritten.' })
+    void loadWeek()
+  }
 
   // Load what this date already holds, so a second save edits the first.
   useEffect(() => {
     let alive = true
     setLoading(true)
     setMsg(null)
+    setSaved(null)
     fetchDayVerse(churchId, date).then((r) => {
       if (!alive) return
       const v = r.ok ? r.data : null
@@ -110,11 +149,14 @@ export function TodayVerseForm({ churchId, churchName }: { churchId: string; chu
     if (bad >= 0) return setMsg({ ok: false, text: `Question ${bad + 1} isn’t finished. ${REASONS.bad_questions}` })
 
     setBusy(true)
-    const r = await saveDayVerse(churchId, date, { reference: reference.trim(), text: text.trim(), questions: built as Question[] })
+    const v: DayVerse = { reference: reference.trim(), text: text.trim(), questions: built as Question[] }
+    const r = await saveDayVerse(churchId, date, v)
     setBusy(false)
     if (!r.ok) return setMsg({ ok: false, text: REASONS[r.reason] ?? 'That didn’t save — check your connection and try again.' })
     juice.select?.()
     setExisting(true)
+    setSaved(v)
+    void loadWeek()
     setMsg({
       ok: true,
       text: date === today
@@ -125,9 +167,22 @@ export function TodayVerseForm({ churchId, churchName }: { churchId: string; chu
 
   return (
     <div style={{ display: 'grid', gap: 12 }}>
+      <WeekStrip
+        week={week}
+        error={weekErr}
+        selected={date}
+        today={today}
+        canBack={weekStart > today}
+        canForward={addDays(weekStart, 13) <= addDays(today, 366)}
+        onBack={() => setWeekStart(addDays(weekStart, -7) < today ? today : addDays(weekStart, -7))}
+        onForward={() => setWeekStart(addDays(weekStart, 7))}
+        onPick={pick}
+        onRetry={() => void loadWeek()}
+      />
+
       <label style={labelStyle}>
         Day
-        <input type="date" value={date} min={today} max={addDays(today, 366)} onChange={(e) => e.target.value && setDate(e.target.value)} />
+        <input type="date" value={date} min={today} max={addDays(today, 366)} onChange={(e) => e.target.value && pick(e.target.value)} />
       </label>
       <p className="faint" style={{ margin: '-4px 0 0', fontSize: 11.5, lineHeight: 1.45 }}>
         {loading
@@ -190,9 +245,90 @@ export function TodayVerseForm({ churchId, churchName }: { churchId: string; chu
       </p>
 
       {msg && <p style={{ margin: 0, fontSize: 13, color: msg.ok ? 'var(--mint)' : 'var(--coral)' }}>{msg.text}</p>}
+      {saved && emptyLater.length > 0 && (
+        <div className="card" style={{ padding: 12, display: 'grid', gap: 8, background: 'var(--card-raised)' }}>
+          <b style={{ fontSize: 13.5 }}>
+            {emptyLater.length} {emptyLater.length === 1 ? 'day' : 'days'} this week still {emptyLater.length === 1 ? 'plays' : 'play'} the global verse.
+          </b>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+            <input type="checkbox" checked={mix} onChange={(e) => setMix(e.target.checked)} style={{ width: 18, height: 18, flexShrink: 0 }} />
+            Mix the order of the questions and answers each day
+          </label>
+          <Button variant="secondary" full disabled={filling} onClick={fillWeek}>
+            {filling ? 'Copying…' : `Use ${saved.reference} for ${emptyLater.length === 1 ? 'that day' : `all ${emptyLater.length}`}`}
+          </Button>
+          <p className="faint" style={{ margin: 0, fontSize: 11.5 }}>Days you&rsquo;ve already set are never changed.</p>
+        </div>
+      )}
       <Button variant="gold" full disabled={busy || loading} onClick={save}>
         {busy ? 'Saving…' : date === today ? 'Set today’s verse' : `Set the verse for ${pretty(date)}`}
       </Button>
+    </div>
+  )
+}
+
+function WeekStrip(props: {
+  week: WeekDay[] | null
+  error: boolean
+  selected: string
+  today: string
+  canBack: boolean
+  canForward: boolean
+  onBack: () => void
+  onForward: () => void
+  onPick: (d: string) => void
+  onRetry: () => void
+}) {
+  const { week, error, selected, today } = props
+  const unset = week ? week.filter((w) => !w.verse).length : 0
+  return (
+    <div style={{ display: 'grid', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <b style={{ flex: 1, fontSize: 13, fontWeight: 800 }}>
+          {week ? `${pretty(week[0].date)} – ${pretty(week[6].date)}` : 'This week'}
+        </b>
+        <button className="pill" onClick={props.onBack} disabled={!props.canBack} aria-label="Earlier week" style={{ opacity: props.canBack ? 1 : 0.4 }}>‹</button>
+        <button className="pill" onClick={props.onForward} disabled={!props.canForward} aria-label="Next week" style={{ opacity: props.canForward ? 1 : 0.4 }}>›</button>
+      </div>
+      {error ? (
+        <button className="pill" onClick={props.onRetry} style={{ justifySelf: 'start', fontSize: 12.5 }}>Couldn&rsquo;t load the week — try again</button>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 4 }}>
+          {(week ?? Array.from({ length: 7 }, () => null)).map((w, i) => {
+            if (!w) return <div key={i} className="skeleton" style={{ height: 58, borderRadius: 10 }} />
+            const on = w.date === selected
+            const [y, m, d] = w.date.split('-').map(Number)
+            const day = new Date(y, m - 1, d)
+            return (
+              <button
+                key={w.date}
+                onClick={() => props.onPick(w.date)}
+                aria-pressed={on}
+                aria-label={`${day.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}: ${w.verse ? w.verse.reference : 'not set, plays the global verse'}`}
+                style={{
+                  minWidth: 0, padding: '6px 2px', borderRadius: 10, display: 'grid', gap: 2, justifyItems: 'center',
+                  border: `1.5px solid ${on ? 'var(--ink-dim)' : 'transparent'}`,
+                  background: w.verse ? 'var(--select)' : 'var(--card-raised)',
+                  color: 'var(--ink)', cursor: 'pointer',
+                }}
+              >
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--ink-dim)' }}>
+                  {w.date === today ? 'Today' : day.toLocaleDateString(undefined, { weekday: 'short' })}
+                </span>
+                <span style={{ fontSize: 15, fontWeight: 800 }}>{d}</span>
+                <span aria-hidden="true" style={{ fontSize: 10, color: w.verse ? 'var(--mint)' : 'var(--ink-dim)' }}>{w.verse ? '✓' : '—'}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+      {week && (
+        <p className="faint" style={{ margin: 0, fontSize: 11.5, lineHeight: 1.45 }}>
+          {unset === 0
+            ? 'Every day this week has your verse.'
+            : `${unset} of these 7 days ${unset === 1 ? 'plays' : 'play'} the global verse. ✓ marks a day with yours.`}
+        </p>
+      )}
     </div>
   )
 }

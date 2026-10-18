@@ -1,3 +1,4 @@
+import { WeekGapLine } from './admin/WeekGapLine'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -425,6 +426,7 @@ function ChurchHome({ church }: { church: Church }) {
             <Button variant="secondary" full onClick={() => navigate(`/church/${church.id}/admin`)}>
               ⛪ Leadership tools
             </Button>
+            {extras.verified && <WeekGapLine churchId={church.id} />}
           </div>
         )}
 

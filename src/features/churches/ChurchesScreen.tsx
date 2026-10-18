@@ -6,14 +6,45 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/store/auth'
 import { useJuice } from '@/juice/useJuice'
 
-// For Churches — what a church actually gets here, and the inquiry form.
+// For Churches — the page a pastor lands on from outreach, a QR or a link, and
+// the inquiry form behind it.
 //
-// It used to sell a product that does not exist: a private congregation group,
-// a pooled weekly points climb and Bible Battles between members. Rewritten
-// (2026-10-16) to say only what is true today — a public page, one shared daily
-// verse, giving that grows the building at no cost to the player, and edit
-// access for a staff member — and nothing about rivalry, sponsorship, ranks,
-// factions or prices. The form and `submit_church_inquiry` are unchanged.
+// It names what a church gets for free and what a Founding Church gets on top
+// (the verified layer, docs/CHURCH-SHARED-VERSE.md), and every line here is
+// something production does today. Four rules hold it:
+//
+//   * NO PRICE. A Founding Church is a free pilot handled by a person, off the
+//     device — the same pattern as church skins and the sponsored slot — so this
+//     page is byte-identical on web and in the App Store build and never becomes
+//     a storefront `lib/commerce.ts` would have to gate.
+//   * NOTHING COMPETITIVE. No ranks, no rivalry, no badge, no "featured": a
+//     church that pays is not a bigger church, and a verified church is never
+//     sorted first anywhere (0119).
+//   * THE PRIVACY LINE IS A FEATURE, so it is stated, not buried. Leadership
+//     sees floored aggregates and never a name (`get_church_participation`).
+//   * THE GIVING LINK SAYS "on the web", because `givingLinkVisible()` hides it
+//     in the App Store build and the page must not promise what the app won't do.
+//
+// The inquiry RPC is unchanged (`submit_church_inquiry`, 0025); the role picked
+// here rides at the top of the message, so there is no migration.
+
+const ROLES = ['Senior or lead pastor', 'Youth pastor', "Children's ministry", 'Church staff', 'Church member'] as const
+
+const FREE: string[] = [
+  'A public page anyone can open from a link — no account needed to look.',
+  'The daily verse and a short quiz, the same one for everybody who plays.',
+  'Points your people give grow your church’s building. Giving costs them nothing.',
+  'A staff member can claim the page: service times, website, a notice and a “This week” line.',
+]
+
+const FOUNDING: string[] = [
+  'You choose the day’s verse and write its five questions — or fill them from the library in one tap.',
+  'Your members play your verse as their daily drop. Streaks carry on exactly as before.',
+  'Congregation numbers for leadership: players, plays, average score and streaks.',
+  'Your logo and an invite QR on your page, ready for the bulletin or the screen.',
+  'Your giving link on your page (on the web).',
+]
+
 export default function ChurchesScreen() {
   const navigate = useNavigate()
   const juice = useJuice()
@@ -35,9 +66,11 @@ export default function ChurchesScreen() {
     if (location.key !== 'default') navigate(-1)
     else navigate(profile ? '/play' : '/')
   }
+
   const [church, setChurch] = useState('')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [role, setRole] = useState('')
   const [size, setSize] = useState('')
   const [message, setMessage] = useState('')
   const [sent, setSent] = useState(false)
@@ -51,8 +84,9 @@ export default function ChurchesScreen() {
     setBusy(true)
     setErr(null)
     juice.select?.()
+    const note = [role && `Role: ${role}`, message.trim()].filter(Boolean).join('\n\n')
     const { data, error } = await supabase.rpc('submit_church_inquiry', {
-      p_church: church, p_name: name, p_email: email, p_size: size || null, p_message: message || null,
+      p_church: church, p_name: name, p_email: email, p_size: size || null, p_message: note || null,
     })
     setBusy(false)
     if (error || !(data as { ok?: boolean })?.ok) {
@@ -62,19 +96,24 @@ export default function ChurchesScreen() {
     setSent(true)
   }
 
+  const toForm = () => {
+    juice.select?.()
+    document.getElementById('founding-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   if (sent) {
     return (
       <Page>
         <div className="center" style={{ paddingTop: 40 }}>
           <div className="floaty" style={{ fontSize: 56 }}>⛪</div>
           <h1 style={{ fontSize: 28, marginTop: 8 }}>Thank you!</h1>
-          <p className="dim" style={{ marginTop: 8, maxWidth: 320 }}>
-            A person reads every one of these, and we'll write back to <b>{email}</b>. In the
-            meantime, today's verse is open — it's the same one your congregation will play.
+          <p className="dim" style={{ marginTop: 8, maxWidth: 320, marginInline: 'auto' }}>
+            A person reads every one of these, and we&rsquo;ll write back to <b>{email}</b>. In the
+            meantime, today&rsquo;s verse is open — it&rsquo;s the same one your congregation will play.
           </p>
           <div style={{ marginTop: 20 }}>
             <Button variant="gold" full onClick={() => navigate('/play')}>
-              Play today's verse
+              Play today&rsquo;s verse
             </Button>
           </div>
         </div>
@@ -88,49 +127,165 @@ export default function ChurchesScreen() {
         <button className="pill" onClick={exit} aria-label="Back">← Back</button>
       </div>
 
-      <div className="center" style={{ marginBottom: 16 }}>
+      <div className="center" style={{ marginBottom: 18 }}>
         <div className="floaty" style={{ fontSize: 44 }}>⛪</div>
-        <h1 style={{ fontSize: 28, marginTop: 4 }}>Verse Arcade for Churches</h1>
-        <p className="dim" style={{ marginTop: 4 }}>One Bible verse a day, played by your congregation.</p>
+        <h1 style={{ fontSize: 28, marginTop: 4, lineHeight: 1.15 }}>Your sermon, played all week.</h1>
+        <p className="dim" style={{ margin: '8px auto 0', maxWidth: 360, lineHeight: 1.5 }}>
+          Pick the verse you&rsquo;re preaching on. Your congregation plays it every day — a two-minute
+          quiz that teaches with every answer, right or wrong.
+        </p>
+        <div style={{ marginTop: 14 }}>
+          <Button variant="gold" full onClick={toForm}>Become a Founding Church</Button>
+        </div>
       </div>
 
-      <div className="card" style={{ marginBottom: 16 }}>
-        <b style={{ fontFamily: 'var(--font-display)', fontSize: 16 }}>What your church gets</b>
-        <ul style={{ margin: '10px 0 0', paddingLeft: 18, lineHeight: 1.7, fontSize: 14 }}>
-          <li>A public page anyone can open from a link — no account needed to look.</li>
-          <li>One daily verse and a short quiz on it, the same verse for everyone who plays.</li>
-          <li>Points people give to your church grow its building. Giving costs them nothing.</li>
-          <li>A staff member can be given edit access to put service times and a website on the page.</li>
-        </ul>
-        <p className="faint" style={{ fontSize: 12, marginTop: 10 }}>
-          Tell us about your church below and a person will get back to you.
+      <VerseFormMock />
+
+      <section className="card" style={{ marginBottom: 12 }} aria-labelledby="tier-founding">
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+          <b id="tier-founding" style={{ fontFamily: 'var(--font-display)', fontSize: 17 }}>Founding Church</b>
+          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--mint)' }}>Free through Easter 2027</span>
+        </div>
+        <p className="dim" style={{ margin: '4px 0 0', fontSize: 13 }}>Everything in Free, and:</p>
+        <List items={FOUNDING} />
+      </section>
+
+      <section className="card" style={{ marginBottom: 12 }} aria-labelledby="tier-free">
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+          <b id="tier-free" style={{ fontFamily: 'var(--font-display)', fontSize: 17 }}>Free</b>
+          <span className="faint" style={{ fontSize: 12, fontWeight: 700 }}>Always</span>
+        </div>
+        <List items={FREE} />
+      </section>
+
+      <section className="card" style={{ marginBottom: 12 }} aria-labelledby="privacy">
+        <b id="privacy" style={{ fontFamily: 'var(--font-display)', fontSize: 16 }}>
+          You&rsquo;ll see how your church is doing — never who skipped.
+        </b>
+        <p className="dim" style={{ margin: '8px 0 0', fontSize: 13.5, lineHeight: 1.55 }}>
+          Leadership sees totals for the whole congregation and nothing about any one person: no names,
+          no list of who played, no list of who didn&rsquo;t. Any number under five stays hidden, because
+          in a small group a total can point at somebody. Nobody is ranked against anybody, and a wrong
+          answer always teaches the right one.
+        </p>
+      </section>
+
+      <section className="card" style={{ marginBottom: 16 }} aria-labelledby="founding-what">
+        <b id="founding-what" style={{ fontFamily: 'var(--font-display)', fontSize: 16 }}>What a Founding Church agrees to</b>
+        <p className="dim" style={{ margin: '8px 0 0', fontSize: 13.5, lineHeight: 1.55 }}>
+          Use it with your people and tell us honestly what works and what doesn&rsquo;t. We set your
+          church up by hand — a short call or an email from your church&rsquo;s own address — and a person
+          answers every message.
+        </p>
+      </section>
+
+      <div id="founding-form" className="card" style={{ display: 'grid', gap: 10, scrollMarginTop: 16 }}>
+        <b style={{ fontFamily: 'var(--font-display)', fontSize: 16 }}>Tell us about your church</b>
+        <label style={labelStyle}>
+          Church / ministry name
+          <input value={church} onChange={(e) => setChurch(e.target.value)} placeholder="Grace Community Church" maxLength={80} />
+        </label>
+        <label style={labelStyle}>
+          Your name
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Pastor Jane Smith" maxLength={80} />
+        </label>
+        <div role="group" aria-label="Your role" style={{ ...labelStyle, gap: 7 }}>
+          Your role (optional)
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, minWidth: 0 }}>
+            {ROLES.map((r) => {
+              const on = role === r
+              return (
+                <button
+                  key={r}
+                  type="button"
+                  className="pill"
+                  aria-pressed={on}
+                  onClick={() => { juice.select?.(); setRole(on ? '' : r) }}
+                  style={{ fontSize: 12.5, fontWeight: 700, ...(on ? { background: 'var(--select)', color: 'var(--ink)', borderColor: 'var(--select)' } : null) }}
+                >
+                  {r}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+        <label style={labelStyle}>
+          Email
+          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@church.org" type="email" autoCapitalize="none" autoCorrect="off" maxLength={120} />
+        </label>
+        <label style={labelStyle}>
+          Congregation size (optional)
+          <input value={size} onChange={(e) => setSize(e.target.value)} placeholder="e.g. 150" maxLength={40} />
+        </label>
+        <label style={labelStyle}>
+          Anything else? (optional)
+          <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="What you’re preaching on, or what you’re hoping to do…" rows={3} maxLength={500} style={{ resize: 'vertical' }} />
+        </label>
+        {err && <p style={{ color: 'var(--coral)', fontSize: 13, margin: 0 }}>{err}</p>}
+        <Button variant="gold" full disabled={!valid || busy} onClick={submit}>
+          {busy ? 'Sending…' : 'Become a Founding Church'}
+        </Button>
+        <p className="faint" style={{ margin: 0, fontSize: 12, lineHeight: 1.45 }}>
+          No payment details, now or at sign-up. We&rsquo;ll write back by email.
         </p>
       </div>
 
-      <div className="card" style={{ display: 'grid', gap: 10 }}>
-        <label style={labelStyle}>Church / ministry name
-          <input value={church} onChange={(e) => setChurch(e.target.value)} placeholder="Grace Community Church" maxLength={80} />
-        </label>
-        <label style={labelStyle}>Your name
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Pastor Jane Smith" maxLength={80} />
-        </label>
-        <label style={labelStyle}>Email
-          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@church.org" type="email" autoCapitalize="none" autoCorrect="off" maxLength={120} />
-        </label>
-        <label style={labelStyle}>Congregation size (optional)
-          <input value={size} onChange={(e) => setSize(e.target.value)} placeholder="e.g. 150" maxLength={40} />
-        </label>
-        <label style={labelStyle}>Anything else? (optional)
-          <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="What you’re hoping to do…" rows={3} maxLength={500} style={{ resize: 'vertical' }} />
-        </label>
-        {err && <p style={{ color: 'var(--coral)', fontSize: 13 }}>{err}</p>}
-        <Button variant="gold" full disabled={!valid || busy} onClick={submit}>
-          {busy ? 'Sending…' : 'Send inquiry'}
-        </Button>
-      </div>
       <div style={{ height: 40 }} />
     </Page>
   )
 }
 
-const labelStyle: React.CSSProperties = { display: 'grid', gap: 5, fontSize: 12, fontWeight: 700, color: 'var(--ink-faint)' }
+function List({ items }: { items: string[] }) {
+  return (
+    <ul style={{ margin: '10px 0 0', paddingLeft: 18, lineHeight: 1.6, fontSize: 14, display: 'grid', gap: 4 }}>
+      {items.map((t) => <li key={t}>{t}</li>)}
+    </ul>
+  )
+}
+
+// A drawing of the leadership verse form, not a screenshot: it is the product in
+// one picture, it stays sharp at every size and in every build, and it can't go
+// stale against a real screen the way a baked image would. Static and inert —
+// nothing in it is a control, and it is hidden from screen readers in favour of
+// the one-sentence description beside it.
+function VerseFormMock() {
+  return (
+    <figure style={{ margin: '0 0 14px' }}>
+      <div className="card" aria-hidden="true" style={{ padding: 14, display: 'grid', gap: 8, pointerEvents: 'none', userSelect: 'none' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase', color: 'var(--ink-dim)' }}>Leadership · Today&rsquo;s verse</span>
+          <span style={{ fontSize: 11, color: 'var(--ink-dim)' }}>Sunday</span>
+        </div>
+        <MockField label="Verse reference" value="John 15:5" />
+        <MockField label="The verse" value="I am the vine; you are the branches. If you remain in me and I in you, you will bear much fruit…" />
+        <div style={{ background: 'var(--card-raised)', borderRadius: 12, padding: '10px 12px', display: 'grid', gap: 6 }}>
+          <b style={{ fontSize: 12, color: 'var(--ink-dim)' }}>Question 1 of 5</b>
+          <span style={{ fontSize: 13.5, fontWeight: 700 }}>What does Jesus call himself here?</span>
+          {['The vine', 'The gardener', 'The branch'].map((o, i) => (
+            <span key={o} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+              <span style={{ width: 14, height: 14, borderRadius: 999, flexShrink: 0, border: '2px solid var(--edge)', background: i === 0 ? 'var(--mint)' : 'transparent' }} />
+              {o}
+            </span>
+          ))}
+        </div>
+        <span style={{ justifySelf: 'stretch', textAlign: 'center', fontWeight: 800, fontSize: 13.5, padding: '10px 12px', borderRadius: 12, background: 'var(--select)', color: 'var(--ink)' }}>
+          Set today&rsquo;s verse
+        </span>
+      </div>
+      <figcaption className="faint" style={{ marginTop: 6, fontSize: 12, textAlign: 'center' }}>
+        What a Founding Church&rsquo;s leadership sees: the verse and five questions, set in about five minutes.
+      </figcaption>
+    </figure>
+  )
+}
+
+function MockField({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: 'grid', gap: 4 }}>
+      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-dim)' }}>{label}</span>
+      <span style={{ fontSize: 13.5, padding: '9px 11px', borderRadius: 10, background: 'var(--card-raised)', lineHeight: 1.4 }}>{value}</span>
+    </div>
+  )
+}
+
+const labelStyle: React.CSSProperties = { display: 'grid', gap: 5, fontSize: 12, fontWeight: 700, color: 'var(--ink-dim)' }

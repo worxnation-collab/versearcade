@@ -101,3 +101,24 @@ that on the server.
 | Notices | any claimed church | ONE live notice. Giving link: verified only, https only, hidden in the App Store build. |
 
 An unverified church sees only Notices, and nothing on the screen says why.
+
+## The offer page (`/churches`)
+
+`/churches` is the page sent to a pastor, and it sells the verified layer as a
+**Founding Church** pilot: free through Easter 2027, set up by hand. It shows
+**no price and no checkout**, so it is identical on web and in the App Store
+build and stays out of `lib/commerce.ts`. Its rules:
+
+- **Only claim what ships.**
+- **The giving link is described as "on the web".** That matches
+  `givingLinkVisible()`.
+- **The privacy promise is stated outright.** It quotes
+  `get_church_participation`: floored at five, never a name.
+- **Nothing competitive.** No rank, rivalry or badge.
+
+The role a person picks rides at the top of the inquiry message
+(`Role: Youth pastor`), so `submit_church_inquiry` (0025) is unchanged.
+`netlify/edge-functions/churches-og.ts` gives the link its own preview card.
+
+Turning a church on after the call is still `admin_set_church_package`, run by
+an operator. There is no Admin button for it yet.

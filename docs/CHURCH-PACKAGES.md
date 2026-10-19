@@ -125,3 +125,23 @@ Churches**: find the church, Turn on, optionally paste an https logo. It calls
 `admin_set_church_package` and reads `verified` off the public `churches` table,
 so it needed no migration. It only does anything for a church whose leadership
 has been granted a claim (the panel below it).
+
+## The demo (`/churches/try`)
+
+A public page where a pastor uses the **real** leadership tools before their
+church exists here, then plays what they wrote. It's linked from `/churches` as
+"Try the leadership tools — no sign-up".
+
+- **The verse form and week planner are the leadership components themselves.**
+  They're given `memoryVerseBackend()` instead of the server, so validation is
+  the same `cleanQuestions` and the planner, copy and mix work exactly as they
+  do for real.
+- **The quiz is `QuizRunner` with `demo`.** It records no book accuracy, no
+  Bible mark, no road miles, no drop and no library borrow, and gets no
+  `runId`. Driven signed out against a logging mock backend, a full
+  build-save-copy-play run made **zero** backend requests.
+- **The Congregation tab shows SAMPLE totals, labelled in its first line.** One
+  streak bucket is under five, so the floor is shown rather than claimed. No
+  real church's numbers ever appear here.
+- **"Want this for your church?" opens `/churches` with a line about the verse
+  they tried in the inquiry message**, scrolled to the form.

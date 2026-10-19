@@ -13,11 +13,14 @@ import { PARTICIPATION_FLOOR, type ChurchParticipation } from '@/types/churchPac
 
 const DAYS = 14
 
-export function ParticipationPanel({ churchId }: { churchId: string }) {
-  const [p, setP] = useState<ChurchParticipation | null>(null)
+export function ParticipationPanel({ churchId, sample }: { churchId: string; sample?: ChurchParticipation }) {
+  // `sample` is the public demo's: invented, illustrative totals, never fetched
+  // and never about a real church — the panel says so in its first line.
+  const [p, setP] = useState<ChurchParticipation | null>(sample ?? null)
   const [failed, setFailed] = useState(false)
 
   useEffect(() => {
+    if (sample) return
     let alive = true
     fetchParticipation(churchId, DAYS).then((r) => {
       if (!alive) return
@@ -25,13 +28,18 @@ export function ParticipationPanel({ churchId }: { churchId: string }) {
       else setFailed(true)
     })
     return () => { alive = false }
-  }, [churchId])
+  }, [churchId, sample])
 
   if (failed) return <p className="dim" style={{ fontSize: 13.5 }}>These numbers couldn't load just now.</p>
   if (!p) return <div className="skeleton" style={{ height: 220, borderRadius: 14 }} />
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 14, minWidth: 0 }}>
+      {sample && (
+        <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: 'var(--mint)' }}>
+          Sample numbers — your church&rsquo;s real totals appear here.
+        </p>
+      )}
       <div className="card" style={{ padding: '10px 12px', borderColor: 'var(--edge)' }}>
         <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5 }}>
           🔒 <b>Only your church's leadership sees this.</b>{' '}

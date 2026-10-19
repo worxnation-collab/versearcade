@@ -77,7 +77,17 @@ export default function ChurchTryScreen() {
   const navigate = useNavigate()
   const juice = useJuice()
   const today = todayLocalDate()
-  const backend = useMemo(() => memoryVerseBackend(sampleSeries(addDays(today, 2))), []) // eslint-disable-line react-hooks/exhaustive-deps
+  // The demo's "Draft" answers from the library (no model call, nothing sent):
+  // the real button drafts any passage, so off the library it says that
+  // plainly instead of pretending.
+  const backend = useMemo(
+    () =>
+      memoryVerseBackend(sampleSeries(addDays(today, 2)), async (_c, reference) => {
+        const v = verseFromReference(reference)
+        return v ? { ok: true, data: v.questions.slice(0, 5) } : { ok: false, reason: 'demo_library_only' }
+      }),
+    [], // eslint-disable-line react-hooks/exhaustive-deps
+  )
   const sample = useMemo<ChurchParticipation>(() => {
     const d = new Date()
     d.setDate(d.getDate() - 13)

@@ -162,3 +162,39 @@ leftovers is a safe cleanup for the SQL editor later:
 - `church_care_list`
 - `set_church_care_optin`
 - `profiles.church_care_optin`
+
+## Drafting the questions (0122, `church-draft`)
+
+Under the verse, leadership gets **"✨ Draft five questions from this
+passage"**. It works for any reference, not only the library's 726 verses.
+
+- **Server-side.** The `church-draft` Edge Function asks Gemini. The key is
+  `GEMINI_API_KEY` or Vault `tiktok_gemini_key()`, and it never reaches a
+  device.
+- **Gate and spend in one call.** The function calls `use_church_draft` (0122)
+  with the caller's own token. That checks `church_admin_can` (leadership of a
+  verified church) and spends one of the church's **30 drafts a day (UTC)**
+  before the model is asked. Anybody else costs nothing.
+- **A draft is a draft.** It fills the form and saves nothing.
+  `set_church_verse` is still the only writer.
+- **Every draft is checked three times** with the same rules: in the function,
+  in `draftQuestions` (`cleanQuestions`) and on save. Options are re-dealt
+  server-side, because models put the right answer first.
+- **The prompt carries the house rules:**
+  - answerable from the passage
+  - a teach line on every answer, never scolding
+  - nothing that splits denominations
+  - no trick or "NOT" questions
+  - plain words
+- **It doesn't wipe the pastor's work.** Over questions the pastor already
+  typed, the first tap only warns and the second replaces.
+- **The demo (`/churches/try`) drafts from the library only** and makes no call.
+  For any other reference it says a Founding Church can draft any passage.
+
+Not yet verified end to end against the model: production has no verified
+church, so no real leader token has called it. Live checks:
+
+- a request with no token is refused at the gateway
+- a signed-out caller is refused before any model call
+- bad input is refused
+- preflight answers

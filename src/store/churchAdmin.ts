@@ -167,6 +167,8 @@ export interface VerseBackend {
   range?: (churchId: string, from: string, days: number) => Promise<Res<Record<string, DayVerse>> | null>
   /** The church page's "This week" line. */
   setThisWeek?: (churchId: string, line: string) => Promise<Res<unknown>>
+  /** Five drafted questions for a passage, or a reason. Absent ⇒ no button. */
+  draft?: (churchId: string, reference: string, text: string) => Promise<Res<Question[]>>
 }
 
 export const serverVerseBackend: VerseBackend = {
@@ -174,13 +176,37 @@ export const serverVerseBackend: VerseBackend = {
   save: (c, d, v) => saveDayVerse(c, d, v),
   range: (c, f, n) => fetchRange(c, f, n),
   setThisWeek: (c, l) => saveThisWeek(c, l),
+  draft: (c, r, t) => draftQuestions(c, r, t),
+}
+
+/**
+ * Ask `church-draft` (0122) for five questions about a passage. Leadership of
+ * a verified church only, capped per church per day server-side; the result is
+ * a DRAFT that fills the form and saves nothing. Re-checked with
+ * `cleanQuestions` here as well, so the form never holds something
+ * `set_church_verse` would refuse.
+ */
+export async function draftQuestions(churchId: string, reference: string, text: string): Promise<Res<Question[]>> {
+  if (!online()) return { ok: false, reason: 'unavailable' }
+  const { data, error } = await supabase!.functions.invoke('church-draft', {
+    body: { church_id: churchId, reference, text },
+  })
+  if (error) return { ok: false, reason: 'unavailable' }
+  const d = data as { ok?: boolean; reason?: string; questions?: Question[] } | null
+  if (!d?.ok) return { ok: false, reason: String(d?.reason ?? 'unavailable') }
+  const qs = cleanQuestions(d.questions ?? [])
+  return qs ? { ok: true, data: qs } : { ok: false, reason: 'draft_failed' }
 }
 
 /** In-memory days, seeded with `initial`. Validates exactly as the server does. */
-export function memoryVerseBackend(initial: Record<string, DayVerse> = {}): VerseBackend & { thisWeek: () => string | null } {
+export function memoryVerseBackend(
+  initial: Record<string, DayVerse> = {},
+  draft?: VerseBackend['draft'],
+): VerseBackend & { thisWeek: () => string | null } {
   const days = new Map(Object.entries(initial))
   let thisWeek: string | null = null
   return {
+    draft,
     get: async (_c, d) => ({ ok: true, data: days.get(d) ?? null }),
     save: async (_c, d, v) => {
       const questions = cleanQuestions(v.questions)

@@ -66,6 +66,15 @@ const REASONS: Record<string, string> = {
   not_leadership: 'Only this church’s leadership can set the verse.',
 }
 
+const DRAFT_REASONS: Record<string, string> = {
+  limit: 'That’s the drafting limit for today — write these by hand, or draft again tomorrow.',
+  not_verified: 'Drafting is part of a Founding Church.',
+  not_leadership: 'Only this church’s leadership can draft questions.',
+  draft_failed: 'Couldn’t draft good questions for that one — try again, or write your own.',
+  demo_library_only: 'In this demo, drafting works for verses in our library (try John 15:5). A Founding Church can draft from any passage.',
+  unavailable: 'Drafting isn’t available just now — check your connection and try again.',
+}
+
 export function TodayVerseForm({
   churchId,
   churchName,
@@ -148,6 +157,28 @@ export function TodayVerseForm({
     setQs(library.questions.slice(0, 5).map(toDraft))
   }
 
+  // "✨ Draft questions" — five questions written from the passage by the
+  // server (`church-draft`, 0122) for ANY reference, not only the library's.
+  // It fills the form and saves nothing. Over questions the pastor already
+  // typed, the first tap only warns; the second replaces.
+  const [drafting, setDrafting] = useState(false)
+  const [armed, setArmed] = useState(false)
+  const typed = qs.some((q) => q.prompt.trim() || q.teach.trim() || q.options.some((o) => o.trim()))
+  const canDraft = !!backend.draft && !!parseReference(reference) && text.trim().length >= 3
+  const draft = async () => {
+    if (!backend.draft || !canDraft) return
+    if (typed && !armed) { setArmed(true); return }
+    setArmed(false)
+    setMsg(null)
+    setDrafting(true)
+    const r = await backend.draft(churchId, reference.trim(), text.trim())
+    setDrafting(false)
+    if (!r.ok) return setMsg({ ok: false, text: DRAFT_REASONS[r.reason] ?? DRAFT_REASONS.unavailable })
+    juice.select?.()
+    setQs(r.data.map(toDraft))
+    setMsg({ ok: true, text: 'Drafted. Read each one before you save — change anything that isn’t how you’d say it.' })
+  }
+
   const setQ = (i: number, patch: Partial<Draft>) => setQs((all) => all.map((q, j) => (j === i ? { ...q, ...patch } : q)))
   const setOpt = (i: number, k: number, v: string) =>
     setQs((all) => all.map((q, j) => (j === i ? { ...q, options: q.options.map((o, m) => (m === k ? v : o)) } : q)))
@@ -226,6 +257,24 @@ export function TodayVerseForm({
         The verse
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={1000} placeholder="I am the vine; you are the branches…" style={{ resize: 'vertical' }} />
       </label>
+
+      {backend.draft && (
+        <div style={{ display: 'grid', gap: 4 }}>
+          <button
+            className="pill"
+            onClick={draft}
+            disabled={!canDraft || drafting}
+            style={{ justifySelf: 'start', fontSize: 12.5, fontWeight: 800, opacity: canDraft ? 1 : 0.55 }}
+          >
+            {drafting ? 'Drafting five questions…' : armed ? 'Tap again to replace your questions' : '✨ Draft five questions from this passage'}
+          </button>
+          <span className="faint" style={{ fontSize: 11.5, lineHeight: 1.4 }}>
+            {canDraft
+              ? 'A first draft to edit — nothing is saved until you tap Set.'
+              : 'Add the reference and the words of the verse first.'}
+          </span>
+        </div>
+      )}
 
       {qs.map((q, i) => (
         <div key={i} className="card" role="group" aria-label={`Question ${i + 1}`} style={{ padding: '12px 12px 10px', display: 'grid', gap: 8, minWidth: 0 }}>

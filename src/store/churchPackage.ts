@@ -141,6 +141,9 @@ export interface EffectiveVerse {
   reference: string
   text: string
   questions: Question[]
+  /** The series leadership put this day in, and their note for it (0123). */
+  series?: string
+  note?: string
 }
 
 export async function fetchEffectiveVerse(date: string): Promise<EffectiveVerse | null> {
@@ -169,7 +172,16 @@ function toEffective(d: any): EffectiveVerse | null {
     reference: d.reference,
     text: d.text,
     questions,
+    series: line(d.series, 60),
+    note: line(d.note, 280),
   }
+}
+
+/** Plain text or nothing — a server without 0123 simply omits both keys. */
+function line(x: unknown, max: number): string | undefined {
+  if (typeof x !== 'string') return undefined
+  const t = x.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim().slice(0, max)
+  return t || undefined
 }
 
 // ---------------------------------------------------------------------------

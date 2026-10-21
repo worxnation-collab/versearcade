@@ -51,6 +51,67 @@ the same pattern skins and promotions follow.
     It is a fact about the schedule, never about a person, and it renders
     nothing once the week is covered.
 
+## Series and notes (0123)
+
+Pastors plan by the series, not only by the day. Migration `0123` adds two
+optional, plain-text, length-capped columns to `church_verses`, and the planner
+is built around them.
+
+- **`series`** (60 chars) — a name for a run of days: "John 15–17", "Advent".
+- **`note`** (280 chars) — a line from the pastor, shown to members beside that
+  day's verse on the Play tab (`ChurchTodayStrip`). That day only, members only:
+  it travels through `get_effective_verse`, which already refuses anyone outside
+  the church and any date outside ±1 day.
+- Both are written by **`set_church_verse_extras(church, date, series, note)`**,
+  for a day that already has a verse (`no_verse` otherwise), gated by the same
+  `church_admin_can` as the verse. `set_church_verse` is untouched and is still
+  the only verse write. NULL leaves a field as it is; `''` clears it. Text is
+  cleaned by `church_clean_line` ↔ `cleanLine` (control characters become a
+  space, trimmed, capped) — keep them in sync.
+- **`church_verses_range(church, from, days ≤ 42)`** reads the planner's window
+  in one call. A server without 0123 falls back to one `church_verse_for` per day,
+  and a failed extras write still saves the verse and says the note didn't.
+
+**The planner** (`TodayVerseForm`):
+
+- **Three weeks at once** (21 day chips, ‹ › moves a week). ✓ marks a day with
+  the church's verse, ✉ one with a note, and a bar along the top a day filed
+  under a series. Under the strip, each run of a series is listed by date
+  range ("Advent · Nov 30 – Dec 6"). An empty day right after a day in a series
+  has that series name pre-filled.
+- **Copying across a series** (`SeriesCopyPanel`), after a save: the leader picks
+  a "through" date (default: one week; at most 42 days). Before anything is
+  written, the panel lists every day in the run that **already has a verse**, by
+  date and reference. Those are left alone unless ticked one by one, and the
+  button says what will happen ("Copy to 3 days and replace 1"). `fillDays`
+  re-reads each day just before writing. It writes an empty day only if it is
+  still empty, and a ticked day only if it still holds the reference that was on
+  screen, so a stale screen can never overwrite another leader's day. Copies
+  carry the series name and **clear the note**, because a note is about its own
+  day. "Mix the order" still works as before.
+- **"This week we're in …" on the church page.** After saving a day in a series,
+  one tap writes `This week we're in <series>` to the page's "This week" line
+  (0120) through **`set_church_this_week`**. That RPC writes that column only.
+  `update_my_church_profile` would overwrite every other page field with
+  whatever was sent. It is a deliberate tap, not automatic: the series stays
+  private to leadership until they choose to publish it.
+- **On the leadership card**, `WeekGapLine` leads with today's series ("This
+  week: Advent") and stays visible while one is running, even once the week is
+  covered.
+
+Nothing here is about a person. A series and a note describe the schedule; no
+count, no reader list, no "seen by". The Congregation panel is unchanged.
+
+**The demo** (`/churches/try`) seeds its `memoryVerseBackend` with a sample
+three-day series ("Abiding (John 15)", from the library, one day with a note),
+so the strip, the copy panel's replace list and the page line all have
+something to show. The memory backend implements `range` and `setThisWeek`, so
+none of the planner's actions reach the server. Checked by driving it with a
+configured Supabase URL: saving, copying, replacing and the page line made
+**zero** requests. The only requests on that page are the app shell's own
+page-load reads (`content_catalog`, `list_buddies`, `list_buddy_requests`).
+They are identical on the commit before this change.
+
 ## The congregation's numbers: aggregates only, floored at five
 
 `get_church_participation(church, days = 14)` is for verified leadership only,

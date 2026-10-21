@@ -19,6 +19,7 @@ export function ShareChurch({
   city,
   label = '🔗 Share this church',
   note = 'Anyone can open this page — no account needed to look.',
+  showLink = false,
 }: {
   churchId: string
   churchName: string
@@ -27,14 +28,28 @@ export function ShareChurch({
   /** The button. Your own church's card says "Invite your congregation". */
   label?: string
   note?: string
+  /** Print the link and offer a plain Copy beside the share sheet — the
+   *  leadership Share tab, where the link is going into a bulletin by hand. */
+  showLink?: boolean
 }) {
   const referralCode = useAuth((s) => s.profile?.referralCode)
   const juice = useJuice()
   const [msg, setMsg] = useState<string | null>(null)
 
+  const link = inviteUrl(referralCode, `/church/${churchId}`)
+
+  const copy = async () => {
+    juice.select()
+    try {
+      await navigator.clipboard.writeText(link)
+      setMsg('Link copied!')
+    } catch {
+      setMsg('Couldn’t copy — press and hold the link to copy it.')
+    }
+  }
+
   const share = async () => {
     juice.select()
-    const link = inviteUrl(referralCode, `/church/${churchId}`)
     // The church first, then where it is, then that the page opens without an
     // account. No "beat", "score", "rank" or "win" — this is a church's link,
     // and the game's own share line is a different thing.
@@ -46,6 +61,12 @@ export function ShareChurch({
 
   return (
     <div style={{ marginTop: 12 }}>
+      {showLink && (
+        <div className="card" style={{ padding: '10px 12px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--card-raised)' }}>
+          <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, overflowWrap: 'anywhere', userSelect: 'all' }}>{link}</span>
+          <button className="pill" onClick={copy} style={{ fontSize: 12, fontWeight: 800, flexShrink: 0 }}>Copy</button>
+        </div>
+      )}
       <Button variant="secondary" full onClick={share}>{label}</Button>
       {msg && (
         <p className="faint center" style={{ margin: '8px 0 0', fontSize: 12.5 }}>{msg}</p>

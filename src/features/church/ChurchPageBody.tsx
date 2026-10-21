@@ -42,6 +42,7 @@ export function ChurchPageBody({
   showRank = true,
   footer,
   extras = null,
+  lead = false,
 }: {
   page: ChurchPage
   loading: boolean
@@ -84,6 +85,16 @@ export function ChurchPageBody({
    * reads of one fact can disagree for a frame.
    */
   extras?: ChurchExtras | null
+  /**
+   * The FRONT-DOOR layout: /church/:id for somebody who followed a link. The
+   * church's own current facts — this week's line, the service times, the
+   * tagline — are lifted out of the "About" card to sit directly under the
+   * building, larger, because they are what a bulletin or a slide is pointing
+   * at; and the logo is drawn at a size a stranger can recognise. Everything
+   * else on the page is unchanged. Off in the sheet, which is opened FROM a
+   * board by somebody comparing churches, where the old order is right.
+   */
+  lead?: boolean
 }) {
   const { church, members, memberTotal } = page
   // The yard is a second read on purpose: the sheet is seeded from the row and
@@ -139,11 +150,13 @@ export function ChurchPageBody({
             alt=""
             draggable={false}
             referrerPolicy="no-referrer"
-            style={{ width: 44, height: 44, borderRadius: 10, objectFit: 'cover', flexShrink: 0, background: 'var(--card-raised)' }}
+            // A logo that fails to load leaves no broken-image box behind.
+            onError={(e) => { e.currentTarget.style.display = 'none' }}
+            style={{ width: lead ? 60 : 44, height: lead ? 60 : 44, borderRadius: lead ? 14 : 10, objectFit: 'cover', flexShrink: 0, background: 'var(--card-raised)' }}
           />
         )}
         <div style={{ minWidth: 0, flex: 1 }}>
-          <h2 style={{ fontSize: 21, margin: 0, overflowWrap: 'anywhere', fontFamily: 'var(--font-body)', fontWeight: 800 }}>{church.name}</h2>
+          <h2 style={{ fontSize: lead ? 24 : 21, lineHeight: 1.15, margin: 0, overflowWrap: 'anywhere', fontFamily: 'var(--font-body)', fontWeight: 800 }}>{church.name}</h2>
           <p className="faint" style={{ margin: '3px 0 0', fontSize: 12.5 }}>
             {where || 'Location not listed'}
             {church.miles != null && !church.isMine ? ` · ${formatMiles(church.miles)} away` : ''}
@@ -166,6 +179,8 @@ export function ChurchPageBody({
         flora={yard}
         statues={statues}
       />
+
+      {lead && page.info && <Headline info={page.info} />}
 
       {/* No "weeks won" here, on any surface that draws this body (2026-10-16).
           The weekly pairing lives folded on your own church tab and nowhere
@@ -197,7 +212,7 @@ export function ChurchPageBody({
         <Crowd total={memberTotal} loading={loading} />
       )}
 
-      {canAsk ? <InfoSection page={page} loading={loading} /> : <PublishedInfo page={page} loading={loading} />}
+      {canAsk ? <InfoSection page={page} loading={loading} /> : <PublishedInfo page={page} loading={loading} hoisted={lead} />}
       {footer}
       <div style={{ height: 8 }} />
     </>
@@ -443,15 +458,18 @@ function InfoSection({ page, loading }: { page: ChurchPage; loading: boolean }) 
 // "Suggest an edit", no "Edit page", no form, no skin chooser, and none of the
 // queue's copy (there is no queue a stranger can join). An unpublished church
 // gets one sentence; the page's footer is already the way in.
-function PublishedInfo({ page, loading }: { page: ChurchPage; loading: boolean }) {
+function PublishedInfo({ page, loading, hoisted = false }: { page: ChurchPage; loading: boolean; hoisted?: boolean }) {
   const { church, info } = page
+  // With the lead facts already up under the building, a profile with nothing
+  // else to say draws no second, empty "About" card.
+  if (hoisted && info && !info.about && !info.contact && !info.website) return null
   return (
     <div className="card">
       <b style={{ fontFamily: 'var(--font-display)', fontSize: 16, display: 'block', marginBottom: info ? 10 : 6 }}>
         About this church
       </b>
       {info ? (
-        <InfoFacts info={info} />
+        <InfoFacts info={info} hoisted={hoisted} />
       ) : loading ? (
         <p className="faint" style={{ margin: 0, fontSize: 13 }}>Looking…</p>
       ) : (
@@ -463,13 +481,13 @@ function PublishedInfo({ page, loading }: { page: ChurchPage; loading: boolean }
   )
 }
 
-function InfoFacts({ info }: { info: ChurchInfo }) {
+function InfoFacts({ info, hoisted = false }: { info: ChurchInfo; hoisted?: boolean }) {
   return (
     <div style={{ display: 'grid', gap: 8 }}>
-      {info.tagline && <p style={{ margin: 0, fontSize: 14.5, fontWeight: 700 }}>{info.tagline}</p>}
+      {!hoisted && info.tagline && <p style={{ margin: 0, fontSize: 14.5, fontWeight: 700 }}>{info.tagline}</p>}
       {/* Leadership's line for now (0120). Plain text in a text node — never
           HTML — so anything in it renders as the characters it is. */}
-      {info.thisWeek && (
+      {!hoisted && info.thisWeek && (
         <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, overflowWrap: 'anywhere' }}>
           <span className="faint" style={{ fontSize: 11.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 6 }}>
             This week
@@ -478,9 +496,45 @@ function InfoFacts({ info }: { info: ChurchInfo }) {
         </p>
       )}
       {info.about && <p className="dim" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55 }}>{info.about}</p>}
-      {info.serviceTimes && <Detail icon="🕘" label="Services" value={info.serviceTimes} />}
+      {!hoisted && info.serviceTimes && <Detail icon="🕘" label="Services" value={info.serviceTimes} />}
       {info.contact && <Detail icon="✉️" label="Contact" value={info.contact} />}
       {info.website && <Detail icon="🌐" label="Website" value={info.website} href={info.website} />}
+    </div>
+  )
+}
+
+/**
+ * The church's own current words, under its building, on the front door:
+ * the tagline, this week's line and when to come. Renders nothing when the
+ * church has published none of the three, so an unclaimed church's page is
+ * simply the building and the way in.
+ */
+function Headline({ info }: { info: ChurchInfo }) {
+  if (!info.tagline && !info.thisWeek && !info.serviceTimes) return null
+  return (
+    <div
+      className="card"
+      style={{ marginTop: 12, padding: '14px 16px', display: 'grid', gap: 10, borderColor: 'var(--edge)', minWidth: 0 }}
+    >
+      {info.tagline && (
+        <p style={{ margin: 0, fontSize: 17, fontWeight: 800, lineHeight: 1.3, overflowWrap: 'anywhere' }}>{info.tagline}</p>
+      )}
+      {info.thisWeek && (
+        <div style={{ minWidth: 0 }}>
+          <span className="faint" style={{ display: 'block', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>
+            This week
+          </span>
+          <p style={{ margin: 0, fontSize: 16, lineHeight: 1.4, overflowWrap: 'anywhere' }}>{info.thisWeek}</p>
+        </div>
+      )}
+      {info.serviceTimes && (
+        <div style={{ minWidth: 0 }}>
+          <span className="faint" style={{ display: 'block', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>
+            Join us
+          </span>
+          <p style={{ margin: 0, fontSize: 16, fontWeight: 700, lineHeight: 1.4, overflowWrap: 'anywhere' }}>🕘 {info.serviceTimes}</p>
+        </div>
+      )}
     </div>
   )
 }

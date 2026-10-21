@@ -16,6 +16,110 @@ This is the scope for that door. **Shipped** — `0074_public_church_page.sql`,
 function. The roster decision below was taken as recommended: the public page
 draws the congregation and counts it, and never names it.
 
+## Update, 2026-10-21: a page a pastor can put in a bulletin
+
+Four changes, each aimed at the page doing its job once it has been shared.
+
+**1. The front door leads with the church's own words.** Signed out, the page
+draws (`ChurchPageBody`'s `lead` prop, set by `ChurchPublicScreen` only):
+
+1. the logo at 60px and the name at 24px;
+2. the building;
+3. a **headline card** directly under the building: the tagline, **This week**
+   (0120) and **Join us** with the service times, at 16-17px.
+
+Those three fields used to sit inside "About this church", under the stats and
+the crowd. Now they are what a bulletin or a slide is pointing at. "About" keeps
+the rest (about, contact, website), and it is not drawn when the headline
+already showed everything. An unclaimed church with nothing published draws no
+headline at all: just the building and the way in. The leaderboard sheet and
+the signed-in page are unchanged.
+
+**One call to action, pinned to the bottom of the screen.** A `JoinBar` reads
+"Join {church}", or "Join this church" when the name would wrap the button on a
+320px phone (measured: 22 characters wraps, 16 doesn't). Under it is one line,
+"Free on Verse Arcade · one verse a day". The card at the end of the page still
+explains what joining means, but it no longer has a second button competing
+with the first. Checked at 390px and 320px with no sideways scroll.
+
+**2. Sharing lives where the leader already is.**
+- **Leadership tools → Share** is a new tab, for every claimed church:
+  - the page link printed out, with a plain **Copy** button (a phone's share
+    sheet doesn't always offer copy);
+  - the share sheet;
+  - for a verified church, the QR code, open by default.
+- The QR stays part of the verified package, as it is on the page.
+- **"Save for a bulletin or slide"** turns the QR into a 1200×1500 PNG, black on
+  white: the church's name, "Scan to play the daily verse with us", the code,
+  and the page address. The printed address leaves off the invite code (that is
+  in the QR) and is shrunk to fit rather than cut, because a truncated URL is
+  worse than none.
+- The PNG is handed over through `shareImage` in `lib/postcard.ts`: the
+  postcard's native-safe path, lifted out of `sharePostcard`. In the App Store
+  build it goes to the native share sheet, where a download link would silently
+  do nothing.
+- Verified by decoding the saved PNG: it reads back as exactly the invite link,
+  `?ref=` included.
+
+**3. The link preview has a picture, and says which church.** `church-og`
+fills in the preview:
+
+- **Title:** `{name}, {city}, {region} — on Verse Arcade`.
+- **Description:** leads with the church's own published words ("This week: …",
+  or the tagline, then "Services: …"), ends with one line about the page, and
+  drops whole pieces rather than cutting one mid-sentence to stay within 200
+  characters.
+- **Image:** `og:image` is new; there was none before, so every church link
+  previewed as text. It shows **the church's own building, at its real tier and
+  in its real material, standing in the churchyard**. `twitter:card` becomes
+  `summary_large_image`.
+
+How the image works without a render pipeline: the only things a preview can
+honestly show without a person in it are the tier and the skin, and both are
+finite (8 × 4). `scripts/og-church-cards.mjs` composites the existing Nano
+Banana building paintings onto `churchyard.jpg` once, giving 32 static JPEGs in
+`public/og/church/` (1.2MB in all, committed). The edge function only picks
+one: the tier comes from `churches.xp` through `levels.ts`, imported rather than
+restated so the preview can't disagree with the page. The skin comes from the
+published profile; an unknown or unset skin uses the default card.
+
+The cards carry no words and no people. Re-run the script when a building
+render or the yard changes.
+
+**Still a separate project:** a per-church image with the name drawn in, or the
+live crowd. That would mean drawing `ChurchScene` server-side on every crawler
+hit.
+
+The function was run under Node with mocked `fetch`/`Deno.env` across five
+cases:
+
+- full profile;
+- no profile;
+- unknown skin;
+- missing church;
+- network down.
+
+The last two serve the untouched shell, as before (it still fails open). A name
+containing `"` and `<` comes out escaped.
+
+**4. A guest could not sign up from a church page, and now can.** A guest has a
+profile too (the local one). So `ChurchResume` saw "a profile" on `/auth`,
+cleared the pending church and sent the guest straight back to the page.
+Sign-up was unreachable for exactly the visitors most likely to arrive from a
+pastor's link. It fires on `mode === 'online'` now, meaning a real account.
+
+Verified by driving it:
+
+- **Before the fix:** the guest was bounced, with the pending church wiped.
+- **After:**
+  - the guest and a signed-out visitor both reach `/auth?mode=signup` with the
+    church parked;
+  - a freshly signed-in account that opens `/play` is carried to
+    `/church/:id`, with the roster named and the front-door layout off.
+
+`BattleResume` has the same `profile`-only check and very likely the same bug
+for battle invites. Not changed here.
+
 ## What it is
 
 `/church/:id` — a public, linkable page for one congregation. A pastor puts it

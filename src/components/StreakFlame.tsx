@@ -8,7 +8,7 @@ import { flameById } from '@/data/season'
 // The glyph and its glow colour come from the equipped seasonal flame skin
 // (data/season); the HEAT still comes from the streak itself, so a skin changes
 // what the flame looks like and never what it says about you.
-export function StreakFlame({ days, size = 22 }: { days: number; size?: number }) {
+export function StreakFlame({ days, size = 22, glyphOnly = false }: { days: number; size?: number; glyphOnly?: boolean }) {
   const equipped = useSeason((s) => s.equipped.flame)
   const flame = flameById(equipped)
   const hot = days >= 30 ? 1 : days >= 7 ? 0.7 : days >= 3 ? 0.45 : 0.25
@@ -25,7 +25,7 @@ export function StreakFlame({ days, size = 22 }: { days: number; size?: number }
       >
         {flame.glyph}
       </motion.span>
-      <span style={{ fontFamily: 'var(--font-display)', fontSize: size - 2 }}>{days}</span>
+      {!glyphOnly && <span style={{ fontFamily: 'var(--font-display)', fontSize: size - 2 }}>{days}</span>}
     </span>
   )
 }

@@ -28,6 +28,7 @@ import { RoomSection } from '@/features/room/RoomSection'
 import { ChurchNudge } from '@/features/church/ChurchNudge'
 import { SettingsSheet } from './SettingsSheet'
 import { Tutorial } from '@/features/home/Tutorial'
+import { Icon, type IconId } from '@/data/icons'
 
 export default function ProfileScreen() {
   const navigate = useNavigate()
@@ -272,7 +273,7 @@ export default function ProfileScreen() {
           it — everywhere else your character is a 44px cropped circle. It's a
           portrait: no numbers, because the card right underneath is all
           numbers. */}
-      <div style={{ marginBottom: 14 }}>
+      <div style={{ marginBottom: 10 }}>
         <ProfileHero
           spec={profile.avatarCharacter}
           emoji={profile.avatarEmoji}
@@ -283,6 +284,17 @@ export default function ProfileScreen() {
         />
       </div>
 
+      {/* Customize, Journal, Mail and Settings: one thin, quiet row under the
+          name rather than pills inside the card, so the card is only numbers
+          and these read as tools rather than as part of the score. The Mail
+          button carries the same one dot the nav does — no count. */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 6, marginBottom: 14 }}>
+        <ProfileTool icon="sparkle" label="Customize" onClick={openCustomize} />
+        <ProfileTool icon="journal" label="Journal" onClick={() => { juice.select?.(); navigate('/journal') }} />
+        <ProfileTool icon="mail" label="Mail" dot={mailWaiting > 0} onClick={() => { juice.select?.(); navigate('/mail') }} />
+        <ProfileTool icon="tools" ariaLabel="Settings" onClick={() => { juice.select?.(); setSettingsOpen(true) }} />
+      </div>
+
       {/* The numbers, and only the numbers. The hero above is already you at
           full size on your own background, so the card here drops its identity
           block — the same avatar and handle twice on one screen was the thing
@@ -290,56 +302,7 @@ export default function ProfileScreen() {
           other players see when they tap your pfp is unchanged: that's the same
           component with its identity intact (PlayerCardModal). */}
       <div style={{ marginBottom: 18 }}>
-        <PlayerCard
-          p={cardData}
-          statsOnly
-          actions={
-            <>
-              <button onClick={openCustomize} aria-label="Customize your card" className="pill" style={{ fontSize: 12, padding: '4px 10px', flexShrink: 0 }}>
-                ✨ Customize
-              </button>
-              <button
-                onClick={() => { juice.select?.(); navigate('/journal') }}
-                aria-label="Journal"
-                className="pill"
-                style={{ fontSize: 12, padding: '4px 10px', flexShrink: 0 }}
-              >
-                📔 Journal
-              </button>
-              {/* The mailbox. It lives behind a pill rather than a sixth tab
-                  (five already have to clear a 320px phone), and it carries the
-                  same one dot the nav does — no count, nothing to clear. */}
-              <button
-                onClick={() => { juice.select?.(); navigate('/mail') }}
-                aria-label="Mail"
-                className="pill"
-                style={{ fontSize: 12, padding: '4px 10px', flexShrink: 0, position: 'relative' }}
-              >
-                📬 Mail
-                {mailWaiting > 0 && (
-                  <span
-                    aria-hidden
-                    style={{
-                      position: 'absolute', top: -2, right: -2, width: 8, height: 8,
-                      borderRadius: 999, background: 'var(--gold)',
-                      border: '2px solid rgba(30, 21, 28,0.95)', boxSizing: 'content-box',
-                    }}
-                  />
-                )}
-              </button>
-              {/* Sound, haptics, motion and translation all live behind here so
-                  the profile stays about the player, not the knobs. */}
-              <button
-                onClick={() => { juice.select?.(); setSettingsOpen(true) }}
-                aria-label="Settings"
-                className="pill"
-                style={{ fontSize: 14, padding: '4px 10px', flexShrink: 0, lineHeight: 1 }}
-              >
-                ⚙️
-              </button>
-            </>
-          }
-        />
+        <PlayerCard p={cardData} statsOnly />
       </div>
 
       {/* The fourth little world, and the only one that is yours alone. It opens
@@ -568,5 +531,62 @@ function Stat({ label, value, node }: { label: string; value?: string; node?: Re
       <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, minHeight: 26, display: 'grid', placeItems: 'center' }}>{node ?? value}</div>
       <div className="faint" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
     </div>
+  )
+}
+
+// One button in the profile's tool row: a drawn icon and a word, on a thin
+// outlined strip with no fill, so the row reads quieter than the card under it.
+function ProfileTool({
+  icon,
+  label,
+  ariaLabel,
+  dot = false,
+  onClick,
+}: {
+  icon: IconId
+  label?: string
+  ariaLabel?: string
+  dot?: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={ariaLabel ?? label}
+      style={{
+        position: 'relative',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 5,
+        height: 36,
+        minWidth: label ? 0 : 40,
+        padding: label ? '0 6px' : '0 10px',
+        borderRadius: 12,
+        border: '1px solid var(--stroke)',
+        background: 'transparent',
+        color: 'var(--ink-dim)',
+        // Scales down on a 320px phone so "Customize" never meets its border.
+        fontSize: 'clamp(11.5px, 3.5vw, 13px)',
+        fontWeight: 700,
+        cursor: 'pointer',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      <span aria-hidden style={{ color: 'var(--gold)', lineHeight: 0 }}>
+        <Icon id={icon} size={15} />
+      </span>
+      {label}
+      {dot && (
+        <span
+          aria-hidden
+          style={{
+            position: 'absolute', top: -3, right: -3, width: 8, height: 8,
+            borderRadius: 999, background: 'var(--gold)',
+            border: '2px solid rgba(30, 21, 28,0.95)', boxSizing: 'content-box',
+          }}
+        />
+      )}
+    </button>
   )
 }

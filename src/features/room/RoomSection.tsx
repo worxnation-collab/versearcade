@@ -240,23 +240,34 @@ export function RoomSection() {
           while today is unprayed, quiet once it isn't. No count, no streak, no
           rung — see the lamp's note in CLAUDE.md for why a growing tally here
           would change why somebody does it. */}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-        <b style={{ fontFamily: 'var(--font-display)', fontSize: 16 }}>Your Upper Room</b>
-        <span className="faint" style={{ fontSize: 11.5 }}>{roomTierName(tier)}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+        {/* The room's name is the title; the tier is a quiet subtitle under it,
+            rather than two strings fighting on one baseline. */}
+        <div style={{ minWidth: 0, marginRight: 'auto' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 800, lineHeight: 1.15, color: 'var(--gold)' }}>
+            Your Room
+          </div>
+          <div className="faint" style={{ fontSize: 12.5, marginTop: 2 }}>{roomTierName(tier)}</div>
+        </div>
         <button
           className="pill"
           onClick={() => { juice.select(); setPraying(true) }}
           aria-label={lampLit ? 'Pray again' : 'Pray in your room'}
           style={{
-            marginLeft: 'auto',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
             fontWeight: 800,
-            fontSize: 12,
-            padding: '5px 12px',
+            fontSize: 13,
+            padding: '6px 14px 6px 10px',
             borderColor: lampLit ? undefined : 'var(--gold)',
             color: lampLit ? undefined : 'var(--gold)',
           }}
         >
-          🙏 Pray
+          {/* The painted praying hands from the "Open right now" row, so
+              the same gesture wears the same picture everywhere. */}
+          <img src="/invite/pray.png" alt="" aria-hidden width={20} height={20} draggable={false} style={{ display: 'block' }} />
+          Pray
         </button>
         <button
           className="pill"

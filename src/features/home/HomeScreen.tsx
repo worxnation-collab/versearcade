@@ -8,7 +8,7 @@ import { XpBar } from '@/components/XpBar'
 import { StreakFlame } from '@/components/StreakFlame'
 import { QuickSheet } from '@/components/QuickSheet'
 import { DailyChest } from '@/features/chest/DailyChest'
-import { RoadStrip } from '@/features/season/RoadStrip'
+import { ChurchWindow } from './ChurchWindow'
 import { MapCompass } from '@/features/map/MapCompass'
 import { PlayedToday } from '@/features/presence/PlayedToday'
 import { ChurchTodayStrip } from './ChurchTodayStrip'
@@ -237,12 +237,11 @@ export default function HomeScreen() {
       )}
 
       {/* ── The two daily boxes ────────────────────────────────────────────
-          `1fr 1fr` with `minWidth: 0` on each child: without it a long verse
-          reference or a book name like "1 Thessalonians" blows the column out
-          and the pair stops being two halves. `alignItems: stretch` keeps them
-          the same height whatever state each is in, because two boxes of
-          different heights read as one card and one afterthought. */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, alignItems: 'stretch' }}>
+          Stacked, full width, the verse on top: side by side each box had half
+          a phone and its copy wrapped into a column of three-word lines.
+          `minWidth: 0` on each child still matters — a book name like
+          "1 Thessalonians" must not blow a box out. */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
         <DropBox
           played={playedToday}
           reference={today?.reference}
@@ -294,9 +293,11 @@ export default function HomeScreen() {
           do, and nobody can do Easter. It asks nothing and pays nothing. */}
       <FeastLine />
 
-      {/* The Pilgrimage, under the two things that are new today. */}
+      {/* Your church, under the two things that are new today — where the
+          Harvest Road strip used to lead. The road keeps its own screen
+          (/pilgrimage), its map row and every quest; see ChurchWindow. */}
       <div style={{ marginTop: 14 }}>
-        <RoadStrip />
+        <ChurchWindow />
       </div>
 
       {/* And the way to everywhere else. */}

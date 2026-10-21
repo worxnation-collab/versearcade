@@ -4237,11 +4237,17 @@ ranks belong *somewhere* — and the sum was a column you had to scroll to reach
 the one thing the app is for. It is now four things and deliberately nothing
 else (`features/home/HomeScreen.tsx`, whose header is the long version):
 
-1. **The two daily boxes, side by side.** Today's verse and today's trivia round
+1. **The two daily boxes, stacked (verse on top).** Today's verse and today's trivia round
    are both "new today, gone tomorrow", so they sit level with each other rather
    than one being buried under the other. The verse keeps the gold; the trivia
    box is deliberately cooler, because the verse is still what this app is for.
-2. **The Harvest Road**, under them, unchanged.
+2. **Your church** (`features/home/ChurchWindow.tsx`), under them — where the
+   Harvest Road strip used to lead (2026-10-21, the owner's call). With a
+   church: its own building, its name, and two signals that are true now (how
+   many play there, the gathering hour); without one: four lines on what a
+   church adds and ONE "Add church" into `/church`. No person is named or
+   counted on it. The road keeps its own screen, its map row and every quest.
+   The two daily boxes are STACKED now, verse on top, full width.
 3. **The compass at full size** (`features/map/MapCompass.tsx`) — the same door
    as the 46px puck beside the nav, made big on the one screen everybody lands
    on, because the map is what answers "what now?".

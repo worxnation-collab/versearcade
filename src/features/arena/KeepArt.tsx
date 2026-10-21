@@ -22,6 +22,7 @@ import { KEEP_LEVEL_NAMES, decorById, keepTier, unpackDecor, type MountKind } fr
 // The display boxes live in their own module so the build-time check can run
 // the real table against the real renders — see src/data/keepArt.ts.
 import { RASTER_DECOR, type DecorMode } from '@/data/keepArt'
+import type { KeepBackdrop } from './keepBackdrop'
 
 // Palette — warm stone interior against the app's dark chrome. Anything the
 // six halls vary tier to tier lives in HALL_TIERS below instead; what's left
@@ -56,7 +57,7 @@ const PAGE = '#efe4c8'
 //
 // Tier 0 is the exception: hall.jpg predates the generated-art map and is a
 // .jpg rather than a .png, so it's named directly.
-const hallImage = (tier: number): string | null =>
+export const hallImage = (tier: number): string | null =>
   tier === 0 ? '/keep/hall.jpg' : GENERATED_ART[`hall-${tier + 1}`] ?? null
 
 /**
@@ -115,14 +116,25 @@ export const hallTierCount = KEEP_LEVEL_NAMES.length
  * The gonfalon stays DRAWN on top: it takes denominationColor() at runtime,
  * which a baked image can't.
  */
-export function KeepHall({ color, level = 1 }: { color: string; level?: number }) {
+export function KeepHall({
+  color,
+  level = 1,
+  backdrop,
+}: {
+  color: string
+  level?: number
+  /** The rotating painting (keepBackdrop.ts); absent, the drawn hall alone. */
+  backdrop?: KeepBackdrop | null
+}) {
+  // The drawn hall's chimney breast, or the painting's own bare stone.
+  const g = backdrop?.gonfalon ?? { x: 95, y: 52 }
   return (
     <g>
-      <PaintedOrDrawnHall color={color} tier={keepTier(level)} />
+      <PaintedOrDrawnHall color={color} tier={keepTier(level)} painting={backdrop?.src ?? null} />
       {/* the faction gonfalon — on the chimney breast, always present, the one
           element that says whose hall this is. Colour is the whole identity:
           no crest is invented per faction, so none can be wrong. */}
-      <g transform="translate(95, 52)">
+      <g transform={`translate(${g.x}, ${g.y})`}>
         <rect x="-26" y="0" width="52" height="5" fill={WOOD_DARK} />
         <path d="M-20 5 h40 v46 l-20 -12 -20 12 z" fill={color} />
         <path d="M-20 5 h40 v7 h-40 z" fill="#ffffff" opacity="0.22" />
@@ -131,8 +143,12 @@ export function KeepHall({ color, level = 1 }: { color: string; level?: number }
   )
 }
 
-function PaintedOrDrawnHall({ color, tier }: { color: string; tier: number }) {
-  const painting = hallImage(tier)
+// The painting is now one of five rotating halls (keepBackdrop.ts), picked
+// each time the Keep opens or the app returns, and chosen by KeepScene so the
+// anchors can stand on the same painting. The drawn tier hall stays under it
+// as the fallback. hallImage() is kept so the per-tier paintings are one
+// line away if the rotator is ever retired.
+function PaintedOrDrawnHall({ color, tier, painting }: { color: string; tier: number; painting: string | null }) {
   return (
     <g>
       <DrawnHall color={color} tier={tier} />

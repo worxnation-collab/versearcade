@@ -3,6 +3,7 @@ import type { Placements } from '@/store/keep'
 import type { KeepMember } from '@/store/keep'
 import { KeepHall, DecorProp } from './KeepArt'
 import { KeepLife } from './KeepLife'
+import { useKeepBackdrop } from './keepBackdrop'
 
 // The hall as a place you can look at — the painted room at its tier, whatever
 // is hung in it, and the people living in it.
@@ -55,6 +56,8 @@ export function KeepScene({
   /** Makes the whole scene one big button. Only for the non-editing surfaces. */
   onOpen?: () => void
 }) {
+  // One of five painted halls, each with its own spots (keepBackdrop.ts).
+  const backdrop = useKeepBackdrop()
   return (
     <div
       style={{
@@ -67,7 +70,7 @@ export function KeepScene({
       onClick={onOpen}
     >
       <svg viewBox="0 0 560 300" style={{ display: 'block', width: '100%', height: 'auto' }}>
-        <KeepHall color={color} level={level} />
+        <KeepHall color={color} level={level} backdrop={backdrop} />
 
         {ANCHORS.map((a) => {
           const value = placements[a.id]
@@ -97,7 +100,16 @@ export function KeepScene({
                   }
                 : {})}
             >
-              <DecorProp value={value} x={a.x} y={a.y} color={color} mount={a.mount} />
+              {/* Stands on this painting's own spot for the anchor; the id and
+                  mount are the shared ones, so nothing stored changes. */}
+              <DecorProp
+                value={value}
+                x={backdrop.spots[a.id]?.x ?? a.x}
+                y={backdrop.spots[a.id]?.y ?? a.y}
+                sizeScale={backdrop.spots[a.id]?.s ?? 1}
+                color={color}
+                mount={a.mount}
+              />
             </g>
           )
         })}
@@ -108,7 +120,9 @@ export function KeepScene({
           your own hall shows you. Static figures were deliberately cut before
           this — if these ever stop moving, remove them rather than letting them
           go back to being stickers. */}
-      <KeepLife members={members} />
+      {/* Keyed on the painting: a figure keeps walking its old schedule otherwise,
+          and would stand on the previous hall's floor until its next move. */}
+      <KeepLife key={backdrop.src} members={members} waypoints={backdrop.waypoints} />
     </div>
   )
 }

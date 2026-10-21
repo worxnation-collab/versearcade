@@ -4686,13 +4686,13 @@ the geometry rather than by nudging it.
 (`StudyShelf`/`StudyBookArt` deleted) and everything Study can do is now
 something in the room. Full design: `docs/STUDY-LIBRARY.md`. Five things:
 
-- **The room is atmosphere, and the actions are a list under it** (2026-10-21,
-  the owner's call). No markers sit on the painting and the satchel no longer
-  stands on the floor; "At the desk" lists Ask her (Tabitha's sheet, carrying
-  the due count), Reports and Your bag (its finds count) in the desk sheet's
-  own row style. Anything new in Study still belongs in her offer, not as a
-  fourth row. `LibraryScene` keeps its optional hotspot props, unused, so a
-  marker can come back without redrawing the room.
+- **The room is the door to Tabitha, and the rest is a list under it**
+  (2026-10-21, the owner's call). She is painted in and tapping the picture
+  opens her sheet; one "Ask Tabitha" chip on the frame's bottom edge says so and
+  carries the due count. No clouds on the art and no satchel on the floor; "At
+  the desk" lists Reports and Your bag (its finds count). Anything new in Study
+  still belongs in her offer, not as a third row. `LibraryScene` keeps its
+  optional hotspot props, unused.
 - **One list, two surfaces.** `StudyBook[]` is built once in `StudyScreen` and
   handed BOTH to the room (hotspot badges) and to Tabitha (what she lends). A
   `lend` line makes an entry stock; without one it is yours and stands in the

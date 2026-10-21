@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { GENERATED_ART } from '@/data/generatedArt'
+import { ownerBuildingArt } from './ownerArt'
 import { CHURCH_TIERS, tierForLevel, type ChurchTierId } from './levels'
 import { churchSkin, type ChurchSkin } from './skins'
 
@@ -667,7 +668,8 @@ export function ChurchArt({ level = 1, tier, skin, size = 200, animate = false, 
   // eye against the real board row rather than assumed — the prompts demand
   // silhouette, roof colour and lit windows that survive 44px, and the drawn
   // kit remains one deleted map entry away, not a rewrite away.
-  const raster = GENERATED_ART[`church_${kit.skin.id}_${tierId}`]
+  // The owner's own buildings (ownerArt.ts) come first.
+  const raster = ownerBuildingArt(kit.skin.id, tierId) ?? GENERATED_ART[`church_${kit.skin.id}_${tierId}`]
   const tierIdx = Math.max(0, CHURCH_TIERS.findIndex((t) => t.id === tierId))
   const svg = (
     <svg

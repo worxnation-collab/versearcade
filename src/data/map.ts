@@ -1,4 +1,5 @@
 import type { IconId } from './icons'
+import { rewardArt } from '@/data/rewardArt'
 // Everywhere you can go, as data.
 //
 // This app has five tabs and around two dozen destinations, and the gap between
@@ -46,6 +47,11 @@ export const MAP_AREAS: MapAreaDef[] = [
 export interface MapPlace {
   id: string
   icon: IconId
+  /**
+   * A painted icon drawn in place of `icon` (a path from `data/rewardArt.ts`).
+   * The drawn icon stays the fallback and is still what the nav uses.
+   */
+  art?: string
   label: string
   /** One line saying what it IS. Not a slogan, and never a number. */
   line: string
@@ -104,6 +110,7 @@ export const MAP_PLACES: MapPlace[] = [
   {
     id: 'road',
     icon: 'road',
+    art: rewardArt('title_wayfarer'),
     label: 'The Harvest Road',
     line: 'The season’s road and everything along it',
     to: '/pilgrimage',

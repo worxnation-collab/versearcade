@@ -2,7 +2,7 @@ import type { AvatarSpec } from '@/types'
 import { Avatar } from '@/components/Avatar'
 import { itemArt } from '@/data/avatar'
 import { confettiById, flameById, chestSkinById, cosmeticKind, rewardLabel } from '@/data/season'
-import { GENERATED_ART } from '@/data/generatedArt'
+import { rewardArt } from '@/data/rewardArt'
 
 // A road reward, drawn as the THING rather than named.
 //
@@ -49,12 +49,12 @@ export function RewardArt({
     )
   }
 
-  // A painted icon for this reward (art/road-rewards.json → `reward_<id>`).
+  // A painted icon for this reward (`data/rewardArt.ts`).
   // It layers OVER the drawing below rather than replacing it: an id with no
   // render keeps its glyph, dots or name plate, so an ungenerated batch is the
   // app exactly as it was. A title keeps its plate under the picture, because
   // the words ARE what a title gives you.
-  const painted = GENERATED_ART[`reward_${id}`]
+  const painted = rewardArt(id)
   if (painted) {
     return (
       <div style={{ ...box, position: 'relative' }} title={label.name} aria-hidden>

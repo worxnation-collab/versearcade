@@ -12,6 +12,7 @@ import { useJuice } from '@/juice/useJuice'
 import { useSeason } from '@/store/season'
 import { chestSkinById } from '@/data/season'
 import { GENERATED_ART } from '@/data/generatedArt'
+import { rewardArt } from '@/data/rewardArt'
 import { CARD_BACKGROUNDS } from '@/data/playerCards'
 
 // A once-a-day reward that reinforces the daily loop: it unlocks only after you
@@ -50,6 +51,17 @@ export function DailyChest() {
     painted ? (
       <img
         src={open ? GENERATED_ART['chest_open'] : GENERATED_ART['chest_closed']}
+        alt=""
+        aria-hidden
+        width={size}
+        height={size}
+        style={{ width: size, height: size, objectFit: 'contain', display: 'block', margin: '0 auto', opacity: dim ? 0.55 : 1 }}
+      />
+    ) : rewardArt(chest.id) ? (
+      // A seasonal skin with a painted icon (the Treasure Sack): one picture,
+      // open or shut — a sack has no lid to swing.
+      <img
+        src={rewardArt(chest.id)}
         alt=""
         aria-hidden
         width={size}

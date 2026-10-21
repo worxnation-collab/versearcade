@@ -59,7 +59,7 @@ is built around them.
 
 - **`series`** (60 chars) — a name for a run of days: "John 15–17", "Advent".
 - **`note`** (280 chars) — a line from the pastor, shown to members beside that
-  day's verse on the Play tab (`ChurchTodayStrip`). That day only, members only:
+  day's verse on the Play tab (`ChurchWindow`). That day only, members only:
   it travels through `get_effective_verse`, which already refuses anyone outside
   the church and any date outside ±1 day.
 - Both are written by **`set_church_verse_extras(church, date, series, note)`**,

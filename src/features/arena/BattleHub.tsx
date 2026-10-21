@@ -7,6 +7,7 @@ import { FirstVisitTip } from '@/features/home/FirstVisitTip'
 import { Button } from '@/components/Button'
 import { Avatar } from '@/components/Avatar'
 import { Collapsible } from '@/components/Collapsible'
+import { PaintedIcon } from '@/components/PaintedIcon'
 import { useAuth } from '@/store/auth'
 import { useBattles, type Battle, type BattleBoard, type DenomBoard } from '@/store/battles'
 import { DENOMINATIONS, DENOMINATION_GROUPS, denominationColor, denominationName, isOpenFaction } from '@/data/denominations'
@@ -159,7 +160,7 @@ export default function BattleHub() {
           have never carried one. The explanatory line stays, because that part
           is genuinely new information to somebody on their first visit. */}
       <p className="dim" style={{ margin: '2px 0 14px', fontSize: 13.5, lineHeight: 1.5 }}>
-        ⚔️ Challenge a friend to the same verse quiz. Highest score wins.
+        <PaintedIcon id="battle_swords" /> Challenge a friend to the same verse quiz. Highest score wins.
       </p>
 
       {isGuest ? (
@@ -193,7 +194,7 @@ export default function BattleHub() {
       ) : (
         <>
           <Button variant="gold" full onClick={() => { juice.coin(); navigate('/battle/new') }}>
-            ⚔️ Start a new battle
+            <PaintedIcon id="battle_swords" /> Start a new battle
           </Button>
           <p className="faint center" style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
             Pick who you’re battling, then play your round.
@@ -207,7 +208,7 @@ export default function BattleHub() {
               battle that always works. */}
           <div style={{ marginTop: 10 }}>
             <Button full onClick={() => { juice.coin(); navigate('/battle/live') }}>
-              {gatheringOpen() ? '🔴 Live battle — it’s the gathering hour' : '🔴 Live battle — same verse, same moment'}
+              <PaintedIcon id="battle_live" /> {gatheringOpen() ? 'Live battle — it’s the gathering hour' : 'Live battle — same verse, same moment'}
             </Button>
             <p className="faint center" style={{ fontSize: 11, margin: '6px 0 0', lineHeight: 1.4 }}>
               {gatheringOpen() ? 'People are likeliest to be looking right now.' : `Everyone’s told to come at ${gatheringLabel()} — the gathering hour.`}
@@ -306,7 +307,7 @@ export default function BattleHub() {
             onOpen={(tab) => { juice.select(); setRankTab(tab); setRanksOpen(true) }}
           />
 
-          <Collapsible icon="🏆" title="Battle ranks" defaultOpen={ranksOpen} onToggle={setRanksOpen}>
+          <Collapsible icon={<PaintedIcon id="battle_trophy" />} title="Battle ranks" defaultOpen={ranksOpen} onToggle={setRanksOpen}>
             <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
               {(['individual', 'denomination'] as const).map((t) => (
                 <button key={t} onClick={() => { juice.select(); setRankTab(t) }} className="pill"
@@ -327,7 +328,7 @@ export default function BattleHub() {
                     {board.top.slice(0, 5).map((r) => (
                       <div key={r.rank} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 2px' }}>
                         <span style={{ width: 20, textAlign: 'center', fontFamily: 'var(--font-display)', color: 'var(--ink-faint)' }}>
-                          {r.rank === 1 ? '👑' : r.rank}
+                          {r.rank === 1 ? <PaintedIcon id="battle_crown" label="1st" /> : r.rank}
                         </span>
                         <span style={{ position: 'relative', flexShrink: 0 }}>
                           <Avatar emoji={r.avatar_emoji} character={r.avatar_character} size={28} ring={false} username={r.username} />
@@ -412,7 +413,7 @@ export default function BattleHub() {
                           style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 8px', borderRadius: 10, borderLeft: `3px solid ${color}`, background: mine ? 'rgba(255,210,63,0.08)' : 'transparent', width: '100%', textAlign: 'left', cursor: 'pointer' }}
                         >
                           <span style={{ width: 18, textAlign: 'center', fontFamily: 'var(--font-display)', color: 'var(--ink-faint)' }}>
-                            {r.rank === 1 ? '👑' : r.rank}
+                            {r.rank === 1 ? <PaintedIcon id="battle_crown" label="1st" /> : r.rank}
                           </span>
                           <span style={{ width: 12, height: 12, borderRadius: '50%', background: color, flexShrink: 0, boxShadow: `0 0 8px ${color}` }} />
                           <div style={{ flex: 1, minWidth: 0 }}>

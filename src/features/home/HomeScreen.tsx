@@ -11,7 +11,6 @@ import { DailyChest } from '@/features/chest/DailyChest'
 import { ChurchWindow } from './ChurchWindow'
 import { MapCompass } from '@/features/map/MapCompass'
 import { PlayedToday } from '@/features/presence/PlayedToday'
-import { ChurchTodayStrip } from './ChurchTodayStrip'
 import { liturgyFor } from '@/data/liturgy'
 import { useJuice } from '@/juice/useJuice'
 import { todayLocalDate } from '@/lib/date'
@@ -270,11 +269,6 @@ export default function HomeScreen() {
         />
       </div>
 
-      {/* A verified church's layer on the day — whose verse it is, the
-          church's banner and its giving link. One slim card, and
-          nothing at all for anybody not in a verified church. */}
-      <ChurchTodayStrip />
-
       {/* How many people are in this with you today, directly under the two
           boxes because it is a fact about the thing those boxes just offered.
           A number and a door — never a score beside anybody's name. See
@@ -294,8 +288,9 @@ export default function HomeScreen() {
       <FeastLine />
 
       {/* Your church, under the two things that are new today — where the
-          Harvest Road strip used to lead. The road keeps its own screen
-          (/pilgrimage), its map row and every quest; see ChurchWindow. */}
+          Harvest Road strip used to lead. For a member it is the church's word
+          today (its verse, note, notice, giving link); for everybody else the
+          "Add your church" pitch. See ChurchWindow. */}
       <div style={{ marginTop: 14 }}>
         <ChurchWindow />
       </div>

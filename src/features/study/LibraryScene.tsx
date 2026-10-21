@@ -34,12 +34,22 @@ import { GENERATED_ART } from '@/data/generatedArt'
 const W = 398
 const H = 640
 
+/** The band of the painting the tab actually SHOWS. The whole 5:8 portrait
+ *  filled a phone on its own and pushed the desk list (every action Study has)
+ *  below the fold, so the frame is cropped to Tabitha, the desk and the lamp:
+ *  just above her head to just below her feet, with her drawn a little
+ *  smaller (she stood 300 units tall in the full frame) so she still fits it.
+ *  The painting and every coordinate stay in the full 398x640 space — only
+ *  the window moves. */
+const VIEW_Y = 300
+const VIEW_H = 280
+
 /** Where Tabitha stands: the clear half of the floor. The painting was
  *  prompted empty there on purpose — moving her right puts her through the
  *  desk, which is painted and cannot move. */
 const HER_X = 158
 const HER_FOOT_Y = 566
-const HER_H = 300
+const HER_H = 240
 
 /** The ledger painted on the desk top, right of frame. */
 const LEDGER = { x: 334, y: 336 }
@@ -93,7 +103,7 @@ export function LibraryScene({
         isolation: 'isolate',
       }}
     >
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', width: '100%', height: 'auto' }}>
+      <svg viewBox={`0 ${VIEW_Y} ${W} ${VIEW_H}`} style={{ display: 'block', width: '100%', height: 'auto' }}>
         <DrawnLibrary />
         {painting && (
           <image href={painting} x="0" y="0" width={W} height={H} preserveAspectRatio="xMidYMid slice" />

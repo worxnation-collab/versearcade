@@ -18,6 +18,7 @@ const INVITE_ART: Record<string, string> = {
   mail: '/invite/mail.png',
   pray: '/invite/pray.png',
   arcade: '/invite/arcade.png',
+  review: '/invite/review.png',
 }
 
 const SIZE = 32

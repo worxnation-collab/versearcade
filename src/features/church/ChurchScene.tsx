@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { ChurchArt } from './ChurchArt'
+import { churchSceneArt } from './sceneArt'
 import { ChurchFlora } from './ChurchFlora'
 import { ChurchStatues } from './ChurchStatues'
 import { CrowdLife, type CrowdWaypoint } from '@/components/CrowdLife'
@@ -141,7 +143,19 @@ export function ChurchScene({
   // night painting is not read any more; `art/church-scene.json` carries the
   // daytime prompt, and until it is generated the drawn sky and grass below
   // are the scene.
-  const backdrop = GENERATED_ART['churchyard_day']
+  //
+  // Since 2026-10-21 the owner's illustrated set comes first: one fixed
+  // painting per skin (features/church/sceneArt.ts), and every one is an EMPTY
+  // churchyard — no building in it. That is deliberate: the first cut of this
+  // set had the church painted in, which froze the yard at one building and
+  // hid the level ladder. So the drawn path and ChurchArt stand on top of the
+  // painting exactly as they did on the drawn lawn, and the building still
+  // grows tier by tier. Flora, statues and the crowd are unchanged. If the
+  // painting fails to load, the scene falls back to the generated lawn.
+  const scene = churchSceneArt(level, skin)
+  const [failed, setFailed] = useState<string | null>(null)
+  const painted = failed !== scene
+  const backdrop = painted ? scene : GENERATED_ART['churchyard_day']
 
   const holding = !!floraEditing?.picked || !!statueEditing?.picked
 
@@ -183,6 +197,7 @@ export function ChurchScene({
             // few pixels below it, where the figures would stand in the sky.
             objectPosition: 'center 42%',
           }}
+          onError={painted ? () => setFailed(scene) : undefined}
         />
       )}
 

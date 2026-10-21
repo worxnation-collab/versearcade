@@ -24,6 +24,10 @@ import church_giving from '@/assets/icons/church_giving.png'
 import church_worldwide from '@/assets/icons/church_worldwide.png'
 import church_topgivers from '@/assets/icons/church_topgivers.png'
 import church_buildings from '@/assets/icons/church_buildings.png'
+import tool_customize from '@/assets/icons/tool_customize.png'
+import tool_journal from '@/assets/icons/tool_journal.png'
+import tool_mail from '@/assets/icons/tool_mail.png'
+import tool_settings from '@/assets/icons/tool_settings.png'
 
 // The painted stand-ins for the emoji that used to label buttons, headers and
 // folds — owner-supplied (2026-10-21), cut out of baked-in checkerboards into
@@ -65,6 +69,11 @@ const ICONS = {
   church_worldwide,
   church_topgivers,
   church_buildings,
+  // The profile's tool row: Customize, Journal, Mail, Settings.
+  tool_customize,
+  tool_journal,
+  tool_mail,
+  tool_settings,
 } as const
 
 export type PaintedIconId = keyof typeof ICONS

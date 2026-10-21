@@ -34,7 +34,8 @@ export function StudySubPage({
         {blurb && <p className="dim" style={{ marginTop: 4, fontSize: 14, lineHeight: 1.45 }}>{blurb}</p>}
       </div>
 
-      {children}
+      {/* Every card on a study page is the library's paper (index.css). */}
+      <div className="study-vellum">{children}</div>
 
       <div style={{ height: 90 }} />
     </Page>

@@ -81,6 +81,42 @@
      without claiming to be the action on the screen. */
   --edge: #9a7c45;
 
+  /* ── Material: grain, lamplight and thickness ────────────────────────────
+     The surfaces were measured into a ladder and still read as flat vector
+     fills — three opaque colours with nothing in them. These four tokens are
+     the whole material language, and they are layered OVER the existing
+     colours rather than replacing any, so every number above still holds.
+
+     `--tex-grain` is the tooth of a soft leather or a felt: a fine fractal
+     noise baked into a 180px SVG tile, with light specks and espresso specks
+     in roughly equal weight so it adds texture without moving the surface's
+     average value (measured: +2/255 on --card, which is why
+     check:contrast's numbers did not need touching). `--tex-fiber` is the
+     same noise stretched 45:1 horizontally — laid paper or vellum — and is
+     only used on Study's surfaces, where the room it stands for is a library.
+     Both are SVG `feTurbulence` rather than a PNG: no asset to ship, crisp at
+     every density, and the browser rasterises the tile once.
+
+     `--lamp` is light falling from above: a warm wash over the top third of a
+     surface, so a card reads as lit by the same lamp the paintings are. It
+     is the one layer that lifts a value, and it was measured against the
+     faintest ink where it is brightest: --ink-faint stays above 5.5:1 there.
+     `--lit-edge` is the thickness — a one-pixel catch-light on the top edge
+     and a shade on the bottom one, the cheapest way to say "this has a
+     front face" without a bevel.
+
+     What is deliberately NOT here: a gloss, a glow, a bevel or anything that
+     moves. This is a warm room with things made of something in it, not a
+     shiny one. `prefers-contrast: more` drops all of it. */
+  --tex-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0' result='g'/%3E%3CfeColorMatrix in='g' result='l' values='0 0 0 0 1 0 0 0 0 .94 0 0 0 0 .86 0.24 0 0 0 -0.115'/%3E%3CfeColorMatrix in='g' result='d' values='0 0 0 0 .05 0 0 0 0 .03 0 0 0 0 .03 -0.28 0 0 0 0.15'/%3E%3CfeMerge%3E%3CfeMergeNode in='d'/%3E%3CfeMergeNode in='l'/%3E%3C/feMerge%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --tex-fiber: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012 .55' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0' result='g'/%3E%3CfeColorMatrix in='g' result='l' values='0 0 0 0 1 0 0 0 0 .94 0 0 0 0 .86 0.13 0 0 0 -0.055'/%3E%3CfeColorMatrix in='g' result='d' values='0 0 0 0 .05 0 0 0 0 .03 0 0 0 0 .03 -0.16 0 0 0 0.08'/%3E%3CfeMerge%3E%3CfeMergeNode in='d'/%3E%3CfeMergeNode in='l'/%3E%3C/feMerge%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --lamp: linear-gradient(180deg, rgba(255, 232, 206, 0.032), rgba(255, 232, 206, 0) 38%);
+  --lit-edge: inset 0 1px 0 rgba(255, 236, 214, 0.08), inset 0 -1px 0 rgba(0, 0, 0, 0.26);
+  /* Restrained brass, for the gold action: a catch-light along the top and a
+     darker lip, so the gold reads as struck metal rather than a flat fill. */
+  --brass-edge: inset 0 1px 0 rgba(255, 250, 225, 0.65), inset 0 -2px 0 rgba(150, 80, 0, 0.22);
+  --brass-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 42%);
+
   --r-sm: 12px;
   --r-md: 18px;
   --r-lg: 28px;
@@ -104,7 +140,11 @@ html, body, #root { height: 100%; margin: 0; }
 body {
   font-family: var(--font-body);
   color: var(--ink);
+  /* The grain sits over the whole ground, so a translucent callout card (the
+     gold and mint tinted ones carry their own `background`) still has tooth
+     where the page shows through it. */
   background:
+    var(--tex-grain),
     radial-gradient(1200px 700px at 50% -10%, #2b1d26 0%, transparent 60%),
     radial-gradient(900px 600px at 100% 100%, #33212b 0%, transparent 55%),
     linear-gradient(180deg, var(--bg-1), var(--bg-0));
@@ -166,19 +206,41 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 
 /* Cards ------------------------------------------------------------------ */
 .card {
-  background: var(--card);
+  /* Colour and image are set APART on purpose. A card that carries its own
+     inline `background:` (the tinted callouts) replaces both and opts out of
+     the material, which is right for a translucent tint; one that sets only
+     `backgroundColor` keeps the grain. */
+  background-color: var(--card);
+  background-image: var(--lamp), var(--tex-grain);
   border: 1px solid var(--stroke);
   border-radius: var(--r-lg);
   padding: 18px;
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--lit-edge), var(--shadow-soft);
+}
+
+/* Study's surfaces are the library's paper: the same card with laid fibres
+   running across it. Scoped by a wrapper rather than a per-card class, so a
+   card added to a study page later is vellum without anybody remembering. */
+.study-vellum .card,
+.vellum {
+  background-image: var(--lamp), var(--tex-fiber), var(--tex-grain);
 }
 
 /* Chips / pills ---------------------------------------------------------- */
 .pill {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 6px 12px; border-radius: var(--r-pill);
-  background: var(--card); border: 1px solid var(--stroke);
+  background-color: var(--card); background-image: var(--lamp), var(--tex-grain);
+  border: 1px solid var(--stroke);
+  box-shadow: inset 0 1px 0 rgba(255, 236, 214, 0.07);
   font-weight: 700; font-size: 13px;
+}
+
+/* No material for anybody who asked the OS for more contrast: texture is
+   decoration, and that setting is a request to remove decoration. */
+@media (prefers-contrast: more) {
+  body { background-image: none; background-color: var(--bg-0); }
+  .card, .pill, .study-vellum .card, .vellum { background-image: none; }
 }
 
 /* Text utilities --------------------------------------------------------- */

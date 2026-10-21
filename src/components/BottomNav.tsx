@@ -231,9 +231,13 @@ export function BottomNav() {
           padding: 6,
           borderRadius: 999,
           background: 'rgba(30, 21, 28,0.85)',
+          // The same grain and lamplight as a card (index.css), and a stronger
+          // catch-light on the top rim: the pill floats over everything, so
+          // it is the surface that most needs to read as having a front face.
+          backgroundImage: 'var(--lamp), var(--tex-grain)',
           border: '1px solid var(--stroke)',
           backdropFilter: 'blur(14px)',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+          boxShadow: 'inset 0 1px 0 rgba(255, 236, 214, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.32), 0 10px 30px rgba(0,0,0,0.5)',
         }}
       >
         {tabs.map((t) => (

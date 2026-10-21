@@ -134,7 +134,6 @@ export function RoomVisitSheet({ username, onClose }: { username: string; onClos
                   handler decided to say no. */}
               <RoomScene
                 tier={room.tier}
-                skin={room.skin}
                 placements={room.placements}
                 members={[{
                   username: room.username,

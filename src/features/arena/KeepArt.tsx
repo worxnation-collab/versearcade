@@ -49,16 +49,10 @@ const PAGE = '#efe4c8'
 // ladder must never be: the promise is that the place gets better, so the place
 // has to visibly get better.
 //
-// Each tier is a Nano Banana painting (see art/keep-halls.json), and the drawn
-// hall underneath is the fallback — so a tier whose painting hasn't been
-// generated yet still reads as its own room rather than as the wrong one.
-// GENERATED_ART is written by the generator itself, so a hall starts being
-// painted the moment its file lands and never points at one that isn't there.
-//
-// Tier 0 is the exception: hall.jpg predates the generated-art map and is a
-// .jpg rather than a .png, so it's named directly.
-export const hallImage = (tier: number): string | null =>
-  tier === 0 ? '/keep/hall.jpg' : GENERATED_ART[`hall-${tier + 1}`] ?? null
+// The PICTURE no longer climbs with it: the owner's five daily paintings
+// (keepBackdrop.ts) replaced the per-tier hall renders on 2026-10-21, and the
+// drawn tier hall below is only the fallback while (or if) a painting never
+// loads. The level is still the hall's name.
 
 /**
  * How the drawn hall differs tier to tier. Timber and soot at the bottom,
@@ -143,11 +137,9 @@ export function KeepHall({
   )
 }
 
-// The painting is now one of five rotating halls (keepBackdrop.ts), picked
-// each time the Keep opens or the app returns, and chosen by KeepScene so the
-// anchors can stand on the same painting. The drawn tier hall stays under it
-// as the fallback. hallImage() is kept so the per-tier paintings are one
-// line away if the rotator is ever retired.
+// The painting is today's one of five rotating halls (keepBackdrop.ts, by
+// local date), chosen by KeepScene so the anchors can stand on the same
+// painting. The drawn tier hall stays under it as the fallback.
 function PaintedOrDrawnHall({ color, tier, painting }: { color: string; tier: number; painting: string | null }) {
   return (
     <g>

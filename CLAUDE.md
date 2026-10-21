@@ -3353,7 +3353,7 @@ Three things to know before touching it:
 - **One copy per decoration.** The shelf refuses to stand a second copy;
   `planPickOn` returns `already` where it used to merge.
 
-### The rooms arrange THEMSELVES: you pick the skin and the layout
+### The rooms arrange THEMSELVES: you pick the layout
 
 Both rooms let you drag every piece anywhere inside its mount's band and resize
 it in ten steps. That is **gone**, deliberately, and `data/layouts.ts` carries
@@ -3368,7 +3368,7 @@ looked least like its own art. The clearest evidence is that `keep_placements`
 sat at ZERO ROWS in production for months because the RPC was never awaited, and
 nobody reported it.
 
-So: **you pick the material and the arrangement; the app places things.** The
+So: **you pick the arrangement; the app places things.** The
 unlock gets better rather than worse — a piece you earn appears where it
 belongs, in a room that still looks composed.
 
@@ -3981,55 +3981,21 @@ alcove overlapped by 22 viewBox units and drew two arches in one place: three
 fixtures own three bands of the back wall (shelf 110..214, window 400..460,
 alcove 470..540) and they must not touch.
 
-### Room skins: what the Upper Room is MADE of
+### Room skins: REMOVED (2026-10-21, the owner's call)
 
-The five rooms are the ladder — level 1, 5, 12, 25, 40, each a real change of
-silhouette. `features/room/skins.ts` is the other axis, and it is exactly the
-split `levels.ts` and `skins.ts` have made for churches since 0051: the
-material the same room is made of, never its size, its tier, or anything
-rankable. The church has had four material languages for months; the one space
-in this app that belongs to the player alone had one. `0110`, four ids —
-`clay` (the room as it always was), `limestone`, `cedar`, `dusk`.
+The Upper Room used to offer four materials (`clay`, `limestone`, `cedar`,
+`dusk`, `0110`) with fifteen tiered paintings. The owner's five daily room
+paintings (`features/room/roomScenes.ts`, `src/assets/rooms/`) replaced them:
+every room shows today's painting whatever material is stored, so the picker,
+`features/room/skins.ts`, the store's `skin`/`setSkin`, the material renders
+and `art/room-skins.json` are gone. The drawn chamber under the painting is
+plain clay (the fallback and the postcard).
 
-- **Every skin is FREE, from the first minute**, and this follows the CHARACTER
-  BUILDER's rule rather than the church's: figure, six tones, six hairs, "all
-  free, none of them a number". A material is a taste, and tastes do not rank.
-  There is also nothing here for a gate to protect — every skin is the same
-  room.
-- **A skin may only repaint what the TIER already draws.** `DrawnChamber` reads
-  `s` for the booleans (`plastered`, `window`, `beams`, `upper`, `gilt`) and
-  `pal` for every colour, so a Bare Chamber in cedar is still a bare chamber.
-  Same guarantee "a skinned church is not a bigger church" gives, in the shape
-  of the code rather than in care.
-- **The painting is keyed on the SKIN, and it had to be.** The five bundled
-  paintings are the CLAY room and they are laid OVER the drawn chamber, so a
-  flat `room-<tier>` lookup would have repainted the SVG underneath and then
-  drawn the clay painting on top — the material invisible, which is the whole
-  feature. `room-<skin>-<tier>` first, the default falling back to the historic
-  ids (`art/room-skins.json`, fifteen renders).
-- **And the fallback is ALL-OR-NOTHING PER MATERIAL**, which is narrower than
-  `ChurchArt`'s per-entry rule and was earned during the batch: `dusk` sat for
-  an hour with two tiers painted and three lost to a run of 503s from the image
-  API. Per entry, that player's room would have been a painting to level 5 and a
-  drawing from level 12 — and unlike a church's building, which somebody meets
-  once on a ladder climbed over months, YOUR OWN ROOM changes tier under them. A
-  material that switches medium halfway up reads as the art breaking. All
-  fifteen exist now, so nothing is drawn; the rule stays because it is what
-  makes adding a FIFTH material safe.
-- **The image API 503s under load and the generator does not retry.** Nine of
-  the fifteen came back `503 UNAVAILABLE` on the first pass and every one of
-  them succeeded on a later attempt with no prompt change. A failed render is a
-  capacity problem, not a bad prompt — check the message before rewriting
-  anything. The other drift worth knowing: tiers 1-3 say "ABSOLUTELY NO CEILING
-  BEAMS" and a beam still appears at the very top of some of them. It is above
-  the `xMidYMid slice` crop and the ladder still reads (the arched window and
-  the gilt are what separate the tiers), so it was left.
-- **Nothing is stored but the id**, checked against a literal list of four in
-  `set_room_skin` and by a check constraint on the column, so there is nowhere
-  here to write a string — 0069's "no player-authored text", which is what
-  keeps a room safe to let a stranger walk into. `room_json` carries it so a
-  visitor sees the material, exactly as they already see the owner's character
-  and pet, and it is no more rankable than their robe.
+**The server half is deliberately untouched.** `profiles.room_skin`,
+`set_room_skin` and the `skin` key in `my_room`/`room_json` stay: approved iOS
+builds ship a baked `dist` that still calls `set_room_skin`, and dropping it
+would make that tap error in every one of them. The client simply never reads
+the key. `public/room/room-1..5.jpg` also stay — the TikTok engine uses them.
 
 ## Praying: the one thing here that isn't a game
 

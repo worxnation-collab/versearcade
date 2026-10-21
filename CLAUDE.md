@@ -4733,6 +4733,19 @@ part of CI: `.github/workflows/deploy.yml` was removed because it never had a
 green. Merges to `main` use a **merge commit** titled `<PR title> (#NN)` —
 match the existing history.
 
+**Edge Functions deploy from CI** (`.github/workflows/deploy-functions.yml`,
+2026-10-21). A push to `main` that touches `supabase/functions/<fn>/` deploys
+THAT function and no other; Actions → "Deploy Edge Functions" → Run workflow
+deploys one by name (or `all`). It needs the `SUPABASE_ACCESS_TOKEN` repo secret.
+It exists because the Supabase connector carries source INLINE and `tiktok-gen`
+(~140KB) does not fit in one call. Two things are load-bearing: it only deploys
+folders that exist in the repo, and `stripe-webhook` / `username-login` — the
+two functions that run with `verify_jwt` OFF — are not in the repo, so the CLI's
+verify-on default can never flip them; and it deploys changed folders only, so a
+function whose repo copy has drifted from production is never pushed as a side
+effect. If either of those two functions is ever added to the repo, give it a
+`supabase/config.toml` entry with `verify_jwt = false` in the same commit.
+
 ## Store versions: an approved version can never be uploaded again
 
 `package.json` `"version"` is the source of truth for the *store* version, and it is

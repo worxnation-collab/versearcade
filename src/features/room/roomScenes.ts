@@ -3,12 +3,12 @@ import room2 from '@/assets/rooms/room2.jpg'
 import room3 from '@/assets/rooms/room3.jpg'
 import room4 from '@/assets/rooms/room4.jpg'
 import room5 from '@/assets/rooms/room5.jpg'
-import { useEffect, useState } from 'react'
+import { dailySceneIndex, useToday } from '@/lib/dailyScene'
 import { DEFAULT_ROOM_SKIN } from './skins'
 
-// Five owner-supplied paintings of the Upper Room (2026-10-21), one picked at
-// random each time the room is opened and again each time the app comes back
-// to the foreground, so the room is never quite the same twice.
+// Five owner-supplied paintings of the Upper Room (2026-10-21), one per day:
+// the same scene for everybody on a local date (lib/dailyScene.ts), so a
+// visitor sees the room as its owner does today, moving on at midnight.
 //
 // They are the DEFAULT material's (Clay) paintings only, by the owner's call:
 // Limestone, Cedar and Dusk keep their own tiered renders, so choosing a
@@ -112,7 +112,7 @@ const SCENE_LAYOUTS: Record<string, Record<string, Spot>> = {
   },
 }
 
-/** Where an anchor stands over one of the random scenes, and how large. */
+/** Where an anchor stands over one of the daily scenes, and how large. */
 export const sceneSpot = (scene: string, id: string): Spot | undefined => SCENE_LAYOUTS[scene]?.[id]
 
 /** The walking path over the scenes: open floor only, clear of the cabinet
@@ -125,27 +125,11 @@ export const SCENE_WAYPOINTS = [
   { x: 62, b: 16 },
 ]
 
-const pick = (not?: string | null): string => {
-  const pool = ROOM_SCENES.length > 1 && not ? ROOM_SCENES.filter((s) => s !== not) : ROOM_SCENES
-  return pool[Math.floor(Math.random() * pool.length)]
-}
-
-/** Whether a room in this material takes the random scenes. */
+/** Whether a room in this material takes the five daily scenes. */
 export const takesRandomScene = (skin?: string | null): boolean => (skin ?? DEFAULT_ROOM_SKIN) === DEFAULT_ROOM_SKIN
 
-/**
- * The scene for one mounted room: chosen on mount (opening the room), and
- * re-chosen when the page becomes visible again (returning to the app). It
- * avoids repeating the one just shown, so a return always reads as a change.
- */
+/** Today's scene. Offset by two so it doesn't step in lockstep with the keep. */
 export function useRoomScene(): string {
-  const [scene, setScene] = useState(() => pick())
-  useEffect(() => {
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') setScene((s) => pick(s))
-    }
-    document.addEventListener('visibilitychange', onVisible)
-    return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [])
-  return scene
+  const today = useToday()
+  return ROOM_SCENES[dailySceneIndex(today, ROOM_SCENES.length, 2)]
 }

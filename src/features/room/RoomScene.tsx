@@ -103,7 +103,7 @@ export function RoomScene({
   // Where everything stands, as this arrangement has it. Memoised because it
   // is pure over (surface, arrangement) and the scene re-renders on every
   // crowd tick.
-  // A Clay room takes one of the five scenes at random (roomScenes.ts); the
+  // A Clay room takes today's one of the five scenes (roomScenes.ts); the
   // other materials keep their tiered paintings, and the postcard (`flat`)
   // keeps the drawn room it can serialise.
   const pickedScene = useRoomScene()

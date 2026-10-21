@@ -171,7 +171,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   min-height: 100%;
   max-width: 520px;
   margin: 0 auto;
-  padding: calc(var(--safe-top) + 8px) 18px calc(var(--safe-bottom) + 96px);
+  padding: calc(var(--safe-top) + 8px) 18px calc(var(--safe-bottom) + 118px);
   position: relative;
 }
 .app-shell.no-nav { padding-bottom: calc(var(--safe-bottom) + 18px); }

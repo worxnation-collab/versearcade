@@ -51,7 +51,7 @@ Everything about either one now lives in `docs/CHURCH-SHARED-VERSE.md`.
 | `/churches/find` (public directory, map: "Find a church") | listed, tagline | same row: **no badge, never sorted first** (0119) |
 | `/church/:id` profile | announcement, Join button, share link | + logo, giving link, invite QR |
 | Play tab (`ChurchWindow`) | — | "chosen by your church", banner, giving link |
-| Daily drop | global verse | the church's verse, on days leadership set one |
+| Daily drop | global verse | global verse — the church's verse is a separate box on the church card (0127) |
 
 **About the giving link:**
 - It is decided by `givingLinkVisible()` in `lib/commerce.ts`, and is **hidden in

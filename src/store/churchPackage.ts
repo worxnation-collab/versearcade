@@ -3,7 +3,9 @@ import { supabase } from '@/lib/supabase'
 import { todayLocalDate } from '@/lib/date'
 import { useAuth } from './auth'
 import type { ChurchDirectoryRow, ChurchExtras, ChurchToday } from '@/types/churchPackages'
-import type { Question } from '@/types'
+import type { DailyVerse, Question } from '@/types'
+import { aboutVerseSeed } from '@/data/cardAbout'
+import { parseReference } from '@/lib/bibleProgress'
 
 // Church discovery and the verified package, client side (0116, 0117, 0119).
 //
@@ -129,11 +131,11 @@ export const useChurchToday = create<ChurchTodayState>((set, get) => ({
 }))
 
 // ---------------------------------------------------------------------------
-// The church's verse for a day (0119), or null — and null means the global
-// verse. Signed-in only: a guest has no church, and the server answers null
-// for anybody without a verified church that set one, so this costs a solo
-// player one round trip running beside the ones `loadToday` already makes and
-// changes nothing about what they play.
+// The church's verse for a day (0119, made ADDITIVE by 0127), or null. It is a
+// box of its own beside the global drop — never the drop itself — and it is
+// for the congregation only: `church_verse_today` answers for the caller's own
+// verified church, approved days only (a leader's draft is invisible), ±1 day.
+// Signed-in only: a guest has no church.
 // ---------------------------------------------------------------------------
 export interface EffectiveVerse {
   churchId: string
@@ -149,7 +151,7 @@ export interface EffectiveVerse {
 export async function fetchEffectiveVerse(date: string): Promise<EffectiveVerse | null> {
   if (!isOnline()) return null
   const call = supabase!
-    .rpc('get_effective_verse', { p_drop_date: date })
+    .rpc('church_verse_today', { p_drop_date: date })
     .then(({ data, error }) => (error ? null : toEffective(data)))
   return withDeadline(call, DEADLINE_MS, null)
 }
@@ -182,6 +184,95 @@ function line(x: unknown, max: number): string | undefined {
   if (typeof x !== 'string') return undefined
   const t = x.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim().slice(0, max)
   return t || undefined
+}
+
+/**
+ * The church's verse as a playable `DailyVerse`, for `/play/church`. It carries
+ * `church`, which is what keeps `QuizRunner` from translating a pastor's own
+ * wording and what the screen labels itself with. When the pool carries the
+ * verse its speaker and facts come along for the recap; the questions are
+ * still the church's.
+ */
+export function churchDailyVerse(v: EffectiveVerse, date: string): DailyVerse | null {
+  const ref = parseReference(v.reference)
+  if (!ref) return null
+  const seed = aboutVerseSeed(v.reference)
+  return {
+    dropDate: date,
+    church: { id: v.churchId, name: v.churchName, series: v.series, note: v.note },
+    translation: v.churchName,
+    reference: v.reference,
+    book: ref.book,
+    chapter: ref.chapter,
+    verseStart: ref.start,
+    verseEnd: ref.end !== ref.start ? ref.end : undefined,
+    text: v.text,
+    speaker: seed?.speaker,
+    testament: seed?.testament,
+    questions: v.questions,
+    facts: seed?.facts ?? [],
+  }
+}
+
+/** Today's church verse, for the Play tab's church card and `/play/church`. */
+interface ChurchVerseState {
+  date: string | null
+  verse: EffectiveVerse | null
+  loaded: boolean
+  load: (force?: boolean) => Promise<EffectiveVerse | null>
+}
+
+export const useChurchVerse = create<ChurchVerseState>((set, get) => ({
+  date: null,
+  verse: null,
+  loaded: false,
+  async load(force = false) {
+    const date = todayLocalDate()
+    const s = get()
+    if (!force && s.loaded && s.date === date) return s.verse
+    const verse = await fetchEffectiveVerse(date)
+    set({ date, verse, loaded: true })
+    return verse
+  },
+}))
+
+// Which day's church verse this device has played, with its numbers — the
+// daily-trivia shape (`store/dailyTrivia.ts`): device-local in both modes,
+// today's round only, written once, no best and no history. It grants nothing.
+const DONE_KEY = 'va.churchVerse.done'
+export interface ChurchVerseDone { s: number; c: number; t: number }
+
+function doneKey(churchId: string, date: string) {
+  return `${churchId}:${date}`
+}
+
+export function churchVersePlayed(churchId: string, date: string): ChurchVerseDone | null {
+  try {
+    const m = JSON.parse(localStorage.getItem(DONE_KEY) ?? '{}') as Record<string, ChurchVerseDone>
+    return m[doneKey(churchId, date)] ?? null
+  } catch {
+    return null
+  }
+}
+
+export function markChurchVersePlayed(churchId: string, date: string, done: ChurchVerseDone): void {
+  try {
+    const m = JSON.parse(localStorage.getItem(DONE_KEY) ?? '{}') as Record<string, ChurchVerseDone>
+    const k = doneKey(churchId, date)
+    if (m[k]) return
+    // Keep a fortnight; nothing reads further back.
+    const keep = Object.fromEntries(Object.entries(m).filter(([key]) => key.slice(-10) >= addDaysIso(date, -14)))
+    keep[k] = done
+    localStorage.setItem(DONE_KEY, JSON.stringify(keep))
+  } catch {
+    /* private mode — the card just offers it again */
+  }
+}
+
+function addDaysIso(iso: string, n: number): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  const t = new Date(y, m - 1, d + n)
+  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
 }
 
 // ---------------------------------------------------------------------------

@@ -84,7 +84,7 @@ export default function ChurchTryScreen() {
     () =>
       memoryVerseBackend(sampleSeries(addDays(today, 2)), async (_c, reference) => {
         const v = verseFromReference(reference)
-        return v ? { ok: true, data: v.questions.slice(0, 5) } : { ok: false, reason: 'demo_library_only' }
+        return v ? { ok: true, data: { questions: v.questions.slice(0, 5) } } : { ok: false, reason: 'demo_library_only' }
       }),
     [], // eslint-disable-line react-hooks/exhaustive-deps
   )

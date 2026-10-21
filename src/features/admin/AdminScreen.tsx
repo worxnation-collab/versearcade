@@ -356,7 +356,7 @@ function Churches() {
 // congregation numbers, the logo, the giving link and the QR
 // (docs/CHURCH-SHARED-VERSE.md). It does nothing for a church with no claim, so
 // the panel says so — grant the claim below first. Turning it off freezes those
-// writes and the church falls back to the global verse; nothing is deleted.
+// writes and empties the church box on members' Play tab; nothing is deleted.
 //
 // Verified state is read straight off `churches`, which is public by design
 // (0040), so this needs no new RPC. The payment reference column
@@ -370,10 +370,35 @@ function FoundingChurches() {
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
 
-  const load = () =>
-    supabase?.from('churches').select('id,name,city,region,verified,logo_url').eq('verified', true).order('name')
+  // The Content Generation add-on (0127) — which churches hold it. A server
+  // without 0127 errors here and the toggle simply reads "off".
+  const [gen, setGen] = useState<Set<string>>(new Set())
+  const loadGen = () =>
+    supabase?.rpc('admin_church_addons').then(({ data, error }) => {
+      if (!error) setGen(new Set(((data as { church_id: string }[]) ?? []).map((r) => r.church_id)))
+    })
+  const load = () => {
+    void loadGen()
+    return supabase?.from('churches').select('id,name,city,region,verified,logo_url').eq('verified', true).order('name')
       .then(({ data }) => setLive((data as FoundingRow[]) ?? []))
+  }
   useEffect(() => { void load() }, [])
+
+  // On only for a church that already has the base tier; the server refuses
+  // otherwise (`needs_base`), and turning the base off leaves this inert.
+  const setGeneration = async (c: FoundingRow, on: boolean) => {
+    setBusy(`gen:${c.id}`)
+    setMsg(null)
+    const { data, error } = await supabase!.rpc('admin_set_church_content_generation', { p_church_id: c.id, p_enabled: on })
+    setBusy(null)
+    const res = data as { ok?: boolean; reason?: string } | null
+    if (error || !res?.ok) {
+      setMsg(res?.reason === 'needs_base' ? `${c.name} needs to be a Founding Church first.` : `Couldn't update ${c.name}.`)
+      return
+    }
+    setMsg(on ? `${c.name} has the Content Generation package.` : `${c.name}'s Content Generation package is off.`)
+    void loadGen()
+  }
 
   const search = async () => {
     const { data } = await supabase!.rpc('admin_find_churches', { p_search: q || null, p_limit: 20 })
@@ -425,6 +450,7 @@ function FoundingChurches() {
           <b style={{ fontSize: 14 }}>{c.name}</b>
           <div className="faint" style={{ fontSize: 11 }}>
             {where(c) || 'Location not listed'} · {c.verified ? 'Founding Church' : 'Free'}
+            {gen.has(c.id) ? ` · Content Generation${c.verified ? '' : ' (inert)'}` : ''}
           </div>
         </div>
         <Button variant={c.verified ? 'ghost' : 'gold'} disabled={busy === c.id} onClick={() => set(c, !c.verified)}>
@@ -432,6 +458,11 @@ function FoundingChurches() {
         </Button>
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        {(c.verified || gen.has(c.id)) && (
+          <button className="pill" disabled={busy === `gen:${c.id}`} onClick={() => setGeneration(c, !gen.has(c.id))} style={{ fontSize: 12, fontWeight: 800 }}>
+            {busy === `gen:${c.id}` ? '…' : gen.has(c.id) ? '✨ Content Generation: on — turn off' : '✨ Add Content Generation'}
+          </button>
+        )}
         <button className="pill" disabled={busy === `inv:${c.id}`} onClick={() => invite(c)} style={{ fontSize: 12, fontWeight: 800 }}>
           {busy === `inv:${c.id}` ? '…' : '🔗 Copy leader invite link'}
         </button>
@@ -454,7 +485,9 @@ function FoundingChurches() {
       <p className="faint" style={{ fontSize: 12, marginBottom: 10, lineHeight: 1.4 }}>
         Turning a church on gives its <b>claimed</b> leadership the shared verse, congregation numbers,
         logo, giving link and QR. Grant the claim under Church leadership first — with no claim, nobody
-        can use it. Turning it off keeps everything and returns members to the global verse.
+        can use it. Turning it off keeps everything and empties the church box.
+        <b> Content Generation</b> is a separate add-on on top of it (drafting questions and notes; every draft
+        needs a leader&rsquo;s approval) — it can only be added to a Founding Church.
       </p>
 
       <div className="card" style={{ marginBottom: 12, display: 'grid', gap: 8 }}>

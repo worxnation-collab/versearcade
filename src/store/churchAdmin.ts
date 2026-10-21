@@ -29,6 +29,43 @@ async function call<T = any>(fn: string, args: Record<string, unknown>): Promise
 }
 
 // ---------------------------------------------------------------------------
+// Entitlements (0127): two levels, and the second only stands on the first.
+//
+//   * `churchLeader` — the BASE tier: leadership of a verified church. Every
+//     leadership tool (verse, questions, series, notes, congregation numbers,
+//     approving a draft) is behind it.
+//   * `contentGeneration` — the ADD-ON. The content engine (drafting from a
+//     passage, a focus line or a sermon transcript) is behind it AND the base
+//     tier; the server reports it false whenever the base is missing, so the
+//     client never has to combine the two itself.
+//
+// Presentation only — `church_gen_can` / `church_admin_can` decide on the server.
+// ---------------------------------------------------------------------------
+export interface Entitlements {
+  churchLeader: boolean
+  contentGeneration: boolean
+  /** The add-on is on the church's record but inert, because the base tier isn't. */
+  contentGenerationHeld: boolean
+}
+
+/** Null on a server without 0127, which reads as "no add-on" — fail closed. */
+export async function fetchEntitlements(churchId: string): Promise<Res<Entitlements> | null> {
+  if (!online()) return { ok: false, reason: 'unavailable' }
+  const { data, error } = await supabase!.rpc('church_entitlements', { p_church_id: churchId })
+  if (error) return null
+  const d = data as any
+  if (d?.ok === false) return { ok: false, reason: String(d.reason ?? 'unavailable') }
+  return {
+    ok: true,
+    data: {
+      churchLeader: !!d?.church_leader,
+      contentGeneration: !!d?.church_leader && !!d?.content_generation,
+      contentGenerationHeld: !!d?.content_generation_held,
+    },
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Settings: the live announcement and the giving link
 // ---------------------------------------------------------------------------
 export interface AdminSettings {
@@ -74,7 +111,17 @@ export interface DayVerse {
   series?: string | null
   /** A line from the pastor shown with the verse on members' Play tab, 0123. */
   note?: string | null
+  /**
+   * 0127. 'draft' is generated and not yet approved — members never see it.
+   * 'approved' is live on its date; 'published' is an approved day whose date
+   * has come. Absent on writes and on a server without 0127.
+   */
+  status?: VerseStatus
+  /** Whether the content engine drafted it (kept after hand edits). */
+  generated?: boolean
 }
+
+export type VerseStatus = 'draft' | 'approved' | 'published'
 
 export const SERIES_MAX = 60
 export const NOTE_MAX = 280
@@ -96,6 +143,8 @@ function toDayVerse(v: any): DayVerse {
     questions: (v.questions ?? []) as Question[],
     series: typeof v.series === 'string' && v.series ? v.series : null,
     note: typeof v.note === 'string' && v.note ? v.note : null,
+    status: v.status === 'draft' || v.status === 'approved' || v.status === 'published' ? v.status : undefined,
+    generated: v.generated === true,
   }
 }
 
@@ -135,6 +184,30 @@ export async function saveDayVerse(churchId: string, date: string, v: DayVerse) 
   return { ok: true as const, data: { drop_date: date, extras: x.ok } }
 }
 
+/**
+ * A GENERATED day, saved for review (0127, Content Generation only). Members
+ * never see it until `approveDayVerse`. Over a day that is already live the
+ * server refuses (`day_is_set`) unless `replace` — replacing takes that day off
+ * members' screens until the draft is approved, so the form asks first.
+ */
+export async function saveDraftVerse(churchId: string, date: string, v: DayVerse, replace = false) {
+  return call<{ drop_date: string; status: VerseStatus }>('save_church_verse_draft', {
+    p_church_id: churchId,
+    p_drop_date: date,
+    p_reference: v.reference,
+    p_text: v.text,
+    p_questions: cleanQuestions(v.questions),
+    p_series: v.series === undefined ? null : (cleanLine(v.series, SERIES_MAX) ?? ''),
+    p_note: v.note === undefined ? null : (cleanLine(v.note, NOTE_MAX) ?? ''),
+    p_replace: replace,
+  })
+}
+
+/** The explicit approval that makes a draft live (0127). Base tier is enough. */
+export async function approveDayVerse(churchId: string, date: string) {
+  return call<{ drop_date: string; status: VerseStatus }>('approve_church_verse', { p_church_id: churchId, p_drop_date: date })
+}
+
 /** A run of days in one read (0123), set days only. Null when the server has no 0123. */
 async function fetchRange(churchId: string, from: string, days: number): Promise<Res<Record<string, DayVerse>> | null> {
   if (!online()) return { ok: false, reason: 'unavailable' }
@@ -167,8 +240,16 @@ export interface VerseBackend {
   range?: (churchId: string, from: string, days: number) => Promise<Res<Record<string, DayVerse>> | null>
   /** The church page's "This week" line. */
   setThisWeek?: (churchId: string, line: string) => Promise<Res<unknown>>
-  /** Five drafted questions for a passage, or a reason. Absent ⇒ no button. */
-  draft?: (churchId: string, reference: string, text: string) => Promise<Res<Question[]>>
+  /**
+   * The content engine: five questions (and maybe a note) drafted for a
+   * passage, or a reason. ABSENT ⇒ the church doesn't hold the Content
+   * Generation package, and the form draws the locked state instead.
+   */
+  draft?: (churchId: string, reference: string, text: string, steer?: DraftSteer) => Promise<Res<DraftResult>>
+  /** Save a generated day as a draft. Present exactly when `draft` is. */
+  saveDraft?: (churchId: string, date: string, v: DayVerse, replace: boolean) => Promise<Res<unknown>>
+  /** Approve a draft. Base tier — present whenever leadership can save. */
+  approve?: (churchId: string, date: string) => Promise<Res<{ status?: VerseStatus }>>
 }
 
 export const serverVerseBackend: VerseBackend = {
@@ -176,8 +257,32 @@ export const serverVerseBackend: VerseBackend = {
   save: (c, d, v) => saveDayVerse(c, d, v),
   range: (c, f, n) => fetchRange(c, f, n),
   setThisWeek: (c, l) => saveThisWeek(c, l),
-  draft: (c, r, t) => draftQuestions(c, r, t),
+  approve: (c, d) => approveDayVerse(c, d),
 }
+
+/** The same, plus the content engine — only for a church holding the add-on. */
+export const serverGenerationBackend: VerseBackend = {
+  ...serverVerseBackend,
+  draft: (c, r, t, steer) => draftQuestions(c, r, t, steer),
+  saveDraft: (c, d, v, replace) => saveDraftVerse(c, d, v, replace),
+}
+
+/** What steers a draft. Both optional; the passage is always required. */
+export interface DraftSteer {
+  /** A short focus line from the pastor. */
+  guidance?: string
+  /** Sermon notes or a voice-memo transcript. */
+  transcript?: string
+}
+
+export interface DraftResult {
+  questions: Question[]
+  /** A suggested note for members, when the engine wrote one. */
+  note?: string
+}
+
+export const GUIDANCE_MAX = 300
+export const TRANSCRIPT_MAX = 4000
 
 /**
  * Ask `church-draft` (0122) for five questions about a passage. Leadership of
@@ -186,16 +291,23 @@ export const serverVerseBackend: VerseBackend = {
  * `cleanQuestions` here as well, so the form never holds something
  * `set_church_verse` would refuse.
  */
-export async function draftQuestions(churchId: string, reference: string, text: string): Promise<Res<Question[]>> {
+export async function draftQuestions(churchId: string, reference: string, text: string, steer: DraftSteer = {}): Promise<Res<DraftResult>> {
   if (!online()) return { ok: false, reason: 'unavailable' }
   const { data, error } = await supabase!.functions.invoke('church-draft', {
-    body: { church_id: churchId, reference, text },
+    body: {
+      church_id: churchId,
+      reference,
+      text,
+      guidance: cleanLine(steer.guidance, GUIDANCE_MAX) ?? undefined,
+      transcript: steer.transcript?.trim().slice(0, TRANSCRIPT_MAX) || undefined,
+    },
   })
   if (error) return { ok: false, reason: 'unavailable' }
-  const d = data as { ok?: boolean; reason?: string; questions?: Question[] } | null
+  const d = data as { ok?: boolean; reason?: string; questions?: Question[]; note?: unknown } | null
   if (!d?.ok) return { ok: false, reason: String(d?.reason ?? 'unavailable') }
   const qs = cleanQuestions(d.questions ?? [])
-  return qs ? { ok: true, data: qs } : { ok: false, reason: 'draft_failed' }
+  if (!qs) return { ok: false, reason: 'draft_failed' }
+  return { ok: true, data: { questions: qs, note: cleanLine(typeof d.note === 'string' ? d.note : null, NOTE_MAX) ?? undefined } }
 }
 
 /** In-memory days, seeded with `initial`. Validates exactly as the server does. */
@@ -205,20 +317,43 @@ export function memoryVerseBackend(
 ): VerseBackend & { thisWeek: () => string | null } {
   const days = new Map(Object.entries(initial))
   let thisWeek: string | null = null
+  // The same status rules as 0127: a save is an approval, a draft is not live.
+  const statusFor = (date: string): VerseStatus => (date <= todayLocalDate() ? 'published' : 'approved')
+  const put = (d: string, v: DayVerse, status: VerseStatus, generated: boolean) => {
+    const questions = cleanQuestions(v.questions)
+    if (!questions) return false
+    const prev = days.get(d)
+    days.set(d, {
+      ...v,
+      questions,
+      series: v.series === undefined ? (prev?.series ?? null) : cleanLine(v.series, SERIES_MAX),
+      note: v.note === undefined ? (prev?.note ?? null) : cleanLine(v.note, NOTE_MAX),
+      status,
+      generated,
+    })
+    return true
+  }
   return {
     draft,
+    ...(draft
+      ? {
+          saveDraft: async (_c: string, d: string, v: DayVerse, replace: boolean): Promise<Res<unknown>> => {
+            const cur = days.get(d)
+            if (cur && cur.status !== 'draft' && !replace) return { ok: false, reason: 'day_is_set' }
+            return put(d, v, 'draft', true) ? { ok: true, data: { status: 'draft' } } : { ok: false, reason: 'bad_questions' }
+          },
+        }
+      : {}),
+    approve: async (_c, d) => {
+      const cur = days.get(d)
+      if (!cur || cur.status !== 'draft') return { ok: false, reason: 'no_draft' }
+      days.set(d, { ...cur, status: statusFor(d) })
+      return { ok: true, data: { status: statusFor(d) } }
+    },
     get: async (_c, d) => ({ ok: true, data: days.get(d) ?? null }),
     save: async (_c, d, v) => {
-      const questions = cleanQuestions(v.questions)
-      if (!questions) return { ok: false, reason: 'bad_questions' }
-      const prev = days.get(d)
-      days.set(d, {
-        ...v,
-        questions,
-        series: v.series === undefined ? (prev?.series ?? null) : cleanLine(v.series, SERIES_MAX),
-        note: v.note === undefined ? (prev?.note ?? null) : cleanLine(v.note, NOTE_MAX),
-      })
-      return { ok: true, data: { extras: true } }
+      const generated = days.get(d)?.generated ?? false
+      return put(d, v, statusFor(d), generated) ? { ok: true, data: { extras: true } } : { ok: false, reason: 'bad_questions' }
     },
     range: async (_c, from, n) => {
       const out: Record<string, DayVerse> = {}

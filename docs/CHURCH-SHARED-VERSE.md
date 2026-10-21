@@ -191,10 +191,70 @@ passage"**. It works for any reference, not only the library's 726 verses.
 - **The demo (`/churches/try`) drafts from the library only** and makes no call.
   For any other reference it says a Founding Church can draft any passage.
 
-Not yet verified end to end against the model: production has no verified
-church, so no real leader token has called it. Live checks:
+Superseded in part by 0127 (below): the gate now also needs the Content
+Generation add-on, and a draft is saved as a DRAFT rather than filling the
+form for `set_church_verse`.
+
+Not yet verified end to end against the model (as of 0122). Live checks:
 
 - a request with no token is refused at the gateway
 - a signed-out caller is refused before any model call
 - bad input is refused
 - preflight answers
+
+## Content Generation: the add-on, drafts and approval (0127)
+
+**Two entitlements.** `church_entitlements(church)` tells a church's own
+leadership what it holds:
+
+| | What it is | Gate | Unlocks |
+|---|---|---|---|
+| Church Leader (base) | leadership of a verified church | `church_admin_can` | every tool on this page, manual entry, approving drafts |
+| Content Generation (add-on) | `church_addons.content_generation` | `church_gen_can` = base **and** add-on | `church-draft`, `save_church_verse_draft` |
+
+The operator grants the add-on in Admin → Founding Churches
+(`admin_set_church_content_generation`), which refuses (`needs_base`) a church
+that isn't verified. Un-verifying a church leaves the add-on on its record but
+inert, and `/church/:id/admin` says "on your plan, switches on with Church
+Leader". The top of that screen shows both rows as Active or Locked; without
+the add-on, the verse form shows a locked "Drafting assist" card in place of
+the draft button. There is no price or upgrade button anywhere.
+
+**The engine** (`church-draft`): POST `{ church_id, reference, text,
+guidance?, transcript? }`. The reference must be in citation form
+(`bad_reference` otherwise). `guidance` is a focus line (300 chars) and
+`transcript` is sermon notes or a voice-memo transcript (4,000 chars), pasted
+in. Both steer emphasis and the suggested note only. It returns five questions
+and a `note`. The note fills the form's note only when that is empty. On-device
+transcription of a voice memo isn't built; paste the transcript.
+
+**Drafts and approval:**
+
+- A drafted edit is saved with **Save as draft** (`save_church_verse_draft`):
+  `status = 'draft'`, `generated = true`. Members can't see it.
+- Saving a draft over a day that's already live needs a second tap, and the
+  form says that the day leaves members' screens until it's approved
+  (`p_replace`).
+- **Approve for <day>** saves the edits as the draft and then calls
+  `approve_church_verse`, which needs the base tier only. A church whose
+  add-on lapsed can still approve what it made. Without the add-on the approve
+  button goes through `set_church_verse`, which is also an approval.
+- The planner marks a draft day ✎ with a dashed border, and counts it as "no
+  church verse live" on the strip and on the leadership card.
+
+**Audit fields on `church_verses`:** `created_by`, `created_at`, `updated_at`,
+`visibility` ('congregation', the only value the check allows), `status`,
+`generated`, `approved_by`, `approved_at`. `church_verse_for` and
+`church_verses_range` return status, generated, visibility, created_at and
+approved_at. `approved_by` stays server-side.
+
+**The church verse is additive.** `get_effective_verse` is restated to return
+null, so no build, including approved iOS builds, swaps the daily drop.
+Members see the church's approved verse in the church card on the Play tab,
+with the note and a "Play your church's five →" button. That opens
+`/play/church` (`ChurchVerseScreen`), which:
+
+- reads `church_verse_today`: own verified church, non-draft, ±1 day;
+- runs `QuizRunner` with `runId church:<id>:<date>`;
+- pays nothing: no XP, no `plays`, no streak;
+- records a device-local done flag with the score, the trivia round's shape.

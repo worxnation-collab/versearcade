@@ -8,8 +8,8 @@ import { gatheringLabel, gatheringOpen, gatheringWindow } from '@/data/gathering
 import { useChurch } from '@/store/church'
 import type { Church } from '@/types'
 import { useJuice } from '@/juice/useJuice'
-import { useGame } from '@/store/game'
-import { useChurchToday, bannerSeen, markBannerSeen } from '@/store/churchPackage'
+import { useChurchToday, useChurchVerse, churchVersePlayed, bannerSeen, markBannerSeen } from '@/store/churchPackage'
+import { todayLocalDate } from '@/lib/date'
 import { givingLinkVisible } from '@/lib/commerce'
 import { GiveLink } from '@/features/church/ChurchExtras'
 
@@ -27,9 +27,11 @@ import { GiveLink } from '@/features/church/ChurchExtras'
 //     card above this one saying half the same thing). In order, and each
 //     part only when it is TRUE today:
 //       1. who it is: the building at its real tier and skin, name, tier, city;
-//       2. today's verse from the church — only when leadership set one AND it
-//          is today's drop (`get_effective_verse`, 0119), with the series as a
-//          quiet label and the pastor's note clamped to two lines (0123);
+//       2. today's verse from the church — only when leadership set and
+//          APPROVED one (`church_verse_today`, 0127), with the series as a
+//          quiet label, the pastor's note clamped to two lines (0123), and its
+//          own Play button. It sits BESIDE the everyday drop, never in place of
+//          it: congregation-only content is additive;
 //       3. the church's one live notice (`set_church_announcement` keeps one),
 //          with its last day when it has one, dismissible per notice;
 //       4. the giving link, where this BUILD may show one (`givingLinkVisible`);
@@ -105,18 +107,23 @@ export function ChurchWindow() {
 // and a <button> can't contain buttons. So the church's identity row is the
 // door to /church, and "Open church" at the foot is the same door again.
 function MemberCard({ church, now, onOpen }: { church: Church; now: Date; onOpen: () => void }) {
+  const navigate = useNavigate()
+  const juice = useJuice()
   const ct = useChurchToday((s) => s.today)
   const loadToday = useChurchToday((s) => s.load)
-  const drop = useGame((s) => s.today)
+  const cv = useChurchVerse((s) => s.verse)
+  const loadVerse = useChurchVerse((s) => s.load)
   const [, bump] = useState(0)
 
   useEffect(() => {
     void loadToday()
-  }, [loadToday])
+    void loadVerse()
+  }, [loadToday, loadVerse])
 
-  // Only the church's OWN verse, and only when it is today's drop: the run
-  // carries `church` exactly on the days leadership set one (0119).
-  const verse = drop?.church?.id === church.id ? drop : null
+  // Only the church's OWN verse — keyed to the church it answered for, so
+  // switching church can't show the old one's verse under the new name.
+  const verse = cv?.churchId === church.id ? cv : null
+  const played = verse ? churchVersePlayed(church.id, todayLocalDate()) : null
   // The today payload is keyed to the church it answered for, so switching
   // church can't show the old one's notice under the new one's name.
   const pkg = ct?.verified && ct.church_id === church.id ? ct : null
@@ -158,17 +165,30 @@ function MemberCard({ church, now, onOpen }: { church: Church; now: Date; onOpen
         <Section>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, justifyContent: 'space-between' }}>
             <Eyebrow nowrap>Today’s verse from {church.name}</Eyebrow>
-            {verse.church?.series && (
+            {verse.series && (
               <span
                 className="faint"
                 style={{ fontSize: 11, fontWeight: 700, flexShrink: 0, maxWidth: '45%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
               >
-                {verse.church.series}
+                {verse.series}
               </span>
             )}
           </div>
           <div style={{ fontSize: 15, fontWeight: 800, marginTop: 3 }}>{verse.reference}</div>
-          {verse.church?.note && <PastorNote text={verse.church.note} />}
+          {verse.note && <PastorNote text={verse.note} />}
+          {played ? (
+            <div className="faint" style={{ marginTop: 8, fontSize: 12.5, fontWeight: 700 }}>
+              ✓ Played today · {played.c}/{played.t}
+            </div>
+          ) : (
+            <button
+              className="pill"
+              onClick={() => { juice.select?.(); navigate('/play/church') }}
+              style={{ marginTop: 8, fontSize: 12.5, fontWeight: 800 }}
+            >
+              Play your church’s five →
+            </button>
+          )}
         </Section>
       )}
 

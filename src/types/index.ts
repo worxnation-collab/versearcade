@@ -36,10 +36,10 @@ export type Testament = 'OT' | 'NT'
 export interface DailyVerse {
   dropDate: string // YYYY-MM-DD
   /**
-   * Set when this is a VERIFIED church's verse for the day standing in for the
-   * global one (0119, `get_effective_verse`). Absent on every other run — the
-   * global drop, practice, battles — so nothing that does not look for it can
-   * be changed by it.
+   * Set on a VERIFIED church's own verse for the day, played from its box on
+   * the Play tab (`/play/church`, 0127) — never the global drop, which no
+   * church replaces any more. Absent on every other run — the drop, practice,
+   * battles — so nothing that does not look for it can be changed by it.
    */
   church?: {
     id: string

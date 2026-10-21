@@ -16,6 +16,7 @@ import HomeScreen from './features/home/HomeScreen'
 import QuizScreen from './features/daily/QuizScreen'
 import ResultScreen from './features/daily/ResultScreen'
 import DailyTriviaScreen from './features/daily/DailyTriviaScreen'
+import ChurchVerseScreen from './features/daily/ChurchVerseScreen'
 import PracticeQuizScreen from './features/practice/PracticeQuizScreen'
 import PracticeResultScreen from './features/practice/PracticeResultScreen'
 import ReviewScreen from './features/review/ReviewScreen'
@@ -324,6 +325,17 @@ export default function App() {
           element={
             <RequireProfile>
               <DailyTriviaScreen />
+            </RequireProfile>
+          }
+        />
+        {/* The church's own verse — congregation-only, BESIDE the drop (0127). */}
+        <Route
+          path="/play/church"
+          element={
+            <RequireProfile>
+              <RequireAccount copy={WALL.church}>
+                <ChurchVerseScreen />
+              </RequireAccount>
             </RequireProfile>
           }
         />

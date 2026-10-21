@@ -34,7 +34,13 @@ export interface DailyVerse {
    * global drop, practice, battles — so nothing that does not look for it can
    * be changed by it.
    */
-  church?: { id: string; name: string }
+  church?: {
+    id: string
+    name: string
+    /** The series leadership filed this day under, and the pastor's note for it (0123). */
+    series?: string
+    note?: string
+  }
   translation: string
   reference: string // "John 3:16"
   book: string

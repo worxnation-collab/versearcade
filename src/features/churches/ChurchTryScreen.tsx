@@ -4,11 +4,12 @@ import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { TabbedSection } from '@/components/TabbedSection'
 import { useJuice } from '@/juice/useJuice'
-import { todayLocalDate } from '@/lib/date'
+import { addDays, todayLocalDate } from '@/lib/date'
 import { parseReference } from '@/lib/bibleProgress'
 import { TodayVerseForm } from '@/features/church/admin/TodayVerseForm'
 import { ParticipationPanel } from '@/features/church/admin/ParticipationPanel'
 import { QuizRunner } from '@/features/daily/QuizRunner'
+import { verseFromReference } from '@/data/bible/questions'
 import { MissedList } from '@/features/daily/MissedList'
 import { memoryVerseBackend, type DayVerse } from '@/store/churchAdmin'
 import type { ChurchParticipation } from '@/types/churchPackages'
@@ -23,6 +24,11 @@ import type { DailyVerse, PlayResult } from '@/types'
 //     same (`cleanQuestions`), so what works here works for real.
 //   * The quiz is the real `QuizRunner` with `demo`, which records no accuracy,
 //     no Bible mark, no road miles and no drop, and is given no `runId`.
+//   * The planner opens on a SAMPLE series — three days of "Abiding (John 15)"
+//     from the library, starting in two days, one with a pastor's note — so
+//     the series bar, the note mark and the copy panel's "these days already
+//     have a verse" list all have something real to show on the first tap.
+//     It lives in the same memory backend, so a reload clears it too.
 //   * The Congregation tab shows SAMPLE totals, labelled as such in its first
 //     line, with one bucket under five so the floor is visible rather than
 //     claimed. No real church's numbers are ever shown here.
@@ -46,11 +52,32 @@ const SAMPLE: ChurchParticipation = {
   streaks: { s1: 9, s2_6: 12, s7: null },
 }
 
+const SAMPLE_SERIES = 'Abiding (John 15)'
+const SAMPLE_REFS = ['John 15:5', 'John 15:12', 'John 15:13']
+const SAMPLE_NOTE = 'Read all of John 15 before Sunday — we pick up at verse 9.'
+
+/** Three library verses on consecutive days from `start`, filed under one series. */
+function sampleSeries(start: string): Record<string, DayVerse> {
+  const out: Record<string, DayVerse> = {}
+  SAMPLE_REFS.forEach((ref, i) => {
+    const v = verseFromReference(ref)
+    if (!v) return
+    out[addDays(start, i)] = {
+      reference: v.reference,
+      text: v.text,
+      questions: v.questions.slice(0, 5),
+      series: SAMPLE_SERIES,
+      note: i === 0 ? SAMPLE_NOTE : null,
+    }
+  })
+  return out
+}
+
 export default function ChurchTryScreen() {
   const navigate = useNavigate()
   const juice = useJuice()
   const today = todayLocalDate()
-  const backend = useMemo(() => memoryVerseBackend(), [])
+  const backend = useMemo(() => memoryVerseBackend(sampleSeries(addDays(today, 2))), []) // eslint-disable-line react-hooks/exhaustive-deps
   const sample = useMemo<ChurchParticipation>(() => {
     const d = new Date()
     d.setDate(d.getDate() - 13)
@@ -160,13 +187,19 @@ export default function ChurchTryScreen() {
       <h1 style={{ fontSize: 24, margin: '0 0 4px' }}>Try it as a pastor</h1>
       <p className="dim" style={{ margin: '0 0 12px', fontSize: 13.5, lineHeight: 1.5 }}>
         These are the real leadership tools. Type the verse you&rsquo;re preaching on — or tap{' '}
-        <b>✨ Fill in</b> for one from our library — save it, then play it the way your congregation will.
-        Nothing here is saved.
+        <b>✨ Fill in</b> for one from our library — name the series, save it, then play it the way your
+        congregation will. A sample series is already on the calendar so you can see how a run of days
+        looks. Nothing here is saved.
       </p>
 
       {saved && (
         <div className="card" style={{ marginBottom: 12, display: 'grid', gap: 8 }}>
-          <b style={{ fontSize: 14 }}>{saved.reference} is set.</b>
+          <b style={{ fontSize: 14 }}>{saved.reference} is set{saved.series ? ` · ${saved.series}` : ''}.</b>
+          {saved.note && (
+            <p className="dim" style={{ margin: 0, fontSize: 13, lineHeight: 1.45, overflowWrap: 'anywhere' }}>
+              Your members see beside it: ✉️ {saved.note}
+            </p>
+          )}
           <Button variant="gold" full onClick={() => { juice.select?.(); setRuns((n) => n + 1); setPhase('play') }}>
             Play it as your congregation →
           </Button>

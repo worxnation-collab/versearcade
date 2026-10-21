@@ -14,7 +14,9 @@ import { GiveLink } from '@/features/church/ChurchExtras'
 // box of its own, and carries at most three things, each only when it exists:
 //
 //   1. Whose verse today is — when the church set one and it IS today's
-//      drop (`get_effective_verse`, 0119). Nothing on a day it didn't.
+//      drop (`get_effective_verse`, 0119). Nothing on a day it didn't. With
+//      it, the series that day is filed under and the pastor's note for it
+//      (0123), each only when leadership wrote one.
 //   2. The church's newest announcement, the "banner" — dismissible, and a NEW
 //      announcement shows again (`bannerSeen` remembers one id per device).
 //   3. The giving link, if this build may show one (`givingLinkVisible`).
@@ -56,8 +58,14 @@ export function ChurchTodayStrip() {
       {verse && (
         <div>
           <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.45 }}>
-            Today's drop is <b>{verse.reference}</b>, chosen by your church.
+            Today's drop is <b>{verse.reference}</b>, chosen by your church
+            {verse.church?.series ? <> · <span className="dim">{verse.church.series}</span></> : null}.
           </p>
+          {verse.church?.note && (
+            <p style={{ margin: '6px 0 0', fontSize: 13, lineHeight: 1.45, color: 'var(--ink-dim)', overflowWrap: 'anywhere' }}>
+              ✉️ {verse.church.note}
+            </p>
+          )}
         </div>
       )}
 

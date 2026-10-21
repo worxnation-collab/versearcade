@@ -82,7 +82,7 @@ async function churchVerseOr(global: DailyVerse, date: string): Promise<DailyVer
   const seed = aboutVerseSeed(v.reference)
   return {
     dropDate: date,
-    church: { id: v.churchId, name: v.churchName },
+    church: { id: v.churchId, name: v.churchName, series: v.series, note: v.note },
     translation: v.churchName,
     reference: v.reference,
     book: ref.book,

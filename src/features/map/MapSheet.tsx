@@ -109,7 +109,7 @@ export function MapSheet({ onClose }: { onClose: () => void }) {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <b style={{ fontFamily: 'var(--font-display)', fontSize: 18, flex: 1, minWidth: 0 }}>
-              <Icon id="compass" size={17} style={{ display: 'inline-block', verticalAlign: '-2px', marginRight: 7 }} />
+              <img src="/invite/compass.png" alt="" aria-hidden width={20} height={20} draggable={false} style={{ display: 'inline-block', verticalAlign: '-3px', marginRight: 7 }} />
               Find your way around
             </b>
             <button className="pill" onClick={() => { juice.select?.(); onClose() }} aria-label="Close">✕</button>

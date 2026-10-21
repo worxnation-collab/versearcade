@@ -118,7 +118,16 @@ export function MapCompass() {
               boxShadow: '0 6px 20px rgba(0,0,0,0.45)',
             }}
           >
-            <Icon id="compass" size={25} />
+            {/* The painted compass coin — the same picture as the puck beside
+                the nav. Muted while nothing is open, the nav's own tone rule. */}
+            <img
+              src="/invite/compass.png"
+              alt=""
+              width={30}
+              height={30}
+              draggable={false}
+              style={{ display: 'block', opacity: glowing ? 1 : 0.72, filter: glowing ? undefined : 'saturate(0.8) brightness(0.92)' }}
+            />
           </motion.span>
           <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
             <b style={{ fontFamily: 'var(--font-display)', fontSize: 16 }}>

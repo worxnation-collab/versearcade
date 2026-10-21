@@ -17,6 +17,7 @@ import { addDays } from '@/lib/date'
 import { getVerseForDate } from '@/data/bible/questions'
 import { VERSE_POOL } from '@/data/bible/pool'
 import { pickVoice, pickCast, pickCastRotated, PICKER_VOICES, SCENE_NAMES, VERSE_SCENES, READER_ORDER, type VoiceSeed, type CastPick } from '@/data/tiktokVoice'
+import { seriesFor, seriesPayload, storyVerseFor } from '@/data/tiktokSeries'
 import type { Backdrop, TimedPhrase } from '@/lib/tiktokRender'
 import { STORY_STAGES, stagePath } from '@/data/tiktokStages'
 
@@ -55,6 +56,7 @@ export const TELLERS = [{ id: 'tabitha', name: 'Tabitha (librarian)' }, ...READE
 export const ROOMS = [
   { id: '/tiktok/rooms/story-circle.jpg', name: 'Story circle', hasTeller: true },
   { id: '/keep/study-library.jpg', name: 'The library' },
+  { id: '/tiktok/rooms/reading-room.jpg', name: 'Reading room (new, no Tabitha painted in)' },
   { id: '/room/room-2.jpg', name: 'Upper Room' },
   { id: '/room/room-4.jpg', name: 'Upper Room (finer)' },
   { id: '/keep/hall.jpg', name: 'The keep' },
@@ -80,6 +82,20 @@ export function seedFor(date: string): StorySeed {
   return {
     speaker: seed?.speaker ?? 'The narrator', testament: seed?.testament ?? 'NT', theme: v.theme ?? '', text: v.text, book: v.book ?? '', chapter: v.chapter,
     before: seed?.before, after: seed?.after, audience: seed?.audience, facts: seed?.facts,
+  }
+}
+/**
+ * The seed the EVENING STORY is told from: tonight's series verse on a
+ * series night (data/tiktokSeries.ts), the day's verse otherwise. The
+ * morning post never reads this.
+ */
+export function storySeedFor(date: string): StorySeed {
+  const s = seriesFor(date)
+  if (!s) return seedFor(date)
+  const v = s.verse
+  return {
+    speaker: v.speaker, testament: v.testament, theme: v.theme, text: v.text, book: v.book, chapter: v.chapter,
+    before: v.before, after: v.after, audience: v.audience, facts: v.facts,
   }
 }
 export function autoPick(date: string, reader: string) { return pickVoice(seedFor(date), reader) }
@@ -407,17 +423,21 @@ export async function fetchThought(d: string, force = false, samples: string[] =
 export type Place = 'open' | 'close'
 
 export async function fetchStoryWord(d: string, force = false, samples: string[] = [], place: Place = 'close'): Promise<Thought> {
-  const v = getVerseForDate(d)
+  const v = storyVerseFor(d)
   const st = await fetchStory(d, false)
-  return call<Thought>('thought', { date: d, kind: 'story', place, force, reference: v.reference, text: v.text, paragraphs: st.paragraphs, samples })
+  return call<Thought>('thought', { date: d, kind: 'story', place, force, reference: v.reference, text: v.text, paragraphs: st.paragraphs, samples, ...seriesPayload(d) })
 }
+// The series key rides on every STORY-shaped thought call, so a draft parked
+// for a date before it became a series night is never shown or saved over as
+// though it were tonight's (the function compares keys). Other kinds send none.
+const storySeriesArgs = (d: string, kind: VoiceKind) => (kind === 'story' ? seriesPayload(d) : {})
 /** The draft already parked for a date, or null — never drafts. */
 export async function peekThought(d: string, kind: VoiceKind = 'verse', place: Place = 'close'): Promise<Thought | null> {
-  const t = await call<Partial<Thought>>('thought', { date: d, kind, place, peek: true })
+  const t = await call<Partial<Thought>>('thought', { date: d, kind, place, peek: true, ...storySeriesArgs(d, kind) })
   return t && typeof t.text === 'string' ? (t as Thought) : null
 }
 export async function saveThought(d: string, text: string, kind: VoiceKind = 'verse', place: Place = 'close'): Promise<Thought> {
-  return call<Thought>('thought', { date: d, kind, place, save: text })
+  return call<Thought>('thought', { date: d, kind, place, save: text, ...storySeriesArgs(d, kind) })
 }
 /** Park a file in the bucket through a signed upload URL (the bucket is service-role write only). */
 export async function parkFile(path: string, blob: Blob, contentType: string): Promise<string> {
@@ -428,14 +448,14 @@ export async function parkFile(path: string, blob: Blob, contentType: string): P
 }
 
 export async function fetchStory(d: string, force: boolean): Promise<Story> {
-  const v = getVerseForDate(d)
-  const sd = seedFor(d)
+  const v = storyVerseFor(d)
+  const sd = storySeedFor(d)
   // The stage list travels WITH the request: the paintings ship in this
   // bundle, so this is the only place that knows which exist, and the
   // function validates the answer against exactly what it was sent. See
   // data/tiktokStages.ts for why that is the prepack rather than a list in
   // the function.
-  return call<Story>('story', { date: d, force, reference: v.reference, text: v.text, theme: v.theme, speaker: sd.speaker, audience: sd.audience, before: sd.before, after: sd.after, facts: sd.facts, stages: STORY_STAGES.map((x) => ({ id: x.id, when: x.when })) })
+  return call<Story>('story', { date: d, force, reference: v.reference, text: v.text, theme: v.theme, speaker: sd.speaker, audience: sd.audience, before: sd.before, after: sd.after, facts: sd.facts, stages: STORY_STAGES.map((x) => ({ id: x.id, when: x.when })), ...seriesPayload(d) })
 }
 
 /**
@@ -453,8 +473,10 @@ export async function loadStages(r: Pick<Renderer, 'loadImage'>, ids: Array<stri
 // bucket by date and kind) so the hub can show today's without rendering a
 // video, and a render on the same day gets the same words.
 export async function fetchCopy(d: string, kind: Made['kind'], force = false, extra: { question?: string; about?: string; voiced?: boolean } = {}): Promise<Copy> {
-  const v = getVerseForDate(d)
-  return call<Copy>('copy', { date: d, kind, force, reference: v.reference, text: v.text, theme: v.theme, ...extra })
+  // The story's caption is about the verse the story is told behind, which on
+  // a series night is not the day's verse.
+  const v = kind === 'story' ? storyVerseFor(d) : getVerseForDate(d)
+  return call<Copy>('copy', { date: d, kind, force, reference: v.reference, text: v.text, theme: v.theme, ...extra, ...(kind === 'story' ? seriesPayload(d) : {}) })
 }
 
 // ---- the bits of form every generator draws -----------------------------------

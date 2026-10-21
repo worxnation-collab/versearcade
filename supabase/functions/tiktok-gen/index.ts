@@ -156,6 +156,32 @@ async function gemini(path: string, body: unknown, method = 'POST'): Promise<Rec
  * paths and by both places `voiced` is decided, so a kind cannot be voiced for
  * the caption and unvoiced for the disclosure.
  */
+// ---- the evening story as a five-night series ---------------------------------
+// The client decides which nights are series nights (src/data/tiktokSeries.ts,
+// a pure function of the date) and sends the context with every story-shaped
+// call: `series` for the prompts and `seriesKey` for the cache. Everything is
+// sanitised here because it lands in a prompt.
+type Series = { book: string; part: number; of: number; next?: { reference: string; theme: string }; earlier: Array<{ reference: string; theme: string }> }
+function seriesOf(v: unknown): Series | null {
+  const o = (v ?? null) as Record<string, unknown> | null
+  if (!o || typeof o !== 'object') return null
+  const book = String(o.book ?? '').replace(/[^A-Za-z0-9 ]/g, '').slice(0, 40)
+  const part = Math.floor(Number(o.part)), of = Math.floor(Number(o.of))
+  if (!book || !(of >= 2 && of <= 7) || !(part >= 1 && part <= of)) return null
+  const ref = (x: unknown) => {
+    const r = (x ?? {}) as Record<string, unknown>
+    return { reference: String(r.reference ?? '').slice(0, 40), theme: String(r.theme ?? '').slice(0, 80) }
+  }
+  const next = o.next ? ref(o.next) : undefined
+  const earlier = Array.isArray(o.earlier) ? (o.earlier as unknown[]).slice(0, 6).map(ref) : []
+  return { book, part, of, next: next?.reference ? next : undefined, earlier }
+}
+const seriesKeyOf = (v: unknown): string => String(v ?? '').slice(0, 120)
+const seriesLine = (s: Series) =>
+  `This is part ${s.part} of ${s.of} of a week-long series through the book of ${s.book}, told one evening at a time.` +
+  (s.earlier.length ? ` Earlier nights covered: ${s.earlier.map((e) => `${e.reference} (${e.theme})`).join('; ')}.` : ' Tonight is the first night.') +
+  (s.next ? ` Tomorrow night is ${s.next.reference} (${s.next.theme}).` : ' Tonight is the last night of the series.')
+
 const VOICED_KINDS: string[] = ['verse', 'story', 'exchange', 'book', 'moment', 'before', 'figure', 'quiet', 'prayer']
 /**
  * Every kind with a PARKED RECORDING of its own, which is a longer list than
@@ -299,6 +325,20 @@ Deno.serve(async (req) => {
     const { error: bucketErr } = await admin.storage.createBucket(BUCKET, { public: true })
     if (bucketErr && !/already exists|duplicate/i.test(bucketErr.message)) return json({ error: bucketErr.message }, 500)
     const publicUrl = (path: string) => admin.storage.from(BUCKET).getPublicUrl(path).data.publicUrl
+    // A parked JSON, or null. With a series KEY, a file parked under any
+    // other key (or none — written before the date was a series night) is
+    // treated as absent so the caller writes tonight's over it: a fix to the
+    // code is not a fix to what the code already parked. No key ⇒ the old
+    // behaviour exactly, so every non-series call is unchanged.
+    const cachedFor = async (path: string, key: string): Promise<Record<string, unknown> | null> => {
+      if (!(await exists(path))) return null
+      const { data: file } = await admin.storage.from(BUCKET).download(path)
+      if (!file) return null
+      let j: Record<string, unknown>
+      try { j = JSON.parse(await file.text()) } catch { return null }
+      if (key && j.seriesKey !== key) return null
+      return j
+    }
     const exists = async (path: string) => {
       const dir = path.slice(0, path.lastIndexOf('/'))
       const name = path.slice(path.lastIndexOf('/') + 1)
@@ -457,9 +497,11 @@ Deno.serve(async (req) => {
       const text = String(input.text ?? '').slice(0, 1200)
       if (!reference || !text) return json({ error: 'reference and text are required' }, 400)
       const path = `days/${date}/story.json`
-      if (!input.force && (await exists(path))) {
-        const { data: file } = await admin.storage.from(BUCKET).download(path)
-        if (file) return json({ ...JSON.parse(await file.text()), cached: true })
+      const series = seriesOf(input.series)
+      const key = series ? seriesKeyOf(input.seriesKey) : ''
+      if (!input.force) {
+        const hit = await cachedFor(path, key)
+        if (hit) return json({ ...hit, cached: true })
       }
       const f = (k: string, n = 300) => String(input[k] ?? '').slice(0, n)
       const facts = Array.isArray(input.facts) ? (input.facts as unknown[]).slice(0, 6).map((x) => String(x).slice(0, 200)) : []
@@ -482,6 +524,9 @@ Deno.serve(async (req) => {
           `You write short spoken scripts for Tabitha, the librarian in the Verse Arcade Bible app. Each evening she tells the story BEHIND that day's verse to a small audience — warm, plain, unhurried, like a bedtime story for grown-ups. Never preachy, never shaming, no jokes about the listener.\n\n` +
           `Today's verse: ${reference} — "${text}"\nSpoken by: ${f('speaker', 80)}\nTo: ${f('audience', 120)}\nWhat came before: ${f('before')}\nWhat came after: ${f('after')}\nTheme: ${f('theme', 80)}\nFacts you may use: ${facts.join(' | ') || '(none)'}\n\n` +
           `Use ONLY the situation described above and the plain narrative of that Bible passage. Do not invent names, numbers, dialogue or events that are not in the passage. Do not quote the verse itself in the paragraphs — it is read aloud separately at the end.\n\n` +
+          (series
+            ? `${seriesLine(series)} Tonight's story stands on its own for somebody who missed the other nights, but in paragraph 2, just before the lead-in to the verse, add ONE short sentence that ${series.next ? `points toward tomorrow night without telling it` : `gathers the week in ${series.book} together`}. Never say "part" or number the nights — the screen does that.\n\n`
+            : '') +
           `Return JSON with: "title" (at most 6 words, no punctuation), "hook" (the single most dramatic sentence of the story, at most 10 words, no emoji — it is the first thing on screen and it has to stop a thumb), and "paragraphs": exactly two strings. ` +
           `Paragraph 1 OPENS ON THE DRAMATIC MOMENT — the hook's sentence or its twin, the thing that was at stake, in the first line — and only then says where we are and who is there. Paragraph 2: what happened next, what came after, and one plain sentence about why it still matters, ending with a short lead-in such as "Here's the verse." ` +
           `About 80 to 100 words in total: the whole telling has to fit in a minute. Simple sentences that read well aloud. No emoji, no hashtags.` +
@@ -504,7 +549,7 @@ Deno.serve(async (req) => {
             return stageIds.has(id) ? id : null
           })
         : undefined
-      const out = { title: String(parsed.title ?? '').slice(0, 60), hook: String(parsed.hook ?? '').slice(0, 80), paragraphs, ...(scenes ? { scenes } : {}) }
+      const out = { title: String(parsed.title ?? '').slice(0, 60), hook: String(parsed.hook ?? '').slice(0, 80), paragraphs, ...(scenes ? { scenes } : {}), ...(key ? { seriesKey: key } : {}) }
       await park(path, new TextEncoder().encode(JSON.stringify(out)), 'application/json')
       return json({ ...out, cached: false })
     }
@@ -555,16 +600,21 @@ Deno.serve(async (req) => {
       const place = input.place === 'open' ? 'open' : 'close'
       const path = `days/${date}/thought${reading ? `-${reading}` : forStory ? (place === 'open' ? '-story-intro' : '-story') : ''}.json`
       const count = (t: string) => t.split(/\s+/).filter(Boolean).length
+      // A series night's story word is keyed like the story it is written
+      // from, so a draft parked before the date was a series night is never
+      // offered as tonight's.
+      const tseries = forStory ? seriesOf(input.series) : null
+      const tkey = tseries ? seriesKeyOf(input.seriesKey) : ''
       if (typeof input.save === 'string') {
         const text = input.save.replace(/\s+/g, ' ').trim().slice(0, 1600)
         if (!text) return json({ error: 'nothing to save' }, 400)
-        const out = { text, words: count(text), source: 'operator', at: new Date().toISOString() }
+        const out = { text, words: count(text), source: 'operator', at: new Date().toISOString(), ...(tkey ? { seriesKey: tkey } : {}) }
         await park(path, new TextEncoder().encode(JSON.stringify(out)), 'application/json')
         return json({ ...out, cached: false })
       }
-      if (!input.force && (await exists(path))) {
-        const { data: file } = await admin.storage.from(BUCKET).download(path)
-        if (file) return json({ ...JSON.parse(await file.text()), cached: true })
+      if (!input.force) {
+        const hit = await cachedFor(path, tkey)
+        if (hit) return json({ ...hit, cached: true })
       }
       // `peek` reads what is parked and never drafts, so opening the card for
       // a week of dates costs nothing until a Draft button is pressed.
@@ -619,6 +669,7 @@ Deno.serve(async (req) => {
                 `The maker of Verse Arcade, a Bible app, opens a short video in his own voice and hands it over to Tabitha, the app's librarian, who tells the story behind today's verse. He speaks first, to camera, for about fifteen seconds. He is one person talking plainly to a phone, not a preacher and not a brand.\n\n` +
                 `The story Tabitha is about to tell: ${paragraphs.join(' ')}\n\nThe verse it is about: ${String(input.reference ?? '').slice(0, 80)} — "${String(input.text ?? '').slice(0, 600)}"\n\n` +
                 voiceNote +
+                (tseries ? `${seriesLine(tseries)} Say in a few plain words where tonight sits in the week in ${tseries.book} (for example "night three in Genesis"). ${tseries.next ? `Before you hand over, add ONE short clause that teases tomorrow night — a reason to come back, not a summary of it.` : `It is the last night: say so once, plainly.`} This replaces nothing below; keep within the word count.\n` : '') +
                 `Rules. First person, present tense, short sentences that read well aloud — no sentence over about 15 words. Open by naming the QUESTION or the situation the story is about to answer, in one breath, so a stranger knows why to stay. Do NOT tell the story, do NOT give away how it turns out, and do NOT quote the verse — Tabitha does all three in a moment. Say ONE true sentence about why this one stopped you. Do not say "today's verse", name the app, thank anyone for watching, or ask for a follow, a comment or a share.\n` +
                 `End by handing over to Tabitha BY NAME, in a plain spoken sentence — something in the shape of "In this round-up, Tabitha…" or "Tabitha has the rest". Vary it; do not use the same hand-off twice.\n\n` +
                 `Return JSON with: "text" — the introduction, 30 to 45 words, plain punctuation, no emoji, no headings, no line breaks.` }] }],
@@ -629,6 +680,7 @@ Deno.serve(async (req) => {
                 `The maker of Verse Arcade, a Bible app, closes a short video in his own voice. The video has just told the story behind today's verse and read the verse aloud; he now speaks last, to camera, for about twenty seconds. He is one person talking plainly to a phone, not a preacher and not a brand.\n\n` +
                 `The story that was just told: ${paragraphs.join(' ')}\n\nThe verse that was just read: ${String(input.reference ?? '').slice(0, 80)} — "${String(input.text ?? '').slice(0, 600)}"\n\n` +
                 voiceNote +
+                (tseries ? `${seriesLine(tseries)} ${tseries.next ? `You may name, in one clause, what tomorrow night picks up.` : `It is the last night of the series; the closing statement may gather the week.`}\n` : '') +
                 `Rules. First person, present tense, short sentences that read well aloud — no sentence over about 15 words. Open by naming in ONE breath the thing the story turned on, so somebody who half-watched still has it. Then ONE plain thing he carries from it today. Do not retell the story beat by beat — the viewer just watched it. Do not quote the verse (it was just read). Do not say "today's verse", name the app, or thank anyone for watching. Nothing that one Christian tradition would say differently from another. Never shame the listener, no "we all" sermons, no call to action, no link.\n` +
                 `End on a closing STATEMENT: one plain sentence, first person, naming something specific from THIS story that he is choosing or carrying today. It must settle the thought and let the video end — not a question, not an instruction, not a stock closer.\n\n` +
                 `Return JSON with: "text" — the closing word, 45 to 60 words, plain punctuation, no emoji, no headings, no line breaks.` }] }],
@@ -640,7 +692,7 @@ Deno.serve(async (req) => {
         try { sp = JSON.parse(sraw) } catch { return json({ error: 'summary was not JSON', raw: sraw.slice(0, 300) }, 502) }
         const sdraft = String(sp.text ?? '').replace(/\s+/g, ' ').trim().slice(0, 800)
         if (count(sdraft) < 20) return json({ error: 'summary came back too short', raw: sraw.slice(0, 300) }, 502)
-        const sout = { text: sdraft, words: count(sdraft), source: 'gemini', at: new Date().toISOString() }
+        const sout = { text: sdraft, words: count(sdraft), source: 'gemini', at: new Date().toISOString(), ...(tkey ? { seriesKey: tkey } : {}) }
         await park(path, new TextEncoder().encode(JSON.stringify(sout)), 'application/json')
         return json({ ...sout, cached: false })
       }
@@ -716,9 +768,11 @@ Deno.serve(async (req) => {
       const kind = kindOf(input.kind)
       const date = String(input.date ?? '')
       const path = /^\d{4}-\d{2}-\d{2}$/.test(date) ? `days/${date}/copy-${kind}.json` : null
-      if (path && !input.force && (await exists(path))) {
-        const { data: file } = await admin.storage.from(BUCKET).download(path)
-        if (file) return json({ ...JSON.parse(await file.text()), cached: true })
+      const cseries = kind === 'story' ? seriesOf(input.series) : null
+      const ckey = cseries ? seriesKeyOf(input.seriesKey) : ''
+      if (path && !input.force) {
+        const hit = await cachedFor(path, ckey)
+        if (hit) return json({ ...hit, cached: true })
       }
       // ---- the NOTE: Facebook's one post that is not a video --------------
       //
@@ -810,7 +864,9 @@ Deno.serve(async (req) => {
         : kind === 'exchange'
         ? `the app's maker opens in his own voice, then TWO painted biblical figures speak one recorded exchange from scripture to each other — one asks, one answers — and he closes it in his own voice with a question to the viewer. This exchange: ${about || 'a question and its answer'}. Write about THAT exchange, not about the verse of the day. `
         : kind === 'story'
-        ? `Tabitha, the app's librarian, tells the short story behind the verse of the day each evening (the morning post was the verse itself, read aloud). ${voiced ? `At the end the app's maker speaks last, in his own voice, with one plain closing word about it. ` : ''}`
+        ? (cseries
+          ? `Tabitha, the app's librarian, tells a short story from the Bible each evening; this week the evenings walk through the book of ${cseries.book}, and tonight is Part ${cseries.part} of ${cseries.of} (the video says so on screen). Say "Part ${cseries.part} of ${cseries.of}" in the YouTube title, and let the other captions mention plainly that it is one night of a week in ${cseries.book}${cseries.next ? ` and that the next part is tomorrow evening` : ` and that this is the last night`} — a fact, not an ask. ${voiced ? `The app's maker introduces it in his own voice. ` : ''}`
+          : `Tabitha, the app's librarian, tells the short story behind the verse of the day each evening (the morning post was the verse itself, read aloud). ${voiced ? `At the end the app's maker speaks last, in his own voice, with one plain closing word about it. ` : ''}`)
         : kind === 'quiz'
           ? `a painted character plays YESTERDAY's five-question quiz about the verse against a countdown clock, and viewers play along and see the answers (the post is a replay of yesterday's verse; today's is waiting in the app). `
           : challenge
@@ -872,7 +928,7 @@ Deno.serve(async (req) => {
       // `caption` and `hashtags` are the TikTok block under the names older
       // clients read, so a dashboard that predates the per-platform copy
       // still gets a caption.
-      const out = { hook: String(parsed.hook ?? '').slice(0, 80), caption: platforms.tiktok.text, hashtags: platforms.tiktok.tags, platforms }
+      const out = { hook: String(parsed.hook ?? '').slice(0, 80), caption: platforms.tiktok.text, hashtags: platforms.tiktok.tags, platforms, ...(ckey ? { seriesKey: ckey } : {}) }
       if (path) await park(path, new TextEncoder().encode(JSON.stringify(out)), 'application/json')
       return json({ ...out, cached: false })
     }

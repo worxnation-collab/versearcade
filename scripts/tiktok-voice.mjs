@@ -444,7 +444,7 @@ try {
       `> ${r.verse}`,
       `### Morning — opening the post${mark(r.verseWord)}`,
       body(r.verseWord),
-      ...(r.storyWord ? [`### Evening — ${r.storyPlace === 'open' ? 'introducing the story' : 'after the story'}${mark(r.storyWord)}`, body(r.storyWord)] : []),
+      ...(r.storyWord ? [`### Evening — ${r.storyPlace === 'open' ? 'introducing the story' : 'after the story'}${r.series ? ` · ${r.series}` : ''}${mark(r.storyWord)}`, body(r.storyWord)] : []),
     ].join('\n\n') + '\n').join('\n')
     console.log(md)
     await done()

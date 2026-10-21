@@ -5,12 +5,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/Button'
 import { todayLocalDate } from '@/lib/date'
-import { getVerseForDate } from '@/data/bible/questions'
+import { seriesFor, seriesLabel, storyVerseFor } from '@/data/tiktokSeries'
 import { pickStoryVoice } from '@/data/tiktokVoice'
 import { makeStory as makeStoryPost, storyAssets } from './make'
 import {
   TELLERS, ROOMS, VOICES, TEXTAREA_STYLE,
-  seedFor, addDays, fetchStory, useDisplayFont, DateRow, Busy, MadeCard,
+  storySeedFor, addDays, fetchStory, useDisplayFont, DateRow, Busy, MadeCard,
   type Made, type Story,
 } from './shared'
 
@@ -22,8 +22,8 @@ export default function StoryPost() {
   const [castAuto, setCastAuto] = useState(true)
   const [story, setStory] = useState<Story | null>(null)
   const [poster, setPoster] = useState<string | null>(null)
-  const [voice, setVoice] = useState(() => pickStoryVoice(seedFor(todayLocalDate()), 'tabitha').voice)
-  const [style, setStyle] = useState(() => pickStoryVoice(seedFor(todayLocalDate()), 'tabitha').style)
+  const [voice, setVoice] = useState(() => pickStoryVoice(storySeedFor(todayLocalDate()), 'tabitha').voice)
+  const [style, setStyle] = useState(() => pickStoryVoice(storySeedFor(todayLocalDate()), 'tabitha').style)
   const [voiceAuto, setVoiceAuto] = useState(true)
   const [withCopy, setWithCopy] = useState(true)
   const [withMusic, setWithMusic] = useState(true)
@@ -33,8 +33,10 @@ export default function StoryPost() {
   const [made, setMade] = useState<Made[]>([])
   const cancel = useRef(false)
 
-  const verse = getVerseForDate(date)
-  const pick = pickStoryVoice(seedFor(date), teller)
+  // On a series night the story is about tonight's part, not the day's verse.
+  const verse = storyVerseFor(date)
+  const series = seriesFor(date)
+  const pick = pickStoryVoice(storySeedFor(date), teller)
   useEffect(() => {
     if (!voiceAuto) return
     setVoice(pick.voice)
@@ -49,7 +51,7 @@ export default function StoryPost() {
   async function posterFor(d: string, st: Story): Promise<string> {
     const r = await import('@/lib/tiktokRender')
     const { roomImg, tellerImg } = await storyAssets(r, teller, room)
-    const v = getVerseForDate(d)
+    const v = storyVerseFor(d)
     return r.renderStoryPoster({ title: st.title, reference: v.reference, verseText: v.text, paragraphs: [...st.paragraphs, v.text], hook: st.hook, room: roomImg, teller: tellerImg })
   }
 
@@ -104,6 +106,11 @@ export default function StoryPost() {
       <div className="card" style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
         <DateRow date={date} setDate={setDate} homeDate={todayLocalDate()} />
         <div>
+          {series && (
+            <div style={{ fontSize: 11, letterSpacing: 1, color: 'var(--gold)', fontWeight: 800 }}>
+              {seriesLabel(series)}{series.next ? ` · tomorrow: ${series.next.reference}` : ' · last night'}
+            </div>
+          )}
           <b style={{ fontFamily: 'var(--font-display)', fontSize: 18 }}>{verse.reference}</b>
           <p className="faint" style={{ fontSize: 13, lineHeight: 1.45, marginTop: 4 }}>{verse.text}</p>
         </div>

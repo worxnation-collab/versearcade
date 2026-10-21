@@ -1459,6 +1459,11 @@ export interface StoryInput {
   /** The small-caps line over the title. Defaults to the story's own. */
   eyebrow?: string
   /**
+   * One gold line above the verse on the end card — a series night's "Part 3
+   * of 5 tomorrow night". Absent ⇒ the end card exactly as it was.
+   */
+  endNote?: string
+  /**
    * One held painting per paragraph, cut to on that paragraph's first word.
    * A null entry, and a missing array, is the room.
    *
@@ -1843,6 +1848,10 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
     lines.forEach((l, i) => outlined(ctx, l, WIDTH / 2, y0 + i * lh))
     ctx.font = `800 44px ${FONT_DISPLAY}`
     outlined(ctx, input.reference, WIDTH / 2, y0 + lines.length * lh + 20, '#ffd23f')
+    if (input.endNote) {
+      ctx.font = `800 40px ${FONT_DISPLAY}`
+      wrap(ctx, input.endNote, 900).forEach((l, i, all) => outlined(ctx, l, WIDTH / 2, y0 - 110 - (all.length - 1 - i) * 50, '#ffd23f'))
+    }
     // A person standing behind the link, exactly as the verse post's end card
     // does it — only on a day he actually spoke.
     if (input.own?.photo) drawSpeaker(ctx, input.own.photo, input.own.label ? `Made by ${input.own.label.split(' · ')[0]}` : undefined, WIDTH / 2, HEIGHT / 2 + 150, 78, 0, endFade)

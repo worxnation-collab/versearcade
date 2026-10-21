@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { GENERATED_ART } from '@/data/generatedArt'
 
@@ -44,6 +45,23 @@ const H = 640
 const VIEW_Y = 300
 const VIEW_H = 280
 
+/** The owner's own painting of the room WITH TABITHA PAINTED IN (2026-10-21,
+ *  the owner's call; prompt in `art/owner/study-library-tabitha.txt`). It is
+ *  NOT routed through GENERATED_ART — the `rewardArt` rule, so a gen-art run
+ *  can never overwrite it — and while it shows, the separate librarian render
+ *  is NOT drawn: she is already in the picture, and a second figure on top is
+ *  the "second Tabitha" the TikTok story layout shipped once. 640x953, laid at
+ *  its own aspect in the 398-wide space (398 x 593), so nothing is sliced off
+ *  her, and the view shows her head to feet with the lamps trimmed. If the
+ *  file fails to load, the scene falls back to the empty room + her render. */
+const PAINTED = '/keep/study-library-tabitha.jpg'
+const PAINTED_H = (W * 953) / 640
+const PAINTED_VIEW_Y = 40
+const PAINTED_VIEW_H = PAINTED_H - PAINTED_VIEW_Y
+/** Her head and the desk top in the painted room, for the (currently unused)
+ *  hotspot markers. */
+const PAINTED_HER = { x: 168, top: 76 }
+
 /** Where Tabitha stands: the clear half of the floor. The painting was
  *  prompted empty there on purpose — moving her right puts her through the
  *  desk, which is painted and cannot move. */
@@ -89,6 +107,10 @@ export function LibraryScene({
   const painting = GENERATED_ART['study-library']
   const her = GENERATED_ART['librarian']
   const alive = !still && !reduceMotion
+  const [paintedFailed, setPaintedFailed] = useState(false)
+  const painted = !paintedFailed
+  const viewY = painted ? PAINTED_VIEW_Y : VIEW_Y
+  const viewH = painted ? PAINTED_VIEW_H : VIEW_H
 
   return (
     <div
@@ -103,10 +125,20 @@ export function LibraryScene({
         isolation: 'isolate',
       }}
     >
-      <svg viewBox={`0 ${VIEW_Y} ${W} ${VIEW_H}`} style={{ display: 'block', width: '100%', height: 'auto' }}>
+      <svg viewBox={`0 ${viewY} ${W} ${viewH}`} style={{ display: 'block', width: '100%', height: 'auto' }}>
         <DrawnLibrary />
-        {painting && (
-          <image href={painting} x="0" y="0" width={W} height={H} preserveAspectRatio="xMidYMid slice" />
+        {painted ? (
+          <image
+            href={PAINTED}
+            x="0"
+            y="0"
+            width={W}
+            height={PAINTED_H}
+            preserveAspectRatio="xMidYMid meet"
+            onError={() => setPaintedFailed(true)}
+          />
+        ) : (
+          painting && <image href={painting} x="0" y="0" width={W} height={H} preserveAspectRatio="xMidYMid slice" />
         )}
 
         {/* LAYERED BACK TO FRONT, and that ordering is load-bearing: the desk is
@@ -117,10 +149,14 @@ export function LibraryScene({
         {/* The ledger, already painted on the desk — this only rings it. */}
         {ledger && <Tappable spot={ledger} x={LEDGER.x} y={LEDGER.y - 52} alive={alive} trail="down" />}
 
+        {painted && librarian && (
+          <Tappable spot={librarian} x={PAINTED_HER.x + 54} y={PAINTED_HER.top} alive={alive} trail="down-left" />
+        )}
+
         {/* Her. Bobs a hair, so the room has somebody alive in it rather than a
             sticker on a background — the trick CrowdLife plays, without its
             waypoints, because she never leaves her desk. */}
-        <motion.g
+        {!painted && <motion.g
           animate={alive ? { y: [0, -3, 0] } : { y: 0 }}
           transition={alive ? { duration: 4.2, repeat: Infinity, ease: 'easeInOut' } : undefined}
         >
@@ -155,7 +191,7 @@ export function LibraryScene({
               trail="down-left"
             />
           )}
-        </motion.g>
+        </motion.g>}
 
         {/* The satchel, nearest the camera and therefore last. Ours rather than
             painted — the room's floor was prompted empty on purpose, so

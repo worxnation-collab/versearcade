@@ -4725,7 +4725,11 @@ something in the room. Full design: `docs/STUDY-LIBRARY.md`. Five things:
 
 Two-mode for real (`store/library.ts`), because a keyless LOCAL build IS this
 tab and a dead librarian there would be a dead tab; the guest day rolls over on
-READ, so nothing has to fire at midnight. The room's painting is a **5:8
+READ, so nothing has to fire at midnight. **Since 2026-10-21 the room is the owner's own painting
+with Tabitha PAINTED IN** (`public/keep/study-library-tabitha.jpg`, prompt in
+`art/owner/`, deliberately outside `GENERATED_ART`), shown head to feet, and the
+separate `librarian` render is not drawn over it — two Tabithas is the TikTok
+scar. A failed load falls back to the empty room plus her render. The old room's painting was a **5:8
 portrait because the frame is one** — it was re-prompted twice to get there —
 and it's bled past the shell's 18px gutter, since it isn't a card on the tab,
 it's the tab.

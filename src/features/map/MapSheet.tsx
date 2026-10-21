@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useJuice } from '@/juice/useJuice'
 import { useAuth } from '@/store/auth'
+import { useChurch } from '@/store/church'
+import { useChurchExtras } from '@/features/church/ChurchExtras'
 import { useAccountLocked } from '@/components/AccountWall'
 import { MAP_AREAS, placesIn, type MapPlace } from '@/data/map'
 import { Icon } from '@/data/icons'
@@ -26,6 +28,10 @@ export function MapSheet({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate()
   const locked = useAccountLocked()
   const isAdmin = useAuth((s) => s.profile?.isAdmin ?? false)
+  // Whether you lead your church (0127) — the Leadership row's only gate. Asked
+  // when the sheet opens; the row simply isn't there until the answer is yes.
+  const myChurch = useChurch((s) => s.church)
+  const leader = !!useChurchExtras(myChurch?.id ?? '')?.isAdmin
   const invites = useInvitations()
   const [query, setQuery] = useState('')
 
@@ -57,11 +63,11 @@ export function MapSheet({ onClose }: { onClose: () => void }) {
     () =>
       MAP_AREAS.map((a) => ({
         ...a,
-        places: placesIn(a.id, { admin: isAdmin }).filter(
+        places: placesIn(a.id, { admin: isAdmin, leader }).filter(
           (p) => !q || p.label.toLowerCase().includes(q) || p.line.toLowerCase().includes(q),
         ),
       })).filter((a) => a.places.length > 0),
-    [q, isAdmin],
+    [q, isAdmin, leader],
   )
 
   const nothingFound = q.length > 0 && areas.length === 0

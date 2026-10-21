@@ -13,8 +13,9 @@ another one its own size, and the one that gives more wins a statue for its
 yard. The distinction that keeps the rule intact is that a church is an
 institution, not a person — and it is enforced in the *shape of the data*, not
 in copy: a matchup carries two totals and one church name, there is no losses
-column anywhere in the schema, and no RPC will tell you a per-member weekly
-number. Read that doc before extending anything competitive. **The exception
+column anywhere in the schema, and no RPC will tell a member or a stranger a
+per-member weekly number (a church's own verified LEADERSHIP sees its members
+by name since 0127 — the owner's call; see "A church can claim its own page"). Read that doc before extending anything competitive. **The exception
 stops at churches**: the Study tab, the Journal, the Basin, the crowd scenes and
 every player-facing surface are unchanged, and widening it needs its own
 argument rather than following from this one.
@@ -1637,20 +1638,20 @@ What a claim buys is narrow, and each exclusion is load-bearing:
   operator could undo.
 - **Nothing about a member**, and this is the rule someone will try to break.
 
-**The opt-in check-in list (0118) was RETIRED a day later (`0119`, the
-owner's call, 2026-10-14).** Leadership of a VERIFIED church sees
-`get_church_participation`, and only that: congregation totals with every number
-under five withheld (zero included), no usernames, no per-person row and nothing
-about who did not play. `docs/CHURCH-SHARED-VERSE.md`. The rule below is
-absolute again. Don't bring a list of people back as an "opt-in".
-
-**No per-member data for leadership.** The roster carries no per-person numbers
-("a crowd, not a ladder"), and a pastor-facing view of who played and who lapsed
-is that shape *with authority attached* — the person who played less becomes
-visible to their minister as having played less, which is worse than the
-player-vs-player comparison this app already refuses. A leader already sees the
-two aggregates that are public anyway: congregation size and banked XP. Anything
-more must be an aggregate with a small-count floor and needs its own argument.
+**Leadership sees its members BY NAME since `0127` (the owner's call,
+2026-10-21), and that reverses the rule this section used to state absolutely.**
+The owner's words: "this is a tool for church leaders, names are important".
+`church_leader_insights` gives verified leadership of THAT church the roster with
+each member's last play, streak and plays this week, plus congregation totals
+with no small-count floor; `church_feed` gives the congregation's activity with
+scores. Both are `church_admin_can` / `church_insider` gated and reach no board,
+no other church and no stranger. History, so the reversal is understood rather
+than re-litigated: 0118 shipped an opt-in check-in list, 0119 retired it in
+favour of floored aggregates on the argument that "the person who played less
+becomes visible to their minister as having played less", and 0127 restored
+names for everybody. **What still holds:** members are never ranked against
+each other — church competition stays church vs church (the board and the
+week), and there is deliberately no member leaderboard. `docs/CHURCH-CLAIM.md`.
 
 **The website is validated server-side now**, because this is the first writer
 of those columns that isn't us: https, http, or a bare host that gets prefixed;
@@ -2427,7 +2428,21 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0126` (two more churchyard statues — `church_statue_exists`
+The latest is `0127` (the church layer — `church_verse_plays`,
+`my_church_verse`, `submit_church_verse_play`, `church_feed`,
+`church_leader_insights`, `church_insider`, `is_church_admin_of`, and
+`get_effective_verse` restated to return NULL). **The church verse no longer
+replaces the daily drop**: everybody plays the global verse, and a member of a
+verified church that scheduled one also gets it as its own lane (`/play/church`,
+`ChurchVerseBox` on the Play tab, `store/churchVerse.ts`), recorded in its own
+table and paying no XP. `get_effective_verse` keeps its signature because
+approved iOS builds still call it to swap the drop — null is "play the global
+verse" to that code, so every installed build separates too. Run against a local
+Postgres 16 first (eleven cases: member/outsider/anon/unverified gates, once per
+day, bad results refused, no direct table read, re-run a no-op).
+`docs/CHURCH-SHARED-VERSE.md`.
+
+Before it, `0126` (two more churchyard statues — `church_statue_exists`
 restated from 0075 with `statue_praying` and `statue_cross` appended), APPLIED
 2026-10-21 and verified: one signature, ACL unchanged, both new ids true.
 
@@ -2508,9 +2523,8 @@ claimed church, `my_church_today` restated with the church's name and giving
 link; `docs/CHURCH-PACKAGES.md`). APPLIED 2026-10-13 except its two policies,
 as `0117_church_discovery_a_giving` / `_b_directory_today`. Verified live: one
 signature each, the house ACL shape, `church_directory` returning all 23
-churches. **A verified church's verse now REPLACES the global drop for its
-members** — the owner's call — keyed so the date, `plays`, the streak, first
-light and the run lock cannot tell (see the doc). The giving link is hidden in
+churches. A verified church's verse REPLACED the global drop for its members until
+`0127`, which separated them (see the 0127 note at the top of this list). The giving link is hidden in
 the App Store build by `givingLinkVisible()` in `lib/commerce.ts`.
 
 **The Supabase MCP hangs on any `apply_migration` containing `CREATE POLICY`**
@@ -2897,7 +2911,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0127` (0126 is the two new statues, 0125 is the API.Bible key, 0124 the reading translation, 0123 is the church verse series and note, 0122 is `church_question_drafts` in production only, 0121 is the church leader invite link, 0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0128` (0127 is the church layer, 0126 is the two new statues, 0125 is the API.Bible key, 0124 the reading translation, 0123 is the church verse series and note, 0122 is `church_question_drafts` in production only, 0121 is the church leader invite link, 0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

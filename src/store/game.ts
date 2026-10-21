@@ -1,9 +1,6 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import { getVerseForDate } from '@/data/bible/questions'
-import { aboutVerseSeed } from '@/data/cardAbout'
-import { parseReference } from '@/lib/bibleProgress'
-import { fetchEffectiveVerse } from './churchPackage'
 import { todayLocalDate } from '@/lib/date'
 import { localdb } from '@/lib/localdb'
 import { applyPlayLocal } from '@/lib/progress'
@@ -58,44 +55,10 @@ export function usualPlayTime(): string | null {
   }
 }
 
-// A VERIFIED church's verse for the day stands in for the global one — for
-// its members, on the dates leadership set one (`get_effective_verse`, 0119).
-// Every other case returns the global verse untouched: no church, an
-// unverified church, nothing set for today, a reference the client can't
-// parse, a slow or failed call. `fetchEffectiveVerse` has a 2.5s deadline, so
-// a church can make the drop different but never late.
-//
-// The church brings its OWN five questions (validated server-side against the
-// `Question` shape), so any verse can be a drop — not only the ones the pool
-// carries. When the pool does carry it, its speaker and facts come along for
-// the recap; the questions are still the church's.
-//
-// What deliberately does NOT change: `dropDate`, so the streak, `plays`,
-// first light and the run lock are keyed exactly as before, and
-// `ensure_daily_verse`, which keeps writing the GLOBAL verse — that row is the
-// shared record of the day and one congregation must not overwrite it.
-async function churchVerseOr(global: DailyVerse, date: string): Promise<DailyVerse> {
-  const v = await fetchEffectiveVerse(date)
-  if (!v) return global
-  const ref = parseReference(v.reference)
-  if (!ref) return global
-  const seed = aboutVerseSeed(v.reference)
-  return {
-    dropDate: date,
-    church: { id: v.churchId, name: v.churchName, series: v.series, note: v.note },
-    translation: v.churchName,
-    reference: v.reference,
-    book: ref.book,
-    chapter: ref.chapter,
-    verseStart: ref.start,
-    verseEnd: ref.end !== ref.start ? ref.end : undefined,
-    text: v.text,
-    speaker: seed?.speaker,
-    testament: seed?.testament,
-    questions: v.questions,
-    facts: seed?.facts ?? [],
-  }
-}
+// The daily drop is ALWAYS the global verse — for church members too (0127).
+// A verified church's verse used to stand in for it (0119); it is its own lane
+// now (`store/churchVerse.ts`, `/play/church`), so the shared moment of the day
+// is the same for everybody and the church's reading is added, never swapped.
 
 export const useGame = create<GameState>((set, get) => ({
   today: null,
@@ -122,8 +85,6 @@ export const useGame = create<GameState>((set, get) => ({
     }
 
     // ONLINE: make sure the shared row exists, then check if the user played.
-    // The church lookup runs beside it, so it adds no wait of its own.
-    const servedP = churchVerseOr(verse, date)
     await supabase.rpc('ensure_daily_verse', {
       p_drop_date: date,
       p_translation: verse.translation,
@@ -177,8 +138,7 @@ export const useGame = create<GameState>((set, get) => ({
       }
     }
     // Keep an accurate just-played result if we have one; else use the rebuilt one.
-    const served = await servedP
-    set({ today: served, todayDate: date, playedToday: played, lastResult: get().lastResult ?? restored })
+    set({ today: verse, todayDate: date, playedToday: played, lastResult: get().lastResult ?? restored })
   },
 
   async submitPlay(result) {

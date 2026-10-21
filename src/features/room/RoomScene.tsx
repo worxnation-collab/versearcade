@@ -194,7 +194,14 @@ export function RoomScene({
                   }
                 : {})}
             >
-              <FurnishingProp value={value} x={bx} y={by} mount={a.mount as RoomMount} lit={lampLit} />
+              <FurnishingProp
+                value={value}
+                x={bx}
+                y={by}
+                mount={a.mount as RoomMount}
+                lit={lampLit}
+                sizeScale={spot?.s ?? 1}
+              />
             </motion.g>
           )
         })}

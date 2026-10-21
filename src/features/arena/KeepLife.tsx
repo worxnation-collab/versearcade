@@ -29,6 +29,15 @@ const WAYPOINTS: CrowdWaypoint[] = [
 const sizeFor = (b: number) =>
   Math.round(44 - ((Math.min(Math.max(b, 1.7), 20.7) - 1.7) / 19) * 18)
 
-export function KeepLife({ members, inert = false }: { members: KeepMember[]; inert?: boolean }) {
-  return <CrowdLife members={members} waypoints={WAYPOINTS} sizeFor={sizeFor} max={6} inert={inert} />
+export function KeepLife({
+  members,
+  inert = false,
+  waypoints = WAYPOINTS,
+}: {
+  members: KeepMember[]
+  inert?: boolean
+  /** The painting's own open floor (keepBackdrop.ts); defaults to hall.jpg's. */
+  waypoints?: CrowdWaypoint[]
+}) {
+  return <CrowdLife members={members} waypoints={waypoints} sizeFor={sizeFor} max={6} inert={inert} />
 }

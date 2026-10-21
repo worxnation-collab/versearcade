@@ -135,11 +135,13 @@ export function ProfileHero({
         <p
           className={cardBgInk(cardBackground) === 'gold' ? 'gold-text' : undefined}
           style={{
-            margin: '8px 0 0',
+            margin: '10px 0 0',
             textAlign: 'center',
             fontFamily: 'var(--font-display)',
-            fontSize: FIGURE >= 170 ? 22 : 20,
+            fontSize: FIGURE >= 170 ? 28 : 22,
             fontWeight: 800,
+            lineHeight: 1.15,
+            textShadow: '0 2px 10px rgba(9, 6, 8,0.7)',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
@@ -151,7 +153,7 @@ export function ProfileHero({
           <FounderTag username={username} />
         </div>
         {title && (
-          <p className="faint" style={{ margin: '1px 0 0', textAlign: 'center', fontSize: 13, fontWeight: 600 }}>
+          <p className="dim" style={{ margin: '2px 0 0', textAlign: 'center', fontSize: 14, fontWeight: 600, textShadow: '0 1px 6px rgba(9, 6, 8,0.8)' }}>
             {title}
           </p>
         )}

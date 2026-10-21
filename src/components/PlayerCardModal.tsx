@@ -229,8 +229,8 @@ function CardSheet({ username, onClose }: { username: string; onClose: () => voi
                 size={140}
                 // The faction comes FIRST, for anyone: it left the card with the
                 // identity block, and it is the one piece of identity the
-                // pop-up would otherwise drop entirely. "This is you" is the
-                // fallback on your own card when you have no faction yet.
+                // pop-up would otherwise drop entirely. No faction, no caption:
+                // the handle under the portrait already says whose card it is.
                 caption={
                   data.denomination ? (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -245,8 +245,6 @@ function CardSheet({ username, onClose }: { username: string; onClose: () => voi
                       />
                       {denominationName(data.denomination)}
                     </span>
-                  ) : isMe ? (
-                    'This is you'
                   ) : null
                 }
               />

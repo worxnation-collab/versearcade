@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { supabase } from '@/lib/supabase'
@@ -61,6 +61,23 @@ export default function ChurchesScreen() {
   // location key of 'default' means this is the first entry of the session —
   // there is no in-app page to return to, so send them somewhere real instead,
   // which depends on whether they have an account at all.
+  // ?claim=1 is Landing's "Church leader?" link. Frozen at mount and stripped,
+  // like every deep link here, so a reload doesn't yank the page back down.
+  const [params, setParams] = useSearchParams()
+  const [claimIntent] = useState(() => params.get('claim') === '1')
+  const signedIn = useAuth((s) => s.mode === 'online' && s.isAuthed)
+  useEffect(() => {
+    if (!claimIntent) return
+    // Offset by hand rather than scrollIntoView: the top strip (notch scrim,
+    // the first-visit music toast) would sit over the card's title.
+    const el = document.getElementById('claim')
+    if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 88 })
+    const next = new URLSearchParams(params)
+    next.delete('claim')
+    setParams(next, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const exit = () => {
     juice.select?.()
     if (location.key !== 'default') navigate(-1)
@@ -168,6 +185,49 @@ export default function ChurchesScreen() {
           <span className="faint" style={{ fontSize: 12, fontWeight: 700 }}>Always</span>
         </div>
         <List items={FREE} />
+      </section>
+
+      {/* How leadership claims a page. Deliberately NOT a sign-up path of its
+          own: a leader makes the same free account everybody makes, then asks
+          from the church's page, and a person verifies it by hand
+          (docs/CHURCH-CLAIM.md). Nothing here grants anything. */}
+      <section
+        id="claim"
+        className="card"
+        style={{ marginBottom: 12, scrollMarginTop: 16, ...(claimIntent ? { borderColor: 'var(--edge)' } : null) }}
+        aria-labelledby="claim-title"
+      >
+        <b id="claim-title" style={{ fontFamily: 'var(--font-display)', fontSize: 16 }}>
+          Claim your church&rsquo;s page
+        </b>
+        <ol style={{ margin: '10px 0 0', paddingLeft: 20, lineHeight: 1.55, fontSize: 14, display: 'grid', gap: 6 }}>
+          <li>{signedIn ? 'You’re signed in — that’s step one done.' : 'Make a free account, the same one anybody plays with — or sign in.'}</li>
+          <li>Find your church and open its page.</li>
+          <li>
+            Tap <b>Add info</b> (or <b>Suggest an edit</b>) and say you&rsquo;re leadership. A person checks with your church — a
+            call, or an email from its own address — and then the page is yours to edit.
+          </li>
+        </ol>
+        <p className="faint" style={{ margin: '10px 0 0', fontSize: 12.5, lineHeight: 1.45 }}>
+          Sent a leadership invite link by us? Just open it — it does the same thing in one tap.
+        </p>
+        <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
+          {!signedIn && (
+            <Button variant="secondary" full onClick={() => { juice.select?.(); navigate('/auth?mode=signup') }}>
+              Create a free account
+            </Button>
+          )}
+          <Button variant={signedIn ? 'secondary' : 'ghost'} full onClick={() => { juice.select?.(); navigate('/churches/find') }}>
+            Find your church →
+          </Button>
+          {!signedIn && (
+            <p className="faint center" style={{ fontSize: 13, margin: 0 }}>
+              <span style={{ textDecoration: 'underline', cursor: 'pointer' }} onClick={() => navigate('/auth')}>
+                I already have an account
+              </span>
+            </p>
+          )}
+        </div>
       </section>
 
       <section className="card" style={{ marginBottom: 12 }} aria-labelledby="privacy">

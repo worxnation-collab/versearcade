@@ -138,6 +138,16 @@ export default function Landing() {
                   or just play today’s verse
                 </span>
               </p>
+              {/* Leaders make the same account as everybody; this only shows
+                  them how a page is claimed afterwards (/churches#claim). */}
+              <p className="faint center" style={{ fontSize: 12.5, margin: '2px 0 0' }}>
+                <span
+                  style={{ textDecoration: 'underline', cursor: 'pointer' }}
+                  onClick={() => navigate('/churches?claim=1')}
+                >
+                  Pastor or church leader? Claim your page
+                </span>
+              </p>
             </>
           ) : (
             <>

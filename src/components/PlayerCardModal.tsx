@@ -15,6 +15,7 @@ import { ProfileHero } from '@/features/profile/ProfileHero'
 import { denominationColor, denominationName } from '@/data/denominations'
 import { RoomVisitSheet } from '@/features/room/RoomVisitSheet'
 import { GiveGiftSheet } from '@/features/gifts/GiveGiftSheet'
+import { PaintedIcon } from '@/components/PaintedIcon'
 
 // Tap any avatar anywhere and their card pops up. A single provider owns the
 // one open card, so avatars stay dumb: they just say "open @handle".
@@ -262,7 +263,7 @@ function CardSheet({ username, onClose }: { username: string; onClose: () => voi
             <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: alreadyBuddy ? '1fr' : '1fr 1fr', gap: 10 }}>
               {!alreadyBuddy && (
                 <Button variant="secondary" full onClick={addBuddy} disabled={sending || !!buddyMsg}>
-                  {buddyMsg ? '✓ Sent' : sending ? '…' : '🤝 Add buddy'}
+                  {buddyMsg ? '✓ Sent' : sending ? '…' : <><PaintedIcon id="buddies" /> Add buddy</>}
                 </Button>
               )}
               <Button variant="gold" full onClick={battle}>⚔️ Battle</Button>

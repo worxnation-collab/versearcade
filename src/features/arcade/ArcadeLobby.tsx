@@ -7,6 +7,7 @@ import { ARCADE_GAMES, type ArcadeGame } from './games'
 import { useAccountLocked } from '@/components/AccountWall'
 import { useArcadeXp } from '@/store/arcadeXp'
 import { useJuice } from '@/juice/useJuice'
+import { PaintedIcon } from '@/components/PaintedIcon'
 
 // The arcade: a row of machines against a wall, and you pick one.
 //
@@ -141,7 +142,7 @@ function Machine({ game, width, delay }: { game: ArcadeGame; width: number; dela
               boxShadow: '0 3px 8px rgba(0,0,0,0.55)',
             }}
           >
-            🔒
+            <PaintedIcon id="lock" />
           </span>
         )}
       </div>

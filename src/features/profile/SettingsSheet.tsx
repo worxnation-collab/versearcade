@@ -10,6 +10,7 @@ import { useReminders } from '@/store/reminders'
 import { MusicSection } from './MusicSection'
 import { InstallRow } from '@/features/home/InstallPrompt'
 import { AppStoreRow } from '@/features/home/AppStoreNudge'
+import { PaintedIcon } from '@/components/PaintedIcon'
 
 /** Four steps, and 1 is exactly what the book was drawn at. */
 const TEXT_SIZES = [
@@ -134,7 +135,7 @@ export function SettingsSheet({
         {/* Grabber + header */}
         <div style={{ width: 42, height: 4, borderRadius: 999, background: 'var(--stroke)', margin: '0 auto 12px' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <h2 style={{ fontSize: 22, margin: 0 }}>⚙️ Settings</h2>
+          <h2 style={{ fontSize: 22, margin: 0 }}><PaintedIcon id="settings" /> Settings</h2>
           <button onClick={onClose} className="pill" style={{ fontSize: 13, fontWeight: 800, padding: '7px 14px' }}>Done</button>
         </div>
 

@@ -28,6 +28,7 @@ import {
 import { useChurch } from '@/store/church'
 import { DecorThumb } from './KeepArt'
 import { KeepScene } from './KeepScene'
+import { PaintedIcon } from '@/components/PaintedIcon'
 
 // The Keep — a faction's hall, opened from a row on the battle Teams board, or
 // your own hall from the "Your keep" card.
@@ -519,7 +520,7 @@ function Shelf({
                   ? `${out ? 'In the hall' : MOUNT_WORD[d.mount]}${next ? ` · ${next.name} at ${next.goal}` : ''}`
                   : (() => {
                       const ch = CHALLENGES.find((c) => c.decor === d.id)
-                      return ch ? `🔒 ${ch.text} (${Math.min(counters[ch.counter] ?? 0, ch.goal)}/${ch.goal})` : '🔒 Locked'
+                      return ch ? <><PaintedIcon id="lock" /> {`${ch.text} (${Math.min(counters[ch.counter] ?? 0, ch.goal)}/${ch.goal})`}</> : <><PaintedIcon id="lock" /> Locked</>
                     })()}
               </span>
             </button>

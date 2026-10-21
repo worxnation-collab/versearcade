@@ -12,6 +12,7 @@ import { usePlayerCard } from '@/components/PlayerCardModal'
 import { useJuice } from '@/juice/useJuice'
 import { collectibleByKey } from '@/data/collectibles'
 import { activeNews } from '@/data/catalog'
+import { PaintedIcon } from '@/components/PaintedIcon'
 
 // The mailbox — everything addressed to YOU, in one place.
 //
@@ -73,7 +74,7 @@ export default function MailScreen() {
   return (
     <Page>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-        <h2 style={{ fontSize: 24, margin: 0 }}>📬 Mail</h2>
+        <h2 style={{ fontSize: 24, margin: 0 }}><PaintedIcon id="mail" /> Mail</h2>
         <div style={{ flex: 1 }} />
         <button
           className="pill"

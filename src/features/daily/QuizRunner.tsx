@@ -22,6 +22,7 @@ import { fetchVerse, peekVerse } from '@/lib/bible'
 import { quizTranslation } from '@/lib/translations'
 import { localizeQuestions } from '@/data/bible/localize'
 import type { DailyVerse, PlayResult, Question } from '@/types'
+import { PaintedIcon } from '@/components/PaintedIcon'
 
 type Phase = 'read' | 'question' | 'feedback' | 'submitting'
 
@@ -494,7 +495,7 @@ export function QuizRunner({
           }}
           aria-label={locked ? 'Run in progress' : 'Back'}
         >
-          {locked ? '🔒' : '✕'}
+          {locked ? <PaintedIcon id="lock" /> : '✕'}
         </button>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 22 }}>
           <CountUp to={score} /> <span className="faint" style={{ fontSize: 13 }}>pts</span>
@@ -518,7 +519,7 @@ export function QuizRunner({
             style={{ overflow: 'hidden' }}
           >
             <div className="card" style={{ marginBottom: 14, background: 'rgba(94,231,223,0.1)', borderColor: 'var(--sky)' }}>
-              <b style={{ color: 'var(--sky)' }}>🔒 You’re mid-run</b>
+              <b style={{ color: 'var(--sky)' }}><PaintedIcon id="lock" /> You’re mid-run</b>
               <p style={{ marginTop: 6, fontSize: 15, lineHeight: 1.5 }}>
                 {left === 0
                   ? 'Your score is one tap away.'

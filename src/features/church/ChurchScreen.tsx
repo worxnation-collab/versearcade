@@ -27,6 +27,7 @@ import { statueById } from './rivalry'
 import { ChurchPicker } from './ChurchPicker'
 import { CHURCH_TIERS, churchLevelInfo, nextTier, tierForLevel, tierIndexForLevel, xpToReachLevel } from './levels'
 import type { Church } from '@/types'
+import { PaintedIcon } from '@/components/PaintedIcon'
 
 // The Church tab. Pick the church you actually attend, then pour the points
 // you've earned into it: the congregation's XP is pooled, the building grows as
@@ -626,7 +627,7 @@ function ChurchHome({ church }: { church: Church }) {
                               : `Unlocks at LVL ${t.minLevel}`}
                         </span>
                       </span>
-                      <span style={{ fontSize: 16 }}>{earned ? '✅' : '🔒'}</span>
+                      <span style={{ fontSize: 16 }}>{earned ? '✅' : <PaintedIcon id="lock" />}</span>
                     </div>
                   )
                 })}
@@ -826,7 +827,7 @@ function Landscaping({
                         {f.name}
                       </span>
                       <span className="faint" style={{ display: 'block', fontSize: 10, marginTop: 2 }}>
-                        {planted ? 'In the yard' : open ? 'Tap to plant' : `🔒 ${f.given.toLocaleString()} given`}
+                        {planted ? 'In the yard' : open ? 'Tap to plant' : <><PaintedIcon id="lock" /> {f.given.toLocaleString()} given</>}
                       </span>
                     </button>
                     {planted && (

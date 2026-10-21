@@ -4643,7 +4643,13 @@ every tab as the fallback for an image that fails to load, and the map's area
 headings still use the drawn set. The row measures ~306px and clears a 320px
 phone; `.app-shell`'s bottom padding went 96 → 118 for the taller bar. The "Open right now" rows (`features/map/InviteIcon.tsx`,
 `public/invite/`) are painted the same way, keyed on the INVITATION id, and an
-invitation with no painting keeps its drawn gold path. Road
+invitation with no painting keeps its drawn gold path. The emoji that
+labelled buttons, headers and folds (lock, streak, pray, mail, journal,
+settings, customize, postcard, buddies, invite, material, arrangement, week,
+first light, freeze) are `<PaintedIcon id>` (`components/PaintedIcon.tsx`,
+`src/assets/icons/`), sized in `em` so an icon takes the emoji's own box.
+Content emoji (badges, collectibles, prayer occasions, crowd chatter, the
+equipped streak flame) and emoji inside running sentences stay emoji. Road
 rewards (`data/rewardArt.ts`) were the first owner-supplied painted icons and
 follow the same hand-kept-table rule: never route these through
 `GENERATED_ART`, where a gen-art run could overwrite them.

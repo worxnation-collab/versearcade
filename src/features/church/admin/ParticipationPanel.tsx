@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { fetchParticipation } from '@/store/churchAdmin'
 import { PARTICIPATION_FLOOR, type ChurchParticipation } from '@/types/churchPackages'
+import { PaintedIcon } from '@/components/PaintedIcon'
 
 // How the congregation's last two weeks went — PRIVATE to leadership (0119).
 //
@@ -42,7 +43,7 @@ export function ParticipationPanel({ churchId, sample }: { churchId: string; sam
       )}
       <div className="card" style={{ padding: '10px 12px', borderColor: 'var(--edge)' }}>
         <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5 }}>
-          🔒 <b>Only your church's leadership sees this.</b>{' '}
+          <PaintedIcon id="lock" /> <b>Only your church's leadership sees this.</b>{' '}
           <span className="dim">
             Every number is the whole congregation together, never one person. Anything under{' '}
             {PARTICIPATION_FLOOR} shows as “fewer than {PARTICIPATION_FLOOR}”, so no total can point at someone.

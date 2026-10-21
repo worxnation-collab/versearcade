@@ -29,6 +29,7 @@ import { ChurchNudge } from '@/features/church/ChurchNudge'
 import { SettingsSheet } from './SettingsSheet'
 import { Tutorial } from '@/features/home/Tutorial'
 import { Icon, type IconId } from '@/data/icons'
+import { PaintedIcon } from '@/components/PaintedIcon'
 
 export default function ProfileScreen() {
   const navigate = useNavigate()
@@ -196,7 +197,7 @@ export default function ProfileScreen() {
     return (
       <Page>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 14 }}>
-          <h2 style={{ fontSize: 24, margin: 0 }}>✨ Customize</h2>
+          <h2 style={{ fontSize: 24, margin: 0 }}><PaintedIcon id="customize" /> Customize</h2>
           <button onClick={closeCustomize} className="pill" style={{ fontSize: 13, fontWeight: 800, padding: '7px 14px', flexShrink: 0 }}>
             Done
           </button>
@@ -348,7 +349,8 @@ export default function ProfileScreen() {
         tabs={[
           {
             key: 'buddies',
-            label: '🤝 Buddies',
+            icon: <PaintedIcon id="buddies" />,
+            label: 'Buddies',
             // The pill wears the same single, countless dot the bottom nav
             // does. This row used to advertise nothing at all, and 71% of every
             // buddy request ever sent was still unanswered.
@@ -365,7 +367,8 @@ export default function ProfileScreen() {
           ...(profile.referralCode
             ? [{
                 key: 'invite',
-                label: '🎁 Invite',
+                icon: <PaintedIcon id="invite" />,
+                label: 'Invite',
                 right: `${Math.min(profile.referralCount ?? 0, 5)}/5 friends toward the carried-cross look`,
                 content: (
                   <>

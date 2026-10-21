@@ -5,6 +5,7 @@ import { QuizRunner, type QuizHudState } from '@/features/daily/QuizRunner'
 import { useAuth } from '@/store/auth'
 import { useLive, type LivePlayer } from '@/store/live'
 import type { DailyVerse, PlayResult } from '@/types'
+import { PaintedIcon } from '@/components/PaintedIcon'
 
 // A quiz run against a LIVE opponent — the same shape as CpuVersusQuiz, with the
 // simulated plan replaced by messages off the wire. Deliberately the same shape:
@@ -156,7 +157,7 @@ function LiveVersusBar({
             {them.done
               ? '🏁 They’ve finished — play your own out'
               : them.locked
-                ? `🔒 Locked question ${them.qi + 1}`
+                ? <><PaintedIcon id="lock" /> Locked question {them.qi + 1}</>
                 : `💭 On question ${them.qi + 1} of ${totalQuestions}`}
           </span>
         )}

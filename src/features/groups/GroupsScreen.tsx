@@ -8,6 +8,7 @@ import { useAuth } from '@/store/auth'
 import { useJuice } from '@/juice/useJuice'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { shareResult, inviteUrl } from '@/features/daily/shareCard'
+import { PaintedIcon } from '@/components/PaintedIcon'
 
 // Co-op tier: a group opens the SAME daily verse and pools points toward a
 // shared goal against the clock. Everyone climbs together — no member is ever
@@ -144,7 +145,7 @@ function GroupCard({ g, canContribute, onContribute }: { g: GroupView; canContri
         <div style={{ fontSize: 26 }}>{g.emoji}</div>
         <div style={{ flex: 1 }}>
           <b style={{ fontFamily: 'var(--font-display)', fontSize: 18 }}>{g.name}</b>
-          <div className="faint" style={{ fontSize: 12 }}>LVL {g.level} · 🔥 {g.currentStreak} · {g.memberCount} members · code {g.joinCode}</div>
+          <div className="faint" style={{ fontSize: 12 }}>LVL {g.level} · <PaintedIcon id="streak" /> {g.currentStreak} · {g.memberCount} members · code {g.joinCode}</div>
         </div>
       </div>
 

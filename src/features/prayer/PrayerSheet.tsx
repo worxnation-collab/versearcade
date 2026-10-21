@@ -17,6 +17,7 @@ import {
   type Occasion,
   type Prayer,
 } from '@/data/prayers'
+import { PaintedIcon } from '@/components/PaintedIcon'
 
 // A practice prayer, in the one room in this app that belongs to one person.
 //
@@ -262,7 +263,7 @@ export function PrayerSheet({ onClose }: { onClose: () => void }) {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
             <b style={{ fontFamily: 'var(--font-display)', fontSize: 18, flex: 1, minWidth: 0 }}>
-              🙏 Pray
+              <PaintedIcon id="pray" /> Pray
             </b>
             <button className="pill" onClick={() => { stop(); juice.select(); onClose() }} aria-label="Close">✕</button>
           </div>

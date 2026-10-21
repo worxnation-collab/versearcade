@@ -14,6 +14,7 @@ import { petProgress } from '@/lib/petProgress'
 import { chaptersOpened } from '@/data/seals'
 import { DEFAULT_AVATAR, skinOwned, type AvatarSpec, type SkinDef } from '@/data/avatar'
 import { DOORS, atDoor, wardrobe, type WardrobeEntry } from '@/data/wardrobe'
+import { PaintedIcon } from '@/components/PaintedIcon'
 
 // The Wardrobe — everything there is to earn, and the door to each thing.
 //
@@ -211,7 +212,7 @@ function Tile({
               padding: 3,
             }}
           >
-            🔒
+            <PaintedIcon id="lock" />
           </span>
         )}
       </div>

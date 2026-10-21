@@ -18,6 +18,12 @@ import stat_longest from '@/assets/icons/stat_longest.png'
 import stat_cards from '@/assets/icons/stat_cards.png'
 import stat_xp from '@/assets/icons/stat_xp.png'
 import stat_plays from '@/assets/icons/stat_plays.png'
+import church_invite from '@/assets/icons/church_invite.png'
+import church_landscaping from '@/assets/icons/church_landscaping.png'
+import church_giving from '@/assets/icons/church_giving.png'
+import church_worldwide from '@/assets/icons/church_worldwide.png'
+import church_topgivers from '@/assets/icons/church_topgivers.png'
+import church_buildings from '@/assets/icons/church_buildings.png'
 
 // The painted stand-ins for the emoji that used to label buttons, headers and
 // folds — owner-supplied (2026-10-21), cut out of baked-in checkerboards into
@@ -52,6 +58,13 @@ const ICONS = {
   stat_cards,
   stat_xp,
   stat_plays,
+  // The church tab's sections and its invite button.
+  church_invite,
+  church_landscaping,
+  church_giving,
+  church_worldwide,
+  church_topgivers,
+  church_buildings,
 } as const
 
 export type PaintedIconId = keyof typeof ICONS

@@ -1,6 +1,7 @@
 import { borderRender, badgeByKey } from '@/data/cosmetics'
 import { Character } from '@/components/Character'
 import { usePlayerCard } from '@/components/PlayerCardModal'
+import { GOLD_RING, GOLD_RING_EDGE, PORTRAIT_FILL } from '@/components/portraitTexture'
 import type { AvatarSpec } from '@/types'
 
 export function Avatar({
@@ -41,9 +42,15 @@ export function Avatar({
         placeItems: 'center',
         fontSize: size * 0.5,
         overflow: 'hidden',
-        background: 'linear-gradient(180deg, var(--grape), var(--grape-deep))',
-        boxShadow: render.type === 'shadow' ? render.boxShadow : '0 6px 16px rgba(0,0,0,0.4)',
+        // Painted, not flat (components/portraitTexture.ts). The tile is
+        // stretched to the face so every size shows the same strokes.
+        background: PORTRAIT_FILL,
+        backgroundSize: 'cover',
+        // A textured ring carries the shadow itself (it is under the face, and a
+        // shadow cast by the face would darken the ring it sits on).
+        boxShadow: render.type === 'shadow' ? render.boxShadow : render.type === 'textured' ? undefined : '0 6px 16px rgba(0,0,0,0.4)',
         flexShrink: 0,
+        position: render.type === 'textured' ? 'relative' : undefined,
       }}
     >
       {character ? <Character spec={character} size={size} /> : emoji}
@@ -53,7 +60,26 @@ export function Avatar({
   // Gradient borders (aurora, halo) need a conic-gradient ring wrapping the face.
   const ringPad = Math.max(3, Math.round(size * 0.07))
   const content =
-    render.type === 'gradient' ? (
+    render.type === 'textured' ? (
+      // The textured gold ring sits UNDER the face and 3px outside it, so it
+      // shows only as the annulus the old box-shadow ring drew: same footprint,
+      // same layout box. `isolation` keeps the ring's stacking local.
+      <div style={{ position: 'relative', isolation: 'isolate', borderRadius: '50%', flexShrink: 0, lineHeight: 0 }}>
+        <span
+          aria-hidden
+          style={{
+            position: 'absolute',
+            inset: -3,
+            borderRadius: '50%',
+            background: GOLD_RING,
+            backgroundSize: 'cover',
+            boxShadow: `${GOLD_RING_EDGE}, ${render.boxShadow}`,
+            zIndex: 0,
+          }}
+        />
+        <div style={{ position: 'relative', zIndex: 1, borderRadius: '50%' }}>{face}</div>
+      </div>
+    ) : render.type === 'gradient' ? (
       <div
         className={render.animated ? 'va-halo' : undefined}
         style={{

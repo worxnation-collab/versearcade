@@ -128,6 +128,9 @@ export const isUnlocked = (
 // that). `halo` also animates (see the .va-halo rule in index.css).
 export type BorderRender =
   | { type: 'shadow'; boxShadow: string }
+  // The textured gold ring (components/portraitTexture.ts), drawn under the
+  // face. `boxShadow` is any glow that goes with it.
+  | { type: 'textured'; boxShadow: string }
   | { type: 'gradient'; gradient: string; animated?: boolean; glow?: string }
 
 const BASE_SHADOW = '0 6px 16px rgba(0,0,0,0.4)'
@@ -139,7 +142,7 @@ export function borderRender(key: string): BorderRender {
     case 'silver':
       return { type: 'shadow', boxShadow: `0 0 0 3px #d7dee8, 0 0 0 6px rgba(215,222,232,0.35), ${BASE_SHADOW}` }
     case 'gold':
-      return { type: 'shadow', boxShadow: `0 0 0 3px #ffd23f, 0 0 0 6px rgba(255,210,63,0.35), 0 0 16px 2px rgba(255,210,63,0.45), ${BASE_SHADOW}` }
+      return { type: 'textured', boxShadow: `0 0 0 3px rgba(255,210,63,0.35), 0 0 16px 2px rgba(255,210,63,0.45), ${BASE_SHADOW}` }
     case 'amethyst':
       return { type: 'shadow', boxShadow: `0 0 0 3px #a06bff, 0 0 18px 3px rgba(160,107,255,0.65), ${BASE_SHADOW}` }
     case 'aurora':
@@ -179,6 +182,6 @@ export function borderRender(key: string): BorderRender {
       }
     case 'default':
     default:
-      return { type: 'shadow', boxShadow: `0 0 0 3px var(--gold), ${BASE_SHADOW}` }
+      return { type: 'textured', boxShadow: BASE_SHADOW }
   }
 }

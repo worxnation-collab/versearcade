@@ -1,7 +1,9 @@
 import { churchSkin, type ChurchSkinId } from './skins'
 import { tierIndexForLevel, CHURCH_TIERS } from './levels'
 
-// The churchyard paintings: one FIXED scene per skin, building included.
+// The churchyard paintings: one FIXED scene per skin, each an EMPTY yard —
+// ChurchScene stands the drawn building and path on top, so the level ladder
+// still shows.
 //
 // SUPPLIED by the app's owner as finished art (2026-10-21), not generated
 // through scripts/gen-art.mjs, so this is a hand-kept table rather than rows

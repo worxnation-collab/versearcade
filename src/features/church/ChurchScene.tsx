@@ -145,11 +145,13 @@ export function ChurchScene({
   // are the scene.
   //
   // Since 2026-10-21 the owner's illustrated set comes first: one fixed
-  // painting per skin (features/church/sceneArt.ts) with the BUILDING PAINTED
-  // IN, so while it is showing the drawn path and ChurchArt are skipped — a
-  // second church stood in front of the painted one otherwise. Everything
-  // drawn on top (flora, statues, the crowd) is unchanged. If the painting
-  // fails to load, the scene falls back to exactly what it drew before.
+  // painting per skin (features/church/sceneArt.ts), and every one is an EMPTY
+  // churchyard — no building in it. That is deliberate: the first cut of this
+  // set had the church painted in, which froze the yard at one building and
+  // hid the level ladder. So the drawn path and ChurchArt stand on top of the
+  // painting exactly as they did on the drawn lawn, and the building still
+  // grows tier by tier. Flora, statues and the crowd are unchanged. If the
+  // painting fails to load, the scene falls back to the generated lawn.
   const scene = churchSceneArt(level, skin)
   const [failed, setFailed] = useState<string | null>(null)
   const painted = failed !== scene
@@ -193,7 +195,7 @@ export function ChurchScene({
             objectFit: 'cover',
             // Nudged up so the painted horizon lands on GROUND rather than a
             // few pixels below it, where the figures would stand in the sky.
-            objectPosition: painted ? '65% 60%' : 'center 42%',
+            objectPosition: 'center 42%',
           }}
           onError={painted ? () => setFailed(scene) : undefined}
         />
@@ -235,8 +237,6 @@ export function ChurchScene({
           }}
         />
       )}
-      {!painted && (
-        <>
       {/* The path up to the door — narrow at the church, wide at the viewer, so
           it reads as ground running away from you rather than a beam of light.
           It's what makes the figures look like they're standing *outside* the
@@ -262,9 +262,6 @@ export function ChurchScene({
       <div style={{ position: 'absolute', left: '50%', bottom: GROUND - 26, transform: 'translateX(-50%)' }}>
         <ChurchArt level={level} skin={skin} size={CHURCH_W} ground="#3f5420" />
       </div>
-
-        </>
-      )}
 
       {/* Planted in front of the wall, behind the people: flowers earned by
           giving, drawn by ChurchFlora. Non-interactive — planting happens on

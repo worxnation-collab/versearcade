@@ -190,9 +190,24 @@ function toBase64(blob: Blob): Promise<string> {
 export async function sharePostcard(username: string): Promise<PostcardOutcome> {
   const blob = await renderPostcard(username)
   if (!blob) return 'failed'
+  return shareImage(blob, {
+    filename: 'upper-room',
+    title: 'My Upper Room',
+    text: `A little chamber on the wall. ${APP_URL}`,
+  })
+}
 
-  const text = `A little chamber on the wall. ${APP_URL}`
-
+/**
+ * Hand a picture to the person: the native share sheet in the app, Web Share
+ * where the browser has it, a download where a download means something. The
+ * postcard's path, lifted out so a second "save a picture" (the church's
+ * printable QR code) takes the same three branches rather than re-learning the
+ * WKWebView lesson above.
+ */
+export async function shareImage(
+  blob: Blob,
+  { filename, title, text }: { filename: string; title: string; text: string },
+): Promise<PostcardOutcome> {
   if (isNativeApp()) {
     try {
       const [{ Filesystem, Directory }, { Share }] = await Promise.all([
@@ -202,31 +217,31 @@ export async function sharePostcard(username: string): Promise<PostcardOutcome> 
       // A fresh name each time: the sheet can hold on to the previous file, and
       // overwriting the one it is reading hands somebody last week's room.
       const { uri } = await Filesystem.writeFile({
-        path: `upper-room-${Date.now()}.png`,
+        path: `${filename}-${Date.now()}.png`,
         data: await toBase64(blob),
         directory: Directory.Cache,
       })
-      await Share.share({ title: 'My Upper Room', text, files: [uri] })
+      await Share.share({ title, text, files: [uri] })
       return 'shared'
     } catch (err) {
       return wasCancelled(err) ? 'cancelled' : 'failed'
     }
   }
 
-  const file = new File([blob], 'upper-room.png', { type: 'image/png' })
+  const file = new File([blob], `${filename}.png`, { type: 'image/png' })
   const nav = navigator as Navigator & {
     canShare?: (data: ShareData & { files?: File[] }) => boolean
   }
 
   if (nav.share && nav.canShare?.({ files: [file] })) {
     try {
-      await nav.share({ files: [file], title: 'My Upper Room', text })
+      await nav.share({ files: [file], title, text })
       return 'shared'
     } catch (err) {
       // Waving the sheet away is not a failure and must not draw an error line
       // — or, worse, silently download a file nobody asked for.
       if (wasCancelled(err)) return 'cancelled'
-      // The sheet refused the file: saving it is still a postcard in hand.
+      // The sheet refused the file: saving it is still a picture in hand.
     }
   }
 
@@ -234,7 +249,7 @@ export async function sharePostcard(username: string): Promise<PostcardOutcome> 
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'upper-room.png'
+    a.download = `${filename}.png`
     a.click()
     setTimeout(() => URL.revokeObjectURL(url), 4000)
     return 'saved'

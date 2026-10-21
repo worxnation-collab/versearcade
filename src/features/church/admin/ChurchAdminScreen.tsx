@@ -8,6 +8,7 @@ import { fetchAdminSettings, type AdminSettings } from '@/store/churchAdmin'
 import { TodayVerseForm } from './TodayVerseForm'
 import { ParticipationPanel } from './ParticipationPanel'
 import { NoticesPanel } from './NoticesPanel'
+import { SharePanel } from './SharePanel'
 
 // /church/:id/admin — the tools a church's verified leadership uses.
 //
@@ -20,8 +21,9 @@ import { NoticesPanel } from './NoticesPanel'
 //   1. Today's verse — the church's verse and five questions for a day (0119).
 //   2. Congregation — totals only, floored at five, private to leadership.
 //   3. Notices — the announcement and the giving link.
+//   4. Share — the page's link to paste, and (verified) the QR code to print.
 //
-// A claimed church that is not verified gets the Notices panel alone (the
+// A claimed church that is not verified gets Notices and Share alone (the
 // announcement is free-layer, 0117), and nothing on this screen says why:
 // "verified" is decided off the device, and no upgrade, price or badge is ever
 // drawn on a client (the skins and promotions pattern).
@@ -88,6 +90,11 @@ export default function ChurchAdminScreen() {
       key: 'notices',
       label: 'Notices',
       content: <NoticesPanel churchId={id} settings={settings} onSaved={load} />,
+    },
+    {
+      key: 'share',
+      label: 'Share',
+      content: <SharePanel churchId={id} churchName={settings.name} verified={settings.verified} />,
     },
   ]
 

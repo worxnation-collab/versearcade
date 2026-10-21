@@ -31,15 +31,16 @@ const FLORA: Record<string, string> = {
 export const ownerFloraArt = (id: string): string | undefined => FLORA[id]
 
 // Six buildings over eight tiers and four skins. The stone ladder grows with
-// level for the tile and classic skins — small, modest, tower, then the parish
+// level for the tile and classic skins — the bell-cote chapel (church-modest),
+// the spired one (church-small), the tower, then the parish
 // church from Parish Church (level 8) up, the same tier the yard switches to
 // its parish painting. Modern and glass each have one building of their own,
 // at every tier. The tier and skin logic is untouched; this only says which
 // picture a (skin, tier) wears.
 const B = (name: string) => `/church/buildings/church-${name}.png`
 const LADDER: Record<ChurchTierId, string> = {
-  gathering: B('small'),
-  chapel: B('modest'),
+  gathering: B('modest'),
+  chapel: B('small'),
   country: B('tower'),
   parish: B('parish'),
   stone: B('parish'),

@@ -269,41 +269,29 @@ export default function ProfileScreen() {
   return (
     <Page>
       <FirstVisitTip id="you" />
-      {/* You, at the size the skin was drawn for, with your pet and the
-          background you earned. The tab is called You, so it opens with you in
-          it — everywhere else your character is a 44px cropped circle. It's a
-          portrait: no numbers, because the card right underneath is all
-          numbers. */}
-      <div style={{ marginBottom: 10 }}>
-        <ProfileHero
-          spec={profile.avatarCharacter}
-          emoji={profile.avatarEmoji}
-          username={profile.username}
-          pet={profile.pet}
-          cardBackground={profile.cardBackground}
-          title={myTitle}
-        />
-      </div>
+      {/* You and your numbers on ONE card: the portrait, the handle and title
+          on the background you earned, then the level and the five stats on
+          the same painting rather than a second card under it. What other
+          players see when they tap your pfp is unchanged (PlayerCardModal). */}
+      <ProfileHero
+        spec={profile.avatarCharacter}
+        emoji={profile.avatarEmoji}
+        username={profile.username}
+        pet={profile.pet}
+        cardBackground={profile.cardBackground}
+        title={myTitle}
+      >
+        <PlayerCard p={cardData} statsOnly embedded />
+      </ProfileHero>
 
-      {/* Customize, Journal, Mail and Settings: one thin, quiet row under the
-          name rather than pills inside the card, so the card is only numbers
-          and these read as tools rather than as part of the score. The Mail
-          button carries the same one dot the nav does — no count. */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 6, marginBottom: 14 }}>
+      {/* Customize, Journal, Mail and Settings: one thin, quiet row tucked
+          under the card, so they read as tools rather than as part of the
+          score. The Mail button carries the same one dot the nav does. */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 6, margin: '10px 0 18px' }}>
         <ProfileTool icon="sparkle" label="Customize" onClick={openCustomize} />
         <ProfileTool icon="journal" label="Journal" onClick={() => { juice.select?.(); navigate('/journal') }} />
         <ProfileTool icon="mail" label="Mail" dot={mailWaiting > 0} onClick={() => { juice.select?.(); navigate('/mail') }} />
         <ProfileTool icon="tools" ariaLabel="Settings" onClick={() => { juice.select?.(); setSettingsOpen(true) }} />
-      </div>
-
-      {/* The numbers, and only the numbers. The hero above is already you at
-          full size on your own background, so the card here drops its identity
-          block — the same avatar and handle twice on one screen was the thing
-          that made the hero feel like a duplicate rather than the header. What
-          other players see when they tap your pfp is unchanged: that's the same
-          component with its identity intact (PlayerCardModal). */}
-      <div style={{ marginBottom: 18 }}>
-        <PlayerCard p={cardData} statsOnly />
       </div>
 
       {/* The fourth little world, and the only one that is yours alone. It opens

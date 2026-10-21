@@ -75,8 +75,40 @@ export function XpBar({ xp }: { xp: number }) {
 // taking the rest, and the XP into this level printed INSIDE the bar so the
 // figure and the thing it measures are read as one. Used where the card has
 // no identity block for the bar to sit under (your own profile, the pop-up).
-export function LevelRow({ xp, gold }: { xp: number; gold?: boolean }) {
+export function LevelRow({ xp, gold, compact = false }: { xp: number; gold?: boolean; compact?: boolean }) {
   const { level, intoLevel, levelSpan, pct } = levelInfo(xp)
+  // The quieter shape for the merged profile card: a small LVL, a thin bar,
+  // and the figure printed UNDER it with the part you have in gold.
+  if (compact) {
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 800, color: 'var(--gold)', whiteSpace: 'nowrap' }}>
+            LVL {level}
+          </span>
+          <div
+            role="progressbar"
+            aria-label={`Level ${level}`}
+            aria-valuemin={0}
+            aria-valuemax={levelSpan}
+            aria-valuenow={intoLevel}
+            style={{ flex: 1, minWidth: 0, height: 12, borderRadius: 999, background: 'rgba(0,0,0,0.45)', overflow: 'hidden', border: '1px solid var(--edge)' }}
+          >
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${pct * 100}%` }}
+              transition={{ type: 'spring', stiffness: 120, damping: 20 }}
+              style={{ height: '100%', borderRadius: 999, background: 'linear-gradient(90deg, var(--gold), var(--tangerine))' }}
+            />
+          </div>
+        </div>
+        <div style={{ textAlign: 'center', marginTop: 6, fontSize: 12.5, fontWeight: 700, textShadow: '0 1px 4px rgba(9, 6, 8,0.9)' }}>
+          <span style={{ color: 'var(--gold)' }}>{intoLevel.toLocaleString()}</span>
+          <span className="dim"> / {levelSpan.toLocaleString()} XP</span>
+        </div>
+      </div>
+    )
+  }
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
       <span

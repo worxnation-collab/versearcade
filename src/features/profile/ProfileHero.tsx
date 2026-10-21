@@ -29,6 +29,7 @@ export function ProfileHero({
   title,
   caption = null,
   size = 190,
+  children,
 }: {
   spec?: AvatarSpec | null
   emoji: string
@@ -38,6 +39,11 @@ export function ProfileHero({
   title?: string | null
   caption?: ReactNode
   size?: number
+  /**
+   * What sits under the title on the SAME painted surface — on /you, the level
+   * and the five stats, so the portrait and its numbers are one card.
+   */
+  children?: ReactNode
 }) {
   const reduceMotion = useSettings((s) => s.reduceMotion)
   const companion = petById(pet)
@@ -64,7 +70,11 @@ export function ProfileHero({
         style={{
           position: 'absolute',
           inset: 0,
-          background: 'linear-gradient(180deg, rgba(9, 6, 8,0.18) 0%, rgba(9, 6, 8,0.52) 100%)',
+          // With numbers under the title the lower half needs a deeper scrim,
+          // or a bright background washes the stats out.
+          background: children
+            ? 'linear-gradient(180deg, rgba(9, 6, 8,0.12) 0%, rgba(9, 6, 8,0.35) 45%, rgba(9, 6, 8,0.82) 75%, rgba(9, 6, 8,0.9) 100%)'
+            : 'linear-gradient(180deg, rgba(9, 6, 8,0.18) 0%, rgba(9, 6, 8,0.52) 100%)',
         }}
       />
 
@@ -157,6 +167,7 @@ export function ProfileHero({
             {title}
           </p>
         )}
+        {children && <div style={{ marginTop: 16 }}>{children}</div>}
       </div>
     </div>
   )

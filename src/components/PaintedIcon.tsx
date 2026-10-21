@@ -13,6 +13,11 @@ import pray from '@/assets/icons/pray.png'
 import settings from '@/assets/icons/settings.png'
 import streak from '@/assets/icons/streak.png'
 import week from '@/assets/icons/week.png'
+import stat_streak from '@/assets/icons/stat_streak.png'
+import stat_longest from '@/assets/icons/stat_longest.png'
+import stat_cards from '@/assets/icons/stat_cards.png'
+import stat_xp from '@/assets/icons/stat_xp.png'
+import stat_plays from '@/assets/icons/stat_plays.png'
 
 // The painted stand-ins for the emoji that used to label buttons, headers and
 // folds — owner-supplied (2026-10-21), cut out of baked-in checkerboards into
@@ -41,6 +46,12 @@ const ICONS = {
   settings,
   streak,
   week,
+  // The player card's five stats (Streak, Longest, Cards, Total XP, Plays).
+  stat_streak,
+  stat_longest,
+  stat_cards,
+  stat_xp,
+  stat_plays,
 } as const
 
 export type PaintedIconId = keyof typeof ICONS

@@ -4641,7 +4641,9 @@ take a runtime colour, so a tab's three states are carried by TONE (`NavArt` in
 desaturated when not, greyer behind a padlock. The drawn `icon` id stays on
 every tab as the fallback for an image that fails to load, and the map's area
 headings still use the drawn set. The row measures ~306px and clears a 320px
-phone; `.app-shell`'s bottom padding went 96 → 118 for the taller bar. Road
+phone; `.app-shell`'s bottom padding went 96 → 118 for the taller bar. The "Open right now" rows (`features/map/InviteIcon.tsx`,
+`public/invite/`) are painted the same way, keyed on the INVITATION id, and an
+invitation with no painting keeps its drawn gold path. Road
 rewards (`data/rewardArt.ts`) were the first owner-supplied painted icons and
 follow the same hand-kept-table rule: never route these through
 `GENERATED_ART`, where a gen-art run could overwrite them.

@@ -7,6 +7,7 @@ import { useSettings } from '@/store/settings'
 import { MapSheet } from './MapSheet'
 import { useInvitations } from './invitations'
 import { Icon } from '@/data/icons'
+import { InviteIcon } from './InviteIcon'
 
 // The compass, at full size, standing on the Play tab.
 //
@@ -157,9 +158,7 @@ export function MapCompass() {
                   background: 'rgba(255,210,63,0.08)',
                 }}
               >
-                <span style={{ flexShrink: 0, lineHeight: 0, color: 'var(--gold)' }}>
-                  <Icon id={inv.icon} size={20} />
-                </span>
+                <InviteIcon id={inv.id} icon={inv.icon} />
                 <span style={{ flex: 1, minWidth: 0, fontWeight: 800, fontSize: 14 }}>{inv.label}</span>
                 <span style={{ color: 'var(--gold)', flexShrink: 0 }}>›</span>
               </motion.button>

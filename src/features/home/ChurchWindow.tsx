@@ -281,7 +281,7 @@ function PastorNote({ text }: { text: string }) {
 // "through today" / "through tomorrow" / "through Sunday" / "through Nov 3".
 // The admin form saves the END of the chosen local day (`saveAnnouncement`),
 // so the local date of `expires_at` is the notice's last day.
-function throughLabel(expiresAt: string, now: Date): string {
+export function throughLabel(expiresAt: string, now: Date): string {
   const end = new Date(expiresAt)
   if (Number.isNaN(end.getTime())) return ''
   const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()

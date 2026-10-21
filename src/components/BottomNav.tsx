@@ -247,20 +247,24 @@ export function BottomNav() {
         pointerEvents: 'none',
       }}
     >
-      {/* The pill and the compass are centred together as one unit, so the
-          five tabs sit very slightly left of centre rather than the compass
-          hanging off the edge. 8px of gap and a 50px puck is 58px; with 40px
-          painted icons the pill measures ~236px, so the row is ~294px and
-          still clears a 320px phone. */}
+      {/* Three columns: an empty one, the pill, the compass. The two outer
+          columns share what is left equally, so the five tabs sit on the
+          viewport's true centre and the compass hangs off the pill's right
+          edge rather than dragging the whole row 29px left (which is what
+          centring pill + compass as one unit did). Where the phone is too
+          narrow for a 58px column on BOTH sides (a 320px phone has ~30), the
+          grid gives the compass its room from the empty side, so the pill
+          drifts left only by what it must and never overflows. */}
       <div
         style={{
-          display: 'flex',
+          display: 'grid',
+          gridTemplateColumns: '1fr auto 1fr',
           alignItems: 'center',
-          gap: 8,
-          maxWidth: 'calc(100vw - 12px)',
+          width: 'calc(100vw - 12px)',
           marginBottom: 'calc(var(--safe-bottom) + 10px)',
         }}
       >
+      <span aria-hidden />
       <div
         style={{
           pointerEvents: 'auto',
@@ -290,7 +294,11 @@ export function BottomNav() {
           >
             {({ isActive }) => (
               <motion.div
-                animate={{ scale: isActive ? 1 : 0.92 }}
+                // Every tab at the same size: shrinking the inactive four made
+                // the selected one read as enlarged, and the bar lopsided
+                // whenever it was an end tab. The bronze bubble and the tone
+                // already say which one is on.
+                animate={{ scale: 1 }}
                 whileTap={{ scale: 0.85 }}
                 transition={{ type: 'spring', stiffness: 600, damping: 18 }}
                 style={{
@@ -326,7 +334,9 @@ export function BottomNav() {
           </NavLink>
         ))}
       </div>
-      <CompassPuck onOpen={openMap} hint={!mapSeen} />
+      <div style={{ justifySelf: 'start', display: 'flex', marginLeft: 8 }}>
+        <CompassPuck onOpen={openMap} hint={!mapSeen} />
+      </div>
       </div>
     </nav>
 

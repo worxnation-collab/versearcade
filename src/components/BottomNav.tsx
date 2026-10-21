@@ -35,7 +35,15 @@ const tabs: { to: string; label: string; icon: IconId; art: string; guest: boole
   { to: '/you', label: 'You', icon: 'you', art: '/nav/you.png', guest: true },
 ]
 
+// Every PNG in public/nav is a 132px SQUARE with its painting scaled for equal
+// visual weight and placed at its optical centre (solid shapes like the play
+// triangle smaller, the thin swords larger) — so the bar draws them all in the
+// same box with no per-icon CSS. Re-cut a painting and that balancing has to
+// be redone on the file, not patched here.
 const NAV_ICON = 40
+// Every tab is the same width, so each icon's centre lands at the same place
+// in its slot whatever the label under it says.
+const TAB_W = 46
 
 // A painted tab icon, falling back to the drawn path if the PNG never loads —
 // a nav with a hole in it is worse than a nav in the old style.
@@ -56,8 +64,10 @@ function NavArt({ src, icon, size, tone }: { src: string; icon: IconId; size: nu
         height: size,
         objectFit: 'contain',
         display: 'block',
-        opacity: tone === 'on' ? 1 : tone === 'off' ? 0.62 : 0.4,
-        filter: tone === 'on' ? 'drop-shadow(0 2px 4px rgba(0,0,0,0.45))' : tone === 'off' ? 'saturate(0.55)' : 'grayscale(0.7)',
+        // Muted, not bleached: a heavy desaturate washed the gold play
+        // triangle out to beige while the darker icons barely changed.
+        opacity: tone === 'on' ? 1 : tone === 'off' ? 0.72 : 0.42,
+        filter: tone === 'on' ? 'drop-shadow(0 2px 4px rgba(0,0,0,0.45))' : tone === 'off' ? 'saturate(0.8) brightness(0.92)' : 'grayscale(0.7)',
         transition: 'opacity 0.2s, filter 0.2s',
       }}
     />
@@ -80,8 +90,8 @@ function NavDot() {
       aria-hidden
       style={{
         position: 'absolute',
-        top: 5,
-        right: 5,
+        top: -1,
+        right: -1,
         width: 9,
         height: 9,
         borderRadius: 999,
@@ -101,8 +111,8 @@ function NavLock() {
       aria-hidden
       style={{
         position: 'absolute',
-        top: 2,
-        right: 2,
+        top: 0,
+        right: 0,
         lineHeight: 0,
         opacity: 0.8,
       }}
@@ -288,7 +298,8 @@ export function BottomNav() {
                   flexDirection: 'column',
                   alignItems: 'center',
                   gap: 2,
-                  padding: '5px 3px 6px',
+                  width: TAB_W,
+                  padding: '5px 0 6px',
                   borderRadius: 999,
                   position: 'relative',
                   // Warm bronze rather than the app's violet `--select`: the
@@ -299,13 +310,17 @@ export function BottomNav() {
                   boxShadow: isActive ? 'inset 0 0 0 1px var(--edge), 0 4px 14px rgba(0,0,0,0.4)' : 'none',
                 }}
               >
-                <NavArt src={t.art} icon={t.icon} size={NAV_ICON} tone={isActive ? 'on' : locked && !t.guest ? 'locked' : 'off'} />
-                <span style={{ fontSize: 10, fontWeight: 800, whiteSpace: 'nowrap' }}>{t.label}</span>
+                {/* The dot and the padlock anchor to the ICON's box, not the
+                    tab's, so they sit on the same corner of every picture. */}
+                <span style={{ position: 'relative', width: NAV_ICON, height: NAV_ICON, display: 'grid', placeItems: 'center' }}>
+                  <NavArt src={t.art} icon={t.icon} size={NAV_ICON} tone={isActive ? 'on' : locked && !t.guest ? 'locked' : 'off'} />
                 {t.to === '/you' && buddyRequests + unseenGifts > 0 && <NavDot />}
                 {/* Not while the tab is locked: the padlock sits in the same
                     corner, and a guest can't reach the reviews anyway. */}
                 {t.to === '/study' && !locked && reviewsDue > 0 && <NavDot />}
                 {locked && !t.guest && <NavLock />}
+                </span>
+                <span style={{ fontSize: 10, fontWeight: 800, whiteSpace: 'nowrap' }}>{t.label}</span>
               </motion.div>
             )}
           </NavLink>

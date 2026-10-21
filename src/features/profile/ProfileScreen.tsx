@@ -26,6 +26,7 @@ import { PatronCard } from './PatronCard'
 import { ProfileHero } from './ProfileHero'
 import { RoomSection } from '@/features/room/RoomSection'
 import { ChurchNudge } from '@/features/church/ChurchNudge'
+import { ProfileChurchCard } from '@/features/church/ProfileChurchCard'
 import { SettingsSheet } from './SettingsSheet'
 import { Tutorial } from '@/features/home/Tutorial'
 import { PaintedIcon, type PaintedIconId } from '@/components/PaintedIcon'
@@ -326,8 +327,11 @@ export default function ProfileScreen() {
       {/* Open rather than folded, and first: it's the only row here that's an
           invitation instead of a drawer, and a player with no church has
           nothing to open. It removes itself the moment there is one — or when
-          they say it isn't for them. */}
+          they say it isn't for them. ProfileChurchCard is the other half of
+          the same slot: it renders only once there IS a church, so exactly one
+          of the two ever shows (and neither for a guest). */}
       <ChurchNudge />
+      <ProfileChurchCard />
       {/* A deep link wins over the waiting-request default: somebody who tapped
           "wash a friend's feet" asked for the Basin by name. */}
       <TabbedSection

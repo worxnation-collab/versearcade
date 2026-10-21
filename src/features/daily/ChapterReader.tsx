@@ -128,7 +128,7 @@ export function ChapterReader({ verse, onClose }: { verse: DailyVerse; onClose: 
 
       {/* Scrollable body */}
       <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
-        <div style={{ maxWidth: 640, margin: '0 auto', padding: '16px 16px calc(var(--safe-bottom) + 96px)' }}>
+        <div style={{ maxWidth: 640, margin: '0 auto', padding: '16px 16px calc(var(--safe-bottom) + 118px)' }}>
           {state === 'loading' && <ChapterSkeleton />}
 
           {state === 'ready' && chapter && (

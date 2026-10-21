@@ -20,19 +20,49 @@ import { Icon, type IconId } from '@/data/icons'
 // tab you can look into is the pitch, and hiding half the nav would make the
 // app look smaller than it is.
 //
-// The icons are DRAWN (`data/icons.tsx`), not emoji and not renders. An emoji
-// is a different typeface on every platform, at a size this app does not
-// control, in a colour it cannot set — and all three of those matter here,
-// because a tab is white when you are on it, faint when you are not, and dim
-// behind a padlock. That is the runtime-colour carve-out the church kit and
-// the seals' wax already sit in.
-const tabs: { to: string; label: string; icon: IconId; guest: boolean }[] = [
-  { to: '/play', label: 'Play', icon: 'play', guest: true },
-  { to: '/battle', label: 'Battle', icon: 'battle', guest: false },
-  { to: '/study', label: 'Study', icon: 'study', guest: false },
-  { to: '/church', label: 'Church', icon: 'church', guest: false },
-  { to: '/you', label: 'You', icon: 'you', guest: true },
+// The icons are PAINTED (`public/nav/*.png`), supplied by the app's owner on
+// 2026-10-21 and drawn at 40px — a deliberate reversal of the drawn-paths nav
+// (see CLAUDE.md, "Icons"). A baked image can't take a runtime colour, so the
+// three states a tab has are carried by TONE instead of ink: full colour on
+// the active tab (on the `--select` pill), muted and desaturated when not, and
+// greyer still behind a padlock. `icon` stays as the drawn fallback for an
+// image that fails to load, and is what the map's area headings still use.
+const tabs: { to: string; label: string; icon: IconId; art: string; guest: boolean }[] = [
+  { to: '/play', label: 'Play', icon: 'play', art: '/nav/play.png', guest: true },
+  { to: '/battle', label: 'Battle', icon: 'battle', art: '/nav/battle.png', guest: false },
+  { to: '/study', label: 'Study', icon: 'study', art: '/nav/study.png', guest: false },
+  { to: '/church', label: 'Church', icon: 'church', art: '/nav/church.png', guest: false },
+  { to: '/you', label: 'You', icon: 'you', art: '/nav/you.png', guest: true },
 ]
+
+const NAV_ICON = 40
+
+// A painted tab icon, falling back to the drawn path if the PNG never loads —
+// a nav with a hole in it is worse than a nav in the old style.
+function NavArt({ src, icon, size, tone }: { src: string; icon: IconId; size: number; tone: 'on' | 'off' | 'locked' }) {
+  const [broken, setBroken] = useState(false)
+  if (broken) return <Icon id={icon} size={size * 0.55} />
+  return (
+    <img
+      src={src}
+      alt=""
+      aria-hidden
+      width={size}
+      height={size}
+      draggable={false}
+      onError={() => setBroken(true)}
+      style={{
+        width: size,
+        height: size,
+        objectFit: 'contain',
+        display: 'block',
+        opacity: tone === 'on' ? 1 : tone === 'off' ? 0.62 : 0.4,
+        filter: tone === 'on' ? 'drop-shadow(0 2px 4px rgba(0,0,0,0.45))' : tone === 'off' ? 'saturate(0.55)' : 'grayscale(0.7)',
+        transition: 'opacity 0.2s, filter 0.2s',
+      }}
+    />
+  )
+}
 
 // A pending buddy request lives two taps deep on the You tab, so nothing out
 // here said it existed. One dot — no count, no red, no badge that demands
@@ -141,8 +171,8 @@ function CompassPuck({ onOpen, hint }: { onOpen: () => void; hint: boolean }) {
       style={{
         pointerEvents: 'auto',
         flexShrink: 0,
-        width: 46,
-        height: 46,
+        width: 50,
+        height: 50,
         borderRadius: 999,
         display: 'grid',
         placeItems: 'center',
@@ -160,7 +190,7 @@ function CompassPuck({ onOpen, hint }: { onOpen: () => void; hint: boolean }) {
         color: hint ? 'var(--gold)' : 'var(--ink-dim)',
       }}
     >
-      <Icon id="compass" size={23} />
+      <NavArt src="/nav/compass.png" icon="compass" size={NAV_ICON} tone={hint ? 'on' : 'off'} />
     </motion.button>
   )
 }
@@ -209,8 +239,9 @@ export function BottomNav() {
     >
       {/* The pill and the compass are centred together as one unit, so the
           five tabs sit very slightly left of centre rather than the compass
-          hanging off the edge. 8px of gap and a 46px puck is 54px, which is
-          what the row's max-width below leaves room for on a 320px phone. */}
+          hanging off the edge. 8px of gap and a 50px puck is 58px; with 40px
+          painted icons the pill measures ~236px, so the row is ~294px and
+          still clears a 320px phone. */}
       <div
         style={{
           display: 'flex',
@@ -226,7 +257,7 @@ export function BottomNav() {
           display: 'flex',
           // Five tabs have to clear a 320px-wide phone, so the gaps and the pill
           // padding below are as tight as they can be without cramping the taps.
-          gap: 2,
+          gap: 1,
           minWidth: 0,
           padding: 6,
           borderRadius: 999,
@@ -257,17 +288,18 @@ export function BottomNav() {
                   flexDirection: 'column',
                   alignItems: 'center',
                   gap: 2,
-                  padding: '8px 7px',
+                  padding: '5px 3px 6px',
                   borderRadius: 999,
                   position: 'relative',
-                  background: isActive
-                    ? 'linear-gradient(180deg, var(--grape), var(--grape-deep))'
-                    : 'transparent',
-                  color: isActive ? '#fff' : 'var(--ink-faint)',
-                  boxShadow: isActive ? '0 4px 14px rgba(122,63,242,0.5)' : 'none',
+                  // Warm bronze rather than the app's violet `--select`: the
+                  // painted icons are all earth and gold, and a violet pill
+                  // behind them was the one cold thing in the bar.
+                  background: isActive ? 'linear-gradient(180deg, rgba(154,124,69,0.55), rgba(154,124,69,0.22))' : 'transparent',
+                  color: isActive ? 'var(--ink)' : 'var(--ink-faint)',
+                  boxShadow: isActive ? 'inset 0 0 0 1px var(--edge), 0 4px 14px rgba(0,0,0,0.4)' : 'none',
                 }}
               >
-                <Icon id={t.icon} size={21} />
+                <NavArt src={t.art} icon={t.icon} size={NAV_ICON} tone={isActive ? 'on' : locked && !t.guest ? 'locked' : 'off'} />
                 <span style={{ fontSize: 10, fontWeight: 800, whiteSpace: 'nowrap' }}>{t.label}</span>
                 {t.to === '/you' && buddyRequests + unseenGifts > 0 && <NavDot />}
                 {/* Not while the tab is locked: the padlock sits in the same

@@ -261,7 +261,17 @@ function PlaceRow({
       }}
     >
       <span style={{ width: 24, display: 'grid', placeItems: 'center', flexShrink: 0, color: isLocked ? 'var(--ink-faint)' : 'var(--ink-dim)' }}>
-        <Icon id={place.icon} size={19} />
+        {place.art ? (
+          <img
+            src={place.art}
+            alt=""
+            aria-hidden
+            draggable={false}
+            style={{ width: 26, height: 26, objectFit: 'contain', opacity: isLocked ? 0.55 : 1 }}
+          />
+        ) : (
+          <Icon id={place.icon} size={19} />
+        )}
       </span>
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

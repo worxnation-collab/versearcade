@@ -11,6 +11,7 @@ import {
   confettiById,
   type CosmeticKind,
 } from '@/data/season'
+import { rewardArt } from '@/data/rewardArt'
 
 // What you wear from the road. Four kinds so far — a title under your name, the
 // confetti that fires on a correct answer, the streak flame on the home screen,
@@ -42,7 +43,7 @@ const ROWS: Row[] = [
   {
     kind: 'confetti',
     label: 'Confetti',
-    options: allConfetti().map((c) => ({ id: c.id, name: c.name, glyph: '🎊' })),
+    options: allConfetti().map((c) => ({ id: c.id, name: c.name, glyph: '🎊', art: rewardArt(c.id) })),
   },
   {
     kind: 'flame',
@@ -52,7 +53,7 @@ const ROWS: Row[] = [
   {
     kind: 'chest',
     label: 'Daily Chest',
-    options: allChestSkins().map((c) => ({ id: c.id, name: c.name, glyph: c.glyph })),
+    options: allChestSkins().map((c) => ({ id: c.id, name: c.name, glyph: c.glyph, art: rewardArt(c.id) })),
   },
 ]
 
@@ -97,6 +98,7 @@ export function SeasonCosmetics() {
                   <Tile
                     key={o.id}
                     glyph={o.glyph}
+                    art={'art' in o ? (o.art as string | undefined) : undefined}
                     name={o.name}
                     active={current === o.id}
                     owned={owned}
@@ -129,12 +131,15 @@ export function SeasonCosmetics() {
 
 function Tile({
   glyph,
+  art,
   name,
   active,
   owned,
   onClick,
 }: {
   glyph: string
+  /** A painted icon, drawn instead of the glyph once owned. */
+  art?: string
   name: string
   active: boolean
   owned: boolean
@@ -159,7 +164,11 @@ function Tile({
         opacity: owned ? 1 : 0.5,
       }}
     >
-      <span aria-hidden>{owned ? glyph : '·'}</span>
+      {owned && art ? (
+        <img src={art} alt="" aria-hidden draggable={false} style={{ width: 18, height: 18, objectFit: 'contain' }} />
+      ) : (
+        <span aria-hidden>{owned ? glyph : '·'}</span>
+      )}
       {name}
     </button>
   )

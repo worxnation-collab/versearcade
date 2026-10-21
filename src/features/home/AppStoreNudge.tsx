@@ -75,7 +75,7 @@ export function AppStoreNudge() {
             position: 'fixed',
             left: 0,
             right: 0,
-            bottom: 'calc(var(--safe-bottom) + 84px)',
+            bottom: 'calc(var(--safe-bottom) + 104px)',
             display: 'grid',
             justifyItems: 'center',
             padding: '0 14px',

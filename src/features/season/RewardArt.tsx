@@ -2,6 +2,7 @@ import type { AvatarSpec } from '@/types'
 import { Avatar } from '@/components/Avatar'
 import { itemArt } from '@/data/avatar'
 import { confettiById, flameById, chestSkinById, cosmeticKind, rewardLabel } from '@/data/season'
+import { rewardArt } from '@/data/rewardArt'
 
 // A road reward, drawn as the THING rather than named.
 //
@@ -44,6 +45,52 @@ export function RewardArt({
     return (
       <div style={box} title={label.name}>
         <Avatar emoji="🌾" character={{ ...spec, skinId: id.slice(5), regalia: null }} size={size} ring={false} />
+      </div>
+    )
+  }
+
+  // A painted icon for this reward (`data/rewardArt.ts`).
+  // It layers OVER the drawing below rather than replacing it: an id with no
+  // render keeps its glyph, dots or name plate, so an ungenerated batch is the
+  // app exactly as it was. A title keeps its plate under the picture, because
+  // the words ARE what a title gives you.
+  const painted = rewardArt(id)
+  if (painted) {
+    return (
+      <div style={{ ...box, position: 'relative' }} title={label.name} aria-hidden>
+        <img
+          src={painted}
+          alt=""
+          width={size}
+          height={size}
+          loading="lazy"
+          draggable={false}
+          style={{ width: size * 0.86, height: size * 0.86, objectFit: 'contain' }}
+        />
+        {kind === 'title' && (
+          <span
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              fontFamily: 'var(--font-display)',
+              fontSize: Math.max(8, size * 0.15),
+              fontWeight: 800,
+              lineHeight: 1.1,
+              padding: '1px 4px',
+              borderRadius: 4,
+              background: 'var(--card)',
+              border: '1px solid var(--edge)',
+              color: 'var(--gold)',
+              whiteSpace: 'nowrap',
+              maxWidth: size,
+              overflow: 'hidden',
+            }}
+          >
+            {label.name}
+          </span>
+        )}
       </div>
     )
   }

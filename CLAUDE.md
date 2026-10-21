@@ -4628,7 +4628,21 @@ along with it staying ≥1.5:1 from `--card` so "on" is visible without reading
 the text. **`--ink-faint` is deliberately NOT legible on it and must not be
 used there** — a selected tile's own description takes `--ink-dim`.
 
-### Icons are DRAWN, not emoji and not generated
+### Icons are DRAWN, not emoji and not generated — except the bottom nav
+
+**The bottom nav is PAINTED since 2026-10-21, the owner's call.** The five tabs
+and the compass puck draw owner-supplied paintings (`public/nav/*.png`, cut out
+of baked-in checkerboards) at 40px, not the paths below. A baked image can't
+take a runtime colour, so a tab's three states are carried by TONE (`NavArt` in
+`BottomNav.tsx`): full colour on a warm bronze pill when active, muted and
+desaturated when not, greyer behind a padlock. The drawn `icon` id stays on
+every tab as the fallback for an image that fails to load, and the map's area
+headings still use the drawn set. The row measures ~306px and clears a 320px
+phone; `.app-shell`'s bottom padding went 96 → 118 for the taller bar. Road
+rewards (`data/rewardArt.ts`) were the first owner-supplied painted icons and
+follow the same hand-kept-table rule: never route these through
+`GENERATED_ART`, where a gen-art run could overwrite them.
+
 
 `data/icons.tsx` is 41 hand-written paths behind one `<Icon id>`, and
 `scripts/check-icons.mjs` asserts the union and the table agree, that every path

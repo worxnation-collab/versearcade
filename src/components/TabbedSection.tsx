@@ -92,7 +92,8 @@ export function TabbedSection({
                   fontWeight: 800,
                   cursor: 'pointer',
                   color: on ? 'var(--ink)' : 'var(--ink-dim)',
-                  background: on ? 'var(--select)' : 'var(--card)',
+                  // Colour only, so `.pill`'s grain stays under it.
+                  backgroundColor: on ? 'var(--select)' : 'var(--card)',
                   borderColor: t.dot && !on ? 'var(--edge)' : on ? 'var(--select)' : 'var(--stroke)',
                 }}
               >

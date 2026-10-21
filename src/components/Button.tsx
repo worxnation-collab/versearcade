@@ -4,20 +4,23 @@ import { useJuice } from '@/juice/useJuice'
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'gold'
 
+// Each variant's first shadows are INSET edge light (index.css's material
+// tokens): a catch-light on the top rim and a darker lip, so a button reads as
+// a thing with a face rather than a flat fill. Gold gets the brass version.
 const styles: Record<Variant, React.CSSProperties> = {
   primary: {
     background: 'linear-gradient(180deg, var(--grape) 0%, var(--grape-deep) 100%)',
-    boxShadow: '0 6px 0 #4b1fb0, 0 12px 24px rgba(122,63,242,0.45)',
+    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.28), inset 0 -2px 0 rgba(40,10,110,0.25), 0 6px 0 #4b1fb0, 0 12px 24px rgba(122,63,242,0.45)',
     color: '#fff',
   },
   gold: {
-    background: 'linear-gradient(180deg, #ffe27a 0%, var(--gold) 60%, var(--tangerine) 100%)',
-    boxShadow: '0 6px 0 #c9860a, 0 12px 24px rgba(255,159,28,0.4)',
+    background: 'var(--brass-sheen), linear-gradient(180deg, #ffe27a 0%, var(--gold) 60%, var(--tangerine) 100%)',
+    boxShadow: 'var(--brass-edge), 0 6px 0 #c9860a, 0 12px 24px rgba(255,159,28,0.4)',
     color: '#3a2200',
   },
   secondary: {
-    background: 'var(--card-solid)',
-    boxShadow: '0 5px 0 rgba(0,0,0,0.4)',
+    background: 'var(--lamp), var(--tex-grain), var(--card-solid)',
+    boxShadow: 'var(--lit-edge), 0 5px 0 rgba(0,0,0,0.4)',
     color: '#fff',
   },
   ghost: {

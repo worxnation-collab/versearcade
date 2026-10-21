@@ -170,6 +170,7 @@ export function LibrarianSheet({ items, onClose }: { items: StudyBook[]; onClose
                     key={item.key}
                     onClick={() => void take(item)}
                     disabled={busy}
+                    className="vellum"
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -177,7 +178,7 @@ export function LibrarianSheet({ items, onClose }: { items: StudyBook[]; onClose
                       textAlign: 'left',
                       padding: '11px 12px',
                       borderRadius: 12,
-                      background: 'var(--card-solid)',
+                      backgroundColor: 'var(--card-solid)',
                       border: '1px solid var(--stroke)',
                       cursor: busy ? 'default' : 'pointer',
                       color: 'var(--ink)',

@@ -1,0 +1,27 @@
+[
+  {
+    "id": "reward_title_wayfarer",
+    "kind": "prop",
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the object itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT charcoal, NOT black, NOT a gradient, NOT a vignette, NOT a card, NOT a rounded rectangle, NOT a frame. No ground, no cast shadow on the backdrop, no text, no watermark, no second copy of the object.\n\nONE WAYFARER'S CLOAK, HOODED, standing on its own as though worn by an invisible traveller — NO PERSON, NO FACE, NO HANDS: the hood is empty and dark inside. Flowing terracotta / burnt-orange wool with soft deep folds, draped over the shoulders and falling to a ragged pointed hem. A thin line of subtle gold vine embroidery runs along the hood's edge and the hem.\n\nLightly painterly style with soft realistic shading and gentle fabric texture, warm earth and gold palette, lit warmly from the upper left. The whole cloak centred, inside the frame with a little magenta margin around it, readable at a small size."
+  },
+  {
+    "id": "reward_chest_sack",
+    "kind": "prop",
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the object itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT charcoal, NOT black, NOT a gradient, NOT a vignette, NOT a card, NOT a rounded rectangle, NOT a frame. No ground, no cast shadow on the backdrop, no text, no watermark, no second copy of the object.\n\nONE PLUMP GOLD TREASURE SACK, seen from the front, sitting upright. Soft cloth gathered and ruffled at the top, tied with a coiled rope whose two knotted ends hang down the left side. A large raised dollar sign is embossed on the front of the sack. Warm metallic gold with soft highlights and gentle fabric folds. Nothing spills out, no loose coins.\n\nLightly painterly style with soft realistic shading and gentle texture, warm earth and gold palette, lit warmly from the upper left. The whole sack centred, inside the frame with a little magenta margin around it, readable at a small size."
+  },
+  {
+    "id": "reward_freeze",
+    "kind": "prop",
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the object itself — INCLUDING THE HOLE IN THE MIDDLE OF THE RING, which must also be solid pure magenta. A flat chroma-key backdrop, NOT white, NOT grey, NOT charcoal, NOT black, NOT a gradient, NOT a vignette, NOT a card, NOT a frame. No ground, no cast shadow on the backdrop, no rope, no water, no text, no watermark, no second copy.\n\nONE CLASSIC LIFE RING (life preserver) seen face-on, a perfect round torus with eight alternating segments of warm off-white and warm burnt orange. Soft painted texture with slight wear and a few chips in the paint.\n\nLightly painterly style with soft realistic shading and gentle texture, warm earth palette, lit warmly from the upper left. The whole ring centred, inside the frame with a little magenta margin around it, readable at a small size."
+  },
+  {
+    "id": "reward_boost",
+    "kind": "prop",
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the object itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT charcoal, NOT black, NOT a gradient, NOT a vignette, NOT a card, NOT a rounded rectangle, NOT a frame. No ground, no cast shadow, no sparks, no particles, no glow spilling onto the magenta, no crackling lines on the backdrop, no text, no watermark, no second copy.\n\nONE STYLISED LIGHTNING BOLT, a thick chunky zig-zag with bevelled faces, tilted slightly to the right. Warm gold and amber with a soft brushed-metal texture and bright highlights along its edges, as if lit from within.\n\nLightly painterly style with soft realistic shading and gentle texture, warm gold palette, lit warmly from the upper left. The whole bolt centred, inside the frame with a little magenta margin around it, readable at a small size."
+  },
+  {
+    "id": "reward_confetti_doves",
+    "kind": "prop",
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the objects themselves — a flat chroma-key backdrop, NOT white, NOT grey, NOT charcoal, NOT black, NOT a gradient, NOT a vignette, NOT a card, NOT a frame. No ground, no shadows, no lines connecting them, no text, no watermark.\n\nFIVE SMALL SOFT ROUND DOTS arranged in a loose pentagon constellation: one at the top, two at the middle left and right, two at the bottom. The top and bottom three are warm off-white; the middle left and right two are muted gold. Each dot is a soft painted disc with gentle texture and a faint darker rim. The dots are well separated with plenty of magenta between them.\n\nLightly painterly style with soft realistic shading and gentle texture, warm off-white and gold palette. The whole arrangement centred, inside the frame with a little magenta margin around it, readable at a small size."
+  }
+]

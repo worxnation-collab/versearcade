@@ -27,6 +27,7 @@ must never be written into a tracked file.
 | `cpu.json` | the three CPU opponents (Rookie, Deacon, Prophet) as full-length figures; `CpuFace` crops them to a portrait | `public/skins/cpu_*.png` |
 | `sharkey.json` | "Sharkey" — the founder's own one-of-one skin, from likeness photos not kept in the repo (see the manifest's `note`) | `public/skins/sharkey.png` |
 | `skins-refit.json` | re-renders of pre-pipeline skins that shipped as busts (Eden cut at the hem, Elijah at the knees) — full length, head to feet | `public/skins/eden.png`, `public/skins/elijah.png` |
+| `road-rewards.json` | painted icons for road rewards that were emoji — Wayfarer cloak, Treasure Sack, Streak Freeze life ring, XP Boost bolt, Doves confetti. `RewardArt` reads `reward_<id>` and falls back to the old drawing | `public/keep/reward_*.png` |
 
 **Check what came back**, every time:
 

@@ -1,4 +1,5 @@
 import { GENERATED_ART } from '@/data/generatedArt'
+import { ownerFloraArt } from './ownerArt'
 import { SceneRemoveButton } from '@/components/SceneRemoveBadge'
 import { unpackPercent } from '@/data/placement'
 import { percentSpace, useSceneDrag } from '@/lib/sceneDrag'
@@ -267,7 +268,7 @@ export const DRAWN_FLORA = Object.keys(PLANTS)
  * frame ends up half the size of the bed it's meant to fill.
  */
 function PlantArt({ id, height }: { id: string; height: number }) {
-  const raster = GENERATED_ART[id]
+  const raster = ownerFloraArt(id) ?? GENERATED_ART[id]
   if (raster) {
     // draggable={false} is load-bearing, not tidiness: an <img> starts a NATIVE
     // image drag, and the browser cancels the pointer stream to do it — so the
@@ -347,7 +348,7 @@ export function ChurchFlora({
       {filled.map((plot) => {
         const value = plantings[plot.id]
         const flora = floraById(value)!
-        if (!PLANTS[flora.id] && !GENERATED_ART[flora.id]) return null
+        if (!PLANTS[flora.id] && !ownerFloraArt(flora.id) && !GENERATED_ART[flora.id]) return null
         const lifted = picked === plot.id
         // Mid-drag the plant follows the finger; otherwise it stands where its
         // value says, or on its plot when the value carries no position.
@@ -459,7 +460,7 @@ function plotStyle(value: string | undefined, plot: PlotDef): { left: string; bo
 
 /** One plant on its own, for the picker rows and the ladder. */
 export function FloraIcon({ id, size = 40 }: { id: string; size?: number }) {
-  if (!PLANTS[id] && !GENERATED_ART[id]) return null
+  if (!PLANTS[id] && !ownerFloraArt(id) && !GENERATED_ART[id]) return null
   return (
     <span style={{ display: 'block', flexShrink: 0, lineHeight: 0 }} aria-hidden>
       <PlantArt id={id} height={size} />

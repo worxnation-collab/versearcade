@@ -9,6 +9,7 @@ import { useAuth } from '@/store/auth'
 import { isSupabaseConfigured } from '@/lib/config'
 import { OAuthButtons } from './oauthUi'
 import type { AvatarSpec } from '@/types'
+import { Icon, type IconId } from '@/data/icons'
 
 // Email/password + Sign in with Google + Sign in with Apple. All wired through
 // Supabase Auth. In LOCAL mode (no backend env yet) we explain and offer guest
@@ -100,7 +101,7 @@ export default function AuthScreen() {
             {mode === 'in'
               ? 'Keep your streak safe across devices.'
               : signingUpLook
-                ? 'This is you, everywhere in the arcade. Change it any time \u2014 nothing here is locked.'
+                ? 'This is you in every battle, in your keep, in Study and outside your church. Change it any time \u2014 nothing here is locked.'
                 : 'Free, and it opens the whole game \u2014 battles, the keep, Study, your Bible and your church.'}
           </p>
         </div>
@@ -127,6 +128,8 @@ export default function AuthScreen() {
             <div className="card">
               <CharacterPicker value={spec} onChange={setSpec} layout="tiles" />
             </div>
+
+            <OpensStrip />
 
             <Button
               variant="gold"
@@ -274,4 +277,54 @@ function GuestWayOut({
     )
   }
   return null
+}
+
+// What the account this character is for opens — a glance, not a step. The
+// same five things Landing names, so the promise reads the same at both doors.
+const OPENS: { icon: IconId; label: string }[] = [
+  { icon: 'battle', label: 'Battles' },
+  { icon: 'keep', label: 'Your Keep' },
+  { icon: 'study', label: 'Study' },
+  { icon: 'book', label: 'Your Bible' },
+  { icon: 'church', label: 'Your church' },
+]
+
+function OpensStrip() {
+  return (
+    <div aria-label="Your free account opens">
+      <p className="faint center" style={{ fontSize: 12, fontWeight: 700, margin: '0 0 6px' }}>
+        Your free account opens
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 6 }}>
+        {OPENS.map((o) => (
+          <div
+            key={o.label}
+            style={{
+              display: 'grid',
+              justifyItems: 'center',
+              gap: 4,
+              padding: '8px 2px',
+              borderRadius: 'var(--r-sm)',
+              background: 'var(--card-raised)',
+              boxShadow: 'var(--lit-edge)',
+              minWidth: 0,
+            }}
+          >
+            <Icon id={o.icon} size={20} style={{ color: 'var(--ink-dim)' }} />
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                lineHeight: 1.15,
+                textAlign: 'center',
+                color: 'var(--ink-dim)',
+              }}
+            >
+              {o.label}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }

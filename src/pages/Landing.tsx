@@ -7,6 +7,7 @@ import { useAuth } from '@/store/auth'
 import { appStoreAsk } from '@/lib/appStore'
 import { isSupabaseConfigured } from '@/lib/config'
 import { useEffect } from 'react'
+import { LandingPreviewCarousel } from './LandingPreviewCarousel'
 
 // Marketing / hero landing. On web this is the front door; inside the iOS app a
 // returning user with a profile is bounced straight to /play.
@@ -55,7 +56,7 @@ export default function Landing() {
             initial={{ scale: 0.6, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: 'spring', stiffness: 200, damping: 12 }}
-            style={{ fontSize: iosFirst ? 68 : 92, textAlign: 'center' }}
+            style={{ fontSize: iosFirst ? 52 : 64, textAlign: 'center' }}
           >
             📖
           </motion.div>
@@ -82,6 +83,10 @@ export default function Landing() {
               and actually <b style={{ color: 'var(--gold)' }}>remember</b> it.
             </p>
           </div>
+
+          {/* What is inside, shown rather than listed — drawn with the app's
+              own components so it can't drift from the app. */}
+          <LandingPreviewCarousel />
 
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
             {['🔥 Daily streaks', '⚡ Beat the clock', '👥 Play with friends', '🃏 Collect verse cards'].map((t) => (
@@ -131,6 +136,16 @@ export default function Landing() {
                   onClick={() => navigate('/welcome')}
                 >
                   or just play today’s verse
+                </span>
+              </p>
+              {/* Leaders make the same account as everybody; this only shows
+                  them how a page is claimed afterwards (/churches#claim). */}
+              <p className="faint center" style={{ fontSize: 12.5, margin: '2px 0 0' }}>
+                <span
+                  style={{ textDecoration: 'underline', cursor: 'pointer' }}
+                  onClick={() => navigate('/churches?claim=1')}
+                >
+                  Pastor or church leader? Claim your page
                 </span>
               </p>
             </>

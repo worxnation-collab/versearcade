@@ -116,9 +116,14 @@ export function plantingAt(value: string | undefined, plot: PlotDef): PercentPos
 }
 
 /** Depth cue, matching the crowd's: further up the yard = smaller. */
+// The owner's painted plantings (ownerArt.ts) stand in front of a painted yard
+// that already has flowers in it, so at the old drawn sizes they vanished into
+// it. Everything planted is drawn this much larger; positions are unchanged.
+export const YARD_ART_SCALE = 1.6
+
 export function plotHeight(b: number): number {
   const clamped = Math.min(Math.max(b, 4), 30)
-  return 52 - ((clamped - 4) / 26) * 22
+  return (52 - ((clamped - 4) / 26) * 22) * YARD_ART_SCALE
 }
 
 // ── What you can plant ───────────────────────────────────────────────────────

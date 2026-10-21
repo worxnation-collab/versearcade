@@ -238,6 +238,8 @@ export const STATUES: StatueDef[] = [
   { id: 'statue_dove', name: 'The Descending Dove', scale: 0.9, blurb: 'A column, and the Spirit coming down on it.' },
   { id: 'statue_tomb', name: 'The Empty Tomb', scale: 0.86, blurb: 'The stone rolled back off an open door.' },
   { id: 'statue_lion_lamb', name: 'The Lion and the Lamb', scale: 0.92, blurb: 'Lying down together, the way it was promised.' },
+  { id: 'statue_praying', name: 'The Kneeling Figure', scale: 0.9, blurb: 'Hood up, hands together, unhurried.' },
+  { id: 'statue_cross', name: 'The Stone Cross', scale: 1.0, blurb: 'Rough stone, and the ivy left to climb it.' },
 ]
 
 /**
@@ -306,9 +308,13 @@ export function statueAt(value: string | undefined, plinth: PlinthDef): PercentP
  * smaller. Statues run taller than plants at the same depth because a monument
  * on a plinth should read as a monument — b 1..30 -> 58..34px.
  */
+// Scaled with the plantings (YARD_ART_SCALE) so a statue still reads as the
+// largest thing in the yard after the plants grew.
+export const STATUE_ART_SCALE = 1.5
+
 export function plinthHeight(b: number): number {
   const clamped = Math.min(Math.max(b, 1), 30)
-  return 58 - ((clamped - 1) / 29) * 24
+  return (58 - ((clamped - 1) / 29) * 24) * STATUE_ART_SCALE
 }
 
 /** plinth id -> statue value (`statue_dove`, or `statue_dove~x500y120`). */

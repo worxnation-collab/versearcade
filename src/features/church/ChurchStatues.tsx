@@ -1,4 +1,5 @@
 import { GENERATED_ART } from '@/data/generatedArt'
+import { ownerStatueArt } from './ownerArt'
 import { SceneRemoveButton } from '@/components/SceneRemoveBadge'
 import { percentSpace, useSceneDrag } from '@/lib/sceneDrag'
 import {
@@ -240,7 +241,7 @@ const CARVINGS: Record<string, JSX.Element> = {
 // render reaches the yard the moment it exists and no id can point at a 404.
 // Until then every statue is a real carving. See art/church-statues.json.
 export function StatueIcon({ id, size = 40 }: { id: string; size?: number }) {
-  const raster = GENERATED_ART[id]
+  const raster = ownerStatueArt(id) ?? GENERATED_ART[id]
   if (raster) {
     return (
       <img
@@ -313,7 +314,7 @@ export function ChurchStatues({
     .sort((a, b) => b.b - a.b)
     .filter((p) => {
       const id = raisedId(statues[p.id])
-      return !!id && (!!CARVINGS[id] || !!GENERATED_ART[id])
+      return !!id && (!!CARVINGS[id] || !!ownerStatueArt(id) || !!GENERATED_ART[id])
     })
 
   const pickedPlinth = picked ? plinthById(picked) : undefined
@@ -386,4 +387,4 @@ export function ChurchStatues({
 
 /** Every carving this build can draw — what the picker offers. */
 export const drawableStatues = () =>
-  STATUES.filter((s) => !!CARVINGS[s.id] || !!GENERATED_ART[s.id])
+  STATUES.filter((s) => !!CARVINGS[s.id] || !!ownerStatueArt(s.id) || !!GENERATED_ART[s.id])

@@ -28,8 +28,7 @@ import { RoomSection } from '@/features/room/RoomSection'
 import { ChurchNudge } from '@/features/church/ChurchNudge'
 import { SettingsSheet } from './SettingsSheet'
 import { Tutorial } from '@/features/home/Tutorial'
-import { Icon, type IconId } from '@/data/icons'
-import { PaintedIcon } from '@/components/PaintedIcon'
+import { PaintedIcon, type PaintedIconId } from '@/components/PaintedIcon'
 
 export default function ProfileScreen() {
   const navigate = useNavigate()
@@ -288,10 +287,10 @@ export default function ProfileScreen() {
           under the card, so they read as tools rather than as part of the
           score. The Mail button carries the same one dot the nav does. */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 6, margin: '10px 0 18px' }}>
-        <ProfileTool icon="sparkle" label="Customize" onClick={openCustomize} />
-        <ProfileTool icon="journal" label="Journal" onClick={() => { juice.select?.(); navigate('/journal') }} />
-        <ProfileTool icon="mail" label="Mail" dot={mailWaiting > 0} onClick={() => { juice.select?.(); navigate('/mail') }} />
-        <ProfileTool icon="tools" ariaLabel="Settings" onClick={() => { juice.select?.(); setSettingsOpen(true) }} />
+        <ProfileTool icon="tool_customize" label="Customize" onClick={openCustomize} />
+        <ProfileTool icon="tool_journal" label="Journal" onClick={() => { juice.select?.(); navigate('/journal') }} />
+        <ProfileTool icon="tool_mail" label="Mail" dot={mailWaiting > 0} onClick={() => { juice.select?.(); navigate('/mail') }} />
+        <ProfileTool icon="tool_settings" ariaLabel="Settings" onClick={() => { juice.select?.(); setSettingsOpen(true) }} />
       </div>
 
       {/* The fourth little world, and the only one that is yours alone. It opens
@@ -534,7 +533,7 @@ function ProfileTool({
   dot = false,
   onClick,
 }: {
-  icon: IconId
+  icon: PaintedIconId
   label?: string
   ariaLabel?: string
   dot?: boolean
@@ -565,7 +564,7 @@ function ProfileTool({
       }}
     >
       <span aria-hidden style={{ color: 'var(--gold)', lineHeight: 0 }}>
-        <Icon id={icon} size={15} />
+        <PaintedIcon id={icon} size={20} style={{ verticalAlign: 'middle' }} />
       </span>
       {label}
       {dot && (

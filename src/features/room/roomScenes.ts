@@ -4,15 +4,15 @@ import room3 from '@/assets/rooms/room3.jpg'
 import room4 from '@/assets/rooms/room4.jpg'
 import room5 from '@/assets/rooms/room5.jpg'
 import { dailySceneIndex, useToday } from '@/lib/dailyScene'
-import { DEFAULT_ROOM_SKIN } from './skins'
 
 // Five owner-supplied paintings of the Upper Room (2026-10-21), one per day:
 // the same scene for everybody on a local date (lib/dailyScene.ts), so a
 // visitor sees the room as its owner does today, moving on at midnight.
 //
-// They are the DEFAULT material's (Clay) paintings only, by the owner's call:
-// Limestone, Cedar and Dusk keep their own tiered renders, so choosing a
-// material still changes how the room looks. Every scene has the arcade on the
+// They are now the ONLY room paintings, by the owner's call (2026-10-21): the
+// material picker was removed, every room rotates through these five whatever
+// `room_skin` says, and the tiered limestone/cedar/dusk renders are unused.
+// Every scene has the arcade on the
 // left, the table in the centre and open floor — but not where the drawn
 // chamber put them, so each scene carries its own anchor spots and sizes
 // (below). The anchor IDS are unchanged; only where each one stands.
@@ -124,9 +124,6 @@ export const SCENE_WAYPOINTS = [
   { x: 84, b: 5 },
   { x: 62, b: 16 },
 ]
-
-/** Whether a room in this material takes the five daily scenes. */
-export const takesRandomScene = (skin?: string | null): boolean => (skin ?? DEFAULT_ROOM_SKIN) === DEFAULT_ROOM_SKIN
 
 /** Today's scene. Offset by two so it doesn't step in lockstep with the keep. */
 export function useRoomScene(): string {

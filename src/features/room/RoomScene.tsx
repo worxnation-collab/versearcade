@@ -6,7 +6,7 @@ import { arrangeAnchors, arrangementById } from '@/data/layouts'
 import type { RoomPlacements } from '@/store/room'
 import { RoomChamber, FurnishingProp } from './RoomArt'
 import { ArcadeCabinet } from '@/features/arcade/ArcadeCabinet'
-import { SCENE_WAYPOINTS, sceneSpot, takesRandomScene, useRoomScene } from './roomScenes'
+import { SCENE_WAYPOINTS, sceneSpot, useRoomScene } from './roomScenes'
 
 // The Upper Room as a place you can look at — the chamber at its tier, whatever
 // is in it, and whoever lives there.
@@ -58,7 +58,6 @@ const sizeFor = (b: number) => Math.round(146 - ((Math.min(Math.max(b, 5), 17) -
 
 export function RoomScene({
   tier,
-  skin,
   layout,
   placements,
   members,
@@ -71,9 +70,6 @@ export function RoomScene({
   lampLit = true,
 }: {
   tier: number
-  /** What the room is made of. Undefined draws the default, which is the room
-   *  exactly as it has always been drawn. */
-  skin?: string | null
   /** Which arrangement the owner picked (`data/layouts.ts`, 0112). Undefined
    *  is `settled`, the room exactly as it has always been laid out. */
   layout?: string | null
@@ -83,8 +79,7 @@ export function RoomScene({
    * Your own room only. The scene used to take a whole editing protocol here —
    * pick, drop, drag-commit, resize, remove — and it is one callback now.
    *
-   * **The room arranges itself** (`data/layouts.ts`): you choose the material
-   * and the arrangement, and where each piece stands is the app's job. Tapping
+   * **The room arranges itself** (`data/layouts.ts`): you choose the arrangement, and where each piece stands is the app's job. Tapping
    * a piece takes it back out, which is the one thing left that only makes
    * sense with the piece in front of you; everything else is the shelf.
    */
@@ -103,11 +98,11 @@ export function RoomScene({
   // Where everything stands, as this arrangement has it. Memoised because it
   // is pure over (surface, arrangement) and the scene re-renders on every
   // crowd tick.
-  // A Clay room takes today's one of the five scenes (roomScenes.ts); the
-  // other materials keep their tiered paintings, and the postcard (`flat`)
-  // keeps the drawn room it can serialise.
+  // Every room takes today's one of the five scenes (roomScenes.ts), whatever
+  // material an older build stored — the material picker is gone. The
+  // postcard (`flat`) keeps the drawn room it can serialise.
   const pickedScene = useRoomScene()
-  const randomScene = !flat && takesRandomScene(skin) ? pickedScene : null
+  const randomScene = flat ? null : pickedScene
 
   const anchors = useMemo(
     () => arrangeAnchors(ROOM_SURFACE, arrangementById(layout)),
@@ -130,7 +125,7 @@ export function RoomScene({
         style={{ display: 'block', width: '100%', height: 'auto' }}
         data-room-scene=""
       >
-        <RoomChamber tier={tier} flat={flat} skin={skin} scene={randomScene} />
+        <RoomChamber tier={tier} flat={flat} scene={randomScene} />
 
         {/* Tucked into the left corner, clear of floor_1 at x=96. */}
         {/* The new scenes paint their own cabinet in this corner, so over one

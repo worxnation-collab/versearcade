@@ -29,7 +29,6 @@ import {
 } from '@/data/room'
 import { RoomScene } from './RoomScene'
 import { FurnishingThumb } from './RoomArt'
-import { ROOM_SKINS, roomPalette, roomSkinById } from './skins'
 import { sharePostcard } from '@/lib/postcard'
 import { PrayerSheet } from '@/features/prayer/PrayerSheet'
 import { usePrayer } from '@/store/prayer'
@@ -48,8 +47,6 @@ export function RoomSection() {
   const navigate = useNavigate()
   const me = useAuth((s) => s.profile)
   const placements = useRoom((s) => s.placements)
-  const skin = useRoom((s) => s.skin)
-  const setSkin = useRoom((s) => s.setSkin)
   const layout = useRoom((s) => s.layout)
   const setLayout = useRoom((s) => s.setLayout)
   const [merged, setMerged] = useState<{ anchor: string; name: string } | null>(null)
@@ -287,7 +284,6 @@ export function RoomSection() {
 
       <RoomScene
         tier={tier}
-        skin={skin}
         placements={placements}
         members={[{
           username: me.username,
@@ -377,60 +373,9 @@ export function RoomSection() {
         </p>
       )}
 
-      {/* What the room is MADE of, beside the ladder that says how far it has
-          come. Four materials, all free from the first minute — a taste, not an
-          achievement, which is the character builder's rule rather than the
-          church's. A skin repaints only what the tier already draws, so it can
-          never make a low room look like a high one. See features/room/skins. */}
-      <div style={{ marginTop: 12 }}>
-        <Collapsible icon={<PaintedIcon id="material" />} title="Material" meta={roomSkinById(skin).name}>
-          <p className="faint" style={{ fontSize: 11.5, margin: '0 0 10px', lineHeight: 1.5 }}>
-            What the room is built from. All four are yours from the start — this is a taste,
-            not something to earn, and none of them makes the room any bigger.
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(78px, 1fr))', gap: 8 }}>
-            {ROOM_SKINS.map((sk) => {
-              const on = sk.id === skin
-              const pal = roomPalette(sk.id, tier)
-              return (
-                <button
-                  key={sk.id}
-                  onClick={() => { juice.select(); void setSkin(sk.id) }}
-                  title={sk.blurb}
-                  style={{
-                    display: 'grid',
-                    justifyItems: 'center',
-                    gap: 5,
-                    padding: '8px 4px',
-                    borderRadius: 12,
-                    background: on ? 'var(--select)' : 'var(--card-solid)',
-                    border: on ? '1px solid var(--edge)' : '1px solid var(--stroke)',
-                    cursor: 'pointer',
-                    minWidth: 0,
-                  }}
-                >
-                  {/* The swatch is the room's own two surfaces at YOUR tier, so
-                      what you tap is what you get rather than a generic chip. */}
-                  <svg width="46" height="30" viewBox="0 0 46 30" aria-hidden style={{ borderRadius: 6 }}>
-                    <rect x="0" y="0" width="46" height="30" fill={pal.wall} />
-                    <rect x="0" y="0" width="46" height="6" fill={pal.wallDark} />
-                    <rect x="0" y="21" width="46" height="9" fill={pal.floor} />
-                    <rect x="0" y="21" width="46" height="1.5" fill={pal.floorDark} />
-                    <rect x="8" y="11" width="18" height="2.4" rx="1" fill={pal.wood} />
-                  </svg>
-                  <span style={{ fontSize: 11, fontWeight: 800, textAlign: 'center', lineHeight: 1.2, color: on ? 'var(--gold)' : undefined }}>
-                    {sk.name}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        </Collapsible>
-      </div>
-
-      {/* The other half of the one lever of agency. You choose what the room is
-          MADE of and how it is LAID OUT; where each piece stands is the app's
-          job. Three arrangements, every one composed, none of them a number —
+      {/* The one lever of agency left. The room's painting rotates by itself
+          (roomScenes.ts — there is no material picker any more); you choose
+          how it is LAID OUT, and where each piece stands is the app's job. Three arrangements, every one composed, none of them a number —
           see data/layouts.ts for why this replaced dragging. */}
       <div style={{ marginTop: 12 }}>
         <Collapsible icon={<PaintedIcon id="arrangement" />} title="Arrangement" meta={arrangementById(layout).name}>

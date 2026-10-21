@@ -2393,8 +2393,11 @@ shows a verse. Four things are load-bearing:
   Word Catch takes the translated text only if it is already on the device
   when a run is dealt (it warms the next verse during the current one). The
   Cross Word stays BSB: its authored words and the part-of-speech lexicon are
-  the BSB's. `quizzable` gates all of it per translation — NLT and MSG are
-  false until their publishers confirm quizzing isn't "altering" the text.
+  the BSB's. `quizzable` gates all of it per translation — ALL true since
+  2026-10-21, NLT and MSG included, the owner's call made knowing the terms
+  forbid "altering" licensed text and no publisher has been asked. If one
+  objects, its flag is the whole switch back. The Message tags verse SPANS, so
+  a MSG run can read a span (1 Kings 2:1-3) where the BSB reads one verse.
 - **Fail closed to the bundled text, labelled BSB.** Offline, a keyless build, a
   verse a version numbers differently (The Message tags spans by their LAST
   verse) — every failure leaves the pool's words on screen with a BSB badge,

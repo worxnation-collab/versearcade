@@ -35,11 +35,11 @@ export interface TranslationOption {
   blurb: string
   /**
    * May a QUIZ be played in it — fill-in-the-blanks cut from its text, Word
-   * Catch rebuilding it word by word? True for the public-domain versions.
-   * False for NLT and MSG until their publishers confirm it: API.Bible's terms
-   * forbid altering licensed text, and whether a blanked word is "altering" is
-   * the rights holder's call. One flag per translation, so turning it on is a
-   * one-word change.
+   * Catch rebuilding it word by word? True for every version today, NLT and MSG
+   * included: that was the owner's call (2026-10-21), made knowing API.Bible's
+   * terms forbid "altering" licensed text and that whether a blanked word
+   * counts is the rights holder's to say. If Tyndale or NavPress object, this
+   * flag is the whole switch back — one word per translation.
    */
   quizzable: boolean
 }
@@ -48,8 +48,8 @@ export interface TranslationOption {
 // supabase/functions/bible-text/index.ts — that list is the server's ceiling.
 export const TRANSLATIONS_ALL: TranslationOption[] = [
   { id: 'bsb', abbr: 'BSB', name: 'Berean Standard Bible', apiBibleId: 'bba9f40183526463-01', licensed: false, quizzable: true, blurb: 'Built into the app, so it reads offline' },
-  { id: 'nlt', abbr: 'NLT', name: 'New Living Translation', apiBibleId: 'd6e14a625393b4da-01', licensed: true, quizzable: false, blurb: 'Clear, modern, thought-for-thought' },
-  { id: 'msg', abbr: 'MSG', name: 'The Message', apiBibleId: '6f11a7de016f942e-01', licensed: true, quizzable: false, blurb: 'A paraphrase in everyday speech' },
+  { id: 'nlt', abbr: 'NLT', name: 'New Living Translation', apiBibleId: 'd6e14a625393b4da-01', licensed: true, quizzable: true, blurb: 'Clear, modern, thought-for-thought' },
+  { id: 'msg', abbr: 'MSG', name: 'The Message', apiBibleId: '6f11a7de016f942e-01', licensed: true, quizzable: true, blurb: 'A paraphrase in everyday speech' },
   { id: 'kjv', abbr: 'KJV', name: 'King James Version', apiBibleId: 'de4e12af7f28f599-02', bibleApiCode: 'kjv', licensed: false, quizzable: true, blurb: 'The classic of 1611' },
   { id: 'web', abbr: 'WEB', name: 'World English Bible', apiBibleId: '9879dbb7cfe39e4d-04', bibleApiCode: 'web', licensed: false, quizzable: true, blurb: 'Modern and public domain' },
   { id: 'asv', abbr: 'ASV', name: 'American Standard Version', apiBibleId: '06125adad2d5898a-01', licensed: false, quizzable: true, blurb: 'Word-for-word, 1901' },

@@ -15,6 +15,7 @@ import { shareResult, inviteUrl } from '@/features/daily/shareCard'
 import { useJuice } from '@/juice/useJuice'
 import { FavoriteButton } from '@/components/FavoriteButton'
 import type { PlayResult } from '@/types'
+import { PaintedIcon } from '@/components/PaintedIcon'
 
 // Challenger flow: pick who you're battling, play a fresh random-verse quiz,
 // and the challenge goes out on its own. Opponents come from your BUDDIES first,
@@ -431,7 +432,7 @@ function PlayerRow({ u, label, onClick }: { u: BuddyCard; label: string; onClick
         <b style={{ fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
           @{u.username}
         </b>
-        <span className="faint" style={{ fontSize: 12 }}>Level {u.level} · 🔥 {u.current_streak}</span>
+        <span className="faint" style={{ fontSize: 12 }}>Level {u.level} · <PaintedIcon id="streak" /> {u.current_streak}</span>
       </div>
       <motion.button
         whileTap={{ scale: 0.94 }}

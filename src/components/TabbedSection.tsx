@@ -25,6 +25,8 @@ import { useSettings } from '@/store/settings'
 export interface SectionTab {
   key: string
   label: string
+  /** A painted icon before the label (components/PaintedIcon). */
+  icon?: ReactNode
   /** A line under the pills once the section is open. Not a badge. */
   right?: ReactNode
   content: ReactNode
@@ -97,6 +99,7 @@ export function TabbedSection({
                   borderColor: t.dot && !on ? 'var(--edge)' : on ? 'var(--select)' : 'var(--stroke)',
                 }}
               >
+                {t.icon && <>{t.icon} </>}
                 {t.label}
                 {t.dot && (
                   <span

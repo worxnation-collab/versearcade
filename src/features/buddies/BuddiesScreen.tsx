@@ -9,6 +9,7 @@ import { PushNudge } from '@/components/PushNudge'
 import { useBuddies, type BuddyCard } from '@/store/buddies'
 import { WashFeetButton } from '@/components/WashFeetButton'
 import { useJuice } from '@/juice/useJuice'
+import { PaintedIcon } from '@/components/PaintedIcon'
 
 // Bible Buddies — a personal friends layer. Add someone by @username (a "be my
 // buddy" request), accept the ones who ask you, and your buddies become your
@@ -150,7 +151,7 @@ export function BuddiesSection() {
                 <Avatar emoji={u.avatar_emoji} character={u.avatar_character} size={38} ring={false} username={u.username} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <b style={{ fontWeight: 800 }}>@{u.username}</b>
-                  <div className="faint" style={{ fontSize: 12 }}>Level {u.level} · 🔥 {u.current_streak}</div>
+                  <div className="faint" style={{ fontSize: 12 }}>Level {u.level} · <PaintedIcon id="streak" /> {u.current_streak}</div>
                 </div>
                 <button className="pill" onClick={() => add(u.username)}
                   style={{ fontWeight: 800, fontSize: 13, background: 'var(--gold)', color: '#241f0a', border: 'none' }}>+ Buddy</button>
@@ -166,7 +167,7 @@ export function BuddiesSection() {
 function Header() {
   return (
     <div className="center" style={{ marginBottom: 16 }}>
-      <div className="floaty" style={{ fontSize: 44 }}>🤝</div>
+      <div className="floaty" style={{ fontSize: 44 }}><PaintedIcon id="buddies" /></div>
       <h1 style={{ fontSize: 28, marginTop: 4 }}>Bible Buddies</h1>
       <p className="dim" style={{ marginTop: 4 }}>Add friends, cheer each other on, and battle head to head.</p>
     </div>
@@ -185,7 +186,7 @@ function BuddyRow({ u, onBattle, onRemove }: { u: BuddyCard; onBattle: () => voi
           {u.official && <span className="pill" style={{ marginLeft: 6, fontSize: 10, background: 'var(--gold)', color: '#241f0a', fontWeight: 800 }}>★ Official</span>}
         </b>
         <div className="faint" style={{ fontSize: 12 }}>
-          {u.official ? 'Verse Arcade · say hi!' : <>Level {u.level} · 🔥 {u.current_streak}</>}
+          {u.official ? 'Verse Arcade · say hi!' : <>Level {u.level} · <PaintedIcon id="streak" /> {u.current_streak}</>}
         </div>
       </div>
       {/* The official account has no feet to wash — it never plays. */}

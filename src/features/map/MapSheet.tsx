@@ -8,6 +8,7 @@ import { MAP_AREAS, placesIn, type MapPlace } from '@/data/map'
 import { Icon } from '@/data/icons'
 import { useInvitations } from './invitations'
 import { InviteIcon } from './InviteIcon'
+import { PaintedIcon } from '@/components/PaintedIcon'
 
 // The map — every place in this app, on one screen, one tap from anywhere.
 //
@@ -277,7 +278,7 @@ function PlaceRow({
           <b style={{ fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {place.label}
           </b>
-          {isLocked && <span aria-label="Needs an account" style={{ fontSize: 10, opacity: 0.85 }}>🔒</span>}
+          {isLocked && <span style={{ fontSize: 10, opacity: 0.85 }}><PaintedIcon id="lock" label="Needs an account" /></span>}
         </span>
         <span className="faint" style={{ display: 'block', fontSize: 12, lineHeight: 1.35, marginTop: 1 }}>
           {place.line}

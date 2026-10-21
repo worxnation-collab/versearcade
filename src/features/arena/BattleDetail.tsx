@@ -14,6 +14,7 @@ import { FavoriteButton } from '@/components/FavoriteButton'
 import { BattleXpLine } from './BattleXpLine'
 import { battleVerse, asBattleMode } from './battle'
 import { ScriptureQuote } from '@/components/ScriptureQuote'
+import { PaintedIcon } from '@/components/PaintedIcon'
 
 function myOutcome(b: Battle): 'won' | 'lost' | 'tie' | null {
   if (b.status !== 'complete' || !b.winner) return null
@@ -244,7 +245,7 @@ export default function BattleDetail() {
       ) : battle.invited && !battle.is_invited ? (
         // Targeted at someone else
         <div className="card" style={{ textAlign: 'center', marginTop: 16 }}>
-          <div style={{ fontSize: 40 }}>🔒</div>
+          <div style={{ fontSize: 40 }}><PaintedIcon id="lock" /></div>
           <p style={{ fontSize: 15, marginTop: 8 }}>
             This challenge is for <b>@{battle.invited}</b>. Start your own to take on <b>@{battle.challenger.username}</b>!
           </p>

@@ -8,6 +8,7 @@ import { useGame } from '@/store/game'
 import { useFirstLight } from '@/store/firstLight'
 import { firstLightLine } from '@/data/firstLight'
 import { denominationColor } from '@/data/denominations'
+import { PaintedIcon } from '@/components/PaintedIcon'
 
 // First light — the day's card for whoever opened today's verse first.
 //
@@ -129,7 +130,7 @@ export function FirstLight() {
             background: 'linear-gradient(180deg, rgba(255,210,63,0.10), transparent)',
           }}
         >
-          🌅
+          <PaintedIcon id="firstlight" />
         </div>
       )}
 

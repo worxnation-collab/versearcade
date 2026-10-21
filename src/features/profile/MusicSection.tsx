@@ -4,6 +4,7 @@ import { useMusic, musicProgress } from '@/store/music'
 import { useSettings } from '@/store/settings'
 import { useNowPlaying } from '@/juice/MusicDirector'
 import { useJuice } from '@/juice/useJuice'
+import { PaintedIcon } from '@/components/PaintedIcon'
 
 // The music player: the whole soundtrack, what you've walked into so far, and
 // the mute. Locked tracks stay visible and name the room that plays them —
@@ -85,7 +86,7 @@ export function MusicSection() {
               }}
             >
               <span style={{ fontSize: 17, flexShrink: 0, width: 20, textAlign: 'center' }} aria-hidden>
-                {found ? (isPlaying ? <Bars /> : '♪') : '🔒'}
+                {found ? (isPlaying ? <Bars /> : '♪') : <PaintedIcon id="lock" />}
               </span>
               <span style={{ flex: 1, minWidth: 0 }}>
                 <b style={{ fontFamily: 'var(--font-display)', fontSize: 14.5, display: 'block' }}>

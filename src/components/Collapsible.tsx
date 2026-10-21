@@ -14,7 +14,7 @@ export function Collapsible({
   defaultOpen = false,
   onToggle,
 }: {
-  icon: string
+  icon: ReactNode
   title: string
   /** Small dimmed text after the title — a count, a rank, a status. */
   meta?: ReactNode

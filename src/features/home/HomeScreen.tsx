@@ -35,6 +35,7 @@ import { FirstLight } from '@/features/daily/FirstLight'
 import { dailyTriviaBook } from '@/data/bible/questions'
 import { msUntilNextLocalMidnight, formatCountdown } from '@/lib/date'
 import { prefetchScripture, refreshAvailableBibles } from '@/lib/bible'
+import { PaintedIcon } from '@/components/PaintedIcon'
 
 // The Play tab: two daily boxes, the road, and the compass.
 //
@@ -230,8 +231,8 @@ export default function HomeScreen() {
       {!playedToday && profile.currentStreak > 0 && (
         <p className="faint" style={{ fontSize: 12, marginBottom: 10 }}>
           {profile.streakFreezes > 0
-            ? `🛟 Your ${profile.currentStreak}-day streak is safe tonight even if you miss — ${profile.streakFreezes} freeze${profile.streakFreezes > 1 ? 's' : ''} held.`
-            : `🔥 ${profile.currentStreak} day${profile.currentStreak > 1 ? 's' : ''} running — today’s verse keeps it going.`}
+            ? <><PaintedIcon id="freeze" /> {`Your ${profile.currentStreak}-day streak is safe tonight even if you miss — ${profile.streakFreezes} freeze${profile.streakFreezes > 1 ? 's' : ''} held.`}</>
+            : <><PaintedIcon id="streak" /> {`${profile.currentStreak} day${profile.currentStreak > 1 ? 's' : ''} running — today’s verse keeps it going.`}</>}
         </p>
       )}
 
@@ -308,10 +309,10 @@ export default function HomeScreen() {
       {(firstLightAvailable || guest || recap) && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
           {recap && (
-            <PillButton icon="📆" label="Your week" gold={!recapSeen} onClick={() => setSheet('week')} />
+            <PillButton icon={<PaintedIcon id="week" />} label="Your week" gold={!recapSeen} onClick={() => setSheet('week')} />
           )}
           {firstLightAvailable && (
-            <PillButton icon="🌅" label="First light" onClick={() => setSheet('lantern')} />
+            <PillButton icon={<PaintedIcon id="firstlight" />} label="First light" onClick={() => setSheet('lantern')} />
           )}
           {guest && (
             <PillButton icon="⭐" label="Create a free account" gold onClick={() => setSheet('account')} />
@@ -346,7 +347,7 @@ export default function HomeScreen() {
           lives in the pill row until the next Sunday. See store/weekly.ts. */}
       {sheet === 'week' && recap && (
         <QuickSheet
-          title="📆 Your week"
+          title={<><PaintedIcon id="week" /> Your week</>}
           onClose={() => { useWeekly.getState().markSeen(); setSheet(null) }}
         >
           <WeekRecapBody recap={recap} onClose={() => { useWeekly.getState().markSeen(); setSheet(null) }} />
@@ -354,7 +355,7 @@ export default function HomeScreen() {
       )}
 
       {sheet === 'lantern' && (
-        <QuickSheet title="🌅 First light" onClose={() => setSheet(null)}>
+        <QuickSheet title={<><PaintedIcon id="firstlight" /> First light</>} onClose={() => setSheet(null)}>
           <FirstLight />
         </QuickSheet>
       )}
@@ -649,7 +650,7 @@ function PillButton({
   gold,
   onClick,
 }: {
-  icon: string
+  icon: React.ReactNode
   label: string
   gold?: boolean
   onClick: () => void

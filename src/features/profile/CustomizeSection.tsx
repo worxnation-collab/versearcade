@@ -55,6 +55,7 @@ import {
 } from '@/data/avatar'
 import { BundleSheet } from './BundleSheet'
 import type { AvatarSpec } from '@/types'
+import { PaintedIcon } from '@/components/PaintedIcon'
 
 // "Customize" — streak-unlocked avatar borders + badges. Unlock eligibility is
 // based on the player's LONGEST streak ever, so a missed day never takes a
@@ -475,9 +476,9 @@ export function CustomizeSection() {
                                     : skin.levelGoal != null
                                       ? `Level ${skin.levelGoal}`
                                       : `Shared ${Math.min(sharedCount, skin.shareGoal ?? 0)}/${skin.shareGoal ?? 0} days`
-                            : skin.exclusive ? `🔒 ${skin.packName ?? 'Exclusive'}`
-                              : skin.bundleOnly ? `🔒 ${skin.packName ?? 'Pack only'}`
-                                : `🔒 ${skin.price}`
+                            : skin.exclusive ? <><PaintedIcon id="lock" /> {skin.packName ?? 'Exclusive'}</>
+                              : skin.bundleOnly ? <><PaintedIcon id="lock" /> {skin.packName ?? 'Pack only'}</>
+                                : <><PaintedIcon id="lock" /> {skin.price}</>
                       return (
                         <button
                           key={skin.id}
@@ -517,7 +518,7 @@ export function CustomizeSection() {
                                   filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.6))',
                                 }}
                               >
-                                🔒
+                                <PaintedIcon id="lock" />
                               </span>
                             )}
                           </div>
@@ -700,7 +701,7 @@ export function CustomizeSection() {
                                 ? 'Beside you · tap to put down'
                                 : open
                                   ? p.blurb
-                                  : `🔒 ${petRequirementText(p)}${short ? ` · ${short}` : ''}`}
+                                  : <><PaintedIcon id="lock" /> {`${petRequirementText(p)}${short ? ` · ${short}` : ''}`}</>}
                             </span>
                             {/* What it does, always — including "Just company", so the
                                 common ones read as a choice rather than as a lesser
@@ -1194,7 +1195,7 @@ function SwatchDot({
             padding: 1,
           }}
         >
-          {locked ? '🔒' : '✦'}
+          {locked ? <PaintedIcon id="lock" /> : '✦'}
         </span>
       )}
     </button>
@@ -1259,7 +1260,7 @@ function CosmeticTile({
               padding: 3,
             }}
           >
-            🔒
+            <PaintedIcon id="lock" />
           </span>
         )}
       </div>

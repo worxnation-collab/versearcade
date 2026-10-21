@@ -33,6 +33,7 @@ import { ROOM_SKINS, roomPalette, roomSkinById } from './skins'
 import { sharePostcard } from '@/lib/postcard'
 import { PrayerSheet } from '@/features/prayer/PrayerSheet'
 import { usePrayer } from '@/store/prayer'
+import { PaintedIcon } from '@/components/PaintedIcon'
 
 // Your Upper Room, on /you — the one surface that owns furnishing it.
 //
@@ -264,9 +265,8 @@ export function RoomSection() {
             color: lampLit ? undefined : 'var(--gold)',
           }}
         >
-          {/* The painted praying hands from the "Open right now" row, so
-              the same gesture wears the same picture everywhere. */}
-          <img src="/invite/pray.png" alt="" aria-hidden width={20} height={20} draggable={false} style={{ display: 'block' }} />
+          {/* The painted praying hands, the same picture Pray wears everywhere. */}
+          <PaintedIcon id="pray" size={20} style={{ verticalAlign: 'middle' }} />
           Pray
         </button>
         <button
@@ -281,7 +281,7 @@ export function RoomSection() {
             opacity: sharing ? 0.6 : 1,
           }}
         >
-          {sharing ? '…' : '📮 Postcard'}
+          {sharing ? '…' : <><PaintedIcon id="postcard" /> Postcard</>}
         </button>
       </div>
 
@@ -325,7 +325,7 @@ export function RoomSection() {
                 color: 'var(--ink)',
               }}
             >
-              🙏 Pray
+              <PaintedIcon id="pray" /> Pray
             </button>
             <button
               className="pill"
@@ -383,7 +383,7 @@ export function RoomSection() {
           church's. A skin repaints only what the tier already draws, so it can
           never make a low room look like a high one. See features/room/skins. */}
       <div style={{ marginTop: 12 }}>
-        <Collapsible icon="🎨" title="Material" meta={roomSkinById(skin).name}>
+        <Collapsible icon={<PaintedIcon id="material" />} title="Material" meta={roomSkinById(skin).name}>
           <p className="faint" style={{ fontSize: 11.5, margin: '0 0 10px', lineHeight: 1.5 }}>
             What the room is built from. All four are yours from the start — this is a taste,
             not something to earn, and none of them makes the room any bigger.
@@ -433,7 +433,7 @@ export function RoomSection() {
           job. Three arrangements, every one composed, none of them a number —
           see data/layouts.ts for why this replaced dragging. */}
       <div style={{ marginTop: 12 }}>
-        <Collapsible icon="📐" title="Arrangement" meta={arrangementById(layout).name}>
+        <Collapsible icon={<PaintedIcon id="arrangement" />} title="Arrangement" meta={arrangementById(layout).name}>
           <p className="faint" style={{ fontSize: 11.5, margin: '0 0 10px', lineHeight: 1.5 }}>
             How the room lays itself out. Everything you've put in stays in — this only changes
             where it stands, and you can switch as often as you like.
@@ -571,7 +571,7 @@ function Shelf({
               <span className="faint" style={{ display: 'block', fontSize: 10, marginTop: 2, lineHeight: 1.3 }}>
                 {has
                   ? `${out ? 'In the room' : ROOM_MOUNT_WORD[f.mount]}${next ? ` · ${next.name} at ${next.goal.toLocaleString()}` : ''}`
-                  : `🔒 ${REQUIREMENT_NOUN[f.req](f.goal)} (${Math.min(progress[f.req], f.goal).toLocaleString()}/${f.goal.toLocaleString()})`}
+                  : <><PaintedIcon id="lock" /> {`${REQUIREMENT_NOUN[f.req](f.goal)} (${Math.min(progress[f.req], f.goal).toLocaleString()}/${f.goal.toLocaleString()})`}</>}
               </span>
             </button>
             {out && (

@@ -8,6 +8,7 @@ import { scoreQuestion } from '@/lib/progress'
 import { buildCpuPlan, type CpuProfile } from './cpu'
 import { CpuFace } from './CpuFace'
 import type { DailyVerse, PlayResult } from '@/types'
+import { PaintedIcon } from '@/components/PaintedIcon'
 
 // A quiz run with a live CPU opponent racing the same clock. Shared by Bible
 // Battle (vs a chosen difficulty) and Focus practice (vs a study companion): the
@@ -164,7 +165,7 @@ function VersusBar({
       <div style={{ marginTop: 6, textAlign: 'center', minHeight: 15 }}>
         {phase === 'question' && (
           <span className="faint" style={{ fontSize: 11, fontWeight: 700 }}>
-            {status === 'thinking' ? `💭 ${profile.name} is thinking…` : `🔒 ${profile.name} locked it in`}
+            {status === 'thinking' ? `💭 ${profile.name} is thinking…` : <><PaintedIcon id="lock" /> {profile.name} locked it in</>}
           </span>
         )}
         {phase === 'feedback' && (

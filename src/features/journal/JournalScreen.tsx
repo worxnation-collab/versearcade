@@ -23,6 +23,7 @@ import {
   totalRungs,
   type JournalNumbers,
 } from '@/data/journal'
+import { PaintedIcon } from '@/components/PaintedIcon'
 
 // The Journal — what you have done, on one page.
 //
@@ -82,7 +83,7 @@ export default function JournalScreen() {
   return (
     <Page>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-        <h2 style={{ fontSize: 24, margin: 0 }}>📔 Journal</h2>
+        <h2 style={{ fontSize: 24, margin: 0 }}><PaintedIcon id="journal" /> Journal</h2>
         <div style={{ flex: 1 }} />
         <button
           className="pill"

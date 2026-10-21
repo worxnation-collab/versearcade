@@ -15,8 +15,11 @@ import type { PlayResult, Question } from '@/types'
 // perfect run renders nothing — it has nothing to teach and a tick on a clean
 // screen is the checklist this app doesn't keep.
 export function MissedList({ questions, result }: { questions: Question[]; result: PlayResult }) {
+  // A run played in another Bible carries its own questions: its blanks were
+  // cut from that text, and `choiceIndex` only means anything against those.
+  const asPlayed = result.questions ?? questions
   const missed = result.perQuestion
-    .map((p, i) => ({ p, q: questions[i] }))
+    .map((p, i) => ({ p, q: asPlayed[i] }))
     .filter(({ p, q }) => q && !p.correct)
   if (!missed.length) return null
 

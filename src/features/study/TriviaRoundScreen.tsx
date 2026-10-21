@@ -9,6 +9,7 @@ import { triviaVerseFromBook } from '@/data/bible/questions'
 import { triviaBooks, BOOK_TRIVIA } from '@/data/bible/trivia'
 import { useJuice } from '@/juice/useJuice'
 import type { DailyVerse, PlayResult } from '@/types'
+import { ScriptureQuote } from '@/components/ScriptureQuote'
 
 // Bonus trivia, a whole round of it — what Tabitha lends when you want the book
 // rather than the verse.
@@ -72,6 +73,7 @@ export default function TriviaRoundScreen() {
   if (phase === 'play') {
     return (
       <QuizRunner
+        translate
         key={seed}
         verse={verse}
         label={`✨ Bonus trivia · ${bookLabel(book)}`}
@@ -222,7 +224,7 @@ function Recap({
           <b style={{ fontFamily: 'var(--font-display)', fontSize: 17, flex: 1, minWidth: 0 }}>{verse.reference}</b>
           <FavoriteButton reference={verse.reference} variant="icon" />
         </div>
-        <p style={{ marginTop: 8, lineHeight: 1.5 }}>“{verse.text}”</p>
+        <ScriptureQuote verse={verse} style={{ marginTop: 8 }} />
       </div>
 
       <div style={{ marginTop: 16, display: 'grid', gap: 10 }}>

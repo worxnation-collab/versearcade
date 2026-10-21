@@ -13,6 +13,7 @@ import { poolBooks, poolBookCounts, practiceVerseFromBook, verseFromReference } 
 import { useJuice } from '@/juice/useJuice'
 import { FavoriteButton } from '@/components/FavoriteButton'
 import type { AvatarSpec, DailyVerse, PlayResult } from '@/types'
+import { ScriptureQuote } from '@/components/ScriptureQuote'
 
 // Focus practice: pick a book, then drill random verses from just that book —
 // reached from the Study tab, alongside the CPU battle and the last-five replay.
@@ -294,7 +295,7 @@ function RecapScreen({
           <b style={{ fontFamily: 'var(--font-display)', fontSize: 17, flex: 1, minWidth: 0 }}>{verse.reference}</b>
           <FavoriteButton reference={verse.reference} variant="icon" />
         </div>
-        <p style={{ marginTop: 8, lineHeight: 1.5 }}>“{verse.text}”</p>
+        <ScriptureQuote verse={verse} style={{ marginTop: 8 }} />
       </div>
 
       <div style={{ marginTop: 16, display: 'grid', gap: 10 }}>

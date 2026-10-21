@@ -52,6 +52,7 @@ interface DbProfileRow {
   favorite_verse?: string | null
   favorite_book?: string | null
   favorite_translation?: string | null
+  reading_translation?: string | null
   // Not yet a real column — an online account reads back null and falls back to
   // the emoji until a profiles.avatar_character migration lands.
   avatar_character?: AvatarSpec | null
@@ -91,6 +92,7 @@ function mapRow(r: DbProfileRow): Profile {
     favoriteVerse: r.favorite_verse ?? null,
     favoriteBook: r.favorite_book ?? null,
     favoriteTranslation: r.favorite_translation ?? null,
+    readingTranslation: r.reading_translation ?? null,
     avatarCharacter: r.avatar_character ?? null,
     sharedDays: r.shared_days ?? [],
     liveBattles: r.live_battles ?? 0,
@@ -111,6 +113,8 @@ function syncSettingsFromProfile(p: Profile) {
     soundEnabled: p.soundEnabled,
     hapticsEnabled: p.hapticsEnabled,
     reduceMotion: p.reduceMotion,
+    // Only an explicit choice travels: a null leaves this device's own pick.
+    ...(p.readingTranslation ? { readingTranslation: p.readingTranslation } : {}),
   })
 }
 
@@ -703,6 +707,7 @@ export const useAuth = create<AuthState>((set, get) => ({
     if (patch.hapticsEnabled !== undefined) dbPatch.haptics_enabled = patch.hapticsEnabled
     if (patch.reduceMotion !== undefined) dbPatch.reduce_motion = patch.reduceMotion
     if (patch.onboarded !== undefined) dbPatch.onboarded = patch.onboarded
+    if (patch.readingTranslation !== undefined) dbPatch.reading_translation = patch.readingTranslation
     if (Object.keys(dbPatch).length) {
       await supabase.from('profiles').update(dbPatch).eq('id', cur.id)
     }

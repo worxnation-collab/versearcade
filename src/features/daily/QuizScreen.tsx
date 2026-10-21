@@ -36,6 +36,7 @@ export default function QuizScreen() {
 
   return (
     <QuizRunner
+      translate
       verse={today}
       // The day's five questions are the same five for everybody, forever (see
       // getVerseForDate), so an abandoned run restarted is a retry with the

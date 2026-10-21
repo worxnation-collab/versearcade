@@ -4,6 +4,7 @@
 
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
+import { DEFAULT_TRANSLATION_ID } from '@/lib/translations'
 
 interface SettingsState {
   soundEnabled: boolean
@@ -35,7 +36,9 @@ interface SettingsState {
   appNudgeSnoozedAt: number
   /** Set once they've tapped through to the store — then we stop asking. */
   appNudgeDone: boolean
-  /** Preferred translation for reading the full chapter (bible-api code). */
+  /** The Bible this player reads in — a lib/translations id. Every surface
+   *  that quotes a verse reads it; the daily quiz alone keeps the BSB it asks
+   *  about. 'web', 'kjv' and 'bbe' are the old bible-api codes, still valid. */
   readingTranslation: string
   /** Which of the device's two chosen voices reads scripture aloud. Shared
    *  with the prayer sheet on purpose: it is one person's preferred reading
@@ -78,7 +81,7 @@ export const useSettings = create<SettingsState>()(
       inventoryNudgeDismissed: false,
       appNudgeSnoozedAt: 0,
       appNudgeDone: false,
-      readingTranslation: 'web',
+      readingTranslation: DEFAULT_TRANSLATION_ID,
       readingVoice: 'female',
       readingTextScale: 1,
       prayerShowShape: false,

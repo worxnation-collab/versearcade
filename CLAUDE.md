@@ -2361,6 +2361,52 @@ one. Unpressed is the same shape in outline — never a padlock, never a greyed
 copy — because an unread book is an invitation, which is the call the reader's
 `unread` tier already makes.
 
+## Scripture in the player's translation (API.Bible)
+
+`settings.readingTranslation` (mirrored to `profiles.reading_translation`,
+0124) picks the Bible every QUOTED verse reads in — recaps, the Bible reader,
+highlights, the calendar. `lib/translations.ts` is the catalog, `lib/bible.ts`
+fetches and caches, `useVerseText` / `ScriptureQuote` are the one way a screen
+shows a verse. Four things are load-bearing:
+
+- **The key never reaches the client.** API.Bible is called only by the
+  `bible-text` Edge Function (function secret `API_BIBLE_API_KEY`, else Vault
+  via `api_bible_key()`, 0125, service_role only), because the iOS build ships
+  `dist` inside the IPA. There is deliberately no `VITE_` variable for it. The
+  function serves only the Bibles in its `ALLOWED` table — keep it in sync with
+  `TRANSLATIONS_ALL` and with 0124's check constraint (three lists, one set of
+  ids; a new id needs all three).
+- **A solo quiz is the BSB deal with its blanks re-cut** (`data/bible/
+  localize.ts`). Seven of the nine question kinds are facts no translation
+  changes; only the two fill-in-the-blanks (tagged `Question.blank`, tagged
+  AFTER `buildMC` so the deal is byte-identical) are rewritten against the
+  chosen text — same answer if the word is there, else a seeded stand-in word
+  in the old answer's slot. Any blank that can't be cut cleanly sends the whole
+  run back to the BSB. Opt-in per caller (`QuizRunner translate`): the daily
+  drop, replays, drills, CPU races and both trivia rounds. Live and async
+  battles and the church demo stay BSB — two players racing one score read one
+  wording, and a pastor's questions are about the words they wrote against.
+  The run's translation is frozen at its start and PARKED with its text
+  (`RunSnapshot.translation/text`), so a reload re-derives the same questions
+  offline; `PlayResult.questions` carries them to `MissedList`, whose
+  `choiceIndex` only means anything against the questions actually played.
+  Word Catch takes the translated text only if it is already on the device
+  when a run is dealt (it warms the next verse during the current one). The
+  Cross Word stays BSB: its authored words and the part-of-speech lexicon are
+  the BSB's. `quizzable` gates all of it per translation — NLT and MSG are
+  false until their publishers confirm quizzing isn't "altering" the text.
+- **Fail closed to the bundled text, labelled BSB.** Offline, a keyless build, a
+  verse a version numbers differently (The Message tags spans by their LAST
+  verse) — every failure leaves the pool's words on screen with a BSB badge,
+  never an empty card and never a third version under the chosen label.
+- **API.Bible's terms are code here.** Cached licensed text expires after 30
+  days and is not shown past that (`TTL_MS`); every licensed text shown reports
+  its `fumsToken` (`lib/fums.ts`); the badge after a quote opens the
+  publisher's notice in place; the picker credits api.bible. Text is NOT
+  memoised in the function, because one cached fair-use token handed to many
+  readers would report one view. Note the terms' non-commercial clause before
+  assuming the free plan covers an app with a paid patron skin.
+
 ## Supabase
 
 Migrations live in `supabase/migrations/`, numbered, and are **applied by hand**
@@ -2368,7 +2414,13 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0123` (a series and a pastor's note on the church's shared
+The latest is `0125` (`api_bible_key()`, the API.Bible key out of Vault) and
+`0124` (`profiles.reading_translation` + its check constraint), both APPLIED
+2026-10-21 for the API.Bible translations (see "Scripture in the player's
+translation" above). They took 0124/0125 because production already held
+0122 and 0123.
+
+Before them, `0123` (a series and a pastor's note on the church's shared
 verse — `church_verses.series`/`note`, `set_church_verse_extras`,
 `church_verses_range`, `set_church_this_week`, and `church_verse_for` /
 `get_effective_verse` restated with two more keys, same signatures;
@@ -2828,7 +2880,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0124` (0123 is the church verse series and note, 0122 is `church_question_drafts` in production only, 0121 is the church leader invite link, 0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0126` (0125 is the API.Bible key, 0124 the reading translation, 0123 is the church verse series and note, 0122 is `church_question_drafts` in production only, 0121 is the church leader invite link, 0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

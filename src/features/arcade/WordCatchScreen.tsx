@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useSettings } from '@/store/settings'
 import { TapGameScreen } from './TapGameScreen'
@@ -9,13 +9,26 @@ import { wordCatchSurface } from './WordCatchField'
 import { getVerseForDate } from '@/data/bible/questions'
 import { VERSE_POOL } from '@/data/bible/pool'
 import { todayLocalDate } from '@/lib/date'
+import { fetchVerse, peekVerse } from '@/lib/bible'
+import { quizTranslation } from '@/lib/translations'
 
 /**
  * What this screen needs of a verse, which is all `VerseSeed` and `DailyVerse`
  * have in common — the day's rotation hands back the second, the pool holds the
  * first, and the game itself only ever reads these four fields.
  */
-type PlayableVerse = { reference: string; text: string; book: string; chapter: number }
+type PlayableVerse = {
+  reference: string
+  text: string
+  book: string
+  chapter: number
+  verseStart: number
+  verseEnd?: number
+  /** Set when `text` is the player's own Bible rather than the bundled BSB. */
+  abbr?: string
+}
+
+const refOf = (v: PlayableVerse) => ({ book: v.book, chapter: v.chapter, start: v.verseStart, end: v.verseEnd })
 
 // Word Catch: the machine about recall — what comes next?
 export default function WordCatchScreen({ demo }: { demo?: boolean }) {
@@ -27,7 +40,41 @@ export default function WordCatchScreen({ demo }: { demo?: boolean }) {
   // verse everybody else is playing today, with nothing of theirs needed to
   // build it.
   const today = useMemo(() => getVerseForDate(todayLocalDate()), [])
-  const [verse, setVerse] = useState<PlayableVerse>(today)
+
+  // In the player's own Bible, where it is cleared for quizzing (lib/
+  // translations `quizzable`) — the machine rebuilds whatever words it is
+  // given. Only text ALREADY ON THE DEVICE is used when a run is dealt: a run
+  // must never change its words once it has started, so the network is asked
+  // ahead of time instead (today's verse at once, and the next "Play again"
+  // verse while this one is being played). Not there in time ⇒ the BSB.
+  const tid = useSettings((s) => s.readingTranslation)
+  const bible = quizTranslation(tid)
+  const inBible = useCallback(
+    (v: PlayableVerse): PlayableVerse => {
+      if (!bible) return v
+      const hit = peekVerse(refOf(v), bible.id)
+      return hit ? { ...v, text: hit.text, abbr: bible.abbr } : v
+    },
+    [bible],
+  )
+  const [verse, setVerse] = useState<PlayableVerse>(() => inBible(today))
+  const started = useRef(false)
+  const pickOther = (avoid: string) => {
+    const others = VERSE_POOL.filter((v) => v.reference !== avoid)
+    return others[Math.floor(Math.random() * others.length)] ?? today
+  }
+  const upcoming = useRef<PlayableVerse>(pickOther(today.reference))
+  const warm = useCallback((v: PlayableVerse) => {
+    if (bible) void fetchVerse(refOf(v), bible.id).catch(() => {})
+  }, [bible])
+  useEffect(() => {
+    if (!bible) return
+    // Today's verse may still be on its way: take it if no run has begun.
+    void fetchVerse(refOf(today), bible.id)
+      .then(() => { if (!started.current) setVerse(inBible(today)) })
+      .catch(() => {})
+    warm(upcoming.current)
+  }, [bible, today, inBible, warm])
 
   // ...and "Play again" deals a different one, from the whole 726-verse pool.
   //
@@ -40,14 +87,18 @@ export default function WordCatchScreen({ demo }: { demo?: boolean }) {
   // its lines are chunked.
   const deal = useCallback(
     (run: number) => {
+      started.current = true
       if (run === 1) {
-        setVerse(today)
+        setVerse(inBible(today))
         return
       }
-      const others = VERSE_POOL.filter((v) => v.reference !== verse.reference)
-      setVerse(others[Math.floor(Math.random() * others.length)] ?? today)
+      const next = upcoming.current.reference === verse.reference ? pickOther(verse.reference) : upcoming.current
+      setVerse(inBible(next))
+      upcoming.current = pickOther(next.reference)
+      warm(upcoming.current)
     },
-    [today, verse.reference],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [today, verse.reference, inBible, warm],
   )
 
   const wc = useMemo(() => buildWordCatch(verse), [verse])
@@ -59,7 +110,7 @@ export default function WordCatchScreen({ demo }: { demo?: boolean }) {
       id="word-catch"
       game={wc.game}
       surface={surface}
-      tagline={isToday ? `Today’s verse · ${wc.reference}` : `Another verse · ${wc.reference}`}
+      tagline={`${isToday ? 'Today’s verse' : 'Another verse'} · ${wc.reference}${verse.abbr ? ` · ${verse.abbr}` : ''}`}
       how={[
         'The words of today’s verse have come loose from the page. Tap them in the order they belong.',
         'Play again afterwards and a different verse comes apart — there are 726 of them in the pool.',

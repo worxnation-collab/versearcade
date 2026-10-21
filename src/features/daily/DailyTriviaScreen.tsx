@@ -6,11 +6,12 @@ import { Button } from '@/components/Button'
 import { CountUp } from '@/components/CountUp'
 import { FavoriteButton } from '@/components/FavoriteButton'
 import { QuizRunner } from '@/features/daily/QuizRunner'
-import { MissedList, quoted } from '@/features/daily/MissedList'
+import { MissedList } from '@/features/daily/MissedList'
 import { dailyTriviaBook, dailyTriviaFor } from '@/data/bible/questions'
 import { useDailyTrivia } from '@/store/dailyTrivia'
 import { useGame } from '@/store/game'
 import type { PlayResult } from '@/types'
+import { ScriptureQuote } from '@/components/ScriptureQuote'
 
 // The day's trivia round — the second box on the Play tab.
 //
@@ -60,6 +61,7 @@ export default function DailyTriviaScreen() {
   if (!result) {
     return (
       <QuizRunner
+        translate
         verse={verse}
         label={`✨ Today’s trivia · ${book ?? 'the whole Bible'}`}
         onExit={() => navigate('/play')}
@@ -146,7 +148,7 @@ export default function DailyTriviaScreen() {
           <b style={{ fontFamily: 'var(--font-display)', fontSize: 17, flex: 1, minWidth: 0 }}>{verse.reference}</b>
           <FavoriteButton reference={verse.reference} variant="icon" />
         </div>
-        <p style={{ marginTop: 8, lineHeight: 1.5 }}>{quoted(verse.text)}</p>
+        <ScriptureQuote verse={verse} style={{ marginTop: 8 }} />
       </div>
 
       {/* The facts the misses carried. A round of book trivia is the one place

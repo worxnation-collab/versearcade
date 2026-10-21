@@ -10,6 +10,7 @@ import { useFavorites } from '@/store/favorites'
 import { savedLabel, toList } from '@/lib/favorites'
 import { parseReference } from '@/lib/bibleProgress'
 import { useBibleMarks } from './useBibleMarks'
+import { ScriptureQuote } from '@/components/ScriptureQuote'
 
 // Every verse the player has kept, newest first — the old favorites shelf, now
 // the index to their Bible rather than a place of its own. Tapping one opens it
@@ -94,7 +95,7 @@ export default function HighlightsScreen() {
 
               {f.seed ? (
                 <>
-                  <p style={{ marginTop: 10, lineHeight: 1.6, color: PAPER.ink }}>“{f.seed.text}”</p>
+                  <ScriptureQuote verse={f.seed} style={{ marginTop: 10, lineHeight: 1.6, color: PAPER.ink }} />
                   {f.seed.facts[0] && (
                     <p style={{ marginTop: 8, fontSize: 13, color: PAPER.inkFaint }}>💡 {f.seed.facts[0]}</p>
                   )}

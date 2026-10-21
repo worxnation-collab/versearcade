@@ -5,7 +5,8 @@ import { fetchChapter, type Chapter } from '@/lib/bible'
 import { useSettings } from '@/store/settings'
 import { useBible } from '@/store/bible'
 import { noteRealVerseCount } from '@/data/bible/structure'
-import { readingByCode } from '@/lib/config'
+import { translationById } from '@/lib/translations'
+import { reportFums } from '@/lib/fums'
 
 // A full-screen chapter reader: the day's verse shown in its surrounding
 // context, with the verse itself highlighted and scrolled into view. Opened from
@@ -43,6 +44,7 @@ export function ChapterReader({ verse, onClose }: { verse: DailyVerse; onClose: 
         noteRealVerseCount(verse.book, verse.chapter, c.verses.length)
         setChapter(c)
         setState('ready')
+        if (c.licensed) reportFums(c.fumsToken)
       })
       .catch((e) => {
         if (ctrl.signal.aborted || (e as Error)?.name === 'AbortError') return
@@ -119,7 +121,7 @@ export function ChapterReader({ verse, onClose }: { verse: DailyVerse; onClose: 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, lineHeight: 1.1 }}>{chapterLabel}</div>
           <div className="faint" style={{ fontSize: 12 }}>
-            {chapter?.translationName ?? readingByCode(readingCode).name} · {verse.reference} highlighted
+            {chapter?.translationName ?? translationById(readingCode).name} · {verse.reference} highlighted
           </div>
         </div>
       </div>
@@ -175,6 +177,7 @@ export function ChapterReader({ verse, onClose }: { verse: DailyVerse; onClose: 
                   </div>
                 )
               })}
+              <p className="faint" style={{ margin: '14px 2px 0', fontSize: 11, lineHeight: 1.4 }}>{chapter.copyright}</p>
             </div>
           )}
 

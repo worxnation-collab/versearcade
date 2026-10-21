@@ -86,6 +86,7 @@ export function CpuVersusQuiz({
 
   return (
     <QuizRunner
+      translate
       verse={verse}
       onComplete={onComplete}
       onExit={onExit}

@@ -13,11 +13,12 @@ import { ModePicker } from './ModePicker'
 import { CpuVersusQuiz } from './CpuVersusQuiz'
 import { CPU_PROFILES, CPU_LEVELS, type CpuLevel, type CpuProfile } from './cpu'
 import { FavoriteButton } from '@/components/FavoriteButton'
-import { MissedList, quoted } from '@/features/daily/MissedList'
+import { MissedList } from '@/features/daily/MissedList'
 import { nearestKeepChallenge } from '@/store/unlocks'
 import { DecorThumb } from './KeepArt'
 import { CpuFace } from './CpuFace'
 import type { AvatarSpec, DailyVerse, PlayResult } from '@/types'
+import { ScriptureQuote } from '@/components/ScriptureQuote'
 
 // Solo Bible Battle vs a simulated CPU, reached from the Study tab. No account
 // or opponent needed — you play the same seeded quiz while the CPU races the
@@ -238,7 +239,7 @@ function CpuResult({
           <b style={{ fontFamily: 'var(--font-display)', fontSize: 17, flex: 1, minWidth: 0 }}>{verse.reference}</b>
           <FavoriteButton reference={verse.reference} variant="icon" />
         </div>
-        <p style={{ marginTop: 8, lineHeight: 1.5 }}>{quoted(verse.text)}</p>
+        <ScriptureQuote verse={verse} style={{ marginTop: 8 }} />
       </div>
 
       <MissedList questions={verse.questions} result={outcome.player} />

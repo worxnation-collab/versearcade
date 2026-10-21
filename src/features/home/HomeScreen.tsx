@@ -34,6 +34,7 @@ import { AppStoreNudge } from './AppStoreNudge'
 import { FirstLight } from '@/features/daily/FirstLight'
 import { dailyTriviaBook } from '@/data/bible/questions'
 import { msUntilNextLocalMidnight, formatCountdown } from '@/lib/date'
+import { prefetchScripture, refreshAvailableBibles } from '@/lib/bible'
 
 // The Play tab: two daily boxes, the road, and the compass.
 //
@@ -122,6 +123,17 @@ export default function HomeScreen() {
       { replace: true },
     )
   }, [wantsChest, setSearchParams])
+  // The day's verse in the player's translation, warmed onto the device while
+  // there is a network, so the recap and the reader have it offline later. One
+  // chapter request covers the verse and its context. The list of Bibles this
+  // key serves rides along at most once a week.
+  const readingTranslation = useSettings((s) => s.readingTranslation)
+  useEffect(() => {
+    void refreshAvailableBibles()
+    if (!today || readingTranslation === 'bsb') return
+    prefetchScripture({ book: today.book, chapter: today.chapter, start: today.verseStart, end: today.verseEnd }, readingTranslation)
+  }, [today?.reference, readingTranslation])
+
   const recap = useWeekly((s) => s.recap)
   const recapSeen = useWeekly((s) => s.seen)
   const snapshotWeek = useWeekly((s) => s.snapshot)

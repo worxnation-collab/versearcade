@@ -60,6 +60,15 @@ export interface RunSnapshot {
    */
   questionStartedAt: number | null
   savedAt: number
+  /**
+   * Set when the run is played in another Bible (data/bible/localize.ts): the
+   * translation id, its badge, and the verse TEXT the blanks were cut from.
+   * The text rides here so a resumed run re-derives the identical questions
+   * with no network — the questions are never stored, only what makes them.
+   */
+  translation?: string
+  translationAbbr?: string
+  text?: string
 }
 
 function key(): string {
@@ -104,6 +113,7 @@ export function readRun(runId: string, reference: string, questionCount: number)
   // The two halves have to agree about where the run is: `qi` answers banked
   // while a question is up, one more while its teach card is.
   if (snap.answers.length !== snap.qi + (onTeachCard ? 1 : 0)) return null
+  if (snap.translation !== undefined && (typeof snap.translation !== 'string' || typeof snap.text !== 'string')) return null
   return snap
 }
 

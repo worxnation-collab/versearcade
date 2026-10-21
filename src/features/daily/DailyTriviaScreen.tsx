@@ -61,6 +61,7 @@ export default function DailyTriviaScreen() {
   if (!result) {
     return (
       <QuizRunner
+        translate
         verse={verse}
         label={`✨ Today’s trivia · ${book ?? 'the whole Bible'}`}
         onExit={() => navigate('/play')}

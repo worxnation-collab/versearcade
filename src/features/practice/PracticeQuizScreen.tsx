@@ -25,6 +25,7 @@ export default function PracticeQuizScreen() {
 
   return (
     <QuizRunner
+      translate
       verse={verse}
       label="📖 Practice · study run"
       // A replay is the same past verse every time, so a run walked out of and

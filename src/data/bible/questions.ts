@@ -9,7 +9,7 @@ import { triviaBooks, triviaRoundFor } from './trivia'
 import { DEFAULT_TRANSLATION } from '@/lib/config'
 
 // --- seeded RNG (mulberry32) ------------------------------------------------
-function mulberry32(seed: number) {
+export function mulberry32(seed: number) {
   return function () {
     seed |= 0
     seed = (seed + 0x6d2b79f5) | 0
@@ -19,7 +19,7 @@ function mulberry32(seed: number) {
   }
 }
 
-function hashString(s: string): number {
+export function hashString(s: string): number {
   let h = 2166136261
   for (let i = 0; i < s.length; i++) {
     h ^= s.charCodeAt(i)
@@ -43,7 +43,7 @@ function uniq(arr: string[]): string[] {
 
 // Common words we never want to blank out for a fill-in-the-blank question —
 // they'd make a weak, guessable prompt.
-const STOP_WORDS = new Set([
+export const STOP_WORDS = new Set([
   'which', 'where', 'these', 'there', 'their', 'would', 'could', 'should',
   'because', 'before', 'after', 'about', 'through', 'against', 'everyone',
   'whatever', 'themselves', 'yourselves', 'another', 'things', 'people',
@@ -152,7 +152,9 @@ export function generateQuestions(seed: VerseSeed, rng: () => number): Question[
       rng,
       `The missing word is "${seed.keyword}."`,
     )
-    if (q) candidates.push(q)
+    // Tagged AFTER buildMC, so marking it consumes no rng and every deal is
+    // byte-identical to the one before the tag existed. See localize.ts.
+    if (q) candidates.push({ ...q, blank: true })
   }
 
   candidates.push(
@@ -189,7 +191,7 @@ export function generateQuestions(seed: VerseSeed, rng: () => number): Question[
       rng,
       `The missing word is "${blank2}."`,
     )
-    if (q) candidates.push(q)
+    if (q) candidates.push({ ...q, blank: true })
   }
 
   // Keep a deterministic set of valid questions.

@@ -54,7 +54,9 @@ export function flattenVerses(content: unknown): PlainVerse[] {
   walk(content)
   return [...byVerse.entries()]
     .sort((a, b) => a[0] - b[0])
-    .map(([verse, parts]) => ({ verse, text: tidy(parts.join('')) }))
+    // The KJV marks paragraph starts with a pilcrow inside the text itself;
+    // it is typesetting, not scripture, and on a card it reads as a stray glyph.
+    .map(([verse, parts]) => ({ verse, text: tidy(parts.join('').replace(/¶/g, ' ')) }))
     .filter((v) => v.text.length > 0)
 }
 

@@ -17,9 +17,22 @@ import { useLibrary } from '@/store/library'
 import { scoreQuestion } from '@/lib/progress'
 import { SCORING } from '@/lib/config'
 import { clearRun, readRun, saveRun } from '@/lib/runProgress'
-import type { DailyVerse, PlayResult } from '@/types'
+import { useSettings } from '@/store/settings'
+import { fetchVerse, peekVerse } from '@/lib/bible'
+import { quizTranslation } from '@/lib/translations'
+import { localizeQuestions } from '@/data/bible/localize'
+import type { DailyVerse, PlayResult, Question } from '@/types'
 
 type Phase = 'read' | 'question' | 'feedback' | 'submitting'
+
+/** The run as the player meets it: which words, and the questions cut from them. */
+interface PlayedRun {
+  text: string
+  abbr: string
+  questions: Question[]
+  /** A lib/translations id when this is NOT the bundled BSB run. */
+  translation?: string
+}
 
 interface Answered {
   choiceIndex: number
@@ -99,6 +112,7 @@ export function QuizRunner({
   studyDrop = false,
   runId,
   demo = false,
+  translate = false,
 }: {
   verse: DailyVerse
   onComplete: (result: PlayResult) => Promise<void>
@@ -136,10 +150,16 @@ export function QuizRunner({
    * can show the result. Pass no `runId` with it, so nothing is parked either.
    */
   demo?: boolean
+  /**
+   * Play this run in the player's own Bible where it can be (data/bible/
+   * localize.ts): the read card shows that text and the fill-in-the-blanks are
+   * cut from it. Set by the SOLO modes only — the daily drop, a replay, a
+   * drill, a CPU race, the trivia rounds. A head-to-head battle leaves it off
+   * so two players racing one score read one wording.
+   */
+  translate?: boolean
 }) {
   const juice = useJuice()
-
-  const questions = verse.questions
 
   // Resolved ONCE, on the first render: is there a run of this deal to come
   // back to? `elapsed` is how much of the current question's window has already
@@ -147,13 +167,57 @@ export function QuizRunner({
   // does not stop while somebody is away, which is what makes handing a parked
   // run back safe rather than a pause button. See lib/runProgress.
   const [resume] = useState(() => {
-    const snap = runId ? readRun(runId, verse.reference, questions.length) : null
+    const snap = runId ? readRun(runId, verse.reference, verse.questions.length) : null
     if (!snap) return null
     return {
       snap,
       elapsed: snap.questionStartedAt === null ? null : Math.max(0, Date.now() - snap.questionStartedAt),
     }
   })
+
+  // Which Bible this run is played in, decided ONCE and then frozen — a run
+  // never changes wording under the player. A resumed run takes the version it
+  // was parked in (its snapshot carries the text, so this needs no network);
+  // a fresh one takes the player's choice when the day's verse is already on
+  // the device, waits briefly for it when it isn't, and otherwise — offline, a
+  // verified church's own questions, a translation not cleared for quizzing,
+  // any blank that can't be cut cleanly — is the BSB run it always was.
+  const readingTranslation = useSettings((st) => st.readingTranslation)
+  const bsbRun: PlayedRun = { text: verse.text, abbr: verse.translation, questions: verse.questions }
+  const saltFor = (id: string) => `${runId ?? verse.reference}|${id}`
+  const localized = (id: string, abbr: string, text: string): PlayedRun | null => {
+    const qs = localizeQuestions(verse.questions, text, saltFor(id))
+    return qs ? { text, abbr, questions: qs, translation: id } : null
+  }
+  const wanted = translate && !verse.church ? quizTranslation(readingTranslation) : null
+  const verseRef = { book: verse.book, chapter: verse.chapter, start: verse.verseStart, end: verse.verseEnd }
+  const [played, setPlayed] = useState<PlayedRun | 'pending'>(() => {
+    if (resume) {
+      const { translation, translationAbbr, text } = resume.snap
+      return (translation && text && localized(translation, translationAbbr ?? translation.toUpperCase(), text)) || bsbRun
+    }
+    if (!wanted) return bsbRun
+    const hit = peekVerse(verseRef, wanted.id)
+    if (hit) return localized(wanted.id, wanted.abbr, hit.text) ?? bsbRun
+    return 'pending'
+  })
+  useEffect(() => {
+    if (played !== 'pending' || !wanted) return
+    const ctrl = new AbortController()
+    // A short wait, not a spinner: the read card is the first thing on screen,
+    // and a player who opened the quiz offline should be reading the BSB in a
+    // moment rather than watching a loader.
+    const giveUp = setTimeout(() => ctrl.abort(), 2500)
+    fetchVerse(verseRef, wanted.id, ctrl.signal)
+      .then((r) => setPlayed(localized(wanted.id, wanted.abbr, r.text) ?? bsbRun))
+      .catch(() => setPlayed(bsbRun))
+      .finally(() => clearTimeout(giveUp))
+    return () => { clearTimeout(giveUp); ctrl.abort() }
+    // Decided once per mount; see above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const run = played === 'pending' ? bsbRun : played
+  const questions = run.questions
 
   const [phase, setPhase] = useState<Phase>(resume ? (resume.elapsed === null ? 'feedback' : 'question') : 'read')
   const [qi, setQi] = useState(resume?.snap.qi ?? 0)
@@ -258,11 +322,14 @@ export function QuizRunner({
       combo,
       comboMax,
       answers,
+      translation: run.translation,
+      translationAbbr: run.translation ? run.abbr : undefined,
+      text: run.translation ? run.text : undefined,
       // Wall time, converted from the monotonic clock the run is scored on.
       questionStartedAt: phase === 'question' ? Date.now() - Math.round(performance.now() - startTs.current) : null,
       savedAt: Date.now(),
     })
-  }, [runId, locked, phase, qi, score, combo, comboMax, answers, verse.reference])
+  }, [runId, locked, phase, qi, score, combo, comboMax, answers, verse.reference, run])
 
   // Back — the browser's, and Android's hardware button, which Capacitor routes
   // to the same place. There is no useBlocker to lean on (main.tsx mounts a
@@ -374,6 +441,7 @@ export function QuizRunner({
       totalQuestions: questions.length,
       comboMax,
       perQuestion: answers.map((a) => ({ correct: a.correct, timeMs: a.timeMs, choiceIndex: a.choiceIndex })),
+      ...(run.translation ? { questions, translation: run.translation } : {}),
     }
     // Every finished run feeds per-book accuracy, whatever mode it came from —
     // knowing Romans is knowing Romans whether it was a daily drop or a battle.
@@ -507,16 +575,16 @@ export function QuizRunner({
               <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
                 <span className="pill">
                   <Icon id="book" size={13} />
-                  {verse.translation}
+                  {run.abbr}
                 </span>
                 {/* The TEXT alone, never the reference: this phase hides which
                     book it is on purpose, and a voice saying "John 3:16" would
                     hand over the answer to the first question. The clock has
                     not started, so listening costs exactly what reading does. */}
-                <ListenButton text={verse.text} compact />
+                <ListenButton text={run.text} compact />
               </div>
               <p style={{ fontSize: 24, lineHeight: 1.5, fontWeight: 700, marginTop: 18, fontFamily: 'var(--font-display)' }}>
-                “{verse.text}”
+                {played === 'pending' ? <span style={{ opacity: 0.35 }}>…</span> : `“${run.text}”`}
               </p>
               <p className="faint" style={{ marginTop: 14, fontSize: 13 }}>
                 Read it once. {readPromise}
@@ -533,7 +601,7 @@ export function QuizRunner({
                   {waitingToStart ? startGate.waitingLabel : startGate.readyLabel}
                 </Button>
               ) : (
-                <Button variant="gold" full onClick={() => { juice.whoosh(); beginQuestion() }}>
+                <Button variant="gold" full disabled={played === 'pending'} onClick={() => { juice.whoosh(); beginQuestion() }}>
                   I’ve read it — start the clock ⏱️
                 </Button>
               )}

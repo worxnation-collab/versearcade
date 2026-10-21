@@ -11,10 +11,10 @@
 // were the bible-api codes stored before API.Bible existed, so they are kept as
 // ids verbatim — nobody's saved choice changes meaning.
 //
-// The DAILY QUIZ is not switched by any of this. Its questions — the fill-in-
-// the-blanks above all — are generated from the bundled BSB words, so the run
-// shows the BSB it asks about. Everywhere a verse is READ rather than quizzed
-// (recaps, the Bible, highlights, the player card) takes the player's choice.
+// A QUIZ follows the choice too, where the translation is `quizzable`: the deal
+// is still made from the bundled BSB, and data/bible/localize.ts rewrites its
+// fill-in-the-blanks against the chosen text (see `quizTranslation`). Head-to-
+// head battles stay BSB, so two players racing one score read one wording.
 
 import { isSupabaseConfigured } from './config'
 import { BIBLE_BOOKS } from '@/data/bible/pool'
@@ -33,19 +33,28 @@ export interface TranslationOption {
   licensed: boolean
   /** One plain line for the picker. */
   blurb: string
+  /**
+   * May a QUIZ be played in it — fill-in-the-blanks cut from its text, Word
+   * Catch rebuilding it word by word? True for the public-domain versions.
+   * False for NLT and MSG until their publishers confirm it: API.Bible's terms
+   * forbid altering licensed text, and whether a blanked word is "altering" is
+   * the rights holder's call. One flag per translation, so turning it on is a
+   * one-word change.
+   */
+  quizzable: boolean
 }
 
 // Keep the API.Bible ids in sync with ALLOWED in
 // supabase/functions/bible-text/index.ts — that list is the server's ceiling.
 export const TRANSLATIONS_ALL: TranslationOption[] = [
-  { id: 'bsb', abbr: 'BSB', name: 'Berean Standard Bible', apiBibleId: 'bba9f40183526463-01', licensed: false, blurb: 'The text the daily quiz uses' },
-  { id: 'nlt', abbr: 'NLT', name: 'New Living Translation', apiBibleId: 'd6e14a625393b4da-01', licensed: true, blurb: 'Clear, modern, thought-for-thought' },
-  { id: 'msg', abbr: 'MSG', name: 'The Message', apiBibleId: '6f11a7de016f942e-01', licensed: true, blurb: 'A paraphrase in everyday speech' },
-  { id: 'kjv', abbr: 'KJV', name: 'King James Version', apiBibleId: 'de4e12af7f28f599-02', bibleApiCode: 'kjv', licensed: false, blurb: 'The classic of 1611' },
-  { id: 'web', abbr: 'WEB', name: 'World English Bible', apiBibleId: '9879dbb7cfe39e4d-04', bibleApiCode: 'web', licensed: false, blurb: 'Modern and public domain' },
-  { id: 'asv', abbr: 'ASV', name: 'American Standard Version', apiBibleId: '06125adad2d5898a-01', licensed: false, blurb: 'Word-for-word, 1901' },
-  { id: 'dra', abbr: 'DRA', name: 'Douay-Rheims', apiBibleId: '179568874c45066f-01', licensed: false, blurb: 'The Catholic English classic' },
-  { id: 'bbe', abbr: 'BBE', name: 'Bible in Basic English', bibleApiCode: 'bbe', licensed: false, blurb: 'A small, simple vocabulary' },
+  { id: 'bsb', abbr: 'BSB', name: 'Berean Standard Bible', apiBibleId: 'bba9f40183526463-01', licensed: false, quizzable: true, blurb: 'Built into the app, so it reads offline' },
+  { id: 'nlt', abbr: 'NLT', name: 'New Living Translation', apiBibleId: 'd6e14a625393b4da-01', licensed: true, quizzable: false, blurb: 'Clear, modern, thought-for-thought' },
+  { id: 'msg', abbr: 'MSG', name: 'The Message', apiBibleId: '6f11a7de016f942e-01', licensed: true, quizzable: false, blurb: 'A paraphrase in everyday speech' },
+  { id: 'kjv', abbr: 'KJV', name: 'King James Version', apiBibleId: 'de4e12af7f28f599-02', bibleApiCode: 'kjv', licensed: false, quizzable: true, blurb: 'The classic of 1611' },
+  { id: 'web', abbr: 'WEB', name: 'World English Bible', apiBibleId: '9879dbb7cfe39e4d-04', bibleApiCode: 'web', licensed: false, quizzable: true, blurb: 'Modern and public domain' },
+  { id: 'asv', abbr: 'ASV', name: 'American Standard Version', apiBibleId: '06125adad2d5898a-01', licensed: false, quizzable: true, blurb: 'Word-for-word, 1901' },
+  { id: 'dra', abbr: 'DRA', name: 'Douay-Rheims', apiBibleId: '179568874c45066f-01', licensed: false, quizzable: true, blurb: 'The Catholic English classic' },
+  { id: 'bbe', abbr: 'BBE', name: 'Bible in Basic English', bibleApiCode: 'bbe', licensed: false, quizzable: true, blurb: 'A small, simple vocabulary' },
 ]
 
 /** What a new install reads in: the same words the quiz asks about, so a
@@ -128,4 +137,14 @@ if (import.meta.env.DEV && USFM.length !== BIBLE_BOOKS.length) {
 export function usfmFor(book: string): string | null {
   const i = BIBLE_BOOKS.indexOf(canonBook(book))
   return i >= 0 ? USFM[i] : null
+}
+
+/**
+ * The translation a solo quiz should be played in, or null for the BSB. Null
+ * for the BSB itself (the deal already IS the BSB), and for a version whose
+ * publisher hasn't cleared quizzing (`quizzable`).
+ */
+export function quizTranslation(id: string | null | undefined): TranslationOption | null {
+  const t = translationById(id)
+  return t.id === 'bsb' || !t.quizzable ? null : t
 }

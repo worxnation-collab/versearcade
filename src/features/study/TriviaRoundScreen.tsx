@@ -73,6 +73,7 @@ export default function TriviaRoundScreen() {
   if (phase === 'play') {
     return (
       <QuizRunner
+        translate
         key={seed}
         verse={verse}
         label={`✨ Bonus trivia · ${bookLabel(book)}`}

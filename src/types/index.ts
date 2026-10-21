@@ -22,6 +22,13 @@ export interface Question {
    * weight on it as well would change every stored score in the app.
    */
   bonus?: string
+  /**
+   * Set on a FILL-IN-THE-BLANK question — the only kind whose wording depends
+   * on the translation. `data/bible/localize.ts` rewrites exactly these when a
+   * run is played in the player's own Bible; every other question is about
+   * facts no translation changes.
+   */
+  blank?: boolean
 }
 
 export type Testament = 'OT' | 'NT'
@@ -176,6 +183,15 @@ export interface PlayResult {
   totalQuestions: number
   comboMax: number
   perQuestion: { correct: boolean; timeMs: number; choiceIndex: number }[]
+  /**
+   * The questions AS PLAYED, when they differ from the verse's own — a run
+   * played in another translation rewrites its blanks, and a recap that read
+   * `choiceIndex` against the BSB options would name the wrong word. Absent on
+   * a BSB run; readers fall back to the verse's questions.
+   */
+  questions?: Question[]
+  /** The translation the run was played in, when it was not the bundled BSB. */
+  translation?: string
 }
 
 export interface SubmitOutcome {

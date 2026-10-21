@@ -2365,10 +2365,25 @@ shows a verse. Four things are load-bearing:
   function serves only the Bibles in its `ALLOWED` table — keep it in sync with
   `TRANSLATIONS_ALL` and with 0124's check constraint (three lists, one set of
   ids; a new id needs all three).
-- **The daily quiz stays BSB.** Its questions, the blanks above all, are built
-  from the bundled pool's words, so the run shows the BSB pill and the BSB
-  text. Word Catch and the Cross Word likewise end on the BSB verse their words
-  came out of. Translate a quiz surface and the blanks stop matching.
+- **A solo quiz is the BSB deal with its blanks re-cut** (`data/bible/
+  localize.ts`). Seven of the nine question kinds are facts no translation
+  changes; only the two fill-in-the-blanks (tagged `Question.blank`, tagged
+  AFTER `buildMC` so the deal is byte-identical) are rewritten against the
+  chosen text — same answer if the word is there, else a seeded stand-in word
+  in the old answer's slot. Any blank that can't be cut cleanly sends the whole
+  run back to the BSB. Opt-in per caller (`QuizRunner translate`): the daily
+  drop, replays, drills, CPU races and both trivia rounds. Live and async
+  battles and the church demo stay BSB — two players racing one score read one
+  wording, and a pastor's questions are about the words they wrote against.
+  The run's translation is frozen at its start and PARKED with its text
+  (`RunSnapshot.translation/text`), so a reload re-derives the same questions
+  offline; `PlayResult.questions` carries them to `MissedList`, whose
+  `choiceIndex` only means anything against the questions actually played.
+  Word Catch takes the translated text only if it is already on the device
+  when a run is dealt (it warms the next verse during the current one). The
+  Cross Word stays BSB: its authored words and the part-of-speech lexicon are
+  the BSB's. `quizzable` gates all of it per translation — NLT and MSG are
+  false until their publishers confirm quizzing isn't "altering" the text.
 - **Fail closed to the bundled text, labelled BSB.** Offline, a keyless build, a
   verse a version numbers differently (The Message tags spans by their LAST
   verse) — every failure leaves the pool's words on screen with a BSB badge,

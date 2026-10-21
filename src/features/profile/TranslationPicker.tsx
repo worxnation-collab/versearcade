@@ -5,9 +5,9 @@ import { useJuice } from '@/juice/useJuice'
 import { refreshAvailableBibles } from '@/lib/bible'
 import { copyrightFor, selectableTranslations, translationById, type AvailableBible } from '@/lib/translations'
 
-// The Bible you read in. One choice for every verse the app QUOTES — recaps,
-// the Bible, highlights, the reader. The daily quiz keeps the BSB its
-// questions are written from, and the line under the list says so.
+// The Bible you read in. One choice for every verse the app quotes AND every
+// solo quiz (data/bible/localize.ts) — except versions not yet cleared for
+// quizzing, and head-to-head battles, which the line under the list says.
 //
 // The list is only what this build can actually serve (selectableTranslations):
 // the licensed versions appear once the Edge Function has confirmed this key
@@ -71,9 +71,10 @@ export function TranslationPicker() {
         <p className="faint" style={{ fontSize: 11, margin: '0 0 4px' }}>Checking for more translations…</p>
       )}
       <p className="faint" style={{ fontSize: 11, lineHeight: 1.4 }}>
-        Used wherever a verse is shown and in the Bible reader. The daily quiz asks about the Berean
-        Standard Bible’s wording, so it shows the BSB. Offline, a verse you haven’t read in{' '}
-        {chosen.abbr} yet shows in the BSB.
+        Used wherever a verse is shown, in the Bible reader, and in your quizzes and Word Catch
+        {chosen.quizzable ? '' : ` — though the quizzes stay in the BSB for ${chosen.abbr} until its publisher clears them`}.
+        Battles with other players use the BSB, so you both read the same words. Offline, a verse
+        you haven’t read in {chosen.abbr} yet shows in the BSB.
       </p>
       <p className="faint" style={{ fontSize: 10.5, lineHeight: 1.4, marginTop: 6 }}>
         {copyrightFor(chosen)} Scripture text provided by{' '}

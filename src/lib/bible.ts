@@ -140,7 +140,8 @@ async function callFunction(body: Record<string, unknown>, signal?: AbortSignal)
     if (error) throw error
     const d = data as FnPayload
     if (!d || d.error || !Array.isArray(d.verses) || !d.verses.length) throw new Error(d?.error ?? 'empty')
-    return d
+    // Belt and braces for the KJV's pilcrows (the function strips them too).
+    return { ...d, verses: d.verses.map((v) => ({ verse: v.verse, text: v.text.replace(/¶/g, ' ').replace(/\s+/g, ' ').trim() })) }
   } finally {
     deadline.done()
   }
@@ -242,6 +243,18 @@ function fromChapter(c: Chapter, r: VerseRef, t: TranslationOption): VerseText |
   const text = joinRange(c.verses, r)
   if (!text) return null
   return { text, translationName: c.translationName, abbr: c.abbr || t.abbr, copyright: c.copyright, licensed: c.licensed, fumsToken: c.fumsToken }
+}
+
+/**
+ * A verse from the device cache alone — no network, no promise. What a quiz
+ * uses to start in the player's own Bible on the first frame when the day's
+ * verse was already fetched ahead (prefetchScripture), which is the usual case.
+ */
+export function peekVerse(r: VerseRef, translationId?: string): VerseText | null {
+  const t = translationById(translationId)
+  const ch = cacheGet<Chapter>(chapterKey(t.id, r.book, r.chapter), t.licensed, true)
+  const viaChapter = ch && ch.abbr === t.abbr ? fromChapter(ch, r, t) : null
+  return viaChapter ?? cacheGet<VerseText>(passageKey(t.id, r), t.licensed, true)
 }
 
 /**

@@ -254,7 +254,7 @@ export function LibrarianSheet({ items, onClose }: { items: StudyBook[]; onClose
  * drawn, not painted, so it keeps its emblem here rather than borrowing
  * somebody else's cover.
  */
-function Cover({ item }: { item: StudyBook }) {
+export function Cover({ item }: { item: StudyBook }) {
   const art = item.cover ? COVERS[item.cover] : undefined
   if (!art) {
     return (

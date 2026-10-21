@@ -4686,12 +4686,13 @@ the geometry rather than by nudging it.
 (`StudyShelf`/`StudyBookArt` deleted) and everything Study can do is now
 something in the room. Full design: `docs/STUDY-LIBRARY.md`. Five things:
 
-- **Three hotspots, and the ceiling is deliberate.** Tabitha lends the five
-  practice surfaces, the ledger on her desk is `/study/reports`, the satchel on
-  the floor is `/study/bag`. Nothing else is tappable: a room with a hotspot on
-  every object is a menu with a painting behind it, so anything new in Study
-  belongs in her offer rather than as a fourth glowing thing on the floor. Every
-  marker is always labelled — this is a tab, not a puzzle.
+- **The room is atmosphere, and the actions are a list under it** (2026-10-21,
+  the owner's call). No markers sit on the painting and the satchel no longer
+  stands on the floor; "At the desk" lists Ask her (Tabitha's sheet, carrying
+  the due count), Reports and Your bag (its finds count) in the desk sheet's
+  own row style. Anything new in Study still belongs in her offer, not as a
+  fourth row. `LibraryScene` keeps its optional hotspot props, unused, so a
+  marker can come back without redrawing the room.
 - **One list, two surfaces.** `StudyBook[]` is built once in `StudyScreen` and
   handed BOTH to the room (hotspot badges) and to Tabitha (what she lends). A
   `lend` line makes an entry stock; without one it is yours and stands in the

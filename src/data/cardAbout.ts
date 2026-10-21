@@ -32,9 +32,9 @@ export const EMPTY_ABOUT: CardAbout = { verse: null, book: null, translation: nu
 /**
  * The translations a player can name as theirs. A DECLARATION, not a data
  * source: nothing here is fetched (the chapter reader's list is
- * READING_TRANSLATIONS in lib/config, and is only what bible-api serves), so
+ * TRANSLATIONS_ALL in lib/translations, and is only what this app can serve), so
  * the licensed versions people actually read at church belong on this list
- * even though the app can't show a word of them.
+ * whether or not the app can show a word of them.
  *
  * Keep in sync with the `codes` array in set_card_about (migration 0098).
  */

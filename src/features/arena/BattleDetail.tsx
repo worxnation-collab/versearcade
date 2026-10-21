@@ -13,6 +13,7 @@ import { useKeep } from '@/store/keep'
 import { FavoriteButton } from '@/components/FavoriteButton'
 import { BattleXpLine } from './BattleXpLine'
 import { battleVerse, asBattleMode } from './battle'
+import { ScriptureQuote } from '@/components/ScriptureQuote'
 
 function myOutcome(b: Battle): 'won' | 'lost' | 'tie' | null {
   if (b.status !== 'complete' || !b.winner) return null
@@ -179,7 +180,7 @@ export default function BattleDetail() {
                 <b style={{ fontFamily: 'var(--font-display)', fontSize: 17, flex: 1, minWidth: 0 }}>{verse.reference}</b>
                 <FavoriteButton reference={verse.reference} variant="icon" />
               </div>
-              <p style={{ marginTop: 8, lineHeight: 1.5 }}>“{verse.text}”</p>
+              <ScriptureQuote verse={verse} style={{ marginTop: 8 }} />
             </div>
           )}
 

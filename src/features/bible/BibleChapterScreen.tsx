@@ -9,7 +9,8 @@ import { useSettings } from '@/store/settings'
 import { useBible } from '@/store/bible'
 import { useSeason } from '@/store/season'
 import { useFavorites } from '@/store/favorites'
-import { fetchChapter, type Chapter } from '@/lib/bible'
+import { fetchChapter, prefetchScripture, type Chapter } from '@/lib/bible'
+import { reportFums } from '@/lib/fums'
 import { FAVORITES_CAP } from '@/lib/favorites'
 import { useBibleMarks } from './useBibleMarks'
 import { BookHeader, BookPage } from './BookPage'
@@ -81,6 +82,10 @@ export default function BibleChapterScreen() {
         noteRealVerseCount(book, chapter, c.verses.length)
         setText(c)
         setState('ready')
+        if (c.licensed) reportFums(c.fumsToken)
+        // The page a reader turns to next is the likeliest one to be opened
+        // offline, so it is already on the device by the time they get there.
+        if (chapter < chapterCount(book)) prefetchScripture({ book, chapter: chapter + 1, start: 1 }, readingCode)
       })
       .catch((e) => {
         if (ctrl.signal.aborted || (e as Error)?.name === 'AbortError') return
@@ -261,6 +266,10 @@ export default function BibleChapterScreen() {
           )
         })}
       </div>
+
+      {state === 'ready' && text && (
+        <p style={{ fontSize: 11, lineHeight: 1.4, marginTop: 16, color: PAPER.inkFaint }}>{text.copyright}</p>
+      )}
 
       <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
         {prev !== null && <TurnButton label={`← ${prev}`} onClick={() => goto(prev, -1)} />}

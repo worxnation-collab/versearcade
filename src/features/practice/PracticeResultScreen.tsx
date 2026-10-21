@@ -6,6 +6,7 @@ import { Button } from '@/components/Button'
 import { usePractice } from '@/store/practice'
 import { useJuice } from '@/juice/useJuice'
 import { FavoriteButton } from '@/components/FavoriteButton'
+import { ScriptureQuote } from '@/components/ScriptureQuote'
 
 export default function PracticeResultScreen() {
   const navigate = useNavigate()
@@ -98,7 +99,7 @@ export default function PracticeResultScreen() {
               <b style={{ fontFamily: 'var(--font-display)', fontSize: 17, flex: 1, minWidth: 0 }}>{verse.reference}</b>
               <FavoriteButton reference={verse.reference} variant="icon" />
             </div>
-            <p style={{ marginTop: 8, lineHeight: 1.5 }}>“{verse.text}”</p>
+            <ScriptureQuote verse={verse} style={{ marginTop: 8 }} />
           </div>
         )}
 

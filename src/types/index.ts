@@ -131,6 +131,9 @@ export interface Profile {
   favoriteVerse?: string | null
   favoriteBook?: string | null
   favoriteTranslation?: string | null
+  /** The Bible this player reads in (lib/translations id), mirrored from the
+   *  device setting so it follows the account (0124). Null = never chosen. */
+  readingTranslation?: string | null
   /** Distinct day-drops the player has shared (YYYY-MM-DD). Drives share-count
    *  unlocks like the King Baldwin set. */
   sharedDays?: string[]

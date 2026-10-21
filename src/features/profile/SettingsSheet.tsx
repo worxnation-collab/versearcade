@@ -4,7 +4,7 @@ import { useAuth } from '@/store/auth'
 import { useSettings } from '@/store/settings'
 import { useJuice } from '@/juice/useJuice'
 import { VOICE_KINDS, canSpeak } from '@/lib/voice'
-import { READING_TRANSLATIONS } from '@/lib/config'
+import { TranslationPicker } from './TranslationPicker'
 import { pushSupported, pushPermission, isPushSubscribed, enablePush, disablePush } from '@/lib/push'
 import { useReminders } from '@/store/reminders'
 import { MusicSection } from './MusicSection'
@@ -284,36 +284,8 @@ export function SettingsSheet({
           </div>
         </div>
 
-        {/* Reading translation — the version used to read the full chapter. */}
-        <h3 style={{ fontSize: 14, margin: '0 0 8px' }} className="dim">
-          Reading translation <span className="faint" style={{ fontSize: 12 }}>· {READING_TRANSLATIONS.find((t) => t.code === settings.readingTranslation)?.short ?? 'WEB'}</span>
-        </h3>
-        <div className="card" style={{ marginBottom: 6 }}>
-          <div style={{ display: 'grid', gap: 8 }}>
-            {READING_TRANSLATIONS.map((t) => {
-              const on = settings.readingTranslation === t.code
-              return (
-                <button
-                  key={t.code}
-                  onClick={() => { juice.select?.(); settings.set({ readingTranslation: t.code }) }}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%',
-                    padding: '11px 12px', borderRadius: 12,
-                    background: on ? 'var(--select)' : 'var(--card-solid)',
-                    border: on ? '1px solid var(--gold)' : '1px solid var(--stroke)', cursor: 'pointer',
-                  }}
-                >
-                  <span className="pill" style={{ fontSize: 11, fontWeight: 800, flexShrink: 0 }}>{t.short}</span>
-                  <b style={{ flex: 1, fontSize: 14 }}>{t.name}</b>
-                  {on && <span style={{ color: 'var(--gold)', fontWeight: 800 }}>✓</span>}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-        <p className="faint" style={{ fontSize: 11, lineHeight: 1.4 }}>
-          Used when you read the full chapter. All free &amp; public domain — more versions coming. The daily quiz uses the Berean Standard Bible.
-        </p>
+        {/* Bible translation — every quoted verse and the reader. */}
+        <TranslationPicker />
 
         {/* Reading voice — which of the device's two voices reads scripture and
             prayers aloud. One setting for both, because which voice somebody

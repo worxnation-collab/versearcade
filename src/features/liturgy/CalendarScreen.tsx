@@ -7,6 +7,7 @@ import { useJuice } from '@/juice/useJuice'
 import { todayLocalDate } from '@/lib/date'
 import { WESTERN_NOTE, liturgyFor, nextFeast, yearOf, type FeastDef } from '@/data/liturgy'
 import { VERSE_POOL } from '@/data/bible/pool'
+import { ScriptureQuote } from '@/components/ScriptureQuote'
 
 // The church year, as a place you can stand in.
 //
@@ -168,7 +169,7 @@ function VerseLine({ feast }: { feast?: FeastDef }) {
       </div>
       {/* A reference the pool does not carry shows the reference alone, exactly
           as the player card's favourite verse does — never a blank quote. */}
-      {hit && <p style={{ margin: '5px 0 0' }} className="dim">“{hit.text}”</p>}
+      {hit && <ScriptureQuote verse={hit} className="dim" style={{ margin: '5px 0 0', lineHeight: 'normal' }} />}
     </div>
   )
 }

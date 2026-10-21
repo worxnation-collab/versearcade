@@ -20,7 +20,8 @@ import { OAuthButtons } from '@/features/auth/oauthUi'
 import { FavoriteButton } from '@/components/FavoriteButton'
 import { PushNudge } from '@/components/PushNudge'
 import { WatchYesterday } from './WatchYesterday'
-import { MissedList, quoted } from './MissedList'
+import { MissedList } from './MissedList'
+import { ScriptureQuote } from '@/components/ScriptureQuote'
 
 export default function ResultScreen() {
   const navigate = useNavigate()
@@ -181,7 +182,7 @@ export default function ResultScreen() {
             </div>
           </div>
           <b style={{ fontFamily: 'var(--font-display)', fontSize: 18 }}>{today.reference}</b>
-          <p style={{ marginTop: 6, lineHeight: 1.5 }}>{quoted(today.text)}</p>
+          <ScriptureQuote verse={today} style={{ marginTop: 6 }} />
           {today.facts[0] && <p className="faint" style={{ marginTop: 10, fontSize: 13 }}>💡 {today.facts[0]}</p>}
           <button
             onClick={() => setReaderOpen(true)}

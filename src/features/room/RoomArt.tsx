@@ -2,6 +2,11 @@ import { DEFAULT_ROOM_SKIN, roomPalette } from './skins'
 import { GENERATED_ART } from '@/data/generatedArt'
 import { furnishingById, roomTierName, type RoomMount } from '@/data/room'
 import { unpackDecor } from '@/data/placement'
+import decorBanner from '@/assets/decorations/banner.png'
+import decorBooks from '@/assets/decorations/books.png'
+import decorChest from '@/assets/decorations/chest.png'
+import decorPlant from '@/assets/decorations/plant.png'
+import decorStool from '@/assets/decorations/stool.png'
 
 // The Upper Room and its furnishings — drawn, not generated.
 //
@@ -139,9 +144,20 @@ const roomImage = (tier: number, skin?: string | null): string | null => {
   )
 }
 
-export function RoomChamber({ tier = 0, flat = false, skin }: { tier?: number; flat?: boolean; skin?: string | null }) {
+export function RoomChamber({
+  tier = 0,
+  flat = false,
+  skin,
+  scene,
+}: {
+  tier?: number
+  flat?: boolean
+  skin?: string | null
+  /** A whole-room painting that stands in for the tiered one (roomScenes.ts). */
+  scene?: string | null
+}) {
   const t = Math.min(TIERS.length - 1, Math.max(0, tier))
-  const painting = flat ? null : roomImage(t, skin)
+  const painting = flat ? null : scene ?? roomImage(t, skin)
   return (
     <>
       <DrawnChamber tier={t} skin={skin} />
@@ -557,6 +573,20 @@ export const DRAWN_FURNISHINGS = Object.keys(PROPS)
 const ALWAYS_DRAWN = new Set(['room_lampstand'])
 
 /**
+ * Owner-supplied paintings (2026-10-21) that replace five furnishings' renders.
+ * ART ONLY: the ids, names, unlock rules, anchors and sizes (RASTER_H) are the
+ * furnishings' own, so a piece stands where it always did. Hand-kept rather
+ * than in GENERATED_ART, so a gen-art run can never overwrite them.
+ */
+const DECOR_ART: Record<string, string> = {
+  room_hanging: decorBanner,
+  room_scroll_rack: decorBooks,
+  room_cedar_chest: decorChest,
+  room_water_jar: decorPlant,
+  room_stool: decorStool,
+}
+
+/**
  * Natural height of each furnishing in room units, so a render occupies the
  * space its drawing did rather than whatever size it happened to come back.
  *
@@ -568,14 +598,14 @@ const ALWAYS_DRAWN = new Set(['room_lampstand'])
  */
 const RASTER_H: Record<string, number> = {
   room_reed_mat: 8,
-  room_stool: 20,
+  room_stool: 32, // owner-supplied painting (DECOR_ART), drawn larger than the old render
   room_sleeping_mat: 10,
   room_olive_jar: 16,
   room_lattice: 22,
-  room_hanging: 30,
+  room_hanging: 48, // owner-supplied painting (DECOR_ART), drawn larger than the old render
   room_open_scroll: 8,
-  room_scroll_rack: 18,
-  room_water_jar: 22,
+  room_scroll_rack: 29, // owner-supplied painting (DECOR_ART), drawn larger than the old render
+  room_water_jar: 35, // owner-supplied painting (DECOR_ART), drawn larger than the old render
   room_clay_lamps: 9,
   room_psaltery: 22,
   room_palm_wreath: 24,
@@ -583,7 +613,7 @@ const RASTER_H: Record<string, number> = {
   room_land_map: 26,
   room_dovecote: 24,
   room_loom: 36,
-  room_cedar_chest: 20,
+  room_cedar_chest: 32, // owner-supplied painting (DECOR_ART), drawn larger than the old render
 }
 
 /** A render placed on the same ground point its drawing is built around. */
@@ -607,7 +637,7 @@ function PropImage({ id, mount, href, h }: { id: string; mount: RoomMount; href:
 /** The render for a furnishing, or null to keep its drawing. */
 function propRaster(id: string): string | null {
   if (ALWAYS_DRAWN.has(id)) return null
-  return GENERATED_ART[id] ?? null
+  return DECOR_ART[id] ?? GENERATED_ART[id] ?? null
 }
 
 /** Plain, Fine, Grand. Small steps: this has to stay recognisably the same mat. */

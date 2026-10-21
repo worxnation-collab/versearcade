@@ -6,6 +6,7 @@ import { arrangeAnchors, arrangementById } from '@/data/layouts'
 import type { RoomPlacements } from '@/store/room'
 import { RoomChamber, FurnishingProp } from './RoomArt'
 import { ArcadeCabinet } from '@/features/arcade/ArcadeCabinet'
+import { SCENE_WAYPOINTS, sceneSpot, takesRandomScene, useRoomScene } from './roomScenes'
 
 // The Upper Room as a place you can look at — the chamber at its tier, whatever
 // is in it, and whoever lives there.
@@ -102,6 +103,12 @@ export function RoomScene({
   // Where everything stands, as this arrangement has it. Memoised because it
   // is pure over (surface, arrangement) and the scene re-renders on every
   // crowd tick.
+  // A Clay room takes one of the five scenes at random (roomScenes.ts); the
+  // other materials keep their tiered paintings, and the postcard (`flat`)
+  // keeps the drawn room it can serialise.
+  const pickedScene = useRoomScene()
+  const randomScene = !flat && takesRandomScene(skin) ? pickedScene : null
+
   const anchors = useMemo(
     () => arrangeAnchors(ROOM_SURFACE, arrangementById(layout)),
     [layout],
@@ -123,10 +130,17 @@ export function RoomScene({
         style={{ display: 'block', width: '100%', height: 'auto' }}
         data-room-scene=""
       >
-        <RoomChamber tier={tier} flat={flat} skin={skin} />
+        <RoomChamber tier={tier} flat={flat} skin={skin} scene={randomScene} />
 
         {/* Tucked into the left corner, clear of floor_1 at x=96. */}
-        {onArcade && <ArcadeCabinet x={52} y={284} scale={0.86} screen="attract" onOpen={onArcade} />}
+        {/* The new scenes paint their own cabinet in this corner, so over one
+            the drawn cabinet goes invisible and stays as the TAP TARGET at the
+            same coordinates (opacity 0 still takes pointer events in SVG). */}
+        {onArcade && (
+          <g opacity={randomScene ? 0 : 1}>
+            <ArcadeCabinet x={52} y={284} scale={0.86} screen="attract" onOpen={onArcade} />
+          </g>
+        )}
 
         {anchors.map((a, i) => {
           const value = placements[a.id]
@@ -140,8 +154,14 @@ export function RoomScene({
           const base = ROOM_SURFACE.anchors[i]
           const bx = (base as { x?: number }).x ?? 0
           const by = (base as { y?: number }).y ?? 0
-          const ax = (a as { x?: number }).x ?? bx
-          const ay = (a as { y?: number }).y ?? by
+          // Over a random scene the anchor stands on that painting's own spot
+          // (roomScenes.ts). The arrangement still nudges floor and wall
+          // pieces; a piece ON something (table, shelf, sill) keeps its spot,
+          // or a pull would slide it off the painted tabletop.
+          const spot = randomScene ? sceneSpot(randomScene, a.id) : undefined
+          const onSurface = a.mount === 'table' || a.mount === 'shelf' || a.mount === 'sill'
+          const ax = spot ? spot.x + (onSurface ? 0 : ((a as { x?: number }).x ?? bx) - bx) : ((a as { x?: number }).x ?? bx)
+          const ay = spot ? spot.y + (onSurface ? 0 : ((a as { y?: number }).y ?? by) - by) : ((a as { y?: number }).y ?? by)
           // The value's own `~x..y..s..` suffix is deliberately NOT read any
           // more: a piece stands where the arrangement puts it. Old values
           // still parse — `unpackDecor` is untouched and no row was rewritten —
@@ -189,7 +209,7 @@ export function RoomScene({
           meant for the lampstand would open the prayer offer instead. */}
       <CrowdLife
         members={members}
-        waypoints={WAYPOINTS}
+        waypoints={randomScene ? SCENE_WAYPOINTS : WAYPOINTS}
         sizeFor={sizeFor}
         max={3}
         onTapSelf={onTapSelf}

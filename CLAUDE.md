@@ -1273,6 +1273,17 @@ church's name is set in `--font-body`, not the arcade face. `ShareChurch` names
 the church and its city and says the page opens with no account; church-og
 puts the city in the preview's description.
 
+**The front door (2026-10-21, `docs/CHURCH-PAGE-PUBLIC.md`).** Signed out, the
+church's own words (tagline, "This week", service times) sit in a headline card
+directly under the building (`ChurchPageBody`'s `lead`), and there is ONE call
+to action, pinned to the bottom (`JoinBar`). The link preview carries an
+`og:image`: the church's building at its real tier and skin. It is one of 32
+pre-composited cards (`scripts/og-church-cards.mjs`) that `church-og` picks by
+lookup, with no rendering at request time. **`ChurchResume` fires on `mode ===
+'online'`, not on "a profile exists"**: a guest has a local profile, so the old
+check bounced every guest off `/auth` back onto the page with the pending church
+cleared. `BattleResume` still has the profile-only check.
+
 The page names the congregation ("Who plays here") as well as drawing it. Both
 the roster and the scene are ordered by join date and carry no per-person
 points: a crowd, not a ladder. "Top givers" stays your own church's thank-you

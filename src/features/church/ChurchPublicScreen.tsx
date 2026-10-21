@@ -28,6 +28,13 @@ import type { ChurchPage } from '@/types'
 //
 // Signed in, it is the same page the sheet draws, names and all. `fetchChurchPage`
 // picks the RPC; nothing here branches on it beyond who gets a roster.
+//
+// Signed out it is laid out as a FRONT DOOR (2026-10-21): the logo and name
+// large, the building, then the church's own words — this week's line and its
+// service times — directly under it (`lead`), and ONE call to action, pinned
+// to the bottom of the screen so it is never a scroll away: "Join {church} on
+// Verse Arcade". The explanation of what joining means stays at the end of the
+// page as text, without a second button competing with the first.
 export default function ChurchPublicScreen() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
@@ -100,6 +107,7 @@ export default function ChurchPublicScreen() {
           // A church's own front door compares it with nobody. The rank only
           // means something on the board it came from, so the sheet keeps it.
           showRank={signedIn}
+          lead={!signedIn}
           extras={extras}
           footer={
             signedIn ? (
@@ -118,28 +126,67 @@ export default function ChurchPublicScreen() {
                 {extras?.verified && <ChurchInviteQR churchId={page.church.id} churchName={page.church.name} />}
               </>
             ) : (
-              <JoinIn churchId={page.church.id} churchName={page.church.name} verified={!!extras?.verified} />
+              <JoinIn churchName={page.church.name} verified={!!extras?.verified} />
             )
           }
         />
       </div>
+      {!signedIn && (
+        <>
+          {/* Room for the pinned bar, so it never covers the last line. */}
+          <div style={{ height: 116 }} />
+          <JoinBar churchId={page.church.id} churchName={page.church.name} />
+        </>
+      )}
     </Page>
   )
 }
 
-// The one way in, and the only thing on this page that asks for anything.
-//
-// It says what the account is FOR on this particular page — the names of the
-// people standing on the grass above it — rather than reciting the app's
-// feature list, because that is the thing the visitor is looking at and can't
-// have yet. Same no-scolding rule as AccountWall: nothing here suggests they
-// did something wrong by arriving without one.
-function JoinIn({ churchId, churchName, verified }: { churchId: string; churchName: string; verified: boolean }) {
+/** "Join {church}" — or "this church" when the name would wrap the button on
+ *  a 320px phone (measured: a 22-character name wraps there, 16 does not). The
+ *  name is the page's own headline, so the short form loses nothing; "on Verse
+ *  Arcade" rides the line under the button rather than wrapping it. */
+function joinLabel(churchName: string): string {
+  return churchName.length <= 16 ? `Join ${churchName}` : 'Join this church'
+}
+
+// The one thing this page asks for, pinned where a thumb already is. It parks
+// the church (`setPendingChurch`) so the visitor lands back here after sign-up
+// — through an OAuth reload too — via `ChurchResume`, and is offered the real
+// Join button with the congregation named. Joining itself only ever happens on
+// that tap; this button creates the account.
+function JoinBar({ churchId, churchName }: { churchId: string; churchName: string }) {
   const navigate = useNavigate()
   const go = () => {
     setPendingChurch(churchId)
     navigate('/auth?mode=signup')
   }
+  return (
+    <div
+      style={{
+        position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 40,
+        padding: '12px 16px calc(12px + env(safe-area-inset-bottom))',
+        background: 'linear-gradient(to top, var(--bg-0) 70%, transparent)',
+      }}
+    >
+      <div style={{ maxWidth: 520, margin: '0 auto' }}>
+        <Button variant="gold" full onClick={go}>{joinLabel(churchName)}</Button>
+        <p className="faint center" style={{ margin: '6px 0 0', fontSize: 11.5 }}>
+          Free on Verse Arcade · one verse a day
+        </p>
+      </div>
+    </div>
+  )
+}
+
+// What joining means, at the end of the page. It says what the account is FOR
+// on this particular page — the names of the people standing on the grass above
+// it — rather than reciting the app's feature list, because that is the thing
+// the visitor is looking at and can't have yet. Same no-scolding rule as
+// AccountWall: nothing here suggests they did something wrong by arriving
+// without one. Its button moved to the pinned `JoinBar`: one ask, not two.
+function JoinIn({ churchName, verified }: { churchName: string; verified: boolean }) {
+  const navigate = useNavigate()
   return (
     <div className="card" style={{ marginTop: 4 }}>
       <b style={{ fontFamily: 'var(--font-display)', fontSize: 17, display: 'block' }}>
@@ -152,11 +199,10 @@ function JoinIn({ churchId, churchName, verified }: { churchId: string; churchNa
         The points you earn you can give to this church — giving costs you nothing, and it's how the
         building grows. Make a free account and you'll see who else plays here.
       </p>
-      <Button variant="gold" full onClick={go}>Create a free account</Button>
       <button
         onClick={() => navigate('/play')}
         className="faint"
-        style={{ display: 'block', width: '100%', marginTop: 10, fontSize: 12.5, textDecoration: 'underline' }}
+        style={{ display: 'block', width: '100%', marginTop: 2, fontSize: 12.5, textDecoration: 'underline' }}
       >
         Or just play today's verse first
       </button>

@@ -63,7 +63,7 @@ export function GiveLink({ url, churchName, compact = false }: { url: string; ch
       className={compact ? 'pill' : 'card'}
       style={
         compact
-          ? { fontSize: 12, fontWeight: 800, textDecoration: 'none' }
+          ? { fontSize: 12, fontWeight: 800, textDecoration: 'none', color: 'var(--ink)', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
           : { display: 'block', textDecoration: 'none', color: 'inherit', textAlign: 'center' }
       }
     >

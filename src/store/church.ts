@@ -222,6 +222,13 @@ interface ChurchState {
    * from the auth store rather than the row.
    */
   congregation: ChurchMember[]
+  /**
+   * Your OWN church's published info (tagline, "This week", service times…),
+   * from the same `get_church_page` read `loadCongregation` already makes —
+   * kept rather than thrown away so the profile's church card can quote it
+   * without a second round trip. Null until loaded, or when nothing is published.
+   */
+  myInfo: ChurchInfo | null
 
   load: () => Promise<void>
   loadBoard: () => Promise<void>
@@ -272,6 +279,7 @@ export const useChurch = create<ChurchState>((set, get) => ({
   page: null,
   pageLoading: false,
   congregation: [],
+  myInfo: null,
 
   async load() {
     if (!isOnline()) {
@@ -366,7 +374,7 @@ export const useChurch = create<ChurchState>((set, get) => ({
       return null
     }
     const church = toChurch(data)
-    set({ church, loading: false, givers: [], myGiven: 0, board: [], boardMe: null })
+    set({ church, loading: false, givers: [], myGiven: 0, board: [], boardMe: null, myInfo: null })
     // Pull the real numbers (available budget, who else is here) now that we're in.
     void get().load()
     return church
@@ -375,7 +383,7 @@ export const useChurch = create<ChurchState>((set, get) => ({
   async leave() {
     if (!isOnline()) return
     await supabase!.rpc('leave_church')
-    set({ church: null, givers: [], myGiven: 0, board: [], boardMe: null, boardTotal: 0 })
+    set({ church: null, givers: [], myGiven: 0, board: [], boardMe: null, boardTotal: 0, myInfo: null })
     void get().load()
   },
 
@@ -469,7 +477,7 @@ export const useChurch = create<ChurchState>((set, get) => ({
   async loadCongregation() {
     const mine = get().church
     if (!mine || !isOnline()) {
-      set({ congregation: [] })
+      set({ congregation: [], myInfo: null })
       return
     }
     const { data, error } = await supabase!.rpc('get_church_page', {
@@ -480,7 +488,10 @@ export const useChurch = create<ChurchState>((set, get) => ({
     // belong to a yard that isn't on screen any more.
     if (get().church?.id !== mine.id) return
     if (error || !(data as any)?.ok) return
-    set({ congregation: ((data as any).members ?? []).map(toMember) })
+    set({
+      congregation: ((data as any).members ?? []).map(toMember),
+      myInfo: toInfo((data as any).info),
+    })
   },
 
   async updateChurchPage({ churchId, tagline, thisWeek, about, serviceTimes, website, contact }) {

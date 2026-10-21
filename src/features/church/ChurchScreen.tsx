@@ -417,7 +417,7 @@ function ChurchHome({ church }: { church: Church }) {
           churchId={church.id}
           churchName={church.name}
           city={church.city}
-          label="📣 Invite your congregation"
+          label={<><PaintedIcon id="church_invite" /> Invite your congregation</>}
           note="Sends the church’s own page — anyone can open it, and joining takes one tap."
         />
 
@@ -519,7 +519,7 @@ function ChurchHome({ church }: { church: Church }) {
           name or the two totals without opening this. Statues already raised
           still stand in the yard above — the yard can show a statue, never who
           gave less. */}
-      <Collapsible icon="🤝" title="A week of giving">
+      <Collapsible icon={<PaintedIcon id="church_giving" />} title="A week of giving">
         <RivalryCard mine={church} />
       </Collapsible>
 
@@ -546,7 +546,8 @@ function ChurchHome({ church }: { church: Church }) {
         tabs={[
           {
             key: 'board',
-            label: worldwide ? '🌐 Worldwide' : '📍 Near you',
+            icon: worldwide ? <PaintedIcon id="church_worldwide" /> : undefined,
+            label: worldwide ? 'Worldwide' : '📍 Near you',
             right: worldwide
               ? `Every church playing, ranked by points given${TIMEFRAME_PHRASE[timeframe]}`
               : `Ranked by points given${TIMEFRAME_PHRASE[timeframe]}, measured from ${church.name}`,
@@ -559,7 +560,8 @@ function ChurchHome({ church }: { church: Church }) {
           ...(givers.length > 0
             ? [{
                 key: 'givers',
-                label: '🙌 Top givers',
+                icon: <PaintedIcon id="church_topgivers" />,
+                label: 'Top givers',
                 right: 'Your own church’s thank-you list.',
                 content: (
                   <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
@@ -591,7 +593,8 @@ function ChurchHome({ church }: { church: Church }) {
             : []),
           {
             key: 'buildings',
-            label: '🏗️ Buildings',
+            icon: <PaintedIcon id="church_buildings" />,
+            label: 'Buildings',
             right: `${tierIndexForLevel(info.level) + 1} of ${CHURCH_TIERS.length} earned by playing — nothing buys one.`,
             content: (
               <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'minmax(0, 1fr)' }}>
@@ -754,7 +757,7 @@ function Landscaping({
     // the hero one row, which is the whole reason it can live up here.
     <>
       <Collapsible
-        icon="🌷"
+        icon={<PaintedIcon id="church_landscaping" />}
         title="Landscaping"
         onToggle={onOpenChange}
         // NO META, and it was measured rather than chosen. Every other folded

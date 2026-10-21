@@ -26,7 +26,7 @@ export function ShareChurch({
   /** Named in the shared line so the link reads as THIS church, not the game. */
   city?: string | null
   /** The button. Your own church's card says "Invite your congregation". */
-  label?: string
+  label?: React.ReactNode
   note?: string
   /** Print the link and offer a plain Copy beside the share sheet — the
    *  leadership Share tab, where the link is going into a bulletin by hand. */

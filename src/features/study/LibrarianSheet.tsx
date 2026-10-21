@@ -42,12 +42,25 @@ const COVERS: Record<string, string> = Object.fromEntries(
 
 type Phase = 'choosing' | 'stamped'
 
+/** What Tabitha leads with, in this order; the rest sit behind More. */
+const PRIMARY = ['replay', 'keep']
+
 export function LibrarianSheet({ items, onClose }: { items: StudyBook[]; onClose: () => void }) {
   const juice = useJuice()
   const navigate = useNavigate()
   const reduceMotion = useReducedMotion()
 
   const stock = useMemo(() => items.filter((i) => i.lend), [items])
+  // The two she leads with — the daily verses you've already played and the
+  // kept verses brought back round — because those are about verses YOU have
+  // met. Everything else waits behind one "More", in its usual order, and
+  // opens in place. A key she doesn't stock simply isn't primary.
+  const primary = useMemo(
+    () => PRIMARY.map((k) => stock.find((i) => i.key === k)).filter((i): i is StudyBook => !!i),
+    [stock],
+  )
+  const rest = useMemo(() => stock.filter((i) => !PRIMARY.includes(i.key)), [stock])
+  const [more, setMore] = useState(false)
   // Drawn once per opening, so she isn't a recording — but not per render, or
   // she'd change her mind mid-sentence on every keystroke elsewhere.
   const greeting = useMemo(() => lineFrom(GREETINGS), [])
@@ -95,6 +108,37 @@ export function LibrarianSheet({ items, onClose }: { items: StudyBook[]; onClose
       setReward(null)
     }
   }
+
+  // One row of her stock — the same look whichever group it is in.
+  const row = (item: StudyBook) => (
+    <button
+      key={item.key}
+      onClick={() => void take(item)}
+      disabled={busy}
+      className="vellum"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 11,
+        textAlign: 'left',
+        padding: '11px 12px',
+        borderRadius: 12,
+        backgroundColor: 'var(--card-solid)',
+        border: '1px solid var(--stroke)',
+        cursor: busy ? 'default' : 'pointer',
+        color: 'var(--ink)',
+        opacity: busy ? 0.6 : 1,
+        width: '100%',
+      }}
+    >
+      <Cover item={item} />
+      <span style={{ minWidth: 0, flex: 1 }}>
+        <b style={{ display: 'block', fontSize: 13.5 }}>{item.title}</b>
+        <span className="faint" style={{ fontSize: 11, lineHeight: 1.35 }}>{item.lend}</span>
+      </span>
+      <span className="faint" style={{ fontSize: 13, flexShrink: 0 }}>→</span>
+    </button>
+  )
 
   const go = () => {
     if (!chosen) return
@@ -165,35 +209,31 @@ export function LibrarianSheet({ items, onClose }: { items: StudyBook[]; onClose
                 Nothing is ever due back, and none of it affects your rank.
               </p>
               <div style={{ display: 'grid', gap: 8 }}>
-                {stock.map((item) => (
+                {primary.map(row)}
+                <AnimatePresence initial={false}>
+                  {more && (
+                    <motion.div
+                      key="more"
+                      initial={reduceMotion ? false : { height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={reduceMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+                      transition={{ duration: 0.22 }}
+                      style={{ display: 'grid', gap: 8, overflow: 'hidden' }}
+                    >
+                      {rest.map(row)}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                {rest.length > 0 && (
                   <button
-                    key={item.key}
-                    onClick={() => void take(item)}
-                    disabled={busy}
-                    className="vellum"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 11,
-                      textAlign: 'left',
-                      padding: '11px 12px',
-                      borderRadius: 12,
-                      backgroundColor: 'var(--card-solid)',
-                      border: '1px solid var(--stroke)',
-                      cursor: busy ? 'default' : 'pointer',
-                      color: 'var(--ink)',
-                      opacity: busy ? 0.6 : 1,
-                      width: '100%',
-                    }}
+                    className="pill"
+                    onClick={() => { juice.select(); setMore((m) => !m) }}
+                    aria-expanded={more}
+                    style={{ width: '100%', display: 'flex', justifyContent: 'center', padding: '9px 12px', fontSize: 13, fontWeight: 800 }}
                   >
-                    <Cover item={item} />
-                    <span style={{ minWidth: 0, flex: 1 }}>
-                      <b style={{ display: 'block', fontSize: 13.5 }}>{item.title}</b>
-                      <span className="faint" style={{ fontSize: 11, lineHeight: 1.35 }}>{item.lend}</span>
-                    </span>
-                    <span className="faint" style={{ fontSize: 13, flexShrink: 0 }}>→</span>
+                    {more ? 'Less ▴' : 'More ▾'}
                   </button>
-                ))}
+                )}
               </div>
             </>
           ) : (

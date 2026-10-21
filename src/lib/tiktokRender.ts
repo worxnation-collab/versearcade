@@ -1601,18 +1601,22 @@ const SHOT_PUSH = 0.035
  * All three numbers are measured rather than chosen, by drawing the real
  * figure over the real room at the real `cover` zoom:
  *
- *   - `x` 0.165 sets him against the left shelves, clear of Tabitha (who sits
- *     centre-right) and of the desk and lamp on the right.
- *   - `feet` 0.72 puts him on the floorboards BEHIND the seated circle rather
- *     than among it: the boy nearest him reads as in front, which is the
- *     depth cue that makes him part of the room instead of pasted onto it.
- *   - `height` 0.335 matches the painted figures at that depth and puts his
- *     head near y=790, well clear of the caption panel's bottom edge at 668.
+ *   - `x` 0.13 sets him on the open floor in front of the left bookshelf,
+ *     left of the reading lamp and clear of the circle (whose nearest child
+ *     starts at about x 0.28).
+ *   - `feet` 0.70 is the floor line at the base of that shelf — the same
+ *     depth as Tabitha's stool, so he stands in the room with her rather
+ *     than among the children in front.
+ *   - `height` 0.36 is his size at her depth (she is seated; a standing
+ *     adult beside her reads about this tall) and puts his head near y=700,
+ *     clear of the caption panel's bottom edge at 668.
  *
- * Re-render `story-circle.jpg` or `sharkey.png` and all three have to be
- * checked again on a real frame — the floor line and the shelves move.
+ * Measured 2026-10-21 against the repainted story circle (the owner's
+ * cinematic set, which replaced the storybook one). Re-render
+ * `story-circle.jpg` or `sharkey.png` and all three have to be checked again
+ * on a real frame — the floor line and the shelves move.
  */
-const STORY_CORNER = { x: 0.165, feet: 0.72, height: 0.335 }
+const STORY_CORNER = { x: 0.13, feet: 0.70, height: 0.36 }
 
 /**
  * How long he takes to arrive, and how long he takes to go.

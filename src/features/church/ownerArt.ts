@@ -55,3 +55,20 @@ export function ownerBuildingArt(skinId: string, tier: ChurchTierId): string | u
   if (skinId === 'tile' || skinId === 'classic') return LADDER[tier]
   return undefined
 }
+
+// The owner's statues (2026-10-21), the same hand-kept rule as the plantings.
+const S = (name: string) => `/keep/churchyard/statues/${name}.png`
+const STATUES: Record<string, string> = {
+  statue_shepherd: S('good-shepherd'),
+  statue_mary: S('virgin-mary'),
+  statue_moses: S('moses'),
+  statue_angel: S('guardian-angel'),
+  statue_david: S('david'),
+  statue_dove: S('descending-dove'),
+  statue_tomb: S('empty-tomb'),
+  statue_lion_lamb: S('lion-and-lamb'),
+  statue_praying: S('praying-figure'),
+  statue_cross: S('stone-cross'),
+}
+
+export const ownerStatueArt = (id: string): string | undefined => STATUES[id]

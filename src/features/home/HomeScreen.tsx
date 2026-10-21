@@ -14,6 +14,7 @@ import { PlayedToday } from '@/features/presence/PlayedToday'
 import { liturgyFor } from '@/data/liturgy'
 import { useJuice } from '@/juice/useJuice'
 import { todayLocalDate } from '@/lib/date'
+import { takeVerseLink } from '@/lib/verseLink'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/store/auth'
 import { useGame } from '@/store/game'
@@ -111,6 +112,14 @@ export default function HomeScreen() {
   const [sheet, setSheet] = useState<null | 'chest' | 'lantern' | 'account' | 'week'>(
     wantsChest ? 'chest' : null,
   )
+
+  // A social post's link names the day it was about (?d=, lib/verseLink.ts):
+  // taken once, here, because this is the first screen with a profile to
+  // play it with. Today's opens the run; a past day opens its replay.
+  useEffect(() => {
+    const to = takeVerseLink(todayLocalDate())
+    if (to) navigate(to)
+  }, [navigate])
 
   useEffect(() => {
     if (!wantsChest) return

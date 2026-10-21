@@ -247,7 +247,24 @@ const tagLine = (tags: string[] | undefined, n: number) => (tags ?? []).slice(0,
  * so the hub can say which network sends people who sign up rather than
  * people who watch.
  */
-export const siteLink = (platform: Platform): string => `https://versearcade.org/play?src=${platform}`
+export const siteLink = (platform: Platform, day?: string): string =>
+  `https://versearcade.org/play?src=${platform}${day && /^\d{4}-\d{2}-\d{2}$/.test(day) ? `&d=${day}` : ''}`
+
+/**
+ * The day whose verse a post is ABOUT, for `?d=` (src/lib/verseLink.ts opens
+ * it): the verse post's own date, and the quiz and the two challenges replay
+ * YESTERDAY's. The story is deliberately absent — on a series night it is
+ * told behind a verse that is not any day's drop — as is everything else.
+ */
+export function verseDayOf(kind: string, date: string): string | undefined {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return undefined
+  if (kind === 'verse') return date
+  if (kind === 'quiz' || kind === 'challenge' || kind === 'challenge2') {
+    const t = Date.parse(`${date}T00:00:00Z`) - 86_400_000
+    return new Date(t).toISOString().slice(0, 10)
+  }
+  return undefined
+}
 
 /**
  * NO CAPTION IN THIS ACCOUNT CARRIES A LINK, on any network. Two reasons,
@@ -389,7 +406,8 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
   if (a.scheduleDate) body.scheduleDate = a.scheduleDate
   // The tracked link, on the three networks where a comment's link is
   // tappable. Everywhere else it is the bio link, set by hand.
-  if (FIRST_COMMENT_ON.includes(platform)) body.firstComment = { comment: `Play today's verse: ${siteLink(platform)}` }
+  const day = verseDayOf(a.kind, a.date)
+  if (FIRST_COMMENT_ON.includes(platform)) body.firstComment = { comment: `${day ? 'Play this verse' : "Play today's verse"}: ${siteLink(platform, day)}` }
   if (platform === 'tiktok') {
     // BOTH: the flag AND the note in the caption.
     //
@@ -448,7 +466,7 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
     // caption text (tapping a pin is following it), so it keeps the tracked
     // URL while the description has none.
     body.post = [withAsk(c.text, a.kind), aiNote(a), tagLine(c.tags, 3)].filter(Boolean).join('\n\n').slice(0, 500)
-    body.pinterestOptions = { title: (c.title || `${a.reference || 'Verse Arcade'} · Daily Bible Verse`).slice(0, 100), link: siteLink(platform), thumbNail: photo ? undefined : a.cover, altText: [`${a.reference || 'A Bible verse'}, read aloud over a painted road — Verse Arcade`.slice(0, 500)] }
+    body.pinterestOptions = { title: (c.title || `${a.reference || 'Verse Arcade'} · Daily Bible Verse`).slice(0, 100), link: siteLink(platform, verseDayOf(a.kind, a.date)), thumbNail: photo ? undefined : a.cover, altText: [`${a.reference || 'A Bible verse'}, read aloud over a painted road — Verse Arcade`.slice(0, 500)] }
   } else if (platform === 'snapchat') {
     // 160 characters, hard, and everything here is ordered by what must
     // survive it: the AI disclosure first (Spotlight's review rejected the

@@ -489,6 +489,49 @@ a Gemini Flash script and a longer TTS.
 - `renderStory()` shares `produce()` with the verse layout — one copy of the
   codec, timing, AAC and audible-track checks.
 
+### The week's series: one book, five nights (2026-10-21)
+
+From `SERIES_FROM` (Monday 2026-10-26), Monday to Friday's story walks through
+ONE book in five parts; Saturday and Sunday are the ordinary story behind the
+day's verse. It adds no post: it is the evening story re-pointed, which was
+the owner's condition (the engine is two voiced posts a day on purpose).
+`src/data/tiktokSeries.ts` is the whole calendar — a pure function of the
+date, so the hub and the runner agree with nothing stored. Books are the
+narrative ones in `SERIES_BOOKS`, shuffled once by `SERIES_SEED` and cycled
+week by week; each part is one of five pool verses spread through the book in
+reading order. **Append to `SERIES_BOOKS`; never reorder it or change the
+seed**, or every week from the start re-deals, recorded intros included.
+
+What a series night changes, and nothing else:
+
+- **The verse the story is told behind** is tonight's part (`storyVerseFor`,
+  `storySeedFor`). The morning post is untouched.
+- **On screen:** the eyebrow reads `PART 2 OF 5 · JOB` where `STORY TIME`
+  stood, and the end card carries one gold line over the verse — "Part 3 of 5
+  tomorrow night · Job 23:10", or "The last of 5 nights in Job". The Story
+  card in the hub shows the same label and tomorrow's reference.
+- **The telling** gets one sentence before the verse pointing toward
+  tomorrow (or gathering the week on night five), and is told to stand on its
+  own for somebody who missed the others.
+- **His introduction** (`place: 'open'`) says where tonight sits in the week
+  and teases tomorrow in one clause before handing to Tabitha; the closing
+  word may name it. The CLI's draft script prints the part beside each
+  evening. Any question to the viewer stays in what he SAYS, never as caption
+  text (the owner's call on comment asks).
+- **The caption** says "Part X of 5" in the YouTube title and mentions the
+  week as a fact, not an ask.
+
+**The cache is keyed, because a date can change what it means.** Story,
+story drafts and the story caption are parked by DATE; a date that held an
+ordinary story before it became a series night would otherwise serve the old
+telling about a different verse. Every series call sends `seriesKey`
+(`series:<book>:<part>:<reference>`) and the function's `cachedFor` treats a
+file parked under any other key — or none — as absent and writes tonight's
+over it. Calls with no key behave exactly as before. **A parked RECORDING is
+not keyed**: an intro recorded for a date before it was a series night would
+still be joined to the series telling, so record series weeks from series
+drafts. (Nothing was parked for 2026-10-21 → 11-02 when this shipped.)
+
 ### The stages: where each paragraph is SET
 
 The telling used to be one picture — her library — held for a minute while she
@@ -784,6 +827,19 @@ conversion path, not the homepage. The client keeps the first `src` it sees
 (`lib/attribution.ts`), and `set_signup_source` (0106) files a NEW account
 under it, once, server-side. The hub's weekly table shows Sign-ups beside
 views per network.
+
+**The link names the day the post was about** (2026-10-21): `siteLink(platform,
+day)` appends `&d=<date>` — the verse post's own date, and YESTERDAY's for the
+quiz and the challenges (`verseDayOf`). The story carries none, because on a
+series night it is told behind a verse that is no day's drop. The app parks
+`d` at boot beside `src` (`lib/verseLink.ts`), so it survives /welcome, and
+the Play tab takes it ONCE: today's date opens the drop's run, a past date
+opens that day's replay (`/play/practice/<date>`, behind the account wall for
+a guest — the wall is the pitch), anything else is ignored, and a link parked
+more than a day ago is dropped. The bio links are undated and stay `/play`.
+**Parked for the next store build:** opening the INSTALLED app from the same
+URL needs an `apple-app-site-association` file plus the Associated Domains
+entitlement; only the entitlement costs a submission.
 
 xAI credits: `XAI_API_KEY` as a function secret or Vault through
 `tiktok_xai_key()` (`0105`), model `XAI_MODEL` (default

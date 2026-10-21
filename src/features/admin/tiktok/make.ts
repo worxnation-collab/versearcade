@@ -17,7 +17,7 @@ import type { QuizStep } from '@/lib/tiktokRender'
 import { challengeIndex } from '@/lib/tiktokChallenge'
 import {
   READERS, TELLERS, ROOMS, skinPath, loadScene, publicUrl, existsAt, parkFile,
-  seedFor, autoPick, autoCast, challengeCast, spokenReference, call, fetchCopy, fetchStory, fetchVoice, bedFor, backdropFor, tierFor, speakerFor, ownFigure,
+  seedFor, storySeedFor, autoPick, autoCast, challengeCast, spokenReference, call, fetchCopy, fetchStory, fetchVoice, bedFor, backdropFor, tierFor, speakerFor, ownFigure,
   FOUNDER_PHOTO, VOICE_LABEL, voiceWavPath, voiceJsonPath,
   type Copy, type Made, type Story, type Renderer, type VoiceTrack,
 } from './shared'
@@ -27,6 +27,11 @@ import { MOMENTS, momentPath } from '@/data/tiktokMoments'
 import { castFor } from '@/data/tiktokCast'
 import { EXCHANGES, exchangeForDate, isExchangeDay, voiceFor } from '@/data/tiktokExchanges'
 import type { TimedWord } from '@/lib/tiktokRender'
+import { seriesFor, seriesLabel, storyVerseFor, type SeriesNight } from '@/data/tiktokSeries'
+
+/** The end card's series line: what tomorrow is, or that the week is done. */
+const seriesEndNote = (s: SeriesNight): string =>
+  s.next ? `Part ${s.part + 1} of ${s.of} tomorrow night · ${s.next.reference}` : `The last of ${s.of} nights in ${s.book}`
 
 export type Progress = (fraction: number, label: string) => void
 
@@ -350,8 +355,12 @@ export async function makeNote(d: string, o: { cast?: { reader: string; scene: s
 }
 
 export async function makeStory(d: string, o: StoryOptions, progress: Progress): Promise<MadeBlob> {
-  const v = getVerseForDate(d)
-  const sd = seedFor(d)
+  // On a series night (Mon-Fri from SERIES_FROM) the story is told behind
+  // tonight's part of the week's book rather than behind the day's verse —
+  // see data/tiktokSeries.ts. Every other night this is the day's verse.
+  const series = seriesFor(d)
+  const v = storyVerseFor(d)
+  const sd = storySeedFor(d)
   // Asked FIRST, like makeVerse: the caption's words differ on a day the
   // maker speaks (`voiced` on the copy action), so his half has to be known
   // and its transcript parked before `fetchCopy` runs below.
@@ -414,6 +423,9 @@ export async function makeStory(d: string, o: StoryOptions, progress: Progress):
   const out = await r.renderStory({
     title: st.title, reference: v.reference, verseText: v.text,
     paragraphs, hook, audio, room: roomImg, teller: tellerImg, bed, align: o.align, figure: figure ?? undefined,
+    // "PART 2 OF 5 · GENESIS" where "VERSE ARCADE · STORY TIME" stands, and
+    // what tomorrow is on the end card. Nothing else about the layout moves.
+    ...(series ? { eyebrow: seriesLabel(series), endNote: seriesEndNote(series) } : {}),
     own: own && ownAudio
       ? { audio: ownAudio, words: own.thought, text: own.text, place: own.place ?? o.ownPlace ?? 'close', photo, label: VOICE_LABEL }
       : undefined,
@@ -430,7 +442,7 @@ export async function makeStory(d: string, o: StoryOptions, progress: Progress):
   // "introduction" when it is the last thing said would be a new falsehood to
   // fix an old one. It wants its own line, and it is not what ships.
   const opensIt = !!(own && ownAudio) && (own.place ?? o.ownPlace ?? 'close') === 'open'
-  return made(d, 'story', v.reference, out, copy, `${teller} · story${own ? ' · your voice' : ''}`, !!(own && ownAudio), opensIt)
+  return made(d, 'story', v.reference, out, copy, `${teller} · story${series ? ` · part ${series.part}/${series.of} ${series.book}` : ''}${own ? ' · your voice' : ''}`, !!(own && ownAudio), opensIt)
 }
 
 // ---- yesterday's quiz ----------------------------------------------------------------

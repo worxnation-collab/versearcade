@@ -593,6 +593,16 @@ posted to YouTube and Facebook only:
   speakers sharing a voice, on a missing painting, and on the runner's copy
   of the calendar drifting from the app's — every one of those RENDERS.
 
+**Weekday stories are a five-night SERIES through one book** (from
+2026-10-26, `data/tiktokSeries.ts`, `docs/TIKTOK-ENGINE.md` → "The week's
+series"). It is the evening story re-pointed and adds no post — the owner's
+condition. Two things are load-bearing: the calendar is a pure function of
+the date (append to `SERIES_BOOKS`, never reorder it or touch the seed), and
+story, story drafts and the story caption are cached under a `seriesKey` so a
+date that held an ordinary story is never served it on a series night. And a
+post's tracked link now names its day (`&d=`, `lib/verseLink.ts`) so it opens
+the verse the video was about rather than today's.
+
 **Why the reading moved off him**, since it is the half that looks like a
 downgrade: a reading has to be recorded for THAT DAY'S verse, so a day he
 misses has no human in it at all, and he was committed to fourteen full

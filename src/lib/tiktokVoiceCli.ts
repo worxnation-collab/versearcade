@@ -9,6 +9,7 @@
 // the runner token and catches the finished video as a download — the shape
 // lib/tiktokDaily.ts already has. Never imported by the app.
 
+import { seriesFor, seriesLabel } from '@/data/tiktokSeries'
 import { VOICE_LABEL, setRunnerToken, parkFile, fetchCopy, fetchThought, fetchStoryWord, fetchVoice, publicUrl, existsAt, voiceWavPath, voiceJsonPath, postKindOf, type VoiceKind } from '@/features/admin/tiktok/shared'
 import { makeVerse, makeStory, makeNote, makeReading, makeExchange, type Progress } from '@/features/admin/tiktok/make'
 import { isReadingKind } from '@/data/tiktokWeek'
@@ -17,7 +18,7 @@ import type { TimedWord } from '@/lib/tiktokRender'
 import { env as tfEnv } from '@huggingface/transformers'
 
 export interface DraftPart { text: string; words: number; source: string; recorded: boolean; listened: boolean }
-export interface DraftRow { date: string; reference: string; verse: string; verseWord: DraftPart; storyWord: DraftPart | null; storyPlace: 'open' | 'close' }
+export interface DraftRow { date: string; reference: string; verse: string; verseWord: DraftPart; storyWord: DraftPart | null; storyPlace: 'open' | 'close'; /** "PART 2 OF 5 · GENESIS · Genesis 12:1" on a series night. */ series?: string }
 export interface ListenResult { seconds: number; verseMatched: number; verseWords: number; verseEnd: number; thoughtStart: number; thoughtWords: number; text: string }
 export interface RenderResult { ext: 'mp4' | 'webm'; size: number; reference: string; tier: string; seconds: number; phrases: number }
 export interface FixResult { words: number; heard: number; text: string }
@@ -100,7 +101,8 @@ window.vaVoice = {
       const verseWord = await part(date, 'verse', () => fetchThought(date, forced('verse')))
       say(`drafting ${date} · the story's ${place === 'open' ? 'introduction' : 'closing word'}`)
       const storyWord = await part(date, 'story', () => fetchStoryWord(date, forced('story'), [], place)).catch(() => null)
-      out.push({ date, reference: v.reference, verse: v.text, verseWord, storyWord, storyPlace: place })
+      const sn = seriesFor(date)
+      out.push({ date, reference: v.reference, verse: v.text, verseWord, storyWord, storyPlace: place, ...(sn ? { series: `${seriesLabel(sn)} · ${sn.verse.reference}` } : {}) })
     }
     return out
   },

@@ -73,6 +73,7 @@ import { BottomNav } from './components/BottomNav'
 import { PlayerCardProvider } from './components/PlayerCardModal'
 import { AccountWall, useAccountLocked, type WallCopy } from './components/AccountWall'
 import { captureSource } from './lib/attribution'
+import { captureVerseLink } from './lib/verseLink'
 
 function RequireProfile({ children }: { children: JSX.Element }) {
   const { ready, profile } = useAuth()
@@ -225,6 +226,8 @@ export default function App() {
     }
     // And which network sent them (?src=tiktok…), same lifetime, same reason.
     captureSource()
+    // And which day's verse the post was about (?d=…), so the link opens it.
+    captureVerseLink()
     init()
     // The content catalog, BEFORE the season store reads it. Its cache is
     // already applied at import (store/catalog.ts), so this only refreshes;

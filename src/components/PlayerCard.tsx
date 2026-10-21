@@ -2,8 +2,7 @@ import type { ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { Avatar } from '@/components/Avatar'
 import { XpBar, LevelRow } from '@/components/XpBar'
-import { Icon, type IconId } from '@/data/icons'
-import { StreakFlame } from '@/components/StreakFlame'
+import { PaintedIcon, type PaintedIconId } from '@/components/PaintedIcon'
 import { cardBgInk, cardBgStyle } from '@/data/playerCards'
 import { CardBg } from '@/components/CardBg'
 import { FounderTag } from '@/components/FounderTag'
@@ -102,11 +101,11 @@ export function PlayerCard({
         {/* Five across, divided by hairlines rather than boxed — on the
             painting the tiles read as a second card laid over the first. */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', marginTop: 14 }}>
-          <RowStat first label="Streak" value={`${p.currentStreak}`} glyph={<StreakFlame days={p.currentStreak} size={20} glyphOnly />} gold={gold} />
-          <RowStat label="Longest" value={`${p.longestStreak}d`} icon="trophy" gold={gold} />
-          <RowStat label="Cards" value={`${p.cards}`} icon="card" gold={gold} />
-          <RowStat label="Total XP" value={p.xp.toLocaleString()} icon="sparkle" gold={gold} />
-          <RowStat label="Plays" value={`${p.totalPlays}`} icon="play" gold={gold} />
+          <RowStat first label="Streak" value={`${p.currentStreak}`} art="stat_streak" gold={gold} />
+          <RowStat label="Longest" value={`${p.longestStreak}d`} art="stat_longest" gold={gold} />
+          <RowStat label="Cards" value={`${p.cards}`} art="stat_cards" gold={gold} />
+          <RowStat label="Total XP" value={p.xp.toLocaleString()} art="stat_xp" gold={gold} />
+          <RowStat label="Plays" value={`${p.totalPlays}`} art="stat_plays" gold={gold} />
         </div>
       </div>
     )
@@ -229,11 +228,11 @@ export function PlayerCard({
           half — a six-column grid so the second row is two even halves rather
           than an orphan. */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10 }}>
-        <div style={{ gridColumn: 'span 2' }}><Stat label="Streak" value={`${p.currentStreak}`} glyph={<StreakFlame days={p.currentStreak} size={20} glyphOnly />} gold={gold} /></div>
-        <div style={{ gridColumn: 'span 2' }}><Stat label="Longest" value={`${p.longestStreak}d`} icon="trophy" gold={gold} /></div>
-        <div style={{ gridColumn: 'span 2' }}><Stat label="Cards" value={`${p.cards}`} icon="card" gold={gold} /></div>
-        <div style={{ gridColumn: 'span 3' }}><Stat label="Total XP" value={p.xp.toLocaleString()} icon="sparkle" gold={gold} /></div>
-        <div style={{ gridColumn: 'span 3' }}><Stat label="Plays" value={`${p.totalPlays}`} icon="play" gold={gold} /></div>
+        <div style={{ gridColumn: 'span 2' }}><Stat label="Streak" value={`${p.currentStreak}`} art="stat_streak" gold={gold} /></div>
+        <div style={{ gridColumn: 'span 2' }}><Stat label="Longest" value={`${p.longestStreak}d`} art="stat_longest" gold={gold} /></div>
+        <div style={{ gridColumn: 'span 2' }}><Stat label="Cards" value={`${p.cards}`} art="stat_cards" gold={gold} /></div>
+        <div style={{ gridColumn: 'span 3' }}><Stat label="Total XP" value={p.xp.toLocaleString()} art="stat_xp" gold={gold} /></div>
+        <div style={{ gridColumn: 'span 3' }}><Stat label="Plays" value={`${p.totalPlays}`} art="stat_plays" gold={gold} /></div>
       </div>
       </div>
     </div>
@@ -374,15 +373,15 @@ function AboutStrip({
 // so the five line up across a row whatever they hold. The streak's icon is the
 // equipped flame (it still flickers and grows hotter with the streak); the rest
 // are the drawn set from data/icons in gold.
-function Stat({ label, value, icon, glyph, gold }: { label: string; value: string; icon?: IconId; glyph?: ReactNode; gold?: boolean }) {
+function Stat({ label, value, art, gold }: { label: string; value: string; art: PaintedIconId; gold?: boolean }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       style={{ ...TILE, padding: '12px 8px 11px', textAlign: 'center', display: 'grid', justifyItems: 'center', gap: 4 }}
     >
-      <div aria-hidden style={{ height: 24, display: 'grid', placeItems: 'center', color: 'var(--gold)', lineHeight: 0 }}>
-        {glyph ?? (icon ? <Icon id={icon} size={20} /> : null)}
+      <div aria-hidden style={{ height: 28, display: 'grid', placeItems: 'center', lineHeight: 0 }}>
+        <PaintedIcon id={art} size={26} />
       </div>
       <div
         className={gold ? 'gold-text' : undefined}
@@ -397,7 +396,7 @@ function Stat({ label, value, icon, glyph, gold }: { label: string; value: strin
 
 // One column of the embedded stat row: icon, number, label at fixed heights,
 // with a hairline on its left so five read as one row and not five boxes.
-function RowStat({ label, value, icon, glyph, gold, first = false }: { label: string; value: string; icon?: IconId; glyph?: ReactNode; gold?: boolean; first?: boolean }) {
+function RowStat({ label, value, art, gold, first = false }: { label: string; value: string; art: PaintedIconId; gold?: boolean; first?: boolean }) {
   return (
     <div
       style={{
@@ -410,8 +409,8 @@ function RowStat({ label, value, icon, glyph, gold, first = false }: { label: st
         textShadow: '0 1px 4px rgba(9, 6, 8,0.9)',
       }}
     >
-      <div aria-hidden style={{ height: 24, display: 'grid', placeItems: 'center', color: 'var(--gold)', lineHeight: 0 }}>
-        {glyph ?? (icon ? <Icon id={icon} size={20} /> : null)}
+      <div aria-hidden style={{ height: 28, display: 'grid', placeItems: 'center', lineHeight: 0 }}>
+        <PaintedIcon id={art} size={26} />
       </div>
       <div
         className={gold ? 'gold-text' : undefined}

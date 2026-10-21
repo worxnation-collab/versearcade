@@ -1,0 +1,32 @@
+[
+  {
+    "id": "nav_play",
+    "kind": "prop",
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the object itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT charcoal, NOT black, NOT a gradient, NOT a vignette, NOT a card, NOT a rounded rectangle, NOT a tile, NOT a frame. No ground, no cast shadow on the backdrop, no text, no letters, no watermark, no second copy of the object.\n\nONE SIMPLE PLAY TRIANGLE pointing right, with softly rounded corners and a slight thickness like a thin gold tablet. Warm gold with a soft hammered-metal texture and gentle highlights. Nothing else.\n\nLightly painterly style with soft realistic shading and gentle texture, warm earth and gold palette, lit warmly from the upper left. A simple, bold silhouette that stays readable at a very small size. The whole object centred, inside the frame with a little magenta margin around it."
+  },
+  {
+    "id": "nav_battle",
+    "kind": "prop",
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the object itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT charcoal, NOT black, NOT a gradient, NOT a vignette, NOT a card, NOT a rounded rectangle, NOT a tile, NOT a frame. No ground, no cast shadow on the backdrop, no text, no letters, no watermark, no second copy of the object.\n\nTWO CROSSED SWORDS forming an X, points down, hilts up. Warm silvery steel blades with soft highlights, ornate gold crossguards and pommels, brown leather-wrapped grips. No shield, no blood, no banner.\n\nLightly painterly style with soft realistic shading and gentle texture, warm earth and gold palette, lit warmly from the upper left. A simple, bold silhouette that stays readable at a very small size. The whole object centred, inside the frame with a little magenta margin around it."
+  },
+  {
+    "id": "nav_study",
+    "kind": "prop",
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the object itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT charcoal, NOT black, NOT a gradient, NOT a vignette, NOT a card, NOT a rounded rectangle, NOT a tile, NOT a frame. No ground, no cast shadow on the backdrop, no text, no letters, no watermark, no second copy of the object.\n\nA SMALL STACK OF THREE CLOSED BOOKS lying flat, seen from slightly above and to the left: warm tan, olive-brown and russet leather covers with thin gold lines on the spines, cream paper edges visible, and one short gold ribbon bookmark hanging from the middle book.\n\nLightly painterly style with soft realistic shading and gentle texture, warm earth and gold palette, lit warmly from the upper left. A simple, bold silhouette that stays readable at a very small size. The whole object centred, inside the frame with a little magenta margin around it."
+  },
+  {
+    "id": "nav_church",
+    "kind": "prop",
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the object itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT charcoal, NOT black, NOT a gradient, NOT a vignette, NOT a card, NOT a rounded rectangle, NOT a tile, NOT a frame. No ground, no cast shadow on the backdrop, no text, no letters, no watermark, no second copy of the object.\n\nONE SMALL SIMPLE STONE CHURCH seen from the front: warm cream limestone walls, a dark slate roof, an arched wooden double door, two small glowing arched windows, a square bell tower with a little gold bell, and a gold spire topped by a simple gold cross. No ground, no bushes, no trees, no path.\n\nLightly painterly style with soft realistic shading and gentle texture, warm earth and gold palette, lit warmly from the upper left. A simple, bold silhouette that stays readable at a very small size. The whole object centred, inside the frame with a little magenta margin around it."
+  },
+  {
+    "id": "nav_you",
+    "kind": "prop",
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the object itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT charcoal, NOT black, NOT a gradient, NOT a vignette, NOT a card, NOT a rounded rectangle, NOT a tile, NOT a frame. No ground, no cast shadow on the backdrop, no text, no letters, no watermark, no second copy of the object.\n\nA SIMPLE HEAD-AND-SHOULDERS BUST SILHOUETTE of a person, FACELESS, smooth and featureless like a soft watercolour mannequin, warm soft gold shading to pale off-white highlights. No eyes, no mouth, no hair, no clothing details, no frame, no paper behind it.\n\nLightly painterly style with soft realistic shading and gentle texture, warm earth and gold palette, lit warmly from the upper left. A simple, bold silhouette that stays readable at a very small size. The whole object centred, inside the frame with a little magenta margin around it."
+  },
+  {
+    "id": "nav_compass",
+    "kind": "prop",
+    "prompt": "THE ENTIRE BACKGROUND MUST BE SOLID PURE MAGENTA, RGB(255,0,255), edge to edge, filling every pixel that is not the object itself — a flat chroma-key backdrop, NOT white, NOT grey, NOT charcoal, NOT black, NOT a gradient, NOT a vignette, NOT a card, NOT a rounded rectangle, NOT a tile, NOT a frame. No ground, no cast shadow on the backdrop, no text, no letters, no watermark, no second copy of the object.\n\nONE ROUND BRASS COMPASS seen face-on: a thick warm gold bezel ring, a parchment-gold face with four small raised gold arrowheads at the cardinal points and faint fine lines, and a long diamond needle pointing to the upper right — the north half bright gold, the south half dark bronze — on a domed gold pivot. No letters, no numbers.\n\nLightly painterly style with soft realistic shading and gentle texture, warm earth and gold palette, lit warmly from the upper left. A simple, bold silhouette that stays readable at a very small size. The whole object centred, inside the frame with a little magenta margin around it."
+  }
+]

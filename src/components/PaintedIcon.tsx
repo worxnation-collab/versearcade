@@ -28,6 +28,10 @@ import tool_customize from '@/assets/icons/tool_customize.png'
 import tool_journal from '@/assets/icons/tool_journal.png'
 import tool_mail from '@/assets/icons/tool_mail.png'
 import tool_settings from '@/assets/icons/tool_settings.png'
+import battle_swords from '@/assets/icons/battle_swords.png'
+import battle_live from '@/assets/icons/battle_live.png'
+import battle_trophy from '@/assets/icons/battle_trophy.png'
+import battle_crown from '@/assets/icons/battle_crown.png'
 
 // The painted stand-ins for the emoji that used to label buttons, headers and
 // folds — owner-supplied (2026-10-21), cut out of baked-in checkerboards into
@@ -74,6 +78,11 @@ const ICONS = {
   tool_journal,
   tool_mail,
   tool_settings,
+  // The Battle tab: new battle, live battle, the ranks fold and its #1 rows.
+  battle_swords,
+  battle_live,
+  battle_trophy,
+  battle_crown,
 } as const
 
 export type PaintedIconId = keyof typeof ICONS

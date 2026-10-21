@@ -42,35 +42,45 @@ export type IconId =
 /** 24x24 path data. One `d` per icon, or several for a compound shape. */
 const ICONS: Record<IconId, string[]> = {
   // ── Tabs ────────────────────────────────────────────────────────────────
-  // A play triangle inside a soft square: this tab IS the day's run.
-  play: ['M5 4.6h14a2.4 2.4 0 0 1 2.4 2.4v10a2.4 2.4 0 0 1-2.4 2.4H5A2.4 2.4 0 0 1 2.6 17V7A2.4 2.4 0 0 1 5 4.6Zm5.1 3.7v7.4l6.2-3.7-6.2-3.7Z'],
-  // Two blades leaning APART rather than crossing in an X, each with a real
-  // crossguard, grip and pommel. The first draft was two thin diagonals and
-  // read as the letter X at 20px on a phone — the geometry below is rotated
-  // about each pommel rather than eyeballed, which is what makes them read as
-  // swords at nav size. Points up and apart on purpose: this app's battles are
-  // two people who went out to meet each other (see Jonathan and Deborah).
+  // A play triangle cut from a disc: this tab IS the day's run. A disc rather
+  // than the old rounded square, which was the heaviest shape in the row and
+  // read as a video player's logo.
+  play: [
+    'M12 2.8a9.2 9.2 0 1 1 0 18.4 9.2 9.2 0 0 1 0-18.4Zm-2.1 5.2v8l6.5-4-6.5-4Z',
+  ],
+  // Crossed swords, points up, each a real blade + guard + grip + pommel,
+  // generated about each sword's own axis rather than eyeballed. The first
+  // draft was two thin diagonals and read as the letter X; the second leaned
+  // two blades apart with their hilts touching and read as a V with a knot at
+  // the bottom. What makes a crossing read as two swords at 21px is the gap:
+  // the back blade is CUT where the front one passes over it, so the eye sees
+  // which is in front instead of one merged blob. Pommel, grip and guard are
+  // separate paths because overlapping subpaths in one path punch holes under
+  // evenodd.
   battle: [
-    'M3.5 3.4L6.3 6.1L9.2 13.2L6.2 14.4L3.3 7.3Z',
-    'M4.2 15.2L11.2 12.3L11.9 14.0L4.8 16.9Z',
-    'M7.4 15.8L9.3 15.1L10.9 19.1L9.1 19.9Z',
-    'M8.4 19.9L11.4 18.7L12.3 21.0L9.3 22.2Z',
-    'M20.5 3.4L20.7 7.3L17.8 14.4L14.8 13.2L17.7 6.1Z',
-    'M12.8 12.3L19.8 15.2L19.2 16.9L12.1 14.0Z',
-    'M14.7 15.1L16.6 15.8L14.9 19.9L13.1 19.1Z',
-    'M12.6 18.7L15.6 19.9L14.7 22.2L11.7 21.0Z',
+    'M3.05 19.7a1.25 1.25 0 1 0 2.5 0a1.25 1.25 0 1 0 -2.5 0Z',
+    'M4.51 18.5L7.34 15.67L8.33 16.66L5.5 19.49Z',
+    'M5.57 14.18L6.56 13.19L10.81 17.44L9.82 18.43Z',
+    'M7.62 14.54L17.8 4.36L20.7 3.3L19.64 6.2L9.46 16.38Z',
+    'M18.45 19.7a1.25 1.25 0 1 0 2.5 0a1.25 1.25 0 1 0 -2.5 0Z',
+    'M18.5 19.49L15.67 16.66L16.66 15.67L19.49 18.5Z',
+    'M14.18 18.43L13.19 17.44L17.44 13.19L18.43 14.18Z',
+    'M14.54 16.38L12.6 14.44L14.44 12.6L16.38 14.54Z',
+    'M9.56 11.4L4.36 6.2L3.3 3.3L6.2 4.36L11.4 9.56Z',
   ],
-  // A stack of books, spines out.
+  // Three books lying flat, each seen end-on: the rounded end is the spine
+  // (with one band across it) and the forked end is the fore-edge, covers
+  // standing proud of the pages. Alternating spines and offsets are what make
+  // it a STACK; the previous centred pyramid of slotted bars read as bricks.
   study: [
-    'M3.4 17.2h17.2v3.4H3.4v-3.4Zm2.2.9v1.6h1.1v-1.6H5.6Zm11.6 0v1.6h1.2v-1.6h-1.2Z',
-    'M4.8 12.6h14.4v3.4H4.8v-3.4Zm2.2.9v1.6h1.1v-1.6H7Zm9.8 0v1.6h1.2v-1.6h-1.2Z',
-    'M6.2 8h11.6v3.4H6.2V8Zm2.2.9v1.6h1.1V8.9H8.4Zm7 0v1.6h1.2V8.9h-1.2Z',
-    'M8.4 3.4h7.2v3.4H8.4V3.4Zm2 .9v1.6h1.1V4.3h-1.1Z',
+    'M3.7 16.6H20.1a0.5 0.5 0 0 1 0.5 0.5V18.05H13.32V19.55H20.6V20.5a0.5 0.5 0 0 1 -0.5 0.5H3.7a1.3 1.3 0 0 1 -1.3 -1.3V17.9a1.3 1.3 0 0 1 1.3 -1.3ZM3.9 17.6h.9v2.4h-.9Z',
+    'M17.9 11.2H4.5a0.5 0.5 0 0 0 -0.5 0.5V12.65H10.08V14.15H4V15.1a0.5 0.5 0 0 0 0.5 0.5H17.9a1.3 1.3 0 0 0 1.3 -1.3V12.5a1.3 1.3 0 0 0 -1.3 -1.3ZM16.8 12.2h.9v2.4h-.9Z',
+    'M6.9 5.8H19.5a0.5 0.5 0 0 1 0.5 0.5V7.25H14.24V8.75H20V9.7a0.5 0.5 0 0 1 -0.5 0.5H6.9a1.3 1.3 0 0 1 -1.3 -1.3V7.1a1.3 1.3 0 0 1 1.3 -1.3ZM7.1 6.8h.9v2.4h-.9Z',
   ],
-  // A chapel: pitched roof, door, cross on the ridge.
+  // A chapel: walls under an overhanging roof, arched door, cross on the ridge.
   church: [
-    'M11.1 2h1.8v2.1H15v1.8h-2.1v2.4h-1.8V5.9H9V4.1h2.1V2Z',
-    'M12 8.6 20.4 15v6.2h-5.6v-4.4a2.8 2.8 0 0 0-5.6 0v4.4H3.6V15L12 8.6Z',
+    'M11.1 1.8h1.8v2h2.1v1.7h-2.1v3h-1.8v-3H9V3.8h2.1v-2Z',
+    'M12 7.4l8.9 6.8h-1.9V21h-4.6v-3.6a2.4 2.4 0 0 0-4.8 0V21H5v-6.8H3.1L12 7.4Z',
   ],
   // A person: head and shoulders.
   you: [

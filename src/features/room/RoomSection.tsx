@@ -368,7 +368,7 @@ export function RoomSection() {
       </p>
       {nextLevel != null && (
         <p className="faint" style={{ fontSize: 11.5, margin: '4px 0 0', lineHeight: 1.5 }}>
-          At level {nextLevel} this becomes the{' '}
+          At level {nextLevel} your room reaches the{' '}
           <b style={{ color: 'var(--ink-dim)' }}>{roomTierName(tier + 1)}</b>.
         </p>
       )}

@@ -5,7 +5,7 @@ models) by `scripts/gen-art.mjs`, so the whole app looks like one hand. A
 manifest here is the prompt set for one batch:
 
 ```bash
-GEMINI_API_KEY=... node scripts/gen-art.mjs art/keep-halls.json
+GEMINI_API_KEY=... node scripts/gen-art.mjs art/keep-props.json
 GEMINI_API_KEY=... node scripts/gen-art.mjs art/churchyard-flora.json --only yard_dogwood
 ```
 
@@ -14,7 +14,6 @@ must never be written into a tracked file.
 
 | Manifest | What it makes | Lands in |
 |---|---|---|
-| `keep-halls.json` | halls 2–6 of the keep's six-tier ladder (hall 1 is the existing `hall.jpg`) | `public/keep/hall-<n>.png` |
 | `churchyard-flora.json` | the eight plants a giver can put in a churchyard | `public/keep/yard_*.png` |
 | `pets.json` | the six companions that stand beside you on the You tab | `public/items/pet_*.png` |
 | `keep-props.json` | every picture-backed decoration in the keep's hall | `public/keep/<id>.png` |

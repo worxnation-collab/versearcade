@@ -21,7 +21,7 @@
 // public/keep/<id>.png. Style references (public/skins/moses.png +
 // esther.png) ride along on every skin call so a new road matches the ten
 // skins it will sit next to; `refs` adds per-entry reference images, which is
-// how the keep's halls are held to one composition (see art/keep-halls.json).
+// how the keep's halls are held to one composition.
 //
 // Successful renders are written into src/data/generatedArt.ts so the app
 // picks them up with no second step.

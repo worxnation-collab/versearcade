@@ -26,7 +26,7 @@ import { SeriesCopyPanel } from './SeriesCopyPanel'
 //
 // Each day may carry a SERIES name and a short NOTE from the pastor (0123), both
 // optional plain text. The note is what members read beside the verse on the
-// Play tab that day (`ChurchTodayStrip`); the series is what the strip groups by
+// Play tab that day (the church card, `ChurchWindow`); the series is the quiet label beside it
 // and what "This week we're in …" puts on the church's page in one tap.
 //
 // When the arcade's library already carries the verse, one tap fills its words

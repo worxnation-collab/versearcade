@@ -7,6 +7,7 @@ import { useAccountLocked } from '@/components/AccountWall'
 import { MAP_AREAS, placesIn, type MapPlace } from '@/data/map'
 import { Icon } from '@/data/icons'
 import { useInvitations } from './invitations'
+import { InviteIcon } from './InviteIcon'
 
 // The map — every place in this app, on one screen, one tap from anywhere.
 //
@@ -138,9 +139,7 @@ export function MapSheet({ onClose }: { onClose: () => void }) {
                       background: 'rgba(255,210,63,0.08)',
                     }}
                   >
-                    <span style={{ flexShrink: 0, lineHeight: 0, color: 'var(--gold)' }}>
-                      <Icon id={inv.icon} size={20} />
-                    </span>
+                    <InviteIcon id={inv.id} icon={inv.icon} />
                     <span style={{ flex: 1, minWidth: 0, fontWeight: 800, fontSize: 14 }}>{inv.label}</span>
                     <span style={{ color: 'var(--ink-faint)', flexShrink: 0 }}>›</span>
                   </motion.button>

@@ -11,24 +11,19 @@ import type { KeepMember } from '@/store/keep'
 // ever stop moving, remove them rather than letting them go back to being
 // stickers.
 
-// Standing spots on the painted hall's open floor, as percentages of the scene
-// (the hall is a 560x300 viewBox rendered edge-to-edge). All are in FRONT of
-// the painting — the room is one flat image, so nothing can pass behind the
-// table; the spots are chosen so nobody has to.
-const WAYPOINTS: CrowdWaypoint[] = [
-  { x: 24.1, b: 12.7 }, // warming at the hearth
-  { x: 17.0, b: 18.0 }, // back left, by the chimney
-  { x: 40.2, b: 10.7 }, // the near end of the table
-  { x: 58.9, b: 8.7 },  // the far end of the table
-  { x: 48.2, b: 2.7 },  // mid-floor, front
-  { x: 36.6, b: 19.3 }, // along the back wall
-  { x: 81.3, b: 14.0 }, // looking in at the stable
-]
-
 /** Depth cue: further up the floor = smaller. b 1.7..20.7% -> 44..26px. */
 const sizeFor = (b: number) =>
   Math.round(44 - ((Math.min(Math.max(b, 1.7), 20.7) - 1.7) / 19) * 18)
 
-export function KeepLife({ members, inert = false }: { members: KeepMember[]; inert?: boolean }) {
-  return <CrowdLife members={members} waypoints={WAYPOINTS} sizeFor={sizeFor} max={6} inert={inert} />
+export function KeepLife({
+  members,
+  inert = false,
+  waypoints,
+}: {
+  members: KeepMember[]
+  inert?: boolean
+  /** The painting's own open floor (keepBackdrop.ts). */
+  waypoints: CrowdWaypoint[]
+}) {
+  return <CrowdLife members={members} waypoints={waypoints} sizeFor={sizeFor} max={6} inert={inert} />
 }

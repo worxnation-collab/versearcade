@@ -304,13 +304,13 @@ export function KeepSheet({
             {Object.keys(placements).length === 0 && ' Stone, and room to fill it.'}
           </p>
 
-          {/* What the next hall costs. The room itself grows with pooled wins
-              (six halls, KeepHall), so the ladder is worth naming — a level
-              that only changes a label is the thing this was fixing. */}
+          {/* What the next hall costs. Pooled wins still name the hall; the
+              picture is the day's painting (keepBackdrop.ts), so this says
+              the level is reached rather than that the room turns into it. */}
           {nextHall != null && (
             <p className="faint" style={{ fontSize: 11.5, margin: '4px 0 0', lineHeight: 1.5 }}>
               {Math.max(0, nextHall - wins).toLocaleString()} more win
-              {nextHall - wins === 1 ? '' : 's'} and this becomes the{' '}
+              {nextHall - wins === 1 ? '' : 's'} to reach the{' '}
               <b style={{ color: 'var(--ink-dim)' }}>{keepLevelName(level + 1)}</b>.
             </p>
           )}

@@ -7,7 +7,6 @@ import invite from '@/assets/icons/invite.png'
 import journal from '@/assets/icons/journal.png'
 import lock from '@/assets/icons/lock.png'
 import mail from '@/assets/icons/mail.png'
-import material from '@/assets/icons/material.png'
 import postcard from '@/assets/icons/postcard.png'
 import pray from '@/assets/icons/pray.png'
 import settings from '@/assets/icons/settings.png'
@@ -54,7 +53,6 @@ const ICONS = {
   journal,
   lock,
   mail,
-  material,
   postcard,
   pray,
   settings,

@@ -23,9 +23,8 @@ import { useKeep } from '@/store/keep'
 import { BORDERS, BADGES, isUnlocked } from '@/data/cosmetics'
 import { chaptersOpened } from '@/data/seals'
 import { useCollection } from '@/store/collection'
-import { collectibleByKey } from '@/data/collectibles'
-import { CARD_BACKGROUNDS, DEFAULT_CARD_BG, cardBgStyle, cardArtProps, cardBgAccentColor, cardBgUnlocked } from '@/data/playerCards'
-import { CardArt } from '@/data/cardArt'
+import { CARD_BACKGROUNDS, DEFAULT_CARD_BG, cardBgStyle, cardBgAccentColor, cardBgUnlocked } from '@/data/playerCards'
+import { CardBg } from '@/components/CardBg'
 import { ItemShapeThumb } from '@/data/itemArt'
 import { SavedLooks } from './SavedLooks'
 import { CardAboutEditor } from './CardAboutEditor'
@@ -823,7 +822,7 @@ export function CustomizeSection() {
               <div className="card" style={{ marginBottom: 14 }}>
                 {/* Live preview of the equipped background. */}
                 <div style={{ ...cardBgStyle(equippedBg), position: 'relative', height: 92, borderRadius: 14, border: '1px solid var(--stroke)', overflow: 'hidden', display: 'grid', placeItems: 'center', marginBottom: 12 }}>
-                  <CardArt {...cardArtProps(equippedBg)} id={`bg-preview-${equippedBg}`} />
+                  <CardBg bgKey={equippedBg} id={`bg-preview-${equippedBg}`} eager />
                   <span style={{ position: 'relative', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 15, textShadow: '0 2px 10px rgba(0,0,0,0.85)' }}>
                     {CARD_BACKGROUNDS.find((b) => b.key === equippedBg)?.name ?? 'Classic'}
                   </span>
@@ -831,7 +830,6 @@ export function CustomizeSection() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
                   {visibleBgs.map((b) => {
                     const equipped = equippedBg === b.key
-                    const src = collectibleByKey(b.key)
                     return (
                       <button
                         key={b.key}
@@ -846,10 +844,7 @@ export function CustomizeSection() {
                         }}
                       >
                         <div style={{ ...cardBgStyle(b.key), position: 'relative', height: 52, overflow: 'hidden', display: 'grid', placeItems: 'center' }}>
-                          <CardArt {...cardArtProps(b.key)} id={`bg-tile-${b.key}`} />
-                          <span style={{ position: 'relative', fontSize: 16, filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.9))' }}>
-                            {b.emoji ?? src?.emoji ?? '✦'}
-                          </span>
+                          <CardBg bgKey={b.key} id={`bg-tile-${b.key}`} />
                         </div>
                         <div style={{ padding: '5px 4px 6px', background: 'var(--card-solid)' }}>
                           <div style={{ fontSize: 9.5, fontWeight: 800, lineHeight: 1.15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

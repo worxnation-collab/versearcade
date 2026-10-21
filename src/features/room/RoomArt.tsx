@@ -1,4 +1,3 @@
-import { DEFAULT_ROOM_SKIN, roomPalette } from './skins'
 import { GENERATED_ART } from '@/data/generatedArt'
 import { furnishingById, roomTierName, type RoomMount } from '@/data/room'
 import { unpackDecor } from '@/data/placement'
@@ -92,75 +91,25 @@ const TIERS: RoomTierStyle[] = [
 export const roomTierCount = TIERS.length
 
 /**
- * A painting for this (skin, tier) if one has been generated, otherwise
- * nothing — the drawn chamber underneath is always rendered, so a room without
- * art still reads as itself rather than as the wrong one. Wiring is automatic:
- * the generator writes data/generatedArt.ts, so a room starts being painted the
- * moment its file lands and no id can point at a 404.
- *
- * The SKIN is part of the key, and it has to be. The five bundled paintings
- * (art/upper-room.json → `room-1` … `room-5`) are the CLAY room — they were
- * painted before materials existed — and they are laid OVER the drawn chamber,
- * so with a flat `room-<tier>` lookup a player choosing cedar would repaint the
- * SVG underneath and then have the clay painting drawn on top of it. The
- * material would be invisible, which is the whole feature.
- *
- * So a skinned room looks for `room-<skin>-<tier>`, and the default skin falls
- * back to the historic `room-<tier>` ids. Paint a material later and it wires
- * itself in with no code change, the `GENERATED_ART` bargain.
- *
- * The fallback is ALL-OR-NOTHING PER MATERIAL, which is a narrower rule than
- * the per-entry one `ChurchArt` uses, and the difference was earned during this
- * batch: `dusk` sat for an hour with tiers 1 and 2 painted and 3-5 lost to a
- * run of 503s from the image API. Per entry, that player's room would have been
- * a painting up to level 5 and a drawing from level 12 — and unlike a church's
- * building, which somebody meets once on a ladder climbed over months, YOUR OWN
- * ROOM changes tier under you. A material that switches medium halfway up reads
- * as the art breaking rather than as the room growing.
- *
- * All fifteen renders exist now, so nothing is currently drawn. The rule stays
- * because it is what makes adding a FIFTH material safe: paint it one tier at a
- * time and players see the old drawn room until the set is whole, rather than a
- * half-painted one.
+ * The drawn chamber, with today's painting (roomScenes.ts) laid over it. The
+ * drawing is the fallback — a painting that fails to load still leaves a room —
+ * and it is all the postcard (`flat`) can serialise.
  */
-const PAINTED_SKINS: Record<string, boolean> = {}
-const roomPainted = (skin: string): boolean => {
-  if (PAINTED_SKINS[skin] === undefined) {
-    PAINTED_SKINS[skin] = Array.from({ length: TIERS.length }, (_, i) =>
-      skin === DEFAULT_ROOM_SKIN
-        ? GENERATED_ART[`room-${skin}-${i + 1}`] ?? GENERATED_ART[`room-${i + 1}`]
-        : GENERATED_ART[`room-${skin}-${i + 1}`],
-    ).every(Boolean)
-  }
-  return PAINTED_SKINS[skin]
-}
-
-const roomImage = (tier: number, skin?: string | null): string | null => {
-  const id = skin ?? DEFAULT_ROOM_SKIN
-  if (!roomPainted(id)) return null
-  return (
-    GENERATED_ART[`room-${id}-${tier + 1}`] ??
-    (id === DEFAULT_ROOM_SKIN ? GENERATED_ART[`room-${tier + 1}`] ?? null : null)
-  )
-}
-
 export function RoomChamber({
   tier = 0,
   flat = false,
-  skin,
   scene,
 }: {
   tier?: number
   flat?: boolean
-  skin?: string | null
-  /** A whole-room painting that stands in for the tiered one (roomScenes.ts). */
+  /** Today's whole-room painting (roomScenes.ts). */
   scene?: string | null
 }) {
   const t = Math.min(TIERS.length - 1, Math.max(0, tier))
-  const painting = flat ? null : scene ?? roomImage(t, skin)
+  const painting = flat ? null : scene ?? null
   return (
     <>
-      <DrawnChamber tier={t} skin={skin} />
+      <DrawnChamber tier={t} />
       {painting && (
         <image
           href={painting}
@@ -184,14 +133,11 @@ export function RoomChamber({
  * alcove on top of each other and drew two arches in the same place; the anchor
  * table in data/room.ts carries the same warning.
  */
-// The tier decides the room's SHAPE — plaster, window, beams, gilt — and the
-// skin decides only what it is MADE of. So `s` is read for the booleans and
-// `pal` for every colour of wall, floor and fixture wood: a skin can repaint a
-// Bare Chamber but can never make it look like a higher one. Same guarantee
-// "a skinned church is not a bigger church" gives, in the shape of the code.
-function DrawnChamber({ tier, skin }: { tier: number; skin?: string | null }) {
+// The tier decides the room's shape (plaster, window, beams, gilt) and its
+// colours; `pal` is the tier's walls and floor plus the fixture wood.
+function DrawnChamber({ tier }: { tier: number }) {
   const s = TIERS[tier]
-  const pal = roomPalette(skin, tier)
+  const pal = { ...TIERS[tier], wood: WOOD, woodDark: WOOD_DARK }
   return (
     <g>
       {/* Back wall + floor */}

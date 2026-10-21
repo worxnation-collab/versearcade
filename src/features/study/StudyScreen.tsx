@@ -4,7 +4,6 @@ import { Page } from '@/components/Page'
 import { FirstVisitTip } from '@/features/home/FirstVisitTip'
 import { LibraryScene } from './LibraryScene'
 import { LibrarianSheet, Cover } from './LibrarianSheet'
-import { GENERATED_ART } from '@/data/generatedArt'
 import { useLibrary } from '@/store/library'
 import { LIBRARIAN_NAME, type StudyBook } from '@/data/library'
 import { useJuice } from '@/juice/useJuice'
@@ -209,24 +208,69 @@ export default function StudyScreen() {
         </p>
       </div>
 
-      {/* The room is ATMOSPHERE now: the painting and Tabitha, with no
-          markers on the art and no bag on the floor (2026-10-21, the owner's
-          call). Bled past the shell's 18px gutter because it is the tab's
-          picture rather than a card on it. Every action it used to carry is a
-          row in the list under it, with the same door and the same badge. */}
-      <div style={{ margin: '0 -18px' }}>
+      {/* The room is the door to HER (2026-10-21, the owner's call): she is
+          painted in, head to feet, and tapping the picture opens her sheet —
+          the "Ask her" row went, so the tab's most-used action is on screen
+          without a scroll. One small chip on the frame's bottom edge says so
+          and carries what's DUE; it is a caption on the frame, not a cloud on
+          the art. Bled past the shell's 18px gutter because it is the tab's
+          picture rather than a card on it. */}
+      <button
+        onClick={() => { juice.select?.(); setAtDesk(true) }}
+        aria-label={due ? `Ask ${LIBRARIAN_NAME}, ${due} due` : `Ask ${LIBRARIAN_NAME}`}
+        style={{
+          display: 'block',
+          position: 'relative',
+          margin: '0 -18px',
+          width: 'calc(100% + 36px)',
+          padding: 0,
+          border: 0,
+          background: 'none',
+          cursor: 'pointer',
+          textAlign: 'left',
+        }}
+      >
         <LibraryScene />
-      </div>
+        <span
+          aria-hidden
+          style={{
+            position: 'absolute',
+            left: 14,
+            bottom: 14,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '8px 14px',
+            borderRadius: 999,
+            background: 'rgba(20,12,6,0.78)',
+            border: '1px solid var(--gold)',
+            color: 'var(--ink)',
+            fontSize: 14,
+            fontWeight: 700,
+          }}
+        >
+          Ask {LIBRARIAN_NAME}
+          {due && (
+            <span
+              style={{
+                minWidth: 22,
+                padding: '1px 7px',
+                borderRadius: 999,
+                background: 'var(--gold)',
+                color: '#3a2200',
+                fontSize: 12,
+                textAlign: 'center',
+              }}
+            >
+              {due}
+            </span>
+          )}
+          <span style={{ opacity: 0.8 }}>→</span>
+        </span>
+      </button>
 
       <h3 className="dim" style={{ fontSize: 16, margin: '16px 0 10px' }}>At the desk</h3>
       <div style={{ display: 'grid', gap: 8 }}>
-        <DeskRow
-          visual={<HerFace />}
-          title="Ask her"
-          caption="What she can lend you — practice, replays, kept verses"
-          badge={due}
-          onTap={() => { juice.select?.(); setAtDesk(true) }}
-        />
         {byKey('reports') && (
           <DeskRow
             visual={<Cover item={byKey('reports')!} />}
@@ -310,29 +354,5 @@ function DeskRow({
       )}
       <span className="faint" style={{ fontSize: 13, flexShrink: 0 }}>→</span>
     </button>
-  )
-}
-
-// Tabitha's own render, cropped to her head and shoulders in the same 30x42
-// box the book covers use, so her row sits in line with theirs.
-function HerFace() {
-  const her = GENERATED_ART['librarian']
-  return (
-    <span
-      aria-hidden
-      style={{
-        flexShrink: 0,
-        width: 30,
-        height: 42,
-        borderRadius: 6,
-        overflow: 'hidden',
-        background: her ? `top center/180% auto no-repeat url(${her}), var(--card-raised)` : 'var(--card-raised)',
-        display: 'grid',
-        placeItems: 'center',
-        fontSize: 18,
-      }}
-    >
-      {her ? null : '📚'}
-    </span>
   )
 }

@@ -4686,13 +4686,13 @@ the geometry rather than by nudging it.
 (`StudyShelf`/`StudyBookArt` deleted) and everything Study can do is now
 something in the room. Full design: `docs/STUDY-LIBRARY.md`. Five things:
 
-- **The room is atmosphere, and the actions are a list under it** (2026-10-21,
-  the owner's call). No markers sit on the painting and the satchel no longer
-  stands on the floor; "At the desk" lists Ask her (Tabitha's sheet, carrying
-  the due count), Reports and Your bag (its finds count) in the desk sheet's
-  own row style. Anything new in Study still belongs in her offer, not as a
-  fourth row. `LibraryScene` keeps its optional hotspot props, unused, so a
-  marker can come back without redrawing the room.
+- **The room is the door to Tabitha, and the rest is a list under it**
+  (2026-10-21, the owner's call). She is painted in and tapping the picture
+  opens her sheet; one "Ask Tabitha" chip on the frame's bottom edge says so and
+  carries the due count. No clouds on the art and no satchel on the floor; "At
+  the desk" lists Reports and Your bag (its finds count). Anything new in Study
+  still belongs in her offer, not as a third row. `LibraryScene` keeps its
+  optional hotspot props, unused.
 - **One list, two surfaces.** `StudyBook[]` is built once in `StudyScreen` and
   handed BOTH to the room (hotspot badges) and to Tabitha (what she lends). A
   `lend` line makes an entry stock; without one it is yours and stands in the
@@ -4725,7 +4725,11 @@ something in the room. Full design: `docs/STUDY-LIBRARY.md`. Five things:
 
 Two-mode for real (`store/library.ts`), because a keyless LOCAL build IS this
 tab and a dead librarian there would be a dead tab; the guest day rolls over on
-READ, so nothing has to fire at midnight. The room's painting is a **5:8
+READ, so nothing has to fire at midnight. **Since 2026-10-21 the room is the owner's own painting
+with Tabitha PAINTED IN** (`public/keep/study-library-tabitha.jpg`, prompt in
+`art/owner/`, deliberately outside `GENERATED_ART`), shown head to feet, and the
+separate `librarian` render is not drawn over it — two Tabithas is the TikTok
+scar. A failed load falls back to the empty room plus her render. The old room's painting was a **5:8
 portrait because the frame is one** — it was re-prompted twice to get there —
 and it's bled past the shell's 18px gutter, since it isn't a card on the tab,
 it's the tab.

@@ -441,6 +441,24 @@ function FoundingChurches() {
     setMsg(`${copied ? 'Copied' : 'Made'} a leader invite for ${c.name} — one use, 14 days. Send it to the person you verified.`)
   }
 
+  // The church's billing page (0131): a stable link to a web-only page with
+  // the prices and both ways to pay. The link carries a token, never the
+  // church id, so it cannot be pointed at another church. Copying it shows no
+  // price here — this panel is in the app bundle.
+  const billing = async (c: FoundingRow) => {
+    setBusy(`bill:${c.id}`)
+    setMsg(null)
+    const { data, error } = await supabase!.rpc('admin_church_billing_link', { p_church_id: c.id })
+    setBusy(null)
+    const d = data as { ok?: boolean; token?: string } | null
+    if (error || !d?.ok || !d.token) return setMsg(`Couldn't make a billing link for ${c.name}.`)
+    const url = `https://versearcade.org/church-billing/?t=${d.token}`
+    setLinks((m) => ({ ...m, [`bill:${c.id}`]: url }))
+    let copied = false
+    try { await navigator.clipboard.writeText(url); copied = true } catch { /* shown below to copy by hand */ }
+    setMsg(`${copied ? 'Copied' : 'Made'} the billing link for ${c.name}. It's the same link every time.`)
+  }
+
   const where = (c: { city: string | null; region: string | null }) => [c.city, c.region].filter(Boolean).join(', ')
 
   const row = (c: FoundingRow) => (
@@ -468,6 +486,14 @@ function FoundingChurches() {
         </button>
         {links[c.id] && (
           <span className="faint" style={{ fontSize: 11, wordBreak: 'break-all', flex: 1, minWidth: 0 }}>{links[c.id]}</span>
+        )}
+      </div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <button className="pill" disabled={busy === `bill:${c.id}`} onClick={() => billing(c)} style={{ fontSize: 12, fontWeight: 800 }}>
+          {busy === `bill:${c.id}` ? '…' : 'Copy billing link'}
+        </button>
+        {links[`bill:${c.id}`] && (
+          <span className="faint" style={{ fontSize: 11, wordBreak: 'break-all', flex: 1, minWidth: 0 }}>{links[`bill:${c.id}`]}</span>
         )}
       </div>
       <input

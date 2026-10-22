@@ -194,7 +194,15 @@ export async function makeVerse(d: string, o: VerseOptions, progress: Progress):
   const opener = d >= OPENER_FROM && own ? await openerFor(own, progress).catch(() => null) : null
   if (opener) {
     const r: Renderer = await import('@/lib/tiktokRender')
-    const scene = await r.loadImage(versePainting(v.reference)).catch(() => null)
+    // A verse with no painting of its own stands on the day's ROAD rather than
+    // leaving the format. Leaving it was harmless while every recording was a
+    // full reading plus a thought; a HOOK-ONLY take (the shape a batch of
+    // openers is recorded in) has no reading in it, so the old layout below
+    // would play fifteen seconds of him as "the reading" and never read the
+    // verse at all. Four of the first series week's five mornings had no
+    // painting, which is how this was found.
+    const painted = await r.loadImage(versePainting(v.reference)).catch(() => null)
+    const scene = painted ?? (await loadScene(r, c.scene).catch(() => null))
     const figure = await r.loadImage(`/skins/${c2.figure}.png`).catch(() => null)
     if (scene && figure) {
       progress(0, 'asking for the reading')
@@ -217,12 +225,14 @@ export async function makeVerse(d: string, o: VerseOptions, progress: Progress):
         opener: { audio: opener.audio, words: opener.words, photo: photo2, label: VOICE_LABEL },
         bed: bed2, onProgress: progress,
       })
-      return made(d, 'verse', v.reference, out2, copy2, `${c2.figure} (${c2.why}) · painted for the verse · you open it`, true, true)
+      return made(d, 'verse', v.reference, out2, copy2, `${c2.figure} (${c2.why}) · ${painted ? 'painted for the verse' : `${c.scene} (no painting yet)`} · you open it`, true, true)
     }
     console.warn('opener format unavailable (no painting or no figure) — falling back')
   }
 
-  if (own) {
+  // A hook-only take carries no reading, so it can never stand in for one:
+  // with the opener format unavailable the day is read by Gemini instead.
+  if (own && own.verse.length) {
     progress(0, 'fetching your recording')
     const audio = await (await fetch(own.wavUrl + '?v=' + Date.now())).arrayBuffer()
     let copy: Copy | null = null

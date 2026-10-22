@@ -1,0 +1,7 @@
+# Only what the deploy workflow needs. Every function runs with verify_jwt ON
+# (the CLI default) EXCEPT the ones listed here, which are called by a third
+# party with no Supabase session. See CLAUDE.md → Deploy.
+project_id = "visuppaucpzzigwtqmdd"
+
+[functions.church-billing]
+verify_jwt = false

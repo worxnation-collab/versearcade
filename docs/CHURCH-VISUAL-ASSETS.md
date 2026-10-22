@@ -130,8 +130,9 @@ drawing any card a church made before the art landed.
 
 ### Picture cards (2026-10-22)
 
-Ten more owner-supplied illustrations, with people in them: verse — Wonder,
-Open hands, Family, Elder, Kneeling, The path; series — Gathered; notice —
+Eleven more owner-supplied illustrations, with people in them: verse — Wonder,
+Open hands, Family, Elder, Kneeling, The path, Lamplight (night, light ink in
+the sky); series — Gathered; notice —
 Friends, Quiet prayer, Reading corner. The rule for these is that **words never
 cross a face**: each one puts its text in the picture's own empty space
 (Kneeling's left column, The path's sky, Friends' top) or on a soft panel faded

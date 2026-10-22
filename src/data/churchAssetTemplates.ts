@@ -301,6 +301,17 @@ export const ASSET_TEMPLATES: AssetTemplate[] = [
     },
   },
   {
+    id: 'verse_lamplight', kind: 'verse_card', name: 'Lamplight', aspect: [2, 3],
+    background: { color: '#2a1f45', image: '/church-assets/verse_lamplight/bg.jpg' },
+    ink: '#f3e9d2', accent: '#f2c66d', fonts: { serif: SERIF },
+    slots: {
+      eyebrow: { x: 46, y: 25, w: 48, h: 3.5, size: 2.8, uppercase: true, tracking: 0.14, weight: 800, color: '#f2c66d' },
+      body: { x: 46, y: 29, w: 48, h: 21, size: 5, minScale: 0.55, font: 'serif', italic: true, valign: 'top', maxLines: 12 },
+      reference: { x: 46, y: 51, w: 48, h: 4, size: 3.6, weight: 800, color: '#f2c66d' },
+      footer: { x: 52, y: 95, w: 42, h: 3.5, size: 2.6, align: 'right', color: '#cbbfe0' },
+    },
+  },
+  {
     id: 'series_gathered', kind: 'series_header', name: 'Gathered', aspect: [3, 2],
     background: { color: '#fef6e9', image: '/church-assets/series_gathered/bg.jpg' },
     ink: '#2e2a22', accent: '#5f6b47',

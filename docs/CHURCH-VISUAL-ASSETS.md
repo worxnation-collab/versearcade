@@ -12,8 +12,10 @@ per template. Nothing else needs to change to ship real art.
 
 1. **Background image:** put the file at `public/church-assets/<template-id>/bg.jpg`
    (or `.png`/`.webp`) and set `background.image: '/church-assets/<id>/bg.jpg'`.
-   Size it to the template's `aspect`: 1080×1350 for a 4:5 verse card,
-   1920×1080 for a 16:9 series or notice card. Keep `background.color` set to
+   Set the template's `aspect` to the IMAGE's, never the other way round — the
+   card is `object-fit: cover`, so a mismatch crops the art silently. The
+   shipped art is 784×1168 (2:3) for verse and notice cards and 1168×784 (3:2)
+   for series headers, and those templates say so. Keep `background.color` set to
    the image's dominant colour, because a failed image falls back to it. If text
    sits over a busy area, add `background.overlay` (a CSS gradient).
 2. **Layout:** each slot (`eyebrow`, `title`, `body`, `reference`, `footer`) is a
@@ -117,8 +119,11 @@ the web, **Download PNG**. It is drawn in the leader's own browser by
 - **Congregation-only stays the default.** `visibility` is still constrained to
   `'congregation'`; nothing about the card in the app changes. Posting the PNG
   somewhere is the leader's own act, outside the app.
-- **Sizes.** **Post**: the card at its own aspect, 1080x1350 for a 4:5 card
-  (an Instagram portrait post) or 1920x1080 for a 16:9 one, square corners.
+- **Sizes.** **Post**: the card at its own aspect, 1080 wide for a portrait
+  card or 1920 wide for a landscape one, square corners — EXCEPT a card taller
+  than 4:5 (all the shipped 2:3 verse and notice art), which the feed would crop
+  through its eyebrow and footer, so it posts whole on a 1080x1350 frame of its
+  own dimmed background (`postsFramed`).
   **Story**: 1080x1920, the card unchanged and centred on a dimmed field of its
   own background, inside the Story safe zone (clear of the top 250px and bottom
   340px the app draws over). A story is a FRAME, not a relayout, so a template
@@ -137,9 +142,12 @@ the web, **Download PNG**. It is drawn in the leader's own browser by
   overlay. Sizing (`slotScale`, `slotFamily`, `SLOT_LINE_HEIGHT`) is imported
   from `churchAssetTemplates.ts`, not restated, so the two renderers can only
   differ in how they wrap a line.
-- **What a new template must stay inside.** A background gradient or overlay
-  the export cannot parse (radial, `to right`, a stop with no %) is SKIPPED and
-  the flat colour shows; the in-app card still draws it. Keep real art to a
+- **What a new template must stay inside.** The export reads a colour,
+  `linear-gradient(<deg> | to <side> [<side>], …)` with or without stop
+  percentages, and `radial-gradient([ellipse] at X% Y%, …)` (the default
+  farthest-corner size). Anything else (a `circle`, an explicit radial size,
+  `conic-gradient`, several layered gradients) is SKIPPED in the export and the
+  flat colour shows; the in-app card still draws it. Keep real art to a
   colour, that linear-gradient form and/or a `/church-assets/` image, and check
   one export after adding a template. A web font named in `fonts` must be
   loaded by the page (`document.fonts`) or the export falls back like the card
@@ -157,3 +165,50 @@ the web, **Download PNG**. It is drawn in the leader's own browser by
 Each `AssetStudio` shows live thumbnails of every look, drawn from the real
 words before anything is created. It then offers Generate → Approve / Change
 look / Discard.
+
+## The shipped art (2026-10-22)
+
+Twelve owner-supplied backgrounds, one template each, first of each kind the
+once the default: verse — Parchment, Stillwater, First light, Clay, Vigil; series —
+Meadow, Current, Ember; notice — Laurel, Blossom, Garden, Midnight. They are
+not Nano Banana renders and are deliberately NOT in `GENERATED_ART` (the
+hand-kept-table rule the road rewards and nav paintings follow), so a gen-art
+run can never overwrite them. Each slot box was placed by rendering the card
+with a long verse and a long notice and moving text off the painted
+ornaments; re-check by rendering, not by reading numbers, if an image is
+replaced. The six original stand-ins are `retired`: off the picker, still
+drawing any card a church made before the art landed.
+
+### Picture cards (2026-10-22)
+
+Eleven more owner-supplied illustrations, with people in them: verse — Wonder,
+Open hands, Family, Elder, Kneeling, The path, Lamplight (night, light ink in
+the sky); series — Gathered; notice —
+Friends, Quiet prayer, Reading corner. The rule for these is that **words never
+cross a face**: each one puts its text in the picture's own empty space
+(Kneeling's left column, The path's sky, Friends' top) or on a soft panel faded
+in over the lower third (`background.overlay` — cream, or navy on Elder, where
+the cardigan already is). Gathered's source was 3:2 with the group dead centre
+and no room for a title, so it was re-composed on its own flat background
+(cropped left, extended right in the measured edge colour) — seamless only
+because that background is flat; don't do it to a painted edge. The path's top
+band is the tightest box in the set and sets a long verse small; it is the one
+to avoid for a passage over ~200 characters.
+
+### The official style (2026-10-22) — the defaults
+
+Thirteen templates from the owner's "official style" set: night purple and
+gold, the app's own palette. They lead `ASSET_TEMPLATES`, so they are the
+defaults a leader sees first: **Glow** (verse), **Cosmos** (series) and
+**Cosmos** (notice — the one landscape notice, sharing the series art). With
+them: verse — Golden path, Night reading, Rays, Beam; series — Vine circle;
+notice — Night family, Night friends, Elder, Halo, Prayer. The light set above
+stays pickable; nothing was retired, so a card already made with one keeps it.
+
+Same rule as the picture cards — words never cross a face — plus two scars
+found by rendering: on Glow the verse sits ABOVE the light and the reference
+below it (light ink over the core measured luminance 178, unreadable), and on
+Golden path the footer moved off the bright path to sit under the reference.
+Vine circle's art filled its whole frame, so it is scaled into the left of the
+card on its own flat navy (measured from the corners), the Gathered trick.
+

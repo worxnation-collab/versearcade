@@ -14,11 +14,12 @@ import { assetSlots, slotFamily, slotScale, SLOT_LINE_HEIGHT, templateFor, type 
 // than restated, so the two renderers can only drift in how they wrap and
 // clip, never in what they say or how big it is.
 //
-// What it supports is what the template TYPE allows: a colour, a
-// `linear-gradient(<deg>, <colour> <n>%, …)` over it, a root-relative image
-// covering the card, and an overlay that is a colour or such a gradient. A
-// gradient it cannot read is skipped and the flat colour shows, which is the
-// card's own fail-closed rule for a background image that won't load.
+// What it supports is what the shipped templates use: a colour, a
+// `linear-gradient(<deg> | to <side>, …)` or `radial-gradient(ellipse at X% Y%,
+// …)` over it, a root-relative image covering the card, and an overlay that is
+// a colour or such a gradient. A gradient it cannot read is skipped and the
+// flat colour shows, which is the card's own fail-closed rule for a background
+// image that won't load.
 //
 // No storage, no server: the PNG exists only in the leader's browser until they
 // share or save it. Square corners, because a social network draws its own.
@@ -38,36 +39,127 @@ function resolveFamily(family: string): string {
 
 // ---- backgrounds --------------------------------------------------------------
 
-/** A CSS `linear-gradient(<deg>, <colour> <n>%, …)` as a canvas gradient, or null if it isn't one. */
-function linearGradient(ctx: CanvasRenderingContext2D, css: string, w: number, h: number): CanvasGradient | null {
-  const m = /^\s*linear-gradient\(\s*(-?[\d.]+)deg\s*,(.*)\)\s*$/i.exec(css)
-  if (!m) return null
-  const stops = [...m[2].matchAll(/(#[0-9a-f]{3,8}|rgba?\([^)]*\))\s+(-?[\d.]+)%/gi)]
-  if (stops.length < 2) return null
-  // CSS: 0deg points up, angles run clockwise, and the line is long enough
-  // that the corners land exactly on the first and last stop.
-  const a = (Number(m[1]) * Math.PI) / 180
-  const dx = Math.sin(a)
-  const dy = -Math.cos(a)
-  const half = (Math.abs(w * dx) + Math.abs(h * dy)) / 2
-  const g = ctx.createLinearGradient(w / 2 - dx * half, h / 2 - dy * half, w / 2 + dx * half, h / 2 + dy * half)
-  try {
-    for (const s of stops) g.addColorStop(Math.min(1, Math.max(0, Number(s[2]) / 100)), s[1])
-  } catch {
-    return null
+/** Split on commas that are not inside parentheses: `rgba(1,2,3,0.5) 40%, #fff` → two parts. */
+function splitTop(css: string): string[] {
+  const out: string[] = []
+  let depth = 0
+  let cur = ''
+  for (const ch of css) {
+    if (ch === '(') depth++
+    if (ch === ')') depth--
+    if (ch === ',' && depth === 0) { out.push(cur.trim()); cur = '' } else cur += ch
   }
-  return g
+  if (cur.trim()) out.push(cur.trim())
+  return out
 }
 
-/** Fill the whole card with a colour or a linear gradient; anything else is skipped. */
+const COLOUR = /^(#[0-9a-f]{3,8}|rgba?\([^)]*\)|transparent)(?:\s+(-?[\d.]+)%)?$/i
+
+/**
+ * Colour stops, positions as 0..1. A stop with no % is placed the way CSS
+ * places it: the first at 0, the last at 1, the rest spread evenly between
+ * their positioned neighbours. Null if any stop isn't a colour we can read.
+ */
+function stopsOf(parts: string[]): Array<[number, string]> | null {
+  const raw = parts.map((p) => COLOUR.exec(p))
+  if (raw.length < 2 || raw.some((m) => !m)) return null
+  const pos: Array<number | null> = raw.map((m) => (m![2] === undefined ? null : Number(m![2]) / 100))
+  if (pos[0] === null) pos[0] = 0
+  if (pos[pos.length - 1] === null) pos[pos.length - 1] = 1
+  for (let i = 1; i < pos.length; i++) {
+    if (pos[i] !== null) continue
+    let j = i
+    while (pos[j] === null) j++
+    const from = pos[i - 1]!
+    const to = pos[j]!
+    for (let k = i; k < j; k++) pos[k] = from + ((to - from) * (k - i + 1)) / (j - i + 1)
+  }
+  // CSS clamps a stop that comes before the one ahead of it.
+  for (let i = 1; i < pos.length; i++) pos[i] = Math.max(pos[i]!, pos[i - 1]!)
+  return raw.map((m, i) => [Math.min(1, Math.max(0, pos[i]!)), m![1] === 'transparent' ? 'rgba(0,0,0,0)' : m![1]])
+}
+
+/** The CSS angle (0deg up, clockwise) a `<deg>` or `to <side> [<side>]` names on a w×h box. */
+function angleOf(dir: string, w: number, h: number): number | null {
+  const deg = /^(-?[\d.]+)deg$/i.exec(dir)
+  if (deg) return (Number(deg[1]) * Math.PI) / 180
+  const to = /^to\s+(top|bottom|left|right)(?:\s+(top|bottom|left|right))?$/i.exec(dir)
+  if (!to) return null
+  const sides = [to[1], to[2]].filter(Boolean).map((x) => x!.toLowerCase())
+  const dx = sides.includes('right') ? 1 : sides.includes('left') ? -1 : 0
+  const dy = sides.includes('bottom') ? 1 : sides.includes('top') ? -1 : 0
+  // A corner is perpendicular to the diagonal through the other two corners,
+  // which on a non-square box is not 45°.
+  return Math.atan2(dx * (dy ? h : 1), -dy * (dx ? w : 1))
+}
+
+function addStops(g: CanvasGradient, stops: Array<[number, string]>): boolean {
+  try {
+    for (const [at, colour] of stops) g.addColorStop(at, colour)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Paint a CSS `linear-gradient(...)` or `radial-gradient(ellipse at X% Y%, ...)`
+ * across w×h. False when it is a form this doesn't read, so the caller leaves
+ * the flat colour showing — the card's own fail-closed rule.
+ */
+function paintGradient(ctx: CanvasRenderingContext2D, css: string, w: number, h: number): boolean {
+  const lin = /^\s*linear-gradient\((.*)\)\s*$/i.exec(css)
+  if (lin) {
+    const parts = splitTop(lin[1])
+    let a = angleOf(parts[0], w, h)
+    if (a === null) a = Math.PI // no direction: CSS's default, to bottom
+    else parts.shift()
+    const stops = stopsOf(parts)
+    if (!stops) return false
+    // The line is long enough that the corners land exactly on 0 and 1.
+    const dx = Math.sin(a)
+    const dy = -Math.cos(a)
+    const half = (Math.abs(w * dx) + Math.abs(h * dy)) / 2
+    const g = ctx.createLinearGradient(w / 2 - dx * half, h / 2 - dy * half, w / 2 + dx * half, h / 2 + dy * half)
+    if (!addStops(g, stops)) return false
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, w, h)
+    return true
+  }
+  const rad = /^\s*radial-gradient\((.*)\)\s*$/i.exec(css)
+  if (rad) {
+    const parts = splitTop(rad[1])
+    const shape = /^(?:ellipse\s+)?at\s+(-?[\d.]+)%\s+(-?[\d.]+)%$/i.exec(parts[0])
+    if (!shape) return false
+    const stops = stopsOf(parts.slice(1))
+    if (!stops) return false
+    // `ellipse farthest-corner` (CSS's default size): the farthest-side
+    // ellipse, scaled by √2 so it passes through the farthest corner.
+    const cx = (Number(shape[1]) / 100) * w
+    const cy = (Number(shape[2]) / 100) * h
+    const rx = Math.max(cx, w - cx) * Math.SQRT2
+    const ry = Math.max(cy, h - cy) * Math.SQRT2
+    if (!rx || !ry) return false
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, rx)
+    if (!addStops(g, stops)) return false
+    ctx.save()
+    ctx.translate(cx, cy)
+    ctx.scale(1, ry / rx)
+    ctx.fillStyle = g
+    ctx.fillRect(-cx, (-cy * rx) / ry, w, (h * rx) / ry)
+    ctx.restore()
+    return true
+  }
+  return false
+}
+
+/** Fill the whole card with a colour or a gradient; a gradient it can't read is skipped. */
 function fillCss(ctx: CanvasRenderingContext2D, css: string, w: number, h: number) {
   if (/gradient\(/i.test(css)) {
-    const g = linearGradient(ctx, css, w, h)
-    if (!g) return
-    ctx.fillStyle = g
-  } else {
-    ctx.fillStyle = css
+    paintGradient(ctx, css, w, h)
+    return
   }
+  ctx.fillStyle = css
   ctx.fillRect(0, 0, w, h)
 }
 
@@ -216,37 +308,45 @@ async function drawCard(kind: AssetKind, templateId: string, payload: AssetPaylo
   return canvas
 }
 
-// A STORY is the card, unchanged, standing on a 9:16 field of its own
-// background. The template's boxes are for its own aspect, so a story is a
-// FRAME around the card rather than a relayout of it — which is also why it
-// needs nothing from a template author. The card sits inside Instagram's Story
-// safe zone (clear of the top ~250px and bottom ~340px the app draws over),
-// with the field dimmed so the card's edge reads on a light template too.
-const STORY = { w: 1080, h: 1920, gutter: 64, safeTop: 250, safeBottom: 340, radius: 28 }
+// A FRAME is the card, unchanged, standing on a field of its own background —
+// used where the network's shape is not the card's. The template's boxes are
+// for its own aspect, so this frames rather than relayouts, which is also why a
+// template author never has to think about it. The field is dimmed so the
+// card's edge reads on a light template too.
+interface Frame { w: number; h: number; gutter: number; top: number; bottom: number }
 
-async function drawStory(kind: AssetKind, templateId: string, payload: AssetPayload): Promise<HTMLCanvasElement | null> {
+// A Story keeps the card inside Instagram's safe zone, clear of the top ~250px
+// and bottom ~340px the app draws over.
+const STORY: Frame = { w: 1080, h: 1920, gutter: 64, top: 250, bottom: 340 }
+// The feed crops anything TALLER than 4:5, and the shipped verse and notice
+// art is 2:3 — the crop would take the eyebrow and the footer. So a tall card
+// posts whole on a 4:5 frame instead.
+const FEED_PORTRAIT: Frame = { w: 1080, h: 1350, gutter: 56, top: 56, bottom: 56 }
+const RADIUS = 28
+
+async function drawFramed(kind: AssetKind, templateId: string, payload: AssetPayload, f: Frame): Promise<HTMLCanvasElement | null> {
   const card = await drawCard(kind, templateId, payload)
   if (!card) return null
   const t = templateFor(templateId, kind)
   const canvas = document.createElement('canvas')
-  canvas.width = STORY.w
-  canvas.height = STORY.h
+  canvas.width = f.w
+  canvas.height = f.h
   const ctx = canvas.getContext('2d')
   if (!ctx) return null
-  await paintBackground(ctx, t, STORY.w, STORY.h)
+  await paintBackground(ctx, t, f.w, f.h)
   ctx.fillStyle = 'rgba(0,0,0,0.28)'
-  ctx.fillRect(0, 0, STORY.w, STORY.h)
+  ctx.fillRect(0, 0, f.w, f.h)
 
-  const room = STORY.h - STORY.safeTop - STORY.safeBottom
-  let cw = STORY.w - STORY.gutter * 2
+  const room = f.h - f.top - f.bottom
+  let cw = f.w - f.gutter * 2
   let ch = (cw * card.height) / card.width
   if (ch > room) { ch = room; cw = (ch * card.width) / card.height }
-  const x = (STORY.w - cw) / 2
-  const y = STORY.safeTop + (room - ch) / 2
+  const x = (f.w - cw) / 2
+  const y = f.top + (room - ch) / 2
 
   const shape = () => {
     ctx.beginPath()
-    if (typeof ctx.roundRect === 'function') ctx.roundRect(x, y, cw, ch, STORY.radius)
+    if (typeof ctx.roundRect === 'function') ctx.roundRect(x, y, cw, ch, RADIUS)
     else ctx.rect(x, y, cw, ch)
   }
   ctx.save()
@@ -265,7 +365,13 @@ async function drawStory(kind: AssetKind, templateId: string, payload: AssetPayl
   return canvas
 }
 
-/** `post`: the card at its own aspect. `story`: the card framed on a 9:16 field. */
+/** Whether a template's card is taller than the feed's 4:5, and so posts framed. */
+export function postsFramed(templateId: string, kind: AssetKind): boolean {
+  const [aw, ah] = templateFor(templateId, kind).aspect
+  return ah / aw > 5 / 4 + 1e-6
+}
+
+/** `post`: the card at its own aspect (framed at 4:5 if it is taller). `story`: framed on 9:16. */
 export type ExportFormat = 'post' | 'story'
 
 /**
@@ -274,7 +380,10 @@ export type ExportFormat = 'post' | 'story'
  */
 export async function renderAssetPng(kind: AssetKind, templateId: string, payload: AssetPayload, format: ExportFormat = 'post'): Promise<Blob | null> {
   try {
-    const canvas = format === 'story' ? await drawStory(kind, templateId, payload) : await drawCard(kind, templateId, payload)
+    const canvas =
+      format === 'story' ? await drawFramed(kind, templateId, payload, STORY)
+        : postsFramed(templateId, kind) ? await drawFramed(kind, templateId, payload, FEED_PORTRAIT)
+          : await drawCard(kind, templateId, payload)
     if (!canvas) return null
     return await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
   } catch {

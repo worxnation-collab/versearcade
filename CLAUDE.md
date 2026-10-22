@@ -1755,8 +1755,8 @@ cards for the Content Generation package. Four things are load-bearing:
   (`lib/churchAssetExport.ts`), drawn on a canvas from the template DATA rather
   than by photographing the HTML (Safari taints a foreignObject canvas). Sizing
   is shared with `ChurchAssetCard` through `slotScale`/`slotFamily`; a template
-  background outside colour + `linear-gradient(<deg>, …%)` + image is skipped in
-  the export. `docs/CHURCH-VISUAL-ASSETS.md` → "Export".
+  background outside colour, `linear-gradient`, `radial-gradient(ellipse at X% Y%,
+  …)` and an image is skipped in the export; a card taller than 4:5 posts framed. `docs/CHURCH-VISUAL-ASSETS.md` → "Export".
 
 ### The sponsored slot
 

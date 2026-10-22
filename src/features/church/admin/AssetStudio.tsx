@@ -3,7 +3,7 @@ import { useJuice } from '@/juice/useJuice'
 import { pickableTemplates, templateFor, type AssetKind } from '@/data/churchAssetTemplates'
 import { matchesSource, useChurchAssetsAdmin, type AssetSource } from '@/store/churchAssets'
 import { ChurchAssetCard } from '../ChurchAssetCard'
-import { assetFilename, renderAssetPng, type ExportFormat } from '@/lib/churchAssetExport'
+import { assetFilename, postsFramed, renderAssetPng, type ExportFormat } from '@/lib/churchAssetExport'
 import { saveImage, shareImage } from '@/lib/postcard'
 import { isNativeApp } from '@/lib/appStore'
 import type { ChurchAsset } from '@/store/churchAssets'
@@ -238,7 +238,7 @@ function ExportRow({ asset }: { asset: ChurchAsset }) {
             onClick={() => { setFormat(f); setNote(null) }}
             style={{ fontSize: 11.5, padding: '3px 10px', ...(format === f ? { background: 'var(--select)', color: 'var(--ink)' } : {}) }}
           >
-            {f === 'post' ? `Post · ${templateFor(asset.templateId, asset.kind).aspect.join(':')}` : 'Story · 9:16'}
+            {f === 'post' ? `Post · ${postsFramed(asset.templateId, asset.kind) ? '4:5' : templateFor(asset.templateId, asset.kind).aspect.join(':')}` : 'Story · 9:16'}
           </button>
         ))}
       </div>

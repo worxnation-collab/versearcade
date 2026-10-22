@@ -23,6 +23,7 @@ import { useSettings } from '@/store/settings'
 import { useCollection } from '@/store/collection'
 import { useDailyTrivia } from '@/store/dailyTrivia'
 import { useChurchVerse } from '@/store/churchVerse'
+import { SeriesTrail } from '@/features/church/SeriesTrail'
 import { useFirstLight } from '@/store/firstLight'
 import { useWeekly } from '@/store/weekly'
 import { useReminders } from '@/store/reminders'
@@ -579,6 +580,7 @@ function DropBox({
 
 function ChurchVerseBox({ onPlay }: { onPlay: () => void }) {
   const today = useChurchVerse((s) => s.today)
+  const series = useChurchVerse((s) => s.series)
   const load = useChurchVerse((s) => s.load)
   const mode = useAuth((s) => s.mode)
 
@@ -588,14 +590,18 @@ function ChurchVerseBox({ onPlay }: { onPlay: () => void }) {
 
   if (!today) return null
   const p = today.progress
+  // The series line reads the 0130 arc when there is one ("Day 3 of 5 · …"),
+  // and 0128's counts on a server without it.
+  const arc = series && series.churchId === today.churchId && series.name === today.series ? series : null
   return (
     <BoxShell accent="rgba(154,124,69,0.22)">
       <span className="pill" style={PILL}>⛪ From {today.churchName}</span>
       <h2 style={{ fontSize: 18, lineHeight: 1.2 }}>{today.reference}</h2>
-      {today.series && (
+      {arc ? (
+        <p style={{ marginTop: 3 }}><SeriesTrail series={arc} compact /></p>
+      ) : today.series && (
         <p className="faint" style={{ marginTop: 3, fontSize: 12 }}>
-          {today.series}
-          {p ? ` · day ${p.soFar} of ${p.total}` : ''}
+          {p ? `Day ${p.soFar} of ${p.total} · ` : ''}{today.series}
         </p>
       )}
       {!today.played ? (
@@ -613,9 +619,9 @@ function ChurchVerseBox({ onPlay }: { onPlay: () => void }) {
             <Stat label="Score" value={today.played.score.toLocaleString()} />
             <Stat label="Correct" value={`${today.played.correct}/${today.played.total}`} />
           </div>
-          {p && p.soFar > 0 && (
+          {(arc ? arc.days.some((d) => d.played) : p && p.soFar > 0) && (
             <p className="faint" style={{ marginTop: 8, fontSize: 11.5 }}>
-              You’ve played {p.played} of {p.soFar} days of this series so far
+              You’ve played {arc ? arc.days.filter((d) => d.played).length : p!.played} {arc ? `of ${arc.days.length} days` : `of ${p!.soFar} days so far`} in this series
             </p>
           )}
           <div style={{ marginTop: 10 }}>

@@ -8,6 +8,7 @@ import { FavoriteButton } from '@/components/FavoriteButton'
 import { QuizRunner } from '@/features/daily/QuizRunner'
 import { MissedList } from '@/features/daily/MissedList'
 import { useChurchVerse } from '@/store/churchVerse'
+import { SeriesTrail } from './SeriesTrail'
 import { aboutVerseSeed } from '@/data/cardAbout'
 import { parseReference } from '@/lib/bibleProgress'
 import type { DailyVerse, PlayResult } from '@/types'
@@ -23,6 +24,7 @@ import type { DailyVerse, PlayResult } from '@/types'
 export default function ChurchVerseScreen() {
   const navigate = useNavigate()
   const today = useChurchVerse((s) => s.today)
+  const series = useChurchVerse((s) => s.series)
   const loaded = useChurchVerse((s) => s.loaded)
   const load = useChurchVerse((s) => s.load)
   const submit = useChurchVerse((s) => s.submit)
@@ -92,6 +94,7 @@ export default function ChurchVerseScreen() {
   const correct = result?.correctCount ?? today.played?.correct ?? 0
   const total = result?.totalQuestions ?? today.played?.total ?? verse.questions.length
   const p = today.progress
+  const arc = series && series.churchId === today.churchId && series.name === today.series ? series : null
 
   return (
     <Page noNav>
@@ -114,12 +117,20 @@ export default function ChurchVerseScreen() {
           <CountUp to={score} duration={1000} className="gradient-text" />
         </div>
         <h1 style={{ fontSize: 20, marginTop: 6 }}>{correct}/{total} on {today.reference}</h1>
-        {today.series && p && (
+        {today.series && p && !arc && (
           <p className="dim" style={{ marginTop: 4 }}>
-            {today.series} · day {p.soFar} of {p.total}
+            Day {p.soFar} of {p.total} · {today.series}
           </p>
         )}
       </motion.div>
+
+      {/* The series as the run it is — today's day joins the ones before it,
+          so finishing one reads as a step in something rather than a drop. */}
+      {arc && (
+        <div className="card" style={{ marginBottom: 12 }}>
+          <SeriesTrail series={arc} />
+        </div>
+      )}
 
       {result && <MissedList result={result} questions={verse.questions} />}
 

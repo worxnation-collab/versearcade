@@ -157,6 +157,28 @@ export const ASSET_TEMPLATES: AssetTemplate[] = [
   },
 ]
 
+/**
+ * How much a slot's type shrinks for this text. Long text shrinks toward
+ * size × minScale so a 200-character verse and a 20-character one both fill
+ * the box. Area grows with the square of the type size, so the scale is a
+ * square root. Shared by `ChurchAssetCard` and the PNG export
+ * (`lib/churchAssetExport.ts`), so the two can never size a verse differently.
+ */
+export function slotScale(box: AssetSlot, text: string): number {
+  const min = box.minScale ?? 1
+  return min < 1 ? Math.max(min, Math.sqrt(90 / Math.max(90, text.length))) : 1
+}
+
+/** The CSS font-family a slot draws in (may be a `var(...)` the caller resolves). */
+export function slotFamily(box: AssetSlot, fonts?: AssetTemplate['fonts']): string {
+  return box.font === 'serif' ? fonts?.serif ?? 'Georgia, serif'
+    : box.font === 'display' ? fonts?.display ?? 'var(--font-display)'
+      : fonts?.body ?? 'var(--font-body)'
+}
+
+/** Line height every slot uses, as a multiple of its font size. */
+export const SLOT_LINE_HEIGHT = 1.25
+
 /** The first template of each kind is its default — keep a good one first. */
 export function defaultTemplate(kind: AssetKind): AssetTemplate {
   return ASSET_TEMPLATES.find((t) => t.kind === kind)!

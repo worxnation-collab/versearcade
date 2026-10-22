@@ -102,6 +102,41 @@ on the `/play/church` result. No card exists anywhere a stranger, a board or
 the global daily verse can reach. `visibility` is constrained to
 `'congregation'`; widening it is a migration.
 
+## Export: a PNG for social
+
+An approved, up-to-date card can be taken off the app by its church's
+leadership: **Post it** under the card in the leader's studio (`AssetStudio`
+→ `ExportRow`) offers **Share image** (the native or Web Share sheet) and, on
+the web, **Download PNG**. It is drawn in the leader's own browser by
+`lib/churchAssetExport.ts` and handed over through the postcard's
+`shareImage` / `saveImage`. Nothing is uploaded or stored.
+
+- **Who and what.** Only the leadership studio draws it, and only for a card
+  that is approved, not stale, and (for a verse card) whose day is approved.
+  That is exactly what members can already see. A draft cannot be exported.
+- **Congregation-only stays the default.** `visibility` is still constrained to
+  `'congregation'`; nothing about the card in the app changes. Posting the PNG
+  somewhere is the leader's own act, outside the app.
+- **Sizes.** A 4:5 card exports at 1080x1350 (an Instagram portrait post), a
+  16:9 card at 1920x1080. Square corners; the network draws its own.
+- **Why a second renderer.** The card is HTML, and the only way to photograph
+  HTML in a browser is an SVG `<foreignObject>` on a canvas. Safari taints the
+  canvas for that (so `toBlob` throws), and web fonts and images inside it do
+  not load. So the export draws from the same template DATA instead: boxes,
+  colour, `linear-gradient(<deg>, <colour> <n>%, …)`, a cover image and an
+  overlay. Sizing (`slotScale`, `slotFamily`, `SLOT_LINE_HEIGHT`) is imported
+  from `churchAssetTemplates.ts`, not restated, so the two renderers can only
+  differ in how they wrap a line.
+- **What a new template must stay inside.** A background gradient or overlay
+  the export cannot parse (radial, `to right`, a stop with no %) is SKIPPED and
+  the flat colour shows; the in-app card still draws it. Keep real art to a
+  colour, that linear-gradient form and/or a `/church-assets/` image, and check
+  one export after adding a template. A web font named in `fonts` must be
+  loaded by the page (`document.fonts`) or the export falls back like the card
+  does.
+- **App Store build.** Share only (no download link, which a WKWebView
+  ignores). There is no price or link in it, so nothing for review to gate.
+
 ## Where leaders make them
 
 - **Schedule → a day's form** (`TodayVerseForm`): verse card for that date, and

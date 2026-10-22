@@ -3,6 +3,10 @@ import { useJuice } from '@/juice/useJuice'
 import { pickableTemplates, templateFor, type AssetKind } from '@/data/churchAssetTemplates'
 import { matchesSource, useChurchAssetsAdmin, type AssetSource } from '@/store/churchAssets'
 import { ChurchAssetCard } from '../ChurchAssetCard'
+import { assetFilename, renderAssetPng } from '@/lib/churchAssetExport'
+import { saveImage, shareImage } from '@/lib/postcard'
+import { isNativeApp } from '@/lib/appStore'
+import type { ChurchAsset } from '@/store/churchAssets'
 
 // The leader's control for ONE visual asset (0133) — a day's verse card, a
 // series header, or the live announcement's card. Mounted beside the content it
@@ -146,6 +150,8 @@ export function AssetStudio({
         </>
       )}
 
+      {asset && !picking && asset.status === 'approved' && !asset.stale && asset.sourceStatus !== 'draft' && <ExportRow asset={asset} />}
+
       {msg && <p style={{ margin: 0, fontSize: 12.5, color: msg.ok ? 'var(--mint)' : 'var(--coral)' }}>{msg.text}</p>}
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -187,4 +193,57 @@ function StatusPill({ status }: { status: 'draft' | 'approved' | 'stale' }) {
 
 function sourceKey(s: AssetSource): string {
   return s.kind === 'verse_card' ? s.date : s.kind === 'series_header' ? s.series : s.announcementId
+}
+
+// Take an APPROVED card off the app: a PNG drawn in this browser
+// (lib/churchAssetExport.ts), handed to the share sheet or saved as a file.
+// Only here, on the leadership screen, and only for a card members can already
+// see — never a draft, never an out-of-date card, never a verse card whose day
+// is still a draft. Nothing is stored or uploaded; posting it anywhere is the
+// leader's own act, outside the app, which is what keeps the cards themselves
+// congregation-only.
+function ExportRow({ asset }: { asset: ChurchAsset }) {
+  const juice = useJuice()
+  const [busy, setBusy] = useState(false)
+  const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null)
+  const canShareFiles = isNativeApp() || (typeof navigator !== 'undefined' && !!navigator.share)
+
+  const go = async (how: 'share' | 'save') => {
+    juice.select?.()
+    setBusy(true)
+    setNote(null)
+    const blob = await renderAssetPng(asset.kind, asset.templateId, asset.payload)
+    if (!blob) {
+      setBusy(false)
+      return setNote({ ok: false, text: 'Couldn’t make the image on this device. Try again, or from another browser.' })
+    }
+    const name = assetFilename(asset.kind, asset.payload)
+    const church = typeof asset.payload.church_name === 'string' ? asset.payload.church_name : 'Our church'
+    const r = how === 'save' ? saveImage(blob, name) : await shareImage(blob, { filename: name, title: church, text: '' })
+    setBusy(false)
+    if (r === 'failed') setNote({ ok: false, text: 'Couldn’t share it just now. Try again in a moment.' })
+    else if (r === 'saved') setNote({ ok: true, text: 'Saved as an image — ready to post.' })
+  }
+
+  return (
+    <div style={{ display: 'grid', gap: 6, borderTop: '1px solid var(--edge)', paddingTop: 8 }}>
+      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-dim)' }}>Post it</span>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {canShareFiles && (
+          <button className="pill" disabled={busy} onClick={() => void go('share')} style={{ fontWeight: 800 }}>
+            {busy ? 'Making…' : 'Share image'}
+          </button>
+        )}
+        {!isNativeApp() && (
+          <button className="pill" disabled={busy} onClick={() => void go('save')}>
+            {busy && !canShareFiles ? 'Making…' : 'Download PNG'}
+          </button>
+        )}
+      </div>
+      <span className="faint" style={{ fontSize: 11, lineHeight: 1.4 }}>
+        {note ? <span style={{ color: note.ok ? 'var(--mint)' : 'var(--coral)' }}>{note.text}</span>
+          : 'A full-size image for Instagram, Facebook or your slides. Posting it is up to you — in the app it stays with your congregation.'}
+      </span>
+    </div>
+  )
 }

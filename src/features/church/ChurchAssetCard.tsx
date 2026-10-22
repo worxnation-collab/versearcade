@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { assetSlots, templateFor, type AssetKind, type AssetPayload, type AssetSlot, type SlotName } from '@/data/churchAssetTemplates'
+import { assetSlots, slotFamily, slotScale, SLOT_LINE_HEIGHT, templateFor, type AssetKind, type AssetPayload, type AssetSlot, type AssetTemplate, type SlotName } from '@/data/churchAssetTemplates'
 
 // Draws a church's visual asset — a verse card, series header or announcement
 // card (0133) — from its template id and the payload the server stored. The
@@ -76,16 +76,11 @@ export function ChurchAssetCard({
   )
 }
 
-function Slot({ box, text, fonts, ink }: { box: AssetSlot; text: string; fonts?: Partial<Record<'display' | 'body' | 'serif', string>>; ink: string }) {
-  // Long text shrinks toward size × minScale, so a 200-character verse and a
-  // 20-character one both fill the box instead of one overflowing it.
-  const min = box.minScale ?? 1
-  // Area grows with the square of the type size, so scale by the square root.
-  const scale = min < 1 ? Math.max(min, Math.sqrt(90 / Math.max(90, text.length))) : 1
-  const family =
-    box.font === 'serif' ? fonts?.serif ?? 'Georgia, serif'
-      : box.font === 'display' ? fonts?.display ?? 'var(--font-display)'
-        : fonts?.body ?? 'var(--font-body)'
+function Slot({ box, text, fonts, ink }: { box: AssetSlot; text: string; fonts?: AssetTemplate['fonts']; ink: string }) {
+  // Sizing and family come from the template module so the PNG export
+  // (lib/churchAssetExport.ts) lays a card out by the same numbers.
+  const scale = slotScale(box, text)
+  const family = slotFamily(box, fonts)
   return (
     <div
       style={{
@@ -97,7 +92,7 @@ function Slot({ box, text, fonts, ink }: { box: AssetSlot; text: string; fonts?:
     >
       <span
         style={{
-          fontSize: `${box.size * scale}cqw`, lineHeight: 1.25, fontFamily: family,
+          fontSize: `${box.size * scale}cqw`, lineHeight: SLOT_LINE_HEIGHT, fontFamily: family,
           fontWeight: box.weight ?? 500, fontStyle: box.italic ? 'italic' : 'normal',
           textTransform: box.uppercase ? 'uppercase' : 'none',
           letterSpacing: box.tracking ? `${box.tracking}em` : undefined,

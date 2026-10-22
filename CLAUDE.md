@@ -2495,7 +2495,31 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0130` (the member's church — `my_church_series`, the days of
+The latest is `0133` (`stripe_church_secret_key()` — church-billing's
+RESTRICTED Stripe key out of Vault, service_role only), APPLIED 2026-10-22 and
+verified: ACL `{postgres,service_role}`, returns the 107-character `rk_live_`
+key, and the key itself opened (and expired) a real two-line Checkout Session
+with the Founding trial. Written with `vault.create_secret`; in no file.
+
+Before it, `0132` (`stripe_church_webhook_secret()` — the church-billing
+webhook's signing secret out of Vault, service_role only), APPLIED 2026-10-22
+and verified: ACL `{postgres,service_role}`, returns the 38-character `whsec_`
+value. The secret was written with `vault.create_secret` and is in no file.
+The Supabase MCP's `create_edge_function_secret` waits on a dashboard
+confirmation that never reaches a cloud session (it timed out), which is why
+this went to Vault like the TikTok keys.
+
+Before it, `0131` (church billing through Stripe — `church_billing` grows
+the subscription's state and a per-church `billing_token`,
+`admin_church_billing_link` (operator) and `billing_apply_subscription`
+(service_role only, the webhook's writer), APPLIED 2026-10-22 and verified: one
+signature each, the writer's ACL `{postgres,service_role}`. It is 0131 because
+production already held `0127_church_content_generation` through
+`0130_church_member_view` from another branch; the webhook flips that branch's
+`church_addons.content_generation` for the add-on. See `docs/CHURCH-PACKAGES.md`
+→ "Billing".)
+
+Before it, `0130` (the member's church — `my_church_series`, the days of
 the series a member's verified church is in, with which ones THEY played and
 no reference on a future day; and `church_week_summary`, church totals for the
 rivalry's UTC week with player counts under five returned null, the 0119
@@ -3030,7 +3054,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0131` (0130 is the member's church view, 0129 is the week-from-a-sermon drafts, 0128 is the church layer, 0127 is `church_content_generation` in production, 0126 is the two new statues, 0125 is the API.Bible key, 0124 the reading translation, 0123 is the church verse series and note, 0122 is `church_question_drafts` in production only, 0121 is the church leader invite link, 0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0134` (0133 is the church Stripe key in Vault, 0132 is the church webhook's Vault secret, 0131 is church billing, 0130 is the member's church view, 0129 is the week-from-a-sermon drafts, 0128 is the church layer, 0127 is `church_content_generation` in production, 0126 is the two new statues, 0125 is the API.Bible key, 0124 the reading translation, 0123 is the church verse series and note, 0122 is `church_question_drafts` in production only, 0121 is the church leader invite link, 0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the
@@ -4881,7 +4905,8 @@ two functions that run with `verify_jwt` OFF — are not in the repo, so the CLI
 verify-on default can never flip them; and it deploys changed folders only, so a
 function whose repo copy has drifted from production is never pushed as a side
 effect. If either of those two functions is ever added to the repo, give it a
-`supabase/config.toml` entry with `verify_jwt = false` in the same commit.
+`supabase/config.toml` entry with `verify_jwt = false` in the same commit —
+`church-billing` already has one, because Stripe calls it with no session.
 
 ## Store versions: an approved version can never be uploaded again
 

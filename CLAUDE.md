@@ -767,10 +767,13 @@ cron does the upload. Full design: `docs/TIKTOK-ENGINE.md`. Things to know —
   the MP4, not by reading the log**: cross-correlating the parked wav against
   the posted audio gives r=0.22 where a genuinely voiced render gives 0.99,
   and the runner reported a clean render either way. The reverse of this
-  mistake is still live and unfixed: an `own` clip — him on camera, no
-  generated voice in it at all — is captioned "AI-generated art and voice."
-  and carries TikTok's and Instagram's AIGC flag, because `aiNote` has no
-  branch for it and the flags are unconditional.
+  mistake is FIXED (2026-10-22): an `own` clip — him on camera, nothing
+  generated in it — was captioned "AI-generated art and voice." with the AIGC
+  and synthetic-media flags set, because `aiNote` had no branch for it.
+  `isWhollyHuman` in `social.ts` now gives it no note and all three flags
+  false; no `own` clip had ever been posted, so nothing live needed replacing.
+  If an `own` clip ever gains anything generated, it needs its own note, not
+  that exemption.
 - **TikTok is on a warm-up, and the numbers are why.** Fifteen posts over four
   days drew SEVEN views between them — uniformly 0-2 each, across five
   formats, every one published successfully. Content that varies that much

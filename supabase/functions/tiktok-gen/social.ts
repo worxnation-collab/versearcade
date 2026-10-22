@@ -229,8 +229,24 @@ export const AI_NOTE_OPENED_STORY = 'AI-generated art, and the story is told by 
  * voices, and names which words are his.
  */
 export const AI_NOTE_EXCHANGE = 'AI-generated art, and both speakers are AI voices. The opening and closing words are mine.'
+/**
+ * An `own` clip carries NO note and NO platform flag, because nothing in it is
+ * generated: it is him on camera, uploaded as it was recorded, with no render,
+ * no painting, no music bed and no synthetic voice. Every line above names
+ * "AI-generated art", and the flags say "synthetic" — on this post both
+ * describe something that is not in it, which is the one thing a disclosure
+ * must never do. It was live the other way round: `own` had no branch, its
+ * `voiced` is never true (no recording is parked for it), so it fell through
+ * to `AI_NOTE` — "AI-generated art and voice." over a man talking to camera —
+ * with TikTok's and Instagram's AIGC flags and YouTube's synthetic-media flag
+ * set, while the hub's own card promised "no AI label". If an `own` clip ever
+ * gains anything generated (a painted end card, a TTS line), it needs a note
+ * of its own here, not this exemption.
+ */
+export const isWhollyHuman = (a: Pick<PostArgs, 'kind'>) => a.kind === 'own'
 const aiNote = (a: PostArgs) =>
-  a.kind === 'note' ? AI_NOTE_STILL
+  isWhollyHuman(a) ? ''
+  : a.kind === 'note' ? AI_NOTE_STILL
     : a.kind === 'exchange' && a.opened ? AI_NOTE_EXCHANGE
       : a.opened ? (a.kind === 'story' ? AI_NOTE_OPENED_STORY : AI_NOTE_OPENED)
         : a.voiced ? AI_NOTE_ART
@@ -424,10 +440,10 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
     // flag is a binary that reads "synthetic", and these posts are not. The
     // art is a model's; the voice is a person's.
     body.post = [withAsk(c.text, a.kind, ' '), aiNote(a), tagLine(c.tags, 5)].filter(Boolean).join(' ').slice(0, 2200)
-    body.tikTokOptions = { visibility: 'public', isAIGenerated: true }
+    body.tikTokOptions = { visibility: 'public', isAIGenerated: !isWhollyHuman(a) }
   } else if (platform === 'youtube') {
     body.post = [withAsk(c.text, a.kind), tagLine(c.tags, 5)].filter(Boolean).join('\n\n').slice(0, 5000)
-    body.youTubeOptions = { title: (c.title || `${a.reference || 'Verse Arcade'} · Verse Arcade`).slice(0, 100), visibility: 'public', shorts: true, madeForKids: false, containsSyntheticMedia: true }
+    body.youTubeOptions = { title: (c.title || `${a.reference || 'Verse Arcade'} · Verse Arcade`).slice(0, 100), visibility: 'public', shorts: true, madeForKids: false, containsSyntheticMedia: !isWhollyHuman(a) }
   } else if (platform === 'facebook') {
     body.post = [withAsk(c.text, a.kind), aiNote(a), tagLine(c.tags, 2)].filter(Boolean).join('\n\n').slice(0, 5000)
     // A Reel where one is allowed (it is the surface Facebook shows to
@@ -498,7 +514,7 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
     // briefly dropped here too, on the same mistaken premise, and Meta never
     // published a reach penalty for it in the first place.
     body.post = [withAsk(c.text, a.kind), aiNote(a), tagLine(c.tags, 5)].filter(Boolean).join('\n\n').slice(0, 2200)
-    body.instagramOptions = { shareReelsFeed: true, isAIGenerated: true }
+    body.instagramOptions = { shareReelsFeed: true, isAIGenerated: !isWhollyHuman(a) }
   }
   return body
 }

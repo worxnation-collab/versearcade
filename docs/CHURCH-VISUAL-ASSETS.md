@@ -12,8 +12,10 @@ per template. Nothing else needs to change to ship real art.
 
 1. **Background image:** put the file at `public/church-assets/<template-id>/bg.jpg`
    (or `.png`/`.webp`) and set `background.image: '/church-assets/<id>/bg.jpg'`.
-   Size it to the template's `aspect`: 1080×1350 for a 4:5 verse card,
-   1920×1080 for a 16:9 series or notice card. Keep `background.color` set to
+   Set the template's `aspect` to the IMAGE's, never the other way round — the
+   card is `object-fit: cover`, so a mismatch crops the art silently. The
+   shipped art is 784×1168 (2:3) for verse and notice cards and 1168×784 (3:2)
+   for series headers, and those templates say so. Keep `background.color` set to
    the image's dominant colour, because a failed image falls back to it. If text
    sits over a busy area, add `background.overlay` (a CSS gradient).
 2. **Layout:** each slot (`eyebrow`, `title`, `body`, `reference`, `footer`) is a
@@ -112,3 +114,17 @@ the global daily verse can reach. `visibility` is constrained to
 Each `AssetStudio` shows live thumbnails of every look, drawn from the real
 words before anything is created. It then offers Generate → Approve / Change
 look / Discard.
+
+## The shipped art (2026-10-22)
+
+Twelve owner-supplied backgrounds, one template each, first of each kind the
+default: verse — Parchment, Stillwater, First light, Clay, Vigil; series —
+Meadow, Current, Ember; notice — Laurel, Blossom, Garden, Midnight. They are
+not Nano Banana renders and are deliberately NOT in `GENERATED_ART` (the
+hand-kept-table rule the road rewards and nav paintings follow), so a gen-art
+run can never overwrite them. Each slot box was placed by rendering the card
+with a long verse and a long notice and moving text off the painted
+ornaments; re-check by rendering, not by reading numbers, if an image is
+replaced. The six original stand-ins are `retired`: off the picker, still
+drawing any card a church made before the art landed.
+

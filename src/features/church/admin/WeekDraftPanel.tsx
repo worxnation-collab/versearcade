@@ -361,32 +361,84 @@ export function DraftReview({
     setNote(`Discarded ${n} draft${n === 1 ? '' : 's'}${key ? ` of “${key}”` : ''}. Those days are empty again.`)
   }
 
+  // Reorder: two drafts trade dates by trading content, both saved as drafts
+  // again. If the second write fails the first is put back, so a failed swap
+  // never leaves one verse on two days. Needs the add-on (`saveDraft`).
+  const swap = async (a: WeekDay, b: WeekDay) => {
+    if (!backend.saveDraft || !a.verse || !b.verse) return
+    const body = (v: NonNullable<WeekDay['verse']>) => ({ reference: v.reference, text: v.text, questions: v.questions, series: v.series ?? '', note: v.note ?? '' })
+    setBusy(`swap:${a.date}`)
+    setErr(null)
+    setArmed(null)
+    const first = await backend.saveDraft(churchId, a.date, body(b.verse), false)
+    const second = first.ok ? await backend.saveDraft(churchId, b.date, body(a.verse), false) : first
+    if (first.ok && !second.ok) await backend.saveDraft(churchId, a.date, body(a.verse), false)
+    setBusy(null)
+    if (!first.ok || !second.ok) return setErr('Those two days didn’t swap — check your connection and try again.')
+    juice.select?.()
+    onChanged()
+  }
+
+  const discardOne = async (d: WeekDay) => {
+    if (!backend.discard) return
+    const id = `one:${d.date}`
+    if (armed !== id) { setArmed(id); return }
+    setArmed(null)
+    setBusy(id)
+    setErr(null)
+    const r = await backend.discard(churchId, d.date)
+    setBusy(null)
+    if (!r.ok) return setErr('That draft didn’t discard — check your connection and try again.')
+    onChanged()
+    setNote(`Discarded the draft for ${weekday(d.date)}. That day is empty again.`)
+  }
+
   return (
     <div className="card" style={{ padding: 12, display: 'grid', gap: 10, background: 'var(--card-raised)', borderStyle: 'dashed', borderColor: 'var(--edge)' }} aria-label="Drafts waiting for approval">
       <b style={{ fontSize: 13 }}>✎ Waiting for your approval</b>
       {groups.map(([key, days]) => (
         <div key={key || '—'} style={{ display: 'grid', gap: 6 }}>
           <span style={{ fontSize: 12.5, fontWeight: 800, overflowWrap: 'anywhere' }}>{key || 'No series'}</span>
-          {days.map((d) => (
-            <button
+          {days.map((d, i) => (
+            <div
               key={d.date}
-              onClick={() => onOpen(d.date)}
-              aria-pressed={d.date === selected}
               style={{
-                display: 'grid', gridTemplateColumns: '72px minmax(0,1fr) auto', gap: 8, alignItems: 'baseline',
-                textAlign: 'left', padding: '6px 8px', borderRadius: 10, cursor: 'pointer', color: 'inherit', font: 'inherit',
-                background: d.date === selected ? 'var(--select)' : 'transparent',
+                display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: 4, alignItems: 'center',
+                borderRadius: 10, background: d.date === selected ? 'var(--select)' : 'transparent',
               }}
             >
-              <span style={{ fontSize: 12, fontWeight: 700 }}>{weekday(d.date)}</span>
-              <span style={{ minWidth: 0 }}>
-                <span style={{ fontSize: 12.5, fontWeight: 700 }}>{d.verse!.reference}</span>
-                {d.verse!.note && (
-                  <span className="dim" style={{ display: 'block', fontSize: 11.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.verse!.note}</span>
+              <button
+                onClick={() => onOpen(d.date)}
+                aria-pressed={d.date === selected}
+                style={{
+                  display: 'grid', gridTemplateColumns: '72px minmax(0,1fr)', gap: 8, alignItems: 'baseline', minWidth: 0,
+                  textAlign: 'left', padding: '6px 8px', borderRadius: 10, cursor: 'pointer', color: 'inherit', font: 'inherit',
+                  background: 'transparent',
+                }}
+              >
+                <span style={{ fontSize: 12, fontWeight: 700 }}>{weekday(d.date)}</span>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 700 }}>{d.verse!.reference}</span>
+                  {d.verse!.generated && <span className="dim" style={{ fontSize: 11 }}> · ✨ suggested</span>}
+                  {d.verse!.note && (
+                    <span className="dim" style={{ display: 'block', fontSize: 11.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.verse!.note}</span>
+                  )}
+                </span>
+              </button>
+              <span style={{ display: 'flex', gap: 2, paddingRight: 4 }}>
+                {backend.saveDraft && (
+                  <>
+                    <button className="pill" disabled={!!busy || i === 0} onClick={() => swap(days[i - 1], d)} aria-label={`Move ${d.verse!.reference} a day earlier`} style={rowBtn(i === 0)}>↑</button>
+                    <button className="pill" disabled={!!busy || i === days.length - 1} onClick={() => swap(d, days[i + 1])} aria-label={`Move ${d.verse!.reference} a day later`} style={rowBtn(i === days.length - 1)}>↓</button>
+                  </>
+                )}
+                {backend.discard && (
+                  <button className="pill" disabled={!!busy} onClick={() => discardOne(d)} aria-label={`Discard the draft for ${weekday(d.date)}`} style={rowBtn(false)}>
+                    {armed === `one:${d.date}` ? 'Discard?' : '✕'}
+                  </button>
                 )}
               </span>
-              <span className="dim" style={{ fontSize: 11.5 }}>Open →</span>
-            </button>
+            </div>
           ))}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button className="pill" disabled={!!busy} onClick={() => approveAll(key, days)} style={{ fontSize: 12.5, fontWeight: 800 }}>
@@ -401,7 +453,7 @@ export function DraftReview({
         </div>
       ))}
       <span className="faint" style={{ fontSize: 11.5, lineHeight: 1.4 }}>
-        Open a day to read and edit it before approving. Approving the set approves the drafts as they’re saved.
+        Open a day to change its verse, questions or note before approving; ↑ ↓ move a day, ✕ discards it. Approving the set approves the drafts as they’re saved.
       </span>
       {note && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--mint)' }}>{note}</p>}
       {err && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--coral)' }}>{err}</p>}
@@ -417,6 +469,10 @@ function pretty(iso: string): string {
 
 function weekday(iso: string): string {
   return pretty(iso)
+}
+
+function rowBtn(off: boolean): React.CSSProperties {
+  return { padding: '2px 8px', fontSize: 12, opacity: off ? 0.35 : 1 }
 }
 
 const labelStyle: React.CSSProperties = { display: 'grid', gap: 5, fontSize: 12, fontWeight: 700, color: 'var(--ink-dim)' }

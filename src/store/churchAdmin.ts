@@ -262,6 +262,8 @@ export interface VerseBackend {
    * Present exactly when `draft` is — the Content Generation package.
    */
   draftWeek?: (churchId: string, input: WeekDraftInput) => Promise<Res<WeekDraftResult>>
+  /** Which passages a study topic means — references only (Content Generation). */
+  planTopic?: (churchId: string, topic: string, book?: string) => Promise<Res<TopicPlan>>
 }
 
 export const serverVerseBackend: VerseBackend = {
@@ -280,6 +282,7 @@ export const serverGenerationBackend: VerseBackend = {
   draft: (c, r, t, steer) => draftQuestions(c, r, t, steer),
   saveDraft: (c, d, v, replace) => saveDraftVerse(c, d, v, replace),
   draftWeek: (c, input) => draftWeek(c, input),
+  planTopic: (c, t, b) => planTopic(c, t, b),
 }
 
 // ---------------------------------------------------------------------------
@@ -379,6 +382,68 @@ export async function draftWeek(churchId: string, input: WeekDraftInput): Promis
     })
   }
   return days.length ? { ok: true, data: { days, asked: Number(d.asked) || days.length } } : { ok: false, reason: 'draft_failed' }
+}
+
+// ---------------------------------------------------------------------------
+// "What is your congregation studying this week?" (Content Generation only).
+//
+// A topic the catalog (`data/studyTopics.ts`) anchors needs no call: its
+// passages are known. Anything else asks `church-draft`'s `topic` mode which
+// passages it means — REFERENCES ONLY, one of the church's thirty daily units —
+// and the week is then drafted by `draftWeek` exactly as from a sermon, with
+// the words fetched here by `resolvePassage`. No second generator.
+// ---------------------------------------------------------------------------
+export const TOPIC_MAX = 80
+
+export interface TopicPlan {
+  series: string
+  passages: string[]
+}
+
+export async function planTopic(churchId: string, topic: string, book?: string): Promise<Res<TopicPlan>> {
+  if (!online()) return { ok: false, reason: 'unavailable' }
+  const t = cleanLine(topic, TOPIC_MAX)
+  if (!t) return { ok: false, reason: 'needs_topic' }
+  const { data, error } = await supabase!.functions.invoke('church-draft', {
+    body: { mode: 'topic', church_id: churchId, topic: t, book: book || undefined },
+  })
+  if (error) return { ok: false, reason: 'unavailable' }
+  const d = data as { ok?: boolean; reason?: string; series?: unknown; passages?: unknown } | null
+  if (!d?.ok) return { ok: false, reason: String(d?.reason ?? 'unavailable') }
+  const passages = (Array.isArray(d.passages) ? d.passages : [])
+    .map((x) => String(x ?? '').trim())
+    .filter((x) => !!parseReference(x))
+    .slice(0, WEEK_PASSAGES_MAX)
+  if (!passages.length) return { ok: false, reason: 'topic_unclear' }
+  return { ok: true, data: { series: cleanLine(typeof d.series === 'string' ? d.series : null, SERIES_MAX) ?? t.slice(0, SERIES_MAX), passages } }
+}
+
+/**
+ * The series names this church has used, newest first — the autocomplete's
+ * "used before" rows. Read from the schedule itself (the last twelve weeks and
+ * the next six), two of `church_verses_range`'s 42-day windows at a time, so
+ * there is no new RPC and nothing stored. Fails to [] — an autocomplete
+ * without history is still an autocomplete.
+ */
+export async function fetchPastSeries(churchId: string, today: string, be: VerseBackend = serverVerseBackend): Promise<string[]> {
+  if (!be.range) return []
+  const starts = [addDays(today, -84), addDays(today, -42), today]
+  const reads = await Promise.all(starts.map((s) => be.range!(churchId, s, 42).catch(() => null)))
+  const byDate: [string, string][] = []
+  for (const r of reads) {
+    if (!r || !r.ok) continue
+    for (const [date, v] of Object.entries(r.data)) if (v.series && v.status !== 'draft') byDate.push([date, v.series])
+  }
+  byDate.sort((a, b) => (a[0] < b[0] ? 1 : -1))
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const [, name] of byDate) {
+    const k = name.toLowerCase()
+    if (seen.has(k)) continue
+    seen.add(k)
+    out.push(name)
+  }
+  return out.slice(0, 12)
 }
 
 /** Approve exactly the dates the leader was shown (0129). */

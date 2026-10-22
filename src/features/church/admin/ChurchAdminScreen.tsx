@@ -4,7 +4,8 @@ import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { TabbedSection } from '@/components/TabbedSection'
 import { useJuice } from '@/juice/useJuice'
-import { fetchAdminSettings, fetchEntitlements, serverGenerationBackend, serverVerseBackend, type AdminSettings, type Entitlements } from '@/store/churchAdmin'
+import { fetchAdminSettings, fetchChurchBilling, fetchEntitlements, openBillingPortal, serverGenerationBackend, serverVerseBackend, type AdminSettings, type ChurchBilling, type Entitlements } from '@/store/churchAdmin'
+import { churchBillingPortalVisible } from '@/lib/commerce'
 import { TodayVerseForm } from './TodayVerseForm'
 import { OverviewPanel, PeoplePanel, ActivityPanel, useInsights } from './InsightsPanel'
 import { NoticesPanel } from './NoticesPanel'
@@ -46,13 +47,16 @@ export default function ChurchAdminScreen() {
   const juice = useJuice()
   const [settings, setSettings] = useState<AdminSettings | null>(null)
   const [ent, setEnt] = useState<Entitlements | null>(null)
+  const [billing, setBilling] = useState<ChurchBilling | null>(null)
   const [state, setState] = useState<'loading' | 'ok' | 'denied' | 'unavailable'>('loading')
   // Read once for Overview and People together. Unverified leadership gets
   // `not_verified` back and those tabs are not drawn.
   const insights = useInsights(id)
 
   const load = useCallback(async () => {
-    const [r, e] = await Promise.all([fetchAdminSettings(id), fetchEntitlements(id)])
+    const [r, e, b] = await Promise.all([fetchAdminSettings(id), fetchEntitlements(id), fetchChurchBilling(id)])
+    // A server without 0135, or a church verified by hand, draws no billing row.
+    setBilling(b)
     // A server without 0127 (null) or a failed read is "no add-on": fail closed.
     setEnt(e && e.ok ? e.data : null)
     if (r.ok) {
@@ -142,7 +146,7 @@ export default function ChurchAdminScreen() {
       <h1 style={{ fontSize: 24, margin: '0 0 4px' }}>Leadership</h1>
       <div className="dim" style={{ fontSize: 13.5, marginBottom: 12 }}>{settings.name}</div>
 
-      <PlanStatus leader={leader} generation={generation} held={!!ent?.contentGenerationHeld} />
+      <PlanStatus leader={leader} generation={generation} held={!!ent?.contentGenerationHeld} churchId={id} billing={billing} />
 
       <TabbedSection tabs={tabs} defaultOpen defaultTab={settings.verified ? 'overview' : 'notices'} />
       <div style={{ height: 32 }} />
@@ -153,7 +157,9 @@ export default function ChurchAdminScreen() {
 // What this church holds, stated plainly: two rows, each on or not. No price,
 // no upgrade button — a church asks through the page's "Add info" pill, as it
 // always has, and an operator grants both.
-function PlanStatus({ leader, generation, held }: { leader: boolean; generation: boolean; held: boolean }) {
+function PlanStatus({ leader, generation, held, churchId, billing }: {
+  leader: boolean; generation: boolean; held: boolean; churchId: string; billing: ChurchBilling | null
+}) {
   return (
     <div className="card" style={{ padding: '10px 12px', marginBottom: 12, display: 'grid', gap: 6 }} aria-label="This church’s plan">
       <PlanRow
@@ -172,6 +178,57 @@ function PlanStatus({ leader, generation, held }: { leader: boolean; generation:
               : 'An add-on to Church Leader. Not on this church’s plan.'
         }
       />
+      {billing?.subscribed && churchBillingPortalVisible() && <BillingRow churchId={churchId} billing={billing} />}
+    </div>
+  )
+}
+
+// The church's own Stripe subscription, and the door to Stripe's billing portal
+// (cancel, change the card, download invoices). Drawn only for a live
+// subscription with a Stripe customer, so a church an operator verified by hand
+// sees exactly the card it always did, and only on the web — the portal is a
+// page with prices and a card form, which the App Store build does not show.
+function BillingRow({ churchId, billing }: { churchId: string; billing: ChurchBilling }) {
+  const juice = useJuice()
+  const [busy, setBusy] = useState(false)
+  const [failed, setFailed] = useState(false)
+  const when = billing.periodEnd
+    ? new Date(billing.periodEnd).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+    : null
+  const detail =
+    billing.status === 'trialing'
+      ? 'Founding Church — free through Easter 2027. Nothing is charged before then.'
+      : billing.status === 'past_due'
+        ? 'The last payment didn’t go through. Update the card or pay the invoice to keep Church Leader on.'
+        : `Billed ${billing.interval === 'year' ? 'yearly' : 'monthly'}${billing.invoiced ? ' by invoice' : ''}${when ? ` · renews ${when}` : ''}.`
+
+  const open = async () => {
+    juice.select?.()
+    setBusy(true)
+    setFailed(false)
+    const r = await openBillingPortal(churchId)
+    if ('url' in r) {
+      window.location.href = r.url
+      return
+    }
+    setBusy(false)
+    setFailed(true)
+  }
+
+  return (
+    <div style={{ borderTop: '1px solid var(--edge)', paddingTop: 8, marginTop: 2, display: 'grid', gap: 6 }}>
+      <div style={{ minWidth: 0 }}>
+        <b style={{ fontSize: 13 }}>Billing</b>
+        <div className="faint" style={{ fontSize: 11.5, lineHeight: 1.4 }}>{detail}</div>
+      </div>
+      <button className="pill" style={{ justifySelf: 'start' }} disabled={busy} onClick={open}>
+        {busy ? 'Opening…' : 'Manage billing →'}
+      </button>
+      <div className="faint" style={{ fontSize: 11, lineHeight: 1.4 }}>
+        {failed
+          ? 'Couldn’t open billing just now. Try again in a moment.'
+          : 'Change the card, see invoices, or cancel. Cancelling keeps Church Leader on until the period ends.'}
+      </div>
     </div>
   )
 }

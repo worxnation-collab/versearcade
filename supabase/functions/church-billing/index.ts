@@ -11,6 +11,12 @@
 //        → a subscription billed by INVOICE (card, ACH, bank transfer or a
 //          cheque marked paid by hand), for a church whose treasurer has to
 //          approve a bill rather than type a card in
+//   POST { action: 'portal', church } + the leader's own Authorization header
+//        → a Stripe customer-portal session (cancel, change card, invoices),
+//          answered with its URL. The ONE door that takes a church id, and it
+//          is safe because the caller's session is checked against
+//          `church_admins` for that church before Stripe is asked anything
+//          (0135). Same portal for a Founding trial and a paying church.
 //   POST with a `stripe-signature` header → the webhook
 //
 // A SELF-SERVE CLAIM (0134) uses the same three doors with `c` in place of `t`:
@@ -46,7 +52,7 @@
 //
 // Secrets (Supabase → Edge Functions → Secrets):
 //   STRIPE_SECRET_KEY            a RESTRICTED rk_live_… key (Customers, Subscriptions,
-//     Checkout Sessions: write), or Vault via stripe_church_secret_key() (0133),
+//     Checkout Sessions, Customer portal: write), or Vault via stripe_church_secret_key() (0133),
 //     which is where it is
 //   STRIPE_CHURCH_WEBHOOK_SECRET whsec_… of webhook we_1UTB3nHlxD9PZQmbjy4PiBb9,
 //     or Vault via stripe_church_webhook_secret() (0132), which is where it is
@@ -85,7 +91,7 @@ const STRIPE_VERSION = '2024-06-20'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'content-type',
+  'Access-Control-Allow-Headers': 'authorization, apikey, x-client-info, content-type',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 }
 const json = (body: unknown, status = 200) =>
@@ -291,6 +297,29 @@ async function invoice(link: Linked, interval: 'month' | 'year', addon: boolean,
   return json({ ok: true, founding: founding() })
 }
 
+// The portal: leadership of THIS church, with a live Stripe
+// subscription, gets a session on the church's own Stripe customer. The customer
+// id never leaves the server. A church verified by hand (no customer) gets
+// `no_subscription`, and its dashboard never draws the button anyway.
+async function portal(req: Request, churchId: unknown): Promise<Response> {
+  const jwt = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '')
+  if (!jwt || typeof churchId !== 'string' || !/^[0-9a-f-]{36}$/i.test(churchId)) return json({ error: 'unauthorized' }, 401)
+  const { data: who } = await admin.auth.getUser(jwt)
+  const uid = who?.user?.id
+  if (!uid) return json({ error: 'unauthorized' }, 401)
+  const { count } = await admin.from('church_admins').select('user_id', { count: 'exact', head: true })
+    .eq('church_id', churchId).eq('user_id', uid)
+  if (!count) return json({ error: 'not_leadership' }, 403)
+  const { data: bill } = await admin.from('church_billing').select('stripe_customer_id, status')
+    .eq('church_id', churchId).maybeSingle()
+  const customer = bill?.stripe_customer_id as string | undefined
+  if (!customer || !alreadyPaying((bill?.status as string) ?? null)) return json({ error: 'no_subscription' }, 404)
+  const s = await stripe<{ url: string }>('POST', 'billing_portal/sessions', {
+    customer, return_url: `${SITE}/church/${churchId}/admin`,
+  })
+  return json({ url: s.url })
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   // Both secrets live in Vault (0132, 0133); a function secret of the same
@@ -322,6 +351,7 @@ Deno.serve(async (req) => {
 
     if (req.method === 'POST') {
       const b = await req.json().catch(() => ({})) as Record<string, unknown>
+      if (b.action === 'portal') return await portal(req, b.church)
       const link = b.c ? await claimFor(b.c) : await churchFor(b.t)
       if (!link) return json({ error: 'unknown link' }, 404)
       if (alreadyPaying(link.status)) return json({ error: 'already', message: 'This church already has a subscription.' }, 409)

@@ -67,7 +67,14 @@ export function LeaderLookFigure({
   const custom = look === 'custom' && customArtUrl ? customArtUrl : null
   const id = look && look !== 'custom' ? look : DEFAULT_LEADER_LOOK
   const g = GARMENTS[id]
-  const raster = custom ?? GENERATED_ART[`leader_${id}_${fem ? 'fem' : 'masc'}`]
+  // Renders are per skin tone (`leader_<look>_<figure>_<tone>`); the sand set
+  // was the first batch and carries no suffix. A tone with no render draws the
+  // figure in the leader's own tone rather than borrowing somebody else's.
+  const tone = spec?.skin ?? 'sand'
+  const fig = fem ? 'fem' : 'masc'
+  const raster = custom
+    ?? GENERATED_ART[`leader_${id}_${fig}_${tone}`]
+    ?? (tone === 'sand' ? GENERATED_ART[`leader_${id}_${fig}`] : undefined)
   const [failed, setFailed] = useState<string | null>(null)
   const useRaster = !!raster && failed !== raster
 

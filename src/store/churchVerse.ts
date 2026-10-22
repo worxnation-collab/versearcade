@@ -37,8 +37,37 @@ export interface ChurchVerseToday {
   progress: { total: number; soFar: number; played: number } | null
 }
 
+/**
+ * The series the member's church is in right now (0130), as the run of days it
+ * is — so a series reads as one connected thing rather than isolated drops.
+ * Present on a gap day and before a series starts, which `today` is not. A
+ * future day carries its date only: no reference until it comes.
+ */
+export interface ChurchSeries {
+  churchId: string
+  churchName: string
+  name: string
+  today: string
+  days: { date: string; reference: string | null; played: boolean; today: boolean }[]
+}
+
+/** Where today sits in a series: "Day 3 of 5", the next day ahead, what you've played. */
+export function seriesPosition(s: ChurchSeries) {
+  const idx = s.days.findIndex((d) => d.today)
+  const next = s.days.find((d) => d.date > s.today) ?? null
+  return {
+    day: idx >= 0 ? idx + 1 : null,
+    total: s.days.length,
+    played: s.days.filter((d) => d.played).length,
+    started: s.days.some((d) => d.date <= s.today),
+    next,
+  }
+}
+
 interface State {
   today: ChurchVerseToday | null
+  /** The series around today (0130); null with none, or on a server without 0130. */
+  series: ChurchSeries | null
   date: string | null
   loaded: boolean
   load: (force?: boolean) => Promise<void>
@@ -48,6 +77,7 @@ interface State {
 
 export const useChurchVerse = create<State>((set, get) => ({
   today: null,
+  series: null,
   date: null,
   loaded: false,
 
@@ -55,19 +85,33 @@ export const useChurchVerse = create<State>((set, get) => ({
     const date = todayLocalDate()
     if (!force && get().loaded && get().date === date) return
     if (!online()) {
-      set({ today: null, date, loaded: true })
+      set({ today: null, series: null, date, loaded: true })
       return
     }
-    const { data, error } = await supabase!.rpc('my_church_verse', { p_local_date: date })
-    set({ today: error ? null : parse(data), date, loaded: true })
+    // The series is a second read so a server without 0130 still has its day:
+    // a failed series read is "no series", never "no church verse".
+    const [verse, series] = await Promise.all([
+      supabase!.rpc('my_church_verse', { p_local_date: date }),
+      supabase!.rpc('my_church_series', { p_local_date: date }),
+    ])
+    set({
+      today: verse.error ? null : parse(verse.data),
+      series: series.error ? null : parseSeries(series.data),
+      date,
+      loaded: true,
+    })
   },
 
   async submit(r) {
     const t = get().today
     if (!t || !online()) return
     // Optimistic: the card turns into "done" the moment the run ends.
-    set({ today: { ...t, played: { score: r.score, correct: r.correctCount, total: r.totalQuestions },
-      progress: t.progress && !t.played ? { ...t.progress, played: t.progress.played + 1 } : t.progress } })
+    const sr = get().series
+    set({
+      today: { ...t, played: { score: r.score, correct: r.correctCount, total: r.totalQuestions },
+        progress: t.progress && !t.played ? { ...t.progress, played: t.progress.played + 1 } : t.progress },
+      series: sr ? { ...sr, days: sr.days.map((d) => (d.date === t.date ? { ...d, played: true } : d)) } : sr,
+    })
     const { error } = await supabase!.rpc('submit_church_verse_play', {
       p_local_date: t.date,
       p_score: Math.max(0, Math.min(10000, Math.round(r.score))),
@@ -81,7 +125,7 @@ export const useChurchVerse = create<State>((set, get) => ({
   },
 
   clear() {
-    set({ today: null, date: null, loaded: false })
+    set({ today: null, series: null, date: null, loaded: false })
   },
 }))
 
@@ -112,6 +156,21 @@ function parse(d: any): ChurchVerseToday | null {
       ? { total: Number(sp.total), soFar: Number(sp.so_far), played: Number(sp.played) }
       : null,
   }
+}
+
+function parseSeries(d: any): ChurchSeries | null {
+  const name = line(d?.series, 60)
+  if (!d || !name || !d.church_id || typeof d.today !== 'string' || !Array.isArray(d.days)) return null
+  const days = (d.days as any[])
+    .filter((x) => x && typeof x.date === 'string')
+    .map((x) => ({
+      date: String(x.date),
+      reference: typeof x.reference === 'string' && x.reference ? x.reference : null,
+      played: x.played === true,
+      today: x.today === true,
+    }))
+  if (!days.length) return null
+  return { churchId: String(d.church_id), churchName: String(d.church_name ?? 'Your church'), name, today: d.today, days }
 }
 
 function line(x: unknown, max: number): string | undefined {
@@ -166,4 +225,34 @@ export async function fetchChurchFeed(churchId: string, limit = 40): Promise<Fee
 function num(x: unknown): number | null {
   const n = Number(x)
   return x == null || !Number.isFinite(n) ? null : n
+}
+
+// ---------------------------------------------------------------------------
+// "This week in our church" (0130): church TOTALS for the rivalry's UTC week.
+// Player counts under five come back null (the 0119 floor) and are drawn as
+// nothing rather than as a small number that points at two people.
+// ---------------------------------------------------------------------------
+export interface ChurchWeek {
+  members: number
+  /** Members who played the church verse this week; null under the floor. */
+  versePlayers: number | null
+  /** Members who played the daily verse this week; null under the floor. */
+  dropPlayers: number | null
+  /** Church-verse days the week has had so far. */
+  verseDays: number
+  floor: number
+}
+
+export async function fetchChurchWeek(churchId: string): Promise<ChurchWeek | null> {
+  if (!online()) return null
+  const { data, error } = await supabase!.rpc('church_week_summary', { p_church_id: churchId })
+  const d = data as any
+  if (error || !d?.ok) return null
+  return {
+    members: num(d.members) ?? 0,
+    versePlayers: num(d.verse_players),
+    dropPlayers: num(d.drop_players),
+    verseDays: num(d.verse_days) ?? 0,
+    floor: num(d.floor) ?? 5,
+  }
 }

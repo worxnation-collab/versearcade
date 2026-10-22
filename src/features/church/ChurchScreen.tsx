@@ -547,6 +547,7 @@ function ChurchHome({ church }: { church: Church }) {
           shelf is deliberately NOT in here — the shelf lives on the card that
           draws the yard, or tapping a plant changes a yard that is no longer on
           screen. */}
+      <div id="church-board" style={{ scrollMarginTop: 16 }} />
       <TabbedSection
         defaultOpen
         tabs={[

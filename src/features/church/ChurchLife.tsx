@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Avatar } from '@/components/Avatar'
 import { useJuice } from '@/juice/useJuice'
-import { useChurchVerse, fetchChurchFeed, type FeedEvent } from '@/store/churchVerse'
+import { useChurchVerse, fetchChurchFeed, fetchChurchWeek, type ChurchWeek, type FeedEvent } from '@/store/churchVerse'
+import { SeriesTrail } from './SeriesTrail'
 import type { ChurchExtras } from '@/types/churchPackages'
 import type { Church } from '@/types'
 
@@ -11,8 +12,13 @@ import type { Church } from '@/types'
 //
 //   1. "You're in {name}" — the context is said once, plainly.
 //   2. The leader's live announcement.
-//   3. Today's church verse, with how far through its series you are — its own
-//      lane, played at /play/church, never in place of the daily drop.
+//   3. Today's church verse, with its series drawn as the run of days it is
+//      (`SeriesTrail`, 0130) — its own lane, played at /play/church, never in
+//      place of the daily drop. On a day with no church verse the series still
+//      shows, so a series reads as one connected thing rather than as drops.
+//   3b. "This week in {name}" (0130): church TOTALS for the board's week —
+//      members, how many played the church verse and the daily verse. Under
+//      five comes back null and is drawn as nothing (the 0119 floor).
 //   4. What the congregation has been doing (`church_feed`): who played the
 //      drop or the church verse and how they scored, who gave, who joined,
 //      what leadership posted. Scores are shown — the owner's call.
@@ -25,9 +31,11 @@ export function ChurchLife({ church, extras }: { church: Church; extras: ChurchE
   const navigate = useNavigate()
   const juice = useJuice()
   const verse = useChurchVerse((s) => s.today)
+  const series = useChurchVerse((s) => s.series)
   const loadVerse = useChurchVerse((s) => s.load)
   const [feed, setFeed] = useState<FeedEvent[] | null>(null)
   const [more, setMore] = useState(false)
+  const [week, setWeek] = useState<ChurchWeek | null>(null)
 
   const verified = !!extras?.verified
 
@@ -36,6 +44,7 @@ export function ChurchLife({ church, extras }: { church: Church; extras: ChurchE
     void loadVerse()
     let alive = true
     fetchChurchFeed(church.id, 40).then((f) => { if (alive) setFeed(f) })
+    fetchChurchWeek(church.id).then((w) => { if (alive) setWeek(w) })
     return () => { alive = false }
   }, [verified, church.id, loadVerse])
 
@@ -44,6 +53,13 @@ export function ChurchLife({ church, extras }: { church: Church; extras: ChurchE
   const go = (to: string) => { juice.select?.(); navigate(to) }
   const shown = feed ? (more ? feed : feed.slice(0, 6)) : null
   const p = verse?.progress
+  // The series is the member's church's; a stale one from another church
+  // (switched churches this session) is not drawn.
+  const arc = series && series.churchId === church.id ? series : null
+  const toBoard = () => {
+    juice.select?.()
+    document.getElementById('church-board')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   return (
     <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'minmax(0, 1fr)' }}>
@@ -73,33 +89,34 @@ export function ChurchLife({ church, extras }: { church: Church; extras: ChurchE
           onClick={() => go('/play/church')}
           style={{ padding: '12px 14px', textAlign: 'left', color: 'inherit', font: 'inherit', cursor: 'pointer', width: '100%' }}
         >
-          <Eyebrow>Today’s church verse{verse.series ? ` · ${verse.series}` : ''}</Eyebrow>
+          <Eyebrow>Today’s church verse{verse.series && !arc ? ` · ${verse.series}` : ''}</Eyebrow>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
             <b style={{ flex: 1, minWidth: 0, fontSize: 16 }}>{verse.reference}</b>
             <span style={{ fontSize: 13, fontWeight: 800, color: verse.played ? 'var(--mint)' : 'var(--gold)', flexShrink: 0 }}>
               {verse.played ? `${verse.played.correct}/${verse.played.total} ✓` : 'Play →'}
             </span>
           </div>
-          {p && p.total > 0 && (
-            <div style={{ marginTop: 8 }}>
-              <div style={{ display: 'flex', gap: 3 }} aria-label={`You've played ${p.played} of ${p.soFar} days so far`}>
-                {Array.from({ length: p.total }, (_, i) => (
-                  <span
-                    key={i}
-                    style={{
-                      flex: 1, height: 6, borderRadius: 3,
-                      background: i < p.played ? 'var(--mint)' : i < p.soFar ? 'var(--edge)' : 'var(--card-sunken)',
-                    }}
-                  />
-                ))}
-              </div>
-              <div className="faint" style={{ fontSize: 11.5, marginTop: 4 }}>
-                Day {p.soFar} of {p.total} · you’ve played {p.played}
-              </div>
+          {arc ? (
+            <div style={{ marginTop: 10 }}><SeriesTrail series={arc} /></div>
+          ) : p && p.total > 0 ? (
+            <div className="faint" style={{ fontSize: 11.5, marginTop: 6 }}>
+              Day {p.soFar} of {p.total} · you’ve played {p.played}
             </div>
-          )}
+          ) : null}
         </button>
       )}
+
+      {!verse && arc && (
+        <div className="card" style={{ padding: '12px 14px' }}>
+          <Eyebrow>Your church’s series</Eyebrow>
+          <div style={{ marginTop: 8 }}><SeriesTrail series={arc} /></div>
+          <p className="faint" style={{ margin: '8px 0 0', fontSize: 12 }}>
+            No church verse today — the daily verse is waiting on the Play tab as always.
+          </p>
+        </div>
+      )}
+
+      {week && <WeekCard name={church.name} week={week} />}
 
       <div className="card" style={{ padding: '12px 14px' }}>
         <Eyebrow>What your church has been up to</Eyebrow>
@@ -129,11 +146,45 @@ export function ChurchLife({ church, extras }: { church: Church; extras: ChurchE
         <p className="dim" style={{ margin: '4px 0 10px', fontSize: 13, lineHeight: 1.45 }}>
           Your church plays as one team — the church board and the week of giving are below. Want the global game too?
         </p>
+        <button className="pill" onClick={toBoard} style={{ width: '100%', justifyContent: 'center', fontWeight: 800, marginBottom: 8, borderColor: 'var(--edge)' }}>
+          See the church board ↓
+        </button>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="pill" onClick={() => go('/battle')} style={{ flex: 1, justifyContent: 'center', fontWeight: 700 }}>Global battles</button>
           <button className="pill" onClick={() => go('/leaderboard')} style={{ flex: 1, justifyContent: 'center', fontWeight: 700 }}>Worldwide ranks</button>
         </div>
       </div>
+    </div>
+  )
+}
+
+// Church totals for the week, nothing per person. A count under the floor is
+// null and simply not drawn — "2 of you played" in a congregation of six points
+// at two people. With nothing to show past the head count it says one warm line.
+function WeekCard({ name, week }: { name: string; week: ChurchWeek }) {
+  const tiles: { value: string; label: string }[] = [
+    { value: week.members.toLocaleString(), label: week.members === 1 ? 'member' : 'members' },
+  ]
+  if (week.verseDays > 0) tiles.push({ value: String(week.verseDays), label: week.verseDays === 1 ? 'church verse day' : 'church verse days' })
+  if (week.versePlayers != null) tiles.push({ value: week.versePlayers.toLocaleString(), label: 'played the church verse' })
+  if (week.dropPlayers != null) tiles.push({ value: week.dropPlayers.toLocaleString(), label: 'played the daily verse' })
+  const floored = week.versePlayers == null && week.dropPlayers == null
+  return (
+    <div className="card" style={{ padding: '12px 14px' }}>
+      <Eyebrow>This week in {name}</Eyebrow>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(tiles.length, 4)}, minmax(0, 1fr))`, gap: 8, marginTop: 8 }}>
+        {tiles.map((t) => (
+          <div key={t.label} style={{ textAlign: 'center', minWidth: 0 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, lineHeight: 1.1 }}>{t.value}</div>
+            <div className="faint" style={{ fontSize: 11, lineHeight: 1.3 }}>{t.label}</div>
+          </div>
+        ))}
+      </div>
+      {floored && (
+        <p className="faint" style={{ margin: '8px 0 0', fontSize: 11.5, lineHeight: 1.4 }}>
+          How many played shows here once five or more of you have this week.
+        </p>
+      )}
     </div>
   )
 }

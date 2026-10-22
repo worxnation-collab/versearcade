@@ -330,3 +330,40 @@ marked ✨ suggested, where each can be opened and edited (verse, questions,
 note), moved ↑/↓, discarded ✕, or the set approved through `approve_church_verses`.
 "Discard this suggested week" discards exactly the dates that run saved.
 
+## What a member sees (0130)
+
+A member of a VERIFIED church gets the church tab's `ChurchLife` block,
+directly under the churchyard:
+
+1. **"You're in {church}"** and the leaders' live notice (one at a time, by
+   design — `set_church_announcement` keeps one; older notices show up in the
+   feed as "posted").
+2. **Today's church verse** → `/play/church`, with the series as a trail of
+   days (`SeriesTrail`): "Day 3 of 5 · Fruit of the Spirit", ✓ on the days you
+   played, a ring on today, then "So far: …" with the references that have
+   arrived. A future day shows only its weekday. A day you skipped is drawn
+   neutral, never "missed".
+3. **The series on a gap day**: when today has no church verse but a series is
+   running (or starts within a week, or ended in the last three days), the
+   trail still shows with a line pointing at the daily verse.
+4. **"This week in {church}"** (`church_week_summary`): members, church-verse
+   days so far, members who played the church verse, members who played the
+   daily verse. The week is the board's (UTC, the rivalry's). A player count
+   under five is null and not drawn.
+5. The congregation feed (0128) and **Compete**: "See the church board ↓"
+   scrolls to the board on the same tab; "Global battles" and "Worldwide ranks"
+   leave for the global game.
+
+The Play tab's church box and the `/play/church` result use the same trail
+(compact on the box). `my_church_series` picks the series: today's verse's,
+else one running across today, else the next within seven days, else one that
+ended in the last three; a series is that name's approved days within thirty
+days either side, so "Advent" next year is a new series.
+
+**Data gaps, stated rather than papered over:** missed days in a series can be
+read but not played (`submit_church_verse_play` records today only, ±1 day);
+a series is identified by its NAME, so two overlapping series with one name
+merge; there is no per-member series completion for members (by design — it
+is leadership's `church_leader_insights`); and an unverified church gets none
+of this.
+

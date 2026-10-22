@@ -5,7 +5,9 @@ import { fetchWeek } from '@/store/churchAdmin'
 import { useJuice } from '@/juice/useJuice'
 
 // One line on a VERIFIED church's own card, for its leadership only: how many
-// of the next seven days will play the global verse because nobody set one.
+// of the next seven days have no church verse live — nothing set, or only a
+// draft nobody has approved yet (0127). The everyday drop is unaffected either
+// way; this is about the church box beside it.
 //
 // It is a fact about the church's SCHEDULE, never about a person — the same
 // kind of number as "this church has 3 players". It renders nothing when the
@@ -26,7 +28,7 @@ export function WeekGapLine({ churchId }: { churchId: string }) {
     let alive = true
     fetchWeek(churchId, todayLocalDate()).then((r) => {
       if (!alive || !r.ok) return
-      setUnset(r.data.filter((w) => !w.verse).length)
+      setUnset(r.data.filter((w) => !w.verse || w.verse.status === 'draft').length)
       setSeries(r.data[0]?.verse?.series ?? null)
     })
     return () => { alive = false }
@@ -42,8 +44,8 @@ export function WeekGapLine({ churchId }: { churchId: string }) {
       {series && <>📖 This week: <b>{series}</b>.{unset ? ' ' : ' Plan ahead →'}</>}
       {!!unset && (series ? '' : '📅 ')}
       {!!unset && (unset === 7
-        ? 'No verse is set for the next 7 days — your members get the global verse.'
-        : `${unset} of the next 7 days ${unset === 1 ? 'uses' : 'use'} the global verse. Plan the week →`)}
+        ? 'No church verse is live for the next 7 days. Plan the week →'
+        : `${unset} of the next 7 days ${unset === 1 ? 'has' : 'have'} no church verse live. Plan the week →`)}
     </button>
   )
 }

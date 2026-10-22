@@ -1659,6 +1659,50 @@ any other scheme is refused rather than mangled. `Detail` already neutralised a
 `javascript:` string on one render path, but `public_church_page` is a second
 reader and shouldn't have to know that.
 
+### Church content: two tiers, and generated content is a draft
+
+`0127`, `docs/CHURCH-SHARED-VERSE.md` → "Content Generation". Two entitlements,
+and the second only stands on the first:
+
+- **Base Church Leader** = leadership (`church_admins`) of a VERIFIED church —
+  `church_admin_can`, unchanged. Every leadership tool, manual verse /
+  questions / series / note entry, and approving a draft.
+- **Content Generation package** = `church_addons.content_generation`, set only
+  by `admin_set_church_content_generation` (Admin → Founding Churches), which
+  refuses a church without the base tier. `church_gen_can` checks base FIRST,
+  so the add-on on an un-verified church is inert. It gates `use_church_draft`
+  (the `church-draft` function's gate and spend) and `save_church_verse_draft`.
+  The client picks `serverGenerationBackend` only when `church_entitlements`
+  says so; otherwise the form draws a locked card and every manual tool works.
+  Billing is stubbed: no price, no checkout, either mode.
+
+Four rules are load-bearing:
+
+- **Generation starts from a reference.** `church-draft` refuses anything that
+  isn't a citation; a focus line and a sermon/voice-memo transcript only steer
+  emphasis and the suggested note. No free-form generation.
+- **A generated day is a DRAFT until a leader approves it.** `status` is stored
+  'draft' | 'approved'; readers report 'published' for an approved day whose
+  date has come (`church_verse_status` — derived, because there is no cron).
+  `church_verse_today` never returns a draft. A leader's hand-typed save IS an
+  approval (`set_church_verse` writes 'approved', keeps `generated`). The
+  client cannot lie its way past review in any way that matters: the only
+  shortcut is the leader saving it themselves.
+- **Visibility is 'congregation' and the check constraint allows nothing
+  else.** Widening it is a migration.
+- **A church's verse never replaces the global drop.** Enforced server-side:
+  `get_effective_verse` returns null, so approved iOS builds that still call it
+  play the global verse too. Members get 0128's lane instead, which skips drafts.
+- **A week from one sermon is the SAME generator** (`church-draft`
+  `mode: 'week'`, 0129, `WeekDraftPanel`), spending one of the church's 30
+  daily units per day drafted. **The scripture on a drafted day never comes
+  from the model**: the client fetches the passages' BSB verses and the
+  function assembles each day's text from them — the model only picks which
+  verse a day is about, inside passages the leader named. Every day saves as a
+  draft; `DraftReview` approves exactly the listed dates or discards them.
+  Discarding stamps `discarded_at` instead of deleting (the MCP can't apply a
+  DELETE); every leadership reader skips it and every writer clears it.
+
 ### The sponsored slot
 
 **RETIRED FROM THE PICKER (2026-10-16).** `ChurchPicker` no longer calls
@@ -2428,7 +2472,22 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0128` (the church layer — `church_verse_plays`,
+The latest is `0129` (a week of drafts from one sermon —
+`use_church_draft_units`, `approve_church_verses`, `discard_church_verse_draft`,
+`church_verses.discarded_at`, and `use_church_draft`, `set_church_verse`,
+`set_church_verse_extras`, `save_church_verse_draft`, `approve_church_verse`,
+`church_verse_for`, `church_verses_range` restated with the same signatures;
+`docs/CHURCH-SHARED-VERSE.md` → "A week from one sermon"). APPLIED 2026-10-22
+as `0129_church_week_drafts`, after a local Postgres 16 run (no add-on refused,
+the 30-unit cap across 7+7+7+7 then 7 refused and 2 accepted, clamp at 7, a
+member refused approve and discard, discard twice, a set approve that skips a
+discarded and a missing day, a discarded day absent to leadership readers and
+clean when drafted over, anon denied, re-run a no-op). Production's copies of
+the restated functions were checked to still be 0127's before the apply, and
+afterwards: one signature each, all `authenticated`-only. It took 0129 because
+`0128_church_layer` landed on main and in production the same day.
+
+Before it, `0128` (the church layer — `church_verse_plays`,
 `my_church_verse`, `submit_church_verse_play`, `church_feed`,
 `church_leader_insights`, `church_insider`, `is_church_admin_of`). **0128,
 because production already held `0127_church_content_generation`** (another
@@ -2449,6 +2508,19 @@ verse" to that code, so every installed build separates too. Run against a local
 Postgres 16 first (eleven cases: member/outsider/anon/unverified gates, once per
 day, bad results refused, no direct table read, re-run a no-op).
 `docs/CHURCH-SHARED-VERSE.md`.
+
+Before it, `0127` (the Content Generation package — `church_addons`,
+`church_entitlements`, `admin_set_church_content_generation`,
+`save_church_verse_draft`, `approve_church_verse`, `church_verse_today`, the
+audit columns on `church_verses`, and `use_church_draft` / `set_church_verse` /
+`church_verse_for` / `church_verses_range` / `get_effective_verse` restated with
+the same signatures; see "Church content: two tiers" below and
+`docs/CHURCH-SHARED-VERSE.md`). APPLIED 2026-10-21 after a local Postgres 16
+run of fifteen cases, and verified: one signature each, the two helpers
+`{postgres,service_role}`, all 21 existing verses backfilled as approved. It
+also carries 0122 (`church_question_drafts`, `use_church_draft`) and the
+`church-draft` Edge Function into the tree for the first time; both had been
+in production since 2026-10-19 from an unmerged branch.
 
 Before it, `0126` (two more churchyard statues — `church_statue_exists`
 restated from 0075 with `statue_praying` and `statue_cross` appended), APPLIED
@@ -2919,7 +2991,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0129` (0128 is the church layer, 0127 is `church_content_generation` in production, 0126 is the two new statues, 0125 is the API.Bible key, 0124 the reading translation, 0123 is the church verse series and note, 0122 is `church_question_drafts` in production only, 0121 is the church leader invite link, 0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0130` (0129 is the week-from-a-sermon drafts, 0128 is the church layer, 0127 is `church_content_generation` in production, 0126 is the two new statues, 0125 is the API.Bible key, 0124 the reading translation, 0123 is the church verse series and note, 0122 is `church_question_drafts` in production only, 0121 is the church leader invite link, 0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

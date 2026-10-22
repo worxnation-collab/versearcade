@@ -152,3 +152,145 @@ leftovers is a safe cleanup for the SQL editor later:
 - `church_care_list`
 - `set_church_care_optin`
 - `profiles.church_care_optin`
+
+## Drafting the questions (0122, `church-draft`)
+
+Under the verse, leadership gets **"✨ Draft five questions from this
+passage"**. It works for any reference, not only the library's 726 verses.
+
+- **Server-side.** The `church-draft` Edge Function asks Gemini. The key is
+  `GEMINI_API_KEY` or Vault `tiktok_gemini_key()`, and it never reaches a
+  device.
+- **Gate and spend in one call.** The function calls `use_church_draft` (0122)
+  with the caller's own token. That checks `church_admin_can` (leadership of a
+  verified church) and spends one of the church's **30 drafts a day (UTC)**
+  before the model is asked. Anybody else costs nothing.
+- **A draft is a draft.** It fills the form and saves nothing.
+  `set_church_verse` is still the only writer.
+- **Every draft is checked three times** with the same rules: in the function,
+  in `draftQuestions` (`cleanQuestions`) and on save. Options are re-dealt
+  server-side, because models put the right answer first.
+- **The prompt carries the house rules:**
+  - answerable from the passage
+  - a teach line on every answer, never scolding
+  - nothing that splits denominations
+  - no trick or "NOT" questions
+  - plain words
+- **It doesn't wipe the pastor's work.** Over questions the pastor already
+  typed, the first tap only warns and the second replaces.
+- **The demo (`/churches/try`) drafts from the library only** and makes no call.
+  For any other reference it says a Founding Church can draft any passage.
+
+Superseded in part by 0127 (below): the gate now also needs the Content
+Generation add-on, and a draft is saved as a DRAFT rather than filling the
+form for `set_church_verse`.
+
+Not yet verified end to end against the model (as of 0122). Live checks:
+
+- a request with no token is refused at the gateway
+- a signed-out caller is refused before any model call
+- bad input is refused
+- preflight answers
+
+## Content Generation: the add-on, drafts and approval (0127)
+
+**Two entitlements.** `church_entitlements(church)` tells a church's own
+leadership what it holds:
+
+| | What it is | Gate | Unlocks |
+|---|---|---|---|
+| Church Leader (base) | leadership of a verified church | `church_admin_can` | every tool on this page, manual entry, approving drafts |
+| Content Generation (add-on) | `church_addons.content_generation` | `church_gen_can` = base **and** add-on | `church-draft`, `save_church_verse_draft` |
+
+The operator grants the add-on in Admin → Founding Churches
+(`admin_set_church_content_generation`), which refuses (`needs_base`) a church
+that isn't verified. Un-verifying a church leaves the add-on on its record but
+inert, and `/church/:id/admin` says "on your plan, switches on with Church
+Leader". The top of that screen shows both rows as Active or Locked; without
+the add-on, the verse form shows a locked "Drafting assist" card in place of
+the draft button. There is no price or upgrade button anywhere.
+
+**The engine** (`church-draft`): POST `{ church_id, reference, text,
+guidance?, transcript? }`. The reference must be in citation form
+(`bad_reference` otherwise). `guidance` is a focus line (300 chars) and
+`transcript` is sermon notes or a voice-memo transcript (4,000 chars), pasted
+in. Both steer emphasis and the suggested note only. It returns five questions
+and a `note`. The note fills the form's note only when that is empty. On-device
+transcription of a voice memo isn't built; paste the transcript.
+
+**Drafts and approval:**
+
+- A drafted edit is saved with **Save as draft** (`save_church_verse_draft`):
+  `status = 'draft'`, `generated = true`. Members can't see it.
+- Saving a draft over a day that's already live needs a second tap, and the
+  form says that the day leaves members' screens until it's approved
+  (`p_replace`).
+- **Approve for <day>** saves the edits as the draft and then calls
+  `approve_church_verse`, which needs the base tier only. A church whose
+  add-on lapsed can still approve what it made. Without the add-on the approve
+  button goes through `set_church_verse`, which is also an approval.
+- The planner marks a draft day ✎ with a dashed border, and counts it as "no
+  church verse live" on the strip and on the leadership card.
+
+**Audit fields on `church_verses`:** `created_by`, `created_at`, `updated_at`,
+`visibility` ('congregation', the only value the check allows), `status`,
+`generated`, `approved_by`, `approved_at`. `church_verse_for` and
+`church_verses_range` return status, generated, visibility, created_at and
+approved_at. `approved_by` stays server-side.
+
+**The church verse is additive.** `get_effective_verse` is restated to return
+null, so no build, including approved iOS builds, swaps the daily drop. What
+members get instead is 0128's lane — `my_church_verse`, the box on the Play
+tab and `/play/church` — which skips drafts, so a draft (and a discarded one,
+which is always a draft) never reaches a member.
+
+## A week from one sermon (0129)
+
+With the add-on, the Schedule tab carries **✨ Draft a week from a sermon**
+(`WeekDraftPanel`): a series name, 1–3 passages, a start date, 2–7 days, and
+the sermon pasted in (or at least a focus line). It produces one DRAFT per day,
+each with its own verse focus inside those passages, five questions and a note.
+
+- **One generator.** It is `church-draft` with `mode: 'week'`, not a second
+  function. The gate is the same `church_gen_can`; the spend is
+  `use_church_draft_units(church, days)` — one of the church's **30 drafts a
+  day** per DAY drafted, taken atomically before the model is asked.
+  `use_church_draft` is now `units = 1`.
+- **The scripture never comes from the model.** The client fetches each
+  passage's verses itself (`resolvePassage`: the BSB, the app's own unlicensed
+  text — a licensed translation can't be stored on a church's day), sends them
+  numbered, and the function builds every day's text from those verses. The
+  model only picks which verse(s) a day is about; a day whose reference isn't
+  inside a supplied passage is dropped, so a week can come back shorter than
+  asked (the panel says so).
+- **The dates are planned and named before anything is spent:** the next N
+  days from the start with no LIVE verse. A live day is skipped and listed
+  ("left alone"); a planned day holding an older draft is listed as replaced.
+  Each day is then saved with `save_church_verse_draft` without `replace`, so
+  a day that went live meanwhile refuses and is reported, never overwritten.
+- **Review, one by one or as the set** (`DraftReview`, under the strip, base
+  tier): every draft in the window grouped by series, each with Open →; per
+  series **Approve all N** (`approve_church_verses`, exactly the dates listed,
+  drafts only) and **Discard all**, both behind a second tap. A single draft has
+  **Discard this draft** under the approve button.
+- **Discard stamps rather than deletes** (`discarded_at`): every leadership
+  reader treats the row as absent, every writer clears the stamp. Partly
+  because the Supabase MCP can't apply a `DELETE` from a cloud session, partly
+  because "generated, then thrown away" is worth keeping in the audit trail.
+
+**Limits, all enforced in the function:** 2–7 days; 1–3 passages, each inside
+one chapter, ≤ 40 verses each and ≤ 6,000 characters of scripture in all; a
+transcript ≤ 12,000 characters (about a 20-minute sermon; longer ones are cut);
+a focus line ≤ 300; each day ≤ 3 consecutive verses and ≤ 1,000 characters of
+text; one model call with a 90-second timeout and one retry only if the first
+failed inside 50 seconds; 30 draft-days per church per UTC day.
+
+**Members:** a week of approved days reads as a sequence in 0128's lane — the
+box shows "<series> · day N of M" — counted over every approved day under that
+series name. Days planned around a live day are not contiguous, which that
+count handles; reusing a series name a year later would add to its total.
+
+**Not verified end to end against the model**: the container has no leader
+token. The flow was driven in the browser with the demo's memory backend and a
+stand-in for the model call (removed again); the function's passage guards were
+unit-checked.

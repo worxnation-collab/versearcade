@@ -1,0 +1,114 @@
+# Church visual assets — verse cards, series graphics, notice cards
+
+Part of the Content Generation package (`church_addons.content_generation`).
+Migration `0133`, `src/data/churchAssetTemplates.ts` (the art),
+`src/features/church/ChurchAssetCard.tsx` (the one renderer),
+`src/store/churchAssets.ts`, `src/features/church/admin/AssetStudio.tsx`.
+
+## Where the art goes (the part you will touch)
+
+Everything visual lives in **`src/data/churchAssetTemplates.ts`**, one entry
+per template. Nothing else needs to change to ship real art.
+
+1. **Background image:** put the file at `public/church-assets/<template-id>/bg.jpg`
+   (or `.png`/`.webp`) and set `background.image: '/church-assets/<id>/bg.jpg'`.
+   Size it to the template's `aspect`: 1080×1350 for a 4:5 verse card,
+   1920×1080 for a 16:9 series or notice card. Keep `background.color` set to
+   the image's dominant colour, because a failed image falls back to it. If text
+   sits over a busy area, add `background.overlay` (a CSS gradient).
+2. **Layout:** each slot (`eyebrow`, `title`, `body`, `reference`, `footer`) is a
+   box given in **percent of the card** (`x, y, w, h`). Type size is in **`cqw`**
+   (percent of card width), so a layout is exact at every size from a 90px
+   thumbnail to a full-width card. Leave a slot out and that text is not drawn.
+   `minScale` lets long text shrink (by the square root of its length);
+   `maxLines` clamps it.
+3. **Fonts:** add the `@font-face` (or a Google Fonts `<link>`) in
+   `src/index.css`, then set `fonts: { display, body, serif }` on the template to
+   a stack starting with that family. A slot picks one with `font`.
+4. **Ship it:** remove `placeholder: true`. Leaders see "Placeholder art · Name"
+   under any card still marked as stand-in art.
+
+Rules (`npm run build` runs `scripts/check-asset-templates.mjs` and fails on
+the ones that break silently):
+
+- **A template id is permanent.** Stored cards name it. To replace a look, add
+  a new id and set `retired: true` on the old one. A retired template still
+  renders its existing cards but is no longer offered. Never rename an id.
+  (An unknown id renders with its kind's default template, never a blank card.)
+- **Ids are prefixed by kind:** `verse_…`, `series_…`, `notice_…`. The server
+  refuses a template id with the wrong prefix for its kind.
+- Images must be under `/church-assets/` and must exist in `public/`. Slot boxes
+  must fit inside the card.
+- The first template of each kind is the default.
+
+To add a whole new kind (for example a sermon quote), you need a migration, because
+`church_assets.kind` has a check constraint and the server composes the payload.
+
+## Decisions
+
+**Storage: a card is DATA, not an image.** A row stores `template_id` plus a
+`payload` (the words: reference, text, series, dates, church name, notice).
+There is no storage bucket and no rendered file.
+
+- New art reaches every existing card the moment it ships. No re-render, no
+  backfill, and nothing to invalidate.
+- No image hosting, CDN cost or upload path, and no URL that can leak outside
+  the congregation (there is no public sharing in this pass).
+- A stored card can never drift from what renders it.
+- Cost: there is no file to post anywhere. Public/social export, when it comes,
+  is a client-side rasterise of the same component (the Upper Room postcard's
+  `lib/postcard.ts` path, including its native share branch). That's an
+  addition, not a rewrite.
+
+**Rendering: HTML/CSS on the client**, not canvas and not server-side images.
+It is crisp at any DPI, accessible (`role="img"` with the words as its label),
+and uses the app's own fonts. One component draws every surface, so the leader
+reviews exactly what members get.
+
+**The words never come from a model, and never from the client.**
+`generate_church_asset` takes a kind, a source (a date, a series name, or the
+live notice) and a template id. The server copies the text from the church's
+own rows (`church_asset_source_payload`):
+
+- The verse card copies the day's `church_verses` row. A drafted day's text was
+  assembled by `church-draft` from fetched BSB verses (the model only picks
+  which verse). A day the leader typed by hand carries the leader's own saved
+  text: it is the leader's content, saved and approved by them.
+- The series graphic copies the series name, its dates, its day count and up to
+  seven references, all from saved rows.
+- The notice card copies the live announcement.
+
+"Generate" is therefore composition, not generation. There is no prompt field
+anywhere, and none could be added without a new server path.
+
+**Draft → approve, with staleness.** Every generate writes a draft. Approve and
+discard need base leadership, so a base-tier leader can still review a card the
+church made. Generating needs the add-on (`church_gen_can`). A card whose source
+words have changed since it was made is **stale**: approve refuses it, the
+leader sees "Out of date", and members never get it. Regenerating over an
+approved card puts it back to draft (the UI asks first). Discard stamps
+`discarded_at`; nothing is deleted.
+
+**What members see** (`my_church_assets`, verified church members only, today
+only, approved and fresh only):
+
+- verse card: today's church verse, and only if that verse is itself approved;
+- series graphic: the series of today's approved verse;
+- notice card: the live announcement.
+
+The cards appear in `ChurchLife` (church tab: the notice card replaces the text
+notice, and the series graphic and verse card sit in the today's-verse box) and
+on the `/play/church` result. No card exists anywhere a stranger, a board or
+the global daily verse can reach. `visibility` is constrained to
+`'congregation'`; widening it is a migration.
+
+## Where leaders make them
+
+- **Schedule → a day's form** (`TodayVerseForm`): verse card for that date, and
+  a series graphic when the day carries a series. This shows once the day is
+  saved, because a card is made from what is saved.
+- **Notices** (`NoticesPanel`): notice card for the live announcement.
+
+Each `AssetStudio` shows live thumbnails of every look, drawn from the real
+words before anything is created. It then offers Generate → Approve / Change
+look / Discard.

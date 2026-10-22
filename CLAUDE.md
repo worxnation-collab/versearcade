@@ -1726,6 +1726,30 @@ Four rules are load-bearing:
   fails the build on a curated passage that isn't real, spans two chapters or
   blows the verse budget — all three render.
 
+### Church visual assets: a card is data, and the words are the church's
+
+`0133`, `docs/CHURCH-VISUAL-ASSETS.md`. Verse cards, series graphics and notice
+cards for the Content Generation package. Four things are load-bearing:
+
+- **Stored as `template_id` + `payload`, rendered by `ChurchAssetCard`** (HTML,
+  percent boxes, `cqw` type). No bucket and no image file, so new art reaches
+  every existing card the day it ships. **The art lives in
+  `src/data/churchAssetTemplates.ts` and `public/church-assets/<id>/`, and
+  nowhere else.** Template ids are permanent (retire, never rename) and
+  prefixed by kind (`verse_`/`series_`/`notice_`, which the server enforces);
+  `check-asset-templates.mjs` fails the build on a bad box, a missing image or
+  a wrong prefix.
+- **The client never sends words.** `generate_church_asset` names a source and a
+  template, and the server copies the text from `church_verses` /
+  announcements. There is no prompt anywhere, and the scripture is whatever
+  the saved day carries (BSB on a drafted day).
+- **Stale never reaches a member.** A card whose source words changed is refused
+  on approve and filtered from `my_church_assets`; regenerating over an
+  approved card returns it to draft.
+- **Congregation only**, by check constraint. Public export, when wanted, is a
+  client-side rasterise of the same component (the postcard path), not a new
+  storage design.
+
 ### The sponsored slot
 
 **RETIRED FROM THE PICKER (2026-10-16).** `ChurchPicker` no longer calls
@@ -2495,7 +2519,21 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0130` (the member's church — `my_church_series`, the days of
+The latest is `0133` (church visual assets — `church_assets`, verse cards /
+series graphics / notice cards stored as a template id plus words the SERVER
+copies from the church's own rows, draft → approve, stale-aware;
+`generate_church_asset` is add-on only, approve/discard base leadership,
+`my_church_assets` gives members today's approved fresh cards;
+`docs/CHURCH-VISUAL-ASSETS.md`). APPLIED 2026-10-22 as `0133_church_assets`
+after a local Postgres 16 run of thirteen cases, and verified live: one
+signature each, the five RPCs `authenticated` only, the three helpers
+`{postgres,service_role}`, RLS on with no policy, and a generate → approve
+inside a rolled-back transaction composed the card from the verse row. **It is
+0133 because production already holds `0131_church_billing_stripe` and
+`0132_church_billing_vault`** from an unmerged branch — `list_migrations`
+caught it before the apply.
+
+Before it, `0130` (the member's church — `my_church_series`, the days of
 the series a member's verified church is in, with which ones THEY played and
 no reference on a future day; and `church_week_summary`, church totals for the
 rivalry's UTC week with player counts under five returned null, the 0119
@@ -3030,7 +3068,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0131` (0130 is the member's church view, 0129 is the week-from-a-sermon drafts, 0128 is the church layer, 0127 is `church_content_generation` in production, 0126 is the two new statues, 0125 is the API.Bible key, 0124 the reading translation, 0123 is the church verse series and note, 0122 is `church_question_drafts` in production only, 0121 is the church leader invite link, 0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0134` (0133 is church visual assets, 0131 and 0132 are church billing in production from an unmerged branch, 0130 is the member's church view, 0129 is the week-from-a-sermon drafts, 0128 is the church layer, 0127 is `church_content_generation` in production, 0126 is the two new statues, 0125 is the API.Bible key, 0124 the reading translation, 0123 is the church verse series and note, 0122 is `church_question_drafts` in production only, 0121 is the church leader invite link, 0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

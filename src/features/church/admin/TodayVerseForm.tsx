@@ -9,6 +9,8 @@ import type { Question } from '@/types'
 import { SeriesCopyPanel } from './SeriesCopyPanel'
 import { DraftReview, WeekDraftPanel } from './WeekDraftPanel'
 import { StudyTopicWeek } from './StudyTopicWeek'
+import { AssetStudio } from './AssetStudio'
+import { useChurchAssetsAdmin } from '@/store/churchAssets'
 
 // "Set today's verse" — the verified layer's one write (0119).
 //
@@ -106,6 +108,7 @@ export function TodayVerseForm({
   churchName,
   backend = serverVerseBackend,
   generationLocked = false,
+  assets,
   onSaved,
 }: {
   churchId: string
@@ -116,6 +119,12 @@ export function TodayVerseForm({
   generationLocked?: boolean
   /** After a successful save, with the verse as saved. */
   onSaved?: (date: string, v: DayVerse) => void
+  /**
+   * Visual assets (0133) for a saved day — the verse card and its series
+   * graphic. Only the real admin screen passes this (the public demo does
+   * not); `canGenerate` is the Content Generation add-on.
+   */
+  assets?: { canGenerate: boolean }
 }) {
   const juice = useJuice()
   const today = todayLocalDate()
@@ -125,6 +134,8 @@ export function TodayVerseForm({
   const [qs, setQs] = useState<Draft[]>(() => Array.from({ length: 5 }, blank))
   const [loading, setLoading] = useState(true)
   const [existing, setExisting] = useState(false)
+  // The day as it is SAVED (not the edits in the fields) — what a card is made from.
+  const [stored, setStored] = useState<DayVerse | null>(null)
   // What the loaded day IS (0127), and whether the engine filled this edit.
   const [status, setStatus] = useState<VerseStatus | undefined>(undefined)
   const [generatedNow, setGeneratedNow] = useState(false)
@@ -172,6 +183,7 @@ export function TodayVerseForm({
       if (!alive) return
       const v = r.ok ? r.data : null
       setExisting(!!v)
+      setStored(v)
       setStatus(v?.status ?? (v ? 'approved' : undefined))
       setGeneratedNow(false)
       setReplaceArmed(false)
@@ -254,10 +266,13 @@ export function TodayVerseForm({
     setGeneratedNow(false)
     setReplaceArmed(false)
     setSaved(v)
+    setStored(v)
     setCopied(false)
     setPageLine('idle')
     onSaved?.(date, v)
     void loadWeek()
+    // A save can make an existing card out of date; re-read the flags.
+    if (assets) void useChurchAssetsAdmin.getState().load(churchId, true)
     setMsg({
       ok: !extrasLost,
       text: lead + (extrasLost ? ' The series name and note didn’t save — try again in a moment.' : ''),
@@ -304,11 +319,13 @@ export function TodayVerseForm({
     if (!r.ok) return setMsg({ ok: false, text: REASONS[r.reason] ?? 'That didn’t save — check your connection and try again.' })
     juice.select?.()
     setExisting(true)
+    setStored({ ...v, status: 'draft' })
     setStatus('draft')
     setGeneratedNow(false)
     setReplaceArmed(false)
     setSaved(null)
     void loadWeek()
+    if (assets) void useChurchAssetsAdmin.getState().load(churchId, true)
     setMsg({ ok: true, text: `Saved as a draft. ${churchName}’s members can’t see it until you approve it.` })
   }
 
@@ -574,8 +591,43 @@ export function TodayVerseForm({
           {busy ? 'Saving…' : date === today ? 'Set today’s verse' : `Set the verse for ${pretty(date)}`}
         </Button>
       )}
+
+      {/* Graphics for the SAVED day (0133): its verse card, and its series'
+          graphic when it belongs to one. Made from what is saved, never from
+          the fields being edited, so a card can't show words nobody saved. */}
+      {assets && !loading && existing && stored && (
+        <div style={{ display: 'grid', gap: 10 }}>
+          <AssetStudio
+            churchId={churchId}
+            source={{ kind: 'verse_card', date }}
+            canGenerate={assets.canGenerate}
+            preview={{ church_name: churchName, date, reference: stored.reference, text: stored.text, series: stored.series ?? null, note: stored.note ?? null }}
+          />
+          {stored.series && (
+            <AssetStudio
+              churchId={churchId}
+              source={{ kind: 'series_header', series: stored.series }}
+              canGenerate={assets.canGenerate}
+              preview={seriesPreview(churchName, stored.series, week)}
+            />
+          )}
+        </div>
+      )}
     </div>
   )
+}
+
+/** What a series graphic would say, from the days on the strip — the thumbnails' stand-in until it is made. */
+function seriesPreview(churchName: string, series: string, week: WeekDay[] | null): Record<string, unknown> {
+  const days = (week ?? []).filter((w) => w.verse?.series === series)
+  return {
+    church_name: churchName,
+    series,
+    days: days.length || null,
+    start_date: days[0]?.date ?? null,
+    end_date: days[days.length - 1]?.date ?? null,
+    references: days.slice(0, 7).map((d) => d.verse!.reference),
+  }
 }
 
 function WeekStrip(props: {

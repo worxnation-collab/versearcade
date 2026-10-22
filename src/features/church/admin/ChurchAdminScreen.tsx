@@ -113,6 +113,7 @@ export default function ChurchAdminScreen() {
                 churchName={settings.name}
                 backend={generation ? serverGenerationBackend : serverVerseBackend}
                 generationLocked={!generation}
+                assets={{ canGenerate: generation }}
               />
             ),
           },
@@ -123,7 +124,7 @@ export default function ChurchAdminScreen() {
     {
       key: 'notices',
       label: 'Notices',
-      content: <NoticesPanel churchId={id} settings={settings} onSaved={load} />,
+      content: <NoticesPanel churchId={id} settings={settings} onSaved={load} canGenerate={generation} />,
     },
     {
       key: 'share',

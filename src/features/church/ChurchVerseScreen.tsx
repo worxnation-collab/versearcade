@@ -9,6 +9,8 @@ import { QuizRunner } from '@/features/daily/QuizRunner'
 import { MissedList } from '@/features/daily/MissedList'
 import { useChurchVerse } from '@/store/churchVerse'
 import { SeriesTrail } from './SeriesTrail'
+import { ChurchAssetCard } from './ChurchAssetCard'
+import { useMyChurchAssets } from '@/store/churchAssets'
 import { aboutVerseSeed } from '@/data/cardAbout'
 import { parseReference } from '@/lib/bibleProgress'
 import type { DailyVerse, PlayResult } from '@/types'
@@ -25,6 +27,8 @@ export default function ChurchVerseScreen() {
   const navigate = useNavigate()
   const today = useChurchVerse((s) => s.today)
   const series = useChurchVerse((s) => s.series)
+  const verseCard = useMyChurchAssets((s) => s.assets.find((a) => a.kind === 'verse_card') ?? null)
+  const loadCards = useMyChurchAssets((s) => s.load)
   const loaded = useChurchVerse((s) => s.loaded)
   const load = useChurchVerse((s) => s.load)
   const submit = useChurchVerse((s) => s.submit)
@@ -32,7 +36,8 @@ export default function ChurchVerseScreen() {
 
   useEffect(() => {
     void load()
-  }, [load])
+    void loadCards()
+  }, [load, loadCards])
 
   const verse: DailyVerse | null = useMemo(() => {
     if (!today) return null
@@ -133,6 +138,14 @@ export default function ChurchVerseScreen() {
       )}
 
       {result && <MissedList result={result} questions={verse.questions} />}
+
+      {/* The church's approved verse card for today (0133), the keepsake of
+          the run — only ever an approved, current card, or nothing. */}
+      {verseCard && (
+        <div style={{ margin: '12px auto 0', maxWidth: 360 }}>
+          <ChurchAssetCard kind="verse_card" templateId={verseCard.templateId} payload={verseCard.payload} />
+        </div>
+      )}
 
       <div className="card" style={{ textAlign: 'left', marginTop: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

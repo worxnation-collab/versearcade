@@ -8,6 +8,7 @@ import { cleanLine, cleanQuestions, fetchDays, GUIDANCE_MAX, NOTE_MAX, SERIES_MA
 import type { Question } from '@/types'
 import { SeriesCopyPanel } from './SeriesCopyPanel'
 import { DraftReview, WeekDraftPanel } from './WeekDraftPanel'
+import { StudyTopicWeek } from './StudyTopicWeek'
 
 // "Set today's verse" — the verified layer's one write (0119).
 //
@@ -362,6 +363,15 @@ export function TodayVerseForm({
 
   return (
     <div style={{ display: 'grid', gap: 12 }}>
+      {backend.draftWeek && (
+        <StudyTopicWeek
+          churchId={churchId}
+          backend={backend}
+          today={today}
+          onDrafted={(ds) => { void loadWeek(); pick(ds[0]); setDayKey((k) => k + 1) }}
+          onChanged={() => { void loadWeek(); setDayKey((k) => k + 1) }}
+        />
+      )}
       <WeekStrip
         week={week}
         error={weekErr}
@@ -685,8 +695,9 @@ function GenerationLocked() {
     <div className="card" aria-label="Drafting assist, locked" style={{ padding: '10px 12px', display: 'grid', gap: 4, background: 'var(--card-raised)' }}>
       <b style={{ fontSize: 12.5, fontWeight: 800 }}>🔒 Drafting assist</b>
       <span className="faint" style={{ fontSize: 11.5, lineHeight: 1.45 }}>
-        Drafting questions and a note from a passage, or a whole week from one sermon, is the Content Generation
-        package — an add-on this church doesn’t have. Everything here still works by hand.
+        Suggesting a whole week from what your congregation is studying, a week from one sermon, or the questions
+        and a note for a passage is the Content Generation package — an add-on this church doesn’t have. Everything
+        here still works by hand.
       </span>
     </div>
   )

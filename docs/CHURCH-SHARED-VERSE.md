@@ -294,3 +294,39 @@ count handles; reusing a series name a year later would add to its total.
 token. The flow was driven in the browser with the demo's memory backend and a
 stand-in for the model call (removed again); the function's passage guards were
 unit-checked.
+
+## A week from a study topic
+
+The top of the leadership planner asks **"What is your congregation studying
+this week?"** (`src/features/church/admin/StudyTopicWeek.tsx`). Content
+Generation only — it renders only when the backend carries `draftWeek`; a
+base-tier leader sees the existing locked card and every manual tool.
+
+**Autocomplete** (`suggestTopics` in `src/data/studyTopics.ts`): ~40 curated
+series, seasons and themes, the 66 books, and the church's own series from the
+last twelve weeks ("Used before", ranked first when they match). Keyboard:
+↑/↓, Enter picks the highlighted row or commits what was typed, Esc closes.
+
+**Anchoring** — generation never starts from the topic alone:
+
+| The topic is… | Passages come from | Cost |
+|---|---|---|
+| typed with verse hints | the leader's hints (up to 3, each one chapter) | days |
+| a curated topic | its catalog passages | days |
+| a book, a past series, or free text | `church-draft` `mode: 'topic'` — references only | days + 1 |
+
+Every passage is then fetched from the BSB (`resolvePassage`); the model never
+supplies scripture. The week itself is `church-draft` `mode: 'week'` with the
+topic as its focus line and an optional pasted transcript.
+
+**What a day already holds:** the fill covers a fixed window (start + 2-7
+days). Empty days are filled; waiting drafts are kept unless "Also redo drafts"
+is ticked; approved days are never touched and are named in the plan. A day
+that goes live between planning and saving refuses (`day_is_set`) and is
+reported. One open day still drafts two (the week mode's minimum) and saves one.
+
+**After:** the days show in the strip as ✎ and in "Waiting for your approval",
+marked ✨ suggested, where each can be opened and edited (verse, questions,
+note), moved ↑/↓, discarded ✕, or the set approved through `approve_church_verses`.
+"Discard this suggested week" discards exactly the dates that run saved.
+

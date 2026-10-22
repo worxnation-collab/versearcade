@@ -1702,6 +1702,23 @@ Four rules are load-bearing:
   draft; `DraftReview` approves exactly the listed dates or discards them.
   Discarding stamps `discarded_at` instead of deleting (the MCP can't apply a
   DELETE); every leadership reader skips it and every writer clears it.
+- **"What is your congregation studying this week?" is that week mode again,
+  with a topic in front of it** (`StudyTopicWeek`, `data/studyTopics.ts`, no
+  migration). A topic resolves to at most three passages — the leader's own
+  verse hints, else the catalog's curated ones, else `church-draft`'s `topic`
+  mode, which returns REFERENCES ONLY (one unit; `book` pins them inside a book
+  and anything outside is dropped; `topic_unclear` rather than a guess). Then
+  the BSB words are fetched and `draftWeek` drafts the days with the topic as
+  its focus line. It fills a FIXED window: empty days only, waiting drafts only
+  when the leader ticks "redo", approved days never — named in the plan before
+  anything is spent. "Discard this suggested week" discards exactly the dates
+  that run saved, and the server only ever discards a draft. Autocomplete =
+  catalog + the 66 books + the church's own past series (read off
+  `church_verses_range`, last twelve weeks). `DraftReview` gained ↑/↓ (two
+  drafts trade content through `saveDraft`, rolled back if the second write
+  fails — add-on only) and a per-day ✕. `scripts/check-study-topics.mjs`
+  fails the build on a curated passage that isn't real, spans two chapters or
+  blows the verse budget — all three render.
 
 ### The sponsored slot
 

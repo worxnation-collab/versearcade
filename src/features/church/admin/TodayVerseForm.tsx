@@ -4,22 +4,34 @@ import { useJuice } from '@/juice/useJuice'
 import { todayLocalDate, addDays } from '@/lib/date'
 import { parseReference } from '@/lib/bibleProgress'
 import { verseFromReference } from '@/data/bible/questions'
-import { cleanLine, cleanQuestions, fetchDays, NOTE_MAX, SERIES_MAX, serverVerseBackend, type DayVerse, type VerseBackend, type WeekDay } from '@/store/churchAdmin'
+import { cleanLine, cleanQuestions, fetchDays, GUIDANCE_MAX, NOTE_MAX, SERIES_MAX, serverVerseBackend, TRANSCRIPT_MAX, type DayVerse, type VerseBackend, type VerseStatus, type WeekDay } from '@/store/churchAdmin'
 import type { Question } from '@/types'
 import { SeriesCopyPanel } from './SeriesCopyPanel'
+import { DraftReview, WeekDraftPanel } from './WeekDraftPanel'
+import { StudyTopicWeek } from './StudyTopicWeek'
 
 // "Set today's verse" — the verified layer's one write (0119).
 //
 // A reference, the words, and five questions of the church's own, saved for a
 // date. Saving the same date again replaces it (`set_church_verse` is an
 // upsert), so the form loads whatever is already there first and edits it
-// rather than overwriting blind. Members of the church play it as that day's
-// drop; everybody else is untouched.
+// rather than overwriting blind. Members get it as their church's own round
+// for that day, BESIDE the global drop (0128) — never in place of it.
+//
+// Two tiers meet in this form (0127). Everything above is the BASE church
+// leader tier. The content engine — "✨ Draft five questions", steered by a
+// focus line or a sermon transcript, and "Draft a week from a sermon" (0129) —
+// exists only when the backend carries `draft`/`draftWeek`, i.e. the church
+// holds the Content Generation package; without it the form draws a locked
+// card in its place (`generationLocked`). Anything the engine drafted is saved
+// as a DRAFT, which members never see, and goes live only through an explicit
+// approve. A day typed by hand is approved by being saved, because the leader
+// wrote it.
 //
 // A pastor prepares weekly and preaches by the SERIES, so the form sits under a
 // three-week strip: twenty-one days, each marked set or not, tapping one edits
 // it, and a run of days filed under one series name is drawn as one. A day
-// nobody set quietly plays the global verse, and the strip is what makes that
+// nobody set leaves the church box empty that day, and the strip is what makes that
 // visible before it happens. After a save, `SeriesCopyPanel` carries the verse
 // through a chosen date, listing every day it would replace before it touches
 // one (nothing is replaced unless ticked).
@@ -73,18 +85,35 @@ const REASONS: Record<string, string> = {
   bad_questions: 'Each question needs a prompt, at least two different answers, the right one marked, and a line that explains it.',
   not_verified: 'This isn’t available for your church right now.',
   not_leadership: 'Only this church’s leadership can set the verse.',
+  no_addon: 'Drafting is part of the Content Generation package, which this church doesn’t have.',
+  no_draft: 'That draft was already approved or replaced — reload the day to see it.',
+  day_is_set: 'This day already has a live verse.',
+}
+
+const DRAFT_REASONS: Record<string, string> = {
+  limit: 'That’s the drafting limit for today — write these by hand, or draft again tomorrow.',
+  not_verified: 'Drafting is part of a Founding Church.',
+  no_addon: 'Drafting is part of the Content Generation package, which this church doesn’t have.',
+  bad_reference: 'Drafting starts from a verse reference — try “John 15:5” or “Psalm 23:1-3”.',
+  not_leadership: 'Only this church’s leadership can draft questions.',
+  draft_failed: 'Couldn’t draft good questions for that one — try again, or write your own.',
+  demo_library_only: 'In this demo, drafting works for verses in our library (try John 15:5). A Founding Church can draft from any passage.',
+  unavailable: 'Drafting isn’t available just now — check your connection and try again.',
 }
 
 export function TodayVerseForm({
   churchId,
   churchName,
   backend = serverVerseBackend,
+  generationLocked = false,
   onSaved,
 }: {
   churchId: string
   churchName: string
   /** Where days are read and written — the server, or memory for the demo. */
   backend?: VerseBackend
+  /** Draw the content engine as locked (base tier without the add-on). */
+  generationLocked?: boolean
   /** After a successful save, with the verse as saved. */
   onSaved?: (date: string, v: DayVerse) => void
 }) {
@@ -96,6 +125,10 @@ export function TodayVerseForm({
   const [qs, setQs] = useState<Draft[]>(() => Array.from({ length: 5 }, blank))
   const [loading, setLoading] = useState(true)
   const [existing, setExisting] = useState(false)
+  // What the loaded day IS (0127), and whether the engine filled this edit.
+  const [status, setStatus] = useState<VerseStatus | undefined>(undefined)
+  const [generatedNow, setGeneratedNow] = useState(false)
+  const [replaceArmed, setReplaceArmed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [weekStart, setWeekStart] = useState(today)
@@ -108,6 +141,10 @@ export function TodayVerseForm({
   // The copy panel closes once it has run; the verse it copied stays `saved`,
   // so "This week we're in …" is still one tap away afterwards.
   const [copied, setCopied] = useState(false)
+  // Bumped to re-read the open day after something outside the form changed it.
+  const [dayKey, setDayKey] = useState(0)
+  // A line to show once that re-read lands (the load clears messages).
+  const afterLoad = useRef<{ ok: boolean; text: string } | null>(null)
   const weekRef = useRef<WeekDay[] | null>(null)
   weekRef.current = week
 
@@ -126,7 +163,8 @@ export function TodayVerseForm({
   useEffect(() => {
     let alive = true
     setLoading(true)
-    setMsg(null)
+    setMsg(afterLoad.current)
+    afterLoad.current = null
     setSaved(null)
     setCopied(false)
     setPageLine('idle')
@@ -134,6 +172,9 @@ export function TodayVerseForm({
       if (!alive) return
       const v = r.ok ? r.data : null
       setExisting(!!v)
+      setStatus(v?.status ?? (v ? 'approved' : undefined))
+      setGeneratedNow(false)
+      setReplaceArmed(false)
       setReference(v?.reference ?? '')
       setText(v?.text ?? '')
       setQs(v ? v.questions.map(toDraft) : Array.from({ length: 5 }, blank))
@@ -145,7 +186,7 @@ export function TodayVerseForm({
       setLoading(false)
     })
     return () => { alive = false }
-  }, [churchId, date, backend])
+  }, [churchId, date, backend, dayKey])
 
   const library = useMemo(() => (parseReference(reference) ? verseFromReference(reference.trim()) : null), [reference])
 
@@ -156,44 +197,161 @@ export function TodayVerseForm({
     setQs(library.questions.slice(0, 5).map(toDraft))
   }
 
+  // "✨ Draft questions" — five questions written from the passage by the
+  // server (`church-draft`, 0122) for ANY reference, not only the library's.
+  // It fills the form and saves nothing. Over questions the pastor already
+  // typed, the first tap only warns; the second replaces.
+  const [drafting, setDrafting] = useState(false)
+  const [armed, setArmed] = useState(false)
+  const [steerOpen, setSteerOpen] = useState(false)
+  const [guidance, setGuidance] = useState('')
+  const [transcript, setTranscript] = useState('')
+  const typed = qs.some((q) => q.prompt.trim() || q.teach.trim() || q.options.some((o) => o.trim()))
+  const canDraft = !!backend.draft && !!parseReference(reference) && text.trim().length >= 3
+  const draft = async () => {
+    if (!backend.draft || !canDraft) return
+    if (typed && !armed) { setArmed(true); return }
+    setArmed(false)
+    setMsg(null)
+    setDrafting(true)
+    const r = await backend.draft(churchId, reference.trim(), text.trim(), { guidance, transcript })
+    setDrafting(false)
+    if (!r.ok) return setMsg({ ok: false, text: DRAFT_REASONS[r.reason] ?? DRAFT_REASONS.unavailable })
+    juice.select?.()
+    setQs(r.data.questions.map(toDraft))
+    // A suggested note fills an EMPTY note only — never over the pastor's own.
+    if (r.data.note && !note.trim()) setNote(r.data.note)
+    setGeneratedNow(true)
+    setMsg({ ok: true, text: 'Drafted. Nothing is live yet — read each one, change anything that isn’t how you’d say it, then save it as a draft and approve it.' })
+  }
+
   const setQ = (i: number, patch: Partial<Draft>) => setQs((all) => all.map((q, j) => (j === i ? { ...q, ...patch } : q)))
   const setOpt = (i: number, k: number, v: string) =>
     setQs((all) => all.map((q, j) => (j === i ? { ...q, options: q.options.map((o, m) => (m === k ? v : o)) } : q)))
 
-  const save = async () => {
+  // The verse as the form holds it, or null with the reason on screen.
+  const build = (): DayVerse | null => {
     setMsg(null)
-    if (!parseReference(reference)) return setMsg({ ok: false, text: REASONS.bad_reference })
-    if (!text.trim()) return setMsg({ ok: false, text: REASONS.bad_text })
+    if (!parseReference(reference)) { setMsg({ ok: false, text: REASONS.bad_reference }); return null }
+    if (!text.trim()) { setMsg({ ok: false, text: REASONS.bad_text }); return null }
     const built = qs.map(fromDraft)
     const bad = built.findIndex((q) => !q || !cleanQuestions([q, q, q, q, q]))
-    if (bad >= 0) return setMsg({ ok: false, text: `Question ${bad + 1} isn’t finished. ${REASONS.bad_questions}` })
-
-    setBusy(true)
-    const v: DayVerse = {
+    if (bad >= 0) { setMsg({ ok: false, text: `Question ${bad + 1} isn’t finished. ${REASONS.bad_questions}` }); return null }
+    return {
       reference: reference.trim(),
       text: text.trim(),
       questions: built as Question[],
       series: cleanLine(series, SERIES_MAX),
       note: cleanLine(note, NOTE_MAX),
     }
-    const r = await backend.save(churchId, date, v)
-    setBusy(false)
-    if (!r.ok) return setMsg({ ok: false, text: REASONS[r.reason] ?? 'That didn’t save — check your connection and try again.' })
+  }
+
+  // After anything that left the day LIVE: the copy panel, the page line, the strip.
+  const landed = (v: DayVerse, extrasLost: boolean, lead: string) => {
     juice.select?.()
     setExisting(true)
+    setStatus(date <= today ? 'published' : 'approved')
+    setGeneratedNow(false)
+    setReplaceArmed(false)
     setSaved(v)
     setCopied(false)
     setPageLine('idle')
     onSaved?.(date, v)
     void loadWeek()
-    const lost = r.data?.extras === false && (v.series || v.note)
     setMsg({
-      ok: !lost,
-      text: (date === today
-        ? `Saved. It’s today’s drop for ${churchName}’s members — anyone who already played keeps their run.`
-        : `Saved for ${pretty(date)}.`) + (lost ? ' The series name and note didn’t save — try again in a moment.' : ''),
+      ok: !extrasLost,
+      text: lead + (extrasLost ? ' The series name and note didn’t save — try again in a moment.' : ''),
     })
   }
+  const liveLine = () =>
+    date === today
+      ? `It’s live now for ${churchName}’s members, next to today’s drop — anyone who already played it keeps their run.`
+      : `It goes to ${churchName}’s members on ${pretty(date)}.`
+
+  // A day typed by hand: saving it IS the approval (`set_church_verse`).
+  const save = async () => {
+    const v = build()
+    if (!v) return
+    setBusy(true)
+    const r = await backend.save(churchId, date, v)
+    setBusy(false)
+    if (!r.ok) return setMsg({ ok: false, text: REASONS[r.reason] ?? 'That didn’t save — check your connection and try again.' })
+    const lost = r.data?.extras === false && !!(v.series || v.note)
+    landed(v, lost, `Saved. ${liveLine()}`)
+  }
+
+  // Replacing a LIVE day with a draft takes it off members' screens until the
+  // draft is approved, so the first tap only says so.
+  const liveDay = existing && status !== 'draft'
+  const needsReplace = liveDay && generatedNow
+  const armReplace = (): boolean => {
+    if (needsReplace && !replaceArmed) {
+      setReplaceArmed(true)
+      setMsg({ ok: false, text: `${pretty(date)} already has a live verse. Saving this draft takes it off your members’ screens until you approve — tap again to go ahead.` })
+      return false
+    }
+    return true
+  }
+
+  // Generated content, saved for review. Members can't see a draft.
+  const saveAsDraft = async () => {
+    if (!backend.saveDraft) return
+    const v = build()
+    if (!v || !armReplace()) return
+    setBusy(true)
+    const r = await backend.saveDraft(churchId, date, v, needsReplace)
+    setBusy(false)
+    if (!r.ok) return setMsg({ ok: false, text: REASONS[r.reason] ?? 'That didn’t save — check your connection and try again.' })
+    juice.select?.()
+    setExisting(true)
+    setStatus('draft')
+    setGeneratedNow(false)
+    setReplaceArmed(false)
+    setSaved(null)
+    void loadWeek()
+    setMsg({ ok: true, text: `Saved as a draft. ${churchName}’s members can’t see it until you approve it.` })
+  }
+
+  // The explicit approval. With the add-on, the edits are saved as the draft
+  // first so the record keeps "generated"; without it (a lapsed add-on, an old
+  // draft), the leader's own save approves it.
+  const approve = async () => {
+    const v = build()
+    if (!v || !armReplace()) return
+    setBusy(true)
+    let r: { ok: true; data: unknown } | { ok: false; reason: string }
+    let lost = false
+    if (backend.saveDraft && backend.approve) {
+      const d = await backend.saveDraft(churchId, date, v, needsReplace || liveDay)
+      r = d.ok ? await backend.approve(churchId, date) : d
+    } else {
+      const s2 = await backend.save(churchId, date, v)
+      r = s2
+      lost = s2.ok && s2.data?.extras === false && !!(v.series || v.note)
+    }
+    setBusy(false)
+    if (!r.ok) return setMsg({ ok: false, text: REASONS[r.reason] ?? 'That didn’t go through — check your connection and try again.' })
+    landed(v, lost, `Approved. ${liveLine()}`)
+  }
+
+  // Throw the open draft away (0129). The day reads as empty again.
+  const [discardArmed, setDiscardArmed] = useState(false)
+  const discard = async () => {
+    if (!backend.discard) return
+    if (!discardArmed) { setDiscardArmed(true); return }
+    setDiscardArmed(false)
+    setBusy(true)
+    const r = await backend.discard(churchId, date)
+    setBusy(false)
+    if (!r.ok) return setMsg({ ok: false, text: REASONS[r.reason] ?? 'That didn’t go through — check your connection and try again.' })
+    juice.select?.()
+    void loadWeek()
+    afterLoad.current = { ok: true, text: `Discarded the draft for ${pretty(date)}. That day is empty again.` }
+    setDayKey((k) => k + 1)
+  }
+
+  // Draft flow: the engine filled this edit, or the day on file is a draft.
+  const draftFlow = generatedNow || status === 'draft'
 
   const putOnPage = async () => {
     if (!saved?.series || !backend.setThisWeek) return
@@ -205,6 +363,15 @@ export function TodayVerseForm({
 
   return (
     <div style={{ display: 'grid', gap: 12 }}>
+      {backend.draftWeek && (
+        <StudyTopicWeek
+          churchId={churchId}
+          backend={backend}
+          today={today}
+          onDrafted={(ds) => { void loadWeek(); pick(ds[0]); setDayKey((k) => k + 1) }}
+          onChanged={() => { void loadWeek(); setDayKey((k) => k + 1) }}
+        />
+      )}
       <WeekStrip
         week={week}
         error={weekErr}
@@ -218,6 +385,23 @@ export function TodayVerseForm({
         onRetry={() => void loadWeek()}
       />
 
+      {backend.draftWeek && (
+        <WeekDraftPanel
+          churchId={churchId}
+          backend={backend}
+          today={today}
+          onDrafted={(ds) => { void loadWeek(); pick(ds[0]); setDayKey((k) => k + 1) }}
+        />
+      )}
+      <DraftReview
+        churchId={churchId}
+        backend={backend}
+        week={week}
+        selected={date}
+        onOpen={pick}
+        onChanged={() => { void loadWeek(); setDayKey((k) => k + 1) }}
+      />
+
       <label style={labelStyle}>
         Day
         <input type="date" value={date} min={today} max={addDays(today, 366)} onChange={(e) => e.target.value && pick(e.target.value)} />
@@ -225,9 +409,11 @@ export function TodayVerseForm({
       <p className="faint" style={{ margin: '-4px 0 0', fontSize: 11.5, lineHeight: 1.45 }}>
         {loading
           ? 'Checking that day…'
-          : existing
-            ? 'A verse is set for this day — saving replaces it.'
-            : 'Nothing set — your members get the same verse as everyone else that day.'}
+          : status === 'draft'
+            ? 'A DRAFT is saved for this day — your members can’t see it until you approve it.'
+            : existing
+              ? 'A verse is set for this day — saving replaces it.'
+              : 'Nothing set — your members just have the everyday verse that day.'}
       </p>
 
       <label style={labelStyle}>
@@ -251,6 +437,48 @@ export function TodayVerseForm({
         The verse
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={1000} placeholder="I am the vine; you are the branches…" style={{ resize: 'vertical' }} />
       </label>
+
+      {backend.draft && (
+        <div style={{ display: 'grid', gap: 6 }}>
+          <button
+            className="pill"
+            onClick={draft}
+            disabled={!canDraft || drafting}
+            style={{ justifySelf: 'start', fontSize: 12.5, fontWeight: 800, opacity: canDraft ? 1 : 0.55 }}
+          >
+            {drafting ? 'Drafting five questions…' : armed ? 'Tap again to replace your questions' : '✨ Draft five questions from this passage'}
+          </button>
+          <button
+            className="faint"
+            onClick={() => setSteerOpen((o) => !o)}
+            aria-expanded={steerOpen}
+            style={{ justifySelf: 'start', padding: 0, fontSize: 12, fontWeight: 700, cursor: 'pointer', color: 'var(--ink-dim)' }}
+          >
+            {steerOpen ? '− Hide focus and sermon notes' : '+ Add a focus or sermon notes (optional)'}
+          </button>
+          {steerOpen && (
+            <div style={{ display: 'grid', gap: 8 }}>
+              <label style={labelStyle}>
+                What to focus on
+                <input value={guidance} onChange={(e) => setGuidance(e.target.value)} maxLength={GUIDANCE_MAX} placeholder="Abiding when life is busy" />
+              </label>
+              <label style={labelStyle}>
+                Sermon notes or a voice-memo transcript
+                <textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} rows={4} maxLength={TRANSCRIPT_MAX} placeholder="Paste your notes, or the transcript of a voice memo…" style={{ resize: 'vertical' }} />
+              </label>
+              <span className="faint" style={{ fontSize: 11.5, lineHeight: 1.4 }}>
+                These only steer the emphasis and the suggested note. The questions are still about {parseReference(reference) ? reference.trim() : 'the passage above'} and nothing else.
+              </span>
+            </div>
+          )}
+          <span className="faint" style={{ fontSize: 11.5, lineHeight: 1.4 }}>
+            {canDraft
+              ? 'A first draft to edit. It’s saved as a draft your members can’t see until you approve it.'
+              : 'Add the reference and the words of the verse first — drafting always starts from a passage.'}
+          </span>
+        </div>
+      )}
+      {!backend.draft && generationLocked && <GenerationLocked />}
 
       <label style={labelStyle}>
         Series (optional)
@@ -322,9 +550,30 @@ export function TodayVerseForm({
           onDone={(t) => { setCopied(true); setMsg({ ok: true, text: `${t} Tap any day to change it.` }); void loadWeek() }}
         />
       )}
-      <Button variant="gold" full disabled={busy || loading} onClick={save}>
-        {busy ? 'Saving…' : date === today ? 'Set today’s verse' : `Set the verse for ${pretty(date)}`}
-      </Button>
+      {draftFlow ? (
+        <div style={{ display: 'grid', gap: 8 }}>
+          <p className="faint" style={{ margin: 0, fontSize: 11.5, lineHeight: 1.45 }}>
+            Drafted content needs your approval before {churchName}’s members see it.
+          </p>
+          {backend.saveDraft && (
+            <Button variant="secondary" full disabled={busy || loading} onClick={saveAsDraft}>
+              {busy ? 'Saving…' : 'Save as draft'}
+            </Button>
+          )}
+          <Button variant="gold" full disabled={busy || loading} onClick={approve}>
+            {busy ? 'Saving…' : date === today ? 'Approve for today' : `Approve for ${pretty(date)}`}
+          </Button>
+          {status === 'draft' && backend.discard && (
+            <button className="pill" disabled={busy || loading} onClick={discard} style={{ justifySelf: 'center', fontSize: 12.5 }}>
+              {discardArmed ? 'Tap again to discard this draft' : 'Discard this draft'}
+            </button>
+          )}
+        </div>
+      ) : (
+        <Button variant="gold" full disabled={busy || loading} onClick={save}>
+          {busy ? 'Saving…' : date === today ? 'Set today’s verse' : `Set the verse for ${pretty(date)}`}
+        </Button>
+      )}
     </div>
   )
 }
@@ -343,6 +592,7 @@ function WeekStrip(props: {
 }) {
   const { week, error, selected, today } = props
   const unset = week ? week.filter((w) => !w.verse).length : 0
+  const drafts = week ? week.filter((w) => w.verse?.status === 'draft').length : 0
   const runs = week ? seriesRuns(week) : []
   return (
     <div style={{ display: 'grid', gap: 8 }}>
@@ -360,6 +610,7 @@ function WeekStrip(props: {
           {(week ?? Array.from({ length: WINDOW }, () => null)).map((w, i) => {
             if (!w) return <div key={i} className="skeleton" style={{ height: 58, borderRadius: 10 }} />
             const on = w.date === selected
+            const isDraft = w.verse?.status === 'draft'
             const [y, m, d] = w.date.split('-').map(Number)
             const day = new Date(y, m - 1, d)
             return (
@@ -367,11 +618,13 @@ function WeekStrip(props: {
                 key={w.date}
                 onClick={() => props.onPick(w.date)}
                 aria-pressed={on}
-                aria-label={`${day.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}: ${w.verse ? `${w.verse.reference}${w.verse.series ? `, ${w.verse.series}` : ''}` : 'not set, plays the global verse'}`}
+                aria-label={`${day.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}: ${w.verse ? `${isDraft ? 'draft, not approved: ' : ''}${w.verse.reference}${w.verse.series ? `, ${w.verse.series}` : ''}` : 'not set'}`}
                 style={{
                   minWidth: 0, padding: '6px 2px', borderRadius: 10, display: 'grid', gap: 2, justifyItems: 'center',
-                  border: `1.5px solid ${on ? 'var(--ink-dim)' : 'transparent'}`,
-                  background: w.verse ? 'var(--select)' : 'var(--card-raised)',
+                  borderWidth: 1.5,
+                  background: w.verse && !isDraft ? 'var(--select)' : 'var(--card-raised)',
+                  borderStyle: isDraft && !on ? 'dashed' : 'solid',
+                  borderColor: on ? 'var(--ink-dim)' : isDraft ? 'var(--edge)' : 'transparent',
                   // A day filed under a series wears a bar along its top, so a
                   // run reads as one stretch of the strip.
                   boxShadow: w.verse?.series ? 'inset 0 3px 0 var(--edge)' : undefined,
@@ -382,7 +635,7 @@ function WeekStrip(props: {
                   {w.date === today ? 'Today' : day.toLocaleDateString(undefined, { weekday: 'short' })}
                 </span>
                 <span style={{ fontSize: 15, fontWeight: 800 }}>{d}</span>
-                <span aria-hidden="true" style={{ fontSize: 10, color: w.verse ? 'var(--mint)' : 'var(--ink-dim)' }}>{w.verse ? (w.verse.note ? '✓✉' : '✓') : '—'}</span>
+                <span aria-hidden="true" style={{ fontSize: 10, color: w.verse && !isDraft ? 'var(--mint)' : 'var(--ink-dim)' }}>{isDraft ? '✎' : w.verse ? (w.verse.note ? '✓✉' : '✓') : '—'}</span>
               </button>
             )
           })}
@@ -399,9 +652,9 @@ function WeekStrip(props: {
       )}
       {week && (
         <p className="faint" style={{ margin: 0, fontSize: 11.5, lineHeight: 1.45 }}>
-          {unset === 0
+          {unset === 0 && drafts === 0
             ? 'Every one of these days has your verse.'
-            : `${unset} of these ${week.length} days ${unset === 1 ? 'plays' : 'play'} the global verse. ✓ marks a day with yours, ✉ one with a note, and a bar along the top a day in a series.`}
+            : `${unset} of these ${week.length} days ${unset === 1 ? 'has' : 'have'} no church verse${drafts ? `, and ${drafts} ${drafts === 1 ? 'is a draft' : 'are drafts'} waiting for approval` : ''}. ✓ marks a live day, ✎ a draft, ✉ a note, and a bar along the top a day in a series.`}
         </p>
       )}
     </div>
@@ -432,3 +685,20 @@ function pretty(iso: string): string {
 }
 
 const labelStyle: React.CSSProperties = { display: 'grid', gap: 5, fontSize: 12, fontWeight: 700, color: 'var(--ink-dim)' }
+
+// The content engine, locked: the base tier without the Content Generation
+// package. It says what the package is and that it isn't on this church's plan
+// — no price, no checkout, the same no-storefront rule as the rest of the
+// verified layer. Manual entry above is untouched.
+function GenerationLocked() {
+  return (
+    <div className="card" aria-label="Drafting assist, locked" style={{ padding: '10px 12px', display: 'grid', gap: 4, background: 'var(--card-raised)' }}>
+      <b style={{ fontSize: 12.5, fontWeight: 800 }}>🔒 Drafting assist</b>
+      <span className="faint" style={{ fontSize: 11.5, lineHeight: 1.45 }}>
+        Suggesting a whole week from what your congregation is studying, a week from one sermon, or the questions
+        and a note for a passage is the Content Generation package — an add-on this church doesn’t have. Everything
+        here still works by hand.
+      </span>
+    </div>
+  )
+}

@@ -22,6 +22,8 @@ import { useReviews } from '@/store/reviews'
 import { useSettings } from '@/store/settings'
 import { useCollection } from '@/store/collection'
 import { useDailyTrivia } from '@/store/dailyTrivia'
+import { useChurchVerse } from '@/store/churchVerse'
+import { SeriesTrail } from '@/features/church/SeriesTrail'
 import { useFirstLight } from '@/store/firstLight'
 import { useWeekly } from '@/store/weekly'
 import { useReminders } from '@/store/reminders'
@@ -253,7 +255,6 @@ export default function HomeScreen() {
         <DropBox
           played={playedToday}
           reference={today?.reference}
-          churchName={today?.church?.name}
           questionCount={today?.questions.length ?? 5}
           score={lastResult?.result.score}
           correct={lastResult?.result.correctCount}
@@ -276,6 +277,10 @@ export default function HomeScreen() {
           countdown={formatCountdown(countdown)}
           onPlay={() => navigate('/play/trivia')}
         />
+        {/* Your church's own verse, a THIRD lane — never in place of the drop
+            above (0128). Renders nothing for anybody without a verified church
+            that scheduled one today, so the tab is unchanged for them. */}
+        <ChurchVerseBox onPlay={() => navigate('/play/church')} />
       </div>
 
       {/* How many people are in this with you today, directly under the two
@@ -452,7 +457,6 @@ function BoxShell({
 function DropBox({
   played,
   reference,
-  churchName,
   questionCount,
   score,
   correct,
@@ -468,8 +472,6 @@ function DropBox({
 }: {
   played: boolean
   reference?: string
-  /** Set when a verified church's verse is today's drop for this player. */
-  churchName?: string
   questionCount: number
   score?: number
   correct?: number
@@ -497,7 +499,7 @@ function DropBox({
               somebody into it, and the two must agree. */}
           <p className="dim" style={{ marginTop: 6, fontSize: 12.5, lineHeight: 1.45, flex: 1 }}>
             {questionCount} quick questions about it, against the clock.{' '}
-            {churchName ? `Chosen by ${churchName} for its members.` : 'Same verse everyone’s playing.'}
+            Same verse everyone’s playing.
           </p>
 
           {/* The boost was a full-width row; at half width it is a toggle pill
@@ -569,6 +571,61 @@ function DropBox({
 
           <div style={{ marginTop: 10 }}>
             <Button variant="secondary" full onClick={onRecap}>Recap →</Button>
+          </div>
+        </>
+      )}
+    </BoxShell>
+  )
+}
+
+function ChurchVerseBox({ onPlay }: { onPlay: () => void }) {
+  const today = useChurchVerse((s) => s.today)
+  const series = useChurchVerse((s) => s.series)
+  const load = useChurchVerse((s) => s.load)
+  const mode = useAuth((s) => s.mode)
+
+  useEffect(() => {
+    if (mode === 'online') void load()
+  }, [mode, load])
+
+  if (!today) return null
+  const p = today.progress
+  // The series line reads the 0130 arc when there is one ("Day 3 of 5 · …"),
+  // and 0128's counts on a server without it.
+  const arc = series && series.churchId === today.churchId && series.name === today.series ? series : null
+  return (
+    <BoxShell accent="rgba(154,124,69,0.22)">
+      <span className="pill" style={PILL}>⛪ From {today.churchName}</span>
+      <h2 style={{ fontSize: 18, lineHeight: 1.2 }}>{today.reference}</h2>
+      {arc ? (
+        <p style={{ marginTop: 3 }}><SeriesTrail series={arc} compact /></p>
+      ) : today.series && (
+        <p className="faint" style={{ marginTop: 3, fontSize: 12 }}>
+          {p ? `Day ${p.soFar} of ${p.total} · ` : ''}{today.series}
+        </p>
+      )}
+      {!today.played ? (
+        <>
+          <p className="dim" style={{ marginTop: 6, fontSize: 12.5, lineHeight: 1.45, flex: 1 }}>
+            {today.note ?? 'The verse your church is reading today, with five questions from your pastor.'}
+          </p>
+          <div style={{ marginTop: 12 }}>
+            <Button variant="secondary" full onClick={onPlay}>▶ Play your church’s verse</Button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 10 }}>
+            <Stat label="Score" value={today.played.score.toLocaleString()} />
+            <Stat label="Correct" value={`${today.played.correct}/${today.played.total}`} />
+          </div>
+          {(arc ? arc.days.some((d) => d.played) : p && p.soFar > 0) && (
+            <p className="faint" style={{ marginTop: 8, fontSize: 11.5 }}>
+              You’ve played {arc ? arc.days.filter((d) => d.played).length : p!.played} {arc ? `of ${arc.days.length} days` : `of ${p!.soFar} days so far`} in this series
+            </p>
+          )}
+          <div style={{ marginTop: 10 }}>
+            <Button variant="ghost" full onClick={onPlay}>See it again</Button>
           </div>
         </>
       )}

@@ -1,4 +1,4 @@
--- 0127 — The church layer: the church's verse stops REPLACING the daily drop and
+-- 0128 — The church layer: the church's verse stops REPLACING the daily drop and
 -- becomes its own lane, members get an activity feed, and leadership gets a
 -- real dashboard (names included — the owner's call, 2026-10-21).
 --
@@ -7,11 +7,15 @@
 -- 1. SEPARATION. 0119 made a verified church's verse stand in for the global
 --    drop. It no longer does: everybody, members included, plays the same
 --    global verse, and the church's verse is a SECOND thing with its own play
---    record (`church_verse_plays`). `get_effective_verse` is kept with its
---    signature and now answers NULL, because approved iOS builds ship a baked
---    `dist` that still calls it to swap the drop — null is exactly "play the
---    global verse" to that code, so every installed build separates too, with
---    no submission. New clients read `my_church_verse` instead.
+--    record (`church_verse_plays`). `get_effective_verse` already answers NULL
+--    in production — `0127_church_content_generation` (another branch, applied
+--    first) restated it — so this migration does not touch it. New clients
+--    read `my_church_verse` instead.
+--
+--    0127 also gave `church_verses` a `status` ('draft' | 'approved') and a
+--    `visibility`. EVERY reader here skips drafts and anything not visible to
+--    the congregation, exactly as 0127's `church_verse_today` does: an
+--    unapproved draft must never reach a member, a feed or a completion %.
 --
 -- 2. NAMES FOR LEADERSHIP. 0119 withheld every per-person number from a
 --    church's leaders and floored totals at five. The owner reversed that for
@@ -64,16 +68,6 @@ revoke all on function public.church_insider(uuid) from public, anon;
 grant execute on function public.church_insider(uuid) to authenticated;
 
 -- ---------------------------------------------------------------------------
--- 1. Old builds: never swap the drop again. Same signature, always null.
--- ---------------------------------------------------------------------------
-create or replace function public.get_effective_verse(p_drop_date date)
-returns jsonb
-language sql stable security definer set search_path = public
-as $$
-  select null::jsonb;
-$$;
-
--- ---------------------------------------------------------------------------
 -- The member's church verse for a day, their own result if they played it,
 -- and how far through the day's series they are. Null when there is nothing.
 -- ---------------------------------------------------------------------------
@@ -98,7 +92,8 @@ begin
   if not found then return null; end if;
 
   select * into v_verse from public.church_verses
-   where church_id = v_church.id and drop_date = v_date;
+   where church_id = v_church.id and drop_date = v_date
+     and status <> 'draft' and visibility = 'congregation';
   if not found then return null; end if;
 
   select * into v_mine from public.church_verse_plays where user_id = uid and drop_date = v_date;
@@ -110,7 +105,8 @@ begin
       from public.church_verses cv
       left join public.church_verse_plays cvp
         on cvp.user_id = uid and cvp.drop_date = cv.drop_date and cvp.church_id = cv.church_id
-     where cv.church_id = v_church.id and cv.series = v_verse.series;
+     where cv.church_id = v_church.id and cv.series = v_verse.series
+       and cv.status <> 'draft' and cv.visibility = 'congregation';
   end if;
 
   return jsonb_build_object(
@@ -152,7 +148,9 @@ begin
     from public.profiles p join public.churches c on c.id = p.church_id and c.verified
    where p.id = uid;
   if v_church is null then return jsonb_build_object('ok', false, 'reason', 'no_church'); end if;
-  if not exists (select 1 from public.church_verses where church_id = v_church and drop_date = v_date) then
+  if not exists (select 1 from public.church_verses
+                  where church_id = v_church and drop_date = v_date
+                    and status <> 'draft' and visibility = 'congregation') then
     return jsonb_build_object('ok', false, 'reason', 'no_verse');
   end if;
   if p_total is null or p_total < 1 or p_total > 10
@@ -298,7 +296,8 @@ begin
            'church', (select count(*) from public.church_verse_plays c
                        where c.church_id = p_church_id and c.drop_date = d::date),
            'scheduled', exists (select 1 from public.church_verses cv
-                                 where cv.church_id = p_church_id and cv.drop_date = d::date))
+                                 where cv.church_id = p_church_id and cv.drop_date = d::date
+                                   and cv.status <> 'draft'))
            order by d)
     into v_days
     from generate_series(v_from, v_today, interval '1 day') d;
@@ -320,6 +319,7 @@ begin
         from public.church_verses cv
         left join public.church_verse_plays c on c.church_id = cv.church_id and c.drop_date = cv.drop_date
        where cv.church_id = p_church_id and cv.series is not null
+         and cv.status <> 'draft'
          and cv.drop_date >= v_today - 60
        group by cv.series
     ) x;
@@ -363,3 +363,5 @@ as $$
   select exists (select 1 from public.church_admins where church_id = p_church_id and user_id = p_user_id);
 $$;
 revoke all on function public.is_church_admin_of(uuid, uuid) from public, anon, authenticated;
+
+notify pgrst, 'reload schema';

@@ -36,7 +36,7 @@ export type Testament = 'OT' | 'NT'
 export interface DailyVerse {
   dropDate: string // YYYY-MM-DD
   /**
-   * Set on a run of a VERIFIED church's own verse (`/play/church`, 0127) —
+   * Set on a run of a VERIFIED church's own verse (`/play/church`, 0128) —
    * its own lane beside the global drop, never in place of it. Absent on every
    * other run (the drop, practice, battles), so nothing that does not look for
    * it can be changed by it.

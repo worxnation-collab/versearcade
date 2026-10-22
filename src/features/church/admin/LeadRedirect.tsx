@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom'
 import { Page } from '@/components/Page'
 import { useChurch } from '@/store/church'
 
-// /church/lead — "my church's leadership", for the map's Leadership row (0127).
+// /church/lead — "my church's leadership", for the map's Leadership row (0128).
 // The map's rows are static routes (scripts/check-map.mjs asserts them), and a
 // leader's dashboard lives at /church/:id/admin, so this resolves YOUR church
 // and forwards. The admin screen re-checks leadership server-side; this is a

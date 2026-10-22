@@ -28,7 +28,7 @@ export function MapSheet({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate()
   const locked = useAccountLocked()
   const isAdmin = useAuth((s) => s.profile?.isAdmin ?? false)
-  // Whether you lead your church (0127) — the Leadership row's only gate. Asked
+  // Whether you lead your church (0128) — the Leadership row's only gate. Asked
   // when the sheet opens; the row simply isn't there until the answer is yes.
   const myChurch = useChurch((s) => s.church)
   const leader = !!useChurchExtras(myChurch?.id ?? '')?.isAdmin

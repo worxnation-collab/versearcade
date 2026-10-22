@@ -4,7 +4,7 @@ import { fetchLeaderInsights, type LeaderInsights } from '@/store/churchAdmin'
 import { fetchChurchFeed, type FeedEvent } from '@/store/churchVerse'
 import { ago } from '../ChurchLife'
 
-// The leadership dashboard's three insight panels (0127): Overview, People and
+// The leadership dashboard's three insight panels (0128): Overview, People and
 // Activity. Names are shown — the owner reversed the earlier "totals only,
 // floored at five" rule for leadership (2026-10-21): "this is a tool for church
 // leaders, names are important". The server returns this only to verified

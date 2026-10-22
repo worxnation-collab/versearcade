@@ -45,7 +45,7 @@ Two consequences worth stating plainly:
 | ❌ Anything about a member | See below |
 | ❌ Another church's page | `is_church_admin(p_church_id)` is checked per call, not per session |
 
-## Leadership sees members by name (0127)
+## Leadership sees members by name (0128)
 
 **This section used to say "no per-member data, ever". The owner reversed it on
 2026-10-21: "this is a tool for church leaders, names are important."**

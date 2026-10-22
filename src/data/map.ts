@@ -68,7 +68,7 @@ export interface MapPlace {
   wall?: string
   /** Operator-only rows, hidden from everybody who lacks the server-set flag. */
   adminOnly?: boolean
-  /** Church-leadership rows (0127), shown only to someone who leads their church. */
+  /** Church-leadership rows (0128), shown only to someone who leads their church. */
   leaderOnly?: boolean
 }
 

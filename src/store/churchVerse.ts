@@ -5,9 +5,9 @@ import { useAuth } from './auth'
 import type { AvatarSpec } from '@/data/avatar'
 import type { PlayResult, Question } from '@/types'
 
-// The church's own verse, as its OWN lane (0127).
+// The church's own verse, as its OWN lane (0128).
 //
-// Until 0127 a verified church's verse stood in for the global daily drop. It
+// Until 0128 a verified church's verse stood in for the global daily drop. It
 // does not any more: everybody plays the global verse, and a member of a
 // verified church that scheduled one for today ALSO gets this — its own card
 // on the Play tab, its own run at `/play/church`, its own play record
@@ -121,7 +121,7 @@ function line(x: unknown, max: number): string | undefined {
 }
 
 // ---------------------------------------------------------------------------
-// The congregation's activity feed (0127) — members and leadership of that
+// The congregation's activity feed (0128) — members and leadership of that
 // verified church. Scores included, the owner's call.
 // ---------------------------------------------------------------------------
 export type FeedKind = 'church_verse' | 'drop' | 'gave' | 'joined' | 'notice'

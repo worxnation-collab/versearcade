@@ -12,7 +12,7 @@ import { aboutVerseSeed } from '@/data/cardAbout'
 import { parseReference } from '@/lib/bibleProgress'
 import type { DailyVerse, PlayResult } from '@/types'
 
-// /play/church — today's verse from YOUR church, as its own run (0127).
+// /play/church — today's verse from YOUR church, as its own run (0128).
 //
 // It sits beside the global drop rather than replacing it: everybody plays the
 // day's shared verse, and a member of a verified church that scheduled one

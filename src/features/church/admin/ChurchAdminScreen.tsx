@@ -17,12 +17,12 @@ import { SharePanel } from './SharePanel'
 // check is the server's (every RPC behind this screen re-checks it), so the
 // screen deciding what to draw is presentation, not protection.
 //
-// Six panels behind one row of pills, the house's TabbedSection rule (0127):
+// Six panels behind one row of pills, the house's TabbedSection rule (0128):
 //   1. Overview — members, active vs quiet, 14 days of play, series
 //      completion, streaks and the live notice.
 //   2. Schedule — the church's verse and five questions per day, series and
 //      pastor's note, copy across days (0119, 0123). Its OWN lane for members
-//      since 0127, never in place of the daily drop.
+//      since 0128, never in place of the daily drop.
 //   3. People — every member BY NAME with last play, streak and this week's
 //      plays. Names are the owner's call (2026-10-21), reversing 0119's
 //      totals-only rule for leadership.

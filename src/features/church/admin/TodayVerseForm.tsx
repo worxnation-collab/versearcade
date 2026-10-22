@@ -14,7 +14,7 @@ import { SeriesCopyPanel } from './SeriesCopyPanel'
 // date. Saving the same date again replaces it (`set_church_verse` is an
 // upsert), so the form loads whatever is already there first and edits it
 // rather than overwriting blind. Members get it as their church's own round
-// for that day, BESIDE the global drop (0127) — never in place of it.
+// for that day, BESIDE the global drop (0128) — never in place of it.
 //
 // A pastor prepares weekly and preaches by the SERIES, so the form sits under a
 // three-week strip: twenty-one days, each marked set or not, tapping one edits

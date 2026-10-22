@@ -277,7 +277,7 @@ export default function HomeScreen() {
           onPlay={() => navigate('/play/trivia')}
         />
         {/* Your church's own verse, a THIRD lane — never in place of the drop
-            above (0127). Renders nothing for anybody without a verified church
+            above (0128). Renders nothing for anybody without a verified church
             that scheduled one today, so the tab is unchanged for them. */}
         <ChurchVerseBox onPlay={() => navigate('/play/church')} />
       </div>

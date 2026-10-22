@@ -330,7 +330,7 @@ export default function App() {
           }
         />
         {/* Today's verse from your church — its own lane beside the global
-            drop, never in place of it (0127). Members of a verified church
+            drop, never in place of it (0128). Members of a verified church
             only; the screen says so plainly to anybody else. */}
         <Route
           path="/play/church"

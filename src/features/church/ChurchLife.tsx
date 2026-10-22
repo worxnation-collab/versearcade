@@ -6,7 +6,7 @@ import { useChurchVerse, fetchChurchFeed, type FeedEvent } from '@/store/churchV
 import type { ChurchExtras } from '@/types/churchPackages'
 import type { Church } from '@/types'
 
-// The member's church, as a PLACE PEOPLE ARE (0127) — the top of the Church tab
+// The member's church, as a PLACE PEOPLE ARE (0128) — the top of the Church tab
 // for a member of a VERIFIED church, between the churchyard and Give:
 //
 //   1. "You're in {name}" — the context is said once, plainly.

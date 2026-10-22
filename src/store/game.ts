@@ -55,7 +55,7 @@ export function usualPlayTime(): string | null {
   }
 }
 
-// The daily drop is ALWAYS the global verse — for church members too (0127).
+// The daily drop is ALWAYS the global verse — for church members too (0128).
 // A verified church's verse used to stand in for it (0119); it is its own lane
 // now (`store/churchVerse.ts`, `/play/church`), so the shared moment of the day
 // is the same for everybody and the church's reading is added, never swapped.

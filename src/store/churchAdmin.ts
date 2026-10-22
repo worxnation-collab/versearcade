@@ -349,7 +349,7 @@ export async function fetchParticipation(churchId: string, days = 14) {
 }
 
 // ---------------------------------------------------------------------------
-// The leadership dashboard (0127): congregation numbers WITH names — the
+// The leadership dashboard (0128): congregation numbers WITH names — the
 // owner's call, "this is a tool for church leaders, names are important".
 // Verified leadership of THIS church only; nothing here reaches a member.
 // ---------------------------------------------------------------------------

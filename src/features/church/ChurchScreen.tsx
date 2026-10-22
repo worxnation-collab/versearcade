@@ -454,7 +454,7 @@ function ChurchHome({ church }: { church: Church }) {
         </div>
       </div>
 
-      {/* The congregation as people (0127): context, the leader's notice,
+      {/* The congregation as people (0128): context, the leader's notice,
           the church verse and its series, the activity feed, and where to
           compete. Verified churches only — nothing changes for the rest. */}
       <ChurchLife church={church} extras={extras} />

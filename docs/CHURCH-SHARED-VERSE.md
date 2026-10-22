@@ -22,7 +22,7 @@ the same pattern skins and promotions follow.
     dropped.
   - Dates run from yesterday to a year ahead.
   - Saving the same day twice replaces the first save.
-- **Since 0127 the church verse is its OWN lane, never the daily drop.**
+- **Since 0128 the church verse is its OWN lane, never the daily drop.**
   Everybody, members included, plays the global verse. A member of a verified
   church that set one for today also gets:
   - `my_church_verse(date)` — the verse, their own result, and their progress
@@ -115,7 +115,7 @@ configured Supabase URL: saving, copying, replacing and the page line made
 page-load reads (`content_catalog`, `list_buddies`, `list_buddy_requests`).
 They are identical on the commit before this change.
 
-## The congregation's numbers (0127: names included)
+## The congregation's numbers (0128: names included)
 
 `church_leader_insights(church, date)` replaced `get_church_participation` on the
 dashboard. It returns members, active this week, quiet, fourteen days of drop and

@@ -27,7 +27,7 @@ import { GiveLink } from '@/features/church/ChurchExtras'
 //     part only when it is TRUE today:
 //       1. who it is: the building at its real tier and skin, name, tier, city;
 //       2. (today's church verse moved OUT of this card to its own box beside
-//          the drop and the trivia — `ChurchVerseBox`, 0127 — because it is
+//          the drop and the trivia — `ChurchVerseBox`, 0128 — because it is
 //          a thing to PLAY, not a line to read);
 //       3. the church's one live notice (`set_church_announcement` keeps one),
 //          with its last day when it has one, dismissible per notice;

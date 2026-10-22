@@ -36,7 +36,9 @@
 // item on the SAME subscription, so one cancellation ends both.
 //
 // Secrets (Supabase → Edge Functions → Secrets):
-//   STRIPE_SECRET_KEY            sk_live_… (or sk_test_…)
+//   STRIPE_SECRET_KEY            a RESTRICTED rk_live_… key (Customers, Subscriptions,
+//     Checkout Sessions: write), or Vault via stripe_church_secret_key() (0133),
+//     which is where it is
 //   STRIPE_CHURCH_WEBHOOK_SECRET whsec_… of webhook we_1UTB3nHlxD9PZQmbjy4PiBb9,
 //     or Vault via stripe_church_webhook_secret() (0132), which is where it is
 //     (pinned to API version 2024-06-20, the version STRIPE_VERSION reads)
@@ -47,7 +49,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const STRIPE_KEY = Deno.env.get('STRIPE_SECRET_KEY') ?? ''
+let STRIPE_KEY = Deno.env.get('STRIPE_SECRET_KEY') ?? ''
 let WEBHOOK_SECRET = Deno.env.get('STRIPE_CHURCH_WEBHOOK_SECRET') ?? ''
 // The live price ids (created 2026-10-22: "Verified Church" $29/mo + $290/yr,
 // "Content Generation (church add-on)" $19/mo + $190/yr). A price id is not a
@@ -237,9 +239,15 @@ async function invoice(link: Linked, interval: 'month' | 'year', addon: boolean,
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
+  // Both secrets live in Vault (0132, 0133); a function secret of the same
+  // name wins. Read once per worker, not per request.
   if (!WEBHOOK_SECRET) {
     const { data } = await admin.rpc('stripe_church_webhook_secret')
     WEBHOOK_SECRET = typeof data === 'string' ? data : ''
+  }
+  if (!STRIPE_KEY) {
+    const { data } = await admin.rpc('stripe_church_secret_key')
+    STRIPE_KEY = typeof data === 'string' ? data : ''
   }
   if (!STRIPE_KEY || !WEBHOOK_SECRET || !PRICES.base.month || !PRICES.base.year || !PRICES.addon.month || !PRICES.addon.year) {
     return json({ error: 'billing is not configured' }, 503)

@@ -3,7 +3,7 @@ import { useJuice } from '@/juice/useJuice'
 import { pickableTemplates, templateFor, type AssetKind } from '@/data/churchAssetTemplates'
 import { matchesSource, useChurchAssetsAdmin, type AssetSource } from '@/store/churchAssets'
 import { ChurchAssetCard } from '../ChurchAssetCard'
-import { assetFilename, renderAssetPng } from '@/lib/churchAssetExport'
+import { assetFilename, renderAssetPng, type ExportFormat } from '@/lib/churchAssetExport'
 import { saveImage, shareImage } from '@/lib/postcard'
 import { isNativeApp } from '@/lib/appStore'
 import type { ChurchAsset } from '@/store/churchAssets'
@@ -206,18 +206,19 @@ function ExportRow({ asset }: { asset: ChurchAsset }) {
   const juice = useJuice()
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null)
+  const [format, setFormat] = useState<ExportFormat>('post')
   const canShareFiles = isNativeApp() || (typeof navigator !== 'undefined' && !!navigator.share)
 
   const go = async (how: 'share' | 'save') => {
     juice.select?.()
     setBusy(true)
     setNote(null)
-    const blob = await renderAssetPng(asset.kind, asset.templateId, asset.payload)
+    const blob = await renderAssetPng(asset.kind, asset.templateId, asset.payload, format)
     if (!blob) {
       setBusy(false)
       return setNote({ ok: false, text: 'Couldn’t make the image on this device. Try again, or from another browser.' })
     }
-    const name = assetFilename(asset.kind, asset.payload)
+    const name = `${assetFilename(asset.kind, asset.payload)}${format === 'story' ? '-story' : ''}`
     const church = typeof asset.payload.church_name === 'string' ? asset.payload.church_name : 'Our church'
     const r = how === 'save' ? saveImage(blob, name) : await shareImage(blob, { filename: name, title: church, text: '' })
     setBusy(false)
@@ -227,7 +228,20 @@ function ExportRow({ asset }: { asset: ChurchAsset }) {
 
   return (
     <div style={{ display: 'grid', gap: 6, borderTop: '1px solid var(--edge)', paddingTop: 8 }}>
-      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-dim)' }}>Post it</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-dim)', marginRight: 2 }}>Post it</span>
+        {(['post', 'story'] as const).map((f) => (
+          <button
+            key={f}
+            className="pill"
+            aria-pressed={format === f}
+            onClick={() => { setFormat(f); setNote(null) }}
+            style={{ fontSize: 11.5, padding: '3px 10px', ...(format === f ? { background: 'var(--select)', color: 'var(--ink)' } : {}) }}
+          >
+            {f === 'post' ? `Post · ${templateFor(asset.templateId, asset.kind).aspect.join(':')}` : 'Story · 9:16'}
+          </button>
+        ))}
+      </div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {canShareFiles && (
           <button className="pill" disabled={busy} onClick={() => void go('share')} style={{ fontWeight: 800 }}>
@@ -242,7 +256,7 @@ function ExportRow({ asset }: { asset: ChurchAsset }) {
       </div>
       <span className="faint" style={{ fontSize: 11, lineHeight: 1.4 }}>
         {note ? <span style={{ color: note.ok ? 'var(--mint)' : 'var(--coral)' }}>{note.text}</span>
-          : 'A full-size image for Instagram, Facebook or your slides. Posting it is up to you — in the app it stays with your congregation.'}
+          : format === 'story' ? 'Sized for Instagram and Facebook Stories, with the card clear of the parts the app covers.' : 'A full-size image for Instagram, Facebook or your slides. Posting it is up to you — in the app it stays with your congregation.'}
       </span>
     </div>
   )

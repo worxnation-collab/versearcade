@@ -96,7 +96,7 @@ export const ASSET_TEMPLATES: AssetTemplate[] = [
     background: { color: '#2a1d22', gradient: 'linear-gradient(160deg, #3a2730 0%, #1c1317 100%)' },
     ink: '#fbf3e6', accent: '#e9c46a', fonts: { serif: SERIF },
     slots: {
-      eyebrow: { x: 8, y: 7, w: 84, h: 8, size: 3.4, uppercase: true, tracking: 0.14, weight: 800, color: '#e9c46a' },
+      eyebrow: { x: 8, y: 7, w: 84, h: 8, size: 3.4, uppercase: true, tracking: 0.14, weight: 800, color: '#e9c46a', maxLines: 1 },
       body: { x: 8, y: 20, w: 84, h: 54, size: 7, minScale: 0.5, font: 'serif', valign: 'middle', maxLines: 12 },
       reference: { x: 8, y: 77, w: 84, h: 7, size: 4.4, weight: 800, color: '#e9c46a' },
       footer: { x: 8, y: 88, w: 84, h: 6, size: 3, color: '#cbb9a8' },
@@ -107,7 +107,7 @@ export const ASSET_TEMPLATES: AssetTemplate[] = [
     background: { color: '#f6efe2', gradient: 'linear-gradient(180deg, #fbf6ec 0%, #efe3cc 100%)' },
     ink: '#2b2118', accent: '#9a6b2f', fonts: { serif: SERIF },
     slots: {
-      eyebrow: { x: 10, y: 8, w: 80, h: 8, size: 3.4, uppercase: true, tracking: 0.14, weight: 800, align: 'center', color: '#9a6b2f' },
+      eyebrow: { x: 10, y: 8, w: 80, h: 8, size: 3.4, uppercase: true, tracking: 0.14, weight: 800, align: 'center', color: '#9a6b2f', maxLines: 1 },
       body: { x: 10, y: 20, w: 80, h: 54, size: 7, minScale: 0.5, font: 'serif', italic: true, align: 'center', valign: 'middle', maxLines: 12 },
       reference: { x: 10, y: 77, w: 80, h: 7, size: 4.4, weight: 800, align: 'center', color: '#9a6b2f' },
       footer: { x: 10, y: 88, w: 80, h: 6, size: 3, align: 'center', color: '#7a6650' },
@@ -118,7 +118,7 @@ export const ASSET_TEMPLATES: AssetTemplate[] = [
     background: { color: '#1f2a2e', gradient: 'linear-gradient(120deg, #24363b 0%, #141c1f 100%)' },
     ink: '#f2f7f6', accent: '#7fd1c7',
     slots: {
-      eyebrow: { x: 7, y: 12, w: 86, h: 9, size: 2.6, uppercase: true, tracking: 0.16, weight: 800, color: '#7fd1c7' },
+      eyebrow: { x: 7, y: 12, w: 86, h: 9, size: 2.6, uppercase: true, tracking: 0.16, weight: 800, color: '#7fd1c7', maxLines: 1 },
       title: { x: 7, y: 24, w: 86, h: 34, size: 8, minScale: 0.55, font: 'display', weight: 800, valign: 'middle', maxLines: 2 },
       body: { x: 7, y: 62, w: 86, h: 10, size: 3, color: '#cfe3e0' },
       reference: { x: 7, y: 76, w: 86, h: 10, size: 2.6, color: '#9fbdb8', maxLines: 1 },
@@ -129,7 +129,7 @@ export const ASSET_TEMPLATES: AssetTemplate[] = [
     background: { color: '#e9c46a', gradient: 'linear-gradient(135deg, #f1d28a 0%, #d9a441 100%)' },
     ink: '#2a1a08', accent: '#6b3f12',
     slots: {
-      eyebrow: { x: 8, y: 12, w: 84, h: 9, size: 2.6, uppercase: true, tracking: 0.16, weight: 800, align: 'center', color: '#6b3f12' },
+      eyebrow: { x: 8, y: 12, w: 84, h: 9, size: 2.6, uppercase: true, tracking: 0.16, weight: 800, align: 'center', color: '#6b3f12', maxLines: 1 },
       title: { x: 8, y: 25, w: 84, h: 34, size: 8.5, minScale: 0.55, font: 'display', weight: 900, align: 'center', valign: 'middle', maxLines: 2 },
       body: { x: 8, y: 63, w: 84, h: 10, size: 3, align: 'center' },
       reference: { x: 8, y: 77, w: 84, h: 10, size: 2.6, align: 'center', color: '#5a3a14', maxLines: 1 },
@@ -140,7 +140,7 @@ export const ASSET_TEMPLATES: AssetTemplate[] = [
     background: { color: '#2b2433', gradient: 'linear-gradient(150deg, #362c41 0%, #1d1823 100%)' },
     ink: '#f7f2fb', accent: '#c7a6ff',
     slots: {
-      eyebrow: { x: 7, y: 10, w: 86, h: 9, size: 2.6, uppercase: true, tracking: 0.16, weight: 800, color: '#c7a6ff' },
+      eyebrow: { x: 7, y: 10, w: 86, h: 9, size: 2.6, uppercase: true, tracking: 0.16, weight: 800, color: '#c7a6ff', maxLines: 1 },
       body: { x: 7, y: 22, w: 86, h: 56, size: 5, minScale: 0.55, weight: 700, valign: 'middle', maxLines: 6 },
       footer: { x: 7, y: 82, w: 86, h: 8, size: 2.4, color: '#bcb0c9' },
     },
@@ -150,7 +150,7 @@ export const ASSET_TEMPLATES: AssetTemplate[] = [
     background: { color: '#f4f1ea' },
     ink: '#24201a', accent: '#a0522d', fonts: { serif: SERIF },
     slots: {
-      eyebrow: { x: 8, y: 10, w: 84, h: 9, size: 2.6, uppercase: true, tracking: 0.16, weight: 800, align: 'center', color: '#a0522d' },
+      eyebrow: { x: 8, y: 10, w: 84, h: 9, size: 2.6, uppercase: true, tracking: 0.16, weight: 800, align: 'center', color: '#a0522d', maxLines: 1 },
       body: { x: 8, y: 22, w: 84, h: 56, size: 5, minScale: 0.55, font: 'serif', align: 'center', valign: 'middle', maxLines: 6 },
       footer: { x: 8, y: 82, w: 84, h: 8, size: 2.4, align: 'center', color: '#7a6a58' },
     },
@@ -219,7 +219,16 @@ export function assetSlots(kind: AssetKind, p: AssetPayload): Partial<Record<Slo
       reference: refs.slice(0, 3).join(' · '),
     }
   }
-  return { eyebrow: 'From your church’s leaders', body: s('message'), footer: church }
+  // Named, not "your church's leaders": the same card is read by a member in
+  // the app and by a stranger on Instagram once a leader exports it, and the
+  // church's own name reads right to both.
+  return { eyebrow: church ? `From ${church}` : 'From our church', body: s('message'), footer: postedOn(s('posted_at')) }
+}
+
+/** "Posted Oct 22" from the announcement's timestamp, in the reader's own day. */
+function postedOn(iso: string): string {
+  const t = Date.parse(iso)
+  return Number.isFinite(t) ? `Posted ${new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : ''
 }
 
 function formatDate(iso: string): string {

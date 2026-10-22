@@ -23,7 +23,7 @@ import { assetSlots, slotFamily, slotScale, SLOT_LINE_HEIGHT, templateFor, type 
 // No storage, no server: the PNG exists only in the leader's browser until they
 // share or save it. Square corners, because a social network draws its own.
 
-/** Long edge of the export: Instagram's 1080 for a portrait post, 1920 for a 16:9. */
+/** The card's own size: Instagram's 1080 wide for a portrait post, 1920 for a 16:9. */
 function exportSize(t: AssetTemplate): { w: number; h: number } {
   const [aw, ah] = t.aspect
   const w = aw >= ah ? 1920 : 1080
@@ -179,41 +179,103 @@ function drawSlot(ctx: CanvasRenderingContext2D, t: AssetTemplate, box: AssetSlo
   ctx.restore()
 }
 
+/** Paint a template's background (colour, gradient, image + overlay) across a w×h canvas. */
+async function paintBackground(ctx: CanvasRenderingContext2D, t: AssetTemplate, w: number, h: number) {
+  ctx.fillStyle = t.background.color
+  ctx.fillRect(0, 0, w, h)
+  if (t.background.gradient) fillCss(ctx, t.background.gradient, w, h)
+  if (t.background.image) {
+    const img = await loadImage(t.background.image)
+    if (img) {
+      drawCover(ctx, img, w, h)
+      if (t.background.overlay) fillCss(ctx, t.background.overlay, w, h)
+    }
+  }
+}
+
+/** The card itself, at its own aspect, on a canvas of its own. */
+async function drawCard(kind: AssetKind, templateId: string, payload: AssetPayload): Promise<HTMLCanvasElement | null> {
+  const t = templateFor(templateId, kind)
+  const words = assetSlots(kind, payload)
+  const { w: W, h: H } = exportSize(t)
+  const canvas = document.createElement('canvas')
+  canvas.width = W
+  canvas.height = H
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return null
+  await paintBackground(ctx, t, W, H)
+  // A web font the card uses must be loaded before the canvas draws with it,
+  // or the first export comes out in the fallback face.
+  await document.fonts?.ready
+  const native = 'letterSpacing' in ctx
+  for (const name of Object.keys(t.slots) as SlotName[]) {
+    const box = t.slots[name]
+    const text = words[name]
+    if (box && text) drawSlot(ctx, t, box, text, W, H, native)
+  }
+  return canvas
+}
+
+// A STORY is the card, unchanged, standing on a 9:16 field of its own
+// background. The template's boxes are for its own aspect, so a story is a
+// FRAME around the card rather than a relayout of it — which is also why it
+// needs nothing from a template author. The card sits inside Instagram's Story
+// safe zone (clear of the top ~250px and bottom ~340px the app draws over),
+// with the field dimmed so the card's edge reads on a light template too.
+const STORY = { w: 1080, h: 1920, gutter: 64, safeTop: 250, safeBottom: 340, radius: 28 }
+
+async function drawStory(kind: AssetKind, templateId: string, payload: AssetPayload): Promise<HTMLCanvasElement | null> {
+  const card = await drawCard(kind, templateId, payload)
+  if (!card) return null
+  const t = templateFor(templateId, kind)
+  const canvas = document.createElement('canvas')
+  canvas.width = STORY.w
+  canvas.height = STORY.h
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return null
+  await paintBackground(ctx, t, STORY.w, STORY.h)
+  ctx.fillStyle = 'rgba(0,0,0,0.28)'
+  ctx.fillRect(0, 0, STORY.w, STORY.h)
+
+  const room = STORY.h - STORY.safeTop - STORY.safeBottom
+  let cw = STORY.w - STORY.gutter * 2
+  let ch = (cw * card.height) / card.width
+  if (ch > room) { ch = room; cw = (ch * card.width) / card.height }
+  const x = (STORY.w - cw) / 2
+  const y = STORY.safeTop + (room - ch) / 2
+
+  const shape = () => {
+    ctx.beginPath()
+    if (typeof ctx.roundRect === 'function') ctx.roundRect(x, y, cw, ch, STORY.radius)
+    else ctx.rect(x, y, cw, ch)
+  }
+  ctx.save()
+  ctx.shadowColor = 'rgba(0,0,0,0.4)'
+  ctx.shadowBlur = 48
+  ctx.shadowOffsetY = 12
+  shape()
+  ctx.fillStyle = t.background.color
+  ctx.fill()
+  ctx.restore()
+  ctx.save()
+  shape()
+  ctx.clip()
+  ctx.drawImage(card, x, y, cw, ch)
+  ctx.restore()
+  return canvas
+}
+
+/** `post`: the card at its own aspect. `story`: the card framed on a 9:16 field. */
+export type ExportFormat = 'post' | 'story'
+
 /**
  * Draw one asset to a PNG. Null when the browser can't (no canvas, a toBlob
  * failure) — the caller says "couldn't make the image", never throws a dialog.
  */
-export async function renderAssetPng(kind: AssetKind, templateId: string, payload: AssetPayload): Promise<Blob | null> {
+export async function renderAssetPng(kind: AssetKind, templateId: string, payload: AssetPayload, format: ExportFormat = 'post'): Promise<Blob | null> {
   try {
-    const t = templateFor(templateId, kind)
-    const words = assetSlots(kind, payload)
-    const { w: W, h: H } = exportSize(t)
-    const canvas = document.createElement('canvas')
-    canvas.width = W
-    canvas.height = H
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return null
-
-    ctx.fillStyle = t.background.color
-    ctx.fillRect(0, 0, W, H)
-    if (t.background.gradient) fillCss(ctx, t.background.gradient, W, H)
-    if (t.background.image) {
-      const img = await loadImage(t.background.image)
-      if (img) {
-        drawCover(ctx, img, W, H)
-        if (t.background.overlay) fillCss(ctx, t.background.overlay, W, H)
-      }
-    }
-
-    // A web font the card uses must be loaded before the canvas draws with it,
-    // or the first export comes out in the fallback face.
-    await document.fonts?.ready
-    const native = 'letterSpacing' in ctx
-    for (const name of Object.keys(t.slots) as SlotName[]) {
-      const box = t.slots[name]
-      const text = words[name]
-      if (box && text) drawSlot(ctx, t, box, text, W, H, native)
-    }
+    const canvas = format === 'story' ? await drawStory(kind, templateId, payload) : await drawCard(kind, templateId, payload)
+    if (!canvas) return null
     return await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
   } catch {
     return null

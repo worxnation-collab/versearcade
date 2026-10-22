@@ -117,8 +117,18 @@ the web, **Download PNG**. It is drawn in the leader's own browser by
 - **Congregation-only stays the default.** `visibility` is still constrained to
   `'congregation'`; nothing about the card in the app changes. Posting the PNG
   somewhere is the leader's own act, outside the app.
-- **Sizes.** A 4:5 card exports at 1080x1350 (an Instagram portrait post), a
-  16:9 card at 1920x1080. Square corners; the network draws its own.
+- **Sizes.** **Post**: the card at its own aspect, 1080x1350 for a 4:5 card
+  (an Instagram portrait post) or 1920x1080 for a 16:9 one, square corners.
+  **Story**: 1080x1920, the card unchanged and centred on a dimmed field of its
+  own background, inside the Story safe zone (clear of the top 250px and bottom
+  340px the app draws over). A story is a FRAME, not a relayout, so a template
+  needs nothing extra to support it.
+- **The notice card names the church.** Its top line is "From {church}" (it was
+  "From your church's leaders", which read wrong to a stranger) and its footer
+  is "Posted {date}". Every eyebrow is one line, so a long church name ends in
+  an ellipsis rather than a clipped second line. These are `assetSlots`
+  changes, so every existing card re-renders with them; staleness is decided
+  by the server's source words and is unaffected.
 - **Why a second renderer.** The card is HTML, and the only way to photograph
   HTML in a browser is an SVG `<foreignObject>` on a canvas. Safari taints the
   canvas for that (so `toBlob` throws), and web fonts and images inside it do

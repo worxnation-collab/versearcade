@@ -31,26 +31,38 @@
 // invoicing address) is on file now and the first charge happens by itself at
 // the base price they chose. Nobody has to ask a church for money twice.
 //
-// No price is decided here either. The four price ids come from secrets, and
+// No price is decided here either. The four price ids are named below, and
 // what each costs is set in the Stripe dashboard; the add-on is a second line
 // item on the SAME subscription, so one cancellation ends both.
 //
 // Secrets (Supabase → Edge Functions → Secrets):
 //   STRIPE_SECRET_KEY            sk_live_… (or sk_test_…)
-//   STRIPE_CHURCH_WEBHOOK_SECRET whsec_… from this endpoint's webhook in Stripe
-//   STRIPE_PRICE_BASE_MONTH / STRIPE_PRICE_BASE_YEAR
-//   STRIPE_PRICE_ADDON_MONTH / STRIPE_PRICE_ADDON_YEAR
-// Any missing ⇒ 503 and nothing is created or changed.
+//   STRIPE_CHURCH_WEBHOOK_SECRET whsec_… of webhook we_1UTB3nHlxD9PZQmbjy4PiBb9,
+//     or Vault via stripe_church_webhook_secret() (0132), which is where it is
+//     (pinned to API version 2024-06-20, the version STRIPE_VERSION reads)
+// Either missing ⇒ 503 and nothing is created or changed. STRIPE_PRICE_* may
+// override the four price ids below (for a test-mode run).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const STRIPE_KEY = Deno.env.get('STRIPE_SECRET_KEY') ?? ''
-const WEBHOOK_SECRET = Deno.env.get('STRIPE_CHURCH_WEBHOOK_SECRET') ?? ''
+let WEBHOOK_SECRET = Deno.env.get('STRIPE_CHURCH_WEBHOOK_SECRET') ?? ''
+// The live price ids (created 2026-10-22: "Verified Church" $29/mo + $290/yr,
+// "Content Generation (church add-on)" $19/mo + $190/yr). A price id is not a
+// secret, so it lives here rather than in a secret nobody can read back; an
+// env var of the same name still wins, which is how a test-mode run swaps in
+// sandbox prices.
 const PRICES = {
-  base: { month: Deno.env.get('STRIPE_PRICE_BASE_MONTH') ?? '', year: Deno.env.get('STRIPE_PRICE_BASE_YEAR') ?? '' },
-  addon: { month: Deno.env.get('STRIPE_PRICE_ADDON_MONTH') ?? '', year: Deno.env.get('STRIPE_PRICE_ADDON_YEAR') ?? '' },
+  base: {
+    month: Deno.env.get('STRIPE_PRICE_BASE_MONTH') || 'price_1UTB37HlxD9PZQmbqMEqfOkw',
+    year: Deno.env.get('STRIPE_PRICE_BASE_YEAR') || 'price_1UTB3HHlxD9PZQmbx5QN6Xa5',
+  },
+  addon: {
+    month: Deno.env.get('STRIPE_PRICE_ADDON_MONTH') || 'price_1UTB3BHlxD9PZQmbGFHjSxMP',
+    year: Deno.env.get('STRIPE_PRICE_ADDON_YEAR') || 'price_1UTB3LHlxD9PZQmb701EVjML',
+  },
 }
 const SITE = 'https://versearcade.org'
 /** The Monday after Easter Sunday 2027 (28 March), at midnight US Eastern. */
@@ -225,6 +237,10 @@ async function invoice(link: Linked, interval: 'month' | 'year', addon: boolean,
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
+  if (!WEBHOOK_SECRET) {
+    const { data } = await admin.rpc('stripe_church_webhook_secret')
+    WEBHOOK_SECRET = typeof data === 'string' ? data : ''
+  }
   if (!STRIPE_KEY || !WEBHOOK_SECRET || !PRICES.base.month || !PRICES.base.year || !PRICES.addon.month || !PRICES.addon.year) {
     return json({ error: 'billing is not configured' }, 503)
   }

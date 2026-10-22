@@ -178,6 +178,11 @@ the app carries none.
   webhook. Founding Churches verified during the pilot stay on until an
   operator turns them off or they subscribe.
 
-Secrets: `STRIPE_SECRET_KEY`, `STRIPE_CHURCH_WEBHOOK_SECRET`,
-`STRIPE_PRICE_BASE_MONTH`, `STRIPE_PRICE_BASE_YEAR`, `STRIPE_PRICE_ADDON_MONTH`,
-`STRIPE_PRICE_ADDON_YEAR`. Any missing ⇒ 503, nothing created.
+Stripe (live, created 2026-10-22): products `prod_VU9LiqvsmVNmUa` (Verified
+Church) and `prod_VU9LodsgFJ5Xir` (Content Generation), their monthly and
+annual prices named in the function, and webhook `we_1UTB3nHlxD9PZQmbjy4PiBb9`
+pinned to API version 2024-06-20. Its signing secret is in Vault
+(`stripe_church_webhook_secret()`, 0132; a `STRIPE_CHURCH_WEBHOOK_SECRET`
+function secret would win). `STRIPE_SECRET_KEY` is a function secret, ideally
+a RESTRICTED key (Customers, Subscriptions and Checkout Sessions: write).
+Either missing ⇒ 503, nothing created.

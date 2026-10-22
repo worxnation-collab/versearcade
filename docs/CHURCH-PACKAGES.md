@@ -183,6 +183,7 @@ Church) and `prod_VU9LodsgFJ5Xir` (Content Generation), their monthly and
 annual prices named in the function, and webhook `we_1UTB3nHlxD9PZQmbjy4PiBb9`
 pinned to API version 2024-06-20. Its signing secret is in Vault
 (`stripe_church_webhook_secret()`, 0132; a `STRIPE_CHURCH_WEBHOOK_SECRET`
-function secret would win). `STRIPE_SECRET_KEY` is a function secret, ideally
-a RESTRICTED key (Customers, Subscriptions and Checkout Sessions: write).
-Either missing ⇒ 503, nothing created.
+function secret would win), and so is the RESTRICTED Stripe key
+(`stripe_church_secret_key()`, 0133 — Customers, Subscriptions and Checkout
+Sessions: write; a `STRIPE_SECRET_KEY` function secret would win). Either
+missing ⇒ 503, nothing created.

@@ -10,10 +10,12 @@
 #   - On a push it deploys ONLY the functions whose folder changed in that push.
 #     A function whose repo copy has drifted from production is never redeployed
 #     as a side effect of an unrelated merge.
-#   - It only ever deploys folders that exist under supabase/functions/. The two
+#   - It only ever deploys folders that exist under supabase/functions/. Two
 #     functions that run with verify_jwt OFF (stripe-webhook, username-login)
-#     are not in the repo, so nothing here can flip them; every function that IS
-#     here runs with verify_jwt ON, which is the CLI's default.
+#     are not in the repo, so nothing here can flip them. A function that IS
+#     here runs with verify_jwt ON (the CLI's default) unless supabase/config.toml
+#     says otherwise — church-billing is listed there because Stripe calls it
+#     with no Supabase session.
 #
 # Needs one repo secret: SUPABASE_ACCESS_TOKEN (a personal access token from
 # supabase.com/dashboard/account/tokens). Without it the job fails with a line

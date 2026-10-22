@@ -153,8 +153,16 @@ window.vaVoice = {
     // Its level is the story's for the story's reason: he is speaking either
     // side of other voices, not after a reading.
     const isExchange = kind === 'exchange' || kind === 'exchange-close'
-    const own = kind === 'story' || isExchange || isReadingKind(kind)
-    const dec = await m.decodeRecording(await (await fetch(wavUrl)).blob(), own ? m.SPEECH_TARGET.story : m.SPEECH_TARGET.verse)
+    // A morning take with `place: 'open'` is a HOOK alone. Since the morning
+    // post became his hook over a synthetic reading (OPENER_FROM in make.ts),
+    // the render keeps only the half after the verse — so a take that never
+    // reads the verse is the natural shape, and hunting for one refused every
+    // hook in a hook-only sitting with "read the verse first". It parks with
+    // an empty `verse`, which is exactly what `openerOf` cuts to anyway, and
+    // at the VERSE level, which is what every hook before it was parked at.
+    const hook = kind === 'verse' && place === 'open'
+    const own = kind === 'story' || isExchange || isReadingKind(kind) || hook
+    const dec = await m.decodeRecording(await (await fetch(wavUrl)).blob(), own && !hook ? m.SPEECH_TARGET.story : m.SPEECH_TARGET.verse)
     say('parking the recording')
     await parkFile(voiceWavPath(date, kind), dec.wav, 'audio/wav')
     const v = getVerseForDate(date)

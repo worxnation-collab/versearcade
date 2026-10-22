@@ -145,3 +145,45 @@ church exists here, then plays what they wrote. It's linked from `/churches` as
   real church's numbers ever appear here.
 - **"Want this for your church?" opens `/churches` with a line about the verse
   they tried in the inquiry message**, scrolled to the form.
+
+## Billing (0131, `church-billing`)
+
+The verified tier is paid for **on the web only**: a stable per-church link
+(Admin → Churches → **Copy billing link**) opens `versearcade.org/church-billing/?t=…`,
+a static page outside the SPA that no app route links to. It carries the prices;
+the app carries none.
+
+- **Plans** — Verified Church $29/month or $290/year; Content Generation add-on
+  $19/month or $190/year, a second line item on the SAME subscription (one
+  cancellation ends both). The amounts live in Stripe; the page's copy must be
+  changed with them.
+- **Two ways to pay, one webhook.** *Card*: a Stripe Checkout Session
+  (`client_reference_id` = the church). *Invoice*: a `send_invoice`
+  subscription, due in 30 days, payable by card, ACH, bank transfer or a cheque
+  marked paid in the dashboard. Both end in `customer.subscription.*` events,
+  and those are all the webhook acts on.
+- **Founding Churches** — anyone signing up before Easter 2027 gets
+  `trial_end` = 2027-03-29 04:00 UTC (the Monday after Easter, midnight
+  Eastern). Nothing is charged until then; the first charge or invoice happens
+  by itself at the plan they chose.
+- **What a status means is decided in SQL** (`billing_apply_subscription`):
+  active / trialing / past_due ⇒ verified; canceled / unpaid /
+  incomplete_expired / paused ⇒ not, and only for the subscription on file;
+  incomplete ⇒ no change. Billing turns the add-on off only if billing turned
+  it on, so a hand-granted pilot add-on survives.
+- **The link is a token, never the church id**, so it cannot open a checkout
+  for a church it was not sent to. It is stable — the same church always gets
+  the same link.
+- **A church verified by hand with no subscription is never touched** by the
+  webhook. Founding Churches verified during the pilot stay on until an
+  operator turns them off or they subscribe.
+
+Stripe (live, created 2026-10-22): products `prod_VU9LiqvsmVNmUa` (Verified
+Church) and `prod_VU9LodsgFJ5Xir` (Content Generation), their monthly and
+annual prices named in the function, and webhook `we_1UTB3nHlxD9PZQmbjy4PiBb9`
+pinned to API version 2024-06-20. Its signing secret is in Vault
+(`stripe_church_webhook_secret()`, 0132; a `STRIPE_CHURCH_WEBHOOK_SECRET`
+function secret would win), and so is the RESTRICTED Stripe key
+(`stripe_church_secret_key()`, 0133 — Customers, Subscriptions and Checkout
+Sessions: write; a `STRIPE_SECRET_KEY` function secret would win). Either
+missing ⇒ 503, nothing created.

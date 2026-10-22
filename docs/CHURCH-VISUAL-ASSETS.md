@@ -118,7 +118,7 @@ look / Discard.
 ## The shipped art (2026-10-22)
 
 Twelve owner-supplied backgrounds, one template each, first of each kind the
-default: verse — Parchment, Stillwater, First light, Clay, Vigil; series —
+once the default: verse — Parchment, Stillwater, First light, Clay, Vigil; series —
 Meadow, Current, Ember; notice — Laurel, Blossom, Garden, Midnight. They are
 not Nano Banana renders and are deliberately NOT in `GENERATED_ART` (the
 hand-kept-table rule the road rewards and nav paintings follow), so a gen-art
@@ -143,4 +143,21 @@ and no room for a title, so it was re-composed on its own flat background
 because that background is flat; don't do it to a painted edge. The path's top
 band is the tightest box in the set and sets a long verse small; it is the one
 to avoid for a passage over ~200 characters.
+
+### The official style (2026-10-22) — the defaults
+
+Thirteen templates from the owner's "official style" set: night purple and
+gold, the app's own palette. They lead `ASSET_TEMPLATES`, so they are the
+defaults a leader sees first: **Glow** (verse), **Cosmos** (series) and
+**Cosmos** (notice — the one landscape notice, sharing the series art). With
+them: verse — Golden path, Night reading, Rays, Beam; series — Vine circle;
+notice — Night family, Night friends, Elder, Halo, Prayer. The light set above
+stays pickable; nothing was retired, so a card already made with one keeps it.
+
+Same rule as the picture cards — words never cross a face — plus two scars
+found by rendering: on Glow the verse sits ABOVE the light and the reference
+below it (light ink over the core measured luminance 178, unreadable), and on
+Golden path the footer moved off the bright path to sit under the reference.
+Vine circle's art filled its whole frame, so it is scaled into the left of the
+card on its own flat navy (measured from the corners), the Gathered trick.
 

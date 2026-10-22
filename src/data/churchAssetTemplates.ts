@@ -91,9 +91,146 @@ export interface AssetTemplate {
 const SERIF = "Georgia, 'Times New Roman', serif"
 
 export const ASSET_TEMPLATES: AssetTemplate[] = [
-  // --- Finished art (owner-supplied, public/church-assets/<id>/bg.jpg). The
-  // first of each kind is its default. Verse and notice art is 2:3 portrait and
-  // series art 3:2, so those are their aspects — the art is not cropped to fit.
+  // --- The OFFICIAL style (owner-supplied, 2026-10-22): night purple and gold,
+  // the app's own palette. These lead each kind, so they are the defaults.
+  {
+    id: 'verse_glow', kind: 'verse_card', name: 'Glow', aspect: [2, 3],
+    background: { color: '#2a1d36', image: '/church-assets/verse_glow/bg.jpg' },
+    ink: '#f5ecd9', accent: '#f0c46a', fonts: { serif: SERIF },
+    slots: {
+      eyebrow: { x: 10, y: 9, w: 80, h: 4, size: 3, uppercase: true, tracking: 0.14, weight: 800, align: 'center', color: '#f0c46a' },
+      body: { x: 10, y: 13, w: 80, h: 24, size: 5.6, minScale: 0.5, font: 'serif', italic: true, align: 'center', valign: 'middle', maxLines: 12 },
+      reference: { x: 10, y: 68, w: 80, h: 4.5, size: 3.8, weight: 800, align: 'center', color: '#f0c46a' },
+      footer: { x: 10, y: 92, w: 80, h: 3.5, size: 2.6, align: 'center', color: '#c8bde0' },
+    },
+  },
+  {
+    id: 'series_cosmos', kind: 'series_header', name: 'Cosmos', aspect: [3, 2],
+    background: { color: '#1d1140', image: '/church-assets/series_cosmos/bg.jpg' },
+    ink: '#f5ecd9', accent: '#f0c46a',
+    slots: {
+      eyebrow: { x: 15, y: 24, w: 70, h: 7, size: 2.3, uppercase: true, tracking: 0.16, weight: 800, align: 'center', color: '#f0c46a' },
+      title: { x: 15, y: 32, w: 70, h: 28, size: 7, minScale: 0.55, font: 'display', weight: 800, align: 'center', valign: 'middle', maxLines: 2 },
+      body: { x: 15, y: 62, w: 70, h: 7, size: 2.5, align: 'center', color: '#c8bde0' },
+      reference: { x: 15, y: 70, w: 70, h: 7, size: 2.2, align: 'center', color: '#f0c46a', maxLines: 1 },
+    },
+  },
+  {
+    id: 'notice_cosmos', kind: 'announcement', name: 'Cosmos', aspect: [3, 2],
+    background: { color: '#1d1140', image: '/church-assets/notice_cosmos/bg.jpg' },
+    ink: '#f5ecd9', accent: '#f0c46a', fonts: { serif: SERIF },
+    slots: {
+      eyebrow: { x: 14, y: 20, w: 72, h: 7, size: 2.3, uppercase: true, tracking: 0.16, weight: 800, align: 'center', color: '#f0c46a' },
+      body: { x: 14, y: 29, w: 72, h: 44, size: 4.2, minScale: 0.55, font: 'serif', align: 'center', valign: 'middle', maxLines: 6 },
+      footer: { x: 14, y: 76, w: 72, h: 6, size: 2.1, align: 'center', color: '#c8bde0' },
+    },
+  },
+  {
+    id: 'verse_golden_path', kind: 'verse_card', name: 'Golden path', aspect: [2, 3],
+    background: { color: '#2f2150', image: '/church-assets/verse_golden_path/bg.jpg' },
+    ink: '#f5ecd9', accent: '#f0c46a', fonts: { serif: SERIF },
+    slots: {
+      eyebrow: { x: 10, y: 8, w: 80, h: 4, size: 3, uppercase: true, tracking: 0.14, weight: 800, align: 'center', color: '#f0c46a' },
+      body: { x: 10, y: 12, w: 80, h: 25, size: 5.6, minScale: 0.5, font: 'serif', italic: true, align: 'center', valign: 'middle', maxLines: 12 },
+      reference: { x: 10, y: 38, w: 80, h: 4.5, size: 3.8, weight: 800, align: 'center', color: '#f0c46a' },
+      footer: { x: 10, y: 43, w: 80, h: 3.5, size: 2.6, align: 'center', color: '#c8bde0' },
+    },
+  },
+  {
+    id: 'verse_night_reading', kind: 'verse_card', name: 'Night reading', aspect: [2, 3],
+    background: { color: '#291a48', image: '/church-assets/verse_night_reading/bg.jpg' },
+    ink: '#f5ecd9', accent: '#f0c46a', fonts: { serif: SERIF },
+    slots: {
+      eyebrow: { x: 45, y: 23, w: 49, h: 3.5, size: 2.8, uppercase: true, tracking: 0.14, weight: 800, align: 'left', color: '#f0c46a' },
+      body: { x: 45, y: 27, w: 49, h: 21, size: 5, minScale: 0.5, font: 'serif', italic: true, align: 'left', valign: 'top', maxLines: 12 },
+      reference: { x: 45, y: 49, w: 49, h: 4, size: 3.6, weight: 800, align: 'left', color: '#f0c46a' },
+      footer: { x: 52, y: 95, w: 42, h: 3.5, size: 2.6, align: 'right', color: '#c8bde0' },
+    },
+  },
+  {
+    id: 'verse_rays', kind: 'verse_card', name: 'Rays', aspect: [2, 3],
+    background: { color: '#3e2a66', image: '/church-assets/verse_rays/bg.jpg' },
+    ink: '#f5ecd9', accent: '#f0c46a', fonts: { serif: SERIF },
+    slots: {
+      eyebrow: { x: 4, y: 44, w: 38, h: 3.5, size: 2.1, uppercase: true, tracking: 0.14, weight: 800, align: 'left', color: '#f0c46a' },
+      body: { x: 4, y: 48, w: 38, h: 30, size: 4.6, minScale: 0.5, font: 'serif', italic: true, align: 'left', valign: 'top', maxLines: 14 },
+      reference: { x: 5, y: 80, w: 36, h: 4, size: 3.4, weight: 800, align: 'left', color: '#f0c46a' },
+      footer: { x: 5, y: 95, w: 40, h: 3.5, size: 2.6, align: 'left', color: '#c8bde0' },
+    },
+  },
+  {
+    id: 'verse_beam', kind: 'verse_card', name: 'Beam', aspect: [2, 3],
+    background: { color: '#2f2445', image: '/church-assets/verse_beam/bg.jpg' },
+    ink: '#f5ecd9', accent: '#f0c46a', fonts: { serif: SERIF },
+    slots: {
+      eyebrow: { x: 54, y: 58, w: 40, h: 3.5, size: 2.6, uppercase: true, tracking: 0.14, weight: 800, align: 'left', color: '#f0c46a' },
+      body: { x: 54, y: 62, w: 40, h: 24, size: 4.6, minScale: 0.5, font: 'serif', italic: true, align: 'left', valign: 'top', maxLines: 14 },
+      reference: { x: 54, y: 88, w: 40, h: 4, size: 3.4, weight: 800, align: 'left', color: '#f0c46a' },
+      footer: { x: 54, y: 94, w: 40, h: 3.5, size: 2.6, align: 'left', color: '#c8bde0' },
+    },
+  },
+  {
+    id: 'series_vine_circle', kind: 'series_header', name: 'Vine circle', aspect: [3, 2],
+    background: { color: '#091023', image: '/church-assets/series_vine_circle/bg.jpg' },
+    ink: '#f5ecd9', accent: '#f0c46a',
+    slots: {
+      eyebrow: { x: 64, y: 26, w: 32, h: 7, size: 2.1, uppercase: true, tracking: 0.16, weight: 800, color: '#f0c46a' },
+      title: { x: 64, y: 34, w: 32, h: 28, size: 5.4, minScale: 0.55, font: 'display', weight: 800, valign: 'middle', maxLines: 3 },
+      body: { x: 64, y: 63, w: 32, h: 7, size: 2.2, color: '#c8bde0' },
+      reference: { x: 64, y: 70, w: 32, h: 9, size: 2, color: '#f0c46a', maxLines: 2 },
+    },
+  },
+  {
+    id: 'notice_night_family', kind: 'announcement', name: 'Night family', aspect: [2, 3],
+    background: { color: '#2b2533', image: '/church-assets/notice_night_family/bg.jpg' },
+    ink: '#f5ecd9', accent: '#f0c46a', fonts: { serif: SERIF },
+    slots: {
+      eyebrow: { x: 40, y: 3.5, w: 54, h: 3, size: 2.5, uppercase: true, tracking: 0.14, weight: 800, align: 'left', color: '#f0c46a' },
+      body: { x: 40, y: 7, w: 54, h: 10, size: 3.8, minScale: 0.6, font: 'serif', align: 'left', valign: 'top', maxLines: 4 },
+      footer: { x: 8, y: 95, w: 84, h: 3.5, size: 2.6, align: 'center', color: '#c8bde0' },
+    },
+  },
+  {
+    id: 'notice_night_friends', kind: 'announcement', name: 'Night friends', aspect: [2, 3],
+    background: { color: '#343e4c', image: '/church-assets/notice_night_friends/bg.jpg' },
+    ink: '#f5ecd9', accent: '#f0c46a', fonts: { serif: SERIF },
+    slots: {
+      eyebrow: { x: 42, y: 5, w: 52, h: 3, size: 2.5, uppercase: true, tracking: 0.14, weight: 800, align: 'left', color: '#f0c46a' },
+      body: { x: 42, y: 9, w: 52, h: 17, size: 4, minScale: 0.6, font: 'serif', align: 'left', valign: 'top', maxLines: 7 },
+      footer: { x: 8, y: 95, w: 84, h: 3.5, size: 2.6, align: 'center', color: '#c8bde0' },
+    },
+  },
+  {
+    id: 'notice_elder_glow', kind: 'announcement', name: 'Elder', aspect: [2, 3],
+    background: { color: '#382655', image: '/church-assets/notice_elder_glow/bg.jpg' },
+    ink: '#f5ecd9', accent: '#f0c46a', fonts: { serif: SERIF },
+    slots: {
+      eyebrow: { x: 36, y: 4, w: 58, h: 3, size: 2.5, uppercase: true, tracking: 0.14, weight: 800, align: 'left', color: '#f0c46a' },
+      body: { x: 36, y: 8, w: 58, h: 12, size: 4, minScale: 0.6, font: 'serif', align: 'left', valign: 'top', maxLines: 5 },
+      footer: { x: 8, y: 95, w: 84, h: 3.5, size: 2.6, align: 'center', color: '#c8bde0' },
+    },
+  },
+  {
+    id: 'notice_halo', kind: 'announcement', name: 'Halo', aspect: [2, 3],
+    background: { color: '#342647', image: '/church-assets/notice_halo/bg.jpg', overlay: 'linear-gradient(to bottom, rgba(18,12,30,0) 70%, rgba(18,12,30,0.75) 82%, rgba(18,12,30,0.9) 100%)' },
+    ink: '#f5ecd9', accent: '#f0c46a', fonts: { serif: SERIF },
+    slots: {
+      body: { x: 12, y: 83, w: 76, h: 11, size: 3.8, minScale: 0.6, font: 'serif', align: 'center', valign: 'middle', maxLines: 4 },
+      footer: { x: 12, y: 95.5, w: 76, h: 3, size: 2.6, align: 'center', color: '#c8bde0' },
+    },
+  },
+  {
+    id: 'notice_prayer_portrait', kind: 'announcement', name: 'Prayer', aspect: [2, 3],
+    background: { color: '#302521', image: '/church-assets/notice_prayer_portrait/bg.jpg', overlay: 'linear-gradient(to bottom, rgba(18,12,30,0) 70%, rgba(18,12,30,0.75) 82%, rgba(18,12,30,0.9) 100%)' },
+    ink: '#f5ecd9', accent: '#f0c46a', fonts: { serif: SERIF },
+    slots: {
+      body: { x: 10, y: 84, w: 80, h: 10.5, size: 3.8, minScale: 0.6, font: 'serif', align: 'center', valign: 'middle', maxLines: 4 },
+      footer: { x: 10, y: 95.5, w: 80, h: 3, size: 2.6, align: 'center', color: '#c8bde0' },
+    },
+  },
+  // --- Light set (owner-supplied, public/church-assets/<id>/bg.jpg). Verse and
+  // notice art is 2:3 portrait and series art 3:2, so those are their aspects —
+  // the art is not cropped to fit.
   {
     id: 'verse_cream_cross', kind: 'verse_card', name: 'Parchment', aspect: [2, 3],
     background: { color: '#f7f2e7', image: '/church-assets/verse_cream_cross/bg.jpg' },

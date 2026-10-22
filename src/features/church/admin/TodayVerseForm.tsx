@@ -13,17 +13,18 @@ import { SeriesCopyPanel } from './SeriesCopyPanel'
 // A reference, the words, and five questions of the church's own, saved for a
 // date. Saving the same date again replaces it (`set_church_verse` is an
 // upsert), so the form loads whatever is already there first and edits it
-// rather than overwriting blind. Members play it in a CHURCH box beside the
-// everyday drop (0127) — it never replaces the verse everybody else plays.
+// rather than overwriting blind. Members get it as their church's own round
+// for that day, BESIDE the global drop (0128) — never in place of it.
 //
 // Two tiers meet in this form (0127). Everything above is the BASE church
 // leader tier. The content engine — "✨ Draft five questions", steered by a
-// focus line or a sermon transcript — exists only when the backend carries
-// `draft`, i.e. the church holds the Content Generation package; without it
-// the form draws a locked card in its place (`generationLocked`). Anything the
-// engine drafted is saved as a DRAFT (`saveDraft`), which members never see,
-// and goes live only through the explicit "Approve" button. A day typed by
-// hand is approved by being saved, because the leader wrote it.
+// focus line or a sermon transcript, and "Draft a week from a sermon" (0129) —
+// exists only when the backend carries `draft`/`draftWeek`, i.e. the church
+// holds the Content Generation package; without it the form draws a locked
+// card in its place (`generationLocked`). Anything the engine drafted is saved
+// as a DRAFT, which members never see, and goes live only through an explicit
+// approve. A day typed by hand is approved by being saved, because the leader
+// wrote it.
 //
 // A pastor prepares weekly and preaches by the SERIES, so the form sits under a
 // three-week strip: twenty-one days, each marked set or not, tapping one edits
@@ -257,7 +258,7 @@ export function TodayVerseForm({
   }
   const liveLine = () =>
     date === today
-      ? `It’s in ${churchName}’s church box today, beside the everyday verse — anyone who already played it keeps their run.`
+      ? `It’s live now for ${churchName}’s members, next to today’s drop — anyone who already played it keeps their run.`
       : `It goes to ${churchName}’s members on ${pretty(date)}.`
 
   // A day typed by hand: saving it IS the approval (`set_church_verse`).

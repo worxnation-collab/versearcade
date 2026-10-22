@@ -68,6 +68,8 @@ export interface MapPlace {
   wall?: string
   /** Operator-only rows, hidden from everybody who lacks the server-set flag. */
   adminOnly?: boolean
+  /** Church-leadership rows (0128), shown only to someone who leads their church. */
+  leaderOnly?: boolean
 }
 
 // Ordered within each area by how central the thing is, not alphabetically and
@@ -268,6 +270,15 @@ export const MAP_PLACES: MapPlace[] = [
     wall: 'church',
   },
   {
+    id: 'church-lead',
+    icon: 'tools',
+    label: 'Leadership',
+    line: 'Your church’s schedule, people and activity',
+    to: '/church/lead',
+    area: 'church',
+    leaderOnly: true,
+  },
+  {
     id: 'church-directory',
     icon: 'church',
     label: 'Find a church',
@@ -373,8 +384,10 @@ export const MAP_PLACES: MapPlace[] = [
 ]
 
 /** The places in one neighbourhood, in the order this file lists them. */
-export function placesIn(area: MapArea, opts?: { admin?: boolean }): MapPlace[] {
-  return MAP_PLACES.filter((p) => p.area === area && (!p.adminOnly || opts?.admin))
+export function placesIn(area: MapArea, opts?: { admin?: boolean; leader?: boolean }): MapPlace[] {
+  return MAP_PLACES.filter(
+    (p) => p.area === area && (!p.adminOnly || opts?.admin) && (!p.leaderOnly || opts?.leader),
+  )
 }
 
 /**

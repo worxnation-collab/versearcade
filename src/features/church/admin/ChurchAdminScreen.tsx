@@ -6,7 +6,7 @@ import { TabbedSection } from '@/components/TabbedSection'
 import { useJuice } from '@/juice/useJuice'
 import { fetchAdminSettings, fetchEntitlements, serverGenerationBackend, serverVerseBackend, type AdminSettings, type Entitlements } from '@/store/churchAdmin'
 import { TodayVerseForm } from './TodayVerseForm'
-import { ParticipationPanel } from './ParticipationPanel'
+import { OverviewPanel, PeoplePanel, ActivityPanel, useInsights } from './InsightsPanel'
 import { NoticesPanel } from './NoticesPanel'
 import { SharePanel } from './SharePanel'
 
@@ -17,11 +17,18 @@ import { SharePanel } from './SharePanel'
 // check is the server's (every RPC behind this screen re-checks it), so the
 // screen deciding what to draw is presentation, not protection.
 //
-// Three panels behind one row of pills, the house's TabbedSection rule:
-//   1. Today's verse — the church's verse and five questions for a day (0119).
-//   2. Congregation — totals only, floored at five, private to leadership.
-//   3. Notices — the announcement and the giving link.
-//   4. Share — the page's link to paste, and (verified) the QR code to print.
+// Six panels behind one row of pills, the house's TabbedSection rule (0128):
+//   1. Overview — members, active vs quiet, 14 days of play, series
+//      completion, streaks and the live notice.
+//   2. Schedule — the church's verse and five questions per day, series and
+//      pastor's note, copy across days (0119, 0123). Its OWN lane for members
+//      since 0128, never in place of the daily drop.
+//   3. People — every member BY NAME with last play, streak and this week's
+//      plays. Names are the owner's call (2026-10-21), reversing 0119's
+//      totals-only rule for leadership.
+//   4. Activity — the congregation's feed, the same one members see.
+//   5. Notices — the announcement and the giving link.
+//   6. Share — the page's link to paste, and (verified) the QR code to print.
 //
 // A claimed church that is not verified gets Notices and Share alone (the
 // announcement is free-layer, 0117).
@@ -40,6 +47,9 @@ export default function ChurchAdminScreen() {
   const [settings, setSettings] = useState<AdminSettings | null>(null)
   const [ent, setEnt] = useState<Entitlements | null>(null)
   const [state, setState] = useState<'loading' | 'ok' | 'denied' | 'unavailable'>('loading')
+  // Read once for Overview and People together. Unverified leadership gets
+  // `not_verified` back and those tabs are not drawn.
+  const insights = useInsights(id)
 
   const load = useCallback(async () => {
     const [r, e] = await Promise.all([fetchAdminSettings(id), fetchEntitlements(id)])
@@ -93,9 +103,10 @@ export default function ChurchAdminScreen() {
   const tabs = [
     ...(settings.verified
       ? [
+          { key: 'overview', label: 'Overview', content: <OverviewPanel insights={insights.data} failed={insights.failed} /> },
           {
             key: 'verse',
-            label: 'Today’s verse',
+            label: 'Schedule',
             content: (
               <TodayVerseForm
                 churchId={id}
@@ -105,7 +116,8 @@ export default function ChurchAdminScreen() {
               />
             ),
           },
-          { key: 'people', label: 'Congregation', content: <ParticipationPanel churchId={id} /> },
+          { key: 'people', label: 'People', content: <PeoplePanel insights={insights.data} failed={insights.failed} /> },
+          { key: 'activity', label: 'Activity', content: <ActivityPanel churchId={id} /> },
         ]
       : []),
     {
@@ -131,7 +143,7 @@ export default function ChurchAdminScreen() {
 
       <PlanStatus leader={leader} generation={generation} held={!!ent?.contentGenerationHeld} />
 
-      <TabbedSection tabs={tabs} defaultOpen defaultTab={settings.verified ? 'verse' : 'notices'} />
+      <TabbedSection tabs={tabs} defaultOpen defaultTab={settings.verified ? 'overview' : 'notices'} />
       <div style={{ height: 32 }} />
     </Page>
   )

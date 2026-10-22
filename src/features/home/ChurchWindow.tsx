@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ChurchArt } from '@/features/church/ChurchArt'
@@ -8,8 +8,7 @@ import { gatheringLabel, gatheringOpen, gatheringWindow } from '@/data/gathering
 import { useChurch } from '@/store/church'
 import type { Church } from '@/types'
 import { useJuice } from '@/juice/useJuice'
-import { useChurchToday, useChurchVerse, churchVersePlayed, bannerSeen, markBannerSeen } from '@/store/churchPackage'
-import { todayLocalDate } from '@/lib/date'
+import { useChurchToday, bannerSeen, markBannerSeen } from '@/store/churchPackage'
 import { givingLinkVisible } from '@/lib/commerce'
 import { GiveLink } from '@/features/church/ChurchExtras'
 
@@ -27,11 +26,9 @@ import { GiveLink } from '@/features/church/ChurchExtras'
 //     card above this one saying half the same thing). In order, and each
 //     part only when it is TRUE today:
 //       1. who it is: the building at its real tier and skin, name, tier, city;
-//       2. today's verse from the church — only when leadership set and
-//          APPROVED one (`church_verse_today`, 0127), with the series as a
-//          quiet label, the pastor's note clamped to two lines (0123), and its
-//          own Play button. It sits BESIDE the everyday drop, never in place of
-//          it: congregation-only content is additive;
+//       2. (today's church verse moved OUT of this card to its own box beside
+//          the drop and the trivia — `ChurchVerseBox`, 0128 — because it is
+//          a thing to PLAY, not a line to read);
 //       3. the church's one live notice (`set_church_announcement` keeps one),
 //          with its last day when it has one, dismissible per notice;
 //       4. the giving link, where this BUILD may show one (`givingLinkVisible`);
@@ -107,23 +104,14 @@ export function ChurchWindow() {
 // and a <button> can't contain buttons. So the church's identity row is the
 // door to /church, and "Open church" at the foot is the same door again.
 function MemberCard({ church, now, onOpen }: { church: Church; now: Date; onOpen: () => void }) {
-  const navigate = useNavigate()
-  const juice = useJuice()
   const ct = useChurchToday((s) => s.today)
   const loadToday = useChurchToday((s) => s.load)
-  const cv = useChurchVerse((s) => s.verse)
-  const loadVerse = useChurchVerse((s) => s.load)
   const [, bump] = useState(0)
 
   useEffect(() => {
     void loadToday()
-    void loadVerse()
-  }, [loadToday, loadVerse])
+  }, [loadToday])
 
-  // Only the church's OWN verse — keyed to the church it answered for, so
-  // switching church can't show the old one's verse under the new name.
-  const verse = cv?.churchId === church.id ? cv : null
-  const played = verse ? churchVersePlayed(church.id, todayLocalDate()) : null
   // The today payload is keyed to the church it answered for, so switching
   // church can't show the old one's notice under the new one's name.
   const pkg = ct?.verified && ct.church_id === church.id ? ct : null
@@ -160,37 +148,6 @@ function MemberCard({ church, now, onOpen }: { church: Church; now: Date; onOpen
           </div>
         </div>
       </button>
-
-      {verse && (
-        <Section>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, justifyContent: 'space-between' }}>
-            <Eyebrow nowrap>Today’s verse from {church.name}</Eyebrow>
-            {verse.series && (
-              <span
-                className="faint"
-                style={{ fontSize: 11, fontWeight: 700, flexShrink: 0, maxWidth: '45%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-              >
-                {verse.series}
-              </span>
-            )}
-          </div>
-          <div style={{ fontSize: 15, fontWeight: 800, marginTop: 3 }}>{verse.reference}</div>
-          {verse.note && <PastorNote text={verse.note} />}
-          {played ? (
-            <div className="faint" style={{ marginTop: 8, fontSize: 12.5, fontWeight: 700 }}>
-              ✓ Played today · {played.c}/{played.t}
-            </div>
-          ) : (
-            <button
-              className="pill"
-              onClick={() => { juice.select?.(); navigate('/play/church') }}
-              style={{ marginTop: 8, fontSize: 12.5, fontWeight: 800 }}
-            >
-              Play your church’s five →
-            </button>
-          )}
-        </Section>
-      )}
 
       {showNotice && notice && (
         <Section>
@@ -254,46 +211,6 @@ function Eyebrow({ children, nowrap = false }: { children: React.ReactNode; nowr
       }}
     >
       {children}
-    </div>
-  )
-}
-
-// Two lines, then "more" — measured rather than guessed from a character
-// count, because a 280-char note is two lines on a tablet and five on a phone.
-function PastorNote({ text }: { text: string }) {
-  const ref = useRef<HTMLParagraphElement>(null)
-  const [open, setOpen] = useState(false)
-  const [clipped, setClipped] = useState(false)
-
-  useLayoutEffect(() => {
-    const el = ref.current
-    if (el && !open) setClipped(el.scrollHeight > el.clientHeight + 1)
-  }, [text, open])
-
-  return (
-    <div style={{ marginTop: 6, paddingLeft: 10, borderLeft: '2px solid var(--edge)' }}>
-      <p
-        ref={ref}
-        style={{
-          margin: 0,
-          fontSize: 13,
-          lineHeight: 1.45,
-          color: 'var(--ink-dim)',
-          overflowWrap: 'anywhere',
-          ...(open ? null : { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }),
-        }}
-      >
-        {text}
-      </p>
-      {(clipped || open) && (
-        <button
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
-          style={{ padding: 0, marginTop: 2, fontSize: 12, fontWeight: 700, color: 'var(--ink-dim)', cursor: 'pointer' }}
-        >
-          {open ? 'Less' : 'More'}
-        </button>
-      )}
     </div>
   )
 }

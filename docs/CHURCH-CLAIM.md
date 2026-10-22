@@ -45,24 +45,23 @@ Two consequences worth stating plainly:
 | ❌ Anything about a member | See below |
 | ❌ Another church's page | `is_church_admin(p_church_id)` is checked per call, not per session |
 
-## No per-member data. Ever, without a deliberate decision
+## Leadership sees members by name (0128)
 
-This is the rule most likely to be broken by someone adding "just a small
-dashboard", so it is written here as well as in the migration.
+**This section used to say "no per-member data, ever". The owner reversed it on
+2026-10-21: "this is a tool for church leaders, names are important."**
 
-A congregation's roster deliberately carries no per-person numbers — "a crowd,
-not a ladder" (`get_church_page`). A pastor-facing view of who played, how
-often, and who has lapsed is that exact shape **with authority attached**: the
-person who played less becomes visible to their minister as having played less.
-That is worse than player-vs-player comparison, in an app whose whole premise is
-that no feature needs a loser.
+The dashboard at `/church/:id/admin` now has **Overview** (members, active this
+week vs quiet 7+ days, fourteen days of drop and church-verse play, series
+completion, streak buckets, the live notice), **People** (every member by name:
+last play, streak, plays this week, average church-verse score) and **Activity**
+(the congregation's feed, scores included). It reads `church_leader_insights` and
+`church_feed`, both gated to verified leadership of THAT church.
 
-A leader already sees the two aggregates that exist and are public to everyone
-anyway: how many people are in the congregation, and what the church has banked.
-Anything beyond that must be an aggregate with a small-count floor (suppress
-under ~5 members, so a count can never identify one person), and adding one is a
-deliberate decision to be argued for — not a convenience that arrives inside a
-leadership screen.
+The argument that used to stand here — a pastor-facing view of who played and who
+lapsed is the player-vs-player comparison with authority attached — is kept as
+history, not as a rule. What survives of it: **members are never ranked against
+each other.** Church competition is church against church, and there is no member
+leaderboard anywhere.
 
 ## The website field is validated server-side now
 

@@ -43,9 +43,6 @@ export default function QuizScreen() {
       // answers known. Naming the deal is what makes a reload come back to the
       // question it left instead — QuizRunner's run lock.
       runId={`daily:${today.dropDate}`}
-      // A church's verse says whose it is, in the runner's own mode pill —
-      // the global drop carries no label, exactly as before.
-      label={today.church ? `⛪ ${today.church.name}` : undefined}
       onExit={() => navigate('/play')}
       onComplete={async (result) => {
         // The daily drop's own miles, on top of the per-run miles QuizRunner

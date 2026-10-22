@@ -16,7 +16,6 @@ import HomeScreen from './features/home/HomeScreen'
 import QuizScreen from './features/daily/QuizScreen'
 import ResultScreen from './features/daily/ResultScreen'
 import DailyTriviaScreen from './features/daily/DailyTriviaScreen'
-import ChurchVerseScreen from './features/daily/ChurchVerseScreen'
 import PracticeQuizScreen from './features/practice/PracticeQuizScreen'
 import PracticeResultScreen from './features/practice/PracticeResultScreen'
 import ReviewScreen from './features/review/ReviewScreen'
@@ -33,6 +32,8 @@ import ChurchClaimScreen from './features/church/ChurchClaimScreen'
 import ChurchScreen from './features/church/ChurchScreen'
 import ChurchPublicScreen from './features/church/ChurchPublicScreen'
 import ChurchAdminScreen from './features/church/admin/ChurchAdminScreen'
+import ChurchVerseScreen from './features/church/ChurchVerseScreen'
+import LeadRedirect from './features/church/admin/LeadRedirect'
 import AdminScreen from './features/admin/AdminScreen'
 import LeaderboardScreen from './features/leaderboard/LeaderboardScreen'
 import CollectionScreen from './features/collection/CollectionScreen'
@@ -328,7 +329,9 @@ export default function App() {
             </RequireProfile>
           }
         />
-        {/* The church's own verse — congregation-only, BESIDE the drop (0127). */}
+        {/* Today's verse from your church — its own lane beside the global
+            drop, never in place of it (0128). Members of a verified church
+            only; the screen says so plainly to anybody else. */}
         <Route
           path="/play/church"
           element={
@@ -486,6 +489,17 @@ export default function App() {
         {/* A church's leadership tools. Behind the church wall (an account) —
             and every RPC under it re-checks leadership server-side, so the
             route is a door, not a lock. */}
+        {/* The map's Leadership row: resolves your church, then /admin. */}
+        <Route
+          path="/church/lead"
+          element={
+            <RequireProfile>
+              <RequireAccount copy={WALL.church}>
+                <LeadRedirect />
+              </RequireAccount>
+            </RequireProfile>
+          }
+        />
         <Route
           path="/church/:id/admin"
           element={

@@ -4,6 +4,8 @@ import { Avatar } from '@/components/Avatar'
 import { useJuice } from '@/juice/useJuice'
 import { useChurchVerse, fetchChurchFeed, fetchChurchWeek, type ChurchWeek, type FeedEvent } from '@/store/churchVerse'
 import { SeriesTrail } from './SeriesTrail'
+import { ChurchAssetCard } from './ChurchAssetCard'
+import { useMyChurchAssets } from '@/store/churchAssets'
 import type { ChurchExtras } from '@/types/churchPackages'
 import type { Church } from '@/types'
 
@@ -32,6 +34,11 @@ export function ChurchLife({ church, extras }: { church: Church; extras: ChurchE
   const juice = useJuice()
   const verse = useChurchVerse((s) => s.today)
   const series = useChurchVerse((s) => s.series)
+  // Approved graphics (0133). The server returns only approved, fresh cards for
+  // today's approved verse, its series and the live notice, so nothing is
+  // filtered here — an empty list is the ordinary case.
+  const cards = useMyChurchAssets((s) => s.assets)
+  const loadCards = useMyChurchAssets((s) => s.load)
   const loadVerse = useChurchVerse((s) => s.load)
   const [feed, setFeed] = useState<FeedEvent[] | null>(null)
   const [more, setMore] = useState(false)
@@ -42,17 +49,22 @@ export function ChurchLife({ church, extras }: { church: Church; extras: ChurchE
   useEffect(() => {
     if (!verified) return
     void loadVerse()
+    void loadCards()
     let alive = true
     fetchChurchFeed(church.id, 40).then((f) => { if (alive) setFeed(f) })
     fetchChurchWeek(church.id).then((w) => { if (alive) setWeek(w) })
     return () => { alive = false }
-  }, [verified, church.id, loadVerse])
+  }, [verified, church.id, loadVerse, loadCards])
 
   if (!verified) return null
 
   const go = (to: string) => { juice.select?.(); navigate(to) }
   const shown = feed ? (more ? feed : feed.slice(0, 6)) : null
   const p = verse?.progress
+  const verseCard = cards.find((c) => c.kind === 'verse_card') ?? null
+  const seriesCard = cards.find((c) => c.kind === 'series_header') ?? null
+  // A notice card stands in for the notice only while it is the SAME notice.
+  const noticeCard = cards.find((c) => c.kind === 'announcement') ?? null
   // The series is the member's church's; a stale one from another church
   // (switched churches this session) is not drawn.
   const arc = series && series.churchId === church.id ? series : null
@@ -73,7 +85,13 @@ export function ChurchLife({ church, extras }: { church: Church; extras: ChurchE
         </span>
       </div>
 
-      {extras?.announcement && (
+      {extras?.announcement && noticeCard && (
+        <div className="card" style={{ padding: 8 }}>
+          <ChurchAssetCard kind="announcement" templateId={noticeCard.templateId} payload={noticeCard.payload} />
+          <div className="faint" style={{ fontSize: 11.5, margin: '6px 6px 0' }}>{ago(extras.announcement.createdAt)}</div>
+        </div>
+      )}
+      {extras?.announcement && !noticeCard && (
         <div className="card" style={{ padding: '12px 14px' }}>
           <Eyebrow>From your church’s leaders</Eyebrow>
           <p style={{ margin: '4px 0 0', fontSize: 14, lineHeight: 1.45, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>
@@ -89,6 +107,16 @@ export function ChurchLife({ church, extras }: { church: Church; extras: ChurchE
           onClick={() => go('/play/church')}
           style={{ padding: '12px 14px', textAlign: 'left', color: 'inherit', font: 'inherit', cursor: 'pointer', width: '100%' }}
         >
+          {seriesCard && (
+            <div style={{ marginBottom: 10 }}>
+              <ChurchAssetCard kind="series_header" templateId={seriesCard.templateId} payload={seriesCard.payload} />
+            </div>
+          )}
+          {verseCard && (
+            <div style={{ marginBottom: 10, maxWidth: 320 }}>
+              <ChurchAssetCard kind="verse_card" templateId={verseCard.templateId} payload={verseCard.payload} />
+            </div>
+          )}
           <Eyebrow>Today’s church verse{verse.series && !arc ? ` · ${verse.series}` : ''}</Eyebrow>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
             <b style={{ flex: 1, minWidth: 0, fontSize: 16 }}>{verse.reference}</b>

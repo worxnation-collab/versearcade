@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { AssetStudio } from './AssetStudio'
 import { Button } from '@/components/Button'
 import { useJuice } from '@/juice/useJuice'
 import { todayLocalDate } from '@/lib/date'
@@ -18,7 +19,18 @@ import { saveAnnouncement, saveGivingUrl, type AdminSettings } from '@/store/chu
 
 const MAX = 280
 
-export function NoticesPanel({ churchId, settings, onSaved }: { churchId: string; settings: AdminSettings; onSaved: () => void }) {
+export function NoticesPanel({
+  churchId,
+  settings,
+  onSaved,
+  canGenerate = false,
+}: {
+  churchId: string
+  settings: AdminSettings
+  onSaved: () => void
+  /** The Content Generation add-on — a card for the live notice (0133). */
+  canGenerate?: boolean
+}) {
   const juice = useJuice()
   const [message, setMessage] = useState(settings.announcement?.message ?? '')
   const [until, setUntil] = useState(settings.announcement?.expiresAt ? todayLocalDate(new Date(settings.announcement.expiresAt)) : '')
@@ -97,6 +109,20 @@ export function NoticesPanel({ churchId, settings, onSaved }: { churchId: string
           </button>
         )}
       </div>
+
+      {/* A card for the LIVE notice (0133) — verified churches only, since
+          members only ever see cards in a verified church. Keyed on the
+          notice's id: posting a new notice is a new card, and the old one stops
+          showing to members by itself. */}
+      {settings.verified && settings.announcement && (
+        <AssetStudio
+          key={settings.announcement.id}
+          churchId={churchId}
+          source={{ kind: 'announcement', announcementId: settings.announcement.id }}
+          canGenerate={canGenerate}
+          preview={{ church_name: settings.name, message: settings.announcement.message }}
+        />
+      )}
 
       {settings.verified && (
         <div style={{ display: 'grid', gap: 10 }}>

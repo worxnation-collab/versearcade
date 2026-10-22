@@ -1690,12 +1690,18 @@ Four rules are load-bearing:
   shortcut is the leader saving it themselves.
 - **Visibility is 'congregation' and the check constraint allows nothing
   else.** Widening it is a migration.
-- **A church's verse never replaces the global drop.** `loadToday` plays the
-  global verse for everybody; the church's verse is a box on the church card
-  (`ChurchWindow`) → `/play/church` (`ChurchVerseScreen`), paying nothing — no
-  XP, no `plays` row, no streak — with a `runId` and a device-local done flag
-  like the trivia round. Enforced server-side: `get_effective_verse` returns
-  null, so approved iOS builds that still call it play the global verse too.
+- **A church's verse never replaces the global drop.** Enforced server-side:
+  `get_effective_verse` returns null, so approved iOS builds that still call it
+  play the global verse too. Members get 0128's lane instead, which skips drafts.
+- **A week from one sermon is the SAME generator** (`church-draft`
+  `mode: 'week'`, 0129, `WeekDraftPanel`), spending one of the church's 30
+  daily units per day drafted. **The scripture on a drafted day never comes
+  from the model**: the client fetches the passages' BSB verses and the
+  function assembles each day's text from them — the model only picks which
+  verse a day is about, inside passages the leader named. Every day saves as a
+  draft; `DraftReview` approves exactly the listed dates or discards them.
+  Discarding stamps `discarded_at` instead of deleting (the MCP can't apply a
+  DELETE); every leadership reader skips it and every writer clears it.
 
 ### The sponsored slot
 
@@ -2466,7 +2472,22 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0128` (the church layer — `church_verse_plays`,
+The latest is `0129` (a week of drafts from one sermon —
+`use_church_draft_units`, `approve_church_verses`, `discard_church_verse_draft`,
+`church_verses.discarded_at`, and `use_church_draft`, `set_church_verse`,
+`set_church_verse_extras`, `save_church_verse_draft`, `approve_church_verse`,
+`church_verse_for`, `church_verses_range` restated with the same signatures;
+`docs/CHURCH-SHARED-VERSE.md` → "A week from one sermon"). APPLIED 2026-10-22
+as `0129_church_week_drafts`, after a local Postgres 16 run (no add-on refused,
+the 30-unit cap across 7+7+7+7 then 7 refused and 2 accepted, clamp at 7, a
+member refused approve and discard, discard twice, a set approve that skips a
+discarded and a missing day, a discarded day absent to leadership readers and
+clean when drafted over, anon denied, re-run a no-op). Production's copies of
+the restated functions were checked to still be 0127's before the apply, and
+afterwards: one signature each, all `authenticated`-only. It took 0129 because
+`0128_church_layer` landed on main and in production the same day.
+
+Before it, `0128` (the church layer — `church_verse_plays`,
 `my_church_verse`, `submit_church_verse_play`, `church_feed`,
 `church_leader_insights`, `church_insider`, `is_church_admin_of`). **0128,
 because production already held `0127_church_content_generation`** (another

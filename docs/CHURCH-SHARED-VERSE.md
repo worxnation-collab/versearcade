@@ -239,12 +239,58 @@ transcription of a voice memo isn't built; paste the transcript.
 approved_at. `approved_by` stays server-side.
 
 **The church verse is additive.** `get_effective_verse` is restated to return
-null, so no build, including approved iOS builds, swaps the daily drop.
-Members see the church's approved verse in the church card on the Play tab,
-with the note and a "Play your church's five →" button. That opens
-`/play/church` (`ChurchVerseScreen`), which:
+null, so no build, including approved iOS builds, swaps the daily drop. What
+members get instead is 0128's lane — `my_church_verse`, the box on the Play
+tab and `/play/church` — which skips drafts, so a draft (and a discarded one,
+which is always a draft) never reaches a member.
 
-- reads `church_verse_today`: own verified church, non-draft, ±1 day;
-- runs `QuizRunner` with `runId church:<id>:<date>`;
-- pays nothing: no XP, no `plays`, no streak;
-- records a device-local done flag with the score, the trivia round's shape.
+## A week from one sermon (0129)
+
+With the add-on, the Schedule tab carries **✨ Draft a week from a sermon**
+(`WeekDraftPanel`): a series name, 1–3 passages, a start date, 2–7 days, and
+the sermon pasted in (or at least a focus line). It produces one DRAFT per day,
+each with its own verse focus inside those passages, five questions and a note.
+
+- **One generator.** It is `church-draft` with `mode: 'week'`, not a second
+  function. The gate is the same `church_gen_can`; the spend is
+  `use_church_draft_units(church, days)` — one of the church's **30 drafts a
+  day** per DAY drafted, taken atomically before the model is asked.
+  `use_church_draft` is now `units = 1`.
+- **The scripture never comes from the model.** The client fetches each
+  passage's verses itself (`resolvePassage`: the BSB, the app's own unlicensed
+  text — a licensed translation can't be stored on a church's day), sends them
+  numbered, and the function builds every day's text from those verses. The
+  model only picks which verse(s) a day is about; a day whose reference isn't
+  inside a supplied passage is dropped, so a week can come back shorter than
+  asked (the panel says so).
+- **The dates are planned and named before anything is spent:** the next N
+  days from the start with no LIVE verse. A live day is skipped and listed
+  ("left alone"); a planned day holding an older draft is listed as replaced.
+  Each day is then saved with `save_church_verse_draft` without `replace`, so
+  a day that went live meanwhile refuses and is reported, never overwritten.
+- **Review, one by one or as the set** (`DraftReview`, under the strip, base
+  tier): every draft in the window grouped by series, each with Open →; per
+  series **Approve all N** (`approve_church_verses`, exactly the dates listed,
+  drafts only) and **Discard all**, both behind a second tap. A single draft has
+  **Discard this draft** under the approve button.
+- **Discard stamps rather than deletes** (`discarded_at`): every leadership
+  reader treats the row as absent, every writer clears the stamp. Partly
+  because the Supabase MCP can't apply a `DELETE` from a cloud session, partly
+  because "generated, then thrown away" is worth keeping in the audit trail.
+
+**Limits, all enforced in the function:** 2–7 days; 1–3 passages, each inside
+one chapter, ≤ 40 verses each and ≤ 6,000 characters of scripture in all; a
+transcript ≤ 12,000 characters (about a 20-minute sermon; longer ones are cut);
+a focus line ≤ 300; each day ≤ 3 consecutive verses and ≤ 1,000 characters of
+text; one model call with a 90-second timeout and one retry only if the first
+failed inside 50 seconds; 30 draft-days per church per UTC day.
+
+**Members:** a week of approved days reads as a sequence in 0128's lane — the
+box shows "<series> · day N of M" — counted over every approved day under that
+series name. Days planned around a live day are not contiguous, which that
+count handles; reusing a series name a year later would add to its total.
+
+**Not verified end to end against the model**: the container has no leader
+token. The flow was driven in the browser with the demo's memory backend and a
+stand-in for the model call (removed again); the function's passage guards were
+unit-checked.

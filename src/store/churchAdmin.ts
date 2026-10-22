@@ -1,6 +1,9 @@
 import { supabase } from '@/lib/supabase'
 import { addDays, todayLocalDate } from '@/lib/date'
 import { useAuth } from './auth'
+import { parseReference } from '@/lib/bibleProgress'
+import { fetchChapter } from '@/lib/bible'
+import { verseFromReference } from '@/data/bible/questions'
 import type { Question } from '@/types'
 import type { ChurchParticipation } from '@/types/churchPackages'
 
@@ -250,6 +253,15 @@ export interface VerseBackend {
   saveDraft?: (churchId: string, date: string, v: DayVerse, replace: boolean) => Promise<Res<unknown>>
   /** Approve a draft. Base tier — present whenever leadership can save. */
   approve?: (churchId: string, date: string) => Promise<Res<{ status?: VerseStatus }>>
+  /** Approve exactly these dates (drafts only). Base tier (0129). */
+  approveMany?: (churchId: string, dates: string[]) => Promise<Res<{ approved: string[] }>>
+  /** Throw a draft away; the day reads as empty again. Base tier (0129). */
+  discard?: (churchId: string, date: string) => Promise<Res<unknown>>
+  /**
+   * The content engine's WEEK: one sermon → several days of drafts (0129).
+   * Present exactly when `draft` is — the Content Generation package.
+   */
+  draftWeek?: (churchId: string, input: WeekDraftInput) => Promise<Res<WeekDraftResult>>
 }
 
 export const serverVerseBackend: VerseBackend = {
@@ -258,6 +270,8 @@ export const serverVerseBackend: VerseBackend = {
   range: (c, f, n) => fetchRange(c, f, n),
   setThisWeek: (c, l) => saveThisWeek(c, l),
   approve: (c, d) => approveDayVerse(c, d),
+  approveMany: (c, ds) => approveDays(c, ds),
+  discard: (c, d) => discardDraft(c, d),
 }
 
 /** The same, plus the content engine — only for a church holding the add-on. */
@@ -265,6 +279,118 @@ export const serverGenerationBackend: VerseBackend = {
   ...serverVerseBackend,
   draft: (c, r, t, steer) => draftQuestions(c, r, t, steer),
   saveDraft: (c, d, v, replace) => saveDraftVerse(c, d, v, replace),
+  draftWeek: (c, input) => draftWeek(c, input),
+}
+
+// ---------------------------------------------------------------------------
+// A week from one sermon (0129, Content Generation only).
+//
+// The SCRIPTURE never comes from the model: `resolvePassage` fetches each
+// passage's verses here (the BSB — the app's own unlicensed text, so storing
+// it on a church's day breaks no licence), the function is handed them, and it
+// builds each day's text from those verses. The model only chooses which verse
+// a day focuses on, inside the passages the leader named.
+// ---------------------------------------------------------------------------
+export const WEEK_DAYS_MIN = 2
+export const WEEK_DAYS_MAX = 7
+export const WEEK_PASSAGES_MAX = 3
+export const WEEK_TRANSCRIPT_MAX = 12_000
+/** Mirrors the function's 40-verse and 6,000-character caps. */
+const PASSAGE_VERSES_MAX = 40
+const SCRIPTURE_MAX = 6_000
+
+export interface WeekPassage {
+  reference: string
+  verses: { n: number; text: string }[]
+}
+
+export interface WeekDraftInput {
+  series: string
+  days: number
+  passages: WeekPassage[]
+  transcript?: string
+  guidance?: string
+}
+
+export interface WeekDraftDay {
+  reference: string
+  text: string
+  questions: Question[]
+  note?: string
+}
+
+export interface WeekDraftResult {
+  days: WeekDraftDay[]
+  /** How many were asked for; `days` can be shorter if some came back unusable. */
+  asked: number
+}
+
+/** Fetch a passage's verses. Null reason says why it can't be used. */
+export async function resolvePassage(reference: string): Promise<{ ok: true; data: WeekPassage } | { ok: false; reason: string }> {
+  const ref = parseReference(reference.trim())
+  if (!ref) return { ok: false, reason: 'bad_reference' }
+  if (ref.end - ref.start + 1 > PASSAGE_VERSES_MAX) return { ok: false, reason: 'passage_too_long' }
+  try {
+    const ch = await fetchChapter(ref.book, ref.chapter, 'bsb')
+    const verses = ch.verses
+      .filter((v) => v.verse >= ref.start && v.verse <= ref.end)
+      .map((v) => ({ n: v.verse, text: v.text.replace(/\s+/g, ' ').trim() }))
+      .filter((v) => v.text)
+    if (verses.length) return { ok: true, data: { reference: reference.trim(), verses } }
+  } catch {
+    /* offline or not served — the library below may still have it */
+  }
+  // Offline: a single verse the arcade's library carries.
+  const lib = ref.start === ref.end ? verseFromReference(reference.trim()) : null
+  if (lib) return { ok: true, data: { reference: reference.trim(), verses: [{ n: ref.start, text: lib.text }] } }
+  return { ok: false, reason: 'passage_unavailable' }
+}
+
+export function scriptureChars(ps: WeekPassage[]): number {
+  return ps.reduce((n, p) => n + p.verses.reduce((m, v) => m + v.text.length, 0), 0)
+}
+export const SCRIPTURE_CHARS_MAX = SCRIPTURE_MAX
+
+export async function draftWeek(churchId: string, input: WeekDraftInput): Promise<Res<WeekDraftResult>> {
+  if (!online()) return { ok: false, reason: 'unavailable' }
+  const { data, error } = await supabase!.functions.invoke('church-draft', {
+    body: {
+      mode: 'week',
+      church_id: churchId,
+      series: cleanLine(input.series, SERIES_MAX) ?? '',
+      days: input.days,
+      passages: input.passages,
+      guidance: cleanLine(input.guidance, GUIDANCE_MAX) ?? undefined,
+      transcript: input.transcript?.trim().slice(0, WEEK_TRANSCRIPT_MAX) || undefined,
+    },
+  })
+  if (error) return { ok: false, reason: 'unavailable' }
+  const d = data as { ok?: boolean; reason?: string; days?: any[]; asked?: number } | null
+  if (!d?.ok) return { ok: false, reason: String(d?.reason ?? 'unavailable') }
+  const days: WeekDraftDay[] = []
+  for (const x of d.days ?? []) {
+    const questions = cleanQuestions(x?.questions ?? [])
+    if (!questions || typeof x?.reference !== 'string' || !parseReference(x.reference) || typeof x?.text !== 'string' || !x.text.trim()) continue
+    days.push({
+      reference: x.reference,
+      text: x.text.trim().slice(0, 1000),
+      questions,
+      note: cleanLine(typeof x.note === 'string' ? x.note : null, NOTE_MAX) ?? undefined,
+    })
+  }
+  return days.length ? { ok: true, data: { days, asked: Number(d.asked) || days.length } } : { ok: false, reason: 'draft_failed' }
+}
+
+/** Approve exactly the dates the leader was shown (0129). */
+export async function approveDays(churchId: string, dates: string[]) {
+  const r = await call<{ approved: string[] }>('approve_church_verses', { p_church_id: churchId, p_dates: dates })
+  if (!r.ok) return r
+  return { ok: true as const, data: { approved: (r.data.approved ?? []).map(String) } }
+}
+
+/** Throw a draft away (0129). The row is stamped, not deleted. */
+export async function discardDraft(churchId: string, date: string) {
+  return call('discard_church_verse_draft', { p_church_id: churchId, p_drop_date: date })
 }
 
 /** What steers a draft. Both optional; the passage is always required. */
@@ -344,6 +470,19 @@ export function memoryVerseBackend(
           },
         }
       : {}),
+    approveMany: async (_c, ds) => {
+      const approved: string[] = []
+      for (const d of ds) {
+        const cur = days.get(d)
+        if (cur?.status === 'draft') { days.set(d, { ...cur, status: statusFor(d) }); approved.push(d) }
+      }
+      return { ok: true, data: { approved } }
+    },
+    discard: async (_c, d) => {
+      if (days.get(d)?.status !== 'draft') return { ok: false, reason: 'no_draft' }
+      days.delete(d)
+      return { ok: true, data: null }
+    },
     approve: async (_c, d) => {
       const cur = days.get(d)
       if (!cur || cur.status !== 'draft') return { ok: false, reason: 'no_draft' }

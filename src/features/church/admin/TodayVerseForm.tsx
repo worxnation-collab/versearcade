@@ -7,6 +7,7 @@ import { verseFromReference } from '@/data/bible/questions'
 import { cleanLine, cleanQuestions, fetchDays, GUIDANCE_MAX, NOTE_MAX, SERIES_MAX, serverVerseBackend, TRANSCRIPT_MAX, type DayVerse, type VerseBackend, type VerseStatus, type WeekDay } from '@/store/churchAdmin'
 import type { Question } from '@/types'
 import { SeriesCopyPanel } from './SeriesCopyPanel'
+import { DraftReview, WeekDraftPanel } from './WeekDraftPanel'
 
 // "Set today's verse" — the verified layer's one write (0119).
 //
@@ -139,6 +140,10 @@ export function TodayVerseForm({
   // The copy panel closes once it has run; the verse it copied stays `saved`,
   // so "This week we're in …" is still one tap away afterwards.
   const [copied, setCopied] = useState(false)
+  // Bumped to re-read the open day after something outside the form changed it.
+  const [dayKey, setDayKey] = useState(0)
+  // A line to show once that re-read lands (the load clears messages).
+  const afterLoad = useRef<{ ok: boolean; text: string } | null>(null)
   const weekRef = useRef<WeekDay[] | null>(null)
   weekRef.current = week
 
@@ -157,7 +162,8 @@ export function TodayVerseForm({
   useEffect(() => {
     let alive = true
     setLoading(true)
-    setMsg(null)
+    setMsg(afterLoad.current)
+    afterLoad.current = null
     setSaved(null)
     setCopied(false)
     setPageLine('idle')
@@ -179,7 +185,7 @@ export function TodayVerseForm({
       setLoading(false)
     })
     return () => { alive = false }
-  }, [churchId, date, backend])
+  }, [churchId, date, backend, dayKey])
 
   const library = useMemo(() => (parseReference(reference) ? verseFromReference(reference.trim()) : null), [reference])
 
@@ -327,6 +333,22 @@ export function TodayVerseForm({
     landed(v, lost, `Approved. ${liveLine()}`)
   }
 
+  // Throw the open draft away (0129). The day reads as empty again.
+  const [discardArmed, setDiscardArmed] = useState(false)
+  const discard = async () => {
+    if (!backend.discard) return
+    if (!discardArmed) { setDiscardArmed(true); return }
+    setDiscardArmed(false)
+    setBusy(true)
+    const r = await backend.discard(churchId, date)
+    setBusy(false)
+    if (!r.ok) return setMsg({ ok: false, text: REASONS[r.reason] ?? 'That didn’t go through — check your connection and try again.' })
+    juice.select?.()
+    void loadWeek()
+    afterLoad.current = { ok: true, text: `Discarded the draft for ${pretty(date)}. That day is empty again.` }
+    setDayKey((k) => k + 1)
+  }
+
   // Draft flow: the engine filled this edit, or the day on file is a draft.
   const draftFlow = generatedNow || status === 'draft'
 
@@ -351,6 +373,23 @@ export function TodayVerseForm({
         onForward={() => setWeekStart(addDays(weekStart, 7))}
         onPick={pick}
         onRetry={() => void loadWeek()}
+      />
+
+      {backend.draftWeek && (
+        <WeekDraftPanel
+          churchId={churchId}
+          backend={backend}
+          today={today}
+          onDrafted={(ds) => { void loadWeek(); pick(ds[0]); setDayKey((k) => k + 1) }}
+        />
+      )}
+      <DraftReview
+        churchId={churchId}
+        backend={backend}
+        week={week}
+        selected={date}
+        onOpen={pick}
+        onChanged={() => { void loadWeek(); setDayKey((k) => k + 1) }}
       />
 
       <label style={labelStyle}>
@@ -514,6 +553,11 @@ export function TodayVerseForm({
           <Button variant="gold" full disabled={busy || loading} onClick={approve}>
             {busy ? 'Saving…' : date === today ? 'Approve for today' : `Approve for ${pretty(date)}`}
           </Button>
+          {status === 'draft' && backend.discard && (
+            <button className="pill" disabled={busy || loading} onClick={discard} style={{ justifySelf: 'center', fontSize: 12.5 }}>
+              {discardArmed ? 'Tap again to discard this draft' : 'Discard this draft'}
+            </button>
+          )}
         </div>
       ) : (
         <Button variant="gold" full disabled={busy || loading} onClick={save}>
@@ -641,7 +685,7 @@ function GenerationLocked() {
     <div className="card" aria-label="Drafting assist, locked" style={{ padding: '10px 12px', display: 'grid', gap: 4, background: 'var(--card-raised)' }}>
       <b style={{ fontSize: 12.5, fontWeight: 800 }}>🔒 Drafting assist</b>
       <span className="faint" style={{ fontSize: 11.5, lineHeight: 1.45 }}>
-        Drafting questions and a note from a passage, a focus line or your sermon notes is the Content Generation
+        Drafting questions and a note from a passage, or a whole week from one sermon, is the Content Generation
         package — an add-on this church doesn’t have. Everything here still works by hand.
       </span>
     </div>

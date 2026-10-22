@@ -6,6 +6,7 @@ import { fetchChapter } from '@/lib/bible'
 import { verseFromReference } from '@/data/bible/questions'
 import type { Question } from '@/types'
 import type { ChurchParticipation } from '@/types/churchPackages'
+import { isLeaderLookId, type LeaderLookId } from '@/features/church/pricing'
 
 // Church leadership's reads and writes (0118, 0119). Every call is a security-definer
 // RPC that re-checks `is_church_admin` (and, for the paid half, `verified`)
@@ -49,6 +50,13 @@ export interface Entitlements {
   contentGeneration: boolean
   /** The add-on is on the church's record but inert, because the base tier isn't. */
   contentGenerationHeld: boolean
+  /** The Custom Leader Avatar add-on (0136): one request, base tier required. */
+  customLeaderAvatar: boolean
+  customLeaderAvatarHeld: boolean
+  /** The CALLER's own look as leadership of this church; null = not chosen yet. */
+  leaderLook: LeaderLookId | null
+  /** The art delivered for the caller's custom avatar (https only, server-checked). */
+  customArtUrl: string | null
 }
 
 /** Null on a server without 0127, which reads as "no add-on" — fail closed. */
@@ -64,7 +72,88 @@ export async function fetchEntitlements(churchId: string): Promise<Res<Entitleme
       churchLeader: !!d?.church_leader,
       contentGeneration: !!d?.church_leader && !!d?.content_generation,
       contentGenerationHeld: !!d?.content_generation_held,
+      // Absent on a server without 0136, which reads as "no add-on, no look".
+      customLeaderAvatar: !!d?.church_leader && !!d?.custom_leader_avatar,
+      customLeaderAvatarHeld: !!d?.custom_leader_avatar_held,
+      leaderLook: isLeaderLookId(d?.leader_look) ? d.leader_look : null,
+      customArtUrl: typeof d?.custom_art_url === 'string' && d.custom_art_url.startsWith('https://') ? d.custom_art_url : null,
     },
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Leader looks and the Custom Leader Avatar request (0136). The server decides
+// every gate: the base tier to pick a look, the add-on to submit, a delivered
+// request of YOUR OWN before 'custom' is accepted.
+// ---------------------------------------------------------------------------
+export async function saveLeaderLook(churchId: string, look: LeaderLookId) {
+  return call<{ leader_look: LeaderLookId }>('set_my_leader_look', { p_church_id: churchId, p_look: look })
+}
+
+export type AvatarRequestStatus = 'submitted' | 'in_progress' | 'delivered' | 'declined'
+
+export interface AvatarRequest {
+  /** Whether the caller sent it. Another leader's request shows only its status. */
+  mine: boolean
+  status: AvatarRequestStatus
+  notes: string | null
+  photoCount: number | null
+  operatorNote: string | null
+  createdAt: string
+}
+
+/** The church's live request (or the caller's last declined one); null = none. */
+export async function fetchAvatarRequest(churchId: string): Promise<Res<AvatarRequest | null>> {
+  const r = await call<{ request: any }>('church_avatar_request', { p_church_id: churchId })
+  if (!r.ok) return r
+  const q = r.data.request
+  if (!q) return { ok: true, data: null }
+  return {
+    ok: true,
+    data: {
+      mine: !!q.mine,
+      status: (['submitted', 'in_progress', 'delivered', 'declined'].includes(q.status) ? q.status : 'submitted') as AvatarRequestStatus,
+      notes: typeof q.notes === 'string' ? q.notes : null,
+      photoCount: typeof q.photo_count === 'number' ? q.photo_count : null,
+      operatorNote: typeof q.operator_note === 'string' ? q.operator_note : null,
+      createdAt: String(q.created_at ?? ''),
+    },
+  }
+}
+
+/** `photos` are base64 JPEG bodies (no data: prefix) — see `photoToJpegBase64`. */
+export async function submitAvatarRequest(churchId: string, photos: string[], notes: string) {
+  return call<{ replaced: boolean }>('submit_church_avatar_request', { p_church_id: churchId, p_photos: photos, p_notes: notes })
+}
+
+/**
+ * A picked photo → a JPEG of at most `max` px on its long side, as base64 with
+ * no prefix. The server refuses anything that isn't a JPEG by its first bytes
+ * or is over 600KB decoded, so every photo is re-encoded here whatever it was
+ * (a HEIC from an iPhone included, wherever the browser can decode it).
+ */
+export async function photoToJpegBase64(file: File, max = 1024): Promise<string> {
+  const url = URL.createObjectURL(file)
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image()
+      i.onload = () => resolve(i)
+      i.onerror = () => reject(new Error('decode'))
+      i.src = url
+    })
+    const scale = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale))
+    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale))
+    canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
+    for (const q of [0.85, 0.7, 0.55]) {
+      const data = canvas.toDataURL('image/jpeg', q).split(',')[1] ?? ''
+      // base64 is 4/3 of the bytes; stay well under the server's 600KB.
+      if (data.length * 0.75 < 550_000) return data
+    }
+    throw new Error('too_big')
+  } finally {
+    URL.revokeObjectURL(url)
   }
 }
 

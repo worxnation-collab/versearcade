@@ -9,6 +9,7 @@ import { TodayVerseForm } from './TodayVerseForm'
 import { OverviewPanel, PeoplePanel, ActivityPanel, useInsights } from './InsightsPanel'
 import { NoticesPanel } from './NoticesPanel'
 import { SharePanel } from './SharePanel'
+import { LeaderLookPanel } from './LeaderLookPanel'
 
 // /church/:id/admin — the tools a church's verified leadership uses.
 //
@@ -40,6 +41,12 @@ import { SharePanel } from './SharePanel'
 // manual tool and draws the drafting assist as locked; with it, the form gets
 // the server backend that carries `draft`/`saveDraft`. Still no price, no
 // checkout and no upgrade button anywhere: both are granted off the device.
+//
+// A third row since 0136: the CUSTOM LEADER AVATAR, a one-time add-on on the
+// same base. "Your look" (verified leadership) is where every leader picks one
+// of five default looks, and where the add-on's photo request is sent. A leader
+// who has not chosen a look yet lands on that tab first — the claim screen
+// sends a new leader straight here, so that IS the setup step.
 export default function ChurchAdminScreen() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
@@ -100,6 +107,8 @@ export default function ChurchAdminScreen() {
 
   const leader = ent ? ent.churchLeader : settings.verified
   const generation = leader && !!ent?.contentGeneration
+  // Setup: verified leadership with no look chosen yet opens on the picker.
+  const setup = settings.verified && !!ent && ent.churchLeader && !ent.leaderLook
   const tabs = [
     ...(settings.verified
       ? [
@@ -119,6 +128,7 @@ export default function ChurchAdminScreen() {
           },
           { key: 'people', label: 'People', content: <PeoplePanel insights={insights.data} failed={insights.failed} /> },
           { key: 'activity', label: 'Activity', content: <ActivityPanel churchId={id} /> },
+          { key: 'look', label: 'Your look', content: <LeaderLookPanel churchId={id} ent={ent} setup={setup} onChanged={load} /> },
         ]
       : []),
     {
@@ -142,9 +152,15 @@ export default function ChurchAdminScreen() {
       <h1 style={{ fontSize: 24, margin: '0 0 4px' }}>Leadership</h1>
       <div className="dim" style={{ fontSize: 13.5, marginBottom: 12 }}>{settings.name}</div>
 
-      <PlanStatus leader={leader} generation={generation} held={!!ent?.contentGenerationHeld} />
+      <PlanStatus
+        leader={leader}
+        generation={generation}
+        held={!!ent?.contentGenerationHeld}
+        avatar={leader && !!ent?.customLeaderAvatar}
+        avatarHeld={!!ent?.customLeaderAvatarHeld}
+      />
 
-      <TabbedSection tabs={tabs} defaultOpen defaultTab={settings.verified ? 'overview' : 'notices'} />
+      <TabbedSection tabs={tabs} defaultOpen defaultTab={setup ? 'look' : settings.verified ? 'overview' : 'notices'} />
       <div style={{ height: 32 }} />
     </Page>
   )
@@ -153,13 +169,19 @@ export default function ChurchAdminScreen() {
 // What this church holds, stated plainly: two rows, each on or not. No price,
 // no upgrade button — a church asks through the page's "Add info" pill, as it
 // always has, and an operator grants both.
-function PlanStatus({ leader, generation, held }: { leader: boolean; generation: boolean; held: boolean }) {
+function PlanStatus({ leader, generation, held, avatar, avatarHeld }: {
+  leader: boolean
+  generation: boolean
+  held: boolean
+  avatar: boolean
+  avatarHeld: boolean
+}) {
   return (
     <div className="card" style={{ padding: '10px 12px', marginBottom: 12, display: 'grid', gap: 6 }} aria-label="This church’s plan">
       <PlanRow
         on={leader}
         name="Church Leader"
-        detail={leader ? 'Your verse and questions, series, notes, congregation totals.' : 'Notices and sharing only for now.'}
+        detail={leader ? 'Your verse and questions, series, notes, congregation totals, and five leader looks.' : 'Notices and sharing only for now.'}
       />
       <PlanRow
         on={generation}
@@ -170,6 +192,17 @@ function PlanStatus({ leader, generation, held }: { leader: boolean; generation:
             : held
               ? 'On your plan, and switches on with Church Leader.'
               : 'An add-on to Church Leader. Not on this church’s plan.'
+        }
+      />
+      <PlanRow
+        on={avatar}
+        name="Custom Leader Avatar"
+        detail={
+          avatar
+            ? 'Send up to three photos and notes from “Your look”, and we make your avatar.'
+            : avatarHeld
+              ? 'On your plan, and switches on with Church Leader.'
+              : 'A one-time add-on to Church Leader. Not on this church’s plan.'
         }
       />
     </div>

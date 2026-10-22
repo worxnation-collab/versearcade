@@ -226,6 +226,122 @@ export const ASSET_TEMPLATES: AssetTemplate[] = [
     },
   },
 
+  // --- Picture cards (owner-supplied, people in them). The words sit in the
+  // picture's own empty space or on a soft panel, never across a face.
+  {
+    id: 'verse_child_light', kind: 'verse_card', name: 'Wonder', aspect: [2, 3],
+    background: { color: '#e9d0a9', image: '/church-assets/verse_child_light/bg.jpg', overlay: 'linear-gradient(to bottom, rgba(250,243,230,0) 46%, rgba(250,243,230,0.88) 60%, rgba(250,243,230,0.96) 100%)' },
+    ink: '#3a2a18', accent: '#8a5f24', fonts: { serif: SERIF },
+    slots: {
+      eyebrow: { x: 8, y: 58, w: 84, h: 4, size: 3, uppercase: true, tracking: 0.14, weight: 800, align: 'center', color: '#8a5f24' },
+      body: { x: 8, y: 63, w: 84, h: 26, size: 5.6, minScale: 0.5, font: 'serif', italic: true, align: 'center', valign: 'middle', maxLines: 10 },
+      reference: { x: 8, y: 90, w: 84, h: 4, size: 3.8, weight: 800, align: 'center', color: '#8a5f24' },
+      footer: { x: 8, y: 95, w: 84, h: 3.5, size: 2.6, align: 'center', color: '#8a5f24' },
+    },
+  },
+  {
+    id: 'verse_open_hands', kind: 'verse_card', name: 'Open hands', aspect: [2, 3],
+    background: { color: '#d3c5ae', image: '/church-assets/verse_open_hands/bg.jpg', overlay: 'linear-gradient(to bottom, rgba(250,243,230,0) 46%, rgba(250,243,230,0.88) 60%, rgba(250,243,230,0.96) 100%)' },
+    ink: '#2e2a24', accent: '#6b5a3e', fonts: { serif: SERIF },
+    slots: {
+      eyebrow: { x: 8, y: 58, w: 84, h: 4, size: 3, uppercase: true, tracking: 0.14, weight: 800, align: 'center', color: '#6b5a3e' },
+      body: { x: 8, y: 63, w: 84, h: 26, size: 5.6, minScale: 0.5, font: 'serif', italic: true, align: 'center', valign: 'middle', maxLines: 10 },
+      reference: { x: 8, y: 90, w: 84, h: 4, size: 3.8, weight: 800, align: 'center', color: '#6b5a3e' },
+      footer: { x: 8, y: 95, w: 84, h: 3.5, size: 2.6, align: 'center', color: '#6b5a3e' },
+    },
+  },
+  {
+    id: 'verse_family_reading', kind: 'verse_card', name: 'Family', aspect: [2, 3],
+    background: { color: '#ccb99b', image: '/church-assets/verse_family_reading/bg.jpg', overlay: 'linear-gradient(to bottom, rgba(250,243,230,0) 46%, rgba(250,243,230,0.88) 60%, rgba(250,243,230,0.96) 100%)' },
+    ink: '#2e2a20', accent: '#5d6b45', fonts: { serif: SERIF },
+    slots: {
+      eyebrow: { x: 8, y: 60, w: 84, h: 4, size: 3, uppercase: true, tracking: 0.14, weight: 800, align: 'center', color: '#5d6b45' },
+      body: { x: 8, y: 65, w: 84, h: 24, size: 5.6, minScale: 0.5, font: 'serif', italic: true, align: 'center', valign: 'middle', maxLines: 10 },
+      reference: { x: 8, y: 90, w: 84, h: 4, size: 3.8, weight: 800, align: 'center', color: '#5d6b45' },
+      footer: { x: 8, y: 95, w: 84, h: 3.5, size: 2.6, align: 'center', color: '#5d6b45' },
+    },
+  },
+  {
+    id: 'verse_elder_book', kind: 'verse_card', name: 'Elder', aspect: [2, 3],
+    background: {
+      color: '#525359', image: '/church-assets/verse_elder_book/bg.jpg',
+      overlay: 'linear-gradient(to bottom, rgba(16,26,52,0) 38%, rgba(16,26,52,0.35) 48%, rgba(16,26,52,0.82) 60%, rgba(16,26,52,0.95) 72%)',
+    },
+    ink: '#f4ecdc', accent: '#e2c27f', fonts: { serif: SERIF },
+    slots: {
+      eyebrow: { x: 8, y: 58, w: 84, h: 4, size: 3, uppercase: true, tracking: 0.14, weight: 800, align: 'center', color: '#e2c27f' },
+      body: { x: 8, y: 63, w: 84, h: 26, size: 5.6, minScale: 0.5, font: 'serif', italic: true, align: 'center', valign: 'middle', maxLines: 10 },
+      reference: { x: 8, y: 90, w: 84, h: 4, size: 3.8, weight: 800, align: 'center', color: '#e2c27f' },
+      footer: { x: 8, y: 95, w: 84, h: 3.5, size: 2.6, align: 'center', color: '#c9bfae' },
+    },
+  },
+  {
+    id: 'verse_kneeling', kind: 'verse_card', name: 'Kneeling', aspect: [2, 3],
+    background: { color: '#b3ada4', image: '/church-assets/verse_kneeling/bg.jpg' },
+    ink: '#1f2733', accent: '#3e4c63', fonts: { serif: SERIF },
+    slots: {
+      eyebrow: { x: 7, y: 7, w: 86, h: 4, size: 3, uppercase: true, tracking: 0.14, weight: 800, color: '#3e4c63' },
+      body: { x: 7, y: 12, w: 36, h: 44, size: 5.2, minScale: 0.5, font: 'serif', italic: true, valign: 'top', maxLines: 14 },
+      reference: { x: 7, y: 58, w: 40, h: 4, size: 3.8, weight: 800, color: '#3e4c63' },
+      footer: { x: 7, y: 93, w: 50, h: 3.5, size: 2.6, color: '#3e4c63' },
+    },
+  },
+  {
+    id: 'verse_the_path', kind: 'verse_card', name: 'The path', aspect: [2, 3],
+    background: {
+      color: '#a39175', image: '/church-assets/verse_the_path/bg.jpg',
+      overlay: 'linear-gradient(to bottom, rgba(246,238,224,0.85) 0%, rgba(246,238,224,0.6) 26%, rgba(246,238,224,0) 36%)',
+    },
+    ink: '#2c2a22', accent: '#5a5338', fonts: { serif: SERIF },
+    slots: {
+      eyebrow: { x: 8, y: 4, w: 84, h: 3.5, size: 2.8, uppercase: true, tracking: 0.14, weight: 800, align: 'center', color: '#5a5338' },
+      body: { x: 6, y: 7.5, w: 88, h: 18.5, size: 5, minScale: 0.6, font: 'serif', italic: true, align: 'center', valign: 'middle', maxLines: 7 },
+      reference: { x: 58, y: 27, w: 36, h: 3.5, size: 3.4, weight: 800, align: 'right', color: '#5a5338' },
+      footer: { x: 52, y: 95, w: 42, h: 3.5, size: 2.6, align: 'right', color: '#f4ecdc' },
+    },
+  },
+  {
+    id: 'series_gathered', kind: 'series_header', name: 'Gathered', aspect: [3, 2],
+    background: { color: '#fef6e9', image: '/church-assets/series_gathered/bg.jpg' },
+    ink: '#2e2a22', accent: '#5f6b47',
+    slots: {
+      eyebrow: { x: 56, y: 22, w: 40, h: 8, size: 2.2, uppercase: true, tracking: 0.16, weight: 800, color: '#5f6b47' },
+      title: { x: 56, y: 31, w: 40, h: 30, size: 6, minScale: 0.55, font: 'display', weight: 800, valign: 'middle', maxLines: 3 },
+      body: { x: 56, y: 63, w: 40, h: 7, size: 2.4, color: '#4a4636' },
+      reference: { x: 56, y: 71, w: 40, h: 8, size: 2.1, color: '#5f6b47', maxLines: 2 },
+    },
+  },
+  {
+    id: 'notice_two_friends', kind: 'announcement', name: 'Friends', aspect: [2, 3],
+    background: { color: '#e0dbcc', image: '/church-assets/notice_two_friends/bg.jpg' },
+    ink: '#2a2e26', accent: '#5b6b4a', fonts: { serif: SERIF },
+    slots: {
+      eyebrow: { x: 8, y: 4, w: 84, h: 4, size: 3, uppercase: true, tracking: 0.16, weight: 800, align: 'center', color: '#5b6b4a' },
+      body: { x: 8, y: 8.5, w: 84, h: 19, size: 5.2, minScale: 0.55, font: 'serif', align: 'center', valign: 'middle', maxLines: 6 },
+      footer: { x: 8, y: 94, w: 84, h: 3.5, size: 2.6, align: 'center', color: '#5b6b4a' },
+    },
+  },
+  {
+    id: 'notice_quiet_prayer', kind: 'announcement', name: 'Quiet prayer', aspect: [2, 3],
+    background: { color: '#e6cbb3', image: '/church-assets/notice_quiet_prayer/bg.jpg', overlay: 'linear-gradient(to bottom, rgba(250,243,230,0) 52%, rgba(250,243,230,0.88) 66%, rgba(250,243,230,0.96) 100%)' },
+    ink: '#3a2826', accent: '#8a5a52', fonts: { serif: SERIF },
+    slots: {
+      eyebrow: { x: 8, y: 66, w: 84, h: 4, size: 3, uppercase: true, tracking: 0.16, weight: 800, align: 'center', color: '#8a5a52' },
+      body: { x: 8, y: 71, w: 84, h: 23, size: 5.4, minScale: 0.55, font: 'serif', align: 'center', valign: 'middle', maxLines: 7 },
+      footer: { x: 8, y: 95, w: 84, h: 3.5, size: 2.6, align: 'center', color: '#8a5a52' },
+    },
+  },
+  {
+    id: 'notice_reading_corner', kind: 'announcement', name: 'Reading corner', aspect: [2, 3],
+    background: { color: '#d8c9b2', image: '/church-assets/notice_reading_corner/bg.jpg', overlay: 'linear-gradient(to bottom, rgba(250,243,230,0) 52%, rgba(250,243,230,0.88) 66%, rgba(250,243,230,0.96) 100%)' },
+    ink: '#2e2a22', accent: '#5d6b4a', fonts: { serif: SERIF },
+    slots: {
+      eyebrow: { x: 8, y: 70, w: 84, h: 4, size: 3, uppercase: true, tracking: 0.16, weight: 800, align: 'center', color: '#5d6b4a' },
+      body: { x: 8, y: 75, w: 84, h: 19, size: 5.4, minScale: 0.55, font: 'serif', align: 'center', valign: 'middle', maxLines: 7 },
+      footer: { x: 8, y: 95, w: 84, h: 3.5, size: 2.6, align: 'center', color: '#5d6b4a' },
+    },
+  },
+
   // --- The original stand-ins, retired: hidden from the picker, still drawing
   // any card a church made with them before the art landed.
   {

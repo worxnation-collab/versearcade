@@ -128,3 +128,18 @@ ornaments; re-check by rendering, not by reading numbers, if an image is
 replaced. The six original stand-ins are `retired`: off the picker, still
 drawing any card a church made before the art landed.
 
+### Picture cards (2026-10-22)
+
+Ten more owner-supplied illustrations, with people in them: verse — Wonder,
+Open hands, Family, Elder, Kneeling, The path; series — Gathered; notice —
+Friends, Quiet prayer, Reading corner. The rule for these is that **words never
+cross a face**: each one puts its text in the picture's own empty space
+(Kneeling's left column, The path's sky, Friends' top) or on a soft panel faded
+in over the lower third (`background.overlay` — cream, or navy on Elder, where
+the cardigan already is). Gathered's source was 3:2 with the group dead centre
+and no room for a title, so it was re-composed on its own flat background
+(cropped left, extended right in the measured edge colour) — seamless only
+because that background is flat; don't do it to a painted edge. The path's top
+band is the tightest box in the set and sets a long verse small; it is the one
+to avoid for a passage over ~200 characters.
+

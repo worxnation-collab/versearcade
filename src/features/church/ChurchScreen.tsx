@@ -25,6 +25,7 @@ import { FloraIcon } from './ChurchFlora'
 import { FLORA, PLOTS, floraById, nextFlora, plantingId } from './yard'
 import { statueById } from './rivalry'
 import { ChurchPicker } from './ChurchPicker'
+import { ChurchLife } from './ChurchLife'
 import { CHURCH_TIERS, churchLevelInfo, nextTier, tierForLevel, tierIndexForLevel, xpToReachLevel } from './levels'
 import type { Church } from '@/types'
 import { PaintedIcon } from '@/components/PaintedIcon'
@@ -452,6 +453,11 @@ function ChurchHome({ church }: { church: Church }) {
           />
         </div>
       </div>
+
+      {/* The congregation as people (0128): context, the leader's notice,
+          the church verse and its series, the activity feed, and where to
+          compete. Verified churches only — nothing changes for the rest. */}
+      <ChurchLife church={church} extras={extras} />
 
       {/* Give -------------------------------------------------------------- */}
       <div className="card">

@@ -22,18 +22,21 @@ the same pattern skins and promotions follow.
     dropped.
   - Dates run from yesterday to a year ahead.
   - Saving the same day twice replaces the first save.
-- **`get_effective_verse(date)`** returns the caller's church verse for that
-  date. It returns **null** when the caller has no church, the church isn't
-  verified, no verse is set, or the date is outside ±1 day (so nobody can read
-  tomorrow's questions today).
-- **In the client, `loadToday()`** (`store/game.ts`, `churchVerseOr`) asks for
-  the church verse alongside its usual calls, with a 2.5s deadline.
-  - A null answer, an error or a timeout means the global verse, exactly as
-    before. Local mode and guests never call it.
-  - `dropDate` stays the real date, so the streak, `plays`, first light and the
-    run lock don't notice which verse was played.
-  - `ensure_daily_verse` still records the global verse, so one congregation
-    never overwrites the day.
+- **Since 0128 the church verse is its OWN lane, never the daily drop.**
+  Everybody, members included, plays the global verse. A member of a verified
+  church that set one for today also gets:
+  - `my_church_verse(date)` — the verse, their own result, and their progress
+    through its series. Null with no church, an unverified church, nothing set,
+    or a date outside ±1 day.
+  - `/play/church` (`ChurchVerseScreen`) — its own `QuizRunner` run with runId
+    `church:<church>:<date>`, recorded by `submit_church_verse_play` in
+    `church_verse_plays` (once per day, no XP).
+  - `ChurchVerseBox` on the Play tab, the third box under the drop and trivia,
+    and the church-verse card on the Church tab (`ChurchLife`).
+- **`get_effective_verse(date)` now always returns null.** It used to make the
+  church verse stand in for the drop (`churchVerseOr` in `store/game.ts`, now
+  gone). The signature is kept because approved iOS builds still call it — null
+  is "play the global verse" to that code, so they separate too.
 - **Admin UI:** `/church/:id/admin` → **Today's verse** (`TodayVerseForm`).
   - It loads whatever is already set for the chosen date, so leaders edit it
     rather than overwrite it.
@@ -112,32 +115,19 @@ configured Supabase URL: saving, copying, replacing and the page line made
 page-load reads (`content_catalog`, `list_buddies`, `list_buddy_requests`).
 They are identical on the commit before this change.
 
-## The congregation's numbers: aggregates only, floored at five
+## The congregation's numbers (0128: names included)
 
-`get_church_participation(church, days = 14)` is for verified leadership only,
-and appears as the **Congregation** tab. It returns:
+`church_leader_insights(church, date)` replaced `get_church_participation` on the
+dashboard. It returns members, active this week, quiet, fourteen days of drop and
+church-verse players, each series' completion, streak buckets, the live notice,
+and the roster BY NAME — the owner's call (see docs/CHURCH-CLAIM.md). There is no
+small-count floor any more. `get_church_participation` is kept, unused by the
+dashboard, because the public demo (`/churches/try`) still draws its sample
+numbers through `ParticipationPanel`.
 
-- members
-- players in the window
-- plays
-- average score
-- % who played today
-- live-streak buckets: 1, 2–6, 7+
-
-**Every number under 5 comes back null, including 0.** The screen shows it as
-"fewer than 5". In a small group a total points at a person.
-
-What it never returns, and what no RPC in this layer returns:
-
-- usernames
-- per-person rows
-- per-day series
-- "who hasn't played"
-
-This is the church roster's *crowd, not a ladder* rule (docs/CHURCH-CLAIM.md),
-and it holds harder here because the reader has authority over the people being
-counted. Adding anything per-member needs its own argument. It must not grow out
-of this function.
+`church_feed(church)` is the activity feed: drop and church-verse plays with
+scores, gifts, joins and notices from the last fourteen days, to members and
+leadership of that verified church.
 
 ## What 0119 replaced
 

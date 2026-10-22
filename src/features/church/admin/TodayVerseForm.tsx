@@ -13,8 +13,8 @@ import { SeriesCopyPanel } from './SeriesCopyPanel'
 // A reference, the words, and five questions of the church's own, saved for a
 // date. Saving the same date again replaces it (`set_church_verse` is an
 // upsert), so the form loads whatever is already there first and edits it
-// rather than overwriting blind. Members of the church play it as that day's
-// drop; everybody else is untouched.
+// rather than overwriting blind. Members get it as their church's own round
+// for that day, BESIDE the global drop (0128) — never in place of it.
 //
 // A pastor prepares weekly and preaches by the SERIES, so the form sits under a
 // three-week strip: twenty-one days, each marked set or not, tapping one edits
@@ -190,7 +190,7 @@ export function TodayVerseForm({
     setMsg({
       ok: !lost,
       text: (date === today
-        ? `Saved. It’s today’s drop for ${churchName}’s members — anyone who already played keeps their run.`
+        ? `Saved. It’s live now for ${churchName}’s members, next to today’s drop — anyone who already played it keeps their run.`
         : `Saved for ${pretty(date)}.`) + (lost ? ' The series name and note didn’t save — try again in a moment.' : ''),
     })
   }

@@ -39,7 +39,7 @@ const FREE: string[] = [
 
 const FOUNDING: string[] = [
   'You choose the day’s verse and write its five questions — or fill them from the library in one tap.',
-  'Your members play your verse as their daily drop. Streaks carry on exactly as before.',
+  'Your members get your verse as their own church round beside the daily verse — the shared drop stays for everybody.',
   'Congregation numbers for leadership: players, plays, average score and streaks.',
   'Your logo and an invite QR on your page, ready for the bulletin or the screen.',
   'Your giving link on your page (on the web).',

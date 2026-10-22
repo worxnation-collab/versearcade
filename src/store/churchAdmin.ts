@@ -347,3 +347,83 @@ export async function fetchParticipation(churchId: string, days = 14) {
   }
   return { ok: true as const, data: p }
 }
+
+// ---------------------------------------------------------------------------
+// The leadership dashboard (0128): congregation numbers WITH names — the
+// owner's call, "this is a tool for church leaders, names are important".
+// Verified leadership of THIS church only; nothing here reaches a member.
+// ---------------------------------------------------------------------------
+export interface InsightMember {
+  username: string
+  avatarEmoji: string | null
+  avatarCharacter: import('@/data/avatar').AvatarSpec | null
+  joinedAt: string | null
+  streak: number
+  lastPlayedOn: string | null
+  drop7d: number
+  church7d: number
+  churchAvg: number | null
+  leader: boolean
+  active: boolean
+}
+
+export interface InsightSeries {
+  series: string
+  starts: string
+  ends: string
+  days: number
+  soFar: number
+  plays: number
+  players: number
+  completion: number | null
+}
+
+export interface LeaderInsights {
+  today: string
+  members: number
+  active7d: number
+  quiet: number
+  days: { date: string; drop: number; church: number; scheduled: boolean }[]
+  series: InsightSeries[]
+  streaks: { s0: number; s1: number; s2_6: number; s7: number }
+  notice: { message: string; createdAt: string; expiresAt: string | null } | null
+  roster: InsightMember[]
+}
+
+export async function fetchLeaderInsights(churchId: string) {
+  const r = await call('church_leader_insights', { p_church_id: churchId, p_local_date: todayLocalDate() })
+  if (!r.ok) return r
+  const d = r.data
+  const n = (x: unknown) => (Number.isFinite(Number(x)) ? Number(x) : 0)
+  const data: LeaderInsights = {
+    today: String(d.today),
+    members: n(d.members),
+    active7d: n(d.active_7d),
+    quiet: n(d.quiet),
+    days: (Array.isArray(d.days) ? d.days : []).map((x: any) => ({
+      date: String(x.date), drop: n(x.drop), church: n(x.church), scheduled: !!x.scheduled,
+    })),
+    series: (Array.isArray(d.series) ? d.series : []).map((x: any) => ({
+      series: String(x.series ?? ''), starts: String(x.starts), ends: String(x.ends), days: n(x.days),
+      soFar: n(x.so_far), plays: n(x.plays), players: n(x.players), completion: num(x.completion),
+    })),
+    streaks: { s0: n(d.streaks?.s0), s1: n(d.streaks?.s1), s2_6: n(d.streaks?.s2_6), s7: n(d.streaks?.s7) },
+    notice: d.notice?.message
+      ? { message: String(d.notice.message), createdAt: String(d.notice.created_at), expiresAt: d.notice.expires_at ?? null }
+      : null,
+    roster: (Array.isArray(d.roster) ? d.roster : []).map((m: any) => ({
+      username: String(m.username ?? ''),
+      avatarEmoji: typeof m.avatar_emoji === 'string' ? m.avatar_emoji : null,
+      avatarCharacter: m.avatar_character ?? null,
+      joinedAt: m.joined_at ?? null,
+      streak: n(m.streak),
+      lastPlayedOn: m.last_played_on ?? null,
+      drop7d: n(m.drop_7d),
+      church7d: n(m.church_7d),
+      churchAvg: num(m.church_avg),
+      leader: !!m.leader,
+      active: !!m.active,
+    })),
+  }
+  return { ok: true as const, data }
+}

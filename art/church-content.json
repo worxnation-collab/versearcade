@@ -1,0 +1,52 @@
+[
+  {
+    "id": "cg_study",
+    "kind": "scene",
+    "format": "jpg",
+    "prompt": "WIDE LANDSCAPE 16:9 painting, filling the frame edge to edge. ABSOLUTELY NO PEOPLE, no figures, no faces, no hands, no silhouettes, no text, no letters, no watermark, no border, no UI. A pastor's study at night, seen from across the room: a heavy wooden desk on the RIGHT side with an open Bible, a stack of handwritten sermon pages, a pencil and a small brass oil lamp throwing a warm pool of light; tall bookshelves behind; a tall window on the far left showing a deep slate-blue night with one star over a small church steeple. The LEFT and MIDDLE of the frame are calm: plain wooden floor and quiet wall, room for words drawn over it. STYLE, emphatically: flat graphic vector-like shapes with CLEAN HARD EDGES and DEEP SATURATED colour blocks, exactly in the manner of the reference paintings. Burnt orange, ochre, terracotta, deep slate blue. NOT pale, NOT hazy, NOT photographic, NOT airbrushed. ONE continuous scene, no panels or seams.",
+    "refs": [
+      "public/tiktok/roads/mountain-path.jpg",
+      "public/tiktok/roads/dawn-hills.jpg"
+    ]
+  },
+  {
+    "id": "cg_week",
+    "kind": "scene",
+    "format": "jpg",
+    "prompt": "WIDE LANDSCAPE 16:9 painting, filling the frame edge to edge. ABSOLUTELY NO PEOPLE, no figures, no faces, no silhouettes, no text, no letters, no numbers, no watermark, no border, no UI. One sermon becoming a week: inside an empty stone sanctuary at sunrise, a simple wooden pulpit on the LEFT with an open Bible on it, and from a row of SEVEN tall arched windows along the right wall seven long beams of gold morning light fall across the plain floor in a row, evenly spaced. Wooden pews in soft shadow. The middle of the floor is open and calm. STYLE, emphatically: flat graphic vector-like shapes with CLEAN HARD EDGES and DEEP SATURATED colour blocks, exactly in the manner of the reference paintings. Burnt orange, ochre, terracotta, deep slate blue. NOT pale, NOT hazy, NOT photographic, NOT airbrushed. ONE continuous scene, no panels or seams.",
+    "refs": [
+      "public/tiktok/roads/mountain-path.jpg",
+      "public/tiktok/roads/dawn-hills.jpg"
+    ]
+  },
+  {
+    "id": "cg_draft",
+    "kind": "scene",
+    "format": "jpg",
+    "prompt": "AN INDOOR STILL LIFE ON A TABLE. NOT A LANDSCAPE: no hills, no sky, no road, no trees, no outdoors at all \u2014 the reference images are for STYLE ONLY, not subject. WIDE LANDSCAPE 16:9 painting filling the frame edge to edge. ABSOLUTELY NO PEOPLE, no hands, no faces, no readable text, no letters, no watermark, no border, no UI. Close view of a dark wooden writing table against a warm terracotta wall: on the RIGHT half, a long unrolled parchment scroll with faint wavy pencil lines (unreadable), a brass seal stamp standing upright beside it, a stick of deep red sealing wax not yet melted, a quill in a small inkpot, and one lit candle. The LEFT half is plain table top and plain wall. STYLE, emphatically: flat graphic vector-like shapes with CLEAN HARD EDGES and DEEP SATURATED colour blocks like the references. Burnt orange, ochre, terracotta, deep slate blue, one deep red. NOT pale, NOT hazy, NOT photographic.",
+    "refs": [
+      "public/tiktok/roads/mountain-path.jpg",
+      "public/tiktok/roads/dawn-hills.jpg"
+    ]
+  },
+  {
+    "id": "cg_approved",
+    "kind": "scene",
+    "format": "jpg",
+    "prompt": "WIDE LANDSCAPE 16:9 painting, filling the frame edge to edge. ABSOLUTELY NO PEOPLE, no figures, no faces, no hands, no text, no letters, no watermark, no border, no UI. Approved and sent out: a rolled parchment scroll tied with cord and closed with a pressed deep red wax seal bearing a simple cross, resting on a stone windowsill on the RIGHT; through the open window, a small village church on a hill at golden morning with warm light in its windows and a path leading up to its door. The LEFT side is open sky and calm hills. STYLE, emphatically: flat graphic vector-like shapes with CLEAN HARD EDGES and DEEP SATURATED colour blocks, exactly in the manner of the reference paintings. Burnt orange, ochre, terracotta, deep slate blue. NOT pale, NOT hazy, NOT photographic, NOT airbrushed.",
+    "refs": [
+      "public/tiktok/roads/mountain-path.jpg",
+      "public/tiktok/roads/dawn-hills.jpg"
+    ]
+  },
+  {
+    "id": "cg_private",
+    "kind": "scene",
+    "format": "jpg",
+    "prompt": "WIDE LANDSCAPE 16:9 painting, filling the frame edge to edge. ABSOLUTELY NO PEOPLE, no figures, no faces, no silhouettes, no text, no letters, no signs, no watermark, no border, no UI. For your congregation only: a small stone CHURCH — unmistakably a church, with a small bell tower and a simple cross on top of it — at dusk on the RIGHT, its heavy wooden double door standing HALF OPEN with bright warm gold light pouring out of the doorway onto the step and down the path, and gold light glowing in its small windows and a low stone wall with a gate around its yard; olive trees; a deep slate-blue evening sky with the first stars. The LEFT side is quiet hills and open sky. Feels welcoming, kept and safe, not secretive. STYLE, emphatically: flat graphic vector-like shapes with CLEAN HARD EDGES and DEEP SATURATED colour blocks, exactly in the manner of the reference paintings. Burnt orange, ochre, terracotta, deep slate blue. NOT pale, NOT hazy, NOT photographic, NOT airbrushed.",
+    "refs": [
+      "public/tiktok/roads/mountain-path.jpg",
+      "public/tiktok/roads/dawn-hills.jpg"
+    ]
+  }
+]

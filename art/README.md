@@ -26,6 +26,7 @@ must never be written into a tracked file.
 | `cpu.json` | the three CPU opponents (Rookie, Deacon, Prophet) as full-length figures; `CpuFace` crops them to a portrait | `public/skins/cpu_*.png` |
 | `sharkey.json` | "Sharkey" — the founder's own one-of-one skin, from likeness photos not kept in the repo (see the manifest's `note`) | `public/skins/sharkey.png` |
 | `skins-refit.json` | re-renders of pre-pipeline skins that shipped as busts (Eden cut at the hem, Elijah at the knees) — full length, head to feet | `public/skins/eden.png`, `public/skins/elijah.png` |
+| `church-content.json` | the Content Generation package (church leaders): the pastor's study, a week of light from one sermon, a draft awaiting its seal, the sealed approval, and "for your congregation only" — in the YouTube/Facebook verse-painting style (flat, hard-edged, saturated; refs are two TikTok roads) | `public/keep/cg_*.jpg` |
 
 **Check what came back**, every time:
 

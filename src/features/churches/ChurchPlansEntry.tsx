@@ -4,6 +4,7 @@ import { Browser } from '@capacitor/browser'
 import { churchApplePlansVisible, churchPlansLink } from '@/lib/commerce'
 import { useIap, type ChurchPlanOutcome } from '@/store/iap'
 import type { ChurchPlanInterval } from '@/lib/iap'
+import { noteChurchPlanTap } from '@/store/churchAdmin'
 import { useJuice } from '@/juice/useJuice'
 
 // "For Churches" — the App Store build's quiet door to church plans.
@@ -65,6 +66,9 @@ export function ChurchPlansEntry({ churchId, churchName, onAsk, subscribe }: {
     // The web admin page carries this church's billing once signed in there;
     // without a church, the For Churches page carries the plans.
     const url = churchId ? `${SITE}/church/${encodeURIComponent(churchId)}/admin` : `${SITE}/churches`
+    // Counted only on the leadership screen, where there is a church to count
+    // it against. Not awaited: the browser opens on this tap regardless.
+    if (churchId && subscribe) noteChurchPlanTap(churchId, 'web', null)
     try {
       await Browser.open({ url })
     } catch {
@@ -153,7 +157,14 @@ function ApplePlans({ churchId, churchName, onChanged }: { churchId: string; chu
           className="pill"
           style={{ justifySelf: 'start' }}
           disabled={busy !== null}
-          onClick={async () => { juice.select?.(); setNote(null); setBusy(p.interval); done(await buy(p.interval, churchId)) }}
+          onClick={async () => {
+            juice.select?.()
+            setNote(null)
+            setBusy(p.interval)
+            // Fire-and-forget (0141), BEFORE the sheet opens and never awaited.
+            noteChurchPlanTap(churchId, 'apple', p.interval)
+            done(await buy(p.interval, churchId))
+          }}
         >
           {busy === p.interval ? 'Opening…' : `Subscribe with Apple · ${p.priceString} / ${p.interval === 'year' ? 'year' : 'month'}`}
         </button>

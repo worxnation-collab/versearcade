@@ -110,6 +110,24 @@ export async function fetchChurchBilling(churchId: string): Promise<ChurchBillin
 }
 
 /**
+ * Which door a leader took toward a plan (0141): "Subscribe with Apple" or the
+ * web billing link. Fire-and-forget by design — the caller never awaits it, so
+ * the Apple sheet or the browser opens on the same tap whether this lands,
+ * fails, or the server has no 0141. `.then()` is what sends a postgrest call
+ * (a bare `void rpc()` sends nothing — CLAUDE.md), so it is kept even though
+ * nothing reads the answer. `interval` is null for the web, where the plan's
+ * period is chosen on the page rather than in the app.
+ */
+export function noteChurchPlanTap(churchId: string, path: 'apple' | 'web', interval: 'month' | 'year' | null): void {
+  if (!online()) return
+  try {
+    void supabase!
+      .rpc('note_church_plan_tap', { p_church_id: churchId, p_path: path, p_interval: interval })
+      .then(() => {}, () => {})
+  } catch { /* never let counting a tap get in the way of the tap */ }
+}
+
+/**
  * A Stripe customer-portal URL for this church, or null with a reason.
  * `flow: 'plan'` opens straight on the plan picker ("Manage plan").
  */

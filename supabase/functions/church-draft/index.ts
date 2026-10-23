@@ -36,8 +36,10 @@
 // AND THEN EVERY ANSWER IS CHECKED (0143). A finished set of five is read a
 // second time, blind: the model is shown the passage and each question's
 // options and asked which one the passage supports — never told which was
-// marked right. Where its pick differs (or it can't tell, -1), the question
-// carries `check: true` and `checkPick` back to the leader as a ⚠. The check
+// marked right. Where it picks a DIFFERENT option, the question
+// carries `check: true` and `checkPick` back to the leader as a ⚠ ("can't
+// tell", -1, is not a flag: a verse alone often can't answer a before/after
+// question). The check
 // is a note, not a gate: it is one cheap call for the whole run, time-boxed,
 // and a check that fails or runs out of time leaves the questions exactly as
 // they were, unflagged. Only a DRAFT keeps the flag (`church_draft_questions`);
@@ -452,7 +454,9 @@ async function checkAnswers(
     if (answers.some((a, n) => !Number.isInteger(a) || a < -1 || a >= it.questions[n].options.length)) continue
     it.questions.forEach((q, n) => {
       checked++
-      if (answers[n] !== q.answerIndex) { q.check = true; q.checkPick = answers[n]; flagged++ }
+      // "Can't tell" (-1) is not a disagreement: a verse alone often can't answer a
+      // before/after question, and a ⚠ on a right answer teaches leaders to ignore it.
+      if (answers[n] !== -1 && answers[n] !== q.answerIndex) { q.check = true; q.checkPick = answers[n]; flagged++ }
     })
   }
   return { checked, flagged }

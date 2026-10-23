@@ -5,6 +5,7 @@ import { Avatar } from '@/components/Avatar'
 import { Button } from '@/components/Button'
 import { useBuddies } from '@/store/buddies'
 import { useGifts } from '@/store/gifts'
+import { useChurchCheckIns } from '@/store/churchCheckIns'
 import { useWashing } from '@/store/washing'
 import { usePrayerWall } from '@/store/prayerWall'
 import { prayerCategoryById } from '@/data/prayerWall'
@@ -45,6 +46,9 @@ export default function MailScreen() {
 
   const gifts = useGifts((s) => s.received)
   const giftsLoaded = useGifts((s) => s.loaded)
+  // A leader's check-in (0137): their own words and nothing else — no reason,
+  // no list, nothing about why it was sent.
+  const checkIns = useChurchCheckIns((s) => s.notes)
   const requests = useBuddies((s) => s.requests)
   const respond = useBuddies((s) => s.respond)
   const washings = useWashing((s) => s.recent)
@@ -61,6 +65,7 @@ export default function MailScreen() {
 
   useEffect(() => {
     void useGifts.getState().load().then(() => useGifts.getState().markSeen())
+    void useChurchCheckIns.getState().load().then(() => useChurchCheckIns.getState().markSeen())
     void useBuddies.getState().load()
     void useWashing.getState().load()
     void usePrayerWall.getState().load()
@@ -68,7 +73,7 @@ export default function MailScreen() {
 
   const noteLit = !!myNote && myNote.open && myNote.lit
   const empty =
-    giftsLoaded && !gifts.length && !requests.length && !washings.length && !news.length &&
+    giftsLoaded && !gifts.length && !checkIns.length && !requests.length && !washings.length && !news.length &&
     !answered.length && !noteLit
 
   return (
@@ -89,7 +94,7 @@ export default function MailScreen() {
         <div className="card" style={{ textAlign: 'center', padding: 30 }}>
           <div style={{ fontSize: 34 }}>📭</div>
           <p className="dim" style={{ marginTop: 10, fontSize: 14, lineHeight: 1.5 }}>
-            Nothing today. Gifts, buddy requests, answered prayers and news land here.
+            Nothing today. Gifts, notes from your church, buddy requests, answered prayers and news land here.
           </p>
         </div>
       )}
@@ -145,6 +150,22 @@ export default function MailScreen() {
               >
                 Not now
               </button>
+            </div>
+          ))}
+        </Section>
+      )}
+
+      {checkIns.length > 0 && (
+        <Section title="From your church">
+          {checkIns.map((n) => (
+            <div key={n.id} className="card" style={{ marginBottom: 8, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              <Avatar emoji={n.fromAvatar ?? '⛪'} character={n.fromCharacter} username={n.fromUsername} size={40} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: 14, lineHeight: 1.45, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>{n.message}</p>
+                <span className="faint" style={{ fontSize: 12 }}>
+                  @{n.fromUsername} · {n.churchName} · {new Date(n.createdAt).toLocaleDateString()}
+                </span>
+              </div>
             </div>
           ))}
         </Section>

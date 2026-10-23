@@ -121,7 +121,7 @@ export default function ChurchAdminScreen() {
               />
             ),
           },
-          { key: 'people', label: 'People', content: <PeoplePanel insights={insights.data} failed={insights.failed} /> },
+          { key: 'people', label: 'People', content: <PeoplePanel churchId={id} insights={insights.data} failed={insights.failed} /> },
           { key: 'activity', label: 'Activity', content: <ActivityPanel churchId={id} /> },
         ]
       : []),

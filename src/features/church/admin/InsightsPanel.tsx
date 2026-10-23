@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Avatar } from '@/components/Avatar'
 import { Collapsible } from '@/components/Collapsible'
+import { QuickSheet } from '@/components/QuickSheet'
+import { Button } from '@/components/Button'
+import { useJuice } from '@/juice/useJuice'
+import { CHECK_IN_DRAFT, CHECK_IN_MAX, useChurchCheckIns, type CheckInReason } from '@/store/churchCheckIns'
 import { fetchLeaderInsights, type InsightMember, type LeaderInsights } from '@/store/churchAdmin'
 import { fetchChurchFeed, type FeedEvent } from '@/store/churchVerse'
 import { ago } from '../ChurchLife'
@@ -141,11 +145,18 @@ export function OverviewPanel({ insights, failed }: { insights: LeaderInsights |
 }
 
 // Active members are the list. Members with no play in seven days sit in ONE
-// folded section the leader has to open — never a filter pill with a count on
-// it, never coral, never a "quiet" tile on the front page. Somebody who hasn't
-// played this week is a person to call, not a row on a list of failures, and
-// the fold is what keeps the page from opening on them.
-export function PeoplePanel({ insights, failed }: { insights: LeaderInsights | null; failed: boolean }) {
+// folded section the leader has to open — never a filter pill, never coral,
+// never a "quiet" tile on the front page. Somebody who hasn't played this week
+// is a person to call, not a row on a list of failures, and the fold is what
+// keeps the page from opening on them. The header keeps its count so a folded
+// section still says how many people are inside.
+//
+// "Check in" lives on rows INSIDE the fold and nowhere else. It opens a draft
+// the leader edits and sends by hand (0137); nothing is sent on its own, and
+// the server is told only who and what — never which list the name came from.
+export function PeoplePanel({ churchId, insights, failed }: { churchId: string; insights: LeaderInsights | null; failed: boolean }) {
+  const [checkIn, setCheckIn] = useState<InsightMember | null>(null)
+  const [sent, setSent] = useState<Set<string>>(() => new Set())
   if (failed) return FAILED
   if (!insights) return LOADING
   const active = insights.roster.filter((m) => m.active)
@@ -161,15 +172,38 @@ export function PeoplePanel({ insights, failed }: { insights: LeaderInsights | n
       {resting.length > 0 && (
         <Collapsible icon="🕊️" title="Not active this week" meta={resting.length.toLocaleString()}>
           <div style={{ display: 'grid', gap: 8 }}>
-            {resting.map((m) => <MemberRow key={m.username} m={m} today={insights.today} />)}
+            {resting.map((m) => (
+              <MemberRow
+                key={m.username}
+                m={m}
+                today={insights.today}
+                action={
+                  m.leader ? undefined : sent.has(m.username) ? (
+                    <span className="faint" style={{ fontSize: 12, fontWeight: 700 }}>Sent ✓</span>
+                  ) : (
+                    <button className="pill" onClick={() => setCheckIn(m)} style={{ fontSize: 12, fontWeight: 800, padding: '6px 11px' }}>
+                      Check in
+                    </button>
+                  )
+                }
+              />
+            ))}
           </div>
         </Collapsible>
+      )}
+      {checkIn && (
+        <CheckInSheet
+          churchId={churchId}
+          member={checkIn}
+          onClose={() => setCheckIn(null)}
+          onSent={(u) => { setSent((s) => new Set(s).add(u)); setCheckIn(null) }}
+        />
       )}
     </div>
   )
 }
 
-function MemberRow({ m, today }: { m: InsightMember; today: string }) {
+function MemberRow({ m, today, action }: { m: InsightMember; today: string; action?: React.ReactNode }) {
   const plays = m.drop7d + m.church7d
   return (
     <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', minWidth: 0 }}>
@@ -187,7 +221,76 @@ function MemberRow({ m, today }: { m: InsightMember; today: string }) {
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 17 }}>{liveStreak(m, today)}</div>
         <div className="faint" style={{ fontSize: 10.5 }}>streak</div>
       </div>
+      {action && <div style={{ flexShrink: 0 }}>{action}</div>}
     </div>
+  )
+}
+
+const CHECK_IN_FAIL: Record<CheckInReason, string> = {
+  offline: 'You’re offline — nothing was sent.',
+  empty: 'Write a few words first.',
+  not_member: 'They’re no longer a member here, so nothing was sent.',
+  self: 'That’s you.',
+  daily_cap: 'That’s today’s check-ins. You can send more tomorrow.',
+  already_today: 'You’ve already checked in with them today.',
+  not_leadership: 'Only this church’s leadership can send these.',
+  not_verified: 'Check-ins open once the church is verified.',
+  failed: 'That didn’t send. Try again in a moment.',
+}
+
+// The draft. Prefilled, fully editable, and sent only by the button — closing
+// the sheet discards it. The preview line says exactly what they will see, so
+// the leader knows nothing else travels with the words.
+function CheckInSheet({ churchId, member, onClose, onSent }: {
+  churchId: string
+  member: InsightMember
+  onClose: () => void
+  onSent: (username: string) => void
+}) {
+  const juice = useJuice()
+  const send = useChurchCheckIns((s) => s.send)
+  const [text, setText] = useState(CHECK_IN_DRAFT)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const submit = async () => {
+    if (busy) return
+    setBusy(true)
+    setError(null)
+    const r = await send(churchId, member.username, text)
+    setBusy(false)
+    if (r.ok) {
+      juice.select?.()
+      onSent(member.username)
+    } else {
+      setError(CHECK_IN_FAIL[r.reason ?? 'failed'])
+    }
+  }
+
+  return (
+    <QuickSheet title={`Check in with ${member.username}`} onClose={onClose}>
+      <div style={{ display: 'grid', gap: 10 }}>
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value.slice(0, CHECK_IN_MAX))}
+          rows={4}
+          autoFocus
+          aria-label="Your message"
+          style={{
+            width: '100%', boxSizing: 'border-box', resize: 'vertical', padding: '10px 12px', borderRadius: 12,
+            border: '1px solid var(--edge)', background: 'var(--card-raised)', color: 'var(--ink)',
+            font: 'inherit', fontSize: 15, lineHeight: 1.45,
+          }}
+        />
+        <div className="faint" style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 11.5 }}>
+          <span>It arrives in their mailbox from you, with only these words.</span>
+          <span style={{ flexShrink: 0 }}>{text.length}/{CHECK_IN_MAX}</span>
+        </div>
+        {error && <p className="dim" style={{ margin: 0, fontSize: 13 }}>{error}</p>}
+        <Button full onClick={submit} disabled={busy || !text.trim()}>{busy ? 'Sending…' : 'Send'}</Button>
+        <Button variant="secondary" full onClick={onClose}>Not now</Button>
+      </div>
+    </QuickSheet>
   )
 }
 

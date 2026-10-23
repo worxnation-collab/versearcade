@@ -2547,8 +2547,13 @@ adds `report_church_check_in` plus `admin_church_check_in_reports` /
 `admin_resolve_church_check_in_report` behind Admin → Check-ins — the Prayer
 Wall's shape: one tap, no reason stored, nothing blocks the sender). The draft
 now leads with the verse and "Thought of you with this one." (editable,
-clearable); a day with no approved verse falls back to 0137's draft. STATUS:
-see the 0138 apply note below.
+clearable); a day with no approved verse falls back to 0137's draft. APPLIED
+2026-10-23 as `0138_check_in_verse_a` / `_b` after a local Postgres 16 run
+(twenty-five cases, re-run a no-op) — part a's `drop not null` went through the
+MCP with no confirmation stall — and verified live: one signature each, the old
+overload `{postgres,service_role}`, the rest `authenticated`, and a send (verse,
+no line) → mailbox → report → admin queue round trip against a real verified
+church, rolled back (zero rows after).
 
 Before it, `0137` (a leader's check-in note — `church_check_ins`,
 `send_church_check_in` (verified leadership of that church, to one member, 280

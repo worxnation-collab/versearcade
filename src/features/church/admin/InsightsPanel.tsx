@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Avatar } from '@/components/Avatar'
-import { fetchLeaderInsights, type LeaderInsights } from '@/store/churchAdmin'
+import { Collapsible } from '@/components/Collapsible'
+import { fetchLeaderInsights, type InsightMember, type LeaderInsights } from '@/store/churchAdmin'
 import { fetchChurchFeed, type FeedEvent } from '@/store/churchVerse'
 import { ago } from '../ChurchLife'
 
@@ -25,6 +26,32 @@ export function useInsights(churchId: string) {
   return { data, failed }
 }
 
+// Shown above the numbers on both tabs that carry names. Plain words, no icon:
+// it is a promise about where this data goes, not a feature.
+export function PrivacyNote() {
+  return (
+    <p className="dim" style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, padding: '8px 12px', borderRadius: 12, background: 'var(--card-raised)' }}>
+      This data is only visible to you. Players are never ranked publicly.
+    </p>
+  )
+}
+
+// A streak is only live if it was played today or yesterday — `current_streak`
+// is written on play and never decays on its own, so a member gone a month
+// still carries the number they stopped on. Same rule as the server's
+// `streaks` buckets (0128), so the average and the buckets can't disagree.
+export function liveStreak(m: InsightMember, today: string): number {
+  if (!m.lastPlayedOn || m.streak <= 0) return 0
+  const gap = Math.round((Date.parse(`${today}T00:00:00`) - Date.parse(`${m.lastPlayedOn}T00:00:00`)) / 86_400_000)
+  return gap <= 1 ? m.streak : 0
+}
+
+function headline(i: LeaderInsights) {
+  const pctActive = i.members ? Math.round((i.active7d / i.members) * 100) : 0
+  const avg = i.roster.length ? i.roster.reduce((t, m) => t + liveStreak(m, i.today), 0) / i.roster.length : 0
+  return { pctActive, avgStreak: Math.round(avg * 10) / 10 }
+}
+
 const FAILED = <p className="dim" style={{ fontSize: 13.5 }}>These numbers couldn’t load just now.</p>
 const LOADING = <div className="skeleton" style={{ height: 220, borderRadius: 14 }} />
 
@@ -33,13 +60,15 @@ export function OverviewPanel({ insights, failed }: { insights: LeaderInsights |
   if (!insights) return LOADING
   const i = insights
   const max = Math.max(1, ...i.days.map((d) => Math.max(d.drop, d.church)))
+  const h = headline(i)
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 14, minWidth: 0 }}>
+      <PrivacyNote />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
-        <Tile label="members" value={i.members} />
-        <Tile label="active this week" value={i.active7d} tone="var(--mint)" />
-        <Tile label="quiet 7+ days" value={i.quiet} tone={i.quiet ? 'var(--coral)' : undefined} />
+        <Tile label="members" value={i.members.toLocaleString()} />
+        <Tile label="active in 7 days" value={`${h.pctActive}%`} tone="var(--mint)" />
+        <Tile label="average streak" value={h.avgStreak.toLocaleString()} />
       </div>
 
       <div className="card" style={{ padding: '12px 14px' }}>
@@ -111,47 +140,53 @@ export function OverviewPanel({ insights, failed }: { insights: LeaderInsights |
   )
 }
 
+// Active members are the list. Members with no play in seven days sit in ONE
+// folded section the leader has to open — never a filter pill with a count on
+// it, never coral, never a "quiet" tile on the front page. Somebody who hasn't
+// played this week is a person to call, not a row on a list of failures, and
+// the fold is what keeps the page from opening on them.
 export function PeoplePanel({ insights, failed }: { insights: LeaderInsights | null; failed: boolean }) {
-  const [filter, setFilter] = useState<'all' | 'active' | 'quiet'>('all')
   if (failed) return FAILED
   if (!insights) return LOADING
-  const rows = insights.roster.filter((m) => filter === 'all' || (filter === 'active' ? m.active : !m.active))
+  const active = insights.roster.filter((m) => m.active)
+  const resting = insights.roster.filter((m) => !m.active)
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10, minWidth: 0 }}>
-      <div style={{ display: 'flex', gap: 6 }}>
-        {(['all', 'active', 'quiet'] as const).map((f) => (
-          <button
-            key={f}
-            className="pill"
-            aria-pressed={filter === f}
-            onClick={() => setFilter(f)}
-            style={{ fontSize: 12.5, fontWeight: 700, ...(filter === f ? { background: 'var(--select)', borderColor: 'var(--select)', color: 'var(--ink)' } : null) }}
-          >
-            {f === 'all' ? `All ${insights.members}` : f === 'active' ? `Active ${insights.active7d}` : `Quiet ${insights.quiet}`}
-          </button>
-        ))}
-      </div>
-      {rows.length === 0 && <p className="dim" style={{ fontSize: 13.5 }}>Nobody here.</p>}
-      {rows.map((m) => (
-        <div key={m.username} className="card" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', minWidth: 0 }}>
-          <Avatar emoji={m.avatarEmoji ?? '🙂'} character={m.avatarCharacter} username={m.username} size={36} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 800, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {m.username}{m.leader ? <span className="faint" style={{ fontWeight: 700, fontSize: 11.5 }}> · leader</span> : null}
-            </div>
-            <div className="faint" style={{ fontSize: 11.5 }}>
-              {m.lastPlayedOn ? `Last played ${lastLabel(m.lastPlayedOn, insights.today)}` : 'Hasn’t played yet'}
-              {` · ${m.drop7d} drop, ${m.church7d} church this week`}
-              {m.churchAvg != null ? ` · avg ${m.churchAvg.toLocaleString()}` : ''}
-            </div>
+      <PrivacyNote />
+      {active.length === 0 && (
+        <p className="dim" style={{ fontSize: 13.5, margin: '4px 0' }}>Nobody has played this week yet.</p>
+      )}
+      {active.map((m) => <MemberRow key={m.username} m={m} today={insights.today} />)}
+      {resting.length > 0 && (
+        <Collapsible icon="🕊️" title="Not active this week" meta={resting.length.toLocaleString()}>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {resting.map((m) => <MemberRow key={m.username} m={m} today={insights.today} />)}
           </div>
-          <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, color: m.active ? 'var(--mint)' : 'var(--coral)' }}>{m.streak}</div>
-            <div className="faint" style={{ fontSize: 10.5 }}>streak</div>
-          </div>
+        </Collapsible>
+      )}
+    </div>
+  )
+}
+
+function MemberRow({ m, today }: { m: InsightMember; today: string }) {
+  const plays = m.drop7d + m.church7d
+  return (
+    <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', minWidth: 0 }}>
+      <Avatar emoji={m.avatarEmoji ?? '🙂'} character={m.avatarCharacter} username={m.username} size={36} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 800, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {m.username}{m.leader ? <span className="faint" style={{ fontWeight: 700, fontSize: 11.5 }}> · leader</span> : null}
         </div>
-      ))}
+        <div className="faint" style={{ fontSize: 11.5 }}>
+          {m.lastPlayedOn ? `Last played ${lastLabel(m.lastPlayedOn, today)}` : 'Hasn’t played yet'}
+          {` · ${plays} ${plays === 1 ? 'play' : 'plays'} this week`}
+        </div>
+      </div>
+      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 17 }}>{liveStreak(m, today)}</div>
+        <div className="faint" style={{ fontSize: 10.5 }}>streak</div>
+      </div>
     </div>
   )
 }
@@ -196,10 +231,10 @@ function describe(e: FeedEvent): string {
   }
 }
 
-function Tile({ label, value, tone }: { label: string; value: number; tone?: string }) {
+function Tile({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
     <div className="card center" style={{ padding: '12px 6px' }}>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, color: tone }}>{value.toLocaleString()}</div>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, color: tone }}>{value}</div>
       <div className="faint" style={{ fontSize: 11, marginTop: 2 }}>{label}</div>
     </div>
   )

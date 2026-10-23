@@ -1736,21 +1736,20 @@ Four things are load-bearing:
   leader) on `church_admins`, never in `avatar_character`, so a pastor's
   cassock never follows them onto the Battle tab and a pastor at two churches
   can wear two. `LeaderLookFigure` reads only tone, hair and figure from their
-  own spec. Renders (`art/leader-looks.json`) are per tone AND hair —
-  `leader_<look>_<figure>_<tone>_<hair>`, with espresso (the default hair)
-  unsuffixed and sand + espresso unsuffixed entirely — and layer over a DRAWN
-  fallback in the leader's own tone. **Each one is referenced ONLY on the
-  starter with that exact tone and hair**: the first tone pass also referenced
-  the sand outfit and 27 of 49 came back with the sand face, which renders
-  perfectly. Measure a new batch's faces against the starters before trusting
-  it. Two known light ones: male bronze Classic Clergy and Professional Suit.
-  **Leaders are ADULTS, and the starter reference is why that has to be
-  said.** The starters are young (about five heads tall), and the first 359
-  renders were told to copy "exactly the face" of theirs, so they came back
-  childlike. The prompts now use the reference for style, skin tone and hair
-  colour ONLY and spell out the age (30–60), adult facial structure and ~7.5
-  heads. The drawn fallback scales its head by `ADULT_HEAD` for the same
-  reason. The shipped renders predate this and are due a regeneration.
+  own spec. **The art is the OWNER'S paintings** (2026-10-23):
+  `public/skins/leader-looks/` — one adult painting per look plus five
+  tone/hair variants, hand-kept in `OWNER_LOOK_ART` / `OWNER_VARIANTS`
+  (`leaderLooks.tsx`) and deliberately NOT in `GENERATED_ART`, so a gen-art
+  run can never overwrite them. They arrived on an opaque pink backdrop and
+  were cut out by `scripts/key-owner-figure.mjs`, which keys only the
+  backdrop's BRIGHT pink (gen-art's looser magenta test ate half of a purple
+  stole) — re-run it on any new painting rather than hand-editing. A leader
+  gets the variant matching their exact tone AND hair, else the look's
+  painting; the picker tiles always show the look's own painting
+  (`preview`). **All ten are men, so a woman leader gets the DRAWN adult
+  figure in her own tone** until women's paintings exist. The 359 generated
+  renders that preceded these were childlike (referenced on the young
+  starters) and were removed with their manifest.
 - **Setup is the claim screen's landing.** Claiming sends a leader to
   `/church/:id/admin`; verified leadership with no look chosen opens on "Your
   look" with the picker worded as a first step.

@@ -88,7 +88,7 @@ export function LeaderLookPanel({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <LeaderLookFigure look={shown} spec={spec} customArtUrl={ent?.customArtUrl} size={86} />
+          <LeaderLookFigure look={shown} spec={spec} customArtUrl={ent?.customArtUrl} size={104} />
           <div style={{ minWidth: 0 }}>
             <b style={{ fontSize: 15 }}>{leaderLookName(shown)}</b>
             {blurb && <div className="dim" style={{ fontSize: 12.5, lineHeight: 1.45 }}>{blurb}</div>}
@@ -116,7 +116,7 @@ export function LeaderLookPanel({
                   cursor: 'pointer',
                 }}
               >
-                <LeaderLookFigure look={id} spec={spec} customArtUrl={ent?.customArtUrl} size={48} />
+                <LeaderLookFigure look={id} spec={spec} customArtUrl={ent?.customArtUrl} size={64} preview />
                 <span style={{ fontSize: 11.5, fontWeight: 700, lineHeight: 1.2, textAlign: 'center', color: 'var(--ink)' }}>
                   {leaderLookName(id)}
                 </span>

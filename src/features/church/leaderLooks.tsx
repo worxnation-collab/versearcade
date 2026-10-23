@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { figureOf, hairHex, skinHex } from '@/data/avatar'
-import { GENERATED_ART } from '@/data/generatedArt'
 import type { AvatarSpec } from '@/types'
 import { DEFAULT_LEADER_LOOK, DEFAULT_LEADER_LOOKS, type LeaderLookId } from './pricing'
 
@@ -9,11 +8,10 @@ import { DEFAULT_LEADER_LOOK, DEFAULT_LEADER_LOOKS, type LeaderLookId } from './
 // look is a fact about the role at that church (0136 stores it per church), so
 // equipping one must not repaint them on the Battle tab.
 //
-// Same layering as every look here: a render through GENERATED_ART when one
-// exists (`leader_<look>_<figure>`, art/leader-looks.json), else the DRAWN
-// figure below, in the leader's own skin tone and hair from their character.
-// The drawing is the fallback, not a leftover — the batch can land late and
-// nothing breaks. A delivered custom avatar is an https URL from the server
+// Same layering as every look here: the owner's painting when there is one
+// (OWNER_LOOK_ART below), else the DRAWN figure in the leader's own skin tone
+// and hair from their character. The drawing is the fallback, not a leftover —
+// a failed load or a figure with no painting still renders as itself. A delivered custom avatar is an https URL from the server
 // (0136 refuses anything else) and falls back to the drawing on a failed load.
 //
 // viewBox 0 0 120 170, ground at y 162 — Character's frame, so a leader can
@@ -22,9 +20,44 @@ import { DEFAULT_LEADER_LOOK, DEFAULT_LEADER_LOOKS, type LeaderLookId } from './
 // These are ADULTS, and the drawn figure has to read as one. The pilgrim's
 // head (r 13 on a ~135-unit body, about five heads tall) is a child's
 // proportion; scaled to 0.74 about the top of the neck it is ~6.7 heads, an
-// adult's, without redrawing the hair caps. The renders carry the same rule
-// in their prompts (art/leader-looks.json).
+// adult's, without redrawing the hair caps.
 const ADULT_HEAD = 'translate(60 52) scale(0.74) translate(-60 -52)'
+
+// The owner's paintings (2026-10-23): adult, full-length, cut out of their
+// magenta backdrop by scripts/key-owner-figure.mjs into public/skins/
+// leader-looks/. Hand-kept, deliberately NOT in GENERATED_ART — a gen-art run
+// writes that map and must never be able to overwrite these (the rule the
+// road rewards and the nav paintings follow).
+//
+// One painting per look, plus five tone/hair variants. A leader gets the
+// variant that matches their own skin tone AND hair exactly, else the look's
+// painting. All ten are men, so a woman leader gets the DRAWN figure in her
+// own tone until women's paintings exist — a man standing in for her would be
+// a stranger wearing her name.
+const OWNER_DIR = '/skins/leader-looks'
+const OWNER_LOOK_ART: Record<Exclude<LeaderLookId, 'custom'>, string> = {
+  'classic-clergy': `${OWNER_DIR}/classic-clergy.png`,
+  'liturgical-vestments': `${OWNER_DIR}/liturgical-vestments.png`,
+  'professional-suit': `${OWNER_DIR}/professional-suit.png`,
+  'robe-stole': `${OWNER_DIR}/robe-stole.png`,
+  contemporary: `${OWNER_DIR}/contemporary.png`,
+}
+/** `look|tone|hair` → painting. Tones and hairs are the AvatarSpec keys. */
+const OWNER_VARIANTS: Record<string, string> = {
+  'classic-clergy|amber|chestnut': `${OWNER_DIR}/classic-clergy-amber-chestnut.png`,
+  'classic-clergy|porcelain|auburn': `${OWNER_DIR}/classic-clergy-porcelain-auburn.png`,
+  // Supplied as "bronze-black"; black hair is the `jet` key.
+  'liturgical-vestments|bronze|jet': `${OWNER_DIR}/liturgical-vestments-bronze-black.png`,
+  'professional-suit|sand|chestnut': `${OWNER_DIR}/professional-suit-sand-chestnut.png`,
+  // Supplied as "medium-dark", which is not one of the six tones; filed under
+  // bronze with the default hair, between amber and umber.
+  'robe-stole|bronze|espresso': `${OWNER_DIR}/robe-stole-medium-dark.png`,
+}
+
+function ownerLookArt(look: Exclude<LeaderLookId, 'custom'>, fem: boolean, tone: string, hair: string): string | undefined {
+  if (fem) return undefined
+  return OWNER_VARIANTS[`${look}|${tone}|${hair}`] ?? OWNER_LOOK_ART[look]
+}
 
 type Garment = {
   /** The long garment from the shoulders down. */
@@ -43,7 +76,7 @@ type Garment = {
 
 const GARMENTS: Record<Exclude<LeaderLookId, 'custom'>, Garment> = {
   'classic-clergy': { body: '#1d1b22', hem: 158, collar: 'band' },
-  'liturgical-vestments': { body: '#f2efe6', hem: 158, collar: 'none', stole: { color: '#2f7a4f', trim: '#d9b45a', cross: true }, cincture: '#d8d2c2' },
+  'liturgical-vestments': { body: '#f2efe6', hem: 158, collar: 'none', stole: { color: '#5b3a8c', trim: '#d9b45a', cross: true }, cincture: '#d8d2c2' },
   'professional-suit': { body: '#232a3d', hem: 112, legs: '#1d2333', collar: 'tab', shirt: '#2a2a30', lapels: true },
   'robe-stole': { body: '#2b2433', hem: 158, collar: 'none', stole: { color: '#7a2e3a', trim: '#d9b45a', cross: true } },
   contemporary: { body: '#8a7a64', hem: 112, legs: '#2e3a52', collar: 'open', shirt: '#e8e4da', lapels: true },
@@ -60,6 +93,7 @@ export function LeaderLookFigure({
   customArtUrl,
   size = 120,
   title,
+  preview = false,
 }: {
   look: LeaderLookId | null | undefined
   /** The leader's own character — only tone, hair and figure are read. */
@@ -67,6 +101,9 @@ export function LeaderLookFigure({
   customArtUrl?: string | null
   size?: number
   title?: string
+  /** A picker tile: show the look's own painting whoever is choosing, because
+   *  the tile's job is to show the OUTFIT. Off, it is how this leader appears. */
+  preview?: boolean
 }) {
   const fem = spec ? figureOf(spec) === 'fem' : false
   const skin = skinHex(spec?.skin ?? 'sand')
@@ -74,20 +111,9 @@ export function LeaderLookFigure({
   const custom = look === 'custom' && customArtUrl ? customArtUrl : null
   const id = look && look !== 'custom' ? look : DEFAULT_LEADER_LOOK
   const g = GARMENTS[id]
-  // Renders are per skin tone AND hair: `leader_<look>_<figure>_<tone>_<hair>`.
-  // Espresso is the default hair and its renders carry no hair suffix
-  // (`leader_<look>_<figure>_<tone>`), and the sand + espresso set was the
-  // first batch and carries neither. A missing hair render falls back to the
-  // same tone in espresso — the right face with the wrong hair — and a missing
-  // tone draws the figure in the leader's own tone rather than borrowing
-  // somebody else's face.
   const tone = spec?.skin ?? 'sand'
   const hairKey = spec?.hair ?? 'espresso'
-  const fig = fem ? 'fem' : 'masc'
-  const raster = custom
-    ?? (hairKey !== 'espresso' ? GENERATED_ART[`leader_${id}_${fig}_${tone}_${hairKey}`] : undefined)
-    ?? GENERATED_ART[`leader_${id}_${fig}_${tone}`]
-    ?? (tone === 'sand' ? GENERATED_ART[`leader_${id}_${fig}`] : undefined)
+  const raster = custom ?? (preview ? OWNER_LOOK_ART[id] : ownerLookArt(id, fem, tone, hairKey))
   const [failed, setFailed] = useState<string | null>(null)
   const useRaster = !!raster && failed !== raster
 

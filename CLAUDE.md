@@ -1736,8 +1736,14 @@ Four things are load-bearing:
   leader) on `church_admins`, never in `avatar_character`, so a pastor's
   cassock never follows them onto the Battle tab and a pastor at two churches
   can wear two. `LeaderLookFigure` reads only tone, hair and figure from their
-  own spec. A raster (`leader_<look>_<figure>`, `art/leader-looks.json`, not
-  generated yet) layers over a DRAWN fallback in the leader's own tone.
+  own spec. Renders (`art/leader-looks.json`) are per tone AND hair —
+  `leader_<look>_<figure>_<tone>_<hair>`, with espresso (the default hair)
+  unsuffixed and sand + espresso unsuffixed entirely — and layer over a DRAWN
+  fallback in the leader's own tone. **Each one is referenced ONLY on the
+  starter with that exact tone and hair**: the first tone pass also referenced
+  the sand outfit and 27 of 49 came back with the sand face, which renders
+  perfectly. Measure a new batch's faces against the starters before trusting
+  it. Two known light ones: male bronze Classic Clergy and Professional Suit.
 - **Setup is the claim screen's landing.** Claiming sends a leader to
   `/church/:id/admin`; verified leadership with no look chosen opens on "Your
   look" with the picker worded as a first step.

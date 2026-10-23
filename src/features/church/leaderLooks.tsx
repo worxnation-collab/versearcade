@@ -67,12 +67,18 @@ export function LeaderLookFigure({
   const custom = look === 'custom' && customArtUrl ? customArtUrl : null
   const id = look && look !== 'custom' ? look : DEFAULT_LEADER_LOOK
   const g = GARMENTS[id]
-  // Renders are per skin tone (`leader_<look>_<figure>_<tone>`); the sand set
-  // was the first batch and carries no suffix. A tone with no render draws the
-  // figure in the leader's own tone rather than borrowing somebody else's.
+  // Renders are per skin tone AND hair: `leader_<look>_<figure>_<tone>_<hair>`.
+  // Espresso is the default hair and its renders carry no hair suffix
+  // (`leader_<look>_<figure>_<tone>`), and the sand + espresso set was the
+  // first batch and carries neither. A missing hair render falls back to the
+  // same tone in espresso — the right face with the wrong hair — and a missing
+  // tone draws the figure in the leader's own tone rather than borrowing
+  // somebody else's face.
   const tone = spec?.skin ?? 'sand'
+  const hair = spec?.hair ?? 'espresso'
   const fig = fem ? 'fem' : 'masc'
   const raster = custom
+    ?? (hair !== 'espresso' ? GENERATED_ART[`leader_${id}_${fig}_${tone}_${hair}`] : undefined)
     ?? GENERATED_ART[`leader_${id}_${fig}_${tone}`]
     ?? (tone === 'sand' ? GENERATED_ART[`leader_${id}_${fig}`] : undefined)
   const [failed, setFailed] = useState<string | null>(null)

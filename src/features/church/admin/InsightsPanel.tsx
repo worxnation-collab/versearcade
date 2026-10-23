@@ -216,13 +216,18 @@ function MemberRow({ m, today, action }: { m: InsightMember; today: string; acti
         </div>
         <div className="faint" style={{ fontSize: 11.5 }}>
           {m.lastPlayedOn ? `Last played ${lastLabel(m.lastPlayedOn, today)}` : 'Hasn’t played yet'}
-          {` · ${plays} ${plays === 1 ? 'play' : 'plays'} this week`}
+          {m.active ? ` · ${plays} ${plays === 1 ? 'play' : 'plays'} this week` : ''}
         </div>
       </div>
-      <div style={{ textAlign: 'right', flexShrink: 0 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 17 }}>{liveStreak(m, today)}</div>
-        <div className="faint" style={{ fontSize: 10.5 }}>streak</div>
-      </div>
+      {/* Inside the fold both numbers are always 0 (no play in seven days ⇒ no
+          plays this week and no live streak), so they are left out: they said
+          nothing and squeezed the row until its line wrapped under Check in. */}
+      {m.active && (
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 17 }}>{liveStreak(m, today)}</div>
+          <div className="faint" style={{ fontSize: 10.5 }}>streak</div>
+        </div>
+      )}
       {action && <div style={{ flexShrink: 0 }}>{action}</div>}
     </div>
   )

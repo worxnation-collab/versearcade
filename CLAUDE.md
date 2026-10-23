@@ -341,7 +341,11 @@ caller's bindings — so the skins' Restore restores the plan too. **An Apple
 lapse only switches off what Apple switched on** (`granted_verified`), and a
 dead Stripe subscription no longer switches off a church Apple is paying for.
 The plan through Apple is Verified only; the Suite stays a web purchase, and
-the web hides "Unlock with Church Suite" while Apple is billing a church.
+the web hides "Unlock with Church Suite" while Apple is billing a church. **And
+a binding lives exactly as long as the leadership it stands on** (0140): removing
+the paying leader — by `admin_revoke_church_admin` or by erasing their account —
+ends it the way a lapse would, so an operator-verified or card-paying church
+stays verified and an Apple-only one does not.
 
 So the same catalog is sold twice: Stripe on web (`lib/config.ts`), Apple IAP in
 the app (`lib/iap.ts` + `store/iap.ts`, RevenueCat). Setup runbook and the
@@ -2568,7 +2572,23 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0139` (the Verified Church plan through Apple IAP —
+The latest is `0140` (a removed leader stops verifying the church — two
+TRIGGERS rather than an edit to `admin_revoke_church_admin`, because erasing an
+account or a church also takes a leadership row, by cascade, and a trigger is
+where all three paths meet: `church_admins_end_apple` runs a lapse through
+`billing_apply_apple(..., false, ...)` for the removed user, so the rule is the
+one a lapse follows, and `church_apple_binding_gone` applies it to an ACTIVE
+binding that disappears with an erased account. The Apple subscription itself
+is never cancelled — only its owner can — and a removed leader cannot re-bind
+it. The triggers are `0140_apple_binding_leader_removed_b`). APPLIED
+2026-10-23; both bodies md5-equal to the file, ACLs `{postgres,service_role}`,
+both triggers enabled. The test is `supabase/tests/0140_apple_binding_leader_removed.sql`
+(self-contained; run it against a throwaway local Postgres — it fails without
+the triggers and passes with them). **A live round trip could not be run**: it
+needs a DELETE, and the MCP waits on a confirmation for one that never reaches
+a cloud session (it timed out; nothing changed, checked after).
+
+Before it, `0139` (the Verified Church plan through Apple IAP —
 `church_apple_subscriptions` (one row per church, at most one ACTIVE row per
 user, so one Apple subscription verifies one church), `billing_apply_apple` and
 `billing_apple_bindings` (service_role only, called by `iap-fulfill` and
@@ -3235,7 +3255,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0140` (0139 is the church plan through Apple, in two parts; 0138 is the check-in verse and report, in two parts; 0137 is used FOUR times in production — the check-in note in two parts, the leaderboard's streak-free tie-break, and `church_free_claim` — 0136 is `church_leader_looks` in production only, 0135 is the church billing read for the portal, 0134 is the self-serve church claim, in two parts; 0133 is used twice — church visual assets AND the church Stripe key in Vault — 0132 is the church webhook's Vault secret, 0131 is church billing, 0130 is the member's church view, 0129 is the week-from-a-sermon drafts, 0128 is the church layer, 0127 is `church_content_generation` in production, 0126 is the two new statues, 0125 is the API.Bible key, 0124 the reading translation, 0123 is the church verse series and note, 0122 is `church_question_drafts` in production only, 0121 is the church leader invite link, 0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0141` (0140 is the leader-removal triggers, in two parts; 0139 is the church plan through Apple, in two parts; 0138 is the check-in verse and report, in two parts; 0137 is used FOUR times in production — the check-in note in two parts, the leaderboard's streak-free tie-break, and `church_free_claim` — 0136 is `church_leader_looks` in production only, 0135 is the church billing read for the portal, 0134 is the self-serve church claim, in two parts; 0133 is used twice — church visual assets AND the church Stripe key in Vault — 0132 is the church webhook's Vault secret, 0131 is church billing, 0130 is the member's church view, 0129 is the week-from-a-sermon drafts, 0128 is the church layer, 0127 is `church_content_generation` in production, 0126 is the two new statues, 0125 is the API.Bible key, 0124 the reading translation, 0123 is the church verse series and note, 0122 is `church_question_drafts` in production only, 0121 is the church leader invite link, 0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

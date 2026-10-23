@@ -104,6 +104,38 @@ on the `/play/church` result. No card exists anywhere a stranger, a board or
 the global daily verse can reach. `visibility` is constrained to
 `'congregation'`; widening it is a migration.
 
+## How much text a look holds (2026-10-23)
+
+Long text shrinks toward `size × minScale`, so no card ever overflows; what
+happens instead is that a long verse on a small-type look comes out too small
+to read. `bodyCapacity(template)` is the longest body, in characters, a look
+sets at or above `READABLE_FLOOR` (3.2% of the card's width: ~11px on a
+phone-width card, ~35px on a 1080px export). It is the inverse of `slotScale`,
+so it cannot disagree with how the card actually draws, capped by `bodyMax`
+where the BOX runs out first (Night family's band between the moon and the
+family clips at ~112 characters; The path's sky at ~372). Both of those were
+measured by rendering at 240-1080px, not reasoned.
+
+- **The studio greys a look too small for the current words** ("For shorter
+  text", with its capacity on hover) and defaults to the first look that fits,
+  so a long verse never lands on Rays by default. A card already made on a look
+  too small for its words says so under the card.
+- **Sizes were raised where the art allows it**, found by measuring the size at
+  which a SHORT verse first overflows: Rays 4.6→5.2 (185→237 characters),
+  Beam 4.6→5.0 (185→219), Night reading 5.0→5.2 (219→237), The path 5.0→5.6
+  (219→370), Kneeling 5.2→5.6 (237→275), notice Cosmos 4.2→5.4 (155→256),
+  Night friends 4.0→4.6 (140→185). Rays, Beam and Night reading sit in narrow
+  columns and overflow a short verse just above those sizes, so they stay
+  "shorter text" looks for anything past ~220-237 characters. Elder, Halo,
+  Prayer and Night family are short-notice looks by layout (126-140, 110).
+- For scale: pool verses run to 237 characters (90th percentile 163), real
+  church verses to 281 (90th percentile 228), notices are capped at 280.
+- **Lamplight is retired**: its background was byte-identical to Night
+  reading's, so the picker offered one look twice.
+- `check-asset-templates.mjs` now fails the build on two pickable looks of the
+  same kind sharing a background file, and on a DEFAULT verse or notice look
+  that holds fewer than 240 characters.
+
 ## Export: a PNG for social
 
 An approved, up-to-date card can be taken off the app by its church's

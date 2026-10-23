@@ -26,6 +26,8 @@ await build({
 })
 const FN = pathToFileURL(join(dir, 'fn.mjs')).href
 console.warn = () => {}
+// The option shuffle becomes the identity, so a test knows where each answer sits.
+Math.random = () => 0.999999
 
 const SB = 'http://sb.local'
 let handler
@@ -122,7 +124,7 @@ const six = d3.find((x) => x.prompt === 'Six options here?')
 check('>4 options trimmed, answer kept', six && six.options.length === 4 && six.options[six.answerIndex] === 'F', six)
 check('refund 1 unsaved day, left reported', db.refunds.join() === '1' && r.body.left === 28, { refunds: db.refunds, left: r.body.left })
 check('run logged without content', db.runs.length === 1 && db.runs[0].days_saved === 2 && db.runs[0].units_used === 2 && db.runs[0].outcome === 'short' && !JSON.stringify(db.runs[0]).includes('notes'), db.runs)
-check('two model calls (draft + refill)', geminiCalls === 2, geminiCalls)
+check('three model calls (draft + refill + check)', geminiCalls === 3, geminiCalls)
 
 // 2. A live day is never overwritten.
 reset(); db.verses[D[1]] = { status: 'approved' }
@@ -187,6 +189,45 @@ check('duplicate dates refused, nothing spent', r.status === 422 && r.body.reaso
 reset(); gemini = [{ days: [{ reference: 'John 15:1', questions: five() }, { reference: 'John 15:2', questions: five() }] }]
 r = await call(week({ days: 2, dates: [D[0]] }))
 check('2 drafted, 1 date: saves 1, refunds 1', r.body.ok && r.body.saved.length === 1 && db.used === 1, r.body)
+
+// 13. The blind check flags a disagreement on the saved draft, and the run log counts it.
+//     q() marks option 1 right; the checker answers 1 everywhere but Q3 of day 1 (2) and
+//     Q5 of day 1 (-1, couldn't tell from the passage).
+reset(); gemini = [
+  { days: [{ reference: 'John 15:1', questions: five() }, { reference: 'John 15:4', questions: five() }] },
+  { items: [{ i: 0, answers: [1, 1, 2, 1, -1] }, { i: 1, answers: [1, 1, 1, 1, 1] }] },
+]
+r = await call(week({ days: 2, dates: [D[0], D[1]] }))
+let d0 = db.verses[D[0]]?.questions ?? [], d1 = db.verses[D[1]]?.questions ?? []
+check('check: disagreement flagged with the pick', d0[2]?.check === true && d0[2]?.checkPick === 2, d0[2])
+check('check: "couldn\'t tell" flagged as -1', d0[4]?.check === true && d0[4]?.checkPick === -1, d0[4])
+check('check: agreeing questions untouched', !d0[0].check && !d0[1].check && !d0[3].check && d1.every((q) => !q.check), { d0, d1 })
+check('check: run log counts checked and flagged', db.runs.at(-1)?.questions_checked === 10 && db.runs.at(-1)?.questions_flagged === 2, db.runs.at(-1))
+check('check: units unchanged by the check', db.used === 2, db.used)
+
+// 14. A checker that fails leaves the draft exactly as it was, unflagged, and still saves.
+reset(); gemini = [{ days: [{ reference: 'John 15:1', questions: five() }, { reference: 'John 15:4', questions: five() }] }, 503]
+r = await call(week({ days: 2, dates: [D[0], D[1]] }))
+check('check fails: still saved, no flags, nothing counted', r.body.ok && r.body.saved.length === 2 && Object.values(db.verses).every((v) => v.questions.every((q) => !q.check)) && db.runs.at(-1)?.questions_checked === 0, { body: r.body, run: db.runs.at(-1) })
+
+// 15. A checker answer that is out of range for a set is ignored for that set only.
+reset(); gemini = [
+  { days: [{ reference: 'John 15:1', questions: five() }, { reference: 'John 15:4', questions: five() }] },
+  { items: [{ i: 0, answers: [1, 1, 9, 1, 1] }, { i: 1, answers: [0, 1, 1, 1, 1] }] },
+]
+r = await call(week({ days: 2, dates: [D[0], D[1]] }))
+d0 = db.verses[D[0]].questions; d1 = db.verses[D[1]].questions
+check('check: unreadable set skipped whole, readable one flagged', d0.every((q) => !q.check) && d1[0].check === true && d1[0].checkPick === 0 && db.runs.at(-1)?.questions_checked === 5, { d0, d1 })
+
+// 16. One-day mode carries the flags back to the form.
+reset(); gemini = [{ questions: five(), note: 'n' }, { items: [{ i: 0, answers: [1, 3, 1, 1, 1] }] }]
+r = await call({ church_id: CH, reference: 'John 15:5', text: V[5], api: 2 })
+check('one-day: flag returned on the question', r.body.ok && r.body.questions[1].check === true && r.body.questions[1].checkPick === 3 && !r.body.questions[0].check, r.body.questions)
+
+// 17. The model cannot flag or unflag itself: a `check` it writes is not carried.
+reset(); gemini = [{ questions: five().map((q) => ({ ...q, check: true, checkPick: 0 })), note: 'n' }, 503]
+r = await call({ church_id: CH, reference: 'John 15:5', text: V[5], api: 2 })
+check('a self-written check is ignored', r.body.ok && r.body.questions.every((q) => !q.check), r.body.questions)
 
 console.log(fails ? `${fails} FAILED` : 'ALL PASS')
 process.exit(fails ? 1 : 0)

@@ -33,6 +33,16 @@
 // passage ends up short of five, the model is asked once more for ONLY the
 // missing ones, while there is time.
 //
+// AND THEN EVERY ANSWER IS CHECKED (0143). A finished set of five is read a
+// second time, blind: the model is shown the passage and each question's
+// options and asked which one the passage supports — never told which was
+// marked right. Where its pick differs (or it can't tell, -1), the question
+// carries `check: true` and `checkPick` back to the leader as a ⚠. The check
+// is a note, not a gate: it is one cheap call for the whole run, time-boxed,
+// and a check that fails or runs out of time leaves the questions exactly as
+// they were, unflagged. Only a DRAFT keeps the flag (`church_draft_questions`);
+// every approval strips it, and Approve all skips a flagged day (0143).
+//
 // What it returns for one day is a DRAFT. It saves nothing: the form shows it,
 // the pastor edits it, saves it with `save_church_verse_draft` (status
 // 'draft', invisible to members) and approves it with `approve_church_verse`.
@@ -90,6 +100,8 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const TEXT_MODEL = Deno.env.get('GEMINI_TEXT_MODEL') ?? 'gemini-3.6-flash'
+/** The blind second read. Defaults to the drafting model; set a cheaper one if the account has it. */
+const CHECK_MODEL = Deno.env.get('GEMINI_CHECK_MODEL') ?? TEXT_MODEL
 const GEMINI = 'https://generativelanguage.googleapis.com/v1beta'
 
 /** Everything a request does finishes inside this, saving included. */
@@ -115,7 +127,7 @@ const STATUS: Record<string, number> = {
   no_key: 500, unavailable: 500,
 }
 
-type Question = { prompt: string; options: string[]; answerIndex: number; teach: string }
+type Question = { prompt: string; options: string[]; answerIndex: number; teach: string; check?: true; checkPick?: number }
 type Mode = 'one' | 'week' | 'topic'
 type Reply = (body: Record<string, unknown>) => Response
 
@@ -158,11 +170,13 @@ async function refund(churchId: string, spent: { day: string; left: number }, un
 type Run = {
   churchId: string; mode: Mode; unitsAsked: number; unitsUsed: number
   daysAsked?: number; daysReturned?: number; daysSaved?: number; outcome: string; started: number
+  questionsChecked?: number; questionsFlagged?: number
 }
 async function logRun(r: Run): Promise<void> {
   const { error } = await admin().from('church_draft_runs').insert({
     church_id: r.churchId, mode: r.mode, units_asked: r.unitsAsked, units_used: Math.max(0, r.unitsUsed),
     days_asked: r.daysAsked ?? 0, days_returned: r.daysReturned ?? 0, days_saved: r.daysSaved ?? 0,
+    questions_checked: r.questionsChecked ?? 0, questions_flagged: r.questionsFlagged ?? 0,
     outcome: r.outcome.slice(0, 40), ms: Date.now() - r.started, model: TEXT_MODEL,
   })
   if (error) console.warn('church-draft log', error.message)
@@ -173,10 +187,10 @@ async function logRun(r: Run): Promise<void> {
 // ---------------------------------------------------------------------------
 type ModelResult = { ok: true; value: Record<string, unknown> } | { ok: false; reason: 'model_busy' | 'timeout' | 'draft_failed' }
 
-async function askModel(key: string, text: string, temperature: number, timeoutMs: number): Promise<ModelResult> {
+async function askModel(key: string, text: string, temperature: number, timeoutMs: number, model = TEXT_MODEL): Promise<ModelResult> {
   let res: Response
   try {
-    res = await fetch(`${GEMINI}/models/${TEXT_MODEL}:generateContent`, {
+    res = await fetch(`${GEMINI}/models/${model}:generateContent`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
       body: JSON.stringify({
@@ -397,6 +411,54 @@ async function refill(
 }
 
 // ---------------------------------------------------------------------------
+// The blind check (0143): does the passage pick the answer the draft marked?
+// ---------------------------------------------------------------------------
+const CHECK_MIN_LEFT = 15_000
+const CHECK_TIMEOUT = 20_000
+
+function checkPrompt(items: { i: number; context: string; questions: Question[] }[]): string {
+  const blocks = items.map((it) =>
+    `[${it.i}] Passage:\n"""${it.context}"""\n` +
+    it.questions.map((q, n) => `  Q${n + 1}. ${q.prompt}\n` + q.options.map((o, k) => `     ${k}) ${o}`).join('\n')).join('\n'),
+  ).join('\n\n')
+  return (
+    `You are checking quiz questions against the Bible passage they are about. For each question, read ONLY the passage ` +
+    `given with it and choose the option that passage supports. Do not use outside knowledge, and do not guess: if the ` +
+    `passage does not let you choose one option, answer -1.\n\n${blocks}\n\n` +
+    `Return JSON only: {"items":[{"i":<the number in brackets>,"answers":[<0-based option number or -1 for each question, in order>]}]}`
+  )
+}
+
+/**
+ * Read each set a second time, blind, and flag every question whose pick
+ * differs from the marked answer. Mutates the questions; returns counts. Never
+ * throws and never blocks: no time, a failed call or an unreadable answer
+ * leaves the questions unflagged and reports nothing checked.
+ */
+async function checkAnswers(
+  key: string, deadline: number,
+  items: { i: number; context: string; questions: Question[] }[],
+): Promise<{ checked: number; flagged: number }> {
+  const left = deadline - Date.now()
+  if (!items.length || left < CHECK_MIN_LEFT) return { checked: 0, flagged: 0 }
+  const r = await askModel(key, checkPrompt(items), 0, Math.min(CHECK_TIMEOUT, left - 8_000), CHECK_MODEL).catch(() => null)
+  if (!r || !r.ok) return { checked: 0, flagged: 0 }
+  let checked = 0, flagged = 0
+  for (const got of Array.isArray(r.value.items) ? (r.value.items as Array<Record<string, unknown>>) : []) {
+    const it = items.find((x) => x.i === Number(got?.i))
+    const answers = Array.isArray(got?.answers) ? (got.answers as unknown[]).map(Number) : []
+    if (!it || answers.length !== it.questions.length) continue
+    // A set the checker answered out of range is a set it didn't read: skip it whole.
+    if (answers.some((a, n) => !Number.isInteger(a) || a < -1 || a >= it.questions[n].options.length)) continue
+    it.questions.forEach((q, n) => {
+      checked++
+      if (answers[n] !== q.answerIndex) { q.check = true; q.checkPick = answers[n]; flagged++ }
+    })
+  }
+  return { checked, flagged }
+}
+
+// ---------------------------------------------------------------------------
 // Week mode
 // ---------------------------------------------------------------------------
 type Passage = { reference: string; book: string; chapter: number; start: number; end: number; verses: Map<number, string> }
@@ -459,6 +521,14 @@ function placeDay(ref: string, passages: Passage[]): { reference: string; text: 
   // The citation in the passage's own spelling of the book, so it parses everywhere.
   const book = p.reference.replace(/ [0-9]{1,3}:.*$/, '')
   return { reference: `${book} ${r.chapter}:${r.start}${r.end > r.start ? `-${r.end}` : ''}`, text }
+}
+
+/** The supplied passage a day sits in, verse-numbered, for the blind check. */
+function passageContext(dayRef: string, passages: Passage[]): string {
+  const r = parseRef(dayRef)
+  const p = r && passages.find((x) => x.book === r.book && x.chapter === r.chapter && r.start >= x.start && r.end <= x.end)
+  if (!p) return dayRef
+  return `${p.reference}\n` + [...p.verses.entries()].sort((a, b) => a[0] - b[0]).map(([n, t]) => `[${n}] ${t}`).join(' ')
 }
 
 function weekPrompt(series: string, days: number, passages: Passage[], guidance: string, transcript: string): string {
@@ -553,6 +623,12 @@ async function handleWeek(body: Record<string, unknown>, authHeader: string, rep
     const ready = slots.map((s) => (s && s.questions.length >= 5 ? { ...s, questions: shuffleOptions(s.questions.slice(0, 5)) } : null))
     const returned = ready.filter((s) => !!s).length
     if (!returned) return fail('draft_failed')
+
+    // The blind second read, over the final (shuffled) options, with the whole
+    // passage each day came from as its context.
+    const checks = await checkAnswers(key, deadline, ready.flatMap((d, i) => (d ? [{ i, context: passageContext(d.reference, passages), questions: d.questions }] : [])))
+    run.questionsChecked = checks.checked
+    run.questionsFlagged = checks.flagged
 
     // Clients before 0142: hand the days back, compacted as before, and let the
     // client save them. Refund what didn't come back.
@@ -702,8 +778,10 @@ async function handleOne(body: Record<string, unknown>, authHeader: string, repl
     const slot = { reference, text, questions: salvage(got.value.questions, text, seen) }
     await refill(key, deadline, seen, [slot])
     if (slot.questions.length < 5) return fail('draft_failed')
-    await logRun({ ...run, unitsUsed: 1, daysReturned: 1, outcome: 'ok' })
-    return reply({ ok: true, questions: shuffleOptions(slot.questions.slice(0, 5)), note: line(got.value.note, 280), left: spent.left })
+    const questions = shuffleOptions(slot.questions.slice(0, 5))
+    const checks = await checkAnswers(key, deadline, [{ i: 0, context: `${reference}\n${text}`, questions }])
+    await logRun({ ...run, unitsUsed: 1, daysReturned: 1, outcome: 'ok', questionsChecked: checks.checked, questionsFlagged: checks.flagged })
+    return reply({ ok: true, questions, note: line(got.value.note, 280), left: spent.left })
   } catch (e) {
     console.error('church-draft', (e as Error).message)
     return fail('unavailable')

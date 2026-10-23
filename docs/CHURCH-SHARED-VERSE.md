@@ -310,6 +310,22 @@ carries no `left`, because it doesn't know how many remain. A function from
 before 0142 still works with this client: a reply with `days` and no `saved`
 is saved positionally on the client, as before.
 
+**The answer check (0143).** Every finished set of five is read a second
+time, blind, in one cheap call (`GEMINI_CHECK_MODEL`, else the drafting
+model): the passage and each question's options, never which one was marked.
+Where its pick differs, or it can't pick one from the passage (-1), the
+question carries `check: true` and `checkPick`. It never blocks a draft — no
+time left, a failed call or an unreadable answer leaves the questions as they
+were — and it spends nothing. The leader sees it everywhere a draft is
+reviewed: a ⚠ on the question in the form, with what the second read picked
+and a "Looks right" button (editing the question also clears it); "⚠ N to
+check" on the day in "Waiting for your approval"; ✎⚠ on the planner chip.
+**Approve all is disabled while any day in the set carries a ⚠**, with the
+days named, and the server enforces the same rule (`approve_church_verses`
+skips a flagged day). Approving one day from the form is allowed and takes
+its flags off — the leader approved it with the warning on screen. A flag is
+only ever on a draft; a member never receives one.
+
 **Limits, all enforced in the function:** 2–7 days; 1–3 passages, each inside
 one chapter, ≤ 40 verses each and ≤ 6,000 characters of scripture in all; a
 transcript ≤ 12,000 characters (about a 20-minute sermon; longer ones are cut);

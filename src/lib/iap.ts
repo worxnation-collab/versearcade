@@ -160,6 +160,30 @@ export async function fetchProducts(): Promise<IapProduct[]> {
   })
 }
 
+/**
+ * The App Store storefront this device buys from, as Apple's ISO 3166-1
+ * alpha-3 code ('USA'), or null when it can't be read.
+ *
+ * `getStorefront()` exists from @revenuecat/purchases-capacitor 10.3, which
+ * needs Capacitor 7; this repo is on Capacitor 6 / RevenueCat 9.2, whose
+ * native half has no such method. So it is feature-detected rather than typed:
+ * on today's build it resolves null and lib/commerce treats that as "not the
+ * US", which is the compliant answer everywhere. After the Capacitor 7 upgrade
+ * it starts answering with no change here.
+ */
+export async function fetchStorefrontCountry(): Promise<string | null> {
+  if (!iapAvailable()) return null
+  try {
+    const { Purchases } = await loadSdk()
+    const get = (Purchases as unknown as { getStorefront?: () => Promise<{ countryCode?: string }> }).getStorefront
+    if (typeof get !== 'function') return null
+    const sf = await get.call(Purchases)
+    return typeof sf?.countryCode === 'string' && sf.countryCode ? sf.countryCode.toUpperCase() : null
+  } catch {
+    return null
+  }
+}
+
 export interface PurchaseOutcome {
   /** False when the user simply backed out — not an error, and never surfaced. */
   cancelled: boolean

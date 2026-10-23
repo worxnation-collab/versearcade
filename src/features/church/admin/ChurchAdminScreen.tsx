@@ -10,6 +10,7 @@ import { TodayVerseForm } from './TodayVerseForm'
 import { OverviewPanel, PeoplePanel, ActivityPanel, SummaryPanel, useInsights, useSummary } from './InsightsPanel'
 import { NoticesPanel } from './NoticesPanel'
 import { SharePanel } from './SharePanel'
+import { ChurchPlansEntry } from '@/features/churches/ChurchPlansEntry'
 
 // /church/:id/admin — the tools a church's verified leadership uses.
 //
@@ -179,6 +180,8 @@ export default function ChurchAdminScreen() {
       <div className="dim" style={{ fontSize: 13.5, marginBottom: 12 }}>{settings.name}</div>
 
       <PlanStatus leader={leader} generation={generation} held={!!ent?.contentGenerationHeld} churchId={id} billing={billing} upgraded={upgraded} />
+      {/* Native only: the web build already draws the upgrade and the portal above. */}
+      <ChurchPlansEntry churchId={id} churchName={settings.name} />
 
       <TabbedSection tabs={tabs} defaultOpen defaultTab="overview" />
       <div style={{ height: 32 }} />

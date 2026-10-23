@@ -312,6 +312,16 @@ not a legal requirement. A US-only Stripe path is a real option worth real money
 (Apple takes 15–30%); if it's ever added, the storefront check goes in
 `commerce.ts` and nowhere else.
 
+**Church plans are that exception, and the only one** (`churchPlansLink()` in
+`commerce.ts`, `features/churches/ChurchPlansEntry.tsx`). In the App Store
+build the leadership screen and `/churches` carry a small "For Churches" card:
+on the US storefront with `VITE_CHURCH_PLANS_US_LINK=on` it opens the web
+pages in the in-app browser, with no price in the app; anywhere else it
+points at the existing inquiry form. The storefront comes from RevenueCat's
+`getStorefront()`, which needs purchases-capacitor ≥10.3 and so Capacitor 7 —
+on Capacitor 6 it reads null and the card stays on the inquiry path. Never
+substitute locale or IP for the storefront.
+
 So the same catalog is sold twice: Stripe on web (`lib/config.ts`), Apple IAP in
 the app (`lib/iap.ts` + `store/iap.ts`, RevenueCat). Setup runbook and the
 account-gated Apple steps: `docs/APPLE-IAP.md`.

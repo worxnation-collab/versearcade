@@ -26,6 +26,7 @@ import { supabase } from '@/lib/supabase'
 import { localdb } from '@/lib/localdb'
 import {
   configureIap,
+  fetchStorefrontCountry,
   fetchProducts,
   iapAvailable,
   purchaseSku,
@@ -63,6 +64,9 @@ interface IapState {
   loading: boolean
   products: Record<string, IapProduct>
   error: string | null
+  /** Apple's storefront country ('USA'), or null when unread or unreadable.
+   *  Read by `churchPlansLink` in lib/commerce and nothing else. */
+  storefront: string | null
   load: () => Promise<void>
   buy: (sku: string) => Promise<PurchaseOutcome>
   restore: () => Promise<RestoreOutcome>
@@ -73,6 +77,7 @@ export const useIap = create<IapState>((set, get) => ({
   loading: false,
   products: {},
   error: null,
+  storefront: null,
 
   async load() {
     if (!iapAvailable() || get().loading) return
@@ -87,6 +92,10 @@ export const useIap = create<IapState>((set, get) => ({
         ready: list.length > 0,
         loading: false,
       })
+      // Independent of the products: a storefront is a fact about the device,
+      // and a product that isn't approved yet shouldn't hide it. Null on any
+      // failure, which commerce reads as "not the US".
+      set({ storefront: await fetchStorefrontCountry() })
     } catch (e) {
       set({ ready: false, loading: false, error: msg(e) })
     }

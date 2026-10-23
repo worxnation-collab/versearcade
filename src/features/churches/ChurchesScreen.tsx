@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/store/auth'
 import { useJuice } from '@/juice/useJuice'
 import { churchPlansVisible } from '@/lib/commerce'
+import { ChurchPlansEntry } from './ChurchPlansEntry'
 
 // For Churches — the page a pastor lands on from outreach, a QR or a link, and
 // the inquiry form behind it.
@@ -182,6 +183,9 @@ export default function ChurchesScreen() {
       </section>
 
       {churchPlansVisible() && <PlansCard />}
+      {/* The App Store build's door to plans (nothing on the web, which has PlansCard).
+          Outside the US storefront it points at the form below rather than out. */}
+      <ChurchPlansEntry onAsk={() => document.getElementById('founding-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />
 
       <section className="card" style={{ marginBottom: 12 }} aria-labelledby="tier-free">
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>

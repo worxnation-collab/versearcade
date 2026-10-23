@@ -1687,7 +1687,9 @@ and the second only stands on the first:
   (the `church-draft` function's gate and spend) and `save_church_verse_draft`.
   The client picks `serverGenerationBackend` only when `church_entitlements`
   says so; otherwise the form draws a locked card and every manual tool works.
-  Billing is stubbed: no price, no checkout, either mode.
+  On the web the locked row carries "Unlock with Church Suite" (church-billing
+  `upgrade`; `docs/CHURCH-PACKAGES.md` → Billing); the App Store build draws no
+  button, no price and no checkout.
 
 Four rules are load-bearing:
 

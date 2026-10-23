@@ -7,12 +7,11 @@ import { useJuice } from '@/juice/useJuice'
 import { addDays, todayLocalDate } from '@/lib/date'
 import { parseReference } from '@/lib/bibleProgress'
 import { TodayVerseForm } from '@/features/church/admin/TodayVerseForm'
-import { ParticipationPanel } from '@/features/church/admin/ParticipationPanel'
+import { activeThisWeek, liveStreak, OverviewPanel, PeoplePanel } from '@/features/church/admin/InsightsPanel'
 import { QuizRunner } from '@/features/daily/QuizRunner'
 import { verseFromReference } from '@/data/bible/questions'
 import { MissedList } from '@/features/daily/MissedList'
-import { memoryVerseBackend, type DayVerse } from '@/store/churchAdmin'
-import type { ChurchParticipation } from '@/types/churchPackages'
+import { memoryVerseBackend, type DayVerse, type InsightMember, type LeaderInsights } from '@/store/churchAdmin'
 import type { DailyVerse, PlayResult } from '@/types'
 
 // /churches/try — a pastor uses the REAL leadership tools before their church
@@ -29,9 +28,12 @@ import type { DailyVerse, PlayResult } from '@/types'
 //     the series bar, the note mark and the copy panel's "these days already
 //     have a verse" list all have something real to show on the first tap.
 //     It lives in the same memory backend, so a reload clears it too.
-//   * The Congregation tab shows SAMPLE totals, labelled as such in its first
-//     line, with one bucket under five so the floor is visible rather than
-//     claimed. No real church's numbers are ever shown here.
+//   * The Overview and People tabs are the REAL leadership panels over an
+//     invented congregation (`sampleInsights`), labelled as a sample in their
+//     first line, so the demo shows what leadership actually gets since 0128:
+//     members by name, exact totals, the quiet ones folded away with a
+//     check-in. `PeoplePanel`'s `demo` keeps it from sending anything. No real
+//     church's people or numbers are ever shown here.
 // A reload forgets everything, which is the point of a demo.
 //
 // It ends on the inquiry form with the verse they wrote in the message, so the
@@ -40,16 +42,68 @@ import type { DailyVerse, PlayResult } from '@/types'
 const DEMO_CHURCH = 'demo'
 const DEMO_NAME = 'your church'
 
-const SAMPLE: ChurchParticipation = {
-  days: 14,
-  from: '',
-  to: '',
-  members: 48,
-  players: 31,
-  plays: 214,
-  avg_score: 412,
-  pct_played_today: 38,
-  streaks: { s1: 9, s2_6: 12, s7: null },
+// An invented congregation, in join order, as `church_leader_insights` returns
+// it: [name, emoji, days since last play (null = never), streak, drops, church
+// verses this week]. Plain names, so nobody reads one as a real account.
+const SAMPLE_PEOPLE: [string, string, number | null, number, number, number][] = [
+  ['pastor_jen', '🙂', 0, 21, 7, 3],
+  ['ruth.a', '🌻', 0, 12, 6, 3],
+  ['marcus_t', '😄', 1, 5, 4, 2],
+  ['the_okafors', '🏡', 0, 9, 5, 3],
+  ['grace_l', '🕊️', 2, 0, 3, 1],
+  ['sam_youth', '⚡', 0, 3, 3, 2],
+  ['eleanor', '📖', 4, 0, 2, 1],
+  ['danny.r', '🎸', 1, 2, 2, 1],
+  ['hope_w', '🌿', 9, 0, 0, 0],
+  ['mike_and_sue', '☕', 15, 0, 0, 0],
+  ['tomasz', '🙂', null, 0, 0, 0],
+]
+const SAMPLE_DAYS = [8, 7, 9, 6, 8, 10, 7, 8, 9, 7, 8, 9, 8, 7]
+
+/** The real panels' input, invented and dated around today. */
+function sampleInsights(today: string): LeaderInsights {
+  const roster: InsightMember[] = SAMPLE_PEOPLE.map(([username, avatarEmoji, ago, streak, drop7d, church7d], i) => ({
+    username,
+    avatarEmoji,
+    avatarCharacter: null,
+    joinedAt: addDays(today, -200 + i * 15),
+    streak,
+    lastPlayedOn: ago == null ? null : addDays(today, -ago),
+    drop7d,
+    church7d,
+    churchAvg: null,
+    leader: i === 0,
+  }))
+  const live = roster.map((m) => liveStreak(m, today))
+  const active7d = roster.filter((m) => activeThisWeek(m, today)).length
+  return {
+    today,
+    members: roster.length,
+    active7d,
+    quiet: roster.length - active7d,
+    days: SAMPLE_DAYS.map((drop, i) => {
+      const date = addDays(today, i - 13)
+      const scheduled = i >= 11
+      return { date, drop, church: scheduled ? Math.max(1, drop - 3) : 0, scheduled }
+    }),
+    series: [{ series: 'Fruit of the Spirit', starts: addDays(today, -2), ends: addDays(today, 4), days: 7, soFar: 3, plays: 16, players: 7, completion: 48 }],
+    streaks: {
+      s0: live.filter((n) => n === 0).length,
+      s1: live.filter((n) => n === 1).length,
+      s2_6: live.filter((n) => n >= 2 && n <= 6).length,
+      s7: live.filter((n) => n >= 7).length,
+    },
+    notice: { message: 'Potluck after the 10:30 service — bring a dish to share!', createdAt: new Date(Date.now() - 2 * 86_400_000).toISOString(), expiresAt: null },
+    roster,
+  }
+}
+
+function SampleLabel() {
+  return (
+    <p style={{ margin: '0 0 10px', fontSize: 12.5, fontWeight: 700, color: 'var(--mint)' }}>
+      A sample congregation — your own members appear here, by name, once your church is set up.
+    </p>
+  )
 }
 
 const SAMPLE_SERIES = 'Abiding (John 15)'
@@ -88,12 +142,7 @@ export default function ChurchTryScreen() {
       }),
     [], // eslint-disable-line react-hooks/exhaustive-deps
   )
-  const sample = useMemo<ChurchParticipation>(() => {
-    const d = new Date()
-    d.setDate(d.getDate() - 13)
-    const from = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    return { ...SAMPLE, from, to: today }
-  }, [today])
+  const sample = useMemo(() => sampleInsights(today), [today])
 
   const [saved, setSaved] = useState<DayVerse | null>(null)
   const [phase, setPhase] = useState<'build' | 'play' | 'done'>('build')
@@ -185,7 +234,8 @@ export default function ChurchTryScreen() {
         />
       ),
     },
-    { key: 'people', label: 'Congregation', content: <ParticipationPanel churchId={DEMO_CHURCH} sample={sample} /> },
+    { key: 'overview', label: 'Overview', content: <><SampleLabel /><OverviewPanel insights={sample} failed={false} summary={null} /></> },
+    { key: 'people', label: 'People', content: <><SampleLabel /><PeoplePanel churchId={DEMO_CHURCH} insights={sample} failed={false} demo /></> },
   ]
 
   return (

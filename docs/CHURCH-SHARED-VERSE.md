@@ -103,7 +103,7 @@ is built around them.
   covered.
 
 Nothing here is about a person. A series and a note describe the schedule; no
-count, no reader list, no "seen by". The Congregation panel is unchanged.
+count, no reader list, no "seen by".
 
 **The demo** (`/churches/try`) seeds its `memoryVerseBackend` with a sample
 three-day series ("Abiding (John 15)", from the library, one day with a note),
@@ -121,9 +121,13 @@ They are identical on the commit before this change.
 dashboard. It returns members, active this week, quiet, fourteen days of drop and
 church-verse players, each series' completion, streak buckets, the live notice,
 and the roster BY NAME — the owner's call (see docs/CHURCH-CLAIM.md). There is no
-small-count floor any more. `get_church_participation` is kept, unused by the
-dashboard, because the public demo (`/churches/try`) still draws its sample
-numbers through `ParticipationPanel`.
+small-count floor for leadership any more. The roster is in join order and
+never sorted by play; members with no play in seven days are folded into one
+section where the only action is a hand-sent check-in (0137/0138).
+`get_church_participation` is now unused: `ParticipationPanel` was deleted on
+2026-10-23 and the public demo (`/churches/try`) draws the real `OverviewPanel`
+and `PeoplePanel` over a sample congregation instead, so the demo and the sales
+page show what leadership actually gets.
 
 `church_feed(church)` is the activity feed: drop and church-verse plays with
 scores, gifts, joins and notices from the last fourteen days, to members and
@@ -208,7 +212,8 @@ that isn't verified. Un-verifying a church leaves the add-on on its record but
 inert, and `/church/:id/admin` says "on your plan, switches on with Church
 Leader". The top of that screen shows both rows as Active or Locked; without
 the add-on, the verse form shows a locked "Drafting assist" card in place of
-the draft button. There is no price or upgrade button anywhere.
+the draft button. There is no price in the app; on the web only, the locked
+row carries "Unlock with Church Suite" (docs/CHURCH-PACKAGES.md → Billing).
 
 **The engine** (`church-draft`): POST `{ church_id, reference, text,
 guidance?, transcript? }`. The reference must be in citation form

@@ -2569,6 +2569,24 @@ RLS on with no rule, all three FKs, and a send → read inside a rolled-back
 transaction against a real verified church. **0136 is
 `0136_church_leader_looks` in production**, which has no file in this tree.
 
+The other `0137` (the free church claim: `church_claims` gains `tier` /
+`method` / `phone` / `domain_match`; `start_church_free_claim`,
+`billing_activate_free_claim` (service_role), `church_leader_summary`, and
+`church_self_claim_status` / `admin_church_claims` / `admin_review_church_claim`
+/ `church_leader_insights` restated — the roster now in join order with no
+`active` flag; `docs/CHURCH-CLAIM.md` → "Free claim"). APPLIED 2026-10-23
+after a local Postgres 16 run of twenty cases (threshold, bad method/phone,
+domain flag, reuse, non-admin approve refused, approve, card conflict after
+approve, idempotent activation, manual claim unreachable from the webhook,
+stranger refused the summary, re-run a no-op); live ACLs verified. Because its
+`church_leader_insights` rows no longer carry `active`, the People tab works
+"active this week" out itself (`activeThisWeek` in `InsightsPanel.tsx`, the
+same `last_on >= today - 6` rule the server counts `active_7d` by) — the fold
+and the Overview tile cannot disagree, and the roster's join order holds in
+both groups. Its People-tab rewrite (one flat list) was NOT kept when the two
+branches met: the owner kept the fold, so a member with no play in seven days
+is still behind one tap, never on the front of the tab.
+
 Before it, `0135` (`my_church_billing` — a church's own leadership reads
 its Stripe plan, never the customer id; it backs the dashboard's **Manage
 billing** pill, whose portal session `church-billing` v4 opens after checking
@@ -2588,7 +2606,10 @@ payment wins + conflict, revoke, rate limit, re-run a no-op) and verified live:
 one signature each, `billing_activate_claim` `{postgres,service_role}`, RLS on
 with no policy, both FKs present. **It reverses "there is no self-serve claim"
 for a church nobody leads** — the owner's call; read `docs/CHURCH-CLAIM.md` →
-"Self-serve claim" before touching it. `church-billing` v3 (claim mode, `?c=`)
+"Self-serve claim" before touching it. **And since `0137` such a church can be claimed FREE
+once it has three members** (card on file via a $0 SetupIntent, or by hand
+through the operator queue); a free claim leaves the church unverified and
+sees totals only. `church-billing` v3 (claim mode, `?c=`)
 was deployed by MCP the same day.
 
 Before it, `0133` (church visual assets — `church_assets`, verse cards /

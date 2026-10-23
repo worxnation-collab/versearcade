@@ -337,6 +337,7 @@ function Churches() {
   return (
     <div style={{ display: 'grid', gap: 18 }}>
       <FoundingChurches />
+      <PlanTaps />
       <SelfServeClaims />
       <ChurchClaims />
       <Promotions />
@@ -347,6 +348,78 @@ function Churches() {
           ? <p className="faint center" style={{ padding: 20 }}>No church inquiries yet.</p>
           : <Inquiries rows={rows} />}
       </div>
+    </div>
+  )
+}
+
+// Which door church leaders take toward a plan (0141): "Subscribe with Apple"
+// or the web billing link, counted per tap on the leadership screen. A TAP, not
+// a purchase — what was bought is in billing. Read-only, `admin_church_plan_taps`
+// (require_admin on the server). Churches and leaders are distinct per row, so
+// they are never summed across rows: one leader who tapped both paths would
+// count twice.
+interface PlanTapRow { path: 'apple' | 'web'; interval: 'month' | 'year' | null; taps: number; churches: number; leaders: number }
+
+function PlanTaps() {
+  const [days, setDays] = useState(30)
+  const [rows, setRows] = useState<PlanTapRow[] | null>(null)
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    let live = true
+    setRows(null)
+    setFailed(false)
+    if (!supabase) { setFailed(true); setRows([]); return }
+    supabase.rpc('admin_church_plan_taps', { p_days: days }).then(({ data, error }) => {
+      if (!live) return
+      if (error) { setFailed(true); setRows([]); return }
+      setRows(Array.isArray(data) ? (data as PlanTapRow[]) : [])
+    })
+    return () => { live = false }
+  }, [days])
+
+  const label = (r: PlanTapRow) =>
+    r.path === 'apple' ? `Apple · ${r.interval === 'year' ? 'yearly' : r.interval === 'month' ? 'monthly' : '—'}` : 'Web billing link'
+  const total = (path: PlanTapRow['path']) => (rows ?? []).filter((r) => r.path === path).reduce((n, r) => n + r.taps, 0)
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 8px' }}>
+        <h3 style={{ fontSize: 14, margin: 0, flex: 1 }} className="dim">Plan taps</h3>
+        {[7, 30, 90].map((d) => (
+          <button key={d} className="pill" onClick={() => setDays(d)}
+            style={{ fontSize: 11, fontWeight: 800, background: days === d ? 'var(--select)' : 'var(--card)' }}>
+            {d}d
+          </button>
+        ))}
+      </div>
+      <p className="faint" style={{ fontSize: 12, marginBottom: 10, lineHeight: 1.4 }}>
+        Taps on “Subscribe with Apple” and the web billing link on a church’s leadership screen (App Store
+        build). A tap, not a sale — a cancelled Apple sheet still counts. The web link has no interval: it is
+        chosen on the page.
+      </p>
+      {rows === null ? (
+        <p className="faint center" style={{ padding: 20 }}>Loading…</p>
+      ) : failed ? (
+        <p className="faint center" style={{ padding: 20 }}>Couldn’t load plan taps.</p>
+      ) : rows.length === 0 ? (
+        <p className="faint center" style={{ padding: 20 }}>No plan taps in the last {days} days.</p>
+      ) : (
+        <div style={{ display: 'grid', gap: 8 }}>
+          <div className="card" style={{ display: 'flex', gap: 16, fontSize: 13 }}>
+            <span>Apple <b style={{ fontFamily: 'var(--font-display)' }}>{total('apple')}</b></span>
+            <span>Web <b style={{ fontFamily: 'var(--font-display)' }}>{total('web')}</b></span>
+          </div>
+          {rows.map((r) => (
+            <div key={`${r.path}:${r.interval ?? ''}`} className="card" style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
+              <b style={{ fontSize: 14, flex: 1, minWidth: 0 }}>{label(r)}</b>
+              <span className="faint" style={{ fontSize: 11.5 }}>
+                {r.churches} {r.churches === 1 ? 'church' : 'churches'} · {r.leaders} {r.leaders === 1 ? 'leader' : 'leaders'}
+              </span>
+              <b style={{ fontFamily: 'var(--font-display)', fontSize: 16 }}>{r.taps}</b>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

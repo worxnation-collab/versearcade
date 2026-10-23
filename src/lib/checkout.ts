@@ -39,3 +39,34 @@ export async function startSkinCheckout(
   window.open(url, '_blank', 'noopener,noreferrer')
   return 'opened'
 }
+
+/**
+ * Start the one-time Custom Leader Avatar purchase for a church (web only).
+ *
+ * Returns 'unavailable' until there is something real to open: on native (a
+ * church add-on is never sold in the App Store build — `churchPricesVisible`),
+ * and on the web while `CHURCH_PRODUCTS.customLeaderAvatar.priceId` is still a
+ * placeholder.
+ *
+ * The wiring, when the Stripe price exists:
+ *   1. Here: POST the `church-billing` Edge Function { action:
+ *      'avatar-checkout', church_id } and open the Checkout Session URL it
+ *      returns (mode 'payment', `client_reference_id` = the church id,
+ *      metadata.product = 'custom_leader_avatar'). The church id rides as the
+ *      reference exactly as 0131's subscription checkout does — drop it and
+ *      the money arrives with no way to tell whose it was.
+ *   2. Success path: the existing church-billing webhook handles
+ *      `checkout.session.completed` with that metadata by calling a
+ *      service_role-only writer (the `billing_apply_subscription` shape, 0131)
+ *      that sets `church_addons.custom_leader_avatar = true` — the same flag
+ *      the operator toggle (`admin_set_church_custom_avatar`, 0136) sets, so
+ *      `church_entitlements` reads one flag however it was granted.
+ *   3. The leader returns to /church/:id/admin, whose reload of entitlements
+ *      opens the photo form. The client never grants anything.
+ */
+export async function startCustomAvatarCheckout(churchId: string): Promise<'opened' | 'unavailable'> {
+  const { CHURCH_PRODUCTS, isPlaceholderPriceId } = await import('@/features/church/pricing')
+  if (isNativeApp() || !churchId || isPlaceholderPriceId(CHURCH_PRODUCTS.customLeaderAvatar.priceId)) return 'unavailable'
+  // Unreachable until the price id is real; the session call lands here.
+  return 'unavailable'
+}

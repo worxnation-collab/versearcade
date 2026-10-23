@@ -1733,6 +1733,52 @@ Four rules are load-bearing:
   fails the build on a curated passage that isn't real, spans two chapters or
   blows the verse budget — all three render.
 
+### Church Leader looks, and the Custom Leader Avatar
+
+`0136`, `features/church/pricing.ts`, `features/church/leaderLooks.tsx`,
+`admin/LeaderLookPanel.tsx` (the "Your look" tab on `/church/:id/admin`).
+Four things are load-bearing:
+
+- **A leader look is NOT the player's character.** It is stored per (church,
+  leader) on `church_admins`, never in `avatar_character`, so a pastor's
+  cassock never follows them onto the Battle tab and a pastor at two churches
+  can wear two. `LeaderLookFigure` reads only tone, hair and figure from their
+  own spec. **The art is the OWNER'S paintings** (2026-10-23):
+  `public/skins/leader-looks/` — one adult painting per look for EACH
+  figure (five men, five women) plus ten men's tone/hair variants, hand-kept
+  in `OWNER_LOOK_ART` / `OWNER_FEM_LOOK_ART` / `OWNER_VARIANTS` /
+  `OWNER_FEM_VARIANTS`
+  (`leaderLooks.tsx`) and deliberately NOT in `GENERATED_ART`, so a gen-art
+  run can never overwrite them. They arrived on an opaque pink backdrop and
+  were cut out by `scripts/key-owner-figure.mjs`, which keys only the
+  backdrop's BRIGHT pink (gen-art's looser magenta test ate half of a purple
+  stole; `--shadow` also takes a dark-pink floor shadow, flood-filled from the
+  backdrop only) — re-run it on any new painting rather than hand-editing. A
+  leader gets the variant matching their figure, tone AND hair, else their
+  FIGURE's painting of the look — never the other figure's; the picker tiles
+  show the look in the chooser's figure (`preview`). The drawn adult figure
+  is now only the failed-load fallback. The 359 generated
+  renders that preceded these were childlike (referenced on the young
+  starters) and were removed with their manifest.
+- **Setup is the claim screen's landing.** Claiming sends a leader to
+  `/church/:id/admin`; verified leadership with no look chosen opens on "Your
+  look" with the picker worded as a first step.
+- **The Custom Leader Avatar is ONE request per purchase, per church.** The
+  add-on stands on the base tier exactly as Content Generation does
+  (`church_avatar_can` checks base first). A leader may replace photos while
+  'submitted'; an operator starting it locks them; 'declined' frees the
+  purchase; 'delivered' takes an https art URL and sets that leader's look to
+  'custom', which `set_my_leader_look` refuses until then. Photos are seen by
+  the operator queue (Admin → Churches) and nobody else — another leader sees
+  only that the church's request exists.
+- **Prices are constants, and the App Store build shows none.**
+  `CHURCH_PRODUCTS` carries placeholder Stripe ids (`isPlaceholderPriceId`);
+  `churchPricesVisible()` in `commerce.ts` is false on native, for the
+  `givingLinkVisible` reason. There is no in-app checkout yet: the add-on is
+  granted by the operator toggle until Stripe has a one-time price, and when
+  it does, the webhook should flip `church_addons.custom_leader_avatar` the
+  way 0131 flips `content_generation`.
+
 ### Church visual assets: a card is data, and the words are the church's
 
 `0133`, `docs/CHURCH-VISUAL-ASSETS.md`. Verse cards, series graphics and notice
@@ -2535,7 +2581,23 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0135` (`my_church_billing` — a church's own leadership reads
+The latest is `0136` (Church Leader looks and the Custom Leader Avatar
+add-on — `church_admins.leader_look` (five ids + 'custom', a check
+constraint), `church_addons.custom_leader_avatar`, `church_avatar_requests`
+with 1-3 JPEG reference photos stored IN THE ROW as `bytea[]` (deliberately
+not a bucket: a writable bucket needs a storage policy, which the MCP hangs
+on), `set_my_leader_look`, `church_avatar_request`,
+`submit_church_avatar_request`, three admin RPCs, and `church_entitlements`
+restated from 0127 with four more keys — copy forward from HERE; see "Church
+Leader looks" below). APPLIED 2026-10-22 as `0136_church_leader_looks` after a
+local Postgres 16 run of 31 cases, and verified live: one signature each, the
+player and admin RPCs `authenticated`, the two helpers
+`{postgres,service_role}`, RLS on with no policy. **It is 0136 because
+production already holds `0134_church_self_claim` (+ `_b`) and
+`0135_church_billing_portal`**, from branches not on main when this landed —
+caught by `list_migrations`.
+
+Before it, `0135` (`my_church_billing` — a church's own leadership reads
 its Stripe plan, never the customer id; it backs the dashboard's **Manage
 billing** pill, whose portal session `church-billing` v4 opens after checking
 the caller's JWT against `church_admins`). APPLIED 2026-10-22 after a local
@@ -3130,7 +3192,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0136` (0135 is the church billing read for the portal, 0134 is the self-serve church claim, in two parts; 0133 is used twice — church visual assets AND the church Stripe key in Vault — 0132 is the church webhook's Vault secret, 0131 is church billing, 0130 is the member's church view, 0129 is the week-from-a-sermon drafts, 0128 is the church layer, 0127 is `church_content_generation` in production, 0126 is the two new statues, 0125 is the API.Bible key, 0124 the reading translation, 0123 is the church verse series and note, 0122 is `church_question_drafts` in production only, 0121 is the church leader invite link, 0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0137` (0136 is the leader looks, 0135 is the church billing read for the portal, 0134 is the self-serve church claim, in two parts; 0133 is used twice — church visual assets AND the church Stripe key in Vault — 0132 is the church webhook's Vault secret, 0131 is church billing, 0130 is the member's church view, 0129 is the week-from-a-sermon drafts, 0128 is the church layer, 0127 is `church_content_generation` in production, 0126 is the two new statues, 0125 is the API.Bible key, 0124 the reading translation, 0123 is the church verse series and note, 0122 is `church_question_drafts` in production only, 0121 is the church leader invite link, 0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

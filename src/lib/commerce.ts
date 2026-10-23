@@ -211,6 +211,17 @@ export function patronOffer(skin: SkinDef, owned: boolean, webUrl: string): Patr
 export const givingLinkVisible = (): boolean => !isNativeApp()
 
 /**
+ * May this build show a CHURCH product's price (`features/church/pricing.ts`)?
+ *
+ * Web: yes. Native: NO. A church add-on is a digital unlock inside the app, so
+ * offering it in the App Store build is an IAP by Apple's reckoning, and a
+ * price label with no IAP behind it is still a storefront (the rule at the top
+ * of this file). Church billing happens on the web; the native build tells a
+ * leader what is on their plan and never what it costs.
+ */
+export const churchPricesVisible = (): boolean => !isNativeApp()
+
+/**
  * Whether a church can be claimed and paid for from this build (0134). The
  * claim ends on the web billing page, which carries prices and a checkout, so
  * the App Store build offers none of it — not the link on a church's page and

@@ -110,7 +110,7 @@ function PinGate({ onOk }: { onOk: () => void }) {
 function Dashboard() {
   const navigate = useNavigate()
   const [ov, setOv] = useState<Overview | null>(null)
-  const [tab, setTab] = useState<'stats' | 'growth' | 'users' | 'sales' | 'church' | 'codes' | 'push' | 'tiktok' | 'prayers'>('stats')
+  const [tab, setTab] = useState<'stats' | 'growth' | 'users' | 'sales' | 'church' | 'codes' | 'push' | 'tiktok' | 'prayers' | 'checkins'>('stats')
 
   useEffect(() => {
     supabase?.rpc('admin_overview', { p_tz: localTimeZone() }).then(({ data }) => setOv(data as Overview))
@@ -125,10 +125,10 @@ function Dashboard() {
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-        {(['stats', 'growth', 'users', 'sales', 'church', 'codes', 'push', 'tiktok', 'prayers'] as const).map((t) => (
+        {(['stats', 'growth', 'users', 'sales', 'church', 'codes', 'push', 'tiktok', 'prayers', 'checkins'] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)} className="pill"
             style={{ background: tab === t ? 'var(--select)' : 'var(--card)', fontWeight: 800, textTransform: 'capitalize' }}>
-            {t === 'church' ? 'Churches' : t === 'tiktok' ? 'TikTok' : t}
+            {t === 'church' ? 'Churches' : t === 'tiktok' ? 'TikTok' : t === 'checkins' ? 'Check-ins' : t}
           </button>
         ))}
       </div>
@@ -142,6 +142,7 @@ function Dashboard() {
       {tab === 'push' && <PushBroadcast />}
       {tab === 'tiktok' && <TikTokPanel />}
       {tab === 'prayers' && <PrayerReports />}
+      {tab === 'checkins' && <CheckInReports />}
       <div style={{ height: 40 }} />
     </Page>
   )
@@ -1253,6 +1254,63 @@ function PrayerReports() {
                 </span>
               </div>
               <p style={{ margin: '6px 0 10px', fontSize: 14, fontStyle: 'italic' }}>{r.line ? `“${r.line}”` : '(no line)'}</p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="pill" onClick={() => resolve(r.id, false)} style={{ fontWeight: 800, fontSize: 12, borderColor: 'var(--good)', color: 'var(--good)' }}>Keep</button>
+                <button className="pill" onClick={() => resolve(r.id, true)} style={{ fontWeight: 800, fontSize: 12, borderColor: 'var(--coral)', color: 'var(--coral)' }}>Take down</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Church check-in reports ──────────────────────────────────────────────────
+// A member reported a leader's check-in note from their mailbox (0138). The
+// report already took it out of their mailbox; Keep puts it back, Take down
+// hides it for good — the Prayer Wall's two outcomes. No reason is stored and
+// nothing here blocks the sender.
+interface CheckInReportRow {
+  id: number
+  message: string | null
+  verse_ref: string | null
+  church_name: string
+  sender: string
+  recipient: string
+  reported_at: string
+  created_at: string
+}
+
+function CheckInReports() {
+  const [rows, setRows] = useState<CheckInReportRow[] | null>(null)
+  const load = () => supabase?.rpc('admin_church_check_in_reports').then(({ data }) => setRows((data as CheckInReportRow[]) ?? []))
+  useEffect(() => { load() }, [])
+
+  const resolve = async (id: number, hide: boolean) => {
+    await supabase!.rpc('admin_resolve_church_check_in_report', { p_id: id, p_hide: hide })
+    load()
+  }
+
+  return (
+    <div>
+      <p className="faint" style={{ fontSize: 12, marginBottom: 10, lineHeight: 1.4 }}>
+        Check-in notes a member reported from their mailbox. A reported note is already out of their mailbox; Keep puts it back,
+        Take down hides it for good. The sender is told nothing either way.
+      </p>
+      {rows === null ? (
+        <p className="faint center" style={{ padding: 20 }}>Loading…</p>
+      ) : rows.length === 0 ? (
+        <p className="faint center" style={{ padding: 20 }}>Nothing reported.</p>
+      ) : (
+        <div style={{ display: 'grid', gap: 8 }}>
+          {rows.map((r) => (
+            <div key={r.id} className="card">
+              <div className="faint" style={{ fontSize: 11 }}>
+                {r.church_name} · @{r.sender} → @{r.recipient} · reported {new Date(r.reported_at).toLocaleString()}
+              </div>
+              {r.verse_ref && <div style={{ fontSize: 12.5, fontWeight: 700, marginTop: 6 }}>with {r.verse_ref}</div>}
+              <p style={{ margin: '6px 0 10px', fontSize: 14, fontStyle: 'italic' }}>{r.message ? `“${r.message}”` : '(verse only, no line)'}</p>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button className="pill" onClick={() => resolve(r.id, false)} style={{ fontWeight: 800, fontSize: 12, borderColor: 'var(--good)', color: 'var(--good)' }}>Keep</button>
                 <button className="pill" onClick={() => resolve(r.id, true)} style={{ fontWeight: 800, fontSize: 12, borderColor: 'var(--coral)', color: 'var(--coral)' }}>Take down</button>

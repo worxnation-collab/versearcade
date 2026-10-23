@@ -1,10 +1,11 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Page } from '@/components/Page'
 import { Avatar } from '@/components/Avatar'
 import { Button } from '@/components/Button'
 import { useBuddies } from '@/store/buddies'
 import { useGifts } from '@/store/gifts'
+import { useChurchCheckIns } from '@/store/churchCheckIns'
 import { useWashing } from '@/store/washing'
 import { usePrayerWall } from '@/store/prayerWall'
 import { prayerCategoryById } from '@/data/prayerWall'
@@ -38,6 +39,9 @@ import { PaintedIcon } from '@/components/PaintedIcon'
 // It also never demands to be emptied. Opening the screen marks gifts read; the
 // dot goes away because you looked, not because you cleared a queue.
 
+/** How long a Report tap can be taken back before it is sent. */
+const REPORT_UNDO_MS = 4000
+
 export default function MailScreen() {
   const navigate = useNavigate()
   const juice = useJuice()
@@ -45,6 +49,49 @@ export default function MailScreen() {
 
   const gifts = useGifts((s) => s.received)
   const giftsLoaded = useGifts((s) => s.loaded)
+  // A leader's check-in (0137): their own words and nothing else — no reason,
+  // no list, nothing about why it was sent.
+  const allCheckIns = useChurchCheckIns((s) => s.notes)
+  // One tap, the Prayer Wall's report: the note leaves the mailbox for an
+  // operator's look (0138). No reason asked, nothing blocked, and the sender
+  // is told nothing. The line stays until the next visit so the tap visibly
+  // did something.
+  //
+  // A tap is HELD for REPORT_UNDO_MS before it reaches the server, so a thumb
+  // that lands on Report by accident can take it back: the note hides at once,
+  // "Undo" puts it back, and only when the window closes (or the mailbox is
+  // left) does `report` run. Nothing new on the server — 0138's report is
+  // sent exactly as before, just a beat later.
+  const [reported, setReported] = useState(false)
+  const [pendingReport, setPendingReport] = useState<number | null>(null)
+  const pendingRef = useRef<{ id: number; timer: number } | null>(null)
+  const sendReport = (id: number) => { void useChurchCheckIns.getState().report(id) }
+  const flushReport = () => {
+    const p = pendingRef.current
+    if (!p) return
+    window.clearTimeout(p.timer)
+    pendingRef.current = null
+    setPendingReport(null)
+    sendReport(p.id)
+  }
+  const reportNote = (id: number) => {
+    flushReport() // a second report while one is held sends the first now
+    const timer = window.setTimeout(flushReport, REPORT_UNDO_MS)
+    pendingRef.current = { id, timer }
+    setPendingReport(id)
+    setReported(true)
+  }
+  const undoReport = () => {
+    const p = pendingRef.current
+    if (!p) return
+    window.clearTimeout(p.timer)
+    pendingRef.current = null
+    setPendingReport(null)
+    setReported(false)
+  }
+  // Leaving the mailbox inside the window still files the report.
+  useEffect(() => () => flushReport(), []) // eslint-disable-line react-hooks/exhaustive-deps
+  const checkIns = allCheckIns.filter((n) => n.id !== pendingReport)
   const requests = useBuddies((s) => s.requests)
   const respond = useBuddies((s) => s.respond)
   const washings = useWashing((s) => s.recent)
@@ -61,6 +108,7 @@ export default function MailScreen() {
 
   useEffect(() => {
     void useGifts.getState().load().then(() => useGifts.getState().markSeen())
+    void useChurchCheckIns.getState().load().then(() => useChurchCheckIns.getState().markSeen())
     void useBuddies.getState().load()
     void useWashing.getState().load()
     void usePrayerWall.getState().load()
@@ -68,7 +116,7 @@ export default function MailScreen() {
 
   const noteLit = !!myNote && myNote.open && myNote.lit
   const empty =
-    giftsLoaded && !gifts.length && !requests.length && !washings.length && !news.length &&
+    giftsLoaded && !gifts.length && !checkIns.length && !reported && !requests.length && !washings.length && !news.length &&
     !answered.length && !noteLit
 
   return (
@@ -89,7 +137,7 @@ export default function MailScreen() {
         <div className="card" style={{ textAlign: 'center', padding: 30 }}>
           <div style={{ fontSize: 34 }}>📭</div>
           <p className="dim" style={{ marginTop: 10, fontSize: 14, lineHeight: 1.5 }}>
-            Nothing today. Gifts, buddy requests, answered prayers and news land here.
+            Nothing today. Gifts, notes from your church, buddy requests, answered prayers and news land here.
           </p>
         </div>
       )}
@@ -147,6 +195,51 @@ export default function MailScreen() {
               </button>
             </div>
           ))}
+        </Section>
+      )}
+
+      {(checkIns.length > 0 || reported) && (
+        <Section title="From your church">
+          {checkIns.map((n) => (
+            <div key={n.id} className="card" style={{ marginBottom: 8, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              <Avatar emoji={n.fromAvatar ?? '⛪'} character={n.fromCharacter} username={n.fromUsername} size={40} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {n.verseRef && (
+                  <div style={{ marginBottom: n.message ? 6 : 0 }}>
+                    {n.verseText && (
+                      <p style={{ margin: 0, fontSize: 14, lineHeight: 1.45, fontStyle: 'italic', overflowWrap: 'anywhere' }}>“{n.verseText}”</p>
+                    )}
+                    <span className="faint" style={{ fontSize: 12, fontWeight: 700 }}>{n.verseRef}</span>
+                  </div>
+                )}
+                {n.message && (
+                  <p style={{ margin: 0, fontSize: 14, lineHeight: 1.45, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>{n.message}</p>
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                  <span className="faint" style={{ fontSize: 12, flex: 1, minWidth: 0 }}>
+                    @{n.fromUsername} · {n.churchName} · {new Date(n.createdAt).toLocaleDateString()}
+                  </span>
+                  <button
+                    className="pill"
+                    onClick={() => { juice.select(); reportNote(n.id) }}
+                    style={{ fontSize: 11.5, padding: '4px 10px', opacity: 0.7, flexShrink: 0 }}
+                  >
+                    Report
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+          {reported && (
+            <div className="faint" style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12.5, margin: '2px 0 8px' }}>
+              <span style={{ flex: 1, minWidth: 0 }}>Reported. It’s out of your mailbox while we take a look.</span>
+              {pendingReport != null && (
+                <button className="pill" onClick={() => { juice.select(); undoReport() }} style={{ fontSize: 12, fontWeight: 800, padding: '4px 12px', flexShrink: 0 }}>
+                  Undo
+                </button>
+              )}
+            </div>
+          )}
         </Section>
       )}
 

@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { useAuth } from './store/auth'
 import { useBuddies } from './store/buddies'
 import { useGifts } from './store/gifts'
+import { useChurchCheckIns } from './store/churchCheckIns'
 import { useReminders } from './store/reminders'
 import { useSeason } from './store/season'
 import { useCatalog } from './store/catalog'
@@ -214,6 +215,8 @@ export default function App() {
       // mailbox renders would make a gift invisible until you'd already gone
       // looking for it.
       void useGifts.getState().load()
+      // A church check-in (0137) lights the same mailbox dot.
+      void useChurchCheckIns.getState().load()
     }
   }, [ready, mode])
 

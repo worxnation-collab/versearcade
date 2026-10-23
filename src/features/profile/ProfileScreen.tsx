@@ -18,6 +18,7 @@ import { BuddiesSection } from '@/features/buddies/BuddiesScreen'
 import { BasinSection } from '@/features/washing/BasinSection'
 import { useBuddies } from '@/store/buddies'
 import { useGifts } from '@/store/gifts'
+import { useChurchCheckIns } from '@/store/churchCheckIns'
 import { useWashing } from '@/store/washing'
 import { useSeason } from '@/store/season'
 import { titleById } from '@/data/season'
@@ -79,7 +80,7 @@ export default function ProfileScreen() {
   const buddyRequests = useBuddies((st) => st.requests.length)
   // Same "something for you" signal the bottom nav shows, so the pill and the
   // tab can't disagree about whether the mailbox has anything in it.
-  const unseenGifts = useGifts((st) => st.unseen)
+  const unseenGifts = useGifts((st) => st.unseen) + useChurchCheckIns((st) => st.unseen)
   const mailWaiting = buddyRequests + unseenGifts
   const loadBuddies = useBuddies((st) => st.load)
   useEffect(() => {

@@ -1753,9 +1753,13 @@ cards for the Content Generation package. Four things are load-bearing:
 - **Stale never reaches a member.** A card whose source words changed is refused
   on approve and filtered from `my_church_assets`; regenerating over an
   approved card returns it to draft.
-- **Congregation only**, by check constraint. Public export, when wanted, is a
-  client-side rasterise of the same component (the postcard path), not a new
-  storage design.
+- **Congregation only**, by check constraint. Export is a LEADER's act: an
+  approved, fresh card can be shared or downloaded as a PNG from the studio
+  (`lib/churchAssetExport.ts`), drawn on a canvas from the template DATA rather
+  than by photographing the HTML (Safari taints a foreignObject canvas). Sizing
+  is shared with `ChurchAssetCard` through `slotScale`/`slotFamily`; a template
+  background outside colour, `linear-gradient`, `radial-gradient(ellipse at X% Y%,
+  …)` and an image is skipped in the export; a card taller than 4:5 posts framed. `docs/CHURCH-VISUAL-ASSETS.md` → "Export".
 
 ### The sponsored slot
 

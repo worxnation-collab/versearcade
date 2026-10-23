@@ -245,6 +245,15 @@ export async function shareImage(
     }
   }
 
+  return saveImage(blob, filename)
+}
+
+/**
+ * Save a picture as a file, with no share sheet — for a leader at a desk who
+ * wants the PNG in Downloads to upload somewhere. WEB ONLY: a WKWebView ignores
+ * a download link (the lesson above), so native callers use `shareImage`.
+ */
+export function saveImage(blob: Blob, filename: string): PostcardOutcome {
   try {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')

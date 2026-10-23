@@ -87,13 +87,13 @@ export function ChurchLife({ church, extras }: { church: Church; extras: ChurchE
 
       {extras?.announcement && noticeCard && (
         <div className="card" style={{ padding: 8 }}>
+          {/* The card carries its own "From {church}" and "Posted {date}". */}
           <ChurchAssetCard kind="announcement" templateId={noticeCard.templateId} payload={noticeCard.payload} />
-          <div className="faint" style={{ fontSize: 11.5, margin: '6px 6px 0' }}>{ago(extras.announcement.createdAt)}</div>
         </div>
       )}
       {extras?.announcement && !noticeCard && (
         <div className="card" style={{ padding: '12px 14px' }}>
-          <Eyebrow>From your church’s leaders</Eyebrow>
+          <Eyebrow>From {church.name}</Eyebrow>
           <p style={{ margin: '4px 0 0', fontSize: 14, lineHeight: 1.45, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>
             {extras.announcement.message}
           </p>

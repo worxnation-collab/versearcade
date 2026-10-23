@@ -204,7 +204,7 @@
       show('done'); return;
     }
     if (j.paying) { show('paying'); return; }
-    if (j.claim) { show('claiming'); $('invoice-card').hidden = true; $('cancel-line').hidden = true; }
+    if (j.claim) { show('claiming'); $('invoice-card').hidden = true; $('cancel-line').textContent = 'To cancel before then, open Manage billing on your church’s leadership page.'; }
     if (founding) show('founding');
     show('form');
   }).catch(function () { $('church').textContent = 'Verified Church'; show('bad'); });

@@ -171,6 +171,20 @@ the app carries none.
   incomplete_expired / paused ⇒ not, and only for the subscription on file;
   incomplete ⇒ no change. Billing turns the add-on off only if billing turned
   it on, so a hand-granted pilot add-on survives.
+- **Leadership manages its own subscription** (0135). The leader dashboard
+  shows a Billing line (Founding trial, interval, renewal date, or "the last
+  payment didn't go through") and a **Manage billing →** pill that opens
+  Stripe's customer portal — change the card, see invoices, cancel. Portal
+  config `bpc_1UTNfWHlxD9PZQmbI9MV6O7Q` (live, default): cancel at period end
+  with no proration, plan switching OFF (changing tier or adding the add-on
+  still goes through us), return URL the church's dashboard. The session is
+  opened by `church-billing` `{ action: 'portal', church }` with the leader's
+  own JWT, checked against `church_admins` for that church — the one door that
+  takes a church id, safe because of that check; the Stripe customer id never
+  reaches a client (`my_church_billing` doesn't return it). Drawn only for a
+  live subscription WITH a Stripe customer, so a church an operator verified by
+  hand sees nothing new, and only on the web (`churchBillingPortalVisible()`).
+  A cancellation arrives through the webhook like any other status change.
 - **The link is a token, never the church id**, so it cannot open a checkout
   for a church it was not sent to. It is stable — the same church always gets
   the same link.

@@ -69,6 +69,44 @@ export async function fetchEntitlements(churchId: string): Promise<Res<Entitleme
 }
 
 // ---------------------------------------------------------------------------
+// Billing: what the church's Stripe subscription says, and the portal (0135)
+// ---------------------------------------------------------------------------
+// `subscribed` is true only for a live subscription with a Stripe customer, so
+// a church verified by hand reads false and its dashboard shows nothing new.
+// The customer id never reaches the client: the portal session is opened by
+// the church-billing function, which checks the caller's leadership itself.
+export interface ChurchBilling {
+  subscribed: boolean
+  status: string | null
+  interval: 'month' | 'year' | null
+  addon: boolean
+  invoiced: boolean
+  periodEnd: string | null
+}
+
+export async function fetchChurchBilling(churchId: string): Promise<ChurchBilling | null> {
+  const r = await call('my_church_billing', { p_church_id: churchId })
+  if (!r.ok) return null
+  const d = r.data as any
+  return {
+    subscribed: !!d?.subscribed,
+    status: d?.status ?? null,
+    interval: d?.interval === 'year' || d?.interval === 'month' ? d.interval : null,
+    addon: !!d?.addon,
+    invoiced: d?.collection_method === 'send_invoice',
+    periodEnd: d?.period_end ?? null,
+  }
+}
+
+/** A Stripe customer-portal URL for this church, or null with a reason. */
+export async function openBillingPortal(churchId: string): Promise<{ url: string } | { error: string }> {
+  if (!online()) return { error: 'unavailable' }
+  const { data, error } = await supabase!.functions.invoke('church-billing', { body: { action: 'portal', church: churchId } })
+  if (error || typeof (data as any)?.url !== 'string') return { error: String((data as any)?.error ?? 'failed') }
+  return { url: (data as any).url }
+}
+
+// ---------------------------------------------------------------------------
 // Settings: the live announcement and the giving link
 // ---------------------------------------------------------------------------
 export interface AdminSettings {

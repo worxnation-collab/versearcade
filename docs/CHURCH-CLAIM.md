@@ -186,7 +186,10 @@ refund and cancel there, and the cancellation un-verifies the church through
 the webhook. Until it is cancelled the church reads `paying` and nobody else
 can self-claim it.
 
-**Known gaps.** A self-serve claimant has no cancellation path of their own
-(the billing page's "reply to the email" line is hidden in claim mode, since no
-email thread exists) — a Stripe customer portal link is the obvious fix. An
-already-paying church cannot add the Content Generation add-on itself.
+**Cancelling.** A claimant manages the subscription from their own leader
+dashboard — **Manage billing →** opens Stripe's customer portal (0135,
+`docs/CHURCH-PACKAGES.md` → "Billing"), and the billing page's claim-mode line
+says so.
+
+**Known gap.** An already-paying church cannot add the Content Generation
+add-on itself (the portal's plan switching is off on purpose).

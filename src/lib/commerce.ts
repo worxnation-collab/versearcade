@@ -217,3 +217,11 @@ export const givingLinkVisible = (): boolean => !isNativeApp()
  * not the form — exactly as it shows no patron price it can't charge.
  */
 export const churchSelfClaimVisible = (): boolean => !isNativeApp()
+
+/**
+ * Whether a church's leadership can open Stripe's billing portal from this
+ * build (0135). The portal shows prices, invoices and a card form — a
+ * storefront by Apple's reckoning — so it is web only, like the claim that
+ * starts the subscription.
+ */
+export const churchBillingPortalVisible = (): boolean => !isNativeApp()

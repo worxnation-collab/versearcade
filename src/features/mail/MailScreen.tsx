@@ -40,7 +40,7 @@ import { PaintedIcon } from '@/components/PaintedIcon'
 // dot goes away because you looked, not because you cleared a queue.
 
 /** How long a Report tap can be taken back before it is sent. */
-const REPORT_UNDO_MS = 1000
+const REPORT_UNDO_MS = 4000
 
 export default function MailScreen() {
   const navigate = useNavigate()

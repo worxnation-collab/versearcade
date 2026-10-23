@@ -75,10 +75,10 @@ export function LeaderLookFigure({
   // tone draws the figure in the leader's own tone rather than borrowing
   // somebody else's face.
   const tone = spec?.skin ?? 'sand'
-  const hair = spec?.hair ?? 'espresso'
+  const hairKey = spec?.hair ?? 'espresso'
   const fig = fem ? 'fem' : 'masc'
   const raster = custom
-    ?? (hair !== 'espresso' ? GENERATED_ART[`leader_${id}_${fig}_${tone}_${hair}`] : undefined)
+    ?? (hairKey !== 'espresso' ? GENERATED_ART[`leader_${id}_${fig}_${tone}_${hairKey}`] : undefined)
     ?? GENERATED_ART[`leader_${id}_${fig}_${tone}`]
     ?? (tone === 'sand' ? GENERATED_ART[`leader_${id}_${fig}`] : undefined)
   const [failed, setFailed] = useState<string | null>(null)

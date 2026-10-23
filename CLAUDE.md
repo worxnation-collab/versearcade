@@ -1744,6 +1744,13 @@ Four things are load-bearing:
   the sand outfit and 27 of 49 came back with the sand face, which renders
   perfectly. Measure a new batch's faces against the starters before trusting
   it. Two known light ones: male bronze Classic Clergy and Professional Suit.
+  **Leaders are ADULTS, and the starter reference is why that has to be
+  said.** The starters are young (about five heads tall), and the first 359
+  renders were told to copy "exactly the face" of theirs, so they came back
+  childlike. The prompts now use the reference for style, skin tone and hair
+  colour ONLY and spell out the age (30–60), adult facial structure and ~7.5
+  heads. The drawn fallback scales its head by `ADULT_HEAD` for the same
+  reason. The shipped renders predate this and are due a regeneration.
 - **Setup is the claim screen's landing.** Claiming sends a leader to
   `/church/:id/admin`; verified leadership with no look chosen opens on "Your
   look" with the picker worded as a first step.

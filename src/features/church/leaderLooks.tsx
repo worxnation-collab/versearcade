@@ -19,6 +19,13 @@ import { DEFAULT_LEADER_LOOK, DEFAULT_LEADER_LOOKS, type LeaderLookId } from './
 // viewBox 0 0 120 170, ground at y 162 — Character's frame, so a leader can
 // stand anywhere a figure already stands.
 
+// These are ADULTS, and the drawn figure has to read as one. The pilgrim's
+// head (r 13 on a ~135-unit body, about five heads tall) is a child's
+// proportion; scaled to 0.74 about the top of the neck it is ~6.7 heads, an
+// adult's, without redrawing the hair caps. The renders carry the same rule
+// in their prompts (art/leader-looks.json).
+const ADULT_HEAD = 'translate(60 52) scale(0.74) translate(-60 -52)'
+
 type Garment = {
   /** The long garment from the shoulders down. */
   body: string
@@ -106,8 +113,8 @@ export function LeaderLookFigure({
         />
       ) : (
         <g>
-          {/* Long hair falls behind the shoulders. */}
-          {fem && <path d="M44 38 Q44 70 50 80 L70 80 Q76 70 76 38 Z" fill={hair} />}
+          {/* Long hair falls behind the shoulders — scaled with the head (ADULT_HEAD). */}
+          {fem && <path transform={ADULT_HEAD} d="M44 38 Q44 70 50 80 L70 80 Q76 70 76 38 Z" fill={hair} />}
 
           {/* Legs + shoes under a short jacket; just shoes under a long one. */}
           {g.legs && <path d="M47 110 L50 158 L59 158 L60 118 L61 158 L70 158 L73 110 Z" fill={g.legs} />}
@@ -158,7 +165,7 @@ export function LeaderLookFigure({
           )}
 
           {/* Neck, head, hair cap — faceless, like the drawn pilgrim. */}
-          <rect x="55" y="49" width="10" height="11" rx="3" fill={skin} />
+          <rect x="56" y="48" width="8" height="12" rx="3" fill={skin} />
           {g.collar === 'band' && <rect x="54" y="56" width="12" height="3.2" rx="1.2" fill="#f4f2ec" />}
           {g.collar === 'tab' && (
             <>
@@ -167,8 +174,10 @@ export function LeaderLookFigure({
             </>
           )}
           {g.collar === 'open' && <path d="M55 58 L60 66 L65 58 Z" fill={skin} />}
+          <g transform={ADULT_HEAD}>
           <circle cx="60" cy="40" r="13" fill={skin} />
           <path d={fem ? 'M46 40 Q46 25 60 25 Q74 25 74 40 Q68 31 60 31 Q52 31 46 40 Z' : 'M47 38 Q48 26 60 26 Q72 26 73 38 Q67 31 60 31 Q53 31 47 38 Z'} fill={hair} />
+          </g>
         </g>
       )}
     </svg>

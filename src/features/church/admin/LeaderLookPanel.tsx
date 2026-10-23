@@ -3,6 +3,7 @@ import { Button } from '@/components/Button'
 import { useAuth } from '@/store/auth'
 import { useJuice } from '@/juice/useJuice'
 import { churchPricesVisible } from '@/lib/commerce'
+import { startCustomAvatarCheckout } from '@/lib/checkout'
 import {
   fetchAvatarRequest,
   photoToJpegBase64,
@@ -132,8 +133,19 @@ export function LeaderLookPanel({
 }
 
 function CustomAvatarCard({ churchId, ent, onChanged }: { churchId: string; ent: Entitlements | null; onChanged: () => void }) {
+  const juice = useJuice()
   const product = CHURCH_PRODUCTS.customLeaderAvatar
   const has = !!ent?.customLeaderAvatar
+  const [buying, setBuying] = useState(false)
+  const [buyNote, setBuyNote] = useState<string | null>(null)
+  const buy = async () => {
+    juice.select?.()
+    setBuying(true)
+    setBuyNote(null)
+    const r = await startCustomAvatarCheckout(churchId)
+    setBuying(false)
+    if (r === 'unavailable') setBuyNote('Online checkout isn’t connected yet — reply to your billing email or tap “Add info” on your church page and we’ll add it.')
+  }
   const [req, setReq] = useState<AvatarRequest | null | undefined>(undefined)
   const [editing, setEditing] = useState(false)
 
@@ -159,13 +171,18 @@ function CustomAvatarCard({ churchId, ent, onChanged }: { churchId: string; ent:
       <div className="card" style={{ display: 'grid', gap: 8 }}>
         {header}
         {churchPricesVisible() ? (
-          <div style={{ fontSize: 13, lineHeight: 1.5 }}>
-            <b>{formatUsd(product.amount)}</b> <span className="dim">· one time, on top of Church Leader.</span>
-            <div className="faint" style={{ fontSize: 12, marginTop: 4 }}>
-              {ent?.customLeaderAvatarHeld
-                ? 'On your plan, and switches on with Church Leader.'
-                : 'To add it, reply to your billing email or tap “Add info” on your church page — we’ll set it up and this card opens.'}
-            </div>
+          <div style={{ display: 'grid', gap: 8, fontSize: 13, lineHeight: 1.5 }}>
+            <div><b>{formatUsd(product.amount)}</b> <span className="dim">· one time, on top of Church Leader.</span></div>
+            {ent?.customLeaderAvatarHeld ? (
+              <div className="faint" style={{ fontSize: 12 }}>On your plan, and switches on with Church Leader.</div>
+            ) : (
+              <>
+                <Button full onClick={() => void buy()} disabled={buying}>
+                  {buying ? 'Opening…' : `Get a custom avatar — ${formatUsd(product.amount)}`}
+                </Button>
+                {buyNote && <div className="faint" style={{ fontSize: 12 }}>{buyNote}</div>}
+              </>
+            )}
           </div>
         ) : (
           <div className="faint" style={{ fontSize: 12 }}>
@@ -183,6 +200,11 @@ function CustomAvatarCard({ churchId, ent, onChanged }: { churchId: string; ent:
   return (
     <div className="card" style={{ display: 'grid', gap: 10 }}>
       {header}
+      {req?.mine && (
+        <div>
+          <span className="pill" style={{ fontSize: 11.5, fontWeight: 800 }}>{STATUS_LABEL[req.status]}</span>
+        </div>
+      )}
       {req && !req.mine && req.status !== 'declined' && (
         <Line>Another leader of this church has already sent this church’s request.</Line>
       )}
@@ -218,6 +240,14 @@ function CustomAvatarCard({ churchId, ent, onChanged }: { churchId: string; ent:
       )}
     </div>
   )
+}
+
+// The words a leader reads for each stored status (0136).
+const STATUS_LABEL: Record<AvatarRequest['status'], string> = {
+  submitted: 'Pending',
+  in_progress: 'In progress',
+  delivered: 'Complete',
+  declined: 'Needs a new request',
 }
 
 function Line({ children, faint }: { children: React.ReactNode; faint?: boolean }) {

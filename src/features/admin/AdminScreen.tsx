@@ -531,7 +531,7 @@ function FoundingChurches() {
     setLinks((m) => ({ ...m, [`bill:${c.id}`]: url }))
     let copied = false
     try { await navigator.clipboard.writeText(url); copied = true } catch { /* shown below to copy by hand */ }
-    setMsg(`${copied ? 'Copied' : 'Made'} the billing link for ${c.name}. It's the same link every time.`)
+    setMsg(`${copied ? 'Copied' : 'Made'} the billing link for ${c.name}. It's the same link every time and needs no sign-in — send it to the pastor or treasurer. It opens both plans, card checkout and invoicing (ACH, card or check); once they pay, Manage billing on their leadership page handles changes.`)
   }
 
   const where = (c: { city: string | null; region: string | null }) => [c.city, c.region].filter(Boolean).join(', ')

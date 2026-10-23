@@ -5,161 +5,278 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="robots" content="noindex, nofollow" />
   <meta name="referrer" content="no-referrer" />
-  <title>Verified Church · Verse Arcade</title>
+  <meta name="theme-color" content="#0e0a0c" />
+  <title>Church plans · Verse Arcade</title>
   <link rel="icon" href="/favicon.png" />
   <!--
     The church billing page. A static page OUTSIDE the app, on purpose.
 
-    Billing is web-only: the app shows no price anywhere (CLAUDE.md, "Two
-    checkouts"; the /churches offer page has none either). This file ships in
-    dist like everything in public/, but no route in the SPA links to it and
-    the app never opens it — it is reached only from the link an operator
-    sends a church (Admin → Churches → Billing link), in a browser.
+    Prices live on the web only. The App Store build never shows one (CLAUDE.md,
+    "Two checkouts"). The /churches offer page has none either. This file ships
+    in dist like everything in public/, but no route in the SPA links to it. It
+    is reached from the link an operator sends a church (Admin → Churches → Copy
+    billing link), opened in a desktop browser or in the in-app browser (the
+    Capacitor Browser on iOS, an SFSafariViewController). So it must read well
+    at 320px under a notch and at 1200px on a church office monitor.
 
     It knows nothing on its own. The `t` in its URL is the church's billing
-    token (0131); the church-billing Edge Function turns that into the
-    church's name and starts either a card checkout or an invoiced
-    subscription. Prices are written here for READING; what is charged is
-    whatever the Stripe price ids say, so if the two ever disagree, change
-    this copy and the Stripe dashboard together.
+    token (0131). The church-billing Edge Function turns that token into the
+    church's name, then starts either a card checkout or an invoiced
+    subscription. Prices are written here for READING. What is charged is
+    whatever the Stripe price ids say, so if the two ever disagree, change this
+    copy and the Stripe dashboard together. NOTHING HERE names a price id.
 
-    A SELF-SERVE CLAIM (0134) arrives with `c` instead of `t`: the one-time
-    token the app's claim screen got from `start_church_claim`. Same page, two
-    differences: card only (no invoice — a claim has to put a card on file),
-    and a line saying that paying is what makes them the church's leadership.
+    A SELF-SERVE CLAIM (0134) arrives with `c` instead of `t`. The `c` is the
+    one-time token the app's claim screen got from `start_church_claim`. It uses
+    the same page, with two differences:
+    - card only, no invoice, because a claim has to put a card on file;
+    - a line saying that paying is what makes them the church's leadership.
+
+    The Apple line is information, not a link. The Verified Church plan can also
+    be bought through Apple inside the iOS app (0139). Saying so here is neutral
+    and true; linking a web page to an IAP is neither needed nor useful.
   -->
   <style>
     :root {
       color-scheme: dark;
-      --bg: #0e0a0c; --card: #3a2a36; --raised: #4a3746; --ink: #fdfbfc; --dim: #d9cdd5;
-      --gold: #ffd23f; --mint: #6ee7b7; --edge: #8a6f80; --coral: #ff8a7a;
+      --bg: #0e0a0c; --card: #2a1f27; --raised: #3a2a36; --high: #4a3746;
+      --ink: #fdfbfc; --dim: #d9cdd5; --faint: #b7a7b2;
+      --gold: #ffd23f; --mint: #6ee7b7; --edge: #5c4757; --edge-hi: #8a6f80; --coral: #ff8a7a;
     }
     * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
     body {
       margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      line-height: 1.45;
+      line-height: 1.5;
     }
-    main { max-width: 520px; margin: 0 auto; padding: 32px 16px 48px; display: grid; gap: 16px; }
-    h1 { font-size: 24px; margin: 0; }
-    h2 { font-size: 16px; margin: 0 0 8px; }
+    main {
+      max-width: 880px; margin: 0 auto; display: grid; gap: 20px;
+      padding: calc(28px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right))
+               calc(48px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+    }
+    h1 { font-size: 26px; line-height: 1.2; margin: 2px 0 0; overflow-wrap: anywhere; }
+    h2 { font-size: 17px; margin: 0; }
+    h3 { font-size: 15px; margin: 0; }
     p { margin: 0; color: var(--dim); }
-    .card { background: var(--card); border-radius: 16px; padding: 16px; display: grid; gap: 10px; }
-    .founding { border: 1px solid var(--mint); }
+    ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+    .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); }
+    .small { font-size: 13.5px; color: var(--dim); }
+    .faint { font-size: 12.5px; color: var(--faint); }
+    .card { background: var(--card); border: 1px solid var(--edge); border-radius: 16px; padding: 18px; display: grid; gap: 12px; align-content: start; }
+    .pay .card { grid-template-rows: auto; }
+    .pay .card > button { margin-top: auto; }
+    .ok { color: var(--mint); }
+    .msg { color: var(--coral); font-size: 14px; }
+    [hidden] { display: none !important; }
+
+    /* Loading: a quiet placeholder where the church's name will land. */
+    .skel { display: inline-block; height: 26px; width: 220px; max-width: 70%; border-radius: 8px;
+      background: linear-gradient(90deg, var(--card), var(--raised), var(--card)); background-size: 200% 100%;
+      animation: shimmer 1.4s linear infinite; vertical-align: middle; }
+    @keyframes shimmer { to { background-position: -200% 0; } }
+    @media (prefers-reduced-motion: reduce) { .skel { animation: none; } }
+
+    .founding { border-color: var(--mint); background: linear-gradient(0deg, rgba(110,231,183,0.06), rgba(110,231,183,0.06)), var(--card); }
     .founding b { color: var(--mint); }
-    .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    label.opt {
-      display: grid; gap: 2px; padding: 12px; border-radius: 12px; background: var(--raised);
-      border: 2px solid transparent; cursor: pointer;
-    }
-    label.opt input { display: none; }
-    label.opt:has(input:checked) { border-color: var(--gold); }
-    .price { font-size: 20px; font-weight: 800; }
-    .small { font-size: 13px; color: var(--dim); }
+
+    /* Monthly / annual: one segmented control above both plans. */
+    .section-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .seg { display: inline-grid; grid-template-columns: 1fr 1fr; background: var(--card); border: 1px solid var(--edge);
+      border-radius: 999px; padding: 4px; }
+    .seg label { cursor: pointer; }
+    .seg input { position: absolute; opacity: 0; pointer-events: none; }
+    .seg span { display: block; padding: 8px 16px; border-radius: 999px; font-size: 14px; font-weight: 700; color: var(--dim); text-align: center; white-space: nowrap; }
+    .seg input:checked + span { background: var(--high); color: var(--ink); }
+    .seg input:focus-visible + span { outline: 2px solid var(--gold); outline-offset: 2px; }
+    .seg em { font-style: normal; color: var(--mint); font-weight: 700; font-size: 12px; margin-left: 4px; }
+
+    .plans { display: grid; gap: 12px; }
+    @media (min-width: 720px) { .plans { grid-template-columns: 1fr 1fr; } }
     label.plan {
-      display: grid; gap: 4px; padding: 14px; border-radius: 12px; background: var(--raised);
-      border: 2px solid transparent; cursor: pointer;
+      position: relative; display: grid; gap: 12px; align-content: start; padding: 18px; border-radius: 16px;
+      background: var(--card); border: 2px solid var(--edge); cursor: pointer;
     }
-    label.plan input { display: none; }
-    label.plan:has(input:checked) { border-color: var(--gold); }
-    .plan-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-    .was { text-decoration: line-through; color: var(--dim); font-size: 13px; font-weight: 600; }
-    .tag { font-size: 11px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gold); }
+    label.plan input { position: absolute; opacity: 0; pointer-events: none; }
+    label.plan:has(input:checked) { border-color: var(--gold); background: var(--raised); }
+    label.plan:has(input:focus-visible) { outline: 2px solid var(--gold); outline-offset: 3px; }
+    .pick { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--edge-hi); flex: none; display: grid; place-items: center; }
+    label.plan:has(input:checked) .pick { border-color: var(--gold); }
+    label.plan:has(input:checked) .pick::after { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--gold); }
+    .plan-top { display: flex; align-items: center; gap: 10px; }
+    .tag { font-size: 11px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--gold); }
+    .price-row { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+    .price { font-size: 30px; font-weight: 800; line-height: 1; }
+    .was { text-decoration: line-through; color: var(--faint); font-size: 14px; font-weight: 600; }
+    .save { font-size: 12.5px; font-weight: 700; color: var(--mint); }
+    .feat li { display: grid; grid-template-columns: 18px 1fr; gap: 8px; font-size: 14px; color: var(--dim); }
+    .feat li::before { content: '✓'; color: var(--mint); font-weight: 800; }
+    .feat li.no { color: var(--faint); }
+    .feat li.no::before { content: '–'; color: var(--faint); }
+
+    /* Paying: two equal doors, side by side on a wide screen. */
+    .pay { display: grid; gap: 12px; }
+    @media (min-width: 720px) { .pay { grid-template-columns: 1fr 1fr; } }
+    .methods { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-start; }
+    .chip { font-size: 12.5px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--raised); color: var(--ink); border: 1px solid var(--edge); }
+    .note { border-left: 3px solid var(--mint); padding: 2px 0 2px 10px; }
+
     button {
       font: inherit; font-weight: 700; font-size: 16px; border: 0; border-radius: 999px; padding: 14px 18px;
-      cursor: pointer; width: 100%;
+      cursor: pointer; width: 100%; min-height: 48px;
     }
     .gold { background: var(--gold); color: #1a1208; }
-    .ghost { background: transparent; color: var(--ink); border: 1px solid var(--edge); }
+    .ghost { background: transparent; color: var(--ink); border: 1px solid var(--edge-hi); }
     button:disabled { opacity: 0.6; cursor: default; }
+    button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+    .field { display: grid; gap: 4px; }
+    .field span { font-size: 12.5px; font-weight: 700; color: var(--dim); }
     input[type=email], input[type=text] {
-      font: inherit; width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--edge);
+      font: inherit; font-size: 16px; width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--edge-hi);
       background: var(--bg); color: var(--ink);
     }
-    .msg { color: var(--coral); font-size: 14px; }
-    .ok { color: var(--mint); }
-    [hidden] { display: none !important; }
+    input:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+
+    .how { display: grid; gap: 12px; }
+    @media (min-width: 720px) { .how { grid-template-columns: 1fr 1fr 1fr; } }
+    .how .card { gap: 6px; }
+    footer { text-align: center; }
+    footer a { color: var(--dim); }
   </style>
 </head>
 <body>
 <main>
-  <div>
-    <p class="small">Verse Arcade · Verified Church</p>
-    <h1 id="church">Loading…</h1>
+  <header>
+    <p class="eyebrow">Verse Arcade · Church plans</p>
+    <h1 id="church"><span class="skel" aria-label="Loading"></span></h1>
     <p id="where" class="small"></p>
+  </header>
+
+  <div id="loading" class="card" role="status">
+    <p class="small">Looking up your church’s billing link…</p>
   </div>
 
-  <div id="bad" class="card" hidden>
-    <p id="bad-text">This link isn't working. Reply to the email it came in and we'll send a fresh one.</p>
+  <div id="bad" class="card" role="alert" hidden>
+    <h2>This link isn’t working</h2>
+    <p id="bad-text">It may have been mistyped or replaced. Reply to the email it came in and we’ll send a fresh one.</p>
   </div>
 
   <div id="claiming" class="card" hidden>
-    <p>Choosing a plan finishes your claim. As soon as checkout is complete you're this church's
+    <h2>Finishing your claim</h2>
+    <p>Choosing a plan finishes your claim. As soon as checkout is complete you become this church’s
       leadership on Verse Arcade, and your tools open.</p>
   </div>
 
   <div id="paying" class="card" hidden>
-    <h2 class="ok">You're all set</h2>
+    <h2 class="ok">You’re all set</h2>
     <p>This church already has a subscription. Thank you.</p>
+    <p class="small">To change the plan, update a card, download invoices or cancel, open
+      <b>Manage billing</b> on your church’s leadership page in Verse Arcade (on the web).</p>
   </div>
 
-  <div id="done" class="card" hidden>
+  <div id="done" class="card" role="status" hidden>
     <h2 class="ok" id="done-title">Thank you</h2>
     <p id="done-text"></p>
+    <p class="small">Billing from here on (receipts, invoices, a new card, a change of plan) lives under
+      <b>Manage billing</b> on your church’s leadership page.</p>
   </div>
 
-  <form id="form" hidden>
-    <div style="display:grid;gap:16px">
+  <form id="form" hidden novalidate>
+    <div style="display:grid;gap:20px">
       <div id="founding" class="card founding" hidden>
-        <p><b>Founding Church — free through Easter 2027.</b> Nothing is charged today. Your plan
+        <p><b>Founding Church: free through Easter 2027.</b> Nothing is charged today. Your plan
           starts on Monday, March 29, 2027 at the price you choose below.
           <span id="cancel-line">To cancel before then, just reply to the email this link came in.</span></p>
       </div>
 
-      <div class="card">
-        <h2>How often</h2>
-        <div class="opts">
-          <label class="opt"><input type="radio" name="interval" value="month" checked />
-            <span class="price">Monthly</span><span class="small">cancel any time</span></label>
-          <label class="opt"><input type="radio" name="interval" value="year" />
-            <span class="price">Yearly</span><span class="small">two months free</span></label>
+      <section style="display:grid;gap:12px" aria-labelledby="plans-h">
+        <div class="section-head">
+          <h2 id="plans-h">1. Choose a plan</h2>
+          <div class="seg" role="radiogroup" aria-label="Billing period">
+            <label><input type="radio" name="interval" value="month" checked /><span>Monthly</span></label>
+            <label><input type="radio" name="interval" value="year" /><span>Annual<em>2 months free</em></span></label>
+          </div>
         </div>
-      </div>
+        <div class="plans">
+          <label class="plan"><input type="radio" name="plan" value="verified" />
+            <div class="plan-top"><span class="pick"></span><h3>Verified Church</h3></div>
+            <div class="price-row"><span class="price" id="base-price">$29</span><span class="small" id="base-per">/ month</span></div>
+            <p class="small">The essentials for leading your congregation on Verse Arcade.</p>
+            <ul class="feat">
+              <li>Your church marked Verified on Verse Arcade</li>
+              <li>Your shared daily verse with a pastor’s note</li>
+              <li>Notices, your logo and your giving link</li>
+              <li>Your congregation’s activity, private to your leadership</li>
+              <li class="no">Content Generation (drafted weeks, verse and notice cards)</li>
+            </ul>
+          </label>
+          <label class="plan"><input type="radio" name="plan" value="suite" checked />
+            <div class="plan-top"><span class="pick"></span><h3>Church Suite</h3><span class="tag" style="margin-left:auto">Best value</span></div>
+            <div class="price-row"><span class="price" id="suite-price">$39</span><span class="small" id="suite-per">/ month</span>
+              <span class="was" id="suite-was">$48</span></div>
+            <p class="save" id="suite-save">Save $9 a month against buying them separately</p>
+            <ul class="feat">
+              <li>Everything in Verified Church</li>
+              <li><span><b>Content Generation</b>: a week of verse days drafted from one sermon or topic, for you to approve</span></li>
+              <li>Verse, series and notice cards ready to share</li>
+            </ul>
+          </label>
+        </div>
+      </section>
 
-      <div class="card">
-        <h2>Choose a plan</h2>
-        <label class="plan"><input type="radio" name="plan" value="suite" checked />
-          <span class="tag">Everything · best value</span>
-          <span class="plan-head"><b>Church Suite</b>
-            <span><span class="was" id="suite-was">$48</span> <span class="price" id="suite-price">$39</span><span class="small" id="suite-per"> / month</span></span></span>
-          <span class="small"><b>Includes Content Generation.</b> Verified Church and Content Generation in one plan: your shared verse with a
-            pastor's note, notices, logo and giving link, your congregation's numbers, plus verse, series and
-            notice cards ready to post. <b id="suite-save">Save $9 a month</b> against buying them separately.</span></label>
-        <label class="plan"><input type="radio" name="plan" value="verified" />
-          <span class="plan-head"><b>Verified Church</b>
-            <span><span class="price" id="base-price">$29</span><span class="small" id="base-per"> / month</span></span></span>
-          <span class="small">Your shared verse with a pastor's note, notices, your logo and giving link, and
-            your congregation's numbers, private to your leadership. No verse or notice cards.</span></label>
-      </div>
-
-      <div class="card">
-        <h2>Pay by card</h2>
-        <button type="button" class="gold" id="card">Continue to secure checkout</button>
-        <p class="small">Card payments are handled by Stripe. We never see your card number.</p>
-      </div>
-
-      <div class="card" id="invoice-card">
-        <h2>Or have us invoice the church</h2>
-        <p class="small">For a treasurer to approve. Pay the invoice by card, bank transfer (ACH) or
-          check; it's due within 30 days of each invoice.</p>
-        <input type="text" id="name" placeholder="Name on the invoice (e.g. the church office)" autocomplete="organization" />
-        <input type="email" id="email" placeholder="Where to send the invoice" autocomplete="email" />
-        <button type="button" class="ghost" id="invoice">Send me an invoice</button>
-      </div>
-
-      <p id="msg" class="msg" hidden></p>
+      <section style="display:grid;gap:12px" aria-labelledby="pay-h">
+        <h2 id="pay-h">2. Choose how the church pays</h2>
+        <div class="pay">
+          <div class="card" id="invoice-card">
+            <h3>Invoice the church</h3>
+            <div class="methods" aria-label="Ways to pay an invoice">
+              <span class="chip">Invoice</span><span class="chip">ACH bank transfer</span><span class="chip">Check</span><span class="chip">Card</span>
+            </div>
+            <p class="small note">Ideal for churches that need an invoice for a treasurer or finance committee,
+              or that prefer to pay by bank transfer or check rather than by card or through Apple.</p>
+            <p class="faint">We email an invoice for each period, due within 30 days. Pay it online by ACH or card,
+              or by check. No card needed today.</p>
+            <label class="field"><span>Name on the invoice</span>
+              <input type="text" id="name" placeholder="e.g. Grace Church office" autocomplete="organization" /></label>
+            <label class="field"><span>Email for invoices</span>
+              <input type="email" id="email" placeholder="treasurer@yourchurch.org" autocomplete="email" inputmode="email" /></label>
+            <button type="button" class="ghost" id="invoice">Send me an invoice</button>
+          </div>
+          <div class="card">
+            <h3>Pay by card</h3>
+            <div class="methods"><span class="chip">Credit or debit card</span></div>
+            <p class="small">The quickest way: a secure Stripe checkout, renewing automatically. Receipts arrive by email.</p>
+            <p class="faint">Card payments are handled by Stripe. We never see the card number.</p>
+            <button type="button" class="gold" id="card">Continue to secure checkout</button>
+          </div>
+        </div>
+        <p id="msg" class="msg" role="alert" hidden></p>
+        <p class="faint">Prefer to subscribe through Apple? The Verified Church plan is also available inside the
+          Verse Arcade iOS app, from your church’s leadership screen, billed to your Apple ID. Church Suite and
+          invoicing are available here on the web.</p>
+      </section>
     </div>
   </form>
+
+  <section id="how" class="how" aria-label="How church billing works" hidden>
+    <div class="card">
+      <h3>This link is your church’s</h3>
+      <p class="small">It opens this church’s plans and nobody else’s, needs no sign-in, and stays the same.
+        Forward it to your treasurer or office so they can set up payment.</p>
+    </div>
+    <div class="card">
+      <h3>After you subscribe</h3>
+      <p class="small">Your church’s leadership tools switch on right away. Receipts and invoices go to the
+        email given at checkout.</p>
+    </div>
+    <div class="card">
+      <h3>Changes later</h3>
+      <p class="small">Change plan, update a card, download invoices or cancel from <b>Manage billing</b> on
+        your church’s leadership page. Questions? Reply to the email this link came in.</p>
+    </div>
+  </section>
+
+  <footer><p class="faint"><a href="/privacy.html">Privacy</a></p></footer>
 </main>
 <script>
 (function () {
@@ -174,67 +291,81 @@
 
   // Display only: what each price id costs is set in Stripe, and the function
   // names the ids. If these ever disagree with Stripe, change them here too.
-  var PRICES = { month: { suite: 39, sep: 48, base: 29, per: ' / month' }, year: { suite: 390, sep: 480, base: 290, per: ' / year' } };
+  var PRICES = { month: { suite: 39, sep: 48, base: 29, per: '/ month' }, year: { suite: 390, sep: 480, base: 290, per: '/ year' } };
   function interval() { return document.querySelector('input[name=interval]:checked').value; }
   function plan() { return document.querySelector('input[name=plan]:checked').value; }
   function syncPrices() {
     var p = PRICES[interval()];
     $('suite-price').textContent = '$' + p.suite; $('suite-was').textContent = '$' + p.sep; $('suite-per').textContent = p.per;
     $('base-price').textContent = '$' + p.base; $('base-per').textContent = p.per;
-    $('suite-save').textContent = 'Save $' + (p.sep - p.suite) + (interval() === 'year' ? ' a year' : ' a month');
+    $('suite-save').textContent = 'Save $' + (p.sep - p.suite) + (interval() === 'year' ? ' a year' : ' a month') + ' against buying them separately';
   }
   document.querySelectorAll('input[name=interval]').forEach(function (r) { r.addEventListener('change', syncPrices); });
 
-  function busy(on) { $('card').disabled = on; $('invoice').disabled = on; }
+  function busy(which) {
+    $('card').disabled = !!which; $('invoice').disabled = !!which;
+    $('card').textContent = which === 'card' ? 'Opening secure checkout…' : 'Continue to secure checkout';
+    $('invoice').textContent = which === 'invoice' ? 'Setting up the invoice…' : 'Send me an invoice';
+  }
+  function settle(id) {
+    $('form').hidden = true; $('how').hidden = true; $('loading').hidden = true; show(id);
+    window.scrollTo(0, 0);
+  }
 
   function post(body) {
     if (c) body.c = c; else body.t = t;
     body.interval = interval(); body.plan = plan();
     return fetch(FN, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); });
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, j: j }; }); });
   }
 
   $('card').addEventListener('click', function () {
-    busy(true); say('');
+    busy('card'); say('');
     post({ action: 'checkout' }).then(function (r) {
       if (r.ok && r.j.url) { location.href = r.j.url; return; }
-      busy(false); say((r.j && r.j.message) || 'We couldn’t start the checkout. Please try again.');
-    }).catch(function () { busy(false); say('We couldn’t reach the server. Please try again.'); });
+      busy(null); say((r.j && r.j.message) || 'We couldn’t start the checkout. Nothing was charged. Please try again.');
+    }).catch(function () { busy(null); say('We couldn’t reach the server. Nothing was charged. Check your connection and try again.'); });
   });
 
   $('invoice').addEventListener('click', function () {
     var email = $('email').value.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { say('Enter the email the invoice should go to.'); return; }
-    busy(true); say('');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { say('Enter the email the invoices should go to.'); $('email').focus(); return; }
+    busy('invoice'); say('');
     post({ action: 'invoice', email: email, name: $('name').value.trim() }).then(function (r) {
-      busy(false);
+      busy(null);
       if (!r.ok) { say((r.j && r.j.message) || 'We couldn’t set up the invoice. Please try again.'); return; }
-      $('form').hidden = true;
+      $('done-title').textContent = 'Invoicing is set up';
       $('done-text').textContent = founding
-        ? 'You’re a Founding Church. Nothing is due now; the first invoice goes to ' + email + ' when your plan starts after Easter 2027.'
-        : 'Your first invoice is on its way to ' + email + '. Your church’s verified tools are already switched on.';
-      show('done');
-    }).catch(function () { busy(false); say('We couldn’t reach the server. Please try again.'); });
+        ? 'You’re a Founding Church. Nothing is due now. The first invoice goes to ' + email + ' when your plan starts after Easter 2027.'
+        : 'Your first invoice is on its way to ' + email + '. It can be paid by ACH bank transfer, card or check within 30 days. Your church’s verified tools are already switched on.';
+      settle('done');
+    }).catch(function () { busy(null); say('We couldn’t reach the server. Check your connection and try again.'); });
   });
 
+  function bad() { $('church').textContent = 'Church plans'; $('loading').hidden = true; show('bad'); }
   if (c) $('bad-text').textContent = 'This claim link has expired, or the church has been claimed since. Start again from the church’s page in Verse Arcade.';
-  if (!/^[0-9a-f]{64}$/.test(c || t)) { $('church').textContent = 'Verified Church'; show('bad'); return; }
+  if (!/^[0-9a-f]{64}$/.test(c || t)) { bad(); return; }
   fetch(FN + (c ? '?c=' + encodeURIComponent(c) : '?t=' + encodeURIComponent(t))).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
-    if (!j) { $('church').textContent = 'Verified Church'; show('bad'); return; }
+    if (!j) { bad(); return; }
+    $('loading').hidden = true;
     $('church').textContent = j.church;
     $('where').textContent = j.where || '';
     founding = !!j.founding;
     if (q.get('done') === 'card') {
+      $('done-title').textContent = founding ? 'Welcome, Founding Church' : 'Payment received';
       $('done-text').textContent = founding
-        ? 'You’re a Founding Church. Nothing was charged today; your plan starts after Easter 2027. Your church’s verified tools are switched on.'
-        : 'Payment received. Your church’s verified tools are switched on. A receipt is on its way by email.';
+        ? 'Nothing was charged today; your plan starts after Easter 2027. Your church’s verified tools are switched on.'
+        : 'Your church’s verified tools are switched on. A receipt is on its way by email.';
       show('done'); return;
     }
     if (j.paying) { show('paying'); return; }
-    if (j.claim) { show('claiming'); $('invoice-card').hidden = true; $('cancel-line').textContent = 'To cancel before then, open Manage billing on your church’s leadership page.'; }
+    if (j.claim) {
+      show('claiming'); $('invoice-card').hidden = true;
+      $('cancel-line').textContent = 'To cancel before then, open Manage billing on your church’s leadership page.';
+    }
     if (founding) show('founding');
-    show('form');
-  }).catch(function () { $('church').textContent = 'Verified Church'; show('bad'); });
+    show('form'); if (!c) show('how');
+  }).catch(bad);
 })();
 </script>
 </body>

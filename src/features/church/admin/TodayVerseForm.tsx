@@ -4,11 +4,12 @@ import { useJuice } from '@/juice/useJuice'
 import { todayLocalDate, addDays } from '@/lib/date'
 import { parseReference } from '@/lib/bibleProgress'
 import { verseFromReference } from '@/data/bible/questions'
-import { cleanLine, cleanQuestions, fetchDays, GUIDANCE_MAX, NOTE_MAX, SERIES_MAX, serverVerseBackend, TRANSCRIPT_MAX, type DayVerse, type VerseBackend, type VerseStatus, type WeekDay } from '@/store/churchAdmin'
+import { cleanLine, cleanQuestions, fetchDays, GUIDANCE_MAX, NOTE_MAX, SERIES_MAX, serverVerseBackend, TRANSCRIPT_MAX, useDraftAllowance, type DayVerse, type VerseBackend, type VerseStatus, type WeekDay } from '@/store/churchAdmin'
 import type { Question } from '@/types'
 import { SeriesCopyPanel } from './SeriesCopyPanel'
 import { DraftReview, WeekDraftPanel } from './WeekDraftPanel'
 import { StudyTopicWeek } from './StudyTopicWeek'
+import { ENGINE_REASONS } from './weekRun'
 import { AssetStudio } from './AssetStudio'
 import { useChurchAssetsAdmin } from '@/store/churchAssets'
 
@@ -93,6 +94,7 @@ const REASONS: Record<string, string> = {
 }
 
 const DRAFT_REASONS: Record<string, string> = {
+  ...ENGINE_REASONS,
   limit: 'That’s the drafting limit for today — write these by hand, or draft again tomorrow.',
   not_verified: 'Drafting is part of a Founding Church.',
   no_addon: 'Drafting is part of the Content Generation package, which this church doesn’t have.',
@@ -220,6 +222,8 @@ export function TodayVerseForm({
   const [transcript, setTranscript] = useState('')
   const typed = qs.some((q) => q.prompt.trim() || q.teach.trim() || q.options.some((o) => o.trim()))
   const canDraft = !!backend.draft && !!parseReference(reference) && text.trim().length >= 3
+  // What the engine last said this church has left today (null until it has answered).
+  const draftsLeft = useDraftAllowance((s) => (backend.draft ? s.left[churchId] : undefined))
   const draft = async () => {
     if (!backend.draft || !canDraft) return
     if (typed && !armed) { setArmed(true); return }
@@ -492,6 +496,7 @@ export function TodayVerseForm({
             {canDraft
               ? 'A first draft to edit. It’s saved as a draft your members can’t see until you approve it.'
               : 'Add the reference and the words of the verse first — drafting always starts from a passage.'}
+            {draftsLeft != null ? ` Your church has ${draftsLeft} draft${draftsLeft === 1 ? '' : 's'} left today.` : ''}
           </span>
         </div>
       )}

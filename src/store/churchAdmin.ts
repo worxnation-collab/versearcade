@@ -1,3 +1,4 @@
+import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import { addDays, todayLocalDate } from '@/lib/date'
 import { useAuth } from './auth'
@@ -21,6 +22,42 @@ export type AdminFail = 'not_authenticated' | 'not_leadership' | 'not_verified' 
 function online(): boolean {
   return !!supabase && useAuth.getState().mode === 'online'
 }
+
+// ---------------------------------------------------------------------------
+// The content engine (`church-draft`). Every call sends `api: 2`, which makes
+// the function answer a failure with a real HTTP status (0142) — and
+// `functions.invoke` then hides the body behind `error.context`, so this is the
+// one place that reads it back. A reply we never got (the connection dropped,
+// the phone suspended the tab) is `lost`, which is NOT the same as a failure:
+// the week mode may have saved its drafts anyway, and the panels go and look.
+// ---------------------------------------------------------------------------
+type Invoked = { kind: 'reply'; data: Record<string, any> } | { kind: 'lost' }
+
+async function invokeDraft(churchId: string, body: Record<string, unknown>): Promise<Invoked> {
+  const { data, error } = await supabase!.functions.invoke('church-draft', { body: { ...body, church_id: churchId, api: 2 } })
+  let reply: Record<string, any> | null = null
+  if (!error) reply = data && typeof data === 'object' ? (data as Record<string, any>) : null
+  else {
+    // A non-2xx answer: FunctionsHttpError carries the Response itself.
+    const ctx = (error as { context?: unknown }).context
+    if (ctx instanceof Response) {
+      try { const j = await ctx.json(); if (j && typeof j === 'object') reply = j as Record<string, any> } catch { /* no body */ }
+    }
+  }
+  if (!reply) return { kind: 'lost' }
+  if (Number.isFinite(reply.left)) useDraftAllowance.getState().note(churchId, Number(reply.left))
+  return { kind: 'reply', data: reply }
+}
+
+/**
+ * How many of today's drafts this church has left, as the engine last said —
+ * per church, in memory, null until a call has answered. The three drafting
+ * panels read it so none of them has to restate the cap.
+ */
+export const useDraftAllowance = create<{ left: Record<string, number>; note: (churchId: string, left: number) => void }>((set) => ({
+  left: {},
+  note: (churchId, left) => set((st) => ({ left: { ...st.left, [churchId]: Math.max(0, left) } })),
+}))
 
 async function call<T = any>(fn: string, args: Record<string, unknown>): Promise<{ ok: true; data: T } | { ok: false; reason: AdminFail }> {
   if (!online()) return { ok: false, reason: 'unavailable' }
@@ -368,18 +405,22 @@ export interface WeekDraftInput {
   passages: WeekPassage[]
   transcript?: string
   guidance?: string
-}
-
-export interface WeekDraftDay {
-  reference: string
-  text: string
-  questions: Question[]
-  note?: string
+  /**
+   * The planned dates, in order (1..days). Day k of the engine's plan is saved
+   * on dates[k] and nowhere else — by the FUNCTION, as the leader (0142), so a
+   * phone that backgrounds mid-draft loses nothing.
+   */
+  dates: string[]
 }
 
 export interface WeekDraftResult {
-  days: WeekDraftDay[]
-  /** How many were asked for; `days` can be shorter if some came back unusable. */
+  /** Dates that now hold one of this run's drafts. Never empty on success. */
+  saved: string[]
+  /** Dates the server would not write, with why (`day_is_set`: it went live meanwhile). */
+  refused: { date: string; reason: string }[]
+  /** Planned dates whose day came back unusable — left empty, not slid. */
+  missing: string[]
+  /** How many days were asked of the engine. */
   asked: number
 }
 
@@ -411,32 +452,55 @@ export const SCRIPTURE_CHARS_MAX = SCRIPTURE_MAX
 
 export async function draftWeek(churchId: string, input: WeekDraftInput): Promise<Res<WeekDraftResult>> {
   if (!online()) return { ok: false, reason: 'unavailable' }
-  const { data, error } = await supabase!.functions.invoke('church-draft', {
-    body: {
-      mode: 'week',
-      church_id: churchId,
-      series: cleanLine(input.series, SERIES_MAX) ?? '',
-      days: input.days,
-      passages: input.passages,
-      guidance: cleanLine(input.guidance, GUIDANCE_MAX) ?? undefined,
-      transcript: input.transcript?.trim().slice(0, WEEK_TRANSCRIPT_MAX) || undefined,
-    },
+  const r = await invokeDraft(churchId, {
+    mode: 'week',
+    series: cleanLine(input.series, SERIES_MAX) ?? '',
+    days: input.days,
+    passages: input.passages,
+    guidance: cleanLine(input.guidance, GUIDANCE_MAX) ?? undefined,
+    transcript: input.transcript?.trim().slice(0, WEEK_TRANSCRIPT_MAX) || undefined,
+    dates: input.dates,
   })
-  if (error) return { ok: false, reason: 'unavailable' }
-  const d = data as { ok?: boolean; reason?: string; days?: any[]; asked?: number } | null
-  if (!d?.ok) return { ok: false, reason: String(d?.reason ?? 'unavailable') }
-  const days: WeekDraftDay[] = []
-  for (const x of d.days ?? []) {
+  // No answer at all: the panel re-reads the planned dates before saying anything.
+  if (r.kind === 'lost') return { ok: false, reason: 'no_reply' }
+  const d = r.data
+  const refusals = (x: unknown) => (Array.isArray(x) ? x : [])
+    .map((y: any) => ({ date: String(y?.date ?? ''), reason: String(y?.reason ?? 'unavailable') }))
+    .filter((y) => input.dates.includes(y.date))
+  if (!d.ok) return { ok: false, reason: String(d.reason ?? 'unavailable') }
+
+  // 0142 and later: the function saved the days itself.
+  if (Array.isArray(d.saved)) {
+    const saved = (d.saved as unknown[]).map(String).filter((x) => input.dates.includes(x))
+    if (!saved.length) return { ok: false, reason: 'not_saved' }
+    const missing = (Array.isArray(d.missing) ? d.missing : []).map(String).filter((x: string) => input.dates.includes(x))
+    return { ok: true, data: { saved, refused: refusals(d.refused), missing, asked: Number(d.asked) || input.days } }
+  }
+
+  // A function from before 0142 ignores `dates` and hands the days back, so
+  // they are saved here, positionally, exactly as the panels used to — this
+  // only matters in the minutes between a client and a function deploy.
+  const saved: string[] = []
+  const refused: { date: string; reason: string }[] = []
+  const days = Array.isArray(d.days) ? d.days : []
+  for (let i = 0; i < days.length && i < input.dates.length; i++) {
+    const x = days[i]
     const questions = cleanQuestions(x?.questions ?? [])
+    const date = input.dates[i]
     if (!questions || typeof x?.reference !== 'string' || !parseReference(x.reference) || typeof x?.text !== 'string' || !x.text.trim()) continue
-    days.push({
+    const s = await saveDraftVerse(churchId, date, {
       reference: x.reference,
       text: x.text.trim().slice(0, 1000),
       questions,
-      note: cleanLine(typeof x.note === 'string' ? x.note : null, NOTE_MAX) ?? undefined,
-    })
+      series: input.series,
+      note: cleanLine(typeof x.note === 'string' ? x.note : null, NOTE_MAX) ?? '',
+    }, false)
+    if (s.ok) saved.push(date)
+    else refused.push({ date, reason: String(s.reason) })
   }
-  return days.length ? { ok: true, data: { days, asked: Number(d.asked) || days.length } } : { ok: false, reason: 'draft_failed' }
+  if (!saved.length) return { ok: false, reason: refused.length ? 'not_saved' : 'draft_failed' }
+  const missing = input.dates.filter((x) => !saved.includes(x) && !refused.some((y) => y.date === x))
+  return { ok: true, data: { saved, refused, missing, asked: Number(d.asked) || input.days } }
 }
 
 // ---------------------------------------------------------------------------
@@ -459,12 +523,10 @@ export async function planTopic(churchId: string, topic: string, book?: string):
   if (!online()) return { ok: false, reason: 'unavailable' }
   const t = cleanLine(topic, TOPIC_MAX)
   if (!t) return { ok: false, reason: 'needs_topic' }
-  const { data, error } = await supabase!.functions.invoke('church-draft', {
-    body: { mode: 'topic', church_id: churchId, topic: t, book: book || undefined },
-  })
-  if (error) return { ok: false, reason: 'unavailable' }
-  const d = data as { ok?: boolean; reason?: string; series?: unknown; passages?: unknown } | null
-  if (!d?.ok) return { ok: false, reason: String(d?.reason ?? 'unavailable') }
+  const r = await invokeDraft(churchId, { mode: 'topic', topic: t, book: book || undefined })
+  if (r.kind === 'lost') return { ok: false, reason: 'unavailable' }
+  const d = r.data as { ok?: boolean; reason?: string; series?: unknown; passages?: unknown }
+  if (!d.ok) return { ok: false, reason: String(d.reason ?? 'unavailable') }
   const passages = (Array.isArray(d.passages) ? d.passages : [])
     .map((x) => String(x ?? '').trim())
     .filter((x) => !!parseReference(x))
@@ -539,18 +601,15 @@ export const TRANSCRIPT_MAX = 4000
  */
 export async function draftQuestions(churchId: string, reference: string, text: string, steer: DraftSteer = {}): Promise<Res<DraftResult>> {
   if (!online()) return { ok: false, reason: 'unavailable' }
-  const { data, error } = await supabase!.functions.invoke('church-draft', {
-    body: {
-      church_id: churchId,
-      reference,
-      text,
-      guidance: cleanLine(steer.guidance, GUIDANCE_MAX) ?? undefined,
-      transcript: steer.transcript?.trim().slice(0, TRANSCRIPT_MAX) || undefined,
-    },
+  const r = await invokeDraft(churchId, {
+    reference,
+    text,
+    guidance: cleanLine(steer.guidance, GUIDANCE_MAX) ?? undefined,
+    transcript: steer.transcript?.trim().slice(0, TRANSCRIPT_MAX) || undefined,
   })
-  if (error) return { ok: false, reason: 'unavailable' }
-  const d = data as { ok?: boolean; reason?: string; questions?: Question[]; note?: unknown } | null
-  if (!d?.ok) return { ok: false, reason: String(d?.reason ?? 'unavailable') }
+  if (r.kind === 'lost') return { ok: false, reason: 'unavailable' }
+  const d = r.data as { ok?: boolean; reason?: string; questions?: Question[]; note?: unknown }
+  if (!d.ok) return { ok: false, reason: String(d.reason ?? 'unavailable') }
   const qs = cleanQuestions(d.questions ?? [])
   if (!qs) return { ok: false, reason: 'draft_failed' }
   return { ok: true, data: { questions: qs, note: cleanLine(typeof d.note === 'string' ? d.note : null, NOTE_MAX) ?? undefined } }

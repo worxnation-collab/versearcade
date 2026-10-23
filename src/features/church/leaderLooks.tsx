@@ -29,9 +29,9 @@ const ADULT_HEAD = 'translate(60 52) scale(0.74) translate(-60 -52)'
 // writes that map and must never be able to overwrite these (the rule the
 // road rewards and the nav paintings follow).
 //
-// One painting per look, plus five tone/hair variants. A leader gets the
+// One painting per look, plus tone/hair variants (ten so far). A leader gets the
 // variant that matches their own skin tone AND hair exactly, else the look's
-// painting. All ten are men, so a woman leader gets the DRAWN figure in her
+// painting. All fifteen are men, so a woman leader gets the DRAWN figure in her
 // own tone until women's paintings exist — a man standing in for her would be
 // a stranger wearing her name.
 const OWNER_DIR = '/skins/leader-looks'
@@ -52,6 +52,14 @@ const OWNER_VARIANTS: Record<string, string> = {
   // Supplied as "medium-dark", which is not one of the six tones; filed under
   // bronze with the default hair, between amber and umber.
   'robe-stole|bronze|espresso': `${OWNER_DIR}/robe-stole-medium-dark.png`,
+  // The second batch. "deepbrown" is umber (ebony is the very dark brown),
+  // "gray" is the `ash` key, and "medium" — the tone between sand and bronze —
+  // is amber.
+  'classic-clergy|umber|jet': `${OWNER_DIR}/classic-clergy-deepbrown-black.png`,
+  'classic-clergy|porcelain|ash': `${OWNER_DIR}/classic-clergy-porcelain-gray.png`,
+  'contemporary|bronze|jet': `${OWNER_DIR}/contemporary-bronze-black.png`,
+  'liturgical-vestments|sand|auburn': `${OWNER_DIR}/liturgical-vestments-sand-auburn.png`,
+  'professional-suit|amber|chestnut': `${OWNER_DIR}/professional-suit-medium-chestnut.png`,
 }
 
 function ownerLookArt(look: Exclude<LeaderLookId, 'custom'>, fem: boolean, tone: string, hair: string): string | undefined {

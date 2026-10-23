@@ -1,7 +1,7 @@
 # Adult Church Leader Looks
 
 The owner's paintings for the five default looks included with the Church
-Leader package, plus five tone/hair variants. Wired by hand in
+Leader package, plus ten tone/hair variants. Wired by hand in
 `src/features/church/leaderLooks.tsx` (`OWNER_LOOK_ART`, `OWNER_VARIANTS`),
 deliberately not through `GENERATED_ART`.
 

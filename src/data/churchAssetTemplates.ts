@@ -79,6 +79,13 @@ export interface AssetTemplate {
   slots: Partial<Record<SlotName, AssetSlot>>
   /** True while this is stand-in art — leaders see a small "placeholder" tag. */
   placeholder?: boolean
+  /**
+   * The longest body (in characters) this layout holds, where the BOX runs out
+   * before the type gets too small to read — measured by rendering, not
+   * reasoned. Leave it out and `bodyCapacity` derives the limit from the body
+   * slot's size and shrink alone, which is the binding limit on most cards.
+   */
+  bodyMax?: number
   /** Hidden from the picker; still renders cards that already use it. */
   retired?: boolean
 }
@@ -121,7 +128,7 @@ export const ASSET_TEMPLATES: AssetTemplate[] = [
     ink: '#f5ecd9', accent: '#f0c46a', fonts: { serif: SERIF },
     slots: {
       eyebrow: { x: 14, y: 20, w: 72, h: 7, size: 2.3, uppercase: true, tracking: 0.16, weight: 800, align: 'center', color: '#f0c46a', maxLines: 1 },
-      body: { x: 14, y: 29, w: 72, h: 44, size: 4.2, minScale: 0.55, font: 'serif', align: 'center', valign: 'middle', maxLines: 6 },
+      body: { x: 14, y: 29, w: 72, h: 44, size: 5.4, minScale: 0.55, font: 'serif', align: 'center', valign: 'middle', maxLines: 6 },
       footer: { x: 14, y: 76, w: 72, h: 6, size: 2.1, align: 'center', color: '#c8bde0' },
     },
   },
@@ -142,7 +149,7 @@ export const ASSET_TEMPLATES: AssetTemplate[] = [
     ink: '#f5ecd9', accent: '#f0c46a', fonts: { serif: SERIF },
     slots: {
       eyebrow: { x: 45, y: 23, w: 49, h: 3.5, size: 2.8, uppercase: true, tracking: 0.14, weight: 800, align: 'left', color: '#f0c46a', maxLines: 1 },
-      body: { x: 45, y: 27, w: 49, h: 21, size: 5, minScale: 0.5, font: 'serif', italic: true, align: 'left', valign: 'top', maxLines: 12 },
+      body: { x: 45, y: 27, w: 49, h: 21, size: 5.2, minScale: 0.5, font: 'serif', italic: true, align: 'left', valign: 'top', maxLines: 12 },
       reference: { x: 45, y: 49, w: 49, h: 4, size: 3.6, weight: 800, align: 'left', color: '#f0c46a' },
       footer: { x: 52, y: 95, w: 42, h: 3.5, size: 2.6, align: 'right', color: '#c8bde0' },
     },
@@ -153,7 +160,7 @@ export const ASSET_TEMPLATES: AssetTemplate[] = [
     ink: '#f5ecd9', accent: '#f0c46a', fonts: { serif: SERIF },
     slots: {
       eyebrow: { x: 4, y: 44, w: 38, h: 3.5, size: 2.1, uppercase: true, tracking: 0.14, weight: 800, align: 'left', color: '#f0c46a', maxLines: 1 },
-      body: { x: 4, y: 48, w: 38, h: 30, size: 4.6, minScale: 0.5, font: 'serif', italic: true, align: 'left', valign: 'top', maxLines: 14 },
+      body: { x: 4, y: 48, w: 38, h: 30, size: 5.2, minScale: 0.5, font: 'serif', italic: true, align: 'left', valign: 'top', maxLines: 14 },
       reference: { x: 5, y: 80, w: 36, h: 4, size: 3.4, weight: 800, align: 'left', color: '#f0c46a' },
       footer: { x: 5, y: 95, w: 40, h: 3.5, size: 2.6, align: 'left', color: '#c8bde0' },
     },
@@ -164,7 +171,7 @@ export const ASSET_TEMPLATES: AssetTemplate[] = [
     ink: '#f5ecd9', accent: '#f0c46a', fonts: { serif: SERIF },
     slots: {
       eyebrow: { x: 54, y: 58, w: 40, h: 3.5, size: 2.6, uppercase: true, tracking: 0.14, weight: 800, align: 'left', color: '#f0c46a', maxLines: 1 },
-      body: { x: 54, y: 62, w: 40, h: 24, size: 4.6, minScale: 0.5, font: 'serif', italic: true, align: 'left', valign: 'top', maxLines: 14 },
+      body: { x: 54, y: 62, w: 40, h: 24, size: 5.0, minScale: 0.5, font: 'serif', italic: true, align: 'left', valign: 'top', maxLines: 14 },
       reference: { x: 54, y: 88, w: 40, h: 4, size: 3.4, weight: 800, align: 'left', color: '#f0c46a' },
       footer: { x: 54, y: 94, w: 40, h: 3.5, size: 2.6, align: 'left', color: '#c8bde0' },
     },
@@ -181,22 +188,12 @@ export const ASSET_TEMPLATES: AssetTemplate[] = [
     },
   },
   {
-    id: 'notice_night_family', kind: 'announcement', name: 'Night family', aspect: [2, 3],
-    background: { color: '#2b2533', image: '/church-assets/notice_night_family/bg.jpg' },
-    ink: '#f5ecd9', accent: '#f0c46a', fonts: { serif: SERIF },
-    slots: {
-      eyebrow: { x: 40, y: 3.5, w: 54, h: 3, size: 2.5, uppercase: true, tracking: 0.14, weight: 800, align: 'left', color: '#f0c46a', maxLines: 1 },
-      body: { x: 40, y: 7, w: 54, h: 10, size: 3.8, minScale: 0.6, font: 'serif', align: 'left', valign: 'top', maxLines: 4 },
-      footer: { x: 8, y: 95, w: 84, h: 3.5, size: 2.6, align: 'center', color: '#c8bde0' },
-    },
-  },
-  {
     id: 'notice_night_friends', kind: 'announcement', name: 'Night friends', aspect: [2, 3],
     background: { color: '#343e4c', image: '/church-assets/notice_night_friends/bg.jpg' },
     ink: '#f5ecd9', accent: '#f0c46a', fonts: { serif: SERIF },
     slots: {
       eyebrow: { x: 42, y: 5, w: 52, h: 3, size: 2.5, uppercase: true, tracking: 0.14, weight: 800, align: 'left', color: '#f0c46a', maxLines: 1 },
-      body: { x: 42, y: 9, w: 52, h: 17, size: 4, minScale: 0.6, font: 'serif', align: 'left', valign: 'top', maxLines: 7 },
+      body: { x: 42, y: 9, w: 52, h: 17, size: 4.6, minScale: 0.6, font: 'serif', align: 'left', valign: 'top', maxLines: 7 },
       footer: { x: 8, y: 95, w: 84, h: 3.5, size: 2.6, align: 'center', color: '#c8bde0' },
     },
   },
@@ -207,6 +204,18 @@ export const ASSET_TEMPLATES: AssetTemplate[] = [
     slots: {
       eyebrow: { x: 36, y: 4, w: 58, h: 3, size: 2.5, uppercase: true, tracking: 0.14, weight: 800, align: 'left', color: '#f0c46a', maxLines: 1 },
       body: { x: 36, y: 8, w: 58, h: 12, size: 4, minScale: 0.6, font: 'serif', align: 'left', valign: 'top', maxLines: 5 },
+      footer: { x: 8, y: 95, w: 84, h: 3.5, size: 2.6, align: 'center', color: '#c8bde0' },
+    },
+  },
+  {
+    id: 'notice_night_family', kind: 'announcement', name: 'Night family', aspect: [2, 3],
+    // its band between the moon and the family clips past ~112 characters at every width (measured at 240-1080px).
+    bodyMax: 110,
+    background: { color: '#2b2533', image: '/church-assets/notice_night_family/bg.jpg' },
+    ink: '#f5ecd9', accent: '#f0c46a', fonts: { serif: SERIF },
+    slots: {
+      eyebrow: { x: 40, y: 3.5, w: 54, h: 3, size: 2.5, uppercase: true, tracking: 0.14, weight: 800, align: 'left', color: '#f0c46a', maxLines: 1 },
+      body: { x: 40, y: 7, w: 54, h: 10, size: 3.8, minScale: 0.6, font: 'serif', align: 'left', valign: 'top', maxLines: 4 },
       footer: { x: 8, y: 95, w: 84, h: 3.5, size: 2.6, align: 'center', color: '#c8bde0' },
     },
   },
@@ -418,13 +427,15 @@ export const ASSET_TEMPLATES: AssetTemplate[] = [
     ink: '#1f2733', accent: '#3e4c63', fonts: { serif: SERIF },
     slots: {
       eyebrow: { x: 7, y: 7, w: 86, h: 4, size: 3, uppercase: true, tracking: 0.14, weight: 800, color: '#3e4c63', maxLines: 1 },
-      body: { x: 7, y: 12, w: 36, h: 44, size: 5.2, minScale: 0.5, font: 'serif', italic: true, valign: 'top', maxLines: 14 },
+      body: { x: 7, y: 12, w: 36, h: 44, size: 5.6, minScale: 0.5, font: 'serif', italic: true, valign: 'top', maxLines: 14 },
       reference: { x: 7, y: 58, w: 40, h: 4, size: 3.8, weight: 800, color: '#3e4c63' },
       footer: { x: 7, y: 93, w: 50, h: 3.5, size: 2.6, color: '#3e4c63' },
     },
   },
   {
     id: 'verse_the_path', kind: 'verse_card', name: 'The path', aspect: [2, 3],
+    // the sky band clips past ~372 characters (measured at 240-1080px).
+    bodyMax: 370,
     background: {
       color: '#a39175', image: '/church-assets/verse_the_path/bg.jpg',
       overlay: 'linear-gradient(to bottom, rgba(246,238,224,0.85) 0%, rgba(246,238,224,0.6) 26%, rgba(246,238,224,0) 36%)',
@@ -432,13 +443,17 @@ export const ASSET_TEMPLATES: AssetTemplate[] = [
     ink: '#2c2a22', accent: '#5a5338', fonts: { serif: SERIF },
     slots: {
       eyebrow: { x: 8, y: 4, w: 84, h: 3.5, size: 2.8, uppercase: true, tracking: 0.14, weight: 800, align: 'center', color: '#5a5338', maxLines: 1 },
-      body: { x: 6, y: 7.5, w: 88, h: 18.5, size: 5, minScale: 0.6, font: 'serif', italic: true, align: 'center', valign: 'middle', maxLines: 7 },
+      body: { x: 6, y: 7.5, w: 88, h: 18.5, size: 5.6, minScale: 0.6, font: 'serif', italic: true, align: 'center', valign: 'middle', maxLines: 7 },
       reference: { x: 58, y: 27, w: 36, h: 3.5, size: 3.4, weight: 800, align: 'right', color: '#5a5338' },
       footer: { x: 52, y: 95, w: 42, h: 3.5, size: 2.6, align: 'right', color: '#f4ecdc' },
     },
   },
   {
     id: 'verse_lamplight', kind: 'verse_card', name: 'Lamplight', aspect: [2, 3],
+    // The same painting as Night reading (byte-identical file), which the official set
+    // added later and which holds more text; retired so the picker doesn't offer one
+    // look twice. Still renders any card made with it.
+    retired: true,
     background: { color: '#2a1f45', image: '/church-assets/verse_lamplight/bg.jpg' },
     ink: '#f3e9d2', accent: '#f2c66d', fonts: { serif: SERIF },
     slots: {
@@ -579,6 +594,33 @@ export function slotFamily(box: AssetSlot, fonts?: AssetTemplate['fonts']): stri
 
 /** Line height every slot uses, as a multiple of its font size. */
 export const SLOT_LINE_HEIGHT = 1.25
+
+/**
+ * The smallest a card's body type may get, as a percent of the card's width:
+ * ~11px on a phone-width card, ~35px on a 1080px export — the app's own
+ * caption size. Long text shrinks toward size × minScale, and past this point
+ * a look is "for shorter text" rather than a look that will set anything.
+ */
+export const READABLE_FLOOR = 3.2
+
+/**
+ * The longest body, in characters, a template sets at or above
+ * `READABLE_FLOOR` — the inverse of `slotScale` (size · √(90/L) ≥ floor) —
+ * capped by the template's measured `bodyMax`. Infinity when the body never
+ * shrinks below the floor and the box never runs out.
+ */
+export function bodyCapacity(t: AssetTemplate): number {
+  const box = t.slots.body
+  if (!box) return Infinity
+  const min = box.minScale ?? 1
+  const byType = box.size * min >= READABLE_FLOOR ? Infinity : Math.floor(90 * (box.size / READABLE_FLOOR) ** 2)
+  return Math.min(byType, t.bodyMax ?? Infinity)
+}
+
+/** Whether this template sets these words' body readably. */
+export function templateFits(t: AssetTemplate, kind: AssetKind, payload: AssetPayload): boolean {
+  return (assetSlots(kind, payload).body ?? '').length <= bodyCapacity(t)
+}
 
 /** The first template of each kind is its default — keep a good one first. */
 export function defaultTemplate(kind: AssetKind): AssetTemplate {

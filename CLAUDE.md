@@ -1757,6 +1757,11 @@ cards for the Content Generation package. Four things are load-bearing:
   is shared with `ChurchAssetCard` through `slotScale`/`slotFamily`; a template
   background outside colour, `linear-gradient`, `radial-gradient(ellipse at X% Y%,
   …)` and an image is skipped in the export; a card taller than 4:5 posts framed. `docs/CHURCH-VISUAL-ASSETS.md` → "Export".
+- **A look holds a measured amount of text.** `bodyCapacity()` (the inverse of
+  `slotScale` at `READABLE_FLOOR`, capped by a measured `bodyMax`) greys a look
+  too small for the words in the studio and picks the first that fits; the
+  build fails on a default verse/notice look under 240 characters or two looks
+  of one kind on the same file. → "How much text a look holds".
 
 ### The sponsored slot
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useJuice } from '@/juice/useJuice'
-import { pickableTemplates, templateFor, type AssetKind } from '@/data/churchAssetTemplates'
+import { bodyCapacity, pickableTemplates, templateFits, templateFor, type AssetKind } from '@/data/churchAssetTemplates'
 import { matchesSource, useChurchAssetsAdmin, type AssetSource } from '@/store/churchAssets'
 import { ChurchAssetCard } from '../ChurchAssetCard'
 import { assetFilename, postsFramed, renderAssetPng, type ExportFormat } from '@/lib/churchAssetExport'
@@ -65,7 +65,12 @@ export function AssetStudio({
   const approve = useChurchAssetsAdmin((s) => s.approve)
   const discard = useChurchAssetsAdmin((s) => s.discard)
   const templates = pickableTemplates(source.kind)
-  const [template, setTemplate] = useState(templates[0]?.id ?? '')
+  // A look too small for these words is offered but greyed ("for shorter
+  // text"), and the default is the first look that sets them readably — so a
+  // long verse never lands on Rays by default and comes out in 9px type.
+  const fits = (id: string) => templateFits(templateFor(id, source.kind), source.kind, preview)
+  const firstFit = templates.find((t) => fits(t.id)) ?? templates[0]
+  const [template, setTemplate] = useState(firstFit?.id ?? '')
   const [busy, setBusy] = useState(false)
   const [armed, setArmed] = useState<'replace' | 'discard' | null>(null)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
@@ -76,6 +81,10 @@ export function AssetStudio({
   const asset = assets?.find((a) => matchesSource(a, source)) ?? null
   useEffect(() => { setArmed(null); setMsg(null); setPicking(false) }, [asset?.id, source.kind, sourceKey(source)])
   useEffect(() => { if (asset) setTemplate(templateFor(asset.templateId, source.kind).id) }, [asset?.id, asset?.templateId, source.kind])
+  // The words can change under a picked look (a different day, an edited
+  // notice); move off a look that no longer holds them.
+  const textKey = JSON.stringify(preview)
+  useEffect(() => { if (!asset && template && !fits(template) && firstFit) setTemplate(firstFit.id) }, [textKey, asset?.id])
 
   if (failed) return null
   if (!assets) return <div className="skeleton" style={{ height: 60, borderRadius: 12 }} />
@@ -119,6 +128,12 @@ export function AssetStudio({
           This day’s verse is still a draft — the card reaches members only once the verse is approved too.
         </p>
       )}
+      {asset && !asset.stale && !picking && !templateFits(templateFor(asset.templateId, asset.kind), asset.kind, asset.payload) && (
+        <p className="faint" style={{ margin: 0, fontSize: 11.5 }}>
+          This look is made for shorter text, so these words come out small.
+          {canGenerate ? ' Change look for a roomier one.' : ''}
+        </p>
+      )}
       {asset?.stale && (
         <p style={{ margin: 0, fontSize: 12, color: 'var(--coral)' }}>
           Out of date — what it was made from has changed since. Members never see an out-of-date card.
@@ -130,22 +145,30 @@ export function AssetStudio({
         <>
           <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-dim)' }}>Choose a look</span>
           <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(templates.length, 3)}, minmax(0, 1fr))`, gap: 8 }}>
-            {templates.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setTemplate(t.id)}
-                aria-pressed={template === t.id}
-                style={{
-                  padding: 4, borderRadius: 12, cursor: 'pointer', minWidth: 0, display: 'grid', gap: 4,
-                  background: template === t.id ? 'var(--select)' : 'transparent',
-                  boxShadow: template === t.id ? '0 0 0 2px var(--ink-dim)' : 'inset 0 0 0 1px var(--edge)',
-                  color: 'inherit', font: 'inherit',
-                }}
-              >
-                <ChurchAssetCard kind={source.kind} templateId={t.id} payload={asset?.payload ?? preview} label={t.name} />
-                <span style={{ fontSize: 11, fontWeight: 700 }}>{t.name}</span>
-              </button>
-            ))}
+            {templates.map((t) => {
+              const ok = fits(t.id)
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => ok && setTemplate(t.id)}
+                  disabled={!ok}
+                  aria-pressed={template === t.id}
+                  title={ok ? undefined : `Holds up to about ${bodyCapacity(t)} characters`}
+                  style={{
+                    padding: 4, borderRadius: 12, cursor: ok ? 'pointer' : 'default', minWidth: 0, display: 'grid', gap: 4,
+                    background: template === t.id ? 'var(--select)' : 'transparent',
+                    boxShadow: template === t.id ? '0 0 0 2px var(--ink-dim)' : 'inset 0 0 0 1px var(--edge)',
+                    color: 'inherit', font: 'inherit',
+                  }}
+                >
+                  <div style={{ opacity: ok ? 1 : 0.4, filter: ok ? undefined : 'saturate(0.5)' }}>
+                    <ChurchAssetCard kind={source.kind} templateId={t.id} payload={asset?.payload ?? preview} label={t.name} />
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 700 }}>{t.name}</span>
+                  {!ok && <span style={{ fontSize: 10.5, color: 'var(--ink-dim)' }}>For shorter text</span>}
+                </button>
+              )
+            })}
           </div>
         </>
       )}

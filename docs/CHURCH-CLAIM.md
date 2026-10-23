@@ -191,8 +191,9 @@ dashboard — **Manage billing →** opens Stripe's customer portal (0135,
 `docs/CHURCH-PACKAGES.md` → "Billing"), and the billing page's claim-mode line
 says so.
 
-**Known gap.** An already-paying church cannot add the Content Generation
-add-on itself (the portal's plan switching is off on purpose).
+**Upgrading.** Since 2026-10-23 a paying church can switch between Verified
+Church and Church Suite itself from **Manage billing**. See
+`docs/CHURCH-PACKAGES.md` → "Billing".
 
 ## Free claim: three members, card on file or by hand (0137)
 

@@ -408,7 +408,7 @@ function PlansCard() {
           </span>
         </div>
         <span className="dim" style={{ fontSize: 12.5, lineHeight: 1.45 }}>
-          Every Founding Church tool, plus verse, series and notice cards ready to post — drafted, approved by you,
+          <b>Includes Content Generation.</b> Every Founding Church tool, plus verse, series and notice cards ready to post — drafted, approved by you,
           exported for the feed and Stories. <b>{p.save}.</b>
         </span>
       </div>

@@ -168,6 +168,15 @@ the app carries none.
   amounts live in Stripe; the billing page's `PRICES` and the `/churches`
   plans card (`PlansCard`, web only via `churchPlansVisible()`) must be changed
   with them.
+- **Upgrading is self-serve in the portal** (`bpc_1UTNfWHlxD9PZQmbI9MV6O7Q`,
+  2026-10-23). The only plans a church can switch between are Verified Church
+  and Church Suite, monthly or yearly. An upgrade applies now and is prorated
+  on the next invoice. A downgrade, or a move from yearly to monthly, waits
+  for renewal. **`trial_update_behavior` is `continue_trial`**; the Stripe
+  default ends a Founding trial the moment a plan changes. A subscription with
+  the old base + add-on pair can't be switched in the portal, because Stripe
+  only switches single-item subscriptions. Those churches already have
+  everything, so it doesn't matter.
 - **Two ways to pay, one webhook.** *Card*: a Stripe Checkout Session
   (`client_reference_id` = the church). *Invoice*: a `send_invoice`
   subscription, due in 30 days, payable by card, ACH, bank transfer or a cheque

@@ -234,7 +234,9 @@ function BillingRow({ churchId, billing }: { churchId: string; billing: ChurchBi
       <div className="faint" style={{ fontSize: 11, lineHeight: 1.4 }}>
         {failed
           ? 'Couldn’t open billing just now. Try again in a moment.'
-          : 'Change the card, see invoices, or cancel. Cancelling keeps Church Leader on until the period ends.'}
+          : billing.addon
+            ? 'Change the card or plan, see invoices, or cancel. Cancelling keeps your tools on until the period ends.'
+            : 'Upgrade to Church Suite here to add verse, series and notice cards for social. You can also change the card, see invoices, or cancel.'}
       </div>
     </div>
   )

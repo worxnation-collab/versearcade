@@ -520,7 +520,8 @@ async function handleWeek(body: Record<string, unknown>, authHeader: string, rep
   const run: Run = { churchId, mode: 'week', unitsAsked: days, unitsUsed: 0, daysAsked: days, outcome: 'ok', started }
   if (!spent.ok) {
     if (spent.reason === 'limit') await logRun({ ...run, unitsAsked: 0, outcome: 'limit' })
-    return reply({ ok: false, reason: spent.reason, ...(spent.reason === 'limit' ? { left: 0 } : {}) })
+    // No `left` here: the refusal doesn't say how many remain, and 0 would be false.
+    return reply({ ok: false, reason: spent.reason })
   }
   const fail = async (reason: string, extra: Record<string, unknown> = {}) => {
     const left = await refund(churchId, spent, spent.units)
@@ -640,7 +641,8 @@ async function handleTopic(body: Record<string, unknown>, authHeader: string, re
   const run: Run = { churchId, mode: 'topic', unitsAsked: 1, unitsUsed: 0, outcome: 'ok', started }
   if (!spent.ok) {
     if (spent.reason === 'limit') await logRun({ ...run, unitsAsked: 0, outcome: 'limit' })
-    return reply({ ok: false, reason: spent.reason, ...(spent.reason === 'limit' ? { left: 0 } : {}) })
+    // No `left` here: the refusal doesn't say how many remain, and 0 would be false.
+    return reply({ ok: false, reason: spent.reason })
   }
   const fail = async (reason: string) => {
     const left = await refund(churchId, spent, spent.units)
@@ -679,7 +681,8 @@ async function handleOne(body: Record<string, unknown>, authHeader: string, repl
   const run: Run = { churchId, mode: 'one', unitsAsked: 1, unitsUsed: 0, outcome: 'ok', started }
   if (!spent.ok) {
     if (spent.reason === 'limit') await logRun({ ...run, unitsAsked: 0, outcome: 'limit' })
-    return reply({ ok: false, reason: spent.reason, ...(spent.reason === 'limit' ? { left: 0 } : {}) })
+    // No `left` here: the refusal doesn't say how many remain, and 0 would be false.
+    return reply({ ok: false, reason: spent.reason })
   }
   const fail = async (reason: string) => {
     const left = await refund(churchId, spent, spent.units)

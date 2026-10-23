@@ -295,6 +295,21 @@ own answer, no repeat across the week — with one follow-up call for just the
 missing ones. Failures name themselves (`model_busy`, `timeout`, `no_key`,
 `not_saved`, …) and carry a real HTTP status when the request sends `api: 2`.
 
+**The client (same change):** all three draft calls send `api: 2` and read a
+failure's reason out of the response body (`invokeDraft` in
+`store/churchAdmin.ts`, the one place that does). Both week panels send their
+planned `dates`, save nothing themselves and re-read the strip. When NO answer
+comes back (`no_reply` — the connection dropped, the phone suspended the tab)
+they don't report a failure straight away: `recoverLanded`
+(`features/church/admin/weekRun.tsx`) re-reads the planned dates a few times
+across the function's budget, and a date now holding a draft that differs from
+what it held before the run is reported as this run's work. Only when nothing
+landed is it an error. The allowance line reads the `left` the engine last
+returned (`useDraftAllowance`) instead of a fixed "of 30"; a `limit` refusal
+carries no `left`, because it doesn't know how many remain. A function from
+before 0142 still works with this client: a reply with `days` and no `saved`
+is saved positionally on the client, as before.
+
 **Limits, all enforced in the function:** 2–7 days; 1–3 passages, each inside
 one chapter, ≤ 40 verses each and ≤ 6,000 characters of scripture in all; a
 transcript ≤ 12,000 characters (about a 20-minute sermon; longer ones are cut);

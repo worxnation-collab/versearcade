@@ -160,7 +160,7 @@ check('one: five after salvage + refill', r.body.ok && r.body.questions.length =
 // 7. Limit.
 reset(); db.used = 29
 r = await call(week({ dates: D }))
-check('limit 429 left 0, no model call', r.status === 429 && r.body.reason === 'limit' && r.body.left === 0 && geminiCalls === 0, r)
+check('limit 429, no false left, no model call', r.status === 429 && r.body.reason === 'limit' && r.body.left === undefined && geminiCalls === 0, r)
 
 // 8. Gate refusal costs nothing and isn't logged.
 reset(); db.gate = 'no_addon'

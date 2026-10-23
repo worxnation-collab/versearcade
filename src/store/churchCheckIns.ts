@@ -3,7 +3,8 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from './auth'
 import type { AvatarSpec } from '@/data/avatar'
 
-// A leader's check-in note to one member (0137).
+// A leader's check-in note to one member (0137, with today's verse and a
+// report action since 0138).
 //
 // The leader writes it from the People tab's folded "Not active this week"
 // section and sends it by hand; it lands in the member's mailbox as words from
@@ -14,19 +15,28 @@ import type { AvatarSpec } from '@/data/avatar'
 //   * NOTHING SAYS WHY. The server takes a church, a username and the words —
 //     no flag, no source, no list name — so the note a member reads can only
 //     ever be the leader's own sentence.
+//   * THE VERSE IS THE SERVER'S COPY. `attachVerse` asks for the church's own
+//     approved verse for today; the client never sends scripture, and the note
+//     keeps a snapshot so a later edit to the day never rewrites it.
+//   * A REPORT IS ONE TAP AND SAYS NOTHING. It takes the note out of the
+//     recipient's mailbox for an operator's look (Admin → Check-ins), stores no
+//     reason, tells the sender nothing, and blocks nobody.
 //
 // ONLINE-ONLY, inherited rather than chosen — the store/gifts.ts break with the
 // two-mode invariant: a note needs a second real account on the other end, and
 // leadership itself is a server-side role a guest cannot hold.
 
-/** KEEP IN SYNC with `church_clean_line(p_message, 280)` in 0137. */
+/** KEEP IN SYNC with `church_clean_line(p_message, 280)` in 0137/0138b. */
 export const CHECK_IN_MAX = 280
 /** KEEP IN SYNC with the `v_sent >= 25` check in send_church_check_in. */
 export const CHECK_IN_DAILY_CAP = 25
+/** The line under today's verse. Prefilled, editable, and may be cleared. */
+export const CHECK_IN_VERSE_DRAFT = 'Thought of you with this one.'
+/** The draft on a day the church has no verse to attach — 0137's, unchanged. */
 export const CHECK_IN_DRAFT = 'Missed you this week'
 
 export type CheckInReason =
-  | 'offline' | 'empty' | 'not_member' | 'self' | 'daily_cap' | 'already_today'
+  | 'offline' | 'empty' | 'no_verse' | 'not_member' | 'self' | 'daily_cap' | 'already_today'
   | 'not_leadership' | 'not_verified' | 'failed'
 
 export interface CheckInNote {
@@ -35,6 +45,8 @@ export interface CheckInNote {
   createdAt: string
   seen: boolean
   churchName: string
+  verseRef: string | null
+  verseText: string | null
   fromUsername: string
   fromAvatar: string | null
   fromCharacter: AvatarSpec | null
@@ -51,7 +63,13 @@ interface CheckInsState {
   unseen: number
   load: () => Promise<void>
   markSeen: () => Promise<void>
-  send: (churchId: string, username: string, message: string) => Promise<{ ok: boolean; reason?: CheckInReason }>
+  send: (
+    churchId: string,
+    username: string,
+    message: string,
+    opts?: { attachVerse?: boolean; localDate?: string },
+  ) => Promise<{ ok: boolean; reason?: CheckInReason }>
+  report: (id: number) => Promise<boolean>
 }
 
 export const useChurchCheckIns = create<CheckInsState>((set, get) => ({
@@ -80,6 +98,8 @@ export const useChurchCheckIns = create<CheckInsState>((set, get) => ({
         createdAt: String(n.created_at),
         seen: !!n.seen,
         churchName: String(n.church_name ?? 'Your church'),
+        verseRef: typeof n.verse_ref === 'string' && n.verse_ref ? n.verse_ref : null,
+        verseText: typeof n.verse_text === 'string' && n.verse_text ? n.verse_text : null,
         fromUsername: String(n.from_username ?? ''),
         fromAvatar: typeof n.from_avatar === 'string' ? n.from_avatar : null,
         fromCharacter: n.from_character ?? null,
@@ -93,19 +113,36 @@ export const useChurchCheckIns = create<CheckInsState>((set, get) => ({
     await supabase!.rpc('mark_church_check_ins_seen')
   },
 
-  async send(churchId, username, message) {
+  async send(churchId, username, message, opts) {
     if (!isOnline()) return { ok: false, reason: 'offline' }
     const text = message.trim().slice(0, CHECK_IN_MAX)
-    if (!text) return { ok: false, reason: 'empty' }
+    const attachVerse = !!opts?.attachVerse
+    if (!text && !attachVerse) return { ok: false, reason: 'empty' }
     // Awaited: a postgrest-js builder is lazy, and a `void` here would report
     // "sent" for a note that never left the device.
     const { data, error } = await supabase!.rpc('send_church_check_in', {
       p_church_id: churchId,
       p_username: username,
       p_message: text,
+      p_attach_verse: attachVerse,
+      p_local_date: opts?.localDate ?? null,
     })
     if (error) return { ok: false, reason: 'failed' }
     const r = data as { ok?: boolean; reason?: CheckInReason }
     return r?.ok ? { ok: true } : { ok: false, reason: r?.reason ?? 'failed' }
+  },
+
+  // Optimistic: the note leaves the mailbox the moment it is reported. On a
+  // failed call it comes back from the server rather than staying a lie.
+  async report(id) {
+    if (!isOnline()) return false
+    const prev = get().notes
+    set({ notes: prev.filter((n) => n.id !== id) })
+    const { data, error } = await supabase!.rpc('report_church_check_in', { p_id: id })
+    if (error || !(data as { ok?: boolean })?.ok) {
+      await get().load()
+      return false
+    }
+    return true
   },
 }))

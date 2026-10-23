@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Page } from '@/components/Page'
 import { Avatar } from '@/components/Avatar'
@@ -49,6 +49,11 @@ export default function MailScreen() {
   // A leader's check-in (0137): their own words and nothing else — no reason,
   // no list, nothing about why it was sent.
   const checkIns = useChurchCheckIns((s) => s.notes)
+  // One tap, the Prayer Wall's report: the note leaves the mailbox for an
+  // operator's look (0138). No reason asked, nothing blocked, and the sender
+  // is told nothing. The line stays until the next visit so the tap visibly
+  // did something.
+  const [reported, setReported] = useState(false)
   const requests = useBuddies((s) => s.requests)
   const respond = useBuddies((s) => s.respond)
   const washings = useWashing((s) => s.recent)
@@ -73,7 +78,7 @@ export default function MailScreen() {
 
   const noteLit = !!myNote && myNote.open && myNote.lit
   const empty =
-    giftsLoaded && !gifts.length && !checkIns.length && !requests.length && !washings.length && !news.length &&
+    giftsLoaded && !gifts.length && !checkIns.length && !reported && !requests.length && !washings.length && !news.length &&
     !answered.length && !noteLit
 
   return (
@@ -155,19 +160,43 @@ export default function MailScreen() {
         </Section>
       )}
 
-      {checkIns.length > 0 && (
+      {(checkIns.length > 0 || reported) && (
         <Section title="From your church">
           {checkIns.map((n) => (
             <div key={n.id} className="card" style={{ marginBottom: 8, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
               <Avatar emoji={n.fromAvatar ?? '⛪'} character={n.fromCharacter} username={n.fromUsername} size={40} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 14, lineHeight: 1.45, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>{n.message}</p>
-                <span className="faint" style={{ fontSize: 12 }}>
-                  @{n.fromUsername} · {n.churchName} · {new Date(n.createdAt).toLocaleDateString()}
-                </span>
+                {n.verseRef && (
+                  <div style={{ marginBottom: n.message ? 6 : 0 }}>
+                    {n.verseText && (
+                      <p style={{ margin: 0, fontSize: 14, lineHeight: 1.45, fontStyle: 'italic', overflowWrap: 'anywhere' }}>“{n.verseText}”</p>
+                    )}
+                    <span className="faint" style={{ fontSize: 12, fontWeight: 700 }}>{n.verseRef}</span>
+                  </div>
+                )}
+                {n.message && (
+                  <p style={{ margin: 0, fontSize: 14, lineHeight: 1.45, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>{n.message}</p>
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                  <span className="faint" style={{ fontSize: 12, flex: 1, minWidth: 0 }}>
+                    @{n.fromUsername} · {n.churchName} · {new Date(n.createdAt).toLocaleDateString()}
+                  </span>
+                  <button
+                    className="pill"
+                    onClick={() => { juice.select(); setReported(true); void useChurchCheckIns.getState().report(n.id) }}
+                    style={{ fontSize: 11.5, padding: '4px 10px', opacity: 0.7, flexShrink: 0 }}
+                  >
+                    Report
+                  </button>
+                </div>
               </div>
             </div>
           ))}
+          {reported && (
+            <p className="faint" style={{ fontSize: 12.5, margin: '2px 0 8px' }}>
+              Reported. It’s out of your mailbox while we take a look.
+            </p>
+          )}
         </Section>
       )}
 

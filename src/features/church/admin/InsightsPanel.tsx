@@ -4,8 +4,9 @@ import { Collapsible } from '@/components/Collapsible'
 import { QuickSheet } from '@/components/QuickSheet'
 import { Button } from '@/components/Button'
 import { useJuice } from '@/juice/useJuice'
-import { CHECK_IN_DRAFT, CHECK_IN_MAX, useChurchCheckIns, type CheckInReason } from '@/store/churchCheckIns'
-import { fetchLeaderInsights, type InsightMember, type LeaderInsights } from '@/store/churchAdmin'
+import { CHECK_IN_DRAFT, CHECK_IN_MAX, CHECK_IN_VERSE_DRAFT, useChurchCheckIns, type CheckInReason } from '@/store/churchCheckIns'
+import { fetchDayVerse, fetchLeaderInsights, type InsightMember, type LeaderInsights } from '@/store/churchAdmin'
+import { todayLocalDate } from '@/lib/date'
 import { fetchChurchFeed, type FeedEvent } from '@/store/churchVerse'
 import { ago } from '../ChurchLife'
 
@@ -154,6 +155,7 @@ export function OverviewPanel({ insights, failed }: { insights: LeaderInsights |
 // "Check in" lives on rows INSIDE the fold and nowhere else. It opens a draft
 // the leader edits and sends by hand (0137); nothing is sent on its own, and
 // the server is told only who and what — never which list the name came from.
+// Since 0138 the draft leads with the church's own verse for today.
 export function PeoplePanel({ churchId, insights, failed }: { churchId: string; insights: LeaderInsights | null; failed: boolean }) {
   const [checkIn, setCheckIn] = useState<InsightMember | null>(null)
   const [sent, setSent] = useState<Set<string>>(() => new Set())
@@ -229,6 +231,7 @@ function MemberRow({ m, today, action }: { m: InsightMember; today: string; acti
 const CHECK_IN_FAIL: Record<CheckInReason, string> = {
   offline: 'You’re offline — nothing was sent.',
   empty: 'Write a few words first.',
+  no_verse: 'Today’s verse isn’t available any more, so nothing was sent.',
   not_member: 'They’re no longer a member here, so nothing was sent.',
   self: 'That’s you.',
   daily_cap: 'That’s today’s check-ins. You can send more tomorrow.',
@@ -238,9 +241,12 @@ const CHECK_IN_FAIL: Record<CheckInReason, string> = {
   failed: 'That didn’t send. Try again in a moment.',
 }
 
-// The draft. Prefilled, fully editable, and sent only by the button — closing
-// the sheet discards it. The preview line says exactly what they will see, so
-// the leader knows nothing else travels with the words.
+// The draft. When the church has an approved verse for today, that verse IS
+// the check-in: it is attached by default, with "Thought of you with this
+// one." under it as a line the leader can edit or clear. The server copies the
+// verse itself (0138), so what the leader sees here is only a preview. On a day
+// with no verse to attach the sheet is 0137's: a prefilled line, required.
+// Sent only by the button — closing the sheet discards it.
 function CheckInSheet({ churchId, member, onClose, onSent }: {
   churchId: string
   member: InsightMember
@@ -249,15 +255,29 @@ function CheckInSheet({ churchId, member, onClose, onSent }: {
 }) {
   const juice = useJuice()
   const send = useChurchCheckIns((s) => s.send)
-  const [text, setText] = useState(CHECK_IN_DRAFT)
+  const [verse, setVerse] = useState<{ reference: string; text: string } | null | undefined>(undefined)
+  const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const today = todayLocalDate()
+
+  useEffect(() => {
+    let live = true
+    void fetchDayVerse(churchId, today).then((r) => {
+      if (!live) return
+      // A draft isn't the church's verse yet, and the server refuses to attach one.
+      const v = r.ok && r.data && r.data.status !== 'draft' ? { reference: r.data.reference, text: r.data.text } : null
+      setVerse(v)
+      setText(v ? CHECK_IN_VERSE_DRAFT : CHECK_IN_DRAFT)
+    })
+    return () => { live = false }
+  }, [churchId, today])
 
   const submit = async () => {
     if (busy) return
     setBusy(true)
     setError(null)
-    const r = await send(churchId, member.username, text)
+    const r = await send(churchId, member.username, text, { attachVerse: !!verse, localDate: today })
     setBusy(false)
     if (r.ok) {
       juice.select?.()
@@ -269,27 +289,44 @@ function CheckInSheet({ churchId, member, onClose, onSent }: {
 
   return (
     <QuickSheet title={`Check in with ${member.username}`} onClose={onClose}>
-      <div style={{ display: 'grid', gap: 10 }}>
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value.slice(0, CHECK_IN_MAX))}
-          rows={4}
-          autoFocus
-          aria-label="Your message"
-          style={{
-            width: '100%', boxSizing: 'border-box', resize: 'vertical', padding: '10px 12px', borderRadius: 12,
-            border: '1px solid var(--edge)', background: 'var(--card-raised)', color: 'var(--ink)',
-            font: 'inherit', fontSize: 15, lineHeight: 1.45,
-          }}
-        />
-        <div className="faint" style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 11.5 }}>
-          <span>It arrives in their mailbox from you, with only these words.</span>
-          <span style={{ flexShrink: 0 }}>{text.length}/{CHECK_IN_MAX}</span>
+      {verse === undefined ? (
+        <div className="skeleton" style={{ height: 180, borderRadius: 14 }} />
+      ) : (
+        <div style={{ display: 'grid', gap: 10 }}>
+          {verse && (
+            <div style={{ padding: '10px 12px', borderRadius: 12, background: 'var(--card-raised)', border: '1px solid var(--edge)' }}>
+              <div className="faint" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Today’s church verse · {verse.reference}
+              </div>
+              <p style={{ margin: '6px 0 0', fontSize: 14, lineHeight: 1.45 }}>{verse.text}</p>
+            </div>
+          )}
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value.slice(0, CHECK_IN_MAX))}
+            rows={verse ? 2 : 4}
+            autoFocus={!verse}
+            aria-label={verse ? 'A line with the verse (optional)' : 'Your message'}
+            placeholder={verse ? 'Add a line (optional)' : undefined}
+            style={{
+              width: '100%', boxSizing: 'border-box', resize: 'vertical', padding: '10px 12px', borderRadius: 12,
+              border: '1px solid var(--edge)', background: 'var(--card-raised)', color: 'var(--ink)',
+              font: 'inherit', fontSize: 15, lineHeight: 1.45,
+            }}
+          />
+          <div className="faint" style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 11.5 }}>
+            <span>
+              {verse
+                ? 'It arrives in their mailbox from you: the verse, and your line if you keep one.'
+                : 'It arrives in their mailbox from you, with only these words.'}
+            </span>
+            <span style={{ flexShrink: 0 }}>{text.length}/{CHECK_IN_MAX}</span>
+          </div>
+          {error && <p className="dim" style={{ margin: 0, fontSize: 13 }}>{error}</p>}
+          <Button full onClick={submit} disabled={busy || (!verse && !text.trim())}>{busy ? 'Sending…' : 'Send'}</Button>
+          <Button variant="secondary" full onClick={onClose}>Not now</Button>
         </div>
-        {error && <p className="dim" style={{ margin: 0, fontSize: 13 }}>{error}</p>}
-        <Button full onClick={submit} disabled={busy || !text.trim()}>{busy ? 'Sending…' : 'Send'}</Button>
-        <Button variant="secondary" full onClick={onClose}>Not now</Button>
-      </div>
+      )}
     </QuickSheet>
   )
 }

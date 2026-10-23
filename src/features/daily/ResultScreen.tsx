@@ -23,6 +23,7 @@ import { WatchYesterday } from './WatchYesterday'
 import { MissedList } from './MissedList'
 import { ScriptureQuote } from '@/components/ScriptureQuote'
 import { PaintedIcon } from '@/components/PaintedIcon'
+import { StreakBorderOffer } from './StreakBorderOffer'
 
 export default function ResultScreen() {
   const navigate = useNavigate()
@@ -229,9 +230,10 @@ export default function ResultScreen() {
           animate={outcome.currentStreak >= 3 ? { scale: [1, 1.03, 1] } : {}} transition={{ repeat: 2, duration: 0.5 }}>
           <StreakFlame days={outcome.currentStreak} size={26} />
           <span className="dim">
-            {outcome.usedFreeze ? <>Streak freeze saved you! <PaintedIcon id="freeze" /></> : outcome.currentStreak === 1 ? 'Streak started — come back tomorrow!' : `${outcome.currentStreak}-day streak. Don’t break it!`}
+            {outcome.usedFreeze ? <>Streak freeze saved you! <PaintedIcon id="freeze" /></> : outcome.currentStreak === 1 ? 'Streak started — come back tomorrow!' : `${outcome.currentStreak}-day streak. Same time tomorrow?`}
           </span>
         </motion.div>
+        <StreakBorderOffer streak={outcome.currentStreak} alreadyPlayed={outcome.alreadyPlayed} />
 
         {/* Collectibles earned */}
         {cards.length > 0 && (

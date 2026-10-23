@@ -220,3 +220,19 @@ export const givingLinkVisible = (): boolean => !isNativeApp()
  * leader what is on their plan and never what it costs.
  */
 export const churchPricesVisible = (): boolean => !isNativeApp()
+
+/**
+ * Whether a church can be claimed and paid for from this build (0134). The
+ * claim ends on the web billing page, which carries prices and a checkout, so
+ * the App Store build offers none of it — not the link on a church's page and
+ * not the form — exactly as it shows no patron price it can't charge.
+ */
+export const churchSelfClaimVisible = (): boolean => !isNativeApp()
+
+/**
+ * Whether a church's leadership can open Stripe's billing portal from this
+ * build (0135). The portal shows prices, invoices and a card form — a
+ * storefront by Apple's reckoning — so it is web only, like the claim that
+ * starts the subscription.
+ */
+export const churchBillingPortalVisible = (): boolean => !isNativeApp()

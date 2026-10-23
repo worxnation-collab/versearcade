@@ -10,6 +10,8 @@ import { ShareChurch } from './ShareChurch'
 import { useChurchExtras } from './ChurchExtras'
 import { JoinChurchButton } from './JoinChurchButton'
 import { ChurchInviteQR } from './ChurchInviteQR'
+import { churchSelfClaimVisible } from '@/lib/commerce'
+import { selfClaimStatus } from '@/store/churchClaim'
 import type { ChurchPage } from '@/types'
 
 // /church/:id — a congregation, linkable by anybody.
@@ -124,9 +126,13 @@ export default function ChurchPublicScreen() {
                 {/* The QR code is the verified package's; the link above is
                     every church's, free, and stays that way. */}
                 {extras?.verified && <ChurchInviteQR churchId={page.church.id} churchName={page.church.name} />}
+                <ClaimLink churchId={page.church.id} />
               </>
             ) : (
-              <JoinIn churchName={page.church.name} verified={!!extras?.verified} />
+              <>
+                <JoinIn churchName={page.church.name} verified={!!extras?.verified} />
+                <ClaimLink churchId={page.church.id} />
+              </>
             )
           }
         />
@@ -207,5 +213,30 @@ function JoinIn({ churchName, verified }: { churchName: string; verified: boolea
         Or just play today's verse first
       </button>
     </div>
+  )
+}
+
+// The quiet door for a pastor: "Lead this church?" under everything else, and
+// only while the church can actually be claimed (nobody leads it here, no
+// subscription) — a link to a form that would refuse them is a dead end. Web
+// only (`churchSelfClaimVisible`): the claim ends on a page with prices.
+function ClaimLink({ churchId }: { churchId: string }) {
+  const navigate = useNavigate()
+  const [open, setOpen] = useState(false)
+  useEffect(() => {
+    if (!churchSelfClaimVisible()) return
+    let alive = true
+    selfClaimStatus(churchId).then((s) => { if (alive) setOpen(s === 'open') })
+    return () => { alive = false }
+  }, [churchId])
+  if (!open) return null
+  return (
+    <button
+      onClick={() => navigate(`/church/${churchId}/claim`)}
+      className="faint"
+      style={{ display: 'block', width: '100%', marginTop: 14, fontSize: 12.5, textDecoration: 'underline' }}
+    >
+      Lead this church? Claim its page
+    </button>
   )
 }

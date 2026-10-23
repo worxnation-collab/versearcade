@@ -337,6 +337,7 @@ function Churches() {
     <div style={{ display: 'grid', gap: 18 }}>
       <FoundingChurches />
       <LeaderAvatarRequests />
+      <SelfServeClaims />
       <ChurchClaims />
       <Promotions />
       <InfoRequests />
@@ -784,6 +785,88 @@ function ChurchClaims() {
                 style={{ fontWeight: 800, fontSize: 12, background: 'var(--card-solid)', color: 'var(--ink-dim)' }}>
                 Revoke
               </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Self-serve claims (0134): a church nobody led claimed itself and paid, and
+// the webhook made the claimant leadership with nobody in the loop. This list
+// IS the review the owner traded the queue for — newest first, unreviewed ones
+// marked. "Looks right" files it; "Revoke" takes the leadership back through
+// 0079's revoke. Neither touches Stripe: refund and cancel there, and the
+// cancellation un-verifies the church through the webhook as usual. A
+// 'conflict' is a second payer who lost the race to an unled church — never
+// applied, waiting on a refund.
+interface SelfClaimRow {
+  id: string; church_id: string; church_name: string; city: string | null; region: string | null
+  username: string | null; role: string; contact_name: string; email: string
+  status: 'pending' | 'active' | 'conflict' | 'revoked'; stripe_subscription_id: string | null
+  created_at: string; activated_at: string | null; reviewed_at: string | null
+}
+
+function SelfServeClaims() {
+  const [rows, setRows] = useState<SelfClaimRow[] | null>(null)
+  const [armed, setArmed] = useState<string | null>(null)
+  const load = () =>
+    supabase?.rpc('admin_church_claims', { p_limit: 100 }).then(({ data }) => setRows((data as SelfClaimRow[]) ?? []))
+  useEffect(() => { void load() }, [])
+
+  const act = async (r: SelfClaimRow, action: 'seen' | 'revoke') => {
+    if (action === 'revoke' && armed !== r.id) { setArmed(r.id); return }
+    setArmed(null)
+    await supabase!.rpc('admin_review_church_claim', { p_claim_id: r.id, p_action: action })
+    void load()
+  }
+
+  const shown = (rows ?? []).filter((r) => r.status !== 'pending' || Date.now() - Date.parse(r.created_at) < 7 * 864e5)
+  const color = (st: SelfClaimRow['status']) =>
+    st === 'active' ? 'var(--mint)' : st === 'conflict' ? 'var(--coral)' : 'var(--ink-dim)'
+
+  return (
+    <div>
+      <h3 style={{ fontSize: 14, margin: '0 0 8px' }} className="dim">Self-serve claims</h3>
+      <p className="faint" style={{ fontSize: 12, marginBottom: 10, lineHeight: 1.4 }}>
+        Paid claims on churches nobody led. Already live — check each one. Revoking takes the
+        leadership back; refund and cancel in Stripe yourself. A <b style={{ color: 'var(--coral)' }}>conflict</b> lost
+        the race to another payer and needs a refund.
+      </p>
+      {rows === null ? (
+        <p className="faint center" style={{ padding: 20 }}>Loading…</p>
+      ) : shown.length === 0 ? (
+        <p className="faint center" style={{ padding: 20 }}>No self-serve claims yet.</p>
+      ) : (
+        <div style={{ display: 'grid', gap: 8 }}>
+          {shown.map((r) => (
+            <div key={r.id} className="card" style={{ display: 'grid', gap: 6, borderColor: r.reviewed_at ? undefined : 'var(--gold)' }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
+                <b style={{ fontSize: 14, flex: 1, minWidth: 0 }}>{r.church_name}</b>
+                <span style={{ fontSize: 11, fontWeight: 800, color: color(r.status) }}>{r.status}</span>
+              </div>
+              <div className="faint" style={{ fontSize: 11.5, lineHeight: 1.45 }}>
+                {[r.city, r.region].filter(Boolean).join(', ')}{r.city || r.region ? ' · ' : ''}
+                @{r.username ?? '—'} · {r.contact_name} ({r.role}) · {r.email}
+                <br />
+                started {new Date(r.created_at).toLocaleString()}
+                {r.activated_at ? ` · paid ${new Date(r.activated_at).toLocaleString()}` : ''}
+                {r.stripe_subscription_id ? ` · ${r.stripe_subscription_id}` : ''}
+              </div>
+              {(r.status === 'active' || r.status === 'conflict') && (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {!r.reviewed_at && (
+                    <button className="pill" onClick={() => act(r, 'seen')} style={{ fontWeight: 800, fontSize: 12 }}>Looks right</button>
+                  )}
+                  {r.status === 'active' && (
+                    <button className="pill" onClick={() => act(r, 'revoke')}
+                      style={{ fontWeight: 800, fontSize: 12, background: 'var(--card-solid)', color: armed === r.id ? 'var(--coral)' : 'var(--ink-dim)' }}>
+                      {armed === r.id ? 'Tap again to revoke' : 'Revoke'}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>

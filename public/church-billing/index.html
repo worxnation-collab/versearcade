@@ -22,6 +22,11 @@
     subscription. Prices are written here for READING; what is charged is
     whatever the Stripe price ids say, so if the two ever disagree, change
     this copy and the Stripe dashboard together.
+
+    A SELF-SERVE CLAIM (0134) arrives with `c` instead of `t`: the one-time
+    token the app's claim screen got from `start_church_claim`. Same page, two
+    differences: card only (no invoice — a claim has to put a card on file),
+    and a line saying that paying is what makes them the church's leadership.
   -->
   <style>
     :root {
@@ -78,7 +83,12 @@
   </div>
 
   <div id="bad" class="card" hidden>
-    <p>This link isn't working. Reply to the email it came in and we'll send a fresh one.</p>
+    <p id="bad-text">This link isn't working. Reply to the email it came in and we'll send a fresh one.</p>
+  </div>
+
+  <div id="claiming" class="card" hidden>
+    <p>Choosing a plan finishes your claim. As soon as checkout is complete you're this church's
+      leadership on Verse Arcade, and your tools open.</p>
   </div>
 
   <div id="paying" class="card" hidden>
@@ -95,8 +105,8 @@
     <div style="display:grid;gap:16px">
       <div id="founding" class="card founding" hidden>
         <p><b>Founding Church — free through Easter 2027.</b> Nothing is charged today. Your plan
-          starts on Monday, March 29, 2027 at the price you choose below. To cancel before then,
-          just reply to the email this link came in.</p>
+          starts on Monday, March 29, 2027 at the price you choose below.
+          <span id="cancel-line">To cancel before then, just reply to the email this link came in.</span></p>
       </div>
 
       <div class="card">
@@ -120,7 +130,7 @@
         <p class="small">Card payments are handled by Stripe. We never see your card number.</p>
       </div>
 
-      <div class="card">
+      <div class="card" id="invoice-card">
         <h2>Or have us invoice the church</h2>
         <p class="small">For a treasurer to approve. Pay the invoice by card, bank transfer (ACH) or
           check; it's due within 30 days of each invoice.</p>
@@ -138,6 +148,7 @@
   var FN = 'https://visuppaucpzzigwtqmdd.supabase.co/functions/v1/church-billing';
   var q = new URLSearchParams(location.search);
   var t = q.get('t') || '';
+  var c = q.get('c') || '';
   var $ = function (id) { return document.getElementById(id); };
   var show = function (id) { $(id).hidden = false; };
   var say = function (text) { $('msg').textContent = text; $('msg').hidden = !text; };
@@ -150,7 +161,8 @@
   function busy(on) { $('card').disabled = on; $('invoice').disabled = on; }
 
   function post(body) {
-    body.t = t; body.interval = interval(); body.addon = $('addon').checked;
+    if (c) body.c = c; else body.t = t;
+    body.interval = interval(); body.addon = $('addon').checked;
     return fetch(FN, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); });
   }
@@ -178,8 +190,9 @@
     }).catch(function () { busy(false); say('We couldn’t reach the server. Please try again.'); });
   });
 
-  if (!/^[0-9a-f]{64}$/.test(t)) { $('church').textContent = 'Verified Church'; show('bad'); return; }
-  fetch(FN + '?t=' + encodeURIComponent(t)).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+  if (c) $('bad-text').textContent = 'This claim link has expired, or the church has been claimed since. Start again from the church’s page in Verse Arcade.';
+  if (!/^[0-9a-f]{64}$/.test(c || t)) { $('church').textContent = 'Verified Church'; show('bad'); return; }
+  fetch(FN + (c ? '?c=' + encodeURIComponent(c) : '?t=' + encodeURIComponent(t))).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
     if (!j) { $('church').textContent = 'Verified Church'; show('bad'); return; }
     $('church').textContent = j.church;
     $('where').textContent = j.where || '';
@@ -191,6 +204,7 @@
       show('done'); return;
     }
     if (j.paying) { show('paying'); return; }
+    if (j.claim) { show('claiming'); $('invoice-card').hidden = true; $('cancel-line').textContent = 'To cancel before then, open Manage billing on your church’s leadership page.'; }
     if (founding) show('founding');
     show('form');
   }).catch(function () { $('church').textContent = 'Verified Church'; show('bad'); });

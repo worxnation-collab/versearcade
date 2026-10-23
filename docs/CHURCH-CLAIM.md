@@ -19,6 +19,11 @@ the app can put one there.
 
 ## Verification is manual, and that is the design
 
+> **Reversed in part on 2026-10-22 (0134, the owner's call): a church that
+> nobody leads here can now claim itself by paying.** See "Self-serve claim"
+> at the end of this file. Everything below still holds for a church that
+> already has leadership, which can only be reached through the operator.
+
 There is **no self-serve claim**. No domain-email check, no mailed code, nothing
 a stranger can drive. An operator reads the request in the "Add info" queue
 (role, name, email, note), satisfies themselves the person is who they say — a
@@ -131,3 +136,60 @@ How the code is protected:
 - **Guessing is pointless.** `church_claim_preview` is anon-callable so the page
   can say "expired" before asking anybody to sign up, but a code is 244 random
   bits.
+
+## Self-serve claim: claim → pay → verified (0134)
+
+The operator queue was the bottleneck between a church wanting to pay and
+being able to. The owner chose **pay = claim, guarded** over two alternatives
+(member tools held for an operator OK; domain-matched email only).
+
+**The flow.** `/church/:id` shows "Lead this church? Claim its page" while the
+church is claimable → `/church/:id/claim` (no fragment) asks for role, name,
+email and an "I'm on the staff or leadership" tick, signing the visitor up
+first if needed (`setPendingClaim(id, '')` + `ChurchResume`) →
+`start_church_claim` returns a one-time token → the web billing page opens in
+**claim mode** (`/church-billing/?c=…`): card only, no invoice → Stripe
+Checkout → back to `/church/:id/claim?paid=1`, which polls
+`church_self_claim_status` until the webhook has made them leadership and
+then opens `/church/:id/admin`.
+
+**The guards, which are the whole design:**
+
+- **Only an unled church.** Any `church_admins` row, or a live subscription,
+  and the church is not claimable — checked when the claim starts, when the
+  checkout opens (`claimFor` in the function) and under a row lock when the
+  payment lands. That is the case where a stranger would take a congregation
+  from its real leaders, and it still goes through "Add info".
+- **Payment is the act.** Starting a claim grants nothing.
+  `billing_activate_claim` (service_role only) writes the leadership row, and
+  the webhook calls it only for an `active`/`trialing`/`past_due`
+  subscription carrying the claim id.
+- **Card required, even on the Founding trial.** An invoiced Founding
+  subscription is live with no payment method at all, so claim mode refuses
+  the invoice path (`card_required`) and sets
+  `payment_method_collection=always`. Nothing is charged until Easter 2027;
+  a card on Stripe's file is the identity signal.
+- **First payment wins.** Two people may each open a checkout for one unled
+  church. The second webhook finds leadership already there, marks its claim
+  `conflict` and does **not** apply its subscription, so the first payer's
+  billing row is never overwritten. The operator refunds the second in Stripe.
+- **Five new claims per account per day.** A returning claimant reuses their
+  pending claim with a fresh token (only the sha256 is stored).
+- **App Store build: none of it** (`churchSelfClaimVisible` in
+  `lib/commerce.ts`). The claim ends on a page with prices.
+
+**The review is the trade.** Admin → Churches → **Self-serve claims** lists
+every claim newest first (who, role, name, email, subscription), unreviewed
+ones outlined in gold. **Looks right** files one; **Revoke** takes the
+leadership back through `admin_revoke_church_admin`. Neither touches Stripe —
+refund and cancel there, and the cancellation un-verifies the church through
+the webhook. Until it is cancelled the church reads `paying` and nobody else
+can self-claim it.
+
+**Cancelling.** A claimant manages the subscription from their own leader
+dashboard — **Manage billing →** opens Stripe's customer portal (0135,
+`docs/CHURCH-PACKAGES.md` → "Billing"), and the billing page's claim-mode line
+says so.
+
+**Known gap.** An already-paying church cannot add the Content Generation
+add-on itself (the portal's plan switching is off on purpose).

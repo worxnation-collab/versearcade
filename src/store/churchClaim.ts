@@ -58,3 +58,31 @@ export function getPendingClaim(): { churchId: string; code: string } | null {
 export function clearPendingClaim(): void {
   try { localStorage.removeItem(KEY) } catch { /* ignore */ }
 }
+
+// ── Self-serve: claim → pay → verified (0134) ───────────────────────────────
+//
+// No invite at all. A signed-in claimant opens a claim on a church nobody leads
+// yet, gets a one-time token, and pays on the web billing page with it; the
+// church-billing webhook makes them leadership once the subscription is live.
+// Starting a claim grants nothing, and the token is never stored here — it goes
+// straight into the billing page's URL. A parked self-serve claim is
+// `setPendingClaim(id, '')`: an empty code is the self-serve screen.
+
+export type SelfClaimStatus = 'open' | 'has_leader' | 'paying' | 'you_lead' | 'not_found'
+
+export async function selfClaimStatus(churchId: string): Promise<SelfClaimStatus | null> {
+  if (!supabase) return null
+  const { data, error } = await supabase.rpc('church_self_claim_status', { p_church_id: churchId })
+  const d = data as { ok?: boolean; status?: SelfClaimStatus } | null
+  return error || !d?.ok ? null : (d.status ?? null)
+}
+
+export async function startSelfClaim(churchId: string, role: string, name: string, email: string) {
+  if (!supabase) return { ok: false as const, reason: 'unavailable' }
+  const { data, error } = await supabase.rpc('start_church_claim', {
+    p_church_id: churchId, p_role: role, p_name: name, p_email: email,
+  })
+  const d = data as { ok?: boolean; token?: string; reason?: string } | null
+  if (error || !d?.ok || !d.token) return { ok: false as const, reason: d?.reason ?? 'unavailable' }
+  return { ok: true as const, billingUrl: `${location.origin}/church-billing/?c=${d.token}` }
+}

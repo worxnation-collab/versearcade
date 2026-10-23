@@ -11,7 +11,22 @@
 //        → a subscription billed by INVOICE (card, ACH, bank transfer or a
 //          cheque marked paid by hand), for a church whose treasurer has to
 //          approve a bill rather than type a card in
+//   POST { action: 'portal', church } + the leader's own Authorization header
+//        → a Stripe customer-portal session (cancel, change card, invoices),
+//          answered with its URL. The ONE door that takes a church id, and it
+//          is safe because the caller's session is checked against
+//          `church_admins` for that church before Stripe is asked anything
+//          (0135). Same portal for a Founding trial and a paying church.
 //   POST with a `stripe-signature` header → the webhook
+//
+// A SELF-SERVE CLAIM (0134) uses the same three doors with `c` in place of `t`:
+// the one-time token `start_church_claim` handed a signed-in claimant. It
+// opens a card checkout only — never an invoice, because an invoiced Founding
+// subscription is live with no payment method at all, and a live subscription
+// is what makes a claimant leadership. The subscription carries the claim id,
+// and the webhook calls `billing_activate_claim` before it applies the
+// subscription; a claim that lost the race to another payer is a 'conflict',
+// and its subscription is NOT applied, so the first payer's billing row stands.
 //
 // THE TOKEN IS THE ONLY THING A CALLER SENDS ABOUT WHICH CHURCH. It comes from
 // `admin_church_billing_link` (0131) and is looked up here with the service
@@ -37,7 +52,7 @@
 //
 // Secrets (Supabase → Edge Functions → Secrets):
 //   STRIPE_SECRET_KEY            a RESTRICTED rk_live_… key (Customers, Subscriptions,
-//     Checkout Sessions: write), or Vault via stripe_church_secret_key() (0133),
+//     Checkout Sessions, Customer portal: write), or Vault via stripe_church_secret_key() (0133),
 //     which is where it is
 //   STRIPE_CHURCH_WEBHOOK_SECRET whsec_… of webhook we_1UTB3nHlxD9PZQmbjy4PiBb9,
 //     or Vault via stripe_church_webhook_secret() (0132), which is where it is
@@ -76,7 +91,7 @@ const STRIPE_VERSION = '2024-06-20'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'content-type',
+  'Access-Control-Allow-Headers': 'authorization, apikey, x-client-info, content-type',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 }
 const json = (body: unknown, status = 200) =>
@@ -129,7 +144,7 @@ async function verifySignature(payload: string, header: string): Promise<boolean
 
 // ---- the church a link is for ----------------------------------------------
 
-interface Linked { church_id: string; name: string; city: string | null; region: string | null; status: string | null }
+interface Linked { church_id: string; name: string; city: string | null; region: string | null; status: string | null; claim?: string }
 
 async function churchFor(token: unknown): Promise<Linked | null> {
   if (typeof token !== 'string' || !/^[0-9a-f]{64}$/.test(token)) return null
@@ -137,6 +152,31 @@ async function churchFor(token: unknown): Promise<Linked | null> {
   if (!data) return null
   const c = (data as { churches: { name: string; city: string | null; region: string | null } | null }).churches
   return { church_id: data.church_id as string, status: (data.status as string | null) ?? null, name: c?.name ?? 'Your church', city: c?.city ?? null, region: c?.region ?? null }
+}
+
+/** sha256 hex, the way 0134 stores a claim token. */
+async function sha256(text: string): Promise<string> {
+  return hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)))
+}
+
+/**
+ * The church a SELF-SERVE claim token is for, while it is still claimable:
+ * the claim pending, nobody leading the church, no live subscription on file.
+ * Anything else answers null, exactly as an unknown link does.
+ */
+async function claimFor(token: unknown): Promise<Linked | null> {
+  if (typeof token !== 'string' || !/^[0-9a-f]{64}$/.test(token)) return null
+  const { data } = await admin.from('church_claims').select('id,church_id,status,churches(name,city,region)')
+    .eq('token_hash', await sha256(token)).maybeSingle()
+  if (!data || data.status !== 'pending') return null
+  const [{ count }, { data: bill }] = await Promise.all([
+    admin.from('church_admins').select('user_id', { count: 'exact', head: true }).eq('church_id', data.church_id),
+    admin.from('church_billing').select('status').eq('church_id', data.church_id).maybeSingle(),
+  ])
+  const status = (bill?.status as string | null) ?? null
+  if ((count ?? 0) > 0 || alreadyPaying(status)) return null
+  const c = (data as { churches: { name: string; city: string | null; region: string | null } | null }).churches
+  return { church_id: data.church_id as string, status, claim: data.id as string, name: c?.name ?? 'Your church', city: c?.city ?? null, region: c?.region ?? null }
 }
 
 const founding = () => FOUNDING_UNTIL - Date.now() > TRIAL_MIN_MS
@@ -163,6 +203,17 @@ interface Sub {
 async function apply(sub: Sub, churchHint?: string | null): Promise<unknown> {
   const church = sub.metadata?.church_id || churchHint
   if (!church) return { skipped: 'no church on subscription' }
+  // A self-serve claim becomes leadership on a live subscription, and only if
+  // nobody else got there first. A conflict is left for an operator to refund
+  // and never applied, so it cannot overwrite the first payer's billing row.
+  const claim = sub.metadata?.claim_id
+  if (claim && (sub.status === 'active' || sub.status === 'trialing' || sub.status === 'past_due')) {
+    const { data: act, error: actErr } = await admin.rpc('billing_activate_claim', {
+      p_claim_id: claim, p_church_id: church, p_subscription_id: sub.id,
+    })
+    if (actErr) throw new Error(`activate: ${actErr.message}`)
+    if ((act as { reason?: string } | null)?.reason === 'conflict') return { claim: 'conflict', subscription: sub.id }
+  }
   const prices = sub.items?.data ?? []
   const addons = new Set([PRICES.addon.month, PRICES.addon.year].filter(Boolean))
   const { data, error } = await admin.rpc('billing_apply_subscription', {
@@ -200,7 +251,7 @@ async function webhook(req: Request): Promise<Response> {
 // ---- the two ways to start paying -------------------------------------------
 
 async function checkout(link: Linked, interval: 'month' | 'year', addon: boolean, token: string): Promise<Response> {
-  const back = `${SITE}/church-billing/?t=${token}`
+  const back = `${SITE}/church-billing/?${link.claim ? 'c' : 't'}=${token}`
   const items = lineItems(interval, addon)
   const params: Record<string, string | number> = {
     mode: 'subscription',
@@ -209,11 +260,20 @@ async function checkout(link: Linked, interval: 'month' | 'year', addon: boolean
     'subscription_data[metadata][church_id]': link.church_id,
     'line_items[0][price]': items['items[0][price]'],
     'line_items[0][quantity]': 1,
-    success_url: `${back}&done=card`,
+    // A claimant comes back to the app's claim screen, which waits for the
+    // webhook to make them leadership and then opens their tools.
+    success_url: link.claim ? `${SITE}/church/${link.church_id}/claim?paid=1` : `${back}&done=card`,
     cancel_url: back,
     billing_address_collection: 'auto',
   }
   if (addon) Object.assign(params, { 'line_items[1][price]': items['items[1][price]'], 'line_items[1][quantity]': 1 })
+  if (link.claim) {
+    params['metadata[claim_id]'] = link.claim
+    params['subscription_data[metadata][claim_id]'] = link.claim
+    // A card on file is the whole of what a claim proves, so it is required
+    // even when the Founding trial means nothing is charged today.
+    params.payment_method_collection = 'always'
+  }
   if (founding()) params['subscription_data[trial_end]'] = Math.floor(FOUNDING_UNTIL / 1000)
   const s = await stripe<{ url: string }>('POST', 'checkout/sessions', params)
   return json({ url: s.url })
@@ -237,6 +297,29 @@ async function invoice(link: Linked, interval: 'month' | 'year', addon: boolean,
   return json({ ok: true, founding: founding() })
 }
 
+// The portal: leadership of THIS church, with a live Stripe
+// subscription, gets a session on the church's own Stripe customer. The customer
+// id never leaves the server. A church verified by hand (no customer) gets
+// `no_subscription`, and its dashboard never draws the button anyway.
+async function portal(req: Request, churchId: unknown): Promise<Response> {
+  const jwt = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '')
+  if (!jwt || typeof churchId !== 'string' || !/^[0-9a-f-]{36}$/i.test(churchId)) return json({ error: 'unauthorized' }, 401)
+  const { data: who } = await admin.auth.getUser(jwt)
+  const uid = who?.user?.id
+  if (!uid) return json({ error: 'unauthorized' }, 401)
+  const { count } = await admin.from('church_admins').select('user_id', { count: 'exact', head: true })
+    .eq('church_id', churchId).eq('user_id', uid)
+  if (!count) return json({ error: 'not_leadership' }, 403)
+  const { data: bill } = await admin.from('church_billing').select('stripe_customer_id, status')
+    .eq('church_id', churchId).maybeSingle()
+  const customer = bill?.stripe_customer_id as string | undefined
+  if (!customer || !alreadyPaying((bill?.status as string) ?? null)) return json({ error: 'no_subscription' }, 404)
+  const s = await stripe<{ url: string }>('POST', 'billing_portal/sessions', {
+    customer, return_url: `${SITE}/church/${churchId}/admin`,
+  })
+  return json({ url: s.url })
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   // Both secrets live in Vault (0132, 0133); a function secret of the same
@@ -256,23 +339,27 @@ Deno.serve(async (req) => {
     if (req.method === 'POST' && req.headers.get('stripe-signature')) return await webhook(req)
 
     if (req.method === 'GET') {
-      const link = await churchFor(new URL(req.url).searchParams.get('t'))
+      const q = new URL(req.url).searchParams
+      const link = q.get('c') ? await claimFor(q.get('c')) : await churchFor(q.get('t'))
       if (!link) return json({ error: 'unknown link' }, 404)
       return json({
         church: link.name, where: [link.city, link.region].filter(Boolean).join(', '),
         paying: alreadyPaying(link.status), founding: founding(), foundingUntil: '2027-03-28',
+        claim: !!link.claim, churchId: link.claim ? link.church_id : undefined,
       })
     }
 
     if (req.method === 'POST') {
       const b = await req.json().catch(() => ({})) as Record<string, unknown>
-      const link = await churchFor(b.t)
+      if (b.action === 'portal') return await portal(req, b.church)
+      const link = b.c ? await claimFor(b.c) : await churchFor(b.t)
       if (!link) return json({ error: 'unknown link' }, 404)
       if (alreadyPaying(link.status)) return json({ error: 'already', message: 'This church already has a subscription.' }, 409)
       const interval = b.interval === 'year' ? 'year' : 'month'
       const addon = b.addon === true
-      if (b.action === 'checkout') return await checkout(link, interval, addon, b.t as string)
+      if (b.action === 'checkout') return await checkout(link, interval, addon, (link.claim ? b.c : b.t) as string)
       if (b.action === 'invoice') {
+        if (link.claim) return json({ error: 'card_required', message: 'Claiming a church is done by card.' }, 400)
         const email = typeof b.email === 'string' ? b.email.trim().slice(0, 200) : ''
         const name = typeof b.name === 'string' ? b.name.trim().slice(0, 120) : ''
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: 'email', message: 'Enter the email the invoice should go to.' }, 400)

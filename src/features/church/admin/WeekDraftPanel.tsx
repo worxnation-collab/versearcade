@@ -6,6 +6,7 @@ import { parseReference } from '@/lib/bibleProgress'
 import {
   cleanLine,
   fetchDays,
+  flaggedCount,
   GUIDANCE_MAX,
   resolvePassage,
   SCRIPTURE_CHARS_MAX,
@@ -343,8 +344,13 @@ export function DraftReview({
     if (!r.ok) return setErr('Those didn’t approve — check your connection and try again.')
     juice.select?.()
     const n = r.data.approved.length
+    // The server skips a day that still carries a ⚠ (0143), whatever this list showed.
+    const held = r.data.flagged ?? []
     onChanged()
-    setNote(`Approved ${n} day${n === 1 ? '' : 's'}${key ? ` of “${key}”` : ''}. ${n ? 'Each goes to your members on its day, beside the everyday verse.' : ''}`)
+    setNote(
+      `Approved ${n} day${n === 1 ? '' : 's'}${key ? ` of “${key}”` : ''}. ${n ? 'Each goes to your members on its day, beside the everyday verse.' : ''}` +
+      (held.length ? ` ${held.map(weekday).join(', ')} still ${held.length === 1 ? 'has' : 'have'} a ⚠ to check and ${held.length === 1 ? 'was' : 'were'} left as a draft.` : ''),
+    )
   }
 
   const discardAll = async (key: string, days: WeekDay[]) => {
@@ -420,6 +426,11 @@ export function DraftReview({
                 <span style={{ minWidth: 0 }}>
                   <span style={{ fontSize: 12.5, fontWeight: 700 }}>{d.verse!.reference}</span>
                   {d.verse!.generated && <span className="dim" style={{ fontSize: 11 }}> · ✨ suggested</span>}
+                  {flaggedCount(d.verse!.questions) > 0 && (
+                    <span title="The draft answer may not match the passage. Please check." style={{ fontSize: 11.5, fontWeight: 800, color: 'var(--gold)' }}>
+                      {' '}· ⚠ {flaggedCount(d.verse!.questions)} to check
+                    </span>
+                  )}
                   {d.verse!.note && (
                     <span className="dim" style={{ display: 'block', fontSize: 11.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.verse!.note}</span>
                   )}
@@ -440,8 +451,23 @@ export function DraftReview({
               </span>
             </div>
           ))}
+          {(() => {
+            // Approve all waits until no day in the set carries a ⚠: each one is
+            // opened and approved (or edited, or marked "looks right") on its own.
+            const toCheck = days.filter((d) => flaggedCount(d.verse?.questions) > 0)
+            return toCheck.length > 0 ? (
+              <span style={{ fontSize: 12, lineHeight: 1.45 }}>
+                ⚠ <b>Approve all</b> waits until the flagged questions are checked: open {toCheck.map((d) => weekday(d.date)).join(', ')}, then approve {toCheck.length === 1 ? 'it' : 'each'} there, or edit the question.
+              </span>
+            ) : null
+          })()}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button className="pill" disabled={!!busy} onClick={() => approveAll(key, days)} style={{ fontSize: 12.5, fontWeight: 800 }}>
+            <button
+              className="pill"
+              disabled={!!busy || days.some((d) => flaggedCount(d.verse?.questions) > 0)}
+              onClick={() => approveAll(key, days)}
+              style={{ fontSize: 12.5, fontWeight: 800 }}
+            >
               {busy === `ok:${key}` ? 'Approving…' : armed === `ok:${key}` ? `Tap again to approve ${days.length} for your members` : `Approve all ${days.length}`}
             </button>
             {backend.discard && (

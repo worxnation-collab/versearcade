@@ -346,7 +346,7 @@ export interface VerseBackend {
   /** Approve a draft. Base tier — present whenever leadership can save. */
   approve?: (churchId: string, date: string) => Promise<Res<{ status?: VerseStatus }>>
   /** Approve exactly these dates (drafts only). Base tier (0129). */
-  approveMany?: (churchId: string, dates: string[]) => Promise<Res<{ approved: string[] }>>
+  approveMany?: (churchId: string, dates: string[]) => Promise<Res<{ approved: string[]; flagged?: string[] }>>
   /** Throw a draft away; the day reads as empty again. Base tier (0129). */
   discard?: (churchId: string, date: string) => Promise<Res<unknown>>
   /**
@@ -565,9 +565,10 @@ export async function fetchPastSeries(churchId: string, today: string, be: Verse
 
 /** Approve exactly the dates the leader was shown (0129). */
 export async function approveDays(churchId: string, dates: string[]) {
-  const r = await call<{ approved: string[] }>('approve_church_verses', { p_church_id: churchId, p_dates: dates })
+  const r = await call<{ approved: string[]; flagged?: string[] }>('approve_church_verses', { p_church_id: churchId, p_dates: dates })
   if (!r.ok) return r
-  return { ok: true as const, data: { approved: (r.data.approved ?? []).map(String) } }
+  // `flagged` (0143): days the server would not approve because a ⚠ is still on them.
+  return { ok: true as const, data: { approved: (r.data.approved ?? []).map(String), flagged: (r.data.flagged ?? []).map(String) } }
 }
 
 /** Throw a draft away (0129). The row is stamped, not deleted. */
@@ -625,8 +626,10 @@ export function memoryVerseBackend(
   // The same status rules as 0127: a save is an approval, a draft is not live.
   const statusFor = (date: string): VerseStatus => (date <= todayLocalDate() ? 'published' : 'approved')
   const put = (d: string, v: DayVerse, status: VerseStatus, generated: boolean) => {
-    const questions = cleanQuestions(v.questions)
-    if (!questions) return false
+    const cleaned = cleanQuestions(v.questions)
+    if (!cleaned) return false
+    // As on the server (0143): only a draft keeps the check's ⚠; going live strips it.
+    const questions = status === 'draft' ? cleaned : cleaned.map(({ check: _c, checkPick: _p, ...q }) => q)
     const prev = days.get(d)
     days.set(d, {
       ...v,
@@ -651,11 +654,15 @@ export function memoryVerseBackend(
       : {}),
     approveMany: async (_c, ds) => {
       const approved: string[] = []
+      const flagged: string[] = []
       for (const d of ds) {
         const cur = days.get(d)
-        if (cur?.status === 'draft') { days.set(d, { ...cur, status: statusFor(d) }); approved.push(d) }
+        if (cur?.status !== 'draft') continue
+        // The server's rule (0143): a day still carrying a ⚠ is not approved in a set.
+        if (flaggedCount(cur.questions)) { flagged.push(d); continue }
+        days.set(d, { ...cur, status: statusFor(d) }); approved.push(d)
       }
-      return { ok: true, data: { approved } }
+      return { ok: true, data: { approved, flagged } }
     },
     discard: async (_c, d) => {
       if (days.get(d)?.status !== 'draft') return { ok: false, reason: 'no_draft' }
@@ -665,7 +672,7 @@ export function memoryVerseBackend(
     approve: async (_c, d) => {
       const cur = days.get(d)
       if (!cur || cur.status !== 'draft') return { ok: false, reason: 'no_draft' }
-      days.set(d, { ...cur, status: statusFor(d) })
+      days.set(d, { ...cur, status: statusFor(d), questions: cur.questions.map(({ check: _c, checkPick: _p, ...q }) => q) })
       return { ok: true, data: { status: statusFor(d) } }
     },
     get: async (_c, d) => ({ ok: true, data: days.get(d) ?? null }),
@@ -799,10 +806,18 @@ export function cleanQuestions(qs: Question[]): Question[] | null {
     if (options.some((o) => o.length < 1 || o.length > 120)) return null
     if (new Set(options.map((o) => o.toLowerCase())).size !== options.length) return null
     if (!Number.isInteger(q.answerIndex) || q.answerIndex < 0 || q.answerIndex >= options.length) return null
-    out.push({ prompt, options, answerIndex: q.answerIndex, teach })
+    // A draft's check flag (0143) rides along, well-formed or not at all —
+    // the same rule `church_draft_questions` applies on the server.
+    const check = q.check === true
+      ? { check: true as const, ...(Number.isInteger(q.checkPick) && q.checkPick! >= -1 && q.checkPick! < options.length ? { checkPick: q.checkPick } : {}) }
+      : {}
+    out.push({ prompt, options, answerIndex: q.answerIndex, teach, ...check })
   }
   return out
 }
+
+/** How many of a day's questions carry the blind check's ⚠ (0143). */
+export const flaggedCount = (qs: Question[] | undefined | null) => (qs ?? []).filter((q) => q.check === true).length
 
 // ---------------------------------------------------------------------------
 // Participation — congregation totals, every number under five withheld.

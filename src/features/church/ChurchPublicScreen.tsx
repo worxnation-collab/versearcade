@@ -11,7 +11,7 @@ import { useChurchExtras } from './ChurchExtras'
 import { JoinChurchButton } from './JoinChurchButton'
 import { ChurchInviteQR } from './ChurchInviteQR'
 import { churchSelfClaimVisible } from '@/lib/commerce'
-import { selfClaimStatus } from '@/store/churchClaim'
+import { claimOptions } from '@/store/churchClaim'
 import type { ChurchPage } from '@/types'
 
 // /church/:id — a congregation, linkable by anybody.
@@ -218,15 +218,19 @@ function JoinIn({ churchName, verified }: { churchName: string; verified: boolea
 
 // The quiet door for a pastor: "Lead this church?" under everything else, and
 // only while the church can actually be claimed (nobody leads it here, no
-// subscription) — a link to a form that would refuse them is a dead end. Web
-// only (`churchSelfClaimVisible`): the claim ends on a page with prices.
+// subscription) — a link to a form that would refuse them is a dead end. On
+// the web always; in the App Store build only while the free claim is open,
+// since that is the one claim there that ends on no page with prices.
 function ClaimLink({ churchId }: { churchId: string }) {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   useEffect(() => {
-    if (!churchSelfClaimVisible()) return
     let alive = true
-    selfClaimStatus(churchId).then((s) => { if (alive) setOpen(s === 'open') })
+    // The App Store build can offer only the free, hand-verified claim, so it
+    // shows the link only while that door is open (0137).
+    claimOptions(churchId).then((o) => {
+      if (alive) setOpen(!!o && o.status === 'open' && (churchSelfClaimVisible() || o.freeOk))
+    })
     return () => { alive = false }
   }, [churchId])
   if (!open) return null

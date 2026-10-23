@@ -767,7 +767,6 @@ export interface InsightMember {
   church7d: number
   churchAvg: number | null
   leader: boolean
-  active: boolean
 }
 
 export interface InsightSeries {
@@ -779,6 +778,36 @@ export interface InsightSeries {
   plays: number
   players: number
   completion: number | null
+}
+
+// ---------------------------------------------------------------------------
+// The free leader's numbers (0137): ANY leadership of this church, verified or
+// not. Three totals and the live notice — no names and no rows of people, by
+// construction (`church_leader_summary` returns none to draw).
+// ---------------------------------------------------------------------------
+export interface LeaderSummary {
+  verified: boolean
+  members: number
+  active7d: number
+  activePct: number | null
+  avgStreak: number
+  notice: { message: string; createdAt: string } | null
+}
+
+export async function fetchLeaderSummary(churchId: string) {
+  const r = await call('church_leader_summary', { p_church_id: churchId, p_local_date: todayLocalDate() })
+  if (!r.ok) return r
+  const d = r.data
+  const n = (x: unknown) => (Number.isFinite(Number(x)) ? Number(x) : 0)
+  const data: LeaderSummary = {
+    verified: !!d.verified,
+    members: n(d.members),
+    active7d: n(d.active_7d),
+    activePct: num(d.active_pct),
+    avgStreak: n(d.avg_streak),
+    notice: d.notice?.message ? { message: String(d.notice.message), createdAt: String(d.notice.created_at) } : null,
+  }
+  return { ok: true as const, data }
 }
 
 export interface LeaderInsights {
@@ -825,7 +854,6 @@ export async function fetchLeaderInsights(churchId: string) {
       church7d: n(m.church_7d),
       churchAvg: num(m.church_avg),
       leader: !!m.leader,
-      active: !!m.active,
     })),
   }
   return { ok: true as const, data }

@@ -71,10 +71,34 @@ export function clearPendingClaim(): void {
 export type SelfClaimStatus = 'open' | 'has_leader' | 'paying' | 'you_lead' | 'not_found'
 
 export async function selfClaimStatus(churchId: string): Promise<SelfClaimStatus | null> {
+  return (await claimOptions(churchId))?.status ?? null
+}
+
+/**
+ * Everything the claim screen asks before drawing anything (0134, widened by
+ * 0137): the status, how many members the page has, whether the FREE door is
+ * open, and whether the caller already has a manual claim waiting on review.
+ * A server without 0137 answers `members`/`freeOk` as 0/false, so the screen
+ * simply offers the paid claim it always did.
+ */
+export interface ClaimOptions {
+  status: SelfClaimStatus
+  members: number
+  freeOk: boolean
+  pendingManual: boolean
+}
+
+export async function claimOptions(churchId: string): Promise<ClaimOptions | null> {
   if (!supabase) return null
   const { data, error } = await supabase.rpc('church_self_claim_status', { p_church_id: churchId })
-  const d = data as { ok?: boolean; status?: SelfClaimStatus } | null
-  return error || !d?.ok ? null : (d.status ?? null)
+  const d = data as { ok?: boolean; status?: SelfClaimStatus; members?: number; free_ok?: boolean; my_pending?: string | null } | null
+  if (error || !d?.ok || !d.status) return null
+  return {
+    status: d.status,
+    members: Number.isFinite(Number(d.members)) ? Number(d.members) : 0,
+    freeOk: d.free_ok === true,
+    pendingManual: d.my_pending === 'manual',
+  }
 }
 
 export async function startSelfClaim(churchId: string, role: string, name: string, email: string) {
@@ -85,4 +109,43 @@ export async function startSelfClaim(churchId: string, role: string, name: strin
   const d = data as { ok?: boolean; token?: string; reason?: string } | null
   if (error || !d?.ok || !d.token) return { ok: false as const, reason: d?.reason ?? 'unavailable' }
   return { ok: true as const, billingUrl: `${location.origin}/church-billing/?c=${d.token}` }
+}
+
+// ── Free claim (0137) ───────────────────────────────────────────────────────
+//
+// A church page with at least this many members can be claimed for nothing.
+// Mirrors `church_free_claim_min_members()` in SQL and FREE_CLAIM_MIN_MEMBERS
+// in the church-billing function — keep the three in sync.
+export const FREE_CLAIM_MIN_MEMBERS = 3
+
+export type FreeClaimMethod = 'card' | 'manual'
+
+/**
+ * Open a free claim. `card` comes back with the Stripe setup page to send the
+ * claimant to (a $0 SetupIntent — the card is saved, nothing is charged);
+ * `manual` comes back waiting on an operator, with whether the email's domain
+ * matched the church's own website (a flag for the reviewer, not a grant).
+ */
+export async function startFreeClaim(
+  churchId: string,
+  method: FreeClaimMethod,
+  form: { role: string; name: string; email: string; phone?: string },
+): Promise<
+  | { ok: true; method: 'card'; setupUrl: string }
+  | { ok: true; method: 'manual'; domainMatch: boolean }
+  | { ok: false; reason: string; members?: number }
+> {
+  if (!supabase) return { ok: false, reason: 'unavailable' }
+  const { data, error } = await supabase.rpc('start_church_free_claim', {
+    p_church_id: churchId, p_method: method, p_role: form.role, p_name: form.name,
+    p_email: form.email, p_phone: form.phone || null,
+  })
+  const d = data as { ok?: boolean; method?: string; token?: string; domain_match?: boolean; reason?: string; members?: number } | null
+  if (error || !d?.ok) return { ok: false, reason: d?.reason ?? 'unavailable', members: d?.members }
+  if (d.method === 'manual') return { ok: true, method: 'manual', domainMatch: d.domain_match === true }
+  if (!d.token) return { ok: false, reason: 'unavailable' }
+  const r = await supabase.functions.invoke('church-billing', { body: { action: 'setup', f: d.token } })
+  const url = (r.data as { url?: unknown } | null)?.url
+  if (r.error || typeof url !== 'string') return { ok: false, reason: 'setup_failed' }
+  return { ok: true, method: 'card', setupUrl: url }
 }

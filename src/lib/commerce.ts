@@ -209,3 +209,11 @@ export function patronOffer(skin: SkinDef, owned: boolean, webUrl: string): Patr
  * here.
  */
 export const givingLinkVisible = (): boolean => !isNativeApp()
+
+/**
+ * Whether a church can be claimed and paid for from this build (0134). The
+ * claim ends on the web billing page, which carries prices and a checkout, so
+ * the App Store build offers none of it — not the link on a church's page and
+ * not the form — exactly as it shows no patron price it can't charge.
+ */
+export const churchSelfClaimVisible = (): boolean => !isNativeApp()

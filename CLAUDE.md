@@ -1621,7 +1621,11 @@ corrected service time went through the operator. `church_admins` (`0079`) is
 the seam: a row saying *this player is verified leadership of this church*,
 granted only by `admin_grant_church_admin`. Full rules: `docs/CHURCH-CLAIM.md`.
 
-**Verification is MANUAL and stays manual.** There is no self-serve claim — no
+**Verification is MANUAL for a church that already has leadership.** Since
+`0134` (2026-10-22, the owner's call) a church NOBODY leads here can claim
+itself by paying — card on file required, first payment wins, every claim
+listed for operator review with one-tap revoke (`docs/CHURCH-CLAIM.md` →
+"Self-serve claim"). For any other church there is still no self-serve path — no
 domain check, no mailed code, nothing a stranger can drive. An operator reads
 the request in the "Add info" queue, satisfies themselves by phone or by an
 email from the church's own domain, and grants it by username. So the grant IS
@@ -2519,7 +2523,20 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0133` (church visual assets — `church_assets`, verse cards /
+The latest is `0134` (self-serve church claim — `church_claims`,
+`church_self_claim_status` (anon), `start_church_claim`, `billing_activate_claim`
+(service_role only, called by the church-billing webhook),
+`admin_church_claims` / `admin_review_church_claim`; the cascading foreign keys
+are `0134_church_self_claim_b`, kept apart for the MCP). APPLIED 2026-10-22
+after a local Postgres 16 run (open/led/paying gates, token rotation, first
+payment wins + conflict, revoke, rate limit, re-run a no-op) and verified live:
+one signature each, `billing_activate_claim` `{postgres,service_role}`, RLS on
+with no policy, both FKs present. **It reverses "there is no self-serve claim"
+for a church nobody leads** — the owner's call; read `docs/CHURCH-CLAIM.md` →
+"Self-serve claim" before touching it. `church-billing` v3 (claim mode, `?c=`)
+was deployed by MCP the same day.
+
+Before it, `0133` (church visual assets — `church_assets`, verse cards /
 series graphics / notice cards stored as a template id plus words the SERVER
 copies from the church's own rows, draft → approve, stale-aware;
 `generate_church_asset` is add-on only, approve/discard base leadership,
@@ -3092,7 +3109,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0134` (0133 is used twice — church visual assets AND the church Stripe key in Vault — 0132 is the church webhook's Vault secret, 0131 is church billing, 0130 is the member's church view, 0129 is the week-from-a-sermon drafts, 0128 is the church layer, 0127 is `church_content_generation` in production, 0126 is the two new statues, 0125 is the API.Bible key, 0124 the reading translation, 0123 is the church verse series and note, 0122 is `church_question_drafts` in production only, 0121 is the church leader invite link, 0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0135` (0134 is the self-serve church claim, in two parts; 0133 is used twice — church visual assets AND the church Stripe key in Vault — 0132 is the church webhook's Vault secret, 0131 is church billing, 0130 is the member's church view, 0129 is the week-from-a-sermon drafts, 0128 is the church layer, 0127 is `church_content_generation` in production, 0126 is the two new statues, 0125 is the API.Bible key, 0124 the reading translation, 0123 is the church verse series and note, 0122 is `church_question_drafts` in production only, 0121 is the church leader invite link, 0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

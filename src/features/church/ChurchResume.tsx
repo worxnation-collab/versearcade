@@ -31,8 +31,9 @@ export function ChurchResume() {
     const claim = getPendingClaim()
     if (claim) {
       clearPendingClaim()
+      // An empty code is a self-serve claim (0134): the screen, no fragment.
       if (location.pathname !== `/church/${claim.churchId}/claim`) {
-        navigate(`/church/${claim.churchId}/claim#${claim.code}`, { replace: true })
+        navigate(`/church/${claim.churchId}/claim${claim.code ? `#${claim.code}` : ''}`, { replace: true })
       }
       return
     }

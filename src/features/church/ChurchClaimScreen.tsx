@@ -518,6 +518,9 @@ function ClaimExplainer({ web, members }: { web: boolean; members: number }) {
             <li style={li}>Your own daily verse and questions, series and pastor&rsquo;s notes.</li>
             <li style={li}>Each member&rsquo;s play by name, for your leadership only.</li>
           </ul>
+          <p className="faint" style={{ margin: '8px 0 0', fontSize: 12, lineHeight: 1.45 }}>
+            Or the Church Suite: all of this plus verse, series and notice cards ready to post, in one plan.
+          </p>
         </div>
       )}
       <div className="card" style={{ padding: '12px 14px', borderColor: 'var(--edge)' }}>

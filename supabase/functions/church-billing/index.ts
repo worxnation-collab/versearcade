@@ -5,9 +5,9 @@
 // it with no Supabase session — supabase/config.toml says so):
 //
 //   GET  ?t=<token>                       the billing page asks who the link is for
-//   POST { action: 'checkout', t, interval, addon }
+//   POST { action: 'checkout', t, interval, plan }
 //        → a Stripe Checkout Session (card), answered with its URL
-//   POST { action: 'invoice', t, interval, addon, email, name }
+//   POST { action: 'invoice', t, interval, plan, email, name }
 //        → a subscription billed by INVOICE (card, ACH, bank transfer or a
 //          cheque marked paid by hand), for a church whose treasurer has to
 //          approve a bill rather than type a card in
@@ -55,9 +55,17 @@
 // invoicing address) is on file now and the first charge happens by itself at
 // the base price they chose. Nobody has to ask a church for money twice.
 //
-// No price is decided here either. The four price ids are named below, and
-// what each costs is set in the Stripe dashboard; the add-on is a second line
-// item on the SAME subscription, so one cancellation ends both.
+// No price is decided here either. The price ids are named below, and what
+// each costs is set in the Stripe dashboard.
+//
+// TWO PLANS. `plan: 'suite'` is the CHURCH SUITE — Verified Church and Content
+// Generation as ONE price ($39/mo, $390/yr, created 2026-10-23), the default on
+// the billing page. `plan: 'verified'` is the base alone. An older page that
+// still sends `addon: true` gets the base plus the add-on as two line items, as
+// before, so a link opened mid-deploy still works. Whatever a subscription
+// carries, the webhook reads Content Generation as ON for an add-on price OR a
+// suite price — a suite subscription has no add-on line item, and missing that
+// would sell a church the add-on and never switch it on.
 //
 // Secrets (Supabase → Edge Functions → Secrets):
 //   STRIPE_SECRET_KEY            a RESTRICTED rk_live_… key (Customers, Subscriptions,
@@ -88,6 +96,11 @@ const PRICES = {
   addon: {
     month: Deno.env.get('STRIPE_PRICE_ADDON_MONTH') || 'price_1UTB3BHlxD9PZQmbGFHjSxMP',
     year: Deno.env.get('STRIPE_PRICE_ADDON_YEAR') || 'price_1UTB3LHlxD9PZQmb701EVjML',
+  },
+  // "Church Suite" (prod_VUaHXSAxvbhT5z): base + add-on as one price.
+  suite: {
+    month: Deno.env.get('STRIPE_PRICE_SUITE_MONTH') || 'price_1UTb6qHlxD9PZQmbVvypDKKU',
+    year: Deno.env.get('STRIPE_PRICE_SUITE_YEAR') || 'price_1UTb6tHlxD9PZQmbP6YBOfU9',
   },
 }
 const SITE = 'https://versearcade.org'
@@ -219,9 +232,19 @@ async function freeClaimFor(token: unknown): Promise<(Linked & { claim: string; 
 const founding = () => FOUNDING_UNTIL - Date.now() > TRIAL_MIN_MS
 const alreadyPaying = (s: string | null) => s === 'active' || s === 'trialing' || s === 'past_due'
 
-function lineItems(interval: 'month' | 'year', addon: boolean): Record<string, string | number> {
+/** suite = the one bundled price; verified = base alone; legacy = base + add-on line items. */
+type Plan = 'suite' | 'verified' | 'legacy'
+
+function planOf(b: Record<string, unknown>): Plan {
+  if (b.plan === 'suite') return 'suite'
+  if (b.plan === 'verified') return 'verified'
+  return b.addon === true ? 'legacy' : 'verified'
+}
+
+function lineItems(interval: 'month' | 'year', plan: Plan): Record<string, string | number> {
+  if (plan === 'suite') return { 'items[0][price]': PRICES.suite[interval], 'items[0][quantity]': 1 }
   const items: Record<string, string | number> = { 'items[0][price]': PRICES.base[interval], 'items[0][quantity]': 1 }
-  if (addon) Object.assign(items, { 'items[1][price]': PRICES.addon[interval], 'items[1][quantity]': 1 })
+  if (plan === 'legacy') Object.assign(items, { 'items[1][price]': PRICES.addon[interval], 'items[1][quantity]': 1 })
   return items
 }
 
@@ -252,7 +275,8 @@ async function apply(sub: Sub, churchHint?: string | null): Promise<unknown> {
     if ((act as { reason?: string } | null)?.reason === 'conflict') return { claim: 'conflict', subscription: sub.id }
   }
   const prices = sub.items?.data ?? []
-  const addons = new Set([PRICES.addon.month, PRICES.addon.year].filter(Boolean))
+  // Content Generation is on for the add-on's line item OR the suite's price.
+  const addons = new Set([PRICES.addon.month, PRICES.addon.year, PRICES.suite.month, PRICES.suite.year].filter(Boolean))
   const { data, error } = await admin.rpc('billing_apply_subscription', {
     p_church_id: church,
     p_subscription_id: sub.id,
@@ -299,9 +323,9 @@ async function webhook(req: Request): Promise<Response> {
 
 // ---- the two ways to start paying -------------------------------------------
 
-async function checkout(link: Linked, interval: 'month' | 'year', addon: boolean, token: string): Promise<Response> {
+async function checkout(link: Linked, interval: 'month' | 'year', plan: Plan, token: string): Promise<Response> {
   const back = `${SITE}/church-billing/?${link.claim ? 'c' : 't'}=${token}`
-  const items = lineItems(interval, addon)
+  const items = lineItems(interval, plan)
   const params: Record<string, string | number> = {
     mode: 'subscription',
     client_reference_id: link.church_id,
@@ -315,7 +339,7 @@ async function checkout(link: Linked, interval: 'month' | 'year', addon: boolean
     cancel_url: back,
     billing_address_collection: 'auto',
   }
-  if (addon) Object.assign(params, { 'line_items[1][price]': items['items[1][price]'], 'line_items[1][quantity]': 1 })
+  if (items['items[1][price]']) Object.assign(params, { 'line_items[1][price]': items['items[1][price]'], 'line_items[1][quantity]': 1 })
   if (link.claim) {
     params['metadata[claim_id]'] = link.claim
     params['subscription_data[metadata][claim_id]'] = link.claim
@@ -328,7 +352,7 @@ async function checkout(link: Linked, interval: 'month' | 'year', addon: boolean
   return json({ url: s.url })
 }
 
-async function invoice(link: Linked, interval: 'month' | 'year', addon: boolean, email: string, name: string): Promise<Response> {
+async function invoice(link: Linked, interval: 'month' | 'year', plan: Plan, email: string, name: string): Promise<Response> {
   const customer = await stripe<{ id: string }>('POST', 'customers', {
     email, name: name || link.name, 'metadata[church_id]': link.church_id,
   })
@@ -337,7 +361,7 @@ async function invoice(link: Linked, interval: 'month' | 'year', addon: boolean,
     collection_method: 'send_invoice',
     days_until_due: 30,
     'metadata[church_id]': link.church_id,
-    ...lineItems(interval, addon),
+    ...lineItems(interval, plan),
   }
   // A founding church's first invoice is issued when the trial ends, not now.
   if (founding()) params.trial_end = Math.floor(FOUNDING_UNTIL / 1000)
@@ -404,7 +428,8 @@ Deno.serve(async (req) => {
     const { data } = await admin.rpc('stripe_church_secret_key')
     STRIPE_KEY = typeof data === 'string' ? data : ''
   }
-  if (!STRIPE_KEY || !WEBHOOK_SECRET || !PRICES.base.month || !PRICES.base.year || !PRICES.addon.month || !PRICES.addon.year) {
+  if (!STRIPE_KEY || !WEBHOOK_SECRET || !PRICES.base.month || !PRICES.base.year || !PRICES.addon.month || !PRICES.addon.year
+      || !PRICES.suite.month || !PRICES.suite.year) {
     return json({ error: 'billing is not configured' }, 503)
   }
   try {
@@ -433,14 +458,14 @@ Deno.serve(async (req) => {
       if (!link) return json({ error: 'unknown link' }, 404)
       if (alreadyPaying(link.status)) return json({ error: 'already', message: 'This church already has a subscription.' }, 409)
       const interval = b.interval === 'year' ? 'year' : 'month'
-      const addon = b.addon === true
-      if (b.action === 'checkout') return await checkout(link, interval, addon, (link.claim ? b.c : b.t) as string)
+      const plan = planOf(b)
+      if (b.action === 'checkout') return await checkout(link, interval, plan, (link.claim ? b.c : b.t) as string)
       if (b.action === 'invoice') {
         if (link.claim) return json({ error: 'card_required', message: 'Claiming a church is done by card.' }, 400)
         const email = typeof b.email === 'string' ? b.email.trim().slice(0, 200) : ''
         const name = typeof b.name === 'string' ? b.name.trim().slice(0, 120) : ''
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: 'email', message: 'Enter the email the invoice should go to.' }, 400)
-        return await invoice(link, interval, addon, email, name)
+        return await invoice(link, interval, plan, email, name)
       }
     }
     return json({ error: 'not found' }, 404)

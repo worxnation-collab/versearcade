@@ -225,7 +225,7 @@ function BillingRow({ churchId, billing }: { churchId: string; billing: ChurchBi
   return (
     <div style={{ borderTop: '1px solid var(--edge)', paddingTop: 8, marginTop: 2, display: 'grid', gap: 6 }}>
       <div style={{ minWidth: 0 }}>
-        <b style={{ fontSize: 13 }}>Billing</b>
+        <b style={{ fontSize: 13 }}>Billing · {billing.addon ? 'Church Suite' : 'Verified Church'}</b>
         <div className="faint" style={{ fontSize: 11.5, lineHeight: 1.4 }}>{detail}</div>
       </div>
       <button className="pill" style={{ justifySelf: 'start' }} disabled={busy} onClick={open}>

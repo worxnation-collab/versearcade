@@ -153,10 +153,21 @@ The verified tier is paid for **on the web only**: a stable per-church link
 a static page outside the SPA that no app route links to. It carries the prices;
 the app carries none.
 
-- **Plans** — Verified Church $29/month or $290/year; Content Generation add-on
-  $19/month or $190/year, a second line item on the SAME subscription (one
-  cancellation ends both). The amounts live in Stripe; the page's copy must be
-  changed with them.
+- **Plans** (2026-10-23) — the **Church Suite**, $39/month or $390/year
+  (`prod_VUaHXSAxvbhT5z`: `price_1UTb6qHlxD9PZQmbVvypDKKU` monthly,
+  `price_1UTb6tHlxD9PZQmbP6YBOfU9` yearly), is Verified Church + Content
+  Generation as ONE price and the billing page's default; it is shown against
+  the separate $48/$480 so the saving is plain. **Verified Church** alone is
+  $29/month or $290/year. The page sends `plan: 'suite' | 'verified'`. The
+  standalone add-on ($19/$190, a second line item) is no longer offered on the
+  page, but `addon: true` from an older page still builds base + add-on, and
+  every existing add-on subscription keeps working.
+- **The webhook reads Content Generation as ON for an add-on price OR a suite
+  price.** A suite subscription carries no add-on line item, so leaving the
+  suite ids out of that set would sell the add-on and never switch it on. The
+  amounts live in Stripe; the billing page's `PRICES` and the `/churches`
+  plans card (`PlansCard`, web only via `churchPlansVisible()`) must be changed
+  with them.
 - **Two ways to pay, one webhook.** *Card*: a Stripe Checkout Session
   (`client_reference_id` = the church). *Invoice*: a `send_invoice`
   subscription, due in 30 days, payable by card, ACH, bank transfer or a cheque

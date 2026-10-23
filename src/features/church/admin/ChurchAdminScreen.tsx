@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { TabbedSection } from '@/components/TabbedSection'
 import { useJuice } from '@/juice/useJuice'
-import { fetchAdminSettings, fetchChurchBilling, fetchEntitlements, openBillingPortal, serverGenerationBackend, serverVerseBackend, type AdminSettings, type ChurchBilling, type Entitlements } from '@/store/churchAdmin'
+import { fetchAdminSettings, fetchChurchBilling, fetchEntitlements, openBillingPortal, serverGenerationBackend, startSuiteUpgrade, serverVerseBackend, type AdminSettings, type ChurchBilling, type Entitlements } from '@/store/churchAdmin'
 import { churchBillingPortalVisible } from '@/lib/commerce'
 import { TodayVerseForm } from './TodayVerseForm'
 import { OverviewPanel, PeoplePanel, ActivityPanel, SummaryPanel, useInsights, useSummary } from './InsightsPanel'
@@ -42,8 +42,11 @@ import { SharePanel } from './SharePanel'
 // leadership — every tool above) and the Content Generation PACKAGE, an add-on
 // that only stands on the base. Without the add-on the verse form keeps every
 // manual tool and draws the drafting assist as locked; with it, the form gets
-// the server backend that carries `draft`/`saveDraft`. Still no price, no
-// checkout and no upgrade button anywhere: both are granted off the device.
+// the server backend that carries `draft`/`saveDraft`. On the web, the locked
+// Content Generation row carries "Unlock with Church Suite" (a Suite Checkout,
+// or the portal's confirm step for a card-billed Verified plan) and a "Manage
+// plan" link; the App Store build draws neither (`churchBillingPortalVisible`).
+// The grant itself is still the webhook's — the screen only re-reads.
 export default function ChurchAdminScreen() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
@@ -57,6 +60,18 @@ export default function ChurchAdminScreen() {
   const insights = useInsights(id)
   // Every tier's top row of totals, verified or not (0137).
   const summary = useSummary(id)
+  // Back from Stripe with ?upgraded=1: frozen at mount and stripped, then the
+  // entitlements are re-read for a little while, because the webhook that
+  // grants the Suite usually lands a few seconds after the redirect.
+  const [params, setParams] = useSearchParams()
+  const [upgraded] = useState(() => params.get('upgraded') === '1')
+  useEffect(() => {
+    if (!upgraded) return
+    const next = new URLSearchParams(params)
+    next.delete('upgraded')
+    setParams(next, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const load = useCallback(async () => {
     const [r, e, b] = await Promise.all([fetchAdminSettings(id), fetchEntitlements(id), fetchChurchBilling(id)])
@@ -75,6 +90,18 @@ export default function ChurchAdminScreen() {
   useEffect(() => {
     void load()
   }, [load])
+
+  const granted = !!ent?.churchLeader && !!ent?.contentGeneration
+  useEffect(() => {
+    if (!upgraded || granted) return
+    let tries = 0
+    const t = window.setInterval(() => {
+      tries += 1
+      void load()
+      if (tries >= 10) window.clearInterval(t)
+    }, 3000)
+    return () => window.clearInterval(t)
+  }, [upgraded, granted, load])
 
   const back = () => {
     juice.select?.()
@@ -151,7 +178,7 @@ export default function ChurchAdminScreen() {
       <h1 style={{ fontSize: 24, margin: '0 0 4px' }}>Leadership</h1>
       <div className="dim" style={{ fontSize: 13.5, marginBottom: 12 }}>{settings.name}</div>
 
-      <PlanStatus leader={leader} generation={generation} held={!!ent?.contentGenerationHeld} churchId={id} billing={billing} />
+      <PlanStatus leader={leader} generation={generation} held={!!ent?.contentGenerationHeld} churchId={id} billing={billing} upgraded={upgraded} />
 
       <TabbedSection tabs={tabs} defaultOpen defaultTab="overview" />
       <div style={{ height: 32 }} />
@@ -159,12 +186,16 @@ export default function ChurchAdminScreen() {
   )
 }
 
-// What this church holds, stated plainly: two rows, each on or not. No price,
-// no upgrade button — a church asks through the page's "Add info" pill, as it
-// always has, and an operator grants both.
-function PlanStatus({ leader, generation, held, churchId, billing }: {
-  leader: boolean; generation: boolean; held: boolean; churchId: string; billing: ChurchBilling | null
+// What this church holds, stated plainly: two rows, each on or not. On the
+// web the locked Content Generation row is also the way to get it — Church
+// Suite is the one price that carries it, so there is no separate add-on to
+// sell — and an invoiced church is told to reply to an invoice instead, since
+// Stripe's portal cannot change an invoiced plan.
+function PlanStatus({ leader, generation, held, churchId, billing, upgraded }: {
+  leader: boolean; generation: boolean; held: boolean; churchId: string; billing: ChurchBilling | null; upgraded: boolean
 }) {
+  const web = churchBillingPortalVisible()
+  const card = !!billing?.subscribed && !billing.invoiced
   return (
     <div className="card" style={{ padding: '10px 12px', marginBottom: 12, display: 'grid', gap: 6 }} aria-label="This church’s plan">
       <PlanRow
@@ -182,10 +213,83 @@ function PlanStatus({ leader, generation, held, churchId, billing }: {
             ? 'Draft questions and a note from a passage or your sermon notes. Drafts need your approval.'
             : held
               ? 'On your plan, and switches on with Church Leader.'
-              : 'An add-on to Church Leader. Not on this church’s plan.'
+              : 'Included in Church Suite, with Church Leader. Not on this church’s plan.'
         }
-      />
-      {billing?.subscribed && churchBillingPortalVisible() && <BillingRow churchId={churchId} billing={billing} />}
+      >
+        {web && !generation && !held && (
+          upgraded
+            ? <div className="dim" style={{ fontSize: 12, lineHeight: 1.45, marginTop: 6 }}>Thanks — Church Suite switches on as soon as Stripe confirms it. This usually takes a few seconds.</div>
+            : billing?.subscribed && billing.invoiced
+              ? <div className="dim" style={{ fontSize: 12, lineHeight: 1.45, marginTop: 6 }}>To move to Church Suite, reply to any invoice email and we’ll switch it.</div>
+              : <SuiteUpgrade churchId={churchId} switching={card} />
+        )}
+        {web && card && (generation || !upgraded) && <ManagePlan churchId={churchId} />}
+      </PlanRow>
+      {billing?.subscribed && web && <BillingRow churchId={churchId} billing={billing} />}
+    </div>
+  )
+}
+
+/** Founding Churches pay nothing before Easter 2027 (church-billing's FOUNDING_UNTIL). */
+const foundingOpen = () => Date.now() < Date.parse('2027-03-27T00:00:00Z')
+
+function SuiteUpgrade({ churchId, switching }: { churchId: string; switching: boolean }) {
+  const juice = useJuice()
+  const [busy, setBusy] = useState(false)
+  const [failed, setFailed] = useState(false)
+  const go = async () => {
+    juice.select?.()
+    setBusy(true)
+    setFailed(false)
+    const r = await startSuiteUpgrade(churchId)
+    if ('url' in r) {
+      window.location.href = r.url
+      return
+    }
+    setBusy(false)
+    setFailed(true)
+  }
+  return (
+    <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>
+      <Button variant="gold" full disabled={busy} onClick={go}>{busy ? 'Opening…' : 'Unlock with Church Suite'}</Button>
+      <div className="faint" style={{ fontSize: 11, lineHeight: 1.4 }}>
+        {failed
+          ? 'Couldn’t open Stripe just now. Try again in a moment.'
+          : switching
+            ? `Stripe shows the change before anything is confirmed.${foundingOpen() ? ' Your Founding Church trial carries over.' : ''}`
+            : `Checkout is on Stripe.${foundingOpen() ? ' Founding Churches pay nothing before Easter 2027.' : ''}`}
+      </div>
+    </div>
+  )
+}
+
+// The portal on its plan picker: downgrade to Verified, or monthly ↔ yearly.
+function ManagePlan({ churchId }: { churchId: string }) {
+  const juice = useJuice()
+  const [busy, setBusy] = useState(false)
+  const [failed, setFailed] = useState(false)
+  const go = async () => {
+    juice.select?.()
+    setBusy(true)
+    setFailed(false)
+    const r = await openBillingPortal(churchId, 'plan')
+    if ('url' in r) {
+      window.location.href = r.url
+      return
+    }
+    setBusy(false)
+    setFailed(true)
+  }
+  return (
+    <div style={{ marginTop: 6, fontSize: 12 }}>
+      <button
+        onClick={go}
+        disabled={busy}
+        style={{ background: 'none', border: 0, padding: 0, color: 'var(--ink-dim)', textDecoration: 'underline', font: 'inherit', cursor: 'pointer' }}
+      >
+        {busy ? 'Opening…' : 'Manage plan'}
+      </button>
+      {failed && <span className="faint" style={{ marginLeft: 8, fontSize: 11 }}>Couldn’t open it just now.</span>}
     </div>
   )
 }
@@ -241,23 +345,24 @@ function BillingRow({ churchId, billing }: { churchId: string; billing: ChurchBi
           : billing.invoiced
             ? billing.addon
               ? 'See invoices or cancel. To change your plan, reply to any invoice email and we’ll switch it.'
-              : 'To move to Church Suite and add verse, series and notice cards, reply to any invoice email and we’ll switch it. You can see invoices or cancel here.'
+              : 'See invoices or cancel here.'
             : billing.addon
               ? 'Change the card or plan, see invoices, or cancel. Cancelling keeps your tools on until the period ends.'
-              : 'Upgrade to Church Suite here to add verse, series and notice cards for social. You can also change the card, see invoices, or cancel.'}
+              : 'Change the card, see invoices, or cancel.'}
       </div>
     </div>
   )
 }
 
-function PlanRow({ on, name, detail }: { on: boolean; name: string; detail: string }) {
+function PlanRow({ on, name, detail, children }: { on: boolean; name: string; detail: string; children?: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, minWidth: 0 }}>
       <span aria-hidden style={{ fontSize: 13, lineHeight: '18px', color: on ? 'var(--mint)' : 'var(--ink-dim)', flexShrink: 0 }}>{on ? '✓' : '🔒'}</span>
-      <div style={{ minWidth: 0 }}>
+      <div style={{ minWidth: 0, flex: 1 }}>
         <b style={{ fontSize: 13 }}>{name}</b>
         <span className="dim" style={{ fontSize: 12, fontWeight: 700 }}> · {on ? 'Active' : 'Locked'}</span>
         <div className="faint" style={{ fontSize: 11.5, lineHeight: 1.4 }}>{detail}</div>
+        {children}
       </div>
     </div>
   )

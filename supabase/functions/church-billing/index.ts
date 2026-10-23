@@ -17,6 +17,11 @@
 //          is safe because the caller's session is checked against
 //          `church_admins` for that church before Stripe is asked anything
 //          (0135). Same portal for a Founding trial and a paying church.
+//          `flow: 'plan'` opens it on the plan picker ("Manage plan").
+//   POST { action: 'upgrade', church, interval? } + the same header
+//        → "Unlock with Church Suite": a portal session on the confirm step of
+//          Verified → Suite for a card subscription, or a Suite Checkout for a
+//          church with none (a free claim). Same leadership check.
 //   POST with a `stripe-signature` header → the webhook
 //
 // A SELF-SERVE CLAIM (0134) uses the same three doors with `c` in place of `t`:
@@ -257,7 +262,7 @@ interface Sub {
   collection_method: string
   current_period_end: number | null
   metadata: Record<string, string>
-  items: { data: Array<{ price: { id: string; recurring: { interval: string } | null } }> }
+  items: { data: Array<{ id: string; price: { id: string; recurring: { interval: string } | null } }> }
 }
 
 async function apply(sub: Sub, churchHint?: string | null): Promise<unknown> {
@@ -393,11 +398,10 @@ async function setup(link: Linked & { claim: string; email: string; contact: str
   return json({ url: s.url })
 }
 
-// The portal: leadership of THIS church, with a live Stripe
-// subscription, gets a session on the church's own Stripe customer. The customer
-// id never leaves the server. A church verified by hand (no customer) gets
-// `no_subscription`, and its dashboard never draws the button anyway.
-async function portal(req: Request, churchId: unknown): Promise<Response> {
+// The leader doors (portal, upgrade) take a church id, and are safe because
+// the caller's own session is checked against `church_admins` for THAT church
+// before Stripe is asked anything. Answers the leader's user, or a Response.
+async function leaderOf(req: Request, churchId: unknown): Promise<{ uid: string; email: string | null; church: string } | Response> {
   const jwt = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '')
   if (!jwt || typeof churchId !== 'string' || !/^[0-9a-f-]{36}$/i.test(churchId)) return json({ error: 'unauthorized' }, 401)
   const { data: who } = await admin.auth.getUser(jwt)
@@ -406,13 +410,129 @@ async function portal(req: Request, churchId: unknown): Promise<Response> {
   const { count } = await admin.from('church_admins').select('user_id', { count: 'exact', head: true })
     .eq('church_id', churchId).eq('user_id', uid)
   if (!count) return json({ error: 'not_leadership' }, 403)
-  const { data: bill } = await admin.from('church_billing').select('stripe_customer_id, status')
+  return { uid, email: who.user?.email ?? null, church: churchId }
+}
+
+interface Bill { stripe_customer_id: string | null; stripe_subscription_id: string | null; status: string | null; collection_method: string | null; content_addon: boolean | null }
+
+async function billOf(churchId: string): Promise<Bill | null> {
+  const { data } = await admin.from('church_billing')
+    .select('stripe_customer_id, stripe_subscription_id, status, collection_method, content_addon')
     .eq('church_id', churchId).maybeSingle()
-  const customer = bill?.stripe_customer_id as string | undefined
-  if (!customer || !alreadyPaying((bill?.status as string) ?? null)) return json({ error: 'no_subscription' }, 404)
-  const s = await stripe<{ url: string }>('POST', 'billing_portal/sessions', {
-    customer, return_url: `${SITE}/church/${churchId}/admin`,
-  })
+  return (data as Bill | null) ?? null
+}
+
+const dashboard = (churchId: string) => `${SITE}/church/${churchId}/admin`
+
+// The portal: leadership of THIS church, with a live Stripe subscription, gets
+// a session on the church's own Stripe customer. The customer id never leaves
+// the server. A church verified by hand (no customer) gets `no_subscription`,
+// and its dashboard never draws the button anyway. `flow: 'plan'` opens
+// straight on the plan picker ("Manage plan": downgrade, monthly ↔ yearly);
+// without it, the portal's home page ("Manage billing").
+async function portal(req: Request, churchId: unknown, flow: unknown): Promise<Response> {
+  const who = await leaderOf(req, churchId)
+  if (who instanceof Response) return who
+  const bill = await billOf(who.church)
+  const customer = bill?.stripe_customer_id
+  if (!customer || !alreadyPaying(bill?.status ?? null)) return json({ error: 'no_subscription' }, 404)
+  const params: Record<string, string> = { customer, return_url: dashboard(who.church) }
+  // Stripe's portal will not change the plan of an invoiced subscription, so a
+  // plan flow there would be a dead end: it gets the portal's home instead.
+  if (flow === 'plan' && bill?.stripe_subscription_id && bill.collection_method !== 'send_invoice') {
+    params['flow_data[type]'] = 'subscription_update'
+    params['flow_data[subscription_update][subscription]'] = bill.stripe_subscription_id
+  }
+  const s = await stripe<{ url: string }>('POST', 'billing_portal/sessions', params)
+  return json({ url: s.url })
+}
+
+// "Unlock with Church Suite" on the dashboard's locked Content Generation row.
+// Two shapes, one door, and no new product — the Suite price is the one the
+// billing page already sells:
+//
+//   * a card-billed Verified subscription → a portal session that opens on the
+//     CONFIRM step of swapping its base item for the Suite price at the same
+//     interval. The portal configuration (bpc_1UTNfW…) has
+//     `trial_update_behavior: continue_trial`, so a Founding trial survives
+//     the switch, and the webhook reads the Suite price as Content Generation
+//     on exactly as it does for a Suite bought on the billing page.
+//   * no live subscription (a free claim, or nothing at all) → a Checkout
+//     Session for the Suite, with the Founding trial while it lasts. A free
+//     claim already put a card on a Stripe customer (its SetupIntent), so that
+//     customer is reused and the card is waiting on the page.
+//
+// An invoiced subscription is refused: the portal cannot change its plan, and
+// the dashboard tells that church to reply to an invoice email instead.
+async function upgrade(req: Request, b: Record<string, unknown>): Promise<Response> {
+  const who = await leaderOf(req, b.church)
+  if (who instanceof Response) return who
+  const church = who.church
+  const bill = await billOf(church)
+  const back = dashboard(church)
+
+  if (bill?.stripe_customer_id && alreadyPaying(bill.status)) {
+    if (bill.content_addon) return json({ error: 'already', message: 'This church already has Content Generation.' }, 409)
+    if (bill.collection_method === 'send_invoice' || !bill.stripe_subscription_id) {
+      return json({ error: 'invoiced', message: 'Reply to any invoice email and we’ll switch it.' }, 409)
+    }
+    const sub = await stripe<Sub>('GET', `subscriptions/${bill.stripe_subscription_id}`)
+    const baseIds = new Set([PRICES.base.month, PRICES.base.year])
+    const item = sub.items.data.find((i) => baseIds.has(i.price?.id)) ?? sub.items.data[0]
+    if (!item || sub.items.data.length !== 1) {
+      // More than one line item (not a shape this function ever sells without
+      // the add-on) cannot be confirmed as one swap: let them choose in the portal.
+      return portal(req, church, 'plan')
+    }
+    const interval = item.price?.recurring?.interval === 'year' ? 'year' : 'month'
+    const s = await stripe<{ url: string }>('POST', 'billing_portal/sessions', {
+      customer: bill.stripe_customer_id,
+      return_url: back,
+      'flow_data[type]': 'subscription_update_confirm',
+      'flow_data[subscription_update_confirm][subscription]': sub.id,
+      'flow_data[subscription_update_confirm][items][0][id]': item.id,
+      'flow_data[subscription_update_confirm][items][0][price]': PRICES.suite[interval],
+      'flow_data[subscription_update_confirm][items][0][quantity]': 1,
+      'flow_data[after_completion][type]': 'redirect',
+      'flow_data[after_completion][redirect][return_url]': `${back}?upgraded=1`,
+    })
+    return json({ url: s.url })
+  }
+
+  // No live subscription: Checkout for the Suite. Reuse a customer this church
+  // already has — on its billing row, or the one its free claim's card is on.
+  let customer = bill?.stripe_customer_id ?? null
+  if (!customer) {
+    const { data: claim } = await admin.from('church_claims').select('stripe_setup_intent_id')
+      .eq('church_id', church).eq('status', 'active').not('stripe_setup_intent_id', 'is', null)
+      .order('activated_at', { ascending: false }).limit(1).maybeSingle()
+    const si = claim?.stripe_setup_intent_id as string | undefined
+    if (si) {
+      try {
+        const intent = await stripe<{ customer: string | null }>('GET', `setup_intents/${si}`)
+        customer = typeof intent.customer === 'string' ? intent.customer : null
+      } catch (e) {
+        console.error(e) // a fresh customer is fine; the card is simply typed again
+      }
+    }
+  }
+  const interval = b.interval === 'year' ? 'year' : 'month'
+  const params: Record<string, string | number> = {
+    mode: 'subscription',
+    client_reference_id: church,
+    'metadata[church_id]': church,
+    'subscription_data[metadata][church_id]': church,
+    'line_items[0][price]': PRICES.suite[interval],
+    'line_items[0][quantity]': 1,
+    payment_method_collection: 'always',
+    success_url: `${back}?upgraded=1`,
+    cancel_url: back,
+    billing_address_collection: 'auto',
+  }
+  if (customer) params.customer = customer
+  else if (who.email) params.customer_email = who.email
+  if (founding()) params['subscription_data[trial_end]'] = Math.floor(FOUNDING_UNTIL / 1000)
+  const s = await stripe<{ url: string }>('POST', 'checkout/sessions', params)
   return json({ url: s.url })
 }
 
@@ -448,7 +568,8 @@ Deno.serve(async (req) => {
 
     if (req.method === 'POST') {
       const b = await req.json().catch(() => ({})) as Record<string, unknown>
-      if (b.action === 'portal') return await portal(req, b.church)
+      if (b.action === 'portal') return await portal(req, b.church, b.flow)
+      if (b.action === 'upgrade') return await upgrade(req, b)
       if (b.action === 'setup') {
         const free = await freeClaimFor(b.f)
         if (!free) return json({ error: 'unknown link' }, 404)

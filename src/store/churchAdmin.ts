@@ -98,10 +98,27 @@ export async function fetchChurchBilling(churchId: string): Promise<ChurchBillin
   }
 }
 
-/** A Stripe customer-portal URL for this church, or null with a reason. */
-export async function openBillingPortal(churchId: string): Promise<{ url: string } | { error: string }> {
+/**
+ * A Stripe customer-portal URL for this church, or null with a reason.
+ * `flow: 'plan'` opens straight on the plan picker ("Manage plan").
+ */
+export async function openBillingPortal(churchId: string, flow?: 'plan'): Promise<{ url: string } | { error: string }> {
+  return billingUrl({ action: 'portal', church: churchId, flow })
+}
+
+/**
+ * "Unlock with Church Suite": a Suite Checkout for a church with no live
+ * subscription (a free claim), or a portal session on the confirm step of
+ * Verified → Suite for a card subscription. The function decides which from
+ * the church's own billing row; the client only names the church.
+ */
+export async function startSuiteUpgrade(churchId: string): Promise<{ url: string } | { error: string }> {
+  return billingUrl({ action: 'upgrade', church: churchId })
+}
+
+async function billingUrl(body: Record<string, unknown>): Promise<{ url: string } | { error: string }> {
   if (!online()) return { error: 'unavailable' }
-  const { data, error } = await supabase!.functions.invoke('church-billing', { body: { action: 'portal', church: churchId } })
+  const { data, error } = await supabase!.functions.invoke('church-billing', { body })
   if (error || typeof (data as any)?.url !== 'string') return { error: String((data as any)?.error ?? 'failed') }
   return { url: (data as any).url }
 }

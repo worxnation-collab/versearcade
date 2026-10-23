@@ -185,6 +185,21 @@ the app carries none.
   and switching a trialing subscription to the Suite shows **$0.00 due today**
   with the first charge still on 29 March 2027. Stripe asks for a card at
   confirm when none is on file; every card-checkout church already has one.
+- **"Unlock with Church Suite" on the dashboard** (web only, the locked
+  Content Generation row; `action: 'upgrade'`, the leader's own session checked
+  against `church_admins` like `portal`). The church's billing row decides the
+  door: a live CARD subscription without the add-on gets a portal session on
+  `subscription_update_confirm` (its one item → the Suite price at the same
+  interval, so `continue_trial` above keeps a Founding trial); no live
+  subscription (a free claim) gets a Suite Checkout Session, reusing the Stripe
+  customer the free claim's SetupIntent saved a card on, with the Founding
+  trial; an invoiced one is refused (`invoiced`) and the card says to reply to
+  an invoice email. Both return to `/church/:id/admin?upgraded=1`, which
+  re-reads entitlements every 3s (up to 30s) until the webhook's grant lands.
+  There is no separate Content Generation product: the Suite price is the
+  add-on. **"Manage plan"** is `portal` with `flow: 'plan'` — the portal's
+  `subscription_update` picker, for a downgrade or monthly ↔ yearly — and is
+  not drawn for an invoiced church.
 - **Two ways to pay, one webhook.** *Card*: a Stripe Checkout Session
   (`client_reference_id` = the church). *Invoice*: a `send_invoice`
   subscription, due in 30 days, payable by card, ACH, bank transfer or a cheque

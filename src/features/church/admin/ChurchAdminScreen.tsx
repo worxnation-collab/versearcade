@@ -234,9 +234,17 @@ function BillingRow({ churchId, billing }: { churchId: string; billing: ChurchBi
       <div className="faint" style={{ fontSize: 11, lineHeight: 1.4 }}>
         {failed
           ? 'Couldn’t open billing just now. Try again in a moment.'
-          : billing.addon
-            ? 'Change the card or plan, see invoices, or cancel. Cancelling keeps your tools on until the period ends.'
-            : 'Upgrade to Church Suite here to add verse, series and notice cards for social. You can also change the card, see invoices, or cancel.'}
+          // Stripe's portal cannot change the plan on an invoiced subscription
+          // (it refuses any collection method but charge_automatically), so an
+          // invoiced church is pointed at a person rather than at a button
+          // that would not offer the switch.
+          : billing.invoiced
+            ? billing.addon
+              ? 'See invoices or cancel. To change your plan, reply to any invoice email and we’ll switch it.'
+              : 'To move to Church Suite and add verse, series and notice cards, reply to any invoice email and we’ll switch it. You can see invoices or cancel here.'
+            : billing.addon
+              ? 'Change the card or plan, see invoices, or cancel. Cancelling keeps your tools on until the period ends.'
+              : 'Upgrade to Church Suite here to add verse, series and notice cards for social. You can also change the card, see invoices, or cancel.'}
       </div>
     </div>
   )

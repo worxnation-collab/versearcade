@@ -176,7 +176,15 @@ the app carries none.
   default ends a Founding trial the moment a plan changes. A subscription with
   the old base + add-on pair can't be switched in the portal, because Stripe
   only switches single-item subscriptions. Those churches already have
-  everything, so it doesn't matter.
+  everything, so it doesn't matter. **An INVOICED subscription can't be switched in
+  the portal at all** (Stripe refuses any collection method but
+  `charge_automatically`), so the dashboard points an invoiced church at its
+  invoice email instead, and the operator changes the price in the Stripe
+  dashboard. Checked live on 2026-10-23, along with two more facts: the portal
+  allows ONE copy of a plan (quantity editing was on by default and is off),
+  and switching a trialing subscription to the Suite shows **$0.00 due today**
+  with the first charge still on 29 March 2027. Stripe asks for a card at
+  confirm when none is on file; every card-checkout church already has one.
 - **Two ways to pay, one webhook.** *Card*: a Stripe Checkout Session
   (`client_reference_id` = the church). *Invoice*: a `send_invoice`
   subscription, due in 30 days, payable by card, ACH, bank transfer or a cheque

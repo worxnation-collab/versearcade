@@ -7,16 +7,20 @@ import { useJuice } from '@/juice/useJuice'
 import { fetchChurchPage } from '@/store/church'
 import { supabase } from '@/lib/supabase'
 import { churchSelfClaimVisible } from '@/lib/commerce'
+import { ShareChurch } from './ShareChurch'
 import {
+  FREE_CLAIM_MIN_MEMBERS,
+  claimOptions,
   clearPendingClaim,
   getPendingClaim,
   previewClaim,
   redeemClaim,
-  selfClaimStatus,
   setPendingClaim,
+  startFreeClaim,
   startSelfClaim,
+  type ClaimOptions,
   type ClaimStatus,
-  type SelfClaimStatus,
+  type FreeClaimMethod,
 } from '@/store/churchClaim'
 
 // /church/:id/claim#<code> — a pastor's one-time invite to lead their church
@@ -31,7 +35,9 @@ import {
 // address bar, so it can't be shared by accident in a screenshot or a copied
 // link once it has been used.
 //
-// With NO code it is the self-serve claim (0134) instead — `SelfClaim` below.
+// With NO code it is the self-serve claim instead — `SelfClaim` below: free
+// once the page has three members (0137), or paid on the Church Leader plan
+// (0134).
 export default function ChurchClaimScreen() {
   const { id = '' } = useParams()
   const [code] = useState(() => {
@@ -150,65 +156,84 @@ function InviteClaim({ id, code }: { id: string; code: string }) {
   )
 }
 
-// ── Self-serve: claim → pay → verified (0134) ───────────────────────────────
+// ── Self-serve: free (0137) or paid (0134) ──────────────────────────────────
 //
-// For a church nobody leads here yet. The claimant says who they are, gets a
-// one-time token, and chooses a plan on the web billing page (card only); the
-// payment landing is what makes them leadership, so nothing on this screen
-// grants anything. Stripe brings them back to `?paid=1`, which waits for the
-// webhook and then opens their tools.
+// For a church nobody leads here yet. Two doors, side by side:
 //
-// A church that already has leadership, or a subscription, is not claimable
-// this way — that is a stranger taking a congregation from its real leaders,
-// and it still goes through the queue ("Add info" on the church's page). The
-// App Store build offers none of this (`churchSelfClaimVisible`): it ends at a
-// page with prices.
+//   • FREE, once the page has FREE_CLAIM_MIN_MEMBERS members. Proven one of two
+//     ways: a card saved through Stripe (a $0 SetupIntent — nothing charged,
+//     no plan), or a form an operator reviews by hand (an email on the church's
+//     own domain is flagged for them, not waved through). Grants leadership of
+//     an UNVERIFIED church: congregation totals and one notice on its page.
+//   • CHURCH LEADER, the paid plan, exactly as 0134 built it: the billing page,
+//     card only, the Founding trial; makes the church verified.
+//
+// Nothing on this screen grants anything. The card path comes back on
+// `?carded=1` and the paid one on `?paid=1`; both wait for the webhook. A
+// manual claim comes back to "your request is with us" until it is approved.
+//
+// The App Store build offers the manual free claim only
+// (`churchSelfClaimVisible`): the card and the plan both end on Stripe pages,
+// and a form an operator reads is not a storefront.
 
 const ROLES = ['Lead / senior pastor', 'Associate pastor', 'Youth or children’s pastor', 'Church staff', 'Elder or deacon', 'Other leadership']
+
+type Path = 'free' | 'paid'
 
 function SelfClaim({ id }: { id: string }) {
   const navigate = useNavigate()
   const juice = useJuice()
   const [params] = useSearchParams()
-  const paid = params.get('paid') === '1'
+  const returned = params.get('paid') === '1' ? 'paid' : params.get('carded') === '1' ? 'card' : null
   const { ready, profile, mode } = useAuth()
   const signedIn = !!profile && mode === 'online'
+  const web = churchSelfClaimVisible()
 
   const [name, setName] = useState<string | null>(null)
-  const [status, setStatus] = useState<SelfClaimStatus | null | 'loading'>('loading')
+  const [city, setCity] = useState<string | null>(null)
+  const [opts, setOpts] = useState<ClaimOptions | null | 'loading'>('loading')
   const [waited, setWaited] = useState(0)
+  const [path, setPath] = useState<Path | null>(null)
+  const [method, setMethod] = useState<FreeClaimMethod>(web ? 'card' : 'manual')
   const [role, setRole] = useState('')
   const [contact, setContact] = useState('')
   const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
   const [attest, setAttest] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  const [sent, setSent] = useState<{ domainMatch: boolean } | null>(null)
 
   useEffect(() => {
     let alive = true
-    fetchChurchPage(id).then((p) => { if (alive) setName(p?.church?.name ?? null) })
+    fetchChurchPage(id).then((p) => {
+      if (!alive) return
+      setName(p?.church?.name ?? null)
+      setCity(p?.church?.city ?? null)
+    })
     return () => { alive = false }
   }, [id])
 
-  // Re-read when sign-in lands, and — after paying — every two seconds until
-  // the webhook has made this account leadership (about a minute at most).
+  // Re-read when sign-in lands, and — after the card or the payment — every two
+  // seconds until the webhook has made this account leadership.
   useEffect(() => {
     if (!ready) return
     let alive = true
-    selfClaimStatus(id).then((s) => { if (alive) setStatus(s) })
+    claimOptions(id).then((o) => { if (alive) setOpts(o) })
     return () => { alive = false }
   }, [id, ready, signedIn, waited])
+  const status = opts && opts !== 'loading' ? opts.status : null
   useEffect(() => {
-    if (!paid || status === 'you_lead' || waited >= 45) return
+    if (!returned || status === 'you_lead' || waited >= 45) return
     const t = setTimeout(() => setWaited((n) => n + 1), 2000)
     return () => clearTimeout(t)
-  }, [paid, status, waited])
+  }, [returned, status, waited])
   useEffect(() => {
-    if (paid && status === 'you_lead') {
+    if (returned && status === 'you_lead') {
       juice.select?.()
       navigate(`/church/${id}/admin`, { replace: true })
     }
-  }, [paid, status, id, navigate, juice])
+  }, [returned, status, id, navigate, juice])
 
   useEffect(() => {
     if (!signedIn || !supabase) return
@@ -220,7 +245,9 @@ function SelfClaim({ id }: { id: string }) {
 
   const church = name ?? 'your church'
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
-  const ready2 = !!role && contact.trim().length > 0 && emailOk && attest && !busy
+  const phoneOk = phone.replace(/\D/g, '').length >= 7
+  const needsPhone = path === 'free' && method === 'manual'
+  const canSubmit = !!role && contact.trim().length > 0 && emailOk && attest && !busy && (!needsPhone || phoneOk)
 
   const toAuth = (signup: boolean) => {
     juice.select?.()
@@ -228,45 +255,67 @@ function SelfClaim({ id }: { id: string }) {
     navigate(signup ? '/auth?mode=signup' : '/auth')
   }
 
+  const failText = (reason: string, members?: number) =>
+    reason === 'has_leader' ? 'This church already has leadership here.'
+      : reason === 'you_lead' ? 'You already lead this church.'
+      : reason === 'paying' ? 'This church already has a subscription.'
+      : reason === 'too_few_members' ? `The free claim opens at ${FREE_CLAIM_MIN_MEMBERS} members — this page has ${members ?? 'fewer'}.`
+      : reason === 'rate_limited' ? 'That’s a lot of claims for one day — try again tomorrow.'
+      : reason === 'bad_phone' ? 'Add a phone number we can reach you on.'
+      : reason === 'bad_input' ? 'Check your name and email and try again.'
+      : reason === 'setup_failed' ? 'We couldn’t open the card check just now. Try again, or choose “Verify by hand”.'
+      : 'That didn’t go through — check your connection and try again.'
+
   const go = async () => {
     setBusy(true)
     setErr(null)
-    const r = await startSelfClaim(id, role, contact.trim(), email.trim())
+    const form = { role, name: contact.trim(), email: email.trim(), phone: phone.trim() }
+    if (path === 'paid') {
+      const r = await startSelfClaim(id, role, form.name, form.email)
+      if (!r.ok) {
+        setBusy(false)
+        setErr(failText(r.reason))
+        void claimOptions(id).then(setOpts)
+        return
+      }
+      juice.select?.()
+      location.href = r.billingUrl
+      return
+    }
+    const r = await startFreeClaim(id, method, form)
     if (!r.ok) {
       setBusy(false)
-      setErr(
-        r.reason === 'has_leader' ? 'This church already has leadership here.'
-          : r.reason === 'you_lead' ? 'You already lead this church.'
-          : r.reason === 'paying' ? 'This church already has a subscription.'
-          : r.reason === 'rate_limited' ? 'That’s a lot of claims for one day — try again tomorrow.'
-          : r.reason === 'bad_input' ? 'Check your name and email and try again.'
-          : 'That didn’t go through — check your connection and try again.',
-      )
-      if (r.reason === 'has_leader' || r.reason === 'paying' || r.reason === 'you_lead') void selfClaimStatus(id).then(setStatus)
+      setErr(failText(r.reason, r.members))
+      void claimOptions(id).then(setOpts)
       return
     }
     juice.select?.()
-    location.href = r.billingUrl
+    if (r.method === 'card') {
+      location.href = r.setupUrl
+      return
+    }
+    setBusy(false)
+    setSent({ domainMatch: r.domainMatch })
   }
 
   const para = (text: React.ReactNode) => (
     <p className="dim" style={{ margin: '8px 0 16px', fontSize: 14, lineHeight: 1.55 }}>{text}</p>
   )
 
+  const o = opts && opts !== 'loading' ? opts : null
   let body: React.ReactNode
-  if (!churchSelfClaimVisible()) {
-    body = para('Claiming a church page is done on the web, from a computer or a phone’s browser.')
-  } else if (!ready || status === 'loading') {
+  if (!ready || opts === 'loading') {
     body = <div className="skeleton" style={{ height: 160, borderRadius: 18 }} />
-  } else if (paid && status !== 'you_lead') {
+  } else if (returned && status !== 'you_lead') {
+    const what = returned === 'card' ? 'Card saved' : 'Payment received'
     body = waited < 45 ? (
       <>
-        {para(`Payment received — setting you up as ${church}’s leadership. This takes a few seconds.`)}
+        {para(`${what} — setting you up as ${church}’s leadership. This takes a few seconds.`)}
         <div className="skeleton" style={{ height: 8, borderRadius: 8 }} />
       </>
     ) : (
       <>
-        {para('Your payment went through, but setting up your tools is taking longer than usual. Give it a minute and try again — nothing is lost.')}
+        {para(`${what}, but setting up your tools is taking longer than usual. Give it a minute and try again — nothing is lost.`)}
         <Button variant="secondary" full onClick={() => setWaited(0)}>Check again</Button>
       </>
     )
@@ -284,8 +333,27 @@ function SelfClaim({ id }: { id: string }) {
         <Button variant="secondary" full onClick={() => navigate(`/church/${id}`)}>Go to the church page</Button>
       </>
     )
-  } else if (status !== 'open') {
+  } else if (!o || status !== 'open') {
     body = para(status === 'not_found' ? 'We couldn’t find that church.' : 'We couldn’t check this church just now. Check your connection and try again.')
+  } else if (!web && !o.freeOk) {
+    body = para('Claiming a church page is done on the web, from a computer or a phone’s browser.')
+  } else if (sent || (o.pendingManual && path === null)) {
+    body = (
+      <>
+        {para(
+          <>
+            Your request is with us. We&rsquo;ll check it — usually by a quick call or an email to the church — and you&rsquo;ll
+            find your tools on {church}&rsquo;s page once it&rsquo;s approved.
+            {sent?.domainMatch ? ' Your email is on the church’s own domain, which makes this quicker.' : ''}
+          </>,
+        )}
+        {web && (
+          <Button variant="secondary" full onClick={() => { setSent(null); setPath('free'); setMethod('card') }}>
+            Skip the wait — verify with a card instead
+          </Button>
+        )}
+      </>
+    )
   } else if (!signedIn) {
     body = (
       <>
@@ -296,15 +364,60 @@ function SelfClaim({ id }: { id: string }) {
         </div>
       </>
     )
+  } else if (path === null) {
+    body = (
+      <div style={{ display: 'grid', gap: 10 }}>
+        <p className="dim" style={{ margin: '8px 0 4px', fontSize: 14, lineHeight: 1.55 }}>
+          You&rsquo;re signed in as <b>@{profile!.username}</b>. How would you like to claim {church}?
+        </p>
+        {o.freeOk ? (
+          <Button variant="gold" full onClick={() => { juice.select?.(); setPath('free') }}>Claim it free</Button>
+        ) : (
+          <div className="card" style={{ padding: '10px 12px', display: 'grid', gap: 8 }}>
+            <div style={{ fontSize: 13, lineHeight: 1.5 }}>
+              <b>The free claim opens at {FREE_CLAIM_MIN_MEMBERS} members.</b> {church} has {o.members} so far — send the
+              page to your congregation and it opens by itself.
+            </div>
+            <ShareChurch churchId={id} churchName={church} city={city} label="Invite your congregation" />
+          </div>
+        )}
+        {web && (
+          <Button variant={o.freeOk ? 'secondary' : 'gold'} full onClick={() => { juice.select?.(); setPath('paid') }}>
+            Choose the Church Leader plan
+          </Button>
+        )}
+      </div>
+    )
   } else {
     const label: React.CSSProperties = { display: 'grid', gap: 6, fontSize: 12.5, fontWeight: 700, color: 'var(--ink-dim)' }
     body = (
       <div style={{ display: 'grid', gap: 12 }}>
-        <p className="dim" style={{ margin: '8px 0 0', fontSize: 14, lineHeight: 1.55 }}>
-          As <b>@{profile!.username}</b>, you&rsquo;ll set {church}&rsquo;s daily verse and notes, post notices,
-          and see how your congregation is playing. Next you&rsquo;ll choose a plan; your tools open as soon as
-          checkout is done.
-        </p>
+        <button className="pill" style={{ justifySelf: 'start', fontSize: 12 }} disabled={busy} onClick={() => { setPath(null); setErr(null) }}>
+          ← {path === 'free' ? 'Free claim' : 'Church Leader plan'}
+        </button>
+        {path === 'free' && (
+          <div role="radiogroup" aria-label="How to verify" style={{ display: 'grid', gap: 8 }}>
+            {web && (
+              <MethodOption
+                on={method === 'card'}
+                onPick={() => setMethod('card')}
+                title="Card on file"
+                detail="Stripe saves a card to confirm a real person is claiming. It is not charged — there is no plan and no price. Your tools open straight away."
+              />
+            )}
+            <MethodOption
+              on={method === 'manual'}
+              onPick={() => setMethod('manual')}
+              title="Verify by hand"
+              detail="We check with the church by phone or email first, usually within a couple of days. An email on your church’s own domain is quickest."
+            />
+          </div>
+        )}
+        {path === 'paid' && (
+          <p className="dim" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55 }}>
+            Next you&rsquo;ll choose a plan on our billing page; your tools open as soon as checkout is done.
+          </p>
+        )}
         <label style={label}>
           Your role
           <select value={role} onChange={(e) => setRole(e.target.value)} disabled={busy}>
@@ -317,24 +430,33 @@ function SelfClaim({ id }: { id: string }) {
           <input value={contact} onChange={(e) => setContact(e.target.value)} maxLength={120} autoComplete="name" disabled={busy} />
         </label>
         <label style={label}>
-          Email
+          Email{needsPhone ? ' — your church address if you have one' : ''}
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={200} autoComplete="email" disabled={busy} />
         </label>
+        {needsPhone && (
+          <label style={label}>
+            Phone
+            <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={40} autoComplete="tel" disabled={busy} />
+          </label>
+        )}
         <label style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0,1fr)', gap: 8, alignItems: 'start', fontSize: 13, lineHeight: 1.45 }}>
           <input type="checkbox" checked={attest} onChange={(e) => setAttest(e.target.checked)} disabled={busy} style={{ width: 16, height: 16, margin: '2px 0 0', padding: 0 }} />
           <span>I&rsquo;m on the staff or leadership of {church} and can set it up on its behalf.</span>
         </label>
-        <Button variant="gold" full disabled={!ready2} onClick={go}>
-          {busy ? 'One moment…' : 'Continue to choose a plan'}
+        <Button variant="gold" full disabled={!canSubmit} onClick={go}>
+          {busy ? 'One moment…'
+            : path === 'paid' ? 'Continue to choose a plan'
+            : method === 'card' ? 'Continue to save a card' : 'Send for review'}
         </Button>
         {err && <p style={{ color: 'var(--coral)', fontSize: 13, margin: 0 }}>{err}</p>}
         <p className="faint" style={{ margin: 0, fontSize: 11.5, lineHeight: 1.45 }}>
-          Every claim is reviewed afterwards, and one made for a church you don&rsquo;t lead is taken back.
+          Every claim is reviewed, and one made for a church you don&rsquo;t lead is taken back.
         </p>
       </div>
     )
   }
 
+  const showExplainer = status === 'open' && !returned && !sent
   return (
     <Page noNav>
       <div className="center" style={{ paddingTop: 28 }}>
@@ -344,6 +466,68 @@ function SelfClaim({ id }: { id: string }) {
         </h1>
       </div>
       <div className="card" style={{ marginTop: 16 }}>{body}</div>
+      {showExplainer && <ClaimExplainer web={web} members={o?.members ?? 0} />}
+      <div style={{ height: 24 }} />
     </Page>
+  )
+}
+
+function MethodOption({ on, onPick, title, detail }: { on: boolean; onPick: () => void; title: string; detail: string }) {
+  return (
+    <button
+      role="radio"
+      aria-checked={on}
+      onClick={onPick}
+      className="card"
+      style={{
+        textAlign: 'left', padding: '10px 12px', display: 'grid', gap: 3, minWidth: 0,
+        ...(on ? { background: 'var(--select)', borderColor: 'var(--select)' } : null),
+      }}
+    >
+      <b style={{ fontSize: 13.5 }}>{on ? '● ' : '○ '}{title}</b>
+      <span style={{ fontSize: 12, lineHeight: 1.45, color: 'var(--ink-dim)' }}>{detail}</span>
+    </button>
+  )
+}
+
+// What a claim is, said plainly before anybody fills anything in: what's free,
+// what the plan adds, and the rule every leader tool here keeps. No price on
+// this screen in either build — the plan's price lives on the billing page.
+function ClaimExplainer({ web, members }: { web: boolean; members: number }) {
+  const head: React.CSSProperties = { fontFamily: 'var(--font-display)', fontSize: 15, display: 'block' }
+  const li: React.CSSProperties = { margin: '4px 0 0', fontSize: 13, lineHeight: 1.5 }
+  return (
+    <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
+      <div className="card" style={{ padding: '12px 14px' }}>
+        <b style={head}>Free claim</b>
+        <div className="faint" style={{ fontSize: 11.5 }}>
+          Once the page has {FREE_CLAIM_MIN_MEMBERS} members{members >= FREE_CLAIM_MIN_MEMBERS ? ' — yours does' : ''}
+        </div>
+        <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+          <li style={li}>Your congregation&rsquo;s totals: members, how many played this week, the average streak.</li>
+          <li style={li}>One notice on your church&rsquo;s page, changed whenever you like.</li>
+          <li style={li}>{web ? 'Verified by a card on file (never charged) or by hand.' : 'Verified by hand.'}</li>
+        </ul>
+      </div>
+      {web && (
+        <div className="card" style={{ padding: '12px 14px' }}>
+          <b style={head}>Church Leader plan</b>
+          <div className="faint" style={{ fontSize: 11.5 }}>Paid · Founding Churches free through Easter 2027</div>
+          <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+            <li style={li}>Everything in the free claim, and a verified badge.</li>
+            <li style={li}>Your own daily verse and questions, series and pastor&rsquo;s notes.</li>
+            <li style={li}>Each member&rsquo;s play by name, for your leadership only.</li>
+          </ul>
+        </div>
+      )}
+      <div className="card" style={{ padding: '12px 14px', borderColor: 'var(--edge)' }}>
+        <b style={head}>No one is shamed here</b>
+        <p style={{ ...li, margin: '6px 0 0' }}>
+          Verse Arcade never ranks one member against another, and never gives you a list of who hasn&rsquo;t played.
+          On the free claim every number is a total for the whole congregation.{web ? ' On the plan, member names are for your leadership alone, in the order people joined — never sorted into who is behind.' : ''}
+          {' '}Wrong answers teach, and nobody loses for missing a day — your church page should feel like that too.
+        </p>
+      </div>
+    </div>
   )
 }

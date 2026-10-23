@@ -7,7 +7,7 @@ import { useJuice } from '@/juice/useJuice'
 import { fetchAdminSettings, fetchChurchBilling, fetchEntitlements, openBillingPortal, serverGenerationBackend, serverVerseBackend, type AdminSettings, type ChurchBilling, type Entitlements } from '@/store/churchAdmin'
 import { churchBillingPortalVisible } from '@/lib/commerce'
 import { TodayVerseForm } from './TodayVerseForm'
-import { OverviewPanel, PeoplePanel, ActivityPanel, useInsights } from './InsightsPanel'
+import { OverviewPanel, PeoplePanel, ActivityPanel, SummaryPanel, useInsights, useSummary } from './InsightsPanel'
 import { NoticesPanel } from './NoticesPanel'
 import { SharePanel } from './SharePanel'
 
@@ -31,8 +31,11 @@ import { SharePanel } from './SharePanel'
 //   5. Notices — the announcement and the giving link.
 //   6. Share — the page's link to paste, and (verified) the QR code to print.
 //
-// A claimed church that is not verified gets Notices and Share alone (the
-// announcement is free-layer, 0117).
+// A claimed church that is not verified — a FREE claim (0137) — gets an
+// Overview of three congregation totals (`church_leader_summary`: members,
+// active this week as a percentage, average current streak; no names), plus
+// Notices and Share. The notice is free-layer (0117) and shows on the
+// church's page.
 //
 // Two entitlements, and the top of the screen says which this church holds
 // (`church_entitlements`, 0127): the BASE Church Leader tier (verified
@@ -52,6 +55,8 @@ export default function ChurchAdminScreen() {
   // Read once for Overview and People together. Unverified leadership gets
   // `not_verified` back and those tabs are not drawn.
   const insights = useInsights(id)
+  // Every tier's top row of totals, verified or not (0137).
+  const summary = useSummary(id)
 
   const load = useCallback(async () => {
     const [r, e, b] = await Promise.all([fetchAdminSettings(id), fetchEntitlements(id), fetchChurchBilling(id)])
@@ -107,7 +112,7 @@ export default function ChurchAdminScreen() {
   const tabs = [
     ...(settings.verified
       ? [
-          { key: 'overview', label: 'Overview', content: <OverviewPanel insights={insights.data} failed={insights.failed} /> },
+          { key: 'overview', label: 'Overview', content: <OverviewPanel insights={insights.data} failed={insights.failed} summary={summary.data} /> },
           {
             key: 'verse',
             label: 'Schedule',
@@ -124,7 +129,7 @@ export default function ChurchAdminScreen() {
           { key: 'people', label: 'People', content: <PeoplePanel insights={insights.data} failed={insights.failed} /> },
           { key: 'activity', label: 'Activity', content: <ActivityPanel churchId={id} /> },
         ]
-      : []),
+      : [{ key: 'overview', label: 'Overview', content: <SummaryPanel summary={summary.data} failed={summary.failed} /> }]),
     {
       key: 'notices',
       label: 'Notices',
@@ -148,7 +153,7 @@ export default function ChurchAdminScreen() {
 
       <PlanStatus leader={leader} generation={generation} held={!!ent?.contentGenerationHeld} churchId={id} billing={billing} />
 
-      <TabbedSection tabs={tabs} defaultOpen defaultTab={settings.verified ? 'overview' : 'notices'} />
+      <TabbedSection tabs={tabs} defaultOpen defaultTab="overview" />
       <div style={{ height: 32 }} />
     </Page>
   )
@@ -165,7 +170,9 @@ function PlanStatus({ leader, generation, held, churchId, billing }: {
       <PlanRow
         on={leader}
         name="Church Leader"
-        detail={leader ? 'Your verse and questions, series, notes, congregation totals.' : 'Notices and sharing only for now.'}
+        detail={leader
+          ? 'Your verse and questions, series, notes, and each member’s play by name.'
+          : 'Free claim: congregation totals and one notice on your page. Church Leader adds your own verse and member names.'}
       />
       <PlanRow
         on={generation}

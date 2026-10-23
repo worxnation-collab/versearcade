@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Avatar } from '@/components/Avatar'
-import { fetchLeaderInsights, type LeaderInsights } from '@/store/churchAdmin'
+import { fetchLeaderInsights, fetchLeaderSummary, type LeaderInsights, type LeaderSummary } from '@/store/churchAdmin'
 import { fetchChurchFeed, type FeedEvent } from '@/store/churchVerse'
 import { ago } from '../ChurchLife'
 
@@ -9,6 +9,77 @@ import { ago } from '../ChurchLife'
 // floored at five" rule for leadership (2026-10-21): "this is a tool for church
 // leaders, names are important". The server returns this only to verified
 // leadership of THIS church (`church_leader_insights`, `church_admin_can`).
+//
+// Two rules hold on every panel here, for every tier (0137):
+//   • nobody is ranked against anybody — the roster is in join order, and no
+//     panel sorts or filters people by what they did;
+//   • there is no list of who has not played — no "quiet" filter, no coral for
+//     a lapsed streak, nothing that turns a member into a gap to chase.
+// A FREE claim (unverified church) sees `SummaryTiles` and nothing per person.
+
+export function useSummary(churchId: string) {
+  const [data, setData] = useState<LeaderSummary | null>(null)
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    let alive = true
+    fetchLeaderSummary(churchId).then((r) => {
+      if (!alive) return
+      if (r.ok) setData(r.data)
+      else setFailed(true)
+    })
+    return () => { alive = false }
+  }, [churchId])
+  return { data, failed }
+}
+
+/** Members, active this week (%), average current streak — every tier's top row. */
+export function SummaryTiles({ summary }: { summary: LeaderSummary }) {
+  const s = summary
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
+      <Tile label="members" value={s.members.toLocaleString()} />
+      <Tile label="active this week" value={s.activePct == null ? '—' : `${s.activePct}%`} tone="var(--mint)" />
+      <Tile label="avg current streak" value={s.avgStreak.toLocaleString(undefined, { maximumFractionDigits: 1 })} />
+    </div>
+  )
+}
+
+/**
+ * The free claim's whole dashboard: the three totals and the live notice.
+ * Totals only, on purpose — names and per-person play arrive with Church
+ * Leader, the verified plan.
+ */
+export function SummaryPanel({ summary, failed }: { summary: LeaderSummary | null; failed: boolean }) {
+  if (failed) return FAILED
+  if (!summary) return LOADING
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 14, minWidth: 0 }}>
+      <SummaryTiles summary={summary} />
+      <p className="faint" style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}>
+        Active means played in the last seven days. A streak counts while it&rsquo;s alive — played today or
+        yesterday — and everyone else counts as zero in the average. These are totals for the whole
+        congregation; nobody&rsquo;s name is attached to them.
+      </p>
+      <NoticeCard notice={summary.notice} />
+    </div>
+  )
+}
+
+function NoticeCard({ notice }: { notice: { message: string; createdAt: string } | null }) {
+  return (
+    <div className="card" style={{ padding: '12px 14px' }}>
+      <Head>Live notice</Head>
+      {notice ? (
+        <>
+          <p style={{ margin: '6px 0 0', fontSize: 13.5, lineHeight: 1.45, overflowWrap: 'anywhere' }}>{notice.message}</p>
+          <div className="faint" style={{ fontSize: 11.5, marginTop: 4 }}>Posted {ago(notice.createdAt)} ago · on your church&rsquo;s page</div>
+        </>
+      ) : (
+        <p className="dim" style={{ margin: '6px 0 0', fontSize: 13 }}>None right now — post one under Notices.</p>
+      )}
+    </div>
+  )
+}
 
 export function useInsights(churchId: string) {
   const [data, setData] = useState<LeaderInsights | null>(null)
@@ -28,7 +99,7 @@ export function useInsights(churchId: string) {
 const FAILED = <p className="dim" style={{ fontSize: 13.5 }}>These numbers couldn’t load just now.</p>
 const LOADING = <div className="skeleton" style={{ height: 220, borderRadius: 14 }} />
 
-export function OverviewPanel({ insights, failed }: { insights: LeaderInsights | null; failed: boolean }) {
+export function OverviewPanel({ insights, failed, summary }: { insights: LeaderInsights | null; failed: boolean; summary: LeaderSummary | null }) {
   if (failed) return FAILED
   if (!insights) return LOADING
   const i = insights
@@ -36,11 +107,14 @@ export function OverviewPanel({ insights, failed }: { insights: LeaderInsights |
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 14, minWidth: 0 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
-        <Tile label="members" value={i.members} />
-        <Tile label="active this week" value={i.active7d} tone="var(--mint)" />
-        <Tile label="quiet 7+ days" value={i.quiet} tone={i.quiet ? 'var(--coral)' : undefined} />
-      </div>
+      {summary ? (
+        <SummaryTiles summary={summary} />
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+          <Tile label="members" value={i.members.toLocaleString()} />
+          <Tile label="active this week" value={i.active7d.toLocaleString()} tone="var(--mint)" />
+        </div>
+      )}
 
       <div className="card" style={{ padding: '12px 14px' }}>
         <Head>Last 14 days</Head>
@@ -111,28 +185,21 @@ export function OverviewPanel({ insights, failed }: { insights: LeaderInsights |
   )
 }
 
+// Every member, in the order they joined — the server's order, and the only
+// one. No filter by activity and no colour for a lapsed streak: a roster you
+// can narrow to "who hasn't played" is that list with a button in front of it.
 export function PeoplePanel({ insights, failed }: { insights: LeaderInsights | null; failed: boolean }) {
-  const [filter, setFilter] = useState<'all' | 'active' | 'quiet'>('all')
   if (failed) return FAILED
   if (!insights) return LOADING
-  const rows = insights.roster.filter((m) => filter === 'all' || (filter === 'active' ? m.active : !m.active))
+  const rows = insights.roster
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10, minWidth: 0 }}>
-      <div style={{ display: 'flex', gap: 6 }}>
-        {(['all', 'active', 'quiet'] as const).map((f) => (
-          <button
-            key={f}
-            className="pill"
-            aria-pressed={filter === f}
-            onClick={() => setFilter(f)}
-            style={{ fontSize: 12.5, fontWeight: 700, ...(filter === f ? { background: 'var(--select)', borderColor: 'var(--select)', color: 'var(--ink)' } : null) }}
-          >
-            {f === 'all' ? `All ${insights.members}` : f === 'active' ? `Active ${insights.active7d}` : `Quiet ${insights.quiet}`}
-          </button>
-        ))}
-      </div>
-      {rows.length === 0 && <p className="dim" style={{ fontSize: 13.5 }}>Nobody here.</p>}
+      <p className="faint" style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}>
+        {insights.members.toLocaleString()} {insights.members === 1 ? 'member' : 'members'}, in the order they joined. Only
+        your church&rsquo;s leadership sees this page.
+      </p>
+      {rows.length === 0 && <p className="dim" style={{ fontSize: 13.5 }}>Nobody here yet.</p>}
       {rows.map((m) => (
         <div key={m.username} className="card" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', minWidth: 0 }}>
           <Avatar emoji={m.avatarEmoji ?? '🙂'} character={m.avatarCharacter} username={m.username} size={36} />
@@ -141,13 +208,15 @@ export function PeoplePanel({ insights, failed }: { insights: LeaderInsights | n
               {m.username}{m.leader ? <span className="faint" style={{ fontWeight: 700, fontSize: 11.5 }}> · leader</span> : null}
             </div>
             <div className="faint" style={{ fontSize: 11.5 }}>
-              {m.lastPlayedOn ? `Last played ${lastLabel(m.lastPlayedOn, insights.today)}` : 'Hasn’t played yet'}
-              {` · ${m.drop7d} drop, ${m.church7d} church this week`}
+              {m.lastPlayedOn
+                ? `Last played ${lastLabel(m.lastPlayedOn, insights.today)} · `
+                : m.joinedAt ? `Joined ${pretty(m.joinedAt.slice(0, 10))} · ` : ''}
+              {`${m.drop7d} drop, ${m.church7d} church this week`}
               {m.churchAvg != null ? ` · avg ${m.churchAvg.toLocaleString()}` : ''}
             </div>
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, color: m.active ? 'var(--mint)' : 'var(--coral)' }}>{m.streak}</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, color: 'var(--ink)' }}>{m.streak}</div>
             <div className="faint" style={{ fontSize: 10.5 }}>streak</div>
           </div>
         </div>
@@ -196,10 +265,10 @@ function describe(e: FeedEvent): string {
   }
 }
 
-function Tile({ label, value, tone }: { label: string; value: number; tone?: string }) {
+function Tile({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
     <div className="card center" style={{ padding: '12px 6px' }}>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, color: tone }}>{value.toLocaleString()}</div>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, color: tone }}>{value}</div>
       <div className="faint" style={{ fontSize: 11, marginTop: 2 }}>{label}</div>
     </div>
   )

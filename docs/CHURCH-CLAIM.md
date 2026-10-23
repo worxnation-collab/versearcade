@@ -193,3 +193,56 @@ says so.
 
 **Known gap.** An already-paying church cannot add the Content Generation
 add-on itself (the portal's plan switching is off on purpose).
+
+## Free claim: three members, card on file or by hand (0137)
+
+The owner added a free door beside the paid one on 2026-10-23. A church that
+nobody leads can be claimed **for free once its page has at least three
+members** (`church_free_claim_min_members()` ↔ `FREE_CLAIM_MIN_MEMBERS` in
+`store/churchClaim.ts` and in `church-billing`, three copies to keep in sync).
+
+**Two ways to prove it**, both chosen on `/church/:id/claim`:
+
+- **Card on file.** `start_church_free_claim(…, 'card', …)` returns a one-time
+  token; `church-billing` `{ action: 'setup', f }` creates a Stripe customer
+  and a Checkout Session in **setup mode**, which is a $0 SetupIntent with no
+  price and no subscription. When `checkout.session.completed` arrives with
+  mode `setup`, the webhook calls `billing_activate_free_claim`
+  (service_role only). The claimant comes back to `?carded=1`, which polls
+  until they lead the church.
+- **By hand.** Role, name, email and phone go into the queue under
+  Admin → Churches → Self-serve claims, marked **needs review**. An email on
+  the church website's own domain is flagged (`domain_match`), but it is still
+  reviewed. **Approve** grants the claim through the same writer the card path
+  uses (`church_grant_free_claim`); **Decline** closes it. A claimant whose
+  request is waiting sees "your request is with us" and can switch to the card
+  path to skip the wait.
+
+**What a free claim grants:** leadership of an **unverified** church. That
+means the Overview tab (`church_leader_summary`: members, active this week as
+a percentage, and the average current streak, with no names attached) and the
+one live notice on the church's page (`set_church_announcement`, unchanged).
+Everything per member stays with **verified** leadership (`church_admin_can`).
+The church stays unverified until it pays.
+
+**What 0137 changed for verified leadership:** `church_leader_insights` now
+returns the roster in **join order** rather than by last play, and its rows no
+longer carry `active`. The People tab lost its All / Active / Quiet filter and
+the coral colour on a lapsed streak. Names and last play stay, per the 0128
+call. What is gone is any way to sort or filter the roster into a list of who
+hasn't played.
+
+**Guards inherited from 0134:** the church must have no leader and no live
+subscription, the first claim to complete wins and a later one becomes a
+`conflict`, an account can start five claims a day, and every claim stays
+revocable.
+
+**App Store build:** only the by-hand free claim is offered. The card path and
+the plan both end on Stripe pages. The church page's "Lead this church?" link
+shows there only while the free claim is open.
+
+**Known gaps:** a church claimed for free can't upgrade itself to the paid
+plan yet. The operator sends it a billing link (`admin_church_billing_link`).
+The card path also needs the restricted Stripe key to be allowed to create
+Checkout Sessions in setup mode; this was not tested against live Stripe before
+merge.

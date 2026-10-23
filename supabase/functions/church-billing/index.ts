@@ -28,6 +28,15 @@
 // subscription; a claim that lost the race to another payer is a 'conflict',
 // and its subscription is NOT applied, so the first payer's billing row stands.
 //
+// A FREE CLAIM (0137) is a fourth door: POST { action: 'setup', f } with the
+// token `start_church_free_claim` handed a signed-in claimant for a church with
+// at least three members. It opens a Checkout Session in SETUP mode — a
+// SetupIntent, $0, no price, no subscription — so a card lands on Stripe's file
+// as the identity signal and nothing is charged. The webhook sees
+// `checkout.session.completed` with mode 'setup' and calls
+// `billing_activate_free_claim`, which makes the claimant leadership and leaves
+// the church UNVERIFIED (verification is what the paid plan buys).
+//
 // THE TOKEN IS THE ONLY THING A CALLER SENDS ABOUT WHICH CHURCH. It comes from
 // `admin_church_billing_link` (0131) and is looked up here with the service
 // role; a church id in a request is never trusted, so nobody can open a
@@ -166,9 +175,9 @@ async function sha256(text: string): Promise<string> {
  */
 async function claimFor(token: unknown): Promise<Linked | null> {
   if (typeof token !== 'string' || !/^[0-9a-f]{64}$/.test(token)) return null
-  const { data } = await admin.from('church_claims').select('id,church_id,status,churches(name,city,region)')
+  const { data } = await admin.from('church_claims').select('id,church_id,status,tier,churches(name,city,region)')
     .eq('token_hash', await sha256(token)).maybeSingle()
-  if (!data || data.status !== 'pending') return null
+  if (!data || data.status !== 'pending' || data.tier !== 'paid') return null
   const [{ count }, { data: bill }] = await Promise.all([
     admin.from('church_admins').select('user_id', { count: 'exact', head: true }).eq('church_id', data.church_id),
     admin.from('church_billing').select('status').eq('church_id', data.church_id).maybeSingle(),
@@ -177,6 +186,34 @@ async function claimFor(token: unknown): Promise<Linked | null> {
   if ((count ?? 0) > 0 || alreadyPaying(status)) return null
   const c = (data as { churches: { name: string; city: string | null; region: string | null } | null }).churches
   return { church_id: data.church_id as string, status, claim: data.id as string, name: c?.name ?? 'Your church', city: c?.city ?? null, region: c?.region ?? null }
+}
+
+/** The free door's threshold; mirrors church_free_claim_min_members() (0137). */
+const FREE_CLAIM_MIN_MEMBERS = 3
+
+/**
+ * The church a FREE card claim token is for, while it is still claimable: the
+ * claim pending, nobody leading, no live subscription, and still at least
+ * three members. Anything else answers null.
+ */
+async function freeClaimFor(token: unknown): Promise<(Linked & { claim: string; email: string; contact: string }) | null> {
+  if (typeof token !== 'string' || !/^[0-9a-f]{64}$/.test(token)) return null
+  const { data } = await admin.from('church_claims').select('id,church_id,status,tier,method,email,contact_name,churches(name,city,region)')
+    .eq('token_hash', await sha256(token)).maybeSingle()
+  if (!data || data.status !== 'pending' || data.tier !== 'free' || data.method !== 'card') return null
+  const [{ count: leaders }, { count: members }, { data: bill }] = await Promise.all([
+    admin.from('church_admins').select('user_id', { count: 'exact', head: true }).eq('church_id', data.church_id),
+    admin.from('profiles').select('id', { count: 'exact', head: true }).eq('church_id', data.church_id),
+    admin.from('church_billing').select('status').eq('church_id', data.church_id).maybeSingle(),
+  ])
+  const status = (bill?.status as string | null) ?? null
+  if ((leaders ?? 0) > 0 || alreadyPaying(status) || (members ?? 0) < FREE_CLAIM_MIN_MEMBERS) return null
+  const c = (data as { churches: { name: string; city: string | null; region: string | null } | null }).churches
+  return {
+    church_id: data.church_id as string, status, claim: data.id as string,
+    email: data.email as string, contact: data.contact_name as string,
+    name: c?.name ?? 'Your church', city: c?.city ?? null, region: c?.region ?? null,
+  }
 }
 
 const founding = () => FOUNDING_UNTIL - Date.now() > TRIAL_MIN_MS
@@ -238,6 +275,18 @@ async function webhook(req: Request): Promise<Response> {
   let result: unknown = { ignored: event.type }
   if (event.type.startsWith('customer.subscription.')) {
     result = await apply(o as unknown as Sub)
+  } else if (event.type === 'checkout.session.completed' && o.mode === 'setup') {
+    // A free claim's card is saved. Only a session carrying a free claim id
+    // means anything; the SetupIntent id is kept on the claim for the review.
+    const md = (o.metadata ?? {}) as Record<string, string>
+    if (md.free_claim_id && md.church_id) {
+      const { data, error } = await admin.rpc('billing_activate_free_claim', {
+        p_claim_id: md.free_claim_id, p_church_id: md.church_id,
+        p_setup_intent_id: typeof o.setup_intent === 'string' ? o.setup_intent : null,
+      })
+      if (error) throw new Error(`activate free: ${error.message}`)
+      result = data
+    }
   } else if (event.type === 'checkout.session.completed' && o.mode === 'subscription' && typeof o.subscription === 'string') {
     result = await apply(await stripe<Sub>('GET', `subscriptions/${o.subscription}`), o.client_reference_id as string | null)
   } else if ((event.type === 'invoice.paid' || event.type === 'invoice.payment_failed') && typeof o.subscription === 'string') {
@@ -297,6 +346,29 @@ async function invoice(link: Linked, interval: 'month' | 'year', addon: boolean,
   return json({ ok: true, founding: founding() })
 }
 
+// The free claim's card check: a customer for the church, then a Checkout
+// Session in setup mode on it. No price anywhere, so nothing on the page
+// Stripe shows can read as a charge.
+async function setup(link: Linked & { claim: string; email: string; contact: string }): Promise<Response> {
+  const customer = await stripe<{ id: string }>('POST', 'customers', {
+    email: link.email, name: link.contact,
+    'metadata[church_id]': link.church_id, 'metadata[free_claim_id]': link.claim,
+  })
+  const s = await stripe<{ url: string }>('POST', 'checkout/sessions', {
+    mode: 'setup',
+    customer: customer.id,
+    'payment_method_types[0]': 'card',
+    client_reference_id: link.church_id,
+    'metadata[church_id]': link.church_id,
+    'metadata[free_claim_id]': link.claim,
+    'setup_intent_data[metadata][church_id]': link.church_id,
+    'setup_intent_data[metadata][free_claim_id]': link.claim,
+    success_url: `${SITE}/church/${link.church_id}/claim?carded=1`,
+    cancel_url: `${SITE}/church/${link.church_id}/claim`,
+  })
+  return json({ url: s.url })
+}
+
 // The portal: leadership of THIS church, with a live Stripe
 // subscription, gets a session on the church's own Stripe customer. The customer
 // id never leaves the server. A church verified by hand (no customer) gets
@@ -352,6 +424,11 @@ Deno.serve(async (req) => {
     if (req.method === 'POST') {
       const b = await req.json().catch(() => ({})) as Record<string, unknown>
       if (b.action === 'portal') return await portal(req, b.church)
+      if (b.action === 'setup') {
+        const free = await freeClaimFor(b.f)
+        if (!free) return json({ error: 'unknown link' }, 404)
+        return await setup(free)
+      }
       const link = b.c ? await claimFor(b.c) : await churchFor(b.t)
       if (!link) return json({ error: 'unknown link' }, 404)
       if (alreadyPaying(link.status)) return json({ error: 'already', message: 'This church already has a subscription.' }, 409)

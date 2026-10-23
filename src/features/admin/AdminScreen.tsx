@@ -683,11 +683,18 @@ function ChurchClaims() {
 // cancellation un-verifies the church through the webhook as usual. A
 // 'conflict' is a second payer who lost the race to an unled church — never
 // applied, waiting on a refund.
+//
+// FREE claims (0137) sit in the same list. A card one is already live, like a
+// paid one. A MANUAL one is the queue: nothing is granted until "Approve", and
+// the row carries what to check — phone, email, and whether the email's domain
+// matches the church's website (a hint, never a pass).
 interface SelfClaimRow {
   id: string; church_id: string; church_name: string; city: string | null; region: string | null
   username: string | null; role: string; contact_name: string; email: string
   status: 'pending' | 'active' | 'conflict' | 'revoked'; stripe_subscription_id: string | null
   created_at: string; activated_at: string | null; reviewed_at: string | null
+  tier?: 'paid' | 'free'; method?: 'card' | 'manual'; phone?: string | null; domain_match?: boolean
+  church_host?: string | null; members?: number; stripe_setup_intent_id?: string | null
 }
 
 function SelfServeClaims() {
@@ -697,14 +704,16 @@ function SelfServeClaims() {
     supabase?.rpc('admin_church_claims', { p_limit: 100 }).then(({ data }) => setRows((data as SelfClaimRow[]) ?? []))
   useEffect(() => { void load() }, [])
 
-  const act = async (r: SelfClaimRow, action: 'seen' | 'revoke') => {
-    if (action === 'revoke' && armed !== r.id) { setArmed(r.id); return }
+  const manual = (r: SelfClaimRow) => r.tier === 'free' && r.method === 'manual'
+  const act = async (r: SelfClaimRow, action: 'seen' | 'revoke' | 'approve' | 'reject') => {
+    if ((action === 'revoke' || action === 'reject') && armed !== `${action}:${r.id}`) { setArmed(`${action}:${r.id}`); return }
     setArmed(null)
     await supabase!.rpc('admin_review_church_claim', { p_claim_id: r.id, p_action: action })
     void load()
   }
 
-  const shown = (rows ?? []).filter((r) => r.status !== 'pending' || Date.now() - Date.parse(r.created_at) < 7 * 864e5)
+  // A pending MANUAL claim is waiting on us and never ages out of the list.
+  const shown = (rows ?? []).filter((r) => r.status !== 'pending' || manual(r) || Date.now() - Date.parse(r.created_at) < 7 * 864e5)
   const color = (st: SelfClaimRow['status']) =>
     st === 'active' ? 'var(--mint)' : st === 'conflict' ? 'var(--coral)' : 'var(--ink-dim)'
 
@@ -712,7 +721,8 @@ function SelfServeClaims() {
     <div>
       <h3 style={{ fontSize: 14, margin: '0 0 8px' }} className="dim">Self-serve claims</h3>
       <p className="faint" style={{ fontSize: 12, marginBottom: 10, lineHeight: 1.4 }}>
-        Paid claims on churches nobody led. Already live — check each one. Revoking takes the
+        Claims on churches nobody led. Paid and free-by-card claims are already live — check each one.
+        Free <b>by hand</b> claims wait for you: call or email the church, then approve. Revoking takes the
         leadership back; refund and cancel in Stripe yourself. A <b style={{ color: 'var(--coral)' }}>conflict</b> lost
         the race to another payer and needs a refund.
       </p>
@@ -726,16 +736,39 @@ function SelfServeClaims() {
             <div key={r.id} className="card" style={{ display: 'grid', gap: 6, borderColor: r.reviewed_at ? undefined : 'var(--gold)' }}>
               <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
                 <b style={{ fontSize: 14, flex: 1, minWidth: 0 }}>{r.church_name}</b>
-                <span style={{ fontSize: 11, fontWeight: 800, color: color(r.status) }}>{r.status}</span>
+                <span className="faint" style={{ fontSize: 11, fontWeight: 700 }}>
+                  {r.tier === 'free' ? (r.method === 'manual' ? 'free · by hand' : 'free · card') : 'paid'}
+                </span>
+                <span style={{ fontSize: 11, fontWeight: 800, color: color(r.status) }}>{manual(r) && r.status === 'pending' ? 'needs review' : r.status}</span>
               </div>
               <div className="faint" style={{ fontSize: 11.5, lineHeight: 1.45 }}>
                 {[r.city, r.region].filter(Boolean).join(', ')}{r.city || r.region ? ' · ' : ''}
                 @{r.username ?? '—'} · {r.contact_name} ({r.role}) · {r.email}
+                {r.phone ? ` · ${r.phone}` : ''}
+                {r.members != null ? ` · ${r.members} members` : ''}
+                {r.tier === 'free' && (
+                  <>
+                    <br />
+                    {r.domain_match
+                      ? <span style={{ color: 'var(--mint)', fontWeight: 700 }}>email matches {r.church_host}</span>
+                      : r.church_host ? `email does not match ${r.church_host}` : 'church has no website on file'}
+                  </>
+                )}
                 <br />
                 started {new Date(r.created_at).toLocaleString()}
                 {r.activated_at ? ` · paid ${new Date(r.activated_at).toLocaleString()}` : ''}
                 {r.stripe_subscription_id ? ` · ${r.stripe_subscription_id}` : ''}
+                {r.stripe_setup_intent_id ? ` · ${r.stripe_setup_intent_id}` : ''}
               </div>
+              {manual(r) && r.status === 'pending' && (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="pill" onClick={() => act(r, 'approve')} style={{ fontWeight: 800, fontSize: 12 }}>Approve</button>
+                  <button className="pill" onClick={() => act(r, 'reject')}
+                    style={{ fontWeight: 800, fontSize: 12, background: 'var(--card-solid)', color: armed === `reject:${r.id}` ? 'var(--coral)' : 'var(--ink-dim)' }}>
+                    {armed === `reject:${r.id}` ? 'Tap again to decline' : 'Decline'}
+                  </button>
+                </div>
+              )}
               {(r.status === 'active' || r.status === 'conflict') && (
                 <div style={{ display: 'flex', gap: 8 }}>
                   {!r.reviewed_at && (
@@ -743,8 +776,8 @@ function SelfServeClaims() {
                   )}
                   {r.status === 'active' && (
                     <button className="pill" onClick={() => act(r, 'revoke')}
-                      style={{ fontWeight: 800, fontSize: 12, background: 'var(--card-solid)', color: armed === r.id ? 'var(--coral)' : 'var(--ink-dim)' }}>
-                      {armed === r.id ? 'Tap again to revoke' : 'Revoke'}
+                      style={{ fontWeight: 800, fontSize: 12, background: 'var(--card-solid)', color: armed === `revoke:${r.id}` ? 'var(--coral)' : 'var(--ink-dim)' }}>
+                      {armed === `revoke:${r.id}` ? 'Tap again to revoke' : 'Revoke'}
                     </button>
                   )}
                 </div>

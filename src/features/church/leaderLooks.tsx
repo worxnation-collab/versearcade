@@ -29,11 +29,11 @@ const ADULT_HEAD = 'translate(60 52) scale(0.74) translate(-60 -52)'
 // writes that map and must never be able to overwrite these (the rule the
 // road rewards and the nav paintings follow).
 //
-// One painting per look, plus tone/hair variants (ten so far). A leader gets the
-// variant that matches their own skin tone AND hair exactly, else the look's
-// painting. All fifteen are men, so a woman leader gets the DRAWN figure in her
-// own tone until women's paintings exist — a man standing in for her would be
-// a stranger wearing her name.
+// One painting per look for each figure, plus tone/hair variants (ten men's so
+// far). A leader gets the variant that matches their own figure, skin tone AND
+// hair exactly, else their figure's painting of the look — a woman never gets
+// a man's painting, or the reverse; a stranger wearing her name is worse than
+// a near miss on tone.
 const OWNER_DIR = '/skins/leader-looks'
 const OWNER_LOOK_ART: Record<Exclude<LeaderLookId, 'custom'>, string> = {
   'classic-clergy': `${OWNER_DIR}/classic-clergy.png`,
@@ -41,6 +41,15 @@ const OWNER_LOOK_ART: Record<Exclude<LeaderLookId, 'custom'>, string> = {
   'professional-suit': `${OWNER_DIR}/professional-suit.png`,
   'robe-stole': `${OWNER_DIR}/robe-stole.png`,
   contemporary: `${OWNER_DIR}/contemporary.png`,
+}
+// The women's set (2026-10-23), one painting per look. Each is also filed
+// under its own tone/hair so a future variant table reads the same way.
+const OWNER_FEM_LOOK_ART: Record<Exclude<LeaderLookId, 'custom'>, string> = {
+  'classic-clergy': `${OWNER_DIR}/female-classic-clergy-sand-brown.png`,
+  'liturgical-vestments': `${OWNER_DIR}/female-liturgical-medium-dark.png`,
+  'professional-suit': `${OWNER_DIR}/female-professional-fair-auburn.png`,
+  'robe-stole': `${OWNER_DIR}/female-robe-stole-deep-black.png`,
+  contemporary: `${OWNER_DIR}/female-contemporary-medium.png`,
 }
 /** `look|tone|hair` → painting. Tones and hairs are the AvatarSpec keys. */
 const OWNER_VARIANTS: Record<string, string> = {
@@ -61,10 +70,19 @@ const OWNER_VARIANTS: Record<string, string> = {
   'liturgical-vestments|sand|auburn': `${OWNER_DIR}/liturgical-vestments-sand-auburn.png`,
   'professional-suit|amber|chestnut': `${OWNER_DIR}/professional-suit-medium-chestnut.png`,
 }
+/** The same for women. Supplied names: brown hair is `espresso`, fair is
+ *  `porcelain`, medium is `amber`, medium-dark is `bronze`, deep is `ebony`. */
+const OWNER_FEM_VARIANTS: Record<string, string> = {
+  'classic-clergy|sand|espresso': OWNER_FEM_LOOK_ART['classic-clergy'],
+  'liturgical-vestments|bronze|espresso': OWNER_FEM_LOOK_ART['liturgical-vestments'],
+  'professional-suit|porcelain|auburn': OWNER_FEM_LOOK_ART['professional-suit'],
+  'robe-stole|ebony|jet': OWNER_FEM_LOOK_ART['robe-stole'],
+  'contemporary|amber|espresso': OWNER_FEM_LOOK_ART.contemporary,
+}
 
-function ownerLookArt(look: Exclude<LeaderLookId, 'custom'>, fem: boolean, tone: string, hair: string): string | undefined {
-  if (fem) return undefined
-  return OWNER_VARIANTS[`${look}|${tone}|${hair}`] ?? OWNER_LOOK_ART[look]
+function ownerLookArt(look: Exclude<LeaderLookId, 'custom'>, fem: boolean, tone: string, hair: string): string {
+  const key = `${look}|${tone}|${hair}`
+  return fem ? OWNER_FEM_VARIANTS[key] ?? OWNER_FEM_LOOK_ART[look] : OWNER_VARIANTS[key] ?? OWNER_LOOK_ART[look]
 }
 
 type Garment = {
@@ -109,8 +127,9 @@ export function LeaderLookFigure({
   customArtUrl?: string | null
   size?: number
   title?: string
-  /** A picker tile: show the look's own painting whoever is choosing, because
-   *  the tile's job is to show the OUTFIT. Off, it is how this leader appears. */
+  /** A picker tile: show the look's own painting in the chooser's figure,
+   *  because the tile's job is to show the OUTFIT. Off, it is how this leader
+   *  appears (their exact tone/hair variant when one exists). */
   preview?: boolean
 }) {
   const fem = spec ? figureOf(spec) === 'fem' : false
@@ -121,7 +140,7 @@ export function LeaderLookFigure({
   const g = GARMENTS[id]
   const tone = spec?.skin ?? 'sand'
   const hairKey = spec?.hair ?? 'espresso'
-  const raster = custom ?? (preview ? OWNER_LOOK_ART[id] : ownerLookArt(id, fem, tone, hairKey))
+  const raster = custom ?? (preview ? (fem ? OWNER_FEM_LOOK_ART : OWNER_LOOK_ART)[id] : ownerLookArt(id, fem, tone, hairKey))
   const [failed, setFailed] = useState<string | null>(null)
   const useRaster = !!raster && failed !== raster
 

@@ -1744,17 +1744,20 @@ Four things are load-bearing:
   cassock never follows them onto the Battle tab and a pastor at two churches
   can wear two. `LeaderLookFigure` reads only tone, hair and figure from their
   own spec. **The art is the OWNER'S paintings** (2026-10-23):
-  `public/skins/leader-looks/` — one adult painting per look plus ten
-  tone/hair variants, hand-kept in `OWNER_LOOK_ART` / `OWNER_VARIANTS`
+  `public/skins/leader-looks/` — one adult painting per look for EACH
+  figure (five men, five women) plus ten men's tone/hair variants, hand-kept
+  in `OWNER_LOOK_ART` / `OWNER_FEM_LOOK_ART` / `OWNER_VARIANTS` /
+  `OWNER_FEM_VARIANTS`
   (`leaderLooks.tsx`) and deliberately NOT in `GENERATED_ART`, so a gen-art
   run can never overwrite them. They arrived on an opaque pink backdrop and
   were cut out by `scripts/key-owner-figure.mjs`, which keys only the
   backdrop's BRIGHT pink (gen-art's looser magenta test ate half of a purple
-  stole) — re-run it on any new painting rather than hand-editing. A leader
-  gets the variant matching their exact tone AND hair, else the look's
-  painting; the picker tiles always show the look's own painting
-  (`preview`). **All fifteen are men, so a woman leader gets the DRAWN adult
-  figure in her own tone** until women's paintings exist. The 359 generated
+  stole; `--shadow` also takes a dark-pink floor shadow, flood-filled from the
+  backdrop only) — re-run it on any new painting rather than hand-editing. A
+  leader gets the variant matching their figure, tone AND hair, else their
+  FIGURE's painting of the look — never the other figure's; the picker tiles
+  show the look in the chooser's figure (`preview`). The drawn adult figure
+  is now only the failed-load fallback. The 359 generated
   renders that preceded these were childlike (referenced on the young
   starters) and were removed with their manifest.
 - **Setup is the claim screen's landing.** Claiming sends a leader to

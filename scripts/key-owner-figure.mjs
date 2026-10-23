@@ -1,6 +1,10 @@
 // Cut an owner-supplied figure painting out of its magenta backdrop.
 //
-//   node scripts/key-owner-figure.mjs <in.png> <out.png> [--max-h 400]
+//   node scripts/key-owner-figure.mjs <in.png> <out.png> [--max-h 400] [--shadow]
+//
+// --shadow also keys the backdrop's DARK pink — a floor shadow painted into the
+// backdrop under the feet — but only where it is connected to the keyed
+// backdrop, so a red or purple garment inside the figure is never reached.
 //
 // gen-art.mjs keys EVERY magenta-ish pixel, which is right for its own renders
 // (prompted onto flat #FF00FF) and wrong for paintings made elsewhere: their
@@ -33,6 +37,24 @@ const isBg = (p) => {
 }
 const bg = new Uint8Array(w * h)
 for (let p = 0; p < w * h; p++) if (isBg(p)) { bg[p] = 1; data[p * 4 + 3] = 0 }
+
+// The shadow pink: red-dominant with almost no green and blue well under red.
+// A purple garment has b close to r, so it fails the r - b test.
+if (process.argv.includes('--shadow')) {
+  const isShadow = (p) => {
+    const r = data[p * 4], g = data[p * 4 + 1], b = data[p * 4 + 2]
+    return r > 80 && g < 55 && r - g > 70 && r - b > 40 && b - g > 10
+  }
+  const stack = []
+  for (let p = 0; p < w * h; p++) if (bg[p]) stack.push(p)
+  while (stack.length) {
+    const p = stack.pop(), x = p % w, y = (p - x) / w
+    for (const q of [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, y > 0 ? p - w : -1, y < h - 1 ? p + w : -1]) {
+      if (q < 0 || bg[q] || !isShadow(q)) continue
+      bg[q] = 1; data[q * 4 + 3] = 0; stack.push(q)
+    }
+  }
+}
 
 // Soft edge on the one-pixel RIM only: an anti-aliased pixel next to the
 // backdrop is part pink, so its alpha ramps with how magenta it is. Inside the

@@ -82,6 +82,8 @@ export interface ChurchBilling {
   addon: boolean
   invoiced: boolean
   periodEnd: string | null
+  /** The church's Apple subscription (0139), or null. `mine` = this caller's Apple ID pays. */
+  apple: { active: boolean; interval: 'month' | 'year' | null; expiresAt: string | null; mine: boolean } | null
 }
 
 export async function fetchChurchBilling(churchId: string): Promise<ChurchBilling | null> {
@@ -95,6 +97,15 @@ export async function fetchChurchBilling(churchId: string): Promise<ChurchBillin
     addon: !!d?.addon,
     invoiced: d?.collection_method === 'send_invoice',
     periodEnd: d?.period_end ?? null,
+    // A server without 0139 sends no `apple` key, which reads as no Apple plan.
+    apple: d?.apple
+      ? {
+          active: !!d.apple.active,
+          interval: d.apple.interval === 'year' || d.apple.interval === 'month' ? d.apple.interval : null,
+          expiresAt: d.apple.expires_at ?? null,
+          mine: !!d.apple.mine,
+        }
+      : null,
   }
 }
 

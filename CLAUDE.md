@@ -322,6 +322,27 @@ points at the existing inquiry form. The storefront comes from RevenueCat's
 on Capacitor 6 it reads null and the card stays on the inquiry path. Never
 substitute locale or IP for the storefront.
 
+**And the Verified Church plan can be bought THROUGH Apple too** (0139,
+`docs/APPLE-IAP.md` → "Church plan"), which is what Apple's multiplatform rule
+(3.1.3(b)) wants before the app honours a plan bought on the web. Two
+auto-renewable subscriptions in one group (`CHURCH_PLAN_PRODUCT_IDS` in
+`lib/iap.ts` ↔ `CHURCH_PLAN_PRODUCTS` in `supabase/functions/_shared/churchApple.ts`
+— add rows to both, never remove one). Four things are load-bearing. **They are
+NOT in `APPLE_PRODUCT_IDS`**: `useIap.ready` turns the skins shop on, and a
+church plan loading must not be what opens it — `churchPlans` is its own state
+and `churchApplePlansVisible()` its own gate (every storefront, online only,
+only once StoreKit returned the product). **The church is bound by the
+server**: `iap-fulfill` with `{ church_id }` asks RevenueCat itself and
+`billing_apply_apple` checks the caller leads that church; the client never
+says what it bought. **Renewals and lapses arrive by `revenuecat-webhook`**
+(verify_jwt off, a shared Authorization value, and it re-asks RevenueCat
+rather than reading the event), plus every `iap-fulfill` call re-syncs the
+caller's bindings — so the skins' Restore restores the plan too. **An Apple
+lapse only switches off what Apple switched on** (`granted_verified`), and a
+dead Stripe subscription no longer switches off a church Apple is paying for.
+The plan through Apple is Verified only; the Suite stays a web purchase, and
+the web hides "Unlock with Church Suite" while Apple is billing a church.
+
 So the same catalog is sold twice: Stripe on web (`lib/config.ts`), Apple IAP in
 the app (`lib/iap.ts` + `store/iap.ts`, RevenueCat). Setup runbook and the
 account-gated Apple steps: `docs/APPLE-IAP.md`.
@@ -2547,7 +2568,24 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0138` (check-ins carry today's church verse and can be
+The latest is `0139` (the Verified Church plan through Apple IAP —
+`church_apple_subscriptions` (one row per church, at most one ACTIVE row per
+user, so one Apple subscription verifies one church), `billing_apply_apple` and
+`billing_apple_bindings` (service_role only, called by `iap-fulfill` and
+`revenuecat-webhook` after they re-ask RevenueCat), and `billing_apply_subscription`
+/ `my_church_billing` restated: a dead Stripe subscription now leaves a church
+verified while an Apple one is live, and `my_church_billing` gains an `apple`
+key; FKs are `0139_church_apple_subscription_b`). Both production bodies were
+checked byte-identical to 0131/0135 before the restate. APPLIED 2026-10-23
+after a local Postgres 16 run of fifteen cases (member refused, bound
+elsewhere, another leader already paying, renewal keeps the flag, Stripe and
+Apple not switching each other off, an operator-verified church untouched by
+an Apple lapse, re-run a no-op) and verified live: one signature each, the
+four writers/helpers `{postgres,service_role}`, every body md5-equal to the
+file, RLS on with no rule, both FKs, and a bind → read → lapse round trip on a
+real verified church, rolled back (zero rows after).
+
+Before it, `0138` (check-ins carry today's church verse and can be
 reported — `0138_check_in_verse_a` adds `verse_ref`/`verse_text` (a SERVER
 copy of the church's approved verse for the leader's local day, never text the
 client sends), makes `message` optional behind a `check_in_has_body` check, and
@@ -3197,7 +3235,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0139` (0138 is the check-in verse and report, in two parts; 0137 is used FOUR times in production — the check-in note in two parts, the leaderboard's streak-free tie-break, and `church_free_claim` — 0136 is `church_leader_looks` in production only, 0135 is the church billing read for the portal, 0134 is the self-serve church claim, in two parts; 0133 is used twice — church visual assets AND the church Stripe key in Vault — 0132 is the church webhook's Vault secret, 0131 is church billing, 0130 is the member's church view, 0129 is the week-from-a-sermon drafts, 0128 is the church layer, 0127 is `church_content_generation` in production, 0126 is the two new statues, 0125 is the API.Bible key, 0124 the reading translation, 0123 is the church verse series and note, 0122 is `church_question_drafts` in production only, 0121 is the church leader invite link, 0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0140` (0139 is the church plan through Apple, in two parts; 0138 is the check-in verse and report, in two parts; 0137 is used FOUR times in production — the check-in note in two parts, the leaderboard's streak-free tie-break, and `church_free_claim` — 0136 is `church_leader_looks` in production only, 0135 is the church billing read for the portal, 0134 is the self-serve church claim, in two parts; 0133 is used twice — church visual assets AND the church Stripe key in Vault — 0132 is the church webhook's Vault secret, 0131 is church billing, 0130 is the member's church view, 0129 is the week-from-a-sermon drafts, 0128 is the church layer, 0127 is `church_content_generation` in production, 0126 is the two new statues, 0125 is the API.Bible key, 0124 the reading translation, 0123 is the church verse series and note, 0122 is `church_question_drafts` in production only, 0121 is the church leader invite link, 0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

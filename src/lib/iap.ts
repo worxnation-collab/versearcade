@@ -239,6 +239,66 @@ export async function restorePurchases(): Promise<string[]> {
   return customerInfo.allPurchasedProductIdentifiers ?? []
 }
 
+/**
+ * The Verified Church plan as Apple auto-renewable subscriptions (0139).
+ *
+ * Deliberately NOT in APPLE_PRODUCT_IDS: that map is the cosmetic shop, and
+ * `useIap.ready` — what turns the whole skins marketplace on — is derived from
+ * it. A church plan loading must never be the thing that opens a skins shop.
+ * Both ids sit in ONE App Store subscription group, and the server-side mirror
+ * is CHURCH_PLAN_PRODUCTS in supabase/functions/_shared/churchApple.ts.
+ */
+export const CHURCH_PLAN_PRODUCT_IDS = {
+  month: 'com.versearcade.app.church_verified_monthly',
+  year: 'com.versearcade.app.church_verified_yearly',
+} as const
+
+export type ChurchPlanInterval = keyof typeof CHURCH_PLAN_PRODUCT_IDS
+
+/** A church plan as StoreKit describes it — price and period are Apple's. */
+export interface ChurchPlanProduct {
+  interval: ChurchPlanInterval
+  productId: string
+  /** Apple's localized price, e.g. "$29.99". */
+  priceString: string
+}
+
+/** The church plans Apple will sell this device. Empty ⇒ no Apple button. */
+export async function fetchChurchPlanProducts(): Promise<ChurchPlanProduct[]> {
+  if (!iapAvailable()) return []
+  const { Purchases } = await loadSdk()
+  const { products } = await Purchases.getProducts({
+    productIdentifiers: Object.values(CHURCH_PLAN_PRODUCT_IDS),
+    type: 'SUBSCRIPTION' as never,
+  })
+  const out: ChurchPlanProduct[] = []
+  for (const interval of ['month', 'year'] as const) {
+    const p = products.find((x) => x.identifier === CHURCH_PLAN_PRODUCT_IDS[interval])
+    if (p) out.push({ interval, productId: p.identifier, priceString: p.priceString })
+  }
+  return out
+}
+
+/**
+ * Apple's subscription sheet for a church plan. A cancel is reported, not
+ * thrown. Nothing here says which church: that binding is made by the server
+ * (iap-fulfill with `church_id`), after it has asked RevenueCat itself.
+ */
+export async function purchaseChurchPlan(interval: ChurchPlanInterval): Promise<{ cancelled: boolean }> {
+  const { Purchases } = await loadSdk()
+  const productId = CHURCH_PLAN_PRODUCT_IDS[interval]
+  const { products } = await Purchases.getProducts({ productIdentifiers: [productId], type: 'SUBSCRIPTION' as never })
+  const product = products[0]
+  if (!product) throw new Error(`Apple has no product ${productId}`)
+  try {
+    await Purchases.purchaseStoreProduct({ product })
+    return { cancelled: false }
+  } catch (e) {
+    if (isUserCancelled(e)) return { cancelled: true }
+    throw e
+  }
+}
+
 /** Product ids → the skin ids they entitle, expanded through packs. */
 export function skinsForProductIds(productIds: string[]): string[] {
   const skins = productIds.flatMap((pid) => {

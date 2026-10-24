@@ -21,8 +21,12 @@ import { churchPlansVisible } from '@/lib/commerce'
 //   * NOTHING COMPETITIVE. No ranks, no rivalry, no badge, no "featured": a
 //     church that pays is not a bigger church, and a verified church is never
 //     sorted first anywhere (0119).
-//   * THE PRIVACY LINE IS A FEATURE, so it is stated, not buried. Leadership
-//     sees floored aggregates and never a name (`get_church_participation`).
+//   * THE PRIVACY LINE IS A FEATURE, so it is stated, not buried — and it says
+//     what the dashboard really does. Since 0128 a verified church's leadership
+//     sees its members BY NAME with exact totals (`church_leader_insights`, the
+//     owner's call); what the line promises is who else can't, and that nobody
+//     is ranked. It used to promise "no names, under five hidden", which stopped
+//     being true at 0128 — keep it in step with docs/CHURCH-CLAIM.md.
 //   * THE GIVING LINK SAYS "on the web", because `givingLinkVisible()` hides it
 //     in the App Store build and the page must not promise what the app won't do.
 //
@@ -42,7 +46,7 @@ const FREE: string[] = [
 const FOUNDING: string[] = [
   'You choose the day’s verse and write its five questions — or fill them from the library in one tap.',
   'Your members get your verse as their own church round beside the daily verse — the shared drop stays for everybody.',
-  'Congregation numbers for leadership: players, plays, average score and streaks.',
+  'Know your people by name: when each member last played, their streak and their week — and a check-in you write yourself.',
   'Your logo and an invite QR on your page, ready for the bulletin or the screen.',
   'Your giving link on your page (on the web).',
 ]
@@ -236,12 +240,19 @@ export default function ChurchesScreen() {
 
       <section className="card" style={{ marginBottom: 12 }} aria-labelledby="privacy">
         <b id="privacy" style={{ fontFamily: 'var(--font-display)', fontSize: 16 }}>
-          You&rsquo;ll see how your church is doing — never who skipped.
+          You&rsquo;ll know your people by name — and nobody gets ranked.
         </b>
         <p className="dim" style={{ margin: '8px 0 0', fontSize: 13.5, lineHeight: 1.55 }}>
-          Leadership sees totals for the whole congregation and nothing about any one person: no names,
-          no list of who played, no list of who didn&rsquo;t. Any number under five stays hidden, because
-          in a small group a total can point at somebody. Nobody is ranked against anybody, and a wrong
+          Your church&rsquo;s verified leadership sees its members by name: when each last played, their
+          current streak and how often they&rsquo;ve played this week, with totals that are exact however
+          small your congregation is. The list is in the order people joined, never by score. Anyone who
+          hasn&rsquo;t played this week sits in one folded section you open on purpose, and the only thing
+          offered there is a short note you write and send yourself.
+        </p>
+        <p className="dim" style={{ margin: '8px 0 0', fontSize: 13.5, lineHeight: 1.55 }}>
+          That view is for your leadership alone — not other members, not other churches, not the public.
+          Members see their church as a place to belong: today&rsquo;s verse, the series you&rsquo;re in,
+          and what the congregation has been up to together. Nobody is ranked against anybody, and a wrong
           answer always teaches the right one.
         </p>
       </section>

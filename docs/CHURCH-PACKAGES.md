@@ -13,7 +13,7 @@ the manually-granted claim (`church_admins`, 0079) — is unchanged.
 | `churches.stripe_subscription_id` | `church_billing` table, no policies | `churches` is `select using (true)` to **anon**. A billing id on it is public. |
 | `church_members` table | `church_members` **view** over `profiles.church_id` + `church_admins` | Membership already lives in two places every RPC reads. A third copy drifts. |
 | `church_verses`, `church_announcements` | as asked, plus length/shape checks | — |
-| participation view | `church_participation_7d(church, date)` RPC | Needs a caller check and a small-count floor; a view can't do either cleanly. |
+| participation view | `church_participation_7d(church, date)` RPC, superseded by `church_leader_insights` (0128) | Needs a caller check, which a view can't do cleanly. The small-count floor it carried was dropped for leadership in 0128 — see below. |
 
 ## Access rules (all enforced by RLS or the RPC, not the client)
 
@@ -23,25 +23,52 @@ the manually-granted claim (`church_admins`, 0079) — is unchanged.
 - **Church admins:** write verses/announcements **only while the church is
   verified**. Un-verifying freezes writes and blanks `my_church_today`.
 - **Leadership-only:** `church_members` (rows only for churches you lead) and
-  `church_participation_7d`.
+  `church_leader_insights` (0128: the roster by name, verified leadership of
+  THAT church only). `church_participation_7d` (0116) is revoked.
 - **Operator:** `admin_set_church_package(church, verified, logo, stripe_sub)`.
   A future Stripe webhook should call the same thing with the service role.
 
-## Participation is a floored aggregate, on purpose
+## What leadership sees: members by name (0128)
 
-`church_participation_7d` returns members, distinct active players and daily-drop
-completions over the last 7 local days. Below **5** active players the counts are
-`null` and `floored: true`. There is no per-day breakdown and no per-member row.
-CLAUDE.md is explicit: a pastor-facing "who played and who lapsed" is the
-ranking-a-person problem with authority attached. At four people, a weekly total
-names who skipped.
+**This section used to say the opposite, and the reversal was the owner's
+call (2026-10-21): "this is a tool for church leaders, names are important".**
+`church_participation_7d` (0116) and then `get_church_participation` (0119)
+returned floored totals and never a person, on the argument that "who played
+and who lapsed" is the ranking-a-person problem with authority attached. Since
+`0128`, verified leadership of a church sees `church_leader_insights` instead:
+
+- **The roster by name**, in join order: when each member last played, their
+  current streak, and their drop and church-verse plays this week.
+- **Exact totals** (members, active this week, fourteen days of plays, series
+  completion, streak buckets). There is **no small-count floor** for leadership.
+- **The congregation feed** (`church_feed`): who played, gave or joined, with
+  scores, over fourteen days.
+
+What still holds, and what the sales page promises:
+
+- **Nobody is ranked.** The roster is in join order in both groups; nothing
+  sorts members by what they did, and there is no member leaderboard.
+- **No "who skipped" front page.** Members with no play in seven days sit in
+  ONE folded section ("Not active this week") the leader opens on purpose, and
+  the only thing offered there is a check-in note the leader writes and sends
+  by hand (0137/0138).
+- **Leadership of THAT church only.** Not other members, not other churches,
+  not a board, not the public. A FREE claim (an unverified church, 0137) sees
+  three totals and nothing per person (`church_leader_summary`).
+- **Members keep the floor.** What a member sees of their congregation's week
+  (`church_week_summary`, 0130) is still church totals with any count under
+  five withheld.
+
+Full history and rules: `docs/CHURCH-CLAIM.md` → "What a claim buys".
+`ChurchesScreen` and the `/churches/try` demo must say the same thing.
 
 ## The shared verse and the leadership numbers: see CHURCH-SHARED-VERSE.md
 
 **0119 replaced** the windowed verse model described in earlier drafts of this
 doc (`starts_on`/`ends_on`, pool-only) with one verse per church per day,
 including five questions. It also replaced the participation RPCs and the opt-in
-check-in list with `get_church_participation`, which returns aggregates only.
+check-in list with `get_church_participation` (aggregates only), which 0128 in
+turn replaced on the dashboard with `church_leader_insights` (names, above).
 Everything about either one now lives in `docs/CHURCH-SHARED-VERSE.md`.
 
 ## The discovery and membership surfaces (0117)
@@ -96,11 +123,13 @@ that on the server.
 
 | Panel | Who | What |
 |---|---|---|
-| Today's verse | verified | `TodayVerseForm`, 0119 |
-| Congregation | verified | `ParticipationPanel`: totals floored at 5, private to leadership (0119) |
+| Overview | verified | `OverviewPanel`: exact totals, fourteen days, series completion, streak buckets, the live notice (0128) |
+| Schedule | verified | `TodayVerseForm`: the planner, drafts and approval (0119, 0127, 0129) |
+| People | verified | `PeoplePanel`: the roster by name in join order; "Not active this week" folded, with a hand-sent check-in (0128, 0137, 0138) |
+| Activity | verified | `ActivityPanel`: the congregation feed (`church_feed`, 0128) |
+| Overview | free claim (unverified) | `SummaryPanel`: three totals and the notice, nobody's name (0137) |
 | Notices | any claimed church | ONE live notice. Giving link: verified only, https only, hidden in the App Store build. |
-
-An unverified church sees only Notices, and nothing on the screen says why.
+| Share | any claimed church | `SharePanel`: the invite link and QR |
 
 ## The offer page (`/churches`)
 
@@ -112,8 +141,12 @@ build and stays out of `lib/commerce.ts`. Its rules:
 - **Only claim what ships.**
 - **The giving link is described as "on the web".** That matches
   `givingLinkVisible()`.
-- **The privacy promise is stated outright.** It quotes
-  `get_church_participation`: floored at five, never a name.
+- **The privacy promise is stated outright, and it describes the real
+  dashboard.** Leadership sees members by name with exact totals (0128); the
+  promise is that nobody is ranked, the quiet ones are folded away with only a
+  check-in offered, and nobody but that church's leadership sees it. It said
+  "floored at five, never a name" until 2026-10-23, two days after that had
+  stopped being true.
 - **Nothing competitive.** No rank, rivalry or badge.
 
 The role a person picks rides at the top of the inquiry message
@@ -140,9 +173,11 @@ church exists here, then plays what they wrote. It's linked from `/churches` as
   Bible mark, no road miles, no drop and no library borrow, and gets no
   `runId`. Driven signed out against a logging mock backend, a full
   build-save-copy-play run made **zero** backend requests.
-- **The Congregation tab shows SAMPLE totals, labelled in its first line.** One
-  streak bucket is under five, so the floor is shown rather than claimed. No
-  real church's numbers ever appear here.
+- **The Overview and People tabs are the real leadership panels over a SAMPLE
+  congregation**, labelled in their first line: eleven invented members by
+  name, one folded section of quiet ones, a check-in that explains itself and
+  sends nothing (`PeoplePanel`'s `demo`, which also keeps a made-up name from
+  opening a player card). No real church's people or numbers ever appear here.
 - **"Want this for your church?" opens `/churches` with a line about the verse
   they tried in the inquiry message**, scrolled to the form.
 

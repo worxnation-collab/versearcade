@@ -245,9 +245,15 @@ export function OverviewPanel({ insights, failed, summary }: { insights: LeaderI
 // the leader edits and sends by hand (0137); nothing is sent on its own, and
 // the server is told only who and what — never which list the name came from.
 // Since 0138 the draft leads with the church's own verse for today.
-export function PeoplePanel({ churchId, insights, failed }: { churchId: string; insights: LeaderInsights | null; failed: boolean }) {
+//
+// `demo` is /churches/try's: the same panel over an invented roster, so the
+// sales page's demo shows exactly what leadership gets. It sends nothing — no
+// player card is opened for a made-up name, and "Check in" explains itself
+// instead of opening a sheet that would call the server.
+export function PeoplePanel({ churchId, insights, failed, demo = false }: { churchId: string; insights: LeaderInsights | null; failed: boolean; demo?: boolean }) {
   const [checkIn, setCheckIn] = useState<InsightMember | null>(null)
   const [sent, setSent] = useState<Set<string>>(() => new Set())
+  const [demoNote, setDemoNote] = useState<string | null>(null)
   if (failed) return FAILED
   if (!insights) return LOADING
   // The roster arrives in join order (0137) and keeps it in both groups.
@@ -260,20 +266,28 @@ export function PeoplePanel({ churchId, insights, failed }: { churchId: string; 
       {active.length === 0 && (
         <p className="dim" style={{ fontSize: 13.5, margin: '4px 0' }}>Nobody has played this week yet.</p>
       )}
-      {active.map((m) => <MemberRow key={m.username} m={m} today={insights.today} />)}
+      {active.map((m) => <MemberRow key={m.username} m={m} today={insights.today} demo={demo} />)}
       {resting.length > 0 && (
         <Collapsible icon="🕊️" title="Not active this week" meta={resting.length.toLocaleString()}>
           <div style={{ display: 'grid', gap: 8 }}>
+            {demoNote && (
+              <p className="dim" style={{ margin: 0, fontSize: 12.5, lineHeight: 1.45 }}>
+                In your church, &ldquo;Check in&rdquo; opens a short note to {demoNote} that you edit and send
+                yourself — with today&rsquo;s church verse attached when you&rsquo;ve set one. Nothing is sent from
+                this demo.
+              </p>
+            )}
             {resting.map((m) => (
               <MemberRow
                 key={m.username}
                 m={m}
                 today={insights.today}
+                demo={demo}
                 action={
                   m.leader ? undefined : sent.has(m.username) ? (
                     <span className="faint" style={{ fontSize: 12, fontWeight: 700 }}>Sent ✓</span>
                   ) : (
-                    <button className="pill" onClick={() => setCheckIn(m)} style={{ fontSize: 12, fontWeight: 800, padding: '6px 11px' }}>
+                    <button className="pill" onClick={() => (demo ? setDemoNote(m.username) : setCheckIn(m))} style={{ fontSize: 12, fontWeight: 800, padding: '6px 11px' }}>
                       Check in
                     </button>
                   )
@@ -283,7 +297,7 @@ export function PeoplePanel({ churchId, insights, failed }: { churchId: string; 
           </div>
         </Collapsible>
       )}
-      {checkIn && (
+      {checkIn && !demo && (
         <CheckInSheet
           churchId={churchId}
           member={checkIn}
@@ -295,12 +309,12 @@ export function PeoplePanel({ churchId, insights, failed }: { churchId: string; 
   )
 }
 
-function MemberRow({ m, today, action }: { m: InsightMember; today: string; action?: React.ReactNode }) {
+function MemberRow({ m, today, action, demo = false }: { m: InsightMember; today: string; action?: React.ReactNode; demo?: boolean }) {
   const plays = m.drop7d + m.church7d
   const isActive = activeThisWeek(m, today)
   return (
     <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', minWidth: 0 }}>
-      <Avatar emoji={m.avatarEmoji ?? '🙂'} character={m.avatarCharacter} username={m.username} size={36} />
+      <Avatar emoji={m.avatarEmoji ?? '🙂'} character={m.avatarCharacter} username={demo ? null : m.username} size={36} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 800, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {m.username}{m.leader ? <span className="faint" style={{ fontWeight: 700, fontSize: 11.5 }}> · leader</span> : null}

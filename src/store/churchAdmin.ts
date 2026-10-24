@@ -356,6 +356,8 @@ export interface VerseBackend {
   draftWeek?: (churchId: string, input: WeekDraftInput) => Promise<Res<WeekDraftResult>>
   /** Which passages a study topic means — references only (Content Generation). */
   planTopic?: (churchId: string, topic: string, book?: string) => Promise<Res<TopicPlan>>
+  /** A recorded sermon → a transcript for the leader to edit (0144). Content Generation only. */
+  memo?: MemoBackend
 }
 
 export const serverVerseBackend: VerseBackend = {
@@ -375,6 +377,7 @@ export const serverGenerationBackend: VerseBackend = {
   saveDraft: (c, d, v, replace) => saveDraftVerse(c, d, v, replace),
   draftWeek: (c, input) => draftWeek(c, input),
   planTopic: (c, t, b) => planTopic(c, t, b),
+  memo: { upload: uploadMemo, transcribe: transcribeMemo },
 }
 
 // ---------------------------------------------------------------------------
@@ -977,4 +980,88 @@ export async function fetchLeaderInsights(churchId: string) {
     })),
   }
   return { ok: true as const, data }
+}
+
+// ---------------------------------------------------------------------------
+// Voice memos (0144, Content Generation only): record Sunday's sermon, get the
+// transcript back in the box, edit it, then draft exactly as from a paste.
+//
+// Two steps, so a retry after a busy model needn't upload an hour of audio
+// again: `uploadMemo` asks `church-draft` for a signed upload into the private
+// `church-memos` bucket and sends the file there; `transcribeMemo` asks the
+// function to transcribe that upload. Neither spends a draft unit — a
+// transcription has its own allowance (10 a church a day, given back on any
+// failure), and the draft made from it afterwards spends what a pasted
+// transcript spends. Replies carry `memo_left`, never `left`, so the draft
+// allowance on screen is never overwritten by the memo count.
+// ---------------------------------------------------------------------------
+export const MEMO_BYTES_MAX = 50 * 1024 * 1024
+export const MEMO_SECONDS_MAX = 60 * 60
+export const MEMO_ACCEPT = 'audio/*,.m4a,.mp3,.wav,.aac,.ogg,.opus,.flac,.webm,.aif,.aiff'
+const MEMO_EXTS = new Set(['m4a', 'mp4', 'mp3', 'wav', 'aac', 'ogg', 'oga', 'opus', 'flac', 'webm', 'aiff', 'aif'])
+const MEMO_BY_TYPE: Record<string, string> = {
+  'audio/mp4': 'm4a', 'audio/x-m4a': 'm4a', 'audio/m4a': 'm4a', 'audio/aac': 'aac', 'audio/x-aac': 'aac',
+  'audio/mpeg': 'mp3', 'audio/mp3': 'mp3', 'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/wave': 'wav',
+  'audio/ogg': 'ogg', 'audio/opus': 'opus', 'audio/flac': 'flac', 'audio/x-flac': 'flac',
+  'audio/webm': 'webm', 'audio/aiff': 'aiff', 'audio/x-aiff': 'aiff',
+}
+
+export interface MemoUpload { path: string }
+export interface MemoTranscript { transcript: string; seconds?: number }
+export interface MemoBackend {
+  upload: (churchId: string, file: Blob, name?: string) => Promise<Res<MemoUpload>>
+  transcribe: (churchId: string, upload: MemoUpload) => Promise<Res<MemoTranscript>>
+}
+
+/** The extension the function files a memo under, from its name or its type; null = not a format it takes. */
+export function memoExt(file: Blob, name?: string): string | null {
+  const fromName = /\.([a-z0-9]{2,5})$/i.exec(name ?? '')?.[1]?.toLowerCase()
+  if (fromName && MEMO_EXTS.has(fromName)) return fromName
+  const type = (file.type || '').split(';')[0].trim().toLowerCase()
+  return MEMO_BY_TYPE[type] ?? null
+}
+
+/** A recording's length in seconds as the browser reads it, or null when it can't say. */
+export function memoSeconds(file: Blob): Promise<number | null> {
+  return new Promise((resolve) => {
+    let url = ''
+    const done = (n: number | null) => { if (url) URL.revokeObjectURL(url); resolve(n) }
+    try {
+      url = URL.createObjectURL(file)
+      const a = new Audio()
+      a.preload = 'metadata'
+      a.onloadedmetadata = () => done(Number.isFinite(a.duration) && a.duration > 0 ? a.duration : null)
+      a.onerror = () => done(null)
+      setTimeout(() => done(null), 8_000)
+      a.src = url
+    } catch {
+      done(null)
+    }
+  })
+}
+
+export async function uploadMemo(churchId: string, file: Blob, name?: string): Promise<Res<MemoUpload>> {
+  if (!online()) return { ok: false, reason: 'unavailable' }
+  const ext = memoExt(file, name)
+  if (!ext) return { ok: false, reason: 'memo_format' }
+  if (file.size > MEMO_BYTES_MAX) return { ok: false, reason: 'memo_too_big' }
+  const r = await invokeDraft(churchId, { mode: 'memo_url', ext, bytes: file.size })
+  if (r.kind === 'lost') return { ok: false, reason: 'unavailable' }
+  const d = r.data
+  if (!d.ok || typeof d.path !== 'string' || typeof d.token !== 'string') return { ok: false, reason: String(d.reason ?? 'unavailable') }
+  const { error } = await supabase!.storage.from(String(d.bucket ?? 'church-memos'))
+    .uploadToSignedUrl(d.path, d.token, file, { contentType: file.type || undefined })
+  if (error) return { ok: false, reason: 'upload_failed' }
+  return { ok: true, data: { path: d.path } }
+}
+
+export async function transcribeMemo(churchId: string, upload: MemoUpload): Promise<Res<MemoTranscript>> {
+  if (!online()) return { ok: false, reason: 'unavailable' }
+  const r = await invokeDraft(churchId, { mode: 'transcribe', path: upload.path })
+  if (r.kind === 'lost') return { ok: false, reason: 'no_reply' }
+  const d = r.data
+  if (!d.ok) return { ok: false, reason: String(d.reason ?? 'unavailable') }
+  if (typeof d.transcript !== 'string' || !d.transcript.trim()) return { ok: false, reason: 'memo_silent' }
+  const seconds = Number(d.seconds)
+  return { ok: true, data: { transcript: d.transcript.trim(), seconds: Number.isFinite(seconds) && seconds > 0 ? seconds : undefined } }
 }

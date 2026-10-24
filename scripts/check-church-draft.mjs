@@ -54,7 +54,29 @@ const rpc = {
     return { ok: true, drop_date: a.p_drop_date, status: 'draft' }
   },
   tiktok_gemini_key: () => 'vault-key',
+  // Voice memos (0144): their own allowance, never the draft units.
+  church_memo_can: () => (db.gate !== 'ok' ? { ok: false, reason: db.gate } : db.memoUsed >= 10 ? { ok: false, reason: 'memo_limit' } : { ok: true, left: 10 - db.memoUsed }),
+  use_church_memo: () => {
+    if (db.gate !== 'ok') return { ok: false, reason: db.gate }
+    if (db.memoUsed >= 10) return { ok: false, reason: 'memo_limit' }
+    db.memoUsed++; return { ok: true, left: 10 - db.memoUsed, day: today }
+  },
+  release_church_memo: () => { db.memoUsed = Math.max(0, db.memoUsed - 1); db.memoReleases++; return { ok: true, left: 10 - db.memoUsed } },
 }
+// --- fake storage (the church-memos bucket) --------------------------------
+const store = new Map()
+const storage = async (url, init) => {
+  const path = url.slice((SB + '/storage/v1').length).split('?')[0]
+  const json = (b, status = 200) => new Response(JSON.stringify(b), { status, headers: { 'content-type': 'application/json' } })
+  if (path === '/bucket') return json({ name: 'church-memos' })
+  if (path.startsWith('/object/list/')) return json([])
+  if (path.startsWith('/object/upload/sign/')) return json({ url: path + '?token=tok' })
+  if ((init.method ?? 'GET') === 'DELETE') { for (const p of JSON.parse(init.body).prefixes) store.delete(p); return json([]) }
+  const key = decodeURIComponent(path.replace(/^\/object\/(authenticated\/)?church-memos\//, ''))
+  return store.has(key) ? new Response(store.get(key)) : json({ error: 'not_found', message: 'Object not found' }, 400)
+}
+// --- fake Gemini Files API, for memo cases --------------------------------
+const files = { uploaded: 0, deleted: 0, tokens: 32 * 60 * 40, uploadStatus: 200 }
 // --- fake Gemini: a queue of answers per test ------------------------------
 let gemini = []
 let geminiCalls = 0
@@ -65,6 +87,13 @@ globalThis.fetch = async (url, init = {}) => {
     const out = rpc[fn](JSON.parse(init.body || '{}'))
     return new Response(JSON.stringify(out), { status: 200, headers: { 'content-type': 'application/json' } })
   }
+  if (url.startsWith(SB + '/storage/v1')) return storage(url, init)
+  if (url.includes('/upload/v1beta/files') && !url.includes('upload_id')) {
+    return new Response('{}', { status: files.uploadStatus, headers: files.uploadStatus === 200 ? { 'x-goog-upload-url': 'https://generativelanguage.googleapis.com/upload/v1beta/files?upload_id=1' } : {} })
+  }
+  if (url.includes('upload_id=')) { files.uploaded++; return new Response(JSON.stringify({ file: { name: 'files/abc', uri: 'https://g/files/abc', state: 'ACTIVE', mimeType: 'audio/mp4' } })) }
+  if (url.includes(':countTokens')) return new Response(JSON.stringify({ totalTokens: files.tokens }))
+  if (url.endsWith('/files/abc') && init.method === 'DELETE') { files.deleted++; return new Response('{}') }
   if (url.startsWith(SB + '/rest/v1/church_draft_runs')) {
     db.runs.push(JSON.parse(init.body)); return new Response(null, { status: 201 })
   }
@@ -74,6 +103,7 @@ globalThis.fetch = async (url, init = {}) => {
     if (!next) throw new Error('unexpected model call')
     if (next === 'timeout') { const e = new Error('t'); e.name = 'TimeoutError'; throw e }
     if (typeof next === 'number') return new Response('err', { status: next })
+    if (next.raw !== undefined) return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: next.raw }] } }] }), { status: 200 })
     return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(next) }] } }] }), { status: 200 })
   }
   throw new Error('unmocked ' + url)
@@ -90,7 +120,7 @@ const call = async (body) => {
   const res = await handler(new Request('http://fn', { method: 'POST', headers: { Authorization: 'Bearer leader' }, body: JSON.stringify(body) }))
   return { status: res.status, body: await res.json() }
 }
-const reset = () => { db.used = 0; db.gate = 'ok'; db.verses = {}; db.runs = []; db.refunds = []; gemini = []; geminiCalls = 0 }
+const reset = () => { db.memoUsed = 0; db.memoReleases = 0; store.clear(); files.uploaded = 0; files.deleted = 0; files.tokens = 32 * 60 * 40; files.uploadStatus = 200; db.used = 0; db.gate = 'ok'; db.verses = {}; db.runs = []; db.refunds = []; gemini = []; geminiCalls = 0 }
 let fails = 0
 const check = (name, cond, extra) => { console.log((cond ? 'PASS ' : 'FAIL ') + name + (cond ? '' : '  ' + JSON.stringify(extra))); if (!cond) fails++ }
 const week = (o = {}) => ({ mode: 'week', church_id: CH, series: 'Abiding', days: 3, passages, transcript: 'notes', api: 2, ...o })
@@ -228,6 +258,71 @@ check('one-day: flag returned on the question', r.body.ok && r.body.questions[1]
 reset(); gemini = [{ questions: five().map((q) => ({ ...q, check: true, checkPick: 0 })), note: 'n' }, 503]
 r = await call({ church_id: CH, reference: 'John 15:5', text: V[5], api: 2 })
 check('a self-written check is ignored', r.body.ok && r.body.questions.every((q) => !q.check), r.body.questions)
+
+// 18. A long transcript is condensed first, and the answer says so.
+reset(); gemini = [{ outline: '- ' + 'the vine and the branches, point by point. '.repeat(12) }, { questions: five(), note: 'n' }, { items: [] }]
+r = await call({ church_id: CH, reference: 'John 15:5', text: V[5], transcript: 'word '.repeat(5000), api: 2 })
+check('long transcript: condensed, then drafted, one unit', r.body.ok && r.body.transcript_use === 'condensed' && r.body.transcript_read === 24999 && db.used === 1 && geminiCalls === 3, r.body)
+
+// 19. A failed condense falls back to the first 12,000 and still drafts.
+reset(); gemini = [503, { questions: five(), note: 'n' }, { items: [] }]
+r = await call({ church_id: CH, reference: 'John 15:5', text: V[5], transcript: 'word '.repeat(5000), api: 2 })
+check('condense fails: clipped, still drafted', r.body.ok && r.body.transcript_use === 'clipped' && r.body.transcript_read === 12000, r.body)
+
+// 20. Memo: an upload URL for this church's own folder, spending nothing.
+const MEMO = `${CH}/22222222-2222-2222-2222-222222222222.m4a`
+reset()
+r = await call({ mode: 'memo_url', church_id: CH, ext: 'm4a', bytes: 1e6, api: 2 })
+check('memo_url: signed path in own folder, no unit, no memo spent', r.body.ok && r.body.path.startsWith(CH + '/') && r.body.token === 'tok' && r.body.left === undefined && r.body.memo_left === 10 && db.used === 0 && db.memoUsed === 0, r.body)
+r = await call({ mode: 'memo_url', church_id: CH, ext: 'exe', bytes: 1e6, api: 2 })
+check('memo_url: unknown format 415', r.status === 415 && r.body.reason === 'memo_format', r)
+r = await call({ mode: 'memo_url', church_id: CH, ext: 'mp3', bytes: 60 * 1024 * 1024, api: 2 })
+check('memo_url: over 50 MB 413', r.status === 413 && r.body.reason === 'memo_too_big', r)
+db.gate = 'no_addon'
+r = await call({ mode: 'memo_url', church_id: CH, ext: 'm4a', bytes: 1e6, api: 2 })
+check('memo_url: gate refuses before any upload', r.status === 403 && r.body.reason === 'no_addon', r)
+
+// 21. Transcribe: the transcript comes back, a memo is spent, no draft unit, upload and Gemini copy removed.
+reset(); store.set(MEMO, new Uint8Array(5000)); gemini = [{ raw: 'Good morning, church.\n\n\n\nToday we are in John fifteen, the vine and the branches.' }]
+r = await call({ mode: 'transcribe', church_id: CH, path: MEMO, api: 2 })
+check('transcribe: transcript, seconds, memo_left, no draft unit', r.body.ok && r.body.transcript.startsWith('Good morning') && !r.body.transcript.includes('\n\n\n') && r.body.seconds === 2400 && r.body.memo_left === 9 && r.body.left === undefined && db.used === 0, r.body)
+check('transcribe: upload and Gemini file removed, nothing logged as a draft', !store.has(MEMO) && files.deleted === 1 && db.runs.length === 0, { store: [...store.keys()], files, runs: db.runs })
+
+// 22. Another church's folder, or an invented name, is refused before any spend.
+reset()
+r = await call({ mode: 'transcribe', church_id: CH, path: `33333333-3333-3333-3333-333333333333/22222222-2222-2222-2222-222222222222.m4a`, api: 2 })
+check('transcribe: other church\'s path refused, nothing spent', r.status === 422 && r.body.reason === 'bad_memo' && db.memoUsed === 0, r)
+r = await call({ mode: 'transcribe', church_id: CH, path: `${CH}/../../secret.m4a`, api: 2 })
+check('transcribe: traversal refused', r.body.reason === 'bad_memo', r)
+
+// 23. Over an hour by Gemini's own count → refused, released, upload removed.
+reset(); store.set(MEMO, new Uint8Array(5000)); files.tokens = 32 * 60 * 75
+r = await call({ mode: 'transcribe', church_id: CH, path: MEMO, api: 2 })
+check('transcribe: 75 min refused, memo released, upload gone', r.status === 413 && r.body.reason === 'memo_too_long' && db.memoUsed === 0 && !store.has(MEMO) && files.deleted === 1, { body: r.body, used: db.memoUsed })
+
+// 24. Busy model → released, upload KEPT so the retry needn't upload again; the retry works.
+reset(); store.set(MEMO, new Uint8Array(5000)); gemini = [503]
+r = await call({ mode: 'transcribe', church_id: CH, path: MEMO, api: 2 })
+check('transcribe busy: 503, released, upload kept', r.status === 503 && r.body.reason === 'model_busy' && db.memoUsed === 0 && store.has(MEMO), r.body)
+gemini = [{ raw: 'And so we remain in him, every day of this week.' }]
+r = await call({ mode: 'transcribe', church_id: CH, path: MEMO, api: 2 })
+check('transcribe retry on the same upload succeeds', r.body.ok && db.memoUsed === 1, r.body)
+
+// 25. A format Gemini won't take → 415, released, upload removed.
+reset(); store.set(MEMO, new Uint8Array(5000)); files.uploadStatus = 400
+r = await call({ mode: 'transcribe', church_id: CH, path: MEMO, api: 2 })
+check('transcribe: refused format 415, released', r.status === 415 && r.body.reason === 'memo_format' && db.memoUsed === 0 && !store.has(MEMO), r.body)
+
+// 26. Silence, a missing upload, and the daily memo cap.
+reset(); store.set(MEMO, new Uint8Array(5000)); gemini = [{ raw: '' }]
+r = await call({ mode: 'transcribe', church_id: CH, path: MEMO, api: 2 })
+check('transcribe: no speech → memo_silent, released', r.body.reason === 'memo_silent' && db.memoUsed === 0, r.body)
+reset()
+r = await call({ mode: 'transcribe', church_id: CH, path: MEMO, api: 2 })
+check('transcribe: missing upload → memo_missing 404, released', r.status === 404 && r.body.reason === 'memo_missing' && db.memoUsed === 0, r)
+reset(); db.memoUsed = 10
+r = await call({ mode: 'transcribe', church_id: CH, path: MEMO, api: 2 })
+check('transcribe: memo cap 429, no model call', r.status === 429 && r.body.reason === 'memo_limit' && geminiCalls === 0, r)
 
 console.log(fails ? `${fails} FAILED` : 'ALL PASS')
 process.exit(fails ? 1 : 0)

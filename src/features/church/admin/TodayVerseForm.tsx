@@ -5,6 +5,7 @@ import { todayLocalDate, addDays } from '@/lib/date'
 import { parseReference } from '@/lib/bibleProgress'
 import { verseFromReference } from '@/data/bible/questions'
 import { TranscriptMeter, transcriptNote } from './transcript'
+import { MemoInput, placeTranscript } from './memo'
 import { cleanLine, cleanQuestions, fetchDays, flaggedCount, GUIDANCE_MAX, NOTE_MAX, SERIES_MAX, serverVerseBackend, useDraftAllowance, type DayVerse, type VerseBackend, type VerseStatus, type WeekDay } from '@/store/churchAdmin'
 import type { Question } from '@/types'
 import { SeriesCopyPanel } from './SeriesCopyPanel'
@@ -512,6 +513,7 @@ export function TodayVerseForm({
                 <textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} rows={4} placeholder="Paste your notes, or the transcript of a voice memo…" style={{ resize: 'vertical' }} />
               </label>
               <TranscriptMeter value={transcript} />
+              {backend.memo && <MemoInput churchId={churchId} memo={backend.memo} hasText={!!transcript.trim()} disabled={drafting} onTranscript={(t, how) => setTranscript((cur) => placeTranscript(cur, t, how))} />}
               <span className="faint" style={{ fontSize: 11.5, lineHeight: 1.4 }}>
                 These only steer the emphasis and the suggested note. The questions are still about {parseReference(reference) ? reference.trim() : 'the passage above'} and nothing else.
               </span>

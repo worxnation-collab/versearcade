@@ -20,6 +20,7 @@ import {
 } from '@/store/churchAdmin'
 import { AllowanceLine, ENGINE_REASONS, outcomeText, recoverLanded } from './weekRun'
 import { TranscriptMeter, transcriptNote } from './transcript'
+import { MemoInput, placeTranscript } from './memo'
 
 // "Draft a week from a sermon" — the Content Generation package's week (0129).
 //
@@ -243,6 +244,7 @@ export function WeekDraftPanel({
         <textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} rows={6} placeholder="Paste the sermon, your notes, or the transcript of a voice memo…" style={{ resize: 'vertical' }} />
       </label>
       <TranscriptMeter value={transcript} />
+      {backend.memo && <MemoInput churchId={churchId} memo={backend.memo} hasText={!!transcript.trim()} disabled={busy} onTranscript={(t, how) => setTranscript((cur) => placeTranscript(cur, t, how))} />}
       <label style={labelStyle}>
         What to focus on (optional)
         <input value={guidance} onChange={(e) => setGuidance(e.target.value)} maxLength={GUIDANCE_MAX} placeholder="Staying connected when life is busy" />

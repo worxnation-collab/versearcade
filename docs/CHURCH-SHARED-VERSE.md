@@ -446,3 +446,42 @@ on the opening third and the arc was lost. Now, in both modes:
   presented as having read the whole sermon. No unit is spent on the condense
   and `church_draft_runs` is unchanged.
 
+## Voice memos
+
+"Record Sunday's sermon, get Monday–Friday." Each of the three drafting forms
+(one day, a week from a sermon, the study-topic week) has **Upload a voice
+memo** and, where the browser can record, **Record here** beside the paste box
+(`features/church/admin/memo.tsx`). The paste box is unchanged; this only
+fills it.
+
+1. **Upload.** `church-draft` `mode: 'memo_url'` checks the Content Generation
+   gate (`church_memo_can`, 0144, spends nothing) and hands back a signed
+   upload into the private `church-memos` bucket, under the church's own
+   folder. The browser sends the file there directly. m4a/mp4, mp3, wav, aac,
+   ogg/opus, flac, webm and aiff, up to 50 MB; the browser reads the length
+   first and refuses past an hour before anything is sent.
+2. **Transcribe.** `mode: 'transcribe'` spends one of the church's 10 daily
+   transcriptions (`use_church_memo`), sends the audio to Gemini through the
+   Files API, measures it with countTokens (32 tokens a second) and refuses
+   past an hour, and transcribes it word for word — scripture written as heard,
+   never swapped for a translation's wording. Any failure gives the
+   transcription back (`release_church_memo`). A busy or timed-out model keeps
+   the upload so **Try again** doesn't upload again; a refused format, a silent
+   or overlong file, and every success remove it. Leftovers are pruned after
+   six hours.
+3. **Edit, then draft.** The transcript lands in the box (or, when the box
+   already has text, the leader picks Replace it / Add below). Drafting is the
+   ordinary call: a long transcript is condensed first, it spends exactly the
+   draft units a paste would, and every other rule — BSB scripture, drafts
+   until approved, the ⚠ check, refunds, the run log — is untouched.
+
+No draft unit is ever spent on a transcription, and the replies carry
+`memo_left` rather than `left`, because `left` is what every client shows as
+the draft allowance.
+
+**Not verified against the live model:** m4a and webm are on Vertex AI's audio
+list but not the Gemini API's documented one; a refusal comes back as
+`memo_format` ("try an M4A, MP3 or WAV"). And an hour of audio is a long
+transcription inside the function's 140-second budget; a timeout keeps the
+upload for a retry.
+

@@ -22,6 +22,7 @@ import {
 } from '@/store/churchAdmin'
 import { AllowanceLine, ENGINE_REASONS, outcomeText, recoverLanded } from './weekRun'
 import { TranscriptMeter, transcriptNote } from './transcript'
+import { MemoInput, placeTranscript } from './memo'
 
 // "What is your congregation studying this week?" — the guided week fill at the
 // top of the leadership planner (Content Generation only; drawn only when the
@@ -451,14 +452,17 @@ export function StudyTopicWeek({
           </label>
 
           {notesOpen ? (
+            <div style={{ display: 'grid', gap: 8 }}>
             <label style={labelStyle}>
               Sermon notes or a transcript (optional)
               <textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} rows={5} disabled={busy} placeholder="Paste notes or a transcript to steer each day’s note…" style={{ resize: 'vertical' }} />
               <TranscriptMeter value={transcript} />
             </label>
+            {backend.memo && <MemoInput churchId={churchId} memo={backend.memo} hasText={!!transcript.trim()} disabled={busy} onTranscript={(t, how) => setTranscript((cur) => placeTranscript(cur, t, how))} />}
+            </div>
           ) : (
             <button className="faint" onClick={() => setNotesOpen(true)} style={{ justifySelf: 'start', padding: 0, fontSize: 12, fontWeight: 700, color: 'var(--ink-dim)', cursor: 'pointer' }}>
-              + Paste sermon notes or a transcript
+              + Paste sermon notes, a transcript or a voice memo
             </button>
           )}
 

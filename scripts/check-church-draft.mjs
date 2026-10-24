@@ -192,7 +192,7 @@ check('2 drafted, 1 date: saves 1, refunds 1', r.body.ok && r.body.saved.length 
 
 // 13. The blind check flags a disagreement on the saved draft, and the run log counts it.
 //     q() marks option 1 right; the checker answers 1 everywhere but Q3 of day 1 (2) and
-//     Q5 of day 1 (-1, couldn't tell from the passage).
+//     Q5 of day 1 (-1, couldn't tell — not a flag).
 reset(); gemini = [
   { days: [{ reference: 'John 15:1', questions: five() }, { reference: 'John 15:4', questions: five() }] },
   { items: [{ i: 0, answers: [1, 1, 2, 1, -1] }, { i: 1, answers: [1, 1, 1, 1, 1] }] },
@@ -200,9 +200,9 @@ reset(); gemini = [
 r = await call(week({ days: 2, dates: [D[0], D[1]] }))
 let d0 = db.verses[D[0]]?.questions ?? [], d1 = db.verses[D[1]]?.questions ?? []
 check('check: disagreement flagged with the pick', d0[2]?.check === true && d0[2]?.checkPick === 2, d0[2])
-check('check: "couldn\'t tell" flagged as -1', d0[4]?.check === true && d0[4]?.checkPick === -1, d0[4])
+check('check: "couldn\'t tell" is not flagged', !d0[4]?.check && d0[4]?.checkPick === undefined, d0[4])
 check('check: agreeing questions untouched', !d0[0].check && !d0[1].check && !d0[3].check && d1.every((q) => !q.check), { d0, d1 })
-check('check: run log counts checked and flagged', db.runs.at(-1)?.questions_checked === 10 && db.runs.at(-1)?.questions_flagged === 2, db.runs.at(-1))
+check('check: run log counts checked and flagged', db.runs.at(-1)?.questions_checked === 10 && db.runs.at(-1)?.questions_flagged === 1, db.runs.at(-1))
 check('check: units unchanged by the check', db.used === 2, db.used)
 
 // 14. A checker that fails leaves the draft exactly as it was, unflagged, and still saves.

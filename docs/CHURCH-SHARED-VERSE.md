@@ -318,8 +318,10 @@ is saved positionally on the client, as before.
 **The answer check (0143).** Every finished set of five is read a second
 time, blind, in one cheap call (`GEMINI_CHECK_MODEL`, else the drafting
 model): the passage and each question's options, never which one was marked.
-Where its pick differs, or it can't pick one from the passage (-1), the
-question carries `check: true` and `checkPick`. It never blocks a draft — no
+Where it picks a different option, the question carries `check: true` and
+`checkPick`. "Can't tell" (-1) is NOT a flag: in one-day mode the checker sees
+only the verse, which can't answer a before/after question, and a ⚠ on a right
+answer teaches leaders to ignore the ⚠. It never blocks a draft — no
 time left, a failed call or an unreadable answer leaves the questions as they
 were — and it spends nothing. The leader sees it everywhere a draft is
 reviewed: a ⚠ on the question in the form, with what the second read picked

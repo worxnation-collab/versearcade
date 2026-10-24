@@ -16,12 +16,12 @@ import {
   TOPIC_MAX,
   WEEK_DAYS_MAX,
   WEEK_DAYS_MIN,
-  WEEK_TRANSCRIPT_MAX,
   type VerseBackend,
   type WeekDay,
   type WeekPassage,
 } from '@/store/churchAdmin'
 import { AllowanceLine, ENGINE_REASONS, outcomeText, recoverLanded } from './weekRun'
+import { TranscriptMeter, transcriptNote } from './transcript'
 
 // "What is your congregation studying this week?" — the guided week fill at the
 // top of the leadership planner (Content Generation only; drawn only when the
@@ -273,8 +273,10 @@ export function StudyTopicWeek({
     // 4. The function saved each day as a DRAFT on its own date (0142). With no
     //    answer at all, look at the planned dates before calling it a failure.
     let saved: string[], refused: { date: string; reason: string }[] = [], missing: string[] = []
+    let told = ''
     if (r.ok) {
       ;({ saved, refused, missing } = r.data)
+      told = transcriptNote(transcript, r.data.transcriptUse, r.data.transcriptRead)
     } else if (r.reason === 'no_reply') {
       setPhase('checking')
       saved = await recoverLanded(churchId, backend, window_, dates, () => mounted.current)
@@ -287,7 +289,7 @@ export function StudyTopicWeek({
     setPhase('idle')
     juice.select?.()
     setResult({ series, dates: saved, passages: passages.map((p) => p.reference) })
-    setMsg({ ok: true, text: outcomeText(`Suggested “${series}”:`, saved, refused, missing) })
+    setMsg({ ok: true, text: outcomeText(`Suggested “${series}”:`, saved, refused, missing) + told })
     onDrafted(saved)
   }
 
@@ -451,7 +453,8 @@ export function StudyTopicWeek({
           {notesOpen ? (
             <label style={labelStyle}>
               Sermon notes or a transcript (optional)
-              <textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} rows={5} maxLength={WEEK_TRANSCRIPT_MAX} disabled={busy} placeholder="Paste notes or a transcript to steer each day’s note…" style={{ resize: 'vertical' }} />
+              <textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} rows={5} disabled={busy} placeholder="Paste notes or a transcript to steer each day’s note…" style={{ resize: 'vertical' }} />
+              <TranscriptMeter value={transcript} />
             </label>
           ) : (
             <button className="faint" onClick={() => setNotesOpen(true)} style={{ justifySelf: 'start', padding: 0, fontSize: 12, fontWeight: 700, color: 'var(--ink-dim)', cursor: 'pointer' }}>

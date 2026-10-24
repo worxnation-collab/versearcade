@@ -4,7 +4,8 @@ import { useJuice } from '@/juice/useJuice'
 import { todayLocalDate, addDays } from '@/lib/date'
 import { parseReference } from '@/lib/bibleProgress'
 import { verseFromReference } from '@/data/bible/questions'
-import { cleanLine, cleanQuestions, fetchDays, flaggedCount, GUIDANCE_MAX, NOTE_MAX, SERIES_MAX, serverVerseBackend, TRANSCRIPT_MAX, useDraftAllowance, type DayVerse, type VerseBackend, type VerseStatus, type WeekDay } from '@/store/churchAdmin'
+import { TranscriptMeter, transcriptNote } from './transcript'
+import { cleanLine, cleanQuestions, fetchDays, flaggedCount, GUIDANCE_MAX, NOTE_MAX, SERIES_MAX, serverVerseBackend, useDraftAllowance, type DayVerse, type VerseBackend, type VerseStatus, type WeekDay } from '@/store/churchAdmin'
 import type { Question } from '@/types'
 import { SeriesCopyPanel } from './SeriesCopyPanel'
 import { DraftReview, WeekDraftPanel } from './WeekDraftPanel'
@@ -258,7 +259,7 @@ export function TodayVerseForm({
     // A suggested note fills an EMPTY note only — never over the pastor's own.
     if (r.data.note && !note.trim()) setNote(r.data.note)
     setGeneratedNow(true)
-    setMsg({ ok: true, text: 'Drafted. Nothing is live yet — read each one, change anything that isn’t how you’d say it, then save it as a draft and approve it.' })
+    setMsg({ ok: true, text: 'Drafted. Nothing is live yet — read each one, change anything that isn’t how you’d say it, then save it as a draft and approve it.' + transcriptNote(transcript, r.data.transcriptUse, r.data.transcriptRead) })
   }
 
   // Any edit to a question is the leader's own call on it, so it clears the ⚠.
@@ -508,8 +509,9 @@ export function TodayVerseForm({
               </label>
               <label style={labelStyle}>
                 Sermon notes or a voice-memo transcript
-                <textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} rows={4} maxLength={TRANSCRIPT_MAX} placeholder="Paste your notes, or the transcript of a voice memo…" style={{ resize: 'vertical' }} />
+                <textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} rows={4} placeholder="Paste your notes, or the transcript of a voice memo…" style={{ resize: 'vertical' }} />
               </label>
+              <TranscriptMeter value={transcript} />
               <span className="faint" style={{ fontSize: 11.5, lineHeight: 1.4 }}>
                 These only steer the emphasis and the suggested note. The questions are still about {parseReference(reference) ? reference.trim() : 'the passage above'} and nothing else.
               </span>

@@ -218,8 +218,8 @@ row carries "Unlock with Church Suite" (docs/CHURCH-PACKAGES.md → Billing).
 **The engine** (`church-draft`): POST `{ church_id, reference, text,
 guidance?, transcript? }`. The reference must be in citation form
 (`bad_reference` otherwise). `guidance` is a focus line (300 chars) and
-`transcript` is sermon notes or a voice-memo transcript (4,000 chars), pasted
-in. Both steer emphasis and the suggested note only. It returns five questions
+`transcript` is sermon notes or a voice-memo transcript, pasted in (see
+"Long transcripts" below for the limits). Both steer emphasis and the suggested note only. It returns five questions
 and a `note`. The note fills the form's note only when that is empty. On-device
 transcription of a voice memo isn't built; paste the transcript.
 
@@ -335,7 +335,8 @@ only ever on a draft; a member never receives one.
 
 **Limits, all enforced in the function:** 2–7 days; 1–3 passages, each inside
 one chapter, ≤ 40 verses each and ≤ 6,000 characters of scripture in all; a
-transcript ≤ 12,000 characters (about a 20-minute sermon; longer ones are cut);
+transcript ≤ 60,000 characters, condensed first above 12,000 (see "Long
+transcripts");
 a focus line ≤ 300; each day ≤ 3 consecutive verses and ≤ 1,000 characters of
 text; one model call with a 90-second timeout and one retry only if the first
 failed inside 50 seconds; 30 draft-days per church per UTC day.
@@ -421,4 +422,27 @@ a series is identified by its NAME, so two overlapping series with one name
 merge; there is no per-member series completion for members (by design — it
 is leadership's `church_leader_insights`); and an unverified church gets none
 of this.
+
+## Long transcripts
+
+A 30-minute sermon is 25-30k characters, and the forms used to cut a paste at
+4,000 (one day) or 12,000 (a week) with nothing on screen — so the model drew
+on the opening third and the arc was lost. Now, in both modes:
+
+- **Up to 12,000 characters are read word for word.** The forms carry no
+  `maxLength`; a live count sits under the box (`TranscriptMeter`).
+- **Above that, the function condenses first.** One time-boxed call
+  (`prepareTranscript`, ≤ 25s, `GEMINI_CHECK_MODEL`) turns the whole
+  transcript into an ordered outline of the pastor's own points, and the draft
+  is written from the outline plus the passage. The outline is held to the
+  same rule as the transcript: emphasis and the note, never facts the passage
+  doesn't contain. The meter says this will happen before anything is sent.
+- **Up to 60,000 are accepted** (about an hour of speech); beyond that the
+  meter names exactly how much won't be considered.
+- **A condense that fails or runs late falls back** to the first 12,000 — what
+  every draft got before — and never fails the draft. The answer carries
+  `transcript_use` (`full` / `condensed` / `clipped`) and `transcript_read`,
+  and the form's result line says which happened, so a clipped draft is never
+  presented as having read the whole sermon. No unit is spent on the condense
+  and `church_draft_runs` is unchanged.
 

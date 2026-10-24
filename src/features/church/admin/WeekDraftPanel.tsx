@@ -15,11 +15,11 @@ import {
   WEEK_DAYS_MAX,
   WEEK_DAYS_MIN,
   WEEK_PASSAGES_MAX,
-  WEEK_TRANSCRIPT_MAX,
   type VerseBackend,
   type WeekDay,
 } from '@/store/churchAdmin'
 import { AllowanceLine, ENGINE_REASONS, outcomeText, recoverLanded } from './weekRun'
+import { TranscriptMeter, transcriptNote } from './transcript'
 
 // "Draft a week from a sermon" — the Content Generation package's week (0129).
 //
@@ -141,8 +141,10 @@ export function WeekDraftPanel({
     const dates = plan.dates
     const r = await backend.draftWeek(churchId, { series, days, passages, transcript, guidance, dates })
     let saved: string[], refused: { date: string; reason: string }[] = [], missing: string[] = []
+    let told = ''
     if (r.ok) {
       ;({ saved, refused, missing } = r.data)
+      told = transcriptNote(transcript, r.data.transcriptUse, r.data.transcriptRead)
     } else if (r.reason === 'no_reply') {
       // No answer is not a failure yet: the drafts may have landed anyway.
       setPhase('checking')
@@ -155,7 +157,7 @@ export function WeekDraftPanel({
     }
     setPhase('idle')
     juice.select?.()
-    setMsg({ ok: true, text: outcomeText(`Drafted “${cleanLine(series, SERIES_MAX)}”:`, saved, refused, missing) })
+    setMsg({ ok: true, text: outcomeText(`Drafted “${cleanLine(series, SERIES_MAX)}”:`, saved, refused, missing) + told })
     setOpen(false)
     onDrafted(saved)
   }
@@ -238,11 +240,9 @@ export function WeekDraftPanel({
 
       <label style={labelStyle}>
         Sermon notes or a voice-memo transcript
-        <textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} rows={6} maxLength={WEEK_TRANSCRIPT_MAX} placeholder="Paste the sermon, your notes, or the transcript of a voice memo…" style={{ resize: 'vertical' }} />
+        <textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} rows={6} placeholder="Paste the sermon, your notes, or the transcript of a voice memo…" style={{ resize: 'vertical' }} />
       </label>
-      {transcript.length > WEEK_TRANSCRIPT_MAX - 1000 && (
-        <span className="faint" style={{ fontSize: 11.5, marginTop: -6 }}>{(WEEK_TRANSCRIPT_MAX - transcript.length).toLocaleString()} characters left.</span>
-      )}
+      <TranscriptMeter value={transcript} />
       <label style={labelStyle}>
         What to focus on (optional)
         <input value={guidance} onChange={(e) => setGuidance(e.target.value)} maxLength={GUIDANCE_MAX} placeholder="Staying connected when life is busy" />

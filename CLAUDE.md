@@ -1708,6 +1708,13 @@ Four rules are load-bearing:
 - **A church's verse never replaces the global drop.** Enforced server-side:
   `get_effective_verse` returns null, so approved iOS builds that still call it
   play the global verse too. Members get 0128's lane instead, which skips drafts.
+- **A pasted sermon is never cut silently.** Up to 12,000 characters are
+  read word for word; up to 60,000 are condensed first to an ordered outline
+  (one time-boxed call) and drafted from that, and a failed condense falls back
+  to the first 12,000 and SAYS so — the answer's `transcript_use` reaches the
+  form's result line. No `maxLength` on those boxes; `TranscriptMeter` says
+  what will happen before anything is sent. `docs/CHURCH-SHARED-VERSE.md` →
+  "Long transcripts".
 - **A week from one sermon is the SAME generator** (`church-draft`
   `mode: 'week'`, 0129, `WeekDraftPanel`), spending one of the church's 30
   daily units per day drafted. **The scripture on a drafted day never comes

@@ -389,7 +389,6 @@ export const serverGenerationBackend: VerseBackend = {
 export const WEEK_DAYS_MIN = 2
 export const WEEK_DAYS_MAX = 7
 export const WEEK_PASSAGES_MAX = 3
-export const WEEK_TRANSCRIPT_MAX = 12_000
 /** Mirrors the function's 40-verse and 6,000-character caps. */
 const PASSAGE_VERSES_MAX = 40
 const SCRIPTURE_MAX = 6_000
@@ -422,6 +421,10 @@ export interface WeekDraftResult {
   missing: string[]
   /** How many days were asked of the engine. */
   asked: number
+  /** What became of the transcript, when one was sent and the function says (see TranscriptUse). */
+  transcriptUse?: TranscriptUse
+  /** Characters of the pasted transcript the draft drew on. */
+  transcriptRead?: number
 }
 
 /** Fetch a passage's verses. Null reason says why it can't be used. */
@@ -458,7 +461,7 @@ export async function draftWeek(churchId: string, input: WeekDraftInput): Promis
     days: input.days,
     passages: input.passages,
     guidance: cleanLine(input.guidance, GUIDANCE_MAX) ?? undefined,
-    transcript: input.transcript?.trim().slice(0, WEEK_TRANSCRIPT_MAX) || undefined,
+    transcript: input.transcript?.trim().slice(0, TRANSCRIPT_SEND_MAX) || undefined,
     dates: input.dates,
   })
   // No answer at all: the panel re-reads the planned dates before saying anything.
@@ -474,7 +477,7 @@ export async function draftWeek(churchId: string, input: WeekDraftInput): Promis
     const saved = (d.saved as unknown[]).map(String).filter((x) => input.dates.includes(x))
     if (!saved.length) return { ok: false, reason: 'not_saved' }
     const missing = (Array.isArray(d.missing) ? d.missing : []).map(String).filter((x: string) => input.dates.includes(x))
-    return { ok: true, data: { saved, refused: refusals(d.refused), missing, asked: Number(d.asked) || input.days } }
+    return { ok: true, data: { saved, refused: refusals(d.refused), missing, asked: Number(d.asked) || input.days, ...transcriptOf(d) } }
   }
 
   // A function from before 0142 ignores `dates` and hands the days back, so
@@ -500,7 +503,7 @@ export async function draftWeek(churchId: string, input: WeekDraftInput): Promis
   }
   if (!saved.length) return { ok: false, reason: refused.length ? 'not_saved' : 'draft_failed' }
   const missing = input.dates.filter((x) => !saved.includes(x) && !refused.some((y) => y.date === x))
-  return { ok: true, data: { saved, refused, missing, asked: Number(d.asked) || input.days } }
+  return { ok: true, data: { saved, refused, missing, asked: Number(d.asked) || input.days, ...transcriptOf(d) } }
 }
 
 // ---------------------------------------------------------------------------
@@ -588,10 +591,36 @@ export interface DraftResult {
   questions: Question[]
   /** A suggested note for members, when the engine wrote one. */
   note?: string
+  /** What became of the transcript, when one was sent and the function says. */
+  transcriptUse?: TranscriptUse
+  /** Characters of the pasted transcript the draft drew on. */
+  transcriptRead?: number
 }
 
 export const GUIDANCE_MAX = 300
-export const TRANSCRIPT_MAX = 4000
+/**
+ * Transcripts (the function's caps, both modes). Up to TRANSCRIPT_DIRECT_MAX
+ * is read word for word; a longer one is condensed to an ordered outline of
+ * its key points before drafting, so the whole sermon steers it. The forms
+ * carry no maxLength: a paste is never cut silently, and anything past
+ * TRANSCRIPT_SEND_MAX (about an hour of speech) is named on screen first.
+ */
+export const TRANSCRIPT_DIRECT_MAX = 12_000
+export const TRANSCRIPT_SEND_MAX = 60_000
+/**
+ * 'full' — read word for word; 'condensed' — condensed first, then drafted
+ * from; 'clipped' — the condense failed, so only the first
+ * TRANSCRIPT_DIRECT_MAX characters steered it. A function from before this
+ * says nothing, and the field stays undefined.
+ */
+export type TranscriptUse = 'full' | 'condensed' | 'clipped'
+
+function transcriptOf(d: Record<string, unknown>): { transcriptUse?: TranscriptUse; transcriptRead?: number } {
+  const use = d.transcript_use
+  if (use !== 'full' && use !== 'condensed' && use !== 'clipped') return {}
+  const read = Number(d.transcript_read)
+  return { transcriptUse: use, transcriptRead: Number.isFinite(read) && read > 0 ? read : undefined }
+}
 
 /**
  * Ask `church-draft` (0122) for five questions about a passage. Leadership of
@@ -606,14 +635,14 @@ export async function draftQuestions(churchId: string, reference: string, text: 
     reference,
     text,
     guidance: cleanLine(steer.guidance, GUIDANCE_MAX) ?? undefined,
-    transcript: steer.transcript?.trim().slice(0, TRANSCRIPT_MAX) || undefined,
+    transcript: steer.transcript?.trim().slice(0, TRANSCRIPT_SEND_MAX) || undefined,
   })
   if (r.kind === 'lost') return { ok: false, reason: 'unavailable' }
   const d = r.data as { ok?: boolean; reason?: string; questions?: Question[]; note?: unknown }
   if (!d.ok) return { ok: false, reason: String(d.reason ?? 'unavailable') }
   const qs = cleanQuestions(d.questions ?? [])
   if (!qs) return { ok: false, reason: 'draft_failed' }
-  return { ok: true, data: { questions: qs, note: cleanLine(typeof d.note === 'string' ? d.note : null, NOTE_MAX) ?? undefined } }
+  return { ok: true, data: { questions: qs, note: cleanLine(typeof d.note === 'string' ? d.note : null, NOTE_MAX) ?? undefined, ...transcriptOf(d as Record<string, unknown>) } }
 }
 
 /** In-memory days, seeded with `initial`. Validates exactly as the server does. */

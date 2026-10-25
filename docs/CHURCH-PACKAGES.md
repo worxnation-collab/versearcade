@@ -235,6 +235,26 @@ the app carries none.
   add-on. **"Manage plan"** is `portal` with `flow: 'plan'` — the portal's
   `subscription_update` picker, for a downgrade or monthly ↔ yearly — and is
   not drawn for an invoiced church.
+- **The Custom Leader Avatar is a ONE-TIME $79 Checkout** (2026-10-25, 0145;
+  `prod_VVGkrkRfTdTZCo`, `price_1UUGDMHlxD9PZQmbiQYsps27`). "Get a custom
+  avatar — $79" on the dashboard's **Your look** tab (web only,
+  `churchPricesVisible()`) calls `church-billing` `{ action: 'avatar', church }`
+  with the leader's own session: leadership of THAT church (`leaderOf`), a
+  verified church (`needs_base` otherwise) and the add-on not held already
+  (`already`, because 0136 allows one live request per church). The session is
+  `mode: 'payment'`, card only (`payment_method_types` is accepted at the pinned
+  `2024-06-20`; newer API versions reject it — without it the account's dashboard
+  would also offer Klarna, Link, Cash App and Amazon Pay), `client_reference_id`
+  = the church and `metadata.product = 'custom_leader_avatar'`, reusing the
+  church's Stripe customer when it has one. The webhook grants on
+  `checkout.session.completed` (or `async_payment_succeeded`) with
+  `payment_status: 'paid'` through `billing_grant_custom_avatar` (service_role
+  only, idempotent per session id, which it keeps on `church_addons` for a
+  refund). It sets the same `custom_leader_avatar` flag the operator toggle
+  sets; a `had: true` answer means the church already held it and the operator
+  should look at a refund. Stripe returns the leader to
+  `/church/:id/admin?avatar=1`, which opens on Your look and re-reads
+  entitlements every 3s until the photo form appears.
 - **Two ways to pay, one webhook.** *Card*: a Stripe Checkout Session
   (`client_reference_id` = the church). *Invoice*: a `send_invoice`
   subscription, due in 30 days, payable by card, ACH, bank transfer or a cheque

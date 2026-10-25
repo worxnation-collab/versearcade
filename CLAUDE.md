@@ -1792,13 +1792,34 @@ Four things are load-bearing:
   'custom', which `set_my_leader_look` refuses until then. Photos are seen by
   the operator queue (Admin → Churches) and nobody else — another leader sees
   only that the church's request exists.
-- **Prices are constants, and the App Store build shows none.**
-  `CHURCH_PRODUCTS` carries placeholder Stripe ids (`isPlaceholderPriceId`);
-  `churchPricesVisible()` in `commerce.ts` is false on native, for the
-  `givingLinkVisible` reason. There is no in-app checkout yet: the add-on is
-  granted by the operator toggle until Stripe has a one-time price, and when
-  it does, the webhook should flip `church_addons.custom_leader_avatar` the
-  way 0131 flips `content_generation`.
+- **Prices are constants, the App Store build shows none, and the $79 is a
+  real Stripe checkout** (2026-10-25). `CHURCH_PRODUCTS` carries the LIVE
+  price ids (the same ones `church-billing`'s `PRICES` names); the one-time
+  avatar is `price_1UUGDMHlxD9PZQmbiQYsps27`. `churchPricesVisible()` in
+  `commerce.ts` is false on native, for the `givingLinkVisible` reason — no
+  price, no buy button, no Suite button there, while a church that already
+  holds the add-on still gets the photo form (verified in a browser with the
+  native bridge faked). The button calls `church-billing` `action: 'avatar'`
+  (leadership of THAT church, verified, not already held — `lib/checkout.ts`
+  starts it, as it does every sale); the webhook grants on a PAID
+  `mode: 'payment'` session through `billing_grant_custom_avatar` (0145), the
+  same flag the operator toggle sets, so `church_entitlements` reads one
+  answer however it was granted. **The session asks for card only, and that
+  is load-bearing**: without it the account's payment-method settings offer
+  delayed methods, and the endpoint (`we_1UTB3n…`) does not subscribe to
+  `async_payment_succeeded`, so a delayed payment would be money with no
+  grant. `payment_method_types` is accepted at the function's pinned
+  `2024-06-20` and REJECTED by newer API versions (the Stripe connector runs
+  one) — if the pin ever moves, add that event to the endpoint first.
+  `docs/CHURCH-PACKAGES.md` → Billing.
+- **Driven in a browser on 2026-10-25** against a stubbed backend that follows
+  the 0136/0145 rules (no test leader account exists, and production gets no
+  fake churches). These all checked out: setup lands on Your look, a woman
+  leader gets her exact variant, a man his, and a 40MB PNG goes up as a 196KB
+  JPEG. Pending, Replace photos, the operator's Start/Deliver (Deliver refuses
+  without https art), Complete, and the delivered look in the picker work too.
+  The server half was run live inside a rolled-back transaction on the QA
+  church.
 
 ### Church visual assets: a card is data, and the words are the church's
 
@@ -2602,7 +2623,20 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0144` (voice memos for the content engine —
+The latest is `0145` (the Custom Leader Avatar bought on Stripe —
+`church_addons.custom_avatar_session` and `billing_grant_custom_avatar(church,
+session)`, service_role only, the church-billing webhook's writer for a PAID
+one-time session; idempotent per session id, and it does not re-check
+verification at grant time, because the checkout already did and refusing
+there would keep the money and give nothing). APPLIED 2026-10-25 after a local
+Postgres 16 run of nine cases (bad input, unknown church, grant, same-session
+retry a no-op, a second church's Content Generation untouched, a second session
+answering `had: true`, `authenticated` and `anon` refused, re-run a no-op) and
+verified live: ACL `{postgres,service_role}`, one signature, the column
+present, and a grant → entitlements → JPEG submit → read round trip on the QA
+church inside a rolled-back transaction (nothing left behind).
+
+Before it, `0144` (voice memos for the content engine —
 `church_memo_uses` (church, day) → a COUNT and nothing else, RLS on with no
 rule; `use_church_memo` (the Content Generation gate + one of 10 transcriptions
 a church a day), `church_memo_can` (the same gate before an upload, spends
@@ -3315,7 +3349,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0145` (0144 is the voice-memo allowance, in two parts; 0143 is the answer check's flag; 0142 is the content engine's run log and refund, in two parts; 0139, 0140 and 0141 are the Apple church subscription, its leader-removed binding and the church plan taps in production, each in two parts; 0138 is the check-in verse and report, in two parts; 0137 is used FOUR times in production — the check-in note in two parts, the leaderboard's streak-free tie-break, and `church_free_claim` — 0136 is the church leader looks, 0135 is the church billing read for the portal, 0134 is the self-serve church claim, in two parts; 0133 is used twice — church visual assets AND the church Stripe key in Vault — 0132 is the church webhook's Vault secret, 0131 is church billing, 0130 is the member's church view, 0129 is the week-from-a-sermon drafts, 0128 is the church layer, 0127 is `church_content_generation` in production, 0126 is the two new statues, 0125 is the API.Bible key, 0124 the reading translation, 0123 is the church verse series and note, 0122 is `church_question_drafts` in production only, 0121 is the church leader invite link, 0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0146` (0145 is the Custom Leader Avatar purchase; 0144 is the voice-memo allowance, in two parts; 0143 is the answer check's flag; 0142 is the content engine's run log and refund, in two parts; 0139, 0140 and 0141 are the Apple church subscription, its leader-removed binding and the church plan taps in production, each in two parts; 0138 is the check-in verse and report, in two parts; 0137 is used FOUR times in production — the check-in note in two parts, the leaderboard's streak-free tie-break, and `church_free_claim` — 0136 is the church leader looks, 0135 is the church billing read for the portal, 0134 is the self-serve church claim, in two parts; 0133 is used twice — church visual assets AND the church Stripe key in Vault — 0132 is the church webhook's Vault secret, 0131 is church billing, 0130 is the member's church view, 0129 is the week-from-a-sermon drafts, 0128 is the church layer, 0127 is `church_content_generation` in production, 0126 is the two new statues, 0125 is the API.Bible key, 0124 the reading translation, 0123 is the church verse series and note, 0122 is `church_question_drafts` in production only, 0121 is the church leader invite link, 0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

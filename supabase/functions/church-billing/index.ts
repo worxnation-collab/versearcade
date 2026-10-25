@@ -327,9 +327,12 @@ async function webhook(req: Request): Promise<Response> {
       if (error) throw new Error(`activate free: ${error.message}`)
       result = data
     }
-  } else if (event.type === 'checkout.session.completed' && o.mode === 'payment') {
+  } else if ((event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') && o.mode === 'payment') {
     // The one-time Custom Leader Avatar. Granted only when Stripe says PAID and
     // the session names the product; the session id makes a retry a no-op.
+    // The session asks for card only (valid at the pinned API version), so it
+    // is paid on completion; the async event is handled in case a delayed
+    // method is ever allowed — add it to the endpoint's events if so.
     const md = (o.metadata ?? {}) as Record<string, string>
     if (md.product === AVATAR_PRODUCT && md.church_id && o.payment_status === 'paid' && typeof o.id === 'string') {
       const { data, error } = await admin.rpc('billing_grant_custom_avatar', { p_church_id: md.church_id, p_session_id: o.id })

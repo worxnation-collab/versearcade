@@ -222,7 +222,7 @@ function CustomAvatarCard({ churchId, ent, paid, onChanged }: { churchId: string
         <>
           <Line>
             Sent — {req.photoCount ?? 0} photo{req.photoCount === 1 ? '' : 's'}
-            {req.notes ? <> and your notes: “{req.notes}”</> : null}. You can replace them until we start.
+            {req.notes ? <> and your notes: “{req.notes.replace(/[.!?]+$/, '')}”</> : null}. You can replace them until we start.
           </Line>
           <Button variant="secondary" onClick={() => setEditing(true)}>Replace photos</Button>
         </>

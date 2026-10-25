@@ -230,6 +230,14 @@ export const churchPricesVisible = (): boolean => !isNativeApp()
 export const churchSelfClaimVisible = (): boolean => !isNativeApp()
 
 /**
+ * Whether the For Churches page may name the church plans and their prices
+ * (Church Suite $39, Verified Church $29). Web only: in the App Store build a
+ * price the app can't charge is a storefront, so the page there stays exactly
+ * as it was — no plan names, no amounts.
+ */
+export const churchPlansVisible = (): boolean => !isNativeApp()
+
+/**
  * Whether a church's leadership can open Stripe's billing portal from this
  * build (0135). The portal shows prices, invoices and a card form — a
  * storefront by Apple's reckoning — so it is web only, like the claim that

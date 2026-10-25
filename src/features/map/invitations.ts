@@ -9,6 +9,7 @@ import { useDailyTrivia } from '@/store/dailyTrivia'
 import { useArcadeXp } from '@/store/arcadeXp'
 import { useBuddies } from '@/store/buddies'
 import { useGifts } from '@/store/gifts'
+import { useChurchCheckIns } from '@/store/churchCheckIns'
 import { useWashing } from '@/store/washing'
 import { usePrayerWall } from '@/store/prayerWall'
 import { useAccountLocked } from '@/components/AccountWall'
@@ -136,7 +137,7 @@ export function useInvitations(): MapInvite[] {
   const triviaDone = useDailyTrivia((s) => !!s.done[todayDate])
   const paidGames = useArcadeXp((s) => s.paidToday.length)
   const buddyRequests = useBuddies((s) => s.requests.length)
-  const unseenGifts = useGifts((s) => s.unseen)
+  const unseenGifts = useGifts((s) => s.unseen) + useChurchCheckIns((s) => s.unseen)
   const online = useAuth((s) => s.mode === 'online')
   const washedSomeoneToday = useWashing((s) => s.today > 0)
   const kneltAtWallToday = usePrayerWall((s) => s.today > 0)

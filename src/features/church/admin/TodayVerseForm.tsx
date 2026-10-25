@@ -4,11 +4,14 @@ import { useJuice } from '@/juice/useJuice'
 import { todayLocalDate, addDays } from '@/lib/date'
 import { parseReference } from '@/lib/bibleProgress'
 import { verseFromReference } from '@/data/bible/questions'
-import { cleanLine, cleanQuestions, fetchDays, GUIDANCE_MAX, NOTE_MAX, SERIES_MAX, serverVerseBackend, TRANSCRIPT_MAX, type DayVerse, type VerseBackend, type VerseStatus, type WeekDay } from '@/store/churchAdmin'
+import { TranscriptMeter, transcriptNote } from './transcript'
+import { MemoInput, placeTranscript } from './memo'
+import { cleanLine, cleanQuestions, fetchDays, flaggedCount, GUIDANCE_MAX, NOTE_MAX, SERIES_MAX, serverVerseBackend, useDraftAllowance, type DayVerse, type VerseBackend, type VerseStatus, type WeekDay } from '@/store/churchAdmin'
 import type { Question } from '@/types'
 import { SeriesCopyPanel } from './SeriesCopyPanel'
 import { DraftReview, WeekDraftPanel } from './WeekDraftPanel'
 import { StudyTopicWeek } from './StudyTopicWeek'
+import { ENGINE_REASONS } from './weekRun'
 import { AssetStudio } from './AssetStudio'
 import { useChurchAssetsAdmin } from '@/store/churchAssets'
 
@@ -57,6 +60,10 @@ interface Draft {
   options: string[]
   answerIndex: number
   teach: string
+  /** The blind check's ⚠ (0143), until the leader edits the question or says it looks right. */
+  check?: true
+  /** The option the second read picked (an index into `options`), or -1. */
+  checkPick?: number
 }
 
 const blank = (): Draft => ({ prompt: '', options: Array(OPTIONS).fill(''), answerIndex: 0, teach: '' })
@@ -65,6 +72,7 @@ const toDraft = (q: Question): Draft => ({
   options: [...q.options, ...Array(OPTIONS).fill('')].slice(0, OPTIONS),
   answerIndex: q.answerIndex,
   teach: q.teach,
+  ...(q.check === true ? { check: true as const, checkPick: q.checkPick } : {}),
 })
 
 /** Blank options drop out; the correct one has to survive that. */
@@ -77,7 +85,22 @@ function fromDraft(d: Draft): Question | null {
     kept.push(o)
   })
   if (answer < 0) return null
-  return { prompt: d.prompt, options: kept, answerIndex: answer, teach: d.teach }
+  const q: Question = { prompt: d.prompt, options: kept, answerIndex: answer, teach: d.teach }
+  // An unedited flagged question is saved flagged (a draft keeps it; approving strips it).
+  if (d.check) {
+    q.check = true
+    const pick = d.checkPick != null && d.checkPick >= 0 ? kept.indexOf(d.options[d.checkPick] ?? '') : -1
+    q.checkPick = pick
+  }
+  return q
+}
+
+/** What the ⚠ says, in the words of the passage check. */
+function checkLine(d: Draft): string {
+  const picked = d.checkPick != null && d.checkPick >= 0 ? d.options[d.checkPick]?.trim() : ''
+  return picked
+    ? `The draft answer may not match the passage. Please check — a second read of the passage picked “${picked}”.`
+    : 'The draft answer may not match the passage. Please check — a second read couldn’t answer it from the passage alone.'
 }
 
 const REASONS: Record<string, string> = {
@@ -93,6 +116,7 @@ const REASONS: Record<string, string> = {
 }
 
 const DRAFT_REASONS: Record<string, string> = {
+  ...ENGINE_REASONS,
   limit: 'That’s the drafting limit for today — write these by hand, or draft again tomorrow.',
   not_verified: 'Drafting is part of a Founding Church.',
   no_addon: 'Drafting is part of the Content Generation package, which this church doesn’t have.',
@@ -220,6 +244,8 @@ export function TodayVerseForm({
   const [transcript, setTranscript] = useState('')
   const typed = qs.some((q) => q.prompt.trim() || q.teach.trim() || q.options.some((o) => o.trim()))
   const canDraft = !!backend.draft && !!parseReference(reference) && text.trim().length >= 3
+  // What the engine last said this church has left today (null until it has answered).
+  const draftsLeft = useDraftAllowance((s) => (backend.draft ? s.left[churchId] : undefined))
   const draft = async () => {
     if (!backend.draft || !canDraft) return
     if (typed && !armed) { setArmed(true); return }
@@ -234,12 +260,15 @@ export function TodayVerseForm({
     // A suggested note fills an EMPTY note only — never over the pastor's own.
     if (r.data.note && !note.trim()) setNote(r.data.note)
     setGeneratedNow(true)
-    setMsg({ ok: true, text: 'Drafted. Nothing is live yet — read each one, change anything that isn’t how you’d say it, then save it as a draft and approve it.' })
+    setMsg({ ok: true, text: 'Drafted. Nothing is live yet — read each one, change anything that isn’t how you’d say it, then save it as a draft and approve it.' + transcriptNote(transcript, r.data.transcriptUse, r.data.transcriptRead) })
   }
 
-  const setQ = (i: number, patch: Partial<Draft>) => setQs((all) => all.map((q, j) => (j === i ? { ...q, ...patch } : q)))
+  // Any edit to a question is the leader's own call on it, so it clears the ⚠.
+  const unflag = (q: Draft): Draft => { const { check: _c, checkPick: _p, ...rest } = q; return rest }
+  const setQ = (i: number, patch: Partial<Draft>) => setQs((all) => all.map((q, j) => (j === i ? unflag({ ...q, ...patch }) : q)))
   const setOpt = (i: number, k: number, v: string) =>
-    setQs((all) => all.map((q, j) => (j === i ? { ...q, options: q.options.map((o, m) => (m === k ? v : o)) } : q)))
+    setQs((all) => all.map((q, j) => (j === i ? unflag({ ...q, options: q.options.map((o, m) => (m === k ? v : o)) }) : q)))
+  const flagged = qs.filter((q) => q.check).length
 
   // The verse as the form holds it, or null with the reason on screen.
   const build = (): DayVerse | null => {
@@ -481,8 +510,10 @@ export function TodayVerseForm({
               </label>
               <label style={labelStyle}>
                 Sermon notes or a voice-memo transcript
-                <textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} rows={4} maxLength={TRANSCRIPT_MAX} placeholder="Paste your notes, or the transcript of a voice memo…" style={{ resize: 'vertical' }} />
+                <textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} rows={4} placeholder="Paste your notes, or the transcript of a voice memo…" style={{ resize: 'vertical' }} />
               </label>
+              <TranscriptMeter value={transcript} />
+              {backend.memo && <MemoInput churchId={churchId} memo={backend.memo} hasText={!!transcript.trim()} disabled={drafting} onTranscript={(t, how) => setTranscript((cur) => placeTranscript(cur, t, how))} />}
               <span className="faint" style={{ fontSize: 11.5, lineHeight: 1.4 }}>
                 These only steer the emphasis and the suggested note. The questions are still about {parseReference(reference) ? reference.trim() : 'the passage above'} and nothing else.
               </span>
@@ -492,6 +523,7 @@ export function TodayVerseForm({
             {canDraft
               ? 'A first draft to edit. It’s saved as a draft your members can’t see until you approve it.'
               : 'Add the reference and the words of the verse first — drafting always starts from a passage.'}
+            {draftsLeft != null ? ` Your church has ${draftsLeft} draft${draftsLeft === 1 ? '' : 's'} left today.` : ''}
           </span>
         </div>
       )}
@@ -510,9 +542,32 @@ export function TodayVerseForm({
         Members see the note beside this day&rsquo;s verse on their Play tab, that day only. {note.length > NOTE_MAX - 40 ? `${NOTE_MAX - note.length} characters left.` : ''}
       </p>
 
+      {flagged > 0 && (
+        <p role="status" style={{ margin: 0, fontSize: 12.5, lineHeight: 1.45, padding: '8px 12px', borderRadius: 12, background: 'var(--card-raised)', border: '1px solid var(--edge)' }}>
+          ⚠ <b>{flagged} question{flagged === 1 ? '' : 's'} to check.</b>{' '}
+          <span className="dim">A second read of the passage didn’t agree with the marked answer. Edit it, or tap “Looks right” and save. You can still save or approve either way; approving takes the ⚠ off.</span>
+        </p>
+      )}
       {qs.map((q, i) => (
-        <div key={i} className="card" role="group" aria-label={`Question ${i + 1}`} style={{ padding: '12px 12px 10px', display: 'grid', gap: 8, minWidth: 0 }}>
-          <b style={{ fontSize: 12, fontWeight: 800, color: 'var(--ink-dim)' }}>Question {i + 1}</b>
+        <div
+          key={i}
+          className="card"
+          role="group"
+          aria-label={`Question ${i + 1}${q.check ? ', needs a check' : ''}`}
+          style={{ padding: '12px 12px 10px', display: 'grid', gap: 8, minWidth: 0, ...(q.check ? { borderColor: 'var(--gold)' } : {}) }}
+        >
+          <b style={{ fontSize: 12, fontWeight: 800, color: 'var(--ink-dim)' }}>
+            Question {i + 1}
+            {q.check && <span title={checkLine(q)} aria-hidden="true" style={{ marginLeft: 6, color: 'var(--gold)' }}>⚠ check this one</span>}
+          </b>
+          {q.check && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              <span style={{ flex: '1 1 200px', fontSize: 12, lineHeight: 1.45 }}>{checkLine(q)}</span>
+              <button className="pill" onClick={() => setQs((all) => all.map((x, j) => (j === i ? unflag(x) : x)))} style={{ fontSize: 12, fontWeight: 800 }}>
+                Looks right
+              </button>
+            </div>
+          )}
           <input value={q.prompt} onChange={(e) => setQ(i, { prompt: e.target.value })} placeholder="What does Jesus call himself here?" maxLength={300} aria-label={`Question ${i + 1}`} />
           {q.options.map((o, k) => (
             <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -663,6 +718,7 @@ function WeekStrip(props: {
             if (!w) return <div key={i} className="skeleton" style={{ height: 58, borderRadius: 10 }} />
             const on = w.date === selected
             const isDraft = w.verse?.status === 'draft'
+            const toCheck = isDraft ? flaggedCount(w.verse?.questions) : 0
             const [y, m, d] = w.date.split('-').map(Number)
             const day = new Date(y, m - 1, d)
             return (
@@ -670,7 +726,7 @@ function WeekStrip(props: {
                 key={w.date}
                 onClick={() => props.onPick(w.date)}
                 aria-pressed={on}
-                aria-label={`${day.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}: ${w.verse ? `${isDraft ? 'draft, not approved: ' : ''}${w.verse.reference}${w.verse.series ? `, ${w.verse.series}` : ''}` : 'not set'}`}
+                aria-label={`${day.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}: ${w.verse ? `${isDraft ? 'draft, not approved: ' : ''}${w.verse.reference}${w.verse.series ? `, ${w.verse.series}` : ''}${toCheck ? `, ${toCheck} to check` : ''}` : 'not set'}`}
                 style={{
                   minWidth: 0, padding: '6px 2px', borderRadius: 10, display: 'grid', gap: 2, justifyItems: 'center',
                   borderWidth: 1.5,
@@ -687,7 +743,7 @@ function WeekStrip(props: {
                   {w.date === today ? 'Today' : day.toLocaleDateString(undefined, { weekday: 'short' })}
                 </span>
                 <span style={{ fontSize: 15, fontWeight: 800 }}>{d}</span>
-                <span aria-hidden="true" style={{ fontSize: 10, color: w.verse && !isDraft ? 'var(--mint)' : 'var(--ink-dim)' }}>{isDraft ? '✎' : w.verse ? (w.verse.note ? '✓✉' : '✓') : '—'}</span>
+                <span aria-hidden="true" style={{ fontSize: 10, color: w.verse && !isDraft ? 'var(--mint)' : 'var(--ink-dim)' }}>{isDraft ? (toCheck ? '✎⚠' : '✎') : w.verse ? (w.verse.note ? '✓✉' : '✓') : '—'}</span>
               </button>
             )
           })}

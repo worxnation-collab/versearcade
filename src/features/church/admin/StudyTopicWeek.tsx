@@ -16,11 +16,13 @@ import {
   TOPIC_MAX,
   WEEK_DAYS_MAX,
   WEEK_DAYS_MIN,
-  WEEK_TRANSCRIPT_MAX,
   type VerseBackend,
   type WeekDay,
   type WeekPassage,
 } from '@/store/churchAdmin'
+import { AllowanceLine, ENGINE_REASONS, outcomeText, recoverLanded } from './weekRun'
+import { TranscriptMeter, transcriptNote } from './transcript'
+import { MemoInput, placeTranscript } from './memo'
 
 // "What is your congregation studying this week?" — the guided week fill at the
 // top of the leadership planner (Content Generation only; drawn only when the
@@ -36,7 +38,8 @@ import {
 //   2. DRAFT. `draftWeek` — the sermon week's own call, with the topic as its
 //      focus line and an optional pasted transcript — writes each day's verse
 //      focus inside those passages, five questions and a note.
-//   3. SAVE AS DRAFTS on the planned dates with `saveDraft`. Nothing is live:
+//   3. SAVE AS DRAFTS on the planned dates — done by the FUNCTION since 0142,
+//      each day on its own date, and re-read here. Nothing is live:
 //      the days show in the strip as ✎ and wait in `DraftReview`, where each is
 //      opened, edited, reordered, approved or discarded.
 //
@@ -48,7 +51,7 @@ import {
 // that was approved in the meantime.
 
 const REASONS: Record<string, string> = {
-  limit: 'That’s more drafting than today’s allowance has left (30 a church a day). Try fewer days, or tomorrow.',
+  ...ENGINE_REASONS,
   no_addon: 'Suggesting a week is part of the Content Generation package, which this church doesn’t have.',
   not_verified: 'This isn’t available for your church right now.',
   not_leadership: 'Only this church’s leadership can draft.',
@@ -70,7 +73,7 @@ const KIND_LABEL: Record<StudyTopic['kind'], string> = {
   book: 'Book',
 }
 
-type Phase = 'idle' | 'anchoring' | 'reading' | 'drafting' | 'saving'
+type Phase = 'idle' | 'anchoring' | 'reading' | 'drafting' | 'checking'
 
 export interface FillPlan {
   /** Dates this run will write. */
@@ -147,6 +150,8 @@ export function StudyTopicWeek({
   const [result, setResult] = useState<{ series: string; dates: string[]; passages: string[] } | null>(null)
   const [discardArmed, setDiscardArmed] = useState(false)
   const [discarding, setDiscarding] = useState(false)
+  const mounted = useRef(true)
+  useEffect(() => () => { mounted.current = false }, [])
 
   useEffect(() => {
     let alive = true
@@ -176,8 +181,10 @@ export function StudyTopicWeek({
   const hintList = readHints(hints)
   const anchors = hintList?.length ? hintList : topic?.passages ?? []
   const needsAnchoring = !anchors.length
-  // Week mode drafts at least two days; one open day still costs two.
-  const units = plan ? Math.max(plan.dates.length, plan.dates.length ? WEEK_DAYS_MIN : 0) + (needsAnchoring ? 1 : 0) : 0
+  // Week mode drafts at least two days, but since 0142 the day that is not
+  // saved is refunded, so the cost is the open days (plus one to anchor). The
+  // spend itself still needs WEEK_DAYS_MIN free at the moment it is taken.
+  const units = plan ? plan.dates.length + (needsAnchoring ? 1 : 0) : 0
   const busy = phase !== 'idle'
   const canAnchor = !needsAnchoring || !!backend.planTopic
   const ready = !!topic && hintList !== null && !!plan && plan.dates.length > 0 && canAnchor && !busy
@@ -218,7 +225,7 @@ export function StudyTopicWeek({
   }
 
   const run = async () => {
-    if (!topic || !plan || !ready || !backend.draftWeek || !backend.saveDraft) return
+    if (!topic || !plan || !ready || !backend.draftWeek || !window_) return
     setMsg(null)
     setResult(null)
     setDiscardArmed(false)
@@ -254,38 +261,36 @@ export function StudyTopicWeek({
     setPhase('drafting')
     const n = plan.dates.length
     const guidance = `This week the congregation is studying “${topic.label}”. Keep every day on that topic.`.slice(0, GUIDANCE_MAX)
+    const dates = plan.dates
     const r = await backend.draftWeek(churchId, {
       series,
       days: Math.max(n, WEEK_DAYS_MIN),
       passages,
       guidance,
       transcript: transcript.trim() || undefined,
+      dates,
     })
-    if (!r.ok) { setPhase('idle'); return setMsg({ ok: false, text: REASONS[r.reason] ?? REASONS.unavailable }) }
 
-    // 4. Save each as a DRAFT on its planned date. A day that went live in the
-    //    meantime refuses (`day_is_set`) and is reported, never forced.
-    setPhase('saving')
-    const saved: string[] = []
-    const refused: string[] = []
-    for (let i = 0; i < n && i < r.data.days.length; i++) {
-      const d = r.data.days[i]
-      const s = await backend.saveDraft(churchId, plan.dates[i], { reference: d.reference, text: d.text, questions: d.questions, series, note: d.note ?? '' }, false)
-      if (s.ok) saved.push(plan.dates[i])
-      else refused.push(plan.dates[i])
+    // 4. The function saved each day as a DRAFT on its own date (0142). With no
+    //    answer at all, look at the planned dates before calling it a failure.
+    let saved: string[], refused: { date: string; reason: string }[] = [], missing: string[] = []
+    let told = ''
+    if (r.ok) {
+      ;({ saved, refused, missing } = r.data)
+      told = transcriptNote(transcript, r.data.transcriptUse, r.data.transcriptRead)
+    } else if (r.reason === 'no_reply') {
+      setPhase('checking')
+      saved = await recoverLanded(churchId, backend, window_, dates, () => mounted.current)
+      if (!mounted.current) return
+      if (!saved.length) { setPhase('idle'); return setMsg({ ok: false, text: REASONS.no_reply }) }
+    } else {
+      setPhase('idle')
+      return setMsg({ ok: false, text: REASONS[r.reason] ?? REASONS.unavailable })
     }
     setPhase('idle')
-    if (!saved.length) return setMsg({ ok: false, text: 'None of the suggested days could be saved — check your connection and try again.' })
     juice.select?.()
-    const short = n - Math.min(n, r.data.days.length)
     setResult({ series, dates: saved, passages: passages.map((p) => p.reference) })
-    setMsg({
-      ok: true,
-      text:
-        `Suggested ${saved.length} day${saved.length === 1 ? '' : 's'} of “${series}”. All of them are drafts — nothing is live until you approve it.` +
-        (short ? ` ${short} day${short === 1 ? '' : 's'} came back unusable and ${short === 1 ? 'was' : 'were'} left empty.` : '') +
-        (refused.length ? ` ${refused.map(pretty).join(', ')} couldn’t be saved and ${refused.length === 1 ? 'was' : 'were'} skipped.` : ''),
-    })
+    setMsg({ ok: true, text: outcomeText(`Suggested “${series}”:`, saved, refused, missing) + told })
     onDrafted(saved)
   }
 
@@ -447,13 +452,17 @@ export function StudyTopicWeek({
           </label>
 
           {notesOpen ? (
+            <div style={{ display: 'grid', gap: 8 }}>
             <label style={labelStyle}>
               Sermon notes or a transcript (optional)
-              <textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} rows={5} maxLength={WEEK_TRANSCRIPT_MAX} disabled={busy} placeholder="Paste notes or a transcript to steer each day’s note…" style={{ resize: 'vertical' }} />
+              <textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} rows={5} disabled={busy} placeholder="Paste notes or a transcript to steer each day’s note…" style={{ resize: 'vertical' }} />
+              <TranscriptMeter value={transcript} />
             </label>
+            {backend.memo && <MemoInput churchId={churchId} memo={backend.memo} hasText={!!transcript.trim()} disabled={busy} onTranscript={(t, how) => setTranscript((cur) => placeTranscript(cur, t, how))} />}
+            </div>
           ) : (
             <button className="faint" onClick={() => setNotesOpen(true)} style={{ justifySelf: 'start', padding: 0, fontSize: 12, fontWeight: 700, color: 'var(--ink-dim)', cursor: 'pointer' }}>
-              + Paste sermon notes or a transcript
+              + Paste sermon notes, a transcript or a voice memo
             </button>
           )}
 
@@ -481,15 +490,15 @@ export function StudyTopicWeek({
                     ? 'Reading the passages…'
                     : phase === 'drafting'
                       ? `Drafting ${plan?.dates.length ?? days} days — about a minute…`
-                      : phase === 'saving'
-                        ? 'Saving the drafts…'
+                      : phase === 'checking'
+                        ? 'Lost the connection — checking whether the drafts landed…'
                         : plan && plan.dates.length
                           ? `Suggest ${plan.dates.length} day${plan.dates.length === 1 ? '' : 's'}`
                           : 'Suggest a week'}
               </Button>
               {plan && plan.dates.length > 0 && (
                 <span className="faint" style={{ fontSize: 11.5, marginTop: -4, lineHeight: 1.4 }}>
-                  Uses {units} of your church’s 30 drafts for today.
+                  <AllowanceLine churchId={churchId} units={units} />
                   {needsAnchoring && !backend.planTopic ? ' Name a passage above to anchor this topic.' : ''}
                 </span>
               )}

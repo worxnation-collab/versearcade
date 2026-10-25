@@ -1687,7 +1687,9 @@ and the second only stands on the first:
   (the `church-draft` function's gate and spend) and `save_church_verse_draft`.
   The client picks `serverGenerationBackend` only when `church_entitlements`
   says so; otherwise the form draws a locked card and every manual tool works.
-  Billing is stubbed: no price, no checkout, either mode.
+  On the web the locked row carries "Unlock with Church Suite" (church-billing
+  `upgrade`; `docs/CHURCH-PACKAGES.md` → Billing); the App Store build draws no
+  button, no price and no checkout.
 
 Four rules are load-bearing:
 
@@ -1706,6 +1708,25 @@ Four rules are load-bearing:
 - **A church's verse never replaces the global drop.** Enforced server-side:
   `get_effective_verse` returns null, so approved iOS builds that still call it
   play the global verse too. Members get 0128's lane instead, which skips drafts.
+- **A pasted sermon is never cut silently.** Up to 12,000 characters are
+  read word for word; up to 60,000 are condensed first to an ordered outline
+  (one time-boxed call) and drafted from that, and a failed condense falls back
+  to the first 12,000 and SAYS so — the answer's `transcript_use` reaches the
+  form's result line. No `maxLength` on those boxes; `TranscriptMeter` says
+  what will happen before anything is sent. `docs/CHURCH-SHARED-VERSE.md` →
+  "Long transcripts".
+- **A recorded sermon is a transcript first, and the leader edits it.**
+  `MemoInput` (upload a file, or record in the browser with the screen kept
+  awake) → `church-draft` `memo_url` (a signed upload into the private
+  `church-memos` bucket the function makes itself) → `transcribe` (Gemini Files
+  API, length checked by countTokens, refused past an hour or 50 MB) → the text
+  lands in the SAME box, and drafting is the same button. It spends no draft
+  unit: 0144's own 10-a-day allowance, given back on any failure, and replies
+  say `memo_left` because `left` is the draft allowance to every client. The
+  upload is removed once transcribed or refused and kept on busy/timeout so a
+  retry needn't upload again. m4a/webm are not on the Gemini API's documented
+  list (Vertex lists both) — a refusal comes back as `memo_format`.
+  `docs/CHURCH-SHARED-VERSE.md` → "Voice memos".
 - **A week from one sermon is the SAME generator** (`church-draft`
   `mode: 'week'`, 0129, `WeekDraftPanel`), spending one of the church's 30
   daily units per day drafted. **The scripture on a drafted day never comes
@@ -2581,7 +2602,88 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0136` (Church Leader looks and the Custom Leader Avatar
+The latest is `0144` (voice memos for the content engine —
+`church_memo_uses` (church, day) → a COUNT and nothing else, RLS on with no
+rule; `use_church_memo` (the Content Generation gate + one of 10 transcriptions
+a church a day), `church_memo_can` (the same gate before an upload, spends
+nothing) and `release_church_memo` (service_role only, gives a failed one
+back); the cascading foreign key is `0144_church_memo_uses_b`, kept apart for
+the MCP). A transcription spends NO draft unit. APPLIED 2026-10-24 after a
+local Postgres 16 run (gate refused, ten then the cap, release, release with no
+row, floor at zero, authenticated refused the release, re-run a no-op) and
+verified live: one signature each, `release_church_memo`
+`{postgres,service_role}`, the other two `authenticated`, the table RLS-on with
+no client grant, the foreign key present.
+
+Before it, `0143` (the content engine's answer check — `church-draft`
+reads every drafted question a second time, blind, and flags one whose answer
+the passage doesn't support with `check: true` + `checkPick` ON THE QUESTION,
+so the flag travels with it through saves and swaps. Only a draft keeps it:
+`church_draft_questions` is the draft writer's cleaner (0119's rules plus the
+flag), `set_church_verse` still strips it (a hand save is an approval),
+`approve_church_verse` strips it (`church_unflag_questions`), and
+`approve_church_verses` SKIPS a flagged day and returns it in `flagged`, so
+Approve all cannot carry an unread ⚠ live even from an old client; plus
+`questions_checked` / `questions_flagged` on `church_draft_runs`). APPLIED
+2026-10-23 after a local Postgres 16 run (well-formed flags kept, a bad pick
+and `check: false` lost, the set skips the flagged day, the single approve
+strips, re-run a no-op) and verified live: one signature each, the two helpers
+`{postgres,service_role}`, no existing row flagged. Production's
+`save_church_verse_draft` differed from 0129 by one stripped comment line and
+was otherwise identical; it was restated from the live body.
+
+Before it, `0142` (the content engine's run log and refund —
+`church_draft_runs`, one row per `church-draft` call past the gate holding
+counts, outcome, time and model and NEVER the transcript or the questions;
+`refund_church_draft_units(church, day, units)`, service_role only, which the
+function calls for every unit spent and not delivered; and
+`use_church_draft_units` restated with the same signature and `day` added to
+its answer, still returning `left`; the cascading foreign key is
+`0142_church_draft_runs_b`, kept apart for the MCP). APPLIED 2026-10-23 after
+a local Postgres 16 run (spend to the cap, refusal, refund clamp, refund on a
+day with no spend, client roles refused the refund and the table, re-run a
+no-op) and verified live: one signature each, the refund
+`{postgres,service_role}`, the table RLS-on with no client grant. Production's
+`use_church_draft_units` was checked byte-identical to 0129 before the
+restate. **It is 0142 because production already holds 0139-0141** (the Apple
+church subscription and the plan taps) from branches not yet on main.
+`npm run check:church-draft` drives the real function handler against a fake
+model and a fake database.
+
+Before it, `0138` (check-ins carry today's church verse and can be
+reported — `0138_check_in_verse_a` adds `verse_ref`/`verse_text` (a SERVER
+copy of the church's approved verse for the leader's local day, never text the
+client sends), makes `message` optional behind a `check_in_has_body` check, and
+adds `reported_at`/`hidden`; `0138_check_in_verse_b` gives
+`send_church_check_in` two arguments (`p_attach_verse`, `p_local_date`), RENAMES
+0137's three-argument version to `send_church_check_in_0137` and revokes it
+(the 0120 pattern), filters reported notes out of `my_church_check_ins`, and
+adds `report_church_check_in` plus `admin_church_check_in_reports` /
+`admin_resolve_church_check_in_report` behind Admin → Check-ins — the Prayer
+Wall's shape: one tap, no reason stored, nothing blocks the sender). The draft
+now leads with the verse and "Thought of you with this one." (editable,
+clearable); a day with no approved verse falls back to 0137's draft. APPLIED
+2026-10-23 as `0138_check_in_verse_a` / `_b` after a local Postgres 16 run
+(twenty-five cases, re-run a no-op) — part a's `drop not null` went through the
+MCP with no confirmation stall — and verified live: one signature each, the old
+overload `{postgres,service_role}`, the rest `authenticated`, and a send (verse,
+no line) → mailbox → report → admin queue round trip against a real verified
+church, rolled back (zero rows after).
+
+Before it, `0137` (a leader's check-in note — `church_check_ins`,
+`send_church_check_in` (verified leadership of that church, to one member, 280
+chars, once per member per day, 25 a day), `my_church_check_ins` /
+`mark_church_check_ins_seen` for the recipient's mailbox; the cascading FKs are
+`0137_church_check_ins_b`, kept apart for the MCP). The People tab offers
+"Check in" ONLY inside the folded "Not active this week" section, as an
+editable draft the leader sends by hand — and the server is told who and what,
+never which list the name came from, so no note can reveal it. APPLIED
+2026-10-23 after a local Postgres 16 run (fourteen cases) and verified live:
+one signature each, `authenticated` only, table ACL `{postgres,service_role}`,
+RLS on with no rule, all three FKs, and a send → read inside a rolled-back
+transaction against a real verified church.
+
+Before it, `0136` (Church Leader looks and the Custom Leader Avatar
 add-on — `church_admins.leader_look` (five ids + 'custom', a check
 constraint), `church_addons.custom_leader_avatar`, `church_avatar_requests`
 with 1-3 JPEG reference photos stored IN THE ROW as `bytea[]` (deliberately
@@ -2596,6 +2698,24 @@ player and admin RPCs `authenticated`, the two helpers
 production already holds `0134_church_self_claim` (+ `_b`) and
 `0135_church_billing_portal`**, from branches not on main when this landed —
 caught by `list_migrations`.
+
+The other `0137` (the free church claim: `church_claims` gains `tier` /
+`method` / `phone` / `domain_match`; `start_church_free_claim`,
+`billing_activate_free_claim` (service_role), `church_leader_summary`, and
+`church_self_claim_status` / `admin_church_claims` / `admin_review_church_claim`
+/ `church_leader_insights` restated — the roster now in join order with no
+`active` flag; `docs/CHURCH-CLAIM.md` → "Free claim"). APPLIED 2026-10-23
+after a local Postgres 16 run of twenty cases (threshold, bad method/phone,
+domain flag, reuse, non-admin approve refused, approve, card conflict after
+approve, idempotent activation, manual claim unreachable from the webhook,
+stranger refused the summary, re-run a no-op); live ACLs verified. Because its
+`church_leader_insights` rows no longer carry `active`, the People tab works
+"active this week" out itself (`activeThisWeek` in `InsightsPanel.tsx`, the
+same `last_on >= today - 6` rule the server counts `active_7d` by) — the fold
+and the Overview tile cannot disagree, and the roster's join order holds in
+both groups. Its People-tab rewrite (one flat list) was NOT kept when the two
+branches met: the owner kept the fold, so a member with no play in seven days
+is still behind one tap, never on the front of the tab.
 
 Before it, `0135` (`my_church_billing` — a church's own leadership reads
 its Stripe plan, never the customer id; it backs the dashboard's **Manage
@@ -2616,7 +2736,10 @@ payment wins + conflict, revoke, rate limit, re-run a no-op) and verified live:
 one signature each, `billing_activate_claim` `{postgres,service_role}`, RLS on
 with no policy, both FKs present. **It reverses "there is no self-serve claim"
 for a church nobody leads** — the owner's call; read `docs/CHURCH-CLAIM.md` →
-"Self-serve claim" before touching it. `church-billing` v3 (claim mode, `?c=`)
+"Self-serve claim" before touching it. **And since `0137` such a church can be claimed FREE
+once it has three members** (card on file via a $0 SetupIntent, or by hand
+through the operator queue); a free claim leaves the church unverified and
+sees totals only. `church-billing` v3 (claim mode, `?c=`)
 was deployed by MCP the same day.
 
 Before it, `0133` (church visual assets — `church_assets`, verse cards /
@@ -3192,7 +3315,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0137` (0136 is the leader looks, 0135 is the church billing read for the portal, 0134 is the self-serve church claim, in two parts; 0133 is used twice — church visual assets AND the church Stripe key in Vault — 0132 is the church webhook's Vault secret, 0131 is church billing, 0130 is the member's church view, 0129 is the week-from-a-sermon drafts, 0128 is the church layer, 0127 is `church_content_generation` in production, 0126 is the two new statues, 0125 is the API.Bible key, 0124 the reading translation, 0123 is the church verse series and note, 0122 is `church_question_drafts` in production only, 0121 is the church leader invite link, 0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0145` (0144 is the voice-memo allowance, in two parts; 0143 is the answer check's flag; 0142 is the content engine's run log and refund, in two parts; 0139, 0140 and 0141 are the Apple church subscription, its leader-removed binding and the church plan taps in production, each in two parts; 0138 is the check-in verse and report, in two parts; 0137 is used FOUR times in production — the check-in note in two parts, the leaderboard's streak-free tie-break, and `church_free_claim` — 0136 is the church leader looks, 0135 is the church billing read for the portal, 0134 is the self-serve church claim, in two parts; 0133 is used twice — church visual assets AND the church Stripe key in Vault — 0132 is the church webhook's Vault secret, 0131 is church billing, 0130 is the member's church view, 0129 is the week-from-a-sermon drafts, 0128 is the church layer, 0127 is `church_content_generation` in production, 0126 is the two new statues, 0125 is the API.Bible key, 0124 the reading translation, 0123 is the church verse series and note, 0122 is `church_question_drafts` in production only, 0121 is the church leader invite link, 0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

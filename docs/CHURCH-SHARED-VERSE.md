@@ -103,7 +103,7 @@ is built around them.
   covered.
 
 Nothing here is about a person. A series and a note describe the schedule; no
-count, no reader list, no "seen by". The Congregation panel is unchanged.
+count, no reader list, no "seen by".
 
 **The demo** (`/churches/try`) seeds its `memoryVerseBackend` with a sample
 three-day series ("Abiding (John 15)", from the library, one day with a note),
@@ -121,9 +121,13 @@ They are identical on the commit before this change.
 dashboard. It returns members, active this week, quiet, fourteen days of drop and
 church-verse players, each series' completion, streak buckets, the live notice,
 and the roster BY NAME — the owner's call (see docs/CHURCH-CLAIM.md). There is no
-small-count floor any more. `get_church_participation` is kept, unused by the
-dashboard, because the public demo (`/churches/try`) still draws its sample
-numbers through `ParticipationPanel`.
+small-count floor for leadership any more. The roster is in join order and
+never sorted by play; members with no play in seven days are folded into one
+section where the only action is a hand-sent check-in (0137/0138).
+`get_church_participation` is now unused: `ParticipationPanel` was deleted on
+2026-10-23 and the public demo (`/churches/try`) draws the real `OverviewPanel`
+and `PeoplePanel` over a sample congregation instead, so the demo and the sales
+page show what leadership actually gets.
 
 `church_feed(church)` is the activity feed: drop and church-verse plays with
 scores, gifts, joins and notices from the last fourteen days, to members and
@@ -208,13 +212,14 @@ that isn't verified. Un-verifying a church leaves the add-on on its record but
 inert, and `/church/:id/admin` says "on your plan, switches on with Church
 Leader". The top of that screen shows both rows as Active or Locked; without
 the add-on, the verse form shows a locked "Drafting assist" card in place of
-the draft button. There is no price or upgrade button anywhere.
+the draft button. There is no price in the app; on the web only, the locked
+row carries "Unlock with Church Suite" (docs/CHURCH-PACKAGES.md → Billing).
 
 **The engine** (`church-draft`): POST `{ church_id, reference, text,
 guidance?, transcript? }`. The reference must be in citation form
 (`bad_reference` otherwise). `guidance` is a focus line (300 chars) and
-`transcript` is sermon notes or a voice-memo transcript (4,000 chars), pasted
-in. Both steer emphasis and the suggested note only. It returns five questions
+`transcript` is sermon notes or a voice-memo transcript, pasted in (see
+"Long transcripts" below for the limits). Both steer emphasis and the suggested note only. It returns five questions
 and a `note`. The note fills the form's note only when that is empty. On-device
 transcription of a voice memo isn't built; paste the transcript.
 
@@ -278,9 +283,60 @@ each with its own verse focus inside those passages, five questions and a note.
   because the Supabase MCP can't apply a `DELETE` from a cloud session, partly
   because "generated, then thrown away" is worth keeping in the audit trail.
 
+**Since 0142 the function saves the week itself.** A client that sends
+`dates` (the planned dates, in order) gets the drafts saved on the server, as
+the leader, through `save_church_verse_draft` without `replace`, and back only
+`{ saved, refused: [{ date, reason }], missing, left }` — then re-reads the
+window. Day k of the plan goes on dates[k] and nowhere else, so a day that came
+back unusable leaves its own date empty instead of sliding the series a day
+early, a phone that backgrounds mid-draft loses nothing, and a day that went
+live meanwhile still refuses (`day_is_set`). A client that sends no `dates`
+gets the old `days` answer. Every unit spent and not delivered (a failed run,
+a short week, a refused day, a topic the model couldn't anchor) is refunded
+(`refund_church_draft_units`), every run leaves one content-free row in
+`church_draft_runs`, and questions are salvaged one at a time — clipped rather
+than refused, a blank's answer checked against the verse, no prompt holding its
+own answer, no repeat across the week — with one follow-up call for just the
+missing ones. Failures name themselves (`model_busy`, `timeout`, `no_key`,
+`not_saved`, …) and carry a real HTTP status when the request sends `api: 2`.
+
+**The client (same change):** all three draft calls send `api: 2` and read a
+failure's reason out of the response body (`invokeDraft` in
+`store/churchAdmin.ts`, the one place that does). Both week panels send their
+planned `dates`, save nothing themselves and re-read the strip. When NO answer
+comes back (`no_reply` — the connection dropped, the phone suspended the tab)
+they don't report a failure straight away: `recoverLanded`
+(`features/church/admin/weekRun.tsx`) re-reads the planned dates a few times
+across the function's budget, and a date now holding a draft that differs from
+what it held before the run is reported as this run's work. Only when nothing
+landed is it an error. The allowance line reads the `left` the engine last
+returned (`useDraftAllowance`) instead of a fixed "of 30"; a `limit` refusal
+carries no `left`, because it doesn't know how many remain. A function from
+before 0142 still works with this client: a reply with `days` and no `saved`
+is saved positionally on the client, as before.
+
+**The answer check (0143).** Every finished set of five is read a second
+time, blind, in one cheap call (`GEMINI_CHECK_MODEL`, else the drafting
+model): the passage and each question's options, never which one was marked.
+Where it picks a different option, the question carries `check: true` and
+`checkPick`. "Can't tell" (-1) is NOT a flag: in one-day mode the checker sees
+only the verse, which can't answer a before/after question, and a ⚠ on a right
+answer teaches leaders to ignore the ⚠. It never blocks a draft — no
+time left, a failed call or an unreadable answer leaves the questions as they
+were — and it spends nothing. The leader sees it everywhere a draft is
+reviewed: a ⚠ on the question in the form, with what the second read picked
+and a "Looks right" button (editing the question also clears it); "⚠ N to
+check" on the day in "Waiting for your approval"; ✎⚠ on the planner chip.
+**Approve all is disabled while any day in the set carries a ⚠**, with the
+days named, and the server enforces the same rule (`approve_church_verses`
+skips a flagged day). Approving one day from the form is allowed and takes
+its flags off — the leader approved it with the warning on screen. A flag is
+only ever on a draft; a member never receives one.
+
 **Limits, all enforced in the function:** 2–7 days; 1–3 passages, each inside
 one chapter, ≤ 40 verses each and ≤ 6,000 characters of scripture in all; a
-transcript ≤ 12,000 characters (about a 20-minute sermon; longer ones are cut);
+transcript ≤ 60,000 characters, condensed first above 12,000 (see "Long
+transcripts");
 a focus line ≤ 300; each day ≤ 3 consecutive verses and ≤ 1,000 characters of
 text; one model call with a 90-second timeout and one retry only if the first
 failed inside 50 seconds; 30 draft-days per church per UTC day.
@@ -366,4 +422,66 @@ a series is identified by its NAME, so two overlapping series with one name
 merge; there is no per-member series completion for members (by design — it
 is leadership's `church_leader_insights`); and an unverified church gets none
 of this.
+
+## Long transcripts
+
+A 30-minute sermon is 25-30k characters, and the forms used to cut a paste at
+4,000 (one day) or 12,000 (a week) with nothing on screen — so the model drew
+on the opening third and the arc was lost. Now, in both modes:
+
+- **Up to 12,000 characters are read word for word.** The forms carry no
+  `maxLength`; a live count sits under the box (`TranscriptMeter`).
+- **Above that, the function condenses first.** One time-boxed call
+  (`prepareTranscript`, ≤ 25s, `GEMINI_CHECK_MODEL`) turns the whole
+  transcript into an ordered outline of the pastor's own points, and the draft
+  is written from the outline plus the passage. The outline is held to the
+  same rule as the transcript: emphasis and the note, never facts the passage
+  doesn't contain. The meter says this will happen before anything is sent.
+- **Up to 60,000 are accepted** (about an hour of speech); beyond that the
+  meter names exactly how much won't be considered.
+- **A condense that fails or runs late falls back** to the first 12,000 — what
+  every draft got before — and never fails the draft. The answer carries
+  `transcript_use` (`full` / `condensed` / `clipped`) and `transcript_read`,
+  and the form's result line says which happened, so a clipped draft is never
+  presented as having read the whole sermon. No unit is spent on the condense
+  and `church_draft_runs` is unchanged.
+
+## Voice memos
+
+"Record Sunday's sermon, get Monday–Friday." Each of the three drafting forms
+(one day, a week from a sermon, the study-topic week) has **Upload a voice
+memo** and, where the browser can record, **Record here** beside the paste box
+(`features/church/admin/memo.tsx`). The paste box is unchanged; this only
+fills it.
+
+1. **Upload.** `church-draft` `mode: 'memo_url'` checks the Content Generation
+   gate (`church_memo_can`, 0144, spends nothing) and hands back a signed
+   upload into the private `church-memos` bucket, under the church's own
+   folder. The browser sends the file there directly. m4a/mp4, mp3, wav, aac,
+   ogg/opus, flac, webm and aiff, up to 50 MB; the browser reads the length
+   first and refuses past an hour before anything is sent.
+2. **Transcribe.** `mode: 'transcribe'` spends one of the church's 10 daily
+   transcriptions (`use_church_memo`), sends the audio to Gemini through the
+   Files API, measures it with countTokens (32 tokens a second) and refuses
+   past an hour, and transcribes it word for word — scripture written as heard,
+   never swapped for a translation's wording. Any failure gives the
+   transcription back (`release_church_memo`). A busy or timed-out model keeps
+   the upload so **Try again** doesn't upload again; a refused format, a silent
+   or overlong file, and every success remove it. Leftovers are pruned after
+   six hours.
+3. **Edit, then draft.** The transcript lands in the box (or, when the box
+   already has text, the leader picks Replace it / Add below). Drafting is the
+   ordinary call: a long transcript is condensed first, it spends exactly the
+   draft units a paste would, and every other rule — BSB scripture, drafts
+   until approved, the ⚠ check, refunds, the run log — is untouched.
+
+No draft unit is ever spent on a transcription, and the replies carry
+`memo_left` rather than `left`, because `left` is what every client shows as
+the draft allowance.
+
+**Not verified against the live model:** m4a and webm are on Vertex AI's audio
+list but not the Gemini API's documented one; a refusal comes back as
+`memo_format` ("try an M4A, MP3 or WAV"). And an hour of audio is a long
+transcription inside the function's 140-second budget; a timeout keeps the
+upload for a retry.
 

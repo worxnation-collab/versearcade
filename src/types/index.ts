@@ -29,6 +29,14 @@ export interface Question {
    * facts no translation changes.
    */
   blank?: boolean
+  /**
+   * CHURCH DRAFTS ONLY (0143). A blind second read of the passage picked a
+   * different option than `answerIndex` (`checkPick`), or couldn't pick one
+   * (-1). Shown to the leader as a ⚠; never stored on an approved day, so a
+   * member's question never carries it.
+   */
+  check?: boolean
+  checkPick?: number
 }
 
 export type Testament = 'OT' | 'NT'

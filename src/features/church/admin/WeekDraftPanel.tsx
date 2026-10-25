@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/Button'
 import { useJuice } from '@/juice/useJuice'
 import { addDays } from '@/lib/date'
@@ -6,6 +6,7 @@ import { parseReference } from '@/lib/bibleProgress'
 import {
   cleanLine,
   fetchDays,
+  flaggedCount,
   GUIDANCE_MAX,
   resolvePassage,
   SCRIPTURE_CHARS_MAX,
@@ -14,17 +15,19 @@ import {
   WEEK_DAYS_MAX,
   WEEK_DAYS_MIN,
   WEEK_PASSAGES_MAX,
-  WEEK_TRANSCRIPT_MAX,
   type VerseBackend,
   type WeekDay,
 } from '@/store/churchAdmin'
+import { AllowanceLine, ENGINE_REASONS, outcomeText, recoverLanded } from './weekRun'
+import { TranscriptMeter, transcriptNote } from './transcript'
+import { MemoInput, placeTranscript } from './memo'
 
 // "Draft a week from a sermon" — the Content Generation package's week (0129).
 //
 // One sermon (pasted transcript or notes), a series name and the passage(s) it
 // preached → two to seven DRAFT days, one per date, each with its own verse
 // focus inside those passages, five questions and a note. Nothing is live:
-// every day is saved with `saveDraft` and waits in `DraftReview` below the
+// every day is saved as a draft by the function and waits in `DraftReview` below the
 // strip, where it is opened, edited, approved or discarded — one at a time or
 // as the set.
 //
@@ -35,10 +38,14 @@ import {
 //     and named — and an older draft on a planned day is replaced, also named.
 //   * It fetches the scripture itself (`resolvePassage`), so the words on each
 //     day are the Bible's and never the model's.
-//   * It states the cost: one of the church's thirty daily drafts per day.
+//   * It states the cost: one of the church's daily drafts per day, with what
+//     is left once the engine has said (`AllowanceLine`).
+// Since 0142 the FUNCTION saves the days, each on its planned date, and says
+// which landed; this panel only re-reads. If no answer comes back at all, it
+// looks at the planned dates before calling the run a failure (`recoverLanded`).
 
 const REASONS: Record<string, string> = {
-  limit: 'That’s more drafting than today’s allowance has left (30 days of drafts a church a day). Try fewer days, or tomorrow.',
+  ...ENGINE_REASONS,
   no_addon: 'Drafting a week is part of the Content Generation package, which this church doesn’t have.',
   not_verified: 'This isn’t available for your church right now.',
   not_leadership: 'Only this church’s leadership can draft.',
@@ -85,7 +92,11 @@ export function WeekDraftPanel({
   const [guidance, setGuidance] = useState('')
   const [plan, setPlan] = useState<Plan | null>(null)
   const [planErr, setPlanErr] = useState(false)
-  const [phase, setPhase] = useState<'idle' | 'fetching' | 'drafting' | 'saving'>('idle')
+  const [phase, setPhase] = useState<'idle' | 'fetching' | 'drafting' | 'checking'>('idle')
+  // What the planned dates held before the run, for the no-reply recovery.
+  const [before, setBefore] = useState<WeekDay[]>([])
+  const mounted = useRef(true)
+  useEffect(() => () => { mounted.current = false }, [])
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
   // Plan the dates whenever the start or the length changes.
@@ -98,6 +109,7 @@ export function WeekDraftPanel({
       if (!alive) return
       if (!r.ok) return setPlanErr(true)
       setPlan(planDates(r.data, days))
+      setBefore(r.data)
     })
     return () => { alive = false }
   }, [open, churchId, start, days, backend])
@@ -108,7 +120,7 @@ export function WeekDraftPanel({
   const ready = !!cleanLine(series, SERIES_MAX) && refsOk && notesOk && !!plan && plan.dates.length === days && phase === 'idle'
 
   const run = async () => {
-    if (!backend.draftWeek || !backend.saveDraft || !plan || !ready) return
+    if (!backend.draftWeek || !plan || !ready) return
     setMsg(null)
     setPhase('fetching')
     const wanted = refs.map((r) => r.trim()).filter(Boolean)
@@ -125,36 +137,28 @@ export function WeekDraftPanel({
       return setMsg({ ok: false, text: 'Those passages are longer than a week can draft from — trim them to the verses the sermon dwelt on.' })
     }
 
+    // The function drafts AND saves, each day on its own planned date (0142).
     setPhase('drafting')
-    const r = await backend.draftWeek(churchId, { series, days, passages, transcript, guidance })
-    if (!r.ok) {
+    const dates = plan.dates
+    const r = await backend.draftWeek(churchId, { series, days, passages, transcript, guidance, dates })
+    let saved: string[], refused: { date: string; reason: string }[] = [], missing: string[] = []
+    let told = ''
+    if (r.ok) {
+      ;({ saved, refused, missing } = r.data)
+      told = transcriptNote(transcript, r.data.transcriptUse, r.data.transcriptRead)
+    } else if (r.reason === 'no_reply') {
+      // No answer is not a failure yet: the drafts may have landed anyway.
+      setPhase('checking')
+      saved = await recoverLanded(churchId, backend, before, dates, () => mounted.current)
+      if (!mounted.current) return
+      if (!saved.length) { setPhase('idle'); return setMsg({ ok: false, text: REASONS.no_reply }) }
+    } else {
       setPhase('idle')
       return setMsg({ ok: false, text: REASONS[r.reason] ?? REASONS.unavailable })
     }
-
-    // Save each day as a DRAFT on its planned date, in order. A day that went
-    // live in the meantime refuses (`day_is_set`) and is reported, not forced.
-    setPhase('saving')
-    const saved: string[] = []
-    const refused: string[] = []
-    for (let i = 0; i < r.data.days.length && i < plan.dates.length; i++) {
-      const d = r.data.days[i]
-      const date = plan.dates[i]
-      const s = await backend.saveDraft(churchId, date, { reference: d.reference, text: d.text, questions: d.questions, series, note: d.note ?? '' }, false)
-      if (s.ok) saved.push(date)
-      else refused.push(date)
-    }
     setPhase('idle')
-    if (!saved.length) return setMsg({ ok: false, text: 'None of the drafts could be saved — check your connection and try again.' })
     juice.select?.()
-    const short = r.data.asked > r.data.days.length ? ` ${r.data.asked - r.data.days.length} came back unusable and ${r.data.asked - r.data.days.length === 1 ? 'was' : 'were'} left out.` : ''
-    setMsg({
-      ok: true,
-      text:
-        `Drafted ${saved.length} day${saved.length === 1 ? '' : 's'} of “${cleanLine(series, SERIES_MAX)}”, ${pretty(saved[0])} – ${pretty(saved[saved.length - 1])}. ` +
-        `Nothing is live yet — review them below.${short}` +
-        (refused.length ? ` ${refused.map(pretty).join(', ')} couldn’t be saved and ${refused.length === 1 ? 'was' : 'were'} skipped.` : ''),
-    })
+    setMsg({ ok: true, text: outcomeText(`Drafted “${cleanLine(series, SERIES_MAX)}”:`, saved, refused, missing) + told })
     setOpen(false)
     onDrafted(saved)
   }
@@ -237,11 +241,10 @@ export function WeekDraftPanel({
 
       <label style={labelStyle}>
         Sermon notes or a voice-memo transcript
-        <textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} rows={6} maxLength={WEEK_TRANSCRIPT_MAX} placeholder="Paste the sermon, your notes, or the transcript of a voice memo…" style={{ resize: 'vertical' }} />
+        <textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} rows={6} placeholder="Paste the sermon, your notes, or the transcript of a voice memo…" style={{ resize: 'vertical' }} />
       </label>
-      {transcript.length > WEEK_TRANSCRIPT_MAX - 1000 && (
-        <span className="faint" style={{ fontSize: 11.5, marginTop: -6 }}>{(WEEK_TRANSCRIPT_MAX - transcript.length).toLocaleString()} characters left.</span>
-      )}
+      <TranscriptMeter value={transcript} />
+      {backend.memo && <MemoInput churchId={churchId} memo={backend.memo} hasText={!!transcript.trim()} disabled={busy} onTranscript={(t, how) => setTranscript((cur) => placeTranscript(cur, t, how))} />}
       <label style={labelStyle}>
         What to focus on (optional)
         <input value={guidance} onChange={(e) => setGuidance(e.target.value)} maxLength={GUIDANCE_MAX} placeholder="Staying connected when life is busy" />
@@ -251,10 +254,10 @@ export function WeekDraftPanel({
 
       {msg && <p style={{ margin: 0, fontSize: 12.5, color: msg.ok ? 'var(--mint)' : 'var(--coral)' }}>{msg.text}</p>}
       <Button variant="gold" full disabled={!ready} onClick={run}>
-        {phase === 'fetching' ? 'Reading the passages…' : phase === 'drafting' ? `Drafting ${days} days — about a minute…` : phase === 'saving' ? 'Saving the drafts…' : `Draft ${days} days`}
+        {phase === 'fetching' ? 'Reading the passages…' : phase === 'drafting' ? `Drafting ${days} days — about a minute…` : phase === 'checking' ? 'Lost the connection — checking whether the drafts landed…' : `Draft ${days} days`}
       </Button>
       <span className="faint" style={{ fontSize: 11.5, marginTop: -4, lineHeight: 1.4 }}>
-        {!notesOk ? 'Paste your notes or a focus line first. ' : ''}Uses {days} of your church’s 30 drafts for today.
+        {!notesOk ? 'Paste your notes or a focus line first. ' : ''}<AllowanceLine churchId={churchId} units={days} />
       </span>
     </div>
   )
@@ -343,8 +346,13 @@ export function DraftReview({
     if (!r.ok) return setErr('Those didn’t approve — check your connection and try again.')
     juice.select?.()
     const n = r.data.approved.length
+    // The server skips a day that still carries a ⚠ (0143), whatever this list showed.
+    const held = r.data.flagged ?? []
     onChanged()
-    setNote(`Approved ${n} day${n === 1 ? '' : 's'}${key ? ` of “${key}”` : ''}. ${n ? 'Each goes to your members on its day, beside the everyday verse.' : ''}`)
+    setNote(
+      `Approved ${n} day${n === 1 ? '' : 's'}${key ? ` of “${key}”` : ''}. ${n ? 'Each goes to your members on its day, beside the everyday verse.' : ''}` +
+      (held.length ? ` ${held.map(weekday).join(', ')} still ${held.length === 1 ? 'has' : 'have'} a ⚠ to check and ${held.length === 1 ? 'was' : 'were'} left as a draft.` : ''),
+    )
   }
 
   const discardAll = async (key: string, days: WeekDay[]) => {
@@ -420,6 +428,11 @@ export function DraftReview({
                 <span style={{ minWidth: 0 }}>
                   <span style={{ fontSize: 12.5, fontWeight: 700 }}>{d.verse!.reference}</span>
                   {d.verse!.generated && <span className="dim" style={{ fontSize: 11 }}> · ✨ suggested</span>}
+                  {flaggedCount(d.verse!.questions) > 0 && (
+                    <span title="The draft answer may not match the passage. Please check." style={{ fontSize: 11.5, fontWeight: 800, color: 'var(--gold)' }}>
+                      {' '}· ⚠ {flaggedCount(d.verse!.questions)} to check
+                    </span>
+                  )}
                   {d.verse!.note && (
                     <span className="dim" style={{ display: 'block', fontSize: 11.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.verse!.note}</span>
                   )}
@@ -440,8 +453,23 @@ export function DraftReview({
               </span>
             </div>
           ))}
+          {(() => {
+            // Approve all waits until no day in the set carries a ⚠: each one is
+            // opened and approved (or edited, or marked "looks right") on its own.
+            const toCheck = days.filter((d) => flaggedCount(d.verse?.questions) > 0)
+            return toCheck.length > 0 ? (
+              <span style={{ fontSize: 12, lineHeight: 1.45 }}>
+                ⚠ <b>Approve all</b> waits until the flagged questions are checked: open {toCheck.map((d) => weekday(d.date)).join(', ')}, then approve {toCheck.length === 1 ? 'it' : 'each'} there, or edit the question.
+              </span>
+            ) : null
+          })()}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button className="pill" disabled={!!busy} onClick={() => approveAll(key, days)} style={{ fontSize: 12.5, fontWeight: 800 }}>
+            <button
+              className="pill"
+              disabled={!!busy || days.some((d) => flaggedCount(d.verse?.questions) > 0)}
+              onClick={() => approveAll(key, days)}
+              style={{ fontSize: 12.5, fontWeight: 800 }}
+            >
               {busy === `ok:${key}` ? 'Approving…' : armed === `ok:${key}` ? `Tap again to approve ${days.length} for your members` : `Approve all ${days.length}`}
             </button>
             {backend.discard && (

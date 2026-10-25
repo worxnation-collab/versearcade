@@ -5,6 +5,7 @@ import { Button } from '@/components/Button'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/store/auth'
 import { useJuice } from '@/juice/useJuice'
+import { churchPlansVisible } from '@/lib/commerce'
 
 // For Churches — the page a pastor lands on from outreach, a QR or a link, and
 // the inquiry form behind it.
@@ -13,15 +14,19 @@ import { useJuice } from '@/juice/useJuice'
 // (the verified layer, docs/CHURCH-SHARED-VERSE.md), and every line here is
 // something production does today. Four rules hold it:
 //
-//   * NO PRICE. A Founding Church is a free pilot handled by a person, off the
-//     device — the same pattern as church skins and the sponsored slot — so this
-//     page is byte-identical on web and in the App Store build and never becomes
-//     a storefront `lib/commerce.ts` would have to gate.
+//   * NO PRICE IN THE APP. The App Store build shows no plan name and no amount.
+//     On the web, and only there (`churchPlansVisible`), one card names the two
+//     plans a Founding Church moves to after Easter 2027 — the Church Suite
+//     first, with the separate total struck through so the saving is plain.
 //   * NOTHING COMPETITIVE. No ranks, no rivalry, no badge, no "featured": a
 //     church that pays is not a bigger church, and a verified church is never
 //     sorted first anywhere (0119).
-//   * THE PRIVACY LINE IS A FEATURE, so it is stated, not buried. Leadership
-//     sees floored aggregates and never a name (`get_church_participation`).
+//   * THE PRIVACY LINE IS A FEATURE, so it is stated, not buried — and it says
+//     what the dashboard really does. Since 0128 a verified church's leadership
+//     sees its members BY NAME with exact totals (`church_leader_insights`, the
+//     owner's call); what the line promises is who else can't, and that nobody
+//     is ranked. It used to promise "no names, under five hidden", which stopped
+//     being true at 0128 — keep it in step with docs/CHURCH-CLAIM.md.
 //   * THE GIVING LINK SAYS "on the web", because `givingLinkVisible()` hides it
 //     in the App Store build and the page must not promise what the app won't do.
 //
@@ -35,12 +40,13 @@ const FREE: string[] = [
   'The daily verse and a short quiz, the same one for everybody who plays.',
   'Points your people give grow your church’s building. Giving costs them nothing.',
   'A staff member can claim the page: service times, website, a notice and a “This week” line.',
+  'Once three people play for your church, claiming it is free — with your congregation’s totals.',
 ]
 
 const FOUNDING: string[] = [
   'You choose the day’s verse and write its five questions — or fill them from the library in one tap.',
   'Your members get your verse as their own church round beside the daily verse — the shared drop stays for everybody.',
-  'Congregation numbers for leadership: players, plays, average score and streaks.',
+  'Know your people by name: when each member last played, their streak and their week — and a check-in you write yourself.',
   'Your logo and an invite QR on your page, ready for the bulletin or the screen.',
   'Your giving link on your page (on the web).',
 ]
@@ -179,6 +185,8 @@ export default function ChurchesScreen() {
         <List items={FOUNDING} />
       </section>
 
+      {churchPlansVisible() && <PlansCard />}
+
       <section className="card" style={{ marginBottom: 12 }} aria-labelledby="tier-free">
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
           <b id="tier-free" style={{ fontFamily: 'var(--font-display)', fontSize: 17 }}>Free</b>
@@ -232,12 +240,19 @@ export default function ChurchesScreen() {
 
       <section className="card" style={{ marginBottom: 12 }} aria-labelledby="privacy">
         <b id="privacy" style={{ fontFamily: 'var(--font-display)', fontSize: 16 }}>
-          You&rsquo;ll see how your church is doing — never who skipped.
+          You&rsquo;ll know your people by name — and nobody gets ranked.
         </b>
         <p className="dim" style={{ margin: '8px 0 0', fontSize: 13.5, lineHeight: 1.55 }}>
-          Leadership sees totals for the whole congregation and nothing about any one person: no names,
-          no list of who played, no list of who didn&rsquo;t. Any number under five stays hidden, because
-          in a small group a total can point at somebody. Nobody is ranked against anybody, and a wrong
+          Your church&rsquo;s verified leadership sees its members by name: when each last played, their
+          current streak and how often they&rsquo;ve played this week, with totals that are exact however
+          small your congregation is. The list is in the order people joined, never by score. Anyone who
+          hasn&rsquo;t played this week sits in one folded section you open on purpose, and the only thing
+          offered there is a short note you write and send yourself.
+        </p>
+        <p className="dim" style={{ margin: '8px 0 0', fontSize: 13.5, lineHeight: 1.55 }}>
+          That view is for your leadership alone — not other members, not other churches, not the public.
+          Members see their church as a place to belong: today&rsquo;s verse, the series you&rsquo;re in,
+          and what the congregation has been up to together. Nobody is ranked against anybody, and a wrong
           answer always teaches the right one.
         </p>
       </section>
@@ -361,3 +376,63 @@ function MockField({ label, value }: { label: string; value: string }) {
 }
 
 const labelStyle: React.CSSProperties = { display: 'grid', gap: 5, fontSize: 12, fontWeight: 700, color: 'var(--ink-dim)' }
+
+// The two paid plans, web only. Same numbers as the billing page (the amounts
+// themselves live in Stripe; change all three together). The Suite leads and is
+// the one marked — buying both separately is shown only as the struck-through
+// figure it saves against, never as a third option.
+function PlansCard() {
+  const [yearly, setYearly] = useState(false)
+  const p = yearly
+    ? { suite: '$390', sep: '$480', base: '$290', per: '/ year', save: 'Save $90 a year' }
+    : { suite: '$39', sep: '$48', base: '$29', per: '/ month', save: 'Save $9 a month' }
+  const row: React.CSSProperties = { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }
+  return (
+    <section className="card" style={{ marginBottom: 12, display: 'grid', gap: 10 }} aria-labelledby="tier-plans">
+      <div style={row}>
+        <b id="tier-plans" style={{ fontFamily: 'var(--font-display)', fontSize: 17 }}>After Easter 2027</b>
+        <div role="group" aria-label="Billing period" style={{ display: 'flex', gap: 4 }}>
+          {[false, true].map((y) => (
+            <button
+              key={String(y)}
+              className="pill"
+              aria-pressed={yearly === y}
+              onClick={() => setYearly(y)}
+              style={{ fontSize: 12, fontWeight: 700, ...(yearly === y ? { background: 'var(--select)', borderColor: 'var(--select)', color: 'var(--ink)' } : null) }}
+            >
+              {y ? 'Yearly' : 'Monthly'}
+            </button>
+          ))}
+        </div>
+      </div>
+      <p className="dim" style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>
+        Founding Churches pay nothing until then, and your plan starts by itself at the price you chose.
+      </p>
+      <div className="card" style={{ padding: '12px 14px', borderColor: 'var(--gold)', display: 'grid', gap: 4 }}>
+        <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--gold)' }}>Everything · best value</span>
+        <div style={row}>
+          <b style={{ fontSize: 15 }}>Church Suite</b>
+          <span>
+            <s className="faint" style={{ fontSize: 13 }}>{p.sep}</s>{' '}
+            <b style={{ fontFamily: 'var(--font-display)', fontSize: 20 }}>{p.suite}</b>
+            <span className="faint" style={{ fontSize: 12 }}> {p.per}</span>
+          </span>
+        </div>
+        <span className="dim" style={{ fontSize: 12.5, lineHeight: 1.45 }}>
+          <b>Includes Content Generation.</b> Every Founding Church tool, plus verse, series and notice cards ready to post — drafted, approved by you,
+          exported for the feed and Stories. <b>{p.save}.</b>
+        </span>
+      </div>
+      <div className="card" style={{ padding: '12px 14px', display: 'grid', gap: 4 }}>
+        <div style={row}>
+          <b style={{ fontSize: 15 }}>Verified Church</b>
+          <span>
+            <b style={{ fontFamily: 'var(--font-display)', fontSize: 20 }}>{p.base}</b>
+            <span className="faint" style={{ fontSize: 12 }}> {p.per}</span>
+          </span>
+        </div>
+        <span className="dim" style={{ fontSize: 12.5, lineHeight: 1.45 }}>Every Founding Church tool, without the cards.</span>
+      </div>
+    </section>
+  )
+}

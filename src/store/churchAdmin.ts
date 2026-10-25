@@ -1,3 +1,4 @@
+import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import { addDays, todayLocalDate } from '@/lib/date'
 import { useAuth } from './auth'
@@ -22,6 +23,42 @@ export type AdminFail = 'not_authenticated' | 'not_leadership' | 'not_verified' 
 function online(): boolean {
   return !!supabase && useAuth.getState().mode === 'online'
 }
+
+// ---------------------------------------------------------------------------
+// The content engine (`church-draft`). Every call sends `api: 2`, which makes
+// the function answer a failure with a real HTTP status (0142) — and
+// `functions.invoke` then hides the body behind `error.context`, so this is the
+// one place that reads it back. A reply we never got (the connection dropped,
+// the phone suspended the tab) is `lost`, which is NOT the same as a failure:
+// the week mode may have saved its drafts anyway, and the panels go and look.
+// ---------------------------------------------------------------------------
+type Invoked = { kind: 'reply'; data: Record<string, any> } | { kind: 'lost' }
+
+async function invokeDraft(churchId: string, body: Record<string, unknown>): Promise<Invoked> {
+  const { data, error } = await supabase!.functions.invoke('church-draft', { body: { ...body, church_id: churchId, api: 2 } })
+  let reply: Record<string, any> | null = null
+  if (!error) reply = data && typeof data === 'object' ? (data as Record<string, any>) : null
+  else {
+    // A non-2xx answer: FunctionsHttpError carries the Response itself.
+    const ctx = (error as { context?: unknown }).context
+    if (ctx instanceof Response) {
+      try { const j = await ctx.json(); if (j && typeof j === 'object') reply = j as Record<string, any> } catch { /* no body */ }
+    }
+  }
+  if (!reply) return { kind: 'lost' }
+  if (Number.isFinite(reply.left)) useDraftAllowance.getState().note(churchId, Number(reply.left))
+  return { kind: 'reply', data: reply }
+}
+
+/**
+ * How many of today's drafts this church has left, as the engine last said —
+ * per church, in memory, null until a call has answered. The three drafting
+ * panels read it so none of them has to restate the cap.
+ */
+export const useDraftAllowance = create<{ left: Record<string, number>; note: (churchId: string, left: number) => void }>((set) => ({
+  left: {},
+  note: (churchId, left) => set((st) => ({ left: { ...st.left, [churchId]: Math.max(0, left) } })),
+}))
 
 async function call<T = any>(fn: string, args: Record<string, unknown>): Promise<{ ok: true; data: T } | { ok: false; reason: AdminFail }> {
   if (!online()) return { ok: false, reason: 'unavailable' }
@@ -187,10 +224,27 @@ export async function fetchChurchBilling(churchId: string): Promise<ChurchBillin
   }
 }
 
-/** A Stripe customer-portal URL for this church, or null with a reason. */
-export async function openBillingPortal(churchId: string): Promise<{ url: string } | { error: string }> {
+/**
+ * A Stripe customer-portal URL for this church, or null with a reason.
+ * `flow: 'plan'` opens straight on the plan picker ("Manage plan").
+ */
+export async function openBillingPortal(churchId: string, flow?: 'plan'): Promise<{ url: string } | { error: string }> {
+  return billingUrl({ action: 'portal', church: churchId, flow })
+}
+
+/**
+ * "Unlock with Church Suite": a Suite Checkout for a church with no live
+ * subscription (a free claim), or a portal session on the confirm step of
+ * Verified → Suite for a card subscription. The function decides which from
+ * the church's own billing row; the client only names the church.
+ */
+export async function startSuiteUpgrade(churchId: string): Promise<{ url: string } | { error: string }> {
+  return billingUrl({ action: 'upgrade', church: churchId })
+}
+
+async function billingUrl(body: Record<string, unknown>): Promise<{ url: string } | { error: string }> {
   if (!online()) return { error: 'unavailable' }
-  const { data, error } = await supabase!.functions.invoke('church-billing', { body: { action: 'portal', church: churchId } })
+  const { data, error } = await supabase!.functions.invoke('church-billing', { body })
   if (error || typeof (data as any)?.url !== 'string') return { error: String((data as any)?.error ?? 'failed') }
   return { url: (data as any).url }
 }
@@ -381,7 +435,7 @@ export interface VerseBackend {
   /** Approve a draft. Base tier — present whenever leadership can save. */
   approve?: (churchId: string, date: string) => Promise<Res<{ status?: VerseStatus }>>
   /** Approve exactly these dates (drafts only). Base tier (0129). */
-  approveMany?: (churchId: string, dates: string[]) => Promise<Res<{ approved: string[] }>>
+  approveMany?: (churchId: string, dates: string[]) => Promise<Res<{ approved: string[]; flagged?: string[] }>>
   /** Throw a draft away; the day reads as empty again. Base tier (0129). */
   discard?: (churchId: string, date: string) => Promise<Res<unknown>>
   /**
@@ -391,6 +445,8 @@ export interface VerseBackend {
   draftWeek?: (churchId: string, input: WeekDraftInput) => Promise<Res<WeekDraftResult>>
   /** Which passages a study topic means — references only (Content Generation). */
   planTopic?: (churchId: string, topic: string, book?: string) => Promise<Res<TopicPlan>>
+  /** A recorded sermon → a transcript for the leader to edit (0144). Content Generation only. */
+  memo?: MemoBackend
 }
 
 export const serverVerseBackend: VerseBackend = {
@@ -410,6 +466,7 @@ export const serverGenerationBackend: VerseBackend = {
   saveDraft: (c, d, v, replace) => saveDraftVerse(c, d, v, replace),
   draftWeek: (c, input) => draftWeek(c, input),
   planTopic: (c, t, b) => planTopic(c, t, b),
+  memo: { upload: uploadMemo, transcribe: transcribeMemo },
 }
 
 // ---------------------------------------------------------------------------
@@ -424,7 +481,6 @@ export const serverGenerationBackend: VerseBackend = {
 export const WEEK_DAYS_MIN = 2
 export const WEEK_DAYS_MAX = 7
 export const WEEK_PASSAGES_MAX = 3
-export const WEEK_TRANSCRIPT_MAX = 12_000
 /** Mirrors the function's 40-verse and 6,000-character caps. */
 const PASSAGE_VERSES_MAX = 40
 const SCRIPTURE_MAX = 6_000
@@ -440,19 +496,27 @@ export interface WeekDraftInput {
   passages: WeekPassage[]
   transcript?: string
   guidance?: string
-}
-
-export interface WeekDraftDay {
-  reference: string
-  text: string
-  questions: Question[]
-  note?: string
+  /**
+   * The planned dates, in order (1..days). Day k of the engine's plan is saved
+   * on dates[k] and nowhere else — by the FUNCTION, as the leader (0142), so a
+   * phone that backgrounds mid-draft loses nothing.
+   */
+  dates: string[]
 }
 
 export interface WeekDraftResult {
-  days: WeekDraftDay[]
-  /** How many were asked for; `days` can be shorter if some came back unusable. */
+  /** Dates that now hold one of this run's drafts. Never empty on success. */
+  saved: string[]
+  /** Dates the server would not write, with why (`day_is_set`: it went live meanwhile). */
+  refused: { date: string; reason: string }[]
+  /** Planned dates whose day came back unusable — left empty, not slid. */
+  missing: string[]
+  /** How many days were asked of the engine. */
   asked: number
+  /** What became of the transcript, when one was sent and the function says (see TranscriptUse). */
+  transcriptUse?: TranscriptUse
+  /** Characters of the pasted transcript the draft drew on. */
+  transcriptRead?: number
 }
 
 /** Fetch a passage's verses. Null reason says why it can't be used. */
@@ -483,32 +547,55 @@ export const SCRIPTURE_CHARS_MAX = SCRIPTURE_MAX
 
 export async function draftWeek(churchId: string, input: WeekDraftInput): Promise<Res<WeekDraftResult>> {
   if (!online()) return { ok: false, reason: 'unavailable' }
-  const { data, error } = await supabase!.functions.invoke('church-draft', {
-    body: {
-      mode: 'week',
-      church_id: churchId,
-      series: cleanLine(input.series, SERIES_MAX) ?? '',
-      days: input.days,
-      passages: input.passages,
-      guidance: cleanLine(input.guidance, GUIDANCE_MAX) ?? undefined,
-      transcript: input.transcript?.trim().slice(0, WEEK_TRANSCRIPT_MAX) || undefined,
-    },
+  const r = await invokeDraft(churchId, {
+    mode: 'week',
+    series: cleanLine(input.series, SERIES_MAX) ?? '',
+    days: input.days,
+    passages: input.passages,
+    guidance: cleanLine(input.guidance, GUIDANCE_MAX) ?? undefined,
+    transcript: input.transcript?.trim().slice(0, TRANSCRIPT_SEND_MAX) || undefined,
+    dates: input.dates,
   })
-  if (error) return { ok: false, reason: 'unavailable' }
-  const d = data as { ok?: boolean; reason?: string; days?: any[]; asked?: number } | null
-  if (!d?.ok) return { ok: false, reason: String(d?.reason ?? 'unavailable') }
-  const days: WeekDraftDay[] = []
-  for (const x of d.days ?? []) {
+  // No answer at all: the panel re-reads the planned dates before saying anything.
+  if (r.kind === 'lost') return { ok: false, reason: 'no_reply' }
+  const d = r.data
+  const refusals = (x: unknown) => (Array.isArray(x) ? x : [])
+    .map((y: any) => ({ date: String(y?.date ?? ''), reason: String(y?.reason ?? 'unavailable') }))
+    .filter((y) => input.dates.includes(y.date))
+  if (!d.ok) return { ok: false, reason: String(d.reason ?? 'unavailable') }
+
+  // 0142 and later: the function saved the days itself.
+  if (Array.isArray(d.saved)) {
+    const saved = (d.saved as unknown[]).map(String).filter((x) => input.dates.includes(x))
+    if (!saved.length) return { ok: false, reason: 'not_saved' }
+    const missing = (Array.isArray(d.missing) ? d.missing : []).map(String).filter((x: string) => input.dates.includes(x))
+    return { ok: true, data: { saved, refused: refusals(d.refused), missing, asked: Number(d.asked) || input.days, ...transcriptOf(d) } }
+  }
+
+  // A function from before 0142 ignores `dates` and hands the days back, so
+  // they are saved here, positionally, exactly as the panels used to — this
+  // only matters in the minutes between a client and a function deploy.
+  const saved: string[] = []
+  const refused: { date: string; reason: string }[] = []
+  const days = Array.isArray(d.days) ? d.days : []
+  for (let i = 0; i < days.length && i < input.dates.length; i++) {
+    const x = days[i]
     const questions = cleanQuestions(x?.questions ?? [])
+    const date = input.dates[i]
     if (!questions || typeof x?.reference !== 'string' || !parseReference(x.reference) || typeof x?.text !== 'string' || !x.text.trim()) continue
-    days.push({
+    const s = await saveDraftVerse(churchId, date, {
       reference: x.reference,
       text: x.text.trim().slice(0, 1000),
       questions,
-      note: cleanLine(typeof x.note === 'string' ? x.note : null, NOTE_MAX) ?? undefined,
-    })
+      series: input.series,
+      note: cleanLine(typeof x.note === 'string' ? x.note : null, NOTE_MAX) ?? '',
+    }, false)
+    if (s.ok) saved.push(date)
+    else refused.push({ date, reason: String(s.reason) })
   }
-  return days.length ? { ok: true, data: { days, asked: Number(d.asked) || days.length } } : { ok: false, reason: 'draft_failed' }
+  if (!saved.length) return { ok: false, reason: refused.length ? 'not_saved' : 'draft_failed' }
+  const missing = input.dates.filter((x) => !saved.includes(x) && !refused.some((y) => y.date === x))
+  return { ok: true, data: { saved, refused, missing, asked: Number(d.asked) || input.days, ...transcriptOf(d) } }
 }
 
 // ---------------------------------------------------------------------------
@@ -531,12 +618,10 @@ export async function planTopic(churchId: string, topic: string, book?: string):
   if (!online()) return { ok: false, reason: 'unavailable' }
   const t = cleanLine(topic, TOPIC_MAX)
   if (!t) return { ok: false, reason: 'needs_topic' }
-  const { data, error } = await supabase!.functions.invoke('church-draft', {
-    body: { mode: 'topic', church_id: churchId, topic: t, book: book || undefined },
-  })
-  if (error) return { ok: false, reason: 'unavailable' }
-  const d = data as { ok?: boolean; reason?: string; series?: unknown; passages?: unknown } | null
-  if (!d?.ok) return { ok: false, reason: String(d?.reason ?? 'unavailable') }
+  const r = await invokeDraft(churchId, { mode: 'topic', topic: t, book: book || undefined })
+  if (r.kind === 'lost') return { ok: false, reason: 'unavailable' }
+  const d = r.data as { ok?: boolean; reason?: string; series?: unknown; passages?: unknown }
+  if (!d.ok) return { ok: false, reason: String(d.reason ?? 'unavailable') }
   const passages = (Array.isArray(d.passages) ? d.passages : [])
     .map((x) => String(x ?? '').trim())
     .filter((x) => !!parseReference(x))
@@ -575,9 +660,10 @@ export async function fetchPastSeries(churchId: string, today: string, be: Verse
 
 /** Approve exactly the dates the leader was shown (0129). */
 export async function approveDays(churchId: string, dates: string[]) {
-  const r = await call<{ approved: string[] }>('approve_church_verses', { p_church_id: churchId, p_dates: dates })
+  const r = await call<{ approved: string[]; flagged?: string[] }>('approve_church_verses', { p_church_id: churchId, p_dates: dates })
   if (!r.ok) return r
-  return { ok: true as const, data: { approved: (r.data.approved ?? []).map(String) } }
+  // `flagged` (0143): days the server would not approve because a ⚠ is still on them.
+  return { ok: true as const, data: { approved: (r.data.approved ?? []).map(String), flagged: (r.data.flagged ?? []).map(String) } }
 }
 
 /** Throw a draft away (0129). The row is stamped, not deleted. */
@@ -597,10 +683,36 @@ export interface DraftResult {
   questions: Question[]
   /** A suggested note for members, when the engine wrote one. */
   note?: string
+  /** What became of the transcript, when one was sent and the function says. */
+  transcriptUse?: TranscriptUse
+  /** Characters of the pasted transcript the draft drew on. */
+  transcriptRead?: number
 }
 
 export const GUIDANCE_MAX = 300
-export const TRANSCRIPT_MAX = 4000
+/**
+ * Transcripts (the function's caps, both modes). Up to TRANSCRIPT_DIRECT_MAX
+ * is read word for word; a longer one is condensed to an ordered outline of
+ * its key points before drafting, so the whole sermon steers it. The forms
+ * carry no maxLength: a paste is never cut silently, and anything past
+ * TRANSCRIPT_SEND_MAX (about an hour of speech) is named on screen first.
+ */
+export const TRANSCRIPT_DIRECT_MAX = 12_000
+export const TRANSCRIPT_SEND_MAX = 60_000
+/**
+ * 'full' — read word for word; 'condensed' — condensed first, then drafted
+ * from; 'clipped' — the condense failed, so only the first
+ * TRANSCRIPT_DIRECT_MAX characters steered it. A function from before this
+ * says nothing, and the field stays undefined.
+ */
+export type TranscriptUse = 'full' | 'condensed' | 'clipped'
+
+function transcriptOf(d: Record<string, unknown>): { transcriptUse?: TranscriptUse; transcriptRead?: number } {
+  const use = d.transcript_use
+  if (use !== 'full' && use !== 'condensed' && use !== 'clipped') return {}
+  const read = Number(d.transcript_read)
+  return { transcriptUse: use, transcriptRead: Number.isFinite(read) && read > 0 ? read : undefined }
+}
 
 /**
  * Ask `church-draft` (0122) for five questions about a passage. Leadership of
@@ -611,21 +723,18 @@ export const TRANSCRIPT_MAX = 4000
  */
 export async function draftQuestions(churchId: string, reference: string, text: string, steer: DraftSteer = {}): Promise<Res<DraftResult>> {
   if (!online()) return { ok: false, reason: 'unavailable' }
-  const { data, error } = await supabase!.functions.invoke('church-draft', {
-    body: {
-      church_id: churchId,
-      reference,
-      text,
-      guidance: cleanLine(steer.guidance, GUIDANCE_MAX) ?? undefined,
-      transcript: steer.transcript?.trim().slice(0, TRANSCRIPT_MAX) || undefined,
-    },
+  const r = await invokeDraft(churchId, {
+    reference,
+    text,
+    guidance: cleanLine(steer.guidance, GUIDANCE_MAX) ?? undefined,
+    transcript: steer.transcript?.trim().slice(0, TRANSCRIPT_SEND_MAX) || undefined,
   })
-  if (error) return { ok: false, reason: 'unavailable' }
-  const d = data as { ok?: boolean; reason?: string; questions?: Question[]; note?: unknown } | null
-  if (!d?.ok) return { ok: false, reason: String(d?.reason ?? 'unavailable') }
+  if (r.kind === 'lost') return { ok: false, reason: 'unavailable' }
+  const d = r.data as { ok?: boolean; reason?: string; questions?: Question[]; note?: unknown }
+  if (!d.ok) return { ok: false, reason: String(d.reason ?? 'unavailable') }
   const qs = cleanQuestions(d.questions ?? [])
   if (!qs) return { ok: false, reason: 'draft_failed' }
-  return { ok: true, data: { questions: qs, note: cleanLine(typeof d.note === 'string' ? d.note : null, NOTE_MAX) ?? undefined } }
+  return { ok: true, data: { questions: qs, note: cleanLine(typeof d.note === 'string' ? d.note : null, NOTE_MAX) ?? undefined, ...transcriptOf(d as Record<string, unknown>) } }
 }
 
 /** In-memory days, seeded with `initial`. Validates exactly as the server does. */
@@ -638,8 +747,10 @@ export function memoryVerseBackend(
   // The same status rules as 0127: a save is an approval, a draft is not live.
   const statusFor = (date: string): VerseStatus => (date <= todayLocalDate() ? 'published' : 'approved')
   const put = (d: string, v: DayVerse, status: VerseStatus, generated: boolean) => {
-    const questions = cleanQuestions(v.questions)
-    if (!questions) return false
+    const cleaned = cleanQuestions(v.questions)
+    if (!cleaned) return false
+    // As on the server (0143): only a draft keeps the check's ⚠; going live strips it.
+    const questions = status === 'draft' ? cleaned : cleaned.map(({ check: _c, checkPick: _p, ...q }) => q)
     const prev = days.get(d)
     days.set(d, {
       ...v,
@@ -664,11 +775,15 @@ export function memoryVerseBackend(
       : {}),
     approveMany: async (_c, ds) => {
       const approved: string[] = []
+      const flagged: string[] = []
       for (const d of ds) {
         const cur = days.get(d)
-        if (cur?.status === 'draft') { days.set(d, { ...cur, status: statusFor(d) }); approved.push(d) }
+        if (cur?.status !== 'draft') continue
+        // The server's rule (0143): a day still carrying a ⚠ is not approved in a set.
+        if (flaggedCount(cur.questions)) { flagged.push(d); continue }
+        days.set(d, { ...cur, status: statusFor(d) }); approved.push(d)
       }
-      return { ok: true, data: { approved } }
+      return { ok: true, data: { approved, flagged } }
     },
     discard: async (_c, d) => {
       if (days.get(d)?.status !== 'draft') return { ok: false, reason: 'no_draft' }
@@ -678,7 +793,7 @@ export function memoryVerseBackend(
     approve: async (_c, d) => {
       const cur = days.get(d)
       if (!cur || cur.status !== 'draft') return { ok: false, reason: 'no_draft' }
-      days.set(d, { ...cur, status: statusFor(d) })
+      days.set(d, { ...cur, status: statusFor(d), questions: cur.questions.map(({ check: _c, checkPick: _p, ...q }) => q) })
       return { ok: true, data: { status: statusFor(d) } }
     },
     get: async (_c, d) => ({ ok: true, data: days.get(d) ?? null }),
@@ -812,10 +927,18 @@ export function cleanQuestions(qs: Question[]): Question[] | null {
     if (options.some((o) => o.length < 1 || o.length > 120)) return null
     if (new Set(options.map((o) => o.toLowerCase())).size !== options.length) return null
     if (!Number.isInteger(q.answerIndex) || q.answerIndex < 0 || q.answerIndex >= options.length) return null
-    out.push({ prompt, options, answerIndex: q.answerIndex, teach })
+    // A draft's check flag (0143) rides along, well-formed or not at all —
+    // the same rule `church_draft_questions` applies on the server.
+    const check = q.check === true
+      ? { check: true as const, ...(Number.isInteger(q.checkPick) && q.checkPick! >= -1 && q.checkPick! < options.length ? { checkPick: q.checkPick } : {}) }
+      : {}
+    out.push({ prompt, options, answerIndex: q.answerIndex, teach, ...check })
   }
   return out
 }
+
+/** How many of a day's questions carry the blind check's ⚠ (0143). */
+export const flaggedCount = (qs: Question[] | undefined | null) => (qs ?? []).filter((q) => q.check === true).length
 
 // ---------------------------------------------------------------------------
 // Participation — congregation totals, every number under five withheld.
@@ -856,7 +979,6 @@ export interface InsightMember {
   church7d: number
   churchAvg: number | null
   leader: boolean
-  active: boolean
 }
 
 export interface InsightSeries {
@@ -868,6 +990,36 @@ export interface InsightSeries {
   plays: number
   players: number
   completion: number | null
+}
+
+// ---------------------------------------------------------------------------
+// The free leader's numbers (0137): ANY leadership of this church, verified or
+// not. Three totals and the live notice — no names and no rows of people, by
+// construction (`church_leader_summary` returns none to draw).
+// ---------------------------------------------------------------------------
+export interface LeaderSummary {
+  verified: boolean
+  members: number
+  active7d: number
+  activePct: number | null
+  avgStreak: number
+  notice: { message: string; createdAt: string } | null
+}
+
+export async function fetchLeaderSummary(churchId: string) {
+  const r = await call('church_leader_summary', { p_church_id: churchId, p_local_date: todayLocalDate() })
+  if (!r.ok) return r
+  const d = r.data
+  const n = (x: unknown) => (Number.isFinite(Number(x)) ? Number(x) : 0)
+  const data: LeaderSummary = {
+    verified: !!d.verified,
+    members: n(d.members),
+    active7d: n(d.active_7d),
+    activePct: num(d.active_pct),
+    avgStreak: n(d.avg_streak),
+    notice: d.notice?.message ? { message: String(d.notice.message), createdAt: String(d.notice.created_at) } : null,
+  }
+  return { ok: true as const, data }
 }
 
 export interface LeaderInsights {
@@ -914,8 +1066,91 @@ export async function fetchLeaderInsights(churchId: string) {
       church7d: n(m.church_7d),
       churchAvg: num(m.church_avg),
       leader: !!m.leader,
-      active: !!m.active,
     })),
   }
   return { ok: true as const, data }
+}
+
+// ---------------------------------------------------------------------------
+// Voice memos (0144, Content Generation only): record Sunday's sermon, get the
+// transcript back in the box, edit it, then draft exactly as from a paste.
+//
+// Two steps, so a retry after a busy model needn't upload an hour of audio
+// again: `uploadMemo` asks `church-draft` for a signed upload into the private
+// `church-memos` bucket and sends the file there; `transcribeMemo` asks the
+// function to transcribe that upload. Neither spends a draft unit — a
+// transcription has its own allowance (10 a church a day, given back on any
+// failure), and the draft made from it afterwards spends what a pasted
+// transcript spends. Replies carry `memo_left`, never `left`, so the draft
+// allowance on screen is never overwritten by the memo count.
+// ---------------------------------------------------------------------------
+export const MEMO_BYTES_MAX = 50 * 1024 * 1024
+export const MEMO_SECONDS_MAX = 60 * 60
+export const MEMO_ACCEPT = 'audio/*,.m4a,.mp3,.wav,.aac,.ogg,.opus,.flac,.webm,.aif,.aiff'
+const MEMO_EXTS = new Set(['m4a', 'mp4', 'mp3', 'wav', 'aac', 'ogg', 'oga', 'opus', 'flac', 'webm', 'aiff', 'aif'])
+const MEMO_BY_TYPE: Record<string, string> = {
+  'audio/mp4': 'm4a', 'audio/x-m4a': 'm4a', 'audio/m4a': 'm4a', 'audio/aac': 'aac', 'audio/x-aac': 'aac',
+  'audio/mpeg': 'mp3', 'audio/mp3': 'mp3', 'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/wave': 'wav',
+  'audio/ogg': 'ogg', 'audio/opus': 'opus', 'audio/flac': 'flac', 'audio/x-flac': 'flac',
+  'audio/webm': 'webm', 'audio/aiff': 'aiff', 'audio/x-aiff': 'aiff',
+}
+
+export interface MemoUpload { path: string }
+export interface MemoTranscript { transcript: string; seconds?: number }
+export interface MemoBackend {
+  upload: (churchId: string, file: Blob, name?: string) => Promise<Res<MemoUpload>>
+  transcribe: (churchId: string, upload: MemoUpload) => Promise<Res<MemoTranscript>>
+}
+
+/** The extension the function files a memo under, from its name or its type; null = not a format it takes. */
+export function memoExt(file: Blob, name?: string): string | null {
+  const fromName = /\.([a-z0-9]{2,5})$/i.exec(name ?? '')?.[1]?.toLowerCase()
+  if (fromName && MEMO_EXTS.has(fromName)) return fromName
+  const type = (file.type || '').split(';')[0].trim().toLowerCase()
+  return MEMO_BY_TYPE[type] ?? null
+}
+
+/** A recording's length in seconds as the browser reads it, or null when it can't say. */
+export function memoSeconds(file: Blob): Promise<number | null> {
+  return new Promise((resolve) => {
+    let url = ''
+    const done = (n: number | null) => { if (url) URL.revokeObjectURL(url); resolve(n) }
+    try {
+      url = URL.createObjectURL(file)
+      const a = new Audio()
+      a.preload = 'metadata'
+      a.onloadedmetadata = () => done(Number.isFinite(a.duration) && a.duration > 0 ? a.duration : null)
+      a.onerror = () => done(null)
+      setTimeout(() => done(null), 8_000)
+      a.src = url
+    } catch {
+      done(null)
+    }
+  })
+}
+
+export async function uploadMemo(churchId: string, file: Blob, name?: string): Promise<Res<MemoUpload>> {
+  if (!online()) return { ok: false, reason: 'unavailable' }
+  const ext = memoExt(file, name)
+  if (!ext) return { ok: false, reason: 'memo_format' }
+  if (file.size > MEMO_BYTES_MAX) return { ok: false, reason: 'memo_too_big' }
+  const r = await invokeDraft(churchId, { mode: 'memo_url', ext, bytes: file.size })
+  if (r.kind === 'lost') return { ok: false, reason: 'unavailable' }
+  const d = r.data
+  if (!d.ok || typeof d.path !== 'string' || typeof d.token !== 'string') return { ok: false, reason: String(d.reason ?? 'unavailable') }
+  const { error } = await supabase!.storage.from(String(d.bucket ?? 'church-memos'))
+    .uploadToSignedUrl(d.path, d.token, file, { contentType: file.type || undefined })
+  if (error) return { ok: false, reason: 'upload_failed' }
+  return { ok: true, data: { path: d.path } }
+}
+
+export async function transcribeMemo(churchId: string, upload: MemoUpload): Promise<Res<MemoTranscript>> {
+  if (!online()) return { ok: false, reason: 'unavailable' }
+  const r = await invokeDraft(churchId, { mode: 'transcribe', path: upload.path })
+  if (r.kind === 'lost') return { ok: false, reason: 'no_reply' }
+  const d = r.data
+  if (!d.ok) return { ok: false, reason: String(d.reason ?? 'unavailable') }
+  if (typeof d.transcript !== 'string' || !d.transcript.trim()) return { ok: false, reason: 'memo_silent' }
+  const seconds = Number(d.seconds)
+  return { ok: true, data: { transcript: d.transcript.trim(), seconds: Number.isFinite(seconds) && seconds > 0 ? seconds : undefined } }
 }

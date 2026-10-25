@@ -29,8 +29,8 @@ const ADULT_HEAD = 'translate(60 52) scale(0.74) translate(-60 -52)'
 // writes that map and must never be able to overwrite these (the rule the
 // road rewards and the nav paintings follow).
 //
-// One painting per look for each figure, plus tone/hair variants (ten men's so
-// far). A leader gets the variant that matches their own figure, skin tone AND
+// One painting per look for each figure, plus tone/hair variants (ten men's,
+// ten women's). A leader gets the variant that matches their own figure, skin tone AND
 // hair exactly, else their figure's painting of the look — a woman never gets
 // a man's painting, or the reverse; a stranger wearing her name is worse than
 // a near miss on tone.
@@ -78,6 +78,20 @@ const OWNER_FEM_VARIANTS: Record<string, string> = {
   'professional-suit|porcelain|auburn': OWNER_FEM_LOOK_ART['professional-suit'],
   'robe-stole|ebony|jet': OWNER_FEM_LOOK_ART['robe-stole'],
   'contemporary|amber|espresso': OWNER_FEM_LOOK_ART.contemporary,
+  // Generated 2026-10-25 FROM the owner's painting of each look
+  // (scripts/gen-leader-looks.mjs, art/leader-looks-women.json): same outfit,
+  // pose and hand, a different complexion and hair. Two per look, chosen far
+  // from the original's own tone.
+  'classic-clergy|ebony|jet': `${OWNER_DIR}/female-classic-clergy-ebony-jet.png`,
+  'classic-clergy|porcelain|honey': `${OWNER_DIR}/female-classic-clergy-porcelain-honey.png`,
+  'liturgical-vestments|porcelain|ash': `${OWNER_DIR}/female-liturgical-vestments-porcelain-ash.png`,
+  'liturgical-vestments|umber|jet': `${OWNER_DIR}/female-liturgical-vestments-umber-jet.png`,
+  'professional-suit|umber|espresso': `${OWNER_DIR}/female-professional-suit-umber-espresso.png`,
+  'professional-suit|amber|chestnut': `${OWNER_DIR}/female-professional-suit-amber-chestnut.png`,
+  'robe-stole|sand|chestnut': `${OWNER_DIR}/female-robe-stole-sand-chestnut.png`,
+  'robe-stole|porcelain|ash': `${OWNER_DIR}/female-robe-stole-porcelain-ash.png`,
+  'contemporary|ebony|jet': `${OWNER_DIR}/female-contemporary-ebony-jet.png`,
+  'contemporary|porcelain|honey': `${OWNER_DIR}/female-contemporary-porcelain-honey.png`,
 }
 
 function ownerLookArt(look: Exclude<LeaderLookId, 'custom'>, fem: boolean, tone: string, hair: string): string {

@@ -1,0 +1,82 @@
+[
+ {
+  "id": "female-classic-clergy-ebony-jet",
+  "look": "classic-clergy",
+  "tone": "ebony",
+  "hair": "jet",
+  "ref": "public/skins/leader-looks/female-classic-clergy-sand-brown.png",
+  "prompt": "THE ENTIRE BACKGROUND MUST BE ONE FLAT SOLID HOT PINK, RGB(255,20,147), edge to edge, exactly like the pink behind the reference \u2014 NOT white, NOT grey, NOT a gradient, NOT a scene, no floor, no cast shadow on the floor, no border, no text, no watermark, no second figure.\n\nRepaint THE SAME adult woman church leader as the reference image, in EXACTLY the same outfit, same pose standing square to the viewer, same proportions, same painted art style, same lighting from the upper left, same framing: one full-length figure, head to feet, both shoes fully visible, the whole figure inside the frame with a little pink margin all round. Change ONLY two things: her skin tone is now very deep dark brown, and her hair colour is now jet black (keep the same hairstyle and length). Her face may be a different woman with that complexion, kind and calm, an adult in her forties or fifties \u2014 not a child, not a cartoon. Every garment colour, the stole, the collar and every detail of the clothing stay exactly as in the reference."
+ },
+ {
+  "id": "female-classic-clergy-porcelain-honey",
+  "look": "classic-clergy",
+  "tone": "porcelain",
+  "hair": "honey",
+  "ref": "public/skins/leader-looks/female-classic-clergy-sand-brown.png",
+  "prompt": "THE ENTIRE BACKGROUND MUST BE ONE FLAT SOLID HOT PINK, RGB(255,20,147), edge to edge, exactly like the pink behind the reference \u2014 NOT white, NOT grey, NOT a gradient, NOT a scene, no floor, no cast shadow on the floor, no border, no text, no watermark, no second figure.\n\nRepaint THE SAME adult woman church leader as the reference image, in EXACTLY the same outfit, same pose standing square to the viewer, same proportions, same painted art style, same lighting from the upper left, same framing: one full-length figure, head to feet, both shoes fully visible, the whole figure inside the frame with a little pink margin all round. Change ONLY two things: her skin tone is now very fair porcelain, and her hair colour is now honey blonde (keep the same hairstyle and length). Her face may be a different woman with that complexion, kind and calm, an adult in her forties or fifties \u2014 not a child, not a cartoon. Every garment colour, the stole, the collar and every detail of the clothing stay exactly as in the reference."
+ },
+ {
+  "id": "female-liturgical-vestments-porcelain-ash",
+  "look": "liturgical-vestments",
+  "tone": "porcelain",
+  "hair": "ash",
+  "ref": "public/skins/leader-looks/female-liturgical-medium-dark.png",
+  "prompt": "THE ENTIRE BACKGROUND MUST BE ONE FLAT SOLID HOT PINK, RGB(255,20,147), edge to edge, exactly like the pink behind the reference \u2014 NOT white, NOT grey, NOT a gradient, NOT a scene, no floor, no cast shadow on the floor, no border, no text, no watermark, no second figure.\n\nRepaint THE SAME adult woman church leader as the reference image, in EXACTLY the same outfit, same pose standing square to the viewer, same proportions, same painted art style, same lighting from the upper left, same framing: one full-length figure, head to feet, both shoes fully visible, the whole figure inside the frame with a little pink margin all round. Change ONLY two things: her skin tone is now very fair porcelain, and her hair colour is now silver-grey (keep the same hairstyle and length). Her face may be a different woman with that complexion, kind and calm, an adult in her forties or fifties \u2014 not a child, not a cartoon. Every garment colour, the stole, the collar and every detail of the clothing stay exactly as in the reference."
+ },
+ {
+  "id": "female-liturgical-vestments-umber-jet",
+  "look": "liturgical-vestments",
+  "tone": "umber",
+  "hair": "jet",
+  "ref": "public/skins/leader-looks/female-liturgical-medium-dark.png",
+  "prompt": "THE ENTIRE BACKGROUND MUST BE ONE FLAT SOLID HOT PINK, RGB(255,20,147), edge to edge, exactly like the pink behind the reference \u2014 NOT white, NOT grey, NOT a gradient, NOT a scene, no floor, no cast shadow on the floor, no border, no text, no watermark, no second figure.\n\nRepaint THE SAME adult woman church leader as the reference image, in EXACTLY the same outfit, same pose standing square to the viewer, same proportions, same painted art style, same lighting from the upper left, same framing: one full-length figure, head to feet, both shoes fully visible, the whole figure inside the frame with a little pink margin all round. Change ONLY two things: her skin tone is now deep brown, and her hair colour is now jet black (keep the same hairstyle and length). Her face may be a different woman with that complexion, kind and calm, an adult in her forties or fifties \u2014 not a child, not a cartoon. Every garment colour, the stole, the collar and every detail of the clothing stay exactly as in the reference."
+ },
+ {
+  "id": "female-professional-suit-umber-espresso",
+  "look": "professional-suit",
+  "tone": "umber",
+  "hair": "espresso",
+  "ref": "public/skins/leader-looks/female-professional-fair-auburn.png",
+  "prompt": "THE ENTIRE BACKGROUND MUST BE ONE FLAT SOLID HOT PINK, RGB(255,20,147), edge to edge, exactly like the pink behind the reference \u2014 NOT white, NOT grey, NOT a gradient, NOT a scene, no floor, no cast shadow on the floor, no border, no text, no watermark, no second figure.\n\nRepaint THE SAME adult woman church leader as the reference image, in EXACTLY the same outfit, same pose standing square to the viewer, same proportions, same painted art style, same lighting from the upper left, same framing: one full-length figure, head to feet, both shoes fully visible, the whole figure inside the frame with a little pink margin all round. Change ONLY two things: her skin tone is now deep brown, and her hair colour is now dark espresso brown (keep the same hairstyle and length). Her face may be a different woman with that complexion, kind and calm, an adult in her forties or fifties \u2014 not a child, not a cartoon. Every garment colour, the stole, the collar and every detail of the clothing stay exactly as in the reference."
+ },
+ {
+  "id": "female-professional-suit-amber-chestnut",
+  "look": "professional-suit",
+  "tone": "amber",
+  "hair": "chestnut",
+  "ref": "public/skins/leader-looks/female-professional-fair-auburn.png",
+  "prompt": "THE ENTIRE BACKGROUND MUST BE ONE FLAT SOLID HOT PINK, RGB(255,20,147), edge to edge, exactly like the pink behind the reference \u2014 NOT white, NOT grey, NOT a gradient, NOT a scene, no floor, no cast shadow on the floor, no border, no text, no watermark, no second figure.\n\nRepaint THE SAME adult woman church leader as the reference image, in EXACTLY the same outfit, same pose standing square to the viewer, same proportions, same painted art style, same lighting from the upper left, same framing: one full-length figure, head to feet, both shoes fully visible, the whole figure inside the frame with a little pink margin all round. Change ONLY two things: her skin tone is now medium warm golden-brown, and her hair colour is now warm chestnut brown (keep the same hairstyle and length). Her face may be a different woman with that complexion, kind and calm, an adult in her forties or fifties \u2014 not a child, not a cartoon. Every garment colour, the stole, the collar and every detail of the clothing stay exactly as in the reference."
+ },
+ {
+  "id": "female-robe-stole-sand-chestnut",
+  "look": "robe-stole",
+  "tone": "sand",
+  "hair": "chestnut",
+  "ref": "public/skins/leader-looks/female-robe-stole-deep-black.png",
+  "prompt": "THE ENTIRE BACKGROUND MUST BE ONE FLAT SOLID HOT PINK, RGB(255,20,147), edge to edge, exactly like the pink behind the reference \u2014 NOT white, NOT grey, NOT a gradient, NOT a scene, no floor, no cast shadow on the floor, no border, no text, no watermark, no second figure.\n\nRepaint THE SAME adult woman church leader as the reference image, in EXACTLY the same outfit, same pose standing square to the viewer, same proportions, same painted art style, same lighting from the upper left, same framing: one full-length figure, head to feet, both shoes fully visible, the whole figure inside the frame with a little pink margin all round. Change ONLY two things: her skin tone is now light warm tan, and her hair colour is now warm chestnut brown (keep the same hairstyle and length). Her face may be a different woman with that complexion, kind and calm, an adult in her forties or fifties \u2014 not a child, not a cartoon. Every garment colour, the stole, the collar and every detail of the clothing stay exactly as in the reference."
+ },
+ {
+  "id": "female-robe-stole-porcelain-ash",
+  "look": "robe-stole",
+  "tone": "porcelain",
+  "hair": "ash",
+  "ref": "public/skins/leader-looks/female-robe-stole-deep-black.png",
+  "prompt": "THE ENTIRE BACKGROUND MUST BE ONE FLAT SOLID HOT PINK, RGB(255,20,147), edge to edge, exactly like the pink behind the reference \u2014 NOT white, NOT grey, NOT a gradient, NOT a scene, no floor, no cast shadow on the floor, no border, no text, no watermark, no second figure.\n\nRepaint THE SAME adult woman church leader as the reference image, in EXACTLY the same outfit, same pose standing square to the viewer, same proportions, same painted art style, same lighting from the upper left, same framing: one full-length figure, head to feet, both shoes fully visible, the whole figure inside the frame with a little pink margin all round. Change ONLY two things: her skin tone is now very fair porcelain, and her hair colour is now silver-grey (keep the same hairstyle and length). Her face may be a different woman with that complexion, kind and calm, an adult in her forties or fifties \u2014 not a child, not a cartoon. Every garment colour, the stole, the collar and every detail of the clothing stay exactly as in the reference."
+ },
+ {
+  "id": "female-contemporary-ebony-jet",
+  "look": "contemporary",
+  "tone": "ebony",
+  "hair": "jet",
+  "ref": "public/skins/leader-looks/female-contemporary-medium.png",
+  "prompt": "THE ENTIRE BACKGROUND MUST BE ONE FLAT SOLID HOT PINK, RGB(255,20,147), edge to edge, exactly like the pink behind the reference \u2014 NOT white, NOT grey, NOT a gradient, NOT a scene, no floor, no cast shadow on the floor, no border, no text, no watermark, no second figure.\n\nRepaint THE SAME adult woman church leader as the reference image, in EXACTLY the same outfit, same pose standing square to the viewer, same proportions, same painted art style, same lighting from the upper left, same framing: one full-length figure, head to feet, both shoes fully visible, the whole figure inside the frame with a little pink margin all round. Change ONLY two things: her skin tone is now very deep dark brown, and her hair colour is now jet black (keep the same hairstyle and length). Her face may be a different woman with that complexion, kind and calm, an adult in her forties or fifties \u2014 not a child, not a cartoon. Every garment colour, the stole, the collar and every detail of the clothing stay exactly as in the reference."
+ },
+ {
+  "id": "female-contemporary-porcelain-honey",
+  "look": "contemporary",
+  "tone": "porcelain",
+  "hair": "honey",
+  "ref": "public/skins/leader-looks/female-contemporary-medium.png",
+  "prompt": "THE ENTIRE BACKGROUND MUST BE ONE FLAT SOLID HOT PINK, RGB(255,20,147), edge to edge, exactly like the pink behind the reference \u2014 NOT white, NOT grey, NOT a gradient, NOT a scene, no floor, no cast shadow on the floor, no border, no text, no watermark, no second figure.\n\nRepaint THE SAME adult woman church leader as the reference image, in EXACTLY the same outfit, same pose standing square to the viewer, same proportions, same painted art style, same lighting from the upper left, same framing: one full-length figure, head to feet, both shoes fully visible, the whole figure inside the frame with a little pink margin all round. Change ONLY two things: her skin tone is now very fair porcelain, and her hair colour is now honey blonde (keep the same hairstyle and length). Her face may be a different woman with that complexion, kind and calm, an adult in her forties or fifties \u2014 not a child, not a cartoon. Every garment colour, the stole, the collar and every detail of the clothing stay exactly as in the reference."
+ }
+]

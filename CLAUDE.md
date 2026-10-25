@@ -1766,7 +1766,10 @@ Four things are load-bearing:
   can wear two. `LeaderLookFigure` reads only tone, hair and figure from their
   own spec. **The art is the OWNER'S paintings** (2026-10-23):
   `public/skins/leader-looks/` — one adult painting per look for EACH
-  figure (five men, five women) plus ten men's tone/hair variants, hand-kept
+  figure (five men, five women) plus ten men's and ten women's tone/hair
+  variants (the women's GENERATED from the owner's own painting of each look by
+  `scripts/gen-leader-looks.mjs` — not gen-art, which would wire them into
+  `GENERATED_ART` — and checked side by side against it), hand-kept
   in `OWNER_LOOK_ART` / `OWNER_FEM_LOOK_ART` / `OWNER_VARIANTS` /
   `OWNER_FEM_VARIANTS`
   (`leaderLooks.tsx`) and deliberately NOT in `GENERATED_ART`, so a gen-art

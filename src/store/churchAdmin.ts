@@ -242,6 +242,15 @@ export async function startSuiteUpgrade(churchId: string): Promise<{ url: string
   return billingUrl({ action: 'upgrade', church: churchId })
 }
 
+/**
+ * The one-time Custom Leader Avatar (0145): a Stripe Checkout Session in
+ * payment mode. The function checks leadership, a verified church and that the
+ * add-on isn't held; the client only names the church.
+ */
+export async function startAvatarCheckout(churchId: string): Promise<{ url: string } | { error: string }> {
+  return billingUrl({ action: 'avatar', church: churchId })
+}
+
 async function billingUrl(body: Record<string, unknown>): Promise<{ url: string } | { error: string }> {
   if (!online()) return { error: 'unavailable' }
   const { data, error } = await supabase!.functions.invoke('church-billing', { body })

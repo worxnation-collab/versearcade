@@ -72,10 +72,14 @@ export default function ChurchAdminScreen() {
   // grants the Suite usually lands a few seconds after the redirect.
   const [params, setParams] = useSearchParams()
   const [upgraded] = useState(() => params.get('upgraded') === '1')
+  // Back from the one-time Custom Leader Avatar checkout (?avatar=1): the same
+  // freeze, strip and re-read, and the dashboard opens on "Your look".
+  const [avatarPaid] = useState(() => params.get('avatar') === '1')
   useEffect(() => {
-    if (!upgraded) return
+    if (!upgraded && !avatarPaid) return
     const next = new URLSearchParams(params)
     next.delete('upgraded')
+    next.delete('avatar')
     setParams(next, { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -98,9 +102,11 @@ export default function ChurchAdminScreen() {
     void load()
   }, [load])
 
-  const granted = !!ent?.churchLeader && !!ent?.contentGeneration
+  const granted = upgraded
+    ? !!ent?.churchLeader && !!ent?.contentGeneration
+    : !!ent?.customLeaderAvatar
   useEffect(() => {
-    if (!upgraded || granted) return
+    if ((!upgraded && !avatarPaid) || granted) return
     let tries = 0
     const t = window.setInterval(() => {
       tries += 1
@@ -108,7 +114,7 @@ export default function ChurchAdminScreen() {
       if (tries >= 10) window.clearInterval(t)
     }, 3000)
     return () => window.clearInterval(t)
-  }, [upgraded, granted, load])
+  }, [upgraded, avatarPaid, granted, load])
 
   const back = () => {
     juice.select?.()
@@ -164,7 +170,7 @@ export default function ChurchAdminScreen() {
           },
           { key: 'people', label: 'People', content: <PeoplePanel churchId={id} insights={insights.data} failed={insights.failed} /> },
           { key: 'activity', label: 'Activity', content: <ActivityPanel churchId={id} /> },
-          { key: 'look', label: 'Your look', content: <LeaderLookPanel churchId={id} ent={ent} setup={setup} onChanged={load} /> },
+          { key: 'look', label: 'Your look', content: <LeaderLookPanel churchId={id} ent={ent} setup={setup} paid={avatarPaid} onChanged={load} /> },
         ]
       : [{ key: 'overview', label: 'Overview', content: <SummaryPanel summary={summary.data} failed={summary.failed} /> }]),
     {
@@ -199,7 +205,7 @@ export default function ChurchAdminScreen() {
         upgraded={upgraded}
       />
 
-      <TabbedSection tabs={tabs} defaultOpen defaultTab={setup ? 'look' : 'overview'} />
+      <TabbedSection tabs={tabs} defaultOpen defaultTab={setup || avatarPaid ? 'look' : 'overview'} />
       <div style={{ height: 32 }} />
     </Page>
   )

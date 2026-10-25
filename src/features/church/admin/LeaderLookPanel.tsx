@@ -37,11 +37,14 @@ export function LeaderLookPanel({
   churchId,
   ent,
   setup = false,
+  paid = false,
   onChanged,
 }: {
   churchId: string
   ent: Entitlements | null
   setup?: boolean
+  /** Back from the avatar checkout; the webhook may not have landed yet. */
+  paid?: boolean
   onChanged: () => void
 }) {
   const juice = useJuice()
@@ -127,12 +130,12 @@ export function LeaderLookPanel({
         {msg && <div style={{ fontSize: 12.5, color: 'var(--coral)' }}>{msg}</div>}
       </div>
 
-      <CustomAvatarCard churchId={churchId} ent={ent} onChanged={onChanged} />
+      <CustomAvatarCard churchId={churchId} ent={ent} paid={paid} onChanged={onChanged} />
     </div>
   )
 }
 
-function CustomAvatarCard({ churchId, ent, onChanged }: { churchId: string; ent: Entitlements | null; onChanged: () => void }) {
+function CustomAvatarCard({ churchId, ent, paid, onChanged }: { churchId: string; ent: Entitlements | null; paid: boolean; onChanged: () => void }) {
   const juice = useJuice()
   const product = CHURCH_PRODUCTS.customLeaderAvatar
   const has = !!ent?.customLeaderAvatar
@@ -143,8 +146,13 @@ function CustomAvatarCard({ churchId, ent, onChanged }: { churchId: string; ent:
     setBuying(true)
     setBuyNote(null)
     const r = await startCustomAvatarCheckout(churchId)
+    if (r === 'opened') return // the page is on its way to Stripe
     setBuying(false)
-    if (r === 'unavailable') setBuyNote('Online checkout isn’t connected yet — reply to your billing email or tap “Add info” on your church page and we’ll add it.')
+    setBuyNote(
+      r === 'already' ? 'This church already has it — reload the page to send your photos.'
+        : r === 'unavailable' ? 'Checkout isn’t available here. Reply to your billing email and we’ll add it.'
+        : 'Couldn’t open Stripe just now. Try again in a moment.',
+    )
   }
   const [req, setReq] = useState<AvatarRequest | null | undefined>(undefined)
   const [editing, setEditing] = useState(false)
@@ -175,6 +183,8 @@ function CustomAvatarCard({ churchId, ent, onChanged }: { churchId: string; ent:
             <div><b>{formatUsd(product.amount)}</b> <span className="dim">· one time, on top of Church Leader.</span></div>
             {ent?.customLeaderAvatarHeld ? (
               <div className="faint" style={{ fontSize: 12 }}>On your plan, and switches on with Church Leader.</div>
+            ) : paid ? (
+              <div className="dim" style={{ fontSize: 12.5 }}>Thanks — the photo form opens here as soon as Stripe confirms the payment. This usually takes a few seconds.</div>
             ) : (
               <>
                 <Button full onClick={() => void buy()} disabled={buying}>

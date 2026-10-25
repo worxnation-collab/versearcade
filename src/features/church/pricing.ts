@@ -1,8 +1,8 @@
 // What the church side of the app charges, in one place.
 //
-// The Stripe price ids are PLACEHOLDERS until the products exist; swapping in
-// the real ids is the whole of the remaining wiring on this file. Amounts are
-// USD cents and are web prices only — this app never shows a church price in
+// The Stripe price ids are the LIVE ones (the same ids church-billing's PRICES
+// names; that function is what actually opens a checkout, and an env var there
+// can swap in sandbox prices). Amounts are USD cents and are web prices only — this app never shows a church price in
 // the App Store build (`churchPricesVisible` in lib/commerce.ts decides that,
 // for the same reason `givingLinkVisible` does), and nothing here grants
 // anything: the server's `church_entitlements` (0127, 0136) is what a church
@@ -12,21 +12,24 @@ export const CHURCH_PRODUCTS = {
   churchLeader: {
     name: 'Church Leader',
     description: 'Leadership tools plus 5 default leader looks.',
-    priceIdMonthly: 'price_church_leader_monthly', // placeholder
-    priceIdAnnual: 'price_church_leader_annual', // placeholder
+    // "Verified Church" (prod_VU9LiqvsmVNmUa)
+    priceIdMonthly: 'price_1UTB37HlxD9PZQmbqMEqfOkw',
+    priceIdAnnual: 'price_1UTB3HHlxD9PZQmbx5QN6Xa5',
     amountMonthly: 2900, // cents
     amountAnnual: 29000,
   },
   contentGeneration: {
     name: 'Content Generation',
     description: 'Draft questions and notes from a passage or sermon notes.',
-    priceIdMonthly: 'price_content_gen_monthly',
+    // "Content Generation (church add-on)" (prod_VU9LodsgFJ5Xir)
+    priceIdMonthly: 'price_1UTB3BHlxD9PZQmbGFHjSxMP',
     amountMonthly: 1900,
   },
   customLeaderAvatar: {
     name: 'Custom Leader Avatar',
     description: 'Submit reference photos and notes. We’ll generate a custom avatar of you for the virtual sanctuary.',
-    priceId: 'price_custom_avatar_onetime', // one-time
+    // "Custom Leader Avatar" (prod_VVGkrkRfTdTZCo), one-time, created 2026-10-25
+    priceId: 'price_1UUGDMHlxD9PZQmbiQYsps27',
     amount: 7900, // $79.00
   },
 } as const
@@ -54,10 +57,6 @@ export function isLeaderLookId(v: unknown): v is LeaderLookId {
   return v === 'custom' || DEFAULT_LEADER_LOOKS.some((l) => l.id === v)
 }
 
-/** A Stripe id still holding its placeholder — no checkout can open on it. */
-export function isPlaceholderPriceId(id: string): boolean {
-  return !/^price_[A-Za-z0-9]{14,}$/.test(id)
-}
 
 /** 7900 → "$79", 2950 → "$29.50". */
 export function formatUsd(cents: number): string {

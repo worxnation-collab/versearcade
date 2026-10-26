@@ -312,6 +312,41 @@ not a legal requirement. A US-only Stripe path is a real option worth real money
 (Apple takes 15–30%); if it's ever added, the storefront check goes in
 `commerce.ts` and nowhere else.
 
+**Church plans are that exception, and the only one** (`churchPlansLink()` in
+`commerce.ts`, `features/churches/ChurchPlansEntry.tsx`). In the App Store
+build the leadership screen and `/churches` carry a small "For Churches" card:
+on the US storefront with `VITE_CHURCH_PLANS_US_LINK=on` it opens the web
+pages in the in-app browser, with no price in the app; anywhere else it
+points at the existing inquiry form. The storefront comes from RevenueCat's
+`getStorefront()`, which needs purchases-capacitor ≥10.3 and so Capacitor 7 —
+on Capacitor 6 it reads null and the card stays on the inquiry path. Never
+substitute locale or IP for the storefront.
+
+**And the Verified Church plan can be bought THROUGH Apple too** (0139,
+`docs/APPLE-IAP.md` → "Church plan"), which is what Apple's multiplatform rule
+(3.1.3(b)) wants before the app honours a plan bought on the web. Two
+auto-renewable subscriptions in one group (`CHURCH_PLAN_PRODUCT_IDS` in
+`lib/iap.ts` ↔ `CHURCH_PLAN_PRODUCTS` in `supabase/functions/_shared/churchApple.ts`
+— add rows to both, never remove one). Four things are load-bearing. **They are
+NOT in `APPLE_PRODUCT_IDS`**: `useIap.ready` turns the skins shop on, and a
+church plan loading must not be what opens it — `churchPlans` is its own state
+and `churchApplePlansVisible()` its own gate (every storefront, online only,
+only once StoreKit returned the product). **The church is bound by the
+server**: `iap-fulfill` with `{ church_id }` asks RevenueCat itself and
+`billing_apply_apple` checks the caller leads that church; the client never
+says what it bought. **Renewals and lapses arrive by `revenuecat-webhook`**
+(verify_jwt off, a shared Authorization value, and it re-asks RevenueCat
+rather than reading the event), plus every `iap-fulfill` call re-syncs the
+caller's bindings — so the skins' Restore restores the plan too. **An Apple
+lapse only switches off what Apple switched on** (`granted_verified`), and a
+dead Stripe subscription no longer switches off a church Apple is paying for.
+The plan through Apple is Verified only; the Suite stays a web purchase, and
+the web hides "Unlock with Church Suite" while Apple is billing a church. **And
+a binding lives exactly as long as the leadership it stands on** (0140): removing
+the paying leader — by `admin_revoke_church_admin` or by erasing their account —
+ends it the way a lapse would, so an operator-verified or card-paying church
+stays verified and an Apple-only one does not.
+
 So the same catalog is sold twice: Stripe on web (`lib/config.ts`), Apple IAP in
 the app (`lib/iap.ts` + `store/iap.ts`, RevenueCat). Setup runbook and the
 account-gated Apple steps: `docs/APPLE-IAP.md`.
@@ -2686,6 +2721,52 @@ restate. **It is 0142 because production already holds 0139-0141** (the Apple
 church subscription and the plan taps) from branches not yet on main.
 `npm run check:church-draft` drives the real function handler against a fake
 model and a fake database.
+
+Before it, `0141` (which door a leader took toward a plan —
+`church_plan_taps`, one row per tap on "Subscribe with Apple" (path `apple`,
+interval month/year) or the web billing link (path `web`, interval null — it is
+chosen on the page), written by `note_church_plan_tap` (leadership of THAT
+church only, 30 a day, the `note_promotion_join` shape) and read only by
+`admin_church_plan_taps`. This app has NO analytics SDK, on purpose; this is the
+pattern for counting a tap. The client fires it with `noteChurchPlanTap`
+(`store/churchAdmin.ts`), never awaited, so the sheet or browser opens on the
+same tap either way. APPLIED 2026-10-23 after a local Postgres 16 run
+(`supabase/tests/0141_church_plan_taps.sql`), and verified live with a
+rolled-back round trip from a real leader: both paths ok, zero rows after, the
+table readable by no client role, both FKs).
+
+Before it, `0140` (a removed leader stops verifying the church — two
+TRIGGERS rather than an edit to `admin_revoke_church_admin`, because erasing an
+account or a church also takes a leadership row, by cascade, and a trigger is
+where all three paths meet: `church_admins_end_apple` runs a lapse through
+`billing_apply_apple(..., false, ...)` for the removed user, so the rule is the
+one a lapse follows, and `church_apple_binding_gone` applies it to an ACTIVE
+binding that disappears with an erased account. The Apple subscription itself
+is never cancelled — only its owner can — and a removed leader cannot re-bind
+it. The triggers are `0140_apple_binding_leader_removed_b`). APPLIED
+2026-10-23; both bodies md5-equal to the file, ACLs `{postgres,service_role}`,
+both triggers enabled. The test is `supabase/tests/0140_apple_binding_leader_removed.sql`
+(self-contained; run it against a throwaway local Postgres — it fails without
+the triggers and passes with them). **A live round trip could not be run**: it
+needs a DELETE, and the MCP waits on a confirmation for one that never reaches
+a cloud session (it timed out; nothing changed, checked after).
+
+Before it, `0139` (the Verified Church plan through Apple IAP —
+`church_apple_subscriptions` (one row per church, at most one ACTIVE row per
+user, so one Apple subscription verifies one church), `billing_apply_apple` and
+`billing_apple_bindings` (service_role only, called by `iap-fulfill` and
+`revenuecat-webhook` after they re-ask RevenueCat), and `billing_apply_subscription`
+/ `my_church_billing` restated: a dead Stripe subscription now leaves a church
+verified while an Apple one is live, and `my_church_billing` gains an `apple`
+key; FKs are `0139_church_apple_subscription_b`). Both production bodies were
+checked byte-identical to 0131/0135 before the restate. APPLIED 2026-10-23
+after a local Postgres 16 run of fifteen cases (member refused, bound
+elsewhere, another leader already paying, renewal keeps the flag, Stripe and
+Apple not switching each other off, an operator-verified church untouched by
+an Apple lapse, re-run a no-op) and verified live: one signature each, the
+four writers/helpers `{postgres,service_role}`, every body md5-equal to the
+file, RLS on with no rule, both FKs, and a bind → read → lapse round trip on a
+real verified church, rolled back (zero rows after).
 
 Before it, `0138` (check-ins carry today's church verse and can be
 reported — `0138_check_in_verse_a` adds `verse_ref`/`verse_text` (a SERVER

@@ -299,3 +299,69 @@ function secret would win), and so is the RESTRICTED Stripe key
 (`stripe_church_secret_key()`, 0133 — Customers, Subscriptions and Checkout
 Sessions: write; a `STRIPE_SECRET_KEY` function secret would win). Either
 missing ⇒ 503, nothing created.
+
+### The App Store path: the Verified Church plan through Apple (0139–0141)
+
+The web path above is unchanged. The App Store build adds a second way to buy
+the **Verified Church** plan, because Apple's multiplatform rule (3.1.3(b))
+only lets the app honour a plan bought on the web if the same plan can also be
+bought in the app. Full mechanics: `docs/APPLE-IAP.md` → "Church plan".
+
+- **Where it shows.** On `/church/:id/admin`, under the plan card, the
+  "For Churches" card (`ChurchPlansEntry`) offers **Subscribe with Apple · {Apple's
+  price} / month|year** — only in the App Store build, only for a church that
+  is not verified yet, only signed in, and only once StoreKit has returned the
+  products (`churchApplePlansVisible()` in `lib/commerce.ts`). The price is
+  Apple's localized string, never the USD numbers in `pricing.ts` — those stay
+  behind `churchPricesVisible()`, which is still false on native. The card also
+  carries Restore purchase, Apple's EULA and our privacy link (3.1.2).
+- **Products.** `com.versearcade.app.church_verified_monthly` and
+  `com.versearcade.app.church_verified_yearly`, one subscription group
+  (`CHURCH_PLAN_PRODUCT_IDS` in `lib/iap.ts` ↔ `CHURCH_PLAN_PRODUCTS` in
+  `supabase/functions/_shared/churchApple.ts`). They are deliberately NOT in
+  `APPLE_PRODUCT_IDS`, so a church plan loading never switches the skins shop on.
+- **Purchase → verified.** Apple's sheet → `iap-fulfill { church_id }`, which
+  asks RevenueCat itself whether the subscription is live and calls
+  `billing_apply_apple` (service_role); that checks the caller leads the church
+  and flips the same `verified` flag Stripe and the operator use, so
+  `church_entitlements` reads one answer however the church paid. One Apple
+  subscription verifies one church.
+- **Renewal, lapse, refund** arrive by `revenuecat-webhook` (verify_jwt off,
+  shared Authorization value), which re-asks RevenueCat rather than trusting
+  the event. An Apple lapse only switches off what Apple switched on; a church
+  verified by an operator or by Stripe is never turned off by it, and a dead
+  Stripe subscription leaves a church verified while Apple is paying (0139).
+  Removing the paying leader ends the binding (0140).
+- **On the web**, a church billed through Apple shows "Billing · Verified
+  Church through Apple" on its dashboard, and the "Unlock with Church Suite"
+  offer is replaced by a line asking the leader to cancel the Apple
+  subscription first, so nobody is billed twice. Church Suite (Content
+  Generation) stays a web purchase.
+- **Outside the US, and in every storefront until the storefront can be read**,
+  the same card's second half points at the inquiry form. The US-only link out
+  to the web plans (`churchPlansLink()`) is behind `VITE_CHURCH_PLANS_US_LINK=on`,
+  OFF by default, and needs RevenueCat's `getStorefront()` (Capacitor 7) before
+  it can ever turn on.
+- **Counting.** Every tap on Subscribe with Apple or the web link is a row in
+  `church_plan_taps` (0141), read in Admin → Churches → Plan taps.
+
+**Manual steps still required** (nothing in the repo can do these). Until step 1
+is approved, StoreKit returns nothing and the app shows no Apple button — the
+merged code is inert, which is the fail-closed answer.
+
+1. **App Store Connect → Subscriptions**: create a group "Verified Church" with
+   the two products above (1 month, 1 year), priced at the nearest Apple price
+   point to $29 / $290, display name "Verified Church", the leadership screen's
+   For Churches card as the review screenshot, then submit them with the next
+   binary.
+2. **RevenueCat**: import both products (no entitlement or offering needed — the
+   server reads `subscriber.subscriptions` by product id).
+3. **RevenueCat → Integrations → Webhooks**: URL
+   `https://visuppaucpzzigwtqmdd.supabase.co/functions/v1/revenuecat-webhook`,
+   Authorization = a long random value.
+4. **Supabase secret** `REVENUECAT_WEBHOOK_AUTH` = that same value (Edge
+   Functions → Secrets). Without it the webhook answers 503 and does nothing;
+   renewals and lapses then only settle when a leader's app calls `iap-fulfill`.
+   `REVENUECAT_SECRET_KEY` already exists for the skins.
+5. **A new App Store build** carrying this client (the plan card is in the
+   baked `dist`), with the two subscriptions attached to its review.

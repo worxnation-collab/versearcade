@@ -160,6 +160,30 @@ export async function fetchProducts(): Promise<IapProduct[]> {
   })
 }
 
+/**
+ * The App Store storefront this device buys from, as Apple's ISO 3166-1
+ * alpha-3 code ('USA'), or null when it can't be read.
+ *
+ * `getStorefront()` exists from @revenuecat/purchases-capacitor 10.3, which
+ * needs Capacitor 7; this repo is on Capacitor 6 / RevenueCat 9.2, whose
+ * native half has no such method. So it is feature-detected rather than typed:
+ * on today's build it resolves null and lib/commerce treats that as "not the
+ * US", which is the compliant answer everywhere. After the Capacitor 7 upgrade
+ * it starts answering with no change here.
+ */
+export async function fetchStorefrontCountry(): Promise<string | null> {
+  if (!iapAvailable()) return null
+  try {
+    const { Purchases } = await loadSdk()
+    const get = (Purchases as unknown as { getStorefront?: () => Promise<{ countryCode?: string }> }).getStorefront
+    if (typeof get !== 'function') return null
+    const sf = await get.call(Purchases)
+    return typeof sf?.countryCode === 'string' && sf.countryCode ? sf.countryCode.toUpperCase() : null
+  } catch {
+    return null
+  }
+}
+
 export interface PurchaseOutcome {
   /** False when the user simply backed out — not an error, and never surfaced. */
   cancelled: boolean
@@ -213,6 +237,66 @@ export async function restorePurchases(): Promise<string[]> {
   const { Purchases } = await loadSdk()
   const { customerInfo } = await Purchases.restorePurchases()
   return customerInfo.allPurchasedProductIdentifiers ?? []
+}
+
+/**
+ * The Verified Church plan as Apple auto-renewable subscriptions (0139).
+ *
+ * Deliberately NOT in APPLE_PRODUCT_IDS: that map is the cosmetic shop, and
+ * `useIap.ready` — what turns the whole skins marketplace on — is derived from
+ * it. A church plan loading must never be the thing that opens a skins shop.
+ * Both ids sit in ONE App Store subscription group, and the server-side mirror
+ * is CHURCH_PLAN_PRODUCTS in supabase/functions/_shared/churchApple.ts.
+ */
+export const CHURCH_PLAN_PRODUCT_IDS = {
+  month: 'com.versearcade.app.church_verified_monthly',
+  year: 'com.versearcade.app.church_verified_yearly',
+} as const
+
+export type ChurchPlanInterval = keyof typeof CHURCH_PLAN_PRODUCT_IDS
+
+/** A church plan as StoreKit describes it — price and period are Apple's. */
+export interface ChurchPlanProduct {
+  interval: ChurchPlanInterval
+  productId: string
+  /** Apple's localized price, e.g. "$29.99". */
+  priceString: string
+}
+
+/** The church plans Apple will sell this device. Empty ⇒ no Apple button. */
+export async function fetchChurchPlanProducts(): Promise<ChurchPlanProduct[]> {
+  if (!iapAvailable()) return []
+  const { Purchases } = await loadSdk()
+  const { products } = await Purchases.getProducts({
+    productIdentifiers: Object.values(CHURCH_PLAN_PRODUCT_IDS),
+    type: 'SUBSCRIPTION' as never,
+  })
+  const out: ChurchPlanProduct[] = []
+  for (const interval of ['month', 'year'] as const) {
+    const p = products.find((x) => x.identifier === CHURCH_PLAN_PRODUCT_IDS[interval])
+    if (p) out.push({ interval, productId: p.identifier, priceString: p.priceString })
+  }
+  return out
+}
+
+/**
+ * Apple's subscription sheet for a church plan. A cancel is reported, not
+ * thrown. Nothing here says which church: that binding is made by the server
+ * (iap-fulfill with `church_id`), after it has asked RevenueCat itself.
+ */
+export async function purchaseChurchPlan(interval: ChurchPlanInterval): Promise<{ cancelled: boolean }> {
+  const { Purchases } = await loadSdk()
+  const productId = CHURCH_PLAN_PRODUCT_IDS[interval]
+  const { products } = await Purchases.getProducts({ productIdentifiers: [productId], type: 'SUBSCRIPTION' as never })
+  const product = products[0]
+  if (!product) throw new Error(`Apple has no product ${productId}`)
+  try {
+    await Purchases.purchaseStoreProduct({ product })
+    return { cancelled: false }
+  } catch (e) {
+    if (isUserCancelled(e)) return { cancelled: true }
+    throw e
+  }
 }
 
 /** Product ids → the skin ids they entitle, expanded through packs. */

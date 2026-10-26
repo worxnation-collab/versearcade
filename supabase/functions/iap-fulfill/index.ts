@@ -22,11 +22,18 @@
 // this lookup meaningful — if it ever stops being true, this function silently
 // grants nothing rather than granting the wrong thing.
 //
+// It also settles the Verified Church plan (migration 0139), from the SAME
+// RevenueCat answer: body `{ church_id }` binds a live church subscription to
+// that church (the caller must lead it), and every church this account's Apple
+// ID already verifies is re-checked on every call — so the skins' Restore is
+// the church plan's restore too. See ../_shared/churchApple.ts.
+//
 // Secrets (Supabase → Edge Functions → Secrets):
 //   REVENUECAT_SECRET_KEY   required. Missing ⇒ 503 and nothing is granted.
 // SUPABASE_* are injected by the platform.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { syncChurchPlans } from '../_shared/churchApple.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
@@ -97,12 +104,12 @@ interface RcPurchase {
  */
 async function ownedFromRevenueCat(
   appUserId: string,
-): Promise<{ productIds: string[]; txnByProduct: Record<string, string | null>; raw: unknown }> {
+): Promise<{ productIds: string[]; txnByProduct: Record<string, string | null>; raw: unknown; subscriber: Record<string, unknown> | null }> {
   const res = await fetch(
     `https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(appUserId)}`,
     { headers: { Authorization: `Bearer ${RC_SECRET}`, Accept: 'application/json' } },
   )
-  if (res.status === 404) return { productIds: [], txnByProduct: {}, raw: null }
+  if (res.status === 404) return { productIds: [], txnByProduct: {}, raw: null, subscriber: null }
   if (!res.ok) throw new Error(`RevenueCat ${res.status}: ${(await res.text()).slice(0, 300)}`)
 
   const body = await res.json()
@@ -119,7 +126,7 @@ async function ownedFromRevenueCat(
     const last = purchases[purchases.length - 1] ?? {}
     txnByProduct[productId] = last.store_transaction_id ?? last.id ?? null
   }
-  return { productIds, txnByProduct, raw: body?.subscriber?.non_subscriptions ?? null }
+  return { productIds, txnByProduct, raw: body?.subscriber?.non_subscriptions ?? null, subscriber: body?.subscriber ?? null }
 }
 
 Deno.serve(async (req: Request) => {
@@ -140,15 +147,28 @@ Deno.serve(async (req: Request) => {
     } = await userClient.auth.getUser()
     if (!user) return json({ error: 'not signed in' }, 401)
 
-    const { productIds, txnByProduct, raw } = await ownedFromRevenueCat(user.id)
+    // Optional: the church a Verified Church subscription should bind to. Only
+    // a uuid is read; whether the caller leads it is the SQL's question.
+    const body = await req.json().catch(() => ({}))
+    const churchId = typeof body?.church_id === 'string' && /^[0-9a-f-]{36}$/i.test(body.church_id) ? body.church_id : null
+
+    const { productIds, txnByProduct, raw, subscriber } = await ownedFromRevenueCat(user.id)
+    const admin = createClient(SUPABASE_URL, SERVICE_KEY)
+    // A church-plan failure must never cost a patron their skins, so it is
+    // reported in `church` rather than thrown.
+    let church: unknown = null
+    try {
+      church = (await syncChurchPlans(admin, user.id, subscriber, churchId)).church
+    } catch (e) {
+      church = { ok: false, reason: 'error', message: e instanceof Error ? e.message : String(e) }
+    }
+
     if (productIds.length === 0) {
       // Deliberately not an error: a restore with nothing to restore, or a
       // purchase RevenueCat hasn't recorded yet, both land here. `seen` is
       // echoed so a first-run mismatch is diagnosable without guesswork.
-      return json({ granted: [], seen: raw })
+      return json({ granted: [], seen: raw, church })
     }
-
-    const admin = createClient(SUPABASE_URL, SERVICE_KEY)
 
     // Expand each owned product into skins via pack_skins(), the same authority
     // the Stripe path uses, so a pack's contents can never drift between the
@@ -186,7 +206,7 @@ Deno.serve(async (req: Request) => {
       if (error) throw new Error(`grant_skins: ${error.message}`)
     }
 
-    return json({ granted: skins })
+    return json({ granted: skins, church })
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500)
   }

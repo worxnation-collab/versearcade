@@ -20,18 +20,28 @@
 //     (there's no account to ask about), but also unexploitable: the grant is
 //     device-local and claim_guest_progress (0009) does not carry owned_skins
 //     into a new account, so it can't be laundered into a real entitlement.
+//
+// The Verified Church plan (0139) is the one exception to "both modes": it is
+// ONLINE ONLY, because a church is a server row and only a signed-in leader of
+// it can be bound to one. `churchPlans` is kept apart from `products` so that a
+// church plan loading never turns the skins storefront on (see lib/iap).
 
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import { localdb } from '@/lib/localdb'
 import {
   configureIap,
+  fetchStorefrontCountry,
+  fetchChurchPlanProducts,
   fetchProducts,
+  purchaseChurchPlan,
   iapAvailable,
   purchaseSku,
   restorePurchases,
   skinsForProductIds,
   skinsForSku,
+  type ChurchPlanInterval,
+  type ChurchPlanProduct,
   type IapProduct,
 } from '@/lib/iap'
 import { useAuth } from './auth'
@@ -63,7 +73,16 @@ interface IapState {
   loading: boolean
   products: Record<string, IapProduct>
   error: string | null
+  /** Apple's storefront country ('USA'), or null when unread or unreadable.
+   *  Read by `churchPlansLink` in lib/commerce and nothing else. */
+  storefront: string | null
+  /** The Verified Church plans StoreKit returned. Empty ⇒ no Apple button. */
+  churchPlans: ChurchPlanProduct[]
   load: () => Promise<void>
+  /** Subscribe this Apple ID to a church plan and bind it to `churchId`. */
+  buyChurchPlan: (interval: ChurchPlanInterval, churchId: string) => Promise<ChurchPlanOutcome>
+  /** Restore an Apple church plan and bind it to `churchId`. */
+  restoreChurchPlan: (churchId: string) => Promise<ChurchPlanOutcome>
   buy: (sku: string) => Promise<PurchaseOutcome>
   restore: () => Promise<RestoreOutcome>
 }
@@ -73,6 +92,8 @@ export const useIap = create<IapState>((set, get) => ({
   loading: false,
   products: {},
   error: null,
+  storefront: null,
+  churchPlans: [],
 
   async load() {
     if (!iapAvailable() || get().loading) return
@@ -87,6 +108,12 @@ export const useIap = create<IapState>((set, get) => ({
         ready: list.length > 0,
         loading: false,
       })
+      // Independent of the products: a storefront is a fact about the device,
+      // and a product that isn't approved yet shouldn't hide it. Null on any
+      // failure, which commerce reads as "not the US".
+      set({ storefront: await fetchStorefrontCountry() })
+      // Online only: a guest has no church to bind a subscription to.
+      if (isOnline()) set({ churchPlans: await fetchChurchPlanProducts().catch(() => []) })
     } catch (e) {
       set({ ready: false, loading: false, error: msg(e) })
     }
@@ -123,6 +150,30 @@ export const useIap = create<IapState>((set, get) => ({
       set({ error: msg(e) })
       return 'unconfirmed'
     }
+  },
+
+  async buyChurchPlan(interval, churchId) {
+    let r
+    try {
+      r = await purchaseChurchPlan(interval)
+    } catch (e) {
+      set({ error: msg(e) })
+      return 'failed'
+    }
+    if (r.cancelled) return 'cancelled'
+    // Apple has taken the subscription. Nothing below may report a failure as
+    // "not charged": the worst case is the binding landing a moment late.
+    return settleChurch(churchId, 3)
+  },
+
+  async restoreChurchPlan(churchId) {
+    try {
+      await restorePurchases()
+    } catch (e) {
+      set({ error: msg(e) })
+      return 'failed'
+    }
+    return settleChurch(churchId, 1)
   },
 
   async restore() {
@@ -180,6 +231,34 @@ async function persist(claimed: string[], attempts: number): Promise<string[]> {
     })
   }
   return skins
+}
+
+/**
+ * What became of a church plan purchase or restore, from the server's answer.
+ * `pending` = Apple charged but RevenueCat has not reported it to us yet; the
+ * webhook or the next Restore will finish the binding, so it is never "failed".
+ */
+export type ChurchPlanOutcome =
+  | 'verified' | 'cancelled' | 'failed' | 'pending' | 'not_subscribed'
+  | 'bound_elsewhere' | 'already_subscribed' | 'not_leadership'
+
+async function settleChurch(churchId: string, attempts: number): Promise<ChurchPlanOutcome> {
+  if (!isOnline() || !supabase) return 'failed'
+  let last: ChurchPlanOutcome = 'pending'
+  for (let i = 0; i < Math.max(1, attempts); i++) {
+    if (i > 0) await new Promise((r) => setTimeout(r, 2000))
+    const { data, error } = await supabase.functions.invoke('iap-fulfill', { body: { church_id: churchId } })
+    if (error) { last = 'pending'; continue }
+    const c = data?.church as { ok?: boolean; reason?: string } | null
+    if (c?.ok) return 'verified'
+    const reason = c?.reason
+    if (reason === 'bound_elsewhere' || reason === 'already_subscribed' || reason === 'not_leadership') return reason
+    // The server could not finish (it says so rather than guessing); the
+    // webhook or a later Restore will.
+    if (reason === 'error') { last = 'pending'; continue }
+    last = attempts > 1 ? 'pending' : 'not_subscribed'
+  }
+  return last
 }
 
 const msg = (e: unknown): string => (e instanceof Error ? e.message : String(e))

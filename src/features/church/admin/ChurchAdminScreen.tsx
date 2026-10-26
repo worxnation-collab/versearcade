@@ -11,6 +11,7 @@ import { OverviewPanel, PeoplePanel, ActivityPanel, SummaryPanel, useInsights, u
 import { NoticesPanel } from './NoticesPanel'
 import { SharePanel } from './SharePanel'
 import { LeaderLookPanel } from './LeaderLookPanel'
+import { ChurchPlansEntry } from '@/features/churches/ChurchPlansEntry'
 
 // /church/:id/admin — the tools a church's verified leadership uses.
 //
@@ -204,6 +205,12 @@ export default function ChurchAdminScreen() {
         billing={billing}
         upgraded={upgraded}
       />
+      {/* Native only: the web build already draws the upgrade and the portal above. */}
+      <ChurchPlansEntry
+        churchId={id}
+        churchName={settings.name}
+        subscribe={{ verified: settings.verified || !!billing?.apple?.active, onChanged: load }}
+      />
 
       <TabbedSection tabs={tabs} defaultOpen defaultTab={setup || avatarPaid ? 'look' : 'overview'} />
       <div style={{ height: 32 }} />
@@ -222,6 +229,9 @@ function PlanStatus({ leader, generation, held, churchId, billing, upgraded, ava
 }) {
   const web = churchBillingPortalVisible()
   const card = !!billing?.subscribed && !billing.invoiced
+  // 0139: a Verified plan billed through Apple. Adding the Suite on the web
+  // would start a second subscription on top of it, so that offer waits.
+  const apple = billing?.apple?.active ? billing.apple : null
   return (
     <div className="card" style={{ padding: '10px 12px', marginBottom: 12, display: 'grid', gap: 6 }} aria-label="This church’s plan">
       <PlanRow
@@ -242,7 +252,10 @@ function PlanStatus({ leader, generation, held, churchId, billing, upgraded, ava
               : 'Included in Church Suite, with Church Leader. Not on this church’s plan.'
         }
       >
-        {web && !generation && !held && (
+        {web && !generation && !held && apple && (
+          <div className="dim" style={{ fontSize: 12, lineHeight: 1.45, marginTop: 6 }}>Church Suite is a web plan. Cancel the Apple subscription first, then add the Suite here, so you are never billed twice.</div>
+        )}
+        {web && !generation && !held && !apple && (
           upgraded
             ? <div className="dim" style={{ fontSize: 12, lineHeight: 1.45, marginTop: 6 }}>Thanks — Church Suite switches on as soon as Stripe confirms it. This usually takes a few seconds.</div>
             : billing?.subscribed && billing.invoiced
@@ -263,6 +276,7 @@ function PlanStatus({ leader, generation, held, churchId, billing, upgraded, ava
         }
       />
       {billing?.subscribed && web && <BillingRow churchId={churchId} billing={billing} />}
+      {apple && <AppleBillingRow apple={apple} />}
     </div>
   )
 }
@@ -386,6 +400,26 @@ function BillingRow({ churchId, billing }: { churchId: string; billing: ChurchBi
             : billing.addon
               ? 'Change the card or plan, see invoices, or cancel. Cancelling keeps your tools on until the period ends.'
               : 'Change the card, see invoices, or cancel.'}
+      </div>
+    </div>
+  )
+}
+
+// The church's Verified plan, billed through an Apple ID (0139). Apple owns
+// cancelling and changing it, so this row only says so — and, when it is the
+// viewer's own Apple ID paying, opens Apple's subscriptions page.
+function AppleBillingRow({ apple }: { apple: NonNullable<ChurchBilling['apple']> }) {
+  const when = apple.expiresAt
+    ? new Date(apple.expiresAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+    : null
+  return (
+    <div style={{ borderTop: '1px solid var(--edge)', paddingTop: 8, marginTop: 2, display: 'grid', gap: 4 }}>
+      <b style={{ fontSize: 13 }}>Billing · Verified Church through Apple</b>
+      <div className="faint" style={{ fontSize: 11.5, lineHeight: 1.4 }}>
+        {`Billed ${apple.interval === 'year' ? 'yearly' : 'monthly'} by Apple${when ? ` · renews ${when}` : ''}. `}
+        {apple.mine
+          ? <>Change or cancel it in <a href="https://apps.apple.com/account/subscriptions" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--ink-dim)' }}>your Apple subscriptions</a>.</>
+          : 'Another leader’s Apple ID pays for it; they can change or cancel it.'}
       </div>
     </div>
   )

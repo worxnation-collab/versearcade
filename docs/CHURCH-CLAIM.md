@@ -23,6 +23,11 @@ the app can put one there.
 > nobody leads here can now claim itself by paying.** See "Self-serve claim"
 > at the end of this file. Everything below still holds for a church that
 > already has leadership, which can only be reached through the operator.
+>
+> **And since 0147 (2026-10-26) a VERIFIED church's leadership adds its own
+> co-leaders** — see "Co-leaders" below. The operator still decides who the
+> FIRST leader of a church is; after that, the staff team is the church's own
+> business.
 
 There is **no self-serve claim**. No domain-email check, no mailed code, nothing
 a stranger can drive. An operator reads the request in the "Add info" queue
@@ -67,6 +72,49 @@ custom look first, then the longest-standing leader); no name, no user id,
 only the look plus the leader's tone, hair and figure; untappable, so it opens
 no player card. No look ⇒ nothing is drawn — never a stand-in figure. The
 leader's own character (`avatar_character`) is unchanged everywhere else.
+
+## Co-leaders: leadership adds its own team (0147)
+
+Real churches have a staff team, and every associate pastor, youth pastor and
+office manager used to be a message to the operator. Since `0147` verified
+leadership of a church manages its own leadership from **People → Leaders** on
+`/church/:id/admin` (`LeadersSection.tsx`, `store/churchAdmin.ts`).
+
+- **Add**: pick a member from the roster, or type any username (staff often
+  have not joined the church in the app — the row then says "not a member in
+  the app"). A confirm step says what a grant hands over: every member by
+  name, the schedule, the notices, and the power to add or remove leaders.
+  `grant_church_co_leader(church, username)`.
+- **Remove / step down**: any leader may remove another, or step down
+  themselves. `remove_church_co_leader(church, username)`. Stepping down sends
+  you back to the church's page.
+- **Who can**: `church_admin_can` must answer `ok` for THAT church on every
+  call — verified leadership only. A free-claim leader (0137, unverified) is
+  refused (`not_verified`) and the section never appears for them, because the
+  People tab is verified-only. A leader of another church is refused
+  (`not_leadership`).
+- **What it grants is one row in `church_admins`, and nothing else.** No skin
+  (only `admin_upsert_church_profile` writes it), no billing (Stripe, Apple and
+  the add-ons have their own writers), no operator power (`is_admin` is on
+  `profiles` and nothing here touches it), no other church.
+- **Two refusals, shown before anyone taps.** The LAST leader cannot leave
+  (`last_leader` — a church with no leadership needs the operator), and the
+  leader whose Apple ID pays for the church cannot be removed (`apple_payer`):
+  0140's trigger would end that subscription's hold, which for an Apple-only
+  church un-verifies it and takes the dashboard from everybody.
+- **Caps**: twelve leaders a church, ten grants a church a day, taken under an
+  advisory lock so two grants racing can't both pass.
+- **Audit**: `church_admins.granted_by` (0079) records who added whom — the
+  list says "Added by …", or "Verified by Verse Arcade" for an operator grant
+  or a claim. `church_leader_events` records every grant AND removal (actor,
+  target, time) — the half a removed row can't keep. No client reads it; it is
+  for the operator, in SQL.
+- **Production state**: part a (`church_leaders`, `grant_church_co_leader`, the
+  events table) is APPLIED. Part b (`0147_church_co_leaders_b.sql` — the
+  removal function and the events table's foreign keys) carries `delete`,
+  which stalls the Supabase MCP, and must be pasted into the SQL editor. Until
+  it is, Remove / Step down answer "That didn't go through" and nothing is
+  removed.
 
 ## Leadership sees members by name (0128)
 

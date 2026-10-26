@@ -16,6 +16,8 @@ import { denominationColor, denominationName } from '@/data/denominations'
 import { RoomVisitSheet } from '@/features/room/RoomVisitSheet'
 import { GiveGiftSheet } from '@/features/gifts/GiveGiftSheet'
 import { PaintedIcon } from '@/components/PaintedIcon'
+import { fetchCardChurch, type CardChurch } from '@/store/churchDiscovery'
+import { ChurchInquirySheet, LeadsChurchLine } from '@/features/church/LeadsChurch'
 
 // Tap any avatar anywhere and their card pops up. A single provider owns the
 // one open card, so avatars stay dumb: they just say "open @handle".
@@ -63,6 +65,16 @@ function CardSheet({ username, onClose }: { username: string; onClose: () => voi
   const [visiting, setVisiting] = useState(false)
   // Handing over a relic. Same tier and the same reason as visiting.
   const [gifting, setGifting] = useState(false)
+  // The verified church this player leads (0149), or null — its own read, so
+  // get_player_card is untouched and an older server simply draws no line.
+  const [leads, setLeads] = useState<CardChurch | null>(null)
+  const [asking, setAsking] = useState(false)
+  useEffect(() => {
+    let alive = true
+    setLeads(null)
+    void fetchCardChurch(username).then((c) => { if (alive) setLeads(c) })
+    return () => { alive = false }
+  }, [username])
 
   // Someone else's card, and you have an account: you can act on it.
   const canAct = !isMe && !isGuest && !!supabase
@@ -250,6 +262,10 @@ function CardSheet({ username, onClose }: { username: string; onClose: () => voi
                 }
               />
             </div>
+            {/* "Leads {church}": a verified church leader's quiet line, under the
+                portrait and above the numbers — what they do, not a rank.
+                Tapping it opens the church (see LeadsChurch). */}
+            {leads && <LeadsChurchLine church={leads} onOpen={() => setAsking(true)} />}
             {/* The founder's card carries its own "become a founder" pill —
                 drawn by PlayerCard, see FounderPill. */}
             <PlayerCard p={data} compact statsOnly />
@@ -302,6 +318,9 @@ function CardSheet({ username, onClose }: { username: string; onClose: () => voi
 
         {visiting && <RoomVisitSheet username={username} onClose={() => setVisiting(false)} />}
         {gifting && <GiveGiftSheet username={username} onClose={() => setGifting(false)} />}
+        {asking && leads && (
+          <ChurchInquirySheet church={leads} leader={data?.username ?? username} isMe={isMe} onClose={() => setAsking(false)} onLeave={onClose} />
+        )}
 
         <div style={{ textAlign: 'center', marginTop: 12 }}>
           <button className="pill" onClick={onClose} style={{ fontWeight: 800, fontSize: 13, padding: '8px 16px' }}>Close</button>

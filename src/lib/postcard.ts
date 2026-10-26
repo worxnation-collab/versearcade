@@ -95,6 +95,9 @@ async function sanitizeClone(svg: SVGSVGElement): Promise<SVGSVGElement> {
   // Chrome that carries no dash of its own — the ✕ on a lifted piece, its grab
   // area. Anything drawn only for the person arranging the room marks itself.
   clone.querySelectorAll('[data-scene-edit]').forEach((n) => n.remove())
+  // Anything that is a fact about the owner rather than the room — the Prayer
+  // Wall's door lantern — marks itself private and never leaves the screen.
+  clone.querySelectorAll('[data-room-private]').forEach((n) => n.remove())
   return clone
 }
 

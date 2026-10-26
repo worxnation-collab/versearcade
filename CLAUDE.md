@@ -4571,6 +4571,15 @@ safety argument: `docs/PRAYER-WALL.md`. Four things to know before touching it:
   "isn't open on this server yet", and `available` keeps the compass from
   inviting it). The Journal's "Candles held" ladder counts kneelings, and there
   is deliberately no rung for being prayed for.
+- **The lantern by your door** (2026-10-26, `DoorLantern` in `RoomArt.tsx`):
+  your own Upper Room hangs one off the frame's edge while your note is in the
+  wall, lit when `mine.lit` says somebody knelt in the last day. The lamp's
+  binary shape, but stricter about who sees it: it is drawn ONLY in your own
+  room (the visit sheet never passes `lantern`, rather than drawing it lit for
+  everybody the way the lamp defaults), and its group is `data-room-private`,
+  which `lib/postcard.ts` strips — the postcard serialises your live room SVG.
+  No note, a guest, a keyless build or a server without 0099 ⇒ no lantern at
+  all. `docs/PRAYER-WALL.md` → "The lantern by your door".
 
 ## Giving, and the mailbox
 

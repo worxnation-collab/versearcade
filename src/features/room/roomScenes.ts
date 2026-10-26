@@ -113,6 +113,23 @@ const SCENE_LAYOUTS: Record<string, Record<string, Spot>> = {
 }
 
 /** Where an anchor stands over one of the daily scenes, and how large. */
+/**
+ * The door lantern's bracket point over each painting (`DoorLantern`). None
+ * of the five shows a door, so it hangs on the frame's right edge at the
+ * height of a latch, clear of each painting's own furniture. Measured by
+ * looking at the render, like the spots above; re-measure with them.
+ */
+const SCENE_DOOR: Record<string, Spot> = {
+  [room1]: { x: 556, y: 150, s: 1.3 },
+  [room2]: { x: 556, y: 130, s: 1.3 },
+  [room3]: { x: 556, y: 120, s: 1.3 },
+  [room4]: { x: 556, y: 150, s: 1.3 },
+  [room5]: { x: 556, y: 120, s: 1.3 },
+}
+/** The drawn chamber (no painting: the fallback and a failed load). */
+export const CHAMBER_DOOR: Spot = { x: 556, y: 150, s: 1.1 }
+export const doorSpot = (scene: string | null): Spot => (scene && SCENE_DOOR[scene]) || CHAMBER_DOOR
+
 export const sceneSpot = (scene: string, id: string): Spot | undefined => SCENE_LAYOUTS[scene]?.[id]
 
 /** The walking path over the scenes: open floor only, clear of the cabinet

@@ -627,6 +627,56 @@ function TierAccent({ tier, mount }: { tier: number; mount?: RoomMount }) {
  * than a second drawing — 18 furnishings x 3 tiers would be 54 pictures for
  * something drawn at 40px.
  */
+// THE DOOR LANTERN. Lit when somebody knelt at your Prayer Wall note in the
+// last day (`my_prayer_wall` → `mine.lit`, 0099); dark when nobody has.
+//
+// The lamp's shape exactly, and for the lamp's reasons: not a count, not a
+// name, not a brighter flame for more prayers — "today, yes" or nothing. It
+// is NOT a furnishing: nothing earns it and the shelf never offers it. It is
+// drawn only in your own room (RoomScene's `lantern`, passed by RoomSection
+// and nobody else) and only while your note is in the wall, so a visitor, a
+// postcard and a keyless build never see it at all.
+//
+// None of the five room paintings shows a door — the way in is the viewer's
+// side — so it hangs off the frame's edge on an iron bracket, the doorpost
+// you came in by. Drawn around the bracket's wall point; the arm reaches left.
+/** Forged black iron: the room's grey IRON read as a pipe against warm stone. */
+const LANTERN_IRON = '#2e2622'
+
+export function DoorLantern({ x, y, scale = 1, lit }: { x: number; y: number; scale?: number; lit: boolean }) {
+  return (
+    <g transform={`translate(${x} ${y}) scale(${scale})`}>
+      <title>{lit ? 'The lantern by your door: somebody prayed over your note today' : 'The lantern by your door'}</title>
+      {/* Bracket: a plate on the post and an arm out over the floor. */}
+      <rect x="-3" y="-6" width="6" height="14" rx="1.5" fill={LANTERN_IRON} />
+      <path d="M0 -2 h-18 q-4 0 -4 4" stroke={LANTERN_IRON} strokeWidth="2.4" fill="none" strokeLinecap="round" />
+      <path d="M0 4 q-10 0 -14 -6" stroke={LANTERN_IRON} strokeWidth="1.6" fill="none" />
+      <line x1="-22" y1="2" x2="-22" y2="6" stroke={LANTERN_IRON} strokeWidth="1.4" />
+      {lit && (
+        <>
+          <circle cx="-22" cy="17" r="15" fill={FLAME} opacity="0.10" />
+          <circle cx="-22" cy="17" r="8.5" fill={FLAME_HOT} opacity="0.16" />
+        </>
+      )}
+      {/* The lantern: cap, glass, base. */}
+      <path d="M-28 8 h12 l-2 -3 h-8 z" fill={BRASS} />
+      <rect x="-28" y="8" width="12" height="17" rx="1.5" fill={lit ? '#5a4318' : '#2c2a2e'} opacity="0.92" />
+      <rect x="-26.5" y="9.5" width="9" height="14" rx="1" fill={lit ? '#ffcf6a' : '#3c3a40'} opacity={lit ? 0.55 : 0.9} />
+      <line x1="-22" y1="8" x2="-22" y2="25" stroke={BRASS} strokeWidth="1" opacity="0.8" />
+      <rect x="-29" y="25" width="14" height="3" rx="1" fill={BRASS} />
+      {lit ? (
+        <>
+          <path d="M-22 12 q4 4.5 0 9 q-4 -4.5 0 -9 z" fill={FLAME} />
+          <path d="M-22 15.5 q2 2.2 0 4.4 q-2 -2.2 0 -4.4 z" fill={FLAME_HOT} />
+        </>
+      ) : (
+        // Waiting, never broken: the wick is there, just dark.
+        <rect x="-22.8" y="18" width="1.6" height="4" rx="0.8" fill="#4a4030" />
+      )}
+    </g>
+  )
+}
+
 export function FurnishingProp({
   value,
   x,

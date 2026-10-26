@@ -208,6 +208,8 @@ export interface ChurchBilling {
   addon: boolean
   invoiced: boolean
   periodEnd: string | null
+  /** The church's Apple subscription (0139), or null. `mine` = this caller's Apple ID pays. */
+  apple: { active: boolean; interval: 'month' | 'year' | null; expiresAt: string | null; mine: boolean } | null
 }
 
 export async function fetchChurchBilling(churchId: string): Promise<ChurchBilling | null> {
@@ -221,7 +223,34 @@ export async function fetchChurchBilling(churchId: string): Promise<ChurchBillin
     addon: !!d?.addon,
     invoiced: d?.collection_method === 'send_invoice',
     periodEnd: d?.period_end ?? null,
+    // A server without 0139 sends no `apple` key, which reads as no Apple plan.
+    apple: d?.apple
+      ? {
+          active: !!d.apple.active,
+          interval: d.apple.interval === 'year' || d.apple.interval === 'month' ? d.apple.interval : null,
+          expiresAt: d.apple.expires_at ?? null,
+          mine: !!d.apple.mine,
+        }
+      : null,
   }
+}
+
+/**
+ * Which door a leader took toward a plan (0141): "Subscribe with Apple" or the
+ * web billing link. Fire-and-forget by design — the caller never awaits it, so
+ * the Apple sheet or the browser opens on the same tap whether this lands,
+ * fails, or the server has no 0141. `.then()` is what sends a postgrest call
+ * (a bare `void rpc()` sends nothing — CLAUDE.md), so it is kept even though
+ * nothing reads the answer. `interval` is null for the web, where the plan's
+ * period is chosen on the page rather than in the app.
+ */
+export function noteChurchPlanTap(churchId: string, path: 'apple' | 'web', interval: 'month' | 'year' | null): void {
+  if (!online()) return
+  try {
+    void supabase!
+      .rpc('note_church_plan_tap', { p_church_id: churchId, p_path: path, p_interval: interval })
+      .then(() => {}, () => {})
+  } catch { /* never let counting a tap get in the way of the tap */ }
 }
 
 /**

@@ -195,3 +195,50 @@ Business Program (30% above $1M/yr) against Stripe's ~2.9% + 30¢ — about $0.9
 $0.47 on a $5.99 pack, and $15 vs $3.20 on the $99.99 patron tier. Adding a
 US-only Stripe path means asking StoreKit for the storefront country and
 branching in `lib/commerce.ts` — and nowhere else.
+
+## Church plan: the Verified Church through Apple (0139)
+
+Apple's multiplatform rule (3.1.3(b)) lets the app honour a plan bought on the
+web only if the same plan can also be bought in the app. So the Verified Church
+plan is ALSO two auto-renewable subscriptions. Additive: the Stripe path is
+untouched, and a church can be verified by either (or by an operator).
+
+What has to be done outside the repo, in this order:
+
+1. **App Store Connect → Subscriptions**: one subscription group ("Verified
+   Church"), two products in it — `com.versearcade.app.church_verified_monthly`
+   (1 month) and `com.versearcade.app.church_verified_yearly` (1 year). Price
+   them at the nearest Apple price point to the web's $29 / $290. Display name
+   "Verified Church"; the review screenshot is the leadership screen's For
+   Churches card.
+2. **RevenueCat**: import both products. No entitlement or offering is needed —
+   the server reads `subscriber.subscriptions` by product id.
+3. **RevenueCat → Integrations → Webhooks**: URL
+   `https://visuppaucpzzigwtqmdd.supabase.co/functions/v1/revenuecat-webhook`,
+   Authorization header = a long random value, which also goes into the
+   `REVENUECAT_WEBHOOK_AUTH` function secret.
+4. **Deploy** `iap-fulfill` and `revenuecat-webhook` (the deploy workflow does
+   both on merge, because `_shared/` changed; `supabase/config.toml` keeps the
+   webhook's `verify_jwt` off).
+
+Until step 1 is approved StoreKit returns nothing and the app shows no Apple
+button (`churchApplePlansVisible`) — fail closed, as everywhere else here.
+
+How it fits together:
+
+- **Purchase**: "Subscribe with Apple" on the leadership screen (only for an
+  unverified church) → `purchaseChurchPlan` → `iap-fulfill { church_id }`.
+  The function asks RevenueCat whether the subscription is live and calls
+  `billing_apply_apple`, which checks the caller leads that church.
+- **One subscription, one church**: at most one ACTIVE binding per user. A
+  leader of two churches is told the Apple ID already verifies the other; a
+  second leader of the same church is told someone already pays.
+- **Renewal, lapse, refund**: the webhook re-asks RevenueCat and re-applies
+  every church that user's Apple ID verifies. Every `iap-fulfill` call (the
+  skins' Restore included) does the same.
+- **Lapse rules**: Apple only turns OFF what Apple turned ON. A church that was
+  already verified (operator, or Stripe) is never switched off by an Apple
+  lapse, and a dead Stripe subscription leaves a church verified while an Apple
+  one is live.
+- **Restore**: "Restore purchase" in the same card binds a live subscription to
+  that church; the general Restore re-syncs existing bindings.

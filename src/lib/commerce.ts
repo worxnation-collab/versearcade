@@ -244,3 +244,54 @@ export const churchPlansVisible = (): boolean => !isNativeApp()
  * starts the subscription.
  */
 export const churchBillingPortalVisible = (): boolean => !isNativeApp()
+
+/**
+ * The App Store build's door to church plans — the one US-storefront
+ * exception to "sell through IAP full stop", and the reason it lives here.
+ *
+ * A church plan is not a cosmetic and is not sold through Apple: it is a
+ * Stripe subscription for an institution (invoicing, several leaders). Since
+ * the Epic v. Apple injunction a US-storefront app may link out to an outside
+ * checkout; every other storefront still forbids it. So:
+ *
+ *   `none`     — the web build. It already carries plans, prices and billing
+ *                (`churchPlansVisible`, `churchBillingPortalVisible`), so the
+ *                native entry point has nothing to add there.
+ *   `external` — native, the flag is on, AND StoreKit says the storefront is
+ *                the US. A button that opens the web pages in the in-app
+ *                browser. Still NO price in the app: the price is on the page.
+ *   `ask`      — native, anything else. No external link; the existing
+ *                inquiry form (`/churches`) or support instead.
+ *
+ * Fails closed twice over: the flag defaults OFF (`VITE_CHURCH_PLANS_US_LINK`
+ * must be exactly `on`), and an unreadable storefront is not the US — which is
+ * every build until RevenueCat's `getStorefront` is available (lib/iap).
+ * Never decide this from the device locale or the IP: neither is the
+ * storefront, and an Ecuador account in en-US is still not the US store.
+ */
+export const CHURCH_PLANS_US_LINK = import.meta.env.VITE_CHURCH_PLANS_US_LINK === 'on'
+
+export type ChurchPlansLink = 'external' | 'ask' | 'none'
+
+export function churchPlansLink(): ChurchPlansLink {
+  if (!isNativeApp()) return 'none'
+  if (!CHURCH_PLANS_US_LINK) return 'ask'
+  const sf = useIap.getState().storefront
+  return sf === 'USA' || sf === 'US' ? 'external' : 'ask'
+}
+
+/**
+ * May this build offer the Verified Church plan through Apple (0139)?
+ *
+ * This is in-app purchase, so it is NOT the US-storefront exception above —
+ * it is allowed in every storefront, and it is what Apple's multiplatform rule
+ * (3.1.3(b)) asks for before the app may honour a plan bought on the web.
+ * Native, signed in (a church is a server row), and only once StoreKit has
+ * actually returned a church plan: no RevenueCat key, products not approved
+ * yet, offline ⇒ no button, the same fail-closed rule `storefrontEnabled`
+ * follows. Deliberately independent of `storefrontEnabled`, which is the
+ * COSMETIC shop and must not be switched on by a church plan loading.
+ */
+export function churchApplePlansVisible(): boolean {
+  return isNativeApp() && useAuth.getState().mode === 'online' && useIap.getState().churchPlans.length > 0
+}

@@ -5133,7 +5133,20 @@ spines and a road's centre line were all invisible until it was set. `battle`
 read as the letter X and `road` as the letter A; both were fixed by computing
 the geometry rather than by nudging it.
 
-### The Study tab IS a library
+### The Study tab is a reports-first dashboard, with Tabitha at the desk
+
+**Since 2026-10-26 `/study` opens on PROGRESS, not on the room**
+(`docs/STUDY-LIBRARY.md`, top section; `StudyScreen.tsx` header). Order: a
+small Tabitha strip (portrait from the `librarian` render, a `GREETINGS` line,
+"Ask" → `LibrarianSheet`, which is still the ONLY place the stamp and the
+first-book 5 XP happen); "Your progress" (overall % and books answered from
+`summarize`, the three most recent books, "See all reports →" — the full chart
+stays on `/study/reports` and is not duplicated); a grid of study tools built
+from the same `StudyBook[]`; and the painted room folded under "Visit the
+library". Progress copy is rank-free — "only against yourself", nothing about
+anybody else. `?desk=1` still opens her sheet. The rest of this section is the
+earlier room-first design: its rules (her voice, the XP, two modes) still hold;
+where it says the room is the tab, read "the folded room".
 
 `/study` is one room filling the tab — a lit library with an NPC librarian
 (Tabitha) at the desk. It used to be a grid of book tiles; the tiles are gone

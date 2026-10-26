@@ -24,8 +24,8 @@ import { AllowanceLine, ENGINE_REASONS, outcomeText, recoverLanded } from './wee
 import { TranscriptMeter, transcriptNote } from './transcript'
 import { MemoInput, placeTranscript } from './memo'
 
-// "What is your congregation studying this week?" — the guided week fill at the
-// top of the leadership planner (Content Generation only; drawn only when the
+// "What is your congregation studying this week?" — the Topic source in "Plan
+// your week" (`PlanWeek`, embedded) — the guided week fill in the leadership planner (Content Generation only; drawn only when the
 // backend carries `draftWeek`).
 //
 // A topic in → a suggested week of DRAFTS out, through the machinery that
@@ -116,7 +116,10 @@ export function StudyTopicWeek({
   today,
   onDrafted,
   onChanged,
+  embedded = false,
 }: {
+  /** Inside `PlanWeek` (the Topic source): no card of its own. */
+  embedded?: boolean
   churchId: string
   backend: VerseBackend
   today: string
@@ -151,7 +154,7 @@ export function StudyTopicWeek({
   const [discardArmed, setDiscardArmed] = useState(false)
   const [discarding, setDiscarding] = useState(false)
   const mounted = useRef(true)
-  useEffect(() => () => { mounted.current = false }, [])
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
 
   useEffect(() => {
     let alive = true
@@ -317,7 +320,7 @@ export function StudyTopicWeek({
   if (!backend.draftWeek || !backend.saveDraft) return null
 
   return (
-    <div className="card" style={{ padding: 12, display: 'grid', gap: 10, background: 'var(--card-raised)' }} aria-label="Suggest a week from a study topic">
+    <div className={embedded ? undefined : 'card'} style={embedded ? { display: 'grid', gap: 10, minWidth: 0 } : { padding: 12, display: 'grid', gap: 10, background: 'var(--card-raised)' }} aria-label="Suggest a week from a study topic">
       <label htmlFor={`${listId}-input`} style={{ fontSize: 14.5, fontWeight: 800, lineHeight: 1.3 }}>
         What is your congregation studying this week?
       </label>

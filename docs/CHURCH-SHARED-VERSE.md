@@ -159,8 +159,8 @@ leftovers is a safe cleanup for the SQL editor later:
 
 ## Drafting the questions (0122, `church-draft`)
 
-Under the verse, leadership gets **"✨ Draft five questions from this
-passage"**. It works for any reference, not only the library's 726 verses.
+Inside **Edit one day**, under the verse, leadership gets **"✨ Draft five
+questions from this passage"**. It works for any reference, not only the library's 726 verses.
 
 - **Server-side.** The `church-draft` Edge Function asks Gemini. The key is
   `GEMINI_API_KEY` or Vault `tiktok_gemini_key()`, and it never reaches a
@@ -249,10 +249,49 @@ members get instead is 0128's lane — `my_church_verse`, the box on the Play
 tab and `/play/church` — which skips drafts, so a draft (and a discarded one,
 which is always a draft) never reaches a member.
 
+## Plan your week: the Plan tab's one flow (2026-10-26)
+
+The planner used to stack four generators down one column — the study-topic
+fill, "✨ Draft a week from a sermon", the per-day "✨ Draft five questions" and
+the library fill — and a pastor had to work out which one they wanted. With the
+Content Generation package, the Plan tab now opens on **Plan your week**
+(`src/features/church/admin/PlanWeek.tsx`), three steps:
+
+1. **Start from** — **Your sermon** (the hero and the default, drawn full
+   width: upload or record the memo, or paste the transcript), **A topic**, or
+   **One passage**.
+2. **Draft the week** — the chosen source's form, embedded:
+   `WeekDraftPanel source="sermon"` (sermon box FIRST, then passages, series,
+   dates), `StudyTopicWeek`, or `WeekDraftPanel source="passage"` (one passage,
+   no sermon box; a blank focus becomes "Stay with {passage} itself…", and the
+   series defaults to the reference, because the week call needs notes or a
+   focus line). All three stay mounted and only the chosen one shows, so
+   switching source never loses a transcript or a memo mid-upload.
+3. **Review and approve** — `DraftReview`, unchanged. A ⚠ day still holds
+   "Approve all" back until it is opened and checked; the server skips it too.
+
+**Every source is the same `church-draft` week call**, so nothing about the
+engine changed: the Content Generation gate (`church_gen_can`), the 30 draft
+units a day (one per day drafted, refunds for days not delivered — 0142), the
+10 memo transcriptions a day (0144, no draft unit), the long-transcript
+condense, the server-side save on each planned date, the planned-dates check
+(live days skipped and named) and the blind answer check (0143).
+
+**Manual entry is one tap away.** Under the flow sits the three-week strip and
+**✎ Edit one day**, which unfolds the day-by-day form — reference, words, five
+questions, series, note, save/approve/discard, copy-through and the visual
+assets. Tapping a day on the strip, opening a draft from the review, or
+arriving from a Home to-do (`initialDate`) opens it on that day. The per-day
+"✨ Draft five questions" and the library fill live inside it, as tools for
+editing one day rather than ways to plan a week. **Without the package** (and
+in the public demo) there is no flow: the form is the tab, starts open, and the
+locked card says what the package would add.
+
 ## A week from one sermon (0129)
 
-With the add-on, the Schedule tab carries **✨ Draft a week from a sermon**
-(`WeekDraftPanel`): a series name, 1–3 passages, a start date, 2–7 days, and
+With the add-on, the Plan tab's **Your sermon** source (above; it was the
+Schedule tab's **✨ Draft a week from a sermon** before 2026-10-26) is
+`WeekDraftPanel`: a series name, 1–3 passages, a start date, 2–7 days, and
 the sermon pasted in (or at least a focus line). It produces one DRAFT per day,
 each with its own verse focus inside those passages, five questions and a note.
 
@@ -353,8 +392,8 @@ unit-checked.
 
 ## A week from a study topic
 
-The top of the leadership planner asks **"What is your congregation studying
-this week?"** (`src/features/church/admin/StudyTopicWeek.tsx`). Content
+The **A topic** source in Plan your week asks **"What is your congregation
+studying this week?"** (`src/features/church/admin/StudyTopicWeek.tsx`). Content
 Generation only — it renders only when the backend carries `draftWeek`; a
 base-tier leader sees the existing locked card and every manual tool.
 

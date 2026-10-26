@@ -40,6 +40,15 @@ import { MemoInput, placeTranscript } from './memo'
 //     day are the Bible's and never the model's.
 //   * It states the cost: one of the church's daily drafts per day, with what
 //     is left once the engine has said (`AllowanceLine`).
+// Since 2026-10-26 it is two of the three sources in "Plan your week"
+// (`PlanWeek`), drawn `embedded` (always open, no card of its own):
+//   * `sermon` — the hero: the sermon comes FIRST (a memo, a recording or a
+//     pasted transcript), then the passage(s), the series and the dates.
+//   * `passage` — one passage and nothing else. The week call needs notes or a
+//     focus line, so a blank focus becomes a line about the passage itself; the
+//     series defaults to the reference.
+// The call, the plan, the refunds and the answer check are the same for both.
+//
 // Since 0142 the FUNCTION saves the days, each on its planned date, and says
 // which landed; this panel only re-reads. If no answer comes back at all, it
 // looks at the planned dates before calling the run a failure (`recoverLanded`).
@@ -74,16 +83,23 @@ export function WeekDraftPanel({
   today,
   defaultSeries,
   onDrafted,
+  source = 'sermon',
+  embedded = false,
 }: {
   churchId: string
   backend: VerseBackend
   today: string
   defaultSeries?: string
+  /** What the week is drafted from: a sermon (the hero) or one passage alone. */
+  source?: 'sermon' | 'passage'
+  /** Inside `PlanWeek`: always open, no card or close button of its own. */
+  embedded?: boolean
   /** After drafts were saved — reload the strip and open the first one. */
   onDrafted: (dates: string[]) => void
 }) {
   const juice = useJuice()
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(embedded)
+  const passageOnly = source === 'passage'
   const [series, setSeries] = useState(defaultSeries ?? '')
   const [refs, setRefs] = useState<string[]>([''])
   const [days, setDays] = useState(5)
@@ -96,7 +112,7 @@ export function WeekDraftPanel({
   // What the planned dates held before the run, for the no-reply recovery.
   const [before, setBefore] = useState<WeekDay[]>([])
   const mounted = useRef(true)
-  useEffect(() => () => { mounted.current = false }, [])
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
   // Plan the dates whenever the start or the length changes.
@@ -116,8 +132,12 @@ export function WeekDraftPanel({
 
   const parsed = useMemo(() => refs.map((r) => (r.trim() ? parseReference(r.trim()) : null)), [refs])
   const refsOk = refs.some((r) => r.trim()) && refs.every((r, i) => !r.trim() || !!parsed[i])
-  const notesOk = !!transcript.trim() || !!guidance.trim()
-  const ready = !!cleanLine(series, SERIES_MAX) && refsOk && notesOk && !!plan && plan.dates.length === days && phase === 'idle'
+  // One passage stands on its own: a blank focus becomes a line about it.
+  const firstRef = refs.find((r) => r.trim())?.trim() ?? ''
+  const focus = guidance.trim() || (passageOnly && firstRef ? `Stay with ${firstRef} itself — what it says, and what it asks of us this week.` : '')
+  const seriesName = cleanLine(series, SERIES_MAX) ?? (passageOnly ? cleanLine(firstRef, SERIES_MAX) : null)
+  const notesOk = !!transcript.trim() || !!focus
+  const ready = !!seriesName && refsOk && notesOk && !!plan && plan.dates.length === days && phase === 'idle'
 
   const run = async () => {
     if (!backend.draftWeek || !plan || !ready) return
@@ -140,7 +160,7 @@ export function WeekDraftPanel({
     // The function drafts AND saves, each day on its own planned date (0142).
     setPhase('drafting')
     const dates = plan.dates
-    const r = await backend.draftWeek(churchId, { series, days, passages, transcript, guidance, dates })
+    const r = await backend.draftWeek(churchId, { series: seriesName!, days, passages, transcript, guidance: focus.slice(0, GUIDANCE_MAX), dates })
     let saved: string[], refused: { date: string; reason: string }[] = [], missing: string[] = []
     let told = ''
     if (r.ok) {
@@ -158,8 +178,8 @@ export function WeekDraftPanel({
     }
     setPhase('idle')
     juice.select?.()
-    setMsg({ ok: true, text: outcomeText(`Drafted “${cleanLine(series, SERIES_MAX)}”:`, saved, refused, missing) + told })
-    setOpen(false)
+    setMsg({ ok: true, text: outcomeText(`Drafted “${seriesName}”:`, saved, refused, missing) + told })
+    if (!embedded) setOpen(false)
     onDrafted(saved)
   }
 
@@ -181,24 +201,23 @@ export function WeekDraftPanel({
   }
 
   const busy = phase !== 'idle'
-  return (
-    <div className="card" style={{ padding: 12, display: 'grid', gap: 10, background: 'var(--card-raised)' }} aria-label="Draft a week from a sermon">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <b style={{ flex: 1, fontSize: 14 }}>✨ Draft a week from a sermon</b>
-        <button className="pill" onClick={() => setOpen(false)} disabled={busy} aria-label="Close">✕</button>
-      </div>
-      <p className="faint" style={{ margin: 0, fontSize: 11.5, lineHeight: 1.45 }}>
-        Each day gets its own verse from the passages you name, five questions and a note — all saved as drafts your
-        members can’t see until you approve them.
-      </p>
-
+  const sermonBox = !passageOnly && (
+    <div style={{ display: 'grid', gap: 6 }}>
       <label style={labelStyle}>
-        Series name
-        <input value={series} onChange={(e) => setSeries(e.target.value)} maxLength={SERIES_MAX} placeholder="Abiding (John 15)" autoCapitalize="words" />
+        Your sermon — record it, upload the memo, or paste the transcript
+        <textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} rows={6} placeholder="Paste the sermon, your notes, or the transcript of a voice memo…" style={{ resize: 'vertical' }} />
       </label>
+      <TranscriptMeter value={transcript} />
+      {backend.memo && <MemoInput churchId={churchId} memo={backend.memo} hasText={!!transcript.trim()} disabled={busy} onTranscript={(t, how) => setTranscript((cur) => placeTranscript(cur, t, how))} />}
+    </div>
+  )
+  const passageLabel = passageOnly ? 'The passage' : `The passage${refs.length > 1 ? 's' : ''} you preached`
+  const fields = (
+    <>
+      {sermonBox}
 
       <div style={{ display: 'grid', gap: 6 }}>
-        <span style={labelStyle as React.CSSProperties}>The passage{refs.length > 1 ? 's' : ''} you preached</span>
+        <span style={labelStyle as React.CSSProperties}>{passageLabel}</span>
         {refs.map((r, i) => (
           <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             <input
@@ -216,13 +235,20 @@ export function WeekDraftPanel({
             )}
           </div>
         ))}
-        {refs.length < WEEK_PASSAGES_MAX && (
+        {!passageOnly && refs.length < WEEK_PASSAGES_MAX && (
           <button className="faint" onClick={() => setRefs((all) => [...all, ''])} style={{ justifySelf: 'start', padding: 0, fontSize: 12, fontWeight: 700, color: 'var(--ink-dim)', cursor: 'pointer' }}>
             + Add a passage
           </button>
         )}
-        <span className="faint" style={{ fontSize: 11.5 }}>Each inside one chapter, up to 40 verses. The words come from the Berean Standard Bible.</span>
+        <span className="faint" style={{ fontSize: 11.5 }}>
+          {passageOnly ? 'One passage, inside one chapter, up to 40 verses — each day takes its own verse from it.' : 'Each inside one chapter, up to 40 verses.'} The words come from the Berean Standard Bible.
+        </span>
       </div>
+
+      <label style={labelStyle}>
+        Series name{passageOnly ? ' (optional)' : ''}
+        <input value={series} onChange={(e) => setSeries(e.target.value)} maxLength={SERIES_MAX} placeholder={passageOnly && firstRef ? firstRef : 'Abiding (John 15)'} autoCapitalize="words" />
+      </label>
 
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <label style={{ ...labelStyle, flex: '1 1 140px' }}>
@@ -240,12 +266,6 @@ export function WeekDraftPanel({
       </div>
 
       <label style={labelStyle}>
-        Sermon notes or a voice-memo transcript
-        <textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} rows={6} placeholder="Paste the sermon, your notes, or the transcript of a voice memo…" style={{ resize: 'vertical' }} />
-      </label>
-      <TranscriptMeter value={transcript} />
-      {backend.memo && <MemoInput churchId={churchId} memo={backend.memo} hasText={!!transcript.trim()} disabled={busy} onTranscript={(t, how) => setTranscript((cur) => placeTranscript(cur, t, how))} />}
-      <label style={labelStyle}>
         What to focus on (optional)
         <input value={guidance} onChange={(e) => setGuidance(e.target.value)} maxLength={GUIDANCE_MAX} placeholder="Staying connected when life is busy" />
       </label>
@@ -257,8 +277,24 @@ export function WeekDraftPanel({
         {phase === 'fetching' ? 'Reading the passages…' : phase === 'drafting' ? `Drafting ${days} days — about a minute…` : phase === 'checking' ? 'Lost the connection — checking whether the drafts landed…' : `Draft ${days} days`}
       </Button>
       <span className="faint" style={{ fontSize: 11.5, marginTop: -4, lineHeight: 1.4 }}>
-        {!notesOk ? 'Paste your notes or a focus line first. ' : ''}<AllowanceLine churchId={churchId} units={days} />
+        {!notesOk ? 'Add your sermon or a focus line first. ' : ''}<AllowanceLine churchId={churchId} units={days} />
       </span>
+    </>
+  )
+
+  if (embedded) return <div style={{ display: 'grid', gap: 10, minWidth: 0 }} aria-label={passageOnly ? 'Draft a week from a passage' : 'Draft a week from a sermon'}>{fields}</div>
+
+  return (
+    <div className="card" style={{ padding: 12, display: 'grid', gap: 10, background: 'var(--card-raised)' }} aria-label="Draft a week from a sermon">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <b style={{ flex: 1, fontSize: 14 }}>✨ Draft a week from a sermon</b>
+        <button className="pill" onClick={() => setOpen(false)} disabled={busy} aria-label="Close">✕</button>
+      </div>
+      <p className="faint" style={{ margin: 0, fontSize: 11.5, lineHeight: 1.45 }}>
+        Each day gets its own verse from the passages you name, five questions and a note — all saved as drafts your
+        members can’t see until you approve them.
+      </p>
+      {fields}
     </div>
   )
 }

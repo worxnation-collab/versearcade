@@ -9,8 +9,8 @@ import { MemoInput, placeTranscript } from './memo'
 import { cleanLine, cleanQuestions, fetchDays, flaggedCount, GUIDANCE_MAX, NOTE_MAX, SERIES_MAX, serverVerseBackend, useDraftAllowance, type DayVerse, type VerseBackend, type VerseStatus, type WeekDay } from '@/store/churchAdmin'
 import type { Question } from '@/types'
 import { SeriesCopyPanel } from './SeriesCopyPanel'
-import { DraftReview, WeekDraftPanel } from './WeekDraftPanel'
-import { StudyTopicWeek } from './StudyTopicWeek'
+import { DraftReview } from './WeekDraftPanel'
+import { PlanWeek } from './PlanWeek'
 import { ENGINE_REASONS } from './weekRun'
 import { AssetStudio } from './AssetStudio'
 import { useChurchAssetsAdmin } from '@/store/churchAssets'
@@ -45,6 +45,15 @@ import { useChurchAssetsAdmin } from '@/store/churchAssets'
 // optional plain text. The note is what members read beside the verse on the
 // Play tab that day (the church card, `ChurchWindow`); the series is the quiet label beside it
 // and what "This week we're in …" puts on the church's page in one tap.
+//
+// LAYOUT (2026-10-26): with the Content Generation package the tab opens on
+// "Plan your week" (`PlanWeek`) — start from a sermon, a topic or a passage,
+// draft the week, review and approve — and this day-by-day form sits folded
+// under "Edit one day", opened by tapping a day on the strip, opening a draft
+// from the review, or arriving from a Home to-do (`initialDate`). Without the
+// package (and in the public demo) the form is the tab and starts open. The
+// per-day "✨ Draft five questions" and the library fill live inside it, as
+// tools for editing one day rather than ways to plan a week.
 //
 // When the arcade's library already carries the verse, one tap fills its words
 // and the five questions the app would have asked — a starting point to edit,
@@ -194,9 +203,17 @@ export function TodayVerseForm({
   }
   useEffect(() => { void loadWeek(weekStart) }, [churchId, weekStart, backend]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const pick = (d: string) => {
+  // The day form is folded under the planning flow when there is one.
+  const planning = !!backend.draftWeek
+  const [dayOpen, setDayOpen] = useState(!planning || !!initialDate)
+  const dayRef = useRef<HTMLDivElement>(null)
+  const pick = (d: string, open = true) => {
     if (d < weekStart || d > addDays(weekStart, WINDOW - 1)) setWeekStart(d < today ? today : d)
     setDate(d)
+    if (open && planning) {
+      setDayOpen(true)
+      requestAnimationFrame(() => dayRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }))
+    }
   }
 
   // Load what this date already holds, so a second save edits the first.
@@ -414,15 +431,32 @@ export function TodayVerseForm({
 
   return (
     <div style={{ display: 'grid', gap: 12 }}>
-      {backend.draftWeek && (
-        <StudyTopicWeek
+      {planning ? (
+        <PlanWeek
           churchId={churchId}
           backend={backend}
           today={today}
-          onDrafted={(ds) => { void loadWeek(); pick(ds[0]); setDayKey((k) => k + 1) }}
+          week={week}
+          selected={date}
+          onDrafted={(ds) => { void loadWeek(); if (ds[0]) pick(ds[0], false); setDayKey((k) => k + 1) }}
           onChanged={() => { void loadWeek(); setDayKey((k) => k + 1) }}
+          onOpenDay={pick}
         />
+      ) : (
+        <>
+          {generationLocked && <GenerationLocked />}
+          {/* A church whose add-on lapsed still reviews what it made. */}
+          <DraftReview
+            churchId={churchId}
+            backend={backend}
+            week={week}
+            selected={date}
+            onOpen={pick}
+            onChanged={() => { void loadWeek(); setDayKey((k) => k + 1) }}
+          />
+        </>
       )}
+
       <WeekStrip
         week={week}
         error={weekErr}
@@ -436,23 +470,19 @@ export function TodayVerseForm({
         onRetry={() => void loadWeek()}
       />
 
-      {backend.draftWeek && (
-        <WeekDraftPanel
-          churchId={churchId}
-          backend={backend}
-          today={today}
-          onDrafted={(ds) => { void loadWeek(); pick(ds[0]); setDayKey((k) => k + 1) }}
-        />
+      {planning && (
+        <button
+          className="pill"
+          data-edit-day
+          aria-expanded={dayOpen}
+          onClick={() => { juice.select?.(); setDayOpen((o) => !o) }}
+          style={{ justifySelf: 'start', fontSize: 12.5, fontWeight: 800 }}
+        >
+          {dayOpen ? `− Close ${pretty(date)}` : '✎ Edit one day — type a verse and questions by hand'}
+        </button>
       )}
-      <DraftReview
-        churchId={churchId}
-        backend={backend}
-        week={week}
-        selected={date}
-        onOpen={pick}
-        onChanged={() => { void loadWeek(); setDayKey((k) => k + 1) }}
-      />
-
+      {dayOpen && (
+      <div ref={dayRef} style={{ display: 'grid', gap: 12, scrollMarginTop: 12 }}>
       <label style={labelStyle}>
         Day
         <input type="date" value={date} min={today} max={addDays(today, 366)} onChange={(e) => e.target.value && pick(e.target.value)} />
@@ -532,7 +562,6 @@ export function TodayVerseForm({
           </span>
         </div>
       )}
-      {!backend.draft && generationLocked && <GenerationLocked />}
 
       <label style={labelStyle}>
         Series (optional)
@@ -652,6 +681,7 @@ export function TodayVerseForm({
         </Button>
       )}
 
+
       {/* Graphics for the SAVED day (0133): its verse card, and its series'
           graphic when it belongs to one. Made from what is saved, never from
           the fields being edited, so a card can't show words nobody saved. */}
@@ -672,6 +702,8 @@ export function TodayVerseForm({
             />
           )}
         </div>
+      )}
+      </div>
       )}
     </div>
   )

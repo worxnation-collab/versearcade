@@ -39,7 +39,7 @@ import { msUntilNextLocalMidnight, formatCountdown } from '@/lib/date'
 import { prefetchScripture, refreshAvailableBibles } from '@/lib/bible'
 import { PaintedIcon } from '@/components/PaintedIcon'
 
-// The Play tab: two daily boxes, the road, and the compass.
+// The Play tab: the drop, the second daily things, your church, the compass.
 //
 // ── WHY IT IS FOUR THINGS ────────────────────────────────────────────────────
 //
@@ -48,15 +48,26 @@ import { PaintedIcon } from '@/components/PaintedIcon'
 // belong somewhere — and the sum was a column you had to scroll to find the one
 // thing the app is for. So the shape is now:
 //
-//   1. **The two daily boxes, side by side.** Today's verse and today's trivia
-//      round are both "a thing that is new today and gone tomorrow", so they sit
-//      level with each other rather than one being buried under the other. The
-//      verse keeps the gold; the trivia box is deliberately cooler, because the
-//      verse is still what this app is for.
-//   2. **The Harvest Road**, under them, exactly as before.
-//   3. **The compass**, at full size, glowing gold when something is open. It is
-//      the same door as the puck beside the nav — see `MapCompass`, and read
-//      `features/map/invitations.ts` before touching what makes it glow.
+//   1. **The drop is the hero, and nothing but the identity bar and the
+//      streak-safety line sits above it.** Full width, gold, the one big Play
+//      button on the screen.
+//   2. **The second daily things are ROWS under it, not boxes beside it**
+//      (2026-10-26): today's trivia, and — for a member of a verified church
+//      that scheduled one — the church's verse. Both are still "new today, gone
+//      tomorrow", so they stay above the fold and one tap away (`DailyRow`, the
+//      whole row is the button); neither gets a card the size of the drop's,
+//      because two equal boxes said the verse was one of two things here. Each
+//      keeps its own cooler accent (sky, bronze) and an outlined chip rather
+//      than a gold button — the gold is rationed to the drop. They used to sit
+//      side by side, then stacked as equal cards; this is the third shape.
+//   3. **Your church** (`ChurchWindow`): a member's church card, or for
+//      everybody else an INVITATION ("Play for a congregation") — short on
+//      purpose, so it doesn't push the compass down.
+//   4. **The compass**, at full size, glowing gold when something is open. It is
+//      the same door as the puck beside the nav, and it is where the ARCADE is
+//      offered — see `MapCompass`, and read `features/map/invitations.ts` before
+//      touching what makes it glow. Anything that grows the cards above it
+//      buries the arcade; that is the budget every card here spends from.
 //
 // Plus one LINE, not a card: how many people have played today, under the two
 // boxes. It is what survived of the presence ticker — the count was the part
@@ -246,12 +257,11 @@ export default function HomeScreen() {
         </p>
       )}
 
-      {/* ── The two daily boxes ────────────────────────────────────────────
-          Stacked, full width, the verse on top: side by side each box had half
-          a phone and its copy wrapped into a column of three-word lines.
-          `minWidth: 0` on each child still matters — a book name like
-          "1 Thessalonians" must not blow a box out. */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
+      {/* ── Today ─────────────────────────────────────────────────────────
+          The drop as the one full card, then the second daily things as slim
+          rows under it. `minmax(0, 1fr)`: a grid item's min-width is `auto`,
+          and a book name like "1 Thessalonians" must not blow a row out. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 8 }}>
         <DropBox
           played={playedToday}
           reference={today?.reference}
@@ -271,20 +281,20 @@ export default function HomeScreen() {
         <TriviaBox
           book={triviaBook}
           done={triviaDone}
-          score={triviaScore?.s}
           correct={triviaScore?.c}
           total={triviaScore?.t}
           countdown={formatCountdown(countdown)}
           onPlay={() => navigate('/play/trivia')}
         />
         {/* Your church's own verse, a THIRD lane — never in place of the drop
-            above (0128). Renders nothing for anybody without a verified church
-            that scheduled one today, so the tab is unchanged for them. */}
+            above (0128), and a row like the trivia so it never pushes the drop
+            down. Renders nothing for anybody without a verified church that
+            scheduled one today, so the tab is unchanged for them. */}
         <ChurchVerseBox onPlay={() => navigate('/play/church')} />
       </div>
 
-      {/* How many people are in this with you today, directly under the two
-          boxes because it is a fact about the thing those boxes just offered.
+      {/* How many people are in this with you today, directly under the daily
+          things because it is a fact about the thing those boxes just offered.
           A number and a door — never a score beside anybody's name. See
           `PlayedToday` and `0093_daily_players.sql`. */}
       <PlayedToday />
@@ -304,7 +314,7 @@ export default function HomeScreen() {
       {/* Your church, under the two things that are new today — where the
           Harvest Road strip used to lead. For a member it is the church's word
           today (its verse, note, notice, giving link); for everybody else the
-          "Add your church" pitch. See ChurchWindow. */}
+          "Play for a congregation" invitation. See ChurchWindow. */}
       <div style={{ marginTop: 14 }}>
         <ChurchWindow />
       </div>
@@ -398,11 +408,10 @@ export default function HomeScreen() {
   )
 }
 
-// ── The boxes ───────────────────────────────────────────────────────────────
+// ── The drop box, and the rows under it ─────────────────────────────────────
 //
-// Both are half-width on a 320px phone (roughly 145px of content), which is the
-// constraint that shaped every line in them: one heading, one fact, one button.
-// Anything that wanted a third line got cut or moved to a sheet.
+// The drop is the only BOX: one heading, one fact, one gold button. The trivia
+// round and the church verse are `DailyRow`s further down — see its comment.
 
 /** The box's own label. `nowrap` is the load-bearing part — see DropBox. */
 const PILL: React.CSSProperties = {
@@ -418,7 +427,7 @@ function BoxShell({
   accent,
   children,
 }: {
-  /** The wash behind the box. Gold for the verse, sky for the trivia. */
+  /** The wash behind the box. Only the drop wears one now — gold. */
   accent: string
   children: React.ReactNode
 }) {
@@ -429,7 +438,7 @@ function BoxShell({
       animate={{ scale: 1, opacity: 1 }}
       transition={{ type: 'spring', stiffness: 260, damping: 24 }}
       style={{
-        padding: '16px 12px',
+        padding: '18px 14px',
         textAlign: 'center',
         position: 'relative',
         overflow: 'hidden',
@@ -491,10 +500,10 @@ function DropBox({
 
       {!played ? (
         <>
-          <h2 style={{ fontSize: 18, lineHeight: 1.2 }}>A new verse is live</h2>
+          <h2 style={{ fontSize: 21, lineHeight: 1.2 }}>A new verse is live</h2>
           {/* Every question is about the verse again — the bonus that used to
               take the last slot is gone (see `generateQuestions`), and trivia
-              has the box next door. `QuizRunner` derives the same promise from
+              has its own row under this box. `QuizRunner` derives the same promise from
               the run itself on the read screen; this is the pitch that gets
               somebody into it, and the two must agree. */}
           <p className="dim" style={{ marginTop: 6, fontSize: 12.5, lineHeight: 1.45, flex: 1 }}>
@@ -502,8 +511,8 @@ function DropBox({
             Same verse everyone’s playing.
           </p>
 
-          {/* The boost was a full-width row; at half width it is a toggle pill
-              that says its own state. It only exists when you hold one. */}
+          {/* The boost is a toggle pill that says its own state. It only exists
+              when you hold one. */}
           {boosts > 0 && (
             <button
               onClick={onBoost}
@@ -529,7 +538,7 @@ function DropBox({
         </>
       ) : (
         <>
-          <h2 style={{ fontSize: 18, lineHeight: 1.2 }}>Done for today 🎉</h2>
+          <h2 style={{ fontSize: 20, lineHeight: 1.2 }}>Done for today 🎉</h2>
           <p
             className="dim"
             style={{ marginTop: 4, fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
@@ -593,50 +602,30 @@ function ChurchVerseBox({ onPlay }: { onPlay: () => void }) {
   // The series line reads the 0130 arc when there is one ("Day 3 of 5 · …"),
   // and 0128's counts on a server without it.
   const arc = series && series.churchId === today.churchId && series.name === today.series ? series : null
+  const seriesLine = arc
+    ? <SeriesTrail series={arc} compact />
+    : today.series ? `${p ? `Day ${p.soFar} of ${p.total} · ` : ''}${today.series}` : null
   return (
-    <BoxShell accent="rgba(154,124,69,0.22)">
-      <span className="pill" style={PILL}>⛪ From {today.churchName}</span>
-      <h2 style={{ fontSize: 18, lineHeight: 1.2 }}>{today.reference}</h2>
-      {arc ? (
-        <p style={{ marginTop: 3 }}><SeriesTrail series={arc} compact /></p>
-      ) : today.series && (
-        <p className="faint" style={{ marginTop: 3, fontSize: 12 }}>
-          {p ? `Day ${p.soFar} of ${p.total} · ` : ''}{today.series}
-        </p>
-      )}
-      {!today.played ? (
-        <>
-          <p className="dim" style={{ marginTop: 6, fontSize: 12.5, lineHeight: 1.45, flex: 1 }}>
-            {today.note ?? 'The verse your church is reading today, with five questions from your pastor.'}
-          </p>
-          <div style={{ marginTop: 12 }}>
-            <Button variant="secondary" full onClick={onPlay}>▶ Play your church’s verse</Button>
-          </div>
-        </>
-      ) : (
-        <>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 10 }}>
-            <Stat label="Score" value={today.played.score.toLocaleString()} />
-            <Stat label="Correct" value={`${today.played.correct}/${today.played.total}`} />
-          </div>
-          {(arc ? arc.days.some((d) => d.played) : p && p.soFar > 0) && (
-            <p className="faint" style={{ marginTop: 8, fontSize: 11.5 }}>
-              You’ve played {arc ? arc.days.filter((d) => d.played).length : p!.played} {arc ? `of ${arc.days.length} days` : `of ${p!.soFar} days so far`} in this series
-            </p>
-          )}
-          <div style={{ marginTop: 10 }}>
-            <Button variant="ghost" full onClick={onPlay}>See it again</Button>
-          </div>
-        </>
-      )}
-    </BoxShell>
+    <DailyRow
+      accent="rgba(154,124,69,0.30)"
+      icon="⛪"
+      eyebrow={`From ${today.churchName}`}
+      title={today.reference}
+      // The pastor's note used to be a paragraph here; as a row it is one
+      // clamped line, and the whole note is on the read screen of the run.
+      line={!today.played ? (seriesLine ?? today.note ?? 'Five questions from your pastor') : seriesLine}
+      done={!!today.played}
+      result={today.played ? `${today.played.correct}/${today.played.total}` : undefined}
+      action={today.played ? 'Again' : 'Play'}
+      label={today.played ? `See ${today.churchName}’s verse again` : `Play ${today.churchName}’s verse, ${today.reference}`}
+      onClick={onPlay}
+    />
   )
 }
 
 function TriviaBox({
   book,
   done,
-  score,
   correct,
   total,
   countdown,
@@ -644,67 +633,131 @@ function TriviaBox({
 }: {
   book: string | null
   done: boolean
-  score?: number
   correct?: number
   total?: number
   countdown: string
   onPlay: () => void
 }) {
   const label = book ?? 'the whole Bible'
+  // Today's numbers only, the same as before it was a row: no best, no
+  // history, nothing to be behind on. A day recorded before the numbers were
+  // kept simply has none, and the row says "done" without them.
   return (
-    <BoxShell accent="rgba(93,211,255,0.13)">
-      <span className="pill" style={PILL}>✨ Today’s Trivia</span>
-
-      {!done ? (
-        <>
-          <h2
-            style={{ fontSize: 18, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis' }}
-            title={label}
-          >
-            Five on {label}
-          </h2>
-          <p className="dim" style={{ marginTop: 6, fontSize: 12.5, lineHeight: 1.45, flex: 1 }}>
-            About the book itself — its people, its places, what happens in it.
-            Every answer teaches you something.
-          </p>
-          <div style={{ marginTop: 12 }}>
-            <Button variant="primary" full onClick={onPlay}>▶ Play</Button>
-          </div>
-        </>
-      ) : (
-        <>
-          <h2 style={{ fontSize: 18, lineHeight: 1.2 }}>Done for today ✨</h2>
-          <p
-            className="dim"
-            style={{ marginTop: 4, fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-            title={label}
-          >
-            {label}
-          </p>
-          {/* The same two numbers the drop box shows, for the same reason: a
-              round that ends with no record of how it went reads as though it
-              didn't count. They are TODAY'S round and nothing else — no best,
-              no history, no total — so there is still nothing here to be behind
-              on, including your own past self. A day recorded before the numbers
-              were kept simply has none, and says so with a dash. */}
-          {(score !== undefined || correct !== undefined) && (
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 10 }}>
-              <Stat label="Score" value={score?.toLocaleString() ?? '—'} />
-              <Stat label="Correct" value={correct !== undefined ? `${correct}/${total}` : '—'} />
-            </div>
-          )}
-
-          <p className="faint" style={{ marginTop: 10, fontSize: 11.5, flex: 1 }}>
-            New book in <b style={{ color: 'var(--sky)' }}>{countdown}</b>
-          </p>
-          <div style={{ marginTop: 10 }}>
-            <Button variant="secondary" full onClick={onPlay}>Play again</Button>
-          </div>
-        </>
-      )}
-    </BoxShell>
+    <DailyRow
+      accent="rgba(93,211,255,0.16)"
+      icon="✨"
+      eyebrow="Today’s trivia"
+      title={done ? label : `Five on ${label}`}
+      line={done ? `New book in ${countdown}` : 'The book itself — its people, places, what happens'}
+      done={done}
+      result={done && correct !== undefined ? `${correct}/${total}` : undefined}
+      action={done ? 'Again' : 'Play'}
+      label={done ? `Play today’s trivia on ${label} again` : `Play today’s trivia: five on ${label}`}
+      onClick={onPlay}
+    />
   )
 }
+
+/**
+ * A second daily thing, as ONE ROW under the drop: the trivia round and (for
+ * a member of a verified church that scheduled one) the church's verse.
+ *
+ * The whole row is the button — eyebrow, title, one clamped line, and a chip
+ * on the right that says what a tap does. The chip is outlined in the row's
+ * own accent, never filled gold: the gold is the drop's alone, and a second
+ * gold Play button an inch under the first is two primaries. Done shows the
+ * day's own `n/5` in the chip's place, tinted, with no tick-mark ceremony — a
+ * finished day is quiet, not a list of boxes ticked.
+ */
+function DailyRow({
+  accent,
+  icon,
+  eyebrow,
+  title,
+  line,
+  done,
+  result,
+  action,
+  label,
+  onClick,
+}: {
+  /** The wash on the row's left edge. Sky for trivia, bronze for the church. */
+  accent: string
+  icon: React.ReactNode
+  eyebrow: string
+  title: string
+  line?: React.ReactNode
+  done: boolean
+  /** Today's "n/5", once played. */
+  result?: string
+  action: string
+  label: string
+  onClick: () => void
+}) {
+  const juice = useJuice()
+  return (
+    <motion.button
+      className="card"
+      onClick={() => { juice.select?.(); onClick() }}
+      aria-label={label}
+      whileTap={{ scale: 0.98 }}
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        width: '100%',
+        minWidth: 0,
+        padding: '10px 12px',
+        textAlign: 'left',
+        cursor: 'pointer',
+        color: 'inherit',
+        font: 'inherit',
+        position: 'relative',
+        overflow: 'hidden',
+        background: `linear-gradient(90deg, ${accent}, transparent 55%), var(--card)`,
+      }}
+    >
+      <span
+        aria-hidden
+        style={{
+          width: 38, height: 38, flexShrink: 0, borderRadius: 12,
+          display: 'grid', placeItems: 'center', fontSize: 19,
+          background: 'var(--card-raised)', opacity: done ? 0.75 : 1,
+        }}
+      >
+        {icon}
+      </span>
+      <span style={{ flex: 1, minWidth: 0, display: 'grid', gap: 1 }}>
+        <span className="faint" style={ROW_EYEBROW}>{eyebrow}</span>
+        <span style={{ ...ROW_CLAMP, fontWeight: 800, fontSize: 15, color: done ? 'var(--ink-dim)' : 'var(--ink)' }}>{title}</span>
+        {line && <span className="faint" style={{ ...ROW_CLAMP, fontSize: 12 }}>{line}</span>}
+      </span>
+      <span style={{ display: 'grid', justifyItems: 'end', gap: 2, flexShrink: 0 }}>
+        {result && (
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: 15, color: 'var(--ink)' }}>{result}</span>
+        )}
+        <span
+          style={{
+            fontSize: 12.5, fontWeight: 800, padding: '6px 11px', borderRadius: 999,
+            border: '1.5px solid var(--edge)', color: done ? 'var(--ink-dim)' : 'var(--ink)',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {done ? action : `▶ ${action}`}
+        </span>
+      </span>
+    </motion.button>
+  )
+}
+
+const ROW_EYEBROW: React.CSSProperties = {
+  fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase',
+  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+}
+const ROW_CLAMP: React.CSSProperties = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3 }
 
 function PillButton({
   icon,

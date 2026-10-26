@@ -135,8 +135,8 @@ every time zone. No migration.
 
 - **Yours only, by construction.** `RoomScene` takes an optional `lantern`;
   `RoomSection` passes it and the visit sheet never does, so a visitor cannot
-  read "somebody prayed for them today" off somebody else's doorpost. Unlike
-  the lamp, it is not drawn lit for everybody else; it is not drawn at all.
+  read "somebody prayed for them today" off somebody else's doorpost. It is
+  not drawn at all outside your own room.
 - **Never on a postcard.** The postcard serialises your own room's live SVG,
   so the lantern's group carries `data-room-private` and
   `sanitizeClone` strips it.
@@ -150,5 +150,14 @@ every time zone. No migration.
   right edge, at latch height. Each painting has its own spot
   (`SCENE_DOOR` in `roomScenes.ts`), plus `CHAMBER_DOOR` for the drawn room;
   re-measure them with the furnishing spots if a painting is replaced.
+- **The personal-prayer lamp is owner-only too** (2026-10-26). The room's
+  `room_lampstand` used to default to LIT everywhere but your own room, which
+  meant your own postcard carried the real answer to "did you pray today".
+  Now `lit` defaults to false, only `RoomSection` passes `usePrayer().today >
+  0`, and the flame's group is `data-room-private`, so visitors and every
+  postcard see the cold wick. Both lights — the lantern (somebody prayed for
+  you) and the lamp (you prayed) — are visible on one screen: your own room.
+  No count, no brighter flame, nothing new sent; both LOCAL and ONLINE paths
+  go through the prayer store unchanged.
 - It is not tappable. The wall is one tap away on the map and the compass;
   a doorpost that navigates would be a second door to the same place.

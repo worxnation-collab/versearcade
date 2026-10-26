@@ -67,7 +67,7 @@ export function RoomScene({
   onTapSelf,
   /** Skip the generated painting — the postcard can only serialise drawn SVG. */
   flat = false,
-  lampLit = true,
+  lampLit = false,
   lantern,
 }: {
   tier: number
@@ -94,6 +94,9 @@ export function RoomScene({
   onTapSelf?: () => void
   /** Skip the generated painting — the postcard can only serialise drawn SVG. */
   flat?: boolean
+  /** Whether YOU prayed today (`usePrayer().today > 0`). Owner-only, like the
+   *  lantern: RoomSection passes it, the visit sheet never does, so a visitor
+   *  sees a cold wick. Undefined is dark — the fail-closed answer. */
   lampLit?: boolean
   /**
    * The Prayer Wall's lantern by the door (0099). YOUR room only, and only

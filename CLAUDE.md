@@ -4522,13 +4522,17 @@ feature where a growing tally would change WHY somebody does it — a daily thin
 that clears is an invitation, a lifetime number is an accumulation you can fall
 behind on.
 
-**`lit` defaults to TRUE, and that default is a privacy decision.** Only your own
-room passes the real value; a visited room, the postcard and the shelf thumbnail
-all keep the lamp lit exactly as it has always looked, so a visitor can never
-read "did they pray today" off somebody else's furniture. The signal exists on
-one screen: yours. `RoomSection` also has to `load()` the prayer store, or the
-lamp stays dark until you open the sheet — the one screen where you already know
-the answer.
+**The lamp is owner-only, and `lit` defaults to FALSE** (2026-10-26, reversing
+an earlier "lit for everybody" default). Only `RoomSection` passes the real
+value; a visited room and every other render draw the cold wick, and the flame's
+group is `data-room-private`, which the postcard strips — so a shared picture of
+your own room shows the wick too. Praying is a personal practice, and "did they
+pray today" is readable on exactly one screen: yours. A dark lamp for everybody
+else says nothing, because it is dark for everybody. Missing prayer data reads
+`today: 0`, which is dark — the fail-closed answer. `RoomSection` also has to
+`load()` the prayer store, or the lamp stays dark until you open the sheet. The
+Prayer Wall's door lantern follows the same rule (below), stricter still: it is
+not drawn at all outside your own room.
 
 **There is deliberately no Journal ladder for it.** Every rung in the Journal is
 a number you passed; a rung you climb by praying is a rung you would pray to

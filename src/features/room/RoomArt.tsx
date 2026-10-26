@@ -334,20 +334,20 @@ const PROPS: Record<string, Prop> = {
       <rect x="-2" y="-26" width="4" height="25" fill={BRASS} />
       <path d="M-11 -26 q11 -7 22 0 z" fill={BRASS} />
       <ellipse cx="0" cy="-27" rx="6" ry="2.4" fill="#a8842f" />
-      {lit ? (
-        <>
+      {/* The wick is always drawn: unlit reads as a lamp waiting, never as a
+          broken one. Nothing scolds, nothing is missing. */}
+      <rect x="-1" y="-33" width="2" height="6" rx="1" fill="#4a4030" />
+      <ellipse cx="0" cy="-33.5" rx="2.2" ry="1.2" fill="#3a3226" />
+      {/* The flame is OWNER-ONLY. Only your own room passes `lit`, and the
+          group is `data-room-private`, which the postcard strips — so a
+          shared picture of your room shows the wick, never the flame. */}
+      {lit && (
+        <g data-room-private="">
           <circle cx="0" cy="-34" r="16" fill={FLAME} opacity="0.10" />
           <circle cx="0" cy="-34" r="9" fill={FLAME_HOT} opacity="0.16" />
           <path d="M0 -40 q6 6 0 11 q-6 -5 0 -11 z" fill={FLAME} />
           <path d="M0 -36 q3 3 0 6 q-3 -3 0 -6 z" fill={FLAME_HOT} />
-        </>
-      ) : (
-        // Unlit reads as a lamp waiting, never as a broken one: the wick is
-        // still there, just dark. Nothing scolds, nothing is missing.
-        <>
-          <rect x="-1" y="-33" width="2" height="6" rx="1" fill="#4a4030" />
-          <ellipse cx="0" cy="-33.5" rx="2.2" ry="1.2" fill="#3a3226" />
-        </>
+        </g>
       )}
     </g>
   ),
@@ -682,7 +682,7 @@ export function FurnishingProp({
   x,
   y,
   mount,
-  lit = true,
+  lit = false,
   sizeScale = 1,
 }: {
   value: string
@@ -694,11 +694,11 @@ export function FurnishingProp({
   /**
    * Whether the lamp is burning.
    *
-   * DEFAULTS TO TRUE, and that default is a privacy decision rather than a
-   * convenience. Only your OWN room passes the real value; a visited room, the
-   * postcard and every other render keep the lamp lit as it has always looked,
-   * so a visitor can never read "did they pray today" off somebody else's
-   * lampstand. The signal exists on exactly one screen: yours.
+   * DEFAULTS TO FALSE, and that default is the privacy rule. Only your OWN
+   * room (RoomSection) passes the real value; a visited room and every other
+   * render draw the cold wick, and the postcard strips the flame even from
+   * your own room (`data-room-private`). Praying is a personal practice, so
+   * "did they pray today" is readable on exactly one screen: yours.
    */
   lit?: boolean
 }) {

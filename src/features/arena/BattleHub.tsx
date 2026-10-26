@@ -1,4 +1,35 @@
-import { useEffect, useMemo, useState } from 'react'
+/**
+ * The Battle tab, top to bottom — and the order is the design:
+ *
+ *   1. One intro line, then the gold "Start a new battle" (the primary action)
+ *      and the single "Live battle" button under it (the secondary door).
+ *      ONE faint line serves both buttons: the gathering-hour line while the
+ *      hour is open, otherwise "quick match or a room code". It used to be
+ *      three helper paragraphs, which together were most of a button's height
+ *      spent explaining two buttons that already say what they do.
+ *   2. Your battles — the three turn buckets, Your turn by default, its count
+ *      gold when somebody is waiting on you. `VISIBLE_ROWS` is per bucket and
+ *      deliberately unchanged here.
+ *   3. `RankStrip` — your rank and your team's, two tiles. If you have no team,
+ *      ONE compact "Choose a team" row sits directly under it and unfolds the
+ *      picker IN PLACE (`TeamChooser`). It never opens the ranks board to do
+ *      it: choosing a team is a one-time setting, and dragging a top-5 board
+ *      open on the way is how the picker used to push the battle list down.
+ *   4. "Battle ranks", FOLDED by default. The strip already carries both
+ *      numbers, so the board behind it is something you open, not something
+ *      you scroll past. The Teams tab inside still has the picker, which is
+ *      where somebody who already HAS a team goes to change it.
+ *   5. The Keep as a compact row (`KeepRow`: name, hall level, arrow) that
+ *      opens `KeepSheet`. The full painted hall lives in the sheet only — an
+ *      inline ~230px scene was the heaviest thing on the tab and the one thing
+ *      on it that can always wait. Then the keep's own challenge ladder.
+ *
+ * Unchanged and load-bearing: the guest branch (an account card plus the
+ * device-local keep), nothing here pays a winner more than a loser (that lives
+ * in `award_battle_xp`, which never reads a score), and the tab publishes no
+ * comparison the boards didn't already — no losses column, no new ladder.
+ */
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { gatheringLabel, gatheringOpen } from '@/data/gathering'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
@@ -12,9 +43,8 @@ import { useAuth } from '@/store/auth'
 import { useBattles, type Battle, type BattleBoard, type DenomBoard } from '@/store/battles'
 import { DENOMINATIONS, DENOMINATION_GROUPS, denominationColor, denominationName, isOpenFaction } from '@/data/denominations'
 import { KeepSheet } from './KeepSheet'
-import { useKeep, loadFactionKeep, type FactionKeep, type KeepMember, type Placements } from '@/store/keep'
+import { loadFactionKeep, type FactionKeep } from '@/store/keep'
 import { keepLevelForWins, keepLevelName } from '@/data/keep'
-import { KeepScene } from './KeepScene'
 import { KeepChallenges } from './KeepChallenges'
 import { useJuice } from '@/juice/useJuice'
 
@@ -50,15 +80,14 @@ export default function BattleHub() {
   const juice = useJuice()
   const mode = useAuth((s) => s.mode)
   const profile = useAuth((s) => s.profile)
-  const updateProfile = useAuth((s) => s.updateProfile)
   const { mine, loadMine } = useBattles()
   const leaderboard = useBattles((s) => s.leaderboard)
   const denominationBoard = useBattles((s) => s.denominationBoard)
   const [board, setBoard] = useState<BattleBoard | null>(null)
   const [denomBoard, setDenomBoard] = useState<DenomBoard | null>(null)
   const [rankTab, setRankTab] = useState<'individual' | 'denomination'>('individual')
-  // Which turn-bucket the player tapped. Null = follow `autoTurn` below, so the
-  // tab that actually needs them is open before they touch anything.
+  // Which turn-bucket the player tapped. Null = Your turn (see `turn` below),
+  // the bucket that actually needs them, before they touch anything.
   const [pickedTurn, setPickedTurn] = useState<Turn | null>(null)
   /** Faction key whose keep is open, '' for "my hall", null for closed. */
   // ?keep=1 opens your own hall straight away — the unlock toast's door. Read
@@ -71,56 +100,21 @@ export default function BattleHub() {
   }, [])
   const [expanded, setExpanded] = useState<Turn | null>(null)
   /**
-   * The team picker only EXISTS inside the Teams rank tab, which now also sits
-   * inside a folded "Battle ranks" section — so "Choose a team" has to open
-   * BOTH before it can scroll to it. Neither a closed Collapsible nor the
-   * unselected rank tab mounts its children, and `getElementById` on something
-   * that isn't mounted returns null and makes the button do nothing at all,
-   * silently. That bug shipped once already on the rank-tab half alone; folding
-   * the section re-armed it, which is why the fix is widened here in the same
-   * change rather than left to be rediscovered.
-   *
-   * Opening both and scrolling in an EFFECT — rather than in the same handler —
-   * is what guarantees the picker is mounted before we look for it. The beat of
-   * delay is for the Collapsible's own 250ms expand: scrolling while the
-   * section is still growing aims at a target that is still moving.
-   */
-  const [scrollToPicker, setScrollToPicker] = useState(false)
-  /**
    * Mirrors the ranks fold's own open state, and drives it.
    *
-   * It starts OPEN. That reverses an earlier call ("a board is something you
-   * look up occasionally") on the app owner's read of what people come to this
-   * tab for: the standing IS the reason a lot of players battle, and it was the
-   * one thing on the tab you had to know to tap for. The strip above it means
-   * the number is on screen either way; this is the board behind it.
+   * It starts CLOSED (2026-10-26), reversing the call that opened it: the
+   * strip directly above carries both numbers, so an open top-5 board on first
+   * load was a screen of scroll between the strip and the Keep for nothing the
+   * player didn't already have. Tapping a strip tile opens it to that tab.
    *
-   * Kept as a mirror rather than a one-way prop so "Choose a denomination" can
-   * still re-open a fold the player has closed — Collapsible only honours
-   * defaultOpen on its rising edge, so a stale `true` here would make that
-   * button silently do nothing, which is the bug this block already carries two
-   * scars from.
+   * Kept as a mirror rather than a one-way prop because Collapsible only
+   * honours defaultOpen on its RISING edge — a stale `true` here would make a
+   * second tile tap after the player closed the fold silently do nothing.
    */
-  const [ranksOpen, setRanksOpen] = useState(true)
-  const browseTeams = () => {
-    setRanksOpen(true)
-    setRankTab('denomination')
-    setScrollToPicker(true)
-  }
-  useEffect(() => {
-    if (!scrollToPicker) return
-    // The flag is cleared INSIDE the timeout, not before it. Clearing it first
-    // re-renders, which changes this effect's dep, which runs its cleanup —
-    // cancelling the very timeout that does the scrolling. That shipped for
-    // about ten minutes and the button silently did nothing again, which is
-    // the same failure this whole block exists to prevent; found by driving
-    // the real tab rather than by reading the diff.
-    const t = setTimeout(() => {
-      document.getElementById('team-picker')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      setScrollToPicker(false)
-    }, 320)
-    return () => clearTimeout(t)
-  }, [scrollToPicker])
+  const [ranksOpen, setRanksOpen] = useState(false)
+  // A team picked from the compact row (or the Teams tab) has to re-read the
+  // team board, or the strip keeps saying "No team" after the pick.
+  const onTeamChanged = async () => setDenomBoard(await denominationBoard())
 
   const isGuest = mode === 'local'
 
@@ -196,26 +190,23 @@ export default function BattleHub() {
           <Button variant="gold" full onClick={() => { juice.coin(); navigate('/battle/new') }}>
             <PaintedIcon id="battle_swords" /> Start a new battle
           </Button>
-          <p className="faint center" style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
-            Pick who you’re battling, then play your round.
-          </p>
 
           {/* Live sits UNDER the async battle, not beside it: a live match needs
               the other person to be holding their phone right now, so it is the
               rarer case even though it is the louder one. One button, not two:
               quick match and the room code are both behind this door, and a
               second button here would put the rarer case ahead of the async
-              battle that always works. */}
+              battle that always works. ONE line under both buttons — the
+              gathering hour only says "now" while it's open. */}
           <div style={{ marginTop: 10 }}>
             <Button full onClick={() => { juice.coin(); navigate('/battle/live') }}>
               <PaintedIcon id="battle_live" /> {gatheringOpen() ? 'Live battle — it’s the gathering hour' : 'Live battle — same verse, same moment'}
             </Button>
-            <p className="faint center" style={{ fontSize: 11, margin: '6px 0 0', lineHeight: 1.4 }}>
-              {gatheringOpen() ? 'People are likeliest to be looking right now.' : `Everyone’s told to come at ${gatheringLabel()} — the gathering hour.`}
-            </p>
           </div>
-          <p className="faint center" style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
-            Quick match anyone who’s looking, or share a room code.
+          <p className="faint center" style={{ fontSize: 11, margin: '6px 0 0', lineHeight: 1.4 }}>
+            {gatheringOpen()
+              ? 'People are likeliest to be looking right now.'
+              : `Quick match or a room code · everyone gathers at ${gatheringLabel()}`}
           </p>
 
           {/* Your battles, split by whose move it is. "Your turn" carries the
@@ -289,23 +280,17 @@ export default function BattleHub() {
               labelled "Teams", not "Denominations": Agnostic and Atheist play
               on this board too, and a heading that reads past them is the
               first thing that would tell them they're guests. */}
-          {/* Folded, but OPEN by default now, directly under the strip that
-              carries the same two numbers. The earlier call was that a board is
-              something you look up occasionally; the tab's own evidence says
-              otherwise — the standing is a large part of why people battle at
-              all, and it was the only thing here you had to know to tap for.
-              What made that call affordable is above: the strip means your rank
-              and your team's are on screen whether the fold is open or shut, so
-              closing it now costs nothing.
-
-              The team picker rides inside it because the team is a Battle-only
-              faction and this is where it is used, and because "Choose a
-              denomination" opens the tab and scrolls to it. */}
+          {/* Folded by default, directly under the strip that carries the same
+              two numbers — the strip means your rank and your team's are on
+              screen whether the fold is open or shut. A player with no team
+              gets one compact row between the two, which unfolds the picker
+              where it is rather than opening the board to reach it. */}
           <RankStrip
             board={board}
             denomBoard={denomBoard}
             onOpen={(tab) => { juice.select(); setRankTab(tab); setRanksOpen(true) }}
           />
+          {!profile?.denomination && <TeamChooser onChanged={onTeamChanged} />}
 
           <Collapsible icon={<PaintedIcon id="battle_trophy" />} title="Battle ranks" defaultOpen={ranksOpen} onToggle={setRanksOpen}>
             <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
@@ -354,48 +339,9 @@ export default function BattleHub() {
             ) : (
               <>
               {/* Your team lives here rather than in profile settings — it's a
-                  Battle-only faction, so it's picked where it's used. */}
-              <div className="card" id="team-picker" style={{ marginBottom: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ width: 14, height: 14, borderRadius: '50%', flexShrink: 0, background: profile?.denomination ? denominationColor(profile.denomination) : 'var(--stroke)', boxShadow: profile?.denomination ? `0 0 8px ${denominationColor(profile.denomination)}` : 'none' }} />
-                  <select
-                    aria-label="Who you're playing for"
-                    value={profile?.denomination ?? ''}
-                    onChange={async (e) => {
-                      juice.select()
-                      // Wait for the write to land before re-reading, or the board
-                      // comes back with the old membership.
-                      await updateProfile({ denomination: e.target.value || null })
-                      setDenomBoard(await denominationBoard())
-                    }}
-                    style={{ flex: 1, padding: '10px 8px', borderRadius: 10, background: 'var(--card-solid)', color: 'var(--ink)', border: '1px solid var(--stroke)', fontSize: 14 }}
-                  >
-                    <option value="">Prefer not to say</option>
-                    {DENOMINATION_GROUPS.map((g) => (
-                      <optgroup key={g.key} label={g.label}>
-                        {DENOMINATIONS.filter((d) => d.group === g.key).map((d) => (
-                          <option key={d.key} value={d.key}>{d.name}</option>
-                        ))}
-                      </optgroup>
-                    ))}
-                    {/* `other` belongs to neither heading, so it sits after both. */}
-                    {DENOMINATIONS.filter((d) => !d.group).map((d) => (
-                      <option key={d.key} value={d.key}>{d.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <p className="faint" style={{ fontSize: 11, marginTop: 8, lineHeight: 1.4 }}>
-                  Optional &amp; friendly — pick who you’re playing for. Your battle wins add to that team’s total automatically, and it never shows on the main leaderboard.
-                </p>
-                {/* Said once, only to the two teams that might wonder whether
-                    they're actually welcome. It's a welcome, not a badge: nothing
-                    else about these teams looks different anywhere in the app. */}
-                {isOpenFaction(profile?.denomination) && (
-                  <p className="faint" style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
-                    You don’t have to believe it to be good at it — same verses, same board, no sermon attached.
-                  </p>
-                )}
-              </div>
+                  Battle-only faction, so it's picked (and changed) where it's
+                  used. The no-team row above the fold mounts the same picker. */}
+              <TeamPicker onChanged={onTeamChanged} style={{ marginBottom: 10 }} />
               <div className="card">
                 {!denomBoard || denomBoard.top.length === 0 ? (
                   <p className="faint" style={{ fontSize: 14, textAlign: 'center', padding: '4px 0' }}>
@@ -443,29 +389,14 @@ export default function BattleHub() {
             )}
           </Collapsible>
           {/* ── The Keep ─────────────────────────────────────────────────
-              The room itself on the tab, never a link to it — that's the rule;
-              WHERE on the tab is not, and it moved. It used to open the screen,
-              so a ~230px painting sat between "Start a new battle" and the
-              battle actually waiting on you: the one thing here that can wait,
-              since it's a room you furnish rather than a move you owe anybody.
-              It stands with its own ladder now, under the turn you have to take
-              and the standing you came to check.
-
-              Someone with no team gets the invitation instead, because a hall
-              with nobody's colours in it is the one version of this that says
-              nothing. There's still no "open your keep" row anywhere: tapping
-              the room opens the sheet, and the scene names its own faction and
-              tier underneath, so this heading stays the plain one. */}
+              A compact row now, not the painted hall. The inline ~230px scene
+              was the heaviest thing on the tab and the one thing on it that can
+              always wait — a room you furnish, not a move you owe anybody. The
+              row names the hall and its level and opens KeepSheet, which is
+              where the full scene has always lived too. With no team it opens
+              your own hall (the same device/account keep a guest gets). */}
           <h3 className="dim" style={{ fontSize: 16, margin: '22px 0 10px' }}>The Keep</h3>
-          <div style={{ marginBottom: 4 }}>
-            {profile?.denomination ? <MyKeepScene onOpen={() => { juice.select(); setOpenKeep(profile.denomination ?? '') }} /> : <PickATeam onBrowse={browseTeams} />}
-          </div>
-          {!profile?.denomination && (
-            <p className="faint" style={{ fontSize: 12.5, margin: '10px 0', lineHeight: 1.5 }}>
-              Pick a team above to share a hall — everything below is yours either way.
-            </p>
-          )}
-          <div style={{ height: 10 }} />
+          <KeepRow onOpen={() => { juice.select(); setOpenKeep(profile?.denomination ?? '') }} />
           <KeepChallenges />
 
           <div style={{ height: 90 }} />
@@ -559,119 +490,135 @@ function RankStrip({
 }
 
 /**
- * Your faction's hall, inline under the new-battle button.
+ * The Keep as one row: the hall's name, its level, an arrow. Tapping opens
+ * KeepSheet, which draws the full painted hall — the only place it is drawn.
  *
- * The whole scene is the button: tapping anywhere in the room opens the sheet.
- * Deliberately NOT editable here — a hall you could rearrange from a summary
- * card would let you move the tapestry while reaching for what's under it.
- *
- * The faction blend is the same read the sheet does (keep_json), so the room
- * on the tab and the room in the sheet are the same room. It loads on mount
- * and shows the drawn fallback while it's in flight, which is the whole reason
- * the fallback exists.
+ * The level still comes from the faction's pooled wins (keep_json via
+ * loadFactionKeep), so the name on the row and the room in the sheet agree.
+ * With no team the row is your own hall, saying so plainly; choosing a team
+ * is the compact row up by the rank strip, not a card here.
  */
-function MyKeepScene({ onOpen }: { onOpen: () => void }) {
-  const profile = useAuth((st) => st.profile)
-  const keep = useKeep()
+function KeepRow({ onOpen }: { onOpen: () => void }) {
+  const denomination = useAuth((st) => st.profile?.denomination ?? null)
   const [faction, setFaction] = useState<FactionKeep | null>(null)
-  const denomination = profile?.denomination ?? null
 
   useEffect(() => {
-    void useKeep.getState().load()
+    setFaction(null)
     if (denomination) loadFactionKeep(denomination).then(setFaction)
   }, [denomination])
 
-  if (!denomination) return null
-  const color = denominationColor(denomination)
-  const placements: Placements = { ...(faction?.placements ?? {}), ...keep.placements }
-  const wins = faction?.wins ?? 0
-  const level = keepLevelForWins(wins)
-  const members: KeepMember[] = faction?.members?.length
-    ? faction.members
-    : profile
-      ? [{ username: profile.username, avatarEmoji: profile.avatarEmoji, avatarCharacter: profile.avatarCharacter, isMe: true }]
-      : []
+  const color = denomination ? denominationColor(denomination) : 'var(--stroke)'
+  const level = keepLevelForWins(faction?.wins ?? 0)
 
   return (
-    <div>
-      <KeepScene
-        color={color}
-        level={level}
-        placements={placements}
-        members={members}
-        onOpen={onOpen}
-      />
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 8 }}>
-        <b style={{ fontFamily: 'var(--font-display)', fontSize: 14, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {denominationName(denomination)} Keep
+    <motion.button
+      whileTap={{ scale: 0.98 }}
+      onClick={onOpen}
+      className="card"
+      style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', marginBottom: 10, borderLeft: `3px solid ${color}` }}
+    >
+      <div style={{ fontSize: 26, flexShrink: 0 }}>🏰</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <b style={{ fontFamily: 'var(--font-display)', fontSize: 15, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {denomination ? `${denominationName(denomination)} Keep` : 'Your Keep'}
         </b>
-        <span className="faint" style={{ fontSize: 11.5, flex: 1, minWidth: 0 }}>
-          {keepLevelName(level)}
-        </span>
-        <button className="pill" onClick={onOpen} style={{ fontSize: 11.5, padding: '4px 10px', fontWeight: 800, flexShrink: 0 }}>
-          Decorate
-        </button>
+        <div className="faint" style={{ fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {denomination ? keepLevelName(level) : 'Your own hall — pick a team to share one.'}
+        </div>
       </div>
+      <div style={{ fontFamily: 'var(--font-display)', color: 'var(--gold)', fontSize: 18, flexShrink: 0 }}>→</div>
+    </motion.button>
+  )
+}
+
+/**
+ * Who you're playing for — the one picker, mounted in two places: unfolded
+ * from the no-team row by the rank strip, and in the ranks fold's Teams tab
+ * (where somebody who already has a team changes it).
+ *
+ * It is a plain list with every team on equal footing. An earlier card put the
+ * gold "do the thing" colour on Non-denominational alone, which made one of
+ * thirty teams read as the recommended answer and skewed who joined what; the
+ * gold on this tab belongs to "Start a new battle". Don't add a highlighted
+ * shortcut back.
+ */
+function TeamPicker({ onChanged, style }: { onChanged: () => void | Promise<void>; style?: CSSProperties }) {
+  const juice = useJuice()
+  const profile = useAuth((st) => st.profile)
+  const updateProfile = useAuth((st) => st.updateProfile)
+  return (
+    <div className="card" style={style}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ width: 14, height: 14, borderRadius: '50%', flexShrink: 0, background: profile?.denomination ? denominationColor(profile.denomination) : 'var(--stroke)', boxShadow: profile?.denomination ? `0 0 8px ${denominationColor(profile.denomination)}` : 'none' }} />
+        <select
+          aria-label="Who you're playing for"
+          value={profile?.denomination ?? ''}
+          onChange={async (e) => {
+            juice.select()
+            // Wait for the write to land before re-reading, or the board
+            // comes back with the old membership.
+            await updateProfile({ denomination: e.target.value || null })
+            await onChanged()
+          }}
+          style={{ flex: 1, minWidth: 0, padding: '10px 8px', borderRadius: 10, background: 'var(--card-solid)', color: 'var(--ink)', border: '1px solid var(--stroke)', fontSize: 14 }}
+        >
+          <option value="">Prefer not to say</option>
+          {DENOMINATION_GROUPS.map((g) => (
+            <optgroup key={g.key} label={g.label}>
+              {DENOMINATIONS.filter((d) => d.group === g.key).map((d) => (
+                <option key={d.key} value={d.key}>{d.name}</option>
+              ))}
+            </optgroup>
+          ))}
+          {/* `other` belongs to neither heading, so it sits after both. */}
+          {DENOMINATIONS.filter((d) => !d.group).map((d) => (
+            <option key={d.key} value={d.key}>{d.name}</option>
+          ))}
+        </select>
+      </div>
+      <p className="faint" style={{ fontSize: 11, marginTop: 8, lineHeight: 1.4 }}>
+        Optional &amp; friendly — your battle wins add to that team’s total and raise its hall. It never shows on the main leaderboard, and you can change it whenever you like.
+      </p>
+      {/* Said once, only to the two teams that might wonder whether
+          they're actually welcome. It's a welcome, not a badge: nothing
+          else about these teams looks different anywhere in the app. */}
+      {isOpenFaction(profile?.denomination) && (
+        <p className="faint" style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
+          You don’t have to believe it to be good at it — same verses, same board, no sermon attached.
+        </p>
+      )}
     </div>
   )
 }
 
 /**
- * What sits where the hall would be, before there's a hall to show.
+ * The no-team row under the rank strip. One line until tapped, then the picker
+ * unfolds right here — no board opened, no scroll-to. It replaces both the old
+ * "Every team has a hall" card (which sat where the keep is) and the
+ * open-two-folds-then-scroll button that reached the picker inside the ranks
+ * board, which shipped twice as a button that silently did nothing.
  *
- * The tone matters more than the layout here. A faction is optional and stays
- * optional — this offers the full list and the one-tap answer, and says plainly
- * that it can be changed and that it never touches the main leaderboard.
- * Nobody is nagged twice: it disappears the moment a team is picked.
- *
- * NEITHER BUTTON OUTRANKS THE OTHER, and that's the whole point of this card.
- * The gold variant is this app's "do the thing" colour, so putting it on
- * Non-denominational alone made one of thirty teams look like the recommended
- * answer and skewed who joined what. Both paths are the same variant now, the
- * full list leads, and the gold on this tab belongs to "Start a new battle".
- * If a variant ever changes here, change both.
+ * The parent unmounts it the moment a team is set, so nobody is asked twice.
  */
-function PickATeam({ onBrowse }: { onBrowse: () => void }) {
+function TeamChooser({ onChanged }: { onChanged: () => void | Promise<void> }) {
   const juice = useJuice()
-  const updateProfile = useAuth((st) => st.updateProfile)
-  const [busy, setBusy] = useState(false)
-
-  const pick = async (key: string) => {
-    if (busy) return
-    setBusy(true)
-    juice.select()
-    await updateProfile({ denomination: key })
-    setBusy(false)
-  }
-
+  const [open, setOpen] = useState(false)
   return (
-    <div className="card">
-      <div className="center" style={{ fontSize: 30, lineHeight: 1 }}>🏰</div>
-      <b style={{ display: 'block', textAlign: 'center', fontFamily: 'var(--font-display)', fontSize: 16, marginTop: 6 }}>
-        Every team has a hall
-      </b>
-      <p className="dim center" style={{ fontSize: 13, margin: '6px 0 12px', lineHeight: 1.5 }}>
-        Pick who you're playing for and you get a room to fill — your battle wins raise it, and
-        what you win in them hangs on its walls. It never shows on the main leaderboard, and you
-        can change it whenever you like.
-      </p>
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-        <Button
-          variant="primary"
-          disabled={busy}
-          onClick={() => {
-            juice.select()
-            // The full list already exists further down the tab; send them to
-            // it rather than building a second picker that could disagree.
-            onBrowse()
-          }}
-        >
-          Choose a denomination
-        </Button>
-        <Button variant="primary" disabled={busy} onClick={() => void pick('non_denominational')}>
-          Non-denominational
-        </Button>
-      </div>
+    <div style={{ marginBottom: 10 }}>
+      <motion.button
+        whileTap={{ scale: 0.98 }}
+        onClick={() => { juice.select(); setOpen((o) => !o) }}
+        aria-expanded={open}
+        className="card"
+        style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', cursor: 'pointer', marginBottom: open ? 8 : 0 }}
+      >
+        <span style={{ flex: 1, minWidth: 0, fontWeight: 800, fontSize: 14 }}>
+          Choose a team
+          <span className="faint" style={{ fontWeight: 400, fontSize: 12 }}> · optional, shares a hall</span>
+        </span>
+        <span style={{ color: 'var(--gold)', fontFamily: 'var(--font-display)', fontSize: 15, flexShrink: 0 }}>{open ? '▴' : '▾'}</span>
+      </motion.button>
+      {open && <TeamPicker onChanged={onChanged} />}
     </div>
   )
 }

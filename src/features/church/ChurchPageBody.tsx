@@ -16,6 +16,7 @@ import { DEFAULT_AVATAR } from '@/data/avatar'
 import type { Church, ChurchInfo, ChurchMember, ChurchPage } from '@/types'
 import type { ChurchExtras } from '@/types/churchPackages'
 import { ChurchExtrasBlock } from './ChurchExtras'
+import { useChurchLeaderLook } from '@/store/churchLeaderLook'
 
 /** Stable empty yard — a fresh {} from the selector would re-render forever. */
 const EMPTY_YARD = {}
@@ -119,6 +120,11 @@ export function ChurchPageBody({
     return () => { void loadPageStatues(null) }
   }, [church.id, loadPageStatues, withYard])
 
+  // The church's leader at the door (0146). Unlike the crowd this is NOT made
+  // plain signed out: a church's leadership is a public role, the look is one
+  // they chose (or paid for) to be seen in, and it carries no name.
+  const leader = useChurchLeaderLook(church.id)
+
   // Signed out, the congregation is drawn as PLAIN figures: one neutral
   // starter character per returned member, with no equipped skin, no pet and
   // no frame. `public_church_page` still returns each member's look (the
@@ -178,6 +184,7 @@ export function ChurchPageBody({
         skin={church.skin}
         flora={yard}
         statues={statues}
+        leader={leader}
       />
 
       {lead && page.info && <Headline info={page.info} />}

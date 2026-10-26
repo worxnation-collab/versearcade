@@ -12,6 +12,7 @@ import {
   type AvatarRequest,
   type Entitlements,
 } from '@/store/churchAdmin'
+import { forgetChurchLeaderLook } from '@/store/churchLeaderLook'
 import { LeaderLookFigure, leaderLookName } from '../leaderLooks'
 import {
   AVATAR_NOTES_MAX,
@@ -27,8 +28,10 @@ import {
 //
 // Presentation only: `set_my_leader_look` re-checks the base tier and refuses
 // 'custom' until one was delivered to YOU; `submit_church_avatar_request`
-// re-checks the add-on. Nothing here ranks anybody or shows a member anything —
-// a look is how leadership appears, chosen by the leader.
+// re-checks the add-on. Nothing here ranks anybody — a look is how leadership
+// appears, chosen by the leader. Since 0146 members and visitors SEE it (the
+// note, the notice, the churchyard; `store/churchLeaderLook.ts`), so a save
+// forgets the cached public read.
 //
 // `setup` is the moment straight after a leader claims the church (the claim
 // screen lands here) and nothing is chosen yet: the same picker, worded as a
@@ -71,6 +74,8 @@ export function LeaderLookPanel({
       setMsg(r.reason === 'not_verified' ? 'Leader looks come with the Church Leader plan.' : "That didn't save — try again in a moment.")
       return
     }
+    // Members see this look now (0146) — the next church screen re-reads it.
+    forgetChurchLeaderLook(churchId)
     onChanged()
   }
 
@@ -86,7 +91,7 @@ export function LeaderLookPanel({
             {setup ? 'First, how should you appear?' : 'Your leader look'}
           </b>
           <p className="dim" style={{ margin: '4px 0 0', fontSize: 13, lineHeight: 1.5 }}>
-            How you appear as leadership of this church. Your own character everywhere else in the app stays as it is.
+            How your congregation sees you: beside your note on the church verse, beside your live notice, and standing at the door of your churchyard. Your own character everywhere else in the app stays as it is.
           </p>
         </div>
 

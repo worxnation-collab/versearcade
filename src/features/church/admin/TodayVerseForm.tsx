@@ -134,7 +134,10 @@ export function TodayVerseForm({
   generationLocked = false,
   assets,
   onSaved,
+  initialDate,
 }: {
+  /** Open on this day (the Home to-do's "draft for Thursday"). Today if absent or past. */
+  initialDate?: string
   churchId: string
   churchName: string
   /** Where days are read and written — the server, or memory for the demo. */
@@ -152,7 +155,8 @@ export function TodayVerseForm({
 }) {
   const juice = useJuice()
   const today = todayLocalDate()
-  const [date, setDate] = useState(today)
+  const start = initialDate && initialDate > today ? initialDate : today
+  const [date, setDate] = useState(start)
   const [reference, setReference] = useState('')
   const [text, setText] = useState('')
   const [qs, setQs] = useState<Draft[]>(() => Array.from({ length: 5 }, blank))
@@ -166,7 +170,8 @@ export function TodayVerseForm({
   const [replaceArmed, setReplaceArmed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
-  const [weekStart, setWeekStart] = useState(today)
+  // The strip starts at today unless the opening day would fall off it.
+  const [weekStart, setWeekStart] = useState(() => (start > addDays(today, WINDOW - 1) ? start : today))
   const [week, setWeek] = useState<WeekDay[] | null>(null)
   const [weekErr, setWeekErr] = useState(false)
   const [saved, setSaved] = useState<DayVerse | null>(null)

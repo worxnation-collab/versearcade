@@ -8,6 +8,7 @@ import { fetchAdminSettings, fetchChurchBilling, fetchEntitlements, openBillingP
 import { churchBillingPortalVisible } from '@/lib/commerce'
 import { TodayVerseForm } from './TodayVerseForm'
 import { OverviewPanel, PeoplePanel, ActivityPanel, SummaryPanel, useInsights, useSummary } from './InsightsPanel'
+import { InquiriesSection } from './InquiriesSection'
 import { HomePanel, type HomeGo } from './HomePanel'
 import { Collapsible } from '@/components/Collapsible'
 import { NoticesPanel } from './NoticesPanel'
@@ -38,7 +39,8 @@ import { ChurchPlansEntry } from '@/features/churches/ChurchPlansEntry'
 //      without it, the form is the tab. `initialDate` is how a Home row opens a
 //      given day (it unfolds the form on that day).
 //      Its OWN lane for members since 0128, never in place of the daily drop.
-//   3. People — co-leaders (0147), every member BY NAME with last play,
+//   3. People — players asking about the church from a leader's card (0149,
+//      `InquiriesSection`, only when there are any), co-leaders (0147), every member BY NAME with last play,
 //      streak and this week's plays (the owner's call, 2026-10-21), the quiet
 //      fold with its hand-sent check-in, and the congregation feed (Activity,
 //      folded under "Recent activity").
@@ -110,9 +112,15 @@ export default function ChurchAdminScreen() {
   const [planDate, setPlanDate] = useState<string | undefined>(undefined)
   const [quiet, setQuiet] = useState(false)
   const [noticeFocus, setNoticeFocus] = useState(0)
+  const [inquiryFocus, setInquiryFocus] = useState(0)
+  useEffect(() => {
+    if (!inquiryFocus) return
+    requestAnimationFrame(() => document.getElementById('church-inquiries')?.scrollIntoView({ block: 'start' }))
+  }, [inquiryFocus])
   const onGo = (g: HomeGo) => {
     if (g.tab === 'plan') setPlanDate(g.date)
-    if (g.tab === 'people') setQuiet(true)
+    if (g.tab === 'people' && g.quiet) setQuiet(true)
+    if (g.tab === 'people' && g.inquiries) setInquiryFocus((n) => n + 1)
     if (g.tab === 'page') setNoticeFocus((n) => n + 1)
     setGo((cur) => ({ key: g.tab, nonce: (cur?.nonce ?? 0) + 1 }))
   }
@@ -240,6 +248,9 @@ export default function ChurchAdminScreen() {
             label: 'People',
             content: (
               <div style={{ display: 'grid', gap: 12 }}>
+                <div id="church-inquiries" style={{ scrollMarginTop: 12 }}>
+                  <InquiriesSection churchId={id} />
+                </div>
                 <PeoplePanel
                   churchId={id}
                   insights={insights.data}

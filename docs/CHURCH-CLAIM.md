@@ -313,3 +313,12 @@ plan yet. The operator sends it a billing link (`admin_church_billing_link`).
 The card path also needs the restricted Stripe key to be allowed to create
 Checkout Sessions in setup mode; this was not tested against live Stripe before
 merge.
+
+## On the leader's own player card (0149)
+
+A verified church's leader carries a quiet "Leads {church}" line on their
+player card, and tapping it opens the church — Inquire and Join for a player
+with no church, Visit for one with a church, the account wall for a guest.
+Free claims and unverified churches get no line. Incoming notes appear on the
+dashboard (Home and People). Full rules: `docs/CHURCH-DISCOVERY.md`.
+

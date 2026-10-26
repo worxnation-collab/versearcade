@@ -34,13 +34,15 @@ export interface WallCopy {
   icon: string
   title: string
   line: string
+  /** Runs before either button navigates — e.g. remembering a church to come back to. */
+  onGo?: () => void
 }
 
 /**
  * The wall as a card, for a screen that wants to keep its own header above it.
  * `AccountWall` below is the whole-screen version the route guard uses.
  */
-export function AccountWallCard({ icon, title, line }: WallCopy) {
+export function AccountWallCard({ icon, title, line, onGo }: WallCopy) {
   const navigate = useNavigate()
   return (
     <motion.div
@@ -53,10 +55,10 @@ export function AccountWallCard({ icon, title, line }: WallCopy) {
       <h2 style={{ fontSize: 22, margin: '10px 0 0' }}>{title}</h2>
       <p className="dim" style={{ margin: '8px 0 16px', fontSize: 14.5, lineHeight: 1.55 }}>{line}</p>
       <div style={{ display: 'grid', gap: 10 }}>
-        <Button variant="gold" full onClick={() => navigate('/auth?mode=signup')}>
+        <Button variant="gold" full onClick={() => { onGo?.(); navigate('/auth?mode=signup') }}>
           Create a free account →
         </Button>
-        <Button variant="ghost" full onClick={() => navigate('/auth')}>
+        <Button variant="ghost" full onClick={() => { onGo?.(); navigate('/auth') }}>
           I already have an account
         </Button>
       </div>

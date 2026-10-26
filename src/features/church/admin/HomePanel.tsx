@@ -5,6 +5,7 @@ import { fetchDays, flaggedCount, type AdminSettings, type LeaderInsights, type 
 import { activeThisWeek } from './InsightsPanel'
 import { autoWeekFailed, autoWeekRunning } from '@/store/churchAdmin'
 import { autoWeekRange, autoWeekReason, currentAutoWeek, useAutoWeeks } from './autoWeek'
+import { useJoinInquiries } from './InquiriesSection'
 
 // Home — "This week": what needs a leader, before anything else (2026-10-26).
 //
@@ -19,6 +20,7 @@ import { autoWeekRange, autoWeekReason, currentAutoWeek, useAutoWeeks } from './
 //   • drafted questions the answer check flagged ⚠ → Plan, on that day
 //   • no live notice (none set, or it expired)     → Your page, the notice form
 //   • members who could use a check-in             → People, the quiet fold open
+//   • players asking about the church from a leader's card (0149) → People
 //   • a sermon memo's week (0148): ready, drafting, or failed → Plan
 //     ("record Sunday, review Monday" — the week drafted itself from the memo;
 //     the row is the in-app notice that it is waiting)
@@ -40,7 +42,7 @@ import { autoWeekRange, autoWeekReason, currentAutoWeek, useAutoWeeks } from './
 
 export type HomeGo =
   | { tab: 'plan'; date: string }
-  | { tab: 'people'; quiet: true }
+  | { tab: 'people'; quiet?: true; inquiries?: true }
   | { tab: 'page'; notice: true }
 
 type Row = { key: string; icon: string; title: string; detail: string; go: HomeGo }
@@ -155,6 +157,16 @@ export function HomePanel({
       title: 'Your notice ends soon',
       detail: `“${notice.message.slice(0, 60)}${notice.message.length > 60 ? '…' : ''}” — replace or extend it →`,
       go: { tab: 'page', notice: true },
+    })
+  }
+
+  const { items: asks } = useJoinInquiries(churchId, verified)
+  if (asks?.length) {
+    rows.push({
+      key: 'inquiries', icon: '✉',
+      title: asks.length === 1 ? `${asks[0].username} asked about your church` : `${asks.length} players asked about your church`,
+      detail: 'They wrote from a leader’s player card. Read them →',
+      go: { tab: 'people', inquiries: true },
     })
   }
 

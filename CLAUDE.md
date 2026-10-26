@@ -4726,8 +4726,9 @@ one thing a player can do nothing about: the hall filled the first screen, and
 under it "Your battles" defaulted to whichever bucket had rows in it — so
 somebody with nothing to play and 23 battles out landed on 23 full-size
 "Waiting on their play" cards, with the boards and the team below the fold.
-The order is now: the two battle buttons, your battles, where you stand, the
-boards, then the hall and its ladder. Four rules fall out of it:
+The order is now: the two battle buttons, your battles, where you stand (plus a
+choose-a-team row if you have none), the folded boards, then the keep row and
+its ladder. The header of `BattleHub.tsx` is the map. The rules:
 
 - **The turn tabs default to Your turn, always**, never to whatever is
   populated. An empty Your turn is one short line and the other two tabs are one
@@ -4745,16 +4746,21 @@ boards, then the hall and its ladder. Four rules fall out of it:
   already ended with. It publishes **nothing new**: battle wins have been ranked
   since `0020`, both tiles are your own row, and there is no losses column here
   for the same reason there isn't one in the schema. The board behind it is
-  **open by default** now, reversing the earlier "a board is something you look
-  up occasionally" call — what makes that affordable is the strip, which keeps
-  both numbers on screen whether the fold is open or shut.
-- **The hall moved DOWN, and only the position moved.** The rule is that the
-  room itself is on the tab rather than a link to it; where on the tab is not
-  part of it. It stands with `KeepChallenges` now — a ~230px painting between
-  "Start a new battle" and the battle waiting on you is the one thing here that
-  can wait. `MyKeepScene` names its own faction and tier underneath, so the
-  section heading above it stays the plain "The Keep" rather than saying it
-  twice.
+  **folded by default** (2026-10-26) — the strip already carries both numbers,
+  so an open top-5 board was scroll between the strip and everything below it.
+  A tile tap opens the fold to that tab.
+- **Choosing a team is a compact row, not a trip through the board.** With no
+  team, one "Choose a team" row sits under the strip and unfolds the picker in
+  place (`TeamChooser` over `TeamPicker`, the same picker the Teams tab mounts
+  for changing it). The old path opened two folds and scrolled to a picker
+  inside the board, and shipped twice as a button that silently did nothing.
+  The picker stays a neutral list: no gold shortcut for any one team.
+- **The Keep is a ROW on the tab, and the hall lives in the sheet.** This
+  reverses "the room itself on the tab, never a link to it": the inline ~230px
+  scene was the heaviest thing here and the one thing that can always wait.
+  `KeepRow` names the hall and its level and opens `KeepSheet`, which draws the
+  full scene. Under the two buttons there is ONE helper line (the gathering hour
+  while it's open, otherwise quick match / room code), not three.
 
 **The two daily boxes point at each other now.** Finishing the verse puts a line
 about today's trivia directly under the score, and the trivia recap does the

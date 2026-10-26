@@ -14,6 +14,7 @@ import { useMyChurchAssets } from '@/store/churchAssets'
 import { aboutVerseSeed } from '@/data/cardAbout'
 import { parseReference } from '@/lib/bibleProgress'
 import type { DailyVerse, PlayResult } from '@/types'
+import { LeaderBeside } from './LeaderBeside'
 
 // /play/church — today's verse from YOUR church, as its own run (0128).
 //
@@ -154,9 +155,14 @@ export default function ChurchVerseScreen() {
         </div>
         <p style={{ margin: '8px 0 0', lineHeight: 1.55 }}>{today.text}</p>
         {today.note && (
-          <p className="dim" style={{ margin: '10px 0 0', paddingLeft: 10, borderLeft: '2px solid var(--edge)', fontSize: 13.5, lineHeight: 1.45 }}>
-            {today.note}
-          </p>
+          // The leader who wrote it stands beside it (0146) — or nothing does.
+          <div style={{ marginTop: 10 }}>
+            <LeaderBeside churchId={today.churchId} size={40}>
+              <p className="dim" style={{ margin: 0, paddingLeft: 10, borderLeft: '2px solid var(--edge)', fontSize: 13.5, lineHeight: 1.45 }}>
+                {today.note}
+              </p>
+            </LeaderBeside>
+          </div>
         )}
       </div>
 

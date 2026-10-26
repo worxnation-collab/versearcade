@@ -8,6 +8,9 @@ import type { Plantings } from './yard'
 import type { Statues } from './rivalry'
 import type { ChurchMember } from '@/types'
 import { GENERATED_ART } from '@/data/generatedArt'
+import { LeaderLookFigure } from './leaderLooks'
+import type { ChurchLeaderLook } from '@/store/churchLeaderLook'
+import { useSettings } from '@/store/settings'
 
 // The church, pulled back far enough that you can see the people.
 //
@@ -52,6 +55,12 @@ const WAYPOINTS: CrowdWaypoint[] = [
 const sizeFor = (b: number) =>
   Math.round(42 - ((Math.min(Math.max(b, 5), 26) - 5) / 21) * 15)
 
+// Where the church's leader stands (0146): just right of the path, below the
+// door — in front of the building's footprint (which starts at b 20%), clear
+// of the path the crowd walks up, and in the same depth band as the
+// "by the door" waypoint so the scale matches the people around them.
+const LEADER_SPOT = { x: 59, b: 17 }
+
 export function ChurchScene({
   level,
   members,
@@ -63,6 +72,7 @@ export function ChurchScene({
   arranging = false,
   onBackgroundTap,
   emptyNote = true,
+  leader = null,
 }: {
   level: number
   members: ChurchMember[]
@@ -130,7 +140,15 @@ export function ChurchScene({
    * yet" would be talking about you.
    */
   emptyNote?: boolean
+  /**
+   * The church's leadership, as its leader chose to appear (0146,
+   * `store/churchLeaderLook.ts`). Stands by the door, still and untappable —
+   * a role rather than a player, so it opens no card and wanders nowhere.
+   * Null (no look chosen, unverified, no keys) draws nobody there.
+   */
+  leader?: ChurchLeaderLook | null
 }) {
+  const reduceMotion = useSettings((s) => s.reduceMotion)
   // The painted backdrop, layered OVER the drawn one rather than instead of it
   // — the house rule every other render follows. The gradients below are the
   // fallback, and the pieces it supersedes (the sky and the grass) both ask
@@ -284,6 +302,41 @@ export function ChurchScene({
           statueEditing — a statue is the congregation's, and moving one is
           shared the way choosing one already is (see ChurchStatues). */}
       {statues && <ChurchStatues statues={statues} editing={statueEditing} />}
+
+      {/* Leadership, standing at the door. Drawn before the crowd so the
+          congregation walks in front of them, and pointer-events off so a tap
+          on the lawn (or a plant behind them) still lands. Adults: a touch
+          taller than the starter figures at the same depth, which are drawn
+          at a younger proportion. The figure's own viewBox is 120x170, so
+          `size` is its width and the height follows. */}
+      {leader && (
+        <div
+          aria-label="Church leadership"
+          data-leader-look={leader.look}
+          style={{
+            position: 'absolute',
+            left: `${LEADER_SPOT.x}%`,
+            bottom: `${LEADER_SPOT.b}%`,
+            transform: 'translateX(-50%)',
+            pointerEvents: 'none',
+          }}
+        >
+          <div
+            style={{
+              animation: reduceMotion ? 'none' : 'va-keep-breathe 2.6s ease-in-out infinite alternate',
+              transformOrigin: 'bottom center',
+            }}
+          >
+            <LeaderLookFigure
+              look={leader.look}
+              spec={leader.spec}
+              customArtUrl={leader.customArtUrl}
+              size={Math.round((sizeFor(LEADER_SPOT.b) * 1.2 * 120) / 170)}
+              title="Church leadership"
+            />
+          </div>
+        </div>
+      )}
 
       {/* The congregation, alive: figures drift between the lawn, the path
           and the door on seeded schedules (CrowdLife sorts you to the front

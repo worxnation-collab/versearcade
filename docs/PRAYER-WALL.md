@@ -120,6 +120,44 @@ Reduce-motion keeps the hold (it is the gesture) and drops the flicker.
   tally says how many; never who.
 - No push notification. The mailbox and the compass are the channels this app
   already has.
-- The Upper Room does not draw the lantern yet. The natural next step is a
-  lantern by the room's door that is lit when somebody knelt at your note
-  today — `RoomArt`'s `lit` pattern, gated to your own room like the lamp.
+- No lantern on anybody else's room. The one in yours (below) is drawn by
+  your own room only.
+
+## The lantern by your door (done, 2026-10-26)
+
+Your Upper Room has a lantern hanging by its door while your note is in the
+wall: lit when somebody knelt at it in the last day, dark when nobody has.
+`DoorLantern` in `RoomArt.tsx`, the lampstand's `lit` shape exactly: a flame or
+a dark wick, never a count, never a brighter flame for more prayers, never a
+name. The answer is `my_prayer_wall` → `mine.lit` (0099), which is a
+rolling 24 hours on the server because a note is one row shared by kneelers in
+every time zone. No migration.
+
+- **Yours only, by construction.** `RoomScene` takes an optional `lantern`;
+  `RoomSection` passes it and the visit sheet never does, so a visitor cannot
+  read "somebody prayed for them today" off somebody else's doorpost. It is
+  not drawn at all outside your own room.
+- **Never on a postcard.** The postcard serialises your own room's live SVG,
+  so the lantern's group carries `data-room-private` and
+  `sanitizeClone` strips it.
+- **Online-only, and it fails closed.** It is drawn only when the wall store
+  says `available` AND you have a note. A guest, a keyless build and a server
+  without 0099 all read `available: false` and get no lantern rather than a
+  dark one that could never light; with no note there is nothing for it to be
+  about, so there is none.
+- **Where the door is.** None of the five room paintings shows a door — the
+  way in is the viewer's side — so it hangs on an iron bracket off the frame's
+  right edge, at latch height. Each painting has its own spot
+  (`SCENE_DOOR` in `roomScenes.ts`), plus `CHAMBER_DOOR` for the drawn room;
+  re-measure them with the furnishing spots if a painting is replaced.
+- **The personal-prayer lamp is owner-only too** (2026-10-26). The room's
+  `room_lampstand` used to default to LIT everywhere but your own room, which
+  meant your own postcard carried the real answer to "did you pray today".
+  Now `lit` defaults to false, only `RoomSection` passes `usePrayer().today >
+  0`, and the flame's group is `data-room-private`, so visitors and every
+  postcard see the cold wick. Both lights — the lantern (somebody prayed for
+  you) and the lamp (you prayed) — are visible on one screen: your own room.
+  No count, no brighter flame, nothing new sent; both LOCAL and ONLINE paths
+  go through the prayer store unchanged.
+- It is not tappable. The wall is one tap away on the map and the compass;
+  a doorpost that navigates would be a second door to the same place.

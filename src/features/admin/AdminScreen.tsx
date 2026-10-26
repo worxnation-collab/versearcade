@@ -337,6 +337,7 @@ function Churches() {
   return (
     <div style={{ display: 'grid', gap: 18 }}>
       <FoundingChurches />
+      <LeaderAvatarRequests />
       <SelfServeClaims />
       <ChurchClaims />
       <Promotions />
@@ -379,8 +380,15 @@ function FoundingChurches() {
     supabase?.rpc('admin_church_addons').then(({ data, error }) => {
       if (!error) setGen(new Set(((data as { church_id: string }[]) ?? []).map((r) => r.church_id)))
     })
+  // The Custom Leader Avatar add-on (0136), the same shape as the line above.
+  const [avatar, setAvatar] = useState<Set<string>>(new Set())
+  const loadAvatar = () =>
+    supabase?.rpc('admin_church_avatar_addons').then(({ data, error }) => {
+      if (!error) setAvatar(new Set((data as string[]) ?? []))
+    })
   const load = () => {
     void loadGen()
+    void loadAvatar()
     return supabase?.from('churches').select('id,name,city,region,verified,logo_url').eq('verified', true).order('name')
       .then(({ data }) => setLive((data as FoundingRow[]) ?? []))
   }
@@ -400,6 +408,20 @@ function FoundingChurches() {
     }
     setMsg(on ? `${c.name} has the Content Generation package.` : `${c.name}'s Content Generation package is off.`)
     void loadGen()
+  }
+
+  const setCustomAvatar = async (c: FoundingRow, on: boolean) => {
+    setBusy(`ava:${c.id}`)
+    setMsg(null)
+    const { data, error } = await supabase!.rpc('admin_set_church_custom_avatar', { p_church_id: c.id, p_enabled: on })
+    setBusy(null)
+    const res = data as { ok?: boolean; reason?: string } | null
+    if (error || !res?.ok) {
+      setMsg(res?.reason === 'needs_base' ? `${c.name} needs to be a Founding Church first.` : `Couldn't update ${c.name}.`)
+      return
+    }
+    setMsg(on ? `${c.name} can send a Custom Leader Avatar request.` : `${c.name}'s Custom Leader Avatar is off.`)
+    void loadAvatar()
   }
 
   const search = async () => {
@@ -471,6 +493,7 @@ function FoundingChurches() {
           <div className="faint" style={{ fontSize: 11 }}>
             {where(c) || 'Location not listed'} · {c.verified ? 'Founding Church' : 'Free'}
             {gen.has(c.id) ? ` · Content Generation${c.verified ? '' : ' (inert)'}` : ''}
+            {avatar.has(c.id) ? ` · Custom Avatar${c.verified ? '' : ' (inert)'}` : ''}
           </div>
         </div>
         <Button variant={c.verified ? 'ghost' : 'gold'} disabled={busy === c.id} onClick={() => set(c, !c.verified)}>
@@ -481,6 +504,11 @@ function FoundingChurches() {
         {(c.verified || gen.has(c.id)) && (
           <button className="pill" disabled={busy === `gen:${c.id}`} onClick={() => setGeneration(c, !gen.has(c.id))} style={{ fontSize: 12, fontWeight: 800 }}>
             {busy === `gen:${c.id}` ? '…' : gen.has(c.id) ? '✨ Content Generation: on — turn off' : '✨ Add Content Generation'}
+          </button>
+        )}
+        {(c.verified || avatar.has(c.id)) && (
+          <button className="pill" disabled={busy === `ava:${c.id}`} onClick={() => setCustomAvatar(c, !avatar.has(c.id))} style={{ fontSize: 12, fontWeight: 800 }}>
+            {busy === `ava:${c.id}` ? '…' : avatar.has(c.id) ? '🧑 Custom Avatar: on — turn off' : '🧑 Add Custom Leader Avatar'}
           </button>
         )}
         <button className="pill" disabled={busy === `inv:${c.id}`} onClick={() => invite(c)} style={{ fontSize: 12, fontWeight: 800 }}>
@@ -536,6 +564,96 @@ function FoundingChurches() {
       ) : (
         <div style={{ display: 'grid', gap: 8 }}>{live.map(row)}</div>
       )}
+    </div>
+  )
+}
+
+// Custom Leader Avatar requests (0136). The one place the reference photos are
+// ever shown: start one (it locks the leader's photos), deliver it with an
+// https art URL (it becomes that leader's look at once), or decline it with a
+// note (which frees the church's purchase for another go). The photos are
+// a stranger's face — look, make the avatar, and leave them here.
+interface AvatarRequestRow {
+  id: string
+  church_id: string
+  church: string
+  username: string | null
+  status: 'submitted' | 'in_progress' | 'delivered' | 'declined'
+  notes: string | null
+  art_url: string | null
+  operator_note: string | null
+  created_at: string
+  photos: string[] | null
+}
+
+function LeaderAvatarRequests() {
+  const [rows, setRows] = useState<AvatarRequestRow[] | null>(null)
+  const [art, setArt] = useState<Record<string, string>>({})
+  const [note, setNote] = useState<Record<string, string>>({})
+  const [busy, setBusy] = useState<string | null>(null)
+  const [msg, setMsg] = useState<string | null>(null)
+
+  const load = () =>
+    supabase?.rpc('admin_church_avatar_requests').then(({ data, error }) => setRows(error ? [] : ((data as AvatarRequestRow[]) ?? [])))
+  useEffect(() => { void load() }, [])
+
+  const move = async (r: AvatarRequestRow, status: AvatarRequestRow['status']) => {
+    setBusy(r.id)
+    setMsg(null)
+    const { data, error } = await supabase!.rpc('admin_update_church_avatar_request', {
+      p_id: r.id, p_status: status, p_art_url: (art[r.id] ?? '').trim() || null, p_operator_note: (note[r.id] ?? '').trim() || null,
+    })
+    setBusy(null)
+    const res = data as { ok?: boolean; reason?: string } | null
+    if (error || !res?.ok) {
+      setMsg(
+        res?.reason === 'needs_art' ? 'Paste the finished art URL first.'
+          : res?.reason === 'bad_url' ? 'The art URL has to start with https://.'
+          : res?.reason === 'another_live' ? 'That church already has another live request.'
+          : 'Couldn’t update that request.',
+      )
+      return
+    }
+    void load()
+  }
+
+  if (!rows || rows.length === 0) return null
+  return (
+    <div>
+      <h3 style={{ fontSize: 14, margin: '0 0 8px' }} className="dim">Custom Leader Avatar requests</h3>
+      {msg && <p style={{ color: 'var(--coral)', fontSize: 13, margin: '0 0 8px' }}>{msg}</p>}
+      <div style={{ display: 'grid', gap: 8 }}>
+        {rows.map((r) => (
+          <div key={r.id} className="card" style={{ display: 'grid', gap: 8, padding: '10px 12px' }}>
+            <div style={{ fontSize: 13 }}>
+              <b>{r.church}</b> · @{r.username ?? 'unknown'} · <span className="dim">{r.status.replace('_', ' ')}</span>
+              <div className="faint" style={{ fontSize: 11 }}>{new Date(r.created_at).toLocaleString()}</div>
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {(r.photos ?? []).map((b64, i) => (
+                <a key={i} href={`data:image/jpeg;base64,${b64}`} download={`${r.church}-${r.username ?? 'leader'}-${i + 1}.jpg`}>
+                  <img src={`data:image/jpeg;base64,${b64}`} alt={`Reference ${i + 1}`} style={{ width: 84, height: 84, objectFit: 'cover', borderRadius: 10, display: 'block' }} />
+                </a>
+              ))}
+            </div>
+            {r.notes && <div style={{ fontSize: 13 }}>“{r.notes}”</div>}
+            {r.art_url && <div className="faint" style={{ fontSize: 11, wordBreak: 'break-all' }}>Art: {r.art_url}</div>}
+            {r.status !== 'delivered' && (
+              <>
+                <input value={art[r.id] ?? ''} onChange={(e) => setArt((m) => ({ ...m, [r.id]: e.target.value }))}
+                  placeholder="Finished art (https://…, full-length PNG)" autoCapitalize="none" autoCorrect="off" inputMode="url" />
+                <input value={note[r.id] ?? ''} onChange={(e) => setNote((m) => ({ ...m, [r.id]: e.target.value }))}
+                  placeholder="A note to the leader (optional; shown on decline)" maxLength={280} />
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {r.status === 'submitted' && <button className="pill" disabled={busy === r.id} onClick={() => move(r, 'in_progress')}>Start</button>}
+                  <button className="pill" disabled={busy === r.id} onClick={() => move(r, 'delivered')}>Deliver</button>
+                  {r.status !== 'declined' && <button className="pill" disabled={busy === r.id} onClick={() => move(r, 'declined')}>Decline</button>}
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

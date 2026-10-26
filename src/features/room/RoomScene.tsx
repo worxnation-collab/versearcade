@@ -4,9 +4,9 @@ import { CrowdLife, type CrowdMember, type CrowdWaypoint } from '@/components/Cr
 import { ROOM_SURFACE, furnishingName, type RoomMount } from '@/data/room'
 import { arrangeAnchors, arrangementById } from '@/data/layouts'
 import type { RoomPlacements } from '@/store/room'
-import { RoomChamber, FurnishingProp } from './RoomArt'
+import { RoomChamber, FurnishingProp, DoorLantern } from './RoomArt'
 import { ArcadeCabinet } from '@/features/arcade/ArcadeCabinet'
-import { SCENE_WAYPOINTS, sceneSpot, useRoomScene } from './roomScenes'
+import { SCENE_WAYPOINTS, doorSpot, sceneSpot, useRoomScene } from './roomScenes'
 
 // The Upper Room as a place you can look at — the chamber at its tier, whatever
 // is in it, and whoever lives there.
@@ -67,7 +67,8 @@ export function RoomScene({
   onTapSelf,
   /** Skip the generated painting — the postcard can only serialise drawn SVG. */
   flat = false,
-  lampLit = true,
+  lampLit = false,
+  lantern,
 }: {
   tier: number
   /** Which arrangement the owner picked (`data/layouts.ts`, 0112). Undefined
@@ -93,7 +94,18 @@ export function RoomScene({
   onTapSelf?: () => void
   /** Skip the generated painting — the postcard can only serialise drawn SVG. */
   flat?: boolean
+  /** Whether YOU prayed today (`usePrayer().today > 0`). Owner-only, like the
+   *  lantern: RoomSection passes it, the visit sheet never does, so a visitor
+   *  sees a cold wick. Undefined is dark — the fail-closed answer. */
   lampLit?: boolean
+  /**
+   * The Prayer Wall's lantern by the door (0099). YOUR room only, and only
+   * while your note is in the wall: RoomSection passes it, the visit sheet
+   * never does, so a visitor cannot read "somebody prayed for them today" off
+   * somebody else's doorpost. Undefined draws nothing — which is also what a
+   * keyless build and a server without 0099 get.
+   */
+  lantern?: { lit: boolean }
 }) {
   // Where everything stands, as this arrangement has it. Memoised because it
   // is pure over (surface, arrangement) and the scene re-renders on every
@@ -200,6 +212,16 @@ export function RoomScene({
             </motion.g>
           )
         })}
+        {/* Marked private: the postcard serialises this very SVG and strips
+            [data-room-private], so a shared card never carries the lantern. */}
+        {lantern && (() => {
+          const d = doorSpot(randomScene)
+          return (
+            <g data-room-private="">
+              <DoorLantern x={d.x} y={d.y} scale={d.s} lit={lantern.lit} />
+            </g>
+          )
+        })()}
       </svg>
 
       {/* Alive, not pasted — the same engine the hall, the churchyard and the

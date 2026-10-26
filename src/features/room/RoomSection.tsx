@@ -32,6 +32,7 @@ import { FurnishingThumb } from './RoomArt'
 import { sharePostcard } from '@/lib/postcard'
 import { PrayerSheet } from '@/features/prayer/PrayerSheet'
 import { usePrayer } from '@/store/prayer'
+import { usePrayerWall } from '@/store/prayerWall'
 import { PaintedIcon } from '@/components/PaintedIcon'
 
 // Your Upper Room, on /you — the one surface that owns furnishing it.
@@ -60,6 +61,14 @@ export function RoomSection() {
   // no count, no streak, no rung — it resets by itself every day and the only
   // thing it can say is "today, yes".
   const lampLit = usePrayer((s) => s.today > 0)
+  // The Prayer Wall's lantern by the door: there while your note is in the
+  // wall, lit when somebody knelt at it in the last day (`mine.lit`, 0099).
+  // Online-only like the wall itself — the store reports `available: false`
+  // for a guest, a keyless build and a server without 0099, and then no
+  // lantern is drawn at all rather than a dark one that could never light.
+  const wallAvailable = usePrayerWall((s) => s.available)
+  const myNote = usePrayerWall((s) => s.mine)
+  const lantern = wallAvailable && myNote ? { lit: myNote.lit } : undefined
   const [praying, setPraying] = useState(false)
   const [prayerOffered, setPrayerOffered] = useState(false)
 
@@ -97,6 +106,7 @@ export function RoomSection() {
     // would stay dark until you opened the sheet — which is the one screen
     // where you already know the answer.
     void usePrayer.getState().load()
+    void usePrayerWall.getState().load()
   }, [])
 
   // Re-read the numbers whenever anything they depend on changes. Subscribing
@@ -295,6 +305,7 @@ export function RoomSection() {
         layout={layout}
         onRemove={(a) => void removeAt(a)}
         lampLit={lampLit}
+        lantern={lantern}
         onTapSelf={() => { juice.tap(); setPrayerOffered(true) }}
         onArcade={() => { juice.select(); navigate('/arcade') }}
       />

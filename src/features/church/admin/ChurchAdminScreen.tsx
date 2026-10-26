@@ -10,6 +10,7 @@ import { TodayVerseForm } from './TodayVerseForm'
 import { OverviewPanel, PeoplePanel, ActivityPanel, SummaryPanel, useInsights, useSummary } from './InsightsPanel'
 import { NoticesPanel } from './NoticesPanel'
 import { SharePanel } from './SharePanel'
+import { LeaderLookPanel } from './LeaderLookPanel'
 
 // /church/:id/admin — the tools a church's verified leadership uses.
 //
@@ -47,6 +48,12 @@ import { SharePanel } from './SharePanel'
 // or the portal's confirm step for a card-billed Verified plan) and a "Manage
 // plan" link; the App Store build draws neither (`churchBillingPortalVisible`).
 // The grant itself is still the webhook's — the screen only re-reads.
+//
+// A third row since 0136: the CUSTOM LEADER AVATAR, a one-time add-on on the
+// same base. "Your look" (verified leadership) is where every leader picks one
+// of five default looks, and where the add-on's photo request is sent. A leader
+// who has not chosen a look yet lands on that tab first — the claim screen
+// sends a new leader straight here, so that IS the setup step.
 export default function ChurchAdminScreen() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
@@ -65,10 +72,14 @@ export default function ChurchAdminScreen() {
   // grants the Suite usually lands a few seconds after the redirect.
   const [params, setParams] = useSearchParams()
   const [upgraded] = useState(() => params.get('upgraded') === '1')
+  // Back from the one-time Custom Leader Avatar checkout (?avatar=1): the same
+  // freeze, strip and re-read, and the dashboard opens on "Your look".
+  const [avatarPaid] = useState(() => params.get('avatar') === '1')
   useEffect(() => {
-    if (!upgraded) return
+    if (!upgraded && !avatarPaid) return
     const next = new URLSearchParams(params)
     next.delete('upgraded')
+    next.delete('avatar')
     setParams(next, { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -91,9 +102,11 @@ export default function ChurchAdminScreen() {
     void load()
   }, [load])
 
-  const granted = !!ent?.churchLeader && !!ent?.contentGeneration
+  const granted = upgraded
+    ? !!ent?.churchLeader && !!ent?.contentGeneration
+    : !!ent?.customLeaderAvatar
   useEffect(() => {
-    if (!upgraded || granted) return
+    if ((!upgraded && !avatarPaid) || granted) return
     let tries = 0
     const t = window.setInterval(() => {
       tries += 1
@@ -101,7 +114,7 @@ export default function ChurchAdminScreen() {
       if (tries >= 10) window.clearInterval(t)
     }, 3000)
     return () => window.clearInterval(t)
-  }, [upgraded, granted, load])
+  }, [upgraded, avatarPaid, granted, load])
 
   const back = () => {
     juice.select?.()
@@ -136,6 +149,8 @@ export default function ChurchAdminScreen() {
 
   const leader = ent ? ent.churchLeader : settings.verified
   const generation = leader && !!ent?.contentGeneration
+  // Setup: verified leadership with no look chosen yet opens on the picker.
+  const setup = settings.verified && !!ent && ent.churchLeader && !ent.leaderLook
   const tabs = [
     ...(settings.verified
       ? [
@@ -155,6 +170,7 @@ export default function ChurchAdminScreen() {
           },
           { key: 'people', label: 'People', content: <PeoplePanel churchId={id} insights={insights.data} failed={insights.failed} /> },
           { key: 'activity', label: 'Activity', content: <ActivityPanel churchId={id} /> },
+          { key: 'look', label: 'Your look', content: <LeaderLookPanel churchId={id} ent={ent} setup={setup} paid={avatarPaid} onChanged={load} /> },
         ]
       : [{ key: 'overview', label: 'Overview', content: <SummaryPanel summary={summary.data} failed={summary.failed} /> }]),
     {
@@ -178,21 +194,31 @@ export default function ChurchAdminScreen() {
       <h1 style={{ fontSize: 24, margin: '0 0 4px' }}>Leadership</h1>
       <div className="dim" style={{ fontSize: 13.5, marginBottom: 12 }}>{settings.name}</div>
 
-      <PlanStatus leader={leader} generation={generation} held={!!ent?.contentGenerationHeld} churchId={id} billing={billing} upgraded={upgraded} />
+      <PlanStatus
+        leader={leader}
+        generation={generation}
+        held={!!ent?.contentGenerationHeld}
+        avatar={leader && !!ent?.customLeaderAvatar}
+        avatarHeld={!!ent?.customLeaderAvatarHeld}
+        churchId={id}
+        billing={billing}
+        upgraded={upgraded}
+      />
 
-      <TabbedSection tabs={tabs} defaultOpen defaultTab="overview" />
+      <TabbedSection tabs={tabs} defaultOpen defaultTab={setup || avatarPaid ? 'look' : 'overview'} />
       <div style={{ height: 32 }} />
     </Page>
   )
 }
 
-// What this church holds, stated plainly: two rows, each on or not. On the
+// What this church holds, stated plainly: three rows, each on or not. On the
 // web the locked Content Generation row is also the way to get it — Church
 // Suite is the one price that carries it, so there is no separate add-on to
 // sell — and an invoiced church is told to reply to an invoice instead, since
 // Stripe's portal cannot change an invoiced plan.
-function PlanStatus({ leader, generation, held, churchId, billing, upgraded }: {
+function PlanStatus({ leader, generation, held, churchId, billing, upgraded, avatar, avatarHeld }: {
   leader: boolean; generation: boolean; held: boolean; churchId: string; billing: ChurchBilling | null; upgraded: boolean
+  avatar: boolean; avatarHeld: boolean
 }) {
   const web = churchBillingPortalVisible()
   const card = !!billing?.subscribed && !billing.invoiced
@@ -202,7 +228,7 @@ function PlanStatus({ leader, generation, held, churchId, billing, upgraded }: {
         on={leader}
         name="Church Leader"
         detail={leader
-          ? 'Your verse and questions, series, notes, and each member’s play by name.'
+          ? 'Your verse and questions, series, notes, and each member’s play by name, and five leader looks.'
           : 'Free claim: congregation totals and one notice on your page. Church Leader adds your own verse and member names.'}
       />
       <PlanRow
@@ -225,6 +251,17 @@ function PlanStatus({ leader, generation, held, churchId, billing, upgraded }: {
         )}
         {web && card && (generation || !upgraded) && <ManagePlan churchId={churchId} />}
       </PlanRow>
+      <PlanRow
+        on={avatar}
+        name="Custom Leader Avatar"
+        detail={
+          avatar
+            ? 'Send up to three photos and notes from “Your look”, and we make your avatar.'
+            : avatarHeld
+              ? 'On your plan, and switches on with Church Leader.'
+              : 'A one-time add-on to Church Leader. Not on this church’s plan.'
+        }
+      />
       {billing?.subscribed && web && <BillingRow churchId={churchId} billing={billing} />}
     </div>
   )

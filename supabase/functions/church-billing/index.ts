@@ -22,6 +22,13 @@
 //        → "Unlock with Church Suite": a portal session on the confirm step of
 //          Verified → Suite for a card subscription, or a Suite Checkout for a
 //          church with none (a free claim). Same leadership check.
+//   POST { action: 'avatar', church } + the same header
+//        → the one-time $79 Custom Leader Avatar (0136, 0145): a Checkout
+//          Session in PAYMENT mode for a verified church that does not hold
+//          the add-on yet. The webhook grants it on `checkout.session.completed`
+//          with `payment_status: 'paid'` through `billing_grant_custom_avatar`,
+//          the same flag the operator toggle sets. Card only, so a paid
+//          session is paid when it completes — no delayed method to wait on.
 //   POST with a `stripe-signature` header → the webhook
 //
 // A SELF-SERVE CLAIM (0134) uses the same three doors with `c` in place of `t`:
@@ -80,7 +87,7 @@
 //     or Vault via stripe_church_webhook_secret() (0132), which is where it is
 //     (pinned to API version 2024-06-20, the version STRIPE_VERSION reads)
 // Either missing ⇒ 503 and nothing is created or changed. STRIPE_PRICE_* may
-// override the four price ids below (for a test-mode run).
+// override any of the price ids below (for a test-mode run).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -107,7 +114,11 @@ const PRICES = {
     month: Deno.env.get('STRIPE_PRICE_SUITE_MONTH') || 'price_1UTb6qHlxD9PZQmbVvypDKKU',
     year: Deno.env.get('STRIPE_PRICE_SUITE_YEAR') || 'price_1UTb6tHlxD9PZQmbP6YBOfU9',
   },
+  // "Custom Leader Avatar" (prod_VVGkrkRfTdTZCo, created 2026-10-25): $79, one-time.
+  avatar: Deno.env.get('STRIPE_PRICE_AVATAR') || 'price_1UUGDMHlxD9PZQmbiQYsps27',
 }
+/** The metadata a one-time avatar session carries, and the only thing the webhook grants on. */
+const AVATAR_PRODUCT = 'custom_leader_avatar'
 const SITE = 'https://versearcade.org'
 /** The Monday after Easter Sunday 2027 (28 March), at midnight US Eastern. */
 const FOUNDING_UNTIL = Date.parse('2027-03-29T04:00:00Z')
@@ -314,6 +325,18 @@ async function webhook(req: Request): Promise<Response> {
         p_setup_intent_id: typeof o.setup_intent === 'string' ? o.setup_intent : null,
       })
       if (error) throw new Error(`activate free: ${error.message}`)
+      result = data
+    }
+  } else if ((event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') && o.mode === 'payment') {
+    // The one-time Custom Leader Avatar. Granted only when Stripe says PAID and
+    // the session names the product; the session id makes a retry a no-op.
+    // The session asks for card only (valid at the pinned API version), so it
+    // is paid on completion; the async event is handled in case a delayed
+    // method is ever allowed — add it to the endpoint's events if so.
+    const md = (o.metadata ?? {}) as Record<string, string>
+    if (md.product === AVATAR_PRODUCT && md.church_id && o.payment_status === 'paid' && typeof o.id === 'string') {
+      const { data, error } = await admin.rpc('billing_grant_custom_avatar', { p_church_id: md.church_id, p_session_id: o.id })
+      if (error) throw new Error(`grant avatar: ${error.message}`)
       result = data
     }
   } else if (event.type === 'checkout.session.completed' && o.mode === 'subscription' && typeof o.subscription === 'string') {
@@ -536,6 +559,43 @@ async function upgrade(req: Request, b: Record<string, unknown>): Promise<Respon
   return json({ url: s.url })
 }
 
+// "Get a custom avatar — $79" on the dashboard's "Your look" tab. Leadership
+// of THIS church (the leaderOf check), a verified church (the add-on stands on
+// the base tier, as 0136's `church_avatar_can` says), and not already held —
+// a second purchase would be money for a request the church cannot make, since
+// 0136 allows one live request per church.
+async function avatar(req: Request, b: Record<string, unknown>): Promise<Response> {
+  const who = await leaderOf(req, b.church)
+  if (who instanceof Response) return who
+  const church = who.church
+  const [{ data: c }, { data: addon }, bill] = await Promise.all([
+    admin.from('churches').select('verified').eq('id', church).maybeSingle(),
+    admin.from('church_addons').select('custom_leader_avatar').eq('church_id', church).maybeSingle(),
+    billOf(church),
+  ])
+  if (!c?.verified) return json({ error: 'needs_base', message: 'The Custom Leader Avatar is for a verified church.' }, 403)
+  if (addon?.custom_leader_avatar) return json({ error: 'already', message: 'This church already has a custom avatar on its plan.' }, 409)
+  const back = dashboard(church)
+  const params: Record<string, string | number> = {
+    mode: 'payment',
+    'payment_method_types[0]': 'card',
+    client_reference_id: church,
+    'metadata[church_id]': church,
+    'metadata[product]': AVATAR_PRODUCT,
+    'metadata[leader_id]': who.uid,
+    'payment_intent_data[metadata][church_id]': church,
+    'payment_intent_data[metadata][product]': AVATAR_PRODUCT,
+    'line_items[0][price]': PRICES.avatar,
+    'line_items[0][quantity]': 1,
+    success_url: `${back}?avatar=1`,
+    cancel_url: back,
+  }
+  if (bill?.stripe_customer_id) params.customer = bill.stripe_customer_id
+  else if (who.email) params.customer_email = who.email
+  const s = await stripe<{ url: string }>('POST', 'checkout/sessions', params)
+  return json({ url: s.url })
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   // Both secrets live in Vault (0132, 0133); a function secret of the same
@@ -549,7 +609,7 @@ Deno.serve(async (req) => {
     STRIPE_KEY = typeof data === 'string' ? data : ''
   }
   if (!STRIPE_KEY || !WEBHOOK_SECRET || !PRICES.base.month || !PRICES.base.year || !PRICES.addon.month || !PRICES.addon.year
-      || !PRICES.suite.month || !PRICES.suite.year) {
+      || !PRICES.suite.month || !PRICES.suite.year || !PRICES.avatar) {
     return json({ error: 'billing is not configured' }, 503)
   }
   try {
@@ -570,6 +630,7 @@ Deno.serve(async (req) => {
       const b = await req.json().catch(() => ({})) as Record<string, unknown>
       if (b.action === 'portal') return await portal(req, b.church, b.flow)
       if (b.action === 'upgrade') return await upgrade(req, b)
+      if (b.action === 'avatar') return await avatar(req, b)
       if (b.action === 'setup') {
         const free = await freeClaimFor(b.f)
         if (!free) return json({ error: 'unknown link' }, 404)

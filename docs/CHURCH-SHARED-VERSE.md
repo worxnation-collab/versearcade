@@ -198,6 +198,16 @@ Not yet verified end to end against the model (as of 0122). Live checks:
 
 ## Content Generation: the add-on, drafts and approval (0127)
 
+**Its art** (2026-10-26): five paintings for the package's surfaces — the
+pastor's study (`cg_study`), a week of light from one sermon (`cg_week`), a
+draft awaiting its seal (`cg_draft`), the sealed approval (`cg_approved`), and
+"for your congregation only" (`cg_private`) — in the verse-post style, from
+`art/church-content.json` into `public/keep/cg_*.jpg`, wired through
+`GENERATED_ART` like every other render. They are opaque 16:9 scenes (JPEG,
+no key), so `check-art` has nothing to check on them. Nothing draws them yet;
+a surface that wants one looks its id up in `GENERATED_ART` and keeps a drawn
+or plain fallback, the house rule.
+
 **Two entitlements.** `church_entitlements(church)` tells a church's own
 leadership what it holds:
 

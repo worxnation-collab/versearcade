@@ -3,6 +3,7 @@ import { useJuice } from '@/juice/useJuice'
 import type { VerseBackend, WeekDay } from '@/store/churchAdmin'
 import { DraftReview, WeekDraftPanel } from './WeekDraftPanel'
 import { StudyTopicWeek } from './StudyTopicWeek'
+import { AutoWeekCard, useAutoWeeks } from './autoWeek'
 
 // "Plan your week" — the Plan tab's one drafting flow (2026-10-26).
 //
@@ -23,6 +24,11 @@ import { StudyTopicWeek } from './StudyTopicWeek'
 //      a transcript or a memo mid-upload.
 //   3. REVIEW AND APPROVE — `DraftReview`, unchanged: open a day, reorder,
 //      discard, approve the set. A flagged ⚠ day keeps "Approve all" waiting.
+//
+// RECORD SUNDAY, REVIEW MONDAY (0148): the sermon source can hand the memo to
+// the server, which drafts the week by itself. `AutoWeekCard` sits above step
+// 1 and says what became of it — drafting, ready (the drafts are in step 3),
+// or failed with Retry — and refreshes the planner when the week lands.
 //
 // Drawn only when the backend carries `draftWeek` (the Content Generation
 // package). Without it the Plan tab is the day-by-day form, which is also what
@@ -63,6 +69,7 @@ export function PlanWeek({
   const juice = useJuice()
   const [source, setSource] = useState<Source>('sermon')
   const waiting = (week ?? []).some((w) => w.verse?.status === 'draft')
+  const auto = useAutoWeeks(churchId, !!backend.autoWeek)
 
   return (
     <section aria-label="Plan your week" style={{ display: 'grid', gap: 12, minWidth: 0 }}>
@@ -72,6 +79,8 @@ export function PlanWeek({
           Drafts are saved for you to read and approve. Your members see nothing until you do.
         </p>
       </div>
+
+      {backend.autoWeek && <AutoWeekCard churchId={churchId} jobs={auto.jobs} reload={auto.reload} onLanded={onChanged} />}
 
       <Step n={1} title="Start from">
         <div role="radiogroup" aria-label="Start from" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 8 }}>
@@ -107,7 +116,7 @@ export function PlanWeek({
 
       <Step n={2} title={source === 'sermon' ? 'Draft the week from your sermon' : source === 'topic' ? 'Draft the week from a topic' : 'Draft the week from a passage'}>
         <div hidden={source !== 'sermon'}>
-          <WeekDraftPanel churchId={churchId} backend={backend} today={today} source="sermon" embedded onDrafted={onDrafted} />
+          <WeekDraftPanel churchId={churchId} backend={backend} today={today} source="sermon" embedded onDrafted={onDrafted} onQueued={() => void auto.reload()} />
         </div>
         <div hidden={source !== 'topic'}>
           <StudyTopicWeek churchId={churchId} backend={backend} today={today} embedded onDrafted={onDrafted} onChanged={onChanged} />

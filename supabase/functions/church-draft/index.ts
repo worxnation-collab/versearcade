@@ -105,6 +105,26 @@
 //       anything older than six hours is pruned on the next upload.
 //   Formats: m4a/mp4, mp3, wav, aac, ogg/opus, flac, webm, aiff, up to 50 MB.
 //
+// AUTO WEEK (0148) — "record Sunday, review Monday". The memo path above, with
+// the week attached, so the leader never presses the draft button:
+//   POST { mode: 'auto_week', church_id, path, series, passages, start, days?, guidance? }
+//     → { ok: true, job } at once — the job is a `church_auto_weeks` row, and the
+//       work carries on after the answer (EdgeRuntime.waitUntil), so the phone
+//       can be closed the moment the upload is done.
+// The job runs the two calls the hand path makes, unchanged and as the caller:
+// `transcribe` (one memo use, released on failure), then `week` with `dates`
+// (units per day, refunded for every day not saved; scripture from the
+// passages the client fetched from the BSB; answers checked; drafts saved,
+// never over a live day). The dates are the first `days` EMPTY days from
+// `start` — a day holding a draft is left alone too, so nothing is replaced.
+// Each stage runs in its own invocation (`auto_week_step`, a call to itself
+// with the leader's token) so neither shares the other's wall clock. A failure
+// at either stage leaves the job 'failed' with the stage's own reason; the
+// transcript, once made, is kept on the job so a retry skips straight to the
+// week, and is cleared when the week lands.
+//   POST { mode: 'auto_week_retry', church_id, job } → { ok: true, job }
+// Nothing is approved here, ever: the leader reviews the drafts on Plan.
+//
 // TOPIC MODE (study-topic week): POST { mode: 'topic', church_id, topic, book?, api? }
 //   →  { ok: true, series, passages: string[], left } | { ok: false, reason }
 // References only: up to three short single-chapter passages and a series
@@ -149,7 +169,7 @@ const STATUS: Record<string, number> = {
   bad_reference: 422, needs_series: 422, bad_days: 422, needs_notes: 422, bad_passages: 422,
   bad_dates: 422, needs_topic: 422, topic_unclear: 422,
   bad_memo: 422, memo_format: 415, memo_too_big: 413, memo_too_long: 413, memo_missing: 404, memo_silent: 422,
-  memo_limit: 429, transcribe_failed: 502,
+  memo_limit: 429, transcribe_failed: 502, no_open_days: 409, not_failed: 409, not_found: 404,
   not_authenticated: 401, not_leadership: 403, not_verified: 403, no_addon: 403,
   not_saved: 409,
   limit: 429,
@@ -764,7 +784,7 @@ async function handleWeek(body: Record<string, unknown>, authHeader: string, rep
     const outcome = !saved.length ? 'not_saved' : saved.length < dates.length ? 'short' : 'ok'
     await logRun({ ...run, unitsUsed: saved.length, daysReturned: returned, daysSaved: saved.length, outcome })
     if (!saved.length) return reply({ ok: false, reason: 'not_saved', refused, missing, left })
-    return reply({ ok: true, asked: days, saved, refused, missing, left, ...told })
+    return reply({ ok: true, asked: days, saved, refused, missing, left, flagged: checks.flagged, ...told })
   } catch (e) {
     console.error('church-draft', (e as Error).message)
     return fail('unavailable')
@@ -1119,6 +1139,199 @@ async function handleTranscribe(body: Record<string, unknown>, authHeader: strin
   }
 }
 
+// ---------------------------------------------------------------------------
+// Auto week (0148): a memo that drafts its own week, as a job.
+// ---------------------------------------------------------------------------
+declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined
+const AUTO_STALE_MS = 12 * 60 * 1000
+const AUTO_LOOKAHEAD = 42
+
+/** Keep working after the answer has gone; without the runtime (tests), finish first. */
+async function later(p: Promise<unknown>): Promise<void> {
+  const safe = p.catch((e) => console.error('church-draft auto', (e as Error).message))
+  if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime?.waitUntil) EdgeRuntime.waitUntil(safe)
+  else await safe
+}
+
+type AutoJob = {
+  id: string; church_id: string; created_by: string | null; status: string; memo_path: string | null
+  transcript: string | null; series: string; passages: unknown; guidance: string | null
+  start_date: string; days: number; updated_at: string
+}
+
+async function autoJob(id: string): Promise<AutoJob | null> {
+  const { data } = await admin().from('church_auto_weeks').select('*').eq('id', id).maybeSingle()
+  return (data as AutoJob | null) ?? null
+}
+async function autoSet(id: string, patch: Record<string, unknown>): Promise<void> {
+  const { error } = await admin().from('church_auto_weeks').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id)
+  if (error) console.warn('church-draft auto set', error.message)
+}
+
+/**
+ * Take the job for one stage: the write lands only if nobody has touched the
+ * job since `job` was read. Two runners racing for the same stage (a chained
+ * call that did start after all, and its fallback) — one wins, one stops.
+ */
+async function claim(job: AutoJob, patch: Record<string, unknown>): Promise<boolean> {
+  const { data, error } = await admin().from('church_auto_weeks')
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq('id', job.id).eq('updated_at', job.updated_at).select('id')
+  if (error) console.warn('church-draft auto claim', error.message)
+  return !error && Array.isArray(data) && data.length === 1
+}
+
+/** Who the token belongs to, or null. */
+async function callerId(authHeader: string): Promise<string | null> {
+  const { data } = await asCaller(authHeader).auth.getUser()
+  return data?.user?.id ?? null
+}
+
+/** Run one of this function's own handlers and read its JSON answer. */
+async function inner(run: (reply: Reply) => Promise<Response>): Promise<Record<string, unknown>> {
+  const res = await run((b) => new Response(JSON.stringify(b), { headers: { 'Content-Type': 'application/json' } }))
+  return (await res.json().catch(() => ({ ok: false, reason: 'unavailable' }))) as Record<string, unknown>
+}
+
+/**
+ * Start the next stage in a FRESH invocation, so a long transcription and a
+ * week draft never share one wall clock. If the call can't be made, run the
+ * stage here instead — slower, never lost.
+ */
+async function nextStage(job: string, authHeader: string): Promise<void> {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/church-draft`, {
+      method: 'POST',
+      headers: { Authorization: authHeader, apikey: ANON_KEY, 'content-type': 'application/json' },
+      body: JSON.stringify({ mode: 'auto_week_step', job }),
+      signal: AbortSignal.timeout(20_000),
+    })
+    if (res.ok) return
+    console.warn('church-draft auto chain', res.status)
+  } catch (e) {
+    console.warn('church-draft auto chain', (e as Error).message)
+  }
+  await runAutoStage(job, authHeader)
+}
+
+/** The first `n` dates from `start` with nothing at all on them (no live day, no draft). */
+async function openDates(authHeader: string, churchId: string, start: string, n: number): Promise<string[] | null> {
+  const { data, error } = await asCaller(authHeader).rpc('church_verses_range', { p_church_id: churchId, p_from: start, p_days: AUTO_LOOKAHEAD })
+  const d = data as { ok?: boolean; days?: Array<{ drop_date?: string }> } | null
+  if (error || !d?.ok) return null
+  const taken = new Set((d.days ?? []).map((x) => String(x.drop_date ?? '')))
+  const out: string[] = []
+  const base = Date.parse(`${start}T00:00:00Z`)
+  for (let i = 0; i < AUTO_LOOKAHEAD && out.length < n; i++) {
+    const day = new Date(base + i * 86_400_000).toISOString().slice(0, 10)
+    if (!taken.has(day)) out.push(day)
+  }
+  return out
+}
+
+/** One step of a job: transcribe if there's no transcript yet, else draft the week. */
+async function runAutoStage(id: string, authHeader: string): Promise<void> {
+  const job = await autoJob(id)
+  if (!job || job.status === 'done' || job.status === 'failed') return
+
+  if (!job.transcript) {
+    if (!job.memo_path) return autoSet(id, { status: 'failed', reason: 'memo_missing' })
+    if (!(await claim(job, { status: 'transcribing', reason: null }))) return
+    const t = await inner((reply) => handleTranscribe({ church_id: job.church_id, path: job.memo_path }, authHeader, reply, Date.now()))
+    if (!t.ok) {
+      // The memo is kept for a retry only when the reason is one a retry can fix.
+      const keep = !MEMO_FINAL.has(String(t.reason))
+      return autoSet(id, { status: 'failed', reason: String(t.reason ?? 'unavailable'), memo_path: keep ? job.memo_path : null })
+    }
+    await autoSet(id, { status: 'drafting', transcript: String(t.transcript ?? ''), memo_path: null })
+    return nextStage(id, authHeader)
+  }
+
+  if (!(await claim(job, { status: 'drafting', reason: null }))) return
+  const dates = await openDates(authHeader, job.church_id, job.start_date, job.days)
+  if (!dates) return autoSet(id, { status: 'failed', reason: 'unavailable' })
+  if (dates.length < WEEK_MIN) return autoSet(id, { status: 'failed', reason: 'no_open_days' })
+  const w = await inner((reply) => handleWeek({
+    church_id: job.church_id, series: job.series, days: dates.length, passages: job.passages,
+    transcript: job.transcript, guidance: job.guidance ?? undefined, dates,
+  }, authHeader, reply, Date.now()))
+  if (!w.ok) return autoSet(id, { status: 'failed', reason: String(w.reason ?? 'unavailable') })
+  await autoSet(id, {
+    status: 'done', reason: null, transcript: null,
+    saved: Array.isArray(w.saved) ? w.saved : [], flagged: Number(w.flagged ?? 0) || 0,
+  })
+}
+
+async function handleAutoWeek(body: Record<string, unknown>, authHeader: string, reply: Reply): Promise<Response> {
+  const churchId = String(body.church_id ?? '').toLowerCase()
+  const path = String(body.path ?? '')
+  const m = MEMO_PATH.exec(path)
+  const series = line(body.series, 60) ?? ''
+  const days = body.days === undefined ? WEEK_MAX : Number(body.days)
+  const start = String(body.start ?? '')
+  const guidance = line(body.guidance, 300) ?? null
+  if (!/^[0-9a-f-]{36}$/.test(churchId)) return reply({ ok: false, reason: 'bad_input' })
+  if (!m || m[1] !== churchId || !MEMO_TYPES[m[2]]) return reply({ ok: false, reason: 'bad_memo' })
+  if (!series) return reply({ ok: false, reason: 'needs_series' })
+  if (!Number.isInteger(days) || days < WEEK_MIN || days > WEEK_MAX) return reply({ ok: false, reason: 'bad_days' })
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || Number.isNaN(Date.parse(`${start}T00:00:00Z`))) return reply({ ok: false, reason: 'bad_dates' })
+  // Validated now so a job never fails on its passages hours later.
+  if (!readPassages(body.passages)) return reply({ ok: false, reason: 'bad_passages' })
+
+  // The Content Generation gate, as the caller, spending nothing — the stages spend.
+  const { data, error } = await asCaller(authHeader).rpc('church_memo_can', { p_church_id: churchId })
+  const g = data as { ok?: boolean; reason?: string } | null
+  if (error || !g?.ok) return reply({ ok: false, reason: error ? 'unavailable' : String(g?.reason ?? 'unavailable') })
+  const uid = await callerId(authHeader)
+  if (!uid) return reply({ ok: false, reason: 'not_authenticated' })
+
+  const { data: row, error: insErr } = await admin().from('church_auto_weeks').insert({
+    church_id: churchId, created_by: uid, status: 'queued', memo_path: path, series,
+    passages: body.passages, guidance, start_date: start, days,
+  }).select('id').single()
+  if (insErr || !row) {
+    console.warn('church-draft auto insert', insErr?.message)
+    return reply({ ok: false, reason: 'unavailable' })
+  }
+  const id = String((row as { id: string }).id)
+  const res = reply({ ok: true, job: id })
+  await later(runAutoStage(id, authHeader))
+  return res
+}
+
+/** The next stage of a job, started by the job itself. Only its creator's token runs it. */
+async function handleAutoStep(body: Record<string, unknown>, authHeader: string, reply: Reply): Promise<Response> {
+  const id = String(body.job ?? '')
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return reply({ ok: false, reason: 'bad_input' })
+  const [job, uid] = await Promise.all([autoJob(id), callerId(authHeader)])
+  if (!job || !uid || job.created_by !== uid) return reply({ ok: false, reason: 'not_found' })
+  const res = reply({ ok: true, job: id })
+  await later(runAutoStage(id, authHeader))
+  return res
+}
+
+/** Run a failed (or lost) job again, from where it stopped. Any verified leader of the church. */
+async function handleAutoRetry(body: Record<string, unknown>, authHeader: string, reply: Reply): Promise<Response> {
+  const id = String(body.job ?? '')
+  const churchId = String(body.church_id ?? '').toLowerCase()
+  if (!/^[0-9a-f-]{36}$/i.test(id) || !/^[0-9a-f-]{36}$/.test(churchId)) return reply({ ok: false, reason: 'bad_input' })
+  const job = await autoJob(id)
+  if (!job || job.church_id !== churchId) return reply({ ok: false, reason: 'not_found' })
+  const { data, error } = await asCaller(authHeader).rpc('church_memo_can', { p_church_id: churchId })
+  const g = data as { ok?: boolean; reason?: string } | null
+  if (error || !g?.ok) return reply({ ok: false, reason: error ? 'unavailable' : String(g?.reason ?? 'unavailable') })
+  const uid = await callerId(authHeader)
+  if (!uid) return reply({ ok: false, reason: 'not_authenticated' })
+  const lost = job.status !== 'done' && job.status !== 'failed' && Date.now() - Date.parse(job.updated_at) > AUTO_STALE_MS
+  if (job.status !== 'failed' && !lost) return reply({ ok: false, reason: 'not_failed' })
+  if (!job.transcript && !job.memo_path) return reply({ ok: false, reason: 'memo_missing' })
+  // The retrying leader's token runs it from here (and owns the next step).
+  await autoSet(id, { status: 'queued', reason: null, created_by: uid, seen_at: null })
+  const res = reply({ ok: true, job: id })
+  await later(runAutoStage(id, authHeader))
+  return res
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   const started = Date.now()
@@ -1139,6 +1352,9 @@ Deno.serve(async (req) => {
     if (body.mode === 'topic') return await handleTopic(body, auth, reply, started)
     if (body.mode === 'memo_url') return await handleMemoUrl(body, auth, reply)
     if (body.mode === 'transcribe') return await handleTranscribe(body, auth, reply, started)
+    if (body.mode === 'auto_week') return await handleAutoWeek(body, auth, reply)
+    if (body.mode === 'auto_week_step') return await handleAutoStep(body, auth, reply)
+    if (body.mode === 'auto_week_retry') return await handleAutoRetry(body, auth, reply)
     return await handleOne(body, auth, reply, started)
   } catch (e) {
     console.error('church-draft', (e as Error).message)

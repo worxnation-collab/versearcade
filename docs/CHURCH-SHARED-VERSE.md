@@ -524,3 +524,67 @@ list but not the Gemini API's documented one; a refusal comes back as
 transcription inside the function's 140-second budget; a timeout keeps the
 upload for a retry.
 
+## Record Sunday, review Monday (0148)
+
+**This is the highest-value loop the package has.** A pastor records Sunday's
+sermon on the way out of the building, uploads it, closes the app — and on
+Monday the week is sitting on Plan as drafts waiting for approval. No draft
+button, no waiting on a spinner.
+
+**How a leader starts it.** Plan → *Your sermon*. Under the memo buttons sits
+**✨ Draft my week for me**, ticked by default whenever the church holds
+Content Generation. The passage they preached is the one thing it needs before
+the upload (the memo refuses to send without it and says so), plus the series
+name (the reference if left blank), the start date and the number of days the
+form already has.
+
+**What happens.** The client fetches the passages' BSB words exactly as a
+hand-drafted week does, uploads the memo (`memo_url`), and calls
+`church-draft` with `mode: 'auto_week'`. The function checks the Content
+Generation gate, writes a job row (`church_auto_weeks`), answers `{ ok, job }`
+at once, and keeps working after the answer (`EdgeRuntime.waitUntil`):
+
+1. **Transcribe** — the ordinary `transcribe` handler, as the leader: one of
+   the church's 10 memo uses, released on any failure; the upload removed once
+   heard, kept on a busy/timeout so a retry needn't re-upload.
+2. **Draft the week** — in a FRESH invocation (the function calls itself with
+   the leader's token, so the two stages never share one wall clock), the
+   ordinary `week` handler with `dates`: the first N days from the start that
+   hold **nothing at all** — a live day and a waiting draft are both left
+   alone, so nothing a leader made is ever replaced. One draft unit per day,
+   refunded for every day not saved; scripture only from the passages sent;
+   the blind answer check; every day saved as a DRAFT.
+
+Nothing is approved. A ⚠ day still holds "Approve all" back.
+
+**Where the leader hears about it.** Home's "This week" list carries one row
+for the job — *ready to review* (with the draft count, the dates and the ⚠
+count), *being drafted*, or *didn't finish* — and Plan carries the same as a
+card above step 1, which turns from "drafting" to "ready" by itself (it looks
+again every 15 seconds while a job runs) and refreshes the planner when the
+week lands. Seeing a ready job on Plan marks it seen, so Home stops announcing
+it. The weekly digest will carry it too once the digest exists; it doesn't yet.
+
+**Failures** are the stage's own reason (`model_busy`, `timeout`, `limit`,
+`memo_limit`, `memo_silent`, `no_open_days`, …) on the job, with everything
+that stage spent already given back. **Retry** (Plan) runs the job again from
+where it stopped: a job whose transcript was made skips straight to the week,
+so a busy model on Monday costs no second transcription. A job still "running"
+twelve minutes after it last moved is treated as lost and offered the same
+Retry. **Dismiss** clears it, and the transcript with it.
+
+**What is stored.** The job keeps the memo path, the transcript once made, the
+passages and the window — the least a retry needs. The transcript is cleared
+when the week lands or the job is dismissed, and no reader ever returns it:
+`church_auto_weeks` (verified leadership of that church) gives status,
+references, dates, counts and reason only. The table has no client grant and
+no policy; the function writes it as service_role. Two racing runners for one
+stage (a chained call that did start after all, and its fallback) can't both
+draft: each stage claims the job with an optimistic `updated_at` check.
+
+`npm run check:church-draft` drives all of it against the real handler: the
+week on the first empty days, drafts only, one memo use and N units, the flag
+carried, the second invocation, a busy week stage refunded with the transcript
+kept and a retry that doesn't re-transcribe, a busy transcription keeping the
+upload, and the gates.
+

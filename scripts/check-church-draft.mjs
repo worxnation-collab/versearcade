@@ -61,6 +61,10 @@ const rpc = {
     if (db.memoUsed >= 10) return { ok: false, reason: 'memo_limit' }
     db.memoUsed++; return { ok: true, left: 10 - db.memoUsed, day: today }
   },
+  church_verses_range: ({ p_from, p_days }) => {
+    const days = Object.entries(db.verses).filter(([d]) => d >= p_from).map(([d, v]) => ({ drop_date: d, ...v }))
+    return { ok: true, days, from: p_from, n: p_days }
+  },
   release_church_memo: () => { db.memoUsed = Math.max(0, db.memoUsed - 1); db.memoReleases++; return { ok: true, left: 10 - db.memoUsed } },
 }
 // --- fake storage (the church-memos bucket) --------------------------------
@@ -80,8 +84,41 @@ const files = { uploaded: 0, deleted: 0, tokens: 32 * 60 * 40, uploadStatus: 200
 // --- fake Gemini: a queue of answers per test ------------------------------
 let gemini = []
 let geminiCalls = 0
+// --- fake church_auto_weeks table (0148), PostgREST-shaped -----------------
+const jobs = new Map()
+let jobN = 0
+const jobsTable = (url, init) => {
+  const u = new URL(url)
+  const eq = [...u.searchParams.entries()].filter(([k, v]) => k !== 'select' && v.startsWith('eq.')).map(([k, v]) => [k, v.slice(3)])
+  const match = (row) => eq.every(([k, v]) => String(row[k]) === v)
+  const json = (b, status = 200) => new Response(JSON.stringify(b), { status, headers: { 'content-type': 'application/json' } })
+  const method = init.method ?? 'GET'
+  const single = String(new Headers(init.headers).get('accept') ?? '').includes('vnd.pgrst.object')
+  if (method === 'POST') {
+    const row = { id: `00000000-0000-4000-8000-${String(++jobN).padStart(12, '0')}`, status: 'queued', saved: [], flagged: 0, transcript: null, reason: null, seen_at: null, updated_at: new Date(Date.now() + jobN).toISOString(), ...JSON.parse(init.body) }
+    jobs.set(row.id, row)
+    return json(single ? row : [row], 201)
+  }
+  if (method === 'PATCH') {
+    const patch = JSON.parse(init.body)
+    const hit = [...jobs.values()].filter(match)
+    for (const r of hit) { Object.assign(r, patch); r.updated_at = new Date(Date.parse(r.updated_at) + 1).toISOString() }
+    return json(hit)
+  }
+  const hit = [...jobs.values()].filter(match)
+  return single ? (hit[0] ? json(hit[0]) : json({ code: 'PGRST116' }, 406)) : json(hit)
+}
 globalThis.fetch = async (url, init = {}) => {
   url = String(url)
+  if (url.startsWith(SB + '/rest/v1/church_auto_weeks')) return jobsTable(url, init)
+  if (url.startsWith(SB + '/auth/v1/user')) {
+    const tok = String(new Headers(init.headers).get('authorization') ?? '').replace('Bearer ', '')
+    return new Response(JSON.stringify({ id: tok === 'leader' ? 'u-leader' : 'u-' + tok, aud: 'authenticated' }), { status: 200, headers: { 'content-type': 'application/json' } })
+  }
+  if (url.startsWith(SB + '/functions/v1/church-draft')) {
+    db.chained = (db.chained ?? 0) + 1
+    return handler(new Request('http://fn', { method: 'POST', headers: { Authorization: new Headers(init.headers).get('authorization') }, body: init.body }))
+  }
   if (url.startsWith(SB + '/rest/v1/rpc/')) {
     const fn = url.slice((SB + '/rest/v1/rpc/').length).split('?')[0]
     const out = rpc[fn](JSON.parse(init.body || '{}'))
@@ -323,6 +360,59 @@ check('transcribe: missing upload → memo_missing 404, released', r.status === 
 reset(); db.memoUsed = 10
 r = await call({ mode: 'transcribe', church_id: CH, path: MEMO, api: 2 })
 check('transcribe: memo cap 429, no model call', r.status === 429 && r.body.reason === 'memo_limit' && geminiCalls === 0, r)
+
+// 27. Auto week (0148): upload → transcript → week, with nobody pressing a button.
+//     Dates are the first EMPTY days from the start: a live day and a waiting
+//     draft are both left alone. The stage after transcription is a fresh call.
+const S = '2030-02-03'
+const day = (n) => new Date(Date.parse(S + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10)
+const auto = (o = {}) => ({ mode: 'auto_week', church_id: CH, path: MEMO, series: 'Abiding', passages, start: S, days: 3, api: 2, ...o })
+reset(); jobs.clear(); db.chained = 0; store.set(MEMO, new Uint8Array(5000))
+db.verses[day(0)] = { status: 'approved' }; db.verses[day(1)] = { status: 'draft' }
+gemini = [
+  { raw: 'Good morning church. Today we read John fifteen: remain in Me. '.repeat(3) },
+  { days: [1, 4, 5].map((v) => ({ reference: `John 15:${v}`, note: 'n', questions: five() })) },
+  { items: [{ i: 0, answers: [1, 1, 1, 1, 1] }, { i: 1, answers: [2, 1, 1, 1, 1] }, { i: 2, answers: [1, 1, 1, 1, 1] }] },
+]
+r = await call(auto())
+let job = jobs.get(r.body.job)
+check('auto: answers with a job', r.body.ok && !!job, r.body)
+check('auto: week drafted on the first EMPTY days (live and draft skipped)', job.status === 'done' && JSON.stringify(job.saved) === JSON.stringify([day(2), day(3), day(4)]) && db.verses[day(1)].status === 'draft' && db.verses[day(0)].status === 'approved', job)
+check('auto: drafts only, never approved', [2, 3, 4].every((n) => db.verses[day(n)]?.status === 'draft'), db.verses)
+check('auto: one memo use, three draft units, memo and transcript gone', db.memoUsed === 1 && db.used === 3 && !store.has(MEMO) && job.transcript === null && job.memo_path === null, { memo: db.memoUsed, used: db.used, job })
+check('auto: answer check carried — one flag counted, on the draft', job.flagged === 1 && db.verses[day(3)].questions.some((x) => x.check), { flagged: job.flagged })
+check('auto: the week ran in a second invocation', db.chained === 1, db.chained)
+
+// 28. Week stage fails (model busy) → every unit refunded, transcript KEPT, retry skips transcription.
+reset(); jobs.clear(); store.set(MEMO, new Uint8Array(5000))
+gemini = [{ raw: 'We read the vine and the branches together this morning, friends.' }, 503, 503]
+r = await call(auto())
+job = jobs.get(r.body.job)
+check('auto: week failure → failed with its reason, units refunded, transcript kept', job.status === 'failed' && job.reason === 'model_busy' && db.used === 0 && !!job.transcript && db.memoUsed === 1, job)
+const uploadsBefore = files.uploaded
+gemini = [{ days: [1, 4, 5].map((v) => ({ reference: `John 15:${v}`, questions: five() })) }]
+r = await call({ mode: 'auto_week_retry', church_id: CH, job: job.id, api: 2 })
+job = jobs.get(job.id)
+check('auto retry: no second transcription, week lands', r.body.ok && job.status === 'done' && job.saved.length === 3 && files.uploaded === uploadsBefore && db.memoUsed === 1 && db.used === 3, { body: r.body, job })
+r = await call({ mode: 'auto_week_retry', church_id: CH, job: job.id, api: 2 })
+check('auto retry: a finished job is not run again', r.status === 409 && r.body.reason === 'not_failed', r)
+
+// 29. Transcription fails (busy) → memo released and KEPT for the retry, nothing drafted.
+reset(); jobs.clear(); store.set(MEMO, new Uint8Array(5000)); gemini = [503]
+r = await call(auto())
+job = jobs.get(r.body.job)
+check('auto: transcription failure → failed, memo released, upload kept, no units', job.status === 'failed' && job.reason === 'model_busy' && db.memoUsed === 0 && store.has(MEMO) && job.memo_path === MEMO && db.used === 0, job)
+
+// 30. Gates: no add-on → no job; bad passages and someone else's step are refused.
+reset(); jobs.clear(); db.gate = 'no_addon'; store.set(MEMO, new Uint8Array(5000))
+r = await call(auto())
+check('auto: gate refuses, no job made', r.status === 403 && jobs.size === 0, r)
+reset(); jobs.clear()
+r = await call(auto({ passages: [{ reference: 'John 15:1', verses: [] }] }))
+check('auto: bad passages refused up front', r.body.reason === 'bad_passages' && jobs.size === 0, r)
+jobs.set('00000000-0000-4000-8000-0000000000aa', { id: '00000000-0000-4000-8000-0000000000aa', church_id: CH, created_by: 'u-leader', status: 'drafting', transcript: 't', updated_at: new Date().toISOString() })
+const res = await handler(new Request('http://fn', { method: 'POST', headers: { Authorization: 'Bearer stranger' }, body: JSON.stringify({ mode: 'auto_week_step', job: '00000000-0000-4000-8000-0000000000aa', api: 2 }) }))
+check('auto: a step from another account is refused', res.status === 404, res.status)
 
 console.log(fails ? `${fails} FAILED` : 'ALL PASS')
 process.exit(fails ? 1 : 0)

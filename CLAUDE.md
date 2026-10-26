@@ -1798,6 +1798,12 @@ Four rules are load-bearing:
   changes nothing about them. The day-by-day form is folded under "✎ Edit one
   day" (open by default without the add-on, and in the demo).
   `docs/CHURCH-SHARED-VERSE.md` → "Plan your week".
+- **Discussion questions for small groups are an add-on, never the hero**
+  (0151, `docs/CHURCH-GROUPS.md`). The day form, the sermon week and the topic
+  week carry an "Also write 2–3 discussion questions" toggle (off by default);
+  `church-draft` writes them at no extra unit and a week saves them beside each
+  day. Group leaders (People → Small groups) read them on their church tab for
+  APPROVED days only, with their group's names — no score reaches them.
 - **"What is your congregation studying this week?" is that week mode again,
   with a topic in front of it** (`StudyTopicWeek`, `data/studyTopics.ts`, no
   migration). A topic resolves to at most three passages — the leader's own
@@ -2705,7 +2711,23 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0150` (`church_series_landing` — per series the church ran,
+The latest is `0151` (small groups and discussion questions —
+`church_groups`, `church_group_members` (one row per member: the primary key
+IS "one group per member"), `church_verse_discussions` (2-3 open questions per
+day, kept only while they match the day's reference); leadership's
+`church_groups_list` / `save_church_group` / `archive_church_group` /
+`set_church_group_member` / `set_church_discussion` / `church_discussion_for`
+behind `church_admin_can`, and `my_church_group` for a GROUP LEADER — names,
+faces and approved days' questions, never a score; null for a plain member.
+Nothing is ever deleted (retire = `archived_at`), so there is no part b.
+`church-draft` writes the questions with `discussion: true` at no extra unit.
+`docs/CHURCH-GROUPS.md`). APPLIED 2026-10-26 after a local Postgres 16 run of
+twenty-four cases and verified live: one signature each, the seven player
+RPCs `authenticated` only, `church_clean_discussion` `{postgres,service_role}`,
+and a create → assign leader → questions → group-leader read round trip on a
+real verified church, rolled back.
+
+Before it, `0150` (`church_series_landing` — per series the church ran,
 how many CURRENT members played at least one live day ("engaged") and how many
 played every live day ("completed", "kept up so far" while it runs), as counts
 and percentages about the congregation: never a name, a user id or a
@@ -3544,7 +3566,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0151` (0150 is the series numbers; 0149 the leader's card and church inquiries, in two parts — part b pending; 0148 is record-Sunday-review-Monday, in two parts — part b pending; 0147 is the co-leaders, in two parts — part b pending; 0146 is the public leader look; 0145 is the Custom Leader Avatar purchase; 0144 is the voice-memo allowance, in two parts; 0143 is the answer check's flag; 0142 is the content engine's run log and refund, in two parts; 0139, 0140 and 0141 are the Apple church subscription, its leader-removed binding and the church plan taps in production, each in two parts; 0138 is the check-in verse and report, in two parts; 0137 is used FOUR times in production — the check-in note in two parts, the leaderboard's streak-free tie-break, and `church_free_claim` — 0136 is the church leader looks, 0135 is the church billing read for the portal, 0134 is the self-serve church claim, in two parts; 0133 is used twice — church visual assets AND the church Stripe key in Vault — 0132 is the church webhook's Vault secret, 0131 is church billing, 0130 is the member's church view, 0129 is the week-from-a-sermon drafts, 0128 is the church layer, 0127 is `church_content_generation` in production, 0126 is the two new statues, 0125 is the API.Bible key, 0124 the reading translation, 0123 is the church verse series and note, 0122 is `church_question_drafts` in production only, 0121 is the church leader invite link, 0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0152` (0151 is small groups; 0150 is the series numbers; 0149 the leader's card and church inquiries, in two parts — part b pending; 0148 is record-Sunday-review-Monday, in two parts — part b pending; 0147 is the co-leaders, in two parts — part b pending; 0146 is the public leader look; 0145 is the Custom Leader Avatar purchase; 0144 is the voice-memo allowance, in two parts; 0143 is the answer check's flag; 0142 is the content engine's run log and refund, in two parts; 0139, 0140 and 0141 are the Apple church subscription, its leader-removed binding and the church plan taps in production, each in two parts; 0138 is the check-in verse and report, in two parts; 0137 is used FOUR times in production — the check-in note in two parts, the leaderboard's streak-free tie-break, and `church_free_claim` — 0136 is the church leader looks, 0135 is the church billing read for the portal, 0134 is the self-serve church claim, in two parts; 0133 is used twice — church visual assets AND the church Stripe key in Vault — 0132 is the church webhook's Vault secret, 0131 is church billing, 0130 is the member's church view, 0129 is the week-from-a-sermon drafts, 0128 is the church layer, 0127 is `church_content_generation` in production, 0126 is the two new statues, 0125 is the API.Bible key, 0124 the reading translation, 0123 is the church verse series and note, 0122 is `church_question_drafts` in production only, 0121 is the church leader invite link, 0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

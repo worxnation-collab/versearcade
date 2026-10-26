@@ -9,6 +9,7 @@ import { useMyChurchAssets } from '@/store/churchAssets'
 import type { ChurchExtras } from '@/types/churchPackages'
 import type { Church } from '@/types'
 import { LeaderBeside } from './LeaderBeside'
+import { MyGroupCard } from './MyGroupCard'
 
 // The member's church, as a PLACE PEOPLE ARE (0128) — the top of the Church tab
 // for a member of a VERIFIED church, between the churchyard and Give:
@@ -19,6 +20,8 @@ import { LeaderBeside } from './LeaderBeside'
 //      (`SeriesTrail`, 0130) — its own lane, played at /play/church, never in
 //      place of the daily drop. On a day with no church verse the series still
 //      shows, so a series reads as one connected thing rather than as drops.
+//   3a. "You lead a small group" (0151, `MyGroupCard`) — only for a group
+//       leader: their group's names and the week's discussion questions.
 //   3b. "This week in {name}" (0130): church TOTALS for the board's week —
 //      members, how many played the church verse and the daily verse. Under
 //      five comes back null and is drawn as nothing (the 0119 floor).
@@ -150,6 +153,9 @@ export function ChurchLife({ church, extras }: { church: Church; extras: ChurchE
           </p>
         </div>
       )}
+
+      {/* A group leader's own group and the week's discussion questions (0151); nothing for anybody else. */}
+      <MyGroupCard churchId={church.id} />
 
       {week && <WeekCard name={church.name} week={week} />}
 

@@ -487,6 +487,11 @@ export interface VerseBackend {
   memo?: MemoBackend
   /** Queue "record Sunday, review Monday": the uploaded memo drafts its own week on the server (0148). */
   autoWeek?: (churchId: string, input: AutoWeekInput) => Promise<Res<{ job: string }>>
+  /** A day's open discussion questions for small groups (0151). Base tier; absent in the demo. */
+  discussion?: {
+    get: (churchId: string, date: string) => Promise<Res<string[]>>
+    save: (churchId: string, date: string, questions: string[], generated: boolean) => Promise<Res<string[]>>
+  }
 }
 
 export const serverVerseBackend: VerseBackend = {
@@ -497,6 +502,7 @@ export const serverVerseBackend: VerseBackend = {
   approve: (c, d) => approveDayVerse(c, d),
   approveMany: (c, ds) => approveDays(c, ds),
   discard: (c, d) => discardDraft(c, d),
+  discussion: { get: (c, d) => fetchDiscussion(c, d), save: (c, d, q, g) => saveDiscussion(c, d, q, g) },
 }
 
 /** The same, plus the content engine — only for a church holding the add-on. */
@@ -543,6 +549,8 @@ export interface WeekDraftInput {
    * phone that backgrounds mid-draft loses nothing.
    */
   dates: string[]
+  /** Also write 2-3 open discussion questions for each day's small groups (0151). */
+  discussion?: boolean
 }
 
 export interface WeekDraftResult {
@@ -558,6 +566,8 @@ export interface WeekDraftResult {
   transcriptUse?: TranscriptUse
   /** Characters of the pasted transcript the draft drew on. */
   transcriptRead?: number
+  /** Saved days that also got discussion questions (0151), when they were asked for. */
+  discussed?: string[]
 }
 
 /** Fetch a passage's verses. Null reason says why it can't be used. */
@@ -596,6 +606,7 @@ export async function draftWeek(churchId: string, input: WeekDraftInput): Promis
     guidance: cleanLine(input.guidance, GUIDANCE_MAX) ?? undefined,
     transcript: input.transcript?.trim().slice(0, TRANSCRIPT_SEND_MAX) || undefined,
     dates: input.dates,
+    discussion: input.discussion || undefined,
   })
   // No answer at all: the panel re-reads the planned dates before saying anything.
   if (r.kind === 'lost') return { ok: false, reason: 'no_reply' }
@@ -610,7 +621,8 @@ export async function draftWeek(churchId: string, input: WeekDraftInput): Promis
     const saved = (d.saved as unknown[]).map(String).filter((x) => input.dates.includes(x))
     if (!saved.length) return { ok: false, reason: 'not_saved' }
     const missing = (Array.isArray(d.missing) ? d.missing : []).map(String).filter((x: string) => input.dates.includes(x))
-    return { ok: true, data: { saved, refused: refusals(d.refused), missing, asked: Number(d.asked) || input.days, ...transcriptOf(d) } }
+    const discussed = Array.isArray(d.discussed) ? (d.discussed as unknown[]).map(String).filter((x) => saved.includes(x)) : undefined
+    return { ok: true, data: { saved, refused: refusals(d.refused), missing, asked: Number(d.asked) || input.days, discussed, ...transcriptOf(d) } }
   }
 
   // A function from before 0142 ignores `dates` and hands the days back, so
@@ -718,12 +730,16 @@ export interface DraftSteer {
   guidance?: string
   /** Sermon notes or a voice-memo transcript. */
   transcript?: string
+  /** Also write 2-3 open discussion questions for small groups (0151). */
+  discussion?: boolean
 }
 
 export interface DraftResult {
   questions: Question[]
   /** A suggested note for members, when the engine wrote one. */
   note?: string
+  /** Open discussion questions for small groups, when asked for (0151). */
+  discussion?: string[]
   /** What became of the transcript, when one was sent and the function says. */
   transcriptUse?: TranscriptUse
   /** Characters of the pasted transcript the draft drew on. */
@@ -769,13 +785,23 @@ export async function draftQuestions(churchId: string, reference: string, text: 
     text,
     guidance: cleanLine(steer.guidance, GUIDANCE_MAX) ?? undefined,
     transcript: steer.transcript?.trim().slice(0, TRANSCRIPT_SEND_MAX) || undefined,
+    discussion: steer.discussion || undefined,
   })
   if (r.kind === 'lost') return { ok: false, reason: 'unavailable' }
-  const d = r.data as { ok?: boolean; reason?: string; questions?: Question[]; note?: unknown }
+  const d = r.data as { ok?: boolean; reason?: string; questions?: Question[]; note?: unknown; discussion?: unknown }
   if (!d.ok) return { ok: false, reason: String(d.reason ?? 'unavailable') }
   const qs = cleanQuestions(d.questions ?? [])
   if (!qs) return { ok: false, reason: 'draft_failed' }
-  return { ok: true, data: { questions: qs, note: cleanLine(typeof d.note === 'string' ? d.note : null, NOTE_MAX) ?? undefined, ...transcriptOf(d as Record<string, unknown>) } }
+  const discussion = cleanDiscussion(d.discussion)
+  return {
+    ok: true,
+    data: {
+      questions: qs,
+      note: cleanLine(typeof d.note === 'string' ? d.note : null, NOTE_MAX) ?? undefined,
+      ...(discussion.length ? { discussion } : {}),
+      ...transcriptOf(d as Record<string, unknown>),
+    },
+  }
 }
 
 /** In-memory days, seeded with `initial`. Validates exactly as the server does. */
@@ -1415,6 +1441,134 @@ export async function fetchSeriesLanding(churchId: string): Promise<Res<{ member
         engagedPct: s.engaged_pct == null ? null : Number(s.engaged_pct),
         completedPct: s.completed_pct == null ? null : Number(s.completed_pct),
       })),
+    },
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Small groups (0151). Verified leadership sorts members into groups and marks
+// group leaders; a group leader reads their own group and the week's
+// discussion questions. Names and faces only — no score reaches either read.
+// docs/CHURCH-GROUPS.md.
+// ---------------------------------------------------------------------------
+export const GROUP_NAME_MAX = 60
+export const GROUP_DESC_MAX = 240
+export const DISCUSSION_MAX = 3
+export const DISCUSSION_LINE_MAX = 240
+
+export interface GroupPerson {
+  username: string
+  avatarEmoji: string | null
+  avatarCharacter: import('@/data/avatar').AvatarSpec | null
+  role: 'member' | 'leader'
+  isMe?: boolean
+}
+
+export interface ChurchGroup {
+  id: string
+  name: string
+  description: string | null
+  members: GroupPerson[]
+}
+
+export interface GroupDiscussionDay {
+  date: string
+  reference: string
+  series: string | null
+  questions: string[]
+}
+
+export interface MyGroup extends ChurchGroup {
+  today: string
+  discussion: GroupDiscussionDay[]
+}
+
+/** The server's `church_clean_discussion`: 0-3 lines of 8-240 characters. */
+export function cleanDiscussion(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .filter((x): x is string => typeof x === 'string')
+    .map((x) => cleanLine(x.replace(/\s+/g, ' '), DISCUSSION_LINE_MAX) ?? '')
+    .filter((x) => x.length >= 8)
+    .slice(0, DISCUSSION_MAX)
+}
+
+const person = (m: any): GroupPerson => ({
+  username: String(m?.username ?? ''),
+  avatarEmoji: m?.avatar_emoji ?? null,
+  avatarCharacter: m?.avatar_character ?? null,
+  role: m?.role === 'leader' ? 'leader' : 'member',
+  ...(m?.is_me ? { isMe: true } : {}),
+})
+const group = (g: any): ChurchGroup => ({
+  id: String(g?.id ?? ''),
+  name: String(g?.name ?? ''),
+  description: g?.description ? String(g.description) : null,
+  members: Array.isArray(g?.members) ? g.members.map(person) : [],
+})
+
+export async function fetchChurchGroups(churchId: string): Promise<Res<ChurchGroup[]>> {
+  const r = await call<{ groups?: unknown[] }>('church_groups_list', { p_church_id: churchId })
+  if (!r.ok) return r
+  return { ok: true, data: (r.data.groups ?? []).map(group) }
+}
+
+/** Create (no id) or rename a group. */
+export async function saveChurchGroup(churchId: string, g: { id?: string; name: string; description?: string | null }): Promise<Res<{ id: string }>> {
+  const name = cleanLine(g.name, GROUP_NAME_MAX)
+  if (!name) return { ok: false, reason: 'bad_name' }
+  const r = await call<{ id?: string }>('save_church_group', {
+    p_church_id: churchId,
+    p_group_id: g.id ?? null,
+    p_name: name,
+    p_description: cleanLine(g.description ?? '', GROUP_DESC_MAX) ?? '',
+  })
+  if (!r.ok) return r
+  return { ok: true, data: { id: String(r.data.id ?? g.id ?? '') } }
+}
+
+export async function archiveChurchGroup(churchId: string, groupId: string): Promise<Res<unknown>> {
+  return call('archive_church_group', { p_church_id: churchId, p_group_id: groupId })
+}
+
+/** Put a member in a group (moving them from any other), set their role, or take them out (groupId null). */
+export async function setGroupMember(churchId: string, username: string, groupId: string | null, role: 'member' | 'leader' = 'member'): Promise<Res<unknown>> {
+  return call('set_church_group_member', { p_church_id: churchId, p_username: username, p_group_id: groupId, p_role: role })
+}
+
+/** A day's discussion questions, as leadership sees them (draft or approved). */
+export async function fetchDiscussion(churchId: string, date: string): Promise<Res<string[]>> {
+  const r = await call<{ questions?: unknown }>('church_discussion_for', { p_church_id: churchId, p_drop_date: date })
+  if (!r.ok) return r
+  return { ok: true, data: cleanDiscussion(r.data.questions) }
+}
+
+/** Save (or, with an empty list, clear) a day's discussion questions. The day must exist. */
+export async function saveDiscussion(churchId: string, date: string, questions: string[], generated = false): Promise<Res<string[]>> {
+  const r = await call<{ questions?: unknown }>('set_church_discussion', {
+    p_church_id: churchId, p_drop_date: date, p_questions: cleanDiscussion(questions), p_generated: generated,
+  })
+  if (!r.ok) return r
+  return { ok: true, data: cleanDiscussion(r.data.questions) }
+}
+
+/** The group the caller LEADS, with this week's questions. Null for everybody else. */
+export async function fetchMyGroup(): Promise<Res<MyGroup | null>> {
+  const r = await call<any>('my_church_group', { p_local_date: todayLocalDate() })
+  if (!r.ok) return r
+  const g = r.data
+  if (!g || !g.id) return { ok: true, data: null }
+  return {
+    ok: true,
+    data: {
+      ...group(g),
+      today: String(g.today ?? todayLocalDate()),
+      discussion: (Array.isArray(g.discussion) ? g.discussion : []).map((d: any) => ({
+        date: String(d?.date ?? ''),
+        reference: String(d?.reference ?? ''),
+        series: d?.series ? String(d.series) : null,
+        questions: cleanDiscussion(d?.questions),
+      })).filter((d: GroupDiscussionDay) => d.questions.length > 0),
     },
   }
 }

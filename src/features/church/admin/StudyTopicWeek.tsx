@@ -21,6 +21,7 @@ import {
   type WeekPassage,
 } from '@/store/churchAdmin'
 import { AllowanceLine, ENGINE_REASONS, outcomeText, recoverLanded } from './weekRun'
+import { DiscussionToggle } from './WeekDraftPanel'
 import { TranscriptMeter, transcriptNote } from './transcript'
 import { MemoInput, placeTranscript } from './memo'
 
@@ -144,6 +145,7 @@ export function StudyTopicWeek({
   const [start, setStart] = useState(today)
   const [days, setDays] = useState(7)
   const [redo, setRedo] = useState(false)
+  const [withDiscussion, setWithDiscussion] = useState(false)
   const [window_, setWindow] = useState<WeekDay[] | null>(null)
   const [windowErr, setWindowErr] = useState(false)
 
@@ -272,6 +274,7 @@ export function StudyTopicWeek({
       guidance,
       transcript: transcript.trim() || undefined,
       dates,
+      discussion: withDiscussion && !!backend.discussion,
     })
 
     // 4. The function saved each day as a DRAFT on its own date (0142). With no
@@ -281,6 +284,7 @@ export function StudyTopicWeek({
     if (r.ok) {
       ;({ saved, refused, missing } = r.data)
       told = transcriptNote(transcript, r.data.transcriptUse, r.data.transcriptRead)
+      if (r.data.discussed?.length) told += ` ${r.data.discussed.length} came with discussion questions for your groups.`
     } else if (r.reason === 'no_reply') {
       setPhase('checking')
       saved = await recoverLanded(churchId, backend, window_, dates, () => mounted.current)
@@ -469,6 +473,7 @@ export function StudyTopicWeek({
             </button>
           )}
 
+          {!result && backend.discussion && <DiscussionToggle on={withDiscussion} onChange={setWithDiscussion} />}
           {!result && <FillLine plan={plan} error={windowErr} />}
 
           {msg && <p style={{ margin: 0, fontSize: 12.5, color: msg.ok ? 'var(--mint)' : 'var(--coral)' }}>{msg.text}</p>}

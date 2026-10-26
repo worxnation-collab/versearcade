@@ -10,6 +10,7 @@ import { todayLocalDate } from '@/lib/date'
 import { fetchChurchFeed, type FeedEvent } from '@/store/churchVerse'
 import { ago } from '../ChurchLife'
 import { LeadersSection } from './LeadersSection'
+import { GroupsSection } from './GroupsSection'
 
 // The leadership dashboard's three insight panels (0128): Overview, People and
 // Activity. Names are shown — the owner reversed the earlier "totals only,
@@ -288,6 +289,7 @@ export function PeoplePanel({ churchId, insights, failed, demo = false, leaders,
       {leaders && !demo && (
         <LeadersSection churchId={churchId} churchName={leaders.churchName} roster={insights.roster} onChanged={leaders.onChanged} />
       )}
+      {leaders && !demo && <GroupsSection churchId={churchId} roster={insights.roster} />}
       {active.length === 0 && (
         <p className="dim" style={{ fontSize: 13.5, margin: '4px 0' }}>Nobody has played this week yet.</p>
       )}

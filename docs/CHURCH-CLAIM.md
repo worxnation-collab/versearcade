@@ -134,6 +134,15 @@ history, not as a rule. What survives of it: **members are never ranked against
 each other.** Church competition is church against church, and there is no member
 leaderboard anywhere.
 
+## Small groups and group leaders (0151)
+
+Verified leadership can sort members into small groups and mark group leaders
+(People → Small groups). A group leader is NOT church leadership: they get one
+card on their own church tab with their group's names and the week's approved
+discussion questions, and no scores, no dashboard and no write access. Free
+claims don't get groups, since they never see names. Full rules:
+`docs/CHURCH-GROUPS.md`.
+
 ## The website field is validated server-side now
 
 `update_my_church_profile` is the first writer of these columns that isn't us,

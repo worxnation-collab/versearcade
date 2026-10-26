@@ -5,6 +5,13 @@
 //   →  { ok: true, questions: Question[5], note?: string, left }
 //   |  { ok: false, reason, left? }
 //
+// `discussion: true` (0151), on this call or on a week, also asks for 2-3 OPEN
+// discussion questions for small groups — no options, nothing scored, no extra
+// unit. One day hands them back as `discussion: string[]`; a week saves them
+// beside each saved day with `set_church_discussion` and lists those dates in
+// `discussed`. Fewer than two usable questions is none, and a day is never
+// refused for want of them. Not used by the automatic week (0148).
+//
 // Who may call it: leadership of a VERIFIED church that ALSO holds the Content
 // Generation add-on, decided by `use_church_draft` (0122, restated by 0127 to
 // check `church_gen_can`), which this function calls with the CALLER's own
@@ -386,6 +393,34 @@ function line(x: unknown, max: number): string | undefined {
 }
 
 // ---------------------------------------------------------------------------
+// Discussion questions (0151): 2-3 OPEN questions a small group talks over
+// beside the day's verse. An add-on to a draft, asked for with
+// `discussion: true`; the quiz questions are untouched by it. No options, no
+// answer, nothing scored. Cleaned like `church_clean_discussion`: each 8-240
+// characters, at most three, and fewer than two is none at all.
+// ---------------------------------------------------------------------------
+const DISCUSSION_RULE =
+  `Also write "discussion": 2 or 3 OPEN questions a small group could talk over together about this verse — ` +
+  `no options, no single right answer, nothing a person could get wrong. One about what the passage says, one about ` +
+  `what it meant for its first hearers or what it shows about God, one about living it out this week. Warm, plain words, ` +
+  `each under 200 characters. Nothing a Catholic, an Orthodox, a Baptist or a Pentecostal would answer differently. ` +
+  `Never ask anyone to compare themselves with someone else.`
+
+function discussionOf(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return []
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const x of raw) {
+    const q = typeof x === 'string' ? line(x.replace(/\s+/g, ' '), 240) : undefined
+    if (!q || q.length < 8 || seen.has(norm(q))) continue
+    seen.add(norm(q))
+    out.push(q)
+    if (out.length === 3) break
+  }
+  return out.length >= 2 ? out : []
+}
+
+// ---------------------------------------------------------------------------
 // Long transcripts: condensed, never silently cut.
 //
 // A transcript up to TRANSCRIPT_DIRECT_MAX is read word for word. A longer one
@@ -464,7 +499,7 @@ const BLANK_RULE =
   `A fill-in-the-blank writes the blank as ____ and its answer is a word or phrase exactly as it appears in the passage. ` +
   `Never put a question's answer anywhere in its own prompt.`
 
-function prompt(reference: string, text: string, guidance: string, transcript: Transcript): string {
+function prompt(reference: string, text: string, guidance: string, transcript: Transcript, discussion = false): string {
   const steer =
     (guidance ? `The pastor's focus for this day (steer emphasis only):\n"""${guidance}"""\n\n` : '') +
     transcriptBlock(transcript, 'draw emphasis and the note from')
@@ -482,8 +517,10 @@ function prompt(reference: string, text: string, guidance: string, transcript: T
     `6. Plain words a twelve-year-old can read. Prompt under 160 characters, each option under 80, teach under 280.\n` +
     `7. Do not invent names, numbers or events that are not in the Bible text.\n` +
     `8. Also write "note": one or two warm sentences (under 240 characters) the pastor could put beside the verse for the congregation today, in the pastor's own voice if notes were given. No scolding, no rankings, no links.\n` +
-    `9. ${BLANK_RULE}\n\n` +
-    `Return JSON only: {"questions":[{"prompt":"...","options":["...","...","...","..."],"answerIndex":0,"teach":"..."}, ... exactly 5 ...],"note":"..."}`
+    `9. ${BLANK_RULE}\n` +
+    (discussion ? `10. ${DISCUSSION_RULE}\n` : '') + `\n` +
+    `Return JSON only: {"questions":[{"prompt":"...","options":["...","...","...","..."],"answerIndex":0,"teach":"..."}, ... exactly 5 ...],"note":"..."` +
+    (discussion ? `,"discussion":["...","..."]` : '') + `}`
   )
 }
 
@@ -587,7 +624,7 @@ async function checkAnswers(
 // Week mode
 // ---------------------------------------------------------------------------
 type Passage = { reference: string; book: string; chapter: number; start: number; end: number; verses: Map<number, string> }
-type WeekDay = { reference: string; text: string; questions: Question[]; note?: string }
+type WeekDay = { reference: string; text: string; questions: Question[]; note?: string; discussion?: string[] }
 
 const WEEK_MIN = 2, WEEK_MAX = 7
 const SCRIPTURE_MAX = 6_000
@@ -655,7 +692,7 @@ function passageContext(dayRef: string, passages: Passage[]): string {
   return `${p.reference}\n` + [...p.verses.entries()].sort((a, b) => a[0] - b[0]).map(([n, t]) => `[${n}] ${t}`).join(' ')
 }
 
-function weekPrompt(series: string, days: number, passages: Passage[], guidance: string, transcript: Transcript): string {
+function weekPrompt(series: string, days: number, passages: Passage[], guidance: string, transcript: Transcript, discussion = false): string {
   const scripture = passages
     .map((p) => `${p.reference}\n` + [...p.verses.entries()].sort((a, b) => a[0] - b[0]).map(([n, t]) => `  [${n}] ${t}`).join('\n'))
     .join('\n\n')
@@ -668,7 +705,8 @@ function weekPrompt(series: string, days: number, passages: Passage[], guidance:
     `Plan the ${days} days as a sequence that moves through the sermon's thought in order. For EACH day:\n` +
     `- "reference": the verse or verses (at most ${DAY_SPAN_MAX} consecutive) that day focuses on, written exactly as Book Chapter:Verse or Book Chapter:Start-End, and ONLY from inside the passages above. Spread the days across the passages; repeat a verse only if there are fewer verses than days.\n` +
     `- "questions": exactly 5 quiz questions about THAT day's verse(s), following every rule below.\n` +
-    `- "note": one or two warm sentences (under 240 characters) the pastor could put beside that day's verse — the day's step in the series, in the pastor's own voice where notes were given. No scolding, no rankings, no links.\n\n` +
+    `- "note": one or two warm sentences (under 240 characters) the pastor could put beside that day's verse — the day's step in the series, in the pastor's own voice where notes were given. No scolding, no rankings, no links.\n` +
+    (discussion ? `- "discussion": for that day's verse(s). ${DISCUSSION_RULE.replace(/^Also write "discussion": /, '')}\n` : '') + `\n` +
     `Question rules — every one of them matters:\n` +
     `1. Answerable from that day's verse(s) and the passages above. No trivia from elsewhere.\n` +
     `2. Mix the kinds: who is speaking or addressed, what it says (a fill-in-the-blank of a key word), what an image or word means in plain terms, what comes right before or after, and what it asks of the reader.\n` +
@@ -678,7 +716,7 @@ function weekPrompt(series: string, days: number, passages: Passage[], guidance:
     `6. Plain words a twelve-year-old can read. Prompt under 160 characters, each option under 80, teach under 280.\n` +
     `7. Do not invent names, numbers or events that are not in the Bible text.\n` +
     `8. ${BLANK_RULE} No two questions in the week may ask the same thing.\n\n` +
-    `Return JSON only: {"days":[{"reference":"...","note":"...","questions":[{"prompt":"...","options":["...","...","...","..."],"answerIndex":0,"teach":"..."}, ... exactly 5 ...]}, ... exactly ${days} ...]}`
+    `Return JSON only: {"days":[{"reference":"...","note":"...",` + (discussion ? `"discussion":["...","..."],` : '') + `"questions":[{"prompt":"...","options":["...","...","...","..."],"answerIndex":0,"teach":"..."}, ... exactly 5 ...]}, ... exactly ${days} ...]}`
   )
 }
 
@@ -705,6 +743,7 @@ async function handleWeek(body: Record<string, unknown>, authHeader: string, rep
   if (!passages) return reply({ ok: false, reason: 'bad_passages' })
   const dates = readDates(body.dates, days)
   if (dates === null) return reply({ ok: false, reason: 'bad_dates' })
+  const wantDiscussion = body.discussion === true
 
   // The gate AND the spend — one unit per day — as the caller, before any model.
   const caller = asCaller(authHeader)
@@ -732,7 +771,7 @@ async function handleWeek(body: Record<string, unknown>, authHeader: string, rep
     // A long sermon is condensed first, leaving the draft its first full try.
     const material = await prepareTranscript(key, transcript, passages.map((p) => p.reference).join('; '), deadline, 95_000)
     const told = { transcript_use: transcript ? material.use : undefined, transcript_read: transcript ? material.read : undefined }
-    const got = await askWithRetry(key, weekPrompt(series, days, passages, guidance, material), 0.6, 90_000, deadline, 90_000, usable)
+    const got = await askWithRetry(key, weekPrompt(series, days, passages, guidance, material, wantDiscussion), 0.6, 90_000, deadline, 90_000, usable)
     if (!got.ok) return fail(got.reason)
 
     // Day k of the plan stays day k: an unusable day is a null slot, so its date
@@ -742,7 +781,9 @@ async function handleWeek(body: Record<string, unknown>, authHeader: string, rep
     const slots: Array<WeekDay | null> = Array.from({ length: days }, (_, k) => {
       const d = planned[k]
       const placed = d ? placeDay(String(d.reference ?? ''), passages) : null
-      return placed ? { ...placed, questions: salvage(d!.questions, placed.text, seen), note: line(d!.note, 280) } : null
+      return placed
+        ? { ...placed, questions: salvage(d!.questions, placed.text, seen), note: line(d!.note, 280), ...(wantDiscussion ? { discussion: discussionOf(d!.discussion) } : {}) }
+        : null
     })
     await refill(key, deadline, seen, slots)
     const ready = slots.map((s) => (s && s.questions.length >= 5 ? { ...s, questions: shuffleOptions(s.questions.slice(0, 5)) } : null))
@@ -773,18 +814,28 @@ async function handleWeek(body: Record<string, unknown>, authHeader: string, rep
       })
       const r = data as { ok?: boolean; reason?: string } | null
       if (error || !r?.ok) return { date, status: 'refused' as const, reason: error ? 'unavailable' : String(r?.reason ?? 'unavailable') }
-      return { date, status: 'saved' as const }
+      // The day's discussion questions ride beside it (0151). A failure here
+      // never un-saves the day: the questions are an add-on.
+      let discussed = false
+      if (d.discussion?.length) {
+        const { data: dd, error: de } = await caller.rpc('set_church_discussion', {
+          p_church_id: churchId, p_drop_date: date, p_questions: d.discussion, p_generated: true,
+        })
+        discussed = !de && !!(dd as { ok?: boolean } | null)?.ok
+      }
+      return { date, status: 'saved' as const, discussed }
     }))
     const saved = results.filter((r) => r.status === 'saved').map((r) => r.date)
     const refused = results.filter((r) => r.status === 'refused').map((r) => ({ date: r.date, reason: (r as { reason: string }).reason }))
     const missing = results.filter((r) => r.status === 'missing').map((r) => r.date)
+    const discussed = results.filter((r) => r.status === 'saved' && (r as { discussed?: boolean }).discussed).map((r) => r.date)
 
     // Units are kept only for days that landed on the calendar.
     const left = await refund(churchId, spent, days - saved.length)
     const outcome = !saved.length ? 'not_saved' : saved.length < dates.length ? 'short' : 'ok'
     await logRun({ ...run, unitsUsed: saved.length, daysReturned: returned, daysSaved: saved.length, outcome })
     if (!saved.length) return reply({ ok: false, reason: 'not_saved', refused, missing, left })
-    return reply({ ok: true, asked: days, saved, refused, missing, left, flagged: checks.flagged, ...told })
+    return reply({ ok: true, asked: days, saved, refused, missing, left, flagged: checks.flagged, ...(wantDiscussion ? { discussed } : {}), ...told })
   } catch (e) {
     console.error('church-draft', (e as Error).message)
     return fail('unavailable')
@@ -877,6 +928,7 @@ async function handleOne(body: Record<string, unknown>, authHeader: string, repl
   const transcript = readTranscript(body.transcript)
   if (!/^[0-9a-f-]{36}$/i.test(churchId) || text.length < 3) return reply({ ok: false, reason: 'bad_input' })
   if (!REFERENCE.test(reference.replace(/\s+/g, ' '))) return reply({ ok: false, reason: 'bad_reference' })
+  const wantDiscussion = body.discussion === true
 
   const spent = await spend(asCaller(authHeader), churchId, 1)
   const run: Run = { churchId, mode: 'one', unitsAsked: 1, unitsUsed: 0, outcome: 'ok', started }
@@ -899,7 +951,7 @@ async function handleOne(body: Record<string, unknown>, authHeader: string, repl
     // Usable = at least three questions survive on their own; refill does the rest.
     const usable = (v: Record<string, unknown>) => salvage(v.questions, text, new Set()).length >= 3
     const material = await prepareTranscript(key, transcript, reference, deadline, 60_000)
-    const got = await askWithRetry(key, prompt(reference, text, guidance, material), 0.6, 45_000, deadline, 60_000, usable)
+    const got = await askWithRetry(key, prompt(reference, text, guidance, material, wantDiscussion), 0.6, 45_000, deadline, 60_000, usable)
     if (!got.ok) return fail(got.reason)
     const slot = { reference, text, questions: salvage(got.value.questions, text, seen) }
     await refill(key, deadline, seen, [slot])
@@ -909,6 +961,7 @@ async function handleOne(body: Record<string, unknown>, authHeader: string, repl
     await logRun({ ...run, unitsUsed: 1, daysReturned: 1, outcome: 'ok', questionsChecked: checks.checked, questionsFlagged: checks.flagged })
     return reply({
       ok: true, questions, note: line(got.value.note, 280), left: spent.left,
+      ...(wantDiscussion ? { discussion: discussionOf(got.value.discussion) } : {}),
       ...(transcript ? { transcript_use: material.use, transcript_read: material.read } : {}),
     })
   } catch (e) {

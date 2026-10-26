@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { Page } from '@/components/Page'
+import { Collapsible } from '@/components/Collapsible'
 import { FirstVisitTip } from '@/features/home/FirstVisitTip'
 import { LibraryScene } from './LibraryScene'
 import { LibrarianSheet, Cover } from './LibrarianSheet'
 import { useLibrary } from '@/store/library'
-import { LIBRARIAN_NAME, type StudyBook } from '@/data/library'
+import { GREETINGS, LIBRARIAN_NAME, LIBRARY_XP, lineFrom, type StudyBook } from '@/data/library'
+import { GENERATED_ART } from '@/data/generatedArt'
+import { Icon } from '@/data/icons'
 import { useJuice } from '@/juice/useJuice'
 import { useReviews } from '@/store/reviews'
 import { useFavorites } from '@/store/favorites'
@@ -13,29 +16,48 @@ import { useInventory, seedGuestInventoryFromCollection } from '@/store/inventor
 import { usePractice } from '@/store/practice'
 import { useBookAccuracy } from '@/store/bookAccuracy'
 import { useAuth } from '@/store/auth'
-import { summarize } from '@/lib/bookAccuracy'
+import {
+  TIERS,
+  accuracyPct,
+  reviewOrder,
+  summarize,
+  tierOf,
+  type AccuracySummary,
+  type BookStat,
+} from '@/lib/bookAccuracy'
 
 // The Study tab — everything that's practice rather than the daily drop or a
-// real battle. It is a LIBRARY: one room, filling the tab, with a librarian at
-// the desk who lends you the five things you can practise, a ledger on that
-// desk that is your reports, and a satchel on the floor that is your bag.
+// real battle. Since 2026-10-26 it is a REPORTS-FIRST DASHBOARD, top to bottom:
 //
-// It used to be a grid of book tiles. The argument for the room is the one
-// every other section of this app already made — the road is the top of
-// /season, the hall sits under "Start a new battle", the churchyard is the hero
-// of /church, your Upper Room is under the player card — and Study was the last
-// section that opened with a list of things rather than the place they are in.
+//   1. Tabitha, reduced — a strip with her portrait (the `librarian` render),
+//      one line from GREETINGS and an "Ask" button that opens LibrarianSheet.
+//      She is still the one who lends: the stamp and the day's first-book
+//      5 XP (checkout_library_book, 0083) live ONLY in her sheet. The tool
+//      cards below are plain doors and pay nothing at the door.
+//   2. Your progress — overall accuracy and books answered (`summarize`), and
+//      the three most recently answered books, softest first on a tie. "See
+//      all reports" goes to /study/reports; the full BookAccuracyChart is NOT
+//      repeated here. Every word on it is about you against you.
+//   3. Study tools — every StudyBook but reports, as a 2-column grid.
+//   4. "Visit the library" — the painted room, folded. Kept, not deleted;
+//      tapping it opens her desk as it always did.
+//
+// It used to open on the room itself (and before that on a grid of tiles).
+// The room read beautifully and buried the one thing a returning studier
+// wants to know — how am I doing, and what next — under a picture.
 //
 // ONE LIST, TWO SURFACES. `books` below is built once and handed BOTH to the
-// room (for its hotspot badges) and to Tabitha (for what she lends). A book
-// carrying `lend` is stock; one without it is yours, and stands in the room as
-// itself. Deciding that here, once, is what stops the room and her desk from
-// becoming two menus that can disagree.
+// dashboard's tool grid and to Tabitha (for what she lends). A book carrying
+// `lend` is stock; one without it is yours (reports, bag). Deciding that
+// here, once, is what stops the grid and her desk becoming two menus that
+// can disagree.
+//
+// ?desk=1 still opens her sheet on arrival (the compass's "borrow today's
+// book" row points here), and ?bag=1 still redirects to /study/bag.
 //
 // Nothing here touches your rank. The one exception is deliberately tiny and
-// deliberately server-granted: the FIRST BOOK OF THE DAY pays 5 XP
-// (checkout_library_book, 0083), and nothing anywhere counts how many days in a
-// row you have collected it.
+// deliberately server-granted: the FIRST BOOK OF THE DAY pays 5 XP, and
+// nothing anywhere counts how many days in a row you have collected it.
 export default function StudyScreen() {
   const navigate = useNavigate()
   const juice = useJuice()
@@ -50,6 +72,9 @@ export default function StudyScreen() {
   const loadPractice = usePractice((s) => s.loadList)
   const stats = useBookAccuracy((s) => s.stats)
   const loadAccuracy = useBookAccuracy((s) => s.load)
+  const accuracyLoaded = useBookAccuracy((s) => s.loaded)
+  const borrowedToday = useLibrary((s) => s.borrowedToday)
+  const libraryLoaded = useLibrary((s) => s.loaded)
   const name = useAuth((s) => s.profile?.username ?? '')
   const loadLibrary = useLibrary((s) => s.load)
 
@@ -58,7 +83,7 @@ export default function StudyScreen() {
   //
   // ?desk=1 opens Tabitha straight away. The compass's "borrow today's book"
   // row and any quest naming `borrow_book` point here, because the checkout is
-  // a HOTSPOT in the room rather than a route — landing in the library and
+  // her sheet rather than a route — landing in the library and
   // leaving somebody to work out that the librarian is the thing to tap is the
   // gap that row exists to close. Frozen at mount and the param dropped on the
   // way past, so a reload doesn't re-open the desk over whatever they went on
@@ -85,18 +110,30 @@ export default function StudyScreen() {
     loadInventory()
     loadPractice()
     loadAccuracy()
-    // Loaded here rather than only in the sheet, so the room knows whether
+    // Loaded here rather than only in the sheet, so her strip knows whether
     // today's welcome is still owed before anybody taps anything.
     void loadLibrary()
     seedGuestInventoryFromCollection()
   }, [loadDue, loadFavorites, loadInventory, loadPractice, loadAccuracy, loadLibrary])
 
   const summary = useMemo(() => summarize(stats), [stats])
+  // The three books you touched most recently; on a tie (same day, or no
+  // date) the softer one first — the chart's own review order.
+  const recent = useMemo(() => {
+    const soft = reviewOrder(stats)
+    const rank = new Map(soft.map((s, i) => [s.book, i]))
+    return [...soft]
+      .sort((a, b) => {
+        const d = (b.lastPlayedOn ?? '').localeCompare(a.lastPlayedOn ?? '')
+        return d !== 0 ? d : rank.get(a.book)! - rank.get(b.book)!
+      })
+      .slice(0, 3)
+  }, [stats])
 
   if (params.get('bag') === '1') return <Navigate to="/study/bag" replace />
 
   // Everything Study can do, in one list. `lend` is what Tabitha will fetch;
-  // the two without it stand in the room as themselves. `name` rides along for
+  // the two without it (reports, bag) are yours rather than stock. `name` rides along for
   // the Bible, which is the player's own and says so.
   const books: StudyBook[] = [
     {
@@ -193,10 +230,22 @@ export default function StudyScreen() {
     juice.select?.()
     navigate(to)
   }
+  const openDesk = () => {
+    juice.select?.()
+    setAtDesk(true)
+  }
 
-  // Her row carries what's DUE, because that's the one number somebody needs
-  // before deciding whether to open anything.
+  // What's DUE rides on her button, because that's the one number somebody
+  // needs before deciding whether to open anything.
   const due = byKey('keep')?.badge
+  // The tools on the dashboard: everything she lends, plus the bag (yours,
+  // not stock). Reports is left out — it IS the panel above.
+  // Her two leads first (verses you've already met), then the rest in order.
+  const LEAD = ['keep', 'replay']
+  const tools = [
+    ...LEAD.map((k) => byKey(k)).filter((b): b is StudyBook => !!b),
+    ...books.filter((b) => b.key !== 'reports' && !LEAD.includes(b.key)),
+  ]
 
   return (
     <Page>
@@ -204,90 +253,48 @@ export default function StudyScreen() {
       <div className="center" style={{ marginBottom: 12 }}>
         <h1 style={{ fontSize: 26 }}>Study</h1>
         <p className="dim" style={{ marginTop: 2, fontSize: 13 }}>
-          {LIBRARIAN_NAME} is at the desk — none of this affects your rank.
+          Your progress — only ever against yourself.
         </p>
       </div>
 
-      {/* The room is the door to HER (2026-10-21, the owner's call): she is
-          painted in, head to feet, and tapping the picture opens her sheet —
-          the "Ask her" row went, so the tab's most-used action is on screen
-          without a scroll. One small chip on the frame's bottom edge says so
-          and carries what's DUE; it is a caption on the frame, not a cloud on
-          the art. Bled past the shell's 18px gutter because it is the tab's
-          picture rather than a card on it. */}
-      <button
-        onClick={() => { juice.select?.(); setAtDesk(true) }}
-        aria-label={due ? `Ask ${LIBRARIAN_NAME}, ${due} due` : `Ask ${LIBRARIAN_NAME}`}
-        style={{
-          display: 'block',
-          position: 'relative',
-          margin: '0 -18px',
-          width: 'calc(100% + 36px)',
-          padding: 0,
-          border: 0,
-          background: 'none',
-          cursor: 'pointer',
-          textAlign: 'left',
-        }}
-      >
-        <LibraryScene />
-        <span
-          aria-hidden
-          style={{
-            position: 'absolute',
-            left: 14,
-            bottom: 14,
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '8px 14px',
-            borderRadius: 999,
-            background: 'rgba(20,12,6,0.78)',
-            border: '1px solid var(--gold)',
-            color: 'var(--ink)',
-            fontSize: 14,
-            fontWeight: 700,
-          }}
-        >
-          Ask {LIBRARIAN_NAME}
-          {due && (
-            <span
-              style={{
-                minWidth: 22,
-                padding: '1px 7px',
-                borderRadius: 999,
-                background: 'var(--gold)',
-                color: '#3a2200',
-                fontSize: 12,
-                textAlign: 'center',
-              }}
-            >
-              {due}
-            </span>
-          )}
-          <span style={{ opacity: 0.8 }}>→</span>
-        </span>
-      </button>
+      <TabithaStrip due={due} owed={libraryLoaded && !borrowedToday} onOpen={openDesk} />
 
-      <h3 className="dim" style={{ fontSize: 16, margin: '16px 0 10px' }}>At the desk</h3>
-      <div style={{ display: 'grid', gap: 8 }}>
-        {byKey('reports') && (
-          <DeskRow
-            visual={<Cover item={byKey('reports')!} />}
-            title="Reports"
-            caption={byKey('reports')!.caption}
-            onTap={() => go('/study/reports')}
-          />
-        )}
-        {byKey('bag') && (
-          <DeskRow
-            visual={<Cover item={byKey('bag')!} />}
-            title="Your bag"
-            caption={byKey('bag')!.caption}
-            badge={byKey('bag')!.badge}
-            onTap={() => go('/study/bag')}
-          />
-        )}
+      <ProgressPanel
+        summary={summary}
+        loaded={accuracyLoaded}
+        recent={recent}
+        onAll={() => go('/study/reports')}
+        onBook={(book) => go(`/study/focus?book=${encodeURIComponent(book)}`)}
+      />
+
+      <h3 className="dim" style={{ fontSize: 16, margin: '18px 0 10px' }}>Study tools</h3>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+        {tools.map((b) => (
+          <ToolCard key={b.key} item={b} onTap={() => go(b.to)} />
+        ))}
+      </div>
+
+      {/* The room, kept rather than deleted, folded under everything else:
+          the art is still the library you're in, it just isn't the first
+          thing on the tab any more. Tapping it still opens her desk. */}
+      <div style={{ marginTop: 18 }}>
+        <Collapsible icon={<Icon id="study" size={18} style={{ display: 'inline-block', verticalAlign: '-3px' }} />} title="Visit the library">
+          <button
+            onClick={openDesk}
+            aria-label={due ? `Ask ${LIBRARIAN_NAME}, ${due} due` : `Ask ${LIBRARIAN_NAME}`}
+            style={{
+              display: 'block',
+              width: '100%',
+              padding: 0,
+              border: 0,
+              background: 'none',
+              cursor: 'pointer',
+              marginBottom: 10,
+            }}
+          >
+            <LibraryScene />
+          </button>
+        </Collapsible>
       </div>
 
       {atDesk && <LibrarianSheet items={books} onClose={() => setAtDesk(false)} />}
@@ -295,64 +302,236 @@ export default function StudyScreen() {
   )
 }
 
-// One row of the list under the room — the desk sheet's own row shape, so the
-// tab and her sheet read as one set of shelves. The badge is the same count
-// the marker on the art used to carry; never anything new.
-function DeskRow({
-  visual,
-  title,
-  caption,
-  badge,
-  onTap,
+/**
+ * Tabitha, reduced: her portrait, one line from her greeting pool, and the
+ * door to her desk. She is still the one who lends — every practice door and
+ * the day's first-book stamp live in her sheet — but she no longer fills the
+ * tab. The line is drawn once per visit, like the sheet's own greeting.
+ */
+function TabithaStrip({ due, owed, onOpen }: { due?: string; owed: boolean; onOpen: () => void }) {
+  const line = useMemo(() => lineFrom(GREETINGS), [])
+  const art = GENERATED_ART['librarian']
+  return (
+    <div
+      className="card"
+      style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', marginBottom: 12 }}
+    >
+      <span
+        aria-hidden
+        style={{
+          flexShrink: 0,
+          width: 46,
+          height: 46,
+          borderRadius: '50%',
+          border: '1.5px solid var(--edge)',
+          background: art
+            ? `var(--card-raised) url(${art}) center -3px / 104px auto no-repeat`
+            : 'var(--card-raised)',
+          display: 'grid',
+          placeItems: 'center',
+          fontSize: 22,
+        }}
+      >
+        {!art && '📚'}
+      </span>
+      <span style={{ minWidth: 0, flex: 1 }}>
+        <b style={{ display: 'block', fontSize: 13.5 }}>{LIBRARIAN_NAME}</b>
+        <span className="dim" style={{ fontSize: 12, lineHeight: 1.35, display: 'block' }}>
+          “{line}”
+        </span>
+        {owed && (
+          <span className="faint" style={{ fontSize: 11, display: 'block', marginTop: 2 }}>
+            Today’s first book comes with +{LIBRARY_XP} XP.
+          </span>
+        )}
+      </span>
+      <button
+        className="pill"
+        onClick={onOpen}
+        aria-label={due ? `Ask ${LIBRARIAN_NAME}, ${due} due` : `Ask ${LIBRARIAN_NAME}`}
+        style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 800 }}
+      >
+        Ask
+        {due && <CountBadge>{due}</CountBadge>}
+      </button>
+    </div>
+  )
+}
+
+/**
+ * Your progress, compact: overall accuracy, how many books it covers, and
+ * the three most recently answered books. The full chart lives on
+ * /study/reports and is NOT duplicated here. Nothing on it is about anybody
+ * else — no average, no percentile, no "better than".
+ */
+function ProgressPanel({
+  summary,
+  loaded,
+  recent,
+  onAll,
+  onBook,
 }: {
-  visual: React.ReactNode
-  title: string
-  caption?: string
-  badge?: string
-  onTap: () => void
+  summary: AccuracySummary
+  loaded: boolean
+  recent: BookStat[]
+  onAll: () => void
+  onBook: (book: string) => void
 }) {
+  const empty = summary.answered === 0
+  return (
+    <section className="card" style={{ padding: '14px 14px 10px' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+        <b style={{ fontFamily: 'var(--font-display)', fontSize: 16, flex: 1 }}>Your progress</b>
+        <span className="faint" style={{ fontSize: 11 }}>only against yourself</span>
+      </div>
+
+      {empty ? (
+        <p className="faint" style={{ fontSize: 13, lineHeight: 1.45, margin: '8px 0 6px' }}>
+          {loaded
+            ? 'Answer a few questions anywhere — the daily verse, a replay, a race — and every book you touch fills in here.'
+            : 'Reading your answers…'}
+        </p>
+      ) : (
+        <>
+          <div style={{ display: 'flex', gap: 10, margin: '10px 0 12px' }}>
+            <Stat value={`${summary.pct}%`} label="right overall" />
+            <Stat
+              value={String(summary.books)}
+              label={summary.books === 1 ? 'book answered' : 'books answered'}
+            />
+          </div>
+          <div style={{ display: 'grid', gap: 6 }}>
+            {recent.map((s) => (
+              <BookRow key={s.book} stat={s} onTap={() => onBook(s.book)} />
+            ))}
+          </div>
+        </>
+      )}
+
+      <button
+        onClick={onAll}
+        style={{
+          display: 'block',
+          width: '100%',
+          marginTop: 8,
+          padding: '8px 0 4px',
+          border: 0,
+          background: 'none',
+          color: 'var(--ink-dim)',
+          fontSize: 13,
+          fontWeight: 700,
+          textAlign: 'right',
+          cursor: 'pointer',
+        }}
+      >
+        See all reports →
+      </button>
+    </section>
+  )
+}
+
+function Stat({ value, label }: { value: string; label: string }) {
+  return (
+    <div
+      style={{
+        flex: 1,
+        padding: '8px 10px',
+        borderRadius: 10,
+        background: 'var(--card-raised)',
+      }}
+    >
+      <b style={{ display: 'block', fontFamily: 'var(--font-display)', fontSize: 22 }}>{value}</b>
+      <span className="faint" style={{ fontSize: 11 }}>{label}</span>
+    </div>
+  )
+}
+
+/** One book, compact: name, tier in words, a thin meter. Tapping drills it —
+ *  the same single action the full chart offers. */
+function BookRow({ stat, onTap }: { stat: BookStat; onTap: () => void }) {
+  const tier = TIERS[tierOf(stat)]
+  const pct = accuracyPct(stat)
   return (
     <button
       onClick={onTap}
-      aria-label={badge ? `${title}, ${badge}` : title}
+      aria-label={`${stat.book}, ${pct}% right, ${tier.label}. Drill it`}
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1fr) auto',
+        gap: '4px 10px',
+        alignItems: 'center',
+        width: '100%',
+        padding: '7px 2px',
+        border: 0,
+        borderTop: '1px solid var(--stroke)',
+        background: 'none',
+        color: 'var(--ink)',
+        textAlign: 'left',
+        cursor: 'pointer',
+      }}
+    >
+      <b style={{ fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {stat.book}
+      </b>
+      <span style={{ fontSize: 12, color: tier.color, fontWeight: 700 }}>
+        {pct}% · {tier.label}
+      </span>
+      <span
+        aria-hidden
+        style={{ gridColumn: '1 / -1', height: 6, borderRadius: 999, background: 'var(--card-raised)', overflow: 'hidden' }}
+      >
+        <span style={{ display: 'block', height: '100%', width: `${pct}%`, borderRadius: 999, background: tier.color }} />
+      </span>
+    </button>
+  )
+}
+
+/** A study tool on the dashboard. Its route is the same one Tabitha opens;
+ *  her sheet is still where the stamp and the day's XP happen. */
+function ToolCard({ item, onTap }: { item: StudyBook; onTap: () => void }) {
+  return (
+    <button
+      onClick={onTap}
+      aria-label={item.badge ? `${item.title}, ${item.badge}` : item.title}
       className="vellum"
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 11,
+        gap: 9,
         textAlign: 'left',
-        padding: '11px 12px',
+        padding: '9px 10px',
         borderRadius: 12,
         backgroundColor: 'var(--card-solid)',
         border: '1px solid var(--stroke)',
         cursor: 'pointer',
         color: 'var(--ink)',
         width: '100%',
+        minWidth: 0,
       }}
     >
-      {visual}
-      <span style={{ minWidth: 0, flex: 1 }}>
-        <b style={{ display: 'block', fontSize: 14 }}>{title}</b>
-        {caption && <span className="faint" style={{ fontSize: 11.5, lineHeight: 1.35 }}>{caption}</span>}
-      </span>
-      {badge && (
-        <span
-          style={{
-            flexShrink: 0,
-            minWidth: 22,
-            padding: '2px 7px',
-            borderRadius: 999,
-            background: 'var(--gold)',
-            color: '#3a2200',
-            fontSize: 11.5,
-            fontWeight: 800,
-            textAlign: 'center',
-          }}
-        >
-          {badge}
-        </span>
-      )}
-      <span className="faint" style={{ fontSize: 13, flexShrink: 0 }}>→</span>
+      <Cover item={item} />
+      <b style={{ flex: 1, minWidth: 0, fontSize: 13, lineHeight: 1.25 }}>{item.title}</b>
+      {item.badge && <CountBadge>{item.badge}</CountBadge>}
     </button>
+  )
+}
+
+function CountBadge({ children }: { children: React.ReactNode }) {
+  return (
+    <span
+      style={{
+        flexShrink: 0,
+        minWidth: 20,
+        padding: '1px 6px',
+        borderRadius: 999,
+        background: 'var(--gold)',
+        color: '#3a2200',
+        fontSize: 11.5,
+        fontWeight: 800,
+        textAlign: 'center',
+      }}
+    >
+      {children}
+    </span>
   )
 }

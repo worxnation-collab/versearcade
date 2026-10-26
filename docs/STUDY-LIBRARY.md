@@ -1,9 +1,48 @@
-# The Study tab is a library
+# The Study tab: reports first, Tabitha at the desk
 
-`/study` is one room, filling the tab: a lit library with a librarian at the
-desk. Everything Study can do is something in that room — Tabitha lends the five
-things you can practise, the ledger on her desk is your reports, and the satchel
-on the floor is your bag. **The first book you borrow each day pays 5 XP.**
+**Since 2026-10-26 `/study` opens on your progress, not on the room.** Top to
+bottom (`features/study/StudyScreen.tsx`, whose header is the short version):
+
+1. **Tabitha, reduced** — one strip: her portrait (the `librarian` render,
+   cropped to her face), one line from `GREETINGS`, a hint that today's first
+   book carries +5 XP while it's still owed, and an **Ask** button (carrying
+   the verses-due count) that opens `LibrarianSheet`. She is still named,
+   still the one who lends, and her sheet is still the ONLY place the stamp
+   and the day's 5 XP happen.
+2. **Your progress** — overall accuracy and books answered (`summarize` in
+   `lib/bookAccuracy.ts`), plus the three most recently answered books (ties
+   broken softest-first by `reviewOrder`), each a name, a tier in words and a
+   thin meter. Tapping a book drills it (`/study/focus?book=`), the full
+   chart's own single action. **"See all reports →"** goes to `/study/reports`;
+   the full `BookAccuracyChart` is deliberately NOT repeated on the tab. With
+   nothing answered it says how the panel fills — never a zero.
+3. **Study tools** — every `StudyBook` except reports, as a two-column grid of
+   cover + title (+ the existing badge). Each goes straight to its route. That
+   skips her stamp, and that is fine: a study run already counts as borrowing
+   the day's book (`borrowIfNeeded` in `QuizRunner`), so nothing is lost.
+4. **"Visit the library"** — the painted room, folded in a `Collapsible`.
+   Kept, not deleted; tapping the picture opens her desk as before.
+
+**Rank-free copy is the rule for the progress panel.** "Only against
+yourself", no average, no percentile, no comparison to anybody. Add a number
+there only if it is about you against you.
+
+**Why the room stepped back.** It read beautifully and put the one thing a
+returning studier wants — how am I doing, and what next — a scroll and a
+tap away, under a picture. The library-as-room argument below is history: it
+explains why the art exists and why Tabitha is a person rather than a menu
+label, and it still governs the folded room and her sheet.
+
+---
+
+*What follows is the earlier design, kept because the rules in it still hold
+(her voice, the XP, the two modes, the art pipeline). Where it says the room is
+the tab, read "the folded room".*
+
+`/study` was one room, filling the tab: a lit library with a librarian at the
+desk. Tabitha lends the five things you can practise, the ledger on her desk is
+your reports, and the satchel on the floor is your bag. **The first book you
+borrow each day pays 5 XP.**
 
 Files: `features/study/LibraryScene.tsx` (the room), `features/study/
 LibrarianSheet.tsx` (the desk), `data/library.ts` (the `StudyBook` list type,
@@ -27,8 +66,9 @@ and is drawn, not painted, so it shouldn't borrow somebody else's cover.
 
 ## One list, two surfaces
 
-`StudyBook[]` is built once in `StudyScreen` and handed **both** to the room
-(for its hotspot badges) and to Tabitha (for what she lends). An entry carrying
+`StudyBook[]` is built once in `StudyScreen` and handed **both** to the
+dashboard's tool grid and to Tabitha (for what she lends; the room's hotspot
+props are unused now). An entry carrying
 `lend` is stock; one without it is yours and stands in the room as itself. That
 decision is made once, in one place, so the room and her desk can never become
 two menus that disagree — the same choke-point habit `QuizRunner` and

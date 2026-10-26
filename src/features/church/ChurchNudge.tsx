@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button } from '@/components/Button'
+import { ChurchArt } from './ChurchArt'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/store/auth'
 import { useChurch } from '@/store/church'
@@ -22,6 +22,10 @@ import { useJuice } from '@/juice/useJuice'
 //     asked, not a fact about your account worth a migration.
 //   • Online-only, inherited from `store/church.ts` — a guest has no church to
 //     join and no board to join it for.
+//   • It is ONE ROW on `/you` (building · one line · button, plus a quiet ✕),
+//     not a card with a paragraph. It used to be the tallest thing in "Your
+//     people", and a church you haven't joined is not what that tab is about;
+//     the explaining lives on `/church`, which the button opens.
 const HIDDEN_KEY = 'va.churchNudge'
 
 function dismissed(): boolean {
@@ -62,22 +66,37 @@ export function ChurchNudge() {
     setHidden(true)
   }
 
+  const open = () => {
+    juice.select?.()
+    navigate('/church')
+  }
+
   return (
-    <div className="card" style={{ borderColor: 'var(--gold)', marginBottom: 10 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ fontSize: 24 }}>⛪</span>
-        <b style={{ fontFamily: 'var(--font-display)', fontSize: 16 }}>Play for your church</b>
+    <div
+      className="card"
+      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 8px 8px 10px', marginBottom: 10 }}
+    >
+      <div aria-hidden style={{ width: 36, height: 36, flexShrink: 0, display: 'grid', placeItems: 'end center' }}>
+        <ChurchArt level={1} size={36} />
       </div>
-      <p className="dim" style={{ margin: '8px 0 0', fontSize: 14, lineHeight: 1.5 }}>
-        We'll suggest the churches near you. Tap yours and the points you earn pool with everyone
-        else who goes there — the building grows for all of you.
-      </p>
-      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-        <Button variant="gold" onClick={() => { juice.select?.(); navigate('/church') }}>
-          Find my church
-        </Button>
-        <Button variant="ghost" onClick={hide}>Not for me</Button>
-      </div>
+      <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 700, lineHeight: 1.3 }}>
+        Play for your church
+      </span>
+      <button
+        className="pill"
+        onClick={open}
+        style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--gold)', flexShrink: 0, cursor: 'pointer', whiteSpace: 'nowrap' }}
+      >
+        Find mine
+      </button>
+      <button
+        onClick={hide}
+        aria-label="Not for me"
+        className="faint"
+        style={{ fontSize: 15, lineHeight: 1, padding: '6px 4px', flexShrink: 0, cursor: 'pointer', background: 'none', border: 0 }}
+      >
+        ✕
+      </button>
     </div>
   )
 }

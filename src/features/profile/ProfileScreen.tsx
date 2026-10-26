@@ -32,6 +32,23 @@ import { SettingsSheet } from './SettingsSheet'
 import { Tutorial } from '@/features/home/Tutorial'
 import { PaintedIcon, type PaintedIconId } from '@/components/PaintedIcon'
 
+// The You tab, for one player. Its shape, top to bottom (2026-10-26):
+//
+//   1. ProfileHero with the PlayerCard's stats embedded — the one place the
+//      full figure is drawn. Don't shrink it.
+//   2. The tool row: Customize, Journal, Mail (one countless dot), Settings.
+//   3. RoomSection — the Upper Room, the only world that is yours alone.
+//   4. Your Bible (BibleCover). Room and book are the pair this tab is for,
+//      so they sit directly under the portrait, ahead of anything social.
+//   5. Your people: ONE thin church row (nudge or door), then Buddies / Basin
+//      / Invite as a TabbedSection. Invite shows the code and a share — no
+//      "N/5" fraction or bar toward the cross look.
+//   6. Your things: Bag / Cards, folded unless ?inventory=1.
+//   7. PatronCard, Account, More (For Churches, Admin).
+//
+// The test for anything new here: does it compete with 1, 3 or 4 for the first
+// screen? If so it is a row or a pill further down, or it belongs on its own
+// tab. Deep links: ?customize=1, ?inventory=1, ?people=basin|buddies.
 export default function ProfileScreen() {
   const navigate = useNavigate()
   const juice = useJuice()
@@ -325,12 +342,13 @@ export default function ProfileScreen() {
           of five would undo the very distinction these headings were added to
           draw. */}
       <h3 ref={peopleRef} style={{ fontSize: 16, margin: '18px 0 10px', scrollMarginTop: 8 }} className="dim">Your people</h3>
-      {/* Open rather than folded, and first: it's the only row here that's an
-          invitation instead of a drawer, and a player with no church has
-          nothing to open. It removes itself the moment there is one — or when
-          they say it isn't for them. ProfileChurchCard is the other half of
-          the same slot: it renders only once there IS a church, so exactly one
-          of the two ever shows (and neither for a guest). */}
+      {/* One THIN row, above the pills: ChurchNudge (no church — building,
+          one line, "Find mine", a quiet ✕) or ProfileChurchCard (building,
+          name, arrow to /church). Exactly one of the two ever shows, and
+          neither for a guest. Both are doors and never summaries: the yard,
+          the week, the notice and the leadership tools are the Church tab's,
+          and this tab is about the individual player — the church row used to
+          be the tallest thing in this section and must not grow back. */}
       <ChurchNudge />
       <ProfileChurchCard />
       {/* A deep link wins over the waiting-request default: somebody who tapped
@@ -361,7 +379,7 @@ export default function ProfileScreen() {
                 key: 'invite',
                 icon: <PaintedIcon id="invite" />,
                 label: 'Invite',
-                right: `${Math.min(profile.referralCount ?? 0, 5)}/5 friends toward the carried-cross look`,
+                right: 'Your code, and a link to share',
                 content: (
                   <>
                     <div className="card" style={{ marginBottom: 6 }}>
@@ -379,22 +397,15 @@ export default function ProfileScreen() {
                       </div>
                       {refFlash && <p style={{ color: 'var(--good)', fontSize: 13, marginTop: 8 }}>{refFlash}</p>}
 
-                      <div style={{ marginTop: 14 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6, fontWeight: 700 }}>
-                          <span className="dim">✝️ Take Up Your Cross</span>
-                          <span style={{ color: (profile.referralCount ?? 0) >= 5 ? 'var(--good)' : 'var(--gold)' }}>
-                            {Math.min(profile.referralCount ?? 0, 5)}/5 friends
-                          </span>
-                        </div>
-                        <div style={{ height: 8, borderRadius: 999, background: 'rgba(0,0,0,0.3)', overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: `${Math.min((profile.referralCount ?? 0) / 5, 1) * 100}%`, borderRadius: 999, background: 'linear-gradient(90deg, var(--gold), var(--tangerine))', transition: 'width 0.3s' }} />
-                        </div>
-                        <p className="faint" style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>
-                          {(profile.referralCount ?? 0) >= 5
-                            ? 'Unlocked! Equip it in Customize → Skins.'
-                            : 'When 5 friends sign up with your code, the carried-cross look unlocks.'}
-                        </p>
-                      </div>
+                      {/* The look the code unlocks is said once, as a door, with
+                          no bar and no fraction — the Wardrobe's rule (the thing
+                          and the door, never the distance). The code and the
+                          share button are what this panel is for. */}
+                      <p className="faint" style={{ fontSize: 11, marginTop: 10, lineHeight: 1.4 }}>
+                        {(profile.referralCount ?? 0) >= 5
+                          ? '✝️ Take Up Your Cross is yours — equip it in Customize → Skins.'
+                          : '✝️ Five friends who join with your code unlock the carried-cross look.'}
+                      </p>
                     </div>
                     <p className="faint" style={{ fontSize: 11, lineHeight: 1.4 }}>
                       Friends enter your code (or tap your link) when they create an account.

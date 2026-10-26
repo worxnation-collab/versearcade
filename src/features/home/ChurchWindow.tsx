@@ -36,7 +36,8 @@ import { GiveLink } from '@/features/church/ChurchExtras'
 //          and the gathering hour.
 //     No giver, no rank, no "who played today" — the church rules in
 //     CLAUDE.md, applied to a card. An unverified church simply has no 2-4.
-//   * You don't — what a church adds, in four short lines, and ONE button into
+//   * You don't — an invitation, "Play for a congregation": the building, one
+//     warm sentence of what a church adds, and ONE door (the whole card) into
 //     the existing picker at /church. A guest meets the account wall there,
 //     which is the pitch; a keyless build meets the Church tab's own card.
 //
@@ -71,29 +72,30 @@ export function ChurchWindow() {
 
   if (church) return <MemberCard church={church} now={now} onOpen={go} />
 
+  // The pitch is an INVITATION, not a task: no "Add", no checklist of four
+  // features to unlock, and the building is drawn first and large because a
+  // place is what is being offered. It is deliberately shorter than it was
+  // (one line of what a church adds, not four rows) so it sits under the
+  // daily things without pushing the compass — and the arcade it invites —
+  // down the screen. Still ONE tap, the whole card, into /church.
   return (
-    <Shell onClick={go} label="Add your church">
+    <Shell onClick={go} label="Play for a congregation — find your church">
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <div aria-hidden style={{ width: 64, height: 64, flexShrink: 0, display: 'grid', placeItems: 'end center', opacity: 0.9 }}>
-          <ChurchArt level={1} size={64} />
+        <div aria-hidden style={{ width: 76, height: 76, flexShrink: 0, display: 'grid', placeItems: 'end center' }}>
+          <ChurchArt level={1} size={76} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 17, fontWeight: 800, lineHeight: 1.2 }}>Add your church</div>
-          <div className="faint" style={{ fontSize: 12.5, marginTop: 3, lineHeight: 1.4 }}>
-            Play for your own congregation.
+          <Eyebrow>There’s a seat for you</Eyebrow>
+          <div style={{ fontSize: 17, fontWeight: 800, lineHeight: 1.2, marginTop: 2 }}>Play for a congregation</div>
+          <div className="dim" style={{ fontSize: 13, marginTop: 4, lineHeight: 1.45 }}>
+            The points you earn can help a church grow — the one you go to, or one near
+            you — and you’ll see who else plays there.
           </div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gap: 6, marginTop: 12 }}>
-        <Signal icon="buddies">See who plays from your church</Signal>
-        <Signal icon="week">This week’s news from your church</Signal>
-        <Signal icon="pray">Pray for each other at the wall</Signal>
-        <Signal icon="journal">Study the verse your church picks</Signal>
-      </div>
-
       <div style={{ marginTop: 12 }}>
-        <CardButton>Add church</CardButton>
+        <CardButton>Find your church ›</CardButton>
       </div>
     </Shell>
   )

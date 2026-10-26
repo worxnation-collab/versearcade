@@ -365,3 +365,47 @@ merged code is inert, which is the fail-closed answer.
    `REVENUECAT_SECRET_KEY` already exists for the skins.
 5. **A new App Store build** carrying this client (the plan card is in the
    baked `dist`), with the two subscriptions attached to its review.
+
+## Series numbers: is a series landing? (0150)
+
+Home on the leadership dashboard carries **"How your series are landing"**
+under the to-do: one row per series the church has run or scheduled (the last
+year, newest first, eight at most), and one trend line comparing the newest
+measured series with the one before it ("Psalms of Ascent: 75% engaged, up
+from 62% on Fruit of the Spirit."). It comes from `church_series_landing`,
+computed on the server from the church's own verse plays (`church_verse_plays`,
+0128), and the client does no counting.
+
+**Definitions** (the migration header says the same):
+
+- **A series** is the church's APPROVED days carrying the same series name,
+  compared case-insensitively with surrounding space trimmed. Drafts and
+  discarded days never count.
+- **A live day** is a day whose date has come (the leader's local date,
+  clamped ±1 like every reader). Days still ahead count toward the series'
+  length and nothing else; a series with no live day yet is "upcoming" and has
+  no numbers.
+- **The base** is the church's CURRENT members, and only plays of THIS
+  church's verse count. Someone who has left is out of the base and their
+  plays are out of the numbers, so a percentage is always out of the people
+  who are here now.
+- **Engaged** = a current member who played at least one live day of the
+  series.
+- **Completed** = a current member who played EVERY live day of it. While a
+  series is still running the screen calls this "kept up so far"; once its
+  last day has passed it is the finished number.
+
+**What it never shows is a person.** Counts and percentages about the
+congregation, and nothing else: no name, no user id, no per-person days, no
+order of people by anything. Series are listed by date, the order they were
+preached, not by how well they did. The names stay where they already were,
+on the People tab (verified leadership, 0128).
+
+**Who sees it.** Any leadership of the church (`is_church_admin`), because
+nothing in it is named, so a free claim (0137) gets the same shape. A free
+claim cannot schedule a church verse (`set_church_verse` needs a verified
+church), so in practice it has no series and the section does not render.
+Members, other churches' leaders and strangers are refused (`not_leadership`).
+The section renders nothing when there are no named series, or against a server
+without 0150.
+

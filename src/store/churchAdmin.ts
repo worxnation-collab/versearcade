@@ -1336,3 +1336,50 @@ export async function fetchAutoWeeks(churchId: string): Promise<Res<AutoWeekJob[
 }
 
 export const dismissAutoWeek = (jobId: string) => call('dismiss_church_auto_week', { p_job_id: jobId })
+
+// ---------------------------------------------------------------------------
+// Is a series landing? (0150) Counts and percentages about the congregation,
+// per series the church has run: how many current members played at least one
+// live day ("engaged") and how many played every live day ("completed" — "kept
+// up so far" while it runs). Never a name, never a per-person number.
+// docs/CHURCH-PACKAGES.md → "Series numbers".
+// ---------------------------------------------------------------------------
+export interface SeriesLanding {
+  name: string
+  startDate: string
+  endDate: string
+  days: number
+  liveDays: number
+  status: 'upcoming' | 'running' | 'finished'
+  engaged: number
+  completed: number
+  /** Out of the church's CURRENT members; null before any day is live. */
+  engagedPct: number | null
+  completedPct: number | null
+}
+
+export async function fetchSeriesLanding(churchId: string): Promise<Res<{ members: number; series: SeriesLanding[] }>> {
+  const r = await call<{ members?: number; series?: Array<Record<string, any>> }>('church_series_landing', {
+    p_church_id: churchId,
+    p_local_date: todayLocalDate(),
+  })
+  if (!r.ok) return r
+  return {
+    ok: true,
+    data: {
+      members: Number(r.data.members) || 0,
+      series: (r.data.series ?? []).map((s) => ({
+        name: String(s.name ?? ''),
+        startDate: String(s.start_date ?? ''),
+        endDate: String(s.end_date ?? ''),
+        days: Number(s.days) || 0,
+        liveDays: Number(s.live_days) || 0,
+        status: s.status === 'finished' || s.status === 'running' ? s.status : 'upcoming',
+        engaged: Number(s.engaged) || 0,
+        completed: Number(s.completed) || 0,
+        engagedPct: s.engaged_pct == null ? null : Number(s.engaged_pct),
+        completedPct: s.completed_pct == null ? null : Number(s.completed_pct),
+      })),
+    },
+  }
+}

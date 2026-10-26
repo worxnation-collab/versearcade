@@ -3,6 +3,7 @@ import { addDays, todayLocalDate } from '@/lib/date'
 import { useJuice } from '@/juice/useJuice'
 import { fetchDays, flaggedCount, type AdminSettings, type LeaderInsights, type WeekDay } from '@/store/churchAdmin'
 import { activeThisWeek } from './InsightsPanel'
+import { SeriesLandingPanel } from './SeriesLandingPanel'
 import { autoWeekFailed, autoWeekRunning } from '@/store/churchAdmin'
 import { autoWeekRange, autoWeekReason, currentAutoWeek, useAutoWeeks } from './autoWeek'
 
@@ -34,6 +35,10 @@ import { autoWeekRange, autoWeekReason, currentAutoWeek, useAutoWeeks } from './
 // (2026-10-26). It names NOBODY and carries no streak or coral; it is one
 // count of members a leader can write to, and the names stay behind the fold
 // it opens. Leaders are never counted in it.
+//
+// Under the list, "How your series are landing" (0150): per series, how many
+// members engaged and how many completed it — congregation totals, never who.
+// Any leadership reads it (it names nobody); it renders nothing with no series.
 //
 // Totals ("At a glance") follow the list, unchanged; they used to be the
 // whole first screen.
@@ -201,6 +206,8 @@ export function HomePanel({
           </span>
         </button>
       ))}
+
+      <SeriesLandingPanel churchId={churchId} />
 
       <h2 style={{ margin: '10px 0 0', fontSize: 17, fontFamily: 'var(--font-display)' }}>At a glance</h2>
       {glance}

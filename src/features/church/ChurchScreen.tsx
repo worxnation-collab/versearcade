@@ -29,6 +29,7 @@ import { ChurchLife } from './ChurchLife'
 import { CHURCH_TIERS, churchLevelInfo, nextTier, tierForLevel, tierIndexForLevel, xpToReachLevel } from './levels'
 import type { Church } from '@/types'
 import { PaintedIcon } from '@/components/PaintedIcon'
+import { useChurchLeaderLook } from '@/store/churchLeaderLook'
 
 // The Church tab. Pick the church you actually attend, then pour the points
 // you've earned into it: the congregation's XP is pooled, the building grows as
@@ -126,6 +127,8 @@ function ChurchHome({ church }: { church: Church }) {
   // plots. Two scenes on one screen was one scene too many.
   const me = useAuth((s) => s.profile)
   const { plantings, load: loadYard, move: moveFlora } = useChurchYard()
+  // Your church's leader, standing at the door of your own yard (0146).
+  const leader = useChurchLeaderLook(church.id)
   // The congregation's monuments stand in the same hero scene as its flowers.
   const statues = useRivalry((s) => s.statues)
   const loadRivalry = useRivalry((s) => s.load)
@@ -343,6 +346,7 @@ function ChurchHome({ church }: { church: Church }) {
           skin={church.skin}
           flora={plantings}
           statues={statues}
+          leader={leader}
           floraEditing={{
             picked,
             onPick: pick,

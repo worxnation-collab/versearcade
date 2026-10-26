@@ -50,6 +50,24 @@ Two consequences worth stating plainly:
 | ❌ Anything about a member | See below |
 | ❌ Another church's page | `is_church_admin(p_church_id)` is checked per call, not per session |
 
+## The leader's look is what the congregation sees (0146)
+
+Verified leadership picks a look in **Your look** (0136: five defaults, or the
+one-time Custom Leader Avatar). Until 0146 that look was drawn only in the
+leader's own picker. Now `church_leader_look(church)` — public, read-only —
+returns one face per verified church, and three places draw it:
+
+- **beside the pastor's note** on the church verse (`ChurchVerseScreen`);
+- **beside the live notice** on a member's church tab (`ChurchLife`);
+- **standing by the door of the churchyard** (`ChurchScene`), on the member's
+  own tab, the leaderboard sheet and the public `/church/:id` page.
+
+Rules: verified churches only; only a leader who chose a look (a delivered
+custom look first, then the longest-standing leader); no name, no user id,
+only the look plus the leader's tone, hair and figure; untappable, so it opens
+no player card. No look ⇒ nothing is drawn — never a stand-in figure. The
+leader's own character (`avatar_character`) is unchanged everywhere else.
+
 ## Leadership sees members by name (0128)
 
 **This section used to say "no per-member data, ever". The owner reversed it on

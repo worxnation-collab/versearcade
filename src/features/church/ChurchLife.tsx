@@ -8,6 +8,7 @@ import { ChurchAssetCard } from './ChurchAssetCard'
 import { useMyChurchAssets } from '@/store/churchAssets'
 import type { ChurchExtras } from '@/types/churchPackages'
 import type { Church } from '@/types'
+import { LeaderBeside } from './LeaderBeside'
 
 // The member's church, as a PLACE PEOPLE ARE (0128) — the top of the Church tab
 // for a member of a VERIFIED church, between the churchyard and Give:
@@ -85,19 +86,25 @@ export function ChurchLife({ church, extras }: { church: Church; extras: ChurchE
         </span>
       </div>
 
+      {/* The live notice, with the church's leader standing beside it when
+          leadership has chosen a look (0146) — the words alone otherwise. */}
       {extras?.announcement && noticeCard && (
         <div className="card" style={{ padding: 8 }}>
           {/* The card carries its own "From {church}" and "Posted {date}". */}
-          <ChurchAssetCard kind="announcement" templateId={noticeCard.templateId} payload={noticeCard.payload} />
+          <LeaderBeside churchId={church.id} size={40} align="flex-end">
+            <ChurchAssetCard kind="announcement" templateId={noticeCard.templateId} payload={noticeCard.payload} />
+          </LeaderBeside>
         </div>
       )}
       {extras?.announcement && !noticeCard && (
         <div className="card" style={{ padding: '12px 14px' }}>
-          <Eyebrow>From {church.name}</Eyebrow>
-          <p style={{ margin: '4px 0 0', fontSize: 14, lineHeight: 1.45, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>
-            {extras.announcement.message}
-          </p>
-          <div className="faint" style={{ fontSize: 11.5, marginTop: 4 }}>{ago(extras.announcement.createdAt)}</div>
+          <LeaderBeside churchId={church.id} size={40}>
+            <Eyebrow>From {church.name}</Eyebrow>
+            <p style={{ margin: '4px 0 0', fontSize: 14, lineHeight: 1.45, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>
+              {extras.announcement.message}
+            </p>
+            <div className="faint" style={{ fontSize: 11.5, marginTop: 4 }}>{ago(extras.announcement.createdAt)}</div>
+          </LeaderBeside>
         </div>
       )}
 

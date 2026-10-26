@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Avatar } from '@/components/Avatar'
 import { Collapsible } from '@/components/Collapsible'
 import { QuickSheet } from '@/components/QuickSheet'
@@ -9,6 +9,7 @@ import { fetchDayVerse, fetchLeaderInsights, fetchLeaderSummary, type InsightMem
 import { todayLocalDate } from '@/lib/date'
 import { fetchChurchFeed, type FeedEvent } from '@/store/churchVerse'
 import { ago } from '../ChurchLife'
+import { LeadersSection } from './LeadersSection'
 
 // The leadership dashboard's three insight panels (0128): Overview, People and
 // Activity. Names are shown — the owner reversed the earlier "totals only,
@@ -92,6 +93,10 @@ function NoticeCard({ notice }: { notice: { message: string; createdAt: string }
 export function useInsights(churchId: string) {
   const [data, setData] = useState<LeaderInsights | null>(null)
   const [failed, setFailed] = useState(false)
+  // Bumped after a co-leader is added or removed, so the roster's
+  // "· leader" tags follow (0147).
+  const [nonce, setNonce] = useState(0)
+  const reload = useCallback(() => setNonce((n) => n + 1), [])
   useEffect(() => {
     let alive = true
     fetchLeaderInsights(churchId).then((r) => {
@@ -100,8 +105,8 @@ export function useInsights(churchId: string) {
       else setFailed(true)
     })
     return () => { alive = false }
-  }, [churchId])
-  return { data, failed }
+  }, [churchId, nonce])
+  return { data, failed, reload }
 }
 
 // Shown above the numbers on both tabs that carry names. Plain words, no icon:
@@ -250,7 +255,11 @@ export function OverviewPanel({ insights, failed, summary }: { insights: LeaderI
 // sales page's demo shows exactly what leadership gets. It sends nothing — no
 // player card is opened for a made-up name, and "Check in" explains itself
 // instead of opening a sheet that would call the server.
-export function PeoplePanel({ churchId, insights, failed, demo = false }: { churchId: string; insights: LeaderInsights | null; failed: boolean; demo?: boolean }) {
+export function PeoplePanel({ churchId, insights, failed, demo = false, leaders }: {
+  churchId: string; insights: LeaderInsights | null; failed: boolean; demo?: boolean
+  /** The Leaders section (0147) — verified leadership's own dashboard only, never the demo. */
+  leaders?: { churchName: string; onChanged: () => void }
+}) {
   const [checkIn, setCheckIn] = useState<InsightMember | null>(null)
   const [sent, setSent] = useState<Set<string>>(() => new Set())
   const [demoNote, setDemoNote] = useState<string | null>(null)
@@ -263,6 +272,9 @@ export function PeoplePanel({ churchId, insights, failed, demo = false }: { chur
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10, minWidth: 0 }}>
       <PrivacyNote />
+      {leaders && !demo && (
+        <LeadersSection churchId={churchId} churchName={leaders.churchName} roster={insights.roster} onChanged={leaders.onChanged} />
+      )}
       {active.length === 0 && (
         <p className="dim" style={{ fontSize: 13.5, margin: '4px 0' }}>Nobody has played this week yet.</p>
       )}

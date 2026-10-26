@@ -169,7 +169,7 @@ export default function ChurchAdminScreen() {
               />
             ),
           },
-          { key: 'people', label: 'People', content: <PeoplePanel churchId={id} insights={insights.data} failed={insights.failed} /> },
+          { key: 'people', label: 'People', content: <PeoplePanel churchId={id} insights={insights.data} failed={insights.failed} leaders={{ churchName: settings.name, onChanged: insights.reload }} /> },
           { key: 'activity', label: 'Activity', content: <ActivityPanel churchId={id} /> },
           { key: 'look', label: 'Your look', content: <LeaderLookPanel churchId={id} ent={ent} setup={setup} paid={avatarPaid} onChanged={load} /> },
         ]

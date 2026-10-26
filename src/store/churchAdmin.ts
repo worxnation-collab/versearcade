@@ -1192,3 +1192,58 @@ export async function transcribeMemo(churchId: string, upload: MemoUpload): Prom
   const seconds = Number(d.seconds)
   return { ok: true, data: { transcript: d.transcript.trim(), seconds: Number.isFinite(seconds) && seconds > 0 ? seconds : undefined } }
 }
+
+// ---------------------------------------------------------------------------
+// Co-leaders (0147). Verified leadership of a church adds and removes its own
+// leadership; every call re-checks `church_admin_can` for THAT church on the
+// server, so the screen deciding what to draw is presentation only. A grant
+// is one row in `church_admins` and nothing else — no skin, no billing, no
+// operator power.
+// ---------------------------------------------------------------------------
+export interface ChurchLeader {
+  username: string
+  avatarEmoji: string | null
+  avatarCharacter: import('@/data/avatar').AvatarSpec | null
+  grantedAt: string | null
+  /** Who added them; null for an operator grant or a claim. */
+  grantedBy: string | null
+  isMe: boolean
+  /** Plays for this church in the app (staff often have not joined it). */
+  member: boolean
+  /** Their Apple ID pays for this church (0139) — removal is refused. */
+  applePayer: boolean
+}
+
+export async function fetchChurchLeaders(churchId: string) {
+  const r = await call('church_leaders', { p_church_id: churchId })
+  if (!r.ok) return r
+  const list = Array.isArray(r.data?.leaders) ? r.data.leaders : []
+  const leaders: ChurchLeader[] = list
+    .filter((x: any) => x && typeof x.username === 'string')
+    .map((x: any) => ({
+      username: x.username,
+      avatarEmoji: x.avatar_emoji ?? null,
+      avatarCharacter: x.avatar_character ?? null,
+      grantedAt: x.granted_at ?? null,
+      grantedBy: typeof x.granted_by === 'string' ? x.granted_by : null,
+      isMe: !!x.is_me,
+      member: !!x.member,
+      applePayer: !!x.apple_payer,
+    }))
+  return { ok: true as const, data: leaders }
+}
+
+export async function grantCoLeader(churchId: string, username: string) {
+  const r = await call<{ username?: string; member?: boolean }>('grant_church_co_leader', {
+    p_church_id: churchId,
+    p_username: username.trim().replace(/^@/, ''),
+  })
+  if (!r.ok) return r
+  return { ok: true as const, data: { username: String(r.data?.username ?? username), member: !!r.data?.member } }
+}
+
+export async function removeCoLeader(churchId: string, username: string) {
+  const r = await call<{ self?: boolean }>('remove_church_co_leader', { p_church_id: churchId, p_username: username })
+  if (!r.ok) return r
+  return { ok: true as const, data: { self: !!r.data?.self } }
+}

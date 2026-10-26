@@ -70,7 +70,8 @@ export function MemoInput({
   const fileRef = useRef<HTMLInputElement>(null)
   const rec = useRef<{ mr: MediaRecorder; stream: MediaStream; chunks: Blob[]; started: number; lock?: { release: () => Promise<void> }; cancel?: boolean } | null>(null)
   const mounted = useRef(true)
-  useEffect(() => () => { mounted.current = false; stopStream() }, [])
+  // Set on mount too: StrictMode (dev) mounts, unmounts and mounts again.
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; stopStream() } }, [])
 
   const canRecord = typeof MediaRecorder !== 'undefined' && !!navigator.mediaDevices?.getUserMedia
   const busy = phase !== 'idle' && phase !== 'recording'

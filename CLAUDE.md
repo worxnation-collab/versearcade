@@ -1776,6 +1776,13 @@ Four rules are load-bearing:
   draft; `DraftReview` approves exactly the listed dates or discards them.
   Discarding stamps `discarded_at` instead of deleting (the MCP can't apply a
   DELETE); every leadership reader skips it and every writer clears it.
+- **The Plan tab is ONE flow, "Plan your week"** (`PlanWeek`, 2026-10-26):
+  start from **your sermon** (the hero and default — memo or transcript), a
+  topic, or one passage → the same `church-draft` week call → `DraftReview`.
+  Every allowance, refund, condense and ⚠ check is the engine's, so the source
+  changes nothing about them. The day-by-day form is folded under "✎ Edit one
+  day" (open by default without the add-on, and in the demo).
+  `docs/CHURCH-SHARED-VERSE.md` → "Plan your week".
 - **"What is your congregation studying this week?" is that week mode again,
   with a topic in front of it** (`StudyTopicWeek`, `data/studyTopics.ts`, no
   migration). A topic resolves to at most three passages — the leader's own

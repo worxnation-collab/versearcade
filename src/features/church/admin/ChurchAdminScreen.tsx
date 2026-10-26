@@ -32,8 +32,11 @@ import { ChurchPlansEntry } from '@/features/churches/ChurchPlansEntry'
 //      never a name; see HomePanel's header for why that narrows the People
 //      rule). Under it, "At a glance": the totals the Overview tab used to
 //      be (verified), or a free claim's three totals.
-//   2. Plan — `TodayVerseForm`, unchanged: the planner, drafts and approval
-//      (0119, 0127, 0129). `initialDate` is how a Home row opens a given day.
+//   2. Plan — `TodayVerseForm`. With Content Generation it opens on "Plan
+//      your week" (`PlanWeek`: sermon, topic or passage → a week of drafts →
+//      review and approve), with the day-by-day form under "Edit one day";
+//      without it, the form is the tab. `initialDate` is how a Home row opens a
+//      given day (it unfolds the form on that day).
 //      Its OWN lane for members since 0128, never in place of the daily drop.
 //   3. People — co-leaders (0147), every member BY NAME with last play,
 //      streak and this week's plays (the owner's call, 2026-10-21), the quiet

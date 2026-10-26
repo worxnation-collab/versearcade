@@ -49,6 +49,13 @@ import { MemoInput, placeTranscript } from './memo'
 //     series defaults to the reference.
 // The call, the plan, the refunds and the answer check are the same for both.
 //
+// RECORD SUNDAY, REVIEW MONDAY (0148): on the sermon source, "✨ Draft my week
+// for me" (on by default when the backend has `autoWeek`) turns a memo upload
+// into a hand-off: the passages are fetched from the BSB here, as always, and
+// the upload goes to the server with them, which transcribes it and drafts the
+// first N EMPTY days from the start date by itself. The leader can close the
+// app; `onQueued` tells Plan to show the job's status.
+//
 // Since 0142 the FUNCTION saves the days, each on its planned date, and says
 // which landed; this panel only re-reads. If no answer comes back at all, it
 // looks at the planned dates before calling the run a failure (`recoverLanded`).
@@ -85,7 +92,10 @@ export function WeekDraftPanel({
   onDrafted,
   source = 'sermon',
   embedded = false,
+  onQueued,
 }: {
+  /** A memo was handed to the server to draft the week (0148). */
+  onQueued?: () => void
   churchId: string
   backend: VerseBackend
   today: string
@@ -137,6 +147,25 @@ export function WeekDraftPanel({
   const focus = guidance.trim() || (passageOnly && firstRef ? `Stay with ${firstRef} itself — what it says, and what it asks of us this week.` : '')
   const seriesName = cleanLine(series, SERIES_MAX) ?? (passageOnly ? cleanLine(firstRef, SERIES_MAX) : null)
   const notesOk = !!transcript.trim() || !!focus
+  // Record Sunday, review Monday: the memo drafts its own week (0148).
+  const canAuto = !passageOnly && !!backend.autoWeek
+  const [autoOn, setAutoOn] = useState(true)
+  const auto = canAuto && autoOn
+  const autoSeries = cleanLine(series, SERIES_MAX) ?? cleanLine(firstRef, SERIES_MAX)
+  const autoReady = !refsOk ? 'Add the passage you preached first — the week is drafted from it.' : !autoSeries ? 'Give the week a series name.' : null
+  const queueWeek = async (up: { path: string }) => {
+    const wanted = refs.map((r) => r.trim()).filter(Boolean)
+    const resolved = await Promise.all(wanted.map((r) => resolvePassage(r)))
+    const bad = resolved.find((r) => !r.ok) as { ok: false; reason: string } | undefined
+    if (bad) return { ok: false as const, reason: bad.reason }
+    const passages = resolved.map((r) => (r as { ok: true; data: { reference: string; verses: { n: number; text: string }[] } }).data)
+    if (scriptureChars(passages) > SCRIPTURE_CHARS_MAX) return { ok: false as const, reason: 'bad_passages' }
+    const r = await backend.autoWeek!(churchId, { path: up.path, series: autoSeries!, passages, start, days, guidance })
+    if (!r.ok) return { ok: false as const, reason: r.reason }
+    juice.select?.()
+    onQueued?.()
+    return { ok: true as const }
+  }
   const ready = !!seriesName && refsOk && notesOk && !!plan && plan.dates.length === days && phase === 'idle'
 
   const run = async () => {
@@ -208,7 +237,28 @@ export function WeekDraftPanel({
         <textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} rows={6} placeholder="Paste the sermon, your notes, or the transcript of a voice memo…" style={{ resize: 'vertical' }} />
       </label>
       <TranscriptMeter value={transcript} />
-      {backend.memo && <MemoInput churchId={churchId} memo={backend.memo} hasText={!!transcript.trim()} disabled={busy} onTranscript={(t, how) => setTranscript((cur) => placeTranscript(cur, t, how))} />}
+      {backend.memo && (
+        <MemoInput
+          churchId={churchId}
+          memo={backend.memo}
+          hasText={!!transcript.trim()}
+          disabled={busy}
+          onTranscript={(t, how) => setTranscript((cur) => placeTranscript(cur, t, how))}
+          queue={auto ? { ready: autoReady, run: queueWeek } : undefined}
+        />
+      )}
+      {canAuto && backend.memo && (
+        <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, lineHeight: 1.45, cursor: 'pointer' }}>
+          <input type="checkbox" checked={autoOn} onChange={(e) => setAutoOn(e.target.checked)} style={{ marginTop: 2, width: 16, height: 16, flexShrink: 0 }} />
+          <span>
+            <b>✨ Draft my week for me</b>{' '}
+            <span className="dim">
+              — send the memo and close the app. We transcribe it and draft the first {days} open days from {pretty(start)} as drafts waiting for you on Plan.
+              Add the passage below first.
+            </span>
+          </span>
+        </label>
+      )}
     </div>
   )
   const passageLabel = passageOnly ? 'The passage' : `The passage${refs.length > 1 ? 's' : ''} you preached`

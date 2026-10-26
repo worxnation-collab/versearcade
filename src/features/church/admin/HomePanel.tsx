@@ -3,6 +3,8 @@ import { addDays, todayLocalDate } from '@/lib/date'
 import { useJuice } from '@/juice/useJuice'
 import { fetchDays, flaggedCount, type AdminSettings, type LeaderInsights, type WeekDay } from '@/store/churchAdmin'
 import { activeThisWeek } from './InsightsPanel'
+import { autoWeekFailed, autoWeekRunning } from '@/store/churchAdmin'
+import { autoWeekRange, autoWeekReason, currentAutoWeek, useAutoWeeks } from './autoWeek'
 
 // Home — "This week": what needs a leader, before anything else (2026-10-26).
 //
@@ -17,6 +19,9 @@ import { activeThisWeek } from './InsightsPanel'
 //   • drafted questions the answer check flagged ⚠ → Plan, on that day
 //   • no live notice (none set, or it expired)     → Your page, the notice form
 //   • members who could use a check-in             → People, the quiet fold open
+//   • a sermon memo's week (0148): ready, drafting, or failed → Plan
+//     ("record Sunday, review Monday" — the week drafted itself from the memo;
+//     the row is the in-app notice that it is waiting)
 //
 // Every row is DERIVED from reads the dashboard already makes (`fetchDays`,
 // the same window logic as `WeekGapLine`; `church_leader_insights`;
@@ -50,7 +55,10 @@ export function HomePanel({
   insights,
   onGo,
   glance,
+  autoWeeks = false,
 }: {
+  /** The church holds Content Generation: read its sermon-memo weeks (0148). */
+  autoWeeks?: boolean
   churchId: string
   verified: boolean
   settings: AdminSettings
@@ -78,6 +86,23 @@ export function HomePanel({
   }, [churchId, verified, today])
 
   const rows: Row[] = []
+  const { jobs } = useAutoWeeks(churchId, verified && autoWeeks)
+  const job = currentAutoWeek(jobs)
+  if (job) {
+    const refs = job.references.join(', ')
+    if (autoWeekRunning(job)) {
+      rows.push({ key: 'auto', icon: '🎙️', title: `Your week from the sermon on ${refs} is being drafted`, detail: 'Nothing to do yet — it’ll be waiting on Plan. →', go: { tab: 'plan', date: job.startDate } })
+    } else if (autoWeekFailed(job)) {
+      rows.push({ key: 'auto', icon: '↻', title: `The week from your sermon on ${refs} didn’t finish`, detail: `${autoWeekReason(job)} Retry it from Plan →`, go: { tab: 'plan', date: job.startDate } })
+    } else {
+      rows.push({
+        key: 'auto', icon: '✨',
+        title: `Your week from the sermon on ${refs} is ready to review`,
+        detail: `${job.saved.length} draft${job.saved.length === 1 ? '' : 's'}, ${autoWeekRange(job.saved)}${job.flagged ? ` · ⚠ ${job.flagged} to check` : ''}. Review and approve →`,
+        go: { tab: 'plan', date: job.saved[0] ?? job.startDate },
+      })
+    }
+  }
   if (verified && days) {
     const week = days.slice(0, 7)
     const empty = week.filter((w) => !w.verse)

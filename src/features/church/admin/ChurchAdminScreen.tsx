@@ -215,7 +215,7 @@ export default function ChurchAdminScreen() {
     {
       key: 'home',
       label: 'Home',
-      content: <HomePanel churchId={id} verified={settings.verified} settings={settings} insights={insights.data} onGo={onGo} glance={glance} />,
+      content: <HomePanel churchId={id} verified={settings.verified} settings={settings} insights={insights.data} onGo={onGo} glance={glance} autoWeeks={generation} />,
     },
     ...(settings.verified
       ? [

@@ -19,6 +19,13 @@ import {
 // the native one on iOS and Android) and recording right here, which asks for
 // the microphone and keeps the screen awake while it runs. The upload is kept
 // between "transcribe" attempts, so a busy model costs a retry, not a re-upload.
+//
+// With `queue` (the sermon week's "draft my week for me", 0148) the upload is
+// handed to the SERVER instead of transcribed here: the function transcribes
+// it and drafts the week by itself, and the leader can close the app. `queue`
+// may refuse before anything is uploaded (`ready` says why — no passage yet),
+// and if the hand-off itself fails, the same upload can still be transcribed
+// here the ordinary way.
 
 const MSG: Record<string, string> = {
   memo_format: 'That file type can’t be read. Try an M4A, MP3 or WAV.',
@@ -34,10 +41,18 @@ const MSG: Record<string, string> = {
   no_mic: 'This browser couldn’t use the microphone. Record in your phone’s voice memo app and upload it instead.',
   unavailable: 'Voice memos aren’t available right now — you can still paste a transcript.',
 }
+/** Why the server wouldn't take the week (the upload itself is fine). */
+const QUEUE_MSG: Record<string, string> = {
+  bad_passages: 'One of those passages couldn’t be used — keep each inside one chapter, 40 verses at most.',
+  passage_unavailable: 'Couldn’t fetch the words of that passage — check your connection.',
+  needs_series: 'Give the week a series name.',
+  no_addon: 'Drafting a week is part of the Content Generation package, which this church doesn’t have.',
+  no_reply: 'Lost the connection handing it over — check Plan in a minute; it may have started anyway.',
+}
 /** A failure the same upload can be sent again for. */
 const RETRY = new Set(['model_busy', 'timeout', 'no_reply', 'unavailable', 'transcribe_failed'])
 
-type Phase = 'idle' | 'recording' | 'checking' | 'uploading' | 'transcribing'
+type Phase = 'idle' | 'recording' | 'checking' | 'uploading' | 'transcribing' | 'queueing'
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 const minutes = (s: number) => (s < 90 ? `${Math.max(1, Math.round(s))} sec` : `${Math.round(s / 60)} min`)
@@ -52,10 +67,15 @@ function recorderType(): string | undefined {
 }
 
 export function MemoInput({
-  churchId, memo, hasText, disabled, onTranscript,
+  churchId, memo, hasText, disabled, onTranscript, queue,
 }: {
   churchId: string
   memo: MemoBackend
+  /**
+   * Hand the upload to the server to transcribe AND draft the week (0148).
+   * `ready` is null when it can go, else the line saying what's missing.
+   */
+  queue?: { ready: string | null; run: (up: MemoUpload) => Promise<{ ok: true } | { ok: false; reason: string }> }
   /** Whether the box already holds text — then the leader chooses replace or add. */
   hasText: boolean
   disabled?: boolean
@@ -67,6 +87,8 @@ export function MemoInput({
   const [pending, setPending] = useState<string | null>(null)
   const [upload, setUpload] = useState<MemoUpload | null>(null)
   const [elapsed, setElapsed] = useState(0)
+  // The last upload went to the server to draft the week (so "Try again" there means transcribe here).
+  const [queued, setQueued] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const rec = useRef<{ mr: MediaRecorder; stream: MediaStream; chunks: Blob[]; started: number; lock?: { release: () => Promise<void> }; cancel?: boolean } | null>(null)
   const mounted = useRef(true)
@@ -98,8 +120,20 @@ export function MemoInput({
     setUpload(RETRY.has(r.reason) ? up : null)
   }
 
+  const handOff = async (up: MemoUpload) => {
+    if (!queue) return
+    setPhase('queueing')
+    const r = await queue.run(up)
+    if (!mounted.current) return
+    setPhase('idle')
+    if (r.ok) { setUpload(null); setQueued(true); setDone('Sent. Your week is being drafted on our side — you can close the app. It’ll be waiting on Plan for you to review; nothing goes to your members until you approve it.'); return }
+    setErr(QUEUE_MSG[r.reason] ?? MSG[r.reason] ?? 'Couldn’t start the week for you.')
+    setUpload(up)
+  }
+
   const send = async (file: Blob, name: string, knownSeconds?: number) => {
-    setErr(null); setDone(null); setPending(null); setUpload(null)
+    setErr(null); setDone(null); setPending(null); setUpload(null); setQueued(false)
+    if (queue?.ready) return setErr(queue.ready)
     if (file.size > MEMO_BYTES_MAX) return setErr(MSG.memo_too_big)
     setPhase('checking')
     const secs = knownSeconds ?? (await memoSeconds(file))
@@ -109,7 +143,8 @@ export function MemoInput({
     const up = await memo.upload(churchId, file, name)
     if (!mounted.current) return
     if (!up.ok) { setPhase('idle'); return setErr(MSG[up.reason] ?? MSG.unavailable) }
-    await transcribe(up.data)
+    if (queue) await handOff(up.data)
+    else await transcribe(up.data)
   }
 
   const startRecording = async () => {
@@ -162,14 +197,15 @@ export function MemoInput({
     phase === 'checking' ? 'Checking the recording…'
       : phase === 'uploading' ? 'Uploading… a long sermon can take a minute.'
         : phase === 'transcribing' ? 'Listening to it… up to two minutes for an hour-long sermon.'
-          : null
+          : phase === 'queueing' ? 'Handing it over…'
+            : null
 
   return (
     <div style={{ display: 'grid', gap: 6 }}>
       {phase === 'recording' ? (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
           <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--coral)' }} aria-live="polite">● Recording {clock(elapsed)}</span>
-          <button className="pill" onClick={() => stopRecording()} style={{ fontSize: 12.5, fontWeight: 800 }}>■ Stop and transcribe</button>
+          <button className="pill" onClick={() => stopRecording()} style={{ fontSize: 12.5, fontWeight: 800 }}>{queue ? '■ Stop and send' : '■ Stop and transcribe'}</button>
           <button className="faint" onClick={() => stopRecording(true)} style={{ padding: 0, fontSize: 12, fontWeight: 700, color: 'var(--ink-dim)', cursor: 'pointer' }}>Cancel</button>
           <span className="faint" style={{ flexBasis: '100%', fontSize: 11.5 }}>Keep this screen open while it records — up to an hour.</span>
         </div>
@@ -202,7 +238,7 @@ export function MemoInput({
           {err}{' '}
           {upload && (
             <button className="faint" onClick={() => { setErr(null); void transcribe(upload) }} style={{ padding: 0, fontSize: 12, fontWeight: 800, color: 'var(--ink)', cursor: 'pointer', textDecoration: 'underline' }}>
-              Try again
+              {queue && !queued ? 'Transcribe it here instead' : 'Try again'}
             </button>
           )}
         </span>

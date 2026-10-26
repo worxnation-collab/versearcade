@@ -485,6 +485,8 @@ export interface VerseBackend {
   planTopic?: (churchId: string, topic: string, book?: string) => Promise<Res<TopicPlan>>
   /** A recorded sermon → a transcript for the leader to edit (0144). Content Generation only. */
   memo?: MemoBackend
+  /** Queue "record Sunday, review Monday": the uploaded memo drafts its own week on the server (0148). */
+  autoWeek?: (churchId: string, input: AutoWeekInput) => Promise<Res<{ job: string }>>
 }
 
 export const serverVerseBackend: VerseBackend = {
@@ -505,6 +507,7 @@ export const serverGenerationBackend: VerseBackend = {
   draftWeek: (c, input) => draftWeek(c, input),
   planTopic: (c, t, b) => planTopic(c, t, b),
   memo: { upload: uploadMemo, transcribe: transcribeMemo },
+  autoWeek: (c, input) => queueAutoWeek(c, input),
 }
 
 // ---------------------------------------------------------------------------
@@ -1247,3 +1250,89 @@ export async function removeCoLeader(churchId: string, username: string) {
   if (!r.ok) return r
   return { ok: true as const, data: { self: !!r.data?.self } }
 }
+
+// ---------------------------------------------------------------------------
+// Record Sunday, review Monday (0148). An uploaded sermon memo can ask the
+// server to transcribe it AND draft the week, with nobody pressing a button:
+// `church-draft` `auto_week` records a job, answers at once, and runs the same
+// transcribe and week calls the hand path makes (allowances, refunds, BSB
+// scripture, the answer check, drafts only). The leader finds the week waiting
+// for approval on Plan, and a row on Home says it is ready (or why it isn't).
+// ---------------------------------------------------------------------------
+export interface AutoWeekInput {
+  path: string
+  series: string
+  passages: WeekPassage[]
+  /** First date to look from; the week goes on the first `days` EMPTY dates. */
+  start: string
+  days: number
+  guidance?: string
+}
+
+export type AutoWeekStatus = 'queued' | 'transcribing' | 'drafting' | 'done' | 'failed'
+export interface AutoWeekJob {
+  id: string
+  status: AutoWeekStatus
+  reason: string | null
+  series: string
+  references: string[]
+  startDate: string
+  days: number
+  saved: string[]
+  flagged: number
+  seen: boolean
+  retryable: boolean
+  /** Still "running" long after it should have finished: the server lost it. */
+  stale: boolean
+  createdAt: string
+}
+/** Running from the leader's point of view: not finished, and not lost. */
+export const autoWeekRunning = (j: AutoWeekJob) => !j.stale && j.status !== 'done' && j.status !== 'failed'
+/** Needs the leader: failed, or lost mid-run. */
+export const autoWeekFailed = (j: AutoWeekJob) => j.status === 'failed' || (j.stale && j.status !== 'done')
+
+export async function queueAutoWeek(churchId: string, input: AutoWeekInput): Promise<Res<{ job: string }>> {
+  if (!online()) return { ok: false, reason: 'unavailable' }
+  const r = await invokeDraft(churchId, {
+    mode: 'auto_week', path: input.path, series: cleanLine(input.series, SERIES_MAX) ?? '',
+    passages: input.passages, start: input.start, days: input.days, guidance: input.guidance?.trim() || undefined,
+  })
+  if (r.kind === 'lost') return { ok: false, reason: 'no_reply' }
+  const d = r.data
+  if (!d.ok || typeof d.job !== 'string') return { ok: false, reason: String(d.reason ?? 'unavailable') }
+  return { ok: true, data: { job: d.job } }
+}
+
+export async function retryAutoWeek(churchId: string, job: string): Promise<Res<{ job: string }>> {
+  if (!online()) return { ok: false, reason: 'unavailable' }
+  const r = await invokeDraft(churchId, { mode: 'auto_week_retry', job })
+  if (r.kind === 'lost') return { ok: false, reason: 'no_reply' }
+  const d = r.data
+  if (!d.ok) return { ok: false, reason: String(d.reason ?? 'unavailable') }
+  return { ok: true, data: { job } }
+}
+
+export async function fetchAutoWeeks(churchId: string): Promise<Res<AutoWeekJob[]>> {
+  const r = await call<{ jobs?: Array<Record<string, any>> }>('church_auto_weeks', { p_church_id: churchId })
+  if (!r.ok) return r
+  return {
+    ok: true,
+    data: (r.data.jobs ?? []).map((j) => ({
+      id: String(j.id),
+      status: j.status as AutoWeekStatus,
+      reason: j.reason ? String(j.reason) : null,
+      series: String(j.series ?? ''),
+      references: Array.isArray(j.references) ? j.references.map(String) : [],
+      startDate: String(j.start_date ?? ''),
+      days: Number(j.days) || 0,
+      saved: Array.isArray(j.saved) ? j.saved.map(String) : [],
+      flagged: Number(j.flagged) || 0,
+      seen: j.seen === true,
+      retryable: j.retryable === true,
+      stale: j.stale === true,
+      createdAt: String(j.created_at ?? ''),
+    })),
+  }
+}
+
+export const dismissAutoWeek = (jobId: string) => call('dismiss_church_auto_week', { p_job_id: jobId })

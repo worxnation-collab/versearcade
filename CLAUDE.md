@@ -1776,6 +1776,14 @@ Four rules are load-bearing:
   draft; `DraftReview` approves exactly the listed dates or discards them.
   Discarding stamps `discarded_at` instead of deleting (the MCP can't apply a
   DELETE); every leadership reader skips it and every writer clears it.
+- **Record Sunday, review Monday** (0148, the package's best loop): on the
+  sermon source, "✨ Draft my week for me" (on by default) hands the uploaded
+  memo to `church-draft` `auto_week`, which records a job, answers at once and
+  runs the ordinary transcribe and week calls on the server — drafts only, on
+  the first EMPTY days (a live day or a waiting draft is never touched), every
+  allowance and refund as by hand. Home and Plan say ready / drafting /
+  didn't finish; Retry resumes from the stage that failed.
+  `docs/CHURCH-SHARED-VERSE.md` → "Record Sunday, review Monday".
 - **The Plan tab is ONE flow, "Plan your week"** (`PlanWeek`, 2026-10-26):
   start from **your sermon** (the hero and default — memo or transcript), a
   topic, or one passage → the same `church-draft` week call → `DraftReview`.
@@ -2690,7 +2698,21 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0147` (co-leaders — a verified church's leadership adds and
+The latest is `0148` (record Sunday, review Monday — `church_auto_weeks`, a
+job row per sermon memo that drafts its own week, written only by
+`church-draft` as service_role; `church_auto_weeks(church)` for verified
+leadership (status, references, dates, counts — never the transcript) and
+`dismiss_church_auto_week(job)`). APPLIED 2026-10-26 after a local Postgres 16
+run (leader read, no transcript in any answer, member / other church / free
+claim refused, dismiss clears the transcript, unknown job, clients refused the
+table, re-run a no-op) and verified live: one signature each, `authenticated`
+only, the table RLS-on with no client grant, and a read → dismiss round trip
+as a real leader of a verified church inside a rolled-back transaction. **Part
+b (`0148_church_auto_week_b.sql`, the two foreign keys) is NOT applied** — the
+cascade clause stalls the MCP; paste it into the SQL editor. The function half
+deploys with `church-draft` from CI on merge.
+
+Before it, `0147` (co-leaders — a verified church's leadership adds and
 removes its own leaders: `church_leaders`, `grant_church_co_leader`,
 `remove_church_co_leader`, and `church_leader_events` for who granted and who
 removed whom; every call re-checks `church_admin_can` for THAT church, and a
@@ -3486,7 +3508,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0148` (0147 is the co-leaders, in two parts — part b pending; 0146 is the public leader look; 0145 is the Custom Leader Avatar purchase; 0144 is the voice-memo allowance, in two parts; 0143 is the answer check's flag; 0142 is the content engine's run log and refund, in two parts; 0139, 0140 and 0141 are the Apple church subscription, its leader-removed binding and the church plan taps in production, each in two parts; 0138 is the check-in verse and report, in two parts; 0137 is used FOUR times in production — the check-in note in two parts, the leaderboard's streak-free tie-break, and `church_free_claim` — 0136 is the church leader looks, 0135 is the church billing read for the portal, 0134 is the self-serve church claim, in two parts; 0133 is used twice — church visual assets AND the church Stripe key in Vault — 0132 is the church webhook's Vault secret, 0131 is church billing, 0130 is the member's church view, 0129 is the week-from-a-sermon drafts, 0128 is the church layer, 0127 is `church_content_generation` in production, 0126 is the two new statues, 0125 is the API.Bible key, 0124 the reading translation, 0123 is the church verse series and note, 0122 is `church_question_drafts` in production only, 0121 is the church leader invite link, 0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0149` (0148 is record-Sunday-review-Monday, in two parts — part b pending; 0147 is the co-leaders, in two parts — part b pending; 0146 is the public leader look; 0145 is the Custom Leader Avatar purchase; 0144 is the voice-memo allowance, in two parts; 0143 is the answer check's flag; 0142 is the content engine's run log and refund, in two parts; 0139, 0140 and 0141 are the Apple church subscription, its leader-removed binding and the church plan taps in production, each in two parts; 0138 is the check-in verse and report, in two parts; 0137 is used FOUR times in production — the check-in note in two parts, the leaderboard's streak-free tie-break, and `church_free_claim` — 0136 is the church leader looks, 0135 is the church billing read for the portal, 0134 is the self-serve church claim, in two parts; 0133 is used twice — church visual assets AND the church Stripe key in Vault — 0132 is the church webhook's Vault secret, 0131 is church billing, 0130 is the member's church view, 0129 is the week-from-a-sermon drafts, 0128 is the church layer, 0127 is `church_content_generation` in production, 0126 is the two new statues, 0125 is the API.Bible key, 0124 the reading translation, 0123 is the church verse series and note, 0122 is `church_question_drafts` in production only, 0121 is the church leader invite link, 0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

@@ -8,6 +8,8 @@ import { fetchAdminSettings, fetchChurchBilling, fetchEntitlements, openBillingP
 import { churchBillingPortalVisible } from '@/lib/commerce'
 import { TodayVerseForm } from './TodayVerseForm'
 import { OverviewPanel, PeoplePanel, ActivityPanel, SummaryPanel, useInsights, useSummary } from './InsightsPanel'
+import { HomePanel, type HomeGo } from './HomePanel'
+import { Collapsible } from '@/components/Collapsible'
 import { NoticesPanel } from './NoticesPanel'
 import { SharePanel } from './SharePanel'
 import { LeaderLookPanel } from './LeaderLookPanel'
@@ -20,24 +22,38 @@ import { ChurchPlansEntry } from '@/features/churches/ChurchPlansEntry'
 // check is the server's (every RPC behind this screen re-checks it), so the
 // screen deciding what to draw is presentation, not protection.
 //
-// Six panels behind one row of pills, the house's TabbedSection rule (0128):
-//   1. Overview — members, active vs quiet, 14 days of play, series
-//      completion, streaks and the live notice.
-//   2. Schedule — the church's verse and five questions per day, series and
-//      pastor's note, copy across days (0119, 0123). Its OWN lane for members
-//      since 0128, never in place of the daily drop.
-//   3. People — every member BY NAME with last play, streak and this week's
-//      plays. Names are the owner's call (2026-10-21), reversing 0119's
-//      totals-only rule for leadership.
-//   4. Activity — the congregation's feed, the same one members see.
-//   5. Notices — the announcement and the giving link.
-//   6. Share — the page's link to paste, and (verified) the QR code to print.
+// FOUR tabs since 2026-10-26, and it opens on what needs doing:
+//   1. Home — "This week" (`HomePanel`): a short to-do, each row a door to the
+//      tool that does it — days in the next seven with no church verse and
+//      drafts waiting for approval (→ Plan, opened on that day), drafted
+//      questions the answer check flagged ⚠ (0143, → Plan on that day), a
+//      missing or ending notice (→ Your page, the notice form), and members
+//      who could use a check-in (→ People with the quiet fold open — a count,
+//      never a name; see HomePanel's header for why that narrows the People
+//      rule). Under it, "At a glance": the totals the Overview tab used to
+//      be (verified), or a free claim's three totals.
+//   2. Plan — `TodayVerseForm`, unchanged: the planner, drafts and approval
+//      (0119, 0127, 0129). `initialDate` is how a Home row opens a given day.
+//      Its OWN lane for members since 0128, never in place of the daily drop.
+//   3. People — co-leaders (0147), every member BY NAME with last play,
+//      streak and this week's plays (the owner's call, 2026-10-21), the quiet
+//      fold with its hand-sent check-in, and the congregation feed (Activity,
+//      folded under "Recent activity").
+//   4. Your page — the live notice and giving link, Share (the page's link
+//      and, verified, the QR), Your look (0136; opened when a new leader has
+//      not chosen one, or on return from the avatar checkout), and Plan &
+//      billing (the plan card and the App Store plans entry; opened on return
+//      from a Stripe upgrade).
+// Nothing was removed — the seven tabs' panels are all still here, rehomed —
+// and no RPC or gate changed: every panel makes the same reads it did.
 //
-// A claimed church that is not verified — a FREE claim (0137) — gets an
-// Overview of three congregation totals (`church_leader_summary`: members,
-// active this week as a percentage, average current streak; no names), plus
-// Notices and Share. The notice is free-layer (0117) and shows on the
-// church's page.
+// Plan & billing moved off the top of the screen for the same reason the tabs
+// moved: a pastor's first screen was a plan card with an upsell on it, and
+// the to-do belongs there instead.
+//
+// A FREE claim (0137, unverified) gets Home (its notice row and three
+// congregation totals — no names) and Your page. Plan and People are the
+// verified tier's, and are not drawn.
 //
 // Two entitlements, and the top of the screen says which this church holds
 // (`church_entitlements`, 0127): the BASE Church Leader tier (verified
@@ -84,6 +100,23 @@ export default function ChurchAdminScreen() {
     setParams(next, { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // A Home row's door (2026-10-26): which tab to open, and what to open in it.
+  // `nonce` makes the same row tapped twice re-open its tab after a fold.
+  const [go, setGo] = useState<{ key: string; nonce: number } | null>(null)
+  const [planDate, setPlanDate] = useState<string | undefined>(undefined)
+  const [quiet, setQuiet] = useState(false)
+  const [noticeFocus, setNoticeFocus] = useState(0)
+  const onGo = (g: HomeGo) => {
+    if (g.tab === 'plan') setPlanDate(g.date)
+    if (g.tab === 'people') setQuiet(true)
+    if (g.tab === 'page') setNoticeFocus((n) => n + 1)
+    setGo((cur) => ({ key: g.tab, nonce: (cur?.nonce ?? 0) + 1 }))
+  }
+  useEffect(() => {
+    if (!noticeFocus) return
+    requestAnimationFrame(() => document.getElementById('church-notice')?.scrollIntoView({ block: 'start' }))
+  }, [noticeFocus])
 
   const load = useCallback(async () => {
     const [r, e, b] = await Promise.all([fetchAdminSettings(id), fetchEntitlements(id), fetchChurchBilling(id)])
@@ -152,49 +185,11 @@ export default function ChurchAdminScreen() {
   const generation = leader && !!ent?.contentGeneration
   // Setup: verified leadership with no look chosen yet opens on the picker.
   const setup = settings.verified && !!ent && ent.churchLeader && !ent.leaderLook
-  const tabs = [
-    ...(settings.verified
-      ? [
-          { key: 'overview', label: 'Overview', content: <OverviewPanel insights={insights.data} failed={insights.failed} summary={summary.data} /> },
-          {
-            key: 'verse',
-            label: 'Schedule',
-            content: (
-              <TodayVerseForm
-                churchId={id}
-                churchName={settings.name}
-                backend={generation ? serverGenerationBackend : serverVerseBackend}
-                generationLocked={!generation}
-                assets={{ canGenerate: generation }}
-              />
-            ),
-          },
-          { key: 'people', label: 'People', content: <PeoplePanel churchId={id} insights={insights.data} failed={insights.failed} leaders={{ churchName: settings.name, onChanged: insights.reload }} /> },
-          { key: 'activity', label: 'Activity', content: <ActivityPanel churchId={id} /> },
-          { key: 'look', label: 'Your look', content: <LeaderLookPanel churchId={id} ent={ent} setup={setup} paid={avatarPaid} onChanged={load} /> },
-        ]
-      : [{ key: 'overview', label: 'Overview', content: <SummaryPanel summary={summary.data} failed={summary.failed} /> }]),
-    {
-      key: 'notices',
-      label: 'Notices',
-      content: <NoticesPanel churchId={id} settings={settings} onSaved={load} canGenerate={generation} />,
-    },
-    {
-      key: 'share',
-      label: 'Share',
-      content: <SharePanel churchId={id} churchName={settings.name} verified={settings.verified} />,
-    },
-  ]
-
-  return (
-    <Page>
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
-        <button className="pill" onClick={back} aria-label="Back to the church">← {settings.name}</button>
-      </div>
-
-      <h1 style={{ fontSize: 24, margin: '0 0 4px' }}>Leadership</h1>
-      <div className="dim" style={{ fontSize: 13.5, marginBottom: 12 }}>{settings.name}</div>
-
+  const glance = settings.verified
+    ? <OverviewPanel insights={insights.data} failed={insights.failed} summary={summary.data} />
+    : <SummaryPanel summary={summary.data} failed={summary.failed} />
+  const plan = (
+    <div style={{ display: 'grid', gap: 12 }}>
       <PlanStatus
         leader={leader}
         generation={generation}
@@ -211,8 +206,87 @@ export default function ChurchAdminScreen() {
         churchName={settings.name}
         subscribe={{ verified: settings.verified || !!billing?.apple?.active, onChanged: load }}
       />
+    </div>
+  )
+  const tabs = [
+    {
+      key: 'home',
+      label: 'Home',
+      content: <HomePanel churchId={id} verified={settings.verified} settings={settings} insights={insights.data} onGo={onGo} glance={glance} />,
+    },
+    ...(settings.verified
+      ? [
+          {
+            key: 'plan',
+            label: 'Plan',
+            content: (
+              <TodayVerseForm
+                // Only the open tab is mounted, so arriving here from a Home
+                // row mounts the planner fresh on the day that row named.
+                initialDate={planDate}
+                churchId={id}
+                churchName={settings.name}
+                backend={generation ? serverGenerationBackend : serverVerseBackend}
+                generationLocked={!generation}
+                assets={{ canGenerate: generation }}
+              />
+            ),
+          },
+          {
+            key: 'people',
+            label: 'People',
+            content: (
+              <div style={{ display: 'grid', gap: 12 }}>
+                <PeoplePanel
+                  churchId={id}
+                  insights={insights.data}
+                  failed={insights.failed}
+                  leaders={{ churchName: settings.name, onChanged: insights.reload }}
+                  openQuiet={quiet}
+                  onQuietShown={() => setQuiet(false)}
+                />
+                <Collapsible icon="🕯️" title="Recent activity">
+                  <ActivityPanel churchId={id} />
+                </Collapsible>
+              </div>
+            ),
+          },
+        ]
+      : []),
+    {
+      key: 'page',
+      label: 'Your page',
+      content: (
+        <div style={{ display: 'grid', gap: 12 }}>
+          <div id="church-notice" style={{ scrollMarginTop: 12 }}>
+            <NoticesPanel churchId={id} settings={settings} onSaved={load} canGenerate={generation} />
+          </div>
+          <Collapsible icon="🔗" title="Share your page">
+            <SharePanel churchId={id} churchName={settings.name} verified={settings.verified} />
+          </Collapsible>
+          {settings.verified && (
+            <Collapsible icon="🧑‍🦳" title="Your look" defaultOpen={setup || avatarPaid}>
+              <LeaderLookPanel churchId={id} ent={ent} setup={setup} paid={avatarPaid} onChanged={load} />
+            </Collapsible>
+          )}
+          <Collapsible icon="🧾" title="Plan & billing" defaultOpen={upgraded}>
+            {plan}
+          </Collapsible>
+        </div>
+      ),
+    },
+  ]
 
-      <TabbedSection tabs={tabs} defaultOpen defaultTab={setup || avatarPaid ? 'look' : 'overview'} />
+  return (
+    <Page>
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
+        <button className="pill" onClick={back} aria-label="Back to the church">← {settings.name}</button>
+      </div>
+
+      <h1 style={{ fontSize: 24, margin: '0 0 4px' }}>Leadership</h1>
+      <div className="dim" style={{ fontSize: 13.5, marginBottom: 12 }}>{settings.name}</div>
+
+      <TabbedSection tabs={tabs} defaultOpen defaultTab={setup || avatarPaid || upgraded ? 'page' : 'home'} go={go} />
       <div style={{ height: 32 }} />
     </Page>
   )

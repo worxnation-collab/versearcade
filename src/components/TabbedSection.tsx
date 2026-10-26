@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useJuice } from '@/juice/useJuice'
 import { useSettings } from '@/store/settings'
@@ -38,11 +38,19 @@ export function TabbedSection({
   tabs,
   defaultOpen = false,
   defaultTab,
+  go,
 }: {
   tabs: SectionTab[]
   defaultOpen?: boolean
   /** Which pill starts selected. Falls back to the first tab. */
   defaultTab?: string
+  /**
+   * Switch tab from OUTSIDE the pills — a row elsewhere on the screen that
+   * names a tool ("3 days with no verse" → the planner). Each new `nonce` opens
+   * the section on `key` and brings the pills into view; the same request
+   * twice is ignored. Omitted, the section is exactly as it always was.
+   */
+  go?: { key: string; nonce: number } | null
 }) {
   const juice = useJuice()
   const [open, setOpen] = useState(defaultOpen)
@@ -52,6 +60,14 @@ export function TabbedSection({
   const reduceMotion = useSettings((st) => st.reduceMotion)
   const headRef = useRef<HTMLDivElement>(null)
   const current = tabs.find((t) => t.key === active) ?? tabs[0]
+
+  useEffect(() => {
+    if (!go || !tabs.some((t) => t.key === go.key)) return
+    setActive(go.key)
+    setOpen(true)
+    headRef.current?.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [go?.nonce])
 
   // Switching from a long shelf (44 card backgrounds) to a short one can leave
   // you scrolled below the whole section, looking at nothing. If the pills have

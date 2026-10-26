@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Avatar } from '@/components/Avatar'
 import { Collapsible } from '@/components/Collapsible'
 import { QuickSheet } from '@/components/QuickSheet'
@@ -255,14 +255,27 @@ export function OverviewPanel({ insights, failed, summary }: { insights: LeaderI
 // sales page's demo shows exactly what leadership gets. It sends nothing — no
 // player card is opened for a made-up name, and "Check in" explains itself
 // instead of opening a sheet that would call the server.
-export function PeoplePanel({ churchId, insights, failed, demo = false, leaders }: {
+export function PeoplePanel({ churchId, insights, failed, demo = false, leaders, openQuiet = false, onQuietShown }: {
   churchId: string; insights: LeaderInsights | null; failed: boolean; demo?: boolean
+  /** Arrived from the Home to-do's check-in row: open the quiet fold and bring it into view. */
+  openQuiet?: boolean
+  /** Called once the fold has been opened and scrolled to, so a later visit doesn't repeat it. */
+  onQuietShown?: () => void
   /** The Leaders section (0147) — verified leadership's own dashboard only, never the demo. */
   leaders?: { churchName: string; onChanged: () => void }
 }) {
   const [checkIn, setCheckIn] = useState<InsightMember | null>(null)
   const [sent, setSent] = useState<Set<string>>(() => new Set())
   const [demoNote, setDemoNote] = useState<string | null>(null)
+  // Scroll to the quiet fold ONCE, when it first exists — not on every render.
+  const quietRef = useRef<HTMLDivElement>(null)
+  const scrolled = useRef(false)
+  useEffect(() => {
+    if (!openQuiet || scrolled.current || !quietRef.current) return
+    scrolled.current = true
+    requestAnimationFrame(() => quietRef.current?.scrollIntoView({ block: 'start' }))
+    onQuietShown?.()
+  }, [openQuiet, insights]) // eslint-disable-line react-hooks/exhaustive-deps
   if (failed) return FAILED
   if (!insights) return LOADING
   // The roster arrives in join order (0137) and keeps it in both groups.
@@ -280,7 +293,8 @@ export function PeoplePanel({ churchId, insights, failed, demo = false, leaders 
       )}
       {active.map((m) => <MemberRow key={m.username} m={m} today={insights.today} demo={demo} />)}
       {resting.length > 0 && (
-        <Collapsible icon="🕊️" title="Not active this week" meta={resting.length.toLocaleString()}>
+        <div id="church-quiet" ref={quietRef} style={{ scrollMarginTop: 12 }}>
+        <Collapsible icon="🕊️" title="Not active this week" meta={resting.length.toLocaleString()} defaultOpen={openQuiet}>
           <div style={{ display: 'grid', gap: 8 }}>
             {demoNote && (
               <p className="dim" style={{ margin: 0, fontSize: 12.5, lineHeight: 1.45 }}>
@@ -308,6 +322,7 @@ export function PeoplePanel({ churchId, insights, failed, demo = false, leaders 
             ))}
           </div>
         </Collapsible>
+        </div>
       )}
       {checkIn && !demo && (
         <CheckInSheet

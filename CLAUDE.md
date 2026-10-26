@@ -1685,6 +1685,13 @@ What a claim buys is narrow, and each exclusion is load-bearing:
   operator could undo.
 - **Nothing about a member**, and this is the rule someone will try to break.
 
+**A verified leader is recognisable on their own player card since `0149`**:
+a quiet "Leads {church}" row under the portrait that opens the church (Inquire
+/ Join for a player with no church, Visit for one with a church, the account
+wall for a guest), from a companion read so `get_player_card` is untouched.
+Verified only; a church, never a number. Inquiries reach that church's
+leadership on Home and People. `docs/CHURCH-DISCOVERY.md`.
+
 **Leadership sees its members BY NAME since `0128` (the owner's call,
 2026-10-21), and that reverses the rule this section used to state absolutely.**
 The owner's words: "this is a tool for church leaders, names are important".
@@ -2710,7 +2717,22 @@ series, one finished and one running; a departed member's plays, a draft day
 and a discarded day all excluded; two spellings of one name merged; member,
 other church and anon refused) and verified live: one signature,
 `authenticated` only, and a real verified church's running series matching a
-hand count off its plays. `0149` is the leader's card and church inquiries.
+hand count off its plays.
+
+Before it, `0149` (a church leader on their own player card —
+`player_card_church(username)`, anon + authenticated, a VERIFIED church's id,
+name, building level and skin, tagline and "This week" and nothing countable;
+`church_join_inquiries` (NOT 0025's `church_inquiries`, the For Churches
+contact form — the first apply collided with it and rolled back whole) with
+`send_church_join_inquiry`, `my_church_join_inquiry`,
+`church_join_inquiry_list` and `dismiss_church_join_inquiry`;
+`docs/CHURCH-DISCOVERY.md`). APPLIED 2026-10-26 after a local Postgres 16 run
+(verified leader only, hidden and unverified null, no counts on the card, one
+note per church, has-church / own-church / unverified refused, leadership-only
+read and dismiss, clients refused the table) and verified live: one signature
+each, the writers `authenticated` only, the card read anon too, the table with
+no client grant, and a real verified leader's card answering. **Part b (the
+foreign keys) is NOT applied** — paste `0149_church_discovery_b.sql`.
 
 Before it, `0148` (record Sunday, review Monday — `church_auto_weeks`, a
 job row per sermon memo that drafts its own week, written only by

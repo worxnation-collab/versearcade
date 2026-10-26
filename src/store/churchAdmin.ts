@@ -1338,6 +1338,41 @@ export async function fetchAutoWeeks(churchId: string): Promise<Res<AutoWeekJob[
 export const dismissAutoWeek = (jobId: string) => call('dismiss_church_auto_week', { p_job_id: jobId })
 
 // ---------------------------------------------------------------------------
+// Players asking about the church from a leader's player card (0149). The
+// church's verified leadership reads them as a plain list, newest first, and
+// dismisses them; there is no reply path yet (check-ins reach members only).
+// ---------------------------------------------------------------------------
+export interface JoinInquiry {
+  username: string
+  avatarEmoji: string | null
+  avatarCharacter: import('@/data/avatar').AvatarSpec | null
+  note: string
+  at: string
+  /** They have since joined this church, or another one. */
+  joinedHere: boolean
+  joinedElsewhere: boolean
+}
+
+export async function fetchJoinInquiries(churchId: string): Promise<Res<JoinInquiry[]>> {
+  const r = await call<{ inquiries?: Array<Record<string, any>> }>('church_join_inquiry_list', { p_church_id: churchId })
+  if (!r.ok) return r
+  return {
+    ok: true,
+    data: (r.data.inquiries ?? []).map((i) => ({
+      username: String(i.username ?? ''),
+      avatarEmoji: i.avatar_emoji ?? null,
+      avatarCharacter: i.avatar_character ?? null,
+      note: String(i.note ?? ''),
+      at: String(i.at ?? ''),
+      joinedHere: i.joined_here === true,
+      joinedElsewhere: i.joined_elsewhere === true,
+    })),
+  }
+}
+
+export const dismissJoinInquiry = (churchId: string, username: string) =>
+  call('dismiss_church_join_inquiry', { p_church_id: churchId, p_username: username })
+
 // Is a series landing? (0150) Counts and percentages about the congregation,
 // per series the church has run: how many current members played at least one
 // live day ("engaged") and how many played every live day ("completed" — "kept

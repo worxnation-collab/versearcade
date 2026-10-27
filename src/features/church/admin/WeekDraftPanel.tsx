@@ -150,6 +150,8 @@ export function WeekDraftPanel({
   // Record Sunday, review Monday: the memo drafts its own week (0148).
   const canAuto = !passageOnly && !!backend.autoWeek
   const [autoOn, setAutoOn] = useState(true)
+  // Discussion questions for small groups (0151): an add-on to the week, off by default.
+  const [withDiscussion, setWithDiscussion] = useState(false)
   const auto = canAuto && autoOn
   const autoSeries = cleanLine(series, SERIES_MAX) ?? cleanLine(firstRef, SERIES_MAX)
   const autoReady = !refsOk ? 'Add the passage you preached first — the week is drafted from it.' : !autoSeries ? 'Give the week a series name.' : null
@@ -189,12 +191,13 @@ export function WeekDraftPanel({
     // The function drafts AND saves, each day on its own planned date (0142).
     setPhase('drafting')
     const dates = plan.dates
-    const r = await backend.draftWeek(churchId, { series: seriesName!, days, passages, transcript, guidance: focus.slice(0, GUIDANCE_MAX), dates })
+    const r = await backend.draftWeek(churchId, { series: seriesName!, days, passages, transcript, guidance: focus.slice(0, GUIDANCE_MAX), dates, discussion: withDiscussion && !!backend.discussion })
     let saved: string[], refused: { date: string; reason: string }[] = [], missing: string[] = []
     let told = ''
     if (r.ok) {
       ;({ saved, refused, missing } = r.data)
       told = transcriptNote(transcript, r.data.transcriptUse, r.data.transcriptRead)
+      if (r.data.discussed?.length) told += ` ${r.data.discussed.length === saved.length ? 'Every day' : `${r.data.discussed.length} of them`} came with discussion questions for your groups.`
     } else if (r.reason === 'no_reply') {
       // No answer is not a failure yet: the drafts may have landed anyway.
       setPhase('checking')
@@ -319,6 +322,8 @@ export function WeekDraftPanel({
         What to focus on (optional)
         <input value={guidance} onChange={(e) => setGuidance(e.target.value)} maxLength={GUIDANCE_MAX} placeholder="Staying connected when life is busy" />
       </label>
+
+      {backend.discussion && <DiscussionToggle on={withDiscussion} onChange={setWithDiscussion} />}
 
       <PlanLine plan={plan} error={planErr} days={days} />
 
@@ -590,3 +595,16 @@ function rowBtn(off: boolean): React.CSSProperties {
 }
 
 const labelStyle: React.CSSProperties = { display: 'grid', gap: 5, fontSize: 12, fontWeight: 700, color: 'var(--ink-dim)' }
+
+/** "Also write discussion questions for small groups" — the week's and the day's add-on (0151). */
+export function DiscussionToggle({ on, onChange }: { on: boolean; onChange: (on: boolean) => void }) {
+  return (
+    <label data-discussion-toggle style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, lineHeight: 1.45, cursor: 'pointer' }}>
+      <input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} style={{ marginTop: 2, width: 16, height: 16, flexShrink: 0 }} />
+      <span>
+        <b>Also write 2–3 discussion questions for small groups</b>{' '}
+        <span className="dim">— open questions, no right answer. Your group leaders see them beside the day once you approve it.</span>
+      </span>
+    </label>
+  )
+}

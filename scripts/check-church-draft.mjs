@@ -54,6 +54,12 @@ const rpc = {
     return { ok: true, drop_date: a.p_drop_date, status: 'draft' }
   },
   tiktok_gemini_key: () => 'vault-key',
+  // Discussion questions (0151): only on a day that exists.
+  set_church_discussion: (a) => {
+    if (!db.verses[a.p_drop_date]) return { ok: false, reason: 'no_day' }
+    db.discussions[a.p_drop_date] = { questions: a.p_questions, generated: a.p_generated }
+    return { ok: true, questions: a.p_questions }
+  },
   // Voice memos (0144): their own allowance, never the draft units.
   church_memo_can: () => (db.gate !== 'ok' ? { ok: false, reason: db.gate } : db.memoUsed >= 10 ? { ok: false, reason: 'memo_limit' } : { ok: true, left: 10 - db.memoUsed }),
   use_church_memo: () => {
@@ -157,7 +163,7 @@ const call = async (body) => {
   const res = await handler(new Request('http://fn', { method: 'POST', headers: { Authorization: 'Bearer leader' }, body: JSON.stringify(body) }))
   return { status: res.status, body: await res.json() }
 }
-const reset = () => { db.memoUsed = 0; db.memoReleases = 0; store.clear(); files.uploaded = 0; files.deleted = 0; files.tokens = 32 * 60 * 40; files.uploadStatus = 200; db.used = 0; db.gate = 'ok'; db.verses = {}; db.runs = []; db.refunds = []; gemini = []; geminiCalls = 0 }
+const reset = () => { db.memoUsed = 0; db.memoReleases = 0; store.clear(); files.uploaded = 0; files.deleted = 0; files.tokens = 32 * 60 * 40; files.uploadStatus = 200; db.used = 0; db.gate = 'ok'; db.verses = {}; db.discussions = {}; db.runs = []; db.refunds = []; gemini = []; geminiCalls = 0 }
 let fails = 0
 const check = (name, cond, extra) => { console.log((cond ? 'PASS ' : 'FAIL ') + name + (cond ? '' : '  ' + JSON.stringify(extra))); if (!cond) fails++ }
 const week = (o = {}) => ({ mode: 'week', church_id: CH, series: 'Abiding', days: 3, passages, transcript: 'notes', api: 2, ...o })
@@ -413,6 +419,23 @@ check('auto: bad passages refused up front', r.body.reason === 'bad_passages' &&
 jobs.set('00000000-0000-4000-8000-0000000000aa', { id: '00000000-0000-4000-8000-0000000000aa', church_id: CH, created_by: 'u-leader', status: 'drafting', transcript: 't', updated_at: new Date().toISOString() })
 const res = await handler(new Request('http://fn', { method: 'POST', headers: { Authorization: 'Bearer stranger' }, body: JSON.stringify({ mode: 'auto_week_step', job: '00000000-0000-4000-8000-0000000000aa', api: 2 }) }))
 check('auto: a step from another account is refused', res.status === 404, res.status)
+
+// D1. Discussion questions (0151) ride beside a week's days only when asked for.
+reset(); gemini = [{ days: [
+  { reference: 'John 15:1', questions: five(), discussion: ['What does it mean to you that God tends the vine?', 'Where do you need pruning this week?', 'x', 'Another open question for the group?'] },
+  { reference: 'John 15:4', questions: five(), discussion: ['Only one usable question here?'] },
+] }, { items: [] }]
+r = await call(week({ days: 2, dates: [D[0], D[1]], discussion: true }))
+check('discussion: saved beside day 1, cleaned to three, generated', r.body.ok && db.discussions[D[0]]?.questions.length === 3 && db.discussions[D[0]].generated === true && !db.discussions[D[0]].questions.includes('x'), db.discussions)
+check('discussion: fewer than two usable = none, day still saved', !db.discussions[D[1]] && db.verses[D[1]] && JSON.stringify(r.body.discussed) === JSON.stringify([D[0]]), { d: db.discussions, body: r.body })
+check('discussion: no extra unit spent', db.used === 2, db.used)
+reset(); gemini = [{ days: [{ reference: 'John 15:1', questions: five(), discussion: ['Should never be saved without asking?', 'Not asked for this run at all?'] }, { reference: 'John 15:4', questions: five() }] }, { items: [] }]
+r = await call(week({ days: 2, dates: [D[0], D[1]] }))
+check('discussion: not asked = not saved, no discussed key', r.body.ok && Object.keys(db.discussions).length === 0 && r.body.discussed === undefined, r.body)
+// D2. One-day mode hands them back to the form; the prompt asked for them.
+reset(); gemini = [{ questions: five(), note: 'n', discussion: ['What is Jesus asking of His friends here?', 'How could you remain in Him tomorrow?'] }, { items: [] }]
+r = await call({ church_id: CH, reference: 'John 15:5', text: V[5], api: 2, discussion: true })
+check('one-day: discussion returned', r.body.ok && r.body.discussion?.length === 2, r.body)
 
 console.log(fails ? `${fails} FAILED` : 'ALL PASS')
 process.exit(fails ? 1 : 0)

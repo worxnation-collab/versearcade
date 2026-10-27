@@ -6,10 +6,10 @@ import { parseReference } from '@/lib/bibleProgress'
 import { verseFromReference } from '@/data/bible/questions'
 import { TranscriptMeter, transcriptNote } from './transcript'
 import { MemoInput, placeTranscript } from './memo'
-import { cleanLine, cleanQuestions, fetchDays, flaggedCount, GUIDANCE_MAX, NOTE_MAX, SERIES_MAX, serverVerseBackend, useDraftAllowance, type DayVerse, type VerseBackend, type VerseStatus, type WeekDay } from '@/store/churchAdmin'
+import { cleanDiscussion, DISCUSSION_LINE_MAX, cleanLine, cleanQuestions, fetchDays, flaggedCount, GUIDANCE_MAX, NOTE_MAX, SERIES_MAX, serverVerseBackend, useDraftAllowance, type DayVerse, type VerseBackend, type VerseStatus, type WeekDay } from '@/store/churchAdmin'
 import type { Question } from '@/types'
 import { SeriesCopyPanel } from './SeriesCopyPanel'
-import { DraftReview } from './WeekDraftPanel'
+import { DiscussionToggle, DraftReview } from './WeekDraftPanel'
 import { PlanWeek } from './PlanWeek'
 import { ENGINE_REASONS } from './weekRun'
 import { AssetStudio } from './AssetStudio'
@@ -186,6 +186,13 @@ export function TodayVerseForm({
   const [saved, setSaved] = useState<DayVerse | null>(null)
   const [series, setSeries] = useState('')
   const [note, setNote] = useState('')
+  // Open discussion questions for small groups (0151): three slots, saved
+  // beside the day after the day itself saves. `discOnFile` is what the server
+  // holds, so an untouched day is never re-written.
+  const [disc, setDisc] = useState<string[]>(['', '', ''])
+  const [discOnFile, setDiscOnFile] = useState<string[]>([])
+  const [discGenerated, setDiscGenerated] = useState(false)
+  const [askDiscussion, setAskDiscussion] = useState(false)
   const [pageLine, setPageLine] = useState<'idle' | 'busy' | 'done' | 'failed'>('idle')
   // The copy panel closes once it has run; the verse it copied stays `saved`,
   // so "This week we're in …" is still one tap away afterwards.
@@ -241,10 +248,37 @@ export function TodayVerseForm({
       const before = weekRef.current?.find((w) => w.date === addDays(date, -1))?.verse
       setSeries(v ? (v.series ?? '') : (before?.series ?? ''))
       setNote(v?.note ?? '')
+      setDisc(['', '', ''])
+      setDiscOnFile([])
+      setDiscGenerated(false)
       setLoading(false)
     })
+    if (backend.discussion) {
+      backend.discussion.get(churchId, date).then((r) => {
+        if (!alive || !r.ok) return
+        setDiscOnFile(r.data)
+        setDisc([0, 1, 2].map((i) => r.data[i] ?? ''))
+      })
+    }
     return () => { alive = false }
   }, [churchId, date, backend, dayKey])
+
+  /**
+   * After the day itself saved: write its discussion questions if they
+   * changed — or if the day's reference did, since questions are kept only
+   * while they match it (0151). Returns a sentence to add when they didn't
+   * save, else ''.
+   */
+  const persistDiscussion = async (moved: boolean): Promise<string> => {
+    if (!backend.discussion) return ''
+    const want = cleanDiscussion(disc)
+    if (!(moved && want.length) && JSON.stringify(want) === JSON.stringify(discOnFile)) return ''
+    const r = await backend.discussion.save(churchId, date, want, discGenerated)
+    if (!r.ok) return ' The discussion questions didn’t save — try again in a moment.'
+    setDiscOnFile(r.data)
+    setDiscGenerated(false)
+    return ''
+  }
 
   const library = useMemo(() => (parseReference(reference) ? verseFromReference(reference.trim()) : null), [reference])
 
@@ -274,13 +308,17 @@ export function TodayVerseForm({
     setArmed(false)
     setMsg(null)
     setDrafting(true)
-    const r = await backend.draft(churchId, reference.trim(), text.trim(), { guidance, transcript })
+    const r = await backend.draft(churchId, reference.trim(), text.trim(), { guidance, transcript, discussion: askDiscussion && !!backend.discussion })
     setDrafting(false)
     if (!r.ok) return setMsg({ ok: false, text: DRAFT_REASONS[r.reason] ?? DRAFT_REASONS.unavailable })
     juice.select?.()
     setQs(r.data.questions.map(toDraft))
     // A suggested note fills an EMPTY note only — never over the pastor's own.
     if (r.data.note && !note.trim()) setNote(r.data.note)
+    if (r.data.discussion?.length) {
+      setDisc([0, 1, 2].map((i) => r.data.discussion![i] ?? ''))
+      setDiscGenerated(true)
+    }
     setGeneratedNow(true)
     setMsg({ ok: true, text: 'Drafted. Nothing is live yet — read each one, change anything that isn’t how you’d say it, then save it as a draft and approve it.' + transcriptNote(transcript, r.data.transcriptUse, r.data.transcriptRead) })
   }
@@ -338,12 +376,13 @@ export function TodayVerseForm({
   const save = async () => {
     const v = build()
     if (!v) return
+    const moved = stored?.reference !== v.reference
     setBusy(true)
     const r = await backend.save(churchId, date, v)
     setBusy(false)
     if (!r.ok) return setMsg({ ok: false, text: REASONS[r.reason] ?? 'That didn’t save — check your connection and try again.' })
     const lost = r.data?.extras === false && !!(v.series || v.note)
-    landed(v, lost, `Saved. ${liveLine()}`)
+    landed(v, lost, `Saved. ${liveLine()}` + (await persistDiscussion(moved)))
   }
 
   // Replacing a LIVE day with a draft takes it off members' screens until the
@@ -364,6 +403,7 @@ export function TodayVerseForm({
     if (!backend.saveDraft) return
     const v = build()
     if (!v || !armReplace()) return
+    const moved = stored?.reference !== v.reference
     setBusy(true)
     const r = await backend.saveDraft(churchId, date, v, needsReplace)
     setBusy(false)
@@ -377,7 +417,8 @@ export function TodayVerseForm({
     setSaved(null)
     void loadWeek()
     if (assets) void useChurchAssetsAdmin.getState().load(churchId, true)
-    setMsg({ ok: true, text: `Saved as a draft. ${churchName}’s members can’t see it until you approve it.` })
+    const discLost = await persistDiscussion(moved)
+    setMsg({ ok: !discLost, text: `Saved as a draft. ${churchName}’s members can’t see it until you approve it.` + discLost })
   }
 
   // The explicit approval. With the add-on, the edits are saved as the draft
@@ -386,6 +427,7 @@ export function TodayVerseForm({
   const approve = async () => {
     const v = build()
     if (!v || !armReplace()) return
+    const moved = stored?.reference !== v.reference
     setBusy(true)
     let r: { ok: true; data: unknown } | { ok: false; reason: string }
     let lost = false
@@ -399,7 +441,7 @@ export function TodayVerseForm({
     }
     setBusy(false)
     if (!r.ok) return setMsg({ ok: false, text: REASONS[r.reason] ?? 'That didn’t go through — check your connection and try again.' })
-    landed(v, lost, `Approved. ${liveLine()}`)
+    landed(v, lost, `Approved. ${liveLine()}` + (await persistDiscussion(moved)))
   }
 
   // Throw the open draft away (0129). The day reads as empty again.
@@ -529,6 +571,7 @@ export function TodayVerseForm({
           >
             {drafting ? 'Drafting five questions…' : armed ? 'Tap again to replace your questions' : '✨ Draft five questions from this passage'}
           </button>
+          {backend.discussion && <DiscussionToggle on={askDiscussion} onChange={setAskDiscussion} />}
           <button
             className="faint"
             onClick={() => setSteerOpen((o) => !o)}
@@ -575,6 +618,25 @@ export function TodayVerseForm({
       <p className="faint" style={{ margin: '-4px 0 0', fontSize: 11.5, lineHeight: 1.45 }}>
         Members see the note beside this day&rsquo;s verse on their Play tab, that day only. {note.length > NOTE_MAX - 40 ? `${NOTE_MAX - note.length} characters left.` : ''}
       </p>
+
+      {backend.discussion && (
+        <div data-discussion style={{ display: 'grid', gap: 6 }}>
+          <span style={labelStyle as React.CSSProperties}>Discussion questions for small groups (optional)</span>
+          {disc.map((q, i) => (
+            <input
+              key={i}
+              value={q}
+              onChange={(e) => { const v = e.target.value; setDisc((all) => all.map((x, j) => (j === i ? v : x))) }}
+              maxLength={DISCUSSION_LINE_MAX}
+              placeholder={i === 0 ? 'What does this verse show us about God?' : i === 1 ? 'Where could you live this out this week?' : 'Another question (optional)'}
+              aria-label={`Discussion question ${i + 1}`}
+            />
+          ))}
+          <span className="faint" style={{ fontSize: 11.5, lineHeight: 1.45 }}>
+            Open questions with no right answer. Your group leaders see them beside this day once it’s approved; members don’t.
+          </span>
+        </div>
+      )}
 
       {flagged > 0 && (
         <p role="status" style={{ margin: 0, fontSize: 12.5, lineHeight: 1.45, padding: '8px 12px', borderRadius: 12, background: 'var(--card-raised)', border: '1px solid var(--edge)' }}>

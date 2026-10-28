@@ -33,7 +33,7 @@ the two cannot drift:
 
 | Row | Home's wording | Link lands on |
 |---|---|---|
-| Sermon week / Autopilot | "Week drafted — review" with the range (or ready / being drafted / didn't finish), or "No source this week — Autopilot skipped" | Plan, on the first drafted day (or today) |
+| Sermon week / Autopilot | "Week drafted — review" with the range (or ready / being drafted / didn't finish), or "Nothing drafted this week" | Plan, on the first drafted day (or today) |
 | Drafts waiting | "N drafts are waiting for your approval", first date | Plan, on the first draft |
 | Flagged questions | "N drafted questions need a second look", first date | Plan, on that day |
 | Inquiries waiting | "N players asked about your church" — **a count, no names, no notes** | People, the inquiries section |
@@ -45,7 +45,7 @@ nothing in it is a per-person number.
 
 The sermon-week and Autopilot rows need Content Generation, exactly as on Home.
 Note the timing: the email goes out Monday morning, and Autopilot's default
-cutoff is Monday 9pm — so "Autopilot skipped" for THIS week usually appears on
+cutoff is Monday 9pm — so "Nothing drafted this week" for THIS week usually appears on
 Home after the email has gone. A church that wants it in the digest can set its
 cutoff to Sunday.
 

@@ -87,7 +87,7 @@ export function autoRow(job: HomeJob | null, autopilotSkipped: boolean, today: s
       go: { tab: 'plan', date: job.saved[0] ?? job.startDate },
     }
   }
-  if (autopilotSkipped) return { key: 'autopilot', icon: '✈️', title: 'No source this week — Autopilot skipped', detail: 'No sermon memo arrived and no fallback is set, so nothing was drafted. Set a fallback on Plan →', go: { tab: 'plan', date: today } }
+  if (autopilotSkipped) return { key: 'autopilot', icon: '✈️', title: 'Nothing drafted this week', detail: 'No sermon memo arrived by the cutoff and no fallback is set. Plan this week, or set a fallback on Plan →', go: { tab: 'plan', date: today } }
   return null
 }
 

@@ -1797,8 +1797,10 @@ Four rules are load-bearing:
   switch on Plan, default off. A memo sent from "Your sermon" queues its week
   by itself; no memo by the cutoff (Monday 9pm, the church's clock) drafts
   the week from the pastor's saved topic/passage fallback through the SAME
-  week call, empty days of that week only; no fallback → "No source this
-  week — Autopilot skipped", never a week from nothing. "Skip this week"
+  week call, empty days of that week only; no fallback → "Nothing drafted
+  this week", never a week from nothing. Switching it on with no fallback
+  saved asks for the fallback FIRST (a midweek switch-on settles the week at
+  once, and used to greet the pastor with a red skip). "Skip this week"
   pauses one week. There is no cron: the dashboard and a leader's church tab
   send `autopilot_tick`, and the week is claimed once by a primary key.
   Everything it writes is a DRAFT; there is no auto-approve.

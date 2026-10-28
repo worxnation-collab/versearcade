@@ -10,6 +10,7 @@ import { useGame } from '@/store/game'
 import { useDailyTrivia } from '@/store/dailyTrivia'
 import { dailyTriviaBook } from '@/data/bible/questions'
 import { useAuth } from '@/store/auth'
+import { useSettings } from '@/store/settings'
 import { useAccountLocked } from '@/components/AccountWall'
 import { useSeason } from '@/store/season'
 import { useJuice } from '@/juice/useJuice'
@@ -24,6 +25,7 @@ import { MissedList } from './MissedList'
 import { ScriptureQuote } from '@/components/ScriptureQuote'
 import { PaintedIcon } from '@/components/PaintedIcon'
 import { StreakBorderOffer } from './StreakBorderOffer'
+import { ChurchArt } from '@/features/church/ChurchArt'
 
 export default function ResultScreen() {
   const navigate = useNavigate()
@@ -51,6 +53,7 @@ export default function ResultScreen() {
   const [shareState, setShareState] = useState<string | null>(null)
   const [signInErr, setSignInErr] = useState<string | null>(null)
   const [readerOpen, setReaderOpen] = useState(false)
+  const reduceMotion = useSettings((s) => s.reduceMotion)
 
   const result = lastResult?.result
   const outcome = lastResult?.outcome
@@ -85,6 +88,12 @@ export default function ResultScreen() {
 
   if (!result || !outcome || !today) return null
 
+  // A low run (none or one right) makes the facts the peak of the screen: the
+  // score stays visible but compact, the zero-line folds into the list's own
+  // header, and the trivia nudge moves under the list so five facts fit on a
+  // phone without scrolling. A perfect or good run is untouched.
+  const lowRun = result.correctCount <= 1 && result.perQuestion.some((p) => !p.correct)
+
   const doShare = async () => {
     const text = buildShareText(result, outcome, profile.referralCode)
     const r = await shareResult(text, inviteUrl(profile.referralCode))
@@ -100,47 +109,31 @@ export default function ResultScreen() {
   return (
     <Page noNav>
       <div style={{ textAlign: 'center', paddingTop: 12 }}>
-        <motion.div initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 240, damping: 12 }}>
+        <motion.div initial={{ scale: reduceMotion ? 1 : 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 240, damping: 12 }}>
           {/* A star over a zero reads as sarcasm. A run that taught five facts
               and scored none of them gets the book instead — the same beat,
               naming what actually happened. */}
-          <div style={{ fontSize: 60 }}>
+          <div style={{ fontSize: lowRun ? 36 : 60 }}>
             {outcome.leveledUp ? '🎉' : result.correctCount === result.totalQuestions ? '💎' : result.correctCount === 0 ? '📖' : '⭐'}
           </div>
         </motion.div>
 
-        <p className="dim" style={{ marginTop: 4 }}>You scored</p>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 64, lineHeight: 1 }}>
+        <p className="dim" style={{ marginTop: lowRun ? 0 : 4, fontSize: lowRun ? 13 : undefined }}>You scored</p>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: lowRun ? 40 : 64, lineHeight: 1 }}>
           <CountUp to={result.score} duration={1200} tickSound className="gradient-text" />
         </div>
 
         {/* THE SCORE IS NEVER HIDDEN — it is the player's own number and taking
-            it away would be a worse lie than a big zero. What this line does is
-            stop the zero being the LAST word: on the one run where the screen
-            has nothing else warm to say, it says the true thing (nothing was
-            lost, and the facts are directly below) and points at the list that
-            is now the very next thing on screen. This app's rule is stickiness
-            without shame, and a first-ever run scoring nothing is exactly where
-            that rule is thinnest. Shown only at zero: at 1/5 the missed list's
-            own "4 things you now know" already does this job. */}
-        {result.correctCount === 0 && (
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.9 }}
-            className="dim"
-            style={{ margin: '10px auto 0', maxWidth: 320, fontSize: 13.5, lineHeight: 1.5 }}
-          >
-            Nothing lost — a wrong answer here is just a fact you hadn’t met yet.
-            All {result.totalQuestions} of them are below.
-          </motion.p>
-        )}
+            it away would be a worse lie than a big zero. On a zero (or one-
+            right) run it is drawn compact instead, and the featured list
+            directly under it carries the "nothing lost" line in its header, so
+            the facts are the last word rather than the zero. */}
 
         {/* Up by the score, while the run is still the thing on screen: the
             day's other box. It renders only while there IS one left to play —
             a finished day says nothing here rather than showing a tick, which
             is the same rule the map's invitations panel follows. */}
-        {!triviaDone && (
+        {!triviaDone && !lowRun && (
           <motion.button
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -171,7 +164,31 @@ export default function ResultScreen() {
             as nothing, so the verse card is still directly under the score
             there and that screen is unchanged. The verse keeps the last word —
             it is the keepsake, and the heart that keeps it lives with it. */}
-        <MissedList questions={today.questions} result={result} />
+        <MissedList questions={today.questions} result={result} featured={lowRun} />
+        {!triviaDone && lowRun && (
+          <motion.button
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            onClick={() => navigate('/play/trivia')}
+            className="card"
+            style={{
+              width: '100%', marginTop: 16, display: 'flex', alignItems: 'center', gap: 10,
+              textAlign: 'left', cursor: 'pointer',
+              borderColor: 'var(--sky)', background: 'rgba(93,211,255,0.10)',
+            }}
+          >
+            <span style={{ fontSize: 22, flexShrink: 0 }}>✨</span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <b style={{ display: 'block', fontSize: 14 }}>Today’s trivia is still waiting</b>
+              <span className="faint" style={{ fontSize: 12 }}>
+                Five on {triviaBook ?? 'the whole Bible'} — the book itself, not the verse.
+              </span>
+            </span>
+            <span style={{ color: 'var(--sky)', fontFamily: 'var(--font-display)', fontSize: 18 }}>→</span>
+          </motion.button>
+        )}
+
 
         {/* The teaching payoff: reveal what the verse actually was. */}
         <div className="card" style={{ marginTop: 18, textAlign: 'left' }}>
@@ -280,12 +297,13 @@ export default function ResultScreen() {
             </b>
             <p className="dim" style={{ fontSize: 13, marginTop: 4 }}>
               {returningGuest
-                ? `You’ve come back ${profile.totalPlays} times as a guest. Everything you’ve built lives on this device only — clear your browser and it’s gone. A free account keeps it.`
-                : 'You’re playing as a guest. Create a free account so your streak, XP, and verse cards sync across devices — and never reset.'}
+                ? `You’ve come back ${profile.totalPlays} times as a guest. It all lives on this device only — a free account keeps it on any phone.`
+                : 'Totally optional — you can keep playing as a guest. A free account carries these to any phone:'}
             </p>
+            <SyncStrip streak={outcome.currentStreak} reduceMotion={reduceMotion} />
             <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>
               <OAuthButtons onError={setSignInErr} />
-              <Button variant="ghost" full onClick={() => navigate('/auth')}>
+              <Button variant="ghost" full onClick={() => navigate('/auth?mode=signup')}>
                 Use email instead
               </Button>
             </div>
@@ -359,6 +377,38 @@ export default function ResultScreen() {
         {readerOpen && <ChapterReader verse={today} onClose={() => setReaderOpen(false)} />}
       </AnimatePresence>
     </Page>
+  )
+}
+
+// What an account actually keeps, drawn rather than listed: your streak, your
+// Upper Room, and the church you give to — three things a guest can SEE, each
+// with the "on any device" fact under it. Optional in tone (the copy above it
+// says so) and it adds no wall: the guest's next tap still plays.
+function SyncStrip({ streak, reduceMotion }: { streak: number; reduceMotion: boolean }) {
+  const items: { art: React.ReactNode; label: string }[] = [
+    { art: <StreakFlame days={Math.max(1, streak)} size={22} />, label: `${Math.max(1, streak)}-day streak` },
+    { art: <span style={{ fontSize: 26, lineHeight: 1 }}>🕯️</span>, label: 'Your Upper Room' },
+    { art: <ChurchArt level={3} size={34} />, label: 'Giving to your church' },
+  ]
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, marginTop: 10 }}>
+      {items.map((it, i) => (
+        <motion.div
+          key={it.label}
+          initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 + i * 0.1 }}
+          style={{
+            display: 'grid', justifyItems: 'center', alignContent: 'start', gap: 4, padding: '10px 4px',
+            borderRadius: 12, background: 'var(--card-raised)', textAlign: 'center', minWidth: 0,
+          }}
+        >
+          <div style={{ height: 34, display: 'grid', placeItems: 'center' }}>{it.art}</div>
+          <b style={{ fontSize: 11.5, lineHeight: 1.25 }}>{it.label}</b>
+          <span className="faint" style={{ fontSize: 10.5 }}>synced 📱↔📱</span>
+        </motion.div>
+      ))}
+    </div>
   )
 }
 

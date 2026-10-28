@@ -6,6 +6,7 @@ import { Button } from '@/components/Button'
 import { useBuddies } from '@/store/buddies'
 import { useGifts } from '@/store/gifts'
 import { useChurchCheckIns } from '@/store/churchCheckIns'
+import { useChurchReplies } from '@/store/churchReplies'
 import { useWashing } from '@/store/washing'
 import { usePrayerWall } from '@/store/prayerWall'
 import { prayerCategoryById } from '@/data/prayerWall'
@@ -92,6 +93,8 @@ export default function MailScreen() {
   // Leaving the mailbox inside the window still files the report.
   useEffect(() => () => flushReport(), []) // eslint-disable-line react-hooks/exhaustive-deps
   const checkIns = allCheckIns.filter((n) => n.id !== pendingReport)
+  // A church you asked about answered (0155): their words, your question under them.
+  const churchReplies = useChurchReplies((s) => s.replies)
   const requests = useBuddies((s) => s.requests)
   const respond = useBuddies((s) => s.respond)
   const washings = useWashing((s) => s.recent)
@@ -109,6 +112,7 @@ export default function MailScreen() {
   useEffect(() => {
     void useGifts.getState().load().then(() => useGifts.getState().markSeen())
     void useChurchCheckIns.getState().load().then(() => useChurchCheckIns.getState().markSeen())
+    void useChurchReplies.getState().load().then(() => useChurchReplies.getState().markSeen())
     void useBuddies.getState().load()
     void useWashing.getState().load()
     void usePrayerWall.getState().load()
@@ -116,7 +120,7 @@ export default function MailScreen() {
 
   const noteLit = !!myNote && myNote.open && myNote.lit
   const empty =
-    giftsLoaded && !gifts.length && !checkIns.length && !reported && !requests.length && !washings.length && !news.length &&
+    giftsLoaded && !gifts.length && !checkIns.length && !churchReplies.length && !reported && !requests.length && !washings.length && !news.length &&
     !answered.length && !noteLit
 
   return (
@@ -240,6 +244,32 @@ export default function MailScreen() {
               )}
             </div>
           )}
+        </Section>
+      )}
+
+      {churchReplies.length > 0 && (
+        <Section title="Replies from churches">
+          {churchReplies.map((r) => (
+            <div key={r.churchId} className="card" data-church-reply={r.churchName} style={{ marginBottom: 8, display: 'grid', gap: 6 }}>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 24, lineHeight: 1.2 }}>⛪</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: 14, lineHeight: 1.45, overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>{r.reply}</p>
+                  <span className="faint" style={{ fontSize: 12, display: 'block', marginTop: 2 }}>
+                    {r.churchName}’s leaders · {new Date(r.repliedAt).toLocaleDateString()}
+                  </span>
+                  <p className="dim" style={{ margin: '6px 0 0', fontSize: 12, lineHeight: 1.45, overflowWrap: 'anywhere' }}>You asked: “{r.note}”</p>
+                </div>
+              </div>
+              <button
+                className="pill"
+                onClick={() => { juice.select(); navigate(`/church/${r.churchId}`) }}
+                style={{ justifySelf: 'start', fontSize: 12, fontWeight: 800, padding: '4px 12px' }}
+              >
+                Visit {r.churchName}
+              </button>
+            </div>
+          ))}
         </Section>
       )}
 

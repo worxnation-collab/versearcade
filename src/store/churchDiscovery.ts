@@ -51,9 +51,10 @@ export async function sendJoinInquiry(churchId: string, note: string): Promise<I
   return d?.ok ? { ok: true } : { ok: false, reason: String(d?.reason ?? 'unavailable') }
 }
 
-/** Whether this player already asked this church (one note per church, ever). */
-export async function fetchMyInquiry(churchId: string): Promise<boolean> {
-  if (!supabase) return false
+/** Whether this player already asked this church (one note per church, ever), and the church's reply (0155). */
+export async function fetchMyInquiry(churchId: string): Promise<{ sent: boolean; reply: string | null }> {
+  if (!supabase) return { sent: false, reply: null }
   const { data, error } = await supabase.rpc('my_church_join_inquiry', { p_church_id: churchId })
-  return !error && (data as { sent?: boolean } | null)?.sent === true
+  const d = (error ? null : data) as { sent?: boolean; reply?: string | null } | null
+  return { sent: d?.sent === true, reply: typeof d?.reply === 'string' && d.reply ? d.reply : null }
 }

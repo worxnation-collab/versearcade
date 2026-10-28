@@ -1800,6 +1800,12 @@ Four rules are load-bearing:
   pauses one week. There is no cron: the dashboard and a leader's church tab
   send `autopilot_tick`, and the week is claimed once by a primary key.
   Everything it writes is a DRAFT; there is no auto-approve.
+- **The Monday digest** (0154, `docs/CHURCH-DIGEST.md`): Home → "Email me
+  the Monday digest", PER LEADER, default off, verified only. It carries ONLY
+  Home rows (sermon week / Autopilot, drafts, flags, inquiries as a count,
+  the quiet count — never names), worded by the builder Home itself uses
+  (`church-digest/home.ts`), each a `?go=` link onto the tab its row opens.
+  `church-digest` + pg_cron + Resend; no key ⇒ nothing sent, nothing marked.
 - **The Plan tab is ONE flow, "Plan your week"** (`PlanWeek`, 2026-10-26):
   start from **your sermon** (the hero and default — memo or transcript), a
   topic, or one passage → the same `church-draft` week call → `DraftReview`.
@@ -2720,7 +2726,26 @@ against project `visuppaucpzzigwtqmdd` (`verse-arcade`). Nothing applies them on
 deploy, so a merged PR whose migration hasn't been run means online accounts hit
 a missing table. Apply the schema *before* merging the client.
 
-The latest is `0153` (the pastoral prayer list — `church_prayer_list(church)`
+The latest is `0154` (the Monday digest — `church_digest_optins` (PER
+LEADER, per church, default off), `church_digest_setting` /
+`set_church_digest` behind `church_admin_can` (free claims refused), and
+service-role `church_digest_build` (Home's own reads run AS that leader, so
+their gates decide), `church_digest_due`, `church_digest_mark_sent`,
+`church_digest_tz`, `church_digest_secret`; part 2
+`0154_church_digest_cron` enables pg_net, makes a random Vault
+`DIGEST_CRON_TOKEN` and schedules `church-digest-monday` (`7 * * * 0,1,2`).
+The `church-digest` Edge Function sends through Resend; the rows are worded by
+`supabase/functions/church-digest/home.ts`, which Home imports too.
+`docs/CHURCH-DIGEST.md`). APPLIED 2026-10-28 after a local Postgres 16 run
+(impersonated build with the caller restored, member and free-claim refused,
+due list across time zones, Monday-only, once a week, removed leaders and
+free claims never due) and verified live: the four helpers
+`{postgres,service_role}`, the two toggles `authenticated`, a rolled-back
+opt-in → build → due round trip on the real verified church, the cron job
+active and the token in Vault. **No email goes out until `RESEND_API_KEY` is
+set** (function secret or Vault) and the sending domain is verified.
+
+Before it, `0153` (the pastoral prayer list — `church_prayer_list(church)`
 for VERIFIED leadership (`church_admin_can`): the Prayer Wall notes the
 church's current members SIGNED in the last thirty days, newest first, with
 name, line, when and open/answered, and no count of kneelings anywhere; plus
@@ -3613,7 +3638,7 @@ card, which was applied to production under that number and renumbered to
 `0082` and `0083` twice each — and now `0089` twice as well (the growth tab's
 timezone fix landed on main while the church places index was in flight on a
 branch; the branch side became 0091, and its follow-up burned 0090 in
-production only). So the next free number is `0154` (0153 is the pastoral prayer list, in two parts — part b pending; 0152 is Autopilot, recorded twice — the main file and `_keep`; 0151 is small groups; 0150 is the series numbers; 0149 the leader's card and church inquiries, in two parts — part b pending; 0148 is record-Sunday-review-Monday, in two parts — part b pending; 0147 is the co-leaders, in two parts — part b pending; 0146 is the public leader look; 0145 is the Custom Leader Avatar purchase; 0144 is the voice-memo allowance, in two parts; 0143 is the answer check's flag; 0142 is the content engine's run log and refund, in two parts; 0139, 0140 and 0141 are the Apple church subscription, its leader-removed binding and the church plan taps in production, each in two parts; 0138 is the check-in verse and report, in two parts; 0137 is used FOUR times in production — the check-in note in two parts, the leaderboard's streak-free tie-break, and `church_free_claim` — 0136 is the church leader looks, 0135 is the church billing read for the portal, 0134 is the self-serve church claim, in two parts; 0133 is used twice — church visual assets AND the church Stripe key in Vault — 0132 is the church webhook's Vault secret, 0131 is church billing, 0130 is the member's church view, 0129 is the week-from-a-sermon drafts, 0128 is the church layer, 0127 is `church_content_generation` in production, 0126 is the two new statues, 0125 is the API.Bible key, 0124 the reading translation, 0123 is the church verse series and note, 0122 is `church_question_drafts` in production only, 0121 is the church leader invite link, 0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
+production only). So the next free number is `0155` (0154 is the Monday digest, in two parts — the main file and `_cron`; 0153 is the pastoral prayer list, in two parts — part b pending; 0152 is Autopilot, recorded twice — the main file and `_keep`; 0151 is small groups; 0150 is the series numbers; 0149 the leader's card and church inquiries, in two parts — part b pending; 0148 is record-Sunday-review-Monday, in two parts — part b pending; 0147 is the co-leaders, in two parts — part b pending; 0146 is the public leader look; 0145 is the Custom Leader Avatar purchase; 0144 is the voice-memo allowance, in two parts; 0143 is the answer check's flag; 0142 is the content engine's run log and refund, in two parts; 0139, 0140 and 0141 are the Apple church subscription, its leader-removed binding and the church plan taps in production, each in two parts; 0138 is the check-in verse and report, in two parts; 0137 is used FOUR times in production — the check-in note in two parts, the leaderboard's streak-free tie-break, and `church_free_claim` — 0136 is the church leader looks, 0135 is the church billing read for the portal, 0134 is the self-serve church claim, in two parts; 0133 is used twice — church visual assets AND the church Stripe key in Vault — 0132 is the church webhook's Vault secret, 0131 is church billing, 0130 is the member's church view, 0129 is the week-from-a-sermon drafts, 0128 is the church layer, 0127 is `church_content_generation` in production, 0126 is the two new statues, 0125 is the API.Bible key, 0124 the reading translation, 0123 is the church verse series and note, 0122 is `church_question_drafts` in production only, 0121 is the church leader invite link, 0120 is the church "This week" line, 0119 is the church shared verse, 0118 is the church admin dashboard, 0117 is church discovery, 0116 is church packages, 0115 is `church_cities_rls` in production, 0114 is taken by the church CITY index, 0113 by the church name search — recorded THREE times in production, a/b/c, as above — 0112 by the room's arrangement, 0111 by the verse notes, 0110 by room skins, 0109 by the reading cosmetics, 0108 by the Sharkey skin, 0107 by the Cool Dad skin it renamed, 0106 by the sign-up source, 0105 by the xAI key, 0104 by the X keys, 0103 by the season's multi-road in production, 0102 by the runner token, 0101 by the Ayrshare Vault key, 0100 by the daily answer poll, 0099 by the Prayer Wall, 0098 by the card's About field on main, 0097 by the TikTok engine's Vault key, 0096 by the Cornerstone border, 0085 is taken by erasure
 hardening, 0086 by battle XP, 0087 by battle wins, 0088 by the lantern skin,
 0089 by the growth timezone fix AND by church places as production recorded it,
 0090 by the name locks as production recorded them, 0091 by church places in the

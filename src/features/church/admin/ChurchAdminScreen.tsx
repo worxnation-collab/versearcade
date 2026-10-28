@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { parseHomeGo } from '../../../../supabase/functions/church-digest/home.ts'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { TabbedSection } from '@/components/TabbedSection'
@@ -124,6 +125,25 @@ export default function ChurchAdminScreen() {
     if (g.tab === 'page') setNoticeFocus((n) => n + 1)
     setGo((cur) => ({ key: g.tab, nonce: (cur?.nonce ?? 0) + 1 }))
   }
+  // A Monday digest link (0154): `?go=plan&date=…`, `?go=people&focus=quiet|
+  // inquiries`, `?go=page&focus=notice` — the same doors a Home row opens.
+  // Frozen at mount and stripped, like `?upgraded=1`, and applied once the
+  // dashboard has loaded, so a reload doesn't re-open it.
+  const [linkGo] = useState(() => parseHomeGo(params))
+  useEffect(() => {
+    if (!linkGo) return
+    const next = new URLSearchParams(params)
+    for (const k of ['go', 'date', 'focus']) next.delete(k)
+    setParams(next, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const linkApplied = useRef(false)
+  useEffect(() => {
+    if (!linkGo || linkApplied.current || state !== 'ok') return
+    linkApplied.current = true
+    onGo(linkGo)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state])
   useEffect(() => {
     if (!noticeFocus) return
     requestAnimationFrame(() => document.getElementById('church-notice')?.scrollIntoView({ block: 'start' }))

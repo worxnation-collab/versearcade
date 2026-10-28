@@ -1775,3 +1775,35 @@ export async function markChurchPrayer(churchId: string, requestId: string, pray
   if (!r.ok) return r
   return { ok: true, data: { prayed: r.data.prayed === true } }
 }
+
+// ---------------------------------------------------------------------------
+// The Monday digest (0154, docs/CHURCH-DIGEST.md). PER LEADER: the switch is
+// the caller's own inbox for this church, never a co-leader's. Verified
+// leadership only; a free claim is refused by the server.
+// ---------------------------------------------------------------------------
+
+export async function fetchDigestSetting(churchId: string): Promise<Res<{ enabled: boolean; hasEmail: boolean }>> {
+  const r = await call<{ enabled?: boolean; has_email?: boolean }>('church_digest_setting', { p_church_id: churchId })
+  if (!r.ok) return r
+  return { ok: true, data: { enabled: r.data.enabled === true, hasEmail: r.data.has_email !== false } }
+}
+
+export async function setDigest(churchId: string, enabled: boolean): Promise<Res<{ enabled: boolean }>> {
+  const r = await call<{ enabled?: boolean }>('set_church_digest', { p_church_id: churchId, p_enabled: enabled })
+  if (!r.ok) return r
+  return { ok: true, data: { enabled: r.data.enabled === true } }
+}
+
+/** Send this week's digest to the caller's own address now (the `church-digest` function). */
+export async function sendDigestTest(churchId: string): Promise<Res<{ to: string | null }>> {
+  if (!online()) return { ok: false, reason: 'unavailable' }
+  const { data, error } = await supabase!.functions.invoke('church-digest', { body: { action: 'test', church_id: churchId } })
+  let reply: Record<string, any> | null = !error && data && typeof data === 'object' ? (data as Record<string, any>) : null
+  if (error) {
+    const ctx = (error as { context?: unknown }).context
+    if (ctx instanceof Response) { try { reply = await ctx.json() } catch { /* no body */ } }
+  }
+  if (!reply) return { ok: false, reason: 'unavailable' }
+  if (reply.ok !== true) return { ok: false, reason: String(reply.reason ?? 'unavailable') }
+  return { ok: true, data: { to: reply.to ? String(reply.to) : null } }
+}

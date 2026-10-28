@@ -366,6 +366,15 @@ merged code is inert, which is the fail-closed answer.
 5. **A new App Store build** carrying this client (the plan card is in the
    baked `dist`), with the two subscriptions attached to its review.
 
+## The Monday digest (0154)
+
+Home → "Email me the Monday digest": an opt-in, PER-LEADER email (default
+off, verified leadership only, free claims refused) carrying Home's sermon
+week / Autopilot line, drafts waiting, flagged questions, inquiries (a count)
+and the quiet count (no names), each a link onto the right dashboard tab.
+`church-digest` Edge Function + pg_cron, sent through Resend. Full rules:
+`docs/CHURCH-DIGEST.md`.
+
 ## The Sunday pack (2026-10-28, no migration)
 
 Plan tab, under the week strip: **📄 Sunday pack** (`SundayPack.tsx` over

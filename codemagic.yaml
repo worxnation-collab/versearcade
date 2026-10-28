@@ -230,12 +230,21 @@ workflows:
           #    · Push (aps-environment) — without it register() fails and the
           #      app simply never stores a token; nothing else changes.
           SIWA=""; APS=""
-          for P in "$HOME/Library/MobileDevice/Provisioning Profiles"/*.mobileprovision; do
+          # Xcode 16+ keeps profiles under ~/Library/Developer/Xcode/UserData,
+          # older tooling under ~/Library/MobileDevice — search both, and log
+          # every profile seen so a miss says WHY rather than just "none".
+          for P in "$HOME/Library/MobileDevice/Provisioning Profiles"/* \
+                   "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"/*; do
             [ -f "$P" ] || continue
             DEC=$(security cms -D -i "$P" 2>/dev/null || true)
-            echo "$DEC" | grep -q "$BUNDLE_ID" || continue
-            echo "$DEC" | grep -q "com.apple.developer.applesignin" && SIWA="$P"
-            echo "$DEC" | grep -q "<key>aps-environment</key>" && APS="$P"
+            NAME=$(echo "$DEC" | plutil -extract Name raw -o - - 2>/dev/null || echo "?")
+            HAS_ID=no; echo "$DEC" | grep -q "$BUNDLE_ID" && HAS_ID=yes
+            HAS_SIWA=no; echo "$DEC" | grep -q "com.apple.developer.applesignin" && HAS_SIWA=yes
+            HAS_APS=no; echo "$DEC" | grep -q "<key>aps-environment</key>" && HAS_APS=yes
+            echo "profile: $NAME | $P | bundle=$HAS_ID siwa=$HAS_SIWA push=$HAS_APS"
+            [ "$HAS_ID" = yes ] || continue
+            [ "$HAS_SIWA" = yes ] && SIWA="$P"
+            [ "$HAS_APS" = yes ] && APS="$P"
           done
           [ -n "$SIWA" ] && echo "OK: profile carries Sign in with Apple ($SIWA)" \
             || echo "WARNING: no profile for $BUNDLE_ID carries Sign in with Apple — building without it."

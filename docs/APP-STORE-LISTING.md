@@ -104,7 +104,17 @@ Start your streak today. It's one verse.
 
 ## What's New (max 4000 chars — per version, App Store Connect asks for this)
 
-### 1.3.0 — the release after 1.2.0 (NEXT, unuploaded — RUNNING DRAFT)
+### 1.4.0 — the release after 1.3.0 (NEXT, unuploaded — RUNNING DRAFT)
+
+> **1.3.0 is APPROVED** (found 2026-10-28, when Codemagic build 39 was refused for
+> re-using it). This block is still to be written: rebuild it from
+> `git log --first-parent` since the 1.3.0 upload. Headline items since then include
+> native push notifications on iPhone (church check-in notes and news), the Verified
+> Church plan through Apple, and the church leadership tools (Autopilot, the Tuesday
+> digest, small groups, the pastoral prayer list, co-leaders, inquiry replies).
+> The 1.3.0 block below is kept as the record of what that release said.
+
+### 1.3.0 — the release after 1.2.0 (APPROVED)
 
 > 1.3.0's train is open and features are still landing under that number, so this
 > block is **not final**. Add to it as things merge, and re-read it against `git log`

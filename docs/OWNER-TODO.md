@@ -37,8 +37,8 @@ The code is merged. It stays invisible until these are done:
 - [ ] Supabase secret `REVENUECAT_WEBHOOK_AUTH` = that same value.
 - [ ] Attach both subscriptions to the next App Store build's review.
 
-## 5. App Store 1.3.0 submission (`docs/APP-STORE-1.3.0-PACKET.md`)
-- [ ] Look at App Store Connect to confirm 1.2.0 is still the latest **approved** version. If anything newer is approved, tell Claude before building.
+## 5. App Store 1.4.0 submission (the 1.3.0 packet `docs/APP-STORE-1.3.0-PACKET.md` is the template)
+- [x] 1.3.0 turned out to be already approved (Codemagic build 39 was refused for it, 2026-10-28); the repo now carries **1.4.0**.
 - [ ] Run a fresh Codemagic build from current `main`. The TestFlight build predates weeks of church features.
 - [ ] Install it from TestFlight and play one round on a real phone.
 - [ ] Ask Claude to refresh "What's New" in `docs/APP-STORE-LISTING.md` from the merged work.

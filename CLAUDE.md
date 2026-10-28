@@ -5596,19 +5596,19 @@ closes — every later upload must carry a strictly higher `CFBundleShortVersion
 or the upload is rejected (`90062` + `90186`) *after* a full signed archive, about
 20 minutes in. Builds 22 and 23 died that way with a perfectly good Admin API key.
 
-**Where we are: 1.2.0 is the approved, live version — its train is CLOSED — and the
-repo carries 1.3.0, which has never been uploaded.** 1.2.0 shipped the Upper Room,
-praying, gifts and the mailbox, the Journal, saved looks and companions in the crowd
-scenes.
+**Where we are (2026-10-28): 1.3.0 is APPROVED — its train is CLOSED — and the repo
+carries 1.4.0, which has never been uploaded.** This paragraph still said 1.3.0 was
+unuploaded when Codemagic build 39 was refused for it (`90062`, "must contain a higher
+version than that of the previously approved version [1.3.0]"), which is exactly the
+trap described below, sprung again.
 
-**1.3.0's train is OPEN, so keep landing features under that number.** An unuploaded
+**1.4.0's train is OPEN, so keep landing features under that number.** An unuploaded
 version can absorb any amount of work: a feature merging today does NOT need a bump,
 and bumping per-feature just burns numbers and makes the next one harder to reason
 about. The number only has to move when the version it names has been *approved*. So
 what a new feature changes is the release NOTES, not the version — the running list
-for 1.3.0 lives in `docs/APP-STORE-LISTING.md` under "What's New", and it is a draft
-that grows until the day someone uploads. This is the same situation 1.2.0 was in
-while the Upper Room, praying, gifts and the Journal all landed on top of it.
+lives in `docs/APP-STORE-LISTING.md` under "What's New", and it is a draft that grows
+until the day someone uploads.
 
 The lesson this file has now learned twice: **this paragraph goes stale silently, and
 a stale version number costs a full signed archive to discover.** It is a claim about

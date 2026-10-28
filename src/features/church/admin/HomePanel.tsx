@@ -4,10 +4,11 @@ import { useJuice } from '@/juice/useJuice'
 import { fetchDays, flaggedCount, type AdminSettings, type LeaderInsights, type WeekDay } from '@/store/churchAdmin'
 import { activeThisWeek } from './InsightsPanel'
 import { SeriesLandingPanel } from './SeriesLandingPanel'
-import { autoWeekFailed, autoWeekRunning } from '@/store/churchAdmin'
-import { autoWeekFrom, autoWeekRange, autoWeekReason, currentAutoWeek, useAutoWeeks } from './autoWeek'
+import { currentAutoWeek, useAutoWeeks } from './autoWeek'
+import { autoRow, draftRows, inquiryRow, quietRow, type HomeGo, type HomeRow } from '../../../../supabase/functions/church-digest/home.ts'
 import { useAutopilot } from './autopilot'
 import { useJoinInquiries } from './InquiriesSection'
+import { DigestToggle } from './DigestToggle'
 
 // Home — "This week": what needs a leader, before anything else (2026-10-26).
 //
@@ -46,12 +47,11 @@ import { useJoinInquiries } from './InquiriesSection'
 // Totals ("At a glance") follow the list, unchanged; they used to be the
 // whole first screen.
 
-export type HomeGo =
-  | { tab: 'plan'; date: string }
-  | { tab: 'people'; quiet?: true; inquiries?: true }
-  | { tab: 'page'; notice: true }
-
-type Row = { key: string; icon: string; title: string; detail: string; go: HomeGo }
+// The rows the Monday digest also carries come from one shared builder
+// (supabase/functions/church-digest/home.ts) — the email can't word a row
+// differently from Home. docs/CHURCH-DIGEST.md.
+export type { HomeGo }
+type Row = HomeRow
 
 const day = (iso: string) =>
   new Date(`${iso}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })
@@ -98,27 +98,10 @@ export function HomePanel({
   // Autopilot (0152): opening Home is a visit after the cutoff — this is what
   // settles a due week. A fallback job it made shows up in the jobs above.
   const { ap } = useAutopilot(churchId, verified && autoWeeks, () => void reloadJobs())
-  const job = currentAutoWeek(jobs)
-  if (job) {
-    const from = autoWeekFrom(job)
-    if (autoWeekRunning(job)) {
-      rows.push({ key: 'auto', icon: job.source === 'fallback' ? '✈️' : '🎙️', title: `Your week from ${from} is being drafted`, detail: 'Nothing to do yet — it’ll be waiting on Plan. →', go: { tab: 'plan', date: job.startDate } })
-    } else if (autoWeekFailed(job)) {
-      rows.push({ key: 'auto', icon: '↻', title: `The week from ${from} didn’t finish`, detail: `${autoWeekReason(job)} Retry it from Plan →`, go: { tab: 'plan', date: job.startDate } })
-    } else {
-      rows.push({
-        key: 'auto', icon: job.autopilot ? '✈️' : '✨',
-        title: job.autopilot ? 'Week drafted — review' : `Your week from ${from} is ready to review`,
-        detail: `${job.saved.length} draft${job.saved.length === 1 ? '' : 's'}, ${autoWeekRange(job.saved)}${job.autopilot ? `, from ${from}` : ''}${job.flagged ? ` · ⚠ ${job.flagged} to check` : ''}. Nothing is live until you approve it →`,
-        go: { tab: 'plan', date: job.saved[0] ?? job.startDate },
-      })
-    }
-  } else if (ap?.enabled && ap.state === 'no_source') {
-    rows.push({ key: 'autopilot', icon: '✈️', title: 'No source this week — Autopilot skipped', detail: 'No sermon memo arrived and no fallback is set, so nothing was drafted. Set a fallback on Plan →', go: { tab: 'plan', date: today } })
-  }
-  // TODO(digest): there is no Monday digest yet. When one is built it carries
-  // this same line — the auto-week row above ("Week drafted — review", with
-  // the range and a link to Plan) or the Autopilot skip line — and nothing else.
+  const auto = autoRow(currentAutoWeek(jobs), !!(ap?.enabled && ap.state === 'no_source'), today)
+  if (auto) rows.push(auto)
+  // The Monday digest (0154, docs/CHURCH-DIGEST.md) carries this line and the
+  // drafts / flags / inquiries / quiet rows below, built by the same functions.
 
   if (verified && days) {
     const week = days.slice(0, 7)
@@ -133,26 +116,7 @@ export function HomePanel({
       })
     }
     const drafts = days.filter((w) => w.verse?.status === 'draft')
-    if (drafts.length) {
-      rows.push({
-        key: 'drafts',
-        icon: '✎',
-        title: `${drafts.length} ${drafts.length === 1 ? 'draft is' : 'drafts are'} waiting for your approval`,
-        detail: `Members see nothing until you approve. First: ${day(drafts[0].date)} →`,
-        go: { tab: 'plan', date: drafts[0].date },
-      })
-    }
-    const flagged = drafts.filter((w) => flaggedCount(w.verse?.questions) > 0)
-    if (flagged.length) {
-      const qs = flagged.reduce((n, w) => n + flaggedCount(w.verse?.questions), 0)
-      rows.push({
-        key: 'flags',
-        icon: '⚠',
-        title: `${qs} drafted ${qs === 1 ? 'question needs' : 'questions need'} a second look`,
-        detail: `The answer check wasn’t sure the passage supports ${qs === 1 ? 'its answer' : 'their answers'}. ${day(flagged[0].date)} →`,
-        go: { tab: 'plan', date: flagged[0].date },
-      })
-    }
+    rows.push(...draftRows(drafts.map((w) => ({ date: w.date, flagged: flaggedCount(w.verse?.questions) }))))
   }
 
   const notice = settings.announcement
@@ -176,26 +140,12 @@ export function HomePanel({
   }
 
   const { items: asks } = useJoinInquiries(churchId, verified)
-  if (asks?.length) {
-    rows.push({
-      key: 'inquiries', icon: '✉',
-      title: asks.length === 1 ? `${asks[0].username} asked about your church` : `${asks.length} players asked about your church`,
-      detail: 'They wrote from a leader’s player card. Read them →',
-      go: { tab: 'people', inquiries: true },
-    })
-  }
+  const ask = inquiryRow(asks?.length ?? 0, asks?.[0]?.username ?? null)
+  if (ask) rows.push(ask)
 
   if (verified && insights) {
-    const quiet = insights.roster.filter((m) => !m.leader && !activeThisWeek(m, insights.today)).length
-    if (quiet) {
-      rows.push({
-        key: 'quiet',
-        icon: '✉',
-        title: quiet === 1 ? 'Someone could use a check-in' : `${quiet} members could use a check-in`,
-        detail: 'They haven’t played this week. A short note, with today’s verse if you’ve set one →',
-        go: { tab: 'people', quiet: true },
-      })
-    }
+    const q = quietRow(insights.roster.filter((m) => !m.leader && !activeThisWeek(m, insights.today)).length)
+    if (q) rows.push(q)
   }
 
   const loading = verified && !days && !failed
@@ -228,6 +178,8 @@ export function HomePanel({
           </span>
         </button>
       ))}
+
+      {verified && <DigestToggle churchId={churchId} />}
 
       <SeriesLandingPanel churchId={churchId} />
 

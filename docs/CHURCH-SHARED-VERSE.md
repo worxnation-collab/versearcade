@@ -684,8 +684,9 @@ need its own credential and argument; it is deliberately not built.
   passages, so it is always retryable, and its retry is gated on Content
   Generation, not the memo allowance. Everything spent is refunded as in the
   manual path.
-- **The Monday digest does not exist yet.** HomePanel carries a `TODO(digest)`
-  naming the one line it should carry.
+- **The Monday digest carries this line** (0154, `docs/CHURCH-DIGEST.md`):
+  "Week drafted — review" with the range, or "Autopilot skipped", worded by
+  the same builder Home uses.
 
 **Driven in a browser** against a stub that follows these rules:
 - **Off:** no tick claims anything, the memo box starts unticked, and a memo

@@ -209,7 +209,18 @@ export async function sharePostcard(username: string): Promise<PostcardOutcome> 
  */
 export async function shareImage(
   blob: Blob,
-  { filename, title, text }: { filename: string; title: string; text: string },
+  opts: { filename: string; title: string; text: string },
+): Promise<PostcardOutcome> {
+  return shareFile(blob, { ...opts, ext: 'png', mime: 'image/png' })
+}
+
+/**
+ * `shareImage` for any file — the Sunday pack's PDF takes the same three
+ * branches (native share sheet, Web Share, a download on the web).
+ */
+export async function shareFile(
+  blob: Blob,
+  { filename, title, text, ext, mime }: { filename: string; title: string; text: string; ext: string; mime: string },
 ): Promise<PostcardOutcome> {
   if (isNativeApp()) {
     try {
@@ -220,7 +231,7 @@ export async function shareImage(
       // A fresh name each time: the sheet can hold on to the previous file, and
       // overwriting the one it is reading hands somebody last week's room.
       const { uri } = await Filesystem.writeFile({
-        path: `${filename}-${Date.now()}.png`,
+        path: `${filename}-${Date.now()}.${ext}`,
         data: await toBase64(blob),
         directory: Directory.Cache,
       })
@@ -231,7 +242,7 @@ export async function shareImage(
     }
   }
 
-  const file = new File([blob], `${filename}.png`, { type: 'image/png' })
+  const file = new File([blob], `${filename}.${ext}`, { type: mime })
   const nav = navigator as Navigator & {
     canShare?: (data: ShareData & { files?: File[] }) => boolean
   }
@@ -248,7 +259,7 @@ export async function shareImage(
     }
   }
 
-  return saveImage(blob, filename)
+  return saveImage(blob, filename, ext)
 }
 
 /**
@@ -256,12 +267,12 @@ export async function shareImage(
  * wants the PNG in Downloads to upload somewhere. WEB ONLY: a WKWebView ignores
  * a download link (the lesson above), so native callers use `shareImage`.
  */
-export function saveImage(blob: Blob, filename: string): PostcardOutcome {
+export function saveImage(blob: Blob, filename: string, ext = 'png'): PostcardOutcome {
   try {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${filename}.png`
+    a.download = `${filename}.${ext}`
     a.click()
     setTimeout(() => URL.revokeObjectURL(url), 4000)
     return 'saved'

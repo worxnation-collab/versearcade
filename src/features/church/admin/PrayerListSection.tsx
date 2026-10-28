@@ -3,7 +3,7 @@ import { Avatar } from '@/components/Avatar'
 import { Collapsible } from '@/components/Collapsible'
 import { useJuice } from '@/juice/useJuice'
 import { prayerCategoryById } from '@/data/prayerWall'
-import { fetchChurchPrayerList, markChurchPrayer, type PastoralPrayer } from '@/store/churchAdmin'
+import { fetchChurchPrayerList, followUpChurchPrayer, markChurchPrayer, type PastoralPrayer } from '@/store/churchAdmin'
 import { ago } from '../ChurchLife'
 
 // The pastoral prayer list (0153), on the People tab under Small groups:
@@ -38,12 +38,20 @@ export function PrayerListSection({ churchId }: { churchId: string }) {
     if (next) juice.select?.()
   }
 
+  const follow = async (n: PastoralPrayer) => {
+    const next = !n.followedUp
+    setNotes((cur) => cur?.map((x) => (x.id === n.id ? { ...x, followedUp: next } : x)) ?? cur)
+    const r = await followUpChurchPrayer(churchId, n.id, next)
+    if (!r.ok) { await load(); return }
+    if (next) juice.select?.()
+  }
+
   return (
     <Collapsible icon="🕯️" title="Prayer list">
       <div data-prayer-list style={{ display: 'grid', gap: 8, minWidth: 0 }}>
         <p className="dim" style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5 }}>
           Notes your members signed on the Prayer Wall this past month. Unsigned notes stay anonymous and aren’t
-          shown here. “I’ve prayed” is only for you — the member isn’t told and nobody else sees it.
+          shown here. “I’ve prayed” and “Followed up” are only for you — the member isn’t told and nobody else sees them.
         </p>
         {failed && <p className="dim" style={{ margin: 0, fontSize: 13 }}>Couldn’t load the prayer list. Try again in a moment.</p>}
         {!notes && !failed && <div className="skeleton" style={{ height: 60, borderRadius: 12 }} />}
@@ -63,6 +71,7 @@ export function PrayerListSection({ churchId }: { churchId: string }) {
                     {n.state === 'answered' ? ' · answered' : n.state === 'ended' ? ' · off the wall' : ''}
                   </div>
                 </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
                 <button
                   className="pill"
                   aria-pressed={n.prayed}
@@ -71,6 +80,16 @@ export function PrayerListSection({ churchId }: { churchId: string }) {
                 >
                   {n.prayed ? '✓ Prayed' : 'I’ve prayed'}
                 </button>
+                <button
+                  className="pill"
+                  data-followed-up
+                  aria-pressed={n.followedUp}
+                  onClick={() => void follow(n)}
+                  style={{ fontSize: 11.5, fontWeight: 800, padding: '5px 10px', ...(n.followedUp ? { background: 'var(--select)' } : {}) }}
+                >
+                  {n.followedUp ? '✓ Followed up' : 'Followed up'}
+                </button>
+                </div>
               </div>
               {n.line
                 ? <div style={{ fontSize: 13.5, lineHeight: 1.45, overflowWrap: 'anywhere' }}>{n.line}</div>

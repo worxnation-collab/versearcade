@@ -404,6 +404,36 @@ Rules:
   leadership; the public demo never mounts it. Nothing is uploaded or
   published, and nobody else is told.
 
+## Share today's verse, and a check-in that reaches a phone (0156)
+
+**"Share today's verse"** (`ShareVerse`) sits on Plan beside the Sunday pack
+and on Your page → Share. One tap shares (or copies) the day's reference and
+words with a link to the church's PUBLIC page (`/church/:id`, carrying the
+leader's referral code like every invite). There is deliberately no public page
+for the verse itself: a church verse is congregation-only by check constraint,
+and widening that is a migration and an argument of its own, so the words ride
+in the shared text, which is the leader's act, the same way exporting a verse
+card is. With no live verse today (nothing set, or only a draft), the button
+shares the page alone and says so. No new page, no new RPC.
+
+**A check-in can reach the member's phone.** After `send_church_check_in` (or
+a group leader's `send_group_check_in`) succeeds, the client fires
+`push-send` with `{ action: 'check_in', church_id, username }` and never waits
+on it. The function calls `church_check_in_push_claim` (service role) with the
+caller's own id from their JWT. That hands back only a note THIS caller sent
+THAT member in the last fifteen minutes and has not pushed yet, and stamps
+`pushed_at`, so a retry never pushes twice and nobody can push a note they did
+not send. It sends to the member's own Web Push subscriptions. The note is
+already in their mailbox; the push is a nudge on top, and every failure is a
+quiet no-op. Leadership and group leaders only, because only they can write a
+note; members never see anybody else's.
+
+**Native is not wired, on purpose.** There is no APNs sender yet
+(docs/NATIVE-PUSH.md), so `device_tokens` is empty and a member on the App
+Store build gets the in-app note alone. The function counts their tokens and
+returns `native_pending`, and the place to call an APNs sender is marked in
+`push-send/index.ts`. No SMS, anywhere.
+
 ## Series numbers: is a series landing? (0150)
 
 Home on the leadership dashboard carries **"How your series are landing"**
@@ -439,11 +469,34 @@ order of people by anything. Series are listed by date, the order they were
 preached, not by how well they did. The names stay where they already were,
 on the People tab (verified leadership, 0128).
 
-**Who sees it.** Any leadership of the church (`is_church_admin`), because
-nothing in it is named, so a free claim (0137) gets the same shape. A free
-claim cannot schedule a church verse (`set_church_verse` needs a verified
-church), so in practice it has no series and the section does not render.
+**Who sees it.** Verified leadership. The RPC answers any leadership of the
+church (`is_church_admin`), because nothing in it is named, but Home mounts the
+section only for a VERIFIED church (2026-10-28), so a free claim (0137) sees no
+series numbers at all — it could not schedule a church verse anyway
+(`set_church_verse` needs a verified church).
 Members, other churches' leaders and strangers are refused (`not_leadership`).
 The section renders nothing when there are no named series, or against a server
 without 0150.
+
+**Export summary** (2026-10-28, no migration). A pill on the section's header
+makes a one-page PDF of the last three series with a live day — name, dates,
+engaged % and completed %, "N of M" under each, and the definitions above
+printed at the foot. It is drawn on a canvas from the same
+`church_series_landing` answer the rows show (`lib/seriesSummary.ts`) and
+written through the Sunday pack's image-only PDF writer, so the numbers on the
+page are the numbers on the screen, and there is no name anywhere because the
+input carries none. Handed over through `shareFile`; nothing is uploaded.
+
+**"Hasn't touched {series}" in the quiet fold (0156).** Inside the People
+tab's folded "Not active this week", a quiet member's row also says which
+series they haven't played a day of. The series is the one in FOCUS: the
+running one that started most recently, else the most recent one that
+finished in the last fourteen days; with neither, no row says anything.
+"Hasn't touched" is exactly **not engaged** above — a current member with no
+play of any live day of it, from the same plays and the same series rules —
+returned by `church_quiet_series` to verified leadership only
+(`church_admin_can`), and drawn only on rows inside the fold. The fold stays
+closed by default. The check-in composer then offers "Include today's verse" as
+a switch (on by default when the church has an approved verse today) and
+"+ Mention {series}" as one tap that adds a line the leader can edit.
 

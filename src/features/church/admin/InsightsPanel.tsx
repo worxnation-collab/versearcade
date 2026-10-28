@@ -4,8 +4,8 @@ import { Collapsible } from '@/components/Collapsible'
 import { QuickSheet } from '@/components/QuickSheet'
 import { Button } from '@/components/Button'
 import { useJuice } from '@/juice/useJuice'
-import { CHECK_IN_DRAFT, CHECK_IN_MAX, CHECK_IN_VERSE_DRAFT, useChurchCheckIns, type CheckInReason } from '@/store/churchCheckIns'
-import { fetchDayVerse, fetchLeaderInsights, fetchLeaderSummary, type InsightMember, type LeaderInsights, type LeaderSummary } from '@/store/churchAdmin'
+import { CHECK_IN_DRAFT, CHECK_IN_FAIL, CHECK_IN_MAX, CHECK_IN_VERSE_DRAFT, useChurchCheckIns } from '@/store/churchCheckIns'
+import { fetchDayVerse, fetchLeaderInsights, fetchLeaderSummary, fetchQuietSeries, type QuietSeries, type InsightMember, type LeaderInsights, type LeaderSummary } from '@/store/churchAdmin'
 import { todayLocalDate } from '@/lib/date'
 import { fetchChurchFeed, type FeedEvent } from '@/store/churchVerse'
 import { ago } from '../ChurchLife'
@@ -253,6 +253,15 @@ export function OverviewPanel({ insights, failed, summary }: { insights: LeaderI
 // the server is told only who and what — never which list the name came from.
 // Since 0138 the draft leads with the church's own verse for today.
 //
+// Since 0156 a quiet row also says which series they haven't touched ("Hasn't
+// touched Fruit of the Spirit") — the running series, or one finished in the
+// last two weeks, from the same plays `church_series_landing` counts (0150's
+// "not engaged"). It is drawn only inside the fold, only for verified
+// leadership (`church_quiet_series` refuses anybody else), and it is a fact to
+// start a conversation with, not a mark against anybody. The composer then
+// offers "Include today's verse" as a switch and "Mention the series" as one
+// tap that adds a line the leader can still edit.
+//
 // `demo` is /churches/try's: the same panel over an invented roster, so the
 // sales page's demo shows exactly what leadership gets. It sends nothing — no
 // player card is opened for a made-up name, and "Check in" explains itself
@@ -269,6 +278,15 @@ export function PeoplePanel({ churchId, insights, failed, demo = false, leaders,
   const [checkIn, setCheckIn] = useState<InsightMember | null>(null)
   const [sent, setSent] = useState<Set<string>>(() => new Set())
   const [demoNote, setDemoNote] = useState<string | null>(null)
+  const [quietSeries, setQuietSeries] = useState<QuietSeries | null>(null)
+  useEffect(() => {
+    if (demo) return
+    let live = true
+    void fetchQuietSeries(churchId).then((r) => { if (live && r.ok) setQuietSeries(r.data) })
+    return () => { live = false }
+  }, [churchId, demo])
+  const untouched = (u: string) =>
+    quietSeries?.series && quietSeries.notEngaged.has(u.toLowerCase()) ? quietSeries.series.name : null
   // Scroll to the quiet fold ONCE, when it first exists — not on every render.
   const quietRef = useRef<HTMLDivElement>(null)
   const scrolled = useRef(false)
@@ -313,6 +331,7 @@ export function PeoplePanel({ churchId, insights, failed, demo = false, leaders,
                 m={m}
                 today={insights.today}
                 demo={demo}
+                note={!m.leader && untouched(m.username) ? `Hasn’t touched ${untouched(m.username)}` : undefined}
                 action={
                   m.leader ? undefined : sent.has(m.username) ? (
                     <span className="faint" style={{ fontSize: 12, fontWeight: 700 }}>Sent ✓</span>
@@ -332,6 +351,7 @@ export function PeoplePanel({ churchId, insights, failed, demo = false, leaders,
         <CheckInSheet
           churchId={churchId}
           member={checkIn}
+          series={untouched(checkIn.username)}
           onClose={() => setCheckIn(null)}
           onSent={(u) => { setSent((s) => new Set(s).add(u)); setCheckIn(null) }}
         />
@@ -340,7 +360,7 @@ export function PeoplePanel({ churchId, insights, failed, demo = false, leaders,
   )
 }
 
-function MemberRow({ m, today, action, demo = false }: { m: InsightMember; today: string; action?: React.ReactNode; demo?: boolean }) {
+function MemberRow({ m, today, action, note, demo = false }: { m: InsightMember; today: string; action?: React.ReactNode; note?: string; demo?: boolean }) {
   const plays = m.drop7d + m.church7d
   const isActive = activeThisWeek(m, today)
   return (
@@ -354,6 +374,7 @@ function MemberRow({ m, today, action, demo = false }: { m: InsightMember; today
           {m.lastPlayedOn ? `Last played ${lastLabel(m.lastPlayedOn, today)}` : 'Hasn’t played yet'}
           {isActive ? ` · ${plays} ${plays === 1 ? 'play' : 'plays'} this week` : ''}
         </div>
+        {note && <div data-untouched className="faint" style={{ fontSize: 11.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{note}</div>}
       </div>
       {/* Inside the fold both numbers are always 0 (no play in seven days ⇒ no
           plays this week and no live streak), so they are left out: they said
@@ -369,18 +390,6 @@ function MemberRow({ m, today, action, demo = false }: { m: InsightMember; today
   )
 }
 
-const CHECK_IN_FAIL: Record<CheckInReason, string> = {
-  offline: 'You’re offline — nothing was sent.',
-  empty: 'Write a few words first.',
-  no_verse: 'Today’s verse isn’t available any more, so nothing was sent.',
-  not_member: 'They’re no longer a member here, so nothing was sent.',
-  self: 'That’s you.',
-  daily_cap: 'That’s today’s check-ins. You can send more tomorrow.',
-  already_today: 'You’ve already checked in with them today.',
-  not_leadership: 'Only this church’s leadership can send these.',
-  not_verified: 'Check-ins open once the church is verified.',
-  failed: 'That didn’t send. Try again in a moment.',
-}
 
 // The draft. When the church has an approved verse for today, that verse IS
 // the check-in: it is attached by default, with "Thought of you with this
@@ -388,9 +397,11 @@ const CHECK_IN_FAIL: Record<CheckInReason, string> = {
 // verse itself (0138), so what the leader sees here is only a preview. On a day
 // with no verse to attach the sheet is 0137's: a prefilled line, required.
 // Sent only by the button — closing the sheet discards it.
-function CheckInSheet({ churchId, member, onClose, onSent }: {
+function CheckInSheet({ churchId, member, series, onClose, onSent }: {
   churchId: string
   member: InsightMember
+  /** The series they haven't touched, if any — offered as a line to add. */
+  series?: string | null
   onClose: () => void
   onSent: (username: string) => void
 }) {
@@ -398,6 +409,7 @@ function CheckInSheet({ churchId, member, onClose, onSent }: {
   const send = useChurchCheckIns((s) => s.send)
   const [verse, setVerse] = useState<{ reference: string; text: string } | null | undefined>(undefined)
   const [text, setText] = useState('')
+  const [attach, setAttach] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const today = todayLocalDate()
@@ -418,7 +430,7 @@ function CheckInSheet({ churchId, member, onClose, onSent }: {
     if (busy) return
     setBusy(true)
     setError(null)
-    const r = await send(churchId, member.username, text, { attachVerse: !!verse, localDate: today })
+    const r = await send(churchId, member.username, text, { attachVerse: !!verse && attach, localDate: today })
     setBusy(false)
     if (r.ok) {
       juice.select?.()
@@ -435,6 +447,22 @@ function CheckInSheet({ churchId, member, onClose, onSent }: {
       ) : (
         <div style={{ display: 'grid', gap: 10 }}>
           {verse && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={attach}
+                onChange={(e) => {
+                  setAttach(e.target.checked)
+                  // Without the verse the note needs words of its own.
+                  if (!e.target.checked && text.trim() === CHECK_IN_VERSE_DRAFT) setText(CHECK_IN_DRAFT)
+                  if (e.target.checked && text.trim() === CHECK_IN_DRAFT) setText(CHECK_IN_VERSE_DRAFT)
+                }}
+                style={{ width: 18, height: 18, flexShrink: 0, margin: 0 }}
+              />
+              Include today’s verse
+            </label>
+          )}
+          {verse && attach && (
             <div style={{ padding: '10px 12px', borderRadius: 12, background: 'var(--card-raised)', border: '1px solid var(--edge)' }}>
               <div className="faint" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 Today’s church verse · {verse.reference}
@@ -445,26 +473,36 @@ function CheckInSheet({ churchId, member, onClose, onSent }: {
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value.slice(0, CHECK_IN_MAX))}
-            rows={verse ? 2 : 4}
+            rows={verse && attach ? 2 : 4}
             autoFocus={!verse}
-            aria-label={verse ? 'A line with the verse (optional)' : 'Your message'}
-            placeholder={verse ? 'Add a line (optional)' : undefined}
+            aria-label={verse && attach ? 'A line with the verse (optional)' : 'Your message'}
+            placeholder={verse && attach ? 'Add a line (optional)' : undefined}
             style={{
               width: '100%', boxSizing: 'border-box', resize: 'vertical', padding: '10px 12px', borderRadius: 12,
               border: '1px solid var(--edge)', background: 'var(--card-raised)', color: 'var(--ink)',
               font: 'inherit', fontSize: 15, lineHeight: 1.45,
             }}
           />
+          {series && !text.includes(series) && (
+            <button
+              className="pill"
+              data-mention-series
+              onClick={() => setText((t) => `${t.trim()}${t.trim() ? ' ' : ''}We’re in ${series} — come pick it up any day.`.slice(0, CHECK_IN_MAX))}
+              style={{ justifySelf: 'start', fontSize: 12, padding: '5px 11px' }}
+            >
+              + Mention {series}
+            </button>
+          )}
           <div className="faint" style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 11.5 }}>
             <span>
-              {verse
+              {verse && attach
                 ? 'It arrives in their mailbox from you: the verse, and your line if you keep one.'
                 : 'It arrives in their mailbox from you, with only these words.'}
             </span>
             <span style={{ flexShrink: 0 }}>{text.length}/{CHECK_IN_MAX}</span>
           </div>
           {error && <p className="dim" style={{ margin: 0, fontSize: 13 }}>{error}</p>}
-          <Button full onClick={submit} disabled={busy || (!verse && !text.trim())}>{busy ? 'Sending…' : 'Send'}</Button>
+          <Button full onClick={submit} disabled={busy || (!(verse && attach) && !text.trim())}>{busy ? 'Sending…' : 'Send'}</Button>
           <Button variant="secondary" full onClick={onClose}>Not now</Button>
         </div>
       )}

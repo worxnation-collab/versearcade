@@ -1,6 +1,21 @@
 // push-send — broadcasts a Web Push notification to every stored subscription.
 //
-// Admin-only (sharkbait). Implements VAPID (RFC 8292) auth and aes128gcm
+// Two actions:
+//   • (default) the operator broadcast — admin-only (sharkbait).
+//   • `{ action: 'check_in', church_id, username }` — one church check-in note
+//     (0137/0138, or a group leader's, 0156) to the ONE member it was sent to.
+//     The caller is whoever's JWT this is; `church_check_in_push_claim` hands
+//     back only a note THAT caller sent THAT member in the last fifteen
+//     minutes and stamps it, so a retry never pushes twice and nobody can push
+//     a note they did not send. The note is already in the member's mailbox —
+//     this is a nudge on top, and every "can't" here is a quiet no-op.
+//
+//     Web Push only. Native (APNs) has no sender yet: `device_tokens` stays
+//     empty until docs/NATIVE-PUSH.md is done, so a member on the iOS build
+//     gets the in-app note and nothing on the lock screen. When that sender
+//     exists, call it from `sendCheckIn` below for the recipient's tokens.
+//
+// The broadcast is admin-only (sharkbait). Implements VAPID (RFC 8292) auth and aes128gcm
 // payload encryption (RFC 8291 + RFC 8188) with the Deno Web Crypto API — no
 // external push library, so there's nothing to break on a runtime bump.
 //
@@ -129,6 +144,48 @@ async function sendOne(sub: Sub, payload: Uint8Array, key: CryptoKey): Promise<n
   return res.status
 }
 
+// One check-in note to its one recipient. Never throws: the note is in their
+// mailbox whatever happens here.
+// deno-lint-ignore no-explicit-any
+async function sendCheckIn(admin: any, sender: string, input: Record<string, unknown>) {
+  const churchId = String(input.church_id ?? '')
+  const username = String(input.username ?? '')
+  if (!churchId || !username) return { pushed: 0, reason: 'bad_input' }
+  const { data: claim, error } = await admin.rpc('church_check_in_push_claim', {
+    p_sender: sender, p_church_id: churchId, p_username: username,
+  })
+  if (error || !claim?.ok) return { pushed: 0, reason: claim?.reason ?? 'claim_failed' }
+
+  const { data: subs } = await admin
+    .from('push_subscriptions').select('endpoint, p256dh, auth').eq('profile_id', claim.recipient_id)
+  // Native: no APNs sender yet (docs/NATIVE-PUSH.md), so tokens are counted, not used.
+  const { count: tokens } = await admin
+    .from('device_tokens').select('token', { count: 'exact', head: true }).eq('profile_id', claim.recipient_id)
+  if (!subs?.length || !VAPID_PRIVATE) return { pushed: 0, reason: 'no_subscription', native_pending: tokens ?? 0 }
+
+  // The note's own words, or the verse when the leader sent only that. No
+  // link in the body; tapping opens the mailbox, where the note is.
+  const body = (claim.message || (claim.verse_ref ? `${claim.verse_ref} — a verse for you` : 'A note for you'))
+  const payload = enc.encode(JSON.stringify({
+    title: `${claim.from_username} · ${claim.church_name}`.slice(0, 80),
+    body: String(body).slice(0, 240),
+    url: '/mail',
+    tag: `check-in-${claim.id}`,
+  }))
+  const key = await vapidSigningKey()
+  let pushed = 0
+  const dead: string[] = []
+  for (const s of subs as Sub[]) {
+    try {
+      const status = await sendOne(s, payload, key)
+      if (status >= 200 && status < 300) pushed++
+      else if (status === 404 || status === 410) dead.push(s.endpoint)
+    } catch { /* one bad endpoint never fails the rest */ }
+  }
+  if (dead.length) await admin.from('push_subscriptions').delete().in('endpoint', dead)
+  return { pushed, native_pending: tokens ?? 0 }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   const json = (b: unknown, status = 200) =>
@@ -136,7 +193,6 @@ Deno.serve(async (req) => {
 
   try {
     if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405)
-    if (!VAPID_PRIVATE) return json({ error: 'VAPID_PRIVATE_KEY is not configured' }, 500)
 
     // Verify the caller is the admin (sharkbait).
     const authHeader = req.headers.get('Authorization') ?? ''
@@ -145,10 +201,13 @@ Deno.serve(async (req) => {
     if (!user) return json({ error: 'unauthorized' }, 401)
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY)
+    const input = await req.json().catch(() => ({}))
+    if (input.action === 'check_in') return json(await sendCheckIn(admin, user.id, input))
+
     const { data: prof } = await admin.from('profiles').select('username').eq('id', user.id).single()
     if (!prof || prof.username !== 'sharkbait') return json({ error: 'forbidden' }, 403)
 
-    const input = await req.json().catch(() => ({}))
+    if (!VAPID_PRIVATE) return json({ error: 'VAPID_PRIVATE_KEY is not configured' }, 500)
     const title = String(input.title ?? 'Verse Arcade').slice(0, 80)
     const bodyText = String(input.body ?? '').slice(0, 240)
     const url = String(input.url ?? '/')

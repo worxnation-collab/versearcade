@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from './store/auth'
 import { useBuddies } from './store/buddies'
 import { useGifts } from './store/gifts'
@@ -65,6 +65,8 @@ import SealsScreen from './features/bible/SealsScreen'
 import FocusPracticeScreen from './features/practice/FocusPracticeScreen'
 import { BattleResume } from './features/arena/BattleResume'
 import { ChurchResume } from './features/church/ChurchResume'
+import { setPendingChurchAdmin } from './features/church/pending'
+import { isSupabaseConfigured } from './lib/config'
 import { StudyDropToast } from './features/study/StudyDropToast'
 import { WaystationToast } from './features/season/WaystationToast'
 import { SkinUnlockToast } from './features/profile/SkinUnlockToast'
@@ -87,6 +89,22 @@ function RequireProfile({ children }: { children: JSX.Element }) {
   // and "I already have an account"). Onboarding assumes you're new.
   if (!profile) return <Navigate to="/" replace />
   return children
+}
+
+// The leadership dashboard's own front door. It is opened signed out on
+// purpose — "Plan on a bigger screen" sends a leader from the phone app to a
+// desktop browser with no session — so instead of Landing it parks the church
+// and opens sign-in; `ChurchResume` brings them back here once signed in. A
+// keyless build has no sign-in to offer and keeps RequireProfile's rule.
+function RequireLeaderSession({ children }: { children: JSX.Element }) {
+  const { ready, profile, mode } = useAuth()
+  const { id } = useParams()
+  if (!ready) return <Splash />
+  if (isSupabaseConfigured && id && (mode !== 'online' || !profile)) {
+    setPendingChurchAdmin(id)
+    return <Navigate to="/auth" replace />
+  }
+  return <RequireProfile>{children}</RequireProfile>
 }
 
 // What a guest can reach, and what asks for a free account first.
@@ -509,11 +527,11 @@ export default function App() {
         <Route
           path="/church/:id/admin"
           element={
-            <RequireProfile>
+            <RequireLeaderSession>
               <RequireAccount copy={WALL.church}>
                 <ChurchAdminScreen />
               </RequireAccount>
-            </RequireProfile>
+            </RequireLeaderSession>
           }
         />
         <Route path="/churches" element={<ChurchesScreen />} />

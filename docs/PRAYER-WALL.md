@@ -188,6 +188,13 @@ the wall's privacy is unchanged.** It stays inside that rule because:
   the member's lantern does not light, their tally does not move, and no other
   leader, member, card or postcard ever sees it. It is returned only to the
   leader who set it, inside their own list. Un-ticking writes `prayed = false`.
+- **"Followed up" is the same kind of mark** (0156, `follow_up_church_prayer`,
+  `church_prayer_marks.followed_up`): for the other half of the job — you
+  called, visited or wrote back. The leader's alone, exactly like "I've
+  prayed": not on the wall, the lantern, the postcard or anywhere a member or
+  another leader looks. A "hand it to their small group" path was weighed and
+  left out: it would put a member's prayer line in front of a group leader who
+  has no pastoral role here, which the member never chose.
 - **Nothing new reaches a member.** The member's own screens are untouched;
   the only new surface is behind `church_admin_can`.
 

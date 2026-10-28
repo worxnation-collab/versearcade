@@ -22,6 +22,18 @@ import type { AvatarSpec } from '@/data/avatar'
 //     recipient's mailbox for an operator's look (Admin → Check-ins), stores no
 //     reason, tells the sender nothing, and blocks nobody.
 //
+// A PHONE NUDGE ON TOP (0156). After a note is stored, `pushCheckIn` asks the
+// push-send function to send it to the member's own Web Push subscription, if
+// they have one. It is never awaited by the send and never reported: the note
+// is already in their mailbox, which is the whole delivery. The function pushes
+// only a note the caller sent that member in the last fifteen minutes, once.
+// Native (APNs) has no sender yet — see docs/NATIVE-PUSH.md — so the iOS build
+// gets the in-app note alone until that lands; nothing here needs to change.
+//
+// A GROUP LEADER can send the same note to their own group's members
+// (`sendGroup`, 0156's `send_group_check_in`): same table, same mailbox, same
+// one-note-a-day per member, 10 a day.
+//
 // ONLINE-ONLY, inherited rather than chosen — the store/gifts.ts break with the
 // two-mode invariant: a note needs a second real account on the other end, and
 // leadership itself is a server-side role a guest cannot hold.
@@ -37,7 +49,22 @@ export const CHECK_IN_DRAFT = 'Missed you this week'
 
 export type CheckInReason =
   | 'offline' | 'empty' | 'no_verse' | 'not_member' | 'self' | 'daily_cap' | 'already_today'
-  | 'not_leadership' | 'not_verified' | 'failed'
+  | 'not_leadership' | 'not_verified' | 'not_in_group' | 'failed'
+
+/** What each refusal says to the sender — the leadership sheet and the group card. */
+export const CHECK_IN_FAIL: Record<CheckInReason, string> = {
+  offline: 'You’re offline — nothing was sent.',
+  empty: 'Write a few words first.',
+  no_verse: 'Today’s verse isn’t available any more, so nothing was sent.',
+  not_member: 'They’re no longer a member here, so nothing was sent.',
+  self: 'That’s you.',
+  daily_cap: 'That’s today’s check-ins. You can send more tomorrow.',
+  already_today: 'You’ve already checked in with them today.',
+  not_leadership: 'Only this church’s leadership can send these.',
+  not_verified: 'Check-ins open once the church is verified.',
+  not_in_group: 'They’re not in your group any more, so nothing was sent.',
+  failed: 'That didn’t send. Try again in a moment.',
+}
 
 export interface CheckInNote {
   id: number
@@ -69,7 +96,23 @@ interface CheckInsState {
     message: string,
     opts?: { attachVerse?: boolean; localDate?: string },
   ) => Promise<{ ok: boolean; reason?: CheckInReason }>
+  sendGroup: (
+    username: string,
+    message: string,
+    opts?: { attachVerse?: boolean; localDate?: string },
+  ) => Promise<{ ok: boolean; reason?: CheckInReason }>
   report: (id: number) => Promise<boolean>
+}
+
+/** KEEP IN SYNC with the `v_sent >= 10` check in send_group_check_in (0156). */
+export const GROUP_CHECK_IN_DAILY_CAP = 10
+
+// Fire-and-forget: `functions.invoke` is a fetch, so it leaves on the call.
+// Any failure (no subscription, no VAPID key, an old function) is silence.
+function pushCheckIn(churchId: string, username: string) {
+  void supabase!.functions
+    .invoke('push-send', { body: { action: 'check_in', church_id: churchId, username } })
+    .catch(() => undefined)
 }
 
 export const useChurchCheckIns = create<CheckInsState>((set, get) => ({
@@ -129,7 +172,27 @@ export const useChurchCheckIns = create<CheckInsState>((set, get) => ({
     })
     if (error) return { ok: false, reason: 'failed' }
     const r = data as { ok?: boolean; reason?: CheckInReason }
-    return r?.ok ? { ok: true } : { ok: false, reason: r?.reason ?? 'failed' }
+    if (!r?.ok) return { ok: false, reason: r?.reason ?? 'failed' }
+    pushCheckIn(churchId, username)
+    return { ok: true }
+  },
+
+  async sendGroup(username, message, opts) {
+    if (!isOnline()) return { ok: false, reason: 'offline' }
+    const text = message.trim().slice(0, CHECK_IN_MAX)
+    const attachVerse = !!opts?.attachVerse
+    if (!text && !attachVerse) return { ok: false, reason: 'empty' }
+    const { data, error } = await supabase!.rpc('send_group_check_in', {
+      p_username: username,
+      p_message: text,
+      p_attach_verse: attachVerse,
+      p_local_date: opts?.localDate ?? null,
+    })
+    if (error) return { ok: false, reason: 'failed' }
+    const r = data as { ok?: boolean; reason?: CheckInReason; church_id?: string }
+    if (!r?.ok) return { ok: false, reason: r?.reason ?? 'failed' }
+    if (r.church_id) pushCheckIn(r.church_id, username)
+    return { ok: true }
   },
 
   // Optimistic: the note leaves the mailbox the moment it is reported. On a

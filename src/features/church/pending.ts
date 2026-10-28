@@ -31,3 +31,22 @@ export function clearPendingChurch(): void {
     /* ignore */
   }
 }
+
+// The leadership dashboard opened signed out — from "Plan on a bigger screen"
+// on a phone, landing in a desktop browser with no session. Same shape, its
+// own key: `ChurchResume` sends a real account straight back to
+// /church/:id/admin, where the server re-checks leadership as always.
+const ADMIN_KEY = 'va.pendingChurchAdmin'
+
+export function setPendingChurchAdmin(id: string): void {
+  try { localStorage.setItem(ADMIN_KEY, id) } catch { /* resume just won't happen */ }
+}
+export function takePendingChurchAdmin(): string | null {
+  try {
+    const id = localStorage.getItem(ADMIN_KEY)
+    if (id) localStorage.removeItem(ADMIN_KEY)
+    return id
+  } catch {
+    return null
+  }
+}

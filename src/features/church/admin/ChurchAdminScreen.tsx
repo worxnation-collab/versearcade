@@ -7,10 +7,13 @@ import { TabbedSection } from '@/components/TabbedSection'
 import { useJuice } from '@/juice/useJuice'
 import { fetchAdminSettings, fetchChurchBilling, fetchEntitlements, openBillingPortal, serverGenerationBackend, startSuiteUpgrade, serverVerseBackend, type AdminSettings, type ChurchBilling, type Entitlements } from '@/store/churchAdmin'
 import { churchBillingPortalVisible } from '@/lib/commerce'
+import { todayLocalDate } from '@/lib/date'
+import { Capacitor } from '@capacitor/core'
 import { TodayVerseForm } from './TodayVerseForm'
 import { OverviewPanel, PeoplePanel, ActivityPanel, SummaryPanel, useInsights, useSummary } from './InsightsPanel'
 import { InquiriesSection } from './InquiriesSection'
 import { HomePanel, type HomeGo } from './HomePanel'
+import type { FirstWeekDoor } from './FirstWeek'
 import { Collapsible } from '@/components/Collapsible'
 import { NoticesPanel } from './NoticesPanel'
 import { SharePanel } from './SharePanel'
@@ -53,6 +56,25 @@ import { ChurchPlansEntry } from '@/features/churches/ChurchPlansEntry'
 // Nothing was removed — the seven tabs' panels are all still here, rehomed —
 // and no RPC or gate changed: every panel makes the same reads it did.
 //
+// "Your first week" (FirstWeek.tsx): a brand-new verified leader — no notice,
+// nothing planned in the next seven days, fewer than three members — gets a
+// four-row checklist at the top of Home (look, notice, plan or Autopilot,
+// share), each row a door like the to-do's. It sits above "This week" and
+// blocks none of it, and goes when done or hidden. The look and share rows
+// open folds on Your page that HomeGo has no name for (`onDoor`).
+//
+// DESKTOP: "Plan on a bigger screen →" is one quiet row at the foot of Home
+// (not drawn when already wide). It opens this same URL in the system browser
+// from the app, or a new tab on the web; signed out there, ordinary sign-in
+// brings them straight back (`RequireLeaderSession` in App.tsx →
+// `ChurchResume`). Free claims and verified leaders both get it — it is a
+// door, and every gate is the server's as before.
+// The WIDE layout: on the WEB only (`admin-wide`, never the App Store build's
+// webview) and only at ≥900px (index.css), Home puts the to-do and "At a
+// glance" side by side, Plan puts steps 1–2 beside "Review and approve", and
+// the share and Sunday pack actions sit side by side. Nothing is hidden or
+// removed at any width; below 900px, and in the app, it stacks as it always has.
+//
 // Plan & billing moved off the top of the screen for the same reason the tabs
 // moved: a pastor's first screen was a plan card with an upsell on it, and
 // the to-do belongs there instead.
@@ -77,7 +99,23 @@ import { ChurchPlansEntry } from '@/features/churches/ChurchPlansEntry'
 // of five default looks, and where the add-on's photo request is sent. A leader
 // who has not chosen a look yet lands on that tab first — the claim screen
 // sends a new leader straight here, so that IS the setup step.
+// Wide web: ≥900px in a browser. Never the App Store build's webview, which
+// keeps the stacked phone layout whatever the device's width.
+function useWideWeb(): boolean {
+  const native = Capacitor.isNativePlatform()
+  const q = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(min-width: 900px)') : null
+  const [wide, setWide] = useState(() => !native && !!q?.matches)
+  useEffect(() => {
+    if (native || !q) return
+    const on = () => setWide(q.matches)
+    q.addEventListener?.('change', on)
+    return () => q.removeEventListener?.('change', on)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  return wide
+}
+
 export default function ChurchAdminScreen() {
+  const wideWeb = useWideWeb()
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const juice = useJuice()
@@ -114,11 +152,21 @@ export default function ChurchAdminScreen() {
   const [quiet, setQuiet] = useState(false)
   const [noticeFocus, setNoticeFocus] = useState(0)
   const [inquiryFocus, setInquiryFocus] = useState(0)
+  // "Your first week" (FirstWeek.tsx): the two doors HomeGo has no name for.
+  const [pageOpen, setPageOpen] = useState<'look' | 'share' | null>(null)
   useEffect(() => {
     if (!inquiryFocus) return
     requestAnimationFrame(() => document.getElementById('church-inquiries')?.scrollIntoView({ block: 'start' }))
   }, [inquiryFocus])
+  const onDoor = (d: FirstWeekDoor) => {
+    if (d === 'notice') return onGo({ tab: 'page', notice: true })
+    if (d === 'plan') return onGo({ tab: 'plan', date: todayLocalDate() })
+    setPageOpen(d)
+    setGo((cur) => ({ key: 'page', nonce: (cur?.nonce ?? 0) + 1 }))
+    requestAnimationFrame(() => document.getElementById(`church-${d}`)?.scrollIntoView({ block: 'start' }))
+  }
   const onGo = (g: HomeGo) => {
+    setPageOpen(null)
     if (g.tab === 'plan') setPlanDate(g.date)
     if (g.tab === 'people' && g.quiet) setQuiet(true)
     if (g.tab === 'people' && g.inquiries) setInquiryFocus((n) => n + 1)
@@ -243,7 +291,7 @@ export default function ChurchAdminScreen() {
     {
       key: 'home',
       label: 'Home',
-      content: <HomePanel churchId={id} verified={settings.verified} settings={settings} insights={insights.data} onGo={onGo} glance={glance} autoWeeks={generation} />,
+      content: <HomePanel churchId={id} verified={settings.verified} settings={settings} insights={insights.data} onGo={onGo} glance={glance} autoWeeks={generation} hasLook={!ent || !ent.churchLeader || !!ent.leaderLook} onDoor={onDoor} bigger={!wideWeb} />,
     },
     ...(settings.verified
       ? [
@@ -295,13 +343,17 @@ export default function ChurchAdminScreen() {
           <div id="church-notice" style={{ scrollMarginTop: 12 }}>
             <NoticesPanel churchId={id} settings={settings} onSaved={load} canGenerate={generation} />
           </div>
-          <Collapsible icon="🔗" title="Share your page">
+          <div id="church-share" style={{ scrollMarginTop: 12 }}>
+          <Collapsible icon="🔗" title="Share your page" defaultOpen={pageOpen === 'share'}>
             <SharePanel churchId={id} churchName={settings.name} verified={settings.verified} />
           </Collapsible>
+          </div>
           {settings.verified && (
-            <Collapsible icon="🧑‍🦳" title="Your look" defaultOpen={setup || avatarPaid}>
+            <div id="church-look" style={{ scrollMarginTop: 12 }}>
+            <Collapsible icon="🧑‍🦳" title="Your look" defaultOpen={setup || avatarPaid || pageOpen === 'look'}>
               <LeaderLookPanel churchId={id} ent={ent} setup={setup} paid={avatarPaid} onChanged={load} />
             </Collapsible>
+            </div>
           )}
           <Collapsible icon="🧾" title="Plan & billing" defaultOpen={upgraded}>
             {plan}
@@ -312,7 +364,7 @@ export default function ChurchAdminScreen() {
   ]
 
   return (
-    <Page>
+    <Page className={Capacitor.isNativePlatform() ? undefined : 'admin-wide'}>
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
         <button className="pill" onClick={back} aria-label="Back to the church">← {settings.name}</button>
       </div>

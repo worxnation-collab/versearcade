@@ -102,4 +102,4 @@ Online-only, inherited from the church store: an inquiry needs a real
 congregation on the other end, and a keyless build has no leader to tap.
 
 Foreign keys (cascade on the church and the player) are
-`0149_church_discovery_b.sql`, to paste in the SQL editor.
+`0149_church_discovery_b.sql`, pasted in the SQL editor and verified on 2026-10-28.

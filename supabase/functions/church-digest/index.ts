@@ -95,7 +95,7 @@ export function composeDigest(churchId: string, b: Record<string, any>): Digest 
   const name = String(b.church_name ?? 'your church')
   const subject = linked.length ? `This week at ${name}: ${linked.length} thing${linked.length === 1 ? '' : 's'} for you` : `This week at ${name}: you’re all set`
   const intro = linked.length ? 'Here’s what’s waiting on your leadership Home this week.' : 'Nothing is waiting on you this week.'
-  const footer = 'You get this because you switched on the Monday digest on your leadership Home. Turn it off there any time.'
+  const footer = 'You get this because you switched on the Tuesday digest on your leadership Home. Turn it off there any time.'
 
   const text = [
     `This week at ${name}`, '', intro, '',

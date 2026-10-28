@@ -1,4 +1,11 @@
-# The Monday digest (0154)
+# The weekly digest (0154; Tuesday since 0157)
+
+**Since 0157 (2026-10-28, the owner's call) it goes out TUESDAY 08:00 church
+time, not Monday**: the Monday email went out before Autopilot's Monday 21:00
+cutoff, so it described a week that was about to be drafted. The cron job is
+`church-digest-tuesday` (`7 * * * 1,2,3` UTC); `week` is still that week's
+Monday date, so nobody gets two across the switch. Where this page says
+Monday about the SEND, read Tuesday.
 
 An opt-in email to a verified church's leadership that carries the "This week"
 to-do from the dashboard's Home — nothing more. Home is still the place the

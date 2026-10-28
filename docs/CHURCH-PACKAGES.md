@@ -366,6 +366,35 @@ merged code is inert, which is the fail-closed answer.
 5. **A new App Store build** carrying this client (the plan card is in the
    baked `dist`), with the two subscriptions attached to its review.
 
+## The Sunday pack (2026-10-28, no migration)
+
+Plan tab, under the week strip: **📄 Sunday pack** (`SundayPack.tsx` over
+`lib/sundayPack.ts`). One PDF for the pastor to print or drop into slides:
+
+1. A title slide (1920x1080): the church's name, the week's series (every
+   distinct one, or "This week's verses"), the dates and the day-by-day
+   references.
+2. A verse card for each day of the chosen week (Sunday–Saturday, ‹ › to move
+   up to eight weeks either way) whose verse is LIVE. A card is the existing
+   export path (`renderAssetPng`): the church's own approved, fresh card for
+   that day when it has one, otherwise the first look that fits the words. The
+   words are the payload `church_asset_source_payload` builds.
+3. The invite QR page: `ChurchInviteQR`'s printable code, carrying the same link
+   `ShareChurch` sends.
+
+Rules:
+
+- **A day with no verse, or only a draft, is left out and named in the result
+  line.** It is never a failure. A card that fails to render is left out the
+  same way. A week with nothing live makes no PDF and says so.
+- **No new art, no new service, no migration.** The PDF is built in the
+  browser (`lib/imagePdf.ts`, a hand-written image-only PDF with one JPEG per
+  page, each page in its picture's own shape and the long side 11in). It is
+  handed over through `shareFile`, the postcard's native-safe path.
+- **Leadership only, and a FILE rather than a page.** The Plan tab is verified
+  leadership; the public demo never mounts it. Nothing is uploaded or
+  published, and nobody else is told.
+
 ## Series numbers: is a series landing? (0150)
 
 Home on the leadership dashboard carries **"How your series are landing"**

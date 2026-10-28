@@ -35,18 +35,9 @@ export function ChurchInviteQR({
   const referralCode = useAuth((s) => s.profile?.referralCode)
   const [open, setOpen] = useState(defaultOpen)
   const [saved, setSaved] = useState<string | null>(null)
-  const link = inviteUrl(referralCode, `/church/${churchId}`)
+  const link = churchInviteLink(referralCode, churchId)
 
-  const grid = useMemo(() => {
-    if (!open) return null
-    const qr = qrcode(0, 'M')
-    qr.addData(link)
-    qr.make()
-    const n = qr.getModuleCount()
-    const cells: Array<[number, number]> = []
-    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) cells.push([c, r])
-    return { n, cells }
-  }, [open, link])
+  const grid = useMemo(() => (open ? qrGrid(link) : null), [open, link])
 
   if (!open) {
     return (
@@ -115,7 +106,32 @@ export function ChurchInviteQR({
  * link below. Drawn module by module onto a canvas (never through an image of
  * the SVG), so it is crisp at any size a printer scales it to.
  */
-async function printableQr(grid: { n: number; cells: Array<[number, number]> }, churchName: string, link: string): Promise<Blob | null> {
+export type QrGrid = { n: number; cells: Array<[number, number]> }
+
+/** The church invite's link, the one `ShareChurch` sends — also the Sunday pack's. */
+export function churchInviteLink(referralCode: string | null | undefined, churchId: string): string {
+  return inviteUrl(referralCode, `/church/${churchId}`)
+}
+
+/** The module grid for a link, dark cells as [column, row]. */
+export function qrGrid(link: string): QrGrid {
+  const qr = qrcode(0, 'M')
+  qr.addData(link)
+  qr.make()
+  const n = qr.getModuleCount()
+  const cells: Array<[number, number]> = []
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) cells.push([c, r])
+  return { n, cells }
+}
+
+export async function printableQr(grid: QrGrid, churchName: string, link: string): Promise<Blob | null> {
+  const canvas = printableQrCanvas(grid, churchName, link)
+  if (!canvas) return null
+  return await new Promise<Blob | null>((resolve) => canvas.toBlob((b) => resolve(b), 'image/png'))
+}
+
+/** The printable code as a canvas — the Sunday pack puts this page in its PDF. */
+export function printableQrCanvas(grid: QrGrid, churchName: string, link: string): HTMLCanvasElement | null {
   try {
     const W = 1200
     const H = 1500
@@ -163,7 +179,7 @@ async function printableQr(grid: { n: number; cells: Array<[number, number]> }, 
     ctx.font = '700 38px system-ui, -apple-system, Segoe UI, sans-serif'
     ctx.fillText('Verse Arcade · free · no account needed to look', W / 2, y0 + side + 130)
 
-    return await new Promise<Blob | null>((resolve) => canvas.toBlob((b) => resolve(b), 'image/png'))
+    return canvas
   } catch {
     return null
   }

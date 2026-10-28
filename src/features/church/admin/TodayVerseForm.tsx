@@ -10,6 +10,7 @@ import { cleanDiscussion, DISCUSSION_LINE_MAX, cleanLine, cleanQuestions, fetchD
 import type { Question } from '@/types'
 import { SeriesCopyPanel } from './SeriesCopyPanel'
 import { DiscussionToggle, DraftReview } from './WeekDraftPanel'
+import { SundayPack } from './SundayPack'
 import { PlanWeek } from './PlanWeek'
 import { ENGINE_REASONS } from './weekRun'
 import { AssetStudio } from './AssetStudio'
@@ -511,6 +512,9 @@ export function TodayVerseForm({
         onPick={pick}
         onRetry={() => void loadWeek()}
       />
+
+      {/* The Sunday pack: real admin screen only (the demo passes no `assets`). */}
+      {assets && <SundayPack churchId={churchId} churchName={churchName} backend={backend} />}
 
       {planning && (
         <button

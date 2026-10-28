@@ -5,23 +5,25 @@ Web Push already works: `src/lib/push.ts` subscribes the browser and
 any of that — an iOS WKWebView has no `PushManager` — so native needs APNs, and
 that means a device token instead of a push-service endpoint.
 
-The client half is written and merged:
+**Status (2026-10-28): wired end to end; waiting on the first build.** The
+Apple steps below are done, the three secrets are set, and:
 
 | Piece | Where |
 |---|---|
-| Permission, `register()`, token → server | `src/lib/native.ts` → `registerPush()` |
+| Permission, `register()`, token → server | `src/lib/native.ts` → `registerPush()` (iOS only — Android has no Firebase and `register()` would crash it) |
+| Silent token refresh on every sign-in (never prompts) | `refreshPushToken()`, called from `App.tsx` |
+| Tap → opens the payload's `url` | `pushNotificationActionPerformed` in `initNative` |
+| The opt-in | `PushNudge` and Settings → "Notes and news", through `lib/push.ts`, which answers for APNs on iOS |
 | Token storage + upsert RPC | `supabase/migrations/0054_device_tokens.sql` |
-| The opt-in moment (web today) | `src/components/PushNudge.tsx` |
+| AppDelegate hooks + entitlements (only what the profile carries) | `codemagic.yaml` → "Push hooks + entitlements" |
+| The sender (check-in notes + operator broadcast) | `supabase/functions/push-send` → `sendNative` |
 
-**Everything below needs your Apple account and cannot be done from the repo or
-from CI.** Until it's finished nothing calls `registerPush()`, no tokens are
-stored, and the app behaves exactly as it does now. That is the correct
-fallback, not a broken state — local notifications (`src/lib/reminders.ts`)
-already cover the daily verse and study nudges and need none of this.
+iOS has ONE notification permission, shared by local reminders and remote
+push — so anyone who already allowed reminders starts getting remote push on
+their next sign-in with no second prompt. That is deliberate: the permission is
+the same answer to the same question.
 
-What native push is actually *for* is the things another human triggers — a
-battle invite, or a buddy request being accepted. Those are the ones a server
-has to deliver because the person who caused them isn't you.
+The runbook below is kept as the record of what was set up.
 
 ---
 

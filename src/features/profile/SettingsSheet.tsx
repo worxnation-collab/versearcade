@@ -6,6 +6,7 @@ import { useJuice } from '@/juice/useJuice'
 import { VOICE_KINDS, canSpeak } from '@/lib/voice'
 import { TranslationPicker } from './TranslationPicker'
 import { pushSupported, pushPermission, isPushSubscribed, enablePush, disablePush } from '@/lib/push'
+import { nativePushPlatform } from '@/lib/native'
 import { useReminders } from '@/store/reminders'
 import { MusicSection } from './MusicSection'
 import { InstallRow } from '@/features/home/InstallPrompt'
@@ -78,7 +79,12 @@ export function SettingsSheet({
     } else if (on && ok) juice.coin()
   }
 
-  const supportsPush = pushSupported()
+  // On iOS this is APNs, which needs an account to hold the token — and what
+  // it carries is notes from people (a church check-in) and news, not the
+  // daily nudges, which are the Reminders section below.
+  const nativePush = nativePushPlatform()
+  const signedIn = useAuth((s) => s.mode === 'online' && !!s.profile)
+  const supportsPush = pushSupported() && (!nativePush || signedIn)
   const [pushOn, setPushOn] = useState(false)
   const [pushBusy, setPushBusy] = useState(false)
   const [pushErr, setPushErr] = useState('')
@@ -100,7 +106,9 @@ export function SettingsSheet({
         const ok = await enablePush()
         setPushOn(ok)
         if (!ok) setPushErr(pushPermission() === 'denied'
-          ? 'Notifications are blocked in your browser settings.'
+          ? nativePushPlatform()
+            ? 'Notifications are turned off for Verse Arcade in iOS Settings — turn them back on there, then flip this on.'
+            : 'Notifications are blocked in your browser settings.'
           : 'Could not turn on notifications.')
         else juice.coin()
       }
@@ -197,13 +205,17 @@ export function SettingsSheet({
             <h3 style={{ fontSize: 14, margin: '0 0 8px' }} className="dim">Notifications</h3>
             <div className="card" style={{ marginBottom: 6 }}>
               <Row
-                label={pushBusy ? '🔔 Working…' : '🔔 Daily reminders'}
+                label={pushBusy ? '🔔 Working…' : nativePush ? '🔔 Notes and news' : '🔔 Daily reminders'}
                 on={pushOn}
                 onToggle={togglePush}
               />
             </div>
             <p className="faint" style={{ fontSize: 11, lineHeight: 1.4, marginBottom: 18 }}>
-              {denied
+              {nativePush
+                ? denied
+                  ? 'Notifications are turned off for Verse Arcade in iOS Settings — turn them back on there, then flip this on.'
+                  : 'A note from your church’s leaders when they send you one, and the occasional word from us.'
+                : denied
                 ? 'Notifications are blocked for this site — turn them back on in your browser settings, then flip this on.'
                 : 'A gentle nudge when a new verse drops and when your streak’s about to break. Add Verse Arcade to your home screen for the most reliable delivery.'}
               {pushErr && <span style={{ color: 'var(--coral)', display: 'block', marginTop: 4 }}>{pushErr}</span>}

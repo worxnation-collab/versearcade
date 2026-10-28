@@ -4,13 +4,25 @@
 // PushManager. Here we request notification permission, subscribe with our
 // VAPID public key, and persist the resulting subscription server-side via the
 // save_push_subscription RPC so the push-send Edge Function can reach it.
+//
+// The iOS app has no PushManager (WKWebView), so on iOS every export here
+// answers for APNs instead (lib/native: registerPush → save_device_token), and
+// PushNudge and the Settings toggle work unchanged in both places.
 
+import { PushNotifications } from '@capacitor/push-notifications'
 import { supabase } from './supabase'
 import { VAPID_PUBLIC_KEY } from './config'
+import { nativePushPlatform, nativePushPermission, registerPush } from './native'
+
+const APNS_TOKEN_KEY = 'va.apnsToken'
+// iOS answers permission asynchronously; the sync reader below returns the
+// last answer seen, and pushPermissionNow() refreshes it.
+let nativePerm: PushState = 'default'
 
 export type PushState = 'unsupported' | 'default' | 'denied' | 'granted'
 
 export function pushSupported(): boolean {
+  if (nativePushPlatform()) return true
   return (
     typeof window !== 'undefined' &&
     'serviceWorker' in navigator &&
@@ -20,8 +32,17 @@ export function pushSupported(): boolean {
 }
 
 export function pushPermission(): PushState {
+  if (nativePushPlatform()) return nativePerm
   if (!pushSupported()) return 'unsupported'
   return Notification.permission as PushState
+}
+
+/** pushPermission, asked fresh — the only accurate answer on iOS. */
+export async function pushPermissionNow(): Promise<PushState> {
+  if (!nativePushPlatform()) return pushPermission()
+  const p = await nativePushPermission()
+  nativePerm = p === 'granted' ? 'granted' : p === 'denied' ? 'denied' : p === 'prompt' ? 'default' : 'unsupported'
+  return nativePerm
 }
 
 // VAPID public keys are base64url; PushManager wants a Uint8Array.
@@ -65,6 +86,10 @@ async function readyRegistration(): Promise<ServiceWorkerRegistration | null> {
 }
 
 export async function isPushSubscribed(): Promise<boolean> {
+  if (nativePushPlatform()) {
+    if ((await pushPermissionNow()) !== 'granted') return false
+    try { return !!localStorage.getItem(APNS_TOKEN_KEY) } catch { return false }
+  }
   const reg = await readyRegistration()
   if (!reg) return false
   const sub = await reg.pushManager.getSubscription()
@@ -74,6 +99,11 @@ export async function isPushSubscribed(): Promise<boolean> {
 // Ask permission (if needed), subscribe, and persist. Returns true on success.
 // Throws only for unexpected errors; a denied permission resolves to false.
 export async function enablePush(): Promise<boolean> {
+  if (nativePushPlatform()) {
+    const token = await registerPush()
+    await pushPermissionNow()
+    return !!token
+  }
   if (!pushSupported() || !supabase) return false
 
   const permission = await Notification.requestPermission()
@@ -120,6 +150,13 @@ export async function enablePush(): Promise<boolean> {
 
 // Unsubscribe locally and remove the row server-side.
 export async function disablePush(): Promise<void> {
+  if (nativePushPlatform()) {
+    // Unregistering retires the token at Apple, so push-send's next attempt
+    // gets 410 and deletes the row itself. The iOS permission stays as it is.
+    try { await PushNotifications.unregister() } catch { /* ignore */ }
+    try { localStorage.removeItem(APNS_TOKEN_KEY) } catch { /* ignore */ }
+    return
+  }
   const reg = await readyRegistration()
   if (!reg) return
   const sub = await reg.pushManager.getSubscription()

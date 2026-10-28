@@ -10,10 +10,18 @@
 //     a note they did not send. The note is already in the member's mailbox —
 //     this is a nudge on top, and every "can't" here is a quiet no-op.
 //
-//     Web Push only. Native (APNs) has no sender yet: `device_tokens` stays
-//     empty until docs/NATIVE-PUSH.md is done, so a member on the iOS build
-//     gets the in-app note and nothing on the lock screen. When that sender
-//     exists, call it from `sendCheckIn` below for the recipient's tokens.
+//     Both transports: the recipient's Web Push subscriptions AND their iOS
+//     device tokens (APNs).
+//
+// APNs (docs/NATIVE-PUSH.md): token auth with the team's .p8 key — ES256 JWT,
+// iss = team id, kid = key id, reused for 50 minutes (Apple refuses one older
+// than an hour and throttles one minted per request). Each token goes to the
+// host its `environment` names, since a sandbox token 400s on production. A
+// 410, or a 400 BadDeviceToken, deletes the row: that is Apple saying the app
+// is gone from that phone, and the only way tokens get cleaned up. Secrets:
+// APNS_KEY_ID, APNS_TEAM_ID, APNS_KEY_P8 (the whole .p8, header lines and
+// all); APNS_TOPIC overrides the bundle id. Missing any of the three ⇒ native
+// is skipped and said so, never an error.
 //
 // The broadcast is admin-only (sharkbait). Implements VAPID (RFC 8292) auth and aes128gcm
 // payload encryption (RFC 8291 + RFC 8188) with the Deno Web Crypto API — no
@@ -30,6 +38,12 @@ const VAPID_PUBLIC =
   'BMjBZZ-dKxm_J-ARiuH3TPX1kjGbR4Uju1JtgZbsdp1P0phqRTiwKiEARyqOD_R0AkYhEDCcAX0tRWkkyvzHW1c'
 const VAPID_PRIVATE = Deno.env.get('VAPID_PRIVATE_KEY') ?? ''
 const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT') ?? 'mailto:worxnation@gmail.com'
+
+const APNS_KEY_ID = (Deno.env.get('APNS_KEY_ID') ?? '').trim()
+const APNS_TEAM_ID = (Deno.env.get('APNS_TEAM_ID') ?? '').trim()
+const APNS_KEY_P8 = Deno.env.get('APNS_KEY_P8') ?? ''
+const APNS_TOPIC = (Deno.env.get('APNS_TOPIC') ?? 'com.versearcade.app').trim()
+const APNS_READY = !!(APNS_KEY_ID && APNS_TEAM_ID && APNS_KEY_P8)
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
@@ -144,6 +158,75 @@ async function sendOne(sub: Sub, payload: Uint8Array, key: CryptoKey): Promise<n
   return res.status
 }
 
+// ---- APNs (iOS) -------------------------------------------------------------
+let apnsToken: { jwt: string; at: number } | null = null
+
+async function apnsJwt(): Promise<string> {
+  const now = Math.floor(Date.now() / 1000)
+  if (apnsToken && now - apnsToken.at < 50 * 60) return apnsToken.jwt
+  // The .p8 is a PKCS#8 PEM. Pasted secrets sometimes arrive with literal "\n"
+  // or with the line breaks gone; stripping to the base64 body handles both.
+  const body = APNS_KEY_P8.replace(/\\n/g, '\n').replace(/-----[^-]+-----/g, '').replace(/\s+/g, '')
+  const key = await crypto.subtle.importKey(
+    'pkcs8', b64urlToBytes(body), { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign'],
+  )
+  const header = bytesToB64url(enc.encode(JSON.stringify({ alg: 'ES256', kid: APNS_KEY_ID })))
+  const claims = bytesToB64url(enc.encode(JSON.stringify({ iss: APNS_TEAM_ID, iat: now })))
+  const input = `${header}.${claims}`
+  const sig = new Uint8Array(await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, enc.encode(input)))
+  apnsToken = { jwt: `${input}.${bytesToB64url(sig)}`, at: now }
+  return apnsToken.jwt
+}
+
+interface DeviceToken { token: string; environment: string }
+interface Note { title: string; body: string; url: string; tag: string }
+
+async function sendApns(t: DeviceToken, note: Note): Promise<{ status: number; reason: string }> {
+  const host = t.environment === 'development' ? 'https://api.sandbox.push.apple.com' : 'https://api.push.apple.com'
+  const res = await fetch(`${host}/3/device/${encodeURIComponent(t.token)}`, {
+    method: 'POST',
+    headers: {
+      authorization: `bearer ${await apnsJwt()}`,
+      'apns-topic': APNS_TOPIC,
+      'apns-push-type': 'alert',
+      'apns-priority': '10',
+      'apns-expiration': String(Math.floor(Date.now() / 1000) + 86400),
+      'apns-collapse-id': note.tag.slice(0, 64),
+      'content-type': 'application/json',
+    },
+    // `url` rides beside `aps`; the app opens it on tap (lib/native.ts).
+    body: JSON.stringify({ aps: { alert: { title: note.title, body: note.body }, sound: 'default' }, url: note.url }),
+  })
+  let reason = ''
+  if (res.status !== 200) {
+    try { reason = String((await res.json())?.reason ?? '') } catch { /* empty body */ }
+  } else {
+    await res.body?.cancel()
+  }
+  return { status: res.status, reason }
+}
+
+/** Sends one note to a set of iOS tokens; prunes the dead ones. Never throws. */
+// deno-lint-ignore no-explicit-any
+async function sendNative(admin: any, tokens: DeviceToken[], note: Note) {
+  if (!tokens.length) return { native_sent: 0, native_failed: 0, native_removed: 0 }
+  if (!APNS_READY) return { native_sent: 0, native_failed: 0, native_removed: 0, native_error: 'apns_not_configured' }
+  let sent = 0, failed = 0
+  const dead: string[] = []
+  let error = ''
+  const results = await Promise.allSettled(tokens.map(async (t) => ({ t, r: await sendApns(t, note) })))
+  for (const x of results) {
+    if (x.status !== 'fulfilled') { failed++; error ||= String(x.reason); continue }
+    const { t, r } = x.value
+    if (r.status === 200) { sent++; continue }
+    failed++
+    error ||= `${r.status} ${r.reason}`.trim()
+    if (r.status === 410 || (r.status === 400 && r.reason === 'BadDeviceToken')) dead.push(t.token)
+  }
+  if (dead.length) await admin.from('device_tokens').delete().in('token', dead)
+  return { native_sent: sent, native_failed: failed, native_removed: dead.length, ...(error ? { native_error: error } : {}) }
+}
+
 // One check-in note to its one recipient. Never throws: the note is in their
 // mailbox whatever happens here.
 // deno-lint-ignore no-explicit-any
@@ -158,20 +241,24 @@ async function sendCheckIn(admin: any, sender: string, input: Record<string, unk
 
   const { data: subs } = await admin
     .from('push_subscriptions').select('endpoint, p256dh, auth').eq('profile_id', claim.recipient_id)
-  // Native: no APNs sender yet (docs/NATIVE-PUSH.md), so tokens are counted, not used.
-  const { count: tokens } = await admin
-    .from('device_tokens').select('token', { count: 'exact', head: true }).eq('profile_id', claim.recipient_id)
-  if (!subs?.length || !VAPID_PRIVATE) return { pushed: 0, reason: 'no_subscription', native_pending: tokens ?? 0 }
+  const { data: tokens } = await admin
+    .from('device_tokens').select('token, environment').eq('profile_id', claim.recipient_id).eq('platform', 'ios')
 
   // The note's own words, or the verse when the leader sent only that. No
   // link in the body; tapping opens the mailbox, where the note is.
   const body = (claim.message || (claim.verse_ref ? `${claim.verse_ref} — a verse for you` : 'A note for you'))
-  const payload = enc.encode(JSON.stringify({
+  const note: Note = {
     title: `${claim.from_username} · ${claim.church_name}`.slice(0, 80),
     body: String(body).slice(0, 240),
     url: '/mail',
     tag: `check-in-${claim.id}`,
-  }))
+  }
+  const native = await sendNative(admin, (tokens ?? []) as DeviceToken[], note)
+  if (!subs?.length || !VAPID_PRIVATE) {
+    return { pushed: native.native_sent, ...native, ...(native.native_sent ? {} : { reason: 'no_subscription' }) }
+  }
+
+  const payload = enc.encode(JSON.stringify(note))
   const key = await vapidSigningKey()
   let pushed = 0
   const dead: string[] = []
@@ -183,7 +270,7 @@ async function sendCheckIn(admin: any, sender: string, input: Record<string, unk
     } catch { /* one bad endpoint never fails the rest */ }
   }
   if (dead.length) await admin.from('push_subscriptions').delete().in('endpoint', dead)
-  return { pushed, native_pending: tokens ?? 0 }
+  return { pushed: pushed + native.native_sent, ...native }
 }
 
 Deno.serve(async (req) => {
@@ -207,18 +294,22 @@ Deno.serve(async (req) => {
     const { data: prof } = await admin.from('profiles').select('username').eq('id', user.id).single()
     if (!prof || prof.username !== 'sharkbait') return json({ error: 'forbidden' }, 403)
 
-    if (!VAPID_PRIVATE) return json({ error: 'VAPID_PRIVATE_KEY is not configured' }, 500)
     const title = String(input.title ?? 'Verse Arcade').slice(0, 80)
     const bodyText = String(input.body ?? '').slice(0, 240)
     const url = String(input.url ?? '/')
     const tag = String(input.tag ?? 'verse-arcade')
     if (!bodyText) return json({ error: 'body is required' }, 400)
 
+    // Native first, so a missing VAPID key never stops the iOS half.
+    const { data: tokens } = await admin.from('device_tokens').select('token, environment').eq('platform', 'ios')
+    const native = await sendNative(admin, (tokens ?? []) as DeviceToken[], { title, body: bodyText, url, tag })
+
+    if (!VAPID_PRIVATE) return json({ sent: 0, failed: 0, removed: 0, total: 0, ...native, web_error: 'VAPID_PRIVATE_KEY is not configured' })
     const { data: subs, error } = await admin
       .from('push_subscriptions')
       .select('endpoint, p256dh, auth')
-    if (error) return json({ error: error.message }, 500)
-    if (!subs || subs.length === 0) return json({ sent: 0, failed: 0, removed: 0, total: 0 })
+    if (error) return json({ error: error.message, ...native }, 500)
+    if (!subs || subs.length === 0) return json({ sent: 0, failed: 0, removed: 0, total: 0, ...native })
 
     const payload = enc.encode(JSON.stringify({ title, body: bodyText, url, tag }))
     const key = await vapidSigningKey()
@@ -241,7 +332,7 @@ Deno.serve(async (req) => {
     // Prune subscriptions the push service says are gone.
     if (dead.length) await admin.from('push_subscriptions').delete().in('endpoint', dead)
 
-    return json({ sent, failed, removed: dead.length, total: subs.length })
+    return json({ sent, failed, removed: dead.length, total: subs.length, ...native })
   } catch (e) {
     return json({ error: String(e) }, 500)
   }

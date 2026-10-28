@@ -1351,9 +1351,17 @@ function PushBroadcast() {
         body: { title: title.trim() || 'Verse Arcade', body: body.trim(), url: url.trim() || '/' },
       })
       if (error) throw error
-      const r = data as { sent: number; failed: number; removed: number; total: number; error?: string }
+      const r = data as {
+        sent: number; failed: number; removed: number; total: number; error?: string
+        native_sent?: number; native_failed?: number; native_removed?: number; native_error?: string
+      }
       if (r?.error) { setErr(r.error); return }
-      setMsg(`Sent to ${r.sent}/${r.total} devices${r.failed ? ` · ${r.failed} failed` : ''}${r.removed ? ` · ${r.removed} stale removed` : ''}.`)
+      const ios = (r.native_sent ?? 0) + (r.native_failed ?? 0)
+      setMsg(
+        `Web: ${r.sent}/${r.total}${r.failed ? ` · ${r.failed} failed` : ''}${r.removed ? ` · ${r.removed} stale removed` : ''}` +
+        ` · iPhone: ${r.native_sent ?? 0}/${ios}${r.native_removed ? ` · ${r.native_removed} stale removed` : ''}` +
+        `${r.native_error ? ` · ${r.native_error}` : ''}.`,
+      )
     } catch (e) {
       const m = (e as { message?: string })?.message || String(e)
       setErr(/non-2xx|500/i.test(m) ? 'Send failed — is VAPID_PRIVATE_KEY set in Supabase?' : m)
@@ -1365,7 +1373,7 @@ function PushBroadcast() {
   return (
     <div>
       <p className="faint" style={{ fontSize: 12, marginBottom: 10, lineHeight: 1.4 }}>
-        Push a notification to everyone who turned reminders on (Profile → ⚙️ → Notifications). Needs the <code>VAPID_PRIVATE_KEY</code> secret set in Supabase.
+        Push a notification to everyone who turned notifications on — browsers through Web Push (<code>VAPID_PRIVATE_KEY</code>), the iPhone app through APNs (<code>APNS_KEY_ID</code>, <code>APNS_TEAM_ID</code>, <code>APNS_KEY_P8</code>).
       </p>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>

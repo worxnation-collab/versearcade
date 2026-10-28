@@ -161,3 +161,35 @@ every time zone. No migration.
   go through the prayer store unchanged.
 - It is not tappable. The wall is one tap away on the map and the compass;
   a doorpost that navigates would be a second door to the same place.
+
+## Your church's leaders (0153, 2026-10-28)
+
+Verified leadership of a church sees a **prayer list** on the dashboard's
+People tab (`PrayerListSection`, folded, no number on its header): the notes
+that church's CURRENT members left on the wall in the last thirty days,
+newest first, with the line, the member's name and face, when it was left and
+whether it has since been answered. `church_prayer_list(church)`, gated by
+`church_admin_can` — the same gate as the named roster (0128), so a free claim
+(unverified) and every non-leader are refused.
+
+The rule, stated once: **leadership sees its own members' notes; the rest of
+the wall's privacy is unchanged.** It stays inside that rule because:
+
+- **Signed notes only.** The wall is anonymous by default and an unsigned note
+  carries no name for anybody, church-mates included. Putting a name on it for
+  a pastor would identify somebody in a way they never chose, so unsigned notes
+  are not in this list at all — they stay on the wall exactly as before.
+  Reported, hidden and withdrawn notes are left out too.
+- **No count about anybody.** The list never reads `prayer_intercessions`: no
+  "prayed for N times", no ordering by kneelings, nothing per member. The order
+  is the clock.
+- **"I've prayed" is the leader's own tick and nothing else**
+  (`mark_church_prayer`, `church_prayer_marks`). It is NOT a kneeling: no XP,
+  the member's lantern does not light, their tally does not move, and no other
+  leader, member, card or postcard ever sees it. It is returned only to the
+  leader who set it, inside their own list. Un-ticking writes `prayed = false`.
+- **Nothing new reaches a member.** The member's own screens are untouched;
+  the only new surface is behind `church_admin_can`.
+
+The foreign keys (erasure cascades) are `0153_church_prayer_list_b.sql`, kept
+apart for the MCP — paste it into the SQL editor.

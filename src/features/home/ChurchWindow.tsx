@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ChurchArt } from '@/features/church/ChurchArt'
+import { WarmPlaceholder } from '@/components/WarmPlaceholder'
 import { tierForLevel } from '@/features/church/levels'
 import { PaintedIcon, type PaintedIconId } from '@/components/PaintedIcon'
 import { gatheringLabel, gatheringOpen, gatheringWindow } from '@/data/gathering'
@@ -63,7 +64,9 @@ export function ChurchWindow() {
     return () => window.clearInterval(t)
   }, [])
 
-  if (!loaded) return null
+  // Hold the card's place while it loads rather than popping it in under the
+  // daily boxes — still no "Add your church" flash before a member's name.
+  if (!loaded) return <WarmPlaceholder height={236} />
 
   const go = () => {
     juice.select?.()

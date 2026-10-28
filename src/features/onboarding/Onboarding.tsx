@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useOverlayHold } from '@/store/overlayHold'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Page } from '@/components/Page'
@@ -29,6 +30,13 @@ export default function Onboarding() {
   const startAsGuest = useAuth((s) => s.startAsGuest)
   const setPendingCharacter = useAuth((s) => s.setPendingCharacter)
   const settings = useSettings()
+
+  // The "music is on" toast waits until onboarding is over: on the first
+  // screen it landed squarely on the sample verse.
+  useEffect(() => {
+    useOverlayHold.getState().hold('onboarding')
+    return () => useOverlayHold.getState().release('onboarding')
+  }, [])
 
   const [step, setStep] = useState(0)
   const [spec, setSpec] = useState<AvatarSpec>(DEFAULT_AVATAR)

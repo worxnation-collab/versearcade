@@ -11,6 +11,7 @@ import type { Question } from '@/types'
 import { SeriesCopyPanel } from './SeriesCopyPanel'
 import { DiscussionToggle, DraftReview } from './WeekDraftPanel'
 import { SundayPack } from './SundayPack'
+import { ShareVerse } from './ShareVerse'
 import { PlanWeek } from './PlanWeek'
 import { ENGINE_REASONS } from './weekRun'
 import { AssetStudio } from './AssetStudio'
@@ -514,7 +515,12 @@ export function TodayVerseForm({
       />
 
       {/* The Sunday pack: real admin screen only (the demo passes no `assets`). */}
-      {assets && <SundayPack churchId={churchId} churchName={churchName} backend={backend} />}
+      {assets && (
+        <div className="plan-actions">
+          <ShareVerse churchId={churchId} churchName={churchName} />
+          <SundayPack churchId={churchId} churchName={churchName} backend={backend} />
+        </div>
+      )}
 
       {planning && (
         <button

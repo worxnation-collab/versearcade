@@ -92,6 +92,10 @@ export function PlanWeek({
       {backend.autoWeek && <AutopilotCard churchId={churchId} ap={pilot.ap} setAp={pilot.setAp} />}
       {backend.autoWeek && <AutoWeekCard churchId={churchId} jobs={auto.jobs} reload={auto.reload} onLanded={onChanged} />}
 
+      {/* Wide web (≥900px, ChurchAdminScreen's `admin-wide`): steps 1–2 on the
+          left and the review on the right. Everywhere else it stacks. */}
+      <div className="plan-split">
+      <div className="plan-split-main">
       <Step n={1} title="Start from">
         <div role="radiogroup" aria-label="Start from" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 8 }}>
           {SOURCES.map((s) => {
@@ -136,6 +140,8 @@ export function PlanWeek({
         </div>
       </Step>
 
+      </div>
+      <div className="plan-split-side">
       <Step n={3} title="Review and approve">
         {/* Always mounted: once the last draft is approved it still says so. */}
         <DraftReview churchId={churchId} backend={backend} week={week} selected={selected} onOpen={onOpenDay} onChanged={onChanged} />
@@ -145,6 +151,8 @@ export function PlanWeek({
           </p>
         )}
       </Step>
+      </div>
+      </div>
     </section>
   )
 }

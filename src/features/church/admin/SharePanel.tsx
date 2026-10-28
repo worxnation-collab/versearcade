@@ -1,5 +1,6 @@
 import { ShareChurch } from '@/features/church/ShareChurch'
 import { ChurchInviteQR } from '@/features/church/ChurchInviteQR'
+import { ShareVerse } from './ShareVerse'
 
 // Leadership's Share tab: the church's page link, ready to paste, and — for a
 // verified church — the QR code ready to print.
@@ -8,6 +9,9 @@ import { ChurchInviteQR } from '@/features/church/ChurchInviteQR'
 // belongs where the pastor already is, not two screens away at the bottom of
 // the church's own page. Same two components the page uses, so the link here
 // and the link there can never differ (both carry the sharer's referral code).
+//
+// "Share today's verse" (`ShareVerse`) sits under the page link: the day's
+// verse and the same page link, for a group text. Plan carries it too.
 //
 // The QR stays part of the verified package (docs/CHURCH-PACKAGES.md), as it
 // is on the page; the link is every church's, free.
@@ -35,6 +39,7 @@ export function SharePanel({
         showLink
         label="Share the page"
       />
+      <div style={{ marginTop: 12 }}><ShareVerse churchId={churchId} churchName={churchName} /></div>
       {verified && <ChurchInviteQR churchId={churchId} churchName={churchName} defaultOpen />}
     </div>
   )

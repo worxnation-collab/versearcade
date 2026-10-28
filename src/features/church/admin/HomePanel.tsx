@@ -4,6 +4,9 @@ import { useJuice } from '@/juice/useJuice'
 import { fetchDays, flaggedCount, type AdminSettings, type LeaderInsights, type WeekDay } from '@/store/churchAdmin'
 import { activeThisWeek } from './InsightsPanel'
 import { SeriesLandingPanel } from './SeriesLandingPanel'
+import { Capacitor } from '@capacitor/core'
+import { APP_URL } from '@/features/daily/shareCard'
+import { FirstWeek, type FirstWeekDoor } from './FirstWeek'
 import { currentAutoWeek, useAutoWeeks } from './autoWeek'
 import { autoRow, draftRows, inquiryRow, quietRow, type HomeGo, type HomeRow } from '../../../../supabase/functions/church-digest/home.ts'
 import { useAutopilot } from './autopilot'
@@ -64,7 +67,16 @@ export function HomePanel({
   onGo,
   glance,
   autoWeeks = false,
+  hasLook = true,
+  onDoor,
+  bigger = false,
 }: {
+  /** Draw "Plan on a bigger screen →" (not on a wide web layout — it's already big). */
+  bigger?: boolean
+  /** The leader has chosen a look (0136) — "Your first week"'s first row. */
+  hasLook?: boolean
+  /** "Your first week" rows that open something a HomeGo can't name. */
+  onDoor?: (d: FirstWeekDoor) => void
   /** The church holds Content Generation: read its sermon-memo weeks (0148). */
   autoWeeks?: boolean
   churchId: string
@@ -152,6 +164,19 @@ export function HomePanel({
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10, minWidth: 0 }}>
+      {verified && days && insights && onDoor && (
+        <FirstWeek
+          churchId={churchId}
+          fresh={!settings.announcement && days.slice(0, 7).every((w) => !w.verse) && insights.members < 3}
+          hasLook={hasLook}
+          hasNotice={!!settings.announcement}
+          planned={days.slice(0, 7).some((w) => !!w.verse) || !!ap?.enabled}
+          autopilotOffered={autoWeeks}
+          onDoor={onDoor}
+        />
+      )}
+      <div className="home-split">
+      <div className="home-split-main">
       <h2 style={{ margin: '2px 0 0', fontSize: 17, fontFamily: 'var(--font-display)' }}>This week</h2>
       {loading && <div className="skeleton" style={{ height: 64, borderRadius: 14 }} />}
       {failed && (
@@ -181,10 +206,41 @@ export function HomePanel({
 
       {verified && <DigestToggle churchId={churchId} />}
 
-      <SeriesLandingPanel churchId={churchId} />
+      {verified && <SeriesLandingPanel churchId={churchId} churchName={settings.name} />}
+      </div>
 
+      <div className="home-split-side">
       <h2 style={{ margin: '10px 0 0', fontSize: 17, fontFamily: 'var(--font-display)' }}>At a glance</h2>
       {glance}
+      </div>
+      </div>
+      {bigger && <BiggerScreen churchId={churchId} />}
     </div>
+  )
+}
+
+// "Plan on a bigger screen →" — one quiet row at the foot of Home. It opens
+// this same dashboard (/church/:id/admin) on the web: the system browser from
+// the app, a new tab on the web. The app's session doesn't travel to another
+// browser, so a signed-out visit there goes through ordinary sign-in and comes
+// straight back here (`RequireLeaderSession` + `ChurchResume`). It is a second
+// door, not a gate — every tool stays here too — and free-claim and verified
+// leadership both get it; what each can use is decided on the server as ever.
+function BiggerScreen({ churchId }: { churchId: string }) {
+  const url = `${APP_URL}/church/${churchId}/admin`
+  const open = () => {
+    // On the App Store build `_system` hands the URL to Safari itself.
+    if (Capacitor.isNativePlatform()) window.open(url, '_system')
+    else window.open(url, '_blank', 'noopener')
+  }
+  return (
+    <button
+      data-bigger-screen
+      onClick={open}
+      className="faint"
+      style={{ justifySelf: 'start', fontSize: 12.5, fontWeight: 700, padding: '6px 2px', textDecoration: 'underline', textUnderlineOffset: 3 }}
+    >
+      Plan on a bigger screen →
+    </button>
   )
 }

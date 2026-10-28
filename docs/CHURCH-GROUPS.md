@@ -33,7 +33,19 @@ for church data.
   - the discussion questions for **approved** days from today through the next
     six, with each day's reference and series.
 
-  They see no score, no last-played day and no streak. That means a group
+  - **"Haven't played this week"** (0156, `my_church_group_quiet`): folded
+    behind one tap, their own members (role 'member') with no play in seven
+    days, by name and face — the SAME rule as leadership's "Not active this
+    week" fold (the later of the last daily play and the last church-verse
+    play, older than today − 6, or none). Each name offers **Send a note**: the
+    check-in note, through `send_group_check_in`, which refuses anybody outside
+    this leader's group (`not_in_group`), shares the one-note-a-day per member
+    with leadership's check-ins (whoever sends first), copies today's church
+    verse when asked, and allows 10 a day. It lands in the member's mailbox
+    from the group leader, with the push nudge where they have one.
+
+  They see no score, no last-played day and no streak — the quiet line is a
+  name in a folded list, never a number about a person. That means a group
   leader learns less about their people than leadership already sees, never
   more. They cannot edit anything; the leadership RPCs refuse them.
 - **A regular member** sees nothing about groups in this pass, including which

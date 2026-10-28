@@ -1473,6 +1473,37 @@ export async function fetchSeriesLanding(churchId: string): Promise<Res<{ member
   }
 }
 
+/**
+ * The series in focus for the quiet fold (0156, `church_quiet_series`): the
+ * running one, else one that finished in the last two weeks, and the current
+ * members who have not played a single live day of it — 0150's "not engaged".
+ * Verified leadership only; shown only inside the folded quiet section.
+ */
+export interface QuietSeries {
+  series: { name: string; status: 'running' | 'finished'; startDate: string; endDate: string } | null
+  notEngaged: Set<string>
+}
+export async function fetchQuietSeries(churchId: string): Promise<Res<QuietSeries>> {
+  const r = await call<{ series?: Record<string, any> | null; not_engaged?: string[] }>('church_quiet_series', {
+    p_church_id: churchId,
+    p_local_date: todayLocalDate(),
+  })
+  if (!r.ok) return r
+  const s = r.data.series
+  return {
+    ok: true,
+    data: {
+      series: s && s.name ? {
+        name: String(s.name),
+        status: s.status === 'finished' ? 'finished' : 'running',
+        startDate: String(s.start_date ?? ''),
+        endDate: String(s.end_date ?? ''),
+      } : null,
+      notEngaged: new Set((r.data.not_engaged ?? []).map((u) => String(u).toLowerCase())),
+    },
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Small groups (0151). Verified leadership sorts members into groups and marks
 // group leaders; a group leader reads their own group and the week's
@@ -1599,6 +1630,18 @@ export async function fetchMyGroup(): Promise<Res<MyGroup | null>> {
       })).filter((d: GroupDiscussionDay) => d.questions.length > 0),
     },
   }
+}
+
+/**
+ * A group leader's members with no play in seven days (0156,
+ * `my_church_group_quiet`) — names and faces only, the leadership fold's rule.
+ * null for anybody who leads no group (and for an unverified church).
+ */
+export async function fetchMyGroupQuiet(): Promise<Res<GroupPerson[] | null>> {
+  const r = await call<any>('my_church_group_quiet', { p_local_date: todayLocalDate() })
+  if (!r.ok) return r
+  if (!r.data || !Array.isArray(r.data.quiet)) return { ok: true, data: null }
+  return { ok: true, data: r.data.quiet.map((m: any) => person({ ...m, role: 'member' })) }
 }
 
 // ---------------------------------------------------------------------------
@@ -1767,6 +1810,8 @@ export interface PastoralPrayer {
   avatarEmoji: string | null
   avatarCharacter: any | null
   prayed: boolean
+  /** The leader's own private "Followed up" (0156) — seen by nobody else. */
+  followedUp: boolean
 }
 
 const pastoralPrayer = (n: any): PastoralPrayer => ({
@@ -1780,6 +1825,7 @@ const pastoralPrayer = (n: any): PastoralPrayer => ({
   avatarEmoji: n?.avatar_emoji ?? null,
   avatarCharacter: n?.avatar_character ?? null,
   prayed: n?.prayed === true,
+  followedUp: n?.followed_up === true,
 })
 
 export async function fetchChurchPrayerList(churchId: string): Promise<Res<PastoralPrayer[]>> {
@@ -1792,6 +1838,13 @@ export async function markChurchPrayer(churchId: string, requestId: string, pray
   const r = await call<{ prayed?: boolean }>('mark_church_prayer', { p_church_id: churchId, p_request_id: requestId, p_prayed: prayed })
   if (!r.ok) return r
   return { ok: true, data: { prayed: r.data.prayed === true } }
+}
+
+/** The leader's private "Followed up" on a note (0156). Not a kneeling, not told to anybody. */
+export async function followUpChurchPrayer(churchId: string, requestId: string, followed: boolean): Promise<Res<{ followedUp: boolean }>> {
+  const r = await call<{ followed_up?: boolean }>('follow_up_church_prayer', { p_church_id: churchId, p_request_id: requestId, p_followed: followed })
+  if (!r.ok) return r
+  return { ok: true, data: { followedUp: r.data.followed_up === true } }
 }
 
 // ---------------------------------------------------------------------------

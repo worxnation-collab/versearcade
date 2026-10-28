@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/store/auth'
-import { getPendingChurch, clearPendingChurch } from './pending'
+import { getPendingChurch, clearPendingChurch, takePendingChurchAdmin } from './pending'
 import { clearPendingClaim, getPendingClaim } from '@/store/churchClaim'
 
 // After someone signs up (or in) from a shared church link, drop them straight
@@ -28,6 +28,16 @@ export function ChurchResume() {
     // fragment, and cleared — the same one-shot rule the church resume below
     // follows, or anybody who wandered off before tapping would be dragged
     // back to the claim screen on every navigation.
+    // The leadership dashboard opened signed out (a desktop browser from
+    // "Plan on a bigger screen"): back to it, once.
+    // Not from /auth itself: the sign-in screen sends a fresh session to /play
+    // in its own effect, which would land after this one and win. Waiting for
+    // that first hop makes this the last word.
+    const admin = location.pathname === '/auth' ? null : takePendingChurchAdmin()
+    if (admin) {
+      if (location.pathname !== `/church/${admin}/admin`) navigate(`/church/${admin}/admin`, { replace: true })
+      return
+    }
     const claim = getPendingClaim()
     if (claim) {
       clearPendingClaim()

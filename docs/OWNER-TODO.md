@@ -10,10 +10,10 @@ Paste each of these files from `supabase/migrations/` into Supabase → SQL Edit
 - [x] `0153_church_prayer_list_b.sql`: foreign keys only.
 - [ ] Optional: the `church_announcements` policies in `docs/CHURCH-PACKAGES.md` → "Production state". Nothing needs them today.
 
-## 2. Monday digest email — about 20 minutes
-- [ ] Create a Resend account and verify the `versearcade.org` sending domain. Resend gives you DNS records to add.
-- [ ] Create an API key and add it as Supabase → Edge Functions → Secrets → `RESEND_API_KEY`. It is not in Vault or the repo today, so **no digest has been sent yet**.
-- [ ] Decide the timing. Right now the digest goes out Monday morning but the Autopilot cutoff is Monday 9pm, so the email can say "no drafts yet". Pick one:
+## 2. Monday digest email — DONE 2026-10-28 (verified; now sends Tuesday 8am)
+- [x] Create a Resend account and verify the `versearcade.org` sending domain. Resend gives you DNS records to add.
+- [x] Create an API key and add it as Supabase → Edge Functions → Secrets → `RESEND_API_KEY`. It is not in Vault or the repo today, so **no digest has been sent yet**.
+- [x] Decide the timing. Right now the digest goes out Monday morning but the Autopilot cutoff is Monday 9pm, so the email can say "no drafts yet". Pick one:
   - send it Tuesday, or
   - move the default cutoff to Sunday night.
 

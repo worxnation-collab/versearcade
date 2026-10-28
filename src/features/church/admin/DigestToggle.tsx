@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useJuice } from '@/juice/useJuice'
 import { fetchDigestSetting, sendDigestTest, setDigest } from '@/store/churchAdmin'
 
-// "Email me the Monday digest" — under Home's "This week" list (0154,
+// "Email me the Tuesday digest" (Monday until 0157) — under Home's "This week" list (0154,
 // docs/CHURCH-DIGEST.md). Default OFF, and PER LEADER: this switch is your
 // own inbox for this church; a co-leader decides for theirs.
 //
@@ -15,7 +15,7 @@ import { fetchDigestSetting, sendDigestTest, setDigest } from '@/store/churchAdm
 // draws nothing.
 
 const FAIL: Record<string, string> = {
-  no_provider: 'Email isn’t switched on for the app yet — your setting is saved and the first Monday after it is, it’ll arrive.',
+  no_provider: 'Email isn’t switched on for the app yet — your setting is saved and the first Tuesday after it is, it’ll arrive.',
   no_email: 'Your account has no email address to send to.',
   not_verified: 'The digest is for verified churches.',
   not_leadership: 'Only this church’s leadership gets the digest.',
@@ -59,9 +59,9 @@ export function DigestToggle({ churchId }: { churchId: string }) {
       <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
         <input type="checkbox" checked={on} disabled={busy || !hasEmail} onChange={() => void flip()} style={{ marginTop: 3, width: 18, height: 18, flexShrink: 0, padding: 0 }} />
         <span style={{ minWidth: 0 }}>
-          <b style={{ display: 'block', fontSize: 14 }}>Email me the Monday digest</b>
+          <b style={{ display: 'block', fontSize: 14 }}>Email me the Tuesday digest</b>
           <span className="dim" style={{ display: 'block', fontSize: 12.5, lineHeight: 1.45, marginTop: 2 }}>
-            Monday morning: your sermon week, drafts, flagged questions, inquiries and how many could use a check-in
+            Tuesday morning: your sermon week, drafts, flagged questions, inquiries and how many could use a check-in
             (never names), each a link back here. Just to you — other leaders choose for themselves.
           </span>
         </span>

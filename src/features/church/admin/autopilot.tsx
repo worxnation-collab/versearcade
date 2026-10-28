@@ -24,7 +24,15 @@ import {
 //     the pastor sets another) → the saved FALLBACK — a topic or one passage —
 //     drafts the week instead, through the same week call.
 //   * ON + no memo + no fallback → nothing is drafted, and this card and Home
-//     say "No source this week — Autopilot skipped". Never a week from nothing.
+//     say so in a quiet line. Never a week from nothing.
+//
+// Switching it on with no fallback saved opens the fallback chooser FIRST and
+// only turns Autopilot on when that is saved. Switching it on midweek, after
+// the cutoff, settles the current week at once — so a pastor who flipped the
+// switch with nothing saved used to be greeted by a red "skipped" for a week
+// that had passed its deadline before Autopilot existed. Asking first means a
+// fallback is in place for that very settle, and the empty days of this week
+// are drafted on the spot.
 //   * "Skip this week" pauses it for the current week only (a guest speaker, a
 //     vacation); the switch stays on.
 //
@@ -102,7 +110,7 @@ export function autopilotLine(ap: Autopilot): { tone: 'quiet' | 'gold' | 'coral'
       }
     case 'due': return { tone: 'quiet', text: 'Checking this week…' }
     case 'fallback': return { tone: 'gold', text: `No sermon memo by ${cut}, so the week was drafted from ${fb ?? 'your fallback'}${ap.windowFrom ? ` (${day(ap.windowFrom)} – ${day(ap.windowTo)})` : ''}. Review it below.` }
-    case 'no_source': return { tone: 'coral', text: 'No source this week — Autopilot skipped. No sermon memo arrived and no fallback is set, so nothing was drafted.' }
+    case 'no_source': return { tone: 'quiet', text: `Nothing drafted this week: no sermon memo arrived by ${cut} and no fallback is set. Plan this week below, or set a fallback so next week drafts itself.` }
     case 'covered': return { tone: 'quiet', text: 'This week was already planned, so Autopilot had nothing to draft.' }
     default: return null
   }
@@ -134,6 +142,8 @@ export function AutopilotCard({
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
+  // Switching on with no fallback saved: the chooser opens first, and Save turns it on.
+  const [setup, setSetup] = useState(false)
   const [dow, setDow] = useState(1)
   const [time, setTime] = useState('21:00')
   const [kind, setKind] = useState<'none' | 'topic' | 'passage'>('none')
@@ -178,7 +188,7 @@ export function AutopilotCard({
     if (!r.ok) return setErr(FAIL[r.reason] ?? 'That didn’t save — try again in a moment.')
     juice.select?.()
     setAp(r.data)
-    if (patch.settings) setEditing(false)
+    if (patch.settings) { setEditing(false); setSetup(false) }
     // Turning it on after the cutoff: settle this week now, not on the next visit.
     if (r.data.state === 'due') {
       const t = await autopilotTick(churchId)
@@ -210,7 +220,15 @@ export function AutopilotCard({
           aria-checked={ap.enabled}
           aria-label="Autopilot"
           disabled={busy}
-          onClick={() => void save({ enabled: !ap.enabled })}
+          onClick={() => {
+            if (!ap.enabled && !ap.fallback) {
+              openEdit()
+              setKind('topic')
+              setSetup(true)
+              return
+            }
+            void save({ enabled: !ap.enabled })
+          }}
           style={{
             width: 48, height: 28, borderRadius: 14, flexShrink: 0, cursor: 'pointer', position: 'relative',
             background: ap.enabled ? 'var(--gold)' : 'var(--card-raised)', border: '1px solid var(--edge)',
@@ -246,8 +264,13 @@ export function AutopilotCard({
         </span>
       )}
 
-      {ap.enabled && editing && (
+      {(ap.enabled || setup) && editing && (
         <div style={{ display: 'grid', gap: 8 }}>
+          {setup && (
+            <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.45 }}>
+              <b>First, a fallback.</b> If no sermon memo arrives by the cutoff, Autopilot drafts the week from this instead.
+            </p>
+          )}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <label style={{ display: 'grid', gap: 4, fontSize: 12, fontWeight: 700, color: 'var(--ink-dim)', flex: '1 1 130px' }}>
               If no sermon memo by
@@ -284,10 +307,10 @@ export function AutopilotCard({
               : 'The week is drafted from this, as drafts for you to review, only when no memo arrives by the cutoff. The words come from the Berean Standard Bible.'}
           </span>
           <div style={{ display: 'flex', gap: 8 }}>
-            <Button variant="secondary" disabled={busy || (kind !== 'none' && !label.trim())} onClick={() => void save({ settings: true })}>
-              {busy ? 'Saving…' : 'Save'}
+            <Button variant="secondary" disabled={busy || (kind !== 'none' && !label.trim())} onClick={() => void save(setup ? { settings: true, enabled: true } : { settings: true })}>
+              {busy ? 'Saving…' : setup ? 'Turn on Autopilot' : 'Save'}
             </Button>
-            <Button variant="ghost" disabled={busy} onClick={() => setEditing(false)}>Cancel</Button>
+            <Button variant="ghost" disabled={busy} onClick={() => { setEditing(false); setSetup(false) }}>Cancel</Button>
           </div>
         </div>
       )}

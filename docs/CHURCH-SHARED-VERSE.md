@@ -641,7 +641,12 @@ own time zone** (saved from the leader's device when the switch is set).
    empty days is recorded as `covered` — already planned, nothing drafted.
 3. **No memo by the cutoff and NO fallback**: nothing is drafted, ever. The
    week is recorded as `no_source`, and Plan and Home say **"No source this
-   week — Autopilot skipped"**. Autopilot never drafts from nothing.
+   week — Autopilot skipped"** (since 2026-10-28, in a quiet line: "Nothing
+   drafted this week…"). Autopilot never drafts from nothing. **Switching it on
+   with no fallback saved opens the fallback chooser first** and turns it on
+   only when that is saved, so a midweek switch-on (after the cutoff, which
+   settles the week at once) drafts this week's empty days instead of recording
+   a skip.
 
 **Skip this week** (`set_church_autopilot_skip`) pauses the current week only
 — a guest speaker, a vacation — and the switch stays on. While skipped:
@@ -685,7 +690,7 @@ need its own credential and argument; it is deliberately not built.
   Generation, not the memo allowance. Everything spent is refunded as in the
   manual path.
 - **The Monday digest carries this line** (0154, `docs/CHURCH-DIGEST.md`):
-  "Week drafted — review" with the range, or "Autopilot skipped", worded by
+  "Week drafted — review" with the range, or "Nothing drafted this week", worded by
   the same builder Home uses.
 
 **Driven in a browser** against a stub that follows these rules:

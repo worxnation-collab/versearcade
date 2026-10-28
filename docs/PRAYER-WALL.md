@@ -199,4 +199,4 @@ the wall's privacy is unchanged.** It stays inside that rule because:
   the only new surface is behind `church_admin_can`.
 
 The foreign keys (erasure cascades) are `0153_church_prayer_list_b.sql`, kept
-apart for the MCP — paste it into the SQL editor.
+apart for the MCP — pasted in the SQL editor and verified on 2026-10-28.

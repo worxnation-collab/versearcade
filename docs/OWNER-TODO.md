@@ -2,12 +2,12 @@
 
 Ordered quickest and highest-payoff first. Where you hand a key or a decision back, Claude does the rest.
 
-## 1. Supabase SQL editor — about 10 minutes
+## 1. Supabase SQL editor — DONE 2026-10-28 (verified)
 Paste each of these files from `supabase/migrations/` into Supabase → SQL Editor, one at a time, and run it. All four are safe to re-run.
-- [ ] `0147_church_co_leaders_b.sql`: until this runs, **Remove / Step down for co-leaders doesn't work.**
-- [ ] `0148_church_auto_week_b.sql`: foreign keys only.
-- [ ] `0149_church_discovery_b.sql`: foreign keys only.
-- [ ] `0153_church_prayer_list_b.sql`: foreign keys only.
+- [x] `0147_church_co_leaders_b.sql`: until this runs, **Remove / Step down for co-leaders doesn't work.**
+- [x] `0148_church_auto_week_b.sql`: foreign keys only.
+- [x] `0149_church_discovery_b.sql`: foreign keys only.
+- [x] `0153_church_prayer_list_b.sql`: foreign keys only.
 - [ ] Optional: the `church_announcements` policies in `docs/CHURCH-PACKAGES.md` → "Production state". Nothing needs them today.
 
 ## 2. Monday digest email — about 20 minutes

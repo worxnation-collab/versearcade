@@ -109,12 +109,10 @@ leadership of a church manages its own leadership from **People → Leaders** on
   or a claim. `church_leader_events` records every grant AND removal (actor,
   target, time) — the half a removed row can't keep. No client reads it; it is
   for the operator, in SQL.
-- **Production state**: part a (`church_leaders`, `grant_church_co_leader`, the
-  events table) is APPLIED. Part b (`0147_church_co_leaders_b.sql` — the
-  removal function and the events table's foreign keys) carries `delete`,
-  which stalls the Supabase MCP, and must be pasted into the SQL editor. Until
-  it is, Remove / Step down answer "That didn't go through" and nothing is
-  removed.
+- **Production state**: both parts are APPLIED. Part b
+  (`0147_church_co_leaders_b.sql` — the removal function and the events
+  table's foreign keys) carries `delete`, which stalls the Supabase MCP, so the
+  owner pasted it into the SQL editor; verified live on 2026-10-28.
 
 ## Leadership sees members by name (0128)
 

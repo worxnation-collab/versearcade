@@ -1730,3 +1730,48 @@ export async function resolveAutopilotFallback(
     },
   }
 }
+
+// ---------------------------------------------------------------------------
+// The pastoral prayer list (0153). Verified leadership of THIS church sees the
+// Prayer Wall notes its current members SIGNED in the last thirty days, newest
+// first, with no count about anybody. `prayed` is the caller's own private
+// mark — not a kneeling: no XP, no lantern, and nobody else ever sees it.
+// ---------------------------------------------------------------------------
+
+export interface PastoralPrayer {
+  id: string
+  category: string
+  line: string | null
+  createdAt: string
+  state: 'open' | 'answered' | 'ended'
+  answeredAt: string | null
+  username: string
+  avatarEmoji: string | null
+  avatarCharacter: any | null
+  prayed: boolean
+}
+
+const pastoralPrayer = (n: any): PastoralPrayer => ({
+  id: String(n?.id ?? ''),
+  category: String(n?.category ?? ''),
+  line: n?.line ? String(n.line) : null,
+  createdAt: String(n?.created_at ?? ''),
+  state: n?.state === 'answered' ? 'answered' : n?.state === 'open' ? 'open' : 'ended',
+  answeredAt: n?.answered_at ? String(n.answered_at) : null,
+  username: String(n?.username ?? ''),
+  avatarEmoji: n?.avatar_emoji ?? null,
+  avatarCharacter: n?.avatar_character ?? null,
+  prayed: n?.prayed === true,
+})
+
+export async function fetchChurchPrayerList(churchId: string): Promise<Res<PastoralPrayer[]>> {
+  const r = await call<{ notes?: unknown[] }>('church_prayer_list', { p_church_id: churchId })
+  if (!r.ok) return r
+  return { ok: true, data: (r.data.notes ?? []).map(pastoralPrayer) }
+}
+
+export async function markChurchPrayer(churchId: string, requestId: string, prayed: boolean): Promise<Res<{ prayed: boolean }>> {
+  const r = await call<{ prayed?: boolean }>('mark_church_prayer', { p_church_id: churchId, p_request_id: requestId, p_prayed: prayed })
+  if (!r.ok) return r
+  return { ok: true, data: { prayed: r.data.prayed === true } }
+}

@@ -68,8 +68,17 @@ export function MissedList({ questions, result, featured = false }: { questions:
             >
               {/* A thin gold ribbon down the left edge: the gift, without a bow. */}
               <span aria-hidden style={{ position: 'absolute', left: 0, top: 8, bottom: 8, width: 3, borderRadius: 3, background: 'var(--gold)', opacity: 0.8 }} />
-              <p style={{ margin: 0, fontSize: 15, fontWeight: 800, lineHeight: 1.3 }}>{q.options[q.answerIndex]}</p>
-              <p style={{ margin: '3px 0 0', fontSize: 13.5, lineHeight: 1.4, color: 'var(--ink)' }}>{q.teach}</p>
+              {/* Most teach lines already name the answer ("This verse is
+                  Matthew 4:4"); printing the answer above them as well makes
+                  the card say the same thing twice, so it leads with the fact. */}
+              {q.teach.toLowerCase().includes(q.options[q.answerIndex].toLowerCase()) ? (
+                <p style={{ margin: 0, fontSize: 14.5, fontWeight: 800, lineHeight: 1.35 }}>{q.teach}</p>
+              ) : (
+                <>
+                  <p style={{ margin: 0, fontSize: 15, fontWeight: 800, lineHeight: 1.3 }}>{q.options[q.answerIndex]}</p>
+                  <p style={{ margin: '3px 0 0', fontSize: 13.5, lineHeight: 1.4, color: 'var(--ink)' }}>{q.teach}</p>
+                </>
+              )}
               <p className="faint" style={{ margin: '3px 0 0', fontSize: 11.5, lineHeight: 1.35 }}>
                 {q.prompt}
                 {p.choiceIndex >= 0 && p.choiceIndex !== q.answerIndex && <> · you said {q.options[p.choiceIndex]}</>}

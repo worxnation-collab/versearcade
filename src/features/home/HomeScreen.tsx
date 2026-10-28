@@ -7,6 +7,8 @@ import { Avatar } from '@/components/Avatar'
 import { XpBar } from '@/components/XpBar'
 import { StreakFlame } from '@/components/StreakFlame'
 import { QuickSheet } from '@/components/QuickSheet'
+import { FirstDropTour, ChurchMoment, ArcadeCue, BibleCue } from './FirstWeekCues'
+import { useChurch } from '@/store/church'
 import { DailyChest } from '@/features/chest/DailyChest'
 import { ChurchWindow } from './ChurchWindow'
 import { MapCompass } from '@/features/map/MapCompass'
@@ -122,7 +124,7 @@ export default function HomeScreen() {
   // re-open it over whatever they moved on to.
   const [searchParams, setSearchParams] = useSearchParams()
   const [wantsChest] = useState(() => searchParams.get('chest') === '1')
-  const [sheet, setSheet] = useState<null | 'chest' | 'lantern' | 'account' | 'week'>(
+  const [sheet, setSheet] = useState<null | 'chest' | 'lantern' | 'account' | 'week' | 'tour' | 'church'>(
     wantsChest ? 'chest' : null,
   )
 
@@ -205,6 +207,50 @@ export default function HomeScreen() {
     // shown last week's numbers instead is the row not working.
     if (recap && !recapSeen && !tutorialOpen && !wantsChest) setSheet('week')
   }, [recap, recapSeen, tutorialOpen, wantsChest])
+
+  // The first week's two one-time sheets (FirstWeekCues.tsx). Each waits for
+  // the tab to be otherwise quiet — no tutorial, no chest asked for by name, no
+  // other sheet up, last week's recap not still waiting to open itself — so
+  // they never stack. The tour is for the moment somebody lands back here
+  // having just finished their FIRST daily verse; the church moment is day 2-3,
+  // online only (a church needs an account), offered to somebody with no church
+  // and, after they've been sent to find one, once more to give into it.
+  const firstDropTourSeen = useSettings((s) => s.firstDropTourSeen)
+  const churchMoment = useSettings((s) => s.churchMoment)
+  const churchLoaded = useChurch((s) => s.loaded)
+  const myChurch = useChurch((s) => s.church)
+  const myGiven = useChurch((s) => s.myGiven)
+  const churchAvailable = useChurch((s) => s.available)
+  const quiet = sheet === null && !tutorialOpen && !wantsChest && !(recap && !recapSeen)
+  const churchPhase: 'find' | 'give' | null =
+    mode !== 'online' || !churchLoaded || churchMoment === 'done' || profile.totalPlays < 2 || profile.totalPlays > 30
+      ? null
+      : churchMoment === 'new' && !myChurch
+        ? 'find'
+        : churchMoment === 'found' && myChurch && myGiven === 0 && churchAvailable > 0
+          ? 'give'
+          : null
+  // Frozen when the sheet opens: giving changes `myGiven`, which would
+  // otherwise unmount the sheet at the exact moment the building grows.
+  const [churchSheetPhase, setChurchSheetPhase] = useState<'find' | 'give'>('find')
+  useEffect(() => {
+    if (!quiet) return
+    if (!firstDropTourSeen && playedToday && profile.totalPlays <= 1) setSheet('tour')
+    else if (churchPhase) {
+      setChurchSheetPhase(churchPhase)
+      setSheet('church')
+    }
+  }, [quiet, firstDropTourSeen, playedToday, profile.totalPlays, churchPhase])
+  // Sent to find a church and came back without one (or already giving): the
+  // moment has had its one go.
+  useEffect(() => {
+    if (churchMoment !== 'found' || !churchLoaded || sheet === 'church') return
+    if (!myChurch || myGiven > 0 || churchAvailable <= 0) setSettings({ churchMoment: 'done' })
+  }, [churchMoment, churchLoaded, myChurch, myGiven, churchAvailable, sheet, setSettings])
+  // A player past their first verse never needs the tour.
+  useEffect(() => {
+    if (!firstDropTourSeen && profile.totalPlays > 1) setSettings({ firstDropTourSeen: true })
+  }, [firstDropTourSeen, profile.totalPlays, setSettings])
 
   // The device's reminders read `playedToday` (a played day's nudge is
   // dropped), so a finished run has to re-plan them. No-op off native.
@@ -322,6 +368,12 @@ export default function HomeScreen() {
       {/* And the way to everywhere else. */}
       <MapCompass />
 
+      {/* Two quiet first-week rows under the compass — never above the daily
+          things. Each renders once its moment is real and retires for good the
+          first time its place is opened. */}
+      <ArcadeCue playedToday={playedToday} totalPlays={profile.totalPlays} />
+      <BibleCue totalPlays={profile.totalPlays} />
+
       {/* ── The buttons ────────────────────────────────────────────────────
           What is left of this screen's old cards, each one tap from its own
           content. Only what is genuinely there renders: no placeholder row, no
@@ -371,6 +423,28 @@ export default function HomeScreen() {
           onClose={() => { useWeekly.getState().markSeen(); setSheet(null) }}
         >
           <WeekRecapBody recap={recap} onClose={() => { useWeekly.getState().markSeen(); setSheet(null) }} />
+        </QuickSheet>
+      )}
+
+      {sheet === 'tour' && (
+        <QuickSheet
+          title="Where to next"
+          onClose={() => { setSettings({ firstDropTourSeen: true }); setSheet(null) }}
+        >
+          <FirstDropTour onDone={() => { setSettings({ firstDropTourSeen: true }); setSheet(null) }} />
+        </QuickSheet>
+      )}
+
+      {sheet === 'church' && (
+        <QuickSheet
+          title="⛪ Your church"
+          onClose={() => { setSettings({ churchMoment: 'done' }); setSheet(null) }}
+        >
+          <ChurchMoment
+            phase={churchSheetPhase}
+            onFind={() => { setSettings({ churchMoment: 'found' }); setSheet(null); navigate('/church') }}
+            onDone={() => { setSettings({ churchMoment: 'done' }); setSheet(null) }}
+          />
         </QuickSheet>
       )}
 

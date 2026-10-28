@@ -5,7 +5,8 @@ import { fetchDays, flaggedCount, type AdminSettings, type LeaderInsights, type 
 import { activeThisWeek } from './InsightsPanel'
 import { SeriesLandingPanel } from './SeriesLandingPanel'
 import { autoWeekFailed, autoWeekRunning } from '@/store/churchAdmin'
-import { autoWeekRange, autoWeekReason, currentAutoWeek, useAutoWeeks } from './autoWeek'
+import { autoWeekFrom, autoWeekRange, autoWeekReason, currentAutoWeek, useAutoWeeks } from './autoWeek'
+import { useAutopilot } from './autopilot'
 import { useJoinInquiries } from './InquiriesSection'
 
 // Home — "This week": what needs a leader, before anything else (2026-10-26).
@@ -93,23 +94,32 @@ export function HomePanel({
   }, [churchId, verified, today])
 
   const rows: Row[] = []
-  const { jobs } = useAutoWeeks(churchId, verified && autoWeeks)
+  const { jobs, reload: reloadJobs } = useAutoWeeks(churchId, verified && autoWeeks)
+  // Autopilot (0152): opening Home is a visit after the cutoff — this is what
+  // settles a due week. A fallback job it made shows up in the jobs above.
+  const { ap } = useAutopilot(churchId, verified && autoWeeks, () => void reloadJobs())
   const job = currentAutoWeek(jobs)
   if (job) {
-    const refs = job.references.join(', ')
+    const from = autoWeekFrom(job)
     if (autoWeekRunning(job)) {
-      rows.push({ key: 'auto', icon: '🎙️', title: `Your week from the sermon on ${refs} is being drafted`, detail: 'Nothing to do yet — it’ll be waiting on Plan. →', go: { tab: 'plan', date: job.startDate } })
+      rows.push({ key: 'auto', icon: job.source === 'fallback' ? '✈️' : '🎙️', title: `Your week from ${from} is being drafted`, detail: 'Nothing to do yet — it’ll be waiting on Plan. →', go: { tab: 'plan', date: job.startDate } })
     } else if (autoWeekFailed(job)) {
-      rows.push({ key: 'auto', icon: '↻', title: `The week from your sermon on ${refs} didn’t finish`, detail: `${autoWeekReason(job)} Retry it from Plan →`, go: { tab: 'plan', date: job.startDate } })
+      rows.push({ key: 'auto', icon: '↻', title: `The week from ${from} didn’t finish`, detail: `${autoWeekReason(job)} Retry it from Plan →`, go: { tab: 'plan', date: job.startDate } })
     } else {
       rows.push({
-        key: 'auto', icon: '✨',
-        title: `Your week from the sermon on ${refs} is ready to review`,
-        detail: `${job.saved.length} draft${job.saved.length === 1 ? '' : 's'}, ${autoWeekRange(job.saved)}${job.flagged ? ` · ⚠ ${job.flagged} to check` : ''}. Review and approve →`,
+        key: 'auto', icon: job.autopilot ? '✈️' : '✨',
+        title: job.autopilot ? 'Week drafted — review' : `Your week from ${from} is ready to review`,
+        detail: `${job.saved.length} draft${job.saved.length === 1 ? '' : 's'}, ${autoWeekRange(job.saved)}${job.autopilot ? `, from ${from}` : ''}${job.flagged ? ` · ⚠ ${job.flagged} to check` : ''}. Nothing is live until you approve it →`,
         go: { tab: 'plan', date: job.saved[0] ?? job.startDate },
       })
     }
+  } else if (ap?.enabled && ap.state === 'no_source') {
+    rows.push({ key: 'autopilot', icon: '✈️', title: 'No source this week — Autopilot skipped', detail: 'No sermon memo arrived and no fallback is set, so nothing was drafted. Set a fallback on Plan →', go: { tab: 'plan', date: today } })
   }
+  // TODO(digest): there is no Monday digest yet. When one is built it carries
+  // this same line — the auto-week row above ("Week drafted — review", with
+  // the range and a link to Plan) or the Autopilot skip line — and nothing else.
+
   if (verified && days) {
     const week = days.slice(0, 7)
     const empty = week.filter((w) => !w.verse)

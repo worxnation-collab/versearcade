@@ -36,6 +36,10 @@ const REASONS: Record<string, string> = {
   no_addon: 'Content Generation isn’t on this church’s plan any more.',
   not_verified: 'The church isn’t verified right now.',
 }
+/** What the week was drafted FROM: the sermon's passages, or Autopilot's fallback (0152). */
+export const autoWeekFrom = (j: AutoWeekJob) =>
+  j.source === 'fallback' ? `your Autopilot fallback “${j.series}”` : `the sermon on ${j.references.join(', ')}`
+
 export const autoWeekReason = (j: AutoWeekJob) =>
   j.stale && j.status !== 'failed' ? 'It stopped partway through.' : REASONS[j.reason ?? ''] ?? 'Something went wrong on our side.'
 
@@ -122,7 +126,7 @@ export function AutoWeekCard({
     await reload()
   }
 
-  const refs = show.references.join(', ')
+  const from = autoWeekFrom(show)
   const running = autoWeekRunning(show)
   const failed = autoWeekFailed(show)
   return (
@@ -134,16 +138,18 @@ export function AutoWeekCard({
     >
       <b style={{ fontSize: 13.5, lineHeight: 1.35 }}>
         {running
-          ? `🎙️ Drafting your week from the sermon on ${refs}…`
+          ? `${show.source === 'fallback' ? '✈️' : '🎙️'} Drafting your week from ${from}…`
           : failed
-            ? `The week from your sermon on ${refs} didn’t finish`
-            : `✨ Your week from the sermon on ${refs} is ready to review`}
+            ? `The week from ${from} didn’t finish`
+            : show.autopilot
+              ? `✈️ Week drafted — review (from ${from})`
+              : `✨ Your week from ${from} is ready to review`}
       </b>
       <span className="dim" style={{ fontSize: 12, lineHeight: 1.45 }}>
         {running
-          ? `${show.status === 'drafting' ? 'Transcribed — now writing the days.' : 'Listening to the recording.'} You can close the app; the drafts will be waiting here.`
+          ? `${show.source === 'fallback' ? 'Writing the days.' : show.status === 'drafting' ? 'Transcribed — now writing the days.' : 'Listening to the recording.'} You can close the app; the drafts will be waiting here.`
           : failed
-            ? `${autoWeekReason(show)} Anything it had used was given back.${show.retryable ? '' : ' Upload the memo again to start over.'}`
+            ? `${autoWeekReason(show)} Anything it had used was given back.${show.retryable ? '' : show.source === 'fallback' ? '' : ' Upload the memo again to start over.'}`
             : `${show.saved.length} draft${show.saved.length === 1 ? '' : 's'}, ${autoWeekRange(show.saved)}, in “${show.series}”.` +
               (show.flagged ? ` ${show.flagged} question${show.flagged === 1 ? '' : 's'} marked ⚠ to check.` : '') +
               ' Nothing is live until you approve it — see step 3.'}

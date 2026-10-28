@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/Button'
 import { useJuice } from '@/juice/useJuice'
-import { pushSupported, pushPermission, enablePush } from '@/lib/push'
+import { pushSupported, pushPermissionNow, enablePush } from '@/lib/push'
 
 // Asking for notifications, at a moment the answer is obviously yes.
 //
@@ -89,6 +89,7 @@ export function PushNudge({ reason, when = true }: { reason: NudgeReason; when?:
   useEffect(() => {
     if (!when) return
     if (!pushSupported()) return
+    let live = true
     // The permission is the whole gate, and it's synchronous.
     //
     // 'granted' means they already have a subscription; 'denied' is the
@@ -98,11 +99,15 @@ export function PushNudge({ reason, when = true }: { reason: NudgeReason; when?:
     // at all if registration failed, and a hung promise would leave this
     // rendering nothing forever — silently disabling the one prompt that
     // exists to fix a push-subscription count of 1.
-    if (pushPermission() !== 'default') return
-    const st = readState()
-    if (st.count >= MAX_ASKS) return
-    if (Date.now() - st.last < WEEK) return
-    setShow(true)
+    // (On iOS the permission is APNs's and is read asynchronously; it never hangs.)
+    void pushPermissionNow().then((perm) => {
+      if (!live || perm !== 'default') return
+      const st = readState()
+      if (st.count >= MAX_ASKS) return
+      if (Date.now() - st.last < WEEK) return
+      setShow(true)
+    })
+    return () => { live = false }
   }, [when])
 
   if (!show) return null

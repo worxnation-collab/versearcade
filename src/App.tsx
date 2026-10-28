@@ -9,7 +9,7 @@ import { useReminders } from './store/reminders'
 import { useSeason } from './store/season'
 import { useCatalog } from './store/catalog'
 import { useJuiceSync } from './juice/useJuice'
-import { initNative } from './lib/native'
+import { initNative, refreshPushToken } from './lib/native'
 
 import Landing from './pages/Landing'
 import Onboarding from './features/onboarding/Onboarding'
@@ -219,8 +219,16 @@ export default function App() {
   const init = useAuth((s) => s.init)
   const ready = useAuth((s) => s.ready)
   const mode = useAuth((s) => s.mode)
+  const profileId = useAuth((s) => s.profile?.id)
   const navigate = useNavigate()
   useJuiceSync()
+
+  // iOS remote push: hand the server a fresh APNs token for whoever is signed
+  // in, on every sign-in. Silent — it only re-registers when the permission
+  // is already granted and never shows the OS prompt (PushNudge / Settings do).
+  useEffect(() => {
+    if (ready && mode === 'online' && profileId) void refreshPushToken()
+  }, [ready, mode, profileId])
 
   // Pull buddy requests once the account is up, app-wide rather than on the You
   // tab. The nav dot has to be able to say "someone is waiting" from the Play
@@ -280,7 +288,7 @@ export default function App() {
       // Back in the foreground: rebuild the reminder plan against the current
       // review state and roll the horizon forward.
       void useReminders.getState().reschedule()
-    })
+    }, (path) => navigate(path))
   }, [init, navigate])
 
   if (!ready) return <Splash />

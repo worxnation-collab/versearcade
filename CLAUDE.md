@@ -2740,8 +2740,8 @@ secret and the sending domain is verified).
 Before it, `0156` (five leadership tools in one migration —
 `church_check_ins.pushed_at` + `church_check_in_push_claim(sender, church,
 username)` (service_role; `push-send`'s new `check_in` action pushes a note
-the CALLER sent that member in the last fifteen minutes, once; native APNs is
-still unwired, see docs/NATIVE-PUSH.md); `church_quiet_series` (verified
+the CALLER sent that member in the last fifteen minutes, once; it reaches iOS
+too since native APNs was wired on 2026-10-28, see docs/NATIVE-PUSH.md); `church_quiet_series` (verified
 leadership: the series in focus and the current members not engaged with it,
 0150's definition, drawn only inside the quiet fold); `my_church_group_quiet`
 and `send_group_check_in` (a group leader's own members with no play in seven

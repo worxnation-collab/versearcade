@@ -2,10 +2,10 @@
 // fine on the web. Wires status bar, splash hide, deep links, and the
 // foreground callback that reminders hang off.
 //
-// The daily verse and study nudges are LOCAL notifications now (lib/reminders),
+// The daily verse and study nudges are LOCAL notifications (lib/reminders),
 // scheduled on the device because their content is deterministic. Remote push
-// is still unbuilt and is only needed for things another human triggers —
-// battle invites — which is what registerPush below is a placeholder for.
+// (APNs, iOS only) carries what another human triggers — a church check-in
+// note, an operator broadcast — and is registerPush below plus push-send.
 
 import { Capacitor } from '@capacitor/core'
 import { StatusBar, Style } from '@capacitor/status-bar'
@@ -14,7 +14,11 @@ import { App as CapApp } from '@capacitor/app'
 import { PushNotifications } from '@capacitor/push-notifications'
 import { supabase } from './supabase'
 
-export async function initNative(onDeepLink?: (url: string) => void, onResume?: () => void) {
+export async function initNative(
+  onDeepLink?: (url: string) => void,
+  onResume?: () => void,
+  onPushOpen?: (path: string) => void,
+) {
   if (!Capacitor.isNativePlatform()) return
   try {
     await StatusBar.setStyle({ style: Style.Dark })
@@ -36,34 +40,69 @@ export async function initNative(onDeepLink?: (url: string) => void, onResume?: 
   CapApp.addListener('appStateChange', ({ isActive }) => {
     if (isActive) onResume?.()
   })
+  // Tapping a remote notification opens the screen it names. push-send puts a
+  // root-relative `url` beside `aps`; anything else is ignored rather than
+  // navigated to, since the payload is the one string here a server wrote.
+  if (nativePushPlatform()) {
+    void PushNotifications.addListener('pushNotificationActionPerformed', (a) => {
+      const url = a.notification?.data?.url
+      if (typeof url === 'string' && url.startsWith('/') && !url.startsWith('//')) onPushOpen?.(url)
+    })
+  }
 }
 
 /**
- * APNs/FCM device-token registration.
+ * Remote push is iOS only. Android would need Firebase (google-services.json),
+ * which is not set up, and PushNotifications.register() without it crashes the
+ * app — so Android never reaches register().
+ */
+export function nativePushPlatform(): boolean {
+  return Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'ios'
+}
+
+/** 'prompt' | 'granted' | 'denied', or null off iOS. Never prompts. */
+export async function nativePushPermission(): Promise<'prompt' | 'granted' | 'denied' | null> {
+  if (!nativePushPlatform()) return null
+  try {
+    const s = await PushNotifications.checkPermissions()
+    return s.receive === 'granted' ? 'granted' : s.receive === 'denied' ? 'denied' : 'prompt'
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Re-register silently when permission is ALREADY granted, so the server holds
+ * a fresh token for whoever is signed in now. iOS can reissue a token, and the
+ * reminders' local-notification permission is the same iOS permission — so a
+ * player who allowed reminders gets remote push with no second prompt. Never
+ * asks: with no permission it does nothing.
+ */
+export async function refreshPushToken(): Promise<void> {
+  if ((await nativePushPermission()) !== 'granted') return
+  await registerPush()
+}
+
+/**
+ * APNs device-token registration (iOS).
  *
  * Deliberately NOT what powers the daily verse or study nudges; those are local
- * (lib/reminders.ts) and need none of this. What this is for is the things
- * another human triggers — a battle invite, a buddy request being accepted —
- * where only a server can deliver the message.
+ * (lib/reminders.ts). This is for what another human triggers, where only a
+ * server can deliver the message — push-send reads device_tokens and signs for
+ * APNs. The App ID capability, the APNs key and the aps-environment
+ * entitlement (codemagic.yaml, written only when the profile carries it) are
+ * docs/NATIVE-PUSH.md.
  *
- * The client half is now real: it asks, registers, and persists the token via
- * save_device_token (0054). The rest is not, and cannot be done from a repo:
+ * It must NOT be called on startup for a player who hasn't granted permission:
+ * `requestPermissions()` is the OS dialog, iOS offers it once, and it belongs
+ * to a deliberate opt-in (PushNudge, the Settings toggle). refreshPushToken is
+ * the startup path and never prompts.
  *
- *   · an APNs auth key from the Apple Developer account
- *   · the Push Notifications capability on the App ID
- *   · the aps-environment entitlement patched into the Xcode project that
- *     `cap add ios` regenerates on every build (codemagic.yaml)
- *   · an Edge Function that signs for APNs and reads device_tokens
- *
- * See docs/NATIVE-PUSH.md. Until those exist this must NOT be called on
- * startup: `register()` triggers the OS permission dialog, iOS only offers it
- * once, and spending it on notifications nothing can deliver wastes it for
- * good. Call it from a deliberate opt-in, the way PushNudge does on the web.
- *
- * Returns the token on success, or null if unsupported, denied, or unfinished.
+ * Returns the token on success, or null if unsupported, denied, or unfinished
+ * (a build without the entitlement never calls back; the timeout covers it).
  */
 export async function registerPush(): Promise<string | null> {
-  if (!Capacitor.isNativePlatform()) return null
+  if (!nativePushPlatform()) return null
 
   try {
     // checkPermissions first: 'denied' is final on iOS and requesting again
@@ -76,15 +115,18 @@ export async function registerPush(): Promise<string | null> {
 
     // registration fires asynchronously after register() — wrap it so callers
     // get a plain awaitable token instead of having to wire listeners.
+    // Listeners are removed once it settles, or every call would stack another.
     const token = await new Promise<string | null>((resolve) => {
       let settled = false
+      const handles: Promise<{ remove: () => Promise<void> }>[] = []
       const done = (v: string | null) => {
         if (settled) return
         settled = true
+        for (const h of handles) void h.then((x) => x.remove()).catch(() => {})
         resolve(v)
       }
-      void PushNotifications.addListener('registration', (t) => done(t.value))
-      void PushNotifications.addListener('registrationError', () => done(null))
+      handles.push(PushNotifications.addListener('registration', (t) => done(t.value)))
+      handles.push(PushNotifications.addListener('registrationError', () => done(null)))
       void PushNotifications.register()
       // A device with no APNs capability never calls back at all; don't hang.
       setTimeout(() => done(null), 15000)
@@ -92,13 +134,17 @@ export async function registerPush(): Promise<string | null> {
     if (!token) return null
 
     if (supabase) {
-      await supabase.rpc('save_device_token', {
+      // Awaited and checked: a postgrest builder sends nothing until awaited,
+      // and a token the server never stored is a phone that never rings.
+      const { error } = await supabase.rpc('save_device_token', {
         p_token: token,
         p_platform: Capacitor.getPlatform() === 'android' ? 'android' : 'ios',
         // Debug builds get sandbox tokens, which 400 against production APNs.
         p_environment: import.meta.env.DEV ? 'development' : 'production',
       })
+      if (error) return null
     }
+    try { localStorage.setItem('va.apnsToken', token) } catch { /* only a hint for Settings */ }
     return token
   } catch {
     return null

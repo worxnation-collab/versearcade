@@ -17,21 +17,12 @@ Paste each of these files from `supabase/migrations/` into Supabase → SQL Edit
   - send it Tuesday, or
   - move the default cutoff to Sunday night.
 
-## 3. Native push for the iOS app (`docs/NATIVE-PUSH.md`) — about 45 minutes, plus one build
-These steps need your Apple account:
-- [ ] Apple Developer → Keys → **+** → tick APNs → download the `.p8` (**it can only be downloaded once**). Write down the Key ID and your Team ID.
-- [ ] Apple Developer → Identifiers → `com.versearcade.app` → tick **Push Notifications** → Save.
-- [ ] Regenerate the provisioning profile after that change, so Codemagic picks it up.
-- [ ] Put the `.p8` contents, Key ID and Team ID in Supabase secrets (names below). **Never paste them into chat or a file.** Then tell Claude they're set.
-
-After that, Claude will:
-- patch the `aps-environment` entitlement into `codemagic.yaml`;
-- build the APNs sender (`push-send` already has the spot marked);
-- turn on the opt-in, followed by one test build.
-
-Suggested secret names: `APNS_KEY_P8`, `APNS_KEY_ID`, `APNS_TEAM_ID`.
-
-Check-ins already push to anyone on web push. Until this is done, the App Store build gets in-app notes only.
+## 3. Native push for the iOS app (`docs/NATIVE-PUSH.md`) — Apple side DONE 2026-10-28
+- [x] APNs key made, `.p8` downloaded, Key ID + Team ID recorded.
+- [x] Push Notifications ticked on `com.versearcade.app`; the stale App Store profile removed.
+- [x] `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_KEY_P8` set as Supabase function secrets.
+- [x] Code: APNs sender in `push-send`, the AppDelegate hooks + `aps-environment` entitlement in `codemagic.yaml`, the opt-in (PushNudge + Settings → Notes and news) and a silent token refresh on sign-in.
+- [ ] **One Codemagic build**, then on your phone: install from TestFlight, sign in, Settings → turn on "Notes and news". Then Admin → Push → send yourself a test. The build log should say "OK: profile carries Push Notifications".
 
 ## 4. Verified Church plan through Apple (`docs/APPLE-IAP.md` → "Church plan")
 The code is merged. It stays invisible until these are done:

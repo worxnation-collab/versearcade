@@ -132,6 +132,12 @@
 //   POST { mode: 'auto_week_retry', church_id, job } → { ok: true, job }
 // Nothing is approved here, ever: the leader reviews the drafts on Plan.
 //
+// AUTOPILOT (0152): POST { mode: 'autopilot_tick', church_id } → the church's
+// Autopilot state; past the cutoff with no memo it claims the week and runs a
+// FALLBACK job (the pastor's saved topic/passage) through the auto-week stages
+// below — no transcription, only the week, only empty days inside the week's
+// window. `auto_week` takes `autopilot: true` and refuses a skipped week.
+//
 // TOPIC MODE (study-topic week): POST { mode: 'topic', church_id, topic, book?, api? }
 //   →  { ok: true, series, passages: string[], left } | { ok: false, reason }
 // References only: up to three short single-chapter passages and a series
@@ -178,7 +184,7 @@ const STATUS: Record<string, number> = {
   bad_memo: 422, memo_format: 415, memo_too_big: 413, memo_too_long: 413, memo_missing: 404, memo_silent: 422,
   memo_limit: 429, transcribe_failed: 502, no_open_days: 409, not_failed: 409, not_found: 404,
   not_authenticated: 401, not_leadership: 403, not_verified: 403, no_addon: 403,
-  not_saved: 409,
+  not_saved: 409, autopilot_paused: 409,
   limit: 429,
   draft_failed: 502,
   model_busy: 503,
@@ -1210,6 +1216,10 @@ type AutoJob = {
   id: string; church_id: string; created_by: string | null; status: string; memo_path: string | null
   transcript: string | null; series: string; passages: unknown; guidance: string | null
   start_date: string; days: number; updated_at: string
+  /** 'memo' (0148) or 'fallback' (Autopilot's topic/passage, 0152: no recording, no transcript). */
+  source?: string | null
+  /** A fallback drafts only inside its week: no date after this one. */
+  window_end?: string | null
 }
 
 async function autoJob(id: string): Promise<AutoJob | null> {
@@ -1267,8 +1277,8 @@ async function nextStage(job: string, authHeader: string): Promise<void> {
   await runAutoStage(job, authHeader)
 }
 
-/** The first `n` dates from `start` with nothing at all on them (no live day, no draft). */
-async function openDates(authHeader: string, churchId: string, start: string, n: number): Promise<string[] | null> {
+/** The first `n` dates from `start` with nothing at all on them (no live day, no draft), none after `until`. */
+async function openDates(authHeader: string, churchId: string, start: string, n: number, until?: string | null): Promise<string[] | null> {
   const { data, error } = await asCaller(authHeader).rpc('church_verses_range', { p_church_id: churchId, p_from: start, p_days: AUTO_LOOKAHEAD })
   const d = data as { ok?: boolean; days?: Array<{ drop_date?: string }> } | null
   if (error || !d?.ok) return null
@@ -1277,6 +1287,7 @@ async function openDates(authHeader: string, churchId: string, start: string, n:
   const base = Date.parse(`${start}T00:00:00Z`)
   for (let i = 0; i < AUTO_LOOKAHEAD && out.length < n; i++) {
     const day = new Date(base + i * 86_400_000).toISOString().slice(0, 10)
+    if (until && day > until) break
     if (!taken.has(day)) out.push(day)
   }
   return out
@@ -1287,7 +1298,8 @@ async function runAutoStage(id: string, authHeader: string): Promise<void> {
   const job = await autoJob(id)
   if (!job || job.status === 'done' || job.status === 'failed') return
 
-  if (!job.transcript) {
+  // An Autopilot fallback (0152) has no recording: it starts at the week.
+  if (!job.transcript && job.source !== 'fallback') {
     if (!job.memo_path) return autoSet(id, { status: 'failed', reason: 'memo_missing' })
     if (!(await claim(job, { status: 'transcribing', reason: null }))) return
     const t = await inner((reply) => handleTranscribe({ church_id: job.church_id, path: job.memo_path }, authHeader, reply, Date.now()))
@@ -1301,7 +1313,7 @@ async function runAutoStage(id: string, authHeader: string): Promise<void> {
   }
 
   if (!(await claim(job, { status: 'drafting', reason: null }))) return
-  const dates = await openDates(authHeader, job.church_id, job.start_date, job.days)
+  const dates = await openDates(authHeader, job.church_id, job.start_date, job.days, job.window_end)
   if (!dates) return autoSet(id, { status: 'failed', reason: 'unavailable' })
   if (dates.length < WEEK_MIN) return autoSet(id, { status: 'failed', reason: 'no_open_days' })
   const w = await inner((reply) => handleWeek({
@@ -1337,10 +1349,17 @@ async function handleAutoWeek(body: Record<string, unknown>, authHeader: string,
   if (error || !g?.ok) return reply({ ok: false, reason: error ? 'unavailable' : String(g?.reason ?? 'unavailable') })
   const uid = await callerId(authHeader)
   if (!uid) return reply({ ok: false, reason: 'not_authenticated' })
+  // Autopilot (0152) asked for this one: not in a week the pastor skipped. A
+  // memo the leader ticked by hand is their own call and is never refused here.
+  const autopilot = body.autopilot === true
+  if (autopilot) {
+    const { data: paused } = await admin().rpc('church_autopilot_paused', { p_church_id: churchId })
+    if (paused === true) return reply({ ok: false, reason: 'autopilot_paused' })
+  }
 
   const { data: row, error: insErr } = await admin().from('church_auto_weeks').insert({
     church_id: churchId, created_by: uid, status: 'queued', memo_path: path, series,
-    passages: body.passages, guidance, start_date: start, days,
+    passages: body.passages, guidance, start_date: start, days, source: 'memo', autopilot,
   }).select('id').single()
   if (insErr || !row) {
     console.warn('church-draft auto insert', insErr?.message)
@@ -1370,18 +1389,50 @@ async function handleAutoRetry(body: Record<string, unknown>, authHeader: string
   if (!/^[0-9a-f-]{36}$/i.test(id) || !/^[0-9a-f-]{36}$/.test(churchId)) return reply({ ok: false, reason: 'bad_input' })
   const job = await autoJob(id)
   if (!job || job.church_id !== churchId) return reply({ ok: false, reason: 'not_found' })
-  const { data, error } = await asCaller(authHeader).rpc('church_memo_can', { p_church_id: churchId })
+  // A fallback has no memo to transcribe, so the memo allowance doesn't gate
+  // its retry — only Content Generation does (the week call spends the units).
+  const fallback = job.source === 'fallback'
+  const { data, error } = await asCaller(authHeader).rpc(fallback ? 'church_autopilot' : 'church_memo_can', { p_church_id: churchId })
   const g = data as { ok?: boolean; reason?: string } | null
   if (error || !g?.ok) return reply({ ok: false, reason: error ? 'unavailable' : String(g?.reason ?? 'unavailable') })
   const uid = await callerId(authHeader)
   if (!uid) return reply({ ok: false, reason: 'not_authenticated' })
   const lost = job.status !== 'done' && job.status !== 'failed' && Date.now() - Date.parse(job.updated_at) > AUTO_STALE_MS
   if (job.status !== 'failed' && !lost) return reply({ ok: false, reason: 'not_failed' })
-  if (!job.transcript && !job.memo_path) return reply({ ok: false, reason: 'memo_missing' })
+  if (!fallback && !job.transcript && !job.memo_path) return reply({ ok: false, reason: 'memo_missing' })
   // The retrying leader's token runs it from here (and owns the next step).
   await autoSet(id, { status: 'queued', reason: null, created_by: uid, seen_at: null })
   const res = reply({ ok: true, job: id })
   await later(runAutoStage(id, authHeader))
+  return res
+}
+
+// ---------------------------------------------------------------------------
+// Autopilot (0152): POST { mode: 'autopilot_tick', church_id }
+//
+// There is no cron here, so the cutoff is noticed by the first visit from the
+// church's leadership after it: the dashboard and the church tab call this on
+// load. It reads `church_autopilot` AS THE CALLER (Content Generation gate),
+// and only when the week is 'due' asks the service-role claim to settle it —
+// once per church per week, by a primary key. A claimed fallback is an
+// ordinary 0148 job with `source: 'fallback'` and runs through `runAutoStage`
+// like any other: the same week call, the caller's units, the refunds, the
+// answer check, drafts only. Answers the state either way.
+// ---------------------------------------------------------------------------
+async function handleAutopilotTick(body: Record<string, unknown>, authHeader: string, reply: Reply): Promise<Response> {
+  const churchId = String(body.church_id ?? '').toLowerCase()
+  if (!/^[0-9a-f-]{36}$/.test(churchId)) return reply({ ok: false, reason: 'bad_input' })
+  const { data, error } = await asCaller(authHeader).rpc('church_autopilot', { p_church_id: churchId })
+  const st = data as Record<string, unknown> | null
+  if (error || !st) return reply({ ok: false, reason: 'unavailable' })
+  if (st.ok === false || st.state !== 'due') return reply(st)
+  const uid = await callerId(authHeader)
+  if (!uid) return reply({ ok: false, reason: 'not_authenticated' })
+  const { data: claimed, error: cErr } = await admin().rpc('church_autopilot_claim', { p_church_id: churchId, p_user: uid })
+  const c = claimed as Record<string, unknown> | null
+  if (cErr || !c) return reply({ ok: false, reason: 'unavailable' })
+  const res = reply({ ok: true, ...c })
+  if (c.run === true && typeof c.job_id === 'string') await later(runAutoStage(c.job_id, authHeader))
   return res
 }
 
@@ -1408,6 +1459,7 @@ Deno.serve(async (req) => {
     if (body.mode === 'auto_week') return await handleAutoWeek(body, auth, reply)
     if (body.mode === 'auto_week_step') return await handleAutoStep(body, auth, reply)
     if (body.mode === 'auto_week_retry') return await handleAutoRetry(body, auth, reply)
+    if (body.mode === 'autopilot_tick') return await handleAutopilotTick(body, auth, reply)
     return await handleOne(body, auth, reply, started)
   } catch (e) {
     console.error('church-draft', (e as Error).message)

@@ -10,6 +10,7 @@ import type { ChurchExtras } from '@/types/churchPackages'
 import type { Church } from '@/types'
 import { LeaderBeside } from './LeaderBeside'
 import { MyGroupCard } from './MyGroupCard'
+import { tickAutopilot } from './admin/autopilot'
 
 // The member's church, as a PLACE PEOPLE ARE (0128) — the top of the Church tab
 // for a member of a VERIFIED church, between the churchyard and Give:
@@ -49,6 +50,13 @@ export function ChurchLife({ church, extras }: { church: Church; extras: ChurchE
   const [week, setWeek] = useState<ChurchWeek | null>(null)
 
   const verified = !!extras?.verified
+
+  // Autopilot (0152) has no cron: a leader opening their church tab is one of
+  // the visits that notices a passed cutoff. The server decides everything —
+  // a church without the package, or before the cutoff, changes nothing.
+  useEffect(() => {
+    if (verified && extras?.isAdmin) tickAutopilot(church.id)
+  }, [verified, extras?.isAdmin, church.id])
 
   useEffect(() => {
     if (!verified) return

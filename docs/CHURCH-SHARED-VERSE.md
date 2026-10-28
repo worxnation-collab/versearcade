@@ -542,8 +542,10 @@ Monday the week is sitting on Plan as drafts waiting for approval. No draft
 button, no waiting on a spinner.
 
 **How a leader starts it.** Plan → *Your sermon*. Under the memo buttons sits
-**✨ Draft my week for me**, ticked by default whenever the church holds
-Content Generation. The passage they preached is the one thing it needs before
+**✨ Draft my week for me**. Since Autopilot (0152, below) it is ticked by
+default only while **Autopilot is on** (and not skipped this week); with
+Autopilot off it starts unticked, so nothing is automatic unless the pastor
+ticks it for that one memo. The passage they preached is the one thing it needs before
 the upload (the memo refuses to send without it and says so), plus the series
 name (the reference if left blank), the start date and the number of days the
 form already has.
@@ -598,3 +600,107 @@ carried, the second invocation, a busy week stage refunded with the transcript
 kept and a retry that doesn't re-transcribe, a busy transcription keeping the
 upload, and the gates.
 
+
+## Autopilot (0152)
+
+**The week drafts itself, and waits for the pastor.** Autopilot is the 0148
+loop made standing: one switch on Plan (`AutopilotCard`, top of the tab),
+stored per church in `church_autopilot`, **default off**. It removes the "now
+press draft" step and keeps every human review. It is the Content Generation
+package's, so every RPC behind it is `church_gen_can`: verified leadership of
+that church with the add-on. A free claim, an unverified church or a church
+without the add-on never sees the switch.
+
+**What it does each week.** A week runs **Sunday to Saturday in the church's
+own time zone** (saved from the leader's device when the switch is set).
+
+1. **A sermon memo arrives.** With Autopilot on, Plan → *Your sermon* ticks
+   "✈️ Autopilot: draft my week from this memo" by itself. Sending the memo
+   queues the 0148 job (`autopilot: true`) — the same transcription, the same
+   week call, the same allowances and refunds. The passage preached is still
+   required before the upload: scripture only ever comes from passages a
+   person named. Any memo job made this week (Autopilot's or one ticked by
+   hand) means the sermon arrived, and the fallback never fires.
+2. **No memo by the CUTOFF** — Monday 9:00 PM unless the pastor sets another
+   day and time — **and a FALLBACK is set**: the week is drafted from the
+   fallback instead. The fallback is a **topic** or **one passage**, resolved
+   to BSB verses **when it is saved**, exactly as the topic and passage
+   sources do. A curated topic costs nothing; any other topic spends one unit
+   on `church-draft`'s topic mode, once, at save time. Saving only the switch
+   or the cutoff sends `"keep"` and never re-resolves. The fallback is the
+   same 0148 job row with `source: 'fallback'`. It skips transcription and
+   runs the ordinary `week` call:
+   - one of the 30 daily units per day;
+   - refunds for every day not saved;
+   - the blind answer check;
+   - every day saved as a DRAFT.
+
+   It fills the seven days after the cutoff's day (from today, if the first
+   visit comes later), and **only the empty ones inside that window**. A live
+   day or a waiting draft is never touched, and a window with fewer than two
+   empty days is recorded as `covered` — already planned, nothing drafted.
+3. **No memo by the cutoff and NO fallback**: nothing is drafted, ever. The
+   week is recorded as `no_source`, and Plan and Home say **"No source this
+   week — Autopilot skipped"**. Autopilot never drafts from nothing.
+
+**Skip this week** (`set_church_autopilot_skip`) pauses the current week only
+— a guest speaker, a vacation — and the switch stays on. While skipped:
+- the memo box starts unticked;
+- the cutoff claims nothing;
+- `church-draft` refuses an Autopilot memo job with `autopilot_paused`.
+
+A memo the pastor ticks by hand is their own call and is never refused.
+**Undo** restores the week.
+
+**Nothing goes live without the pastor.** Every day Autopilot writes is a
+draft. Approval is the unchanged 0127/0129 path: `DraftReview`, a ⚠ day
+holding "Approve all" back. There is no auto-approve, and no setting adds one.
+
+**How the cutoff is noticed — there is no cron.** This project has none (the
+rivalry's rule: opening the app IS the scheduler).
+- `church-draft` `autopilot_tick` is sent on load by the leadership dashboard
+  (Home and Plan) and by a leader's church tab (`ChurchLife`).
+- It reads `church_autopilot` **as that leader**. Only when the state is
+  `due` does it call `church_autopilot_claim` (service_role), which settles
+  the week **once per church per week** by the primary key of
+  `church_autopilot_weeks`.
+- The job then runs with that leader's token, so the units are spent and
+  refunded as theirs, exactly as when they press Draft.
+
+So the fallback lands on the first leadership visit after the cutoff and takes
+about a minute — Plan polls and turns from "drafting" to "ready" by itself. A
+true schedule (pg_cron, or an Actions job with a service credential) would
+need its own credential and argument; it is deliberately not built.
+
+**Where the pastor hears about it.**
+- Home's "This week" list leads with **"Week drafted — review"** (the range,
+  where it came from, the ⚠ count), which opens Plan.
+- When the week was skipped for want of a source, Home shows the skip line
+  instead.
+- Plan's card says where the week stands: waiting (with the cutoff and what
+  happens then), memo in, drafted from the fallback, skipped (paused), no
+  source, or already planned.
+- A failed fallback is the same Retry as a failed memo week. It keeps its
+  passages, so it is always retryable, and its retry is gated on Content
+  Generation, not the memo allowance. Everything spent is refunded as in the
+  manual path.
+- **The Monday digest does not exist yet.** HomePanel carries a `TODO(digest)`
+  naming the one line it should carry.
+
+**Driven in a browser** against a stub that follows these rules:
+- **Off:** no tick claims anything, the memo box starts unticked, and a memo
+  only fills the transcript box.
+- **On + memo:** the job is queued as Autopilot's, Home leads with "Week
+  drafted — review", and Approve all puts the days live.
+- **On + no memo + a topic fallback:** the topic resolved to John 15:1-8 at
+  save time; opening the dashboard after the cutoff claimed the week once and
+  seven drafts waited for review.
+- **On + no memo + no fallback:** the skip line on Home and Plan, no job and
+  no drafts.
+- **Skip this week:** the box unticked, a memo sent made no week, the cutoff
+  claimed nothing, and a forced Autopilot job was refused `autopilot_paused`.
+
+`npm run check:church-draft` covers the server half against the real handler:
+off, waiting, no source, a fallback drafted only on empty days inside its
+window, no second claim, a failed fallback refunded and retried past the memo
+cap, the paused refusal, and the gate.

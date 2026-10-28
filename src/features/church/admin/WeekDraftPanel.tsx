@@ -17,6 +17,7 @@ import {
   WEEK_PASSAGES_MAX,
   type VerseBackend,
   type WeekDay,
+  type Autopilot,
 } from '@/store/churchAdmin'
 import { AllowanceLine, ENGINE_REASONS, outcomeText, recoverLanded } from './weekRun'
 import { TranscriptMeter, transcriptNote } from './transcript'
@@ -93,9 +94,12 @@ export function WeekDraftPanel({
   source = 'sermon',
   embedded = false,
   onQueued,
+  autopilot,
 }: {
   /** A memo was handed to the server to draft the week (0148). */
   onQueued?: () => void
+  /** The church's Autopilot (0152): on, the memo box starts ticked and the job is Autopilot's. */
+  autopilot?: Autopilot | null
   churchId: string
   backend: VerseBackend
   today: string
@@ -149,7 +153,12 @@ export function WeekDraftPanel({
   const notesOk = !!transcript.trim() || !!focus
   // Record Sunday, review Monday: the memo drafts its own week (0148).
   const canAuto = !passageOnly && !!backend.autoWeek
-  const [autoOn, setAutoOn] = useState(true)
+  // With Autopilot on (0152) the box starts ticked and the job is Autopilot's;
+  // off — or in a week the pastor skipped — it starts unticked, so nothing is
+  // automatic unless they tick it for this one memo.
+  const pilotOn = !!autopilot?.enabled && autopilot.state !== 'paused'
+  const [autoPick, setAutoOn] = useState<boolean | null>(null)
+  const autoOn = autoPick ?? pilotOn
   // Discussion questions for small groups (0151): an add-on to the week, off by default.
   const [withDiscussion, setWithDiscussion] = useState(false)
   const auto = canAuto && autoOn
@@ -162,7 +171,7 @@ export function WeekDraftPanel({
     if (bad) return { ok: false as const, reason: bad.reason }
     const passages = resolved.map((r) => (r as { ok: true; data: { reference: string; verses: { n: number; text: string }[] } }).data)
     if (scriptureChars(passages) > SCRIPTURE_CHARS_MAX) return { ok: false as const, reason: 'bad_passages' }
-    const r = await backend.autoWeek!(churchId, { path: up.path, series: autoSeries!, passages, start, days, guidance })
+    const r = await backend.autoWeek!(churchId, { path: up.path, series: autoSeries!, passages, start, days, guidance, autopilot: pilotOn && autoOn })
     if (!r.ok) return { ok: false as const, reason: r.reason }
     juice.select?.()
     onQueued?.()
@@ -254,7 +263,7 @@ export function WeekDraftPanel({
         <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, lineHeight: 1.45, cursor: 'pointer' }}>
           <input type="checkbox" checked={autoOn} onChange={(e) => setAutoOn(e.target.checked)} style={{ marginTop: 2, width: 16, height: 16, flexShrink: 0 }} />
           <span>
-            <b>✨ Draft my week for me</b>{' '}
+            <b>{pilotOn ? '✈️ Autopilot: draft my week from this memo' : '✨ Draft my week for me'}</b>{' '}
             <span className="dim">
               — send the memo and close the app. We transcribe it and draft the first {days} open days from {pretty(start)} as drafts waiting for you on Plan.
               Add the passage below first.

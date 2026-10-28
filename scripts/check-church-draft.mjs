@@ -35,7 +35,7 @@ const env = { SUPABASE_URL: SB, SUPABASE_ANON_KEY: 'anon', SUPABASE_SERVICE_ROLE
 globalThis.Deno = { env: { get: (k) => env[k] }, serve: (h) => { handler = h } }
 
 // --- fake database ---------------------------------------------------------
-const db = { used: 0, cap: 30, gate: 'ok', verses: {}, runs: [], refunds: [] }
+const db = { used: 0, cap: 30, gate: 'ok', verses: {}, runs: [], refunds: [], ap: { state: 'off', fallback: false, paused: false, claims: 0, from: '', to: '' } }
 const today = new Date().toISOString().slice(0, 10)
 const rpc = {
   use_church_draft_units: ({ p_units }) => {
@@ -54,6 +54,20 @@ const rpc = {
     return { ok: true, drop_date: a.p_drop_date, status: 'draft' }
   },
   tiktok_gemini_key: () => 'vault-key',
+  // Autopilot (0152): the state read (as the caller), the service claim and the pause check.
+  church_autopilot: () => (db.gate !== 'ok' ? { ok: false, reason: db.gate } : { ok: true, state: db.ap.state }),
+  church_autopilot_claim: ({ p_church_id, p_user }) => {
+    if (db.ap.state !== 'due') return { state: db.ap.state, run: false }
+    db.ap.claims++
+    if (!db.ap.fallback) { db.ap.state = 'no_source'; return { state: 'no_source', run: false } }
+    const id = `00000000-0000-4000-8000-${String(++jobN).padStart(12, '0')}`
+    jobs.set(id, { id, church_id: p_church_id, created_by: p_user, status: 'queued', source: 'fallback', autopilot: true, memo_path: null, transcript: null,
+      series: 'Abiding', passages, guidance: 'Stay with abiding this week.', start_date: db.ap.from, days: 7, window_end: db.ap.to,
+      saved: [], flagged: 0, reason: null, updated_at: new Date().toISOString() })
+    db.ap.state = 'fallback'
+    return { state: 'fallback', run: true, job_id: id }
+  },
+  church_autopilot_paused: () => db.ap.paused,
   // Discussion questions (0151): only on a day that exists.
   set_church_discussion: (a) => {
     if (!db.verses[a.p_drop_date]) return { ok: false, reason: 'no_day' }
@@ -436,6 +450,46 @@ check('discussion: not asked = not saved, no discussed key', r.body.ok && Object
 reset(); gemini = [{ questions: five(), note: 'n', discussion: ['What is Jesus asking of His friends here?', 'How could you remain in Him tomorrow?'] }, { items: [] }]
 r = await call({ church_id: CH, reference: 'John 15:5', text: V[5], api: 2, discussion: true })
 check('one-day: discussion returned', r.body.ok && r.body.discussion?.length === 2, r.body)
+
+// A. Autopilot (0152). The tick reads the state as the caller and claims only
+//    a DUE week; a fallback runs the SAME week stage (no transcription) on the
+//    empty days inside its window, drafts only, units spent and nothing else.
+const apReset = (o = {}) => { reset(); jobs.clear(); db.ap = { state: 'off', fallback: false, paused: false, claims: 0, from: day(0), to: day(6), ...o } }
+const tick = () => call({ mode: 'autopilot_tick', church_id: CH, api: 2 })
+apReset()
+r = await tick()
+check('autopilot off: tick does nothing', r.body.state === 'off' && jobs.size === 0 && db.ap.claims === 0 && geminiCalls === 0, r.body)
+apReset({ state: 'waiting', fallback: true })
+r = await tick()
+check('autopilot before cutoff: waiting, nothing claimed', r.body.state === 'waiting' && jobs.size === 0 && db.ap.claims === 0, r.body)
+apReset({ state: 'due' })
+r = await tick()
+check('autopilot no source: skipped, no job, no model, no units', r.body.state === 'no_source' && jobs.size === 0 && geminiCalls === 0 && db.used === 0, r.body)
+apReset({ state: 'due', fallback: true, to: day(4) })
+db.verses[day(1)] = { status: 'approved' }; db.verses[day(2)] = { status: 'draft' }
+gemini = [{ days: [1, 2, 3, 4].map((v) => ({ reference: `John 15:${v}`, note: 'n', questions: five() })) }, { items: [] }]
+r = await tick()
+job = [...jobs.values()][0]
+check('autopilot fallback: job made and drafted on empty days inside the window only', r.body.state === 'fallback' && job?.status === 'done' && JSON.stringify(job.saved) === JSON.stringify([day(0), day(3), day(4)]) && !db.verses[day(5)], job)
+check('autopilot fallback: drafts only, live day and waiting draft untouched', [0, 3, 4].every((n) => db.verses[day(n)].status === 'draft') && db.verses[day(1)].status === 'approved', db.verses)
+check('autopilot fallback: no transcription, no memo use, 3 units', db.memoUsed === 0 && db.used === 3 && files.uploaded === 0, { memo: db.memoUsed, used: db.used })
+r = await tick()
+check('autopilot fallback: a second tick claims nothing', db.ap.claims === 1 && jobs.size === 1, { claims: db.ap.claims })
+apReset({ state: 'due', fallback: true })
+gemini = [503, 503]
+r = await tick()
+job = [...jobs.values()][0]
+check('autopilot fallback failure: failed, units refunded', job.status === 'failed' && job.reason === 'model_busy' && db.used === 0, job)
+gemini = [{ days: [1, 2, 3, 4, 5, 1, 2].map((v) => ({ reference: `John 15:${v}`, questions: five() })) }, { items: [] }]
+db.memoUsed = 10
+r = await call({ mode: 'auto_week_retry', church_id: CH, job: job.id, api: 2 })
+check('autopilot fallback retry: not held back by the memo cap, week lands', r.body.ok && job.status === 'done' && job.saved.length === 7 && db.used === 7, { body: r.body, job })
+apReset({ state: 'paused', paused: true }); store.set(MEMO, new Uint8Array(5000))
+r = await call(auto({ autopilot: true }))
+check('autopilot paused week: an Autopilot memo job is refused, nothing spent', r.status === 409 && r.body.reason === 'autopilot_paused' && jobs.size === 0 && db.memoUsed === 0, r)
+apReset({ state: 'off' }); db.gate = 'no_addon'
+r = await tick()
+check('autopilot: gate refusal answered, nothing claimed', r.status === 403 && r.body.reason === 'no_addon' && db.ap.claims === 0, r)
 
 console.log(fails ? `${fails} FAILED` : 'ALL PASS')
 process.exit(fails ? 1 : 0)

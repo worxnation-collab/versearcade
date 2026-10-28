@@ -25,13 +25,15 @@ fact instead of repeating it. Guests' account card shows a three-tile strip
 | Cue | When | Retires |
 |---|---|---|
 | `FirstDropTour` sheet | back on Play after the FIRST daily verse | any tap, Not now, close (`firstDropTourSeen`) |
-| `ChurchMoment` sheet | online, 2–30 plays, no church → find; back with a church, nothing given → give & watch it grow | `churchMoment: 'done'` after one go |
+| its church card (`ChurchMoment`) | signed in: opens IN the tour — find (no church) or give & watch it grow (a church, nothing given); a guest's card opens `/church` | `churchMoment: 'done'` when the tour closes, unless the player tapped Find |
+| the give follow-up | only after Find: back with a church, nothing given → one sheet with the give | `churchMoment: 'done'` after one go |
 | `ArcadeCue` row | drop done, ≤14 plays, compass not already listing the arcade | lobby opened (`arcadeLobbySeen`) |
 | `BibleCue` row | ≥3 verses lit, ≤14 plays | `/bible` opened (`bibleMapSeen`) |
 
-The two sheets only open when Home is otherwise quiet (no tutorial, no
-`?chest=1`, no other sheet, last week's recap not pending). The church sheet's
-phase is frozen at open, or the give would unmount it as `myGiven` changes.
+One guided moment, not two: the church flow is the tour's middle card rather
+than its own sheet on day 2–3. The sheets only open when Home is otherwise quiet (no tutorial, no
+`?chest=1`, no other sheet, last week's recap not pending). The church card's
+phase is frozen at the tap, or the give would unmount it as `myGiven` changes.
 Church giving uses the store's own `contribute`; the moment is online-only
 because a church is.
 

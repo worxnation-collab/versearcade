@@ -25,14 +25,46 @@ export const EARLY_PLAYS = 14
 // ── After the first drop: three places, once ───────────────────────────────
 // Shown by HomeScreen as a sheet the first time somebody lands back on the
 // tab having just finished their very first daily verse. Not now = never again.
-export function FirstDropTour({ onDone }: { onDone: () => void }) {
+// The middle card IS the church flow: for an account it opens in place (find →
+// give → watch it grow) rather than being a second sheet days later; for a
+// guest it opens /church, where the wall says what a church adds.
+export function FirstDropTour({
+  churchPhase,
+  onFind,
+  onDone,
+}: {
+  churchPhase: 'find' | 'give' | null
+  onFind: () => void
+  onDone: () => void
+}) {
   const navigate = useNavigate()
   const juice = useJuice()
   const reduceMotion = useSettings((s) => s.reduceMotion)
+  // Frozen at the tap: giving changes what HomeScreen computes, and the card
+  // must not swap phases (or vanish) at the moment the building grows.
+  const [inChurch, setInChurch] = useState<'find' | 'give' | null>(null)
   const go = (to: string) => {
     juice.select()
+    if (to === '/church' && churchPhase) {
+      setInChurch(churchPhase)
+      return
+    }
     onDone()
     navigate(to)
+  }
+  if (inChurch) {
+    return (
+      <div style={{ display: 'grid', gap: 10 }}>
+        <button
+          className="pill"
+          onClick={() => { juice.select(); setInChurch(null) }}
+          style={{ justifySelf: 'start', fontWeight: 800 }}
+        >
+          ← Back
+        </button>
+        <ChurchMoment phase={inChurch} onFind={onFind} onDone={onDone} />
+      </div>
+    )
   }
   const stops = [
     { icon: '🕯️', title: 'Your Upper Room', line: 'A room of your own you furnish as you play.', to: '/you' },
@@ -67,14 +99,15 @@ export function FirstDropTour({ onDone }: { onDone: () => void }) {
   )
 }
 
-// ── Day 2-3: your church, as a personal early win ──────────────────────────
-// Two phases, decided by HomeScreen from `settings.churchMoment`:
+// ── Your church, as a personal early win ───────────────────────────────────
+// The tour's middle card, opened in place. Two phases:
 //   'find' — no church yet: the building, one line, one door into /church
 //            (the existing picker). Tapping it records 'found'.
-//   'give' — back home WITH a church and nothing given: give the points in
-//            hand right here (the store's own `contribute`), and watch the
-//            building take them — the bar fills, and a new tier grows in.
-// Either phase dismissed, or the give done, records 'done' for good.
+//   'give' — WITH a church and nothing given: give the points in hand right
+//            here (the store's own `contribute`), and watch the building take
+//            them — the bar fills, and a new tier grows in.
+// After 'found', HomeScreen offers the give once more on its own when the
+// player comes back with a church; dismissed or done, it records 'done'.
 export function ChurchMoment({ phase, onFind, onDone }: { phase: 'find' | 'give'; onFind: () => void; onDone: () => void }) {
   return phase === 'find' ? <FindPhase onFind={onFind} onDone={onDone} /> : <GivePhase onDone={onDone} />
 }

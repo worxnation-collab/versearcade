@@ -53,7 +53,7 @@ export default function ChurchScreen() {
       <Page>
         <Header />
         <div className="card center">
-          <div style={{ fontSize: 34 }}>⛪</div>
+          <div style={{ display: 'grid', placeItems: 'center' }}><ChurchArt level={5} size={96} /></div>
           <p style={{ margin: '10px 0 14px', lineHeight: 1.5 }}>
             Create a free account to play for your church. Your points pool with everyone else who
             goes there, and your church climbs the local board.

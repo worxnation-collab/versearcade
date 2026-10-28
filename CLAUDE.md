@@ -5114,6 +5114,15 @@ break first:
   invisible in the diff, and the shape of bug any future move-a-card-into-a-sheet
   will hit.
 
+## Onboarding opens on a question; the first week's cues are one-time
+
+Onboarding's first screen is a sample question whose answer reveals its fact
+the way a real run does, before any text claims wrong answers teach. A 0-1
+correct result makes the facts the peak (`MissedList featured`). Four one-time
+cues (post-first-drop tour, day-2-3 church moment, arcade row, Bible row) live
+in `features/home/FirstWeekCues.tsx`, each retired by a settings flag and never
+shown again. Full rules and the known rough edges: `docs/FIRST-WEEK.md`.
+
 ## Retention beats: the streak's net, your week, the gathering hour, the first week
 
 Five small systems added in one round, all client-side, none with a migration,

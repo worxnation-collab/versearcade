@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useJuice } from '@/juice/useJuice'
 import { useAuth } from '@/store/auth'
 import { useBibleMarks } from './useBibleMarks'
+import { useSettings } from '@/store/settings'
 import { useCollection } from '@/store/collection'
 import { bibleTitle } from './title'
 import { BookHeader, BookPage } from './BookPage'
@@ -62,6 +63,10 @@ export default function BibleScreen() {
   useEffect(() => {
     loadCollection()
   }, [loadCollection])
+  // The Play tab's "verses lit" cue retires once the Bible has been opened.
+  useEffect(() => {
+    if (!useSettings.getState().bibleMapSeen) useSettings.getState().set({ bibleMapSeen: true })
+  }, [])
 
   const toggle = (key: string) => {
     juice.select()

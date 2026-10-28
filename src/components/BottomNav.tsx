@@ -68,7 +68,9 @@ function NavArt({ src, icon, size, tone }: { src: string; icon: IconId; size: nu
         display: 'block',
         // Muted, not bleached: a heavy desaturate washed the gold play
         // triangle out to beige while the darker icons barely changed.
-        opacity: tone === 'on' ? 1 : tone === 'off' ? 0.72 : 0.42,
+        // Locked stays readable as a picture (0.42 lost the painting entirely on
+        // the dark bar); the padlock and the grey say "locked", not the fade.
+        opacity: tone === 'on' ? 1 : tone === 'off' ? 0.72 : 0.58,
         filter: tone === 'on' ? 'drop-shadow(0 2px 4px rgba(0,0,0,0.45))' : tone === 'off' ? 'saturate(0.8) brightness(0.92)' : 'grayscale(0.7)',
         transition: 'opacity 0.2s, filter 0.2s',
       }}
@@ -222,6 +224,7 @@ export function BottomNav() {
   // call on every screen.
   const reviewsDue = useReviews((s) => s.dueRefs.length)
   const locked = useAccountLocked()
+  const reduceMotion = useSettings((s) => s.reduceMotion)
   const [mapOpen, setMapOpen] = useState(false)
   // The pulse is read ONCE, at mount, and cleared the first time the compass is
   // opened. Re-reading it per render would be a localStorage hit on every tab
@@ -301,7 +304,7 @@ export function BottomNav() {
                 // whenever it was an end tab. The bronze bubble and the tone
                 // already say which one is on.
                 animate={{ scale: 1 }}
-                whileTap={{ scale: 0.85 }}
+                whileTap={reduceMotion ? undefined : { scale: 0.85 }}
                 transition={{ type: 'spring', stiffness: 600, damping: 18 }}
                 style={{
                   display: 'flex',

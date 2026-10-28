@@ -22,6 +22,15 @@ interface SettingsState {
   /** First-visit tips already closed, by tab (`FirstVisitTip`). Grows once per
    *  tab and never shrinks; a closed tip leaves no other trace. */
   tipsSeen: string[]
+  /** The three-places sheet after the very first daily verse (one-time). */
+  firstDropTourSeen: boolean
+  /** The arcade lobby has been opened once — its Play-tab cue stops. */
+  arcadeLobbySeen: boolean
+  /** The Bible map has been opened once — its "verses lit" cue stops. */
+  bibleMapSeen: boolean
+  /** The day-2-3 church moment: 'new' (not offered), 'found' (sent to the
+   *  picker; one give offer may follow), 'done' (completed or dismissed). */
+  churchMoment: 'new' | 'found' | 'done'
   /** Whether the "add to home screen" nudge has been dismissed (one-time). */
   installPromptDismissed: boolean
   /**
@@ -76,6 +85,10 @@ export const useSettings = create<SettingsState>()(
       characterPromptDismissed: false,
       tutorialSeen: false,
       tipsSeen: [],
+      firstDropTourSeen: false,
+      arcadeLobbySeen: false,
+      bibleMapSeen: false,
+      churchMoment: 'new',
       installPromptDismissed: false,
       inventorySeen: false,
       inventoryNudgeDismissed: false,

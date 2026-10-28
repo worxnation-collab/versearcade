@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useSettings } from '@/store/settings'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArcadeShell } from './ArcadeShell'
@@ -38,6 +39,11 @@ export default function ArcadeLobby() {
   useEffect(() => {
     void loadXp()
   }, [loadXp])
+  // The Play tab's one-time "the arcade is open" cue retires once the lobby
+  // has actually been seen.
+  useEffect(() => {
+    if (!useSettings.getState().arcadeLobbySeen) useSettings.getState().set({ arcadeLobbySeen: true })
+  }, [])
   const cabinetW = Math.min(Math.floor(((width - GAP) / 2) * 0.82), MAX_CABINET)
 
   return (

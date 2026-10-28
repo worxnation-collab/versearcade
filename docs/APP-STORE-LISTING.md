@@ -111,7 +111,11 @@ Start your streak today. It's one verse.
 > `git log --first-parent` since the 1.3.0 upload. Headline items since then include
 > native push notifications on iPhone (church check-in notes and news), the Verified
 > Church plan through Apple, and the church leadership tools (Autopilot, the Tuesday
-> digest, small groups, the pastoral prayer list, co-leaders, inquiry replies).
+> digest, small groups, the pastoral prayer list, co-leaders, inquiry replies),
+> and the first-week flow (#376): onboarding opens on a sample question whose
+> answer teaches, a low-score result leads with "things you now know", a one-time
+> tour after the first verse (Upper Room, your church — find and give in place —
+> and the arcade), and the guest prompt showing what an account keeps.
 > The 1.3.0 block below is kept as the record of what that release said.
 
 ### 1.3.0 — the release after 1.2.0 (APPROVED)

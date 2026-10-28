@@ -4,6 +4,7 @@ import type { VerseBackend, WeekDay } from '@/store/churchAdmin'
 import { DraftReview, WeekDraftPanel } from './WeekDraftPanel'
 import { StudyTopicWeek } from './StudyTopicWeek'
 import { AutoWeekCard, useAutoWeeks } from './autoWeek'
+import { AutopilotCard, useAutopilot } from './autopilot'
 
 // "Plan your week" — the Plan tab's one drafting flow (2026-10-26).
 //
@@ -24,6 +25,11 @@ import { AutoWeekCard, useAutoWeeks } from './autoWeek'
 //      a transcript or a memo mid-upload.
 //   3. REVIEW AND APPROVE — `DraftReview`, unchanged: open a day, reorder,
 //      discard, approve the set. A flagged ⚠ day keeps "Approve all" waiting.
+//
+// AUTOPILOT (0152): `AutopilotCard` sits at the very top — the switch, where
+// this week stands, "Skip this week", the cutoff and the fallback. With it on,
+// a memo sent from the sermon source queues its week by itself, and a week with
+// no memo by the cutoff drafts from the fallback; both land in step 3 as drafts.
 //
 // RECORD SUNDAY, REVIEW MONDAY (0148): the sermon source can hand the memo to
 // the server, which drafts the week by itself. `AutoWeekCard` sits above step
@@ -70,6 +76,9 @@ export function PlanWeek({
   const [source, setSource] = useState<Source>('sermon')
   const waiting = (week ?? []).some((w) => w.verse?.status === 'draft')
   const auto = useAutoWeeks(churchId, !!backend.autoWeek)
+  // Autopilot (0152) rides the same package: its card, its tick, and the memo
+  // checkbox below defaulting to it.
+  const pilot = useAutopilot(churchId, !!backend.autoWeek, () => { void auto.reload(); onChanged() })
 
   return (
     <section aria-label="Plan your week" style={{ display: 'grid', gap: 12, minWidth: 0 }}>
@@ -80,6 +89,7 @@ export function PlanWeek({
         </p>
       </div>
 
+      {backend.autoWeek && <AutopilotCard churchId={churchId} ap={pilot.ap} setAp={pilot.setAp} />}
       {backend.autoWeek && <AutoWeekCard churchId={churchId} jobs={auto.jobs} reload={auto.reload} onLanded={onChanged} />}
 
       <Step n={1} title="Start from">
@@ -116,7 +126,7 @@ export function PlanWeek({
 
       <Step n={2} title={source === 'sermon' ? 'Draft the week from your sermon' : source === 'topic' ? 'Draft the week from a topic' : 'Draft the week from a passage'}>
         <div hidden={source !== 'sermon'}>
-          <WeekDraftPanel churchId={churchId} backend={backend} today={today} source="sermon" embedded onDrafted={onDrafted} onQueued={() => void auto.reload()} />
+          <WeekDraftPanel churchId={churchId} backend={backend} today={today} source="sermon" embedded onDrafted={onDrafted} onQueued={() => { void auto.reload(); void pilot.reload() }} autopilot={pilot.ap} />
         </div>
         <div hidden={source !== 'topic'}>
           <StudyTopicWeek churchId={churchId} backend={backend} today={today} embedded onDrafted={onDrafted} onChanged={onChanged} />

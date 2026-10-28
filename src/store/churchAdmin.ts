@@ -8,6 +8,7 @@ import { verseFromReference } from '@/data/bible/questions'
 import type { Question } from '@/types'
 import type { ChurchParticipation } from '@/types/churchPackages'
 import { isLeaderLookId, type LeaderLookId } from '@/features/church/pricing'
+import { freeTopic, topicByLabel } from '@/data/studyTopics'
 
 // Church leadership's reads and writes (0118, 0119). Every call is a security-definer
 // RPC that re-checks `is_church_admin` (and, for the paid half, `verified`)
@@ -1293,6 +1294,8 @@ export interface AutoWeekInput {
   start: string
   days: number
   guidance?: string
+  /** Autopilot queued this one (0152): the server refuses it in a skipped week. */
+  autopilot?: boolean
 }
 
 export type AutoWeekStatus = 'queued' | 'transcribing' | 'drafting' | 'done' | 'failed'
@@ -1300,6 +1303,10 @@ export interface AutoWeekJob {
   id: string
   status: AutoWeekStatus
   reason: string | null
+  /** 'memo' — a sermon recording (0148); 'fallback' — Autopilot's saved topic or passage (0152). */
+  source: 'memo' | 'fallback'
+  /** Autopilot made it (a memo it queued, or its fallback). */
+  autopilot: boolean
   series: string
   references: string[]
   startDate: string
@@ -1322,6 +1329,7 @@ export async function queueAutoWeek(churchId: string, input: AutoWeekInput): Pro
   const r = await invokeDraft(churchId, {
     mode: 'auto_week', path: input.path, series: cleanLine(input.series, SERIES_MAX) ?? '',
     passages: input.passages, start: input.start, days: input.days, guidance: input.guidance?.trim() || undefined,
+    autopilot: input.autopilot || undefined,
   })
   if (r.kind === 'lost') return { ok: false, reason: 'no_reply' }
   const d = r.data
@@ -1347,6 +1355,8 @@ export async function fetchAutoWeeks(churchId: string): Promise<Res<AutoWeekJob[
       id: String(j.id),
       status: j.status as AutoWeekStatus,
       reason: j.reason ? String(j.reason) : null,
+      source: j.source === 'fallback' ? 'fallback' : 'memo',
+      autopilot: j.autopilot === true,
       series: String(j.series ?? ''),
       references: Array.isArray(j.references) ? j.references.map(String) : [],
       startDate: String(j.start_date ?? ''),
@@ -1569,6 +1579,154 @@ export async function fetchMyGroup(): Promise<Res<MyGroup | null>> {
         series: d?.series ? String(d.series) : null,
         questions: cleanDiscussion(d?.questions),
       })).filter((d: GroupDiscussionDay) => d.questions.length > 0),
+    },
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Autopilot (0152). One switch per church: a sermon memo sent through Plan
+// drafts its own week, and when none arrives by the cutoff the pastor's saved
+// FALLBACK (a topic or one passage) drafts it instead — the same 0148 job and
+// the same week call, drafts only. There is no cron, so the cutoff is noticed
+// by `autopilotTick`, which the dashboard and the church tab send on load.
+// docs/CHURCH-SHARED-VERSE.md → "Autopilot".
+// ---------------------------------------------------------------------------
+export type AutopilotState = 'off' | 'paused' | 'memo' | 'waiting' | 'due' | 'fallback' | 'no_source' | 'covered'
+export interface AutopilotFallback {
+  kind: 'topic' | 'passage'
+  label: string
+  series: string
+  references: string[]
+}
+export interface Autopilot {
+  enabled: boolean
+  tz: string
+  /** 0 = Sunday … 6 = Saturday, in the church's time zone. */
+  cutoffDow: number
+  /** Minutes after midnight. */
+  cutoffMinute: number
+  fallback: AutopilotFallback | null
+  state: AutopilotState
+  weekStart: string
+  cutoffAt: string
+  windowFrom: string
+  windowTo: string
+  job: { id: string; status: AutoWeekStatus } | null
+}
+export const AUTOPILOT_DEFAULT_CUTOFF = { dow: 1, minute: 21 * 60 }
+
+function toAutopilot(d: any): Autopilot {
+  const st = d?.settings ?? {}
+  const fb = st.fallback
+  return {
+    enabled: st.enabled === true,
+    tz: String(st.tz ?? 'America/New_York'),
+    cutoffDow: Number.isInteger(st.cutoff_dow) ? st.cutoff_dow : AUTOPILOT_DEFAULT_CUTOFF.dow,
+    cutoffMinute: Number.isInteger(st.cutoff_minute) ? st.cutoff_minute : AUTOPILOT_DEFAULT_CUTOFF.minute,
+    fallback: fb && (fb.kind === 'topic' || fb.kind === 'passage')
+      ? { kind: fb.kind, label: String(fb.label ?? ''), series: String(fb.series ?? ''), references: Array.isArray(fb.references) ? fb.references.map(String) : [] }
+      : null,
+    state: (['off', 'paused', 'memo', 'waiting', 'due', 'fallback', 'no_source', 'covered'].includes(d?.state) ? d.state : 'off') as AutopilotState,
+    weekStart: String(d?.week_start ?? ''),
+    cutoffAt: String(d?.cutoff_at ?? ''),
+    windowFrom: String(d?.window_from ?? ''),
+    windowTo: String(d?.window_to ?? ''),
+    job: d?.job?.id ? { id: String(d.job.id), status: d.job.status as AutoWeekStatus } : null,
+  }
+}
+
+export async function fetchAutopilot(churchId: string): Promise<Res<Autopilot>> {
+  const r = await call<any>('church_autopilot', { p_church_id: churchId })
+  return r.ok ? { ok: true, data: toAutopilot(r.data) } : r
+}
+
+/**
+ * Ask the server whether the week is due and, if it is, to settle it (a
+ * fallback job, or "skipped — no source"). Sent on load by the dashboard and
+ * the church tab; changes nothing before the cutoff, or when Autopilot is off.
+ */
+export async function autopilotTick(churchId: string): Promise<Res<Autopilot>> {
+  if (!online()) return { ok: false, reason: 'unavailable' }
+  const r = await invokeDraft(churchId, { mode: 'autopilot_tick' })
+  if (r.kind === 'lost') return { ok: false, reason: 'unavailable' }
+  const d = r.data as any
+  if (!d.ok) return { ok: false, reason: String(d.reason ?? 'unavailable') }
+  return { ok: true, data: toAutopilot(d) }
+}
+
+export interface AutopilotFallbackInput {
+  kind: 'topic' | 'passage'
+  label: string
+  series: string
+  guidance: string
+  passages: WeekPassage[]
+}
+
+export async function saveAutopilot(churchId: string, s: {
+  /** null clears the fallback; 'keep' leaves the saved one (no re-resolving, no unit spent). */
+  enabled: boolean; tz: string; cutoffDow: number; cutoffMinute: number; fallback: AutopilotFallbackInput | null | 'keep'
+}): Promise<Res<Autopilot>> {
+  const r = await call<any>('set_church_autopilot', {
+    p_church_id: churchId,
+    p_enabled: s.enabled,
+    p_tz: s.tz,
+    p_cutoff_dow: s.cutoffDow,
+    p_cutoff_minute: s.cutoffMinute,
+    p_fallback: s.fallback,
+  })
+  return r.ok ? { ok: true, data: toAutopilot(r.data) } : r
+}
+
+export async function setAutopilotSkip(churchId: string, skip: boolean): Promise<Res<Autopilot>> {
+  const r = await call<any>('set_church_autopilot_skip', { p_church_id: churchId, p_skip: skip })
+  return r.ok ? { ok: true, data: toAutopilot(r.data) } : r
+}
+
+/**
+ * Turn a fallback the pastor typed into what a week is drafted from, exactly
+ * as the topic and passage sources do: BSB verses fetched here, a topic
+ * anchored by the curated catalog or (one draft unit) by `church-draft`'s
+ * topic mode. Done once, when the setting is SAVED, so the server never has
+ * to fetch scripture at the cutoff.
+ */
+export async function resolveAutopilotFallback(
+  churchId: string,
+  kind: 'topic' | 'passage',
+  label: string,
+): Promise<Res<AutopilotFallbackInput>> {
+  const text = label.trim()
+  if (!text) return { ok: false, reason: kind === 'topic' ? 'needs_topic' : 'bad_reference' }
+  if (kind === 'passage') {
+    const r = await resolvePassage(text)
+    if (!r.ok) return r
+    return {
+      ok: true,
+      data: {
+        kind, label: text, series: cleanLine(text, SERIES_MAX) ?? text.slice(0, SERIES_MAX),
+        guidance: `Stay with ${text} itself — what it says, and what it asks of us this week.`.slice(0, GUIDANCE_MAX),
+        passages: [r.data],
+      },
+    }
+  }
+  const topic = topicByLabel(text) ?? freeTopic(text)
+  let refs = topic.passages
+  let series = cleanLine(topic.series ?? topic.label, SERIES_MAX) ?? text.slice(0, SERIES_MAX)
+  if (!refs.length) {
+    const p = await planTopic(churchId, topic.label, topic.book)
+    if (!p.ok) return p
+    refs = p.data.passages
+    series = cleanLine(p.data.series, SERIES_MAX) ?? series
+  }
+  const resolved = await Promise.all(refs.map((r) => resolvePassage(r)))
+  const passages = resolved.flatMap((r) => (r.ok ? [r.data] : []))
+  while (passages.length > 1 && scriptureChars(passages) > SCRIPTURE_CHARS_MAX) passages.pop()
+  if (!passages.length || scriptureChars(passages) > SCRIPTURE_CHARS_MAX) return { ok: false, reason: 'passage_unavailable' }
+  return {
+    ok: true,
+    data: {
+      kind, label: topic.label.slice(0, 80), series,
+      guidance: `This week the congregation is studying “${topic.label}”. Keep every day on that topic.`.slice(0, GUIDANCE_MAX),
+      passages,
     },
   }
 }

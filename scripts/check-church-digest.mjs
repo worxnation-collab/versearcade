@@ -136,7 +136,7 @@ check('empty week: no rows, "you’re all set"', r.rows.length === 0 && /all set
 // 6. Autopilot skipped.
 facts.autopilot_skipped = true
 r = await call({ action: 'test', church_id: CH, dry_run: true }, { Authorization: 'Bearer leader' })
-check('Autopilot skipped line → Plan today', r.rows[0]?.title === 'No source this week — Autopilot skipped' && r.rows[0].url === base + 'go=plan&date=2026-11-02')
+check('Autopilot skipped line → Plan today', r.rows[0]?.title === 'Nothing drafted this week' && r.rows[0].url === base + 'go=plan&date=2026-11-02')
 
 if (failed) { console.error(`check:church-digest — ${failed} failed`); process.exit(1) }
 console.log('check:church-digest — all passed')

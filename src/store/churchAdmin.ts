@@ -1376,7 +1376,8 @@ export const dismissAutoWeek = (jobId: string) => call('dismiss_church_auto_week
 // ---------------------------------------------------------------------------
 // Players asking about the church from a leader's player card (0149). The
 // church's verified leadership reads them as a plain list, newest first, and
-// dismisses them; there is no reply path yet (check-ins reach members only).
+// dismisses them. Since 0155 leadership can answer each one ONCE
+// (`replyJoinInquiry`); the answer reaches the asker's mailbox and nobody else.
 // ---------------------------------------------------------------------------
 export interface JoinInquiry {
   username: string
@@ -1387,7 +1388,13 @@ export interface JoinInquiry {
   /** They have since joined this church, or another one. */
   joinedHere: boolean
   joinedElsewhere: boolean
+  /** The church's one reply (0155), and when it was sent. */
+  reply: string | null
+  repliedAt: string | null
 }
+
+/** KEEP IN SYNC with `church_clean_line(..., 280)` in reply_church_join_inquiry (0155). */
+export const INQUIRY_REPLY_MAX = 280
 
 export async function fetchJoinInquiries(churchId: string): Promise<Res<JoinInquiry[]>> {
   const r = await call<{ inquiries?: Array<Record<string, any>> }>('church_join_inquiry_list', { p_church_id: churchId })
@@ -1402,8 +1409,19 @@ export async function fetchJoinInquiries(churchId: string): Promise<Res<JoinInqu
       at: String(i.at ?? ''),
       joinedHere: i.joined_here === true,
       joinedElsewhere: i.joined_elsewhere === true,
+      reply: typeof i.reply === 'string' && i.reply ? i.reply : null,
+      repliedAt: typeof i.replied_at === 'string' ? i.replied_at : null,
     })),
   }
+}
+
+/** Answer one inquiry, once. `joined` says where the asker has gone since, if anywhere. */
+export async function replyJoinInquiry(churchId: string, username: string, message: string): Promise<Res<{ joined: 'here' | 'elsewhere' | null }>> {
+  const text = message.replace(/\s+/g, ' ').trim().slice(0, INQUIRY_REPLY_MAX)
+  if (text.length < 2) return { ok: false, reason: 'bad_note' }
+  const r = await call<{ joined?: string | null }>('reply_church_join_inquiry', { p_church_id: churchId, p_username: username, p_message: text })
+  if (!r.ok) return r
+  return { ok: true, data: { joined: r.data.joined === 'here' || r.data.joined === 'elsewhere' ? r.data.joined : null } }
 }
 
 export const dismissJoinInquiry = (churchId: string, username: string) =>

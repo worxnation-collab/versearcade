@@ -60,8 +60,43 @@ dashboard: a Home to-do row ("{name} asked about your church") and an **Asking
 about your church** list at the top of People — who, the note, when, and
 whether they have since joined. Newest first and nothing else: no count beyond
 the list, no "most asked about", nothing compared. **Dismiss** takes one off
-the list. There is no reply path yet — the check-in note (0137) reaches members
-only — so the welcome is for when they join.
+the list. **Reply** answers it once (below).
+
+## Replying (0155)
+
+**Reply** on an inquiry row opens a short note (280 characters, a counter under
+it) and **Send reply** answers it — `reply_church_join_inquiry(church,
+username, message)`. The rules, all server-side:
+
+- **verified leadership of THAT church only** (`church_admin_can`): a free
+  claim, a member, and a leader of another church are refused;
+- **one reply per inquiry**: it is a column on the inquiry row, not a table,
+  and a second send answers `already`;
+- the text is cleaned and capped the way the inquiry is;
+- **the reply is the church's voice**: no author is stored, so nothing about
+  which leader answered outlives a leader's account;
+- a player who has **since joined** — this church or another — still receives
+  it; the row already says where they went, and the send line repeats it
+  ("They've since joined another church; it's still in their mailbox").
+
+After sending, the row shows **✓ Replied** with the words and when, the Reply
+button goes, and **Dismiss** still takes the row off the list.
+
+**The asker** sees it in two places and nowhere else:
+
+- **the mailbox** (`/mail`, "Replies from churches", `store/churchReplies.ts`
+  over `my_church_join_replies`): the reply, "{church}'s leaders", the date,
+  "You asked: …", and a Visit button. An unseen reply lights the same single
+  mailbox dot a check-in does (the You tab), and opening the mailbox clears it
+  (`mark_church_join_replies_seen`);
+- **the church sheet they asked from** (`LeadsChurch`): "{church}'s leaders
+  replied" and the words, in place of "Your note is with …"
+  (`my_church_join_inquiry`, restated with the reply).
+
+Nobody else: `my_church_join_replies` derives the owner from `auth.uid()` and
+takes no user id; the leadership list (`church_join_inquiry_list`, restated
+with `reply` / `replied_at`) is behind the same gate it always was. No count
+beyond the existing list, no push and no email for this pass — in-app only.
 
 Online-only, inherited from the church store: an inquiry needs a real
 congregation on the other end, and a keyless build has no leader to tap.

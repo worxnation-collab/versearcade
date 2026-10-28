@@ -4,6 +4,7 @@ import { useAuth } from './store/auth'
 import { useBuddies } from './store/buddies'
 import { useGifts } from './store/gifts'
 import { useChurchCheckIns } from './store/churchCheckIns'
+import { useChurchReplies } from './store/churchReplies'
 import { useReminders } from './store/reminders'
 import { useSeason } from './store/season'
 import { useCatalog } from './store/catalog'
@@ -217,6 +218,8 @@ export default function App() {
       void useGifts.getState().load()
       // A church check-in (0137) lights the same mailbox dot.
       void useChurchCheckIns.getState().load()
+      // A church's reply to your inquiry (0155) lights it too.
+      void useChurchReplies.getState().load()
     }
   }, [ready, mode])
 

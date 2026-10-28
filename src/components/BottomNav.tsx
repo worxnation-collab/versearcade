@@ -6,6 +6,7 @@ import { MapSheet } from '@/features/map/MapSheet'
 import { useBuddies } from '@/store/buddies'
 import { useGifts } from '@/store/gifts'
 import { useChurchCheckIns } from '@/store/churchCheckIns'
+import { useChurchReplies } from '@/store/churchReplies'
 import { useReviews } from '@/store/reviews'
 import { useSettings } from '@/store/settings'
 import { useAccountLocked } from '@/components/AccountWall'
@@ -214,7 +215,7 @@ export function BottomNav() {
   // Anything addressed to you that you have not seen. Still ONE dot with no
   // count — a gift and a buddy request are both "there's something for you",
   // and a number here would turn a letterbox into a queue to be cleared.
-  const unseenGifts = useGifts((s) => s.unseen) + useChurchCheckIns((s) => s.unseen)
+  const unseenGifts = useGifts((s) => s.unseen) + useChurchCheckIns((s) => s.unseen) + useChurchReplies((s) => s.unseen)
   // Read-only, like the two above: HomeScreen calls loadDue() and everybody
   // lands there, so the schedule is loaded by the time this matters. The nav
   // never fetches — a tab bar mounted on every screen must not be a network

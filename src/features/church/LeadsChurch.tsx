@@ -91,6 +91,7 @@ export function ChurchInquirySheet({
   const loaded = useChurch((s) => s.loaded)
   const loadMine = useChurch((s) => s.load)
   const [sent, setSent] = useState<boolean | null>(null)
+  const [reply, setReply] = useState<string | null>(null)
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState<'send' | 'join' | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -99,7 +100,7 @@ export function ChurchInquirySheet({
   useEffect(() => {
     if (!online || isMe) return
     let alive = true
-    fetchMyInquiry(church.id).then((s) => alive && setSent(s))
+    fetchMyInquiry(church.id).then((s) => { if (alive) { setSent(s.sent); setReply(s.reply) } })
     return () => { alive = false }
   }, [online, isMe, church.id])
 
@@ -171,7 +172,12 @@ export function ChurchInquirySheet({
           </div>
         ) : (
           <div style={{ display: 'grid', gap: 10 }}>
-            {sent ? (
+            {sent && reply ? (
+              <div data-inquiry-reply style={{ display: 'grid', gap: 3 }}>
+                <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--mint)' }}>{church.name}’s leaders replied</span>
+                <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, overflowWrap: 'anywhere' }}>{reply}</p>
+              </div>
+            ) : sent ? (
               <p role="status" style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: 'var(--mint)' }}>
                 ✓ Your note is with {church.name}’s leaders.
               </p>

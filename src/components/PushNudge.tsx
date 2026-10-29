@@ -65,10 +65,12 @@ const COPY: Record<NudgeReason, { icon: string; title: string; body: string; cta
     body: 'Want a nudge on days you haven’t played yet? One reminder, only when your streak is actually at risk.',
     cta: 'Remind me',
   },
+  // True since 0160: an accept pushes the requester, once. A decline pushes
+  // nothing, so the copy promises the yes and only the yes.
   buddy: {
     icon: '📨',
-    title: 'We’ll tell you when they answer',
-    body: 'Buddy requests get answered whenever your friend next opens the app. Turn on notifications and you’ll know the moment they do.',
+    title: 'We’ll tell you when they say yes',
+    body: 'Buddy requests get answered whenever your friend next opens the app. Turn on notifications and you’ll know the moment they accept.',
     cta: 'Let me know',
   },
   // The first friend challenge sent (FirstChallengePush). True since 0159:

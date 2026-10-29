@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
-import { getVerseForDate } from '@/data/bible/questions'
+import { getVerseForDate, hashString, mulberry32 } from '@/data/bible/questions'
 import { todayLocalDate } from '@/lib/date'
 import { localdb } from '@/lib/localdb'
 import { applyPlayLocal } from '@/lib/progress'
@@ -205,7 +205,7 @@ export const useGame = create<GameState>((set, get) => ({
     if (!supabase) {
       // LOCAL mode: synthesize a warm, believable ambient pulse so solo play
       // still feels populated. (Clearly fake data; real counts come online.)
-      set({ pulse: synthPulse() })
+      set({ pulse: synthPulse(date) })
       return
     }
     const { data, error } = await supabase.rpc('get_daily_pulse', { p_drop_date: date })
@@ -250,13 +250,19 @@ function normalizeOutcome(d: any): SubmitOutcome {
 // Believable filler for offline/solo so "you're not alone" still lands.
 const NAMES = ['grace_r', 'j_walks', 'psalmsurfer', 'noah_b', 'lightseeker', 'ruth88', 'danielc', 'ekklesia', 'maranatha', 'olivebranch', 'shalomkid', 'the_esther', 'ziontrail', 'abba_reads']
 const EMOJI = ['📖', '🕊️', '✨', '🌿', '🔥', '⭐', '🙏', '🌅']
-function synthPulse(): DailyPulse {
+// Seeded by the date and walked forward by the hour (2026-10-29): it used to be
+// Math.random(), so "2,307 played today" read 2,258 on the next reload and
+// 2,349 on the one after — plainly invented. Now one day's count only grows,
+// and the same on every reload. Keyless LOCAL builds only; online is real.
+function synthPulse(date: string): DailyPulse {
+  const rng = mulberry32(hashString(`pulse:${date}`))
+  const hour = new Date().getHours()
   const feed = Array.from({ length: 14 }).map((_, i) => ({
     username: NAMES[i % NAMES.length],
     avatarEmoji: EMOJI[i % EMOJI.length],
-    points: 400 + Math.floor(Math.random() * 900),
+    points: 400 + Math.floor(rng() * 900),
     kind: 'scored' as const,
     createdAt: new Date(Date.now() - i * 42000).toISOString(),
   }))
-  return { opened: 2130 + Math.floor(Math.random() * 400), feed }
+  return { opened: 600 + Math.floor(rng() * 400) + hour * 70, feed }
 }

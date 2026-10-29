@@ -113,6 +113,7 @@ export function wordCatchSurface(
       )
     },
 
+    targetLabel: (kind) => words[Number(kind)] ?? 'a word',
     renderTarget: ({ kind, taken, leaving }) => {
       const idx = Number(kind)
       return (

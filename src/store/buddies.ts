@@ -24,8 +24,9 @@ interface BuddiesState {
   load: () => Promise<void>
   loadSuggested: (limit?: number) => Promise<BuddyCard[]>
   sendRequest: (username: string) => Promise<BuddyResult>
-  respond: (username: string, accept: boolean) => Promise<void>
-  remove: (username: string) => Promise<void>
+  /** False when the server refused or never answered; the list is re-read either way. */
+  respond: (username: string, accept: boolean) => Promise<boolean>
+  remove: (username: string) => Promise<boolean>
 }
 
 export const useBuddies = create<BuddiesState>((set, get) => ({
@@ -66,14 +67,16 @@ export const useBuddies = create<BuddiesState>((set, get) => ({
   },
 
   async respond(username, accept) {
-    if (!supabase) return
-    await supabase.rpc('respond_buddy_request', { p_username: username, p_accept: accept })
+    if (!supabase) return false
+    const { error } = await supabase.rpc('respond_buddy_request', { p_username: username, p_accept: accept })
     await get().load()
+    return !error
   },
 
   async remove(username) {
-    if (!supabase) return
-    await supabase.rpc('remove_buddy', { p_username: username })
+    if (!supabase) return false
+    const { error } = await supabase.rpc('remove_buddy', { p_username: username })
     await get().load()
+    return !error
   },
 }))

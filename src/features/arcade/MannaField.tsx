@@ -49,6 +49,7 @@ export function mannaSurface({ reduceMotion }: { reduceMotion: boolean }): TapSu
         )}
       </>
     ),
+    targetLabel: (kind) => (kind === 'kept' ? 'manna kept from yesterday' : 'fresh manna'),
     renderTarget: ({ kind, taken, leaving }) => (
       <i
         className={

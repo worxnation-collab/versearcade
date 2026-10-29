@@ -111,7 +111,9 @@ Start your streak today. It's one verse.
 
 ### 1.4.0 — the release after 1.3.0 (NEXT, unuploaded — READY TO PASTE)
 
-> Written 2026-10-29 from the merged history. This repo's clone only reaches back
+> Written 2026-10-29 from the merged history, player-facing first (the owner's
+> brief for 1.4.0: teaching, polish, accessibility, performance before leader
+> tools). This repo's clone only reaches back
 > to 2026-10-21, so anything merged between the 1.3.0 upload and then (the
 > church picker's town search, the church page front door) should be checked in
 > App Store Connect against 1.3.0's own notes before pasting. Two lines are
@@ -121,37 +123,35 @@ Start your streak today. It's one verse.
 > Nothing here names a price, a web checkout or a plan bought elsewhere.
 
 ```
-A calmer, kinder Verse Arcade — and a whole new home for your church.
+Wrong answers teach more, the app opens faster, and it's easier to use for everyone.
 
 LEARN SOMETHING EVERY TIME
-• Your very first question now shows how it works: answer it, and whatever you pick, you learn something true about the verse.
 • A wrong answer now teaches more than the answer — who the words were spoken to, what happened around them, or a fact about the verse.
-• A run that didn't go well leads with what you now know, not the score.
+• Your very first question shows how it works: whatever you pick, you learn something true.
+• A run that didn't go well leads with what you now know, in the daily verse and the daily trivia alike.
 
-A CLEANER PLAY TAB
-• Today's verse stays front and center, with today's trivia and your church's verse beside it.
-• Battle, Study and You are calmer: ranks folded away, Study opens on your own progress, and the compass points to what's open right now.
-• Painted icons, a new painting of your Upper Room every day, and a lantern by your door while your Prayer Wall note is up.
+A CALMER DAILY LOOP
+• Your XP and streak show right under your score.
+• "Read the full chapter" opens in the same translation you just played.
+• Today's verse stays front and center, with today's trivia beside it.
+• Battle, Study and You are tidier, and Study waits two rounds before rating a book.
 
-YOUR TRANSLATION
-• Read — and play — in the translation you prefer, eight to choose from.
-
-YOUR CHURCH, ALL WEEK
-• Your church can set a verse of its own, beside the daily one. A series shows as a run of days, and a day you missed never counts against you.
-• A note from your church's leaders lands in your mailbox — and on your iPhone, if you turn notifications on.
-
-FOR CHURCH LEADERS
-• Claim your church's page and add co-leaders.
-• Plan the week: record or upload Sunday's sermon and get a week of verses and questions drafted for you to review. Nothing reaches your people until you approve it.
-• Autopilot drafts the week from your sermon or a backup plan, even if you're busy.
-• Discussion questions for small groups, a pastoral prayer list, check-in notes, replies to people asking about your church, and a Tuesday email of what needs you.
-• Verse cards and a Sunday pack to share.
-• Subscribe to the Verified Church plan through the App Store.
+EASIER TO USE
+• Pinch to zoom anywhere.
+• A clear focus outline for keyboard users, and bigger tap areas on small buttons.
+• Screen readers hear each arcade word and flake for what it is.
 
 FASTER AND STEADIER
 • Opens faster and takes less space on your phone.
-• If something doesn't go through — deleting an account, leaving a church, a report — the app now tells you rather than pretending it worked.
-• Small fixes everywhere: banners no longer cover buttons, and loading screens hold still.
+• If something doesn't go through — deleting an account, leaving a church, a buddy request, a report — the app tells you instead of pretending it worked.
+• Banners no longer cover buttons, and the score holds still during a run.
+
+YOUR TRANSLATION
+• Read and play in the translation you prefer, eight to choose from.
+
+FOR CHURCHES
+• Your church can set a verse of its own beside the daily one, and its leaders can send you a note, on your iPhone too if you turn notifications on.
+• Leaders can claim their page, plan a week from Sunday's sermon, and subscribe to the Verified Church plan through the App Store.
 ```
 
 ### 1.3.0 — the release after 1.2.0 (APPROVED)

@@ -21,7 +21,10 @@ export type BookAccuracy = Record<string, BookStat>
 
 // Below this many answers a book has no meaningful accuracy yet — it's shown as
 // "just started" rather than being ranked as weak off one unlucky question.
-export const MIN_ANSWERS_FOR_TIER = 5
+// Two runs, not one (2026-10-29): after a single five-question run a book was
+// already labelled, so a first-ever 2/5 on James arrived as a coral "Needs
+// review" — a grade, on the tab that promises nothing here grades you.
+export const MIN_ANSWERS_FOR_TIER = 10
 
 // Tier thresholds, in percent. Chosen against the 5-question run: 4/5 = solid,
 // 3/5 = getting there, 2/5 or worse = worth another look.
@@ -37,7 +40,7 @@ export type BookTier = 'strong' | 'steady' | 'shaky' | 'new'
 export const TIERS: Record<BookTier, { label: string; color: string; blurb: string }> = {
   strong: { label: 'Solid', color: 'var(--mint)', blurb: 'you know this book' },
   steady: { label: 'Getting there', color: 'var(--gold)', blurb: 'close — one more pass' },
-  shaky: { label: 'Needs review', color: 'var(--coral)', blurb: 'worth drilling' },
+  shaky: { label: 'Worth a revisit', color: 'var(--coral)', blurb: 'a good one to drill' },
   new: { label: 'Just started', color: 'var(--ink-faint)', blurb: 'answer a few more' },
 }
 

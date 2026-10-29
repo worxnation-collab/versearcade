@@ -4,7 +4,11 @@
 // Sources, in order, for a translation (lib/translations.ts says which apply):
 //   1. the device cache — chapters and passages, kept 30 days;
 //   2. API.Bible through the `bible-text` Edge Function (the key is there);
-//   3. bible-api.com, keyless and public domain.
+//   3. for the BSB, bible.helloao.org — keyless and public domain, the same
+//      text the quiz is dealt from (2026-10-29: without it a keyless or
+//      offline-of-API build opened "Read the full chapter" in the WEB, a
+//      different wording from the verse just played);
+//   4. bible-api.com, keyless and public domain.
 // A verse that none of them can produce is the CALLER's to fall back on — the
 // bundled pool text is always in hand (`useVerseText` does exactly that), so a
 // thrown error here never leaves a screen empty.
@@ -22,6 +26,23 @@ import {
 
 const BIBLE_API = 'https://bible-api.com'
 const FALLBACK_CODE = 'web'
+const HELLOAO = 'https://bible.helloao.org/api'
+
+/** One chapter of the BSB from helloao. Verse content mixes strings with
+ *  footnote markers and `{ text }` runs; only the words are kept. */
+async function helloaoBsb(usfm: string, chapter: number, signal?: AbortSignal): Promise<ChapterVerse[]> {
+  const res = await fetch(`${HELLOAO}/BSB/${usfm}/${chapter}.json`, { signal })
+  if (!res.ok) throw new Error(`helloao ${res.status}`)
+  const d = (await res.json()) as { chapter?: { content?: Array<{ type?: string; number?: number; content?: unknown[] }> } }
+  const words = (part: unknown): string =>
+    typeof part === 'string' ? part : part && typeof part === 'object' && typeof (part as { text?: unknown }).text === 'string' ? (part as { text: string }).text : ''
+  const verses = (d.chapter?.content ?? [])
+    .filter((c) => c.type === 'verse' && Number.isInteger(c.number))
+    .map((c) => ({ verse: c.number as number, text: (c.content ?? []).map(words).join(' ').replace(/\s+/g, ' ').trim() }))
+    .filter((v) => v.text)
+  if (!verses.length) throw new Error('helloao empty')
+  return verses
+}
 
 export interface ChapterVerse {
   verse: number
@@ -213,6 +234,21 @@ export async function fetchChapter(
   // Offline with a stale public-domain copy beats a fallback translation.
   const stale = cacheGet<Chapter>(key, t.licensed, true)
   if (stale) return stale
+
+  if (t.id === 'bsb' && usfm) {
+    try {
+      const out: Chapter = {
+        reference: `${book} ${chapter}`, translationName: t.name, abbr: t.abbr,
+        copyright: `${t.name} — public domain.`, licensed: false,
+        verses: await helloaoBsb(usfm, chapter, signal),
+      }
+      cachePut(key, out)
+      return out
+    } catch (e) {
+      if (isAbort(e, signal)) throw e
+      // fall through to bible-api, which labels what it serves
+    }
+  }
 
   const code = t.bibleApiCode ?? FALLBACK_CODE
   const r = await bibleApi(`${book} ${chapter}`, code, signal)

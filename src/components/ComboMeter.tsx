@@ -18,8 +18,11 @@ export function ComboMeter({ combo, multiplier }: { combo: number; multiplier: n
             gap: 6,
             padding: '6px 14px',
             borderRadius: 999,
-            background: 'linear-gradient(180deg, var(--coral), #d63a3a)',
-            boxShadow: '0 0 20px rgba(255,107,107,0.6)',
+            // Mint, a reward colour (2026-10-29). It was coral — the app's
+            // "wrong" colour — on the thing that means you've got several right.
+            background: 'linear-gradient(180deg, var(--mint), #2a9d86)',
+            boxShadow: '0 0 18px rgba(94,231,200,0.45)',
+            color: '#062a22',
             fontFamily: 'var(--font-display)',
           }}
         >

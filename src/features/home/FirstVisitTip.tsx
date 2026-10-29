@@ -11,8 +11,10 @@ import { Icon, type IconId } from '@/data/icons'
 // tip, and never shown again — not a coach mark that returns, not a checklist
 // of tabs to visit. A tip that has been closed leaves no trace.
 export const TIPS: Record<string, { icon: IconId; text: string }> = {
-  battle: { icon: 'battle', text: 'Challenge a friend to the same quiz, head to head. Your wins raise your team’s keep — a hall you get to furnish.' },
-  study: { icon: 'study', text: 'Nothing in here touches your rank. Race the CPU, drill one book, replay a verse, or open your own Bible — all 66, lighting up as you read.' },
+  // Each tip says something its tab's own subtitle doesn't (2026-10-29): Battle's
+  // and Study's repeated the line printed right under them.
+  battle: { icon: 'battle', text: 'No friend free? Quick match finds whoever else is looking. Win or lose, you earn the same XP.' },
+  study: { icon: 'study', text: 'Tabitha lends a book a day. Race the CPU, drill one book or replay a verse — and any round can turn up a relic to give your church.' },
   church: { icon: 'church', text: 'Play for the church you actually go to. Your points pool with everyone there, the building grows for all of you, and you plant the garden out front.' },
   you: { icon: 'you', text: 'Build your character, earn borders and badges, unlock hero skins — and furnish your own Upper Room, with a quiet place in it to pray.' },
 }

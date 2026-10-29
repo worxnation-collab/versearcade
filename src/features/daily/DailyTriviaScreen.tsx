@@ -79,6 +79,8 @@ export default function DailyTriviaScreen() {
   }
 
   const { score, correctCount, totalQuestions } = result
+  // Same rule as ResultScreen's: at 0-1 right the facts are the peak.
+  const lowRun = correctCount <= 1 && result.perQuestion.some((p) => !p.correct)
 
   // Your own number against your own round, and nothing else. No best, no
   // percentage against anybody, nothing shareable — the same rule the library's
@@ -98,9 +100,9 @@ export default function DailyTriviaScreen() {
         transition={{ type: 'spring', stiffness: 220, damping: 16 }}
         style={{ textAlign: 'center', margin: '10px 0 16px' }}
       >
-        <div style={{ fontSize: 52 }}>✨</div>
-        <p className="dim" style={{ marginTop: 2 }}>You scored</p>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 52, lineHeight: 1 }}>
+        <div style={{ fontSize: lowRun ? 36 : 52 }}>{lowRun ? '📖' : '✨'}</div>
+        <p className="dim" style={{ marginTop: 2, fontSize: lowRun ? 13 : undefined }}>You scored</p>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: lowRun ? 36 : 52, lineHeight: 1 }}>
           <CountUp to={score} duration={1000} className="gradient-text" />
         </div>
         <h1 style={{ fontSize: 20, marginTop: 6 }}>
@@ -142,6 +144,13 @@ export default function DailyTriviaScreen() {
         </motion.button>
       )}
 
+      {/* The facts the misses carried, ABOVE the verse card and featured on a
+          0-1 run — the verse result's low-score treatment (FIRST-WEEK.md),
+          which this recap didn't get: a 0/5 showed a huge 0, the verse, and
+          the five facts below the fold. A round of book trivia is the one
+          place a wrong answer is MOST of the value. */}
+      <MissedList questions={verse.questions} result={result} featured={lowRun} />
+
       {/* The verse the round was read on. It is why this isn't a pub quiz. */}
       <div className="card" style={{ textAlign: 'left' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -151,10 +160,6 @@ export default function DailyTriviaScreen() {
         <ScriptureQuote verse={verse} style={{ marginTop: 8 }} />
       </div>
 
-      {/* The facts the misses carried. A round of book trivia is the one place
-          a wrong answer is MOST of the value — it is the only way to meet a
-          question about Habakkuk you didn't already know the answer to. */}
-      <MissedList questions={verse.questions} result={result} />
 
       {/* There is no "another round" here on purpose: this one is the DAY's, and
           a button that deals a second one would turn a shared daily thing into a

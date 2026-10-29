@@ -112,9 +112,9 @@ export function BuddiesSection() {
                   <b style={{ fontWeight: 800 }}>@{u.username}</b>
                   <div className="faint" style={{ fontSize: 12 }}>Level {u.level} · wants to be your buddy</div>
                 </div>
-                <button className="pill" onClick={() => { juice.coin(); respond(u.username, true) }}
+                <button className="pill" onClick={() => { juice.coin(); void respond(u.username, true).then((ok) => { if (!ok) setFlash({ text: 'That didn’t go through — check your connection and try again.', good: false }) }) }}
                   style={{ background: 'var(--gold)', color: '#241f0a', fontWeight: 800, fontSize: 13, border: 'none' }}>Accept</button>
-                <button className="pill" onClick={() => { juice.select(); respond(u.username, false) }}
+                <button className="pill" onClick={() => { juice.select(); void respond(u.username, false).then((ok) => { if (!ok) setFlash({ text: 'That didn’t go through — check your connection and try again.', good: false }) }) }}
                   style={{ fontWeight: 700, fontSize: 13 }}>✕</button>
               </div>
             ))}
@@ -136,7 +136,7 @@ export function BuddiesSection() {
               // person — landing on the generic picker made people think the
               // tap did nothing and re-pick the same buddy after playing.
               onBattle={() => { juice.coin(); navigate('/battle/new', { state: { challenge: u.username } }) }}
-              onRemove={() => { juice.select(); remove(u.username) }} />
+              onRemove={() => { juice.select(); void remove(u.username).then((ok) => { if (!ok) setFlash({ text: 'That didn’t go through — check your connection and try again.', good: false }) }) }} />
           ))}
         </div>
       )}

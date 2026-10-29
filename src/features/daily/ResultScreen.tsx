@@ -106,6 +106,55 @@ export default function ResultScreen() {
     setShareState(r === 'copied' ? 'Copied to clipboard!' : r === 'shared' ? 'Shared!' : 'Could not share')
   }
 
+  const payoff = (
+    <>
+        {/* Level up / XP */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 16 }}>
+          <Tile label="XP earned" value={`+${outcome.xpEarned ?? 0}`} accent="var(--gold)" />
+          <Tile label="Level" value={`${outcome.level}`} accent={outcome.leveledUp ? 'var(--good)' : undefined} badge={outcome.leveledUp ? 'UP!' : undefined} />
+          <Tile label="Correct" value={`${result.correctCount}/${result.totalQuestions}`} />
+        </div>
+
+        {outcome.boostUsed && (
+          <p className="faint" style={{ marginTop: 8, fontSize: 13 }}>
+            ⚡ <b style={{ color: 'var(--gold)' }}>XP Boost applied</b> — +50% XP this run
+          </p>
+        )}
+
+        {/* Streak */}
+        <motion.div className="card" style={{ marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}
+          animate={outcome.currentStreak >= 3 ? { scale: [1, 1.03, 1] } : {}} transition={{ repeat: 2, duration: 0.5 }}>
+          <StreakFlame days={outcome.currentStreak} size={26} />
+          <span className="dim">
+            {outcome.usedFreeze ? <>Streak freeze saved you! <PaintedIcon id="freeze" /></> : outcome.currentStreak === 1 ? 'Streak started — come back tomorrow!' : `${outcome.currentStreak}-day streak. Same time tomorrow?`}
+          </span>
+        </motion.div>
+        <StreakBorderOffer streak={outcome.currentStreak} alreadyPlayed={outcome.alreadyPlayed} />
+
+        {/* Collectibles earned */}
+        {cards.length > 0 && (
+          <div style={{ marginTop: 16 }}>
+            <p className="faint" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>New verse card{cards.length > 1 ? 's' : ''}!</p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+              {cards.map((k) => {
+                const c = collectibleByKey(k)
+                if (!c) return null
+                return (
+                  <motion.div key={k} initial={{ rotateY: 90, opacity: 0 }} animate={{ rotateY: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 200, damping: 16 }}
+                    className="card" style={{ padding: 12, minWidth: 92, borderColor: rarityColor[c.rarity] }}>
+                    <div style={{ fontSize: 30 }}>{c.emoji}</div>
+                    <div style={{ fontSize: 12, fontWeight: 800, marginTop: 4 }}>{c.name}</div>
+                    <div style={{ fontSize: 10, color: rarityColor[c.rarity], textTransform: 'uppercase' }}>{c.rarity}</div>
+                  </motion.div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+    </>
+  )
+
   return (
     <Page noNav>
       <div style={{ textAlign: 'center', paddingTop: 12 }}>
@@ -128,6 +177,12 @@ export default function ResultScreen() {
             right) run it is drawn compact instead, and the featured list
             directly under it carries the "nothing lost" line in its header, so
             the facts are the last word rather than the zero. */}
+
+        {/* The payoff — XP, level, streak, cards — directly under the score
+            (2026-10-29). It sat under the verse card and the missed list, about
+            two screens down, so a good run's reward was off-screen. On a low
+            run the facts stay the peak and this follows them. */}
+        {!lowRun && payoff}
 
         {/* Up by the score, while the run is still the thing on screen: the
             day's other box. It renders only while there IS one left to play —
@@ -165,6 +220,7 @@ export default function ResultScreen() {
             there and that screen is unchanged. The verse keeps the last word —
             it is the keepsake, and the heart that keeps it lives with it. */}
         <MissedList questions={today.questions} result={result} featured={lowRun} />
+        {lowRun && payoff}
         {!triviaDone && lowRun && (
           <motion.button
             initial={{ opacity: 0, y: 8 }}
@@ -229,90 +285,6 @@ export default function ResultScreen() {
             platforms; see the header in WatchYesterday.tsx. */}
         <WatchYesterday dropDate={today.dropDate} />
 
-        {/* Level up / XP */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 16 }}>
-          <Tile label="XP earned" value={`+${outcome.xpEarned ?? 0}`} accent="var(--gold)" />
-          <Tile label="Level" value={`${outcome.level}`} accent={outcome.leveledUp ? 'var(--good)' : undefined} badge={outcome.leveledUp ? 'UP!' : undefined} />
-          <Tile label="Correct" value={`${result.correctCount}/${result.totalQuestions}`} />
-        </div>
-
-        {outcome.boostUsed && (
-          <p className="faint" style={{ marginTop: 8, fontSize: 13 }}>
-            ⚡ <b style={{ color: 'var(--gold)' }}>XP Boost applied</b> — +50% XP this run
-          </p>
-        )}
-
-        {/* Streak */}
-        <motion.div className="card" style={{ marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}
-          animate={outcome.currentStreak >= 3 ? { scale: [1, 1.03, 1] } : {}} transition={{ repeat: 2, duration: 0.5 }}>
-          <StreakFlame days={outcome.currentStreak} size={26} />
-          <span className="dim">
-            {outcome.usedFreeze ? <>Streak freeze saved you! <PaintedIcon id="freeze" /></> : outcome.currentStreak === 1 ? 'Streak started — come back tomorrow!' : `${outcome.currentStreak}-day streak. Same time tomorrow?`}
-          </span>
-        </motion.div>
-        <StreakBorderOffer streak={outcome.currentStreak} alreadyPlayed={outcome.alreadyPlayed} />
-
-        {/* Collectibles earned */}
-        {cards.length > 0 && (
-          <div style={{ marginTop: 16 }}>
-            <p className="faint" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>New verse card{cards.length > 1 ? 's' : ''}!</p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-              {cards.map((k) => {
-                const c = collectibleByKey(k)
-                if (!c) return null
-                return (
-                  <motion.div key={k} initial={{ rotateY: 90, opacity: 0 }} animate={{ rotateY: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 200, damping: 16 }}
-                    className="card" style={{ padding: 12, minWidth: 92, borderColor: rarityColor[c.rarity] }}>
-                    <div style={{ fontSize: 30 }}>{c.emoji}</div>
-                    <div style={{ fontSize: 12, fontWeight: 800, marginTop: 4 }}>{c.name}</div>
-                    <div style={{ fontSize: 10, color: rarityColor[c.rarity], textTransform: 'uppercase' }}>{c.rarity}</div>
-                  </motion.div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* The moment of highest intent: they just got the payoff. Ask guests to
-            save it before they bounce.
-
-            The ask stays on run one — 71% of guests never come back, so that is
-            the only shot at most of them and removing it would cost more than it
-            saved. What changes is the pitch: once a guest has a streak, the
-            thing they'd lose is concrete, and the copy names it instead of
-            describing sync in the abstract. */}
-        {isGuest && (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, type: 'spring', stiffness: 220, damping: 20 }}
-            className="card"
-            style={{ marginTop: 20, textAlign: 'left', borderColor: 'var(--gold)', background: 'rgba(255,209,102,0.10)' }}
-          >
-            <div style={{ fontSize: 26 }}>{returningGuest ? <PaintedIcon id="streak" /> : '💾'}</div>
-            <b style={{ fontSize: 17, display: 'block', marginTop: 2 }}>
-              {returningGuest
-                ? `Don’t lose your ${outcome.currentStreak}-day streak`
-                : 'Save your streak'}
-            </b>
-            <p className="dim" style={{ fontSize: 13, marginTop: 4 }}>
-              {returningGuest
-                ? `You’ve come back ${profile.totalPlays} times as a guest. It all lives on this device only — a free account keeps it on any phone.`
-                : 'Totally optional — you can keep playing as a guest. A free account carries these to any phone:'}
-            </p>
-            <SyncStrip streak={outcome.currentStreak} reduceMotion={reduceMotion} />
-            <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>
-              <OAuthButtons onError={setSignInErr} />
-              <Button variant="ghost" full onClick={() => navigate('/auth?mode=signup')}>
-                Use email instead
-              </Button>
-            </div>
-            {signInErr && (
-              <p style={{ color: 'var(--coral)', fontSize: 13, marginTop: 8, textAlign: 'center' }}>{signInErr}</p>
-            )}
-          </motion.div>
-        )}
-
         {/* Only worth asking of a signed-in player with a streak to protect —
             a guest has no account for a subscription to hang off, and someone
             on run one has nothing to be reminded about yet. */}
@@ -349,7 +321,7 @@ export default function ResultScreen() {
               sentence either way: today's drop is over, here's what isn't. */}
           {locked ? (
             <>
-              <Button variant="gold" full onClick={() => navigate('/auth?mode=signup')}>
+              <Button variant="secondary" full onClick={() => navigate('/auth?mode=signup')}>
                 ✨ Create a free account
               </Button>
               <p className="faint" style={{ fontSize: 12, marginTop: -2, lineHeight: 1.5 }}>
@@ -371,6 +343,51 @@ export default function ResultScreen() {
 
           <Button variant="ghost" full onClick={() => navigate('/play')}>Back home</Button>
         </div>
+
+        {/* The moment of highest intent: they just got the payoff. Ask guests to
+            save it before they bounce. Since 2026-10-29 it sits UNDER Share and
+            the next-step buttons in a plain card: it used to be the heaviest
+            thing on the screen (gold border, three sign-in buttons) above the
+            one action a result is for, and the XP and streak it protects were
+            two screens down. The ask is the same; it is no longer the headline.
+
+            The ask stays on run one — 71% of guests never come back, so that is
+            the only shot at most of them and removing it would cost more than it
+            saved. What changes is the pitch: once a guest has a streak, the
+            thing they'd lose is concrete, and the copy names it instead of
+            describing sync in the abstract. */}
+        {isGuest && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, type: 'spring', stiffness: 220, damping: 20 }}
+            className="card"
+            style={{ marginTop: 18, textAlign: 'left' }}
+          >
+            <div style={{ fontSize: 22 }}>{returningGuest ? <PaintedIcon id="streak" /> : '💾'}</div>
+            <b style={{ fontSize: 15, display: 'block', marginTop: 2 }}>
+              {returningGuest
+                ? `Don’t lose your ${outcome.currentStreak}-day streak`
+                : 'Save your streak'}
+            </b>
+            <p className="dim" style={{ fontSize: 13, marginTop: 4 }}>
+              {returningGuest
+                ? `You’ve come back ${profile.totalPlays} times as a guest. It all lives on this device only — a free account keeps it on any phone.`
+                : 'Totally optional — you can keep playing as a guest. A free account carries these to any phone:'}
+            </p>
+            <SyncStrip streak={outcome.currentStreak} reduceMotion={reduceMotion} />
+            <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>
+              <OAuthButtons onError={setSignInErr} />
+              <Button variant="ghost" full onClick={() => navigate('/auth?mode=signup')}>
+                Use email instead
+              </Button>
+            </div>
+            {signInErr && (
+              <p style={{ color: 'var(--coral)', fontSize: 13, marginTop: 8, textAlign: 'center' }}>{signInErr}</p>
+            )}
+          </motion.div>
+        )}
+
       </div>
 
       <AnimatePresence>

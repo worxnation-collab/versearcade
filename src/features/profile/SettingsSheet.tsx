@@ -14,6 +14,9 @@ import { InstallRow } from '@/features/home/InstallPrompt'
 import { AppStoreRow } from '@/features/home/AppStoreNudge'
 import { PaintedIcon } from '@/components/PaintedIcon'
 
+/** Set once the keep-the-ones-you-love offer has been shown on this device. */
+const KEEP_OFFER_KEY = 'va.pushKeepOffer'
+
 /** Four steps, and 1 is exactly what the book was drawn at. */
 const TEXT_SIZES = [
   { label: 'Small', scale: 0.9 },
@@ -105,9 +108,29 @@ export function SettingsSheet({
   }, [signedIn])
   const showKinds = signedIn && pushOn && pushPrefs.available
 
+  // The FIRST time somebody reaches for the master switch to turn it off, and
+  // the per-kind switches are there to offer, the tap asks once instead: keep
+  // the kinds you love, or turn them all off. Once per device, ever, marked the
+  // moment it is SHOWN — a second tap on the master always just turns it off,
+  // and there is no second ask. Never a scold and never a count of what you'd
+  // miss: one line and two doors, and either answer is the right one.
+  const [keepOffer, setKeepOffer] = useState(false)
+  const offerKeep = () => {
+    if (!showKinds) return false
+    try {
+      if (localStorage.getItem(KEEP_OFFER_KEY)) return false
+      localStorage.setItem(KEEP_OFFER_KEY, '1')
+    } catch { return false }
+    setKeepOffer(true)
+    juice.select()
+    return true
+  }
+
   const togglePush = async () => {
     if (pushBusy) return
     setPushErr('')
+    if (pushOn && !keepOffer && offerKeep()) return
+    setKeepOffer(false)
     setPushBusy(true)
     try {
       if (pushOn) {
@@ -221,8 +244,23 @@ export function SettingsSheet({
                 onToggle={togglePush}
               />
             </div>
+            {keepOffer && pushOn && (
+              <div className="card" role="status" style={{ marginBottom: 6, borderColor: 'var(--edge)' }}>
+                <p style={{ margin: '2px 0 10px', fontSize: 13, lineHeight: 1.4 }}>
+                  Rather keep the ones you love? You can switch off just the kinds you don’t want, right below.
+                </p>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button className="pill" onClick={() => { setKeepOffer(false); juice.select(); document.getElementById('push-kinds')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }) }}>
+                    Choose which
+                  </button>
+                  <button className="pill" onClick={() => void togglePush()} style={{ opacity: 0.85 }}>
+                    Turn them all off
+                  </button>
+                </div>
+              </div>
+            )}
             {showKinds && (
-              <div className="card" style={{ marginBottom: 6 }}>
+              <div id="push-kinds" className="card" style={{ marginBottom: 6 }}>
                 {PUSH_KINDS.map((k, i) => (
                   <div key={k.kind}>
                     {i > 0 && <Divider />}

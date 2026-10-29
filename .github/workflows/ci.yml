@@ -5,6 +5,13 @@ name: CI
 # verses from src/data/bible/pool.ts, which nothing caught until the Focus
 # practice picker started showing "1 verse" per book again. This job fails the
 # PR instead.
+#
+# Since 2026-10-29 it also runs the FULL `npm run build` — every check:* script
+# chained into it (trivia, structure, map, quest doors, contrast, the church-
+# draft and digest harnesses…) used to run only inside Netlify's build, so a PR
+# could go green here and then fail its deploy — and then plays the real app
+# once (`npm run smoke`, scripts/smoke.mjs): the daily drop with a reload
+# mid-run, the play surviving on disk, and eight screens with no page error.
 
 on:
   pull_request:
@@ -21,7 +28,8 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # 22: check:church-draft needs Node's native WebSocket.
+          node-version: 22
           cache: npm
 
       # No dependencies needed — the pool check is plain Node. Run it before the
@@ -34,3 +42,12 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
+
+      - name: Build, with every check script
+        run: npm run build
+
+      - name: Install Chromium for the smoke test
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke — play the app once
+        run: npm run smoke

@@ -663,6 +663,7 @@ export function QuizRunner({
                 return (
                   <motion.button
                     key={i}
+                    data-option={i}
                     disabled={phase === 'feedback'}
                     whileTap={{ scale: 0.97 }}
                     animate={showState && isAnswer ? { scale: [1, 1.04, 1] } : {}}

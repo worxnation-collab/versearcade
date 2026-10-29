@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
+import { pushGesture } from '@/lib/gesturePush'
 import { todayLocalDate } from '@/lib/date'
 import { useAuth } from './auth'
 import { useSeason } from './season'
@@ -124,6 +125,8 @@ export const useWashing = create<WashingState>((set, get) => ({
       today: Number(r.today ?? get().today + 1),
       washedToday: [...get().washedToday, handle],
     })
+    // Tell them (0161) — at most once a day for them, whoever washes first.
+    pushGesture('wash', handle)
 
     // The XP is real and it's the server's number, so the profile can take it
     // straight — no refetch, no guess.

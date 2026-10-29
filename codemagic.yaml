@@ -55,7 +55,11 @@ workflows:
         script: npm ci
 
       - name: Build the web app (Vite -> dist/)
-        script: npm run build
+        script: |
+          npm run build
+          # The operator's TikTok assets and the sourcemaps (~38 MB) are for a
+          # desktop browser, not a phone — see scripts/native-dist.mjs.
+          node scripts/native-dist.mjs
 
       - name: Add iOS platform if missing, then sync
         script: |
@@ -389,7 +393,11 @@ workflows:
         script: npm ci
 
       - name: Build the web app (Vite -> dist/)
-        script: npm run build
+        script: |
+          npm run build
+          # The operator's TikTok assets and the sourcemaps (~38 MB) are for a
+          # desktop browser, not a phone — see scripts/native-dist.mjs.
+          node scripts/native-dist.mjs
 
       - name: Add Android platform if missing, then sync
         script: |

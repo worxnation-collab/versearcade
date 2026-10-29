@@ -111,7 +111,8 @@ interface PrayerWallState {
   /** Ask the wall for a note. `skip` passes on the one in hand. */
   draw: (skip?: boolean) => Promise<DealtNote | null>
   pray: () => Promise<PrayResult>
-  report: () => Promise<void>
+  /** False when the report didn't reach the server; the note is handed back so it can be reported again. */
+  report: () => Promise<boolean>
   /** Kneelings left today. */
   remaining: () => number
 }
@@ -300,10 +301,21 @@ export const usePrayerWall = create<PrayerWallState>((set, get) => ({
 
   async report() {
     const note = get().current
-    if (!note || !isOnline() || !supabase) return
+    if (!note || !isOnline() || !supabase) return false
     skipped.push(note.id)
     set({ current: null })
-    await supabase.rpc('report_prayer_request', { p_id: note.id })
+    // Checked: a report that silently failed left the note up for everybody
+    // else while telling the reporter it was handled.
+    // On failure the note comes back into the reporter's hand, so the retry is
+    // one tap rather than gone.
+    const { error } = await supabase.rpc('report_prayer_request', { p_id: note.id })
+    if (error) {
+      const at = skipped.lastIndexOf(note.id)
+      if (at >= 0) skipped.splice(at, 1)
+      set({ current: note })
+      return false
+    }
+    return true
   },
 
   remaining() {

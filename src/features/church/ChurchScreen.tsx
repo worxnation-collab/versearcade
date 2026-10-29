@@ -121,6 +121,7 @@ function ChurchHome({ church }: { church: Church }) {
   const [flash, setFlash] = useState<string | null>(null)
   const [promoted, setPromoted] = useState<string | null>(null)
   const [confirmLeave, setConfirmLeave] = useState(false)
+  const [leaveFailed, setLeaveFailed] = useState(false)
 
   // The churchyard lives up here now, because the hero IS the yard: the scene
   // at the top of this tab is the editable one, and the picker below only fills
@@ -660,16 +661,23 @@ function ChurchHome({ church }: { church: Church }) {
               they were a gift, not a deposit.
             </p>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-              <Button variant="secondary" onClick={() => { setConfirmLeave(false); void leave() }}>
+              <Button variant="secondary" onClick={() => { setConfirmLeave(false); setLeaveFailed(false); void leave().then((ok) => { if (!ok) setLeaveFailed(true) }) }}>
                 Yes, switch
               </Button>
               <Button variant="ghost" onClick={() => setConfirmLeave(false)}>Cancel</Button>
             </div>
           </>
         ) : (
-          <button onClick={() => setConfirmLeave(true)} className="faint" style={{ fontSize: 13, textDecoration: 'underline' }}>
-            Change my church
-          </button>
+          <>
+            {leaveFailed && (
+              <p role="alert" style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--coral)' }}>
+                That didn’t go through — you’re still part of {church.name}. Try again in a moment.
+              </p>
+            )}
+            <button onClick={() => setConfirmLeave(true)} className="faint" style={{ fontSize: 13, textDecoration: 'underline' }}>
+              Change my church
+            </button>
+          </>
         )}
       </div>
 

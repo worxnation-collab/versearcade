@@ -1,6 +1,7 @@
 // push-send — broadcasts a Web Push notification to every stored subscription.
 //
-// Six actions:
+// Six actions, and every one but the broadcast is a KIND the recipient can
+// switch off on its own (0163, `profiles.push_prefs`, read in `deliver`):
 //   • (default) the operator broadcast — admin-only (sharkbait).
 //   • `{ action: 'check_in', church_id, username }` — one church check-in note
 //     (0137/0138, or a group leader's, 0156) to the ONE member it was sent to.
@@ -251,7 +252,7 @@ async function sendCheckIn(admin: any, sender: string, input: Record<string, unk
   // The note's own words, or the verse when the leader sent only that. No
   // link in the body; tapping opens the mailbox, where the note is.
   const body = (claim.message || (claim.verse_ref ? `${claim.verse_ref} — a verse for you` : 'A note for you'))
-  return deliver(admin, claim.recipient_id, {
+  return deliver(admin, claim.recipient_id, 'check_in', {
     title: `${claim.from_username} · ${claim.church_name}`.slice(0, 80),
     body: String(body).slice(0, 240),
     url: '/mail',
@@ -272,7 +273,7 @@ async function sendBattlePlayed(admin: any, sender: string, input: Record<string
     p_sender: sender, p_battle: battleId,
   })
   if (error || !claim?.ok) return { pushed: 0, reason: claim?.reason ?? 'claim_failed' }
-  return deliver(admin, claim.recipient_id, {
+  return deliver(admin, claim.recipient_id, 'battle', {
     title: `${claim.from_username} played your battle`.slice(0, 80),
     body: 'See how it went.',
     url: `/battle/${claim.battle_id}`,
@@ -292,7 +293,7 @@ async function sendBuddyAccepted(admin: any, sender: string, input: Record<strin
     p_sender: sender, p_username: username,
   })
   if (error || !claim?.ok) return { pushed: 0, reason: claim?.reason ?? 'claim_failed' }
-  return deliver(admin, claim.recipient_id, {
+  return deliver(admin, claim.recipient_id, 'buddy', {
     title: `@${claim.from_username} is your buddy now`.slice(0, 80),
     body: 'They said yes to your buddy request.',
     url: '/buddies',
@@ -327,7 +328,7 @@ async function sendGesture(admin: any, sender: string, input: Record<string, unk
         url: '/pray',
         tag: `gesture-${claim.recipient_id}-${day}`,
       }
-  return deliver(admin, claim.recipient_id, note)
+  return deliver(admin, claim.recipient_id, 'gesture', note)
 }
 
 // "Your prayer mattered" (0162): the owner of a note marked it answered, and
@@ -352,15 +353,25 @@ async function sendAnswered(admin: any, sender: string, input: Record<string, un
   }
   let pushed = 0
   for (let i = 0; i < recipients.length; i += 10) {
-    const batch = await Promise.allSettled(recipients.slice(i, i + 10).map((r) => deliver(admin, r, note)))
+    const batch = await Promise.allSettled(recipients.slice(i, i + 10).map((r) => deliver(admin, r, 'answered', note)))
     for (const b of batch) if (b.status === 'fulfilled') pushed += b.value.pushed
   }
   return { pushed, recipients: recipients.length }
 }
 
-// One note to one person, on both transports; prunes dead endpoints. Never throws.
+// The five kinds a player can switch off one by one (0163). A missing key in
+// `profiles.push_prefs` is ON, so an account that never opened Settings hears
+// everything it heard before.
+type PushKind = 'battle' | 'buddy' | 'gesture' | 'answered' | 'check_in'
+
+// One note to one person, on both transports; prunes dead endpoints. Never
+// throws. Asks the recipient's own setting for this kind FIRST, server-side,
+// so the choice holds whatever build their phone is running.
 // deno-lint-ignore no-explicit-any
-async function deliver(admin: any, recipientId: string, note: Note) {
+async function deliver(admin: any, recipientId: string, kind: PushKind, note: Note) {
+  const { data: pref } = await admin.from('profiles').select('push_prefs').eq('id', recipientId).maybeSingle()
+  if (pref?.push_prefs?.[kind] === false) return { pushed: 0, reason: 'muted' }
+
   const { data: subs } = await admin
     .from('push_subscriptions').select('endpoint, p256dh, auth').eq('profile_id', recipientId)
   const { data: tokens } = await admin

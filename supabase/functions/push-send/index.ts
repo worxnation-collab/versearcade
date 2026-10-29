@@ -1,6 +1,6 @@
 // push-send — broadcasts a Web Push notification to every stored subscription.
 //
-// Four actions:
+// Five actions:
 //   • (default) the operator broadcast — admin-only (sharkbait).
 //   • `{ action: 'check_in', church_id, username }` — one church check-in note
 //     (0137/0138, or a group leader's, 0156) to the ONE member it was sent to.
@@ -16,6 +16,9 @@
 //     finished an async battle tells its challenger (0159), once per battle.
 //   • `{ action: 'buddy_accepted', username }` — the player who just accepted
 //     a buddy request tells the one who sent it (0160), once per request.
+//   • `{ action: 'gesture', kind: 'wash' | 'kneel', target }` — a friend's
+//     washing or a kneeling at a Prayer Wall note reaches its person (0161),
+//     at most once a day per recipient, whichever comes first.
 //
 // APNs (docs/NATIVE-PUSH.md): token auth with the team's .p8 key — ES256 JWT,
 // iss = team id, kid = key id, reused for 50 minutes (Apple refuses one older
@@ -295,6 +298,36 @@ async function sendBuddyAccepted(admin: any, sender: string, input: Record<strin
   })
 }
 
+// The gestures that give (0161): a washing names the washer, as the basin
+// does; a kneeling names nobody, as the wall does. At most one a day per
+// recipient — `gesture_push_claim` decides, and stamps the day it spends.
+// No counts anywhere: one person, or "somebody", and nothing to tally.
+// deno-lint-ignore no-explicit-any
+async function sendGesture(admin: any, sender: string, input: Record<string, unknown>) {
+  const kind = String(input.kind ?? '')
+  const target = String(input.target ?? '')
+  if ((kind !== 'wash' && kind !== 'kneel') || !target) return { pushed: 0, reason: 'bad_input' }
+  const { data: claim, error } = await admin.rpc('gesture_push_claim', {
+    p_sender: sender, p_kind: kind, p_target: target,
+  })
+  if (error || !claim?.ok) return { pushed: 0, reason: claim?.reason ?? 'claim_failed' }
+  const day = new Date().toISOString().slice(0, 10)
+  const note: Note = kind === 'wash'
+    ? {
+        title: `@${claim.from_username ?? 'A friend'} washed your feet`.slice(0, 80),
+        body: 'A small kindness, given to you today.',
+        url: '/you?people=basin',
+        tag: `gesture-${claim.recipient_id}-${day}`,
+      }
+    : {
+        title: 'Somebody prayed for you today',
+        body: 'Someone knelt at your note on the Prayer Wall.',
+        url: '/pray',
+        tag: `gesture-${claim.recipient_id}-${day}`,
+      }
+  return deliver(admin, claim.recipient_id, note)
+}
+
 // One note to one person, on both transports; prunes dead endpoints. Never throws.
 // deno-lint-ignore no-explicit-any
 async function deliver(admin: any, recipientId: string, note: Note) {
@@ -342,6 +375,7 @@ Deno.serve(async (req) => {
     if (input.action === 'check_in') return json(await sendCheckIn(admin, user.id, input))
     if (input.action === 'battle_played') return json(await sendBattlePlayed(admin, user.id, input))
     if (input.action === 'buddy_accepted') return json(await sendBuddyAccepted(admin, user.id, input))
+    if (input.action === 'gesture') return json(await sendGesture(admin, user.id, input))
 
     const { data: prof } = await admin.from('profiles').select('username').eq('id', user.id).single()
     if (!prof || prof.username !== 'sharkbait') return json({ error: 'forbidden' }, 403)

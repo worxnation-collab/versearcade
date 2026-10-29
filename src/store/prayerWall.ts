@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
+import { pushGesture } from '@/lib/gesturePush'
 import { todayLocalDate } from '@/lib/date'
 import { useAuth } from './auth'
 import { useSeason } from './season'
@@ -276,6 +277,8 @@ export const usePrayerWall = create<PrayerWallState>((set, get) => ({
     // A note you knelt at is not dealt again today, so it leaves your hand.
     skipped.push(note.id)
     set({ lifetime, today: Number(r.today ?? get().today + 1) })
+    // Tell the note's owner somebody knelt (0161) — unnamed, once a day at most.
+    pushGesture('kneel', note.id)
 
     // The XP is real and it's the server's number, so the profile can take it
     // straight — no refetch, no guess.

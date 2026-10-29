@@ -90,56 +90,73 @@ export function generateQuestions(seed: VerseSeed, rng: () => number): Question[
   const references = others.map((v) => v.reference)
 
   const candidates: (Question | null)[] = []
+  // What each question can teach BEYOND its own answer — set beside it here,
+  // attached in `teachMore` once the five are chosen. Kept off the Question
+  // so nothing here touches the rng or the deal.
+  const more = new Map<Question, string[]>()
+  const aud = midSentence(seed.audience)
+  const spk = midSentence(seed.speaker)
+  const add = (q: Question | null, extra: string[]) => { if (q) more.set(q, extra) }
 
-  candidates.push(
-    buildMC(
+  {
+    const q = buildMC(
       'Which book of the Bible is this verse from?',
       seed.book,
       books,
       rng,
       `This verse is ${seed.reference}, from the book of ${seed.book}.`,
-    ),
-  )
+    )
+    add(q, [`Just before it: ${seed.before}`])
+    candidates.push(q)
+  }
 
-  candidates.push(
-    buildMC(
+  {
+    const q = buildMC(
       'Who is speaking in this verse?',
       seed.speaker,
       speakers,
       rng,
       `Here the words come from ${seed.speaker}.`,
-    ),
-  )
+    )
+    add(q, [`Spoken to ${aud}.`, `Just before: ${seed.before}`])
+    candidates.push(q)
+  }
 
-  candidates.push(
-    buildMC(
+  {
+    const q = buildMC(
       'Who is being addressed?',
       seed.audience,
       audiences,
       rng,
       `These words are directed to ${seed.audience}.`,
-    ),
-  )
+    )
+    add(q, [`Spoken by ${spk}.`, `Just before: ${seed.before}`])
+    candidates.push(q)
+  }
 
-  candidates.push(
-    buildMC(
+  {
+    const q = buildMC(
       'What happens just before this verse?',
       seed.before,
       events,
       rng,
       `Just before: ${seed.before}`,
-    ),
-  )
+    )
+    add(q, [`Right after: ${seed.after}`])
+    candidates.push(q)
+  }
 
-  candidates.push(
-    buildMC(
+  {
+    const q = buildMC(
       'What comes right after this verse?',
       seed.after,
       events,
       rng,
       `Right after: ${seed.after}`,
-    ),
-  )
+    )
+    add(q, [`Just before it: ${seed.before}`])
+    candidates.push(q)
+  }
 
   // Fill-in-the-blank from the verse text itself.
   const re = new RegExp(`\\b${seed.keyword}\\b`, 'i')
@@ -154,29 +171,33 @@ export function generateQuestions(seed: VerseSeed, rng: () => number): Question[
     )
     // Tagged AFTER buildMC, so marking it consumes no rng and every deal is
     // byte-identical to the one before the tag existed. See localize.ts.
-    if (q) candidates.push({ ...q, blank: true })
+    if (q) { const b = { ...q, blank: true }; add(b, [`Its theme: ${seed.theme}.`]); candidates.push(b) }
   }
 
-  candidates.push(
-    buildMC(
+  {
+    const q = buildMC(
       'What is the main theme of this verse?',
       seed.theme,
       themes,
       rng,
       `The heart of this verse is: ${seed.theme}.`,
-    ),
-  )
+    )
+    add(q, [`Spoken by ${spk} to ${aud}.`])
+    candidates.push(q)
+  }
 
   // Reference recall — which citation is this verse?
-  candidates.push(
-    buildMC(
+  {
+    const q = buildMC(
       'What is the reference for this verse?',
       seed.reference,
       references,
       rng,
       `This verse is ${seed.reference}.`,
-    ),
-  )
+    )
+    add(q, [`Right after it: ${seed.after}`])
+    candidates.push(q)
+  }
 
   // A second fill-in-the-blank on a different word, so the same verse can feel
   // fresh across replays.
@@ -191,7 +212,7 @@ export function generateQuestions(seed: VerseSeed, rng: () => number): Question[
       rng,
       `The missing word is "${blank2}."`,
     )
-    if (q) candidates.push({ ...q, blank: true })
+    if (q) { const b = { ...q, blank: true }; add(b, [`Its theme: ${seed.theme}.`]); candidates.push(b) }
   }
 
   // Keep a deterministic set of valid questions.
@@ -218,7 +239,53 @@ export function generateQuestions(seed: VerseSeed, rng: () => number): Question[
   // If a bonus question is ever wanted back, `bonusTriviaFor` is still in
   // `./trivia.ts` and still the only thing that builds one — and it must go on
   // the END for the same reason, or every run in the app's history re-deals.
-  return verseQuestions.slice(0, 5)
+  return teachMore(verseQuestions.slice(0, 5), more, seed.facts)
+}
+
+// A wrong answer has to TEACH, and "The missing word is 'Resist.'" only told
+// somebody what they had just been shown (found by playing it, 2026-10-29: the
+// result screen's "3 things you now know" listed three answers back). So each
+// line keeps its answer FIRST — `MissedList` leads with a line that names it —
+// and then says one more true thing out of the verse's own data: who it was
+// said to, what happened around it, or one of the pool's hand-written `facts`,
+// which had been shown on two screens and never here. One extra per line and
+// none repeated in a run, so five misses read as five different things.
+//
+// The guard that matters: a line is read the moment its question is answered,
+// so it must never contain the answer to a question still to come ("Right
+// after: …" on Q1 when Q3 asks what comes right after). Any extra that names a
+// later question's right option is dropped, per extra.
+//
+// It reads nothing random and changes no prompt, option or order — the deal is
+// byte-identical to the one before, checked over 400 dates.
+function teachMore(qs: Question[], more: Map<Question, string[]>, facts: string[]): Question[] {
+  const answers = qs.map((q) => q.options[q.answerIndex].toLowerCase())
+  const used = new Set<string>()
+  return qs.map((q, i) => {
+    const later = answers.slice(i + 1)
+    // Not a later answer, not already added, and not what another line in the
+    // run already says ("Right after: …" is both the after-question's answer
+    // and the reference question's extra).
+    const core = (e: string) => e.replace(/^(Just before|Right after)( it)?: /, '')
+    const safe = (e: string) =>
+      !used.has(core(e)) &&
+      !later.some((a) => a.length > 2 && e.toLowerCase().includes(a)) &&
+      !qs.some((o) => o !== q && o.teach.includes(core(e)))
+    // ONE more thing, never two, and never the same thing twice in a run: the
+    // fact first (it is the one written to teach), else the line's own context.
+    const pick = [...(facts[i] ? [facts[i]] : []), ...(more.get(q) ?? [])].find(safe)
+    if (!pick) return q
+    used.add(core(pick))
+    return { ...q, teach: `${q.teach} ${pick}` }
+  })
+}
+
+// "The Israelites" reads wrong after "to"; "Jesus" and "Paul" must not change.
+// Only an article or possessive at the front is lowered — a name never is.
+const LOWER_FIRST = new Set(['the', 'his', 'her', 'their', 'a', 'an', 'all', 'readers', 'anyone', 'everyone'])
+function midSentence(s: string): string {
+  const [first, ...rest] = s.split(' ')
+  return LOWER_FIRST.has(first.toLowerCase()) ? [first.toLowerCase(), ...rest].join(' ') : s
 }
 
 /**

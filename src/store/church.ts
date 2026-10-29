@@ -235,7 +235,8 @@ interface ChurchState {
   setRadius: (choice: RadiusChoice) => void
   setTimeframe: (choice: TimeframeChoice) => void
   join: (place: ChurchPlace) => Promise<Church | null>
-  leave: () => Promise<void>
+  /** False when the server didn't take it: the player is still in their church. */
+  leave: () => Promise<boolean>
   contribute: (points: number) => Promise<ContributeResult>
   openChurch: (church: Church) => Promise<void>
   closeChurch: () => void
@@ -381,10 +382,14 @@ export const useChurch = create<ChurchState>((set, get) => ({
   },
 
   async leave() {
-    if (!isOnline()) return
-    await supabase!.rpc('leave_church')
+    if (!isOnline()) return false
+    // Checked: clearing the church on screen after a refused leave told the
+    // player they had left while the server still counted them as a member.
+    const { error } = await supabase!.rpc('leave_church')
+    if (error) { void get().load(); return false }
     set({ church: null, givers: [], myGiven: 0, board: [], boardMe: null, boardTotal: 0, myInfo: null })
     void get().load()
+    return true
   },
 
   async contribute(points) {

@@ -46,6 +46,7 @@ export default function PrayerWallScreen() {
   const wall = usePrayerWall()
   const [dealing, setDealing] = useState(false)
   const [result, setResult] = useState<PrayResult | null>(null)
+  const [reportFailed, setReportFailed] = useState(false)
 
   useEffect(() => {
     if (isGuest) return
@@ -120,9 +121,18 @@ export default function PrayerWallScreen() {
           onDraw={() => void draw(false)}
           onSkip={() => void draw(true)}
           onLit={() => void onLit()}
-          onReport={() => { juice.select(); void usePrayerWall.getState().report(); setResult(null) }}
+          onReport={() => {
+            juice.select(); setResult(null); setReportFailed(false)
+            void usePrayerWall.getState().report().then((ok) => { if (!ok) setReportFailed(true) })
+          }}
           onDone={() => { juice.select(); setResult(null); usePrayerWall.setState({ current: null }) }}
         />
+      )}
+
+      {reportFailed && (
+        <p role="alert" style={{ margin: '8px 2px 0', fontSize: 13, color: 'var(--coral)' }}>
+          Your report didn’t go through, so the note is still in your hand. Check your connection and report it again.
+        </p>
       )}
 
       {/* ── Your own note ─────────────────────────────────────────────── */}

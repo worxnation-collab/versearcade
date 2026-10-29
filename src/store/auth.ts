@@ -166,7 +166,8 @@ interface AuthState {
   recordShare: (dropDate: string) => void
   grantItem: (itemId: string) => void
   grantSkin: (skinId: string) => void
-  deleteAccount: () => Promise<void>
+  /** False when the server refused or never answered — the account still exists, so nobody is signed out. */
+  deleteAccount: () => Promise<boolean>
   signOut: () => Promise<void>
 }
 
@@ -950,11 +951,16 @@ export const useAuth = create<AuthState>((set, get) => ({
     if (get().mode === 'local' || !supabase) {
       localdb.clear()
       set({ profile: null, isAuthed: false })
-      return
+      return true
     }
-    await supabase.rpc('delete_my_account')
+    // Checked, because the old version signed out whatever the server said:
+    // a failed deletion looked exactly like a successful one, and an account
+    // a player believes is gone is the one thing this flow must never leave.
+    const { error } = await supabase.rpc('delete_my_account')
+    if (error) return false
     await supabase.auth.signOut()
     set({ profile: null, isAuthed: false })
+    return true
   },
 
   async signOut() {

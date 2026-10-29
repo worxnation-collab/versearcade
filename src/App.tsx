@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from './store/auth'
 import { useBuddies } from './store/buddies'
@@ -17,52 +17,6 @@ import AuthScreen from './features/auth/AuthScreen'
 import HomeScreen from './features/home/HomeScreen'
 import QuizScreen from './features/daily/QuizScreen'
 import ResultScreen from './features/daily/ResultScreen'
-import DailyTriviaScreen from './features/daily/DailyTriviaScreen'
-import PracticeQuizScreen from './features/practice/PracticeQuizScreen'
-import PracticeResultScreen from './features/practice/PracticeResultScreen'
-import ReviewScreen from './features/review/ReviewScreen'
-import BuddiesScreen from './features/buddies/BuddiesScreen'
-import MailScreen from './features/mail/MailScreen'
-import JournalScreen from './features/journal/JournalScreen'
-import CalendarScreen from './features/liturgy/CalendarScreen'
-import WardrobeScreen from './features/wardrobe/WardrobeScreen'
-import PrayerWallScreen from './features/prayer/PrayerWallScreen'
-import ChurchesScreen from './features/churches/ChurchesScreen'
-import ChurchDirectoryScreen from './features/churches/ChurchDirectoryScreen'
-import ChurchTryScreen from './features/churches/ChurchTryScreen'
-import ChurchClaimScreen from './features/church/ChurchClaimScreen'
-import ChurchScreen from './features/church/ChurchScreen'
-import ChurchPublicScreen from './features/church/ChurchPublicScreen'
-import ChurchAdminScreen from './features/church/admin/ChurchAdminScreen'
-import ChurchVerseScreen from './features/church/ChurchVerseScreen'
-import LeadRedirect from './features/church/admin/LeadRedirect'
-import AdminScreen from './features/admin/AdminScreen'
-import LeaderboardScreen from './features/leaderboard/LeaderboardScreen'
-import CollectionScreen from './features/collection/CollectionScreen'
-import ProfileScreen from './features/profile/ProfileScreen'
-import BattleHub from './features/arena/BattleHub'
-import BattleNew from './features/arena/BattleNew'
-import BattlePlay from './features/arena/BattlePlay'
-import BattleDetail from './features/arena/BattleDetail'
-import BattleCpu from './features/arena/BattleCpu'
-import LiveLobby, { LiveRoom } from './features/arena/LiveBattle'
-import ArcadeLobby from './features/arcade/ArcadeLobby'
-import ArcadeInvite from './features/arcade/ArcadeInvite'
-import MannaScreen from './features/arcade/MannaScreen'
-import WordCatchScreen from './features/arcade/WordCatchScreen'
-import StudyScreen from './features/study/StudyScreen'
-import StudyReportsScreen from './features/study/StudyReportsScreen'
-import StudyRecentScreen from './features/study/StudyRecentScreen'
-import StudyBagScreen from './features/study/StudyBagScreen'
-import TriviaRoundScreen from './features/study/TriviaRoundScreen'
-import CrossWordScreen from './features/arcade/CrossWordScreen'
-import BibleScreen from './features/bible/BibleScreen'
-import BibleBookScreen from './features/bible/BibleBookScreen'
-import BibleChapterScreen from './features/bible/BibleChapterScreen'
-import HighlightsScreen from './features/bible/HighlightsScreen'
-import StampsScreen from './features/bible/StampsScreen'
-import SealsScreen from './features/bible/SealsScreen'
-import FocusPracticeScreen from './features/practice/FocusPracticeScreen'
 import { BattleResume } from './features/arena/BattleResume'
 import { ChurchResume } from './features/church/ChurchResume'
 import { setPendingChurchAdmin } from './features/church/pending'
@@ -72,7 +26,6 @@ import { WaystationToast } from './features/season/WaystationToast'
 import { SkinUnlockToast } from './features/profile/SkinUnlockToast'
 import { UnlockToast } from './components/UnlockToast'
 import { SaveThisSheet } from './components/SaveThisSheet'
-import PilgrimageScreen from './features/season/PilgrimageScreen'
 import { MusicDirector } from './juice/MusicDirector'
 import { OffTabHold } from './components/OffTabHold'
 import { NowPlaying } from './components/NowPlaying'
@@ -81,6 +34,60 @@ import { PlayerCardProvider } from './components/PlayerCardModal'
 import { AccountWall, useAccountLocked, type WallCopy } from './components/AccountWall'
 import { captureSource } from './lib/attribution'
 import { captureVerseLink } from './lib/verseLink'
+
+// Every screen past the first few loads on demand, so the first paint carries
+// the Play tab and the run rather than the whole app (the bundle was one
+// 2.66 MB file). Landing, onboarding, sign-in, Play, the run and its result
+// stay eager: they are the path a new player takes before anything else.
+// `prefetchTabs` warms the other four tabs once the app is idle.
+const DailyTriviaScreen = lazy(() => import('./features/daily/DailyTriviaScreen'))
+const PracticeQuizScreen = lazy(() => import('./features/practice/PracticeQuizScreen'))
+const PracticeResultScreen = lazy(() => import('./features/practice/PracticeResultScreen'))
+const ReviewScreen = lazy(() => import('./features/review/ReviewScreen'))
+const BuddiesScreen = lazy(() => import('./features/buddies/BuddiesScreen'))
+const MailScreen = lazy(() => import('./features/mail/MailScreen'))
+const JournalScreen = lazy(() => import('./features/journal/JournalScreen'))
+const CalendarScreen = lazy(() => import('./features/liturgy/CalendarScreen'))
+const WardrobeScreen = lazy(() => import('./features/wardrobe/WardrobeScreen'))
+const PrayerWallScreen = lazy(() => import('./features/prayer/PrayerWallScreen'))
+const ChurchesScreen = lazy(() => import('./features/churches/ChurchesScreen'))
+const ChurchDirectoryScreen = lazy(() => import('./features/churches/ChurchDirectoryScreen'))
+const ChurchTryScreen = lazy(() => import('./features/churches/ChurchTryScreen'))
+const ChurchClaimScreen = lazy(() => import('./features/church/ChurchClaimScreen'))
+const ChurchScreen = lazy(() => import('./features/church/ChurchScreen'))
+const ChurchPublicScreen = lazy(() => import('./features/church/ChurchPublicScreen'))
+const ChurchAdminScreen = lazy(() => import('./features/church/admin/ChurchAdminScreen'))
+const ChurchVerseScreen = lazy(() => import('./features/church/ChurchVerseScreen'))
+const LeadRedirect = lazy(() => import('./features/church/admin/LeadRedirect'))
+const AdminScreen = lazy(() => import('./features/admin/AdminScreen'))
+const LeaderboardScreen = lazy(() => import('./features/leaderboard/LeaderboardScreen'))
+const CollectionScreen = lazy(() => import('./features/collection/CollectionScreen'))
+const ProfileScreen = lazy(() => import('./features/profile/ProfileScreen'))
+const BattleHub = lazy(() => import('./features/arena/BattleHub'))
+const BattleNew = lazy(() => import('./features/arena/BattleNew'))
+const BattlePlay = lazy(() => import('./features/arena/BattlePlay'))
+const BattleDetail = lazy(() => import('./features/arena/BattleDetail'))
+const BattleCpu = lazy(() => import('./features/arena/BattleCpu'))
+const LiveLobby = lazy(() => import('./features/arena/LiveBattle'))
+const LiveRoom = lazy(() => import('./features/arena/LiveBattle').then((m) => ({ default: m.LiveRoom })))
+const ArcadeLobby = lazy(() => import('./features/arcade/ArcadeLobby'))
+const ArcadeInvite = lazy(() => import('./features/arcade/ArcadeInvite'))
+const MannaScreen = lazy(() => import('./features/arcade/MannaScreen'))
+const WordCatchScreen = lazy(() => import('./features/arcade/WordCatchScreen'))
+const StudyScreen = lazy(() => import('./features/study/StudyScreen'))
+const StudyReportsScreen = lazy(() => import('./features/study/StudyReportsScreen'))
+const StudyRecentScreen = lazy(() => import('./features/study/StudyRecentScreen'))
+const StudyBagScreen = lazy(() => import('./features/study/StudyBagScreen'))
+const TriviaRoundScreen = lazy(() => import('./features/study/TriviaRoundScreen'))
+const CrossWordScreen = lazy(() => import('./features/arcade/CrossWordScreen'))
+const BibleScreen = lazy(() => import('./features/bible/BibleScreen'))
+const BibleBookScreen = lazy(() => import('./features/bible/BibleBookScreen'))
+const BibleChapterScreen = lazy(() => import('./features/bible/BibleChapterScreen'))
+const HighlightsScreen = lazy(() => import('./features/bible/HighlightsScreen'))
+const StampsScreen = lazy(() => import('./features/bible/StampsScreen'))
+const SealsScreen = lazy(() => import('./features/bible/SealsScreen'))
+const FocusPracticeScreen = lazy(() => import('./features/practice/FocusPracticeScreen'))
+const PilgrimageScreen = lazy(() => import('./features/season/PilgrimageScreen'))
 
 function RequireProfile({ children }: { children: JSX.Element }) {
   const { ready, profile } = useAuth()
@@ -207,13 +214,37 @@ function Splash() {
 }
 
 // The five tab routes share the bottom nav.
+// Its own Suspense, so a tab whose chunk is still arriving keeps the nav.
 function TabShell({ children }: { children: JSX.Element }) {
   return (
     <>
-      {children}
+      <Suspense fallback={<RouteLoading />}>{children}</Suspense>
       <BottomNav />
     </>
   )
+}
+
+// What a lazy screen shows for the moment its chunk takes to arrive: nothing
+// but reserved space. A spinner or the splash's book would flash on every
+// first visit to a screen; on the App Store build the chunk is on the device
+// and this is a frame or two.
+function RouteLoading() {
+  return <div aria-busy="true" style={{ minHeight: '60vh' }} />
+}
+
+// The four other tabs, fetched once the first screen has painted and the
+// browser is idle, so the first tap on Battle or Study doesn't wait on the
+// network. Fire-and-forget: a failed prefetch only means the tap fetches it.
+function prefetchTabs() {
+  const go = () => {
+    void import('./features/arena/BattleHub').catch(() => {})
+    void import('./features/study/StudyScreen').catch(() => {})
+    void import('./features/church/ChurchScreen').catch(() => {})
+    void import('./features/profile/ProfileScreen').catch(() => {})
+  }
+  const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }
+  if (w.requestIdleCallback) w.requestIdleCallback(go, { timeout: 4000 })
+  else setTimeout(go, 2500)
 }
 
 export default function App() {
@@ -223,6 +254,7 @@ export default function App() {
   const profileId = useAuth((s) => s.profile?.id)
   const navigate = useNavigate()
   useJuiceSync()
+  useEffect(() => { prefetchTabs() }, [])
 
   // iOS remote push: hand the server a fresh APNs token for whoever is signed
   // in, on every sign-in. Silent — it only re-registers when the permission
@@ -322,6 +354,7 @@ export default function App() {
         top-left corner is not somebody's back button. */}
     <OffTabHold />
     <NowPlaying />
+    <Suspense fallback={<RouteLoading />}>
     <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/welcome" element={<Onboarding />} />
@@ -860,6 +893,7 @@ export default function App() {
         />
         <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </Suspense>
     </PlayerCardProvider>
   )
 }

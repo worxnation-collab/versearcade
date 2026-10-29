@@ -59,6 +59,8 @@ export default function ProfileScreen() {
   const loadInventory = useInventory((s) => s.load)
   const { profile, mode, changeUsername, signOut, deleteAccount } = useAuth()
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteFailed, setDeleteFailed] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   // The walkthrough, opened from Settings. Owned here rather than by the sheet
   // because its last step navigates — see the note on SettingsSheet's prop.
@@ -475,8 +477,26 @@ export default function ProfileScreen() {
             <p className="dim" style={{ fontSize: 14, marginTop: 4 }}>This permanently removes your profile, streak, and cards. This can’t be undone.</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 10 }}>
               <Button variant="secondary" onClick={() => setConfirmDelete(false)}>Keep it</Button>
-              <Button variant="ghost" onClick={async () => { await deleteAccount(); navigate('/') }}>Delete</Button>
+              <Button
+                variant="ghost"
+                disabled={deleting}
+                onClick={async () => {
+                  setDeleting(true)
+                  setDeleteFailed(false)
+                  const ok = await deleteAccount()
+                  setDeleting(false)
+                  if (ok) navigate('/')
+                  else setDeleteFailed(true)
+                }}
+              >
+                {deleting ? 'Deleting…' : 'Delete'}
+              </Button>
             </div>
+            {deleteFailed && (
+              <p role="alert" style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--coral)' }}>
+                That didn’t go through, so your account is still here. Check your connection and try again.
+              </p>
+            )}
           </div>
         )}
       </div>

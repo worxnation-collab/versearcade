@@ -8,6 +8,7 @@ import { TranslationPicker } from './TranslationPicker'
 import { pushSupported, pushPermission, isPushSubscribed, enablePush, disablePush } from '@/lib/push'
 import { nativePushPlatform } from '@/lib/native'
 import { useReminders } from '@/store/reminders'
+import { usePushPrefs, PUSH_KINDS } from '@/store/pushPrefs'
 import { MusicSection } from './MusicSection'
 import { InstallRow } from '@/features/home/InstallPrompt'
 import { AppStoreRow } from '@/features/home/AppStoreNudge'
@@ -93,6 +94,16 @@ export function SettingsSheet({
   useEffect(() => {
     isPushSubscribed().then(setPushOn).catch(() => setPushOn(false))
   }, [])
+
+  // One switch per kind (0163). Read and enforced by push-send, so these rows
+  // only appear signed in, with notifications on, against a server that has
+  // them — a row that switches off something that can't reach you is noise.
+  const pushPrefs = usePushPrefs()
+  useEffect(() => {
+    if (signedIn) void pushPrefs.load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signedIn])
+  const showKinds = signedIn && pushOn && pushPrefs.available
 
   const togglePush = async () => {
     if (pushBusy) return
@@ -210,6 +221,21 @@ export function SettingsSheet({
                 onToggle={togglePush}
               />
             </div>
+            {showKinds && (
+              <div className="card" style={{ marginBottom: 6 }}>
+                {PUSH_KINDS.map((k, i) => (
+                  <div key={k.kind}>
+                    {i > 0 && <Divider />}
+                    <Row
+                      label={k.label}
+                      sub={k.line}
+                      on={pushPrefs.prefs[k.kind]}
+                      onToggle={() => { const on = !pushPrefs.prefs[k.kind]; void pushPrefs.set(k.kind, on); if (on) juice.select() }}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
             <p className="faint" style={{ fontSize: 11, lineHeight: 1.4, marginBottom: 18 }}>
               {nativePush
                 ? denied
@@ -369,10 +395,18 @@ function TimePicker({ value, onChange }: { value: string; onChange: (t: string) 
   )
 }
 
-function Row({ label, on, onToggle }: { label: string; on: boolean; onToggle: () => void }) {
+function Row({ label, sub, on, onToggle }: { label: string; sub?: string; on: boolean; onToggle: () => void }) {
   return (
-    <button onClick={onToggle} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 4px', width: '100%' }}>
-      <span style={{ fontWeight: 600 }}>{label}</span>
+    <button
+      onClick={onToggle}
+      role="switch"
+      aria-checked={on}
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 4px', width: '100%', textAlign: 'left' }}
+    >
+      <span style={{ minWidth: 0 }}>
+        <span style={{ fontWeight: 600, display: 'block' }}>{label}</span>
+        {sub && <span className="faint" style={{ fontSize: 12, display: 'block', marginTop: 2, lineHeight: 1.35 }}>{sub}</span>}
+      </span>
       <span style={{
         width: 50, height: 30, borderRadius: 999, background: on ? 'var(--good)' : 'rgba(255,255,255,0.15)',
         position: 'relative', transition: 'background 0.2s', flexShrink: 0,

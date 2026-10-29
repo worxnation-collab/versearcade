@@ -90,7 +90,10 @@ export function localizeQuestions(questions: Question[], text: string, salt: str
         const word = choices[Math.floor(rng() * choices.length)]
         const options = q.options.slice()
         options[q.answerIndex] = word
-        next = { ...q, prompt: blanked(clean, word), options, teach: `The missing word is "${word}."` }
+        // Only the answer sentence changes; what teachMore added after it
+        // (the theme, a fact) is about the verse, not the word, and stays.
+        const rest = q.teach.replace(/^The missing word is "[^"]*\."\s*/, '')
+        next = { ...q, prompt: blanked(clean, word), options, teach: [`The missing word is "${word}."`, rest].filter(Boolean).join(' ') }
       }
     }
 

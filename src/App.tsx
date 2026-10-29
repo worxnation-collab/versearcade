@@ -74,6 +74,7 @@ import { UnlockToast } from './components/UnlockToast'
 import { SaveThisSheet } from './components/SaveThisSheet'
 import PilgrimageScreen from './features/season/PilgrimageScreen'
 import { MusicDirector } from './juice/MusicDirector'
+import { OffTabHold } from './components/OffTabHold'
 import { NowPlaying } from './components/NowPlaying'
 import { BottomNav } from './components/BottomNav'
 import { PlayerCardProvider } from './components/PlayerCardModal'
@@ -317,6 +318,9 @@ export default function App() {
     {/* The soundtrack follows the route rather than any one screen, so it lives
         up here with the other app-wide passengers. */}
     <MusicDirector />
+    {/* The track card and the room-piece toast wait for a tab root, where the
+        top-left corner is not somebody's back button. */}
+    <OffTabHold />
     <NowPlaying />
     <Routes>
         <Route path="/" element={<Landing />} />

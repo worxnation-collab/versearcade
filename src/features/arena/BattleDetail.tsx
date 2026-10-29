@@ -15,6 +15,7 @@ import { BattleXpLine } from './BattleXpLine'
 import { battleVerse, asBattleMode } from './battle'
 import { ScriptureQuote } from '@/components/ScriptureQuote'
 import { PaintedIcon } from '@/components/PaintedIcon'
+import { FirstChallengePush } from './FirstChallengePush'
 
 function myOutcome(b: Battle): 'won' | 'lost' | 'tie' | null {
   if (b.status !== 'complete' || !b.winner) return null
@@ -106,6 +107,7 @@ export default function BattleDetail() {
   }
 
   const outcome = myOutcome(battle)
+  const justCreated = Boolean((location.state as { justCreated?: boolean } | null)?.justCreated)
   const needsAccount = !profile || mode === 'local'
 
   // ── Not signed in / guest: public invite + create-account gate ──
@@ -221,6 +223,7 @@ export default function BattleDetail() {
                 <Button variant="gold" full onClick={() => navigate('/battle')}>Back to my battles</Button>
               </div>
             </div>
+            <FirstChallengePush when={justCreated} />
           </>
         ) : (
           // Open challenge — anyone with the link can take you on.

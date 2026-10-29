@@ -56,7 +56,7 @@ function stopAsking() {
   }
 }
 
-export type NudgeReason = 'streak' | 'buddy'
+export type NudgeReason = 'streak' | 'buddy' | 'battle'
 
 const COPY: Record<NudgeReason, { icon: string; title: string; body: string; cta: string }> = {
   streak: {
@@ -71,6 +71,14 @@ const COPY: Record<NudgeReason, { icon: string; title: string; body: string; cta
     body: 'Buddy requests get answered whenever your friend next opens the app. Turn on notifications and you’ll know the moment they do.',
     cta: 'Let me know',
   },
+  // The first friend challenge sent (FirstChallengePush). True since 0159:
+  // the opponent's submit pushes the challenger, once per battle.
+  battle: {
+    icon: '⚔️',
+    title: 'You’ll hear when they play',
+    body: 'Turn on notifications and we’ll tell you the moment they finish your challenge.',
+    cta: 'Let me know',
+  },
 }
 
 /**
@@ -80,7 +88,7 @@ const COPY: Record<NudgeReason, { icon: string; title: string; body: string; cta
  * keeping, a request just sent. Everything else (support, permission, existing
  * subscription, ask budget) is decided here so no caller has to remember it.
  */
-export function PushNudge({ reason, when = true }: { reason: NudgeReason; when?: boolean }) {
+export function PushNudge({ reason, when = true, onShow }: { reason: NudgeReason; when?: boolean; onShow?: () => void }) {
   const juice = useJuice()
   const [show, setShow] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -106,6 +114,7 @@ export function PushNudge({ reason, when = true }: { reason: NudgeReason; when?:
       if (st.count >= MAX_ASKS) return
       if (Date.now() - st.last < WEEK) return
       setShow(true)
+      onShow?.()
     })
     return () => { live = false }
   }, [when])

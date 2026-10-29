@@ -77,7 +77,8 @@ export const MANNA_RUSH: TapGameDef = {
     },
   },
   labels: {
-    taken: 'omers',
+    // The tally counts FLAKES (one per tap); "omers" called 39 flakes 39 omers.
+    taken: 'flakes gathered',
     clean: 'days clean',
     restKept: 'Rest kept',
     // Warm, never a telling-off. Going out to look on the seventh day is what

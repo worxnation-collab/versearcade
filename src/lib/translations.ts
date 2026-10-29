@@ -46,6 +46,16 @@ export interface TranslationOption {
 
 // Keep the API.Bible ids in sync with ALLOWED in
 // supabase/functions/bible-text/index.ts — that list is the server's ceiling.
+//
+// LICENSING, UNRESOLVED (re-flagged 2026-10-29 for the 1.4.0 release): NLT
+// (Tyndale) and MSG (NavPress) are `licensed` AND `quizzable`, in an app that
+// sells a $9.99 patron skin. API.Bible's terms carry a non-commercial clause
+// and forbid "altering" licensed text, and a quiz blanks a word out of it. No
+// publisher has been asked. Quizzing them was the owner's deliberate call
+// (CLAUDE.md → "Scripture in the player's translation"), so it is NOT flipped
+// here — but until a publisher or API.Bible confirms it, the safe release
+// setting is `quizzable: false` on those two rows: they stay readable, and a
+// run in either falls back to the BSB deal exactly as an un-cuttable blank does.
 export const TRANSLATIONS_ALL: TranslationOption[] = [
   { id: 'bsb', abbr: 'BSB', name: 'Berean Standard Bible', apiBibleId: 'bba9f40183526463-01', licensed: false, quizzable: true, blurb: 'Built into the app, so it reads offline' },
   { id: 'nlt', abbr: 'NLT', name: 'New Living Translation', apiBibleId: 'd6e14a625393b4da-01', licensed: true, quizzable: true, blurb: 'Clear, modern, thought-for-thought' },

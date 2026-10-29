@@ -691,6 +691,8 @@ export function asQuestion(t: TriviaQuestion, rng: () => number, book: string): 
  * question, so a book the catalog has never heard of degrades to the run the
  * app has always had. Fail closed, per entry.
  */
+// PARKED, deliberately unwired (CLAUDE.md → "Book trivia"): kept so putting a
+// bonus question back is one line on the END of a run, never a re-deal.
 export function bonusTriviaFor(book: string, rng: () => number): Question | null {
   const pool = BOOK_TRIVIA[book]
   if (!pool || pool.length === 0) return null

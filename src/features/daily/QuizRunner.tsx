@@ -481,7 +481,10 @@ export function QuizRunner({
   return (
     <Page noNav>
       {/* HUD */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: label ? 8 : 12 }}>
+      {/* Three fixed columns, so the score holds the centre whether or not the
+          combo is showing — with space-between it sat right-aligned and jumped
+          to the middle the moment a combo appeared (2026-10-29). */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 8, marginBottom: label ? 8 : 12 }}>
         {/* Free until the clock starts; a lock that explains itself after. */}
         <button
           className="pill"
@@ -494,13 +497,14 @@ export function QuizRunner({
             setLeaveNote(true)
           }}
           aria-label={locked ? 'Run in progress' : 'Back'}
+          style={{ justifySelf: 'start' }}
         >
           {locked ? <PaintedIcon id="lock" /> : '✕'}
         </button>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 22 }}>
           <CountUp to={score} /> <span className="faint" style={{ fontSize: 13 }}>pts</span>
         </div>
-        <ComboMeter combo={combo} multiplier={multiplier} />
+        <div style={{ justifySelf: 'end' }}><ComboMeter combo={combo} multiplier={multiplier} /></div>
       </div>
       {label && (
         <div style={{ textAlign: 'center', marginBottom: 12 }}>
@@ -622,7 +626,7 @@ export function QuizRunner({
             {/* progress + timer */}
             <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
               {questions.map((_, i) => (
-                <div key={i} style={{ flex: 1, height: 6, borderRadius: 999, background: i < qi ? 'var(--good)' : i === qi ? 'var(--gold)' : 'rgba(255,255,255,0.12)' }} />
+                <div key={i} style={{ flex: 1, height: 6, borderRadius: 999, background: /* done, not "correct": green on a missed question meant two things */ i < qi ? 'var(--ink-dim)' : i === qi ? 'var(--gold)' : 'rgba(255,255,255,0.12)' }} />
               ))}
             </div>
 

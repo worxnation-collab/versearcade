@@ -44,6 +44,13 @@ export interface TapSurface {
   /** One target. `leaving` is true for the last frames of its life. */
   renderTarget: (t: { kind: string; taken: boolean; leaving: boolean }) => React.ReactNode
   /**
+   * What a screen reader hears for a target: what it IS (the word, a fresh or
+   * a kept-over flake), never what to do with it. It used to say "take this
+   * one" / "leave this one", which read the answer aloud — the game's whole
+   * question — and was a cheat for anybody who looked at the markup.
+   */
+  targetLabel?: (kind: string) => string
+  /**
    * Replaces the quota pips in the HUD.
    *
    * Pips answer "how many left", which is the only thing there is to say about
@@ -527,7 +534,7 @@ export function TapRunner({
           <button
             key={t.id}
             type="button"
-            aria-label={t.leave ? 'leave this one' : 'take this one'}
+            aria-label={surface.targetLabel?.(t.kind) ?? t.kind}
             onClick={(e) => {
               e.stopPropagation()
               tap(t)

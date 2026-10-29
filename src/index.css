@@ -166,6 +166,15 @@ h1, h2, h3, .display {
 
 button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
 
+/* Accessibility basics (2026-10-29, for 1.4.0) -------------------------------
+   Pinch-zoom is allowed again (index.html dropped `user-scalable=no` and
+   `maximum-scale`, WCAG 1.4.4); inputs are already 16px, so iOS does not zoom
+   on focus. Keyboard users get a ring they can see — the button reset above
+   strips the browser's — on :focus-visible only, so a tap draws nothing. It is
+   --ink rather than --gold because gold is rationed to "the thing to do next". */
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+
 /* App shell -------------------------------------------------------------- */
 .app-shell {
   min-height: 100%;
@@ -249,6 +258,15 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   border: 1px solid var(--stroke);
   box-shadow: inset 0 1px 0 rgba(255, 236, 214, 0.07);
   font-weight: 700; font-size: 13px;
+}
+/* A pill is ~29px tall — the size the design wants, and under the 44px a
+   finger needs. On a touch screen a tappable one gets an invisible hit area
+   8px above and below (~45px), so every close ✕ and row action is easier to
+   hit and nothing moves. Only button/link pills: a pill used as a label must
+   not catch taps meant for whatever is around it. */
+@media (pointer: coarse) {
+  :is(button, a).pill { position: relative; }
+  :is(button, a).pill::after { content: ''; position: absolute; inset: -8px -2px; border-radius: inherit; }
 }
 
 /* No material for anybody who asked the OS for more contrast: texture is

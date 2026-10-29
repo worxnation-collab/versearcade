@@ -239,7 +239,17 @@ export function generateQuestions(seed: VerseSeed, rng: () => number): Question[
   // If a bonus question is ever wanted back, `bonusTriviaFor` is still in
   // `./trivia.ts` and still the only thing that builds one — and it must go on
   // the END for the same reason, or every run in the app's history re-deals.
-  return teachMore(verseQuestions.slice(0, 5), more, seed.facts)
+  // If a line's own extras would all spoil a later question, it may borrow any
+  // other true thing about the verse; the same guards still apply.
+  const fallback = [
+    ...seed.facts,
+    `Spoken by ${spk} to ${aud}.`,
+    `Its theme: ${seed.theme}.`,
+    `Just before: ${seed.before}`,
+    `Right after: ${seed.after}`,
+    `It's in the ${seed.testament === 'OT' ? 'Old' : 'New'} Testament.`,
+  ]
+  return teachMore(verseQuestions.slice(0, 5), more, seed.facts, fallback)
 }
 
 // A wrong answer has to TEACH, and "The missing word is 'Resist.'" only told
@@ -258,7 +268,7 @@ export function generateQuestions(seed: VerseSeed, rng: () => number): Question[
 //
 // It reads nothing random and changes no prompt, option or order — the deal is
 // byte-identical to the one before, checked over 400 dates.
-function teachMore(qs: Question[], more: Map<Question, string[]>, facts: string[]): Question[] {
+function teachMore(qs: Question[], more: Map<Question, string[]>, facts: string[], fallback: string[]): Question[] {
   const answers = qs.map((q) => q.options[q.answerIndex].toLowerCase())
   const used = new Set<string>()
   return qs.map((q, i) => {
@@ -273,7 +283,7 @@ function teachMore(qs: Question[], more: Map<Question, string[]>, facts: string[
       !qs.some((o) => o !== q && o.teach.includes(core(e)))
     // ONE more thing, never two, and never the same thing twice in a run: the
     // fact first (it is the one written to teach), else the line's own context.
-    const pick = [...(facts[i] ? [facts[i]] : []), ...(more.get(q) ?? [])].find(safe)
+    const pick = [...(facts[i] ? [facts[i]] : []), ...(more.get(q) ?? []), ...fallback].find(safe)
     if (!pick) return q
     used.add(core(pick))
     return { ...q, teach: `${q.teach} ${pick}` }

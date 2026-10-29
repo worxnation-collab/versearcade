@@ -35,7 +35,8 @@
     "check:faces": "node scripts/check-faces.mjs",
     "check:exchanges": "node scripts/check-exchanges.mjs",
     "check:study-topics": "node scripts/check-study-topics.mjs",
-    "check:asset-templates": "node scripts/check-asset-templates.mjs"
+    "check:asset-templates": "node scripts/check-asset-templates.mjs",
+    "smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {
     "@capacitor-community/apple-sign-in": "^6.0.0",

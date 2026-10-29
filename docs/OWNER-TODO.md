@@ -41,7 +41,7 @@ The code is merged. It stays invisible until these are done:
 - [x] 1.3.0 turned out to be already approved (Codemagic build 39 was refused for it, 2026-10-28); the repo now carries **1.4.0**.
 - [ ] Run a fresh Codemagic build from current `main`. The TestFlight build predates weeks of church features.
 - [ ] Install it from TestFlight and play one round on a real phone.
-- [ ] Ask Claude to refresh "What's New" in `docs/APP-STORE-LISTING.md` from the merged work.
+- [x] "What's New" for 1.4.0 and the corrected Description are ready to paste in `docs/APP-STORE-LISTING.md` (2026-10-29). Drop its two CONDITIONAL lines if §3 or §4 isn't done when you submit.
 - [ ] Fill in the version record:
   - What's New
   - screenshots

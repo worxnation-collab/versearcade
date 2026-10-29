@@ -27,7 +27,12 @@ npm install        # node_modules is NOT in the container image — do this firs
 npm run dev        # LOCAL mode with no .env.local; the full solo loop works
 npm run typecheck  # tsc -b --noEmit
 npm run build      # tsc -b && vite build
+npm run smoke      # after a build: plays the real app once (scripts/smoke.mjs)
 ```
+
+CI runs the full `npm run build` (every check script) and then `npm run smoke`
+on every PR. Locally the container's Chromium may not match the pinned
+Playwright: `PW_EXECUTABLE=$(ls -d /opt/pw-browsers/chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell | head -1) npm run smoke`.
 
 Use `npm run typecheck`, never a bare `npx tsc` — the repo pins TypeScript 5.x
 and `tsconfig.json` still sets `baseUrl`, which a globally-installed tsc 6.x

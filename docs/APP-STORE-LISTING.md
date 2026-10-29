@@ -32,6 +32,11 @@ Two rounds a day: today's verse, and five on one book of the Bible. Race a stran
 
 ## Description (max 4000 chars)
 
+> **Corrected for 1.4.0 on 2026-10-29**: three lines had gone false — the weekly
+> church rivalry (now folded away and never on a church's page), the room's
+> material picker (removed for the daily painting), and "KJV, WEB or BBE" (eight
+> translations now). 3,991 characters after it, leaving 9 — re-count after any edit.
+>
 > **Rewritten for 1.3.0 on 2026-09-09. 3,974 characters, leaving 26.** The previous
 > one was written for 1.0 and had gone quietly false in one place and thin in six:
 > it said "Battle a friend" when the app now puts you against a stranger in one tap,
@@ -73,16 +78,16 @@ AN ARCADE IN THE BACK
 Manna Rush: seven days in the wilderness, and on the seventh the best thing is to rest. Word Catch: a verse comes loose from the page and you tap the words back in order. Cross Word: two words that share a letter, standing as a cross — solve it and the squares turn to wood with the verse carved underneath. No high scores. Nothing ranked.
 
 PLAY FOR YOUR CHURCH
-Find your congregation and give it the points you earn. Giving costs you nothing — your own XP and rank stay exactly where they are. Every Monday your church meets another its own size, and whoever gives more raises a statue in their churchyard. Small churches play small ones, so a congregation of four can win its week.
+Find your congregation and give it the points you earn. Giving costs you nothing — your own XP and rank stay exactly where they are. When your church's leaders set a verse of their own, it's waiting for you beside the daily one, and a series reads as a run of days you can pick up anywhere.
 
 A ROOM THAT IS YOURS
-An Upper Room under your player card that belongs to nobody else. Furnish it, choose what it's made of, and let friends knock. Pray in it: a prayer is built for you out of four movements, so you always know what comes next, and it will read itself aloud if you'd rather listen.
+An Upper Room under your player card that belongs to nobody else, painted fresh each day. Furnish it and let friends knock. Pray in it: a prayer is built for you out of four movements, so you always know what comes next, and it will read itself aloud if you'd rather listen.
 
 THE PRAYER WALL
 Tuck a note into the stones and the wall deals somebody else's to you. Hold the candle until the wick catches. A stranger only ever sees the category — your own words reach your church and your buddies, or nobody at all. Anonymous unless you sign it.
 
 YOUR WHOLE BIBLE, FILLING IN
-All 66 books, 1,189 chapters and 31,102 verses. Every one you read, study or keep lights up on your own copy, and reading a book all the way through presses its seal. Open a chapter with no signal and it still draws every verse. Read in KJV, WEB or BBE.
+All 66 books, 1,189 chapters and 31,102 verses. Every one you read, study or keep lights up on your own copy, and reading a book all the way through presses its seal. Open a chapter with no signal and it still draws every verse. Read and play in the translation you prefer — eight to choose from.
 
 STUDY, WITHOUT A SCORE
 The Study tab is a library with a librarian in it. See your accuracy book by book, weakest first, drill what needs it, and review the verses you kept before they fade. Nothing in Study is ranked or scored against anyone.
@@ -97,22 +102,57 @@ MADE THOUGHTFULLY
 • Delete your account and all your data in-app, whenever you want.
 • No ads. No tracking. We never sell your data.
 
-Verse text is the Berean Standard Bible (BSB), a modern, public-domain translation. Scripture is always free — and always will be.
+The built-in text is the Berean Standard Bible (BSB), a modern, public-domain translation. Scripture is always free — and always will be.
 
 Start your streak today. It's one verse.
 ```
 
 ## What's New (max 4000 chars — per version, App Store Connect asks for this)
 
-### 1.4.0 — the release after 1.3.0 (NEXT, unuploaded — RUNNING DRAFT)
+### 1.4.0 — the release after 1.3.0 (NEXT, unuploaded — READY TO PASTE)
 
-> **1.3.0 is APPROVED** (found 2026-10-28, when Codemagic build 39 was refused for
-> re-using it). This block is still to be written: rebuild it from
-> `git log --first-parent` since the 1.3.0 upload. Headline items since then include
-> native push notifications on iPhone (church check-in notes and news), the Verified
-> Church plan through Apple, and the church leadership tools (Autopilot, the Tuesday
-> digest, small groups, the pastoral prayer list, co-leaders, inquiry replies).
-> The 1.3.0 block below is kept as the record of what that release said.
+> Written 2026-10-29 from the merged history. This repo's clone only reaches back
+> to 2026-10-21, so anything merged between the 1.3.0 upload and then (the
+> church picker's town search, the church page front door) should be checked in
+> App Store Connect against 1.3.0's own notes before pasting. Two lines are
+> CONDITIONAL and must come out if their setup isn't done at submission time:
+> the iPhone notifications line needs the TestFlight check in OWNER-TODO §3,
+> and the "through the App Store" plan line needs the subscriptions in §4.
+> Nothing here names a price, a web checkout or a plan bought elsewhere.
+
+```
+A calmer, kinder Verse Arcade — and a whole new home for your church.
+
+LEARN SOMETHING EVERY TIME
+• Your very first question now shows how it works: answer it, and whatever you pick, you learn something true about the verse.
+• A wrong answer now teaches more than the answer — who the words were spoken to, what happened around them, or a fact about the verse.
+• A run that didn't go well leads with what you now know, not the score.
+
+A CLEANER PLAY TAB
+• Today's verse stays front and center, with today's trivia and your church's verse beside it.
+• Battle, Study and You are calmer: ranks folded away, Study opens on your own progress, and the compass points to what's open right now.
+• Painted icons, a new painting of your Upper Room every day, and a lantern by your door while your Prayer Wall note is up.
+
+YOUR TRANSLATION
+• Read — and play — in the translation you prefer, eight to choose from.
+
+YOUR CHURCH, ALL WEEK
+• Your church can set a verse of its own, beside the daily one. A series shows as a run of days, and a day you missed never counts against you.
+• A note from your church's leaders lands in your mailbox — and on your iPhone, if you turn notifications on.
+
+FOR CHURCH LEADERS
+• Claim your church's page and add co-leaders.
+• Plan the week: record or upload Sunday's sermon and get a week of verses and questions drafted for you to review. Nothing reaches your people until you approve it.
+• Autopilot drafts the week from your sermon or a backup plan, even if you're busy.
+• Discussion questions for small groups, a pastoral prayer list, check-in notes, replies to people asking about your church, and a Tuesday email of what needs you.
+• Verse cards and a Sunday pack to share.
+• Subscribe to the Verified Church plan through the App Store.
+
+FASTER AND STEADIER
+• Opens faster and takes less space on your phone.
+• If something doesn't go through — deleting an account, leaving a church, a report — the app now tells you rather than pretending it worked.
+• Small fixes everywhere: banners no longer cover buttons, and loading screens hold still.
+```
 
 ### 1.3.0 — the release after 1.2.0 (APPROVED)
 

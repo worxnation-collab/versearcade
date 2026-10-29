@@ -105,3 +105,30 @@ export const usePushPrefs = create<PushPrefsState>((setState, get) => ({
     return true
   },
 }))
+
+/** What a test push did, in the words Settings shows. */
+export type TestPushOutcome =
+  | { state: 'sent'; devices: number }
+  | { state: 'muted' }
+  | { state: 'held'; until: string }
+  | { state: 'nowhere' }
+  | { state: 'failed' }
+
+/** "Send me a test push": push-send's `test` action sends to the caller ONLY,
+ *  through the same server path every real note takes (kind switch, quiet
+ *  hours, both transports), and says which of those decided it. */
+export async function sendTestPush(kind: PushKind): Promise<TestPushOutcome> {
+  if (!isOnline()) return { state: 'failed' }
+  try {
+    const { data, error } = await supabase!.functions.invoke('push-send', { body: { action: 'test', kind } })
+    if (error || !data) return { state: 'failed' }
+    const r = data as { pushed?: number; reason?: string; deferred?: boolean; until?: string; devices?: number }
+    if (r.reason === 'muted') return { state: 'muted' }
+    if (r.deferred && r.until) return { state: 'held', until: r.until }
+    if ((r.pushed ?? 0) > 0) return { state: 'sent', devices: r.pushed ?? 0 }
+    if (r.reason === 'no_subscription' || r.devices === 0) return { state: 'nowhere' }
+    return { state: 'failed' }
+  } catch {
+    return { state: 'failed' }
+  }
+}

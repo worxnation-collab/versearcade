@@ -8,7 +8,7 @@ import { TranslationPicker } from './TranslationPicker'
 import { pushSupported, pushPermission, isPushSubscribed, enablePush, disablePush } from '@/lib/push'
 import { nativePushPlatform } from '@/lib/native'
 import { useReminders } from '@/store/reminders'
-import { usePushPrefs, PUSH_KINDS } from '@/store/pushPrefs'
+import { usePushPrefs, PUSH_KINDS, sendTestPush, type PushKind, type TestPushOutcome } from '@/store/pushPrefs'
 import { MusicSection } from './MusicSection'
 import { InstallRow } from '@/features/home/InstallPrompt'
 import { AppStoreRow } from '@/features/home/AppStoreNudge'
@@ -290,6 +290,7 @@ export function SettingsSheet({
                 )}
               </div>
             )}
+            {showKinds && <TestPush />}
             <p className="faint" style={{ fontSize: 11, lineHeight: 1.4, marginBottom: 18 }}>
               {nativePush
                 ? denied
@@ -445,6 +446,53 @@ function TimePicker({ value, onChange }: { value: string; onChange: (t: string) 
           <option key={t} value={t}>{timeLabel(t)}</option>
         ))}
       </select>
+    </div>
+  )
+}
+
+// "Send me a test push": one to yourself, through the real server path, and a
+// plain line about what happened to it — sent, muted, or held until morning.
+function TestPush() {
+  const juice = useJuice()
+  const [kind, setKind] = useState<PushKind>('battle')
+  const [busy, setBusy] = useState(false)
+  const [out, setOut] = useState<TestPushOutcome | null>(null)
+  const label = PUSH_KINDS.find((k) => k.kind === kind)?.label ?? kind
+  const run = async () => {
+    if (busy) return
+    setBusy(true); setOut(null); juice.select()
+    setOut(await sendTestPush(kind))
+    setBusy(false)
+  }
+  const line = !out ? null
+    : out.state === 'sent' ? { ok: true, text: `Sent to ${out.devices === 1 ? 'your device' : `${out.devices} devices`} — it should arrive in a few seconds.` }
+    : out.state === 'muted' ? { ok: false, text: `Not sent: ${label} is switched off above, so this kind stays quiet.` }
+    : out.state === 'held' ? { ok: true, text: `Held — your quiet hours are on. It arrives at ${new Date(out.until).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.` }
+    : out.state === 'nowhere' ? { ok: false, text: 'Nothing to send to — no device of yours is signed up. Turn notifications off and on again on this one.' }
+    : { ok: false, text: 'Couldn’t send a test right now. Try again in a moment.' }
+  return (
+    <div className="card" style={{ marginBottom: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <select
+          aria-label="Kind of test push"
+          value={kind}
+          onChange={(e) => { setKind(e.target.value as PushKind); setOut(null) }}
+          style={{
+            padding: '7px 10px', borderRadius: 10, background: 'var(--card-solid)', flex: '1 1 140px', minWidth: 0,
+            border: '1px solid var(--stroke)', color: 'var(--ink)', fontSize: 13, fontWeight: 700,
+          }}
+        >
+          {PUSH_KINDS.map((k) => <option key={k.kind} value={k.kind}>{k.label}</option>)}
+        </select>
+        <button className="pill" onClick={() => void run()} disabled={busy} style={{ flex: '0 0 auto' }}>
+          {busy ? 'Sending…' : '🔔 Send me a test'}
+        </button>
+      </div>
+      {line && (
+        <p role="status" style={{ fontSize: 12, lineHeight: 1.4, margin: '8px 2px 0', color: line.ok ? 'var(--good)' : 'var(--ink-dim)' }}>
+          {line.text}
+        </p>
+      )}
     </div>
   )
 }

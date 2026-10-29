@@ -22,6 +22,8 @@
 //     at most once a day per recipient, whichever comes first.
 //   • `{ action: 'answered', request_id }` — the owner of a Prayer Wall note
 //     just marked it answered; everybody who knelt at it hears so, once (0162).
+//   • `{ action: 'test', kind }` — the caller to THEMSELVES through `deliver`,
+//     answering sent / muted / held so Settings can say which (no migration).
 //   • `{ action: 'flush' }` with `x-push-token` — the cron's morning run: sends
 //     what a recipient's quiet hours (0164) held back. Every kind above goes
 //     through `deliver`, which parks a note that would land in somebody's night.
@@ -367,6 +369,34 @@ async function sendAnswered(admin: any, sender: string, input: Record<string, un
 // everything it heard before.
 type PushKind = 'battle' | 'buddy' | 'gesture' | 'answered' | 'check_in'
 
+// "Send me a test push" (Settings): the caller, to themselves, as one of the
+// five kinds, through the SAME `deliver` every real note takes — so the answer
+// is the truth about their own setup: sent (and to how many devices), muted
+// because that kind is switched off, or held until their quiet hours end. No
+// other recipient is reachable: the id is the caller's own JWT, never input.
+const TEST_COPY: Record<PushKind, string> = {
+  battle: 'This is how a battle push looks.',
+  buddy: 'This is how a buddy push looks.',
+  gesture: 'This is how a kindness push looks.',
+  answered: 'This is how an answered-prayer push looks.',
+  check_in: 'This is how a church check-in looks.',
+}
+
+// deno-lint-ignore no-explicit-any
+async function sendTest(admin: any, self: string, input: Record<string, unknown>) {
+  const kind = String(input.kind ?? 'battle') as PushKind
+  if (!(kind in TEST_COPY)) return { pushed: 0, reason: 'bad_input' }
+  const r = await deliver(admin, self, kind, {
+    title: 'Test from Verse Arcade',
+    body: TEST_COPY[kind],
+    url: '/you',
+    tag: `test-${self}`,
+  })
+  const { count } = await admin.from('push_subscriptions').select('endpoint', { count: 'exact', head: true }).eq('profile_id', self)
+  const { count: ios } = await admin.from('device_tokens').select('token', { count: 'exact', head: true }).eq('profile_id', self).eq('platform', 'ios')
+  return { ...r, kind, devices: (count ?? 0) + (ios ?? 0) }
+}
+
 // One note to one person, on both transports; prunes dead endpoints. Never
 // throws. Asks the recipient's own setting for this kind FIRST, server-side,
 // so the choice holds whatever build their phone is running.
@@ -476,6 +506,7 @@ Deno.serve(async (req) => {
     if (input.action === 'buddy_accepted') return json(await sendBuddyAccepted(admin, user.id, input))
     if (input.action === 'gesture') return json(await sendGesture(admin, user.id, input))
     if (input.action === 'answered') return json(await sendAnswered(admin, user.id, input))
+    if (input.action === 'test') return json(await sendTest(admin, user.id, input))
 
     const { data: prof } = await admin.from('profiles').select('username').eq('id', user.id).single()
     if (!prof || prof.username !== 'sharkbait') return json({ error: 'forbidden' }, 403)

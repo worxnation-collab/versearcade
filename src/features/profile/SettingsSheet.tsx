@@ -274,6 +274,22 @@ export function SettingsSheet({
                 ))}
               </div>
             )}
+            {showKinds && pushPrefs.quietAvailable && (
+              <div className="card" style={{ marginBottom: 6 }}>
+                <Row
+                  label="🌙 Quiet hours"
+                  sub="Notes that come in overnight wait until morning."
+                  on={pushPrefs.quiet.on}
+                  onToggle={() => { void pushPrefs.setQuiet({ ...pushPrefs.quiet, on: !pushPrefs.quiet.on }); juice.select() }}
+                />
+                {pushPrefs.quiet.on && (
+                  <div style={{ display: 'flex', gap: 10, padding: '0 4px 12px', flexWrap: 'wrap' }}>
+                    <HourPicker label="From" value={pushPrefs.quiet.start} onChange={(t) => void pushPrefs.setQuiet({ ...pushPrefs.quiet, start: t })} />
+                    <HourPicker label="Until" value={pushPrefs.quiet.end} onChange={(t) => void pushPrefs.setQuiet({ ...pushPrefs.quiet, end: t })} />
+                  </div>
+                )}
+              </div>
+            )}
             <p className="faint" style={{ fontSize: 11, lineHeight: 1.4, marginBottom: 18 }}>
               {nativePush
                 ? denied
@@ -430,6 +446,27 @@ function TimePicker({ value, onChange }: { value: string; onChange: (t: string) 
         ))}
       </select>
     </div>
+  )
+}
+
+const HOURS = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, '0')}:00`)
+
+function HourPicker({ label, value, onChange }: { label: string; value: string; onChange: (t: string) => void }) {
+  const options = HOURS.includes(value) ? HOURS : [value, ...HOURS]
+  return (
+    <label style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '1 1 120px', minWidth: 0 }}>
+      <span className="faint" style={{ fontSize: 12 }}>{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          padding: '7px 10px', borderRadius: 10, background: 'var(--card-solid)',
+          border: '1px solid var(--stroke)', color: 'var(--ink)', fontSize: 13, fontWeight: 700, minWidth: 0,
+        }}
+      >
+        {options.map((t) => <option key={t} value={t}>{timeLabel(t)}</option>)}
+      </select>
+    </label>
   )
 }
 

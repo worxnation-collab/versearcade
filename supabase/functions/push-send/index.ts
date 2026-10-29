@@ -22,6 +22,9 @@
 //     at most once a day per recipient, whichever comes first.
 //   • `{ action: 'answered', request_id }` — the owner of a Prayer Wall note
 //     just marked it answered; everybody who knelt at it hears so, once (0162).
+//   • `{ action: 'flush' }` with `x-push-token` — the cron's morning run: sends
+//     what a recipient's quiet hours (0164) held back. Every kind above goes
+//     through `deliver`, which parks a note that would land in somebody's night.
 //
 // APNs (docs/NATIVE-PUSH.md): token auth with the team's .p8 key — ES256 JWT,
 // iss = team id, kid = key id, reused for 50 minutes (Apple refuses one older
@@ -372,6 +375,22 @@ async function deliver(admin: any, recipientId: string, kind: PushKind, note: No
   const { data: pref } = await admin.from('profiles').select('push_prefs').eq('id', recipientId).maybeSingle()
   if (pref?.push_prefs?.[kind] === false) return { pushed: 0, reason: 'muted' }
 
+  // Quiet hours (0164): inside the recipient's own night the note is parked
+  // and the morning flush sends it. Nothing is dropped; a failed park falls
+  // through to sending now rather than losing the note.
+  const { data: until } = await admin.rpc('push_quiet_until', { p_user: recipientId })
+  if (until) {
+    const { data: parked } = await admin.rpc('push_defer', {
+      p_user: recipientId, p_kind: kind, p_note: note, p_after: until,
+    })
+    if (parked) return { pushed: 0, deferred: true, until }
+  }
+  return sendNow(admin, recipientId, note)
+}
+
+// The two transports, no gates — `deliver` and the flush decide whether.
+// deno-lint-ignore no-explicit-any
+async function sendNow(admin: any, recipientId: string, note: Note) {
   const { data: subs } = await admin
     .from('push_subscriptions').select('endpoint, p256dh, auth').eq('profile_id', recipientId)
   const { data: tokens } = await admin
@@ -397,6 +416,32 @@ async function deliver(admin: any, recipientId: string, kind: PushKind, note: No
   return { pushed: pushed + native.native_sent, ...native }
 }
 
+// The morning run (0164): pg_cron posts `{ action: 'flush' }` every fifteen
+// minutes with `x-push-token` (Vault PUSH_CRON_TOKEN). Claims what quiet hours
+// held back and has come due — the claim stamps and empties each row once —
+// and sends it through `deliver`, so a kind switched off overnight is honoured
+// and a setting moved later re-parks the note rather than waking anybody.
+async function sameSecret(a: string, b: string): Promise<boolean> {
+  const h = async (x: string) => new Uint8Array(await crypto.subtle.digest('SHA-256', enc.encode(x)))
+  const [x, y] = await Promise.all([h(a), h(b)])
+  let d = 0
+  for (let i = 0; i < x.length; i++) d |= x[i] ^ y[i]
+  return d === 0
+}
+
+// deno-lint-ignore no-explicit-any
+async function flushDeferred(admin: any) {
+  const { data, error } = await admin.rpc('push_deferred_claim', { p_limit: 200 })
+  if (error) return { ok: false, reason: 'unavailable' }
+  const rows = (Array.isArray(data) ? data : []) as Array<{ recipient: string; kind: PushKind; note: Note }>
+  let pushed = 0
+  for (let i = 0; i < rows.length; i += 10) {
+    const batch = await Promise.allSettled(rows.slice(i, i + 10).map((r) => deliver(admin, r.recipient, r.kind, r.note)))
+    for (const b of batch) if (b.status === 'fulfilled') pushed += b.value.pushed
+  }
+  return { ok: true, due: rows.length, pushed }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   const json = (b: unknown, status = 200) =>
@@ -404,6 +449,16 @@ Deno.serve(async (req) => {
 
   try {
     if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405)
+
+    // The cron carries no user session, so it is answered before the JWT check.
+    const cronToken = req.headers.get('x-push-token')
+    if (cronToken) {
+      const admin = createClient(SUPABASE_URL, SERVICE_KEY)
+      const env = Deno.env.get('PUSH_CRON_TOKEN')
+      const want = env || ((await admin.rpc('push_cron_secret')).data as string | null)
+      if (!want || !(await sameSecret(cronToken, want))) return json({ error: 'unauthorized' }, 401)
+      return json(await flushDeferred(admin))
+    }
 
     // Verify the caller is the admin (sharkbait).
     const authHeader = req.headers.get('Authorization') ?? ''

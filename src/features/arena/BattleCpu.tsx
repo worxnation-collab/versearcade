@@ -7,6 +7,7 @@ import { Avatar } from '@/components/Avatar'
 import { useAuth } from '@/store/auth'
 import { useSeason } from '@/store/season'
 import { useKeep } from '@/store/keep'
+import { useBattles } from '@/store/battles'
 import { useJuice } from '@/juice/useJuice'
 import { newBattleSeed, battleVerse, battleModeLabel, type BattleMode } from './battle'
 import { ModePicker } from './ModePicker'
@@ -163,6 +164,7 @@ function CpuResult({
   onDone: () => void
 }) {
   const juice = useJuice()
+  const navigate = useNavigate()
   const me = useAuth((s) => s.profile)
   const you = outcome.player.score
   const cpu = outcome.cpuScore
@@ -187,6 +189,7 @@ function CpuResult({
   // Off with the hall (KEEP_HALL_VISIBLE): a piece for a room nobody can open
   // is a promise with no door. The counters above still move either way.
   const nextPiece = KEEP_HALL_VISIBLE ? nearestKeepChallenge(counters) : null
+  const firstChallenge = useFirstChallengeNudge()
 
   // One result = one payout. StrictMode remounts effects in dev, and this one
   // moves counters — the ref makes the double-invoke a no-op.
@@ -266,14 +269,60 @@ function CpuResult({
         </div>
       )}
 
+      {firstChallenge && (
+        <div className="card" data-first-challenge style={{ marginTop: 12, textAlign: 'left', padding: '14px 16px', borderColor: 'var(--edge)' }}>
+          <b style={{ fontFamily: 'var(--font-display)', fontSize: 16, display: 'block' }}>Now send one to a friend</b>
+          <p className="dim" style={{ fontSize: 13, lineHeight: 1.5, margin: '4px 0 12px' }}>
+            That was the warm-up. A friend battle is the same race with a person on
+            the other end: you play a fresh verse now, they play the same one when
+            they open your link.
+          </p>
+          <Button variant="gold" full onClick={() => { juice.coin(); navigate('/battle/new') }}>Challenge a friend</Button>
+        </div>
+      )}
+
       <div style={{ marginTop: 18, display: 'grid', gap: 10 }}>
-        <Button variant="gold" full onClick={onRematch}>🔁 Rematch {profile.name}</Button>
+        <Button variant={firstChallenge ? 'secondary' : 'gold'} full onClick={onRematch}>🔁 Rematch {profile.name}</Button>
         <Button variant="secondary" full onClick={onChange}>Change difficulty</Button>
         <Button variant="ghost" full onClick={onDone}>← Back to Study</Button>
       </div>
       <div style={{ height: 30 }} />
     </Page>
   )
+}
+
+/**
+ * "Now send one to a friend" — ONE time, on the CPU result of a signed-in
+ * player who has never had a real battle. The Battle tab's first-battle card
+ * sends a new player into a CPU race; this is where that warm-up turns into a
+ * battle with a person, on the screen where they have just seen how one feels.
+ *
+ * It waits for this visit's `list_my_battles` (a player with battles never
+ * sees it), needs an account (a battle writes a score against one), and is
+ * retired on the device the first time it is SHOWN — not tapped — so it is an
+ * invitation once, never a card that comes back every rematch. It counts
+ * nothing and compares nothing: the CPU score is not carried into the
+ * challenge, which deals a fresh verse.
+ */
+const FIRST_CHALLENGE_KEY = 'va.firstChallengeNudge'
+
+function useFirstChallengeNudge(): boolean {
+  const online = useAuth((s) => s.mode === 'online' && s.isAuthed)
+  const [show, setShow] = useState(false)
+  useEffect(() => {
+    if (!online) return
+    let seen = false
+    try { seen = localStorage.getItem(FIRST_CHALLENGE_KEY) === '1' } catch { /* storage blocked: treat as unseen */ }
+    if (seen) return
+    let live = true
+    void useBattles.getState().loadMine().then(() => {
+      if (!live || useBattles.getState().mine.length > 0) return
+      setShow(true)
+      try { localStorage.setItem(FIRST_CHALLENGE_KEY, '1') } catch { /* once per session then */ }
+    })
+    return () => { live = false }
+  }, [online])
+  return show
 }
 
 function CpuScoreRow({

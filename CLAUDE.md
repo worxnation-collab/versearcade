@@ -5232,7 +5232,11 @@ its ladder. The header of `BattleHub.tsx` is the map. The rules:
   a friend" under it, live as a plain link, then the rank strip and team row.
   It waits for this visit's `list_my_battles` to answer (`mineLoaded`) so a
   player with battles never sees it flash, and it goes by itself once any
-  battle exists.
+  battle exists. Its CPU race ends, ONCE, on "Now send one to a friend"
+  (`useFirstChallengeNudge` in `BattleCpu.tsx`): signed in, zero battles after
+  `list_my_battles` answers, retired on the device (`va.firstChallengeNudge`)
+  the first time it is SHOWN, and it carries no score into the challenge,
+  which deals a fresh verse.
 
 - **The turn tabs default to Your turn, always**, never to whatever is
   populated. An empty Your turn is one short line and the other two tabs are one

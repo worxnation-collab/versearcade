@@ -133,7 +133,7 @@ const WALL: Record<string, WallCopy> = {
   battle: {
     icon: '\u2694\ufe0f',
     title: 'Battles need an account',
-    line: 'Challenging a friend, the ranks and your faction\u2019s keep all live on your account \u2014 so a score means the same thing on both your phones.',
+    line: 'Challenging a friend and the ranks both live on your account \u2014 so a score means the same thing on both your phones.',
   },
   study: {
     icon: '\ud83d\udcda',

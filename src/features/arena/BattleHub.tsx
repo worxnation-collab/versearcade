@@ -23,6 +23,9 @@
  *      opens `KeepSheet`. The full painted hall lives in the sheet only — an
  *      inline ~230px scene was the heaviest thing on the tab and the one thing
  *      on it that can always wait. Then the keep's own challenge ladder.
+ *      ALL OF ITEM 5 IS HIDDEN while `KEEP_HALL_VISIBLE` is false
+ *      (data/keep.ts, 2026-10-29); `?keep=1` is still stripped but opens
+ *      nothing, and the team board's rows are no longer doors into a hall.
  *
  * Unchanged and load-bearing: the guest branch (an account card plus the
  * device-local keep), nothing here pays a winner more than a loser (that lives
@@ -44,7 +47,7 @@ import { useBattles, type Battle, type BattleBoard, type DenomBoard } from '@/st
 import { DENOMINATIONS, DENOMINATION_GROUPS, denominationColor, denominationName, isOpenFaction } from '@/data/denominations'
 import { KeepSheet } from './KeepSheet'
 import { loadFactionKeep, type FactionKeep } from '@/store/keep'
-import { keepLevelForWins, keepLevelName } from '@/data/keep'
+import { KEEP_HALL_VISIBLE, keepLevelForWins, keepLevelName } from '@/data/keep'
 import { KeepChallenges } from './KeepChallenges'
 import { useJuice } from '@/juice/useJuice'
 
@@ -93,7 +96,7 @@ export default function BattleHub() {
   // ?keep=1 opens your own hall straight away — the unlock toast's door. Read
   // once at mount and stripped, like /you's ?pray=1, or a reload re-opens it.
   const [searchParams, setSearchParams] = useSearchParams()
-  const [openKeep, setOpenKeep] = useState<string | null>(() => (searchParams.get('keep') === '1' ? '' : null))
+  const [openKeep, setOpenKeep] = useState<string | null>(() => (KEEP_HALL_VISIBLE && searchParams.get('keep') === '1' ? '' : null))
   useEffect(() => {
     if (searchParams.get('keep') === '1') setSearchParams({}, { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -164,7 +167,7 @@ export default function BattleHub() {
           <p style={{ margin: '8px 0 14px' }}>Battles are tied to your account so scores and ranks stick. Create a free one to play.</p>
           <Button variant="gold" full onClick={() => navigate('/auth')}>Create an account</Button>
         </div>
-        <div style={{ textAlign: 'left' }}>
+        {KEEP_HALL_VISIBLE && <div style={{ textAlign: 'left' }}>
           {/* The keep still works for a guest: CPU races (reachable from the
               Study tab) move the same counters, and their hall lives on this
               device. Only the faction layer needs an account. */}
@@ -183,7 +186,7 @@ export default function BattleHub() {
             <div style={{ fontFamily: 'var(--font-display)', color: 'var(--gold)', fontSize: 18, flexShrink: 0 }}>→</div>
           </motion.button>
           <KeepChallenges />
-        </div>
+        </div>}
         </>
       ) : (
         <>
@@ -355,7 +358,7 @@ export default function BattleHub() {
                       return (
                         <button
                           key={r.denomination}
-                          onClick={() => { juice.select(); setOpenKeep(r.denomination) }}
+                          onClick={KEEP_HALL_VISIBLE ? () => { juice.select(); setOpenKeep(r.denomination) } : undefined}
                           style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 8px', borderRadius: 10, borderLeft: `3px solid ${color}`, background: mine ? 'rgba(255,210,63,0.08)' : 'transparent', width: '100%', textAlign: 'left', cursor: 'pointer' }}
                         >
                           <span style={{ width: 18, textAlign: 'center', fontFamily: 'var(--font-display)', color: 'var(--ink-faint)' }}>
@@ -370,13 +373,15 @@ export default function BattleHub() {
                           </div>
                           <span style={{ fontFamily: 'var(--font-display)' }} className="gradient-text">{r.wins}</span>
                           <span className="faint" style={{ fontSize: 11 }}>wins</span>
-                          <span style={{ color: 'var(--gold)', fontFamily: 'var(--font-display)' }}>›</span>
+                          {KEEP_HALL_VISIBLE && <span style={{ color: 'var(--gold)', fontFamily: 'var(--font-display)' }}>›</span>}
                         </button>
                       )
                     })}
-                    <p className="faint" style={{ fontSize: 11, textAlign: 'center', margin: '6px 0 0' }}>
-                      Tap a team to walk into its keep.
-                    </p>
+                    {KEEP_HALL_VISIBLE && (
+                      <p className="faint" style={{ fontSize: 11, textAlign: 'center', margin: '6px 0 0' }}>
+                        Tap a team to walk into its keep.
+                      </p>
+                    )}
                     {denomBoard.me && (
                       <div className="faint" style={{ fontSize: 12, textAlign: 'center', marginTop: 8, borderTop: '1px solid var(--stroke)', paddingTop: 8 }}>
                         {denominationName(denomBoard.me.denomination)} — rank <b style={{ color: 'var(--gold)' }}>#{denomBoard.me.rank}</b> · {denomBoard.me.wins} wins · {denomBoard.me.members} members
@@ -395,9 +400,15 @@ export default function BattleHub() {
               row names the hall and its level and opens KeepSheet, which is
               where the full scene has always lived too. With no team it opens
               your own hall (the same device/account keep a guest gets). */}
-          <h3 className="dim" style={{ fontSize: 16, margin: '22px 0 10px' }}>The Keep</h3>
-          <KeepRow onOpen={() => { juice.select(); setOpenKeep(profile?.denomination ?? '') }} />
-          <KeepChallenges />
+          {/* Hidden while KEEP_HALL_VISIBLE is off (data/keep.ts) — the hall,
+              its counters and its data are all intact behind the flag. */}
+          {KEEP_HALL_VISIBLE && (
+            <>
+              <h3 className="dim" style={{ fontSize: 16, margin: '22px 0 10px' }}>The Keep</h3>
+              <KeepRow onOpen={() => { juice.select(); setOpenKeep(profile?.denomination ?? '') }} />
+              <KeepChallenges />
+            </>
+          )}
 
           <div style={{ height: 90 }} />
         </>
@@ -577,7 +588,7 @@ function TeamPicker({ onChanged, style }: { onChanged: () => void | Promise<void
         </select>
       </div>
       <p className="faint" style={{ fontSize: 11, marginTop: 8, lineHeight: 1.4 }}>
-        Optional &amp; friendly — your battle wins add to that team’s total and raise its hall. It never shows on the main leaderboard, and you can change it whenever you like.
+        Optional &amp; friendly — your battle wins add to that team’s total{KEEP_HALL_VISIBLE ? ' and raise its hall' : ''}. It never shows on the main leaderboard, and you can change it whenever you like.
       </p>
       {/* Said once, only to the two teams that might wonder whether
           they're actually welcome. It's a welcome, not a badge: nothing
@@ -614,7 +625,7 @@ function TeamChooser({ onChanged }: { onChanged: () => void | Promise<void> }) {
       >
         <span style={{ flex: 1, minWidth: 0, fontWeight: 800, fontSize: 14 }}>
           Choose a team
-          <span className="faint" style={{ fontWeight: 400, fontSize: 12 }}> · optional, shares a hall</span>
+          <span className="faint" style={{ fontWeight: 400, fontSize: 12 }}> · optional{KEEP_HALL_VISIBLE ? ', shares a hall' : ''}</span>
         </span>
         <span style={{ color: 'var(--gold)', fontFamily: 'var(--font-display)', fontSize: 15, flexShrink: 0 }}>{open ? '▴' : '▾'}</span>
       </motion.button>

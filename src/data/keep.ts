@@ -58,6 +58,21 @@ export interface AnchorDef {
 // drawn 1120x625 and shown sliced into this 560x300 viewBox): the big bare
 // wall runs x 190..435 between the beams and the table, the hearth owns the
 // left, the stable arch the right.
+/**
+ * Whether the keep's hall is offered anywhere (2026-10-29, the owner's call).
+ *
+ * The hall was the Battle tab's heaviest surface and its one thing that can
+ * always wait, and relics now go straight to the player's church instead of
+ * through a decorated hall (store/drops.ts). So the hall is HIDDEN, not
+ * removed: the counters still count (`useKeep().track()`), `keep_placements`,
+ * `keep_offerings`, every RPC and every `va.keep.*` key are untouched, and the
+ * unlock toasts stay quiet rather than being forgotten — re-read on the way
+ * back, so turning this on again announces nothing stale. Flipping it to true
+ * restores the row, the ladder, the sheet, `?keep=1`, the CPU result's next
+ * piece and the toasts, with no migration.
+ */
+export const KEEP_HALL_VISIBLE = false
+
 export const ANCHORS: AnchorDef[] = [
   { id: 'banner_l', mount: 'banner', x: 215, y: 76 },
   { id: 'banner_r', mount: 'banner', x: 405, y: 76 },

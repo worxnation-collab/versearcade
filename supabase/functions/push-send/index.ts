@@ -394,6 +394,20 @@ async function sendTest(admin: any, self: string, input: Record<string, unknown>
   })
   const { count } = await admin.from('push_subscriptions').select('endpoint', { count: 'exact', head: true }).eq('profile_id', self)
   const { count: ios } = await admin.from('device_tokens').select('token', { count: 'exact', head: true }).eq('profile_id', self).eq('platform', 'ios')
+  // One line per test in the function's logs, split by transport, so "did my
+  // iPhone and my laptop each actually get it" is answerable after the fact.
+  // Counts and the provider's error text only — no token, no endpoint.
+  const n = r as { pushed?: number; native_sent?: number; native_failed?: number; native_error?: string; reason?: string; deferred?: boolean }
+  console.log('push-send test', JSON.stringify({
+    kind,
+    outcome: n.reason === 'muted' ? 'muted' : n.deferred ? 'held' : (n.pushed ?? 0) > 0 ? 'sent' : (n.reason ?? 'none'),
+    web_devices: count ?? 0,
+    web_sent: Math.max(0, (n.pushed ?? 0) - (n.native_sent ?? 0)),
+    ios_devices: ios ?? 0,
+    ios_sent: n.native_sent ?? 0,
+    ios_failed: n.native_failed ?? 0,
+    ...(n.native_error ? { ios_error: n.native_error } : {}),
+  }))
   return { ...r, kind, devices: (count ?? 0) + (ios ?? 0) }
 }
 

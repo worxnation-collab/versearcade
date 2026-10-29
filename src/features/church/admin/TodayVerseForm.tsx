@@ -16,6 +16,7 @@ import { PlanWeek } from './PlanWeek'
 import { ENGINE_REASONS } from './weekRun'
 import { AssetStudio } from './AssetStudio'
 import { useChurchAssetsAdmin } from '@/store/churchAssets'
+import { MoreTools } from './MoreTools'
 
 // "Set today's verse" — the verified layer's one write (0119).
 //
@@ -514,12 +515,13 @@ export function TodayVerseForm({
         onRetry={() => void loadWeek()}
       />
 
-      {/* The Sunday pack: real admin screen only (the demo passes no `assets`). */}
+      {/* Sharing the verse, and the Sunday pack under More tools: real admin
+          screen only (the demo passes no `assets`). */}
+      {assets && <ShareVerse churchId={churchId} churchName={churchName} />}
       {assets && (
-        <div className="plan-actions">
-          <ShareVerse churchId={churchId} churchName={churchName} />
+        <MoreTools names={['Sunday pack PDF']}>
           <SundayPack churchId={churchId} churchName={churchName} backend={backend} />
-        </div>
+        </MoreTools>
       )}
 
       {planning && (

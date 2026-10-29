@@ -67,14 +67,12 @@ export function HomePanel({
   onGo,
   glance,
   autoWeeks = false,
-  hasLook = true,
   onDoor,
   bigger = false,
 }: {
   /** Draw "Plan on a bigger screen →" (not on a wide web layout — it's already big). */
   bigger?: boolean
   /** The leader has chosen a look (0136) — "Your first week"'s first row. */
-  hasLook?: boolean
   /** "Your first week" rows that open something a HomeGo can't name. */
   onDoor?: (d: FirstWeekDoor) => void
   /** The church holds Content Generation: read its sermon-memo weeks (0148). */
@@ -168,7 +166,6 @@ export function HomePanel({
         <FirstWeek
           churchId={churchId}
           fresh={!settings.announcement && days.slice(0, 7).every((w) => !w.verse) && insights.members < 3}
-          hasLook={hasLook}
           hasNotice={!!settings.announcement}
           planned={days.slice(0, 7).some((w) => !!w.verse) || !!ap?.enabled}
           autopilotOffered={autoWeeks}

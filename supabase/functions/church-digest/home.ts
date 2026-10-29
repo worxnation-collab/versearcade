@@ -61,7 +61,7 @@ export const jobReason = (j: HomeJob) =>
 
 /** What the week was drafted FROM: the sermon's passages, or Autopilot's fallback. */
 export const jobFrom = (j: HomeJob) =>
-  j.source === 'fallback' ? `your Autopilot fallback “${j.series}”` : `the sermon on ${j.references.join(', ')}`
+  j.source === 'fallback' ? `your Autopilot backup plan “${j.series}”` : `the sermon on ${j.references.join(', ')}`
 
 const at = (iso: string) => {
   const [y, m, d] = iso.split('-').map(Number)
@@ -87,7 +87,7 @@ export function autoRow(job: HomeJob | null, autopilotSkipped: boolean, today: s
       go: { tab: 'plan', date: job.saved[0] ?? job.startDate },
     }
   }
-  if (autopilotSkipped) return { key: 'autopilot', icon: '✈️', title: 'Nothing drafted this week', detail: 'No sermon memo arrived by the cutoff and no fallback is set. Plan this week, or set a fallback on Plan →', go: { tab: 'plan', date: today } }
+  if (autopilotSkipped) return { key: 'autopilot', icon: '✈️', title: 'Nothing drafted this week', detail: 'No sermon memo arrived by the deadline and no backup plan is set. Plan this week, or set a backup plan on Plan →', go: { tab: 'plan', date: today } }
   return null
 }
 

@@ -180,7 +180,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
    ChurchAdminScreen on the WEB only (never the App Store build's webview), and
    everything here is behind the width test — a phone, and the app, stay
    stacked exactly as before. Nothing is hidden: the same tools, side by side. */
-.home-split, .plan-split, .plan-actions,
+.home-split, .plan-split,
 .home-split-main, .home-split-side, .plan-split-main, .plan-split-side {
   display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); min-width: 0;
 }
@@ -189,7 +189,6 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   .admin-wide .home-split { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 24px; align-items: start; }
   .admin-wide .plan-split { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
   .admin-wide .plan-split-side { position: sticky; top: 12px; }
-  .admin-wide .plan-actions { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
 }
 
 /* Status-bar scrim ------------------------------------------------------- */

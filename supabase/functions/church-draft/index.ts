@@ -172,7 +172,7 @@ const BUDGET_MS = 140_000
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-autopilot-token',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
@@ -198,7 +198,31 @@ type Reply = (body: Record<string, unknown>) => Response
 
 let adminClient: SupabaseClient | null = null
 const admin = () => (adminClient ??= createClient(SUPABASE_URL, SERVICE_KEY))
-const asCaller = (authHeader: string) => createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: authHeader } } })
+const asCaller = (authHeader: string): SupabaseClient => {
+  const user = impersonated(authHeader)
+  return user ? asLeader(user) : createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: authHeader } } })
+}
+
+// ---------------------------------------------------------------------------
+// Acting as a leader with no session (0158). The hourly Autopilot run has no
+// caller, so it hands the drafting path an "auth header" that names a leader
+// instead of carrying a token. The prefix is random per process, so no request
+// can forge one (and the entry point refuses anything that looks like it); a
+// client built from it routes every rpc through `church_rpc_as`, which runs
+// only the five leadership RPCs this path uses, AS that leader, with each one
+// still applying its own gate. Only `autopilot_cron` ever builds one, for the
+// leader `church_autopilot_due()` chose.
+// ---------------------------------------------------------------------------
+const IMPERSONATE = `impersonate:${crypto.randomUUID()}:`
+const impersonated = (authHeader: string): string | null =>
+  authHeader.startsWith(IMPERSONATE) ? authHeader.slice(IMPERSONATE.length) : null
+function asLeader(userId: string): SupabaseClient {
+  return {
+    rpc: (fn: string, args: Record<string, unknown>) =>
+      admin().rpc('church_rpc_as', { p_user: userId, p_fn: fn, p_args: args ?? {} }),
+    auth: { getUser: async () => ({ data: { user: { id: userId } }, error: null }) },
+  } as unknown as SupabaseClient
+}
 
 // ---------------------------------------------------------------------------
 // The spend, the refund and the log.
@@ -1262,6 +1286,8 @@ async function inner(run: (reply: Reply) => Promise<Response>): Promise<Record<s
  * stage here instead — slower, never lost.
  */
 async function nextStage(job: string, authHeader: string): Promise<void> {
+  // An impersonated run has no token to hand a fresh invocation: run it here.
+  if (impersonated(authHeader)) return runAutoStage(job, authHeader)
   try {
     const res = await fetch(`${SUPABASE_URL}/functions/v1/church-draft`, {
       method: 'POST',
@@ -1410,9 +1436,9 @@ async function handleAutoRetry(body: Record<string, unknown>, authHeader: string
 // ---------------------------------------------------------------------------
 // Autopilot (0152): POST { mode: 'autopilot_tick', church_id }
 //
-// There is no cron here, so the cutoff is noticed by the first visit from the
-// church's leadership after it: the dashboard and the church tab call this on
-// load. It reads `church_autopilot` AS THE CALLER (Content Generation gate),
+// Since 0158 an hourly cron settles a due week by itself (`autopilot_cron`,
+// below); a leader's visit still notices the cutoff first if it comes sooner:
+// the dashboard and the church tab call this on load. It reads `church_autopilot` AS THE CALLER (Content Generation gate),
 // and only when the week is 'due' asks the service-role claim to settle it —
 // once per church per week, by a primary key. A claimed fallback is an
 // ordinary 0148 job with `source: 'fallback'` and runs through `runAutoStage`
@@ -1436,6 +1462,48 @@ async function handleAutopilotTick(body: Record<string, unknown>, authHeader: st
   return res
 }
 
+// ---------------------------------------------------------------------------
+// Autopilot on a clock (0158): POST { mode: 'autopilot_cron' } with
+// `x-autopilot-token` (Vault AUTOPILOT_CRON_TOKEN), from pg_cron every hour.
+// Settles every church whose week is due exactly as a leader's visit would —
+// the same service-role claim, then the same `runAutoStage` — acting as the
+// leader `church_autopilot_due()` chose. Churches run one after another after
+// the answer, so a busy model on one never times out the cron's request.
+// ---------------------------------------------------------------------------
+async function autopilotSecret(): Promise<string | null> {
+  const env = Deno.env.get('AUTOPILOT_CRON_TOKEN')
+  if (env) return env
+  const { data } = await admin().rpc('church_autopilot_secret', { p_name: 'AUTOPILOT_CRON_TOKEN' })
+  return typeof data === 'string' && data ? data : null
+}
+
+async function sameSecret(a: string, b: string): Promise<boolean> {
+  const h = async (s: string) => new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))
+  const [x, y] = await Promise.all([h(a), h(b)])
+  let d = 0
+  for (let i = 0; i < x.length; i++) d |= x[i] ^ y[i]
+  return d === 0
+}
+
+async function handleAutopilotCron(req: Request, reply: Reply): Promise<Response> {
+  const token = req.headers.get('x-autopilot-token') ?? ''
+  const want = await autopilotSecret()
+  if (!token || !want || !(await sameSecret(token, want))) return reply({ ok: false, reason: 'not_authenticated' })
+  const { data, error } = await admin().rpc('church_autopilot_due')
+  if (error) return reply({ ok: false, reason: 'unavailable' })
+  const due = (Array.isArray(data) ? data : []) as Array<{ church_id: string; user_id: string }>
+  const res = reply({ ok: true, due: due.length })
+  await later((async () => {
+    for (const d of due) {
+      const { data: claimed, error: cErr } = await admin().rpc('church_autopilot_claim', { p_church_id: d.church_id, p_user: d.user_id })
+      const c = claimed as Record<string, unknown> | null
+      if (cErr || !c) { console.warn('church-draft autopilot cron claim', d.church_id, cErr?.message); continue }
+      if (c.run === true && typeof c.job_id === 'string') await runAutoStage(c.job_id, IMPERSONATE + d.user_id)
+    }
+  })())
+  return res
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   const started = Date.now()
@@ -1452,6 +1520,9 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({})) as Record<string, unknown>
     api2 = Number(body.api) >= 2
     const auth = req.headers.get('Authorization') ?? ''
+    // Only autopilot_cron mints an impersonated header; a request never carries one.
+    if (auth.startsWith('impersonate:')) return reply({ ok: false, reason: 'not_authenticated' })
+    if (body.mode === 'autopilot_cron') return await handleAutopilotCron(req, reply)
     if (body.mode === 'week') return await handleWeek(body, auth, reply, started)
     if (body.mode === 'topic') return await handleTopic(body, auth, reply, started)
     if (body.mode === 'memo_url') return await handleMemoUrl(body, auth, reply)

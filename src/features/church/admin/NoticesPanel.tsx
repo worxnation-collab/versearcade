@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { AssetStudio } from './AssetStudio'
+import { MoreTools } from './MoreTools'
 import { Button } from '@/components/Button'
 import { useJuice } from '@/juice/useJuice'
 import { todayLocalDate } from '@/lib/date'
@@ -114,14 +115,18 @@ export function NoticesPanel({
           members only ever see cards in a verified church. Keyed on the
           notice's id: posting a new notice is a new card, and the old one stops
           showing to members by itself. */}
+      {/* Folded since 2026-10-29: open, its thirteen looks pushed the giving
+          link, sharing and billing two screens down (MoreTools.tsx). */}
       {settings.verified && settings.announcement && (
-        <AssetStudio
-          key={settings.announcement.id}
-          churchId={churchId}
-          source={{ kind: 'announcement', announcementId: settings.announcement.id }}
-          canGenerate={canGenerate}
-          preview={{ church_name: settings.name, message: settings.announcement.message }}
-        />
+        <MoreTools names={['A picture card of this notice']}>
+          <AssetStudio
+            key={settings.announcement.id}
+            churchId={churchId}
+            source={{ kind: 'announcement', announcementId: settings.announcement.id }}
+            canGenerate={canGenerate}
+            preview={{ church_name: settings.name, message: settings.announcement.message }}
+          />
+        </MoreTools>
       )}
 
       {settings.verified && (

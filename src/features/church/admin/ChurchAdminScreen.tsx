@@ -19,6 +19,7 @@ import { NoticesPanel } from './NoticesPanel'
 import { SharePanel } from './SharePanel'
 import { LeaderLookPanel } from './LeaderLookPanel'
 import { ChurchPlansEntry } from '@/features/churches/ChurchPlansEntry'
+import { MoreTools } from './MoreTools'
 
 // /church/:id/admin — the tools a church's verified leadership uses.
 //
@@ -49,19 +50,21 @@ import { ChurchPlansEntry } from '@/features/churches/ChurchPlansEntry'
 //      fold with its hand-sent check-in, and the congregation feed (Activity,
 //      folded under "Recent activity").
 //   4. Your page — the live notice and giving link, Share (the page's link
-//      and, verified, the QR), Your look (0136; opened when a new leader has
-//      not chosen one, or on return from the avatar checkout), and Plan &
-//      billing (the plan card and the App Store plans entry; opened on return
-//      from a Stripe upgrade).
+//      and, verified, the QR), Plan & billing (the plan card and the App
+//      Store plans entry; opened on return from a Stripe upgrade), and Your
+//      look under More tools (0136; opened on return from the avatar checkout).
+// Since 2026-10-29 each tab leads with its everyday tools and folds the rest
+// under one "More tools" row (MoreTools.tsx): People's co-leaders, small
+// groups, prayer list and activity; Plan's Sunday pack; Your page's look.
 // Nothing was removed — the seven tabs' panels are all still here, rehomed —
 // and no RPC or gate changed: every panel makes the same reads it did.
 //
 // "Your first week" (FirstWeek.tsx): a brand-new verified leader — no notice,
 // nothing planned in the next seven days, fewer than three members — gets a
-// four-row checklist at the top of Home (look, notice, plan or Autopilot,
-// share), each row a door like the to-do's. It sits above "This week" and
-// blocks none of it, and goes when done or hidden. The look and share rows
-// open folds on Your page that HomeGo has no name for (`onDoor`).
+// three-row checklist at the top of Home (plan or Autopilot, notice, share),
+// each row a door like the to-do's. It sits above "This week" and blocks none
+// of it, and goes when done or hidden. The share row opens a fold on Your page
+// that HomeGo has no name for (`onDoor`).
 //
 // DESKTOP: "Plan on a bigger screen →" is one quiet row at the foot of Home
 // (not drawn when already wide). It opens this same URL in the system browser
@@ -96,9 +99,10 @@ import { ChurchPlansEntry } from '@/features/churches/ChurchPlansEntry'
 //
 // A third row since 0136: the CUSTOM LEADER AVATAR, a one-time add-on on the
 // same base. "Your look" (verified leadership) is where every leader picks one
-// of five default looks, and where the add-on's photo request is sent. A leader
-// who has not chosen a look yet lands on that tab first — the claim screen
-// sends a new leader straight here, so that IS the setup step.
+// of five default looks, and where the add-on's photo request is sent. Until
+// 2026-10-29 a leader with no look chosen landed on that tab first; it now
+// sits under Your page → More tools (MoreTools.tsx), and a new leader lands on
+// Home, whose first-week list starts with planning the week.
 // Wide web: ≥900px in a browser. Never the App Store build's webview, which
 // keeps the stacked phone layout whatever the device's width.
 function useWideWeb(): boolean {
@@ -153,7 +157,7 @@ export default function ChurchAdminScreen() {
   const [noticeFocus, setNoticeFocus] = useState(0)
   const [inquiryFocus, setInquiryFocus] = useState(0)
   // "Your first week" (FirstWeek.tsx): the two doors HomeGo has no name for.
-  const [pageOpen, setPageOpen] = useState<'look' | 'share' | null>(null)
+  const [pageOpen, setPageOpen] = useState<'share' | null>(null)
   useEffect(() => {
     if (!inquiryFocus) return
     requestAnimationFrame(() => document.getElementById('church-inquiries')?.scrollIntoView({ block: 'start' }))
@@ -291,7 +295,7 @@ export default function ChurchAdminScreen() {
     {
       key: 'home',
       label: 'Home',
-      content: <HomePanel churchId={id} verified={settings.verified} settings={settings} insights={insights.data} onGo={onGo} glance={glance} autoWeeks={generation} hasLook={!ent || !ent.churchLeader || !!ent.leaderLook} onDoor={onDoor} bigger={!wideWeb} />,
+      content: <HomePanel churchId={id} verified={settings.verified} settings={settings} insights={insights.data} onGo={onGo} glance={glance} autoWeeks={generation} onDoor={onDoor} bigger={!wideWeb} />,
     },
     ...(settings.verified
       ? [
@@ -326,10 +330,15 @@ export default function ChurchAdminScreen() {
                   leaders={{ churchName: settings.name, onChanged: insights.reload }}
                   openQuiet={quiet}
                   onQuietShown={() => setQuiet(false)}
+                  more={{
+                    names: ['Recent activity'],
+                    content: (
+                      <Collapsible icon="🕯️" title="Recent activity">
+                        <ActivityPanel churchId={id} />
+                      </Collapsible>
+                    ),
+                  }}
                 />
-                <Collapsible icon="🕯️" title="Recent activity">
-                  <ActivityPanel churchId={id} />
-                </Collapsible>
               </div>
             ),
           },
@@ -348,16 +357,20 @@ export default function ChurchAdminScreen() {
             <SharePanel churchId={id} churchName={settings.name} verified={settings.verified} />
           </Collapsible>
           </div>
-          {settings.verified && (
-            <div id="church-look" style={{ scrollMarginTop: 12 }}>
-            <Collapsible icon="🧑‍🦳" title="Your look" defaultOpen={setup || avatarPaid || pageOpen === 'look'}>
-              <LeaderLookPanel churchId={id} ent={ent} setup={setup} paid={avatarPaid} onChanged={load} />
-            </Collapsible>
-            </div>
-          )}
           <Collapsible icon="🧾" title="Plan & billing" defaultOpen={upgraded}>
             {plan}
           </Collapsible>
+          {/* The look is a nicety, not a setup step (2026-10-29): it used to be
+              where a new leader landed, ahead of planning a single verse. */}
+          {settings.verified && (
+            <MoreTools names={['Your look']} open={avatarPaid}>
+              <div id="church-look" style={{ scrollMarginTop: 12 }}>
+              <Collapsible icon="🧑‍🦳" title="Your look" defaultOpen={avatarPaid}>
+                <LeaderLookPanel churchId={id} ent={ent} setup={setup} paid={avatarPaid} onChanged={load} />
+              </Collapsible>
+              </div>
+            </MoreTools>
+          )}
         </div>
       ),
     },
@@ -372,7 +385,7 @@ export default function ChurchAdminScreen() {
       <h1 style={{ fontSize: 24, margin: '0 0 4px' }}>Leadership</h1>
       <div className="dim" style={{ fontSize: 13.5, marginBottom: 12 }}>{settings.name}</div>
 
-      <TabbedSection tabs={tabs} defaultOpen defaultTab={setup || avatarPaid || upgraded ? 'page' : 'home'} go={go} />
+      <TabbedSection tabs={tabs} defaultOpen defaultTab={avatarPaid || upgraded ? 'page' : 'home'} go={go} />
       <div style={{ height: 32 }} />
     </Page>
   )

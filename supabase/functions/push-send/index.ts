@@ -1,6 +1,6 @@
 // push-send — broadcasts a Web Push notification to every stored subscription.
 //
-// Two actions:
+// Three actions:
 //   • (default) the operator broadcast — admin-only (sharkbait).
 //   • `{ action: 'check_in', church_id, username }` — one church check-in note
 //     (0137/0138, or a group leader's, 0156) to the ONE member it was sent to.
@@ -12,6 +12,8 @@
 //
 //     Both transports: the recipient's Web Push subscriptions AND their iOS
 //     device tokens (APNs).
+//   • `{ action: 'battle_played', battle_id }` — the opponent who just
+//     finished an async battle tells its challenger (0159), once per battle.
 //
 // APNs (docs/NATIVE-PUSH.md): token auth with the team's .p8 key — ES256 JWT,
 // iss = team id, kid = key id, reused for 50 minutes (Apple refuses one older
@@ -239,20 +241,46 @@ async function sendCheckIn(admin: any, sender: string, input: Record<string, unk
   })
   if (error || !claim?.ok) return { pushed: 0, reason: claim?.reason ?? 'claim_failed' }
 
-  const { data: subs } = await admin
-    .from('push_subscriptions').select('endpoint, p256dh, auth').eq('profile_id', claim.recipient_id)
-  const { data: tokens } = await admin
-    .from('device_tokens').select('token, environment').eq('profile_id', claim.recipient_id).eq('platform', 'ios')
-
   // The note's own words, or the verse when the leader sent only that. No
   // link in the body; tapping opens the mailbox, where the note is.
   const body = (claim.message || (claim.verse_ref ? `${claim.verse_ref} — a verse for you` : 'A note for you'))
-  const note: Note = {
+  return deliver(admin, claim.recipient_id, {
     title: `${claim.from_username} · ${claim.church_name}`.slice(0, 80),
     body: String(body).slice(0, 240),
     url: '/mail',
     tag: `check-in-${claim.id}`,
-  }
+  })
+}
+
+// "You'll hear when they play" (0159): the opponent who just finished an async
+// battle pushes its challenger, once. `battle_played_push_claim` checks the
+// caller IS that opponent, the battle completed in the last fifteen minutes
+// and nobody pushed for it yet. No score in the note — the battle screen
+// says who won, and a push is no place to start counting at somebody.
+// deno-lint-ignore no-explicit-any
+async function sendBattlePlayed(admin: any, sender: string, input: Record<string, unknown>) {
+  const battleId = String(input.battle_id ?? '')
+  if (!battleId) return { pushed: 0, reason: 'bad_input' }
+  const { data: claim, error } = await admin.rpc('battle_played_push_claim', {
+    p_sender: sender, p_battle: battleId,
+  })
+  if (error || !claim?.ok) return { pushed: 0, reason: claim?.reason ?? 'claim_failed' }
+  return deliver(admin, claim.recipient_id, {
+    title: `${claim.from_username} played your battle`.slice(0, 80),
+    body: 'See how it went.',
+    url: `/battle/${claim.battle_id}`,
+    tag: `battle-${claim.battle_id}`,
+  })
+}
+
+// One note to one person, on both transports; prunes dead endpoints. Never throws.
+// deno-lint-ignore no-explicit-any
+async function deliver(admin: any, recipientId: string, note: Note) {
+  const { data: subs } = await admin
+    .from('push_subscriptions').select('endpoint, p256dh, auth').eq('profile_id', recipientId)
+  const { data: tokens } = await admin
+    .from('device_tokens').select('token, environment').eq('profile_id', recipientId).eq('platform', 'ios')
+
   const native = await sendNative(admin, (tokens ?? []) as DeviceToken[], note)
   if (!subs?.length || !VAPID_PRIVATE) {
     return { pushed: native.native_sent, ...native, ...(native.native_sent ? {} : { reason: 'no_subscription' }) }
@@ -290,6 +318,7 @@ Deno.serve(async (req) => {
     const admin = createClient(SUPABASE_URL, SERVICE_KEY)
     const input = await req.json().catch(() => ({}))
     if (input.action === 'check_in') return json(await sendCheckIn(admin, user.id, input))
+    if (input.action === 'battle_played') return json(await sendBattlePlayed(admin, user.id, input))
 
     const { data: prof } = await admin.from('profiles').select('username').eq('id', user.id).single()
     if (!prof || prof.username !== 'sharkbait') return json({ error: 'forbidden' }, 403)

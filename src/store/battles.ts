@@ -151,6 +151,15 @@ export const useBattles = create<BattlesState>((set) => ({
     })
     if (error || !data) return null
     const battle = data as Battle
+    // "You'll hear when they play" (0159): tell the challenger, once. The
+    // server's claim decides whether there is anybody to tell (an async battle
+    // this caller just finished, never a live one), so this sends blind and
+    // ignores the answer — the result is already saved either way.
+    if (battle.status === 'complete') {
+      supabase.functions
+        .invoke('push-send', { body: { action: 'battle_played', battle_id: id } })
+        .catch(() => { /* a push is a nudge on top; nothing waits on it */ })
+    }
     // Same as createBattle: the payout happened server-side, so re-read rather
     // than trusting `xp_awarded` to move a number the client keeps its own copy
     // of. The key is there for the screens that want to say "+10 XP".

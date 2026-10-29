@@ -106,11 +106,11 @@ export function autopilotLine(ap: Autopilot): { tone: 'quiet' | 'gold' | 'coral'
       return {
         tone: 'quiet',
         text: `Waiting for this week’s sermon. Send the memo under “Your sermon” and the week drafts itself. ` +
-          (fb ? `If none arrives by ${cut}, it drafts from ${fb}.` : `If none arrives by ${cut}, Autopilot skips the week — add a fallback below.`),
+          (fb ? `If none arrives by ${cut}, it drafts from ${fb}.` : `If none arrives by ${cut}, Autopilot skips the week — add a backup plan below.`),
       }
     case 'due': return { tone: 'quiet', text: 'Checking this week…' }
-    case 'fallback': return { tone: 'gold', text: `No sermon memo by ${cut}, so the week was drafted from ${fb ?? 'your fallback'}${ap.windowFrom ? ` (${day(ap.windowFrom)} – ${day(ap.windowTo)})` : ''}. Review it below.` }
-    case 'no_source': return { tone: 'quiet', text: `Nothing drafted this week: no sermon memo arrived by ${cut} and no fallback is set. Plan this week below, or set a fallback so next week drafts itself.` }
+    case 'fallback': return { tone: 'gold', text: `No sermon memo by ${cut}, so the week was drafted from ${fb ?? 'your backup plan'}${ap.windowFrom ? ` (${day(ap.windowFrom)} – ${day(ap.windowTo)})` : ''}. Review it below.` }
+    case 'no_source': return { tone: 'quiet', text: `Nothing drafted this week: no sermon memo arrived by ${cut} and no backup plan is set. Plan this week below, or set a backup plan so next week drafts itself.` }
     case 'covered': return { tone: 'quiet', text: 'This week was already planned, so Autopilot had nothing to draft.' }
     default: return null
   }
@@ -118,8 +118,8 @@ export function autopilotLine(ap: Autopilot): { tone: 'quiet' | 'gold' | 'coral'
 
 const FAIL: Record<string, string> = {
   bad_tz: 'Your device’s time zone wasn’t recognised.',
-  bad_cutoff: 'Pick a day and a time for the cutoff.',
-  bad_fallback: 'That fallback couldn’t be used — check the topic or passage.',
+  bad_cutoff: 'Pick a day and a time for the deadline.',
+  bad_fallback: 'That backup plan couldn’t be used — check the topic or passage.',
   bad_reference: 'Type a passage like “John 15:1-11”.',
   passage_too_long: 'Keep the passage inside one chapter, up to 40 verses.',
   passage_unavailable: 'We couldn’t fetch that passage — check it, or try again in a moment.',
@@ -212,7 +212,7 @@ export function AutopilotCard({
         <div style={{ flex: 1, minWidth: 0 }}>
           <b style={{ fontSize: 14.5 }}>✈️ Autopilot</b>
           <div className="dim" style={{ fontSize: 12, lineHeight: 1.45 }}>
-            Your week drafts itself from Sunday’s sermon — or from a fallback — and waits here for you. Nothing goes live until you approve it.
+            Your week drafts itself from Sunday’s sermon — or from a backup plan — and waits here for you. Nothing goes live until you approve it.
           </div>
         </div>
         <button
@@ -253,14 +253,14 @@ export function AutopilotCard({
           ) : null}
           {!editing && (
             <button className="pill" disabled={busy} onClick={openEdit} style={{ fontSize: 12.5 }}>
-              {ap.fallback ? 'Cutoff and fallback' : 'Set a fallback'}
+              {ap.fallback ? 'Deadline and backup plan' : 'Set a backup plan'}
             </button>
           )}
         </div>
       )}
       {ap.enabled && !editing && (
         <span className="faint" style={{ fontSize: 11.5, lineHeight: 1.45 }}>
-          Cutoff {cutoffLabel(ap.cutoffDow, ap.cutoffMinute)} · Fallback {ap.fallback ? `“${ap.fallback.label}”${ap.fallback.references.length ? ` (${ap.fallback.references.join(', ')})` : ''}` : 'none — a week with no memo is skipped'}
+          Deadline {cutoffLabel(ap.cutoffDow, ap.cutoffMinute)} · Backup plan {ap.fallback ? `“${ap.fallback.label}”${ap.fallback.references.length ? ` (${ap.fallback.references.join(', ')})` : ''}` : 'none — a week with no memo is skipped'}
         </span>
       )}
 
@@ -268,7 +268,7 @@ export function AutopilotCard({
         <div style={{ display: 'grid', gap: 8 }}>
           {setup && (
             <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.45 }}>
-              <b>First, a fallback.</b> If no sermon memo arrives by the cutoff, Autopilot drafts the week from this instead.
+              <b>First, a backup plan.</b> If no sermon memo arrives by the deadline, Autopilot drafts the week from this instead.
             </p>
           )}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
@@ -283,17 +283,17 @@ export function AutopilotCard({
               <input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
             </label>
           </div>
-          <div role="radiogroup" aria-label="Fallback" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <div role="radiogroup" aria-label="Backup plan" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {(['none', 'topic', 'passage'] as const).map((k) => (
               <button key={k} role="radio" aria-checked={kind === k} className="pill" onClick={() => setKind(k)}
                 style={{ fontSize: 12.5, fontWeight: 800, background: kind === k ? 'var(--select)' : undefined }}>
-                {k === 'none' ? 'No fallback' : k === 'topic' ? 'A topic' : 'A passage'}
+                {k === 'none' ? 'No backup plan' : k === 'topic' ? 'A topic' : 'A passage'}
               </button>
             ))}
           </div>
           {kind !== 'none' && (
             <input
-              aria-label={kind === 'topic' ? 'Fallback topic' : 'Fallback passage'}
+              aria-label={kind === 'topic' ? 'Backup topic' : 'Backup passage'}
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               maxLength={kind === 'topic' ? 80 : 40}
@@ -303,8 +303,8 @@ export function AutopilotCard({
           )}
           <span className="faint" style={{ fontSize: 11.5, lineHeight: 1.45 }}>
             {kind === 'none'
-              ? 'With no fallback, a week with no sermon memo is skipped — nothing is drafted from nothing.'
-              : 'The week is drafted from this, as drafts for you to review, only when no memo arrives by the cutoff. The words come from the Berean Standard Bible.'}
+              ? 'With no backup plan, a week with no sermon memo is skipped — nothing is drafted from nothing.'
+              : 'The week is drafted from this, as drafts for you to review, only when no memo arrives by the deadline. The words come from the Berean Standard Bible.'}
           </span>
           <div style={{ display: 'flex', gap: 8 }}>
             <Button variant="secondary" disabled={busy || (kind !== 'none' && !label.trim())} onClick={() => void save(setup ? { settings: true, enabled: true } : { settings: true })}>

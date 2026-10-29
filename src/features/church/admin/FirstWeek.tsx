@@ -10,15 +10,17 @@ import { useJuice } from '@/juice/useJuice'
 // remembered on this device (`va.church.firstweek.<id>`), so posting the
 // notice doesn't make the list vanish before the other rows are done.
 //
-// Four rows, each a door like a Home to-do row (HomeGo): choose your look,
-// post a notice, plan this week (or switch on Autopilot), share your page.
-// Each is ticked by the real state where there is one (a look chosen, a notice
-// live, a day planned or Autopilot on); "Share" is ticked when its row is
+// Three rows, each a door like a Home to-do row (HomeGo): plan this week (or
+// switch on Autopilot), post a notice, share your page — the order a church
+// gets value in. "Choose your look" was the first row until 2026-10-29 and is
+// now under Your page → More tools: a look is a nicety, not a setup step.
+// Each is ticked by the real state where there is one (a notice live, a day
+// planned or Autopilot on); "Share" is ticked when its row is
 // tapped, since a share leaves the app. The list goes when every row is done,
 // or for good on "Hide this". A done row is dimmed with a tick, not struck out. It sits ABOVE "This week" and blocks nothing —
 // the ordinary to-do rows below it are unchanged.
 
-export type FirstWeekDoor = 'look' | 'notice' | 'plan' | 'share'
+export type FirstWeekDoor = 'notice' | 'plan' | 'share'
 
 const KEY = (id: string) => `va.church.firstweek.${id}`
 function read(id: string): { on?: boolean; hidden?: boolean; shared?: boolean } {
@@ -31,7 +33,6 @@ function write(id: string, v: { on?: boolean; hidden?: boolean; shared?: boolean
 export function FirstWeek({
   churchId,
   fresh,
-  hasLook,
   hasNotice,
   planned,
   autopilotOffered,
@@ -40,7 +41,6 @@ export function FirstWeek({
   churchId: string
   /** Every start condition holds right now (no notice, no verse in 7 days, < 3 members). */
   fresh: boolean
-  hasLook: boolean
   hasNotice: boolean
   /** A verse or draft in the next seven days, or Autopilot on. */
   planned: boolean
@@ -56,13 +56,12 @@ export function FirstWeek({
     if (fresh && !state.on && !state.hidden) { const next = { ...state, on: true }; write(churchId, next); setState(next) }
   }, [fresh, churchId]) // eslint-disable-line react-hooks/exhaustive-deps
   const rows: { door: FirstWeekDoor; icon: string; title: string; detail: string; done: boolean }[] = [
-    { door: 'look', icon: '🧑‍🦳', title: 'Choose your look', detail: 'How you appear by your church’s door and beside your notes.', done: hasLook },
-    { door: 'notice', icon: '📣', title: 'Post a notice', detail: 'One line on your page — a service time, this week’s potluck.', done: hasNotice },
     {
       door: 'plan', icon: '📅', title: 'Plan this week',
       detail: autopilotOffered ? 'A verse for each day — or switch on Autopilot and let your sermon draft it.' : 'A verse for each day your church plays together.',
       done: planned,
     },
+    { door: 'notice', icon: '📣', title: 'Post a notice', detail: 'One line on your page — a service time, this week’s potluck.', done: hasNotice },
     { door: 'share', icon: '🔗', title: 'Share your page', detail: 'The link and QR code for a bulletin, a slide or a group text.', done: !!state.shared },
   ]
   if (!on || state.hidden || rows.every((r) => r.done)) return null

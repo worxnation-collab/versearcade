@@ -661,21 +661,34 @@ A memo the pastor ticks by hand is their own call and is never refused.
 draft. Approval is the unchanged 0127/0129 path: `DraftReview`, a ⚠ day
 holding "Approve all" back. There is no auto-approve, and no setting adds one.
 
-**How the cutoff is noticed — there is no cron.** This project has none (the
-rivalry's rule: opening the app IS the scheduler).
-- `church-draft` `autopilot_tick` is sent on load by the leadership dashboard
-  (Home and Plan) and by a leader's church tab (`ChurchLife`).
-- It reads `church_autopilot` **as that leader**. Only when the state is
-  `due` does it call `church_autopilot_claim` (service_role), which settles
-  the week **once per church per week** by the primary key of
-  `church_autopilot_weeks`.
-- The job then runs with that leader's token, so the units are spent and
-  refunded as theirs, exactly as when they press Draft.
+**How the cutoff is noticed — a clock, and a visit (0158).** Until 0158 there
+was no cron and the week settled only on the next leadership visit, so a pastor
+who didn't open the app by Monday night got nothing drafted and the Tuesday
+digest said so. Now two doors reach the same claim:
+- **Every hour at :23**, pg_cron (`church-autopilot-hourly`) posts
+  `{ mode: 'autopilot_cron' }` to `church-draft` with `x-autopilot-token`
+  (Vault `AUTOPILOT_CRON_TOKEN`). The platform's verify_jwt gate is met with
+  the project's public legacy anon key (Vault `AUTOPILOT_CRON_ANON_KEY`, the
+  same key every client bundle carries); the function's own check is the
+  token. It reads `church_autopilot_due()` — churches whose week is `due`, each
+  with the leader it runs as (the one who last set Autopilot if they still pass
+  the Content Generation gate, else the longest-standing leader who does) — and
+  for each calls `church_autopilot_claim` and runs the job.
+- **A leadership visit** still sends `autopilot_tick` on load (Home, Plan, a
+  leader's church tab), and settles the week first if it comes before the hour.
 
-So the fallback lands on the first leadership visit after the cutoff and takes
-about a minute — Plan polls and turns from "drafting" to "ready" by itself. A
-true schedule (pg_cron, or an Actions job with a service credential) would
-need its own credential and argument; it is deliberately not built.
+Either way the week is settled **once per church per week** by the primary key
+of `church_autopilot_weeks`. A cron-run job acts AS the chosen leader through
+`church_rpc_as` (service_role only): exactly the five leadership RPCs the week
+stage uses (`church_autopilot`, `church_verses_range`, `use_church_draft[_units]`,
+`save_church_verse_draft`, `set_church_discussion`), each still applying its own
+gate as that leader — the `church_digest_build` impersonation, narrowed to an
+allowlist. Inside the function the impersonated "auth header" carries a random
+per-process prefix, and a request carrying anything shaped like it is refused,
+so no caller can forge one. Units are spent and refunded as that leader's,
+exactly as when they press Draft, and everything is still a DRAFT.
+`npm run check:church-draft` drives the cron door (token, chosen leader, drafts
+only, nothing re-claimed, a forged header refused).
 
 **Where the pastor hears about it.**
 - Home's "This week" list leads with **"Week drafted — review"** (the range,

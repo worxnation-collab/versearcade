@@ -35,7 +35,8 @@ const env = { SUPABASE_URL: SB, SUPABASE_ANON_KEY: 'anon', SUPABASE_SERVICE_ROLE
 globalThis.Deno = { env: { get: (k) => env[k] }, serve: (h) => { handler = h } }
 
 // --- fake database ---------------------------------------------------------
-const db = { used: 0, cap: 30, gate: 'ok', verses: {}, runs: [], refunds: [], ap: { state: 'off', fallback: false, paused: false, claims: 0, from: '', to: '' } }
+const CH_ID = '11111111-1111-1111-1111-111111111111'
+const db = { asCalls: [], used: 0, cap: 30, gate: 'ok', verses: {}, runs: [], refunds: [], ap: { state: 'off', fallback: false, paused: false, claims: 0, from: '', to: '' } }
 const today = new Date().toISOString().slice(0, 10)
 const rpc = {
   use_church_draft_units: ({ p_units }) => {
@@ -68,6 +69,10 @@ const rpc = {
     return { state: 'fallback', run: true, job_id: id }
   },
   church_autopilot_paused: () => db.ap.paused,
+  // Autopilot on a clock (0158): the token, the due list, and acting as a leader.
+  church_autopilot_secret: () => 'cron-secret',
+  church_autopilot_due: () => (db.ap.state === 'due' ? [{ church_id: CH_ID, user_id: 'u-pastor' }] : []),
+  church_rpc_as: ({ p_user, p_fn, p_args }) => { db.asCalls.push([p_user, p_fn]); return rpc[p_fn](p_args) },
   // Discussion questions (0151): only on a day that exists.
   set_church_discussion: (a) => {
     if (!db.verses[a.p_drop_date]) return { ok: false, reason: 'no_day' }
@@ -490,6 +495,35 @@ check('autopilot paused week: an Autopilot memo job is refused, nothing spent', 
 apReset({ state: 'off' }); db.gate = 'no_addon'
 r = await tick()
 check('autopilot: gate refusal answered, nothing claimed', r.status === 403 && r.body.reason === 'no_addon' && db.ap.claims === 0, r)
+
+// C. Autopilot on a clock (0158). The cron needs its own token; with it, a due
+//    week is claimed for the leader the due list names and drafted through
+//    `church_rpc_as` as that leader — the same week stage, drafts only. A
+//    request can't forge the impersonated header.
+const cron = (headers = {}) => handler(new Request('http://fn', { method: 'POST', headers: { Authorization: 'Bearer anon', ...headers }, body: JSON.stringify({ mode: 'autopilot_cron' }) }))
+  .then(async (res) => ({ status: res.status, body: await res.json() }))
+apReset({ state: 'due', fallback: true }); db.asCalls = []
+r = await cron()
+check('autopilot cron: no token refused, nothing claimed', r.body.ok === false && db.ap.claims === 0 && jobs.size === 0, r)
+r = await cron({ 'x-autopilot-token': 'wrong' })
+check('autopilot cron: wrong token refused', r.body.ok === false && db.ap.claims === 0, r)
+gemini = [{ days: [1, 2, 3, 4, 5, 1, 2].map((v) => ({ reference: `John 15:${v}`, questions: five() })) }, { items: [] }]
+r = await cron({ 'x-autopilot-token': 'cron-secret' })
+job = [...jobs.values()][0]
+check('autopilot cron: due week claimed for the chosen leader and drafted', r.body.ok && r.body.due === 1 && db.ap.claims === 1 && job?.created_by === 'u-pastor' && job.status === 'done' && job.saved.length === 7, { body: r.body, job })
+check('autopilot cron: drafts only', Object.values(db.verses).every((v) => v.status === 'draft'), db.verses)
+check('autopilot cron: every leadership call ran as that leader through church_rpc_as',
+  db.asCalls.length > 0 && db.asCalls.every(([u]) => u === 'u-pastor') && ['use_church_draft_units', 'church_verses_range', 'save_church_verse_draft'].every((f) => db.asCalls.some(([, g]) => g === f)), db.asCalls)
+check('autopilot cron: units spent once per day', db.used === 7, db.used)
+r = await cron({ 'x-autopilot-token': 'cron-secret' })
+check('autopilot cron: nothing due on the next hour', r.body.ok && r.body.due === 0 && db.ap.claims === 1 && jobs.size === 1, r.body)
+apReset({ state: 'due', fallback: true })
+r = { status: 0 }
+{
+  const res = await handler(new Request('http://fn', { method: 'POST', headers: { Authorization: 'impersonate:anything:u-pastor' }, body: JSON.stringify({ mode: 'autopilot_tick', church_id: CH, api: 2 }) }))
+  r = { status: res.status, body: await res.json() }
+}
+check('autopilot cron: a forged impersonated header is refused', r.status === 401 && db.ap.claims === 0, r)
 
 console.log(fails ? `${fails} FAILED` : 'ALL PASS')
 process.exit(fails ? 1 : 0)

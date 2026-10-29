@@ -12,6 +12,7 @@ import { ago } from '../ChurchLife'
 import { LeadersSection } from './LeadersSection'
 import { GroupsSection } from './GroupsSection'
 import { PrayerListSection } from './PrayerListSection'
+import { MoreTools } from './MoreTools'
 
 // The leadership dashboard's three insight panels (0128): Overview, People and
 // Activity. Names are shown — the owner reversed the earlier "totals only,
@@ -266,7 +267,7 @@ export function OverviewPanel({ insights, failed, summary }: { insights: LeaderI
 // sales page's demo shows exactly what leadership gets. It sends nothing — no
 // player card is opened for a made-up name, and "Check in" explains itself
 // instead of opening a sheet that would call the server.
-export function PeoplePanel({ churchId, insights, failed, demo = false, leaders, openQuiet = false, onQuietShown }: {
+export function PeoplePanel({ churchId, insights, failed, demo = false, leaders, openQuiet = false, onQuietShown, more }: {
   churchId: string; insights: LeaderInsights | null; failed: boolean; demo?: boolean
   /** Arrived from the Home to-do's check-in row: open the quiet fold and bring it into view. */
   openQuiet?: boolean
@@ -274,6 +275,8 @@ export function PeoplePanel({ churchId, insights, failed, demo = false, leaders,
   onQuietShown?: () => void
   /** The Leaders section (0147) — verified leadership's own dashboard only, never the demo. */
   leaders?: { churchName: string; onChanged: () => void }
+  /** Anything else the dashboard folds under "More tools" here (Recent activity). */
+  more?: { names: string[]; content: React.ReactNode }
 }) {
   const [checkIn, setCheckIn] = useState<InsightMember | null>(null)
   const [sent, setSent] = useState<Set<string>>(() => new Set())
@@ -305,11 +308,6 @@ export function PeoplePanel({ churchId, insights, failed, demo = false, leaders,
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10, minWidth: 0 }}>
       <PrivacyNote />
-      {leaders && !demo && (
-        <LeadersSection churchId={churchId} churchName={leaders.churchName} roster={insights.roster} onChanged={leaders.onChanged} />
-      )}
-      {leaders && !demo && <GroupsSection churchId={churchId} roster={insights.roster} />}
-      {leaders && !demo && <PrayerListSection churchId={churchId} />}
       {active.length === 0 && (
         <p className="dim" style={{ fontSize: 13.5, margin: '4px 0' }}>Nobody has played this week yet.</p>
       )}
@@ -346,6 +344,16 @@ export function PeoplePanel({ churchId, insights, failed, demo = false, leaders,
           </div>
         </Collapsible>
         </div>
+      )}
+      {/* The roster and the quiet list are what this tab is for; the rest
+          is one tap further (MoreTools.tsx says why). */}
+      {leaders && !demo && (
+        <MoreTools names={['Co-leaders', 'Small groups', 'Prayer list', ...(more?.names ?? [])]}>
+          <LeadersSection churchId={churchId} churchName={leaders.churchName} roster={insights.roster} onChanged={leaders.onChanged} />
+          <GroupsSection churchId={churchId} roster={insights.roster} />
+          <PrayerListSection churchId={churchId} />
+          {more?.content}
+        </MoreTools>
       )}
       {checkIn && !demo && (
         <CheckInSheet

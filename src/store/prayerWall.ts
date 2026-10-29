@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
-import { pushGesture } from '@/lib/gesturePush'
+import { pushAnswered, pushGesture } from '@/lib/gesturePush'
 import { todayLocalDate } from '@/lib/date'
 import { useAuth } from './auth'
 import { useSeason } from './season'
@@ -235,8 +235,10 @@ export const usePrayerWall = create<PrayerWallState>((set, get) => ({
     const mine = get().mine
     if (!mine || !isOnline() || !supabase) return
     set({ mine: { ...mine, answeredAt: new Date().toISOString(), open: false }, wallCount: Math.max(0, get().wallCount - 1) })
-    const { error } = await supabase.rpc('answer_prayer_request', { p_id: mine.id })
-    if (error) void get().load()
+    const { data, error } = await supabase.rpc('answer_prayer_request', { p_id: mine.id })
+    if (error) { void get().load(); return }
+    // Everybody who knelt at it hears so, once (0162).
+    if ((data as { ok?: boolean })?.ok) pushAnswered(mine.id)
   },
 
   async draw(skip = false) {

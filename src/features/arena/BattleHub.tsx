@@ -102,6 +102,9 @@ export default function BattleHub() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const [expanded, setExpanded] = useState<Turn | null>(null)
+  // True once this visit's list has come back, so a player who has battles
+  // never sees the first-battle card flash while the list is in flight.
+  const [mineLoaded, setMineLoaded] = useState(false)
   /**
    * Mirrors the ranks fold's own open state, and drives it.
    *
@@ -141,7 +144,7 @@ export default function BattleHub() {
 
   useEffect(() => {
     if (isGuest) return
-    loadMine()
+    void loadMine().then(() => setMineLoaded(true))
     leaderboard().then(setBoard)
     denominationBoard().then(setDenomBoard)
   }, [isGuest, loadMine, leaderboard, denominationBoard])
@@ -187,6 +190,21 @@ export default function BattleHub() {
           </motion.button>
           <KeepChallenges />
         </div>}
+        </>
+      ) : mineLoaded && mine.length === 0 ? (
+        <>
+          <FirstBattle
+            onCpu={() => { juice.coin(); navigate('/battle/cpu') }}
+            onFriend={() => { juice.coin(); navigate('/battle/new') }}
+            onLive={() => { juice.select(); navigate('/battle/live') }}
+          />
+          <RankStrip
+            board={board}
+            denomBoard={denomBoard}
+            onOpen={(tab) => { juice.select(); setRankTab(tab); setRanksOpen(true) }}
+          />
+          {!profile?.denomination && <TeamChooser onChanged={onTeamChanged} />}
+          <div style={{ height: 90 }} />
         </>
       ) : (
         <>
@@ -418,6 +436,42 @@ export default function BattleHub() {
         <KeepSheet denomination={openKeep === '' ? null : openKeep} onClose={() => setOpenKeep(null)} />
       )}
     </Page>
+  )
+}
+
+/**
+ * The Battle tab for a signed-in player who has never had a battle.
+ *
+ * Without it they opened on two buttons, three empty turn tabs and a folded
+ * board: a page about battles they don't have. This is one card with one
+ * gold door — race the CPU, which needs nobody else and starts at once — and
+ * the friend challenge beside it, since that is the thing the tab is for.
+ * Live sits under both as a plain link, for the reason the main layout puts
+ * it under the async button: it needs the other person holding their phone
+ * now. It disappears by itself once any battle exists. Nothing here counts or
+ * compares anything; a CPU race is the same race Study offers.
+ */
+function FirstBattle({ onCpu, onFriend, onLive }: { onCpu: () => void; onFriend: () => void; onLive: () => void }) {
+  return (
+    <div className="card" style={{ textAlign: 'center', padding: '22px 18px', marginBottom: 14 }}>
+      <div style={{ fontSize: 40, lineHeight: 1 }} aria-hidden><PaintedIcon id="battle_swords" /></div>
+      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, margin: '10px 0 6px' }}>Your first battle</h2>
+      <p className="dim" style={{ fontSize: 14, lineHeight: 1.5, margin: '0 0 16px' }}>
+        Same verse, same five questions, two players. Warm up against the CPU
+        right now, or send a friend the verse and see who knows it best.
+      </p>
+      <div style={{ display: 'grid', gap: 10 }}>
+        <Button variant="gold" full onClick={onCpu}>Race the CPU</Button>
+        <Button full onClick={onFriend}>Challenge a friend</Button>
+      </div>
+      <button
+        onClick={onLive}
+        className="faint"
+        style={{ marginTop: 12, background: 'none', border: 'none', fontSize: 12.5, cursor: 'pointer', textDecoration: 'underline', minHeight: 32 }}
+      >
+        Or play live — everyone gathers at {gatheringLabel()}
+      </button>
+    </div>
   )
 }
 

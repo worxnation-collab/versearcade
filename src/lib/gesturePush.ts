@@ -10,3 +10,11 @@ export function pushGesture(kind: 'wash' | 'kneel', target: string) {
     .invoke('push-send', { body: { action: 'gesture', kind, target } })
     .catch(() => { /* a push is a nudge on top of the gesture, never the gesture */ })
 }
+
+// A note marked answered tells everybody who knelt at it, once (0162) —
+// unnamed and uncounted. Same blind send; the server's claim decides.
+export function pushAnswered(requestId: string) {
+  supabase?.functions
+    .invoke('push-send', { body: { action: 'answered', request_id: requestId } })
+    .catch(() => { /* the answer is saved either way */ })
+}

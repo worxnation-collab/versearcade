@@ -1,6 +1,6 @@
 // push-send — broadcasts a Web Push notification to every stored subscription.
 //
-// Five actions:
+// Six actions:
 //   • (default) the operator broadcast — admin-only (sharkbait).
 //   • `{ action: 'check_in', church_id, username }` — one church check-in note
 //     (0137/0138, or a group leader's, 0156) to the ONE member it was sent to.
@@ -19,6 +19,8 @@
 //   • `{ action: 'gesture', kind: 'wash' | 'kneel', target }` — a friend's
 //     washing or a kneeling at a Prayer Wall note reaches its person (0161),
 //     at most once a day per recipient, whichever comes first.
+//   • `{ action: 'answered', request_id }` — the owner of a Prayer Wall note
+//     just marked it answered; everybody who knelt at it hears so, once (0162).
 //
 // APNs (docs/NATIVE-PUSH.md): token auth with the team's .p8 key — ES256 JWT,
 // iss = team id, kid = key id, reused for 50 minutes (Apple refuses one older
@@ -328,6 +330,34 @@ async function sendGesture(admin: any, sender: string, input: Record<string, unk
   return deliver(admin, claim.recipient_id, note)
 }
 
+// "Your prayer mattered" (0162): the owner of a note marked it answered, and
+// everybody who knelt at it hears so, once. `answered_push_claim` checks the
+// caller owns the note and stamps it; the kneelers come back as ids only. The
+// note names nobody and counts nothing — not whose note, not how many knelt.
+// Ten at a time, so a well-loved note can't pin the function on one request.
+// deno-lint-ignore no-explicit-any
+async function sendAnswered(admin: any, sender: string, input: Record<string, unknown>) {
+  const requestId = String(input.request_id ?? '')
+  if (!requestId) return { pushed: 0, reason: 'bad_input' }
+  const { data: claim, error } = await admin.rpc('answered_push_claim', {
+    p_sender: sender, p_request: requestId,
+  })
+  if (error || !claim?.ok) return { pushed: 0, reason: claim?.reason ?? 'claim_failed' }
+  const recipients = (claim.recipients ?? []) as string[]
+  const note: Note = {
+    title: 'A prayer you held was answered',
+    body: 'Someone you knelt for on the Prayer Wall says it was answered. Thank you for praying.',
+    url: '/mail',
+    tag: `answered-${claim.request_id}`,
+  }
+  let pushed = 0
+  for (let i = 0; i < recipients.length; i += 10) {
+    const batch = await Promise.allSettled(recipients.slice(i, i + 10).map((r) => deliver(admin, r, note)))
+    for (const b of batch) if (b.status === 'fulfilled') pushed += b.value.pushed
+  }
+  return { pushed, recipients: recipients.length }
+}
+
 // One note to one person, on both transports; prunes dead endpoints. Never throws.
 // deno-lint-ignore no-explicit-any
 async function deliver(admin: any, recipientId: string, note: Note) {
@@ -376,6 +406,7 @@ Deno.serve(async (req) => {
     if (input.action === 'battle_played') return json(await sendBattlePlayed(admin, user.id, input))
     if (input.action === 'buddy_accepted') return json(await sendBuddyAccepted(admin, user.id, input))
     if (input.action === 'gesture') return json(await sendGesture(admin, user.id, input))
+    if (input.action === 'answered') return json(await sendAnswered(admin, user.id, input))
 
     const { data: prof } = await admin.from('profiles').select('username').eq('id', user.id).single()
     if (!prof || prof.username !== 'sharkbait') return json({ error: 'forbidden' }, 403)

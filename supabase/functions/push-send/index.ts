@@ -1,6 +1,6 @@
 // push-send — broadcasts a Web Push notification to every stored subscription.
 //
-// Three actions:
+// Four actions:
 //   • (default) the operator broadcast — admin-only (sharkbait).
 //   • `{ action: 'check_in', church_id, username }` — one church check-in note
 //     (0137/0138, or a group leader's, 0156) to the ONE member it was sent to.
@@ -14,6 +14,8 @@
 //     device tokens (APNs).
 //   • `{ action: 'battle_played', battle_id }` — the opponent who just
 //     finished an async battle tells its challenger (0159), once per battle.
+//   • `{ action: 'buddy_accepted', username }` — the player who just accepted
+//     a buddy request tells the one who sent it (0160), once per request.
 //
 // APNs (docs/NATIVE-PUSH.md): token auth with the team's .p8 key — ES256 JWT,
 // iss = team id, kid = key id, reused for 50 minutes (Apple refuses one older
@@ -273,6 +275,26 @@ async function sendBattlePlayed(admin: any, sender: string, input: Record<string
   })
 }
 
+// "We'll tell you when they answer" (0160): the player who just accepted a
+// buddy request tells the one who sent it, once. `buddy_accepted_push_claim`
+// checks the caller is the addressee, the request was accepted in the last
+// fifteen minutes and nobody pushed for it yet. A decline sends nothing.
+// deno-lint-ignore no-explicit-any
+async function sendBuddyAccepted(admin: any, sender: string, input: Record<string, unknown>) {
+  const username = String(input.username ?? '')
+  if (!username) return { pushed: 0, reason: 'bad_input' }
+  const { data: claim, error } = await admin.rpc('buddy_accepted_push_claim', {
+    p_sender: sender, p_username: username,
+  })
+  if (error || !claim?.ok) return { pushed: 0, reason: claim?.reason ?? 'claim_failed' }
+  return deliver(admin, claim.recipient_id, {
+    title: `@${claim.from_username} is your buddy now`.slice(0, 80),
+    body: 'They said yes to your buddy request.',
+    url: '/buddies',
+    tag: `buddy-${claim.recipient_id}-${sender}`,
+  })
+}
+
 // One note to one person, on both transports; prunes dead endpoints. Never throws.
 // deno-lint-ignore no-explicit-any
 async function deliver(admin: any, recipientId: string, note: Note) {
@@ -319,6 +341,7 @@ Deno.serve(async (req) => {
     const input = await req.json().catch(() => ({}))
     if (input.action === 'check_in') return json(await sendCheckIn(admin, user.id, input))
     if (input.action === 'battle_played') return json(await sendBattlePlayed(admin, user.id, input))
+    if (input.action === 'buddy_accepted') return json(await sendBuddyAccepted(admin, user.id, input))
 
     const { data: prof } = await admin.from('profiles').select('username').eq('id', user.id).single()
     if (!prof || prof.username !== 'sharkbait') return json({ error: 'forbidden' }, 403)

@@ -29,6 +29,15 @@ interface BuddiesState {
   remove: (username: string) => Promise<boolean>
 }
 
+// "We'll tell you when they answer" (0160): tell the requester, once. The
+// server's claim decides whether there is anybody to tell, so this sends
+// blind and ignores the answer. A decline sends nothing at all.
+function pushBuddyAccepted(username: string) {
+  supabase?.functions
+    .invoke('push-send', { body: { action: 'buddy_accepted', username } })
+    .catch(() => { /* a push is a nudge on top; nothing waits on it */ })
+}
+
 export const useBuddies = create<BuddiesState>((set, get) => ({
   buddies: [],
   requests: [],
@@ -62,6 +71,9 @@ export const useBuddies = create<BuddiesState>((set, get) => ({
     const { data, error } = await supabase.rpc('send_buddy_request', { p_username: username })
     if (error) return { ok: false, reason: error.message }
     const res = data as BuddyResult
+    // Sending to somebody who had already asked YOU accepts their request —
+    // so they hear about it the same way an accept from the list tells them.
+    if (res?.status === 'accepted') pushBuddyAccepted(username)
     await get().load()
     return res
   },
@@ -69,6 +81,7 @@ export const useBuddies = create<BuddiesState>((set, get) => ({
   async respond(username, accept) {
     if (!supabase) return false
     const { error } = await supabase.rpc('respond_buddy_request', { p_username: username, p_accept: accept })
+    if (!error && accept) pushBuddyAccepted(username)
     await get().load()
     return !error
   },

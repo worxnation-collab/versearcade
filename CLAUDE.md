@@ -3802,6 +3802,17 @@ points and no standing**, which is what lets it exist at all next to the
 rank-free rule above: the only thing a find is good for is `donate_collectible`,
 giving it to your church. The incentive to study is an offering, not a score.
 
+**A find goes straight to your church since 2026-10-29** (`rollOnline` in
+`store/drops.ts`): the same `donate_collectible` the bag's Give button calls,
+so the `church_offerings` ledger, the church's XP and the `donate` verb move
+exactly as a hand-given relic does, and the stamp stays. No church, a guest or
+a failed call leaves it in the bag as before. That landed with **the keep's
+hall hidden** — `KEEP_HALL_VISIBLE` in `data/keep.ts` gates the Battle tab's
+row and ladder, `?keep=1`, the CPU result's next piece and the keep toasts;
+the counters, `keep_placements`, `keep_offerings`, the RPCs and every
+`va.keep.*` key are untouched, so flipping it back is one edit. Don't ship a
+road quest on `place_decor` / `give_offering` while it is off.
+
 Three things to know before touching it:
 
 - **The roll is opt-in, and only Study opts in.** It lives in `QuizRunner`

@@ -481,7 +481,7 @@ export default function HomeScreen() {
             Today’s verse is yours. The rest is one tap away.
           </p>
           <p className="dim" style={{ margin: '0 0 14px', fontSize: 14, lineHeight: 1.5 }}>
-            A free account opens battles, your keep, Study, your own Bible and playing for
+            A free account opens battles, Study, your own Bible and playing for
             your church — and carries your streak, XP and character to any device.
           </p>
           <div style={{ display: 'grid', gap: 8 }}>

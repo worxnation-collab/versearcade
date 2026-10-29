@@ -115,7 +115,7 @@ export function InventorySection() {
         </b>
         <p className="dim" style={{ fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>
           Open the Daily Chest, play the daily verse — and keep studying: a study run turns
-          something up now and then. Whatever lands here can be given to your church.
+          something up now and then (once you have a church, those go straight to it). Whatever lands here can be given to your church.
         </p>
       </div>
     )

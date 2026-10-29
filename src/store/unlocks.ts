@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { useAuth } from './auth'
 import { useBible } from './bible'
 import { useCollection } from './collection'
-import { CHALLENGES, DECOR, bestOwnedTier, decorById, ownedDecor, type KeepCounters } from '@/data/keep'
+import { CHALLENGES, DECOR, KEEP_HALL_VISIBLE, bestOwnedTier, decorById, ownedDecor, type KeepCounters } from '@/data/keep'
 import { FURNISHINGS, REQUIREMENT_NOUN, ownedFurnishings } from '@/data/room'
 import { roomProgress } from '@/lib/roomProgress'
 import { pressedSeals, sealFor } from '@/data/seals'
@@ -119,6 +119,11 @@ export const useUnlocks = create<UnlockState>((set, get) => ({
   },
 
   noteKeep(before, after) {
+    // The hall is hidden (KEEP_HALL_VISIBLE), so a toast whose only door is
+    // the hall says nothing. This diffs one before/after pair per event, so
+    // staying quiet stores no backlog — switching the hall back on announces
+    // only pieces earned from then on.
+    if (!KEEP_HALL_VISIBLE) return
     const out: Unlock[] = []
     const had = new Set(ownedDecor(before))
     for (const d of DECOR) {

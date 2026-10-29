@@ -101,8 +101,8 @@ export default function AuthScreen() {
             {mode === 'in'
               ? 'Keep your streak safe across devices.'
               : signingUpLook
-                ? 'This is you in every battle, in your keep, in Study and outside your church. Change it any time \u2014 nothing here is locked.'
-                : 'Free, and it opens the whole game \u2014 battles, the keep, Study, your Bible and your church.'}
+                ? 'This is you in every battle, in Study and outside your church. Change it any time \u2014 nothing here is locked.'
+                : 'Free, and it opens the whole game \u2014 battles, Study, your Bible and your church.'}
           </p>
         </div>
 
@@ -280,10 +280,10 @@ function GuestWayOut({
 }
 
 // What the account this character is for opens — a glance, not a step. The
-// same five things Landing names, so the promise reads the same at both doors.
+// same things Landing names, so the promise reads the same at both doors.
+// (The keep left this list with the hall — KEEP_HALL_VISIBLE in data/keep.ts.)
 const OPENS: { icon: IconId; label: string }[] = [
   { icon: 'battle', label: 'Battles' },
-  { icon: 'keep', label: 'Your Keep' },
   { icon: 'study', label: 'Study' },
   { icon: 'book', label: 'Your Bible' },
   { icon: 'church', label: 'Your church' },
@@ -295,7 +295,7 @@ function OpensStrip() {
       <p className="faint center" style={{ fontSize: 12, fontWeight: 700, margin: '0 0 6px' }}>
         Your free account opens
       </p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 6 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${OPENS.length}, minmax(0, 1fr))`, gap: 6 }}>
         {OPENS.map((o) => (
           <div
             key={o.label}

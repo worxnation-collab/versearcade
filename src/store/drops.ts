@@ -9,6 +9,7 @@ import { useAuth } from './auth'
 import { useSeason } from './season'
 import { useCollection } from './collection'
 import { useInventory } from './inventory'
+import { useChurch } from './church'
 
 // Things found while studying. See lib/drops.ts for what a drop is and why it
 // pays nothing; this store is just the roll and the pending reveal.
@@ -26,6 +27,13 @@ export interface StudyDrop {
   newStamp: boolean
   /** Copies now held, so a duplicate can say what it's good for. */
   qty?: number
+  /**
+   * Set when the find went straight to the player's church (see rollOnline).
+   * Absent means it is in the bag: a guest, no church yet, or a failed give.
+   */
+  given?: { points: number; church: string | null }
+  /** True when the give was refused only because there is no church yet. */
+  noChurch?: boolean
 }
 
 /** Guest cap bookkeeping: how many finds on which local day. */
@@ -119,9 +127,31 @@ async function rollOnline(): Promise<StudyDrop | null> {
   if (newStamp) {
     useCollection.setState((s) => (s.owned.includes(key) ? s : { owned: [...s.owned, key] }))
   }
-  void useInventory.getState().load()
+  // A find goes STRAIGHT TO THE CHURCH now (2026-10-29), through the same
+  // `donate_collectible` the bag's Give button calls, so the church_offerings
+  // ledger, the church's XP and the 'donate' road verb all move exactly as a
+  // hand-given relic does. The relic used to sit in the bag waiting for a tap
+  // most people never made, beside a keep hall that is now hidden. The stamp
+  // stays either way. No church, a guest or a failed call leaves the item in
+  // the bag exactly as before, and the bag can still give it by hand.
+  await useInventory.getState().load()
+  // The server decides whether there is a church to give to (`no_church`
+  // comes back as a plain refusal), so a church-less player pays one cheap
+  // call per find — at most the daily cap's three.
+  const res = await useInventory.getState().donate(key)
+  if (res.ok) {
+    const name = useChurch.getState().church?.name ?? null
+    void useChurch.getState().load()
+    return {
+      key,
+      rarity: raw.rarity,
+      newStamp,
+      qty: res.remaining,
+      given: { points: res.points ?? 0, church: name },
+    }
+  }
 
-  return { key, rarity: raw.rarity, newStamp, qty: raw.qty }
+  return { key, rarity: raw.rarity, newStamp, qty: raw.qty, noChurch: res.reason === 'no_church' }
 }
 
 // Guest mirror of roll_study_drop (migration 0055). Keep the two in sync — the

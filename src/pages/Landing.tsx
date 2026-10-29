@@ -107,7 +107,7 @@ export default function Landing() {
             <p className="center" style={{ fontSize: 13.5, maxWidth: 340, marginInline: 'auto', lineHeight: 1.5 }}>
               <b style={{ color: 'var(--gold)' }}>Free account</b>
               <span className="dim">
-                {' '}opens battles, your keep, Study, your own Bible and playing for your church.
+                {' '}opens battles, Study, your own Bible and playing for your church.
               </span>
             </p>
           )}

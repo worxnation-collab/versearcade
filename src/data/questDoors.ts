@@ -76,7 +76,9 @@ const DOORS: Partial<Record<QuestVerb, string>> = {
   battle_wins: '/battle',
   battles_played: '/battle',
   // The hall is a section on the Battle tab; ?keep=1 opens its sheet, the same
-  // deep link the unlock toast uses.
+  // deep link the unlock toast uses. While the hall is hidden
+  // (KEEP_HALL_VISIBLE in data/keep.ts) BattleHub ignores the param, so a road
+  // must not ship a quest on these two verbs until it is back.
   place_decor: '/battle?keep=1',
   give_offering: '/battle?keep=1',
 

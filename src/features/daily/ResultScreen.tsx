@@ -326,7 +326,7 @@ export default function ResultScreen() {
               </Button>
               <p className="faint" style={{ fontSize: 12, marginTop: -2, lineHeight: 1.5 }}>
                 That’s today’s drop. An account opens Study (unlimited, never ranks you),
-                battles, your keep and your own Bible — and keeps this streak safe.
+                battles, Study and your own Bible — and keeps this streak safe.
               </p>
             </>
           ) : (

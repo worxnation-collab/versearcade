@@ -16,6 +16,7 @@ import { FavoriteButton } from '@/components/FavoriteButton'
 import { MissedList } from '@/features/daily/MissedList'
 import { nearestKeepChallenge } from '@/store/unlocks'
 import { DecorThumb } from './KeepArt'
+import { KEEP_HALL_VISIBLE } from '@/data/keep'
 import { CpuFace } from './CpuFace'
 import type { AvatarSpec, DailyVerse, PlayResult } from '@/types'
 import { ScriptureQuote } from '@/components/ScriptureQuote'
@@ -183,7 +184,9 @@ function CpuResult({
   // below tracks first, then this re-reads). A rematch is a tap away and this
   // is the reason to take it.
   const counters = useKeep((s) => s.counters)
-  const nextPiece = nearestKeepChallenge(counters)
+  // Off with the hall (KEEP_HALL_VISIBLE): a piece for a room nobody can open
+  // is a promise with no door. The counters above still move either way.
+  const nextPiece = KEEP_HALL_VISIBLE ? nearestKeepChallenge(counters) : null
 
   // One result = one payout. StrictMode remounts effects in dev, and this one
   // moves counters — the ref makes the double-invoke a no-op.

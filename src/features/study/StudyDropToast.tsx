@@ -44,6 +44,14 @@ export function StudyDropToast() {
   if (typeof document === 'undefined') return null
 
   const glow = def ? rarityColor[def.rarity] : 'var(--gold)'
+  // Where the find went decides the door: a find given to the church opens the
+  // church, one waiting for a church opens the picker, anything else the bag.
+  const to = found?.given || found?.noChurch ? '/church' : '/study/bag'
+  const cta = found?.given
+    ? 'See your church →'
+    : found?.noChurch
+      ? 'Join a church — finds go straight to it →'
+      : 'Open your bag →'
 
   return createPortal(
     <AnimatePresence>
@@ -73,10 +81,10 @@ export function StudyDropToast() {
           {/* One tappable bar rather than a panel with its own button. The
               screen underneath is a recap the player just earned; a toast that
               buries it is worse than one that says less. Tapping anywhere opens
-              the bag, which is the only thing there is to do about a find. */}
+              wherever the find went — the church it was given to, or the bag. */}
           <div style={{ position: 'relative' }}>
             <button
-              onClick={() => { juice.coin(); dismiss(); navigate('/study/bag') }}
+              onClick={() => { juice.coin(); dismiss(); navigate(to) }}
               className="card"
               style={{
                 width: '100%',
@@ -122,9 +130,11 @@ export function StudyDropToast() {
                 {/* A first find and a spare are two different things, and both
                     are worth having — say which one this was. */}
                 <span className="dim" style={{ display: 'block', fontSize: 11.5, lineHeight: 1.4 }}>
-                  {found.newStamp
-                    ? '✦ Stamped into your Bible — and it’s in your bag.'
-                    : `In your bag${found.qty && found.qty > 1 ? ` — that’s ${found.qty}` : ''}.`}
+                  {found.given
+                    ? `${found.newStamp ? '✦ Stamped into your Bible, and given' : 'Given'} to ${found.given.church ?? 'your church'} — +${found.given.points.toLocaleString()} points.`
+                    : found.newStamp
+                      ? '✦ Stamped into your Bible — and it’s in your bag.'
+                      : `In your bag${found.qty && found.qty > 1 ? ` — that’s ${found.qty}` : ''}.`}
                 </span>
                 <span
                   style={{
@@ -135,7 +145,7 @@ export function StudyDropToast() {
                     marginTop: 1,
                   }}
                 >
-                  Give it to your church →
+                  {cta}
                 </span>
               </span>
             </button>

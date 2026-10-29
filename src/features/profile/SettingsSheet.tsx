@@ -469,7 +469,7 @@ function TestPush() {
     : out.state === 'muted' ? { ok: false, text: `Not sent: ${label} is switched off above, so this kind stays quiet.` }
     : out.state === 'held' ? { ok: true, text: `Held — your quiet hours are on. It arrives at ${new Date(out.until).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.` }
     : out.state === 'nowhere' ? { ok: false, text: 'Nothing to send to — no device of yours is signed up. Turn notifications off and on again on this one.' }
-    : { ok: false, text: 'Couldn’t send a test right now. Try again in a moment.' }
+    : { ok: false, text: `Couldn’t send a test right now.${out.detail ? ` (${out.detail})` : ' Try again in a moment.'}` }
   return (
     <div className="card" style={{ marginBottom: 6 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>

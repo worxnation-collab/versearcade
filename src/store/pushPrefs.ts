@@ -112,7 +112,7 @@ export type TestPushOutcome =
   | { state: 'muted' }
   | { state: 'held'; until: string }
   | { state: 'nowhere' }
-  | { state: 'failed' }
+  | { state: 'failed'; detail?: string }
 
 /** "Send me a test push": push-send's `test` action sends to the caller ONLY,
  *  through the same server path every real note takes (kind switch, quiet
@@ -121,13 +121,22 @@ export async function sendTestPush(kind: PushKind): Promise<TestPushOutcome> {
   if (!isOnline()) return { state: 'failed' }
   try {
     const { data, error } = await supabase!.functions.invoke('push-send', { body: { action: 'test', kind } })
-    if (error || !data) return { state: 'failed' }
-    const r = data as { pushed?: number; reason?: string; deferred?: boolean; until?: string; devices?: number }
+    if (error || !data) {
+      // A non-2xx still carries the function's own { error } body; say it.
+      let detail: string | undefined
+      try {
+        const ctx = (error as { context?: Response } | null)?.context
+        const body = ctx ? await ctx.json() : null
+        detail = typeof body?.error === 'string' ? body.error.slice(0, 160) : undefined
+      } catch { /* no body */ }
+      return { state: 'failed', detail }
+    }
+    const r = data as { pushed?: number; reason?: string; deferred?: boolean; until?: string; devices?: number; web_error?: string; native_error?: string }
     if (r.reason === 'muted') return { state: 'muted' }
     if (r.deferred && r.until) return { state: 'held', until: r.until }
     if ((r.pushed ?? 0) > 0) return { state: 'sent', devices: r.pushed ?? 0 }
     if (r.reason === 'no_subscription' || r.devices === 0) return { state: 'nowhere' }
-    return { state: 'failed' }
+    return { state: 'failed', detail: r.web_error || r.native_error }
   } catch {
     return { state: 'failed' }
   }

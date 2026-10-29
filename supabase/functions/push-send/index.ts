@@ -407,6 +407,7 @@ async function sendTest(admin: any, self: string, input: Record<string, unknown>
     ios_sent: n.native_sent ?? 0,
     ios_failed: n.native_failed ?? 0,
     ...(n.native_error ? { ios_error: n.native_error } : {}),
+    ...((r as { web_error?: string }).web_error ? { web_error: (r as { web_error?: string }).web_error } : {}),
   }))
   return { ...r, kind, devices: (count ?? 0) + (ios ?? 0) }
 }
@@ -446,18 +447,36 @@ async function sendNow(admin: any, recipientId: string, note: Note) {
   }
 
   const payload = enc.encode(JSON.stringify(note))
-  const key = await vapidSigningKey()
+  // A VAPID key that will not import (malformed, or not the pair of the public
+  // key) used to throw out of here and turn the whole request into a bare 500
+  // with nothing in the logs. It is a value now, like every other failure.
+  let key: CryptoKey
+  try {
+    key = await vapidSigningKey()
+  } catch (e) {
+    console.error('push-send vapid key', String(e))
+    return { pushed: native.native_sent, ...native, web_failed: subs.length, web_error: `vapid_key: ${String(e)}`.slice(0, 200) }
+  }
   let pushed = 0
+  let webFailed = 0
+  let webError = ''
   const dead: string[] = []
   for (const s of subs as Sub[]) {
     try {
       const status = await sendOne(s, payload, key)
       if (status >= 200 && status < 300) pushed++
-      else if (status === 404 || status === 410) dead.push(s.endpoint)
-    } catch { /* one bad endpoint never fails the rest */ }
+      else {
+        webFailed++
+        webError ||= `push service ${status}`
+        if (status === 404 || status === 410) dead.push(s.endpoint)
+      }
+    } catch (e) {
+      webFailed++
+      webError ||= String(e).slice(0, 200)
+    }
   }
   if (dead.length) await admin.from('push_subscriptions').delete().in('endpoint', dead)
-  return { pushed: pushed + native.native_sent, ...native }
+  return { pushed: pushed + native.native_sent, ...native, ...(webFailed ? { web_failed: webFailed, web_error: webError } : {}) }
 }
 
 // The morning run (0164): pg_cron posts `{ action: 'flush' }` every fifteen
@@ -565,6 +584,7 @@ Deno.serve(async (req) => {
 
     return json({ sent, failed, removed: dead.length, total: subs.length, ...native })
   } catch (e) {
+    console.error('push-send', String(e))
     return json({ error: String(e) }, 500)
   }
 })

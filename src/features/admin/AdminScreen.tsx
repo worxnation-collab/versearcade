@@ -1335,6 +1335,72 @@ const PUSH_PRESETS = [
   { label: '⚔️ Battle call', title: 'Who can you beat today?', body: 'Challenge a buddy to today’s verse and settle it head to head.' },
 ]
 
+// Is the quiet-hours queue (0164) draining? `admin_push_queue` (0165) gives
+// counts and times only. "Last flush" is push-send's own receipt, not
+// pg_cron's: a cron run reads succeeded once the request is merely queued.
+interface PushQueue {
+  waiting: number; overdue: number; next_due: string | null; sent_24h: number
+  last_sent: string | null; quiet_people: number
+  last_flush: { at: string; due: number; pushed: number } | null
+  last_call: { at: string; status: string } | null
+}
+
+function ago(iso: string | null): string {
+  if (!iso) return 'never'
+  const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000)
+  if (m < 0) return `in ${Math.abs(m) < 90 ? `${Math.abs(m)} min` : `${Math.round(Math.abs(m) / 60)} h`}`
+  if (m < 1) return 'just now'
+  if (m < 90) return `${m} min ago`
+  if (m < 48 * 60) return `${Math.round(m / 60)} h ago`
+  return `${Math.round(m / 1440)} d ago`
+}
+
+function QuietQueue() {
+  const [q, setQ] = useState<PushQueue | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  const load = async () => {
+    setErr(null)
+    const { data, error } = await supabase!.rpc('admin_push_queue')
+    if (error) { setErr(error.message); return }
+    setQ(data as PushQueue)
+  }
+  useEffect(() => { void load() }, [])
+
+  // The flush runs every 15 min; past ~20 with no receipt, or anything overdue, is a stall.
+  const stale = !!q && (!q.last_flush || Date.now() - new Date(q.last_flush.at).getTime() > 20 * 60000)
+  const trouble = !!q && (q.overdue > 0 || stale)
+
+  return (
+    <div className="card" style={{ marginBottom: 14, borderColor: trouble ? 'var(--coral)' : undefined }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+        <strong style={{ fontSize: 14 }}>🌙 Quiet-hours queue</strong>
+        <button className="pill" style={{ fontSize: 12 }} onClick={() => void load()}>↻</button>
+      </div>
+      {err && <p style={{ color: 'var(--coral)', fontSize: 13, marginTop: 6 }}>{err}</p>}
+      {q && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, marginTop: 8, fontSize: 13 }}>
+          <div><div className="faint" style={{ fontSize: 11 }}>Waiting</div><strong>{q.waiting}</strong>{q.next_due && <span className="faint"> · {new Date(q.next_due).getTime() > Date.now() ? 'next' : 'due'} {ago(q.next_due)}</span>}</div>
+          <div><div className="faint" style={{ fontSize: 11 }}>Overdue</div><strong style={{ color: q.overdue ? 'var(--coral)' : undefined }}>{q.overdue}</strong></div>
+          <div><div className="faint" style={{ fontSize: 11 }}>Sent, last 24h</div><strong>{q.sent_24h}</strong><span className="faint"> · last {ago(q.last_sent)}</span></div>
+          <div>
+            <div className="faint" style={{ fontSize: 11 }}>Last flush</div>
+            <strong style={{ color: stale ? 'var(--coral)' : undefined }}>{ago(q.last_flush?.at ?? null)}</strong>
+            {q.last_flush && <span className="faint"> · {q.last_flush.pushed}/{q.last_flush.due} sent</span>}
+          </div>
+          <div><div className="faint" style={{ fontSize: 11 }}>Quiet hours on</div><strong>{q.quiet_people}</strong></div>
+          <div><div className="faint" style={{ fontSize: 11 }}>Cron call</div><span>{q.last_call ? `${q.last_call.status} · ${ago(q.last_call.at)}` : '—'}</span></div>
+        </div>
+      )}
+      {trouble && (
+        <p style={{ color: 'var(--coral)', fontSize: 12, marginTop: 8, lineHeight: 1.4 }}>
+          {q!.overdue > 0 ? 'Notes are past due and still waiting. ' : ''}
+          {stale ? 'No flush receipt in the last 20 minutes — check push-send is deployed and PUSH_CRON_TOKEN matches.' : ''}
+        </p>
+      )}
+    </div>
+  )
+}
+
 function PushBroadcast() {
   const [title, setTitle] = useState('Verse Arcade')
   const [body, setBody] = useState('')
@@ -1372,6 +1438,7 @@ function PushBroadcast() {
 
   return (
     <div>
+      <QuietQueue />
       <p className="faint" style={{ fontSize: 12, marginBottom: 10, lineHeight: 1.4 }}>
         Push a notification to everyone who turned notifications on — browsers through Web Push (<code>VAPID_PRIVATE_KEY</code>), the iPhone app through APNs (<code>APNS_KEY_ID</code>, <code>APNS_TEAM_ID</code>, <code>APNS_KEY_P8</code>).
       </p>

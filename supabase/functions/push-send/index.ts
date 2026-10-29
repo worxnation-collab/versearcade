@@ -439,6 +439,9 @@ async function flushDeferred(admin: any) {
     const batch = await Promise.allSettled(rows.slice(i, i + 10).map((r) => deliver(admin, r.recipient, r.kind, r.note)))
     for (const b of batch) if (b.status === 'fulfilled') pushed += b.value.pushed
   }
+  // The run's own receipt (0165): pg_cron calls a run "succeeded" once the
+  // request is queued, so this row is what says the flush really happened.
+  await admin.rpc('push_flush_note', { p_due: rows.length, p_pushed: pushed })
   return { ok: true, due: rows.length, pushed }
 }
 

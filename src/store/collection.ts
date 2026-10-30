@@ -1,5 +1,6 @@
+import { shared } from '@/lib/inflight'
 import { create } from 'zustand'
-import { supabase } from '@/lib/supabase'
+import { sessionUserId, supabase } from '@/lib/supabase'
 import { localdb } from '@/lib/localdb'
 import { drawRelicKey, collectibleByKey } from '@/data/collectibles'
 import { useAuth } from './auth'
@@ -41,10 +42,9 @@ export const useCollection = create<CollectionState>((set, get) => ({
   lastChestOn: null,
   loaded: false,
 
-  async load() {
+  load: shared(async () => {
     if (isOnline() && supabase) {
-      const { data: u } = await supabase.auth.getUser()
-      const uid = u.user?.id
+      const uid = await sessionUserId()
       if (!uid) {
         set({ owned: [], lastChestOn: null, loaded: true })
         return
@@ -61,7 +61,7 @@ export const useCollection = create<CollectionState>((set, get) => ({
     } else {
       set({ owned: localdb.getCards(), lastChestOn: localdb.getChestDate(), loaded: true })
     }
-  },
+  }),
 
   async grant(keys) {
     const cur = new Set(get().owned)

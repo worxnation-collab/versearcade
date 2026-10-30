@@ -1,3 +1,4 @@
+import { shared } from '@/lib/inflight'
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import { todayLocalDate } from '@/lib/date'
@@ -79,7 +80,7 @@ export const usePrayer = create<PrayerState>((set, get) => ({
   today: 0,
   cap: PRAYER_DAILY_CAP,
 
-  async load() {
+  load: shared(async () => {
     if (isOnline()) {
       const { data, error } = await supabase!.rpc('my_prayers', { p_local_date: todayLocalDate() })
       if (!error && data) {
@@ -96,7 +97,7 @@ export const usePrayer = create<PrayerState>((set, get) => ({
     // midnight without anything having to fire at midnight.
     const today = disk.date === todayLocalDate() ? disk.count : 0
     set({ loaded: true, today, cap: PRAYER_DAILY_CAP })
-  },
+  }),
 
   async record() {
     if (isOnline()) {

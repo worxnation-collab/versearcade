@@ -1,3 +1,4 @@
+import { shared } from '@/lib/inflight'
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import { pushAnswered, pushGesture } from '@/lib/gesturePush'
@@ -171,7 +172,7 @@ export const usePrayerWall = create<PrayerWallState>((set, get) => ({
   quiet: false,
   drawing: false,
 
-  async load() {
+  load: shared(async () => {
     if (!isOnline() || !supabase) { set({ loaded: true, available: false }); return }
     const { data, error } = await supabase.rpc('my_prayer_wall', { p_local_date: todayLocalDate() })
     if (error || !data) { set({ loaded: true, available: false }); return }
@@ -187,7 +188,7 @@ export const usePrayerWall = create<PrayerWallState>((set, get) => ({
       answered: ((r.answered as Record<string, unknown>[]) ?? []).map(toNote),
       stars: ((r.stars as Record<string, unknown>[]) ?? []).map(toNote),
     })
-  },
+  }),
 
   async post(category, line, signed) {
     if (!isOnline() || !supabase) return { ok: false, reason: 'offline' }

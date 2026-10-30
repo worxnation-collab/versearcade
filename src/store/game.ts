@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { supabase } from '@/lib/supabase'
+import { sessionUserId, supabase } from '@/lib/supabase'
 import { getVerseForDate, hashString, mulberry32 } from '@/data/bible/questions'
 import { todayLocalDate } from '@/lib/date'
 import { localdb } from '@/lib/localdb'
@@ -98,8 +98,10 @@ export const useGame = create<GameState>((set, get) => ({
       return
     }
 
-    // ONLINE: make sure the shared row exists, then check if the user played.
-    await supabase.rpc('ensure_daily_verse', {
+    // ONLINE: make sure the shared row exists, and — in the same round trip,
+    // not after it — check if the user played. The read doesn't need the row.
+    const sb = supabase
+    const ensure = sb.rpc('ensure_daily_verse', {
       p_drop_date: date,
       p_translation: verse.translation,
       p_reference: verse.reference,
@@ -112,16 +114,21 @@ export const useGame = create<GameState>((set, get) => ({
       p_questions: verse.questions,
       p_facts: verse.facts,
     })
-    const { data: u } = await supabase.auth.getUser()
+    const uid = await sessionUserId()
+    const [, playRes] = await Promise.all([
+      ensure,
+      uid
+        ? sb.from('plays')
+            .select('score, time_ms, correct_count, total_questions, combo_max, xp_earned')
+            .eq('user_id', uid)
+            .eq('drop_date', date)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+    ])
     let played = false
     let restored: GameState['lastResult'] = null
-    if (u.user) {
-      const { data: play } = await supabase
-        .from('plays')
-        .select('score, time_ms, correct_count, total_questions, combo_max, xp_earned')
-        .eq('user_id', u.user.id)
-        .eq('drop_date', date)
-        .maybeSingle()
+    if (uid) {
+      const play = playRes.data as any
       if (play) {
         played = true
         // Rebuild lastResult from the stored play so "See my recap & share" works

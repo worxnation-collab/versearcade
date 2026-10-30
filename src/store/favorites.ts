@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { shared } from '@/lib/inflight'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from './auth'
 import { useSeason } from './season'
@@ -63,11 +64,11 @@ export const useFavorites = create<FavoritesState>((set, get) => ({
   map: {},
   loaded: false,
 
-  async load() {
+  load: shared(async () => {
     const uid = useAuth.getState().profile?.id
     const map = isOnline() && uid ? await readRemote(uid) : readLocal()
     set({ map, loaded: true })
-  },
+  }),
 
   isFavorite(reference) {
     return !!get().map[reference]

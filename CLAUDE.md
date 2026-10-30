@@ -5376,6 +5376,16 @@ Same idea elsewhere: `CpuVersusQuiz` for anything racing a simulated opponent,
 and `TabbedSection` wherever three or more foldable panels would otherwise stack
 down a screen.
 
+**Loading on a slow phone is measured in WAVES, not requests** (2026-10-30,
+`scripts/waterfall.mjs`: a stubbed backend at 400ms a round trip). Three rules
+came out of it. A store's `load()` is wrapped in `shared()` (`lib/inflight.ts`)
+so screens mounting together send it once — the Play tab sent `bible_marks`
+four times. A read needs the user's id from `sessionUserId()`
+(`lib/supabase.ts`, the LOCAL session), never `auth.getUser()`, which is a
+server round trip that every read behind it waited on. And two reads that
+don't need each other go in one `Promise.all`. /play went from 55 requests in
+5 waves (2.6s) to 35 in 3 (1.6s).
+
 ## The Play tab is four things
 
 `/play` accreted for a year: every card on it was individually right — the chest

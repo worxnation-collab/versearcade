@@ -2805,7 +2805,10 @@ address. A pass that found nobody and a pass with no key both leave a row, so
 `admin_email_status()` behind `require_admin()` adds sent / failed in 24h,
 last sent, emailed ever, switched off, and how many are IN RANGE now (0169's
 claim minus the hour). Admin → Email draws it, coral on a failure, a `no_key`
-run or no receipt in 70 minutes. APPLIED 2026-10-30 after a local Postgres 16
+run or no receipt in 70 minutes. Its "Send me a test" row (push-send
+`test_email`, sharkbait only) mails the operator the come-back and
+welcome emails word for word from the shared `EMAIL_COPY`, to their own
+address and token, and records nothing — no stamp, no receipt. APPLIED 2026-10-30 after a local Postgres 16
 run (sums, last run, in-range excluding emailed / off / no address, bad kind
 refused, re-run a no-op) and verified live: `email_run_note`
 `{postgres,service_role}`, `admin_email_status` `authenticated`, the table

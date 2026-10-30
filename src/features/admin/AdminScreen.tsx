@@ -1413,6 +1413,54 @@ interface EmailRuns {
 
 // The come-back email (0169), read through 0170: push-send stamps a receipt
 // after every hourly pass, so "last run" is the function's word, not cron's.
+const TEST_EMAIL_WHY: Record<string, string> = {
+  no_key: 'No Resend key is set.',
+  no_email: 'Your account has no email address.',
+  suppressed: 'Your address is on the bounce/spam list, so nothing is sent to it.',
+  no_token: 'Your profile has no unsubscribe token yet.',
+  bad_input: 'Unknown email kind.',
+}
+
+/** Sends the operator the real player emails, word for word, to their own
+ *  account address. Records nothing: the counts above stay about players. */
+function TestEmail() {
+  const [busy, setBusy] = useState<string | null>(null)
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const send = async (kind: 'comeback' | 'welcome' | 'both') => {
+    if (busy) return
+    setBusy(kind); setMsg(null)
+    try {
+      const { data, error } = await supabase!.functions.invoke('push-send', { body: { action: 'test_email', kind } })
+      if (error) throw error
+      const r = data as { ok?: boolean; to?: string; sent?: string[]; failed?: Record<string, string>; reason?: string; error?: string }
+      if (r?.error) { setMsg({ ok: false, text: r.error }); return }
+      if (!r?.ok) {
+        const why = r?.reason ? (TEST_EMAIL_WHY[r.reason] ?? r.reason) : Object.entries(r?.failed ?? {}).map(([k, v]) => `${k}: ${v}`).join(', ')
+        setMsg({ ok: false, text: why || 'Nothing was sent.' }); return
+      }
+      const failed = Object.entries(r.failed ?? {}).map(([k, v]) => `${k} failed (${v})`)
+      setMsg({ ok: true, text: `Sent ${r.sent!.join(' + ')} to ${r.to}.${failed.length ? ` ${failed.join(', ')}.` : ''}` })
+    } catch (e) {
+      setMsg({ ok: false, text: (e as { message?: string })?.message || String(e) })
+    } finally {
+      setBusy(null)
+    }
+  }
+  return (
+    <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--stroke)' }}>
+      <div className="faint" style={{ fontSize: 11, marginBottom: 6 }}>Send me a test (to your own address, exactly as players get it)</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {(['comeback', 'welcome', 'both'] as const).map((k) => (
+          <button key={k} className="pill" style={{ fontSize: 12, fontWeight: 800 }} disabled={!!busy} onClick={() => void send(k)}>
+            {busy === k ? 'Sending…' : k === 'comeback' ? 'Come-back' : k === 'welcome' ? 'Welcome back' : 'Both'}
+          </button>
+        ))}
+      </div>
+      {msg && <p style={{ fontSize: 12, marginTop: 6, color: msg.ok ? 'var(--mint)' : 'var(--coral)' }}>{msg.text}</p>}
+    </div>
+  )
+}
+
 function EmailStatus() {
   const [e, setE] = useState<EmailRuns | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -1471,6 +1519,7 @@ function EmailStatus() {
           {stale ? 'No run receipt in 70 minutes — check push-send is deployed and push-week-hourly is active.' : ''}
         </p>
       )}
+      <TestEmail />
     </div>
   )
 }

@@ -150,3 +150,25 @@ export async function registerPush(): Promise<string | null> {
     return null
   }
 }
+
+/**
+ * The screen a link into the app names, or null. A sign-in callback is not one
+ * (App.tsx handles that first). Before this, every `com.versearcade.app://` link
+ * that wasn't a sign-in was ignored, so a church or battle link opened from
+ * Notes or Messages opened the app on whatever screen it was last left on.
+ * Accepted: the app's own scheme (`com.versearcade.app://church/<id>` →
+ * `/church/<id>`) and the site's own https host, should universal links ever
+ * be switched on. Anything else is refused rather than navigated to — this
+ * string comes from outside the app.
+ */
+export function inAppPath(url: string): string | null {
+  let u: URL
+  try { u = new URL(url) } catch { return null }
+  let path: string
+  if (u.protocol === 'com.versearcade.app:') path = '/' + u.host + u.pathname
+  else if (u.protocol === 'https:' && /^(www\.)?versearcade\.org$/.test(u.hostname)) path = u.pathname
+  else return null
+  path = path.replace(/\/{2,}/g, '/').replace(/(.)\/$/, '$1')
+  if (!path.startsWith('/') || path === '/auth/callback' || path.startsWith('/auth/native')) return null
+  return path + u.search + u.hash
+}

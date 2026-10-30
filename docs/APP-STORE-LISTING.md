@@ -121,6 +121,12 @@ Start your streak today. It's one verse.
 > the iPhone notifications line needs the TestFlight check in OWNER-TODO §3,
 > and the "through the App Store" plan line needs the subscriptions in §4.
 > Nothing here names a price, a web checkout or a plan bought elsewhere.
+>
+> Brought up to date 2026-10-30 with #386-#419 and the native-shell audit
+> (`scripts/native-shell.mjs`). The whole NOTIFICATIONS block is conditional
+> on the same TestFlight push check as the line above — every note in it is an
+> APNs push (0159-0168), so if push isn't proven on a device, cut the block,
+> keep "per kind / quiet hours" out too, and leave the rest.
 
 ```
 Wrong answers teach more, the app opens faster, and it's easier to use for everyone.
@@ -141,8 +147,20 @@ EASIER TO USE
 • A clear focus outline for keyboard users, and bigger tap areas on small buttons.
 • Screen readers hear each arcade word and flake for what it is.
 
+BRING A FRIEND
+• Send today's verse to a friend in one tap — they can play it straight away, no account needed first.
+• Your first race against the computer ends with a nudge to challenge a friend for real.
+• New to battles? The Battle tab now starts you with one simple card.
+
+NOTIFICATIONS, ONLY THE GOOD KIND
+• Hear when a friend plays your battle, accepts your buddy request, washes your feet, or prays for your note — and when a prayer you held is answered.
+• A short Sunday note about your week, and on Saturday evening your church's verse for tomorrow.
+• Choose exactly which kinds you get, and set quiet hours so nothing arrives overnight.
+
 FASTER AND STEADIER
-• Opens faster and takes less space on your phone.
+• Opens faster and takes less space on your phone, and loads quicker on a slow connection.
+• Works offline: your streak, your Bible, your favorites and your prayers are saved on your phone and sync when you're back.
+• Signing in with Apple or Google always returns you to the app, even if you back out partway.
 • If something doesn't go through — deleting an account, leaving a church, a buddy request, a report — the app tells you instead of pretending it worked.
 • Banners no longer cover buttons, and the score holds still during a run.
 
@@ -152,6 +170,7 @@ YOUR TRANSLATION
 FOR CHURCHES
 • Your church can set a verse of its own beside the daily one, and its leaders can send you a note, on your iPhone too if you turn notifications on.
 • Leaders can claim their page, plan a week from Sunday's sermon, and subscribe to the Verified Church plan through the App Store.
+• Leaders see this week's verse, who's playing and an easy way to send a note right on their home screen — and get a heads-up when tomorrow has no verse yet.
 ```
 
 ### 1.3.0 — the release after 1.2.0 (APPROVED)

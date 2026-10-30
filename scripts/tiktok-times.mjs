@@ -49,4 +49,33 @@ export const slotOf = (kind) => (OWN_SLOT.includes(kind) ? kind : 'second')
 /** `POST_TIMES` in the environment replaces the table wholesale, as it always did. */
 export const timesFrom = (env = {}) => Object.fromEntries((env.POST_TIMES || DEFAULT_TIMES).split(',').map((kv) => kv.split('=').map((s) => s.trim())))
 
-export const timeFor = (times, kind, platform) => times[`${slotOf(kind)}@${platform}`] || times[slotOf(kind)] || times[kind] || '12:00'
+// ---- the Facebook evening-slot test (Meta One, 2026-10-31 → 2026-11-20) ----
+//
+// Business Suite never showed "custom audience insights", so instead of
+// guessing when Facebook's audience is there we MEASURE it: for 21 days the
+// day's second post on Facebook rotates through three hours, one per day.
+// 21 = 3 × 7 and 3 is coprime with 7, so every hour lands on every weekday
+// exactly once — a Sunday-heavy hour cannot win by being a Sunday.
+//
+// Only Facebook's `second` slot moves. YouTube and the verse keep their
+// times, so the test changes one variable. The exchange's Facebook hour is
+// held at 15:00 for the whole window: at 13:00 it sat thirty minutes from a
+// 12:30 story, and it is held CONSTANT (not moved only on clashing days) so
+// the exchange does not become a second variable. The hub's "Facebook time
+// test" card reads the result off each post's recorded scheduleDate, not off
+// this table, so a hand-posted day can't be filed under the wrong hour.
+//
+// After the window everything falls back to the table above. Pick the
+// winner, write it into `second@facebook`, and delete this block.
+export const FB_TIME_TEST = { platform: 'facebook', slot: 'second', hours: ['12:30', '17:00', '19:30'], start: '2026-10-31', end: '2026-11-20', exchange: '15:00' }
+const dayNo = (ymd) => Math.round(Date.parse(`${ymd}T00:00:00Z`) / 86_400_000)
+export function testHour(kind, platform, date) {
+  const t = FB_TIME_TEST
+  if (!date || platform !== t.platform || date < t.start || date > t.end) return null
+  if (slotOf(kind) === 'exchange') return t.exchange
+  if (slotOf(kind) !== t.slot) return null
+  return t.hours[(dayNo(date) - dayNo(t.start)) % t.hours.length]
+}
+
+/** `date` (YYYY-MM-DD, the operator's day) lets the time test apply; without it the table alone answers. */
+export const timeFor = (times, kind, platform, date) => testHour(kind, platform, date) || times[`${slotOf(kind)}@${platform}`] || times[slotOf(kind)] || times[kind] || '12:00'

@@ -153,7 +153,7 @@ function OwnClip() {
 // shares, new followers, per platform and per kind. One function call per
 // (day, kind), cached six hours server-side, so the button is cheap to press
 // twice. Operator numbers about posts elsewhere — nothing here is a player.
-type Row = { platform: Platform; views: number | null; likes: number | null; comments: number | null; shares: number | null; watched: number | null; followers: number | null; error: string | null }
+type Row = { platform: Platform; scheduleDate?: string | null; views: number | null; likes: number | null; comments: number | null; shares: number | null; watched: number | null; followers: number | null; error: string | null }
 function WeekNumbers() {
   const [rows, setRows] = useState<Array<Row & { date: string; kind: Kind }> | null>(null)
   // Sign-ups in the same seven days, by the network their first tracked link
@@ -222,6 +222,72 @@ function WeekNumbers() {
         </div>
       )}
       {rows && rows.length === 0 && <p className="faint" style={{ fontSize: 12, margin: 0 }}>Nothing recorded in the last seven days.</p>}
+    </div>
+  )
+}
+
+// The Facebook evening-slot test (Meta One, 2026-10-31 → 2026-11-20): the
+// day's story goes to Facebook at a rotating hour, one of three per day
+// (`FB_TIME_TEST` in scripts/tiktok-times.mjs — the window here must match
+// it). This card reads each Facebook story over the window and files it
+// under the hour it was SCHEDULED for, read off the post's own record, so a
+// day posted by hand at another time lands under its real hour rather than
+// the table's. Median as well as average, because one post that catches
+// fire would otherwise decide the test alone. Views keep climbing for days,
+// so the comparison is only fair once the last post is a week old.
+const FB_TEST = { start: '2026-10-31', end: '2026-11-20', tz: 'America/New_York' }
+function FacebookTimeTest() {
+  const [rows, setRows] = useState<Array<Row & { date: string; hour: string }> | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  const today = todayLocalDate()
+  if (today < FB_TEST.start) return null
+  const last = addDays(today, -1) < FB_TEST.end ? addDays(today, -1) : FB_TEST.end
+  const settled = today >= addDays(FB_TEST.end, 7)
+  const hourOf = (iso: string) => new Intl.DateTimeFormat('en-GB', { timeZone: FB_TEST.tz, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso))
+  const fetchAll = async (force = false) => {
+    if (busy) return
+    setErr(null)
+    const out: Array<Row & { date: string; hour: string }> = []
+    try {
+      for (let date = FB_TEST.start; date <= last; date = addDays(date, 1)) {
+        setBusy(date)
+        const r = await call<{ rows?: Array<Row & { scheduleDate?: string | null }> }>('analytics', { date, kind: 'story', force })
+        for (const row of r.rows ?? []) {
+          if (row.platform !== 'facebook') continue
+          out.push({ ...row, date, hour: row.scheduleDate ? hourOf(row.scheduleDate) : 'posted on the spot' })
+        }
+      }
+      setRows(out)
+    } catch (e) { setErr(String((e as Error).message || e)) } finally { setBusy(null) }
+  }
+  const median = (xs: number[]) => { if (!xs.length) return 0; const a = [...xs].sort((x, y) => x - y); const m = a.length >> 1; return a.length % 2 ? a[m] : Math.round((a[m - 1] + a[m]) / 2) }
+  const hours = rows ? Array.from(new Set(rows.map((r) => r.hour))).sort() : []
+  const cell = { padding: '3px 8px', textAlign: 'right' as const }
+  return (
+    <div className="card" style={{ display: 'grid', gap: 8, marginTop: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <b style={{ fontFamily: 'var(--font-display)', fontSize: 16 }}>⏰ Facebook time test</b>
+        <span className="faint" style={{ fontSize: 11 }}>{busy ? `reading ${busy}…` : `the evening story at 12:30, 17:00 or 19:30 ET, ${FB_TEST.start} → ${FB_TEST.end}`}</span>
+        <button className="pill" style={{ fontSize: 11, marginLeft: 'auto' }} disabled={!!busy} onClick={() => fetchAll(!!rows)}>{rows ? '↻ Refresh' : '⏰ Fetch'}</button>
+      </div>
+      {err && <p style={{ color: 'var(--coral)', fontSize: 12, margin: 0 }}>{err}</p>}
+      {rows && rows.length > 0 && (
+        <div style={{ overflowX: 'auto', fontSize: 12 }}>
+          <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+            <thead><tr className="faint"><th style={{ ...cell, textAlign: 'left' }}>Hour (ET)</th><th style={cell}>Posts</th><th style={cell}>Median views</th><th style={cell}>Avg views</th><th style={cell}>Shares</th><th style={cell}>New followers</th></tr></thead>
+            <tbody>
+              {hours.map((h) => { const xs = rows.filter((r) => r.hour === h); const v = xs.map((r) => r.views ?? 0); return (
+                <tr key={h}><td style={{ ...cell, textAlign: 'left', fontWeight: 700 }}>{h}</td><td style={cell}>{xs.length}</td><td style={{ ...cell, fontWeight: 700 }}>{median(v)}</td><td style={cell}>{Math.round(v.reduce((a, b) => a + b, 0) / (v.length || 1))}</td><td style={cell}>{xs.reduce((a, r) => a + (r.shares ?? 0), 0)}</td><td style={cell}>{xs.reduce((a, r) => a + (r.followers ?? 0), 0)}</td></tr>
+              ) })}
+            </tbody>
+          </table>
+          <p className="faint" style={{ fontSize: 11, margin: '4px 0 0' }}>
+            {settled ? 'Every post in the window is at least a week old — the medians are comparable. Write the winner into second@facebook in scripts/tiktok-times.mjs.' : `Still running or still settling: newer posts are still collecting views, so the later days read low until ${addDays(FB_TEST.end, 7)}.`}
+          </p>
+        </div>
+      )}
+      {rows && rows.length === 0 && <p className="faint" style={{ fontSize: 12, margin: 0 }}>No Facebook story recorded in the window yet.</p>}
     </div>
   )
 }
@@ -339,6 +405,7 @@ export default function TikTokPanel() {
         <TodaysWords />
         <OwnClip />
         <WeekNumbers />
+        <FacebookTimeTest />
         <Replies />
         <SocialStatus />
       </div>

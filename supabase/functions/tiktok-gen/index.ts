@@ -24,7 +24,7 @@
 //   links       { date, kind }                     → the day's record          asks Ayrshare what became of each SCHEDULED post and fills in the postUrl a network only issues once it publishes
 //   post        { date, kind, videoUrl, platforms[], scheduleDate?, attempt?, seconds? } → { results[] }  posts the video with that day's copy through Ayrshare, one call per platform (a platform not linked in Ayrshare is skipped, not failed); parked at days/<date>/posted-<kind>.json, merged over what an earlier call recorded
 //   posted      { date, kind }                    → { results[] } | {}  what `post` recorded for that day, if anything
-//   analytics   { date, kind, force? }            → { rows[] }          Ayrshare's per-post numbers for that day's record, normalised (views, likes, comments, shares, watched, followers); cached six hours at days/<date>/analytics-<kind>.json
+//   analytics   { date, kind, force? }            → { rows[] }          Ayrshare's per-post numbers for that day's record, normalised (views, likes, comments, shares, watched, followers, and the row's scheduleDate); cached six hours at days/<date>/analytics-<kind>.json
 //   replies     { date, kind, prompt, options[], answerIndex, teach, reference?, dryRun?, max? } → { replies[], added[], skipped[] }  reads the comments under a challenge post, has Grok draft a one-line reply to each answer-shaped one and posts it — on every network but X, where it only lists them (X's rules); the record at days/<date>/replies-<kind>.json is the memory
 //   social      {}                                → { accounts[], posts, quota }  the Ayrshare profile: which networks are connected and this month's post count
 //
@@ -1254,6 +1254,9 @@ Deno.serve(async (req) => {
         const an = ((block.analytics ?? block) as Record<string, unknown>) ?? {}
         rows.push({
           platform, postUrl: r.postUrl ?? block.postUrl ?? null, status: String(r.status ?? ''),
+          // When it was ASKED to go out (null = posted on the spot). The hub's
+          // Facebook time test files each post under this, not under a table.
+          scheduleDate: typeof r.scheduleDate === 'string' ? r.scheduleDate : null,
           views: num(an, ['videoViews', 'views', 'viewsCount', 'viewCount', 'playCount', 'plays', 'impressions', 'totalVideoViews', 'video_views', 'reach', 'reachCount']),
           likes: num(an, ['likeCount', 'likes', 'likesCount', 'reactions', 'totalReactions', 'favorites']),
           comments: num(an, ['commentsCount', 'comments', 'commentCount']),

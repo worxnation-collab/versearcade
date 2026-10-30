@@ -1074,3 +1074,22 @@ day of encoding for a 35-second post.
 
 - Moving the operator's art (`public/tiktok/`) into the Storage bucket, so the
   App Store build stops carrying megabytes only the dashboard reads.
+
+## The Facebook time test (Meta One, 2026-10-31 → 2026-11-20)
+
+The Page is on Meta One Business **Advanced**. Almost every benefit is
+account-side; the API (and so Ayrshare) reaches none of them — Ayrshare's
+`faceBookOptions` takes `reels`, `title` and a thumbnail, and nothing sets the
+paid "links in reels". So the Play link stays the automated first comment, and
+the plan's reel links are spent BY HAND on the posts doing best.
+
+What the pipeline does change is WHEN. "Custom audience insights" never showed
+up, so instead of reading an hour off Meta we measure one: for 21 days the
+evening story goes to Facebook at 12:30, 17:00 or 19:30 ET, rotating daily
+(`FB_TIME_TEST` / `testHour` in `scripts/tiktok-times.mjs`). 21 = 3 × 7, so
+each hour gets each weekday exactly once. Only Facebook's `second` slot moves;
+the exchange's Facebook hour is held at 15:00 for the window so it never sits
+thirty minutes from a 12:30 story. Admin → TikTok → "⏰ Facebook time test"
+files each post under the hour its own record says it was scheduled for and
+shows the median per hour; read it after 2026-11-27, when the last post is a
+week old. Then write the winner into `second@facebook` and delete the block.

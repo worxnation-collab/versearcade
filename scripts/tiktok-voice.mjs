@@ -325,7 +325,7 @@ if (cmd === 'post') {
   // tuned. `--at=HH:MM` overrides every platform at once, and `--now`
   // still means now.
   const times = timesFrom(process.env)
-  const hourFor = (p) => String(flags.at || sharedTimeFor(times, KIND, p))
+  const hourFor = (p) => String(flags.at || sharedTimeFor(times, KIND, p, date))
   // Ayrshare refuses a repeated idempotency key even when the post it named
   // was DELETED, so re-posting a date after `unpost` needs a new attempt
   // number — without it the replacement is rejected as a duplicate and the

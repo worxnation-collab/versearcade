@@ -15,8 +15,9 @@ import { tickAutopilot } from './admin/autopilot'
 // The member's church, as a PLACE PEOPLE ARE (0128) — the top of the Church tab
 // for a member of a VERIFIED church, between the churchyard and Give:
 //
-//   1. "You're in {name}" — the context is said once, plainly.
-//   2. The leader's live announcement.
+//   1. The leader's live announcement. (A "You're in {name}" card used to lead
+//      here; the yard directly above already names the church and its head
+//      count, so it said the same thing twice and was cut.)
 //   3. Today's church verse, with its series drawn as the run of days it is
 //      (`SeriesTrail`, 0130) — its own lane, played at /play/church, never in
 //      place of the daily drop. On a day with no church verse the series still
@@ -24,14 +25,16 @@ import { tickAutopilot } from './admin/autopilot'
 //   3a. "You lead a small group" (0151, `MyGroupCard`) — only for a group
 //       leader: their group's names and the week's discussion questions.
 //   3b. "This week in {name}" (0130): church TOTALS for the board's week —
-//      members, how many played the church verse and the daily verse. Under
-//      five comes back null and is drawn as nothing (the 0119 floor).
+//      how many played the church verse and the daily verse. Under five comes
+//      back null, and a card with nothing past that is not drawn at all.
 //   4. What the congregation has been doing (`church_feed`): who played the
 //      drop or the church verse and how they scored, who gave, who joined,
 //      what leadership posted. Scores are shown — the owner's call.
-//   5. Where to compete: church against church is the default (the board and
-//      the week below), and the global views are one tap away.
 //
+// A "Compete" card closed this column (links to the board below, the Battle
+// tab and worldwide ranks); all three were one scroll or one tab away, so it
+// was cut — a member's reason to open this tab is the church, not a menu.
+
 // An unverified church gets none of this and the tab reads exactly as before:
 // the richer layer is the verified one, like every church package feature.
 export function ChurchLife({ church, extras }: { church: Church; extras: ChurchExtras | null }) {
@@ -80,23 +83,9 @@ export function ChurchLife({ church, extras }: { church: Church; extras: ChurchE
   // The series is the member's church's; a stale one from another church
   // (switched churches this session) is not drawn.
   const arc = series && series.churchId === church.id ? series : null
-  const toBoard = () => {
-    juice.select?.()
-    document.getElementById('church-board')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
 
   return (
     <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'minmax(0, 1fr)' }}>
-      <div className="card" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, borderColor: 'var(--edge)' }}>
-        <span aria-hidden style={{ fontSize: 20 }}>⛪</span>
-        <span style={{ flex: 1, minWidth: 0, fontSize: 14 }}>
-          You’re in <b>{church.name}</b>
-          <span className="faint" style={{ display: 'block', fontSize: 12 }}>
-            {church.members.toLocaleString()} {church.members === 1 ? 'member' : 'members'} · verified church
-          </span>
-        </span>
-      </div>
-
       {/* The live notice, with the church's leader standing beside it when
           leadership has chosen a look (0146) — the words alone otherwise. */}
       {extras?.announcement && noticeCard && (
@@ -156,9 +145,13 @@ export function ChurchLife({ church, extras }: { church: Church; extras: ChurchE
         <div className="card" style={{ padding: '12px 14px' }}>
           <Eyebrow>Your church’s series</Eyebrow>
           <div style={{ marginTop: 8 }}><SeriesTrail series={arc} /></div>
-          <p className="faint" style={{ margin: '8px 0 0', fontSize: 12 }}>
-            No church verse today — the daily verse is waiting on the Play tab as always.
-          </p>
+          <button
+            onClick={() => go('/play')}
+            className="faint"
+            style={{ margin: '8px 0 0', padding: 0, fontSize: 12, textAlign: 'left', cursor: 'pointer', textDecoration: 'underline' }}
+          >
+            No church verse today — today’s verse is on the Play tab.
+          </button>
         </div>
       )}
 
@@ -190,19 +183,6 @@ export function ChurchLife({ church, extras }: { church: Church; extras: ChurchE
         )}
       </div>
 
-      <div className="card" style={{ padding: '12px 14px' }}>
-        <Eyebrow>Compete</Eyebrow>
-        <p className="dim" style={{ margin: '4px 0 10px', fontSize: 13, lineHeight: 1.45 }}>
-          Your church plays as one team — the church board and the week of giving are below. Want the global game too?
-        </p>
-        <button className="pill" onClick={toBoard} style={{ width: '100%', justifyContent: 'center', fontWeight: 800, marginBottom: 8, borderColor: 'var(--edge)' }}>
-          See the church board ↓
-        </button>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="pill" onClick={() => go('/battle')} style={{ flex: 1, justifyContent: 'center', fontWeight: 700 }}>Global battles</button>
-          <button className="pill" onClick={() => go('/leaderboard')} style={{ flex: 1, justifyContent: 'center', fontWeight: 700 }}>Worldwide ranks</button>
-        </div>
-      </div>
     </div>
   )
 }
@@ -211,13 +191,14 @@ export function ChurchLife({ church, extras }: { church: Church; extras: ChurchE
 // null and simply not drawn — "2 of you played" in a congregation of six points
 // at two people. With nothing to show past the head count it says one warm line.
 function WeekCard({ name, week }: { name: string; week: ChurchWeek }) {
-  const tiles: { value: string; label: string }[] = [
-    { value: week.members.toLocaleString(), label: week.members === 1 ? 'member' : 'members' },
-  ]
+  // The head count is already on the yard above, so it is not a tile here; a
+  // card whose only tile would be that number is not drawn at all. Every
+  // congregation under five players is in that state, so it is the usual one.
+  const tiles: { value: string; label: string }[] = []
   if (week.verseDays > 0) tiles.push({ value: String(week.verseDays), label: week.verseDays === 1 ? 'church verse day' : 'church verse days' })
   if (week.versePlayers != null) tiles.push({ value: week.versePlayers.toLocaleString(), label: 'played the church verse' })
   if (week.dropPlayers != null) tiles.push({ value: week.dropPlayers.toLocaleString(), label: 'played the daily verse' })
-  const floored = week.versePlayers == null && week.dropPlayers == null
+  if (week.versePlayers == null && week.dropPlayers == null) return null
   return (
     <div className="card" style={{ padding: '12px 14px' }}>
       <Eyebrow>This week in {name}</Eyebrow>
@@ -229,11 +210,6 @@ function WeekCard({ name, week }: { name: string; week: ChurchWeek }) {
           </div>
         ))}
       </div>
-      {floored && (
-        <p className="faint" style={{ margin: '8px 0 0', fontSize: 11.5, lineHeight: 1.4 }}>
-          How many played shows here once five or more of you have this week.
-        </p>
-      )}
     </div>
   )
 }

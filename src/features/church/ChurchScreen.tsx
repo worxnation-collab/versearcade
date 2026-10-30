@@ -40,6 +40,7 @@ export default function ChurchScreen() {
   const church = useChurch((s) => s.church)
   const loaded = useChurch((s) => s.loaded)
   const loading = useChurch((s) => s.loading)
+  const error = useChurch((s) => s.error)
   const load = useChurch((s) => s.load)
 
   useEffect(() => {
@@ -82,7 +83,23 @@ export default function ChurchScreen() {
           note on Header below. With a church loaded, the churchyard and the
           congregation's own name are the top of this tab. */}
       <FirstVisitTip id="church" />
-      {church ? <ChurchHome church={church} /> : <><Header /><ChurchPicker /></>}
+      {church ? (
+        <ChurchHome church={church} />
+      ) : error ? (
+        // No answer from the server and nothing kept on this phone: say so,
+        // rather than show the picker to somebody who may well have a church.
+        <>
+          <Header />
+          <div className="card center" data-church-offline style={{ display: 'grid', gap: 10 }}>
+            <p style={{ margin: 0, lineHeight: 1.5 }}>
+              Your church can’t be reached right now. Check your connection — nothing you’ve given or planted is lost.
+            </p>
+            <Button variant="ghost" onClick={() => void load()}>Try again</Button>
+          </div>
+        </>
+      ) : (
+        <><Header /><ChurchPicker /></>
+      )}
     </Page>
   )
 }

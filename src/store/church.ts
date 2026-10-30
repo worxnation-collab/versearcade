@@ -67,6 +67,19 @@ function isOnline(): boolean {
 }
 
 // The RPCs speak snake_case; the app speaks camelCase.
+// The device's copy of the player's own church (get_my_church's answer), per
+// account, for the offline tab. Read only when the server can't be reached.
+const KEPT_CHURCH = 'va.myChurch'
+function keepChurch(uid: string, payload: unknown) {
+  try { localStorage.setItem(KEPT_CHURCH, JSON.stringify({ uid, payload })) } catch { /* storage blocked */ }
+}
+function readKeptChurch(uid: string): any {
+  try {
+    const k = JSON.parse(localStorage.getItem(KEPT_CHURCH) ?? 'null')
+    return k && k.uid === uid ? k.payload : null
+  } catch { return null }
+}
+
 function toChurch(raw: any): Church | null {
   if (!raw) return null
   return {
@@ -289,11 +302,24 @@ export const useChurch = create<ChurchState>((set, get) => ({
     }
     set({ loading: true, error: null })
     const { data, error } = await supabase!.rpc('get_my_church', { p_givers_limit: 10 })
+    const uid = useAuth.getState().profile?.id ?? null
+    // Offline (or the server didn't answer), the tab used to fall through to
+    // the PICKER — telling a member they had no church, on a screen that can't
+    // search without a network. So the last answer this device got is kept and
+    // shown instead; with nothing kept, `error` makes the screen say it can't
+    // reach the server rather than offer a picker.
+    let payload: any = data
     if (error) {
-      set({ loading: false, loaded: true, error: error.message })
-      return
+      const kept = uid ? readKeptChurch(uid) : null
+      if (!kept) {
+        set({ loading: false, loaded: true, error: error.message })
+        return
+      }
+      payload = kept
+      set({ error: error.message })
+    } else if (uid) {
+      keepChurch(uid, payload)
     }
-    const payload = data as any
     set({
       church: toChurch(payload?.church),
       available: Number(payload?.available ?? 0),
@@ -302,7 +328,7 @@ export const useChurch = create<ChurchState>((set, get) => ({
       loading: false,
       loaded: true,
     })
-    if (get().church) void get().loadBoard()
+    if (get().church && !error) void get().loadBoard()
   },
 
   async loadBoard() {
@@ -615,4 +641,12 @@ export async function fetchChurchPage(churchId: string): Promise<ChurchPage | nu
     // about who is looking, so the editor never appears on it.
     canEdit: false,
   }
+}
+
+// Back online with a tab showing a kept (or no) church: read the real one.
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => {
+    const c = useChurch.getState()
+    if (c.loaded && c.error) void c.load()
+  })
 }

@@ -5386,6 +5386,20 @@ server round trip that every read behind it waited on. And two reads that
 don't need each other go in one `Promise.all`. /play went from 55 requests in
 5 waves (2.6s) to 35 in 3 (1.6s).
 
+**Airplane mode is a state the app is built for** (2026-10-30,
+`scripts/offline.mjs`). Three things hold it up, and each was found broken:
+the signed-in player's last profile is kept on the device (`va.profileCache`
+in `store/auth.ts`, keyed by user id, cleared on sign-out) and an online launch
+opens on it and refreshes behind — offline, the profile read failed after ~7s
+of retries and every tab sat on the splash for good; a daily play that fails
+for want of a NETWORK waits in `va.pendingPlays` (`store/game.ts`) and is sent
+on the next Play visit or `online` event — `submit_play` takes the drop date
+and is idempotent, so the streak it kept counts for the day it was played and
+the recap says the numbers are an estimate; and the player's own church is
+kept (`va.myChurch`), with "can't be reached" instead of the PICKER when there
+is no copy. Still open: Bible marks, favourites and other writes made offline
+are not queued, and a GET takes ~7s of postgrest retries before it gives up.
+
 ## The Play tab is four things
 
 `/play` accreted for a year: every card on it was individually right — the chest

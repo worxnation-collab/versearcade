@@ -19,7 +19,8 @@ import { todayLocalDate } from '@/lib/date'
 import { takeVerseLink } from '@/lib/verseLink'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/store/auth'
-import { useGame } from '@/store/game'
+import { useGame, usualPlayHour } from '@/store/game'
+import { notePlayRhythm } from '@/store/pushPrefs'
 import { useReviews } from '@/store/reviews'
 import { useSettings } from '@/store/settings'
 import { useCollection } from '@/store/collection'
@@ -264,6 +265,13 @@ export default function HomeScreen() {
   useEffect(() => {
     if (playedToday && useReminders.getState().supported) void useReminders.getState().reschedule()
   }, [playedToday])
+
+  // Sunday's "Your week" push (0166) lands at the hour this person usually
+  // plays; the server only learns that one number, once a day, from here.
+  useEffect(() => {
+    if (mode !== 'online') return
+    void notePlayRhythm(usualPlayHour() ?? new Date().getHours())
+  }, [mode, playedToday])
 
   // Finishing a run can have claimed the day (`submit_play` records the open
   // too), so re-read when the played flag flips rather than leaving a stale

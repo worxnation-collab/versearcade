@@ -24,6 +24,8 @@
 //     just marked it answered; everybody who knelt at it hears so, once (0162).
 //   • `{ action: 'test', kind }` — the caller to THEMSELVES through `deliver`,
 //     answering sent / muted / held so Settings can say which (no migration).
+//   • `{ action: 'weekly' }` with `x-push-token` — the hourly Sunday line
+//     (0166): one thing each player did this week, at their usual hour.
 //   • `{ action: 'flush' }` with `x-push-token` — the cron's morning run: sends
 //     what a recipient's quiet hours (0164) held back. Every kind above goes
 //     through `deliver`, which parks a note that would land in somebody's night.
@@ -367,7 +369,7 @@ async function sendAnswered(admin: any, sender: string, input: Record<string, un
 // The five kinds a player can switch off one by one (0163). A missing key in
 // `profiles.push_prefs` is ON, so an account that never opened Settings hears
 // everything it heard before.
-type PushKind = 'battle' | 'buddy' | 'gesture' | 'answered' | 'check_in'
+type PushKind = 'battle' | 'buddy' | 'gesture' | 'answered' | 'check_in' | 'week'
 
 // "Send me a test push" (Settings): the caller, to themselves, as one of the
 // five kinds, through the SAME `deliver` every real note takes — so the answer
@@ -375,6 +377,7 @@ type PushKind = 'battle' | 'buddy' | 'gesture' | 'answered' | 'check_in'
 // because that kind is switched off, or held until their quiet hours end. No
 // other recipient is reachable: the id is the caller's own JWT, never input.
 const TEST_COPY: Record<PushKind, string> = {
+  week: 'This is how your Sunday week line looks.',
   battle: 'This is how a battle push looks.',
   buddy: 'This is how a buddy push looks.',
   gesture: 'This is how a kindness push looks.',
@@ -492,6 +495,29 @@ async function sameSecret(a: string, b: string): Promise<boolean> {
   return d === 0
 }
 
+// "Your week in Verse Arcade" (0166): hourly, push-send hands out the Sunday
+// line to whoever's usual play hour it now is in their own zone. The claim
+// picks ONE thing they did and stamps the Sunday, so it is once a week by
+// construction; a week with nothing in it is stamped and sends nothing. Goes
+// through `deliver` as the kind 'week', so its switch and quiet hours apply.
+// deno-lint-ignore no-explicit-any
+async function sendWeekly(admin: any) {
+  const { data, error } = await admin.rpc('week_push_claim', { p_limit: 300 })
+  if (error) return { ok: false, reason: 'unavailable' }
+  const rows = (Array.isArray(data) ? data : []) as Array<{ recipient: string; line: string; url: string; sunday: string }>
+  let pushed = 0
+  for (let i = 0; i < rows.length; i += 10) {
+    const batch = await Promise.allSettled(rows.slice(i, i + 10).map((r) => deliver(admin, r.recipient, 'week', {
+      title: 'Your week in Verse Arcade',
+      body: String(r.line).slice(0, 240),
+      url: r.url || '/play',
+      tag: `week-${r.sunday}`,
+    })))
+    for (const b of batch) if (b.status === 'fulfilled') pushed += b.value.pushed
+  }
+  return { ok: true, due: rows.length, pushed }
+}
+
 // deno-lint-ignore no-explicit-any
 async function flushDeferred(admin: any) {
   const { data, error } = await admin.rpc('push_deferred_claim', { p_limit: 200 })
@@ -523,6 +549,8 @@ Deno.serve(async (req) => {
       const env = Deno.env.get('PUSH_CRON_TOKEN')
       const want = env || ((await admin.rpc('push_cron_secret')).data as string | null)
       if (!want || !(await sameSecret(cronToken, want))) return json({ error: 'unauthorized' }, 401)
+      const body = await req.json().catch(() => ({}))
+      if (body?.action === 'weekly') return json(await sendWeekly(admin))
       return json(await flushDeferred(admin))
     }
 

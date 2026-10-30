@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { sessionUserId, supabase } from '@/lib/supabase'
 import { shared } from '@/lib/inflight'
+import { isNetworkFailure } from '@/lib/outbox'
 import { getVerseForDate, hashString, mulberry32 } from '@/data/bible/questions'
 import { todayLocalDate } from '@/lib/date'
 import { localdb } from '@/lib/localdb'
@@ -53,12 +54,6 @@ function readOutbox(): PendingPlay[] {
 }
 function writeOutbox(list: PendingPlay[]) {
   try { localStorage.setItem(OUTBOX, JSON.stringify(list)) } catch { /* storage blocked */ }
-}
-/** No response at all — the phone is offline or the server is unreachable. */
-function isNetworkFailure(err: { message?: string; code?: string } | null): boolean {
-  if (!err) return false
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) return true
-  return !err.code && /fetch|network|load failed|internet|offline/i.test(err.message ?? '')
 }
 
 // The hours of the day the last few plays landed at, device-local, so the
@@ -351,7 +346,11 @@ export const useGame = create<GameState>((set, get) => ({
 
 // Back online: send what waited. (Also sent on every Play-tab visit.)
 if (typeof window !== 'undefined') {
-  window.addEventListener('online', () => { void useGame.getState().flushPending() })
+  // Twice, in sequence, for the outbox's reason (lib/outbox.ts): a flush begun
+  // while still offline may be in flight right now.
+  window.addEventListener('online', () => {
+    void useGame.getState().flushPending().then(() => useGame.getState().flushPending())
+  })
 }
 
 function normalizeOutcome(d: any): SubmitOutcome {

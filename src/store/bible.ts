@@ -1,6 +1,7 @@
 import { shared } from '@/lib/inflight'
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
+import { flushOutbox, rpcOrQueue } from '@/lib/outbox'
 import { useAuth } from './auth'
 import { chapterKey } from '@/data/bible/structure'
 import { BIBLE_MARKS_CAP, parseReference, type MarkMap } from '@/lib/bibleProgress'
@@ -55,12 +56,14 @@ function isOnline(): boolean {
   return !!supabase && a.mode === 'online' && a.isAuthed
 }
 
-async function readRemote(uid: string): Promise<LocalMarks> {
+// Null when the server can't be reached — the caller falls back to the device's
+// copy rather than drawing an empty Bible for somebody who has read half of it.
+async function readRemote(uid: string): Promise<LocalMarks | null> {
   const { data, error } = await supabase!
     .from('bible_marks')
     .select('kind, key, created_at')
     .eq('user_id', uid)
-  if (error || !data) return { chapters: {}, studied: {} }
+  if (error || !data) return null
   const marks: LocalMarks = { chapters: {}, studied: {} }
   for (const r of data as any[]) {
     const at = r.created_at ?? new Date().toISOString()
@@ -86,7 +89,22 @@ export const useBible = create<BibleState>((set, get) => ({
 
   load: shared(async () => {
     const uid = useAuth.getState().profile?.id
-    const marks = isOnline() && uid ? await readRemote(uid) : readLocal()
+    if (!(isOnline() && uid)) {
+      const marks = readLocal()
+      set({ chapters: marks.chapters, studied: marks.studied, loaded: true })
+      return
+    }
+    // Anything opened offline goes first, so the read below includes it.
+    await flushOutbox()
+    const remote = await readRemote(uid)
+    // Online, the per-account local key is the device's copy. Marks only ever
+    // accumulate, so the server's set and the copy merge by union — a mark made
+    // offline and not yet sent is never dropped by a read that predates it.
+    const kept = readLocal()
+    const marks: LocalMarks = remote
+      ? { chapters: { ...kept.chapters, ...remote.chapters }, studied: { ...kept.studied, ...remote.studied } }
+      : kept
+    if (remote) writeLocal(marks)
     set({ chapters: marks.chapters, studied: marks.studied, loaded: true })
   }),
 
@@ -133,14 +151,8 @@ function write(kind: 'read' | 'studied', key: string, set: Setter, get: Getter) 
   }
   set({ chapters: next.chapters, studied: next.studied })
 
-  if (online) {
-    supabase!
-      .rpc('mark_bible_progress', { p_kind: kind, p_key: key })
-      .then(({ error }) => {
-        // Keep a local copy if the network hiccups, so a footprint isn't lost.
-        if (error) writeLocal(next)
-      })
-  } else {
-    writeLocal(next)
-  }
+  // The device's copy moves either way; online, the write is sent now or parked
+  // in the outbox and sent when a network comes back (lib/outbox.ts).
+  writeLocal(next)
+  if (online) void rpcOrQueue('mark_bible_progress', { p_kind: kind, p_key: key }, `bible:${kind}:${key}`)
 }

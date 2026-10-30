@@ -198,6 +198,11 @@ export function PrayerSheet({ onClose }: { onClose: () => void }) {
       return
     }
     setSaidSeed(seed)
+    if (res.queued) {
+      juice.select()
+      setReward('Amen. You’re offline, so it’s saved on your phone — it counts the moment you’re back.')
+      return
+    }
     if (res.awarded > 0) {
       if (res.leveledUp) juice.celebrate()
       else juice.coin()

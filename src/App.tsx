@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from './store/auth'
+import { firstStop } from './lib/firstStop'
 import { useBuddies } from './store/buddies'
 import { useGifts } from './store/gifts'
 import { useChurchCheckIns } from './store/churchCheckIns'
@@ -319,7 +320,7 @@ export default function App() {
         // Native OAuth finishes here, asynchronously, long after the user tapped
         // "Sign in with Apple/Google" — so the sign-in screen can't navigate on
         // its own. Once the session + profile are in, move into the app.
-        if (useAuth.getState().profile) navigate('/play', { replace: true })
+        if (useAuth.getState().profile) navigate(firstStop(useAuth.getState().profile), { replace: true })
       }
     }, () => {
       // Back in the foreground: rebuild the reminder plan against the current
@@ -908,6 +909,6 @@ export default function App() {
 // wait for the profile to load, then bounce into the app.
 function AuthCallback() {
   const { profile, ready } = useAuth()
-  if (ready && profile) return <Navigate to="/play" replace />
+  if (ready && profile) return <Navigate to={firstStop(profile)} replace />
   return <Splash />
 }

@@ -5446,6 +5446,12 @@ cues (post-first-drop tour, day-2-3 church moment, arcade row, Bible row) live
 in `features/home/FirstWeekCues.tsx`, each retired by a settings flag and never
 shown again. Full rules and the known rough edges: `docs/FIRST-WEEK.md`.
 
+**A sign-in that has never played lands IN today's verse** (`lib/firstStop.ts`,
+2026-10-30): `/play/run` instead of the Play tab, from email sign-in/up, the
+web OAuth callback and the native deep link. Of 30 accounts that never finished
+a verse, 24 never opened the run. A guest whose plays are being claimed, or any
+profile with a play, lands on Play as before; the resume doors still win.
+
 **A first session ends on tomorrow** (`TomorrowCard`, streak ≤ 2): what is
 waiting (new verse, next streak day, tomorrow's trivia book) and, in the App
 Store build only, the local daily reminder. **No daily reminder exists on the

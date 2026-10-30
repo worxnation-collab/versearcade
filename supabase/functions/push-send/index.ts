@@ -25,7 +25,8 @@
 //   • `{ action: 'test', kind }` — the caller to THEMSELVES through `deliver`,
 //     answering sent / muted / held so Settings can say which (no migration).
 //   • `{ action: 'weekly' }` with `x-push-token` — the hourly Sunday line
-//     (0166): one thing each player did this week, at their usual hour.
+//     (0166): one thing each player did this week, at their usual hour; and
+//     on Saturday evening, tomorrow's approved church verse (0167).
 //   • `{ action: 'flush' }` with `x-push-token` — the cron's morning run: sends
 //     what a recipient's quiet hours (0164) held back. Every kind above goes
 //     through `deliver`, which parks a note that would land in somebody's night.
@@ -369,7 +370,7 @@ async function sendAnswered(admin: any, sender: string, input: Record<string, un
 // The five kinds a player can switch off one by one (0163). A missing key in
 // `profiles.push_prefs` is ON, so an account that never opened Settings hears
 // everything it heard before.
-type PushKind = 'battle' | 'buddy' | 'gesture' | 'answered' | 'check_in' | 'week'
+type PushKind = 'battle' | 'buddy' | 'gesture' | 'answered' | 'check_in' | 'week' | 'church'
 
 // "Send me a test push" (Settings): the caller, to themselves, as one of the
 // five kinds, through the SAME `deliver` every real note takes — so the answer
@@ -378,6 +379,7 @@ type PushKind = 'battle' | 'buddy' | 'gesture' | 'answered' | 'check_in' | 'week
 // other recipient is reachable: the id is the caller's own JWT, never input.
 const TEST_COPY: Record<PushKind, string> = {
   week: 'This is how your Sunday week line looks.',
+  church: "This is how your church's Saturday line looks.",
   battle: 'This is how a battle push looks.',
   buddy: 'This is how a buddy push looks.',
   gesture: 'This is how a kindness push looks.',
@@ -512,6 +514,30 @@ async function sendWeekly(admin: any) {
       body: String(r.line).slice(0, 240),
       url: r.url || '/play',
       tag: `week-${r.sunday}`,
+    })))
+    for (const b of batch) if (b.status === 'fulfilled') pushed += b.value.pushed
+  }
+  const church = await sendChurchSunday(admin)
+  return { ok: true, due: rows.length, pushed, church }
+}
+
+// "Your church" (0167): the same hourly run hands out Saturday evening's line
+// to members of a verified church whose church has an APPROVED verse for
+// tomorrow — the verse and its series day, never a count. No approved verse
+// ⇒ the claim returns nothing for that member. Kind 'church', so its own
+// switch and quiet hours apply.
+// deno-lint-ignore no-explicit-any
+async function sendChurchSunday(admin: any) {
+  const { data, error } = await admin.rpc('church_push_claim', { p_limit: 300 })
+  if (error) return { ok: false, reason: 'unavailable' }
+  const rows = (Array.isArray(data) ? data : []) as Array<{ recipient: string; line: string; url: string; saturday: string }>
+  let pushed = 0
+  for (let i = 0; i < rows.length; i += 10) {
+    const batch = await Promise.allSettled(rows.slice(i, i + 10).map((r) => deliver(admin, r.recipient, 'church', {
+      title: 'Your church',
+      body: String(r.line).slice(0, 240),
+      url: r.url || '/church',
+      tag: `church-${r.saturday}`,
     })))
     for (const b of batch) if (b.status === 'fulfilled') pushed += b.value.pushed
   }

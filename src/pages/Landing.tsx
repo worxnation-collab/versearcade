@@ -6,7 +6,9 @@ import { AppStoreBadge } from '@/components/AppStoreBadge'
 import { useAuth } from '@/store/auth'
 import { appStoreAsk } from '@/lib/appStore'
 import { isSupabaseConfigured } from '@/lib/config'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { peekVerseLink } from '@/lib/verseLink'
+import { todayLocalDate } from '@/lib/date'
 import { LandingPreviewCarousel } from './LandingPreviewCarousel'
 
 // Marketing / hero landing. On web this is the front door; inside the iOS app a
@@ -37,6 +39,16 @@ export default function Landing() {
   useEffect(() => {
     if (profile) navigate('/play', { replace: true })
   }, [profile, navigate])
+
+  // Somebody sent TODAY's verse (`/play?d=<today>`, SendVerseCard). That is a
+  // person who came to read one thing, so it is one tap: a guest is made on
+  // the spot and the Play tab takes the parked link straight into the run.
+  // The character and the account are offered after, like anywhere else.
+  const [sent] = useState(() => peekVerseLink(todayLocalDate()) === '/play/run')
+  const startStarter = () => {
+    useAuth.getState().startAsGuest(`reader_${Math.floor(1000 + Math.random() * 9000)}`, '📖')
+    navigate('/play', { replace: true })
+  }
 
   return (
     <Page noNav>
@@ -122,9 +134,22 @@ export default function Landing() {
               </p>
             </>
           )}
+          {sent && (
+            <>
+              <p className="center" style={{ fontSize: 14.5, margin: 0 }}>
+                <b style={{ color: 'var(--gold)' }}>A friend sent you today’s verse.</b>
+              </p>
+              <Button variant="gold" full onClick={startStarter}>
+                Read it now →
+              </Button>
+              <p className="faint center" style={{ fontSize: 12.5, margin: '-4px 0 4px' }}>
+                Two minutes, no account needed.
+              </p>
+            </>
+          )}
           {isSupabaseConfigured ? (
             <>
-              <Button variant="gold" full onClick={() => navigate('/auth?mode=signup')}>
+              <Button variant={sent ? 'ghost' : 'gold'} full onClick={() => navigate('/auth?mode=signup')}>
                 Create a free account →
               </Button>
               <Button variant="ghost" full onClick={() => navigate('/auth')}>
@@ -151,7 +176,7 @@ export default function Landing() {
             </>
           ) : (
             <>
-              <Button variant="gold" full onClick={() => navigate('/welcome')}>
+              <Button variant={sent ? 'ghost' : 'gold'} full onClick={() => navigate('/welcome')}>
                 Play today’s verse →
               </Button>
               <Button variant="ghost" full onClick={() => navigate('/auth')}>

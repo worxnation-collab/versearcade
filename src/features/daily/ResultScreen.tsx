@@ -22,6 +22,7 @@ import { FavoriteButton } from '@/components/FavoriteButton'
 import { PushNudge } from '@/components/PushNudge'
 import { WatchYesterday } from './WatchYesterday'
 import { TomorrowCard } from './TomorrowCard'
+import { SendVerseCard } from './SendVerseCard'
 import { MissedList } from './MissedList'
 import { ScriptureQuote } from '@/components/ScriptureQuote'
 import { PaintedIcon } from '@/components/PaintedIcon'
@@ -294,6 +295,10 @@ export default function ResultScreen() {
         {/* A new player's first two streak days: what tomorrow holds, and on
             the App Store build the one reminder that fires (TomorrowCard). */}
         {(outcome.currentStreak ?? 0) <= 2 && <TomorrowCard todayDate={todayDate} streak={outcome.currentStreak ?? 1} />}
+
+        {/* The first week's one tap to bring somebody in: today's verse, not
+            the score (SendVerseCard). Later the result share below does it. */}
+        {(outcome.currentStreak ?? 0) <= 7 && <SendVerseCard dropDate={today.dropDate} />}
 
         <div style={{ display: 'grid', gap: 10, marginTop: 22 }}>
           <Button variant="gold" full onClick={doShare}>📤 Share my result</Button>

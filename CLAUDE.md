@@ -5453,6 +5453,14 @@ web** — one web push subscription in production and no daily push on the
 server — so nothing there promises one, the streak `PushNudge` included.
 `docs/FIRST-WEEK.md` → "Tomorrow".
 
+**Bringing a friend is one tap each side** (`SendVerseCard`, streak ≤ 7): the
+result screen sends TODAY's verse, not the score — no reference, no answers,
+the link `/play?d=<today>&ref=` (`verseInviteUrl`). A stranger who opens it
+lands on Landing with "A friend sent you today's verse" and ONE button that
+makes a guest on the spot (`peekVerseLink`, the link is left parked) — the Play
+tab then takes it into `/play/run`. No character screen, no sign-up first; both
+are offered after, as everywhere. A send counts as the day's share.
+
 ## Retention beats: the streak's net, your week, the gathering hour, the first week
 
 Five small systems added in one round, all client-side, none with a migration,

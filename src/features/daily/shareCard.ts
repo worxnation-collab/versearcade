@@ -22,6 +22,18 @@ export function inviteUrl(refCode?: string | null, path = '/'): string {
   return `${base}${base.includes('?') ? '&' : '?'}ref=${encodeURIComponent(refCode)}`
 }
 
+/** The link a "send today's verse" share carries: `/play?d=<date>` opens that
+ *  day's verse (lib/verseLink), and Landing turns it into one tap for a stranger. */
+export function verseInviteUrl(refCode: string | null | undefined, date: string): string {
+  return inviteUrl(refCode, `/play?d=${encodeURIComponent(date)}`)
+}
+
+/** No score, no reference, no answers — an invitation, not a flex, and nothing
+ *  that spoils the five questions the friend is about to read. */
+export function buildVerseInviteText(refCode: string | null | undefined, date: string): string {
+  return `I just played today's verse on Verse Arcade. Read it and answer 5 quick questions — it takes two minutes, no account needed. 📖\n${verseInviteUrl(refCode, date)}`
+}
+
 // Spoiler-free share text (Wordle-style virality). Never leaks the reference or
 // answers, so sharing can't ruin the day's drop for a friend — it just flexes
 // the score and streak and pulls them in, then links them to play.

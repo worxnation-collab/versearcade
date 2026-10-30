@@ -73,6 +73,7 @@ try {
   await page.waitForURL(/\/play\/result/, { timeout: 15000 }).catch(() => fail('the run never reached its result'))
   // A first play ends on what tomorrow holds (TomorrowCard).
   await page.locator('[data-tomorrow]').waitFor({ timeout: 10000 }).catch(() => fail('a first play ended without the Tomorrow card'))
+  await page.locator('[data-send-verse]').waitFor({ timeout: 5000 }).catch(() => fail('a first play ended without the send-the-verse card'))
 
   // 3. It was recorded.
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('va.profile') || '{}'))

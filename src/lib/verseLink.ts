@@ -47,10 +47,17 @@ export function captureVerseLink(): void {
 
 /** Where a parked link should go, given today's local date — and forget it. */
 export function takeVerseLink(today: string): string | null {
+  const to = peekVerseLink(today)
+  try { localStorage.removeItem(KEY) } catch { /* nothing to forget */ }
+  return to
+}
+
+/** The same answer without forgetting it — Landing asks this to know a friend
+ *  sent today's verse, and leaves the link for the Play tab to take. */
+export function peekVerseLink(today: string): string | null {
   try {
     const raw = localStorage.getItem(KEY)
     if (!raw) return null
-    localStorage.removeItem(KEY)
     const { d, at } = JSON.parse(raw) as { d?: unknown; at?: unknown }
     if (typeof d !== 'string' || !DATE.test(d) || typeof at !== 'number' || Date.now() - at > TTL_MS) return null
     if (d === today) return '/play/run'

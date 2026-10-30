@@ -1726,6 +1726,17 @@ any other scheme is refused rather than mangled. `Detail` already neutralised a
 `javascript:` string on one render path, but `public_church_page` is a second
 reader and shouldn't have to know that.
 
+**The dashboard's Home leads with three cards since 2026-10-30**
+(`LeaderTop.tsx`, verified leadership only): this week's verse (seven bars and
+"Plan the week"), who's playing (members who played in seven days, by name,
+leaders aside) and send a note (any member, through the same `CheckInSheet` —
+"A note to …" with a neutral draft for an active member, "Check in with …" for
+a quiet one). The to-do follows as "To do", its empty-days row dropped as the
+first card's job; the digest switch and series numbers fold under More tools.
+People's active rows carry "Note" beside the fold's "Check in". No pilot church
+exists yet; the owner's call is that pilots get Content Generation FREE —
+Admin → Founding Churches, the operator toggle, once a pilot is verified.
+
 ### Church content: two tiers, and generated content is a draft
 
 `0127`, `docs/CHURCH-SHARED-VERSE.md` → "Content Generation". Two entitlements,

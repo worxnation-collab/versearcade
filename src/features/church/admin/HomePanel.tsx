@@ -12,6 +12,8 @@ import { autoRow, draftRows, inquiryRow, quietRow, type HomeGo, type HomeRow } f
 import { useAutopilot } from './autopilot'
 import { useJoinInquiries } from './InquiriesSection'
 import { DigestToggle } from './DigestToggle'
+import { LeaderTop } from './LeaderTop'
+import { MoreTools } from './MoreTools'
 
 // Home — "This week": what needs a leader, before anything else (2026-10-26).
 //
@@ -49,6 +51,11 @@ import { DigestToggle } from './DigestToggle'
 //
 // Totals ("At a glance") follow the list, unchanged; they used to be the
 // whole first screen.
+//
+// Since 2026-10-30 verified leadership sees three cards ABOVE the list
+// (`LeaderTop`: this week's verse, who's playing, send a note), the list is
+// headed "To do", and the digest switch and series numbers fold under More
+// tools. A free claim's Home is unchanged.
 
 // The rows the Monday digest also carries come from one shared builder
 // (supabase/functions/church-digest/home.ts) — the email can't word a row
@@ -114,17 +121,8 @@ export function HomePanel({
   // drafts / flags / inquiries / quiet rows below, built by the same functions.
 
   if (verified && days) {
-    const week = days.slice(0, 7)
-    const empty = week.filter((w) => !w.verse)
-    if (empty.length) {
-      rows.push({
-        key: 'gaps',
-        icon: '📅',
-        title: empty.length === 7 ? 'No church verse for the next 7 days' : `${empty.length} of the next 7 days ${empty.length === 1 ? 'has' : 'have'} no church verse`,
-        detail: `First open day: ${day(empty[0].date)}. Plan it →`,
-        go: { tab: 'plan', date: empty[0].date },
-      })
-    }
+    // Empty days are the "This week's verse" card's job now (LeaderTop); the
+    // digest still words its own gaps line.
     const drafts = days.filter((w) => w.verse?.status === 'draft')
     rows.push(...draftRows(drafts.map((w) => ({ date: w.date, flagged: flaggedCount(w.verse?.questions) }))))
   }
@@ -172,9 +170,10 @@ export function HomePanel({
           onDoor={onDoor}
         />
       )}
+      {verified && <LeaderTop churchId={churchId} today={today} days={days} insights={insights} onGo={onGo} />}
       <div className="home-split">
       <div className="home-split-main">
-      <h2 style={{ margin: '2px 0 0', fontSize: 17, fontFamily: 'var(--font-display)' }}>This week</h2>
+      <h2 style={{ margin: '2px 0 0', fontSize: 17, fontFamily: 'var(--font-display)' }}>{verified ? 'To do' : 'This week'}</h2>
       {loading && <div className="skeleton" style={{ height: 64, borderRadius: 14 }} />}
       {failed && (
         <p className="dim" style={{ margin: 0, fontSize: 12.5 }}>Couldn’t read your schedule just now — the Plan tab has it.</p>
@@ -201,9 +200,12 @@ export function HomePanel({
         </button>
       ))}
 
-      {verified && <DigestToggle churchId={churchId} />}
-
-      {verified && <SeriesLandingPanel churchId={churchId} churchName={settings.name} />}
+      {verified && (
+        <MoreTools names={['Tuesday email digest', 'How your series are landing']}>
+          <DigestToggle churchId={churchId} />
+          <SeriesLandingPanel churchId={churchId} churchName={settings.name} />
+        </MoreTools>
+      )}
       </div>
 
       <div className="home-split-side">

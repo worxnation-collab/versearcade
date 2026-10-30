@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { shared } from '@/lib/inflight'
+import { flushOutbox, onOutboxSent } from '@/lib/outbox'
 import { Capacitor } from '@capacitor/core'
 import { Browser } from '@capacitor/browser'
 import { nativeAppleAvailable, nativeAppleSignIn } from '@/lib/appleSignIn'
@@ -289,6 +290,9 @@ export const useAuth = create<AuthState>((set, get) => ({
     get().applyPendingCharacter()
     get().autoEquipGrantedSkin()
     void get().loadReferral()
+    // The profile just came back from the server, so a network is here: send
+    // whatever this account parked while it wasn't (lib/outbox.ts).
+    void flushOutbox()
     // Which network sent this person, if a tracked link said so (0106).
     void applyPendingSource()
   }),
@@ -1013,6 +1017,9 @@ export const useAuth = create<AuthState>((set, get) => ({
 // Keep the device's copy current with every change an online profile takes —
 // a play's XP, a new border — so the copy an offline launch opens on is the
 // latest one this phone saw, not the one from the last full refresh.
+// A queued prayer or arcade run that just landed was paid on the server.
+onOutboxSent(() => { void useAuth.getState().refreshProfile() })
+
 useAuth.subscribe((s) => {
   if (s.mode === 'online' && s.isAuthed && s.profile) writeCachedProfile(s.profile)
 })

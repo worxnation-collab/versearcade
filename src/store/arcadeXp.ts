@@ -1,6 +1,7 @@
 import { shared } from '@/lib/inflight'
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
+import { rpcOrQueue } from '@/lib/outbox'
 import { todayLocalDate } from '@/lib/date'
 import { useAuth } from './auth'
 import { levelInfo } from '@/components/XpBar'
@@ -42,6 +43,8 @@ export interface ArcadePlayResult {
   /** Whether this was the day's first on this machine. */
   firstToday: boolean
   leveledUp: boolean
+  /** Finished offline: parked in the outbox and paid by the server when it lands. */
+  queued?: boolean
 }
 
 const NOTHING: ArcadePlayResult = { ok: false, awarded: 0, firstToday: false, leveledUp: false }
@@ -121,10 +124,15 @@ export const useArcadeXp = create<ArcadeXpState>((set, get) => ({
     if (isOnline()) {
       // Awaited, and `error` checked. A postgrest-js builder is lazy — a `void`
       // here would report a payout for a call that never left the device.
-      const { data, error } = await supabase!.rpc('record_arcade_play', {
-        p_game: gameId,
-        p_local_date: todayLocalDate(),
-      })
+      // Through the outbox: a run finished offline is sent when a network
+      // comes back. One entry per machine per day (the server pays the day's
+      // first run only, so a second offline run has nothing more to say).
+      const day = todayLocalDate()
+      const { data, error, queued } = await rpcOrQueue('record_arcade_play', { p_game: gameId, p_local_date: day }, `arcade:${gameId}:${day}`)
+      if (queued) {
+        set({ paidToday: [...new Set([...get().paidToday, gameId])] })
+        return { ok: true, awarded: 0, firstToday: false, leveledUp: false, queued: true }
+      }
       if (error || !data) return NOTHING
       const raw = data as { awarded?: number; first_today?: boolean; leveled_up?: boolean }
       const awarded = Number(raw.awarded ?? 0)

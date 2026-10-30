@@ -5397,8 +5397,19 @@ on the next Play visit or `online` event — `submit_play` takes the drop date
 and is idempotent, so the streak it kept counts for the day it was played and
 the recap says the numbers are an estimate; and the player's own church is
 kept (`va.myChurch`), with "can't be reached" instead of the PICKER when there
-is no copy. Still open: Bible marks, favourites and other writes made offline
-are not queued, and a GET takes ~7s of postgrest retries before it gives up.
+is no copy. And since the same day, **writes made offline wait in an outbox**
+(`lib/outbox.ts`, `va.outbox`, per account): `rpcOrQueue` sends now or parks
+on a NETWORK failure only (a refusal is an answer, never retried), a `key`
+collapses repeats, and it flushes on the `online` event and on every profile
+refresh. Bible marks, favourites, prayers and arcade runs go through it; Bible
+marks and favourites also read the per-account local key when the server
+can't be reached (marks merge by union, favourites take the server's answer
+after a flush). And `fastFetch` in `lib/supabase.ts` answers a failed fetch to
+`/rest/v1/` with a 599 at once — postgrest retried a thrown GET for ~7s first;
+real 503/520s still retry, auth is untouched. `scripts/offline-writes.mjs`
+drives all of it. Not yet through the outbox: battles, gifts, washing feet,
+the Prayer Wall and church giving, which all need the other person or the
+server's answer on the spot.
 
 ## The Play tab is four things
 

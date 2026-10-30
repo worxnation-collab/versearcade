@@ -1,6 +1,7 @@
 import { shared } from '@/lib/inflight'
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
+import { rpcOrQueue } from '@/lib/outbox'
 import { todayLocalDate } from '@/lib/date'
 import { useAuth } from './auth'
 import { useSeason } from './season'
@@ -31,6 +32,8 @@ export interface PrayerResult {
   today: number
   cap: number
   leveledUp: boolean
+  /** Said offline: parked in the outbox and paid by the server when it lands. */
+  queued?: boolean
 }
 
 function isOnline(): boolean {
@@ -103,9 +106,20 @@ export const usePrayer = create<PrayerState>((set, get) => ({
     if (isOnline()) {
       // Awaited, and `error` checked. A postgrest-js builder is lazy — a `void`
       // here would report a payout for a call that never left the device.
-      const { data, error } = await supabase!.rpc('record_prayer', {
-        p_local_date: todayLocalDate(),
-      })
+      // Through the outbox: a prayer said with no network is kept on this
+      // phone and recorded when one comes back. Each prayer is its own entry
+      // (a unique key), since three a day are three prayers; the server's cap
+      // and its ±1 date clamp apply when it lands.
+      const day = todayLocalDate()
+      const { data, error, queued } = await rpcOrQueue('record_prayer', { p_local_date: day }, `prayer:${day}:${Date.now()}`)
+      if (queued) {
+        // The lamp lights now — it is a fact about today on this phone, and the
+        // prayer WAS said. The XP waits for the server.
+        const today = Math.min(get().cap, get().today + 1)
+        set({ today })
+        void useSeason.getState().track('prayed')
+        return { ok: true, awarded: 0, today, cap: get().cap, leveledUp: false, queued: true }
+      }
       if (error || !data) return { ok: false, awarded: 0, today: get().today, cap: get().cap, leveledUp: false }
       const raw = data as { awarded?: number; today?: number; cap?: number; leveled_up?: boolean }
       const today = Number(raw.today ?? get().today)

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { shared } from '@/lib/inflight'
 import { supabase } from '@/lib/supabase'
+import { flushOutbox, rpcOrQueue } from '@/lib/outbox'
 import { useAuth } from './auth'
 import { useSeason } from './season'
 import { FAVORITES_CAP, type FavoriteMap } from '@/lib/favorites'
@@ -38,12 +39,13 @@ function isOnline(): boolean {
   return !!supabase && a.mode === 'online' && a.isAuthed
 }
 
-async function readRemote(uid: string): Promise<FavoriteMap> {
+// Null when the server can't be reached, so the shelf shows the device's copy.
+async function readRemote(uid: string): Promise<FavoriteMap | null> {
   const { data, error } = await supabase!
     .from('favorite_verses')
     .select('reference, created_at')
     .eq('user_id', uid)
-  if (error || !data) return {}
+  if (error || !data) return null
   const map: FavoriteMap = {}
   for (const r of data as any[]) map[r.reference] = r.created_at ?? new Date().toISOString()
   return map
@@ -66,8 +68,18 @@ export const useFavorites = create<FavoritesState>((set, get) => ({
 
   load: shared(async () => {
     const uid = useAuth.getState().profile?.id
-    const map = isOnline() && uid ? await readRemote(uid) : readLocal()
-    set({ map, loaded: true })
+    if (!(isOnline() && uid)) {
+      set({ map: readLocal(), loaded: true })
+      return
+    }
+    // A keep (or un-keep) made offline goes first, so the read reflects it. A
+    // favourite can be removed, so unlike Bible marks this does NOT merge — the
+    // server's answer after the flush is the whole truth, and the device's
+    // copy is only what is shown when there is no answer.
+    await flushOutbox()
+    const remote = await readRemote(uid)
+    if (remote) writeLocal(remote)
+    set({ map: remote ?? readLocal(), loaded: true })
   }),
 
   isFavorite(reference) {
@@ -98,16 +110,11 @@ export const useFavorites = create<FavoritesState>((set, get) => ({
     // Keeping a verse walks the road; un-keeping one doesn't take it back.
     if (!has) void useSeason.getState().track('save_verse')
 
-    if (online) {
-      supabase!
-        .rpc('set_verse_favorite', { p_reference: reference, p_favorite: !has })
-        .then(({ error }) => {
-          // Keep a local copy if the network hiccups, so a keep is never lost.
-          if (error) writeLocal(map)
-        })
-    } else {
-      writeLocal(map)
-    }
+    // The device's copy moves either way; online, the write is sent now or
+    // parked (lib/outbox.ts). Keyed by verse, so keep-then-unkeep offline sends
+    // only the last word.
+    writeLocal(map)
+    if (online) void rpcOrQueue('set_verse_favorite', { p_reference: reference, p_favorite: !has }, `fav:${reference}`)
     return has ? 'removed' : 'added'
   },
 }))

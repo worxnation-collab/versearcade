@@ -117,6 +117,13 @@ export default function ResultScreen() {
           <Tile label="Correct" value={`${result.correctCount}/${result.totalQuestions}`} />
         </div>
 
+        {outcome.pending && (
+          <p className="dim" data-play-pending style={{ marginTop: 8, fontSize: 13, lineHeight: 1.45 }}>
+            You’re offline, so this play is saved on your phone. It counts for today and is sent the moment
+            you’re back online. These numbers are an estimate until then.
+          </p>
+        )}
+
         {outcome.boostUsed && (
           <p className="faint" style={{ marginTop: 8, fontSize: 13 }}>
             ⚡ <b style={{ color: 'var(--gold)' }}>XP Boost applied</b> — +50% XP this run

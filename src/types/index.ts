@@ -221,6 +221,9 @@ export interface SubmitOutcome {
   boostUsed?: boolean
   /** Remaining XP Boosts after this play. */
   xpBoosts?: number
+  /** Played offline: the play is waiting on this device and these numbers are
+   *  this device's estimate until the server settles it (store/game.ts outbox). */
+  pending?: boolean
 }
 
 // Practice mode — replaying an already-played verse to study. Reward comes from

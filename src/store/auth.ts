@@ -172,6 +172,28 @@ interface AuthState {
   signOut: () => Promise<void>
 }
 
+// The signed-in player's last profile, kept on the device. Offline, the
+// profile read fails after its retries and an account with no profile is
+// routed as signed out — every tab sat on the splash with no network. So
+// startup shows THIS straight away and refreshes it behind (which also takes
+// a round trip off every online launch), and a refresh that fails keeps it.
+// Keyed by user id, so a different account on the same phone never sees it;
+// cleared on sign-out and on erasure. It grants nothing — every write still
+// goes through the server, which decides.
+const PROFILE_CACHE = 'va.profileCache'
+function readCachedProfile(uid: string): Profile | null {
+  try {
+    const c = JSON.parse(localStorage.getItem(PROFILE_CACHE) ?? 'null')
+    return c && c.uid === uid && c.profile ? (c.profile as Profile) : null
+  } catch { return null }
+}
+function writeCachedProfile(p: Profile) {
+  try { localStorage.setItem(PROFILE_CACHE, JSON.stringify({ uid: p.id, profile: p })) } catch { /* storage full or blocked */ }
+}
+function clearCachedProfile() {
+  try { localStorage.removeItem(PROFILE_CACHE) } catch { /* nothing to clear */ }
+}
+
 export const useAuth = create<AuthState>((set, get) => ({
   ready: false,
   mode: isSupabaseConfigured ? 'online' : 'local',
@@ -205,6 +227,15 @@ export const useAuth = create<AuthState>((set, get) => ({
 
     const { data } = await supabase.auth.getSession()
     if (data.session) {
+      // The device's copy first, so the app opens with no network and without
+      // waiting on one; the server's copy replaces it a round trip later.
+      const cached = get().profile ? null : readCachedProfile(data.session.user.id)
+      if (cached) {
+        syncSettingsFromProfile(cached)
+        set({ ready: true, mode: 'online', isAuthed: true, profile: cached })
+        void get().refreshProfile()
+        return
+      }
       await get().refreshProfile()
       set({ ready: true, mode: 'online', isAuthed: true })
       return
@@ -237,6 +268,13 @@ export const useAuth = create<AuthState>((set, get) => ({
       .eq('id', user.id)
       .maybeSingle()
     if (error) {
+      // Offline or the server didn't answer: keep what the device last saw
+      // rather than leaving a signed-in player with no profile at all.
+      const cached = get().profile ? null : readCachedProfile(user.id)
+      if (cached) {
+        syncSettingsFromProfile(cached)
+        set({ profile: cached, isAuthed: true })
+      }
       set({ error: error.message })
       return
     }
@@ -960,12 +998,21 @@ export const useAuth = create<AuthState>((set, get) => ({
     const { error } = await supabase.rpc('delete_my_account')
     if (error) return false
     await supabase.auth.signOut()
+    clearCachedProfile()
     set({ profile: null, isAuthed: false })
     return true
   },
 
   async signOut() {
     if (supabase) await supabase.auth.signOut()
+    clearCachedProfile()
     set({ profile: null, isAuthed: false })
   },
 }))
+
+// Keep the device's copy current with every change an online profile takes —
+// a play's XP, a new border — so the copy an offline launch opens on is the
+// latest one this phone saw, not the one from the last full refresh.
+useAuth.subscribe((s) => {
+  if (s.mode === 'online' && s.isAuthed && s.profile) writeCachedProfile(s.profile)
+})

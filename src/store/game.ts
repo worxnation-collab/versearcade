@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { sessionUserId, supabase } from '@/lib/supabase'
+import { shared } from '@/lib/inflight'
 import { getVerseForDate, hashString, mulberry32 } from '@/data/bible/questions'
 import { todayLocalDate } from '@/lib/date'
 import { localdb } from '@/lib/localdb'
@@ -20,6 +21,44 @@ interface GameState {
   submitPlay: (result: PlayResult) => Promise<SubmitOutcome>
   loadPulse: () => Promise<void>
   armBoost: (v: boolean) => void
+  /** Send any daily play that finished offline. Safe to call any time. */
+  flushPending: () => Promise<void>
+}
+
+// A daily drop finished with no connection used to be LOST: submit_play threw,
+// the recap had nothing to show, and the streak that play kept alive broke at
+// midnight. Now a play that fails for want of a NETWORK (never one the server
+// refused) waits here, per account, until a connection comes back — sent on
+// the next Play-tab visit and on the browser's 'online' event. submit_play
+// takes the drop date and works the streak out from it, so a play sent the
+// next morning still counts for the day it was played; it is idempotent per
+// (user, date), so sending twice is harmless. Nothing here is a grant: the
+// SERVER computes the XP when it arrives, and the numbers shown meanwhile are
+// this device's estimate, marked `pending`.
+const OUTBOX = 'va.pendingPlays'
+interface PendingPlay {
+  uid: string
+  date: string
+  useBoost: boolean
+  result: Omit<PlayResult, 'perQuestion' | 'questions'>
+  outcome: SubmitOutcome
+}
+function readOutbox(): PendingPlay[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(OUTBOX) || '[]') as unknown
+    return Array.isArray(raw) ? (raw as PendingPlay[]).filter((p) => p && typeof p.uid === 'string' && typeof p.date === 'string') : []
+  } catch {
+    return []
+  }
+}
+function writeOutbox(list: PendingPlay[]) {
+  try { localStorage.setItem(OUTBOX, JSON.stringify(list)) } catch { /* storage blocked */ }
+}
+/** No response at all — the phone is offline or the server is unreachable. */
+function isNetworkFailure(err: { message?: string; code?: string } | null): boolean {
+  if (!err) return false
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return true
+  return !err.code && /fetch|network|load failed|internet|offline/i.test(err.message ?? '')
 }
 
 // The hours of the day the last few plays landed at, device-local, so the
@@ -98,6 +137,9 @@ export const useGame = create<GameState>((set, get) => ({
       return
     }
 
+    // A play that finished offline goes now that we're trying the network again.
+    void get().flushPending()
+
     // ONLINE: make sure the shared row exists, and — in the same round trip,
     // not after it — check if the user played. The read doesn't need the row.
     const sb = supabase
@@ -158,6 +200,13 @@ export const useGame = create<GameState>((set, get) => ({
         }
       }
     }
+    // Played offline and not sent yet: it is still today's play, so the drop
+    // stays done (and can't be dealt again) and the recap still has its numbers.
+    const waiting = uid ? readOutbox().find((p) => p.uid === uid && p.date === date) : undefined
+    if (!played && waiting) {
+      played = true
+      restored = { result: { ...waiting.result, perQuestion: [] }, outcome: waiting.outcome }
+    }
     // Keep an accurate just-played result if we have one; else use the rebuilt one.
     set({ today: verse, todayDate: date, playedToday: played, lastResult: get().lastResult ?? restored })
   },
@@ -204,6 +253,8 @@ export const useGame = create<GameState>((set, get) => ({
       return outcome
     }
 
+    // An earlier offline play goes first, so the server sees the days in order.
+    await get().flushPending()
     const { data, error } = await supabase.rpc('submit_play', {
       p_drop_date: date,
       p_score: result.score,
@@ -213,6 +264,21 @@ export const useGame = create<GameState>((set, get) => ({
       p_combo_max: result.comboMax,
       p_use_boost: useBoost,
     })
+    if (error && isNetworkFailure(error) && auth.profile) {
+      const uid = auth.profile.id
+      const { outcome: est } = applyPlayLocal(auth.profile, {
+        dropDate: date, score: result.score, correct: result.correctCount, useBoost,
+      })
+      const outcome: SubmitOutcome = { ...est, pending: true }
+      const { score, timeMs, correctCount, totalQuestions, comboMax } = result
+      writeOutbox([
+        ...readOutbox().filter((p) => !(p.uid === uid && p.date === date)),
+        { uid, date, useBoost, result: { score, timeMs, correctCount, totalQuestions, comboMax }, outcome },
+      ])
+      notePlayHour()
+      set({ playedToday: true, lastResult: { result, outcome }, boostArmed: false })
+      return outcome
+    }
     if (error) throw error
     const outcome = normalizeOutcome(data)
     await auth.refreshProfile()
@@ -251,7 +317,42 @@ export const useGame = create<GameState>((set, get) => ({
   armBoost(v) {
     set({ boostArmed: v })
   },
+
+  flushPending: shared(async () => {
+    if (!supabase || useAuth.getState().mode !== 'online') return
+    const uid = await sessionUserId()
+    if (!uid) return
+    const mine = readOutbox().filter((p) => p.uid === uid).sort((a, b) => a.date.localeCompare(b.date))
+    if (!mine.length) return
+    let sent = 0
+    for (const p of mine) {
+      const { data, error } = await supabase.rpc('submit_play', {
+        p_drop_date: p.date,
+        p_score: p.result.score,
+        p_time_ms: p.result.timeMs,
+        p_correct: p.result.correctCount,
+        p_total: p.result.totalQuestions,
+        p_combo_max: p.result.comboMax,
+        p_use_boost: p.useBoost,
+      })
+      // Still offline: keep it and try again later. Anything else — sent, or
+      // refused — is settled, and a refused play is not retried forever.
+      if (error && isNetworkFailure(error)) break
+      writeOutbox(readOutbox().filter((q) => !(q.uid === uid && q.date === p.date)))
+      sent++
+      const last = get().lastResult
+      if (!error && p.date === get().todayDate && last?.outcome.pending) {
+        set({ lastResult: { result: last.result, outcome: normalizeOutcome(data) } })
+      }
+    }
+    if (sent) await useAuth.getState().refreshProfile()
+  }),
 }))
+
+// Back online: send what waited. (Also sent on every Play-tab visit.)
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => { void useGame.getState().flushPending() })
+}
 
 function normalizeOutcome(d: any): SubmitOutcome {
   return {

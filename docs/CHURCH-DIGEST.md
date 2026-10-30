@@ -34,12 +34,13 @@ the two cannot drift:
 | Row | Home's wording | Link lands on |
 |---|---|---|
 | Sermon week / Autopilot | "Week drafted — review" with the range (or ready / being drafted / didn't finish), or "Nothing drafted this week" | Plan, on the first drafted day (or today) |
+| Open days ahead (0175) | "Nothing scheduled for tomorrow" / "Tomorrow's church verse is still a draft" / "N days this week have no church verse" — the next six days without a LIVE verse | Plan, on tomorrow or the first open day |
 | Drafts waiting | "N drafts are waiting for your approval", first date | Plan, on the first draft |
 | Flagged questions | "N drafted questions need a second look", first date | Plan, on that day |
 | Inquiries waiting | "N players asked about your church" — **a count, no names, no notes** | People, the inquiries section |
 | Quiet members | "N members could use a check-in" — **a count, never names**; leaders never counted | People, the "Not active this week" fold open |
 
-Home's other two rows (open days without a verse, the notice) stay Home-only.
+Home's notice row stays Home-only.
 An empty week sends one line: "you're all set". No member is ever emailed, and
 nothing in it is a per-person number.
 

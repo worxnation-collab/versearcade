@@ -26,7 +26,7 @@
 // has no session; both doors check their own credential below.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { autoRow, currentJob, draftRows, homeGoQuery, inquiryRow, quietRow, type HomeJob, type HomeRow } from './home.ts'
+import { autoRow, currentJob, draftRows, homeGoQuery, inquiryRow, openDaysRow, quietRow, type HomeJob, type HomeRow } from './home.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -84,7 +84,13 @@ export function composeDigest(churchId: string, b: Record<string, any>): Digest 
   const rows: HomeRow[] = []
   const auto = autoRow(currentJob((b.jobs ?? []).map(toJob)), b.autopilot_skipped === true, today)
   if (auto) rows.push(auto)
-  rows.push(...draftRows((b.drafts ?? []).map((d: any) => ({ date: String(d.date), flagged: Number(d.flagged) || 0 }))))
+  const drafts = (b.drafts ?? []).map((d: any) => ({ date: String(d.date), flagged: Number(d.flagged) || 0 }))
+  // A server before 0175 sends no `scheduled`; no row then, rather than every day reading open.
+  if (Array.isArray(b.scheduled)) {
+    const open = openDaysRow(today, b.scheduled.map(String), drafts.map((d: { date: string }) => d.date))
+    if (open) rows.push(open)
+  }
+  rows.push(...draftRows(drafts))
   const inq = inquiryRow(Number(b.inquiries) || 0, null)
   if (inq) rows.push(inq)
   const q = quietRow(Number(b.quiet) || 0)

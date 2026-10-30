@@ -8,7 +8,7 @@ import { Capacitor } from '@capacitor/core'
 import { APP_URL } from '@/features/daily/shareCard'
 import { FirstWeek, type FirstWeekDoor } from './FirstWeek'
 import { currentAutoWeek, useAutoWeeks } from './autoWeek'
-import { autoRow, draftRows, inquiryRow, quietRow, type HomeGo, type HomeRow } from '../../../../supabase/functions/church-digest/home.ts'
+import { autoRow, draftRows, inquiryRow, openDaysRow, quietRow, type HomeGo, type HomeRow } from '../../../../supabase/functions/church-digest/home.ts'
 import { useAutopilot } from './autopilot'
 import { useJoinInquiries } from './InquiriesSection'
 import { DigestToggle } from './DigestToggle'
@@ -121,9 +121,12 @@ export function HomePanel({
   // drafts / flags / inquiries / quiet rows below, built by the same functions.
 
   if (verified && days) {
-    // Empty days are the "This week's verse" card's job now (LeaderTop); the
-    // digest still words its own gaps line.
+    // The open days ahead, tomorrow first (0175) — the same row the Tuesday
+    // digest carries. LeaderTop's bars show the week; this says what to do.
     const drafts = days.filter((w) => w.verse?.status === 'draft')
+    const live = days.filter((w) => w.verse && w.verse.status !== 'draft').map((w) => w.date)
+    const open = openDaysRow(today, live, drafts.map((w) => w.date))
+    if (open) rows.push(open)
     rows.push(...draftRows(drafts.map((w) => ({ date: w.date, flagged: flaggedCount(w.verse?.questions) }))))
   }
 

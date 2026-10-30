@@ -8,8 +8,9 @@ import { Capacitor } from '@capacitor/core'
 import { APP_URL } from '@/features/daily/shareCard'
 import { FirstWeek, type FirstWeekDoor } from './FirstWeek'
 import { currentAutoWeek, useAutoWeeks } from './autoWeek'
-import { autoRow, draftRows, inquiryRow, openDaysRow, quietRow, type HomeGo, type HomeRow } from '../../../../supabase/functions/church-digest/home.ts'
+import { autoPublishedRow, autoRow, draftRows, inquiryRow, openDaysRow, quietRow, type HomeGo, type HomeRow } from '../../../../supabase/functions/church-digest/home.ts'
 import { useAutopilot } from './autopilot'
+import { hourLabel, useAutoPublish } from './AutoPublishToggle'
 import { useJoinInquiries } from './InquiriesSection'
 import { DigestToggle } from './DigestToggle'
 import { LeaderTop } from './LeaderTop'
@@ -117,6 +118,11 @@ export function HomePanel({
   const { ap } = useAutopilot(churchId, verified && autoWeeks, () => void reloadJobs())
   const auto = autoRow(currentAutoWeek(jobs), !!(ap?.enabled && ap.state === 'no_source'), today)
   if (auto) rows.push(auto)
+  // Auto-publish (0176): what it put live lately, and tomorrow's draft worded
+  // as going live rather than as missing.
+  const { state: publish } = useAutoPublish(churchId, verified && autoWeeks)
+  const published = publish ? autoPublishedRow(today, publish.recent) : null
+  if (published) rows.push(published)
   // The Monday digest (0154, docs/CHURCH-DIGEST.md) carries this line and the
   // drafts / flags / inquiries / quiet rows below, built by the same functions.
 
@@ -125,7 +131,9 @@ export function HomePanel({
     // digest carries. LeaderTop's bars show the week; this says what to do.
     const drafts = days.filter((w) => w.verse?.status === 'draft')
     const live = days.filter((w) => w.verse && w.verse.status !== 'draft').map((w) => w.date)
-    const open = openDaysRow(today, live, drafts.map((w) => w.date))
+    const tomorrowDraft = drafts.find((w) => w.date === addDays(today, 1))
+    const autoAt = publish?.enabled && tomorrowDraft && !flaggedCount(tomorrowDraft.verse?.questions) ? hourLabel(publish.hour) : null
+    const open = openDaysRow(today, live, drafts.map((w) => w.date), autoAt)
     if (open) rows.push(open)
     rows.push(...draftRows(drafts.map((w) => ({ date: w.date, flagged: flaggedCount(w.verse?.questions) }))))
   }

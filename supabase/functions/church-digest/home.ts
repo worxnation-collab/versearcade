@@ -128,7 +128,12 @@ const plusDays = (iso: string, n: number) => {
  * which members still cannot see. Tomorrow leads, because a member who opens
  * an empty church tab tomorrow morning is the case this row exists for.
  */
-export function openDaysRow(today: string, scheduled: string[], drafts: string[]): HomeRow | null {
+/**
+ * `autoAt` (0176): auto-publish is on and tomorrow's draft carries no flag, so
+ * it goes live by itself at that hour ("8pm") — the row says so instead of
+ * warning that members will find nothing.
+ */
+export function openDaysRow(today: string, scheduled: string[], drafts: string[], autoAt: string | null = null): HomeRow | null {
   const live = new Set(scheduled)
   const open = [1, 2, 3, 4, 5, 6].map((n) => plusDays(today, n)).filter((d) => !live.has(d))
   if (!open.length) return null
@@ -137,6 +142,14 @@ export function openDaysRow(today: string, scheduled: string[], drafts: string[]
   const also = more ? ` ${more} more ${more === 1 ? 'day' : 'days'} this week ${more === 1 ? 'is' : 'are'} open too.` : ''
   if (open[0] === tomorrow) {
     const draft = drafts.includes(tomorrow)
+    if (draft && autoAt) {
+      return {
+        key: 'open', icon: '📅',
+        title: `Tomorrow’s draft goes live at ${autoAt}`,
+        detail: `Auto-publish is on, so members will have it either way.${also} Read it first →`,
+        go: { tab: 'plan', date: tomorrow },
+      }
+    }
     return {
       key: 'open', icon: '📅',
       title: draft ? 'Tomorrow’s church verse is still a draft' : 'Nothing scheduled for tomorrow',
@@ -149,6 +162,24 @@ export function openDaysRow(today: string, scheduled: string[], drafts: string[]
     title: `${open.length} ${open.length === 1 ? 'day' : 'days'} this week ${open.length === 1 ? 'has' : 'have'} no church verse`,
     detail: `Tomorrow is covered. First open day: ${longDay(open[0])} →`,
     go: { tab: 'plan', date: open[0] },
+  }
+}
+
+/**
+ * What auto-publish (0176) put live by itself in the last few days — the
+ * leader always hears. Newest first; nothing when it published nothing.
+ */
+export function autoPublishedRow(today: string, recent: { date: string; reference: string }[]): HomeRow | null {
+  const since = plusDays(today, -3)
+  const hits = recent.filter((r) => r.date >= since)
+  if (!hits.length) return null
+  const first = hits[0]
+  const more = hits.length - 1
+  return {
+    key: 'auto-published', icon: '🕗',
+    title: more ? `Auto-publish put ${hits.length} days live` : `Auto-publish put ${first.reference} live`,
+    detail: `${more ? `Latest: ${first.reference}, ${longDay(first.date)}.` : `For ${longDay(first.date)} — nobody had approved the draft by the evening before.`} Have a look →`,
+    go: { tab: 'plan', date: first.date },
   }
 }
 

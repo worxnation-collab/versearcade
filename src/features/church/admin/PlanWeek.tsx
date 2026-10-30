@@ -5,6 +5,7 @@ import { DraftReview, WeekDraftPanel } from './WeekDraftPanel'
 import { StudyTopicWeek } from './StudyTopicWeek'
 import { AutoWeekCard, useAutoWeeks } from './autoWeek'
 import { AutopilotCard, useAutopilot } from './autopilot'
+import { AutoPublishToggle, useAutoPublish } from './AutoPublishToggle'
 
 // "Plan your week" — the Plan tab's one drafting flow (2026-10-26).
 //
@@ -79,6 +80,8 @@ export function PlanWeek({
   // Autopilot (0152) rides the same package: its card, its tick, and the memo
   // checkbox below defaulting to it.
   const pilot = useAutopilot(churchId, !!backend.autoWeek, () => { void auto.reload(); onChanged() })
+  // Auto-publish (0176): the night-before safety net, beside Autopilot.
+  const publish = useAutoPublish(churchId, !!backend.autoWeek)
 
   return (
     <section aria-label="Plan your week" style={{ display: 'grid', gap: 12, minWidth: 0 }}>
@@ -90,6 +93,7 @@ export function PlanWeek({
       </div>
 
       {backend.autoWeek && <AutopilotCard churchId={churchId} ap={pilot.ap} setAp={pilot.setAp} />}
+      {backend.autoWeek && <AutoPublishToggle churchId={churchId} state={publish.state} setState={publish.setState} />}
       {backend.autoWeek && <AutoWeekCard churchId={churchId} jobs={auto.jobs} reload={auto.reload} onLanded={onChanged} />}
 
       {/* Wide web (≥900px, ChurchAdminScreen's `admin-wide`): steps 1–2 on the

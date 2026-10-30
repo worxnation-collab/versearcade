@@ -731,3 +731,34 @@ only, nothing re-claimed, a forged header refused).
 off, waiting, no source, a fallback drafted only on empty days inside its
 window, no second claim, a failed fallback refunded and retried past the memo
 cap, the paused refusal, and the gate.
+
+## Auto-publish (0176)
+
+One switch on Plan, under Autopilot: **"If I haven't approved it by 8pm,
+publish tomorrow's draft."** Default off, per church, Content Generation only
+(`church_gen_can`). It exists because a member who opens an empty church tab is
+the fastest way to lose a congregation, and Autopilot already writes the week —
+the gap was a pastor who never got round to approving it.
+
+It is the one exception to "a generated day is a draft until a leader approves
+it" (the owner's call, 2026-10-30), and it is narrow by construction:
+
+- **It only approves a DRAFT.** It never writes a verse, never replaces an
+  approved day and never fills an empty one — the words are still the ones
+  `church-draft` wrote for this church from its own sermon, topic or passage.
+- **A ⚠ flagged day is never published**, the rule Approve all follows (0143).
+- **It approves as the leader who switched it on** (`set_by`), and stands down
+  by itself if the church stops being verified, the add-on lapses or that
+  leader is no longer leadership. Switching it on again records the new leader.
+- **When:** tomorrow's draft from 20:00 church time (`church_digest_tz`,
+  Autopilot's clock), plus a draft for TODAY still waiting — which is already
+  past its night-before cutoff (a switch turned on mid-day publishes it within
+  the hour).
+- **The leader always hears.** Every day it publishes is logged in
+  `church_auto_publishes`; Home shows "Auto-publish put … live" for three days,
+  and tomorrow's draft row reads "Tomorrow's draft goes live at 8pm" rather
+  than warning that members will find nothing.
+
+pg_cron `church-auto-publish-hourly` (`2 * * * *`) runs
+`church_auto_publish_run()` (service role) straight in SQL — no Edge Function,
+no impersonation. The Tuesday digest does not carry the rows yet.

@@ -1878,3 +1878,34 @@ export async function sendDigestTest(churchId: string): Promise<Res<{ to: string
   if (reply.ok !== true) return { ok: false, reason: String(reply.reason ?? 'unavailable') }
   return { ok: true, data: { to: reply.to ? String(reply.to) : null } }
 }
+
+// ---------------------------------------------------------------------------
+// Auto-publish (0176). One opt-in switch per church: a draft still waiting at
+// 8pm the night before (church time, Autopilot's clock) goes live by itself,
+// approved as the leader who turned it on. Only drafts, never a flagged one,
+// never an approved day; every day it publishes comes back in `recent` so
+// Home can say so. docs/CHURCH-SHARED-VERSE.md → "Auto-publish".
+// ---------------------------------------------------------------------------
+export interface AutoPublished { date: string; reference: string; publishedAt: string }
+export interface AutoPublish { enabled: boolean; hour: number; recent: AutoPublished[] }
+
+function toAutoPublish(d: any): AutoPublish {
+  return {
+    enabled: d?.enabled === true,
+    hour: Number.isInteger(d?.hour) ? d.hour : 20,
+    recent: Array.isArray(d?.recent)
+      ? d.recent.filter((x: any) => typeof x?.date === 'string' && typeof x?.reference === 'string')
+          .map((x: any) => ({ date: x.date, reference: x.reference, publishedAt: String(x.published_at ?? '') }))
+      : [],
+  }
+}
+
+export async function fetchAutoPublish(churchId: string): Promise<Res<AutoPublish>> {
+  const r = await call<any>('church_auto_publish', { p_church_id: churchId })
+  return r.ok ? { ok: true, data: toAutoPublish(r.data) } : r
+}
+
+export async function setAutoPublish(churchId: string, on: boolean): Promise<Res<AutoPublish>> {
+  const r = await call<any>('set_church_auto_publish', { p_church_id: churchId, p_on: on })
+  return r.ok ? { ok: true, data: toAutoPublish(r.data) } : r
+}

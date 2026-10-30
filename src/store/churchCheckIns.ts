@@ -46,6 +46,8 @@ export const CHECK_IN_DAILY_CAP = 25
 export const CHECK_IN_VERSE_DRAFT = 'Thought of you with this one.'
 /** The draft on a day the church has no verse to attach — 0137's, unchanged. */
 export const CHECK_IN_DRAFT = 'Missed you this week'
+/** The draft to a member who HAS played this week — a note, not a check-in. */
+export const NOTE_DRAFT = 'Thinking of you this week.'
 
 export type CheckInReason =
   | 'offline' | 'empty' | 'no_verse' | 'not_member' | 'self' | 'daily_cap' | 'already_today'

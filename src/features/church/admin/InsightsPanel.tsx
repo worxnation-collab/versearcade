@@ -4,7 +4,7 @@ import { Collapsible } from '@/components/Collapsible'
 import { QuickSheet } from '@/components/QuickSheet'
 import { Button } from '@/components/Button'
 import { useJuice } from '@/juice/useJuice'
-import { CHECK_IN_DRAFT, CHECK_IN_FAIL, CHECK_IN_MAX, CHECK_IN_VERSE_DRAFT, useChurchCheckIns } from '@/store/churchCheckIns'
+import { NOTE_DRAFT, CHECK_IN_DRAFT as QUIET_DRAFT, CHECK_IN_FAIL, CHECK_IN_MAX, CHECK_IN_VERSE_DRAFT, useChurchCheckIns } from '@/store/churchCheckIns'
 import { fetchDayVerse, fetchLeaderInsights, fetchLeaderSummary, fetchQuietSeries, type QuietSeries, type InsightMember, type LeaderInsights, type LeaderSummary } from '@/store/churchAdmin'
 import { todayLocalDate } from '@/lib/date'
 import { fetchChurchFeed, type FeedEvent } from '@/store/churchVerse'
@@ -249,7 +249,8 @@ export function OverviewPanel({ insights, failed, summary }: { insights: LeaderI
 // keeps the page from opening on them. The header keeps its count so a folded
 // section still says how many people are inside.
 //
-// "Check in" lives on rows INSIDE the fold and nowhere else. It opens a draft
+// "Check in" lives on rows inside the fold, and since 2026-10-30 an active
+// row carries "Note" — the same sheet. It opens a draft
 // the leader edits and sends by hand (0137); nothing is sent on its own, and
 // the server is told only who and what — never which list the name came from.
 // Since 0138 the draft leads with the church's own verse for today.
@@ -303,26 +304,37 @@ export function PeoplePanel({ churchId, insights, failed, demo = false, leaders,
   if (!insights) return LOADING
   // The roster arrives in join order (0137) and keeps it in both groups.
   const active = insights.roster.filter((m) => activeThisWeek(m, insights.today))
+  // A note to any member (2026-10-30): "Note" on an active row, "Check in"
+  // inside the fold. The same sheet either way, and the server is told only
+  // who and what, never which list the name came from.
+  const noteAction = (m: InsightMember, label: string) =>
+    m.leader ? undefined : sent.has(m.username) ? (
+      <span className="faint" style={{ fontSize: 12, fontWeight: 700 }}>Sent ✓</span>
+    ) : (
+      <button className="pill" onClick={() => (demo ? setDemoNote(m.username) : setCheckIn(m))} style={{ fontSize: 12, fontWeight: 800, padding: '6px 11px' }}>
+        {label}
+      </button>
+    )
   const resting = insights.roster.filter((m) => !activeThisWeek(m, insights.today))
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10, minWidth: 0 }}>
       <PrivacyNote />
+      {demoNote && (
+        <p className="dim" style={{ margin: 0, fontSize: 12.5, lineHeight: 1.45 }}>
+          In your church, a note button opens a short note to {demoNote} that you edit and send
+          yourself — with today&rsquo;s church verse attached when you&rsquo;ve set one. Nothing is sent from
+          this demo.
+        </p>
+      )}
       {active.length === 0 && (
         <p className="dim" style={{ fontSize: 13.5, margin: '4px 0' }}>Nobody has played this week yet.</p>
       )}
-      {active.map((m) => <MemberRow key={m.username} m={m} today={insights.today} demo={demo} />)}
+      {active.map((m) => <MemberRow key={m.username} m={m} today={insights.today} demo={demo} action={noteAction(m, 'Note')} />)}
       {resting.length > 0 && (
         <div id="church-quiet" ref={quietRef} style={{ scrollMarginTop: 12 }}>
         <Collapsible icon="🕊️" title="Not active this week" meta={resting.length.toLocaleString()} defaultOpen={openQuiet}>
           <div style={{ display: 'grid', gap: 8 }}>
-            {demoNote && (
-              <p className="dim" style={{ margin: 0, fontSize: 12.5, lineHeight: 1.45 }}>
-                In your church, &ldquo;Check in&rdquo; opens a short note to {demoNote} that you edit and send
-                yourself — with today&rsquo;s church verse attached when you&rsquo;ve set one. Nothing is sent from
-                this demo.
-              </p>
-            )}
             {resting.map((m) => (
               <MemberRow
                 key={m.username}
@@ -330,15 +342,7 @@ export function PeoplePanel({ churchId, insights, failed, demo = false, leaders,
                 today={insights.today}
                 demo={demo}
                 note={!m.leader && untouched(m.username) ? `Hasn’t touched ${untouched(m.username)}` : undefined}
-                action={
-                  m.leader ? undefined : sent.has(m.username) ? (
-                    <span className="faint" style={{ fontSize: 12, fontWeight: 700 }}>Sent ✓</span>
-                  ) : (
-                    <button className="pill" onClick={() => (demo ? setDemoNote(m.username) : setCheckIn(m))} style={{ fontSize: 12, fontWeight: 800, padding: '6px 11px' }}>
-                      Check in
-                    </button>
-                  )
-                }
+                action={noteAction(m, 'Check in')}
               />
             ))}
           </div>
@@ -405,7 +409,7 @@ function MemberRow({ m, today, action, note, demo = false }: { m: InsightMember;
 // verse itself (0138), so what the leader sees here is only a preview. On a day
 // with no verse to attach the sheet is 0137's: a prefilled line, required.
 // Sent only by the button — closing the sheet discards it.
-function CheckInSheet({ churchId, member, series, onClose, onSent }: {
+export function CheckInSheet({ churchId, member, series, onClose, onSent }: {
   churchId: string
   member: InsightMember
   /** The series they haven't touched, if any — offered as a line to add. */
@@ -414,6 +418,9 @@ function CheckInSheet({ churchId, member, series, onClose, onSent }: {
   onSent: (username: string) => void
 }) {
   const juice = useJuice()
+  // A member who played this week gets a note, not "missed you".
+  const quiet = !activeThisWeek(member, todayLocalDate())
+  const plain = quiet ? QUIET_DRAFT : NOTE_DRAFT
   const send = useChurchCheckIns((s) => s.send)
   const [verse, setVerse] = useState<{ reference: string; text: string } | null | undefined>(undefined)
   const [text, setText] = useState('')
@@ -429,7 +436,7 @@ function CheckInSheet({ churchId, member, series, onClose, onSent }: {
       // A draft isn't the church's verse yet, and the server refuses to attach one.
       const v = r.ok && r.data && r.data.status !== 'draft' ? { reference: r.data.reference, text: r.data.text } : null
       setVerse(v)
-      setText(v ? CHECK_IN_VERSE_DRAFT : CHECK_IN_DRAFT)
+      setText(v ? CHECK_IN_VERSE_DRAFT : plain)
     })
     return () => { live = false }
   }, [churchId, today])
@@ -449,7 +456,7 @@ function CheckInSheet({ churchId, member, series, onClose, onSent }: {
   }
 
   return (
-    <QuickSheet title={`Check in with ${member.username}`} onClose={onClose}>
+    <QuickSheet title={quiet ? `Check in with ${member.username}` : `A note to ${member.username}`} onClose={onClose}>
       {verse === undefined ? (
         <div className="skeleton" style={{ height: 180, borderRadius: 14 }} />
       ) : (
@@ -462,8 +469,8 @@ function CheckInSheet({ churchId, member, series, onClose, onSent }: {
                 onChange={(e) => {
                   setAttach(e.target.checked)
                   // Without the verse the note needs words of its own.
-                  if (!e.target.checked && text.trim() === CHECK_IN_VERSE_DRAFT) setText(CHECK_IN_DRAFT)
-                  if (e.target.checked && text.trim() === CHECK_IN_DRAFT) setText(CHECK_IN_VERSE_DRAFT)
+                  if (!e.target.checked && text.trim() === CHECK_IN_VERSE_DRAFT) setText(plain)
+                  if (e.target.checked && text.trim() === plain) setText(CHECK_IN_VERSE_DRAFT)
                 }}
                 style={{ width: 18, height: 18, flexShrink: 0, margin: 0 }}
               />

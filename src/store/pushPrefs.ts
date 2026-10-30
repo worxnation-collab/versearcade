@@ -13,7 +13,7 @@ import { localTimeZone } from '@/lib/date'
 // push_subscriptions / device_tokens row that only an account has. A guest has
 // nothing here to switch off.
 
-export type PushKind = 'battle' | 'buddy' | 'gesture' | 'answered' | 'check_in'
+export type PushKind = 'battle' | 'buddy' | 'gesture' | 'answered' | 'check_in' | 'week'
 
 export const PUSH_KINDS: { kind: PushKind; label: string; line: string }[] = [
   { kind: 'battle', label: 'Battles', line: 'When a friend plays the battle you sent.' },
@@ -21,9 +21,10 @@ export const PUSH_KINDS: { kind: PushKind; label: string; line: string }[] = [
   { kind: 'gesture', label: 'Kindnesses', line: 'A washing or a prayer for you — at most once a day.' },
   { kind: 'answered', label: 'Answered prayers', line: 'When a note you knelt at is marked answered.' },
   { kind: 'check_in', label: 'Church check-ins', line: 'A note from your church’s leaders.' },
+  { kind: 'week', label: 'Your week', line: 'On Sunday, one thing you did this week, at the hour you usually play.' },
 ]
 
-const ALL_ON: Record<PushKind, boolean> = { battle: true, buddy: true, gesture: true, answered: true, check_in: true }
+const ALL_ON: Record<PushKind, boolean> = { battle: true, buddy: true, gesture: true, answered: true, check_in: true, week: true }
 
 function isOnline() {
   const a = useAuth.getState()
@@ -140,4 +141,17 @@ export async function sendTestPush(kind: PushKind): Promise<TestPushOutcome> {
   } catch {
     return { state: 'failed' }
   }
+}
+
+/** The hour this person usually plays (median of the device's recent plays),
+ *  or the hour it is now when there is no history yet — they are playing now.
+ *  Sent once a day so Sunday's line lands when they usually turn up (0166);
+ *  the hours themselves never leave the device, only this one number. */
+export async function notePlayRhythm(hour: number): Promise<void> {
+  if (!isOnline()) return
+  const day = new Date().toDateString()
+  const key = 'va.playRhythmSent'
+  try { if (localStorage.getItem(key) === `${day}|${hour}`) return } catch { /* storage blocked: just send */ }
+  const { error } = await supabase!.rpc('note_play_rhythm', { p_hour: hour, p_tz: localTimeZone() })
+  if (!error) { try { localStorage.setItem(key, `${day}|${hour}`) } catch { /* ignore */ } }
 }

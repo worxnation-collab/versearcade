@@ -39,6 +39,20 @@ function notePlayHour() {
 }
 
 /** 'HH:MM' one hour before the player's median play hour, or null with too few plays. */
+/** The median hour of the device's recent plays (0-23), or null with fewer
+ *  than three. The raw habit, where `usualPlayTime` is the nudge an hour before. */
+export function usualPlayHour(): number | null {
+  try {
+    const raw = JSON.parse(localStorage.getItem(HOURS_KEY) || '[]') as unknown
+    const hours = (Array.isArray(raw) ? raw : []).filter((h): h is number => typeof h === 'number')
+    if (hours.length < 3) return null
+    const sorted = [...hours].sort((a, b) => a - b)
+    return sorted[Math.floor(sorted.length / 2)]
+  } catch {
+    return null
+  }
+}
+
 export function usualPlayTime(): string | null {
   try {
     const raw = JSON.parse(localStorage.getItem(HOURS_KEY) || '[]') as unknown

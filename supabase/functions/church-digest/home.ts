@@ -4,8 +4,8 @@
 // below, and the `church-digest` Edge Function imports it to write the email,
 // so the email can never say something Home doesn't. The digest is a SUBSET
 // of Home on purpose (docs/CHURCH-DIGEST.md): the sermon week / Autopilot
-// line, drafts waiting, flagged questions, inquiries waiting and the quiet
-// count. Home's other rows (open days, the notice) stay Home-only.
+// line, the open days ahead (0175), drafts waiting, flagged questions,
+// inquiries waiting and the quiet count. The notice row stays Home-only.
 //
 // It lives in the church-digest folder rather than _shared so a change to it
 // redeploys this function only (the deploy workflow redeploys EVERY function
@@ -113,6 +113,43 @@ export function draftRows(drafts: Array<{ date: string; flagged: number }>): Hom
     })
   }
   return rows
+}
+
+/** `iso` moved by `n` calendar days, still 'YYYY-MM-DD'. */
+const plusDays = (iso: string, n: number) => {
+  const [y, m, d] = iso.split('-').map(Number)
+  const t = new Date(Date.UTC(y, m - 1, d + n))
+  return t.toISOString().slice(0, 10)
+}
+
+/**
+ * The next six days with no LIVE church verse (0175). `scheduled` is the days
+ * that have one (approved or published); `drafts` the days waiting on approval,
+ * which members still cannot see. Tomorrow leads, because a member who opens
+ * an empty church tab tomorrow morning is the case this row exists for.
+ */
+export function openDaysRow(today: string, scheduled: string[], drafts: string[]): HomeRow | null {
+  const live = new Set(scheduled)
+  const open = [1, 2, 3, 4, 5, 6].map((n) => plusDays(today, n)).filter((d) => !live.has(d))
+  if (!open.length) return null
+  const tomorrow = plusDays(today, 1)
+  const more = open.filter((d) => d !== tomorrow).length
+  const also = more ? ` ${more} more ${more === 1 ? 'day' : 'days'} this week ${more === 1 ? 'is' : 'are'} open too.` : ''
+  if (open[0] === tomorrow) {
+    const draft = drafts.includes(tomorrow)
+    return {
+      key: 'open', icon: '📅',
+      title: draft ? 'Tomorrow’s church verse is still a draft' : 'Nothing scheduled for tomorrow',
+      detail: `${draft ? 'Approve it, or members' : 'Members'} who open the church tab tomorrow will find no church verse.${also} ${draft ? 'Review it' : 'Plan it'} →`,
+      go: { tab: 'plan', date: tomorrow },
+    }
+  }
+  return {
+    key: 'open', icon: '📅',
+    title: `${open.length} ${open.length === 1 ? 'day' : 'days'} this week ${open.length === 1 ? 'has' : 'have'} no church verse`,
+    detail: `Tomorrow is covered. First open day: ${longDay(open[0])} →`,
+    go: { tab: 'plan', date: open[0] },
+  }
 }
 
 /**

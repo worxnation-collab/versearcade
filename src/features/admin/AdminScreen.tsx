@@ -1,5 +1,5 @@
 import { createClaimCode } from '@/store/churchClaim'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
@@ -110,7 +110,7 @@ function PinGate({ onOk }: { onOk: () => void }) {
 function Dashboard() {
   const navigate = useNavigate()
   const [ov, setOv] = useState<Overview | null>(null)
-  const [tab, setTab] = useState<'stats' | 'growth' | 'users' | 'sales' | 'church' | 'codes' | 'push' | 'tiktok' | 'prayers' | 'checkins'>('stats')
+  const [tab, setTab] = useState<'stats' | 'growth' | 'users' | 'sales' | 'church' | 'codes' | 'push' | 'email' | 'tiktok' | 'prayers' | 'checkins'>('stats')
 
   useEffect(() => {
     supabase?.rpc('admin_overview', { p_tz: localTimeZone() }).then(({ data }) => setOv(data as Overview))
@@ -125,7 +125,7 @@ function Dashboard() {
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-        {(['stats', 'growth', 'users', 'sales', 'church', 'codes', 'push', 'tiktok', 'prayers', 'checkins'] as const).map((t) => (
+        {(['stats', 'growth', 'users', 'sales', 'church', 'codes', 'push', 'email', 'tiktok', 'prayers', 'checkins'] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)} className="pill"
             style={{ background: tab === t ? 'var(--select)' : 'var(--card)', fontWeight: 800, textTransform: 'capitalize' }}>
             {t === 'church' ? 'Churches' : t === 'tiktok' ? 'TikTok' : t === 'checkins' ? 'Check-ins' : t}
@@ -140,6 +140,7 @@ function Dashboard() {
       {tab === 'church' && <Churches />}
       {tab === 'codes' && <Codes />}
       {tab === 'push' && <PushBroadcast />}
+      {tab === 'email' && <EmailStatus />}
       {tab === 'tiktok' && <TikTokPanel />}
       {tab === 'prayers' && <PrayerReports />}
       {tab === 'checkins' && <CheckInReports />}
@@ -1395,6 +1396,69 @@ function QuietQueue() {
         <p style={{ color: 'var(--coral)', fontSize: 12, marginTop: 8, lineHeight: 1.4 }}>
           {q!.overdue > 0 ? 'Notes are past due and still waiting. ' : ''}
           {stale ? 'No flush receipt in the last 20 minutes — check push-send is deployed and PUSH_CRON_TOKEN matches.' : ''}
+        </p>
+      )}
+    </div>
+  )
+}
+
+interface EmailRuns {
+  runs_24h: number; sent_24h: number; failed_24h: number; last_sent: string | null
+  emailed_ever: number; switched_off: number; in_range: number
+  last_run: { at: string; due: number; sent: number; failed: number; reason: string | null } | null
+}
+
+// The come-back email (0169), read through 0170: push-send stamps a receipt
+// after every hourly pass, so "last run" is the function's word, not cron's.
+function EmailStatus() {
+  const [e, setE] = useState<EmailRuns | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  const load = async () => {
+    setErr(null)
+    const { data, error } = await supabase!.rpc('admin_email_status')
+    if (error) { setErr(error.message); return }
+    setE(data as EmailRuns)
+  }
+  useEffect(() => { void load() }, [])
+
+  // The pass rides the hourly push-week job; past ~70 min with no receipt it has stalled.
+  const stale = !!e && (!e.last_run || Date.now() - new Date(e.last_run.at).getTime() > 70 * 60000)
+  const noKey = e?.last_run?.reason === 'no_key'
+  const trouble = !!e && (stale || noKey || e.failed_24h > 0)
+  const cell = (label: string, v: ReactNode) => (
+    <div><div className="faint" style={{ fontSize: 11 }}>{label}</div>{v}</div>
+  )
+
+  return (
+    <div className="card" style={{ marginBottom: 14, borderColor: trouble ? 'var(--coral)' : undefined }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+        <strong style={{ fontSize: 14 }}>✉️ Come-back emails</strong>
+        <button className="pill" style={{ fontSize: 12 }} onClick={() => void load()}>↻</button>
+      </div>
+      {err && <p style={{ color: 'var(--coral)', fontSize: 13, marginTop: 6 }}>{err}</p>}
+      {e && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, marginTop: 8, fontSize: 13 }}>
+          {cell('Sent, last 24h', <><strong>{e.sent_24h}</strong><span className="faint"> · last {ago(e.last_sent)}</span></>)}
+          {cell('Failed, last 24h', <strong style={{ color: e.failed_24h ? 'var(--coral)' : undefined }}>{e.failed_24h}</strong>)}
+          {cell('Last run', <>
+            <strong style={{ color: stale ? 'var(--coral)' : undefined }}>{ago(e.last_run?.at ?? null)}</strong>
+            {e.last_run && <span className="faint"> · {e.last_run.sent}/{e.last_run.due} sent{e.last_run.reason ? ` · ${e.last_run.reason}` : ''}</span>}
+          </>)}
+          {cell('In range now', <strong>{e.in_range}</strong>)}
+          {cell('Emailed, ever', <strong>{e.emailed_ever}</strong>)}
+          {cell('Switched off', <strong>{e.switched_off}</strong>)}
+        </div>
+      )}
+      {e && (
+        <p className="faint" style={{ fontSize: 12, marginTop: 8, lineHeight: 1.4 }}>
+          In range: 7–60 days away, no push device, an address, not switched off, not yet emailed for this absence. Each goes at their own hour (10:00 New York if unknown).
+        </p>
+      )}
+      {trouble && (
+        <p style={{ color: 'var(--coral)', fontSize: 12, marginTop: 6, lineHeight: 1.4 }}>
+          {noKey ? 'No Resend key — set RESEND_API_KEY. ' : ''}
+          {e!.failed_24h > 0 ? `Resend refused some${e!.last_run?.reason?.startsWith('resend_') ? ` (${e!.last_run.reason})` : ''} — check the Resend dashboard. ` : ''}
+          {stale ? 'No run receipt in 70 minutes — check push-send is deployed and push-week-hourly is active.' : ''}
         </p>
       )}
     </div>

@@ -7,6 +7,7 @@ import { CharacterPicker } from '@/components/CharacterPicker'
 import { DEFAULT_AVATAR } from '@/data/avatar'
 import { useAuth } from '@/store/auth'
 import { isSupabaseConfigured } from '@/lib/config'
+import { firstStop } from '@/lib/firstStop'
 import { OAuthButtons } from './oauthUi'
 import type { AvatarSpec } from '@/types'
 import { Icon, type IconId } from '@/data/icons'
@@ -27,7 +28,7 @@ export default function AuthScreen() {
   // already has a (local) profile, and redirecting on that would make this screen
   // unreachable for guests trying to upgrade to a real account.
   useEffect(() => {
-    if (authMode === 'online' && profile) navigate('/play', { replace: true })
+    if (authMode === 'online' && profile) navigate(firstStop(profile), { replace: true })
   }, [authMode, profile, navigate])
   // ?mode=signup opens on the sign-up form. Landing and every account wall link
   // here that way: the ask is "create an account", so landing on "Welcome back"
@@ -81,7 +82,7 @@ export default function AuthScreen() {
       } else {
         await signIn(email.trim(), password)
       }
-      navigate('/play', { replace: true })
+      navigate(firstStop(useAuth.getState().profile), { replace: true })
     } catch (e: any) {
       setLocalErr(e.message ?? 'Something went wrong')
     } finally {

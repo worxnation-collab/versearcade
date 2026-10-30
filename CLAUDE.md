@@ -1715,8 +1715,11 @@ church tab under the yard): the live notice, today's church verse with its
 series drawn as a run of days (`SeriesTrail`, shared with the Play-tab box and
 the `/play/church` result — a past day you skipped is drawn like a day to come,
 never as missed), the series card on a day with no church verse, "This week in
-{church}" as church totals floored at five, the feed, and one tap to the church
-board or to global battles and ranks. **What still holds:** members are never ranked against
+{church}" as church totals floored at five (not drawn at all when floored),
+and the feed. A first-week audit (2026-10-30) cut what repeated the yard or led
+nowhere — the "You're in" card, a Compete card, the head-count tile — and the
+empty local board opens the worldwide one (`docs/CHURCH-SHARED-VERSE.md` →
+"What a member sees"). **What still holds:** members are never ranked against
 each other — church competition stays church vs church (the board and the
 week), and there is deliberately no member leaderboard. `docs/CHURCH-CLAIM.md`.
 

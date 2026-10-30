@@ -152,8 +152,20 @@ export function ChurchBoard() {
           <p className="dim" style={{ margin: '8px 0 0', fontSize: 14, lineHeight: 1.5 }}>
             {worldwide
               ? "Yours is the first church on the board — every church that joins from here on is chasing you."
-              : `Yours is the only church playing within ${radiusMiles} miles — so you're #1 by default. Invite a friend from a church down the road and give them something to chase.`}
+              : `No other church is playing within ${radiusMiles} miles yet.`}
           </p>
+          {/* Nearly every congregation starts here (most churches have nobody
+              playing near them), and the tab opens on this panel — so the
+              empty local board is a door to the wider one, not a dead end. */}
+          {!worldwide && (
+            <button
+              className="pill"
+              onClick={() => { juice.select(); setRadius('all') }}
+              style={{ marginTop: 10, fontWeight: 800, borderColor: 'var(--edge)' }}
+            >
+              See every church playing →
+            </button>
+          )}
         </div>
       )}
 

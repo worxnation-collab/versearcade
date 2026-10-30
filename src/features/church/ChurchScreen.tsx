@@ -381,6 +381,7 @@ function ChurchHome({ church }: { church: Church }) {
         <h2 style={{ fontSize: 22, marginTop: 8, overflowWrap: 'anywhere', fontFamily: 'var(--font-body)', fontWeight: 800 }}>{church.name}</h2>
         <p className="faint" style={{ margin: '2px 0 0', fontSize: 12.5 }}>
           {where || 'Your congregation'} · {church.members} {church.members === 1 ? 'player' : 'players'}
+          {extras?.verified ? ' · verified church' : ''}
         </p>
 
         <div
@@ -468,8 +469,7 @@ function ChurchHome({ church }: { church: Church }) {
       <div className="card">
         <b style={{ fontFamily: 'var(--font-display)', fontSize: 17 }}>Add points</b>
         <p className="dim" style={{ margin: '6px 0 0', fontSize: 13.5, lineHeight: 1.5 }}>
-          Giving doesn't cost you anything — your own XP and rank stay exactly where they are. You
-          can give up to what you've earned all-time, and playing earns you more.
+          Giving costs you nothing — your own XP and rank stay where they are.
         </p>
 
         <div className="center" style={{ margin: '14px 0 12px' }}>

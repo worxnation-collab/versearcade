@@ -440,7 +440,7 @@ note), moved ↑/↓, discarded ✕, or the set approved through `approve_church
 A member of a VERIFIED church gets the church tab's `ChurchLife` block,
 directly under the churchyard:
 
-1. **"You're in {church}"** and the leaders' live notice (one at a time, by
+1. The leaders' live notice (one at a time, by
    design — `set_church_announcement` keeps one; older notices show up in the
    feed as "posted").
 2. **Today's church verse** → `/play/church`, with the series as a trail of
@@ -450,14 +450,22 @@ directly under the churchyard:
    neutral, never "missed".
 3. **The series on a gap day**: when today has no church verse but a series is
    running (or starts within a week, or ended in the last three days), the
-   trail still shows with a line pointing at the daily verse.
-4. **"This week in {church}"** (`church_week_summary`): members, church-verse
-   days so far, members who played the church verse, members who played the
-   daily verse. The week is the board's (UTC, the rivalry's). A player count
-   under five is null and not drawn.
-5. The congregation feed (0128) and **Compete**: "See the church board ↓"
-   scrolls to the board on the same tab; "Global battles" and "Worldwide ranks"
-   leave for the global game.
+   trail still shows with a line that opens the Play tab.
+4. **"This week in {church}"** (`church_week_summary`): church-verse days so
+   far, members who played the church verse, members who played the daily
+   verse. The week is the board's (UTC, the rivalry's). A player count under
+   five is null and not drawn, and a card with no player count left is not
+   drawn at all — which is every congregation under five.
+5. The congregation feed (0128).
+
+**Cut in the first-week audit (2026-10-30)**, each because it repeated
+something on screen or led nowhere: a "You're in {church} · N members ·
+verified church" card (the yard above names the church and its head count;
+"verified church" moved onto the yard's own line), the head-count tile on
+"This week" (the third time that number appeared), a "Compete" card (a link to
+the board one scroll down, the Battle tab, and worldwide ranks), and the empty
+local board's "you're #1 by default" — it now offers "See every church
+playing" in one tap, because most congregations have nobody near them.
 
 The Play tab's church box and the `/play/church` result use the same trail
 (compact on the box). `my_church_series` picks the series: today's verse's,

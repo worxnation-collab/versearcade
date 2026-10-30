@@ -151,7 +151,7 @@ const FFMPEG = env.FFMPEG || 'ffmpeg'
 // `kind@platform` overrides `kind`. Anything unset falls back to the kind's
 // own time, so a new kind needs no rows here.
 const TIMES = timesFrom(env)
-const timeFor = (kind, platform) => sharedTimeFor(TIMES, kind, platform)
+const timeFor = (kind, platform, date) => sharedTimeFor(TIMES, kind, platform, date)
 const TTS_MODEL = env.GEMINI_TTS_MODEL || 'gemini-2.5-flash-preview-tts'
 // A directory holding `models/onnx-community/whisper-tiny.en_timestamped/…` and
 // `ort/ort-wasm-simd-threaded*.{mjs,wasm}`: served to the page so the aligner
@@ -414,7 +414,7 @@ async function postEach(platforms, body) {
     try {
       // Each network gets its OWN time. A slot already past posts now rather
       // than being skipped — the same rule the single time had.
-      const at = zonedToUtc(body.date, timeFor(body.kind, platform), TZ)
+      const at = zonedToUtc(body.date, timeFor(body.kind, platform, body.date), TZ)
       const scheduleDate = at.getTime() > Date.now() + 90_000 ? at.toISOString().replace(/\.\d{3}Z$/, 'Z') : undefined
       const r = await fn('post', { ...body, scheduleDate, platforms: [platform] })
       results.push(...(Array.isArray(r.results) ? r.results : [{ platform, status: 'error', error: `no result: ${JSON.stringify(r).slice(0, 160)}` }]))
@@ -453,7 +453,7 @@ for (const kind of KINDS) {
   const slot = slotOf(kind)
   const at = zonedToUtc(today, TIMES[slot] || '12:00', TZ)
   const scheduleDate = at.getTime() > Date.now() + 90_000 ? at.toISOString().replace(/\.\d{3}Z$/, 'Z') : undefined
-  log(`${kind} ${date} → ${PLATFORMS.filter((p) => social.postsOn(p, kind)).map((p) => `${p} ${timeFor(kind, p)}`).join(', ')} ${TZ}`)
+  log(`${kind} ${date} → ${PLATFORMS.filter((p) => social.postsOn(p, kind)).map((p) => `${p} ${timeFor(kind, p, date)}`).join(', ')} ${TZ}`)
 
   // Make what is missing. A second run on the same day (a retry after the
   // posting service refused, a manual dispatch after the cron) must not
@@ -549,7 +549,7 @@ for (const kind of KINDS) {
     // Direct mode has no bucket to park a cover in, so Pinterest sits this path out.
     for (const platform of PLATFORMS.filter((p) => p !== 'pinterest' && social.postsOn(p, kind))) {
       // Direct mode takes the same per-platform time as the function path.
-      const pAt = zonedToUtc(date, timeFor(kind, platform), TZ)
+      const pAt = zonedToUtc(date, timeFor(kind, platform, date), TZ)
       const pWhen = pAt.getTime() > Date.now() + 90_000 ? pAt.toISOString().replace(/\.\d{3}Z$/, 'Z') : undefined
       const r = await ayrshare('post', social.postBody(platform, copy, { date, kind, reference: rendered.reference, videoUrl, scheduleDate: pWhen, voiced: rendered.voiced, opened: rendered.opened }))
       rows.push(social.postResult(platform, r, pWhen))

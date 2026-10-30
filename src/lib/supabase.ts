@@ -19,3 +19,16 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured
   : null
 
 export const isOnline = () => supabase !== null
+
+/**
+ * The signed-in user's id from the LOCAL session — no network. Reads use this
+ * rather than `auth.getUser()`, which is a server round trip that every store
+ * load used to sit behind (a full extra wave on a slow phone). It is not a
+ * security check and nothing here treats it as one: RLS and `auth.uid()` in
+ * every RPC still decide what the token may see. A stale id just reads nothing.
+ */
+export async function sessionUserId(): Promise<string | null> {
+  if (!supabase) return null
+  const { data } = await supabase.auth.getSession()
+  return data.session?.user.id ?? null
+}

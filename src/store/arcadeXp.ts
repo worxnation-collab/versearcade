@@ -1,3 +1,4 @@
+import { shared } from '@/lib/inflight'
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import { todayLocalDate } from '@/lib/date'
@@ -94,7 +95,7 @@ export const useArcadeXp = create<ArcadeXpState>((set, get) => ({
   loaded: false,
   paidToday: [],
 
-  async load() {
+  load: shared(async () => {
     if (isOnline()) {
       const { data, error } = await supabase!.rpc('my_arcade_card', {
         p_local_date: todayLocalDate(),
@@ -114,7 +115,7 @@ export const useArcadeXp = create<ArcadeXpState>((set, get) => ({
     // player's own midnight without anything having to fire at midnight (same
     // as store/library.ts).
     set({ loaded: true, paidToday: readLocal().games })
-  },
+  }),
 
   async record(gameId) {
     if (isOnline()) {

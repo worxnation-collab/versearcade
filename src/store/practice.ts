@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { supabase } from '@/lib/supabase'
+import { sessionUserId, supabase } from '@/lib/supabase'
 import { localdb } from '@/lib/localdb'
 import { getVerseForDate } from '@/data/bible/questions'
 import { todayLocalDate } from '@/lib/date'
@@ -40,8 +40,7 @@ export const usePractice = create<PracticeState>((set, get) => ({
     const today = todayLocalDate()
 
     if (isOnline() && supabase) {
-      const { data: u } = await supabase.auth.getUser()
-      const uid = u.user?.id
+      const uid = await sessionUserId()
       if (!uid) {
         set({ list: [], loadedList: true })
         return

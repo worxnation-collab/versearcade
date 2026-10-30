@@ -1,3 +1,4 @@
+import { shared } from '@/lib/inflight'
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import { todayLocalDate } from '@/lib/date'
@@ -94,7 +95,7 @@ export const useLibrary = create<LibraryState>((set, get) => ({
   loaded: false,
   borrowedToday: false,
 
-  async load() {
+  load: shared(async () => {
     if (isOnline()) {
       const { data, error } = await supabase!.rpc('my_library_card', {
         p_local_date: todayLocalDate(),
@@ -114,7 +115,7 @@ export const useLibrary = create<LibraryState>((set, get) => ({
     // than on write is what makes this reset at the player's own midnight
     // without anything having to fire at midnight (same as store/prayer.ts).
     set({ loaded: true, borrowedToday: readLocal() === todayLocalDate() })
-  },
+  }),
 
   async borrowIfNeeded() {
     if (!get().loaded) await get().load()

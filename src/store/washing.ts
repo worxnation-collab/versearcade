@@ -1,3 +1,4 @@
+import { shared } from '@/lib/inflight'
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import { pushGesture } from '@/lib/gesturePush'
@@ -71,7 +72,7 @@ export const useWashing = create<WashingState>((set, get) => ({
   received: 0,
   recent: [],
 
-  async load() {
+  load: shared(async () => {
     if (!isOnline() || !supabase) { set({ loaded: true }); return }
     const { data, error } = await supabase.rpc('my_washings', {
       p_local_date: todayLocalDate(),
@@ -87,7 +88,7 @@ export const useWashing = create<WashingState>((set, get) => ({
       received: Number(r.received ?? 0),
       recent: (r.recent as BuddyCard[]) ?? [],
     })
-  },
+  }),
 
   async wash(username) {
     const handle = lower(username)

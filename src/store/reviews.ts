@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { supabase } from '@/lib/supabase'
+import { sessionUserId, supabase } from '@/lib/supabase'
 import { useAuth } from './auth'
 import { localdb } from '@/lib/localdb'
 import { getVerseForDate } from '@/data/bible/questions'
@@ -57,9 +57,9 @@ async function playedReferences(): Promise<string[]> {
   if (!isOnline()) {
     dates = Object.keys(localdb.getPlays())
   } else {
-    const { data: u } = await supabase!.auth.getUser()
-    if (!u.user) return []
-    const { data } = await supabase!.from('plays').select('drop_date').eq('user_id', u.user.id)
+    const uid = await sessionUserId()
+    if (!uid) return []
+    const { data } = await supabase!.from('plays').select('drop_date').eq('user_id', uid)
     dates = (data ?? []).map((r: any) => r.drop_date)
   }
   const refs = new Set<string>()
@@ -85,8 +85,11 @@ export const useReviews = create<ReviewsState>((set, get) => ({
   async loadDue() {
     const online = isOnline()
     const uid = useAuth.getState().profile?.id
-    const schedule = online && uid ? await readRemoteSchedule(uid) : readLocalSchedule()
-    const refs = await playedReferences()
+    // Both reads at once — the played list doesn't need the schedule.
+    const [schedule, refs] = await Promise.all([
+      online && uid ? readRemoteSchedule(uid) : Promise.resolve(readLocalSchedule()),
+      playedReferences(),
+    ])
     const due = refs.filter((r) => seedByReference(r) && isDue(schedule[r]))
     const queue = due
       .slice(0, SESSION_CAP)

@@ -1,3 +1,4 @@
+import { shared } from '@/lib/inflight'
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from './auth'
@@ -130,7 +131,7 @@ export const useKeep = create<KeepState>((set, get) => ({
   placements: {},
   offered: [],
 
-  async load() {
+  load: shared(async () => {
     if (isOnline()) {
       // Two reads, one round trip: the offering list is a different table and
       // the sheet needs both before it can draw a give button honestly.
@@ -156,7 +157,7 @@ export const useKeep = create<KeepState>((set, get) => ({
     // construction rather than by storage — same reason store/church.ts is
     // online-only.
     set({ loaded: true, counters: local.counters, placements: local.placements, offered: [] })
-  },
+  }),
 
   async track(counter, battleId) {
     // Wins are per-battle facts: read the counted list off DISK, not memory —

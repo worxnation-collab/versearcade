@@ -1,3 +1,4 @@
+import { shared } from '@/lib/inflight'
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from './auth'
@@ -83,11 +84,11 @@ export const useBible = create<BibleState>((set, get) => ({
   studied: {},
   loaded: false,
 
-  async load() {
+  load: shared(async () => {
     const uid = useAuth.getState().profile?.id
     const marks = isOnline() && uid ? await readRemote(uid) : readLocal()
     set({ chapters: marks.chapters, studied: marks.studied, loaded: true })
-  },
+  }),
 
   markChapterRead(book, chapter) {
     if (!book || !Number.isInteger(chapter) || chapter < 1) return

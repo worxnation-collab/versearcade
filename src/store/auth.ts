@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { shared } from '@/lib/inflight'
 import { Capacitor } from '@capacitor/core'
 import { Browser } from '@capacitor/browser'
 import { nativeAppleAvailable, nativeAppleSignIn } from '@/lib/appleSignIn'
@@ -216,7 +217,7 @@ export const useAuth = create<AuthState>((set, get) => ({
     set({ ready: true, mode: p ? 'local' : 'online', profile: p, isAuthed: !!p })
   },
 
-  async refreshProfile() {
+  refreshProfile: shared(async () => {
     if (!supabase) return
     // Use the LOCAL session (getSession) rather than getUser(): getUser() makes a
     // network round-trip and, called from inside onAuthStateChange, triggers a
@@ -252,11 +253,11 @@ export const useAuth = create<AuthState>((set, get) => ({
     void get().loadReferral()
     // Which network sent this person, if a tracked link said so (0106).
     void applyPendingSource()
-  },
+  }),
 
   // Apply any pending referral code (captured from a ?ref=… link before signup),
   // then load my code + referral count into the profile.
-  async loadReferral() {
+  loadReferral: shared(async () => {
     if (!supabase) return
     try {
       const pending = localStorage.getItem('va.ref')
@@ -273,7 +274,7 @@ export const useAuth = create<AuthState>((set, get) => ({
     } catch {
       /* referral is non-critical — never block the app on it */
     }
-  },
+  }),
 
   setProfileLocal(p) {
     if (get().mode === 'local') localdb.saveProfile(p)

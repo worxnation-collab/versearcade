@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { shared } from '@/lib/inflight'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from './auth'
 
@@ -83,7 +84,7 @@ export const useVerseNotes = create<State>((set, get) => ({
   notes: {},
   loaded: false,
 
-  async load() {
+  load: shared(async () => {
     if (isOnline()) {
       const { data, error } = await supabase!.rpc('my_verse_notes')
       // Fails closed: a server without 0111 leaves the reader exactly as it
@@ -92,7 +93,7 @@ export const useVerseNotes = create<State>((set, get) => ({
       return
     }
     set({ notes: readLocal(), loaded: true })
-  },
+  }),
 
   async set(reference, colour, note) {
     if (!reference) return

@@ -246,6 +246,7 @@ export function SettingsSheet({
           <>
             <h3 style={{ fontSize: 14, margin: '0 0 8px' }} className="dim">Email</h3>
             <div className="card" style={{ marginBottom: 18 }}>
+              {emailPrefs.bounced && <BouncedNote email={emailPrefs.email} />}
               <Row
                 label="✉️ Today’s verse by email"
                 sub="Once, if you’ve been away a week and notifications aren’t on: just the day’s verse."
@@ -538,6 +539,46 @@ function HourPicker({ label, value, onChange }: { label: string; value: string; 
         {options.map((t) => <option key={t} value={t}>{timeLabel(t)}</option>)}
       </select>
     </label>
+  )
+}
+
+// The account address hard-bounced (0171), so the switch below can read ON
+// while nothing arrives. One line saying so, and the way out: a different
+// address, confirmed by a link Supabase sends there. Never shown for a spam
+// complaint — that was the player's own no.
+function BouncedNote({ email }: { email: string | null }) {
+  const change = useEmailPrefs((s) => s.changeEmail)
+  const [open, setOpen] = useState(false)
+  const [addr, setAddr] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const submit = async () => {
+    if (busy) return
+    setBusy(true); setMsg(null)
+    const r = await change(addr)
+    setBusy(false)
+    setMsg(r.ok ? { ok: true, text: `Check ${addr.trim()} for a link to confirm it.` } : { ok: false, text: r.error })
+  }
+  return (
+    <div style={{ padding: '10px 4px 12px', borderBottom: '1px solid var(--stroke)', marginBottom: 4 }}>
+      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.4 }}>
+        Emails to <strong>{email ?? 'your address'}</strong> bounced, so we’ve stopped sending them. Check the address is right.
+      </p>
+      {!open && !msg?.ok && (
+        <button className="pill" style={{ fontSize: 12, marginTop: 8 }} onClick={() => setOpen(true)}>Use a different address</button>
+      )}
+      {open && !msg?.ok && (
+        <form style={{ display: 'flex', gap: 8, marginTop: 8 }} onSubmit={(e) => { e.preventDefault(); void submit() }}>
+          <input
+            type="email" autoComplete="email" inputMode="email" placeholder="you@example.com"
+            value={addr} onChange={(e) => setAddr(e.target.value)}
+            style={{ flex: 1, minWidth: 0 }}
+          />
+          <button className="pill" type="submit" disabled={busy || !addr.trim()} style={{ fontSize: 12 }}>{busy ? '…' : 'Save'}</button>
+        </form>
+      )}
+      {msg && <p style={{ margin: '6px 0 0', fontSize: 12, color: msg.ok ? undefined : 'var(--coral)' }} className={msg.ok ? 'dim' : undefined}>{msg.text}</p>}
+    </div>
   )
 }
 

@@ -1405,6 +1405,9 @@ function QuietQueue() {
 interface EmailRuns {
   runs_24h: number; sent_24h: number; failed_24h: number; last_sent: string | null
   emailed_ever: number; switched_off: number; in_range: number
+  // 0171: the Resend webhook's counts (absent on a server without it)
+  bounced_7d?: number; soft_7d?: number; complained_7d?: number
+  last_event?: string | null; suppressed?: number
   last_run: { at: string; due: number; sent: number; failed: number; reason: string | null } | null
 }
 
@@ -1424,7 +1427,8 @@ function EmailStatus() {
   // The pass rides the hourly push-week job; past ~70 min with no receipt it has stalled.
   const stale = !!e && (!e.last_run || Date.now() - new Date(e.last_run.at).getTime() > 70 * 60000)
   const noKey = e?.last_run?.reason === 'no_key'
-  const trouble = !!e && (stale || noKey || e.failed_24h > 0)
+  const spam = (e?.complained_7d ?? 0) > 0
+  const trouble = !!e && (stale || noKey || e.failed_24h > 0 || spam)
   const cell = (label: string, v: ReactNode) => (
     <div><div className="faint" style={{ fontSize: 11 }}>{label}</div>{v}</div>
   )
@@ -1447,16 +1451,22 @@ function EmailStatus() {
           {cell('In range now', <strong>{e.in_range}</strong>)}
           {cell('Emailed, ever', <strong>{e.emailed_ever}</strong>)}
           {cell('Switched off', <strong>{e.switched_off}</strong>)}
+          {e.suppressed !== undefined && <>
+            {cell('Bounced, 7 days', <><strong>{e.bounced_7d ?? 0}</strong>{(e.soft_7d ?? 0) > 0 && <span className="faint"> · {e.soft_7d} soft</span>}</>)}
+            {cell('Spam reports, 7 days', <strong style={{ color: spam ? 'var(--coral)' : undefined }}>{e.complained_7d ?? 0}</strong>)}
+            {cell('Never emailed again', <><strong>{e.suppressed}</strong><span className="faint"> · webhook {e.last_event ? ago(e.last_event) : 'silent'}</span></>)}
+          </>}
         </div>
       )}
       {e && (
         <p className="faint" style={{ fontSize: 12, marginTop: 8, lineHeight: 1.4 }}>
-          In range: 7–60 days away, no push device, an address, not switched off, not yet emailed for this absence. Each goes at their own hour (10:00 New York if unknown).
+          In range: 7–60 days away, no push device, an address that has not bounced or reported spam, not switched off, not yet emailed for this absence. Each goes at their own hour (10:00 New York if unknown).
         </p>
       )}
       {trouble && (
         <p style={{ color: 'var(--coral)', fontSize: 12, marginTop: 6, lineHeight: 1.4 }}>
           {noKey ? 'No Resend key — set RESEND_API_KEY. ' : ''}
+          {spam ? 'Somebody marked an email as spam — that address is never emailed again. ' : ''}
           {e!.failed_24h > 0 ? `Resend refused some${e!.last_run?.reason?.startsWith('resend_') ? ` (${e!.last_run.reason})` : ''} — check the Resend dashboard. ` : ''}
           {stale ? 'No run receipt in 70 minutes — check push-send is deployed and push-week-hourly is active.' : ''}
         </p>

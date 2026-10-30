@@ -13,3 +13,8 @@ verify_jwt = false
 # function checks its own token (and a leader's test checks their JWT).
 [functions.church-digest]
 verify_jwt = false
+
+# Resend posts bounces and complaints with no session; the function checks the
+# Svix signature against RESEND_WEBHOOK_SECRET before reading anything.
+[functions.resend-webhook]
+verify_jwt = false

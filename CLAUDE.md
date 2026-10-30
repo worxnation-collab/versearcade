@@ -5446,6 +5446,13 @@ cues (post-first-drop tour, day-2-3 church moment, arcade row, Bible row) live
 in `features/home/FirstWeekCues.tsx`, each retired by a settings flag and never
 shown again. Full rules and the known rough edges: `docs/FIRST-WEEK.md`.
 
+**A first session ends on tomorrow** (`TomorrowCard`, streak ≤ 2): what is
+waiting (new verse, next streak day, tomorrow's trivia book) and, in the App
+Store build only, the local daily reminder. **No daily reminder exists on the
+web** — one web push subscription in production and no daily push on the
+server — so nothing there promises one, the streak `PushNudge` included.
+`docs/FIRST-WEEK.md` → "Tomorrow".
+
 ## Retention beats: the streak's net, your week, the gathering hour, the first week
 
 Five small systems added in one round, all client-side, none with a migration,

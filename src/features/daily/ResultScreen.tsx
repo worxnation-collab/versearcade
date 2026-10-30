@@ -21,6 +21,7 @@ import { OAuthButtons } from '@/features/auth/oauthUi'
 import { FavoriteButton } from '@/components/FavoriteButton'
 import { PushNudge } from '@/components/PushNudge'
 import { WatchYesterday } from './WatchYesterday'
+import { TomorrowCard } from './TomorrowCard'
 import { MissedList } from './MissedList'
 import { ScriptureQuote } from '@/components/ScriptureQuote'
 import { PaintedIcon } from '@/components/PaintedIcon'
@@ -289,6 +290,10 @@ export default function ResultScreen() {
             a guest has no account for a subscription to hang off, and someone
             on run one has nothing to be reminded about yet. */}
         {!isGuest && <PushNudge reason="streak" when={(outcome.currentStreak ?? 0) >= 3} />}
+
+        {/* A new player's first two streak days: what tomorrow holds, and on
+            the App Store build the one reminder that fires (TomorrowCard). */}
+        {(outcome.currentStreak ?? 0) <= 2 && <TomorrowCard todayDate={todayDate} streak={outcome.currentStreak ?? 1} />}
 
         <div style={{ display: 'grid', gap: 10, marginTop: 22 }}>
           <Button variant="gold" full onClick={doShare}>📤 Share my result</Button>

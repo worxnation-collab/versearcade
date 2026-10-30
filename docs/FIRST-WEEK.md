@@ -21,6 +21,25 @@ header, the trivia nudge moved under it. Measured: a zero run's five facts fit a
 fact instead of repeating it. Guests' account card shows a three-tile strip
 (streak · Upper Room · church giving, "synced") and says it is optional.
 
+## Tomorrow (`features/daily/TomorrowCard.tsx`, 2026-10-30)
+On the first two streak days the result screen ends on three true lines about
+tomorrow: a new verse at midnight, the next streak day, and tomorrow's trivia
+BOOK (the round names its own book, so nothing is spoiled; tomorrow's verse,
+book and speaker are never named — each is a question). In the App Store build
+it offers "Remind me at <now> tomorrow", the local daily reminder Settings
+already had (`store/reminders.ts`, OFF by default and found by nobody). On the
+web it offers no reminder, because none exists there: production had one web
+push subscription and the server sends no daily verse push. The streak
+`PushNudge` no longer promises a streak-at-risk reminder for the same reason —
+it now names what push-send actually sends. `npm run smoke` asserts the card
+appears after a first play.
+
+Why: of 134 players who finished a first verse, 58 (43%) never came back for a
+second day; church members returned at 83% (24 of 29) against 50%, and a 0-1
+first score at 40% against 60%. 31 Google/Apple sign-ins (and 13 unconfirmed
+emails) never finished a first verse at all — a leak before day 1 that this
+card does not reach.
+
 ## One-time cues (`features/home/FirstWeekCues.tsx`, flags in `store/settings.ts`)
 | Cue | When | Retires |
 |---|---|---|

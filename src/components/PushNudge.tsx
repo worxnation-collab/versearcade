@@ -61,9 +61,11 @@ export type NudgeReason = 'streak' | 'buddy' | 'battle'
 const COPY: Record<NudgeReason, { icon: string; title: string; body: string; cta: string }> = {
   streak: {
     icon: '🔔',
-    title: 'Keep the streak alive',
-    body: 'Want a nudge on days you haven’t played yet? One reminder, only when your streak is actually at risk.',
-    cta: 'Remind me',
+    // There is no streak-at-risk push on the server, so this does not promise
+    // one (it did until 2026-10-30). It promises what push-send actually sends.
+    title: 'Hear from your people',
+    body: 'Turn on notifications to know when a friend plays your battle, says yes to a buddy request or prays for you — and a short Sunday line about your week.',
+    cta: 'Turn on',
   },
   // True since 0160: an accept pushes the requester, once. A decline pushes
   // nothing, so the copy promises the yes and only the yes.

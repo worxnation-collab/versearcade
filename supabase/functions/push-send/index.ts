@@ -585,11 +585,17 @@ const esc = (t: string) => t.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 // deno-lint-ignore no-explicit-any
 async function sendComebackEmail(admin: any) {
   const key = Deno.env.get('RESEND_API_KEY') || ((await admin.rpc('church_digest_secret', { p_name: 'RESEND_API_KEY' })).data as string | null)
-  if (!key) return { ok: false, reason: 'no_key' }
+  // Every pass leaves a receipt (0170) — no key and nobody due included — so
+  // Admin -> Email can tell "ran and found nobody" from "never ran".
+  const note = (due: number, sent: number, failed: number, reason: string | null) =>
+    admin.rpc('email_run_note', { p_kind: 'comeback', p_due: due, p_sent: sent, p_failed: failed, p_reason: reason })
+  if (!key) { await note(0, 0, 0, 'no_key'); return { ok: false, reason: 'no_key' } }
   const { data, error } = await admin.rpc('comeback_email_claim', { p_limit: 200 })
-  if (error) return { ok: false, reason: 'unavailable' }
+  if (error) { await note(0, 0, 0, 'claim_failed'); return { ok: false, reason: 'unavailable' } }
   const rows = (Array.isArray(data) ? data : []) as Array<{ recipient: string; email: string; local_day: string; token: string }>
   let sent = 0
+  let failed = 0
+  let lastStatus: string | null = null
   for (const r of rows) {
     const ref = verseRefFor(String(r.local_day))
     const play = `${SITE}/play`
@@ -612,12 +618,14 @@ async function sendComebackEmail(admin: any) {
         }),
       })
       if (res.ok) sent++
-      else console.error('push-send comeback email', res.status)
+      else { failed++; lastStatus = `resend_${res.status}`; console.error('push-send comeback email', res.status) }
     } catch (e) {
+      failed++; lastStatus = 'network'
       console.error('push-send comeback email', String(e))
     }
   }
-  return { ok: true, due: rows.length, sent }
+  await note(rows.length, sent, failed, lastStatus)
+  return { ok: true, due: rows.length, sent, failed }
 }
 
 // deno-lint-ignore no-explicit-any

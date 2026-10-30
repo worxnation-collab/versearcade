@@ -626,6 +626,48 @@ ${lead ? `<p style="margin:0 0 22px;font-size:16px;line-height:1.45">${esc(lead)
   }
 }
 
+/** What each kind of email says — one copy, so the operator's test is the
+ *  email a player gets, word for word. [subject, heading, lead line] */
+const EMAIL_COPY = {
+  comeback: ["Today's verse", "Today's verse", undefined],
+  welcome: ["You're all set", "Today's verse", 'Your new address works. This is where Verse Arcade will write to you from now on.'],
+} as const satisfies Record<string, readonly [string, string, string | undefined]>
+
+// Admin → Email → "Send me a test": the come-back and/or welcome email, sent
+// to the OPERATOR's own account address with their own unsubscribe token and
+// today's verse for their own zone — byte for byte what a player receives.
+// It claims nothing, stamps nothing and writes no email_runs receipt, so the
+// panel's counts stay about players. An address on the suppression list is
+// refused with a reason rather than sent into a bounce.
+// deno-lint-ignore no-explicit-any
+async function sendTestEmail(admin: any, self: { id: string; email?: string | null }, input: Record<string, unknown>) {
+  const which = String(input.kind ?? 'both')
+  const kinds = which === 'both' ? (['comeback', 'welcome'] as const)
+    : which === 'comeback' || which === 'welcome' ? [which] as const : null
+  if (!kinds) return { ok: false, reason: 'bad_input' }
+  const to = (self.email ?? '').trim()
+  if (!to) return { ok: false, reason: 'no_email' }
+  const key = await resendKey(admin)
+  if (!key) return { ok: false, reason: 'no_key' }
+  const { data: suppressed } = await admin.rpc('email_suppressed', { p_email: to })
+  if (suppressed === true) return { ok: false, reason: 'suppressed', to }
+  const { data: prof } = await admin.from('profiles').select('email_token, week_push').eq('id', self.id).single()
+  if (!prof?.email_token) return { ok: false, reason: 'no_token' }
+  const tz = (prof.week_push as { tz?: string } | null)?.tz || 'America/New_York'
+  let day: string
+  try { day = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date()) }
+  catch { day = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date()) }
+  const sent: string[] = []
+  const failed: Record<string, string> = {}
+  for (const k of kinds) {
+    const [subject, heading, lead] = EMAIL_COPY[k]
+    const why = await sendVerseEmail(key, { email: to, local_day: day, token: String(prof.email_token) }, subject, heading, lead)
+    if (why) failed[k] = why; else sent.push(k)
+  }
+  console.log('push-send test_email', JSON.stringify({ sent, failed }))
+  return { ok: sent.length > 0, to, day, sent, failed }
+}
+
 // deno-lint-ignore no-explicit-any
 async function sendComebackEmail(admin: any) {
   const key = await resendKey(admin)
@@ -641,7 +683,8 @@ async function sendComebackEmail(admin: any) {
   let failed = 0
   let lastStatus: string | null = null
   for (const r of rows) {
-    const why = await sendVerseEmail(key, r, "Today's verse", "Today's verse")
+    const [subject, heading] = EMAIL_COPY.comeback
+    const why = await sendVerseEmail(key, r, subject, heading)
     if (why) { failed++; lastStatus = why } else sent++
   }
   await note(rows.length, sent, failed, lastStatus)
@@ -662,8 +705,8 @@ async function sendWelcomeEmail(admin: any) {
   const rows = (Array.isArray(data) ? data : []) as Array<{ recipient: string; email: string; local_day: string; token: string }>
   let sent = 0
   for (const r of rows) {
-    const why = await sendVerseEmail(key, r, "You're all set", "Today's verse",
-      'Your new address works. This is where Verse Arcade will write to you from now on.')
+    const [subject, heading, lead] = EMAIL_COPY.welcome
+    const why = await sendVerseEmail(key, r, subject, heading, lead)
     if (!why) sent++
   }
   return { ok: true, due: rows.length, sent }
@@ -723,6 +766,7 @@ Deno.serve(async (req) => {
 
     const { data: prof } = await admin.from('profiles').select('username').eq('id', user.id).single()
     if (!prof || prof.username !== 'sharkbait') return json({ error: 'forbidden' }, 403)
+    if (input.action === 'test_email') return json(await sendTestEmail(admin, user, input))
 
     const title = String(input.title ?? 'Verse Arcade').slice(0, 80)
     const bodyText = String(input.body ?? '').slice(0, 240)

@@ -8,6 +8,7 @@ import { TranslationPicker } from './TranslationPicker'
 import { pushSupported, pushPermission, isPushSubscribed, enablePush, disablePush } from '@/lib/push'
 import { nativePushPlatform } from '@/lib/native'
 import { useReminders } from '@/store/reminders'
+import { useEmailPrefs } from '@/store/emailPrefs'
 import { usePushPrefs, PUSH_KINDS, sendTestPush, type PushKind, type TestPushOutcome } from '@/store/pushPrefs'
 import { MusicSection } from './MusicSection'
 import { InstallRow } from '@/features/home/InstallPrompt'
@@ -107,6 +108,14 @@ export function SettingsSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signedIn])
   const showKinds = signedIn && pushOn && pushPrefs.available
+
+  // Email (0169): the come-back note goes to the account's address when there
+  // is no push device to send it to. Its own switch, enforced by the claim.
+  const emailPrefs = useEmailPrefs()
+  useEffect(() => {
+    if (signedIn) void emailPrefs.load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signedIn])
 
   // The FIRST time somebody reaches for the master switch to turn it off, and
   // the per-kind switches are there to offer, the tap asks once instead: keep
@@ -232,6 +241,20 @@ export function SettingsSheet({
 
         {/* Install — only renders where the browser can actually install us. */}
         <InstallRow />
+
+        {signedIn && emailPrefs.available && (
+          <>
+            <h3 style={{ fontSize: 14, margin: '0 0 8px' }} className="dim">Email</h3>
+            <div className="card" style={{ marginBottom: 18 }}>
+              <Row
+                label="✉️ Today’s verse by email"
+                sub="Once, if you’ve been away a week and notifications aren’t on: just the day’s verse."
+                on={emailPrefs.comeback}
+                onToggle={() => { const on = !emailPrefs.comeback; void emailPrefs.set('comeback', on); if (on) juice.select() }}
+              />
+            </div>
+          </>
+        )}
 
         {/* Notifications — Web Push. Only shown where the browser supports it. */}
         {supportsPush && (

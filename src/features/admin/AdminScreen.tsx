@@ -1408,6 +1408,8 @@ interface EmailRuns {
   // 0171: the Resend webhook's counts (absent on a server without it)
   bounced_7d?: number; soft_7d?: number; complained_7d?: number
   last_event?: string | null; suppressed?: number
+  // 0174: did the link bring them back? Come-back sends of the last 30 days
+  sends_30d?: number; clicked_30d?: number; returned_30d?: number
   last_run: { at: string; due: number; sent: number; failed: number; reason: string | null } | null
 }
 
@@ -1477,6 +1479,8 @@ function EmailStatus() {
   const noKey = e?.last_run?.reason === 'no_key'
   const spam = (e?.complained_7d ?? 0) > 0
   const trouble = !!e && (stale || noKey || e.failed_24h > 0 || spam)
+  const pct = (n: number | undefined, of: number | undefined) =>
+    of ? <span className="faint"> · {Math.round(((n ?? 0) / of) * 100)}%</span> : null
   const cell = (label: string, v: ReactNode) => (
     <div><div className="faint" style={{ fontSize: 11 }}>{label}</div>{v}</div>
   )
@@ -1504,11 +1508,16 @@ function EmailStatus() {
             {cell('Spam reports, 7 days', <strong style={{ color: spam ? 'var(--coral)' : undefined }}>{e.complained_7d ?? 0}</strong>)}
             {cell('Never emailed again', <><strong>{e.suppressed}</strong><span className="faint"> · webhook {e.last_event ? ago(e.last_event) : 'silent'}</span></>)}
           </>}
+          {e.sends_30d !== undefined && <>
+            {cell('Tracked sends, 30 days', <strong>{e.sends_30d}</strong>)}
+            {cell('Tapped the link', <><strong>{e.clicked_30d ?? 0}</strong>{pct(e.clicked_30d, e.sends_30d)}</>)}
+            {cell('Played within 3 days', <><strong>{e.returned_30d ?? 0}</strong>{pct(e.returned_30d, e.sends_30d)}</>)}
+          </>}
         </div>
       )}
       {e && (
         <p className="faint" style={{ fontSize: 12, marginTop: 8, lineHeight: 1.4 }}>
-          In range: 7–60 days away, no push device, an address that has not bounced or reported spam, not switched off, not yet emailed for this absence. Each goes at their own hour (10:00 New York if unknown).
+          In range: 7–60 days away, no push device, an address that has not bounced or reported spam, not switched off, not yet emailed for this absence. Each goes at their own hour (10:00 New York if unknown). "Played within 3 days" counts everybody who played after the email, tapped or not; a send from the last three days is still counting.
         </p>
       )}
       {trouble && (

@@ -26,7 +26,8 @@
 //     answering sent / muted / held so Settings can say which (no migration).
 //   • `{ action: 'weekly' }` with `x-push-token` — the hourly Sunday line
 //     (0166): one thing each player did this week, at their usual hour; and
-//     on Saturday evening, tomorrow's approved church verse (0167).
+//     on Saturday evening, tomorrow's approved church verse (0167); and a
+//     once-per-absence "today's verse" to a player seven days away (0168).
 //   • `{ action: 'flush' }` with `x-push-token` — the cron's morning run: sends
 //     what a recipient's quiet hours (0164) held back. Every kind above goes
 //     through `deliver`, which parks a note that would land in somebody's night.
@@ -50,6 +51,7 @@
 // SUPABASE_* vars are injected by the platform.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { verseRefFor } from './verseOrder.ts'
 
 const VAPID_PUBLIC =
   Deno.env.get('VAPID_PUBLIC_KEY') ??
@@ -370,7 +372,7 @@ async function sendAnswered(admin: any, sender: string, input: Record<string, un
 // The five kinds a player can switch off one by one (0163). A missing key in
 // `profiles.push_prefs` is ON, so an account that never opened Settings hears
 // everything it heard before.
-type PushKind = 'battle' | 'buddy' | 'gesture' | 'answered' | 'check_in' | 'week' | 'church'
+type PushKind = 'battle' | 'buddy' | 'gesture' | 'answered' | 'check_in' | 'week' | 'church' | 'comeback'
 
 // "Send me a test push" (Settings): the caller, to themselves, as one of the
 // five kinds, through the SAME `deliver` every real note takes — so the answer
@@ -380,6 +382,7 @@ type PushKind = 'battle' | 'buddy' | 'gesture' | 'answered' | 'check_in' | 'week
 const TEST_COPY: Record<PushKind, string> = {
   week: 'This is how your Sunday week line looks.',
   church: "This is how your church's Saturday line looks.",
+  comeback: "This is how the today's-verse note looks.",
   battle: 'This is how a battle push looks.',
   buddy: 'This is how a buddy push looks.',
   gesture: 'This is how a kindness push looks.',
@@ -518,7 +521,8 @@ async function sendWeekly(admin: any) {
     for (const b of batch) if (b.status === 'fulfilled') pushed += b.value.pushed
   }
   const church = await sendChurchSunday(admin)
-  return { ok: true, due: rows.length, pushed, church }
+  const comeback = await sendComeback(admin)
+  return { ok: true, due: rows.length, pushed, church, comeback }
 }
 
 // "Your church" (0167): the same hourly run hands out Saturday evening's line
@@ -538,6 +542,28 @@ async function sendChurchSunday(admin: any) {
       body: String(r.line).slice(0, 240),
       url: r.url || '/church',
       tag: `church-${r.saturday}`,
+    })))
+    for (const b of batch) if (b.status === 'fulfilled') pushed += b.value.pushed
+  }
+  return { ok: true, due: rows.length, pushed }
+}
+
+// "Come back" (0168): once per absence, to a player seven days away, at their
+// usual hour — today's verse REFERENCE and nothing else. No count of days, no
+// streak, nothing missed. The reference comes from verseOrder.ts, generated
+// from the app's own rotation, for the player's local date.
+// deno-lint-ignore no-explicit-any
+async function sendComeback(admin: any) {
+  const { data, error } = await admin.rpc('comeback_push_claim', { p_limit: 300 })
+  if (error) return { ok: false, reason: 'unavailable' }
+  const rows = (Array.isArray(data) ? data : []) as Array<{ recipient: string; local_day: string }>
+  let pushed = 0
+  for (let i = 0; i < rows.length; i += 10) {
+    const batch = await Promise.allSettled(rows.slice(i, i + 10).map((r) => deliver(admin, r.recipient, 'comeback', {
+      title: "Today's verse",
+      body: verseRefFor(String(r.local_day)),
+      url: '/play',
+      tag: `comeback-${r.local_day}`,
     })))
     for (const b of batch) if (b.status === 'fulfilled') pushed += b.value.pushed
   }

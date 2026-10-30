@@ -13,7 +13,7 @@ import { localTimeZone } from '@/lib/date'
 // push_subscriptions / device_tokens row that only an account has. A guest has
 // nothing here to switch off.
 
-export type PushKind = 'battle' | 'buddy' | 'gesture' | 'answered' | 'check_in' | 'week' | 'church'
+export type PushKind = 'battle' | 'buddy' | 'gesture' | 'answered' | 'check_in' | 'week' | 'church' | 'comeback'
 
 export const PUSH_KINDS: { kind: PushKind; label: string; line: string }[] = [
   { kind: 'battle', label: 'Battles', line: 'When a friend plays the battle you sent.' },
@@ -23,9 +23,10 @@ export const PUSH_KINDS: { kind: PushKind; label: string; line: string }[] = [
   { kind: 'check_in', label: 'Church check-ins', line: 'A note from your church’s leaders.' },
   { kind: 'week', label: 'Your week', line: 'On Sunday, one thing you did this week, at the hour you usually play.' },
   { kind: 'church', label: 'Your church', line: "On Saturday evening, tomorrow's verse from your church, when it has one." },
+  { kind: 'comeback', label: "Today's verse", line: "Once, if you've been away a week: just the day's verse, at your usual hour." },
 ]
 
-const ALL_ON: Record<PushKind, boolean> = { battle: true, buddy: true, gesture: true, answered: true, check_in: true, week: true, church: true }
+const ALL_ON: Record<PushKind, boolean> = { battle: true, buddy: true, gesture: true, answered: true, check_in: true, week: true, church: true, comeback: true }
 
 function isOnline() {
   const a = useAuth.getState()

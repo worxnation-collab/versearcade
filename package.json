@@ -6,8 +6,9 @@
   "description": "Verse Arcade — make opening the Bible feel exciting and habitual.",
   "scripts": {
     "dev": "vite",
-    "build": "npm run check:pool && npm run check:structure && npm run check:cross && npm run check:trivia && npm run check:placement && npm run check:decor && npm run check:map && npm run check:items && npm run check:stages && npm run check:week && npm run check:quest-doors && npm run check:contrast && npm run check:icons && npm run check:liturgy && npm run check:layouts && npm run check:cast && npm run check:exchanges && npm run check:dropverse && npm run check:study-topics && npm run check:asset-templates && npm run check:church-draft && npm run check:church-digest && tsc -b && npm run check:faces && vite build",
+    "build": "npm run check:pool && npm run check:push-verses && npm run check:structure && npm run check:cross && npm run check:trivia && npm run check:placement && npm run check:decor && npm run check:map && npm run check:items && npm run check:stages && npm run check:week && npm run check:quest-doors && npm run check:contrast && npm run check:icons && npm run check:liturgy && npm run check:layouts && npm run check:cast && npm run check:exchanges && npm run check:dropverse && npm run check:study-topics && npm run check:asset-templates && npm run check:church-draft && npm run check:church-digest && tsc -b && npm run check:faces && vite build",
     "check:pool": "node scripts/check-pool.mjs",
+    "check:push-verses": "node scripts/gen-push-verses.mjs",
     "check:church-draft": "node scripts/check-church-draft.mjs",
     "check:church-digest": "node scripts/check-church-digest.mjs",
     "check:cross": "node scripts/check-cross.mjs",

@@ -60,6 +60,7 @@ const ChurchAdminScreen = lazy(() => import('./features/church/admin/ChurchAdmin
 const ChurchVerseScreen = lazy(() => import('./features/church/ChurchVerseScreen'))
 const LeadRedirect = lazy(() => import('./features/church/admin/LeadRedirect'))
 const AdminScreen = lazy(() => import('./features/admin/AdminScreen'))
+const UnsubscribeScreen = lazy(() => import('./features/email/UnsubscribeScreen'))
 const LeaderboardScreen = lazy(() => import('./features/leaderboard/LeaderboardScreen'))
 const CollectionScreen = lazy(() => import('./features/collection/CollectionScreen'))
 const ProfileScreen = lazy(() => import('./features/profile/ProfileScreen'))
@@ -360,6 +361,8 @@ export default function App() {
         <Route path="/welcome" element={<Onboarding />} />
         <Route path="/auth" element={<AuthScreen />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        {/* Public: the link at the foot of an email carries no session (0169). */}
+        <Route path="/unsubscribe" element={<UnsubscribeScreen />} />
 
         <Route
           path="/play"

@@ -27,7 +27,8 @@
 //   • `{ action: 'weekly' }` with `x-push-token` — the hourly Sunday line
 //     (0166): one thing each player did this week, at their usual hour; and
 //     on Saturday evening, tomorrow's approved church verse (0167); and a
-//     once-per-absence "today's verse" to a player seven days away (0168).
+//     once-per-absence "today's verse" to a player seven days away (0168),
+//     by EMAIL instead to one with no push device (0169).
 //   • `{ action: 'flush' }` with `x-push-token` — the cron's morning run: sends
 //     what a recipient's quiet hours (0164) held back. Every kind above goes
 //     through `deliver`, which parks a note that would land in somebody's night.
@@ -522,7 +523,8 @@ async function sendWeekly(admin: any) {
   }
   const church = await sendChurchSunday(admin)
   const comeback = await sendComeback(admin)
-  return { ok: true, due: rows.length, pushed, church, comeback }
+  const comebackEmail = await sendComebackEmail(admin)
+  return { ok: true, due: rows.length, pushed, church, comeback, comebackEmail }
 }
 
 // "Your church" (0167): the same hourly run hands out Saturday evening's line
@@ -568,6 +570,54 @@ async function sendComeback(admin: any) {
     for (const b of batch) if (b.status === 'fulfilled') pushed += b.value.pushed
   }
   return { ok: true, due: rows.length, pushed }
+}
+
+// The same note by EMAIL (0169), to a lapsed player the push cannot reach:
+// no push device, 7-60 days away, once per absence, a switch of its own and an
+// unsubscribe link in every one. Body: today's reference, one link, the way
+// out. Resend, keyed like church-digest (function secret, else Vault); no key
+// ⇒ nothing is CLAIMED, so nobody's absence is stamped on an email that never
+// left.
+const SITE = 'https://versearcade.org'
+const EMAIL_FROM = Deno.env.get('VERSE_EMAIL_FROM') ?? 'Verse Arcade <verse@versearcade.org>'
+const esc = (t: string) => t.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
+
+// deno-lint-ignore no-explicit-any
+async function sendComebackEmail(admin: any) {
+  const key = Deno.env.get('RESEND_API_KEY') || ((await admin.rpc('church_digest_secret', { p_name: 'RESEND_API_KEY' })).data as string | null)
+  if (!key) return { ok: false, reason: 'no_key' }
+  const { data, error } = await admin.rpc('comeback_email_claim', { p_limit: 200 })
+  if (error) return { ok: false, reason: 'unavailable' }
+  const rows = (Array.isArray(data) ? data : []) as Array<{ recipient: string; email: string; local_day: string; token: string }>
+  let sent = 0
+  for (const r of rows) {
+    const ref = verseRefFor(String(r.local_day))
+    const play = `${SITE}/play`
+    const off = `${SITE}/unsubscribe?t=${encodeURIComponent(r.token)}`
+    const text = `Today's verse: ${ref}\n\n${play}\n\nStop these emails: ${off}`
+    const html = `<!doctype html><html><body style="margin:0;background:#f6f1e7;font-family:Georgia,serif;color:#2b2118">
+<div style="max-width:440px;margin:0 auto;padding:36px 24px;text-align:center">
+<p style="margin:0 0 6px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#7a6650">Today's verse</p>
+<p style="margin:0 0 26px;font-size:28px">${esc(ref)}</p>
+<a href="${play}" style="display:inline-block;background:#c9962b;color:#1d140b;text-decoration:none;font-family:Arial,sans-serif;font-weight:bold;padding:12px 22px;border-radius:999px">Open Verse Arcade</a>
+<p style="margin:34px 0 0;font-family:Arial,sans-serif;font-size:11px;color:#8a7a68"><a href="${off}" style="color:#8a7a68">Stop these emails</a></p>
+</div></body></html>`
+    try {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: EMAIL_FROM, to: [r.email], subject: "Today's verse", text, html,
+          headers: { 'List-Unsubscribe': `<${off}>` },
+        }),
+      })
+      if (res.ok) sent++
+      else console.error('push-send comeback email', res.status)
+    } catch (e) {
+      console.error('push-send comeback email', String(e))
+    }
+  }
+  return { ok: true, due: rows.length, sent }
 }
 
 // deno-lint-ignore no-explicit-any

@@ -583,8 +583,52 @@ const EMAIL_FROM = Deno.env.get('VERSE_EMAIL_FROM') ?? 'Verse Arcade <verse@vers
 const esc = (t: string) => t.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
 
 // deno-lint-ignore no-explicit-any
+async function resendKey(admin: any): Promise<string | null> {
+  return Deno.env.get('RESEND_API_KEY') || ((await admin.rpc('church_digest_secret', { p_name: 'RESEND_API_KEY' })).data as string | null)
+}
+
+/** One verse email through Resend: a heading line, the reference, one link
+ *  and the way out. Every app email has this shape and an unsubscribe link.
+ *  Answers null when sent, else a short failure reason. */
+async function sendVerseEmail(
+  key: string,
+  r: { email: string; local_day: string; token: string },
+  subject: string,
+  heading: string,
+  lead?: string,
+): Promise<string | null> {
+  const ref = verseRefFor(String(r.local_day))
+  const play = `${SITE}/play`
+  const off = `${SITE}/unsubscribe?t=${encodeURIComponent(r.token)}`
+  const text = `${lead ? `${lead}\n\n` : ''}${heading}: ${ref}\n\n${play}\n\nStop these emails: ${off}`
+  const html = `<!doctype html><html><body style="margin:0;background:#f6f1e7;font-family:Georgia,serif;color:#2b2118">
+<div style="max-width:440px;margin:0 auto;padding:36px 24px;text-align:center">
+${lead ? `<p style="margin:0 0 22px;font-size:16px;line-height:1.45">${esc(lead)}</p>` : ''}<p style="margin:0 0 6px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#7a6650">${esc(heading)}</p>
+<p style="margin:0 0 26px;font-size:28px">${esc(ref)}</p>
+<a href="${play}" style="display:inline-block;background:#c9962b;color:#1d140b;text-decoration:none;font-family:Arial,sans-serif;font-weight:bold;padding:12px 22px;border-radius:999px">Open Verse Arcade</a>
+<p style="margin:34px 0 0;font-family:Arial,sans-serif;font-size:11px;color:#8a7a68"><a href="${off}" style="color:#8a7a68">Stop these emails</a></p>
+</div></body></html>`
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: EMAIL_FROM, to: [r.email], subject, text, html,
+        headers: { 'List-Unsubscribe': `<${off}>` },
+      }),
+    })
+    if (res.ok) return null
+    console.error('push-send email', subject, res.status)
+    return `resend_${res.status}`
+  } catch (e) {
+    console.error('push-send email', subject, String(e))
+    return 'network'
+  }
+}
+
+// deno-lint-ignore no-explicit-any
 async function sendComebackEmail(admin: any) {
-  const key = Deno.env.get('RESEND_API_KEY') || ((await admin.rpc('church_digest_secret', { p_name: 'RESEND_API_KEY' })).data as string | null)
+  const key = await resendKey(admin)
   // Every pass leaves a receipt (0170) — no key and nobody due included — so
   // Admin -> Email can tell "ran and found nobody" from "never ran".
   const note = (due: number, sent: number, failed: number, reason: string | null) =>
@@ -597,41 +641,39 @@ async function sendComebackEmail(admin: any) {
   let failed = 0
   let lastStatus: string | null = null
   for (const r of rows) {
-    const ref = verseRefFor(String(r.local_day))
-    const play = `${SITE}/play`
-    const off = `${SITE}/unsubscribe?t=${encodeURIComponent(r.token)}`
-    const text = `Today's verse: ${ref}\n\n${play}\n\nStop these emails: ${off}`
-    const html = `<!doctype html><html><body style="margin:0;background:#f6f1e7;font-family:Georgia,serif;color:#2b2118">
-<div style="max-width:440px;margin:0 auto;padding:36px 24px;text-align:center">
-<p style="margin:0 0 6px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#7a6650">Today's verse</p>
-<p style="margin:0 0 26px;font-size:28px">${esc(ref)}</p>
-<a href="${play}" style="display:inline-block;background:#c9962b;color:#1d140b;text-decoration:none;font-family:Arial,sans-serif;font-weight:bold;padding:12px 22px;border-radius:999px">Open Verse Arcade</a>
-<p style="margin:34px 0 0;font-family:Arial,sans-serif;font-size:11px;color:#8a7a68"><a href="${off}" style="color:#8a7a68">Stop these emails</a></p>
-</div></body></html>`
-    try {
-      const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          from: EMAIL_FROM, to: [r.email], subject: "Today's verse", text, html,
-          headers: { 'List-Unsubscribe': `<${off}>` },
-        }),
-      })
-      if (res.ok) sent++
-      else { failed++; lastStatus = `resend_${res.status}`; console.error('push-send comeback email', res.status) }
-    } catch (e) {
-      failed++; lastStatus = 'network'
-      console.error('push-send comeback email', String(e))
-    }
+    const why = await sendVerseEmail(key, r, "Today's verse", "Today's verse")
+    if (why) { failed++; lastStatus = why } else sent++
   }
   await note(rows.length, sent, failed, lastStatus)
   return { ok: true, due: rows.length, sent, failed }
 }
 
+// Welcome back (0173): a player confirmed a new account address — usually
+// after 0172's bounce note — and the trigger on auth.users queued them. One
+// email to the NEW address, saying it works, with today's verse. Rides the
+// 15-minute flush so it lands soon after the confirmation tap. No key ⇒
+// nothing is claimed, so the row waits for the next pass.
+// deno-lint-ignore no-explicit-any
+async function sendWelcomeEmail(admin: any) {
+  const key = await resendKey(admin)
+  if (!key) return { ok: false, reason: 'no_key' }
+  const { data, error } = await admin.rpc('email_welcome_claim', { p_limit: 100 })
+  if (error) return { ok: false, reason: 'unavailable' }
+  const rows = (Array.isArray(data) ? data : []) as Array<{ recipient: string; email: string; local_day: string; token: string }>
+  let sent = 0
+  for (const r of rows) {
+    const why = await sendVerseEmail(key, r, "You're all set", "Today's verse",
+      'Your new address works. This is where Verse Arcade will write to you from now on.')
+    if (!why) sent++
+  }
+  return { ok: true, due: rows.length, sent }
+}
+
 // deno-lint-ignore no-explicit-any
 async function flushDeferred(admin: any) {
+  const welcome = await sendWelcomeEmail(admin).catch(() => ({ ok: false, reason: 'threw' }))
   const { data, error } = await admin.rpc('push_deferred_claim', { p_limit: 200 })
-  if (error) return { ok: false, reason: 'unavailable' }
+  if (error) return { ok: false, reason: 'unavailable', welcome }
   const rows = (Array.isArray(data) ? data : []) as Array<{ recipient: string; kind: PushKind; note: Note }>
   let pushed = 0
   for (let i = 0; i < rows.length; i += 10) {
@@ -641,7 +683,7 @@ async function flushDeferred(admin: any) {
   // The run's own receipt (0165): pg_cron calls a run "succeeded" once the
   // request is queued, so this row is what says the flush really happened.
   await admin.rpc('push_flush_note', { p_due: rows.length, p_pushed: pushed })
-  return { ok: true, due: rows.length, pushed }
+  return { ok: true, due: rows.length, pushed, welcome }
 }
 
 Deno.serve(async (req) => {

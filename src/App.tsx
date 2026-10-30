@@ -33,6 +33,7 @@ import { BottomNav } from './components/BottomNav'
 import { PlayerCardProvider } from './components/PlayerCardModal'
 import { AccountWall, useAccountLocked, type WallCopy } from './components/AccountWall'
 import { captureSource } from './lib/attribution'
+import { captureEmailClick } from './lib/emailClick'
 import { captureVerseLink } from './lib/verseLink'
 
 // Every screen past the first few loads on demand, so the first paint carries
@@ -296,6 +297,8 @@ export default function App() {
     captureSource()
     // And which day's verse the post was about (?d=…), so the link opens it.
     captureVerseLink()
+    // And a tap on a come-back email's link (?e=…, 0174), counted once.
+    captureEmailClick()
     init()
     // The content catalog, BEFORE the season store reads it. Its cache is
     // already applied at import (store/catalog.ts), so this only refreshes;

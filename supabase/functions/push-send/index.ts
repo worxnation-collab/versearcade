@@ -589,23 +589,27 @@ async function resendKey(admin: any): Promise<string | null> {
 
 /** One verse email through Resend: a heading line, the reference, one link
  *  and the way out. Every app email has this shape and an unsubscribe link.
- *  Answers null when sent, else a short failure reason. */
+ *  The link opens straight into today's run; `track` is the send's own id
+ *  (0174), carried as `?e=` so a tap can be counted — the operator's test
+ *  email passes none and is never counted. Answers null when sent, else a
+ *  short failure reason. */
 async function sendVerseEmail(
   key: string,
   r: { email: string; local_day: string; token: string },
   subject: string,
   heading: string,
   lead?: string,
+  track?: string,
 ): Promise<string | null> {
   const ref = verseRefFor(String(r.local_day))
-  const play = `${SITE}/play`
+  const play = `${SITE}/play/run${track ? `?e=${encodeURIComponent(track)}` : ''}`
   const off = `${SITE}/unsubscribe?t=${encodeURIComponent(r.token)}`
-  const text = `${lead ? `${lead}\n\n` : ''}${heading}: ${ref}\n\n${play}\n\nStop these emails: ${off}`
+  const text = `${lead ? `${lead}\n\n` : ''}${heading}: ${ref}\n\nPlay today's verse: ${play}\n\nStop these emails: ${off}`
   const html = `<!doctype html><html><body style="margin:0;background:#f6f1e7;font-family:Georgia,serif;color:#2b2118">
 <div style="max-width:440px;margin:0 auto;padding:36px 24px;text-align:center">
 ${lead ? `<p style="margin:0 0 22px;font-size:16px;line-height:1.45">${esc(lead)}</p>` : ''}<p style="margin:0 0 6px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#7a6650">${esc(heading)}</p>
 <p style="margin:0 0 26px;font-size:28px">${esc(ref)}</p>
-<a href="${play}" style="display:inline-block;background:#c9962b;color:#1d140b;text-decoration:none;font-family:Arial,sans-serif;font-weight:bold;padding:12px 22px;border-radius:999px">Open Verse Arcade</a>
+<a href="${play}" style="display:inline-block;background:#c9962b;color:#1d140b;text-decoration:none;font-family:Arial,sans-serif;font-weight:bold;padding:12px 22px;border-radius:999px">Play today's verse</a>
 <p style="margin:34px 0 0;font-family:Arial,sans-serif;font-size:11px;color:#8a7a68"><a href="${off}" style="color:#8a7a68">Stop these emails</a></p>
 </div></body></html>`
   try {
@@ -624,6 +628,20 @@ ${lead ? `<p style="margin:0 0 22px;font-size:16px;line-height:1.45">${esc(lead)
     console.error('push-send email', subject, String(e))
     return 'network'
   }
+}
+
+/** Send one tracked email and, once Resend has it, record the send (0174) so
+ *  a tap on its link and a play after it can be counted. */
+// deno-lint-ignore no-explicit-any
+async function sendTracked(admin: any, key: string, r: { recipient: string; email: string; local_day: string; token: string }, kind: keyof typeof EMAIL_COPY): Promise<string | null> {
+  const id = crypto.randomUUID()
+  const [subject, heading, lead] = EMAIL_COPY[kind]
+  const why = await sendVerseEmail(key, r, subject, heading, lead, id)
+  if (!why) {
+    const { error } = await admin.rpc('email_send_note', { p_id: id, p_user: r.recipient, p_kind: kind })
+    if (error) console.error('push-send email_send_note', error.message)
+  }
+  return why
 }
 
 /** What each kind of email says — one copy, so the operator's test is the
@@ -683,8 +701,7 @@ async function sendComebackEmail(admin: any) {
   let failed = 0
   let lastStatus: string | null = null
   for (const r of rows) {
-    const [subject, heading] = EMAIL_COPY.comeback
-    const why = await sendVerseEmail(key, r, subject, heading)
+    const why = await sendTracked(admin, key, r, 'comeback')
     if (why) { failed++; lastStatus = why } else sent++
   }
   await note(rows.length, sent, failed, lastStatus)
@@ -705,8 +722,7 @@ async function sendWelcomeEmail(admin: any) {
   const rows = (Array.isArray(data) ? data : []) as Array<{ recipient: string; email: string; local_day: string; token: string }>
   let sent = 0
   for (const r of rows) {
-    const [subject, heading, lead] = EMAIL_COPY.welcome
-    const why = await sendVerseEmail(key, r, subject, heading, lead)
+    const why = await sendTracked(admin, key, r, 'welcome')
     if (!why) sent++
   }
   return { ok: true, due: rows.length, sent }

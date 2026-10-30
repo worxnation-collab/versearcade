@@ -561,6 +561,13 @@ export const useAuth = create<AuthState>((set, get) => ({
   // session, closes the in-app browser, and loads the profile.
   async completeNativeOAuth(url) {
     if (!supabase) return
+    // The in-app browser closes on EVERY outcome, not only a good one. It used
+    // to close only after a session landed, so a provider error (the player
+    // backed out on Google's page) or a token Supabase refused left the bridge
+    // page standing over the app with the reason hidden behind it.
+    const closeBrowser = async () => {
+      try { await Browser.close() } catch { /* already closed */ }
+    }
     try {
       // The redirect can carry the session in one of two shapes:
       //  - PKCE flow:     com.versearcade.app://auth/callback?code=...
@@ -578,6 +585,7 @@ export const useAuth = create<AuthState>((set, get) => ({
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code)
         if (error) {
+          await closeBrowser()
           set({ error: error.message })
           return
         }
@@ -587,27 +595,26 @@ export const useAuth = create<AuthState>((set, get) => ({
           refresh_token: refreshToken,
         })
         if (error) {
+          await closeBrowser()
           set({ error: error.message })
           return
         }
       } else {
         // No usable credentials — surface any provider error, then stop.
+        await closeBrowser()
         const errDesc = query.get('error_description') || hash.get('error_description')
         if (errDesc) set({ error: errDesc })
         return
       }
 
-      try {
-        await Browser.close()
-      } catch {
-        /* browser may already be closed */
-      }
+      await closeBrowser()
       // Migrate any pending guest snapshot before we read the profile back, so
       // the account shows the user's chosen handle + progress from the first
       // render (idempotent — onAuthStateChange may have already run it).
       await get().claimGuestProgress()
       await get().refreshProfile()
     } catch (e) {
+      await closeBrowser()
       set({ error: (e as Error).message })
     }
   },

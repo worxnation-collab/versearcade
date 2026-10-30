@@ -156,7 +156,7 @@ for (const apple of ['token', 'cancel', 'unavailable']) {
   } else {
     c.includes('Browser.open') ? ok('sheet unavailable: falls back to the in-app browser') : fail('sheet unavailable: no fallback, calls ' + c.join(','))
     // The provider hands back to the bridge, which deep-links into the app.
-    await page.evaluate(() => window.__fire('App', 'appUrlOpen', { url: 'com.versearcade.app://auth/callback#access_token=' + 'x'.repeat(10) + '&refresh_token=r&expires_in=3600&token_type=bearer' }))
+    await page.evaluate((t) => window.__fire('App', 'appUrlOpen', { url: 'com.versearcade.app://auth/callback#access_token=' + t + '&refresh_token=r&expires_in=3600&token_type=bearer' }), jwt)
     await page.waitForTimeout(1500)
     const c2 = await calls()
     c2.includes('Browser.close') ? ok('deep link: in-app browser closed') : fail('deep link: browser left open')
@@ -185,7 +185,7 @@ for (const pushAnswer of ['granted', 'denied']) {
   await page.waitForTimeout(1500)
   await page.getByRole('button', { name: /settings/i }).first().click()
   await page.waitForTimeout(600)
-  const sw = page.getByRole('switch', { name: /notification/i }).first()
+  const sw = page.getByRole('switch', { name: /Notes and news/ }).first()
   const has = await sw.count()
   if (!has) { fail('no notifications switch in Settings'); await ctx.close(); continue }
   await sw.click()

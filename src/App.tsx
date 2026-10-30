@@ -10,7 +10,7 @@ import { useReminders } from './store/reminders'
 import { useSeason } from './store/season'
 import { useCatalog } from './store/catalog'
 import { useJuiceSync } from './juice/useJuice'
-import { initNative, refreshPushToken } from './lib/native'
+import { inAppPath, initNative, refreshPushToken } from './lib/native'
 
 import Landing from './pages/Landing'
 import Onboarding from './features/onboarding/Onboarding'
@@ -321,7 +321,11 @@ export default function App() {
         // "Sign in with Apple/Google" — so the sign-in screen can't navigate on
         // its own. Once the session + profile are in, move into the app.
         if (useAuth.getState().profile) navigate(firstStop(useAuth.getState().profile), { replace: true })
+        return
       }
+      // Any other link into the app opens the screen it names (lib/native).
+      const path = inAppPath(url)
+      if (path) navigate(path)
     }, () => {
       // Back in the foreground: rebuild the reminder plan against the current
       // review state and roll the horizon forward.

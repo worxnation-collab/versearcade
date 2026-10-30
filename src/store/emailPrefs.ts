@@ -16,8 +16,17 @@ interface EmailPrefsState {
   comeback: boolean
   /** false with no account email, or against a server without 0169. */
   available: boolean
+  /** The account address hard-bounced, so nothing is sent to it (0171/0172). */
+  bounced: boolean
+  /** The caller's own address, for the bounce note. */
+  email: string | null
   load: () => Promise<void>
   set: (kind: EmailKind, on: boolean) => Promise<boolean>
+  /** Ask Supabase to move the account to a new address. It sends a
+   *  confirmation link there; nothing changes until it is tapped. A new
+   *  address is not suppressed (the list is keyed on the address), so mail
+   *  resumes by itself once it is confirmed. */
+  changeEmail: (address: string) => Promise<{ ok: true } | { ok: false; error: string }>
 }
 
 function isOnline() {
@@ -28,12 +37,19 @@ function isOnline() {
 export const useEmailPrefs = create<EmailPrefsState>((setState, get) => ({
   comeback: true,
   available: false,
+  bounced: false,
+  email: null,
   async load() {
     if (!isOnline()) { setState({ available: false }); return }
     const { data, error } = await supabase!.rpc('my_email_prefs')
     if (error || !data) { setState({ available: false }); return }
-    const d = data as { comeback?: boolean; has_email?: boolean }
-    setState({ available: d.has_email === true, comeback: d.comeback !== false })
+    const d = data as { comeback?: boolean; has_email?: boolean; bounced?: boolean; email?: string | null }
+    setState({
+      available: d.has_email === true,
+      comeback: d.comeback !== false,
+      bounced: d.bounced === true,
+      email: typeof d.email === 'string' ? d.email : null,
+    })
   },
   async set(kind, on) {
     if (!isOnline()) return false
@@ -45,5 +61,14 @@ export const useEmailPrefs = create<EmailPrefsState>((setState, get) => ({
       return false
     }
     return true
+  },
+  async changeEmail(address) {
+    if (!isOnline()) return { ok: false, error: 'Sign in first.' }
+    const next = address.trim()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(next)) return { ok: false, error: 'That doesn’t look like an email address.' }
+    if (next.toLowerCase() === (get().email ?? '').toLowerCase()) return { ok: false, error: 'That’s the address that bounced.' }
+    const { error } = await supabase!.auth.updateUser({ email: next })
+    if (error) return { ok: false, error: error.message }
+    return { ok: true }
   },
 }))

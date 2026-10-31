@@ -606,13 +606,13 @@ own viewport rather than resized from the other, and asserts every file against 
 set's size before exiting (see that script's header). Upload the first eight in
 this order; the last five are spares:
 
-1. `01-play-tab` — the two daily boxes, the road, the compass. The whole tab.
+1. `01-play-tab` — today's verse, today's trivia, the church window, and what's open right now. The whole tab.
 2. `02-verse-read` — the verse, before the clock starts.
 3. `03-question` — a question mid-run, points and the five-question rail.
 4. `04-teach` — the wrong-answer reveal. This is the no-shame promise on screen.
 5. `05-result` — the score with "one thing you now know" above the verse card.
 6. `07-you-room` — the full-length character and the Upper Room under it.
-7. `08-study-library` — Tabitha at the desk. The tab that is a room.
+7. `08-study-library` — Study: Tabitha, your own progress, the study tools. (Recaptured 2026-10-31 after the reports-first redesign; the file name is kept so the upload order doesn't move.)
 8. `10-seals` — the Book Collection, wax pressed per book read.
 9. `06-arcade`, `09-bible`, `11-wardrobe`, `12-road`, `13-journal` — spares.
 

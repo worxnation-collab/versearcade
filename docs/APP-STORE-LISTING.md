@@ -455,17 +455,23 @@ lands at 12+ / 9+; either is fine.
 
 ## Review notes (App Information → Notes for reviewer)
 
-Rewritten for 1.3.0. Two things a reviewer hits in the first thirty seconds are
-said first and plainly — most tabs ask for an account, and the app carries one
-in-app purchase — and 1.3.0 adds a third that is worth volunteering rather than
-being asked about: **the Prayer Wall is the first user-generated text in the app**,
-so the Guideline 1.2 controls are described before anyone has to go looking for
-them.
+Rewritten for 1.4.0 (2026-10-31), checked line by line against what the app
+does now. Three things changed since 1.3.0's note and each one would have made a
+sentence in it false: there is now a SECOND kind of in-app purchase (the Verified
+Church plan, an auto-renewable subscription), church pages are no longer "written
+only by us" (verified leaders edit their own), and leaders can now send members a
+note — more user-generated text, so the Guideline 1.2 paragraph grew. 1.4.0 also
+adds push notifications, which are opt-in and never asked for at launch.
 
 **The credentials are deliberately NOT in this file.** App Store Connect has its
 own Sign-In Information fields (App Review Information → "Sign-in required") and
 they are the only place that account's password belongs; a live password in a git
 repo outlives the review by years. The notes point at those fields instead.
+
+**CONDITIONAL:** the "Verified Church plan" paragraph is only true if the two
+subscriptions (`church_verified_monthly` / `_yearly`) are attached to this version
+in App Store Connect (OWNER-TODO §4). If they are not, delete that paragraph and
+change "two kinds" back to "exactly one".
 
 ```
 Verse Arcade is a Bible-learning game. Today's verse can be played immediately as a
@@ -473,58 +479,61 @@ guest — on the home screen, tap "Play today's verse". That runs the full core 
 with no account, no email and no paywall.
 
 PLEASE SIGN IN WITH THE ACCOUNT IN THE SIGN-IN INFORMATION FIELDS TO REVIEW THE
-REST. Beyond today's verse and your own profile, the tabs (Battle, Study, Bible,
-Church) and the Prayer Wall show a padlock and a "create an account" card rather
-than their contents. This is intentional, not a bug or a broken screen: those
-features are multiplayer or synced — a shared church building, a match against
-another person, a record of what you have read — and they have nowhere to live on
-a single device without an account.
+REST. As a guest, Battle, Study, Bible, Church and the Prayer Wall show a padlock
+and a "create an account" card. This is intentional: those features are
+multiplayer or synced and need an account to live in.
 
-WORTH SEEING, all from the bottom tab bar and the compass button beside it:
-- Play: today's verse, plus a second daily round of five questions on one book of
-  the Bible.
-- Battle: "Quick match" pairs you with anyone else looking right now; a room code
-  works between two devices.
-- The arcade: compass button -> "The arcade". Three small games, none of them
-  scored against anybody.
-- You: your character, your Upper Room, and tapping your own figure offers to pray
-  with you.
-- Pray: the Prayer Wall, below.
+THE DEMO ACCOUNT is set up so every part of the app has something in it:
+- Play: today's verse is unplayed and waiting, with a week of history behind it.
+  Under it, today's trivia round and today's verse from the account's church.
+- Battle: a friend's challenge is waiting under "Your turn". "Quick match" pairs
+  you with anyone else looking right now; a room code works between two devices.
+- Church: the account belongs to "Verse Arcade Demo Church" (a test congregation
+  we run) and is one of its verified leaders, so it shows both sides — the member
+  view (the church's verse, its series, its yard) and the leaders' dashboard
+  (Church tab -> "Leadership tools"), where a leader plans the week's verses and can
+  send a member a note.
+- You: your character and Upper Room; tap your own figure to pray. The compass
+  button lists everything else, including the arcade and the Prayer Wall.
 
-USER-GENERATED CONTENT (new in this version). The Prayer Wall is the one place a
-player types something another player reads, and it is deliberately narrow:
-- A stranger is only ever shown one of eight fixed categories ("health", "family",
-  and so on). The optional free-text line — 120 characters, cleaned on the way in —
-  is returned only to members of the writer's own church and to buddies they have
-  accepted. It is never public.
-- Notes are anonymous unless the writer signs them, and the wall DEALS one at
-  random. Nobody can browse the wall or aim a note at a person.
-- Every note carries a Report control. One report hides the note immediately,
-  before any human looks at it; we then restore it or remove it for good.
-- One open note per person at a time, expiring after seven days. Nothing
-  accumulates.
-Everywhere else there is no chat and no free text at all: the figures in the crowd
-scenes speak in a fixed list of ten emoji, a gift has no message field, and church
-pages are written only by us.
+USER-GENERATED CONTENT. Every place one person's words reach another is narrow,
+reportable or reviewed by us:
+- Prayer Wall. A stranger is only ever shown one of eight fixed categories
+  ("health", "family", and so on). The optional 120-character line is returned only
+  to the writer's church and accepted buddies. Notes are anonymous unless signed
+  and dealt at random, so nobody can browse or target one. One report hides a note
+  at once; we then restore or remove it.
+- Church leaders. Only a church's verified leaders can edit its page or write to
+  its members, and every leadership claim is reviewed by us. A
+  leader can send one member a short note (280 characters, at most one per member
+  per day); the member can report it from the note itself, and a reported note is
+  hidden and lands in our review queue. A player can send a church one question
+  about joining, and the church can send one reply; neither is public.
+- AI-assisted drafting exists for church leaders only (an add-on, off for the
+  demo church). It drafts questions about a Bible passage the leader names; nothing
+  it writes reaches a member until a leader has approved it.
+There is no chat anywhere else: crowd figures speak in ten fixed emoji.
 
-IN-APP PURCHASE: there is exactly one, a non-consumable "founding patron" tip
-(com.versearcade.app.patron_founding). It buys a cosmetic thank-you — a character
-look and a card background — and nothing that affects play, scores or standing.
-Every other cosmetic is earned or free. The shop is hidden entirely unless StoreKit
-returns approved products, so it may not appear in a sandbox build; that is
-deliberate fail-closed behaviour, not a missing screen. A "Restore purchases"
-control is in You -> Customize -> Skins whenever StoreKit is reachable.
+NOTIFICATIONS are opt-in: never asked at launch, one switch per kind, quiet hours.
 
-There are no external purchase links or steering of any kind. Everything digital is
-sold through Apple's in-app purchase.
+IN-APP PURCHASES, two kinds, both through Apple:
+- A non-consumable "founding patron" tip (com.versearcade.app.patron_founding). It
+  buys a cosmetic thank-you — a character look and a card background — and nothing
+  that affects play, scores or standing. Every other cosmetic is earned or free.
+  It is hidden unless StoreKit returns the product. "Restore purchases" is in
+  You -> Customize -> Skins.
+- The Verified Church plan, an auto-renewable subscription (monthly or yearly, one
+  subscription group), offered only to the leaders of a church that is not yet
+  verified, on that church's leader screen. It verifies the church — unlocking the
+  leader tools — and does nothing for any individual's play. The demo church is
+  already verified, so the demo account sees the tools rather than the offer.
+There are no external purchase links or steering of any kind. A "For Churches"
+card leads to an inquiry form, not to a checkout.
 
-READ-ALOUD: the prayer sheet can read a prayer out loud. It uses the voices already
-on the device through the standard speech synthesis API — nothing is recorded, and
-no text is sent anywhere. A device with no installed voices shows a line saying so
-rather than a dead button.
+READ-ALOUD uses the device's own voices; nothing is recorded or sent anywhere.
 
 Account deletion: You tab, at the bottom — "Delete my account".
-Sound, music and haptics: You tab -> the gear icon.
+Sound, music, haptics and notifications: You tab -> the gear icon.
 ```
 
 > **The old note said "No account is required" and that sentence is now a
@@ -541,16 +550,33 @@ credentials can only reach today's verse and the profile tab — everything else
 padlock, which reads as "features behind a login" (Guideline 2.1) if the notes do
 not explain it and hand them a way in.
 
-**Done for 1.3.0.** A real account (`applereview@versearcade.org`) is in App Store
-Connect's App Review Information → Sign-In Information, with "Sign-in required"
-checked. Its password lives only there, on purpose — see the note above the review
-notes.
+A real account (`applereview@versearcade.org`) is in App Store Connect's App Review
+Information → Sign-In Information, with "Sign-in required" checked. Its password
+lives only there, on purpose — see the note above the review notes.
 
-Two things to do once, before submitting: **play a round on that account** so the
-profile a reviewer lands on is not empty, and **join a church on it**, so the
-Church tab shows a congregation and a yard rather than the picker. Both take a
-minute and both turn a screen that looks unfinished into the screen the listing
-describes.
+**Seeded for 1.4.0 on 2026-10-31**, because until then it had never been past
+onboarding: no character, no plays, no church, and a reviewer would have landed on
+the church picker and an empty profile. Now:
+
+- onboarded, a starter character, the `non_denominational` team;
+- six days of plays BEFORE the seeding date (streak 6, level 3), today left
+  unplayed so the reviewer plays the core loop themselves — the streak will have
+  lapsed by the time review happens, which is the no-shame path and fine;
+- `profiles.church_id` = the QA church `f1b2cec8-…`, **renamed "Verse Arcade Demo
+  Church" (Springfield, IL)** from "QA Test Church (internal, ignore)", which is
+  what a reviewer would otherwise have read on the Church tab. It is verified, has
+  no real members, and is led by `qa_leader` and now `applereview`
+  (`church_admins`, look `classic-clergy`);
+- fourteen APPROVED church verses from 2026-10-31 (Fruit of the Spirit, then
+  Psalms for the Week), scripture and questions copied from an approved BSB series
+  with each day's real series name — so the church verse lane, the series trail and
+  the leader dashboard all have content through 2026-11-13;
+- a pending async battle from `sharkbait` already waits under "Your turn".
+
+**Before submitting, re-check two dates:** the church verses run out on
+2026-11-13 (extend them if review slips past it), and the two buddy requests on the
+account are from real players (`cryelogan`, `easyandextreme`) — harmless, but
+decline them in the app if you would rather a reviewer not see real handles.
 
 ---
 
@@ -580,13 +606,13 @@ own viewport rather than resized from the other, and asserts every file against 
 set's size before exiting (see that script's header). Upload the first eight in
 this order; the last five are spares:
 
-1. `01-play-tab` — the two daily boxes, the road, the compass. The whole tab.
+1. `01-play-tab` — today's verse, today's trivia, the church window, and what's open right now. The whole tab.
 2. `02-verse-read` — the verse, before the clock starts.
 3. `03-question` — a question mid-run, points and the five-question rail.
 4. `04-teach` — the wrong-answer reveal. This is the no-shame promise on screen.
 5. `05-result` — the score with "one thing you now know" above the verse card.
 6. `07-you-room` — the full-length character and the Upper Room under it.
-7. `08-study-library` — Tabitha at the desk. The tab that is a room.
+7. `08-study-library` — Study: Tabitha, your own progress, the study tools. (Recaptured 2026-10-31 after the reports-first redesign; the file name is kept so the upload order doesn't move.)
 8. `10-seals` — the Book Collection, wax pressed per book read.
 9. `06-arcade`, `09-bible`, `11-wardrobe`, `12-road`, `13-journal` — spares.
 

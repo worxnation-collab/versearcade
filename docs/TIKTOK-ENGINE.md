@@ -319,6 +319,14 @@ directory holding `models/onnx-community/whisper-tiny.en_timestamped/…` and
 instead. Every render still falls back to the energy heuristic if the model
 fails to load, so a post is never blocked on it.
 
+**`npm run voice:setup`** (`scripts/voice-container.sh`) builds that directory
+in `.tiktok-voice/models/` — Whisper base + tiny (fp32 encoder, quantized
+decoder), the ONNX wasm, the Baloo 2 font — and writes `.tiktok-voice/env.sh`
+(`MODELS_DIR`, `PW_CHROMIUM`, `FFMPEG`). Idempotent; put it in a cloud
+environment's setup script so every session can `split` a memo on arrival.
+`--check` also requires `TIKTOK_RUNNER_TOKEN`, which comes from the
+environment's settings, never a file.
+
 ## What a player sees: "Watch yesterday's verse"
 
 The app spent a year advertising nothing about the account advertising it. The

@@ -37,7 +37,8 @@
     "check:exchanges": "node scripts/check-exchanges.mjs",
     "check:study-topics": "node scripts/check-study-topics.mjs",
     "check:asset-templates": "node scripts/check-asset-templates.mjs",
-    "smoke": "node scripts/smoke.mjs"
+    "smoke": "node scripts/smoke.mjs",
+    "voice:setup": "bash scripts/voice-container.sh"
   },
   "dependencies": {
     "@capacitor-community/apple-sign-in": "^6.0.0",

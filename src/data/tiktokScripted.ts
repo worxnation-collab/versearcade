@@ -414,7 +414,7 @@ export const SCRIPTED_QUIZ: Record<string, ScriptedQuiz> = {
 export const SCRIPTED_MYTH: Record<string, ScriptedMyth> = {
   '2026-11-02': {
     hook: 'Jonah wasn’t swallowed by a whale.',
-    title: 'A great fish', reference: 'Jonah 1:17', art: '/tiktok/scenes/fishing_boat.jpg',
+    title: 'A great fish', reference: 'Jonah 1:17', art: '/tiktok/exchange/why-are-you-afraid.jpg',
     ask: 'What do you think it was?',
     title_yt: 'Was Jonah swallowed by a whale? What the Bible actually says',
     caption: 'The book of Jonah never says whale. It says the Lord appointed a great fish.',
@@ -422,7 +422,7 @@ export const SCRIPTED_MYTH: Record<string, ScriptedMyth> = {
   },
   '2026-11-03': {
     hook: 'Matthew never says three wise men.',
-    title: 'Into the house', reference: 'Matthew 2:11', art: '/tiktok/scenes/lamp_house.jpg',
+    title: 'Into the house', reference: 'Matthew 2:11', art: '/tiktok/stages/house.jpg',
     ask: 'Which part did you grow up with?',
     title_yt: 'Were there really three wise men? What Matthew actually says',
     caption: 'Three gifts, no number of visitors, and they came into a house, not a stable.',
@@ -470,7 +470,7 @@ export const SCRIPTED_MYTH: Record<string, ScriptedMyth> = {
   },
   '2026-11-09': {
     hook: "There was no horse.",
-    title: "He fell to the ground", reference: "Acts 9:4", art: "/tiktok/scenes/desert_road.jpg",
+    title: "He fell to the ground", reference: "Acts 9:4", art: "/tiktok/stages/road.jpg",
     ask: "Did you picture one too?",
     title_yt: "Was Paul knocked off a horse? What Acts actually says",
     caption: "Acts just says he fell to the ground. Every painting added the horse.",
@@ -574,7 +574,7 @@ export const SCRIPTED_MYTH: Record<string, ScriptedMyth> = {
   },
   '2026-11-22': {
     hook: "People quote it like scripture.",
-    title: "Not in the Bible", reference: "Not in the Bible", art: "/tiktok/scenes/lamp_house.jpg",
+    title: "Not in the Bible", reference: "Not in the Bible", art: "/tiktok/stages/upper.jpg",
     ask: "Did you think it was in the Bible?",
     title_yt: "Is to thine own self be true in the Bible?",
     caption: "It is Shakespeare. Hamlet.",
@@ -622,7 +622,7 @@ export const SCRIPTED_MYTH: Record<string, ScriptedMyth> = {
   },
   '2026-11-28': {
     hook: "Luke never mentions a donkey.",
-    title: "They went", reference: "Luke 2:5", art: "/tiktok/scenes/desert_road.jpg",
+    title: "They went", reference: "Luke 2:5", art: "/tiktok/stages/road.jpg",
     ask: "Did yours have one?",
     title_yt: "Did Mary ride a donkey to Bethlehem?",
     caption: "Every Christmas card added it.",

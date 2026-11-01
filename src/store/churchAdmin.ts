@@ -1909,3 +1909,18 @@ export async function setAutoPublish(churchId: string, on: boolean): Promise<Res
   const r = await call<any>('set_church_auto_publish', { p_church_id: churchId, p_on: on })
   return r.ok ? { ok: true, data: toAutoPublish(r.data) } : r
 }
+
+/**
+ * The churches the caller leads (0177). Every door to a leader screen resolves
+ * through the church the caller BELONGS to, so a pastor of two campuses had no
+ * way into the second; the leadership screen lists the others from this.
+ * An empty list on any failure — a server without 0177 just shows no row.
+ */
+export interface LedChurch { id: string; name: string; verified: boolean }
+export async function fetchLedChurches(): Promise<LedChurch[]> {
+  const r = await call<unknown>('my_led_churches', {})
+  if (!r.ok || !Array.isArray(r.data)) return []
+  return (r.data as any[])
+    .filter((c) => c && typeof c.id === 'string' && typeof c.name === 'string')
+    .map((c) => ({ id: c.id, name: c.name, verified: !!c.verified }))
+}

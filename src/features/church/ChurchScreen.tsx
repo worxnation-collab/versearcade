@@ -17,6 +17,7 @@ import { useJuice } from '@/juice/useJuice'
 import { supabase } from '@/lib/supabase'
 import { ChurchArt } from './ChurchArt'
 import { ShareChurch } from './ShareChurch'
+import { AskPastorCard } from './AskPastorCard'
 import { useChurchExtras } from './ChurchExtras'
 import { ChurchBoard, TIMEFRAME_PHRASE } from './ChurchBoard'
 import { ChurchScene } from './ChurchScene'
@@ -481,6 +482,9 @@ function ChurchHome({ church }: { church: Church }) {
           the church verse and its series, the activity feed, and where to
           compete. Verified churches only — nothing changes for the rest. */}
       <ChurchLife church={church} extras={extras} />
+      {/* ChurchLife draws nothing for an unverified church; its members get
+          the one move that turns that layer on — see AskPastorCard. */}
+      {extras && !extras.verified && !extras.isAdmin && <AskPastorCard church={church} />}
 
       {/* Give -------------------------------------------------------------- */}
       <div className="card">

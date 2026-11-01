@@ -524,7 +524,8 @@ async function sendWeekly(admin: any) {
   const church = await sendChurchSunday(admin)
   const comeback = await sendComeback(admin)
   const comebackEmail = await sendComebackEmail(admin)
-  return { ok: true, due: rows.length, pushed, church, comeback, comebackEmail }
+  const secondDay = await sendSecondDayEmail(admin).catch(() => ({ ok: false, reason: 'threw' }))
+  return { ok: true, due: rows.length, pushed, church, comeback, comebackEmail, secondDay }
 }
 
 // "Your church" (0167): the same hourly run hands out Saturday evening's line
@@ -649,6 +650,7 @@ async function sendTracked(admin: any, key: string, r: { recipient: string; emai
 const EMAIL_COPY = {
   comeback: ["Today's verse", "Today's verse", undefined],
   welcome: ["You're all set", "Today's verse", 'Your new address works. This is where Verse Arcade will write to you from now on.'],
+  second: ["Today's verse is a new one", "Today's verse", 'You played your first verse yesterday. Today\'s is a different one, and it takes about two minutes.'],
 } as const satisfies Record<string, readonly [string, string, string | undefined]>
 
 // Admin → Email → "Send me a test": the come-back and/or welcome email, sent
@@ -661,7 +663,7 @@ const EMAIL_COPY = {
 async function sendTestEmail(admin: any, self: { id: string; email?: string | null }, input: Record<string, unknown>) {
   const which = String(input.kind ?? 'both')
   const kinds = which === 'both' ? (['comeback', 'welcome'] as const)
-    : which === 'comeback' || which === 'welcome' ? [which] as const : null
+    : which === 'comeback' || which === 'welcome' || which === 'second' ? [which] as const : null
   if (!kinds) return { ok: false, reason: 'bad_input' }
   const to = (self.email ?? '').trim()
   if (!to) return { ok: false, reason: 'no_email' }
@@ -706,6 +708,30 @@ async function sendComebackEmail(admin: any) {
   }
   await note(rows.length, sent, failed, lastStatus)
   return { ok: true, due: rows.length, sent, failed }
+}
+
+// The second day (0178): a player whose FIRST verse was yesterday and who
+// has not played today gets one email, once ever, at the hour they played —
+// the come-back email's shape and rules (its switch, the suppression list),
+// today's reference and one link, nothing countable. 53 of 187 accounts had
+// played exactly once. Not tracked through email_sends (whose kind check would
+// need replacing); email_second_day, written by the claim, is the record. No
+// key ⇒ nothing is claimed, so nobody's one chance is spent on an email that
+// never left.
+// deno-lint-ignore no-explicit-any
+async function sendSecondDayEmail(admin: any) {
+  const key = await resendKey(admin)
+  if (!key) return { ok: false, reason: 'no_key' }
+  const { data, error } = await admin.rpc('second_day_email_claim', { p_limit: 200 })
+  if (error) return { ok: false, reason: 'unavailable' }
+  const rows = (Array.isArray(data) ? data : []) as Array<{ recipient: string; email: string; local_day: string; token: string }>
+  const [subject, heading, lead] = EMAIL_COPY.second
+  let sent = 0
+  for (const r of rows) {
+    const why = await sendVerseEmail(key, r, subject, heading, lead)
+    if (!why) sent++
+  }
+  return { ok: true, due: rows.length, sent }
 }
 
 // Welcome back (0173): a player confirmed a new account address — usually

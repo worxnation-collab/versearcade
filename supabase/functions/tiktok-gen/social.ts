@@ -121,6 +121,14 @@ const PARKED: Kind[] = [...AUTOMATED, ...READING, 'note'].filter((k) => !UNPARKE
  * day there is a reason for it.
  */
 const LIVE_PLATFORMS: Platform[] = ['youtube', 'facebook']
+/**
+ * Where the SCRIPTED quiz and myth go (the owner's call, 2026-11-01): the
+ * live two plus Instagram and TikTok. Both carry his recorded voice end to
+ * end, which is what the parked networks' AI rules turn on. Snapchat is
+ * deliberately NOT here — its ranking demotes AI content even when labelled,
+ * and it has already rejected a post from this account.
+ */
+const SCRIPTED_ON: Platform[] = [...LIVE_PLATFORMS, 'instagram', 'tiktok']
 
 const KINDS_OFF: Partial<Record<Platform, Kind[]>> = Object.fromEntries(
   PLATFORMS.map((p) => [p, [
@@ -129,7 +137,7 @@ const KINDS_OFF: Partial<Record<Platform, Kind[]>> = Object.fromEntries(
     // UNPARKED kinds included: taking a kind off PARKED must not also open
     // it to the networks that are not live (it did, on 2026-11-01, and the
     // first scripted quiz went to all eight).
-    ...(LIVE_PLATFORMS.includes(p) ? [] : (['verse', 'story', 'own', 'note', 'exchange', ...UNPARKED] as Kind[])),
+    ...(LIVE_PLATFORMS.includes(p) ? [] : (['verse', 'story', 'own', 'note', 'exchange', ...(SCRIPTED_ON.includes(p) ? [] : UNPARKED)] as Kind[])),
     // The NOTE is a photo rather than a video, so Facebook distributes it
     // through machinery a Reel never reaches and Pinterest can pin it. It is
     // written from the same paragraphs Tabitha tells, so it belongs to the day

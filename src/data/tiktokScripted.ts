@@ -61,6 +61,18 @@ export interface ScriptedMyth {
 }
 
 export const SCRIPTED_QUIZ: Record<string, ScriptedQuiz> = {
+  '2026-11-01': {
+    hook: 'The walls fell on the seventh day.',
+    prompt: 'On the seventh day, how many times did Israel march around Jericho?',
+    options: ['Once', 'Three', 'Seven', 'Twelve'],
+    answerIndex: 2,
+    teach: 'Once a day for six days, seven times on the seventh, and the wall fell flat.',
+    reference: 'Joshua 6:15',
+    ask: 'Did you get it?',
+    title: 'How many times did Israel march around Jericho? Bible quiz',
+    caption: 'Six days of silence, then seven laps on the last one.',
+    tags: ['jericho', 'joshua', 'biblequiz', 'bibletrivia', 'shorts'],
+  },
   '2026-11-02': {
     hook: 'Almost nobody knows how Jonah ends.',
     prompt: 'How does the book of Jonah end?',
@@ -412,6 +424,14 @@ export const SCRIPTED_QUIZ: Record<string, ScriptedQuiz> = {
 }
 
 export const SCRIPTED_MYTH: Record<string, ScriptedMyth> = {
+  '2026-11-01': {
+    hook: 'The Red Sea didn\u2019t part in a second.',
+    title: 'All that night', reference: 'Exodus 14:21', art: '/tiktok/stages/water.jpg',
+    ask: 'How did you always picture it?',
+    title_yt: 'Did the Red Sea part instantly? What Exodus actually says',
+    caption: 'A strong east wind, all that night. They stood in the dark and watched it happen.',
+    tags: ['redsea', 'moses', 'exodus', 'biblefacts', 'shorts'],
+  },
   '2026-11-02': {
     hook: 'Jonah wasn’t swallowed by a whale.',
     title: 'A great fish', reference: 'Jonah 1:17', art: '/tiktok/exchange/why-are-you-afraid.jpg',

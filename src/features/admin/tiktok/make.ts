@@ -634,7 +634,7 @@ export async function makeReading(d: string, kind: ReadingKind, o: ReadingOption
   const reference = o.reference || myth?.reference || moment?.reference || v.reference
   const out = await r.renderStory({
     title, reference, verseText: reference === v.reference ? v.text : '',
-    paragraphs: [], hook: copy?.hook, room, eyebrow: def.eyebrow, scenes, bed, align: o.align,
+    paragraphs: [], hook: myth?.hook ?? copy?.hook, room, eyebrow: myth ? 'MOST PEOPLE GET THIS WRONG' : def.eyebrow, scenes, bed, align: o.align,
     own: { audio: ownAudio, words: own.thought, text: own.text, place: 'close', photo, label: VOICE_LABEL },
     onProgress: progress,
   })
@@ -722,21 +722,33 @@ function wavOf(samples: Float32Array, rate: number): ArrayBuffer {
   return buf
 }
 
-/** The take cut at its longest pause between words: [question, answer]. */
-async function splitTake(wav: ArrayBuffer, words: TimedWord[]): Promise<{ question: ArrayBuffer; answer: ArrayBuffer | null; questionSec: number }> {
+/**
+ * The take cut at its longest SILENCE: [question, answer]. Measured off the
+ * waveform, not the transcript — Whisper stretches a word across the pause
+ * after it (one ended 5.5s after it was said), so a word-gap test finds no
+ * pause at all in a take that plainly has one.
+ */
+async function splitTake(wav: ArrayBuffer): Promise<{ question: ArrayBuffer; answer: ArrayBuffer | null; questionSec: number }> {
   const ctx = new OfflineAudioContext(1, 1, 48000)
   const audio = await ctx.decodeAudioData(wav.slice(0))
   const ch = audio.getChannelData(0), rate = audio.sampleRate
-  let cut = -1, best = 0
-  for (let i = 1; i < words.length; i++) {
-    const gap = words[i].start - words[i - 1].end
-    if (gap > best) { best = gap; cut = i }
+  const hop = Math.round(rate * 0.02)
+  const quiet: boolean[] = []
+  for (let i = 0; i + hop <= ch.length; i += hop) {
+    let e = 0
+    for (let k = i; k < i + hop; k++) e += ch[k] * ch[k]
+    quiet.push(Math.sqrt(e / hop) < 0.012) // about -38 dBFS, the threshold the memos were cut on
+  }
+  const first = quiet.indexOf(false), last = quiet.lastIndexOf(false)
+  let best = 0, at = -1
+  for (let i = Math.max(0, first), run = 0; i <= last; i++) {
+    run = quiet[i] ? run + 1 : 0
+    if (run > best) { best = run; at = i - run + 1 }
   }
   // Under a second and a half is a breath, not the count of three: keep the
   // whole take as the question and let the reveal play over the bed.
-  if (cut < 0 || best < 1.5) return { question: wav, answer: null, questionSec: audio.duration }
-  const qEnd = Math.min(ch.length, Math.round((words[cut - 1].end + 0.25) * rate))
-  const aStart = Math.max(qEnd, Math.round((words[cut].start - 0.15) * rate))
+  if (at < 0 || best * 0.02 < 1.5) return { question: wav, answer: null, questionSec: audio.duration }
+  const qEnd = (at + 12) * hop, aStart = Math.max(qEnd, (at + best - 8) * hop)
   return { question: wavOf(ch.slice(0, qEnd), rate), answer: wavOf(ch.slice(aStart), rate), questionSec: qEnd / rate }
 }
 
@@ -745,7 +757,7 @@ async function makeScriptedQuiz(d: string, sq: ScriptedQuiz, o: ChallengeOptions
   const own = await fetchVoice(d, 'challenge').catch(() => null)
   if (!own) throw new Error(`no recording parked for ${d} challenge — the scripted quiz is never read by a synthetic voice`)
   const take = await (await fetch(own.wavUrl + '?v=' + Date.now())).arrayBuffer()
-  const { question, answer, questionSec } = await splitTake(take, [...own.verse, ...own.thought])
+  const { question, answer, questionSec } = await splitTake(take)
   const c = o.cast ?? challengeCast(d, 1)
   const name = READERS.find((x) => x.id === c.reader)?.name.split(' ')[0] ?? 'Peter'
   // The clock covers his question and leaves a real three seconds after it.

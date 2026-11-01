@@ -166,7 +166,7 @@ export const SCRIPTED_MYTH: Record<string, ScriptedMyth> = {
   },
   '2026-11-04': {
     hook: 'That’s not what the verse says.',
-    title: 'The love of money', reference: '1 Timothy 6:10', art: '/cards/widows_mite.webp',
+    title: 'The love of money', reference: '1 Timothy 6:10', art: '/tiktok/stages/temple.jpg',
     ask: 'Which version did you learn?',
     title_yt: 'Is money the root of all evil? The verse everyone misquotes',
     caption: 'Paul wrote that the love of money is a root of all kinds of evil. One word changes the whole verse.',
@@ -182,7 +182,7 @@ export const SCRIPTED_MYTH: Record<string, ScriptedMyth> = {
   },
   '2026-11-06': {
     hook: 'Noah didn’t take just two of every animal.',
-    title: 'Seven pairs', reference: 'Genesis 7:2', art: '/cards/covenant_rainbow.webp',
+    title: 'Seven pairs', reference: 'Genesis 7:2', art: '/tiktok/stages/water.jpg',
     ask: 'Did you know that one?',
     title_yt: 'Did Noah take two of every animal? Read the next chapter',
     caption: 'For the clean animals, God tells Noah to take seven pairs.',
@@ -190,7 +190,7 @@ export const SCRIPTED_MYTH: Record<string, ScriptedMyth> = {
   },
   '2026-11-07': {
     hook: 'This famous verse isn’t in the Bible.',
-    title: 'God helps the ones who can’t', reference: 'Mark 1:41', art: '/cards/leper_king.webp',
+    title: 'God helps the ones who can’t', reference: 'Mark 1:41', art: '/tiktok/stages/road.jpg',
     ask: 'Where did you first hear it?',
     title_yt: '"God helps those who help themselves" is not in the Bible',
     caption: 'It sounds like scripture. It is an old proverb, and the Bible keeps saying the opposite.',
@@ -198,7 +198,7 @@ export const SCRIPTED_MYTH: Record<string, ScriptedMyth> = {
   },
   '2026-11-08': {
     hook: 'There is no innkeeper in the Christmas story.',
-    title: 'No room', reference: 'Luke 2:7', art: '/cards/angels_host.webp',
+    title: 'No room', reference: 'Luke 2:7', art: '/tiktok/verse/luke-2-11.jpg',
     ask: 'Did your church have one?',
     title_yt: 'Was there an innkeeper in the Christmas story? What Luke says',
     caption: 'Luke just says there was no room for them. Nobody slams a door.',

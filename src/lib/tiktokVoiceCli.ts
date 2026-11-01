@@ -11,7 +11,7 @@
 
 import { seriesFor, seriesLabel } from '@/data/tiktokSeries'
 import { VOICE_LABEL, setRunnerToken, parkFile, fetchCopy, fetchThought, fetchStoryWord, fetchVoice, publicUrl, existsAt, voiceWavPath, voiceJsonPath, postKindOf, type VoiceKind } from '@/features/admin/tiktok/shared'
-import { makeVerse, makeStory, makeNote, makeReading, makeExchange, type Progress } from '@/features/admin/tiktok/make'
+import { makeVerse, makeStory, makeNote, makeReading, makeExchange, makeChallenge, type Progress } from '@/features/admin/tiktok/make'
 import { isReadingKind } from '@/data/tiktokWeek'
 import { getVerseForDate } from '@/data/bible/questions'
 import type { TimedWord } from '@/lib/tiktokRender'
@@ -323,7 +323,9 @@ window.vaVoice = {
         ? await makeExchange(date, { pick }, progress)
         : kind === 'story'
           ? await makeStory(date, { ownPlace: place, restory }, progress)
-          : await makeVerse(date, {}, progress)
+          : kind === 'challenge'
+            ? await makeChallenge(date, {}, progress)
+            : await makeVerse(date, {}, progress)
     const a = document.createElement('a')
     a.href = m.url
     a.download = `${kind}-${date}.${m.ext}`

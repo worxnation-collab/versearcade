@@ -11,7 +11,7 @@
 
 import { seriesFor, seriesLabel } from '@/data/tiktokSeries'
 import { VOICE_LABEL, setRunnerToken, parkFile, fetchCopy, fetchThought, fetchStoryWord, fetchVoice, publicUrl, existsAt, voiceWavPath, voiceJsonPath, postKindOf, type VoiceKind } from '@/features/admin/tiktok/shared'
-import { makeVerse, makeStory, makeNote, makeReading, makeExchange, type Progress } from '@/features/admin/tiktok/make'
+import { makeVerse, makeStory, makeNote, makeReading, makeExchange, makeChallenge, type Progress } from '@/features/admin/tiktok/make'
 import { isReadingKind } from '@/data/tiktokWeek'
 import { getVerseForDate } from '@/data/bible/questions'
 import type { TimedWord } from '@/lib/tiktokRender'
@@ -161,7 +161,9 @@ window.vaVoice = {
     // an empty `verse`, which is exactly what `openerOf` cuts to anyway, and
     // at the VERSE level, which is what every hook before it was parked at.
     const hook = kind === 'verse' && place === 'open'
-    const own = kind === 'story' || isExchange || isReadingKind(kind) || hook
+    // A scripted quiz take is all his own words (a question, a pause, the
+  // answer) — there is no verse in it to find.
+  const own = kind === 'story' || kind === 'challenge' || isExchange || isReadingKind(kind) || hook
     const dec = await m.decodeRecording(await (await fetch(wavUrl)).blob(), own && !hook ? m.SPEECH_TARGET.story : m.SPEECH_TARGET.verse)
     say('parking the recording')
     await parkFile(voiceWavPath(date, kind), dec.wav, 'audio/wav')
@@ -321,7 +323,9 @@ window.vaVoice = {
         ? await makeExchange(date, { pick }, progress)
         : kind === 'story'
           ? await makeStory(date, { ownPlace: place, restory }, progress)
-          : await makeVerse(date, {}, progress)
+          : kind === 'challenge'
+            ? await makeChallenge(date, {}, progress)
+            : await makeVerse(date, {}, progress)
     const a = document.createElement('a')
     a.href = m.url
     a.download = `${kind}-${date}.${m.ext}`

@@ -182,7 +182,7 @@ const seriesLine = (s: Series) =>
   (s.earlier.length ? ` Earlier nights covered: ${s.earlier.map((e) => `${e.reference} (${e.theme})`).join('; ')}.` : ' Tonight is the first night.') +
   (s.next ? ` Tomorrow night is ${s.next.reference} (${s.next.theme}).` : ' Tonight is the last night of the series.')
 
-const VOICED_KINDS: string[] = ['verse', 'story', 'exchange', 'book', 'moment', 'before', 'figure', 'quiet', 'prayer']
+const VOICED_KINDS: string[] = ['verse', 'story', 'exchange', 'challenge', 'book', 'moment', 'before', 'figure', 'quiet', 'prayer']
 /**
  * Every kind with a PARKED RECORDING of its own, which is a longer list than
  * the one above: the exchange is spoken at both ends, so it has two, and the
@@ -819,6 +819,24 @@ Deno.serve(async (req) => {
         return json({ ...nout, cached: false })
       }
 
+      // A SCRIPTED post (src/data/tiktokScripted.ts) brings its own words:
+      // written by hand, ending on the question the post asks. Nothing is
+      // generated — the words are parked as given, cleaned and capped.
+      const sc = input.scripted && typeof input.scripted === 'object' ? input.scripted as Record<string, unknown> : null
+      if (sc) {
+        const clean = (v: unknown, n: number) => String(v ?? '').replace(/https?:\/\/\S+/g, '').trim().slice(0, n)
+        const ask = clean(sc.ask, 140)
+        const caption = clean(sc.caption, 600)
+        if (!ask || !caption) return json({ error: 'scripted copy needs caption and ask' }, 400)
+        const text = `${caption}\n\n${ask}`
+        const tags = Array.isArray(sc.tags) ? (sc.tags as unknown[]).map((t) => String(t).replace(/[^a-z0-9]/gi, '').toLowerCase()).filter(Boolean).slice(0, 6) : []
+        const one = { title: '', text, tags }
+        const platforms = { tiktok: one, youtube: { title: clean(sc.title, 100), text, tags }, facebook: { title: '', text, tags: tags.slice(0, 3) }, instagram: one, x: { title: '', text: text.slice(0, 260), tags: tags.slice(0, 2) }, threads: one, pinterest: one }
+        const out = { hook: clean(sc.hook, 80), ask, caption: text, hashtags: tags, platforms }
+        if (path) await park(path, new TextEncoder().encode(JSON.stringify(out)), 'application/json')
+        return json({ ...out, cached: false })
+      }
+
       const challenge = kind === 'challenge' || kind === 'challenge2'
       const question = String(input.question ?? '').slice(0, 200)
       const about = String(input.about ?? '').slice(0, 400)
@@ -952,7 +970,7 @@ Deno.serve(async (req) => {
       // photo the thought section draws.
       // The six READING kinds join both halves: they park an MP4 like any
       // other post and a recording like the verse and the story do.
-      if (!/^(days\/\d{4}-\d{2}-\d{2}\/((verse|story|quiz|challenge|challenge2|own|exchange|book|moment|before|figure|quiet|prayer)(\.(mp4|webm)|-cover\.jpg)|note-card\.jpg|voice-(verse|story|exchange|exchange-close|book|moment|before|figure|quiet|prayer)\.(wav|json))|founder\/photo\.jpg|scenes\/[a-z0-9-]{1,60}\.jpg)$/.test(path)) return json({ error: 'bad path' }, 400)
+      if (!/^(days\/\d{4}-\d{2}-\d{2}\/((verse|story|quiz|challenge|challenge2|own|exchange|book|moment|before|figure|quiet|prayer)(\.(mp4|webm)|-cover\.jpg)|note-card\.jpg|voice-(verse|story|exchange|exchange-close|challenge|book|moment|before|figure|quiet|prayer)\.(wav|json))|founder\/photo\.jpg|scenes\/[a-z0-9-]{1,60}\.jpg)$/.test(path)) return json({ error: 'bad path' }, 400)
       const { data, error } = await admin.storage.from(BUCKET).createSignedUploadUrl(path, { upsert: true })
       if (error || !data) return json({ error: error?.message ?? 'no upload url' }, 500)
       return json({ path, token: data.token, publicUrl: publicUrl(path) })

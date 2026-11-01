@@ -14,7 +14,12 @@ export const PLATFORMS: Platform[] = ['tiktok', 'youtube', 'facebook', 'instagra
 export const ayrshareName = (p: Platform): string => (p === 'x' ? 'twitter' : p)
 
 export interface PlatformCopy { title?: string; text?: string; tags?: string[] }
-export interface DayCopy { hook?: string; platforms?: Partial<Record<Platform, PlatformCopy>> }
+/**
+ * `ask` is set only on a SCRIPTED post (src/data/tiktokScripted.ts): the one
+ * question the post ends on. It becomes the first comment, and its presence
+ * means the caption is hand-written and already ends on that question.
+ */
+export interface DayCopy { hook?: string; ask?: string; platforms?: Partial<Record<Platform, PlatformCopy>> }
 
 /** The posts a day: see admin/tiktok/shared.tsx for what each is. */
 export type Kind = 'verse' | 'story' | 'quiz' | 'challenge' | 'challenge2' | 'own' | 'note'
@@ -85,7 +90,12 @@ const AUTOMATED: Kind[] = ['quiz', 'challenge', 'challenge2']
  * runner's `isPhoto`/`mediaName` branch are all kept: it is a row here, not a
  * rebuild, the day a still earns its place back.
  */
-const PARKED: Kind[] = [...AUTOMATED, ...READING, 'note']
+// The scripted week (2026-11-02) brings back TWO of them with his voice on
+// them: `challenge` is the morning "Can you answer this?" and `moment` is the
+// evening "Most people get this wrong". Both are recorded, so neither is the
+// wholly-generated shape the policies above describe.
+const UNPARKED: Kind[] = ['challenge', 'moment']
+const PARKED: Kind[] = [...AUTOMATED, ...READING, 'note'].filter((k) => !UNPARKED.includes(k))
 
 /**
  * The networks this account actually posts to.
@@ -369,6 +379,10 @@ function withAsk(text: string | undefined, kind: Kind, join = '\n'): string {
   // only "share" does not suppress it. The exchange joins the challenges here
   // rather than being special-cased: they are the formats that end on a
   // question, and the guard is about the ask, not about the format.
+  // A caption that already ENDS ON ITS OWN QUESTION gets no stock ask: the
+  // same "share this…" line under 94 posts in a row was wallpaper, and a
+  // second ask after a question asks for nothing.
+  if (/\?\s*$/.test(t)) return t
   const asksComment = kind === 'challenge' || kind === 'challenge2' || kind === 'exchange'
   const hasShare = /\bshare\b/i.test(t)
   const has = hasShare && (!asksComment || /comment/i.test(t))
@@ -422,8 +436,15 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
   if (a.scheduleDate) body.scheduleDate = a.scheduleDate
   // The tracked link, on the three networks where a comment's link is
   // tappable. Everywhere else it is the bio link, set by hand.
-  const day = verseDayOf(a.kind, a.date)
-  if (FIRST_COMMENT_ON.includes(platform)) body.firstComment = { comment: `${day ? 'Play this verse' : "Play today's verse"}: ${siteLink(platform, day)}` }
+  const day = copy.ask ? undefined : verseDayOf(a.kind, a.date)
+  // A scripted post's first comment is its QUESTION, so the comment section
+  // opens on something to answer rather than on our own link. The tracked
+  // link rides under it — it is what a sign-up is filed by (0106).
+  if (FIRST_COMMENT_ON.includes(platform)) {
+    body.firstComment = { comment: copy.ask
+      ? `${copy.ask}\n\nPlay the daily Bible quiz: ${siteLink(platform)}`
+      : `${day ? 'Play this verse' : "Play today's verse"}: ${siteLink(platform, day)}` }
+  }
   if (platform === 'tiktok') {
     // BOTH: the flag AND the note in the caption.
     //

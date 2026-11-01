@@ -382,7 +382,7 @@ export const VOICE_LABEL = 'Matthew · founder'
  * them to learn.
  */
 export type VoiceKind = 'verse' | 'story' | 'book' | 'moment' | 'before' | 'figure' | 'quiet' | 'prayer'
-  | 'exchange' | 'exchange-close'
+  | 'exchange' | 'exchange-close' | 'challenge'
 
 /**
  * The POST a recording belongs to. Every voice kind is its own post except
@@ -472,7 +472,7 @@ export async function loadStages(r: Pick<Renderer, 'loadImage'>, ids: Array<stri
 // The words for a date's post of one kind, written once (cached in the
 // bucket by date and kind) so the hub can show today's without rendering a
 // video, and a render on the same day gets the same words.
-export async function fetchCopy(d: string, kind: Made['kind'], force = false, extra: { question?: string; about?: string; voiced?: boolean } = {}): Promise<Copy> {
+export async function fetchCopy(d: string, kind: Made['kind'], force = false, extra: { question?: string; about?: string; voiced?: boolean; scripted?: { hook: string; title: string; caption: string; ask: string; tags: string[] } } = {}): Promise<Copy> {
   // The story's caption is about the verse the story is told behind, which on
   // a series night is not the day's verse.
   const v = kind === 'story' ? storyVerseFor(d) : getVerseForDate(d)

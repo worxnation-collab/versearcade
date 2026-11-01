@@ -166,7 +166,10 @@ if (!mode) fail('set TIKTOK_RUNNER_TOKEN (function mode) or AYRSHARE_API_KEY + G
 if (mode === 'local' && !GEMINI_KEY) fail('local mode needs GEMINI_API_KEY for the reading')
 const ALL_KINDS = ['verse', 'story', 'quiz', 'challenge', 'challenge2', 'note', 'book', 'moment', 'before', 'figure', 'quiet', 'prayer', 'exchange']
 // The kinds about YESTERDAY's verse: its answers are public only once the day has rolled over.
-const aboutYesterday = (k) => k === 'quiz' || k.startsWith('challenge')
+// `challenge` is NOT any more: since 2026-11-02 it is only ever the SCRIPTED
+// morning quiz, which asks its own question (src/data/tiktokScripted.ts) and
+// is keyed by the day it goes out.
+const aboutYesterday = (k) => k === 'quiz' || k === 'challenge2'
 // The NOTE is the one post here that is not a video: a 4:5 card and the words,
 // Facebook's photo-and-text post (and Pinterest's pin). So it skips the two
 // steps every other kind takes — the ffmpeg transcode, which has nothing to
@@ -201,7 +204,21 @@ function zonedToUtc(ymd, hhmm, tz) {
   return new Date(t)
 }
 const today = env.DATE || ymdIn(TZ)
-const KINDS = (env.KINDS || defaultKinds(today)).split(',').map((s) => s.trim()).filter(Boolean)
+// The scripted week (2026-11-02): a day with his QUIZ take parked posts the
+// quiz in the morning instead of the verse, and a day with his MYTH take
+// posts the myth in the evening instead of the story. Decided by what is
+// actually in the bucket, so a take that never arrived falls back to the old
+// post rather than refusing to post at all — and the exchange steps aside on
+// a scripted day, which is two posts, not three.
+async function parked(d, name) {
+  try { const r = await fetch(`${(env.SUPABASE_URL || 'https://visuppaucpzzigwtqmdd.supabase.co').replace(/\/$/, '')}/storage/v1/object/public/tiktok/days/${d}/${name}`, { method: 'HEAD' }); return r.ok } catch { return false }
+}
+async function scriptedKinds(d) {
+  const [quiz, myth] = await Promise.all([parked(d, 'voice-challenge.wav'), parked(d, 'voice-moment.wav')])
+  if (!quiz && !myth) return defaultKinds(d)
+  return [quiz ? 'challenge' : 'verse', myth ? 'moment' : 'story'].join(',')
+}
+const KINDS = (env.KINDS || (await scriptedKinds(today))).split(',').map((s) => s.trim()).filter(Boolean)
 for (const k of KINDS) if (!ALL_KINDS.includes(k)) fail(`unknown kind ${k}`)
 const yesterday = addDays(today, -1)
 log(`mode ${mode} · ${TZ} · today ${today} · kinds ${KINDS.join(',')} · platforms ${PLATFORMS.join(',')}${DRY ? ' · DRY RUN' : ''}`)

@@ -33,7 +33,9 @@ export const DEFAULT_TIMES = [
   // morning cluster and the story's evening one.
   'exchange=12:30', 'exchange@youtube=12:30', 'exchange@facebook=13:00',
   // Monday's note, and the parked formats if they are ever switched back on.
-  'note=12:00', 'challenge=10:00', 'quiz=12:30', 'challenge2=16:00',
+  // The scripted morning quiz takes the verse's slot (2026-11-02).
+  'challenge=08:00', 'challenge@youtube=08:00', 'challenge@facebook=08:15',
+  'note=12:00', 'quiz=12:30', 'challenge2=16:00',
 ].join(',')
 
 /**

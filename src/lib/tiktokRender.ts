@@ -2352,6 +2352,17 @@ export interface QuizInput {
    * the whole second half of a 20-second post.
    */
   solo?: boolean
+  /**
+   * A second recording played AT THE REVEAL: the operator giving the answer
+   * and its teach line in his own voice (the scripted "Can you answer this?"
+   * post). The reveal holds as long as it needs to.
+   */
+  answerAudio?: ArrayBuffer
+  /**
+   * Seconds the end card holds. 0 drops it: the post ends on the reveal and
+   * loops straight back to the question, which is the rewatch a feed counts.
+   */
+  endSec?: number
   onProgress?: (fraction: number, label: string) => void
 }
 
@@ -2359,6 +2370,8 @@ const QUIZ_REVEAL = 3.8
 const QUIZ_REVEAL_SOLO = 5.5
 const QUIZ_LEAD_SOLO = 0.3
 const QUIZ_END = 3.4
+/** The answer recording starts this long after the reveal, once the gold has landed. */
+const QUIZ_ANSWER_AT = 0.5
 const QUIZ_LEAD_NO_AUDIO = 7
 
 export interface QuizTimeline {
@@ -2372,11 +2385,11 @@ export interface QuizTimeline {
 }
 
 /** The quiz's timing, so the caller can size a music bed and the cue track to it. */
-export function quizTimeline(audioSec: number | null, input: Pick<QuizInput, 'questions' | 'plan' | 'windowSec' | 'solo'>): QuizTimeline {
+export function quizTimeline(audioSec: number | null, input: Pick<QuizInput, 'questions' | 'plan' | 'windowSec' | 'solo' | 'endSec'> & { answerSec?: number }): QuizTimeline {
   // A solo post's clock runs from the first frame; its reading (the
   // question, aloud) starts QUIZ_LEAD_SOLO in, under it.
   const lead = input.solo ? 0 : audioSec != null ? audioSec + 1.6 : QUIZ_LEAD_NO_AUDIO
-  const reveal = input.solo ? QUIZ_REVEAL_SOLO : QUIZ_REVEAL
+  const reveal = input.answerSec ? Math.max(QUIZ_REVEAL_SOLO, QUIZ_ANSWER_AT + input.answerSec + 0.8) : input.solo ? QUIZ_REVEAL_SOLO : QUIZ_REVEAL
   const qStart: number[] = []
   const events: QuizTimeline['events'] = []
   let t = lead
@@ -2388,7 +2401,7 @@ export function quizTimeline(audioSec: number | null, input: Pick<QuizInput, 'qu
     events.push({ t: t + input.windowSec, kind: step && step.pick === q.answerIndex ? 'right' : 'wrong' })
     t += input.windowSec + reveal
   })
-  return { lead, qStart, reveal, total: t + QUIZ_END, events }
+  return { lead, qStart, reveal, total: t + (input.endSec ?? QUIZ_END), events }
 }
 
 /**
@@ -2643,9 +2656,20 @@ async function drawQuizFrame(ctx: CanvasRenderingContext2D, sc: QuizScene, t: nu
 export async function renderQuiz(input: QuizInput): Promise<RenderOutput> {
   const progress = input.onProgress ?? (() => {})
   progress(0, 'Setting up the board')
-  const samples = input.audio ? await decodeAudio(input.audio) : new Float32Array(0)
+  let samples = input.audio ? await decodeAudio(input.audio) : new Float32Array(0)
   const audioDur = samples.length / SAMPLE_RATE
-  const tl = quizTimeline(input.audio ? audioDur : null, input)
+  const answer = input.answerAudio ? await decodeAudio(input.answerAudio) : null
+  const tl = quizTimeline(input.audio ? audioDur : null, { ...input, answerSec: answer ? answer.length / SAMPLE_RATE : undefined })
+  if (answer && tl.qStart.length) {
+    // One track, as `produce` wants it: the question from the lead, then
+    // silence through the clock, then the answer just after the reveal.
+    const lead = input.solo ? QUIZ_LEAD_SOLO : 0.6
+    const at = Math.round((tl.qStart[0] + input.windowSec + QUIZ_ANSWER_AT - lead) * SAMPLE_RATE)
+    const joined = new Float32Array(Math.max(samples.length, at + answer.length))
+    joined.set(samples, 0)
+    joined.set(answer, at)
+    samples = joined
+  }
   let phrases: TimedPhrase[] = []
   if (input.audio && !input.solo) {
     const verse = /[.!?]["'”’)]?$/.test(input.text.trim()) ? input.text.trim() : input.text.trim() + '.'

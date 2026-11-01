@@ -25,6 +25,7 @@ import { stagePath, STORY_STAGES } from '@/data/tiktokStages'
 import { READINGS, stageForReading, type ReadingKind } from '@/data/tiktokWeek'
 import { MOMENTS, momentPath } from '@/data/tiktokMoments'
 import { castFor } from '@/data/tiktokCast'
+import { scriptedQuiz, scriptedMyth, type ScriptedQuiz } from '@/data/tiktokScripted'
 import { EXCHANGES, exchangeForDate, isExchangeDay, voiceFor } from '@/data/tiktokExchanges'
 import type { TimedWord } from '@/lib/tiktokRender'
 import { seriesFor, seriesLabel, storyVerseFor, type SeriesNight } from '@/data/tiktokSeries'
@@ -598,33 +599,42 @@ function pickIndex(d: string, salt: string, n: number): number {
 export async function makeReading(d: string, kind: ReadingKind, o: ReadingOptions, progress: Progress): Promise<MadeBlob> {
   const v = getVerseForDate(d)
   const def = READINGS[kind]
+  // "Most people get this wrong" rides the `moment` kind: his voice over one
+  // held painting, with its own hook, painting, reference and words.
+  const myth = kind === 'moment' ? scriptedMyth(d) : null
   progress(0, 'looking for your recording')
   const own = await ensureReading(d, kind, progress)
   if (!own) throw new Error(`no recording parked for ${d} ${kind} — a reading is never posted in a synthetic voice`)
   let copy: Copy | null = null
   if (o.copy !== false) {
-    progress(0, 'writing the caption')
-    try { copy = await fetchCopy(d, kind, false, { voiced: true }) } catch { copy = null }
+    progress(0, myth ? 'parking the caption' : 'writing the caption')
+    try {
+      copy = myth
+        ? await fetchCopy(d, kind, true, { voiced: true, scripted: { hook: myth.hook, title: myth.title_yt, caption: myth.caption, ask: myth.ask, tags: myth.tags } })
+        : await fetchCopy(d, kind, false, { voiced: true })
+    } catch { copy = null }
+    if (copy && myth) copy = { ...copy, hook: myth.hook }
   }
   progress(0, 'rendering')
   const r: Renderer = await import('@/lib/tiktokRender')
   const ownAudio = await (await fetch(own.wavUrl + '?v=' + Date.now())).arrayBuffer()
   const photo = await r.loadImage(publicUrl(FOUNDER_PHOTO) + '?v=' + Date.now()).catch(() => undefined)
-  const scenes = await readingScenes(r, d, kind, o.pick)
+  const scenes = myth ? [await r.loadImage(myth.art)] : await readingScenes(r, d, kind, o.pick)
   const room = scenes.find(Boolean) ?? (await r.loadImage(ROOMS[0].id).catch(() => r.loadImage('/keep/study-library.jpg')))
   const bed = o.music !== false ? await bedFor(await r.plannedDuration(undefined, copy?.hook, true, ownAudio), kind === 'quiet' || kind === 'prayer' ? 'cloister' : 'morning') : undefined
-  const moment = kind === 'moment' ? momentFor(d, o.pick) : null
-  const title = moment ? moment.title
+  const moment = kind === 'moment' && !myth ? momentFor(d, o.pick) : null
+  const title = myth ? myth.title
+    : moment ? moment.title
     : kind === 'figure' ? 'Who is this?'
     : kind === 'book' ? `The book of ${v.book}`
     : copy?.hook || def.name
   // The end card names what was just READ, which is only the day's verse when
   // the reading is about the day's verse. A moment carries its own citation,
   // and an operator who recorded against a different passage says so.
-  const reference = o.reference || moment?.reference || v.reference
+  const reference = o.reference || myth?.reference || moment?.reference || v.reference
   const out = await r.renderStory({
     title, reference, verseText: reference === v.reference ? v.text : '',
-    paragraphs: [], hook: copy?.hook, room, eyebrow: def.eyebrow, scenes, bed, align: o.align,
+    paragraphs: [], hook: myth?.hook ?? copy?.hook, room, eyebrow: myth ? 'MOST PEOPLE GET THIS WRONG' : def.eyebrow, scenes, bed, align: o.align,
     own: { audio: ownAudio, words: own.thought, text: own.text, place: 'close', photo, label: VOICE_LABEL },
     onProgress: progress,
   })
@@ -692,7 +702,90 @@ export interface ChallengeOptions {
   music?: boolean
 }
 
+// ---- the scripted quiz: "Can you answer this?" --------------------------------------
+//
+// His one take holds the question, a silent count of three, and the answer.
+// It is cut at its longest pause: the first half is read under the clock, the
+// second plays at the reveal. A day with no take is REFUSED rather than read
+// by a synthetic voice — the morning runner checks before choosing the kind.
+
+/** 16-bit mono PCM, the shape `decodeAudio` reads back. */
+function wavOf(samples: Float32Array, rate: number): ArrayBuffer {
+  const buf = new ArrayBuffer(44 + samples.length * 2)
+  const v = new DataView(buf)
+  const str = (o: number, t: string) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)) }
+  str(0, 'RIFF'); v.setUint32(4, 36 + samples.length * 2, true); str(8, 'WAVE'); str(12, 'fmt ')
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true)
+  v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true)
+  str(36, 'data'); v.setUint32(40, samples.length * 2, true)
+  for (let i = 0; i < samples.length; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, samples[i])) * 0x7fff, true)
+  return buf
+}
+
+/**
+ * The take cut at its longest SILENCE: [question, answer]. Measured off the
+ * waveform, not the transcript — Whisper stretches a word across the pause
+ * after it (one ended 5.5s after it was said), so a word-gap test finds no
+ * pause at all in a take that plainly has one.
+ */
+async function splitTake(wav: ArrayBuffer): Promise<{ question: ArrayBuffer; answer: ArrayBuffer | null; questionSec: number }> {
+  const ctx = new OfflineAudioContext(1, 1, 48000)
+  const audio = await ctx.decodeAudioData(wav.slice(0))
+  const ch = audio.getChannelData(0), rate = audio.sampleRate
+  const hop = Math.round(rate * 0.02)
+  const quiet: boolean[] = []
+  for (let i = 0; i + hop <= ch.length; i += hop) {
+    let e = 0
+    for (let k = i; k < i + hop; k++) e += ch[k] * ch[k]
+    quiet.push(Math.sqrt(e / hop) < 0.012) // about -38 dBFS, the threshold the memos were cut on
+  }
+  const first = quiet.indexOf(false), last = quiet.lastIndexOf(false)
+  let best = 0, at = -1
+  for (let i = Math.max(0, first), run = 0; i <= last; i++) {
+    run = quiet[i] ? run + 1 : 0
+    if (run > best) { best = run; at = i - run + 1 }
+  }
+  // Under a second and a half is a breath, not the count of three: keep the
+  // whole take as the question and let the reveal play over the bed.
+  if (at < 0 || best * 0.02 < 1.5) return { question: wav, answer: null, questionSec: audio.duration }
+  const qEnd = (at + 12) * hop, aStart = Math.max(qEnd, (at + best - 8) * hop)
+  return { question: wavOf(ch.slice(0, qEnd), rate), answer: wavOf(ch.slice(aStart), rate), questionSec: qEnd / rate }
+}
+
+async function makeScriptedQuiz(d: string, sq: ScriptedQuiz, o: ChallengeOptions, progress: Progress): Promise<MadeBlob> {
+  progress(0, 'looking for your recording')
+  const own = await fetchVoice(d, 'challenge').catch(() => null)
+  if (!own) throw new Error(`no recording parked for ${d} challenge — the scripted quiz is never read by a synthetic voice`)
+  const take = await (await fetch(own.wavUrl + '?v=' + Date.now())).arrayBuffer()
+  const { question, answer, questionSec } = await splitTake(take)
+  const c = o.cast ?? challengeCast(d, 1)
+  const name = READERS.find((x) => x.id === c.reader)?.name.split(' ')[0] ?? 'Peter'
+  // The clock covers his question and leaves a real three seconds after it.
+  const windowSec = Math.max(8, Math.min(18, Math.ceil(questionSec + 3.5)))
+  // Peter plays too, and gets it about two days in three — "can you beat
+  // Peter?" has to be a real question. Seeded by date, so a re-render agrees.
+  let h = 0; for (const ch of d) h = (h * 31 + ch.charCodeAt(0)) >>> 0
+  const right = h % 3 !== 0
+  const step: QuizStep = { pick: right ? sq.answerIndex : (sq.answerIndex + 1 + (h % 3)) % 4, atSec: windowSec - 2.2, points: 0 }
+  const q = { prompt: sq.prompt, options: [...sq.options], answerIndex: sq.answerIndex, teach: sq.teach }
+  let copy: Copy | null = null
+  if (o.copy !== false) {
+    progress(0, 'parking the caption')
+    try { copy = await fetchCopy(d, 'challenge', true, { voiced: true, scripted: { hook: sq.hook, title: sq.title, caption: sq.caption, ask: sq.ask, tags: sq.tags } }) } catch { copy = null }
+  }
+  progress(0, 'rendering')
+  const r: Renderer = await import('@/lib/tiktokRender')
+  const [backdrop, figure] = await Promise.all([loadScene(r, c.scene), r.loadImage(`/skins/${c.reader}.png`)])
+  const base = { reference: sq.reference, text: '', questions: [q], plan: [step], windowSec, playerName: name, figure, backdrop, hook: sq.hook, solo: true, endSec: 0 }
+  const tl = r.quizTimeline(questionSec, { ...base, answerSec: answer ? await r.audioSeconds(answer) : undefined })
+  const [bed, cues] = await Promise.all([o.music !== false ? bedFor(tl.total, 'morning') : Promise.resolve(undefined), r.quizCues(tl.events, tl.total)])
+  const out = await r.renderQuiz({ ...base, audio: question, answerAudio: answer ?? undefined, bed, cues, onProgress: progress })
+  return made(d, 'challenge', sq.reference, out, copy, `scripted quiz · your voice · ${name} ${right ? 'got it' : 'missed it'}`, true)
+}
+
 export async function makeChallenge(d: string, o: ChallengeOptions, progress: Progress): Promise<MadeBlob> {
+  const sq = (o.slot ?? 1) === 1 ? scriptedQuiz(d) : null
+  if (sq) return makeScriptedQuiz(d, sq, o, progress)
   const v = getVerseForDate(d)
   const slot = o.slot ?? 1
   const kind: Made['kind'] = slot === 2 ? 'challenge2' : 'challenge'

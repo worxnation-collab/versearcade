@@ -126,7 +126,10 @@ const KINDS_OFF: Partial<Record<Platform, Kind[]>> = Object.fromEntries(
   PLATFORMS.map((p) => [p, [
     ...PARKED,
     // A network that is not live takes nothing at all.
-    ...(LIVE_PLATFORMS.includes(p) ? [] : (['verse', 'story', 'own', 'note', 'exchange'] as Kind[])),
+    // UNPARKED kinds included: taking a kind off PARKED must not also open
+    // it to the networks that are not live (it did, on 2026-11-01, and the
+    // first scripted quiz went to all eight).
+    ...(LIVE_PLATFORMS.includes(p) ? [] : (['verse', 'story', 'own', 'note', 'exchange', ...UNPARKED] as Kind[])),
     // The NOTE is a photo rather than a video, so Facebook distributes it
     // through machinery a Reel never reaches and Pinterest can pin it. It is
     // written from the same paragraphs Tabitha tells, so it belongs to the day

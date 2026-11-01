@@ -525,8 +525,9 @@ IN-APP PURCHASES, two kinds, both through Apple:
 - The Verified Church plan, an auto-renewable subscription (monthly or yearly, one
   subscription group), offered only to the leaders of a church that is not yet
   verified, on that church's leader screen. It verifies the church — unlocking the
-  leader tools — and does nothing for any individual's play. The demo church is
-  already verified, so the demo account sees the tools rather than the offer.
+  leader tools — and does nothing for any individual's play. To see it: Church
+  tab -> "Leadership tools" -> "You also lead: Verse Arcade Demo Chapel" ->
+  "Your page" -> "Plan & billing".
 There are no external purchase links or steering of any kind. A "For Churches"
 card leads to an inquiry form, not to a checkout.
 
@@ -573,8 +574,17 @@ the church picker and an empty profile. Now:
   the leader dashboard all have content through 2026-11-13;
 - a pending async battle from `sharkbait` already waits under "Your turn".
 
-**Before submitting, re-check two dates:** the church verses run out on
-2026-11-13 (extend them if review slips past it), and the two buddy requests on the
+**Added 2026-11-01:** `applereview` also leads the UNVERIFIED QA church
+`af9ed0f4-…`, renamed "Verse Arcade Demo Chapel" from "QA Claim Church
+(internal, ignore)" (no members, no page, its only claim revoked). It exists so a
+reviewer can see the Verified Church plan offer, which only an unverified
+church's leaders get. They reach it from the verified church's leader screen
+through "You also lead" (0177) — there was no other door. **Do not buy the plan
+on it in sandbox**: a purchase verifies it and the offer disappears for review.
+The verified church's verses now run through 2026-11-30 (30 days).
+
+**Before submitting, re-check:** the church verses run out on
+2026-11-30 (extend them if review slips past it), and the two buddy requests on the
 account are from real players (`cryelogan`, `easyandextreme`) — harmless, but
 decline them in the app if you would rather a reviewer not see real handles.
 

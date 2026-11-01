@@ -22,6 +22,7 @@ import { chromium } from 'playwright'
 const PORT = process.env.PORT || '4183'
 const B = `http://localhost:${PORT}`
 const UID = '11111111-1111-1111-1111-111111111111'
+const CH_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', CH_B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url')
 const jwt = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: UID, role: 'authenticated', exp: 4102444800, aud: 'authenticated' })}.sig`
 const user = { id: UID, aud: 'authenticated', role: 'authenticated', email: 'p@example.com', app_metadata: {}, user_metadata: {}, created_at: '2026-01-01T00:00:00Z' }
@@ -74,7 +75,15 @@ function shell(cfg) {
     'Filesystem.writeFile': (o) => ({ uri: 'file:///var/mobile/Caches/' + o.path }),
     'Purchases.isConfigured': () => ({ isConfigured: window.__rcConfigured === true }),
     'Purchases.configure': () => { window.__rcConfigured = true },
-    'Purchases.getProducts': () => ({ products: cfg.products === false ? [] : [{ identifier: 'com.versearcade.app.patron_founding', priceString: '$9.99', price: 9.99, currencyCode: 'USD', title: 'x', description: 'x' }] }),
+    'Purchases.getProducts': (o) => {
+      if (cfg.products === false) return { products: [] }
+      const all = [
+        { identifier: 'com.versearcade.app.patron_founding', priceString: '$9.99' },
+        { identifier: 'com.versearcade.app.church_verified_monthly', priceString: '$29.99' },
+        { identifier: 'com.versearcade.app.church_verified_yearly', priceString: '$299.99' },
+      ]
+      return { products: all.filter((p) => (o.productIdentifiers || []).includes(p.identifier)).map((p) => ({ ...p, price: 1, currencyCode: 'USD', title: 'x', description: 'x' })) }
+    },
     'Purchases.restorePurchases': () => { if (cfg.restore === 'fail') throw new Error('Network error'); return { customerInfo: { allPurchasedProductIdentifiers: cfg.restore === 'owns' ? ['com.versearcade.app.patron_founding'] : [] } } },
   }
   window.webkit = { messageHandlers: { bridge: { postMessage() {} } } }
@@ -113,6 +122,9 @@ async function open(cfg, { signedIn = true, path = '/play' } = {}) {
     else if (u.pathname.startsWith('/auth/v1/user')) body = JSON.stringify(user)
     else if (u.pathname === '/rest/v1/profiles') body = JSON.stringify(route.request().headers()['accept']?.includes('vnd.pgrst.object') ? profile : [profile])
     else if (u.pathname.endsWith('/rpc/save_device_token')) body = 'null'
+    else if (u.pathname.endsWith('/rpc/my_led_churches')) body = JSON.stringify([{ id: CH_A, name: 'Demo Church', verified: true }, { id: CH_B, name: 'Demo Chapel', verified: false }])
+    else if (u.pathname.endsWith('/rpc/church_admin_settings')) { const b = JSON.parse(route.request().postData() || '{}'); body = JSON.stringify({ ok: true, name: b.p_church_id === CH_B ? 'Demo Chapel' : 'Demo Church', verified: b.p_church_id !== CH_B, giving_url: null, announcement: null }) }
+    else if (u.pathname.endsWith('/rpc/church_entitlements')) body = JSON.stringify({ ok: true, church_leader: true, leader_look: 'classic-clergy', content_generation: false, custom_leader_avatar: false })
     else if (u.pathname.endsWith('/functions/v1/iap-fulfill')) body = JSON.stringify({ granted: cfg.restore === 'owns' ? ['cephas'] : [] })
     else if (u.pathname.startsWith('/rest/v1/') && !u.pathname.includes('/rpc/')) body = '[]'
     await route.fulfill({ status: 200, contentType: 'application/json', body })
@@ -255,6 +267,27 @@ for (const share of ['ok', 'cancel']) {
   await page.waitForTimeout(1200)
   const p = new URL(page.url()).pathname
   p.startsWith('/church/') ? ok('scheme link: opened ' + p) : fail('scheme link com.versearcade.app://church/… ignored, still on ' + p)
+  await ctx.close()
+}
+
+// 7. A leader of two churches reaches the second (0177), and the unverified one
+//    offers the Verified Church plan through Apple.
+{
+  const { ctx, page } = await open({})
+  await page.goto(B + `/church/${CH_A}/admin`)
+  await page.waitForTimeout(2500)
+  const pill = page.getByRole('button', { name: /Demo Chapel · not yet verified/ })
+  if (!(await pill.count())) fail('two churches: no "You also lead" row on the first church\'s screen')
+  else {
+    ok('two churches: "You also lead" row shown')
+    await pill.click()
+    await page.waitForTimeout(2500)
+    new URL(page.url()).pathname === `/church/${CH_B}/admin` ? ok('two churches: opened the second church\'s screen') : fail('two churches: landed on ' + new URL(page.url()).pathname)
+    await page.getByText('Your page', { exact: true }).first().click().catch(() => {})
+    await page.waitForTimeout(1500)
+    ;(await page.getByRole('button', { name: /Subscribe with Apple/ }).count()) ? ok('unverified church: Apple plan offered') : fail('unverified church: no Apple plan offer')
+    if (process.env.DEBUG) { console.log((await text(page)).slice(0, 1500)); }
+  }
   await ctx.close()
 }
 

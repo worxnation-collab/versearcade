@@ -5,7 +5,7 @@ import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { TabbedSection } from '@/components/TabbedSection'
 import { useJuice } from '@/juice/useJuice'
-import { fetchAdminSettings, fetchChurchBilling, fetchEntitlements, openBillingPortal, serverGenerationBackend, startSuiteUpgrade, serverVerseBackend, type AdminSettings, type ChurchBilling, type Entitlements } from '@/store/churchAdmin'
+import { fetchAdminSettings, fetchLedChurches, fetchChurchBilling, fetchEntitlements, openBillingPortal, serverGenerationBackend, startSuiteUpgrade, serverVerseBackend, type AdminSettings, type ChurchBilling, type Entitlements, type LedChurch } from '@/store/churchAdmin'
 import { churchBillingPortalVisible } from '@/lib/commerce'
 import { todayLocalDate } from '@/lib/date'
 import { Capacitor } from '@capacitor/core'
@@ -357,7 +357,9 @@ export default function ChurchAdminScreen() {
             <SharePanel churchId={id} churchName={settings.name} verified={settings.verified} />
           </Collapsible>
           </div>
-          <Collapsible icon="🧾" title="Plan & billing" defaultOpen={upgraded}>
+          {/* Open by default while the church is unverified: verifying is
+              the one thing an unverified church's leaders have to do here. */}
+          <Collapsible icon="🧾" title="Plan & billing" defaultOpen={upgraded || !settings.verified}>
             {plan}
           </Collapsible>
           {/* The look is a nicety, not a setup step (2026-10-29): it used to be
@@ -384,6 +386,7 @@ export default function ChurchAdminScreen() {
 
       <h1 style={{ fontSize: 24, margin: '0 0 4px' }}>Leadership</h1>
       <div className="dim" style={{ fontSize: 13.5, marginBottom: 12 }}>{settings.name}</div>
+      <AlsoLead currentId={id} />
 
       <TabbedSection tabs={tabs} defaultOpen defaultTab={avatarPaid || upgraded ? 'page' : 'home'} go={go} />
       <div style={{ height: 32 }} />
@@ -608,6 +611,31 @@ function PlanRow({ on, name, detail, children }: { on: boolean; name: string; de
         <div className="faint" style={{ fontSize: 11.5, lineHeight: 1.4 }}>{detail}</div>
         {children}
       </div>
+    </div>
+  )
+}
+
+// The other churches this leader leads (0177), one tap each. Without it a
+// leader of two churches could only ever reach the one they belong to: every
+// door here resolves through membership. Renders nothing for the usual case of
+// one church, and nothing on any failure.
+function AlsoLead({ currentId }: { currentId: string }) {
+  const navigate = useNavigate()
+  const [others, setOthers] = useState<LedChurch[]>([])
+  useEffect(() => {
+    let live = true
+    void fetchLedChurches().then((list) => { if (live) setOthers(list.filter((c) => c.id !== currentId)) })
+    return () => { live = false }
+  }, [currentId])
+  if (!others.length) return null
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+      <span className="dim" style={{ fontSize: 12.5 }}>You also lead</span>
+      {others.map((c) => (
+        <button key={c.id} className="pill" style={{ fontSize: 12.5 }} onClick={() => navigate(`/church/${c.id}/admin`)}>
+          {c.name}{c.verified ? '' : ' · not yet verified'} →
+        </button>
+      ))}
     </div>
   )
 }

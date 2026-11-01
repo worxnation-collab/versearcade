@@ -8,6 +8,7 @@
 // bundles this file alone with esbuild and runs it in Node.
 
 import { getVerseForDate } from '@/data/bible/questions'
+import { scriptedQuiz } from '@/data/tiktokScripted'
 
 function hash(s: string): number {
   let h = 2166136261
@@ -31,6 +32,10 @@ export interface ChallengeQuestion {
 
 /** The question a challenge post of that date and slot asked, with its answer and teach line. */
 export function challengeQuestion(date: string, slot: 1 | 2): ChallengeQuestion {
+  // A scripted morning quiz asks its own question, not one of the verse's —
+  // the replier has to grade comments against THAT answer.
+  const sq = slot === 1 ? scriptedQuiz(date) : null
+  if (sq) return { reference: sq.reference, index: 0, prompt: sq.prompt, options: [...sq.options], answerIndex: sq.answerIndex, teach: sq.teach }
   const v = getVerseForDate(date)
   const index = challengeIndex(date, slot, v.questions.length)
   const q = v.questions[index]

@@ -161,7 +161,9 @@ window.vaVoice = {
     // an empty `verse`, which is exactly what `openerOf` cuts to anyway, and
     // at the VERSE level, which is what every hook before it was parked at.
     const hook = kind === 'verse' && place === 'open'
-    const own = kind === 'story' || isExchange || isReadingKind(kind) || hook
+    // A scripted quiz take is all his own words (a question, a pause, the
+  // answer) — there is no verse in it to find.
+  const own = kind === 'story' || kind === 'challenge' || isExchange || isReadingKind(kind) || hook
     const dec = await m.decodeRecording(await (await fetch(wavUrl)).blob(), own && !hook ? m.SPEECH_TARGET.story : m.SPEECH_TARGET.verse)
     say('parking the recording')
     await parkFile(voiceWavPath(date, kind), dec.wav, 'audio/wav')

@@ -208,10 +208,22 @@ export async function makeVerse(d: string, o: VerseOptions, progress: Progress):
     if (scene && figure) {
       progress(0, 'asking for the reading')
       const p2 = o.voice ?? autoPick(d, c.reader)
-      const tts2 = await call<{ url: string; cached: boolean }>('tts', {
-        date: d, text: `${v.text.trim()} ${spokenReference(v.reference)}.`, voice: p2.voice, style: p2.style,
-      })
-      const reading = await (await fetch(tts2.url + '?v=' + Date.now())).arrayBuffer()
+      // A synthetic reading has come back FIVE MINUTES long (2026-11-02: a
+      // verse of 20 words rendered as a 328s post with "Ezra 7:10." held on
+      // screen) and the bad file is cached by text, so a re-render reuses it.
+      // A reading longer than three times its words' worth is asked for
+      // again with `force`, and a second bad one refuses the post.
+      const readText = `${v.text.trim()} ${spokenReference(v.reference)}.`
+      const expected = readText.split(/\s+/).length / 2.2 + 3
+      let reading: ArrayBuffer | null = null
+      for (const force of [false, true]) {
+        const tts2 = await call<{ url: string; cached: boolean }>('tts', { date: d, text: readText, voice: p2.voice, style: p2.style, ...(force ? { force: true } : {}) })
+        const buf = await (await fetch(tts2.url + '?v=' + Date.now())).arrayBuffer()
+        const secs = await r.audioSeconds(buf).catch(() => Infinity)
+        if (secs <= Math.max(25, expected * 3)) { reading = buf; break }
+        console.warn(`reading came back ${Math.round(secs)}s for ~${Math.round(expected)}s of words${force ? '' : ' — asking again'}`)
+      }
+      if (!reading) throw new Error(`the synthetic reading for ${d} came back far too long twice — not posting a broken verse`)
       let copy2: Copy | null = null
       if (o.copy !== false) {
         progress(0, 'writing the caption')

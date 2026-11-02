@@ -476,7 +476,7 @@ export const SCRIPTED_MYTH: Record<string, ScriptedMyth> = {
     hook: 'This famous verse isn’t in the Bible.',
     title: 'God helps the ones who can’t', reference: 'Mark 1:41', art: '/tiktok/stages/road.jpg',
     ask: 'Where did you first hear it?',
-    title_yt: '"God helps those who help themselves" is not in the Bible',
+    title_yt: 'Is "God helps those who help themselves" in the Bible? It isn\u2019t',
     caption: 'It sounds like scripture. It is an old proverb, and the Bible keeps saying the opposite.',
     tags: ['bible', 'biblefacts', 'misquoted', 'faith', 'shorts'],
   },
@@ -668,3 +668,15 @@ export const SCRIPTED_MYTH: Record<string, ScriptedMyth> = {
 
 export const scriptedQuiz = (date: string): ScriptedQuiz | null => SCRIPTED_QUIZ[date] ?? null
 export const scriptedMyth = (date: string): ScriptedMyth | null => SCRIPTED_MYTH[date] ?? null
+
+/**
+ * The day both numbered series count from: Daily Bible Quiz No. 1 and Most
+ * People Get This Wrong No. 1 both went out on 2026-11-01. One function, read
+ * by the renderer (`make.ts`) AND the app's "Yesterday's board" card, so the
+ * number on the video and the number in the app can never disagree.
+ */
+export const SCRIPTED_FROM = '2026-11-01'
+export function scriptedNo(date: string): number {
+  const day = (ymd: string) => Math.round(Date.parse(`${ymd}T00:00:00Z`) / 86_400_000)
+  return day(date) - day(SCRIPTED_FROM) + 1
+}

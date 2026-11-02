@@ -13,6 +13,7 @@ import { DailyChest } from '@/features/chest/DailyChest'
 import { ChurchWindow } from './ChurchWindow'
 import { MapCompass } from '@/features/map/MapCompass'
 import { PlayedToday } from '@/features/presence/PlayedToday'
+import { YesterdayBoard } from '@/features/daily/YesterdayBoard'
 import { liturgyFor } from '@/data/liturgy'
 import { useJuice } from '@/juice/useJuice'
 import { todayLocalDate } from '@/lib/date'
@@ -359,6 +360,12 @@ export default function HomeScreen() {
           A number and a door — never a score beside anybody's name. See
           `PlayedToday` and `0093_daily_players.sql`. */}
       <PlayedToday />
+
+      {/* Yesterday's chalkboard quiz answered, and last night's myth, the
+          reveal loop from the social posts carried into the app. New today,
+          gone tomorrow, nothing on a day with no scripted posts. See the
+          header of `YesterdayBoard`. */}
+      <YesterdayBoard today={todayDate} />
 
       {/* ── What today IS in the church year ──────────────────────────────
           One line, only on a day that is actually one of the kept days, and

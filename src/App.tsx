@@ -36,6 +36,7 @@ import { AccountWall, useAccountLocked, type WallCopy } from './components/Accou
 import { captureSource } from './lib/attribution'
 import { captureEmailClick } from './lib/emailClick'
 import { captureVerseLink } from './lib/verseLink'
+import { captureBoardLink } from './lib/boardLink'
 
 // Every screen past the first few loads on demand, so the first paint carries
 // the Play tab and the run rather than the whole app (the bundle was one
@@ -298,6 +299,8 @@ export default function App() {
     captureSource()
     // And which day's verse the post was about (?d=…), so the link opens it.
     captureVerseLink()
+    // And a quiz or myth post's ?b=1, which brings them to yesterday's board.
+    captureBoardLink()
     // And a tap on a come-back email's link (?e=…, 0174), counted once.
     captureEmailClick()
     init()

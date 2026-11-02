@@ -28,6 +28,8 @@ export interface ChallengeQuestion {
   options: string[]
   answerIndex: number
   teach: string
+  /** A scripted chalkboard quiz: the reply bot must not reveal the answer. */
+  scripted?: boolean
 }
 
 /** The question a challenge post of that date and slot asked, with its answer and teach line. */
@@ -35,7 +37,7 @@ export function challengeQuestion(date: string, slot: 1 | 2): ChallengeQuestion 
   // A scripted morning quiz asks its own question, not one of the verse's —
   // the replier has to grade comments against THAT answer.
   const sq = slot === 1 ? scriptedQuiz(date) : null
-  if (sq) return { reference: sq.reference, index: 0, prompt: sq.prompt, options: [...sq.options], answerIndex: sq.answerIndex, teach: sq.teach }
+  if (sq) return { reference: sq.reference, index: 0, prompt: sq.prompt, options: [...sq.options], answerIndex: sq.answerIndex, teach: sq.teach, scripted: true }
   const v = getVerseForDate(date)
   const index = challengeIndex(date, slot, v.questions.length)
   const q = v.questions[index]

@@ -3082,3 +3082,212 @@ export async function renderExchangePoster(input: Omit<ExchangeInput, 'onProgres
   await drawExchangeFrame(ctx, sc, t, chrome)
   return canvas.toDataURL('image/jpeg', 0.9)
 }
+
+// ---- the chalkboard quiz (2026-11-02) ------------------------------------------------
+//
+// The scripted morning quiz as a CLASSROOM rather than a game screen: the
+// owner at a painted chalkboard, today's question and its four options
+// chalked on the board, and NO ANSWER. The answer is the comment section's
+// to argue about, and it is revealed at the top of the NEXT day's board
+// ("Yesterday's answer: …") — which is the reason to come back. The old
+// layout (`renderQuiz`, solo) read as an advert for the app; this one reads
+// as a question somebody asked you.
+//
+// Everything on the board is drawn ONCE into an offscreen layer and eroded
+// with a fixed speckle so the strokes read as chalk rather than type; the
+// only thing that changes over the post is that layer's two timed lines
+// (yesterday's answer, then the ask), so the hold-it-still rule stands.
+
+export interface ChalkQuizInput {
+  /** The painted room with the blank board (public/tiktok/exchange/chalkboard.jpg). */
+  backdrop: HTMLImageElement
+  /** The owner's own full-length figure. */
+  figure?: HTMLImageElement
+  prompt: string
+  options: string[]
+  /** "DAILY BIBLE QUIZ · No. 12" */
+  label: string
+  /** Yesterday's answer, shown for the first seconds of the board. */
+  yesterday?: string
+  /** His question, read under the board. */
+  audio: ArrayBuffer
+  bed?: Float32Array
+  onProgress?: (fraction: number, label: string) => void
+}
+
+/** Where the board's writable slate sits, as fractions of the frame (measured off chalkboard.jpg). */
+const BOARD = { x0: 0.13, x1: 0.875, y0: 0.095, y1: 0.535 }
+const CHALK = 'rgba(244,242,232,0.94)'
+const CHALK_DIM = 'rgba(244,242,232,0.62)'
+const CHALK_FONT = '"Caveat", cursive'
+const CHALK_LEAD = 0.35
+const CHALK_HOLD = 4.2
+const YESTERDAY_FOR = 4.5
+
+let chalkFontReady: Promise<void> | null = null
+function loadChalkFont(): Promise<void> {
+  if (!chalkFontReady) {
+    chalkFontReady = (async () => {
+      try {
+        for (const w of [600, 700]) {
+          const f = new FontFace('Caveat', `url(/tiktok/fonts/caveat-${w}.ttf)`, { weight: String(w) })
+          await f.load(); document.fonts.add(f)
+        }
+      } catch { /* the fallback stack still draws */ }
+    })()
+  }
+  return chalkFontReady
+}
+
+/** A speckle mask, made once, that eats small holes out of chalk strokes. */
+let speckle: HTMLCanvasElement | null = null
+function chalkSpeckle(): HTMLCanvasElement {
+  if (speckle) return speckle
+  const c = document.createElement('canvas'); c.width = 256; c.height = 256
+  const x = c.getContext('2d')!
+  let s = 1234567
+  const rnd = () => ((s = (s * 1103515245 + 12345) >>> 0) / 4294967296)
+  for (let i = 0; i < 2600; i++) {
+    x.fillStyle = `rgba(0,0,0,${0.25 + rnd() * 0.6})`
+    const r = 0.4 + rnd() * 1.3
+    x.beginPath(); x.arc(rnd() * 256, rnd() * 256, r, 0, Math.PI * 2); x.fill()
+  }
+  return (speckle = c)
+}
+
+function chalkLines(ctx: CanvasRenderingContext2D, text: string, maxW: number, sizes: number[], maxH: number, weight = 700) {
+  for (const size of sizes) {
+    ctx.font = `${weight} ${size}px ${CHALK_FONT}`
+    const lines = wrap(ctx, text, maxW)
+    const lh = Math.round(size * 1.05)
+    if (lines.length * lh <= maxH) return { lines, size, lh }
+  }
+  const size = sizes[sizes.length - 1]
+  ctx.font = `${weight} ${size}px ${CHALK_FONT}`
+  return { lines: wrap(ctx, text, maxW), size, lh: Math.round(size * 1.05) }
+}
+
+/** Draw chalk text onto a layer: a soft halo, the stroke, then the speckle eats into it. */
+function chalkWrite(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, color = CHALK) {
+  ctx.save()
+  ctx.fillStyle = 'rgba(244,242,232,0.10)'
+  for (const [dx, dy] of [[-1.5, 0], [1.5, 0.5], [0, -1.2]]) ctx.fillText(text, x + dx, y + dy)
+  ctx.fillStyle = color
+  ctx.fillText(text, x, y)
+  ctx.restore()
+}
+
+function erode(layer: HTMLCanvasElement) {
+  const x = layer.getContext('2d')!
+  x.save()
+  x.globalCompositeOperation = 'destination-out'
+  x.fillStyle = x.createPattern(chalkSpeckle(), 'repeat')!
+  x.fillRect(0, 0, layer.width, layer.height)
+  x.restore()
+}
+
+function boardLayer(draw: (ctx: CanvasRenderingContext2D) => void): HTMLCanvasElement {
+  const c = document.createElement('canvas'); c.width = WIDTH; c.height = HEIGHT
+  const ctx = c.getContext('2d')!
+  ctx.textBaseline = 'middle'
+  draw(ctx)
+  erode(c)
+  return c
+}
+
+export async function renderChalkQuiz(input: ChalkQuizInput): Promise<RenderOutput> {
+  const progress = input.onProgress ?? (() => {})
+  progress(0, 'Chalking the board')
+  await loadChalkFont()
+  const samples = await decodeAudio(input.audio)
+  const askAt = CHALK_LEAD + samples.length / SAMPLE_RATE + 0.2
+  const total = askAt + CHALK_HOLD
+
+  const bx0 = WIDTH * BOARD.x0, bx1 = WIDTH * BOARD.x1, by0 = HEIGHT * BOARD.y0, by1 = HEIGHT * BOARD.y1
+  const bw = bx1 - bx0
+
+  // The board as it stands for the whole post: label, question, options.
+  const main = boardLayer((ctx) => {
+    ctx.textAlign = 'center'
+    ctx.font = `600 40px ${CHALK_FONT}`
+    chalkWrite(ctx, input.label, WIDTH / 2, by0 + 34, CHALK_DIM)
+    const q = chalkLines(ctx, input.prompt, bw - 40, [92, 84, 76, 68, 62, 56], 360)
+    const qTop = by0 + (input.yesterday ? 200 : 150)
+    ctx.font = `700 ${q.size}px ${CHALK_FONT}`
+    q.lines.forEach((l, i) => chalkWrite(ctx, l, WIDTH / 2, qTop + i * q.lh))
+    const qBottom = qTop + (q.lines.length - 1) * q.lh + q.lh * 0.7
+    // A chalk rule under the question.
+    ctx.strokeStyle = 'rgba(244,242,232,0.55)'; ctx.lineWidth = 4; ctx.lineCap = 'round'
+    ctx.beginPath(); ctx.moveTo(bx0 + 60, qBottom + 6); ctx.quadraticCurveTo(WIDTH / 2, qBottom + 14, bx1 - 60, qBottom + 4); ctx.stroke()
+    // Four options, left-aligned under it, each with its letter circled. Each
+    // option is measured first so a long one that wraps takes the room it
+    // needs and pushes the rest down, rather than overlapping its neighbours.
+    const room = by1 - (qBottom + 40) - 120
+    let oSize = 64
+    type Row = { lines: string[]; size: number }
+    const layout = (base: number): Row[] => input.options.map((opt) => {
+      ctx.font = `600 ${base}px ${CHALK_FONT}`
+      if (ctx.measureText(opt).width <= bw - 170) return { lines: [opt], size: base }
+      const size = Math.round(base * 0.82)
+      ctx.font = `600 ${size}px ${CHALK_FONT}`
+      return { lines: wrap(ctx, opt, bw - 170).slice(0, 2), size }
+    })
+    const heightOf = (rows: Row[]) => rows.reduce((h, r) => h + r.lines.length * r.size * 0.95 + r.size * 0.35, 0)
+    let rows = layout(oSize)
+    while (heightOf(rows) > room && oSize > 44) { oSize -= 2; rows = layout(oSize) }
+    ctx.textAlign = 'left'
+    let cursor = qBottom + 46
+    rows.forEach((row, i) => {
+      const lh = row.size * 0.95
+      const block = row.lines.length * lh
+      const mid = cursor + block / 2
+      ctx.font = `700 ${oSize}px ${CHALK_FONT}`
+      chalkWrite(ctx, 'ABCD'[i], bx0 + 54, mid)
+      ctx.strokeStyle = 'rgba(244,242,232,0.7)'; ctx.lineWidth = 3
+      ctx.beginPath(); ctx.ellipse(bx0 + 54 + oSize * 0.22, mid + 2, oSize * 0.42, oSize * 0.44, -0.2, 0, Math.PI * 2); ctx.stroke()
+      ctx.font = `600 ${row.size}px ${CHALK_FONT}`
+      row.lines.forEach((l, k) => chalkWrite(ctx, l, bx0 + 130, cursor + lh / 2 + k * lh))
+      cursor += block + row.size * 0.35
+    })
+  })
+  const yesterday = input.yesterday ? boardLayer((ctx) => {
+    ctx.textAlign = 'center'
+    ctx.font = `700 46px ${CHALK_FONT}`
+    chalkWrite(ctx, `Yesterday's answer: ${input.yesterday}`, WIDTH / 2, by0 + 92, 'rgba(255,226,140,0.95)')
+  }) : null
+  const ask = boardLayer((ctx) => {
+    ctx.textAlign = 'center'
+    ctx.font = `700 60px ${CHALK_FONT}`
+    chalkWrite(ctx, 'A, B, C or D? Tell us why.', WIDTH / 2, by1 - 70, 'rgba(255,226,140,0.97)')
+    ctx.font = `600 40px ${CHALK_FONT}`
+    chalkWrite(ctx, "The answer's on tomorrow's board.", WIDTH / 2, by1 - 18, CHALK_DIM)
+  })
+
+  const fig = input.figure
+  const pad = fig ? bottomPad(fig) : 0
+  const draw = async (ctx: CanvasRenderingContext2D, t: number) => {
+    cover(ctx, input.backdrop, input.backdrop.naturalWidth, input.backdrop.naturalHeight, 1 + 0.015 * (t / total))
+    ctx.drawImage(main, 0, 0)
+    if (yesterday) {
+      const a = t < YESTERDAY_FOR ? 1 : Math.max(0, 1 - (t - YESTERDAY_FOR) / 0.5)
+      if (a > 0) { ctx.save(); ctx.globalAlpha = a; ctx.drawImage(yesterday, 0, 0); ctx.restore() }
+    }
+    if (t >= askAt) { ctx.save(); ctx.globalAlpha = easeOut((t - askAt) / 0.5); ctx.drawImage(ask, 0, 0); ctx.restore() }
+    if (fig) {
+      // Standing in front of the board, feet on the floor, lower right.
+      const h = HEIGHT * 0.44
+      const w = h * (fig.naturalWidth / fig.naturalHeight)
+      const feet = HEIGHT * 0.975
+      const x = WIDTH * 0.72 - w / 2
+      const y = feet - h + pad * (h / fig.naturalHeight)
+      ctx.save()
+      ctx.fillStyle = 'rgba(30,18,8,0.28)'
+      ctx.beginPath(); ctx.ellipse(WIDTH * 0.72, feet - 4, w * 0.36, 16, 0, 0, Math.PI * 2); ctx.fill()
+      ctx.drawImage(fig, x, y, w, h)
+      ctx.restore()
+    }
+  }
+  const { blob, ext } = await produce(draw, total, CHALK_LEAD, samples, progress, input.bed)
+  progress(1, 'Done')
+  return { blob, ext, durationSec: total, phrases: [] }
+}

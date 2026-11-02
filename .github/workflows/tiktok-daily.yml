@@ -33,9 +33,13 @@ on:
         description: "Operator's date to make (YYYY-MM-DD, default today in TIKTOK_TZ)"
         required: false
       kinds:
-        description: 'Comma list of verse,challenge,quiz,challenge2,story'
+        # EMPTY by default, so a hand-started run picks the day's posts exactly
+        # as the schedule does (quiz + verse + myth on a scripted day). A
+        # default list here bypassed that on 2026-11-02 and posted the old
+        # story with no myth.
+        description: 'Comma list of kinds; leave empty for the day as the schedule would make it'
         required: false
-        default: 'verse,challenge,quiz,challenge2,story'
+        default: ''
       dry_run:
         description: 'Render only — upload and schedule nothing'
         type: boolean

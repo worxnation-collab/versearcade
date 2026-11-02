@@ -453,7 +453,9 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
   // link rides under it — it is what a sign-up is filed by (0106).
   if (FIRST_COMMENT_ON.includes(platform)) {
     body.firstComment = { comment: copy.ask
-      ? `${copy.ask}\n\nPlay the daily Bible quiz: ${siteLink(platform)}`
+      // `&b=1` lands them on the Play tab's "Yesterday's board" card
+      // (src/lib/boardLink.ts), so the reveal is in the app too.
+      ? `${copy.ask}\n\nYesterday's answer, and today's verse to play: ${siteLink(platform)}&b=1`
       : `${day ? 'Play this verse' : "Play today's verse"}: ${siteLink(platform, day)}` }
   }
   if (platform === 'tiktok') {

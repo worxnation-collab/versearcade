@@ -556,6 +556,14 @@ history; the scars are real, but take the shape from here.**
 | evening | `moment` | MOST PEOPLE GET THIS WRONG — his voice over one painting, numbered, ending on tomorrow's question | YouTube, Facebook, Instagram, TikTok |
 
 The scripted quiz and myth live in `data/tiktokScripted.ts`, keyed by date.
+**The reveal loop reaches the app too**: the Play tab's "Yesterday's board"
+card (`features/daily/YesterdayBoard.tsx`) shows YESTERDAY's quiz answered with
+its teach line and last night's myth, each with a "Read <ref>" into the Bible,
+and renders nothing on a day with no scripted entry. It never names today's
+quiz, so the app is never where an answer leaks early, and it scores nobody.
+A scripted post's first comment links `…&b=1` (`lib/boardLink.ts`), which
+scrolls to and lights the card once. Both series' numbers come from one
+`scriptedNo()`, so the video and the app always agree.
 **PRs #424 and #425 read like a contradiction and are not one**: #424 stopped
 the first scripted quiz leaking to all eight networks (taking a kind off
 `PARKED` had opened it everywhere); #425 then deliberately added Instagram and

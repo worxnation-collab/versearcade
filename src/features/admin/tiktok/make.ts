@@ -25,7 +25,7 @@ import { stagePath, STORY_STAGES } from '@/data/tiktokStages'
 import { READINGS, stageForReading, type ReadingKind } from '@/data/tiktokWeek'
 import { MOMENTS, momentPath } from '@/data/tiktokMoments'
 import { castFor } from '@/data/tiktokCast'
-import { scriptedQuiz, scriptedMyth, type ScriptedQuiz } from '@/data/tiktokScripted'
+import { scriptedQuiz, scriptedMyth, scriptedNo, type ScriptedQuiz } from '@/data/tiktokScripted'
 import { EXCHANGES, exchangeForDate, isExchangeDay, voiceFor } from '@/data/tiktokExchanges'
 import type { TimedWord } from '@/lib/tiktokRender'
 import { seriesFor, seriesLabel, storyVerseFor, type SeriesNight } from '@/data/tiktokSeries'
@@ -618,7 +618,7 @@ export async function makeReading(d: string, kind: ReadingKind, o: ReadingOption
   // the title and "#N" on YouTube, and the end card and caption name
   // TOMORROW's myth by its question, so the evening post hands off to the
   // next one the way the quiz hands off to tomorrow's board.
-  const mythNo = myth ? dayNo(d) - dayNo(MYTH_FROM) + 1 : 0
+  const mythNo = myth ? scriptedNo(d) : 0
   const nextMyth = myth ? scriptedMyth(nextDay(d)) : null
   const tease = nextMyth ? `Tomorrow night: ${mythQuestion(nextMyth.title_yt)}` : undefined
   progress(0, 'looking for your recording')
@@ -771,11 +771,6 @@ async function splitTake(wav: ArrayBuffer): Promise<{ question: ArrayBuffer; ans
   return { question: wavOf(ch.slice(0, qEnd), rate), answer: wavOf(ch.slice(aStart), rate), questionSec: qEnd / rate }
 }
 
-/** The day a quiz number counts from: No. 1 was the first scripted quiz. */
-const QUIZ_FROM = '2026-11-01'
-/** Same for the myth: No. 1 was the Red Sea on 2026-11-01. */
-const MYTH_FROM = '2026-11-01'
-function dayNo(ymd: string) { return Math.round(Date.parse(`${ymd}T00:00:00Z`) / 86_400_000) }
 function prevDay(ymd: string) { return new Date(Date.parse(`${ymd}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10) }
 function nextDay(ymd: string) { return new Date(Date.parse(`${ymd}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10) }
 /** "Was Jonah swallowed by a whale? What the Bible actually says" → its question. */
@@ -792,7 +787,7 @@ async function makeScriptedQuiz(d: string, sq: ScriptedQuiz, o: ChallengeOptions
   const { question } = await splitTake(take)
   const prev = scriptedQuiz(prevDay(d))
   const yesterday = prev ? prev.options[prev.answerIndex] : undefined
-  const no = dayNo(d) - dayNo(QUIZ_FROM) + 1
+  const no = scriptedNo(d)
   const ask = 'A, B, C or D? Tell us why. The answer is on tomorrow\u2019s board.'
   let copy: Copy | null = null
   if (o.copy !== false) {

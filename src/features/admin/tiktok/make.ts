@@ -614,6 +614,13 @@ export async function makeReading(d: string, kind: ReadingKind, o: ReadingOption
   // "Most people get this wrong" rides the `moment` kind: his voice over one
   // held painting, with its own hook, painting, reference and words.
   const myth = kind === 'moment' ? scriptedMyth(d) : null
+  // The myth is a numbered series like the quiz (2026-11-02): "No. N" over
+  // the title and "#N" on YouTube, and the end card and caption name
+  // TOMORROW's myth by its question, so the evening post hands off to the
+  // next one the way the quiz hands off to tomorrow's board.
+  const mythNo = myth ? dayNo(d) - dayNo(MYTH_FROM) + 1 : 0
+  const nextMyth = myth ? scriptedMyth(nextDay(d)) : null
+  const tease = nextMyth ? `Tomorrow night: ${mythQuestion(nextMyth.title_yt)}` : undefined
   progress(0, 'looking for your recording')
   const own = await ensureReading(d, kind, progress)
   if (!own) throw new Error(`no recording parked for ${d} ${kind} — a reading is never posted in a synthetic voice`)
@@ -622,7 +629,7 @@ export async function makeReading(d: string, kind: ReadingKind, o: ReadingOption
     progress(0, myth ? 'parking the caption' : 'writing the caption')
     try {
       copy = myth
-        ? await fetchCopy(d, kind, true, { voiced: true, scripted: { hook: myth.hook, title: myth.title_yt, caption: myth.caption, ask: myth.ask, tags: myth.tags } })
+        ? await fetchCopy(d, kind, true, { voiced: true, scripted: { hook: myth.hook, title: `${myth.title_yt} | Most People Get This Wrong #${mythNo}`.slice(0, 100), caption: tease ? `${myth.caption}\n\n${tease}` : myth.caption, ask: myth.ask, tags: myth.tags } })
         : await fetchCopy(d, kind, false, { voiced: true })
     } catch { copy = null }
     if (copy && myth) copy = { ...copy, hook: myth.hook }
@@ -646,7 +653,7 @@ export async function makeReading(d: string, kind: ReadingKind, o: ReadingOption
   const reference = o.reference || myth?.reference || moment?.reference || v.reference
   const out = await r.renderStory({
     title, reference, verseText: reference === v.reference ? v.text : '',
-    paragraphs: [], hook: myth?.hook ?? copy?.hook, room, eyebrow: myth ? 'MOST PEOPLE GET THIS WRONG' : def.eyebrow, scenes, bed, align: o.align,
+    paragraphs: [], hook: myth?.hook ?? copy?.hook, room, eyebrow: myth ? `MOST PEOPLE GET THIS WRONG \u00b7 No. ${mythNo}` : def.eyebrow, endNote: tease, scenes, bed, align: o.align,
     own: { audio: ownAudio, words: own.thought, text: own.text, place: 'close', photo, label: VOICE_LABEL },
     onProgress: progress,
   })
@@ -766,8 +773,13 @@ async function splitTake(wav: ArrayBuffer): Promise<{ question: ArrayBuffer; ans
 
 /** The day a quiz number counts from: No. 1 was the first scripted quiz. */
 const QUIZ_FROM = '2026-11-01'
-const dayNo = (ymd: string) => Math.round(Date.parse(`${ymd}T00:00:00Z`) / 86_400_000)
-const prevDay = (ymd: string) => new Date(Date.parse(`${ymd}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10)
+/** Same for the myth: No. 1 was the Red Sea on 2026-11-01. */
+const MYTH_FROM = '2026-11-01'
+function dayNo(ymd: string) { return Math.round(Date.parse(`${ymd}T00:00:00Z`) / 86_400_000) }
+function prevDay(ymd: string) { return new Date(Date.parse(`${ymd}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10) }
+function nextDay(ymd: string) { return new Date(Date.parse(`${ymd}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10) }
+/** "Was Jonah swallowed by a whale? What the Bible actually says" → its question. */
+function mythQuestion(titleYt: string) { const q = titleYt.indexOf('?'); return q > 0 ? titleYt.slice(0, q + 1) : titleYt }
 
 async function makeScriptedQuiz(d: string, sq: ScriptedQuiz, o: ChallengeOptions, progress: Progress): Promise<MadeBlob> {
   progress(0, 'looking for your recording')

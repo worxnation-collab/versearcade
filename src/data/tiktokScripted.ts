@@ -476,7 +476,7 @@ export const SCRIPTED_MYTH: Record<string, ScriptedMyth> = {
     hook: 'This famous verse isn’t in the Bible.',
     title: 'God helps the ones who can’t', reference: 'Mark 1:41', art: '/tiktok/stages/road.jpg',
     ask: 'Where did you first hear it?',
-    title_yt: '"God helps those who help themselves" is not in the Bible',
+    title_yt: 'Is "God helps those who help themselves" in the Bible? It isn\u2019t',
     caption: 'It sounds like scripture. It is an old proverb, and the Bible keeps saying the opposite.',
     tags: ['bible', 'biblefacts', 'misquoted', 'faith', 'shorts'],
   },

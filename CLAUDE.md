@@ -544,13 +544,27 @@ the kit still exists.
 
 ## The TikTok engine: an operator tool, not a feature
 
-**Read this first: the engine is TWO POSTS A DAY ON TWO NETWORKS, and most of
-what follows this paragraph is the history of how it got there.** Everything
-below is still worth reading — the scars are real and several of them are
-invisible in a diff — but the bullets describe formats and networks that are
-now parked, so take the shape from here and the lessons from there.
+**Read this first: since 2026-11-02 the engine is THREE POSTS A DAY, and
+which networks get what is decided in ONE place — `postsOn` in
+`tiktok-gen/social.ts`. Everything below that section's first bullet list is
+history; the scars are real, but take the shape from here.**
 
-**What it makes now.** A MORNING VERSE and an EVENING STORY every day, plus an
+| Slot (ET) | Kind | What it is | Networks |
+|---|---|---|---|
+| morning | `challenge` | the CHALKBOARD QUIZ — his voice asks, four options in chalk, NO answer; yesterday's answer opens the next board | YouTube, Facebook, Instagram, TikTok |
+| midday | `verse` | his recorded HOOK, then a synthetic reading | YouTube, Facebook |
+| evening | `moment` | MOST PEOPLE GET THIS WRONG — his voice over one painting, numbered, ending on tomorrow's question | YouTube, Facebook, Instagram, TikTok |
+
+The scripted quiz and myth live in `data/tiktokScripted.ts`, keyed by date.
+**PRs #424 and #425 read like a contradiction and are not one**: #424 stopped
+the first scripted quiz leaking to all eight networks (taking a kind off
+`PARKED` had opened it everywhere); #425 then deliberately added Instagram and
+TikTok for the two scripted kinds only (`SCRIPTED_ON`, the owner's call). The
+verse stays on the two `LIVE_PLATFORMS`. The story and the exchange below are
+no longer in the daily schedule (`scriptedKinds` in `scripts/tiktok-daily.mjs`
+picks the day's kinds).
+
+**What it made before 2026-11-02.** A MORNING VERSE and an EVENING STORY every day, plus an
 EXCHANGE three days a week — all carrying the operator's own recorded voice,
 posted to YouTube and Facebook only:
 

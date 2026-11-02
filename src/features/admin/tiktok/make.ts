@@ -752,35 +752,39 @@ async function splitTake(wav: ArrayBuffer): Promise<{ question: ArrayBuffer; ans
   return { question: wavOf(ch.slice(0, qEnd), rate), answer: wavOf(ch.slice(aStart), rate), questionSec: qEnd / rate }
 }
 
+/** The day a quiz number counts from: No. 1 was the first scripted quiz. */
+const QUIZ_FROM = '2026-11-01'
+const dayNo = (ymd: string) => Math.round(Date.parse(`${ymd}T00:00:00Z`) / 86_400_000)
+const prevDay = (ymd: string) => new Date(Date.parse(`${ymd}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10)
+
 async function makeScriptedQuiz(d: string, sq: ScriptedQuiz, o: ChallengeOptions, progress: Progress): Promise<MadeBlob> {
   progress(0, 'looking for your recording')
   const own = await fetchVoice(d, 'challenge').catch(() => null)
   if (!own) throw new Error(`no recording parked for ${d} challenge — the scripted quiz is never read by a synthetic voice`)
   const take = await (await fetch(own.wavUrl + '?v=' + Date.now())).arrayBuffer()
-  const { question, answer, questionSec } = await splitTake(take)
-  const c = o.cast ?? challengeCast(d, 1)
-  const name = READERS.find((x) => x.id === c.reader)?.name.split(' ')[0] ?? 'Peter'
-  // The clock covers his question and leaves a real three seconds after it.
-  const windowSec = Math.max(8, Math.min(18, Math.ceil(questionSec + 3.5)))
-  // Peter plays too, and gets it about two days in three — "can you beat
-  // Peter?" has to be a real question. Seeded by date, so a re-render agrees.
-  let h = 0; for (const ch of d) h = (h * 31 + ch.charCodeAt(0)) >>> 0
-  const right = h % 3 !== 0
-  const step: QuizStep = { pick: right ? sq.answerIndex : (sq.answerIndex + 1 + (h % 3)) % 4, atSec: windowSec - 2.2, points: 0 }
-  const q = { prompt: sq.prompt, options: [...sq.options], answerIndex: sq.answerIndex, teach: sq.teach }
+  // The chalkboard quiz NEVER gives the answer (2026-11-02): only the
+  // question half of his take is played. The answer is the comments' to
+  // argue about and is chalked on the TOP of tomorrow's board.
+  const { question } = await splitTake(take)
+  const prev = scriptedQuiz(prevDay(d))
+  const yesterday = prev ? prev.options[prev.answerIndex] : undefined
+  const no = dayNo(d) - dayNo(QUIZ_FROM) + 1
+  const ask = 'A, B, C or D? Tell us why. The answer is on tomorrow\u2019s board.'
   let copy: Copy | null = null
   if (o.copy !== false) {
     progress(0, 'parking the caption')
-    try { copy = await fetchCopy(d, 'challenge', true, { voiced: true, scripted: { hook: sq.hook, title: sq.title, caption: sq.caption, ask: sq.ask, tags: sq.tags } }) } catch { copy = null }
+    try { copy = await fetchCopy(d, 'challenge', true, { voiced: true, scripted: { hook: sq.hook, title: `${sq.title} | Daily Bible Quiz #${no}`.slice(0, 100), caption: sq.caption, ask, tags: sq.tags } }) } catch { copy = null }
   }
   progress(0, 'rendering')
   const r: Renderer = await import('@/lib/tiktokRender')
-  const [backdrop, figure] = await Promise.all([loadScene(r, c.scene), r.loadImage(`/skins/${c.reader}.png`)])
-  const base = { reference: sq.reference, text: '', questions: [q], plan: [step], windowSec, playerName: name, figure, backdrop, hook: sq.hook, solo: true, endSec: 0 }
-  const tl = r.quizTimeline(questionSec, { ...base, answerSec: answer ? await r.audioSeconds(answer) : undefined })
-  const [bed, cues] = await Promise.all([o.music !== false ? bedFor(tl.total, 'morning') : Promise.resolve(undefined), r.quizCues(tl.events, tl.total)])
-  const out = await r.renderQuiz({ ...base, audio: question, answerAudio: answer ?? undefined, bed, cues, onProgress: progress })
-  return made(d, 'challenge', sq.reference, out, copy, `scripted quiz · your voice · ${name} ${right ? 'got it' : 'missed it'}`, true)
+  const [backdrop, figure] = await Promise.all([r.loadImage('/tiktok/exchange/chalkboard.jpg'), ownFigure(r).catch(() => null).then((f) => f ?? undefined)])
+  const questionSec = await r.audioSeconds(question)
+  const bed = o.music !== false ? await bedFor(questionSec + 5, 'morning') : undefined
+  const out = await r.renderChalkQuiz({
+    backdrop, figure, prompt: sq.prompt, options: [...sq.options], audio: question, bed,
+    label: `DAILY BIBLE QUIZ \u00b7 No. ${no}`, yesterday, onProgress: progress,
+  })
+  return made(d, 'challenge', sq.reference, out, copy, `chalkboard quiz No. ${no} · your voice`, true)
 }
 
 export async function makeChallenge(d: string, o: ChallengeOptions, progress: Progress): Promise<MadeBlob> {

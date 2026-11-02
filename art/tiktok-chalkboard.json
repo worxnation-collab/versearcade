@@ -1,0 +1,9 @@
+[
+  {
+    "id": "chalkboard",
+    "kind": "tiktok-exchange",
+    "note": "Generated 2026-11-02 through tiktok-gen's `still` action (Nano Banana, server-side key), then the board's right edge was completed by mirroring its left 11.5% and tone-matching the seam. The board's slate is measured in BOARD (src/lib/tiktokRender.ts); re-measure it if this is ever re-rolled.",
+    "prompt": "Vertical 9:16 painted background for a short video, filling the entire frame edge to edge. No characters, no people, no text, no writing, no letters, no numbers, no symbols, no watermark, no border, no UI. A warm old schoolroom wall: a LARGE BLANK dark green slate chalkboard in a simple wooden frame fills the TOP 60% of the picture, almost edge to edge, perfectly flat and facing the viewer straight on, completely EMPTY with only faint smudges of old erased chalk; a wooden chalk tray along its bottom edge holds two short sticks of white chalk and a felt eraser. Below the board, a plain warm plaster wall and a worn wooden floor, open and uncluttered, where a standing person will be drawn later. Soft warm lamplight from the left, gentle shadows. Flat stylised storybook painting, clean shapes, soft shading, warm and rich but never busy, same painterly style as the reference paintings. The chalkboard must be blank: words are drawn on it later.",
+    "refs": ["public/tiktok/exchange/why-are-you-afraid.jpg", "public/tiktok/stages/house.jpg"]
+  }
+]

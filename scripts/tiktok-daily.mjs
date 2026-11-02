@@ -216,7 +216,11 @@ async function parked(d, name) {
 async function scriptedKinds(d) {
   const [quiz, myth] = await Promise.all([parked(d, 'voice-challenge.wav'), parked(d, 'voice-moment.wav')])
   if (!quiz && !myth) return defaultKinds(d)
-  return [quiz ? 'challenge' : 'verse', myth ? 'moment' : 'story'].join(',')
+  // Three a day (2026-11-02): the verse rides at midday beside the two
+  // scripted posts — but ONLY with his recorded hook parked. Without one it
+  // would be a wholly synthetic post on the networks that judge a channel.
+  const hook = await parked(d, 'voice-verse.wav')
+  return [quiz ? 'challenge' : 'verse', ...(quiz && hook ? ['verse'] : []), myth ? 'moment' : 'story'].join(',')
 }
 const KINDS = (env.KINDS || (await scriptedKinds(today))).split(',').map((s) => s.trim()).filter(Boolean)
 for (const k of KINDS) if (!ALL_KINDS.includes(k)) fail(`unknown kind ${k}`)

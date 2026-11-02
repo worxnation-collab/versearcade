@@ -21,6 +21,11 @@ name: tiktok-daily
 
 on:
   schedule:
+    # GitHub runs scheduled jobs hours late (09:30 UTC fired at 15:26-16:17
+    # for days), which put the 08:00 ET morning post near lunch. 05:30 UTC is
+    # 00:30 ET, so even a six-hour delay lands before the morning post; the
+    # 09:30 run stays as a retry, and a second run of a day posts nothing twice.
+    - cron: '30 5 * * *'
     - cron: '30 9 * * *'
   workflow_dispatch:
     inputs:

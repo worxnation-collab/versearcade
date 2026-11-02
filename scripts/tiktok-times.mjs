@@ -14,7 +14,10 @@
 // actually there.
 export const DEFAULT_TIMES = [
   // The morning verse: the ritual, moved off 4am Pacific.
-  'verse=08:00', 'verse@youtube=08:00', 'verse@facebook=08:15', 'verse@instagram=08:30',
+  // Three a day since 2026-11-02 (the owner's call): the scripted QUIZ in the
+  // morning, the VERSE with his hook at midday, the scripted MYTH in the
+  // evening. The verse moved from 08:00 to make room for the quiz.
+  'verse=12:30', 'verse@youtube=12:30', 'verse@facebook=12:45', 'verse@instagram=08:30',
   'verse@tiktok=09:00', 'verse@snapchat=09:15', 'verse@threads=12:00', 'verse@x=12:15',
   // Pinterest is a SEARCH engine — a pin is found for years and its posting
   // hour barely matters, so it sits off the cluster entirely.
@@ -34,7 +37,7 @@ export const DEFAULT_TIMES = [
   'exchange=12:30', 'exchange@youtube=12:30', 'exchange@facebook=13:00',
   // Monday's note, and the parked formats if they are ever switched back on.
   // The scripted morning quiz takes the verse's slot (2026-11-02).
-  'challenge=08:00', 'challenge@youtube=08:00', 'challenge@facebook=08:15',
+  'challenge=08:00', 'challenge@youtube=08:00', 'challenge@facebook=08:15', 'challenge@instagram=08:30', 'challenge@tiktok=09:00',
   'note=12:00', 'quiz=12:30', 'challenge2=16:00',
 ].join(',')
 
@@ -69,7 +72,7 @@ export const timesFrom = (env = {}) => Object.fromEntries((env.POST_TIMES || DEF
 //
 // After the window everything falls back to the table above. Pick the
 // winner, write it into `second@facebook`, and delete this block.
-export const FB_TIME_TEST = { platform: 'facebook', slot: 'second', hours: ['12:30', '17:00', '19:30'], start: '2026-10-31', end: '2026-11-20', exchange: '15:00' }
+export const FB_TIME_TEST = { platform: 'facebook', slot: 'second', hours: ['17:00', '18:30', '20:00'], start: '2026-11-02', end: '2026-11-20', exchange: '15:00' }
 const dayNo = (ymd) => Math.round(Date.parse(`${ymd}T00:00:00Z`) / 86_400_000)
 export function testHour(kind, platform, date) {
   const t = FB_TIME_TEST

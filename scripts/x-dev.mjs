@@ -46,6 +46,8 @@ if (MODE === 'daily') {
   for (let i = 0; i < 4 && paras.length; i++) { seed = (seed * 1103515245 + 12345) >>> 0; picks.push(paras.splice(seed % paras.length, 1)[0]) }
   const notes = `${recent}\n\n=== Older lessons ===\n\n${picks.join('\n\n---\n\n')}`.slice(0, 12000)
   await fn({ action: 'daily', date, notes })
+} else if (MODE === 'once') {
+  await fn({ action: 'once', text: env.TEXT || '' })
 } else if (MODE === 'merge') {
   const count = Number(git('rev-list', '--merges', '--count', 'HEAD').trim())
   if (count % 3 !== 0) { console.log(`merge #${count} — thread posts on every third`); process.exit(0) }

@@ -20,8 +20,11 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'daily or merge'
+        description: 'daily, merge, or once (posts the text below now)'
         default: daily
+      text:
+        description: 'For mode once: the post, 20-280 characters, no links'
+        required: false
       dry_run:
         description: 'Draft only, post nothing'
         type: boolean
@@ -54,4 +57,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MODE: ${{ github.event_name == 'push' && 'merge' || inputs.mode || 'daily' }}
           DRY_RUN: ${{ inputs.dry_run }}
+          TEXT: ${{ inputs.text }}
         run: node scripts/x-dev.mjs

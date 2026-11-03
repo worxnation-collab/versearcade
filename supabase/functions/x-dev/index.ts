@@ -135,6 +135,33 @@ Deno.serve(async (req) => {
     const park = (p: string, v: unknown) =>
       store.upload(p, new Blob([JSON.stringify(v, null, 2)], { type: 'application/json' }), { upsert: true, contentType: 'application/json' })
 
+    // Take down what one of OUR records says was posted. Ids come only from the
+    // record in the bucket, never from the caller, so nothing outside this
+    // account's own posts can be reached.
+    if (action === 'unpost') {
+      const path = String(body.record ?? '')
+      if (!/^x-dev\/[A-Za-z0-9_-]{1,40}\.json$/.test(path)) return json({ error: 'bad record' }, 400)
+      const rec = await read(path)
+      const ids = (rec?.results ?? []).map((r: { id?: string }) => r.id).filter((x: unknown): x is string => typeof x === 'string' && x.length > 0)
+      if (!ids.length) return json({ ok: true, removed: 0 })
+      if (dry) return json({ ok: true, dry: true, ids })
+      const key = await secret(admin, 'AYRSHARE_API_KEY', 'tiktok_ayrshare_key')
+      const xKey = await secret(admin, 'X_API_KEY', 'tiktok_x_api_key')
+      const xSecret = await secret(admin, 'X_API_SECRET', 'tiktok_x_api_secret')
+      const out = []
+      for (const id of ids) {
+        const res = await fetch(`${AYRSHARE}/delete`, {
+          method: 'DELETE',
+          headers: { 'content-type': 'application/json', Authorization: `Bearer ${key}`, 'X-Twitter-OAuth1-Api-Key': xKey, 'X-Twitter-OAuth1-Api-Secret': xSecret },
+          body: JSON.stringify({ id }),
+        })
+        const t = await res.text()
+        out.push({ id, http: res.status, body: t.slice(0, 200) })
+      }
+      await park(path, { ...rec, posted: false, removed: out, removedAt: new Date().toISOString() })
+      return json({ ok: out.every((o) => o.http < 300), removed: out })
+    }
+
     let record: string
     let drafts: string[]
     let posts: Array<{ post: string; scheduleDate?: string; idempotencyKey: string; thread?: boolean }>

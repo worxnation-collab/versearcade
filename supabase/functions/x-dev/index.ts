@@ -36,8 +36,8 @@ const XAI_MODEL = Deno.env.get('XAI_MODEL') ?? 'grok-4.20-0309-non-reasoning'
 const AYRSHARE = 'https://api.ayrshare.com/api'
 const BUCKET = 'tiktok'
 const TZ = 'America/New_York'
-// Local times for the two daily posts. Off :00/:30 on purpose.
-const TIMES = ['12:41', '19:13']
+// Local times for the four daily posts. Off :00/:30 on purpose.
+const TIMES = ['09:47', '12:41', '16:23', '19:13']
 
 type Admin = ReturnType<typeof createClient>
 
@@ -174,8 +174,8 @@ Deno.serve(async (req) => {
       record = `x-dev/${date}.json`
       const prior = await read(record)
       if (prior?.posted) return json({ ok: true, already: prior })
-      const out = await grok(xai, `Notes from building the app (recent commit messages, then older lessons learned):\n\n${notes}\n\nWrite exactly two different posts. Use the older lessons whenever the recent notes are mostly internal tooling. One about a headache or obstacle hit while building (what went wrong, why it was sneaky, what fixed it). One that is a thought or decision about how the app should work and why. Return JSON {"posts":["...","..."]}.`)
-      drafts = (Array.isArray(out.posts) ? out.posts : []).map(clean).filter((s): s is string => !!s).slice(0, 2)
+      const out = await grok(xai, `Notes from building the app (recent commit messages, then older lessons learned):\n\n${notes}\n\nWrite exactly four different posts, each on a different subject. Use the older lessons whenever the recent notes are mostly internal tooling. 1: a headache or obstacle hit while building (what went wrong, why it was sneaky, what fixed it). 2: a thought or decision about how the app should work and why. 3: a small thing that shipped and who it helps, told as a moment rather than a feature list. 4: a short honest question to other builders or to people who read the Bible daily, the kind people answer in the replies. Return JSON {"posts":["...","...","...","..."]}.`)
+      drafts = (Array.isArray(out.posts) ? out.posts : []).map(clean).filter((s): s is string => !!s).slice(0, TIMES.length)
       posts = drafts.map((post, i) => ({ post, scheduleDate: zoned(date, TIMES[i]), idempotencyKey: `xdev-${date}-${i + 1}` }))
     } else if (action === 'once') {
       // One post, written by a person, sent now. Same filter as the drafts.

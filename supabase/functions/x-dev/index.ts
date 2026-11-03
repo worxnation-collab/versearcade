@@ -77,6 +77,9 @@ Rules, all absolute:
 - Never mention security issues, vulnerabilities, keys, tokens, passwords, exploits or anything an attacker could use, even if fixed.
 - No links, no @mentions, no emoji runs, at most one hashtag and usually none.
 - Never say "AI", "Claude", "Grok", "LLM" or "model".
+- Never write about the app's own social media, videos, posting schedule, TikTok, YouTube, captions or content pipeline. Write about the APP people play and the churches that use it.
+- Write for a stranger who has never seen the code: no file names, function names, table names, migration numbers, cron times or jargon like "RPC", "endpoint", "schema".
+- A good post is a small true story: what broke or what was hard, why it was sneaky, what the fix taught. Or a decision and the reason behind it. Concrete beats clever.
 - Each post is one complete thought under 270 characters.`
 
 async function grok(key: string, user: string): Promise<Record<string, unknown>> {
@@ -144,7 +147,7 @@ Deno.serve(async (req) => {
       record = `x-dev/${date}.json`
       const prior = await read(record)
       if (prior?.posted) return json({ ok: true, already: prior })
-      const out = await grok(xai, `Commit messages from the last few days of building the app:\n\n${notes}\n\nWrite exactly two different posts. One about a headache or obstacle hit while building (what went wrong, why it was sneaky, what fixed it). One that is a thought or decision about how the app should work and why. Return JSON {"posts":["...","..."]}.`)
+      const out = await grok(xai, `Notes from building the app (recent commit messages, then older lessons learned):\n\n${notes}\n\nWrite exactly two different posts. Use the older lessons whenever the recent notes are mostly internal tooling. One about a headache or obstacle hit while building (what went wrong, why it was sneaky, what fixed it). One that is a thought or decision about how the app should work and why. Return JSON {"posts":["...","..."]}.`)
       drafts = (Array.isArray(out.posts) ? out.posts : []).map(clean).filter((s): s is string => !!s).slice(0, 2)
       posts = drafts.map((post, i) => ({ post, scheduleDate: zoned(date, TIMES[i]), idempotencyKey: `xdev-${date}-${i + 1}` }))
     } else if (action === 'thread') {

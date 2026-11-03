@@ -9,6 +9,7 @@
 // GITHUB_TOKEN + GITHUB_REPOSITORY (merge mode, to read PR bodies), DRY_RUN.
 
 import { execFileSync } from 'node:child_process'
+import fs from 'node:fs'
 
 const env = process.env
 const SUPABASE_URL = (env.SUPABASE_URL || 'https://visuppaucpzzigwtqmdd.supabase.co').replace(/\/$/, '')
@@ -35,7 +36,15 @@ async function fn(body) {
 
 if (MODE === 'daily') {
   const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
-  const notes = scrub(git('log', '--since=3 days ago', '--no-merges', '--format=%s%n%b%n---', 'HEAD')).slice(0, 12000)
+  const recent = scrub(git('log', '--since=3 days ago', '--no-merges', '--format=%s%n%b%n---', 'HEAD')).slice(0, 6000)
+  // Older lessons: a few hard-won paragraphs from CLAUDE.md, outside the
+  // social/video engine sections, picked by the date so each day differs.
+  const md = fs.readFileSync('CLAUDE.md', 'utf8').split(/\n(?=## )/).filter((sec) => !/TikTok|x-dev|Store versions|Deploy/i.test(sec.split('\n')[0]))
+  const paras = md.join('\n').split(/\n\s*\n/).filter((p) => /found by|shipped|bit |scar|trap|bug|invisible|silently/i.test(p) && p.length > 200 && p.length < 1800)
+  let seed = [...date].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7)
+  const picks = []
+  for (let i = 0; i < 4 && paras.length; i++) { seed = (seed * 1103515245 + 12345) >>> 0; picks.push(paras.splice(seed % paras.length, 1)[0]) }
+  const notes = `${recent}\n\n=== Older lessons ===\n\n${picks.join('\n\n---\n\n')}`.slice(0, 12000)
   await fn({ action: 'daily', date, notes })
 } else if (MODE === 'merge') {
   const count = Number(git('rev-list', '--merges', '--count', 'HEAD').trim())

@@ -99,6 +99,6 @@ jobs:
         run: |
           for fn in ${{ steps.pick.outputs.fns }}; do
             echo "::group::$fn"
-            supabase functions deploy "$fn" --project-ref "$PROJECT_REF" --use-api
+            supabase functions deploy "$fn" --project-ref "$PROJECT_REF" --use-api --yes
             echo "::endgroup::"
           done

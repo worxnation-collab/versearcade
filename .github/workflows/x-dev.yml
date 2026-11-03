@@ -1,0 +1,57 @@
+# Build-in-public posts on X (scripts/x-dev.mjs → the x-dev Edge Function).
+#
+#   * Every morning: two posts drafted from the last three days of commits,
+#     scheduled for 12:41 and 19:13 New York time.
+#   * Every push to main: on every THIRD merge commit, a thread summarising the
+#     last three merged PRs.
+#
+# Same credential as the video runner (TIKTOK_RUNNER_TOKEN): it can post and
+# nothing else. Ayrshare, X and xAI keys stay in Supabase Vault.
+# OFF until the repo variable X_DEV_ENABLED is "true". A manual run (Actions →
+# x-dev → Run workflow) always works and defaults to a dry run, so the drafts
+# can be read before anything is switched on.
+name: x-dev
+
+on:
+  schedule:
+    - cron: '17 13 * * *'
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'daily or merge'
+        default: daily
+      dry_run:
+        description: 'Draft only, post nothing'
+        type: boolean
+        default: true
+
+concurrency:
+  group: x-dev-${{ github.event_name }}
+  cancel-in-progress: false
+
+jobs:
+  post:
+    if: github.event_name == 'workflow_dispatch' || vars.X_DEV_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Post
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          TIKTOK_RUNNER_TOKEN: ${{ secrets.TIKTOK_RUNNER_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MODE: ${{ github.event_name == 'push' && 'merge' || inputs.mode || 'daily' }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: node scripts/x-dev.mjs

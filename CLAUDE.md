@@ -1308,6 +1308,19 @@ cron does the upload. Full design: `docs/TIKTOK-ENGINE.md`. Things to know —
   a week per network and per kind. Numbers about posts on other people's
   networks, never about a player.
 
+## Build-in-public posts on X (x-dev)
+
+`supabase/functions/x-dev` + `scripts/x-dev.mjs` + `.github/workflows/x-dev.yml`:
+two first-person developer posts a day, drafted by Grok from the last three
+days of commit messages and scheduled through Ayrshare (12:41 and 19:13 New
+York), and a 3-6 post thread on every THIRD merge commit on main, from the
+last three PRs' titles and bodies. Same runner token as the video engine;
+idempotent by Ayrshare key and by a record at `tiktok/x-dev/`. The prompt and
+a filter refuse links, @mentions, any person's name or number, and any
+security detail — a commit that closes a hole must never become a post
+describing it. **Off until the repo variable `X_DEV_ENABLED` is `true`**; a
+manual run is a dry run by default.
+
 ## Church pages
 
 Every row on the church leaderboard opens `ChurchDetailSheet` — the building

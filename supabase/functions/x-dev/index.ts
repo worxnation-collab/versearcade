@@ -150,6 +150,14 @@ Deno.serve(async (req) => {
       const out = await grok(xai, `Notes from building the app (recent commit messages, then older lessons learned):\n\n${notes}\n\nWrite exactly two different posts. Use the older lessons whenever the recent notes are mostly internal tooling. One about a headache or obstacle hit while building (what went wrong, why it was sneaky, what fixed it). One that is a thought or decision about how the app should work and why. Return JSON {"posts":["...","..."]}.`)
       drafts = (Array.isArray(out.posts) ? out.posts : []).map(clean).filter((s): s is string => !!s).slice(0, 2)
       posts = drafts.map((post, i) => ({ post, scheduleDate: zoned(date, TIMES[i]), idempotencyKey: `xdev-${date}-${i + 1}` }))
+    } else if (action === 'once') {
+      // One post, written by a person, sent now. Same filter as the drafts.
+      const text = clean(body.text)
+      if (!text) return json({ error: 'text must be 20-280 characters, with no links, @mentions or banned words' }, 400)
+      const key = `xdev-once-${Date.now()}`
+      record = `x-dev/once-${Date.now()}.json`
+      drafts = [text]
+      posts = [{ post: text, idempotencyKey: key }]
     } else if (action === 'thread') {
       const prs = (Array.isArray(body.prs) ? body.prs : []).slice(0, 3) as Array<{ number?: number; title?: string; body?: string }>
       const last = Math.max(0, ...prs.map((p) => Number(p.number) || 0))

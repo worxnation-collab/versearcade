@@ -48,18 +48,31 @@ if (MODE === 'daily') {
   await fn({ action: 'daily', date, notes })
 } else if (MODE === 'once') {
   await fn({ action: 'once', text: env.TEXT || '' })
-} else if (MODE === 'merge') {
-  const count = Number(git('rev-list', '--merges', '--count', 'HEAD').trim())
-  if (count % 3 !== 0) { console.log(`merge #${count} — thread posts on every third`); process.exit(0) }
-  const subjects = git('log', '--merges', '-3', '--format=%s', 'HEAD').trim().split('\n')
-  const nums = subjects.map((s) => (s.match(/\(#(\d+)\)\s*$/) || s.match(/#(\d+)/) || [])[1]).filter(Boolean)
+} else if (MODE === 'unpost') {
+  await fn({ action: 'unpost', record: env.TEXT || '' })
+} else if (MODE === 'merge' || MODE === 'thread') {
+  // A thread is about the APP. A merge whose files are all posting/video
+  // tooling, CI or notes is skipped, so a run of engine work never becomes a
+  // thread about the engine. It posts on every third APP merge (MODE=thread
+  // forces one from the last three).
+  const TOOLING = /^(supabase\/functions\/(x-dev|tiktok-gen)\/|scripts\/(x-dev|tiktok)|\.github\/|src\/lib\/tiktok|src\/data\/tiktok|src\/admin\/tiktok|src\/features\/admin\/tiktok|docs\/TIKTOK|art\/tiktok|public\/tiktok|CLAUDE\.md|tsconfig)/
+  const appMerge = (sha) => git('diff', '--name-only', `${sha}^1`, sha).split('\n').filter((f) => f && !TOOLING.test(f)).length >= 3
+  const merges = git('log', '--merges', '--format=%H %s', 'HEAD').trim().split('\n').map((l) => ({ sha: l.slice(0, 40), subject: l.slice(41) }))
+  const app = merges.filter((m) => appMerge(m.sha))
+  if (MODE === 'merge') {
+    if (!merges.length || !appMerge(merges[0].sha)) { console.log('newest merge is tooling only: no thread'); process.exit(0) }
+    const appCount = app.length
+    if (appCount % 3 !== 0) { console.log(`app merge #${appCount}: thread posts on every third`); process.exit(0) }
+  }
+  const pick = app.slice(0, 3)
+  const nums = pick.map((m) => (m.subject.match(/\(#(\d+)\)\s*$/) || m.subject.match(/#(\d+)/) || [])[1]).filter(Boolean)
   const prs = []
   for (const n of nums) {
     const r = await fetch(`https://api.github.com/repos/${env.GITHUB_REPOSITORY}/pulls/${n}`, { headers: { Authorization: `Bearer ${env.GITHUB_TOKEN}`, Accept: 'application/vnd.github+json' } })
     const p = await r.json().catch(() => ({}))
-    prs.push({ number: Number(n), title: p.title || subjects[nums.indexOf(n)], body: scrub(p.body || '') })
+    prs.push({ number: Number(n), title: p.title || pick[nums.indexOf(n)].subject, body: scrub(p.body || '') })
   }
-  if (!prs.length) { console.log('no PR numbers in the last three merges'); process.exit(0) }
+  if (!prs.length) { console.log('no app PRs found'); process.exit(0) }
   await fn({ action: 'thread', prs })
 } else {
   console.error(`unknown MODE ${MODE}`); process.exit(2)

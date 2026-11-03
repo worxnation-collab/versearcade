@@ -20,10 +20,10 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'daily, merge, or once (posts the text below now)'
+        description: 'daily, merge, thread (last 3 app merges now), once (posts the text below now), or unpost (text = record path, e.g. x-dev/2026-11-03.json)'
         default: daily
       text:
-        description: 'For mode once: the post, 20-280 characters, no links'
+        description: 'once: the post (20-280 chars, no links). unpost: the record path'
         required: false
       dry_run:
         description: 'Draft only, post nothing'

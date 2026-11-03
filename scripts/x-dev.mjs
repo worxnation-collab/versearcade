@@ -1,7 +1,7 @@
 // x-dev — feeds the x-dev Edge Function from git (.github/workflows/x-dev.yml).
 //
 //   MODE=daily  → the last three days of commit messages on main become the
-//                 notes for two build-in-public posts, scheduled for today.
+//                 notes for four build-in-public posts, scheduled for today.
 //   MODE=merge  → on a push to main: if the number of merge commits on main is
 //                 a multiple of three, the last three merged PRs become a thread.
 //

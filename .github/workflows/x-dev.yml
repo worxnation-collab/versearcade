@@ -1,7 +1,7 @@
 # Build-in-public posts on X (scripts/x-dev.mjs → the x-dev Edge Function).
 #
-#   * Every morning: two posts drafted from the last three days of commits,
-#     scheduled for 12:41 and 19:13 New York time.
+#   * Every morning: four posts drafted from the last three days of commits,
+#     scheduled for 09:47, 12:41, 16:23 and 19:13 New York time.
 #   * Every push to main: on every THIRD merge commit, a thread summarising the
 #     last three merged PRs.
 #

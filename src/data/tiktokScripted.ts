@@ -54,6 +54,8 @@ export interface ScriptedMyth {
   reference: string
   /** A root-relative painting held for the whole post. */
   art: string
+  /** Optional: the spoken word where the myth breaks ("never"), so the camera cuts on it. Otherwise it is found by ear. */
+  turn?: string
   ask: string
   title_yt: string
   caption: string

@@ -483,6 +483,117 @@ function outlined(ctx: CanvasRenderingContext2D, text: string, x: number, y: num
 
 function easeOut(t: number) { return 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 3) }
 
+// ---- the camera (the MOTION RULE, 2026-11-05, the owner's call) -------------
+//
+// A still frame reads as a photo and gets scrolled past. So every video:
+//   - moves from its first frame (shot 0 starts pushing in at t = 0);
+//   - never stops moving: every shot is a slow push-in, pull-out or pan for
+//     its whole length;
+//   - CUTS to a new framing every 4-6 seconds, each cut landing on a beat of
+//     the narration (a phrase start), so even one painting is several shots;
+//   - and a myth's debunk gets a cut of its own, harder than the rest.
+//
+// This REVERSES "the only thing moving is the caption" and the 1.5-2% push
+// that rule allowed. That rule was written against drifting motes, halos and
+// a floating figure — motion with no grammar. This is one camera with one
+// grammar (a move per shot, a cut per beat) applied to the whole backdrop,
+// figures included, so nothing slides against the painting it stands in.
+//
+// The camera scales the canvas about a focal point and every focal point is
+// clamped so the frame stays covered: a move can never show an edge.
+
+const CUT_MIN = 4
+const CUT_MAX = 6
+const CUT_AIM = 5
+
+/** Cut times in FRAME seconds: on beats, 4-6s apart, plus any forced cut (a debunk), which wins its neighbourhood. */
+export function cutTimes(beats: number[], total: number, forced: number[] = []): number[] {
+  const end = total - 1.2
+  const b = [...new Set(beats.filter((x) => x > 0.5 && x < end))].sort((a, c) => a - c)
+  const f = forced.filter((x) => x > 0.5 && x < end).sort((a, c) => a - c)
+  let cuts = [0]
+  for (let last = 0; ;) {
+    if (last + CUT_MIN >= end) break
+    const beat = b.find((x) => x >= last + CUT_MIN && x <= last + CUT_MAX)
+    const at = beat ?? last + CUT_AIM
+    if (at >= end) break
+    cuts.push(at); last = at
+  }
+  // A forced cut lands exactly where it was asked for, and the beat cuts
+  // within two seconds of it step aside rather than stutter around it.
+  for (const x of f) cuts = cuts.filter((c) => c === 0 || Math.abs(c - x) >= 2)
+  cuts = [...cuts, ...f].sort((a, c) => a - c)
+  // Stepping aside can leave a gap past the maximum; fill it on a beat.
+  for (let i = 0; i < cuts.length; i++) {
+    const next = cuts[i + 1] ?? end
+    if (next - cuts[i] > CUT_MAX + 0.5 && cuts[i] + CUT_MIN < end) {
+      const beat = b.find((x) => x >= cuts[i] + CUT_MIN && x <= Math.min(cuts[i] + CUT_MAX, next - 2))
+      const at = beat ?? (cuts[i] + next) / 2
+      if (next - at >= 2 && at - cuts[i] >= 2) cuts.splice(i + 1, 0, at)
+    }
+  }
+  return cuts
+}
+
+interface Move { s: [number, number]; x: [number, number]; y: [number, number] }
+// Push in, pull out, pan right, push up, pan left: consecutive shots never
+// repeat a move, so a cut always changes the framing AND the direction.
+const MOVES: Move[] = [
+  { s: [1.06, 1.16], x: [0.5, 0.5], y: [0.5, 0.47] },
+  { s: [1.3, 1.18], x: [0.46, 0.53], y: [0.45, 0.48] },
+  { s: [1.22, 1.24], x: [0.41, 0.59], y: [0.5, 0.49] },
+  { s: [1.16, 1.3], x: [0.54, 0.5], y: [0.56, 0.44] },
+  { s: [1.24, 1.26], x: [0.59, 0.41], y: [0.47, 0.5] },
+]
+/**
+ * The chalkboard's moves are gentler and sit HIGH: the board is the top half
+ * of the frame and every word on it has to stay in shot, so a framing never
+ * crops the slate (measured: at 1.14 and fy 0.42 the visible band is
+ * 0.06-0.78 of the frame, and the slate is 0.095-0.535).
+ */
+const CHALK_MOVES: Move[] = [
+  { s: [1.02, 1.08], x: [0.5, 0.5], y: [0.42, 0.4] },
+  { s: [1.14, 1.08], x: [0.47, 0.52], y: [0.38, 0.4] },
+  { s: [1.1, 1.1], x: [0.45, 0.55], y: [0.4, 0.4] },
+  { s: [1.06, 1.14], x: [0.52, 0.5], y: [0.44, 0.38] },
+]
+/** The debunk's shot: tight, and still pushing. */
+const PUNCH: Move = { s: [1.38, 1.5], x: [0.5, 0.5], y: [0.44, 0.42] }
+
+export interface Cam { s: number; fx: number; fy: number; shot: number; since: number }
+
+/** Where the camera is at frame time `t`. `punch` names cut times that get the debunk's move. */
+export function camAt(cuts: number[], t: number, total: number, punch: number[] = [], moves: Move[] = MOVES): Cam {
+  let i = 0
+  for (let k = 0; k < cuts.length; k++) { if (cuts[k] <= t) i = k; else break }
+  const from = cuts[i], to = cuts[i + 1] ?? total
+  const u = Math.min(1, Math.max(0, (t - from) / Math.max(0.5, to - from)))
+  const m = punch.some((p) => Math.abs(p - from) < 0.01) ? PUNCH : moves[i % moves.length]
+  // Eased in and out so a move never starts or stops with a jolt, but with a
+  // floor of motion in the middle — linear blended with smoothstep.
+  const e = 0.5 * u + 0.5 * (u * u * (3 - 2 * u))
+  const lerp = (r: [number, number]) => r[0] + (r[1] - r[0]) * e
+  return { s: lerp(m.s), fx: lerp(m.x), fy: lerp(m.y), shot: i, since: t - from }
+}
+
+/** Point the canvas through the camera. Caller saves and restores. */
+export function applyCam(ctx: CanvasRenderingContext2D, c: Cam) {
+  const lim = 0.5 - 1 / (2 * c.s)
+  const fx = Math.min(0.5 + lim, Math.max(0.5 - lim, c.fx))
+  const fy = Math.min(0.5 + lim, Math.max(0.5 - lim, c.fy))
+  ctx.translate(WIDTH / 2, HEIGHT / 2)
+  ctx.scale(c.s, c.s)
+  ctx.translate(-WIDTH * fx, -HEIGHT * fy)
+}
+
+/** A cut's first few frames, for a debunk: a white flash that is gone in 0.15s. */
+function drawPunchFlash(ctx: CanvasRenderingContext2D, c: Cam, punch: number[], t: number) {
+  if (!punch.some((p) => Math.abs(p - (t - c.since)) < 0.01)) return
+  const a = 0.55 * (1 - Math.min(1, c.since / 0.15))
+  if (a <= 0) return
+  ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = '#fff8e0'; ctx.fillRect(0, 0, WIDTH, HEIGHT); ctx.restore()
+}
+
 /**
  * The caption to show at `at`: the one being spoken, or — through a pause —
  * the one that was spoken LAST, so a gap is a lingering line rather than a
@@ -580,8 +691,11 @@ function drawCaption(ctx: CanvasRenderingContext2D, phrase: TimedPhrase | null, 
     let x = o.x - total / 2
     for (const w of line) {
       const current = timed && at >= w.start && at < w.end
+      // Words APPEAR as they are spoken (the motion rule): an unspoken word
+      // is not drawn at all, in the place it will land, so nothing reflows.
       const spoken = !timed || at >= w.start
-      ctx.globalAlpha = alpha * (spoken ? 1 : (o.dim ?? 0.5))
+      const rise = timed ? Math.min(1, Math.max(0, (at - w.start) / 0.12)) : 1
+      ctx.globalAlpha = alpha * (spoken ? rise : (o.dim ?? 0))
       outlined(ctx, w.text, x, y0 + i * lh, current ? '#ffd23f' : '#ffffff', 'rgba(11,7,32,0.92)', o.stroke ?? 12)
       x += w.w + out.space
     }
@@ -611,7 +725,13 @@ function drawHook(ctx: CanvasRenderingContext2D, hook: string | undefined, t: nu
   let lh = Math.round(size * 1.12)
   if (lines.length > 2) { const s2 = Math.round(size * 0.8); ctx.font = `800 ${s2}px ${FONT_DISPLAY}`; lines = wrap(ctx, text, maxWidth); lh = Math.round(s2 * 1.12) }
   const y0 = cy - ((lines.length - 1) * lh) / 2
-  lines.forEach((l, i) => outlined(ctx, l, WIDTH / 2, y0 + i * lh, '#ffd23f', 'rgba(11,7,32,0.9)', Math.round(size / 7)))
+  // Line by line: the first line is on frame 0 (it is the thumbnail), each
+  // next one lands 0.3s later, so the opening second already has text arriving.
+  const base = ctx.globalAlpha
+  lines.forEach((l, i) => {
+    ctx.globalAlpha = base * (i === 0 ? 1 : easeOut((t - i * 0.3) / 0.2))
+    outlined(ctx, l, WIDTH / 2, y0 + i * lh, '#ffd23f', 'rgba(11,7,32,0.9)', Math.round(size / 7))
+  })
   ctx.restore()
 }
 
@@ -654,6 +774,8 @@ interface Scene {
   openEnd?: number
   /** Where the READING begins — the far side of `OWN_GAP`, and the moment his half is over on screen. */
   readAt?: number
+  /** The camera's cuts, in frame seconds (`cutTimes`). Derived on first use when absent (posters). */
+  cuts?: number[]
 }
 
 // The one thing that moves in the thought section: a thin gold ring around
@@ -859,15 +981,19 @@ async function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number,
   const swap = Math.min(1, Math.max(0, (at - swapAt) / SWAP_SEC))
   const out = Math.max(0, 1 - swap * 2)
   const inn = Math.max(0, swap * 2 - 1)
+  const cuts = scene.cuts ?? (scene.cuts = cutTimes(phrases.map((p) => p.start + lead), total))
   ctx.save()
+  // Painting AND figures go through the camera together, so the reader moves
+  // with the road he stands on rather than sliding across it.
+  applyCam(ctx, camAt(cuts, t, total))
   if (bd.kind === 'loop') {
     await drawLoop(ctx, bd.video, t)
   } else if (bd.kind === 'still') {
     // A push of one and a half percent across the whole post: enough that the
     // frame is not a photograph, far short of a Ken Burns pan.
-    cover(ctx, bd.image, bd.image.naturalWidth, bd.image.naturalHeight, 1 + 0.015 * (t / total))
+    cover(ctx, bd.image, bd.image.naturalWidth, bd.image.naturalHeight)
   } else {
-    cover(ctx, bd.scene, bd.scene.naturalWidth, bd.scene.naturalHeight, 1 + 0.012 * (t / total))
+    cover(ctx, bd.scene, bd.scene.naturalWidth, bd.scene.naturalHeight)
     // The reader STANDS on the road. This used to float — bobbing on a sine
     // and lit by a pulsing gold halo — which was the single most generated-
     // looking thing in the post. A figure with its feet on the ground and one
@@ -881,7 +1007,7 @@ async function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number,
     ctx.save()
     ctx.globalAlpha = 1 - out
     const sc = input.speaker.scene
-    cover(ctx, sc, sc.naturalWidth, sc.naturalHeight, 1 + 0.012 * (t / total))
+    cover(ctx, sc, sc.naturalWidth, sc.naturalHeight)
     ctx.restore()
   }
   if (input.speaker) standFigure(ctx, input.speaker.figure, 1, inn)
@@ -1524,6 +1650,12 @@ export interface StoryInput {
     place: 'open' | 'close'
     photo?: HTMLImageElement
     label?: string
+    /**
+     * A myth's DEBUNK: seconds into his recording where the correction
+     * lands ("…never says whale"). The camera cuts tight on that moment
+     * with a flash, so the picture changes exactly when the myth breaks.
+     */
+    turnAt?: number
   }
   onProgress?: (fraction: number, label: string) => void
 }
@@ -1563,6 +1695,9 @@ interface StoryScene {
    * the poster can be told to draw any moment of it.
    */
   shots: Shot[]
+  /** The camera's cuts and its punched cuts, in FRAME seconds; derived on first use. */
+  cuts?: number[]
+  punch?: number[]
 }
 
 interface Shot {
@@ -1696,9 +1831,17 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
   // wide and settling. A loop is still played forward, and is only ever the
   // library.
   const { shot, from, mix } = shotMix(shots, at)
-  const settle = SHOT_PUSH * (1 - easeOut((at - shot.at) / SHOT_SETTLE))
-  const zoom = 1.08 + 0.02 * (t / total) + Math.max(0, settle)
+  // The camera replaces the old near-still push and its per-shot settle.
+  // A picture change (`shots`) is a cut too, so it joins the beats.
+  const turn = input.own?.turnAt != null && Number.isFinite(ownAt) ? [lead + ownAt + input.own.turnAt] : []
+  const punch = sc.punch ?? (sc.punch = turn)
+  const cuts = sc.cuts ?? (sc.cuts = cutTimes([...phrases.map((p) => p.start + lead), ...shots.filter((x) => Number.isFinite(x.at)).map((x) => x.at + lead)], total, punch))
+  const cam = camAt(cuts, t, total, punch)
+  const zoom = 1
+  void SHOT_PUSH; void SHOT_SETTLE
   const roomIsLoop = !shot.img && input.room instanceof HTMLVideoElement
+  ctx.save()
+  applyCam(ctx, cam)
   if (roomIsLoop) {
     await drawLoop(ctx, input.room as HTMLVideoElement, t)
   } else {
@@ -1717,6 +1860,8 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
     cover(ctx, bg, bg.naturalWidth, bg.naturalHeight, zoom, 1)
     ctx.restore()
   }
+  ctx.restore()
+  drawPunchFlash(ctx, cam, punch, t)
   const top = ctx.createLinearGradient(0, 0, 0, 820)
   top.addColorStop(0, 'rgba(11,7,32,0.9)'); top.addColorStop(1, 'rgba(11,7,32,0)')
   ctx.fillStyle = top; ctx.fillRect(0, 0, WIDTH, 820)
@@ -1804,7 +1949,7 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
     ctx.letterSpacing = '0px'
     if (phrase) {
       ctx.globalAlpha = (1 - endFade) * panelIn * Math.min(1, easeOut(age) + 0.4)
-      drawCaption(ctx, phrase, at, { x: WIDTH / 2, y: py + ph / 2 + 22, maxWidth: pw - 96, size: 64, small: 54, stroke: 8, dim: 0.42 })
+      drawCaption(ctx, phrase, at, { x: WIDTH / 2, y: py + ph / 2 + 22, maxWidth: pw - 96, size: 64, small: 54, stroke: 8 })
     }
     ctx.restore()
   }
@@ -2232,7 +2377,7 @@ async function drawRoundupFrame(ctx: CanvasRenderingContext2D, sc: RoundupScene,
     }
     if (p && at < audioDur + 0.2) {
       ctx.globalAlpha = (1 - endFade) * Math.min(1, easeOut((at - p.start) / 0.22) + 0.4)
-      drawCaption(ctx, p, at, { x: WIDTH / 2, y: py + ph / 2 + 22, maxWidth: pw - 96, size: 64, small: 54, stroke: 8, dim: 0.42 })
+      drawCaption(ctx, p, at, { x: WIDTH / 2, y: py + ph / 2 + 22, maxWidth: pw - 96, size: 64, small: 54, stroke: 8 })
     }
     ctx.restore()
   }
@@ -3111,6 +3256,8 @@ export interface ChalkQuizInput {
   yesterday?: string
   /** His question, read under the board. */
   audio: ArrayBuffer
+  /** His words, timed against `audio`, so the board fills as he speaks. Optional: without them it fills on a fixed clock. */
+  words?: TimedWord[]
   bed?: Float32Array
   onProgress?: (fraction: number, label: string) => void
 }
@@ -3206,50 +3353,91 @@ export async function renderChalkQuiz(input: ChalkQuizInput): Promise<RenderOutp
   const bx0 = WIDTH * BOARD.x0, bx1 = WIDTH * BOARD.x1, by0 = HEIGHT * BOARD.y0, by1 = HEIGHT * BOARD.y1
   const bw = bx1 - bx0
 
-  // The board as it stands for the whole post: label, question, options.
-  const main = boardLayer((ctx) => {
+  // The board is chalked IN, not shown whole (the motion rule): the label
+  // and the question's first line are on frame 0, the rest of the question
+  // arrives line by line as he says it, and then the four options land ONE AT
+  // A TIME, a second apart, so the eye waits for the next one.
+  const qLayers: HTMLCanvasElement[] = []
+  const oLayers: HTMLCanvasElement[] = []
+  let ruleLayer: HTMLCanvasElement | null = null
+  const label = boardLayer((ctx) => {
     ctx.textAlign = 'center'
     ctx.font = `600 40px ${CHALK_FONT}`
     chalkWrite(ctx, input.label, WIDTH / 2, by0 + 34, CHALK_DIM)
-    const q = chalkLines(ctx, input.prompt, bw - 40, [92, 84, 76, 68, 62, 56], 360)
+  })
+  {
+    // Measured on a scratch canvas, then each piece drawn on its own layer.
+    const m = document.createElement('canvas').getContext('2d')!
     const qTop = by0 + (input.yesterday ? 200 : 150)
-    ctx.font = `700 ${q.size}px ${CHALK_FONT}`
-    q.lines.forEach((l, i) => chalkWrite(ctx, l, WIDTH / 2, qTop + i * q.lh))
+    // The question gives up size before the options run into the ask line:
+    // a four-line question at full size left option D on top of "A, B, C or
+    // D?" (the 2026-11-05 board). Smallest box first that leaves the four
+    // options room at a readable size.
+    const optNeed = (qb: number) => by1 - (qb + 40) - 120
+    let q = chalkLines(m, input.prompt, bw - 40, [92, 84, 76, 68, 62, 56], 360)
+    for (const maxH of [320, 280, 240, 200]) {
+      if (optNeed(qTop + (q.lines.length - 1) * q.lh + q.lh * 0.7) >= 4 * 52 * 1.3) break
+      q = chalkLines(m, input.prompt, bw - 40, [92, 84, 76, 68, 62, 56, 52, 48], maxH)
+    }
+    q.lines.forEach((l, i) => qLayers.push(boardLayer((ctx) => {
+      ctx.textAlign = 'center'
+      ctx.font = `700 ${q.size}px ${CHALK_FONT}`
+      chalkWrite(ctx, l, WIDTH / 2, qTop + i * q.lh)
+    })))
     const qBottom = qTop + (q.lines.length - 1) * q.lh + q.lh * 0.7
-    // A chalk rule under the question.
-    ctx.strokeStyle = 'rgba(244,242,232,0.55)'; ctx.lineWidth = 4; ctx.lineCap = 'round'
-    ctx.beginPath(); ctx.moveTo(bx0 + 60, qBottom + 6); ctx.quadraticCurveTo(WIDTH / 2, qBottom + 14, bx1 - 60, qBottom + 4); ctx.stroke()
-    // Four options, left-aligned under it, each with its letter circled. Each
-    // option is measured first so a long one that wraps takes the room it
-    // needs and pushes the rest down, rather than overlapping its neighbours.
+    ruleLayer = boardLayer((ctx) => {
+      ctx.strokeStyle = 'rgba(244,242,232,0.55)'; ctx.lineWidth = 4; ctx.lineCap = 'round'
+      ctx.beginPath(); ctx.moveTo(bx0 + 60, qBottom + 6); ctx.quadraticCurveTo(WIDTH / 2, qBottom + 14, bx1 - 60, qBottom + 4); ctx.stroke()
+    })
+    // Each option is measured first so a long one that wraps takes the room
+    // it needs and pushes the rest down, rather than overlapping its neighbours.
     const room = by1 - (qBottom + 40) - 120
     let oSize = 64
     type Row = { lines: string[]; size: number }
     const layout = (base: number): Row[] => input.options.map((opt) => {
-      ctx.font = `600 ${base}px ${CHALK_FONT}`
-      if (ctx.measureText(opt).width <= bw - 170) return { lines: [opt], size: base }
+      m.font = `600 ${base}px ${CHALK_FONT}`
+      if (m.measureText(opt).width <= bw - 170) return { lines: [opt], size: base }
       const size = Math.round(base * 0.82)
-      ctx.font = `600 ${size}px ${CHALK_FONT}`
-      return { lines: wrap(ctx, opt, bw - 170).slice(0, 2), size }
+      m.font = `600 ${size}px ${CHALK_FONT}`
+      return { lines: wrap(m, opt, bw - 170).slice(0, 2), size }
     })
     const heightOf = (rows: Row[]) => rows.reduce((h, r) => h + r.lines.length * r.size * 0.95 + r.size * 0.35, 0)
     let rows = layout(oSize)
     while (heightOf(rows) > room && oSize > 44) { oSize -= 2; rows = layout(oSize) }
-    ctx.textAlign = 'left'
     let cursor = qBottom + 46
     rows.forEach((row, i) => {
       const lh = row.size * 0.95
       const block = row.lines.length * lh
-      const mid = cursor + block / 2
-      ctx.font = `700 ${oSize}px ${CHALK_FONT}`
-      chalkWrite(ctx, 'ABCD'[i], bx0 + 54, mid)
-      ctx.strokeStyle = 'rgba(244,242,232,0.7)'; ctx.lineWidth = 3
-      ctx.beginPath(); ctx.ellipse(bx0 + 54 + oSize * 0.22, mid + 2, oSize * 0.42, oSize * 0.44, -0.2, 0, Math.PI * 2); ctx.stroke()
-      ctx.font = `600 ${row.size}px ${CHALK_FONT}`
-      row.lines.forEach((l, k) => chalkWrite(ctx, l, bx0 + 130, cursor + lh / 2 + k * lh))
+      const top = cursor
+      oLayers.push(boardLayer((ctx) => {
+        ctx.textAlign = 'left'
+        const mid = top + block / 2
+        ctx.font = `700 ${oSize}px ${CHALK_FONT}`
+        chalkWrite(ctx, 'ABCD'[i], bx0 + 54, mid)
+        ctx.strokeStyle = 'rgba(244,242,232,0.7)'; ctx.lineWidth = 3
+        ctx.beginPath(); ctx.ellipse(bx0 + 54 + oSize * 0.22, mid + 2, oSize * 0.42, oSize * 0.44, -0.2, 0, Math.PI * 2); ctx.stroke()
+        ctx.font = `600 ${row.size}px ${CHALK_FONT}`
+        row.lines.forEach((l, k) => chalkWrite(ctx, l, bx0 + 130, top + lh / 2 + k * lh))
+      }))
       cursor += block + row.size * 0.35
     })
-  })
+  }
+  // When each piece arrives, in FRAME seconds. With his words: the question
+  // fills over the stretch he spends asking it (up to his first "?"), and the
+  // options follow it. Without them: a fixed clock that does the same thing.
+  const ws = (input.words ?? []).filter((w) => w.end <= samples.length / SAMPLE_RATE + 0.2)
+  const askEnd = ws.find((w) => /\?/.test(w.text))?.end
+  const qFrom = CHALK_LEAD + (ws[0]?.start ?? 0)
+  const qTo = askEnd != null ? CHALK_LEAD + askEnd : qFrom + 0.6 * qLayers.length
+  const qAt = qLayers.map((_, i) => (i === 0 ? 0 : qFrom + (i / qLayers.length) * Math.max(0.6, qTo - qFrom)))
+  const optFrom = Math.min(qTo + 0.3, askAt - 0.2 - (oLayers.length - 1) * 1.0)
+  const oAt = oLayers.map((_, i) => Math.max(qAt[qAt.length - 1] + 0.5, optFrom) + i * 1.0)
+  const beats = ws.filter((w, i) => i > 0 && w.start - ws[i - 1].end > 0.3).map((w) => CHALK_LEAD + w.start)
+  const cuts = cutTimes([...beats, ...oAt.slice(0, 1)], total)
+  const appear = (ctx: CanvasRenderingContext2D, layer: HTMLCanvasElement | null, at: number, t: number, dur = 0.35) => {
+    if (!layer || t < at) return
+    ctx.save(); ctx.globalAlpha = at <= 0 ? 1 : easeOut((t - at) / dur); ctx.drawImage(layer, 0, 0); ctx.restore()
+  }
   const yesterday = input.yesterday ? boardLayer((ctx) => {
     ctx.textAlign = 'center'
     ctx.font = `700 46px ${CHALK_FONT}`
@@ -3266,8 +3454,14 @@ export async function renderChalkQuiz(input: ChalkQuizInput): Promise<RenderOutp
   const fig = input.figure
   const pad = fig ? bottomPad(fig) : 0
   const draw = async (ctx: CanvasRenderingContext2D, t: number) => {
-    cover(ctx, input.backdrop, input.backdrop.naturalWidth, input.backdrop.naturalHeight, 1 + 0.015 * (t / total))
-    ctx.drawImage(main, 0, 0)
+    // The whole room — board, chalk and figure — goes through the camera.
+    ctx.save()
+    applyCam(ctx, camAt(cuts, t, total, [], CHALK_MOVES))
+    cover(ctx, input.backdrop, input.backdrop.naturalWidth, input.backdrop.naturalHeight)
+    ctx.drawImage(label, 0, 0)
+    qLayers.forEach((l, i) => appear(ctx, l, qAt[i], t))
+    appear(ctx, ruleLayer, qAt[qAt.length - 1] ?? 0, t)
+    oLayers.forEach((l, i) => appear(ctx, l, oAt[i], t, 0.3))
     if (yesterday) {
       const a = t < YESTERDAY_FOR ? 1 : Math.max(0, 1 - (t - YESTERDAY_FOR) / 0.5)
       if (a > 0) { ctx.save(); ctx.globalAlpha = a; ctx.drawImage(yesterday, 0, 0); ctx.restore() }
@@ -3286,6 +3480,7 @@ export async function renderChalkQuiz(input: ChalkQuizInput): Promise<RenderOutp
       ctx.drawImage(fig, x, y, w, h)
       ctx.restore()
     }
+    ctx.restore()
   }
   const { blob, ext } = await produce(draw, total, CHALK_LEAD, samples, progress, input.bed)
   progress(1, 'Done')

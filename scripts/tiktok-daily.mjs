@@ -437,7 +437,10 @@ async function postEach(platforms, body) {
       // than being skipped — the same rule the single time had.
       const at = zonedToUtc(body.date, timeFor(body.kind, platform, body.date), TZ)
       const scheduleDate = at.getTime() > Date.now() + 90_000 ? at.toISOString().replace(/\.\d{3}Z$/, 'Z') : undefined
-      const r = await fn('post', { ...body, scheduleDate, platforms: [platform] })
+      // ATTEMPT (2..9) after an `unpost`: Ayrshare refuses a repeated
+      // idempotency key even for a post it has deleted.
+      const attempt = Number(env.ATTEMPT) > 1 ? Number(env.ATTEMPT) : undefined
+      const r = await fn('post', { ...body, scheduleDate, platforms: [platform], attempt })
       results.push(...(Array.isArray(r.results) ? r.results : [{ platform, status: 'error', error: `no result: ${JSON.stringify(r).slice(0, 160)}` }]))
     } catch (e) {
       results.push({ platform, status: 'error', error: String(e?.message || e).slice(0, 200) })

@@ -965,6 +965,17 @@ cron does the upload. Full design: `docs/TIKTOK-ENGINE.md`. Things to know —
   assumed with a constant: the padding differs per skin and a new one lands
   whenever a render does. **Found by looking at the JPEG, not the log** — the
   runner reported a clean render every time.
+- **THE MOTION RULE (2026-11-05, the owner's call) REPLACES the next bullet.**
+  Every video moves from frame 0 and never stops: one camera
+  (`cutTimes`/`camAt`/`applyCam` in `lib/tiktokRender.ts`) pushes, pulls or
+  pans the whole backdrop (figures included) for every shot, and cuts to a new
+  framing every 4-6s on a narration beat. Words appear as they are spoken
+  (unspoken words are not drawn), the hook lands line by line, the chalkboard
+  fills as he asks and its options land one a second, and a myth cuts tight
+  with a flash on its debunk (`debunkAt` in `make.ts`, or a myth's own
+  `turn` word). One painting per post still means the cuts are FRAMINGS of
+  it; a second and third painting per myth is content still to make.
+  The argument below is history: it was about motion with no grammar.
 - **The only thing moving is the caption, and that is a rule now.** These
   posts had drifting motes, a warm pulse over the frame, a hovering figure
   under a breathing halo, page-turn wipes and Veo loops of Tabitha talking —

@@ -3368,8 +3368,17 @@ export async function renderChalkQuiz(input: ChalkQuizInput): Promise<RenderOutp
   {
     // Measured on a scratch canvas, then each piece drawn on its own layer.
     const m = document.createElement('canvas').getContext('2d')!
-    const q = chalkLines(m, input.prompt, bw - 40, [92, 84, 76, 68, 62, 56], 360)
     const qTop = by0 + (input.yesterday ? 200 : 150)
+    // The question gives up size before the options run into the ask line:
+    // a four-line question at full size left option D on top of "A, B, C or
+    // D?" (the 2026-11-05 board). Smallest box first that leaves the four
+    // options room at a readable size.
+    const optNeed = (qb: number) => by1 - (qb + 40) - 120
+    let q = chalkLines(m, input.prompt, bw - 40, [92, 84, 76, 68, 62, 56], 360)
+    for (const maxH of [320, 280, 240, 200]) {
+      if (optNeed(qTop + (q.lines.length - 1) * q.lh + q.lh * 0.7) >= 4 * 52 * 1.3) break
+      q = chalkLines(m, input.prompt, bw - 40, [92, 84, 76, 68, 62, 56, 52, 48], maxH)
+    }
     q.lines.forEach((l, i) => qLayers.push(boardLayer((ctx) => {
       ctx.textAlign = 'center'
       ctx.font = `700 ${q.size}px ${CHALK_FONT}`

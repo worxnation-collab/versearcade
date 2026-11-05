@@ -355,21 +355,43 @@ const FIRST_COMMENT_ON: Platform[] = ['facebook', 'youtube', 'x']
  * of the two anyway: it reaches people already watching, where a share
  * reaches a stranger's feed.
  */
-export function callToAction(kind: Kind, short = false): string {
+// WHO to send it to. "Someone who needs to hear it" was on nearly every post
+// and drew a share on one in ten: a stranger reads it as nobody in particular.
+// The Gaius post, which named "a friend", out-shared all of them. So the ask
+// names a person, and which one is a pure function of the day, so a retry and
+// every network say the same thing about the same post.
+const SHARE_TO = [
+  'Send this to the friend who would love it.',
+  'Send this to your mom.',
+  'Send this to someone in your small group.',
+  'Send this to the friend you pray with.',
+  'Send this to someone who taught you about God.',
+  'Send this to your brother or sister.',
+  'Send this to a friend you have not talked to in a while.',
+]
+const QUIZ_TO = [
+  'then send it to the friend who would get it wrong.',
+  'then send it to the person who knows their Bible best.',
+  'then send it to your small group.',
+  'then send it to someone you want to test.',
+]
+const pickBy = (list: string[], seed = '') => list[[...seed].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % list.length]
+
+export function callToAction(kind: Kind, short = false, seed = ''): string {
   // Friday's "who is this?" is the one format left that asks for a comment,
   // and it is the whole reason the week keeps a guessing post at all: the
   // challenges took the comment ask with them when they were parked.
-  if (kind === 'figure') return short ? 'Guess before the reveal.' : 'Comment your guess before the reveal — then share it with someone who would get it.'
+  if (kind === 'figure') return short ? 'Guess before the reveal.' : `Comment your guess before the reveal, ${pickBy(QUIZ_TO, seed)}`
   // The EXCHANGE ends on a question asked out loud — "who are you still
   // counting?" — so the comment ask is not bolted on here, it is the last
   // thing the video says. Asking for a share instead would answer a question
   // with an errand. It keeps the share second, as the challenges do.
-  if (kind === 'exchange') return short ? 'Answer in the comments.' : 'Answer in the comments — then share this with someone who needs to hear it.'
+  if (kind === 'exchange') return short ? 'Answer in the comments.' : `Answer in the comments, ${pickBy(QUIZ_TO, seed)}`
   const challenge = kind === 'challenge' || kind === 'challenge2'
-  if (short) return challenge ? 'Comment your answer, then share it.' : 'Share this with someone who needs it.'
+  if (short) return challenge ? 'Comment your letter, then share it.' : 'Send this to a friend.'
   return challenge
-    ? 'Comment your answer — then share this with someone who needs to hear it.'
-    : 'Share this with someone who needs to hear it today.'
+    ? `Comment just your letter, ${pickBy(QUIZ_TO, seed)}`
+    : pickBy(SHARE_TO, seed)
 }
 
 /**
@@ -378,7 +400,7 @@ export function callToAction(kind: Kind, short = false): string {
  * network flattens line breaks anyway (TikTok, Snapchat) and a newline
  * everywhere else.
  */
-function withAsk(text: string | undefined, kind: Kind, join = '\n'): string {
+function withAsk(text: string | undefined, kind: Kind, join = '\n', seed = ''): string {
   const stripped = dropLinkSentence((text ?? '').trim()).replace(/\blink in bio\b[^.!?\n]*[.!?]?/gi, ' ')
   // A space join is a network that flattens line breaks (TikTok, Snapchat),
   // so the model's own paragraph breaks are collapsed rather than shipped as
@@ -395,7 +417,7 @@ function withAsk(text: string | undefined, kind: Kind, join = '\n'): string {
   // second ask after a question asks for nothing.
   if (/\?\s*$/.test(t)) return t
   const asksComment = kind === 'challenge' || kind === 'challenge2' || kind === 'exchange'
-  const hasShare = /\bshare\b/i.test(t)
+  const hasShare = /\b(share|send this)\b/i.test(t)
   const has = hasShare && (!asksComment || /comment/i.test(t))
   if (has) return t
   // A HALF-MATCH is the case that shipped a doubled ask: on a comment-asking
@@ -414,7 +436,7 @@ function withAsk(text: string | undefined, kind: Kind, join = '\n'): string {
   // already contains a blank line gets one; a one-line caption keeps the
   // join it was given, and a space-joined network is untouched.
   const gap = join === '\n' && /\n\n/.test(body) ? '\n\n' : join
-  return [body, callToAction(kind)].filter(Boolean).join(gap)
+  return [body, callToAction(kind, false, seed)].filter(Boolean).join(gap)
 }
 
 /**
@@ -455,7 +477,11 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
     body.firstComment = { comment: copy.ask
       // `&b=1` lands them on the Play tab's "Yesterday's board" card
       // (src/lib/boardLink.ts), so the reveal is in the app too.
-      ? `${copy.ask}\n\nYesterday's answer, and today's verse to play: ${siteLink(platform)}&b=1`
+      // A quiz's comment ask is "reply with the letter", not "did you get it?":
+      // a right-or-wrong question is answered in the head and scrolled past,
+      // and one letter is the cheapest reply there is. The answer is NOT
+      // seeded here — it opens tomorrow's board, and that loop is the point.
+      ? `${a.kind === 'challenge' || a.kind === 'challenge2' ? 'A, B, C or D? Reply with just the letter. The answer opens tomorrow’s board.' : copy.ask}\n\nYesterday's answer, and today's verse to play: ${siteLink(platform)}&b=1`
       : `${day ? 'Play this verse' : "Play today's verse"}: ${siteLink(platform, day)}` }
   }
   if (platform === 'tiktok') {
@@ -473,13 +499,13 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
     // The caption note stays, because it says the thing the flag cannot: the
     // flag is a binary that reads "synthetic", and these posts are not. The
     // art is a model's; the voice is a person's.
-    body.post = [withAsk(c.text, a.kind, ' '), aiNote(a), tagLine(c.tags, 5)].filter(Boolean).join(' ').slice(0, 2200)
+    body.post = [withAsk(c.text, a.kind, ' ', a.date), aiNote(a), tagLine(c.tags, 5)].filter(Boolean).join(' ').slice(0, 2200)
     body.tikTokOptions = { visibility: 'public', isAIGenerated: !isWhollyHuman(a) }
   } else if (platform === 'youtube') {
-    body.post = [withAsk(c.text, a.kind), tagLine(c.tags, 5)].filter(Boolean).join('\n\n').slice(0, 5000)
+    body.post = [withAsk(c.text, a.kind, '\n', a.date), tagLine(c.tags, 5)].filter(Boolean).join('\n\n').slice(0, 5000)
     body.youTubeOptions = { title: (c.title || `${a.reference || 'Verse Arcade'} · Verse Arcade`).slice(0, 100), visibility: 'public', shorts: true, madeForKids: false, containsSyntheticMedia: !isWhollyHuman(a) }
   } else if (platform === 'facebook') {
-    body.post = [withAsk(c.text, a.kind), aiNote(a), tagLine(c.tags, 2)].filter(Boolean).join('\n\n').slice(0, 5000)
+    body.post = [withAsk(c.text, a.kind, '\n', a.date), aiNote(a), tagLine(c.tags, 2)].filter(Boolean).join('\n\n').slice(0, 5000)
     // A Reel where one is allowed (it is the surface Facebook shows to
     // strangers); over the ceiling, a plain video post on the page rather
     // than a refusal — Facebook rejected the quiz and a 91-second story as
@@ -494,7 +520,7 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
     // tags. Composed rather than run through withAsk, because the model's
     // words are what get shortened to fit and the ask and the note never do.
     const tail = [aiNote(a), tagLine(c.tags, 2)].filter(Boolean).join(' ')
-    const ask = callToAction(a.kind)
+    const ask = callToAction(a.kind, false, a.date)
     let lead = dropLinkSentence(c.text ?? '').replace(/\s+/g, ' ').trim()
     const words = lead.split(' ').filter(Boolean)
     while (words.length > 1 && [words.join(' '), ask, tail].join(' ').length > 280) words.pop()
@@ -504,7 +530,7 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
     // Threads: 500 characters, no AI flag on the API so the caption says it,
     // two tags at most (Threads treats a tag as a topic). Its link lives in
     // the profile's bio — Ayrshare has no Threads comment endpoint.
-    body.post = [withAsk(c.text, a.kind), aiNote(a), tagLine(c.tags, 2)].filter(Boolean).join('\n\n').slice(0, 500)
+    body.post = [withAsk(c.text, a.kind, '\n', a.date), aiNote(a), tagLine(c.tags, 2)].filter(Boolean).join('\n\n').slice(0, 500)
   } else if (platform === 'pinterest') {
     // Pinterest is search: the title carries the reference and what the pin
     // is, the description (500) the words somebody would type, and the cover
@@ -515,7 +541,7 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
     // that does not exist. `link` is the pin's DESTINATION rather than
     // caption text (tapping a pin is following it), so it keeps the tracked
     // URL while the description has none.
-    body.post = [withAsk(c.text, a.kind), aiNote(a), tagLine(c.tags, 3)].filter(Boolean).join('\n\n').slice(0, 500)
+    body.post = [withAsk(c.text, a.kind, '\n', a.date), aiNote(a), tagLine(c.tags, 3)].filter(Boolean).join('\n\n').slice(0, 500)
     body.pinterestOptions = { title: (c.title || `${a.reference || 'Verse Arcade'} · Daily Bible Verse`).slice(0, 100), link: siteLink(platform, verseDayOf(a.kind, a.date)), thumbNail: photo ? undefined : a.cover, altText: [`${a.reference || 'A Bible verse'}, read aloud over a painted road — Verse Arcade`.slice(0, 500)] }
   } else if (platform === 'snapchat') {
     // 160 characters, hard, and everything here is ordered by what must
@@ -525,7 +551,7 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
     // is the MODEL'S WORDS, cut at a word boundary — a slice(0, 160) over
     // the whole thing ended the post halfway through the word "share".
     const note = aiNote(a)
-    const ask = callToAction(a.kind, true)
+    const ask = callToAction(a.kind, true, a.date)
     const tags = tagLine(c.tags, 2)
     let room = 160 - note.length - ask.length - 2
     let lead = dropLinkSentence(c.text ?? '').replace(/\s+/g, ' ').trim()
@@ -547,7 +573,7 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
     // Instagram, same as TikTok above: the flag AND the note. The flag was
     // briefly dropped here too, on the same mistaken premise, and Meta never
     // published a reach penalty for it in the first place.
-    body.post = [withAsk(c.text, a.kind), aiNote(a), tagLine(c.tags, 5)].filter(Boolean).join('\n\n').slice(0, 2200)
+    body.post = [withAsk(c.text, a.kind, '\n', a.date), aiNote(a), tagLine(c.tags, 5)].filter(Boolean).join('\n\n').slice(0, 2200)
     body.instagramOptions = { shareReelsFeed: true, isAIGenerated: !isWhollyHuman(a) }
   }
   return body

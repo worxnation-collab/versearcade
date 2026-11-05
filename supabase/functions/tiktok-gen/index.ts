@@ -825,7 +825,9 @@ Deno.serve(async (req) => {
       const sc = input.scripted && typeof input.scripted === 'object' ? input.scripted as Record<string, unknown> : null
       if (sc) {
         const clean = (v: unknown, n: number) => String(v ?? '').replace(/https?:\/\/\S+/g, '').trim().slice(0, n)
-        const ask = clean(sc.ask, 140)
+        // A quiz is unanswered when it posts (the answer opens tomorrow's
+        // board), so "Did you get it?" asks about something nobody has seen.
+        const ask = kind === 'challenge' || kind === 'challenge2' ? 'Which letter is it?' : clean(sc.ask, 140)
         const caption = clean(sc.caption, 600)
         if (!ask || !caption) return json({ error: 'scripted copy needs caption and ask' }, 400)
         const text = `${caption}\n\n${ask}`

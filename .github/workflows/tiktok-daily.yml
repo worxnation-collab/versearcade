@@ -40,6 +40,14 @@ on:
         description: 'Comma list of kinds; leave empty for the day as the schedule would make it'
         required: false
         default: ''
+      rerender:
+        description: 'Make the video again even if one is parked (after a renderer change)'
+        type: boolean
+        default: false
+      attempt:
+        description: 'After an unpost: 2, 3… so the re-post is not refused as a duplicate'
+        required: false
+        default: ''
       dry_run:
         description: 'Render only — upload and schedule nothing'
         type: boolean
@@ -74,6 +82,8 @@ jobs:
           DATE: ${{ inputs.date }}
           KINDS: ${{ inputs.kinds }}
           DRY_RUN: ${{ inputs.dry_run }}
+          RERENDER: ${{ inputs.rerender }}
+          ATTEMPT: ${{ inputs.attempt }}
         run: node scripts/tiktok-daily.mjs
       - name: Keep the videos and the results
         if: always()

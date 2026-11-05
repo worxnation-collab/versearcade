@@ -590,6 +590,23 @@ async function readingScenes(r: Renderer, d: string, kind: ReadingKind, pick?: s
   return [await load(stagePath(picks(pick)[0] ?? stageForReading(d, kind)))]
 }
 
+/**
+ * Where a myth's correction LANDS, in seconds into his recording: the camera
+ * cuts tight there (the motion rule). A myth may name its own turning word
+ * (`turn`, e.g. "never"); otherwise the first word that sounds like a
+ * correction past the first tenth of the take ("actually", "never", "but"…),
+ * because the opening restates the myth and a "not" in it is not the turn.
+ * Nothing found ⇒ undefined, and the post cuts on its beats as usual.
+ */
+export function debunkAt(words: Array<{ text: string; start: number }>, turn?: string): number | undefined {
+  if (!words.length) return undefined
+  const norm = (w: string) => w.toLowerCase().replace(/[^a-z']/g, '')
+  const from = (words[words.length - 1].start ?? 0) * 0.1
+  const cue = turn ? [norm(turn)] : ['actually', 'never', 'nowhere', 'but', "doesn't", "isn't", "wasn't", "didn't", 'not', 'no']
+  const hit = words.find((w) => w.start >= from && cue.includes(norm(w.text)))
+  return hit?.start
+}
+
 /** The stage ids an operator named, in order, keeping only ones this build ships. */
 function picks(pick?: string): Array<string | undefined> {
   return String(pick ?? '').split(',').map((x) => x.trim()).map((x) => (STORY_STAGES.some((s) => s.id === x) ? x : undefined))
@@ -654,7 +671,7 @@ export async function makeReading(d: string, kind: ReadingKind, o: ReadingOption
   const out = await r.renderStory({
     title, reference, verseText: reference === v.reference ? v.text : '',
     paragraphs: [], hook: myth?.hook ?? copy?.hook, room, eyebrow: myth ? `MOST PEOPLE GET THIS WRONG \u00b7 No. ${mythNo}` : def.eyebrow, endNote: tease, scenes, bed, align: o.align,
-    own: { audio: ownAudio, words: own.thought, text: own.text, place: 'close', photo, label: VOICE_LABEL },
+    own: { audio: ownAudio, words: own.thought, text: own.text, place: 'close', photo, label: VOICE_LABEL, turnAt: myth ? debunkAt(own.thought, myth.turn) : undefined },
     onProgress: progress,
   })
   return made(d, kind, reference, out, copy, `${def.name} · your voice`, true)
@@ -800,7 +817,7 @@ async function makeScriptedQuiz(d: string, sq: ScriptedQuiz, o: ChallengeOptions
   const questionSec = await r.audioSeconds(question)
   const bed = o.music !== false ? await bedFor(questionSec + 5, 'morning') : undefined
   const out = await r.renderChalkQuiz({
-    backdrop, figure, prompt: sq.prompt, options: [...sq.options], audio: question, bed,
+    backdrop, figure, prompt: sq.prompt, options: [...sq.options], audio: question, bed, words: own.thought,
     label: `DAILY BIBLE QUIZ \u00b7 No. ${no}`, yesterday, onProgress: progress,
   })
   return made(d, 'challenge', sq.reference, out, copy, `chalkboard quiz No. ${no} · your voice`, true)

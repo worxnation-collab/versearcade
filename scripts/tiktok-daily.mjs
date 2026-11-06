@@ -124,7 +124,6 @@ const TZ = env.TIKTOK_TZ || 'America/New_York'
 const EXCHANGE_EPOCH = '2026-09-19'
 const EXCHANGE_DAYS = [1, 3, 5]
 const isExchangeDay = (d) => d === EXCHANGE_EPOCH || EXCHANGE_DAYS.includes(new Date(`${d}T00:00:00Z`).getUTCDay())
-const defaultKinds = (d) => (isExchangeDay(d) ? 'verse,exchange,story' : 'verse,story')
 const PLATFORMS = (env.PLATFORMS || 'tiktok,youtube,facebook,instagram,x,snapchat,threads,pinterest').split(',').map((s) => s.trim()).filter(Boolean)
 const DRY = /^(1|true|yes)$/i.test(env.DRY_RUN || '')
 const FFMPEG = env.FFMPEG || 'ffmpeg'
@@ -208,19 +207,29 @@ const today = env.DATE || ymdIn(TZ)
 // quiz in the morning instead of the verse, and a day with his MYTH take
 // posts the myth in the evening instead of the story. Decided by what is
 // actually in the bucket, so a take that never arrived falls back to the old
-// post rather than refusing to post at all — and the exchange steps aside on
-// a scripted day, which is two posts, not three.
+// post rather than refusing to post at all. The exchange, when its take is
+// parked, takes the 12:30 slot on any of its days (see `scriptedKinds`).
 async function parked(d, name) {
   try { const r = await fetch(`${(env.SUPABASE_URL || 'https://visuppaucpzzigwtqmdd.supabase.co').replace(/\/$/, '')}/storage/v1/object/public/tiktok/days/${d}/${name}`, { method: 'HEAD' }); return r.ok } catch { return false }
 }
 async function scriptedKinds(d) {
-  const [quiz, myth] = await Promise.all([parked(d, 'voice-challenge.wav'), parked(d, 'voice-moment.wav')])
-  if (!quiz && !myth) return defaultKinds(d)
+  const [quiz, myth, ex] = await Promise.all([
+    parked(d, 'voice-challenge.wav'), parked(d, 'voice-moment.wav'),
+    isExchangeDay(d) ? parked(d, 'voice-exchange.wav') : false,
+  ])
+  // On an exchange day with his exchange take parked, the EXCHANGE takes the
+  // 12:30 slot (2026-11-06, the owner's call). Stepping aside for the scripted
+  // week silenced the account's best-performing Short for a whole week while
+  // two recorded exchanges sat unused in the bucket. The verse moved to 12:30
+  // the same week, so the two are a swap: running both would post twice in
+  // the same minute on the two networks that judge a channel.
+  if (!quiz && !myth) return ex ? 'exchange,story' : 'verse,story'
   // Three a day (2026-11-02): the verse rides at midday beside the two
   // scripted posts — but ONLY with his recorded hook parked. Without one it
   // would be a wholly synthetic post on the networks that judge a channel.
   const hook = await parked(d, 'voice-verse.wav')
-  return [quiz ? 'challenge' : 'verse', ...(quiz && hook ? ['verse'] : []), myth ? 'moment' : 'story'].join(',')
+  const midday = ex ? ['exchange'] : quiz && hook ? ['verse'] : []
+  return [...(quiz ? ['challenge'] : ex ? [] : ['verse']), ...midday, myth ? 'moment' : 'story'].join(',')
 }
 const KINDS = (env.KINDS || (await scriptedKinds(today))).split(',').map((s) => s.trim()).filter(Boolean)
 for (const k of KINDS) if (!ALL_KINDS.includes(k)) fail(`unknown kind ${k}`)

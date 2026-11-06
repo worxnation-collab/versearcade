@@ -16,7 +16,7 @@
 //     steady state, so it is a build failure here rather than a surprise on
 //     a Monday.
 //   - And the runner's copy of the calendar drifting from the app's puts the
-//     exchange on the wrong days, or on none — `defaultKinds` is decided in
+//     exchange on the wrong days, or on none — `scriptedKinds` is decided in
 //     Node before the bundle exists, so the duplicate is deliberate and this
 //     is what keeps it honest.
 //

@@ -229,7 +229,10 @@ async function scriptedKinds(d) {
   // would be a wholly synthetic post on the networks that judge a channel.
   const hook = await parked(d, 'voice-verse.wav')
   const midday = ex ? ['exchange'] : quiz && hook ? ['verse'] : []
-  return [...(quiz ? ['challenge'] : ex ? [] : ['verse']), ...midday, myth ? 'moment' : 'story'].join(',')
+  // The story runs EVERY day in its own afternoon slot (2026-11-07, the
+  // owner's call) — a recorded myth adds the evening post rather than
+  // displacing it.
+  return [...(quiz ? ['challenge'] : ex ? [] : ['verse']), ...midday, 'story', ...(myth ? ['moment'] : [])].join(',')
 }
 const KINDS = (env.KINDS || (await scriptedKinds(today))).split(',').map((s) => s.trim()).filter(Boolean)
 for (const k of KINDS) if (!ALL_KINDS.includes(k)) fail(`unknown kind ${k}`)

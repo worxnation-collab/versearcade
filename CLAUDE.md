@@ -553,6 +553,7 @@ history; the scars are real, but take the shape from here.**
 |---|---|---|---|
 | morning | `challenge` | the CHALKBOARD QUIZ — his voice asks, four options in chalk, NO answer; yesterday's answer opens the next board | YouTube, Facebook, Instagram, TikTok |
 | midday | `verse` | his recorded HOOK, then a synthetic reading | YouTube, Facebook |
+| afternoon | `story` | Tabitha's telling, his recorded intro first; EVERY day since 2026-11-07 (it used to give the evening up to the myth) | YouTube, Facebook |
 | evening | `moment` | MOST PEOPLE GET THIS WRONG — his voice over one painting, numbered, ending on tomorrow's question | YouTube, Facebook, Instagram, TikTok |
 
 The scripted quiz and myth live in `data/tiktokScripted.ts`, keyed by date.

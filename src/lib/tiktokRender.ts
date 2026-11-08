@@ -19,7 +19,12 @@ import type { Muxer as Mp4Muxer, ArrayBufferTarget as Mp4Target } from 'mp4-muxe
 export const WIDTH = 1080
 export const HEIGHT = 1920
 export const FPS = 30
-const TAIL_SEC = 2.6
+const TAIL_SEC = 1.8
+// The end card is 1.8s (2.4s on a story or myth), down from 2.6s (3.8s) on
+// 2026-11-08: on a 20-second myth the old card was a fifth of the video, and a
+// viewer who has had the payoff leaves during it, which counts against the
+// whole post. Short enough to loop, long enough to read the address.
+const STORY_EXTRA = 0.6
 // The voice starts almost at once. A post used to open on 1.8 seconds of
 // hook over silence while the reader stood there; on a feed that is 1.8
 // seconds of a thumb deciding, and the reading is the thing worth staying
@@ -1894,7 +1899,7 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
   // top of the frame over from it once it has done its work.
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
   const hasHook = !!input.hook?.trim()
-  drawHook(ctx, input.hook, t, 200, 72, 900)
+  drawHook(ctx, input.hook, t, 210, 88, 920)
   const headIn = hasHook ? easeOut((t - (HOOK_HOLD - 0.3)) / 0.4) : 1
   if (headIn > 0) {
     ctx.save()
@@ -2171,7 +2176,7 @@ export async function renderStory(input: StoryInput): Promise<RenderOutput> {
     phrases = open ? [...his, ...hers] : [...hers, ...his]
   }
   const lead = LEAD
-  const total = lead + audioDur + TAIL_SEC + 1.2
+  const total = lead + audioDur + TAIL_SEC + STORY_EXTRA
   try { await document.fonts.load(`800 70px "Baloo 2"`) } catch { /* fine */ }
   // The hook owns the opening frames and nothing may be put in front of it,
   // so an INTRODUCTION's photo waits for the hook to fade rather than
@@ -2338,7 +2343,7 @@ async function drawRoundupFrame(ctx: CanvasRenderingContext2D, sc: RoundupScene,
 
   // 4. The hook, then the countdown chip where it was.
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-  drawHook(ctx, input.hook, t, 200, 76, 900)
+  drawHook(ctx, input.hook, t, 210, 88, 920)
   const headIn = (input.hook.trim() ? easeOut((t - (HOOK_HOLD - 0.3)) / 0.4) : 1) * (1 - endFade)
   if (headIn > 0) {
     ctx.save()
@@ -2435,12 +2440,12 @@ export async function plannedDuration(audio: ArrayBuffer | undefined, hook: stri
   // A reading has no telling; `own` is the whole track and there is no beat
   // to leave between two voices.
   const samples = audio ? await decodeAudio(audio) : new Float32Array(0)
-  if (!audio) return LEAD + (own ? (await decodeAudio(own)).length / SAMPLE_RATE : 0) + TAIL_SEC + (story ? 1.2 : 0)
+  if (!audio) return LEAD + (own ? (await decodeAudio(own)).length / SAMPLE_RATE : 0) + TAIL_SEC + (story ? STORY_EXTRA : 0)
   // His half lengthens the post, and a bed rendered for the telling alone would
   // run out under the operator's own voice — silence under the one part of
   // the post a person actually spoke.
   const extra = own ? OWN_GAP + (await decodeAudio(own)).length / SAMPLE_RATE : 0
-  return LEAD + samples.length / SAMPLE_RATE + extra + TAIL_SEC + (story ? 1.2 : 0)
+  return LEAD + samples.length / SAMPLE_RATE + extra + TAIL_SEC + (story ? STORY_EXTRA : 0)
 }
 
 export async function renderStoryPoster(input: Omit<StoryInput, 'audio' | 'onProgress'> & { phrases?: TimedPhrase[] }, t = 2.5, chrome = true): Promise<string> {
@@ -3065,7 +3070,11 @@ async function drawExchangeFrame(ctx: CanvasRenderingContext2D, sc: ExchangeScen
     ctx.save()
     ctx.globalAlpha = (1 - endFade) * Math.min(1, easeOut(t / 0.3) + 0.2)
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-    const { lines, lh } = fitText(ctx, input.hook, 860, [54, 48, 42], 160)
+    // For its first three seconds the card is the hook, so it is drawn half
+    // again as large (it is the frame a thumb judges, and the thumbnail), then
+    // eases down to the pinned size it keeps for the rest of the post.
+    const big = 1 - easeOut((t - (HOOK_HOLD - 0.5)) / 0.5)
+    const { lines, lh } = fitText(ctx, input.hook, 860, [54, 48, 42].map((s) => Math.round(s * (1 + 0.45 * big))), 160 * (1 + 0.6 * big))
     const w = Math.min(940, Math.max(...lines.map((l) => ctx.measureText(l).width)) + 72)
     const h = lines.length * lh + 44
     const cy = 268
@@ -3085,7 +3094,8 @@ async function drawExchangeFrame(ctx: CanvasRenderingContext2D, sc: ExchangeScen
   if (endFade < 1) {
     ctx.save()
     ctx.globalAlpha = 1 - endFade
-    drawCaption(ctx, heldPhrase(phrases, at, audioDur), at, { x: WIDTH / 2, y: HEIGHT * 0.79, maxWidth: 950, size: 68, small: 58 })
+    // 0.74, not 0.79: the bottom fifth is under each app's caption and buttons.
+    drawCaption(ctx, heldPhrase(phrases, at, audioDur), at, { x: WIDTH / 2, y: HEIGHT * 0.74, maxWidth: 950, size: 68, small: 58 })
     ctx.restore()
   }
 

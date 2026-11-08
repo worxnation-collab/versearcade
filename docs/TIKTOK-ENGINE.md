@@ -86,6 +86,24 @@ script and every on-screen hook, written by a model or by hand, follows the same
 4. **One idea per sentence,** mostly under 12 words, so something new lands every few seconds.
 5. **No throat-clearing and no recap.** Cut the middle before the payoff.
 6. **Land the payoff, then stop.**
+7. **The on-screen hook works with the sound off** (added 2026-11-08). Most of a feed scrolls muted,
+   so the words on frame one are a complete claim on their own, under ten words, naming the
+   specific thing: "'God helps those who help themselves' is not in the Bible", never "This famous
+   verse isn't in the Bible".
+
+### What the layouts do for it (2026-11-08 engagement pass)
+
+A review of every format on the Facebook Page (60 Reels, all 61 to 325 views, none pushed past the
+first test audience) found the scripts were no longer the weak point; the frame was:
+
+- **Hooks were small.** The story/myth hook went from 72px to 88px and the round-up's from 76px to
+  88px (the verse's was already 96px). The exchange's pinned hook card is drawn 45% larger for its
+  first three seconds and then eases down to its pinned size.
+- **End cards were long.** `TAIL_SEC` went from 2.6s to 1.8s and a story or myth's extra from 1.2s to
+  0.6s (`STORY_EXTRA`). On a 20-second myth the old card was a fifth of the video, and people who
+  have had the payoff leave during it, which lowers the watch-through for the whole post.
+- **The exchange's captions sat in the bottom fifth,** under each app's caption and buttons. They
+  moved up from 0.79 to 0.74 of the height.
 
 The hand-recorded weeks in `docs/scripts/` carry the same rules in their header.
 
@@ -985,6 +1003,22 @@ is, writes each network's words in the operator's own voice (`copy` with
 kind `own` and `about`), and hands it to the same `MadeCard` — upload,
 schedule, post — every generated post uses. Deliberately no AI note on it:
 nothing in it is generated. MP4 only, for the reason every other card has.
+
+## One painting per myth (2026-11-08)
+
+The myths used to borrow a stage (the road, the house, the water) that was true of every post and
+specific to none, so frame one said nothing about the myth. From 2026-11-09 each myth has its OWN
+painting of the thing the myth is about: Paul fallen in the light with no horse anywhere, the wolf
+and the lamb with no lion, the crown in the dust under the cracked tower. A thumb that lands on it
+with the sound off sees the subject before it reads the hook.
+
+- `art/tiktok-myths.json` is the manifest: one prompt per date, the stage it borrows its palette
+  from as a reference, and the same quiet top 40% the stages keep for the hook and the panel.
+- They were made through the function's `still` action (Nano Banana, 9:16, 2K, about 25 cents
+  each), parked at `readers/myth-<date>.png`, then saved at 1080 wide as
+  `public/tiktok/myths/<date>.jpg`, which is what `ScriptedMyth.art` points at.
+- A new week of myths gets new paintings the same way. The hooks were rewritten to rule 7 at the
+  same time (for example "There was no horse." became "Paul never fell off a horse.").
 
 ## The few generated pieces, and why those
 

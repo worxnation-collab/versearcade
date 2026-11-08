@@ -74,9 +74,9 @@ const results = []
 for (const date of [today, addDays(today, -1), addDays(today, -2)]) {
   for (const [kind, slot] of [['challenge', 1], ['challenge2', 2]]) {
     const q = challengeQuestion(date, slot)
-    // A scripted (chalkboard) quiz never reveals its answer in a reply: the
-    // answer is on tomorrow's board, and the comments are there to argue.
-    const r = await fn({ action: 'replies', date, kind, dryRun: DRY, max: MAX, ...q, noSpoil: !!q.scripted })
+    // The chalkboard quiz answers itself in the video since 2026-11-08, so a
+    // reply may say whether a comment got it.
+    const r = await fn({ action: 'replies', date, kind, dryRun: DRY, max: MAX, ...q, noSpoil: false })
     if (r.error) { log(`${kind} ${date}: ${String(r.error).slice(0, 200)}`); results.push({ date, kind, error: r.error }); continue }
     const added = r.added ?? []
     log(`${kind} ${date} · ${q.reference} · ${added.length} new repl${added.length === 1 ? 'y' : 'ies'}${DRY ? ' (dry run)' : ''} · ${(r.replies ?? []).length} on record`)

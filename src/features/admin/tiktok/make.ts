@@ -788,7 +788,17 @@ async function splitTake(wav: ArrayBuffer): Promise<{ question: ArrayBuffer; ans
   return { question: wavOf(ch.slice(0, qEnd), rate), answer: wavOf(ch.slice(aStart), rate), questionSec: qEnd / rate }
 }
 
-function prevDay(ymd: string) { return new Date(Date.parse(`${ymd}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10) }
+/** The question, `gap` seconds of silence, then the answer (if the take had one), as one WAV. */
+async function joinWithGap(question: ArrayBuffer, answer: ArrayBuffer | null, gap: number): Promise<{ wav: ArrayBuffer; sec: number; questionSec: number }> {
+  const pcm = async (w: ArrayBuffer) => (await new OfflineAudioContext(1, 1, 48000).decodeAudioData(w.slice(0))).getChannelData(0)
+  const q = await pcm(question)
+  const a = answer ? await pcm(answer) : new Float32Array(0)
+  const g = Math.round(gap * 48000)
+  const out = new Float32Array(q.length + g + a.length)
+  out.set(q, 0); out.set(a, q.length + g)
+  return { wav: wavOf(out, 48000), sec: out.length / 48000, questionSec: q.length / 48000 }
+}
+
 function nextDay(ymd: string) { return new Date(Date.parse(`${ymd}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10) }
 /** "Was Jonah swallowed by a whale? What the Bible actually says" → its question. */
 function mythQuestion(titleYt: string) { const q = titleYt.indexOf('?'); return q > 0 ? titleYt.slice(0, q + 1) : titleYt }
@@ -798,14 +808,15 @@ async function makeScriptedQuiz(d: string, sq: ScriptedQuiz, o: ChallengeOptions
   const own = await fetchVoice(d, 'challenge').catch(() => null)
   if (!own) throw new Error(`no recording parked for ${d} challenge — the scripted quiz is never read by a synthetic voice`)
   const take = await (await fetch(own.wavUrl + '?v=' + Date.now())).arrayBuffer()
-  // The chalkboard quiz NEVER gives the answer (2026-11-02): only the
-  // question half of his take is played. The answer is the comments' to
-  // argue about and is chalked on the TOP of tomorrow's board.
-  const { question } = await splitTake(take)
-  const prev = scriptedQuiz(prevDay(d))
-  const yesterday = prev ? prev.options[prev.answerIndex] : undefined
+  // The chalkboard quiz ANSWERS ITSELF (2026-11-08): his question, a chalked
+  // 3-2-1 over a fixed gap, then his answer with the right option circled.
+  // The board no longer opens on yesterday's answer either, so frame one is
+  // today's question. See renderChalkQuiz.
+  const { question, answer } = await splitTake(take)
+  const COUNT = 3
+  const joined = await joinWithGap(question, answer, COUNT)
   const no = scriptedNo(d)
-  const ask = 'A, B, C or D? Tell us why. The answer is on tomorrow\u2019s board.'
+  const ask = sq.ask
   let copy: Copy | null = null
   if (o.copy !== false) {
     progress(0, 'parking the caption')
@@ -814,11 +825,11 @@ async function makeScriptedQuiz(d: string, sq: ScriptedQuiz, o: ChallengeOptions
   progress(0, 'rendering')
   const r: Renderer = await import('@/lib/tiktokRender')
   const [backdrop, figure] = await Promise.all([r.loadImage('/tiktok/exchange/chalkboard.jpg'), ownFigure(r).catch(() => null).then((f) => f ?? undefined)])
-  const questionSec = await r.audioSeconds(question)
-  const bed = o.music !== false ? await bedFor(questionSec + 5, 'morning') : undefined
+  const bed = o.music !== false ? await bedFor(joined.sec + 3, 'morning') : undefined
   const out = await r.renderChalkQuiz({
-    backdrop, figure, prompt: sq.prompt, options: [...sq.options], audio: question, bed, words: own.thought,
-    label: `DAILY BIBLE QUIZ \u00b7 No. ${no}`, yesterday, onProgress: progress,
+    backdrop, figure, prompt: sq.prompt, options: [...sq.options], audio: joined.wav, bed, words: own.thought,
+    label: `DAILY BIBLE QUIZ \u00b7 No. ${no}`, onProgress: progress,
+    reveal: { countFrom: joined.questionSec, count: COUNT, answerIndex: sq.answerIndex },
   })
   return made(d, 'challenge', sq.reference, out, copy, `chalkboard quiz No. ${no} · your voice`, true)
 }

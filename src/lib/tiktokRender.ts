@@ -3242,9 +3242,11 @@ export async function renderExchangePoster(input: Omit<ExchangeInput, 'onProgres
 //
 // The scripted morning quiz as a CLASSROOM rather than a game screen: the
 // owner at a painted chalkboard, today's question and its four options
-// chalked on the board, and NO ANSWER. The answer is the comment section's
-// to argue about, and it is revealed at the top of the NEXT day's board
-// ("Yesterday's answer: …") — which is the reason to come back. The old
+// chalked on the board, then a chalked 3-2-1 over the silence he left for it
+// and the answer CIRCLED as he says it (2026-11-08, the owner's call). Until
+// then the answer was held for the next day's board and the post ended on
+// "A, B, C or D? Tell us why." — a vote-in-the-comments line Facebook treats
+// as engagement bait, on a video with no payoff to stay for. The old
 // layout (`renderQuiz`, solo) read as an advert for the app; this one reads
 // as a question somebody asked you.
 //
@@ -3270,6 +3272,12 @@ export interface ChalkQuizInput {
   words?: TimedWord[]
   bed?: Float32Array
   onProgress?: (fraction: number, label: string) => void
+  /**
+   * The in-video answer. `countFrom` is where in `audio` the question ends
+   * (the countdown starts there), `count` the seconds of silence left for it,
+   * then the answer: the voice after the gap, if any, and the option circled.
+   */
+  reveal?: { countFrom: number; count: number; answerIndex: number }
 }
 
 /** Where the board's writable slate sits, as fractions of the frame (measured off chalkboard.jpg). */
@@ -3357,8 +3365,14 @@ export async function renderChalkQuiz(input: ChalkQuizInput): Promise<RenderOutp
   progress(0, 'Chalking the board')
   await loadChalkFont()
   const samples = await decodeAudio(input.audio)
-  const askAt = CHALK_LEAD + samples.length / SAMPLE_RATE + 0.2
-  const total = askAt + CHALK_HOLD
+  const audioSec = samples.length / SAMPLE_RATE
+  const rv = input.reveal
+  // With a reveal the options must all be up before the count starts, and the
+  // post ends shortly after his last word rather than on a held question.
+  const askAt = rv ? CHALK_LEAD + rv.countFrom + 0.2 : CHALK_LEAD + audioSec + 0.2
+  const countAt = rv ? CHALK_LEAD + rv.countFrom + 0.15 : Infinity
+  const answerAt = rv ? countAt + rv.count : Infinity
+  const total = rv ? Math.max(answerAt + 2.6, CHALK_LEAD + audioSec + 1.6) : askAt + CHALK_HOLD
 
   const bx0 = WIDTH * BOARD.x0, bx1 = WIDTH * BOARD.x1, by0 = HEIGHT * BOARD.y0, by1 = HEIGHT * BOARD.y1
   const bw = bx1 - bx0
@@ -3370,6 +3384,7 @@ export async function renderChalkQuiz(input: ChalkQuizInput): Promise<RenderOutp
   const qLayers: HTMLCanvasElement[] = []
   const oLayers: HTMLCanvasElement[] = []
   let ruleLayer: HTMLCanvasElement | null = null
+  const rowBox: Array<{ top: number; bottom: number }> = []
   const label = boardLayer((ctx) => {
     ctx.textAlign = 'center'
     ctx.font = `600 40px ${CHALK_FONT}`
@@ -3429,13 +3444,14 @@ export async function renderChalkQuiz(input: ChalkQuizInput): Promise<RenderOutp
         ctx.font = `600 ${row.size}px ${CHALK_FONT}`
         row.lines.forEach((l, k) => chalkWrite(ctx, l, bx0 + 130, top + lh / 2 + k * lh))
       }))
+      rowBox.push({ top, bottom: top + block })
       cursor += block + row.size * 0.35
     })
   }
   // When each piece arrives, in FRAME seconds. With his words: the question
   // fills over the stretch he spends asking it (up to his first "?"), and the
   // options follow it. Without them: a fixed clock that does the same thing.
-  const ws = (input.words ?? []).filter((w) => w.end <= samples.length / SAMPLE_RATE + 0.2)
+  const ws = (input.words ?? []).filter((w) => w.end <= (rv ? rv.countFrom : audioSec) + 0.2)
   const askEnd = ws.find((w) => /\?/.test(w.text))?.end
   const qFrom = CHALK_LEAD + (ws[0]?.start ?? 0)
   const qTo = askEnd != null ? CHALK_LEAD + askEnd : qFrom + 0.6 * qLayers.length
@@ -3443,7 +3459,7 @@ export async function renderChalkQuiz(input: ChalkQuizInput): Promise<RenderOutp
   const optFrom = Math.min(qTo + 0.3, askAt - 0.2 - (oLayers.length - 1) * 1.0)
   const oAt = oLayers.map((_, i) => Math.max(qAt[qAt.length - 1] + 0.5, optFrom) + i * 1.0)
   const beats = ws.filter((w, i) => i > 0 && w.start - ws[i - 1].end > 0.3).map((w) => CHALK_LEAD + w.start)
-  const cuts = cutTimes([...beats, ...oAt.slice(0, 1)], total)
+  const cuts = cutTimes([...beats, ...oAt.slice(0, 1)], total, rv ? [answerAt] : [])
   const appear = (ctx: CanvasRenderingContext2D, layer: HTMLCanvasElement | null, at: number, t: number, dur = 0.35) => {
     if (!layer || t < at) return
     ctx.save(); ctx.globalAlpha = at <= 0 ? 1 : easeOut((t - at) / dur); ctx.drawImage(layer, 0, 0); ctx.restore()
@@ -3461,6 +3477,26 @@ export async function renderChalkQuiz(input: ChalkQuizInput): Promise<RenderOutp
     chalkWrite(ctx, "The answer's on tomorrow's board.", WIDTH / 2, by1 - 18, CHALK_DIM)
   })
 
+  // The reveal's pieces: three chalked numerals, then a gold ring round the
+  // right option and its name under the options.
+  const numerals = rv ? [3, 2, 1].map((n) => boardLayer((ctx) => {
+    ctx.textAlign = 'center'
+    ctx.font = `700 104px ${CHALK_FONT}`
+    chalkWrite(ctx, String(n), WIDTH / 2, by1 - 58, 'rgba(255,226,140,0.97)')
+  })) : []
+  const ring = rv && rowBox[rv.answerIndex] ? boardLayer((ctx) => {
+    const b = rowBox[rv.answerIndex]
+    ctx.strokeStyle = 'rgba(255,210,63,0.95)'; ctx.lineWidth = 6; ctx.lineCap = 'round'
+    const cx = (bx0 + bx1) / 2, cy = (b.top + b.bottom) / 2
+    const rx = (bx1 - bx0) / 2 - 18, ry = (b.bottom - b.top) / 2 + 16
+    ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, -0.012, 0.15, Math.PI * 2 + 0.05); ctx.stroke()
+  }) : null
+  const answerLine = rv ? boardLayer((ctx) => {
+    ctx.textAlign = 'center'
+    ctx.font = `700 60px ${CHALK_FONT}`
+    chalkWrite(ctx, `${'ABCD'[rv.answerIndex]}. ${input.options[rv.answerIndex]}`, WIDTH / 2, by1 - 58, 'rgba(255,226,140,0.97)')
+  }) : null
+
   const fig = input.figure
   const pad = fig ? bottomPad(fig) : 0
   const draw = async (ctx: CanvasRenderingContext2D, t: number) => {
@@ -3471,12 +3507,30 @@ export async function renderChalkQuiz(input: ChalkQuizInput): Promise<RenderOutp
     ctx.drawImage(label, 0, 0)
     qLayers.forEach((l, i) => appear(ctx, l, qAt[i], t))
     appear(ctx, ruleLayer, qAt[qAt.length - 1] ?? 0, t)
-    oLayers.forEach((l, i) => appear(ctx, l, oAt[i], t, 0.3))
+    oLayers.forEach((l, i) => {
+      // After the answer lands the wrong three fade back so the right one reads at a glance.
+      if (rv && t >= answerAt && i !== rv.answerIndex) {
+        ctx.save(); ctx.globalAlpha = 1 - 0.6 * easeOut((t - answerAt) / 0.4); appear(ctx, l, oAt[i], t, 0.3); ctx.restore()
+      } else appear(ctx, l, oAt[i], t, 0.3)
+    })
+    if (rv) {
+      if (t >= countAt && t < answerAt) {
+        const k = Math.min(2, Math.floor((t - countAt) / (rv.count / 3)))
+        const since = t - countAt - k * (rv.count / 3)
+        ctx.save(); ctx.globalAlpha = easeOut(since / 0.15); ctx.drawImage(numerals[k], 0, 0); ctx.restore()
+      }
+      if (t >= answerAt) {
+        ctx.save(); ctx.globalAlpha = easeOut((t - answerAt) / 0.3)
+        if (ring) ctx.drawImage(ring, 0, 0)
+        if (answerLine) ctx.drawImage(answerLine, 0, 0)
+        ctx.restore()
+      }
+    }
     if (yesterday) {
       const a = t < YESTERDAY_FOR ? 1 : Math.max(0, 1 - (t - YESTERDAY_FOR) / 0.5)
       if (a > 0) { ctx.save(); ctx.globalAlpha = a; ctx.drawImage(yesterday, 0, 0); ctx.restore() }
     }
-    if (t >= askAt) { ctx.save(); ctx.globalAlpha = easeOut((t - askAt) / 0.5); ctx.drawImage(ask, 0, 0); ctx.restore() }
+    if (!rv && t >= askAt) { ctx.save(); ctx.globalAlpha = easeOut((t - askAt) / 0.5); ctx.drawImage(ask, 0, 0); ctx.restore() }
     if (fig) {
       // Standing in front of the board, feet on the floor, lower right.
       const h = HEIGHT * 0.44

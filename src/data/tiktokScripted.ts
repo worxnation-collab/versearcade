@@ -484,7 +484,7 @@ export const SCRIPTED_MYTH: Record<string, ScriptedMyth> = {
   },
   '2026-11-08': {
     hook: 'There is no innkeeper in the Christmas story.',
-    title: 'No room', reference: 'Luke 2:7', art: '/tiktok/verse/luke-2-11.jpg',
+    title: 'No room', reference: 'Luke 2:7', art: '/tiktok/myths/2026-11-08.jpg',
     ask: 'Did your church have one?',
     title_yt: 'Was there an innkeeper in the Christmas story? What Luke says',
     caption: 'Luke just says there was no room for them. Nobody slams a door.',

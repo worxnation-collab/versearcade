@@ -1007,7 +1007,7 @@ nothing in it is generated. MP4 only, for the reason every other card has.
 ## One painting per myth (2026-11-08)
 
 The myths used to borrow a stage (the road, the house, the water) that was true of every post and
-specific to none, so frame one said nothing about the myth. From 2026-11-09 each myth has its OWN
+specific to none, so frame one said nothing about the myth. From 2026-11-08 each myth has its OWN
 painting of the thing the myth is about: Paul fallen in the light with no horse anywhere, the wolf
 and the lamb with no lion, the crown in the dust under the cracked tower. A thumb that lands on it
 with the sound off sees the subject before it reads the hook.

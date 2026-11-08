@@ -1004,6 +1004,22 @@ kind `own` and `about`), and hands it to the same `MadeCard` — upload,
 schedule, post — every generated post uses. Deliberately no AI note on it:
 nothing in it is generated. MP4 only, for the reason every other card has.
 
+## One painting per myth (2026-11-08)
+
+The myths used to borrow a stage (the road, the house, the water) that was true of every post and
+specific to none, so frame one said nothing about the myth. From 2026-11-09 each myth has its OWN
+painting of the thing the myth is about: Paul fallen in the light with no horse anywhere, the wolf
+and the lamb with no lion, the crown in the dust under the cracked tower. A thumb that lands on it
+with the sound off sees the subject before it reads the hook.
+
+- `art/tiktok-myths.json` is the manifest: one prompt per date, the stage it borrows its palette
+  from as a reference, and the same quiet top 40% the stages keep for the hook and the panel.
+- They were made through the function's `still` action (Nano Banana, 9:16, 2K, about 25 cents
+  each), parked at `readers/myth-<date>.png`, then saved at 1080 wide as
+  `public/tiktok/myths/<date>.jpg`, which is what `ScriptedMyth.art` points at.
+- A new week of myths gets new paintings the same way. The hooks were rewritten to rule 7 at the
+  same time (for example "There was no horse." became "Paul never fell off a horse.").
+
 ## The few generated pieces, and why those
 
 Everything generated for these posts is chosen to be true EVERY day, never

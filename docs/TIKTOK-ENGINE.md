@@ -86,6 +86,24 @@ script and every on-screen hook, written by a model or by hand, follows the same
 4. **One idea per sentence,** mostly under 12 words, so something new lands every few seconds.
 5. **No throat-clearing and no recap.** Cut the middle before the payoff.
 6. **Land the payoff, then stop.**
+7. **The on-screen hook works with the sound off** (added 2026-11-08). Most of a feed scrolls muted,
+   so the words on frame one are a complete claim on their own, under ten words, naming the
+   specific thing: "'God helps those who help themselves' is not in the Bible", never "This famous
+   verse isn't in the Bible".
+
+### What the layouts do for it (2026-11-08 engagement pass)
+
+A review of every format on the Facebook Page (60 Reels, all 61 to 325 views, none pushed past the
+first test audience) found the scripts were no longer the weak point; the frame was:
+
+- **Hooks were small.** The story/myth hook went from 72px to 88px and the round-up's from 76px to
+  88px (the verse's was already 96px). The exchange's pinned hook card is drawn 45% larger for its
+  first three seconds and then eases down to its pinned size.
+- **End cards were long.** `TAIL_SEC` went from 2.6s to 1.8s and a story or myth's extra from 1.2s to
+  0.6s (`STORY_EXTRA`). On a 20-second myth the old card was a fifth of the video, and people who
+  have had the payoff leave during it, which lowers the watch-through for the whole post.
+- **The exchange's captions sat in the bottom fifth,** under each app's caption and buttons. They
+  moved up from 0.79 to 0.74 of the height.
 
 The hand-recorded weeks in `docs/scripts/` carry the same rules in their header.
 

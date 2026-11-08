@@ -190,7 +190,9 @@ const RETENTION =
   `(3) Be specific: a name, a number, an object, a place, rather than a general idea. ` +
   `(4) One idea per sentence, mostly under 12 words, so something new lands every few seconds. ` +
   `(5) No throat-clearing and no recap; cut the middle before you cut the payoff. ` +
-  `(6) Land the payoff, then stop.\n\n`
+  `(6) Land the payoff, then stop. ` +
+  `(7) The ON-SCREEN hook must work with the sound off: one complete claim a stranger understands from the words alone, under ten words, naming the specific thing ` +
+  `("'God helps those who help themselves' is not in the Bible", not "This famous verse isn't in the Bible"; "Daniel outlived every king who ruled him", not "God moves every season and every king").\n\n`
 const seriesLine = (s: Series) =>
   `This is part ${s.part} of ${s.of} of a week-long series through the book of ${s.book}, told one evening at a time.` +
   (s.earlier.length ? ` Earlier nights covered: ${s.earlier.map((e) => `${e.reference} (${e.theme})`).join('; ')}.` : ' Tonight is the first night.') +

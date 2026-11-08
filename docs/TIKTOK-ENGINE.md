@@ -69,6 +69,26 @@ all three painted layouts:
 `plannedDuration()` follows the same constant, so the music bed is rendered
 to the length the frames actually take.
 
+## Retention: every script is written to be finished (2026-11-08)
+
+The first frame being the hook (above) is half of it. The other half is the words. The page's own
+Facebook Content Library (Oct 19 to Nov 7) showed nearly every Reel losing most viewers between
+second 2 and second 5, and the myth Reels, which open on the surprising claim and pay it off at the
+end, holding people longest (about 9 seconds on average, the best on the page). So every spoken
+script and every on-screen hook, written by a model or by hand, follows the same six rules.
+`RETENTION` in `tiktok-gen/index.ts` puts them into the HOOK, story and copy prompts.
+
+1. **The first words are the hook.** No greeting, no "so", no "today", no setup before the
+   surprising or high-stakes thing. The on-screen hook leads with a specific (a name, a number,
+   an object) and is never a label like "Today's verse".
+2. **Open a question the ending answers,** and do not answer it early.
+3. **Be specific.** A name, a number, an object, a place, over a general idea.
+4. **One idea per sentence,** mostly under 12 words, so something new lands every few seconds.
+5. **No throat-clearing and no recap.** Cut the middle before the payoff.
+6. **Land the payoff, then stop.**
+
+The hand-recorded weeks in `docs/scripts/` carry the same rules in their header.
+
 ## Posting goes through Ayrshare
 
 Every platform's own posting API needs an audited developer app before a post

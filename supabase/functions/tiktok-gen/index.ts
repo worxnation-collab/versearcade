@@ -177,6 +177,20 @@ function seriesOf(v: unknown): Series | null {
   return { book, part, of, next: next?.reference ? next : undefined, earlier }
 }
 const seriesKeyOf = (v: unknown): string => String(v ?? '').slice(0, 120)
+/**
+ * The retention rules every spoken script and every on-screen hook is written to (2026-11-08, the
+ * owner's call; docs/TIKTOK-ENGINE.md "Retention"). The Facebook page's own Content Library said why:
+ * nearly every Reel lost most viewers between second 2 and second 5, and the myth Reels, which open
+ * on the surprising claim and pay it off at the end, held people longest (about 9s on average).
+ */
+const RETENTION =
+  `Retention rules, which beat every other style note: ` +
+  `(1) The first words ARE the hook: no greeting, no "so", no "today", no setup before the surprising or high-stakes thing. ` +
+  `(2) Open a question the ending answers, and do not answer it early. ` +
+  `(3) Be specific: a name, a number, an object, a place, rather than a general idea. ` +
+  `(4) One idea per sentence, mostly under 12 words, so something new lands every few seconds. ` +
+  `(5) No throat-clearing and no recap; cut the middle before you cut the payoff. ` +
+  `(6) Land the payoff, then stop.\n\n`
 const seriesLine = (s: Series) =>
   `This is part ${s.part} of ${s.of} of a week-long series through the book of ${s.book}, told one evening at a time.` +
   (s.earlier.length ? ` Earlier nights covered: ${s.earlier.map((e) => `${e.reference} (${e.theme})`).join('; ')}.` : ' Tonight is the first night.') +
@@ -524,6 +538,7 @@ Deno.serve(async (req) => {
           `You write short spoken scripts for Tabitha, the librarian in the Verse Arcade Bible app. Each evening she tells the story BEHIND that day's verse to a small audience — warm, plain, unhurried, like a bedtime story for grown-ups. Never preachy, never shaming, no jokes about the listener.\n\n` +
           `Today's verse: ${reference} — "${text}"\nSpoken by: ${f('speaker', 80)}\nTo: ${f('audience', 120)}\nWhat came before: ${f('before')}\nWhat came after: ${f('after')}\nTheme: ${f('theme', 80)}\nFacts you may use: ${facts.join(' | ') || '(none)'}\n\n` +
           `Use ONLY the situation described above and the plain narrative of that Bible passage. Do not invent names, numbers, dialogue or events that are not in the passage. Do not quote the verse itself in the paragraphs — it is read aloud separately at the end.\n\n` +
+          RETENTION +
           (series
             ? `${seriesLine(series)} Tonight's story stands on its own for somebody who missed the other nights, but in paragraph 2, just before the lead-in to the verse, add ONE short sentence that ${series.next ? `points toward tomorrow night without telling it` : `gathers the week in ${series.book} together`}. Never say "part" or number the nights — the screen does that.\n\n`
             : '') +
@@ -701,6 +716,7 @@ Deno.serve(async (req) => {
           `You write the HOOK for the maker of Verse Arcade, a Bible app, to read aloud in his own voice at the very START of a short daily video — about fifteen seconds of him, and then a reading of the verse begins under him. He is one person talking plainly to a phone, not a preacher and not a brand.\n\n` +
           `Today's verse: ${reference} — "${text}"\nSpoken by: ${f('speaker', 80)}\nTo: ${f('audience', 120)}\nWhat came before: ${f('before')}\nWhat came after: ${f('after')}\nTheme: ${f('theme', 80)}\nFacts you may use: ${facts.join(' | ') || '(none)'}\n\n` +
           voiceNote +
+          RETENTION +
           `Rules. First person, present tense, short sentences that read well aloud — no sentence over about 15 words. It is a HOOK, not a reflection: it has to stop a thumb in the first breath and then get out of the way. Open by naming the situation or the difficulty the verse is about to speak into, in ONE sentence, so a stranger knows why to stay. Then ONE true sentence about why this verse stopped him. Then hand over to the reading — a short plain line that makes the next thing a person hears feel like the answer.\n` +
           `Do NOT quote the verse or give away its words: it is read aloud immediately after he stops, and saying it twice is the one thing this post must not do. Do NOT summarise the passage, explain it, or apply it — there is no room, and the verse does that itself. Use only the situation described above and the plain narrative of that passage; invent no names, numbers, events or dialogue. Nothing that one Christian tradition would say differently from another — no doctrine, no denominational language. Never shame the listener, never scold, no "we all" sermons. Do not say "today's verse", name the app, thank anyone for watching, or ask for a follow, a comment or a share.\n\n` +
           `Return JSON with: "text" — the hook, 34 to 46 words and NOT ONE WORD MORE, plain punctuation, no emoji, no headings, no line breaks.` }] }],
@@ -918,7 +934,7 @@ Deno.serve(async (req) => {
             : `Today's verse is ${reference}: "${text}" (theme: ${theme || 'unspecified'}). `) +
           `The same vertical video is posted to TikTok, YouTube Shorts, Facebook and Instagram Reels, X, Snapchat, Threads and Pinterest, and each wants its own words.\n\n` +
           `Return JSON with:\n` +
-          `"hook": one on-screen opening line, max 8 words, no emoji, not a question.\n` +
+          `"hook": one on-screen opening line, max 8 words, no emoji, not a question. It is the first thing a scrolling stranger reads, before any sound: lead with the most surprising or highest-stakes specific thing in the post (a name, a number, an object), and promise something the video pays off. Never a label like "Today's verse" or the app's name.\n` +
           `"tiktok": { "text": 1-2 short sentences, casual and warm, under 150 characters, no hashtags in it, ${shareAsk}; "tags": 5 lowercase hashtags without the # sign }.\n` +
           `"youtube": { "title": a Shorts title under 70 characters that names the verse reference and what the video is; "text": 2-4 sentences for the description, plain, ${shareAsk}; "tags": 5 lowercase hashtags without the # sign, the first one "shorts" }.\n` +
           `"facebook": { "text": 2-4 conversational sentences, a little longer and more personal than the others, no hashtags in it, ${shareAsk}; "tags": 2 lowercase hashtags without the # sign }.\n` +

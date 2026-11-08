@@ -551,7 +551,7 @@ history; the scars are real, but take the shape from here.**
 
 | Slot (ET) | Kind | What it is | Networks |
 |---|---|---|---|
-| morning | `challenge` | the CHALKBOARD QUIZ — his voice asks, four options in chalk, NO answer; yesterday's answer opens the next board | YouTube, Facebook, Instagram, TikTok |
+| morning | `challenge` | the CHALKBOARD QUIZ — his voice asks, four options in chalk, a chalked 3-2-1, then his answer with the right option circled (since 2026-11-08; it used to hold the answer for the next day's board) | YouTube, Facebook, Instagram, TikTok |
 | midday | `verse` | his recorded HOOK, then a synthetic reading | YouTube, Facebook |
 | evening | `moment` | MOST PEOPLE GET THIS WRONG — his voice over one painting, numbered, ending on tomorrow's question | YouTube, Facebook, Instagram, TikTok |
 

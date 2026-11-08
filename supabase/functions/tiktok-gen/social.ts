@@ -395,13 +395,33 @@ export function callToAction(kind: Kind, short = false, seed = ''): string {
 }
 
 /**
+ * Facebook and Instagram get NO ask at all (2026-11-07, the owner's call after
+ * reading the page's own numbers). Meta's engagement-bait rule counts a
+ * caption that explicitly asks for shares, comments or tags as bait, demotes
+ * the post, and weighs it against Content Monetization, which is the page's
+ * goal. Twenty days of Facebook Content Library said the same thing from the
+ * other side: the share ask under nearly every post drew almost no shares,
+ * and the 1 Peter and Gaius posts that out-reacted everything else won on
+ * their words, not their last line. So on these two networks the caption ends
+ * on its own thought or its own real question, and any share/send/comment
+ * sentence the model wrote is taken out. The video itself can still ask.
+ */
+const NO_ASK_ON: Platform[] = ['facebook', 'instagram']
+
+/** Every sentence that asks the reader to share, send, tag or comment, removed. */
+const dropAskSentences = (t: string): string =>
+  t.replace(/[^.!?\n]*\b(share (this|it)|send (this|it)|tag (a|someone|your)|comment (your|just|below|with)|answer in the comments|drop it below)\b[^.!?\n]*[.!?]?/gi, ' ')
+
+/**
  * The caption's words with every link taken out and the share ask on the
  * end, unless the model already wrote one. `join` is a space where the
  * network flattens line breaks anyway (TikTok, Snapchat) and a newline
- * everywhere else.
+ * everywhere else. `ask = false` (Facebook, Instagram) strips the model's
+ * asks and adds none — see NO_ASK_ON.
  */
-function withAsk(text: string | undefined, kind: Kind, join = '\n', seed = ''): string {
-  const stripped = dropLinkSentence((text ?? '').trim()).replace(/\blink in bio\b[^.!?\n]*[.!?]?/gi, ' ')
+function withAsk(text: string | undefined, kind: Kind, join = '\n', seed = '', ask = true): string {
+  const linkless = dropLinkSentence((text ?? '').trim()).replace(/\blink in bio\b[^.!?\n]*[.!?]?/gi, ' ')
+  const stripped = ask ? linkless : dropAskSentences(linkless)
   // A space join is a network that flattens line breaks (TikTok, Snapchat),
   // so the model's own paragraph breaks are collapsed rather than shipped as
   // the blank gaps those feeds render them into.
@@ -415,7 +435,7 @@ function withAsk(text: string | undefined, kind: Kind, join = '\n', seed = ''): 
   // A caption that already ENDS ON ITS OWN QUESTION gets no stock ask: the
   // same "share this…" line under 94 posts in a row was wallpaper, and a
   // second ask after a question asks for nothing.
-  if (/\?\s*$/.test(t)) return t
+  if (/\?\s*$/.test(t) || !ask) return t
   const asksComment = kind === 'challenge' || kind === 'challenge2' || kind === 'exchange'
   const hasShare = /\b(share|send this)\b/i.test(t)
   const has = hasShare && (!asksComment || /comment/i.test(t))
@@ -505,7 +525,7 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
     body.post = [withAsk(c.text, a.kind, '\n', a.date), tagLine(c.tags, 5)].filter(Boolean).join('\n\n').slice(0, 5000)
     body.youTubeOptions = { title: (c.title || `${a.reference || 'Verse Arcade'} · Verse Arcade`).slice(0, 100), visibility: 'public', shorts: true, madeForKids: false, containsSyntheticMedia: !isWhollyHuman(a) }
   } else if (platform === 'facebook') {
-    body.post = [withAsk(c.text, a.kind, '\n', a.date), aiNote(a), tagLine(c.tags, 2)].filter(Boolean).join('\n\n').slice(0, 5000)
+    body.post = [withAsk(c.text, a.kind, '\n', a.date, !NO_ASK_ON.includes(platform)), aiNote(a), tagLine(c.tags, 2)].filter(Boolean).join('\n\n').slice(0, 5000)
     // A Reel where one is allowed (it is the surface Facebook shows to
     // strangers); over the ceiling, a plain video post on the page rather
     // than a refusal — Facebook rejected the quiz and a 91-second story as
@@ -573,7 +593,7 @@ export function postBody(platform: Platform, copy: DayCopy, a: PostArgs): Record
     // Instagram, same as TikTok above: the flag AND the note. The flag was
     // briefly dropped here too, on the same mistaken premise, and Meta never
     // published a reach penalty for it in the first place.
-    body.post = [withAsk(c.text, a.kind, '\n', a.date), aiNote(a), tagLine(c.tags, 5)].filter(Boolean).join('\n\n').slice(0, 2200)
+    body.post = [withAsk(c.text, a.kind, '\n', a.date, !NO_ASK_ON.includes(platform)), aiNote(a), tagLine(c.tags, 5)].filter(Boolean).join('\n\n').slice(0, 2200)
     body.instagramOptions = { shareReelsFeed: true, isAIGenerated: !isWhollyHuman(a) }
   }
   return body

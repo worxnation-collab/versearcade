@@ -163,6 +163,16 @@ title and hashtag count. The key lives in Vault (`tiktok_ayrshare_key()`,
   one anyway: it reaches people already watching, where a share reaches a
   stranger's feed. The copy prompt asks for the same tone; social.ts is the
   guarantee, over words a model may not have written that way.
+- **Except Facebook and Instagram, which get no ask at all (2026-11-07).**
+  Meta's engagement-bait rule counts a caption that explicitly asks for
+  shares, comments or tags as bait: the post is demoted and it weighs against
+  Content Monetization, which is the Facebook page's goal. The page's own
+  Content Library (Oct 19 - Nov 7) agreed: the share ask drew almost no
+  shares, and the posts that out-reacted the rest won on their words. So on
+  those two networks `withAsk(..., ask=false)` strips any share/send/tag/
+  comment sentence the model wrote (`dropAskSentences`) and appends none; the
+  caption ends on its own thought or its own question. The video can still
+  ask out loud. Every other network is unchanged (`NO_ASK_ON` in social.ts).
 - **The tracked link is not lost — it moves.** On **Facebook, YouTube and X**
   it goes out as Ayrshare's `firstComment`, added when the post actually
   publishes, which is also the only moment a SCHEDULED post has an id to

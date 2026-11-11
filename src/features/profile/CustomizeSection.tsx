@@ -30,6 +30,7 @@ import { SavedLooks } from './SavedLooks'
 import { CardAboutEditor } from './CardAboutEditor'
 import {
   DEFAULT_AVATAR,
+  NEW_CHARACTER,
   distinctSharedDays,
   allItems,
   completedSets,
@@ -134,7 +135,7 @@ export function CustomizeSection() {
   const longest = profile.longestStreak
   const equippedBorder = profile.avatarBorder || 'default'
   const equippedBadge = profile.avatarBadge ?? 'none'
-  const spec = profile.avatarCharacter ?? DEFAULT_AVATAR
+  const spec = profile.avatarCharacter ?? NEW_CHARACTER
 
   const equippedBg = profile.cardBackground ?? DEFAULT_CARD_BG
   // Two of the pet requirements live in other stores (verses studied, CPU races

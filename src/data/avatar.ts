@@ -16,6 +16,7 @@
 import { catalogArtUrl, catalogOverlay, mergeById, type CatalogSkin } from './catalog'
 import { overlayFor } from './overlays'
 import type { ArmorSlot, AvatarSpec, Figure, ItemSlot } from '@/types'
+import { defaultOutfit } from '@/data/layered'
 
 export type { ArmorSlot, AvatarSpec, Figure, ItemSlot }
 
@@ -267,6 +268,13 @@ export const DEFAULT_AVATAR: AvatarSpec = {
   figure: 'masc',
   armor: {},
 }
+
+// A character being MADE today: the starter look in the layered wardrobe
+// (data/layered.ts) — a t-shirt, jeans and sneakers, every piece free and every
+// colour changeable. DEFAULT_AVATAR stays as it was, because it is also the
+// stand-in figure on surfaces that draw somebody plain (the public church page)
+// and the fallback for specs written before the wardrobe existed.
+export const NEW_CHARACTER: AvatarSpec = { ...DEFAULT_AVATAR, outfit: defaultOutfit('masc', '#3E2A1E') }
 
 export const skinHex = (key: string): string => (SKINS.find((s) => s.key === key) ?? SKINS[1]).hex
 export const robeHex = (key: string): string => (ROBES.find((r) => r.key === key) ?? ROBES[0]).hex

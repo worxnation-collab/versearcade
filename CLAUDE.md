@@ -20,6 +20,15 @@ stops at churches**: the Study tab, the Journal, the Basin, the crowd scenes and
 every player-facing surface are unchanged, and widening it needs its own
 argument rather than following from this one.
 
+## Working agreement with the owner (2026-11-11)
+
+- **The goal is income**, by the rule above: no money made out of religion
+  itself. `docs/INCOME-ROADMAP.md` is the running list; a recurring research
+  pass works it between prompts.
+- **Merge your own green PRs without asking.** When a task ends in a PR with
+  green CI and nothing risky left (no money moved, no migration you could not
+  verify), merge it and say so. Ask first only for something hard to undo.
+
 ## Commands
 
 ```bash

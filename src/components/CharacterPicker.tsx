@@ -25,6 +25,8 @@ import {
   layerName,
   layerUnlocked,
   layerUrl,
+  BUILDS,
+  buildOf,
   LAYER_REQS,
   reqLabel,
   slotItems,
@@ -487,7 +489,7 @@ function LayeredBuilder({
     <div style={{ display: 'grid', gap: 14 }}>
       <div className="center">
         <motion.div
-          key={JSON.stringify(value.outfit) + figure + value.skin}
+          key={JSON.stringify(value.outfit) + figure + value.skin + buildOf(value)}
           initial={{ scale: 0.94 }}
           animate={{ scale: 1 }}
           transition={{ type: 'spring', stiffness: 480, damping: 18 }}
@@ -507,6 +509,15 @@ function LayeredBuilder({
               selected={figure === f.key}
               onClick={() => set({ figure: f.key as Figure, outfit: cleanOutfit(value.outfit, f.key as Figure, progress, admin) })}
             />
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <RowLabel>Build</RowLabel>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {BUILDS.map((b) => (
+            <FigureTab key={b.key} name={b.name} selected={buildOf(value) === b.key} onClick={() => set({ build: b.key })} />
           ))}
         </div>
       </div>

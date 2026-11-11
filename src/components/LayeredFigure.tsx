@@ -1,5 +1,5 @@
 import { useId } from 'react'
-import { DRAW_ORDER, bodyId, layerBox, layerUrl, takesColor, LAYER_CANVAS } from '@/data/layered'
+import { DRAW_ORDER, bodyId, buildOf, layerBox, layerUrl, takesColor } from '@/data/layered'
 import { figureOf } from '@/data/avatar'
 import type { AvatarSpec } from '@/types'
 
@@ -21,24 +21,29 @@ const LUMA_GAIN = 1.6
 export function LayeredFigure({ spec, portrait }: { spec: AvatarSpec; portrait: boolean }) {
   const uid = useId().replace(/[:]/g, '')
   const figure = figureOf(spec)
+  const build = buildOf(spec)
   const outfit = spec.outfit ?? {}
   const body = bodyId(figure, spec.skin)
-  const bb = layerBox(figure, body) ?? { x: 85, y: 50, w: 190, h: 670 }
+  const bb = layerBox(figure, body, build) ?? { x: 85, y: 50, w: 190, h: 670 }
 
   const layers = DRAW_ORDER.map((slot) => {
     if (slot === 'body') return { id: body, color: undefined as string | undefined }
     const piece = outfit[slot]
     return piece ? { id: piece.id, color: takesColor(piece.id) ? piece.color : undefined } : null
-  }).filter((l): l is { id: string; color: string | undefined } => !!l && !!layerBox(figure, l.id))
+  }).filter((l): l is { id: string; color: string | undefined } => !!l && !!layerBox(figure, l.id, build))
 
   const colors = [...new Set(layers.map((l) => l.color).filter((c): c is string => !!c))]
   const filterId = (c: string) => `lt${uid}${c.replace('#', '')}`
 
-  // Framing. Full length: the body's own box with room either side for wings,
-  // a staff or a cape. Portrait: head and shoulders, for the avatar circle.
+  // Framing. Full length: a fixed window centred on the body, the same width
+  // for every build so a sturdy character reads broader rather than being
+  // zoomed out to the same size (a stretched layer may spill past the canvas,
+  // which is why nothing here clamps to it). Portrait: head and shoulders,
+  // also build-independent — the head is the one part a build never moves.
+  const cx = bb.x + bb.w / 2
   const vb = portrait
-    ? [bb.x + bb.w * 0.12, bb.y - 6, bb.w * 0.76, bb.w * 0.76 * 1.42]
-    : [Math.max(0, bb.x - 70), Math.max(0, bb.y - 50), Math.min(LAYER_CANVAS.w, bb.w + 140), Math.min(LAYER_CANVAS.h, bb.h + 56)]
+    ? [cx - 74.5, bb.y - 6, 149, 149 * 1.42]
+    : [cx - 168, Math.max(0, bb.y - 50), 336, bb.h + 56]
 
   return (
     <svg
@@ -63,11 +68,11 @@ export function LayeredFigure({ spec, portrait }: { spec: AvatarSpec; portrait: 
         ))}
       </defs>
       {layers.map((l) => {
-        const b = layerBox(figure, l.id)!
+        const b = layerBox(figure, l.id, build)!
         return (
           <image
             key={l.id}
-            href={layerUrl(figure, l.id)}
+            href={layerUrl(figure, l.id, build)}
             x={b.x}
             y={b.y}
             width={b.w}

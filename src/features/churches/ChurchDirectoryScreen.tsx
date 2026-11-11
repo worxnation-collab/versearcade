@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Button } from '@/components/Button'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Page } from '@/components/Page'
 import { useAuth } from '@/store/auth'
@@ -89,7 +90,10 @@ export default function ChurchDirectoryScreen() {
           {[0, 1, 2].map((i) => <div key={i} className="skeleton" style={{ height: 64, borderRadius: 14 }} />)}
         </div>
       ) : failed ? (
-        <p className="dim center" style={{ fontSize: 13.5 }}>The list couldn't load just now.</p>
+        <div className="center" style={{ display: 'grid', gap: 10, justifyItems: 'center' }}>
+          <p className="dim" style={{ fontSize: 13.5, margin: 0 }}>The list couldn't load just now.</p>
+          <Button variant="secondary" onClick={() => window.location.reload()}>Try again</Button>
+        </div>
       ) : rows && rows.length > 0 ? (
         <div style={{ display: 'grid', gap: 8, opacity: loading ? 0.6 : 1, transition: 'opacity .15s' }}>
           {rows.map((r) => <Row key={r.id} row={r} onOpen={() => { juice.select?.(); navigate(`/church/${r.id}`) }} />)}

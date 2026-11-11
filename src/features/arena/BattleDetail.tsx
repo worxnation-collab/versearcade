@@ -130,7 +130,7 @@ export default function BattleDetail() {
               full
               onClick={() => {
                 setPendingBattle(id)
-                navigate('/auth')
+                navigate('/auth?mode=signup')
               }}
             >
               Create an account to accept ⚔️

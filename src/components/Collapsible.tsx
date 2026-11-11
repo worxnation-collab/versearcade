@@ -75,9 +75,11 @@ export function Collapsible({
           {icon} {title}
           {meta != null && <span className="faint" style={{ fontWeight: 400, fontSize: 13 }}> · {meta}</span>}
         </span>
+        {/* Neutral, not gold: gold is rationed to the thing to do next, and
+            a fold is never that (2026-11-11 audit). */}
         <span
           className="pill"
-          style={{ position: 'relative', zIndex: 1, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--gold)', color: '#241f0a', fontWeight: 800, fontSize: 13, padding: '6px 12px', flexShrink: 0 }}
+          style={{ position: 'relative', zIndex: 1, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--card-raised)', color: 'var(--ink)', border: '1px solid var(--stroke)', fontWeight: 800, fontSize: 13, padding: '5px 11px', flexShrink: 0 }}
         >
           {open ? 'Hide' : 'Show'}
           <span style={{ fontSize: 15, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>

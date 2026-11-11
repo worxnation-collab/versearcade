@@ -308,7 +308,9 @@ export default function ResultScreen() {
         {(outcome.currentStreak ?? 0) <= 7 && <SendVerseCard dropDate={today.dropDate} />}
 
         <div style={{ display: 'grid', gap: 10, marginTop: 22 }}>
-          <Button variant="gold" full onClick={doShare}>📤 Share my result</Button>
+          {/* One gold button per screen: in the first week SendVerseCard's
+              "send today's verse" is that button, so this one steps back. */}
+          <Button variant={(outcome.currentStreak ?? 0) <= 7 ? 'secondary' : 'gold'} full onClick={doShare}>Share my result</Button>
           {shareState && <p className="faint" style={{ fontSize: 13 }}>{shareState}</p>}
 
           {/* The code used to live only behind a closed drawer on the You tab, at

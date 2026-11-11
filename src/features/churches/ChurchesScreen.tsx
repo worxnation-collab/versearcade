@@ -136,7 +136,7 @@ export default function ChurchesScreen() {
     return (
       <Page>
         <div className="center" style={{ paddingTop: 40 }}>
-          <div className="floaty" style={{ fontSize: 56 }}>⛪</div>
+          <div className="floaty" style={{ display: 'grid', placeItems: 'center' }}><img src="/nav/church.png" alt="" width={73} height={73} style={{ display: 'block' }} /></div>
           <h1 style={{ fontSize: 28, marginTop: 8 }}>Thank you!</h1>
           <p className="dim" style={{ marginTop: 8, maxWidth: 320, marginInline: 'auto' }}>
             A person reads every one of these, and we&rsquo;ll write back to <b>{email}</b>. In the
@@ -159,7 +159,7 @@ export default function ChurchesScreen() {
       </div>
 
       <div className="center" style={{ marginBottom: 18 }}>
-        <div className="floaty" style={{ fontSize: 44 }}>⛪</div>
+        <div className="floaty" style={{ display: 'grid', placeItems: 'center' }}><img src="/nav/church.png" alt="" width={57} height={57} style={{ display: 'block' }} /></div>
         <h1 style={{ fontSize: 28, marginTop: 4, lineHeight: 1.15 }}>Your sermon, played all week.</h1>
         <p className="dim" style={{ margin: '8px auto 0', maxWidth: 360, lineHeight: 1.5 }}>
           Pick the verse you&rsquo;re preaching on. Your congregation plays it every day — a two-minute
@@ -169,7 +169,7 @@ export default function ChurchesScreen() {
           <Button variant="gold" full onClick={toForm}>Become a Founding Church</Button>
           <div style={{ marginTop: 8 }}>
             <Button variant="secondary" full onClick={() => { juice.select?.(); navigate('/churches/try') }}>
-              Try the leadership tools — no sign-up
+              Try the tools — no sign-up
             </Button>
           </div>
         </div>

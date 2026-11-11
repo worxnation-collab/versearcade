@@ -105,9 +105,9 @@ export const MAP_PLACES: MapPlace[] = [
     id: 'arcade',
     icon: 'arcade',
     label: 'The arcade',
-    line: 'Three machines · a minute each',
+    line: 'Three games · a minute each',
     to: '/arcade',
-    area: 'play',
+    area: 'study',
   },
   {
     id: 'road',

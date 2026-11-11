@@ -34,3 +34,4 @@ art/avatar/.raw/
 __pycache__/
 art/icons/.raw/
 art/icons/preview/
+scripts/.tmp/

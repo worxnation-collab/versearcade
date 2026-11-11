@@ -338,12 +338,6 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 105,
    "y": 49
   },
-  "head_desert_scarf": {
-   "h": 156,
-   "w": 167,
-   "x": 97,
-   "y": 81
-  },
   "head_dragon_helm": {
    "h": 164,
    "w": 116,
@@ -445,6 +439,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 185,
    "x": 87,
    "y": 74
+  },
+  "head_traveler_hat": {
+   "h": 115,
+   "w": 180,
+   "x": 89,
+   "y": 64
   },
   "head_traveller_hat": {
    "h": 110,
@@ -1336,12 +1336,6 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 105,
    "y": 49
   },
-  "head_desert_scarf": {
-   "h": 155,
-   "w": 147,
-   "x": 107,
-   "y": 81
-  },
   "head_dragon_helm": {
    "h": 164,
    "w": 116,
@@ -1443,6 +1437,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 185,
    "x": 87,
    "y": 74
+  },
+  "head_traveler_hat": {
+   "h": 115,
+   "w": 180,
+   "x": 89,
+   "y": 64
   },
   "head_traveller_hat": {
    "h": 110,
@@ -2262,12 +2262,6 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 105,
    "y": 49
   },
-  "head_desert_scarf": {
-   "h": 155,
-   "w": 195,
-   "x": 83,
-   "y": 81
-  },
   "head_dragon_helm": {
    "h": 164,
    "w": 116,
@@ -2369,6 +2363,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 185,
    "x": 87,
    "y": 74
+  },
+  "head_traveler_hat": {
+   "h": 115,
+   "w": 180,
+   "x": 89,
+   "y": 64
   },
   "head_traveller_hat": {
    "h": 110,
@@ -3188,12 +3188,6 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 103,
    "y": 68
   },
-  "head_desert_scarf": {
-   "h": 158,
-   "w": 167,
-   "x": 96,
-   "y": 79
-  },
   "head_dragon_helm": {
    "h": 151,
    "w": 134,
@@ -3295,6 +3289,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 200,
    "x": 79,
    "y": 74
+  },
+  "head_traveler_hat": {
+   "h": 146,
+   "w": 179,
+   "x": 90,
+   "y": 65
   },
   "head_traveller_hat": {
    "h": 112,
@@ -4186,12 +4186,6 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 103,
    "y": 68
   },
-  "head_desert_scarf": {
-   "h": 157,
-   "w": 145,
-   "x": 107,
-   "y": 79
-  },
   "head_dragon_helm": {
    "h": 151,
    "w": 134,
@@ -4293,6 +4287,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 200,
    "x": 79,
    "y": 74
+  },
+  "head_traveler_hat": {
+   "h": 146,
+   "w": 179,
+   "x": 90,
+   "y": 65
   },
   "head_traveller_hat": {
    "h": 112,
@@ -5112,12 +5112,6 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 103,
    "y": 68
   },
-  "head_desert_scarf": {
-   "h": 157,
-   "w": 195,
-   "x": 82,
-   "y": 79
-  },
   "head_dragon_helm": {
    "h": 151,
    "w": 134,
@@ -5219,6 +5213,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 200,
    "x": 79,
    "y": 74
+  },
+  "head_traveler_hat": {
+   "h": 146,
+   "w": 179,
+   "x": 90,
+   "y": 65
   },
   "head_traveller_hat": {
    "h": 112,
@@ -5955,11 +5955,6 @@ export const LAYER_ITEMS: Record<string, LayerMeta> = {
   "starter": false,
   "tint": false
  },
- "head_desert_scarf": {
-  "slot": "head",
-  "starter": false,
-  "tint": false
- },
  "head_dragon_helm": {
   "slot": "head",
   "starter": false,
@@ -6041,6 +6036,11 @@ export const LAYER_ITEMS: Record<string, LayerMeta> = {
   "tint": false
  },
  "head_straw_hat": {
+  "slot": "head",
+  "starter": false,
+  "tint": false
+ },
+ "head_traveler_hat": {
   "slot": "head",
   "starter": false,
   "tint": false

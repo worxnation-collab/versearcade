@@ -450,7 +450,7 @@ export default function ProfileScreen() {
       <h3 style={{ fontSize: 16, margin: '18px 0 10px' }} className="dim">Account</h3>
       <div style={{ display: 'grid', gap: 10 }}>
         {mode === 'local' && (
-          <Button variant="gold" full onClick={() => navigate('/auth')}>✨ Create account to sync & invite friends</Button>
+          <Button variant="gold" full onClick={() => navigate('/auth?mode=signup')}>Create account to sync & invite friends</Button>
         )}
         {/* Await the sign-out before leaving. Firing it and navigating in the
             same tick left `profile` still set when Landing mounted, so Landing
@@ -470,7 +470,15 @@ export default function ProfileScreen() {
         )}
 
         {!confirmDelete ? (
-          <Button variant="ghost" full onClick={() => setConfirmDelete(true)}>Delete my account</Button>
+          // A quiet text link, not a full-width button under the sign-up one:
+          // the destructive door stays findable (Apple asks for it) without
+          // sitting at the same weight as the thing we hope somebody taps.
+          <button
+            onClick={() => setConfirmDelete(true)}
+            style={{ justifySelf: 'center', marginTop: 6, background: 'none', border: 0, padding: 6, color: 'var(--ink-faint)', fontSize: 13, textDecoration: 'underline', cursor: 'pointer' }}
+          >
+            {mode === 'online' ? 'Delete my account' : 'Erase my progress on this device'}
+          </button>
         ) : (
           <div className="card" style={{ borderColor: 'var(--coral)' }}>
             <b style={{ color: 'var(--coral)' }}>Delete everything?</b>

@@ -1,5 +1,5 @@
-import { lazy, Suspense, useEffect } from 'react'
-import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
+import { lazy, Suspense, useEffect, useLayoutEffect } from 'react'
+import { Navigate, Route, Routes, useLocation, useNavigate, useNavigationType, useParams } from 'react-router-dom'
 import { useAuth } from './store/auth'
 import { firstStop } from './lib/firstStop'
 import { useBuddies } from './store/buddies'
@@ -366,6 +366,7 @@ export default function App() {
         top-left corner is not somebody's back button. */}
     <OffTabHold />
     <NowPlaying />
+    <ScrollToTop />
     <Suspense fallback={<RouteLoading />}>
     <Routes>
         <Route path="/" element={<Landing />} />
@@ -918,4 +919,21 @@ function AuthCallback() {
   const { profile, ready } = useAuth()
   if (ready && profile) return <Navigate to={firstStop(profile)} replace />
   return <Splash />
+}
+
+/**
+ * A new screen opens at its top. Nothing did this, so a route kept whatever
+ * scroll the last one had: a new player tapping "Start playing" at the foot of
+ * /welcome landed on /play 446px down with the daily verse off screen
+ * (2026-11-11 audit). Only on PUSH/REPLACE, so Back still returns where you
+ * were as far as the browser restores it; it runs before the route's own
+ * effects, so a deep link that scrolls itself (?b=1 and friends) still wins.
+ */
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  const type = useNavigationType()
+  useLayoutEffect(() => {
+    if (type !== 'POP') window.scrollTo(0, 0)
+  }, [pathname, type])
+  return null
 }

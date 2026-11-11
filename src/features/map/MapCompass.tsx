@@ -54,7 +54,10 @@ export function MapCompass() {
   // Deliberately never `invites.length` anywhere a player can read it.
   const glowing = invites.length > 0
   const pulsing = glowing && !reduceMotion
-  const shown = invites.slice(0, SHOWN)
+  // This card sits on the Play tab directly under the verse and trivia boxes,
+  // so naming those two here said the same thing twice (2026-11-11 audit).
+  // The glow and the sheet still count them; only the card's rows skip them.
+  const shown = invites.filter((i) => i.id !== 'verse' && i.id !== 'trivia').slice(0, SHOWN)
 
   const openSheet = () => {
     juice.select?.()

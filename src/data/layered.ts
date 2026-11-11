@@ -45,6 +45,7 @@ export const HAIR_COLORS = ['#241C1A', '#3E2A1E', '#6B4327', '#8C4A2B', '#B4823C
 export const CLOTH_COLORS = ['#F2ECE0', '#E8D9B0', '#B8322E', '#E0763A', '#D9A63A', '#3F8A4A', '#2F8F8A', '#4F8FD6', '#2A3F7A', '#6B3F8F', '#D97A8A', '#6B4226', '#3A3A40', '#9A958C']
 
 const NAME_OVERRIDES: Record<string, string> = {
+  head_traveler_hat: 'Traveller’s Hat',
   head_helmet_salvation: 'Helmet of Salvation',
   top_breastplate: 'Breastplate of Righteousness',
   belt_truth: 'Belt of Truth',
@@ -141,8 +142,8 @@ export const LAYER_REQS: Record<string, LayerReq> = {
   // Fishers of Galilee (Matthew 4:19): daily verses played, joined by the
   // sweater and the pole already on the shelf.
   head_fisher_cap: P(10), legs_rolled_trousers: P(20), back_fish_basket: P(40),
-  // Desert Nomad: the middle levels, where the ladder had a gap.
-  head_desert_scarf: L(13), shoes_desert_boots: L(14), belt_nomad_sash: L(15),
+  // Desert Pilgrim: the middle levels, where the ladder had a gap.
+  head_traveler_hat: L(13), shoes_desert_boots: L(14), belt_nomad_sash: L(15),
   back_waterskin: L(16), top_nomad_robe: L(17),
   // The Builder (Nehemiah 4:6): a streak, because a wall goes up a day at a time.
   head_work_bandana: S(5), belt_tool_belt: S(9), held_hammer: S(12),
@@ -160,7 +161,7 @@ export const LAYER_SETS: Record<string, { name: string; ids: string[] }> = {
   explorer: { name: 'Explorer', ids: ['head_explorer_hat', 'top_explorer_jacket', 'legs_explorer_shorts', 'shoes_explorer_boots', 'back_explorer_pack', 'belt_explorer'] },
   lion: { name: 'Lion of Judah', ids: ['head_lion_helm', 'top_lion_armor', 'legs_lion_greaves', 'held_lion_shield', 'back_lion_cape'] },
   galilee: { name: 'Fishers of Galilee', ids: ['head_fisher_cap', 'top_fisherman_sweater', 'legs_rolled_trousers', 'held_fishing_net', 'back_fish_basket'] },
-  nomad: { name: 'Desert Nomad', ids: ['head_desert_scarf', 'top_nomad_robe', 'belt_nomad_sash', 'shoes_desert_boots', 'back_waterskin'] },
+  nomad: { name: 'Desert Pilgrim', ids: ['head_traveler_hat', 'top_nomad_robe', 'belt_nomad_sash', 'shoes_desert_boots', 'back_waterskin'] },
   builder: { name: 'The Builder', ids: ['head_work_bandana', 'top_work_apron', 'belt_tool_belt', 'held_hammer', 'back_toolbox'] },
   starlight: { name: 'Starlight', ids: ['head_star_circlet', 'top_light_robe', 'legs_starry', 'belt_star_sash', 'back_star_wings'] },
 }

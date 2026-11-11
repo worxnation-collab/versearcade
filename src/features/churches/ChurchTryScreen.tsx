@@ -86,7 +86,7 @@ function sampleInsights(today: string): LeaderInsights {
       const scheduled = i >= 11
       return { date, drop, church: scheduled ? Math.max(1, drop - 3) : 0, scheduled }
     }),
-    series: [{ series: 'Fruit of the Spirit', starts: addDays(today, -2), ends: addDays(today, 4), days: 7, soFar: 3, plays: 16, players: 7, completion: 48 }],
+    series: [{ series: SAMPLE_SERIES, starts: addDays(today, -2), ends: addDays(today, 4), days: 7, soFar: 3, plays: 16, players: 7, completion: 48 }],
     streaks: {
       s0: live.filter((n) => n === 0).length,
       s1: live.filter((n) => n === 1).length,

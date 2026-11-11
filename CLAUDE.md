@@ -4251,6 +4251,17 @@ Three things to know before touching it:
 
 ## The arcade: a room with machines, and a lobby in front of them
 
+**Since 2026-11-11 the arcade's HOME is the Study tab** (an "Arcade" row of
+three cover posters under Study tools, "All games →" to `/arcade`), and every
+surface draws a game as its COVER PAINTING (`ArcadeCover`, Flux, same hand as
+the card backgrounds — `art/arcade-covers.flux.json`,
+`scripts/gen-arcade-covers.py`, `public/arcade/cover_<id>.jpg`), not as a drawn
+cabinet: the lobby is three wide covers, the shared-link page shows the game's
+cover. The drawn `ArcadeCabinet` survives only as the Upper Room's tap target
+(invisible over the painted rooms, which paint their own). The map lists the
+arcade under Study. Where the text below says "cabinet in the lobby", read
+"cover".
+
 A cabinet stands in your own Upper Room, and the home screen's "In the meantime…"
 card is the same machine again — offered only once the day's verse is done.
 Tapping either opens `/arcade` — a wall of machines you pick from. Three today:

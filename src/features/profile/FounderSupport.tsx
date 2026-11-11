@@ -131,8 +131,8 @@ function FounderOfferBody({ username, fo }: { username: string; fo: FounderOffer
       <p className="faint" style={{ fontSize: 12.5, marginTop: 10, lineHeight: 1.55 }}>
         Verse Arcade is one person’s work and it stays free — no ads, no energy
         bar, nothing held back for payers. Becoming a founding patron is how you
-        say thanks. It buys this card — the Cornerstone, with its gold veins and
-        gold name — the {fo.skin.name} skin, and the ring to match, and it pays
+        say thanks. It buys this card — the Cornerstone at dawn, with its gold
+        name — the {fo.skin.name} skin, and the ring to match, and it pays
         for the next thing.
         {price && (
           <>

@@ -1,0 +1,874 @@
+{
+ "canvas": {
+  "h": 728,
+  "w": 360
+ },
+ "items": {
+  "back_backpack": {
+   "slot": "back",
+   "tint": true
+  },
+  "back_banner": {
+   "slot": "back",
+   "tint": false
+  },
+  "back_cape": {
+   "slot": "back",
+   "tint": true
+  },
+  "back_golden_wings": {
+   "slot": "back",
+   "tint": false
+  },
+  "back_quiver": {
+   "slot": "back",
+   "tint": false
+  },
+  "back_royal_cape": {
+   "slot": "back",
+   "tint": false
+  },
+  "back_satchel": {
+   "slot": "back",
+   "tint": false
+  },
+  "back_wings": {
+   "slot": "back",
+   "tint": false
+  },
+  "belt_rope": {
+   "slot": "belt",
+   "tint": false
+  },
+  "belt_sash": {
+   "slot": "belt",
+   "tint": true
+  },
+  "belt_truth": {
+   "slot": "belt",
+   "tint": false
+  },
+  "hair_afro": {
+   "slot": "hair",
+   "tint": true
+  },
+  "hair_bob": {
+   "slot": "hair",
+   "tint": true
+  },
+  "hair_braids": {
+   "slot": "hair",
+   "tint": true
+  },
+  "hair_bun": {
+   "slot": "hair",
+   "tint": true
+  },
+  "hair_buzz": {
+   "slot": "hair",
+   "tint": true
+  },
+  "hair_curly_short": {
+   "slot": "hair",
+   "tint": true
+  },
+  "hair_locs": {
+   "slot": "hair",
+   "tint": true
+  },
+  "hair_long_straight": {
+   "slot": "hair",
+   "tint": true
+  },
+  "hair_long_wavy": {
+   "slot": "hair",
+   "tint": true
+  },
+  "hair_pigtails": {
+   "slot": "hair",
+   "tint": true
+  },
+  "hair_ponytail": {
+   "slot": "hair",
+   "tint": true
+  },
+  "hair_short": {
+   "slot": "hair",
+   "tint": true
+  },
+  "hair_side_part": {
+   "slot": "hair",
+   "tint": true
+  },
+  "hair_space_buns": {
+   "slot": "hair",
+   "tint": true
+  },
+  "hair_spiky": {
+   "slot": "hair",
+   "tint": true
+  },
+  "hair_swept": {
+   "slot": "hair",
+   "tint": true
+  },
+  "head_beanie": {
+   "slot": "head",
+   "tint": true
+  },
+  "head_cap": {
+   "slot": "head",
+   "tint": true
+  },
+  "head_centurion": {
+   "slot": "head",
+   "tint": false
+  },
+  "head_crown": {
+   "slot": "head",
+   "tint": false
+  },
+  "head_crown_stars": {
+   "slot": "head",
+   "tint": false
+  },
+  "head_dragon_helm": {
+   "slot": "head",
+   "tint": false
+  },
+  "head_flower_crown": {
+   "slot": "head",
+   "tint": false
+  },
+  "head_halo": {
+   "slot": "head",
+   "tint": false
+  },
+  "head_headphones": {
+   "slot": "head",
+   "tint": true
+  },
+  "head_helmet_salvation": {
+   "slot": "head",
+   "tint": false
+  },
+  "head_knight_helm": {
+   "slot": "head",
+   "tint": false
+  },
+  "head_laurel": {
+   "slot": "head",
+   "tint": false
+  },
+  "head_straw_hat": {
+   "slot": "head",
+   "tint": false
+  },
+  "head_traveller_hat": {
+   "slot": "head",
+   "tint": true
+  },
+  "head_winged_helm": {
+   "slot": "head",
+   "tint": false
+  },
+  "head_wrap": {
+   "slot": "head",
+   "tint": true
+  },
+  "held_book": {
+   "slot": "held",
+   "tint": false
+  },
+  "held_crook": {
+   "slot": "held",
+   "tint": false
+  },
+  "held_dove": {
+   "slot": "held",
+   "tint": false
+  },
+  "held_harp": {
+   "slot": "held",
+   "tint": false
+  },
+  "held_lantern": {
+   "slot": "held",
+   "tint": false
+  },
+  "held_oil_lamp": {
+   "slot": "held",
+   "tint": false
+  },
+  "held_scroll": {
+   "slot": "held",
+   "tint": false
+  },
+  "held_shield_faith": {
+   "slot": "held",
+   "tint": false
+  },
+  "held_sling": {
+   "slot": "held",
+   "tint": false
+  },
+  "held_staff": {
+   "slot": "held",
+   "tint": false
+  },
+  "held_sword_spirit": {
+   "slot": "held",
+   "tint": false
+  },
+  "held_torch": {
+   "slot": "held",
+   "tint": false
+  },
+  "legs_baggy": {
+   "slot": "legs",
+   "tint": true
+  },
+  "legs_greaves": {
+   "slot": "legs",
+   "tint": false
+  },
+  "legs_joggers": {
+   "slot": "legs",
+   "tint": true
+  },
+  "legs_kilt": {
+   "slot": "legs",
+   "tint": true
+  },
+  "legs_long_skirt": {
+   "slot": "legs",
+   "tint": true
+  },
+  "legs_shorts": {
+   "slot": "legs",
+   "tint": true
+  },
+  "legs_skirt": {
+   "slot": "legs",
+   "tint": true
+  },
+  "legs_trousers": {
+   "slot": "legs",
+   "tint": true
+  },
+  "shoes_armored": {
+   "slot": "shoes",
+   "tint": false
+  },
+  "shoes_boots": {
+   "slot": "shoes",
+   "tint": true
+  },
+  "shoes_gold_sandals": {
+   "slot": "shoes",
+   "tint": false
+  },
+  "shoes_peace": {
+   "slot": "shoes",
+   "tint": false
+  },
+  "shoes_sandals": {
+   "slot": "shoes",
+   "tint": true
+  },
+  "shoes_slippers": {
+   "slot": "shoes",
+   "tint": true
+  },
+  "shoes_sneakers": {
+   "slot": "shoes",
+   "tint": true
+  },
+  "shoes_tall_boots": {
+   "slot": "shoes",
+   "tint": true
+  },
+  "top_armor_full": {
+   "slot": "top",
+   "tint": false
+  },
+  "top_breastplate": {
+   "slot": "top",
+   "tint": false
+  },
+  "top_chainmail": {
+   "slot": "top",
+   "tint": false
+  },
+  "top_cloak": {
+   "slot": "top",
+   "tint": true
+  },
+  "top_hoodie": {
+   "slot": "top",
+   "tint": true
+  },
+  "top_jacket": {
+   "slot": "top",
+   "tint": true
+  },
+  "top_robe_long": {
+   "slot": "top",
+   "tint": true
+  },
+  "top_royal_robe": {
+   "slot": "top",
+   "tint": false
+  },
+  "top_sash_tunic": {
+   "slot": "top",
+   "tint": true
+  },
+  "top_shepherd_coat": {
+   "slot": "top",
+   "tint": true
+  },
+  "top_star_robe": {
+   "slot": "top",
+   "tint": false
+  },
+  "top_tabard": {
+   "slot": "top",
+   "tint": true
+  },
+  "top_toga": {
+   "slot": "top",
+   "tint": true
+  },
+  "top_tshirt": {
+   "slot": "top",
+   "tint": true
+  },
+  "top_tunic": {
+   "slot": "top",
+   "tint": true
+  },
+  "top_vest": {
+   "slot": "top",
+   "tint": true
+  }
+ },
+ "masc": {
+  "back_backpack": {
+   "h": 195,
+   "w": 182,
+   "x": 64,
+   "y": 215
+  },
+  "back_banner": {
+   "h": 629,
+   "w": 311,
+   "x": 26,
+   "y": 13
+  },
+  "back_cape": {
+   "h": 370,
+   "w": 229,
+   "x": 65,
+   "y": 207
+  },
+  "back_golden_wings": {
+   "h": 246,
+   "w": 330,
+   "x": 17,
+   "y": 35
+  },
+  "back_quiver": {
+   "h": 259,
+   "w": 172,
+   "x": 68,
+   "y": 118
+  },
+  "back_royal_cape": {
+   "h": 394,
+   "w": 300,
+   "x": 30,
+   "y": 191
+  },
+  "back_satchel": {
+   "h": 219,
+   "w": 124,
+   "x": 130,
+   "y": 214
+  },
+  "back_wings": {
+   "h": 286,
+   "w": 334,
+   "x": 15,
+   "y": 58
+  },
+  "belt_rope": {
+   "h": 91,
+   "w": 118,
+   "x": 122,
+   "y": 355
+  },
+  "belt_sash": {
+   "h": 189,
+   "w": 149,
+   "x": 103,
+   "y": 335
+  },
+  "belt_truth": {
+   "h": 48,
+   "w": 116,
+   "x": 123,
+   "y": 351
+  },
+  "body": {
+   "h": 570,
+   "w": 196,
+   "x": 82,
+   "y": 103
+  },
+  "hair_afro": {
+   "h": 149,
+   "w": 162,
+   "x": 99,
+   "y": 56
+  },
+  "hair_bob": {
+   "h": 114,
+   "w": 116,
+   "x": 122,
+   "y": 94
+  },
+  "hair_braids": {
+   "h": 197,
+   "w": 131,
+   "x": 111,
+   "y": 132
+  },
+  "hair_bun": {
+   "h": 90,
+   "w": 81,
+   "x": 140,
+   "y": 71
+  },
+  "hair_buzz": {
+   "h": 62,
+   "w": 75,
+   "x": 143,
+   "y": 103
+  },
+  "hair_curly_short": {
+   "h": 79,
+   "w": 86,
+   "x": 136,
+   "y": 90
+  },
+  "hair_long_straight": {
+   "h": 377,
+   "w": 155,
+   "x": 104,
+   "y": 103
+  },
+  "hair_long_wavy": {
+   "h": 447,
+   "w": 210,
+   "x": 74,
+   "y": 90
+  },
+  "hair_pigtails": {
+   "h": 127,
+   "w": 112,
+   "x": 120,
+   "y": 103
+  },
+  "hair_ponytail": {
+   "h": 141,
+   "w": 109,
+   "x": 124,
+   "y": 83
+  },
+  "hair_short": {
+   "h": 88,
+   "w": 101,
+   "x": 129,
+   "y": 81
+  },
+  "hair_side_part": {
+   "h": 80,
+   "w": 94,
+   "x": 133,
+   "y": 87
+  },
+  "hair_space_buns": {
+   "h": 56,
+   "w": 132,
+   "x": 114,
+   "y": 81
+  },
+  "hair_spiky": {
+   "h": 93,
+   "w": 80,
+   "x": 140,
+   "y": 70
+  },
+  "hair_swept": {
+   "h": 130,
+   "w": 118,
+   "x": 121,
+   "y": 90
+  },
+  "head_beanie": {
+   "h": 90,
+   "w": 98,
+   "x": 131,
+   "y": 73
+  },
+  "head_cap": {
+   "h": 73,
+   "w": 82,
+   "x": 139,
+   "y": 90
+  },
+  "head_centurion": {
+   "h": 173,
+   "w": 117,
+   "x": 135,
+   "y": 46
+  },
+  "head_crown": {
+   "h": 82,
+   "w": 87,
+   "x": 135,
+   "y": 54
+  },
+  "head_crown_stars": {
+   "h": 168,
+   "w": 155,
+   "x": 103,
+   "y": 68
+  },
+  "head_dragon_helm": {
+   "h": 151,
+   "w": 134,
+   "x": 113,
+   "y": 59
+  },
+  "head_flower_crown": {
+   "h": 72,
+   "w": 103,
+   "x": 128,
+   "y": 71
+  },
+  "head_halo": {
+   "h": 166,
+   "w": 158,
+   "x": 102,
+   "y": 71
+  },
+  "head_headphones": {
+   "h": 134,
+   "w": 143,
+   "x": 109,
+   "y": 64
+  },
+  "head_helmet_salvation": {
+   "h": 140,
+   "w": 102,
+   "x": 129,
+   "y": 65
+  },
+  "head_knight_helm": {
+   "h": 163,
+   "w": 107,
+   "x": 133,
+   "y": 45
+  },
+  "head_laurel": {
+   "h": 190,
+   "w": 214,
+   "x": 74,
+   "y": 45
+  },
+  "head_straw_hat": {
+   "h": 110,
+   "w": 200,
+   "x": 79,
+   "y": 74
+  },
+  "head_traveller_hat": {
+   "h": 112,
+   "w": 196,
+   "x": 81,
+   "y": 67
+  },
+  "head_winged_helm": {
+   "h": 146,
+   "w": 182,
+   "x": 90,
+   "y": 57
+  },
+  "head_wrap": {
+   "h": 154,
+   "w": 124,
+   "x": 118,
+   "y": 77
+  },
+  "held_book": {
+   "h": 114,
+   "w": 66,
+   "x": 68,
+   "y": 407
+  },
+  "held_crook": {
+   "h": 593,
+   "w": 89,
+   "x": 45,
+   "y": 72
+  },
+  "held_dove": {
+   "h": 498,
+   "w": 213,
+   "x": 52,
+   "y": 181
+  },
+  "held_harp": {
+   "h": 266,
+   "w": 174,
+   "x": 44,
+   "y": 227
+  },
+  "held_lantern": {
+   "h": 104,
+   "w": 52,
+   "x": 68,
+   "y": 396
+  },
+  "held_oil_lamp": {
+   "h": 215,
+   "w": 90,
+   "x": 40,
+   "y": 134
+  },
+  "held_scroll": {
+   "h": 77,
+   "w": 79,
+   "x": 49,
+   "y": 386
+  },
+  "held_shield_faith": {
+   "h": 179,
+   "w": 119,
+   "x": 50,
+   "y": 306
+  },
+  "held_sling": {
+   "h": 342,
+   "w": 153,
+   "x": 85,
+   "y": 215
+  },
+  "held_staff": {
+   "h": 603,
+   "w": 62,
+   "x": 57,
+   "y": 68
+  },
+  "held_sword_spirit": {
+   "h": 526,
+   "w": 98,
+   "x": 31,
+   "y": 109
+  },
+  "held_torch": {
+   "h": 428,
+   "w": 60,
+   "x": 61,
+   "y": 18
+  },
+  "legs_baggy": {
+   "h": 272,
+   "w": 154,
+   "x": 103,
+   "y": 398
+  },
+  "legs_greaves": {
+   "h": 130,
+   "w": 122,
+   "x": 119,
+   "y": 490
+  },
+  "legs_joggers": {
+   "h": 249,
+   "w": 121,
+   "x": 120,
+   "y": 371
+  },
+  "legs_kilt": {
+   "h": 273,
+   "w": 157,
+   "x": 102,
+   "y": 350
+  },
+  "legs_long_skirt": {
+   "h": 334,
+   "w": 175,
+   "x": 92,
+   "y": 338
+  },
+  "legs_shorts": {
+   "h": 254,
+   "w": 136,
+   "x": 112,
+   "y": 370
+  },
+  "legs_skirt": {
+   "h": 276,
+   "w": 148,
+   "x": 106,
+   "y": 350
+  },
+  "legs_trousers": {
+   "h": 216,
+   "w": 123,
+   "x": 119,
+   "y": 404
+  },
+  "shoes_armored": {
+   "h": 458,
+   "w": 217,
+   "x": 71,
+   "y": 212
+  },
+  "shoes_boots": {
+   "h": 404,
+   "w": 154,
+   "x": 103,
+   "y": 266
+  },
+  "shoes_peace": {
+   "h": 48,
+   "w": 144,
+   "x": 107,
+   "y": 614
+  },
+  "shoes_sandals": {
+   "h": 447,
+   "w": 194,
+   "x": 83,
+   "y": 214
+  },
+  "shoes_slippers": {
+   "h": 46,
+   "w": 157,
+   "x": 102,
+   "y": 625
+  },
+  "shoes_sneakers": {
+   "h": 69,
+   "w": 159,
+   "x": 101,
+   "y": 606
+  },
+  "shoes_tall_boots": {
+   "h": 155,
+   "w": 154,
+   "x": 103,
+   "y": 515
+  },
+  "top_armor_full": {
+   "h": 469,
+   "w": 235,
+   "x": 61,
+   "y": 201
+  },
+  "top_breastplate": {
+   "h": 220,
+   "w": 223,
+   "x": 66,
+   "y": 203
+  },
+  "top_chainmail": {
+   "h": 204,
+   "w": 193,
+   "x": 84,
+   "y": 212
+  },
+  "top_cloak": {
+   "h": 379,
+   "w": 255,
+   "x": 53,
+   "y": 198
+  },
+  "top_hoodie": {
+   "h": 496,
+   "w": 229,
+   "x": 65,
+   "y": 198
+  },
+  "top_jacket": {
+   "h": 417,
+   "w": 201,
+   "x": 79,
+   "y": 203
+  },
+  "top_robe_long": {
+   "h": 424,
+   "w": 220,
+   "x": 70,
+   "y": 201
+  },
+  "top_royal_robe": {
+   "h": 462,
+   "w": 312,
+   "x": 25,
+   "y": 208
+  },
+  "top_sash_tunic": {
+   "h": 307,
+   "w": 194,
+   "x": 83,
+   "y": 211
+  },
+  "top_shepherd_coat": {
+   "h": 349,
+   "w": 225,
+   "x": 67,
+   "y": 198
+  },
+  "top_star_robe": {
+   "h": 419,
+   "w": 213,
+   "x": 73,
+   "y": 198
+  },
+  "top_tabard": {
+   "h": 379,
+   "w": 158,
+   "x": 101,
+   "y": 213
+  },
+  "top_toga": {
+   "h": 318,
+   "w": 204,
+   "x": 55,
+   "y": 204
+  },
+  "top_tshirt": {
+   "h": 205,
+   "w": 194,
+   "x": 83,
+   "y": 213
+  },
+  "top_tunic": {
+   "h": 291,
+   "w": 195,
+   "x": 83,
+   "y": 213
+  },
+  "top_vest": {
+   "h": 180,
+   "w": 117,
+   "x": 122,
+   "y": 214
+  }
+ }
+}

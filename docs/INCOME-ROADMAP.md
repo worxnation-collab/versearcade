@@ -66,7 +66,8 @@ purchase to date.
   `versearcade.org` on every layout (checked 2026-11-11), so the engine is not
   the leak; the missing piece is a tappable path, which only Studio can add.
   The Data API cannot set a Short's related video or banner links.
-- Status: **waiting on the owner** for the three YouTube Studio steps above.
+- Status: **waiting on the owner** — step-by-step with a ready script in
+  `docs/YOUTUBE-FUNNEL.md`.
 
 ### 2. Make the church plan self-serve and sell it to churches that play
 34 players sit in 5 active churches. Billing, claim and drafting all exist.

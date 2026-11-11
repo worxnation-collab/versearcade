@@ -37,8 +37,11 @@ purchase to date.
   Sermon Shots $49; all with a 14-day trial and no sales call. RightNow Media
   prices by attendance ($155/mo for 101–200 people). None has a game the
   congregation plays all week, which is ours alone.
-- **We are at the bottom of that band**: Verified $29/mo ($290/yr) + Content
-  Generation $19/mo = $48/mo for the suite.
+- **Our Church Suite is $39/mo ($390/yr)** — the bottom of that band — and
+  every church that signs up before Easter 2027 is a Founding Church, free
+  until 2027-03-29, then billed automatically (`church-billing`). (An earlier
+  note here said $48: that is the old two-line base + add-on, not the plan
+  the billing page sells.)
 - **Consumer subscriptions can't be the engine at our size**: freemium
   converts ~2% (RevenueCat 2026); 2% of 8 sign-ups a month is nothing.
   Ethical faith-app models that work: YouVersion (free, donations), Hallow
@@ -59,18 +62,25 @@ purchase to date.
   `versearcade.org/play?src=yt-related` first in its description.
 - Set every Short's **Related video** to it (YouTube Studio, desktop).
 - Banner link `versearcade.org/play?src=yt-banner`.
-- The engine can say "search Verse Arcade" in the end card for free.
-- Status: waiting on the owner for the YouTube Studio steps; the end-card
-  line is ours to do.
+- The video end cards already say "Play today's verse" over
+  `versearcade.org` on every layout (checked 2026-11-11), so the engine is not
+  the leak; the missing piece is a tappable path, which only Studio can add.
+  The Data API cannot set a Short's related video or banner links.
+- Status: **waiting on the owner** for the three YouTube Studio steps above.
 
 ### 2. Make the church plan self-serve and sell it to churches that play
 34 players sit in 5 active churches. Billing, claim and drafting all exist.
 - A 14-day trial with no call, said plainly on the plans page; annual at a
   discount (already: $290 vs $348).
-- A "send this to another pastor" link for verified leaders, a free month per
-  church that joins (needs a Stripe coupon: the owner's call).
-- Price: the market supports $39–59 entry. **Owner decision**, not ours.
-- Status: open.
+- **Shipped 2026-11-11: "Know another pastor?"** on the leader dashboard's
+  Home — one tap sends /churches with the leader's referral code and
+  `?src=pastor-ref`, so the channel is measurable. Read
+  `select count(*) from profiles where signup_source='pastor-ref'`.
+- Price: kept at $39 (inside the market band; nobody is billed before Easter
+  2027 anyway). A referral "free month" is meaningless while every new church
+  is free until Easter — revisit in March 2027.
+- Next: the churches with the most active players are the warmest leads —
+  see `docs/PILOT-CHURCH.md`.
 
 ### 3. A classroom license (schools, homeschool co-ops, youth groups)
 Reuses the church dashboard: a teacher assigns a book's trivia round and sees
@@ -78,11 +88,11 @@ the class's progress, never a ranking. Market: $5–10 a student a year or
 $99–299 a class, well under what curricula charge.
 - Status: idea; a proposal for the owner when the church plan is selling.
 
-### 4. 28% of accounts never play once
-53 accounts never finished a verse; every later stage starts from a player.
-- Next: check the first-stop redirect (`lib/firstStop.ts`) on today's build;
-  a welcome email that is the verse itself.
-- Status: open.
+### 4. 28% of accounts never play once — CLOSED
+All 53 were created before the first-stop fix (`lib/firstStop.ts`,
+2026-10-30); both accounts made since have played. Deliberately NOT emailing
+the 53: cold mail to accounts that never engaged is how a sending domain gets
+marked as spam for every email this app sends.
 
 ### 5. "Keep it free" support beside the founding patron
 Optional monthly support labelled as covering servers and AI, the reward a
@@ -92,5 +102,7 @@ look and never an edge (YouVersion's model at our scale: ~$50–300/mo).
 **Not doing**: ads, consumer paywalls, sponsored placements.
 
 ## Done
+- 2026-11-11 — "Know another pastor?" on the leader Home (lead 2); confirmed
+  the never-played leak is already closed (lead 4); kept the suite at $39.
 - 2026-11-11 — measured the baseline above; found the attribution gap is a
   traffic problem, not a code bug; researched the market (sources in the PR).

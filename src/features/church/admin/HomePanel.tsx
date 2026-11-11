@@ -15,6 +15,7 @@ import { useJoinInquiries } from './InquiriesSection'
 import { DigestToggle } from './DigestToggle'
 import { LeaderTop } from './LeaderTop'
 import { MoreTools } from './MoreTools'
+import { TellAPastor } from './TellAPastor'
 
 // Home — "This week": what needs a leader, before anything else (2026-10-26).
 //
@@ -210,6 +211,8 @@ export function HomePanel({
           </span>
         </button>
       ))}
+
+      {verified && <TellAPastor churchName={settings.name} />}
 
       {verified && (
         <MoreTools names={['Tuesday email digest', 'How your series are landing']}>

@@ -10,23 +10,24 @@ import os, subprocess, sys
 
 D = sys.argv[1]
 FONT = '/usr/share/fonts/opentype/inter/Inter-ExtraBold.otf'
-# (shot, start, end, caption[, hold]) — timed to the 2026-11-11 voiceover.
-# `hold` freezes the segment's last frame for that many extra seconds, so a
-# shot can wait for the line being spoken over it.
+# (shot, start, end, caption[, hold]) — timed to the owner's second voiceover
+# (2026-11-11, lead 3.3s). `hold` freezes the segment's last frame for that
+# many extra seconds, so a shot can wait for the line spoken over it.
 SEGS = [
     ('verse', 0.0, 2.0, 'One verse a day.\nThe same one for everybody.'),
-    ('verse', 2.0, 5.6, 'Read it once…', 1.3),
-    ('verse', 6.0, 10.0, '…then five quick questions.'),
-    ('verse', 17.0, 21.0, 'Who said it? Who to?\nWhat came before?'),
-    ('verse', 10.0, 16.6, 'Get one wrong?\nIt tells you why.'),
-    ('verse', 16.6, 17.3, 'Wrong answers teach.', 0.4),
-    ('verse', 26.6, 34.6, 'Nobody ranked against friends.\nYou race yourself.', 1.0),
-    ('trivia', 0.5, 5.6, 'A trivia round on one book\nof the Bible, every day.'),
-    ('arcade', 0.0, 2.4, 'A little arcade…'),
-    ('arcade', 3.6, 11.6, 'Manna Rush: gather six days,\nrest on the seventh.'),
-    ('character', 0.4, 14.8, 'Build your own character.'),
-    ('church', 0.0, 4.8, "Your church can share the\nsermon's verse all week."),
-    ('end', 0.0, 8.2, None),
+    ('verse', 2.0, 5.0, 'Read it once…'),
+    ('verse', 6.0, 8.3, '…then five quick questions.'),
+    ('verse', 17.0, 20.5, 'Who said it? Who to?\nWhat came before?'),
+    ('verse', 10.4, 15.0, 'Get one wrong?\nIt tells you why.'),
+    ('verse', 15.0, 16.6, 'Wrong answers teach.'),
+    ('verse', 26.6, 31.6, 'Nobody ranked against friends.\nYou race yourself.'),
+    ('trivia', 0.5, 4.7, 'A trivia round on one book\nof the Bible, every day.'),
+    ('arcade', 0.0, 1.4, 'A little arcade…'),
+    ('arcade', 3.6, 8.0, 'Manna Rush: gather six days,\nrest on the seventh.'),
+    ('character', 0.4, 4.6, 'Build your own character.'),
+    ('character', 8.0, 12.0, 'Earn the fancier pieces\nby playing.'),
+    ('church', 0.0, 4.0, "Your church can share the\nsermon's verse all week."),
+    ('end', 0.0, 5.0, None),
 ]
 
 
@@ -43,7 +44,7 @@ for i, (shot, a, b, cap, *rest) in enumerate(SEGS):
     hold = rest[0] if rest else 0
     out = os.path.join(D, f'seg{i:02d}.mp4')
     vf = 'fps=30,scale=1080:1920,format=yuv420p' + (f',tpad=stop_mode=clone:stop_duration={hold}' if hold else '')
-    if cap:
+    if cap and os.environ.get('CAPTIONS', '1') != '0':
         lines = cap.split('\n')
         h = 70 + 64 * len(lines)
         vf += f',drawbox=x=0:y={1920 - h - 120}:w=1080:h={h}:color=black@0.62:t=fill'

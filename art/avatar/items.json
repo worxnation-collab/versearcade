@@ -927,12 +927,6 @@
       "prompt": "a woven wicker fishing creel basket on a leather strap, slung on the back with two silver fish tails poking out"
     },
     {
-      "id": "head_desert_scarf",
-      "slot": "head",
-      "tint": false,
-      "prompt": "a sand-coloured desert headcloth held by a dark cord band around the crown, the cloth starting at the hairline and draping down behind the ears to the shoulders; the whole face, forehead and chin stay completely uncovered and unchanged"
-    },
-    {
       "id": "top_nomad_robe",
       "slot": "top",
       "tint": false,
@@ -1045,6 +1039,12 @@
       "slot": "head",
       "tint": true,
       "prompt": "a bandana tied around the forehead with the knot at the side"
+    },
+    {
+      "id": "head_traveler_hat",
+      "slot": "head",
+      "tint": false,
+      "prompt": "a traveller's soft brown felt hat with a wide floppy brim and a thin cord band, sitting on top of the head, the whole face fully visible and unchanged"
     }
   ]
 }

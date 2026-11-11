@@ -1,0 +1,10 @@
+{
+  "model": "fal-ai/flux-pro/v1.1-ultra",
+  "aspect_ratio": "3:4, resized to 600x800, JPEG q84, written to public/arcade/cover_<id>.jpg",
+  "style": "Rich hand-painted storybook illustration, soft painterly brushwork, luminous, warm, cinematic, the same hand as the app's player-card backgrounds. A game's cover painting: one clear subject in the upper-middle of the frame, readable at thumbnail size. The lower third is calm, simple and darker so a white title can sit on it. No frame, no border, no text, no letters, no numbers, no logos, no people, no faces, no hands.",
+  "covers": {
+    "manna": "dawn over wide desert dunes in the wilderness, small round white flakes of manna lying thick on the sand and drifting down through golden morning light, a simple clay jar in the sand in the middle distance, violet sky warming to gold at the horizon",
+    "word-catch": "an old open book on a dark wooden table in candlelight, a stream of small glowing golden sparks and tiny torn paper flecks rising from its pages in a gentle spiral, warm light, deep warm brown shadows",
+    "cross": "a simple wooden cross made of two planed timbers lying on a carpenter's workbench in a warm workshop, chisel and mallet beside it, shavings curling on the bench, lamplight from the left, plain wood with no carving; no signature, no marks in the corners"
+  }
+}

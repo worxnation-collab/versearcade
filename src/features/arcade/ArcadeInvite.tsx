@@ -3,7 +3,6 @@ import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { AccountWallCard } from '@/components/AccountWall'
-import { ArcadeCabinetBox, type CabinetScreen } from './ArcadeCabinet'
 import { arcadeGameById } from './games'
 import { GAME_SCREENS } from './gameScreens'
 import { useAuth } from '@/store/auth'
@@ -76,7 +75,7 @@ export default function ArcadeInvite() {
   // An account already opens every machine, as often as they like.
   if (hasAccount) return <Navigate to={game.to} replace />
 
-  if (alreadyPlayed) return <Spent title={game.title} screen={game.screen} from={from} />
+  if (alreadyPlayed) return <Spent title={game.title} cover={game.cover} from={from} />
 
   const Game = GAME_SCREENS[game.id]
   return <Game demo />
@@ -85,18 +84,22 @@ export default function ArcadeInvite() {
 /** Come back to the link after the go: the invitation, warmly. */
 function Spent({
   title,
-  screen,
+  cover,
   from,
 }: {
   title: string
-  screen: CabinetScreen
+  cover: string
   from: string | null
 }) {
   const navigate = useNavigate()
   return (
     <Page noNav>
-      <div style={{ display: 'grid', placeItems: 'center', paddingTop: 14, marginBottom: 6 }}>
-        <ArcadeCabinetBox width={96} screen={screen} />
+      <div style={{ display: 'grid', placeItems: 'center', paddingTop: 14, marginBottom: 10 }}>
+        <img
+          src={cover}
+          alt=""
+          style={{ width: 120, aspectRatio: '3 / 4', objectFit: 'cover', borderRadius: 14, border: '1px solid var(--edge)', boxShadow: '0 10px 24px rgba(0,0,0,0.38)' }}
+        />
       </div>
       <AccountWallCard
         icon="🕹️"

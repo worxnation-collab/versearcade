@@ -4,6 +4,8 @@ import { Page } from '@/components/Page'
 import { Collapsible } from '@/components/Collapsible'
 import { FirstVisitTip } from '@/features/home/FirstVisitTip'
 import { LibraryScene } from './LibraryScene'
+import { ArcadeCover } from '@/features/arcade/ArcadeCover'
+import { ARCADE_GAMES } from '@/features/arcade/games'
 import { LibrarianSheet, Cover } from './LibrarianSheet'
 import { useLibrary } from '@/store/library'
 import { GREETINGS, LIBRARIAN_NAME, LIBRARY_XP, lineFrom, type StudyBook } from '@/data/library'
@@ -271,6 +273,26 @@ export default function StudyScreen() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
         {tools.map((b) => (
           <ToolCard key={b.key} item={b} onTap={() => go(b.to)} />
+        ))}
+      </div>
+
+      {/* The arcade's home (2026-11-11). It used to be reachable only from a
+          cabinet in your room, a compass row and a card on the Play tab once
+          the verse was done; Word Catch and the Cross Word are verse games,
+          and nothing in the arcade touches your rank, which is this tab's own
+          rule — so this is where it lives now. Three covers, one tap each. */}
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', margin: '20px 0 10px' }}>
+        <h3 className="dim" style={{ fontSize: 16, margin: 0 }}>Arcade</h3>
+        <button
+          onClick={() => go('/arcade')}
+          style={{ background: 'none', border: 0, padding: 0, color: 'var(--ink-dim)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+        >
+          All games →
+        </button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
+        {ARCADE_GAMES.map((g, i) => (
+          <ArcadeCover key={g.id} game={g} shape="poster" delay={0.04 * i} />
         ))}
       </div>
 

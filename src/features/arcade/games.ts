@@ -3,7 +3,7 @@ import type { CabinetScreen } from './ArcadeCabinet'
 // What's in the arcade.
 //
 // One list, and every surface that mentions the arcade reads it: the lobby
-// draws a cabinet per entry, and adding a game is a row here plus a route.
+// draws a cover per entry, and adding a game is a row here plus a route.
 // Same choke-point habit as `QuizRunner` and the little worlds — two places
 // listing the machines would disagree the first time one was added.
 //
@@ -36,8 +36,10 @@ export interface ArcadeGame {
    * share invites somebody to the machine, it doesn't challenge them.
    */
   shareLine: string
-  /** What plays on the cabinet's little screen in the lobby. */
+  /** What plays on the room cabinet's little screen. */
   screen: CabinetScreen
+  /** The cover painting every arcade surface draws (art/arcade-covers.flux.json). */
+  cover: string
   /**
    * True where the game writes something to the player's own record, so the
    * lobby can show the padlock rather than let a guest walk into a wall with
@@ -55,6 +57,7 @@ export const ARCADE_GAMES: ArcadeGame[] = [
     to: '/arcade/manna',
     shareLine: 'Seven days in the wilderness — gather the fresh manna, leave yesterday’s, and rest on the seventh.',
     screen: 'manna',
+    cover: '/arcade/cover_manna.jpg',
   },
   {
     id: 'word-catch',
@@ -64,6 +67,7 @@ export const ARCADE_GAMES: ArcadeGame[] = [
     shareLine:
       'Today’s verse has come loose from the page — tap the words back into the order they belong.',
     screen: 'words',
+    cover: '/arcade/cover_word-catch.jpg',
   },
   {
     id: 'cross',
@@ -72,6 +76,7 @@ export const ARCADE_GAMES: ArcadeGame[] = [
     to: '/arcade/cross',
     shareLine: 'Two words that share a letter, standing as a cross. Finish it and it turns to wood, with the verse underneath.',
     screen: 'cross',
+    cover: '/arcade/cover_cross.jpg',
     // It marks its verse studied on your Bible, which is a record rather than a
     // round — so this one asks for an account where Manna Rush doesn't.
     needsAccount: true,

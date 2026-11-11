@@ -34,6 +34,10 @@ OUT = os.path.join(ROOT, 'public', 'avatar')
 FIGS = ['masc', 'fem']
 GREEN_SLOTS = {'top', 'legs', 'shoes', 'belt'}
 SCALE = 0.5   # 720x1456 render -> 360x728 canvas
+# Rows on the 1456-tall render, measured off both bases: the chin sits near
+# 400 and the shoulders near 470.
+HEAD_LINE = 400
+SHOULDER_LINE = 470
 
 KEEP = ("Keep EVERYTHING else exactly identical: same character, same pose, same face, same body, "
         "same size and position in frame, same lighting, same painted storybook style, same solid "
@@ -126,11 +130,15 @@ def not_magenta(a):
     return ~((r > 170) & (b > 170) & (g < 120))
 
 
-def despill(rgb):
+def despill(rgb, green=False):
+    """Pull magenta (backdrop) and green (suit) fringes out of edge pixels."""
     r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
     s = (r - g > 40) & (b - g > 40)
     rgb[..., 0] = np.where(s, np.minimum(r, g + 25), r)
     rgb[..., 2] = np.where(s, np.minimum(b, g + 25), b)
+    if green:
+        gs = (g - r > 25) & (g - b > 25)
+        rgb[..., 1] = np.where(gs, np.maximum(r, b) + 10, g)
     return rgb
 
 
@@ -145,10 +153,10 @@ def clean(m, minpx=600):
     return m
 
 
-def save_layer(rgb, m, fig, name, index):
+def save_layer(rgb, m, fig, name, index, green=False):
     m = nd.binary_erosion(m, iterations=1)
     alpha = np.asarray(Image.fromarray((m * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(1.0)))
-    im = Image.fromarray(np.dstack([despill(rgb.copy()), alpha]).astype(np.uint8), 'RGBA')
+    im = Image.fromarray(np.dstack([despill(rgb.copy(), green), alpha]).astype(np.uint8), 'RGBA')
     w, h = im.size
     im = im.resize((int(w * SCALE), int(h * SCALE)), Image.LANCZOS)
     box = im.getbbox()
@@ -180,12 +188,22 @@ def extract(only, figs):
             if e.shape != b.shape:
                 report.append(f'{f}/{it["id"]}: size {e.shape} != base, re-roll'); continue
             if it['slot'] in GREEN_SLOTS:
+                # Green by HUE, not by value: Kontext often re-shades the
+                # uncovered suit (lime, mint, dark green), and a fixed RGB box
+                # let those through as part of the garment.
                 r_, g_, b_ = e[..., 0], e[..., 1], e[..., 2]
-                green = (g_ > 130) & (r_ < 110) & (b_ < 110)
+                green = (g_ > r_ + 35) & (g_ > b_ + 35)
                 m = (np.abs(e - g).sum(-1) > 45) & not_magenta(e) & ~green
+                # Clothing never owns the face: a hood the model added anyway
+                # would otherwise carry its own redrawn face into the layer.
+                m[:HEAD_LINE] &= False
             else:
                 m = (np.abs(e - b).sum(-1) > 45) & not_magenta(e)
-            px = save_layer(e, clean(m), f, it['id'], index)
+                if it['slot'] == 'head':
+                    # A glowing halo relights the whole body; a hat lives above
+                    # the shoulders, so nothing below them is the hat.
+                    m[SHOULDER_LINE:] = False
+            px = save_layer(e, clean(m), f, it['id'], index, it['slot'] in GREEN_SLOTS)
             if px < 1500:
                 report.append(f'{f}/{it["id"]}: only {px}px changed, re-roll')
     index['items'] = {i: {'slot': m['slot'], 'tint': m.get('tint', False)} for i, m in meta.items()}

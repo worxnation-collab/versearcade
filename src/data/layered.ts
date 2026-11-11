@@ -57,6 +57,18 @@ const NAME_OVERRIDES: Record<string, string> = {
   top_longsleeve: 'Long sleeve',
   shoes_hightops: 'High-tops',
   hair_bob: 'Bob',
+  top_many_colors: 'Coat of Many Colours',
+  head_lion_helm: 'Lion Helm',
+  top_lion_armor: 'Lion Armour',
+  legs_lion_greaves: 'Lion Greaves',
+  held_lion_shield: 'Lion Shield',
+  back_lion_cape: 'Lion Cape',
+  back_star_wings: 'Starlight Wings',
+  top_light_robe: 'Robe of Light',
+  held_trumpet: 'Ram’s Horn',
+  shoes_winged: 'Winged Sandals',
+  shoes_glow_sneakers: 'Glow Sneakers',
+  held_bread_basket: 'Loaves and Fishes',
 }
 
 export const layerName = (id: string): string =>
@@ -77,6 +89,7 @@ const L = (n: number): LayerReq => ({ kind: 'level', n })
 const S = (n: number): LayerReq => ({ kind: 'streak', n })
 const W = (n: number): LayerReq => ({ kind: 'cpuWon', n })
 const V = (n: number): LayerReq => ({ kind: 'studied', n })
+const P = (n: number): LayerReq => ({ kind: 'plays', n })
 
 export const LAYER_REQS: Record<string, LayerReq> = {
   // Headwear
@@ -100,7 +113,36 @@ export const LAYER_REQS: Record<string, LayerReq> = {
   // On the back
   back_backpack: L(2), back_satchel: L(3), back_cape: L(7), back_quiver: W(6), back_banner: L(18),
   back_royal_cape: L(22), back_wings: S(45), back_golden_wings: L(50),
+  // ── The 2026-11-11 drop: three sets and the pieces between them ──
+  // Explorer: the whole outfit at one early rung, so a new player has a
+  // complete look to aim at in their first fortnight.
+  head_explorer_hat: L(7), top_explorer_jacket: L(7), legs_explorer_shorts: L(7),
+  shoes_explorer_boots: L(7), back_explorer_pack: L(7), belt_explorer: L(7),
+  // Lion of Judah (Revelation 5:5): CPU races won, never a player beaten.
+  held_lion_shield: W(12), legs_lion_greaves: W(18), back_lion_cape: W(24),
+  top_lion_armor: W(30), head_lion_helm: W(40),
+  // Starlight (Daniel 12:3, "they that turn many to righteousness as the
+  // stars"): verses studied, the Study tab's own ladder.
+  head_star_circlet: V(20), belt_star_sash: V(40), legs_starry: V(75),
+  top_light_robe: V(120), back_star_wings: V(200),
+  // Between them.
+  head_goggles: W(4), head_feather_cap: L(9), head_olive_wreath: S(10), head_flame_crown: S(21),
+  top_fisherman_sweater: L(6), top_varsity: L(11), top_many_colors: P(60),
+  shoes_glow_sneakers: P(100), shoes_winged: S(30),
+  held_fishing_net: L(5), held_trumpet: S(7), held_bread_basket: P(30), held_star_staff: L(45),
+  back_scroll_case: V(30), back_lantern_pack: S(14), back_rainbow_cape: S(40),
 }
+
+/** Named sets. A set is a NAME and nothing else: it grants nothing, draws no
+ *  bar and puts no "3 of 5" in front of anybody — the same rule ITEM_SETS
+ *  and the Seals page follow. The tile says which set a piece belongs to. */
+export const LAYER_SETS: Record<string, { name: string; ids: string[] }> = {
+  explorer: { name: 'Explorer', ids: ['head_explorer_hat', 'top_explorer_jacket', 'legs_explorer_shorts', 'shoes_explorer_boots', 'back_explorer_pack', 'belt_explorer'] },
+  lion: { name: 'Lion of Judah', ids: ['head_lion_helm', 'top_lion_armor', 'legs_lion_greaves', 'held_lion_shield', 'back_lion_cape'] },
+  starlight: { name: 'Starlight', ids: ['head_star_circlet', 'top_light_robe', 'legs_starry', 'belt_star_sash', 'back_star_wings'] },
+}
+export const layerSetName = (id: string): string | undefined =>
+  Object.values(LAYER_SETS).find((s) => s.ids.includes(id))?.name
 
 export const reqLabel = (r: LayerReq): string => {
   switch (r.kind) {

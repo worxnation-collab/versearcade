@@ -44,7 +44,7 @@ for i, (shot, a, b, cap, *rest) in enumerate(SEGS):
     hold = rest[0] if rest else 0
     out = os.path.join(D, f'seg{i:02d}.mp4')
     vf = 'fps=30,scale=1080:1920,format=yuv420p' + (f',tpad=stop_mode=clone:stop_duration={hold}' if hold else '')
-    if cap:
+    if cap and os.environ.get('CAPTIONS', '1') != '0':
         lines = cap.split('\n')
         h = 70 + 64 * len(lines)
         vf += f',drawbox=x=0:y={1920 - h - 120}:w=1080:h={h}:color=black@0.62:t=fill'

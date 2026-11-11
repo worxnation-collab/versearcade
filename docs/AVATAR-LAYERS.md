@@ -57,6 +57,13 @@ as they do today.
   The full-length frame is a fixed width centred on the body, so a sturdy
   character reads broader rather than zoomed out.
 
+- **The 2026-11-11 drop: 32 pieces in three named sets** (`LAYER_SETS` in
+  `data/layered.ts`): Explorer (all at level 7), Lion of Judah (CPU races won,
+  12 to 40) and Starlight (verses studied, 20 to 200), plus singles such as the
+  Coat of Many Colours (60 plays) and Winged Sandals (30-day streak). A set is a
+  name on the tile and nothing else: no bar, no "3 of 5", no reward for
+  completing one.
+
 Still to do: pets in the new art (the six existing pets keep their drawn art
 and their bonuses; `public/avatar/*/pet_*.webp` is ready), bonuses for the six
 new pets, age options, and showing the full outfit on another

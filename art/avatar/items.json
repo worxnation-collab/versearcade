@@ -715,6 +715,198 @@
         1250,
         1456
       ]
+    },
+    {
+      "id": "head_explorer_hat",
+      "slot": "head",
+      "tint": false,
+      "prompt": "a tan explorer's wide-brim hat with a dark leather band"
+    },
+    {
+      "id": "top_explorer_jacket",
+      "slot": "top",
+      "tint": true,
+      "prompt": "a field explorer's jacket with four flap pockets and rolled sleeves"
+    },
+    {
+      "id": "legs_explorer_shorts",
+      "slot": "legs",
+      "tint": true,
+      "prompt": "knee-length cargo shorts with side pockets"
+    },
+    {
+      "id": "shoes_explorer_boots",
+      "slot": "shoes",
+      "tint": true,
+      "prompt": "sturdy lace-up hiking boots"
+    },
+    {
+      "id": "back_explorer_pack",
+      "slot": "back",
+      "tint": false,
+      "prompt": "a tan canvas explorer's backpack with a rolled blanket strapped on top, worn on the back"
+    },
+    {
+      "id": "belt_explorer",
+      "slot": "belt",
+      "tint": false,
+      "prompt": "a brown leather belt with small pouches and a brass buckle at the waist"
+    },
+    {
+      "id": "head_lion_helm",
+      "slot": "head",
+      "tint": false,
+      "prompt": "a golden helmet shaped like a lion's head with a flowing mane crest, the face fully visible through the open front"
+    },
+    {
+      "id": "top_lion_armor",
+      "slot": "top",
+      "tint": false,
+      "prompt": "golden scale armour over the chest and shoulders with a lion emblem in the centre"
+    },
+    {
+      "id": "legs_lion_greaves",
+      "slot": "legs",
+      "tint": false,
+      "prompt": "golden armour greaves over the shins and knees"
+    },
+    {
+      "id": "held_lion_shield",
+      "slot": "held",
+      "tint": false,
+      "prompt": "a round golden shield with a raised lion emblem, held in the left hand where it already hangs beside the left hip"
+    },
+    {
+      "id": "back_lion_cape",
+      "slot": "back",
+      "tint": false,
+      "prompt": "a long crimson cape with gold lion embroidery hanging from the shoulders down behind the body"
+    },
+    {
+      "id": "head_star_circlet",
+      "slot": "head",
+      "tint": false,
+      "prompt": "a shining silver circlet band around the forehead with a large bright glowing golden star at the centre of the forehead"
+    },
+    {
+      "id": "top_light_robe",
+      "slot": "top",
+      "tint": false,
+      "prompt": "a white robe with softly glowing golden trim at the hems and cuffs"
+    },
+    {
+      "id": "legs_starry",
+      "slot": "legs",
+      "tint": false,
+      "prompt": "deep navy trousers dotted with tiny glowing gold stars"
+    },
+    {
+      "id": "belt_star_sash",
+      "slot": "belt",
+      "tint": false,
+      "prompt": "a deep blue sash around the waist woven with small gold stars"
+    },
+    {
+      "id": "back_star_wings",
+      "slot": "back",
+      "tint": false,
+      "prompt": "large wings made of glowing blue-white starlight spreading out from behind the shoulders"
+    },
+    {
+      "id": "top_many_colors",
+      "slot": "top",
+      "tint": false,
+      "prompt": "Joseph's coat of many colours: a long coat in bright vertical stripes of red, blue, gold, green and purple"
+    },
+    {
+      "id": "top_fisherman_sweater",
+      "slot": "top",
+      "tint": true,
+      "prompt": "a chunky cable-knit fisherman's sweater with a rolled collar"
+    },
+    {
+      "id": "top_varsity",
+      "slot": "top",
+      "tint": true,
+      "prompt": "a varsity jacket with contrasting sleeves and a small star patch on the chest"
+    },
+    {
+      "id": "head_feather_cap",
+      "slot": "head",
+      "tint": false,
+      "prompt": "a jaunty green traveller's cap with a long red feather"
+    },
+    {
+      "id": "head_flame_crown",
+      "slot": "head",
+      "tint": false,
+      "prompt": "a crown whose points are shaped like gentle golden flames, glowing softly, resting on the head"
+    },
+    {
+      "id": "head_olive_wreath",
+      "slot": "head",
+      "tint": false,
+      "prompt": "a wreath of silver-green olive leaves around the head"
+    },
+    {
+      "id": "head_goggles",
+      "slot": "head",
+      "tint": false,
+      "prompt": "brass adventurer goggles pushed up on the forehead"
+    },
+    {
+      "id": "shoes_winged",
+      "slot": "shoes",
+      "tint": false,
+      "prompt": "golden sandals on both feet with a small pair of white feathered wings sticking out from each heel"
+    },
+    {
+      "id": "shoes_glow_sneakers",
+      "slot": "shoes",
+      "tint": false,
+      "prompt": "white sneakers with glowing golden soles"
+    },
+    {
+      "id": "held_trumpet",
+      "slot": "held",
+      "tint": false,
+      "prompt": "a long curved golden ram's horn trumpet (a shofar) gripped in the right hand where it already hangs, the horn curving down and outward beside the right leg"
+    },
+    {
+      "id": "held_fishing_net",
+      "slot": "held",
+      "tint": false,
+      "prompt": "a simple wooden fishing pole held upright in the left hand where it already hangs, the line and hook dangling beside it"
+    },
+    {
+      "id": "held_bread_basket",
+      "slot": "held",
+      "tint": false,
+      "prompt": "a small woven basket holding loaves of bread and two fish, held in the left hand where it already hangs beside the left hip"
+    },
+    {
+      "id": "held_star_staff",
+      "slot": "held",
+      "tint": false,
+      "prompt": "a tall wooden staff topped with a glowing star, gripped in the right hand where it already hangs, resting on the ground beside the right foot"
+    },
+    {
+      "id": "back_scroll_case",
+      "slot": "back",
+      "tint": false,
+      "prompt": "a leather scroll case slung diagonally across the back with scroll ends showing"
+    },
+    {
+      "id": "back_lantern_pack",
+      "slot": "back",
+      "tint": false,
+      "prompt": "a wooden backpack frame on the back with a large glowing brass lantern hanging above the right shoulder"
+    },
+    {
+      "id": "back_elijah_mantle",
+      "slot": "back",
+      "tint": false,
+      "prompt": "Elijah's mantle: a long heavy charcoal-grey woven prophet's cloak hanging from the shoulders down behind the body to the ankles, its inner lining glowing fiery orange and gold like embers, the hem edged with faint flickering flame"
     }
   ]
 }

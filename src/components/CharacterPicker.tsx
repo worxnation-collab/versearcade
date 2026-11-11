@@ -25,6 +25,7 @@ import {
   layerName,
   layerUnlocked,
   layerUrl,
+  layerSetName,
   BUILDS,
   buildOf,
   LAYER_REQS,
@@ -579,7 +580,7 @@ function LayeredBuilder({
             <WardrobeTile
               key={id}
               label={layerName(id)}
-              note={have ? undefined : req ? reqLabel(req) : 'Coming soon'}
+              note={have ? layerSetName(id) : [req ? reqLabel(req) : 'Coming soon', layerSetName(id)].filter(Boolean).join(' · ')}
               selected={current?.id === id}
               locked={!have}
               onClick={() => have && wear(tab, id)}

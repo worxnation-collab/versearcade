@@ -1,100 +1,537 @@
 {
   "_doc": "Layered avatar wardrobe. Each item is generated per figure by scripts/avatar/layers.py: Flux Kontext edits the figure's base (or its green-suit copy for clothing), the base is subtracted, and what changed is the layer. tint:true items are drawn in grey and coloured at runtime. See docs/AVATAR-LAYERS.md.",
-  "slots": ["back", "legs", "shoes", "top", "belt", "hair", "head", "held"],
+  "slots": [
+    "back",
+    "legs",
+    "shoes",
+    "top",
+    "belt",
+    "hair",
+    "head",
+    "held"
+  ],
   "items": [
-    { "id": "hair_short", "slot": "hair", "tint": true, "prompt": "short tousled hair on the bald head" },
-    { "id": "hair_buzz", "slot": "hair", "tint": true, "prompt": "a very short neat buzz cut hugging the scalp" },
-    { "id": "hair_side_part", "slot": "hair", "tint": true, "prompt": "short neat hair combed with a side part" },
-    { "id": "hair_curly_short", "slot": "hair", "tint": true, "prompt": "short tight curly hair" },
-    { "id": "hair_afro", "slot": "hair", "tint": true, "prompt": "a big round curly afro" },
-    { "id": "hair_long_straight", "slot": "hair", "tint": true, "prompt": "long straight hair falling past the shoulders" },
-    { "id": "hair_long_wavy", "slot": "hair", "tint": true, "prompt": "long wavy hair falling past the shoulders" },
-    { "id": "hair_bob", "slot": "hair", "tint": true, "prompt": "a chin-length bob haircut with a fringe" },
-    { "id": "hair_ponytail", "slot": "hair", "tint": true, "prompt": "hair pulled back into a high ponytail" },
-    { "id": "hair_pigtails", "slot": "hair", "tint": true, "prompt": "two pigtails tied at either side of the head" },
-    { "id": "hair_bun", "slot": "hair", "tint": true, "prompt": "hair pulled up into a neat top bun" },
-    { "id": "hair_space_buns", "slot": "hair", "tint": true, "prompt": "two round buns on top of the head" },
-    { "id": "hair_braids", "slot": "hair", "tint": true, "prompt": "long box braids falling past the shoulders" },
-    { "id": "hair_locs", "slot": "hair", "tint": true, "prompt": "shoulder-length locs" },
-    { "id": "hair_spiky", "slot": "hair", "tint": true, "prompt": "short spiky hair standing up" },
-    { "id": "hair_swept", "slot": "hair", "tint": true, "prompt": "medium-length hair swept to one side over the forehead" },
-
-    { "id": "head_helmet_salvation", "slot": "head", "tint": false, "prompt": "the Helmet of Salvation: a gleaming polished gold-and-silver ancient warrior helmet with cheek guards and a small cross emblem on the brow, sitting properly on the head" },
-    { "id": "head_knight_helm", "slot": "head", "tint": false, "prompt": "a shining steel knight's helm with the visor raised so the face shows, and a tall red plume on top" },
-    { "id": "head_centurion", "slot": "head", "tint": false, "prompt": "a Roman centurion helmet in bronze with a red horsehair crest running front to back, face visible" },
-    { "id": "head_crown", "slot": "head", "tint": false, "prompt": "a small simple gold crown with red jewels" },
-    { "id": "head_crown_stars", "slot": "head", "tint": false, "prompt": "a crown of twelve small glowing golden stars floating in a ring just above the head" },
-    { "id": "head_laurel", "slot": "head", "tint": false, "prompt": "a green laurel wreath around the head" },
-    { "id": "head_flower_crown", "slot": "head", "tint": false, "prompt": "a crown woven of small white and yellow wildflowers" },
-    { "id": "head_halo", "slot": "head", "tint": false, "prompt": "a softly glowing golden halo ring floating just above the head" },
-    { "id": "head_wrap", "slot": "head", "tint": true, "prompt": "a simple cloth head wrap like a shepherd in ancient Israel, tied at the back" },
-    { "id": "head_traveller_hat", "slot": "head", "tint": true, "prompt": "a wide-brimmed traveller's hat" },
-    { "id": "head_straw_hat", "slot": "head", "tint": false, "prompt": "a woven straw sun hat" },
-    { "id": "head_beanie", "slot": "head", "tint": true, "prompt": "a knitted beanie hat" },
-    { "id": "head_cap", "slot": "head", "tint": true, "prompt": "a baseball cap facing forward" },
-    { "id": "head_headphones", "slot": "head", "tint": true, "prompt": "big over-ear headphones over the head" },
-    { "id": "head_dragon_helm", "slot": "head", "tint": false, "prompt": "an epic dark-iron helmet shaped like a dragon's head with small horns and glowing amber eyes, face visible through the open front" },
-    { "id": "head_winged_helm", "slot": "head", "tint": false, "prompt": "a silver helmet with two small white feathered wings on the sides, face visible" },
-
-    { "id": "top_tunic", "slot": "top", "tint": true, "prompt": "a simple knee-length tunic with short sleeves and a round neck" },
-    { "id": "top_robe_long", "slot": "top", "tint": true, "prompt": "a long ankle-length robe with wide sleeves to the elbow" },
-    { "id": "top_vest", "slot": "top", "tint": true, "prompt": "a short vest with NO SLEEVES AT ALL, the green undersuit sleeves and arms stay fully visible and unchanged" },
-    { "id": "top_cloak", "slot": "top", "tint": true, "prompt": "a travelling cloak hanging from the shoulders to the calves, front open, the hood lying flat behind the neck, the head and face fully uncovered and unchanged" },
-    { "id": "top_tabard", "slot": "top", "tint": true, "prompt": "a knight's tabard: a long sleeveless overtunic with a simple cross on the chest" },
-    { "id": "top_shepherd_coat", "slot": "top", "tint": true, "prompt": "a thick woolly shepherd's coat to the knee" },
-    { "id": "top_toga", "slot": "top", "tint": true, "prompt": "a draped toga over one shoulder" },
-    { "id": "top_hoodie", "slot": "top", "tint": true, "prompt": "a cosy hoodie with the hood DOWN behind the neck, head and face uncovered" },
-    { "id": "top_tshirt", "slot": "top", "tint": true, "prompt": "a plain short-sleeved t-shirt" },
-    { "id": "top_jacket", "slot": "top", "tint": true, "prompt": "a zip-up jacket" },
-    { "id": "top_sash_tunic", "slot": "top", "tint": true, "prompt": "a tunic with a sash across the chest from one shoulder" },
-    { "id": "top_breastplate", "slot": "top", "tint": false, "prompt": "the Breastplate of Righteousness: a gleaming gold-and-silver ancient breastplate armour over the chest and stomach with a small cross emblem" },
-    { "id": "top_chainmail", "slot": "top", "tint": false, "prompt": "a silver chainmail shirt with short sleeves down to the hips" },
-    { "id": "top_royal_robe", "slot": "top", "tint": false, "prompt": "a royal purple robe with gold trim and gold embroidery" },
-    { "id": "top_star_robe", "slot": "top", "tint": false, "prompt": "a deep night-blue robe covered in small glowing golden stars" },
-    { "id": "top_armor_full", "slot": "top", "tint": false, "prompt": "full plate armour on the chest, shoulders and arms in polished steel with gold edges" },
-
-    { "id": "legs_trousers", "slot": "legs", "tint": true, "prompt": "plain loose trousers" },
-    { "id": "legs_shorts", "slot": "legs", "tint": true, "prompt": "knee-length shorts" },
-    { "id": "legs_skirt", "slot": "legs", "tint": true, "prompt": "a knee-length skirt" },
-    { "id": "legs_long_skirt", "slot": "legs", "tint": true, "prompt": "an ankle-length flowing skirt" },
-    { "id": "legs_baggy", "slot": "legs", "tint": true, "prompt": "baggy wide-leg pants gathered at the ankle" },
-    { "id": "legs_joggers", "slot": "legs", "tint": true, "prompt": "joggers with cuffs at the ankle" },
-    { "id": "legs_greaves", "slot": "legs", "tint": false, "prompt": "polished steel armour leg greaves over the shins and knees" },
-    { "id": "legs_kilt", "slot": "legs", "tint": true, "prompt": "a pleated knee-length kilt" },
-
-    { "id": "shoes_sandals", "slot": "shoes", "tint": true, "prompt": "simple leather sandals" },
-    { "id": "shoes_boots", "slot": "shoes", "tint": true, "prompt": "sturdy ankle boots" },
-    { "id": "shoes_tall_boots", "slot": "shoes", "tint": true, "prompt": "tall riding boots to just below the knee" },
-    { "id": "shoes_sneakers", "slot": "shoes", "tint": true, "prompt": "chunky modern sneakers" },
-    { "id": "shoes_peace", "slot": "shoes", "tint": false, "prompt": "the Shoes of Peace: golden armoured sandals with small white wings at the ankles" },
-    { "id": "shoes_armored", "slot": "shoes", "tint": false, "prompt": "steel armoured boots" },
-    { "id": "shoes_gold_sandals", "slot": "shoes", "tint": false, "prompt": "fine gold sandals" },
-    { "id": "shoes_slippers", "slot": "shoes", "tint": true, "prompt": "soft cloth slippers" },
-
-    { "id": "belt_truth", "slot": "belt", "tint": false, "prompt": "the Belt of Truth: a wide gold-buckled leather belt around the waist" },
-    { "id": "belt_rope", "slot": "belt", "tint": false, "prompt": "a simple rope belt tied around the waist" },
-    { "id": "belt_sash", "slot": "belt", "tint": true, "prompt": "a wide cloth sash tied at the waist" },
-
-    { "id": "held_crook", "slot": "held", "tint": false, "prompt": "a wooden shepherd's crook held upright in the right hand" },
-    { "id": "held_sword_spirit", "slot": "held", "tint": false, "prompt": "the Sword of the Spirit: a gleaming silver sword with a gold hilt, held pointing DOWN at the right side" },
-    { "id": "held_shield_faith", "slot": "held", "tint": false, "prompt": "the Shield of Faith: a round gold-and-white shield with a cross, held on the left arm" },
-    { "id": "held_lantern", "slot": "held", "tint": false, "prompt": "a glowing brass lantern held in the right hand" },
-    { "id": "held_scroll", "slot": "held", "tint": false, "prompt": "a rolled parchment scroll held in the right hand" },
-    { "id": "held_harp", "slot": "held", "tint": false, "prompt": "a small wooden harp held in the left arm" },
-    { "id": "held_staff", "slot": "held", "tint": false, "prompt": "a tall plain wooden walking staff held upright in the right hand" },
-    { "id": "held_sling", "slot": "held", "tint": false, "prompt": "a leather sling hanging from the right hand, like young David" },
-    { "id": "held_oil_lamp", "slot": "held", "tint": false, "prompt": "a small clay oil lamp with a flame, held in the right hand" },
-    { "id": "held_dove", "slot": "held", "tint": false, "prompt": "a white dove perched on the right hand" },
-    { "id": "held_torch", "slot": "held", "tint": false, "prompt": "a burning torch held upright in the right hand" },
-    { "id": "held_book", "slot": "held", "tint": false, "prompt": "a thick leather-bound book held in the right hand" },
-
-    { "id": "back_cape", "slot": "back", "tint": true, "prompt": "a cape hanging from the shoulders down behind the body to the calves, fastened at the neck" },
-    { "id": "back_royal_cape", "slot": "back", "tint": false, "prompt": "a red royal cape with white fur trim hanging behind the body from the shoulders" },
-    { "id": "back_wings", "slot": "back", "tint": false, "prompt": "large white feathered angel wings spreading out from behind the shoulders" },
-    { "id": "back_quiver", "slot": "back", "tint": false, "prompt": "a leather quiver of arrows on the back, its strap across the chest" },
-    { "id": "back_backpack", "slot": "back", "tint": true, "prompt": "a small backpack worn on both shoulders, straps visible" },
-    { "id": "back_satchel", "slot": "back", "tint": false, "prompt": "a leather satchel on a strap across the body, bag at the hip" },
-    { "id": "back_banner", "slot": "back", "tint": false, "prompt": "a tall pole rising from behind the back carrying a small white banner with a gold cross" },
-    { "id": "back_golden_wings", "slot": "back", "tint": false, "prompt": "large shimmering golden wings spreading out from behind the shoulders" }
+    {
+      "id": "hair_short",
+      "slot": "hair",
+      "tint": true,
+      "prompt": "short tousled hair on the bald head"
+    },
+    {
+      "id": "hair_buzz",
+      "slot": "hair",
+      "tint": true,
+      "prompt": "a very short neat buzz cut hugging the scalp"
+    },
+    {
+      "id": "hair_side_part",
+      "slot": "hair",
+      "tint": true,
+      "prompt": "short neat hair combed with a side part"
+    },
+    {
+      "id": "hair_curly_short",
+      "slot": "hair",
+      "tint": true,
+      "prompt": "short tight curly hair"
+    },
+    {
+      "id": "hair_afro",
+      "slot": "hair",
+      "tint": true,
+      "prompt": "a big round curly afro"
+    },
+    {
+      "id": "hair_long_straight",
+      "slot": "hair",
+      "tint": true,
+      "prompt": "long straight hair falling past the shoulders"
+    },
+    {
+      "id": "hair_long_wavy",
+      "slot": "hair",
+      "tint": true,
+      "prompt": "long wavy hair falling past the shoulders"
+    },
+    {
+      "id": "hair_bob",
+      "slot": "hair",
+      "tint": true,
+      "prompt": "a chin-length bob haircut with a fringe"
+    },
+    {
+      "id": "hair_ponytail",
+      "slot": "hair",
+      "tint": true,
+      "prompt": "hair pulled back into a high ponytail"
+    },
+    {
+      "id": "hair_pigtails",
+      "slot": "hair",
+      "tint": true,
+      "prompt": "two pigtails tied at either side of the head"
+    },
+    {
+      "id": "hair_bun",
+      "slot": "hair",
+      "tint": true,
+      "prompt": "hair pulled up into a neat top bun"
+    },
+    {
+      "id": "hair_space_buns",
+      "slot": "hair",
+      "tint": true,
+      "prompt": "hair on the bald head: two round buns on top of the head. The skin, suit and colours of the body stay exactly the same"
+    },
+    {
+      "id": "hair_braids",
+      "slot": "hair",
+      "tint": true,
+      "prompt": "long box braids falling past the shoulders"
+    },
+    {
+      "id": "hair_locs",
+      "slot": "hair",
+      "tint": true,
+      "prompt": "hair on the bald head: shoulder-length dreadlock locs hanging down from the scalp. Do not add any clothing"
+    },
+    {
+      "id": "hair_spiky",
+      "slot": "hair",
+      "tint": true,
+      "prompt": "short spiky hair standing up"
+    },
+    {
+      "id": "hair_swept",
+      "slot": "hair",
+      "tint": true,
+      "prompt": "medium-length hair swept to one side over the forehead"
+    },
+    {
+      "id": "head_helmet_salvation",
+      "slot": "head",
+      "tint": false,
+      "prompt": "the Helmet of Salvation: a gleaming polished gold-and-silver ancient warrior helmet with cheek guards and a small cross emblem on the brow, sitting properly on the head"
+    },
+    {
+      "id": "head_knight_helm",
+      "slot": "head",
+      "tint": false,
+      "prompt": "a shining steel knight's helm with the visor raised so the face shows, and a tall red plume on top"
+    },
+    {
+      "id": "head_centurion",
+      "slot": "head",
+      "tint": false,
+      "prompt": "a Roman centurion helmet in bronze with a red horsehair crest running front to back, face visible"
+    },
+    {
+      "id": "head_crown",
+      "slot": "head",
+      "tint": false,
+      "prompt": "a small simple gold crown with red jewels"
+    },
+    {
+      "id": "head_crown_stars",
+      "slot": "head",
+      "tint": false,
+      "prompt": "a crown of twelve small glowing golden stars floating in a ring just above the head"
+    },
+    {
+      "id": "head_laurel",
+      "slot": "head",
+      "tint": false,
+      "prompt": "a green laurel wreath around the head"
+    },
+    {
+      "id": "head_flower_crown",
+      "slot": "head",
+      "tint": false,
+      "prompt": "a crown woven of small white and yellow wildflowers"
+    },
+    {
+      "id": "head_halo",
+      "slot": "head",
+      "tint": false,
+      "prompt": "a softly glowing golden halo ring floating just above the head"
+    },
+    {
+      "id": "head_wrap",
+      "slot": "head",
+      "tint": true,
+      "prompt": "a simple cloth head wrap like a shepherd in ancient Israel, tied at the back"
+    },
+    {
+      "id": "head_traveller_hat",
+      "slot": "head",
+      "tint": true,
+      "prompt": "a wide-brimmed traveller's hat"
+    },
+    {
+      "id": "head_straw_hat",
+      "slot": "head",
+      "tint": false,
+      "prompt": "a woven straw sun hat"
+    },
+    {
+      "id": "head_beanie",
+      "slot": "head",
+      "tint": true,
+      "prompt": "a knitted beanie hat"
+    },
+    {
+      "id": "head_cap",
+      "slot": "head",
+      "tint": true,
+      "prompt": "a baseball cap facing forward"
+    },
+    {
+      "id": "head_headphones",
+      "slot": "head",
+      "tint": true,
+      "prompt": "big over-ear headphones over the head"
+    },
+    {
+      "id": "head_dragon_helm",
+      "slot": "head",
+      "tint": false,
+      "prompt": "an epic dark-iron helmet shaped like a dragon's head with small horns and glowing amber eyes, face visible through the open front"
+    },
+    {
+      "id": "head_winged_helm",
+      "slot": "head",
+      "tint": false,
+      "prompt": "a silver helmet with two small white feathered wings on the sides, face visible"
+    },
+    {
+      "id": "top_tunic",
+      "slot": "top",
+      "tint": true,
+      "prompt": "a simple knee-length tunic with short sleeves and a round neck"
+    },
+    {
+      "id": "top_robe_long",
+      "slot": "top",
+      "tint": true,
+      "prompt": "a long ankle-length robe with wide sleeves to the elbow"
+    },
+    {
+      "id": "top_vest",
+      "slot": "top",
+      "tint": true,
+      "prompt": "a short vest with NO SLEEVES AT ALL, the green undersuit sleeves and arms stay fully visible and unchanged"
+    },
+    {
+      "id": "top_cloak",
+      "slot": "top",
+      "tint": true,
+      "prompt": "a travelling cloak hanging from the shoulders to the calves, front open, the hood lying flat behind the neck, the head and face fully uncovered and unchanged"
+    },
+    {
+      "id": "top_tabard",
+      "slot": "top",
+      "tint": true,
+      "prompt": "a knight's tabard: a long sleeveless overtunic with a simple cross on the chest"
+    },
+    {
+      "id": "top_shepherd_coat",
+      "slot": "top",
+      "tint": true,
+      "prompt": "a thick woolly shepherd's coat to the knee"
+    },
+    {
+      "id": "top_toga",
+      "slot": "top",
+      "tint": true,
+      "prompt": "a draped toga over one shoulder"
+    },
+    {
+      "id": "top_hoodie",
+      "slot": "top",
+      "tint": true,
+      "prompt": "a cosy hoodie with the hood DOWN behind the neck, head and face uncovered"
+    },
+    {
+      "id": "top_tshirt",
+      "slot": "top",
+      "tint": true,
+      "prompt": "a plain short-sleeved t-shirt"
+    },
+    {
+      "id": "top_jacket",
+      "slot": "top",
+      "tint": true,
+      "prompt": "a zip-up jacket"
+    },
+    {
+      "id": "top_sash_tunic",
+      "slot": "top",
+      "tint": true,
+      "prompt": "a tunic with a sash across the chest from one shoulder"
+    },
+    {
+      "id": "top_breastplate",
+      "slot": "top",
+      "tint": false,
+      "prompt": "the Breastplate of Righteousness: a gleaming gold-and-silver ancient breastplate armour over the chest and stomach with a small cross emblem"
+    },
+    {
+      "id": "top_chainmail",
+      "slot": "top",
+      "tint": false,
+      "prompt": "a silver chainmail shirt with short sleeves down to the hips"
+    },
+    {
+      "id": "top_royal_robe",
+      "slot": "top",
+      "tint": false,
+      "prompt": "a royal purple robe with gold trim and gold embroidery"
+    },
+    {
+      "id": "top_star_robe",
+      "slot": "top",
+      "tint": false,
+      "prompt": "a deep night-blue robe covered in small glowing golden stars"
+    },
+    {
+      "id": "top_armor_full",
+      "slot": "top",
+      "tint": false,
+      "prompt": "full plate armour on the chest, shoulders and arms in polished steel with gold edges"
+    },
+    {
+      "id": "legs_trousers",
+      "slot": "legs",
+      "tint": true,
+      "prompt": "plain loose trousers"
+    },
+    {
+      "id": "legs_shorts",
+      "slot": "legs",
+      "tint": true,
+      "prompt": "knee-length shorts"
+    },
+    {
+      "id": "legs_skirt",
+      "slot": "legs",
+      "tint": true,
+      "prompt": "a knee-length skirt"
+    },
+    {
+      "id": "legs_long_skirt",
+      "slot": "legs",
+      "tint": true,
+      "prompt": "an ankle-length flowing skirt"
+    },
+    {
+      "id": "legs_baggy",
+      "slot": "legs",
+      "tint": true,
+      "prompt": "baggy wide-leg pants gathered at the ankle"
+    },
+    {
+      "id": "legs_joggers",
+      "slot": "legs",
+      "tint": true,
+      "prompt": "joggers with cuffs at the ankle"
+    },
+    {
+      "id": "legs_greaves",
+      "slot": "legs",
+      "tint": false,
+      "prompt": "polished steel armour leg greaves over the shins and knees"
+    },
+    {
+      "id": "legs_kilt",
+      "slot": "legs",
+      "tint": true,
+      "prompt": "a pleated knee-length kilt"
+    },
+    {
+      "id": "shoes_sandals",
+      "slot": "shoes",
+      "tint": true,
+      "prompt": "simple leather sandals"
+    },
+    {
+      "id": "shoes_boots",
+      "slot": "shoes",
+      "tint": true,
+      "prompt": "sturdy ankle boots"
+    },
+    {
+      "id": "shoes_tall_boots",
+      "slot": "shoes",
+      "tint": true,
+      "prompt": "tall riding boots to just below the knee"
+    },
+    {
+      "id": "shoes_sneakers",
+      "slot": "shoes",
+      "tint": true,
+      "prompt": "chunky modern sneakers"
+    },
+    {
+      "id": "shoes_peace",
+      "slot": "shoes",
+      "tint": false,
+      "prompt": "the Shoes of Peace: golden armoured sandals with small white wings at the ankles"
+    },
+    {
+      "id": "shoes_armored",
+      "slot": "shoes",
+      "tint": false,
+      "prompt": "steel armoured boots"
+    },
+    {
+      "id": "shoes_gold_sandals",
+      "slot": "shoes",
+      "tint": false,
+      "prompt": "shiny gold sandals with gold straps on BOTH bare feet, clearly visible"
+    },
+    {
+      "id": "shoes_slippers",
+      "slot": "shoes",
+      "tint": true,
+      "prompt": "soft cloth slippers"
+    },
+    {
+      "id": "belt_truth",
+      "slot": "belt",
+      "tint": false,
+      "prompt": "the Belt of Truth: a wide gold-buckled leather belt around the waist"
+    },
+    {
+      "id": "belt_rope",
+      "slot": "belt",
+      "tint": false,
+      "prompt": "a simple rope belt tied around the waist"
+    },
+    {
+      "id": "belt_sash",
+      "slot": "belt",
+      "tint": true,
+      "prompt": "a wide cloth sash tied at the waist"
+    },
+    {
+      "id": "held_crook",
+      "slot": "held",
+      "tint": false,
+      "prompt": "a wooden shepherd's crook held upright in the right hand"
+    },
+    {
+      "id": "held_sword_spirit",
+      "slot": "held",
+      "tint": false,
+      "prompt": "the Sword of the Spirit: a gleaming silver sword with a gold hilt, held pointing DOWN at the right side"
+    },
+    {
+      "id": "held_shield_faith",
+      "slot": "held",
+      "tint": false,
+      "prompt": "the Shield of Faith: a round gold-and-white shield with a cross, held on the left arm"
+    },
+    {
+      "id": "held_lantern",
+      "slot": "held",
+      "tint": false,
+      "prompt": "a glowing brass lantern held in the right hand. The magenta background stays flat magenta"
+    },
+    {
+      "id": "held_scroll",
+      "slot": "held",
+      "tint": false,
+      "prompt": "a rolled parchment scroll held in the right hand"
+    },
+    {
+      "id": "held_harp",
+      "slot": "held",
+      "tint": false,
+      "prompt": "a small wooden harp held in the left arm"
+    },
+    {
+      "id": "held_staff",
+      "slot": "held",
+      "tint": false,
+      "prompt": "a tall plain wooden walking staff held upright in the right hand"
+    },
+    {
+      "id": "held_sling",
+      "slot": "held",
+      "tint": false,
+      "prompt": "a leather sling hanging from the right hand, like young David"
+    },
+    {
+      "id": "held_oil_lamp",
+      "slot": "held",
+      "tint": false,
+      "prompt": "a small clay oil lamp with a flame, held in the right hand"
+    },
+    {
+      "id": "held_dove",
+      "slot": "held",
+      "tint": false,
+      "prompt": "a large white dove clearly visible perched on the right hand, which is raised slightly in front of the body"
+    },
+    {
+      "id": "held_torch",
+      "slot": "held",
+      "tint": false,
+      "prompt": "a burning torch held upright in the right hand"
+    },
+    {
+      "id": "held_book",
+      "slot": "held",
+      "tint": false,
+      "prompt": "a thick leather-bound book held in the right hand"
+    },
+    {
+      "id": "back_cape",
+      "slot": "back",
+      "tint": true,
+      "prompt": "a cape hanging from the shoulders down behind the body to the calves, fastened at the neck"
+    },
+    {
+      "id": "back_royal_cape",
+      "slot": "back",
+      "tint": false,
+      "prompt": "a red royal cape with white fur trim hanging behind the body from the shoulders"
+    },
+    {
+      "id": "back_wings",
+      "slot": "back",
+      "tint": false,
+      "prompt": "large white feathered angel wings spreading out from behind the shoulders"
+    },
+    {
+      "id": "back_quiver",
+      "slot": "back",
+      "tint": false,
+      "prompt": "a leather quiver of arrows on the back, its strap across the chest"
+    },
+    {
+      "id": "back_backpack",
+      "slot": "back",
+      "tint": true,
+      "prompt": "a small backpack worn on both shoulders, straps visible"
+    },
+    {
+      "id": "back_satchel",
+      "slot": "back",
+      "tint": false,
+      "prompt": "a leather satchel on a strap across the body, bag at the hip"
+    },
+    {
+      "id": "back_banner",
+      "slot": "back",
+      "tint": false,
+      "prompt": "a tall pole rising from behind the back carrying a small white banner with a gold cross"
+    },
+    {
+      "id": "back_golden_wings",
+      "slot": "back",
+      "tint": false,
+      "prompt": "large shimmering golden wings spreading out from behind the shoulders"
+    }
   ]
 }

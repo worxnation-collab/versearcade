@@ -4,7 +4,7 @@ import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { Avatar } from '@/components/Avatar'
 import { CharacterPicker } from '@/components/CharacterPicker'
-import { DEFAULT_AVATAR } from '@/data/avatar'
+import { NEW_CHARACTER } from '@/data/avatar'
 import { useAuth } from '@/store/auth'
 import { isSupabaseConfigured } from '@/lib/config'
 import { firstStop } from '@/lib/firstStop'
@@ -41,7 +41,7 @@ export default function AuthScreen() {
   // (setPendingCharacter) rather than travelling with the credentials, because
   // an OAuth sign-up reloads the whole page between these two beats.
   const [phase, setPhase] = useState<'look' | 'account'>('look')
-  const [spec, setSpec] = useState<AvatarSpec>(DEFAULT_AVATAR)
+  const [spec, setSpec] = useState<AvatarSpec>(NEW_CHARACTER)
   const signingUpLook = mode === 'up' && phase === 'look'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')

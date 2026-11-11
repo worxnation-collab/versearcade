@@ -12,7 +12,7 @@ import { ChurchArt } from './ChurchArt'
 import { ChurchScene } from './ChurchScene'
 import { useRivalry } from '@/store/rivalry'
 import { CHURCH_SKINS, DEFAULT_CHURCH_SKIN, churchSkin, type ChurchSkinChoice } from './skins'
-import { DEFAULT_AVATAR } from '@/data/avatar'
+import { plainCharacter } from '@/features/church/churchLook'
 import type { Church, ChurchInfo, ChurchMember, ChurchPage } from '@/types'
 import type { ChurchExtras } from '@/types/churchPackages'
 import { ChurchExtrasBlock } from './ChurchExtras'
@@ -136,7 +136,7 @@ export function ChurchPageBody({
       username: '',
       seed: m.seed ?? `anon-${i}`,
       avatarEmoji: '🙂',
-      avatarCharacter: { ...DEFAULT_AVATAR, figure: i % 2 ? 'fem' : 'masc' },
+      avatarCharacter: plainCharacter(i, m.seed ?? `anon-${i}`),
       pet: null,
       isMe: false,
     })),

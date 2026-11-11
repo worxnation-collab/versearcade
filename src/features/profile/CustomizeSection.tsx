@@ -30,6 +30,7 @@ import { SavedLooks } from './SavedLooks'
 import { CardAboutEditor } from './CardAboutEditor'
 import {
   DEFAULT_AVATAR,
+  NEW_CHARACTER,
   distinctSharedDays,
   allItems,
   completedSets,
@@ -134,7 +135,7 @@ export function CustomizeSection() {
   const longest = profile.longestStreak
   const equippedBorder = profile.avatarBorder || 'default'
   const equippedBadge = profile.avatarBadge ?? 'none'
-  const spec = profile.avatarCharacter ?? DEFAULT_AVATAR
+  const spec = profile.avatarCharacter ?? NEW_CHARACTER
 
   const equippedBg = profile.cardBackground ?? DEFAULT_CARD_BG
   // Two of the pet requirements live in other stores (verses studied, CPU races
@@ -432,7 +433,7 @@ export function CustomizeSection() {
                       // Native builds carry no storefront, so a priced skin only appears
                       // once it's owned — including packs bought on the website, which
                       // stay wearable here. See lib/commerce.
-                      .filter((skin) => skinVisible(skin, isSkinOwned(skin)))
+                      .filter((skin) => skinVisible(skin, isSkinOwned(skin), isEquipped(skin)))
                       .map((skin) => {
                       const owned = isSkinOwned(skin)
                       const equipped = isEquipped(skin)

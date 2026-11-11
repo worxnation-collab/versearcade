@@ -77,7 +77,10 @@ export function skuPurchasable(sku: string): boolean {
  * (shared days, referrals) and promo-code exclusives are free — no price, no
  * checkout — so they stay exactly as they are on the web.
  */
-export function skinVisible(skin: SkinDef, owned: boolean): boolean {
+export function skinVisible(skin: SkinDef, owned: boolean, worn = false): boolean {
+  // Shelved for the layered wardrobe (see SkinDef.shelved): only the people
+  // who have it. A free skin is everybody's, so for those, only the wearer.
+  if (skin.shelved) return worn || (owned && skin.source !== 'free')
   // Free skins are nobody's storefront question — no price, no checkout, no
   // entitlement. Since the de-monetisation this covers the launch trio
   // (Moses, Esther, Elijah), which used to be $2.99 each.

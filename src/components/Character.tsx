@@ -4,6 +4,8 @@ import { skinHex, robeHex, hairHex, figureOf, equippedSkinId, skinArtUrl, isOver
 import { itemArtFor, itemNodes } from '@/data/itemArt'
 import { overlayFor } from '@/data/overlays'
 import { GENERATED_ART } from '@/data/generatedArt'
+import { LayeredFigure } from '@/components/LayeredFigure'
+import { isLayered } from '@/data/layered'
 
 // A composable character figure, drawn from an AvatarSpec. Two looks share one
 // silhouette so it reads at any size (20px presence chip → 76px builder):
@@ -284,7 +286,11 @@ export function Character({
   const overlay = overlayFor(overlaySkin)
   const overlayRaster = overlay ? GENERATED_ART[overlay.art] : undefined
   const useOverlayRaster = !!overlayRaster && crossFailed !== overlayRaster
-  const useRaster = !!raster && failedSrc !== raster
+  // The layered wardrobe (data/layered.ts) replaces the single starter render
+  // whenever the spec carries an outfit. A worn full skin still wins: a
+  // Legendary Look replaces the whole figure exactly as before.
+  const layered = !baseSkinId && isLayered(spec)
+  const useRaster = !layered && !!raster && failedSrc !== raster
   // Everywhere the player actually reads an avatar — chips, lists, the profile
   // header, the customise grid — a full-length figure in a small circle throws
   // away the face. Those get a portrait crop. The one place that stays
@@ -293,7 +299,7 @@ export function Character({
   // zoom the character to the chest and leave the cross spanning a body that is
   // no longer there. Chips wearing one keep the full figure, exactly as they did
   // when this skin was drawn-only.
-  const zoomRaster = useRaster && size < 120 && !fullBody && !overlaySkin
+  const zoomRaster = (useRaster || layered) && size < 120 && !fullBody && !overlaySkin
 
   return (
     <svg
@@ -364,7 +370,9 @@ export function Character({
         </>
       )}
 
-      {useRaster ? (
+      {layered ? (
+        <LayeredFigure spec={spec} portrait={zoomRaster} />
+      ) : useRaster ? (
         <image
           href={raster}
           // Inset rather than filling the viewBox. Avatar clips to a circle, and

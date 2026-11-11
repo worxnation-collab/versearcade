@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { CharacterPicker } from '@/components/CharacterPicker'
-import { DEFAULT_AVATAR } from '@/data/avatar'
+import { NEW_CHARACTER } from '@/data/avatar'
 import { useAuth } from '@/store/auth'
 import { isSupabaseConfigured } from '@/lib/config'
 import { useSettings } from '@/store/settings'
@@ -39,7 +39,7 @@ export default function Onboarding() {
   }, [])
 
   const [step, setStep] = useState(0)
-  const [spec, setSpec] = useState<AvatarSpec>(DEFAULT_AVATAR)
+  const [spec, setSpec] = useState<AvatarSpec>(NEW_CHARACTER)
   const [username, setUsername] = useState('')
 
   const clean = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, '')

@@ -117,7 +117,22 @@ export interface AvatarSpec {
   skinId?: string | null
   /** @deprecated superseded by skinId; read for backward compatibility only. */
   regalia?: 'baldwin' | null
+  /** The layered wardrobe (data/layered.ts). Present ⇒ the character is drawn
+   *  as stacked layers rather than the old single starter render; absent ⇒ the
+   *  old look, untouched, which is every account made before it existed. A
+   *  worn full skin still wins over it (a Legendary Look). */
+  outfit?: Outfit
 }
+
+/** A layered-wardrobe slot. Pets stay on `Profile.pet`, not in the outfit. */
+export type LayerSlot = 'back' | 'legs' | 'shoes' | 'top' | 'belt' | 'hair' | 'head' | 'held'
+/** One worn piece: an item id from data/avatarLayers and, for a piece that
+ *  takes a colour, the colour it is worn in. */
+export interface OutfitPiece {
+  id: string
+  color?: string
+}
+export type Outfit = Partial<Record<LayerSlot, OutfitPiece>>
 
 export interface Profile {
   id: string

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Character } from '@/components/Character'
 import {
@@ -14,6 +14,25 @@ import {
   type Swatch,
 } from '@/data/avatar'
 import { GENERATED_ART } from '@/data/generatedArt'
+import {
+  CLOTH_COLORS,
+  HAIR_COLORS,
+  SETUP_SLOTS,
+  SLOTS,
+  cleanOutfit,
+  defaultOutfit,
+  isLayered,
+  layerName,
+  layerUnlocked,
+  layerUrl,
+  LAYER_REQS,
+  reqLabel,
+  slotItems,
+  takesColor,
+  type LayerSlot,
+} from '@/data/layered'
+import { petProgress } from '@/lib/petProgress'
+import { EMPTY_PET_PROGRESS } from '@/data/pets'
 import { useJuice } from '@/juice/useJuice'
 import type { AvatarSpec, Figure } from '@/types'
 
@@ -28,7 +47,7 @@ import type { AvatarSpec, Figure } from '@/types'
 // portrait, not a loadout. The paid and earned looks (full skins, items) live
 // on the Customize screen where they can be earned or bought; onboarding never
 // opens with a shop.
-export function CharacterPicker({
+function ClassicPicker({
   value,
   onChange,
   size = 156,
@@ -374,5 +393,251 @@ function SwatchRow({
         )
       })}
     </div>
+  )
+}
+
+type PickerProps = Parameters<typeof ClassicPicker>[0]
+
+// The one character picker, now in two generations. A spec carrying an
+// `outfit` is a layered character (data/layered.ts) and gets the wardrobe
+// builder; a spec without one is an account made before it, and keeps the old
+// picker — plus one button to step into the new wardrobe, because changing
+// somebody's look out from under them is the one thing this must not do.
+// A worn full skin covers both, and the classic picker already says so.
+export function CharacterPicker(props: PickerProps) {
+  const { value, onChange, layout = 'swatches', admin = false } = props
+  const juice = useJuice()
+  const worn = equippedSkinId(value)
+  const covered = !!worn && !isOverlaySkin(worn)
+  if (isLayered(value) && !covered) {
+    return <LayeredBuilder value={value} onChange={onChange} setup={layout === 'tiles'} size={props.size} admin={admin} />
+  }
+  return (
+    <div style={{ display: 'grid', gap: 12 }}>
+      <ClassicPicker {...props} />
+      {!covered && (
+        <button
+          className="btn"
+          onClick={() => {
+            juice.select?.()
+            onChange({ ...value, outfit: defaultOutfit(figureOf(value), hairHexFor(value.hair)) })
+          }}
+          style={{ justifySelf: 'center', fontWeight: 800 }}
+        >
+          Try the new wardrobe
+        </button>
+      )}
+    </div>
+  )
+}
+
+const hairHexFor = (key?: string) => (HAIRS.find((h) => h.key === key) ?? HAIRS[1]).hex
+
+const asSwatches = (hexes: string[]): Swatch[] => hexes.map((hex) => ({ key: hex, name: hex, hex }))
+
+// The wardrobe builder. At setup (`setup`) it offers the four slots a person
+// needs to be dressed — hair, top, legs, shoes — and only free pieces; on the
+// profile it offers every slot, with earned pieces shown locked and saying what
+// earns them (the thing and the door, never a distance — same rule as /wardrobe).
+function LayeredBuilder({
+  value,
+  onChange,
+  setup,
+  size = 200,
+  admin,
+}: {
+  value: AvatarSpec & { outfit: NonNullable<AvatarSpec['outfit']> }
+  onChange: (spec: AvatarSpec) => void
+  setup: boolean
+  size?: number
+  admin: boolean
+}) {
+  const juice = useJuice()
+  const figure = figureOf(value)
+  const slots = setup ? SLOTS.filter((s) => SETUP_SLOTS.includes(s.slot)) : SLOTS
+  const [tab, setTab] = useState<LayerSlot>('hair')
+  // Read once per render: the numbers only go up, and a setup screen has none.
+  const progress = setup ? EMPTY_PET_PROGRESS : petProgress()
+  const open = (id: string) => layerUnlocked(id, progress, admin)
+
+  const set = (patch: Partial<AvatarSpec>) => {
+    juice.select?.()
+    onChange({ ...value, ...patch })
+  }
+  const wear = (slot: LayerSlot, id: string | null) => {
+    const outfit = { ...value.outfit }
+    if (!id) delete outfit[slot]
+    else {
+      const keep = outfit[slot]?.color
+      const palette = slot === 'hair' ? HAIR_COLORS : CLOTH_COLORS
+      outfit[slot] = { id, color: takesColor(id) ? keep ?? palette[slot === 'hair' ? 1 : 7] : undefined }
+    }
+    set({ outfit })
+  }
+  const recolor = (slot: LayerSlot, color: string) => {
+    const piece = value.outfit[slot]
+    if (piece) set({ outfit: { ...value.outfit, [slot]: { ...piece, color } } })
+  }
+
+  const current = value.outfit[tab]
+  const meta = slots.find((s) => s.slot === tab)
+  const ids = slotItems(tab, figure).filter((id) => !setup || open(id))
+
+  return (
+    <div style={{ display: 'grid', gap: 14 }}>
+      <div className="center">
+        <motion.div
+          key={JSON.stringify(value.outfit) + figure + value.skin}
+          initial={{ scale: 0.94 }}
+          animate={{ scale: 1 }}
+          transition={{ type: 'spring', stiffness: 480, damping: 18 }}
+          style={{ display: 'inline-block' }}
+        >
+          <Character spec={value} size={size} fullBody title="Your character" />
+        </motion.div>
+      </div>
+
+      <div>
+        <RowLabel>Figure</RowLabel>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {FIGURES.map((f) => (
+            <FigureTab
+              key={f.key}
+              name={f.name}
+              selected={figure === f.key}
+              onClick={() => set({ figure: f.key as Figure, outfit: cleanOutfit(value.outfit, f.key as Figure, progress, admin) })}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <RowLabel>Skin tone</RowLabel>
+        <SwatchRow swatches={SKINS} selected={value.skin} onPick={(s) => set({ skin: s.key })} />
+      </div>
+
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }} role="tablist">
+        {slots.map((s) => (
+          <button
+            key={s.slot}
+            role="tab"
+            aria-selected={tab === s.slot}
+            className="pill"
+            onClick={() => { juice.select?.(); setTab(s.slot) }}
+            style={{
+              cursor: 'pointer',
+              fontWeight: 800,
+              fontSize: 13,
+              background: tab === s.slot ? 'var(--select)' : undefined,
+              color: tab === s.slot ? '#fff' : undefined,
+            }}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {current && takesColor(current.id) && (
+        <div>
+          <RowLabel>Colour</RowLabel>
+          <SwatchRow
+            swatches={asSwatches(tab === 'hair' ? HAIR_COLORS : CLOTH_COLORS)}
+            selected={current.color ?? ''}
+            onPick={(s) => recolor(tab, s.hex)}
+          />
+        </div>
+      )}
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(78px, 1fr))',
+          gap: 8,
+          minWidth: 0,
+        }}
+      >
+        {!meta?.required && (
+          <WardrobeTile label="None" selected={!current} onClick={() => wear(tab, null)}>
+            <span style={{ fontSize: 22, color: 'var(--ink-faint)' }}>∅</span>
+          </WardrobeTile>
+        )}
+        {ids.map((id) => {
+          const have = open(id)
+          const req = LAYER_REQS[id]
+          return (
+            <WardrobeTile
+              key={id}
+              label={layerName(id)}
+              note={have ? undefined : req ? reqLabel(req) : 'Coming soon'}
+              selected={current?.id === id}
+              locked={!have}
+              onClick={() => have && wear(tab, id)}
+            >
+              <img
+                src={layerUrl(figure, id)}
+                alt=""
+                loading="lazy"
+                draggable={false}
+                style={{ maxHeight: 64, maxWidth: '100%', objectFit: 'contain', filter: have ? undefined : 'grayscale(1) brightness(.75)' }}
+              />
+            </WardrobeTile>
+          )
+        })}
+      </div>
+
+      <p className="faint" style={{ fontSize: 11, margin: 0, textAlign: 'center', lineHeight: 1.45 }}>
+        {setup
+          ? 'Every hairstyle, colour and everyday outfit is free. Helmets, armour, wings and more are earned by playing.'
+          : 'Everything you can see is yours to wear. Locked pieces say what earns them. It saves as you tap.'}
+      </p>
+    </div>
+  )
+}
+
+function WardrobeTile({
+  label,
+  note,
+  selected,
+  locked,
+  onClick,
+  children,
+}: {
+  label: string
+  note?: string
+  selected: boolean
+  locked?: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <motion.button
+      whileTap={locked ? undefined : { scale: 0.93 }}
+      onClick={onClick}
+      aria-pressed={selected}
+      aria-disabled={locked || undefined}
+      style={{
+        display: 'grid',
+        gap: 3,
+        justifyItems: 'center',
+        padding: '6px 4px',
+        borderRadius: 12,
+        background: selected ? 'var(--select)' : 'var(--card-raised)',
+        border: selected ? '2px solid var(--gold)' : '2px solid transparent',
+        cursor: locked ? 'default' : 'pointer',
+        color: 'var(--ink)',
+        minWidth: 0,
+      }}
+    >
+      <span style={{ height: 64, display: 'grid', placeItems: 'center', position: 'relative', width: '100%' }}>
+        {children}
+        {locked && (
+          <span style={{ position: 'absolute', top: 0, right: 2, fontSize: 12 }} aria-hidden>
+            🔒
+          </span>
+        )}
+      </span>
+      <span style={{ fontSize: 11, fontWeight: 700, lineHeight: 1.2, textAlign: 'center' }}>{label}</span>
+      {note && <span style={{ fontSize: 10, color: 'var(--ink-dim)', lineHeight: 1.2, textAlign: 'center' }}>{note}</span>}
+    </motion.button>
   )
 }

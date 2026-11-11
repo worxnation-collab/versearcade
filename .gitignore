@@ -30,3 +30,4 @@ yarn-error.log*
 .tiktok-voice/
 
 supabase/.temp/
+art/avatar/.raw/

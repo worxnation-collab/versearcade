@@ -16,6 +16,7 @@
 import { catalogArtUrl, catalogOverlay, mergeById, type CatalogSkin } from './catalog'
 import { overlayFor } from './overlays'
 import type { ArmorSlot, AvatarSpec, Figure, ItemSlot } from '@/types'
+import { defaultOutfit } from '@/data/layered'
 
 export type { ArmorSlot, AvatarSpec, Figure, ItemSlot }
 
@@ -268,6 +269,13 @@ export const DEFAULT_AVATAR: AvatarSpec = {
   armor: {},
 }
 
+// A character being MADE today: the starter look in the layered wardrobe
+// (data/layered.ts) — a t-shirt, jeans and sneakers, every piece free and every
+// colour changeable. DEFAULT_AVATAR stays as it was, because it is also the
+// stand-in figure on surfaces that draw somebody plain (the public church page)
+// and the fallback for specs written before the wardrobe existed.
+export const NEW_CHARACTER: AvatarSpec = { ...DEFAULT_AVATAR, outfit: defaultOutfit('masc', '#3E2A1E') }
+
 export const skinHex = (key: string): string => (SKINS.find((s) => s.key === key) ?? SKINS[1]).hex
 export const robeHex = (key: string): string => (ROBES.find((r) => r.key === key) ?? ROBES[0]).hex
 /** Falls back to Espresso, so a spec stored before hair existed still gets hair
@@ -388,6 +396,16 @@ export interface SkinDef {
    */
   retired?: boolean
   /**
+   * Taken off the shelf for the layered wardrobe (2026-11-11, the owner's call):
+   * the custom character is the main event, and a grid of thirty ready-made
+   * people crowded it. A shelved skin is shown to a player who has it — a
+   * road reward earned, a pack bought, or one they are wearing right now — and
+   * to nobody else. Unlike `retired` it is not about money: a `free` skin is
+   * "owned" by everybody, so for those only WEARING it keeps it on the shelf.
+   * Nobody loses anything; the art, the ids and every entitlement are kept.
+   */
+  shelved?: boolean
+  /**
    * paid: an OLDER entitlement id that also grants this skin. The founding
    * patron changed product (whale → cephas) and the people who already paid for
    * it must never be asked to pay again — `patronOffer` reads `skinOwned`, so
@@ -419,6 +437,7 @@ export const FULL_SKINS: SkinDef[] = [
   },
   {
     id: 'david',
+    shelved: true,
     name: 'David',
     source: 'earned',
     shareGoal: 25,
@@ -537,6 +556,7 @@ export const FULL_SKINS: SkinDef[] = [
   // ——— The Pilgrimage (seasonal road) ———
   {
     id: 'ruth',
+    shelved: true,
     name: 'Ruth the Gleaner',
     source: 'pass',
     states: 4,
@@ -544,6 +564,7 @@ export const FULL_SKINS: SkinDef[] = [
   },
   {
     id: 'boaz',
+    shelved: true,
     name: 'Boaz',
     source: 'pass',
     blurb: 'Lord of the harvest — the end of the Harvest Road, waystation 50.',
@@ -558,18 +579,21 @@ export const FULL_SKINS: SkinDef[] = [
   // same thing everyone else's absence of a row says.
   {
     id: 'moses',
+    shelved: true,
     name: 'Moses',
     source: 'free',
     blurb: 'The Lawgiver — staff in hand, the tablets at his side.',
   },
   {
     id: 'esther',
+    shelved: true,
     name: 'Esther',
     source: 'free',
     blurb: 'The queen — “for such a time as this.”',
   },
   {
     id: 'elijah',
+    shelved: true,
     name: 'Elijah',
     source: 'free',
     blurb: 'The prophet of fire — mantle, staff, and a raven.',
@@ -586,18 +610,21 @@ export const FULL_SKINS: SkinDef[] = [
   // stops being obtainable is the road closing.
   {
     id: 'gabriel',
+    shelved: true,
     name: 'Gabriel',
     source: 'pass',
     blurb: 'The announcing messenger — trumpet raised, “Do not be afraid.”',
   },
   {
     id: 'michael',
+    shelved: true,
     name: 'Michael',
     source: 'pass',
     blurb: 'The archangel — helm, shield, and a sword of flame.',
   },
   {
     id: 'seraph',
+    shelved: true,
     name: 'Seraph',
     source: 'pass',
     blurb: 'Six wings and a live coal — the burning one of Isaiah 6.',

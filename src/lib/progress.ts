@@ -6,7 +6,7 @@ import { SCORING } from './config'
 import { petXpBonus } from '@/data/pets'
 import type { Profile, SubmitOutcome } from '@/types'
 import { levelInfo } from '@/components/XpBar'
-import { DEFAULT_AVATAR } from '@/data/avatar'
+import { NEW_CHARACTER } from '@/data/avatar'
 
 // Score a single answered question: base points for correct, a decaying speed
 // bonus, times the current combo multiplier.
@@ -120,7 +120,7 @@ export function newLocalProfile(username: string, emoji: string): Profile {
     onboarded: false,
     avatarBorder: 'default',
     avatarBadge: null,
-    avatarCharacter: DEFAULT_AVATAR,
+    avatarCharacter: NEW_CHARACTER,
     sharedDays: [],
     ownedItems: [],
     ownedSkins: [],

@@ -122,7 +122,14 @@ export interface AvatarSpec {
    *  old look, untouched, which is every account made before it existed. A
    *  worn full skin still wins over it (a Legendary Look). */
   outfit?: Outfit
+  /** Body build for the layered character. Absent = 'standard'. Free, like
+   *  figure and tone: identity is never earned. */
+  build?: Build
 }
+
+/** Slim and sturdy are the standard art reshaped (scripts/avatar/layers.py
+ *  `builds`), so every piece fits every build. */
+export type Build = 'slim' | 'standard' | 'sturdy'
 
 /** A layered-wardrobe slot. Pets stay on `Profile.pet`, not in the outfit. */
 export type LayerSlot = 'back' | 'legs' | 'shoes' | 'top' | 'belt' | 'hair' | 'head' | 'held'

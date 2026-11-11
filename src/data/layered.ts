@@ -17,7 +17,7 @@
 // picture, never standing. If an earned piece ever needs to be unforgeable,
 // it gets a server check the way pets did in 0064.
 
-import type { AvatarSpec, Figure, LayerSlot, Outfit } from '@/types'
+import type { AvatarSpec, Build, Figure, LayerSlot, Outfit } from '@/types'
 import type { PetProgress } from '@/data/pets'
 import { LAYER_BOXES, LAYER_CANVAS, LAYER_ITEMS, type LayerBox } from '@/data/avatarLayers'
 
@@ -143,8 +143,26 @@ export function slotItems(slot: LayerSlot, figure: Figure): string[] {
     .sort((a, b) => order(a) - order(b) || a.localeCompare(b))
 }
 
-export const layerUrl = (figure: Figure, id: string): string => `/avatar/${figure}/${id}.webp`
-export const layerBox = (figure: Figure, id: string): LayerBox | undefined => LAYER_BOXES[figure]?.[id]
+/** The three builds, in the order the picker shows them. */
+export const BUILDS: { key: Build; name: string }[] = [
+  { key: 'slim', name: 'Slim' },
+  { key: 'standard', name: 'Standard' },
+  { key: 'sturdy', name: 'Sturdy' },
+]
+export const buildOf = (spec?: AvatarSpec | null): Build =>
+  spec?.build === 'slim' || spec?.build === 'sturdy' ? spec.build : 'standard'
+
+/** Where a layer's art lives: the build's own folder when it has that piece,
+ *  else the standard figure's (a build that lacks a piece draws the standard
+ *  one rather than a gap). */
+const artKey = (figure: Figure, id: string, build: Build = 'standard'): string => {
+  const k = `${figure}_${build}`
+  return build !== 'standard' && LAYER_BOXES[k]?.[id] ? k : figure
+}
+export const layerUrl = (figure: Figure, id: string, build?: Build): string =>
+  `/avatar/${artKey(figure, id, build)}/${id}.webp`
+export const layerBox = (figure: Figure, id: string, build?: Build): LayerBox | undefined =>
+  LAYER_BOXES[artKey(figure, id, build)]?.[id]
 
 /** The body layer for a skin tone; the bases are painted in 'sand'. */
 export function bodyId(figure: Figure, tone: string): string {

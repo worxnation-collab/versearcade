@@ -4847,7 +4847,8 @@ A spec with an `outfit` is drawn as stacked layers (`data/layered.ts`,
 `components/LayeredFigure.tsx`, art from `scripts/avatar/layers.py`); new
 characters start that way, older specs keep their look until the player taps
 "Try the new wardrobe", and the churchyard draws everybody in the new art
-(`features/church/churchLook.ts`). Nine full skins are `shelved` — shown only
+(`features/church/churchLook.ts`). Slim and sturdy builds are the standard
+layers STRETCHED (`layers.py builds`), so re-run it after every `extract`. Nine full skins are `shelved` — shown only
 to players who have them. Read `docs/AVATAR-LAYERS.md` before touching any of
 it; the extraction rules there (green suit, bands, no body skin in clothing)
 each came from a visible bug.

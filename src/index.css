@@ -137,6 +137,13 @@
 
 html, body, #root { height: 100%; margin: 0; }
 
+/* The canvas behind everything. Without a colour here the canvas is WHITE, and
+   an iPhone shows it on rubber-band overscroll (2026-11-11 audit). */
+html { background-color: var(--bg-0); }
+
+/* Native checks and radios in the palette, not the browser's default blue. */
+input[type='radio'], input[type='checkbox'] { accent-color: var(--mint); }
+
 body {
   font-family: var(--font-body);
   color: var(--ink);
@@ -148,6 +155,13 @@ body {
     radial-gradient(1200px 700px at 50% -10%, #2b1d26 0%, transparent 60%),
     radial-gradient(900px 600px at 100% 100%, #33212b 0%, transparent 55%),
     linear-gradient(180deg, var(--bg-1), var(--bg-0));
+  background-color: var(--bg-0);
+  /* iOS Safari ignores `fixed` and scrolls the background, which tiled the
+     gradients every screen-height with a visible seam. The grain still tiles;
+     the three gradients paint once and the ground colour (the gradient's own
+     last stop) carries on below, so there is nothing to seam. */
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+  background-size: auto, auto, auto, 100% 100lvh;
   background-attachment: fixed;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;

@@ -160,6 +160,7 @@ export default function StudyScreen() {
       key: 'trivia',
       title: 'Bonus trivia',
       emblem: '✨',
+      cover: 'trivia',
       caption: 'Five questions about a book of your choosing',
       to: '/study/trivia',
       lend: 'The bonus questions from the daily verse, five at a time',
@@ -194,6 +195,7 @@ export default function StudyScreen() {
       key: 'bible',
       title: name ? `${name}’s Bible` : 'My Bible',
       emblem: '📖',
+      cover: 'bible',
       caption:
         favCount > 0
           ? `${favCount} kept — see what you've studied and read`

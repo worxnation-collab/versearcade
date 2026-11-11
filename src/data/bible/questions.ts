@@ -280,7 +280,10 @@ function teachMore(qs: Question[], more: Map<Question, string[]>, facts: string[
     const safe = (e: string) =>
       !used.has(core(e)) &&
       !later.some((a) => a.length > 2 && e.toLowerCase().includes(a)) &&
-      !qs.some((o) => o !== q && o.teach.includes(core(e)))
+      !qs.some((o) => o !== q && o.teach.includes(core(e))) &&
+      // …nor what THIS line already says: "Just before: X" was appended to a
+      // teach line that already said "Just before: X" (2026-11-11 audit).
+      !q.teach.includes(core(e))
     // ONE more thing, never two, and never the same thing twice in a run: the
     // fact first (it is the one written to teach), else the line's own context.
     const pick = [...(facts[i] ? [facts[i]] : []), ...(more.get(q) ?? []), ...fallback].find(safe)

@@ -87,7 +87,9 @@ export default function Onboarding() {
               <p className="dim center" style={{ fontSize: 15, marginTop: -2 }}>
                 This is you, everywhere in the arcade. You can change it any time.
               </p>
-              <CharacterPicker value={spec} onChange={setSpec} layout="tiles" />
+              {/* The one REQUIRED thing on this screen goes first: it sat under twenty
+                  hair tiles, ~1,250px down, with Start disabled and nothing on
+                  screen saying why (2026-11-11 audit). */}
               <div style={{ marginTop: 4 }}>
                 <input
                   value={username}
@@ -101,6 +103,7 @@ export default function Onboarding() {
                   {clean ? `You’ll show up as @${clean}` : 'letters, numbers, underscores'}
                 </p>
               </div>
+              <CharacterPicker value={spec} onChange={setSpec} layout="tiles" />
               <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
                 <Toggle label="🔊 Sound" on={settings.soundEnabled} onClick={() => settings.set({ soundEnabled: !settings.soundEnabled })} />
                 <Toggle label="📳 Haptics" on={settings.hapticsEnabled} onClick={() => settings.set({ hapticsEnabled: !settings.hapticsEnabled })} />

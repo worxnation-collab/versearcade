@@ -334,7 +334,15 @@ function SelfClaim({ id }: { id: string }) {
       </>
     )
   } else if (!o || status !== 'open') {
-    body = para(status === 'not_found' ? 'We couldn’t find that church.' : 'We couldn’t check this church just now. Check your connection and try again.')
+    // Never a dead end: an error still offers a way on (2026-11-11 audit).
+    body = (
+      <>
+        {para(status === 'not_found' ? 'We couldn’t find that church.' : 'We couldn’t check this church just now. Check your connection and try again.')}
+        {status === 'not_found'
+          ? <Button variant="secondary" full onClick={() => navigate('/churches/find')}>Find a church</Button>
+          : <Button variant="secondary" full onClick={() => window.location.reload()}>Try again</Button>}
+      </>
+    )
   } else if (!web && !o.freeOk) {
     body = para('Claiming a church page is done on the web, from a computer or a phone’s browser.')
   } else if (sent || (o.pendingManual && path === null)) {

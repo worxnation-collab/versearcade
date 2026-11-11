@@ -151,7 +151,7 @@ export function LeaderboardSection() {
               Create a free account to join the worldwide leaderboard and climb the ranks — your
               streak and XP sync across devices.
             </p>
-            <Button variant="gold" full onClick={() => navigate('/auth')}>
+            <Button variant="gold" full onClick={() => navigate('/auth?mode=signup')}>
               Sign in / Create account
             </Button>
           </div>

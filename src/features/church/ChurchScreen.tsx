@@ -60,7 +60,7 @@ export default function ChurchScreen() {
             Create a free account to play for your church. Your points pool with everyone else who
             goes there, and your church climbs the local board.
           </p>
-          <Button variant="gold" full onClick={() => navigate('/auth')}>
+          <Button variant="gold" full onClick={() => navigate('/auth?mode=signup')}>
             Sign in / Create account
           </Button>
         </div>
@@ -72,7 +72,7 @@ export default function ChurchScreen() {
     return (
       <Page>
         <div className="center" style={{ paddingTop: 80 }}>
-          <div className="floaty" style={{ fontSize: 48 }}>⛪</div>
+          <div className="floaty" style={{ display: 'grid', placeItems: 'center' }}><img src="/nav/church.png" alt="" width={62} height={62} style={{ display: 'block' }} /></div>
         </div>
       </Page>
     )
@@ -118,7 +118,7 @@ export default function ChurchScreen() {
 function Header() {
   return (
     <div className="center" style={{ marginBottom: 16 }}>
-      <div className="floaty" style={{ fontSize: 40 }}>⛪</div>
+      {/* No icon over the title: the card under it draws the church. */}
       <h1 style={{ fontSize: 26, marginTop: 2 }}>My Church</h1>
     </div>
   )

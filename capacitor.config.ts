@@ -7,19 +7,19 @@ const config: CapacitorConfig = {
   appId: 'com.versearcade.app',
   appName: 'Verse Arcade',
   webDir: 'dist',
-  backgroundColor: '#0b0720',
+  backgroundColor: '#0e0a0c',
   ios: {
     // Respect the notch / home indicator; we handle safe-area insets in CSS.
     contentInset: 'always',
-    backgroundColor: '#0b0720',
+    backgroundColor: '#0e0a0c',
   },
   android: {
-    backgroundColor: '#0b0720',
+    backgroundColor: '#0e0a0c',
   },
   plugins: {
     SplashScreen: {
       launchShowDuration: 900,
-      backgroundColor: '#0b0720',
+      backgroundColor: '#0e0a0c',
       showSpinner: false,
     },
     PushNotifications: {

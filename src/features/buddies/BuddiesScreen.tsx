@@ -70,7 +70,7 @@ export function BuddiesSection() {
       <div className="card" style={{ textAlign: 'center' }}>
         <div style={{ fontSize: 34 }}>🔐</div>
         <p style={{ margin: '8px 0 14px' }}>Buddies are tied to your account so your friends list sticks. Create a free one to add buddies.</p>
-        <Button variant="gold" full onClick={() => navigate('/auth')}>Create an account</Button>
+        <Button variant="gold" full onClick={() => navigate('/auth?mode=signup')}>Create an account</Button>
       </div>
     )
   }

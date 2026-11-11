@@ -168,7 +168,7 @@ export default function BattleHub() {
         <div className="card" style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 34 }}>🔐</div>
           <p style={{ margin: '8px 0 14px' }}>Battles are tied to your account so scores and ranks stick. Create a free one to play.</p>
-          <Button variant="gold" full onClick={() => navigate('/auth')}>Create an account</Button>
+          <Button variant="gold" full onClick={() => navigate('/auth?mode=signup')}>Create an account</Button>
         </div>
         {KEEP_HALL_VISIBLE && <div style={{ textAlign: 'left' }}>
           {/* The keep still works for a guest: CPU races (reachable from the

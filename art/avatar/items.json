@@ -8,7 +8,8 @@
     "belt",
     "hair",
     "head",
-    "held"
+    "held",
+    "pet"
   ],
   "items": [
     {
@@ -526,6 +527,90 @@
       "slot": "back",
       "tint": false,
       "prompt": "large shimmering golden wings spreading out from behind the shoulders"
+    },
+    {
+      "id": "pet_lamb",
+      "slot": "pet",
+      "tint": false,
+      "shared": true,
+      "prompt": "a small fluffy white lamb, standing on the floor to the LEFT of the character beside the left foot, small, the size of a companion animal, not touching the character"
+    },
+    {
+      "id": "pet_dove",
+      "slot": "pet",
+      "tint": false,
+      "shared": true,
+      "prompt": "exactly ONE white dove, standing on the floor in the empty space to the LEFT of the character beside the left foot, not touching the character. The character stays in exactly the same place and does not shift sideways"
+    },
+    {
+      "id": "pet_raven",
+      "slot": "pet",
+      "tint": false,
+      "shared": true,
+      "prompt": "a glossy black raven standing on the ground, standing on the floor to the LEFT of the character beside the left foot, small, the size of a companion animal, not touching the character"
+    },
+    {
+      "id": "pet_lion_cub",
+      "slot": "pet",
+      "tint": false,
+      "shared": true,
+      "prompt": "a small golden lion cub sitting, standing on the floor to the LEFT of the character beside the left foot, small, the size of a companion animal, not touching the character"
+    },
+    {
+      "id": "pet_donkey",
+      "slot": "pet",
+      "tint": false,
+      "shared": true,
+      "prompt": "ONE tiny baby donkey foal, no taller than the character's knee, standing on the floor in the empty space to the LEFT of the character beside the left foot, not touching the character. The character stays in exactly the same place and does not shift sideways"
+    },
+    {
+      "id": "pet_camel",
+      "slot": "pet",
+      "tint": false,
+      "shared": true,
+      "prompt": "ONE tiny baby camel calf, no taller than the character's knee, standing on the floor in the empty space to the LEFT of the character beside the left foot, not touching the character. The character stays in exactly the same place and does not shift sideways"
+    },
+    {
+      "id": "pet_eagle",
+      "slot": "pet",
+      "tint": false,
+      "shared": true,
+      "prompt": "a young golden eagle with wings half spread, standing on the ground, standing on the floor to the LEFT of the character beside the left foot, small, the size of a companion animal, not touching the character"
+    },
+    {
+      "id": "pet_fox",
+      "slot": "pet",
+      "tint": false,
+      "shared": true,
+      "prompt": "a small red fox sitting, standing on the floor to the LEFT of the character beside the left foot, small, the size of a companion animal, not touching the character"
+    },
+    {
+      "id": "pet_sheepdog",
+      "slot": "pet",
+      "tint": false,
+      "shared": true,
+      "prompt": "a small black-and-white sheepdog puppy sitting, standing on the floor to the LEFT of the character beside the left foot, small, the size of a companion animal, not touching the character"
+    },
+    {
+      "id": "pet_owl",
+      "slot": "pet",
+      "tint": false,
+      "shared": true,
+      "prompt": "a small brown owl standing on the ground, standing on the floor to the LEFT of the character beside the left foot, small, the size of a companion animal, not touching the character"
+    },
+    {
+      "id": "pet_fawn",
+      "slot": "pet",
+      "tint": false,
+      "shared": true,
+      "prompt": "a small spotted fawn lying down, standing on the floor to the LEFT of the character beside the left foot, small, the size of a companion animal, not touching the character"
+    },
+    {
+      "id": "pet_kitten",
+      "slot": "pet",
+      "tint": false,
+      "shared": true,
+      "prompt": "a small orange tabby kitten sitting, standing on the floor to the LEFT of the character beside the left foot, small, the size of a companion animal, not touching the character"
     }
   ]
 }

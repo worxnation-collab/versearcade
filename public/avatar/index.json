@@ -382,6 +382,78 @@
    "x": 119,
    "y": 403
   },
+  "pet_camel": {
+   "h": 137,
+   "w": 166,
+   "x": 59,
+   "y": 543
+  },
+  "pet_donkey": {
+   "h": 200,
+   "w": 197,
+   "x": 23,
+   "y": 472
+  },
+  "pet_dove": {
+   "h": 134,
+   "w": 211,
+   "x": 12,
+   "y": 540
+  },
+  "pet_eagle": {
+   "h": 183,
+   "w": 104,
+   "x": 13,
+   "y": 476
+  },
+  "pet_fawn": {
+   "h": 154,
+   "w": 238,
+   "x": 30,
+   "y": 534
+  },
+  "pet_fox": {
+   "h": 174,
+   "w": 144,
+   "x": 20,
+   "y": 500
+  },
+  "pet_kitten": {
+   "h": 153,
+   "w": 88,
+   "x": 29,
+   "y": 530
+  },
+  "pet_lamb": {
+   "h": 156,
+   "w": 112,
+   "x": 30,
+   "y": 498
+  },
+  "pet_lion_cub": {
+   "h": 188,
+   "w": 248,
+   "x": 14,
+   "y": 486
+  },
+  "pet_owl": {
+   "h": 106,
+   "w": 84,
+   "x": 36,
+   "y": 564
+  },
+  "pet_raven": {
+   "h": 118,
+   "w": 207,
+   "x": 10,
+   "y": 550
+  },
+  "pet_sheepdog": {
+   "h": 171,
+   "w": 182,
+   "x": 37,
+   "y": 505
+  },
   "shoes_armored": {
    "h": 463,
    "w": 222,
@@ -775,6 +847,54 @@
   "legs_trousers": {
    "slot": "legs",
    "tint": true
+  },
+  "pet_camel": {
+   "slot": "pet",
+   "tint": false
+  },
+  "pet_donkey": {
+   "slot": "pet",
+   "tint": false
+  },
+  "pet_dove": {
+   "slot": "pet",
+   "tint": false
+  },
+  "pet_eagle": {
+   "slot": "pet",
+   "tint": false
+  },
+  "pet_fawn": {
+   "slot": "pet",
+   "tint": false
+  },
+  "pet_fox": {
+   "slot": "pet",
+   "tint": false
+  },
+  "pet_kitten": {
+   "slot": "pet",
+   "tint": false
+  },
+  "pet_lamb": {
+   "slot": "pet",
+   "tint": false
+  },
+  "pet_lion_cub": {
+   "slot": "pet",
+   "tint": false
+  },
+  "pet_owl": {
+   "slot": "pet",
+   "tint": false
+  },
+  "pet_raven": {
+   "slot": "pet",
+   "tint": false
+  },
+  "pet_sheepdog": {
+   "slot": "pet",
+   "tint": false
   },
   "shoes_armored": {
    "slot": "shoes",
@@ -1251,6 +1371,78 @@
    "w": 123,
    "x": 119,
    "y": 404
+  },
+  "pet_camel": {
+   "h": 137,
+   "w": 166,
+   "x": 59,
+   "y": 543
+  },
+  "pet_donkey": {
+   "h": 200,
+   "w": 197,
+   "x": 23,
+   "y": 472
+  },
+  "pet_dove": {
+   "h": 134,
+   "w": 211,
+   "x": 12,
+   "y": 540
+  },
+  "pet_eagle": {
+   "h": 183,
+   "w": 104,
+   "x": 13,
+   "y": 476
+  },
+  "pet_fawn": {
+   "h": 154,
+   "w": 238,
+   "x": 30,
+   "y": 534
+  },
+  "pet_fox": {
+   "h": 174,
+   "w": 144,
+   "x": 20,
+   "y": 500
+  },
+  "pet_kitten": {
+   "h": 153,
+   "w": 88,
+   "x": 29,
+   "y": 530
+  },
+  "pet_lamb": {
+   "h": 156,
+   "w": 112,
+   "x": 30,
+   "y": 498
+  },
+  "pet_lion_cub": {
+   "h": 188,
+   "w": 248,
+   "x": 14,
+   "y": 486
+  },
+  "pet_owl": {
+   "h": 106,
+   "w": 84,
+   "x": 36,
+   "y": 564
+  },
+  "pet_raven": {
+   "h": 118,
+   "w": 207,
+   "x": 10,
+   "y": 550
+  },
+  "pet_sheepdog": {
+   "h": 171,
+   "w": 182,
+   "x": 37,
+   "y": 505
   },
   "shoes_armored": {
    "h": 458,

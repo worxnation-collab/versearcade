@@ -104,7 +104,7 @@ def prompt_for(it):
 
 
 def gen(only, figs, force):
-    jobs = [(f, it) for f in figs for it in items(only)
+    jobs = [(f, it) for f in figs for it in items(only) if not (it.get('shared') and f != 'masc')
             if force or not os.path.exists(os.path.join(RAW, f, it['id'] + '.png'))]
     print(f'{len(jobs)} renders to make', flush=True)
 
@@ -184,10 +184,12 @@ def extract(only, figs):
     report = []
     for f in figs:
         index.setdefault(f, {})
-        b, g = A(base(f)), A(base(f, True))
-        save_layer(b, clean(not_magenta(b), 50), f, 'body', index)
+        b0, g = A(base(f)), A(base(f, True))
+        save_layer(b0, clean(not_magenta(b0), 50), f, 'body', index)
         for it in items(only):
-            p = os.path.join(RAW, f, it['id'] + '.png')
+            # A shared item (a pet beside the figure) is rendered once, on masc.
+            p = os.path.join(RAW, 'masc' if it.get('shared') else f, it['id'] + '.png')
+            b = A(base('masc')) if it.get('shared') else A(base(f))
             if not os.path.exists(p):
                 continue
             e = A(Image.open(p).convert('RGB'))

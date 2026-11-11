@@ -135,16 +135,12 @@ const PACK: CardBgDef[] = [
   // the whale buyers get the cornerstone too, without a second rule. The server
   // says the same thing in 0095's set_card_background; keep the two in sync.
   //
-  // `/cards/patron_cornerstone.webp` is a Nano Banana painting of the bedrock
-  // seen CLOSE — pale limestone filling the whole frame, chisel marks, gold
-  // veins running through it — cut to the same 1040x520 as the rest of the
-  // shelf. It started as a wide dusk scene (the first stone of a building not
-  // yet risen) and was re-done as pure texture on purpose: at card size the
-  // scene read as a small grey box on a hill, and the stone itself is the
-  // point. `fx: 'veins'` is what makes it a wow rather than a wall — CardBg
-  // lights the gold from inside and sends a slow gleam along it. The palette
-  // is pale to match, so the gradient under a decoding image doesn't flash
-  // dark; the drawn `stone` scene is still the fallback if the image 404s.
+  // `/cards/patron_cornerstone.webp` is the cornerstone itself at dawn: a carved
+  // block of pale bedrock on a hillside, two old keys resting on it, the city
+  // faintly rising behind (Matthew 16:18). It was a close-up of veined marble
+  // with a glowing `fx: 'veins'` effect, and at card size that read as an
+  // empty card; the effect stays in CardBg for any future card that wants it.
+  // The drawn `stone` scene is still the fallback if the image 404s.
   {
     key: 'patron_cornerstone',
     name: 'The Cornerstone',
@@ -153,9 +149,8 @@ const PACK: CardBgDef[] = [
     emoji: '🪨',
     unlockHint: 'Comes with the Founding Patron',
     scene: 'stone',
-    fx: 'veins',
     ink: 'gold',
-    palette: { sky: ['#efe6d3', '#d9ccb0'], land: '#cbbc9c', glow: '#ffd76b', accent: '#fff2cf' },
+    palette: { sky: ['#6b4a22', '#1f1408'], land: '#2c1e0c', glow: '#ffd76b', accent: '#fff2cf' },
   },
   {
     key: 'angels_ladder',

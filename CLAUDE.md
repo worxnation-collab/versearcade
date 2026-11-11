@@ -487,6 +487,18 @@ GEMINI_API_KEY=... node scripts/gen-art.mjs art/keep-halls.json [--only <id>]
 The key lives in `.env.local` (gitignored) and comes only from the environment —
 never write it into a tracked file.
 
+**One deliberate exception: the 46 player-card backgrounds are Flux (fal.ai),
+not Nano Banana** (2026-11-11, the owner's call). The Oct 21 Nano Banana batch
+drifted into clip-art objects (a rocket, a calendar, a bullseye), painted gold
+frames into images the card already frames, and washed out the text; the set
+was regenerated as one hand with `fal-ai/flux-pro/v1.1-ultra`. Prompts and the
+shared style rule are in `art/card-backgrounds.flux.json`: a SCENE never an
+icon, no frame, left half and lower third calm for the name and stats. The
+fal.ai key is a network secret on the environment (proxy-injected for
+`queue.fal.run`), never a file. Check a new card ON the card — the hero crops
+the centre of a 2:1 image to a portrait. The Cornerstone is now a dawn scene
+and no longer wears `fx: 'veins'`; the effect stays in `CardBg`.
+
 **A skin render must be a FULL-LENGTH FIGURE, head to feet.** One PNG serves two
 frames: avatar chips crop to a portrait (`xMidYMin slice`), but the little
 worlds — the road, the churchyard crowd, `ProfileHero` — render the *same file*

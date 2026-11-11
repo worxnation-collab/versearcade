@@ -417,73 +417,67 @@
       "id": "held_crook",
       "slot": "held",
       "tint": false,
-      "prompt": "a wooden shepherd's crook held upright in the right hand"
+      "prompt": "a wooden shepherd's crook gripped in the right hand where it already hangs, its foot resting on the ground beside the right foot and its hook rising above the shoulder"
     },
     {
       "id": "held_sword_spirit",
       "slot": "held",
       "tint": false,
-      "prompt": "the Sword of the Spirit: a gleaming silver sword with a gold hilt, held pointing DOWN at the right side"
+      "prompt": "the Sword of the Spirit: a gleaming silver sword with a gold hilt, gripped in the right hand where it already hangs, blade pointing straight down beside the right leg"
     },
     {
       "id": "held_shield_faith",
       "slot": "held",
       "tint": false,
-      "prompt": "the Shield of Faith: a round gold-and-white shield with a cross, held on the left arm"
+      "prompt": "the Shield of Faith: a round gold-and-white shield with a cross, gripped in the left hand where it already hangs, resting against the left leg"
     },
     {
       "id": "held_lantern",
       "slot": "held",
       "tint": false,
-      "prompt": "a glowing brass lantern held in the right hand. The magenta background stays flat magenta"
+      "prompt": "a glowing brass lantern hanging from the right hand where it already hangs. The magenta background stays flat magenta"
     },
     {
       "id": "held_scroll",
       "slot": "held",
       "tint": false,
-      "prompt": "a rolled parchment scroll held in the right hand"
+      "prompt": "a rolled parchment scroll gripped in the right hand where it already hangs"
     },
     {
       "id": "held_harp",
       "slot": "held",
       "tint": false,
-      "prompt": "a small wooden harp held in the left arm"
+      "prompt": "a small wooden lyre gripped by its frame in the left hand where it already hangs beside the left hip"
     },
     {
       "id": "held_staff",
       "slot": "held",
       "tint": false,
-      "prompt": "a tall plain wooden walking staff held upright in the right hand"
+      "prompt": "a tall plain wooden walking staff gripped in the right hand where it already hangs, its foot on the ground beside the right foot, rising above the head"
     },
     {
       "id": "held_sling",
       "slot": "held",
       "tint": false,
-      "prompt": "a leather sling hanging from the right hand, like young David"
-    },
-    {
-      "id": "held_oil_lamp",
-      "slot": "held",
-      "tint": false,
-      "prompt": "a small clay oil lamp with a flame, held in the right hand"
+      "prompt": "a leather sling dangling from the right hand where it already hangs"
     },
     {
       "id": "held_dove",
       "slot": "held",
       "tint": false,
-      "prompt": "a large white dove clearly visible perched on the right hand, which is raised slightly in front of the body"
+      "prompt": "a white dove perched on the back of the right hand where it already hangs at the hip"
     },
     {
       "id": "held_torch",
       "slot": "held",
       "tint": false,
-      "prompt": "a burning torch held upright in the right hand"
+      "prompt": "a burning torch gripped in the right hand where it already hangs, angled slightly outward"
     },
     {
       "id": "held_book",
       "slot": "held",
       "tint": false,
-      "prompt": "a thick leather-bound book held in the right hand"
+      "prompt": "a thick leather-bound book gripped in the right hand where it already hangs"
     },
     {
       "id": "back_cape",

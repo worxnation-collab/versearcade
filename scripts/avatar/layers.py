@@ -88,8 +88,14 @@ def base(fig, green=False):
     return Image.open(os.path.join(ART, 'bases', f"{fig}{'_green' if green else ''}.png")).convert('RGB')
 
 
+ARMS = (" THE ARMS DO NOT MOVE: both arms and hands stay exactly where they are in the reference, "
+        "hanging at the sides; do not draw any new arm or hand.")
+
+
 def prompt_for(it):
     p = KEEP + "Add ONLY " + it['prompt'] + "."
+    if it['slot'] == 'held':
+        p += ARMS
     if it['slot'] in GREEN_SLOTS:
         p += GREEN
     if it.get('tint'):
@@ -203,7 +209,17 @@ def extract(only, figs):
                     # A glowing halo relights the whole body; a hat lives above
                     # the shoulders, so nothing below them is the hat.
                     m[SHOULDER_LINE:] = False
-            px = save_layer(e, clean(m), f, it['id'], index, it['slot'] in GREEN_SLOTS)
+            m = clean(m)
+            # A new arm: skin-coloured pixels in the layer where the base had
+            # only backdrop. That arm would be drawn beside the body's own one.
+            r_, g_, b_ = e[..., 0], e[..., 1], e[..., 2]
+            # Skin is bright and warm with real blue in it; wood is darker and gold
+            # and brass have almost no blue, so neither reads as an arm.
+            skin = (r_ > 200) & (g_ > 130) & (g_ < 205) & (b_ > 90) & (b_ < 175) & (r_ - g_ > 25) & (r_ - g_ < 95)
+            extra = int((m & skin & ~not_magenta(b)).sum())
+            if it['slot'] == 'held' and extra > 400:
+                report.append(f'{f}/{it["id"]}: draws a second arm ({extra}px), re-roll')
+            px = save_layer(e, m, f, it['id'], index, it['slot'] in GREEN_SLOTS)
             if px < 1500:
                 report.append(f'{f}/{it["id"]}: only {px}px changed, re-roll')
     index['items'] = {i: {'slot': m['slot'], 'tint': m.get('tint', False)} for i, m in meta.items()}

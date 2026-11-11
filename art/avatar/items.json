@@ -907,6 +907,144 @@
       "slot": "back",
       "tint": false,
       "prompt": "Elijah's mantle: a long heavy charcoal-grey woven prophet's cloak hanging from the shoulders down behind the body to the ankles, its inner lining glowing fiery orange and gold like embers, the hem edged with faint flickering flame"
+    },
+    {
+      "id": "head_fisher_cap",
+      "slot": "head",
+      "tint": true,
+      "prompt": "a soft knitted fisherman's watch cap folded up at the brim"
+    },
+    {
+      "id": "legs_rolled_trousers",
+      "slot": "legs",
+      "tint": true,
+      "prompt": "loose canvas trousers rolled up to mid-calf"
+    },
+    {
+      "id": "back_fish_basket",
+      "slot": "back",
+      "tint": false,
+      "prompt": "a woven wicker fishing creel basket on a leather strap, slung on the back with two silver fish tails poking out"
+    },
+    {
+      "id": "head_desert_scarf",
+      "slot": "head",
+      "tint": false,
+      "prompt": "a sand-coloured desert headcloth held by a dark cord band around the crown, the cloth starting at the hairline and draping down behind the ears to the shoulders; the whole face, forehead and chin stay completely uncovered and unchanged"
+    },
+    {
+      "id": "top_nomad_robe",
+      "slot": "top",
+      "tint": false,
+      "prompt": "a long ankle-length cream wool robe with long sleeves and a round neck, woven with red and blue vertical stripes"
+    },
+    {
+      "id": "belt_nomad_sash",
+      "slot": "belt",
+      "tint": false,
+      "prompt": "a wide woven sash in rust red and gold tied at the waist with fringed ends"
+    },
+    {
+      "id": "shoes_desert_boots",
+      "slot": "shoes",
+      "tint": false,
+      "prompt": "ankle-high dark brown leather desert boots covering both bare feet completely, laced at the front"
+    },
+    {
+      "id": "back_waterskin",
+      "slot": "back",
+      "tint": false,
+      "prompt": "a leather waterskin on a cord slung across the back"
+    },
+    {
+      "id": "head_work_bandana",
+      "slot": "head",
+      "tint": true,
+      "prompt": "a cotton bandana tied over the head like a builder"
+    },
+    {
+      "id": "top_work_apron",
+      "slot": "top",
+      "tint": false,
+      "prompt": "a heavy brown leather work apron with pockets over a plain shirt"
+    },
+    {
+      "id": "belt_tool_belt",
+      "slot": "belt",
+      "tint": false,
+      "prompt": "a leather tool belt with a small chisel and measuring line in its loops"
+    },
+    {
+      "id": "held_hammer",
+      "slot": "held",
+      "tint": false,
+      "prompt": "a wooden mallet hammer gripped in the right hand where it already hangs, head pointing down beside the right leg"
+    },
+    {
+      "id": "back_toolbox",
+      "slot": "back",
+      "tint": false,
+      "prompt": "a wooden carpenter's tool box carried on the back by a rope strap"
+    },
+    {
+      "id": "head_cowboy_hat",
+      "slot": "head",
+      "tint": false,
+      "prompt": "a straw cowboy hat"
+    },
+    {
+      "id": "head_pompom_beanie",
+      "slot": "head",
+      "tint": true,
+      "prompt": "a cosy knitted winter beanie with a big pom-pom on top"
+    },
+    {
+      "id": "top_puffer_jacket",
+      "slot": "top",
+      "tint": true,
+      "prompt": "a puffy quilted puffer jacket, zipped up"
+    },
+    {
+      "id": "top_raincoat",
+      "slot": "top",
+      "tint": true,
+      "prompt": "a knee-length hooded raincoat with the hood DOWN behind the neck, sleeves ending at the wrists so both hands stay bare and unchanged"
+    },
+    {
+      "id": "shoes_rain_boots",
+      "slot": "shoes",
+      "tint": true,
+      "prompt": "shiny rubber rain boots up to mid-calf"
+    },
+    {
+      "id": "held_umbrella",
+      "slot": "held",
+      "tint": false,
+      "prompt": "a closed dark navy umbrella with a curved wooden handle gripped in the right hand where it already hangs, tip resting on the ground"
+    },
+    {
+      "id": "held_balloon",
+      "slot": "held",
+      "tint": false,
+      "prompt": "a single round red balloon on a string held in the left hand where it already hangs, the balloon floating up beside the left shoulder"
+    },
+    {
+      "id": "back_guitar",
+      "slot": "back",
+      "tint": false,
+      "prompt": "an acoustic guitar carried BEHIND the body, the body of the guitar peeking out to the side behind the hip and the neck rising behind the shoulder; nothing of the guitar covers the chest or belly, only a thin strap crosses the chest"
+    },
+    {
+      "id": "back_skateboard",
+      "slot": "back",
+      "tint": false,
+      "prompt": "a wooden skateboard strapped flat against the back"
+    },
+    {
+      "id": "head_bandana",
+      "slot": "head",
+      "tint": true,
+      "prompt": "a bandana tied around the forehead with the knot at the side"
     }
   ]
 }

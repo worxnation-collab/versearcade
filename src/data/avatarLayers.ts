@@ -26,6 +26,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 44,
    "y": 218
   },
+  "back_elijah_mantle": {
+   "h": 480,
+   "w": 266,
+   "x": 47,
+   "y": 192
+  },
   "back_explorer_pack": {
    "h": 227,
    "w": 176,
@@ -880,6 +886,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 64,
    "y": 218
   },
+  "back_elijah_mantle": {
+   "h": 480,
+   "w": 226,
+   "x": 67,
+   "y": 192
+  },
   "back_explorer_pack": {
    "h": 227,
    "w": 159,
@@ -1662,6 +1674,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 18,
    "y": 218
   },
+  "back_elijah_mantle": {
+   "h": 480,
+   "w": 316,
+   "x": 22,
+   "y": 192
+  },
   "back_explorer_pack": {
    "h": 227,
    "w": 209,
@@ -2443,6 +2461,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 229,
    "x": 65,
    "y": 207
+  },
+  "back_elijah_mantle": {
+   "h": 478,
+   "w": 292,
+   "x": 34,
+   "y": 192
   },
   "back_explorer_pack": {
    "h": 261,
@@ -3298,6 +3322,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 82,
    "y": 207
   },
+  "back_elijah_mantle": {
+   "h": 478,
+   "w": 249,
+   "x": 56,
+   "y": 192
+  },
   "back_explorer_pack": {
    "h": 261,
    "w": 185,
@@ -4080,6 +4110,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 42,
    "y": 207
   },
+  "back_elijah_mantle": {
+   "h": 478,
+   "w": 349,
+   "x": 6,
+   "y": 192
+  },
   "back_explorer_pack": {
    "h": 261,
    "w": 258,
@@ -4860,6 +4896,11 @@ export const LAYER_ITEMS: Record<string, LayerMeta> = {
   "slot": "back",
   "starter": false,
   "tint": true
+ },
+ "back_elijah_mantle": {
+  "slot": "back",
+  "starter": false,
+  "tint": false
  },
  "back_explorer_pack": {
   "slot": "back",

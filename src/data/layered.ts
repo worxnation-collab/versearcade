@@ -70,6 +70,7 @@ const NAME_OVERRIDES: Record<string, string> = {
   shoes_glow_sneakers: 'Glow Sneakers',
   held_bread_basket: 'Loaves and Fishes',
   held_fishing_net: 'Fishing Pole',
+  back_elijah_mantle: 'Elijah’s Mantle',
   head_flame_crown: 'Crown of Flame',
 }
 
@@ -132,7 +133,7 @@ export const LAYER_REQS: Record<string, LayerReq> = {
   top_fisherman_sweater: L(6), top_varsity: L(11), top_many_colors: P(60),
   shoes_glow_sneakers: P(100), shoes_winged: S(30),
   held_fishing_net: L(5), held_trumpet: S(7), held_bread_basket: P(30), held_star_staff: L(45),
-  back_scroll_case: V(30), back_lantern_pack: S(14),
+  back_scroll_case: V(30), back_lantern_pack: S(14), back_elijah_mantle: S(40),
 }
 
 /** Named sets. A set is a NAME and nothing else: it grants nothing, draws no

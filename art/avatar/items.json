@@ -901,6 +901,12 @@
       "slot": "back",
       "tint": false,
       "prompt": "a wooden backpack frame on the back with a large glowing brass lantern hanging above the right shoulder"
+    },
+    {
+      "id": "back_elijah_mantle",
+      "slot": "back",
+      "tint": false,
+      "prompt": "Elijah's mantle: a long heavy charcoal-grey woven prophet's cloak hanging from the shoulders down behind the body to the ankles, its inner lining glowing fiery orange and gold like embers, the hem edged with faint flickering flame"
     }
   ]
 }

@@ -171,7 +171,8 @@ function Gate({
   demo?: boolean
   onStart: () => void
 }) {
-  const art = hero ? GENERATED_ART[hero] : undefined
+  // A GENERATED_ART id, or a root-relative path (an arcade cover).
+  const art = hero ? (GENERATED_ART[hero] ?? (hero.startsWith('/') ? hero : undefined)) : undefined
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: 20, overflow: 'hidden' }}>
       {art && (

@@ -10,21 +10,23 @@ import os, subprocess, sys
 
 D = sys.argv[1]
 FONT = '/usr/share/fonts/opentype/inter/Inter-ExtraBold.otf'
+# (shot, start, end, caption[, hold]) — timed to the 2026-11-11 voiceover.
+# `hold` freezes the segment's last frame for that many extra seconds, so a
+# shot can wait for the line being spoken over it.
 SEGS = [
     ('verse', 0.0, 2.0, 'One verse a day.\nThe same one for everybody.'),
-    ('verse', 2.2, 5.5, 'Read it once…'),
+    ('verse', 2.0, 5.6, 'Read it once…', 1.3),
     ('verse', 6.0, 10.0, '…then five quick questions.'),
-    ('verse', 10.5, 16.0, 'Get one wrong?\nIt tells you why.'),
-    ('verse', 18.2, 20.0, 'Wrong answers teach.'),
-    ('verse', 26.0, 30.5, 'Nobody ranked against friends.\nYou race yourself.'),
-    ('verse', 30.5, 34.6, 'You learn something\neither way.'),
-    ('trivia', 0.5, 2.5, 'A trivia round on one book\nof the Bible, every day.'),
-    ('trivia', 3.5, 5.6, 'A trivia round on one book\nof the Bible, every day.'),
-    ('arcade', 0.0, 2.4, 'A little arcade.'),
-    ('arcade', 3.6, 11.0, 'Manna Rush: gather today,\nrest on the seventh.'),
-    ('character', 0.4, 14.8, 'Make your own character.'),
-    ('church', 0.0, 4.8, "Your church can put the sermon's\nverse in front of everyone all week."),
-    ('end', 0.0, 5.0, None),
+    ('verse', 17.0, 21.0, 'Who said it? Who to?\nWhat came before?'),
+    ('verse', 10.0, 16.6, 'Get one wrong?\nIt tells you why.'),
+    ('verse', 16.6, 17.3, 'Wrong answers teach.', 0.4),
+    ('verse', 26.6, 34.6, 'Nobody ranked against friends.\nYou race yourself.', 1.0),
+    ('trivia', 0.5, 5.6, 'A trivia round on one book\nof the Bible, every day.'),
+    ('arcade', 0.0, 2.4, 'A little arcade…'),
+    ('arcade', 3.6, 11.6, 'Manna Rush: gather six days,\nrest on the seventh.'),
+    ('character', 0.4, 14.8, 'Build your own character.'),
+    ('church', 0.0, 4.8, "Your church can share the\nsermon's verse all week."),
+    ('end', 0.0, 8.2, None),
 ]
 
 
@@ -37,9 +39,10 @@ def run(*a):
 
 
 parts, t, sheet = [], 0.0, []
-for i, (shot, a, b, cap) in enumerate(SEGS):
+for i, (shot, a, b, cap, *rest) in enumerate(SEGS):
+    hold = rest[0] if rest else 0
     out = os.path.join(D, f'seg{i:02d}.mp4')
-    vf = 'fps=30,scale=1080:1920,format=yuv420p'
+    vf = 'fps=30,scale=1080:1920,format=yuv420p' + (f',tpad=stop_mode=clone:stop_duration={hold}' if hold else '')
     if cap:
         lines = cap.split('\n')
         h = 70 + 64 * len(lines)
@@ -55,12 +58,21 @@ for i, (shot, a, b, cap) in enumerate(SEGS):
         run('ffmpeg', '-y', '-ss', str(a), '-to', str(b), '-i', os.path.join(D, shot + '.mp4'), '-vf', vf,
             '-c:v', 'libx264', '-crf', '18', '-preset', 'fast', '-r', '30', out)
     parts.append(out)
-    sheet.append(f'{t:5.1f}s – {t + b - a:5.1f}s  {shot:<9} {(cap or "END CARD: versearcade.org").replace(chr(10), " ")}')
-    t += b - a
+    sheet.append(f'{t:5.1f}s – {t + b - a + hold:5.1f}s  {shot:<9} {(cap or "END CARD: versearcade.org").replace(chr(10), " ")}')
+    t += b - a + hold
 
 lst = os.path.join(D, 'parts.txt')
 open(lst, 'w').write(''.join(f"file '{p}'\n" for p in parts))
 final = os.path.join(D, 'verse-arcade-promo.mp4')
 run('ffmpeg', '-y', '-f', 'concat', '-safe', '0', '-i', lst, '-c', 'copy', '-movflags', '+faststart', final)
+# Voiceover: `python3 cut.py <dir> <voice> [lead]` lays the recording under the
+# cut, dropping `lead` seconds of silence off its front, cleaned and levelled.
+if len(sys.argv) > 2:
+    lead = sys.argv[3] if len(sys.argv) > 3 else '0'
+    voiced = os.path.join(D, 'verse-arcade-promo-voiced.mp4')
+    run('ffmpeg', '-y', '-i', final, '-ss', lead, '-i', sys.argv[2], '-map', '0:v', '-map', '1:a',
+        '-af', 'highpass=f=80,afftdn=nf=-25,loudnorm=I=-14:TP=-1.5:LRA=11,apad',
+        '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-shortest', '-movflags', '+faststart', voiced)
+    print('voiced ->', voiced)
 open(os.path.join(D, 'timing.txt'), 'w').write('\n'.join(sheet) + f'\n\nTotal {t:.1f}s\n')
 print('\n'.join(sheet)); print(f'total {t:.1f}s ->', final)

@@ -69,6 +69,8 @@ const NAME_OVERRIDES: Record<string, string> = {
   shoes_winged: 'Winged Sandals',
   shoes_glow_sneakers: 'Glow Sneakers',
   held_bread_basket: 'Loaves and Fishes',
+  held_fishing_net: 'Fishing Pole',
+  head_flame_crown: 'Crown of Flame',
 }
 
 export const layerName = (id: string): string =>

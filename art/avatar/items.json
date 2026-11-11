@@ -786,7 +786,7 @@
       "id": "head_star_circlet",
       "slot": "head",
       "tint": false,
-      "prompt": "a thin silver circlet with a single small glowing star on the forehead"
+      "prompt": "a shining silver circlet band around the forehead with a large bright glowing golden star at the centre of the forehead"
     },
     {
       "id": "top_light_robe",
@@ -840,7 +840,7 @@
       "id": "head_flame_crown",
       "slot": "head",
       "tint": false,
-      "prompt": "a crown made of gentle golden flames resting on the head"
+      "prompt": "a crown whose points are shaped like gentle golden flames, glowing softly, resting on the head"
     },
     {
       "id": "head_olive_wreath",
@@ -858,7 +858,7 @@
       "id": "shoes_winged",
       "slot": "shoes",
       "tint": false,
-      "prompt": "golden sandals with tiny white wings at the heels"
+      "prompt": "golden sandals on both feet with a small pair of white feathered wings sticking out from each heel"
     },
     {
       "id": "shoes_glow_sneakers",
@@ -870,13 +870,13 @@
       "id": "held_trumpet",
       "slot": "held",
       "tint": false,
-      "prompt": "a golden ram's horn trumpet gripped in the right hand where it already hangs, bell pointing down and outward"
+      "prompt": "a long curved golden ram's horn trumpet (a shofar) gripped in the right hand where it already hangs, the horn curving down and outward beside the right leg"
     },
     {
       "id": "held_fishing_net",
       "slot": "held",
       "tint": false,
-      "prompt": "a bundled fishing net with cork floats held in the left hand where it already hangs beside the left hip"
+      "prompt": "a simple wooden fishing pole held upright in the left hand where it already hangs, the line and hook dangling beside it"
     },
     {
       "id": "held_bread_basket",
@@ -894,7 +894,7 @@
       "id": "back_rainbow_cape",
       "slot": "back",
       "tint": false,
-      "prompt": "a flowing cape in the colours of the rainbow hanging from the shoulders down behind the body"
+      "prompt": "a flowing cape made of bold rainbow stripes of red, orange, yellow, green, blue and purple, hanging from the shoulders down behind the body to the calves"
     },
     {
       "id": "back_scroll_case",
@@ -906,7 +906,7 @@
       "id": "back_lantern_pack",
       "slot": "back",
       "tint": false,
-      "prompt": "a small wooden pack frame on the back with a glowing lantern hanging from it"
+      "prompt": "a wooden backpack frame on the back with a large glowing brass lantern hanging above the right shoulder"
     }
   ]
 }

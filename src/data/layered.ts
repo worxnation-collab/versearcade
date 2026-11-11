@@ -71,6 +71,9 @@ const NAME_OVERRIDES: Record<string, string> = {
   held_bread_basket: 'Loaves and Fishes',
   held_fishing_net: 'Fishing Pole',
   back_elijah_mantle: 'Elijah’s Mantle',
+  head_pompom_beanie: 'Pom-pom Beanie',
+  back_fish_basket: 'Fish Basket',
+  held_hammer: 'Mallet',
   head_flame_crown: 'Crown of Flame',
 }
 
@@ -134,6 +137,20 @@ export const LAYER_REQS: Record<string, LayerReq> = {
   shoes_glow_sneakers: P(100), shoes_winged: S(30),
   held_fishing_net: L(5), held_trumpet: S(7), held_bread_basket: P(30), held_star_staff: L(45),
   back_scroll_case: V(30), back_lantern_pack: S(14), back_elijah_mantle: S(40),
+  // ── The second drop ──
+  // Fishers of Galilee (Matthew 4:19): daily verses played, joined by the
+  // sweater and the pole already on the shelf.
+  head_fisher_cap: P(10), legs_rolled_trousers: P(20), back_fish_basket: P(40),
+  // Desert Nomad: the middle levels, where the ladder had a gap.
+  head_desert_scarf: L(13), shoes_desert_boots: L(14), belt_nomad_sash: L(15),
+  back_waterskin: L(16), top_nomad_robe: L(17),
+  // The Builder (Nehemiah 4:6): a streak, because a wall goes up a day at a time.
+  head_work_bandana: S(5), belt_tool_belt: S(9), held_hammer: S(12),
+  top_work_apron: S(18), back_toolbox: S(25),
+  // Everyday.
+  head_bandana: L(3), head_pompom_beanie: L(4), head_cowboy_hat: L(8),
+  top_raincoat: L(5), top_puffer_jacket: L(10), shoes_rain_boots: L(5),
+  held_umbrella: L(6), held_balloon: P(5), back_guitar: L(12), back_skateboard: W(8),
 }
 
 /** Named sets. A set is a NAME and nothing else: it grants nothing, draws no
@@ -142,6 +159,9 @@ export const LAYER_REQS: Record<string, LayerReq> = {
 export const LAYER_SETS: Record<string, { name: string; ids: string[] }> = {
   explorer: { name: 'Explorer', ids: ['head_explorer_hat', 'top_explorer_jacket', 'legs_explorer_shorts', 'shoes_explorer_boots', 'back_explorer_pack', 'belt_explorer'] },
   lion: { name: 'Lion of Judah', ids: ['head_lion_helm', 'top_lion_armor', 'legs_lion_greaves', 'held_lion_shield', 'back_lion_cape'] },
+  galilee: { name: 'Fishers of Galilee', ids: ['head_fisher_cap', 'top_fisherman_sweater', 'legs_rolled_trousers', 'held_fishing_net', 'back_fish_basket'] },
+  nomad: { name: 'Desert Nomad', ids: ['head_desert_scarf', 'top_nomad_robe', 'belt_nomad_sash', 'shoes_desert_boots', 'back_waterskin'] },
+  builder: { name: 'The Builder', ids: ['head_work_bandana', 'top_work_apron', 'belt_tool_belt', 'held_hammer', 'back_toolbox'] },
   starlight: { name: 'Starlight', ids: ['head_star_circlet', 'top_light_robe', 'legs_starry', 'belt_star_sash', 'back_star_wings'] },
 }
 export const layerSetName = (id: string): string | undefined =>

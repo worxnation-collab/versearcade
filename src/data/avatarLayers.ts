@@ -38,11 +38,23 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 78,
    "y": 176
   },
+  "back_fish_basket": {
+   "h": 259,
+   "w": 130,
+   "x": 130,
+   "y": 216
+  },
   "back_golden_wings": {
    "h": 265,
    "w": 333,
    "x": 14,
    "y": 37
+  },
+  "back_guitar": {
+   "h": 308,
+   "w": 182,
+   "x": 52,
+   "y": 170
   },
   "back_lantern_pack": {
    "h": 335,
@@ -80,11 +92,29 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 86,
    "y": 178
   },
+  "back_skateboard": {
+   "h": 216,
+   "w": 155,
+   "x": 90,
+   "y": 141
+  },
   "back_star_wings": {
    "h": 235,
    "w": 321,
    "x": 21,
    "y": 46
+  },
+  "back_toolbox": {
+   "h": 194,
+   "w": 179,
+   "x": 87,
+   "y": 182
+  },
+  "back_waterskin": {
+   "h": 225,
+   "w": 40,
+   "x": 101,
+   "y": 220
   },
   "back_wings": {
    "h": 300,
@@ -97,6 +127,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 132,
    "x": 107,
    "y": 355
+  },
+  "belt_nomad_sash": {
+   "h": 137,
+   "w": 132,
+   "x": 111,
+   "y": 314
   },
   "belt_rope": {
    "h": 154,
@@ -115,6 +151,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 115,
    "x": 123,
    "y": 322
+  },
+  "belt_tool_belt": {
+   "h": 90,
+   "w": 131,
+   "x": 108,
+   "y": 347
   },
   "belt_truth": {
    "h": 41,
@@ -254,6 +296,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 125,
    "y": 90
   },
+  "head_bandana": {
+   "h": 133,
+   "w": 98,
+   "x": 136,
+   "y": 85
+  },
   "head_beanie": {
    "h": 97,
    "w": 98,
@@ -272,6 +320,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 136,
    "y": 48
   },
+  "head_cowboy_hat": {
+   "h": 114,
+   "w": 176,
+   "x": 92,
+   "y": 65
+  },
   "head_crown": {
    "h": 81,
    "w": 95,
@@ -283,6 +337,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 151,
    "x": 105,
    "y": 49
+  },
+  "head_desert_scarf": {
+   "h": 156,
+   "w": 167,
+   "x": 97,
+   "y": 81
   },
   "head_dragon_helm": {
    "h": 164,
@@ -301,6 +361,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 185,
    "x": 94,
    "y": 17
+  },
+  "head_fisher_cap": {
+   "h": 130,
+   "w": 104,
+   "x": 129,
+   "y": 67
   },
   "head_flame_crown": {
    "h": 91,
@@ -362,6 +428,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 104,
    "y": 83
   },
+  "head_pompom_beanie": {
+   "h": 132,
+   "w": 102,
+   "x": 130,
+   "y": 43
+  },
   "head_star_circlet": {
    "h": 46,
    "w": 79,
@@ -386,11 +458,23 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 73,
    "y": 96
   },
+  "head_work_bandana": {
+   "h": 154,
+   "w": 134,
+   "x": 113,
+   "y": 83
+  },
   "head_wrap": {
    "h": 160,
    "w": 122,
    "x": 118,
    "y": 71
+  },
+  "held_balloon": {
+   "h": 635,
+   "w": 181,
+   "x": 96,
+   "y": 42
   },
   "held_book": {
    "h": 127,
@@ -421,6 +505,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 58,
    "x": 57,
    "y": 33
+  },
+  "held_hammer": {
+   "h": 213,
+   "w": 57,
+   "x": 75,
+   "y": 408
   },
   "held_harp": {
    "h": 234,
@@ -488,6 +578,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 62,
    "y": 417
   },
+  "held_umbrella": {
+   "h": 266,
+   "w": 68,
+   "x": 65,
+   "y": 390
+  },
   "legs_baggy": {
    "h": 263,
    "w": 135,
@@ -541,6 +637,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 174,
    "x": 95,
    "y": 374
+  },
+  "legs_rolled_trousers": {
+   "h": 303,
+   "w": 132,
+   "x": 114,
+   "y": 317
   },
   "legs_shorts": {
    "h": 227,
@@ -650,6 +752,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 104,
    "y": 623
   },
+  "shoes_desert_boots": {
+   "h": 98,
+   "w": 157,
+   "x": 102,
+   "y": 572
+  },
   "shoes_explorer_boots": {
    "h": 105,
    "w": 157,
@@ -679,6 +787,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 142,
    "x": 109,
    "y": 623
+  },
+  "shoes_rain_boots": {
+   "h": 133,
+   "w": 156,
+   "x": 102,
+   "y": 540
   },
   "shoes_sandals": {
    "h": 40,
@@ -794,6 +908,24 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 69,
    "y": 198
   },
+  "top_nomad_robe": {
+   "h": 370,
+   "w": 209,
+   "x": 75,
+   "y": 200
+  },
+  "top_puffer_jacket": {
+   "h": 227,
+   "w": 222,
+   "x": 69,
+   "y": 199
+  },
+  "top_raincoat": {
+   "h": 320,
+   "w": 204,
+   "x": 78,
+   "y": 199
+  },
   "top_robe_long": {
    "h": 371,
    "w": 220,
@@ -865,6 +997,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 194,
    "x": 83,
    "y": 213
+  },
+  "top_work_apron": {
+   "h": 460,
+   "w": 212,
+   "x": 73,
+   "y": 213
   }
  },
  "fem_slim": {
@@ -898,11 +1036,23 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 94,
    "y": 176
   },
+  "back_fish_basket": {
+   "h": 259,
+   "w": 112,
+   "x": 136,
+   "y": 216
+  },
   "back_golden_wings": {
    "h": 265,
    "w": 333,
    "x": 14,
    "y": 37
+  },
+  "back_guitar": {
+   "h": 308,
+   "w": 156,
+   "x": 71,
+   "y": 170
   },
   "back_lantern_pack": {
    "h": 335,
@@ -940,11 +1090,29 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 86,
    "y": 178
   },
+  "back_skateboard": {
+   "h": 216,
+   "w": 145,
+   "x": 90,
+   "y": 141
+  },
   "back_star_wings": {
    "h": 235,
    "w": 321,
    "x": 21,
    "y": 46
+  },
+  "back_toolbox": {
+   "h": 194,
+   "w": 173,
+   "x": 93,
+   "y": 182
+  },
+  "back_waterskin": {
+   "h": 225,
+   "w": 33,
+   "x": 113,
+   "y": 220
   },
   "back_wings": {
    "h": 298,
@@ -957,6 +1125,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 111,
    "x": 119,
    "y": 357
+  },
+  "belt_nomad_sash": {
+   "h": 137,
+   "w": 111,
+   "x": 122,
+   "y": 314
   },
   "belt_rope": {
    "h": 152,
@@ -975,6 +1149,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 97,
    "x": 132,
    "y": 324
+  },
+  "belt_tool_belt": {
+   "h": 90,
+   "w": 111,
+   "x": 119,
+   "y": 347
   },
   "belt_truth": {
    "h": 39,
@@ -1114,6 +1294,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 125,
    "y": 90
   },
+  "head_bandana": {
+   "h": 133,
+   "w": 97,
+   "x": 136,
+   "y": 85
+  },
   "head_beanie": {
    "h": 97,
    "w": 98,
@@ -1132,6 +1318,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 136,
    "y": 48
   },
+  "head_cowboy_hat": {
+   "h": 114,
+   "w": 176,
+   "x": 92,
+   "y": 65
+  },
   "head_crown": {
    "h": 81,
    "w": 95,
@@ -1143,6 +1335,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 151,
    "x": 105,
    "y": 49
+  },
+  "head_desert_scarf": {
+   "h": 155,
+   "w": 147,
+   "x": 107,
+   "y": 81
   },
   "head_dragon_helm": {
    "h": 164,
@@ -1161,6 +1359,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 185,
    "x": 94,
    "y": 17
+  },
+  "head_fisher_cap": {
+   "h": 130,
+   "w": 104,
+   "x": 129,
+   "y": 67
   },
   "head_flame_crown": {
    "h": 91,
@@ -1222,6 +1426,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 104,
    "y": 83
   },
+  "head_pompom_beanie": {
+   "h": 132,
+   "w": 102,
+   "x": 130,
+   "y": 43
+  },
   "head_star_circlet": {
    "h": 46,
    "w": 79,
@@ -1246,11 +1456,23 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 73,
    "y": 96
   },
+  "head_work_bandana": {
+   "h": 154,
+   "w": 126,
+   "x": 117,
+   "y": 83
+  },
   "head_wrap": {
    "h": 159,
    "w": 111,
    "x": 124,
    "y": 71
+  },
+  "held_balloon": {
+   "h": 635,
+   "w": 181,
+   "x": 95,
+   "y": 42
   },
   "held_book": {
    "h": 127,
@@ -1281,6 +1503,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 58,
    "x": 70,
    "y": 33
+  },
+  "held_hammer": {
+   "h": 213,
+   "w": 57,
+   "x": 86,
+   "y": 408
   },
   "held_harp": {
    "h": 234,
@@ -1348,6 +1576,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 72,
    "y": 417
   },
+  "held_umbrella": {
+   "h": 266,
+   "w": 68,
+   "x": 76,
+   "y": 390
+  },
   "legs_baggy": {
    "h": 259,
    "w": 115,
@@ -1402,6 +1636,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 108,
    "y": 374
   },
+  "legs_rolled_trousers": {
+   "h": 301,
+   "w": 111,
+   "x": 125,
+   "y": 319
+  },
   "legs_shorts": {
    "h": 225,
    "w": 111,
@@ -1438,6 +1678,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 116,
    "y": 623
   },
+  "shoes_desert_boots": {
+   "h": 96,
+   "w": 133,
+   "x": 114,
+   "y": 574
+  },
   "shoes_explorer_boots": {
    "h": 103,
    "w": 133,
@@ -1467,6 +1713,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 120,
    "x": 120,
    "y": 623
+  },
+  "shoes_rain_boots": {
+   "h": 133,
+   "w": 132,
+   "x": 114,
+   "y": 540
   },
   "shoes_sandals": {
    "h": 40,
@@ -1582,6 +1834,24 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 86,
    "y": 198
   },
+  "top_nomad_robe": {
+   "h": 370,
+   "w": 177,
+   "x": 91,
+   "y": 200
+  },
+  "top_puffer_jacket": {
+   "h": 227,
+   "w": 189,
+   "x": 85,
+   "y": 199
+  },
+  "top_raincoat": {
+   "h": 320,
+   "w": 174,
+   "x": 93,
+   "y": 199
+  },
   "top_robe_long": {
    "h": 370,
    "w": 186,
@@ -1653,6 +1923,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 165,
    "x": 97,
    "y": 214
+  },
+  "top_work_apron": {
+   "h": 459,
+   "w": 181,
+   "x": 89,
+   "y": 214
   }
  },
  "fem_sturdy": {
@@ -1686,11 +1962,23 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 59,
    "y": 176
   },
+  "back_fish_basket": {
+   "h": 259,
+   "w": 151,
+   "x": 123,
+   "y": 216
+  },
   "back_golden_wings": {
    "h": 265,
    "w": 333,
    "x": 14,
    "y": 37
+  },
+  "back_guitar": {
+   "h": 308,
+   "w": 213,
+   "x": 28,
+   "y": 170
   },
   "back_lantern_pack": {
    "h": 335,
@@ -1728,11 +2016,29 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 86,
    "y": 178
   },
+  "back_skateboard": {
+   "h": 216,
+   "w": 166,
+   "x": 90,
+   "y": 141
+  },
   "back_star_wings": {
    "h": 235,
    "w": 324,
    "x": 20,
    "y": 46
+  },
+  "back_toolbox": {
+   "h": 194,
+   "w": 206,
+   "x": 70,
+   "y": 182
+  },
+  "back_waterskin": {
+   "h": 225,
+   "w": 46,
+   "x": 87,
+   "y": 220
   },
   "back_wings": {
    "h": 300,
@@ -1745,6 +2051,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 155,
    "x": 94,
    "y": 357
+  },
+  "belt_nomad_sash": {
+   "h": 137,
+   "w": 155,
+   "x": 99,
+   "y": 314
   },
   "belt_rope": {
    "h": 154,
@@ -1763,6 +2075,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 135,
    "x": 113,
    "y": 324
+  },
+  "belt_tool_belt": {
+   "h": 90,
+   "w": 155,
+   "x": 95,
+   "y": 347
   },
   "belt_truth": {
    "h": 39,
@@ -1902,6 +2220,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 125,
    "y": 90
   },
+  "head_bandana": {
+   "h": 133,
+   "w": 99,
+   "x": 136,
+   "y": 85
+  },
   "head_beanie": {
    "h": 97,
    "w": 98,
@@ -1920,6 +2244,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 136,
    "y": 48
   },
+  "head_cowboy_hat": {
+   "h": 114,
+   "w": 176,
+   "x": 92,
+   "y": 65
+  },
   "head_crown": {
    "h": 81,
    "w": 95,
@@ -1931,6 +2261,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 151,
    "x": 105,
    "y": 49
+  },
+  "head_desert_scarf": {
+   "h": 155,
+   "w": 195,
+   "x": 83,
+   "y": 81
   },
   "head_dragon_helm": {
    "h": 164,
@@ -1949,6 +2285,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 185,
    "x": 94,
    "y": 17
+  },
+  "head_fisher_cap": {
+   "h": 130,
+   "w": 104,
+   "x": 129,
+   "y": 67
   },
   "head_flame_crown": {
    "h": 91,
@@ -2010,6 +2352,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 104,
    "y": 83
   },
+  "head_pompom_beanie": {
+   "h": 132,
+   "w": 102,
+   "x": 130,
+   "y": 43
+  },
   "head_star_circlet": {
    "h": 46,
    "w": 79,
@@ -2034,11 +2382,23 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 73,
    "y": 96
   },
+  "head_work_bandana": {
+   "h": 154,
+   "w": 143,
+   "x": 109,
+   "y": 83
+  },
   "head_wrap": {
    "h": 159,
    "w": 133,
    "x": 112,
    "y": 71
+  },
+  "held_balloon": {
+   "h": 635,
+   "w": 181,
+   "x": 97,
+   "y": 42
   },
   "held_book": {
    "h": 127,
@@ -2069,6 +2429,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 58,
    "x": 38,
    "y": 33
+  },
+  "held_hammer": {
+   "h": 213,
+   "w": 57,
+   "x": 60,
+   "y": 408
   },
   "held_harp": {
    "h": 234,
@@ -2136,6 +2502,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 48,
    "y": 417
   },
+  "held_umbrella": {
+   "h": 266,
+   "w": 68,
+   "x": 49,
+   "y": 390
+  },
   "legs_baggy": {
    "h": 263,
    "w": 159,
@@ -2190,6 +2562,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 78,
    "y": 374
   },
+  "legs_rolled_trousers": {
+   "h": 301,
+   "w": 157,
+   "x": 102,
+   "y": 319
+  },
   "legs_shorts": {
    "h": 225,
    "w": 157,
@@ -2226,6 +2604,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 90,
    "y": 623
   },
+  "shoes_desert_boots": {
+   "h": 98,
+   "w": 185,
+   "x": 88,
+   "y": 572
+  },
   "shoes_explorer_boots": {
    "h": 105,
    "w": 185,
@@ -2255,6 +2639,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 169,
    "x": 96,
    "y": 623
+  },
+  "shoes_rain_boots": {
+   "h": 133,
+   "w": 184,
+   "x": 88,
+   "y": 540
   },
   "shoes_sandals": {
    "h": 40,
@@ -2370,6 +2760,24 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 48,
    "y": 198
   },
+  "top_nomad_robe": {
+   "h": 370,
+   "w": 249,
+   "x": 54,
+   "y": 200
+  },
+  "top_puffer_jacket": {
+   "h": 227,
+   "w": 265,
+   "x": 48,
+   "y": 199
+  },
+  "top_raincoat": {
+   "h": 320,
+   "w": 243,
+   "x": 59,
+   "y": 199
+  },
   "top_robe_long": {
    "h": 370,
    "w": 262,
@@ -2441,6 +2849,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 231,
    "x": 64,
    "y": 214
+  },
+  "top_work_apron": {
+   "h": 459,
+   "w": 252,
+   "x": 53,
+   "y": 214
   }
  },
  "masc": {
@@ -2474,11 +2888,23 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 62,
    "y": 157
   },
+  "back_fish_basket": {
+   "h": 272,
+   "w": 79,
+   "x": 62,
+   "y": 220
+  },
   "back_golden_wings": {
    "h": 246,
    "w": 330,
    "x": 17,
    "y": 35
+  },
+  "back_guitar": {
+   "h": 336,
+   "w": 178,
+   "x": 56,
+   "y": 86
   },
   "back_lantern_pack": {
    "h": 312,
@@ -2516,11 +2942,29 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 94,
    "y": 189
   },
+  "back_skateboard": {
+   "h": 292,
+   "w": 186,
+   "x": 73,
+   "y": 136
+  },
   "back_star_wings": {
    "h": 208,
    "w": 324,
    "x": 19,
    "y": 52
+  },
+  "back_toolbox": {
+   "h": 208,
+   "w": 182,
+   "x": 88,
+   "y": 176
+  },
+  "back_waterskin": {
+   "h": 210,
+   "w": 153,
+   "x": 102,
+   "y": 216
   },
   "back_wings": {
    "h": 286,
@@ -2533,6 +2977,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 130,
    "x": 108,
    "y": 349
+  },
+  "belt_nomad_sash": {
+   "h": 118,
+   "w": 120,
+   "x": 120,
+   "y": 333
   },
   "belt_rope": {
    "h": 90,
@@ -2551,6 +3001,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 117,
    "x": 121,
    "y": 336
+  },
+  "belt_tool_belt": {
+   "h": 90,
+   "w": 133,
+   "x": 109,
+   "y": 355
   },
   "belt_truth": {
    "h": 47,
@@ -2690,6 +3146,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 121,
    "y": 90
   },
+  "head_bandana": {
+   "h": 123,
+   "w": 99,
+   "x": 138,
+   "y": 90
+  },
   "head_beanie": {
    "h": 90,
    "w": 98,
@@ -2708,6 +3170,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 135,
    "y": 46
   },
+  "head_cowboy_hat": {
+   "h": 105,
+   "w": 181,
+   "x": 89,
+   "y": 58
+  },
   "head_crown": {
    "h": 82,
    "w": 87,
@@ -2719,6 +3187,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 155,
    "x": 103,
    "y": 68
+  },
+  "head_desert_scarf": {
+   "h": 158,
+   "w": 167,
+   "x": 96,
+   "y": 79
   },
   "head_dragon_helm": {
    "h": 151,
@@ -2737,6 +3211,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 159,
    "x": 100,
    "y": 47
+  },
+  "head_fisher_cap": {
+   "h": 99,
+   "w": 95,
+   "x": 133,
+   "y": 65
   },
   "head_flame_crown": {
    "h": 88,
@@ -2798,6 +3278,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 79,
    "y": 58
   },
+  "head_pompom_beanie": {
+   "h": 130,
+   "w": 106,
+   "x": 126,
+   "y": 36
+  },
   "head_star_circlet": {
    "h": 46,
    "w": 79,
@@ -2822,11 +3308,23 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 90,
    "y": 57
   },
+  "head_work_bandana": {
+   "h": 138,
+   "w": 147,
+   "x": 110,
+   "y": 73
+  },
   "head_wrap": {
    "h": 154,
    "w": 124,
    "x": 118,
    "y": 77
+  },
+  "held_balloon": {
+   "h": 120,
+   "w": 94,
+   "x": 208,
+   "y": 32
   },
   "held_book": {
    "h": 125,
@@ -2857,6 +3355,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 75,
    "x": 47,
    "y": 33
+  },
+  "held_hammer": {
+   "h": 103,
+   "w": 54,
+   "x": 70,
+   "y": 454
   },
   "held_harp": {
    "h": 167,
@@ -2924,6 +3428,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 235,
    "y": 439
   },
+  "held_umbrella": {
+   "h": 255,
+   "w": 62,
+   "x": 63,
+   "y": 405
+  },
   "legs_baggy": {
    "h": 265,
    "w": 150,
@@ -2977,6 +3487,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 175,
    "x": 92,
    "y": 349
+  },
+  "legs_rolled_trousers": {
+   "h": 213,
+   "w": 127,
+   "x": 117,
+   "y": 406
   },
   "legs_shorts": {
    "h": 252,
@@ -3086,6 +3602,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 103,
    "y": 623
   },
+  "shoes_desert_boots": {
+   "h": 94,
+   "w": 156,
+   "x": 102,
+   "y": 579
+  },
   "shoes_explorer_boots": {
    "h": 104,
    "w": 158,
@@ -3115,6 +3637,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 145,
    "x": 107,
    "y": 623
+  },
+  "shoes_rain_boots": {
+   "h": 129,
+   "w": 155,
+   "x": 103,
+   "y": 542
   },
   "shoes_sandals": {
    "h": 27,
@@ -3230,6 +3758,24 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 73,
    "y": 199
   },
+  "top_nomad_robe": {
+   "h": 377,
+   "w": 208,
+   "x": 76,
+   "y": 200
+  },
+  "top_puffer_jacket": {
+   "h": 234,
+   "w": 224,
+   "x": 68,
+   "y": 199
+  },
+  "top_raincoat": {
+   "h": 340,
+   "w": 206,
+   "x": 77,
+   "y": 199
+  },
   "top_robe_long": {
    "h": 421,
    "w": 220,
@@ -3301,6 +3847,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 117,
    "x": 122,
    "y": 215
+  },
+  "top_work_apron": {
+   "h": 295,
+   "w": 144,
+   "x": 108,
+   "y": 214
   }
  },
  "masc_slim": {
@@ -3334,11 +3886,23 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 80,
    "y": 157
   },
+  "back_fish_basket": {
+   "h": 272,
+   "w": 66,
+   "x": 80,
+   "y": 220
+  },
   "back_golden_wings": {
    "h": 246,
    "w": 330,
    "x": 17,
    "y": 35
+  },
+  "back_guitar": {
+   "h": 336,
+   "w": 152,
+   "x": 75,
+   "y": 86
   },
   "back_lantern_pack": {
    "h": 312,
@@ -3376,11 +3940,29 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 97,
    "y": 189
   },
+  "back_skateboard": {
+   "h": 292,
+   "w": 174,
+   "x": 73,
+   "y": 136
+  },
   "back_star_wings": {
    "h": 208,
    "w": 324,
    "x": 19,
    "y": 52
+  },
+  "back_toolbox": {
+   "h": 208,
+   "w": 181,
+   "x": 89,
+   "y": 176
+  },
+  "back_waterskin": {
+   "h": 209,
+   "w": 129,
+   "x": 114,
+   "y": 217
   },
   "back_wings": {
    "h": 286,
@@ -3393,6 +3975,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 110,
    "x": 119,
    "y": 351
+  },
+  "belt_nomad_sash": {
+   "h": 118,
+   "w": 101,
+   "x": 130,
+   "y": 333
   },
   "belt_rope": {
    "h": 89,
@@ -3411,6 +3999,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 98,
    "x": 131,
    "y": 337
+  },
+  "belt_tool_belt": {
+   "h": 89,
+   "w": 112,
+   "x": 120,
+   "y": 355
   },
   "belt_truth": {
    "h": 45,
@@ -3550,6 +4144,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 121,
    "y": 90
   },
+  "head_bandana": {
+   "h": 121,
+   "w": 99,
+   "x": 138,
+   "y": 90
+  },
   "head_beanie": {
    "h": 90,
    "w": 98,
@@ -3568,6 +4168,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 135,
    "y": 46
   },
+  "head_cowboy_hat": {
+   "h": 105,
+   "w": 181,
+   "x": 89,
+   "y": 58
+  },
   "head_crown": {
    "h": 82,
    "w": 87,
@@ -3579,6 +4185,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 155,
    "x": 103,
    "y": 68
+  },
+  "head_desert_scarf": {
+   "h": 157,
+   "w": 145,
+   "x": 107,
+   "y": 79
   },
   "head_dragon_helm": {
    "h": 151,
@@ -3597,6 +4209,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 159,
    "x": 100,
    "y": 47
+  },
+  "head_fisher_cap": {
+   "h": 99,
+   "w": 95,
+   "x": 133,
+   "y": 65
   },
   "head_flame_crown": {
    "h": 88,
@@ -3658,6 +4276,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 79,
    "y": 58
   },
+  "head_pompom_beanie": {
+   "h": 130,
+   "w": 106,
+   "x": 126,
+   "y": 36
+  },
   "head_star_circlet": {
    "h": 46,
    "w": 79,
@@ -3682,11 +4306,23 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 90,
    "y": 57
   },
+  "head_work_bandana": {
+   "h": 138,
+   "w": 147,
+   "x": 110,
+   "y": 73
+  },
   "head_wrap": {
    "h": 154,
    "w": 109,
    "x": 126,
    "y": 77
+  },
+  "held_balloon": {
+   "h": 120,
+   "w": 94,
+   "x": 198,
+   "y": 32
   },
   "held_book": {
    "h": 125,
@@ -3717,6 +4353,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 75,
    "x": 60,
    "y": 33
+  },
+  "held_hammer": {
+   "h": 103,
+   "w": 54,
+   "x": 82,
+   "y": 454
   },
   "held_harp": {
    "h": 167,
@@ -3784,6 +4426,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 224,
    "y": 439
   },
+  "held_umbrella": {
+   "h": 255,
+   "w": 62,
+   "x": 75,
+   "y": 405
+  },
   "legs_baggy": {
    "h": 263,
    "w": 128,
@@ -3838,6 +4486,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 106,
    "y": 349
   },
+  "legs_rolled_trousers": {
+   "h": 213,
+   "w": 107,
+   "x": 127,
+   "y": 406
+  },
   "legs_shorts": {
    "h": 251,
    "w": 116,
@@ -3874,6 +4528,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 115,
    "y": 624
   },
+  "shoes_desert_boots": {
+   "h": 93,
+   "w": 132,
+   "x": 114,
+   "y": 580
+  },
   "shoes_explorer_boots": {
    "h": 102,
    "w": 134,
@@ -3903,6 +4563,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 122,
    "x": 119,
    "y": 624
+  },
+  "shoes_rain_boots": {
+   "h": 128,
+   "w": 131,
+   "x": 115,
+   "y": 543
   },
   "shoes_sandals": {
    "h": 25,
@@ -4018,6 +4684,24 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 89,
    "y": 199
   },
+  "top_nomad_robe": {
+   "h": 377,
+   "w": 176,
+   "x": 92,
+   "y": 200
+  },
+  "top_puffer_jacket": {
+   "h": 234,
+   "w": 190,
+   "x": 85,
+   "y": 199
+  },
+  "top_raincoat": {
+   "h": 340,
+   "w": 174,
+   "x": 93,
+   "y": 199
+  },
   "top_robe_long": {
    "h": 421,
    "w": 187,
@@ -4089,6 +4773,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 99,
    "x": 131,
    "y": 216
+  },
+  "top_work_apron": {
+   "h": 295,
+   "w": 122,
+   "x": 119,
+   "y": 214
   }
  },
  "masc_sturdy": {
@@ -4122,11 +4812,23 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 40,
    "y": 157
   },
+  "back_fish_basket": {
+   "h": 272,
+   "w": 93,
+   "x": 40,
+   "y": 220
+  },
   "back_golden_wings": {
    "h": 246,
    "w": 330,
    "x": 17,
    "y": 35
+  },
+  "back_guitar": {
+   "h": 336,
+   "w": 207,
+   "x": 33,
+   "y": 86
   },
   "back_lantern_pack": {
    "h": 312,
@@ -4164,11 +4866,29 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 87,
    "y": 189
   },
+  "back_skateboard": {
+   "h": 292,
+   "w": 204,
+   "x": 69,
+   "y": 136
+  },
   "back_star_wings": {
    "h": 208,
    "w": 324,
    "x": 19,
    "y": 52
+  },
+  "back_toolbox": {
+   "h": 208,
+   "w": 212,
+   "x": 71,
+   "y": 176
+  },
+  "back_waterskin": {
+   "h": 210,
+   "w": 180,
+   "x": 88,
+   "y": 216
   },
   "back_wings": {
    "h": 286,
@@ -4181,6 +4901,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 153,
    "x": 95,
    "y": 351
+  },
+  "belt_nomad_sash": {
+   "h": 118,
+   "w": 143,
+   "x": 108,
+   "y": 333
   },
   "belt_rope": {
    "h": 89,
@@ -4199,6 +4925,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 137,
    "x": 111,
    "y": 337
+  },
+  "belt_tool_belt": {
+   "h": 89,
+   "w": 157,
+   "x": 96,
+   "y": 355
   },
   "belt_truth": {
    "h": 45,
@@ -4338,6 +5070,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 121,
    "y": 90
   },
+  "head_bandana": {
+   "h": 121,
+   "w": 99,
+   "x": 138,
+   "y": 90
+  },
   "head_beanie": {
    "h": 90,
    "w": 98,
@@ -4356,6 +5094,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 135,
    "y": 46
   },
+  "head_cowboy_hat": {
+   "h": 105,
+   "w": 181,
+   "x": 89,
+   "y": 58
+  },
   "head_crown": {
    "h": 82,
    "w": 87,
@@ -4367,6 +5111,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 155,
    "x": 103,
    "y": 68
+  },
+  "head_desert_scarf": {
+   "h": 157,
+   "w": 195,
+   "x": 82,
+   "y": 79
   },
   "head_dragon_helm": {
    "h": 151,
@@ -4385,6 +5135,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 159,
    "x": 100,
    "y": 47
+  },
+  "head_fisher_cap": {
+   "h": 99,
+   "w": 95,
+   "x": 133,
+   "y": 65
   },
   "head_flame_crown": {
    "h": 88,
@@ -4446,6 +5202,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 79,
    "y": 58
   },
+  "head_pompom_beanie": {
+   "h": 130,
+   "w": 106,
+   "x": 126,
+   "y": 36
+  },
   "head_star_circlet": {
    "h": 46,
    "w": 79,
@@ -4470,11 +5232,23 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 90,
    "y": 57
   },
+  "head_work_bandana": {
+   "h": 138,
+   "w": 147,
+   "x": 110,
+   "y": 73
+  },
   "head_wrap": {
    "h": 154,
    "w": 140,
    "x": 110,
    "y": 77
+  },
+  "held_balloon": {
+   "h": 120,
+   "w": 94,
+   "x": 223,
+   "y": 32
   },
   "held_book": {
    "h": 125,
@@ -4505,6 +5279,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 75,
    "x": 28,
    "y": 33
+  },
+  "held_hammer": {
+   "h": 103,
+   "w": 54,
+   "x": 53,
+   "y": 454
   },
   "held_harp": {
    "h": 167,
@@ -4572,6 +5352,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 251,
    "y": 439
   },
+  "held_umbrella": {
+   "h": 255,
+   "w": 62,
+   "x": 46,
+   "y": 405
+  },
   "legs_baggy": {
    "h": 263,
    "w": 179,
@@ -4626,6 +5412,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 76,
    "y": 349
   },
+  "legs_rolled_trousers": {
+   "h": 213,
+   "w": 150,
+   "x": 105,
+   "y": 406
+  },
   "legs_shorts": {
    "h": 251,
    "w": 162,
@@ -4662,6 +5454,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 89,
    "y": 624
   },
+  "shoes_desert_boots": {
+   "h": 94,
+   "w": 184,
+   "x": 88,
+   "y": 579
+  },
   "shoes_explorer_boots": {
    "h": 104,
    "w": 188,
@@ -4691,6 +5489,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 170,
    "x": 94,
    "y": 623
+  },
+  "shoes_rain_boots": {
+   "h": 128,
+   "w": 183,
+   "x": 89,
+   "y": 543
   },
   "shoes_sandals": {
    "h": 25,
@@ -4806,6 +5610,24 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 53,
    "y": 199
   },
+  "top_nomad_robe": {
+   "h": 377,
+   "w": 246,
+   "x": 57,
+   "y": 200
+  },
+  "top_puffer_jacket": {
+   "h": 234,
+   "w": 266,
+   "x": 47,
+   "y": 199
+  },
+  "top_raincoat": {
+   "h": 340,
+   "w": 244,
+   "x": 58,
+   "y": 199
+  },
   "top_robe_long": {
    "h": 421,
    "w": 263,
@@ -4877,6 +5699,12 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 138,
    "x": 111,
    "y": 216
+  },
+  "top_work_apron": {
+   "h": 295,
+   "w": 170,
+   "x": 95,
+   "y": 214
   }
  }
 }
@@ -4907,7 +5735,17 @@ export const LAYER_ITEMS: Record<string, LayerMeta> = {
   "starter": false,
   "tint": false
  },
+ "back_fish_basket": {
+  "slot": "back",
+  "starter": false,
+  "tint": false
+ },
  "back_golden_wings": {
+  "slot": "back",
+  "starter": false,
+  "tint": false
+ },
+ "back_guitar": {
   "slot": "back",
   "starter": false,
   "tint": false
@@ -4942,7 +5780,22 @@ export const LAYER_ITEMS: Record<string, LayerMeta> = {
   "starter": false,
   "tint": false
  },
+ "back_skateboard": {
+  "slot": "back",
+  "starter": false,
+  "tint": false
+ },
  "back_star_wings": {
+  "slot": "back",
+  "starter": false,
+  "tint": false
+ },
+ "back_toolbox": {
+  "slot": "back",
+  "starter": false,
+  "tint": false
+ },
+ "back_waterskin": {
   "slot": "back",
   "starter": false,
   "tint": false
@@ -4953,6 +5806,11 @@ export const LAYER_ITEMS: Record<string, LayerMeta> = {
   "tint": false
  },
  "belt_explorer": {
+  "slot": "belt",
+  "starter": false,
+  "tint": false
+ },
+ "belt_nomad_sash": {
   "slot": "belt",
   "starter": false,
   "tint": false
@@ -4968,6 +5826,11 @@ export const LAYER_ITEMS: Record<string, LayerMeta> = {
   "tint": true
  },
  "belt_star_sash": {
+  "slot": "belt",
+  "starter": false,
+  "tint": false
+ },
+ "belt_tool_belt": {
   "slot": "belt",
   "starter": false,
   "tint": false
@@ -5057,6 +5920,11 @@ export const LAYER_ITEMS: Record<string, LayerMeta> = {
   "starter": true,
   "tint": true
  },
+ "head_bandana": {
+  "slot": "head",
+  "starter": false,
+  "tint": true
+ },
  "head_beanie": {
   "slot": "head",
   "starter": false,
@@ -5072,12 +5940,22 @@ export const LAYER_ITEMS: Record<string, LayerMeta> = {
   "starter": false,
   "tint": false
  },
+ "head_cowboy_hat": {
+  "slot": "head",
+  "starter": false,
+  "tint": false
+ },
  "head_crown": {
   "slot": "head",
   "starter": false,
   "tint": false
  },
  "head_crown_stars": {
+  "slot": "head",
+  "starter": false,
+  "tint": false
+ },
+ "head_desert_scarf": {
   "slot": "head",
   "starter": false,
   "tint": false
@@ -5096,6 +5974,11 @@ export const LAYER_ITEMS: Record<string, LayerMeta> = {
   "slot": "head",
   "starter": false,
   "tint": false
+ },
+ "head_fisher_cap": {
+  "slot": "head",
+  "starter": false,
+  "tint": true
  },
  "head_flame_crown": {
   "slot": "head",
@@ -5147,6 +6030,11 @@ export const LAYER_ITEMS: Record<string, LayerMeta> = {
   "starter": false,
   "tint": false
  },
+ "head_pompom_beanie": {
+  "slot": "head",
+  "starter": false,
+  "tint": true
+ },
  "head_star_circlet": {
   "slot": "head",
   "starter": false,
@@ -5167,10 +6055,20 @@ export const LAYER_ITEMS: Record<string, LayerMeta> = {
   "starter": false,
   "tint": false
  },
+ "head_work_bandana": {
+  "slot": "head",
+  "starter": false,
+  "tint": true
+ },
  "head_wrap": {
   "slot": "head",
   "starter": false,
   "tint": true
+ },
+ "held_balloon": {
+  "slot": "held",
+  "starter": false,
+  "tint": false
  },
  "held_book": {
   "slot": "held",
@@ -5193,6 +6091,11 @@ export const LAYER_ITEMS: Record<string, LayerMeta> = {
   "tint": false
  },
  "held_fishing_net": {
+  "slot": "held",
+  "starter": false,
+  "tint": false
+ },
+ "held_hammer": {
   "slot": "held",
   "starter": false,
   "tint": false
@@ -5252,6 +6155,11 @@ export const LAYER_ITEMS: Record<string, LayerMeta> = {
   "starter": false,
   "tint": false
  },
+ "held_umbrella": {
+  "slot": "held",
+  "starter": false,
+  "tint": false
+ },
  "legs_baggy": {
   "slot": "legs",
   "starter": false,
@@ -5293,6 +6201,11 @@ export const LAYER_ITEMS: Record<string, LayerMeta> = {
   "tint": false
  },
  "legs_long_skirt": {
+  "slot": "legs",
+  "starter": false,
+  "tint": true
+ },
+ "legs_rolled_trousers": {
   "slot": "legs",
   "starter": false,
   "tint": true
@@ -5387,6 +6300,11 @@ export const LAYER_ITEMS: Record<string, LayerMeta> = {
   "starter": true,
   "tint": true
  },
+ "shoes_desert_boots": {
+  "slot": "shoes",
+  "starter": false,
+  "tint": false
+ },
  "shoes_explorer_boots": {
   "slot": "shoes",
   "starter": false,
@@ -5411,6 +6329,11 @@ export const LAYER_ITEMS: Record<string, LayerMeta> = {
   "slot": "shoes",
   "starter": false,
   "tint": false
+ },
+ "shoes_rain_boots": {
+  "slot": "shoes",
+  "starter": false,
+  "tint": true
  },
  "shoes_sandals": {
   "slot": "shoes",
@@ -5507,6 +6430,21 @@ export const LAYER_ITEMS: Record<string, LayerMeta> = {
   "starter": false,
   "tint": false
  },
+ "top_nomad_robe": {
+  "slot": "top",
+  "starter": false,
+  "tint": false
+ },
+ "top_puffer_jacket": {
+  "slot": "top",
+  "starter": false,
+  "tint": true
+ },
+ "top_raincoat": {
+  "slot": "top",
+  "starter": false,
+  "tint": true
+ },
  "top_robe_long": {
   "slot": "top",
   "starter": false,
@@ -5566,5 +6504,10 @@ export const LAYER_ITEMS: Record<string, LayerMeta> = {
   "slot": "top",
   "starter": false,
   "tint": true
+ },
+ "top_work_apron": {
+  "slot": "top",
+  "starter": false,
+  "tint": false
  }
 }

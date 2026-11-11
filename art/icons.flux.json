@@ -1,0 +1,282 @@
+{
+  "_doc": "One icon set for every painted button (scripts/gen-icons.py). The MASTER is drawn once from text; every other icon is a Flux Kontext edit OF the master, so they share its light, palette, scale and framing. `out` is every file that icon replaces (one design for mail everywhere, one for praying hands, etc).",
+  "style": "A single painted storybook game icon: one object, burnished warm gold and soft cream with at most one gentle accent colour, soft light from the top left, a subtle warm inner glow, a clean bold silhouette that still reads at 40 pixels, centred and filling about 78% of the frame. No text, no letters, no frame, no tile, no rounded square, no badge plate, no ground shadow. Solid flat pure magenta (#FF00FF) background filling the entire image.",
+  "master": {
+    "id": "compass",
+    "subject": "a round golden compass medallion with a four-pointed star rose",
+    "out": [
+      "public/nav/compass.png",
+      "public/invite/compass.png"
+    ]
+  },
+  "icons": [
+    {
+      "id": "play",
+      "subject": "a rounded golden play triangle, like a big play button with no circle behind it",
+      "out": [
+        "public/nav/play.png"
+      ]
+    },
+    {
+      "id": "swords",
+      "subject": "two crossed golden swords with cream leather grips",
+      "out": [
+        "public/nav/battle.png",
+        "src/assets/icons/battle_swords.png"
+      ]
+    },
+    {
+      "id": "books",
+      "subject": "a small stack of three closed leather books with gold edges",
+      "out": [
+        "public/nav/study.png"
+      ]
+    },
+    {
+      "id": "church",
+      "subject": "a small cream stone church with a golden steeple and cross and warm lit windows",
+      "out": [
+        "public/nav/church.png",
+        "src/assets/icons/church_buildings.png"
+      ]
+    },
+    {
+      "id": "you",
+      "subject": "a gold oval cameo frame holding a simple featureless cream head-and-shoulders silhouette, no face, no features, neither male nor female",
+      "out": [
+        "public/nav/you.png"
+      ]
+    },
+    {
+      "id": "mail",
+      "subject": "a cream envelope sealed with a round red wax seal",
+      "out": [
+        "src/assets/icons/mail.png",
+        "src/assets/icons/tool_mail.png",
+        "public/invite/mail.png"
+      ]
+    },
+    {
+      "id": "pray",
+      "subject": "two hands pressed together in prayer, painted in warm gold",
+      "out": [
+        "src/assets/icons/pray.png",
+        "public/invite/pray.png"
+      ]
+    },
+    {
+      "id": "settings",
+      "subject": "a golden cog gear with a smaller cog beside it",
+      "out": [
+        "src/assets/icons/settings.png",
+        "src/assets/icons/tool_settings.png"
+      ]
+    },
+    {
+      "id": "journal",
+      "subject": "an open leather-bound journal with a red ribbon bookmark",
+      "out": [
+        "src/assets/icons/journal.png",
+        "src/assets/icons/tool_journal.png"
+      ]
+    },
+    {
+      "id": "customize",
+      "subject": "a golden coat hanger with a small sparkle beside it",
+      "out": [
+        "src/assets/icons/customize.png",
+        "src/assets/icons/tool_customize.png"
+      ]
+    },
+    {
+      "id": "lock",
+      "subject": "a golden padlock",
+      "out": [
+        "src/assets/icons/lock.png"
+      ]
+    },
+    {
+      "id": "flame",
+      "subject": "a single warm orange and gold flame",
+      "out": [
+        "src/assets/icons/streak.png",
+        "src/assets/icons/stat_streak.png"
+      ]
+    },
+    {
+      "id": "star",
+      "subject": "a glowing golden four-pointed star",
+      "out": [
+        "src/assets/icons/stat_xp.png"
+      ]
+    },
+    {
+      "id": "trophy",
+      "subject": "a golden trophy cup with two handles",
+      "out": [
+        "src/assets/icons/battle_trophy.png"
+      ]
+    },
+    {
+      "id": "laurel",
+      "subject": "a golden laurel wreath around a small flame",
+      "out": [
+        "src/assets/icons/stat_longest.png"
+      ]
+    },
+    {
+      "id": "plays",
+      "subject": "a round golden coin stamped with a raised play triangle",
+      "out": [
+        "src/assets/icons/stat_plays.png"
+      ]
+    },
+    {
+      "id": "cards",
+      "subject": "a small fanned stack of three collectible cards with gold borders",
+      "out": [
+        "src/assets/icons/stat_cards.png"
+      ]
+    },
+    {
+      "id": "crown",
+      "subject": "a golden crown with three points and small red jewels",
+      "out": [
+        "src/assets/icons/battle_crown.png"
+      ]
+    },
+    {
+      "id": "live",
+      "subject": "a glowing red orb set in a golden ring, like a live signal light",
+      "out": [
+        "src/assets/icons/battle_live.png"
+      ]
+    },
+    {
+      "id": "buddies",
+      "subject": "two simple rounded game-pawn figures side by side, one cream and one gold, smooth and faceless, like chess pawns",
+      "out": [
+        "src/assets/icons/buddies.png"
+      ]
+    },
+    {
+      "id": "handshake",
+      "subject": "two hands clasped in a warm handshake",
+      "out": [
+        "src/assets/icons/church_giving.png"
+      ]
+    },
+    {
+      "id": "megaphone",
+      "subject": "a golden megaphone",
+      "out": [
+        "src/assets/icons/church_invite.png"
+      ]
+    },
+    {
+      "id": "flower",
+      "subject": "a blooming golden rose with two green leaves",
+      "out": [
+        "src/assets/icons/church_landscaping.png"
+      ]
+    },
+    {
+      "id": "hands",
+      "subject": "two open hands raised upward in thanks",
+      "out": [
+        "src/assets/icons/church_topgivers.png"
+      ]
+    },
+    {
+      "id": "globe",
+      "subject": "a golden globe of the world",
+      "out": [
+        "src/assets/icons/church_worldwide.png"
+      ]
+    },
+    {
+      "id": "lantern",
+      "subject": "a small brass lantern glowing with warm dawn light",
+      "out": [
+        "src/assets/icons/firstlight.png"
+      ]
+    },
+    {
+      "id": "freeze",
+      "subject": "a cream and gold life ring buoy",
+      "out": [
+        "src/assets/icons/freeze.png"
+      ]
+    },
+    {
+      "id": "gift",
+      "subject": "a wrapped gift box with a red ribbon bow",
+      "out": [
+        "src/assets/icons/invite.png"
+      ]
+    },
+    {
+      "id": "postcard",
+      "subject": "a cream postcard tilted slightly, showing a tiny painted sunrise over hills, with a small gold stamp in the corner",
+      "out": [
+        "src/assets/icons/postcard.png"
+      ]
+    },
+    {
+      "id": "calendar",
+      "subject": "a cream desk calendar page with golden rings at the top and an empty grid of blank squares, no numbers, no writing",
+      "out": [
+        "src/assets/icons/week.png"
+      ]
+    },
+    {
+      "id": "room",
+      "subject": "a tiny cosy room seen from above with a rug, a chair and a table",
+      "out": [
+        "src/assets/icons/arrangement.png"
+      ]
+    },
+    {
+      "id": "arcade",
+      "subject": "a small golden arcade cabinet with a glowing screen",
+      "out": [
+        "public/invite/arcade.png"
+      ]
+    },
+    {
+      "id": "chest",
+      "subject": "a wooden treasure chest with gold bands, lid closed",
+      "out": [
+        "public/invite/chest.png"
+      ]
+    },
+    {
+      "id": "scroll",
+      "subject": "an unrolled cream parchment scroll",
+      "out": [
+        "public/invite/review.png"
+      ]
+    },
+    {
+      "id": "verse",
+      "subject": "an open book standing upright facing the viewer, with soft golden light rising from its pages",
+      "out": [
+        "public/invite/verse.png"
+      ]
+    },
+    {
+      "id": "candle",
+      "subject": "a single lit cream candle",
+      "out": [
+        "public/invite/wall.png"
+      ]
+    },
+    {
+      "id": "basin",
+      "subject": "a shallow cream clay basin filled with water",
+      "out": [
+        "public/invite/wash.png"
+      ]
+    }
+  ]
+}

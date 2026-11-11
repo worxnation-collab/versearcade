@@ -5989,6 +5989,8 @@ used there** — a selected tile's own description takes `--ink-dim`.
 
 ### Icons are DRAWN, not emoji and not generated — except the bottom nav
 
+**Every painted button is ONE Flux set since 2026-11-11** (`art/icons.flux.json`, `scripts/gen-icons.py`): a master icon drawn once, every other icon a Kontext edit OF it, cut out by `fal-ai/birefnet` (Flux paints "flat magenta" as textured raspberry, which no colour key survives), written at 132px over the same files — nav, invite rows and `PaintedIcon` — so no code changed. It replaced 48 owner paintings that had drifted into tiles, flats and three different envelopes. Add an icon as a row there, never a one-off.
+
 **The bottom nav is PAINTED since 2026-10-21, the owner's call.** The five tabs
 and the compass puck draw owner-supplied paintings (`public/nav/*.png`, cut out
 of baked-in checkerboards) at 40px, not the paths below. A baked image can't

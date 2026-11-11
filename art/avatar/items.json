@@ -891,12 +891,6 @@
       "prompt": "a tall wooden staff topped with a glowing star, gripped in the right hand where it already hangs, resting on the ground beside the right foot"
     },
     {
-      "id": "back_rainbow_cape",
-      "slot": "back",
-      "tint": false,
-      "prompt": "a flowing cape made of bold rainbow stripes of red, orange, yellow, green, blue and purple, hanging from the shoulders down behind the body to the calves"
-    },
-    {
       "id": "back_scroll_case",
       "slot": "back",
       "tint": false,

@@ -132,7 +132,7 @@ export const LAYER_REQS: Record<string, LayerReq> = {
   top_fisherman_sweater: L(6), top_varsity: L(11), top_many_colors: P(60),
   shoes_glow_sneakers: P(100), shoes_winged: S(30),
   held_fishing_net: L(5), held_trumpet: S(7), held_bread_basket: P(30), held_star_staff: L(45),
-  back_scroll_case: V(30), back_lantern_pack: S(14), back_rainbow_cape: S(40),
+  back_scroll_case: V(30), back_lantern_pack: S(14),
 }
 
 /** Named sets. A set is a NAME and nothing else: it grants nothing, draws no

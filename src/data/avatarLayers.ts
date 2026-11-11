@@ -56,12 +56,6 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 69,
    "y": 122
   },
-  "back_rainbow_cape": {
-   "h": 396,
-   "w": 328,
-   "x": 18,
-   "y": 198
-  },
   "back_royal_cape": {
    "h": 427,
    "w": 286,
@@ -916,12 +910,6 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 69,
    "y": 122
   },
-  "back_rainbow_cape": {
-   "h": 396,
-   "w": 280,
-   "x": 42,
-   "y": 198
-  },
   "back_royal_cape": {
    "h": 427,
    "w": 244,
@@ -1704,12 +1692,6 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 69,
    "y": 122
   },
-  "back_rainbow_cape": {
-   "h": 396,
-   "w": 392,
-   "x": -13,
-   "y": 198
-  },
   "back_royal_cape": {
    "h": 427,
    "w": 340,
@@ -2491,12 +2473,6 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "w": 172,
    "x": 68,
    "y": 118
-  },
-  "back_rainbow_cape": {
-   "h": 396,
-   "w": 329,
-   "x": 16,
-   "y": 199
   },
   "back_royal_cape": {
    "h": 394,
@@ -3352,12 +3328,6 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 68,
    "y": 118
   },
-  "back_rainbow_cape": {
-   "h": 396,
-   "w": 281,
-   "x": 40,
-   "y": 199
-  },
   "back_royal_cape": {
    "h": 394,
    "w": 257,
@@ -4140,12 +4110,6 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "x": 68,
    "y": 118
   },
-  "back_rainbow_cape": {
-   "h": 396,
-   "w": 391,
-   "x": -15,
-   "y": 199
-  },
   "back_royal_cape": {
    "h": 394,
    "w": 359,
@@ -4918,11 +4882,6 @@ export const LAYER_ITEMS: Record<string, LayerMeta> = {
   "tint": false
  },
  "back_quiver": {
-  "slot": "back",
-  "starter": false,
-  "tint": false
- },
- "back_rainbow_cape": {
   "slot": "back",
   "starter": false,
   "tint": false

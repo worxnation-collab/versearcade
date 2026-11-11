@@ -346,6 +346,12 @@
    "x": 119,
    "y": 488
   },
+  "legs_jeans": {
+   "h": 234,
+   "w": 122,
+   "x": 119,
+   "y": 386
+  },
   "legs_joggers": {
    "h": 254,
    "w": 121,
@@ -357,6 +363,12 @@
    "w": 159,
    "x": 100,
    "y": 349
+  },
+  "legs_leggings": {
+   "h": 235,
+   "w": 121,
+   "x": 120,
+   "y": 385
   },
   "legs_long_skirt": {
    "h": 351,
@@ -472,6 +484,12 @@
    "x": 110,
    "y": 637
   },
+  "shoes_hightops": {
+   "h": 60,
+   "w": 156,
+   "x": 103,
+   "y": 613
+  },
   "shoes_peace": {
    "h": 56,
    "w": 142,
@@ -514,6 +532,12 @@
    "x": 60,
    "y": 201
   },
+  "top_buttonup": {
+   "h": 233,
+   "w": 194,
+   "x": 83,
+   "y": 198
+  },
   "top_chainmail": {
    "h": 216,
    "w": 203,
@@ -526,6 +550,12 @@
    "x": 45,
    "y": 199
   },
+  "top_dress": {
+   "h": 465,
+   "w": 196,
+   "x": 82,
+   "y": 213
+  },
   "top_hoodie": {
    "h": 225,
    "w": 206,
@@ -537,6 +567,12 @@
    "w": 202,
    "x": 79,
    "y": 198
+  },
+  "top_longsleeve": {
+   "h": 205,
+   "w": 194,
+   "x": 83,
+   "y": 214
   },
   "top_robe_long": {
    "h": 382,
@@ -567,6 +603,12 @@
    "w": 211,
    "x": 74,
    "y": 198
+  },
+  "top_sweatshirt": {
+   "h": 210,
+   "w": 198,
+   "x": 80,
+   "y": 208
   },
   "top_tabard": {
    "h": 351,
@@ -602,394 +644,527 @@
  "items": {
   "back_backpack": {
    "slot": "back",
+   "starter": false,
    "tint": true
   },
   "back_banner": {
    "slot": "back",
+   "starter": false,
    "tint": false
   },
   "back_cape": {
    "slot": "back",
+   "starter": false,
    "tint": true
   },
   "back_golden_wings": {
    "slot": "back",
+   "starter": false,
    "tint": false
   },
   "back_quiver": {
    "slot": "back",
+   "starter": false,
    "tint": false
   },
   "back_royal_cape": {
    "slot": "back",
+   "starter": false,
    "tint": false
   },
   "back_satchel": {
    "slot": "back",
+   "starter": false,
    "tint": false
   },
   "back_wings": {
    "slot": "back",
+   "starter": false,
    "tint": false
   },
   "belt_rope": {
    "slot": "belt",
+   "starter": false,
    "tint": false
   },
   "belt_sash": {
    "slot": "belt",
+   "starter": false,
    "tint": true
   },
   "belt_truth": {
    "slot": "belt",
+   "starter": false,
    "tint": false
   },
   "hair_afro": {
    "slot": "hair",
+   "starter": true,
    "tint": true
   },
   "hair_bob": {
    "slot": "hair",
+   "starter": true,
    "tint": true
   },
   "hair_braids": {
    "slot": "hair",
+   "starter": true,
    "tint": true
   },
   "hair_bun": {
    "slot": "hair",
+   "starter": true,
    "tint": true
   },
   "hair_buzz": {
    "slot": "hair",
+   "starter": true,
    "tint": true
   },
   "hair_curly_short": {
    "slot": "hair",
+   "starter": true,
    "tint": true
   },
   "hair_locs": {
    "slot": "hair",
+   "starter": true,
    "tint": true
   },
   "hair_long_straight": {
    "slot": "hair",
+   "starter": true,
    "tint": true
   },
   "hair_long_wavy": {
    "slot": "hair",
+   "starter": true,
    "tint": true
   },
   "hair_pigtails": {
    "slot": "hair",
+   "starter": true,
    "tint": true
   },
   "hair_ponytail": {
    "slot": "hair",
+   "starter": true,
    "tint": true
   },
   "hair_short": {
    "slot": "hair",
+   "starter": true,
    "tint": true
   },
   "hair_side_part": {
    "slot": "hair",
+   "starter": true,
    "tint": true
   },
   "hair_space_buns": {
    "slot": "hair",
+   "starter": true,
    "tint": true
   },
   "hair_spiky": {
    "slot": "hair",
+   "starter": true,
    "tint": true
   },
   "hair_swept": {
    "slot": "hair",
+   "starter": true,
    "tint": true
   },
   "head_beanie": {
    "slot": "head",
+   "starter": false,
    "tint": true
   },
   "head_cap": {
    "slot": "head",
+   "starter": false,
    "tint": true
   },
   "head_centurion": {
    "slot": "head",
+   "starter": false,
    "tint": false
   },
   "head_crown": {
    "slot": "head",
+   "starter": false,
    "tint": false
   },
   "head_crown_stars": {
    "slot": "head",
+   "starter": false,
    "tint": false
   },
   "head_dragon_helm": {
    "slot": "head",
+   "starter": false,
    "tint": false
   },
   "head_flower_crown": {
    "slot": "head",
+   "starter": false,
    "tint": false
   },
   "head_halo": {
    "slot": "head",
+   "starter": false,
    "tint": false
   },
   "head_headphones": {
    "slot": "head",
+   "starter": false,
    "tint": true
   },
   "head_helmet_salvation": {
    "slot": "head",
+   "starter": false,
    "tint": false
   },
   "head_knight_helm": {
    "slot": "head",
+   "starter": false,
    "tint": false
   },
   "head_laurel": {
    "slot": "head",
+   "starter": false,
    "tint": false
   },
   "head_straw_hat": {
    "slot": "head",
+   "starter": false,
    "tint": false
   },
   "head_traveller_hat": {
    "slot": "head",
+   "starter": false,
    "tint": true
   },
   "head_winged_helm": {
    "slot": "head",
+   "starter": false,
    "tint": false
   },
   "head_wrap": {
    "slot": "head",
+   "starter": false,
    "tint": true
   },
   "held_book": {
    "slot": "held",
+   "starter": false,
    "tint": false
   },
   "held_crook": {
    "slot": "held",
+   "starter": false,
    "tint": false
   },
   "held_dove": {
    "slot": "held",
+   "starter": false,
    "tint": false
   },
   "held_harp": {
    "slot": "held",
+   "starter": false,
    "tint": false
   },
   "held_lantern": {
    "slot": "held",
+   "starter": false,
    "tint": false
   },
   "held_scroll": {
    "slot": "held",
+   "starter": false,
    "tint": false
   },
   "held_shield_faith": {
    "slot": "held",
+   "starter": false,
    "tint": false
   },
   "held_sling": {
    "slot": "held",
+   "starter": false,
    "tint": false
   },
   "held_staff": {
    "slot": "held",
+   "starter": false,
    "tint": false
   },
   "held_sword_spirit": {
    "slot": "held",
+   "starter": false,
    "tint": false
   },
   "held_torch": {
    "slot": "held",
+   "starter": false,
    "tint": false
   },
   "legs_baggy": {
    "slot": "legs",
+   "starter": false,
    "tint": true
   },
   "legs_greaves": {
    "slot": "legs",
+   "starter": false,
    "tint": false
+  },
+  "legs_jeans": {
+   "slot": "legs",
+   "starter": true,
+   "tint": true
   },
   "legs_joggers": {
    "slot": "legs",
+   "starter": true,
    "tint": true
   },
   "legs_kilt": {
    "slot": "legs",
+   "starter": false,
+   "tint": true
+  },
+  "legs_leggings": {
+   "slot": "legs",
+   "starter": true,
    "tint": true
   },
   "legs_long_skirt": {
    "slot": "legs",
+   "starter": false,
    "tint": true
   },
   "legs_shorts": {
    "slot": "legs",
+   "starter": true,
    "tint": true
   },
   "legs_skirt": {
    "slot": "legs",
+   "starter": true,
    "tint": true
   },
   "legs_trousers": {
    "slot": "legs",
+   "starter": true,
    "tint": true
   },
   "pet_camel": {
    "slot": "pet",
+   "starter": false,
    "tint": false
   },
   "pet_donkey": {
    "slot": "pet",
+   "starter": false,
    "tint": false
   },
   "pet_dove": {
    "slot": "pet",
+   "starter": false,
    "tint": false
   },
   "pet_eagle": {
    "slot": "pet",
+   "starter": false,
    "tint": false
   },
   "pet_fawn": {
    "slot": "pet",
+   "starter": false,
    "tint": false
   },
   "pet_fox": {
    "slot": "pet",
+   "starter": false,
    "tint": false
   },
   "pet_kitten": {
    "slot": "pet",
+   "starter": false,
    "tint": false
   },
   "pet_lamb": {
    "slot": "pet",
+   "starter": false,
    "tint": false
   },
   "pet_lion_cub": {
    "slot": "pet",
+   "starter": false,
    "tint": false
   },
   "pet_owl": {
    "slot": "pet",
+   "starter": false,
    "tint": false
   },
   "pet_raven": {
    "slot": "pet",
+   "starter": false,
    "tint": false
   },
   "pet_sheepdog": {
    "slot": "pet",
+   "starter": false,
    "tint": false
   },
   "shoes_armored": {
    "slot": "shoes",
+   "starter": false,
    "tint": false
   },
   "shoes_boots": {
    "slot": "shoes",
+   "starter": true,
    "tint": true
   },
   "shoes_gold_sandals": {
    "slot": "shoes",
+   "starter": false,
    "tint": false
+  },
+  "shoes_hightops": {
+   "slot": "shoes",
+   "starter": true,
+   "tint": true
   },
   "shoes_peace": {
    "slot": "shoes",
+   "starter": false,
    "tint": false
   },
   "shoes_sandals": {
    "slot": "shoes",
+   "starter": true,
    "tint": true
   },
   "shoes_slippers": {
    "slot": "shoes",
+   "starter": false,
    "tint": true
   },
   "shoes_sneakers": {
    "slot": "shoes",
+   "starter": true,
    "tint": true
   },
   "shoes_tall_boots": {
    "slot": "shoes",
+   "starter": false,
    "tint": true
   },
   "top_armor_full": {
    "slot": "top",
+   "starter": false,
    "tint": false
   },
   "top_breastplate": {
    "slot": "top",
+   "starter": false,
    "tint": false
+  },
+  "top_buttonup": {
+   "slot": "top",
+   "starter": true,
+   "tint": true
   },
   "top_chainmail": {
    "slot": "top",
+   "starter": false,
    "tint": false
   },
   "top_cloak": {
    "slot": "top",
+   "starter": false,
+   "tint": true
+  },
+  "top_dress": {
+   "slot": "top",
+   "starter": true,
    "tint": true
   },
   "top_hoodie": {
    "slot": "top",
+   "starter": true,
    "tint": true
   },
   "top_jacket": {
    "slot": "top",
+   "starter": true,
+   "tint": true
+  },
+  "top_longsleeve": {
+   "slot": "top",
+   "starter": true,
    "tint": true
   },
   "top_robe_long": {
    "slot": "top",
+   "starter": false,
    "tint": true
   },
   "top_royal_robe": {
    "slot": "top",
+   "starter": false,
    "tint": false
   },
   "top_sash_tunic": {
    "slot": "top",
+   "starter": false,
    "tint": true
   },
   "top_shepherd_coat": {
    "slot": "top",
+   "starter": false,
    "tint": true
   },
   "top_star_robe": {
    "slot": "top",
+   "starter": false,
    "tint": false
+  },
+  "top_sweatshirt": {
+   "slot": "top",
+   "starter": true,
+   "tint": true
   },
   "top_tabard": {
    "slot": "top",
+   "starter": false,
    "tint": true
   },
   "top_toga": {
    "slot": "top",
+   "starter": false,
    "tint": true
   },
   "top_tshirt": {
    "slot": "top",
+   "starter": true,
    "tint": true
   },
   "top_tunic": {
    "slot": "top",
+   "starter": true,
    "tint": true
   },
   "top_vest": {
    "slot": "top",
+   "starter": false,
    "tint": true
   }
  },
@@ -1336,6 +1511,12 @@
    "x": 119,
    "y": 490
   },
+  "legs_jeans": {
+   "h": 219,
+   "w": 122,
+   "x": 119,
+   "y": 401
+  },
   "legs_joggers": {
    "h": 249,
    "w": 121,
@@ -1347,6 +1528,12 @@
    "w": 157,
    "x": 102,
    "y": 350
+  },
+  "legs_leggings": {
+   "h": 243,
+   "w": 121,
+   "x": 120,
+   "y": 377
   },
   "legs_long_skirt": {
    "h": 334,
@@ -1462,6 +1649,12 @@
    "x": 110,
    "y": 640
   },
+  "shoes_hightops": {
+   "h": 59,
+   "w": 157,
+   "x": 102,
+   "y": 613
+  },
   "shoes_peace": {
    "h": 48,
    "w": 144,
@@ -1504,6 +1697,12 @@
    "x": 66,
    "y": 203
   },
+  "top_buttonup": {
+   "h": 226,
+   "w": 194,
+   "x": 83,
+   "y": 198
+  },
   "top_chainmail": {
    "h": 204,
    "w": 193,
@@ -1516,6 +1715,12 @@
    "x": 53,
    "y": 198
   },
+  "top_dress": {
+   "h": 411,
+   "w": 198,
+   "x": 81,
+   "y": 214
+  },
   "top_hoodie": {
    "h": 496,
    "w": 229,
@@ -1527,6 +1732,12 @@
    "w": 201,
    "x": 79,
    "y": 203
+  },
+  "top_longsleeve": {
+   "h": 200,
+   "w": 194,
+   "x": 83,
+   "y": 214
   },
   "top_robe_long": {
    "h": 424,
@@ -1557,6 +1768,12 @@
    "w": 213,
    "x": 73,
    "y": 198
+  },
+  "top_sweatshirt": {
+   "h": 204,
+   "w": 195,
+   "x": 83,
+   "y": 214
   },
   "top_tabard": {
    "h": 379,

@@ -224,7 +224,7 @@ def extract(only, figs):
             px = save_layer(e, m, f, it['id'], index, it['slot'] in GREEN_SLOTS)
             if px < 1500:
                 report.append(f'{f}/{it["id"]}: only {px}px changed, re-roll')
-    index['items'] = {i: {'slot': m['slot'], 'tint': m.get('tint', False)} for i, m in meta.items()}
+    index['items'] = {i: {'slot': m['slot'], 'tint': m.get('tint', False), 'starter': m.get('starter', False)} for i, m in meta.items()}
     json.dump(index, open(ipath, 'w'), indent=1, sort_keys=True)
     print('\n'.join(report) or 'all layers extracted')
 

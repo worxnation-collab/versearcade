@@ -30,43 +30,67 @@ comfortable with: a pastor buys a tool that saves them hours a week, and no
 player pays anything. One paying church is worth more than every patron
 purchase to date.
 
+## The market (researched 2026-11-11)
+
+- **Church content tools sell at $39–129/mo, self-serve.** Pulpit AI
+  (Subsplash) $39/$59/$129 by sermons a month; Gloo Content Studio ~$65/$100;
+  Sermon Shots $49; all with a 14-day trial and no sales call. RightNow Media
+  prices by attendance ($155/mo for 101–200 people). None has a game the
+  congregation plays all week, which is ours alone.
+- **We are at the bottom of that band**: Verified $29/mo ($290/yr) + Content
+  Generation $19/mo = $48/mo for the suite.
+- **Consumer subscriptions can't be the engine at our size**: freemium
+  converts ~2% (RevenueCat 2026); 2% of 8 sign-ups a month is nothing.
+  Ethical faith-app models that work: YouVersion (free, donations), Hallow
+  ($69.99/yr), Dwell ($59.99/yr). Trivia apps live on ads; we will not.
+- **Adjacent buyers pay per seat**: Christian school Bible courses $149–169
+  per seat per semester (CSI), homeschool $99.95/yr per course (Monarch),
+  youth curriculum ~$469/yr for 50 users (Lifeway).
+- **Shorts links**: only the "Related video" link under a Short is tappable
+  (to your own long-form video, whose description link IS clickable), plus
+  channel-banner links. One creator measured ~10% tap-through on it.
+
 ## Leads, highest value first
 
-### 1. Social views turn into zero sign-ups — FIX THE FUNNEL
-YouTube delivers ~900 views a Short and is the only network with reach, but
-no account has ever arrived through a tracked link. The attribution code is
-sound (verified 2026-11-11: `captureSource` runs at boot, `set_signup_source`
-is live and granted, the `/play?src=` link resolves 200), so the honest
-reading is that nobody follows the link. YouTube does not make links in
-Shorts descriptions or comments clickable; the link only works from the
-channel's own profile.
-- Next: put the app on screen and in words in the end card (a spoken
-  "search Verse Arcade"), use Shorts' related-video link to a long-form video
-  that carries a clickable link, and the channel-header link. Measure with a
-  distinct `?src=yt-header` etc.
+### 1. Turn Shorts views into sign-ups — needs the owner (≈1 hour)
+~900 views a Short, zero sign-ups ever (attribution verified working
+2026-11-11: nobody follows the link, because Shorts links are not tappable).
+- One 2–4 minute long-form "How to play today's verse" video with
+  `versearcade.org/play?src=yt-related` first in its description.
+- Set every Short's **Related video** to it (YouTube Studio, desktop).
+- Banner link `versearcade.org/play?src=yt-banner`.
+- The engine can say "search Verse Arcade" in the end card for free.
+- Status: waiting on the owner for the YouTube Studio steps; the end-card
+  line is ours to do.
+
+### 2. Make the church plan self-serve and sell it to churches that play
+34 players sit in 5 active churches. Billing, claim and drafting all exist.
+- A 14-day trial with no call, said plainly on the plans page; annual at a
+  discount (already: $290 vs $348).
+- A "send this to another pastor" link for verified leaders, a free month per
+  church that joins (needs a Stripe coupon: the owner's call).
+- Price: the market supports $39–59 entry. **Owner decision**, not ours.
 - Status: open.
 
-### 2. Sell the church plan to churches that already play
-34 players sit in churches, and the "ask your pastor" card exists. Verified
-church + Content Generation is the product; the free claim exists.
-- Next: find the churches with the most active players and give each pastor
-  a reason to look (the pilot-church pipeline, `docs/PILOT-CHURCH.md`).
-- Status: open.
+### 3. A classroom license (schools, homeschool co-ops, youth groups)
+Reuses the church dashboard: a teacher assigns a book's trivia round and sees
+the class's progress, never a ranking. Market: $5–10 a student a year or
+$99–299 a class, well under what curricula charge.
+- Status: idea; a proposal for the owner when the church plan is selling.
 
-### 3. 28% of accounts never play once
-53 accounts made an account and never finished a verse. Every later stage of
-the funnel (church, patron) starts from a player.
+### 4. 28% of accounts never play once
+53 accounts never finished a verse; every later stage starts from a player.
 - Next: check the first-stop redirect (`lib/firstStop.ts`) on today's build;
   a welcome email that is the verse itself.
 - Status: open.
 
-### 4. The patron card sells one look; the wardrobe is now a reason to visit
-The layered wardrobe shipped 2026-11-11 (PR #440). A supporter look in the
-new art (a cosmetic, earned nothing, thanked publicly nowhere) could sit
-beside the founding patron. Constraint: never a gameplay edge, never sold to a
-guest, IAP on native.
+### 5. "Keep it free" support beside the founding patron
+Optional monthly support labelled as covering servers and AI, the reward a
+look and never an edge (YouVersion's model at our scale: ~$50–300/mo).
 - Status: idea; needs the owner's yes before anything is priced.
+
+**Not doing**: ads, consumer paywalls, sponsored placements.
 
 ## Done
 - 2026-11-11 — measured the baseline above; found the attribution gap is a
-  traffic problem, not a code bug.
+  traffic problem, not a code bug; researched the market (sources in the PR).

@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { churchLook } from './churchLook'
 import { ChurchArt } from './ChurchArt'
 import { churchSceneArt } from './sceneArt'
 import { ChurchFlora } from './ChurchFlora'
@@ -148,6 +149,13 @@ export function ChurchScene({
    */
   leader?: ChurchLeaderLook | null
 }) {
+  // Members drawn in the layered wardrobe's art (features/church/churchLook):
+  // anybody without a layered character yet is shown in everyday clothes in
+  // their own figure, tone and hair colour, so the yard is one style.
+  const drawn = useMemo(
+    () => members.map((m, i) => ({ ...m, avatarCharacter: churchLook(m.avatarCharacter, m.seed ?? (m.username || `m${i}`)) })),
+    [members],
+  )
   const reduceMotion = useSettings((s) => s.reduceMotion)
   // The painted backdrop, layered OVER the drawn one rather than instead of it
   // — the house rule every other render follows. The gradients below are the
@@ -343,7 +351,7 @@ export function ChurchScene({
           of the cut and caps the crowd — a picture of the place, not a
           census, same as ever). */}
       <CrowdLife
-        members={members}
+        members={drawn}
         waypoints={WAYPOINTS}
         sizeFor={sizeFor}
         max={9}

@@ -433,7 +433,7 @@ export function CustomizeSection() {
                       // Native builds carry no storefront, so a priced skin only appears
                       // once it's owned — including packs bought on the website, which
                       // stay wearable here. See lib/commerce.
-                      .filter((skin) => skinVisible(skin, isSkinOwned(skin)))
+                      .filter((skin) => skinVisible(skin, isSkinOwned(skin), isEquipped(skin)))
                       .map((skin) => {
                       const owned = isSkinOwned(skin)
                       const equipped = isEquipped(skin)

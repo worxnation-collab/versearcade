@@ -4832,6 +4832,17 @@ Verified by driving it: set all three as a guest, reload, all three survive on
 the card and the page never scrolls sideways (the picker's rows hit the
 grid-item `min-width: auto` trap first time out).
 
+### The layered wardrobe (2026-11-11)
+
+A spec with an `outfit` is drawn as stacked layers (`data/layered.ts`,
+`components/LayeredFigure.tsx`, art from `scripts/avatar/layers.py`); new
+characters start that way, older specs keep their look until the player taps
+"Try the new wardrobe", and the churchyard draws everybody in the new art
+(`features/church/churchLook.ts`). Nine full skins are `shelved` — shown only
+to players who have them. Read `docs/AVATAR-LAYERS.md` before touching any of
+it; the extraction rules there (green suit, bands, no body skin in clothing)
+each came from a visible bug.
+
 ### Customizing is one shelf, not six
 
 **A worn full skin hides the WHOLE "Your Character" section on the profile.** A

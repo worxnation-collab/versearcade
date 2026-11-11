@@ -80,8 +80,15 @@ purchase to date.
 - Price: kept at $39 (inside the market band; nobody is billed before Easter
   2027 anyway). A referral "free month" is meaningless while every new church
   is free until Easter — revisit in March 2027.
-- Next: the churches with the most active players are the warmest leads —
-  see `docs/PILOT-CHURCH.md`.
+- **Warmest leads (measured 2026-11-11 20:55 UTC):** Real Life On The
+  Palouse (4 members, 3 active in 14 days) and Connect Church in Opelika, AL
+  (2 members, both active). Nobody leads either. Palouse also had a free claim
+  on 2026-10-23 that was REVOKED — find out whether that was a real pastor
+  turned away or a test; if real, that is the first pilot to call.
+- The in-app asks are not producing on their own: 0 claims and 0 join
+  inquiries in 14 days, and `pastor-ref` has no sign-ups yet (it shipped
+  today). Pilots will come from the owner's own outreach first
+  (`docs/PILOT-CHURCH.md` §1A), not from the funnel.
 
 ### 3. A classroom license (schools, homeschool co-ops, youth groups)
 Reuses the church dashboard: a teacher assigns a book's trivia round and sees
@@ -103,6 +110,8 @@ look and never an edge (YouVersion's model at our scale: ~$50–300/mo).
 **Not doing**: ads, consumer paywalls, sponsored placements.
 
 ## Done
+- 2026-11-11 — research pass: named the two warmest pilot churches and the
+  revoked Palouse claim (lead 2); no code change, nothing safe to ship.
 - 2026-11-11 — "Know another pastor?" on the leader Home (lead 2); confirmed
   the never-played leak is already closed (lead 4); kept the suite at $39.
 - 2026-11-11 — measured the baseline above; found the attribution gap is a

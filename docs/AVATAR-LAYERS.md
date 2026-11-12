@@ -132,3 +132,30 @@ About $0.04 a render.
   renders. Ages still need their own bases.
 - **Skin tone is not layered yet**: the body is drawn in one tone. The plan is
   the same tint trick on a skin mask.
+
+## Cleanup pass (2026-11-12)
+
+Found on a real phone, each a leak of the LIGHT base body into a layer, which
+reads as a pale patch on every darker tone. All fixed in place on the same
+paths, then `layers.py builds` re-derived slim and sturdy:
+
+- `scripts/avatar/head-skin.py` — a brim, ring or halo is the one part of a
+  headpiece wider than the head, so below the widest such row (inside the head
+  outline) the layer is leaked face: it becomes a soft brim shadow. The star
+  crown and the halo carried a whole bald head; it is cleared outright. Pixel
+  matching (Kontext moves the head) and skin-colour tests (felt and straw ARE
+  skin-coloured) both failed first.
+- `scripts/avatar/cloth-skin.py` — a TINTED piece is stored grey, so any warm
+  saturated pixel in it is skin: cleared, for tops, legs and brimless headwear.
+  Full-colour pieces are left alone (leather and the coat of many colours lost
+  garment to a hue test), and `top_explorer_jacket` is cut at its hem: it had a
+  pair of trousers under it that covered any legs and shoes.
+- `scripts/avatar/back-icons.py` — back tiles show a picture of the piece
+  (`public/avatar/icons/<id>.webp`): a back layer is only what shows AROUND the
+  body, so alone it was a hole with straps, and on the figure every pack looked
+  like the same strap.
+
+Also: full-length figures draw past their frame so a balloon or banner is not
+cut off; an overlay look (the wings) is dropped on moving into the wardrobe and
+the builder shows any one still worn with "Take off"; the goofy pieces unlock
+early (balloon, pompom, goggles, skateboard, glow sneakers, trumpet).

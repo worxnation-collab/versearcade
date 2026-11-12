@@ -177,7 +177,13 @@ if not os.path.exists(end):
     run('ffmpeg', '-y', '-loop', '1', '-t', '9', '-i', os.path.join(D, 'end', 'f00000.jpg'), '-vf', 'fps=30,scale=1080:1920,format=yuv420p', '-c:v', 'libx264', '-crf', '18', end)
 
 parts, sfx, sheet, T = [], [], [], 0.0
+SUBS = arg('--subs')
 for i, (name, a, b, sp, zoom, caps, fx) in enumerate(SEGS):
+    # With word-by-word subtitles the voice carries the words, so a shot's own
+    # caption pills would say the same thing twice: only the cold open and the
+    # chapter cards keep theirs.
+    if SUBS and i >= 3 and not name.startswith('card:'):
+        caps = []
     hold = 0.0
     if isinstance(sp, str):
         # 'fit:<seconds>': as long as the words over it, never below 0.8x.
@@ -223,6 +229,10 @@ lst = os.path.join(D, f'{PRE}-parts.txt')
 open(lst, 'w').write(''.join(f"file '{p}'\n" for p in parts))
 video = os.path.join(D, f'{PRE}-video.mp4')
 run('ffmpeg', '-y', '-f', 'concat', '-safe', '0', '-i', lst, '-c', 'copy', video)
+if SUBS:
+    subbed = os.path.join(D, f'{PRE}-video-subs.mp4')
+    run('ffmpeg', '-y', '-i', video, '-vf', f"ass={SUBS}:fontsdir=/usr/share/fonts/opentype/inter", '-c:v', 'libx264', '-crf', '18', '-preset', 'fast', subbed)
+    video = subbed
 
 # Sound effects, synthesised here: nothing to license, nothing to fetch.
 SFX = {

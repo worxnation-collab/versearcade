@@ -192,7 +192,9 @@ for i, (name, a, b, sp, zoom, caps, fx) in enumerate(SEGS):
         hold = max(0.0, target - (b - a) / sp)
     dur = (b - a) / sp + hold
     vf = [f'setpts=(PTS-STARTPTS)/{sp}', 'fps=30', *([f'tpad=stop_mode=clone:stop_duration={hold:.3f}'] if hold else []), 'scale=1080:1920:force_original_aspect_ratio=increase', 'crop=1080:1920']
-    if zoom:
+    # --no-zoom: every screen edge to edge. A punch-in on a phone-shaped frame
+    # can only grow by cutting the sides off, which read as "doesn't fit".
+    if zoom and '--no-zoom' not in sys.argv:
         cx, cy, z = zoom
         z = min(z, 1.25)   # past this a phone screen loses text at both edges
         # Punch in over 0.35s, eased, then hold: the moment that matters, big.

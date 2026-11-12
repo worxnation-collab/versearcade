@@ -1,5 +1,5 @@
 // Records the promo walkthrough of the real app as JPEG frames (CDP
-// screencast at 1080x1920), one folder per shot. Assembled by cut.sh.
+// viewport screenshots at 1080x1920, ~16fps), one folder per shot. Cut by cut.py / cut2.py.
 //   node scripts/video/record.mjs <outDir> [shot,shot]
 // Needs `npm run build` (keyless) and `npx vite preview --port 4173`.
 import { chromium } from 'playwright'
@@ -45,6 +45,11 @@ async function shot(browser, name, fn) {
   if (ONLY && !ONLY.includes(name)) return
   const dir = path.join(OUT, name)
   fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true })
+  // FULL RESOLUTION: CDP's screencast hands back CSS-pixel frames (432x768)
+  // whatever the device scale, which the cut then stretched into soft text.
+  // So frames are SCREENSHOTS of the visible viewport at 2.5x (1080x1920),
+  // taken back to back (~16 a second) while the shot plays. The clip is in
+  // document coordinates, hence the layout metrics on every frame.
   const ctx = await browser.newContext({ viewport: { width: 432, height: 768 }, deviceScaleFactor: 2.5 })
   await ctx.addInitScript(([p, s]) => {
     if (!localStorage.getItem('va.profile')) {
@@ -55,14 +60,21 @@ async function shot(browser, name, fn) {
   await ctx.addInitScript(TAPS)
   const page = await ctx.newPage()
   page.on('pageerror', (e) => console.error(name, 'pageerror', e.message))
-  let rec = false
+  let rec = false, stop = false
   const frames = []
   const cdp = await ctx.newCDPSession(page)
-  cdp.on('Page.screencastFrame', async (f) => {
-    if (rec) frames.push({ t: f.metadata.timestamp, data: f.data })
-    await cdp.send('Page.screencastFrameAck', { sessionId: f.sessionId }).catch(() => {})
-  })
-  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 92, maxWidth: 1080, maxHeight: 1920 })
+  const grab = (async () => {
+    while (!stop) {
+      if (!rec) { await new Promise((r) => setTimeout(r, 20)); continue }
+      try {
+        const v = (await cdp.send('Page.getLayoutMetrics')).cssVisualViewport
+        const t = Date.now() / 1000
+        const r = await cdp.send('Page.captureScreenshot', { format: 'jpeg', quality: 92, optimizeForSpeed: true,
+          clip: { x: v.pageX, y: v.pageY, width: v.clientWidth, height: v.clientHeight, scale: 2.5 } })
+        if (rec) frames.push({ t, data: r.data })
+      } catch { await new Promise((r) => setTimeout(r, 30)) }
+    }
+  })()
   const api = {
     page,
     go: async (url) => { await page.goto(BASE + url); await page.waitForLoadState('networkidle').catch(() => {}) },
@@ -71,8 +83,8 @@ async function shot(browser, name, fn) {
   }
   await fn(api)
   await page.waitForTimeout(300)
-  rec = false
-  await cdp.send('Page.stopScreencast')
+  rec = false; stop = true
+  await grab
   // ffconcat with each frame held until the next one arrived.
   const lines = ['ffconcat version 1.0']
   frames.forEach((f, i) => {

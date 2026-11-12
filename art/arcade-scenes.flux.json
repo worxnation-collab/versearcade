@@ -1,0 +1,33 @@
+{
+  "_doc": "The arcade's IN-GAME backdrops, painted in the same hand as its covers (art/arcade-covers.flux.json) so a game looks the same from cover to play (2026-11-12). Written over public/arcade/arcade_<id>.jpg at the size the field draws them; GENERATED_ART already points there. Each backdrop has things drawn OVER it, so the rule in every prompt is the playfield's: the ground, the page or the wall stays EMPTY where play happens.",
+  "model": "fal-ai/flux-pro/v1.1-ultra",
+  "style": "Rich hand-painted storybook illustration, soft painterly brushwork, luminous, warm, cinematic, the same hand as the app's game cover paintings. A game backdrop: quiet, soft, low-contrast where play happens, so small objects and text drawn on top stay readable. No frame, no border, no vignette, no text, no letters, no numbers, no logos, no people, no faces, no hands, no animals.",
+  "scenes": {
+    "arcade_wilderness": {
+      "aspect": "9:21",
+      "size": [
+        429,
+        640
+      ],
+      "subject": "the wilderness of Sinai just before dawn, seen from standing height. A wide high view: the horizon sits HIGH, one third of the way down the frame, a flat distant line; above it a deep violet sky with a few fading stars and a soft gold glow, the sun not yet risen and not visible. The lower two thirds of the frame is a broad, flat, gently rolling plain of open bare desert sand in soft warm honey and clay tones, evenly lit with very gentle shading and no deep shadows, running to the bottom edge. The sand is empty: no flakes, no specks, no jar, no rocks, no plants, no tents, no footprints, no signature, nothing resting on the ground",
+      "anchor": "bottom",
+      "_note": "Flux puts the horizon about two-thirds down whatever the prompt says, and MANNA_PLOTS start two-fifths down. So it is painted TALL (9:21) and the bottom of it is kept: the horizon lands ~43% down, flakes on sand."
+    },
+    "arcade_page": {
+      "aspect": "2:3",
+      "size": [
+        429,
+        640
+      ],
+      "subject": "a close-up of the middle of one blank page of old cream Bible paper, so close that the page fills the entire frame and its edges are OUTSIDE the picture: no page edge, no torn edge, no burnt edge, no cracks, no curl visible anywhere. Soft paper fibre grain, a faint warm foxing near the corners, a gentle soft shadow down the far left side where the paper bends toward the binding, soft warm candlelight. Absolutely nothing printed or drawn on it: no words, no lines, no margins, no ornament, completely blank, light and even so dark ink laid on it is easy to read"
+    },
+    "arcade_workshop": {
+      "aspect": "1:1",
+      "size": [
+        640,
+        640
+      ],
+      "subject": "a close, straight-on view of a plain wall of rough vertical wooden planks in a carpenter's workshop at night, nothing but the planks filling the whole frame from edge to edge. Soft warm lamplight spills from off-frame at the upper left, fading to deep warm brown shadow toward the right and the corners. The wall is completely bare: no objects, no tools, no rope, no hooks, no pegs, no shelf, no lamp, no cross shapes, no beams, no window, no floor, no bench. Just dim, quiet, empty boards"
+    }
+  }
+}

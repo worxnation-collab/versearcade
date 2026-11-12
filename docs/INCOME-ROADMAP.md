@@ -82,9 +82,9 @@ purchase to date.
   is free until Easter — revisit in March 2027.
 - **Warmest leads (measured 2026-11-11 20:55 UTC):** Real Life On The
   Palouse (4 members, 3 active in 14 days) and Connect Church in Opelika, AL
-  (2 members, both active). Nobody leads either. Palouse also had a free claim
-  on 2026-10-23 that was REVOKED — find out whether that was a real pastor
-  turned away or a test; if real, that is the first pilot to call.
+  (2 members, both active). Nobody leads either. Palouse's revoked free claim
+  of 2026-10-23 was the OPERATOR'S OWN TEST (checked 2026-11-12) — no real
+  pastor was turned away, so the lead is the congregation, not a claimant.
 - The in-app asks are not producing on their own: 0 claims and 0 join
   inquiries in 14 days, and `pastor-ref` has no sign-ups yet (it shipped
   today). Pilots will come from the owner's own outreach first
@@ -110,6 +110,12 @@ look and never an edge (YouVersion's model at our scale: ~$50–300/mo).
 **Not doing**: ads, consumer paywalls, sponsored placements.
 
 ## Done
+- 2026-11-12 — research pass: the funnel is still at zero (no `pastor-ref`
+  sign-ups, no claims or join inquiries in 2 days, no plan-page taps in 14
+  days, no new accounts in a day); the Palouse claim was an operator test. The
+  plans page already says "Free through Easter 2027". No code change: the
+  bottleneck is traffic (lead 1, YouTube Studio) and the owner's outreach to
+  the two warm churches (lead 2), not the product.
 - 2026-11-11 — research pass: named the two warmest pilot churches and the
   revoked Palouse claim (lead 2); no code change, nothing safe to ship.
 - 2026-11-11 — "Know another pastor?" on the leader Home (lead 2); confirmed

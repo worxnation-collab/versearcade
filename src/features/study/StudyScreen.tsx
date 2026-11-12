@@ -158,7 +158,7 @@ export default function StudyScreen() {
     },
     {
       key: 'trivia',
-      title: 'Bonus trivia',
+      title: 'Book trivia',
       emblem: '✨',
       cover: 'trivia',
       caption: 'Five questions about a book of your choosing',

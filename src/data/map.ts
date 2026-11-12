@@ -189,7 +189,7 @@ export const MAP_PLACES: MapPlace[] = [
   {
     id: 'trivia',
     icon: 'sparkle',
-    label: 'Bonus trivia',
+    label: 'Book trivia',
     line: 'The daily verse’s last question, five at a time',
     to: '/study/trivia',
     area: 'study',

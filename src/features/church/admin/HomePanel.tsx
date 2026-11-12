@@ -36,7 +36,7 @@ import { TellAPastor } from './TellAPastor'
 //     the row is the in-app notice that it is waiting)
 //
 // Every row is DERIVED from reads the dashboard already makes (`fetchDays`,
-// the same window logic as `WeekGapLine`; `church_leader_insights`;
+// the same window logic as `OfficeBar`; `church_leader_insights`;
 // `church_admin_settings`) — no new RPC, no new table, nothing stored.
 //
 // It is a to-do, not a scoreboard: a row appears only while there is
@@ -103,7 +103,7 @@ export function HomePanel({
     if (!verified) return
     let alive = true
     // Three weeks, the planner's own window: gaps are judged on the first
-    // seven (WeekGapLine's rule), drafts and flags on all of it — a draft for
+    // seven (OfficeBar's rule), drafts and flags on all of it — a draft for
     // the week after next still needs approving.
     fetchDays(churchId, today, 21).then((r) => {
       if (!alive) return

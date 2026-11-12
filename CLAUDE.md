@@ -5738,6 +5738,31 @@ touching any of them; this is the map.
   page's `ShareChurch`, with a `label`, on the card of the person likeliest to
   send it. Same link, same referral credit.
 
+## Today is a PATH, and a leader's tools are an OFFICE (2026-11-12)
+
+**For a church member the Play tab's daily things are steps, not rivals**
+(`TodayPath` in `HomeScreen.tsx`): today's drop, then the church's verse (a
+member of a verified church that set one), then trivia — always in that order,
+the drop always first (0128). Exactly one step is big with the one gold button
+(the first not yet played); a played step is a slim row with its score; a step
+still to come is a quiet row that still taps through. Every result screen hands
+on to the next step with `NextStepCard` (`features/daily/NextStepCard.tsx`):
+the drop's result names the church verse ("{church} picked … for today") before
+trivia, the church verse's names trivia. The church tab no longer repeats the
+verse as a second Play button — `ChurchLife` shows the series and one line
+pointing at the Play tab — and a small-group leader's discussion questions for
+the day appear at the end of the church verse's own result ("Talk about it with
+{group}"), where the conversation starts.
+
+**A leader's church tab is the member's tab plus ONE bar** (`OfficeBar`): "You
+lead {church} → Open the Church Office", with a gold dot when the week ahead
+has open or draft days. No tools, alerts or schedule lines inside the game's
+cards any more. The dashboard at `/church/:id/admin` is the **Church Office**:
+its own space outside the tab shell (no bottom nav, no XP, no yard), a
+`PageHeader` with "← Back to the app", and every door into it (claim, player
+card, public page) says "Church Office". The pitch is the shape: the
+congregation plays a game; the pastor gets an office.
+
 ## The Battle tab leads with the turn you owe
 
 Every card on that tab was individually right and the sum of it opened on the

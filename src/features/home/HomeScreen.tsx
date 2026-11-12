@@ -319,41 +319,50 @@ export default function HomeScreen() {
         </p>
       )}
 
-      {/* ── Today ─────────────────────────────────────────────────────────
-          The drop as the one full card, then the second daily things as slim
-          rows under it. `minmax(0, 1fr)`: a grid item's min-width is `auto`,
-          and a book name like "1 Thessalonians" must not blow a row out. */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 8 }}>
-        <DropBox
-          played={playedToday}
-          reference={today?.reference}
-          questionCount={today?.questions.length ?? 5}
-          score={lastResult?.result.score}
-          correct={lastResult?.result.correctCount}
-          total={lastResult?.result.totalQuestions}
-          countdown={formatCountdown(countdown)}
-          boosts={profile.xpBoosts}
-          boostArmed={boostArmed}
-          onBoost={() => armBoost(!boostArmed)}
-          chestReady={chestReady}
-          onChest={() => setSheet('chest')}
-          onPlay={() => navigate('/play/run')}
-          onRecap={() => navigate('/play/result')}
-        />
-        <TriviaBox
-          book={triviaBook}
-          done={triviaDone}
-          correct={triviaScore?.c}
-          total={triviaScore?.t}
-          countdown={formatCountdown(countdown)}
-          onPlay={() => navigate('/play/trivia')}
-        />
-        {/* Your church's own verse, a THIRD lane — never in place of the drop
-            above (0128), and a row like the trivia so it never pushes the drop
-            down. Renders nothing for anybody without a verified church that
-            scheduled one today, so the tab is unchanged for them. */}
-        <ChurchVerseBox onPlay={() => navigate('/play/church')} />
-      </div>
+      {/* ── Today, as ONE path (2026-11-12) ─────────────────────────────────
+          The drop, your church's verse (a member of a verified church that set
+          one) and the trivia round used to sit as three equal cards competing
+          for the same thumb. They are steps now, in that order and always in
+          that order: the step that is NEXT is the one big card with the one
+          gold button, a finished step shrinks to a row that says its score,
+          and a step still to come is a quiet row you can still tap. The drop
+          is always first — a church's verse never takes its place (0128). */}
+      <TodayPath
+        drop={
+          <DropBox
+            played={playedToday}
+            reference={today?.reference}
+            questionCount={today?.questions.length ?? 5}
+            score={lastResult?.result.score}
+            correct={lastResult?.result.correctCount}
+            total={lastResult?.result.totalQuestions}
+            countdown={formatCountdown(countdown)}
+            boosts={profile.xpBoosts}
+            boostArmed={boostArmed}
+            onBoost={() => armBoost(!boostArmed)}
+            chestReady={chestReady}
+            onChest={() => setSheet('chest')}
+            onPlay={() => navigate('/play/run')}
+            onRecap={() => navigate('/play/result')}
+          />
+        }
+        dropDone={playedToday}
+        dropRow={{
+          reference: today?.reference ?? 'Today’s verse',
+          result: lastResult ? `${lastResult.result.correctCount}/${lastResult.result.totalQuestions}` : undefined,
+          chestReady,
+          onChest: () => setSheet('chest'),
+          onRecap: () => navigate('/play/result'),
+        }}
+        trivia={{
+          book: triviaBook,
+          done: triviaDone,
+          result: triviaDone && triviaScore?.c !== undefined ? `${triviaScore.c}/${triviaScore.t}` : undefined,
+          countdown: formatCountdown(countdown),
+          onPlay: () => navigate('/play/trivia'),
+        }}
+        onChurch={() => navigate('/play/church')}
+      />
 
       {/* How many people are in this with you today, directly under the daily
           things because it is a fact about the thing those boxes just offered.
@@ -693,74 +702,155 @@ function DropBox({
   )
 }
 
-function ChurchVerseBox({ onPlay }: { onPlay: () => void }) {
-  const today = useChurchVerse((s) => s.today)
+/**
+ * Today's path: the drop, then (for a member of a verified church that set
+ * one) the church's verse, then the trivia round. See the comment where it is
+ * mounted. Exactly one step is big — the first one not yet played — and when
+ * everything is played the drop's own "Done for today" card leads again, with
+ * the other two as finished rows under it.
+ */
+function TodayPath({
+  drop,
+  dropDone,
+  dropRow,
+  trivia,
+  onChurch,
+}: {
+  drop: React.ReactNode
+  dropDone: boolean
+  dropRow: { reference: string; result?: string; chestReady: boolean; onChest: () => void; onRecap: () => void }
+  trivia: { book: string | null; done: boolean; result?: string; countdown: string; onPlay: () => void }
+  onChurch: () => void
+}) {
+  const church = useChurchVerse((s) => s.today)
   const series = useChurchVerse((s) => s.series)
   const load = useChurchVerse((s) => s.load)
   const mode = useAuth((s) => s.mode)
-
   useEffect(() => {
     if (mode === 'online') void load()
   }, [mode, load])
 
-  if (!today) return null
-  const p = today.progress
-  // The series line reads the 0130 arc when there is one ("Day 3 of 5 · …"),
-  // and 0128's counts on a server without it.
-  const arc = series && series.churchId === today.churchId && series.name === today.series ? series : null
-  const seriesLine = arc
-    ? <SeriesTrail series={arc} compact />
-    : today.series ? `${p ? `Day ${p.soFar} of ${p.total} · ` : ''}${today.series}` : null
+  const churchDone = !!church?.played
+  const current: 'drop' | 'church' | 'trivia' | null =
+    !dropDone ? 'drop' : church && !churchDone ? 'church' : !trivia.done ? 'trivia' : null
+  const big = current ?? 'drop'
+  const triviaLabel = trivia.book ?? 'the whole Bible'
+
+  const arc = church && series && series.churchId === church.churchId && series.name === church.series ? series : null
+  const churchLine = church
+    ? arc ? <SeriesTrail series={arc} compact /> : church.series ? `${church.progress ? `Day ${church.progress.soFar} of ${church.progress.total} · ` : ''}${church.series}` : church.note
+    : null
+
+  const upcoming = (key: 'church' | 'trivia') => current === 'drop' || (current === 'church' && key === 'trivia')
+
   return (
-    <DailyRow
-      accent="rgba(154,124,69,0.30)"
-      icon="⛪"
-      eyebrow={`From ${today.churchName}`}
-      title={today.reference}
-      // The pastor's note used to be a paragraph here; as a row it is one
-      // clamped line, and the whole note is on the read screen of the run.
-      line={!today.played ? (seriesLine ?? today.note ?? 'Five questions from your pastor') : seriesLine}
-      done={!!today.played}
-      result={today.played ? `${today.played.correct}/${today.played.total}` : undefined}
-      action={today.played ? 'Again' : 'Play'}
-      label={today.played ? `See ${today.churchName}’s verse again` : `Play ${today.churchName}’s verse, ${today.reference}`}
-      onClick={onPlay}
-    />
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 8 }} data-today-path={current ?? 'done'}>
+      {big === 'drop' ? (
+        drop
+      ) : (
+        <DailyRow
+          accent="rgba(255,210,63,0.12)"
+          icon="✦"
+          eyebrow="Today’s drop"
+          title={dropRow.reference}
+          done
+          result={dropRow.result}
+          action="Recap"
+          label={`Today’s drop, ${dropRow.reference}: see your recap`}
+          onClick={dropRow.onRecap}
+        />
+      )}
+      {big !== 'drop' && dropRow.chestReady && (
+        <button
+          onClick={dropRow.onChest}
+          className="pill"
+          style={{ justifySelf: 'center', fontSize: 11.5, cursor: 'pointer', borderColor: 'var(--gold)', color: 'var(--gold)', background: 'rgba(255,210,63,0.14)' }}
+        >
+          🎁 Open your chest
+        </button>
+      )}
+
+      {church && (big === 'church' ? (
+        <NextBox
+          accent="rgba(154,124,69,0.32)"
+          pill={`⛪ Next · from ${church.churchName}`}
+          title={church.reference}
+          line={churchLine ?? 'Five questions from your church'}
+          note={church.note && churchLine !== church.note ? church.note : null}
+          button="▶ Play your church’s verse"
+          onPlay={onChurch}
+        />
+      ) : (
+        <DailyRow
+          accent="rgba(154,124,69,0.30)"
+          icon="⛪"
+          eyebrow={upcoming('church') ? `Then · from ${church.churchName}` : `From ${church.churchName}`}
+          title={church.reference}
+          line={churchDone ? churchLine : upcoming('church') ? 'Your church’s verse, after today’s drop' : churchLine}
+          done={churchDone}
+          quiet={upcoming('church')}
+          result={church.played ? `${church.played.correct}/${church.played.total}` : undefined}
+          action={churchDone ? 'Again' : 'Play'}
+          label={churchDone ? `See ${church.churchName}’s verse again` : `Play ${church.churchName}’s verse, ${church.reference}`}
+          onClick={onChurch}
+        />
+      ))}
+
+      {big === 'trivia' ? (
+        <NextBox
+          accent="rgba(93,211,255,0.18)"
+          pill="✨ Next · today’s trivia"
+          title={`Five on ${triviaLabel}`}
+          line="The book itself — its people, places, what happens"
+          button="▶ Play trivia"
+          onPlay={trivia.onPlay}
+        />
+      ) : (
+        <DailyRow
+          accent="rgba(93,211,255,0.16)"
+          icon="✨"
+          eyebrow={upcoming('trivia') ? 'Then · today’s trivia' : 'Today’s trivia'}
+          title={trivia.done ? triviaLabel : `Five on ${triviaLabel}`}
+          line={trivia.done ? `New book in ${trivia.countdown}` : 'The book itself — its people, places, what happens'}
+          done={trivia.done}
+          quiet={upcoming('trivia')}
+          result={trivia.result}
+          action={trivia.done ? 'Again' : 'Play'}
+          label={trivia.done ? `Play today’s trivia on ${triviaLabel} again` : `Play today’s trivia: five on ${triviaLabel}`}
+          onClick={trivia.onPlay}
+        />
+      )}
+    </div>
   )
 }
 
-function TriviaBox({
-  book,
-  done,
-  correct,
-  total,
-  countdown,
-  onPlay,
+/** The big card for the NEXT step when it is not the drop: the drop box's
+ *  shape, with the one gold button the path allows at a time. */
+function NextBox({
+  accent, pill, title, line, note, button, onPlay,
 }: {
-  book: string | null
-  done: boolean
-  correct?: number
-  total?: number
-  countdown: string
+  accent: string
+  pill: string
+  title: string
+  line: React.ReactNode
+  note?: string | null
+  button: string
   onPlay: () => void
 }) {
-  const label = book ?? 'the whole Bible'
-  // Today's numbers only, the same as before it was a row: no best, no
-  // history, nothing to be behind on. A day recorded before the numbers were
-  // kept simply has none, and the row says "done" without them.
   return (
-    <DailyRow
-      accent="rgba(93,211,255,0.16)"
-      icon="✨"
-      eyebrow="Today’s trivia"
-      title={done ? label : `Five on ${label}`}
-      line={done ? `New book in ${countdown}` : 'The book itself — its people, places, what happens'}
-      done={done}
-      result={done && correct !== undefined ? `${correct}/${total}` : undefined}
-      action={done ? 'Again' : 'Play'}
-      label={done ? `Play today’s trivia on ${label} again` : `Play today’s trivia: five on ${label}`}
-      onClick={onPlay}
-    />
+    <BoxShell accent={accent}>
+      <span className="pill" style={PILL}>{pill}</span>
+      <h2 style={{ fontSize: 21, lineHeight: 1.2, overflowWrap: 'anywhere' }}>{title}</h2>
+      <div className="dim" style={{ marginTop: 6, fontSize: 12.5, lineHeight: 1.45 }}>{line}</div>
+      {note && (
+        <p className="faint" style={{ margin: '6px 0 0', fontSize: 12, lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+          “{note}”
+        </p>
+      )}
+      <div style={{ marginTop: 12 }}>
+        <Button variant="gold" full onClick={onPlay}>{button}</Button>
+      </div>
+    </BoxShell>
   )
 }
 
@@ -786,7 +876,10 @@ function DailyRow({
   action,
   label,
   onClick,
+  quiet,
 }: {
+  /** A step still to come on today's path: drawn softer, still tappable. */
+  quiet?: boolean
   /** The wash on the row's left edge. Sky for trivia, bronze for the church. */
   accent: string
   icon: React.ReactNode
@@ -823,6 +916,7 @@ function DailyRow({
         font: 'inherit',
         position: 'relative',
         overflow: 'hidden',
+        opacity: quiet ? 0.72 : 1,
         background: `linear-gradient(90deg, ${accent}, transparent 55%), var(--card)`,
       }}
     >

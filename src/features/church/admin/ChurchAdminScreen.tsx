@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { PageHeader } from '@/components/PageHeader'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { parseHomeGo } from '../../../../supabase/functions/church-digest/home.ts'
 import { Page } from '@/components/Page'
@@ -235,7 +236,7 @@ export default function ChurchAdminScreen() {
 
   const back = () => {
     juice.select?.()
-    navigate(`/church/${id}`)
+    navigate('/church')
   }
 
   if (state === 'loading') {
@@ -251,7 +252,7 @@ export default function ChurchAdminScreen() {
       <Page>
         <div className="card center" style={{ marginTop: 16 }}>
           <b style={{ fontFamily: 'var(--font-display)', fontSize: 18, display: 'block' }}>
-            {state === 'denied' ? 'This page is for church leadership' : "Leadership tools aren't available right now"}
+            {state === 'denied' ? 'This page is for church leadership' : "The Church Office isn't available right now"}
           </b>
           <p className="dim" style={{ margin: '8px 0 14px', fontSize: 13.5, lineHeight: 1.55 }}>
             {state === 'denied'
@@ -380,12 +381,20 @@ export default function ChurchAdminScreen() {
 
   return (
     <Page className={Capacitor.isNativePlatform() ? undefined : 'admin-wide'}>
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
-        <button className="pill" onClick={back} aria-label="Back to the church">← {settings.name}</button>
-      </div>
-
-      <h1 style={{ fontSize: 24, margin: '0 0 4px' }}>Leadership</h1>
-      <div className="dim" style={{ fontSize: 13.5, marginBottom: 12 }}>{settings.name}</div>
+      {/* The Church Office (2026-11-12): the leader's tools as their own
+          space, apart from the game. No bottom nav (this route is outside the
+          tab shell), no XP, no yard — and ONE way back to the app. The church
+          tab reaches here through OfficeBar, its only leadership element. */}
+      <PageHeader
+        noBack
+        title="Church Office"
+        sub={settings.name}
+        action={
+          <button className="pill" onClick={back} style={{ fontSize: 12.5, fontWeight: 800, whiteSpace: 'nowrap' }}>
+            ← Back to the app
+          </button>
+        }
+      />
       <AlsoLead currentId={id} />
 
       <TabbedSection tabs={tabs} defaultOpen defaultTab={avatarPaid || upgraded ? 'page' : 'home'} go={go} />

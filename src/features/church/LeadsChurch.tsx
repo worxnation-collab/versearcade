@@ -153,7 +153,7 @@ export function ChurchInquirySheet({
         </div>
 
         {isMe ? (
-          <Button variant="secondary" full onClick={() => go(`/church/${church.id}/admin`)}>Open your dashboard</Button>
+          <Button variant="secondary" full onClick={() => go(`/church/${church.id}/admin`)}>Open the Church Office</Button>
         ) : locked || !online ? (
           <AccountWallCard
             icon="⛪"

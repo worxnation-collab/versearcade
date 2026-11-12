@@ -1307,7 +1307,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 75
   },
   "head_cap": {
-   "h": 80,
+   "h": 64,
    "w": 85,
    "x": 137,
    "y": 90
@@ -1331,7 +1331,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 59
   },
   "head_crown_stars": {
-   "h": 187,
+   "h": 159,
    "w": 151,
    "x": 105,
    "y": 49
@@ -1349,7 +1349,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 71
   },
   "head_feather_cap": {
-   "h": 219,
+   "h": 199,
    "w": 185,
    "x": 94,
    "y": 17
@@ -1379,7 +1379,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 134
   },
   "head_halo": {
-   "h": 63,
+   "h": 53,
    "w": 152,
    "x": 105,
    "y": 65
@@ -1397,7 +1397,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 67
   },
   "head_knight_helm": {
-   "h": 203,
+   "h": 184,
    "w": 102,
    "x": 131,
    "y": 34
@@ -1457,7 +1457,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 96
   },
   "head_work_bandana": {
-   "h": 154,
+   "h": 139,
    "w": 126,
    "x": 117,
    "y": 83
@@ -2233,7 +2233,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 75
   },
   "head_cap": {
-   "h": 80,
+   "h": 64,
    "w": 85,
    "x": 137,
    "y": 90
@@ -2257,7 +2257,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 59
   },
   "head_crown_stars": {
-   "h": 187,
+   "h": 159,
    "w": 151,
    "x": 105,
    "y": 49
@@ -2275,7 +2275,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 71
   },
   "head_feather_cap": {
-   "h": 219,
+   "h": 199,
    "w": 185,
    "x": 94,
    "y": 17
@@ -2305,7 +2305,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 134
   },
   "head_halo": {
-   "h": 63,
+   "h": 53,
    "w": 152,
    "x": 105,
    "y": 65
@@ -2323,7 +2323,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 67
   },
   "head_knight_helm": {
-   "h": 203,
+   "h": 184,
    "w": 102,
    "x": 131,
    "y": 34
@@ -2383,7 +2383,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 96
   },
   "head_work_bandana": {
-   "h": 154,
+   "h": 140,
    "w": 143,
    "x": 109,
    "y": 83
@@ -4157,7 +4157,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 73
   },
   "head_cap": {
-   "h": 73,
+   "h": 63,
    "w": 82,
    "x": 139,
    "y": 90
@@ -4181,7 +4181,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 54
   },
   "head_crown_stars": {
-   "h": 168,
+   "h": 139,
    "w": 155,
    "x": 103,
    "y": 68
@@ -4229,7 +4229,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 136
   },
   "head_halo": {
-   "h": 166,
+   "h": 131,
    "w": 158,
    "x": 102,
    "y": 71
@@ -4289,7 +4289,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 74
   },
   "head_traveler_hat": {
-   "h": 146,
+   "h": 140,
    "w": 179,
    "x": 90,
    "y": 65
@@ -5083,7 +5083,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 73
   },
   "head_cap": {
-   "h": 73,
+   "h": 63,
    "w": 82,
    "x": 139,
    "y": 90
@@ -5107,7 +5107,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 54
   },
   "head_crown_stars": {
-   "h": 168,
+   "h": 139,
    "w": 155,
    "x": 103,
    "y": 68
@@ -5155,7 +5155,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 136
   },
   "head_halo": {
-   "h": 166,
+   "h": 131,
    "w": 158,
    "x": 102,
    "y": 71
@@ -5215,7 +5215,7 @@ export const LAYER_BOXES: Record<string, Record<string, LayerBox>> = {
    "y": 74
   },
   "head_traveler_hat": {
-   "h": 146,
+   "h": 140,
    "w": 179,
    "x": 90,
    "y": 65

@@ -43,6 +43,12 @@ const outfit = (fig) => ({
   top: { id: 'top_tshirt', color: '#4F8FD6' },
   legs: { id: 'legs_jeans', color: '#2A3F7A' },
   shoes: { id: 'shoes_sneakers', color: '#F2ECE0' },
+  // A brimmed hat and a held/back piece on each: the headwear layers once
+  // carried a leaked light FACE under the brim (scripts/avatar/head-face.py),
+  // which only shows with a hat on.
+  head: { id: fig === 'fem' ? 'head_feather_cap' : 'head_explorer_hat' },
+  held: { id: 'held_balloon' },
+  back: { id: 'back_explorer_pack' },
 })
 
 const profile = (fig) => ({

@@ -159,3 +159,27 @@ Also: full-length figures draw past their frame so a balloon or banner is not
 cut off; an overlay look (the wings) is dropped on moving into the wardrobe and
 the builder shows any one still worn with "Take off"; the goofy pieces unlock
 early (balloon, pompom, goggles, skateboard, glow sneakers, trumpet).
+
+## The leaked face under the brim (2026-11-12, `head-face.py`)
+
+The cleanup pass above shipped with a second face inside eleven headwear
+layers: the explorer, traveler(s), feather cap, straw, cowboy and fisher hats,
+the cap, both bandanas and the female knight helm carried the light base's eyes
+and skin under the brim, and the female star crown a whole head. Over a darker
+player it read as a pale second face with a moustache — `head-skin.py`
+measured the brim from its LAST wide row, and a wide brim droops below the
+eyes at its tips, so it cleared the chin and left the face.
+
+`scripts/avatar/head-face.py` (run on `masc`/`fem`, then `layers.py builds`)
+does not look for the brim. The base's eyebrows sit at canvas row ~145 on both
+figures, so inside the head's outline everything from row 141 down is face and
+is cleared, with a short shadow fade under the brim. A helm keeps a wider rim
+for its cheek guards; the halo and the star crown clear the whole head below
+the skull; the olive and silver pieces also clear skin hue just outside the
+outline (a jaw Kontext moved). A colour test alone was tried first and is NOT
+safe on the others: it ate the cream cap, the bandanas and the crowns.
+
+The visual audit now wears a brimmed hat, the balloon and a pack on both
+figures, because this bug only exists with a hat on — and the contact sheets
+from `audit.py` had shown it and been missed. Look at the FACE on every
+headwear tile, not only the hat.

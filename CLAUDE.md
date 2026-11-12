@@ -5708,7 +5708,10 @@ touching any of them; this is the map.
   on the wall and nothing more: no bonus, no attendance, no streak for
   coming, because an hour that pays more is an hour you can be behind on. It
   shows on the live lobby, under the hub's live button, and as a compass
-  invitation only while it is OPEN (online-only, like the match).
+  invitation only while it is OPEN (online-only, like the match). **It is not
+  mentioned at all where it lands outside 7am-11pm on the viewer's own clock**
+  (`gatheringSuitsYou`, 2026-11-12): 8pm New York is 1am in London, and an
+  invitation to get up in the night is not one.
 - **The first week paces the invitations** (`invitations.ts`, `OPENS_ON`):
   verse and chest on day 0, trivia on day 1, arcade and praying on day 2,
   Study and reviews on day 3, the two gestures toward other people on day 4.

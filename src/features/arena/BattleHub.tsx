@@ -33,7 +33,7 @@
  * comparison the boards didn't already — no losses column, no new ladder.
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { gatheringLabel, gatheringOpen } from '@/data/gathering'
+import { gatheringLabel, gatheringOpen, gatheringSuitsYou } from '@/data/gathering'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Page } from '@/components/Page'
@@ -224,13 +224,15 @@ export default function BattleHub() {
               gathering hour only says "now" while it's open. */}
           <div style={{ marginTop: 10 }}>
             <Button full onClick={() => { juice.coin(); navigate('/battle/live') }}>
-              <PaintedIcon id="battle_live" /> {gatheringOpen() ? 'Live battle — it’s the gathering hour' : 'Live battle — same verse, same moment'}
+              <PaintedIcon id="battle_live" /> {gatheringOpen() && gatheringSuitsYou() ? 'Live battle — it’s the gathering hour' : 'Live battle — same verse, same moment'}
             </Button>
           </div>
           <p className="faint center" style={{ fontSize: 11, margin: '6px 0 0', lineHeight: 1.4 }}>
-            {gatheringOpen()
-              ? 'People are likeliest to be looking right now.'
-              : `Quick match or a room code · everyone gathers at ${gatheringLabel()}`}
+            {!gatheringSuitsYou()
+              ? 'Quick match, or a room code for a friend'
+              : gatheringOpen()
+                ? 'People are likeliest to be looking right now.'
+                : `Quick match or a room code · everyone gathers at ${gatheringLabel()}`}
           </p>
 
           {/* Your battles, split by whose move it is. "Your turn" carries the
@@ -472,7 +474,7 @@ function FirstBattle({ onCpu, onFriend, onLive }: { onCpu: () => void; onFriend:
         className="faint"
         style={{ marginTop: 12, background: 'none', border: 'none', fontSize: 12.5, cursor: 'pointer', textDecoration: 'underline', minHeight: 32 }}
       >
-        Or play live — everyone gathers at {gatheringLabel()}
+        {gatheringSuitsYou() ? <>Or play live — everyone gathers at {gatheringLabel()}</> : 'Or play live with a friend'}
       </button>
     </div>
   )

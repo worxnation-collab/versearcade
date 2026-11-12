@@ -275,7 +275,15 @@
       "id": "basin",
       "subject": "a shallow cream clay basin filled with water",
       "out": [
-        "public/invite/wash.png"
+        "public/invite/wash.png",
+        "src/assets/icons/basin.png"
+      ]
+    },
+    {
+      "id": "bag",
+      "subject": "a small worn leather satchel bag with a curved flap and a gold buckle",
+      "out": [
+        "src/assets/icons/bag.png"
       ]
     }
   ]

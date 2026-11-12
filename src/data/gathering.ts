@@ -80,6 +80,16 @@ export function gatheringLabel(now: Date = new Date()): string {
   }
 }
 
+/** Whether the hour lands at a sociable time on THIS viewer's clock (7am-11pm).
+ *  The anchor is 8pm New York, which reads "1:00 am" in London — an invitation
+ *  to get up in the night is not an invitation. Outside that band every surface
+ *  simply doesn't mention the hour (and the compass doesn't invite it); the
+ *  match itself is still there whenever somebody wants it. */
+export function gatheringSuitsYou(now: Date = new Date()): boolean {
+  const h = gatheringWindow(now).start.getHours()
+  return h >= 7 && h <= 22
+}
+
 /** A short line for a surface that offers a live match. */
 export function gatheringLine(now: Date = new Date()): string {
   if (gatheringOpen(now)) return 'It’s the gathering hour — this is when people are likeliest to be looking.'

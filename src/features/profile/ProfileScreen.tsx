@@ -373,7 +373,8 @@ export default function ProfileScreen() {
           },
           {
             key: 'basin',
-            label: '🫗 Basin',
+            icon: <PaintedIcon id="basin" />,
+            label: 'Basin',
             right: washLifetime > 0 ? `${washLifetime} washed` : 'The one gesture here that asks nothing back.',
             content: <BasinSection />,
           },
@@ -433,7 +434,7 @@ export default function ProfileScreen() {
           defaultOpen={openInventory}
           defaultTab={openInventory ? 'bag' : undefined}
           tabs={[
-            { key: 'bag', label: '🎒 Bag', right: `${inHand} in hand`, content: <InventorySection /> },
+            { key: 'bag', icon: <PaintedIcon id="bag" />, label: 'Bag', right: `${inHand} in hand`, content: <InventorySection /> },
             { key: 'cards', icon: <PaintedIcon id="stat_cards" />, label: 'Cards', right: `${cards} collected`, content: <CollectionSection /> },
           ]}
         />

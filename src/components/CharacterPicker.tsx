@@ -436,6 +436,11 @@ export function CharacterPicker(props: PickerProps) {
 
 const hairHexFor = (key?: string) => (HAIRS.find((h) => h.key === key) ?? HAIRS[1]).hex
 
+/** The setup stage's figure: big, but never more than about a quarter of the
+ *  screen, so a short phone still has room for the options under it. */
+const stageSize = () =>
+  typeof window === 'undefined' ? 220 : Math.round(Math.max(150, Math.min(230, window.innerHeight * 0.27)))
+
 const asSwatches = (hexes: string[]): Swatch[] => hexes.map((hex) => ({ key: hex, name: hex, hex }))
 
 // The wardrobe builder. At setup (`setup`) it offers the four slots a person
@@ -488,7 +493,29 @@ function LayeredBuilder({
 
   return (
     <div style={{ display: 'grid', gap: 14 }}>
-      <div className="center">
+      {/* At setup the figure is the point of the screen, so it is big and it
+          STAYS on screen while the options scroll under it: a 150px figure that
+          scrolled away left a new player tapping hairstyles they could no longer
+          see (2026-11-12, driven in Chromium). */}
+      <div
+        className="center"
+        style={
+          setup
+            ? {
+                position: 'sticky',
+                top: 0,
+                zIndex: 5,
+                margin: '0 -18px',
+                padding: '6px 0 10px',
+                // Translucent over the page rather than a flat block of the
+                // ground colour, which drew a visible dark rectangle.
+                background: 'linear-gradient(180deg, rgba(20,14,17,0.9) 78%, rgba(20,14,17,0))',
+                backdropFilter: 'blur(6px)',
+                WebkitBackdropFilter: 'blur(6px)',
+              }
+            : undefined
+        }
+      >
         <motion.div
           key={JSON.stringify(value.outfit) + figure + value.skin + buildOf(value)}
           initial={{ scale: 0.94 }}
@@ -496,7 +523,7 @@ function LayeredBuilder({
           transition={{ type: 'spring', stiffness: 480, damping: 18 }}
           style={{ display: 'inline-block' }}
         >
-          <Character spec={value} size={size} fullBody title="Your character" />
+          <Character spec={value} size={setup ? stageSize() : size} fullBody title="Your character" />
         </motion.div>
       </div>
 
@@ -585,13 +612,28 @@ function LayeredBuilder({
               locked={!have}
               onClick={() => have && wear(tab, id)}
             >
-              <img
-                src={layerUrl(figure, id)}
-                alt=""
-                loading="lazy"
-                draggable={false}
-                style={{ maxHeight: 64, maxWidth: '100%', objectFit: 'contain', filter: have ? undefined : 'grayscale(1) brightness(.75)' }}
-              />
+              {tab === 'hair' || tab === 'top' ? (
+                // A hairstyle on its own is a wig floating in a box, and the
+                // long ones shrank to slivers beside a bob; a top's grey render
+                // took the tint on its arm pixels too. Drawn ON the player's own
+                // head and shoulders instead, every piece is the same size, in
+                // the colour picked, and reads as "this is how I'd look".
+                <span style={{ filter: have ? undefined : 'grayscale(1) brightness(.75)', display: 'block' }}>
+                  <Character
+                    spec={{ ...value, outfit: { ...value.outfit, [tab]: { id, color: takesColor(id) ? current?.color ?? (tab === 'hair' ? HAIR_COLORS[1] : CLOTH_COLORS[7]) : undefined } } }}
+                    size={64}
+                  />
+                </span>
+              ) : (
+                <TintedPiece
+                  src={layerUrl(figure, id)}
+                  // A colourable piece is stored GREY and coloured at runtime, so
+                  // its tile showed grey while the character wore blue. The tile
+                  // wears the colour picked for this slot, like the figure does.
+                  tint={have && takesColor(id) ? current?.color ?? CLOTH_COLORS[7] : undefined}
+                  dim={!have}
+                />
+              )}
             </WardrobeTile>
           )
         })}
@@ -603,6 +645,36 @@ function LayeredBuilder({
           : 'Everything you can see is yours to wear. Locked pieces say what earns them. It saves as you tap.'}
       </p>
     </div>
+  )
+}
+
+/** A piece's art, multiplied by a colour where it takes one: the grey render
+ *  under a solid colour masked to the piece's own shape. */
+function TintedPiece({ src, tint, dim }: { src: string; tint?: string; dim?: boolean }) {
+  const img = { maxHeight: 64, maxWidth: '100%', objectFit: 'contain' as const, display: 'block' }
+  return (
+    <span style={{ position: 'relative', display: 'inline-block', filter: dim ? 'grayscale(1) brightness(.75)' : undefined }}>
+      <img src={src} alt="" loading="lazy" draggable={false} style={img} />
+      {tint && (
+        <span
+          aria-hidden
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: tint,
+            mixBlendMode: 'multiply',
+            WebkitMaskImage: `url(${src})`,
+            maskImage: `url(${src})`,
+            WebkitMaskSize: 'contain',
+            maskSize: 'contain',
+            WebkitMaskRepeat: 'no-repeat',
+            maskRepeat: 'no-repeat',
+            WebkitMaskPosition: 'center',
+            maskPosition: 'center',
+          }}
+        />
+      )}
+    </span>
   )
 }
 
@@ -634,7 +706,8 @@ function WardrobeTile({
         padding: '6px 4px',
         borderRadius: 12,
         background: selected ? 'var(--select)' : 'var(--card-raised)',
-        border: selected ? '2px solid var(--gold)' : '2px solid transparent',
+        // One signal for "on": the select fill. Gold is for the next thing to do.
+        border: selected ? '2px solid rgba(255,255,255,0.35)' : '2px solid transparent',
         cursor: locked ? 'default' : 'pointer',
         color: 'var(--ink)',
         minWidth: 0,

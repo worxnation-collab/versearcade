@@ -41,6 +41,9 @@ export default function AuthScreen() {
   // (setPendingCharacter) rather than travelling with the credentials, because
   // an OAuth sign-up reloads the whole page between these two beats.
   const [phase, setPhase] = useState<'look' | 'account'>('look')
+  // The account beat opens at its top: it used to open wherever the hair grid
+  // had been scrolled to, with its own heading off the screen.
+  useEffect(() => { window.scrollTo(0, 0) }, [phase])
   const [spec, setSpec] = useState<AvatarSpec>(NEW_CHARACTER)
   const signingUpLook = mode === 'up' && phase === 'look'
   const [email, setEmail] = useState('')
@@ -94,7 +97,11 @@ export default function AuthScreen() {
     <Page noNav>
       <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 16 }}>
         <div className="center">
-          {!signingUpLook && <div className="floaty" style={{ fontSize: 60 }}>📖</div>}
+          {!signingUpLook && (
+            <div className="floaty" style={{ display: 'grid', placeItems: 'center' }}>
+              <img src="/icon-192.png" alt="" width={68} height={68} style={{ borderRadius: 16, boxShadow: '0 10px 28px rgba(0,0,0,0.4)' }} />
+            </div>
+          )}
           <h1 style={{ fontSize: 32, marginTop: 8 }}>
             {mode === 'in' ? 'Welcome back' : signingUpLook ? 'Make your character' : 'Create account'}
           </h1>
@@ -126,24 +133,37 @@ export default function AuthScreen() {
         {/* ── Beat one: the character ──────────────────────────────────── */}
         {isSupabaseConfigured && signingUpLook && (
           <>
-            <div className="card">
-              <CharacterPicker value={spec} onChange={setSpec} layout="tiles" />
-            </div>
+            {/* No card around it: the picker's stage pins to the top of the
+                screen while the options scroll, and a card boxed it in. */}
+            <CharacterPicker value={spec} onChange={setSpec} layout="tiles" />
 
             <OpensStrip />
 
-            <Button
-              variant="gold"
-              full
-              onClick={() => {
-                // Parked before the account exists, and again at submit — an
-                // OAuth sign-up leaves this page entirely between the two.
-                setPendingCharacter(spec)
-                setPhase('account')
+            {/* Pinned to the bottom, as on the guest door: the hair grid alone
+                is taller than a phone (2026-11-12, driven in Chromium). */}
+            <div
+              style={{
+                position: 'sticky',
+                bottom: 0,
+                margin: '0 -18px',
+                padding: '12px 18px calc(12px + var(--safe-bottom))',
+                background: 'linear-gradient(0deg, var(--bg-0) 70%, transparent)',
+                zIndex: 6,
               }}
             >
-              That’s me →
-            </Button>
+              <Button
+                variant="gold"
+                full
+                onClick={() => {
+                  // Parked before the account exists, and again at submit — an
+                  // OAuth sign-up leaves this page entirely between the two.
+                  setPendingCharacter(spec)
+                  setPhase('account')
+                }}
+              >
+                That’s me →
+              </Button>
+            </div>
 
             <p className="faint center" style={{ fontSize: 14 }}>
               Have an account?{' '}

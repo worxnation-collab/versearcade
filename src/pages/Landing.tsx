@@ -68,9 +68,17 @@ export default function Landing() {
             initial={{ scale: 0.6, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: 'spring', stiffness: 200, damping: 12 }}
-            style={{ fontSize: iosFirst ? 52 : 64, textAlign: 'center' }}
+            style={{ textAlign: 'center' }}
           >
-            📖
+            {/* The app's own icon rather than an emoji: it is what they will
+                see on their home screen, and it is the art the app is made of. */}
+            <img
+              src="/icon-192.png"
+              alt=""
+              width={iosFirst ? 64 : 76}
+              height={iosFirst ? 64 : 76}
+              style={{ borderRadius: 18, boxShadow: '0 10px 28px rgba(0,0,0,0.4)', display: 'inline-block' }}
+            />
           </motion.div>
 
           <div style={{ textAlign: 'center' }}>
@@ -94,6 +102,62 @@ export default function Landing() {
               One verse. One shared drop a day. Beat the clock, keep your streak,
               and actually <b style={{ color: 'var(--gold)' }}>remember</b> it.
             </p>
+          </div>
+
+          {/* The doors come straight after the promise (2026-11-12): they sat
+              under the carousel, the pills and two paragraphs, below the fold
+              of a phone, so the first screen of the app had nothing to tap. */}
+          <div style={{ display: 'grid', gap: 12 }}>
+          {sent && (
+              <>
+                <p className="center" style={{ fontSize: 14.5, margin: 0 }}>
+                  <b style={{ color: 'var(--gold)' }}>A friend sent you today’s verse.</b>
+                </p>
+                <Button variant="gold" full onClick={startStarter}>
+                  Read it now →
+                </Button>
+                <p className="faint center" style={{ fontSize: 12.5, margin: '-4px 0 4px' }}>
+                  Two minutes, no account needed.
+                </p>
+              </>
+            )}
+            {isSupabaseConfigured ? (
+              <>
+                <Button variant={sent ? 'ghost' : 'gold'} full onClick={() => navigate('/auth?mode=signup')}>
+                  Create a free account →
+                </Button>
+                <Button variant="ghost" full onClick={() => navigate('/auth')}>
+                  I already have an account
+                </Button>
+                <p className="faint center" style={{ fontSize: 13, margin: '-2px 0 0' }}>
+                  <span
+                    style={{ textDecoration: 'underline', cursor: 'pointer' }}
+                    onClick={() => navigate('/welcome')}
+                  >
+                    or just play today’s verse
+                  </span>
+                </p>
+                {/* Leaders make the same account as everybody; this only shows
+                    them how a page is claimed afterwards (/churches#claim). */}
+                <p className="faint center" style={{ fontSize: 12.5, margin: '2px 0 0' }}>
+                  <span
+                    style={{ textDecoration: 'underline', cursor: 'pointer' }}
+                    onClick={() => navigate('/churches?claim=1')}
+                  >
+                    Pastor or church leader? Claim your page
+                  </span>
+                </p>
+              </>
+            ) : (
+              <>
+                <Button variant={sent ? 'ghost' : 'gold'} full onClick={() => navigate('/welcome')}>
+                  Play today’s verse →
+                </Button>
+                <Button variant="ghost" full onClick={() => navigate('/auth')}>
+                  I already have an account
+                </Button>
+              </>
+            )}
           </div>
 
           {/* What is inside, shown rather than listed — drawn with the app's
@@ -132,56 +196,6 @@ export default function Landing() {
               <p className="faint center" style={{ fontSize: 12.5, margin: '-4px 0 0' }}>
                 Free on iPhone &amp; iPad — or play in your browser.
               </p>
-            </>
-          )}
-          {sent && (
-            <>
-              <p className="center" style={{ fontSize: 14.5, margin: 0 }}>
-                <b style={{ color: 'var(--gold)' }}>A friend sent you today’s verse.</b>
-              </p>
-              <Button variant="gold" full onClick={startStarter}>
-                Read it now →
-              </Button>
-              <p className="faint center" style={{ fontSize: 12.5, margin: '-4px 0 4px' }}>
-                Two minutes, no account needed.
-              </p>
-            </>
-          )}
-          {isSupabaseConfigured ? (
-            <>
-              <Button variant={sent ? 'ghost' : 'gold'} full onClick={() => navigate('/auth?mode=signup')}>
-                Create a free account →
-              </Button>
-              <Button variant="ghost" full onClick={() => navigate('/auth')}>
-                I already have an account
-              </Button>
-              <p className="faint center" style={{ fontSize: 13, margin: '-2px 0 0' }}>
-                <span
-                  style={{ textDecoration: 'underline', cursor: 'pointer' }}
-                  onClick={() => navigate('/welcome')}
-                >
-                  or just play today’s verse
-                </span>
-              </p>
-              {/* Leaders make the same account as everybody; this only shows
-                  them how a page is claimed afterwards (/churches#claim). */}
-              <p className="faint center" style={{ fontSize: 12.5, margin: '2px 0 0' }}>
-                <span
-                  style={{ textDecoration: 'underline', cursor: 'pointer' }}
-                  onClick={() => navigate('/churches?claim=1')}
-                >
-                  Pastor or church leader? Claim your page
-                </span>
-              </p>
-            </>
-          ) : (
-            <>
-              <Button variant={sent ? 'ghost' : 'gold'} full onClick={() => navigate('/welcome')}>
-                Play today’s verse →
-              </Button>
-              <Button variant="ghost" full onClick={() => navigate('/auth')}>
-                I already have an account
-              </Button>
             </>
           )}
           {!iosFirst && !inApp && (

@@ -5634,6 +5634,15 @@ cues (post-first-drop tour, day-2-3 church moment, arcade row, Bible row) live
 in `features/home/FirstWeekCues.tsx`, each retired by a settings flag and never
 shown again. Full rules and the known rough edges: `docs/FIRST-WEEK.md`.
 
+**The character step is a STAGE, not a form** (2026-11-12, driven in Chromium
+at 390x844 and 375x667). At setup the picker pins a big figure to the top of the
+screen while the options scroll under it, and "That's me" is pinned to the
+bottom, on both doors (`/welcome` and `/auth?mode=signup`). Hair and top tiles
+draw the piece ON the player's own head and shoulders (one size, the picked
+colour); legs and shoes are tinted to the picked colour. The guest door names
+the player on its own short step after the look ("What should we call you?",
+Enter starts), and Landing's buttons sit under the headline, above the fold.
+
 **A sign-in that has never played lands IN today's verse** (`lib/firstStop.ts`,
 2026-10-30): `/play/run` instead of the Play tab, from email sign-in/up, the
 web OAuth callback and the native deep link. Of 30 accounts that never finished

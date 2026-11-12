@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/PageHeader'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
@@ -148,18 +149,11 @@ function BookPicker({
 
   return (
     <Page noNav>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-        <button className="pill" onClick={onExit} aria-label="Back">✕</button>
-        <b style={{ fontFamily: 'var(--font-display)', fontSize: 18 }}>Focus practice</b>
-      </div>
-
-      <div className="center" style={{ marginBottom: 16 }}>
-        <div className="floaty" style={{ fontSize: 44 }}>🎯</div>
-        <h1 style={{ fontSize: 26, marginTop: 4 }}>Pick a book to focus on</h1>
-        <p className="dim" style={{ marginTop: 4, lineHeight: 1.4 }}>
-          Drill verses from just this book, racing a study partner. Earn {FOCUS_XP_PER_SESSION} XP every session — study as much as you like.
-        </p>
-      </div>
+      <PageHeader
+        title="Focus practice"
+        sub={`Pick a book and drill its verses, racing a study partner. ${FOCUS_XP_PER_SESSION} XP every session — study as much as you like.`}
+        onBack={onExit}
+      />
 
       {/* Jump back into the remembered book. */}
       {chosen && (

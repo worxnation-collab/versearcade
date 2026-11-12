@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/PageHeader'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
@@ -166,11 +167,12 @@ export function BuddiesSection() {
 
 function Header() {
   return (
-    <div className="center" style={{ marginBottom: 16 }}>
-      <div className="floaty" style={{ fontSize: 44 }}><PaintedIcon id="buddies" /></div>
-      <h1 style={{ fontSize: 28, marginTop: 4 }}>Bible Buddies</h1>
-      <p className="dim" style={{ marginTop: 4 }}>Add friends, cheer each other on, and battle head to head.</p>
-    </div>
+    <PageHeader
+      title="Bible Buddies"
+      icon={<PaintedIcon id="buddies" />}
+      sub="Add friends, cheer each other on, and battle head to head."
+      home="/you"
+    />
   )
 }
 

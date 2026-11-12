@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/PageHeader'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
@@ -131,10 +132,7 @@ function OpponentPicker({
 
   return (
     <Page noNav>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-        <button className="pill" onClick={onExit} aria-label="Back">✕</button>
-        <b style={{ fontFamily: 'var(--font-display)', fontSize: 18 }}>Who are you battling?</b>
-      </div>
+      <PageHeader title="Who are you battling?" onBack={onExit} />
 
       <div className="card" style={{ textAlign: 'center', marginBottom: 14 }}>
         <div className="floaty" style={{ fontSize: 40 }}>⚔️</div>

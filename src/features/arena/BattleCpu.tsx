@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/PageHeader'
 import { useMemo, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
@@ -102,16 +103,7 @@ function CpuPicker({
 }) {
   return (
     <Page noNav>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-        <button className="pill" onClick={onExit} aria-label="Back">✕</button>
-        <b style={{ fontFamily: 'var(--font-display)', fontSize: 18 }}>Play vs CPU</b>
-      </div>
-
-      <div className="center" style={{ marginBottom: 18 }}>
-        <div className="floaty" style={{ fontSize: 46 }}>🤖</div>
-        <h1 style={{ fontSize: 26, marginTop: 4 }}>Race the CPU</h1>
-        <p className="dim" style={{ marginTop: 4 }}>Live head-to-head against the same round. Pick what you're playing, then who.</p>
-      </div>
+      <PageHeader title="Race the CPU" sub="Live head-to-head against the same round. Pick what you're playing, then who." onBack={onExit} />
 
       {/* Mode first, because the CPU rows are the START button — a control BELOW
           them would never be seen, and picking a difficulty is the tap that

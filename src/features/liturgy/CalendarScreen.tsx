@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/PageHeader'
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
@@ -31,12 +32,7 @@ export default function CalendarScreen() {
 
   return (
     <Page>
-      <div className="center" style={{ marginBottom: 14 }}>
-        <h1 style={{ fontSize: 26 }}>The church year</h1>
-        <p className="dim" style={{ marginTop: 2, fontSize: 13 }}>
-          What today is, and what is coming. Nothing here is scored.
-        </p>
-      </div>
+      <PageHeader title="The church year" sub="What today is, and what is coming. Nothing here is scored." />
 
       {/* ── Today ──────────────────────────────────────────────────────────
           The season always; the day's own name only when it has one. */}

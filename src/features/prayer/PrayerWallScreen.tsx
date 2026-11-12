@@ -1,5 +1,7 @@
+import { PaintedIcon } from '@/components/PaintedIcon'
+import { PageHeader } from '@/components/PageHeader'
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
@@ -53,7 +55,9 @@ export default function PrayerWallScreen() {
     void usePrayerWall.getState().load()
   }, [isGuest])
 
-  const back = () => { juice.select(); navigate(-1) }
+  // A cold open (a link, a reload) has no history: going back would leave the app.
+  const location = useLocation()
+  const back = () => { juice.select(); if (location.key !== 'default') navigate(-1); else navigate('/you') }
 
   if (isGuest) {
     return (
@@ -162,15 +166,7 @@ export default function PrayerWallScreen() {
 }
 
 function Header({ onBack }: { onBack: () => void }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-      <h2 style={{ fontSize: 24, margin: 0 }}>🕯️ The Prayer Wall</h2>
-      <div style={{ flex: 1 }} />
-      <button className="pill" onClick={onBack} style={{ fontSize: 13, fontWeight: 800, padding: '7px 14px' }}>
-        Back
-      </button>
-    </div>
-  )
+  return <PageHeader title="The Prayer Wall" icon={<PaintedIcon id="pray" />} onBack={onBack} />
 }
 
 // ── the dealt note ───────────────────────────────────────────────────────────

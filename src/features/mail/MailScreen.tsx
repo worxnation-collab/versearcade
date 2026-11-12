@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/PageHeader'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Page } from '@/components/Page'
@@ -125,17 +126,7 @@ export default function MailScreen() {
 
   return (
     <Page>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-        <h2 style={{ fontSize: 24, margin: 0 }}><PaintedIcon id="mail" /> Mail</h2>
-        <div style={{ flex: 1 }} />
-        <button
-          className="pill"
-          onClick={() => { juice.select(); navigate(-1) }}
-          style={{ fontSize: 13, fontWeight: 800, padding: '7px 14px' }}
-        >
-          Back
-        </button>
-      </div>
+      <PageHeader title="Mail" icon={<PaintedIcon id="mail" />} home="/you" />
 
       {empty && (
         <div className="card" style={{ textAlign: 'center', padding: 30 }}>

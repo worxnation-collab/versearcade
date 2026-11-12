@@ -1,3 +1,5 @@
+import { PaintedIcon } from '@/components/PaintedIcon'
+import { PageHeader } from '@/components/PageHeader'
 import { useEffect, useMemo, useState } from 'react'
 import { gatheringLine, gatheringOpen } from '@/data/gathering'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
@@ -93,10 +95,7 @@ export default function LiveLobby() {
 
   return (
     <Page noNav>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-        <button className="pill" onClick={() => navigate('/battle')} aria-label="Back">✕</button>
-        <b style={{ fontFamily: 'var(--font-display)', fontSize: 20 }}>🔴 Live battle</b>
-      </div>
+      <PageHeader title="Live battle" icon={<PaintedIcon id="battle_live" />} onBack={() => navigate('/battle')} />
 
       <div className="card" style={{ padding: 22, textAlign: 'center' }}>
         <div className="floaty" style={{ fontSize: 46 }}>⚔️</div>
@@ -308,10 +307,7 @@ function RoomWaiting({
 
   return (
     <Page noNav>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-        <button className="pill" onClick={onExit} aria-label="Back">✕</button>
-        <b style={{ fontFamily: 'var(--font-display)', fontSize: 20 }}>🔴 Live battle</b>
-      </div>
+      <PageHeader title="Live battle" icon={<PaintedIcon id="battle_live" />} onBack={onExit} />
 
       <div className="card" style={{ padding: 26, textAlign: 'center' }}>
         <div className="faint" style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.1em' }}>ROOM CODE</div>

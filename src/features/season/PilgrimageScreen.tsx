@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/PageHeader'
 import { useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
@@ -37,7 +38,6 @@ import { RewardArt } from './RewardArt'
 // The road says where you are and what's next. That's the whole contract.
 
 export default function PilgrimageScreen() {
-  const navigate = useNavigate()
   const load = useSeason((s) => s.load)
   const miles = useSeason((s) => s.miles)
   const waystation = useSeason((s) => s.waystation)
@@ -50,7 +50,7 @@ export default function PilgrimageScreen() {
   if (!road) {
     return (
       <Page>
-        <BackBar onBack={() => navigate('/play')} />
+        <PageHeader title="The Pilgrimage" home="/play" />
         <div className="card" style={{ textAlign: 'center', padding: 28 }}>
           <div style={{ fontSize: 40, marginBottom: 10 }}>🌾</div>
           <h2 style={{ fontSize: 20, marginBottom: 8 }}>The road is resting</h2>
@@ -67,7 +67,7 @@ export default function PilgrimageScreen() {
 
   return (
     <Page>
-      <BackBar onBack={() => navigate('/play')} />
+      <PageHeader title="The Pilgrimage" home="/play" />
 
       {/* Header — the road, where you are, and how long it's open. Note what
           isn't here: no "34/50", no percentage complete. The number that goes
@@ -87,7 +87,6 @@ export default function PilgrimageScreen() {
           }}
         />
         <div style={{ position: 'relative' }}>
-          <span className="pill" style={{ marginBottom: 10 }}>🌾 The Pilgrimage</span>
           <h1 style={{ fontSize: 24, marginBottom: 4 }}>{road.name}</h1>
           <p className="dim" style={{ fontSize: 13.5, margin: '0 0 14px', lineHeight: 1.5 }}>
             {road.blurb}
@@ -136,16 +135,6 @@ export default function PilgrimageScreen() {
         this road is free, and everything you reach is yours to keep after it closes.
       </p>
     </Page>
-  )
-}
-
-function BackBar({ onBack }: { onBack: () => void }) {
-  return (
-    <div style={{ marginBottom: 12 }}>
-      <button className="pill" onClick={onBack} aria-label="Back">
-        ← Back
-      </button>
-    </div>
   )
 }
 

@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/PageHeader'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/Button'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -64,11 +65,7 @@ export default function ChurchDirectoryScreen() {
 
   return (
     <Page noNav>
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
-        <button className="pill" onClick={exit} aria-label="Back">← Back</button>
-      </div>
-
-      <h1 style={{ fontSize: 26, margin: '0 0 4px' }}>Find a church</h1>
+      <PageHeader title="Find a church" onBack={exit} />
       <p className="dim" style={{ margin: '0 0 14px', fontSize: 13.5, lineHeight: 1.5 }}>
         Churches playing on Verse Arcade. Joining one is optional — the daily verse and quiz are the
         same game either way.

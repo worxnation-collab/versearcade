@@ -5952,6 +5952,16 @@ hall, the churchyard, the road, the Upper Room) the figures escaped into the
 page root and painted a camel over the player card you had just opened by
 tapping it. Any future overlay inside a scene needs the same treatment.
 
+**Every screen that is not a tab root opens with `PageHeader`**
+(`components/PageHeader.tsx`, 2026-11-12): a round ← on the left, the title, one
+dim line under it, at most one action on the right. Seven shapes were in use
+before (a centred emoji over a centred h1, a "← Back" pill above a title, a
+top-right "Back" pill, a ✕ pill, no title at all). Its back walks history and
+goes to `home` on a cold open, because `navigate(-1)` from a link or a reload
+walks the player out of the app — don't hand-roll one. Tab roots keep no title
+(see "Customizing is one shelf"); in-run HUDs and result screens are not
+headers and keep their own.
+
 Design tokens live at the top of `src/index.css` — use the CSS variables, never
 raw hexes. Numbers and headings wear `var(--font-display)`; that's the brand.
 Motion is springy `framer-motion`, mobile-first, max width 520px.

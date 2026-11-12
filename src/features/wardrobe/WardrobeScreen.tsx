@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/PageHeader'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
@@ -78,17 +79,7 @@ export default function WardrobeScreen() {
 
   return (
     <Page>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-        <h2 style={{ fontSize: 24, margin: 0 }}>🧺 Wardrobe</h2>
-        <div style={{ flex: 1 }} />
-        <button
-          className="pill"
-          onClick={() => { juice.select(); navigate(-1) }}
-          style={{ fontSize: 13, fontWeight: 800, padding: '7px 14px' }}
-        >
-          Back
-        </button>
-      </div>
+      <PageHeader title="Wardrobe" home="/you" />
 
       <p className="faint" style={{ fontSize: 12.5, margin: '0 0 16px', lineHeight: 1.55 }}>
         Everything there is to wear, and what brings it. Nothing here is ranked, nothing expires,

@@ -67,10 +67,13 @@ async function shot(browser, name, fn) {
     while (!stop) {
       if (!rec) { await new Promise((r) => setTimeout(r, 20)); continue }
       try {
-        const v = (await cdp.send('Page.getLayoutMetrics')).cssVisualViewport
+        // A capture asked for mid-navigation can simply never answer, and an
+        // unanswered one used to hang the whole recording at its last shot.
+        const within = (p) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('slow frame')), 1500))])
+        const v = (await within(cdp.send('Page.getLayoutMetrics'))).cssVisualViewport
         const t = Date.now() / 1000
-        const r = await cdp.send('Page.captureScreenshot', { format: 'jpeg', quality: 92, optimizeForSpeed: true,
-          clip: { x: v.pageX, y: v.pageY, width: v.clientWidth, height: v.clientHeight, scale: 2.5 } })
+        const r = await within(cdp.send('Page.captureScreenshot', { format: 'jpeg', quality: 92, optimizeForSpeed: true,
+          clip: { x: v.pageX, y: v.pageY, width: v.clientWidth, height: v.clientHeight, scale: 2.5 } }))
         if (rec) frames.push({ t, data: r.data })
       } catch { await new Promise((r) => setTimeout(r, 30)) }
     }

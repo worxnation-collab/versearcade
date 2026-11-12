@@ -98,7 +98,7 @@ export default function LiveLobby() {
       <PageHeader title="Live battle" icon={<PaintedIcon id="battle_live" />} onBack={() => navigate('/battle')} />
 
       <div className="card" style={{ padding: 22, textAlign: 'center' }}>
-        <div className="floaty" style={{ fontSize: 46 }}>⚔️</div>
+        <div className="floaty" style={{ fontSize: 46 }}><PaintedIcon id="battle_live" /></div>
         <p style={{ marginTop: 10, fontSize: 15, lineHeight: 1.5 }}>
           Same verse, same moment. You both read it, you both tap ready, and the
           clock starts for the two of you together.
@@ -111,7 +111,7 @@ export default function LiveLobby() {
           which is the case it was built for. */}
       <div style={{ marginTop: 18 }}>
         <Button variant="gold" full onClick={() => { juice.coin(); void search() }}>
-          🎲 Quick match — find me anyone
+          Quick match — find me anyone
         </Button>
       </div>
       <p className="faint center" style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4 }}>

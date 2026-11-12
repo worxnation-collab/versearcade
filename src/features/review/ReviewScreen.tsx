@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { PageHeader } from '@/components/PageHeader'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Page } from '@/components/Page'
@@ -83,14 +84,15 @@ export default function ReviewScreen() {
   if (session.length === 0) {
     return (
       <Page noNav>
-        <div style={{ textAlign: 'center', paddingTop: 80 }}>
+        <PageHeader title="Keep it" sub="Verses you've played come back here so they stick." home="/study" />
+        <div style={{ textAlign: 'center', paddingTop: 40 }}>
           <div className="floaty" style={{ fontSize: 56 }}>🧠</div>
           <h2 style={{ marginTop: 12 }}>Nothing to review yet</h2>
           <p className="dim" style={{ marginTop: 6 }}>
             Play a few daily drops — they’ll come back here to help you keep them.
           </p>
           <div style={{ marginTop: 20 }}>
-            <Button variant="gold" full onClick={() => navigate('/study')}>← Back to Study</Button>
+            <Button variant="secondary" full onClick={() => navigate('/play')}>Play today’s verse</Button>
           </div>
         </div>
       </Page>

@@ -423,7 +423,7 @@ export function CharacterPicker(props: PickerProps) {
           className="btn"
           onClick={() => {
             juice.select?.()
-            onChange({ ...value, outfit: defaultOutfit(figureOf(value), hairHexFor(value.hair)) })
+            onChange(toLayered(value))
           }}
           style={{ justifySelf: 'center', fontWeight: 800 }}
         >
@@ -435,6 +435,14 @@ export function CharacterPicker(props: PickerProps) {
 }
 
 const hairHexFor = (key?: string) => (HAIRS.find((h) => h.key === key) ?? HAIRS[1]).hex
+
+/** An old-style character stepped into the new wardrobe: same figure, tone and
+ *  hair colour, dressed in the default outfit. Used by "Try the new wardrobe"
+ *  and by the You tab's one-time card (WardrobeInvite), so the two can't differ. */
+export const toLayered = (spec: AvatarSpec): AvatarSpec => ({
+  ...spec,
+  outfit: defaultOutfit(figureOf(spec), hairHexFor(spec.hair)),
+})
 
 /** The setup stage's figure: big, but never more than about a quarter of the
  *  screen, so a short phone still has room for the options under it. */

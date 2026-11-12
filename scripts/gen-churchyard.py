@@ -82,26 +82,26 @@ def put(img, rel, dry, key):
 
 
 def scenes(only, force, dry):
-    for sid, sub in M['scenes'].items():
-        if only and sid not in only:
-            continue
-        rp = os.path.join(RAW, sid + '.jpg')
+    """Painted from text in the buildings' hand (icons.text_to_image, square),
+    horizon asked for at the middle, then cropped so it lands ~62% down."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    def one(sid):
+        rp = os.path.join(RAW, sid + '.text.png')
         if force or not os.path.exists(rp):
-            # An EDIT of the owner's own painting, not a new one: the hand, the
-            # light and the horizon (which ChurchScene's GROUND is set to) are
-            # kept, and only the clutter is cleared. A text-to-image yard came
-            # back flat, with a high horizon and a toy church in the middle.
-            src = os.path.join(RAW, sid + '.orig.jpg')
-            if not os.path.exists(src):
-                Image.open(os.path.join(ROOT, 'public/church', sid + '.jpg')).save(src, quality=95)
-            kontext(M['scene_edit'] + ' ' + sub, Image.open(src).convert('RGB')).save(rp, quality=95)
+            icons.text_to_image(M['scenes'][sid] + '. ' + M['scene_text_style']).save(rp)
         im = Image.open(rp).convert('RGB')
-        w, h = 1168, 784
-        r = max(w / im.width, h / im.height)
-        im = im.resize((round(im.width * r), round(im.height * r)), Image.LANCZOS)
-        l, t = (im.width - w) // 2, (im.height - h) // 2
-        put(im.crop((l, t, l + w, t + h)), f'public/church/{sid}.jpg', dry, sid)
-        print('ok', sid, flush=True)
+        S = im.width
+        h = round(S * 784 / 1168)
+        top = max(0, min(S - h, round(0.5 * S - 0.62 * h)))
+        im = im.crop((0, top, S, top + h)).resize((1168, 784), Image.LANCZOS)
+        put(im, f'public/church/{sid}.jpg', dry, sid)
+        return sid
+
+    todo = [s for s in M['scenes'] if not only or s in only]
+    with ThreadPoolExecutor(5) as ex:
+        for sid in ex.map(one, todo):
+            print('ok', sid, flush=True)
 
 
 def props(kind, only, force, dry):

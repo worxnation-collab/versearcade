@@ -2115,10 +2115,13 @@ which is the one number the slot produces and the only thing to renew on.
 ### The churchyard
 
 **The yard was repainted calm on 2026-11-12** (`scripts/gen-churchyard.py`,
-`art/churchyard.flux.json`): the five yard paintings are Kontext EDITS of the
-owner's own (same hand, light and horizon) with every flower, headstone and
-path cleared, because the backdrop's own flowerbeds plus the plantings on top
-read as busy. Plantings and statues are repainted by the same script onto the SAME
+`art/churchyard.flux.json`): the five yard paintings are painted FROM TEXT in
+the buildings' own gouache hand (`scene_text_style`), drawn square with the
+horizon across the middle and cropped so it lands ~62% down where `GROUND`
+expects it. (A first pass decluttered the owner's paintings instead; the
+buildings then looked pasted into a different picture.) Flux paints what a
+prompt NAMES, even after "no", so the style lists only what is in the scene —
+"no gravestones" produced gravestones. Plantings and statues are repainted by the same script onto the SAME
 paths `ownerArt.ts` reads (plain silhouettes, no ivy, no gold, no mound of
 soil); over a painted yard the drawn path is a soft gravel track. **The
 buildings are 32 now, one per (skin, tier)** (`ladder`,

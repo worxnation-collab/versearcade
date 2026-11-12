@@ -1,6 +1,6 @@
 import { useId } from 'react'
 import { DRAW_ORDER, bodyId, buildOf, layerBox, layerUrl, takesColor } from '@/data/layered'
-import { figureOf } from '@/data/avatar'
+import { figureOf, skinHex } from '@/data/avatar'
 import type { AvatarSpec } from '@/types'
 
 // The layered character, drawn INSIDE Character's 120x170 viewBox so every
@@ -26,11 +26,20 @@ export function LayeredFigure({ spec, portrait }: { spec: AvatarSpec; portrait: 
   const body = bodyId(figure, spec.skin)
   const bb = layerBox(figure, body, build) ?? { x: 85, y: 50, w: 190, h: 670 }
 
-  const layers = DRAW_ORDER.map((slot) => {
-    if (slot === 'body') return { id: body, color: undefined as string | undefined }
+  // A piece cut with the light base's own hand, forearm or foot in it carries
+  // that skin as a separate `<id>__skin` layer (scripts/avatar/skin-split.py),
+  // drawn straight after it in the PLAYER's tone through the same filter a
+  // garment colour uses — so a fist on a staff matches the arm it belongs to.
+  const tone = skinHex(spec.skin)
+  const layers = DRAW_ORDER.flatMap((slot) => {
+    if (slot === 'body') return [{ id: body, color: undefined as string | undefined }]
     const piece = outfit[slot]
-    return piece ? { id: piece.id, color: takesColor(piece.id) ? piece.color : undefined } : null
-  }).filter((l): l is { id: string; color: string | undefined } => !!l && !!layerBox(figure, l.id, build))
+    if (!piece) return []
+    return [
+      { id: piece.id, color: takesColor(piece.id) ? piece.color : undefined },
+      { id: `${piece.id}__skin`, color: tone },
+    ]
+  }).filter((l) => !!layerBox(figure, l.id, build))
 
   const colors = [...new Set(layers.map((l) => l.color).filter((c): c is string => !!c))]
   const filterId = (c: string) => `lt${uid}${c.replace('#', '')}`

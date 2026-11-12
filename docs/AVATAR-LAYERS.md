@@ -183,3 +183,36 @@ The visual audit now wears a brimmed hat, the balloon and a pack on both
 figures, because this bug only exists with a hat on — and the contact sheets
 from `audit.py` had shown it and been missed. Look at the FACE on every
 headwear tile, not only the hat.
+
+## The base's skin and bodysuit, everywhere else (2026-11-12)
+
+The base body wears a CREAM BODYSUIT, wrist to ankle, and every wardrobe
+layer was cut from a Kontext edit of it. Four scripts take out what came with
+it; run them on `masc`/`fem`, then `layers.py builds`:
+
+- **`body-skin.py`** — the body layers themselves (every tone) kept the suit,
+  so a T-shirt or shorts showed cream "sleeves" and "leggings" on everybody.
+  The arms below the shoulder cap and the legs below the crotch are repainted
+  in that layer's own skin (measured off its hands), shading blurred and
+  halved so they read as skin rather than fabric; the cuff line is blended.
+  The torso stays cream (an undershirt under an open robe), and the hip band
+  is a dark undergarment, so greaves read as worn over shorts and the gap
+  under a short top reads as shadow.
+- **`skin-split.py`** — 24 pieces carried the base's light HANDS, forearms or
+  feet (staffs, crook, torch, fishing net, the mantle and capes, the rope
+  belt and sash, eight robes and tops, three pairs of sandals). Those pixels
+  MOVE into `<id>__skin.webp`, which `LayeredFigure` draws straight after the
+  piece in `skinHex(spec.skin)` through the garment tint filter — so a fist on
+  a staff matches its arm on every tone, including ones added later. The list
+  (`SPLIT`) is reviewed by eye on `--sheet`; colour alone also flags honey
+  wood, gold and parchment, which are the material and are never split.
+  `layers.py builds` carries a `__skin` layer with its piece.
+- **`hair-rim.py`** — a 1-4px line of the base's forehead inside every
+  hairline, which the hair tint turned into a bright outline round the face.
+- **`debris.py`** — cut-out hairlines tracing the base's limbs and specks on
+  tops, legs and belts (the apron carried both arms' outlines and a sandal).
+
+Male braids and space buns were regenerated: both had lost the hair on the
+scalp. **`outfits.py`** renders every piece WORN on a tone, the way the app
+draws it — `audit.py` shows a layer alone, and alone is not where a cream
+sleeve or a pale fist shows. Run it on ebony and porcelain.

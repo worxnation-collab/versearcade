@@ -39,7 +39,9 @@ this list whenever art, a wardrobe piece, a palette value or a feature ships:
   retired robed starters a month after the wardrobe replaced them; also check
   share cards (`og-church-cards.mjs`), the public church page, crowd scenes, the
   room postcard and the TikTok renderer.
-- **Avatar pieces: run `python3 scripts/avatar/audit.py` and LOOK** at
+- **Avatar pieces: run `python3 scripts/avatar/outfits.py <out> <slots> ebony`
+  (and porcelain) — every piece WORN, drawn as the app draws it.** A pale fist,
+  a cream sleeve or a second face only shows worn. Then `audit.py` and LOOK at
   `art/avatar/.audit/` (every piece on ebony AND porcelain). Light skin baked
   into a layer is a pale patch on the ebony row. Also: does a garment cover
   slots it shouldn't (a coat with trousers in it)? Does anything rise above the

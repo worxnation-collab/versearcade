@@ -82,11 +82,11 @@ export const titleById = (id?: string | null): TitleDef | undefined =>
  *  still the last word, in juice/confetti. */
 export const CONFETTI_THEMES: ConfettiDef[] = [
   // The house palette, and what every player starts on.
-  { id: 'confetti_arcade', name: 'Arcade', colors: ['#ffd23f', '#ff6b6b', '#4ecdc4', '#a06bff', '#5ee7df', '#ff9f1c'] },
+  { id: 'confetti_arcade', name: 'Arcade', colors: ['#ecb860', '#e07f6a', '#78b5a3', '#a58bd0', '#8ec5cf', '#e59a4c'] },
   { id: 'confetti_chaff', name: 'Barley Chaff', colors: ['#e6c88a', '#c9a25f', '#f3e6c4', '#a8813f'] },
-  { id: 'confetti_coins', name: 'Gold Coins', colors: ['#ffd23f', '#ffb648', '#fff2c2', '#c9950f'], shapes: ['circle'] },
+  { id: 'confetti_coins', name: 'Gold Coins', colors: ['#ecb860', '#e8b062', '#fff2c2', '#c9950f'], shapes: ['circle'] },
   { id: 'confetti_doves', name: 'Doves', colors: ['#ffffff', '#dfe7ff', '#b8c8f0', '#8fa3c8'] },
-  { id: 'confetti_petals', name: 'Rose Petals', colors: ['#ff6b6b', '#ff9fb0', '#e0518b', '#ffd6de'] },
+  { id: 'confetti_petals', name: 'Rose Petals', colors: ['#e07f6a', '#ff9fb0', '#e0518b', '#ffd6de'] },
 ]
 
 export const DEFAULT_CONFETTI = 'confetti_arcade'

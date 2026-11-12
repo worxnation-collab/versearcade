@@ -6064,6 +6064,14 @@ perfectly while saying nothing. Each rule exists because the app was failing it.
   stays ≥1.8:1 from gold (or the ration is undone) and ≥3:1 on card (a border
   nobody can see is a deletion, not a demotion).
 
+**And the accents moved to golden hour (2026-11-12).** The neon arcade set
+(electric violet, lemon gold, neon mint, coral, cyan) clashed with the gouache
+art, so each accent kept its job and hue family and was taken toward the
+paintings: honey gold `#ecb860`, dusty lavender, sage, terracotta, soft sky,
+with every hardcoded copy across `src` moved too. Borders are a warm hairline
+(`--stroke` is warm, not white), and the fold row lost its gold frame and
+carved vine: gold is the action's colour and a fold is not the action.
+
 **And `--select` is not `--grape`.** Every "this one is on" chip, tile and pill
 was painted `--grape`, which is an ACCENT: white ink on it measures **3.37:1**
 and `--ink-faint` **1.63:1**, so a selected tile could not carry its own label,

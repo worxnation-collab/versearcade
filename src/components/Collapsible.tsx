@@ -48,11 +48,12 @@ export function Collapsible({
           width: '100%', display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'space-between',
           padding: '13px 14px', marginBottom: 10, cursor: 'pointer',
           position: 'relative', isolation: 'isolate',
-          // A thin raised gold frame: a dark gold line, lit on its top edge and
-          // shaded on its bottom, with a soft shadow just inside so the row
-          // sits up off the page. The fill underneath is the .card material,
-          // untouched. Opening it warms the line rather than moving anything.
-          border: `1px solid ${open ? '#c99a3a' : '#a87c2c'}`,
+          // A quiet warm hairline, lit on its top edge and shaded on its
+          // bottom. It was a gold frame with a carved vine at two corners,
+          // which beside the gouache art read as busy (2026-11-12); gold is
+          // the action's colour, and a fold is not the action. Opening it
+          // brightens the line to the brass --edge rather than moving anything.
+          border: `1px solid ${open ? 'var(--edge)' : 'var(--stroke-strong)'}`,
           boxShadow: [
             'inset 0 1px 0 rgba(255,236,170,0.38)',
             'inset 0 -1px 0 rgba(48,28,4,0.55)',
@@ -62,8 +63,6 @@ export function Collapsible({
           ].join(', '),
         }}
       >
-        <VineRelief corner="tl" />
-        <VineRelief corner="br" />
         {/* One line, always — a wrapped title would slide under the pill. */}
         <span
           style={{
@@ -103,41 +102,3 @@ export function Collapsible({
   )
 }
 
-// A sprig of vine carved into the frame at two opposite corners — a relief,
-// not a border: a dark cut with a lit edge one hair below it, the way a line
-// incised in gilt catches light. Two corners rather than all four so it reads
-// as ornament on the frame, not a vine wrapped round the row. Drawn, not an
-// image, so it stays crisp at any width and costs nothing to load.
-function VineRelief({ corner }: { corner: 'tl' | 'br' }) {
-  const stem = 'M1 7 C 12 2, 22 9, 34 5 S 52 2, 60 6'
-  const leaves = [
-    'M10 5.2 c 1.6 -3.2, 4.6 -3.6, 5.4 -3.4 c -0.6 1.6, -2.6 3.6, -5.4 3.4 z',
-    'M24 6.8 c 2 2.2, 4.8 2.4, 5.6 2 c -1 -1.6, -3 -2.6, -5.6 -2 z',
-    'M40 4.2 c 1.4 -2.8, 4 -3.4, 4.8 -3.2 c -0.6 1.4, -2.4 3.2, -4.8 3.2 z',
-    'M52 4.6 c 1.8 1.8, 4 2, 4.8 1.6 c -0.8 -1.4, -2.6 -2.2, -4.8 -1.6 z',
-  ]
-  const pos: CSSProperties =
-    corner === 'tl'
-      // Past the corner's curve and onto the straight edge, so the cut follows
-      // the frame line instead of floating inside the rounded end.
-      ? { top: 1.5, left: 30 }
-      : { bottom: 1.5, right: 30, transform: 'rotate(180deg)' }
-  const draw = (color: string, dy: number) => (
-    <g transform={`translate(0 ${dy})`} stroke={color} fill="none" strokeLinecap="round">
-      <path d={stem} strokeWidth={0.9} />
-      {leaves.map((d) => <path key={d} d={d} strokeWidth={0.7} fill={color} fillOpacity={0.35} />)}
-    </g>
-  )
-  return (
-    <svg
-      aria-hidden
-      width={62}
-      height={11}
-      viewBox="0 0 62 11"
-      style={{ position: 'absolute', zIndex: 0, pointerEvents: 'none', opacity: 0.85, ...pos }}
-    >
-      {draw('rgba(255,232,160,0.45)', 0.7)}
-      {draw('rgba(92,58,10,0.85)', 0)}
-    </svg>
-  )
-}

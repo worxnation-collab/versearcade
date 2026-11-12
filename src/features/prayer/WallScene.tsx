@@ -79,8 +79,8 @@ export function WallScene({
             the two read as one wall. */}
         <defs>
           <radialGradient id="wall-lamp" cx="0.12" cy="0.1" r="0.9">
-            <stop offset="0" stopColor="#ffd98a" stopOpacity="0.28" />
-            <stop offset="1" stopColor="#ffd98a" stopOpacity="0" />
+            <stop offset="0" stopColor="#f0d09a" stopOpacity="0.28" />
+            <stop offset="1" stopColor="#f0d09a" stopOpacity="0" />
           </radialGradient>
         </defs>
         <rect x="0" y="0" width={W} height={H} fill="url(#wall-lamp)" />

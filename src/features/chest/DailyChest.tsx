@@ -119,7 +119,7 @@ export function DailyChest() {
   const isBoost = revealed?.kind === 'boost'
   const relic = revealed?.kind === 'relic' && revealed.key ? collectibleByKey(revealed.key) : null
   const rarity = relic?.rarity ?? 'common'
-  const glow = isBoost ? '#ffd23f' : rarityColor[rarity]
+  const glow = isBoost ? '#ecb860' : rarityColor[rarity]
 
   return (
     <motion.div
@@ -151,7 +151,7 @@ export function DailyChest() {
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, marginTop: 6 }} className="gradient-text">
               XP Boost!
             </div>
-            <div style={{ fontSize: 11, color: '#ffd23f', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 2 }}>
+            <div style={{ fontSize: 11, color: '#ecb860', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 2 }}>
               rare find
             </div>
             <p className="faint" style={{ fontSize: 13, marginTop: 8 }}>

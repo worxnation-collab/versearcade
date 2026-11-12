@@ -55,6 +55,13 @@ this list whenever art, a wardrobe piece, a palette value or a feature ships:
   "no", so prompts list only what IS in the picture.
 - **Check the numbers that say it worked**: file sizes (quantize renders that
   never show above ~300px), `npm run build`, and `npm run smoke`.
+- **`npm run visual-audit`** (after a build; in CI on every PR) does the
+  mechanical half: the main screens at 390px wearing the layered wardrobe on
+  ebony, both figures, plus every landing slide mid-transition and at rest. It
+  fails on a page error, a broken `<img>` or sideways scroll, and leaves 33
+  screenshots in `art/.visual-audit/` (CI uploads them as `visual-audit`).
+  Passing it is not looking: open the screenshots. A daily scheduled session
+  re-runs it on `main` with `audit.py` and reports what looks off.
 
 ## Commands
 

@@ -107,3 +107,30 @@ Read it like you're showing a friend, not presenting. Smile on the jokes.
 **The end**
 > It's free. Play today's verse at versearcade dot org — the link is right under this video.
 > And hey… seek first the kingdom. See you tomorrow.
+
+---
+
+## Finishing the voiceover (done 2026-11-12)
+
+The owner recorded the long script on a phone in two takes (a stumble before "All 66 books", so
+the second take starts there). Each take went through the same chain, so the two halves match:
+
+1. **Noise removal**: fal `fal-ai/deepfilternet3` (the take sent as a FLAC data URI).
+2. **Edit**: lead-in silence trimmed, a stray word cut (take 1, "…build a combo. *Wrong.*"),
+   take 1 ended on "…you still learn something." (a first cut at 69.45s kept the stumbled
+   "All 66 books" and played it twice; it ends at 66.2s now), and take 2 begins on "All 66 books".
+3. **Voice chain** (ffmpeg, identical on both):
+   `highpass=f=80, equalizer=f=220:t=q:w=1:g=-2.5, equalizer=f=3200:t=q:w=1.2:g=3,
+   highshelf=f=9000:g=2.5, deesser=i=0.35,
+   acompressor=threshold=-22dB:ratio=3:attack=8:release=160:makeup=3dB,
+   silenceremove=stop_periods=-1:stop_duration=0.4:stop_threshold=-48dB:stop_silence=0.32,
+   atempo=1.04, loudnorm=I=-16:TP=-1.5:LRA=7`. Rumble out, mud down, presence and air up,
+   sibilance tamed, level evened, long pauses tightened to about a third of a second, 4% faster
+   with pitch kept.
+4. **Join** with a 0.35s gap and re-normalised to -16 LUFS; the halves measured within 0.7 dB
+   of each other in the presence band.
+5. **Timing**: the joined voice was transcribed with word timestamps (`fal-ai/whisper`) and each
+   section's start became a `fit:` length in `cut2.py`'s `VOICED` plan.
+6. **Cut**: `python3 scripts/video/cut2.py <dir> --voiced --vo vo-full.wav --music music-long.mp3`.
+   The voice starts after the silent 7-second pop-quiz cold open; music ducks under it
+   (sidechain); the final mix is -14 LUFS, -1 dBTP, the YouTube target. 2:33 total.

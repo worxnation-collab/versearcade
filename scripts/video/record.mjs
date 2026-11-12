@@ -1,5 +1,5 @@
 // Records the promo walkthrough of the real app as JPEG frames (CDP
-// screencast at 1080x1920), one folder per shot. Assembled by cut.sh.
+// viewport screenshots at 1080x1920, ~16fps), one folder per shot. Cut by cut.py / cut2.py.
 //   node scripts/video/record.mjs <outDir> [shot,shot]
 // Needs `npm run build` (keyless) and `npx vite preview --port 4173`.
 import { chromium } from 'playwright'
@@ -45,6 +45,11 @@ async function shot(browser, name, fn) {
   if (ONLY && !ONLY.includes(name)) return
   const dir = path.join(OUT, name)
   fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true })
+  // FULL RESOLUTION: CDP's screencast hands back CSS-pixel frames (432x768)
+  // whatever the device scale, which the cut then stretched into soft text.
+  // So frames are SCREENSHOTS of the visible viewport at 2.5x (1080x1920),
+  // taken back to back (~16 a second) while the shot plays. The clip is in
+  // document coordinates, hence the layout metrics on every frame.
   const ctx = await browser.newContext({ viewport: { width: 432, height: 768 }, deviceScaleFactor: 2.5 })
   await ctx.addInitScript(([p, s]) => {
     if (!localStorage.getItem('va.profile')) {
@@ -55,14 +60,21 @@ async function shot(browser, name, fn) {
   await ctx.addInitScript(TAPS)
   const page = await ctx.newPage()
   page.on('pageerror', (e) => console.error(name, 'pageerror', e.message))
-  let rec = false
+  let rec = false, stop = false
   const frames = []
   const cdp = await ctx.newCDPSession(page)
-  cdp.on('Page.screencastFrame', async (f) => {
-    if (rec) frames.push({ t: f.metadata.timestamp, data: f.data })
-    await cdp.send('Page.screencastFrameAck', { sessionId: f.sessionId }).catch(() => {})
-  })
-  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 92, maxWidth: 1080, maxHeight: 1920 })
+  const grab = (async () => {
+    while (!stop) {
+      if (!rec) { await new Promise((r) => setTimeout(r, 20)); continue }
+      try {
+        const v = (await cdp.send('Page.getLayoutMetrics')).cssVisualViewport
+        const t = Date.now() / 1000
+        const r = await cdp.send('Page.captureScreenshot', { format: 'jpeg', quality: 92, optimizeForSpeed: true,
+          clip: { x: v.pageX, y: v.pageY, width: v.clientWidth, height: v.clientHeight, scale: 2.5 } })
+        if (rec) frames.push({ t, data: r.data })
+      } catch { await new Promise((r) => setTimeout(r, 30)) }
+    }
+  })()
   const api = {
     page,
     go: async (url) => { await page.goto(BASE + url); await page.waitForLoadState('networkidle').catch(() => {}) },
@@ -71,8 +83,8 @@ async function shot(browser, name, fn) {
   }
   await fn(api)
   await page.waitForTimeout(300)
-  rec = false
-  await cdp.send('Page.stopScreencast')
+  rec = false; stop = true
+  await grab
   // ffconcat with each frame held until the next one arrived.
   const lines = ['ffconcat version 1.0']
   frames.forEach((f, i) => {
@@ -257,19 +269,28 @@ await shot(browser, 'seals', async ({ page, go, start, wait }) => {
 })
 await shot(browser, 'study', tour('/study', [500, 1100]))
 await shot(browser, 'wordcatch', async ({ page, go, start, wait }) => {
-  await go('/arcade/word-catch'); await wait(1200); start(); await wait(1400)
-  await page.getByRole('button', { name: /Put it back together/ }).click(); await wait(1500)
-  // Tap the words of today's verse in order as they float past.
-  const words = (await page.evaluate(() => document.body.innerText.match(/[A-Z][^“”"\n]{20,}/)?.[0] ?? '')).split(/\s+/)
-  const end = Date.now() + 14000
-  let k = 0
+  await go('/arcade/word-catch'); await wait(1200)
+  // Today's verse, word by word, exactly as the field labels its targets.
+  const verse = (await page.locator('text=/^But seek first/').first().innerText().catch(() => '')).replace(/[“”"]/g, '').replace(/\s*\.\.\.$|…$/, '')
+  start(); await wait(1400)
+  await page.getByRole('button', { name: /Put it back together/ }).click(); await wait(1200)
+  // Only ever tap a WORD on the field: a stray tap on the header's back
+  // button walked the recording out of the game and back, over and over.
+  const end = Date.now() + 16000
   while (Date.now() < end) {
-    const want = (words[k] ?? '').replace(/[^\w'’-]/g, '')
-    const b = page.locator(`button[aria-label="${want}" i]`).first()
-    if (want && await b.count()) { await b.click({ timeout: 600 }).then(() => { k++ }).catch(() => {}) }
-    else { const any = page.locator('button[aria-label]:not([aria-label*="hare"])').last(); if (await any.count()) await any.click({ timeout: 400 }).catch(() => {}) }
-    await wait(450)
+    const labels = await page.$$eval('button[aria-label]', (bs) => bs.map((b) => b.getAttribute('aria-label')))
+    const words = labels.filter((l) => l && l.length < 24 && !/back|share|close|menu|play|study|church|battle|you/i.test(l))
+    // The game knows which word comes next; try each word on the field once
+    // (a wrong one just drops back), slowly enough to read.
+    let hit = false
+    for (const w of words) {
+      const b = page.locator(`button[aria-label="${w.replace(/"/g, '\\"')}"]`).first()
+      if (await b.count()) { await b.click({ timeout: 500 }).then(() => { hit = true }).catch(() => {}); await wait(380) }
+      if (Date.now() > end) break
+    }
+    if (!hit) await wait(300)
   }
+  void verse
 })
 await shot(browser, 'cross', async ({ page, go, start, wait }) => {
   await go('/arcade/cross'); await wait(1200); start(); await wait(1800)

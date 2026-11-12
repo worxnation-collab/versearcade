@@ -995,6 +995,30 @@ the voice. TikTok's, YouTube's and Instagram's flags stay set — the painting
 is still generated. The `copy` prompt's description of the post changes the
 same way, which is why the hub rewrites the copy on Save.
 
+## His recordings are polished before they render (2026-11-12)
+
+The owner's call, after hearing the walkthrough's voice: every recording he parks goes through the
+same production chain before a post uses it. The morning runner does it first thing
+(`polishDay` in `scripts/tiktok-daily.mjs` over `scripts/voice-polish.mjs`): for each
+`days/<date>/voice-<kind>.wav` it runs RNNoise (`arnndn`, the model fetched at run time), then
+rumble cut, mud down, presence and air up, de-ess and a gentle compressor.
+
+- **Nothing moves a word.** No pause tightening and no tempo change, and the output is refused
+  unless it is the same length as the input within 10 ms, because the transcript beside the WAV
+  carries the word timings the captions are drawn from.
+- **No loudness target here**: the renderer levels speech itself (`SPEECH_TARGET`), and two
+  normalisers would fight.
+- **The original is kept**: `voice-<kind>.raw.wav` is the recording as parked, and
+  `voice-<kind>.enh.json` holds the polished file's hash, so a day is polished once and a NEW
+  upload (a hash that isn't ours) is polished again over a fresh backup. `upload-url` allows those
+  two paths and nothing else new.
+- **It fails open**: no model, an ffmpeg error, a length change or a refused upload all leave the
+  recording exactly as he parked it and the post goes out. `NO_POLISH=1` turns it off for a run.
+- RNNoise rather than the paid DeepFilterNet the walkthrough used: free, no key in CI, and his
+  phone memos measured a -78 dB floor already, so the EQ and dynamics are most of what is heard.
+  `scripts/video/voice.py` is the DeepFilterNet version for anything else he records (reels, a
+  video with his voice on it): `python3 scripts/video/voice.py <file>`.
+
 ## Your own clip
 
 The one post a painted figure cannot make: the operator, on camera, once a

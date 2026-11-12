@@ -57,6 +57,9 @@ import { spawnSync } from 'node:child_process'
 import { chromium } from 'playwright'
 import { createClient } from '@supabase/supabase-js'
 import { timesFrom, slotOf, timeFor as sharedTimeFor } from './tiktok-times.mjs'
+import { polishVoice, rnnoiseModel } from './voice-polish.mjs'
+import crypto from 'node:crypto'
+import os from 'node:os'
 
 // The last thing between the mix and the file: a ceiling.
 //
@@ -466,6 +469,48 @@ async function fn(action, body) {
   if (j.error) throw new Error(`${action}: ${j.error}`)
   return j
 }
+
+// ---- polish his recordings before anything renders from them ------------------------------
+// Every voice file parked for the day goes through scripts/voice-polish.mjs
+// (noise, EQ, de-ess, compression; same length, so the transcript's word
+// timings still hold). The ORIGINAL is kept beside it as voice-<k>.raw.wav,
+// and voice-<k>.enh.json records the polished file's hash: a day already
+// polished is skipped, and a NEW upload (a hash that is not ours) is polished
+// again over a fresh backup. Any failure leaves the recording as it was —
+// polishing is never a reason a post doesn't go out.
+const VOICE_NAMES = ['verse', 'story', 'exchange', 'exchange-close', 'challenge', 'book', 'moment', 'before', 'figure', 'quiet', 'prayer']
+async function polishDay(date) {
+  if (mode !== 'function' || DRY || env.NO_POLISH) return
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'va-voice-'))
+  const model = await rnnoiseModel(tmp)
+  const sha = (b) => crypto.createHash('sha256').update(b).digest('hex')
+  const sb = createClient(SUPABASE_URL, ANON)
+  const put = async (name, body, contentType) => {
+    const up = await fn('upload-url', { path: `days/${date}/${name}` })
+    const { error } = await sb.storage.from('tiktok').uploadToSignedUrl(up.path, up.token, body, { contentType, upsert: true })
+    if (error) throw new Error(`${name}: ${error.message}`)
+  }
+  for (const k of VOICE_NAMES) {
+    try {
+      const base = `${SUPABASE_URL}/storage/v1/object/public/tiktok/days/${date}`
+      const r = await fetch(`${base}/voice-${k}.wav?v=${Date.now()}`)
+      if (!r.ok) continue
+      const wav = Buffer.from(await r.arrayBuffer())
+      const mark = await fetch(`${base}/voice-${k}.enh.json?v=${Date.now()}`).then((x) => (x.ok ? x.json() : null)).catch(() => null)
+      if (mark?.sha === sha(wav)) { log(`  voice-${k}: already polished`); continue }
+      const inF = path.join(tmp, `${k}.wav`), outF = path.join(tmp, `${k}.polished.wav`)
+      fs.writeFileSync(inF, wav)
+      const why = polishVoice(inF, outF, { ffmpeg: FFMPEG, ffprobe: env.FFPROBE || 'ffprobe', model })
+      if (why) { log(`  voice-${k}: left as recorded (${why})`); continue }
+      const out = fs.readFileSync(outF)
+      await put(`voice-${k}.raw.wav`, wav, 'audio/wav')
+      await put(`voice-${k}.wav`, out, 'audio/wav')
+      await put(`voice-${k}.enh.json`, Buffer.from(JSON.stringify({ sha: sha(out), raw: sha(wav), at: new Date().toISOString(), noise: !!model })), 'application/json')
+      log(`  voice-${k}: polished${model ? '' : ' (no noise model — EQ and dynamics only)'}`)
+    } catch (e) { log(`  voice-${k}: left as recorded (${String(e?.message || e).slice(0, 160)})`) }
+  }
+}
+await polishDay(today)
 
 // ---- render, transcode, upload, schedule ----------------------------------------------------
 // Behind an egress proxy (a sandbox, a locked-down runner) the browser has to be

@@ -1612,6 +1612,16 @@ export interface StoryInput {
    */
   scenes?: Array<HTMLImageElement | null>
   /**
+   * The OPENING SHOT, moving (2026-11-12, the owner's call): a five-second
+   * image-to-video clip made from `scenes[0]` (`scripts/gen-myth-clips.mjs`).
+   * It plays forward from frame 0, under the hook, and then its LAST frame is
+   * held in the painting's place for the rest of the post — so the camera
+   * moves keep working on it and the figure never jumps back to where the
+   * painting had him. Wherever `scenes[0]` would be drawn, this is drawn
+   * instead; absent, the painting is drawn exactly as before.
+   */
+  openClip?: HTMLVideoElement
+  /**
    * The operator's own render, standing in the corner of the library while he
    * speaks and fading out as Tabitha begins — `STORY_CORNER`, `OWN_OUT`.
    *
@@ -1693,6 +1703,8 @@ interface StoryScene {
   ownHide: number
   /** His voice's envelope, so the ring breathes with him rather than with her. */
   ownVoice?: { rms: Float32Array; peak: number }
+  /** `openClip`'s last frame, captured once, held after the clip ends. */
+  clipTail?: ImageBitmap | null
   /**
    * The cuts, in order, in AUDIO time: what is behind the words from this
    * moment until the next entry. Built once in `renderStory` rather than
@@ -1825,6 +1837,25 @@ function shotMix(shots: Shot[], at: number): { shot: Shot; from: Shot | null; mi
   return { shot, from, mix: from ? mix : 1 }
 }
 
+// A shot's picture — or, for the opening painting when it has a clip, the
+// clip (while it runs) and then the clip's held last frame. Played forward
+// on video time `t`, the same clock the hook is on, so its motion starts on
+// frame 0 with the words.
+async function paintShot(ctx: CanvasRenderingContext2D, sc: StoryScene, img: HTMLImageElement, t: number, zoom: number) {
+  const clip = sc.input.openClip
+  if (clip && img === sc.input.scenes?.[0]) {
+    const end = Math.max(0, clip.duration - 0.05)
+    if (t < end || !sc.clipTail) {
+      await seek(clip, Math.min(Math.max(0, t), end))
+      cover(ctx, clip, clip.videoWidth, clip.videoHeight, zoom, 1)
+    } else {
+      cover(ctx, sc.clipTail, sc.clipTail.width, sc.clipTail.height, zoom, 1)
+    }
+    return
+  }
+  cover(ctx, img, img.naturalWidth, img.naturalHeight, zoom, 1)
+}
+
 async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: number, chrome = true) {
   const { input, lead, audioDur, total, phrases, para, paraStart, ownAt, ownShow, ownHide, ownVoice, shots } = sc
   const at = t - lead
@@ -1857,12 +1888,12 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
     // cross-dissolve does at the midpoint.
     if (from) {
       const out = from.img ?? (input.room as HTMLImageElement)
-      cover(ctx, out, out.naturalWidth, out.naturalHeight, zoom, 1)
+      await paintShot(ctx, sc, out, t, zoom)
     }
     const bg = shot.img ?? (input.room as HTMLImageElement)
     ctx.save()
     ctx.globalAlpha = mix
-    cover(ctx, bg, bg.naturalWidth, bg.naturalHeight, zoom, 1)
+    await paintShot(ctx, sc, bg, t, zoom)
     ctx.restore()
   }
   ctx.restore()
@@ -2194,6 +2225,15 @@ export async function renderStory(input: StoryInput): Promise<RenderOutput> {
     : (open ? Math.max(ownAt - 0.35, (input.hook ? HOOK_HOLD - 0.4 : 0) - lead) : ownAt - 0.35)
   const ownHide = open ? ownEnd : Infinity
   const sc: StoryScene = { input, lead, audioDur, total, phrases, para, paraStart, ownAt, ownEnd, ownShow, ownHide, ownVoice, shots: storyShots(input, paraStart, ownAt, ownEnd, toldAt, open, reading) }
+  // The clip's last frame, taken once before the first frame is drawn. A
+  // capture that fails leaves the clip parked on its last frame instead,
+  // which draws the same picture at the cost of a seek per frame.
+  if (input.openClip) {
+    try {
+      await seek(input.openClip, Math.max(0, input.openClip.duration - 0.05))
+      sc.clipTail = await createImageBitmap(input.openClip)
+    } catch { sc.clipTail = null }
+  }
   const { blob, ext } = await produce((ctx, t) => drawStoryFrame(ctx, sc, t), total, lead, samples, progress, input.bed)
   progress(1, 'Done')
   return { blob, ext, durationSec: total, phrases }

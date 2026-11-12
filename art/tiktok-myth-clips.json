@@ -1,0 +1,80 @@
+{
+  "model": "fal-ai/kling-video/v2.1/standard/image-to-video",
+  "note": "One Kling image-to-video clip per scripted myth: the OPENING SHOT of the evening post (scripts/gen-myth-clips.mjs). The painting is public/tiktok/myths/<date>.jpg, read from the live site. Every prompt ends on the same stillness line so the clip moves the SUBJECT and never the frame.",
+  "style": " Static camera, no zoom, no pan. Keep the flat storybook painting style, colours and composition exactly; the sky and the top of the picture stay calm and unchanged; no new objects, no new people, no text.",
+  "negative": "camera shake, zoom, pan, morphing, warping, extra people, extra animals, faces turning to camera, new clouds, text, letters, blur, distortion",
+  "clips": [
+    {
+      "date": "2026-11-13",
+      "motion": "Gentle waves lap the stone quay. The moored ship rocks softly and its sail stirs in the evening breeze. Golden light shimmers on the water; the cord on the scrolls flutters slightly."
+    },
+    {
+      "date": "2026-11-14",
+      "motion": "The wolf breathes slowly and lowers its head beside the lamb, which nuzzles closer. The leopard's tail flicks lazily, the young goat settles. Meadow grass and flowers sway in a soft dawn breeze."
+    },
+    {
+      "date": "2026-11-15",
+      "motion": "The crack in the tower widens and chunks of masonry tumble down from it in slow motion, dust drifting. The tipped golden crown at its foot rocks once in the dust and comes to rest."
+    },
+    {
+      "date": "2026-11-16",
+      "motion": "The kneeling traveller slowly tips the small flask and pours oil onto the wounded man's arm. The donkey behind them shifts its weight and flicks its ears. Dust drifts across the road."
+    },
+    {
+      "date": "2026-11-17",
+      "motion": "The travellers walk slowly away down the road toward the hill village. The one ahead turns and waves the others on with a sweep of his arm. Their cloaks stir in the wind; the sky darkens slightly."
+    },
+    {
+      "date": "2026-11-18",
+      "motion": "The dove glides in a slow circle around the ark. Grass and wildflowers around the ark ripple gently in the wind. Soft sunlight moves across the weathered wood."
+    },
+    {
+      "date": "2026-11-19",
+      "motion": "The glowing golden fruit on the tree pulses softly with light. Leaves rustle gently in a breeze; the radiant tree behind glows and its branches sway slowly."
+    },
+    {
+      "date": "2026-11-20",
+      "motion": "Morning light slowly brightens across the stone ledge. A last drop falls from the jug's lip into the basin and small ripples spread across the water. Dust motes float in the light."
+    },
+    {
+      "date": "2026-11-21",
+      "motion": "Light glints and travels slowly across the gold signet ring's band and seal. Sunlight shifts gently over the blue and gold tiles. Fine dust floats in the air."
+    },
+    {
+      "date": "2026-11-22",
+      "motion": "The velvet curtain sways gently as if a draught passed behind it. The top handwritten page lifts slightly at its corner and settles. The quill's feather trembles."
+    },
+    {
+      "date": "2026-11-23",
+      "motion": "The angel of light blazes brighter, wings of light rippling and spreading like a storm. The shepherds shrink back and raise their arms to shield their eyes. The sheep startle and scatter a few steps."
+    },
+    {
+      "date": "2026-11-24",
+      "motion": "The chariot of fire rises slowly into the sky inside the spiralling whirlwind, flames streaming. The rough cloak drifts down through the air toward the small figure, who reaches up for it."
+    },
+    {
+      "date": "2026-11-25",
+      "motion": "The serpent slowly uncoils along the branch, head turning smoothly, tongue flicking once. Leaves sway gently and the golden fruit sways on the branch."
+    },
+    {
+      "date": "2026-11-26",
+      "motion": "A traveller walks slowly away along the winding path, out of the shadows toward the bright opening of warm light. The light at the end of the gorge brightens gently."
+    },
+    {
+      "date": "2026-11-27",
+      "motion": "The caravan's camels shift and lower their heads; a traveller steps forward toward the gate. Banners on the palace towers flutter, and dusk light flickers on the stone walls."
+    },
+    {
+      "date": "2026-11-28",
+      "motion": "The man and the pregnant woman walk slowly away down the dusty road side by side toward the distant town, steady unhurried steps. Their robes stir in the wind and dust lifts at their feet."
+    },
+    {
+      "date": "2026-11-29",
+      "motion": "The lamp flame flickers softly and its warm light dances over the stone trough and the straw. A loose strand of straw stirs; dust motes drift through the lamplight."
+    },
+    {
+      "date": "2026-11-30",
+      "motion": "The older brother stands still, his cloak stirring in the evening wind, and slowly lowers the tool from his shoulder. The warm light from the farmhouse doorway flickers as shadows of dancers pass inside."
+    }
+  ]
+}

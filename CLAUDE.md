@@ -997,6 +997,12 @@ cron does the upload. Full design: `docs/TIKTOK-ENGINE.md`. Things to know —
   with a flash on its debunk (`debunkAt` in `make.ts`, or a myth's own
   `turn` word). One painting per post still means the cuts are FRAMINGS of
   it; a second and third painting per myth is content still to make.
+  **And since 2026-11-12 the myth's opening shot MOVES**: a five-second Kling
+  clip of its own painting (`scripts/gen-myth-clips.mjs`,
+  `art/tiktok-myth-clips.json`, `public/tiktok/myths/<date>.mp4`) plays under
+  the hook and its last frame is held for the rest (`StoryInput.openClip`).
+  One clip per post, the owner's cost call; no clip is the painting.
+  `docs/TIKTOK-ENGINE.md` → "The opening shot moves".
   The argument below is history: it was about motion with no grammar.
 - **The only thing moving is the caption, and that is a rule now.** These
   posts had drifting motes, a warm pulse over the frame, a hovering figure

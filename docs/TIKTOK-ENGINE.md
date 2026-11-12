@@ -1020,6 +1020,29 @@ with the sound off sees the subject before it reads the hook.
 - A new week of myths gets new paintings the same way. The hooks were rewritten to rule 7 at the
   same time (for example "There was no horse." became "Paul never fell off a horse.").
 
+### The opening shot moves (2026-11-12)
+
+The owner's call, after watching the Cain post: the figure in the painting should actually WALK
+rather than the frame drifting over him. So each myth's painting gets one five-second
+image-to-video clip, and only one, on the opening shot (the window that decides whether a short
+video is watched at all).
+
+- `art/tiktok-myth-clips.json` is the manifest: a motion line per date plus one shared stillness
+  line (static camera, sky unchanged, no new people or objects, same painting style).
+  `node scripts/gen-myth-clips.mjs [--only <date>] [--force]` animates the DEPLOYED painting
+  through fal (Kling 2.1 standard, about $0.28 a clip; the key is the proxy-injected fal secret)
+  and writes `public/tiktok/myths/<date>.mp4`, re-encoded silent H.264 at about 1MB.
+- `makeReading` loads `<date>.mp4` beside `<date>.jpg` when it exists and passes it as
+  `StoryInput.openClip`. The clip plays forward from frame 0 under the hook, then its LAST frame
+  is held in the painting's place for the rest of the post, so the camera cuts keep working and
+  the figure never jumps back to where the painting had him. No clip = the painting, as before.
+- Model choice was measured on the Cain painting: Kling walked him away with the light around
+  him; Seedance Lite melted the dome toward the camera; Wan 2.2 barely moved and costs more at
+  720p ($0.40). Kling 2.1 standard is marked deprecated on fal, so the model id is one field in
+  the manifest.
+- A new week of myths needs its clips made by hand after its paintings deploy; the morning
+  runner has no fal key and does not make them.
+
 ## The few generated pieces, and why those
 
 Everything generated for these posts is chosen to be true EVERY day, never

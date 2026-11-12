@@ -41,8 +41,10 @@ export const scenePath = (id: string) => (ROAD_IDS.includes(id) ? `/road/${id}.j
  * names paintings that ship with the site, and a build that predates one of
  * them (or a 404) must still make the post rather than fail the morning.
  */
-export async function loadScene(r: Pick<Renderer, 'loadImage'>, id: string): Promise<HTMLImageElement> {
-  try { return await r.loadImage(scenePath(id)) } catch { return r.loadImage('/road/harvest.jpg') }
+export async function loadScene(r: Pick<Renderer, 'loadImage' | 'loadVideo' | 'makeLiving'>, id: string): Promise<HTMLImageElement> {
+  // The road MOVES when its clips exist (makeAlive): wheat in the wind, waves
+  // on the shore, under every layout that stands a figure on it.
+  try { return await makeAlive(r, await r.loadImage(scenePath(id)), scenePath(id)) } catch { return makeAlive(r, await r.loadImage('/road/harvest.jpg'), '/road/harvest.jpg') }
 }
 export const VOICES = Array.from(new Set([...PICKER_VOICES, 'Algenib', 'Sadaltager', 'Iapetus', 'Enceladus', 'Fenrir', 'Schedar', 'Kore', 'Aoede', 'Sulafat', 'Vindemiatrix', 'Achernar']))
 
@@ -177,6 +179,40 @@ export async function call<T>(action: string, body: Record<string, unknown>): Pr
 export function publicUrl(path: string): string {
   return supabase!.storage.from(BUCKET).getPublicUrl(path).data.publicUrl
 }
+/**
+ * Where a figure painted INTO a backdrop lives: one still per (painting,
+ * figure), made by `scripts/gen-cast-stills.mjs` and animated like any other
+ * painting, so the person gestures and speaks instead of standing as a stiff
+ * cut-out over a moving road. `/tiktok/roads/shore.jpg` + `cephas` →
+ * `/tiktok/cast/shore--cephas.jpg`.
+ */
+export const castStillPath = (sceneUrl: string, figure: string) =>
+  `/tiktok/cast/${sceneUrl.split('?')[0].split('/').pop()!.replace(/\.(jpe?g|png)$/i, '')}--${figure}.jpg`
+
+/** The painted-in still, alive, when its still AND at least one clip exist; otherwise null. */
+export async function castStill(r: Pick<Renderer, 'loadImage' | 'loadVideo' | 'makeLiving' | 'isAlive'>, sceneUrl: string, figure: string): Promise<HTMLImageElement | null> {
+  const url = castStillPath(sceneUrl, figure)
+  if (!(await existsAt(url, 'image/'))) return null
+  const img = await makeAlive(r, await r.loadImage(url).catch(() => null), url)
+  return img && r.isAlive(img) ? img : null
+}
+
+/**
+ * A painting that MOVES, when its clips exist beside it: `<name>.mp4` (the
+ * opening move) and `<name>-loop.mp4` (the calm loop that follows), made by
+ * `scripts/gen-living.mjs`. They are registered against the image object, so
+ * every layout that draws it plays them; no clip is the painting as before,
+ * and a clip that will not load is skipped rather than failing the post.
+ */
+export async function makeAlive<T extends HTMLImageElement | null>(r: Pick<Renderer, 'loadVideo' | 'makeLiving'>, img: T, url: string): Promise<T> {
+  if (!img) return img
+  const base = url.split('?')[0].replace(/\.(jpe?g|png)$/i, '')
+  const load = async (u: string) => ((await existsAt(u, 'video/')) ? r.loadVideo(u).catch(() => undefined) : undefined)
+  const [clip, loop] = await Promise.all([load(`${base}.mp4`), load(`${base}-loop.mp4`)])
+  r.makeLiving(img, clip, loop)
+  return img
+}
+
 // A 200 is NOT proof a file is there. The site serves index.html for any
 // unknown path (the SPA fallback), so a HEAD on a bundled asset that does not
 // exist comes back ok — which told the panel that every reader had a Veo loop

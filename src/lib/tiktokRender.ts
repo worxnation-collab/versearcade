@@ -490,6 +490,56 @@ function easeOut(t: number) { return 1 - Math.pow(1 - Math.min(1, Math.max(0, t)
 
 // ---- the camera (the MOTION RULE, 2026-11-05, the owner's call) -------------
 //
+// LIVING PAINTINGS (2026-11-12, the owner's call: the figure should actually
+// move, not the frame drift over him). Any painting can carry two clips made
+// from it by `scripts/gen-living.mjs`: an OPENING clip (five seconds of real
+// movement — he walks, the ship rocks) and a seamless calm LOOP that starts on
+// the opening clip's last frame and ends on it too. The opening plays from
+// frame 0 under the hook, then the loop repeats for the rest of the post, so
+// nothing ever freezes and nothing ever snaps back. Registered against the
+// image OBJECT (`makeLiving`), so every layout that draws a painting through
+// `paint` picks it up without any input type knowing; an image with nothing
+// registered is drawn exactly as before.
+interface Living { clip?: HTMLVideoElement; loop?: HTMLVideoElement; tail?: ImageBitmap | null }
+const LIVING = new WeakMap<HTMLImageElement, Living>()
+export function makeLiving(img: HTMLImageElement, clip?: HTMLVideoElement, loop?: HTMLVideoElement) {
+  if (clip || loop) LIVING.set(img, { clip, loop })
+}
+/** Whether a painting moves on its own — and so the camera should not. */
+export function isAlive(img: HTMLImageElement | null | undefined): boolean {
+  return !!img && LIVING.has(img)
+}
+/**
+ * The camera over a LIVING painting: one slow, continuous push for the whole
+ * post, no cuts (the owner's call, 2026-11-12). The cut-every-4-6-seconds
+ * grammar was there to stop a STILL picture reading as a photo; once the
+ * picture moves by itself, a framing that snaps every few seconds reads as a
+ * glitch on top of it.
+ */
+const GLIDE: Move = { s: [1.02, 1.1], x: [0.5, 0.5], y: [0.5, 0.48] }
+export function glideAt(t: number, total: number, moves: Move[] = [GLIDE]): Cam {
+  return camAt([0], t, total, [], moves)
+}
+async function paint(ctx: CanvasRenderingContext2D, img: HTMLImageElement, t: number, zoom = 1, anchorY = 0.5) {
+  const l = LIVING.get(img)
+  if (!l) return cover(ctx, img, img.naturalWidth, img.naturalHeight, zoom, anchorY)
+  const end = l.clip ? Math.max(0, l.clip.duration - 0.05) : 0
+  if (l.clip && t < end) {
+    await seek(l.clip, Math.max(0, t))
+    return cover(ctx, l.clip, l.clip.videoWidth, l.clip.videoHeight, zoom, anchorY)
+  }
+  if (l.loop) return drawLoop(ctx, l.loop, t - end)
+  // An opening with no loop holds its last frame, captured once.
+  const clip = l.clip!
+  if (l.tail === undefined) {
+    await seek(clip, end)
+    try { l.tail = await createImageBitmap(clip) } catch { l.tail = null }
+  }
+  if (l.tail) return cover(ctx, l.tail, l.tail.width, l.tail.height, zoom, anchorY)
+  await seek(clip, end)
+  cover(ctx, clip, clip.videoWidth, clip.videoHeight, zoom, anchorY)
+}
+
 // A still frame reads as a photo and gets scrolled past. So every video:
 //   - moves from its first frame (shot 0 starts pushing in at t = 0);
 //   - never stops moving: every shot is a slow push-in, pull-out or pan for
@@ -990,15 +1040,16 @@ async function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number,
   ctx.save()
   // Painting AND figures go through the camera together, so the reader moves
   // with the road he stands on rather than sliding across it.
-  applyCam(ctx, camAt(cuts, t, total))
+  const alive = (bd.kind === 'still' && isAlive(bd.image)) || (bd.kind === 'builtin' && isAlive(bd.scene))
+  applyCam(ctx, alive ? glideAt(t, total) : camAt(cuts, t, total))
   if (bd.kind === 'loop') {
     await drawLoop(ctx, bd.video, t)
   } else if (bd.kind === 'still') {
     // A push of one and a half percent across the whole post: enough that the
     // frame is not a photograph, far short of a Ken Burns pan.
-    cover(ctx, bd.image, bd.image.naturalWidth, bd.image.naturalHeight)
+    await paint(ctx, bd.image, t)
   } else {
-    cover(ctx, bd.scene, bd.scene.naturalWidth, bd.scene.naturalHeight)
+    await paint(ctx, bd.scene, t)
     // The reader STANDS on the road. This used to float — bobbing on a sine
     // and lit by a pulsing gold halo — which was the single most generated-
     // looking thing in the post. A figure with its feet on the ground and one
@@ -1825,6 +1876,10 @@ function shotMix(shots: Shot[], at: number): { shot: Shot; from: Shot | null; mi
   return { shot, from, mix: from ? mix : 1 }
 }
 
+async function paintShot(ctx: CanvasRenderingContext2D, img: HTMLImageElement, t: number, zoom: number) {
+  await paint(ctx, img, t, zoom, 1)
+}
+
 async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: number, chrome = true) {
   const { input, lead, audioDur, total, phrases, para, paraStart, ownAt, ownShow, ownHide, ownVoice, shots } = sc
   const at = t - lead
@@ -1841,7 +1896,8 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
   const turn = input.own?.turnAt != null && Number.isFinite(ownAt) ? [lead + ownAt + input.own.turnAt] : []
   const punch = sc.punch ?? (sc.punch = turn)
   const cuts = sc.cuts ?? (sc.cuts = cutTimes([...phrases.map((p) => p.start + lead), ...shots.filter((x) => Number.isFinite(x.at)).map((x) => x.at + lead)], total, punch))
-  const cam = camAt(cuts, t, total, punch)
+  const alive = isAlive(shot.img ?? (input.room instanceof HTMLImageElement ? input.room : null))
+  const cam = alive ? glideAt(t, total) : camAt(cuts, t, total, punch)
   const zoom = 1
   void SHOT_PUSH; void SHOT_SETTLE
   const roomIsLoop = !shot.img && input.room instanceof HTMLVideoElement
@@ -1857,16 +1913,16 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
     // cross-dissolve does at the midpoint.
     if (from) {
       const out = from.img ?? (input.room as HTMLImageElement)
-      cover(ctx, out, out.naturalWidth, out.naturalHeight, zoom, 1)
+      await paintShot(ctx, out, t, zoom)
     }
     const bg = shot.img ?? (input.room as HTMLImageElement)
     ctx.save()
     ctx.globalAlpha = mix
-    cover(ctx, bg, bg.naturalWidth, bg.naturalHeight, zoom, 1)
+    await paintShot(ctx, bg, t, zoom)
     ctx.restore()
   }
   ctx.restore()
-  drawPunchFlash(ctx, cam, punch, t)
+  if (!alive) drawPunchFlash(ctx, cam, punch, t)
   const top = ctx.createLinearGradient(0, 0, 0, 820)
   top.addColorStop(0, 'rgba(11,7,32,0.9)'); top.addColorStop(1, 'rgba(11,7,32,0)')
   ctx.fillStyle = top; ctx.fillRect(0, 0, WIDTH, 820)
@@ -2610,7 +2666,7 @@ async function drawQuizFrame(ctx: CanvasRenderingContext2D, sc: QuizScene, t: nu
   const W = input.windowSec
 
   // 1. The road, held still, under a heavy wash: this frame is a game screen.
-  cover(ctx, input.backdrop, input.backdrop.naturalWidth, input.backdrop.naturalHeight, 1 + 0.015 * (t / total))
+  await paint(ctx, input.backdrop, t, 1 + 0.015 * (t / total))
   ctx.fillStyle = 'rgba(11,7,32,0.74)'; ctx.fillRect(0, 0, WIDTH, HEIGHT)
   if (!chrome) return
 
@@ -3029,7 +3085,7 @@ async function drawExchangeFrame(ctx: CanvasRenderingContext2D, sc: ExchangeScen
   ctx.translate(WIDTH / 2, HEIGHT * EX_ANCHOR)
   ctx.scale(z, z)
   ctx.translate(-WIDTH / 2, -HEIGHT * EX_ANCHOR)
-  cover(ctx, input.scene, input.scene.naturalWidth, input.scene.naturalHeight, 1.02)
+  await paint(ctx, input.scene, t, 1.02)
 
   const face = (s: ExchangeSpeaker, speaking: boolean, turned: boolean) =>
     (turned ? s.turned : speaking ? s.speaking : null) ?? s.figure
@@ -3360,6 +3416,37 @@ function boardLayer(draw: (ctx: CanvasRenderingContext2D) => void): HTMLCanvasEl
   return c
 }
 
+/** Standing in front of the board, feet on the floor, lower right. */
+function drawChalkFigure(ctx: CanvasRenderingContext2D, fig: HTMLImageElement, pad: number) {
+  const h = HEIGHT * 0.44
+  const w = h * (fig.naturalWidth / fig.naturalHeight)
+  const feet = HEIGHT * 0.975
+  const x = WIDTH * 0.72 - w / 2
+  const y = feet - h + pad * (h / fig.naturalHeight)
+  ctx.save()
+  ctx.fillStyle = 'rgba(30,18,8,0.28)'
+  ctx.beginPath(); ctx.ellipse(WIDTH * 0.72, feet - 4, w * 0.36, 16, 0, 0, Math.PI * 2); ctx.fill()
+  ctx.drawImage(fig, x, y, w, h)
+  ctx.restore()
+}
+
+/**
+ * A figure painted INTO its backdrop, as one still (1080x1920 JPEG), placed
+ * exactly where the layout would stand the cut-out. This is what a living
+ * clip is made from when the figure should move too: animating the painting
+ * alone moves the road and leaves the cut-out standing stiff on top of it
+ * (`scripts/gen-cast-stills.mjs`). `layout` picks whose placement to copy.
+ */
+export async function composeStanding(scene: HTMLImageElement, figure: HTMLImageElement, layout: 'verse' | 'chalk'): Promise<Blob> {
+  const c = document.createElement('canvas')
+  c.width = WIDTH; c.height = HEIGHT
+  const ctx = c.getContext('2d')!
+  cover(ctx, scene, scene.naturalWidth, scene.naturalHeight)
+  if (layout === 'chalk') drawChalkFigure(ctx, figure, bottomPad(figure))
+  else standFigure(ctx, figure, 1)
+  return new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error('toBlob failed'))), 'image/jpeg', 0.92))
+}
+
 export async function renderChalkQuiz(input: ChalkQuizInput): Promise<RenderOutput> {
   const progress = input.onProgress ?? (() => {})
   progress(0, 'Chalking the board')
@@ -3502,8 +3589,8 @@ export async function renderChalkQuiz(input: ChalkQuizInput): Promise<RenderOutp
   const draw = async (ctx: CanvasRenderingContext2D, t: number) => {
     // The whole room — board, chalk and figure — goes through the camera.
     ctx.save()
-    applyCam(ctx, camAt(cuts, t, total, [], CHALK_MOVES))
-    cover(ctx, input.backdrop, input.backdrop.naturalWidth, input.backdrop.naturalHeight)
+    applyCam(ctx, isAlive(input.backdrop) ? glideAt(t, total, [CHALK_MOVES[0]]) : camAt(cuts, t, total, [], CHALK_MOVES))
+    await paint(ctx, input.backdrop, t)
     ctx.drawImage(label, 0, 0)
     qLayers.forEach((l, i) => appear(ctx, l, qAt[i], t))
     appear(ctx, ruleLayer, qAt[qAt.length - 1] ?? 0, t)
@@ -3531,19 +3618,7 @@ export async function renderChalkQuiz(input: ChalkQuizInput): Promise<RenderOutp
       if (a > 0) { ctx.save(); ctx.globalAlpha = a; ctx.drawImage(yesterday, 0, 0); ctx.restore() }
     }
     if (!rv && t >= askAt) { ctx.save(); ctx.globalAlpha = easeOut((t - askAt) / 0.5); ctx.drawImage(ask, 0, 0); ctx.restore() }
-    if (fig) {
-      // Standing in front of the board, feet on the floor, lower right.
-      const h = HEIGHT * 0.44
-      const w = h * (fig.naturalWidth / fig.naturalHeight)
-      const feet = HEIGHT * 0.975
-      const x = WIDTH * 0.72 - w / 2
-      const y = feet - h + pad * (h / fig.naturalHeight)
-      ctx.save()
-      ctx.fillStyle = 'rgba(30,18,8,0.28)'
-      ctx.beginPath(); ctx.ellipse(WIDTH * 0.72, feet - 4, w * 0.36, 16, 0, 0, Math.PI * 2); ctx.fill()
-      ctx.drawImage(fig, x, y, w, h)
-      ctx.restore()
-    }
+    if (fig) drawChalkFigure(ctx, fig, pad)
     ctx.restore()
   }
   const { blob, ext } = await produce(draw, total, CHALK_LEAD, samples, progress, input.bed)

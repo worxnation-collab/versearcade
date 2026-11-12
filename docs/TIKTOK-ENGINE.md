@@ -1020,6 +1020,53 @@ with the sound off sees the subject before it reads the hook.
 - A new week of myths gets new paintings the same way. The hooks were rewritten to rule 7 at the
   same time (for example "There was no horse." became "Paul never fell off a horse.").
 
+### Living paintings: the backdrop moves (2026-11-12)
+
+The owner's call, after watching the Cain post: the figure in the painting should actually WALK
+rather than the frame drifting over him, and the movement should keep going for the whole video,
+never freeze and never jump back.
+
+So a painting can carry two clips beside it, both made by `scripts/gen-living.mjs` from
+`art/living.json`:
+
+- **`<name>.mp4`, the opening**: five seconds of real movement (he walks off, the ship rocks, the
+  wheat rolls). Kling 2.5 Turbo Standard on fal, about $0.21.
+- **`<name>-loop.mp4`, the calm loop**: starts AND ends on the opening's last frame (Kling 2.5
+  Turbo Pro with `tail_image_url`, about $0.35), so it repeats seamlessly and picks up exactly
+  where the opening left off. A walk cannot loop (he would snap back), which is why there are two.
+
+`makeAlive(r, img, url)` (`features/admin/tiktok/shared.tsx`) looks for both and registers them
+against the image object (`makeLiving` in `lib/tiktokRender.ts`); every layout draws its backdrop
+through `paint()`, which plays the opening from frame 0 under the hook and then the loop. No loop
+holds the opening's last frame; neither is the painting exactly as before. Wired today: the myth
+paintings, the verse paintings and the nine roads (`loadScene`, so the verse, quiz and challenge
+layouts), Tabitha's story room and the chalkboard.
+
+- Images go to fal as data URIs, so a painting does not have to be deployed first. The key is the
+  proxy-injected fal secret. Clips are re-encoded silent H.264 at about 1MB, since `public/` ships
+  in the app bundle.
+- Every motion line ends on one shared stillness line (static camera, sky unchanged, no new people
+  or objects). The chalkboard's says the BOARD does not move, because the quiz is chalked onto it
+  at fixed coordinates.
+- Model choice was measured on the Cain painting: Kling walked him away with the light around him;
+  Seedance Lite melted the dome toward the camera; Wan 2.2 barely moved and costs more at 720p.
+- A new painting (a week of myths, a verse painting) needs its clips made by hand after it lands;
+  the morning runner has no fal key. Add it to `art/living.json` and run the script.
+
+**The speaker moves too** (same day, the owner's note: "the background moves, the character is
+still"). The verse and chalkboard layouts stand a CUT-OUT on the painting, so animating the
+painting alone left him stiff on a moving road. `scripts/gen-cast-stills.mjs [--from <date>]
+[--days 14]` paints the day's speaker into the day's painting with the renderer's own placement
+(`composeStanding`) and writes `public/tiktok/cast/<scene>--<figure>.jpg`, appending it to
+`art/living.json`; gen-living then animates it (hands, head, a little mouth, the scene behind).
+`castStill` picks it up and the post draws the composite instead of scene + cut-out. Pairs repeat,
+so a road and speaker seen before cost nothing. The chalkboard has one, with the operator in it.
+Lip movement is approximate, not synced to the words.
+
+**And the camera glides.** Over a living painting there are no cuts: one slow continuous push for
+the whole post (`glideAt`), because a framing that snaps every few seconds over a picture that
+already moves read as a glitch. Still paintings keep the cut grammar.
+
 ## The few generated pieces, and why those
 
 Everything generated for these posts is chosen to be true EVERY day, never

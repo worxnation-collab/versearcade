@@ -1031,6 +1031,17 @@ cron does the upload. Full design: `docs/TIKTOK-ENGINE.md`. Things to know —
   with a flash on its debunk (`debunkAt` in `make.ts`, or a myth's own
   `turn` word). One painting per post still means the cuts are FRAMINGS of
   it; a second and third painting per myth is content still to make.
+  **And since 2026-11-12 the backdrops are LIVING PAINTINGS**: a painting
+  may carry `<name>.mp4` (five seconds of real movement, played under the
+  hook) and `<name>-loop.mp4` (a seamless calm loop starting on the
+  opening's last frame, repeated for the rest), made by
+  `scripts/gen-living.mjs` from `art/living.json` and picked up by
+  `makeAlive`/`paint`. Myths, roads, the story room and the chalkboard
+  have them; no clip is the painting. A new painting needs its clips made
+  by hand. The verse and chalkboard SPEAKER is painted into the scene first
+  (`scripts/gen-cast-stills.mjs`, `castStill`) so he moves with it, and over
+  a living painting the camera is one smooth push with no cuts (`glideAt`).
+  `docs/TIKTOK-ENGINE.md` → "Living paintings".
   The argument below is history: it was about motion with no grammar.
 - **The only thing moving is the caption, and that is a rule now.** These
   posts had drifting motes, a warm pulse over the frame, a hovering figure

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Page } from '@/components/Page'
+import { PageHeader } from '@/components/PageHeader'
 
 // The inside of a study book. Every book Tabitha lends opens onto one of these,
 // so the way back to the library looks the same wherever you landed.
@@ -15,24 +15,11 @@ export function StudySubPage({
   blurb?: string
   children: ReactNode
 }) {
-  const navigate = useNavigate()
-
+  // The house header (PageHeader), home = the Study tab — this page used to
+  // carry its own "← Library" pill and a centred floating emoji.
   return (
     <Page>
-      <button
-        className="pill"
-        onClick={() => navigate('/study')}
-        style={{ marginBottom: 14, fontSize: 13 }}
-        aria-label="Back to the library"
-      >
-        ← Library
-      </button>
-
-      <div className="center" style={{ marginBottom: 18 }}>
-        <div className="floaty" style={{ fontSize: 40 }}>{emblem}</div>
-        <h1 style={{ fontSize: 26, marginTop: 4 }}>{title}</h1>
-        {blurb && <p className="dim" style={{ marginTop: 4, fontSize: 14, lineHeight: 1.45 }}>{blurb}</p>}
-      </div>
+      <PageHeader title={title} sub={blurb} home="/study" icon={<span aria-hidden>{emblem}</span>} />
 
       {/* Every card on a study page is the library's paper (index.css). */}
       <div className="study-vellum">{children}</div>

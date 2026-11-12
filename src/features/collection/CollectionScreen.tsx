@@ -39,7 +39,9 @@ export function CollectionSection() {
   return (
     <>
       <p className="dim" style={{ marginBottom: 18 }}>
-        {loaded ? `${cardsHave + relicsHave}/${CARDS.length + RELICS.length} collected — chase the set.` : 'Loading…'}
+        {/* The thing and the door, never the distance (the Wardrobe's rule): a
+            count of what you hold, no "of 42" to be under. */}
+        {loaded ? `${cardsHave + relicsHave} collected so far. Every card says what brings it.` : 'Loading…'}
       </p>
 
       <SectionHeader title="Verse Cards" sub="Earn these by how you play" have={cardsHave} total={CARDS.length} />
@@ -53,16 +55,14 @@ export function CollectionSection() {
   )
 }
 
-function SectionHeader({ title, sub, have, total }: { title: string; sub: string; have: number; total: number }) {
+function SectionHeader({ title, sub, have }: { title: string; sub: string; have: number; total?: number }) {
   return (
     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
       <div>
         <h2 style={{ fontSize: 20 }}>{title}</h2>
         <p className="faint" style={{ fontSize: 12 }}>{sub}</p>
       </div>
-      <span className="dim" style={{ fontSize: 13 }}>
-        {have}/{total}
-      </span>
+      {have > 0 && <span className="dim" style={{ fontSize: 13 }}>{have} held</span>}
     </div>
   )
 }
@@ -91,8 +91,7 @@ function Grid({
               textAlign: 'center',
               padding: 16,
               borderColor: has ? rarityColor[c.rarity] : 'var(--stroke)',
-              opacity: has ? 1 : 0.5,
-              filter: has ? 'none' : 'grayscale(0.8)',
+              position: 'relative',
               boxShadow: has ? `0 0 20px ${rarityColor[c.rarity]}40` : 'none',
             }}
           >
@@ -101,7 +100,14 @@ function Grid({
                 <ThroneIcon size={40} />
               </div>
             ) : (
-              <div style={{ fontSize: 40 }}>{has ? c.emoji : <PaintedIcon id="lock" />}</div>
+              // Locked shows the THING, dimmed, with the lock as a corner chip —
+              // never a padlock over its face (the Wardrobe's scar).
+              <div style={{ fontSize: 40, opacity: has ? 1 : 0.45, filter: has ? 'none' : 'grayscale(0.85)' }}>{c.emoji}</div>
+            )}
+            {!has && (
+              <span aria-label="Not yet" style={{ position: 'absolute', top: 8, right: 8, fontSize: 14, opacity: 0.8 }}>
+                <PaintedIcon id="lock" />
+              </span>
             )}
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, marginTop: 6 }}>{c.name}</div>
             <div style={{ fontSize: 10, color: rarityColor[c.rarity], textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 2 }}>

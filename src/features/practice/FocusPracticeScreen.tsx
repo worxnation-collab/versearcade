@@ -212,7 +212,16 @@ function PickRow({ label, sub, active, onClick }: { label: string; sub: string; 
         </b>
         <span className="faint" style={{ fontSize: 12 }}>{sub}</span>
       </div>
-      <span className="pill" style={{ background: 'var(--gold)', color: '#241f0a', fontWeight: 800, fontSize: 12 }}>Play</span>
+      {/* Outlined, not gold: a list of sixty books with sixty gold buttons is
+          sixty "next things". Gold stays for the one focused book. */}
+      <span
+        className="pill"
+        style={active
+          ? { background: 'var(--gold)', color: '#241f0a', fontWeight: 800, fontSize: 12 }
+          : { borderColor: 'var(--edge)', fontWeight: 800, fontSize: 12 }}
+      >
+        ▶ Play
+      </span>
     </motion.button>
   )
 }

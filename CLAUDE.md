@@ -2118,10 +2118,18 @@ which is the one number the slot produces and the only thing to renew on.
 `art/churchyard.flux.json`): the five yard paintings are Kontext EDITS of the
 owner's own (same hand, light and horizon) with every flower, headstone and
 path cleared, because the backdrop's own flowerbeds plus the plantings on top
-read as busy. Plantings, statues and buildings are repainted by the same script
-onto the SAME paths `ownerArt.ts` reads (plain silhouettes, no ivy, no gold, no
-mound of soil), so no code changes; over a painted yard the drawn path is a
-soft gravel track.
+read as busy. Plantings and statues are repainted by the same script onto the SAME
+paths `ownerArt.ts` reads (plain silhouettes, no ivy, no gold, no mound of
+soil); over a painted yard the drawn path is a soft gravel track. **The
+buildings are 32 now, one per (skin, tier)** (`ladder`,
+`public/church/buildings/<skin>-<tier>.png`), each tier a Kontext edit of the
+one below so a church visibly GROWS, and `ChurchArt` draws the box taller per
+tier at scene size (thumbnails fill the box: most churches are level 1). The
+owner's six they replaced drew levels 8-26 as ONE building, so the twin
+spires, cathedral and golden dome the ladder promises had never been drawn.
+Modern has its own tier forms (`tiers_form_modern`): the shared ones made it
+grow steeples. `og-church-cards.mjs` composes the share cards from these and
+the skin's own yard; re-run it after any building change.
 
 Giving grows the building for everybody; the same points, counted as *your*
 lifetime giving, open the landscaping you plant in front of it. Eight plants,

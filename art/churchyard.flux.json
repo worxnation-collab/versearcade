@@ -45,5 +45,33 @@
     "statue_cross": "a plain pale weathered limestone cross on a simple square stone base"
   },
   "buildings_note": "Kontext edits OF the owner's six buildings: the architecture is kept, the painting is simplified to this hand, and the patch of ground, shrubs and flowers around each base is removed so the building stands on the yard's own grass.",
-  "scene_edit": "Simplify this painting into a calm, uncluttered, EMPTY churchyard lawn. Keep EXACTLY the same painterly style, warm golden light, colours, camera angle and horizon height. REMOVE every flower, flowerbed, wildflower, headstone, grave marker, standing stone, path, stepping stone, puddle, rock and bush from the lawn and the foreground, and replace them with smooth, evenly mown grass. Keep the trees only at the far left and far right edges and the soft treeline along the horizon; keep the middle of the horizon open. No buildings, no people, no text."
+  "scene_edit": "Simplify this painting into a calm, uncluttered, EMPTY churchyard lawn. Keep EXACTLY the same painterly style, warm golden light, colours, camera angle and horizon height. REMOVE every flower, flowerbed, wildflower, headstone, grave marker, standing stone, path, stepping stone, puddle, rock and bush from the lawn and the foreground, and replace them with smooth, evenly mown grass. Keep the trees only at the far left and far right edges and the soft treeline along the horizon; keep the middle of the horizon open. No buildings, no people, no text.",
+  "ladder_note": "32 buildings, 8 tiers x 4 skins, at public/church/buildings/<skin>-<tier>.png. Tier 1 of each skin is drawn from text; every later tier is a Kontext EDIT of the tier below it ('grow this building into ...'), so a church visibly grows rather than being replaced, and the four skins share each tier's shape while differing in material. Replaces the owner's six, which drew levels 8-26 as one building and both stone ladders as tile AND classic.",
+  "ladder_style": "ONE church building centred on a SOLID FLAT MAGENTA (#FF00FF) background, seen from the front at a slight angle, whole building visible. Soft hand-painted gouache storybook illustration, warm late-afternoon light from the top left, clean readable silhouette that still reads at thumbnail size, warm windows faintly lit from inside. NO ground, NO grass, NO shrubs, NO flowers, NO path, NO people, NO shadow, no text, no frame.",
+  "skins_material": {
+    "tile": "Spanish-mission style: warm cream stucco walls, terracotta barrel-tile roofs, arched bell openings with bronze bells, a dark walnut door",
+    "classic": "cream-painted walls, muted plum-violet slate roofs, white trim, a small gold cross on top, a dark wooden door",
+    "modern": "strictly CONTEMPORARY architecture like a 2020s building: smooth pale concrete and white render, FLAT or single-slope roofs, large floor-to-ceiling glass panels, warm timber slats, a thin minimal steel cross. ABSOLUTELY NO pitched shingle roofs, NO steeples, NO spires, NO gothic arches, NO traditional windows",
+    "glass": "pale grey limestone walls, dark grey lead roofs, and LARGE tall pointed stained-glass windows glowing brightly from inside in jewel colours (ruby, sapphire, emerald, gold) that are the most noticeable thing about the building; NO chimneys, NO flowers"
+  },
+  "tiers_form": {
+    "gathering": "a small one-storey house used as a home church: a little gabled house with a covered front porch and a modest cross above the door",
+    "chapel": "a tiny one-room chapel with a small bell-cote on the roof ridge and a single arched door",
+    "country": "a country church: a simple nave with a tall slender steeple over the front door, visible from the road",
+    "parish": "a parish church: a longer nave with a solid square bell tower beside the entrance, room for the whole town",
+    "stone": "a heavy, solid church of thick masonry: a wide nave, a strong square tower, buttresses along the sides, built to last centuries",
+    "great": "a great church: a tall front with TWIN spires and a large round rose window between them, side aisles",
+    "cathedral": "a cathedral: a vast nave with flying buttresses, pointed arches, a tall central spire and a grand arched entrance",
+    "basilica": "a basilica: a grand building crowned by a large GOLDEN DOME on a drum, a columned portico at the front, two bell towers"
+  },
+  "tiers_form_modern": {
+    "gathering": "a small single-storey modern house used as a home church, flat roof, one big glass front and a small cross by the door",
+    "chapel": "a small modern chapel: a simple white box with a single slanted roof and one tall glass slot window, a thin cross on top",
+    "country": "a modern church with a tall slim freestanding concrete bell tower beside a low glass-fronted hall",
+    "parish": "a larger modern church: a long low concrete hall with a wall of glass and a tall rectangular concrete tower",
+    "stone": "a substantial modern church of heavy board-formed concrete, deep-set glass, a strong square tower",
+    "great": "a great modern church: two tall slender concrete towers framing a huge circular glass window",
+    "cathedral": "a modern cathedral: a soaring angular concrete and glass nave rising to a sharp peak, a very tall thin tower",
+    "basilica": "a modern basilica: a grand building crowned by a large shallow GOLDEN-TINTED glass and concrete dome, with a colonnade of slim concrete columns"
+  }
 }

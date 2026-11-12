@@ -689,7 +689,17 @@ export function ChurchArt({ level = 1, tier, skin, size = 200, animate = false, 
           <kit.Ground rx={42 + tierIdx * 4} fill={ground} />
           {/* Bottom-anchored so the foundation sits on the ground ellipse at
               every tier, whatever shape the building came back. */}
-          <image href={raster} x={14} y={4} width={172} height={148} preserveAspectRatio="xMidYMax meet" />
+          {/* The box GROWS with the tier (92 -> 148 tall), so levelling up
+              makes the church bigger as well as grander: a house gathering
+              and a basilica fitted to the same box read as the same size.
+              Only at scene size (120+); see below. */}
+          {(() => {
+            // Thumbnails (a board row, a picker tile) fill the box: most
+            // churches are level 1, and a shrunk house at 44px is a speck.
+            const h = size >= 120 ? 92 + tierIdx * 8 : 148
+            const w = Math.min(172, h * 1.25)
+            return <image href={raster} x={100 - w / 2} y={152 - h} width={w} height={h} preserveAspectRatio="xMidYMax meet" />
+          })()}
         </>
       ) : (
         Art(kit)

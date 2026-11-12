@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """Repaint the churchyard as ONE calm hand (art/churchyard.flux.json).
 
-    python3 scripts/gen-churchyard.py scenes|flora|statues|buildings [--only id,id] [--force] [--dry]
+    python3 scripts/gen-churchyard.py scenes|flora|statues|ladder [--only id,id] [--force] [--dry]
 
 Scenes: Flux Pro Ultra, written over public/church/scene_*.jpg at 1168x784.
 Flora and statues: a master drawn from text, every other one a Flux Kontext
 EDIT of its master (one light, palette and scale), cut out by birefnet,
 trimmed and written at the height the owner's set used (300 / 360px).
-Buildings: a Kontext edit of each existing building (architecture kept,
-ground patch removed), written at 440px tall.
+Ladder: 8 tiers x 4 skins of church building, tier 1 from text and every
+later tier a Kontext edit of the one below it, at public/church/buildings/
+<skin>-<tier>.png (then resized to 320px and quantized; see the PR).
 Files land on the SAME paths ownerArt.ts / sceneArt.ts already read, so no
 code changes. --dry writes previews to art/churchyard/preview only.
 The fal.ai key is a network secret injected by the environment's proxy.
@@ -41,7 +42,6 @@ STATUE_OUT = {
     'statue_tomb': 'empty-tomb', 'statue_lion_lamb': 'lion-and-lamb',
     'statue_praying': 'praying-figure', 'statue_cross': 'stone-cross',
 }
-BUILDINGS = ['modest', 'small', 'tower', 'parish', 'modern', 'glass']
 
 
 def ultra(prompt, aspect):
@@ -137,27 +137,37 @@ def props(kind, only, force, dry):
             print('ok', k, flush=True)
 
 
-def buildings(only, force, dry):
+TIERS = ['gathering', 'chapel', 'country', 'parish', 'stone', 'great', 'cathedral', 'basilica']
+
+
+def ladder(only, force, dry):
+    """Each skin's eight tiers, every tier an edit of the one below it."""
     from concurrent.futures import ThreadPoolExecutor
+    mat, form = M['skins_material'], M['tiers_form']
 
-    def one(name):
-        p = os.path.join(RAW, 'church-' + name + '.png')
-        if force or not os.path.exists(p):
-            src = Image.open(os.path.join(ROOT, 'public/church/buildings', f'church-{name}.png')).convert('RGBA')
-            bg = Image.new('RGB', (src.width + 160, src.height + 160), (255, 0, 255))
-            bg.paste(src, (80, 80), src)
-            kontext("Repaint this church building in a soft, simple hand-painted gouache storybook style: the same "
-                    "architecture, shape, roof, windows and door, but cleaner and calmer, muted warm stone colours, "
-                    "gentle top-left light, less fine texture. REMOVE everything around its base: no grass, no "
-                    "shrubs, no flowers, no ground patch, no steps spilling out, no shadow. The building alone on a "
-                    "solid flat magenta background.", bg).save(p)
-        put(cut(p, 440), f'public/church/buildings/church-{name}.png', dry, 'church-' + name)
-        return name
+    def skin(sk):
+        prev = None
+        fm = M.get('tiers_form_' + sk, form)
+        for t in TIERS:
+            key = f'{sk}-{t}'
+            p = os.path.join(RAW, key + '.png')
+            want = not only or sk in only or key in only
+            if want and (force or not os.path.exists(p)):
+                if prev is None:
+                    icons.text_to_image(M['ladder_style'].replace('ONE church building', f"ONE church building: {fm[t]}, in {mat[sk]}")).save(p)
+                else:
+                    kontext(f"Grow this church into the next, larger stage: {fm[t]}. Keep EXACTLY the same materials "
+                            f"({mat[sk]}), the same soft painted gouache style, warm top-left light, front three-quarter view "
+                            "and the same solid flat magenta background. The building alone: no ground, grass, shrubs, path, "
+                            "people or shadow, no text.", prev).save(p)
+            if os.path.exists(p):
+                put(cut(p, 440), f'public/church/buildings/{key}.png', dry, key)
+                prev = Image.open(p).convert('RGB')
+                print('ok', key, flush=True)
+        return sk
 
-    todo = [n for n in BUILDINGS if not only or n in only or 'church-' + n in only]
-    with ThreadPoolExecutor(3) as ex:
-        for n in ex.map(one, todo):
-            print('ok', n, flush=True)
+    with ThreadPoolExecutor(4) as ex:
+        list(ex.map(skin, ['tile', 'classic', 'modern', 'glass']))
 
 
 def main():
@@ -169,8 +179,8 @@ def main():
         scenes(only, force, dry)
     elif what in ('flora', 'statue', 'statues'):
         props('flora' if what == 'flora' else 'statue', only, force, dry)
-    elif what == 'buildings':
-        buildings(only, force, dry)
+    elif what == 'ladder':
+        ladder(only, force, dry)
 
 
 if __name__ == '__main__':

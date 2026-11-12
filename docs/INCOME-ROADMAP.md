@@ -110,6 +110,9 @@ look and never an edge (YouVersion's model at our scale: ~$50–300/mo).
 **Not doing**: ads, consumer paywalls, sponsored placements.
 
 ## Done
+- 2026-11-12 (08:52 UTC) — research pass: unchanged. 192 accounts, 0 new
+  in a day, 19 active this week, 0 `pastor-ref`, 0 claims, 0 join inquiries,
+  0 plan-page taps. Nothing to ship.
 - 2026-11-12 (04:52 UTC) — research pass: unchanged. 192 accounts (2 new in
   2 days, neither attributed), 20 active this week, 0 `pastor-ref`, 0 claims,
   0 join inquiries, 0 plan-page taps in 14 days. Nothing to ship; the two

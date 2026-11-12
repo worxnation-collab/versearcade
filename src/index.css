@@ -11,7 +11,14 @@
      separating this app from the ones it is judged against. So the GROUND
      moved to meet the art. The accents did not move: grape is still the
      interactive colour and gold is still the action, so this is a re-ground
-     rather than a rebrand. */
+     rather than a rebrand.
+
+     2026-11-12: and then the ACCENTS moved too. They were the neon arcade set
+     (electric violet #a06bff, lemon #ffd23f, neon mint, coral, cyan), and
+     beside the gouache churches, covers and cards they read as a different
+     app. Each keeps its job and its hue family, taken toward golden hour:
+     honey gold, dusty lavender, sage, terracotta, soft sky. Hardcoded copies
+     of the old values across src were moved with them. */
   --bg-0: #0e0a0c;
   --bg-1: #171014;
   --bg-2: #211820;
@@ -28,8 +35,8 @@
                             it was 3.51:1, which is under AA for the 11-12px
                             captions this colour is used for everywhere */
 
-  --grape: #a06bff;
-  --grape-deep: #7a3ff2;
+  --grape: #a58bd0;
+  --grape-deep: #7c62b0;
   /* The SELECTED surface — a chip, tile or pill that is on.
    *
    * `--grape` is an ACCENT and cannot carry text: white ink on it measures
@@ -39,16 +46,16 @@
    * scripts/check-contrast.mjs asserts. `--ink-faint` is deliberately NOT
    * legible on it and must not be used here — a selected tile's own
    * description takes `--ink-dim`. */
-  --select: #6f45c4;
-  --gold: #ffd23f;
-  --coral: #ff6b6b;
-  --mint: #4ecdc4;
-  --sky: #5ee7df;
-  --tangerine: #ff9f1c;
+  --select: #5f4a8f;
+  --gold: #ecb860;
+  --coral: #e07f6a;
+  --mint: #78b5a3;
+  --sky: #8ec5cf;
+  --tangerine: #e59a4c;
 
-  --good: #43e97b;
-  --good-deep: #1fb85a;
-  --warn: #ffb648;
+  --good: #7fc48c;
+  --good-deep: #4e9a5f;
+  --warn: #e8b062;
 
   /* ── Surfaces are a measured LADDER, not a wash ──────────────────────────
      `--card` used to be `rgba(255,255,255,0.06)`, which composites over the
@@ -68,8 +75,8 @@
   --card-raised: #4b3947;  /* a tile INSIDE a card */
   --card-sunken: #070506;  /* a well — a progress track, an inset */
   --card-solid: #3a2a36;   /* kept as an alias: --card is opaque now */
-  --stroke: rgba(255, 255, 255, 0.10);
-  --stroke-strong: rgba(255, 255, 255, 0.19);
+  --stroke: rgba(255, 226, 186, 0.11);
+  --stroke-strong: rgba(255, 226, 186, 0.20);
 
   /* ── The gold ration ─────────────────────────────────────────────────────
      `--gold` meant "important" in eight places at once — the primary button,
@@ -295,7 +302,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px
 .faint { color: var(--ink-faint); }
 .center { text-align: center; }
 .gold-text {
-  background: linear-gradient(92deg, #fff1b8, var(--gold) 45%, var(--tangerine));
+  background: linear-gradient(92deg, #f6e6c4, var(--gold) 45%, var(--tangerine));
   -webkit-background-clip: text; background-clip: text; color: transparent;
   /* text-shadow paints THROUGH clipped text and muddies it; a filter shadows
      the painted glyphs instead. Hosts must drop their text-shadow for gold. */

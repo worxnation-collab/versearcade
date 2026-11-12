@@ -226,7 +226,7 @@ export function ChapterReader({ verse, onClose }: { verse: DailyVerse; onClose: 
             fontSize: 16,
             fontWeight: 800,
             color: '#2a1a00',
-            background: 'linear-gradient(180deg, #ffe27a, var(--gold))',
+            background: 'linear-gradient(180deg, #f6d590, var(--gold))',
             boxShadow: 'var(--shadow-soft)',
             cursor: 'pointer',
           }}

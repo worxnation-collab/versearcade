@@ -75,9 +75,9 @@ export const COLLECTIBLES: Collectible[] = [
 export const rarityColor: Record<Rarity, string> = {
   common: '#8fa3c8',
   uncommon: '#6fce7f',
-  rare: '#4ecdc4',
-  epic: '#a06bff',
-  legendary: '#ffd23f',
+  rare: '#78b5a3',
+  epic: '#a58bd0',
+  legendary: '#ecb860',
   mythic: '#fff2c2', // radiant gold-white — the throne
 }
 

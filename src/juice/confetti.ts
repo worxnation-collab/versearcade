@@ -9,7 +9,7 @@ let motionOn = true
 // (data/season) swaps these colors — and only the colors. A theme changes what
 // is drawn, never WHETHER motion happens: reduce-motion is still the last word
 // below, which is why the theme is kept separate from `motionOn`.
-const ARCADE_COLORS = ['#ffd23f', '#ff6b6b', '#4ecdc4', '#a06bff', '#5ee7df', '#ff9f1c']
+const ARCADE_COLORS = ['#ecb860', '#e07f6a', '#78b5a3', '#a58bd0', '#8ec5cf', '#e59a4c']
 
 let colors: string[] = ARCADE_COLORS
 let shapes: ('circle' | 'square')[] | undefined
@@ -59,7 +59,7 @@ export const Burst = {
       spread: 55,
       startVelocity: 40,
       origin: { x: 0.5, y: 0.8 },
-      colors: ['#ff6b6b', '#ff9f1c', '#ffd23f'],
+      colors: ['#e07f6a', '#e59a4c', '#ecb860'],
       shapes: ['circle'],
       scalar: 1.1,
     })

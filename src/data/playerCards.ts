@@ -63,27 +63,27 @@ const BASE: CardBgDef = {
   key: DEFAULT_CARD_BG,
   name: 'Classic',
   scene: 'night',
-  palette: { sky: ['#3a1f7a', '#150a34'], land: '#1d1046', glow: '#a06bff', accent: '#d9c8ff' },
+  palette: { sky: ['#3a1f7a', '#150a34'], land: '#1d1046', glow: '#a58bd0', accent: '#d9c8ff' },
 }
 
 // One painted scene per collectible, themed to what it depicts.
 const THEMED: Omit<CardBgDef, 'name'>[] = [
   // ——— Achievement cards ———
   { key: 'first_light', scene: 'sunrise', palette: { sky: ['#7a3f2a', '#2a1030'], land: '#2a1030', glow: '#ffb35c', accent: '#ffe0b0' } },
-  { key: 'night_owl', scene: 'night', palette: { sky: NIGHT, land: '#0d0b26', glow: '#9db8ff', accent: '#cfe0ff' } },
+  { key: 'night_owl', scene: 'night', palette: { sky: NIGHT, land: '#0d0b26', glow: '#a9bde0', accent: '#cfe0ff' } },
   { key: 'early_bird', scene: 'sunrise', palette: { sky: ['#5c4a86', '#1d1240'], land: '#1d1240', glow: '#ffd88a', accent: '#fff0c8' } },
-  { key: 'saved_by_grace', scene: 'storm', palette: { sky: ['#2c3f6b', '#0c1226'], land: '#151a35', glow: '#7fe6ff', accent: '#d6f6ff' } },
-  { key: 'flawless', scene: 'mountain', palette: { sky: ['#245a78', '#08192e'], land: '#0e2440', glow: '#7fe6ff', accent: '#d8f4ff' } },
+  { key: 'saved_by_grace', scene: 'storm', palette: { sky: ['#2c3f6b', '#0c1226'], land: '#151a35', glow: '#9fd0dc', accent: '#d6f6ff' } },
+  { key: 'flawless', scene: 'mountain', palette: { sky: ['#245a78', '#08192e'], land: '#0e2440', glow: '#9fd0dc', accent: '#d8f4ff' } },
   { key: 'combo_king', scene: 'radiance', palette: { sky: DUSK, land: '#28102e', glow: '#ff6b9d', accent: '#ffd0e2' } },
   { key: 'high_scorer', scene: 'flames', palette: { sky: ['#4a2360', '#170a2c'], land: '#1c0b32', glow: '#ff8f5e', accent: '#ffd2a0' } },
   { key: 'week_warrior', scene: 'flames', palette: { sky: ['#63212c', '#1c0a1e'], land: '#220c20', glow: '#ff6b3d', accent: '#ffc46b' } },
   { key: 'co_op_climber', scene: 'mountain', palette: { sky: ['#2c5b52', '#0a1a1e'], land: '#0f2a26', glow: '#6fce7f', accent: '#c8f0cf' } },
-  { key: 'speed_seraph', scene: 'star', palette: { sky: ['#33268c', '#0f0a30'], land: '#170f45', glow: '#9db8ff', accent: '#e2ecff' } },
-  { key: 'fortnight', scene: 'night', palette: { sky: ['#312a6e', '#110d30'], land: '#191248', glow: '#a06bff', accent: '#dcc9ff' } },
+  { key: 'speed_seraph', scene: 'star', palette: { sky: ['#33268c', '#0f0a30'], land: '#170f45', glow: '#a9bde0', accent: '#e2ecff' } },
+  { key: 'fortnight', scene: 'night', palette: { sky: ['#312a6e', '#110d30'], land: '#191248', glow: '#a58bd0', accent: '#dcc9ff' } },
   { key: 'month_mountain', scene: 'mountain', palette: { sky: STONEY, land: '#1a1f30', glow: '#b9c6e8', accent: '#e6ecfa' } },
   { key: 'devoted', scene: 'scroll', palette: { sky: ['#3d2a58', '#150b2c'], land: '#4a3a5e', glow: '#c9a2ff', accent: '#efe2ff' } },
   { key: 'half_century', scene: 'temple', palette: { sky: GOLDEN, land: '#2a1a08', glow: '#ffc861', accent: '#ffeab5' } },
-  { key: 'centurion', scene: 'flames', palette: { sky: ['#6b4a12', '#241705'], land: '#2c1c06', glow: '#ffd23f', accent: '#fff0b0' } },
+  { key: 'centurion', scene: 'flames', palette: { sky: ['#6b4a12', '#241705'], land: '#2c1c06', glow: '#ecb860', accent: '#fff0b0' } },
   { key: 'leper_king', scene: 'radiance', palette: { sky: ['#6e5518', '#241a06'], land: '#332409', glow: '#fff2c2', accent: '#ffffff' } },
 
   // ——— Daily Chest relics ———
@@ -97,7 +97,7 @@ const THEMED: Omit<CardBgDef, 'name'>[] = [
   { key: 'illuminated_icon', scene: 'temple', palette: { sky: ['#5c481e', '#1b1408'], land: '#2a1f0b', glow: '#ffdf8a', accent: '#fff5d2' } },
   { key: 'pilgrim_medallion', scene: 'mountain', palette: { sky: ['#3f465e', '#111325'], land: '#1d2136', glow: '#c2b280', accent: '#efe6cd' } },
   { key: 'ancient_menorah', scene: 'lamp', palette: { sky: ['#4a3818', '#191206'], land: '#2a1f08', glow: '#ffcf5c', accent: '#ffeeb8' } },
-  { key: 'golden_chalice', scene: 'temple', palette: { sky: ['#5e4514', '#1d1405', ], land: '#2c2008', glow: '#ffd23f', accent: '#fff0ae' } },
+  { key: 'golden_chalice', scene: 'temple', palette: { sky: ['#5e4514', '#1d1405', ], land: '#2c2008', glow: '#ecb860', accent: '#fff0ae' } },
   { key: 'alabaster_jar', scene: 'radiance', palette: { sky: ['#4c4553', '#17141b'], land: '#282430', glow: '#efe6f0', accent: '#ffffff' } },
   { key: 'star_of_bethlehem', scene: 'star', palette: { sky: ['#1c2058', '#070a20'], land: '#0e1235', glow: '#ffe98a', accent: '#fff6cf' } },
   { key: 'widows_mite', scene: 'temple', palette: { sky: ['#463f28', '#16130b'], land: '#241f10', glow: '#d4b96a', accent: '#f3e6bd' } },
@@ -107,11 +107,11 @@ const THEMED: Omit<CardBgDef, 'name'>[] = [
   { key: 'descending_dove', scene: 'storm', palette: { sky: ['#3a4670', '#0f1324'], land: '#1c2340', glow: '#dfe8ff', accent: '#ffffff' } },
   { key: 'jubilee_trumpet', scene: 'sunrise', palette: { sky: ['#5e4519', '#1b1408'], land: '#2a1e08', glow: '#ffc94f', accent: '#ffe9ab' } },
   { key: 'davids_harp', scene: 'night', palette: { sky: ['#41306b', '#140c26'], land: '#221645', glow: '#c79bff', accent: '#ecdcff' } },
-  { key: 'jordan_water', scene: 'water', palette: { sky: SEA, land: '#0d2c3e', glow: '#5ee7df', accent: '#c6f7f3' } },
+  { key: 'jordan_water', scene: 'water', palette: { sky: SEA, land: '#0d2c3e', glow: '#8ec5cf', accent: '#c6f7f3' } },
   { key: 'apostles_letter', scene: 'scroll', palette: { sky: ['#463f2c', '#16140d'], land: '#6b5f42', glow: '#e6d7ae', accent: '#fff6e0' } },
   { key: 'covenant_rainbow', scene: 'rainbow', palette: { sky: ['#33417e', '#0f0c26'], land: '#182050', glow: '#cfe6ff', accent: '#ffffff' } },
   { key: 'tablets_law', scene: 'stone', palette: { sky: STONEY, land: '#4a5064', glow: '#c8d0dd', accent: '#f0f4fa' } },
-  { key: 'kingdom_keys', scene: 'temple', palette: { sky: ['#57431a', '#191306'], land: '#291e07', glow: '#ffd76b', accent: '#fff0bc' } },
+  { key: 'kingdom_keys', scene: 'temple', palette: { sky: ['#57431a', '#191306'], land: '#291e07', glow: '#eec67e', accent: '#fff0bc' } },
   { key: 'pearl_price', scene: 'deep', palette: { sky: ['#3f3a5c', '#0f0d1c'], land: '#1c1a30', glow: '#f2e9ff', accent: '#ffffff' } },
 ]
 
@@ -150,7 +150,7 @@ const PACK: CardBgDef[] = [
     unlockHint: 'Comes with the Founding Patron',
     scene: 'stone',
     ink: 'gold',
-    palette: { sky: ['#6b4a22', '#1f1408'], land: '#2c1e0c', glow: '#ffd76b', accent: '#fff2cf' },
+    palette: { sky: ['#6b4a22', '#1f1408'], land: '#2c1e0c', glow: '#eec67e', accent: '#fff2cf' },
   },
   {
     key: 'angels_ladder',
@@ -159,7 +159,7 @@ const PACK: CardBgDef[] = [
     emoji: '🪜',
     unlockHint: 'Comes with The Angel Pack',
     scene: 'ladder',
-    palette: { sky: ['#2a2270', '#0a0722'], land: '#150f3c', glow: '#ffe08a', accent: '#fff4cf' },
+    palette: { sky: ['#2a2270', '#0a0722'], land: '#150f3c', glow: '#f4d8a0', accent: '#fff4cf' },
   },
   {
     key: 'angels_host',

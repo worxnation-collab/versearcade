@@ -60,7 +60,7 @@ const BLOOM_LILAC_DARK = '#8c66b8'
 const LEAF_SILVER = '#8fae8a'
 const STONE = '#cfc4ad'
 const STONE_DARK = '#a89a80'
-const FLAME = '#ffd23f'
+const FLAME = '#ecb860'
 
 /** One planted plot, drawn around its ground point at (20,48). */
 const PLANTS: Record<string, JSX.Element> = {

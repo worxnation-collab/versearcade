@@ -43,9 +43,9 @@ const BODY_DARK = '#452e1c'
 const EDGE = '#b98a3e'
 const SCREEN = '#0b0720'
 const SAND = '#b4855a'
-const GOLD = '#ffd23f'
-const CORAL = '#ff6b6b'
-const MINT = '#4ecdc4'
+const GOLD = '#ecb860'
+const CORAL = '#e07f6a'
+const MINT = '#78b5a3'
 
 /** Natural size, so a caller can reason about how much room it needs. */
 export const CABINET_W = 44

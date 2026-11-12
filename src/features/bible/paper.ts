@@ -48,8 +48,8 @@ export const PAPER_TIER = {
     // A marker stripe: saturated, and fading at the right edge the way a real
     // highlighter runs dry at the end of a stroke.
     wash: 'linear-gradient(90deg, rgba(255,196,0,0.55) 0%, rgba(255,205,40,0.48) 88%, rgba(255,205,40,0.18) 100%)',
-    rule: '#e0a200',
-    dot: '#e0a200',
+    rule: '#c8902a',
+    dot: '#c8902a',
   },
   studied: {
     wash: 'linear-gradient(90deg, rgba(31,110,130,0.32) 0%, rgba(31,110,130,0.22) 88%, rgba(31,110,130,0.06) 100%)',

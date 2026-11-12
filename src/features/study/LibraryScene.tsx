@@ -392,7 +392,7 @@ function Tappable({
           x={x}
           y={y + 5}
           textAnchor="middle"
-          fill="#ffe08a"
+          fill="#f4d8a0"
           fontSize="14"
           fontWeight="700"
           style={{ fontFamily: 'var(--font-display)' }}
@@ -508,13 +508,13 @@ function DrawnLibrary() {
       {/* Desk lamp — the one warm point on that side of the room. */}
       <rect x="272" y="284" width="5" height="32" fill="#b08a3c" />
       <path d="M256 284 h38 l-8 -16 h-22 z" fill="#d6a944" />
-      <circle cx="275" cy="272" r="20" fill="#ffd257" opacity="0.16" />
+      <circle cx="275" cy="272" r="20" fill="#eec170" opacity="0.16" />
       {/* Hanging lamps */}
       {[70, 328].map((x) => (
         <g key={x}>
           <line x1={x} y1="0" x2={x} y2="150" stroke="#54371c" strokeWidth="3" />
-          <circle cx={x} cy="164" r="13" fill="#ffd257" />
-          <circle cx={x} cy="164" r="24" fill="#ffd257" opacity="0.18" />
+          <circle cx={x} cy="164" r="13" fill="#eec170" />
+          <circle cx={x} cy="164" r="24" fill="#eec170" opacity="0.18" />
         </g>
       ))}
     </g>

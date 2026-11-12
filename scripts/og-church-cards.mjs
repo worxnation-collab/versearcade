@@ -38,16 +38,25 @@ const TIERS = ['gathering', 'chapel', 'country', 'parish', 'stone', 'great', 'ca
 
 mkdirSync('public/og/church', { recursive: true })
 
-const yard = await sharp('public/church/churchyard.jpg').resize(W, H, { fit: 'cover', position: 'bottom' }).toBuffer()
+// The SAME yard the scene draws for that skin and tier (sceneArt.ts): its
+// own calm painting, with the tile skin moving to the parish green from Parish
+// Church up.
+const yardFor = async (skin, tierIdx) => {
+  const name = skin === 'tile' && tierIdx >= TIERS.indexOf('parish') ? 'parish' : skin
+  return sharp(`public/church/scene_${name}.jpg`).resize(W, H, { fit: 'cover', position: 'centre' }).toBuffer()
+}
 
 let total = 0
 for (const skin of SKINS) {
   for (const tier of TIERS) {
-    const src = `public/church/church_${skin}_${tier}.png`
+    const src = `public/church/buildings/${skin}-${tier}.png`
+    const yard = await yardFor(skin, TIERS.indexOf(tier))
+    // The church grows with its tier here too, as it does in the scene.
+    const maxH = MAX_H * (0.62 + (0.38 * TIERS.indexOf(tier)) / (TIERS.length - 1))
     // Trim the cut-out's empty margin first, so the base sits ON the ground
     // line rather than hovering by its padding (the `bottomPad` scar).
     const trimmed = await sharp(src).trim().toBuffer({ resolveWithObject: true })
-    const scale = Math.min(MAX_H / trimmed.info.height, (W * 0.6) / trimmed.info.width)
+    const scale = Math.min(maxH / trimmed.info.height, (W * 0.6) / trimmed.info.width)
     const bw = Math.round(trimmed.info.width * scale)
     const bh = Math.round(trimmed.info.height * scale)
     const building = await sharp(trimmed.data).resize(bw, bh).toBuffer()
@@ -67,7 +76,7 @@ for (const skin of SKINS) {
     const out = `public/og/church/${skin}-${tier}.jpg`
     await sharp(yard)
       .composite([{ input: shadow }, { input: building, left, top }])
-      .jpeg({ quality: 78, mozjpeg: true })
+      .jpeg({ quality: 66, mozjpeg: true })
       .toFile(out)
     total += statSync(out).size
   }

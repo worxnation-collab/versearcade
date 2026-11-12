@@ -1,7 +1,7 @@
 import type { ChurchTierId } from './levels'
 
-// The owner's own churchyard art (2026-10-21): fourteen plantings and six
-// buildings, SUPPLIED as finished paintings rather than generated through
+// The owner's own churchyard art (2026-10-21): fourteen plantings (and, until
+// 2026-11-12, six buildings), SUPPLIED as finished paintings rather than generated through
 // scripts/gen-art.mjs. So this is a hand-kept table and not rows in
 // GENERATED_ART, the rewardArt.ts rule: a generator run must never be able to
 // overwrite or un-wire them. Each reader checks here first and falls back to
@@ -30,30 +30,18 @@ const FLORA: Record<string, string> = {
 
 export const ownerFloraArt = (id: string): string | undefined => FLORA[id]
 
-// Six buildings over eight tiers and four skins. The stone ladder grows with
-// level for the tile and classic skins — the bell-cote chapel (church-modest),
-// the spired one (church-small), the tower, then the parish
-// church from Parish Church (level 8) up, the same tier the yard switches to
-// its parish painting. Modern and glass each have one building of their own,
-// at every tier. The tier and skin logic is untouched; this only says which
-// picture a (skin, tier) wears.
-const B = (name: string) => `/church/buildings/church-${name}.png`
-const LADDER: Record<ChurchTierId, string> = {
-  gathering: B('modest'),
-  chapel: B('small'),
-  country: B('tower'),
-  parish: B('parish'),
-  stone: B('parish'),
-  great: B('parish'),
-  cathedral: B('parish'),
-  basilica: B('parish'),
-}
+// The buildings (2026-11-12): one painting per (skin, tier), 32 in all, from
+// scripts/gen-churchyard.py `ladder` — every tier an edit of the one below it,
+// so a church visibly GROWS as it levels and each skin looks like its blurb.
+// They replaced the owner's six, which drew levels 8-26 as one building (the
+// twin spires, the cathedral and the golden dome the ladder promises were
+// never drawn) and gave the tile and classic skins the same stone chapel.
+// An unknown skin (null, `custom`) falls through to GENERATED_ART and then to
+// the drawn kit, by the road it always took.
+const SKINS_DRAWN = new Set(['tile', 'classic', 'modern', 'glass'])
 
 export function ownerBuildingArt(skinId: string, tier: ChurchTierId): string | undefined {
-  if (skinId === 'modern') return B('modern')
-  if (skinId === 'glass') return B('glass')
-  if (skinId === 'tile' || skinId === 'classic') return LADDER[tier]
-  return undefined
+  return SKINS_DRAWN.has(skinId) ? `/church/buildings/${skinId}-${tier}.png` : undefined
 }
 
 // The owner's statues (2026-10-21), the same hand-kept rule as the plantings.

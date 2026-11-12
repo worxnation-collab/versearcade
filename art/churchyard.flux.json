@@ -2,11 +2,11 @@
   "why": "The churchyard read busy: the yard paintings carried their own flowerbeds, headstones and dense foliage, and every planting and statue arrived ornate (ivy, gold trim, its own mound of dirt and stones). This set repaints all three as ONE calm hand: open lawns with nothing on them, and plain objects with clean silhouettes that stand on the grass rather than on a patch of their own. Same paths as the owner's 2026-10-21 set, so ownerArt.ts and sceneArt.ts need no change.",
   "scene_model": "fal-ai/flux-pro/kontext: an EDIT of the owner's 2026-10-21 painting at the same path",
   "scenes": {
-    "scene_tile": "",
-    "scene_classic": "",
-    "scene_modern": "",
-    "scene_glass": "",
-    "scene_parish": ""
+    "scene_tile": "Mediterranean summer: warm golden hills on the horizon, a slim cypress at the left edge, a silvery olive tree at the right edge",
+    "scene_classic": "an English village green: a low dark-green hedge line far away on the horizon, round leafy trees at the left and right edges",
+    "scene_modern": "a clean, modern park lawn, a few young round trees spaced along the horizon, wide bright sky",
+    "scene_glass": "a soft spring meadow: silver birches at the left and right edges, misty blue-green treeline on the horizon",
+    "scene_parish": "a broad village green: large spreading oaks at the left and right edges, gentle green hills on the horizon"
   },
   "prop_style": "ONE object centred on a SOLID FLAT MAGENTA (#FF00FF) background. Soft painted gouache illustration, muted warm natural colours, gentle top-left light, a clean simple silhouette, very little fine detail. The whole object visible, standing upright, seen from the front at eye level. NO ivy, NO vines, NO gold trim, NO ornament, NO mound of soil, NO rocks or pebbles around the base, NO grass patch, NO ground, NO cast shadow, no text, no frame.",
   "flora_master": {
@@ -73,5 +73,7 @@
     "great": "a great modern church: two tall slender concrete towers framing a huge circular glass window",
     "cathedral": "a modern cathedral: a soaring angular concrete and glass nave rising to a sharp peak, a very tall thin tower",
     "basilica": "a modern basilica: a grand building crowned by a large shallow GOLDEN-TINTED glass and concrete dome, with a colonnade of slim concrete columns"
-  }
+  },
+  "scene_note": "2026-11-12, second pass: the yards are now painted FROM TEXT in the buildings' own hand (same model and style words as ladder_style), not decluttered edits of the owner's set, so the church and the ground it stands on read as one picture. Drawn square with the horizon at the middle, then cropped to 1168x784 so the horizon lands where ChurchScene's GROUND expects it (about 62% down). Flux paints what a prompt names, including what it is told to leave out, so the style lists only what IS in the picture.",
+  "scene_text_style": "Soft hand-painted gouache storybook illustration, the same hand as a children's picture book: simple clean shapes, gentle painterly texture, warm golden-hour light from the top left, a soft honey-gold sky fading to pale apricot near the horizon, grass in warm olive and sage greens. A wide landscape that contains ONLY these things: the sky, a soft distant treeline and low hills along a horizon that runs exactly across the middle of the image, one tree standing at the very left edge and one at the very right edge, and a wide, open, smooth, evenly mown lawn that fills the entire lower half of the picture. The middle of the picture is open lawn and open sky. Empty and peaceful, nothing else in the scene."
 }

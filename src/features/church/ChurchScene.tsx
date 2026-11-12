@@ -52,9 +52,12 @@ const WAYPOINTS: CrowdWaypoint[] = [
   { x: 88, b: 24 }, // far back, right of the building
 ]
 
-/** Depth cue: further up the yard = smaller. b 5..26% -> 42..27px. */
+/** Depth cue: further up the yard = smaller. b 5..26% -> 56..36px.
+ *  (Was 42..27: on a phone the congregation read as specks beside a 40px
+ *  door — measured 2026-11-12 — and a yard you can't see people in is a
+ *  painting with nobody home.) */
 const sizeFor = (b: number) =>
-  Math.round(42 - ((Math.min(Math.max(b, 5), 26) - 5) / 21) * 15)
+  Math.round(56 - ((Math.min(Math.max(b, 5), 26) - 5) / 21) * 20)
 
 // Where the church's leader stands (0146): just right of the path, below the
 // door — in front of the building's footprint (which starts at b 20%), clear

@@ -2,6 +2,7 @@ import { borderRender, badgeByKey } from '@/data/cosmetics'
 import { Character } from '@/components/Character'
 import { usePlayerCard } from '@/components/PlayerCardModal'
 import { GOLD_RING, GOLD_RING_EDGE, PORTRAIT_FILL } from '@/components/portraitTexture'
+import { plainCharacter } from '@/features/church/churchLook'
 import type { AvatarSpec } from '@/types'
 
 export function Avatar({
@@ -31,6 +32,11 @@ export function Avatar({
   const useDefaultRing = ring !== false
   const render = border && border !== 'default' ? borderRender(border) : borderRender(useDefaultRing ? 'default' : 'none')
   const badgeDef = badgeByKey(badge)
+  // Half of all accounts never built a character and carry the default 📖,
+  // which drew a book where a person should be in every list. Somebody who
+  // CHOSE an emoji keeps it; the untouched default becomes a plain figure in
+  // everyday clothes, seeded by name so it is the same person every time.
+  const spec = character ?? (emoji === '📖' && username ? plainCharacter(username.charCodeAt(0), username) : null)
 
   const face = (
     <div
@@ -53,7 +59,7 @@ export function Avatar({
         position: render.type === 'textured' ? 'relative' : undefined,
       }}
     >
-      {character ? <Character spec={character} size={size} /> : emoji}
+      {spec ? <Character spec={spec} size={size} /> : emoji}
     </div>
   )
 

@@ -4853,6 +4853,12 @@ Verified by driving it: set all three as a guest, reload, all three survive on
 the card and the page never scrolls sideways (the picker's rows hit the
 grid-item `min-width: auto` trap first time out).
 
+**Nobody is drawn as a book** (2026-11-12). Half of all accounts never built
+a character and carry the default `📖`; `Avatar` (given a username) and
+`CrowdLife` now draw those as `plainCharacter` — everyday clothes seeded by
+name — instead of a book in a circle or floating on a lawn. An emoji a player
+actually CHOSE (🕊️, 🦁…) still shows in avatar circles.
+
 ### The layered wardrobe (2026-11-11)
 
 A spec with an `outfit` is drawn as stacked layers (`data/layered.ts`,

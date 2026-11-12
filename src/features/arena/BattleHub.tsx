@@ -159,9 +159,12 @@ export default function BattleHub() {
           button most of the way down a 390px phone. The Play and Study tabs
           have never carried one. The explanatory line stays, because that part
           is genuinely new information to somebody on their first visit. */}
-      <p className="dim" style={{ margin: '2px 0 14px', fontSize: 13.5, lineHeight: 1.5 }}>
-        <PaintedIcon id="battle_swords" /> Challenge a friend to the same verse quiz. Highest score wins.
-      </p>
+      {/* …except when "Your first battle" is showing: it says the same thing. */}
+      {!(mineLoaded && mine.length === 0 && !isGuest) && (
+        <p className="dim" style={{ margin: '2px 0 14px', fontSize: 13.5, lineHeight: 1.5 }}>
+          <PaintedIcon id="battle_swords" /> Challenge a friend to the same verse quiz. Highest score wins.
+        </p>
+      )}
 
       {isGuest ? (
         <>

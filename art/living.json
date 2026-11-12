@@ -1,80 +1,126 @@
 {
-  "model": "fal-ai/kling-video/v2.1/standard/image-to-video",
-  "note": "One Kling image-to-video clip per scripted myth: the OPENING SHOT of the evening post (scripts/gen-myth-clips.mjs). The painting is public/tiktok/myths/<date>.jpg, read from the live site. Every prompt ends on the same stillness line so the clip moves the SUBJECT and never the frame.",
+  "note": "Living paintings (scripts/gen-living.mjs). For each src painting: an OPENING clip <name>.mp4 (real movement, 5s) and a seamless calm LOOP <name>-loop.mp4 that starts and ends on the opening's last frame. The renderer plays the opening under the hook, then repeats the loop (makeAlive in features/admin/tiktok/shared.tsx).",
+  "model": "fal-ai/kling-video/v2.5-turbo/standard/image-to-video",
+  "loopModel": "fal-ai/kling-video/v2.5-turbo/pro/image-to-video",
   "style": " Static camera, no zoom, no pan. Keep the flat storybook painting style, colours and composition exactly; the sky and the top of the picture stay calm and unchanged; no new objects, no new people, no text.",
+  "loopStyle": " A seamless looping living painting: the last frame is identical to the first. Only gentle ambient motion: light breathes, cloth, leaves and grass stir in a soft breeze, water ripples, flames flicker; any people stay where they are and only shift slightly. Static camera, no zoom, no pan. Keep the flat storybook painting style exactly; no new objects, no new people, no text.",
   "negative": "camera shake, zoom, pan, morphing, warping, extra people, extra animals, faces turning to camera, new clouds, text, letters, blur, distortion",
-  "clips": [
+  "paintings": [
     {
-      "date": "2026-11-13",
+      "src": "/tiktok/myths/2026-11-13.jpg",
       "motion": "Gentle waves lap the stone quay. The moored ship rocks softly and its sail stirs in the evening breeze. Golden light shimmers on the water; the cord on the scrolls flutters slightly."
     },
     {
-      "date": "2026-11-14",
+      "src": "/tiktok/myths/2026-11-14.jpg",
       "motion": "The wolf breathes slowly and lowers its head beside the lamb, which nuzzles closer. The leopard's tail flicks lazily, the young goat settles. Meadow grass and flowers sway in a soft dawn breeze."
     },
     {
-      "date": "2026-11-15",
+      "src": "/tiktok/myths/2026-11-15.jpg",
       "motion": "The crack in the tower widens and chunks of masonry tumble down from it in slow motion, dust drifting. The tipped golden crown at its foot rocks once in the dust and comes to rest."
     },
     {
-      "date": "2026-11-16",
+      "src": "/tiktok/myths/2026-11-16.jpg",
       "motion": "The kneeling traveller slowly tips the small flask and pours oil onto the wounded man's arm. The donkey behind them shifts its weight and flicks its ears. Dust drifts across the road."
     },
     {
-      "date": "2026-11-17",
+      "src": "/tiktok/myths/2026-11-17.jpg",
       "motion": "The travellers walk slowly away down the road toward the hill village. The one ahead turns and waves the others on with a sweep of his arm. Their cloaks stir in the wind; the sky darkens slightly."
     },
     {
-      "date": "2026-11-18",
+      "src": "/tiktok/myths/2026-11-18.jpg",
       "motion": "The dove glides in a slow circle around the ark. Grass and wildflowers around the ark ripple gently in the wind. Soft sunlight moves across the weathered wood."
     },
     {
-      "date": "2026-11-19",
+      "src": "/tiktok/myths/2026-11-19.jpg",
       "motion": "The glowing golden fruit on the tree pulses softly with light. Leaves rustle gently in a breeze; the radiant tree behind glows and its branches sway slowly."
     },
     {
-      "date": "2026-11-20",
+      "src": "/tiktok/myths/2026-11-20.jpg",
       "motion": "Morning light slowly brightens across the stone ledge. A last drop falls from the jug's lip into the basin and small ripples spread across the water. Dust motes float in the light."
     },
     {
-      "date": "2026-11-21",
+      "src": "/tiktok/myths/2026-11-21.jpg",
       "motion": "Light glints and travels slowly across the gold signet ring's band and seal. Sunlight shifts gently over the blue and gold tiles. Fine dust floats in the air."
     },
     {
-      "date": "2026-11-22",
+      "src": "/tiktok/myths/2026-11-22.jpg",
       "motion": "The velvet curtain sways gently as if a draught passed behind it. The top handwritten page lifts slightly at its corner and settles. The quill's feather trembles."
     },
     {
-      "date": "2026-11-23",
+      "src": "/tiktok/myths/2026-11-23.jpg",
       "motion": "The angel of light blazes brighter, wings of light rippling and spreading like a storm. The shepherds shrink back and raise their arms to shield their eyes. The sheep startle and scatter a few steps."
     },
     {
-      "date": "2026-11-24",
+      "src": "/tiktok/myths/2026-11-24.jpg",
       "motion": "The chariot of fire rises slowly into the sky inside the spiralling whirlwind, flames streaming. The rough cloak drifts down through the air toward the small figure, who reaches up for it."
     },
     {
-      "date": "2026-11-25",
+      "src": "/tiktok/myths/2026-11-25.jpg",
       "motion": "The serpent slowly uncoils along the branch, head turning smoothly, tongue flicking once. Leaves sway gently and the golden fruit sways on the branch."
     },
     {
-      "date": "2026-11-26",
+      "src": "/tiktok/myths/2026-11-26.jpg",
       "motion": "A traveller walks slowly away along the winding path, out of the shadows toward the bright opening of warm light. The light at the end of the gorge brightens gently."
     },
     {
-      "date": "2026-11-27",
+      "src": "/tiktok/myths/2026-11-27.jpg",
       "motion": "The caravan's camels shift and lower their heads; a traveller steps forward toward the gate. Banners on the palace towers flutter, and dusk light flickers on the stone walls."
     },
     {
-      "date": "2026-11-28",
+      "src": "/tiktok/myths/2026-11-28.jpg",
       "motion": "The man and the pregnant woman walk slowly away down the dusty road side by side toward the distant town, steady unhurried steps. Their robes stir in the wind and dust lifts at their feet."
     },
     {
-      "date": "2026-11-29",
+      "src": "/tiktok/myths/2026-11-29.jpg",
       "motion": "The lamp flame flickers softly and its warm light dances over the stone trough and the straw. A loose strand of straw stirs; dust motes drift through the lamplight."
     },
     {
-      "date": "2026-11-30",
+      "src": "/tiktok/myths/2026-11-30.jpg",
       "motion": "The older brother stands still, his cloak stirring in the evening wind, and slowly lowers the tool from his shoulder. The warm light from the farmhouse doorway flickers as shadows of dancers pass inside."
+    },
+    {
+      "src": "/tiktok/roads/city-gate.jpg",
+      "motion": "The canvas awning beside the gate flaps gently in the wind; dust drifts along the path; soft clouds drift slowly across the sky."
+    },
+    {
+      "src": "/tiktok/roads/dawn-hills.jpg",
+      "motion": "The sun rises slowly over the far hills and the dawn light spreads warmer across the slopes; grass ripples along the winding path in a soft breeze."
+    },
+    {
+      "src": "/tiktok/roads/mountain-path.jpg",
+      "motion": "Thin mist drifts slowly through the far valleys; the olive leaves and grass beside the path stir in a light mountain breeze."
+    },
+    {
+      "src": "/tiktok/roads/olive-garden.jpg",
+      "motion": "The olive branches sway gently and their silver leaves shimmer; dappled light moves softly over the path; a few birds cross the far sky."
+    },
+    {
+      "src": "/tiktok/roads/shore.jpg",
+      "motion": "Small waves roll in and wash softly up the pebble beach; the little boat rocks gently; light glitters on the water."
+    },
+    {
+      "src": "/tiktok/roads/temple-court.jpg",
+      "motion": "Sunlight shifts slowly between the columns; smoke curls gently up from the stone basin; a few birds fly past high above."
+    },
+    {
+      "src": "/tiktok/roads/wheat-noon.jpg",
+      "motion": "Waves of wind roll through the golden wheat field; the stalks sway and bend; soft clouds drift across the sky."
+    },
+    {
+      "src": "/road/harvest.jpg",
+      "motion": "Wind rolls through the golden wheat, the sheaves rustle, the big clouds drift slowly across the purple sky."
+    },
+    {
+      "src": "/road/lamplight.jpg",
+      "motion": "The little lanterns along the fence flicker warmly; the bare branches sway slightly; the sunset glow pulses softly on the horizon."
+    },
+    {
+      "src": "/tiktok/rooms/story-circle.jpg",
+      "motion": "The storyteller slowly turns a page of her book and looks up at the children; the children lean in, one tilts her head; the candle flames flicker and their warm light dances on the shelves."
+    },
+    {
+      "src": "/tiktok/exchange/chalkboard.jpg",
+      "motion": "Soft daylight shifts gently across the wall and floor; fine chalk dust floats in the air. The blackboard itself stays perfectly still, flat and empty: nothing written on it, its frame does not move."
     }
   ]
 }

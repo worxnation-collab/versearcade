@@ -16,7 +16,7 @@ import { buildCpuPlan, CPU_PROFILES, type CpuLevel } from '@/features/arena/cpu'
 import type { QuizStep } from '@/lib/tiktokRender'
 import { challengeIndex } from '@/lib/tiktokChallenge'
 import {
-  READERS, TELLERS, ROOMS, skinPath, loadScene, publicUrl, existsAt, parkFile,
+  READERS, TELLERS, ROOMS, skinPath, loadScene, publicUrl, existsAt, parkFile, makeAlive,
   seedFor, storySeedFor, autoPick, autoCast, challengeCast, spokenReference, call, fetchCopy, fetchStory, fetchVoice, bedFor, backdropFor, tierFor, speakerFor, ownFigure,
   FOUNDER_PHOTO, VOICE_LABEL, voiceWavPath, voiceJsonPath,
   type Copy, type Made, type Story, type Renderer, type VoiceTrack,
@@ -202,7 +202,7 @@ export async function makeVerse(d: string, o: VerseOptions, progress: Progress):
     // would play fifteen seconds of him as "the reading" and never read the
     // verse at all. Four of the first series week's five mornings had no
     // painting, which is how this was found.
-    const painted = await r.loadImage(versePainting(v.reference)).catch(() => null)
+    const painted = await makeAlive(r, await r.loadImage(versePainting(v.reference)).catch(() => null), versePainting(v.reference))
     const scene = painted ?? (await loadScene(r, c.scene).catch(() => null))
     const figure = await r.loadImage(`/skins/${c2.figure}.png`).catch(() => null)
     if (scene && figure) {
@@ -336,7 +336,7 @@ export async function storyAssets(r: Renderer, tellerId: string, roomPath: strin
   // teller's own render over the painting.
   const hasTeller = !!ROOMS.find((x) => x.id === roomPath)?.hasTeller
   const tellerImg = hasTeller ? undefined : await r.loadImage(skinPath(tellerId))
-  const roomImg = await r.loadImage(roomPath).catch(() => r.loadImage('/keep/study-library.jpg'))
+  const roomImg = await makeAlive(r, await r.loadImage(roomPath).catch(() => r.loadImage('/keep/study-library.jpg')), roomPath)
   return { roomImg, tellerImg }
 }
 
@@ -656,11 +656,8 @@ export async function makeReading(d: string, kind: ReadingKind, o: ReadingOption
   const ownAudio = await (await fetch(own.wavUrl + '?v=' + Date.now())).arrayBuffer()
   const photo = await r.loadImage(publicUrl(FOUNDER_PHOTO) + '?v=' + Date.now()).catch(() => undefined)
   const scenes = myth ? [await r.loadImage(myth.art)] : await readingScenes(r, d, kind, o.pick)
-  // The myth's opening shot MOVES when a clip was made for its painting
-  // (scripts/gen-myth-clips.mjs → public/tiktok/myths/<date>.mp4). A missing
-  // or unloadable clip is the held painting, exactly as before.
-  const clipUrl = myth ? myth.art.replace(/\.jpg$/, '.mp4') : null
-  const openClip = clipUrl && (await existsAt(clipUrl, 'video/')) ? await r.loadVideo(clipUrl).catch(() => undefined) : undefined
+  // The myth's painting MOVES when its clips exist (makeAlive).
+  if (myth && scenes[0]) await makeAlive(r, scenes[0], myth.art)
   const room = scenes.find(Boolean) ?? (await r.loadImage(ROOMS[0].id).catch(() => r.loadImage('/keep/study-library.jpg')))
   const bed = o.music !== false ? await bedFor(await r.plannedDuration(undefined, copy?.hook, true, ownAudio), kind === 'quiet' || kind === 'prayer' ? 'cloister' : 'morning') : undefined
   const moment = kind === 'moment' && !myth ? momentFor(d, o.pick) : null
@@ -675,7 +672,7 @@ export async function makeReading(d: string, kind: ReadingKind, o: ReadingOption
   const reference = o.reference || myth?.reference || moment?.reference || v.reference
   const out = await r.renderStory({
     title, reference, verseText: reference === v.reference ? v.text : '',
-    paragraphs: [], hook: myth?.hook ?? copy?.hook, room, eyebrow: myth ? `MOST PEOPLE GET THIS WRONG \u00b7 No. ${mythNo}` : def.eyebrow, endNote: tease, scenes, openClip, bed, align: o.align,
+    paragraphs: [], hook: myth?.hook ?? copy?.hook, room, eyebrow: myth ? `MOST PEOPLE GET THIS WRONG \u00b7 No. ${mythNo}` : def.eyebrow, endNote: tease, scenes, bed, align: o.align,
     own: { audio: ownAudio, words: own.thought, text: own.text, place: 'close', photo, label: VOICE_LABEL, turnAt: myth ? debunkAt(own.thought, myth.turn) : undefined },
     onProgress: progress,
   })
@@ -829,7 +826,7 @@ async function makeScriptedQuiz(d: string, sq: ScriptedQuiz, o: ChallengeOptions
   }
   progress(0, 'rendering')
   const r: Renderer = await import('@/lib/tiktokRender')
-  const [backdrop, figure] = await Promise.all([r.loadImage('/tiktok/exchange/chalkboard.jpg'), ownFigure(r).catch(() => null).then((f) => f ?? undefined)])
+  const [backdrop, figure] = await Promise.all([r.loadImage('/tiktok/exchange/chalkboard.jpg').then((b) => makeAlive(r, b, '/tiktok/exchange/chalkboard.jpg')), ownFigure(r).catch(() => null).then((f) => f ?? undefined)])
   const bed = o.music !== false ? await bedFor(joined.sec + 3, 'morning') : undefined
   const out = await r.renderChalkQuiz({
     backdrop, figure, prompt: sq.prompt, options: [...sq.options], audio: joined.wav, bed, words: own.thought,

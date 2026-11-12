@@ -41,8 +41,10 @@ export const scenePath = (id: string) => (ROAD_IDS.includes(id) ? `/road/${id}.j
  * names paintings that ship with the site, and a build that predates one of
  * them (or a 404) must still make the post rather than fail the morning.
  */
-export async function loadScene(r: Pick<Renderer, 'loadImage'>, id: string): Promise<HTMLImageElement> {
-  try { return await r.loadImage(scenePath(id)) } catch { return r.loadImage('/road/harvest.jpg') }
+export async function loadScene(r: Pick<Renderer, 'loadImage' | 'loadVideo' | 'makeLiving'>, id: string): Promise<HTMLImageElement> {
+  // The road MOVES when its clips exist (makeAlive): wheat in the wind, waves
+  // on the shore, under every layout that stands a figure on it.
+  try { return await makeAlive(r, await r.loadImage(scenePath(id)), scenePath(id)) } catch { return makeAlive(r, await r.loadImage('/road/harvest.jpg'), '/road/harvest.jpg') }
 }
 export const VOICES = Array.from(new Set([...PICKER_VOICES, 'Algenib', 'Sadaltager', 'Iapetus', 'Enceladus', 'Fenrir', 'Schedar', 'Kore', 'Aoede', 'Sulafat', 'Vindemiatrix', 'Achernar']))
 
@@ -177,6 +179,22 @@ export async function call<T>(action: string, body: Record<string, unknown>): Pr
 export function publicUrl(path: string): string {
   return supabase!.storage.from(BUCKET).getPublicUrl(path).data.publicUrl
 }
+/**
+ * A painting that MOVES, when its clips exist beside it: `<name>.mp4` (the
+ * opening move) and `<name>-loop.mp4` (the calm loop that follows), made by
+ * `scripts/gen-living.mjs`. They are registered against the image object, so
+ * every layout that draws it plays them; no clip is the painting as before,
+ * and a clip that will not load is skipped rather than failing the post.
+ */
+export async function makeAlive<T extends HTMLImageElement | null>(r: Pick<Renderer, 'loadVideo' | 'makeLiving'>, img: T, url: string): Promise<T> {
+  if (!img) return img
+  const base = url.split('?')[0].replace(/\.(jpe?g|png)$/i, '')
+  const load = async (u: string) => ((await existsAt(u, 'video/')) ? r.loadVideo(u).catch(() => undefined) : undefined)
+  const [clip, loop] = await Promise.all([load(`${base}.mp4`), load(`${base}-loop.mp4`)])
+  r.makeLiving(img, clip, loop)
+  return img
+}
+
 // A 200 is NOT proof a file is there. The site serves index.html for any
 // unknown path (the SPA fallback), so a HEAD on a bundled asset that does not
 // exist comes back ok — which told the panel that every reader had a Veo loop

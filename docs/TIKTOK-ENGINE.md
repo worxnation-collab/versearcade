@@ -1020,28 +1020,38 @@ with the sound off sees the subject before it reads the hook.
 - A new week of myths gets new paintings the same way. The hooks were rewritten to rule 7 at the
   same time (for example "There was no horse." became "Paul never fell off a horse.").
 
-### The opening shot moves (2026-11-12)
+### Living paintings: the backdrop moves (2026-11-12)
 
 The owner's call, after watching the Cain post: the figure in the painting should actually WALK
-rather than the frame drifting over him. So each myth's painting gets one five-second
-image-to-video clip, and only one, on the opening shot (the window that decides whether a short
-video is watched at all).
+rather than the frame drifting over him, and the movement should keep going for the whole video,
+never freeze and never jump back.
 
-- `art/tiktok-myth-clips.json` is the manifest: a motion line per date plus one shared stillness
-  line (static camera, sky unchanged, no new people or objects, same painting style).
-  `node scripts/gen-myth-clips.mjs [--only <date>] [--force]` animates the DEPLOYED painting
-  through fal (Kling 2.1 standard, about $0.28 a clip; the key is the proxy-injected fal secret)
-  and writes `public/tiktok/myths/<date>.mp4`, re-encoded silent H.264 at about 1MB.
-- `makeReading` loads `<date>.mp4` beside `<date>.jpg` when it exists and passes it as
-  `StoryInput.openClip`. The clip plays forward from frame 0 under the hook, then its LAST frame
-  is held in the painting's place for the rest of the post, so the camera cuts keep working and
-  the figure never jumps back to where the painting had him. No clip = the painting, as before.
-- Model choice was measured on the Cain painting: Kling walked him away with the light around
-  him; Seedance Lite melted the dome toward the camera; Wan 2.2 barely moved and costs more at
-  720p ($0.40). Kling 2.1 standard is marked deprecated on fal, so the model id is one field in
-  the manifest.
-- A new week of myths needs its clips made by hand after its paintings deploy; the morning
-  runner has no fal key and does not make them.
+So a painting can carry two clips beside it, both made by `scripts/gen-living.mjs` from
+`art/living.json`:
+
+- **`<name>.mp4`, the opening**: five seconds of real movement (he walks off, the ship rocks, the
+  wheat rolls). Kling 2.5 Turbo Standard on fal, about $0.21.
+- **`<name>-loop.mp4`, the calm loop**: starts AND ends on the opening's last frame (Kling 2.5
+  Turbo Pro with `tail_image_url`, about $0.35), so it repeats seamlessly and picks up exactly
+  where the opening left off. A walk cannot loop (he would snap back), which is why there are two.
+
+`makeAlive(r, img, url)` (`features/admin/tiktok/shared.tsx`) looks for both and registers them
+against the image object (`makeLiving` in `lib/tiktokRender.ts`); every layout draws its backdrop
+through `paint()`, which plays the opening from frame 0 under the hook and then the loop. No loop
+holds the opening's last frame; neither is the painting exactly as before. Wired today: the myth
+paintings, the verse paintings and the nine roads (`loadScene`, so the verse, quiz and challenge
+layouts), Tabitha's story room and the chalkboard.
+
+- Images go to fal as data URIs, so a painting does not have to be deployed first. The key is the
+  proxy-injected fal secret. Clips are re-encoded silent H.264 at about 1MB, since `public/` ships
+  in the app bundle.
+- Every motion line ends on one shared stillness line (static camera, sky unchanged, no new people
+  or objects). The chalkboard's says the BOARD does not move, because the quiz is chalked onto it
+  at fixed coordinates.
+- Model choice was measured on the Cain painting: Kling walked him away with the light around him;
+  Seedance Lite melted the dome toward the camera; Wan 2.2 barely moved and costs more at 720p.
+- A new painting (a week of myths, a verse painting) needs its clips made by hand after it lands;
+  the morning runner has no fal key. Add it to `art/living.json` and run the script.
 
 ## The few generated pieces, and why those
 

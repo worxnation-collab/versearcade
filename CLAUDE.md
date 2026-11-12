@@ -2114,6 +2114,15 @@ which is the one number the slot produces and the only thing to renew on.
 
 ### The churchyard
 
+**The yard was repainted calm on 2026-11-12** (`scripts/gen-churchyard.py`,
+`art/churchyard.flux.json`): the five yard paintings are Kontext EDITS of the
+owner's own (same hand, light and horizon) with every flower, headstone and
+path cleared, because the backdrop's own flowerbeds plus the plantings on top
+read as busy. Plantings, statues and buildings are repainted by the same script
+onto the SAME paths `ownerArt.ts` reads (plain silhouettes, no ivy, no gold, no
+mound of soil), so no code changes; over a painted yard the drawn path is a
+soft gravel track.
+
 Giving grows the building for everybody; the same points, counted as *your*
 lifetime giving, open the landscaping you plant in front of it. Eight plants,
 six plots, thresholds from 250 to 120,000 given — `features/church/yard.ts` and

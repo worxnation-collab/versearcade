@@ -35,3 +35,5 @@ __pycache__/
 art/icons/.raw/
 art/icons/preview/
 scripts/.tmp/
+art/churchyard/.raw/
+art/churchyard/preview/

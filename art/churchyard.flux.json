@@ -1,0 +1,49 @@
+{
+  "why": "The churchyard read busy: the yard paintings carried their own flowerbeds, headstones and dense foliage, and every planting and statue arrived ornate (ivy, gold trim, its own mound of dirt and stones). This set repaints all three as ONE calm hand: open lawns with nothing on them, and plain objects with clean silhouettes that stand on the grass rather than on a patch of their own. Same paths as the owner's 2026-10-21 set, so ownerArt.ts and sceneArt.ts need no change.",
+  "scene_model": "fal-ai/flux-pro/kontext: an EDIT of the owner's 2026-10-21 painting at the same path",
+  "scenes": {
+    "scene_tile": "",
+    "scene_classic": "",
+    "scene_modern": "",
+    "scene_glass": "",
+    "scene_parish": ""
+  },
+  "prop_style": "ONE object centred on a SOLID FLAT MAGENTA (#FF00FF) background. Soft painted gouache illustration, muted warm natural colours, gentle top-left light, a clean simple silhouette, very little fine detail. The whole object visible, standing upright, seen from the front at eye level. NO ivy, NO vines, NO gold trim, NO ornament, NO mound of soil, NO rocks or pebbles around the base, NO grass patch, NO ground, NO cast shadow, no text, no frame.",
+  "flora_master": {
+    "id": "yard_rosebush",
+    "subject": "a small rounded rose bush with soft pink roses and green leaves"
+  },
+  "flora": {
+    "yard_planters": "two plain terracotta pots side by side, each with a small cluster of pink and peach flowers",
+    "yard_ivy": "a single slim upright trellis of green ivy leaves, narrow and tall",
+    "yard_marigolds": "a low compact clump of orange marigolds with green leaves",
+    "yard_lavender": "a soft rounded clump of purple lavender stems",
+    "yard_lilies": "a small clump of white lilies on green stems",
+    "yard_olive": "a young slender olive tree with silvery-green leaves",
+    "yard_bench": "a simple plain wooden garden bench",
+    "yard_hedge": "a neatly clipped rectangular box hedge",
+    "yard_birdbath": "a plain pale stone birdbath on a simple pedestal",
+    "yard_lamp": "a slim black iron lamp post with a warm glowing lantern on top",
+    "yard_wisteria": "a small simple wooden arch hung with soft purple wisteria",
+    "yard_sunflowers": "a small clump of three sunflowers on green stems",
+    "yard_dogwood": "a small dogwood tree in soft pink-white blossom"
+  },
+  "statue_master": {
+    "id": "statue_shepherd",
+    "subject": "a pale weathered limestone statue of the Good Shepherd holding a lamb across his shoulders, on a plain square stone plinth"
+  },
+  "statue_style_note": "All statues: the same pale weathered limestone, the same plain clean square plinth with crisp edges sitting on nothing, the same soft light. Clean carved forms, no moss, no ivy, no flowers, no rubble or stones at the foot.",
+  "statues": {
+    "statue_mary": "a pale weathered limestone statue of Mary standing with hands folded, veiled, on a plain square stone plinth",
+    "statue_moses": "a pale weathered limestone statue of Moses holding two stone tablets, on a plain square stone plinth",
+    "statue_angel": "a pale weathered limestone statue of an angel with folded wings, on a plain square stone plinth",
+    "statue_david": "a pale weathered limestone statue of young David holding a sling, on a plain square stone plinth",
+    "statue_dove": "a pale weathered limestone dove with spread wings on top of a plain square stone column",
+    "statue_tomb": "a small pale limestone empty tomb with the round stone rolled aside, on a plain square stone base",
+    "statue_lion_lamb": "a pale weathered limestone lion lying down beside a lamb, on a plain wide stone plinth",
+    "statue_praying": "a pale weathered limestone hooded figure kneeling in prayer, on a plain square stone plinth",
+    "statue_cross": "a plain pale weathered limestone cross on a simple square stone base"
+  },
+  "buildings_note": "Kontext edits OF the owner's six buildings: the architecture is kept, the painting is simplified to this hand, and the patch of ground, shrubs and flowers around each base is removed so the building stands on the yard's own grass.",
+  "scene_edit": "Simplify this painting into a calm, uncluttered, EMPTY churchyard lawn. Keep EXACTLY the same painterly style, warm golden light, colours, camera angle and horizon height. REMOVE every flower, flowerbed, wildflower, headstone, grave marker, standing stone, path, stepping stone, puddle, rock and bush from the lawn and the foreground, and replace them with smooth, evenly mown grass. Keep the trees only at the far left and far right edges and the soft treeline along the horizon; keep the middle of the horizon open. No buildings, no people, no text."
+}

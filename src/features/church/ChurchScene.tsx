@@ -278,8 +278,14 @@ export function ChurchScene({
           width: 120,
           height: GROUND + 6,
           transform: 'translateX(-50%)',
-          background: 'linear-gradient(0deg, rgba(236,214,168,0.75), rgba(236,214,168,0.35))',
+          // Over a painted yard (which carries no path of its own since the
+          // 2026-11-12 repaint) it is a warm, soft-edged gravel track that fades
+          // toward the door; a hard pale trapezoid read as a beam of light.
+          background: backdrop
+            ? 'linear-gradient(0deg, rgba(196,168,118,0.62), rgba(214,190,140,0.18))'
+            : 'linear-gradient(0deg, rgba(236,214,168,0.75), rgba(236,214,168,0.35))',
           clipPath: 'polygon(0% 100%, 100% 100%, 60% 0%, 40% 0%)',
+          filter: backdrop ? 'blur(1.2px)' : undefined,
         }}
       />
 

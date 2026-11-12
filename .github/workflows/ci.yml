@@ -51,3 +51,19 @@ jobs:
 
       - name: Smoke — play the app once
         run: npm run smoke
+
+      # The rollout check's mechanical half (scripts/visual-audit.mjs): the main
+      # screens at 390px with a dark-skinned character in both figures, and the
+      # landing carousel mid-transition. Fails on a page error, a broken image
+      # or a page wider than the phone; the screenshots are uploaded either way
+      # so a person can LOOK at them.
+      - name: Visual audit
+        run: npm run visual-audit
+
+      - name: Upload visual-audit screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-audit
+          path: art/.visual-audit/
+          retention-days: 14

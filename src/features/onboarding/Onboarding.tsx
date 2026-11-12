@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Page } from '@/components/Page'
 import { Button } from '@/components/Button'
 import { CharacterPicker } from '@/components/CharacterPicker'
+import { Character } from '@/components/Character'
 import { NEW_CHARACTER } from '@/data/avatar'
 import { useAuth } from '@/store/auth'
 import { isSupabaseConfigured } from '@/lib/config'
@@ -39,6 +40,9 @@ export default function Onboarding() {
   }, [])
 
   const [step, setStep] = useState(0)
+  // Each step opens at its top: step 1 is long, and step 2 used to open
+  // wherever the hair grid had been scrolled to.
+  useEffect(() => { window.scrollTo(0, 0) }, [step])
   const [spec, setSpec] = useState<AvatarSpec>(NEW_CHARACTER)
   const [username, setUsername] = useState('')
 
@@ -85,33 +89,67 @@ export default function Onboarding() {
                 Make your character
               </h1>
               <p className="dim center" style={{ fontSize: 15, marginTop: -2 }}>
-                This is you, everywhere in the arcade. You can change it any time.
+                This is you, everywhere in the arcade. Change it any time.
               </p>
-              {/* The one REQUIRED thing on this screen goes first: it sat under twenty
-                  hair tiles, ~1,250px down, with Start disabled and nothing on
-                  screen saying why (2026-11-11 audit). */}
-              <div style={{ marginTop: 4 }}>
+              <CharacterPicker value={spec} onChange={setSpec} layout="tiles" />
+              {/* The way on stays in reach the whole time: the hair grid alone
+                  is taller than a phone, and "next" used to wait at the foot of
+                  it (2026-11-12, driven in Chromium). */}
+              <div
+                style={{
+                  position: 'sticky',
+                  bottom: 0,
+                  margin: '0 -18px',
+                  padding: '12px 18px calc(12px + var(--safe-bottom))',
+                  background: 'linear-gradient(0deg, var(--bg-0) 70%, transparent)',
+                  zIndex: 6,
+                }}
+              >
+                <Button variant="gold" full onClick={() => { juice.select?.(); setStep(2) }}>
+                  That&rsquo;s me →
+                </Button>
+              </div>
+            </Step>
+          )}
+
+          {step === 2 && (
+            <Step key="2">
+              <div className="center">
+                <Character spec={spec} size={170} fullBody title="Your character" />
+              </div>
+              <h1 className="center" style={{ fontSize: 28 }}>
+                What should we call you?
+              </h1>
+              <div>
                 <input
+                  autoFocus
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && canContinue) finish() }}
                   placeholder="pick a username"
                   maxLength={16}
                   autoCapitalize="none"
                   autoCorrect="off"
+                  enterKeyHint="go"
                 />
                 <p className="faint" style={{ fontSize: 12, marginTop: 6 }}>
-                  {clean ? `You’ll show up as @${clean}` : 'letters, numbers, underscores'}
+                  {clean ? `You’ll show up as @${clean}` : 'Letters, numbers and underscores. Two or more.'}
                 </p>
               </div>
-              <CharacterPicker value={spec} onChange={setSpec} layout="tiles" />
               <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-                <Toggle label="🔊 Sound" on={settings.soundEnabled} onClick={() => settings.set({ soundEnabled: !settings.soundEnabled })} />
-                <Toggle label="📳 Haptics" on={settings.hapticsEnabled} onClick={() => settings.set({ hapticsEnabled: !settings.hapticsEnabled })} />
+                <Toggle icon="🔊" label="Sound" on={settings.soundEnabled} onClick={() => settings.set({ soundEnabled: !settings.soundEnabled })} />
+                <Toggle icon="📳" label="Haptics" on={settings.hapticsEnabled} onClick={() => settings.set({ hapticsEnabled: !settings.hapticsEnabled })} />
               </div>
               <Button variant="gold" full disabled={!canContinue} onClick={finish}>
                 Start playing →
               </Button>
-              <p className="faint center" style={{ fontSize: 13, marginTop: -2 }}>
+              <button
+                onClick={() => { juice.select?.(); setStep(1) }}
+                style={{ justifySelf: 'center', background: 'none', border: 0, color: 'var(--ink-dim)', fontSize: 13, fontWeight: 700, cursor: 'pointer', padding: 6 }}
+              >
+                ← Change my look
+              </button>
+              <p className="faint center" style={{ fontSize: 13, marginTop: -6 }}>
                 Playing as a guest.{' '}
                 <span style={{ color: 'var(--sky)', textDecoration: 'underline' }} onClick={() => navigate('/auth?mode=signup')}>
                   Create an account
@@ -141,23 +179,19 @@ function Step({ children }: { children: React.ReactNode }) {
   )
 }
 
-function Toggle({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
+function Toggle({ icon, label, on, onClick }: { icon: string; label: string; on: boolean; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
       className="pill"
-      style={{ background: on ? 'var(--select)' : 'var(--card)', fontWeight: 800 }}
+      aria-pressed={on}
+      style={{ background: on ? 'var(--select)' : 'var(--card)', fontWeight: 800, opacity: on ? 1 : 0.8 }}
     >
-      {label} {on ? 'ON' : 'OFF'}
+      {icon} {label} {on ? 'on' : 'off'}
     </button>
   )
 }
 
-// The one sample question. A real pool verse (Psalm 23:1) and a question built
-// the way the generator builds its "who said it" kind, so it is honest about
-// what the game is. Every choice reveals the same fact — right or not — framed
-// exactly as QuizRunner's teach card frames it: "Nice!" or "Good to know",
-// never a red X and never the word wrong. Nothing here is scored or stored.
 const SAMPLE = {
   reference: 'Psalm 23:1',
   text: 'The LORD is my shepherd; I shall not want.',

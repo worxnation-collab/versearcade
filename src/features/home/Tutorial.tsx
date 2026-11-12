@@ -1,3 +1,4 @@
+import { PaintedIcon } from '@/components/PaintedIcon'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -24,8 +25,8 @@ import { useOverlayHold } from '@/store/overlayHold'
 // data/avatar). If armor comes back, its copy comes back with it; until then
 // nothing here may name it. Nothing here mentions a rank you could lose.
 const STEPS = [
-  { icon: '📖', title: 'One verse a day', body: 'Everyone plays the same daily Bible verse. Read it, then race the clock on five quick questions about it.' },
-  { icon: '💡', title: 'You can’t lose', body: 'A wrong answer still teaches you something — every question ends with the fact behind it. Play each day and your streak grows; miss one and a freeze catches you.' },
+  { icon: 'journal' as const, title: 'One verse a day', body: 'Everyone plays the same daily Bible verse. Read it, then race the clock on five quick questions about it.' },
+  { icon: 'streak' as const, title: 'You can’t lose', body: 'A wrong answer still teaches you something — every question ends with the fact behind it. Play each day and your streak grows; miss one and a freeze catches you.' },
 ]
 
 export function Tutorial({ onClose }: { onClose: () => void }) {
@@ -52,7 +53,7 @@ export function Tutorial({ onClose }: { onClose: () => void }) {
       <div onClick={(e) => e.stopPropagation()} className="card" style={{ maxWidth: 360, width: '100%', textAlign: 'center' }}>
         <AnimatePresence mode="wait">
           <motion.div key={i} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.2 }}>
-            <div className="floaty" style={{ fontSize: 56 }}>{step.icon}</div>
+            <div className="floaty" style={{ display: 'grid', placeItems: 'center' }}><PaintedIcon id={step.icon} size={64} /></div>
             <h2 style={{ fontSize: 24, marginTop: 8 }}>{step.title}</h2>
             <p className="dim" style={{ marginTop: 8, lineHeight: 1.5, minHeight: 96 }}>{step.body}</p>
           </motion.div>

@@ -1044,6 +1044,13 @@ cron does the upload. Full design: `docs/TIKTOK-ENGINE.md`. Things to know —
   (`scripts/gen-cast-stills.mjs`, `castStill`) so he moves with it, and over
   a living painting the camera is one smooth push with no cuts (`glideAt`).
   `docs/TIKTOK-ENGINE.md` → "Living paintings".
+  **And his recordings are POLISHED before they render** (2026-11-12): the
+  morning runner puts every parked `voice-<kind>.wav` through
+  `scripts/voice-polish.mjs` (RNNoise, EQ, de-ess, compression; same length,
+  so word timings hold; original kept as `.raw.wav`, `.enh.json` marks it
+  done; fails open). `scripts/video/voice.py` is the same chain with paid
+  DeepFilterNet for reels and anything else he voices.
+  `docs/TIKTOK-ENGINE.md` → "His recordings are polished".
   The argument below is history: it was about motion with no grammar.
 - **The only thing moving is the caption, and that is a rule now.** These
   posts had drifting motes, a warm pulse over the frame, a hovering figure

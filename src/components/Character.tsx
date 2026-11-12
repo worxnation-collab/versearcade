@@ -91,11 +91,11 @@ const L_HAIR = '#B8B2A6'
 const L_BEARD = '#C4BFB2'
 const L_WOOD = '#7A5A34'
 const L_RAVEN = '#26262C'
-const L_FLAME = '#FF8A3C'
-const L_FLAME_HI = '#FFB347'
+const L_FLAME = '#df8a55'
+const L_FLAME_HI = '#e3a45e'
 
 // Angels palette — one family across the three pack skins so they read as a set
-const A_HALO = '#FFE9A8'
+const A_HALO = '#f6e2b8'
 // Gabriel — the announcing messenger
 const G_ROBE = '#F2EDDF'
 const G_ROBE_SHADE = '#D6CDB6'
@@ -111,8 +111,8 @@ const M2_TUNIC = '#2E4A7D'
 const M2_SKIN = '#C89A6E'
 const M2_WING = '#DCE4F2'
 const M2_WING_EDGE = '#93A2BE'
-const M2_FLAME = '#FF8A3C'
-const M2_FLAME_HI = '#FFD23F'
+const M2_FLAME = '#df8a55'
+const M2_FLAME_HI = '#ecb860'
 // Seraph — the burning one, six wings, a live coal
 const S_BODY = '#B33A2B'
 const S_BODY_HI = '#E2683C'
@@ -146,7 +146,7 @@ const ED_SKIN_SH = '#BE8B58'
 const ED_BARK_HI = '#7A5433'
 const ED_CANOPY_DK = '#24552A'
 const ED_FRUIT_DK = '#8E1F26'
-const ED_LIGHT = '#FFE9A8'
+const ED_LIGHT = '#f6e2b8'
 
 // Sonshine palette — the creator-collab skin, sampled off the reference clips.
 // Blocky on purpose: it's a portrait of a voxel-game character, so it is all
@@ -535,9 +535,9 @@ export function Character({
           {/* soft premium aura */}
           <circle cx="54" cy="90" r="55" fill="#6FA8DC" opacity="0.13" />
           {/* gold sparkles */}
-          <path d="M97 50 l1.5 3.6 l3.6 1.5 l-3.6 1.5 l-1.5 3.6 l-1.5 -3.6 l-3.6 -1.5 l3.6 -1.5 z" fill="#FFD23F" />
-          <path d="M16 64 l1 2.6 l2.6 1 l-2.6 1 l-1 2.6 l-1 -2.6 l-2.6 -1 l2.6 -1 z" fill="#FFD23F" />
-          <path d="M101 122 l1 2.4 l2.4 1 l-2.4 1 l-1 2.4 l-1 -2.4 l-2.4 -1 l2.4 -1 z" fill="#FFE58A" />
+          <path d="M97 50 l1.5 3.6 l3.6 1.5 l-3.6 1.5 l-1.5 3.6 l-1.5 -3.6 l-3.6 -1.5 l3.6 -1.5 z" fill="#ecb860" />
+          <path d="M16 64 l1 2.6 l2.6 1 l-2.6 1 l-1 2.6 l-1 -2.6 l-2.6 -1 l2.6 -1 z" fill="#ecb860" />
+          <path d="M101 122 l1 2.4 l2.4 1 l-2.4 1 l-1 2.4 l-1 -2.4 l-2.4 -1 l2.4 -1 z" fill="#f2d79c" />
           {/* water spout + droplets */}
           <path d="M46 60 q-3 -13 0 -20 M50 60 q0 -15 1 -22 M54 60 q3 -13 4 -18"
             stroke="#8FC7E8" strokeWidth="2.4" fill="none" strokeLinecap="round" />
@@ -1211,7 +1211,7 @@ export function Character({
               <path d="M63.5 48.4 q2.6 -1.8 5.2 0" stroke="#5f86ad" strokeWidth="1.3" fill="none" opacity="0.85" />
               <path d="M49 49 L45 47.5" stroke="#14141a" strokeWidth="1.6" strokeLinecap="round" />
               <path d="M71 49 L75 47.5" stroke="#14141a" strokeWidth="1.6" strokeLinecap="round" />
-              <path d="M74 40 l0.9 2.3 l2.3 0.9 l-2.3 0.9 l-0.9 2.3 l-0.9 -2.3 l-2.3 -0.9 l2.3 -0.9 z" fill="#FFD23F" />
+              <path d="M74 40 l0.9 2.3 l2.3 0.9 l-2.3 0.9 l-0.9 2.3 l-0.9 -2.3 l-2.3 -0.9 l2.3 -0.9 z" fill="#ecb860" />
             </>
           )}
         </>

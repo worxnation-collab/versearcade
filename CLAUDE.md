@@ -29,6 +29,40 @@ argument rather than following from this one.
   green CI and nothing risky left (no money moved, no migration you could not
   verify), merge it and say so. Ask first only for something hard to undo.
 
+## Before calling new art or a feature done: the rollout check
+
+The owner found every one of these on a phone after a "done" (2026-11-12). Run
+this list whenever art, a wardrobe piece, a palette value or a feature ships:
+
+- **Find every surface that draws it, not just the screen you built it on.**
+  `grep` for the old ids, specs and hexes. The landing carousel still drew the
+  retired robed starters a month after the wardrobe replaced them; also check
+  share cards (`og-church-cards.mjs`), the public church page, crowd scenes, the
+  room postcard and the TikTok renderer.
+- **Avatar pieces: run `python3 scripts/avatar/audit.py` and LOOK** at
+  `art/avatar/.audit/` (every piece on ebony AND porcelain). Light skin baked
+  into a layer is a pale patch on the ebony row. Also: does a garment cover
+  slots it shouldn't (a coat with trousers in it)? Does anything rise above the
+  head (it must not be clipped)? Does the picker tile read as the item (back
+  pieces need `back-icons.py`)? Does an overlay or old skin ride along into a
+  new look with no way to take it off?
+- **Drive it in Chromium at 390px, on a dark skin tone, both figures**, and
+  screenshot animations MID-transition, not only at rest: two captions
+  overlapping during a slide change looked fine at rest.
+- **New art beside old art.** Put it next to what surrounds it (its backdrop,
+  the cards, the palette) and in the same hand: a gouache church on a decluttered
+  photo-real yard looked pasted in. Flux paints what a prompt NAMES, even after
+  "no", so prompts list only what IS in the picture.
+- **Check the numbers that say it worked**: file sizes (quantize renders that
+  never show above ~300px), `npm run build`, and `npm run smoke`.
+- **`npm run visual-audit`** (after a build; in CI on every PR) does the
+  mechanical half: the main screens at 390px wearing the layered wardrobe on
+  ebony, both figures, plus every landing slide mid-transition and at rest. It
+  fails on a page error, a broken `<img>` or sideways scroll, and leaves 33
+  screenshots in `art/.visual-audit/` (CI uploads them as `visual-audit`).
+  Passing it is not looking: open the screenshots. A daily scheduled session
+  re-runs it on `main` with `audit.py` and reports what looks off.
+
 ## Commands
 
 ```bash
@@ -2126,13 +2160,24 @@ which is the one number the slot produces and the only thing to renew on.
 ### The churchyard
 
 **The yard was repainted calm on 2026-11-12** (`scripts/gen-churchyard.py`,
-`art/churchyard.flux.json`): the five yard paintings are Kontext EDITS of the
-owner's own (same hand, light and horizon) with every flower, headstone and
-path cleared, because the backdrop's own flowerbeds plus the plantings on top
-read as busy. Plantings, statues and buildings are repainted by the same script
-onto the SAME paths `ownerArt.ts` reads (plain silhouettes, no ivy, no gold, no
-mound of soil), so no code changes; over a painted yard the drawn path is a
-soft gravel track.
+`art/churchyard.flux.json`): the five yard paintings are painted FROM TEXT in
+the buildings' own gouache hand (`scene_text_style`), drawn square with the
+horizon across the middle and cropped so it lands ~62% down where `GROUND`
+expects it. (A first pass decluttered the owner's paintings instead; the
+buildings then looked pasted into a different picture.) Flux paints what a
+prompt NAMES, even after "no", so the style lists only what is in the scene —
+"no gravestones" produced gravestones. Plantings and statues are repainted by the same script onto the SAME
+paths `ownerArt.ts` reads (plain silhouettes, no ivy, no gold, no mound of
+soil); over a painted yard the drawn path is a soft gravel track. **The
+buildings are 32 now, one per (skin, tier)** (`ladder`,
+`public/church/buildings/<skin>-<tier>.png`), each tier a Kontext edit of the
+one below so a church visibly GROWS, and `ChurchArt` draws the box taller per
+tier at scene size (thumbnails fill the box: most churches are level 1). The
+owner's six they replaced drew levels 8-26 as ONE building, so the twin
+spires, cathedral and golden dome the ladder promises had never been drawn.
+Modern has its own tier forms (`tiers_form_modern`): the shared ones made it
+grow steeples. `og-church-cards.mjs` composes the share cards from these and
+the skin's own yard; re-run it after any building change.
 
 Giving grows the building for everybody; the same points, counted as *your*
 lifetime giving, open the landscaping you plant in front of it. Eight plants,
@@ -6063,6 +6108,14 @@ perfectly while saying nothing. Each rule exists because the app was failing it.
   next**. `--edge` is where the decorative half went, and the checker asserts it
   stays ≥1.8:1 from gold (or the ration is undone) and ≥3:1 on card (a border
   nobody can see is a deletion, not a demotion).
+
+**And the accents moved to golden hour (2026-11-12).** The neon arcade set
+(electric violet, lemon gold, neon mint, coral, cyan) clashed with the gouache
+art, so each accent kept its job and hue family and was taken toward the
+paintings: honey gold `#ecb860`, dusty lavender, sage, terracotta, soft sky,
+with every hardcoded copy across `src` moved too. Borders are a warm hairline
+(`--stroke` is warm, not white), and the fold row lost its gold frame and
+carved vine: gold is the action's colour and a fold is not the action.
 
 **And `--select` is not `--grape`.** Every "this one is on" chip, tile and pill
 was painted `--grape`, which is an ACCENT: white ink on it measures **3.37:1**

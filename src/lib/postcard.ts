@@ -104,7 +104,7 @@ async function sanitizeClone(svg: SVGSVGElement): Promise<SVGSVGElement> {
 function drawCaption(ctx: CanvasRenderingContext2D, username: string) {
   ctx.fillStyle = '#0a051a'
   ctx.fillRect(0, 600, W, H - 600)
-  ctx.fillStyle = '#ffd23f'
+  ctx.fillStyle = '#ecb860'
   ctx.font = 'bold 44px ui-rounded, "Trebuchet MS", system-ui, sans-serif'
   ctx.textBaseline = 'middle'
   ctx.fillText(`@${username}’s Upper Room`, 44, 662)

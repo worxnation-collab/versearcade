@@ -554,9 +554,9 @@ export const ASSET_TEMPLATES: AssetTemplate[] = [
   {
     id: 'notice_plain', kind: 'announcement', name: 'Notice board', aspect: [16, 9], placeholder: true, retired: true,
     background: { color: '#2b2433', gradient: 'linear-gradient(150deg, #362c41 0%, #1d1823 100%)' },
-    ink: '#f7f2fb', accent: '#c7a6ff',
+    ink: '#f7f2fb', accent: '#c4b2e0',
     slots: {
-      eyebrow: { x: 7, y: 10, w: 86, h: 9, size: 2.6, uppercase: true, tracking: 0.16, weight: 800, color: '#c7a6ff', maxLines: 1 },
+      eyebrow: { x: 7, y: 10, w: 86, h: 9, size: 2.6, uppercase: true, tracking: 0.16, weight: 800, color: '#c4b2e0', maxLines: 1 },
       body: { x: 7, y: 22, w: 86, h: 56, size: 5, minScale: 0.55, weight: 700, valign: 'middle', maxLines: 6 },
       footer: { x: 7, y: 82, w: 86, h: 8, size: 2.4, color: '#bcb0c9' },
     },

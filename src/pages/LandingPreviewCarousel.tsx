@@ -20,11 +20,27 @@ import type { AvatarSpec } from '@/types'
 
 const ADVANCE_MS = 4200
 
+// The cast wears the LAYERED wardrobe — what a new player actually gets — and
+// shows its range: a funny piece, a set, a hat. It drew the old robed starter
+// figures until 2026-11-12, a month after nobody could make one any more.
+const P = (id: string, color?: string) => ({ id, ...(color ? { color } : {}) })
 const CAST: AvatarSpec[] = [
-  DEFAULT_AVATAR,
-  { ...DEFAULT_AVATAR, figure: 'fem', skin: 'bronze', hair: 'jet' },
-  { ...DEFAULT_AVATAR, figure: 'fem', skin: 'porcelain', hair: 'auburn' },
-  { ...DEFAULT_AVATAR, figure: 'masc', skin: 'ebony', hair: 'jet' },
+  {
+    ...DEFAULT_AVATAR, figure: 'masc', skin: 'umber', build: 'standard',
+    outfit: { hair: P('hair_curly_short', '#2B1B12'), top: P('top_hoodie', '#D96B3B'), legs: P('legs_jeans', '#2A3F7A'), shoes: P('shoes_sneakers', '#F2ECE0'), held: P('held_balloon') },
+  },
+  {
+    ...DEFAULT_AVATAR, figure: 'fem', skin: 'bronze', build: 'standard',
+    outfit: { hair: P('hair_braids', '#1E1410'), top: P('top_explorer_jacket', '#6B4226'), legs: P('legs_explorer_shorts', '#C9A66B'), shoes: P('shoes_explorer_boots'), head: P('head_explorer_hat'), back: P('back_explorer_pack') },
+  },
+  {
+    ...DEFAULT_AVATAR, figure: 'fem', skin: 'porcelain', build: 'standard',
+    outfit: { hair: P('hair_long_wavy', '#A0522D'), top: P('top_fisherman_sweater', '#E8DCC4'), legs: P('legs_long_skirt', '#4E6B4A'), shoes: P('shoes_boots', '#5A3A22'), head: P('head_flower_crown') },
+  },
+  {
+    ...DEFAULT_AVATAR, figure: 'masc', skin: 'ebony', build: 'standard',
+    outfit: { hair: P('hair_short', '#1E1410'), top: P('top_varsity', '#3D5A99'), legs: P('legs_joggers', '#3A3A44'), shoes: P('shoes_hightops', '#C8433A'), head: P('head_cap', '#C8433A') },
+  },
 ]
 
 type Slide = { id: string; icon: IconId; title: string; line: string; art: ReactNode }
@@ -74,7 +90,7 @@ export function LandingPreviewCarousel() {
         line: 'Same verse, same clock. Win or lose, you both learn it.',
         art: (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
-            <Character spec={CAST[0]} size={140} fullBody />
+            <Character spec={CAST[3]} size={140} fullBody />
             <span
               style={{
                 fontFamily: 'var(--font-display)',
@@ -151,12 +167,15 @@ export function LandingPreviewCarousel() {
             variants={{
               enter: (d: number) => ({ x: reduceMotion ? 0 : d * 60, opacity: 0 }),
               center: { x: 0, opacity: 1 },
-              exit: (d: number) => ({ x: reduceMotion ? 0 : d * -60, opacity: 0 }),
+              exit: (d: number) => ({ x: reduceMotion ? 0 : d * -60, opacity: 0, transition: { duration: 0.12 } }),
             }}
             initial="enter"
             animate="center"
             exit="exit"
-            transition={{ type: 'spring', stiffness: 260, damping: 30 }}
+            // The outgoing slide leaves FAST: at the same speed both captions
+            // sat on top of each other for half a second ("A charac…" behind
+            // "Race a friend", found on a phone 2026-11-12).
+            transition={{ x: { type: 'spring', stiffness: 260, damping: 30 }, opacity: { duration: 0.22 } }}
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
             dragElastic={0.25}

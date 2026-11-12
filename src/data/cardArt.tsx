@@ -320,7 +320,7 @@ const waterScene = (p: Palette, id: string): ReactNode[] => [
 // player's name; this way the covenant still arcs the whole card but only
 // resolves where there is nothing to read.
 const rainbowScene = (p: Palette, id: string): ReactNode[] => {
-  const bands = ['#ff6b6b', '#ff9f1c', '#ffd23f', '#6fce7f', '#4ecdc4', '#5b7cf0', '#a06bff']
+  const bands = ['#e07f6a', '#e59a4c', '#ecb860', '#6fce7f', '#78b5a3', '#5b7cf0', '#a58bd0']
   return [
     sky(p, id),
     clouds(p, 0.28),

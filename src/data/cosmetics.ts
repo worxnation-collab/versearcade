@@ -138,17 +138,17 @@ const BASE_SHADOW = '0 6px 16px rgba(0,0,0,0.4)'
 export function borderRender(key: string): BorderRender {
   switch (key) {
     case 'ember':
-      return { type: 'shadow', boxShadow: `0 0 0 3px #ff9f1c, 0 0 14px 2px rgba(255,159,28,0.60), ${BASE_SHADOW}` }
+      return { type: 'shadow', boxShadow: `0 0 0 3px #e59a4c, 0 0 14px 2px rgba(255,159,28,0.60), ${BASE_SHADOW}` }
     case 'silver':
       return { type: 'shadow', boxShadow: `0 0 0 3px #d7dee8, 0 0 0 6px rgba(215,222,232,0.35), ${BASE_SHADOW}` }
     case 'gold':
       return { type: 'textured', boxShadow: `0 0 0 3px rgba(255,210,63,0.35), 0 0 16px 2px rgba(255,210,63,0.45), ${BASE_SHADOW}` }
     case 'amethyst':
-      return { type: 'shadow', boxShadow: `0 0 0 3px #a06bff, 0 0 18px 3px rgba(160,107,255,0.65), ${BASE_SHADOW}` }
+      return { type: 'shadow', boxShadow: `0 0 0 3px #a58bd0, 0 0 18px 3px rgba(160,107,255,0.65), ${BASE_SHADOW}` }
     case 'aurora':
-      return { type: 'gradient', gradient: 'conic-gradient(from 0deg, #5ee7df, #a06bff, #ffd23f, #43e97b, #ff6b6b, #5ee7df)' }
+      return { type: 'gradient', gradient: 'conic-gradient(from 0deg, #8ec5cf, #a58bd0, #ecb860, #7fc48c, #e07f6a, #8ec5cf)' }
     case 'halo':
-      return { type: 'gradient', gradient: 'conic-gradient(from 0deg, #fff6cf, #ffd23f, #fff6cf, #ffe58a, #ffffff, #ffd23f, #fff6cf)', animated: true }
+      return { type: 'gradient', gradient: 'conic-gradient(from 0deg, #fff6cf, #ecb860, #fff6cf, #f2d79c, #ffffff, #ecb860, #fff6cf)', animated: true }
     // ——— The reading rings ———
     case 'vellum':
       // Warm parchment, one shade off the page. The quietest ring here on
@@ -162,14 +162,14 @@ export function borderRender(key: string): BorderRender {
       // illuminated capital doesn't spin.
       return {
         type: 'gradient',
-        gradient: 'conic-gradient(from 210deg, #ffd23f 0%, #f6e4a8 12%, #2a4a8f 26%, #ffd23f 40%, #9a2f2f 54%, #f6e4a8 68%, #2a4a8f 82%, #ffd23f 100%)',
+        gradient: 'conic-gradient(from 210deg, #ecb860 0%, #f6e4a8 12%, #2a4a8f 26%, #ecb860 40%, #9a2f2f 54%, #f6e4a8 68%, #2a4a8f 82%, #ecb860 100%)',
         glow: '0 0 14px 2px rgba(255,210,63,0.35), 0 6px 16px rgba(0,0,0,0.4)',
       }
     case 'codex':
       // All 1,189 chapters. The only reading ring that moves.
       return {
         type: 'gradient',
-        gradient: 'conic-gradient(from 0deg, #fdfaf0, #e8d9b4, #ffd23f, #fdfaf0, #b8892b, #fdfaf0, #e8d9b4)',
+        gradient: 'conic-gradient(from 0deg, #fdfaf0, #e8d9b4, #ecb860, #fdfaf0, #b8892b, #fdfaf0, #e8d9b4)',
         animated: true,
       }
     case 'cornerstone':
@@ -177,7 +177,7 @@ export function borderRender(key: string): BorderRender {
       // the card's texture wrapped round the face. Still, like the stone.
       return {
         type: 'gradient',
-        gradient: 'conic-gradient(from 200deg, #efe6d3 0%, #d9ccb0 9%, #ffd23f 13%, #f6eedc 18%, #e6dac2 40%, #f3ebd9 55%, #ffd23f 60%, #d9ccb0 64%, #efe6d3 80%, #e6dac2 100%)',
+        gradient: 'conic-gradient(from 200deg, #efe6d3 0%, #d9ccb0 9%, #ecb860 13%, #f6eedc 18%, #e6dac2 40%, #f3ebd9 55%, #ecb860 60%, #d9ccb0 64%, #efe6d3 80%, #e6dac2 100%)',
         glow: '0 0 14px 2px rgba(255,210,63,0.35), 0 6px 16px rgba(0,0,0,0.4)',
       }
     case 'default':

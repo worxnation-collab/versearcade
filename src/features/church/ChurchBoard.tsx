@@ -126,7 +126,7 @@ export function ChurchBoard() {
                 border: '1px solid var(--stroke)',
                 background: active ? 'linear-gradient(180deg, var(--grape), var(--grape-deep))' : 'var(--card)',
                 color: active ? '#fff' : 'var(--ink-faint)',
-                boxShadow: active ? '0 4px 14px rgba(122,63,242,0.45)' : 'none',
+                boxShadow: active ? '0 4px 14px rgba(124,98,176,0.42)' : 'none',
               }}
             >
               {r === 'all' ? 'All' : `${r} mi`}
@@ -162,7 +162,7 @@ export function ChurchBoard() {
                 border: '1px solid var(--stroke)',
                 background: active ? 'linear-gradient(180deg, var(--grape), var(--grape-deep))' : 'var(--card)',
                 color: active ? '#fff' : 'var(--ink-faint)',
-                boxShadow: active ? '0 4px 14px rgba(122,63,242,0.45)' : 'none',
+                boxShadow: active ? '0 4px 14px rgba(124,98,176,0.42)' : 'none',
               }}
             >
               {TIMEFRAME_LABEL[t]}

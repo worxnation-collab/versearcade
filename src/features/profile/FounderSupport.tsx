@@ -100,7 +100,7 @@ export function FounderPill({ username }: { username: string }) {
           fontSize: 12.5,
           letterSpacing: '0.02em',
           color: '#2a1e05',
-          background: 'linear-gradient(90deg, #fff1b8, var(--gold) 45%, var(--tangerine))',
+          background: 'linear-gradient(90deg, #f6e6c4, var(--gold) 45%, var(--tangerine))',
           boxShadow: '0 0 16px rgba(255,210,63,0.45), 0 4px 12px rgba(0,0,0,0.35)',
         }}
       >

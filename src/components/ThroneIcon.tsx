@@ -25,7 +25,7 @@ export function ThroneIcon({ size = 44 }: { size?: number }) {
           inset: 0,
           borderRadius: '50%',
           background:
-            'conic-gradient(from 0deg, rgba(255,210,63,0), #ffd23f, #fff6cf, #ffffff, #ffd23f, rgba(255,210,63,0))',
+            'conic-gradient(from 0deg, rgba(255,210,63,0), #ecb860, #fff6cf, #ffffff, #ecb860, rgba(255,210,63,0))',
           WebkitMaskImage:
             'radial-gradient(closest-side, transparent 56%, #000 60%, #000 94%, transparent)',
           maskImage:

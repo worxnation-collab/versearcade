@@ -10,12 +10,12 @@ type Variant = 'primary' | 'secondary' | 'ghost' | 'gold'
 const styles: Record<Variant, React.CSSProperties> = {
   primary: {
     background: 'linear-gradient(180deg, var(--grape) 0%, var(--grape-deep) 100%)',
-    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.28), inset 0 -2px 0 rgba(40,10,110,0.25), 0 6px 0 #4b1fb0, 0 12px 24px rgba(122,63,242,0.45)',
+    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.28), inset 0 -2px 0 rgba(40,10,110,0.25), 0 6px 0 #4a3a72, 0 12px 24px rgba(124,98,176,0.42)',
     color: '#fff',
   },
   gold: {
-    background: 'var(--brass-sheen), linear-gradient(180deg, #ffe27a 0%, var(--gold) 60%, var(--tangerine) 100%)',
-    boxShadow: 'var(--brass-edge), 0 6px 0 #c9860a, 0 12px 24px rgba(255,159,28,0.4)',
+    background: 'var(--brass-sheen), linear-gradient(180deg, #f6d590 0%, var(--gold) 60%, var(--tangerine) 100%)',
+    boxShadow: 'var(--brass-edge), 0 6px 0 #a8701e, 0 12px 24px rgba(229,154,76,0.35)',
     color: '#3a2200',
   },
   secondary: {

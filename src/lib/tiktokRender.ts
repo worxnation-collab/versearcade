@@ -751,7 +751,7 @@ function drawCaption(ctx: CanvasRenderingContext2D, phrase: TimedPhrase | null, 
       const spoken = !timed || at >= w.start
       const rise = timed ? Math.min(1, Math.max(0, (at - w.start) / 0.12)) : 1
       ctx.globalAlpha = alpha * (spoken ? rise : (o.dim ?? 0))
-      outlined(ctx, w.text, x, y0 + i * lh, current ? '#ffd23f' : '#ffffff', 'rgba(11,7,32,0.92)', o.stroke ?? 12)
+      outlined(ctx, w.text, x, y0 + i * lh, current ? '#ecb860' : '#ffffff', 'rgba(11,7,32,0.92)', o.stroke ?? 12)
       x += w.w + out.space
     }
   })
@@ -785,7 +785,7 @@ function drawHook(ctx: CanvasRenderingContext2D, hook: string | undefined, t: nu
   const base = ctx.globalAlpha
   lines.forEach((l, i) => {
     ctx.globalAlpha = base * (i === 0 ? 1 : easeOut((t - i * 0.3) / 0.2))
-    outlined(ctx, l, WIDTH / 2, y0 + i * lh, '#ffd23f', 'rgba(11,7,32,0.9)', Math.round(size / 7))
+    outlined(ctx, l, WIDTH / 2, y0 + i * lh, '#ecb860', 'rgba(11,7,32,0.9)', Math.round(size / 7))
   })
   ctx.restore()
 }
@@ -796,7 +796,7 @@ function drawBrand(ctx: CanvasRenderingContext2D, brand: string, reference: stri
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
   ctx.font = `800 34px ${FONT_DISPLAY}`
   ctx.letterSpacing = '6px'
-  outlined(ctx, brand, WIDTH / 2, y, '#ffd23f', 'rgba(11,7,32,0.85)', 8)
+  outlined(ctx, brand, WIDTH / 2, y, '#ecb860', 'rgba(11,7,32,0.85)', 8)
   ctx.letterSpacing = '0px'
   ctx.font = `700 62px ${FONT_DISPLAY}`
   outlined(ctx, reference, WIDTH / 2, y + 72)
@@ -917,7 +917,7 @@ function drawSpeaker(ctx: CanvasRenderingContext2D, photo: HTMLImageElement, lab
   ctx.shadowColor = 'transparent'
   circleImage(ctx, photo, cx, cy, r)
   // The ring: a hairline at rest, wider and brighter as the voice rises.
-  ctx.strokeStyle = '#ffd23f'
+  ctx.strokeStyle = '#ecb860'
   ctx.lineWidth = 5 + 5 * level
   ctx.globalAlpha = alpha * (0.55 + 0.45 * level)
   ctx.beginPath(); ctx.arc(cx, cy, r + 12 + 22 * level, 0, Math.PI * 2); ctx.stroke()
@@ -925,7 +925,7 @@ function drawSpeaker(ctx: CanvasRenderingContext2D, photo: HTMLImageElement, lab
   if (label) {
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
     ctx.font = `800 34px ${FONT_DISPLAY}`
-    outlined(ctx, label, cx, cy + r + 58, '#ffd23f', 'rgba(11,7,32,0.9)', 8)
+    outlined(ctx, label, cx, cy + r + 58, '#ecb860', 'rgba(11,7,32,0.9)', 8)
   }
   ctx.restore()
 }
@@ -1155,7 +1155,7 @@ async function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number,
     ctx.font = `800 76px ${FONT_DISPLAY}`
     outlined(ctx, 'Play today’s verse', WIDTH / 2, HEIGHT / 2 + 470)
     ctx.font = `800 58px ${FONT_DISPLAY}`
-    outlined(ctx, SITE, WIDTH / 2, HEIGHT / 2 + 570, '#ffd23f')
+    outlined(ctx, SITE, WIDTH / 2, HEIGHT / 2 + 570, '#ecb860')
     ctx.restore()
   }
 }
@@ -1594,7 +1594,7 @@ export async function renderNoteCard(input: { reference: string; text: string; b
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
   ctx.font = `800 30px ${FONT_DISPLAY}`
   ctx.letterSpacing = '6px'
-  ctx.fillStyle = '#ffd23f'
+  ctx.fillStyle = '#ecb860'
   ctx.fillText('VERSE ARCADE', CARD_W / 2, 74)
   ctx.letterSpacing = '0px'
 
@@ -1605,7 +1605,7 @@ export async function renderNoteCard(input: { reference: string; text: string; b
   for (const line of lines) { ctx.fillText(line, CARD_W / 2, y); y += lh }
 
   ctx.font = `700 46px ${FONT_DISPLAY}`
-  ctx.fillStyle = '#ffd23f'
+  ctx.fillStyle = '#ecb860'
   ctx.fillText(input.reference, CARD_W / 2, CARD_H - 96)
   ctx.restore()
 
@@ -1962,7 +1962,7 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
     ctx.globalAlpha = headIn
     ctx.font = `800 32px ${FONT_DISPLAY}`
     ctx.letterSpacing = '6px'
-    outlined(ctx, input.eyebrow ?? 'VERSE ARCADE · STORY TIME', WIDTH / 2, 150, '#ffd23f', 'rgba(11,7,32,0.85)', 8)
+    outlined(ctx, input.eyebrow ?? 'VERSE ARCADE · STORY TIME', WIDTH / 2, 150, '#ecb860', 'rgba(11,7,32,0.85)', 8)
     ctx.letterSpacing = '0px'
     ctx.font = `700 54px ${FONT_DISPLAY}`
     wrap(ctx, input.title, 900).forEach((l, i) => outlined(ctx, l, WIDTH / 2, 218 + i * 60))
@@ -2057,10 +2057,10 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
     const y0 = HEIGHT / 2 - 200 - ((lines.length - 1) * lh) / 2
     lines.forEach((l, i) => outlined(ctx, l, WIDTH / 2, y0 + i * lh))
     ctx.font = `800 44px ${FONT_DISPLAY}`
-    outlined(ctx, input.reference, WIDTH / 2, y0 + lines.length * lh + 20, '#ffd23f')
+    outlined(ctx, input.reference, WIDTH / 2, y0 + lines.length * lh + 20, '#ecb860')
     if (input.endNote) {
       ctx.font = `800 40px ${FONT_DISPLAY}`
-      wrap(ctx, input.endNote, 900).forEach((l, i, all) => outlined(ctx, l, WIDTH / 2, y0 - 110 - (all.length - 1 - i) * 50, '#ffd23f'))
+      wrap(ctx, input.endNote, 900).forEach((l, i, all) => outlined(ctx, l, WIDTH / 2, y0 - 110 - (all.length - 1 - i) * 50, '#ecb860'))
     }
     // A person standing behind the link, exactly as the verse post's end card
     // does it — only on a day he actually spoke.
@@ -2068,7 +2068,7 @@ async function drawStoryFrame(ctx: CanvasRenderingContext2D, sc: StoryScene, t: 
     ctx.font = `800 64px ${FONT_DISPLAY}`
     outlined(ctx, 'Play today’s verse', WIDTH / 2, HEIGHT / 2 + 380)
     ctx.font = `800 52px ${FONT_DISPLAY}`
-    outlined(ctx, SITE, WIDTH / 2, HEIGHT / 2 + 470, '#ffd23f')
+    outlined(ctx, SITE, WIDTH / 2, HEIGHT / 2 + 470, '#ecb860')
     ctx.restore()
   }
 }
@@ -2406,7 +2406,7 @@ async function drawRoundupFrame(ctx: CanvasRenderingContext2D, sc: RoundupScene,
     ctx.globalAlpha = headIn
     ctx.font = `800 30px ${FONT_DISPLAY}`
     ctx.letterSpacing = '6px'
-    outlined(ctx, input.brand.toUpperCase(), WIDTH / 2, 120, '#ffd23f', 'rgba(11,7,32,0.85)', 8)
+    outlined(ctx, input.brand.toUpperCase(), WIDTH / 2, 120, '#ecb860', 'rgba(11,7,32,0.85)', 8)
     ctx.letterSpacing = '0px'
     if (item) {
       const pop = easeOut(since / 0.3)
@@ -2451,7 +2451,7 @@ async function drawRoundupFrame(ctx: CanvasRenderingContext2D, sc: RoundupScene,
     wrap(ctx, input.signoff, 900).forEach((l, i) => outlined(ctx, l, WIDTH / 2, 420 + i * 94, '#ffffff', 'rgba(11,7,32,0.9)', 10))
     ctx.font = `800 32px ${FONT_DISPLAY}`
     ctx.letterSpacing = '6px'
-    outlined(ctx, input.brand.toUpperCase(), WIDTH / 2, 300, '#ffd23f', 'rgba(11,7,32,0.85)', 8)
+    outlined(ctx, input.brand.toUpperCase(), WIDTH / 2, 300, '#ecb860', 'rgba(11,7,32,0.85)', 8)
     ctx.letterSpacing = '0px'
     ctx.restore()
   }
@@ -2644,7 +2644,7 @@ interface QuizScene {
   phrases: TimedPhrase[]
 }
 
-const GOLD = '#ffd23f', CORAL = '#ff6b6b', GRAPE = '#a06bff', INK_DIM = '#b8a9e0'
+const GOLD = '#ecb860', CORAL = '#e07f6a', GRAPE = '#a58bd0', INK_DIM = '#b8a9e0'
 
 function headChip(ctx: CanvasRenderingContext2D, figure: HTMLImageElement, cx: number, cy: number, r: number) {
   // The top square of a full-length render is the head; the skins are drawn
@@ -3061,7 +3061,7 @@ function drawPayoff(ctx: CanvasRenderingContext2D, text: string, note: string | 
   const { lines, lh } = fitText(ctx, text, 940, [330, 260, 200, 150, 120, 96], 480)
   const cy = HEIGHT / 2 - (note ? 50 : 0)
   const y0 = cy - ((lines.length - 1) * lh) / 2
-  lines.forEach((l, i) => outlined(ctx, l, WIDTH / 2, y0 + i * lh, '#ffd23f', 'rgba(11,7,32,0.9)', Math.round(lh / 9)))
+  lines.forEach((l, i) => outlined(ctx, l, WIDTH / 2, y0 + i * lh, '#ecb860', 'rgba(11,7,32,0.9)', Math.round(lh / 9)))
   if (note) {
     ctx.font = `800 64px ${FONT_DISPLAY}`
     outlined(ctx, note, WIDTH / 2, y0 + lines.length * lh + 26)
@@ -3183,7 +3183,7 @@ async function drawExchangeFrame(ctx: CanvasRenderingContext2D, sc: ExchangeScen
     ctx.font = `800 82px ${FONT_DISPLAY}`
     outlined(ctx, 'Play today’s verse', WIDTH / 2, 1200)
     ctx.font = `800 72px ${FONT_DISPLAY}`
-    outlined(ctx, SITE, WIDTH / 2, 1320, '#ffd23f')
+    outlined(ctx, SITE, WIDTH / 2, 1320, '#ecb860')
     ctx.restore()
   }
 }

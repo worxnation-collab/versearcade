@@ -117,7 +117,8 @@ the second take starts there). Each take went through the same chain, so the two
 
 1. **Noise removal**: fal `fal-ai/deepfilternet3` (the take sent as a FLAC data URI).
 2. **Edit**: lead-in silence trimmed, a stray word cut (take 1, "…build a combo. *Wrong.*"),
-   take 1 ended before "All 66 books" where take 2 begins.
+   take 1 ended on "…you still learn something." (a first cut at 69.45s kept the stumbled
+   "All 66 books" and played it twice; it ends at 66.2s now), and take 2 begins on "All 66 books".
 3. **Voice chain** (ffmpeg, identical on both):
    `highpass=f=80, equalizer=f=220:t=q:w=1:g=-2.5, equalizer=f=3200:t=q:w=1.2:g=3,
    highshelf=f=9000:g=2.5, deesser=i=0.35,

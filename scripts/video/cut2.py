@@ -116,9 +116,9 @@ VOICED = [
     ('battle', 3.4, 16.0, 'fit:5.3', None, [('Head to head', GOLD, 0.0)], [('ding', 6.0), ('ding', 12.0)]),
     ('battle', 16.0, 19.6, 'fit:2.54', (0.5, 0.3, 1.25), [('Win or lose,', WHITE, 0.0), ('you learn something', GOLD, 0.0)], []),
     ('card:bible@5', 0.0, 1.6, 'fit:1.6', None, [('YOUR BIBLE', GOLD, 0.0), ('all 66 books', WHITE, 0.3)], [('whoosh', 0.0)]),
-    ('bible', 0.0, 4.4, 'fit:3.98', None, [('Every chapter you open', WHITE, 0.0), ('gets marked', GOLD, 0.0)], []),
-    ('bible', 4.4, 9.2, 'fit:4.92', None, [('Your Bible fills in', WHITE, 0.0)], []),
-    ('seals', 0.0, 2.6, 'fit:5.85', None, [('Finish a book,', WHITE, 0.0), ('press its seal', GOLD, 0.0), ('Just yours.', WHITE, 3.4)], [('ding', 0.4)]),
+    ('bible', 0.0, 4.4, 'fit:3.64', None, [('Every chapter you open', WHITE, 1.2), ('gets marked', GOLD, 1.2)], []),
+    ('bible', 4.4, 9.2, 'fit:2.42', None, [('Your Bible fills in', WHITE, 0.0)], []),
+    ('seals', 0.0, 2.6, 'fit:5.82', None, [('Finish a book,', WHITE, 0.0), ('press its seal', GOLD, 0.0), ('Just yours.', WHITE, 3.4)], [('ding', 0.4)]),
     ('study', 0.0, 8.7, 'fit:11.06', None, [('Study with Tabitha', GOLD, 0.0), ('No rankings. Ever.', WHITE, 6.0)], [('whoosh', 0.0)]),
     ('card:arcade@1', 0.0, 1.6, 'fit:1.6', None, [('THE ARCADE', GOLD, 0.0)], [('whoosh', 0.0)]),
     ('wordcatch', 1.0, 6.0, 'fit:1.48', None, [('Three little games', WHITE, 0.0)], []),
@@ -188,11 +188,14 @@ for i, (name, a, b, sp, zoom, caps, fx) in enumerate(SEGS):
     vf = [f'setpts=(PTS-STARTPTS)/{sp}', 'fps=30', *([f'tpad=stop_mode=clone:stop_duration={hold:.3f}'] if hold else []), 'scale=1080:1920:force_original_aspect_ratio=increase', 'crop=1080:1920']
     if zoom:
         cx, cy, z = zoom
+        z = min(z, 1.25)   # past this a phone screen loses text at both edges
         # Punch in over 0.35s, eased, then hold: the moment that matters, big.
-        k = f'(1+({z}-1)*min(1\\,t/0.35)*(2-min(1\\,t/0.35)))'
-        # scale is evaluated per frame (crop's size is not), then crop slides.
-        vf.append(f"scale=w='2*trunc(540*{k})':h='2*trunc(960*{k})':eval=frame")
-        vf.append(f"crop=1080:1920:x='(iw-1080)*{cx}':y='(ih-1920)*{cy}'")
+        # zoompan, not scale+crop: crop fixes its offset on the FIRST frame,
+        # so a frame that grows afterwards stays pinned to its left edge and
+        # every zoom drifted off-centre. Upscaled first so the pan is smooth.
+        k = f'(1+({z}-1)*min(1\\,it/0.35)*(2-min(1\\,it/0.35)))'
+        vf.append('scale=2160:3840:flags=lanczos')
+        vf.append(f"zoompan=z='{k}':x='(iw-iw/zoom)*{cx}':y='(ih-ih/zoom)*{cy}':d=1:s=1080x1920:fps=30")
     # A two-frame white flash on every cut, so a cut reads as a beat.
     vf.append("drawbox=x=0:y=0:w=iw:h=ih:color=white@0.35:t=fill:enable='lt(t,0.067)'")
     big = len(caps) and all(len(c[0]) <= 2 for c in caps)

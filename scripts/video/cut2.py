@@ -113,8 +113,8 @@ VOICED = [
     ('trivia', 0.4, 5.0, 'fit:9.44', (0.5, 0.45, 1.15), [('Today: Matthew', WHITE, 0.0), ('Tomorrow: Obadiah?', GOLD, 5.2)], []),
     ('card:battle@3', 0.0, 1.6, 'fit:1.6', None, [('BATTLE', GOLD, 0.0), ('race the computer', WHITE, 0.3)], [('whoosh', 0.0)]),
     ('battle', 0.0, 3.4, 'fit:2.86', None, [('Rookie. Deacon. Prophet.', WHITE, 0.0)], []),
-    ('battle', 3.4, 16.0, 'fit:5.3', None, [('Head to head', GOLD, 0.0)], [('ding', 6.0), ('ding', 12.0)]),
-    ('battle', 16.0, 19.6, 'fit:2.54', (0.5, 0.3, 1.25), [('Win or lose,', WHITE, 0.0), ('you learn something', GOLD, 0.0)], []),
+    ('battle', 3.4, 18.6, 'fit:5.3', None, [('Head to head', GOLD, 0.0)], [('ding', 6.0), ('ding', 12.0)]),
+    ('battle', 18.8, 22.2, 'fit:2.54', (0.5, 0.3, 1.25), [('Win or lose,', WHITE, 0.0), ('you learn something', GOLD, 0.0)], []),
     ('card:bible@5', 0.0, 1.6, 'fit:1.6', None, [('YOUR BIBLE', GOLD, 0.0), ('all 66 books', WHITE, 0.3)], [('whoosh', 0.0)]),
     ('bible', 0.0, 4.4, 'fit:3.64', None, [('Every chapter you open', WHITE, 1.2), ('gets marked', GOLD, 1.2)], []),
     ('bible', 4.4, 9.2, 'fit:2.42', None, [('Your Bible fills in', WHITE, 0.0)], []),
@@ -178,12 +178,18 @@ if not os.path.exists(end):
 
 parts, sfx, sheet, T = [], [], [], 0.0
 SUBS = arg('--subs')
+# --rescale shot=k,...: a re-recorded shot that ran slower or faster than the
+# one the plan was timed on; its in/out points are scaled by k so the same
+# moments land (k = new length / old length).
+RESCALE = {k: float(v) for k, v in (x.split('=') for x in (arg('--rescale') or '').split(',') if '=' in x)}
 for i, (name, a, b, sp, zoom, caps, fx) in enumerate(SEGS):
     # With word-by-word subtitles the voice carries the words, so a shot's own
     # caption pills would say the same thing twice: only the cold open and the
     # chapter cards keep theirs.
     if SUBS and i >= 3 and not name.startswith('card:'):
         caps = []
+    if name in RESCALE:
+        a, b = a * RESCALE[name], b * RESCALE[name]
     hold = 0.0
     if isinstance(sp, str):
         # 'fit:<seconds>': as long as the words over it, never below 0.8x.

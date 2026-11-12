@@ -255,7 +255,8 @@ def builds(figs=FIGS):
             index[key] = {}
             os.makedirs(os.path.join(OUT, key), exist_ok=True)
             for name, box in index[f].items():
-                slot = meta.get(name, {}).get('slot')
+                # a `<id>__skin` layer (skin-split.py) moves with its item
+                slot = meta.get(name.split('__')[0], {}).get('slot')
                 if slot == 'pet':
                     continue   # a pet stands beside the figure, whatever its build
                 src = Image.open(os.path.join(OUT, f, name + '.webp'))

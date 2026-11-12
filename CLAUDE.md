@@ -4258,7 +4258,7 @@ surface draws a game as its COVER PAINTING (`ArcadeCover`, Flux, same hand as
 the card backgrounds — `art/arcade-covers.flux.json`,
 `scripts/gen-arcade-covers.py`, `public/arcade/cover_<id>.jpg`), not as a drawn
 cabinet: the lobby is three wide covers, the shared-link page shows the game's
-cover. The drawn `ArcadeCabinet` survives only as the Upper Room's tap target
+cover. **The in-game backdrops are the covers' hand too** (2026-11-12, `art/arcade-scenes.flux.json`, `scripts/gen-arcade-scenes.py`, written over `public/arcade/arcade_*.jpg` so `GENERATED_ART` is unchanged); the desert is painted 9:21 and bottom-cropped, because Flux puts its horizon two-thirds down and `MANNA_PLOTS` start two-fifths down. The drawn `ArcadeCabinet` survives only as the Upper Room's tap target
 (invisible over the painted rooms, which paint their own). The map lists the
 arcade under Study. Where the text below says "cabinet in the lobby", read
 "cover".

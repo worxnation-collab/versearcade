@@ -26,6 +26,7 @@ import { titleById } from '@/data/season'
 import { CustomizeSection } from './CustomizeSection'
 import { PatronCard } from './PatronCard'
 import { ProfileHero } from './ProfileHero'
+import { WardrobeInvite } from './WardrobeInvite'
 import { RoomSection } from '@/features/room/RoomSection'
 import { ChurchNudge } from '@/features/church/ChurchNudge'
 import { ProfileChurchCard } from '@/features/church/ProfileChurchCard'
@@ -314,6 +315,8 @@ export default function ProfileScreen() {
         <ProfileTool icon="tool_mail" label="Mail" dot={mailWaiting > 0} onClick={() => { juice.select?.(); navigate('/mail') }} />
         <ProfileTool icon="tool_settings" ariaLabel="Settings" onClick={() => { juice.select?.(); setSettingsOpen(true) }} />
       </div>
+
+      <WardrobeInvite onCustomize={openCustomize} />
 
       {/* The fourth little world, and the only one that is yours alone. It opens
           its section here rather than sitting behind a row that describes it —

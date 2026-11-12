@@ -434,7 +434,7 @@ export default function ProfileScreen() {
           defaultTab={openInventory ? 'bag' : undefined}
           tabs={[
             { key: 'bag', label: '🎒 Bag', right: `${inHand} in hand`, content: <InventorySection /> },
-            { key: 'cards', label: '🃏 Cards', right: `${cards} collected`, content: <CollectionSection /> },
+            { key: 'cards', icon: <PaintedIcon id="stat_cards" />, label: 'Cards', right: `${cards} collected`, content: <CollectionSection /> },
           ]}
         />
       </div>

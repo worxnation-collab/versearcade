@@ -580,7 +580,7 @@ function ChurchHome({ church }: { church: Church }) {
           {
             key: 'board',
             icon: worldwide ? <PaintedIcon id="church_worldwide" /> : undefined,
-            label: worldwide ? 'Worldwide' : '📍 Near you',
+            label: worldwide ? 'Worldwide' : 'Near you',
             right: worldwide
               ? `Every church playing, ranked by points given${TIMEFRAME_PHRASE[timeframe]}`
               : `Ranked by points given${TIMEFRAME_PHRASE[timeframe]}, measured from ${church.name}`,

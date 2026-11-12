@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { plainCharacter } from '@/features/church/churchLook'
 import { Character } from '@/components/Character'
 import { Pet } from '@/components/Pet'
 import { usePlayerCard } from '@/components/PlayerCardModal'
@@ -502,8 +503,10 @@ function LifeFigure({
             transformOrigin: 'bottom center',
           }}
         >
-          {member.avatarCharacter ? (
-            <Character spec={member.avatarCharacter} size={size} title={member.username} fullBody />
+          {/* A member with no character is drawn as a plain figure: an emoji
+              floating on a lawn reads as a broken image, not a person. */}
+          {member.avatarCharacter || member.seed || member.username ? (
+            <Character spec={member.avatarCharacter ?? plainCharacter((member.seed || member.username).charCodeAt(0), member.seed || member.username)} size={size} title={member.username} fullBody />
           ) : (
             <span
               style={{

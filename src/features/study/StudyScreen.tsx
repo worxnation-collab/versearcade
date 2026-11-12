@@ -254,13 +254,8 @@ export default function StudyScreen() {
   return (
     <Page>
       <FirstVisitTip id="study" />
-      <div className="center" style={{ marginBottom: 12 }}>
-        <h1 style={{ fontSize: 26 }}>Study</h1>
-        <p className="dim" style={{ marginTop: 2, fontSize: 13 }}>
-          Your progress — only ever against yourself.
-        </p>
-      </div>
-
+      {/* No page title: a tab root doesn't restate the nav button, and the
+          "only against yourself" line already heads Your progress. */}
       <TabithaStrip due={due} owed={libraryLoaded && !borrowedToday} onOpen={openDesk} />
 
       <ProgressPanel

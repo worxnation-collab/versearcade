@@ -291,7 +291,7 @@ export const useGame = create<GameState>((set, get) => ({
       return
     }
     const { data, error } = await supabase.rpc('get_daily_pulse', { p_drop_date: date })
-    if (error) return
+    if (error || !data) return
     const raw = data as { opened: number; feed: any[] }
     set({
       pulse: {

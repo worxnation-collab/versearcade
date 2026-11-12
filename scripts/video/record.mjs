@@ -218,6 +218,78 @@ await shot(browser, 'people', async ({ page, go, start, wait }) => {
   await smooth(page, 420, 2200); await wait(2000)
 })
 
+// ---- The long walkthrough's extra shots (about three minutes) ----
+// A page, a beat, a slow scroll down: the shape most of these need.
+const tour = (url, ys, pause = 1600) => async ({ page, go, start, wait }) => {
+  await go(url); await wait(900); start(); await wait(pause)
+  for (const y of ys) { await smooth(page, y, 1800); await wait(pause) }
+}
+const answerRun = async (page, wait, n = 5) => {
+  await page.getByRole('button', { name: /start the clock/ }).click({ timeout: 8000 }).catch(() => {})
+  for (let i = 0; i < n; i++) {
+    await page.locator('[data-option]:not([disabled])').first().waitFor({ timeout: 8000 }).catch(() => {})
+    await wait(1100)
+    await page.locator('[data-option]').nth(i % 4).click().catch(() => {}); await wait(1500)
+    await page.getByRole('button', { name: /Next question|See my score|See the result|Finish/ }).first().click({ timeout: 3000 }).catch(() => {})
+  }
+}
+// Scroll with the wheel: the Bible scrolls inside its own page, not the window.
+const wheel = async (page, px, steps = 24, ms = 1800) => {
+  await page.mouse.move(216, 420)
+  for (let k = 0; k < steps; k++) { await page.mouse.wheel(0, px / steps); await page.waitForTimeout(ms / steps) }
+}
+await shot(browser, 'battle', async ({ page, go, start, wait }) => {
+  await go('/battle/cpu'); await wait(1200); start(); await wait(1800)
+  await page.getByRole('button', { name: /Play/ }).nth(1).click(); await wait(2600)
+  await answerRun(page, wait)
+  await wait(3500)
+})
+await shot(browser, 'bible', async ({ page, go, start, wait }) => {
+  await go('/bible'); await wait(2500); start(); await wait(1600)
+  await page.getByText('New Testament').first().click().catch(() => {}); await wait(900)
+  await wheel(page, 700); await wait(1000)
+  await page.goto(BASE + '/bible/John/15'); await wait(2600)
+  await wheel(page, 600, 30, 2600); await wait(1500)
+})
+await shot(browser, 'seals', async ({ page, go, start, wait }) => {
+  await go('/bible/seals'); await wait(2000); start(); await wait(1500)
+  await wheel(page, 800, 30, 2600); await wait(1500)
+})
+await shot(browser, 'study', tour('/study', [500, 1100]))
+await shot(browser, 'wordcatch', async ({ page, go, start, wait }) => {
+  await go('/arcade/word-catch'); await wait(1200); start(); await wait(1400)
+  await page.getByRole('button', { name: /Put it back together/ }).click(); await wait(1500)
+  // Tap the words of today's verse in order as they float past.
+  const words = (await page.evaluate(() => document.body.innerText.match(/[A-Z][^“”"\n]{20,}/)?.[0] ?? '')).split(/\s+/)
+  const end = Date.now() + 14000
+  let k = 0
+  while (Date.now() < end) {
+    const want = (words[k] ?? '').replace(/[^\w'’-]/g, '')
+    const b = page.locator(`button[aria-label="${want}" i]`).first()
+    if (want && await b.count()) { await b.click({ timeout: 600 }).then(() => { k++ }).catch(() => {}) }
+    else { const any = page.locator('button[aria-label]:not([aria-label*="hare"])').last(); if (await any.count()) await any.click({ timeout: 400 }).catch(() => {}) }
+    await wait(450)
+  }
+})
+await shot(browser, 'cross', async ({ page, go, start, wait }) => {
+  await go('/arcade/cross'); await wait(1200); start(); await wait(1800)
+  for (const ch of 'STRONG') { await page.keyboard.press(ch); await wait(260) }
+  await wait(900)
+  await page.getByRole('button', { name: /across|crossbar/i }).first().click().catch(() => {})
+  await wait(500)
+  for (const ch of 'AFRAID') { await page.keyboard.press(ch); await wait(260) }
+  await wait(3500)
+})
+await shot(browser, 'you', tour('/you', [600, 1300]))
+await shot(browser, 'wardrobe', tour('/wardrobe', [700, 1500]))
+await shot(browser, 'journal', tour('/journal', [600]))
+await shot(browser, 'pastor2', async ({ page, go, start, wait }) => {
+  await go('/churches/try'); await wait(900); start(); await wait(1500)
+  await smooth(page, 260, 1400); await wait(1800)
+  await page.getByRole('tab', { name: 'Overview' }).or(page.getByRole('button', { name: 'Overview', exact: true })).first().click().catch(() => {})
+  await wait(1800); await smooth(page, 700, 2200); await wait(1800)
+})
+
 await shot(browser, 'end', async ({ page, start, wait }) => {
   await page.setContent(`<html><body style="margin:0;height:100vh;display:grid;place-items:center;text-align:center;
     background:radial-gradient(ellipse at 50% 30%,#3a2a1c,#120c08);color:#fff;font-family:Inter,system-ui,sans-serif">

@@ -48,6 +48,53 @@ SEGS = [
 ]
 
 
+# The LONG cut (--long): about three minutes, the walkthrough the Shorts'
+# "Related video" link points at (docs/YOUTUBE-FUNNEL.md). Same grammar,
+# slower pace, a chapter card before each part of the app.
+LONG = [
+    *SEGS[:3],
+    ('verse', 0.2, 1.6, 1.0, None, [('This is Verse Arcade', GOLD, 0.0)], [('whoosh', 0.2)]),
+    ('verse', 2.4, 5.6, 1.25, None, [('One verse a day.', WHITE, 0.0), ('Same one for everybody.', GOLD, 1.0)], []),
+    ('verse', 5.6, 9.4, 1.0, (0.5, 0.62, 1.25), [('Read it. Then 5 questions.', WHITE, 0.0)], [('ding', 7.6)]),
+    ('verse', 9.8, 11.4, 1.0, (0.5, 0.55, 1.2), [('Get one wrong?', WHITE, 0.0)], [('buzz', 10.6)]),
+    ('verse', 11.4, 16.4, 1.0, (0.5, 0.82, 1.5), [('It tells you WHY.', GOLD, 0.0), ('Wrong answers teach.', WHITE, 1.6)], []),
+    ('verse', 20.6, 27.2, 1.5, None, [('Build a combo', WHITE, 0.0)], [('ding', 22.2), ('ding', 26.1)]),
+    ('verse', 27.6, 31.0, 1.0, (0.5, 0.32, 1.3), [('Keep your streak', GOLD, 0.0)], [('whoosh', 27.6)]),
+    ('verse', 31.0, 34.2, 1.25, None, [('What you learned,', WHITE, 0.0), ('every single day', GOLD, 0.0)], []),
+    ('card:trivia@1', 0.0, 1.6, 1.0, None, [('TRIVIA', GOLD, 0.0), ('a new book every day', WHITE, 0.3)], [('whoosh', 0.0)]),
+    ('trivia', 0.4, 5.0, 1.25, None, [], [('ding', 3.0)]),
+    ('card:battle@3', 0.0, 1.6, 1.0, None, [('BATTLE', GOLD, 0.0), ('race the clock', WHITE, 0.3)], [('whoosh', 0.0)]),
+    ('battle', 0.0, 3.4, 1.25, None, [('Pick an opponent', WHITE, 0.0)], []),
+    ('battle', 3.4, 16.0, 2.0, None, [('Head to head', GOLD, 0.0)], [('ding', 6.0), ('ding', 9.0), ('ding', 12.0)]),
+    ('battle', 16.0, 19.6, 1.0, (0.5, 0.3, 1.25), [('Win or lose,', WHITE, 0.0), ('you learn something', GOLD, 0.0)], [('whoosh', 16.0)]),
+    ('card:bible@5', 0.0, 1.6, 1.0, None, [('YOUR BIBLE', GOLD, 0.0), ('all 66 books', WHITE, 0.3)], [('whoosh', 0.0)]),
+    ('bible', 0.0, 4.4, 1.25, None, [('Every chapter you open', WHITE, 0.0), ('gets marked', GOLD, 0.0)], []),
+    ('bible', 4.4, 9.2, 1.25, None, [('Read it right here', WHITE, 0.0)], []),
+    ('seals', 0.0, 2.6, 1.0, None, [('Finish a book,', WHITE, 0.0), ('press its seal', GOLD, 0.0)], [('ding', 0.4)]),
+    ('study', 0.0, 8.7, 1.5, None, [('Study with Tabitha', GOLD, 0.0), ('your own progress, no ranks', WHITE, 2.0)], [('whoosh', 0.0)]),
+    ('card:arcade@1', 0.0, 1.6, 1.0, None, [('THE ARCADE', GOLD, 0.0)], [('whoosh', 0.0)]),
+    ('wordcatch', 1.0, 6.0, 1.5, None, [('Three little games', WHITE, 0.0)], []),
+    ('arcade', 2.6, 13.0, 1.75, None, [('Manna Rush', GOLD, 0.0), ('gather six days, rest on the seventh', WHITE, 1.2)], [('whoosh', 2.6)]),
+    ('cross', 0.0, 8.1, 1.25, (0.5, 0.45, 1.15), [('Cross Word', GOLD, 0.0), ('it turns to wood', WHITE, 3.6)], [('ding', 6.0)]),
+    ('card:you@2', 0.0, 1.6, 1.0, None, [('MAKE IT YOURS', GOLD, 0.0)], [('whoosh', 0.0)]),
+    ('character', 0.6, 13.0, 2.0, None, [('Build your character', GOLD, 0.0), ('Hoodie optional', WHITE, 2.4)], []),
+    ('you', 0.0, 8.7, 1.5, None, [('Your own room', WHITE, 0.0)], []),
+    ('wardrobe', 0.0, 8.7, 1.75, None, [('Everything you can earn', GOLD, 0.0), ('by playing, never by paying', WHITE, 1.6)], []),
+    ('journal', 0.0, 5.3, 1.25, None, [('Your journal', WHITE, 0.0)], []),
+    ('card:pastor@2', 0.0, 2.0, 1.0, None, [('PASTORS', GOLD, 0.0), ('this part is for you', WHITE, 0.4)], [('whoosh', 0.0)]),
+    ('pastor', 1.6, 6.4, 1.25, (0.5, 0.7, 1.35), [('Type Sunday’s verse', WHITE, 0.0)], []),
+    ('pastor', 6.4, 13.4, 1.75, None, [('It writes 5 questions', GOLD, 0.0), ('you can edit every one', WHITE, 1.6)], [('ding', 12.2)]),
+    ('pastor', 14.0, 17.4, 1.0, (0.5, 0.4, 1.25), [('Your whole church plays', WHITE, 0.0), ('your sermon all week', GOLD, 0.0)], [('whoosh', 14.0)]),
+    ('pastor', 17.4, 25.0, 1.5, None, [], [('ding', 19.3), ('ding', 23.4)]),
+    ('people', 0.0, 1.4, 1.0, (0.5, 0.45, 1.15), [('See who’s playing', GOLD, 0.0)], [('whoosh', 0.0)]),
+    ('pastor2', 0.0, 6.3, 1.0, None, [('Plan a whole series', WHITE, 0.0), ('see how it lands', GOLD, 2.0)], []),
+    ('end', 0.0, 8.0, 1.0, None, [], [('ding', 0.2)]),
+]
+PRE = 'long' if '--long' in sys.argv else 'fun'
+if '--long' in sys.argv:
+    SEGS = LONG
+
+
 def run(*a):
     subprocess.run(a, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
 
@@ -59,6 +106,15 @@ def esc(t):
 def src_of(name):
     if name == 'open':
         return OPEN
+    if name.startswith('card:'):
+        # A chapter card: one blurred, darkened frame of the shot it introduces.
+        shot, at = name[5:].split('@')
+        out = os.path.join(D, f'card-{shot}-{at}.mp4')
+        if not os.path.exists(out):
+            png = out[:-4] + '.png'
+            run('ffmpeg', '-y', '-ss', at, '-i', os.path.join(D, shot + '.mp4'), '-frames:v', '1', '-vf', 'gblur=sigma=30,eq=brightness=-0.25', png)
+            run('ffmpeg', '-y', '-loop', '1', '-t', '4', '-i', png, '-vf', 'fps=30,scale=1080:1920,format=yuv420p', '-c:v', 'libx264', '-crf', '18', out)
+        return out
     return os.path.join(D, name + '.mp4')
 
 
@@ -69,7 +125,7 @@ if not os.path.exists(card):
     run('ffmpeg', '-y', '-loop', '1', '-t', '2', '-i', os.path.join(D, 'card.png'), '-vf', 'fps=30,scale=1080:1920,format=yuv420p', '-c:v', 'libx264', '-crf', '18', card)
 end = os.path.join(D, 'end.mp4')
 if not os.path.exists(end):
-    run('ffmpeg', '-y', '-loop', '1', '-t', '5', '-i', os.path.join(D, 'end', 'f00000.jpg'), '-vf', 'fps=30,scale=1080:1920,format=yuv420p', '-c:v', 'libx264', '-crf', '18', end)
+    run('ffmpeg', '-y', '-loop', '1', '-t', '9', '-i', os.path.join(D, 'end', 'f00000.jpg'), '-vf', 'fps=30,scale=1080:1920,format=yuv420p', '-c:v', 'libx264', '-crf', '18', end)
 
 parts, sfx, sheet, T = [], [], [], 0.0
 for i, (name, a, b, sp, zoom, caps, fx) in enumerate(SEGS):
@@ -96,7 +152,7 @@ for i, (name, a, b, sp, zoom, caps, fx) in enumerate(SEGS):
         # Pops in: alpha ramps over 0.12s from its own moment.
         vf.append(f"drawtext=fontfile={FONT}:text='{esc(text)}':fontsize={size}:fontcolor={colour}:borderw=4:bordercolor=black@0.6:box=1:boxcolor=#140c22@0.82:boxborderw=24"
                   f":x=(w-text_w)/2:y={y}:alpha='min(1\\,max(0\\,(t-{at})/0.12))':enable='gte(t,{at})'")
-    out = os.path.join(D, f'fun{i:02d}.mp4')
+    out = os.path.join(D, f'{PRE}{i:02d}.mp4')
     run('ffmpeg', '-y', '-ss', str(a), '-t', str(b - a), '-i', src_of(name), '-an', '-vf', ','.join(vf),
         '-t', f'{dur:.3f}', '-c:v', 'libx264', '-crf', '18', '-preset', 'fast', '-r', '30', out)
     parts.append(out)
@@ -105,9 +161,9 @@ for i, (name, a, b, sp, zoom, caps, fx) in enumerate(SEGS):
     sheet.append(f"{T:5.1f}s – {T + dur:5.1f}s  {name:<9} {' / '.join(c[0] for c in caps) or '—'}")
     T += dur
 
-lst = os.path.join(D, 'fun-parts.txt')
+lst = os.path.join(D, f'{PRE}-parts.txt')
 open(lst, 'w').write(''.join(f"file '{p}'\n" for p in parts))
-video = os.path.join(D, 'fun-video.mp4')
+video = os.path.join(D, f'{PRE}-video.mp4')
 run('ffmpeg', '-y', '-f', 'concat', '-safe', '0', '-i', lst, '-c', 'copy', video)
 
 # Sound effects, synthesised here: nothing to license, nothing to fetch.
@@ -145,8 +201,8 @@ for j, (kind, at) in enumerate(sfx):
     mix.append(f'[s{j}]')
     n += 1
 flt.append(f"{''.join(mix)}amix=inputs={len(mix)}:normalize=0,alimiter=limit=0.9[aout]")
-outp = os.path.join(D, 'verse-arcade-fun.mp4')
+outp = os.path.join(D, 'verse-arcade-long.mp4' if '--long' in sys.argv else 'verse-arcade-fun.mp4')
 run('ffmpeg', '-y', *ins, '-filter_complex', ';'.join(flt), '-map', '0:v', '-map', '[aout]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k',
     '-t', f'{T:.3f}', '-movflags', '+faststart', outp)
-open(os.path.join(D, 'timing-fun.txt'), 'w').write('\n'.join(sheet) + f'\n\nTotal {T:.1f}s\n')
+open(os.path.join(D, 'timing-long.txt' if '--long' in sys.argv else 'timing-fun.txt'), 'w').write('\n'.join(sheet) + f'\n\nTotal {T:.1f}s\n')
 print('\n'.join(sheet)); print(f'Total {T:.1f}s -> {outp}')

@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/PageHeader'
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Page } from '@/components/Page'
@@ -82,17 +83,7 @@ export default function JournalScreen() {
 
   return (
     <Page>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-        <h2 style={{ fontSize: 24, margin: 0 }}><PaintedIcon id="journal" /> Journal</h2>
-        <div style={{ flex: 1 }} />
-        <button
-          className="pill"
-          onClick={() => { juice.select(); navigate(-1) }}
-          style={{ fontSize: 13, fontWeight: 800, padding: '7px 14px' }}
-        >
-          Back
-        </button>
-      </div>
+      <PageHeader title="Journal" icon={<PaintedIcon id="journal" />} home="/you" />
 
       <p className="faint" style={{ fontSize: 12.5, margin: '0 0 16px', lineHeight: 1.55 }}>
         <b style={{ color: 'var(--gold)', fontFamily: 'var(--font-display)', fontSize: 15 }}>

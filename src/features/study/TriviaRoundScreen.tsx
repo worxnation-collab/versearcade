@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/PageHeader'
 import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
@@ -116,19 +117,11 @@ function BookPicker({
 
   return (
     <Page noNav>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-        <button className="pill" onClick={onExit} aria-label="Back">✕</button>
-        <b style={{ fontFamily: 'var(--font-display)', fontSize: 18 }}>Bonus trivia</b>
-      </div>
-
-      <div className="center" style={{ marginBottom: 16 }}>
-        <div className="floaty" style={{ fontSize: 44 }}>✨</div>
-        <h1 style={{ fontSize: 26, marginTop: 4 }}>Pick a book to be quizzed on</h1>
-        <p className="dim" style={{ marginTop: 4, lineHeight: 1.4 }}>
-          Five questions about the book itself — its people, its places and what happens in it.
-          Every answer tells you something, right or wrong.
-        </p>
-      </div>
+      <PageHeader
+        title="Bonus trivia"
+        sub="Pick a book: five questions about its people, its places and what happens in it. Every answer tells you something, right or wrong."
+        onBack={onExit}
+      />
 
       <div style={{ display: 'grid', gap: 8 }}>
         <PickRow

@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/PageHeader'
 import { useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Page } from '@/components/Page'
@@ -14,7 +15,7 @@ import { PaintedIcon } from '@/components/PaintedIcon'
 export default function CollectionScreen() {
   return (
     <Page>
-      <h1 style={{ fontSize: 30 }}>Collection</h1>
+      <PageHeader title="Collection" icon={<PaintedIcon id="stat_cards" />} home="/you" />
       <CollectionSection />
       <div style={{ height: 90 }} />
     </Page>

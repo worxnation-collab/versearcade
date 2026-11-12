@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/PageHeader'
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Page } from '@/components/Page'
@@ -154,9 +155,7 @@ export default function ChurchesScreen() {
 
   return (
     <Page>
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
-        <button className="pill" onClick={exit} aria-label="Back">← Back</button>
-      </div>
+      <PageHeader title="For Churches" onBack={exit} />
 
       <div className="center" style={{ marginBottom: 18 }}>
         <div className="floaty" style={{ display: 'grid', placeItems: 'center' }}><img src="/nav/church.png" alt="" width={57} height={57} style={{ display: 'block' }} /></div>

@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/PageHeader'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Page } from '@/components/Page'
@@ -240,11 +241,7 @@ export default function ChurchTryScreen() {
 
   return (
     <Page noNav>
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
-        <button className="pill" onClick={() => { juice.select?.(); navigate('/churches') }} aria-label="Back">← For Churches</button>
-      </div>
-
-      <h1 style={{ fontSize: 24, margin: '0 0 4px' }}>Try it as a pastor</h1>
+      <PageHeader title="Try it as a pastor" backLabel="Back to For Churches" onBack={() => { juice.select?.(); navigate('/churches') }} />
       <p className="dim" style={{ margin: '0 0 12px', fontSize: 13.5, lineHeight: 1.5 }}>
         These are the real leadership tools. Type the verse you&rsquo;re preaching on — or tap{' '}
         <b>✨ Fill in</b> for one from our library — name the series, save it, then play it the way your

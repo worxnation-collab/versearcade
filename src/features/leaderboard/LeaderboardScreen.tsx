@@ -1,3 +1,5 @@
+import { PaintedIcon } from '@/components/PaintedIcon'
+import { PageHeader } from '@/components/PageHeader'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
@@ -62,10 +64,7 @@ export default function LeaderboardScreen() {
   return (
     <Page>
       <div style={{ paddingTop: 8, paddingBottom: 96 }}>
-        <div className="center" style={{ marginBottom: 16 }}>
-          <div className="floaty" style={{ fontSize: 44 }}>🏆</div>
-          <h1 style={{ fontSize: 28, marginTop: 4 }}>Worldwide Ranks</h1>
-        </div>
+        <PageHeader title="Worldwide Ranks" icon={<PaintedIcon id="battle_trophy" />} />
         <LeaderboardSection />
       </div>
     </Page>

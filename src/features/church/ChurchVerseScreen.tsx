@@ -15,6 +15,8 @@ import { aboutVerseSeed } from '@/data/cardAbout'
 import { parseReference } from '@/lib/bibleProgress'
 import type { DailyVerse, PlayResult } from '@/types'
 import { LeaderBeside } from './LeaderBeside'
+import { NextStepCard } from '@/features/daily/NextStepCard'
+import { fetchMyGroup, type MyGroup } from '@/store/churchAdmin'
 
 // /play/church — today's verse from YOUR church, as its own run (0128).
 //
@@ -138,6 +140,9 @@ export default function ChurchVerseScreen() {
         </div>
       )}
 
+      {/* The next step on today's path (trivia), right under the score. */}
+      <NextStepCard from="church" delay={0.3} />
+
       {result && <MissedList result={result} questions={verse.questions} />}
 
       {/* The church's approved verse card for today (0133), the keepsake of
@@ -166,11 +171,41 @@ export default function ChurchVerseScreen() {
         )}
       </div>
 
+      {/* The study guide lives at the end of the verse it is about, for the
+          people who use it: a small-group leader gets today's discussion
+          questions here (0151). Nobody else sees this card. */}
+      <GroupTalk date={today.date} reference={today.reference} />
+
       <div style={{ display: 'grid', gap: 8, marginTop: 14 }}>
         <Button variant="secondary" full onClick={() => navigate('/church')}>See what your church is up to</Button>
         <Button variant="ghost" full onClick={() => navigate('/play')}>Back to Play</Button>
       </div>
       <div style={{ height: 24 }} />
     </Page>
+  )
+}
+
+/** "Talk about it with your group" — today's approved discussion questions,
+ *  for a small-group leader only (`my_church_group` is null for everybody else),
+ *  and only when leadership wrote questions for THIS day's reference. */
+function GroupTalk({ date, reference }: { date: string; reference: string }) {
+  const [g, setG] = useState<MyGroup | null>(null)
+  useEffect(() => {
+    let alive = true
+    fetchMyGroup().then((r) => { if (alive && r.ok) setG(r.data) })
+    return () => { alive = false }
+  }, [])
+  const day = g?.discussion.find((d) => d.date === date && d.reference === reference)
+  if (!g || !day || day.questions.length === 0) return null
+  return (
+    <div className="card" data-group-talk style={{ textAlign: 'left', marginTop: 12 }}>
+      <div className="faint" style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+        Talk about it with {g.name}
+      </div>
+      <ol style={{ margin: '8px 0 0', paddingLeft: 20, display: 'grid', gap: 6, fontSize: 14, lineHeight: 1.45 }}>
+        {day.questions.map((q, i) => <li key={i}>{q}</li>)}
+      </ol>
+      <p className="faint" style={{ margin: '8px 0 0', fontSize: 11.5 }}>Open questions — there’s no right answer to get.</p>
+    </div>
   )
 }

@@ -118,7 +118,7 @@ export default function ChurchPublicScreen() {
                 {extras?.isAdmin && (
                   <div style={{ marginTop: 12 }}>
                     <Button variant="secondary" full onClick={() => navigate(`/church/${page.church.id}/admin`)}>
-                      ⛪ Leadership tools
+                      🗝️ Open the Church Office
                     </Button>
                   </div>
                 )}

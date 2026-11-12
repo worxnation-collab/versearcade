@@ -1,4 +1,4 @@
-import { WeekGapLine } from './admin/WeekGapLine'
+import { OfficeBar } from './admin/OfficeBar'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -348,6 +348,10 @@ function ChurchHome({ church }: { church: Church }) {
 
   return (
     <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'minmax(0, 1fr)' }}>
+      {/* A leader sees exactly what a member sees, plus this one bar: the door
+          into the Church Office. See OfficeBar. */}
+      {extras?.isAdmin && <OfficeBar churchId={church.id} churchName={church.name} verified={!!extras.verified} />}
+
       {/* Hero --------------------------------------------------------------
           The church you play for, as a PLACE: the building at its tier, the
           landscaping its givers planted, and people standing outside it. It was
@@ -445,16 +449,6 @@ function ChurchHome({ church }: { church: Church }) {
           label={<><PaintedIcon id="church_invite" /> Invite your congregation</>}
           note="Sends the church’s own page — anyone can open it, and joining takes one tap."
         />
-
-        {/* Leadership's door, on the one card a leader opens every day. */}
-        {extras?.isAdmin && (
-          <div style={{ marginTop: 12 }}>
-            <Button variant="secondary" full onClick={() => navigate(`/church/${church.id}/admin`)}>
-              ⛪ Leadership tools
-            </Button>
-            {extras.verified && <WeekGapLine churchId={church.id} />}
-          </div>
-        )}
 
         {/* The shelf you fill the yard from, ON the church's own card — the
             shape the Upper Room and the keep's hall both already use: the

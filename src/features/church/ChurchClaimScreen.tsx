@@ -323,7 +323,7 @@ function SelfClaim({ id }: { id: string }) {
     body = (
       <>
         {para(`You lead ${church} on Verse Arcade.`)}
-        <Button variant="gold" full onClick={() => navigate(`/church/${id}/admin`)}>⛪ Open leadership tools</Button>
+        <Button variant="gold" full onClick={() => navigate(`/church/${id}/admin`)}>🗝️ Open the Church Office</Button>
       </>
     )
   } else if (status === 'has_leader' || status === 'paying') {

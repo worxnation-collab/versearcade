@@ -76,7 +76,6 @@ export function ChurchLife({ church, extras }: { church: Church; extras: ChurchE
   const go = (to: string) => { juice.select?.(); navigate(to) }
   const shown = feed ? (more ? feed : feed.slice(0, 6)) : null
   const p = verse?.progress
-  const verseCard = cards.find((c) => c.kind === 'verse_card') ?? null
   const seriesCard = cards.find((c) => c.kind === 'series_header') ?? null
   // A notice card stands in for the notice only while it is the SAME notice.
   const noticeCard = cards.find((c) => c.kind === 'announcement') ?? null
@@ -108,49 +107,33 @@ export function ChurchLife({ church, extras }: { church: Church; extras: ChurchE
         </div>
       )}
 
-      {verse && (
-        <button
-          className="card"
-          onClick={() => go('/play/church')}
-          style={{ padding: '12px 14px', textAlign: 'left', color: 'inherit', font: 'inherit', cursor: 'pointer', width: '100%' }}
-        >
+      {/* The series, as the run of days it is — and today's verse as ONE line
+          pointing at the Play tab, where it is a step on today's path
+          (2026-11-12). This card used to be a second Play button for the
+          same verse, so a member met it twice. */}
+      {(arc || verse) && (
+        <div className="card" style={{ padding: '12px 14px' }} data-church-series>
           {seriesCard && (
             <div style={{ marginBottom: 10 }}>
               <ChurchAssetCard kind="series_header" templateId={seriesCard.templateId} payload={seriesCard.payload} />
             </div>
           )}
-          {verseCard && (
-            <div style={{ marginBottom: 10, maxWidth: 320 }}>
-              <ChurchAssetCard kind="verse_card" templateId={verseCard.templateId} payload={verseCard.payload} />
-            </div>
-          )}
-          <Eyebrow>Today’s church verse{verse.series && !arc ? ` · ${verse.series}` : ''}</Eyebrow>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
-            <b style={{ flex: 1, minWidth: 0, fontSize: 16 }}>{verse.reference}</b>
-            <span style={{ fontSize: 13, fontWeight: 800, color: verse.played ? 'var(--mint)' : 'var(--gold)', flexShrink: 0 }}>
-              {verse.played ? `${verse.played.correct}/${verse.played.total} ✓` : 'Play →'}
-            </span>
-          </div>
+          <Eyebrow>{arc ? 'Your church’s series' : verse?.series ? `Series · ${verse.series}` : 'Your church’s verse'}</Eyebrow>
           {arc ? (
-            <div style={{ marginTop: 10 }}><SeriesTrail series={arc} /></div>
+            <div style={{ marginTop: 8 }}><SeriesTrail series={arc} /></div>
           ) : p && p.total > 0 ? (
-            <div className="faint" style={{ fontSize: 11.5, marginTop: 6 }}>
-              Day {p.soFar} of {p.total} · you’ve played {p.played}
-            </div>
+            <div className="faint" style={{ fontSize: 11.5, marginTop: 6 }}>Day {p.soFar} of {p.total} · you’ve played {p.played}</div>
           ) : null}
-        </button>
-      )}
-
-      {!verse && arc && (
-        <div className="card" style={{ padding: '12px 14px' }}>
-          <Eyebrow>Your church’s series</Eyebrow>
-          <div style={{ marginTop: 8 }}><SeriesTrail series={arc} /></div>
           <button
-            onClick={() => go('/play')}
-            className="faint"
-            style={{ margin: '8px 0 0', padding: 0, fontSize: 12, textAlign: 'left', cursor: 'pointer', textDecoration: 'underline' }}
+            onClick={() => go(verse && !verse.played ? '/play' : verse ? '/play/church' : '/play')}
+            className="dim"
+            style={{ margin: '10px 0 0', padding: 0, fontSize: 12.5, textAlign: 'left', cursor: 'pointer', color: 'var(--ink-dim)' }}
           >
-            No church verse today — today’s verse is on the Play tab.
+            {verse
+              ? verse.played
+                ? `Today: ${verse.reference} · played ${verse.played.correct}/${verse.played.total} ✓`
+                : `Today: ${verse.reference} — it’s on your Play tab, after the daily verse →`
+              : 'No church verse today — today’s verse is on the Play tab.'}
           </button>
         </div>
       )}

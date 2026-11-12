@@ -110,6 +110,11 @@ look and never an edge (YouVersion's model at our scale: ~$50–300/mo).
 **Not doing**: ads, consumer paywalls, sponsored placements.
 
 ## Done
+- 2026-11-12 (04:52 UTC) — research pass: unchanged. 192 accounts (2 new in
+  2 days, neither attributed), 20 active this week, 0 `pastor-ref`, 0 claims,
+  0 join inquiries, 0 plan-page taps in 14 days. Nothing to ship; the two
+  owner actions (lead 1 Studio links, lead 2 outreach) are still the whole
+  bottleneck.
 - 2026-11-12 — research pass: the funnel is still at zero (no `pastor-ref`
   sign-ups, no claims or join inquiries in 2 days, no plan-page taps in 14
   days, no new accounts in a day); the Palouse claim was an operator test. The

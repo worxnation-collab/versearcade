@@ -35,12 +35,12 @@
   "statue_style_note": "All statues: the same pale weathered limestone, the same plain clean square plinth with crisp edges sitting on nothing, the same soft light. Clean carved forms, no moss, no ivy, no flowers, no rubble or stones at the foot.",
   "statues": {
     "statue_mary": "a pale weathered limestone statue of Mary standing with hands folded, veiled, on a plain square stone plinth",
-    "statue_moses": "a pale weathered limestone statue of Moses holding two stone tablets, on a plain square stone plinth",
+    "statue_moses": "a pale weathered limestone statue of an old bearded Moses in robes holding TWO LARGE rounded stone tablets upright against his chest, on a plain square stone plinth",
     "statue_angel": "a pale weathered limestone statue of an angel with folded wings, on a plain square stone plinth",
-    "statue_david": "a pale weathered limestone statue of young David holding a sling, on a plain square stone plinth",
-    "statue_dove": "a pale weathered limestone dove with spread wings on top of a plain square stone column",
-    "statue_tomb": "a small pale limestone empty tomb with the round stone rolled aside, on a plain square stone base",
-    "statue_lion_lamb": "a pale weathered limestone lion lying down beside a lamb, on a plain wide stone plinth",
+    "statue_david": "a pale weathered limestone statue of young David as a shepherd boy, fully clothed in a simple knee-length tunic, holding a sling in one hand and a smooth stone in the other, on a plain square stone plinth",
+    "statue_dove": "a pale weathered limestone dove with wings spread, perched on top of a TALL PLAIN SQUARE STONE COLUMN that stands on the ground; the column is clearly visible below the dove",
+    "statue_tomb": "a small pale limestone rock-cut tomb: a dark open round doorway in a low block of stone, with a large round millstone-shaped stone rolled aside next to the doorway, on a plain flat stone base",
+    "statue_lion_lamb": "a pale weathered limestone lion lying down with a small lamb resting beside it, both carved on top of a plain wide rectangular stone plinth",
     "statue_praying": "a pale weathered limestone hooded figure kneeling in prayer, on a plain square stone plinth",
     "statue_cross": "a plain pale weathered limestone cross on a simple square stone base"
   },

@@ -1053,6 +1053,20 @@ layouts), Tabitha's story room and the chalkboard.
 - A new painting (a week of myths, a verse painting) needs its clips made by hand after it lands;
   the morning runner has no fal key. Add it to `art/living.json` and run the script.
 
+**The speaker moves too** (same day, the owner's note: "the background moves, the character is
+still"). The verse and chalkboard layouts stand a CUT-OUT on the painting, so animating the
+painting alone left him stiff on a moving road. `scripts/gen-cast-stills.mjs [--from <date>]
+[--days 14]` paints the day's speaker into the day's painting with the renderer's own placement
+(`composeStanding`) and writes `public/tiktok/cast/<scene>--<figure>.jpg`, appending it to
+`art/living.json`; gen-living then animates it (hands, head, a little mouth, the scene behind).
+`castStill` picks it up and the post draws the composite instead of scene + cut-out. Pairs repeat,
+so a road and speaker seen before cost nothing. The chalkboard has one, with the operator in it.
+Lip movement is approximate, not synced to the words.
+
+**And the camera glides.** Over a living painting there are no cuts: one slow continuous push for
+the whole post (`glideAt`), because a framing that snaps every few seconds over a picture that
+already moves read as a glitch. Still paintings keep the cut grammar.
+
 ## The few generated pieces, and why those
 
 Everything generated for these posts is chosen to be true EVERY day, never

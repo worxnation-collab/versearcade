@@ -1004,7 +1004,10 @@ cron does the upload. Full design: `docs/TIKTOK-ENGINE.md`. Things to know —
   `scripts/gen-living.mjs` from `art/living.json` and picked up by
   `makeAlive`/`paint`. Myths, roads, the story room and the chalkboard
   have them; no clip is the painting. A new painting needs its clips made
-  by hand. `docs/TIKTOK-ENGINE.md` → "Living paintings".
+  by hand. The verse and chalkboard SPEAKER is painted into the scene first
+  (`scripts/gen-cast-stills.mjs`, `castStill`) so he moves with it, and over
+  a living painting the camera is one smooth push with no cuts (`glideAt`).
+  `docs/TIKTOK-ENGINE.md` → "Living paintings".
   The argument below is history: it was about motion with no grammar.
 - **The only thing moving is the caption, and that is a rule now.** These
   posts had drifting motes, a warm pulse over the frame, a hovering figure

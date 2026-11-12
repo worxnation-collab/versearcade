@@ -29,6 +29,33 @@ argument rather than following from this one.
   green CI and nothing risky left (no money moved, no migration you could not
   verify), merge it and say so. Ask first only for something hard to undo.
 
+## Before calling new art or a feature done: the rollout check
+
+The owner found every one of these on a phone after a "done" (2026-11-12). Run
+this list whenever art, a wardrobe piece, a palette value or a feature ships:
+
+- **Find every surface that draws it, not just the screen you built it on.**
+  `grep` for the old ids, specs and hexes. The landing carousel still drew the
+  retired robed starters a month after the wardrobe replaced them; also check
+  share cards (`og-church-cards.mjs`), the public church page, crowd scenes, the
+  room postcard and the TikTok renderer.
+- **Avatar pieces: run `python3 scripts/avatar/audit.py` and LOOK** at
+  `art/avatar/.audit/` (every piece on ebony AND porcelain). Light skin baked
+  into a layer is a pale patch on the ebony row. Also: does a garment cover
+  slots it shouldn't (a coat with trousers in it)? Does anything rise above the
+  head (it must not be clipped)? Does the picker tile read as the item (back
+  pieces need `back-icons.py`)? Does an overlay or old skin ride along into a
+  new look with no way to take it off?
+- **Drive it in Chromium at 390px, on a dark skin tone, both figures**, and
+  screenshot animations MID-transition, not only at rest: two captions
+  overlapping during a slide change looked fine at rest.
+- **New art beside old art.** Put it next to what surrounds it (its backdrop,
+  the cards, the palette) and in the same hand: a gouache church on a decluttered
+  photo-real yard looked pasted in. Flux paints what a prompt NAMES, even after
+  "no", so prompts list only what IS in the picture.
+- **Check the numbers that say it worked**: file sizes (quantize renders that
+  never show above ~300px), `npm run build`, and `npm run smoke`.
+
 ## Commands
 
 ```bash

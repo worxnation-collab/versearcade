@@ -257,19 +257,28 @@ await shot(browser, 'seals', async ({ page, go, start, wait }) => {
 })
 await shot(browser, 'study', tour('/study', [500, 1100]))
 await shot(browser, 'wordcatch', async ({ page, go, start, wait }) => {
-  await go('/arcade/word-catch'); await wait(1200); start(); await wait(1400)
-  await page.getByRole('button', { name: /Put it back together/ }).click(); await wait(1500)
-  // Tap the words of today's verse in order as they float past.
-  const words = (await page.evaluate(() => document.body.innerText.match(/[A-Z][^“”"\n]{20,}/)?.[0] ?? '')).split(/\s+/)
-  const end = Date.now() + 14000
-  let k = 0
+  await go('/arcade/word-catch'); await wait(1200)
+  // Today's verse, word by word, exactly as the field labels its targets.
+  const verse = (await page.locator('text=/^But seek first/').first().innerText().catch(() => '')).replace(/[“”"]/g, '').replace(/\s*\.\.\.$|…$/, '')
+  start(); await wait(1400)
+  await page.getByRole('button', { name: /Put it back together/ }).click(); await wait(1200)
+  // Only ever tap a WORD on the field: a stray tap on the header's back
+  // button walked the recording out of the game and back, over and over.
+  const end = Date.now() + 16000
   while (Date.now() < end) {
-    const want = (words[k] ?? '').replace(/[^\w'’-]/g, '')
-    const b = page.locator(`button[aria-label="${want}" i]`).first()
-    if (want && await b.count()) { await b.click({ timeout: 600 }).then(() => { k++ }).catch(() => {}) }
-    else { const any = page.locator('button[aria-label]:not([aria-label*="hare"])').last(); if (await any.count()) await any.click({ timeout: 400 }).catch(() => {}) }
-    await wait(450)
+    const labels = await page.$$eval('button[aria-label]', (bs) => bs.map((b) => b.getAttribute('aria-label')))
+    const words = labels.filter((l) => l && l.length < 24 && !/back|share|close|menu|play|study|church|battle|you/i.test(l))
+    // The game knows which word comes next; try each word on the field once
+    // (a wrong one just drops back), slowly enough to read.
+    let hit = false
+    for (const w of words) {
+      const b = page.locator(`button[aria-label="${w.replace(/"/g, '\\"')}"]`).first()
+      if (await b.count()) { await b.click({ timeout: 500 }).then(() => { hit = true }).catch(() => {}); await wait(380) }
+      if (Date.now() > end) break
+    }
+    if (!hit) await wait(300)
   }
+  void verse
 })
 await shot(browser, 'cross', async ({ page, go, start, wait }) => {
   await go('/arcade/cross'); await wait(1200); start(); await wait(1800)

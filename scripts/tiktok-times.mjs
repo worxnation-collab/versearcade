@@ -39,16 +39,22 @@ export const DEFAULT_TIMES = [
   // The scripted morning quiz takes the verse's slot (2026-11-02).
   'challenge=08:00', 'challenge@youtube=08:00', 'challenge@facebook=08:15', 'challenge@instagram=08:30', 'challenge@tiktok=09:00',
   'note=12:00', 'quiz=12:30', 'challenge2=16:00',
+  // The STORY every day (2026-11-07, the owner's call): it was the myth's
+  // evening slot and lost it whenever a myth was recorded, so it ran only on
+  // days the myth didn't. It has the afternoon to itself now — between the
+  // midday verse/exchange and the evening myth — on the two networks it goes
+  // to (`postsOn` keeps it to YouTube and Facebook).
+  'story=16:00', 'story@youtube=16:00', 'story@facebook=16:15',
 ].join(',')
 
 /**
- * Every weekday reading and the story share the evening slot under the alias
+ * Every weekday reading shares the evening slot under the alias
  * `second`. Everything with an hour of its own is named here — and the
  * EXCHANGE has to be, or it falls into `second` and is scheduled on top of
  * the story it was meant to sit hours away from. That failure is silent: two
  * posts go out at 19:30 and the day still reports three successes.
  */
-const OWN_SLOT = ['verse', 'note', 'challenge', 'quiz', 'challenge2', 'exchange']
+const OWN_SLOT = ['verse', 'note', 'challenge', 'quiz', 'challenge2', 'exchange', 'story']
 export const slotOf = (kind) => (OWN_SLOT.includes(kind) ? kind : 'second')
 
 /** `POST_TIMES` in the environment replaces the table wholesale, as it always did. */

@@ -126,7 +126,7 @@ function CpuPicker({
                 <b style={{ fontWeight: 800, fontSize: 17 }}>{p.name}</b>
                 <div className="faint" style={{ fontSize: 12, marginTop: 2, lineHeight: 1.35 }}>{p.blurb}</div>
               </div>
-              <span className="pill" style={{ background: 'var(--gold)', color: '#241f0a', fontWeight: 800, fontSize: 13 }}>Play</span>
+              <span className="pill" style={{ borderColor: 'var(--edge)', fontWeight: 800, fontSize: 13 }}>▶ Play</span>
             </motion.button>
           )
         })}

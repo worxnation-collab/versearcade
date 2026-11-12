@@ -77,7 +77,7 @@ export default function TriviaRoundScreen() {
         translate
         key={seed}
         verse={verse}
-        label={`✨ Bonus trivia · ${bookLabel(book)}`}
+        label={`✨ Book trivia · ${bookLabel(book)}`}
         onExit={() => setPhase('pick')}
         studyDrop
         onComplete={async (r) => {
@@ -118,7 +118,7 @@ function BookPicker({
   return (
     <Page noNav>
       <PageHeader
-        title="Bonus trivia"
+        title="Book trivia"
         sub="Pick a book: five questions about its people, its places and what happens in it. Every answer tells you something, right or wrong."
         onBack={onExit}
       />
@@ -163,7 +163,7 @@ function PickRow({ label, sub, active, onClick }: { label: string; sub: string; 
         </b>
         <span className="faint" style={{ fontSize: 12 }}>{sub}</span>
       </div>
-      <span className="pill" style={{ background: 'var(--gold)', color: '#241f0a', fontWeight: 800, fontSize: 12 }}>Play</span>
+      <span className="pill" style={{ borderColor: 'var(--edge)', fontWeight: 800, fontSize: 12 }}>▶ Play</span>
     </motion.button>
   )
 }
@@ -191,7 +191,7 @@ function Recap({
     <Page noNav>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
         <button className="pill" onClick={onDone} aria-label="Done">✕</button>
-        <b style={{ fontFamily: 'var(--font-display)', fontSize: 18 }}>Bonus trivia · {bookLabel(book)}</b>
+        <b style={{ fontFamily: 'var(--font-display)', fontSize: 18 }}>Book trivia · {bookLabel(book)}</b>
       </div>
 
       <motion.div

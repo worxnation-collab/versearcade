@@ -53,7 +53,7 @@ export function battleModeLabel(seed: number, mode: BattleMode): string {
 
 /** One line saying what the mode asks, for the picker. */
 export const MODE_BLURB: Record<BattleMode, string> = {
-  verse: 'Read a verse, then race the clock on it — the last question a bonus about its book.',
+  verse: 'Read a verse, then race the clock on five questions about it.',
   trivia: 'Five questions about one book of the Bible: its people, its places and what happens in it.',
 }
 

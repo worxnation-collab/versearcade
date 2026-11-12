@@ -182,6 +182,42 @@ await shot(browser, 'church', async ({ page, go, start, wait }) => {
   await smooth(page, 380, 2000); await wait(2600)
 })
 
+// The pastor's side, through the public demo (the real leadership tools over
+// memory): type the sermon's verse, let it fill the words and five questions,
+// name the series, set it, then play it as the congregation would.
+await shot(browser, 'pastor', async ({ page, go, start, wait }) => {
+  await go('/churches/try'); start(); await wait(1600)
+  const ref = page.getByPlaceholder('John 15:5')
+  await ref.scrollIntoViewIfNeeded(); await page.evaluate(() => scrollBy(0, -120)); await wait(500)
+  await ref.click(); await ref.pressSequentially('John 15:5', { delay: 110 }); await wait(700)
+  await page.getByRole('button', { name: /Fill in the words/ }).click(); await wait(1600)
+  const series = page.getByPlaceholder(/John 15–17/)
+  await smooth(page, (await series.evaluate((e) => e.getBoundingClientRect().top + scrollY)) - 260, 1100)
+  await series.click(); await series.pressSequentially('Abide', { delay: 120 }); await wait(600)
+  const note = page.getByPlaceholder(/Read the whole chapter/)
+  await note.click(); await note.pressSequentially('Stay connected this week!', { delay: 45 }); await wait(500)
+  const set = page.getByRole('button', { name: /Set today’s verse|Set the verse/ })
+  await smooth(page, (await set.evaluate((e) => e.getBoundingClientRect().top + scrollY)) - 500, 1300); await wait(500)
+  await set.click(); await wait(1200)
+  await smooth(page, 0, 1100); await wait(800)
+  await page.getByRole('button', { name: /Play it as your congregation/ }).click(); await wait(2600)
+  await page.getByRole('button', { name: /start the clock/ }).click().catch(() => {})
+  for (let i = 0; i < 2; i++) {
+    await page.locator('[data-option]:not([disabled])').first().waitFor({ timeout: 8000 }).catch(() => {})
+    await wait(1200)
+    await page.locator('[data-option]').nth(i).click().catch(() => {}); await wait(2000)
+    await page.getByRole('button', { name: /Next question|See my score/ }).click().catch(() => {})
+  }
+  await wait(800)
+})
+
+await shot(browser, 'people', async ({ page, go, start, wait }) => {
+  await go('/churches/try'); await wait(800)
+  await page.getByRole('tab', { name: 'People' }).or(page.getByRole('button', { name: 'People', exact: true })).first().click()
+  await wait(600); start(); await wait(1800)
+  await smooth(page, 420, 2200); await wait(2000)
+})
+
 await shot(browser, 'end', async ({ page, start, wait }) => {
   await page.setContent(`<html><body style="margin:0;height:100vh;display:grid;place-items:center;text-align:center;
     background:radial-gradient(ellipse at 50% 30%,#3a2a1c,#120c08);color:#fff;font-family:Inter,system-ui,sans-serif">
